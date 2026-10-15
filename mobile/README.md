@@ -447,7 +447,7 @@ A build carrying no follow repository or no offline library leaves that tab out.
 
 ## Localization
 
-Every string the app shows comes from the shared catalogs in `locales/`, and the app renders in the language the device asks for.
+Every string the app shows comes from the shared catalogs in `locales/`, and the app renders in the language the device asks for, among those the tenant offers.
 
 ### Copy
 
@@ -459,7 +459,7 @@ To add copy, add the key under `mobile.<screen>` to every `locales/*.json`, run 
 
 ### Locale
 
-`PubliraApp` resolves the locale the way `web-storefront` does, with the device standing in for the browser. The first device language that names a catalog wins, whether by its whole tag, by the script that tag is written in, or by its language alone. A device set to none of them takes the tenant's `default_locale`, which `GetTenantByDomain` returns and `TenantResolver` keeps; until that answer arrives, and for good when it cannot, on a launch without a network, the app opens in English, the same decision `@publira/i18n` makes for a browser with no usable preference. `MaterialApp.localizationsDelegates` carries the app's own delegate alongside the `flutter_localizations` ones, so Material's own strings follow the same locale.
+`PubliraApp` resolves the locale the way `web-storefront` does, with the device standing in for the browser. The first device language that names a catalog the tenant offers wins, whether by its whole tag, by the script that tag is written in, or by its language alone. A device set to none of them takes the tenant's `default_locale`. `GetTenantByDomain` returns `supported_locales` beside `default_locale`, and `TenantResolver` keeps both. Every catalog stays bundled, so until that answer arrives, and for good when it cannot, on a launch without a network, the device is matched against all of them, and a device set to none of them opens the app in English, the same decision `@publira/i18n` makes for a browser with no usable preference. `MaterialApp.localizationsDelegates` carries the app's own delegate alongside the `flutter_localizations` ones, so Material's own strings follow the same locale.
 
 There is no in-app switcher: the device setting is the switch, and changing it while the app runs re-renders every screen.
 

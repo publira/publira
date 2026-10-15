@@ -184,4 +184,55 @@ void main() {
       }
     },
   );
+
+  test('the locales the tenant offers are kept for the app', () async {
+    final resolver = _resolverOver(
+      MockClient(
+        (_) async => http.Response(
+          jsonEncode(const {
+            'tenantId': _tenantId,
+            'defaultLocale': 'ja',
+            'supportedLocales': ['ja', 'en'],
+          }),
+          200,
+        ),
+      ),
+    );
+    var notified = 0;
+    resolver.supportedLocales.addListener(() => notified++);
+
+    expect(resolver.supportedLocales.value, isNull);
+    await resolver.resolve();
+
+    expect(resolver.supportedLocales.value, ['ja', 'en']);
+    expect(notified, 1);
+
+    await resolver.confirm();
+
+    expect(resolver.supportedLocales.value, ['ja', 'en']);
+    expect(notified, 1, reason: 'the same set answered again');
+  });
+
+  test(
+    'an answer naming no locale leaves the offered locales unknown',
+    () async {
+      for (final body in const <Map<String, Object?>>[
+        {'tenantId': _tenantId},
+        {'tenantId': _tenantId, 'supportedLocales': <String>[]},
+        {'tenantId': _tenantId, 'supportedLocales': 'ja'},
+        {
+          'tenantId': _tenantId,
+          'supportedLocales': ['  ', 1],
+        },
+      ]) {
+        final resolver = _resolverOver(
+          MockClient((_) async => http.Response(jsonEncode(body), 200)),
+        );
+
+        await resolver.resolve();
+
+        expect(resolver.supportedLocales.value, isNull, reason: 'body $body');
+      }
+    },
+  );
 }

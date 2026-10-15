@@ -100,6 +100,7 @@ class PubliraApp extends StatefulWidget {
     this.push,
     this.ageRatingConfirmation,
     this.tenantDefaultLocale,
+    this.tenantSupportedLocales,
     this.site,
     this.incomingLinks,
     this.share,
@@ -266,6 +267,7 @@ class PubliraApp extends StatefulWidget {
         store: ageRatingConfirmation,
       ),
       tenantDefaultLocale: tenants.defaultLocale,
+      tenantSupportedLocales: tenants.supportedLocales,
       site: PublicSite(host: resolved.tenantHost),
       incomingLinks: incomingLinks ?? PluginIncomingLinks(),
       share: share ?? const PluginShareSheet(),
@@ -437,6 +439,14 @@ class PubliraApp extends StatefulWidget {
   /// in which case only the device's own languages decide the locale.
   final ValueListenable<String?>? tenantDefaultLocale;
 
+  /// The locale codes the tenant offers, once the tenant lookup has learnt
+  /// them.
+  ///
+  /// Supplied the way [tenantDefaultLocale] is. Without it, or until it
+  /// answers, the device's languages are matched against every catalog the
+  /// app ships.
+  final ValueListenable<List<String>?>? tenantSupportedLocales;
+
   /// The tenant site a share names and an incoming link is accepted from.
   ///
   /// [PubliraApp.fromConfig] always supplies one. It is nullable for the
@@ -504,6 +514,10 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
   /// signed out can still be named once the session is gone.
   late String _readerId;
 
+  /// The locale [_checkLegalPageAgreements] last asked in, `null` before it
+  /// has asked.
+  Locale? _legalPageAgreementsLocale;
+
   /// The confirmation this run owns when the widget did not pass one, so a
   /// widget test that does not care about ratings still has a store.
   AgeRatingConfirmationController? _ownedAgeRating;
@@ -532,7 +546,8 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
       unawaited(widget.progress?.flush());
       unawaited(_checkLegalPageAgreements());
     }
-    widget.tenantDefaultLocale?.addListener(_onTenantDefaultLocaleChanged);
+    widget.tenantDefaultLocale?.addListener(_onTenantLocalesChanged);
+    widget.tenantSupportedLocales?.addListener(_onTenantLocalesChanged);
     widget.tenantBrand?.addListener(_onTenantBrandChanged);
     widget.tenantAvailability?.addListener(_onTenantAvailabilityChanged);
     unawaited(_restore());
@@ -604,10 +619,12 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
   void didUpdateWidget(PubliraApp oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.tenantDefaultLocale != oldWidget.tenantDefaultLocale) {
-      oldWidget.tenantDefaultLocale?.removeListener(
-        _onTenantDefaultLocaleChanged,
-      );
-      widget.tenantDefaultLocale?.addListener(_onTenantDefaultLocaleChanged);
+      oldWidget.tenantDefaultLocale?.removeListener(_onTenantLocalesChanged);
+      widget.tenantDefaultLocale?.addListener(_onTenantLocalesChanged);
+    }
+    if (widget.tenantSupportedLocales != oldWidget.tenantSupportedLocales) {
+      oldWidget.tenantSupportedLocales?.removeListener(_onTenantLocalesChanged);
+      widget.tenantSupportedLocales?.addListener(_onTenantLocalesChanged);
     }
     if (widget.tenantAvailability != oldWidget.tenantAvailability) {
       oldWidget.tenantAvailability?.removeListener(
@@ -632,7 +649,8 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
   void dispose() {
     widget.tenantAvailability?.removeListener(_onTenantAvailabilityChanged);
     widget.tenantBrand?.removeListener(_onTenantBrandChanged);
-    widget.tenantDefaultLocale?.removeListener(_onTenantDefaultLocaleChanged);
+    widget.tenantSupportedLocales?.removeListener(_onTenantLocalesChanged);
+    widget.tenantDefaultLocale?.removeListener(_onTenantLocalesChanged);
     widget.push?.removeListener(_onPushChanged);
     widget.legalPageAgreements?.removeListener(_onLegalPageAgreementsChanged);
     widget.auth.removeListener(_onAuthChanged);
@@ -677,8 +695,16 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
     }
   }
 
-  void _onTenantDefaultLocaleChanged() {
+  /// The tenant lookup answered which languages the tenant offers and which
+  /// is its default, so the next frame renders in one of them. A reader
+  /// signed in from the device's session was asked about the legal pages
+  /// before that answer, in a language the tenant may not offer, and is asked
+  /// again in the one the app now renders in.
+  void _onTenantLocalesChanged() {
     setState(() {});
+    if (widget.auth.isSignedIn && _locale != _legalPageAgreementsLocale) {
+      unawaited(_checkLegalPageAgreements());
+    }
   }
 
   /// The tenant's colours and name arrived, off the device or from the API.
@@ -699,14 +725,18 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
 
   /// Reads what the signed-in reader owes, in the pages' translations the
   /// screens render in.
-  Future<void> _checkLegalPageAgreements() async =>
-      widget.legalPageAgreements?.check(locale: _locale.toLanguageTag());
+  Future<void> _checkLegalPageAgreements() async {
+    final locale = _locale;
+    _legalPageAgreementsLocale = locale;
+    await widget.legalPageAgreements?.check(locale: locale.toLanguageTag());
+  }
 
   /// The locale every screen renders in, decided from the device's languages
   /// and what the tenant lookup has answered so far.
   Locale get _locale => resolveAppLocale(
     deviceLocales: WidgetsBinding.instance.platformDispatcher.locales,
     tenantDefaultLocale: widget.tenantDefaultLocale?.value,
+    tenantSupportedLocales: widget.tenantSupportedLocales?.value,
   );
 
   /// Keeps the device's notification registration in step with the reader who

@@ -86,27 +86,37 @@ Locale? matchLocale(
   return null;
 }
 
-/// The catalog the device asks for, or `null` when it asks for none:
-/// [matchLocale] over the catalogs `locales/index.json` carries.
-Locale? matchDeviceLocale(List<Locale> deviceLocales) => matchLocale(
-  deviceLocales,
-  AppMessages.supportedLocales,
-  AppMessages.likelyScripts,
-);
+/// The catalogs of [AppMessages.supportedLocales] the tenant offers, in the
+/// order [tenantSupportedLocales] names them, or every catalog while that set
+/// is unknown or names none the app carries.
+List<Locale> _offeredLocales(List<String>? tenantSupportedLocales) {
+  final offered = [
+    for (final code in tenantSupportedLocales ?? const <String>[])
+      ?supportedLocaleForCode(code),
+  ];
+  return offered.isEmpty ? AppMessages.supportedLocales : offered;
+}
 
 /// The locale the app renders in.
 ///
-/// The device's languages are the reader's own preference, so the first
-/// supported one wins outright. A device set to nothing the catalogs cover
+/// The device's languages are the reader's own preference, so the first one
+/// the tenant offers wins outright. [tenantSupportedLocales] is that set once
+/// `GetTenantByDomain` has answered, and `null` until then, in which case
+/// every catalog the app ships is on offer. A device set to nothing on offer
 /// takes the tenant's default instead, the same setting `web-storefront`
 /// serves a visitor who chose no language; [tenantDefaultLocale] is that code
-/// once `GetTenantByDomain` has answered, and `null` until then. With neither,
-/// the app opens in [fallbackLocale].
+/// once the lookup has answered, and `null` until then. With neither, the app
+/// opens in [fallbackLocale].
 Locale resolveAppLocale({
   required List<Locale> deviceLocales,
   required String? tenantDefaultLocale,
+  List<String>? tenantSupportedLocales,
 }) {
-  final device = matchDeviceLocale(deviceLocales);
+  final device = matchLocale(
+    deviceLocales,
+    _offeredLocales(tenantSupportedLocales),
+    AppMessages.likelyScripts,
+  );
   if (device != null) {
     return device;
   }

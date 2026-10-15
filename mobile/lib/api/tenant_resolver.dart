@@ -19,6 +19,7 @@ class TenantResolver {
   String? _tenantId;
   Future<String>? _pending;
   final _defaultLocale = ValueNotifier<String?>(null);
+  final _supportedLocales = ValueNotifier<List<String>?>(null);
 
   /// The tenant's default locale code once the lookup has answered, `null`
   /// before.
@@ -29,6 +30,16 @@ class TenantResolver {
   /// the previous one in place: a lookup that failed has not changed the
   /// tenant's setting.
   ValueListenable<String?> get defaultLocale => _defaultLocale;
+
+  /// The locale codes the tenant offers once the lookup has answered, `null`
+  /// before.
+  ///
+  /// The device's languages are negotiated against these rather than against
+  /// every catalog the app ships, so a reader is never shown a language the
+  /// tenant did not choose. Like [defaultLocale], an answer that names no
+  /// locale leaves the previous set in place, and one naming the same set
+  /// again notifies nobody.
+  ValueListenable<List<String>?> get supportedLocales => _supportedLocales;
 
   /// Throws [ConnectException] when the lookup fails or answers without an id.
   Future<String> resolve() {
@@ -77,6 +88,16 @@ class TenantResolver {
           : '';
       if (defaultLocale.isNotEmpty) {
         _defaultLocale.value = defaultLocale;
+      }
+      final rawSupportedLocales = body['supportedLocales'];
+      final supportedLocales = [
+        if (rawSupportedLocales is List)
+          for (final code in rawSupportedLocales)
+            if (code is String && code.trim().isNotEmpty) code.trim(),
+      ];
+      if (supportedLocales.isNotEmpty &&
+          !listEquals(supportedLocales, _supportedLocales.value)) {
+        _supportedLocales.value = List.unmodifiable(supportedLocales);
       }
       return tenantId;
     } catch (error) {

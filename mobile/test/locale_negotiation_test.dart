@@ -32,6 +32,14 @@ const chineseScripts = <String, String>{
 const zhHans = Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hans');
 const zhHant = Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant');
 
+/// The catalog the device asks for among every one the app ships: what the
+/// app negotiates before the tenant lookup has answered.
+Locale? matchDeviceLocale(List<Locale> deviceLocales) => matchLocale(
+  deviceLocales,
+  AppMessages.supportedLocales,
+  AppMessages.likelyScripts,
+);
+
 void main() {
   group('supportedLocaleForCode', () {
     test('answers the catalog locale for its code, whatever the case', () {
@@ -249,6 +257,94 @@ void main() {
         ),
         fallbackLocale,
       );
+    });
+
+    group('on a tenant that offers Japanese and English', () {
+      const offered = ['ja', 'en'];
+
+      test('takes the first device language the tenant offers', () {
+        expect(
+          resolveAppLocale(
+            deviceLocales: const [Locale('ko', 'KR'), Locale('en', 'US')],
+            tenantDefaultLocale: 'ja',
+            tenantSupportedLocales: offered,
+          ),
+          const Locale('en'),
+        );
+      });
+
+      test('a device that prefers no offered language takes the default', () {
+        expect(
+          resolveAppLocale(
+            deviceLocales: const [Locale('ko', 'KR')],
+            tenantDefaultLocale: 'ja',
+            tenantSupportedLocales: offered,
+          ),
+          const Locale('ja'),
+        );
+        expect(
+          resolveAppLocale(
+            deviceLocales: const [Locale('zh', 'TW')],
+            tenantDefaultLocale: 'en',
+            tenantSupportedLocales: offered,
+          ),
+          const Locale('en'),
+        );
+      });
+    });
+
+    test('a tenant that offers one Chinese catalog serves either script in '
+        'it', () {
+      expect(
+        resolveAppLocale(
+          deviceLocales: const [Locale('zh', 'CN')],
+          tenantDefaultLocale: 'ja',
+          tenantSupportedLocales: const ['ja', 'zh-Hant'],
+        ),
+        zhHant,
+      );
+    });
+
+    test('a tenant that offers every language negotiates as before', () {
+      final everyCode = [
+        for (final locale in AppMessages.supportedLocales)
+          locale.toLanguageTag(),
+      ];
+      for (final device in const [
+        [Locale('ko', 'KR'), Locale('en')],
+        [Locale('zh', 'TW')],
+        [Locale('fr'), Locale('ja')],
+        [Locale('fr')],
+      ]) {
+        expect(
+          resolveAppLocale(
+            deviceLocales: device,
+            tenantDefaultLocale: 'ja',
+            tenantSupportedLocales: everyCode,
+          ),
+          resolveAppLocale(deviceLocales: device, tenantDefaultLocale: 'ja'),
+          reason: 'device $device',
+        );
+      }
+    });
+
+    test('every catalog is on offer while the tenant names none the app '
+        'carries', () {
+      for (final offered in const <List<String>?>[
+        null,
+        [],
+        ['de'],
+      ]) {
+        expect(
+          resolveAppLocale(
+            deviceLocales: const [Locale('ko')],
+            tenantDefaultLocale: null,
+            tenantSupportedLocales: offered,
+          ),
+          const Locale('ko'),
+          reason: 'offered $offered',
+        );
+      }
     });
 
     test('the fallback is a locale a catalog exists for', () {
