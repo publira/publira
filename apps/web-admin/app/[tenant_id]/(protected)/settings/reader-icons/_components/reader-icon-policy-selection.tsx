@@ -29,10 +29,10 @@ const isTenantReaderIconPolicy = (
   TENANT_READER_ICON_POLICIES.some((policy) => policy === value);
 
 /**
- * Holds the policy the card has selected, and works out from the saved one
- * which icons saving it would clear. The radio group below sets it, and
- * {@link ReaderIconPolicyWhenClearing} picks the submit control from it, so a
- * save that takes icons down asks first and one that takes none does not.
+ * Holds the policy the card has selected, and which icons saving it may
+ * clear. The radio group below sets it, and {@link ReaderIconPolicyWhenClearing}
+ * picks the submit control from it, so a save that may take icons down asks
+ * first and one that cannot does not.
  *
  * Only the operator's own choice is state; until they make one the saved
  * policy is selected. The caller keys this by the saved policy, which drops
@@ -49,9 +49,7 @@ export const ReaderIconPolicySelection = ({
   const [choice, setChoice] = useState<TenantReaderIconPolicy>();
   const selected = choice ?? saved;
   const clearance =
-    saved === undefined || selected === undefined
-      ? "none"
-      : readerIconPolicyClearance(saved, selected);
+    selected === undefined ? "none" : readerIconPolicyClearance(selected);
 
   return (
     <SelectPolicyContext value={setChoice}>

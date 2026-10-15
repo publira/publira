@@ -78,8 +78,8 @@ describe("ReaderIconPolicyForm", () => {
     ).toBe("false");
   });
 
-  // Widening takes no icon down, so it is saved without a question.
-  it("saves a wider policy straight away", async () => {
+  // Upload allows every icon, so saving it takes none down.
+  it("saves the upload policy straight away", async () => {
     await renderCard(
       <ReaderIconPolicyForm canEdit initialPolicy="preset" tenantId="T1" />
     );
@@ -104,7 +104,7 @@ describe("ReaderIconPolicyForm", () => {
 
     const dialog = await screen.findByRole("alertdialog");
     expect(dialog.textContent).toContain(
-      "Saving removes every image readers uploaded as their icon"
+      "Saving removes any image readers uploaded as their icon"
     );
     expect(save.formData).toBeUndefined();
 
@@ -125,9 +125,35 @@ describe("ReaderIconPolicyForm", () => {
 
     const dialog = await screen.findByRole("alertdialog");
     expect(dialog.textContent).toContain(
-      "Saving removes every icon readers show"
+      "Saving removes any icon readers show"
     );
   });
+
+  // The server clears against the policy stored when the save lands, which
+  // another administrator may have widened since this card was drawn, so the
+  // question does not depend on the policy the card shows as saved.
+  it.each([
+    ["disabled", /Choose a preset/u],
+    ["preset", /Choose a preset/u],
+    ["disabled", /No icons/u],
+  ] as const)(
+    "asks even when the card shows %s as saved",
+    async (initialPolicy, option) => {
+      await renderCard(
+        <ReaderIconPolicyForm
+          canEdit
+          initialPolicy={initialPolicy}
+          tenantId="T1"
+        />
+      );
+
+      fireEvent.click(screen.getByRole("radio", { name: option }));
+      fireEvent.click(submitButton());
+
+      expect(await screen.findByRole("alertdialog")).toBeDefined();
+      expect(save.formData).toBeUndefined();
+    }
+  );
 
   it("stays read-only for someone who is not a tenant admin", async () => {
     await renderCard(

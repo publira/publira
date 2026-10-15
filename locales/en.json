@@ -3047,8 +3047,8 @@
           "load_failed": "Could not load the reader icon policy. Please try again later.",
           "save_failed": "Could not save the reader icon policy. Please try again later.",
           "confirm_title": "Remove readers' icons?",
-          "confirm_clears_uploads": "Saving removes every image readers uploaded as their icon, and they cannot be restored. Readers who chose a preset icon keep it.",
-          "confirm_clears_all": "Saving removes every icon readers show, uploaded or chosen from the presets, and they cannot be restored.",
+          "confirm_clears_uploads": "Saving removes any image readers uploaded as their icon, and it cannot be restored. Readers who chose a preset icon keep it.",
+          "confirm_clears_all": "Saving removes any icon readers show, uploaded or chosen from the presets, and it cannot be restored.",
           "confirm_action": "Save and remove",
           "validation": {
             "required": "Select what readers can show."

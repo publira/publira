@@ -18,25 +18,30 @@ export const TENANT_READER_ICON_POLICIES = [
 ] as const satisfies readonly TenantReaderIconPolicy[];
 
 /**
- * The icons a save clears, from the policy the tenant has to the one it is
- * switching to. Narrowing to `preset` takes down the images readers uploaded
- * and leaves the presets they picked; narrowing to `disabled` takes down every
- * icon. Widening, or saving the same policy, clears nothing.
+ * The icons saving a policy may clear. The server clears what the policy
+ * stored at that moment no longer allows, and the policy this card was drawn
+ * with may be stale by then — another administrator can have widened it and
+ * readers uploaded since — so the answer depends on the policy being saved
+ * alone: `preset` may take down the images readers uploaded and leaves the
+ * presets they picked, `disabled` may take down every icon, and `upload`
+ * clears nothing.
  */
 export type ReaderIconPolicyClearance = "all" | "none" | "uploads";
 
 export const readerIconPolicyClearance = (
-  saved: TenantReaderIconPolicy,
-  next: TenantReaderIconPolicy
+  policy: TenantReaderIconPolicy
 ): ReaderIconPolicyClearance => {
-  if (next === saved) {
-    return "none";
+  switch (policy) {
+    case "disabled": {
+      return "all";
+    }
+    case "preset": {
+      return "uploads";
+    }
+    default: {
+      return "none";
+    }
   }
-  if (next === "disabled") {
-    return "all";
-  }
-  // Coming from `disabled`, readers show no icon for `preset` to clear.
-  return next === "preset" && saved === "upload" ? "uploads" : "none";
 };
 
 /**

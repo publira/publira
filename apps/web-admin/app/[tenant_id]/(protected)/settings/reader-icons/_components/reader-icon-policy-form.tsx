@@ -50,9 +50,9 @@ interface ReaderIconPolicyFormProps {
 }
 
 /**
- * Chooses what readers may show as an icon. A choice narrower than the saved
- * one takes icons down as it is saved, so its save button asks first and says
- * which icons go; a wider one, or the same one, saves straight away.
+ * Chooses what readers may show as an icon. Saving `preset` or `disabled` may
+ * take icons down, so its save button asks first and says which icons go;
+ * `upload` saves straight away.
  */
 export const ReaderIconPolicyForm = ({
   canEdit,

@@ -141,12 +141,12 @@ What each limit and record is, and what each purge leaves in place, is explained
 | **Choose a preset icon** | A reader picks one of the icons under [Preset icons](#preset-icons), and cannot upload an image |
 | **No icons** | No reader shows an icon, and the site shows a plain outline for everyone |
 
-Choose **Save the reader icon policy** to save. A choice that allows less than the saved one takes icons down as it is saved, so the console asks first with "Remove readers' icons?":
+Choose **Save the reader icon policy** to save. Saving **Choose a preset icon** or **No icons** takes down the icons that choice does not allow, so the console asks first with "Remove readers' icons?":
 
-- From **Upload their own image** to **Choose a preset icon**, every image readers uploaded is removed. Readers who chose a preset keep it.
-- From either of the others to **No icons**, every icon readers show is removed.
+- **Choose a preset icon** removes every image readers uploaded. Readers who chose a preset keep it.
+- **No icons** removes every icon readers show.
 
-Choose **Save and remove** to go ahead. A removed icon cannot be restored, so when the policy allows icons again, each reader chooses one again. A choice that allows more removes nothing, and is saved without asking.
+Choose **Save and remove** to go ahead. The console asks whichever policy the card shows as saved, since another Tenant admin may have changed it since the page was opened. A removed icon cannot be restored, so when the policy allows icons again, each reader chooses one again. **Upload their own image** removes nothing, and is saved without asking.
 
 ![The Reader icon policy card: What readers can show with Upload their own image, Choose a preset icon, and No icons, and Save the reader icon policy.](./settings-reader-icon-policy.png)
 
