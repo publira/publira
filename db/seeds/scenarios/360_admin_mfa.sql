@@ -54,3 +54,9 @@ WHERE user_id = (SELECT id FROM users WHERE public_id = 'MfaEADMNAAA1');
 
 DELETE FROM user_mfa_totp
 WHERE user_id = (SELECT id FROM users WHERE public_id = 'MfaEADMNAAA1');
+
+DELETE FROM user_webauthn_credentials
+WHERE user_id = (SELECT id FROM users WHERE public_id = 'MfaEADMNAAA1');
+
+DELETE FROM user_mfa_lockouts
+WHERE user_id = (SELECT id FROM users WHERE public_id = 'MfaEADMNAAA1');

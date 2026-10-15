@@ -1351,6 +1351,14 @@ type UserImageVariant struct {
 	CreatedAt       time.Time `json:"created_at"`
 }
 
+type UserMfaLockout struct {
+	UserID         uuid.UUID    `json:"user_id"`
+	TenantID       uuid.UUID    `json:"tenant_id"`
+	FailedAttempts int32        `json:"failed_attempts"`
+	LockedUntil    sql.NullTime `json:"locked_until"`
+	UpdatedAt      time.Time    `json:"updated_at"`
+}
+
 type UserMfaRecoveryCode struct {
 	ID        uuid.UUID    `json:"id"`
 	TenantID  uuid.UUID    `json:"tenant_id"`
@@ -1366,8 +1374,6 @@ type UserMfaTotp struct {
 	SecretEncrypted  string        `json:"secret_encrypted"`
 	EnabledAt        sql.NullTime  `json:"enabled_at"`
 	LastVerifiedStep sql.NullInt64 `json:"last_verified_step"`
-	FailedAttempts   int32         `json:"failed_attempts"`
-	LockedUntil      sql.NullTime  `json:"locked_until"`
 	CreatedAt        time.Time     `json:"created_at"`
 	UpdatedAt        time.Time     `json:"updated_at"`
 }
@@ -1429,6 +1435,34 @@ type UserViewerPreference struct {
 	UserID            uuid.UUID `json:"user_id"`
 	WideViewerEnabled bool      `json:"wide_viewer_enabled"`
 	UpdatedAt         time.Time `json:"updated_at"`
+}
+
+type UserWebauthnCeremony struct {
+	Challenge string    `json:"challenge"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	Ceremony  string    `json:"ceremony"`
+	RpID      string    `json:"rp_id"`
+	ExpiresAt time.Time `json:"expires_at"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type UserWebauthnCredential struct {
+	ID             uuid.UUID    `json:"id"`
+	PublicID       string       `json:"public_id"`
+	TenantID       uuid.UUID    `json:"tenant_id"`
+	UserID         uuid.UUID    `json:"user_id"`
+	RpID           string       `json:"rp_id"`
+	CredentialID   []byte       `json:"credential_id"`
+	PublicKey      []byte       `json:"public_key"`
+	SignCount      int64        `json:"sign_count"`
+	Aaguid         uuid.UUID    `json:"aaguid"`
+	Transports     []string     `json:"transports"`
+	BackupEligible bool         `json:"backup_eligible"`
+	BackedUp       bool         `json:"backed_up"`
+	Name           string       `json:"name"`
+	CreatedAt      time.Time    `json:"created_at"`
+	LastUsedAt     sql.NullTime `json:"last_used_at"`
 }
 
 type WaitFreeTicketState struct {

@@ -455,6 +455,21 @@ const mfaActionName = (action: string) => {
         <Message message="admin.audit.actions.admin_mfa_recovery_codes_regenerated" />
       );
     }
+    case "admin_mfa_passkey_registered": {
+      return (
+        <Message message="admin.audit.actions.admin_mfa_passkey_registered" />
+      );
+    }
+    case "admin_mfa_passkey_renamed": {
+      return (
+        <Message message="admin.audit.actions.admin_mfa_passkey_renamed" />
+      );
+    }
+    case "admin_mfa_passkey_removed": {
+      return (
+        <Message message="admin.audit.actions.admin_mfa_passkey_removed" />
+      );
+    }
     default: {
       return null;
     }

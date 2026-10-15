@@ -76,6 +76,27 @@ const (
 	// AdminAuthServiceRegenerateMfaRecoveryCodesProcedure is the procedure name of the
 	// AdminAuthService's RegenerateMfaRecoveryCodes RPC.
 	AdminAuthServiceRegenerateMfaRecoveryCodesProcedure = "/publira.admin.v1.AdminAuthService/RegenerateMfaRecoveryCodes"
+	// AdminAuthServiceBeginPasskeyRegistrationProcedure is the procedure name of the AdminAuthService's
+	// BeginPasskeyRegistration RPC.
+	AdminAuthServiceBeginPasskeyRegistrationProcedure = "/publira.admin.v1.AdminAuthService/BeginPasskeyRegistration"
+	// AdminAuthServiceFinishPasskeyRegistrationProcedure is the procedure name of the
+	// AdminAuthService's FinishPasskeyRegistration RPC.
+	AdminAuthServiceFinishPasskeyRegistrationProcedure = "/publira.admin.v1.AdminAuthService/FinishPasskeyRegistration"
+	// AdminAuthServiceBeginPasskeyVerificationProcedure is the procedure name of the AdminAuthService's
+	// BeginPasskeyVerification RPC.
+	AdminAuthServiceBeginPasskeyVerificationProcedure = "/publira.admin.v1.AdminAuthService/BeginPasskeyVerification"
+	// AdminAuthServiceFinishPasskeyVerificationProcedure is the procedure name of the
+	// AdminAuthService's FinishPasskeyVerification RPC.
+	AdminAuthServiceFinishPasskeyVerificationProcedure = "/publira.admin.v1.AdminAuthService/FinishPasskeyVerification"
+	// AdminAuthServiceListPasskeysProcedure is the procedure name of the AdminAuthService's
+	// ListPasskeys RPC.
+	AdminAuthServiceListPasskeysProcedure = "/publira.admin.v1.AdminAuthService/ListPasskeys"
+	// AdminAuthServiceRenamePasskeyProcedure is the procedure name of the AdminAuthService's
+	// RenamePasskey RPC.
+	AdminAuthServiceRenamePasskeyProcedure = "/publira.admin.v1.AdminAuthService/RenamePasskey"
+	// AdminAuthServiceDeletePasskeyProcedure is the procedure name of the AdminAuthService's
+	// DeletePasskey RPC.
+	AdminAuthServiceDeletePasskeyProcedure = "/publira.admin.v1.AdminAuthService/DeletePasskey"
 )
 
 var (
@@ -212,6 +233,55 @@ var (
 			Procedure:  AdminAuthServiceRegenerateMfaRecoveryCodesProcedure,
 		}
 	})
+	adminAuthServiceBeginPasskeyRegistrationSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_auth_proto.Services().ByName("AdminAuthService").Methods().ByName("BeginPasskeyRegistration"),
+			Procedure:  AdminAuthServiceBeginPasskeyRegistrationProcedure,
+		}
+	})
+	adminAuthServiceFinishPasskeyRegistrationSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_auth_proto.Services().ByName("AdminAuthService").Methods().ByName("FinishPasskeyRegistration"),
+			Procedure:  AdminAuthServiceFinishPasskeyRegistrationProcedure,
+		}
+	})
+	adminAuthServiceBeginPasskeyVerificationSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_auth_proto.Services().ByName("AdminAuthService").Methods().ByName("BeginPasskeyVerification"),
+			Procedure:  AdminAuthServiceBeginPasskeyVerificationProcedure,
+		}
+	})
+	adminAuthServiceFinishPasskeyVerificationSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_auth_proto.Services().ByName("AdminAuthService").Methods().ByName("FinishPasskeyVerification"),
+			Procedure:  AdminAuthServiceFinishPasskeyVerificationProcedure,
+		}
+	})
+	adminAuthServiceListPasskeysSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_auth_proto.Services().ByName("AdminAuthService").Methods().ByName("ListPasskeys"),
+			Procedure:  AdminAuthServiceListPasskeysProcedure,
+		}
+	})
+	adminAuthServiceRenamePasskeySpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_auth_proto.Services().ByName("AdminAuthService").Methods().ByName("RenamePasskey"),
+			Procedure:  AdminAuthServiceRenamePasskeyProcedure,
+		}
+	})
+	adminAuthServiceDeletePasskeySpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_auth_proto.Services().ByName("AdminAuthService").Methods().ByName("DeletePasskey"),
+			Procedure:  AdminAuthServiceDeletePasskeyProcedure,
+		}
+	})
 )
 
 // AdminAuthServiceClient is a client for the publira.admin.v1.AdminAuthService service.
@@ -242,6 +312,22 @@ type AdminAuthServiceClient interface {
 	ConfirmMfaEnrollment(context.Context, *v1.AdminAuthServiceConfirmMfaEnrollmentRequest) (*v1.AdminAuthServiceConfirmMfaEnrollmentResponse, error)
 	DisableMfa(context.Context, *v1.AdminAuthServiceDisableMfaRequest) (*v1.AdminAuthServiceDisableMfaResponse, error)
 	RegenerateMfaRecoveryCodes(context.Context, *v1.AdminAuthServiceRegenerateMfaRecoveryCodesRequest) (*v1.AdminAuthServiceRegenerateMfaRecoveryCodesResponse, error)
+	// Starts registering a passkey, for a signed-in account or for one that
+	// login stopped at an enroll challenge.
+	BeginPasskeyRegistration(context.Context, *v1.AdminAuthServiceBeginPasskeyRegistrationRequest) (*v1.AdminAuthServiceBeginPasskeyRegistrationResponse, error)
+	// Stores the passkey the authenticator created. Under an enroll challenge
+	// it also finishes the login, as ConfirmMfaEnrollment does.
+	FinishPasskeyRegistration(context.Context, *v1.AdminAuthServiceFinishPasskeyRegistrationRequest) (*v1.AdminAuthServiceFinishPasskeyRegistrationResponse, error)
+	// Starts answering a verify challenge with a passkey.
+	BeginPasskeyVerification(context.Context, *v1.AdminAuthServiceBeginPasskeyVerificationRequest) (*v1.AdminAuthServiceBeginPasskeyVerificationResponse, error)
+	// Exchanges a verify challenge and an assertion for the session. A refused
+	// assertion counts toward the same lock a wrong code does.
+	FinishPasskeyVerification(context.Context, *v1.AdminAuthServiceFinishPasskeyVerificationRequest) (*v1.AdminAuthServiceFinishPasskeyVerificationResponse, error)
+	ListPasskeys(context.Context, *v1.AdminAuthServiceListPasskeysRequest) (*v1.AdminAuthServiceListPasskeysResponse, error)
+	RenamePasskey(context.Context, *v1.AdminAuthServiceRenamePasskeyRequest) (*v1.AdminAuthServiceRenamePasskeyResponse, error)
+	// failed_precondition when it is the account's last second factor and the
+	// tenant requires one of its role.
+	DeletePasskey(context.Context, *v1.AdminAuthServiceDeletePasskeyRequest) (*v1.AdminAuthServiceDeletePasskeyResponse, error)
 }
 
 // NewAdminAuthServiceClient constructs a client for the publira.admin.v1.AdminAuthService service.
@@ -278,6 +364,22 @@ type AdminAuthServiceHandler interface {
 	ConfirmMfaEnrollment(context.Context, *v1.AdminAuthServiceConfirmMfaEnrollmentRequest) (*v1.AdminAuthServiceConfirmMfaEnrollmentResponse, error)
 	DisableMfa(context.Context, *v1.AdminAuthServiceDisableMfaRequest) (*v1.AdminAuthServiceDisableMfaResponse, error)
 	RegenerateMfaRecoveryCodes(context.Context, *v1.AdminAuthServiceRegenerateMfaRecoveryCodesRequest) (*v1.AdminAuthServiceRegenerateMfaRecoveryCodesResponse, error)
+	// Starts registering a passkey, for a signed-in account or for one that
+	// login stopped at an enroll challenge.
+	BeginPasskeyRegistration(context.Context, *v1.AdminAuthServiceBeginPasskeyRegistrationRequest) (*v1.AdminAuthServiceBeginPasskeyRegistrationResponse, error)
+	// Stores the passkey the authenticator created. Under an enroll challenge
+	// it also finishes the login, as ConfirmMfaEnrollment does.
+	FinishPasskeyRegistration(context.Context, *v1.AdminAuthServiceFinishPasskeyRegistrationRequest) (*v1.AdminAuthServiceFinishPasskeyRegistrationResponse, error)
+	// Starts answering a verify challenge with a passkey.
+	BeginPasskeyVerification(context.Context, *v1.AdminAuthServiceBeginPasskeyVerificationRequest) (*v1.AdminAuthServiceBeginPasskeyVerificationResponse, error)
+	// Exchanges a verify challenge and an assertion for the session. A refused
+	// assertion counts toward the same lock a wrong code does.
+	FinishPasskeyVerification(context.Context, *v1.AdminAuthServiceFinishPasskeyVerificationRequest) (*v1.AdminAuthServiceFinishPasskeyVerificationResponse, error)
+	ListPasskeys(context.Context, *v1.AdminAuthServiceListPasskeysRequest) (*v1.AdminAuthServiceListPasskeysResponse, error)
+	RenamePasskey(context.Context, *v1.AdminAuthServiceRenamePasskeyRequest) (*v1.AdminAuthServiceRenamePasskeyResponse, error)
+	// failed_precondition when it is the account's last second factor and the
+	// tenant requires one of its role.
+	DeletePasskey(context.Context, *v1.AdminAuthServiceDeletePasskeyRequest) (*v1.AdminAuthServiceDeletePasskeyResponse, error)
 }
 
 // RegisterAdminAuthServiceHandler registers svc as the publira.admin.v1.AdminAuthService
@@ -304,6 +406,13 @@ func RegisterAdminAuthServiceHandler(server *connect.Server, svc AdminAuthServic
 		connect.Method{Spec: adminAuthServiceConfirmMfaEnrollmentSpec(), Handler: adapter.confirmMfaEnrollment},
 		connect.Method{Spec: adminAuthServiceDisableMfaSpec(), Handler: adapter.disableMfa},
 		connect.Method{Spec: adminAuthServiceRegenerateMfaRecoveryCodesSpec(), Handler: adapter.regenerateMfaRecoveryCodes},
+		connect.Method{Spec: adminAuthServiceBeginPasskeyRegistrationSpec(), Handler: adapter.beginPasskeyRegistration},
+		connect.Method{Spec: adminAuthServiceFinishPasskeyRegistrationSpec(), Handler: adapter.finishPasskeyRegistration},
+		connect.Method{Spec: adminAuthServiceBeginPasskeyVerificationSpec(), Handler: adapter.beginPasskeyVerification},
+		connect.Method{Spec: adminAuthServiceFinishPasskeyVerificationSpec(), Handler: adapter.finishPasskeyVerification},
+		connect.Method{Spec: adminAuthServiceListPasskeysSpec(), Handler: adapter.listPasskeys},
+		connect.Method{Spec: adminAuthServiceRenamePasskeySpec(), Handler: adapter.renamePasskey},
+		connect.Method{Spec: adminAuthServiceDeletePasskeySpec(), Handler: adapter.deletePasskey},
 	)
 }
 
@@ -384,6 +493,34 @@ func (UnimplementedAdminAuthServiceHandler) DisableMfa(context.Context, *v1.Admi
 
 func (UnimplementedAdminAuthServiceHandler) RegenerateMfaRecoveryCodes(context.Context, *v1.AdminAuthServiceRegenerateMfaRecoveryCodesRequest) (*v1.AdminAuthServiceRegenerateMfaRecoveryCodesResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminAuthService.RegenerateMfaRecoveryCodes is not implemented")
+}
+
+func (UnimplementedAdminAuthServiceHandler) BeginPasskeyRegistration(context.Context, *v1.AdminAuthServiceBeginPasskeyRegistrationRequest) (*v1.AdminAuthServiceBeginPasskeyRegistrationResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminAuthService.BeginPasskeyRegistration is not implemented")
+}
+
+func (UnimplementedAdminAuthServiceHandler) FinishPasskeyRegistration(context.Context, *v1.AdminAuthServiceFinishPasskeyRegistrationRequest) (*v1.AdminAuthServiceFinishPasskeyRegistrationResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminAuthService.FinishPasskeyRegistration is not implemented")
+}
+
+func (UnimplementedAdminAuthServiceHandler) BeginPasskeyVerification(context.Context, *v1.AdminAuthServiceBeginPasskeyVerificationRequest) (*v1.AdminAuthServiceBeginPasskeyVerificationResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminAuthService.BeginPasskeyVerification is not implemented")
+}
+
+func (UnimplementedAdminAuthServiceHandler) FinishPasskeyVerification(context.Context, *v1.AdminAuthServiceFinishPasskeyVerificationRequest) (*v1.AdminAuthServiceFinishPasskeyVerificationResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminAuthService.FinishPasskeyVerification is not implemented")
+}
+
+func (UnimplementedAdminAuthServiceHandler) ListPasskeys(context.Context, *v1.AdminAuthServiceListPasskeysRequest) (*v1.AdminAuthServiceListPasskeysResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminAuthService.ListPasskeys is not implemented")
+}
+
+func (UnimplementedAdminAuthServiceHandler) RenamePasskey(context.Context, *v1.AdminAuthServiceRenamePasskeyRequest) (*v1.AdminAuthServiceRenamePasskeyResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminAuthService.RenamePasskey is not implemented")
+}
+
+func (UnimplementedAdminAuthServiceHandler) DeletePasskey(context.Context, *v1.AdminAuthServiceDeletePasskeyRequest) (*v1.AdminAuthServiceDeletePasskeyResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminAuthService.DeletePasskey is not implemented")
 }
 
 type adminAuthServiceClient struct {
@@ -537,6 +674,62 @@ func (c *adminAuthServiceClient) DisableMfa(ctx context.Context, req *v1.AdminAu
 func (c *adminAuthServiceClient) RegenerateMfaRecoveryCodes(ctx context.Context, req *v1.AdminAuthServiceRegenerateMfaRecoveryCodesRequest) (*v1.AdminAuthServiceRegenerateMfaRecoveryCodesResponse, error) {
 	var res v1.AdminAuthServiceRegenerateMfaRecoveryCodesResponse
 	if err := c.client.CallUnary(ctx, adminAuthServiceRegenerateMfaRecoveryCodesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminAuthServiceClient) BeginPasskeyRegistration(ctx context.Context, req *v1.AdminAuthServiceBeginPasskeyRegistrationRequest) (*v1.AdminAuthServiceBeginPasskeyRegistrationResponse, error) {
+	var res v1.AdminAuthServiceBeginPasskeyRegistrationResponse
+	if err := c.client.CallUnary(ctx, adminAuthServiceBeginPasskeyRegistrationSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminAuthServiceClient) FinishPasskeyRegistration(ctx context.Context, req *v1.AdminAuthServiceFinishPasskeyRegistrationRequest) (*v1.AdminAuthServiceFinishPasskeyRegistrationResponse, error) {
+	var res v1.AdminAuthServiceFinishPasskeyRegistrationResponse
+	if err := c.client.CallUnary(ctx, adminAuthServiceFinishPasskeyRegistrationSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminAuthServiceClient) BeginPasskeyVerification(ctx context.Context, req *v1.AdminAuthServiceBeginPasskeyVerificationRequest) (*v1.AdminAuthServiceBeginPasskeyVerificationResponse, error) {
+	var res v1.AdminAuthServiceBeginPasskeyVerificationResponse
+	if err := c.client.CallUnary(ctx, adminAuthServiceBeginPasskeyVerificationSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminAuthServiceClient) FinishPasskeyVerification(ctx context.Context, req *v1.AdminAuthServiceFinishPasskeyVerificationRequest) (*v1.AdminAuthServiceFinishPasskeyVerificationResponse, error) {
+	var res v1.AdminAuthServiceFinishPasskeyVerificationResponse
+	if err := c.client.CallUnary(ctx, adminAuthServiceFinishPasskeyVerificationSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminAuthServiceClient) ListPasskeys(ctx context.Context, req *v1.AdminAuthServiceListPasskeysRequest) (*v1.AdminAuthServiceListPasskeysResponse, error) {
+	var res v1.AdminAuthServiceListPasskeysResponse
+	if err := c.client.CallUnary(ctx, adminAuthServiceListPasskeysSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminAuthServiceClient) RenamePasskey(ctx context.Context, req *v1.AdminAuthServiceRenamePasskeyRequest) (*v1.AdminAuthServiceRenamePasskeyResponse, error) {
+	var res v1.AdminAuthServiceRenamePasskeyResponse
+	if err := c.client.CallUnary(ctx, adminAuthServiceRenamePasskeySpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminAuthServiceClient) DeletePasskey(ctx context.Context, req *v1.AdminAuthServiceDeletePasskeyRequest) (*v1.AdminAuthServiceDeletePasskeyResponse, error) {
+	var res v1.AdminAuthServiceDeletePasskeyResponse
+	if err := c.client.CallUnary(ctx, adminAuthServiceDeletePasskeySpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -766,6 +959,90 @@ func (h adminAuthServiceHandler) regenerateMfaRecoveryCodes(ctx context.Context,
 		return err
 	}
 	res, err := h.svc.RegenerateMfaRecoveryCodes(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminAuthServiceHandler) beginPasskeyRegistration(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.AdminAuthServiceBeginPasskeyRegistrationRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.BeginPasskeyRegistration(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminAuthServiceHandler) finishPasskeyRegistration(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.AdminAuthServiceFinishPasskeyRegistrationRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.FinishPasskeyRegistration(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminAuthServiceHandler) beginPasskeyVerification(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.AdminAuthServiceBeginPasskeyVerificationRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.BeginPasskeyVerification(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminAuthServiceHandler) finishPasskeyVerification(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.AdminAuthServiceFinishPasskeyVerificationRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.FinishPasskeyVerification(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminAuthServiceHandler) listPasskeys(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.AdminAuthServiceListPasskeysRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListPasskeys(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminAuthServiceHandler) renamePasskey(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.AdminAuthServiceRenamePasskeyRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.RenamePasskey(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminAuthServiceHandler) deletePasskey(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.AdminAuthServiceDeletePasskeyRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DeletePasskey(ctx, &req)
 	if err != nil {
 		return err
 	}

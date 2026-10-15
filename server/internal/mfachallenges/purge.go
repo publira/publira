@@ -3,6 +3,9 @@
 // user_mfa_used_challenges or platform_user_mfa_used_challenges exists to
 // refuse the second exchange of a challenge token, so it stops meaning
 // anything the moment that token expires — five minutes after it was issued.
+// A passkey ceremony in user_webauthn_ceremonies is the same kind of row from
+// the other side: a challenge kept until its finish spends it, which means
+// nothing once it has expired unfinished.
 package mfachallenges
 
 import (
@@ -20,14 +23,16 @@ import (
 // how much WAL it writes against how many round trips a full purge costs.
 const DefaultChunkSize = 10000
 
-// usedChallengeTables are the tables a run drains, each with the index on
-// expires_at that keeps a chunk from scanning it.
+// usedChallengeTables are the tables a run drains, each with the column a row
+// is keyed by and the index on expires_at that keeps a chunk from scanning it.
 var usedChallengeTables = []struct {
 	name  string
+	key   string
 	index string
 }{
-	{"user_mfa_used_challenges", "idx_user_mfa_used_challenges_expires_at"},
-	{"platform_user_mfa_used_challenges", "idx_platform_user_mfa_used_challenges_expires_at"},
+	{"user_mfa_used_challenges", "jti", "idx_user_mfa_used_challenges_expires_at"},
+	{"platform_user_mfa_used_challenges", "jti", "idx_platform_user_mfa_used_challenges_expires_at"},
+	{"user_webauthn_ceremonies", "challenge", "idx_user_webauthn_ceremonies_expires_at"},
 }
 
 // Purger deletes the spent challenges whose tokens have expired. Its database
@@ -96,7 +101,7 @@ func (p *Purger) Run(ctx context.Context, opts Options) (Result, error) {
 			result.RowCount += candidates
 			continue
 		}
-		if err := p.drain(ctx, table.name, opts.Cutoff, chunkSize, &result); err != nil {
+		if err := p.drain(ctx, table.name, table.key, opts.Cutoff, chunkSize, &result); err != nil {
 			return result, err
 		}
 	}
@@ -104,9 +109,9 @@ func (p *Purger) Run(ctx context.Context, opts Options) (Result, error) {
 }
 
 // drain deletes the expired rows of one table, adding what it did to result.
-func (p *Purger) drain(ctx context.Context, table string, cutoff time.Time, chunkSize int, result *Result) error {
+func (p *Purger) drain(ctx context.Context, table, key string, cutoff time.Time, chunkSize int, result *Result) error {
 	for {
-		deleted, err := p.deleteChunk(ctx, table, cutoff, chunkSize)
+		deleted, err := p.deleteChunk(ctx, table, key, cutoff, chunkSize)
 		if err != nil {
 			return fmt.Errorf("delete expired challenges from %s: %w", table, err)
 		}
@@ -124,9 +129,9 @@ func (p *Purger) drain(ctx context.Context, table string, cutoff time.Time, chun
 	}
 }
 
-// countExpired and deleteChunk take the table name from usedChallengeTables
-// alone, never from a caller, which is what makes formatting it into the
-// statement safe.
+// countExpired and deleteChunk take the table and key names from
+// usedChallengeTables alone, never from a caller, which is what makes
+// formatting them into the statement safe.
 func (p *Purger) countExpired(ctx context.Context, table string, cutoff time.Time) (int64, error) {
 	var count int64
 	err := p.db.QueryRowContext(ctx, fmt.Sprintf(`
@@ -135,8 +140,8 @@ func (p *Purger) countExpired(ctx context.Context, table string, cutoff time.Tim
 	return count, err
 }
 
-func (p *Purger) deleteChunk(ctx context.Context, table string, cutoff time.Time, chunkSize int) (int64, error) {
-	deleted, err := p.db.ExecContext(ctx, deleteChunkSQL(table), cutoff, chunkSize)
+func (p *Purger) deleteChunk(ctx context.Context, table, key string, cutoff time.Time, chunkSize int) (int64, error) {
+	deleted, err := p.db.ExecContext(ctx, deleteChunkSQL(table, key), cutoff, chunkSize)
 	if err != nil {
 		return 0, err
 	}
@@ -148,10 +153,10 @@ func (p *Purger) deleteChunk(ctx context.Context, table string, cutoff time.Time
 // expires_at hands back the oldest rows without scanning the table. SKIP
 // LOCKED then keeps two overlapping runs from serializing on the same rows —
 // whatever one run skips, the next one picks up.
-func deleteChunkSQL(table string) string {
+func deleteChunkSQL(table, key string) string {
 	return fmt.Sprintf(`
 WITH expired AS (
-	SELECT jti
+	SELECT %[2]s
 	FROM %[1]s
 	WHERE expires_at < $1
 	ORDER BY expires_at
@@ -160,6 +165,6 @@ WITH expired AS (
 )
 DELETE FROM %[1]s c
 USING expired
-WHERE c.jti = expired.jti
-`, table)
+WHERE c.%[2]s = expired.%[2]s
+`, table, key)
 }

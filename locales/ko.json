@@ -407,6 +407,9 @@
         "admin_mfa_recovery_code_used": "복구 코드로 로그인",
         "admin_mfa_disabled": "2단계 인증 해제",
         "admin_mfa_recovery_codes_regenerated": "복구 코드 재발급",
+        "admin_mfa_passkey_registered": "패스키 등록",
+        "admin_mfa_passkey_renamed": "패스키 이름 변경",
+        "admin_mfa_passkey_removed": "패스키 삭제",
         "other": "기타 작업"
       },
       "outcome": {

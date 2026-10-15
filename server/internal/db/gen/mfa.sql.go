@@ -72,8 +72,6 @@ func (q *Queries) DeleteUserMfaTotpByUserID(ctx context.Context, userID uuid.UUI
 const EnableUserMfaTotp = `-- name: EnableUserMfaTotp :execrows
 UPDATE user_mfa_totp
 SET enabled_at = now(),
-    failed_attempts = 0,
-    locked_until = NULL,
     updated_at = now()
 WHERE user_id = $1
   AND enabled_at IS NULL
@@ -95,15 +93,34 @@ func (q *Queries) EnableUserMfaTotp(ctx context.Context, userID uuid.UUID) (int6
 	return result.RowsAffected()
 }
 
+const GetUserMfaLockout = `-- name: GetUserMfaLockout :one
+SELECT user_id, tenant_id, failed_attempts, locked_until, updated_at
+FROM user_mfa_lockouts
+WHERE user_id = $1
+`
+
+func (q *Queries) GetUserMfaLockout(ctx context.Context, userID uuid.UUID) (UserMfaLockout, error) {
+	row := q.db.QueryRowContext(ctx, GetUserMfaLockout, userID)
+	var i UserMfaLockout
+	err := row.Scan(
+		&i.UserID,
+		&i.TenantID,
+		&i.FailedAttempts,
+		&i.LockedUntil,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const GetUserMfaTotpByUserID = `-- name: GetUserMfaTotpByUserID :one
 
-SELECT user_id, tenant_id, secret_encrypted, enabled_at, last_verified_step, failed_attempts, locked_until, created_at, updated_at
+SELECT user_id, tenant_id, secret_encrypted, enabled_at, last_verified_step, created_at, updated_at
 FROM user_mfa_totp
 WHERE user_id = $1
 `
 
 // Admin MFA. Every statement is keyed by user_id alone: the row-level
-// security policies on both tables already confine them to the tenant the
+// security policies on these tables already confine them to the tenant the
 // connection is scoped to.
 func (q *Queries) GetUserMfaTotpByUserID(ctx context.Context, userID uuid.UUID) (UserMfaTotp, error) {
 	row := q.db.QueryRowContext(ctx, GetUserMfaTotpByUserID, userID)
@@ -114,8 +131,6 @@ func (q *Queries) GetUserMfaTotpByUserID(ctx context.Context, userID uuid.UUID) 
 		&i.SecretEncrypted,
 		&i.EnabledAt,
 		&i.LastVerifiedStep,
-		&i.FailedAttempts,
-		&i.LockedUntil,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -206,8 +221,6 @@ func (q *Queries) MarkUserMfaRecoveryCodeUsed(ctx context.Context, id uuid.UUID)
 const MarkUserMfaTotpVerified = `-- name: MarkUserMfaTotpVerified :execrows
 UPDATE user_mfa_totp
 SET last_verified_step = $1,
-    failed_attempts = 0,
-    locked_until = NULL,
     updated_at = now()
 WHERE user_id = $2
     AND (
@@ -234,56 +247,68 @@ func (q *Queries) MarkUserMfaTotpVerified(ctx context.Context, arg MarkUserMfaTo
 	return result.RowsAffected()
 }
 
-const RecordUserMfaTotpFailure = `-- name: RecordUserMfaTotpFailure :one
-UPDATE user_mfa_totp
+const RecordUserMfaFailure = `-- name: RecordUserMfaFailure :one
+INSERT INTO user_mfa_lockouts AS l (user_id, tenant_id, failed_attempts, locked_until)
+VALUES (
+        $1,
+        $2,
+        CASE
+            WHEN 1 >= $3::int THEN 0
+            ELSE 1
+        END,
+        CASE
+            WHEN 1 >= $3::int THEN $4::timestamptz
+        END
+    ) ON CONFLICT (user_id) DO UPDATE
 SET failed_attempts = CASE
-        WHEN failed_attempts + 1 >= $1::int THEN 0
-        ELSE failed_attempts + 1
+        WHEN l.failed_attempts + 1 >= $3::int THEN 0
+        ELSE l.failed_attempts + 1
     END,
     locked_until = CASE
-        WHEN failed_attempts + 1 >= $1::int THEN $2::timestamptz
-        ELSE locked_until
+        WHEN l.failed_attempts + 1 >= $3::int THEN $4::timestamptz
+        ELSE l.locked_until
     END,
     updated_at = now()
-WHERE user_id = $3
-RETURNING user_id, tenant_id, secret_encrypted, enabled_at, last_verified_step, failed_attempts, locked_until, created_at, updated_at
+RETURNING user_id, tenant_id, failed_attempts, locked_until, updated_at
 `
 
-type RecordUserMfaTotpFailureParams struct {
+type RecordUserMfaFailureParams struct {
+	UserID            uuid.UUID `json:"user_id"`
+	TenantID          uuid.UUID `json:"tenant_id"`
 	MaxFailedAttempts int32     `json:"max_failed_attempts"`
 	LockedUntil       time.Time `json:"locked_until"`
-	UserID            uuid.UUID `json:"user_id"`
 }
 
+// One refused code or assertion, whichever second factor it was for.
 // Reaching the threshold starts the lock and puts the counter back to zero,
 // so the attempt after a lock expires is not immediately the fifth again.
-func (q *Queries) RecordUserMfaTotpFailure(ctx context.Context, arg RecordUserMfaTotpFailureParams) (UserMfaTotp, error) {
-	row := q.db.QueryRowContext(ctx, RecordUserMfaTotpFailure, arg.MaxFailedAttempts, arg.LockedUntil, arg.UserID)
-	var i UserMfaTotp
+func (q *Queries) RecordUserMfaFailure(ctx context.Context, arg RecordUserMfaFailureParams) (UserMfaLockout, error) {
+	row := q.db.QueryRowContext(ctx, RecordUserMfaFailure,
+		arg.UserID,
+		arg.TenantID,
+		arg.MaxFailedAttempts,
+		arg.LockedUntil,
+	)
+	var i UserMfaLockout
 	err := row.Scan(
 		&i.UserID,
 		&i.TenantID,
-		&i.SecretEncrypted,
-		&i.EnabledAt,
-		&i.LastVerifiedStep,
 		&i.FailedAttempts,
 		&i.LockedUntil,
-		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
 }
 
-const ResetUserMfaTotpFailures = `-- name: ResetUserMfaTotpFailures :exec
-UPDATE user_mfa_totp
-SET failed_attempts = 0,
-    locked_until = NULL,
-    updated_at = now()
+const ResetUserMfaFailures = `-- name: ResetUserMfaFailures :exec
+DELETE FROM user_mfa_lockouts
 WHERE user_id = $1
 `
 
-func (q *Queries) ResetUserMfaTotpFailures(ctx context.Context, userID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, ResetUserMfaTotpFailures, userID)
+// A second factor that checked out clears the count, and so does starting an
+// enrollment, so a stalled attempt never blocks the next one.
+func (q *Queries) ResetUserMfaFailures(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, ResetUserMfaFailures, userID)
 	return err
 }
 
@@ -294,10 +319,8 @@ ON CONFLICT (user_id) DO UPDATE
 SET secret_encrypted = EXCLUDED.secret_encrypted,
     enabled_at = NULL,
     last_verified_step = NULL,
-    failed_attempts = 0,
-    locked_until = NULL,
     updated_at = now()
-RETURNING user_id, tenant_id, secret_encrypted, enabled_at, last_verified_step, failed_attempts, locked_until, created_at, updated_at
+RETURNING user_id, tenant_id, secret_encrypted, enabled_at, last_verified_step, created_at, updated_at
 `
 
 type UpsertUserMfaTotpSecretParams struct {
@@ -306,8 +329,7 @@ type UpsertUserMfaTotpSecretParams struct {
 	SecretEncrypted string    `json:"secret_encrypted"`
 }
 
-// Starting enrollment replaces whatever unconfirmed secret was there and
-// clears the lock, so a stalled attempt never blocks the next one.
+// Starting enrollment replaces whatever unconfirmed secret was there.
 func (q *Queries) UpsertUserMfaTotpSecret(ctx context.Context, arg UpsertUserMfaTotpSecretParams) (UserMfaTotp, error) {
 	row := q.db.QueryRowContext(ctx, UpsertUserMfaTotpSecret, arg.UserID, arg.TenantID, arg.SecretEncrypted)
 	var i UserMfaTotp
@@ -317,8 +339,6 @@ func (q *Queries) UpsertUserMfaTotpSecret(ctx context.Context, arg UpsertUserMfa
 		&i.SecretEncrypted,
 		&i.EnabledAt,
 		&i.LastVerifiedStep,
-		&i.FailedAttempts,
-		&i.LockedUntil,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

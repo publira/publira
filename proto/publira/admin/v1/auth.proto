@@ -23,11 +23,22 @@ message AdminAuthServiceLoginResponse {
 // What the account still owes before the login can finish.
 enum MfaChallengeKind {
   MFA_CHALLENGE_KIND_UNSPECIFIED = 0;
-  // The account has a confirmed authenticator and owes a code from it.
+  // The account holds a second factor and owes an answer from one of them.
   MFA_CHALLENGE_KIND_VERIFY = 1;
-  // The account has no authenticator and the tenant requires one of its role,
-  // so the only thing this challenge can complete is an enrollment.
+  // The account holds no second factor and the tenant requires one of its
+  // role, so the only thing this challenge can complete is an enrollment: a
+  // TOTP authenticator or a passkey.
   MFA_CHALLENGE_KIND_ENROLL = 2;
+}
+
+// A kind of second factor an account can hold.
+enum MfaMethod {
+  MFA_METHOD_UNSPECIFIED = 0;
+  // A confirmed TOTP authenticator, answered with a code from it.
+  MFA_METHOD_TOTP = 1;
+  // A passkey or security key registered for the console's relying party,
+  // answered through FinishPasskeyVerification.
+  MFA_METHOD_PASSKEY = 2;
 }
 
 // The half-finished session a password alone earns. The token is signed and
@@ -36,13 +47,18 @@ message AdminAuthServiceMfaChallenge {
   string token = 1;
   string expires_at = 2;
   MfaChallengeKind kind = 3;
+  // The factors a verify challenge can be answered with, so the console
+  // offers those and no other. Empty for an enroll challenge. A recovery code
+  // answers VerifyMfa whichever of them the account holds.
+  repeated MfaMethod methods = 4;
 }
 
 message AdminAuthServiceVerifyMfaRequest {
   publira.types.v1.TenantContext tenant = 1;
   string challenge_token = 2;
   // A code from the authenticator, or one of the recovery codes handed out at
-  // enrollment. Which one it was is reported back in the response.
+  // enrollment. Which one it was is reported back in the response. An account
+  // that holds passkeys and no authenticator may send a recovery code alone.
   string code = 3;
 }
 
@@ -58,12 +74,17 @@ message AdminAuthServiceGetMfaStatusRequest {
 }
 
 message AdminAuthServiceGetMfaStatusResponse {
+  // The TOTP authenticator is confirmed. A passkey does not set it: methods
+  // names every factor the account holds.
   bool enabled = 1;
   string enabled_at = 2;
+  // What is left of the batch handed out with the account's first factor,
+  // whichever factor that was.
   int32 remaining_recovery_codes = 3;
-  // The tenant requires MFA of this account's role. With enabled false, the
+  // The tenant requires MFA of this account's role. With methods empty, the
   // console has to send the account to enrollment before anything else.
   bool required = 4;
+  repeated MfaMethod methods = 5;
 }
 
 message AdminAuthServiceStartMfaEnrollmentRequest {
@@ -114,6 +135,109 @@ message AdminAuthServiceRegenerateMfaRecoveryCodesResponse {
   // Replaces every code the account held, used or not.
   repeated string recovery_codes = 1;
 }
+
+// A passkey or security key the account registered for the console. Only the
+// ones registered for the console's relying party ID are listed: a credential
+// answers no other.
+message Passkey {
+  string id = 1;
+  // What its owner called it. Empty until they name it.
+  string name = 2;
+  string created_at = 3;
+  // Empty until it first answers a sign-in.
+  string last_used_at = 4;
+  // The authenticator syncs it to the owner's other devices, as a passkey in
+  // a password manager does; false for one bound to a single device, such as
+  // a security key.
+  bool backed_up = 5;
+}
+
+message AdminAuthServiceBeginPasskeyRegistrationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Sent instead of an Authorization header when the login stopped at an
+  // enroll challenge, as StartMfaEnrollment takes it.
+  string challenge_token = 2;
+}
+
+message AdminAuthServiceBeginPasskeyRegistrationResponse {
+  // PublicKeyCredentialCreationOptionsJSON, for
+  // PublicKeyCredential.parseCreationOptionsFromJSON. User verification is
+  // required, and the account's existing credentials are excluded.
+  string creation_options_json = 1;
+}
+
+message AdminAuthServiceFinishPasskeyRegistrationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string challenge_token = 2;
+  // The PublicKeyCredential the authenticator created, as its toJSON()
+  // serializes it.
+  string credential_json = 3;
+  // At most 64 characters; empty leaves it unnamed.
+  string name = 4;
+}
+
+message AdminAuthServiceFinishPasskeyRegistrationResponse {
+  Passkey passkey = 1;
+  // Plaintext exactly once, and only when the account held no unused
+  // recovery code before this passkey.
+  repeated string recovery_codes = 2;
+  // Set when a challenge token finished the login rather than a session.
+  publira.types.v1.User user = 3;
+  publira.types.v1.AccessToken access_token = 4;
+}
+
+message AdminAuthServiceBeginPasskeyVerificationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string challenge_token = 2;
+}
+
+message AdminAuthServiceBeginPasskeyVerificationResponse {
+  // PublicKeyCredentialRequestOptionsJSON, for
+  // PublicKeyCredential.parseRequestOptionsFromJSON, allowing the account's
+  // credentials for the console's relying party ID.
+  string request_options_json = 1;
+}
+
+message AdminAuthServiceFinishPasskeyVerificationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string challenge_token = 2;
+  // The PublicKeyCredential the authenticator asserted with, as its toJSON()
+  // serializes it.
+  string credential_json = 3;
+}
+
+message AdminAuthServiceFinishPasskeyVerificationResponse {
+  publira.types.v1.User user = 1;
+  publira.types.v1.AccessToken access_token = 2;
+  int32 remaining_recovery_codes = 3;
+}
+
+message AdminAuthServiceListPasskeysRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message AdminAuthServiceListPasskeysResponse {
+  // Oldest first.
+  repeated Passkey passkeys = 1;
+}
+
+message AdminAuthServiceRenamePasskeyRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string id = 2;
+  // At most 64 characters; empty clears it.
+  string name = 3;
+}
+
+message AdminAuthServiceRenamePasskeyResponse {
+  Passkey passkey = 1;
+}
+
+message AdminAuthServiceDeletePasskeyRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string id = 2;
+}
+
+message AdminAuthServiceDeletePasskeyResponse {}
 
 message AdminAuthServiceLogoutRequest {
   publira.types.v1.TenantContext tenant = 1;
@@ -280,4 +404,20 @@ service AdminAuthService {
   rpc ConfirmMfaEnrollment(AdminAuthServiceConfirmMfaEnrollmentRequest) returns (AdminAuthServiceConfirmMfaEnrollmentResponse) {}
   rpc DisableMfa(AdminAuthServiceDisableMfaRequest) returns (AdminAuthServiceDisableMfaResponse) {}
   rpc RegenerateMfaRecoveryCodes(AdminAuthServiceRegenerateMfaRecoveryCodesRequest) returns (AdminAuthServiceRegenerateMfaRecoveryCodesResponse) {}
+  // Starts registering a passkey, for a signed-in account or for one that
+  // login stopped at an enroll challenge.
+  rpc BeginPasskeyRegistration(AdminAuthServiceBeginPasskeyRegistrationRequest) returns (AdminAuthServiceBeginPasskeyRegistrationResponse) {}
+  // Stores the passkey the authenticator created. Under an enroll challenge
+  // it also finishes the login, as ConfirmMfaEnrollment does.
+  rpc FinishPasskeyRegistration(AdminAuthServiceFinishPasskeyRegistrationRequest) returns (AdminAuthServiceFinishPasskeyRegistrationResponse) {}
+  // Starts answering a verify challenge with a passkey.
+  rpc BeginPasskeyVerification(AdminAuthServiceBeginPasskeyVerificationRequest) returns (AdminAuthServiceBeginPasskeyVerificationResponse) {}
+  // Exchanges a verify challenge and an assertion for the session. A refused
+  // assertion counts toward the same lock a wrong code does.
+  rpc FinishPasskeyVerification(AdminAuthServiceFinishPasskeyVerificationRequest) returns (AdminAuthServiceFinishPasskeyVerificationResponse) {}
+  rpc ListPasskeys(AdminAuthServiceListPasskeysRequest) returns (AdminAuthServiceListPasskeysResponse) {}
+  rpc RenamePasskey(AdminAuthServiceRenamePasskeyRequest) returns (AdminAuthServiceRenamePasskeyResponse) {}
+  // failed_precondition when it is the account's last second factor and the
+  // tenant requires one of its role.
+  rpc DeletePasskey(AdminAuthServiceDeletePasskeyRequest) returns (AdminAuthServiceDeletePasskeyResponse) {}
 }

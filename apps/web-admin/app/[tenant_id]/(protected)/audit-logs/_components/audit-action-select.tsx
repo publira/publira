@@ -432,6 +432,18 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               ),
               value: "admin_mfa_recovery_codes_regenerated",
             },
+            {
+              label: t("admin.audit.actions.admin_mfa_passkey_registered"),
+              value: "admin_mfa_passkey_registered",
+            },
+            {
+              label: t("admin.audit.actions.admin_mfa_passkey_renamed"),
+              value: "admin_mfa_passkey_renamed",
+            },
+            {
+              label: t("admin.audit.actions.admin_mfa_passkey_removed"),
+              value: "admin_mfa_passkey_removed",
+            },
           ]}
           name="action"
         />

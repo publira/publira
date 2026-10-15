@@ -66,7 +66,7 @@ func (PurgeRankingSnapshotsArgs) InsertOpts() river.InsertOpts {
 }
 
 // PurgeMfaChallengesArgs deletes the spent admin MFA challenges whose tokens
-// have expired.
+// have expired, and the passkey ceremonies left unfinished past their expiry.
 type PurgeMfaChallengesArgs struct{}
 
 func (PurgeMfaChallengesArgs) Kind() string { return kindPurgeMfaChallenges }

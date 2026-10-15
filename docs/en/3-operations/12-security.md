@@ -198,9 +198,13 @@ publiractl policy set --mfa-required-for-tenant-admin
 
 `--mfa-required-for-tenant-admin=false` stops requiring it. The requirement is checked when a Tenant admin signs in, so it applies from each one's next sign-in rather than to sessions already open; what it does, and whom it covers, is in [Platform defaults and policies](./9-platform-policies.md#two-step-verification-for-tenant-administrators).
 
-A member of staff who has lost both the authenticator and every recovery code cannot sign in again, and the tenant's other administrators cannot remove it from their account. You can, with `publiractl tenant member reset-mfa`, as [A tenant's staff](./3-tenant-staff.md#lost-two-step-verification) describes.
+A member of staff can also answer two-step verification with a passkey or a security key, beside an authenticator app or instead of one. A passkey satisfies the requirement as an authenticator does, the account's recovery codes stand in for either, and a refused passkey counts toward the same limit of failed attempts as a wrong code.
 
-Each authenticator's secret is sealed with the encryption keys, which is why [removing an old key](#4-remove-the-old-key-only-when-nothing-uses-it) can lock staff out.
+A passkey works only on the host it was registered on, or under the domain that host shares with the tenant's site. While the console is on its default `admin.` host, or on any other host under the tenant's domain, its passkeys belong to that domain; a console on a host outside it holds passkeys of its own. Changing the tenant's domain, or moving the console from a host under it to one outside it or back, therefore leaves every member's passkeys unusable: they no longer count as a second factor, so an account that held nothing else signs in with its password alone, or is asked to set two-step verification up where you require it, until its owner registers a passkey again.
+
+A member of staff who has lost every authenticator, passkey, and recovery code cannot sign in again, and the tenant's other administrators cannot remove two-step verification from their account. You can, with `publiractl tenant member reset-mfa`, as [A tenant's staff](./3-tenant-staff.md#lost-two-step-verification) describes.
+
+Each authenticator's secret is sealed with the encryption keys, which is why [removing an old key](#4-remove-the-old-key-only-when-nothing-uses-it) can lock staff out. A passkey leaves only its public key on the server, so the encryption keys do not affect it.
 
 ### Platform operators
 

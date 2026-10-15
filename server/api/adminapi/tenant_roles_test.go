@@ -46,6 +46,13 @@ var levelFreeProcedures = []string{
 	"/publira.admin.v1.AdminAuthService/ConfirmMfaEnrollment",
 	"/publira.admin.v1.AdminAuthService/DisableMfa",
 	"/publira.admin.v1.AdminAuthService/RegenerateMfaRecoveryCodes",
+	"/publira.admin.v1.AdminAuthService/BeginPasskeyRegistration",
+	"/publira.admin.v1.AdminAuthService/FinishPasskeyRegistration",
+	"/publira.admin.v1.AdminAuthService/BeginPasskeyVerification",
+	"/publira.admin.v1.AdminAuthService/FinishPasskeyVerification",
+	"/publira.admin.v1.AdminAuthService/ListPasskeys",
+	"/publira.admin.v1.AdminAuthService/RenamePasskey",
+	"/publira.admin.v1.AdminAuthService/DeletePasskey",
 }
 
 var (

@@ -111,13 +111,13 @@ The console reads a member's role on every request, so a change applies at once,
 
 ## Lost two-step verification
 
-A member of staff who turned on two-step verification and has since lost both the authenticator and every recovery code cannot sign in to the console, and nobody on the tenant's staff can remove it from their account. You can:
+A member of staff who turned on two-step verification and has since lost every authenticator, passkey, and recovery code cannot sign in to the console, and nobody on the tenant's staff can remove it from their account. You can:
 
 ```bash
 publiractl tenant member reset-mfa --tenant comics.example.com --email editor@comics.example.com
 ```
 
-`--user <public ID>` names the account instead of `--email`. The command removes the account's authenticator and every recovery code, and nothing else: its password and its role stay as they were. The member then signs in with their password alone and sets two-step verification up again from **Account settings**, as [Your account](../4-console/3-setup/8-your-account.md) describes. If the platform requires two-step verification of their role, the console asks them to set it up as they sign in.
+`--user <public ID>` names the account instead of `--email`. The command removes the account's authenticator, the passkeys it registered for the console, and every recovery code, and nothing else: its password and its role stay as they were. The member then signs in with their password alone and sets two-step verification up again from **Account settings**, as [Your account](../4-console/3-setup/8-your-account.md) describes. If the platform requires two-step verification of their role, the console asks them to set it up as they sign in.
 
 Removing it leaves the account behind its password alone, which is what someone holding a stolen password would ask for. Before you run the command, confirm that the request comes from the member, through a channel you already know is theirs rather than the one the request arrived on.
 

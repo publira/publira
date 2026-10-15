@@ -407,6 +407,9 @@
         "admin_mfa_recovery_code_used": "使用復原碼登入",
         "admin_mfa_disabled": "關閉了兩步驟驗證",
         "admin_mfa_recovery_codes_regenerated": "重新產生了復原碼",
+        "admin_mfa_passkey_registered": "新增了通行金鑰",
+        "admin_mfa_passkey_renamed": "重新命名了通行金鑰",
+        "admin_mfa_passkey_removed": "刪除了通行金鑰",
         "other": "其他操作"
       },
       "outcome": {

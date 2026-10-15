@@ -199,13 +199,13 @@ func (s *adminServer) Login(
 	// The password is right, but it is only half of what this account owes.
 	// A challenge is handed out instead of a session, so nothing signed by
 	// this request can act on the tenant until the factor is settled.
-	challengeKind, err := s.mfaChallengeKindFor(ctx, user, role)
+	challengeKind, methods, err := s.mfaChallengeKindFor(ctx, tenant, user, role)
 	if err != nil {
 		auth.AuditEvent(ctx, "admin_login", "failure", tenant.PublicID, user.PublicID, "mfa_state_lookup_failed")
 		return nil, err
 	}
 	if challengeKind != publiraadminv1.MfaChallengeKind_MFA_CHALLENGE_KIND_UNSPECIFIED {
-		challenge, err := s.mfaChallengeFor(tenant, user, challengeKind)
+		challenge, err := s.mfaChallengeFor(tenant, user, challengeKind, methods)
 		if err != nil {
 			auth.AuditEvent(ctx, "admin_login", "failure", tenant.PublicID, user.PublicID, "mfa_challenge_issue_failed")
 			return nil, err

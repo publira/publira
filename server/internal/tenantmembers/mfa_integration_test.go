@@ -124,3 +124,60 @@ func TestResetMFARefusals(t *testing.T) {
 		t.Fatalf("other tenant's mfa rows = %d authenticator, %d recovery codes; want them untouched", totp, codes)
 	}
 }
+
+// seedPasskey writes a passkey for userID registered for rpID, as the
+// superuser the test seeds with.
+func seedPasskey(t *testing.T, pg *testutil.PostgresEnv, tenantID, userID uuid.UUID, publicID, rpID string) {
+	t.Helper()
+	if _, err := pg.DB.ExecContext(context.Background(), `
+		INSERT INTO user_webauthn_credentials (
+			id, public_id, tenant_id, user_id, rp_id, credential_id, public_key, aaguid, backup_eligible, backed_up
+		) VALUES ($1, $2, $3, $4, $5, $6, '\x00', '00000000-0000-0000-0000-000000000000', false, false)
+	`, uuid.Must(uuid.NewV7()), publicID, tenantID, userID, rpID, []byte(publicID)); err != nil {
+		t.Fatalf("insert user_webauthn_credentials: %v", err)
+	}
+}
+
+func countRows(t *testing.T, pg *testutil.PostgresEnv, query string, args ...any) int {
+	t.Helper()
+	var count int
+	if err := pg.DB.QueryRowContext(context.Background(), query, args...).Scan(&count); err != nil {
+		t.Fatalf("count rows: %v", err)
+	}
+	return count
+}
+
+// An account whose only factor is a passkey is reset like one with an
+// authenticator. The tenant's console is served outside its storefront's
+// domain, so a passkey registered for the storefront is no factor of the
+// console's and stays; the count of refused attempts goes with the factors.
+func TestResetMFARemovesTheConsolePasskeysAndTheLock(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	tenant := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	admin := pg.SeedTenantAdmin(t, tenant.ID, "TAADMIN", "admin@tenant-a.example.com", "Admin")
+	seedPasskey(t, pg, tenant.ID, admin.ID, "PASSKEY00001", "admin-tenant-a.example.com")
+	seedPasskey(t, pg, tenant.ID, admin.ID, "PASSKEY00002", "tenant-a.example.com")
+	if _, err := pg.DB.ExecContext(context.Background(), `
+		INSERT INTO user_mfa_lockouts (user_id, tenant_id, failed_attempts, locked_until)
+		VALUES ($1, $2, 0, now() + interval '15 minutes')
+	`, admin.ID, tenant.ID); err != nil {
+		t.Fatalf("insert user_mfa_lockouts: %v", err)
+	}
+
+	if err := inPlatformTx(t, pg, func(tx *sql.Tx) error {
+		_, err := ResetMFA(context.Background(), tx, ResetMFAParams{TenantID: tenant.ID, UserPublicID: "TAADMIN"})
+		return err
+	}); err != nil {
+		t.Fatalf("ResetMFA: %v", err)
+	}
+	if got := countRows(t, pg, "SELECT count(*) FROM user_webauthn_credentials WHERE user_id = $1 AND rp_id = 'admin-tenant-a.example.com'", admin.ID); got != 0 {
+		t.Fatalf("console passkeys = %d, want none", got)
+	}
+	if got := countRows(t, pg, "SELECT count(*) FROM user_webauthn_credentials WHERE user_id = $1 AND rp_id = 'tenant-a.example.com'", admin.ID); got != 1 {
+		t.Fatalf("storefront passkeys = %d, want the one untouched", got)
+	}
+	if got := countRows(t, pg, "SELECT count(*) FROM user_mfa_lockouts WHERE user_id = $1", admin.ID); got != 0 {
+		t.Fatalf("lockout rows = %d, want none", got)
+	}
+}
