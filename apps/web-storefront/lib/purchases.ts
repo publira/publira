@@ -28,6 +28,15 @@ export interface PurchaseItem {
   isActive: boolean;
   priceAtPurchase: number;
   purchasedAt: string;
+  /** What has been refunded so far, in the same unit as priceAtPurchase. */
+  refundedAmount: number;
+  /** Set once the refunds reach the price; empty until then. */
+  refundedAt: string;
+  /**
+   * Set once the purchase stopped opening its episode before its reading
+   * period ran out — refunded in full, disputed, or refunded by staff.
+   */
+  revokedAt: string;
   series: { publicId: string; title: string };
 }
 
@@ -79,6 +88,9 @@ type RawPurchase = Pick<
   | "isActive"
   | "priceAtPurchase"
   | "purchasedAt"
+  | "refundedAmount"
+  | "refundedAt"
+  | "revokedAt"
   | "series"
 >;
 
@@ -94,6 +106,9 @@ const mapPurchase = (purchase: RawPurchase): PurchaseItem => ({
   isActive: purchase.isActive ?? false,
   priceAtPurchase: purchase.priceAtPurchase ?? 0,
   purchasedAt: purchase.purchasedAt ?? "",
+  refundedAmount: purchase.refundedAmount ?? 0,
+  refundedAt: purchase.refundedAt ?? "",
+  revokedAt: purchase.revokedAt ?? "",
   series: {
     publicId: purchase.series?.publicId ?? "",
     title: purchase.series?.title ?? "",
@@ -178,4 +193,40 @@ export const listMyPurchases = async (
     );
   }
   return result;
+};
+
+/** The largest page `ListMyPurchases` answers. */
+const maxPurchasePageSize = 100;
+
+/**
+ * Every purchase the library lists for the reader `accessToken` belongs to,
+ * newest first, read page by page for the purchase history download. Like the
+ * library, it leaves out an episode the storefront may not show.
+ *
+ * Uncached: a download is asked for once and should report the purchases as
+ * they stand, a refund recorded a moment ago included. An RPC error is thrown
+ * as it is, for the caller to turn a rejected session into the sign-in flow.
+ */
+export const listAllMyPurchases = async (
+  tenantId: string,
+  accessToken: string,
+  token = ""
+): Promise<PurchaseItem[]> => {
+  const response = await apiClient.purchase.listMyPurchases(
+    {
+      limit: maxPurchasePageSize,
+      surface: ClientSurface.WEB,
+      tenant: { tenantId },
+      token,
+    },
+    buildSessionHeaders(accessToken)
+  );
+  const purchases = (response.purchases ?? []).map(mapPurchase);
+  const nextToken = response.nextToken ?? "";
+  return nextToken
+    ? [
+        ...purchases,
+        ...(await listAllMyPurchases(tenantId, accessToken, nextToken)),
+      ]
+    : purchases;
 };

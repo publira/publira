@@ -59,7 +59,7 @@ const tapViewer = async (page: Page, ratio: number): Promise<void> => {
  * The storefront's controls, pressed by the development seed's member.
  *
  * That account holds more of a reader's records than any other the suites sign
- * in with: an access ticket and two purchases of `Seed Episode 001-10`, and
+ * in with: an access ticket and four purchases of `Seed Episode 001-10`, and
  * follows of two creators and a series. Those records reach the client
  * components of every screen it opens — the header, the viewer — so this suite
  * presses the controls as that account rather than as one that has just
