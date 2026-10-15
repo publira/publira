@@ -790,6 +790,26 @@ type Purchase struct {
 	StaffRefundAttempt int32          `json:"staff_refund_attempt"`
 }
 
+type ReaderIconPreset struct {
+	ID        uuid.UUID `json:"id"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type ReaderIconPresetVariant struct {
+	ID                 uuid.UUID `json:"id"`
+	TenantID           uuid.UUID `json:"tenant_id"`
+	ReaderIconPresetID uuid.UUID `json:"reader_icon_preset_id"`
+	Label              string    `json:"label"`
+	StorageProvider    string    `json:"storage_provider"`
+	ObjectKey          string    `json:"object_key"`
+	ContentType        string    `json:"content_type"`
+	FileSizeBytes      int64     `json:"file_size_bytes"`
+	Width              int32     `json:"width"`
+	Height             int32     `json:"height"`
+	CreatedAt          time.Time `json:"created_at"`
+}
+
 type RoyaltyStatement struct {
 	ID              uuid.UUID     `json:"id"`
 	TenantID        uuid.UUID     `json:"tenant_id"`
@@ -1082,6 +1102,7 @@ type TenantConfig struct {
 	IosTeamID                      sql.NullString `json:"ios_team_id"`
 	IosBundleIdentifier            sql.NullString `json:"ios_bundle_identifier"`
 	AppPurchaseRoute               string         `json:"app_purchase_route"`
+	ReaderIconPolicy               string         `json:"reader_icon_policy"`
 }
 
 type TenantEmailRejectionEntry struct {
@@ -1290,6 +1311,7 @@ type User struct {
 	CredentialsVersion int32          `json:"credentials_version"`
 	BirthDate          sql.NullTime   `json:"birth_date"`
 	IconImageID        uuid.NullUUID  `json:"icon_image_id"`
+	IconPresetID       uuid.NullUUID  `json:"icon_preset_id"`
 }
 
 type UserEmailChangeToken struct {

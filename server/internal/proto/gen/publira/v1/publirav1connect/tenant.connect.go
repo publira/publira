@@ -32,6 +32,9 @@ const (
 	// TenantServiceGetTenantMobileAppAssociationProcedure is the procedure name of the TenantService's
 	// GetTenantMobileAppAssociation RPC.
 	TenantServiceGetTenantMobileAppAssociationProcedure = "/publira.v1.TenantService/GetTenantMobileAppAssociation"
+	// TenantServiceGetTenantReaderIconPolicyProcedure is the procedure name of the TenantService's
+	// GetTenantReaderIconPolicy RPC.
+	TenantServiceGetTenantReaderIconPolicyProcedure = "/publira.v1.TenantService/GetTenantReaderIconPolicy"
 )
 
 var (
@@ -56,6 +59,13 @@ var (
 			Procedure:  TenantServiceGetTenantMobileAppAssociationProcedure,
 		}
 	})
+	tenantServiceGetTenantReaderIconPolicySpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_tenant_proto.Services().ByName("TenantService").Methods().ByName("GetTenantReaderIconPolicy"),
+			Procedure:  TenantServiceGetTenantReaderIconPolicyProcedure,
+		}
+	})
 )
 
 // TenantServiceClient is a client for the publira.v1.TenantService service.
@@ -63,6 +73,7 @@ type TenantServiceClient interface {
 	GetTenant(context.Context, *v1.GetTenantRequest) (*v1.GetTenantResponse, error)
 	GetTenantLegalPages(context.Context, *v1.GetTenantLegalPagesRequest) (*v1.GetTenantLegalPagesResponse, error)
 	GetTenantMobileAppAssociation(context.Context, *v1.GetTenantMobileAppAssociationRequest) (*v1.GetTenantMobileAppAssociationResponse, error)
+	GetTenantReaderIconPolicy(context.Context, *v1.GetTenantReaderIconPolicyRequest) (*v1.GetTenantReaderIconPolicyResponse, error)
 }
 
 // NewTenantServiceClient constructs a client for the publira.v1.TenantService service. Multiple
@@ -76,6 +87,7 @@ type TenantServiceHandler interface {
 	GetTenant(context.Context, *v1.GetTenantRequest) (*v1.GetTenantResponse, error)
 	GetTenantLegalPages(context.Context, *v1.GetTenantLegalPagesRequest) (*v1.GetTenantLegalPagesResponse, error)
 	GetTenantMobileAppAssociation(context.Context, *v1.GetTenantMobileAppAssociationRequest) (*v1.GetTenantMobileAppAssociationResponse, error)
+	GetTenantReaderIconPolicy(context.Context, *v1.GetTenantReaderIconPolicyRequest) (*v1.GetTenantReaderIconPolicyResponse, error)
 }
 
 // RegisterTenantServiceHandler registers svc as the publira.v1.TenantService implementation on
@@ -86,6 +98,7 @@ func RegisterTenantServiceHandler(server *connect.Server, svc TenantServiceHandl
 		connect.Method{Spec: tenantServiceGetTenantSpec(), Handler: adapter.getTenant},
 		connect.Method{Spec: tenantServiceGetTenantLegalPagesSpec(), Handler: adapter.getTenantLegalPages},
 		connect.Method{Spec: tenantServiceGetTenantMobileAppAssociationSpec(), Handler: adapter.getTenantMobileAppAssociation},
+		connect.Method{Spec: tenantServiceGetTenantReaderIconPolicySpec(), Handler: adapter.getTenantReaderIconPolicy},
 	)
 }
 
@@ -102,6 +115,10 @@ func (UnimplementedTenantServiceHandler) GetTenantLegalPages(context.Context, *v
 
 func (UnimplementedTenantServiceHandler) GetTenantMobileAppAssociation(context.Context, *v1.GetTenantMobileAppAssociationRequest) (*v1.GetTenantMobileAppAssociationResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.TenantService.GetTenantMobileAppAssociation is not implemented")
+}
+
+func (UnimplementedTenantServiceHandler) GetTenantReaderIconPolicy(context.Context, *v1.GetTenantReaderIconPolicyRequest) (*v1.GetTenantReaderIconPolicyResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.TenantService.GetTenantReaderIconPolicy is not implemented")
 }
 
 type tenantServiceClient struct {
@@ -127,6 +144,14 @@ func (c *tenantServiceClient) GetTenantLegalPages(ctx context.Context, req *v1.G
 func (c *tenantServiceClient) GetTenantMobileAppAssociation(ctx context.Context, req *v1.GetTenantMobileAppAssociationRequest) (*v1.GetTenantMobileAppAssociationResponse, error) {
 	var res v1.GetTenantMobileAppAssociationResponse
 	if err := c.client.CallUnary(ctx, tenantServiceGetTenantMobileAppAssociationSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantServiceClient) GetTenantReaderIconPolicy(ctx context.Context, req *v1.GetTenantReaderIconPolicyRequest) (*v1.GetTenantReaderIconPolicyResponse, error) {
+	var res v1.GetTenantReaderIconPolicyResponse
+	if err := c.client.CallUnary(ctx, tenantServiceGetTenantReaderIconPolicySpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -164,6 +189,18 @@ func (h tenantServiceHandler) getTenantMobileAppAssociation(ctx context.Context,
 		return err
 	}
 	res, err := h.svc.GetTenantMobileAppAssociation(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantServiceHandler) getTenantReaderIconPolicy(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetTenantReaderIconPolicyRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetTenantReaderIconPolicy(ctx, &req)
 	if err != nil {
 		return err
 	}

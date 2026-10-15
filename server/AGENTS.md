@@ -89,7 +89,7 @@ No lint covers this — the variable names are strings in each `cmd/` entrypoint
 
 ## Stored objects must be named by a row the sweep knows
 
-The orphan image sweep — `maintenance.purge_orphan_images` on the worker, and `publiractl job purge-orphan-images` by hand — treats the database as the authority over the bucket: it walks every object under `tenants/` and deletes the ones no `*_image_variants` row names. A new upload path that writes under that prefix without a row in one of those tables therefore has its objects deleted a day later, silently.
+The orphan image sweep — `maintenance.purge_orphan_images` on the worker, and `publiractl job purge-orphan-images` by hand — treats the database as the authority over the bucket: it walks every object under `tenants/` and deletes the ones no variant row `ListReferencedObjectKeys` (`db/query/storage.sql`) reads names. A new upload path that writes under that prefix without a row in one of those tables therefore has its objects deleted a day later, silently.
 
 So a new kind of stored object either records its key in one of the existing `*_image_variants` tables, or brings its own table and a clause in `ListReferencedObjectKeys` (`db/query/storage.sql`) — never a bare `Upload` with the key kept somewhere else. Where the row points at an image an entity elects (an icon, an eye catch), add the matching `DeleteUnreferenced*Images` query too, so a replaced image's row stops protecting its objects.
 

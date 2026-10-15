@@ -182,12 +182,12 @@ func TestDBUploadMyIconSetsReplacesAndRemovesTheReadersIcon(t *testing.T) {
 	if err != nil {
 		t.Fatalf("icon URL %q names no image id: %v", first, err)
 	}
-	rows, err := dbmodels.New(env.PG.DB).ListUserIconImageVariantsByImageIDs(context.Background(), dbmodels.ListUserIconImageVariantsByImageIDsParams{
+	rows, err := dbmodels.New(env.PG.DB).ListUserIconVariantsByIDs(context.Background(), dbmodels.ListUserIconVariantsByIDsParams{
 		TenantID: tenant.ID,
-		ImageIds: []uuid.UUID{superseded},
+		IconIds:  []uuid.UUID{superseded},
 	})
 	if err != nil {
-		t.Fatalf("ListUserIconImageVariantsByImageIDs: %v", err)
+		t.Fatalf("ListUserIconVariantsByIDs: %v", err)
 	}
 	if len(rows) != 0 {
 		t.Fatalf("variants of the replaced icon = %v, want none", rows)

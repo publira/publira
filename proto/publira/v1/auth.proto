@@ -308,6 +308,18 @@ message DeleteMyIconResponse {
   publira.types.v1.User user = 1;
 }
 
+// Shows one of the tenant's presets as the caller's icon, in place of the one
+// it showed.
+message SelectMyIconRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // A ReaderIconPreset.id from TenantService.GetTenantReaderIconPolicy.
+  string preset_id = 2;
+}
+
+message SelectMyIconResponse {
+  publira.types.v1.User user = 1;
+}
+
 message DeleteMeRequest {
   publira.types.v1.TenantContext tenant = 1;
   // The account's password. An account without one confirms with a fresh
@@ -506,8 +518,14 @@ service AuthService {
   rpc UpdateMe(UpdateMeRequest) returns (UpdateMeResponse) {}
   // Sets the caller's icon, replacing the one it showed. failed_precondition,
   // with the STORAGE_NOT_CONFIGURED reason, while the platform has no object
-  // store.
+  // store, and with READER_ICON_NOT_ALLOWED unless the tenant's reader icon
+  // policy is READER_ICON_POLICY_UPLOAD.
   rpc UploadMyIcon(UploadMyIconRequest) returns (UploadMyIconResponse) {}
+  // failed_precondition, with the READER_ICON_NOT_ALLOWED reason, unless the
+  // tenant's reader icon policy is READER_ICON_POLICY_PRESET; not_found for a
+  // preset the tenant does not hold.
+  rpc SelectMyIcon(SelectMyIconRequest) returns (SelectMyIconResponse) {}
+  // Accepted under every reader icon policy.
   rpc DeleteMyIcon(DeleteMyIconRequest) returns (DeleteMyIconResponse) {}
   // Deletes the caller's account. A staff account is deleted too; the tenant's
   // audit entries keep its name and public ID. failed_precondition, with the

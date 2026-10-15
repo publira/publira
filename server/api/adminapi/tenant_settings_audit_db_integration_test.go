@@ -141,6 +141,16 @@ func TestDBTenantSettingSavesAreAuditedOncePerChange(t *testing.T) {
 			},
 		},
 		{
+			name: "reader icons", action: "tenant_reader_icon_policy_updated", targetType: "tenant_reader_icon_policy",
+			save: func() error {
+				_, err := settings.UpdateTenantReaderIconPolicy(ctx, &publiraadminv1.UpdateTenantReaderIconPolicyRequest{
+					Tenant: tenant.tenantContext(),
+					Policy: publirattypesv1.ReaderIconPolicy_READER_ICON_POLICY_PRESET,
+				})
+				return err
+			},
+		},
+		{
 			name: "terms and privacy policy", action: "tenant_legal_pages_updated", targetType: "tenant_legal_pages",
 			save: func() error {
 				_, err := updateDBTenantLegalPages(env, tenant, termsPageID, privacyPageID)

@@ -88,6 +88,65 @@ message UpdateTenantCommentSettingsResponse {
   uint32 auto_hide_report_threshold = 2;
 }
 
+message GetTenantReaderIconPolicyRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantReaderIconPolicyResponse {
+  // Never READER_ICON_POLICY_UNSPECIFIED: a tenant that has saved nothing lets
+  // readers upload, and a stored value naming no policy fails this RPC.
+  publira.types.v1.ReaderIconPolicy policy = 1;
+}
+
+// Narrowing the policy clears the icons it no longer allows: PRESET leaves
+// every account that shows an upload with none, and DISABLED every account
+// that shows any icon. Widening it clears nothing.
+message UpdateTenantReaderIconPolicyRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // READER_ICON_POLICY_UNSPECIFIED is rejected.
+  publira.types.v1.ReaderIconPolicy policy = 2;
+}
+
+message UpdateTenantReaderIconPolicyResponse {
+  publira.types.v1.ReaderIconPolicy policy = 1;
+}
+
+message ListReaderIconPresetsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+// Every preset of the tenant, oldest first. A tenant holds at most 50, so the
+// list is never paged.
+message ListReaderIconPresetsResponse {
+  repeated publira.types.v1.ReaderIconPreset presets = 1;
+}
+
+// The upload is held to what a reader's own icon upload is: an image/* of at
+// most 10 MiB, cut to a square of at least 128 px. Either refusal is
+// invalid_argument on icon_data, or on icon_crop when the rectangle is at
+// fault.
+message UploadReaderIconPresetRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  bytes icon_data = 2;
+  // Empty is detected from icon_data.
+  string icon_content_type = 3;
+  // Where in the upload the square icon is cut. Omitted, it is cut from the
+  // centre.
+  publira.types.v1.ImageCropRect icon_crop = 4;
+}
+
+message UploadReaderIconPresetResponse {
+  publira.types.v1.ReaderIconPreset preset = 1;
+}
+
+// Deleting a preset leaves every account that shows it with no icon.
+message DeleteReaderIconPresetRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string preset_id = 2;
+}
+
+message DeleteReaderIconPresetResponse {}
+
 message GetTenantAgeVerificationRequest {
   publira.types.v1.TenantContext tenant = 1;
 }
@@ -441,6 +500,20 @@ service TenantSettingsService {
   rpc GetTenantCommentSettings(GetTenantCommentSettingsRequest) returns (GetTenantCommentSettingsResponse) {}
   // Minimum role: tenant_admin.
   rpc UpdateTenantCommentSettings(UpdateTenantCommentSettingsRequest) returns (UpdateTenantCommentSettingsResponse) {}
+  // Minimum role: tenant_auditor.
+  rpc GetTenantReaderIconPolicy(GetTenantReaderIconPolicyRequest) returns (GetTenantReaderIconPolicyResponse) {}
+  // Minimum role: tenant_admin.
+  rpc UpdateTenantReaderIconPolicy(UpdateTenantReaderIconPolicyRequest) returns (UpdateTenantReaderIconPolicyResponse) {}
+  // Minimum role: tenant_auditor.
+  rpc ListReaderIconPresets(ListReaderIconPresetsRequest) returns (ListReaderIconPresetsResponse) {}
+  // failed_precondition, with the READER_ICON_PRESET_LIMIT reason, for a
+  // tenant that holds 50 presets already, and with STORAGE_NOT_CONFIGURED while
+  // the platform has no object store.
+  // Minimum role: tenant_admin.
+  rpc UploadReaderIconPreset(UploadReaderIconPresetRequest) returns (UploadReaderIconPresetResponse) {}
+  // not_found for a preset the tenant does not hold.
+  // Minimum role: tenant_admin.
+  rpc DeleteReaderIconPreset(DeleteReaderIconPresetRequest) returns (DeleteReaderIconPresetResponse) {}
   // Minimum role: tenant_auditor.
   rpc GetTenantAgeVerification(GetTenantAgeVerificationRequest) returns (GetTenantAgeVerificationResponse) {}
   // Minimum role: tenant_admin.

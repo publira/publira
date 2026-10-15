@@ -66,6 +66,8 @@ const (
 	AuthServiceUpdateMeProcedure = "/publira.v1.AuthService/UpdateMe"
 	// AuthServiceUploadMyIconProcedure is the procedure name of the AuthService's UploadMyIcon RPC.
 	AuthServiceUploadMyIconProcedure = "/publira.v1.AuthService/UploadMyIcon"
+	// AuthServiceSelectMyIconProcedure is the procedure name of the AuthService's SelectMyIcon RPC.
+	AuthServiceSelectMyIconProcedure = "/publira.v1.AuthService/SelectMyIcon"
 	// AuthServiceDeleteMyIconProcedure is the procedure name of the AuthService's DeleteMyIcon RPC.
 	AuthServiceDeleteMyIconProcedure = "/publira.v1.AuthService/DeleteMyIcon"
 	// AuthServiceDeleteMeProcedure is the procedure name of the AuthService's DeleteMe RPC.
@@ -225,6 +227,13 @@ var (
 			Procedure:  AuthServiceUploadMyIconProcedure,
 		}
 	})
+	authServiceSelectMyIconSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("SelectMyIcon"),
+			Procedure:  AuthServiceSelectMyIconProcedure,
+		}
+	})
 	authServiceDeleteMyIconSpec = sync.OnceValue(func() connect.Spec {
 		return connect.Spec{
 			StreamType: connect.StreamTypeUnary,
@@ -338,8 +347,14 @@ type AuthServiceClient interface {
 	UpdateMe(context.Context, *v1.UpdateMeRequest) (*v1.UpdateMeResponse, error)
 	// Sets the caller's icon, replacing the one it showed. failed_precondition,
 	// with the STORAGE_NOT_CONFIGURED reason, while the platform has no object
-	// store.
+	// store, and with READER_ICON_NOT_ALLOWED unless the tenant's reader icon
+	// policy is READER_ICON_POLICY_UPLOAD.
 	UploadMyIcon(context.Context, *v1.UploadMyIconRequest) (*v1.UploadMyIconResponse, error)
+	// failed_precondition, with the READER_ICON_NOT_ALLOWED reason, unless the
+	// tenant's reader icon policy is READER_ICON_POLICY_PRESET; not_found for a
+	// preset the tenant does not hold.
+	SelectMyIcon(context.Context, *v1.SelectMyIconRequest) (*v1.SelectMyIconResponse, error)
+	// Accepted under every reader icon policy.
 	DeleteMyIcon(context.Context, *v1.DeleteMyIconRequest) (*v1.DeleteMyIconResponse, error)
 	// Deletes the caller's account. A staff account is deleted too; the tenant's
 	// audit entries keep its name and public ID. failed_precondition, with the
@@ -394,8 +409,14 @@ type AuthServiceHandler interface {
 	UpdateMe(context.Context, *v1.UpdateMeRequest) (*v1.UpdateMeResponse, error)
 	// Sets the caller's icon, replacing the one it showed. failed_precondition,
 	// with the STORAGE_NOT_CONFIGURED reason, while the platform has no object
-	// store.
+	// store, and with READER_ICON_NOT_ALLOWED unless the tenant's reader icon
+	// policy is READER_ICON_POLICY_UPLOAD.
 	UploadMyIcon(context.Context, *v1.UploadMyIconRequest) (*v1.UploadMyIconResponse, error)
+	// failed_precondition, with the READER_ICON_NOT_ALLOWED reason, unless the
+	// tenant's reader icon policy is READER_ICON_POLICY_PRESET; not_found for a
+	// preset the tenant does not hold.
+	SelectMyIcon(context.Context, *v1.SelectMyIconRequest) (*v1.SelectMyIconResponse, error)
+	// Accepted under every reader icon policy.
 	DeleteMyIcon(context.Context, *v1.DeleteMyIconRequest) (*v1.DeleteMyIconResponse, error)
 	// Deletes the caller's account. A staff account is deleted too; the tenant's
 	// audit entries keep its name and public ID. failed_precondition, with the
@@ -445,6 +466,7 @@ func RegisterAuthServiceHandler(server *connect.Server, svc AuthServiceHandler) 
 		connect.Method{Spec: authServiceGetMeSpec(), Handler: adapter.getMe},
 		connect.Method{Spec: authServiceUpdateMeSpec(), Handler: adapter.updateMe},
 		connect.Method{Spec: authServiceUploadMyIconSpec(), Handler: adapter.uploadMyIcon},
+		connect.Method{Spec: authServiceSelectMyIconSpec(), Handler: adapter.selectMyIcon},
 		connect.Method{Spec: authServiceDeleteMyIconSpec(), Handler: adapter.deleteMyIcon},
 		connect.Method{Spec: authServiceDeleteMeSpec(), Handler: adapter.deleteMe},
 		connect.Method{Spec: authServiceGetNotificationSettingsSpec(), Handler: adapter.getNotificationSettings},
@@ -530,6 +552,10 @@ func (UnimplementedAuthServiceHandler) UpdateMe(context.Context, *v1.UpdateMeReq
 
 func (UnimplementedAuthServiceHandler) UploadMyIcon(context.Context, *v1.UploadMyIconRequest) (*v1.UploadMyIconResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.UploadMyIcon is not implemented")
+}
+
+func (UnimplementedAuthServiceHandler) SelectMyIcon(context.Context, *v1.SelectMyIconRequest) (*v1.SelectMyIconResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.SelectMyIcon is not implemented")
 }
 
 func (UnimplementedAuthServiceHandler) DeleteMyIcon(context.Context, *v1.DeleteMyIconRequest) (*v1.DeleteMyIconResponse, error) {
@@ -719,6 +745,14 @@ func (c *authServiceClient) UpdateMe(ctx context.Context, req *v1.UpdateMeReques
 func (c *authServiceClient) UploadMyIcon(ctx context.Context, req *v1.UploadMyIconRequest) (*v1.UploadMyIconResponse, error) {
 	var res v1.UploadMyIconResponse
 	if err := c.client.CallUnary(ctx, authServiceUploadMyIconSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) SelectMyIcon(ctx context.Context, req *v1.SelectMyIconRequest) (*v1.SelectMyIconResponse, error) {
+	var res v1.SelectMyIconResponse
+	if err := c.client.CallUnary(ctx, authServiceSelectMyIconSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1028,6 +1062,18 @@ func (h authServiceHandler) uploadMyIcon(ctx context.Context, _ connect.Spec, st
 		return err
 	}
 	res, err := h.svc.UploadMyIcon(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) selectMyIcon(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.SelectMyIconRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.SelectMyIcon(ctx, &req)
 	if err != nil {
 		return err
 	}

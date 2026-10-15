@@ -172,6 +172,20 @@ func TestCrossTenantParentReferencesAreRejected(t *testing.T) {
 			args:       []any{first.userID, second.userImageID},
 		},
 		{
+			name:       "users.icon_preset_id",
+			constraint: "users_tenant_icon_preset_id_fkey",
+			statement:  `UPDATE users SET icon_preset_id = $2 WHERE id = $1`,
+			args:       []any{first.userID, second.readerIconPresetID},
+		},
+		{
+			name:       "reader_icon_preset_variants.reader_icon_preset_id",
+			constraint: "reader_icon_preset_variants_tenant_preset_id_fkey",
+			statement: `INSERT INTO reader_icon_preset_variants
+				(id, tenant_id, reader_icon_preset_id, label, storage_provider, object_key, content_type, file_size_bytes, width, height)
+				VALUES ($1, $2, $3, 'original', 's3', 'tenants/preset.png', 'image/png', 1, 512, 512)`,
+			args: []any{mustUUID(t), first.tenantID, second.readerIconPresetID},
+		},
+		{
 			name:       "user_image_variants.user_image_id",
 			constraint: "user_image_variants_tenant_user_image_id_fkey",
 			statement: `INSERT INTO user_image_variants
@@ -309,6 +323,10 @@ func TestDeletingAnElectedParentNullsOnlyTheReference(t *testing.T) {
 	mustExec(t, ctx, db, `UPDATE genres SET eye_catch_image_id = $2 WHERE id = $1`, seeded.genreID, seeded.genreImageID)
 	mustExec(t, ctx, db, `UPDATE creators SET icon_image_id = $2 WHERE id = $1`, seeded.creatorID, seeded.creatorImageID)
 	mustExec(t, ctx, db, `UPDATE users SET icon_image_id = $2 WHERE id = $1`, seeded.userID, seeded.userImageID)
+	// An account shows one icon, so the preset is elected by an account of its
+	// own rather than the one electing the upload.
+	presetReaderID := mustInsertUser(t, ctx, db, seeded.tenantID, "FKNPRESET01", "fkn-preset@example.com", "FKN Preset Reader")
+	mustExec(t, ctx, db, `UPDATE users SET icon_preset_id = $2 WHERE id = $1`, presetReaderID, seeded.readerIconPresetID)
 
 	cases := []struct {
 		name    string
@@ -342,6 +360,13 @@ func TestDeletingAnElectedParentNullsOnlyTheReference(t *testing.T) {
 			deleted:  seeded.userImageID,
 			survivor: `SELECT tenant_id, icon_image_id FROM users WHERE id = $1`,
 			owner:    seeded.userID,
+		},
+		{
+			name:     "users.icon_preset_id",
+			delete:   `DELETE FROM reader_icon_presets WHERE id = $1`,
+			deleted:  seeded.readerIconPresetID,
+			survivor: `SELECT tenant_id, icon_preset_id FROM users WHERE id = $1`,
+			owner:    presetReaderID,
 		},
 		{
 			name:     "labels.eye_catch_image_id",
@@ -402,25 +427,26 @@ func TestDeletingAnElectedParentNullsOnlyTheReference(t *testing.T) {
 
 // One tenant holding a row of every kind the cases above pair across tenants.
 type foreignKeyTenant struct {
-	tenantID          uuid.UUID
-	userID            uuid.UUID
-	userImageID       uuid.UUID
-	seriesID          uuid.UUID
-	seriesImageID     uuid.UUID
-	episodeImageID    uuid.UUID
-	creatorID         uuid.UUID
-	creatorImageID    uuid.UUID
-	labelID           uuid.UUID
-	labelImageID      uuid.UUID
-	genreID           uuid.UUID
-	genreImageID      uuid.UUID
-	tenantImageID     uuid.UUID
-	pageID            uuid.UUID
-	pageTranslationID uuid.UUID
-	pageVersionID     uuid.UUID
-	notificationID    uuid.UUID
-	announcementID    uuid.UUID
-	accessTicketID    uuid.UUID
+	tenantID           uuid.UUID
+	userID             uuid.UUID
+	userImageID        uuid.UUID
+	readerIconPresetID uuid.UUID
+	seriesID           uuid.UUID
+	seriesImageID      uuid.UUID
+	episodeImageID     uuid.UUID
+	creatorID          uuid.UUID
+	creatorImageID     uuid.UUID
+	labelID            uuid.UUID
+	labelImageID       uuid.UUID
+	genreID            uuid.UUID
+	genreImageID       uuid.UUID
+	tenantImageID      uuid.UUID
+	pageID             uuid.UUID
+	pageTranslationID  uuid.UUID
+	pageVersionID      uuid.UUID
+	notificationID     uuid.UUID
+	announcementID     uuid.UUID
+	accessTicketID     uuid.UUID
 }
 
 // seedForeignKeyTenant builds one whole tenant. prefix keeps the public ids
@@ -436,6 +462,9 @@ func seedForeignKeyTenant(t *testing.T, ctx context.Context, db *sql.DB, prefix 
 	seeded.userImageID = mustUUID(t)
 	mustExec(t, ctx, db, `INSERT INTO user_images (id, tenant_id, user_id) VALUES ($1, $2, $3)`,
 		seeded.userImageID, seeded.tenantID, seeded.userID)
+	seeded.readerIconPresetID = mustUUID(t)
+	mustExec(t, ctx, db, `INSERT INTO reader_icon_presets (id, tenant_id) VALUES ($1, $2)`,
+		seeded.readerIconPresetID, seeded.tenantID)
 
 	episodeID := mustInsertEpisode(t, ctx, db, seeded.tenantID, prefix+"EPISODE01", prefix+" Episode")
 	mustQueryRow(t, ctx, db, `SELECT series_id FROM episodes WHERE id = $1`, &seeded.seriesID, episodeID)

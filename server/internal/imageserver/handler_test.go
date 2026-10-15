@@ -57,6 +57,8 @@ type stubTenantQueries struct {
 	creatorErr       error
 	userIcon         dbmodels.GetUserIconImageByIDForTenantRow
 	userIconKey      dbmodels.GetUserIconImageByIDForTenantParams
+	preset           dbmodels.GetReaderIconPresetImageForTenantRow
+	presetKey        dbmodels.GetReaderIconPresetImageForTenantParams
 	tenant           dbmodels.GetTenantImageVariantByTypeForTenantRow
 	tenantErr        error
 	tenantKey        tenantVariantKey
@@ -93,6 +95,17 @@ func (s stubTenantQueries) GetUserIconImageByIDForTenant(_ context.Context, arg 
 		return dbmodels.GetUserIconImageByIDForTenantRow{}, sql.ErrNoRows
 	}
 	return s.userIcon, nil
+}
+
+// GetReaderIconPresetImageForTenant answers only for the exact preset and
+// tenant the test stored, as GetUserIconImageByIDForTenant does. A deleted
+// preset is the real query's no rows, which is what an unset preset stands
+// for.
+func (s stubTenantQueries) GetReaderIconPresetImageForTenant(_ context.Context, arg dbmodels.GetReaderIconPresetImageForTenantParams) (dbmodels.GetReaderIconPresetImageForTenantRow, error) {
+	if s.preset.ObjectKey == "" || arg != s.presetKey {
+		return dbmodels.GetReaderIconPresetImageForTenantRow{}, sql.ErrNoRows
+	}
+	return s.preset, nil
 }
 
 // tenantVariantKey is the tuple the real query filters on. The stub answers
@@ -1417,6 +1430,63 @@ func TestUserImageServesTheElectedIcon(t *testing.T) {
 					}
 					if got := rec.Header().Get("Content-Type"); got != "image/webp" {
 						t.Fatalf("Content-Type = %q, want image/webp", got)
+					}
+				})
+			}
+		})
+	}
+}
+
+// A tenant's reader icon preset is served on either of the tenant's hosts,
+// under the public cache rule a reader's own icon is, and only while it
+// exists: a deleted preset, or one of another tenant, is not found.
+func TestReaderIconPresetImageServesAPresetTheTenantHolds(t *testing.T) {
+	tenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	otherTenantID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	presetID := uuid.MustParse("99999999-9999-9999-9999-999999999999")
+	deletedID := uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+	queries := stubTenantQueries{
+		preset: dbmodels.GetReaderIconPresetImageForTenantRow{
+			ObjectKey:   "tenants/acme/reader-icon-presets/preset-original.jpg",
+			ContentType: "image/jpeg",
+		},
+		presetKey: dbmodels.GetReaderIconPresetImageForTenantParams{ReaderIconPresetID: presetID, TenantID: tenantID},
+	}
+	store := &countingStore{objects: map[string]storedObject{
+		"tenants/acme/reader-icon-presets/preset-original.jpg": {data: testJPEG(), contentType: "image/jpeg"},
+	}}
+
+	for name, console := range map[string]bool{"storefront": false, "console": true} {
+		t.Run(name, func(t *testing.T) {
+			for _, tc := range []struct {
+				name     string
+				tenantID uuid.UUID
+				path     string
+				want     int
+			}{
+				{"a preset the tenant holds", tenantID, "/images/reader-icon-presets/" + presetID.String(), http.StatusOK},
+				{"a deleted preset", tenantID, "/images/reader-icon-presets/" + deletedID.String(), http.StatusNotFound},
+				{"the preset on another tenant's host", otherTenantID, "/images/reader-icon-presets/" + presetID.String(), http.StatusNotFound},
+				{"a malformed id", tenantID, "/images/reader-icon-presets/not-a-uuid", http.StatusBadRequest},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					srv := newTestServer(t,
+						stubResolver{tenant: dbmodels.Tenant{ID: tc.tenantID, Domain: "example.test"}, console: console},
+						stubFactory{q: queries},
+						store,
+					)
+					req := httptest.NewRequest(http.MethodGet, tc.path, nil)
+					req.Host = "example.test"
+					rec := httptest.NewRecorder()
+					srv.ServeHTTP(rec, req)
+					if rec.Code != tc.want {
+						t.Fatalf("status = %d, want %d (body %q)", rec.Code, tc.want, rec.Body.String())
+					}
+					if tc.want != http.StatusOK {
+						return
+					}
+					if got := rec.Header().Get("Cache-Control"); got != "public, max-age=3600" {
+						t.Fatalf("Cache-Control = %q, want public, max-age=3600", got)
 					}
 				})
 			}

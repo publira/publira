@@ -32,7 +32,7 @@ func (s *adminServer) creatorAccounts(ctx context.Context, tenantID, creatorID u
 	}
 	iconImageIDs := make([]uuid.UUID, 0, len(rows))
 	for _, row := range rows {
-		iconImageIDs = appendIconImageID(iconImageIDs, row.IconImageID)
+		iconImageIDs = appendIconID(iconImageIDs, row.IconImageID, row.IconPresetID)
 	}
 	icons, err := userIcons(ctx, s.queriesFor(ctx), tenantID, iconImageIDs)
 	if err != nil {
@@ -50,6 +50,7 @@ func (s *adminServer) creatorAccounts(ctx context.Context, tenantID, creatorID u
 				CreatedAt:       row.CreatedAt,
 				EmailVerifiedAt: row.EmailVerifiedAt,
 				IconImageID:     row.IconImageID,
+				IconPresetID:    row.IconPresetID,
 				Role:            row.Role,
 			}, icons),
 			LinkedAt: row.LinkedAt.UTC().Format(time.RFC3339),

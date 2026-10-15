@@ -397,8 +397,8 @@ func handlerFromServer(server *adminServer) http.Handler {
 const (
 	// maxUploadedImageBytes is the largest image a procedure that carries one
 	// takes: a cover, a label's or genre's eye-catch, an author's icon, the
-	// tenant's icon or logo.
-	maxUploadedImageBytes = max(imageproc.EyeCatchMaxBytes, imageproc.IconMaxBytes, imageproc.LogoMaxBytes, creatorIconMaxUploadBytes)
+	// tenant's icon or logo, a reader icon preset.
+	maxUploadedImageBytes = max(imageproc.EyeCatchMaxBytes, imageproc.IconMaxBytes, imageproc.LogoMaxBytes, creatorIconMaxUploadBytes, imageproc.UserIconMaxBytes)
 	// imageUploadReadMaxBytes is what a procedure that carries one image reads
 	// of a request: that image as the JSON encoding carries it, in base64 and
 	// a third larger than the binary one, and the fields sent beside it, which
@@ -433,6 +433,7 @@ var readLimits = map[string]int{
 	publiraadminv1connect.AdminCreatorServiceUpdateCreatorProcedure:                  imageUploadReadMaxBytes,
 	publiraadminv1connect.TenantThemeServiceUploadTenantIconProcedure:                imageUploadReadMaxBytes,
 	publiraadminv1connect.TenantThemeServiceUploadTenantLogoProcedure:                imageUploadReadMaxBytes,
+	publiraadminv1connect.TenantSettingsServiceUploadReaderIconPresetProcedure:       imageUploadReadMaxBytes,
 }
 
 func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {

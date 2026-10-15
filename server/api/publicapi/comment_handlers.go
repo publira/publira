@@ -14,6 +14,7 @@ import (
 	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/api/protomapper"
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/commentmode"
 	"github.com/publira/publira/server/internal/contentevents"
@@ -144,10 +145,10 @@ type publicCommentPageRow struct {
 	createdAt      time.Time
 	authorPublicID string
 	authorName     string
-	// authorIconImageID is the icon the author's account elects, and NULL for
-	// one that shows none.
-	authorIconImageID uuid.NullUUID
-	creator           *publirav1.EpisodeCommentCreator
+	// authorIconID is the icon the author's account elects, an upload or a
+	// preset, and NULL for one that shows none.
+	authorIconID uuid.NullUUID
+	creator      *publirav1.EpisodeCommentCreator
 }
 
 // episodeCommentCreator projects the credit a comment's author holds on its
@@ -188,14 +189,14 @@ func (s *apiServer) publicCommentPage(
 		}
 		for _, row := range rows {
 			mapped = append(mapped, publicCommentPageRow{
-				id:                row.ID,
-				publicID:          row.PublicID,
-				body:              row.Body,
-				createdAt:         row.CreatedAt,
-				authorPublicID:    row.AuthorPublicID,
-				authorName:        row.AuthorName,
-				authorIconImageID: row.AuthorIconImageID,
-				creator:           episodeCommentCreator(row.CreatorID, row.CreatorPublicID, row.CreatorName),
+				id:             row.ID,
+				publicID:       row.PublicID,
+				body:           row.Body,
+				createdAt:      row.CreatedAt,
+				authorPublicID: row.AuthorPublicID,
+				authorName:     row.AuthorName,
+				authorIconID:   protomapper.UserIconID(row.AuthorIconImageID, row.AuthorIconPresetID),
+				creator:        episodeCommentCreator(row.CreatorID, row.CreatorPublicID, row.CreatorName),
 			})
 		}
 		return mapped, nil
@@ -206,14 +207,14 @@ func (s *apiServer) publicCommentPage(
 	}
 	for _, row := range rows {
 		mapped = append(mapped, publicCommentPageRow{
-			id:                row.ID,
-			publicID:          row.PublicID,
-			body:              row.Body,
-			createdAt:         row.CreatedAt,
-			authorPublicID:    row.AuthorPublicID,
-			authorName:        row.AuthorName,
-			authorIconImageID: row.AuthorIconImageID,
-			creator:           episodeCommentCreator(row.CreatorID, row.CreatorPublicID, row.CreatorName),
+			id:             row.ID,
+			publicID:       row.PublicID,
+			body:           row.Body,
+			createdAt:      row.CreatedAt,
+			authorPublicID: row.AuthorPublicID,
+			authorName:     row.AuthorName,
+			authorIconID:   protomapper.UserIconID(row.AuthorIconImageID, row.AuthorIconPresetID),
+			creator:        episodeCommentCreator(row.CreatorID, row.CreatorPublicID, row.CreatorName),
 		})
 	}
 	return mapped, nil
@@ -257,13 +258,13 @@ func (s *apiServer) ListEpisodeComments(
 	// The icons of the page's authors are read in one query rather than joined
 	// into the page's: an icon has a row per stored variant, and the page is a
 	// row per comment.
-	iconImageIDs := make([]uuid.UUID, 0, len(rows))
+	iconIDs := make([]uuid.UUID, 0, len(rows))
 	for _, row := range rows {
-		if row.authorIconImageID.Valid && !slices.Contains(iconImageIDs, row.authorIconImageID.UUID) {
-			iconImageIDs = append(iconImageIDs, row.authorIconImageID.UUID)
+		if row.authorIconID.Valid && !slices.Contains(iconIDs, row.authorIconID.UUID) {
+			iconIDs = append(iconIDs, row.authorIconID.UUID)
 		}
 	}
-	icons, err := s.userIcons(ctx, s.queriesFor(ctx), tenant.ID, iconImageIDs)
+	icons, err := s.userIcons(ctx, s.queriesFor(ctx), tenant.ID, iconIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -278,7 +279,7 @@ func (s *apiServer) ListEpisodeComments(
 			AuthorPublicId:          row.authorPublicID,
 			AuthorName:              row.authorName,
 			Creator:                 row.creator,
-			AuthorIconImageVariants: icons[row.authorIconImageID.UUID].Variants,
+			AuthorIconImageVariants: icons[row.authorIconID.UUID].Variants,
 		})
 	}
 

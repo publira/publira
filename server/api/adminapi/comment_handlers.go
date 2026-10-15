@@ -254,78 +254,81 @@ func (s *adminServer) commentReportPage(
 // is about — so the projection names what it reads instead of one of them, and
 // purge_due_at is derived in one place for both.
 type commentProjection struct {
-	id                uuid.UUID
-	publicID          string
-	body              string
-	status            string
-	createdAt         time.Time
-	publishedAt       sql.NullTime
-	hiddenAt          sql.NullTime
-	hiddenReason      sql.NullString
-	withdrawnAt       sql.NullTime
-	openReportCount   int32
-	authorPublicID    string
-	authorName        string
-	authorIsStaff     bool
-	authorIconImageID uuid.NullUUID
-	episodePublicID   string
-	episodeTitle      string
-	seriesPublicID    string
-	seriesTitle       string
-	creatorID         uuid.NullUUID
-	creatorPublicID   sql.NullString
-	creatorName       sql.NullString
+	id                 uuid.UUID
+	publicID           string
+	body               string
+	status             string
+	createdAt          time.Time
+	publishedAt        sql.NullTime
+	hiddenAt           sql.NullTime
+	hiddenReason       sql.NullString
+	withdrawnAt        sql.NullTime
+	openReportCount    int32
+	authorPublicID     string
+	authorName         string
+	authorIsStaff      bool
+	authorIconImageID  uuid.NullUUID
+	authorIconPresetID uuid.NullUUID
+	episodePublicID    string
+	episodeTitle       string
+	seriesPublicID     string
+	seriesTitle        string
+	creatorID          uuid.NullUUID
+	creatorPublicID    sql.NullString
+	creatorName        sql.NullString
 }
 
 func commentProjectionOf(row moderationCommentRow) commentProjection {
 	return commentProjection{
-		id:                row.ID,
-		publicID:          row.PublicID,
-		body:              row.Body,
-		status:            row.Status,
-		createdAt:         row.CreatedAt,
-		publishedAt:       row.PublishedAt,
-		hiddenAt:          row.HiddenAt,
-		hiddenReason:      row.HiddenReason,
-		withdrawnAt:       row.WithdrawnAt,
-		openReportCount:   row.OpenReportCount,
-		authorPublicID:    row.AuthorPublicID,
-		authorName:        row.AuthorName,
-		authorIsStaff:     row.AuthorIsStaff,
-		authorIconImageID: row.AuthorIconImageID,
-		episodePublicID:   row.EpisodePublicID,
-		episodeTitle:      row.EpisodeTitle,
-		seriesPublicID:    row.SeriesPublicID,
-		seriesTitle:       row.SeriesTitle,
-		creatorID:         row.CreatorID,
-		creatorPublicID:   row.CreatorPublicID,
-		creatorName:       row.CreatorName,
+		id:                 row.ID,
+		publicID:           row.PublicID,
+		body:               row.Body,
+		status:             row.Status,
+		createdAt:          row.CreatedAt,
+		publishedAt:        row.PublishedAt,
+		hiddenAt:           row.HiddenAt,
+		hiddenReason:       row.HiddenReason,
+		withdrawnAt:        row.WithdrawnAt,
+		openReportCount:    row.OpenReportCount,
+		authorPublicID:     row.AuthorPublicID,
+		authorName:         row.AuthorName,
+		authorIsStaff:      row.AuthorIsStaff,
+		authorIconImageID:  row.AuthorIconImageID,
+		authorIconPresetID: row.AuthorIconPresetID,
+		episodePublicID:    row.EpisodePublicID,
+		episodeTitle:       row.EpisodeTitle,
+		seriesPublicID:     row.SeriesPublicID,
+		seriesTitle:        row.SeriesTitle,
+		creatorID:          row.CreatorID,
+		creatorPublicID:    row.CreatorPublicID,
+		creatorName:        row.CreatorName,
 	}
 }
 
 func commentProjectionOfReport(row commentReportRow) commentProjection {
 	return commentProjection{
-		id:                row.ID,
-		publicID:          row.PublicID,
-		body:              row.Body,
-		status:            row.Status,
-		createdAt:         row.CreatedAt,
-		publishedAt:       row.PublishedAt,
-		hiddenAt:          row.HiddenAt,
-		hiddenReason:      row.HiddenReason,
-		withdrawnAt:       row.WithdrawnAt,
-		openReportCount:   row.OpenReportCount,
-		authorPublicID:    row.AuthorPublicID,
-		authorName:        row.AuthorName,
-		authorIsStaff:     row.AuthorIsStaff,
-		authorIconImageID: row.AuthorIconImageID,
-		episodePublicID:   row.EpisodePublicID,
-		episodeTitle:      row.EpisodeTitle,
-		seriesPublicID:    row.SeriesPublicID,
-		seriesTitle:       row.SeriesTitle,
-		creatorID:         row.CreatorID,
-		creatorPublicID:   row.CreatorPublicID,
-		creatorName:       row.CreatorName,
+		id:                 row.ID,
+		publicID:           row.PublicID,
+		body:               row.Body,
+		status:             row.Status,
+		createdAt:          row.CreatedAt,
+		publishedAt:        row.PublishedAt,
+		hiddenAt:           row.HiddenAt,
+		hiddenReason:       row.HiddenReason,
+		withdrawnAt:        row.WithdrawnAt,
+		openReportCount:    row.OpenReportCount,
+		authorPublicID:     row.AuthorPublicID,
+		authorName:         row.AuthorName,
+		authorIsStaff:      row.AuthorIsStaff,
+		authorIconImageID:  row.AuthorIconImageID,
+		authorIconPresetID: row.AuthorIconPresetID,
+		episodePublicID:    row.EpisodePublicID,
+		episodeTitle:       row.EpisodeTitle,
+		seriesPublicID:     row.SeriesPublicID,
+		seriesTitle:        row.SeriesTitle,
+		creatorID:          row.CreatorID,
+		creatorPublicID:    row.CreatorPublicID,
+		creatorName:        row.CreatorName,
 	}
 }
 
@@ -367,8 +370,8 @@ func adminComment(row commentProjection, periods retention.Periods, icons map[uu
 		OpenReportCount: row.openReportCount,
 		Creator:         adminCommentCreator(row),
 	}
-	if row.authorIconImageID.Valid {
-		comment.AuthorIconImageVariants = icons[row.authorIconImageID.UUID].Variants
+	if iconID := protomapper.UserIconID(row.authorIconImageID, row.authorIconPresetID); iconID.Valid {
+		comment.AuthorIconImageVariants = icons[iconID.UUID].Variants
 	}
 	if row.withdrawnAt.Valid {
 		comment.PurgeDueAt = periods.WithdrawnCommentPurgeDueAt(row.withdrawnAt.Time).Format(time.RFC3339)
@@ -621,7 +624,7 @@ func (s *adminServer) ListComments(
 	}
 	iconImageIDs := make([]uuid.UUID, 0, len(rows))
 	for _, row := range rows {
-		iconImageIDs = appendIconImageID(iconImageIDs, row.AuthorIconImageID)
+		iconImageIDs = appendIconID(iconImageIDs, row.AuthorIconImageID, row.AuthorIconPresetID)
 	}
 	icons, err := s.commentAuthorIcons(ctx, tenant.ID, iconImageIDs)
 	if err != nil {
@@ -715,7 +718,7 @@ func (s *adminServer) ApproveComment(
 	if current.Status != commentStatusPending {
 		return nil, commentStateError("approved", current.Status)
 	}
-	icons, err := s.commentAuthorIcons(ctx, tenant.ID, appendIconImageID(nil, current.AuthorIconImageID))
+	icons, err := s.commentAuthorIcons(ctx, tenant.ID, appendIconID(nil, current.AuthorIconImageID, current.AuthorIconPresetID))
 	if err != nil {
 		return nil, err
 	}
@@ -787,7 +790,7 @@ func (s *adminServer) HideComment(
 	if current.Status != commentStatusPending && current.Status != commentStatusPublished {
 		return nil, commentStateError("removed", current.Status)
 	}
-	icons, err := s.commentAuthorIcons(ctx, tenant.ID, appendIconImageID(nil, current.AuthorIconImageID))
+	icons, err := s.commentAuthorIcons(ctx, tenant.ID, appendIconID(nil, current.AuthorIconImageID, current.AuthorIconPresetID))
 	if err != nil {
 		return nil, err
 	}
@@ -856,7 +859,7 @@ func (s *adminServer) RestoreComment(
 	if current.Status != commentStatusHidden {
 		return nil, commentStateError("restored", current.Status)
 	}
-	icons, err := s.commentAuthorIcons(ctx, tenant.ID, appendIconImageID(nil, current.AuthorIconImageID))
+	icons, err := s.commentAuthorIcons(ctx, tenant.ID, appendIconID(nil, current.AuthorIconImageID, current.AuthorIconPresetID))
 	if err != nil {
 		return nil, err
 	}
@@ -1026,7 +1029,7 @@ func (s *adminServer) ListCommentReports(
 	}
 	iconImageIDs := make([]uuid.UUID, 0, len(rows))
 	for _, row := range rows {
-		iconImageIDs = appendIconImageID(iconImageIDs, row.AuthorIconImageID)
+		iconImageIDs = appendIconID(iconImageIDs, row.AuthorIconImageID, row.AuthorIconPresetID)
 	}
 	icons, err := s.commentAuthorIcons(ctx, tenant.ID, iconImageIDs)
 	if err != nil {
@@ -1102,7 +1105,7 @@ func (s *adminServer) ResolveCommentReport(
 	if current.ReportStatus != commentReportStatusOpen {
 		return nil, connect.Errorf(connect.CodeFailedPrecondition, "a %s report cannot be decided again", current.ReportStatus)
 	}
-	icons, err := s.commentAuthorIcons(ctx, tenant.ID, appendIconImageID(nil, current.AuthorIconImageID))
+	icons, err := s.commentAuthorIcons(ctx, tenant.ID, appendIconID(nil, current.AuthorIconImageID, current.AuthorIconPresetID))
 	if err != nil {
 		return nil, err
 	}

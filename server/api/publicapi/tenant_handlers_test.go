@@ -198,6 +198,7 @@ func TestGetTenantIncludesTheme(t *testing.T) {
 			nil,
 			nil,
 			"external_checkout",
+			"upload",
 		))
 	expectPaymentsUnavailable(mock, tenantID)
 
@@ -733,6 +734,7 @@ func expectTenantConfigWithCommentMode(
 			nil,
 			nil,
 			"external_checkout",
+			"upload",
 		))
 }
 
@@ -886,5 +888,5 @@ func expectTenantConfigWithAppPurchaseRoute(mock sqlmock.Sqlmock, tenantID uuid.
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantConfigColumns()).
-			AddRow(tenantID, nil, nil, now, now, nil, "disabled", int32(3), "single", ageverification.None, "all", nil, nil, nil, nil, nil, "{}", nil, nil, route))
+			AddRow(tenantID, nil, nil, now, now, nil, "disabled", int32(3), "single", ageverification.None, "all", nil, nil, nil, nil, nil, "{}", nil, nil, route, "upload"))
 }

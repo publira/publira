@@ -74,8 +74,8 @@ func (filters readerListFilters) key() pagination.ListKey {
 // shows out of icons, which userIcons read for the page it is on.
 func adminReader(row readerRow, icons map[uuid.UUID]protomapper.UserIcon) *publiraadminv1.AdminReader {
 	var iconVariants []*publirattypesv1.UserIconVariant
-	if row.IconImageID.Valid {
-		iconVariants = icons[row.IconImageID.UUID].Variants
+	if iconID := protomapper.UserIconID(row.IconImageID, row.IconPresetID); iconID.Valid {
+		iconVariants = icons[iconID.UUID].Variants
 	}
 	return &publiraadminv1.AdminReader{
 		Id:                row.ID.String(),
@@ -188,7 +188,7 @@ func (s *adminServer) ListReaders(
 
 	iconImageIDs := make([]uuid.UUID, 0, len(rows))
 	for _, row := range rows {
-		iconImageIDs = appendIconImageID(iconImageIDs, row.IconImageID)
+		iconImageIDs = appendIconID(iconImageIDs, row.IconImageID, row.IconPresetID)
 	}
 	icons, err := userIcons(ctx, s.queriesFor(ctx), tenant.ID, iconImageIDs)
 	if err != nil {

@@ -486,6 +486,63 @@ func (SurfaceAvailability) EnumDescriptor() ([]byte, []int) {
 	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{7}
 }
 
+// What a tenant lets a reader show as an icon (tenant_config.reader_icon_policy).
+type ReaderIconPolicy int32
+
+const (
+	ReaderIconPolicy_READER_ICON_POLICY_UNSPECIFIED ReaderIconPolicy = 0
+	// A reader uploads an image of their own. This is what a tenant that has
+	// never chosen gets.
+	ReaderIconPolicy_READER_ICON_POLICY_UPLOAD ReaderIconPolicy = 1
+	// A reader picks one of the tenant's presets and uploads nothing.
+	ReaderIconPolicy_READER_ICON_POLICY_PRESET ReaderIconPolicy = 2
+	// No reader shows an icon.
+	ReaderIconPolicy_READER_ICON_POLICY_DISABLED ReaderIconPolicy = 3
+)
+
+// Enum value maps for ReaderIconPolicy.
+var (
+	ReaderIconPolicy_name = map[int32]string{
+		0: "READER_ICON_POLICY_UNSPECIFIED",
+		1: "READER_ICON_POLICY_UPLOAD",
+		2: "READER_ICON_POLICY_PRESET",
+		3: "READER_ICON_POLICY_DISABLED",
+	}
+	ReaderIconPolicy_value = map[string]int32{
+		"READER_ICON_POLICY_UNSPECIFIED": 0,
+		"READER_ICON_POLICY_UPLOAD":      1,
+		"READER_ICON_POLICY_PRESET":      2,
+		"READER_ICON_POLICY_DISABLED":    3,
+	}
+)
+
+func (x ReaderIconPolicy) Enum() *ReaderIconPolicy {
+	p := new(ReaderIconPolicy)
+	*p = x
+	return p
+}
+
+func (x ReaderIconPolicy) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ReaderIconPolicy) Descriptor() protoreflect.EnumDescriptor {
+	return file_publira_types_v1_types_proto_enumTypes[8].Descriptor()
+}
+
+func (ReaderIconPolicy) Type() protoreflect.EnumType {
+	return &file_publira_types_v1_types_proto_enumTypes[8]
+}
+
+func (x ReaderIconPolicy) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ReaderIconPolicy.Descriptor instead.
+func (ReaderIconPolicy) EnumDescriptor() ([]byte, []int) {
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{8}
+}
+
 // Which of a tenant's age ratings a reader has to prove an age for
 // (tenant_config.age_verification). The values are the rungs of one ladder
 // rather than a switch per rating: a tenant that gated `r15` while leaving
@@ -532,11 +589,11 @@ func (x AgeVerification) String() string {
 }
 
 func (AgeVerification) Descriptor() protoreflect.EnumDescriptor {
-	return file_publira_types_v1_types_proto_enumTypes[8].Descriptor()
+	return file_publira_types_v1_types_proto_enumTypes[9].Descriptor()
 }
 
 func (AgeVerification) Type() protoreflect.EnumType {
-	return &file_publira_types_v1_types_proto_enumTypes[8]
+	return &file_publira_types_v1_types_proto_enumTypes[9]
 }
 
 func (x AgeVerification) Number() protoreflect.EnumNumber {
@@ -545,7 +602,7 @@ func (x AgeVerification) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use AgeVerification.Descriptor instead.
 func (AgeVerification) EnumDescriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{8}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{9}
 }
 
 // TenantContext identifies a tenant for internal RPC wiring.
@@ -618,13 +675,21 @@ type User struct {
 	Email string `protobuf:"bytes,5,opt,name=email,proto3" json:"email,omitempty"`
 	// The account's icon. Set where the public API answers with the caller's
 	// own account as GetMe reads it — GetMe, UpdateMe, UploadMyIcon,
-	// DeleteMyIcon, Login and LoginWithIdToken — and empty wherever a User
-	// names someone else. The variant list is empty, and icon_image_updated_at with
-	// it, for an account that shows no icon.
+	// SelectMyIcon, DeleteMyIcon, Login and LoginWithIdToken — and empty
+	// wherever a User names someone else. The variant list is empty, and
+	// icon_image_updated_at with it, for an account that shows no icon.
+	//
+	// The icon is either one the reader uploaded or one of the tenant's presets
+	// (ReaderIconPreset), and the variants carry whichever it is, so a client
+	// renders both alike.
 	IconImageUpdatedAt string             `protobuf:"bytes,6,opt,name=icon_image_updated_at,json=iconImageUpdatedAt,proto3" json:"icon_image_updated_at,omitempty"`
 	IconImageVariants  []*UserIconVariant `protobuf:"bytes,7,rep,name=icon_image_variants,json=iconImageVariants,proto3" json:"icon_image_variants,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// The ReaderIconPreset.id of the preset the account shows, under the same
+	// rule as icon_image_variants, so a preset picker can mark the one in use.
+	// Empty for an account that shows an upload or no icon.
+	IconPresetId  string `protobuf:"bytes,8,opt,name=icon_preset_id,json=iconPresetId,proto3" json:"icon_preset_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *User) Reset() {
@@ -704,6 +769,13 @@ func (x *User) GetIconImageVariants() []*UserIconVariant {
 		return x.IconImageVariants
 	}
 	return nil
+}
+
+func (x *User) GetIconPresetId() string {
+	if x != nil {
+		return x.IconPresetId
+	}
+	return ""
 }
 
 // One stored rendition of a reader's icon, in the shape the tenant's branding
@@ -2668,6 +2740,69 @@ func (x *PageVersion) GetAgreementRequiredAt() string {
 	return ""
 }
 
+// An icon the tenant provides for its readers to pick. A reader's account
+// that shows it carries the same variants in User.icon_image_variants.
+type ReaderIconPreset struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Id        string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	CreatedAt string                 `protobuf:"bytes,2,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	// The stored renditions, largest first.
+	Variants      []*UserIconVariant `protobuf:"bytes,3,rep,name=variants,proto3" json:"variants,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReaderIconPreset) Reset() {
+	*x = ReaderIconPreset{}
+	mi := &file_publira_types_v1_types_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReaderIconPreset) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReaderIconPreset) ProtoMessage() {}
+
+func (x *ReaderIconPreset) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_types_v1_types_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReaderIconPreset.ProtoReflect.Descriptor instead.
+func (*ReaderIconPreset) Descriptor() ([]byte, []int) {
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *ReaderIconPreset) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ReaderIconPreset) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+func (x *ReaderIconPreset) GetVariants() []*UserIconVariant {
+	if x != nil {
+		return x.Variants
+	}
+	return nil
+}
+
 // How long each kind of record that expires is kept before a purge batch
 // deletes it, in whole days. Each value is from 1 to 36500, except
 // content_event_days.
@@ -2691,7 +2826,7 @@ type RetentionPeriods struct {
 
 func (x *RetentionPeriods) Reset() {
 	*x = RetentionPeriods{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[19]
+	mi := &file_publira_types_v1_types_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2703,7 +2838,7 @@ func (x *RetentionPeriods) String() string {
 func (*RetentionPeriods) ProtoMessage() {}
 
 func (x *RetentionPeriods) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[19]
+	mi := &file_publira_types_v1_types_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2716,7 +2851,7 @@ func (x *RetentionPeriods) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RetentionPeriods.ProtoReflect.Descriptor instead.
 func (*RetentionPeriods) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{19}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *RetentionPeriods) GetWithdrawnCommentDays() int32 {
@@ -2753,7 +2888,7 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\n" +
 	"\x1cpublira/types/v1/types.proto\x12\x10publira.types.v1\",\n" +
 	"\rTenantContext\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\"\x86\x02\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\"\xac\x02\n" +
 	"\x04User\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
@@ -2762,7 +2897,8 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"birth_date\x18\x04 \x01(\tR\tbirthDate\x12\x14\n" +
 	"\x05email\x18\x05 \x01(\tR\x05email\x121\n" +
 	"\x15icon_image_updated_at\x18\x06 \x01(\tR\x12iconImageUpdatedAt\x12Q\n" +
-	"\x13icon_image_variants\x18\a \x03(\v2!.publira.types.v1.UserIconVariantR\x11iconImageVariants\"\xb2\x01\n" +
+	"\x13icon_image_variants\x18\a \x03(\v2!.publira.types.v1.UserIconVariantR\x11iconImageVariants\x12$\n" +
+	"\x0eicon_preset_id\x18\b \x01(\tR\ficonPresetId\"\xb2\x01\n" +
 	"\x0fUserIconVariant\x12\x14\n" +
 	"\x05label\x18\x01 \x01(\tR\x05label\x12\x10\n" +
 	"\x03url\x18\x02 \x01(\tR\x03url\x12!\n" +
@@ -2951,7 +3087,12 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"created_at\x18\b \x01(\tR\tcreatedAt\x12!\n" +
 	"\fpublished_at\x18\t \x01(\tR\vpublishedAt\x122\n" +
 	"\x15agreement_required_at\x18\n" +
-	" \x01(\tR\x13agreementRequiredAt\"\xf6\x01\n" +
+	" \x01(\tR\x13agreementRequiredAt\"\x80\x01\n" +
+	"\x10ReaderIconPreset\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\x02 \x01(\tR\tcreatedAt\x12=\n" +
+	"\bvariants\x18\x03 \x03(\v2!.publira.types.v1.UserIconVariantR\bvariants\"\xf6\x01\n" +
 	"\x10RetentionPeriods\x124\n" +
 	"\x16withdrawn_comment_days\x18\x01 \x01(\x05R\x14withdrawnCommentDays\x12,\n" +
 	"\x12content_event_days\x18\x02 \x01(\x05R\x10contentEventDays\x12=\n" +
@@ -2992,7 +3133,12 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	" SURFACE_AVAILABILITY_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18SURFACE_AVAILABILITY_ALL\x10\x01\x12\x1c\n" +
 	"\x18SURFACE_AVAILABILITY_WEB\x10\x02\x12\x1c\n" +
-	"\x18SURFACE_AVAILABILITY_APP\x10\x03*\x8a\x01\n" +
+	"\x18SURFACE_AVAILABILITY_APP\x10\x03*\x95\x01\n" +
+	"\x10ReaderIconPolicy\x12\"\n" +
+	"\x1eREADER_ICON_POLICY_UNSPECIFIED\x10\x00\x12\x1d\n" +
+	"\x19READER_ICON_POLICY_UPLOAD\x10\x01\x12\x1d\n" +
+	"\x19READER_ICON_POLICY_PRESET\x10\x02\x12\x1f\n" +
+	"\x1bREADER_ICON_POLICY_DISABLED\x10\x03*\x8a\x01\n" +
 	"\x0fAgeVerification\x12 \n" +
 	"\x1cAGE_VERIFICATION_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15AGE_VERIFICATION_NONE\x10\x01\x12\x18\n" +
@@ -3011,8 +3157,8 @@ func file_publira_types_v1_types_proto_rawDescGZIP() []byte {
 	return file_publira_types_v1_types_proto_rawDescData
 }
 
-var file_publira_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 9)
-var file_publira_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_publira_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 10)
+var file_publira_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_publira_types_v1_types_proto_goTypes = []any{
 	(CreatorCreditSource)(0),      // 0: publira.types.v1.CreatorCreditSource
 	(SeriesStatus)(0),             // 1: publira.types.v1.SeriesStatus
@@ -3022,53 +3168,56 @@ var file_publira_types_v1_types_proto_goTypes = []any{
 	(ClientSurface)(0),            // 5: publira.types.v1.ClientSurface
 	(AppPurchaseRoute)(0),         // 6: publira.types.v1.AppPurchaseRoute
 	(SurfaceAvailability)(0),      // 7: publira.types.v1.SurfaceAvailability
-	(AgeVerification)(0),          // 8: publira.types.v1.AgeVerification
-	(*TenantContext)(nil),         // 9: publira.types.v1.TenantContext
-	(*User)(nil),                  // 10: publira.types.v1.User
-	(*UserIconVariant)(nil),       // 11: publira.types.v1.UserIconVariant
-	(*AccessToken)(nil),           // 12: publira.types.v1.AccessToken
-	(*CreatorRole)(nil),           // 13: publira.types.v1.CreatorRole
-	(*Creator)(nil),               // 14: publira.types.v1.Creator
-	(*Label)(nil),                 // 15: publira.types.v1.Label
-	(*SeriesEyeCatchVariant)(nil), // 16: publira.types.v1.SeriesEyeCatchVariant
-	(*ImageCropRect)(nil),         // 17: publira.types.v1.ImageCropRect
-	(*Genre)(nil),                 // 18: publira.types.v1.Genre
-	(*Tag)(nil),                   // 19: publira.types.v1.Tag
-	(*Series)(nil),                // 20: publira.types.v1.Series
-	(*Episode)(nil),               // 21: publira.types.v1.Episode
-	(*EpisodeImage)(nil),          // 22: publira.types.v1.EpisodeImage
-	(*TenantImageVariant)(nil),    // 23: publira.types.v1.TenantImageVariant
-	(*TenantTheme)(nil),           // 24: publira.types.v1.TenantTheme
-	(*Page)(nil),                  // 25: publira.types.v1.Page
-	(*PageTranslation)(nil),       // 26: publira.types.v1.PageTranslation
-	(*PageVersion)(nil),           // 27: publira.types.v1.PageVersion
-	(*RetentionPeriods)(nil),      // 28: publira.types.v1.RetentionPeriods
+	(ReaderIconPolicy)(0),         // 8: publira.types.v1.ReaderIconPolicy
+	(AgeVerification)(0),          // 9: publira.types.v1.AgeVerification
+	(*TenantContext)(nil),         // 10: publira.types.v1.TenantContext
+	(*User)(nil),                  // 11: publira.types.v1.User
+	(*UserIconVariant)(nil),       // 12: publira.types.v1.UserIconVariant
+	(*AccessToken)(nil),           // 13: publira.types.v1.AccessToken
+	(*CreatorRole)(nil),           // 14: publira.types.v1.CreatorRole
+	(*Creator)(nil),               // 15: publira.types.v1.Creator
+	(*Label)(nil),                 // 16: publira.types.v1.Label
+	(*SeriesEyeCatchVariant)(nil), // 17: publira.types.v1.SeriesEyeCatchVariant
+	(*ImageCropRect)(nil),         // 18: publira.types.v1.ImageCropRect
+	(*Genre)(nil),                 // 19: publira.types.v1.Genre
+	(*Tag)(nil),                   // 20: publira.types.v1.Tag
+	(*Series)(nil),                // 21: publira.types.v1.Series
+	(*Episode)(nil),               // 22: publira.types.v1.Episode
+	(*EpisodeImage)(nil),          // 23: publira.types.v1.EpisodeImage
+	(*TenantImageVariant)(nil),    // 24: publira.types.v1.TenantImageVariant
+	(*TenantTheme)(nil),           // 25: publira.types.v1.TenantTheme
+	(*Page)(nil),                  // 26: publira.types.v1.Page
+	(*PageTranslation)(nil),       // 27: publira.types.v1.PageTranslation
+	(*PageVersion)(nil),           // 28: publira.types.v1.PageVersion
+	(*ReaderIconPreset)(nil),      // 29: publira.types.v1.ReaderIconPreset
+	(*RetentionPeriods)(nil),      // 30: publira.types.v1.RetentionPeriods
 }
 var file_publira_types_v1_types_proto_depIdxs = []int32{
-	11, // 0: publira.types.v1.User.icon_image_variants:type_name -> publira.types.v1.UserIconVariant
-	13, // 1: publira.types.v1.Creator.role:type_name -> publira.types.v1.CreatorRole
+	12, // 0: publira.types.v1.User.icon_image_variants:type_name -> publira.types.v1.UserIconVariant
+	14, // 1: publira.types.v1.Creator.role:type_name -> publira.types.v1.CreatorRole
 	0,  // 2: publira.types.v1.Creator.source:type_name -> publira.types.v1.CreatorCreditSource
-	16, // 3: publira.types.v1.Label.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	16, // 4: publira.types.v1.Genre.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	15, // 5: publira.types.v1.Series.label:type_name -> publira.types.v1.Label
-	14, // 6: publira.types.v1.Series.creators:type_name -> publira.types.v1.Creator
-	16, // 7: publira.types.v1.Series.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	17, // 3: publira.types.v1.Label.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	17, // 4: publira.types.v1.Genre.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	16, // 5: publira.types.v1.Series.label:type_name -> publira.types.v1.Label
+	15, // 6: publira.types.v1.Series.creators:type_name -> publira.types.v1.Creator
+	17, // 7: publira.types.v1.Series.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
 	1,  // 8: publira.types.v1.Series.status:type_name -> publira.types.v1.SeriesStatus
 	2,  // 9: publira.types.v1.Series.age_rating:type_name -> publira.types.v1.SeriesAgeRating
-	18, // 10: publira.types.v1.Series.genres:type_name -> publira.types.v1.Genre
-	19, // 11: publira.types.v1.Series.tags:type_name -> publira.types.v1.Tag
+	19, // 10: publira.types.v1.Series.genres:type_name -> publira.types.v1.Genre
+	20, // 11: publira.types.v1.Series.tags:type_name -> publira.types.v1.Tag
 	7,  // 12: publira.types.v1.Series.availability:type_name -> publira.types.v1.SurfaceAvailability
-	14, // 13: publira.types.v1.Episode.creators:type_name -> publira.types.v1.Creator
+	15, // 13: publira.types.v1.Episode.creators:type_name -> publira.types.v1.Creator
 	3,  // 14: publira.types.v1.Episode.reading_direction:type_name -> publira.types.v1.ReadingDirection
 	7,  // 15: publira.types.v1.Episode.availability:type_name -> publira.types.v1.SurfaceAvailability
 	7,  // 16: publira.types.v1.Episode.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
-	23, // 17: publira.types.v1.TenantTheme.icon_image_variants:type_name -> publira.types.v1.TenantImageVariant
-	23, // 18: publira.types.v1.TenantTheme.logo_image_variants:type_name -> publira.types.v1.TenantImageVariant
-	19, // [19:19] is the sub-list for method output_type
-	19, // [19:19] is the sub-list for method input_type
-	19, // [19:19] is the sub-list for extension type_name
-	19, // [19:19] is the sub-list for extension extendee
-	0,  // [0:19] is the sub-list for field type_name
+	24, // 17: publira.types.v1.TenantTheme.icon_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	24, // 18: publira.types.v1.TenantTheme.logo_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	12, // 19: publira.types.v1.ReaderIconPreset.variants:type_name -> publira.types.v1.UserIconVariant
+	20, // [20:20] is the sub-list for method output_type
+	20, // [20:20] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_publira_types_v1_types_proto_init() }
@@ -3081,8 +3230,8 @@ func file_publira_types_v1_types_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_types_v1_types_proto_rawDesc), len(file_publira_types_v1_types_proto_rawDesc)),
-			NumEnums:      9,
-			NumMessages:   20,
+			NumEnums:      10,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

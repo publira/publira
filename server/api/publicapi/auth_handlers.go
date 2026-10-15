@@ -1261,6 +1261,7 @@ func ownAccount(user dbmodels.User, role string, icon protomapper.UserIcon) *pub
 		Email:              user.Email,
 		IconImageUpdatedAt: icon.UpdatedAt,
 		IconImageVariants:  icon.Variants,
+		IconPresetId:       icon.PresetID,
 	}
 	if user.BirthDate.Valid {
 		account.BirthDate = ageverification.FormatBirthDate(user.BirthDate.Time)
