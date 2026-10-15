@@ -77,11 +77,13 @@ const runCeremony = async (
  * to `finish`.
  *
  * A browser with no WebAuthn is turned away before anything is begun, so it
- * opens no ceremony it could never finish. Every failure comes back as the
- * form's message rather than a throw: the code form has to stay one click
- * away whatever went wrong. A redirect from either Action is not a failure —
- * it is how a spent challenge goes back to `/login` and a finished one goes on
- * — so it is left to propagate.
+ * opens no ceremony it could never finish. A failure of the browser's half,
+ * and a refusal the Actions classify, come back as the form's message rather
+ * than a throw, so the code form stays one click away. An RPC failure the
+ * Actions cannot classify is rethrown to the error boundary, as it is
+ * everywhere else, and a redirect from either Action is not a failure — it is
+ * how a spent challenge goes back to `/login` and a finished one goes on — so
+ * both are left to propagate.
  */
 const usePasskeyCeremony = <State extends ActionFormResult | null>(
   begin: (formData: FormData) => Promise<PasskeyCeremonyStartState>,

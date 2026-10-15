@@ -180,26 +180,21 @@ test.describe("admin passkey sign-in", () => {
     await signInToMfa(page, ADMIN_PASSKEY_ADMIN);
 
     // The passkey is offered first, and nothing has to be typed.
+    const usePasskey = page.getByRole("button", {
+      exact: true,
+      name: "Use a passkey",
+    });
+    await expect(usePasskey).toBeVisible();
     await expect(page.getByLabel("Recovery code")).toHaveCount(0);
-    await page
-      .getByRole("button", { exact: true, name: "Use a passkey" })
-      .click();
-    await expectConsole(page);
-  });
 
-  test("the recovery code form stays one click away from the passkey", async ({
-    page,
-  }) => {
-    await signInToMfa(page, ADMIN_PASSKEY_ADMIN);
-
+    // The recovery code form is one click away, and so is the way back.
     await page
       .getByRole("button", { name: "Enter a recovery code instead" })
       .click();
     await expect(page.getByLabel("Recovery code")).toBeVisible();
-
     await page.getByRole("button", { name: "Use a passkey instead" }).click();
-    await expect(
-      page.getByRole("button", { exact: true, name: "Use a passkey" })
-    ).toBeVisible();
+
+    await usePasskey.click();
+    await expectConsole(page);
   });
 });
