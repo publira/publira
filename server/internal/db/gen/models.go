@@ -769,25 +769,26 @@ type PublishedFreeEpisode struct {
 }
 
 type Purchase struct {
-	ID                 uuid.UUID      `json:"id"`
-	UserID             uuid.NullUUID  `json:"user_id"`
-	EpisodeID          uuid.UUID      `json:"episode_id"`
-	PriceAtPurchase    int32          `json:"price_at_purchase"`
-	ExpiresAt          sql.NullTime   `json:"expires_at"`
-	PurchasedAt        time.Time      `json:"purchased_at"`
-	TenantID           uuid.UUID      `json:"tenant_id"`
-	ProviderCheckoutID sql.NullString `json:"provider_checkout_id"`
-	ProviderPaymentID  sql.NullString `json:"provider_payment_id"`
-	RefundedAmount     sql.NullInt32  `json:"refunded_amount"`
-	RefundedAt         sql.NullTime   `json:"refunded_at"`
-	Store              sql.NullString `json:"store"`
-	StoreTransactionID sql.NullString `json:"store_transaction_id"`
-	IsTest             bool           `json:"is_test"`
-	Provider           sql.NullString `json:"provider"`
-	Currency           string         `json:"currency"`
-	RevokedAt          sql.NullTime   `json:"revoked_at"`
-	RevocationReason   sql.NullString `json:"revocation_reason"`
-	StaffRefundAttempt int32          `json:"staff_refund_attempt"`
+	ID                         uuid.UUID      `json:"id"`
+	UserID                     uuid.NullUUID  `json:"user_id"`
+	EpisodeID                  uuid.UUID      `json:"episode_id"`
+	PriceAtPurchase            int32          `json:"price_at_purchase"`
+	ExpiresAt                  sql.NullTime   `json:"expires_at"`
+	PurchasedAt                time.Time      `json:"purchased_at"`
+	TenantID                   uuid.UUID      `json:"tenant_id"`
+	ProviderCheckoutID         sql.NullString `json:"provider_checkout_id"`
+	ProviderPaymentID          sql.NullString `json:"provider_payment_id"`
+	RefundedAmount             sql.NullInt32  `json:"refunded_amount"`
+	RefundedAt                 sql.NullTime   `json:"refunded_at"`
+	Store                      sql.NullString `json:"store"`
+	StoreTransactionID         sql.NullString `json:"store_transaction_id"`
+	IsTest                     bool           `json:"is_test"`
+	Provider                   sql.NullString `json:"provider"`
+	Currency                   string         `json:"currency"`
+	RevokedAt                  sql.NullTime   `json:"revoked_at"`
+	RevocationReason           sql.NullString `json:"revocation_reason"`
+	StaffRefundAttempt         int32          `json:"staff_refund_attempt"`
+	StaffRefundRecordedAttempt sql.NullInt32  `json:"staff_refund_recorded_attempt"`
 }
 
 type RoyaltyStatement struct {

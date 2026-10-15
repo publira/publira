@@ -104,6 +104,12 @@ type Querier interface {
 	// drain without waiting on each other's locks. The CTE is required:
 	// FOR UPDATE is not allowed in an IN subquery.
 	ClaimPendingOutboxEvents(ctx context.Context, limit int32) ([]OutboxEvent, error)
+	// Claims the audit entry of a refund the provider carried out under the given
+	// staff attempt, for the one request that moves the recorded attempt to it.
+	// Every other request seeing the same attempt through answers no row: one
+	// racing the claimant, or one that finished the attempt first. A purchase
+	// that has moved on to a later attempt since is left to that attempt.
+	ClaimStaffRefundRecord(ctx context.Context, arg ClaimStaffRefundRecordParams) (uuid.UUID, error)
 	// Spends the reader's ticket on the series and starts the next recharge, when
 	// one is ready. No row means none was: the update's condition failed on a row
 	// whose instant is still ahead.

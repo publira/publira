@@ -430,7 +430,7 @@ func (s *adminServer) RefundPurchase(
 	// refund failed, lands on a purchase already revoked. No row is a purchase
 	// something revoked in the meantime: an earlier or a concurrent request for
 	// the same refund, or the reader's dispute. Only the request that revoked
-	// it takes the revocation back or records the refund.
+	// it takes the revocation back.
 	//
 	// From here on the work runs on a context the request's end does not
 	// cancel, so a caller that hangs up or times out cannot leave a revocation
@@ -508,18 +508,32 @@ func (s *adminServer) RefundPurchase(
 			"purchase_id", row.ID,
 			"provider", row.Provider.String,
 		)
-	case revokedHere:
-		s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
-			TenantID:    tenant.ID,
-			ActorUserID: sessionCtx.User.ID,
-			ActorRole:   sessionCtx.Role,
-			Action:      "purchase_refunded",
-			TargetType:  "purchase",
-			TargetID:    row.ID.String(),
-			Outcome:     auditlog.OutcomeSuccess,
-			Reason:      reason,
-			ClientIP:    clientip.FromContext(ctx),
+	default:
+		// The refund is recorded by whichever request claims it, not by the
+		// one that revoked the purchase: a request finishing what an
+		// interrupted one left unasked revoked nothing, and its staff and
+		// reason are the only ones the refund has.
+		_, err := queries.ClaimStaffRefundRecord(ctx, dbmodels.ClaimStaffRefundRecordParams{
+			TenantID: tenant.ID,
+			ID:       row.ID,
+			Attempt:  row.StaffRefundAttempt,
 		})
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return nil, s.internalDBError(ctx, "failed to claim the audit entry of a staff refund", err, "tenant_id", tenant.ID.String(), "purchase_id", row.ID.String())
+		}
+		if err == nil {
+			s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
+				TenantID:    tenant.ID,
+				ActorUserID: sessionCtx.User.ID,
+				ActorRole:   sessionCtx.Role,
+				Action:      "purchase_refunded",
+				TargetType:  "purchase",
+				TargetID:    row.ID.String(),
+				Outcome:     auditlog.OutcomeSuccess,
+				Reason:      reason,
+				ClientIP:    clientip.FromContext(ctx),
+			})
+		}
 	}
 
 	revoked, err := s.loadPurchase(ctx, tenant.ID, row.ID)

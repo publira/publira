@@ -665,6 +665,11 @@ func TestDBRefundPurchaseFinishesARefundAnEarlierRequestLeftUnasked(t *testing.T
 	if refunds := f.stripe.Refunds(); len(refunds) != 1 {
 		t.Fatalf("refunds = %+v, want one", refunds)
 	}
+	// The interrupted request recorded nothing, so the one that finished the
+	// refund records it, once.
+	if got := f.refundAudits(t, purchaseID); got != 1 {
+		t.Fatalf("audit entries = %d, want 1", got)
+	}
 }
 
 // A refund with no reason is refused before anything is revoked or asked of

@@ -26,7 +26,7 @@ WHERE d.tenant_id = p.tenant_id
     AND p.tenant_id = $1
     AND p.provider = $2::text
     AND p.provider_payment_id = $3::text
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.staff_refund_recorded_attempt
 `
 
 type ApplyUnappliedDisputeToPurchaseParams struct {
@@ -62,6 +62,7 @@ func (q *Queries) ApplyUnappliedDisputeToPurchase(ctx context.Context, arg Apply
 		&i.RevokedAt,
 		&i.RevocationReason,
 		&i.StaffRefundAttempt,
+		&i.StaffRefundRecordedAttempt,
 	)
 	return i, err
 }
@@ -110,7 +111,7 @@ SET refunded_amount = refund.amount,
     END
 FROM refund
 WHERE p.id = refund.id
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.staff_refund_recorded_attempt
 `
 
 type ApplyUnappliedRefundToPurchaseParams struct {
@@ -149,8 +150,37 @@ func (q *Queries) ApplyUnappliedRefundToPurchase(ctx context.Context, arg ApplyU
 		&i.RevokedAt,
 		&i.RevocationReason,
 		&i.StaffRefundAttempt,
+		&i.StaffRefundRecordedAttempt,
 	)
 	return i, err
+}
+
+const ClaimStaffRefundRecord = `-- name: ClaimStaffRefundRecord :one
+UPDATE purchases
+SET staff_refund_recorded_attempt = staff_refund_attempt
+WHERE tenant_id = $1
+    AND id = $2
+    AND staff_refund_attempt = $3
+    AND staff_refund_recorded_attempt IS DISTINCT FROM staff_refund_attempt
+RETURNING id
+`
+
+type ClaimStaffRefundRecordParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+	Attempt  int32     `json:"attempt"`
+}
+
+// Claims the audit entry of a refund the provider carried out under the given
+// staff attempt, for the one request that moves the recorded attempt to it.
+// Every other request seeing the same attempt through answers no row: one
+// racing the claimant, or one that finished the attempt first. A purchase
+// that has moved on to a later attempt since is left to that attempt.
+func (q *Queries) ClaimStaffRefundRecord(ctx context.Context, arg ClaimStaffRefundRecordParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, ClaimStaffRefundRecord, arg.TenantID, arg.ID, arg.Attempt)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const CreatePurchaseFromProviderCheckout = `-- name: CreatePurchaseFromProviderCheckout :one
@@ -181,7 +211,7 @@ VALUES (
     $11::text
 )
 ON CONFLICT (provider, provider_checkout_id) DO NOTHING
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, staff_refund_recorded_attempt
 `
 
 type CreatePurchaseFromProviderCheckoutParams struct {
@@ -237,6 +267,7 @@ func (q *Queries) CreatePurchaseFromProviderCheckout(ctx context.Context, arg Cr
 		&i.RevokedAt,
 		&i.RevocationReason,
 		&i.StaffRefundAttempt,
+		&i.StaffRefundRecordedAttempt,
 	)
 	return i, err
 }
@@ -1175,7 +1206,7 @@ SET revoked_at = COALESCE(revoked_at, NOW()),
 WHERE tenant_id = $1
     AND provider = $2::text
     AND provider_payment_id = $3::text
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, staff_refund_recorded_attempt
 `
 
 type RecordDisputeOnPurchaseParams struct {
@@ -1212,6 +1243,7 @@ func (q *Queries) RecordDisputeOnPurchase(ctx context.Context, arg RecordDispute
 		&i.RevokedAt,
 		&i.RevocationReason,
 		&i.StaffRefundAttempt,
+		&i.StaffRefundRecordedAttempt,
 	)
 	return i, err
 }
@@ -1289,7 +1321,7 @@ WHERE p.tenant_id = $2
     AND p.provider = $3::text
     AND p.provider_payment_id = $4::text
     AND p.currency = $5::text
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.staff_refund_recorded_attempt
 `
 
 type RecordFailedRefundOnPurchaseParams struct {
@@ -1343,6 +1375,7 @@ func (q *Queries) RecordFailedRefundOnPurchase(ctx context.Context, arg RecordFa
 		&i.RevokedAt,
 		&i.RevocationReason,
 		&i.StaffRefundAttempt,
+		&i.StaffRefundRecordedAttempt,
 	)
 	return i, err
 }
@@ -1380,7 +1413,7 @@ SET refunded_amount = refund.amount,
     END
 FROM refund
 WHERE p.id = refund.id
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.staff_refund_recorded_attempt
 `
 
 type RecordRefundOnPurchaseParams struct {
@@ -1434,6 +1467,7 @@ func (q *Queries) RecordRefundOnPurchase(ctx context.Context, arg RecordRefundOn
 		&i.RevokedAt,
 		&i.RevocationReason,
 		&i.StaffRefundAttempt,
+		&i.StaffRefundRecordedAttempt,
 	)
 	return i, err
 }
