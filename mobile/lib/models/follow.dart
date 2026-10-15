@@ -1,3 +1,5 @@
+import 'package:publira/api/gen/publira/v1/catalog.pb.dart' as pb;
+
 /// The kinds of public catalog target a reader can follow, as
 /// `publira.v1.FollowTargetType` names them.
 ///
@@ -5,23 +7,19 @@
 /// offers: an episode follow names something that is already there rather than
 /// something that arrives.
 enum FollowTargetKind {
-  series('FOLLOW_TARGET_TYPE_SERIES'),
-  creator('FOLLOW_TARGET_TYPE_CREATOR');
+  series,
+  creator;
 
-  const FollowTargetKind(this.wireValue);
-
-  /// The enum value the API names this kind by.
-  final String wireValue;
-
-  /// The kind [raw] names, or `null` for one this build cannot show: an
-  /// episode follow, and whatever a later API adds.
-  static FollowTargetKind? fromWire(Object? raw) {
-    for (final kind in values) {
-      if (kind.wireValue == raw) {
-        return kind;
-      }
-    }
-    return null;
+  /// The kind [wire] names, or `null` for one this build cannot show: an
+  /// episode follow, and whatever a later API adds, which the message reads
+  /// as the zero value.
+  static FollowTargetKind? fromWire(pb.FollowTargetType wire) {
+    return switch (wire) {
+      pb.FollowTargetType.FOLLOW_TARGET_TYPE_SERIES => FollowTargetKind.series,
+      pb.FollowTargetType.FOLLOW_TARGET_TYPE_CREATOR =>
+        FollowTargetKind.creator,
+      _ => null,
+    };
   }
 }
 

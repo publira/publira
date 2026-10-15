@@ -1,3 +1,4 @@
+import 'package:publira/api/gen/publira/v1/catalog.pb.dart' as pb;
 import 'package:publira/models/series_item.dart';
 
 /// Which way the pages of an episode are turned, as
@@ -28,14 +29,16 @@ enum EpisodeAccess {
   /// The server named an access state this build does not know.
   unknown;
 
-  /// Reads `publira.v1.EpisodeAccess` as protojson writes it: by name, and
-  /// omitted entirely when it is the zero value.
-  static EpisodeAccess fromWire(Object? raw) {
-    return switch (raw) {
-      'EPISODE_ACCESS_FREE' => EpisodeAccess.free,
-      'EPISODE_ACCESS_LOCKED' => EpisodeAccess.locked,
-      'EPISODE_ACCESS_ENTITLED' => EpisodeAccess.entitled,
-      'EPISODE_ACCESS_AGE_RESTRICTED' => EpisodeAccess.ageRestricted,
+  /// Reads `publira.v1.EpisodeAccess`. The zero value, and a value this
+  /// build does not know, which the message reads as the zero value, are
+  /// both [unknown].
+  static EpisodeAccess fromWire(pb.EpisodeAccess wire) {
+    return switch (wire) {
+      pb.EpisodeAccess.EPISODE_ACCESS_FREE => EpisodeAccess.free,
+      pb.EpisodeAccess.EPISODE_ACCESS_LOCKED => EpisodeAccess.locked,
+      pb.EpisodeAccess.EPISODE_ACCESS_ENTITLED => EpisodeAccess.entitled,
+      pb.EpisodeAccess.EPISODE_ACCESS_AGE_RESTRICTED =>
+        EpisodeAccess.ageRestricted,
       _ => EpisodeAccess.unknown,
     };
   }
@@ -61,15 +64,17 @@ enum EpisodeEntitlementSource {
   /// does not know.
   unspecified;
 
-  /// Reads `publira.v1.EpisodeEntitlementSource` as protojson writes it: by
-  /// name, and omitted entirely when it is the zero value.
-  static EpisodeEntitlementSource fromWire(Object? raw) {
-    return switch (raw) {
-      'EPISODE_ENTITLEMENT_SOURCE_PURCHASE' =>
+  /// Reads `publira.v1.EpisodeEntitlementSource`. The zero value, and a
+  /// value this build does not know, which the message reads as the zero
+  /// value, are both [unspecified].
+  static EpisodeEntitlementSource fromWire(pb.EpisodeEntitlementSource wire) {
+    return switch (wire) {
+      pb.EpisodeEntitlementSource.EPISODE_ENTITLEMENT_SOURCE_PURCHASE =>
         EpisodeEntitlementSource.purchase,
-      'EPISODE_ENTITLEMENT_SOURCE_ACCESS_TICKET' =>
+      pb.EpisodeEntitlementSource.EPISODE_ENTITLEMENT_SOURCE_ACCESS_TICKET =>
         EpisodeEntitlementSource.accessTicket,
-      'EPISODE_ENTITLEMENT_SOURCE_CREATOR' => EpisodeEntitlementSource.creator,
+      pb.EpisodeEntitlementSource.EPISODE_ENTITLEMENT_SOURCE_CREATOR =>
+        EpisodeEntitlementSource.creator,
       _ => EpisodeEntitlementSource.unspecified,
     };
   }

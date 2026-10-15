@@ -1,6 +1,9 @@
 import 'package:publira/api/client_surface.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
+import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/comment.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/tenant.pb.dart' as pb;
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/api/user_icon.dart';
 import 'package:publira/comments/comment_failure.dart';
@@ -16,17 +19,6 @@ class HttpCommentRepository implements CommentRepository {
     required this._client,
     required this._tenants,
   });
-
-  static const _tenantProcedure = '/publira.v1.TenantService/GetTenant';
-  static const _listProcedure =
-      '/publira.v1.CommentService/ListEpisodeComments';
-  static const _listMineProcedure =
-      '/publira.v1.CommentService/ListMyEpisodeComments';
-  static const _postProcedure = '/publira.v1.CommentService/PostEpisodeComment';
-  static const _withdrawProcedure =
-      '/publira.v1.CommentService/WithdrawEpisodeComment';
-  static const _reportProcedure =
-      '/publira.v1.CommentService/ReportEpisodeComment';
 
   /// Rows one page asks for. The API caps this at 100 and falls back to 20.
   static const _pageSize = 20;
@@ -47,10 +39,11 @@ class HttpCommentRepository implements CommentRepository {
   Future<CommentMode> commentMode() async {
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(_tenantProcedure, {
-        'tenant': {'tenantId': tenantId},
-      }, tenantId: tenantId);
-      return CommentMode.fromWire(body['commentMode']);
+      final body = await pb.TenantServiceApi(_client).getTenant(
+        ConnectCallContext(tenantId: tenantId),
+        pb.GetTenantRequest(tenant: pb.TenantContext(tenantId: tenantId)),
+      );
+      return CommentMode.fromWire(body.commentMode);
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
@@ -66,22 +59,22 @@ class HttpCommentRepository implements CommentRepository {
       // Deliberately anonymous even for a signed-in reader: this list is the
       // same for everyone, and every comment in another state reaches its
       // author through listMyComments instead.
-      final body = await _client.unary(
-        _listProcedure,
-        {
-          'episodeId': episodeInternalId,
-          'limit': _pageSize,
-          'tenant': {'tenantId': tenantId},
-          'surface': appClientSurface,
-          'token': token,
-        },
-        tenantId: tenantId,
-        accessToken: '',
+      final body = await pb.CommentServiceApi(_client).listEpisodeComments(
+        ConnectCallContext(tenantId: tenantId, accessToken: ''),
+        pb.ListEpisodeCommentsRequest(
+          episodeId: episodeInternalId,
+          limit: _pageSize,
+          tenant: pb.TenantContext(tenantId: tenantId),
+          surface: appClientSurface,
+          token: token,
+        ),
       );
       return EpisodeCommentPage(
-        comments: _comments(body['comments'], _publicComment),
-        previousToken: _readString(body, 'previousToken'),
-        nextToken: _readString(body, 'nextToken'),
+        comments: List<EpisodeComment>.unmodifiable(
+          body.comments.map(_publicComment),
+        ),
+        previousToken: body.previousToken.trim(),
+        nextToken: body.nextToken.trim(),
       );
     } on ConnectException catch (error) {
       throw _toFailure(error);
@@ -105,19 +98,17 @@ class HttpCommentRepository implements CommentRepository {
     }
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(
-        _listMineProcedure,
-        {
-          'episodeId': episodeInternalId,
-          'limit': _ownPageSize,
-          'tenant': {'tenantId': tenantId},
-          'surface': appClientSurface,
-          'token': '',
-        },
-        tenantId: tenantId,
-        accessToken: accessToken,
+      final body = await pb.CommentServiceApi(_client).listMyEpisodeComments(
+        ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+        pb.ListMyEpisodeCommentsRequest(
+          episodeId: episodeInternalId,
+          limit: _ownPageSize,
+          tenant: pb.TenantContext(tenantId: tenantId),
+          surface: appClientSurface,
+          token: '',
+        ),
       );
-      return _comments(body['comments'], _ownComment);
+      return List<EpisodeComment>.unmodifiable(body.comments.map(_ownComment));
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
@@ -131,18 +122,22 @@ class HttpCommentRepository implements CommentRepository {
     final accessToken = _requireSession();
     try {
       final tenantId = await _tenants.resolve();
-      final response = await _client.unary(
-        _postProcedure,
-        {
-          'body': body,
-          'episodeId': episodeInternalId,
-          'tenant': {'tenantId': tenantId},
-          'surface': appClientSurface,
-        },
-        tenantId: tenantId,
-        accessToken: accessToken,
+      final response = await pb.CommentServiceApi(_client).postEpisodeComment(
+        ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+        pb.PostEpisodeCommentRequest(
+          body: body,
+          episodeId: episodeInternalId,
+          tenant: pb.TenantContext(tenantId: tenantId),
+          surface: appClientSurface,
+        ),
       );
-      return _ownComment(_expectMap(response['comment'], 'comment'));
+      if (!response.hasComment()) {
+        throw const CommentFailure(
+          CommentFailureKind.unexpected,
+          message: 'comment must be an object',
+        );
+      }
+      return _ownComment(response.comment);
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
@@ -153,14 +148,12 @@ class HttpCommentRepository implements CommentRepository {
     final accessToken = _requireSession();
     try {
       final tenantId = await _tenants.resolve();
-      await _client.unary(
-        _withdrawProcedure,
-        {
-          'commentId': commentId,
-          'tenant': {'tenantId': tenantId},
-        },
-        tenantId: tenantId,
-        accessToken: accessToken,
+      await pb.CommentServiceApi(_client).withdrawEpisodeComment(
+        ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+        pb.WithdrawEpisodeCommentRequest(
+          commentId: commentId,
+          tenant: pb.TenantContext(tenantId: tenantId),
+        ),
       );
     } on ConnectException catch (error) {
       throw _toFailure(error);
@@ -176,17 +169,24 @@ class HttpCommentRepository implements CommentRepository {
     final accessToken = _requireSession();
     try {
       final tenantId = await _tenants.resolve();
-      await _client.unary(
-        _reportProcedure,
-        {
-          'commentId': commentId,
-          'note': note,
-          'reason': reason.wireValue,
-          'tenant': {'tenantId': tenantId},
-          'surface': appClientSurface,
-        },
-        tenantId: tenantId,
-        accessToken: accessToken,
+      await pb.CommentServiceApi(_client).reportEpisodeComment(
+        ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+        pb.ReportEpisodeCommentRequest(
+          commentId: commentId,
+          note: note,
+          reason: switch (reason) {
+            CommentReportReason.spam =>
+              pb.CommentReportReason.COMMENT_REPORT_REASON_SPAM,
+            CommentReportReason.abuse =>
+              pb.CommentReportReason.COMMENT_REPORT_REASON_ABUSE,
+            CommentReportReason.spoiler =>
+              pb.CommentReportReason.COMMENT_REPORT_REASON_SPOILER,
+            CommentReportReason.other =>
+              pb.CommentReportReason.COMMENT_REPORT_REASON_OTHER,
+          },
+          tenant: pb.TenantContext(tenantId: tenantId),
+          surface: appClientSurface,
+        ),
       );
     } on ConnectException catch (error) {
       throw _toFailure(error);
@@ -209,59 +209,36 @@ class HttpCommentRepository implements CommentRepository {
   }
 
   /// One published comment, as every visitor of the episode sees it.
-  EpisodeComment _publicComment(Map<String, Object?> json) {
+  EpisodeComment _publicComment(pb.EpisodeComment comment) {
     return EpisodeComment(
-      id: _readString(json, 'id'),
-      body: _readString(json, 'body'),
-      createdAt: _readInstant(json, 'createdAt'),
-      authorId: _readString(json, 'authorPublicId'),
-      authorName: _readString(json, 'authorName'),
-      authorIconUrl: userIconUrl(json['authorIconImageVariants'], _config),
+      id: comment.id.trim(),
+      body: comment.body.trim(),
+      createdAt: _readInstant(comment.createdAt),
+      authorId: comment.authorPublicId.trim(),
+      authorName: comment.authorName.trim(),
+      authorIconUrl: userIconUrl(comment.authorIconImageVariants, _config),
       imageRequestHeaders: _config.publicImageRequestHeaders,
-      creatorName: _creatorName(json),
+      creatorName: _creatorName(comment.creator),
     );
   }
 
   /// One of the caller's own comments, which names no author: it is the
   /// caller, and the API does not repeat their name or icon back to them.
-  EpisodeComment _ownComment(Map<String, Object?> json) {
+  EpisodeComment _ownComment(pb.MyEpisodeComment comment) {
     return EpisodeComment(
-      id: _readString(json, 'id'),
-      body: _readString(json, 'body'),
-      createdAt: _readInstant(json, 'createdAt'),
+      id: comment.id.trim(),
+      body: comment.body.trim(),
+      createdAt: _readInstant(comment.createdAt),
       imageRequestHeaders: _config.publicImageRequestHeaders,
-      creatorName: _creatorName(json),
-      awaitingApproval: _readBool(json, 'awaitingApproval'),
+      creatorName: _creatorName(comment.creator),
+      awaitingApproval: comment.awaitingApproval,
     );
   }
 
   /// The name the episode credits the comment's author as, empty when it
   /// credits them as nothing: protojson omits the unset `creator` message
-  /// every other comment carries.
-  String _creatorName(Map<String, Object?> json) {
-    final creator = json['creator'];
-    return creator is Map ? _readString(creator.cast(), 'name') : '';
-  }
-
-  List<EpisodeComment> _comments(
-    Object? raw,
-    EpisodeComment Function(Map<String, Object?>) read,
-  ) {
-    // protojson omits an empty repeated field, so an episode nobody has
-    // commented on arrives without the key at all.
-    if (raw == null) {
-      return const [];
-    }
-    if (raw is! List) {
-      throw const CommentFailure(
-        CommentFailureKind.unexpected,
-        message: 'comments must be a list',
-      );
-    }
-    return List<EpisodeComment>.unmodifiable(
-      raw.map((item) => read(_expectMap(item, 'comments[]'))),
-    );
-  }
+  /// every other comment carries, which reads as one without a name.
+  String _creatorName(pb.EpisodeCommentCreator creator) => creator.name.trim();
 
   CommentFailure _toFailure(ConnectException error) {
     if (error.isUnavailable) {
@@ -302,31 +279,10 @@ class HttpCommentRepository implements CommentRepository {
     };
   }
 
-  Map<String, Object?> _expectMap(Object? value, String path) {
-    if (value is Map) {
-      return value.map((key, item) => MapEntry(key.toString(), item));
-    }
-    throw CommentFailure(
-      CommentFailureKind.unexpected,
-      message: '$path must be an object',
-    );
-  }
-
-  String _readString(Map<String, Object?> json, String key) {
-    final value = json[key];
-    return value is String ? value.trim() : '';
-  }
-
-  bool _readBool(Map<String, Object?> json, String key) {
-    // protojson omits a false, which is what a published comment arrives as.
-    final value = json[key];
-    return value is bool && value;
-  }
-
-  /// The RFC 3339 timestamp under [key], or `null` when the API sent one this
+  /// The RFC 3339 timestamp [value], or `null` when the API sent one this
   /// build could not read. A row without a date still renders: its text is
   /// what the reader came for.
-  DateTime? _readInstant(Map<String, Object?> json, String key) {
-    return DateTime.tryParse(_readString(json, key))?.toLocal();
+  DateTime? _readInstant(String value) {
+    return DateTime.tryParse(value.trim())?.toLocal();
   }
 }

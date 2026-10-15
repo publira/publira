@@ -1,3 +1,5 @@
+import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
+
 /// How a tenant publishes the comments its readers write
 /// (`publira.types.v1.CommentMode`).
 enum CommentMode {
@@ -12,15 +14,16 @@ enum CommentMode {
   /// can read it.
   approvalRequired;
 
-  /// The mode [wireValue] names, which protojson writes as the enum's own
-  /// name and omits entirely when it is the zero value.
+  /// The mode [wire] names.
   ///
-  /// Anything this build cannot name is [disabled]. Offering a comment box for
-  /// a policy the app does not know would take comments the API then refuses,
-  /// which is worse for the reader than a section that is not there.
-  static CommentMode fromWire(Object? wireValue) => switch (wireValue) {
-    'COMMENT_MODE_IMMEDIATE' => CommentMode.immediate,
-    'COMMENT_MODE_APPROVAL_REQUIRED' => CommentMode.approvalRequired,
+  /// Anything this build cannot name is [disabled], and so is the zero value,
+  /// which a value this build does not know also reads as. Offering a comment
+  /// box for a policy the app does not know would take comments the API then
+  /// refuses, which is worse for the reader than a section that is not there.
+  static CommentMode fromWire(pb.CommentMode wire) => switch (wire) {
+    pb.CommentMode.COMMENT_MODE_IMMEDIATE => CommentMode.immediate,
+    pb.CommentMode.COMMENT_MODE_APPROVAL_REQUIRED =>
+      CommentMode.approvalRequired,
     _ => CommentMode.disabled,
   };
 
@@ -35,16 +38,7 @@ enum CommentMode {
 /// The list is short on purpose: a reporter picks from it in one glance, and
 /// staff working the queue can sort by it. The declaration order is the order
 /// the chooser offers, ending with the one that asks for a sentence.
-enum CommentReportReason {
-  spam('COMMENT_REPORT_REASON_SPAM'),
-  abuse('COMMENT_REPORT_REASON_ABUSE'),
-  spoiler('COMMENT_REPORT_REASON_SPOILER'),
-  other('COMMENT_REPORT_REASON_OTHER');
-
-  const CommentReportReason(this.wireValue);
-
-  final String wireValue;
-}
+enum CommentReportReason { spam, abuse, spoiler, other }
 
 /// One comment as a screen renders it, whoever wrote it.
 ///

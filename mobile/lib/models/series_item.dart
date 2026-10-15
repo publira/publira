@@ -291,9 +291,10 @@ enum EpisodePurchaseSurface {
 
   app;
 
-  /// Reads the enum as protojson writes it: by name, and omitted when it is
-  /// unspecified. Unspecified and unknown names are read as [all], since the
-  /// server still refuses a checkout it forbids.
+  /// Reads back the name [wireName] writes, which is the enum's protojson
+  /// name and what the offline store keeps. A missing, unspecified, or
+  /// unknown name is read as [all], since the server still refuses a checkout
+  /// it forbids.
   static EpisodePurchaseSurface fromWire(Object? raw) {
     return switch (raw) {
       'SURFACE_AVAILABILITY_WEB' => EpisodePurchaseSurface.web,

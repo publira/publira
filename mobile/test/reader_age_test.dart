@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
 import 'package:publira/auth/reader_age.dart';
 import 'package:publira/models/series_item.dart';
 
@@ -82,17 +83,23 @@ void main() {
   });
 
   test('AgeVerification reads an unknown rung as checked', () {
-    expect(AgeVerification.fromWire(null), AgeVerification.none);
     expect(
-      AgeVerification.fromWire('AGE_VERIFICATION_NONE'),
+      AgeVerification.fromWire(pb.AgeVerification.AGE_VERIFICATION_UNSPECIFIED),
       AgeVerification.none,
     );
     expect(
-      AgeVerification.fromWire('AGE_VERIFICATION_R15_AND_R18'),
+      AgeVerification.fromWire(pb.AgeVerification.AGE_VERIFICATION_NONE),
+      AgeVerification.none,
+    );
+    expect(
+      AgeVerification.fromWire(pb.AgeVerification.AGE_VERIFICATION_R15_AND_R18),
       AgeVerification.checked,
     );
     expect(
-      AgeVerification.fromWire('AGE_VERIFICATION_SOMETHING_NEW'),
+      AgeVerification.fromWire(
+        pb.AgeVerification.AGE_VERIFICATION_UNSPECIFIED,
+        unknown: true,
+      ),
       AgeVerification.checked,
     );
   });

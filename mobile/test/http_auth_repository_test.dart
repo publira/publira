@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:protobuf/protobuf.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/auth/account_icon.dart';
 import 'package:publira/auth/auth_failure.dart';
@@ -1075,26 +1076,26 @@ class _HoldingClient extends ConnectClient {
   Stream<String> get settled => _settled.stream;
 
   @override
-  Future<Map<String, Object?>> unary(
-    String procedure,
-    Map<String, Object?> body, {
-    String? tenantId,
-    String? accessToken,
-    Duration? timeout,
-  }) async {
-    if (procedure.endsWith('/$held')) {
+  Future<T> invoke<T extends GeneratedMessage>(
+    ClientContext? ctx,
+    String serviceName,
+    String methodName,
+    GeneratedMessage request,
+    T emptyResponse,
+  ) async {
+    if (methodName == held) {
       await release;
     }
     try {
-      return await super.unary(
-        procedure,
-        body,
-        tenantId: tenantId,
-        accessToken: accessToken,
-        timeout: timeout,
+      return await super.invoke(
+        ctx,
+        serviceName,
+        methodName,
+        request,
+        emptyResponse,
       );
     } finally {
-      _settled.add(procedure);
+      _settled.add('$serviceName/$methodName');
     }
   }
 }

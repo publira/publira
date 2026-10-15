@@ -1,6 +1,8 @@
 import 'package:publira/api/client_surface.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
+import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/catalog.pb.dart' as pb;
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/follow/follow_failure.dart';
 import 'package:publira/follow/follow_repository.dart';
@@ -9,11 +11,6 @@ import 'package:publira/models/follow.dart';
 /// [FollowRepository] backed by `publira.v1.FollowService`.
 class HttpFollowRepository implements FollowRepository {
   const HttpFollowRepository({required this._client, required this._tenants});
-
-  static const _statusProcedure = '/publira.v1.FollowService/GetMyFollowStatus';
-  static const _followProcedure = '/publira.v1.FollowService/Follow';
-  static const _unfollowProcedure = '/publira.v1.FollowService/Unfollow';
-  static const _listProcedure = '/publira.v1.FollowService/ListMyFollows';
 
   /// Rows one page asks for. The API caps this at 100 and falls back to 20.
   static const pageSize = 20;
@@ -36,18 +33,52 @@ class HttpFollowRepository implements FollowRepository {
     if (accessToken.isEmpty) {
       return false;
     }
-    return _call(_statusProcedure, kind, targetId, accessToken);
+    return _call(
+      kind,
+      targetId,
+      accessToken,
+      (api, call, tenant, target) async => (await api.getMyFollowStatus(
+        call,
+        pb.GetMyFollowStatusRequest(
+          tenant: tenant,
+          target: target,
+          surface: appClientSurface,
+        ),
+      )).isFollowing,
+    );
   }
 
   // Both are `async` so a session that ended between the tap and the request
   // reaches the caller as a failed future rather than as a synchronous throw.
   @override
-  Future<bool> follow(FollowTargetKind kind, String targetId) async =>
-      _call(_followProcedure, kind, targetId, _requireSession());
+  Future<bool> follow(FollowTargetKind kind, String targetId) async => _call(
+    kind,
+    targetId,
+    _requireSession(),
+    (api, call, tenant, target) async => (await api.follow(
+      call,
+      pb.FollowRequest(
+        tenant: tenant,
+        target: target,
+        surface: appClientSurface,
+      ),
+    )).isFollowing,
+  );
 
   @override
-  Future<bool> unfollow(FollowTargetKind kind, String targetId) async =>
-      _call(_unfollowProcedure, kind, targetId, _requireSession());
+  Future<bool> unfollow(FollowTargetKind kind, String targetId) async => _call(
+    kind,
+    targetId,
+    _requireSession(),
+    (api, call, tenant, target) async => (await api.unfollow(
+      call,
+      pb.UnfollowRequest(
+        tenant: tenant,
+        target: target,
+        surface: appClientSurface,
+      ),
+    )).isFollowing,
+  );
 
   @override
   Future<MyFollowPage> listMyFollows({String token = ''}) async {
@@ -57,20 +88,24 @@ class HttpFollowRepository implements FollowRepository {
     }
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(
-        _listProcedure,
-        {
-          'limit': pageSize,
-          'tenant': {'tenantId': tenantId},
-          'surface': appClientSurface,
-          if (token.isNotEmpty) 'token': token,
-        },
-        tenantId: tenantId,
-        accessToken: accessToken,
+      final body = await pb.FollowServiceApi(_client).listMyFollows(
+        ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+        pb.ListMyFollowsRequest(
+          limit: pageSize,
+          tenant: pb.TenantContext(tenantId: tenantId),
+          surface: appClientSurface,
+          token: token.isEmpty ? null : token,
+        ),
       );
       return MyFollowPage(
-        follows: _follows(body['follows']),
-        nextToken: _readString(body, 'nextToken'),
+        follows: List<MyFollow>.unmodifiable(
+          body.follows
+              .map(_follow)
+              // A kind this build cannot show, and a row naming no target,
+              // are rows no screen could render.
+              .nonNulls,
+        ),
+        nextToken: body.nextToken.trim(),
       );
     } on ConnectException catch (error) {
       throw _toFailure(error);
@@ -78,28 +113,36 @@ class HttpFollowRepository implements FollowRepository {
   }
 
   /// One of the three RPCs that name a target and answer with the state the
-  /// API holds for it.
+  /// API holds for it, which [send] makes through `api` with the context, the
+  /// tenant, and the target every one of them carries.
   Future<bool> _call(
-    String procedure,
     FollowTargetKind kind,
     String targetId,
     String accessToken,
+    Future<bool> Function(
+      pb.FollowServiceApi api,
+      ConnectCallContext call,
+      pb.TenantContext tenant,
+      pb.FollowTarget target,
+    )
+    send,
   ) async {
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(
-        procedure,
-        {
-          'target': {'id': targetId, 'type': kind.wireValue},
-          'tenant': {'tenantId': tenantId},
-          'surface': appClientSurface,
-        },
-        tenantId: tenantId,
-        accessToken: accessToken,
+      return await send(
+        pb.FollowServiceApi(_client),
+        ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+        pb.TenantContext(tenantId: tenantId),
+        pb.FollowTarget(
+          id: targetId,
+          type: switch (kind) {
+            FollowTargetKind.series =>
+              pb.FollowTargetType.FOLLOW_TARGET_TYPE_SERIES,
+            FollowTargetKind.creator =>
+              pb.FollowTargetType.FOLLOW_TARGET_TYPE_CREATOR,
+          },
+        ),
       );
-      // protojson omits a false, which is what an unfollowed target and every
-      // Unfollow answer arrive as.
-      return body['isFollowing'] == true;
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
@@ -120,32 +163,10 @@ class HttpFollowRepository implements FollowRepository {
     return accessToken;
   }
 
-  List<MyFollow> _follows(Object? raw) {
-    // protojson omits an empty repeated field, so a reader who follows nothing
-    // arrives without the key at all.
-    if (raw == null) {
-      return const [];
-    }
-    if (raw is! List) {
-      throw const FollowFailure(
-        FollowFailureKind.unexpected,
-        message: 'follows must be a list',
-      );
-    }
-    final follows = raw
-        .map((item) => _expectMap(item, 'follows[]'))
-        .map(_follow)
-        // A kind this build cannot show, and a row naming no target, are rows
-        // no screen could render.
-        .nonNulls
-        .toList();
-    return List<MyFollow>.unmodifiable(follows);
-  }
-
-  MyFollow? _follow(Map<String, Object?> json) {
-    final kind = FollowTargetKind.fromWire(json['targetType']);
-    final targetId = _readString(json, 'targetPublicId');
-    final targetInternalId = _readString(json, 'targetId');
+  MyFollow? _follow(pb.MyFollow follow) {
+    final kind = FollowTargetKind.fromWire(follow.targetType);
+    final targetId = follow.targetPublicId.trim();
+    final targetInternalId = follow.targetId.trim();
     if (kind == null || targetId.isEmpty || targetInternalId.isEmpty) {
       return null;
     }
@@ -153,7 +174,8 @@ class HttpFollowRepository implements FollowRepository {
       kind: kind,
       targetId: targetId,
       targetInternalId: targetInternalId,
-      followedAt: _readInstant(json, 'followedAt'),
+      // `null` when the API sent a timestamp this build could not read.
+      followedAt: DateTime.tryParse(follow.followedAt.trim())?.toLocal(),
     );
   }
 
@@ -172,26 +194,5 @@ class HttpFollowRepository implements FollowRepository {
       ),
       _ => FollowFailure(FollowFailureKind.unexpected, message: error.message),
     };
-  }
-
-  Map<String, Object?> _expectMap(Object? value, String path) {
-    if (value is Map) {
-      return value.map((key, item) => MapEntry(key.toString(), item));
-    }
-    throw FollowFailure(
-      FollowFailureKind.unexpected,
-      message: '$path must be an object',
-    );
-  }
-
-  String _readString(Map<String, Object?> json, String key) {
-    final value = json[key];
-    return value is String ? value.trim() : '';
-  }
-
-  /// The RFC 3339 timestamp under [key], or `null` when the API sent one this
-  /// build could not read.
-  DateTime? _readInstant(Map<String, Object?> json, String key) {
-    return DateTime.tryParse(_readString(json, key))?.toLocal();
   }
 }

@@ -27,7 +27,7 @@ void main() {
     String nonce = 'google-nonce-1',
   }) {
     server.idTokens[idToken] = FixtureIdToken(
-      provider: IdentityProvider.google.wireName,
+      provider: 'IDENTITY_PROVIDER_GOOGLE',
       subject: subject,
       email: email,
       nonce: nonce,
@@ -121,7 +121,7 @@ void main() {
     () async {
       // The site linked the member's Google account when it created the
       // account, so the app's token finds it by the provider's subject.
-      server.memberIdentities[IdentityProvider.google.wireName] =
+      server.memberIdentities['IDENTITY_PROVIDER_GOOGLE'] =
           const FixtureIdToken(
             provider: 'IDENTITY_PROVIDER_GOOGLE',
             subject: 'google-subject-1',
@@ -190,13 +190,12 @@ void main() {
       'the Android app, with the redirect its code is exchanged at', () async {
     // The site linked the member's Apple account through the Services ID, and
     // the Android app's web flow is issued to the same one.
-    server.memberIdentities[IdentityProvider.apple.wireName] =
-        const FixtureIdToken(
-          provider: 'IDENTITY_PROVIDER_APPLE',
-          subject: 'apple-subject-1',
-          email: 'relay@privaterelay.appleid.com',
-          nonce: '',
-        );
+    server.memberIdentities['IDENTITY_PROVIDER_APPLE'] = const FixtureIdToken(
+      provider: 'IDENTITY_PROVIDER_APPLE',
+      subject: 'apple-subject-1',
+      email: 'relay@privaterelay.appleid.com',
+      nonce: '',
+    );
     server.idTokens['apple-id-token'] = const FixtureIdToken(
       provider: 'IDENTITY_PROVIDER_APPLE',
       subject: 'apple-subject-1',

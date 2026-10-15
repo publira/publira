@@ -6,6 +6,11 @@ import 'package:http/testing.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
 import 'package:publira/api/error_details.dart';
+import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/auth.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/catalog.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/domain.pb.dart' as pb;
+import 'package:publira/api/proto_json.dart';
 
 import 'support/connect_fixture_server.dart';
 
@@ -24,30 +29,24 @@ void main() {
     await server.close();
   });
 
-  test('unary decodes a Connect JSON success body', () async {
+  test('a call decodes a Connect JSON success body', () async {
     final client = ConnectClient(baseUrl: server.baseUrl);
-    final body = await client.unary(
-      '/publira.v1.CatalogService/ListPublishedSeries',
-      const {'limit': 20},
-      tenantId: ConnectFixtureServer.defaultTenantId,
+    final response = await _listSeries(
+      client,
+      pb.ListPublishedSeriesRequest(limit: 20),
+      ConnectCallContext(tenantId: ConnectFixtureServer.defaultTenantId),
     );
 
-    final series = body['series'] as List<dynamic>;
-    expect(series, isNotEmpty);
-    expect(
-      (series.first as Map)['publicId'],
-      ConnectFixtureServer.seedSeriesId,
-    );
+    expect(response.series, isNotEmpty);
+    expect(response.series.first.publicId, ConnectFixtureServer.seedSeriesId);
   });
 
-  test('unary maps a Connect error code', () async {
+  test('a call maps a Connect error code', () async {
     server.detailStatus = 503;
     final client = ConnectClient(baseUrl: server.baseUrl);
 
     expect(
-      () => client.unary('/publira.v1.CatalogService/GetSeriesDetail', const {
-        'publicId': 'x',
-      }),
+      () => _getSeriesDetail(client),
       throwsA(
         isA<ConnectException>().having(
           (error) => error.code,
@@ -58,7 +57,7 @@ void main() {
     );
   });
 
-  test('unary maps a non-JSON 502 response to unavailable', () async {
+  test('a call maps a non-JSON 502 response to unavailable', () async {
     final client = ConnectClient(
       baseUrl: 'https://example.test',
       httpClient: MockClient((_) async {
@@ -67,7 +66,7 @@ void main() {
     );
 
     expect(
-      () => client.unary('/publira.v1.CatalogService/ListPublishedSeries', {}),
+      () => _listSeries(client),
       throwsA(
         isA<ConnectException>().having(
           (error) => error.code,
@@ -78,14 +77,14 @@ void main() {
     );
   });
 
-  test('unary maps a malformed success response to internal', () async {
+  test('a call maps a malformed success response to internal', () async {
     final client = ConnectClient(
       baseUrl: 'https://example.test',
       httpClient: MockClient((_) async => http.Response('not JSON', 200)),
     );
 
     expect(
-      () => client.unary('/publira.v1.CatalogService/ListPublishedSeries', {}),
+      () => _listSeries(client),
       throwsA(
         isA<ConnectException>().having(
           (error) => error.code,
@@ -96,7 +95,7 @@ void main() {
     );
   });
 
-  test('unary treats a closed port as unavailable', () async {
+  test('a call treats a closed port as unavailable', () async {
     final closedBaseUrl = server.baseUrl;
     await server.close();
     final client = ConnectClient(
@@ -105,7 +104,7 @@ void main() {
     );
 
     expect(
-      () => client.unary('/publira.v1.CatalogService/ListPublishedSeries', {}),
+      () => _listSeries(client),
       throwsA(
         isA<ConnectException>().having(
           (error) => error.isUnavailable,
@@ -116,7 +115,7 @@ void main() {
     );
   });
 
-  test('unary maps a request that outruns the timeout', () async {
+  test('a call maps a request that outruns the timeout', () async {
     final client = ConnectClient(
       baseUrl: 'https://example.test',
       timeout: const Duration(milliseconds: 20),
@@ -127,7 +126,7 @@ void main() {
     );
 
     await expectLater(
-      client.unary('/publira.v1.CatalogService/ListPublishedSeries', const {}),
+      _listSeries(client),
       throwsA(
         isA<ConnectException>()
             .having((error) => error.code, 'code', 'deadline_exceeded')
@@ -136,28 +135,25 @@ void main() {
     );
   });
 
-  test('unary reads an empty success body as an empty message', () async {
+  test('a call reads an empty success body as an empty message', () async {
     final client = ConnectClient(
       baseUrl: 'https://example.test',
       httpClient: MockClient((_) async => http.Response('', 200)),
     );
 
-    final body = await client.unary(
-      '/publira.v1.CatalogService/ListPublishedSeries',
-      const {},
-    );
+    final response = await _listSeries(client);
 
-    expect(body, isEmpty);
+    expect(response, pb.ListPublishedSeriesResponse());
   });
 
-  test('unary rejects a success body that is not a JSON object', () async {
+  test('a call rejects a success body that is not a JSON object', () async {
     final client = ConnectClient(
       baseUrl: 'https://example.test',
       httpClient: MockClient((_) async => http.Response('[1, 2]', 200)),
     );
 
     expect(
-      () => client.unary('/publira.v1.CatalogService/ListPublishedSeries', {}),
+      () => _listSeries(client),
       throwsA(
         isA<ConnectException>().having(
           (error) => error.code,
@@ -168,7 +164,7 @@ void main() {
     );
   });
 
-  test('unary keeps the code and message an error body carries', () async {
+  test('a call keeps the code and message an error body carries', () async {
     final client = ConnectClient(
       baseUrl: 'https://example.test',
       httpClient: MockClient((_) async {
@@ -183,7 +179,7 @@ void main() {
     );
 
     expect(
-      () => client.unary('/publira.v1.CatalogService/GetSeriesDetail', {}),
+      () => _getSeriesDetail(client),
       throwsA(
         isA<ConnectException>()
             .having((error) => error.code, 'code', 'not_found')
@@ -193,7 +189,7 @@ void main() {
     );
   });
 
-  test('unary keeps the ErrorInfo reasons an error body carries', () async {
+  test('a call keeps the ErrorInfo reasons an error body carries', () async {
     final client = ConnectClient(
       baseUrl: 'https://example.test',
       httpClient: MockClient((_) async {
@@ -213,7 +209,9 @@ void main() {
     );
 
     expect(
-      () => client.unary('/publira.v1.RatingService/RateEpisode', {}),
+      () => pb.RatingServiceApi(
+        client,
+      ).rateEpisode(null, pb.RateEpisodeRequest()),
       throwsA(
         isA<ConnectException>()
             .having((error) => error.code, 'code', 'permission_denied')
@@ -259,7 +257,7 @@ void main() {
   });
 
   test(
-    'unary falls back to the status when an error body has no code',
+    'a call falls back to the status when an error body has no code',
     () async {
       final client = ConnectClient(
         baseUrl: 'https://example.test',
@@ -269,7 +267,7 @@ void main() {
       );
 
       expect(
-        () => client.unary('/publira.v1.CatalogService/GetSeriesDetail', {}),
+        () => _getSeriesDetail(client),
         throwsA(
           isA<ConnectException>()
               .having((error) => error.code, 'code', 'internal')
@@ -279,7 +277,7 @@ void main() {
     },
   );
 
-  test('unary posts the Connect envelope and the tenant header', () async {
+  test('a call posts the Connect envelope and the tenant header', () async {
     late http.Request sent;
     final client = ConnectClient(
       baseUrl: 'https://example.test',
@@ -289,9 +287,11 @@ void main() {
       }),
     );
 
-    await client.unary('/publira.v1.CatalogService/ListPublishedSeries', const {
-      'limit': 20,
-    }, tenantId: '  tenant-1  ');
+    await _listSeries(
+      client,
+      pb.ListPublishedSeriesRequest(limit: 20),
+      ConnectCallContext(tenantId: '  tenant-1  '),
+    );
 
     expect(
       sent.url.toString(),
@@ -304,7 +304,7 @@ void main() {
     expect(jsonDecode(sent.body), const {'limit': 20});
   });
 
-  test('unary sends the procedure under /rpc on the base origin', () async {
+  test('a call sends the procedure under /rpc on the base origin', () async {
     late http.Request sent;
     final client = ConnectClient(
       baseUrl: 'http://127.0.0.1:8000',
@@ -314,7 +314,9 @@ void main() {
       }),
     );
 
-    await client.unary('/publira.v1.DomainService/GetTenantByDomain', const {});
+    await pb.DomainServiceApi(
+      client,
+    ).getTenantByDomain(null, pb.GetTenantByDomainRequest());
 
     expect(
       sent.url.toString(),
@@ -322,7 +324,7 @@ void main() {
     );
   });
 
-  test('unary omits the tenant header when no tenant is given', () async {
+  test('a call omits the tenant header when no tenant is given', () async {
     late http.Request sent;
     final client = ConnectClient(
       baseUrl: 'https://example.test',
@@ -332,16 +334,15 @@ void main() {
       }),
     );
 
-    await client.unary(
-      '/publira.v1.DomainService/GetTenantByDomain',
-      const {},
-      tenantId: '   ',
+    await pb.DomainServiceApi(client).getTenantByDomain(
+      ConnectCallContext(tenantId: '   '),
+      pb.GetTenantByDomainRequest(),
     );
 
     expect(sent.headers.containsKey('X-Publira-Tenant-Id'), isFalse);
   });
 
-  test('unary reads the access token again on every call', () async {
+  test('a call reads the access token again on every call', () async {
     var token = '';
     final authorizations = <String?>[];
     final client = ConnectClient(
@@ -353,15 +354,15 @@ void main() {
       }),
     );
 
-    await client.unary('/publira.v1.AuthService/GetMe', const {});
+    await _getMe(client);
     token = '  member-token  ';
-    await client.unary('/publira.v1.AuthService/GetMe', const {});
+    await _getMe(client);
 
     expect(authorizations, [null, 'Bearer member-token']);
     expect(client.accessToken, 'member-token');
   });
 
-  test('unary lets one call replace the token the client holds', () async {
+  test('a call can replace the token the client holds', () async {
     late http.Request sent;
     final client = ConnectClient(
       baseUrl: 'https://example.test',
@@ -372,13 +373,159 @@ void main() {
       }),
     );
 
-    await client.unary(
-      '/publira.v1.AuthService/GetMe',
-      const {},
-      accessToken: 'candidate-token',
-    );
+    await _getMe(client, ConnectCallContext(accessToken: 'candidate-token'));
 
     expect(sent.headers['authorization'], 'Bearer candidate-token');
     expect(client.accessToken, 'stored-token');
   });
+
+  test('a call sends the headers its context names', () async {
+    late http.Request sent;
+    final client = ConnectClient(
+      baseUrl: 'https://example.test',
+      httpClient: MockClient((request) async {
+        sent = request;
+        return http.Response('{}', 200);
+      }),
+    );
+
+    await _getMe(client, ConnectCallContext(headers: {'cookie': 'a=b'}));
+
+    expect(sent.headers['cookie'], 'a=b');
+    expect(sent.headers['content-type'], 'application/json');
+  });
+
+  test('a call hands the answer\'s headers back on its context', () async {
+    final client = ConnectClient(
+      baseUrl: 'https://example.test',
+      httpClient: MockClient(
+        (_) async => http.Response(
+          '{}',
+          200,
+          headers: {'set-cookie': 'publira_aid=minted'},
+        ),
+      ),
+    );
+    final ctx = ConnectCallContext();
+
+    await _getMe(client, ctx);
+
+    expect(ctx.responseHeaders['set-cookie'], 'publira_aid=minted');
+  });
+
+  test('a call context\'s timeout replaces the client\'s own', () async {
+    final client = ConnectClient(
+      baseUrl: 'https://example.test',
+      httpClient: MockClient((_) async {
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        return http.Response('{}', 200);
+      }),
+    );
+
+    await expectLater(
+      _getMe(
+        client,
+        ConnectCallContext(timeout: const Duration(milliseconds: 10)),
+      ),
+      throwsA(
+        isA<ConnectException>().having(
+          (error) => error.code,
+          'code',
+          'deadline_exceeded',
+        ),
+      ),
+    );
+  });
+
+  test('a call fails as internal on a field of the wrong type', () async {
+    final client = ConnectClient(
+      baseUrl: 'https://example.test',
+      httpClient: MockClient(
+        (_) async => http.Response(jsonEncode({'nextToken': 1}), 200),
+      ),
+    );
+
+    await expectLater(
+      _listSeries(client),
+      throwsA(
+        isA<ConnectException>().having(
+          (error) => error.code,
+          'code',
+          'internal',
+        ),
+      ),
+    );
+  });
+
+  test('a call skips a field this build does not know', () async {
+    final client = ConnectClient(
+      baseUrl: 'https://example.test',
+      httpClient: MockClient(
+        (_) async => http.Response(
+          jsonEncode({'nextToken': '20', 'addedLater': true}),
+          200,
+        ),
+      ),
+    );
+
+    final response = await _listSeries(client);
+
+    expect(response.nextToken, '20');
+  });
+
+  test(
+    'a call keeps an enum value this build does not know apart from zero',
+    () async {
+      final client = ConnectClient(
+        baseUrl: 'https://example.test',
+        httpClient: MockClient(
+          (_) async => http.Response(
+            jsonEncode({
+              'series': [
+                {'publicId': 'omitted'},
+                {'publicId': 'known', 'ageRating': 'SERIES_AGE_RATING_R15'},
+                {'publicId': 'later', 'ageRating': 'SERIES_AGE_RATING_R20'},
+              ],
+            }),
+            200,
+          ),
+        ),
+      );
+      const ageRatingField = 15;
+
+      final series = (await _listSeries(client)).series;
+
+      expect(
+        [for (final item in series) item.ageRating],
+        [
+          pb.SeriesAgeRating.SERIES_AGE_RATING_UNSPECIFIED,
+          pb.SeriesAgeRating.SERIES_AGE_RATING_R15,
+          pb.SeriesAgeRating.SERIES_AGE_RATING_UNSPECIFIED,
+        ],
+      );
+      expect(
+        [for (final item in series) carriesUnknownEnum(item, ageRatingField)],
+        [false, false, true],
+      );
+    },
+  );
 }
+
+/// `ListPublishedSeries` with [request], the call most of these go through.
+Future<pb.ListPublishedSeriesResponse> _listSeries(
+  ConnectClient client, [
+  pb.ListPublishedSeriesRequest? request,
+  ConnectCallContext? ctx,
+]) => pb.CatalogServiceApi(
+  client,
+).listPublishedSeries(ctx, request ?? pb.ListPublishedSeriesRequest());
+
+Future<pb.GetSeriesDetailResponse> _getSeriesDetail(ConnectClient client) =>
+    pb.CatalogServiceApi(
+      client,
+    ).getSeriesDetail(null, pb.GetSeriesDetailRequest(publicId: 'x'));
+
+Future<pb.GetMeResponse> _getMe(
+  ConnectClient client, [
+  ConnectCallContext? ctx,
+]) => pb.AuthServiceApi(client).getMe(ctx, pb.GetMeRequest());

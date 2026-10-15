@@ -19,22 +19,27 @@ class LegalPage {
   /// agreed to.
   final String versionId;
 
-  /// The page [raw] describes, or `null` where any part of it is missing, so
-  /// a role the tenant names nothing for is never asked about.
-  static LegalPage? fromWire(Object? raw) {
-    if (raw is! Map<String, Object?>) {
+  /// The page these parts describe, or `null` where any of them is empty,
+  /// so a role the tenant names nothing for is never asked about.
+  static LegalPage? fromParts({
+    required String slug,
+    required String title,
+    required String versionId,
+  }) {
+    final trimmedSlug = slug.trim();
+    final trimmedTitle = title.trim();
+    final trimmedVersionId = versionId.trim();
+    if (trimmedSlug.isEmpty ||
+        trimmedTitle.isEmpty ||
+        trimmedVersionId.isEmpty) {
       return null;
     }
-    final slug = _trimmed(raw['slug']);
-    final title = _trimmed(raw['title']);
-    final versionId = _trimmed(raw['versionId']);
-    if (slug.isEmpty || title.isEmpty || versionId.isEmpty) {
-      return null;
-    }
-    return LegalPage(slug: slug, title: title, versionId: versionId);
+    return LegalPage(
+      slug: trimmedSlug,
+      title: trimmedTitle,
+      versionId: trimmedVersionId,
+    );
   }
-
-  static String _trimmed(Object? value) => value is String ? value.trim() : '';
 
   @override
   bool operator ==(Object other) {

@@ -1,3 +1,4 @@
+import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
 import 'package:publira/models/series_item.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
@@ -12,12 +13,19 @@ enum AgeVerification {
   /// know lands here too, so a stricter future rule still asks for the date.
   checked;
 
-  static AgeVerification fromWire(Object? raw) {
-    return switch (raw) {
-      null ||
-      '' ||
-      'AGE_VERIFICATION_UNSPECIFIED' ||
-      'AGE_VERIFICATION_NONE' => AgeVerification.none,
+  /// Reads [wire], which is the zero value both where the tenant never chose
+  /// and where the server named a rung this build does not know; [unknown]
+  /// tells the second apart.
+  static AgeVerification fromWire(
+    pb.AgeVerification wire, {
+    bool unknown = false,
+  }) {
+    if (unknown) {
+      return AgeVerification.checked;
+    }
+    return switch (wire) {
+      pb.AgeVerification.AGE_VERIFICATION_UNSPECIFIED ||
+      pb.AgeVerification.AGE_VERIFICATION_NONE => AgeVerification.none,
       _ => AgeVerification.checked,
     };
   }

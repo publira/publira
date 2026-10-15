@@ -2302,7 +2302,9 @@ void main() {
         'title': ConnectFixtureServer.seedSeriesTitle,
       },
       'episodes': [
-        {'publicId': 'EP01', 'title': 'First', 'orderIndex': '1'},
+        // A quoted number is how protojson may write an integer, so the value
+        // is one that is no number at all.
+        {'publicId': 'EP01', 'title': 'First', 'orderIndex': 'first'},
       ],
     };
 

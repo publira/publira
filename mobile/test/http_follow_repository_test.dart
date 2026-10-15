@@ -20,7 +20,10 @@ void main() {
     String followedAt = '2026-09-08T10:30:00Z',
   }) {
     return {
-      'targetType': kind.wireValue,
+      'targetType': switch (kind) {
+        FollowTargetKind.series => 'FOLLOW_TARGET_TYPE_SERIES',
+        FollowTargetKind.creator => 'FOLLOW_TARGET_TYPE_CREATOR',
+      },
       'targetPublicId': targetId,
       'followedAt': followedAt,
     };

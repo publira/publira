@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:publira/api/client_surface.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
+import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/catalog.pb.dart' as pb;
+import 'package:publira/api/proto_json.dart';
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
@@ -36,58 +39,16 @@ class HttpCatalogRepository implements CatalogRepository {
     required this._tenants,
   });
 
-  static const _listProcedure =
-      '/publira.v1.CatalogService/ListPublishedSeries';
-  static const _searchProcedure =
-      '/publira.v1.CatalogService/SearchPublishedSeries';
-  static const _searchCreatorsProcedure =
-      '/publira.v1.CatalogService/SearchPublishedCreators';
-  static const _searchLabelsProcedure =
-      '/publira.v1.CatalogService/SearchPublishedLabels';
-  static const _listCreatorsProcedure =
-      '/publira.v1.CatalogService/ListPublishedCreators';
-  static const _listLabelsProcedure =
-      '/publira.v1.CatalogService/ListPublishedLabels';
-  static const _rankedProcedure = '/publira.v1.CatalogService/ListRankedSeries';
-  static const _relatedProcedure =
-      '/publira.v1.CatalogService/ListRelatedSeries';
-  static const _recommendedProcedure =
-      '/publira.v1.CatalogService/ListRecommendedSeries';
-  static const _myRecommendedProcedure =
-      '/publira.v1.CatalogService/ListMyRecommendedSeries';
-  static const _detailProcedure = '/publira.v1.CatalogService/GetSeriesDetail';
-  static const _creatorProcedure =
-      '/publira.v1.CatalogService/GetPublishedCreatorDetail';
-  static const _labelProcedure =
-      '/publira.v1.CatalogService/GetPublishedLabelDetail';
-  static const _genresProcedure =
-      '/publira.v1.CatalogService/ListPublishedGenres';
-  static const _tagsProcedure = '/publira.v1.CatalogService/ListPublishedTags';
-  static const _episodeProcedure =
-      '/publira.v1.CatalogService/GetEpisodeDetail';
-  static const _readingPositionProcedure =
-      '/publira.v1.EpisodeReadService/GetMyReadingPosition';
-  static const _saveReadingPositionProcedure =
-      '/publira.v1.EpisodeReadService/SaveReadingPosition';
-  static const _markReadProcedure =
-      '/publira.v1.EpisodeReadService/MarkEpisodeAsRead';
-  static const _episodeReadsProcedure =
-      '/publira.v1.EpisodeReadService/ListMyEpisodeReads';
-  static const _followUpdatesProcedure =
-      '/publira.v1.FollowService/ListMyFollowUpdates';
-  static const _recentSeriesProcedure =
-      '/publira.v1.EpisodeReadService/ListMyRecentSeries';
-  static const _seriesProgressProcedure =
-      '/publira.v1.EpisodeReadService/GetMySeriesProgress';
-  static const _myEpisodeRatingProcedure =
-      '/publira.v1.RatingService/GetMyEpisodeRating';
-  static const _rateEpisodeProcedure = '/publira.v1.RatingService/RateEpisode';
-  static const _mySeriesRatingProcedure =
-      '/publira.v1.RatingService/GetMySeriesRating';
+  /// `Series.age_rating`'s field number.
+  static const _ageRatingField = 15;
 
   final AppConfig config;
   final ConnectClient _client;
   final TenantResolver _tenants;
+
+  pb.CatalogServiceApi get _catalog => pb.CatalogServiceApi(_client);
+  pb.EpisodeReadServiceApi get _reads => pb.EpisodeReadServiceApi(_client);
+  pb.RatingServiceApi get _ratings => pb.RatingServiceApi(_client);
 
   final _readingProgressWrites = StreamController<void>.broadcast();
 
@@ -106,7 +67,7 @@ class HttpCatalogRepository implements CatalogRepository {
   @override
   Future<SeriesPage> listSeries({String token = ''}) => _listPublishedSeries(
     seriesPageLimit,
-    'SERIES_ORDER_TITLE_ASC',
+    pb.SeriesOrder.SERIES_ORDER_TITLE_ASC,
     token: token,
   );
 
@@ -120,11 +81,18 @@ class HttpCatalogRepository implements CatalogRepository {
     String token = '',
   }) async {
     try {
-      final body = await _search(_searchProcedure, query, token);
-      return SeriesPage(
-        series: _parseSeriesList(body['series']),
-        nextToken: _readString(body, 'nextToken', 'response'),
+      final tenantId = await _tenants.resolve();
+      final body = await _catalog.searchPublishedSeries(
+        ConnectCallContext(tenantId: tenantId),
+        pb.SearchPublishedSeriesRequest(
+          limit: searchPageLimit,
+          query: query,
+          surface: appClientSurface,
+          token: _pageToken(token),
+          tenant: _tenant(tenantId),
+        ),
       );
+      return _seriesPage(body.series, body.nextToken);
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
@@ -136,9 +104,18 @@ class HttpCatalogRepository implements CatalogRepository {
     String token = '',
   }) async {
     try {
-      return _creatorPage(
-        await _search(_searchCreatorsProcedure, query, token),
+      final tenantId = await _tenants.resolve();
+      final body = await _catalog.searchPublishedCreators(
+        ConnectCallContext(tenantId: tenantId),
+        pb.SearchPublishedCreatorsRequest(
+          limit: searchPageLimit,
+          query: query,
+          surface: appClientSurface,
+          token: _pageToken(token),
+          tenant: _tenant(tenantId),
+        ),
       );
+      return _creatorPage(body.creators, body.nextToken);
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
@@ -150,7 +127,18 @@ class HttpCatalogRepository implements CatalogRepository {
     String token = '',
   }) async {
     try {
-      return _labelPage(await _search(_searchLabelsProcedure, query, token));
+      final tenantId = await _tenants.resolve();
+      final body = await _catalog.searchPublishedLabels(
+        ConnectCallContext(tenantId: tenantId),
+        pb.SearchPublishedLabelsRequest(
+          limit: searchPageLimit,
+          query: query,
+          surface: appClientSurface,
+          token: _pageToken(token),
+          tenant: _tenant(tenantId),
+        ),
+      );
+      return _labelPage(body.labels, body.nextToken);
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
@@ -162,9 +150,17 @@ class HttpCatalogRepository implements CatalogRepository {
     String token = '',
   }) async {
     try {
-      return _creatorPage(
-        await _listDirectory(_listCreatorsProcedure, limit, token),
+      final tenantId = await _tenants.resolve();
+      final body = await _catalog.listPublishedCreators(
+        ConnectCallContext(tenantId: tenantId),
+        pb.ListPublishedCreatorsRequest(
+          limit: limit,
+          surface: appClientSurface,
+          token: _pageToken(token),
+          tenant: _tenant(tenantId),
+        ),
       );
+      return _creatorPage(body.creators, body.nextToken);
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
@@ -176,112 +172,79 @@ class HttpCatalogRepository implements CatalogRepository {
     String token = '',
   }) async {
     try {
-      return _labelPage(
-        await _listDirectory(_listLabelsProcedure, limit, token),
+      final tenantId = await _tenants.resolve();
+      final body = await _catalog.listPublishedLabels(
+        ConnectCallContext(tenantId: tenantId),
+        pb.ListPublishedLabelsRequest(
+          limit: limit,
+          surface: appClientSurface,
+          token: _pageToken(token),
+          tenant: _tenant(tenantId),
+        ),
       );
+      return _labelPage(body.labels, body.nextToken);
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
   }
 
-  /// One page of the list RPC [procedure] names, which the author and the
-  /// label list ask in the same shape.
-  Future<Map<String, Object?>> _listDirectory(
-    String procedure,
-    int limit,
-    String token,
-  ) async {
-    final tenantId = await _tenants.resolve();
-    return _client.unary(procedure, {
-      'limit': limit,
-      'surface': appClientSurface,
-      if (token.isNotEmpty) 'token': token,
-      'tenant': {'tenantId': tenantId},
-    }, tenantId: tenantId);
-  }
-
   /// A page of `PublishedCreator`, as a creator search and the author list
   /// both answer.
-  CreatorPage _creatorPage(Map<String, Object?> body) {
-    final raw = body['creators'];
+  CreatorPage _creatorPage(
+    List<pb.PublishedCreator> creators,
+    String nextToken,
+  ) {
     return CreatorPage(
-      // protojson omits an empty repeated field, which is how a keyword
-      // nothing matches arrives.
-      creators: raw == null
-          ? const []
-          : _expectList(raw, 'creators')
-                .map((item) => _publishedCreatorFromJson(item, 'creators[]'))
-                .toList(growable: false),
-      nextToken: _readString(body, 'nextToken', 'response'),
+      creators: creators
+          .map((creator) => _publishedCreator(creator, 'creators[]'))
+          .toList(growable: false),
+      nextToken: nextToken.trim(),
     );
   }
 
-  /// A page of `Label`, as a label search and the label list both answer.
-  LabelPage _labelPage(Map<String, Object?> body) {
-    final raw = body['labels'];
+  /// A page of `PublishedLabel`, as a label search and the label list both
+  /// answer.
+  LabelPage _labelPage(List<pb.PublishedLabel> labels, String nextToken) {
     return LabelPage(
-      labels: raw == null
-          ? const []
-          : _expectList(raw, 'labels')
-                .map((item) => _labelFromJson(item, 'labels[]', counted: false))
-                .toList(growable: false),
-      nextToken: _readString(body, 'nextToken', 'response'),
+      labels: labels
+          .map((label) => _publishedLabel(label, 'labels[]', counted: false))
+          .toList(growable: false),
+      nextToken: nextToken.trim(),
     );
-  }
-
-  /// One page of the search RPC [procedure] names, which every group of the
-  /// search screen asks in the same shape.
-  Future<Map<String, Object?>> _search(
-    String procedure,
-    String query,
-    String token,
-  ) async {
-    final tenantId = await _tenants.resolve();
-    return _client.unary(procedure, {
-      'limit': searchPageLimit,
-      'query': query,
-      'surface': appClientSurface,
-      if (token.isNotEmpty) 'token': token,
-      'tenant': {'tenantId': tenantId},
-    }, tenantId: tenantId);
   }
 
   @override
   Future<List<SeriesItem>> listNewestSeries({required int limit}) async {
     final page = await _listPublishedSeries(
       limit,
-      'SERIES_ORDER_PUBLISHED_AT_DESC',
+      pb.SeriesOrder.SERIES_ORDER_PUBLISHED_AT_DESC,
     );
     return page.series;
   }
 
-  /// One page of `ListPublishedSeries`, in [order] as the enum names it.
+  /// One page of `ListPublishedSeries`, in [order].
   ///
   /// The order is always stated rather than left to the API's default, because
   /// the catalog screen shows two pages of this list at once — the newest few
   /// above the whole of it — and it is the orders that tell them apart.
-  ///
-  /// [token] is left off an empty request the way protojson leaves off a
-  /// default, which is what asks for the first page.
   Future<SeriesPage> _listPublishedSeries(
     int limit,
-    String order, {
+    pb.SeriesOrder order, {
     String token = '',
   }) async {
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(_listProcedure, {
-        'limit': limit,
-        'order': order,
-        'surface': appClientSurface,
-        if (token.isNotEmpty) 'token': token,
-        'tenant': {'tenantId': tenantId},
-      }, tenantId: tenantId);
-      return SeriesPage(
-        series: _parseSeriesList(body['series']),
-        // protojson omits an empty string, which is how the last page arrives.
-        nextToken: _readString(body, 'nextToken', 'response'),
+      final body = await _catalog.listPublishedSeries(
+        ConnectCallContext(tenantId: tenantId),
+        pb.ListPublishedSeriesRequest(
+          limit: limit,
+          order: order,
+          surface: appClientSurface,
+          token: _pageToken(token),
+          tenant: _tenant(tenantId),
+        ),
       );
+      return _seriesPage(body.series, body.nextToken);
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
@@ -297,30 +260,33 @@ class HttpCatalogRepository implements CatalogRepository {
   }) async {
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(_rankedProcedure, {
-        'ageRating': switch (ageRating) {
-          SeriesAgeRating.all => 'SERIES_AGE_RATING_ALL',
-          SeriesAgeRating.r15 => 'SERIES_AGE_RATING_R15',
-          SeriesAgeRating.r18 => 'SERIES_AGE_RATING_R18',
-          SeriesAgeRating.unknown => throw ArgumentError.value(
-            ageRating,
-            'ageRating',
-            'names no ranking',
-          ),
-        },
-        if (genreId.isNotEmpty) 'genrePublicId': genreId,
-        'limit': limit,
-        'period': switch (period) {
-          RankingPeriod.daily => 'RANKING_PERIOD_DAILY',
-          RankingPeriod.weekly => 'RANKING_PERIOD_WEEKLY',
-        },
-        'surface': appClientSurface,
-        if (token.isNotEmpty) 'token': token,
-        'tenant': {'tenantId': tenantId},
-      }, tenantId: tenantId);
+      final body = await _catalog.listRankedSeries(
+        ConnectCallContext(tenantId: tenantId),
+        pb.ListRankedSeriesRequest(
+          ageRating: switch (ageRating) {
+            SeriesAgeRating.all => pb.SeriesAgeRating.SERIES_AGE_RATING_ALL,
+            SeriesAgeRating.r15 => pb.SeriesAgeRating.SERIES_AGE_RATING_R15,
+            SeriesAgeRating.r18 => pb.SeriesAgeRating.SERIES_AGE_RATING_R18,
+            SeriesAgeRating.unknown => throw ArgumentError.value(
+              ageRating,
+              'ageRating',
+              'names no ranking',
+            ),
+          },
+          genrePublicId: genreId.isEmpty ? null : genreId,
+          limit: limit,
+          period: switch (period) {
+            RankingPeriod.daily => pb.RankingPeriod.RANKING_PERIOD_DAILY,
+            RankingPeriod.weekly => pb.RankingPeriod.RANKING_PERIOD_WEEKLY,
+          },
+          surface: appClientSurface,
+          token: _pageToken(token),
+          tenant: _tenant(tenantId),
+        ),
+      );
       return RankedSeriesPage(
-        rankedSeries: _parseRankedSeries(body['rankedSeries']),
-        nextToken: _readString(body, 'nextToken', 'response'),
+        rankedSeries: _parseRankedSeries(body.rankedSeries),
+        nextToken: body.nextToken.trim(),
       );
     } on ConnectException catch (error) {
       throw _toFailure(error);
@@ -333,11 +299,17 @@ class HttpCatalogRepository implements CatalogRepository {
     String token = '',
   }) async {
     try {
-      return await _listRecommended(
-        _recommendedProcedure,
-        limit: limit,
-        token: token,
+      final tenantId = await _tenants.resolve();
+      final body = await _catalog.listRecommendedSeries(
+        ConnectCallContext(tenantId: tenantId),
+        pb.ListRecommendedSeriesRequest(
+          limit: limit,
+          surface: appClientSurface,
+          token: _pageToken(token),
+          tenant: _tenant(tenantId),
+        ),
       );
+      return _seriesPage(body.series, body.nextToken);
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
@@ -353,12 +325,17 @@ class HttpCatalogRepository implements CatalogRepository {
       return listRecommendedSeries(limit: limit, token: token);
     }
     try {
-      return await _listRecommended(
-        _myRecommendedProcedure,
-        limit: limit,
-        token: token,
-        accessToken: accessToken,
+      final tenantId = await _tenants.resolve();
+      final body = await _catalog.listMyRecommendedSeries(
+        ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+        pb.ListMyRecommendedSeriesRequest(
+          limit: limit,
+          surface: appClientSurface,
+          token: _pageToken(token),
+          tenant: _tenant(tenantId),
+        ),
       );
+      return _seriesPage(body.series, body.nextToken);
     } on ConnectException catch (error) {
       if (error.code != 'unauthenticated') {
         throw _toFailure(error);
@@ -369,49 +346,16 @@ class HttpCatalogRepository implements CatalogRepository {
     return listRecommendedSeries(limit: limit, token: token);
   }
 
-  /// One page of [procedure], which is either recommendation RPC: the two
-  /// share a request and a response, and differ in whose order they answer.
-  Future<SeriesPage> _listRecommended(
-    String procedure, {
-    required int limit,
-    required String token,
-    String? accessToken,
-  }) async {
-    final tenantId = await _tenants.resolve();
-    final body = await _client.unary(
-      procedure,
-      {
-        'limit': limit,
-        'surface': appClientSurface,
-        if (token.isNotEmpty) 'token': token,
-        'tenant': {'tenantId': tenantId},
-      },
-      tenantId: tenantId,
-      accessToken: accessToken,
-    );
-    return SeriesPage(
-      series: _parseSeriesList(body['series']),
-      nextToken: _readString(body, 'nextToken', 'response'),
-    );
-  }
-
-  List<RankedSeriesItem> _parseRankedSeries(Object? raw) {
-    // protojson omits an empty repeated field, which is how a tenant the
-    // ranking batch has not run for yet arrives.
-    if (raw == null) {
-      return const [];
-    }
-    final items = _expectList(raw, 'rankedSeries')
-        .map((item) => _expectMap(item, 'rankedSeries[]'))
-        .map((json) {
-          return RankedSeriesItem(
-            rank: _readInt(json, 'rank', 'rankedSeries[]'),
-            series: _seriesFromJson(
-              _expectMap(json['series'], 'rankedSeries[].series'),
-              'rankedSeries[].series',
-            ),
-          );
-        })
+  /// protojson omits an empty repeated field, which is how a tenant the
+  /// ranking batch has not run for yet arrives.
+  List<RankedSeriesItem> _parseRankedSeries(List<pb.RankedSeries> ranked) {
+    final items = ranked
+        .map(
+          (item) => RankedSeriesItem(
+            rank: item.rank,
+            series: _series(item.series, 'rankedSeries[].series'),
+          ),
+        )
         .toList();
     return List<RankedSeriesItem>.unmodifiable(items);
   }
@@ -423,13 +367,16 @@ class HttpCatalogRepository implements CatalogRepository {
   }) async {
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(_relatedProcedure, {
-        'limit': limit,
-        'seriesId': seriesInternalId,
-        'surface': appClientSurface,
-        'tenant': {'tenantId': tenantId},
-      }, tenantId: tenantId);
-      return _parseSeriesList(body['series']);
+      final body = await _catalog.listRelatedSeries(
+        ConnectCallContext(tenantId: tenantId),
+        pb.ListRelatedSeriesRequest(
+          limit: limit,
+          seriesId: seriesInternalId,
+          surface: appClientSurface,
+          tenant: _tenant(tenantId),
+        ),
+      );
+      return _parseSeriesList(body.series);
     } on ConnectException catch (error) {
       if (error.isNotFound) {
         return const [];
@@ -442,11 +389,14 @@ class HttpCatalogRepository implements CatalogRepository {
   Future<SeriesDetail?> getSeries(String publicId) async {
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(_detailProcedure, {
-        'publicId': publicId,
-        'surface': appClientSurface,
-        'tenant': {'tenantId': tenantId},
-      }, tenantId: tenantId);
+      final body = await _catalog.getSeriesDetail(
+        ConnectCallContext(tenantId: tenantId),
+        pb.GetSeriesDetailRequest(
+          publicId: publicId,
+          surface: appClientSurface,
+          tenant: _tenant(tenantId),
+        ),
+      );
       return _parseSeriesDetail(body);
     } on ConnectException catch (error) {
       if (error.isNotFound) {
@@ -464,20 +414,26 @@ class HttpCatalogRepository implements CatalogRepository {
   Future<SeriesCreator?> getCreator(String publicId) async {
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(_creatorProcedure, {
-        // The response carries a page of the creator's published series, which
-        // a follow row does not show; one is asked for because the API falls
-        // back to twenty.
-        'limit': 1,
-        'publicId': publicId,
-        'surface': appClientSurface,
-        'tenant': {'tenantId': tenantId},
-      }, tenantId: tenantId);
-      final creator = _expectMap(body['creator'], 'creator');
+      final body = await _catalog.getPublishedCreatorDetail(
+        ConnectCallContext(tenantId: tenantId),
+        pb.GetPublishedCreatorDetailRequest(
+          // The response carries a page of the creator's published series,
+          // which a follow row does not show; one is asked for because the API
+          // falls back to twenty.
+          limit: 1,
+          publicId: publicId,
+          surface: appClientSurface,
+          tenant: _tenant(tenantId),
+        ),
+      );
+      if (!body.hasCreator()) {
+        _invalidPayload('creator must be an object');
+      }
+      final creator = body.creator;
       return SeriesCreator(
-        id: _readString(creator, 'publicId', 'creator'),
-        internalId: _readString(creator, 'id', 'creator'),
-        name: _readString(creator, 'name', 'creator'),
+        id: creator.publicId.trim(),
+        internalId: creator.id.trim(),
+        name: creator.name.trim(),
       );
     } on ConnectException catch (error) {
       if (error.isNotFound) {
@@ -497,13 +453,20 @@ class HttpCatalogRepository implements CatalogRepository {
     String token = '',
   }) async {
     try {
-      final body = await _detailPage(_creatorProcedure, publicId, token);
-      return CreatorDetail(
-        creator: _publishedCreatorFromJson(body['creator'], 'creator'),
-        series: SeriesPage(
-          series: _parseSeriesList(body['series']),
-          nextToken: _readString(body, 'nextToken', 'response'),
+      final tenantId = await _tenants.resolve();
+      final body = await _catalog.getPublishedCreatorDetail(
+        ConnectCallContext(tenantId: tenantId),
+        pb.GetPublishedCreatorDetailRequest(
+          limit: detailSeriesPageLimit,
+          publicId: publicId,
+          surface: appClientSurface,
+          token: _pageToken(token),
+          tenant: _tenant(tenantId),
         ),
+      );
+      return CreatorDetail(
+        creator: _publishedCreator(body.creator, 'creator'),
+        series: _seriesPage(body.series, body.nextToken),
       );
     } on ConnectException catch (error) {
       if (error.isNotFound) {
@@ -519,13 +482,20 @@ class HttpCatalogRepository implements CatalogRepository {
     String token = '',
   }) async {
     try {
-      final body = await _detailPage(_labelProcedure, publicId, token);
-      return LabelDetail(
-        label: _labelFromJson(body['label'], 'label', counted: true),
-        series: SeriesPage(
-          series: _parseSeriesList(body['series']),
-          nextToken: _readString(body, 'nextToken', 'response'),
+      final tenantId = await _tenants.resolve();
+      final body = await _catalog.getPublishedLabelDetail(
+        ConnectCallContext(tenantId: tenantId),
+        pb.GetPublishedLabelDetailRequest(
+          limit: detailSeriesPageLimit,
+          publicId: publicId,
+          surface: appClientSurface,
+          token: _pageToken(token),
+          tenant: _tenant(tenantId),
         ),
+      );
+      return LabelDetail(
+        label: _publishedLabel(body.label, 'label', counted: true),
+        series: _seriesPage(body.series, body.nextToken),
       );
     } on ConnectException catch (error) {
       if (error.isNotFound) {
@@ -535,56 +505,40 @@ class HttpCatalogRepository implements CatalogRepository {
     }
   }
 
-  /// One page of the detail RPC [procedure] names, which the author and the
-  /// label ask in the same shape.
-  Future<Map<String, Object?>> _detailPage(
-    String procedure,
-    String publicId,
-    String token,
-  ) async {
-    final tenantId = await _tenants.resolve();
-    return _client.unary(procedure, {
-      'limit': detailSeriesPageLimit,
-      'publicId': publicId,
-      'surface': appClientSurface,
-      if (token.isNotEmpty) 'token': token,
-      'tenant': {'tenantId': tenantId},
-    }, tenantId: tenantId);
-  }
-
-  PublishedCreator _publishedCreatorFromJson(Object? raw, String path) {
-    final json = _expectMap(raw, path);
-    final iconUrl = _readString(json, 'iconImageUrl', path);
+  PublishedCreator _publishedCreator(pb.PublishedCreator creator, String path) {
+    final iconUrl = creator.iconImageUrl.trim();
     return PublishedCreator(
-      id: _readString(json, 'publicId', path, requiredNonEmpty: true),
-      internalId: _readString(json, 'id', path),
-      name: _readString(json, 'name', path),
-      profileText: _readString(json, 'profileText', path),
+      id: _requiredId(creator.publicId, '$path.publicId'),
+      internalId: creator.id.trim(),
+      name: creator.name.trim(),
+      profileText: creator.profileText.trim(),
       // protojson omits an empty string, which is a creator with no portrait.
       iconUrl: iconUrl.isEmpty ? null : config.imageUri(iconUrl),
       imageRequestHeaders: config.publicImageRequestHeaders,
-      seriesCount: _readCount(json, 'publishedSeriesCount', path),
+      seriesCount: _count(
+        creator.publishedSeriesCount,
+        '$path.publishedSeriesCount',
+      ),
     );
   }
 
-  /// A `Label`, or with [counted] a `PublishedLabel`, which is the same label
-  /// with the count of its published series.
-  PublishedLabel _labelFromJson(
-    Object? raw,
+  /// A `PublishedLabel`, carrying the count of its published series only
+  /// when [counted].
+  PublishedLabel _publishedLabel(
+    pb.PublishedLabel label,
     String path, {
     required bool counted,
   }) {
-    final json = _expectMap(raw, path);
     return PublishedLabel(
-      id: _readString(json, 'publicId', path, requiredNonEmpty: true),
-      name: _readString(json, 'name', path),
+      id: _requiredId(label.publicId, '$path.publicId'),
+      name: label.name.trim(),
       eyeCatchVariants: _parseEyeCatchVariants(
-        json['eyeCatchImageVariants'],
+        label.eyeCatchImageVariants,
         path,
       ),
       imageRequestHeaders: config.publicImageRequestHeaders,
       seriesCount: counted
-          ? _readCount(json, 'publishedSeriesCount', path)
+          ? _count(label.publishedSeriesCount, '$path.publishedSeriesCount')
           : null,
     );
   }
@@ -597,47 +551,55 @@ class HttpCatalogRepository implements CatalogRepository {
   Future<List<PublishedGenre>> listGenres() async {
     try {
       final genres = <PublishedGenre>[];
-      await _walkClassification(_genresProcedure, 'genres', (json) {
-        genres.add(
-          PublishedGenre(
-            id: _readString(
-              json,
-              'publicId',
-              'genres[]',
-              requiredNonEmpty: true,
+      await _walkClassification<pb.PublishedGenre>(
+        (tenantId, token) async {
+          final body = await _catalog.listPublishedGenres(
+            ConnectCallContext(tenantId: tenantId),
+            pb.ListPublishedGenresRequest(
+              limit: classificationPageLimit,
+              surface: appClientSurface,
+              token: _pageToken(token),
+              tenant: _tenant(tenantId),
             ),
-            name: _readString(json, 'name', 'genres[]'),
-            seriesCount: _readCount(json, 'publishedSeriesCount', 'genres[]'),
-            featuredSeries: _parseGenreFeaturedSeries(json['featuredSeries']),
-            eyeCatchVariants: _parseEyeCatchVariants(
-              json['eyeCatchImageVariants'],
-              'genres[]',
+          );
+          return (body.genres, body.nextToken);
+        },
+        (genre) {
+          genres.add(
+            PublishedGenre(
+              id: _requiredId(genre.publicId, 'genres[].publicId'),
+              name: genre.name.trim(),
+              seriesCount: _count(
+                genre.publishedSeriesCount,
+                'genres[].publishedSeriesCount',
+              ),
+              featuredSeries: _parseGenreFeaturedSeries(genre.featuredSeries),
+              eyeCatchVariants: _parseEyeCatchVariants(
+                genre.eyeCatchImageVariants,
+                'genres[]',
+              ),
+              imageRequestHeaders: config.publicImageRequestHeaders,
             ),
-            imageRequestHeaders: config.publicImageRequestHeaders,
-          ),
-        );
-        return false;
-      });
+          );
+          return false;
+        },
+      );
       return List<PublishedGenre>.unmodifiable(genres);
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
   }
 
-  List<GenreFeaturedSeries> _parseGenreFeaturedSeries(Object? raw) {
-    // protojson omits an empty repeated field, which is how a genre with no
-    // series to draw arrives.
-    if (raw == null) {
-      return const [];
-    }
+  List<GenreFeaturedSeries> _parseGenreFeaturedSeries(
+    List<pb.PublishedGenreFeaturedSeries> featured,
+  ) {
     const path = 'genres[].featuredSeries[]';
-    final series = _expectList(raw, 'genres[].featuredSeries')
-        .map((item) => _expectMap(item, path))
+    final series = featured
         .map(
-          (json) => GenreFeaturedSeries(
-            id: _readString(json, 'publicId', path),
+          (item) => GenreFeaturedSeries(
+            id: item.publicId.trim(),
             eyeCatchVariants: _parseEyeCatchVariants(
-              json['eyeCatchImageVariants'],
+              item.eyeCatchImageVariants,
               path,
             ),
           ),
@@ -654,47 +616,60 @@ class HttpCatalogRepository implements CatalogRepository {
       PublishedTag? match;
       // `ListPublishedTags` is the only read that names a tag, so the list is
       // walked until the slug turns up, the way the storefront finds one.
-      await _walkClassification(_tagsProcedure, 'tags', (json) {
-        if (_readString(json, 'slug', 'tags[]') != slug) {
-          return false;
-        }
-        match = PublishedTag(
-          slug: slug,
-          name: _readString(json, 'name', 'tags[]'),
-          seriesCount: _readCount(json, 'publishedSeriesCount', 'tags[]'),
-        );
-        return true;
-      });
+      await _walkClassification<pb.PublishedTag>(
+        (tenantId, token) async {
+          final body = await _catalog.listPublishedTags(
+            ConnectCallContext(tenantId: tenantId),
+            pb.ListPublishedTagsRequest(
+              limit: classificationPageLimit,
+              surface: appClientSurface,
+              token: _pageToken(token),
+              tenant: _tenant(tenantId),
+            ),
+          );
+          return (body.tags, body.nextToken);
+        },
+        (tag) {
+          if (tag.slug.trim() != slug) {
+            return false;
+          }
+          match = PublishedTag(
+            slug: slug,
+            name: tag.name.trim(),
+            seriesCount: _count(
+              tag.publishedSeriesCount,
+              'tags[].publishedSeriesCount',
+            ),
+          );
+          return true;
+        },
+      );
       return match;
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
   }
 
-  /// Reads every page of the classification list [procedure] names, handing
-  /// each row of [field] to [visit] until it answers `true`.
-  Future<void> _walkClassification(
-    String procedure,
-    String field,
-    bool Function(Map<String, Object?> json) visit,
+  /// Reads every page [readPage] answers, handing each row to [visit] until
+  /// it answers `true`.
+  Future<void> _walkClassification<T>(
+    Future<(List<T> rows, String nextToken)> Function(
+      String tenantId,
+      String token,
+    )
+    readPage,
+    bool Function(T row) visit,
   ) async {
     final tenantId = await _tenants.resolve();
     var token = '';
     do {
-      final body = await _client.unary(procedure, {
-        'limit': classificationPageLimit,
-        'surface': appClientSurface,
-        if (token.isNotEmpty) 'token': token,
-        'tenant': {'tenantId': tenantId},
-      }, tenantId: tenantId);
-      final raw = body[field];
-      // protojson omits an empty repeated field, which is a tenant with none.
-      for (final item in raw == null ? const [] : _expectList(raw, field)) {
-        if (visit(_expectMap(item, '$field[]'))) {
+      final (rows, nextToken) = await readPage(tenantId, token);
+      for (final row in rows) {
+        if (visit(row)) {
           return;
         }
       }
-      token = _readString(body, 'nextToken', 'response');
+      token = nextToken.trim();
     } while (token.isNotEmpty);
   }
 
@@ -703,38 +678,43 @@ class HttpCatalogRepository implements CatalogRepository {
     String genreId, {
     SeriesListFilter filter = const SeriesListFilter(),
     String token = '',
-  }) => _listClassifiedSeries({'genrePublicId': genreId}, filter, token);
+  }) => _listClassifiedSeries(filter, token, genrePublicId: genreId);
 
   @override
   Future<SeriesPage?> listTagSeries(
     String slug, {
     SeriesListFilter filter = const SeriesListFilter(),
     String token = '',
-  }) => _listClassifiedSeries({'tagSlug': slug}, filter, token);
+  }) => _listClassifiedSeries(filter, token, tagSlug: slug);
 
   /// One page of `ListPublishedSeries` narrowed to one genre or one tag, which
   /// the API answers `not_found` for when the tenant has no such one.
   Future<SeriesPage?> _listClassifiedSeries(
-    Map<String, Object?> classification,
     SeriesListFilter filter,
-    String token,
-  ) async {
+    String token, {
+    String? genrePublicId,
+    String? tagSlug,
+  }) async {
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(_listProcedure, {
-        ...classification,
-        if (filter.freeOnly) 'hasFreeEpisodes': true,
-        'limit': detailSeriesPageLimit,
-        'order': filter.order.wireName,
-        if (filter.status case final status?) 'status': _statusWireName(status),
-        'surface': appClientSurface,
-        if (token.isNotEmpty) 'token': token,
-        'tenant': {'tenantId': tenantId},
-      }, tenantId: tenantId);
-      return SeriesPage(
-        series: _parseSeriesList(body['series']),
-        nextToken: _readString(body, 'nextToken', 'response'),
+      final body = await _catalog.listPublishedSeries(
+        ConnectCallContext(tenantId: tenantId),
+        pb.ListPublishedSeriesRequest(
+          genrePublicId: genrePublicId,
+          tagSlug: tagSlug,
+          hasFreeEpisodes: filter.freeOnly ? true : null,
+          limit: detailSeriesPageLimit,
+          order: _seriesOrder(filter.order),
+          status: switch (filter.status) {
+            final status? => _wireStatus(status),
+            null => null,
+          },
+          surface: appClientSurface,
+          token: _pageToken(token),
+          tenant: _tenant(tenantId),
+        ),
       );
+      return _seriesPage(body.series, body.nextToken);
     } on ConnectException catch (error) {
       if (error.isNotFound) {
         return null;
@@ -743,10 +723,18 @@ class HttpCatalogRepository implements CatalogRepository {
     }
   }
 
-  static String _statusWireName(SeriesStatus status) => switch (status) {
-    SeriesStatus.ongoing => 'SERIES_STATUS_ONGOING',
-    SeriesStatus.completed => 'SERIES_STATUS_COMPLETED',
-    SeriesStatus.hiatus => 'SERIES_STATUS_HIATUS',
+  /// The `publira.v1.SeriesOrder` the API is asked for.
+  static pb.SeriesOrder _seriesOrder(SeriesListOrder order) => switch (order) {
+    SeriesListOrder.newest => pb.SeriesOrder.SERIES_ORDER_PUBLISHED_AT_DESC,
+    SeriesListOrder.updated =>
+      pb.SeriesOrder.SERIES_ORDER_LATEST_EPISODE_AT_DESC,
+    SeriesListOrder.title => pb.SeriesOrder.SERIES_ORDER_TITLE_ASC,
+  };
+
+  static pb.SeriesStatus _wireStatus(SeriesStatus status) => switch (status) {
+    SeriesStatus.ongoing => pb.SeriesStatus.SERIES_STATUS_ONGOING,
+    SeriesStatus.completed => pb.SeriesStatus.SERIES_STATUS_COMPLETED,
+    SeriesStatus.hiatus => pb.SeriesStatus.SERIES_STATUS_HIATUS,
   };
 
   @override
@@ -760,15 +748,13 @@ class HttpCatalogRepository implements CatalogRepository {
     final accessToken = _client.accessToken;
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(
-        _episodeProcedure,
-        {
-          'publicId': episodePublicId,
-          'surface': appClientSurface,
-          'tenant': {'tenantId': tenantId},
-        },
-        tenantId: tenantId,
-        accessToken: accessToken,
+      final body = await _catalog.getEpisodeDetail(
+        ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+        pb.GetEpisodeDetailRequest(
+          publicId: episodePublicId,
+          surface: appClientSurface,
+          tenant: _tenant(tenantId),
+        ),
       );
       return _parseEpisodeDetail(body, seriesPublicId, accessToken);
     } on ConnectException catch (error) {
@@ -800,23 +786,20 @@ class HttpCatalogRepository implements CatalogRepository {
     }
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(
-        _readingPositionProcedure,
-        {
-          'episodeId': episodeInternalId,
-          'tenant': {'tenantId': tenantId},
-          'surface': appClientSurface,
-        },
-        tenantId: tenantId,
-        accessToken: accessToken,
+      final body = await _reads.getMyReadingPosition(
+        ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+        pb.GetMyReadingPositionRequest(
+          episodeId: episodeInternalId,
+          tenant: _tenant(tenantId),
+          surface: appClientSurface,
+        ),
       );
-      final raw = body['position'];
       // protojson omits an unset message, which is the answer for a reader who
       // never opened the episode and for one who may no longer read it.
-      if (raw == null) {
+      if (!body.hasPosition()) {
         return null;
       }
-      return _readInt(_expectMap(raw, 'position'), 'pageIndex', 'position');
+      return body.position.pageIndex;
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
@@ -835,16 +818,14 @@ class HttpCatalogRepository implements CatalogRepository {
     }
     try {
       final tenantId = await _tenants.resolve();
-      await _client.unary(
-        _saveReadingPositionProcedure,
-        {
-          'episodeId': episodeInternalId,
-          'pageIndex': pageIndex,
-          'tenant': {'tenantId': tenantId},
-          'surface': appClientSurface,
-        },
-        tenantId: tenantId,
-        accessToken: accessToken,
+      await _reads.saveReadingPosition(
+        ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+        pb.SaveReadingPositionRequest(
+          episodeId: episodeInternalId,
+          pageIndex: pageIndex,
+          tenant: _tenant(tenantId),
+          surface: appClientSurface,
+        ),
       );
       _readingProgressWrites.add(null);
     } on ConnectException catch (error) {
@@ -863,15 +844,13 @@ class HttpCatalogRepository implements CatalogRepository {
     }
     try {
       final tenantId = await _tenants.resolve();
-      await _client.unary(
-        _markReadProcedure,
-        {
-          'episodeId': episodeInternalId,
-          'tenant': {'tenantId': tenantId},
-          'surface': appClientSurface,
-        },
-        tenantId: tenantId,
-        accessToken: accessToken,
+      await _reads.markEpisodeAsRead(
+        ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+        pb.MarkEpisodeAsReadRequest(
+          episodeId: episodeInternalId,
+          tenant: _tenant(tenantId),
+          surface: appClientSurface,
+        ),
       );
       _readingProgressWrites.add(null);
     } on ConnectException catch (error) {
@@ -887,17 +866,20 @@ class HttpCatalogRepository implements CatalogRepository {
     }
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(
-        _myEpisodeRatingProcedure,
-        {
-          'episodeId': episodeInternalId,
-          'tenant': {'tenantId': tenantId},
-          'surface': appClientSurface,
-        },
-        tenantId: tenantId,
-        accessToken: accessToken,
+      final body = await _ratings.getMyEpisodeRating(
+        ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+        pb.GetMyEpisodeRatingRequest(
+          episodeId: episodeInternalId,
+          tenant: _tenant(tenantId),
+          surface: appClientSurface,
+        ),
       );
-      return _reactionFromJson(body, 'reaction');
+      return _reaction(
+        score: body.score,
+        ratingCount: body.ratingCount.toInt(),
+        mode: body.mode,
+        readerCredited: body.readerCredited,
+      );
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
@@ -914,19 +896,24 @@ class HttpCatalogRepository implements CatalogRepository {
     }
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(
-        _rateEpisodeProcedure,
-        {
-          'episodeId': episodeInternalId,
-          'presses': 1,
-          'tenant': {'tenantId': tenantId},
-          'surface': appClientSurface,
-        },
-        tenantId: tenantId,
-        accessToken: accessToken,
+      final body = await _ratings.rateEpisode(
+        ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+        pb.RateEpisodeRequest(
+          episodeId: episodeInternalId,
+          presses: 1,
+          tenant: _tenant(tenantId),
+          surface: appClientSurface,
+        ),
       );
       _reactionWrites.add(null);
-      return _reactionFromJson(body, 'reaction');
+      return _reaction(
+        score: body.score,
+        ratingCount: body.ratingCount.toInt(),
+        mode: body.mode,
+        // RateEpisode never carries it: a credited reader is refused before
+        // there is a response to read.
+        readerCredited: false,
+      );
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
@@ -940,42 +927,27 @@ class HttpCatalogRepository implements CatalogRepository {
     }
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(
-        _seriesProgressProcedure,
-        {
-          'seriesId': seriesInternalId,
-          'tenant': {'tenantId': tenantId},
-          'surface': appClientSurface,
-        },
-        tenantId: tenantId,
-        accessToken: accessToken,
+      final body = await _reads.getMySeriesProgress(
+        ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+        pb.GetMySeriesProgressRequest(
+          seriesId: seriesInternalId,
+          tenant: _tenant(tenantId),
+          surface: appClientSurface,
+        ),
       );
-      final finishedEpisodeIds = <String>{};
-      final finished = body['finishedEpisodePublicIds'];
-      // protojson omits an empty repeated field.
-      if (finished != null) {
-        for (final id in _expectList(finished, 'finishedEpisodePublicIds')) {
-          if (id is! String || id.trim().isEmpty) {
-            _invalidPayload(
-              'finishedEpisodePublicIds[] must be a non-empty string',
-            );
-          }
-          finishedEpisodeIds.add(id.trim());
-        }
-      }
-      final raw = body['progress'];
+      final finishedEpisodeIds = <String>{
+        for (final id in body.finishedEpisodePublicIds)
+          _requiredId(id, 'finishedEpisodePublicIds[]'),
+      };
       // protojson omits an unset message, which is the answer for a reader who
       // has opened no episode of the series they can still read.
-      if (raw == null) {
+      if (!body.hasProgress()) {
         return SeriesProgress(finishedEpisodeIds: finishedEpisodeIds);
       }
-      final progress = _expectMap(raw, 'progress');
+      final progress = body.progress;
       return SeriesProgress(
-        episode: _episodeFromJson(
-          _expectMap(progress['episode'], 'progress.episode'),
-          'progress.episode',
-        ),
-        isFinished: _readBool(progress, 'isFinished', 'progress'),
+        episode: _episode(progress.episode, 'progress.episode'),
+        isFinished: progress.isFinished,
         finishedEpisodeIds: finishedEpisodeIds,
       );
     } on ConnectException catch (error) {
@@ -991,22 +963,20 @@ class HttpCatalogRepository implements CatalogRepository {
     }
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(
-        _mySeriesRatingProcedure,
-        {
-          'seriesId': seriesInternalId,
-          'tenant': {'tenantId': tenantId},
-          'surface': appClientSurface,
-        },
-        tenantId: tenantId,
-        accessToken: accessToken,
+      final body = await _ratings.getMySeriesRating(
+        ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+        pb.GetMySeriesRatingRequest(
+          seriesId: seriesInternalId,
+          tenant: _tenant(tenantId),
+          surface: appClientSurface,
+        ),
       );
       // The average of no scores is 0, which is not a rating of 0: only the
       // count tells a reader who reacted to nothing from one who did.
-      if (_readInt(body, 'ratedEpisodeCount', 'response') <= 0) {
+      if (body.ratedEpisodeCount <= 0) {
         return null;
       }
-      return _readDouble(body, 'ratingAverage', 'response');
+      return _rating(body.ratingAverage, 'response.ratingAverage');
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
@@ -1023,20 +993,18 @@ class HttpCatalogRepository implements CatalogRepository {
     }
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(
-        _recentSeriesProcedure,
-        {
-          'limit': limit,
-          'tenant': {'tenantId': tenantId},
-          'surface': appClientSurface,
-          if (token.isNotEmpty) 'token': token,
-        },
-        tenantId: tenantId,
-        accessToken: accessToken,
+      final body = await _reads.listMyRecentSeries(
+        ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+        pb.ListMyRecentSeriesRequest(
+          limit: limit,
+          tenant: _tenant(tenantId),
+          surface: appClientSurface,
+          token: _pageToken(token),
+        ),
       );
       return RecentSeriesPage(
-        series: _parseRecentSeries(body['series']),
-        nextToken: _readString(body, 'nextToken', 'response'),
+        series: _parseRecentSeries(body.series),
+        nextToken: body.nextToken.trim(),
       );
     } on ConnectException catch (error) {
       throw _toFailure(error);
@@ -1054,47 +1022,33 @@ class HttpCatalogRepository implements CatalogRepository {
     }
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(
-        _episodeReadsProcedure,
-        {
-          'limit': limit,
-          'tenant': {'tenantId': tenantId},
-          'surface': appClientSurface,
-          if (token.isNotEmpty) 'token': token,
-        },
-        tenantId: tenantId,
-        accessToken: accessToken,
+      final body = await _reads.listMyEpisodeReads(
+        ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+        pb.ListMyEpisodeReadsRequest(
+          limit: limit,
+          tenant: _tenant(tenantId),
+          surface: appClientSurface,
+          token: _pageToken(token),
+        ),
       );
       return EpisodeReadPage(
-        reads: _parseEpisodeReads(body['reads']),
-        nextToken: _readString(body, 'nextToken', 'response'),
+        reads: _parseEpisodeReads(body.reads),
+        nextToken: body.nextToken.trim(),
       );
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
   }
 
-  List<EpisodeReadItem> _parseEpisodeReads(Object? raw) {
-    if (raw == null) {
-      return const [];
-    }
-    final items = _expectList(raw, 'reads')
-        .map((item) => _expectMap(item, 'reads[]'))
-        .map((json) {
-          return EpisodeReadItem(
-            series: _seriesFromJson(
-              _expectMap(json['series'], 'reads[].series'),
-              'reads[].series',
-            ),
-            episode: _episodeFromJson(
-              _expectMap(json['episode'], 'reads[].episode'),
-              'reads[].episode',
-            ),
-            readAt: DateTime.tryParse(
-              _readString(json, 'readAt', 'reads[]'),
-            )?.toLocal(),
-          );
-        })
+  List<EpisodeReadItem> _parseEpisodeReads(List<pb.MyEpisodeRead> reads) {
+    final items = reads
+        .map(
+          (read) => EpisodeReadItem(
+            series: _series(read.series, 'reads[].series'),
+            episode: _episode(read.episode, 'reads[].episode'),
+            readAt: DateTime.tryParse(read.readAt.trim())?.toLocal(),
+          ),
+        )
         .toList();
     return List<EpisodeReadItem>.unmodifiable(items);
   }
@@ -1110,67 +1064,47 @@ class HttpCatalogRepository implements CatalogRepository {
     }
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(
-        _followUpdatesProcedure,
-        {
-          'limit': limit,
-          'tenant': {'tenantId': tenantId},
-          'surface': appClientSurface,
-          if (token.isNotEmpty) 'token': token,
-        },
-        tenantId: tenantId,
-        accessToken: accessToken,
+      final body = await pb.FollowServiceApi(_client).listMyFollowUpdates(
+        ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+        pb.ListMyFollowUpdatesRequest(
+          limit: limit,
+          tenant: _tenant(tenantId),
+          surface: appClientSurface,
+          token: _pageToken(token),
+        ),
       );
       return FollowUpdatePage(
-        updates: _parseFollowUpdates(body['updates']),
-        nextToken: _readString(body, 'nextToken', 'response'),
+        updates: _parseFollowUpdates(body.updates),
+        nextToken: body.nextToken.trim(),
       );
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
   }
 
-  List<FollowUpdateItem> _parseFollowUpdates(Object? raw) {
-    if (raw == null) {
-      return const [];
-    }
-    final items = _expectList(raw, 'updates')
-        .map((item) => _expectMap(item, 'updates[]'))
-        .map((json) {
-          final episode = _expectMap(json['episode'], 'updates[].episode');
-          return FollowUpdateItem(
-            series: _seriesFromJson(
-              _expectMap(json['series'], 'updates[].series'),
-              'updates[].series',
-            ),
-            episode: _episodeFromJson(episode, 'updates[].episode'),
+  List<FollowUpdateItem> _parseFollowUpdates(List<pb.FollowUpdate> updates) {
+    final items = updates
+        .map(
+          (update) => FollowUpdateItem(
+            series: _series(update.series, 'updates[].series'),
+            episode: _episode(update.episode, 'updates[].episode'),
             publishedAt: DateTime.tryParse(
-              _readString(episode, 'publishedAt', 'updates[].episode'),
+              update.episode.publishedAt.trim(),
             )?.toLocal(),
-          );
-        })
+          ),
+        )
         .toList();
     return List<FollowUpdateItem>.unmodifiable(items);
   }
 
-  List<RecentSeriesItem> _parseRecentSeries(Object? raw) {
-    if (raw == null) {
-      return const [];
-    }
-    final items = _expectList(raw, 'series')
-        .map((item) => _expectMap(item, 'series[]'))
-        .map((json) {
-          return RecentSeriesItem(
-            series: _seriesFromJson(
-              _expectMap(json['series'], 'series[].series'),
-              'series[].series',
-            ),
-            episode: _episodeFromJson(
-              _expectMap(json['episode'], 'series[].episode'),
-              'series[].episode',
-            ),
-          );
-        })
+  List<RecentSeriesItem> _parseRecentSeries(List<pb.RecentSeries> recent) {
+    final items = recent
+        .map(
+          (item) => RecentSeriesItem(
+            series: _series(item.series, 'series[].series'),
+            episode: _episode(item.episode, 'series[].episode'),
+          ),
+        )
         .toList();
     return List<RecentSeriesItem>.unmodifiable(items);
   }
@@ -1200,256 +1134,209 @@ class HttpCatalogRepository implements CatalogRepository {
     'already_exists',
   };
 
-  List<SeriesItem> _parseSeriesList(Object? raw) {
-    // protojson omits an empty repeated field, so a missing `series` is the
-    // valid wire representation of an empty catalog.
-    if (raw == null) {
-      return const [];
-    }
-    final series = _expectList(raw, 'series');
+  /// The tenant every request names in its body as well as in its header.
+  static pb.TenantContext _tenant(String tenantId) =>
+      pb.TenantContext(tenantId: tenantId);
+
+  /// [token] is left off an empty request the way protojson leaves off a
+  /// default, which is what asks for the first page.
+  static String? _pageToken(String token) => token.isEmpty ? null : token;
+
+  /// A page of series. protojson omits an empty string, which is how the last
+  /// page arrives.
+  SeriesPage _seriesPage(List<pb.Series> series, String nextToken) {
+    return SeriesPage(
+      series: _parseSeriesList(series),
+      nextToken: nextToken.trim(),
+    );
+  }
+
+  List<SeriesItem> _parseSeriesList(List<pb.Series> series) {
     return series
-        .map((item) => _expectMap(item, 'series[]'))
-        .map((item) => _seriesFromJson(item, 'series[]'))
+        .map((item) => _series(item, 'series[]'))
         .toList(growable: false);
   }
 
-  SeriesDetail _parseSeriesDetail(Map<String, Object?> body) {
-    final rawSeries = _expectMap(body['series'], 'series');
-    final series = _seriesFromJson(rawSeries, 'series');
-    final episodes = _parseEpisodes(body['episodes']);
+  SeriesDetail _parseSeriesDetail(pb.GetSeriesDetailResponse body) {
+    final series = _series(body.series, 'series');
+    final episodes = _parseEpisodes(body.episodes);
     return SeriesDetail(
       series: series.copyWith(episodeCount: episodes.length),
       episodes: episodes,
-      waitFree: _parseWaitFreeRule(body['waitFree']),
+      // protojson omits the unset message, which is how a series without the
+      // rule arrives.
+      waitFree: body.hasWaitFree() ? _parseWaitFreeRule(body.waitFree) : null,
     );
   }
 
-  /// The series' wait-for-free rule, or `null` where protojson omitted the
-  /// unset message, which is how a series without the rule arrives.
-  WaitFreeRule? _parseWaitFreeRule(Object? raw) {
-    if (raw == null) {
-      return null;
-    }
-    const path = 'waitFree';
-    final json = _expectMap(raw, path);
-    final rawExcluded = json['excludedEpisodeIds'];
+  WaitFreeRule _parseWaitFreeRule(pb.WaitFreeRule rule) {
     return WaitFreeRule(
-      rechargeHours: _readInt(json, 'rechargeHours', path),
-      accessHours: _readInt(json, 'accessHours', path),
-      // protojson omits an empty repeated field.
-      excludedEpisodeIds: rawExcluded == null
-          ? const {}
-          : Set.unmodifiable({
-              for (final id in _expectList(
-                rawExcluded,
-                '$path.excludedEpisodeIds',
-              ))
-                if (id is String && id.isNotEmpty) id,
-            }),
+      rechargeHours: rule.rechargeHours,
+      accessHours: rule.accessHours,
+      excludedEpisodeIds: Set.unmodifiable({
+        for (final id in rule.excludedEpisodeIds)
+          if (id.isNotEmpty) id,
+      }),
     );
   }
 
-  SeriesItem _seriesFromJson(Map<String, Object?> json, String path) {
-    final rawLabel = json['label'];
-    final label = rawLabel == null ? null : _expectMap(rawLabel, '$path.label');
+  SeriesItem _series(pb.Series series, String path) {
+    // protojson omits an unset message, which is an unlabelled series and
+    // reads as a label with empty fields.
+    final label = series.label;
     return SeriesItem(
-      id: _readString(json, 'publicId', path, requiredNonEmpty: true),
-      internalId: _readString(json, 'id', path),
-      title: _readString(json, 'title', path),
-      description: _readString(json, 'synopsis', path),
-      labelId: label == null
-          ? ''
-          : _readString(label, 'publicId', '$path.label'),
-      labelName: label == null ? '' : _readString(label, 'name', '$path.label'),
-      creators: _parseCreators(json['creators'], path),
+      id: _requiredId(series.publicId, '$path.publicId'),
+      internalId: series.id.trim(),
+      title: series.title.trim(),
+      description: series.synopsis.trim(),
+      labelId: label.publicId.trim(),
+      labelName: label.name.trim(),
+      creators: _parseCreators(series.creators),
       eyeCatchVariants: _parseEyeCatchVariants(
-        json['eyeCatchImageVariants'],
+        series.eyeCatchImageVariants,
         path,
       ),
       imageRequestHeaders: config.publicImageRequestHeaders,
-      status: _parseStatus(json['status']),
-      scheduleWeekdays: _parseScheduleWeekdays(json['scheduleWeekdays'], path),
-      ageRating: _parseAgeRating(json['ageRating']),
-      genres: _parseGenres(json['genres'], path),
-      tags: _parseTags(json['tags'], path),
-      ratingAverage: _readDouble(json, 'ratingAverage', path),
-      ratingCount: _readCount(json, 'ratingCount', path),
+      status: _parseStatus(series.status),
+      scheduleWeekdays: _parseScheduleWeekdays(series.scheduleWeekdays),
+      ageRating: _parseAgeRating(series),
+      genres: _parseGenres(series.genres),
+      tags: _parseTags(series.tags),
+      ratingAverage: _rating(series.ratingAverage, '$path.ratingAverage'),
+      ratingCount: _count(series.ratingCount.toInt(), '$path.ratingCount'),
     );
   }
 
-  /// protojson writes an enum as its name and omits the zero value, which is
-  /// how an unclassified series arrives.
-  SeriesStatus? _parseStatus(Object? raw) {
-    return switch (raw) {
-      'SERIES_STATUS_ONGOING' => SeriesStatus.ongoing,
-      'SERIES_STATUS_COMPLETED' => SeriesStatus.completed,
-      'SERIES_STATUS_HIATUS' => SeriesStatus.hiatus,
+  /// The zero value, and a value this build does not know, are both a series
+  /// the tenant has not classified.
+  SeriesStatus? _parseStatus(pb.SeriesStatus status) {
+    return switch (status) {
+      pb.SeriesStatus.SERIES_STATUS_ONGOING => SeriesStatus.ongoing,
+      pb.SeriesStatus.SERIES_STATUS_COMPLETED => SeriesStatus.completed,
+      pb.SeriesStatus.SERIES_STATUS_HIATUS => SeriesStatus.hiatus,
       _ => null,
     };
   }
 
-  /// protojson writes an enum as its name and omits the zero value. A name
+  /// protojson omits the zero value, which is a series nobody rated. A rating
   /// this build does not know is [SeriesAgeRating.unknown], so a future
   /// rating cannot open as unrestricted.
-  SeriesAgeRating? _parseAgeRating(Object? raw) {
-    return switch (raw) {
-      null || 0 || 'SERIES_AGE_RATING_UNSPECIFIED' => null,
-      'SERIES_AGE_RATING_ALL' => SeriesAgeRating.all,
-      'SERIES_AGE_RATING_R15' => SeriesAgeRating.r15,
-      'SERIES_AGE_RATING_R18' => SeriesAgeRating.r18,
-      _ => SeriesAgeRating.unknown,
+  SeriesAgeRating? _parseAgeRating(pb.Series series) {
+    if (carriesUnknownEnum(series, _ageRatingField)) {
+      return SeriesAgeRating.unknown;
+    }
+    return switch (series.ageRating) {
+      pb.SeriesAgeRating.SERIES_AGE_RATING_ALL => SeriesAgeRating.all,
+      pb.SeriesAgeRating.SERIES_AGE_RATING_R15 => SeriesAgeRating.r15,
+      pb.SeriesAgeRating.SERIES_AGE_RATING_R18 => SeriesAgeRating.r18,
+      _ => null,
     };
   }
 
-  List<int> _parseScheduleWeekdays(Object? raw, String path) {
-    // protojson omits an empty repeated field, which is a series that keeps
-    // no weekly schedule.
-    if (raw == null) {
-      return const [];
-    }
-    final weekdays = _expectList(raw, '$path.scheduleWeekdays')
-        .map((item) {
-          if (item is! int) {
-            _invalidPayload('$path.scheduleWeekdays[] must be an integer');
-          }
-          return item;
-        })
-        // A number outside Sunday–Saturday is dropped rather than named: the
-        // weekday formatter would write it out as the digit it is.
-        .where((weekday) => weekday >= 0 && weekday <= 6)
-        .toList();
-    return List<int>.unmodifiable(weekdays);
+  List<int> _parseScheduleWeekdays(List<int> weekdays) {
+    // A number outside Sunday–Saturday is dropped rather than named: the
+    // weekday formatter would write it out as the digit it is.
+    return List<int>.unmodifiable(
+      weekdays.where((weekday) => weekday >= 0 && weekday <= 6),
+    );
   }
 
-  List<SeriesGenre> _parseGenres(Object? raw, String path) {
-    // protojson omits an empty repeated field, so a series in no genre
-    // arrives without the key at all.
-    if (raw == null) {
-      return const [];
-    }
-    final genrePath = '$path.genres[]';
-    final genres = _expectList(raw, '$path.genres')
-        .map((item) => _expectMap(item, genrePath))
-        .map((json) {
-          return SeriesGenre(
-            id: _readString(json, 'publicId', genrePath),
-            name: _readString(json, 'name', genrePath),
-          );
-        })
+  List<SeriesGenre> _parseGenres(List<pb.Genre> genres) {
+    final parsed = genres
+        .map(
+          (genre) =>
+              SeriesGenre(id: genre.publicId.trim(), name: genre.name.trim()),
+        )
         // A genre with no name or no public id is nothing a reader can be
         // shown, and the site drops it from the same field for the same
         // reason.
         .where((genre) => genre.id.isNotEmpty && genre.name.isNotEmpty)
         .toList();
-    return List<SeriesGenre>.unmodifiable(genres);
+    return List<SeriesGenre>.unmodifiable(parsed);
   }
 
-  List<SeriesTag> _parseTags(Object? raw, String path) {
-    // protojson omits an empty repeated field, so a series with no tag
-    // arrives without the key at all.
-    if (raw == null) {
-      return const [];
-    }
-    final tagPath = '$path.tags[]';
-    final tags = _expectList(raw, '$path.tags')
-        .map((item) => _expectMap(item, tagPath))
-        .map((json) {
-          return SeriesTag(
-            slug: _readString(json, 'slug', tagPath),
-            name: _readString(json, 'name', tagPath),
-          );
-        })
+  List<SeriesTag> _parseTags(List<pb.Tag> tags) {
+    final parsed = tags
+        .map((tag) => SeriesTag(slug: tag.slug.trim(), name: tag.name.trim()))
         // A tag without a slug leads nowhere, for the reason a genre without
         // a public id does.
         .where((tag) => tag.slug.isNotEmpty && tag.name.isNotEmpty)
         .toList();
-    return List<SeriesTag>.unmodifiable(tags);
+    return List<SeriesTag>.unmodifiable(parsed);
   }
 
-  List<SeriesCreator> _parseCreators(Object? raw, String path) {
-    // protojson omits an empty repeated field, so a series credited to nobody
-    // arrives without the key at all.
-    if (raw == null) {
-      return const [];
-    }
-    final creatorPath = '$path.creators[]';
-    final creators = _expectList(raw, '$path.creators')
-        .map((item) => _expectMap(item, creatorPath))
-        .map((json) {
-          final rawRole = json['role'];
-          return SeriesCreator(
-            id: _readString(json, 'publicId', creatorPath),
-            internalId: _readString(json, 'id', creatorPath),
-            name: _readString(json, 'name', creatorPath),
+  List<SeriesCreator> _parseCreators(List<pb.Creator> creators) {
+    final parsed = creators
+        .map(
+          (creator) => SeriesCreator(
+            id: creator.publicId.trim(),
+            internalId: creator.id.trim(),
+            name: creator.name.trim(),
             // protojson omits an unset message, which is a credit written
-            // before the tenant curated any role.
-            roleName: rawRole == null
-                ? ''
-                : _readString(
-                    _expectMap(rawRole, '$creatorPath.role'),
-                    'name',
-                    '$creatorPath.role',
-                  ).trim(),
-          );
-        })
+            // before the tenant curated any role, and names no role.
+            roleName: creator.role.name.trim(),
+          ),
+        )
         // A nameless credit is nothing a reader can be shown, and the site
         // drops it from the same field for the same reason.
         .where((creator) => creator.name.isNotEmpty)
         .toList();
-    return List<SeriesCreator>.unmodifiable(creators);
+    return List<SeriesCreator>.unmodifiable(parsed);
   }
 
-  List<EyeCatchVariant> _parseEyeCatchVariants(Object? raw, String path) {
-    // protojson omits an empty repeated field, so a series with no cover
-    // arrives without the key at all.
-    if (raw == null) {
-      return const [];
-    }
+  List<EyeCatchVariant> _parseEyeCatchVariants(
+    List<pb.SeriesEyeCatchVariant> variants,
+    String path,
+  ) {
     final variantPath = '$path.eyeCatchImageVariants[]';
-    final variants = _expectList(raw, '$path.eyeCatchImageVariants')
-        .map((item) => _expectMap(item, variantPath))
-        .map((json) {
-          return EyeCatchVariant(
-            variantType: _readString(json, 'variantType', variantPath),
-            url: config.imageUri(
-              _readString(json, 'url', variantPath, requiredNonEmpty: true),
-            ),
-            width: _readInt(json, 'width', variantPath),
-            height: _readInt(json, 'height', variantPath),
-          );
-        })
+    final parsed = variants
+        .map(
+          (variant) => EyeCatchVariant(
+            variantType: variant.variantType.trim(),
+            url: config.imageUri(_requiredId(variant.url, '$variantPath.url')),
+            width: variant.width,
+            height: variant.height,
+          ),
+        )
         .toList();
-    return List<EyeCatchVariant>.unmodifiable(variants);
+    return List<EyeCatchVariant>.unmodifiable(parsed);
   }
 
-  List<EpisodeItem> _parseEpisodes(Object? raw) {
-    if (raw == null) {
-      return const [];
-    }
-    final episodes = _expectList(raw, 'episodes')
-        .map((item) => _expectMap(item, 'episodes[]'))
-        .map((json) => _episodeFromJson(json, 'episodes[]'))
+  List<EpisodeItem> _parseEpisodes(List<pb.Episode> episodes) {
+    final parsed = episodes
+        .map((episode) => _episode(episode, 'episodes[]'))
         .toList();
-    episodes.sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
-    return List<EpisodeItem>.unmodifiable(episodes);
+    parsed.sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
+    return List<EpisodeItem>.unmodifiable(parsed);
   }
 
-  EpisodeItem _episodeFromJson(Map<String, Object?> json, String path) {
+  EpisodeItem _episode(pb.Episode episode, String path) {
     return EpisodeItem(
-      id: _readString(json, 'publicId', path, requiredNonEmpty: true),
-      internalId: _readString(json, 'id', path),
-      title: _readString(json, 'title', path),
-      orderIndex: _readInt(json, 'orderIndex', path),
-      price: _readInt(json, 'price', path),
-      purchaseSurface: EpisodePurchaseSurface.fromWire(
-        json['purchaseAvailability'],
-      ),
-      ratingCount: _readCount(json, 'ratingCount', path),
+      id: _requiredId(episode.publicId, '$path.publicId'),
+      internalId: episode.id.trim(),
+      title: episode.title.trim(),
+      orderIndex: episode.orderIndex,
+      price: episode.price,
+      purchaseSurface: _purchaseSurface(episode.purchaseAvailability),
+      ratingCount: _count(episode.ratingCount.toInt(), '$path.ratingCount'),
       // protojson omits an empty string, which is an episode no window holds.
-      freeUntil: DateTime.tryParse(
-        _readString(json, 'freeUntil', path),
-      )?.toLocal(),
+      freeUntil: DateTime.tryParse(episode.freeUntil.trim())?.toLocal(),
     );
+  }
+
+  /// The zero value, and a value this build does not know, are read as
+  /// [EpisodePurchaseSurface.all], since the server still refuses a checkout
+  /// it forbids.
+  static EpisodePurchaseSurface _purchaseSurface(
+    pb.SurfaceAvailability availability,
+  ) {
+    return switch (availability) {
+      pb.SurfaceAvailability.SURFACE_AVAILABILITY_WEB =>
+        EpisodePurchaseSurface.web,
+      pb.SurfaceAvailability.SURFACE_AVAILABILITY_APP =>
+        EpisodePurchaseSurface.app,
+      _ => EpisodePurchaseSurface.all,
+    };
   }
 
   /// Builds the reader's view of one episode.
@@ -1461,206 +1348,142 @@ class HttpCatalogRepository implements CatalogRepository {
   /// Its pages are requested with [accessToken], the session the body was
   /// granted to.
   EpisodeDetail? _parseEpisodeDetail(
-    Map<String, Object?> body,
+    pb.GetEpisodeDetailResponse body,
     String seriesPublicId,
     String accessToken,
   ) {
-    final rawSeries = _expectMap(body['series'], 'series');
-    final seriesId = _readString(
-      rawSeries,
-      'publicId',
-      'series',
-      requiredNonEmpty: true,
-    );
+    final series = body.series;
+    final seriesId = _requiredId(series.publicId, 'series.publicId');
     if (seriesId != seriesPublicId) {
       return null;
     }
-    final rawEpisode = _expectMap(body['episode'], 'episode');
+    final episode = body.episode;
     return EpisodeDetail(
-      episode: _episodeFromJson(rawEpisode, 'episode'),
+      episode: _episode(episode, 'episode'),
       seriesId: seriesId,
-      seriesInternalId: _readString(rawSeries, 'id', 'series'),
-      seriesTitle: _readString(rawSeries, 'title', 'series'),
-      access: EpisodeAccess.fromWire(body['access']),
-      images: _parseEpisodeImages(body['images'], 'images'),
-      previewImages: _parseEpisodeImages(
-        body['previewImages'],
-        'previewImages',
-      ),
+      seriesInternalId: series.id.trim(),
+      seriesTitle: series.title.trim(),
+      access: EpisodeAccess.fromWire(body.access),
+      images: _parseEpisodeImages(body.images, 'images'),
+      previewImages: _parseEpisodeImages(body.previewImages, 'previewImages'),
       entitlementSource: EpisodeEntitlementSource.fromWire(
-        body['entitlementSource'],
+        body.entitlementSource,
       ),
-      previousEpisode: _neighborFromJson(
-        body['previousEpisode'],
-        'previousEpisode',
+      previousEpisode: _neighbor(
+        body.hasPreviousEpisode(),
+        body.previousEpisode,
       ),
-      nextEpisode: _neighborFromJson(body['nextEpisode'], 'nextEpisode'),
-      nextFreeEpisode: _neighborFromJson(
-        body['nextFreeEpisode'],
-        'nextFreeEpisode',
+      nextEpisode: _neighbor(body.hasNextEpisode(), body.nextEpisode),
+      nextFreeEpisode: _neighbor(
+        body.hasNextFreeEpisode(),
+        body.nextFreeEpisode,
       ),
       imageRequestHeaders: config.imageRequestHeaders(accessToken),
       previewImageRequestHeaders: config.publicImageRequestHeaders,
-      ageRating: _parseAgeRating(rawSeries['ageRating']),
-      creators: _parseCreators(rawEpisode['creators'], 'episode'),
-      readingDirection: _parseReadingDirection(rawEpisode['readingDirection']),
+      ageRating: _parseAgeRating(series),
+      creators: _parseCreators(episode.creators),
+      readingDirection: _parseReadingDirection(episode.readingDirection),
       // protojson omits a zero, which is pairing from the first page. A
       // never-edited series answers 1, so the field is present then.
-      spreadStartIndex: _readCount(rawEpisode, 'spreadStartIndex', 'episode'),
+      spreadStartIndex: _count(
+        episode.spreadStartIndex,
+        'episode.spreadStartIndex',
+      ),
     );
   }
 
   /// One side of the episode, or `null` at that end of the series.
   ///
   /// protojson omits an unset message, which is what the server sends where
-  /// there is no episode on that side. A neighbour that names no episode is
-  /// read the same way: nothing can be opened from it.
-  EpisodeNeighbor? _neighborFromJson(Object? raw, String path) {
-    if (raw == null) {
+  /// there is no episode on that side, and [present] is then `false`. A
+  /// neighbour that names no episode is read the same way: nothing can be
+  /// opened from it.
+  EpisodeNeighbor? _neighbor(bool present, pb.EpisodeNeighbor neighbor) {
+    if (!present) {
       return null;
     }
-    final json = _expectMap(raw, path);
-    final id = _readString(json, 'publicId', path);
+    final id = neighbor.publicId.trim();
     if (id.isEmpty) {
       return null;
     }
     return EpisodeNeighbor(
       id: id,
-      title: _readString(json, 'title', path),
-      orderIndex: _readInt(json, 'orderIndex', path),
-      price: _readInt(json, 'price', path),
-      isFree: _readBool(json, 'isFree', path),
-      purchaseSurface: EpisodePurchaseSurface.fromWire(
-        json['purchaseAvailability'],
-      ),
+      title: neighbor.title.trim(),
+      orderIndex: neighbor.orderIndex,
+      price: neighbor.price,
+      isFree: neighbor.isFree,
+      purchaseSurface: _purchaseSurface(neighbor.purchaseAvailability),
     );
   }
 
-  EpisodeReaction _reactionFromJson(Map<String, Object?> json, String path) {
-    final rawScore = _readInt(json, 'score', path);
+  EpisodeReaction _reaction({
+    required int score,
+    required int ratingCount,
+    required pb.EpisodeRatingMode mode,
+    required bool readerCredited,
+  }) {
     return EpisodeReaction(
-      score: rawScore < 0 ? 0 : (rawScore > 5 ? 5 : rawScore),
-      ratingCount: _readCount(json, 'ratingCount', path),
-      allowsMultiplePresses: json['mode'] == 'EPISODE_RATING_MODE_MULTIPLE',
-      // RateEpisode never carries it: a credited reader is refused before
-      // there is a response to read.
-      readerCredited: _readBool(json, 'readerCredited', path),
+      score: score < 0 ? 0 : (score > 5 ? 5 : score),
+      ratingCount: _count(ratingCount, 'reaction.ratingCount'),
+      allowsMultiplePresses:
+          mode == pb.EpisodeRatingMode.EPISODE_RATING_MODE_MULTIPLE,
+      readerCredited: readerCredited,
     );
   }
 
-  /// protojson writes an enum as its name and omits the zero value, which is
-  /// unspecified and is read as right-to-left, the way a series nobody has
-  /// set is laid out. A name this build does not know is read the same way
-  /// rather than flipping the work.
-  ReadingDirection _parseReadingDirection(Object? raw) {
-    return switch (raw) {
-      'READING_DIRECTION_LEFT_TO_RIGHT' => ReadingDirection.ltr,
+  /// The zero value is unspecified and is read as right-to-left, the way a
+  /// series nobody has set is laid out. A value this build does not know is
+  /// read the same way rather than flipping the work.
+  ReadingDirection _parseReadingDirection(pb.ReadingDirection direction) {
+    return switch (direction) {
+      pb.ReadingDirection.READING_DIRECTION_LEFT_TO_RIGHT =>
+        ReadingDirection.ltr,
       _ => ReadingDirection.rtl,
     };
   }
 
-  List<EpisodeImageItem> _parseEpisodeImages(Object? raw, String path) {
-    if (raw == null) {
-      return const [];
-    }
+  List<EpisodeImageItem> _parseEpisodeImages(
+    List<pb.EpisodeImage> images,
+    String path,
+  ) {
     final item = '$path[]';
-    final images = _expectList(raw, path)
-        .map((value) => _expectMap(value, item))
-        .map((json) {
-          return EpisodeImageItem(
-            id: _readString(json, 'id', item, requiredNonEmpty: true),
-            url: config.imageUri(
-              _readString(json, 'imageUrl', item, requiredNonEmpty: true),
-            ),
-            displayOrder: _readInt(json, 'displayOrder', item),
-            width: _readInt(json, 'width', item),
-            height: _readInt(json, 'height', item),
-          );
-        })
+    final parsed = images
+        .map(
+          (image) => EpisodeImageItem(
+            id: _requiredId(image.id, '$item.id'),
+            url: config.imageUri(_requiredId(image.imageUrl, '$item.imageUrl')),
+            displayOrder: image.displayOrder,
+            width: image.width,
+            height: image.height,
+          ),
+        )
         .toList();
-    images.sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
-    return List<EpisodeImageItem>.unmodifiable(images);
+    parsed.sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
+    return List<EpisodeImageItem>.unmodifiable(parsed);
   }
 
-  List<Object?> _expectList(Object? value, String path) {
-    if (value is List) {
+  /// [value] trimmed, which the answer has to carry: an empty one fails the
+  /// whole read.
+  String _requiredId(String value, String path) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) {
+      _invalidPayload('$path must be a non-empty string');
+    }
+    return trimmed;
+  }
+
+  int _count(int value, String path) {
+    if (value < 0) {
+      _invalidPayload('$path must be a non-negative integer');
+    }
+    return value;
+  }
+
+  double _rating(double value, String path) {
+    if (value.isFinite && value >= 0 && value <= 5) {
       return value;
     }
-    _invalidPayload('$path must be a list');
-  }
-
-  Map<String, Object?> _expectMap(Object? value, String path) {
-    if (value is Map) {
-      return value.map((key, item) => MapEntry(key.toString(), item));
-    }
-    _invalidPayload('$path must be an object');
-  }
-
-  String _readString(
-    Map<String, Object?> json,
-    String key,
-    String path, {
-    bool requiredNonEmpty = false,
-  }) {
-    final value = json[key];
-    if (value == null && !requiredNonEmpty) {
-      return '';
-    }
-    if (value is! String || (requiredNonEmpty && value.trim().isEmpty)) {
-      final expected = requiredNonEmpty ? 'a non-empty string' : 'a string';
-      _invalidPayload('$path.$key must be $expected');
-    }
-    return value.trim();
-  }
-
-  int _readInt(Map<String, Object?> json, String key, String path) {
-    final value = json[key];
-    if (value == null) {
-      return 0;
-    }
-    if (value is int) {
-      return value;
-    }
-    _invalidPayload('$path.$key must be an integer');
-  }
-
-  int _readCount(Map<String, Object?> json, String key, String path) {
-    final value = json[key];
-    if (value == null) {
-      return 0;
-    }
-    final parsed = switch (value) {
-      int value => value,
-      String value => int.tryParse(value),
-      _ => null,
-    };
-    if (parsed == null || parsed < 0) {
-      _invalidPayload('$path.$key must be a non-negative integer');
-    }
-    return parsed;
-  }
-
-  double _readDouble(Map<String, Object?> json, String key, String path) {
-    final value = json[key];
-    if (value == null) {
-      return 0;
-    }
-    if (value is num && value.isFinite && value >= 0 && value <= 5) {
-      return value.toDouble();
-    }
-    _invalidPayload('$path.$key must be a number between 0 and 5');
-  }
-
-  bool _readBool(Map<String, Object?> json, String key, String path) {
-    final value = json[key];
-    // protojson omits a false, which is what a paid neighbour arrives as.
-    if (value == null) {
-      return false;
-    }
-    if (value is bool) {
-      return value;
-    }
-    _invalidPayload('$path.$key must be a boolean');
+    _invalidPayload('$path must be a number between 0 and 5');
   }
 
   Never _invalidPayload(String message) {

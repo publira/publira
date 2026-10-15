@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:publira/api/client_surface.dart';
 import 'package:publira/api/connect_client.dart';
+import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/catalog.pb.dart' as pb;
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/content_views/anonymous_id_store.dart';
 import 'package:publira/content_views/content_view_repository.dart';
@@ -20,7 +22,6 @@ class HttpContentViewRepository implements ContentViewRepository {
     this._now = DateTime.now,
   });
 
-  static const _procedure = '/publira.v1.ContentViewService/RecordContentView';
   static const _cookieName = 'publira_aid';
 
   final ConnectClient _client;
@@ -46,20 +47,32 @@ class HttpContentViewRepository implements ContentViewRepository {
     final anonymousId = stored != null && stored.isLiveAt(_now())
         ? stored.value
         : '';
-    final response = await _client.exchange(
-      _procedure,
-      {
-        'tenant': {'tenantId': tenantId},
-        'target': {'type': kind.wireValue, 'id': targetId},
-        'surface': appClientSurface,
-      },
+    final call = ConnectCallContext(
       tenantId: tenantId,
       headers: {
         if (anonymousId.isNotEmpty)
           HttpHeaders.cookieHeader: '$_cookieName=$anonymousId',
       },
     );
-    final minted = _mintedCookie(response.headers[HttpHeaders.setCookieHeader]);
+    await pb.ContentViewServiceApi(_client).recordContentView(
+      call,
+      pb.RecordContentViewRequest(
+        tenant: pb.TenantContext(tenantId: tenantId),
+        target: pb.ContentViewTarget(
+          type: switch (kind) {
+            ContentViewKind.series =>
+              pb.ContentViewTargetType.CONTENT_VIEW_TARGET_TYPE_SERIES,
+            ContentViewKind.episode =>
+              pb.ContentViewTargetType.CONTENT_VIEW_TARGET_TYPE_EPISODE,
+          },
+          id: targetId,
+        ),
+        surface: appClientSurface,
+      ),
+    );
+    final minted = _mintedCookie(
+      call.responseHeaders[HttpHeaders.setCookieHeader],
+    );
     if (minted == null) {
       return;
     }

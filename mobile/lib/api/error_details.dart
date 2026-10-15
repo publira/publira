@@ -63,6 +63,12 @@ const waitFreeEpisodeFreeReason = 'WAIT_FREE_EPISODE_FREE';
 /// A detail's `value` is the message in protobuf binary, base64 without
 /// padding. Only `BadRequest.field_violations` (1) and each violation's
 /// `field` (1) are read; a detail that does not decode is skipped.
+///
+/// The wire format is walked by hand because there is no generated
+/// `google.rpc` message to parse it with: those types come from googleapis,
+/// which the `proto/` module does not depend on, and `buf generate` writes
+/// only what the module declares. The fields read here are all the app needs
+/// of them.
 List<String> fieldViolationsOf(Object? details) {
   if (details is! List) {
     return const [];

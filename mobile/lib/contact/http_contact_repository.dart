@@ -1,5 +1,7 @@
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
+import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/contact.pb.dart' as pb;
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/contact/contact_failure.dart';
 import 'package:publira/contact/contact_repository.dart';
@@ -7,9 +9,6 @@ import 'package:publira/contact/contact_repository.dart';
 /// [ContactRepository] backed by `publira.v1.ContactService`.
 class HttpContactRepository implements ContactRepository {
   const HttpContactRepository({required this._client, required this._tenants});
-
-  static const _submitProcedure =
-      '/publira.v1.ContactService/SubmitContactMessage';
 
   final ConnectClient _client;
   final TenantResolver _tenants;
@@ -24,12 +23,15 @@ class HttpContactRepository implements ContactRepository {
       final tenantId = await _tenants.resolve();
       // The client attaches whatever session it holds. A token the API no
       // longer accepts sends the message as a guest's rather than refusing it.
-      await _client.unary(_submitProcedure, {
-        'tenant': {'tenantId': tenantId},
-        'replyToEmail': replyToEmail,
-        if (subject.isNotEmpty) 'subject': subject,
-        'body': body,
-      }, tenantId: tenantId);
+      await pb.ContactServiceApi(_client).submitContactMessage(
+        ConnectCallContext(tenantId: tenantId),
+        pb.SubmitContactMessageRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+          replyToEmail: replyToEmail,
+          subject: subject.isEmpty ? null : subject,
+          body: body,
+        ),
+      );
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
