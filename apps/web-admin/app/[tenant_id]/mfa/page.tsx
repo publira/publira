@@ -13,6 +13,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
+import { AdminLocaleProvider } from "#components/admin-locale-provider";
 import { Message } from "#components/message";
 import { buildLoginPath } from "#lib/admin-auth-shared";
 import { getLocale } from "#lib/locale";
@@ -68,6 +69,7 @@ const MfaPageContent = async () => {
   ) : (
     <MfaVerifyForm
       finished={finished}
+      methods={challenge.methods}
       nextPath={challenge.nextPath}
       tenantId={tenantId}
     />
@@ -86,9 +88,12 @@ const MfaPage = () => (
         </AuthScreenTagline>
       </AuthScreenHeader>
 
-      <Suspense fallback={<MfaPageFallback />}>
-        <MfaPageContent />
-      </Suspense>
+      {/* The passkey forms word what the browser refused on the client. */}
+      <AdminLocaleProvider>
+        <Suspense fallback={<MfaPageFallback />}>
+          <MfaPageContent />
+        </Suspense>
+      </AdminLocaleProvider>
     </AuthScreenMain>
 
     <AuthScreenPanel>

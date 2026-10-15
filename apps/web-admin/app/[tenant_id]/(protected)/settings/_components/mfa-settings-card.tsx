@@ -72,7 +72,7 @@ const MfaConfirmForm = ({ tenantId }: { tenantId: string }) => (
     <input name="tenant_id" type="hidden" value={tenantId} />
     <ReportMfaSettingsChange />
     <MfaEnrollmentSecret />
-    <MfaCodeField allowRecoveryCode={false} />
+    <MfaCodeField accepts="authenticator" />
     <div className="flex justify-end">
       <ActionFormSubmit>
         <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
@@ -108,7 +108,7 @@ const MfaRegenerateForm = ({ tenantId }: { tenantId: string }) => (
         </Suspense>
       </p>
     </div>
-    <MfaCodeField allowRecoveryCode={false} />
+    <MfaCodeField accepts="authenticator" />
     <div className="flex justify-end">
       <ActionFormSubmit variant="outline">
         <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
@@ -144,7 +144,7 @@ const MfaDisableForm = ({ tenantId }: { tenantId: string }) => (
         </Suspense>
       </p>
     </div>
-    <MfaCodeField allowRecoveryCode />
+    <MfaCodeField accepts="authenticator_or_recovery" />
     <div className="flex justify-end">
       <ActionFormSubmit variant="destructive">
         <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>

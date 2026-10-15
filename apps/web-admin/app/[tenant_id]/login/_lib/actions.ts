@@ -73,6 +73,7 @@ export const loginAction = async (formData: FormData): Promise<void> => {
         challengeToken: result.challengeToken,
         expiresAt: result.expiresAt.toString(),
         kind: result.challengeKind,
+        methods: result.methods,
         nextPath,
         tenantId,
       });

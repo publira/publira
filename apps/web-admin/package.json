@@ -36,6 +36,7 @@
     "@publira/ui-components": "workspace:*",
     "@publira/utils": "workspace:*",
     "@publira/web-session": "workspace:*",
+    "@simplewebauthn/browser": "catalog:",
     "lru-cache": "catalog:",
     "next": "catalog:",
     "react": "catalog:",

@@ -26,6 +26,7 @@ const challenge = () => ({
   challengeToken: "challenge-token",
   expiresAt: instantFromNow(300),
   kind: "verify" as const,
+  methods: ["totp" as const],
   nextPath: "/series",
   tenantId: TENANT_ID,
 });
@@ -86,6 +87,24 @@ describe("readMfaChallenge", () => {
     const { readMfaChallenge } = await import("./mfa-challenge");
 
     await expect(readMfaChallenge()).resolves.toBeNull();
+  });
+
+  it("reads a challenge sealed before the methods were stored as naming none", async () => {
+    const withoutMethods = {
+      challengeToken: "challenge-token",
+      expiresAt: instantFromNow(300),
+      kind: "verify",
+      nextPath: "/series",
+      tenantId: TENANT_ID,
+    };
+    mockGetCookie.mockReturnValue({ value: await sealed(withoutMethods) });
+
+    const { readMfaChallenge } = await import("./mfa-challenge");
+
+    await expect(readMfaChallenge()).resolves.toEqual({
+      ...withoutMethods,
+      methods: [],
+    });
   });
 
   it("sanitizes the return path a stored challenge carries", async () => {
@@ -166,6 +185,7 @@ describe("finishMfaChallenge", () => {
       expiresAt: stored.expiresAt,
       finished: true,
       kind: stored.kind,
+      methods: stored.methods,
       nextPath: stored.nextPath,
       tenantId: stored.tenantId,
     });

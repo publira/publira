@@ -5,16 +5,28 @@ import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 import type {
   MfaEnrollmentConfirmState,
   MfaEnrollmentStartState,
+  PasskeyCeremonyStartState,
 } from "#lib/mfa-action-state";
 
 import { MfaEnrollFlow } from "./mfa-enroll-flow";
 
-const { confirm, redirect, start } = vi.hoisted(() => ({
+const {
+  beginPasskey,
+  confirm,
+  finishPasskey,
+  redirect,
+  start,
+  startRegistration,
+} = vi.hoisted(() => ({
+  beginPasskey:
+    vi.fn<(formData: FormData) => Promise<PasskeyCeremonyStartState>>(),
   confirm:
     vi.fn<
       (
@@ -22,6 +34,8 @@ const { confirm, redirect, start } = vi.hoisted(() => ({
         formData: FormData
       ) => Promise<MfaEnrollmentConfirmState>
     >(),
+  finishPasskey:
+    vi.fn<(formData: FormData) => Promise<MfaEnrollmentConfirmState>>(),
   redirect: vi.fn<(path: string) => never>(),
   start:
     vi.fn<
@@ -30,13 +44,23 @@ const { confirm, redirect, start } = vi.hoisted(() => ({
         formData: FormData
       ) => Promise<MfaEnrollmentStartState>
     >(),
+  startRegistration: vi.fn<(options: unknown) => Promise<unknown>>(),
 }));
 
 // The Actions are `"use server"`, so the module they live in cannot be
 // evaluated here at all.
 vi.mock("../_lib/actions", () => ({
+  beginPasskeyRegistrationAction: beginPasskey,
   confirmMfaEnrollmentAction: confirm,
+  finishPasskeyRegistrationAction: finishPasskey,
   startMfaEnrollmentAction: start,
+}));
+
+// jsdom has no WebAuthn; the browser's half of the ceremony is what these
+// stand in for.
+vi.mock("@simplewebauthn/browser", () => ({
+  browserSupportsWebAuthn: () => true,
+  startRegistration,
 }));
 
 vi.mock("next/navigation", () => ({ redirect }));
@@ -69,12 +93,28 @@ vi.mock("#components/mfa-enrollment-secret", async () => {
   return { MfaEnrollmentSecret: MfaEnrollmentSecretText };
 });
 
-const confirmEnrollment = async () => {
+const renderFlow = (finished = false): ReturnType<typeof render> =>
   render(
-    <MfaEnrollFlow finished={false} nextPath="/series" tenantId="TENANT001" />
+    <MfaEnrollFlow
+      finished={finished}
+      nextPath="/series"
+      tenantId="TENANT001"
+    />,
+    {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <AdminLocaleTestProvider locale="en">
+          {children}
+        </AdminLocaleTestProvider>
+      ),
+    }
   );
 
-  fireEvent.click(screen.getByRole("button", { name: "Start setup" }));
+const confirmEnrollment = async () => {
+  renderFlow();
+
+  fireEvent.click(
+    screen.getByRole("button", { name: "Set up an authenticator app" })
+  );
   expect(await screen.findByText("JBSWY3DPEHPK3PXP")).toBeDefined();
 
   fireEvent.change(screen.getByLabelText("Verification code"), {
@@ -143,11 +183,11 @@ describe("MfaEnrollFlow", () => {
       ok: false,
     });
 
-    render(
-      <MfaEnrollFlow finished={false} nextPath="/series" tenantId="TENANT001" />
-    );
+    renderFlow();
 
-    fireEvent.click(screen.getByRole("button", { name: "Start setup" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Set up an authenticator app" })
+    );
     fireEvent.change(await screen.findByLabelText("Verification code"), {
       target: { value: "000000" },
     });
@@ -164,8 +204,70 @@ describe("MfaEnrollFlow", () => {
       throw new Error(`NEXT_REDIRECT:${path}`);
     });
 
-    expect(() =>
-      render(<MfaEnrollFlow finished nextPath="/series" tenantId="TENANT001" />)
-    ).toThrow("NEXT_REDIRECT:/series");
+    expect(() => renderFlow(true)).toThrow("NEXT_REDIRECT:/series");
+  });
+
+  it("registers a passkey instead and shows the recovery codes it came with", async () => {
+    const creationOptions = { challenge: "Y2hhbGxlbmdl", rp: { name: "Seed" } };
+    const credential = {
+      id: "credential-id",
+      response: {},
+      type: "public-key",
+    };
+    beginPasskey.mockResolvedValue({
+      message: "",
+      ok: true,
+      optionsJson: JSON.stringify(creationOptions),
+    });
+    startRegistration.mockResolvedValue(credential);
+    finishPasskey.mockResolvedValue({
+      message: "",
+      ok: true,
+      recoveryCodes: ["CCCCC-DDDDD"],
+      signedIn: true,
+    });
+
+    renderFlow();
+    fireEvent.click(screen.getByRole("button", { name: "Set up a passkey" }));
+
+    expect(await screen.findByText("CCCCC-DDDDD")).toBeDefined();
+    expect(startRegistration).toHaveBeenCalledWith({
+      optionsJSON: creationOptions,
+    });
+    expect(finishPasskey.mock.calls[0]?.[0].get("credential")).toBe(
+      JSON.stringify(credential)
+    );
+    expect(start).not.toHaveBeenCalled();
+    expect(
+      screen
+        .getByRole("link", { name: "Continue to the console" })
+        .getAttribute("href")
+    ).toBe("/series");
+  });
+
+  it("keeps both ways of enrolling when the passkey is refused", async () => {
+    beginPasskey.mockResolvedValue({
+      message: "",
+      ok: true,
+      optionsJson: "{}",
+    });
+    startRegistration.mockRejectedValue(
+      Object.assign(new Error("previously registered"), {
+        name: "InvalidStateError",
+      })
+    );
+
+    renderFlow();
+    fireEvent.click(screen.getByRole("button", { name: "Set up a passkey" }));
+
+    expect(
+      await screen.findByText(
+        "This passkey is already registered to your account."
+      )
+    ).toBeDefined();
+    expect(finishPasskey).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("button", { name: "Set up an authenticator app" })
+    ).toBeDefined();
   });
 });

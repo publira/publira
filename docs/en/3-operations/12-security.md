@@ -188,6 +188,10 @@ The value has to be at least 32 bytes, and only its first 32 bytes are used, so 
 
 Every member of a tenant's staff can protect their console account with an authenticator app and ten recovery codes, from **Account settings** in the console, as [Your account](../4-console/3-setup/8-your-account.md) describes for them.
 
+Staff can also answer two-step verification with a passkey or a security key, as [Signing in with a passkey](../4-console/3-setup/8-your-account.md#signing-in-with-a-passkey) describes. A passkey satisfies the requirement below just as an authenticator app does: a Tenant admin asked to set up two-step verification as they sign in can register a passkey instead. An account's passkeys and its authenticator share the same ten recovery codes, and a refused passkey counts toward the same lock as a wrong code.
+
+A passkey is bound to the tenant's domain when the console is served on that domain or under it, as `admin.<domain>` is, and to the console's own host otherwise. [Changing the tenant's domain](./2-tenants.md#moving-a-tenant-to-another-host-name), or moving its console host into or out of that domain, therefore leaves every passkey its staff registered unusable. Staff with an authenticator app or a recovery code sign in with that. One whose only second factor was a passkey is asked to set two-step verification up again if the requirement covers their role, and signs in on their password alone if it does not. Moving the console back makes the old passkeys usable again.
+
 You can require it of every Tenant admin on the install: tick **Require multi-factor authentication for tenant administrators** on **Security**, under **Policies** in the Platform Console, and choose **Save security policy**, or run:
 
 ```bash
@@ -198,9 +202,9 @@ publiractl policy set --mfa-required-for-tenant-admin
 
 `--mfa-required-for-tenant-admin=false` stops requiring it. The requirement is checked when a Tenant admin signs in, so it applies from each one's next sign-in rather than to sessions already open; what it does, and whom it covers, is in [Platform defaults and policies](./9-platform-policies.md#two-step-verification-for-tenant-administrators).
 
-A member of staff who has lost both the authenticator and every recovery code cannot sign in again, and the tenant's other administrators cannot remove it from their account. You can, with `publiractl tenant member reset-mfa`, as [A tenant's staff](./3-tenant-staff.md#lost-two-step-verification) describes.
+A member of staff who has lost every second factor — the authenticator and their passkeys — and every recovery code cannot sign in again, and the tenant's other administrators cannot remove two-step verification from their account. You can, with `publiractl tenant member reset-mfa`, as [A tenant's staff](./3-tenant-staff.md#lost-two-step-verification) describes.
 
-Each authenticator's secret is sealed with the encryption keys, which is why [removing an old key](#4-remove-the-old-key-only-when-nothing-uses-it) can lock staff out.
+Each authenticator's secret is sealed with the encryption keys, which is why [removing an old key](#4-remove-the-old-key-only-when-nothing-uses-it) can lock staff out. Passkeys are not: the install keeps only each passkey's public key, which proves nothing to anyone who reads it, so rotating or removing a key leaves them working.
 
 ### Platform operators
 

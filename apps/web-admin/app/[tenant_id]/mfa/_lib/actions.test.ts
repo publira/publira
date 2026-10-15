@@ -2,8 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockAssertSameOrigin,
+  mockBeginAdminPasskeyRegistration,
+  mockBeginAdminPasskeyVerification,
   mockClearMfaChallenge,
   mockConfirmAdminMfaEnrollment,
+  mockFinishAdminPasskeyRegistration,
+  mockFinishAdminPasskeyVerification,
   mockFinishMfaChallenge,
   mockReadMfaChallenge,
   mockRedirect,
@@ -13,8 +17,12 @@ const {
   mockWriteAdminSessionCookie,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
+  mockBeginAdminPasskeyRegistration: vi.fn(),
+  mockBeginAdminPasskeyVerification: vi.fn(),
   mockClearMfaChallenge: vi.fn(),
   mockConfirmAdminMfaEnrollment: vi.fn(),
+  mockFinishAdminPasskeyRegistration: vi.fn(),
+  mockFinishAdminPasskeyVerification: vi.fn(),
   mockFinishMfaChallenge: vi.fn(),
   mockReadMfaChallenge: vi.fn(),
   mockRedirect: vi.fn(),
@@ -39,7 +47,11 @@ vi.mock("#lib/action-messages", async () => {
 });
 
 vi.mock("#lib/admin-mfa", () => ({
+  beginAdminPasskeyRegistration: mockBeginAdminPasskeyRegistration,
+  beginAdminPasskeyVerification: mockBeginAdminPasskeyVerification,
   confirmAdminMfaEnrollment: mockConfirmAdminMfaEnrollment,
+  finishAdminPasskeyRegistration: mockFinishAdminPasskeyRegistration,
+  finishAdminPasskeyVerification: mockFinishAdminPasskeyVerification,
   startAdminMfaEnrollment: mockStartAdminMfaEnrollment,
   verifyAdminMfa: mockVerifyAdminMfa,
 }));
@@ -64,6 +76,7 @@ const challenge = (kind: "enroll" | "verify") => ({
   challengeToken: "challenge-token",
   expiresAt: Temporal.Now.instant().add({ seconds: 300 }).toString(),
   kind,
+  methods: kind === "verify" ? ["passkey" as const] : [],
   nextPath: "/series",
   tenantId: TENANT_ID,
 });
@@ -367,5 +380,215 @@ describe("enrollment actions", () => {
       signedIn: false,
     });
     expect(mockWriteAdminSessionCookie).not.toHaveBeenCalled();
+  });
+});
+
+const CREDENTIAL = JSON.stringify({ id: "credential-id", type: "public-key" });
+
+describe("passkey verification actions", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockReadMfaChallenge.mockResolvedValue(challenge("verify"));
+    mockRedirect.mockImplementation((path: string) => {
+      throw new Error(redirectsTo(path));
+    });
+  });
+
+  it("hands the browser the options the API began the ceremony with", async () => {
+    mockBeginAdminPasskeyVerification.mockResolvedValueOnce({
+      ok: true,
+      optionsJson: '{"challenge":"abc"}',
+    });
+
+    const { beginPasskeyVerificationAction } = await import("./actions");
+    const result = await beginPasskeyVerificationAction(
+      formData({ tenant_id: TENANT_ID })
+    );
+
+    expect(mockAssertSameOrigin).toHaveBeenCalledOnce();
+    expect(mockBeginAdminPasskeyVerification).toHaveBeenCalledWith(
+      TENANT_ID,
+      "challenge-token",
+      "en"
+    );
+    expect(result).toEqual({
+      message: "",
+      ok: true,
+      optionsJson: '{"challenge":"abc"}',
+    });
+  });
+
+  it("drops a challenge the API no longer honours before any ceremony runs", async () => {
+    mockBeginAdminPasskeyVerification.mockResolvedValueOnce({
+      challengeExpired: true,
+      message: "This sign-in has expired.",
+      ok: false,
+    });
+
+    const { beginPasskeyVerificationAction } = await import("./actions");
+    await expect(
+      beginPasskeyVerificationAction(formData({ tenant_id: TENANT_ID }))
+    ).rejects.toThrow(
+      redirectsTo("/login?next=%2Fseries&reason=session_revoked")
+    );
+
+    expect(mockClearMfaChallenge).toHaveBeenCalledOnce();
+  });
+
+  it("refuses an enroll challenge on the verify path", async () => {
+    mockReadMfaChallenge.mockResolvedValue(challenge("enroll"));
+
+    const { beginPasskeyVerificationAction } = await import("./actions");
+    await expect(
+      beginPasskeyVerificationAction(formData({ tenant_id: TENANT_ID }))
+    ).rejects.toThrow(
+      redirectsTo("/login?next=%2Fseries&reason=session_revoked")
+    );
+
+    expect(mockBeginAdminPasskeyVerification).not.toHaveBeenCalled();
+  });
+
+  it("takes the session the assertion earned and resumes the login", async () => {
+    mockFinishAdminPasskeyVerification.mockResolvedValueOnce({
+      ok: true,
+      session,
+    });
+
+    const { finishPasskeyVerificationAction } = await import("./actions");
+    await expect(
+      finishPasskeyVerificationAction(
+        formData({ credential: CREDENTIAL, tenant_id: TENANT_ID })
+      )
+    ).rejects.toThrow(redirectsTo("/series"));
+
+    expect(mockFinishAdminPasskeyVerification).toHaveBeenCalledWith(
+      TENANT_ID,
+      "challenge-token",
+      CREDENTIAL,
+      "en"
+    );
+    expect(mockWriteAdminSessionCookie).toHaveBeenCalledWith(
+      TENANT_ID,
+      session
+    );
+    expect(mockClearMfaChallenge).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a refused assertion on the form instead of ending the login", async () => {
+    mockFinishAdminPasskeyVerification.mockResolvedValueOnce({
+      challengeExpired: false,
+      message: "That passkey was not accepted.",
+      ok: false,
+    });
+
+    const { finishPasskeyVerificationAction } = await import("./actions");
+    const result = await finishPasskeyVerificationAction(
+      formData({ credential: CREDENTIAL, tenant_id: TENANT_ID })
+    );
+
+    expect(result).toEqual({
+      message: "That passkey was not accepted.",
+      ok: false,
+    });
+    expect(mockClearMfaChallenge).not.toHaveBeenCalled();
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+
+  it("refuses a submission carrying no credential without calling the API", async () => {
+    const { finishPasskeyVerificationAction } = await import("./actions");
+    const result = await finishPasskeyVerificationAction(
+      formData({ tenant_id: TENANT_ID })
+    );
+
+    expect(result).toEqual({
+      message:
+        "The passkey could not be used. Try again, or use another way to verify.",
+      ok: false,
+    });
+    expect(mockFinishAdminPasskeyVerification).not.toHaveBeenCalled();
+  });
+});
+
+describe("passkey enrollment actions", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockReadMfaChallenge.mockResolvedValue(challenge("enroll"));
+    mockRedirect.mockImplementation((path: string) => {
+      throw new Error(redirectsTo(path));
+    });
+  });
+
+  it("hands the browser the options the API began the registration with", async () => {
+    mockBeginAdminPasskeyRegistration.mockResolvedValueOnce({
+      ok: true,
+      optionsJson: '{"challenge":"abc"}',
+    });
+
+    const { beginPasskeyRegistrationAction } = await import("./actions");
+    const result = await beginPasskeyRegistrationAction(
+      formData({ tenant_id: TENANT_ID })
+    );
+
+    expect(mockBeginAdminPasskeyRegistration).toHaveBeenCalledWith(
+      TENANT_ID,
+      "challenge-token",
+      "en"
+    );
+    expect(result).toEqual({
+      message: "",
+      ok: true,
+      optionsJson: '{"challenge":"abc"}',
+    });
+  });
+
+  it("keeps the recovery codes and signs the operator in, as confirming an authenticator does", async () => {
+    mockFinishAdminPasskeyRegistration.mockResolvedValueOnce({
+      ok: true,
+      recoveryCodes: ["ABCDE-FGHJK"],
+      session,
+    });
+
+    const { finishPasskeyRegistrationAction } = await import("./actions");
+    const result = await finishPasskeyRegistrationAction(
+      formData({ credential: CREDENTIAL, tenant_id: TENANT_ID })
+    );
+
+    expect(mockFinishAdminPasskeyRegistration).toHaveBeenCalledWith(
+      TENANT_ID,
+      "challenge-token",
+      CREDENTIAL,
+      "en"
+    );
+    expect(result).toEqual({
+      message: "",
+      ok: true,
+      recoveryCodes: ["ABCDE-FGHJK"],
+      signedIn: true,
+    });
+    expect(mockFinishMfaChallenge).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "enroll" })
+    );
+    expect(mockClearMfaChallenge).not.toHaveBeenCalled();
+  });
+
+  it("keeps a refused registration on the form", async () => {
+    mockFinishAdminPasskeyRegistration.mockResolvedValueOnce({
+      challengeExpired: false,
+      message: "The passkey could not be registered. Try again.",
+      ok: false,
+    });
+
+    const { finishPasskeyRegistrationAction } = await import("./actions");
+    const result = await finishPasskeyRegistrationAction(
+      formData({ credential: CREDENTIAL, tenant_id: TENANT_ID })
+    );
+
+    expect(result).toEqual({
+      message: "The passkey could not be registered. Try again.",
+      ok: false,
+    });
+    expect(mockFinishMfaChallenge).not.toHaveBeenCalled();
   });
 });
