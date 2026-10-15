@@ -21,7 +21,7 @@ var jobGroup = commandGroup{
 		jobCommand("aggregate-rankings", "Rebuild the daily and weekly ranking snapshots for every tenant", runAggregateRankings),
 		jobCommand("purge-content-events", "Delete content_events rows past their retention window", runPurgeContentEvents),
 		jobCommand("purge-ranking-snapshots", "Delete content_ranking_snapshots rows past their retention window", runPurgeRankingSnapshots),
-		jobCommand("purge-mfa-challenges", "Delete the spent admin MFA challenges whose tokens have expired", runPurgeMfaChallenges),
+		jobCommand("purge-mfa-challenges", "Delete the spent MFA challenges and unfinished passkey ceremonies that have expired", runPurgeMfaChallenges),
 		jobCommand("purge-withdrawn-comments", "Delete the comments their authors withdrew past the retention window", runPurgeWithdrawnComments),
 		jobCommand("purge-orphan-images", "Delete the image rows and storage objects nothing references", runPurgeOrphanImages),
 		jobCommand("build-recommend-features", "Rebuild the daily user and item recommend feature snapshots", runBuildRecommendFeatures),

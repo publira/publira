@@ -596,9 +596,9 @@ Episode image previews in the admin UI also go through the browser's `<img>` / `
 
 The token only states who the administrator is; on a console host the image routes consult the tenant membership and the admin role (`tenant_admin` / `tenant_editor` / `tenant_auditor`) on every request. It does not look at the publication state or the price.
 
-## Admin MFA (TOTP)
+## Admin MFA (TOTP and passkeys)
 
-A tenant member signing in to the admin console can hold a second factor: a TOTP authenticator (RFC 6238) plus ten one-time recovery codes. `AdminAuthService` carries the whole flow — `StartMfaEnrollment` / `ConfirmMfaEnrollment` / `VerifyMfa` / `DisableMfa` / `RegenerateMfaRecoveryCodes` / `GetMfaStatus`.
+A tenant member signing in to the admin console can hold a second factor: a TOTP authenticator (RFC 6238), any number of passkeys or security keys (WebAuthn), or both, plus ten one-time recovery codes that stand in for whichever it holds. `AdminAuthService` carries the whole flow — `StartMfaEnrollment` / `ConfirmMfaEnrollment` / `VerifyMfa` / `DisableMfa` / `RegenerateMfaRecoveryCodes` / `GetMfaStatus` for the authenticator, and `BeginPasskeyRegistration` / `FinishPasskeyRegistration` / `BeginPasskeyVerification` / `FinishPasskeyVerification` / `ListPasskeys` / `RenamePasskey` / `DeletePasskey` for passkeys. `DisableMfa` takes the authenticator off and leaves passkeys alone.
 
 | Item | Value |
 | --- | --- |
@@ -606,23 +606,37 @@ A tenant member signing in to the admin console can hold a second factor: a TOTP
 | Acceptance window | The current step and one on either side |
 | Replay | A step is accepted once. `user_mfa_totp.last_verified_step` is what refuses a code that is still inside the window but was already spent, and `user_mfa_used_challenges` refuses a challenge token that already bought a session |
 | Secret at rest | Encrypted with `secretcrypto` (`PUBLIRA_SECRET_ENCRYPTION_KEYS`). `StartMfaEnrollment` is the only response the plaintext appears in |
-| Recovery codes | Ten per batch, shown once at enrollment or regeneration, stored as bcrypt hashes. Spending one leaves the row with `used_at` set |
-| Failure limit | Five refused codes lock the account for 15 minutes. The counter is per account and covers login, disabling, and regeneration alike |
-| Audit | `admin_mfa_enrolled`, `admin_mfa_verified` (success and failure), `admin_mfa_recovery_code_used`, `admin_mfa_disabled`, `admin_mfa_recovery_codes_regenerated` in `audit_logs` |
+| Recovery codes | Ten per batch, shown once at enrollment, regeneration, or the registration of a passkey on an account with no unused code, stored as bcrypt hashes. Spending one leaves the row with `used_at` set. They go when the account's last factor does |
+| Failure limit | Five refused codes or passkey assertions lock the account for 15 minutes. The counter is per account in `user_mfa_lockouts`, shared by both factors, and covers login, disabling, and regeneration alike |
+| Audit | `admin_mfa_enrolled`, `admin_mfa_verified` (success and failure, with the factor as the reason: `totp`, `recovery_code`, or `passkey`), `admin_mfa_recovery_code_used`, `admin_mfa_disabled`, `admin_mfa_recovery_codes_regenerated`, `admin_mfa_passkey_registered`, `admin_mfa_passkey_renamed`, `admin_mfa_passkey_removed` in `audit_logs` |
 
 ### The challenge that stands in for half a session
 
-`Login` does not issue an access token to an account that still owes a factor. It answers with a short-lived challenge token instead, under an audience of its own — `admin-mfa-verify` when the account has a confirmed authenticator, `admin-mfa-enroll` when it has none and the platform policy requires one. The challenge lives five minutes and carries `users.credentials_version`, so a password change ends a pending one.
+`Login` does not issue an access token to an account that still owes a factor. It answers with a short-lived challenge token instead, under an audience of its own — `admin-mfa-verify` when the account has a confirmed authenticator or a passkey, `admin-mfa-enroll` when it has neither and the platform policy requires one. A verify challenge names the factors the account holds in `methods`. The challenge lives five minutes and carries `users.credentials_version`, so a password change ends a pending one.
 
-`VerifyMfa` exchanges a verify challenge and a code for the access token. `ConfirmMfaEnrollment` does the same for an enroll challenge: it returns the recovery codes and the session in one response, which is what finishes a login that was stopped at enrollment.
+`VerifyMfa` exchanges a verify challenge and a code for the access token, and `FinishPasskeyVerification` a verify challenge and an assertion. `ConfirmMfaEnrollment` and `FinishPasskeyRegistration` do the same for an enroll challenge: each returns the recovery codes and the session in one response, which is what finishes a login that was stopped at enrollment.
 
-A challenge buys one session, claimed by its `jti` in `user_mfa_used_challenges`; `publiractl job purge-mfa-challenges` deletes those rows once their token has expired. An enroll challenge is presented twice by design, to `StartMfaEnrollment` and then to `ConfirmMfaEnrollment`, and is claimed by the confirmation in the transaction that enables the factor: a second confirmation with the same token is refused as an invalid session, even after the factor has been turned off. Two confirmations racing on one enrollment enable it once, and the one that loses is refused with `mfa is already enabled` and writes no recovery codes.
+A challenge buys one session, claimed by its `jti` in `user_mfa_used_challenges`; `publiractl job purge-mfa-challenges` deletes those rows once their token has expired, and the passkey ceremonies nobody finished along with them. An enroll challenge is presented twice by design, to `StartMfaEnrollment` and then to `ConfirmMfaEnrollment`, and is claimed by the confirmation in the transaction that enables the factor: a second confirmation with the same token is refused as an invalid session, even after the factor has been turned off. Two confirmations racing on one enrollment enable it once, and the one that loses is refused with `mfa is already enabled` and writes no recovery codes. An enroll challenge is refused as an invalid session once the account holds a confirmed authenticator or a passkey, whichever login enrolled it, so a second login's challenge cannot enroll a factor of its own past the owner's.
 
 ### Requiring the factor
 
 `mfa_required_for_tenant_admin` in the platform policy (`PlatformPolicyService` or `publiractl policy set`, off when nothing is saved) turns enrollment from something a tenant admin may do into something it must do before it gets a session. Only `tenant_admin` is covered: an editor or an auditor may enroll and is never held back for not having.
 
-Taking the factor off needs the authenticator or a recovery code. Minting a new batch of recovery codes needs the authenticator.
+Taking the authenticator off needs the authenticator or a recovery code. Removing a passkey needs the session alone, and is refused with `failed_precondition` when it is the account's last factor and the policy requires one of its role. Minting a new batch of recovery codes needs the authenticator.
+
+### Passkeys
+
+| Item | Value |
+| --- | --- |
+| Library | `github.com/go-webauthn/webauthn`, through `internal/tenantwebauthn`, which also carries the software authenticator the tests sign with (`webauthntest`) |
+| Relying party | Derived from the tenant row through `tenantorigin`, never from the request. The RP ID is the storefront's host when the console's host is that host or under it, and the console's own host otherwise; the only origin accepted is the console's. The RP name is the tenant's name |
+| Registration | User verification required, a discoverable credential preferred, no attestation requested, the account's existing credentials excluded |
+| Ceremony state | The challenge, the account, the RP ID, and the expiry, five minutes after the begin, in `user_webauthn_ceremonies`. Nothing of it is handed to the client: the finish finds the row by the challenge the response was signed over and deletes it, which spends it whatever the verification then answers. An account may have up to five ceremonies of each kind open at once, so several tabs or devices can sign in side by side; a begin past that drops the oldest |
+| Stored per credential | `user_webauthn_credentials`: the RP ID, the credential ID (unique per tenant), the COSE public key, the signature counter, the AAGUID, the transports, the backup-eligible and backed-up flags, its owner's name for it, `created_at`, `last_used_at` |
+| Counter | An assertion whose counter does not move past the stored one is refused, unless both are zero, which is what an authenticator that keeps no counter reports |
+| Errors | A refused assertion is `unauthenticated` with the reason `MFA_PASSKEY_REFUSED`; a refused registration is `invalid_argument` with the same reason. An assertion counts toward the failure limit only when it was checked against a ceremony the account had open |
+
+A passkey registered for an RP ID the console no longer derives — after the tenant's domain changes, or its console host moves into or out of that domain — is not counted as a factor and is not listed, and the account's recovery codes stay while one is stored, since moving the console back makes it a factor again.
 
 ## Platform operator MFA (TOTP)
 

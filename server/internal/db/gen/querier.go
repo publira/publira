@@ -157,6 +157,11 @@ type Querier interface {
 	CountUnreadPlatformNotificationsForUser(ctx context.Context, platformUserID uuid.UUID) (int32, error)
 	CountUnusedPlatformUserMfaRecoveryCodes(ctx context.Context, platformUserID uuid.UUID) (int64, error)
 	CountUnusedUserMfaRecoveryCodes(ctx context.Context, userID uuid.UUID) (int64, error)
+	// Every RP ID. A credential registered for an RP ID the console no longer
+	// derives is no factor now, but it becomes one again if the console moves
+	// back, and the recovery codes have to still be there when it does.
+	CountUserWebauthnCredentials(ctx context.Context, userID uuid.UUID) (int64, error)
+	CountUserWebauthnCredentialsForRPID(ctx context.Context, arg CountUserWebauthnCredentialsForRPIDParams) (int64, error)
 	// How much of one tenant's backlog the retention purge is about to take. It
 	// answers that batch's dry run, which reports the total and deletes nothing.
 	CountWithdrawnEpisodeCommentsBefore(ctx context.Context, arg CountWithdrawnEpisodeCommentsBeforeParams) (int64, error)
@@ -331,6 +336,11 @@ type Querier interface {
 	// way both times.
 	CreateUserPageConsent(ctx context.Context, arg CreateUserPageConsentParams) error
 	CreateUserPasswordResetToken(ctx context.Context, arg CreateUserPasswordResetTokenParams) (UserPasswordResetToken, error)
+	// WebAuthn credentials. Every statement is keyed by the user, and the
+	// row-level security policy confines it to the tenant the connection is scoped
+	// to. A credential answers only the relying party ID it was registered for,
+	// so every read that offers credentials to a ceremony names that RP ID too.
+	CreateUserWebauthnCredential(ctx context.Context, arg CreateUserWebauthnCredentialParams) (UserWebauthnCredential, error)
 	// The grant a spent ticket opens. It is an access_tickets row so every read
 	// that decides access sees it through episode_content_grants, and it expires
 	// by the series' access period from the same clock.
@@ -420,6 +430,11 @@ type Querier interface {
 	// Sign-out and the account switch both unregister, and both name the reader
 	// who holds the session, so a token cannot be dropped from another account.
 	DeleteUserPushDeviceForUser(ctx context.Context, arg DeleteUserPushDeviceForUserParams) (int64, error)
+	DeleteUserWebauthnCredential(ctx context.Context, id uuid.UUID) (int64, error)
+	// Every RP ID, not only the one the console derives now: a credential
+	// registered while the console was served on another host is dormant rather
+	// than gone, and moving the console back would let it sign in again.
+	DeleteUserWebauthnCredentialsByUserID(ctx context.Context, userID uuid.UUID) (int64, error)
 	// last_verified_step is left alone: the code that confirmed the enrollment
 	// was accepted through the same path a sign-in code is, which stored it.
 	//
@@ -929,14 +944,16 @@ type Querier interface {
 	GetUserIconImageByIDForTenant(ctx context.Context, arg GetUserIconImageByIDForTenantParams) (GetUserIconImageByIDForTenantRow, error)
 	GetUserIdentityByProviderSubject(ctx context.Context, arg GetUserIdentityByProviderSubjectParams) (UserIdentity, error)
 	GetUserIdentityForUser(ctx context.Context, arg GetUserIdentityForUserParams) (UserIdentity, error)
+	GetUserMfaLockout(ctx context.Context, userID uuid.UUID) (UserMfaLockout, error)
 	// Admin MFA. Every statement is keyed by user_id alone: the row-level
-	// security policies on both tables already confine them to the tenant the
+	// security policies on these tables already confine them to the tenant the
 	// connection is scoped to.
 	GetUserMfaTotpByUserID(ctx context.Context, userID uuid.UUID) (UserMfaTotp, error)
 	GetUserNotificationSettings(ctx context.Context, arg GetUserNotificationSettingsParams) (UserNotificationSetting, error)
 	GetUserPasswordResetTokenByHashForTenant(ctx context.Context, arg GetUserPasswordResetTokenByHashForTenantParams) (UserPasswordResetToken, error)
 	GetUserRecommendFeatures(ctx context.Context, arg GetUserRecommendFeaturesParams) (UserRecommendFeature, error)
 	GetUserViewerPreferences(ctx context.Context, arg GetUserViewerPreferencesParams) (UserViewerPreference, error)
+	GetUserWebauthnCredentialByPublicID(ctx context.Context, arg GetUserWebauthnCredentialByPublicIDParams) (UserWebauthnCredential, error)
 	// A published episode of a published series, both shown on the calling
 	// surface, with what UseTicket decides from. free_to_everyone reads
 	// published_free_episodes, so an episode a free window has opened needs no
@@ -2259,6 +2276,7 @@ type Querier interface {
 	// The creator columns are the ones the public list carries, so the author's
 	// comment is marked the same way before it is published as after.
 	ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc(ctx context.Context, arg ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescParams) ([]ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescRow, error)
+	ListUserWebauthnCredentialsForRPID(ctx context.Context, arg ListUserWebauthnCredentialsForRPIDParams) ([]UserWebauthnCredential, error)
 	// Every tenant, whose site starts offering browser notifications once the
 	// first subject is saved. Read as publira_platform, which bypasses RLS.
 	ListWebPushTenantIDs(ctx context.Context) ([]uuid.UUID, error)
@@ -2428,6 +2446,21 @@ type Querier interface {
 	// Candidates for the sweep: the tags of this tenant no series carries. Locked
 	// in id order so two saves sweeping at once queue up rather than deadlock.
 	LockUnusedTagsForTenant(ctx context.Context, tenantID uuid.UUID) ([]uuid.UUID, error)
+	// Serialises, for the rest of the transaction, every change to an account's
+	// second factors and to the recovery codes that stand in for them. Whether a
+	// change issues codes or deletes them depends on what else the account holds,
+	// and a concurrent change to that is invisible until it commits: a passkey
+	// registered while the last other factor is being removed would count the
+	// codes that removal is about to delete, and be left with none. No single row
+	// covers both factor tables and the codes, and the first factor has no row to
+	// lock yet, so the lock is taken on the account's identity instead.
+	LockUserMfaFactors(ctx context.Context, userID uuid.UUID) error
+	// WebAuthn ceremonies between their begin and their finish.
+	// Serialises the begins of one account's ceremonies of one kind for the rest
+	// of the transaction. StartUserWebauthnCeremony counts what is open and adds to
+	// it in one statement, and two of those running at once would each count from
+	// the same snapshot and both stay within the cap they then exceed together.
+	LockUserWebauthnCeremonies(ctx context.Context, arg LockUserWebauthnCeremoniesParams) error
 	// Inserts a read row for every announcement of the caller's tenant that lacks
 	// one.
 	MarkAllAnnouncementsAsRead(ctx context.Context, arg MarkAllAnnouncementsAsReadParams) (int64, error)
@@ -2522,6 +2555,14 @@ type Querier interface {
 	// code. Affecting no row is therefore a reused code, not a missing account.
 	MarkUserMfaTotpVerified(ctx context.Context, arg MarkUserMfaTotpVerifiedParams) (int64, error)
 	MarkUserPasswordResetTokenCompleted(ctx context.Context, id uuid.UUID) error
+	// The counter predicate is the clone check, not a repeat of one already made
+	// in Go: two assertions carrying the same counter can both pass the check
+	// against the row they read, and Postgres re-evaluates this WHERE against the
+	// row the first one committed, so the second updates nothing and its caller
+	// refuses the assertion. An authenticator that keeps no counter reports zero
+	// each time, which stays acceptable for as long as the stored counter is zero
+	// too. Affecting no row is therefore a counter that did not move forward.
+	MarkUserWebauthnCredentialUsed(ctx context.Context, arg MarkUserWebauthnCredentialUsedParams) (int64, error)
 	// Opens the reader's intent to buy an episode as a store product, or answers
 	// the one already open for the same episode and product, so asking again adds
 	// no row. The no-op update is what makes the existing row come back, with the
@@ -2697,9 +2738,10 @@ type Querier interface {
 	// repeated notification or poll leaves the instants already stored.
 	// Nothing matches when the transaction has no purchase here yet.
 	RecordStoreRefundOnPurchase(ctx context.Context, arg RecordStoreRefundOnPurchaseParams) (Purchase, error)
+	// One refused code or assertion, whichever second factor it was for.
 	// Reaching the threshold starts the lock and puts the counter back to zero,
 	// so the attempt after a lock expires is not immediately the fifth again.
-	RecordUserMfaTotpFailure(ctx context.Context, arg RecordUserMfaTotpFailureParams) (UserMfaTotp, error)
+	RecordUserMfaFailure(ctx context.Context, arg RecordUserMfaFailureParams) (UserMfaLockout, error)
 	// The same reclaim for the events whose payload holds a secret. A crash
 	// records no failure, so an event whose worker dies on every attempt would
 	// be re-queued forever and never reach the terminal update that drops the
@@ -2748,12 +2790,15 @@ type Querier interface {
 	ReleaseUnappliedDispute(ctx context.Context, arg ReleaseUnappliedDisputeParams) error
 	ReleaseUnappliedRefund(ctx context.Context, arg ReleaseUnappliedRefundParams) error
 	ReleaseUnappliedStoreRefund(ctx context.Context, arg ReleaseUnappliedStoreRefundParams) error
+	RenameUserWebauthnCredential(ctx context.Context, arg RenameUserWebauthnCredentialParams) (UserWebauthnCredential, error)
 	// Sets a held refund to the total that stays refunded once one of the refunds
 	// it counted has failed, the one place a held amount goes down. Nothing is
 	// held for the payment in the ordinary case, and nothing changes then.
 	ReplaceUnappliedRefund(ctx context.Context, arg ReplaceUnappliedRefundParams) error
 	ResetPlatformUserMfaTotpFailures(ctx context.Context, platformUserID uuid.UUID) error
-	ResetUserMfaTotpFailures(ctx context.Context, userID uuid.UUID) error
+	// A second factor that checked out clears the count, and so does starting an
+	// enrollment, so a stalled attempt never blocks the next one.
+	ResetUserMfaFailures(ctx context.Context, userID uuid.UUID) error
 	// Staff deciding one report, either way. It names 'open' as the state it moves
 	// from, so a report a second moderator decided in between returns no row and
 	// the caller answers "already decided" rather than overwriting the first
@@ -2852,6 +2897,19 @@ type Querier interface {
 	// expired nonces are dropped in the same statement, so the table holds only
 	// what can still be replayed.
 	SpendSignInNonce(ctx context.Context, arg SpendSignInNonceParams) (int64, error)
+	// The DELETE is the claim on the ceremony: two finishes presenting the same
+	// challenge both look for it, and only the one whose delete returns the row
+	// may verify against it. A ceremony is spent whatever the verification then
+	// answers, so a refused response cannot be retried against the same challenge.
+	SpendUserWebauthnCeremony(ctx context.Context, arg SpendUserWebauthnCeremonyParams) (UserWebauthnCeremony, error)
+	// Ceremonies of one account run side by side, so a second tab or device does
+	// not void the first. Beginning one drops the account's expired ceremonies of
+	// the same kind and all but the newest that, with this one, make up
+	// max_open, which bounds what a caller who keeps calling a begin can leave in
+	// the table.
+	// The caller holds LockUserWebauthnCeremonies, so the open ceremonies this
+	// counts are the ones there are.
+	StartUserWebauthnCeremony(ctx context.Context, arg StartUserWebauthnCeremonyParams) error
 	// Suspends an account and invalidates the sessions it holds. An account that
 	// is already suspended is no rows, like another tenant's. Keeping the tenant an
 	// active tenant_admin is the handler's, which checks before this runs.
@@ -3039,8 +3097,7 @@ type Querier interface {
 	UpsertTenantRoyaltyConfig(ctx context.Context, arg UpsertTenantRoyaltyConfigParams) (TenantRoyaltyConfig, error)
 	UpsertTenantSMTPConfig(ctx context.Context, arg UpsertTenantSMTPConfigParams) (TenantSmtpConfig, error)
 	UpsertTenantTheme(ctx context.Context, arg UpsertTenantThemeParams) (TenantTheme, error)
-	// Starting enrollment replaces whatever unconfirmed secret was there and
-	// clears the lock, so a stalled attempt never blocks the next one.
+	// Starting enrollment replaces whatever unconfirmed secret was there.
 	UpsertUserMfaTotpSecret(ctx context.Context, arg UpsertUserMfaTotpSecretParams) (UserMfaTotp, error)
 	UpsertUserNotificationSettings(ctx context.Context, arg UpsertUserNotificationSettingsParams) (UserNotificationSetting, error)
 	// Records the FCM registration token the reader app holds. The token is the

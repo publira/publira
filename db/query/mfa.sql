@@ -1,5 +1,5 @@
 -- Admin MFA. Every statement is keyed by user_id alone: the row-level
--- security policies on both tables already confine them to the tenant the
+-- security policies on these tables already confine them to the tenant the
 -- connection is scoped to.
 
 -- name: GetUserMfaTotpByUserID :one
@@ -8,16 +8,13 @@ FROM user_mfa_totp
 WHERE user_id = $1;
 
 -- name: UpsertUserMfaTotpSecret :one
--- Starting enrollment replaces whatever unconfirmed secret was there and
--- clears the lock, so a stalled attempt never blocks the next one.
+-- Starting enrollment replaces whatever unconfirmed secret was there.
 INSERT INTO user_mfa_totp (user_id, tenant_id, secret_encrypted)
 VALUES ($1, $2, $3)
 ON CONFLICT (user_id) DO UPDATE
 SET secret_encrypted = EXCLUDED.secret_encrypted,
     enabled_at = NULL,
     last_verified_step = NULL,
-    failed_attempts = 0,
-    locked_until = NULL,
     updated_at = now()
 RETURNING *;
 
@@ -32,8 +29,6 @@ RETURNING *;
 -- another request has already confirmed.
 UPDATE user_mfa_totp
 SET enabled_at = now(),
-    failed_attempts = 0,
-    locked_until = NULL,
     updated_at = now()
 WHERE user_id = $1
   AND enabled_at IS NULL;
@@ -46,37 +41,12 @@ WHERE user_id = $1
 -- code. Affecting no row is therefore a reused code, not a missing account.
 UPDATE user_mfa_totp
 SET last_verified_step = sqlc.arg('last_verified_step'),
-    failed_attempts = 0,
-    locked_until = NULL,
     updated_at = now()
 WHERE user_id = sqlc.arg('user_id')
     AND (
         last_verified_step IS NULL
         OR last_verified_step < sqlc.arg('last_verified_step')
     );
-
--- name: ResetUserMfaTotpFailures :exec
-UPDATE user_mfa_totp
-SET failed_attempts = 0,
-    locked_until = NULL,
-    updated_at = now()
-WHERE user_id = $1;
-
--- name: RecordUserMfaTotpFailure :one
--- Reaching the threshold starts the lock and puts the counter back to zero,
--- so the attempt after a lock expires is not immediately the fifth again.
-UPDATE user_mfa_totp
-SET failed_attempts = CASE
-        WHEN failed_attempts + 1 >= sqlc.arg('max_failed_attempts')::int THEN 0
-        ELSE failed_attempts + 1
-    END,
-    locked_until = CASE
-        WHEN failed_attempts + 1 >= sqlc.arg('max_failed_attempts')::int THEN sqlc.arg('locked_until')::timestamptz
-        ELSE locked_until
-    END,
-    updated_at = now()
-WHERE user_id = sqlc.arg('user_id')
-RETURNING *;
 
 -- name: DeleteUserMfaTotpByUserID :exec
 DELETE FROM user_mfa_totp
@@ -117,3 +87,54 @@ WHERE user_id = $1;
 INSERT INTO user_mfa_used_challenges (jti, tenant_id, user_id, expires_at)
 VALUES ($1, $2, $3, $4)
 ON CONFLICT (jti) DO NOTHING;
+
+-- name: GetUserMfaLockout :one
+SELECT *
+FROM user_mfa_lockouts
+WHERE user_id = $1;
+
+-- name: RecordUserMfaFailure :one
+-- One refused code or assertion, whichever second factor it was for.
+-- Reaching the threshold starts the lock and puts the counter back to zero,
+-- so the attempt after a lock expires is not immediately the fifth again.
+INSERT INTO user_mfa_lockouts AS l (user_id, tenant_id, failed_attempts, locked_until)
+VALUES (
+        sqlc.arg('user_id'),
+        sqlc.arg('tenant_id'),
+        CASE
+            WHEN 1 >= sqlc.arg('max_failed_attempts')::int THEN 0
+            ELSE 1
+        END,
+        CASE
+            WHEN 1 >= sqlc.arg('max_failed_attempts')::int THEN sqlc.arg('locked_until')::timestamptz
+        END
+    ) ON CONFLICT (user_id) DO UPDATE
+SET failed_attempts = CASE
+        WHEN l.failed_attempts + 1 >= sqlc.arg('max_failed_attempts')::int THEN 0
+        ELSE l.failed_attempts + 1
+    END,
+    locked_until = CASE
+        WHEN l.failed_attempts + 1 >= sqlc.arg('max_failed_attempts')::int THEN sqlc.arg('locked_until')::timestamptz
+        ELSE l.locked_until
+    END,
+    updated_at = now()
+RETURNING *;
+
+-- name: ResetUserMfaFailures :exec
+-- A second factor that checked out clears the count, and so does starting an
+-- enrollment, so a stalled attempt never blocks the next one.
+DELETE FROM user_mfa_lockouts
+WHERE user_id = $1;
+
+-- name: LockUserMfaFactors :exec
+-- Serialises, for the rest of the transaction, every change to an account's
+-- second factors and to the recovery codes that stand in for them. Whether a
+-- change issues codes or deletes them depends on what else the account holds,
+-- and a concurrent change to that is invisible until it commits: a passkey
+-- registered while the last other factor is being removed would count the
+-- codes that removal is about to delete, and be left with none. No single row
+-- covers both factor tables and the codes, and the first factor has no row to
+-- lock yet, so the lock is taken on the account's identity instead.
+SELECT pg_advisory_xact_lock(
+    hashtextextended('user_mfa_factors:' || sqlc.arg('user_id')::uuid::text, 0)
+);

@@ -38,6 +38,10 @@ func TestRunDeletesOnlyExpiredChallenges(t *testing.T) {
 		insertUsedChallenge(t, pg.DB, otherTenant.ID, otherAdmin.ID, cutoff.Add(time.Minute)),
 		insertOperatorUsedChallenge(t, pg.DB, operator.ID, cutoff),
 	}
+	// A passkey ceremony left unfinished past its expiry goes the same way,
+	// and one still open stays.
+	expiredCeremony := insertWebauthnCeremony(t, pg.DB, tenant.ID, admin.ID, cutoff.Add(-time.Minute))
+	openCeremony := insertWebauthnCeremony(t, pg.DB, otherTenant.ID, otherAdmin.ID, cutoff)
 
 	// The worker runs the purge as publira_content_stats, which reaches no
 	// other platform_ table.
@@ -48,22 +52,29 @@ func TestRunDeletesOnlyExpiredChallenges(t *testing.T) {
 	if err != nil {
 		t.Fatalf("dry run: %v", err)
 	}
-	if want := (Result{RowCount: 5, DryRun: true}); dry != want {
+	if want := (Result{RowCount: 6, DryRun: true}); dry != want {
 		t.Fatalf("dry run result = %+v, want %+v", dry, want)
 	}
-	if got := countUsedChallenges(t, pg.DB); got != 8 {
-		t.Fatalf("rows after dry run = %d, want 8", got)
+	if got := countUsedChallenges(t, pg.DB); got != 10 {
+		t.Fatalf("rows after dry run = %d, want 10", got)
 	}
 
 	// ChunkSize below the candidate count forces the loop to iterate: two
-	// chunks drain the tenant table's three rows, and two more the operator
-	// table's two, the second of which finds the end.
+	// chunks drain the tenant table's three rows, two more the operator
+	// table's two, the second of which finds the end, and one the ceremonies'
+	// single row.
 	result, err := purger.Run(context.Background(), Options{Cutoff: cutoff, ChunkSize: 2})
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	if want := (Result{RowCount: 5, ChunkCount: 4}); result != want {
+	if want := (Result{RowCount: 6, ChunkCount: 5}); result != want {
 		t.Fatalf("result = %+v, want %+v", result, want)
+	}
+	if webauthnCeremonyExists(t, pg.DB, expiredCeremony) {
+		t.Fatal("the expired passkey ceremony survived the purge")
+	}
+	if !webauthnCeremonyExists(t, pg.DB, openCeremony) {
+		t.Fatal("the open passkey ceremony was purged")
 	}
 	for _, jti := range expired {
 		if usedChallengeExists(t, pg.DB, jti) {
@@ -82,7 +93,7 @@ func TestRunDeletesOnlyExpiredChallenges(t *testing.T) {
 	if err != nil {
 		t.Fatalf("second Run: %v", err)
 	}
-	if want := (Result{ChunkCount: 2}); again != want {
+	if want := (Result{ChunkCount: 3}); again != want {
 		t.Fatalf("second result = %+v, want %+v", again, want)
 	}
 }
@@ -115,7 +126,7 @@ func TestChunkQueryHasEligibleIndex(t *testing.T) {
 		t.Fatalf("disable sequential scans: %v", err)
 	}
 	for _, table := range usedChallengeTables {
-		plan := explain(ctx, t, tx, deleteChunkSQL(table.name))
+		plan := explain(ctx, t, tx, deleteChunkSQL(table.name, table.key))
 		if !strings.Contains(plan, table.index) {
 			t.Fatalf("plan for %s does not use %s:\n%s", table.name, table.index, plan)
 		}
@@ -183,6 +194,7 @@ func countUsedChallenges(t *testing.T, db *sql.DB) int64 {
 	if err := db.QueryRowContext(ctx, `
 		SELECT (SELECT count(*) FROM user_mfa_used_challenges)
 			+ (SELECT count(*) FROM platform_user_mfa_used_challenges)
+			+ (SELECT count(*) FROM user_webauthn_ceremonies)
 	`).Scan(&count); err != nil {
 		t.Fatalf("count used challenges: %v", err)
 	}
@@ -199,6 +211,34 @@ func usedChallengeExists(t *testing.T, db *sql.DB, jti uuid.UUID) bool {
 			OR EXISTS (SELECT 1 FROM platform_user_mfa_used_challenges WHERE jti = $1)
 	`, jti).Scan(&exists); err != nil {
 		t.Fatalf("look up used challenge: %v", err)
+	}
+	return exists
+}
+
+func insertWebauthnCeremony(t *testing.T, db *sql.DB, tenantID, userID uuid.UUID, expiresAt time.Time) string {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	challenge := uuid.Must(uuid.NewV7()).String()
+	if _, err := db.ExecContext(ctx, `
+		INSERT INTO user_webauthn_ceremonies (challenge, tenant_id, user_id, ceremony, rp_id, expires_at)
+		VALUES ($1, $2, $3, 'authentication', 'mfa-purge.example.com', $4)
+	`, challenge, tenantID, userID, expiresAt); err != nil {
+		t.Fatalf("insert webauthn ceremony: %v", err)
+	}
+	return challenge
+}
+
+func webauthnCeremonyExists(t *testing.T, db *sql.DB, challenge string) bool {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var exists bool
+	if err := db.QueryRowContext(ctx, `
+		SELECT EXISTS (SELECT 1 FROM user_webauthn_ceremonies WHERE challenge = $1)
+	`, challenge).Scan(&exists); err != nil {
+		t.Fatalf("look up webauthn ceremony: %v", err)
 	}
 	return exists
 }

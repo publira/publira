@@ -407,6 +407,9 @@
         "admin_mfa_recovery_code_used": "Signed in with a recovery code",
         "admin_mfa_disabled": "Two-step verification turned off",
         "admin_mfa_recovery_codes_regenerated": "Recovery codes regenerated",
+        "admin_mfa_passkey_registered": "Passkey added",
+        "admin_mfa_passkey_renamed": "Passkey renamed",
+        "admin_mfa_passkey_removed": "Passkey removed",
         "other": "Other action"
       },
       "outcome": {

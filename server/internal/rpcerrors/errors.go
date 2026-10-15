@@ -38,6 +38,9 @@ const (
 	ReasonLastTenantAdmin = "LAST_TENANT_ADMIN"
 	ReasonMfaInvalidCode  = "MFA_INVALID_CODE"
 	ReasonMfaLocked       = "MFA_LOCKED"
+	// ReasonMfaPasskeyRefused refuses a passkey response that did not verify:
+	// a signature, an origin, or a challenge that was not the one expected.
+	ReasonMfaPasskeyRefused = "MFA_PASSKEY_REFUSED"
 	// ReasonOwnAccount refuses an administrator suspending or deleting the
 	// account they are signed in with.
 	ReasonOwnAccount = "OWN_ACCOUNT"

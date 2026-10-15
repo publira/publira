@@ -407,6 +407,9 @@
         "admin_mfa_recovery_code_used": "リカバリーコードでのログイン",
         "admin_mfa_disabled": "2段階認証の解除",
         "admin_mfa_recovery_codes_regenerated": "リカバリーコードの再発行",
+        "admin_mfa_passkey_registered": "パスキーの登録",
+        "admin_mfa_passkey_renamed": "パスキーの名前の変更",
+        "admin_mfa_passkey_removed": "パスキーの削除",
         "other": "その他の操作"
       },
       "outcome": {

@@ -99,4 +99,7 @@ export const auditActions = [
   "admin_mfa_recovery_code_used",
   "admin_mfa_disabled",
   "admin_mfa_recovery_codes_regenerated",
+  "admin_mfa_passkey_registered",
+  "admin_mfa_passkey_renamed",
+  "admin_mfa_passkey_removed",
 ] as const;

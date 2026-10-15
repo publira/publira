@@ -106,7 +106,8 @@ func (s RankingSnapshotPurge) Run(ctx context.Context, deps Deps) error {
 	return nil
 }
 
-// Run deletes the spent admin MFA challenges whose tokens have expired.
+// Run deletes the spent MFA challenges whose tokens have expired, and the
+// passkey ceremonies left unfinished past their expiry.
 //
 // The purge has no retention window of its own: a spent challenge is kept only
 // to refuse the token it names, and that token expires five minutes after

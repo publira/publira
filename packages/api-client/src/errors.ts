@@ -22,6 +22,7 @@ export const RPC_ERROR_REASON = {
   legalPageAgreementRequired: "LEGAL_PAGE_AGREEMENT_REQUIRED",
   mfaInvalidCode: "MFA_INVALID_CODE",
   mfaLocked: "MFA_LOCKED",
+  mfaPasskeyRefused: "MFA_PASSKEY_REFUSED",
   ownAccount: "OWN_ACCOUNT",
   providerAlreadyLinked: "PROVIDER_ALREADY_LINKED",
   readerCreditedOnEpisode: "READER_CREDITED_ON_EPISODE",
