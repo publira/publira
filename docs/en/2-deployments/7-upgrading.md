@@ -23,7 +23,7 @@ The notes of a release open with **Upgrade notes**, which names every change in 
 - **A process or a service the install has to run** that it did not run before.
 - **A migration that runs long or locks a busy table**, so that you can choose when to run it.
 
-Only a minor release names any of these. A patch release asks nothing beyond replacing the images, and [Releases](./8-releases.md) says what each kind of release may change and which releases receive fixes.
+Only a minor release names any of these. A patch release asks nothing beyond replacing the images, and [Releases](./9-releases.md) says what each kind of release may change and which releases receive fixes.
 
 ### Get the images of the new release
 
