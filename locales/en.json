@@ -210,6 +210,9 @@
       "subject": ".input {$role :string}\n.match $role\ntenant_editor {{{$tenant_name} editor invitation}}\ntenant_auditor {{{$tenant_name} auditor invitation}}\n* {{{$tenant_name} admin invitation}}"
     }
   },
+  "checkout": {
+    "rental_line_item": ".input {$hours :integer}\n.match $hours\none {{{$episode_title} (rental, {$hours} hour)}}\n* {{{$episode_title} (rental, {$hours} hours)}}"
+  },
   "errors": {
     "disallowed_value": "This value is not allowed. Choose another.",
     "rpc": {

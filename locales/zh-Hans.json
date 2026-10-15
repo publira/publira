@@ -210,6 +210,9 @@
       "subject": ".input {$role :string}\n.match $role\ntenant_editor {{{$tenant_name}编辑邀请}}\ntenant_auditor {{{$tenant_name}审计员邀请}}\n* {{{$tenant_name}管理员邀请}}"
     }
   },
+  "checkout": {
+    "rental_line_item": "{$episode_title}（租借，{$hours :integer}小时）"
+  },
   "errors": {
     "disallowed_value": "这个值不被允许。",
     "rpc": {

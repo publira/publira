@@ -106,6 +106,8 @@ SELECT e.id,
     e.order_index,
     el.price,
     el.reading_period_hours,
+    el.rental_price,
+    el.rental_period_hours,
     el.status,
     el.scheduled_at,
     el.published_at,
@@ -146,6 +148,8 @@ type GetEpisodeByIDForTenantRow struct {
 	OrderIndex                   int32          `json:"order_index"`
 	Price                        int32          `json:"price"`
 	ReadingPeriodHours           sql.NullInt32  `json:"reading_period_hours"`
+	RentalPrice                  sql.NullInt32  `json:"rental_price"`
+	RentalPeriodHours            sql.NullInt32  `json:"rental_period_hours"`
 	Status                       string         `json:"status"`
 	ScheduledAt                  sql.NullTime   `json:"scheduled_at"`
 	PublishedAt                  sql.NullTime   `json:"published_at"`
@@ -169,6 +173,8 @@ func (q *Queries) GetEpisodeByIDForTenant(ctx context.Context, arg GetEpisodeByI
 		&i.OrderIndex,
 		&i.Price,
 		&i.ReadingPeriodHours,
+		&i.RentalPrice,
+		&i.RentalPeriodHours,
 		&i.Status,
 		&i.ScheduledAt,
 		&i.PublishedAt,
@@ -191,6 +197,8 @@ SELECT e.id,
     e.order_index,
     el.price,
     el.reading_period_hours,
+    el.rental_price,
+    el.rental_period_hours,
     el.status,
     el.scheduled_at,
     el.published_at,
@@ -231,6 +239,8 @@ type GetEpisodeByPublicIDForTenantRow struct {
 	OrderIndex                   int32          `json:"order_index"`
 	Price                        int32          `json:"price"`
 	ReadingPeriodHours           sql.NullInt32  `json:"reading_period_hours"`
+	RentalPrice                  sql.NullInt32  `json:"rental_price"`
+	RentalPeriodHours            sql.NullInt32  `json:"rental_period_hours"`
 	Status                       string         `json:"status"`
 	ScheduledAt                  sql.NullTime   `json:"scheduled_at"`
 	PublishedAt                  sql.NullTime   `json:"published_at"`
@@ -254,6 +264,8 @@ func (q *Queries) GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpis
 		&i.OrderIndex,
 		&i.Price,
 		&i.ReadingPeriodHours,
+		&i.RentalPrice,
+		&i.RentalPeriodHours,
 		&i.Status,
 		&i.ScheduledAt,
 		&i.PublishedAt,
@@ -276,6 +288,8 @@ SELECT e.id,
     e.order_index,
     el.price,
     el.reading_period_hours,
+    el.rental_price,
+    el.rental_period_hours,
     el.status,
     el.scheduled_at,
     el.published_at,
@@ -312,6 +326,8 @@ type GetEpisodeByPublicIDForTenantAndSeriesRow struct {
 	OrderIndex                   int32          `json:"order_index"`
 	Price                        int32          `json:"price"`
 	ReadingPeriodHours           sql.NullInt32  `json:"reading_period_hours"`
+	RentalPrice                  sql.NullInt32  `json:"rental_price"`
+	RentalPeriodHours            sql.NullInt32  `json:"rental_period_hours"`
 	Status                       string         `json:"status"`
 	ScheduledAt                  sql.NullTime   `json:"scheduled_at"`
 	PublishedAt                  sql.NullTime   `json:"published_at"`
@@ -334,6 +350,8 @@ func (q *Queries) GetEpisodeByPublicIDForTenantAndSeries(ctx context.Context, ar
 		&i.OrderIndex,
 		&i.Price,
 		&i.ReadingPeriodHours,
+		&i.RentalPrice,
+		&i.RentalPeriodHours,
 		&i.Status,
 		&i.ScheduledAt,
 		&i.PublishedAt,
@@ -479,6 +497,8 @@ SELECT e.id,
     e.series_id,
     el.price,
     el.reading_period_hours,
+    el.rental_price,
+    el.rental_period_hours,
     el.status,
     el.scheduled_at,
     el.published_at,
@@ -564,6 +584,8 @@ type GetPublishedEpisodeForTenantRow struct {
 	SeriesID                     uuid.UUID      `json:"series_id"`
 	Price                        int32          `json:"price"`
 	ReadingPeriodHours           sql.NullInt32  `json:"reading_period_hours"`
+	RentalPrice                  sql.NullInt32  `json:"rental_price"`
+	RentalPeriodHours            sql.NullInt32  `json:"rental_period_hours"`
 	Status                       string         `json:"status"`
 	ScheduledAt                  sql.NullTime   `json:"scheduled_at"`
 	PublishedAt                  sql.NullTime   `json:"published_at"`
@@ -604,6 +626,8 @@ func (q *Queries) GetPublishedEpisodeForTenant(ctx context.Context, arg GetPubli
 		&i.SeriesID,
 		&i.Price,
 		&i.ReadingPeriodHours,
+		&i.RentalPrice,
+		&i.RentalPeriodHours,
 		&i.Status,
 		&i.ScheduledAt,
 		&i.PublishedAt,
@@ -653,6 +677,8 @@ SELECT e.id,
     e.order_index,
     el.price,
     el.reading_period_hours,
+    el.rental_price,
+    el.rental_period_hours,
     el.status,
     el.scheduled_at,
     el.published_at,
@@ -679,6 +705,8 @@ type ListEpisodesBySeriesForTenantRow struct {
 	OrderIndex         int32          `json:"order_index"`
 	Price              int32          `json:"price"`
 	ReadingPeriodHours sql.NullInt32  `json:"reading_period_hours"`
+	RentalPrice        sql.NullInt32  `json:"rental_price"`
+	RentalPeriodHours  sql.NullInt32  `json:"rental_period_hours"`
 	Status             string         `json:"status"`
 	ScheduledAt        sql.NullTime   `json:"scheduled_at"`
 	PublishedAt        sql.NullTime   `json:"published_at"`
@@ -706,6 +734,8 @@ func (q *Queries) ListEpisodesBySeriesForTenant(ctx context.Context, arg ListEpi
 			&i.OrderIndex,
 			&i.Price,
 			&i.ReadingPeriodHours,
+			&i.RentalPrice,
+			&i.RentalPeriodHours,
 			&i.Status,
 			&i.ScheduledAt,
 			&i.PublishedAt,
@@ -731,6 +761,8 @@ SELECT e.id,
     e.order_index,
     el.price,
     el.reading_period_hours,
+    el.rental_price,
+    el.rental_period_hours,
     el.status,
     el.scheduled_at,
     el.published_at,
@@ -774,6 +806,8 @@ type ListEpisodesBySeriesForTenantAscRow struct {
 	OrderIndex         int32          `json:"order_index"`
 	Price              int32          `json:"price"`
 	ReadingPeriodHours sql.NullInt32  `json:"reading_period_hours"`
+	RentalPrice        sql.NullInt32  `json:"rental_price"`
+	RentalPeriodHours  sql.NullInt32  `json:"rental_period_hours"`
 	Status             string         `json:"status"`
 	ScheduledAt        sql.NullTime   `json:"scheduled_at"`
 	PublishedAt        sql.NullTime   `json:"published_at"`
@@ -808,6 +842,8 @@ func (q *Queries) ListEpisodesBySeriesForTenantAsc(ctx context.Context, arg List
 			&i.OrderIndex,
 			&i.Price,
 			&i.ReadingPeriodHours,
+			&i.RentalPrice,
+			&i.RentalPeriodHours,
 			&i.Status,
 			&i.ScheduledAt,
 			&i.PublishedAt,
@@ -833,6 +869,8 @@ SELECT e.id,
     e.order_index,
     el.price,
     el.reading_period_hours,
+    el.rental_price,
+    el.rental_period_hours,
     el.status,
     el.scheduled_at,
     el.published_at,
@@ -876,6 +914,8 @@ type ListEpisodesBySeriesForTenantDescRow struct {
 	OrderIndex         int32          `json:"order_index"`
 	Price              int32          `json:"price"`
 	ReadingPeriodHours sql.NullInt32  `json:"reading_period_hours"`
+	RentalPrice        sql.NullInt32  `json:"rental_price"`
+	RentalPeriodHours  sql.NullInt32  `json:"rental_period_hours"`
 	Status             string         `json:"status"`
 	ScheduledAt        sql.NullTime   `json:"scheduled_at"`
 	PublishedAt        sql.NullTime   `json:"published_at"`
@@ -905,6 +945,8 @@ func (q *Queries) ListEpisodesBySeriesForTenantDesc(ctx context.Context, arg Lis
 			&i.OrderIndex,
 			&i.Price,
 			&i.ReadingPeriodHours,
+			&i.RentalPrice,
+			&i.RentalPeriodHours,
 			&i.Status,
 			&i.ScheduledAt,
 			&i.PublishedAt,
@@ -1710,23 +1752,30 @@ func (q *Queries) UpdateEpisodeOrderIndexByIDForTenantAndSeries(ctx context.Cont
 const UpdateEpisodePricingByIDForTenant = `-- name: UpdateEpisodePricingByIDForTenant :execrows
 UPDATE episode_listings
 SET price = $1,
-    reading_period_hours = $2
-WHERE tenant_id = $3
-    AND episode_id = $4
+    reading_period_hours = $2,
+    rental_price = $3,
+    rental_period_hours = $4
+WHERE tenant_id = $5
+    AND episode_id = $6
 `
 
 type UpdateEpisodePricingByIDForTenantParams struct {
 	Price              int32         `json:"price"`
 	ReadingPeriodHours sql.NullInt32 `json:"reading_period_hours"`
+	RentalPrice        sql.NullInt32 `json:"rental_price"`
+	RentalPeriodHours  sql.NullInt32 `json:"rental_period_hours"`
 	TenantID           uuid.UUID     `json:"tenant_id"`
 	EpisodeID          uuid.UUID     `json:"episode_id"`
 }
 
-// NULL gives a purchase of the episode no expiry.
+// A NULL reading period gives the permanent copy no expiry, and a NULL rental
+// stops renting the episode.
 func (q *Queries) UpdateEpisodePricingByIDForTenant(ctx context.Context, arg UpdateEpisodePricingByIDForTenantParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, UpdateEpisodePricingByIDForTenant,
 		arg.Price,
 		arg.ReadingPeriodHours,
+		arg.RentalPrice,
+		arg.RentalPeriodHours,
 		arg.TenantID,
 		arg.EpisodeID,
 	)
@@ -1760,25 +1809,41 @@ INSERT INTO episode_listings (
         episode_id,
         price,
         reading_period_hours,
+        rental_price,
+        rental_period_hours,
         status,
         scheduled_at,
         published_at,
         tenant_id
     )
-VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (episode_id) DO
+VALUES (
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        $8,
+        $9
+    ) ON CONFLICT (episode_id) DO
 UPDATE
 SET price = EXCLUDED.price,
     reading_period_hours = EXCLUDED.reading_period_hours,
+    rental_price = EXCLUDED.rental_price,
+    rental_period_hours = EXCLUDED.rental_period_hours,
     status = EXCLUDED.status,
     scheduled_at = EXCLUDED.scheduled_at,
     published_at = EXCLUDED.published_at
-RETURNING episode_id, price, reading_period_hours, status, scheduled_at, published_at, tenant_id, announcement_owed
+RETURNING episode_id, price, reading_period_hours, status, scheduled_at, published_at, tenant_id, announcement_owed, rental_price, rental_period_hours
 `
 
 type UpsertEpisodeListingParams struct {
 	EpisodeID          uuid.UUID     `json:"episode_id"`
 	Price              int32         `json:"price"`
 	ReadingPeriodHours sql.NullInt32 `json:"reading_period_hours"`
+	RentalPrice        sql.NullInt32 `json:"rental_price"`
+	RentalPeriodHours  sql.NullInt32 `json:"rental_period_hours"`
 	Status             string        `json:"status"`
 	ScheduledAt        sql.NullTime  `json:"scheduled_at"`
 	PublishedAt        sql.NullTime  `json:"published_at"`
@@ -1790,6 +1855,8 @@ func (q *Queries) UpsertEpisodeListing(ctx context.Context, arg UpsertEpisodeLis
 		arg.EpisodeID,
 		arg.Price,
 		arg.ReadingPeriodHours,
+		arg.RentalPrice,
+		arg.RentalPeriodHours,
 		arg.Status,
 		arg.ScheduledAt,
 		arg.PublishedAt,
@@ -1805,6 +1872,8 @@ func (q *Queries) UpsertEpisodeListing(ctx context.Context, arg UpsertEpisodeLis
 		&i.PublishedAt,
 		&i.TenantID,
 		&i.AnnouncementOwed,
+		&i.RentalPrice,
+		&i.RentalPeriodHours,
 	)
 	return i, err
 }

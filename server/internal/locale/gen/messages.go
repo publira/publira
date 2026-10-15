@@ -2,9 +2,16 @@
 
 package gen
 
-// Messages is the MessageFormat 2 source of every message in the `email`
-// namespace, keyed by the message key and then by locale code.
+// Messages is the MessageFormat 2 source of every message in the `email` and `checkout`
+// namespaces, keyed by the message key and then by locale code.
 var Messages = map[string]map[string]string{
+	"checkout.rental_line_item": {
+		"ja":      "{$episode_title}（レンタル・{$hours :integer}時間）",
+		"en":      ".input {$hours :integer}\n.match $hours\none {{{$episode_title} (rental, {$hours} hour)}}\n* {{{$episode_title} (rental, {$hours} hours)}}",
+		"ko":      "{$episode_title} (대여, {$hours :integer}시간)",
+		"zh-Hans": "{$episode_title}（租借，{$hours :integer}小时）",
+		"zh-Hant": "{$episode_title}（租借，{$hours :integer}小時）",
+	},
 	"email.admin_console_email_change_confirmation.action": {
 		"ja":      "メールアドレス変更を確認する",
 		"en":      "Confirm email address change",

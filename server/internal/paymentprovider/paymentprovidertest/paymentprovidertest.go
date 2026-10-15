@@ -119,6 +119,7 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 			TenantID:           uuid.New(),
 			ReaderID:           uuid.New(),
 			EpisodeID:          uuid.New(),
+			Kind:               paymentprovider.KindPurchase,
 			Price:              500,
 			Currency:           currency,
 			ReadingPeriodHours: 72,
@@ -143,6 +144,44 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 		}
 		if completed.Test {
 			t.Fatal("a live-mode checkout is reported as a test")
+		}
+	})
+
+	t.Run("a rental checkout names its kind", func(t *testing.T) {
+		rental := checkout
+		rental.CheckoutID = "checkout_contract_rental"
+		rental.Purchase.Kind = paymentprovider.KindRental
+		rental.Purchase.Price = 200
+		rental.Purchase.ReadingPeriodHours = 48
+		payload, headers := fixture.CheckoutCompleted(t, credentials, rental)
+		event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
+		if err != nil {
+			t.Fatalf("ParseNotification: %v", err)
+		}
+		completed, ok := event.(paymentprovider.PurchaseCompleted)
+		if !ok {
+			t.Fatalf("event = %T, want PurchaseCompleted", event)
+		}
+		if completed.Purchase != rental.Purchase {
+			t.Fatalf("purchase = %+v, want %+v", completed.Purchase, rental.Purchase)
+		}
+	})
+
+	t.Run("a checkout that names no kind sold the permanent copy", func(t *testing.T) {
+		unnamed := checkout
+		unnamed.CheckoutID = "checkout_contract_unnamed"
+		unnamed.Purchase.Kind = ""
+		payload, headers := fixture.CheckoutCompleted(t, credentials, unnamed)
+		event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
+		if err != nil {
+			t.Fatalf("ParseNotification: %v", err)
+		}
+		completed, ok := event.(paymentprovider.PurchaseCompleted)
+		if !ok {
+			t.Fatalf("event = %T, want PurchaseCompleted", event)
+		}
+		if completed.Purchase.Kind != paymentprovider.KindPurchase {
+			t.Fatalf("kind = %q, want %q", completed.Purchase.Kind, paymentprovider.KindPurchase)
 		}
 	})
 

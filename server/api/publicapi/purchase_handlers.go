@@ -25,6 +25,7 @@ import (
 	"github.com/publira/publira/server/internal/paymentsettings"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
+	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/tenantorigin"
 )
@@ -59,6 +60,10 @@ func (s *apiServer) StartEpisodeCheckout(
 	surface, err := checkoutSurface(req.Client)
 	if err != nil {
 		return nil, err
+	}
+	kind, err := protomapper.PurchaseKindFromRequest(req.Kind)
+	if err != nil {
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "kind")
 	}
 
 	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
@@ -103,6 +108,13 @@ func (s *apiServer) StartEpisodeCheckout(
 	if episode.Price <= 0 {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, "free episodes do not require checkout")
 	}
+	price, readingPeriodHours := episode.Price, episode.ReadingPeriodHours.Int32
+	if kind == paymentprovider.KindRental {
+		if !episode.RentalPrice.Valid || !episode.RentalPeriodHours.Valid {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, "episode is not rented")
+		}
+		price, readingPeriodHours = episode.RentalPrice.Int32, episode.RentalPeriodHours.Int32
+	}
 	soldHere, err := protomapper.PurchasableOn(episode.PurchaseAvailability, surface)
 	if err != nil {
 		return nil, s.internalError(ctx, "episode holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
@@ -114,7 +126,7 @@ func (s *apiServer) StartEpisodeCheckout(
 		return nil, err
 	}
 
-	hasPurchase, err := s.queriesFor(ctx).UserHasValidPurchaseForEpisode(ctx, dbmodels.UserHasValidPurchaseForEpisodeParams{
+	held, err := s.queriesFor(ctx).GetActiveEpisodePurchaseKinds(ctx, dbmodels.GetActiveEpisodePurchaseKindsParams{
 		TenantID:  tenant.ID,
 		UserID:    user.ID,
 		EpisodeID: episode.ID,
@@ -122,10 +134,26 @@ func (s *apiServer) StartEpisodeCheckout(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to check purchase status", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
-	if hasPurchase {
+	// A reader who holds the permanent copy has nothing left to buy, while
+	// one who holds a rental may still buy the permanent copy.
+	if held.HoldsPurchase {
 		return nil, connect.NewError(connect.CodeAlreadyExists, "episode is already purchased")
 	}
+	if kind == paymentprovider.KindRental && held.HoldsRental {
+		return nil, connect.NewError(connect.CodeAlreadyExists, "episode is already rented")
+	}
 
+	lineItemName := episode.Title
+	if kind == paymentprovider.KindRental {
+		code, err := locale.Resolve(readerLocale)
+		if err != nil {
+			return nil, s.internalError(ctx, "reader locale is not a supported locale", err, "tenant_id", tenant.ID.String())
+		}
+		lineItemName, err = rentalLineItemName(code, episode.Title, readingPeriodHours)
+		if err != nil {
+			return nil, s.internalError(ctx, "failed to name the rental line item", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
+		}
+	}
 	successURL := purchaseReturnURL(origin, episode.SeriesPublicID, episode.PublicID, "success")
 	cancelURL := purchaseReturnURL(origin, episode.SeriesPublicID, episode.PublicID, "cancelled")
 	if req.Client == publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE {
@@ -141,11 +169,12 @@ func (s *apiServer) StartEpisodeCheckout(
 			TenantID:           tenant.ID,
 			ReaderID:           user.ID,
 			EpisodeID:          episode.ID,
-			Price:              episode.Price,
+			Kind:               kind,
+			Price:              price,
 			Currency:           config.Currency,
-			ReadingPeriodHours: episode.ReadingPeriodHours.Int32,
+			ReadingPeriodHours: readingPeriodHours,
 		},
-		EpisodeTitle: episode.Title,
+		LineItemName: lineItemName,
 		SuccessURL:   successURL,
 		CancelURL:    cancelURL,
 	}
@@ -167,6 +196,18 @@ func (s *apiServer) StartEpisodeCheckout(
 		return nil, connect.NewError(connect.CodeUnavailable, "failed to start checkout")
 	}
 	return &publirav1.StartEpisodeCheckoutResponse{CheckoutUrl: checkoutURL}, nil
+}
+
+// rentalLineItemName is what the checkout of a rental calls the sale: the
+// episode's title with the period it is rented for, so the payment page says
+// which of the two sales the reader is paying for where the permanent copy's
+// says the title alone. It is written in the reader's locale, the language
+// the title is given in.
+func rentalLineItemName(code, episodeTitle string, rentalPeriodHours int32) (string, error) {
+	return locale.Message(code, "checkout.rental_line_item", map[string]any{
+		"episode_title": episodeTitle,
+		"hours":         int(rentalPeriodHours),
+	})
 }
 
 // checkoutIdempotencyKey names one reader's checkout of one episode by
@@ -232,6 +273,7 @@ func (s *apiServer) appPurchaseRoute(ctx context.Context, tenantID uuid.UUID) (s
 
 type purchasePageRow struct {
 	id                uuid.UUID
+	kind              string
 	priceAtPurchase   int32
 	currency          string
 	expiresAt         sql.NullTime
@@ -253,6 +295,7 @@ func mapPurchaseDescRows(rows []dbmodels.ListMyPurchasesDescRow) []purchasePageR
 	for _, row := range rows {
 		mapped = append(mapped, purchasePageRow{
 			id:                row.ID,
+			kind:              row.Kind,
 			priceAtPurchase:   row.PriceAtPurchase,
 			currency:          row.Currency,
 			expiresAt:         row.ExpiresAt,
@@ -277,6 +320,7 @@ func mapPurchaseAscRows(rows []dbmodels.ListMyPurchasesAscRow) []purchasePageRow
 	for _, row := range rows {
 		mapped = append(mapped, purchasePageRow{
 			id:                row.ID,
+			kind:              row.Kind,
 			priceAtPurchase:   row.PriceAtPurchase,
 			currency:          row.Currency,
 			expiresAt:         row.ExpiresAt,
@@ -331,7 +375,11 @@ func (s *apiServer) purchasePage(
 	return mapPurchaseDescRows(rows), nil
 }
 
-func purchaseItemFromRow(row purchasePageRow, now time.Time) *publirav1.MyPurchase {
+func purchaseItemFromRow(row purchasePageRow, now time.Time) (*publirav1.MyPurchase, error) {
+	kind, err := protomapper.PurchaseKindFromStored(row.kind)
+	if err != nil {
+		return nil, err
+	}
 	expiresAt := ""
 	// A revoked purchase opens nothing, so the library must not offer it as
 	// one the reader can still open.
@@ -360,6 +408,7 @@ func purchaseItemFromRow(row purchasePageRow, now time.Time) *publirav1.MyPurcha
 		Currency:        row.currency,
 		ExpiresAt:       expiresAt,
 		IsActive:        isActive,
+		Kind:            kind,
 		PriceAtPurchase: row.priceAtPurchase,
 		PurchasedAt:     row.purchasedAt.UTC().Format(time.RFC3339),
 		RefundedAmount:  row.refundedAmount.Int32,
@@ -370,7 +419,7 @@ func purchaseItemFromRow(row purchasePageRow, now time.Time) *publirav1.MyPurcha
 			PublicId: row.seriesPublicID,
 			Title:    row.seriesTitle,
 		},
-	}
+	}, nil
 }
 
 func (s *apiServer) ListMyPurchases(
@@ -412,7 +461,11 @@ func (s *apiServer) ListMyPurchases(
 	now := time.Now()
 	items := make([]*publirav1.MyPurchase, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, purchaseItemFromRow(row, now))
+		item, err := purchaseItemFromRow(row, now)
+		if err != nil {
+			return nil, s.internalError(ctx, "purchase holds a kind this build does not know", err, "tenant_id", tenant.ID.String(), "purchase_id", row.id.String())
+		}
+		items = append(items, item)
 	}
 
 	res := &publirav1.ListMyPurchasesResponse{Purchases: items}
@@ -822,6 +875,7 @@ func (s *apiServer) createPurchase(
 		TenantID:           tenantID,
 		UserID:             purchase.ReaderID,
 		EpisodeID:          purchase.EpisodeID,
+		Kind:               string(purchase.Kind),
 		PriceAtPurchase:    purchase.Price,
 		ExpiresAt:          expiresAt,
 		Provider:           providerID,

@@ -34,13 +34,13 @@ func wantEpisodePublicationRevalidateTags(tenantID uuid.UUID) []string {
 	}
 }
 
-var getEpisodeByIDColumns = []string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability", "series_id"}
+var getEpisodeByIDColumns = []string{"id", "public_id", "title", "order_index", "price", "reading_period_hours", "rental_price", "rental_period_hours", "status", "scheduled_at", "published_at", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "availability", "purchase_availability", "resolved_purchase_availability", "series_id"}
 
 func expectPublishedEpisodeLookup(mock sqlmock.Sqlmock, tenantID uuid.UUID, availability any) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByIDForTenant)).
 		WithArgs(tenantID, testEpisodeID).
 		WillReturnRows(sqlmock.NewRows(getEpisodeByIDColumns).
-			AddRow(testEpisodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), "published", nil, time.Now().UTC(), nil, nil, nil, nil, availability, nil, "all", testSeriesID))
+			AddRow(testEpisodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), nil, nil, "published", nil, time.Now().UTC(), nil, nil, nil, nil, availability, nil, "all", testSeriesID))
 }
 
 // expectEpisodeLock expects the lookup that finds testEpisodeID and locks it.
@@ -260,7 +260,7 @@ func TestUpdateEpisodePublishScheduleRevalidatesTheSeriesDetailAndLists(t *testi
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByIDForTenant)).
 		WithArgs(tenantID, testEpisodeID).
 		WillReturnRows(sqlmock.NewRows(getEpisodeByIDColumns).
-			AddRow(testEpisodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), "scheduled", scheduledAt, nil, nil, nil, nil, nil, nil, nil, "all", testSeriesID))
+			AddRow(testEpisodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), nil, nil, "scheduled", scheduledAt, nil, nil, nil, nil, nil, nil, nil, "all", testSeriesID))
 	expectCatalogIndexSync(mock, tenantID, "series", testSeriesID)
 	expectRevalidationRecord(mock, tenantID)
 	mock.ExpectCommit()
@@ -384,7 +384,7 @@ func TestUpdateEpisodePricingRevalidatesTheSeriesDetailAndLists(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateEpisodePricingByIDForTenant)).
-		WithArgs(int32(500), sql.NullInt32{Int32: 48, Valid: true}, tenantID, testEpisodeID).
+		WithArgs(int32(500), sql.NullInt32{Int32: 48, Valid: true}, sql.NullInt32{}, sql.NullInt32{}, tenantID, testEpisodeID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	expectPublishedEpisodeLookup(mock, tenantID, nil)
 	expectCatalogIndexSync(mock, tenantID, "series", testSeriesID)
@@ -407,6 +407,84 @@ func TestUpdateEpisodePricingRevalidatesTheSeriesDetailAndLists(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
+// The rental is written with the permanent copy's terms, and comes back on
+// the episode the call answers with.
+func TestUpdateEpisodePricingWritesTheRental(t *testing.T) {
+	revalidations := newRevalidateRecorder(t)
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
+
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateEpisodePricingByIDForTenant)).
+		WithArgs(int32(500), sql.NullInt32{}, sql.NullInt32{Int32: 200, Valid: true}, sql.NullInt32{Int32: 48, Valid: true}, tenantID, testEpisodeID).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByIDForTenant)).
+		WithArgs(tenantID, testEpisodeID).
+		WillReturnRows(sqlmock.NewRows(getEpisodeByIDColumns).
+			AddRow(testEpisodeID, "EPISODE001", "Episode", int32(1), int32(500), nil, int32(200), int32(48), "published", nil, now, nil, nil, nil, nil, nil, nil, "all", testSeriesID))
+	expectCatalogIndexSync(mock, tenantID, "series", testSeriesID)
+	expectRevalidationRecord(mock, tenantID)
+	mock.ExpectCommit()
+	expectAdminAuditLogInsert(mock)
+
+	expectNoEpisodeEyeCatches(mock, tenantID)
+	resp, err := client.UpdateEpisodePricing(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdateEpisodePricingRequest{
+		Tenant:            &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		EpisodeId:         testEpisodeID.String(),
+		Price:             500,
+		RentalPrice:       200,
+		RentalPeriodHours: 48,
+	})
+	if err != nil {
+		t.Fatalf("UpdateEpisodePricing: %v", err)
+	}
+	if got := resp.Episode; got.RentalPrice != 200 || got.RentalPeriodHours != 48 {
+		t.Fatalf("rental = (%d, %d), want (200, 48)", got.RentalPrice, got.RentalPeriodHours)
+	}
+	revalidations.waitForTags(t, wantEpisodePublicationRevalidateTags(tenantID))
+	assertExpectations(t, mock)
+}
+
+// A rental is cheaper than the permanent copy and always expires, so anything
+// else is refused before the listing is written, naming the field at fault.
+func TestUpdateEpisodePricingRefusesARentalThatUndercutsNothing(t *testing.T) {
+	cases := []struct {
+		name                 string
+		price, rental, hours int32
+		wantField            string
+	}{
+		{name: "a rental of a free episode", price: 0, rental: 100, hours: 48, wantField: "rental_price"},
+		{name: "a rental priced as the permanent copy", price: 500, rental: 500, hours: 48, wantField: "rental_price"},
+		{name: "a rental priced above the permanent copy", price: 500, rental: 600, hours: 48, wantField: "rental_price"},
+		{name: "a rental with no price", price: 500, rental: 0, hours: 48, wantField: "rental_price"},
+		{name: "a rental with no period", price: 500, rental: 200, hours: 0, wantField: "rental_period_hours"},
+		{name: "a rental with a negative period", price: 500, rental: 200, hours: -1, wantField: "rental_period_hours"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			tenantID := uuid.Must(uuid.NewV7())
+			userID := uuid.Must(uuid.NewV7())
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
+
+			_, err := client.UpdateEpisodePricing(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdateEpisodePricingRequest{
+				Tenant:            &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+				EpisodeId:         testEpisodeID.String(),
+				Price:             tc.price,
+				RentalPrice:       tc.rental,
+				RentalPeriodHours: tc.hours,
+			})
+			if connect.CodeOf(err) != connect.CodeInvalidArgument {
+				t.Fatalf("UpdateEpisodePricing error = %v, want invalid_argument", err)
+			}
+			assertBadRequestField(t, err, tc.wantField)
+			assertExpectations(t, mock)
+		})
+	}
+}
+
 // A pricing change that reaches no row is not_found, and rolls back before any
 // drop or sync is recorded.
 func TestUpdateEpisodePricingOfNoEpisodeIsNotFound(t *testing.T) {
@@ -417,7 +495,7 @@ func TestUpdateEpisodePricingOfNoEpisodeIsNotFound(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateEpisodePricingByIDForTenant)).
-		WithArgs(int32(500), sql.NullInt32{}, tenantID, testEpisodeID).
+		WithArgs(int32(500), sql.NullInt32{}, sql.NullInt32{}, sql.NullInt32{}, tenantID, testEpisodeID).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectRollback()
 

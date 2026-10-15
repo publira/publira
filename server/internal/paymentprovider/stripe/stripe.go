@@ -37,6 +37,9 @@ const (
 	MetadataEpisodeID          = "episode_id"
 	MetadataPrice              = "price"
 	MetadataReadingPeriodHours = "reading_period_hours"
+	// MetadataKind is absent on a checkout started before an episode had
+	// two sales, which sold the permanent copy.
+	MetadataKind = "kind"
 )
 
 // currencies are the currencies Stripe's documentation states a minimum charge
@@ -120,7 +123,7 @@ func (p *Provider) StartCheckout(ctx context.Context, credentials paymentprovide
 			PriceData: &stripego.CheckoutSessionCreateLineItemPriceDataParams{
 				Currency: stripego.String(strings.ToLower(req.Purchase.Currency)),
 				ProductData: &stripego.CheckoutSessionCreateLineItemPriceDataProductDataParams{
-					Name: stripego.String(req.EpisodeTitle),
+					Name: stripego.String(req.LineItemName),
 				},
 				UnitAmount: stripego.Int64(int64(req.Purchase.Price)),
 			},
@@ -163,6 +166,9 @@ func purchaseMetadata(purchase paymentprovider.Purchase) map[string]string {
 	}
 	if purchase.ReadingPeriodHours > 0 {
 		metadata[MetadataReadingPeriodHours] = strconv.FormatInt(int64(purchase.ReadingPeriodHours), 10)
+	}
+	if purchase.Kind != "" {
+		metadata[MetadataKind] = string(purchase.Kind)
 	}
 	return metadata
 }
@@ -426,10 +432,15 @@ func parsePurchaseMetadata(metadata map[string]string) (paymentprovider.Purchase
 			return paymentprovider.Purchase{}, errors.New("invalid reading period metadata")
 		}
 	}
+	kind, err := paymentprovider.ParseKind(metadata[MetadataKind])
+	if err != nil {
+		return paymentprovider.Purchase{}, fmt.Errorf("invalid kind metadata: %w", err)
+	}
 	return paymentprovider.Purchase{
 		TenantID:           tenantID,
 		ReaderID:           userID,
 		EpisodeID:          episodeID,
+		Kind:               kind,
 		Price:              int32(price),
 		ReadingPeriodHours: int32(readingPeriodHours),
 	}, nil

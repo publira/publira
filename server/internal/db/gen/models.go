@@ -260,10 +260,11 @@ type EpisodeCommentReport struct {
 }
 
 type EpisodeContentGrant struct {
-	TenantID  uuid.UUID     `json:"tenant_id"`
-	UserID    uuid.NullUUID `json:"user_id"`
-	EpisodeID uuid.UUID     `json:"episode_id"`
-	Kind      string        `json:"kind"`
+	TenantID     uuid.UUID     `json:"tenant_id"`
+	UserID       uuid.NullUUID `json:"user_id"`
+	EpisodeID    uuid.UUID     `json:"episode_id"`
+	Kind         string        `json:"kind"`
+	PurchaseKind string        `json:"purchase_kind"`
 }
 
 type EpisodeCreator struct {
@@ -351,6 +352,8 @@ type EpisodeListing struct {
 	PublishedAt        sql.NullTime  `json:"published_at"`
 	TenantID           uuid.UUID     `json:"tenant_id"`
 	AnnouncementOwed   bool          `json:"announcement_owed"`
+	RentalPrice        sql.NullInt32 `json:"rental_price"`
+	RentalPeriodHours  sql.NullInt32 `json:"rental_period_hours"`
 }
 
 type EpisodePurchaseAvailability struct {
@@ -822,6 +825,7 @@ type Purchase struct {
 	RevocationReason   sql.NullString `json:"revocation_reason"`
 	StaffRefundAttempt int32          `json:"staff_refund_attempt"`
 	DisputeLostAt      sql.NullTime   `json:"dispute_lost_at"`
+	Kind               string         `json:"kind"`
 }
 
 type ReaderIconPreset struct {
@@ -976,6 +980,7 @@ type SeriesListing struct {
 	CommentMode        sql.NullString `json:"comment_mode"`
 	ReadingDirection   string         `json:"reading_direction"`
 	SpreadStartIndex   int32          `json:"spread_start_index"`
+	RentalPeriodHours  sql.NullInt32  `json:"rental_period_hours"`
 }
 
 type SeriesRatingCount struct {

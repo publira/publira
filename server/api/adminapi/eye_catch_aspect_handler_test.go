@@ -78,7 +78,7 @@ func decodeUploadedImage(t *testing.T, encoded []byte) (width, height int, r, b 
 func seriesRowColumns() []string {
 	return []string{
 		"id", "public_id", "title", "label_id", "label_public_id", "label_name", "synopsis",
-		"reading_period_hours", "status", "schedule_weekdays", "age_rating",
+		"reading_period_hours", "rental_period_hours", "status", "schedule_weekdays", "age_rating",
 		"comment_mode", "reading_direction", "spread_start_index", "is_published", "published_at",
 		"eye_catch_image_id", "eye_catch_image_updated_at", "eye_catch_image_file_size_bytes", "availability",
 		"purchase_availability",
@@ -120,7 +120,7 @@ func TestUploadSeriesEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
 		WithArgs(tenantID, testSeriesID).
 		WillReturnRows(sqlmock.NewRows(seriesRowColumns()).
-			AddRow(seriesID, "SERIES001", "Title", nil, nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
+			AddRow(seriesID, "SERIES001", "Title", nil, nil, nil, "Synopsis", nil, nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
 
 	mock.ExpectBegin()
 	// The row is locked and the eye-catch re-read behind it before anything
@@ -131,7 +131,7 @@ func TestUploadSeriesEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
 		WithArgs(tenantID, testSeriesID).
 		WillReturnRows(sqlmock.NewRows(seriesRowColumns()).
-			AddRow(seriesID, "SERIES001", "Title", nil, nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
+			AddRow(seriesID, "SERIES001", "Title", nil, nil, nil, "Synopsis", nil, nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
 	// Only the requested ratio is cleared; the other three keep their rows.
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteSeriesImageVariantsByType)).
 		WithArgs(imageID, "landscape").
@@ -150,7 +150,7 @@ func TestUploadSeriesEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
 		WithArgs(tenantID, testSeriesID).
 		WillReturnRows(sqlmock.NewRows(seriesRowColumns()).
-			AddRow(seriesID, "SERIES001", "Title", nil, nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
+			AddRow(seriesID, "SERIES001", "Title", nil, nil, nil, "Synopsis", nil, nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesCreatorsBySeriesIDs)).
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"series_id", "public_id", "name", "role_public_id", "role_name", "display_order"}))
@@ -200,7 +200,7 @@ func TestUploadSeriesEyeCatchAspectImageRequiresAnExistingEyeCatch(t *testing.T)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
 		WithArgs(tenantID, testSeriesID).
 		WillReturnRows(sqlmock.NewRows(seriesRowColumns()).
-			AddRow(seriesID, "SERIES001", "Title", nil, nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
+			AddRow(seriesID, "SERIES001", "Title", nil, nil, nil, "Synopsis", nil, nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, nil, nil, int64(0), "all", nil))
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	req := &publiraadminv1.UploadSeriesEyeCatchAspectImageRequest{
@@ -260,7 +260,7 @@ func TestUploadSeriesEyeCatchAspectImageRejectsASourceBelowTheRatioMinimum(t *te
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
 		WithArgs(tenantID, testSeriesID).
 		WillReturnRows(sqlmock.NewRows(seriesRowColumns()).
-			AddRow(seriesID, "SERIES001", "Title", nil, nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
+			AddRow(seriesID, "SERIES001", "Title", nil, nil, nil, "Synopsis", nil, nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	req := &publiraadminv1.UploadSeriesEyeCatchAspectImageRequest{
@@ -294,7 +294,7 @@ func TestUploadSeriesEyeCatchAspectImageStoresTheRatioCutFromTheCrop(t *testing.
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
 		WithArgs(tenantID, testSeriesID).
 		WillReturnRows(sqlmock.NewRows(seriesRowColumns()).
-			AddRow(seriesID, "SERIES001", "Title", nil, nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
+			AddRow(seriesID, "SERIES001", "Title", nil, nil, nil, "Synopsis", nil, nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
 
 	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockSeriesByIDForTenant)).
@@ -303,7 +303,7 @@ func TestUploadSeriesEyeCatchAspectImageStoresTheRatioCutFromTheCrop(t *testing.
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
 		WithArgs(tenantID, testSeriesID).
 		WillReturnRows(sqlmock.NewRows(seriesRowColumns()).
-			AddRow(seriesID, "SERIES001", "Title", nil, nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
+			AddRow(seriesID, "SERIES001", "Title", nil, nil, nil, "Synopsis", nil, nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteSeriesImageVariantsByType)).
 		WithArgs(imageID, "landscape").
 		WillReturnResult(sqlmock.NewResult(0, 3))
@@ -320,7 +320,7 @@ func TestUploadSeriesEyeCatchAspectImageStoresTheRatioCutFromTheCrop(t *testing.
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
 		WithArgs(tenantID, testSeriesID).
 		WillReturnRows(sqlmock.NewRows(seriesRowColumns()).
-			AddRow(seriesID, "SERIES001", "Title", nil, nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
+			AddRow(seriesID, "SERIES001", "Title", nil, nil, nil, "Synopsis", nil, nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesCreatorsBySeriesIDs)).
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"series_id", "public_id", "name", "role_public_id", "role_name", "display_order"}))
@@ -387,7 +387,7 @@ func TestUploadSeriesEyeCatchAspectImageRejectsACropOutsideTheImage(t *testing.T
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetSeriesByIDForTenant)).
 		WithArgs(tenantID, testSeriesID).
 		WillReturnRows(sqlmock.NewRows(seriesRowColumns()).
-			AddRow(seriesID, "SERIES001", "Title", nil, nil, nil, "Synopsis", nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
+			AddRow(seriesID, "SERIES001", "Title", nil, nil, nil, "Synopsis", nil, nil, "ongoing", []byte("{}"), "all", nil, nil, nil, true, now, imageID, now, int64(0), "all", nil))
 
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	req := &publiraadminv1.UploadSeriesEyeCatchAspectImageRequest{

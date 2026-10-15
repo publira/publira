@@ -63,6 +63,9 @@ func PurchaseMetadata(purchase paymentprovider.Purchase) map[string]string {
 	if purchase.ReadingPeriodHours > 0 {
 		metadata[stripe.MetadataReadingPeriodHours] = strconv.FormatInt(int64(purchase.ReadingPeriodHours), 10)
 	}
+	if purchase.Kind != "" {
+		metadata[stripe.MetadataKind] = string(purchase.Kind)
+	}
 	return metadata
 }
 

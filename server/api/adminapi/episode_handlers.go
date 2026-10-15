@@ -126,6 +126,8 @@ type episodePageRow struct {
 	orderIndex         int32
 	price              int32
 	readingPeriodHours sql.NullInt32
+	rentalPrice        sql.NullInt32
+	rentalPeriodHours  sql.NullInt32
 	status             string
 	scheduledAt        sql.NullTime
 	publishedAt        sql.NullTime
@@ -144,6 +146,7 @@ func (r episodePageRow) toProto() (*publirattypesv1.Episode, error) {
 	if r.readingPeriodHours.Valid {
 		episode.ReadingPeriodHours = r.readingPeriodHours.Int32
 	}
+	protomapper.SetEpisodeRental(episode, r.rentalPrice, r.rentalPeriodHours)
 	if r.scheduledAt.Valid {
 		episode.ScheduledAt = r.scheduledAt.Time.UTC().Format(time.RFC3339)
 	}
@@ -194,6 +197,8 @@ func mapEpisodeAscRows(rows []dbmodels.ListEpisodesBySeriesForTenantAscRow) []ep
 			orderIndex:         row.OrderIndex,
 			price:              row.Price,
 			readingPeriodHours: row.ReadingPeriodHours,
+			rentalPrice:        row.RentalPrice,
+			rentalPeriodHours:  row.RentalPeriodHours,
 			status:             row.Status,
 			scheduledAt:        row.ScheduledAt,
 			publishedAt:        row.PublishedAt,
@@ -213,6 +218,8 @@ func mapEpisodeDescRows(rows []dbmodels.ListEpisodesBySeriesForTenantDescRow) []
 			orderIndex:         row.OrderIndex,
 			price:              row.Price,
 			readingPeriodHours: row.ReadingPeriodHours,
+			rentalPrice:        row.RentalPrice,
+			rentalPeriodHours:  row.RentalPeriodHours,
 			status:             row.Status,
 			scheduledAt:        row.ScheduledAt,
 			publishedAt:        row.PublishedAt,
@@ -560,6 +567,27 @@ func (s *adminServer) ReorderEpisodes(
 	return &publiraadminv1.ReorderEpisodesResponse{Episodes: episodes}, nil
 }
 
+// episodeRental validates the rental a request states beside the permanent
+// copy's price and answers the two columns to store. Both zero is an episode
+// that is not rented. Otherwise both have to be positive, and the rental
+// cheaper than the permanent copy, which also keeps a free episode from being
+// rented: a rental is the cheaper way to read an episode that has a price.
+func episodeRental(price, rentalPrice, rentalPeriodHours int32) (sql.NullInt32, sql.NullInt32, error) {
+	if rentalPrice == 0 && rentalPeriodHours == 0 {
+		return sql.NullInt32{}, sql.NullInt32{}, nil
+	}
+	if rentalPrice <= 0 {
+		return sql.NullInt32{}, sql.NullInt32{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("rental_price must be greater than 0 when the episode is rented"), "rental_price")
+	}
+	if rentalPeriodHours <= 0 {
+		return sql.NullInt32{}, sql.NullInt32{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("rental_period_hours must be greater than 0 when the episode is rented"), "rental_period_hours")
+	}
+	if rentalPrice >= price {
+		return sql.NullInt32{}, sql.NullInt32{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("rental_price must be less than price"), "rental_price")
+	}
+	return sql.NullInt32{Int32: rentalPrice, Valid: true}, sql.NullInt32{Int32: rentalPeriodHours, Valid: true}, nil
+}
+
 func (s *adminServer) CreateEpisode(
 	ctx context.Context,
 	req *publiraadminv1.CreateEpisodeRequest,
@@ -586,6 +614,10 @@ func (s *adminServer) CreateEpisode(
 	}
 	if req.ReadingPeriodHours < 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, "reading_period_hours must be greater than or equal to 0")
+	}
+	rentalPrice, rentalPeriodHours, err := episodeRental(req.Price, req.RentalPrice, req.RentalPeriodHours)
+	if err != nil {
+		return nil, err
 	}
 	scheduledAt, err := parseScheduledAtOrZero(req.ScheduledAt)
 	if err != nil {
@@ -685,6 +717,8 @@ func (s *adminServer) CreateEpisode(
 		Price:              req.Price,
 		PublishedAt:        publishedAt,
 		ReadingPeriodHours: sql.NullInt32{Int32: req.ReadingPeriodHours, Valid: req.ReadingPeriodHours > 0},
+		RentalPrice:        rentalPrice,
+		RentalPeriodHours:  rentalPeriodHours,
 		ScheduledAt:        scheduledAt,
 		Status:             status,
 		TenantID:           tenant.ID,
@@ -728,6 +762,7 @@ func (s *adminServer) CreateEpisode(
 	if listing.ReadingPeriodHours.Valid {
 		episode.ReadingPeriodHours = listing.ReadingPeriodHours.Int32
 	}
+	protomapper.SetEpisodeRental(episode, listing.RentalPrice, listing.RentalPeriodHours)
 	if listing.ScheduledAt.Valid {
 		episode.ScheduledAt = listing.ScheduledAt.Time.UTC().Format(time.RFC3339)
 	}
@@ -1350,6 +1385,10 @@ func (s *adminServer) UpdateEpisodePricing(
 	if req.ReadingPeriodHours < 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, "reading_period_hours must be greater than or equal to 0")
 	}
+	rentalPrice, rentalPeriodHours, err := episodeRental(req.Price, req.RentalPrice, req.RentalPeriodHours)
+	if err != nil {
+		return nil, err
+	}
 
 	// Purchases, and the checkouts and store purchase intents already started,
 	// carry the terms they were made on, so only the listing is written. The
@@ -1365,6 +1404,8 @@ func (s *adminServer) UpdateEpisodePricing(
 			EpisodeID:          episodeID,
 			Price:              req.Price,
 			ReadingPeriodHours: sql.NullInt32{Int32: req.ReadingPeriodHours, Valid: req.ReadingPeriodHours > 0},
+			RentalPrice:        rentalPrice,
+			RentalPeriodHours:  rentalPeriodHours,
 		})
 		if err != nil {
 			return nil, s.internalDBError(ctx, "failed to update episode pricing", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())

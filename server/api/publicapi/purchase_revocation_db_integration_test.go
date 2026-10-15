@@ -118,15 +118,15 @@ func (e refundWebhookEnv) heldDisputeCount(t *testing.T) int {
 // episode, which a valid purchase of it would refuse.
 func (e refundWebhookEnv) mayBuyAgain(t *testing.T) bool {
 	t.Helper()
-	has, err := e.queries.UserHasValidPurchaseForEpisode(context.Background(), dbmodels.UserHasValidPurchaseForEpisodeParams{
+	held, err := e.queries.GetActiveEpisodePurchaseKinds(context.Background(), dbmodels.GetActiveEpisodePurchaseKindsParams{
 		TenantID:  e.tenant.ID,
 		UserID:    e.user.ID,
 		EpisodeID: e.episode.ID,
 	})
 	if err != nil {
-		t.Fatalf("UserHasValidPurchaseForEpisode: %v", err)
+		t.Fatalf("GetActiveEpisodePurchaseKinds: %v", err)
 	}
-	return !has
+	return !held.HoldsPurchase
 }
 
 func TestDBProcessPaymentWebhookRevokesADisputedPurchase(t *testing.T) {

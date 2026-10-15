@@ -8681,12 +8681,14 @@ class StartEpisodeCheckoutRequest extends $pb.GeneratedMessage {
     StartEpisodeCheckoutRequest_Client? client,
     $core.String? episodeId,
     $core.String? locale,
+    $0.PurchaseKind? kind,
   }) {
     final result = StartEpisodeCheckoutRequest._();
     if (tenant != null) result.tenant = tenant;
     if (client != null) result.client = client;
     if (episodeId != null) result.episodeId = episodeId;
     if (locale != null) result.locale = locale;
+    if (kind != null) result.kind = kind;
     return result;
   }
 
@@ -8709,6 +8711,8 @@ class StartEpisodeCheckoutRequest extends $pb.GeneratedMessage {
         enumValues: StartEpisodeCheckoutRequest_Client.values)
     ..aOS(4, _omitFieldNames ? '' : 'episodeId')
     ..aOS(5, _omitFieldNames ? '' : 'locale')
+    ..aE<$0.PurchaseKind>(6, _omitFieldNames ? '' : 'kind',
+        enumValues: $0.PurchaseKind.values)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -8781,6 +8785,20 @@ class StartEpisodeCheckoutRequest extends $pb.GeneratedMessage {
   $core.bool hasLocale() => $_has(3);
   @$pb.TagNumber(5)
   void clearLocale() => $_clearField(5);
+
+  /// Which of the episode's sales the checkout is for. Unspecified is the
+  /// permanent copy. A rental of an episode that is not rented is
+  /// failed_precondition. A reader who holds an active permanent copy is
+  /// already_exists for either kind, and one who holds an active rental for
+  /// another rental, but may still buy the permanent copy.
+  @$pb.TagNumber(6)
+  $0.PurchaseKind get kind => $_getN(4);
+  @$pb.TagNumber(6)
+  set kind($0.PurchaseKind value) => $_setField(6, value);
+  @$pb.TagNumber(6)
+  $core.bool hasKind() => $_has(4);
+  @$pb.TagNumber(6)
+  void clearKind() => $_clearField(6);
 }
 
 class StartEpisodeCheckoutResponse extends $pb.GeneratedMessage {
@@ -8862,6 +8880,7 @@ class MyPurchase extends $pb.GeneratedMessage {
     $core.int? refundedAmount,
     $core.String? refundedAt,
     $core.String? revokedAt,
+    $0.PurchaseKind? kind,
   }) {
     final result = MyPurchase._();
     if (id != null) result.id = id;
@@ -8875,6 +8894,7 @@ class MyPurchase extends $pb.GeneratedMessage {
     if (refundedAmount != null) result.refundedAmount = refundedAmount;
     if (refundedAt != null) result.refundedAt = refundedAt;
     if (revokedAt != null) result.revokedAt = revokedAt;
+    if (kind != null) result.kind = kind;
     return result;
   }
 
@@ -8904,6 +8924,8 @@ class MyPurchase extends $pb.GeneratedMessage {
     ..aI(9, _omitFieldNames ? '' : 'refundedAmount')
     ..aOS(10, _omitFieldNames ? '' : 'refundedAt')
     ..aOS(11, _omitFieldNames ? '' : 'revokedAt')
+    ..aE<$0.PurchaseKind>(12, _omitFieldNames ? '' : 'kind',
+        enumValues: $0.PurchaseKind.values)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -9042,6 +9064,17 @@ class MyPurchase extends $pb.GeneratedMessage {
   $core.bool hasRevokedAt() => $_has(10);
   @$pb.TagNumber(11)
   void clearRevokedAt() => $_clearField(11);
+
+  /// Which of the episode's sales the reader bought, never unspecified. A
+  /// rental always carries expires_at.
+  @$pb.TagNumber(12)
+  $0.PurchaseKind get kind => $_getN(11);
+  @$pb.TagNumber(12)
+  set kind($0.PurchaseKind value) => $_setField(12, value);
+  @$pb.TagNumber(12)
+  $core.bool hasKind() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearKind() => $_clearField(12);
 }
 
 /// Cursor pagination. Field shape and token rules: proto/README.md.

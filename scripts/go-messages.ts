@@ -12,8 +12,11 @@ import { namespaceLeaves } from "./catalog-leaves.ts";
 import { GENERATED_HEADER, goLocaleEntries, goString } from "./go-source.ts";
 import type { GoLocale } from "./go-source.ts";
 
-/** The namespace the Go server reads: the copy of the mail it sends. */
-export const GO_NAMESPACES = ["email"] as const;
+/**
+ * The namespaces the Go server reads: the copy of the mail it sends, and the
+ * line items of the checkouts it starts.
+ */
+export const GO_NAMESPACES = ["email", "checkout"] as const;
 
 const INDENT = "\t";
 
@@ -58,7 +61,7 @@ export const renderGoMessages = (
     "package gen",
     "",
     `// Messages is the MessageFormat 2 source of every message in the ${namespaces}`,
-    "// namespace, keyed by the message key and then by locale code.",
+    `// namespace${GO_NAMESPACES.length > 1 ? "s" : ""}, keyed by the message key and then by locale code.`,
     "var Messages = map[string]map[string]string{",
   ];
   for (const key of keys) {

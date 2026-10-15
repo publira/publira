@@ -91,6 +91,7 @@ func (e purchaseReceiptEnv) purchaseIn(t *testing.T, ctx context.Context, checko
 		ProviderCheckoutID: checkoutID,
 		IsTest:             test,
 		Currency:           "JPY",
+		Kind:               "purchase",
 	})
 	if err != nil {
 		t.Fatalf("CreatePurchaseFromProviderCheckout: %v", err)

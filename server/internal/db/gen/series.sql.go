@@ -84,6 +84,7 @@ INSERT INTO series_listings (
         tenant_id,
         series_id,
         reading_period_hours,
+        rental_period_hours,
         status,
         schedule_weekdays,
         age_rating,
@@ -100,15 +101,17 @@ VALUES (
         $6,
         $7,
         $8,
-        $9
+        $9,
+        $10
     )
-RETURNING series_id, reading_period_hours, is_published, published_at, tenant_id, status, schedule_weekdays, age_rating, episode_rating_mode, comment_mode, reading_direction, spread_start_index
+RETURNING series_id, reading_period_hours, is_published, published_at, tenant_id, status, schedule_weekdays, age_rating, episode_rating_mode, comment_mode, reading_direction, spread_start_index, rental_period_hours
 `
 
 type CreateSeriesListingParams struct {
 	TenantID           uuid.UUID      `json:"tenant_id"`
 	SeriesID           uuid.UUID      `json:"series_id"`
 	ReadingPeriodHours sql.NullInt32  `json:"reading_period_hours"`
+	RentalPeriodHours  sql.NullInt32  `json:"rental_period_hours"`
 	Status             string         `json:"status"`
 	ScheduleWeekdays   []int32        `json:"schedule_weekdays"`
 	AgeRating          string         `json:"age_rating"`
@@ -122,6 +125,7 @@ func (q *Queries) CreateSeriesListing(ctx context.Context, arg CreateSeriesListi
 		arg.TenantID,
 		arg.SeriesID,
 		arg.ReadingPeriodHours,
+		arg.RentalPeriodHours,
 		arg.Status,
 		pq.Array(arg.ScheduleWeekdays),
 		arg.AgeRating,
@@ -143,6 +147,7 @@ func (q *Queries) CreateSeriesListing(ctx context.Context, arg CreateSeriesListi
 		&i.CommentMode,
 		&i.ReadingDirection,
 		&i.SpreadStartIndex,
+		&i.RentalPeriodHours,
 	)
 	return i, err
 }
@@ -228,6 +233,7 @@ SELECT s.id,
     l.name AS label_name,
     tr.synopsis,
     sl.reading_period_hours,
+    sl.rental_period_hours,
     sl.status,
     sl.schedule_weekdays,
     sl.age_rating,
@@ -273,6 +279,7 @@ type GetSeriesByIDForTenantRow struct {
 	LabelName                  sql.NullString `json:"label_name"`
 	Synopsis                   string         `json:"synopsis"`
 	ReadingPeriodHours         sql.NullInt32  `json:"reading_period_hours"`
+	RentalPeriodHours          sql.NullInt32  `json:"rental_period_hours"`
 	Status                     sql.NullString `json:"status"`
 	ScheduleWeekdays           []int32        `json:"schedule_weekdays"`
 	AgeRating                  sql.NullString `json:"age_rating"`
@@ -300,6 +307,7 @@ func (q *Queries) GetSeriesByIDForTenant(ctx context.Context, arg GetSeriesByIDF
 		&i.LabelName,
 		&i.Synopsis,
 		&i.ReadingPeriodHours,
+		&i.RentalPeriodHours,
 		&i.Status,
 		pq.Array(&i.ScheduleWeekdays),
 		&i.AgeRating,
@@ -326,6 +334,7 @@ SELECT s.id,
     l.name AS label_name,
     tr.synopsis,
     sl.reading_period_hours,
+    sl.rental_period_hours,
     sl.status,
     sl.schedule_weekdays,
     sl.age_rating,
@@ -371,6 +380,7 @@ type GetSeriesByPublicIDForTenantRow struct {
 	LabelName                  sql.NullString `json:"label_name"`
 	Synopsis                   string         `json:"synopsis"`
 	ReadingPeriodHours         sql.NullInt32  `json:"reading_period_hours"`
+	RentalPeriodHours          sql.NullInt32  `json:"rental_period_hours"`
 	Status                     sql.NullString `json:"status"`
 	ScheduleWeekdays           []int32        `json:"schedule_weekdays"`
 	AgeRating                  sql.NullString `json:"age_rating"`
@@ -398,6 +408,7 @@ func (q *Queries) GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSerie
 		&i.LabelName,
 		&i.Synopsis,
 		&i.ReadingPeriodHours,
+		&i.RentalPeriodHours,
 		&i.Status,
 		pq.Array(&i.ScheduleWeekdays),
 		&i.AgeRating,
@@ -537,6 +548,10 @@ SELECT s.id,
                         el.price,
                         'reading_period_hours',
                         el.reading_period_hours,
+                        'rental_price',
+                        el.rental_price,
+                        'rental_period_hours',
+                        el.rental_period_hours,
                         'status',
                         el.status,
                         'scheduled_at',
@@ -684,6 +699,7 @@ SELECT s.id,
     l.name AS label_name,
     tr.synopsis,
     sl.reading_period_hours,
+    sl.rental_period_hours,
     sl.status,
     sl.schedule_weekdays,
     sl.age_rating,
@@ -748,6 +764,7 @@ type ListSeriesByTenantAscRow struct {
 	LabelName                  sql.NullString `json:"label_name"`
 	Synopsis                   string         `json:"synopsis"`
 	ReadingPeriodHours         sql.NullInt32  `json:"reading_period_hours"`
+	RentalPeriodHours          sql.NullInt32  `json:"rental_period_hours"`
 	Status                     sql.NullString `json:"status"`
 	ScheduleWeekdays           []int32        `json:"schedule_weekdays"`
 	AgeRating                  sql.NullString `json:"age_rating"`
@@ -785,6 +802,7 @@ func (q *Queries) ListSeriesByTenantAsc(ctx context.Context, arg ListSeriesByTen
 			&i.LabelName,
 			&i.Synopsis,
 			&i.ReadingPeriodHours,
+			&i.RentalPeriodHours,
 			&i.Status,
 			pq.Array(&i.ScheduleWeekdays),
 			&i.AgeRating,
@@ -817,6 +835,7 @@ SELECT s.id,
     l.name AS label_name,
     tr.synopsis,
     sl.reading_period_hours,
+    sl.rental_period_hours,
     sl.status,
     sl.schedule_weekdays,
     sl.age_rating,
@@ -881,6 +900,7 @@ type ListSeriesByTenantDescRow struct {
 	LabelName                  sql.NullString `json:"label_name"`
 	Synopsis                   string         `json:"synopsis"`
 	ReadingPeriodHours         sql.NullInt32  `json:"reading_period_hours"`
+	RentalPeriodHours          sql.NullInt32  `json:"rental_period_hours"`
 	Status                     sql.NullString `json:"status"`
 	ScheduleWeekdays           []int32        `json:"schedule_weekdays"`
 	AgeRating                  sql.NullString `json:"age_rating"`
@@ -926,6 +946,7 @@ func (q *Queries) ListSeriesByTenantDesc(ctx context.Context, arg ListSeriesByTe
 			&i.LabelName,
 			&i.Synopsis,
 			&i.ReadingPeriodHours,
+			&i.RentalPeriodHours,
 			&i.Status,
 			pq.Array(&i.ScheduleWeekdays),
 			&i.AgeRating,
@@ -1086,6 +1107,7 @@ INSERT INTO series_listings (
         tenant_id,
         series_id,
         reading_period_hours,
+        rental_period_hours,
         status,
         schedule_weekdays,
         age_rating,
@@ -1102,44 +1124,50 @@ VALUES (
         $6,
         $7,
         $8,
-        $9
+        $9,
+        $10
     ) ON CONFLICT (series_id) DO
 UPDATE
 SET reading_period_hours = CASE
-        WHEN $10::boolean THEN EXCLUDED.reading_period_hours
+        WHEN $11::boolean THEN EXCLUDED.reading_period_hours
         ELSE series_listings.reading_period_hours
     END,
+    rental_period_hours = CASE
+        WHEN $12::boolean THEN EXCLUDED.rental_period_hours
+        ELSE series_listings.rental_period_hours
+    END,
     status = CASE
-        WHEN $11::boolean THEN EXCLUDED.status
+        WHEN $13::boolean THEN EXCLUDED.status
         ELSE series_listings.status
     END,
     schedule_weekdays = CASE
-        WHEN $12::boolean THEN EXCLUDED.schedule_weekdays
+        WHEN $14::boolean THEN EXCLUDED.schedule_weekdays
         ELSE series_listings.schedule_weekdays
     END,
     age_rating = CASE
-        WHEN $13::boolean THEN EXCLUDED.age_rating
+        WHEN $15::boolean THEN EXCLUDED.age_rating
         ELSE series_listings.age_rating
     END,
     comment_mode = CASE
-        WHEN $14::boolean THEN EXCLUDED.comment_mode
+        WHEN $16::boolean THEN EXCLUDED.comment_mode
         ELSE series_listings.comment_mode
     END,
     reading_direction = CASE
-        WHEN $15::boolean THEN EXCLUDED.reading_direction
+        WHEN $17::boolean THEN EXCLUDED.reading_direction
         ELSE series_listings.reading_direction
     END,
     spread_start_index = CASE
-        WHEN $16::boolean THEN EXCLUDED.spread_start_index
+        WHEN $18::boolean THEN EXCLUDED.spread_start_index
         ELSE series_listings.spread_start_index
     END
-RETURNING series_id, reading_period_hours, is_published, published_at, tenant_id, status, schedule_weekdays, age_rating, episode_rating_mode, comment_mode, reading_direction, spread_start_index
+RETURNING series_id, reading_period_hours, is_published, published_at, tenant_id, status, schedule_weekdays, age_rating, episode_rating_mode, comment_mode, reading_direction, spread_start_index, rental_period_hours
 `
 
 type UpdateSeriesListingParams struct {
 	TenantID                uuid.UUID      `json:"tenant_id"`
 	SeriesID                uuid.UUID      `json:"series_id"`
 	ReadingPeriodHours      sql.NullInt32  `json:"reading_period_hours"`
+	RentalPeriodHours       sql.NullInt32  `json:"rental_period_hours"`
 	Status                  string         `json:"status"`
 	ScheduleWeekdays        []int32        `json:"schedule_weekdays"`
 	AgeRating               string         `json:"age_rating"`
@@ -1147,6 +1175,7 @@ type UpdateSeriesListingParams struct {
 	ReadingDirection        string         `json:"reading_direction"`
 	SpreadStartIndex        int32          `json:"spread_start_index"`
 	WriteReadingPeriodHours bool           `json:"write_reading_period_hours"`
+	WriteRentalPeriodHours  bool           `json:"write_rental_period_hours"`
 	WriteStatus             bool           `json:"write_status"`
 	WriteScheduleWeekdays   bool           `json:"write_schedule_weekdays"`
 	WriteAgeRating          bool           `json:"write_age_rating"`
@@ -1163,6 +1192,7 @@ func (q *Queries) UpdateSeriesListing(ctx context.Context, arg UpdateSeriesListi
 		arg.TenantID,
 		arg.SeriesID,
 		arg.ReadingPeriodHours,
+		arg.RentalPeriodHours,
 		arg.Status,
 		pq.Array(arg.ScheduleWeekdays),
 		arg.AgeRating,
@@ -1170,6 +1200,7 @@ func (q *Queries) UpdateSeriesListing(ctx context.Context, arg UpdateSeriesListi
 		arg.ReadingDirection,
 		arg.SpreadStartIndex,
 		arg.WriteReadingPeriodHours,
+		arg.WriteRentalPeriodHours,
 		arg.WriteStatus,
 		arg.WriteScheduleWeekdays,
 		arg.WriteAgeRating,
@@ -1191,6 +1222,7 @@ func (q *Queries) UpdateSeriesListing(ctx context.Context, arg UpdateSeriesListi
 		&i.CommentMode,
 		&i.ReadingDirection,
 		&i.SpreadStartIndex,
+		&i.RentalPeriodHours,
 	)
 	return i, err
 }

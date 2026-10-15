@@ -486,6 +486,63 @@ func (SurfaceAvailability) EnumDescriptor() ([]byte, []int) {
 	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{7}
 }
 
+// Which of an episode's two sales a purchase is (purchases.kind).
+type PurchaseKind int32
+
+const (
+	// On a request, the permanent copy, which is what every client that names no
+	// kind buys.
+	PurchaseKind_PURCHASE_KIND_UNSPECIFIED PurchaseKind = 0
+	// The permanent copy, at Episode.price, which opens the episode for its
+	// reading period if it has one and for good if it does not. A store purchase
+	// and a grant staff record are always this.
+	PurchaseKind_PURCHASE_KIND_PURCHASE PurchaseKind = 1
+	// The rental, at Episode.rental_price, which opens the episode for
+	// Episode.rental_period_hours.
+	PurchaseKind_PURCHASE_KIND_RENTAL PurchaseKind = 2
+)
+
+// Enum value maps for PurchaseKind.
+var (
+	PurchaseKind_name = map[int32]string{
+		0: "PURCHASE_KIND_UNSPECIFIED",
+		1: "PURCHASE_KIND_PURCHASE",
+		2: "PURCHASE_KIND_RENTAL",
+	}
+	PurchaseKind_value = map[string]int32{
+		"PURCHASE_KIND_UNSPECIFIED": 0,
+		"PURCHASE_KIND_PURCHASE":    1,
+		"PURCHASE_KIND_RENTAL":      2,
+	}
+)
+
+func (x PurchaseKind) Enum() *PurchaseKind {
+	p := new(PurchaseKind)
+	*p = x
+	return p
+}
+
+func (x PurchaseKind) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (PurchaseKind) Descriptor() protoreflect.EnumDescriptor {
+	return file_publira_types_v1_types_proto_enumTypes[8].Descriptor()
+}
+
+func (PurchaseKind) Type() protoreflect.EnumType {
+	return &file_publira_types_v1_types_proto_enumTypes[8]
+}
+
+func (x PurchaseKind) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use PurchaseKind.Descriptor instead.
+func (PurchaseKind) EnumDescriptor() ([]byte, []int) {
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{8}
+}
+
 // What a tenant lets a reader show as an icon (tenant_config.reader_icon_policy).
 type ReaderIconPolicy int32
 
@@ -527,11 +584,11 @@ func (x ReaderIconPolicy) String() string {
 }
 
 func (ReaderIconPolicy) Descriptor() protoreflect.EnumDescriptor {
-	return file_publira_types_v1_types_proto_enumTypes[8].Descriptor()
+	return file_publira_types_v1_types_proto_enumTypes[9].Descriptor()
 }
 
 func (ReaderIconPolicy) Type() protoreflect.EnumType {
-	return &file_publira_types_v1_types_proto_enumTypes[8]
+	return &file_publira_types_v1_types_proto_enumTypes[9]
 }
 
 func (x ReaderIconPolicy) Number() protoreflect.EnumNumber {
@@ -540,7 +597,7 @@ func (x ReaderIconPolicy) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ReaderIconPolicy.Descriptor instead.
 func (ReaderIconPolicy) EnumDescriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{8}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{9}
 }
 
 // Which of a tenant's age ratings a reader has to prove an age for
@@ -589,11 +646,11 @@ func (x AgeVerification) String() string {
 }
 
 func (AgeVerification) Descriptor() protoreflect.EnumDescriptor {
-	return file_publira_types_v1_types_proto_enumTypes[9].Descriptor()
+	return file_publira_types_v1_types_proto_enumTypes[10].Descriptor()
 }
 
 func (AgeVerification) Type() protoreflect.EnumType {
-	return &file_publira_types_v1_types_proto_enumTypes[9]
+	return &file_publira_types_v1_types_proto_enumTypes[10]
 }
 
 func (x AgeVerification) Number() protoreflect.EnumNumber {
@@ -602,7 +659,7 @@ func (x AgeVerification) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use AgeVerification.Descriptor instead.
 func (AgeVerification) EnumDescriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{9}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{10}
 }
 
 // TenantContext identifies a tenant for internal RPC wiring.
@@ -1545,10 +1602,14 @@ type Series struct {
 	// Which surfaces the series may be shown on. Set on the console's reads;
 	// SURFACE_AVAILABILITY_UNSPECIFIED on the storefront's and the app's, where
 	// the catalog has already left out every series the caller may not show.
-	Availability  SurfaceAvailability `protobuf:"varint,21,opt,name=availability,proto3,enum=publira.types.v1.SurfaceAvailability" json:"availability,omitempty"`
-	Id            string              `protobuf:"bytes,22,opt,name=id,proto3" json:"id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Availability SurfaceAvailability `protobuf:"varint,21,opt,name=availability,proto3,enum=publira.types.v1.SurfaceAvailability" json:"availability,omitempty"`
+	Id           string              `protobuf:"bytes,22,opt,name=id,proto3" json:"id,omitempty"`
+	// Where the rental period of each new episode in the series starts, as
+	// `reading_period_hours` is for the permanent copy's. Zero states none. Set
+	// on the console's reads and 0 on the public ones.
+	RentalPeriodHours int32 `protobuf:"varint,23,opt,name=rental_period_hours,json=rentalPeriodHours,proto3" json:"rental_period_hours,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *Series) Reset() {
@@ -1721,6 +1782,13 @@ func (x *Series) GetId() string {
 	return ""
 }
 
+func (x *Series) GetRentalPeriodHours() int32 {
+	if x != nil {
+		return x.RentalPeriodHours
+	}
+	return 0
+}
+
 type Episode struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
 	PublicId           string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
@@ -1790,8 +1858,18 @@ type Episode struct {
 	// answer in their shape; empty elsewhere.
 	EyeCatchImageUpdatedAt string                   `protobuf:"bytes,17,opt,name=eye_catch_image_updated_at,json=eyeCatchImageUpdatedAt,proto3" json:"eye_catch_image_updated_at,omitempty"`
 	EyeCatchImageVariants  []*SeriesEyeCatchVariant `protobuf:"bytes,18,rep,name=eye_catch_image_variants,json=eyeCatchImageVariants,proto3" json:"eye_catch_image_variants,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// The rental: what renting the episode costs, in the minor unit `price` is
+	// in, and how long the rental opens it. Both are 0 on an episode that is not
+	// rented, and both are set on one that is: `price` then stays what the
+	// permanent copy costs, and `reading_period_hours` its expiry, if any. A
+	// rental is always cheaper than the permanent copy.
+	//
+	// Set on GetEpisodeDetail, on the episodes GetSeriesDetail lists, and on the
+	// console's episode reads and writes; 0 elsewhere.
+	RentalPrice       int32 `protobuf:"varint,19,opt,name=rental_price,json=rentalPrice,proto3" json:"rental_price,omitempty"`
+	RentalPeriodHours int32 `protobuf:"varint,20,opt,name=rental_period_hours,json=rentalPeriodHours,proto3" json:"rental_period_hours,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *Episode) Reset() {
@@ -1948,6 +2026,20 @@ func (x *Episode) GetEyeCatchImageVariants() []*SeriesEyeCatchVariant {
 		return x.EyeCatchImageVariants
 	}
 	return nil
+}
+
+func (x *Episode) GetRentalPrice() int32 {
+	if x != nil {
+		return x.RentalPrice
+	}
+	return 0
+}
+
+func (x *Episode) GetRentalPeriodHours() int32 {
+	if x != nil {
+		return x.RentalPeriodHours
+	}
+	return 0
 }
 
 type EpisodeImage struct {
@@ -2974,7 +3066,7 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x02id\x18\x06 \x01(\tR\x02id\"-\n" +
 	"\x03Tag\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
-	"\x04slug\x18\x02 \x01(\tR\x04slug\"\xb5\a\n" +
+	"\x04slug\x18\x02 \x01(\tR\x04slug\"\xe5\a\n" +
 	"\x06Series\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1a\n" +
@@ -2997,7 +3089,8 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x0erating_average\x18\x13 \x01(\x01R\rratingAverage\x12!\n" +
 	"\frating_count\x18\x14 \x01(\x03R\vratingCount\x12I\n" +
 	"\favailability\x18\x15 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\favailability\x12\x0e\n" +
-	"\x02id\x18\x16 \x01(\tR\x02idJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\xd0\x06\n" +
+	"\x02id\x18\x16 \x01(\tR\x02id\x12.\n" +
+	"\x13rental_period_hours\x18\x17 \x01(\x05R\x11rentalPeriodHoursJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\xa3\a\n" +
 	"\aEpisode\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1f\n" +
@@ -3019,7 +3112,9 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\n" +
 	"free_until\x18\x10 \x01(\tR\tfreeUntil\x12:\n" +
 	"\x1aeye_catch_image_updated_at\x18\x11 \x01(\tR\x16eyeCatchImageUpdatedAt\x12`\n" +
-	"\x18eye_catch_image_variants\x18\x12 \x03(\v2'.publira.types.v1.SeriesEyeCatchVariantR\x15eyeCatchImageVariants\"\xd9\x01\n" +
+	"\x18eye_catch_image_variants\x18\x12 \x03(\v2'.publira.types.v1.SeriesEyeCatchVariantR\x15eyeCatchImageVariants\x12!\n" +
+	"\frental_price\x18\x13 \x01(\x05R\vrentalPrice\x12.\n" +
+	"\x13rental_period_hours\x18\x14 \x01(\x05R\x11rentalPeriodHours\"\xd9\x01\n" +
 	"\fEpisodeImage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\timage_url\x18\x02 \x01(\tR\bimageUrl\x12!\n" +
@@ -3156,7 +3251,11 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	" SURFACE_AVAILABILITY_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18SURFACE_AVAILABILITY_ALL\x10\x01\x12\x1c\n" +
 	"\x18SURFACE_AVAILABILITY_WEB\x10\x02\x12\x1c\n" +
-	"\x18SURFACE_AVAILABILITY_APP\x10\x03*\x95\x01\n" +
+	"\x18SURFACE_AVAILABILITY_APP\x10\x03*c\n" +
+	"\fPurchaseKind\x12\x1d\n" +
+	"\x19PURCHASE_KIND_UNSPECIFIED\x10\x00\x12\x1a\n" +
+	"\x16PURCHASE_KIND_PURCHASE\x10\x01\x12\x18\n" +
+	"\x14PURCHASE_KIND_RENTAL\x10\x02*\x95\x01\n" +
 	"\x10ReaderIconPolicy\x12\"\n" +
 	"\x1eREADER_ICON_POLICY_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19READER_ICON_POLICY_UPLOAD\x10\x01\x12\x1d\n" +
@@ -3180,7 +3279,7 @@ func file_publira_types_v1_types_proto_rawDescGZIP() []byte {
 	return file_publira_types_v1_types_proto_rawDescData
 }
 
-var file_publira_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 10)
+var file_publira_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 11)
 var file_publira_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_publira_types_v1_types_proto_goTypes = []any{
 	(CreatorCreditSource)(0),      // 0: publira.types.v1.CreatorCreditSource
@@ -3191,52 +3290,53 @@ var file_publira_types_v1_types_proto_goTypes = []any{
 	(ClientSurface)(0),            // 5: publira.types.v1.ClientSurface
 	(AppPurchaseRoute)(0),         // 6: publira.types.v1.AppPurchaseRoute
 	(SurfaceAvailability)(0),      // 7: publira.types.v1.SurfaceAvailability
-	(ReaderIconPolicy)(0),         // 8: publira.types.v1.ReaderIconPolicy
-	(AgeVerification)(0),          // 9: publira.types.v1.AgeVerification
-	(*TenantContext)(nil),         // 10: publira.types.v1.TenantContext
-	(*User)(nil),                  // 11: publira.types.v1.User
-	(*UserIconVariant)(nil),       // 12: publira.types.v1.UserIconVariant
-	(*AccessToken)(nil),           // 13: publira.types.v1.AccessToken
-	(*CreatorRole)(nil),           // 14: publira.types.v1.CreatorRole
-	(*Creator)(nil),               // 15: publira.types.v1.Creator
-	(*Label)(nil),                 // 16: publira.types.v1.Label
-	(*SeriesEyeCatchVariant)(nil), // 17: publira.types.v1.SeriesEyeCatchVariant
-	(*ImageCropRect)(nil),         // 18: publira.types.v1.ImageCropRect
-	(*Genre)(nil),                 // 19: publira.types.v1.Genre
-	(*Tag)(nil),                   // 20: publira.types.v1.Tag
-	(*Series)(nil),                // 21: publira.types.v1.Series
-	(*Episode)(nil),               // 22: publira.types.v1.Episode
-	(*EpisodeImage)(nil),          // 23: publira.types.v1.EpisodeImage
-	(*TenantImageVariant)(nil),    // 24: publira.types.v1.TenantImageVariant
-	(*TenantTheme)(nil),           // 25: publira.types.v1.TenantTheme
-	(*Page)(nil),                  // 26: publira.types.v1.Page
-	(*PageTranslation)(nil),       // 27: publira.types.v1.PageTranslation
-	(*PageVersion)(nil),           // 28: publira.types.v1.PageVersion
-	(*ReaderIconPreset)(nil),      // 29: publira.types.v1.ReaderIconPreset
-	(*RetentionPeriods)(nil),      // 30: publira.types.v1.RetentionPeriods
+	(PurchaseKind)(0),             // 8: publira.types.v1.PurchaseKind
+	(ReaderIconPolicy)(0),         // 9: publira.types.v1.ReaderIconPolicy
+	(AgeVerification)(0),          // 10: publira.types.v1.AgeVerification
+	(*TenantContext)(nil),         // 11: publira.types.v1.TenantContext
+	(*User)(nil),                  // 12: publira.types.v1.User
+	(*UserIconVariant)(nil),       // 13: publira.types.v1.UserIconVariant
+	(*AccessToken)(nil),           // 14: publira.types.v1.AccessToken
+	(*CreatorRole)(nil),           // 15: publira.types.v1.CreatorRole
+	(*Creator)(nil),               // 16: publira.types.v1.Creator
+	(*Label)(nil),                 // 17: publira.types.v1.Label
+	(*SeriesEyeCatchVariant)(nil), // 18: publira.types.v1.SeriesEyeCatchVariant
+	(*ImageCropRect)(nil),         // 19: publira.types.v1.ImageCropRect
+	(*Genre)(nil),                 // 20: publira.types.v1.Genre
+	(*Tag)(nil),                   // 21: publira.types.v1.Tag
+	(*Series)(nil),                // 22: publira.types.v1.Series
+	(*Episode)(nil),               // 23: publira.types.v1.Episode
+	(*EpisodeImage)(nil),          // 24: publira.types.v1.EpisodeImage
+	(*TenantImageVariant)(nil),    // 25: publira.types.v1.TenantImageVariant
+	(*TenantTheme)(nil),           // 26: publira.types.v1.TenantTheme
+	(*Page)(nil),                  // 27: publira.types.v1.Page
+	(*PageTranslation)(nil),       // 28: publira.types.v1.PageTranslation
+	(*PageVersion)(nil),           // 29: publira.types.v1.PageVersion
+	(*ReaderIconPreset)(nil),      // 30: publira.types.v1.ReaderIconPreset
+	(*RetentionPeriods)(nil),      // 31: publira.types.v1.RetentionPeriods
 }
 var file_publira_types_v1_types_proto_depIdxs = []int32{
-	12, // 0: publira.types.v1.User.icon_image_variants:type_name -> publira.types.v1.UserIconVariant
-	14, // 1: publira.types.v1.Creator.role:type_name -> publira.types.v1.CreatorRole
+	13, // 0: publira.types.v1.User.icon_image_variants:type_name -> publira.types.v1.UserIconVariant
+	15, // 1: publira.types.v1.Creator.role:type_name -> publira.types.v1.CreatorRole
 	0,  // 2: publira.types.v1.Creator.source:type_name -> publira.types.v1.CreatorCreditSource
-	17, // 3: publira.types.v1.Label.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	17, // 4: publira.types.v1.Genre.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	16, // 5: publira.types.v1.Series.label:type_name -> publira.types.v1.Label
-	15, // 6: publira.types.v1.Series.creators:type_name -> publira.types.v1.Creator
-	17, // 7: publira.types.v1.Series.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	18, // 3: publira.types.v1.Label.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	18, // 4: publira.types.v1.Genre.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	17, // 5: publira.types.v1.Series.label:type_name -> publira.types.v1.Label
+	16, // 6: publira.types.v1.Series.creators:type_name -> publira.types.v1.Creator
+	18, // 7: publira.types.v1.Series.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
 	1,  // 8: publira.types.v1.Series.status:type_name -> publira.types.v1.SeriesStatus
 	2,  // 9: publira.types.v1.Series.age_rating:type_name -> publira.types.v1.SeriesAgeRating
-	19, // 10: publira.types.v1.Series.genres:type_name -> publira.types.v1.Genre
-	20, // 11: publira.types.v1.Series.tags:type_name -> publira.types.v1.Tag
+	20, // 10: publira.types.v1.Series.genres:type_name -> publira.types.v1.Genre
+	21, // 11: publira.types.v1.Series.tags:type_name -> publira.types.v1.Tag
 	7,  // 12: publira.types.v1.Series.availability:type_name -> publira.types.v1.SurfaceAvailability
-	15, // 13: publira.types.v1.Episode.creators:type_name -> publira.types.v1.Creator
+	16, // 13: publira.types.v1.Episode.creators:type_name -> publira.types.v1.Creator
 	3,  // 14: publira.types.v1.Episode.reading_direction:type_name -> publira.types.v1.ReadingDirection
 	7,  // 15: publira.types.v1.Episode.availability:type_name -> publira.types.v1.SurfaceAvailability
 	7,  // 16: publira.types.v1.Episode.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
-	17, // 17: publira.types.v1.Episode.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	24, // 18: publira.types.v1.TenantTheme.icon_image_variants:type_name -> publira.types.v1.TenantImageVariant
-	24, // 19: publira.types.v1.TenantTheme.logo_image_variants:type_name -> publira.types.v1.TenantImageVariant
-	12, // 20: publira.types.v1.ReaderIconPreset.variants:type_name -> publira.types.v1.UserIconVariant
+	18, // 17: publira.types.v1.Episode.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	25, // 18: publira.types.v1.TenantTheme.icon_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	25, // 19: publira.types.v1.TenantTheme.logo_image_variants:type_name -> publira.types.v1.TenantImageVariant
+	13, // 20: publira.types.v1.ReaderIconPreset.variants:type_name -> publira.types.v1.UserIconVariant
 	21, // [21:21] is the sub-list for method output_type
 	21, // [21:21] is the sub-list for method input_type
 	21, // [21:21] is the sub-list for extension type_name
@@ -3254,7 +3354,7 @@ func file_publira_types_v1_types_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_types_v1_types_proto_rawDesc), len(file_publira_types_v1_types_proto_rawDesc)),
-			NumEnums:      10,
+			NumEnums:      11,
 			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   0,

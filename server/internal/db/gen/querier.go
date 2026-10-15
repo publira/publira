@@ -487,6 +487,9 @@ type Querier interface {
 	// one the reader took themselves, so the console neither lists it nor revokes
 	// it, and looking one up here finds nothing.
 	GetAccessTicketForTenant(ctx context.Context, arg GetAccessTicketForTenantParams) (GetAccessTicketForTenantRow, error)
+	// Which of the episode's two sales the reader holds an active purchase of.
+	// Only a purchase counts: an access ticket does not stop the reader buying.
+	GetActiveEpisodePurchaseKinds(ctx context.Context, arg GetActiveEpisodePurchaseKindsParams) (GetActiveEpisodePurchaseKindsRow, error)
 	// Return the first tenant that matches admin_domain, or the admin.{domain}
 	// fallback, keeping the order of the candidate host names.
 	GetAdminTenantByDomains(ctx context.Context, domains []string) (Tenant, error)
@@ -3075,7 +3078,8 @@ type Querier interface {
 	// the series.
 	UpdateEpisodeLayoutByIDForTenant(ctx context.Context, arg UpdateEpisodeLayoutByIDForTenantParams) error
 	UpdateEpisodeOrderIndexByIDForTenantAndSeries(ctx context.Context, arg UpdateEpisodeOrderIndexByIDForTenantAndSeriesParams) error
-	// NULL gives a purchase of the episode no expiry.
+	// A NULL reading period gives the permanent copy no expiry, and a NULL rental
+	// stops renting the episode.
 	UpdateEpisodePricingByIDForTenant(ctx context.Context, arg UpdateEpisodePricingByIDForTenantParams) (int64, error)
 	// Taking the episode off the site settles what it owed: no reader can open it,
 	// and the publication that puts it back owes its own announcement if its
@@ -3273,8 +3277,6 @@ type Querier interface {
 	// Whether the body is free to everyone — price = 0, or an open free window —
 	// is evaluated by the caller; this query only covers grants.
 	UserHasEpisodeContentAccess(ctx context.Context, arg UserHasEpisodeContentAccessParams) (bool, error)
-	// Only a purchase counts: an access ticket does not stop the reader buying.
-	UserHasValidPurchaseForEpisode(ctx context.Context, arg UserHasValidPurchaseForEpisodeParams) (bool, error)
 	// The author's own deletion. It applies to a comment staff had removed too,
 	// since the author still sees that comment unchanged. The removal columns
 	// are cleared because no removal is in force on a withdrawn row any more;

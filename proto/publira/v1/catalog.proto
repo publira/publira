@@ -1573,6 +1573,12 @@ message StartEpisodeCheckoutRequest {
   // answer is that of the translation in this locale, else the tenant's default
   // locale's, else the oldest one. Empty means the tenant's default locale.
   string locale = 5;
+  // Which of the episode's sales the checkout is for. Unspecified is the
+  // permanent copy. A rental of an episode that is not rented is
+  // failed_precondition. A reader who holds an active permanent copy is
+  // already_exists for either kind, and one who holds an active rental for
+  // another rental, but may still buy the permanent copy.
+  publira.types.v1.PurchaseKind kind = 6;
 }
 
 message StartEpisodeCheckoutResponse {
@@ -1608,6 +1614,9 @@ message MyPurchase {
   // bank, or refunded by staff, which revokes it before the provider reports
   // the refund. A purchase revoked here is never active.
   string revoked_at = 11;
+  // Which of the episode's sales the reader bought, never unspecified. A
+  // rental always carries expires_at.
+  publira.types.v1.PurchaseKind kind = 12;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.

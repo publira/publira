@@ -377,6 +377,8 @@ type episodeJSON struct {
 	OrderIndex         int32   `json:"order_index"`
 	Price              int32   `json:"price"`
 	ReadingPeriodHours *int32  `json:"reading_period_hours"`
+	RentalPrice        *int32  `json:"rental_price"`
+	RentalPeriodHours  *int32  `json:"rental_period_hours"`
 	Status             string  `json:"status"`
 	ScheduledAt        *string `json:"scheduled_at"`
 	PublishedAt        *string `json:"published_at"`
@@ -997,6 +999,10 @@ func (s *apiServer) GetSeriesDetail(
 		}
 		if episode.ReadingPeriodHours != nil {
 			item.ReadingPeriodHours = *episode.ReadingPeriodHours
+		}
+		if episode.RentalPrice != nil && episode.RentalPeriodHours != nil {
+			item.RentalPrice = *episode.RentalPrice
+			item.RentalPeriodHours = *episode.RentalPeriodHours
 		}
 		if episode.ScheduledAt != nil {
 			item.ScheduledAt = *episode.ScheduledAt

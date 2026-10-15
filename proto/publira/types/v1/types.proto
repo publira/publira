@@ -253,6 +253,10 @@ message Series {
   // the catalog has already left out every series the caller may not show.
   SurfaceAvailability availability = 21;
   string id = 22;
+  // Where the rental period of each new episode in the series starts, as
+  // `reading_period_hours` is for the permanent copy's. Zero states none. Set
+  // on the console's reads and 0 on the public ones.
+  int32 rental_period_hours = 23;
 }
 
 message Episode {
@@ -323,6 +327,16 @@ message Episode {
   // answer in their shape; empty elsewhere.
   string eye_catch_image_updated_at = 17;
   repeated SeriesEyeCatchVariant eye_catch_image_variants = 18;
+  // The rental: what renting the episode costs, in the minor unit `price` is
+  // in, and how long the rental opens it. Both are 0 on an episode that is not
+  // rented, and both are set on one that is: `price` then stays what the
+  // permanent copy costs, and `reading_period_hours` its expiry, if any. A
+  // rental is always cheaper than the permanent copy.
+  //
+  // Set on GetEpisodeDetail, on the episodes GetSeriesDetail lists, and on the
+  // console's episode reads and writes; 0 elsewhere.
+  int32 rental_price = 19;
+  int32 rental_period_hours = 20;
 }
 
 // Which way the pages of a work are turned. A series states it for every one
@@ -519,6 +533,20 @@ enum SurfaceAvailability {
   SURFACE_AVAILABILITY_WEB = 2;
   // The app alone.
   SURFACE_AVAILABILITY_APP = 3;
+}
+
+// Which of an episode's two sales a purchase is (purchases.kind).
+enum PurchaseKind {
+  // On a request, the permanent copy, which is what every client that names no
+  // kind buys.
+  PURCHASE_KIND_UNSPECIFIED = 0;
+  // The permanent copy, at Episode.price, which opens the episode for its
+  // reading period if it has one and for good if it does not. A store purchase
+  // and a grant staff record are always this.
+  PURCHASE_KIND_PURCHASE = 1;
+  // The rental, at Episode.rental_price, which opens the episode for
+  // Episode.rental_period_hours.
+  PURCHASE_KIND_RENTAL = 2;
 }
 
 // What a tenant lets a reader show as an icon (tenant_config.reader_icon_policy).

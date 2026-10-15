@@ -106,7 +106,9 @@ func (s *apiServer) StartStorePurchase(
 	if err := s.refuseCreditedReader(ctx, tenant.ID, user.ID, episode.ID); err != nil {
 		return nil, err
 	}
-	hasPurchase, err := queries.UserHasValidPurchaseForEpisode(ctx, dbmodels.UserHasValidPurchaseForEpisodeParams{
+	// A store sells the permanent copy alone, which an active rental does not
+	// stand in the way of.
+	held, err := queries.GetActiveEpisodePurchaseKinds(ctx, dbmodels.GetActiveEpisodePurchaseKindsParams{
 		TenantID:  tenant.ID,
 		UserID:    user.ID,
 		EpisodeID: episode.ID,
@@ -114,7 +116,7 @@ func (s *apiServer) StartStorePurchase(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to check purchase status", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
-	if hasPurchase {
+	if held.HoldsPurchase {
 		return nil, connect.NewError(connect.CodeAlreadyExists, "episode is already purchased")
 	}
 
@@ -288,8 +290,9 @@ func (s *apiServer) myPurchase(ctx context.Context, queries Querier, tenantID, u
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to read a store purchase", err, "tenant_id", tenantID.String(), "purchase_id", purchaseID.String())
 	}
-	return purchaseItemFromRow(purchasePageRow{
+	purchase, err := purchaseItemFromRow(purchasePageRow{
 		id:                row.ID,
+		kind:              row.Kind,
 		priceAtPurchase:   row.PriceAtPurchase,
 		currency:          row.Currency,
 		expiresAt:         row.ExpiresAt,
@@ -300,7 +303,11 @@ func (s *apiServer) myPurchase(ctx context.Context, queries Querier, tenantID, u
 		episodeOrderIndex: row.EpisodeOrderIndex,
 		seriesPublicID:    row.SeriesPublicID,
 		seriesTitle:       row.SeriesTitle,
-	}, time.Now()), nil
+	}, time.Now())
+	if err != nil {
+		return nil, s.internalError(ctx, "purchase holds a kind this build does not know", err, "tenant_id", tenantID.String(), "purchase_id", purchaseID.String())
+	}
+	return purchase, nil
 }
 
 func (s *apiServer) appStores(ctx context.Context) *paymentsettings.AppStores {

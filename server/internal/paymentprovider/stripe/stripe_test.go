@@ -14,6 +14,7 @@ func TestPurchaseMetadataRoundTrips(t *testing.T) {
 		TenantID:           uuid.New(),
 		ReaderID:           uuid.New(),
 		EpisodeID:          uuid.New(),
+		Kind:               paymentprovider.KindPurchase,
 		Price:              500,
 		ReadingPeriodHours: 72,
 	}

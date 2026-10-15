@@ -645,6 +645,9 @@ func (s *adminServer) CreateSeries(
 	if req.ReadingPeriodHours < 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, "reading_period_hours must be greater than or equal to 0")
 	}
+	if req.RentalPeriodHours < 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "rental_period_hours must be greater than or equal to 0")
+	}
 	eyeCatchImage, err := normalizeSeriesEyeCatchImage(req.EyeCatchImageData, req.EyeCatchImageContentType)
 	if err != nil {
 		return nil, err
@@ -720,6 +723,7 @@ func (s *adminServer) CreateSeries(
 		TenantID:           tenant.ID,
 		SeriesID:           base.ID,
 		ReadingPeriodHours: sql.NullInt32{Int32: req.ReadingPeriodHours, Valid: req.ReadingPeriodHours > 0},
+		RentalPeriodHours:  sql.NullInt32{Int32: req.RentalPeriodHours, Valid: req.RentalPeriodHours > 0},
 		Status:             listingMetadata.status,
 		ScheduleWeekdays:   listingMetadata.scheduleWeekdays,
 		AgeRating:          listingMetadata.ageRating,
@@ -857,6 +861,9 @@ func (s *adminServer) UpdateSeries(
 	if req.GetReadingPeriodHours() < 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, "reading_period_hours must be greater than or equal to 0")
 	}
+	if req.GetRentalPeriodHours() < 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "rental_period_hours must be greater than or equal to 0")
+	}
 	if req.ClearEyeCatchImage && len(req.EyeCatchImageData) > 0 {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("clear_eye_catch_image and eye_catch_image_data cannot be used together"), "eye_catch_image_data")
 	}
@@ -952,6 +959,7 @@ func (s *adminServer) UpdateSeries(
 		TenantID:                tenant.ID,
 		SeriesID:                current.ID,
 		ReadingPeriodHours:      sql.NullInt32{Int32: req.GetReadingPeriodHours(), Valid: req.GetReadingPeriodHours() > 0},
+		RentalPeriodHours:       sql.NullInt32{Int32: req.GetRentalPeriodHours(), Valid: req.GetRentalPeriodHours() > 0},
 		Status:                  listingMetadata.status,
 		ScheduleWeekdays:        listingMetadata.scheduleWeekdays,
 		AgeRating:               listingMetadata.ageRating,
@@ -959,6 +967,7 @@ func (s *adminServer) UpdateSeries(
 		ReadingDirection:        listingMetadata.readingDirection,
 		SpreadStartIndex:        listingMetadata.spreadStartIndex,
 		WriteReadingPeriodHours: req.ReadingPeriodHours != nil,
+		WriteRentalPeriodHours:  req.RentalPeriodHours != nil,
 		WriteStatus:             req.Status != nil,
 		WriteScheduleWeekdays:   req.WeeklySchedule != nil,
 		WriteAgeRating:          req.AgeRating != nil,
@@ -1104,6 +1113,7 @@ type seriesPageRow struct {
 	labelName              sql.NullString
 	synopsis               string
 	readingPeriodHours     sql.NullInt32
+	rentalPeriodHours      sql.NullInt32
 	status                 sql.NullString
 	scheduleWeekdays       []int32
 	ageRating              sql.NullString
@@ -1126,6 +1136,7 @@ func mapSeriesDescRows(rows []dbmodels.ListSeriesByTenantDescRow) []seriesPageRo
 			labelName:              row.LabelName,
 			synopsis:               row.Synopsis,
 			readingPeriodHours:     row.ReadingPeriodHours,
+			rentalPeriodHours:      row.RentalPeriodHours,
 			status:                 row.Status,
 			scheduleWeekdays:       row.ScheduleWeekdays,
 			ageRating:              row.AgeRating,
@@ -1151,6 +1162,7 @@ func mapSeriesAscRows(rows []dbmodels.ListSeriesByTenantAscRow) []seriesPageRow 
 			labelName:              row.LabelName,
 			synopsis:               row.Synopsis,
 			readingPeriodHours:     row.ReadingPeriodHours,
+			rentalPeriodHours:      row.RentalPeriodHours,
 			status:                 row.Status,
 			scheduleWeekdays:       row.ScheduleWeekdays,
 			ageRating:              row.AgeRating,
@@ -1298,6 +1310,9 @@ func (s *adminServer) ListSeries(
 		}
 		if row.readingPeriodHours.Valid {
 			item.ReadingPeriodHours = row.readingPeriodHours.Int32
+		}
+		if row.rentalPeriodHours.Valid {
+			item.RentalPeriodHours = row.rentalPeriodHours.Int32
 		}
 		if row.status.Valid {
 			status, statusErr := protomapper.SeriesStatusFromStored(row.status.String)

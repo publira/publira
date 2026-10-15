@@ -2,10 +2,12 @@ package publicapi
 
 import (
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/paymentprovider"
 )
 
@@ -60,7 +62,7 @@ func TestCheckoutIdempotencyKeyFollowsTheRequest(t *testing.T) {
 			Price:              300,
 			ReadingPeriodHours: 24,
 		},
-		EpisodeTitle: "Episode 1",
+		LineItemName: "Episode 1",
 		SuccessURL:   "https://tenant.example/series/SERIES001/episodes/EPISODE001?checkout=success",
 		CancelURL:    "https://tenant.example/series/SERIES001/episodes/EPISODE001?checkout=cancelled",
 	}
@@ -80,7 +82,8 @@ func TestCheckoutIdempotencyKeyFollowsTheRequest(t *testing.T) {
 	changes := map[string]func(*paymentprovider.CheckoutRequest){
 		"price":          func(r *paymentprovider.CheckoutRequest) { r.Purchase.Price = 500 },
 		"reading period": func(r *paymentprovider.CheckoutRequest) { r.Purchase.ReadingPeriodHours = 48 },
-		"episode title":  func(r *paymentprovider.CheckoutRequest) { r.EpisodeTitle = "Episode 1: The Beginning" },
+		"line item name": func(r *paymentprovider.CheckoutRequest) { r.LineItemName = "Episode 1: The Beginning" },
+		"kind":           func(r *paymentprovider.CheckoutRequest) { r.Purchase.Kind = paymentprovider.KindRental },
 		"success URL": func(r *paymentprovider.CheckoutRequest) {
 			r.SuccessURL = "https://tenant.example/en/checkout/return?episode=EPISODE001&status=success"
 		},
@@ -112,7 +115,7 @@ func TestCheckoutIdempotencyKeyMovesPastAnExpiredCheckout(t *testing.T) {
 			EpisodeID: uuid.Must(uuid.NewV7()),
 			Price:     300,
 		},
-		EpisodeTitle: "Episode 1",
+		LineItemName: "Episode 1",
 		SuccessURL:   "https://tenant.example/series/SERIES001/episodes/EPISODE001?checkout=success",
 		CancelURL:    "https://tenant.example/series/SERIES001/episodes/EPISODE001?checkout=cancelled",
 	}
@@ -128,6 +131,42 @@ func TestCheckoutIdempotencyKeyMovesPastAnExpiredCheckout(t *testing.T) {
 		keys[key] = true
 		if again, err := checkoutIdempotencyKey(request, expired); err != nil || again != key {
 			t.Fatalf("key after the same expiry of %q = (%q, %v), want %q", expired, again, err, key)
+		}
+	}
+}
+
+// Every locale names a rental by the episode's title and the period it is
+// rented for, so a catalog that drops either would show the payment page a sale
+// the reader cannot tell from the permanent copy.
+func TestRentalLineItemNameCarriesTheTitleAndThePeriodInEveryLocale(t *testing.T) {
+	for _, code := range locale.Supported {
+		t.Run(code, func(t *testing.T) {
+			name, err := rentalLineItemName(code, "Episode 1", 1200)
+			if err != nil {
+				t.Fatalf("rentalLineItemName: %v", err)
+			}
+			if !strings.Contains(name, "Episode 1") {
+				t.Fatalf("rentalLineItemName = %q, which leaves out the title", name)
+			}
+			// The period is grouped the way the locale groups digits.
+			if ungrouped := strings.NewReplacer(",", "", ".", "", "\u00a0", "").Replace(name); !strings.Contains(ungrouped, "1200") {
+				t.Fatalf("rentalLineItemName = %q, which leaves out the period", name)
+			}
+		})
+	}
+}
+
+func TestRentalLineItemNameAgreesWithTheCountInEnglish(t *testing.T) {
+	for hours, want := range map[int32]string{
+		1:  "Episode 1 (rental, 1 hour)",
+		48: "Episode 1 (rental, 48 hours)",
+	} {
+		got, err := rentalLineItemName("en", "Episode 1", hours)
+		if err != nil {
+			t.Fatalf("rentalLineItemName(%d): %v", hours, err)
+		}
+		if got != want {
+			t.Fatalf("rentalLineItemName(%d) = %q, want %q", hours, got, want)
 		}
 	}
 }
