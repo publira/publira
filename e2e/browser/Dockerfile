@@ -9,7 +9,7 @@
 #
 # The version has to match `@playwright/test` in `e2e/package.json` exactly:
 # `browserType.connect()` refuses a server built from a different release.
-FROM mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
+FROM mcr.microsoft.com/playwright:v1.64.1-noble@sha256:7852dc5a7d72f5fe458a597d690f6c42fbc8e9e26ddfa95f8e6ef552558d9bbf
 
 # The font stacks the apps ship end in the Noto CJK faces a Linux desktop
 # carries, and the base image has none of them, so text would fall through to
@@ -42,7 +42,7 @@ RUN printf '%s\n' \
 # rather than letting `npx` fetch it when the container starts keeps the server
 # off the network and out of the reach of a release published between two runs.
 # renovate: datasource=npm depName=playwright
-ARG PLAYWRIGHT_VERSION=1.64.0
+ARG PLAYWRIGHT_VERSION=1.64.1
 RUN npm install --global --no-fund --no-audit "playwright@${PLAYWRIGHT_VERSION}"
 
 # A connected client opens its own contexts; the server itself only has to be
