@@ -3,7 +3,7 @@ version: v2
 # a deleted proto disappears instead of lingering. Set here rather than as a
 # `--clean` flag on one call site: every `buf generate` — `task gen` locally and
 # the drift check in CI — has to behave the same, or the CI failure would ask for
-# a regeneration that cannot fix it. Both directories hold nothing but buf
+# a regeneration that cannot fix it. Every `out` directory holds nothing but buf
 # output, so there is nothing else to lose.
 clean: true
 # Remote plugin versions are pinned so `buf generate` is reproducible: without a
@@ -22,3 +22,10 @@ plugins:
   - remote: buf.build/bufbuild/es:v2.16.0
     out: packages/api-client/src/gen
     opt: target=ts
+  # The mobile app speaks the public API alone, so it is given the messages and
+  # the service stubs of `publira.v1` and of the types those reach, and nothing
+  # of the consoles' APIs. None of them imports a well-known type.
+  - remote: buf.build/protocolbuffers/dart:v25.1.0
+    out: mobile/lib/api/gen
+    types:
+      - publira.v1

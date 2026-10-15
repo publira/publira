@@ -9,6 +9,8 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
+import 'package:publira/api/gen/publira/v1/auth.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/catalog.pb.dart' as pb;
 import 'package:publira/api/error_details.dart';
 import 'package:publira/app.dart';
 import 'package:publira/auth/auth_controller.dart';
@@ -249,7 +251,7 @@ void main() {
       );
 
       await expectLater(
-        client.unary('/publira.v1.FollowService/FollowSeries', {}),
+        pb.FollowServiceApi(client).follow(null, pb.FollowRequest()),
         throwsA(
           isA<ConnectException>().having(
             (error) => error.isLegalPageAgreementRequired,
@@ -281,7 +283,7 @@ void main() {
       );
 
       await expectLater(
-        client.unary('/publira.v1.AuthService/DeleteMe', {}),
+        pb.AuthServiceApi(client).deleteMe(null, pb.DeleteMeRequest()),
         throwsA(isA<ConnectException>()),
       );
       expect(reported, 0);

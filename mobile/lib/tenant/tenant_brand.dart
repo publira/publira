@@ -36,7 +36,8 @@ enum TenantColor {
 
   const TenantColor(this.wireName, this.fallback);
 
-  /// The protojson field of `TenantTheme` that carries this colour.
+  /// The protojson name of the `TenantTheme` field that carries this colour,
+  /// which [TenantPalette.toWire] writes it under as well.
   final String wireName;
 
   final Color fallback;
@@ -49,8 +50,18 @@ class TenantPalette {
   /// The brand defaults, for a tenant that has stored no theme.
   static const standard = TenantPalette._({});
 
-  /// Reads a `TenantTheme` as protojson, or the same shape written by
-  /// [toWire]. A colour that is missing or not `#rrggbb` is its fallback.
+  /// The palette [colors] names, each as `#rrggbb`. A colour that is missing
+  /// or not `#rrggbb` is its fallback.
+  factory TenantPalette.fromHex(Map<TenantColor, String> colors) {
+    return TenantPalette._({
+      for (final MapEntry(key: color, :value) in colors.entries)
+        color: ?_parseHex(value),
+    });
+  }
+
+  /// Reads the shape written by [toWire], which names each colour the way
+  /// `TenantTheme`'s protojson does. A colour that is missing or not
+  /// `#rrggbb` is its fallback.
   factory TenantPalette.fromWire(Object? theme) {
     if (theme is! Map) {
       return standard;

@@ -172,7 +172,6 @@ void main() {
       for (final body in const <Map<String, Object?>>[
         {'tenantId': _tenantId},
         {'tenantId': _tenantId, 'defaultLocale': '  '},
-        {'tenantId': _tenantId, 'defaultLocale': 1},
       ]) {
         final resolver = _resolverOver(
           MockClient((_) async => http.Response(jsonEncode(body), 200)),
@@ -219,10 +218,9 @@ void main() {
       for (final body in const <Map<String, Object?>>[
         {'tenantId': _tenantId},
         {'tenantId': _tenantId, 'supportedLocales': <String>[]},
-        {'tenantId': _tenantId, 'supportedLocales': 'ja'},
         {
           'tenantId': _tenantId,
-          'supportedLocales': ['  ', 1],
+          'supportedLocales': ['  '],
         },
       ]) {
         final resolver = _resolverOver(

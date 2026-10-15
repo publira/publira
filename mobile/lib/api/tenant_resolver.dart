@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
+import 'package:publira/api/gen/publira/v1/domain.pb.dart' as pb;
 
 /// Resolves the tenant id behind the configured host and keeps it for the rest
 /// of the run.
@@ -10,8 +11,6 @@ import 'package:publira/api/connect_exception.dart';
 /// kept, so the next caller retries it.
 class TenantResolver {
   TenantResolver({required this._client, required this.tenantHost});
-
-  static const _procedure = '/publira.v1.DomainService/GetTenantByDomain';
 
   final String tenantHost;
   final ConnectClient _client;
@@ -67,14 +66,11 @@ class TenantResolver {
 
   Future<String> _fetch() async {
     try {
-      final body = await _client.unary(_procedure, {
-        'domains': [tenantHost],
-      });
-      // A value of another type is as unusable as a missing one, and reaches
-      // the caller as the same Connect error rather than as a cast that no
-      // repository is catching.
-      final rawTenantId = body['tenantId'];
-      final tenantId = rawTenantId is String ? rawTenantId.trim() : '';
+      final response = await pb.DomainServiceApi(_client).getTenantByDomain(
+        null,
+        pb.GetTenantByDomainRequest(domains: [tenantHost]),
+      );
+      final tenantId = response.tenantId.trim();
       if (tenantId.isEmpty) {
         throw const ConnectException(
           code: 'internal',
@@ -82,18 +78,13 @@ class TenantResolver {
         );
       }
       _tenantId = tenantId;
-      final rawDefaultLocale = body['defaultLocale'];
-      final defaultLocale = rawDefaultLocale is String
-          ? rawDefaultLocale.trim()
-          : '';
+      final defaultLocale = response.defaultLocale.trim();
       if (defaultLocale.isNotEmpty) {
         _defaultLocale.value = defaultLocale;
       }
-      final rawSupportedLocales = body['supportedLocales'];
       final supportedLocales = [
-        if (rawSupportedLocales is List)
-          for (final code in rawSupportedLocales)
-            if (code is String && code.trim().isNotEmpty) code.trim(),
+        for (final code in response.supportedLocales)
+          if (code.trim().isNotEmpty) code.trim(),
       ];
       if (supportedLocales.isNotEmpty &&
           !listEquals(supportedLocales, _supportedLocales.value)) {

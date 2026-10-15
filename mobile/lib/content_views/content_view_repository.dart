@@ -1,15 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 /// The two kinds of page the storefront counts a view of.
-enum ContentViewKind {
-  series('CONTENT_VIEW_TARGET_TYPE_SERIES'),
-  episode('CONTENT_VIEW_TARGET_TYPE_EPISODE');
-
-  const ContentViewKind(this.wireValue);
-
-  /// The `ContentViewTargetType` the API names this kind by.
-  final String wireValue;
-}
+enum ContentViewKind { series, episode }
 
 /// Where the app reports that a reader opened a series or an episode, which
 /// the tenant's rankings and content statistics are built from.

@@ -1,6 +1,9 @@
 import 'package:publira/api/client_surface.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
+import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/catalog.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/tenant.pb.dart' as pb;
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/my_purchase.dart';
@@ -16,19 +19,6 @@ class HttpPurchaseRepository implements PurchaseRepository {
     this.store,
   });
 
-  static const _tenantProcedure = '/publira.v1.TenantService/GetTenant';
-  static const _accessProcedure =
-      '/publira.v1.CatalogService/GetSeriesEpisodeAccess';
-  static const _episodeProcedure =
-      '/publira.v1.CatalogService/GetEpisodeDetail';
-  static const _checkoutProcedure =
-      '/publira.v1.PurchaseService/StartEpisodeCheckout';
-  static const _listProcedure = '/publira.v1.PurchaseService/ListMyPurchases';
-  static const _startStoreProcedure =
-      '/publira.v1.PurchaseService/StartStorePurchase';
-  static const _confirmStoreProcedure =
-      '/publira.v1.PurchaseService/ConfirmStorePurchase';
-
   final ConnectClient _client;
   final TenantResolver _tenants;
 
@@ -38,14 +28,11 @@ class HttpPurchaseRepository implements PurchaseRepository {
   @override
   Future<bool> acceptsPayments() async {
     final tenant = await _tenant();
-    // protojson omits a false.
     return switch (_route(tenant)) {
-      AppPurchaseRoute.externalCheckout => tenant['acceptsPayments'] == true,
+      AppPurchaseRoute.externalCheckout => tenant.acceptsPayments,
       AppPurchaseRoute.store => switch (store) {
-        InAppPurchaseStore.appStore =>
-          tenant['acceptsAppStorePayments'] == true,
-        InAppPurchaseStore.googlePlay =>
-          tenant['acceptsGooglePlayPayments'] == true,
+        InAppPurchaseStore.appStore => tenant.acceptsAppStorePayments,
+        InAppPurchaseStore.googlePlay => tenant.acceptsGooglePlayPayments,
         null => false,
       },
     };
@@ -56,8 +43,8 @@ class HttpPurchaseRepository implements PurchaseRepository {
 
   @override
   Future<String> currency() async {
-    final currency = (await _tenant())['currency'];
-    if (currency is! String || !_currencyPattern.hasMatch(currency)) {
+    final currency = (await _tenant()).currency;
+    if (!_currencyPattern.hasMatch(currency)) {
       throw const PurchaseFailure(
         PurchaseFailureKind.unexpected,
         message: 'currency must be an ISO 4217 code',
@@ -69,12 +56,13 @@ class HttpPurchaseRepository implements PurchaseRepository {
   /// An ISO 4217 code as the API spells it.
   static final _currencyPattern = RegExp(r'^[A-Z]{3}$');
 
-  Future<Map<String, Object?>> _tenant() async {
+  Future<pb.GetTenantResponse> _tenant() async {
     try {
       final tenantId = await _tenants.resolve();
-      return await _client.unary(_tenantProcedure, {
-        'tenant': {'tenantId': tenantId},
-      }, tenantId: tenantId);
+      return await pb.TenantServiceApi(_client).getTenant(
+        ConnectCallContext(tenantId: tenantId),
+        pb.GetTenantRequest(tenant: pb.TenantContext(tenantId: tenantId)),
+      );
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
@@ -82,8 +70,8 @@ class HttpPurchaseRepository implements PurchaseRepository {
 
   /// A server that names no route predates the store route, and sells through
   /// the external checkout like every tenant that has chosen nothing.
-  AppPurchaseRoute _route(Map<String, Object?> tenant) =>
-      tenant['appPurchaseRoute'] == 'APP_PURCHASE_ROUTE_STORE'
+  AppPurchaseRoute _route(pb.GetTenantResponse tenant) =>
+      tenant.appPurchaseRoute == pb.AppPurchaseRoute.APP_PURCHASE_ROUTE_STORE
       ? AppPurchaseRoute.store
       : AppPurchaseRoute.externalCheckout;
 
@@ -93,28 +81,20 @@ class HttpPurchaseRepository implements PurchaseRepository {
   ) async {
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(_accessProcedure, {
-        'seriesId': seriesInternalId,
-        'surface': appClientSurface,
-        'tenant': {'tenantId': tenantId},
-      }, tenantId: tenantId);
-      final raw = body['episodes'];
-      // protojson omits an empty repeated field.
-      if (raw == null) {
-        return const {};
-      }
-      if (raw is! List) {
-        throw const PurchaseFailure(
-          PurchaseFailureKind.unexpected,
-          message: 'episodes must be a list',
-        );
-      }
+      final body = await pb.CatalogServiceApi(_client).getSeriesEpisodeAccess(
+        ConnectCallContext(tenantId: tenantId),
+        pb.GetSeriesEpisodeAccessRequest(
+          seriesId: seriesInternalId,
+          surface: appClientSurface,
+          tenant: pb.TenantContext(tenantId: tenantId),
+        ),
+      );
       return Map.unmodifiable({
-        for (final item in raw)
-          if (item is Map && item['episodePublicId'] is String)
-            item['episodePublicId'] as String: EpisodeAccess.fromWire(
-              item['access'],
-            ),
+        for (final item in body.episodes)
+          // protojson omits an empty string, so a row that names no episode
+          // is one without the key.
+          if (item.episodePublicId.isNotEmpty)
+            item.episodePublicId: EpisodeAccess.fromWire(item.access),
       });
     } on ConnectException catch (error) {
       throw _toFailure(error);
@@ -125,14 +105,16 @@ class HttpPurchaseRepository implements PurchaseRepository {
   Future<String?> seriesOfEpisode(String episodePublicId) async {
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(_episodeProcedure, {
-        'publicId': episodePublicId,
-        'surface': appClientSurface,
-        'tenant': {'tenantId': tenantId},
-      }, tenantId: tenantId);
-      final series = body['series'];
-      final id = series is Map ? series['publicId'] : null;
-      if (id is! String || id.isEmpty) {
+      final body = await pb.CatalogServiceApi(_client).getEpisodeDetail(
+        ConnectCallContext(tenantId: tenantId),
+        pb.GetEpisodeDetailRequest(
+          publicId: episodePublicId,
+          surface: appClientSurface,
+          tenant: pb.TenantContext(tenantId: tenantId),
+        ),
+      );
+      final id = body.series.publicId;
+      if (id.isEmpty) {
         throw const PurchaseFailure(
           PurchaseFailureKind.unexpected,
           message: 'series.publicId is missing',
@@ -160,18 +142,15 @@ class HttpPurchaseRepository implements PurchaseRepository {
     }
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(
-        _checkoutProcedure,
-        {
-          'client': 'CLIENT_MOBILE',
-          'episodeId': episodeInternalId,
-          'tenant': {'tenantId': tenantId},
-        },
-        tenantId: tenantId,
-        accessToken: accessToken,
+      final body = await pb.PurchaseServiceApi(_client).startEpisodeCheckout(
+        ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+        pb.StartEpisodeCheckoutRequest(
+          client: pb.StartEpisodeCheckoutRequest_Client.CLIENT_MOBILE,
+          episodeId: episodeInternalId,
+          tenant: pb.TenantContext(tenantId: tenantId),
+        ),
       );
-      final raw = body['checkoutUrl'];
-      final url = raw is String ? Uri.tryParse(raw.trim()) : null;
+      final url = Uri.tryParse(body.checkoutUrl.trim());
       if (url == null || url.scheme != 'https') {
         throw const PurchaseFailure(
           PurchaseFailureKind.unexpected,
@@ -194,18 +173,16 @@ class HttpPurchaseRepository implements PurchaseRepository {
     final accessToken = _requireAccessToken();
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(
-        _startStoreProcedure,
-        {
-          'episodeId': episodeInternalId,
-          'store': store.wireName,
-          'tenant': {'tenantId': tenantId},
-        },
-        tenantId: tenantId,
-        accessToken: accessToken,
+      final body = await pb.PurchaseServiceApi(_client).startStorePurchase(
+        ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+        pb.StartStorePurchaseRequest(
+          episodeId: episodeInternalId,
+          store: _store(store),
+          tenant: pb.TenantContext(tenantId: tenantId),
+        ),
       );
-      final intentId = _readString(body, 'intentId');
-      final productId = _readString(body, 'productId');
+      final intentId = body.intentId.trim();
+      final productId = body.productId.trim();
       if (intentId.isEmpty || productId.isEmpty) {
         throw const PurchaseFailure(
           PurchaseFailureKind.unexpected,
@@ -227,16 +204,14 @@ class HttpPurchaseRepository implements PurchaseRepository {
     final accessToken = _requireAccessToken();
     try {
       final tenantId = await _tenants.resolve();
-      await _client.unary(
-        _confirmStoreProcedure,
-        {
-          'productId': productId,
-          'store': store.wireName,
-          'tenant': {'tenantId': tenantId},
-          'transaction': transaction,
-        },
-        tenantId: tenantId,
-        accessToken: accessToken,
+      await pb.PurchaseServiceApi(_client).confirmStorePurchase(
+        ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+        pb.ConfirmStorePurchaseRequest(
+          productId: productId,
+          store: _store(store),
+          tenant: pb.TenantContext(tenantId: tenantId),
+          transaction: transaction,
+        ),
       );
     } on ConnectException catch (error) {
       // Here the store has not settled the charge, rather than the tenant
@@ -250,6 +225,14 @@ class HttpPurchaseRepository implements PurchaseRepository {
       throw _toFailure(error);
     }
   }
+
+  static pb.InAppPurchaseStore _store(InAppPurchaseStore store) =>
+      switch (store) {
+        InAppPurchaseStore.appStore =>
+          pb.InAppPurchaseStore.IN_APP_PURCHASE_STORE_APP_STORE,
+        InAppPurchaseStore.googlePlay =>
+          pb.InAppPurchaseStore.IN_APP_PURCHASE_STORE_GOOGLE_PLAY,
+      };
 
   String _requireAccessToken() {
     final accessToken = _client.accessToken;
@@ -275,95 +258,58 @@ class HttpPurchaseRepository implements PurchaseRepository {
     }
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(
-        _listProcedure,
-        {
-          'limit': limit,
-          'surface': appClientSurface,
-          'tenant': {'tenantId': tenantId},
-          if (token.isNotEmpty) 'token': token,
-        },
-        tenantId: tenantId,
-        accessToken: accessToken,
+      final body = await pb.PurchaseServiceApi(_client).listMyPurchases(
+        ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+        pb.ListMyPurchasesRequest(
+          limit: limit,
+          surface: appClientSurface,
+          tenant: pb.TenantContext(tenantId: tenantId),
+          token: token.isEmpty ? null : token,
+        ),
       );
       return MyPurchasePage(
-        purchases: _purchases(body['purchases']),
-        nextToken: _readString(body, 'nextToken'),
+        purchases: List.unmodifiable(
+          body.purchases
+              .map(_purchase)
+              // A row naming no episode to open is a row no screen could
+              // render.
+              .nonNulls,
+        ),
+        nextToken: body.nextToken.trim(),
       );
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
   }
 
-  List<MyPurchase> _purchases(Object? raw) {
-    // protojson omits an empty repeated field.
-    if (raw == null) {
-      return const [];
-    }
-    if (raw is! List) {
-      throw const PurchaseFailure(
-        PurchaseFailureKind.unexpected,
-        message: 'purchases must be a list',
-      );
-    }
-    return List.unmodifiable(
-      raw
-          .map(
-            (item) => item is Map
-                ? _purchase(item.cast<String, Object?>())
-                : throw const PurchaseFailure(
-                    PurchaseFailureKind.unexpected,
-                    message: 'purchases[] must be an object',
-                  ),
-          )
-          // A row naming no episode to open is a row no screen could render.
-          .nonNulls,
-    );
-  }
-
-  MyPurchase? _purchase(Map<String, Object?> json) {
-    final episode = _map(json['episode']);
-    final series = _map(json['series']);
-    final episodeId = _readString(episode, 'publicId');
-    final seriesId = _readString(series, 'publicId');
+  MyPurchase? _purchase(pb.MyPurchase purchase) {
+    final episode = purchase.episode;
+    final series = purchase.series;
+    final episodeId = episode.publicId.trim();
+    final seriesId = series.publicId.trim();
     if (episodeId.isEmpty || seriesId.isEmpty) {
       return null;
     }
     return MyPurchase(
-      id: _readString(json, 'id'),
+      id: purchase.id.trim(),
       seriesId: seriesId,
-      seriesTitle: _readString(series, 'title'),
+      seriesTitle: series.title.trim(),
       episodeId: episodeId,
-      episodeTitle: _readString(episode, 'title'),
-      orderIndex: _readInt(episode, 'orderIndex'),
-      price: _readInt(json, 'priceAtPurchase'),
-      currency: _readString(json, 'currency'),
-      // protojson omits a false, which is what every expired row arrives as.
-      isActive: json['isActive'] == true,
-      refundedAmount: _readInt(json, 'refundedAmount'),
-      purchasedAt: _readInstant(json, 'purchasedAt'),
-      expiresAt: _readInstant(json, 'expiresAt'),
-      refundedAt: _readInstant(json, 'refundedAt'),
-      revokedAt: _readInstant(json, 'revokedAt'),
+      episodeTitle: episode.title.trim(),
+      orderIndex: episode.orderIndex,
+      price: purchase.priceAtPurchase,
+      currency: purchase.currency.trim(),
+      isActive: purchase.isActive,
+      refundedAmount: purchase.refundedAmount,
+      purchasedAt: _readInstant(purchase.purchasedAt),
+      expiresAt: _readInstant(purchase.expiresAt),
+      refundedAt: _readInstant(purchase.refundedAt),
+      revokedAt: _readInstant(purchase.revokedAt),
     );
   }
 
-  Map<String, Object?> _map(Object? value) =>
-      value is Map ? value.cast<String, Object?>() : const {};
-
-  String _readString(Map<String, Object?> json, String key) {
-    final value = json[key];
-    return value is String ? value.trim() : '';
-  }
-
-  /// protojson writes an `int32` as a number and omits a zero.
-  int _readInt(Map<String, Object?> json, String key) {
-    final value = json[key];
-    return value is num ? value.toInt() : 0;
-  }
-
-  DateTime? _readInstant(Map<String, Object?> json, String key) =>
-      DateTime.tryParse(_readString(json, key))?.toLocal();
+  DateTime? _readInstant(String value) =>
+      DateTime.tryParse(value.trim())?.toLocal();
 
   PurchaseFailure _toFailure(ConnectException error) {
     if (error.isUnavailable) {

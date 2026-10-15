@@ -66,8 +66,8 @@ describe("methodsIn", () => {
     );
     assert.deepEqual(
       methodsIn(
-        "'/publira.v1.CatalogService/GetSeriesDetail';",
-        /Service\/(?<method>[A-Z]\w*)'/gu
+        "_catalog.getSeriesDetail(ctx, pb.GetSeriesDetailRequest(",
+        /\bpb\.(?<method>[A-Z]\w*)Request\(/gu
       ),
       ["GetSeriesDetail"]
     );

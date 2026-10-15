@@ -3,8 +3,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:protobuf/protobuf.dart';
 import 'package:publira/api/connect_exception.dart';
 import 'package:publira/api/error_details.dart';
+import 'package:publira/api/proto_json.dart';
 import 'package:publira/tenant/tenant_availability.dart';
 
 /// Reads the public-audience JWT the app holds right now.
@@ -13,18 +15,39 @@ import 'package:publira/tenant/tenant_availability.dart';
 /// or a sign-out reaches the very next call without rebuilding the client.
 typedef AccessTokenReader = String Function();
 
-/// A unary answer together with its response headers, under lower-cased
-/// names, for the one caller that has to read something beside the body.
-typedef ConnectResponse = ({
-  Map<String, Object?> body,
-  Map<String, String> headers,
-});
+/// What one call sends beside its message, and what it hands back beside the
+/// answer: the generated `*ServiceApi` stubs take it as their context.
+class ConnectCallContext extends ClientContext {
+  ConnectCallContext({
+    this.tenantId,
+    this.accessToken,
+    this.headers = const {},
+    super.timeout,
+  });
 
-/// Minimal Connect JSON unary client for the public API.
+  /// Sent as `X-Publira-Tenant-Id`. Every public RPC but the domain lookup
+  /// names the tenant it is about.
+  final String? tenantId;
+
+  /// Replaces the client's own reader for this one call, which is how a
+  /// stored token gets checked before the app adopts it.
+  final String? accessToken;
+
+  /// Sent beside the Connect headers.
+  final Map<String, String> headers;
+
+  /// The answer's headers, under lower-cased names, once the call has been
+  /// answered.
+  Map<String, String> responseHeaders = const {};
+}
+
+/// Connect unary client for the public API, speaking the JSON codec.
 ///
-/// Only the catalog/domain/auth RPCs this app needs are called. Field names
-/// follow protojson camelCase (`publicId`, `tenantId`), matching connect-go.
-class ConnectClient {
+/// The repositories call it through the `*ServiceApi` stubs `buf generate`
+/// writes into `lib/api/gen/` from `proto/`, so a request and an answer are
+/// the generated messages, written and read as protojson (`publicId`,
+/// `tenantId`), the way connect-go reads and writes them.
+class ConnectClient implements RpcClient {
   ConnectClient({
     required this.baseUrl,
     http.Client? httpClient,
@@ -54,54 +77,44 @@ class ConnectClient {
 
   static const _tenantHeader = 'X-Publira-Tenant-Id';
 
+  /// The package of every service the stubs name: `buf.gen.yaml` generates
+  /// `publira.v1` alone for the app, and a stub passes its service by its
+  /// short name.
+  static const _package = 'publira.v1';
+
   /// The JWT this client would send right now. Empty calls the API
   /// anonymously, which the public RPCs allow; a body that needs a purchase
   /// stays locked without it.
   String get accessToken => _accessToken?.call().trim() ?? '';
 
-  /// Calls [procedure] with [body].
+  /// Calls [methodName] of [serviceName] with [request] and merges the answer
+  /// into [emptyResponse].
   ///
-  /// [accessToken] replaces the client's own reader for this one call, which
-  /// is how a stored token gets checked before the app adopts it. [timeout]
-  /// replaces the client's own for a call that carries more than a few
-  /// fields, such as an image.
-  Future<Map<String, Object?>> unary(
-    String procedure,
-    Map<String, Object?> body, {
-    String? tenantId,
-    String? accessToken,
-    Duration? timeout,
-  }) async {
-    final response = await exchange(
-      procedure,
-      body,
-      tenantId: tenantId,
-      accessToken: accessToken,
-      timeout: timeout,
-    );
-    return response.body;
-  }
-
-  /// [unary] that also sends [headers] and hands back the response headers.
-  Future<ConnectResponse> exchange(
-    String procedure,
-    Map<String, Object?> body, {
-    String? tenantId,
-    String? accessToken,
-    Map<String, String> headers = const {},
-    Duration? timeout,
-  }) async {
-    final uri = Uri.parse(baseUrl).replace(path: '/rpc$procedure');
+  /// [ctx] is a [ConnectCallContext] for a call that names a tenant, a token
+  /// of its own, or headers, and its timeout replaces the client's own for a
+  /// call that carries more than a few fields, such as an image.
+  @override
+  Future<T> invoke<T extends GeneratedMessage>(
+    ClientContext? ctx,
+    String serviceName,
+    String methodName,
+    GeneratedMessage request,
+    T emptyResponse,
+  ) async {
+    final call = ctx is ConnectCallContext ? ctx : null;
+    final uri = Uri.parse(
+      baseUrl,
+    ).replace(path: '/rpc/$_package.$serviceName/$methodName');
     final requestHeaders = <String, String>{
-      ...headers,
+      ...?call?.headers,
       'content-type': 'application/json',
       'connect-protocol-version': '1',
     };
-    final trimmedTenant = tenantId?.trim() ?? '';
+    final trimmedTenant = call?.tenantId?.trim() ?? '';
     if (trimmedTenant.isNotEmpty) {
       requestHeaders[_tenantHeader] = trimmedTenant;
     }
-    final trimmedToken = (accessToken ?? this.accessToken).trim();
+    final trimmedToken = (call?.accessToken ?? accessToken).trim();
     if (trimmedToken.isNotEmpty) {
       requestHeaders['authorization'] = 'Bearer $trimmedToken';
     }
@@ -109,8 +122,12 @@ class ConnectClient {
     late final http.Response response;
     try {
       response = await _http
-          .post(uri, headers: requestHeaders, body: jsonEncode(body))
-          .timeout(timeout ?? this.timeout);
+          .post(
+            uri,
+            headers: requestHeaders,
+            body: jsonEncode(request.toProto3Json()),
+          )
+          .timeout(ctx?.timeout ?? timeout);
     } on TimeoutException {
       throw const ConnectException(
         code: 'deadline_exceeded',
@@ -136,7 +153,15 @@ class ConnectClient {
     }
     if (response.statusCode >= 200 && response.statusCode < 300) {
       _availability?.reportServed();
-      return (body: decoded, headers: response.headers);
+      call?.responseHeaders = response.headers;
+      try {
+        return mergeProto3Json(emptyResponse, decoded);
+      } on FormatException catch (error) {
+        // A field of the wrong type is as unusable as a body that is not
+        // JSON, and reaches the caller as a Connect error rather than as an
+        // exception no repository is catching.
+        throw ConnectException(code: 'internal', message: error.message);
+      }
     }
 
     final responseCode = _readString(decoded, 'code');

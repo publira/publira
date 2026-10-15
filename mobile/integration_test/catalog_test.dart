@@ -8,6 +8,10 @@ import 'package:publira/announcements/dismissed_announcement_store.dart';
 import 'package:publira/api/client_surface.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
+import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/auth.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/catalog.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/notification.pb.dart' as pb;
 import 'package:publira/api/episode_page_store.dart';
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/app.dart';
@@ -563,7 +567,7 @@ void main() {
         );
         final request = server.requestsTo('ListPublishedSeries').last;
         expect(request.body['genrePublicId'], 'SeedGENRAAA1');
-        expect(request.body['surface'], appClientSurface);
+        expect(request.body['surface'], appClientSurface.name);
       });
     });
 
@@ -743,7 +747,7 @@ void main() {
 
         expect(find.byKey(const ValueKey('label-body')), findsOneWidget);
         final request = server.requestsTo('ListPublishedLabels').last;
-        expect(request.body['surface'], appClientSurface);
+        expect(request.body['surface'], appClientSurface.name);
       });
     });
 
@@ -774,7 +778,7 @@ void main() {
           for (final page in pages) {
             expect(page.body['period'], 'RANKING_PERIOD_WEEKLY');
             expect(page.body['ageRating'], 'SERIES_AGE_RATING_ALL');
-            expect(page.body['surface'], appClientSurface);
+            expect(page.body['surface'], appClientSurface.name);
           }
 
           await tapVisible(
@@ -2056,7 +2060,7 @@ void main() {
           request.body['seriesId'],
           ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
         );
-        expect(request.body['surface'], appClientSurface);
+        expect(request.body['surface'], appClientSurface.name);
         expect(
           find.descendant(
             of: find.byKey(const ValueKey('series-related')),
@@ -2140,7 +2144,7 @@ void main() {
         );
         expect(find.text('Top 10 this week'), findsNothing);
         final request = server.requestsTo('ListRecommendedSeries').single;
-        expect(request.body['surface'], appClientSurface);
+        expect(request.body['surface'], appClientSurface.name);
         expect(server.requestsTo('ListMyRecommendedSeries'), isEmpty);
 
         await tapReachable(
@@ -2210,7 +2214,7 @@ void main() {
             request.headers[HttpHeaders.authorizationHeader],
             'Bearer ${ConnectFixtureServer.memberAccessToken}',
           );
-          expect(request.body['surface'], appClientSurface);
+          expect(request.body['surface'], appClientSurface.name);
         },
       );
     });
@@ -2851,28 +2855,27 @@ void main() {
         client: client,
         tenantHost: liveTenantHost,
       ).resolve();
-      final detail = await client.unary(
-        '/publira.v1.CatalogService/GetEpisodeDetail',
-        {
-          'publicId': ConnectFixtureServer.seedEpisodeId,
-          'surface': appClientSurface,
-          'tenant': {'tenantId': tenantId},
-        },
+      final ctx = ConnectCallContext(
         tenantId: tenantId,
         accessToken: session.accessToken,
       );
-      final pageCount = (detail['images']! as List).length;
-      final episode = detail['episode']! as Map<String, Object?>;
-      await client.unary(
-        '/publira.v1.EpisodeReadService/SaveReadingPosition',
-        {
-          'episodeId': episode['id'],
-          'pageIndex': pageCount - 2,
-          'surface': appClientSurface,
-          'tenant': {'tenantId': tenantId},
-        },
-        tenantId: tenantId,
-        accessToken: session.accessToken,
+      final detail = await pb.CatalogServiceApi(client).getEpisodeDetail(
+        ctx,
+        pb.GetEpisodeDetailRequest(
+          publicId: ConnectFixtureServer.seedEpisodeId,
+          surface: appClientSurface,
+          tenant: pb.TenantContext(tenantId: tenantId),
+        ),
+      );
+      final pageCount = detail.images.length;
+      await pb.EpisodeReadServiceApi(client).saveReadingPosition(
+        ctx,
+        pb.SaveReadingPositionRequest(
+          episodeId: detail.episode.id,
+          pageIndex: pageCount - 2,
+          surface: appClientSurface,
+          tenant: pb.TenantContext(tenantId: tenantId),
+        ),
       );
 
       await pumpLive(
@@ -2895,45 +2898,43 @@ void main() {
 
     /// The public ids of the episodes [member] finished, as the API lists
     /// them.
-    Future<List<Object?>> finishedEpisodeIds(
+    Future<List<String>> finishedEpisodeIds(
       ({ConnectClient client, TenantResolver tenants, AuthSession session})
       member,
     ) async {
       final tenantId = await member.tenants.resolve();
-      final body = await member.client.unary(
-        '/publira.v1.EpisodeReadService/ListMyEpisodeReads',
-        {
-          'surface': appClientSurface,
-          'tenant': {'tenantId': tenantId},
-        },
-        tenantId: tenantId,
-        accessToken: member.session.accessToken,
-      );
-      return [
-        for (final read in body['reads'] as List? ?? const [])
-          ((read as Map)['episode'] as Map)['publicId'],
-      ];
+      final response = await pb.EpisodeReadServiceApi(member.client)
+          .listMyEpisodeReads(
+            ConnectCallContext(
+              tenantId: tenantId,
+              accessToken: member.session.accessToken,
+            ),
+            pb.ListMyEpisodeReadsRequest(
+              surface: appClientSurface,
+              tenant: pb.TenantContext(tenantId: tenantId),
+            ),
+          );
+      return [for (final read in response.reads) read.episode.publicId];
     }
 
     /// The rows `ListMyFollowUpdates` answers [member] with, first page only.
-    Future<List<Map<Object?, Object?>>> followUpdates(
+    Future<List<pb.FollowUpdate>> followUpdates(
       ({ConnectClient client, TenantResolver tenants, AuthSession session})
       member,
     ) async {
       final tenantId = await member.tenants.resolve();
-      final body = await member.client.unary(
-        '/publira.v1.FollowService/ListMyFollowUpdates',
-        {
-          'surface': appClientSurface,
-          'tenant': {'tenantId': tenantId},
-        },
-        tenantId: tenantId,
-        accessToken: member.session.accessToken,
-      );
-      return [
-        for (final update in body['updates'] as List? ?? const [])
-          update as Map<Object?, Object?>,
-      ];
+      final response = await pb.FollowServiceApi(member.client)
+          .listMyFollowUpdates(
+            ConnectCallContext(
+              tenantId: tenantId,
+              accessToken: member.session.accessToken,
+            ),
+            pb.ListMyFollowUpdatesRequest(
+              surface: appClientSurface,
+              tenant: pb.TenantContext(tenantId: tenantId),
+            ),
+          );
+      return response.updates;
     }
 
     /// Whether [member] takes notification email, as `GetNotificationSettings`
@@ -2943,16 +2944,17 @@ void main() {
       member,
     ) async {
       final tenantId = await member.tenants.resolve();
-      final body = await member.client.unary(
-        '/publira.v1.AuthService/GetNotificationSettings',
-        {
-          'tenant': {'tenantId': tenantId},
-        },
-        tenantId: tenantId,
-        accessToken: member.session.accessToken,
-      );
-      // protojson omits a false.
-      return body['emailNotificationsEnabled'] == true;
+      final response = await pb.AuthServiceApi(member.client)
+          .getNotificationSettings(
+            ConnectCallContext(
+              tenantId: tenantId,
+              accessToken: member.session.accessToken,
+            ),
+            pb.GetNotificationSettingsRequest(
+              tenant: pb.TenantContext(tenantId: tenantId),
+            ),
+          );
+      return response.emailNotificationsEnabled;
     }
 
     /// Saves [enabled] as [member]'s notification email setting, the way the
@@ -2963,38 +2965,41 @@ void main() {
       required bool enabled,
     }) async {
       final tenantId = await member.tenants.resolve();
-      await member.client.unary(
-        '/publira.v1.AuthService/UpdateNotificationSettings',
-        {
-          'tenant': {'tenantId': tenantId},
-          'emailNotificationsEnabled': enabled,
-        },
-        tenantId: tenantId,
-        accessToken: member.session.accessToken,
+      await pb.AuthServiceApi(member.client).updateNotificationSettings(
+        ConnectCallContext(
+          tenantId: tenantId,
+          accessToken: member.session.accessToken,
+        ),
+        pb.UpdateNotificationSettingsRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+          emailNotificationsEnabled: enabled,
+        ),
       );
     }
 
-    /// Whether the API holds the row [id] of `rows` in [procedure]'s first
-    /// page as read for [member], or null when the page does not list it.
+    /// Whether the API holds the row [id] of the first page [rows] reads
+    /// as read for [member], or null when the page does not list it.
     Future<bool?> isReadAtApi(
       ({ConnectClient client, TenantResolver tenants, AuthSession session})
       member, {
-      required String procedure,
-      required String rows,
+      required Future<Iterable<({String id, bool isRead})>> Function(
+        ConnectCallContext ctx,
+        pb.TenantContext tenant,
+      )
+      rows,
       required String id,
     }) async {
       final tenantId = await member.tenants.resolve();
-      final body = await member.client.unary(
-        procedure,
-        {
-          'tenant': {'tenantId': tenantId},
-        },
-        tenantId: tenantId,
-        accessToken: member.session.accessToken,
+      final page = await rows(
+        ConnectCallContext(
+          tenantId: tenantId,
+          accessToken: member.session.accessToken,
+        ),
+        pb.TenantContext(tenantId: tenantId),
       );
-      for (final row in body[rows] as List? ?? const []) {
-        if ((row as Map)['id'] == id) {
-          return row['isRead'] == true;
+      for (final row in page) {
+        if (row.id == id) {
+          return row.isRead;
         }
       }
       return null;
@@ -3855,40 +3860,49 @@ void main() {
       await withFailureScreenshot(tester, 'live-series-own-rating', () async {
         final member = await signInSeedMember();
         final tenantId = await member.tenants.resolve();
-        Future<Map<String, Object?>> rpc(
-          String procedure,
-          Map<String, Object?> body,
-        ) => member.client.unary(
-          procedure,
-          {
-            ...body,
-            'surface': appClientSurface,
-            'tenant': {'tenantId': tenantId},
-          },
+        final ctx = ConnectCallContext(
           tenantId: tenantId,
           accessToken: member.session.accessToken,
         );
-        final episode =
-            (await rpc('/publira.v1.CatalogService/GetEpisodeDetail', {
-                  'publicId': ConnectFixtureServer.seedEpisodeId,
-                }))['episode']!
-                as Map<String, Object?>;
-        final series =
-            (await rpc('/publira.v1.CatalogService/GetSeriesDetail', {
-                  'publicId': ConnectFixtureServer.seedSeriesId,
-                }))['series']!
-                as Map<String, Object?>;
+        final tenant = pb.TenantContext(tenantId: tenantId);
+        final catalog = pb.CatalogServiceApi(member.client);
+        final ratings = pb.RatingServiceApi(member.client);
+        final episode = (await catalog.getEpisodeDetail(
+          ctx,
+          pb.GetEpisodeDetailRequest(
+            publicId: ConnectFixtureServer.seedEpisodeId,
+            surface: appClientSurface,
+            tenant: tenant,
+          ),
+        )).episode;
+        final series = (await catalog.getSeriesDetail(
+          ctx,
+          pb.GetSeriesDetailRequest(
+            publicId: ConnectFixtureServer.seedSeriesId,
+            surface: appClientSurface,
+            tenant: tenant,
+          ),
+        )).series;
         // A reaction to the seed episode, as the website's press makes one,
         // which leaves the member a rating of the series it belongs to.
-        await rpc('/publira.v1.RatingService/RateEpisode', {
-          'episodeId': episode['id'],
-          'presses': 1,
-        });
-        final rating = await rpc(
-          '/publira.v1.RatingService/GetMySeriesRating',
-          {'seriesId': series['id']},
+        await ratings.rateEpisode(
+          ctx,
+          pb.RateEpisodeRequest(
+            episodeId: episode.id,
+            presses: 1,
+            surface: appClientSurface,
+            tenant: tenant,
+          ),
         );
-        final average = (rating['ratingAverage']! as num).toDouble();
+        final rating = await ratings.getMySeriesRating(
+          ctx,
+          pb.GetMySeriesRatingRequest(
+            seriesId: series.id,
+            surface: appClientSurface,
+            tenant: tenant,
+          ),
+        );
+        final average = rating.ratingAverage;
 
         await pumpLive(
           tester,
@@ -3923,7 +3937,7 @@ void main() {
         // author of Seed Series 070, and nothing that reaches Seed Series 001.
         final updates = await followUpdates(member);
         final seriesIds = [
-          for (final update in updates) (update['series']! as Map)['publicId'],
+          for (final update in updates) update.series.publicId,
         ];
         expect(seriesIds, contains('SeedSERSAA11'));
         expect(seriesIds, isNot(contains(ConnectFixtureServer.seedSeriesId)));
@@ -3934,8 +3948,8 @@ void main() {
           session: member.session,
         );
         final newest = updates.first;
-        final episodeId = (newest['episode']! as Map)['publicId'];
-        final seriesTitle = (newest['series']! as Map)['title']! as String;
+        final episodeId = newest.episode.publicId;
+        final seriesTitle = newest.series.title;
         final row = find.byKey(ValueKey('follow-updates-row-$episodeId'));
         await pumpUntilRouteSettled(
           tester,
@@ -4184,8 +4198,17 @@ void main() {
         final member = await signInSeedMember();
         Future<bool?> isRead() => isReadAtApi(
           member,
-          procedure: '/publira.v1.NotificationService/ListNotifications',
-          rows: 'notifications',
+          rows: (ctx, tenant) async => [
+            for (final row
+                in (await pb.NotificationServiceApi(
+                      member.client,
+                    ).listNotifications(
+                      ctx,
+                      pb.ListNotificationsRequest(tenant: tenant),
+                    ))
+                    .notifications)
+              (id: row.id, isRead: row.isRead),
+          ],
           id: ConnectFixtureServer.memberNotificationId,
         );
         // A row already read would pass whether or not the app sent a mark.
@@ -4273,8 +4296,14 @@ void main() {
         final member = await signInSeedMember();
         Future<bool?> isRead() => isReadAtApi(
           member,
-          procedure: '/publira.v1.AuthService/ListAnnouncements',
-          rows: 'announcements',
+          rows: (ctx, tenant) async => [
+            for (final row
+                in (await pb.AuthServiceApi(member.client).listAnnouncements(
+                  ctx,
+                  pb.ListAnnouncementsRequest(tenant: tenant),
+                )).announcements)
+              (id: row.id, isRead: row.isRead),
+          ],
           id: ConnectFixtureServer.memberAnnouncementId,
         );
         expect(

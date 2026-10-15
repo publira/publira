@@ -3,10 +3,8 @@ import 'package:flutter/foundation.dart';
 /// Which store issued the registration token, as
 /// `publira.v1.NotificationService` names it.
 enum PushPlatform {
-  android('PUSH_PLATFORM_ANDROID'),
-  ios('PUSH_PLATFORM_IOS');
-
-  const PushPlatform(this.wireValue);
+  android,
+  ios;
 
   /// The platform the app is running on. Only the two platforms the app ships
   /// on can hold a registration token, so anything else answers `null` and
@@ -18,8 +16,6 @@ enum PushPlatform {
       _ => null,
     };
   }
-
-  final String wireValue;
 }
 
 /// The device half of `publira.v1.NotificationService`.

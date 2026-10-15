@@ -1,9 +1,12 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
 import 'package:publira/api/error_details.dart';
+import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/auth.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/tenant.pb.dart' as pb;
+import 'package:publira/api/proto_json.dart';
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/api/user_icon.dart';
 import 'package:publira/auth/account_icon.dart';
@@ -40,52 +43,14 @@ class HttpAuthRepository implements AuthRepository {
     required this._tenants,
   });
 
-  static const _loginProcedure = '/publira.v1.AuthService/Login';
-  static const _loginWithIdTokenProcedure =
-      '/publira.v1.AuthService/LoginWithIdToken';
-  static const _listMyIdentitiesProcedure =
-      '/publira.v1.AuthService/ListMyIdentities';
-  static const _unlinkIdentityProcedure =
-      '/publira.v1.AuthService/UnlinkIdentity';
-  static const _linkIdentityProcedure = '/publira.v1.AuthService/LinkIdentity';
-  static const _createUserProcedure = '/publira.v1.AuthService/CreateUser';
-  static const _verifyUserEmailProcedure =
-      '/publira.v1.AuthService/VerifyUserEmail';
-  static const _requestEmailVerificationProcedure =
-      '/publira.v1.AuthService/RequestEmailVerification';
-  static const _requestPasswordResetProcedure =
-      '/publira.v1.AuthService/RequestPasswordReset';
-  static const _confirmPasswordResetProcedure =
-      '/publira.v1.AuthService/ConfirmPasswordReset';
-  static const _getMeProcedure = '/publira.v1.AuthService/GetMe';
-  static const _updateMeProcedure = '/publira.v1.AuthService/UpdateMe';
-  static const _uploadMyIconProcedure = '/publira.v1.AuthService/UploadMyIcon';
-  static const _deleteMyIconProcedure = '/publira.v1.AuthService/DeleteMyIcon';
-  static const _changePasswordProcedure =
-      '/publira.v1.AuthService/ChangePassword';
-  static const _requestEmailChangeProcedure =
-      '/publira.v1.AuthService/RequestEmailChange';
-  static const _confirmEmailChangeProcedure =
-      '/publira.v1.AuthService/ConfirmEmailChange';
-  static const _deleteMeProcedure = '/publira.v1.AuthService/DeleteMe';
-  static const _getNotificationSettingsProcedure =
-      '/publira.v1.AuthService/GetNotificationSettings';
-  static const _updateNotificationSettingsProcedure =
-      '/publira.v1.AuthService/UpdateNotificationSettings';
-  static const _logoutProcedure = '/publira.v1.AuthService/Logout';
-  static const _getMyLegalPageAgreementsProcedure =
-      '/publira.v1.AuthService/GetMyLegalPageAgreements';
-  static const _agreeToLegalPagesProcedure =
-      '/publira.v1.AuthService/AgreeToLegalPages';
-  static const _tenantProcedure = '/publira.v1.TenantService/GetTenant';
-  static const _tenantMobileAppAssociationProcedure =
-      '/publira.v1.TenantService/GetTenantMobileAppAssociation';
-  static const _tenantLegalPagesProcedure =
-      '/publira.v1.TenantService/GetTenantLegalPages';
+  /// `GetTenantResponse.age_verification`'s field number.
+  static const _ageVerificationField = 12;
 
   final AppConfig _config;
   final ConnectClient _client;
   final TenantResolver _tenants;
+
+  pb.AuthServiceApi get _auth => pb.AuthServiceApi(_client);
 
   @override
   Future<AuthSession> signIn({
@@ -94,12 +59,18 @@ class HttpAuthRepository implements AuthRepository {
   }) async {
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(_loginProcedure, {
-        'tenant': {'tenantId': tenantId},
-        'email': email,
-        'password': password,
-      }, tenantId: tenantId);
-      return _sessionFromLogin(body);
+      final body = await _auth.login(
+        ConnectCallContext(tenantId: tenantId),
+        pb.LoginRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+          email: email,
+          password: password,
+        ),
+      );
+      return _sessionFromLogin(
+        _required(body.hasUser(), body.user, 'user'),
+        _required(body.hasAccessToken(), body.accessToken, 'accessToken'),
+      );
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
@@ -107,7 +78,12 @@ class HttpAuthRepository implements AuthRepository {
 
   @override
   Future<SignInProviders> readSignInProviders() async {
-    final association = _readTenant(_tenantMobileAppAssociationProcedure);
+    final association = _readTenant(
+      (service, ctx, tenant) => service.getTenantMobileAppAssociation(
+        ctx,
+        pb.GetTenantMobileAppAssociationRequest(tenant: tenant),
+      ),
+    );
     // Listened to from the start, so its failure is not reported as uncaught
     // while GetTenant is still in flight.
     unawaited(association.then<void>((_) {}, onError: (_) {}));
@@ -116,21 +92,23 @@ class HttpAuthRepository implements AuthRepository {
     var androidApplicationId = '';
     try {
       final apps = await association;
-      final ios = apps['ios'];
-      final android = apps['android'];
-      if (ios is Map<String, Object?>) {
-        appleBundleIdentifier = _readString(ios, 'bundleIdentifier');
-      }
-      if (android is Map<String, Object?>) {
-        androidApplicationId = _readString(android, 'applicationId');
-      }
+      appleBundleIdentifier = apps.ios.bundleIdentifier.trim();
+      androidApplicationId = apps.android.applicationId.trim();
     } on AuthFailure {
       // Without it no app is known to take Apple's token; Google still is.
     }
-    return SignInProviders.fromTenant(
-      tenant,
+    return SignInProviders(
+      // protojson sends an enabled provider with no field set as `{}`.
+      apple: tenant.hasAppleSignIn(),
       appleBundleIdentifier: appleBundleIdentifier,
+      appleServicesId: tenant.appleSignIn.servicesId.trim(),
       androidApplicationId: androidApplicationId,
+      google: tenant.hasGoogleSignIn()
+          ? GoogleSignInClients(
+              webClientId: tenant.googleSignIn.webClientId.trim(),
+              iosClientId: tenant.googleSignIn.iosClientId.trim(),
+            )
+          : null,
     );
   }
 
@@ -142,21 +120,28 @@ class HttpAuthRepository implements AuthRepository {
   }) async {
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(_loginWithIdTokenProcedure, {
-        'tenant': {'tenantId': tenantId},
-        'provider': credential.provider.wireName,
-        'idToken': credential.idToken,
-        'nonce': credential.nonce,
-        if (credential.authorizationCode.isNotEmpty)
-          'authorizationCode': credential.authorizationCode,
-        if (credential.redirectUri.isNotEmpty)
-          'redirectUri': credential.redirectUri,
-        if (credential.name.isNotEmpty) 'name': credential.name,
-        if (birthDate.isNotEmpty) 'birthDate': birthDate,
-        if (agreedPageVersionIds.isNotEmpty)
-          'agreedPageVersionIds': agreedPageVersionIds,
-      }, tenantId: tenantId);
-      return _sessionFromLogin(body);
+      final body = await _auth.loginWithIdToken(
+        ConnectCallContext(tenantId: tenantId),
+        pb.LoginWithIdTokenRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+          provider: credential.provider.wire,
+          idToken: credential.idToken,
+          nonce: credential.nonce,
+          authorizationCode: credential.authorizationCode.isEmpty
+              ? null
+              : credential.authorizationCode,
+          redirectUri: credential.redirectUri.isEmpty
+              ? null
+              : credential.redirectUri,
+          name: credential.name.isEmpty ? null : credential.name,
+          birthDate: birthDate.isEmpty ? null : birthDate,
+          agreedPageVersionIds: agreedPageVersionIds,
+        ),
+      );
+      return _sessionFromLogin(
+        _required(body.hasUser(), body.user, 'user'),
+        _required(body.hasAccessToken(), body.accessToken, 'accessToken'),
+      );
     } on ConnectException catch (error) {
       throw _toProviderSignInFailure(error);
     }
@@ -166,31 +151,26 @@ class HttpAuthRepository implements AuthRepository {
   Future<LinkedIdentities> readLinkedIdentities(AuthSession session) async {
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(
-        _listMyIdentitiesProcedure,
-        {
-          'tenant': {'tenantId': tenantId},
-        },
-        tenantId: tenantId,
-        accessToken: session.accessToken,
+      final body = await _auth.listMyIdentities(
+        ConnectCallContext(
+          tenantId: tenantId,
+          accessToken: session.accessToken,
+        ),
+        pb.ListMyIdentitiesRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+        ),
       );
-      final raw = body['identities'];
       return LinkedIdentities(
         identities: [
-          if (raw is List)
-            for (final item in raw)
-              if (item is Map<String, Object?>)
-                if (IdentityProvider.fromWire(item['provider'])
-                    case final provider?)
-                  LinkedIdentity(
-                    provider: provider,
-                    email: _readString(item, 'email'),
-                    linkedAt: DateTime.tryParse(
-                      _readString(item, 'linkedAt'),
-                    )?.toUtc(),
-                  ),
+          for (final item in body.identities)
+            if (IdentityProvider.fromWire(item.provider) case final provider?)
+              LinkedIdentity(
+                provider: provider,
+                email: item.email.trim(),
+                linkedAt: DateTime.tryParse(item.linkedAt.trim())?.toUtc(),
+              ),
         ],
-        hasPassword: body['hasPassword'] == true,
+        hasPassword: body.hasPassword,
       );
     } on ConnectException catch (error) {
       throw _toAccountFailure(error);
@@ -204,14 +184,15 @@ class HttpAuthRepository implements AuthRepository {
   ) async {
     try {
       final tenantId = await _tenants.resolve();
-      await _client.unary(
-        _unlinkIdentityProcedure,
-        {
-          'tenant': {'tenantId': tenantId},
-          'provider': provider.wireName,
-        },
-        tenantId: tenantId,
-        accessToken: session.accessToken,
+      await _auth.unlinkIdentity(
+        ConnectCallContext(
+          tenantId: tenantId,
+          accessToken: session.accessToken,
+        ),
+        pb.UnlinkIdentityRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+          provider: provider.wire,
+        ),
       );
     } on ConnectException catch (error) {
       switch (error.code) {
@@ -235,20 +216,23 @@ class HttpAuthRepository implements AuthRepository {
   ) async {
     try {
       final tenantId = await _tenants.resolve();
-      await _client.unary(
-        _linkIdentityProcedure,
-        {
-          'tenant': {'tenantId': tenantId},
-          'provider': credential.provider.wireName,
-          'idToken': credential.idToken,
-          'nonce': credential.nonce,
-          if (credential.authorizationCode.isNotEmpty)
-            'authorizationCode': credential.authorizationCode,
-          if (credential.redirectUri.isNotEmpty)
-            'redirectUri': credential.redirectUri,
-        },
-        tenantId: tenantId,
-        accessToken: session.accessToken,
+      await _auth.linkIdentity(
+        ConnectCallContext(
+          tenantId: tenantId,
+          accessToken: session.accessToken,
+        ),
+        pb.LinkIdentityRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+          provider: credential.provider.wire,
+          idToken: credential.idToken,
+          nonce: credential.nonce,
+          authorizationCode: credential.authorizationCode.isEmpty
+              ? null
+              : credential.authorizationCode,
+          redirectUri: credential.redirectUri.isEmpty
+              ? null
+              : credential.redirectUri,
+        ),
       );
     } on ConnectException catch (error) {
       final reasons = error.reasons;
@@ -287,18 +271,20 @@ class HttpAuthRepository implements AuthRepository {
   }) async {
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(_createUserProcedure, {
-        'tenant': {'tenantId': tenantId},
-        'name': name,
-        'email': email,
-        'password': password,
-        // protojson reads an absent field as the empty string, which is what
-        // the API takes as a form that did not ask for a date.
-        if (birthDate.isNotEmpty) 'birthDate': birthDate,
-        if (agreedPageVersionIds.isNotEmpty)
-          'agreedPageVersionIds': agreedPageVersionIds,
-      }, tenantId: tenantId);
-      if (body['accepted'] != true) {
+      final body = await _auth.createUser(
+        ConnectCallContext(tenantId: tenantId),
+        pb.CreateUserRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+          name: name,
+          email: email,
+          password: password,
+          // protojson reads an absent field as the empty string, which is what
+          // the API takes as a form that did not ask for a date.
+          birthDate: birthDate.isEmpty ? null : birthDate,
+          agreedPageVersionIds: agreedPageVersionIds,
+        ),
+      );
+      if (!body.accepted) {
         throw const AuthFailure(
           AuthFailureKind.unexpected,
           message: 'CreateUser answered without accepting the signup',
@@ -313,11 +299,14 @@ class HttpAuthRepository implements AuthRepository {
   Future<void> verifyEmail(String token) async {
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(_verifyUserEmailProcedure, {
-        'tenant': {'tenantId': tenantId},
-        'token': token,
-      }, tenantId: tenantId);
-      if (body['verified'] != true) {
+      final body = await _auth.verifyUserEmail(
+        ConnectCallContext(tenantId: tenantId),
+        pb.VerifyUserEmailRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+          token: token,
+        ),
+      );
+      if (!body.verified) {
         throw const AuthFailure(
           AuthFailureKind.unexpected,
           message: 'VerifyUserEmail answered without confirming the address',
@@ -332,10 +321,13 @@ class HttpAuthRepository implements AuthRepository {
   Future<void> requestEmailVerification(String email) async {
     try {
       final tenantId = await _tenants.resolve();
-      await _client.unary(_requestEmailVerificationProcedure, {
-        'tenant': {'tenantId': tenantId},
-        'email': email,
-      }, tenantId: tenantId);
+      await _auth.requestEmailVerification(
+        ConnectCallContext(tenantId: tenantId),
+        pb.RequestEmailVerificationRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+          email: email,
+        ),
+      );
     } on ConnectException catch (error) {
       throw _toMailFailure(error);
     }
@@ -345,10 +337,13 @@ class HttpAuthRepository implements AuthRepository {
   Future<void> requestPasswordReset(String email) async {
     try {
       final tenantId = await _tenants.resolve();
-      await _client.unary(_requestPasswordResetProcedure, {
-        'tenant': {'tenantId': tenantId},
-        'email': email,
-      }, tenantId: tenantId);
+      await _auth.requestPasswordReset(
+        ConnectCallContext(tenantId: tenantId),
+        pb.RequestPasswordResetRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+          email: email,
+        ),
+      );
     } on ConnectException catch (error) {
       throw _toMailFailure(error);
     }
@@ -361,12 +356,15 @@ class HttpAuthRepository implements AuthRepository {
   }) async {
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(_confirmPasswordResetProcedure, {
-        'tenant': {'tenantId': tenantId},
-        'token': token,
-        'newPassword': newPassword,
-      }, tenantId: tenantId);
-      if (body['confirmed'] != true) {
+      final body = await _auth.confirmPasswordReset(
+        ConnectCallContext(tenantId: tenantId),
+        pb.ConfirmPasswordResetRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+          token: token,
+          newPassword: newPassword,
+        ),
+      );
+      if (!body.confirmed) {
         throw const AuthFailure(
           AuthFailureKind.unexpected,
           message: 'ConfirmPasswordReset answered without setting the password',
@@ -386,14 +384,22 @@ class HttpAuthRepository implements AuthRepository {
   Future<SignUpRequirements> readSignUpRequirements({
     required String locale,
   }) async {
-    final [tenant, legalPages] = await Future.wait([
+    final [
+      tenant as pb.GetTenantResponse,
+      legalPages as pb.GetTenantLegalPagesResponse,
+    ] = await Future.wait<Object>([
       _getTenant(),
-      _readTenant(_tenantLegalPagesProcedure, {'locale': locale}),
+      _readTenant(
+        (service, ctx, tenant) => service.getTenantLegalPages(
+          ctx,
+          pb.GetTenantLegalPagesRequest(tenant: tenant, locale: locale),
+        ),
+      ),
     ]);
     return SignUpRequirements(
-      ageVerification: AgeVerification.fromWire(tenant['ageVerification']),
-      termsPage: LegalPage.fromWire(legalPages['termsPage']),
-      privacyPage: LegalPage.fromWire(legalPages['privacyPage']),
+      ageVerification: _ageVerification(tenant),
+      termsPage: _legalPage(legalPages.termsPage),
+      privacyPage: _legalPage(legalPages.privacyPage),
     );
   }
 
@@ -401,8 +407,12 @@ class HttpAuthRepository implements AuthRepository {
   Future<List<LegalPage>> readOwedLegalPages(
     AuthSession session, {
     required String locale,
-  }) => _legalPageAgreements(session, _getMyLegalPageAgreementsProcedure, {
-    'locale': locale,
+  }) => _legalPageAgreements(session, (ctx, tenant) async {
+    final body = await _auth.getMyLegalPageAgreements(
+      ctx,
+      pb.GetMyLegalPageAgreementsRequest(tenant: tenant, locale: locale),
+    );
+    return (body.termsPage, body.privacyPage);
   });
 
   @override
@@ -410,45 +420,61 @@ class HttpAuthRepository implements AuthRepository {
     AuthSession session, {
     required List<String> agreedPageVersionIds,
     required String locale,
-  }) => _legalPageAgreements(session, _agreeToLegalPagesProcedure, {
-    'agreedPageVersionIds': agreedPageVersionIds,
-    'locale': locale,
+  }) => _legalPageAgreements(session, (ctx, tenant) async {
+    final body = await _auth.agreeToLegalPages(
+      ctx,
+      pb.AgreeToLegalPagesRequest(
+        tenant: tenant,
+        agreedPageVersionIds: agreedPageVersionIds,
+        locale: locale,
+      ),
+    );
+    return (body.termsPage, body.privacyPage);
   });
 
-  /// Sends [procedure] for the reader behind [session], both of whose answers
-  /// name the pages the reader owes afterwards.
+  /// Sends [send] for the reader behind [session], both of whose answers
+  /// name the pages the reader owes afterwards, terms first.
   Future<List<LegalPage>> _legalPageAgreements(
     AuthSession session,
-    String procedure,
-    Map<String, Object?> fields,
+    Future<(pb.TenantLegalPage, pb.TenantLegalPage)> Function(
+      ConnectCallContext ctx,
+      pb.TenantContext tenant,
+    )
+    send,
   ) async {
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(
-        procedure,
-        {
-          'tenant': {'tenantId': tenantId},
-          ...fields,
-        },
-        tenantId: tenantId,
-        accessToken: session.accessToken,
+      final (termsPage, privacyPage) = await send(
+        ConnectCallContext(
+          tenantId: tenantId,
+          accessToken: session.accessToken,
+        ),
+        pb.TenantContext(tenantId: tenantId),
       );
       return legalPagesToAgreeTo(
-        termsPage: LegalPage.fromWire(body['termsPage']),
-        privacyPage: LegalPage.fromWire(body['privacyPage']),
+        termsPage: _legalPage(termsPage),
+        privacyPage: _legalPage(privacyPage),
       );
     } on ConnectException catch (error) {
       throw _toAccountFailure(error);
     }
   }
 
+  /// [page] as one to agree to. protojson omits a role the tenant names
+  /// nothing for, which reads as a page with every part empty.
+  static LegalPage? _legalPage(pb.TenantLegalPage page) => LegalPage.fromParts(
+    slug: page.slug,
+    title: page.title,
+    versionId: page.versionId,
+  );
+
   @override
   Future<AuthSession> refresh(AuthSession session) async {
     final user = await _getMe(session);
     return session.withUser(
-      userPublicId: _readString(user, 'publicId'),
-      userName: _readString(user, 'name'),
-      userIconUrl: userIconUrl(user['iconImageVariants'], _config),
+      userPublicId: user.publicId.trim(),
+      userName: user.name.trim(),
+      userIconUrl: userIconUrl(user.iconImageVariants, _config),
     );
   }
 
@@ -461,50 +487,59 @@ class HttpAuthRepository implements AuthRepository {
     final user = await _getMe(session);
     final tenant = await tenantRead;
     return ReaderAge(
-      birthDate: _readString(user, 'birthDate'),
-      timeZone: _readString(tenant, 'timezone'),
-      verification: AgeVerification.fromWire(tenant['ageVerification']),
+      birthDate: user.birthDate.trim(),
+      timeZone: tenant.timezone.trim(),
+      verification: _ageVerification(tenant),
     );
   }
 
   @override
   Future<String> readEmail(AuthSession session) async {
     final user = await _getMe(session);
-    return _readString(user, 'email');
+    return user.email.trim();
   }
 
   @override
   Future<bool> readEmailNotifications(AuthSession session) =>
-      _notificationSettings(session, _getNotificationSettingsProcedure, {});
+      _notificationSettings(session, (ctx, tenant) async {
+        final body = await _auth.getNotificationSettings(
+          ctx,
+          pb.GetNotificationSettingsRequest(tenant: tenant),
+        );
+        return body.emailNotificationsEnabled;
+      });
 
   @override
   Future<bool> updateEmailNotifications(
     AuthSession session, {
     required bool enabled,
-  }) => _notificationSettings(session, _updateNotificationSettingsProcedure, {
-    'emailNotificationsEnabled': enabled,
+  }) => _notificationSettings(session, (ctx, tenant) async {
+    final body = await _auth.updateNotificationSettings(
+      ctx,
+      pb.UpdateNotificationSettingsRequest(
+        tenant: tenant,
+        emailNotificationsEnabled: enabled,
+      ),
+    );
+    return body.emailNotificationsEnabled;
   });
 
-  /// Sends [procedure] for the account behind [session], both of whose
-  /// answers carry the setting the account holds afterwards.
+  /// Sends [send] for the account behind [session], both of whose answers
+  /// carry the setting the account holds afterwards. protojson omits a false,
+  /// so an absent field is a setting that is off.
   Future<bool> _notificationSettings(
     AuthSession session,
-    String procedure,
-    Map<String, Object?> fields,
+    Future<bool> Function(ConnectCallContext ctx, pb.TenantContext tenant) send,
   ) async {
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(
-        procedure,
-        {
-          'tenant': {'tenantId': tenantId},
-          ...fields,
-        },
-        tenantId: tenantId,
-        accessToken: session.accessToken,
+      return await send(
+        ConnectCallContext(
+          tenantId: tenantId,
+          accessToken: session.accessToken,
+        ),
+        pb.TenantContext(tenantId: tenantId),
       );
-      // protojson omits a false, so an absent field is a setting that is off.
-      return body['emailNotificationsEnabled'] == true;
     } on ConnectException catch (error) {
       throw _toAccountFailure(error);
     }
@@ -520,17 +555,18 @@ class HttpAuthRepository implements AuthRepository {
     final current = await _getMe(session);
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(
-        _updateMeProcedure,
-        {
-          'tenant': {'tenantId': tenantId},
-          'name': _readString(current, 'name'),
-          'birthDate': formatBirthDate(birthDate),
-        },
-        tenantId: tenantId,
-        accessToken: session.accessToken,
+      final body = await _auth.updateMe(
+        ConnectCallContext(
+          tenantId: tenantId,
+          accessToken: session.accessToken,
+        ),
+        pb.UpdateMeRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+          name: current.name.trim(),
+          birthDate: formatBirthDate(birthDate),
+        ),
       );
-      return _readString(_expectMap(body['user'], 'user'), 'birthDate');
+      return _required(body.hasUser(), body.user, 'user').birthDate.trim();
     } on ConnectException catch (error) {
       throw switch (error.code) {
         'unauthenticated' => AuthFailure(
@@ -554,20 +590,21 @@ class HttpAuthRepository implements AuthRepository {
   Future<AuthSession> updateName(AuthSession session, String name) async {
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(
-        _updateMeProcedure,
-        {
-          'tenant': {'tenantId': tenantId},
-          'name': name,
-        },
-        tenantId: tenantId,
-        accessToken: session.accessToken,
+      final body = await _auth.updateMe(
+        ConnectCallContext(
+          tenantId: tenantId,
+          accessToken: session.accessToken,
+        ),
+        pb.UpdateMeRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+          name: name,
+        ),
       );
-      final user = _expectMap(body['user'], 'user');
+      final user = _required(body.hasUser(), body.user, 'user');
       return session.withUser(
-        userPublicId: _readString(user, 'publicId'),
-        userName: _readString(user, 'name'),
-        userIconUrl: userIconUrl(user['iconImageVariants'], _config),
+        userPublicId: user.publicId.trim(),
+        userName: user.name.trim(),
+        userIconUrl: userIconUrl(user.iconImageVariants, _config),
       );
     } on ConnectException catch (error) {
       throw _toAccountFailure(error);
@@ -583,40 +620,50 @@ class HttpAuthRepository implements AuthRepository {
   Future<AuthSession> uploadIcon(
     AuthSession session,
     AccountIconUpload upload,
-  ) => _changeIcon(session, _uploadMyIconProcedure, {
-    'iconData': base64Encode(upload.bytes),
-    'iconContentType': upload.contentType,
+  ) => _changeIcon(session, (ctx, tenant) async {
+    final body = await _auth.uploadMyIcon(
+      ctx,
+      pb.UploadMyIconRequest(
+        tenant: tenant,
+        iconData: upload.bytes,
+        iconContentType: upload.contentType,
+      ),
+    );
+    return _required<pb.User>(body.hasUser(), body.user, 'user');
   }, timeout: _uploadIconTimeout);
 
   @override
   Future<AuthSession> removeIcon(AuthSession session) =>
-      _changeIcon(session, _deleteMyIconProcedure, const {});
+      _changeIcon(session, (ctx, tenant) async {
+        final body = await _auth.deleteMyIcon(
+          ctx,
+          pb.DeleteMyIconRequest(tenant: tenant),
+        );
+        return _required<pb.User>(body.hasUser(), body.user, 'user');
+      });
 
-  /// Sends [procedure] for the reader behind [session], both of whose answers
-  /// are the account with the icon it then shows.
+  /// Sends [send] for the reader behind [session], both of whose answers are
+  /// the account with the icon it then shows.
   Future<AuthSession> _changeIcon(
     AuthSession session,
-    String procedure,
-    Map<String, Object?> fields, {
+    Future<pb.User> Function(ConnectCallContext ctx, pb.TenantContext tenant)
+    send, {
     Duration? timeout,
   }) async {
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(
-        procedure,
-        {
-          'tenant': {'tenantId': tenantId},
-          ...fields,
-        },
-        tenantId: tenantId,
-        accessToken: session.accessToken,
-        timeout: timeout,
+      final user = await send(
+        ConnectCallContext(
+          tenantId: tenantId,
+          accessToken: session.accessToken,
+          timeout: timeout,
+        ),
+        pb.TenantContext(tenantId: tenantId),
       );
-      final user = _expectMap(body['user'], 'user');
       return session.withUser(
-        userPublicId: _readString(user, 'publicId'),
-        userName: _readString(user, 'name'),
-        userIconUrl: userIconUrl(user['iconImageVariants'], _config),
+        userPublicId: user.publicId.trim(),
+        userName: user.name.trim(),
+        userIconUrl: userIconUrl(user.iconImageVariants, _config),
       );
     } on ConnectException catch (error) {
       final fields = error.fieldViolations;
@@ -643,18 +690,23 @@ class HttpAuthRepository implements AuthRepository {
   }) async {
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(
-        _changePasswordProcedure,
-        {
-          'tenant': {'tenantId': tenantId},
-          'currentPassword': currentPassword,
-          'newPassword': newPassword,
-        },
-        tenantId: tenantId,
-        accessToken: session.accessToken,
+      final body = await _auth.changePassword(
+        ConnectCallContext(
+          tenantId: tenantId,
+          accessToken: session.accessToken,
+        ),
+        pb.ChangePasswordRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+          currentPassword: currentPassword,
+          newPassword: newPassword,
+        ),
       );
-      final accessToken = _expectMap(body['accessToken'], 'accessToken');
-      final token = _readString(accessToken, 'token');
+      final accessToken = _required(
+        body.hasAccessToken(),
+        body.accessToken,
+        'accessToken',
+      );
+      final token = accessToken.token.trim();
       if (token.isEmpty) {
         // The change has been made and the token this device held is over, so
         // there is no session left to keep.
@@ -665,9 +717,7 @@ class HttpAuthRepository implements AuthRepository {
       }
       return session.withAccessToken(
         token,
-        expiresAt: DateTime.tryParse(
-          _readString(accessToken, 'expiresAt'),
-        )?.toUtc(),
+        expiresAt: DateTime.tryParse(accessToken.expiresAt.trim())?.toUtc(),
       );
     } on ConnectException catch (error) {
       throw _toAccountFailure(error);
@@ -682,11 +732,15 @@ class HttpAuthRepository implements AuthRepository {
     required String currentPassword,
   }) async {
     try {
-      await _requestEmailChange(session, {
-        'currentEmail': currentEmail,
-        'newEmail': newEmail,
-        'currentPassword': currentPassword,
-      });
+      await _requestEmailChange(
+        session,
+        (tenant) => pb.RequestEmailChangeRequest(
+          tenant: tenant,
+          currentEmail: currentEmail,
+          newEmail: newEmail,
+          currentPassword: currentPassword,
+        ),
+      );
     } on ConnectException catch (error) {
       throw _toAccountFailure(error);
     }
@@ -700,11 +754,17 @@ class HttpAuthRepository implements AuthRepository {
     required ProviderCredential credential,
   }) async {
     try {
-      await _requestEmailChange(session, {
-        'currentEmail': currentEmail,
-        'newEmail': newEmail,
-        ..._confirmationFields(credential),
-      });
+      await _requestEmailChange(
+        session,
+        (tenant) => pb.RequestEmailChangeRequest(
+          tenant: tenant,
+          currentEmail: currentEmail,
+          newEmail: newEmail,
+          provider: credential.provider.wire,
+          idToken: credential.idToken,
+          nonce: credential.nonce,
+        ),
+      );
     } on ConnectException catch (error) {
       throw await _toConfirmationFailure(session, error);
     }
@@ -712,19 +772,14 @@ class HttpAuthRepository implements AuthRepository {
 
   Future<void> _requestEmailChange(
     AuthSession session,
-    Map<String, Object?> fields,
+    pb.RequestEmailChangeRequest Function(pb.TenantContext tenant) request,
   ) async {
     final tenantId = await _tenants.resolve();
-    final body = await _client.unary(
-      _requestEmailChangeProcedure,
-      {
-        'tenant': {'tenantId': tenantId},
-        ...fields,
-      },
-      tenantId: tenantId,
-      accessToken: session.accessToken,
+    final body = await _auth.requestEmailChange(
+      ConnectCallContext(tenantId: tenantId, accessToken: session.accessToken),
+      request(pb.TenantContext(tenantId: tenantId)),
     );
-    if (body['requested'] != true) {
+    if (!body.requested) {
       throw const AuthFailure(
         AuthFailureKind.unexpected,
         message: 'RequestEmailChange answered without sending the links',
@@ -734,13 +789,16 @@ class HttpAuthRepository implements AuthRepository {
 
   @override
   Future<EmailChangeProgress> confirmEmailChange(String token) async {
-    final Map<String, Object?> body;
+    final pb.ConfirmEmailChangeResponse body;
     try {
       final tenantId = await _tenants.resolve();
-      body = await _client.unary(_confirmEmailChangeProcedure, {
-        'tenant': {'tenantId': tenantId},
-        'token': token,
-      }, tenantId: tenantId);
+      body = await _auth.confirmEmailChange(
+        ConnectCallContext(tenantId: tenantId),
+        pb.ConfirmEmailChangeRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+          token: token,
+        ),
+      );
     } on ConnectException catch (error) {
       // Another account took the new address after the change was asked for.
       // The link can never finish it, so it is as spent as an expired one and
@@ -750,16 +808,16 @@ class HttpAuthRepository implements AuthRepository {
       }
       throw _toLinkFailure(error);
     }
-    if (body['changed'] == true) {
+    if (body.changed) {
       return EmailChangeProgress.changed;
     }
-    if (body['confirmed'] != true) {
+    if (!body.confirmed) {
       throw const AuthFailure(
         AuthFailureKind.unexpected,
         message: 'ConfirmEmailChange answered without confirming the link',
       );
     }
-    return _readString(body, 'pendingConfirmationFor') == 'current_email'
+    return body.pendingConfirmationFor.trim() == 'current_email'
         ? EmailChangeProgress.awaitingCurrentEmail
         : EmailChangeProgress.awaitingNewEmail;
   }
@@ -771,14 +829,15 @@ class HttpAuthRepository implements AuthRepository {
   }) async {
     try {
       final tenantId = await _tenants.resolve();
-      await _client.unary(
-        _deleteMeProcedure,
-        {
-          'tenant': {'tenantId': tenantId},
-          'password': password,
-        },
-        tenantId: tenantId,
-        accessToken: session.accessToken,
+      await _auth.deleteMe(
+        ConnectCallContext(
+          tenantId: tenantId,
+          accessToken: session.accessToken,
+        ),
+        pb.DeleteMeRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+          password: password,
+        ),
       );
     } on ConnectException catch (error) {
       throw _toAccountFailure(error);
@@ -792,27 +851,22 @@ class HttpAuthRepository implements AuthRepository {
   ) async {
     try {
       final tenantId = await _tenants.resolve();
-      await _client.unary(
-        _deleteMeProcedure,
-        {
-          'tenant': {'tenantId': tenantId},
-          ..._confirmationFields(credential),
-        },
-        tenantId: tenantId,
-        accessToken: session.accessToken,
+      await _auth.deleteMe(
+        ConnectCallContext(
+          tenantId: tenantId,
+          accessToken: session.accessToken,
+        ),
+        pb.DeleteMeRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+          provider: credential.provider.wire,
+          idToken: credential.idToken,
+          nonce: credential.nonce,
+        ),
       );
     } on ConnectException catch (error) {
       throw await _toConfirmationFailure(session, error);
     }
   }
-
-  /// The fields a step an account without a password takes confirms it with,
-  /// named alike on every RPC that takes one.
-  Map<String, Object?> _confirmationFields(ProviderCredential credential) => {
-    'provider': credential.provider.wireName,
-    'idToken': credential.idToken,
-    'nonce': credential.nonce,
-  };
 
   /// What a step confirmed with a fresh sign-in refuses with.
   ///
@@ -840,53 +894,67 @@ class HttpAuthRepository implements AuthRepository {
   Future<void> signOut(AuthSession session) async {
     try {
       final tenantId = await _tenants.resolve();
-      await _client.unary(
-        _logoutProcedure,
-        {
-          'tenant': {'tenantId': tenantId},
-        },
-        tenantId: tenantId,
-        accessToken: session.accessToken,
+      await _auth.logout(
+        ConnectCallContext(
+          tenantId: tenantId,
+          accessToken: session.accessToken,
+        ),
+        pb.LogoutRequest(tenant: pb.TenantContext(tenantId: tenantId)),
       );
     } on ConnectException catch (error) {
       throw _toAccountFailure(error);
     }
   }
 
-  Future<Map<String, Object?>> _getTenant() => _readTenant(_tenantProcedure);
+  Future<pb.GetTenantResponse> _getTenant() => _readTenant(
+    (service, ctx, tenant) =>
+        service.getTenant(ctx, pb.GetTenantRequest(tenant: tenant)),
+  );
 
-  /// A `TenantService` read of the tenant, with [fields] beside it.
-  Future<Map<String, Object?>> _readTenant(
-    String procedure, [
-    Map<String, Object?> fields = const {},
-  ]) async {
+  /// A `TenantService` read of the tenant, which [read] sends.
+  Future<T> _readTenant<T>(
+    Future<T> Function(
+      pb.TenantServiceApi service,
+      ConnectCallContext ctx,
+      pb.TenantContext tenant,
+    )
+    read,
+  ) async {
     try {
       final tenantId = await _tenants.resolve();
-      return await _client.unary(procedure, {
-        'tenant': {'tenantId': tenantId},
-        ...fields,
-      }, tenantId: tenantId);
+      return await read(
+        pb.TenantServiceApi(_client),
+        ConnectCallContext(tenantId: tenantId),
+        pb.TenantContext(tenantId: tenantId),
+      );
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
   }
 
+  /// The tenant's age rule. A rung this build does not know reads as the
+  /// zero value on the message, and as [AgeVerification.checked] here.
+  static AgeVerification _ageVerification(pb.GetTenantResponse tenant) =>
+      AgeVerification.fromWire(
+        tenant.ageVerification,
+        unknown: carriesUnknownEnum(tenant, _ageVerificationField),
+      );
+
   /// The `User` behind [session], as `GetMe` answers with it.
   ///
   /// The token under test travels explicitly, so a check does not depend on
   /// the app having already adopted the session it is checking.
-  Future<Map<String, Object?>> _getMe(AuthSession session) async {
+  Future<pb.User> _getMe(AuthSession session) async {
     try {
       final tenantId = await _tenants.resolve();
-      final body = await _client.unary(
-        _getMeProcedure,
-        {
-          'tenant': {'tenantId': tenantId},
-        },
-        tenantId: tenantId,
-        accessToken: session.accessToken,
+      final body = await _auth.getMe(
+        ConnectCallContext(
+          tenantId: tenantId,
+          accessToken: session.accessToken,
+        ),
+        pb.GetMeRequest(tenant: pb.TenantContext(tenantId: tenantId)),
       );
-      return _expectMap(body['user'], 'user');
+      return _required<pb.User>(body.hasUser(), body.user, 'user');
     } on ConnectException catch (error) {
       if (error.code == 'unauthenticated') {
         throw AuthFailure(
@@ -898,10 +966,8 @@ class HttpAuthRepository implements AuthRepository {
     }
   }
 
-  AuthSession _sessionFromLogin(Map<String, Object?> body) {
-    final accessToken = _expectMap(body['accessToken'], 'accessToken');
-    final user = _expectMap(body['user'], 'user');
-    final token = _readString(accessToken, 'token');
+  AuthSession _sessionFromLogin(pb.User user, pb.AccessToken accessToken) {
+    final token = accessToken.token.trim();
     if (token.isEmpty) {
       throw const AuthFailure(
         AuthFailureKind.unexpected,
@@ -910,12 +976,10 @@ class HttpAuthRepository implements AuthRepository {
     }
     return AuthSession(
       accessToken: token,
-      userPublicId: _readString(user, 'publicId'),
-      userName: _readString(user, 'name'),
-      userIconUrl: userIconUrl(user['iconImageVariants'], _config),
-      expiresAt: DateTime.tryParse(
-        _readString(accessToken, 'expiresAt'),
-      )?.toUtc(),
+      userPublicId: user.publicId.trim(),
+      userName: user.name.trim(),
+      userIconUrl: userIconUrl(user.iconImageVariants, _config),
+      expiresAt: DateTime.tryParse(accessToken.expiresAt.trim())?.toUtc(),
     );
   }
 
@@ -1030,18 +1094,15 @@ class HttpAuthRepository implements AuthRepository {
     };
   }
 
-  Map<String, Object?> _expectMap(Object? value, String path) {
-    if (value is Map) {
-      return value.map((key, item) => MapEntry(key.toString(), item));
+  /// [message] where the answer carried it, as [present] tells. An answer
+  /// without it is one this build cannot use.
+  T _required<T>(bool present, T message, String path) {
+    if (!present) {
+      throw AuthFailure(
+        AuthFailureKind.unexpected,
+        message: '$path is missing',
+      );
     }
-    throw AuthFailure(
-      AuthFailureKind.unexpected,
-      message: '$path must be an object',
-    );
-  }
-
-  String _readString(Map<String, Object?> json, String key) {
-    final value = json[key];
-    return value is String ? value.trim() : '';
+    return message;
   }
 }

@@ -2,6 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
+import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/catalog.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/domain.pb.dart' as pb;
 
 /// Fails naming why a live run has nothing to read: an API the device cannot
 /// reach, or one that answers without the seed tenant or its series.
@@ -20,14 +23,11 @@ Future<void> expectLiveSeed({
   try {
     final String tenantId;
     try {
-      final body = await client.unary(
-        '/publira.v1.DomainService/GetTenantByDomain',
-        {
-          'domains': [tenantHost],
-        },
+      final response = await pb.DomainServiceApi(client).getTenantByDomain(
+        null,
+        pb.GetTenantByDomainRequest(domains: [tenantHost]),
       );
-      final rawTenantId = body['tenantId'];
-      tenantId = rawTenantId is String ? rawTenantId : '';
+      tenantId = response.tenantId;
     } on ConnectException catch (error) {
       if (error.isNotFound) {
         fail(
@@ -45,10 +45,13 @@ Future<void> expectLiveSeed({
     }
 
     try {
-      await client.unary('/publira.v1.CatalogService/GetSeriesDetail', {
-        'publicId': seriesPublicId,
-        'tenant': {'tenantId': tenantId},
-      }, tenantId: tenantId);
+      await pb.CatalogServiceApi(client).getSeriesDetail(
+        ConnectCallContext(tenantId: tenantId),
+        pb.GetSeriesDetailRequest(
+          publicId: seriesPublicId,
+          tenant: pb.TenantContext(tenantId: tenantId),
+        ),
+      );
     } on ConnectException catch (error) {
       if (error.isNotFound) {
         fail(

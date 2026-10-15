@@ -7,6 +7,8 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
+import 'package:publira/api/gen/publira/v1/catalog.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/domain.pb.dart' as pb;
 import 'package:publira/api/error_details.dart';
 import 'package:publira/app.dart';
 import 'package:publira/router.dart';
@@ -44,7 +46,9 @@ void main() {
       );
 
       await expectLater(
-        client.unary('/publira.v1.CatalogService/ListPublishedSeries', {}),
+        pb.CatalogServiceApi(
+          client,
+        ).listPublishedSeries(null, pb.ListPublishedSeriesRequest()),
         throwsA(
           isA<ConnectException>().having(
             (error) => error.isTenantSuspended,
@@ -56,7 +60,9 @@ void main() {
       expect(availability.suspended, isTrue);
 
       suspended = false;
-      await client.unary('/publira.v1.DomainService/GetTenantByDomain', {});
+      await pb.DomainServiceApi(
+        client,
+      ).getTenantByDomain(null, pb.GetTenantByDomainRequest());
       expect(availability.suspended, isFalse);
     });
 
@@ -80,7 +86,9 @@ void main() {
       );
 
       await expectLater(
-        client.unary('/publira.v1.CatalogService/ListPublishedSeries', {}),
+        pb.CatalogServiceApi(
+          client,
+        ).listPublishedSeries(null, pb.ListPublishedSeriesRequest()),
         throwsA(isA<ConnectException>()),
       );
       expect(availability.suspended, isFalse);

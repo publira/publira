@@ -1,4 +1,6 @@
 import 'package:publira/api/connect_client.dart';
+import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/notification.pb.dart' as pb;
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/push/push_repository.dart';
 
@@ -10,11 +12,6 @@ import 'package:publira/push/push_repository.dart';
 class HttpPushRepository implements PushRepository {
   const HttpPushRepository({required this._client, required this._tenants});
 
-  static const _registerProcedure =
-      '/publira.v1.NotificationService/RegisterPushDevice';
-  static const _unregisterProcedure =
-      '/publira.v1.NotificationService/UnregisterPushDevice';
-
   final ConnectClient _client;
   final TenantResolver _tenants;
 
@@ -24,19 +21,28 @@ class HttpPushRepository implements PushRepository {
     required PushPlatform platform,
   }) async {
     final tenantId = await _tenants.resolve();
-    await _client.unary(_registerProcedure, {
-      'tenant': {'tenantId': tenantId},
-      'token': token,
-      'platform': platform.wireValue,
-    }, tenantId: tenantId);
+    await pb.NotificationServiceApi(_client).registerPushDevice(
+      ConnectCallContext(tenantId: tenantId),
+      pb.RegisterPushDeviceRequest(
+        tenant: pb.TenantContext(tenantId: tenantId),
+        token: token,
+        platform: switch (platform) {
+          PushPlatform.ios => pb.PushPlatform.PUSH_PLATFORM_IOS,
+          PushPlatform.android => pb.PushPlatform.PUSH_PLATFORM_ANDROID,
+        },
+      ),
+    );
   }
 
   @override
   Future<void> unregister(String token) async {
     final tenantId = await _tenants.resolve();
-    await _client.unary(_unregisterProcedure, {
-      'tenant': {'tenantId': tenantId},
-      'token': token,
-    }, tenantId: tenantId);
+    await pb.NotificationServiceApi(_client).unregisterPushDevice(
+      ConnectCallContext(tenantId: tenantId),
+      pb.UnregisterPushDeviceRequest(
+        tenant: pb.TenantContext(tenantId: tenantId),
+        token: token,
+      ),
+    );
   }
 }

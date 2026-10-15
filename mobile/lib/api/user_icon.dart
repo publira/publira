@@ -1,27 +1,26 @@
+import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
 import 'package:publira/config.dart';
 
-/// The image-server URL of the icon a list of `publira.types.v1.UserIconVariant`
-/// describes, resolved against [config], and `null` for an account that shows
-/// none.
+/// The image-server URL of the icon [variants] describe, resolved against
+/// [config], and `null` for an account that shows none.
 ///
 /// An icon is stored as a single rendition, so the first variant is the icon;
-/// image-server scales it to whatever size the app draws it at. protojson
-/// omits an empty list, which is how an account with no icon arrives.
+/// image-server scales it to whatever size the app draws it at. An account
+/// with no icon has no variant.
 ///
-/// Anything this build cannot read is no icon rather than a failure: the name
+/// A URL this build cannot read is no icon rather than a failure: the name
 /// beside it still says whose row it is, and a fallback is what a reader
 /// without an icon gets anyway.
-Uri? userIconUrl(Object? variants, AppConfig config) {
-  if (variants is! List || variants.isEmpty) {
+Uri? userIconUrl(List<pb.UserIconVariant> variants, AppConfig config) {
+  if (variants.isEmpty) {
     return null;
   }
-  final first = variants.first;
-  final url = first is Map ? first['url'] : null;
-  if (url is! String || url.trim().isEmpty) {
+  final url = variants.first.url.trim();
+  if (url.isEmpty) {
     return null;
   }
   try {
-    return config.imageUri(url.trim());
+    return config.imageUri(url);
   } on FormatException {
     return null;
   }

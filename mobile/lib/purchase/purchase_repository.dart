@@ -44,14 +44,7 @@ enum AppPurchaseRoute {
 
 /// The store an app buys through with the store's in-app purchase, as
 /// `publira.v1.InAppPurchaseStore` names it.
-enum InAppPurchaseStore {
-  appStore('IN_APP_PURCHASE_STORE_APP_STORE'),
-  googlePlay('IN_APP_PURCHASE_STORE_GOOGLE_PLAY');
-
-  const InAppPurchaseStore(this.wireName);
-
-  final String wireName;
-}
+enum InAppPurchaseStore { appStore, googlePlay }
 
 /// What the store is asked to charge for one episode: the product the
 /// episode's price is sold as, and the intent the transaction carries as its

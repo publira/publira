@@ -2,6 +2,8 @@ import 'package:publira/api/client_surface.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
 import 'package:publira/api/error_details.dart';
+import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/catalog.pb.dart' as pb;
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/wait_free/wait_free_failure.dart';
 import 'package:publira/wait_free/wait_free_repository.dart';
@@ -10,25 +12,40 @@ import 'package:publira/wait_free/wait_free_repository.dart';
 class HttpWaitFreeRepository implements WaitFreeRepository {
   const HttpWaitFreeRepository({required this._client, required this._tenants});
 
-  static const _stateProcedure = '/publira.v1.WaitFreeService/GetMyTicketState';
-  static const _useProcedure = '/publira.v1.WaitFreeService/UseTicket';
-
   final ConnectClient _client;
   final TenantResolver _tenants;
 
   @override
   Future<WaitFreeTicketState> ticketState(String seriesInternalId) async {
-    final body = await _call(_stateProcedure, {'seriesId': seriesInternalId});
+    final body = await _call(
+      (api, call, tenant) => api.getMyTicketState(
+        call,
+        pb.GetMyTicketStateRequest(
+          seriesId: seriesInternalId,
+          surface: appClientSurface,
+          tenant: tenant,
+        ),
+      ),
+    );
     return WaitFreeTicketState(
-      nextAvailableAt: _readInstant(body, 'nextAvailableAt'),
-      openTickets: _tickets(body['openTickets']),
+      nextAvailableAt: _readInstant(body.nextAvailableAt),
+      openTickets: List.unmodifiable(body.openTickets.map(_ticket).nonNulls),
     );
   }
 
   @override
   Future<WaitFreeTicket> useTicket(String episodeInternalId) async {
-    final body = await _call(_useProcedure, {'episodeId': episodeInternalId});
-    final ticket = _ticket(body['ticket']);
+    final body = await _call(
+      (api, call, tenant) => api.useTicket(
+        call,
+        pb.UseTicketRequest(
+          episodeId: episodeInternalId,
+          surface: appClientSurface,
+          tenant: tenant,
+        ),
+      ),
+    );
+    final ticket = _ticket(body.ticket);
     if (ticket == null) {
       throw const WaitFreeFailure(
         WaitFreeFailureKind.unexpected,
@@ -38,15 +55,19 @@ class HttpWaitFreeRepository implements WaitFreeRepository {
     return ticket;
   }
 
-  /// Sends [fields] to [procedure] for the reader signed in now.
+  /// Makes the call [send] makes through `api`, for the reader signed in now.
   ///
   /// The token is read once and sent explicitly, so the answer is about the
   /// reader who asked even when the account changes while the tenant lookup is
   /// in flight. A guest is answered without a request: the API needs a session
   /// for both calls.
-  Future<Map<String, Object?>> _call(
-    String procedure,
-    Map<String, Object?> fields,
+  Future<T> _call<T>(
+    Future<T> Function(
+      pb.WaitFreeServiceApi api,
+      ConnectCallContext call,
+      pb.TenantContext tenant,
+    )
+    send,
   ) async {
     final accessToken = _client.accessToken;
     if (accessToken.isEmpty) {
@@ -57,57 +78,29 @@ class HttpWaitFreeRepository implements WaitFreeRepository {
     }
     try {
       final tenantId = await _tenants.resolve();
-      return await _client.unary(
-        procedure,
-        {
-          ...fields,
-          'surface': appClientSurface,
-          'tenant': {'tenantId': tenantId},
-        },
-        tenantId: tenantId,
-        accessToken: accessToken,
+      return await send(
+        pb.WaitFreeServiceApi(_client),
+        ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+        pb.TenantContext(tenantId: tenantId),
       );
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
   }
 
-  List<WaitFreeTicket> _tickets(Object? raw) {
-    // protojson omits an empty repeated field.
-    if (raw == null) {
-      return const [];
-    }
-    if (raw is! List) {
-      throw const WaitFreeFailure(
-        WaitFreeFailureKind.unexpected,
-        message: 'openTickets must be a list',
-      );
-    }
-    return List.unmodifiable(raw.map(_ticket).nonNulls);
-  }
-
   /// A ticket that names no episode or no expiry is one nothing could be
   /// timed against, so it is dropped.
-  WaitFreeTicket? _ticket(Object? raw) {
-    if (raw is! Map) {
-      return null;
-    }
-    final json = raw.cast<String, Object?>();
-    final episodeId = _readString(json, 'episodeId');
-    final expiresAt = _readInstant(json, 'expiresAt');
+  WaitFreeTicket? _ticket(pb.WaitFreeTicket ticket) {
+    final episodeId = ticket.episodeId.trim();
+    final expiresAt = _readInstant(ticket.expiresAt);
     if (episodeId.isEmpty || expiresAt == null) {
       return null;
     }
     return WaitFreeTicket(episodeId: episodeId, expiresAt: expiresAt);
   }
 
-  String _readString(Map<String, Object?> json, String key) {
-    final value = json[key];
-    return value is String ? value.trim() : '';
-  }
-
-  DateTime? _readInstant(Map<String, Object?> json, String key) =>
-      DateTime.tryParse(_readString(json, key))?.toLocal();
+  DateTime? _readInstant(String value) =>
+      DateTime.tryParse(value.trim())?.toLocal();
 
   WaitFreeFailure _toFailure(ConnectException error) {
     if (error.isUnavailable) {

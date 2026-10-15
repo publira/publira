@@ -1,23 +1,25 @@
 import 'package:flutter/foundation.dart';
+import 'package:publira/api/gen/publira/v1/auth.pb.dart' as pb;
 
 /// A provider a reader signs in with instead of a password, as
 /// `publira.v1.IdentityProvider` names it.
 enum IdentityProvider {
-  apple('IDENTITY_PROVIDER_APPLE', 'Apple'),
-  google('IDENTITY_PROVIDER_GOOGLE', 'Google');
+  apple(pb.IdentityProvider.IDENTITY_PROVIDER_APPLE, 'Apple'),
+  google(pb.IdentityProvider.IDENTITY_PROVIDER_GOOGLE, 'Google');
 
-  const IdentityProvider(this.wireName, this.displayName);
+  const IdentityProvider(this.wire, this.displayName);
 
-  /// The enum value's name, which protojson sends and reads.
-  final String wireName;
+  /// The value the API names this provider by.
+  final pb.IdentityProvider wire;
 
   /// The provider's own name, which no catalog translates.
   final String displayName;
 
-  /// The provider [raw] names, or `null` for a value this app does not know.
-  static IdentityProvider? fromWire(Object? raw) {
+  /// The provider [wire] names, or `null` for the zero value and for a value
+  /// this app does not know, which the message reads as the zero value.
+  static IdentityProvider? fromWire(pb.IdentityProvider wire) {
     for (final provider in values) {
-      if (provider.wireName == raw) {
+      if (provider.wire == wire) {
         return provider;
       }
     }
@@ -37,32 +39,6 @@ class SignInProviders {
     this.androidApplicationId = '',
     this.google,
   });
-
-  /// Read from the `GetTenant` body [tenant], with the apps
-  /// `GetTenantMobileAppAssociation` names: the iOS bundle identifier
-  /// [appleBundleIdentifier] Apple's tokens are accepted for, and the Android
-  /// [androidApplicationId] the storefront hands Apple's answer back to.
-  factory SignInProviders.fromTenant(
-    Map<String, Object?> tenant, {
-    String appleBundleIdentifier = '',
-    String androidApplicationId = '',
-  }) {
-    final apple = tenant['appleSignIn'];
-    final google = tenant['googleSignIn'];
-    return SignInProviders(
-      // protojson sends an enabled provider with no field set as `{}`.
-      apple: apple is Map,
-      appleBundleIdentifier: appleBundleIdentifier,
-      appleServicesId: apple is Map ? _trimmed(apple['servicesId']) : '',
-      androidApplicationId: androidApplicationId,
-      google: google is Map
-          ? GoogleSignInClients(
-              webClientId: _trimmed(google['webClientId']),
-              iosClientId: _trimmed(google['iosClientId']),
-            )
-          : null,
-    );
-  }
 
   static const none = SignInProviders();
 
@@ -85,8 +61,6 @@ class SignInProviders {
   final String androidApplicationId;
 
   final GoogleSignInClients? google;
-
-  static String _trimmed(Object? value) => value is String ? value.trim() : '';
 
   @override
   bool operator ==(Object other) =>

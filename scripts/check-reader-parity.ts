@@ -62,8 +62,12 @@ export interface Inventory {
 const CLIENT_SERVICE = /^[ \t]*(?<service>\w+): Client<typeof \w+>;/gmu;
 /** `  rpc GetSeriesDetail(GetSeriesDetailRequest)` → `GetSeriesDetail`. */
 const PROTO_RPC = /^[ \t]*rpc (?<method>\w+)\(/gmu;
-/** `'/publira.v1.CatalogService/GetSeriesDetail'` → `GetSeriesDetail`. */
-const MOBILE_RPC = /Service\/(?<method>[A-Z]\w*)'/gu;
+/**
+ * `pb.GetSeriesDetailRequest(` → `GetSeriesDetail`. The app calls the public
+ * API through the generated stubs, and each call builds its method's request
+ * message, so building one is what marks the method as called.
+ */
+const MOBILE_RPC = /\bpb\.(?<method>[A-Z]\w*)Request\(/gu;
 
 const capitalize = (name: string): string =>
   name.charAt(0).toUpperCase() + name.slice(1);
@@ -270,7 +274,9 @@ const takeInventory = async (): Promise<Inventory> => {
 
   return {
     mobileRpcs: new Set(
-      mobileSources.flatMap((source) => methodsIn(source, MOBILE_RPC))
+      mobileSources
+        .flatMap((source) => methodsIn(source, MOBILE_RPC))
+        .filter((method) => rpcs.has(method))
     ),
     mobileTests: testSources.join("\n"),
     webRoutes,

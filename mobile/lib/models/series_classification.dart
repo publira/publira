@@ -67,18 +67,7 @@ class PublishedTag {
 
 /// How a genre's or a tag's series are ordered, as the storefront's sort
 /// offers it.
-enum SeriesListOrder {
-  newest,
-  updated,
-  title;
-
-  /// The `publira.v1.SeriesOrder` name the API is asked for.
-  String get wireName => switch (this) {
-    SeriesListOrder.newest => 'SERIES_ORDER_PUBLISHED_AT_DESC',
-    SeriesListOrder.updated => 'SERIES_ORDER_LATEST_EPISODE_AT_DESC',
-    SeriesListOrder.title => 'SERIES_ORDER_TITLE_ASC',
-  };
-}
+enum SeriesListOrder { newest, updated, title }
 
 /// The sort and the filters a reader narrows a genre or a tag with.
 ///

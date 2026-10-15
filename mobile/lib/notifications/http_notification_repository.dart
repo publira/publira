@@ -1,6 +1,8 @@
 import 'package:publira/api/client_surface.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
+import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/notification.pb.dart' as pb;
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/models/inbox_notification.dart';
 import 'package:publira/notifications/notification_failure.dart';
@@ -17,15 +19,6 @@ class HttpNotificationRepository implements NotificationRepository {
     required this._tenants,
   });
 
-  static const _listProcedure =
-      '/publira.v1.NotificationService/ListNotifications';
-  static const _countProcedure =
-      '/publira.v1.NotificationService/CountUnreadNotifications';
-  static const _markProcedure =
-      '/publira.v1.NotificationService/MarkNotificationAsRead';
-  static const _markAllProcedure =
-      '/publira.v1.NotificationService/MarkAllNotificationsAsRead';
-
   /// Rows one page asks for. The API caps this at 100 and falls back to 20.
   static const pageSize = 20;
 
@@ -38,14 +31,26 @@ class HttpNotificationRepository implements NotificationRepository {
     if (accessToken.isEmpty) {
       return InboxNotificationPage.empty;
     }
-    final body = await _call(_listProcedure, accessToken, {
-      'limit': pageSize,
-      if (token.isNotEmpty) 'token': token,
-      'surface': appClientSurface,
-    });
+    final body = await _call(
+      accessToken,
+      (api, call, tenant) => api.listNotifications(
+        call,
+        pb.ListNotificationsRequest(
+          limit: pageSize,
+          token: token.isEmpty ? null : token,
+          surface: appClientSurface,
+          tenant: tenant,
+        ),
+      ),
+    );
     return InboxNotificationPage(
-      notifications: _notifications(body['notifications']),
-      nextToken: _readString(body, 'nextToken'),
+      notifications: List<InboxNotification>.unmodifiable(
+        body.notifications
+            .map(_notification)
+            // A row with no id could never be marked read.
+            .nonNulls,
+      ),
+      nextToken: body.nextToken.trim(),
     );
   }
 
@@ -55,43 +60,64 @@ class HttpNotificationRepository implements NotificationRepository {
     if (accessToken.isEmpty) {
       return 0;
     }
-    final body = await _call(_countProcedure, accessToken, const {
-      'surface': appClientSurface,
-    });
-    // protojson omits a zero.
-    final count = body['unreadCount'];
-    return count is num ? count.toInt() : 0;
+    final body = await _call(
+      accessToken,
+      (api, call, tenant) => api.countUnreadNotifications(
+        call,
+        pb.CountUnreadNotificationsRequest(
+          surface: appClientSurface,
+          tenant: tenant,
+        ),
+      ),
+    );
+    return body.unreadCount;
   }
 
   @override
   Future<void> markRead(String notificationId) async {
-    await _call(_markProcedure, _requireSession(), {
-      'notificationId': notificationId,
-    });
+    await _call(
+      _requireSession(),
+      (api, call, tenant) => api.markNotificationAsRead(
+        call,
+        pb.MarkNotificationAsReadRequest(
+          notificationId: notificationId,
+          tenant: tenant,
+        ),
+      ),
+    );
   }
 
   @override
   Future<void> markAllRead() async {
-    await _call(_markAllProcedure, _requireSession(), const {
-      'surface': appClientSurface,
-    });
+    await _call(
+      _requireSession(),
+      (api, call, tenant) => api.markAllNotificationsAsRead(
+        call,
+        pb.MarkAllNotificationsAsReadRequest(
+          surface: appClientSurface,
+          tenant: tenant,
+        ),
+      ),
+    );
   }
 
-  Future<Map<String, Object?>> _call(
-    String procedure,
+  /// Makes the call [send] makes through `api`, as the reader [accessToken]
+  /// signs in.
+  Future<T> _call<T>(
     String accessToken,
-    Map<String, Object?> body,
+    Future<T> Function(
+      pb.NotificationServiceApi api,
+      ConnectCallContext call,
+      pb.TenantContext tenant,
+    )
+    send,
   ) async {
     try {
       final tenantId = await _tenants.resolve();
-      return await _client.unary(
-        procedure,
-        {
-          ...body,
-          'tenant': {'tenantId': tenantId},
-        },
-        tenantId: tenantId,
-        accessToken: accessToken,
+      return await send(
+        pb.NotificationServiceApi(_client),
+        ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+        pb.TenantContext(tenantId: tenantId),
       );
     } on ConnectException catch (error) {
       throw _toFailure(error);
@@ -111,41 +137,17 @@ class HttpNotificationRepository implements NotificationRepository {
     return accessToken;
   }
 
-  List<InboxNotification> _notifications(Object? raw) {
-    // protojson omits an empty repeated field.
-    if (raw == null) {
-      return const [];
-    }
-    if (raw is! List) {
-      throw const NotificationFailure(
-        NotificationFailureKind.unexpected,
-        message: 'notifications must be a list',
-      );
-    }
-    final notifications = raw
-        .whereType<Map<Object?, Object?>>()
-        .map((item) => item.map((key, value) => MapEntry('$key', value)))
-        .map(_notification)
-        // A row with no id could never be marked read.
-        .nonNulls
-        .toList();
-    return List<InboxNotification>.unmodifiable(notifications);
-  }
-
-  InboxNotification? _notification(Map<String, Object?> json) {
-    final id = _readString(json, 'id');
+  InboxNotification? _notification(pb.NotificationItem item) {
+    final id = item.id.trim();
     if (id.isEmpty) {
       return null;
     }
     return InboxNotification(
       id: id,
-      kind: InboxNotificationKind.fromWire(
-        _readString(json, 'notificationType'),
-      ),
-      payload: InboxNotificationPayload.parse(_readString(json, 'payload')),
-      // protojson omits a false.
-      isRead: json['isRead'] == true,
-      createdAt: DateTime.tryParse(_readString(json, 'createdAt'))?.toLocal(),
+      kind: InboxNotificationKind.fromWire(item.notificationType),
+      payload: InboxNotificationPayload.parse(item.payload),
+      isRead: item.isRead,
+      createdAt: DateTime.tryParse(item.createdAt.trim())?.toLocal(),
     );
   }
 
@@ -162,10 +164,5 @@ class HttpNotificationRepository implements NotificationRepository {
           : NotificationFailureKind.unexpected,
       message: error.message,
     );
-  }
-
-  String _readString(Map<String, Object?> json, String key) {
-    final value = json[key];
-    return value is String ? value.trim() : '';
   }
 }
