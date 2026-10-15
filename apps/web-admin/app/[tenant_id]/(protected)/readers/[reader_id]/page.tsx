@@ -237,6 +237,10 @@ const ReaderDetailPage = ({ params, searchParams }: ReaderDetailPageProps) => (
             keyName="birth_date_updated"
             message="admin.readers.birth_date_updated"
           />
+          <FlashToast
+            keyName="icon_removed"
+            message="admin.readers.icon_removed"
+          />
           <AdminSections>
             <SectionErrorBoundary
               title={

@@ -49,6 +49,7 @@ const account = (
 ): CreatorAccountItem => ({
   createdAt: "2026-01-01T00:00:00Z",
   email: "one@example.com",
+  icon: null,
   id: "018f0e6a-5000-7000-8000-000000000001",
   linkedAt: "2026-09-01T00:00:00Z",
   name: "Reader One",

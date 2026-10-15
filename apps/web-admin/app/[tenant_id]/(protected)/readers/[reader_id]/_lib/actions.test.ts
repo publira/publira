@@ -4,11 +4,13 @@ const {
   mockAssertSameOrigin,
   mockModerateReader,
   mockRedirect,
+  mockRemoveReaderIcon,
   mockUpdateTag,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
   mockModerateReader: vi.fn(),
   mockRedirect: vi.fn(),
+  mockRemoveReaderIcon: vi.fn(),
   mockUpdateTag: vi.fn(),
 }));
 
@@ -28,6 +30,7 @@ vi.mock("#lib/auth-session", () => ({
 
 vi.mock("#lib/reader", () => ({
   moderateReader: mockModerateReader,
+  removeReaderIcon: mockRemoveReaderIcon,
   setReaderBirthDate: vi.fn(),
 }));
 
@@ -90,5 +93,50 @@ describe("reader moderation actions", () => {
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();
     expect(mockRedirect).not.toHaveBeenCalled();
+  });
+});
+
+describe("removeReaderIconAction", () => {
+  it("removes the icon and returns to the reader's page with its toast", async () => {
+    mockRemoveReaderIcon.mockResolvedValueOnce({ ok: true });
+    const { removeReaderIconAction } = await import("./actions");
+
+    await removeReaderIconAction(null, readerForm());
+
+    expect(mockAssertSameOrigin).toHaveBeenCalled();
+    expect(mockRemoveReaderIcon).toHaveBeenCalledWith(
+      { readerId: READER_ID, tenantId: "TENANT001" },
+      "en"
+    );
+    expect(mockRedirect).toHaveBeenCalledWith(
+      "/readers/READER00001?icon_removed=1"
+    );
+  });
+
+  it("shows the refusal beside the button and stays on the page", async () => {
+    mockRemoveReaderIcon.mockResolvedValueOnce({
+      message: "Could not remove the icon. Please try again later.",
+      ok: false,
+    });
+    const { removeReaderIconAction } = await import("./actions");
+
+    const result = await removeReaderIconAction(null, readerForm());
+
+    expect(result).toEqual({
+      message: "Could not remove the icon. Please try again later.",
+      ok: false,
+    });
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+
+  it("calls nothing for a form that names no reader", async () => {
+    const data = readerForm();
+    data.delete("reader_id");
+    const { removeReaderIconAction } = await import("./actions");
+
+    const result = await removeReaderIconAction(null, data);
+
+    expect(result?.ok).toBe(false);
+    expect(mockRemoveReaderIcon).not.toHaveBeenCalled();
   });
 });

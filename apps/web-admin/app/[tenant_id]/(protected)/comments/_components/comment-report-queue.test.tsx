@@ -67,6 +67,7 @@ vi.mock("./comment-report-decision-button", () => ({
 const reportedComment = (
   overrides: Partial<CommentItem> = {}
 ): CommentItem => ({
+  authorIcon: null,
   authorIsStaff: false,
   authorName: "Reader",
   authorPublicId: "USER001",

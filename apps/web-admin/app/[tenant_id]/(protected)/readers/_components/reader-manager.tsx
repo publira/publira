@@ -32,6 +32,7 @@ import {
   PaginationFooter,
   PaginationFooterDescription,
 } from "#components/pagination-controls";
+import { ReaderIcon } from "#components/reader-icon";
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
 import { getMessagesFor } from "#lib/messages";
@@ -146,12 +147,16 @@ const ReaderListBody = ({
         {rows.map(({ reader, roleLabel }) => (
           <TableRow key={reader.publicId}>
             <TableCell>
-              <Link
-                className="font-medium underline-offset-4 hover:underline"
-                href={`/readers/${reader.publicId}`}
-              >
-                {reader.name || reader.publicId}
-              </Link>
+              <div className="flex min-w-0 items-center gap-2">
+                {/* The name beside it says whose icon it is. */}
+                <ReaderIcon alt="" icon={reader.icon} size={32} />
+                <Link
+                  className="font-medium underline-offset-4 hover:underline"
+                  href={`/readers/${reader.publicId}`}
+                >
+                  {reader.name || reader.publicId}
+                </Link>
+              </div>
             </TableCell>
             <TableCell>{reader.email}</TableCell>
             <TableCell>

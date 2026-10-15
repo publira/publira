@@ -5,6 +5,7 @@ import { applyScenarioSql } from "../src/db";
 import { SEED_ADMIN } from "../src/scenarios/admin-publish";
 import {
   READER_MODERATION_DELETE,
+  READER_MODERATION_ICON,
   READER_MODERATION_SCENARIO,
   READER_MODERATION_SUSPEND,
 } from "../src/scenarios/reader-moderation";
@@ -215,6 +216,54 @@ test.describe("web-admin readers", () => {
       await expect(
         page.getByRole("button", { exact: true, name: "Suspend" })
       ).toBeVisible();
+    });
+
+    test("staff remove a reader's icon, which leaves the outline on the reader page and in the list", async ({
+      page,
+    }) => {
+      const listPath = `/readers?q=${READER_MODERATION_ICON.email}`;
+      await signInAsSeedAdmin(page, listPath);
+      const row = page.getByRole("row").filter({
+        has: page.getByRole("cell", {
+          exact: true,
+          name: READER_MODERATION_ICON.email,
+        }),
+      });
+      await expect(row).toHaveCount(1);
+      await expect(row.locator("img")).toBeVisible();
+
+      await row
+        .getByRole("link", { name: READER_MODERATION_ICON.name })
+        .click();
+      await expect(page).toHaveURL(
+        new RegExp(`/readers/${READER_MODERATION_ICON.publicId}$`, "u")
+      );
+      const icon = page.getByRole("img", {
+        name: `${READER_MODERATION_ICON.name}'s icon`,
+      });
+      await expect(icon).toBeVisible();
+
+      await page
+        .getByRole("button", { exact: true, name: "Remove icon" })
+        .click();
+      const dialog = page.getByRole("alertdialog");
+      await expect(dialog).toContainText(
+        `Remove ${READER_MODERATION_ICON.name}'s icon?`
+      );
+      await dialog.getByRole("button", { exact: true, name: "Remove" }).click();
+
+      await expect(page.getByText("The icon has been removed.")).toBeVisible();
+      await expect(icon).toHaveCount(0);
+      await expect(
+        page.getByRole("definition").getByText("No icon", { exact: true })
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", { exact: true, name: "Remove icon" })
+      ).toHaveCount(0);
+
+      await page.goto(listPath);
+      await expect(row).toHaveCount(1);
+      await expect(row.locator("img")).toHaveCount(0);
     });
 
     test("staff delete a reader after a confirmation that names them", async ({

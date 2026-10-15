@@ -35,6 +35,7 @@ import {
   emptyCursorPageTokens,
 } from "./cursor-page";
 import { getMessagesFor } from "./messages";
+import { toReaderIconImage } from "./reader-icon";
 import { getAccessToken } from "./session";
 
 /*
@@ -95,6 +96,7 @@ const toHiddenReason = (raw: string): CommentHiddenReason => {
 /** The generated `AdminComment` fields {@link mapComment} reads (see `series.ts`). */
 type RawComment = Pick<
   AdminComment,
+  | "authorIconImageVariants"
   | "authorIsStaff"
   | "authorName"
   | "authorPublicId"
@@ -163,6 +165,7 @@ const toCommentCreator = (
     : null;
 
 const mapComment = (item: RawComment): CommentItem => ({
+  authorIcon: toReaderIconImage(item.authorIconImageVariants ?? []),
   authorIsStaff: item.authorIsStaff ?? false,
   authorName: item.authorName ?? "",
   authorPublicId: item.authorPublicId ?? "",
@@ -192,6 +195,7 @@ const mapComment = (item: RawComment): CommentItem => ({
  * missing rather than the whole queue.
  */
 const missingReportedComment: CommentItem = {
+  authorIcon: null,
   authorIsStaff: false,
   authorName: "",
   authorPublicId: "",

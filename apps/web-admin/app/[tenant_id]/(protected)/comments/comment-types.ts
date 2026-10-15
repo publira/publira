@@ -1,4 +1,5 @@
 import type { CursorPageTokens } from "#lib/cursor-page";
+import type { ReaderIconImage } from "#lib/reader-icon";
 
 /**
  * The four states a stored comment can be in, as
@@ -70,6 +71,8 @@ export interface CommentCreator {
 }
 
 export interface CommentItem {
+  /** The icon the author's account shows now, or `null` for none. */
+  authorIcon: ReaderIconImage | null;
   /** A staff account has no reader page, so its name is not linked there. */
   authorIsStaff: boolean;
   authorName: string;

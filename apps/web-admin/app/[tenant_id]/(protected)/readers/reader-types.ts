@@ -1,4 +1,5 @@
 import type { CursorPageTokens } from "#lib/cursor-page";
+import type { ReaderIconImage } from "#lib/reader-icon";
 
 /**
  * The three account states a reader can be in, as
@@ -15,6 +16,8 @@ export interface ReaderItem {
   /** When the account was created, as an absolute API timestamp. */
   createdAt: string;
   email: string;
+  /** The icon the account shows, or `null` for one that shows none. */
+  icon: ReaderIconImage | null;
   /** The internal ID every reader action addresses the reader by. */
   id: string;
   name: string;

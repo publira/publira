@@ -12,6 +12,7 @@ import { ReaderAccount } from "./reader-account";
 
 vi.mock("../_lib/actions", () => ({
   deleteReaderAction: vi.fn(),
+  removeReaderIconAction: vi.fn(),
   setReaderBirthDateAction: vi.fn(),
   suspendReaderAction: vi.fn(),
   unsuspendReaderAction: vi.fn(),
@@ -40,6 +41,7 @@ const reader = (overrides: Partial<ReaderDetail> = {}): ReaderDetail => ({
   createdAt: "2026-06-01T00:00:00Z",
   email: "admin@example.com",
   emailVerifiedAt: "",
+  icon: null,
   id: "01920000-0000-7000-8000-000000000001",
   name: "Avery Admin",
   publicId: "ADMIN000001",
@@ -104,5 +106,30 @@ describe("ReaderAccount", () => {
     ).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Suspend" })).toBeNull();
     expect(screen.getByRole("button", { name: "Delete" })).toBeTruthy();
+  });
+
+  it("draws the reader's icon and offers to remove it", async () => {
+    await renderAccount(
+      reader({
+        icon: {
+          height: 512,
+          url: "/images/users/ADMIN000001/icon.png",
+          width: 512,
+        },
+      })
+    );
+
+    expect(
+      screen.getByAltText<HTMLImageElement>("Avery Admin's icon").src
+    ).toContain("icon.png");
+    expect(screen.getByRole("button", { name: "Remove icon" })).toBeTruthy();
+  });
+
+  it("says an account shows no icon and offers nothing to remove", async () => {
+    await renderAccount(reader());
+
+    expect(screen.queryByAltText("Avery Admin's icon")).toBeNull();
+    expect(screen.getByText("No icon")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Remove icon" })).toBeNull();
   });
 });

@@ -2,7 +2,7 @@
 title: Readers, comments, and contact messages
 description: Find and act on a reader's account, moderate comments and their reports, answer contact messages, and open a paid episode to a reader with an access ticket.
 published: 2026-10-07
-updated: 2026-10-11
+updated: 2026-10-15
 ---
 
 The **Readers** group of the console is where the staff deal with the people who read the site: their accounts, the comments they leave on episodes, the messages they send through the contact form, and the access tickets that open a paid episode to one of them without payment. What is done here reaches a reader directly, sometimes without a way back, so each section below says what an action does before saying how to take it.
@@ -30,21 +30,27 @@ To find someone, type part of their name or email address into **Name or email**
 | **Inactive** | The reader signed up and has not confirmed their email address yet. They cannot sign in until they do |
 | **Suspended** | A Tenant admin suspended the account. It cannot sign in until the suspension is lifted |
 
-A reader's name in the list opens their page. So does the commenter's name on **Comments**, for a Tenant admin, and the sender of a contact message who was signed in when they wrote.
+Each row starts with the icon the reader chose for their account, or a plain outline for one who has not chosen any; **Comments** shows the commenter's the same way. A reader's name in the list opens their page. So does the commenter's name on **Comments**, for a Tenant admin, and the sender of a contact message who was signed in when they wrote.
 
-![The Readers list: the Name or email and Status filters with Apply and Reset, and a row for each account with its name, email address, role, status, and when it signed up.](./readers-list.png)
+![The Readers list: the Name or email and Status filters with Apply and Reset, and a row for each account with its icon, name, email address, role, status, and when it signed up.](./readers-list.png)
 
 ### The reader page
 
-**Account** shows the reader's name, their **Public ID** with a button to copy it, their email address, their status, when they signed up, whether and when they confirmed their email address, and their **Birth date**. **Comments** lists everything they have written, newest first, including the comments they deleted themselves until those are purged, with the same actions as on [Comments](#comments).
+**Account** shows the reader's **Icon**, their name, their **Public ID** with a button to copy it, their email address, their status, when they signed up, whether and when they confirmed their email address, and their **Birth date**. **Comments** lists everything they have written, newest first, including the comments they deleted themselves until those are purged, with the same actions as on [Comments](#comments).
 
-![A reader's page: the Account section with Suspend and Delete, the reader's name, Public ID with a copy button, email address, status, when they signed up and confirmed their address, and Birth date with Change.](./readers-reader.png)
+![A reader's page: the Account section with Suspend and Delete, the reader's icon, their name, Public ID with a copy button, email address, status, when they signed up and confirmed their address, and Birth date with Change.](./readers-reader.png)
 
 The public ID is what **Access tickets** filters by, so copy it from here when you look for a reader's tickets.
 
 ### Correcting a date of birth
 
 A reader cannot change their date of birth once it is saved, so a reader who entered it wrongly has to ask the site, and the age checks set under [Age verification](./3-setup/1-settings.md#age-verification) follow whatever is saved. To correct it, choose **Change** beside **Birth date**, enter the date, and choose **Save**. Leave the date empty to clear it, after which the reader is asked for it again on an age-gated series. The new date applies from the reader's next read.
+
+### Removing a reader's icon
+
+A reader's icon shows beside their comments to everyone who reads the site, so one that breaks the site's rules is taken down from here. Choose **Remove icon** beside **Icon** and confirm with **Remove**. The image stops showing on the site and in the console at once, and the account shows the plain outline in its place. The reader can choose another icon afterwards, as they could after removing their own.
+
+**Remove icon** is offered only while the account shows an icon.
 
 ### Suspending a reader
 
@@ -66,7 +72,7 @@ A reader cannot change their date of birth once it is saved, so a reader who ent
 
 Suspend rather than delete when you may want to undo it.
 
-You cannot suspend or delete the account you are signed in with, nor the tenant's last active Tenant admin: make someone else a Tenant admin first. Suspending, lifting a suspension, deleting, and changing or clearing a date of birth are recorded in the [audit log](./3-setup/7-audit-log.md) as **Reader suspended**, **Reader suspension lifted**, **Reader deleted**, **Reader birth date changed**, and **Reader birth date cleared**.
+You cannot suspend or delete the account you are signed in with, nor the tenant's last active Tenant admin: make someone else a Tenant admin first. Suspending, lifting a suspension, deleting, changing or clearing a date of birth, and removing an icon are recorded in the [audit log](./3-setup/7-audit-log.md) as **Reader suspended**, **Reader suspension lifted**, **Reader deleted**, **Reader birth date changed**, **Reader birth date cleared**, and **Reader icon removed**.
 
 ## Comments
 
