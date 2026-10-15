@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/catalog/catalog_states.dart';
 import 'package:publira/l10n/formatting.dart';
@@ -135,6 +136,12 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
     }
     final messages = AppMessages.of(context);
     final messenger = ScaffoldMessenger.of(context);
+    void reportFailure(String message) => messenger.showSnackBar(
+      SnackBar(
+        key: const ValueKey('purchases-export-failed'),
+        content: AutospacedText(message),
+      ),
+    );
     final accessToken = _accessToken;
     setState(() => _exporting = true);
     try {
@@ -160,17 +167,14 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
         title: messages.purchasesTitle,
       );
     } on PurchaseFailure catch (failure) {
-      messenger.showSnackBar(
-        SnackBar(
-          key: const ValueKey('purchases-export-failed'),
-          content: AutospacedText(switch (failure.kind) {
-            PurchaseFailureKind.network => messages.errorsRpcUnavailable,
-            PurchaseFailureKind.sessionExpired =>
-              messages.errorsRpcUnauthenticated,
-            _ => messages.purchasesExportFailed,
-          }),
-        ),
-      );
+      reportFailure(switch (failure.kind) {
+        PurchaseFailureKind.network => messages.errorsRpcUnavailable,
+        PurchaseFailureKind.sessionExpired => messages.errorsRpcUnauthenticated,
+        _ => messages.purchasesExportFailed,
+      });
+    } on PlatformException {
+      // The share sheet could not be opened, so the file reached no one.
+      reportFailure(messages.purchasesExportFailed);
     } finally {
       if (mounted) {
         setState(() => _exporting = false);

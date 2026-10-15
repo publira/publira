@@ -57,8 +57,9 @@ class FakeShareSheet implements ShareSheet {
   /// The files [shareFile] was handed, in order.
   final files = <SharedFile>[];
 
-  /// Held open by a test that needs a file on its way to the sheet.
-  Completer<void>? fileGate;
+  /// Thrown by [shareFile], standing in for a platform that cannot open the
+  /// sheet.
+  Exception? fileFailure;
 
   @override
   Future<void> shareFile({
@@ -67,10 +68,13 @@ class FakeShareSheet implements ShareSheet {
     required String mimeType,
     required String title,
   }) async {
+    final failure = fileFailure;
+    if (failure != null) {
+      throw failure;
+    }
     files.add(
       SharedFile(bytes: bytes, name: name, mimeType: mimeType, title: title),
     );
-    await fileGate?.future;
   }
 }
 

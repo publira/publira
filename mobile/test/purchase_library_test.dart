@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/app.dart';
@@ -514,6 +515,35 @@ void main() {
         findsOne,
       );
       expect(share.files, isEmpty);
+    });
+
+    testWidgets('says so when the share sheet could not be opened', (
+      tester,
+    ) async {
+      purchases.pages = [
+        [purchase('purchase-1')],
+      ];
+      share.fileFailure = PlatformException(code: 'share-unavailable');
+      await openPurchases(tester);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('purchase-row-purchase-1')),
+      );
+
+      await tester.tap(find.byKey(const ValueKey('purchases-export')));
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('purchases-export-failed')),
+      );
+
+      expect(
+        find.text('Could not export your purchases. Try again.'),
+        findsOne,
+      );
+      final export = tester.widget<IconButton>(
+        find.byKey(const ValueKey('purchases-export')),
+      );
+      expect(export.onPressed, isNotNull);
     });
 
     testWidgets('is not offered for a reader who bought nothing', (
