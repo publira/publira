@@ -371,10 +371,10 @@ packages:
     dependency: "direct main"
     description:
       name: google_sign_in_ios
-      sha256: bba6717cb4df9e3c905ee39e413d7cea5caf6995895c225641f2a369d650d067
+      sha256: b8efb315c778390f1b1c4fc14d74c42784dd9ee0c1d0c26b13f30b46826319ad
       url: "https://pub.dev"
     source: hosted
-    version: "6.3.7"
+    version: "6.3.8"
   google_sign_in_platform_interface:
     dependency: "direct main"
     description:
