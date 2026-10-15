@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	stripego "github.com/stripe/stripe-go/v87"
 
 	"github.com/publira/publira/server/internal/paymentprovider"
 	"github.com/publira/publira/server/internal/paymentprovider/paymentprovidertest"
@@ -134,6 +135,42 @@ func TestParseNotificationReadsDisputesAndExpiredCheckouts(t *testing.T) {
 
 	t.Run("a dispute naming no payment intent is malformed", func(t *testing.T) {
 		payload, headers := fixture.Disputed(t, credentials, "")
+		_, err := fixture.Provider().ParseNotification(t.Context(), payload, headers, credentials)
+		if !errors.Is(err, paymentprovider.ErrMalformedNotification) {
+			t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
+		}
+	})
+
+	t.Run("a lost dispute names the payment it returned to the reader", func(t *testing.T) {
+		payload, headers := fixture.DisputeClosed(t, credentials, "pi_disputed", stripego.DisputeStatusLost)
+		event, err := fixture.Provider().ParseNotification(t.Context(), payload, headers, credentials)
+		if err != nil {
+			t.Fatalf("ParseNotification: %v", err)
+		}
+		lost, ok := event.(paymentprovider.DisputeLost)
+		if !ok {
+			t.Fatalf("event = %T, want DisputeLost", event)
+		}
+		if lost.PaymentID != "pi_disputed" {
+			t.Fatalf("payment id = %q, want pi_disputed", lost.PaymentID)
+		}
+	})
+
+	for _, status := range []stripego.DisputeStatus{stripego.DisputeStatusWon, stripego.DisputeStatusWarningClosed} {
+		t.Run("a dispute closed as "+string(status)+" is ignored", func(t *testing.T) {
+			payload, headers := fixture.DisputeClosed(t, credentials, "pi_disputed", status)
+			event, err := fixture.Provider().ParseNotification(t.Context(), payload, headers, credentials)
+			if err != nil {
+				t.Fatalf("ParseNotification: %v", err)
+			}
+			if _, ok := event.(paymentprovider.Ignored); !ok {
+				t.Fatalf("event = %T, want Ignored", event)
+			}
+		})
+	}
+
+	t.Run("a closed dispute naming no payment intent is malformed", func(t *testing.T) {
+		payload, headers := fixture.DisputeClosed(t, credentials, "", stripego.DisputeStatusLost)
 		_, err := fixture.Provider().ParseNotification(t.Context(), payload, headers, credentials)
 		if !errors.Is(err, paymentprovider.ErrMalformedNotification) {
 			t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)

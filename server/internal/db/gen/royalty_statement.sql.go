@@ -91,6 +91,7 @@ SELECT
 FROM purchases p
 WHERE p.tenant_id = $1
     AND p.refunded_at IS NULL
+    AND p.dispute_lost_at IS NULL
     AND NOT p.is_test
     AND p.currency = $2::text
     AND p.purchased_at >= $3::timestamptz
@@ -355,6 +356,7 @@ SELECT
 FROM purchases p
 WHERE p.tenant_id = $2
     AND p.refunded_at IS NULL
+    AND p.dispute_lost_at IS NULL
     AND NOT p.is_test
     AND p.currency = $3::text
     AND p.purchased_at >= $4::timestamptz
@@ -491,8 +493,8 @@ type ListRoyaltyAdjustmentLinesForPeriodRow struct {
 }
 
 // Computes the adjustment lines of one tenant month: for each line of a
-// statement of an earlier month, the refunds recorded on its sales since they
-// were counted, at the share that line applied and under the names it was
+// statement of an earlier month, the refunds and lost disputes recorded on its
+// sales since they were counted, at the share that line applied and under the names it was
 // closed with. A credit added or edited since that close changes nothing
 // here. A sale in another currency than the one asked for was never counted
 // by a statement in it.
@@ -573,6 +575,7 @@ JOIN creators c ON c.tenant_id = ec.tenant_id AND c.id = ec.creator_id
 LEFT JOIN creator_roles r ON r.tenant_id = ec.tenant_id AND r.id = ec.role_id
 WHERE p.tenant_id = $1
     AND p.refunded_at IS NULL
+    AND p.dispute_lost_at IS NULL
     AND NOT p.is_test
     AND p.currency = $2::text
     AND p.purchased_at >= $3::timestamptz
@@ -618,8 +621,9 @@ type ListRoyaltyLinesForPeriodRow struct {
 // writes and what a preview shows, so the two cannot disagree.
 //
 // The month runs between the bounds GetRoyaltyMonthBounds answers for it. A
-// fully refunded sale is not a sale; a partial refund stays a sale and is
-// carried as refunded_amount. A test purchase, from a store's sandbox or a
+// fully refunded sale is not a sale, and neither is one whose dispute was
+// lost, whose money the reader's bank returned; a partial refund stays a sale
+// and is carried as refunded_amount. A test purchase, from a store's sandbox or a
 // payment provider's test mode, paid the tenant nothing and is not a sale
 // either, and neither is one paid in a currency other than the one asked
 // for, the tenant's: its price cannot be added to theirs. The payout is

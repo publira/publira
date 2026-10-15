@@ -148,7 +148,7 @@ type RefundRequest struct {
 
 // Event is what a notification means to the purchase flow: one of
 // [PurchaseCompleted], [Refunded], [RefundFailed], [Disputed],
-// [CheckoutExpired], or [Ignored].
+// [DisputeLost], [CheckoutExpired], or [Ignored].
 type Event interface {
 	// NotificationID is the provider's id of the notification, for logs.
 	NotificationID() string
@@ -202,6 +202,15 @@ type Disputed struct {
 	PaymentID string
 }
 
+// DisputeLost reports that the reader's bank decided the dispute of one payment
+// against the tenant and returned the money to the reader for good. A dispute
+// decided for the tenant is no event: the payment stands, and the purchase
+// stays revoked as [Disputed] left it.
+type DisputeLost struct {
+	ID        string
+	PaymentID string
+}
+
 // CheckoutExpired reports a checkout that closed without being paid. It
 // revokes nothing, since nothing was bought, but the reader's next checkout of
 // the same episode has to be a new one.
@@ -221,6 +230,7 @@ func (e PurchaseCompleted) NotificationID() string { return e.ID }
 func (e Refunded) NotificationID() string          { return e.ID }
 func (e RefundFailed) NotificationID() string      { return e.ID }
 func (e Disputed) NotificationID() string          { return e.ID }
+func (e DisputeLost) NotificationID() string       { return e.ID }
 func (e CheckoutExpired) NotificationID() string   { return e.ID }
 func (e Ignored) NotificationID() string           { return e.ID }
 
@@ -228,6 +238,7 @@ func (PurchaseCompleted) isEvent() {}
 func (Refunded) isEvent()          {}
 func (RefundFailed) isEvent()      {}
 func (Disputed) isEvent()          {}
+func (DisputeLost) isEvent()       {}
 func (CheckoutExpired) isEvent()   {}
 func (Ignored) isEvent()           {}
 

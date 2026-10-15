@@ -2,7 +2,7 @@
 title: Selling episodes
 description: Price an episode, take payment through Stripe or PAY.JP, choose where episodes are sold, and handle refunds.
 published: 2026-10-06
-updated: 2026-10-14
+updated: 2026-10-15
 ---
 
 Selling an episode on the site takes three things that have to agree: the episode's price in the tenant console, an account with a payment provider, and a webhook through which the provider tells the install that a reader has paid. The provider charges the reader, but only the webhook opens the episode, so a setup with any of the three wrong takes the reader's money and leaves the episode locked. This page walks through all three, in the order they are set up, and ends with a test purchase that proves they agree.
@@ -73,13 +73,14 @@ Do the setup below with the provider's test keys first, as [Testing before going
 In the Stripe Dashboard:
 
 1. Copy the **secret key** from the API keys page. A test key starts with `sk_test_`, a live key with `sk_live_`.
-2. Add a webhook endpoint. Its URL is the **Webhook URL** the console shows under **Payment settings** once Stripe is chosen, `https://<tenant-domain>/api/v1/webhook/payment/stripe` on the tenant's own site domain. Select these six events:
+2. Add a webhook endpoint. Its URL is the **Webhook URL** the console shows under **Payment settings** once Stripe is chosen, `https://<tenant-domain>/api/v1/webhook/payment/stripe` on the tenant's own site domain. Select these seven events:
    - `checkout.session.completed`
    - `checkout.session.async_payment_succeeded`
    - `checkout.session.expired`
    - `charge.refunded`
    - `refund.updated`
    - `charge.dispute.created`
+   - `charge.dispute.closed`
 3. Open the endpoint and copy its **signing secret**, which starts with `whsec_`.
 
 Then in the console, under **Payment settings**:
@@ -184,7 +185,12 @@ The console offers no refund for a purchase made in the app, one the reader disp
 
 ## Disputes
 
-When a reader disputes a Stripe payment with their bank, Stripe reports it through the same webhook, which is why its endpoint needs `charge.dispute.created`. The episode closes to the reader as soon as the dispute is opened, whichever way the bank later decides it, and the purchase stays in their **Purchase history**, marked **Canceled**. Respond to the dispute in the Stripe Dashboard; nothing is done in the console. The sale stays on the royalty statement whichever way the bank decides, since only a refund takes a sale off it.
+When a reader disputes a Stripe payment with their bank, Stripe reports it through the same webhook, which is why its endpoint needs `charge.dispute.created`. The episode closes to the reader as soon as the dispute is opened, whichever way the bank later decides it, and the purchase stays in their **Purchase history**, marked **Canceled**. Respond to the dispute in the Stripe Dashboard; nothing is done in the console.
+
+How the bank decides changes only the royalty statement, which learns of the decision through `charge.dispute.closed`:
+
+- A dispute decided for you leaves the payment with you, so the purchase stays a sale. The episode stays closed to the reader.
+- A dispute decided against you returns the payment to the reader, so the purchase stops being a sale, as a full refund does. When the month it was bought in is already closed, the next statement takes it back as an adjustment, as [Royalties](./5-reports-and-royalties.md#a-refund-after-the-close) describes for a refund.
 
 ## Abandoned checkouts
 

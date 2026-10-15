@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +12,8 @@ import (
 
 	"connectrpc.com/connect/v2"
 	"connectrpc.com/connect/v2/connecthttp"
+	"github.com/google/uuid"
+	stripego "github.com/stripe/stripe-go/v87"
 
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -43,6 +46,41 @@ func (e refundWebhookEnv) deliverDispute(t *testing.T, paymentIntentID string) {
 	t.Helper()
 	payload, headers := stripetest.NewFixture(t).Disputed(t, stripeFixtureCredentials, paymentIntentID)
 	e.deliverSigned(t, payload, headers)
+}
+
+func (e refundWebhookEnv) deliverDisputeClosed(t *testing.T, paymentIntentID string, status stripego.DisputeStatus) {
+	t.Helper()
+	payload, headers := stripetest.NewFixture(t).DisputeClosed(t, stripeFixtureCredentials, paymentIntentID, status)
+	e.deliverSigned(t, payload, headers)
+}
+
+// disputeLostAt reads when the tenant's only purchase was recorded as lost to
+// a dispute.
+func (e refundWebhookEnv) disputeLostAt(t *testing.T) sql.NullTime {
+	t.Helper()
+	var at sql.NullTime
+	if err := e.pg.DB.QueryRowContext(context.Background(), `
+		SELECT dispute_lost_at
+		FROM purchases
+		WHERE tenant_id = $1
+	`, e.tenant.ID).Scan(&at); err != nil {
+		t.Fatalf("read dispute_lost_at: %v", err)
+	}
+	return at
+}
+
+// purchaseID reads the ID of the tenant's only purchase.
+func (e refundWebhookEnv) purchaseID(t *testing.T) uuid.UUID {
+	t.Helper()
+	var id uuid.UUID
+	if err := e.pg.DB.QueryRowContext(context.Background(), `
+		SELECT id
+		FROM purchases
+		WHERE tenant_id = $1
+	`, e.tenant.ID).Scan(&id); err != nil {
+		t.Fatalf("read purchase id: %v", err)
+	}
+	return id
 }
 
 // revocation reads the revocation columns of the tenant's only purchase.
@@ -187,6 +225,139 @@ func TestDBProcessPaymentWebhookHoldsADisputeOfAnUnknownCharge(t *testing.T) {
 	if held := env.heldDisputeCount(t); held != 1 {
 		t.Fatalf("held disputes = %d, want the unmatched one kept", held)
 	}
+}
+
+// A lost dispute is recorded on the purchase the dispute already revoked, and
+// leaves the revocation and the refund columns as they were: the money went
+// back through the bank, not through a refund.
+func TestDBProcessPaymentWebhookRecordsALostDispute(t *testing.T) {
+	env := newRefundWebhookEnv(t, "DISPLOST", "dispute-lost.example.com", "pi_dispute_lost")
+
+	env.deliverDispute(t, "pi_dispute_lost")
+	at, reason := env.revocation(t)
+	if lostAt := env.disputeLostAt(t); lostAt.Valid {
+		t.Fatalf("an open dispute was recorded lost at %v", lostAt.Time)
+	}
+
+	env.deliverDisputeClosed(t, "pi_dispute_lost", stripego.DisputeStatusLost)
+	lostAt := env.disputeLostAt(t)
+	if !lostAt.Valid {
+		t.Fatal("a lost dispute was not recorded")
+	}
+	if lostAt, lostReason := env.revocation(t); !lostAt.Time.Equal(at.Time) || lostReason != reason {
+		t.Fatalf("the lost dispute changed the revocation: %v %v -> %v %v", at.Time, reason, lostAt.Time, lostReason)
+	}
+	if amount, refundedAt := env.refundState(t); amount.Valid || refundedAt.Valid {
+		t.Fatalf("a lost dispute recorded a refund: amount = %v at = %v", amount, refundedAt)
+	}
+
+	env.deliverDisputeClosed(t, "pi_dispute_lost", stripego.DisputeStatusLost)
+	if repeat := env.disputeLostAt(t); !repeat.Time.Equal(lostAt.Time) {
+		t.Fatalf("a repeated delivery moved the loss: %v -> %v", lostAt.Time, repeat.Time)
+	}
+}
+
+// A won dispute leaves the purchase as the dispute left it: revoked, and still
+// a sale, since the payment stayed with the tenant.
+func TestDBProcessPaymentWebhookLeavesAWonDisputeRevoked(t *testing.T) {
+	env := newRefundWebhookEnv(t, "DISPWON", "dispute-won.example.com", "pi_dispute_won")
+
+	env.deliverDispute(t, "pi_dispute_won")
+	at, reason := env.revocation(t)
+
+	env.deliverDisputeClosed(t, "pi_dispute_won", stripego.DisputeStatusWon)
+	if wonAt, wonReason := env.revocation(t); !wonAt.Time.Equal(at.Time) || wonReason != reason {
+		t.Fatalf("the won dispute changed the revocation: %v %v -> %v %v", at.Time, reason, wonAt.Time, wonReason)
+	}
+	if env.hasContentAccess(t) {
+		t.Fatal("a purchase whose dispute was won opens the episode again")
+	}
+	if lostAt := env.disputeLostAt(t); lostAt.Valid {
+		t.Fatalf("a won dispute was recorded lost at %v", lostAt.Time)
+	}
+}
+
+// A lost dispute whose opening notification never arrived revokes the
+// purchase itself.
+func TestDBProcessPaymentWebhookRevokesOnALostDisputeAlone(t *testing.T) {
+	env := newRefundWebhookEnv(t, "DISPLONE", "dispute-lost-alone.example.com", "pi_dispute_lost_alone")
+
+	env.deliverDisputeClosed(t, "pi_dispute_lost_alone", stripego.DisputeStatusLost)
+	if at, reason := env.revocation(t); !at.Valid || reason.String != "dispute" {
+		t.Fatalf("revocation = (%v, %v), want revoked for a dispute", at, reason)
+	}
+	if !env.disputeLostAt(t).Valid {
+		t.Fatal("a lost dispute was not recorded")
+	}
+	if env.hasContentAccess(t) {
+		t.Fatal("a purchase lost to a dispute still opens the episode")
+	}
+}
+
+// A lost dispute held for a payment whose Checkout event is still being
+// retried is recorded on the purchase that event creates.
+func TestDBProcessPaymentWebhookRecordsALostDisputeThatArrivedFirst(t *testing.T) {
+	env := newUnpaidRefundWebhookEnv(t, "DISPLPRE", "dispute-lost-early.example.com")
+
+	env.deliverDisputeClosed(t, "pi_dispute_lost_early", stripego.DisputeStatusLost)
+	// The notification that opened the dispute, delivered again after it.
+	env.deliverDispute(t, "pi_dispute_lost_early")
+	if held := env.heldDisputeCount(t); held != 1 {
+		t.Fatalf("held disputes = %d, want the early dispute kept once", held)
+	}
+
+	env.deliverCheckout(t, "pi_dispute_lost_early")
+	if at, reason := env.revocation(t); !at.Valid || reason.String != "dispute" {
+		t.Fatalf("revocation = (%v, %v), want the early dispute applied to the new purchase", at, reason)
+	}
+	if !env.disputeLostAt(t).Valid {
+		t.Fatal("the held dispute was not recorded lost on the new purchase")
+	}
+	if held := env.heldDisputeCount(t); held != 0 {
+		t.Fatalf("held disputes = %d, want the applied one released", held)
+	}
+}
+
+// Nothing that takes back a refund reopens a purchase whose dispute was lost,
+// whatever revoked it first: the reader's bank has returned the money.
+func TestDBALostDisputeKeepsThePurchaseRevoked(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("a refund that fails after the dispute is lost", func(t *testing.T) {
+		env := newRefundWebhookEnv(t, "LOSTFAIL", "lost-refund-failed.example.com", "pi_lost_refund_failed")
+		env.deliver(t, "charge.refunded", refundedCharge("pi_lost_refund_failed", 500, 500))
+		env.deliverDisputeClosed(t, "pi_lost_refund_failed", stripego.DisputeStatusLost)
+
+		if _, err := env.queries.RecordFailedRefundOnPurchase(ctx, dbmodels.RecordFailedRefundOnPurchaseParams{
+			TenantID:          env.tenant.ID,
+			Provider:          stripe.ID,
+			ProviderPaymentID: "pi_lost_refund_failed",
+			Currency:          "JPY",
+			RefundedAmount:    0,
+		}); err != nil {
+			t.Fatalf("RecordFailedRefundOnPurchase: %v", err)
+		}
+		if at, reason := env.revocation(t); !at.Valid || reason.String != "refund" {
+			t.Fatalf("revocation = (%v, %v), want the refund's kept", at, reason)
+		}
+	})
+
+	t.Run("a staff refund the provider refuses after the dispute is lost", func(t *testing.T) {
+		env := newRefundWebhookEnv(t, "LOSTSTAFF", "lost-staff.example.com", "pi_lost_staff")
+		purchaseID := env.purchaseID(t)
+		if _, err := env.queries.RevokePurchaseForStaff(ctx, dbmodels.RevokePurchaseForStaffParams{TenantID: env.tenant.ID, ID: purchaseID}); err != nil {
+			t.Fatalf("RevokePurchaseForStaff: %v", err)
+		}
+		env.deliverDisputeClosed(t, "pi_lost_staff", stripego.DisputeStatusLost)
+
+		_, err := env.queries.LiftStaffRevocation(ctx, dbmodels.LiftStaffRevocationParams{TenantID: env.tenant.ID, ID: purchaseID, NextAttempt: true})
+		if !errors.Is(err, sql.ErrNoRows) {
+			t.Fatalf("LiftStaffRevocation error = %v, want no row lifted", err)
+		}
+		if at, reason := env.revocation(t); !at.Valid || reason.String != "staff" {
+			t.Fatalf("revocation = (%v, %v), want staff's kept", at, reason)
+		}
+	})
 }
 
 // A reader whose checkout expired unpaid can start again: the next checkout is

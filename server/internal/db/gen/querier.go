@@ -20,10 +20,11 @@ type Querier interface {
 	AdvanceContentStatsThrough(ctx context.Context, arg AdvanceContentStatsThroughParams) error
 	AdvanceRankingsThrough(ctx context.Context, arg AdvanceRankingsThroughParams) error
 	AdvanceRecommendFeaturesThrough(ctx context.Context, arg AdvanceRecommendFeaturesThroughParams) error
-	// Revokes the purchase that has since been created for a held dispute, by the
-	// same rules RecordDisputeOnPurchase uses. Nothing matches when no dispute is
-	// held for the payment, which is the ordinary case. The held row is deleted by
-	// the caller in the same transaction.
+	// Revokes the purchase that has since been created for a held dispute, and
+	// records the dispute lost if it was held as lost, by the same rules
+	// RecordDisputeOnPurchase and RecordLostDisputeOnPurchase use. Nothing matches
+	// when no dispute is held for the payment, which is the ordinary case. The
+	// held row is deleted by the caller in the same transaction.
 	ApplyUnappliedDisputeToPurchase(ctx context.Context, arg ApplyUnappliedDisputeToPurchaseParams) (Purchase, error)
 	// Writes a held refund onto the purchase that has since been created, by the
 	// same rules RecordRefundOnPurchase uses. Nothing matches when no refund is
@@ -1016,7 +1017,9 @@ type Querier interface {
 	// has no staff actor to name.
 	HideEpisodeCommentByIDForTenant(ctx context.Context, arg HideEpisodeCommentByIDForTenantParams) (EpisodeComment, error)
 	// Keeps a dispute whose purchase is not here yet, so the notification that
-	// creates the purchase can still revoke it.
+	// creates the purchase can still revoke it, and record it lost when lost is
+	// set. A dispute held as lost stays lost through a later delivery of the one
+	// that opened it.
 	HoldUnappliedDispute(ctx context.Context, arg HoldUnappliedDisputeParams) error
 	// Keeps a refund whose purchase is not here yet, so the notification that
 	// creates the purchase can still apply it. The provider's payment is the
@@ -1191,8 +1194,8 @@ type Querier interface {
 	// made for did not happen, and moves the purchase on to staff's next attempt
 	// when next_attempt is set: the provider refused or failed the refund, and
 	// under the same idempotency key would only answer that again. A purchase a
-	// refund has covered in full since, or that something else revoked, is left
-	// alone.
+	// refund has covered in full since, one whose dispute has been lost since, or
+	// one that something else revoked, is left alone.
 	LiftStaffRevocation(ctx context.Context, arg LiftStaffRevocationParams) (uuid.UUID, error)
 	ListAccessTicketsForTenantAsc(ctx context.Context, arg ListAccessTicketsForTenantAscParams) ([]ListAccessTicketsForTenantAscRow, error)
 	// Admin ListAccessTickets is (created_at, id) DESC. Forward uses the DESC
@@ -2113,8 +2116,8 @@ type Querier interface {
 	// previous page; the order it describes is the same one.
 	ListRelatedSeriesIDsReversed(ctx context.Context, arg ListRelatedSeriesIDsReversedParams) ([]ListRelatedSeriesIDsReversedRow, error)
 	// Computes the adjustment lines of one tenant month: for each line of a
-	// statement of an earlier month, the refunds recorded on its sales since they
-	// were counted, at the share that line applied and under the names it was
+	// statement of an earlier month, the refunds and lost disputes recorded on its
+	// sales since they were counted, at the share that line applied and under the names it was
 	// closed with. A credit added or edited since that close changes nothing
 	// here. A sale in another currency than the one asked for was never counted
 	// by a statement in it.
@@ -2130,8 +2133,9 @@ type Querier interface {
 	// writes and what a preview shows, so the two cannot disagree.
 	//
 	// The month runs between the bounds GetRoyaltyMonthBounds answers for it. A
-	// fully refunded sale is not a sale; a partial refund stays a sale and is
-	// carried as refunded_amount. A test purchase, from a store's sandbox or a
+	// fully refunded sale is not a sale, and neither is one whose dispute was
+	// lost, whose money the reader's bank returned; a partial refund stays a sale
+	// and is carried as refunded_amount. A test purchase, from a store's sandbox or a
 	// payment provider's test mode, paid the tenant nothing and is not a sale
 	// either, and neither is one paid in a currency other than the one asked
 	// for, the tenant's: its price cannot be added to theirs. The payout is
@@ -2766,10 +2770,19 @@ type Querier interface {
 	// A total of nothing is still recorded as an amount rather than as no refund:
 	// royalty_uncarried_refunds reads a purchase with an amount, which is how a
 	// refund a closed statement already carried is carried back. A dispute keeps
-	// its revocation. Nothing matches a payment of another tenant,
+	// its revocation, and so does a purchase whose dispute was lost, whatever
+	// revoked it. Nothing matches a payment of another tenant,
 	// another provider, no purchase here, or a total in a currency other than the
 	// purchase's, which says nothing comparable to its price.
 	RecordFailedRefundOnPurchase(ctx context.Context, arg RecordFailedRefundOnPurchaseParams) (Purchase, error)
+	// Records that the dispute of the payment was lost: the reader's bank has
+	// returned the money to them for good, so royalty statements no longer count
+	// the purchase as a sale. The purchase is revoked as a dispute too, unless
+	// something revoked it first, since the notification that opened the dispute
+	// need not have arrived. A repeated delivery leaves the instants and the
+	// reason already stored. Nothing matches when the payment belongs to another
+	// tenant, another provider, or no purchase here.
+	RecordLostDisputeOnPurchase(ctx context.Context, arg RecordLostDisputeOnPurchaseParams) (Purchase, error)
 	// A paged handler records how far it has got after each page, so a run
 	// that ends before the event is finished leaves the next one a place to
 	// resume from. Only the run that holds the claim may move it.

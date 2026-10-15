@@ -788,6 +788,7 @@ type Purchase struct {
 	RevokedAt          sql.NullTime   `json:"revoked_at"`
 	RevocationReason   sql.NullString `json:"revocation_reason"`
 	StaffRefundAttempt int32          `json:"staff_refund_attempt"`
+	DisputeLostAt      sql.NullTime   `json:"dispute_lost_at"`
 }
 
 type ReaderIconPreset struct {
@@ -1276,10 +1277,11 @@ type TenantUserRole struct {
 }
 
 type UnappliedDispute struct {
-	TenantID          uuid.UUID `json:"tenant_id"`
-	Provider          string    `json:"provider"`
-	ProviderPaymentID string    `json:"provider_payment_id"`
-	ReceivedAt        time.Time `json:"received_at"`
+	TenantID          uuid.UUID    `json:"tenant_id"`
+	Provider          string       `json:"provider"`
+	ProviderPaymentID string       `json:"provider_payment_id"`
+	ReceivedAt        time.Time    `json:"received_at"`
+	LostAt            sql.NullTime `json:"lost_at"`
 }
 
 type UnappliedRefund struct {

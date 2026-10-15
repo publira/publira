@@ -373,9 +373,6 @@ func (f *Fixture) Refunded(t testing.TB, credentials paymentprovider.Credentials
 	})
 }
 
-// Disputed answers Stripe's notification that the charge of paymentID is
-// disputed. It is not part of the contract, which no provider but Stripe
-// reports a dispute through yet.
 func (f *Fixture) RefundedTotal(_ testing.TB, credentials paymentprovider.Credentials, paymentID string) int64 {
 	return f.API.RefundedTotal(credentials[stripe.FieldSecretKey], paymentID)
 }
@@ -394,10 +391,24 @@ func (f *Fixture) RefundFailed(t testing.TB, credentials paymentprovider.Credent
 	})
 }
 
+// Disputed answers Stripe's notification that the charge of paymentID is
+// disputed. It is not part of the contract, which no provider but Stripe
+// reports a dispute through yet.
 func (*Fixture) Disputed(t testing.TB, credentials paymentprovider.Credentials, paymentID string) ([]byte, http.Header) {
 	t.Helper()
 	return recorded(t, credentials, "charge.dispute.created.json", map[string]any{
 		"payment_intent": paymentID,
+	})
+}
+
+// DisputeClosed answers Stripe's notification that the dispute of the charge
+// of paymentID closed with status, such as "lost" or "won". It is not part of
+// the contract either.
+func (*Fixture) DisputeClosed(t testing.TB, credentials paymentprovider.Credentials, paymentID string, status stripego.DisputeStatus) ([]byte, http.Header) {
+	t.Helper()
+	return recorded(t, credentials, "charge.dispute.closed.json", map[string]any{
+		"payment_intent": paymentID,
+		"status":         status,
 	})
 }
 
