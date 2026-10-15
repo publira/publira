@@ -5,6 +5,8 @@ analyzer:
     missing_return: error
     dead_code: warning
   exclude:
+    # Written by `buf generate` (buf.gen.yaml), which answers for its style.
+    - lib/api/gen/**
     - build/**
     - android/**
     - ios/**
