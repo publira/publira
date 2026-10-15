@@ -369,6 +369,7 @@
         "reader_unsuspended": "독자 정지 해제",
         "reader_birth_date_changed": "독자 생년월일 변경",
         "reader_birth_date_cleared": "독자 생년월일 삭제",
+        "reader_icon_removed": "독자 아이콘 삭제",
         "reader_deleted": "독자 삭제",
         "access_ticket_issued": "이용권 발급",
         "access_ticket_revoked": "이용권 취소",

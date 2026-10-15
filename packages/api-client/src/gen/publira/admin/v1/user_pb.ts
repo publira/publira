@@ -4,7 +4,7 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { TenantContext } from "../../types/v1/types_pb";
+import type { TenantContext, UserIconVariant } from "../../types/v1/types_pb";
 import { file_publira_types_v1_types } from "../../types/v1/types_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/user.proto.
  */
 export const file_publira_admin_v1_user: GenFile = /*@__PURE__*/
-  fileDesc("ChtwdWJsaXJhL2FkbWluL3YxL3VzZXIucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEiQAoPQWRtaW5UZW5hbnRVc2VyEhEKCXB1YmxpY19pZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBHJvbGUYAyABKAkidgoWTGlzdFRlbmFudFVzZXJzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFcXVlcnkYAiABKAkSDQoFbGltaXQYAyABKAUSDQoFdG9rZW4YBCABKAkidwoXTGlzdFRlbmFudFVzZXJzUmVzcG9uc2USMAoFdXNlcnMYASADKAsyIS5wdWJsaXJhLmFkbWluLnYxLkFkbWluVGVuYW50VXNlchIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIsABCgtBZG1pblJlYWRlchIRCglwdWJsaWNfaWQYASABKAkSDAoEbmFtZRgCIAEoCRINCgVlbWFpbBgDIAEoCRIOCgZzdGF0dXMYBCABKAkSEgoKY3JlYXRlZF9hdBgFIAEoCRIZChFlbWFpbF92ZXJpZmllZF9hdBgGIAEoCRISCgpiaXJ0aF9kYXRlGAggASgJEgoKAmlkGAkgASgJEgwKBHJvbGUYCiABKAlKBAgHEAhSDmhhc19iaXJ0aF9kYXRlIoIBChJMaXN0UmVhZGVyc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBXF1ZXJ5GAIgASgJEg4KBnN0YXR1cxgDIAEoCRINCgVsaW1pdBgEIAEoBRINCgV0b2tlbhgFIAEoCSJxChNMaXN0UmVhZGVyc1Jlc3BvbnNlEi4KB3JlYWRlcnMYASADKAsyHS5wdWJsaXJhLmFkbWluLnYxLkFkbWluUmVhZGVyEhYKDnByZXZpb3VzX3Rva2VuGAIgASgJEhIKCm5leHRfdG9rZW4YAyABKAkiVgoQR2V0UmVhZGVyUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEQoJcHVibGljX2lkGAIgASgJIkIKEUdldFJlYWRlclJlc3BvbnNlEi0KBnJlYWRlchgBIAEoCzIdLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5SZWFkZXIiawoUU3VzcGVuZFJlYWRlclJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXJlYWRlcl9pZBgDIAEoCUoECAIQA1IJcHVibGljX2lkIkYKFVN1c3BlbmRSZWFkZXJSZXNwb25zZRItCgZyZWFkZXIYASABKAsyHS5wdWJsaXJhLmFkbWluLnYxLkFkbWluUmVhZGVyIm0KFlVuc3VzcGVuZFJlYWRlclJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXJlYWRlcl9pZBgDIAEoCUoECAIQA1IJcHVibGljX2lkIkgKF1Vuc3VzcGVuZFJlYWRlclJlc3BvbnNlEi0KBnJlYWRlchgBIAEoCzIdLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5SZWFkZXIihAEKGVNldFJlYWRlckJpcnRoRGF0ZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhIKCmJpcnRoX2RhdGUYAyABKAkSEQoJcmVhZGVyX2lkGAQgASgJSgQIAhADUglwdWJsaWNfaWQiSwoaU2V0UmVhZGVyQmlydGhEYXRlUmVzcG9uc2USLQoGcmVhZGVyGAEgASgLMh0ucHVibGlyYS5hZG1pbi52MS5BZG1pblJlYWRlciJqChNEZWxldGVSZWFkZXJSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglyZWFkZXJfaWQYAyABKAlKBAgCEANSCXB1YmxpY19pZCI8ChREZWxldGVSZWFkZXJSZXNwb25zZRIRCglwdWJsaWNfaWQYASABKAkSEQoJcmVhZGVyX2lkGAIgASgJMtQFChBBZG1pblVzZXJTZXJ2aWNlEmgKD0xpc3RUZW5hbnRVc2VycxIoLnB1YmxpcmEuYWRtaW4udjEuTGlzdFRlbmFudFVzZXJzUmVxdWVzdBopLnB1YmxpcmEuYWRtaW4udjEuTGlzdFRlbmFudFVzZXJzUmVzcG9uc2UiABJcCgtMaXN0UmVhZGVycxIkLnB1YmxpcmEuYWRtaW4udjEuTGlzdFJlYWRlcnNSZXF1ZXN0GiUucHVibGlyYS5hZG1pbi52MS5MaXN0UmVhZGVyc1Jlc3BvbnNlIgASVgoJR2V0UmVhZGVyEiIucHVibGlyYS5hZG1pbi52MS5HZXRSZWFkZXJSZXF1ZXN0GiMucHVibGlyYS5hZG1pbi52MS5HZXRSZWFkZXJSZXNwb25zZSIAEmIKDVN1c3BlbmRSZWFkZXISJi5wdWJsaXJhLmFkbWluLnYxLlN1c3BlbmRSZWFkZXJSZXF1ZXN0GicucHVibGlyYS5hZG1pbi52MS5TdXNwZW5kUmVhZGVyUmVzcG9uc2UiABJoCg9VbnN1c3BlbmRSZWFkZXISKC5wdWJsaXJhLmFkbWluLnYxLlVuc3VzcGVuZFJlYWRlclJlcXVlc3QaKS5wdWJsaXJhLmFkbWluLnYxLlVuc3VzcGVuZFJlYWRlclJlc3BvbnNlIgAScQoSU2V0UmVhZGVyQmlydGhEYXRlEisucHVibGlyYS5hZG1pbi52MS5TZXRSZWFkZXJCaXJ0aERhdGVSZXF1ZXN0GiwucHVibGlyYS5hZG1pbi52MS5TZXRSZWFkZXJCaXJ0aERhdGVSZXNwb25zZSIAEl8KDERlbGV0ZVJlYWRlchIlLnB1YmxpcmEuYWRtaW4udjEuRGVsZXRlUmVhZGVyUmVxdWVzdBomLnB1YmxpcmEuYWRtaW4udjEuRGVsZXRlUmVhZGVyUmVzcG9uc2UiAEJWWlRnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
+  fileDesc("ChtwdWJsaXJhL2FkbWluL3YxL3VzZXIucHJvdG8SEHB1YmxpcmEuYWRtaW4udjEiQAoPQWRtaW5UZW5hbnRVc2VyEhEKCXB1YmxpY19pZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBHJvbGUYAyABKAkidgoWTGlzdFRlbmFudFVzZXJzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFcXVlcnkYAiABKAkSDQoFbGltaXQYAyABKAUSDQoFdG9rZW4YBCABKAkidwoXTGlzdFRlbmFudFVzZXJzUmVzcG9uc2USMAoFdXNlcnMYASADKAsyIS5wdWJsaXJhLmFkbWluLnYxLkFkbWluVGVuYW50VXNlchIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIoACCgtBZG1pblJlYWRlchIRCglwdWJsaWNfaWQYASABKAkSDAoEbmFtZRgCIAEoCRINCgVlbWFpbBgDIAEoCRIOCgZzdGF0dXMYBCABKAkSEgoKY3JlYXRlZF9hdBgFIAEoCRIZChFlbWFpbF92ZXJpZmllZF9hdBgGIAEoCRISCgpiaXJ0aF9kYXRlGAggASgJEgoKAmlkGAkgASgJEgwKBHJvbGUYCiABKAkSPgoTaWNvbl9pbWFnZV92YXJpYW50cxgLIAMoCzIhLnB1YmxpcmEudHlwZXMudjEuVXNlckljb25WYXJpYW50SgQIBxAIUg5oYXNfYmlydGhfZGF0ZSKCAQoSTGlzdFJlYWRlcnNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVxdWVyeRgCIAEoCRIOCgZzdGF0dXMYAyABKAkSDQoFbGltaXQYBCABKAUSDQoFdG9rZW4YBSABKAkicQoTTGlzdFJlYWRlcnNSZXNwb25zZRIuCgdyZWFkZXJzGAEgAygLMh0ucHVibGlyYS5hZG1pbi52MS5BZG1pblJlYWRlchIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIlYKEEdldFJlYWRlclJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXB1YmxpY19pZBgCIAEoCSJCChFHZXRSZWFkZXJSZXNwb25zZRItCgZyZWFkZXIYASABKAsyHS5wdWJsaXJhLmFkbWluLnYxLkFkbWluUmVhZGVyImsKFFN1c3BlbmRSZWFkZXJSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglyZWFkZXJfaWQYAyABKAlKBAgCEANSCXB1YmxpY19pZCJGChVTdXNwZW5kUmVhZGVyUmVzcG9uc2USLQoGcmVhZGVyGAEgASgLMh0ucHVibGlyYS5hZG1pbi52MS5BZG1pblJlYWRlciJtChZVbnN1c3BlbmRSZWFkZXJSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglyZWFkZXJfaWQYAyABKAlKBAgCEANSCXB1YmxpY19pZCJIChdVbnN1c3BlbmRSZWFkZXJSZXNwb25zZRItCgZyZWFkZXIYASABKAsyHS5wdWJsaXJhLmFkbWluLnYxLkFkbWluUmVhZGVyIoQBChlTZXRSZWFkZXJCaXJ0aERhdGVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBISCgpiaXJ0aF9kYXRlGAMgASgJEhEKCXJlYWRlcl9pZBgEIAEoCUoECAIQA1IJcHVibGljX2lkIksKGlNldFJlYWRlckJpcnRoRGF0ZVJlc3BvbnNlEi0KBnJlYWRlchgBIAEoCzIdLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5SZWFkZXIiXQoXUmVtb3ZlUmVhZGVySWNvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCXJlYWRlcl9pZBgCIAEoCSJJChhSZW1vdmVSZWFkZXJJY29uUmVzcG9uc2USLQoGcmVhZGVyGAEgASgLMh0ucHVibGlyYS5hZG1pbi52MS5BZG1pblJlYWRlciJqChNEZWxldGVSZWFkZXJSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglyZWFkZXJfaWQYAyABKAlKBAgCEANSCXB1YmxpY19pZCI8ChREZWxldGVSZWFkZXJSZXNwb25zZRIRCglwdWJsaWNfaWQYASABKAkSEQoJcmVhZGVyX2lkGAIgASgJMsEGChBBZG1pblVzZXJTZXJ2aWNlEmgKD0xpc3RUZW5hbnRVc2VycxIoLnB1YmxpcmEuYWRtaW4udjEuTGlzdFRlbmFudFVzZXJzUmVxdWVzdBopLnB1YmxpcmEuYWRtaW4udjEuTGlzdFRlbmFudFVzZXJzUmVzcG9uc2UiABJcCgtMaXN0UmVhZGVycxIkLnB1YmxpcmEuYWRtaW4udjEuTGlzdFJlYWRlcnNSZXF1ZXN0GiUucHVibGlyYS5hZG1pbi52MS5MaXN0UmVhZGVyc1Jlc3BvbnNlIgASVgoJR2V0UmVhZGVyEiIucHVibGlyYS5hZG1pbi52MS5HZXRSZWFkZXJSZXF1ZXN0GiMucHVibGlyYS5hZG1pbi52MS5HZXRSZWFkZXJSZXNwb25zZSIAEmIKDVN1c3BlbmRSZWFkZXISJi5wdWJsaXJhLmFkbWluLnYxLlN1c3BlbmRSZWFkZXJSZXF1ZXN0GicucHVibGlyYS5hZG1pbi52MS5TdXNwZW5kUmVhZGVyUmVzcG9uc2UiABJoCg9VbnN1c3BlbmRSZWFkZXISKC5wdWJsaXJhLmFkbWluLnYxLlVuc3VzcGVuZFJlYWRlclJlcXVlc3QaKS5wdWJsaXJhLmFkbWluLnYxLlVuc3VzcGVuZFJlYWRlclJlc3BvbnNlIgAScQoSU2V0UmVhZGVyQmlydGhEYXRlEisucHVibGlyYS5hZG1pbi52MS5TZXRSZWFkZXJCaXJ0aERhdGVSZXF1ZXN0GiwucHVibGlyYS5hZG1pbi52MS5TZXRSZWFkZXJCaXJ0aERhdGVSZXNwb25zZSIAEmsKEFJlbW92ZVJlYWRlckljb24SKS5wdWJsaXJhLmFkbWluLnYxLlJlbW92ZVJlYWRlckljb25SZXF1ZXN0GioucHVibGlyYS5hZG1pbi52MS5SZW1vdmVSZWFkZXJJY29uUmVzcG9uc2UiABJfCgxEZWxldGVSZWFkZXISJS5wdWJsaXJhLmFkbWluLnYxLkRlbGV0ZVJlYWRlclJlcXVlc3QaJi5wdWJsaXJhLmFkbWluLnYxLkRlbGV0ZVJlYWRlclJlc3BvbnNlIgBCVlpUZ2l0aHViLmNvbS9wdWJsaXJhL3B1YmxpcmEvc2VydmVyL2ludGVybmFsL3Byb3RvL2dlbi9wdWJsaXJhL2FkbWluL3YxO3B1YmxpcmFhZG1pbnYxYgZwcm90bzM", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.admin.v1.AdminTenantUser
@@ -164,6 +164,14 @@ export type AdminReader = Message<"publira.admin.v1.AdminReader"> & {
    * @generated from field: string role = 10;
    */
   role: string;
+
+  /**
+   * The account's icon as it shows it now, the way the storefront renders it
+   * next to the account's comments. Empty for an account that shows none.
+   *
+   * @generated from field: repeated publira.types.v1.UserIconVariant icon_image_variants = 11;
+   */
+  iconImageVariants: UserIconVariant[];
 };
 
 /**
@@ -422,6 +430,45 @@ export const SetReaderBirthDateResponseSchema: GenMessage<SetReaderBirthDateResp
   messageDesc(file_publira_admin_v1_user, 13);
 
 /**
+ * @generated from message publira.admin.v1.RemoveReaderIconRequest
+ */
+export type RemoveReaderIconRequest = Message<"publira.admin.v1.RemoveReaderIconRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * @generated from field: string reader_id = 2;
+   */
+  readerId: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.RemoveReaderIconRequest.
+ * Use `create(RemoveReaderIconRequestSchema)` to create a new message.
+ */
+export const RemoveReaderIconRequestSchema: GenMessage<RemoveReaderIconRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_user, 14);
+
+/**
+ * @generated from message publira.admin.v1.RemoveReaderIconResponse
+ */
+export type RemoveReaderIconResponse = Message<"publira.admin.v1.RemoveReaderIconResponse"> & {
+  /**
+   * @generated from field: publira.admin.v1.AdminReader reader = 1;
+   */
+  reader?: AdminReader | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.RemoveReaderIconResponse.
+ * Use `create(RemoveReaderIconResponseSchema)` to create a new message.
+ */
+export const RemoveReaderIconResponseSchema: GenMessage<RemoveReaderIconResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_user, 15);
+
+/**
  * @generated from message publira.admin.v1.DeleteReaderRequest
  */
 export type DeleteReaderRequest = Message<"publira.admin.v1.DeleteReaderRequest"> & {
@@ -441,7 +488,7 @@ export type DeleteReaderRequest = Message<"publira.admin.v1.DeleteReaderRequest"
  * Use `create(DeleteReaderRequestSchema)` to create a new message.
  */
 export const DeleteReaderRequestSchema: GenMessage<DeleteReaderRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_user, 14);
+  messageDesc(file_publira_admin_v1_user, 16);
 
 /**
  * @generated from message publira.admin.v1.DeleteReaderResponse
@@ -463,7 +510,7 @@ export type DeleteReaderResponse = Message<"publira.admin.v1.DeleteReaderRespons
  * Use `create(DeleteReaderResponseSchema)` to create a new message.
  */
 export const DeleteReaderResponseSchema: GenMessage<DeleteReaderResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_user, 15);
+  messageDesc(file_publira_admin_v1_user, 17);
 
 /**
  * @generated from service publira.admin.v1.AdminUserService
@@ -548,6 +595,21 @@ export const AdminUserService: GenService<{
     methodKind: "unary";
     input: typeof SetReaderBirthDateRequestSchema;
     output: typeof SetReaderBirthDateResponseSchema;
+  },
+  /**
+   * Leaves an account with no icon, for one that breaks the tenant's rules.
+   * The reader can set another one afterwards, as they could after removing
+   * their own. Removing the icon of an account that shows none changes
+   * nothing. not_found as GetReader.
+   *
+   * Minimum role: tenant_admin.
+   *
+   * @generated from rpc publira.admin.v1.AdminUserService.RemoveReaderIcon
+   */
+  removeReaderIcon: {
+    methodKind: "unary";
+    input: typeof RemoveReaderIconRequestSchema;
+    output: typeof RemoveReaderIconResponseSchema;
   },
   /**
    * Deletes an account the way its own DeleteMe does; a staff account's roles

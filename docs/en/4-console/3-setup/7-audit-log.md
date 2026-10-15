@@ -29,7 +29,7 @@ The log cannot be exported, and its entries are never deleted. An entry keeps th
 | Catalog | Series, episodes, Authors, Author roles, labels, and genres created and changed, Author roles and genres deleted, their images uploaded, and free reading periods and Free if you wait changed |
 | Site | Pages created and changed, their versions created, published, and rolled back, their translations added and deleted, pages unpublished, announcements created, and banners taken down |
 | Comments | Comments approved, removed, restored, and purged, removals made automatically after reports, and reports upheld or dismissed |
-| Readers | Readers suspended, restored, and deleted, their dates of birth changed or cleared, and access tickets issued and revoked. Contact messages handled, reopened, assigned, annotated, and answered |
+| Readers | Readers suspended, restored, and deleted, their dates of birth changed or cleared, their icons removed, and access tickets issued and revoked. Contact messages handled, reopened, assigned, annotated, and answered |
 | Royalties | Closing settings changed, months closed, and statements downloaded as CSV |
 | Staff | Members invited, invitations resent, canceled, and accepted, roles changed, and members removed |
 | Branding | The theme changed, and the logo and the icon uploaded and removed |

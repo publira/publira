@@ -369,6 +369,7 @@
         "reader_unsuspended": "解除了读者暂停",
         "reader_birth_date_changed": "更改了读者出生日期",
         "reader_birth_date_cleared": "清除了读者出生日期",
+        "reader_icon_removed": "删除了读者头像",
         "reader_deleted": "删除了读者",
         "access_ticket_issued": "发放了阅读券",
         "access_ticket_revoked": "撤销了阅读券",

@@ -369,6 +369,7 @@
         "reader_unsuspended": "Reader suspension lifted",
         "reader_birth_date_changed": "Reader birth date changed",
         "reader_birth_date_cleared": "Reader birth date cleared",
+        "reader_icon_removed": "Reader icon removed",
         "reader_deleted": "Reader deleted",
         "access_ticket_issued": "Access ticket issued",
         "access_ticket_revoked": "Access ticket revoked",

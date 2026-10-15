@@ -8,6 +8,7 @@ SELECT u.id,
     u.status,
     u.created_at,
     u.email_verified_at,
+    u.icon_image_id,
     COALESCE(
         (
             SELECT tur.role

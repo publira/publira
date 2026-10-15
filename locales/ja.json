@@ -369,6 +369,7 @@
         "reader_unsuspended": "読者の停止解除",
         "reader_birth_date_changed": "読者の生年月日変更",
         "reader_birth_date_cleared": "読者の生年月日の消去",
+        "reader_icon_removed": "読者のアイコン削除",
         "reader_deleted": "読者削除",
         "access_ticket_issued": "アクセスチケット発行",
         "access_ticket_revoked": "アクセスチケット失効",
