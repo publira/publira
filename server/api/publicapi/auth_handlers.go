@@ -69,26 +69,6 @@ func (s *apiServer) mintAccessToken(
 	}, nil
 }
 
-func (s *apiServer) issueAccessToken(
-	tenant dbmodels.Tenant,
-	user dbmodels.User,
-	role string,
-) (*publirav1.LoginResponse, error) {
-	accessToken, err := s.mintAccessToken(tenant, user, role)
-	if err != nil {
-		return nil, err
-	}
-	resp := &publirav1.LoginResponse{
-		User: &publirattypesv1.User{
-			PublicId: user.PublicID,
-			Name:     user.Name,
-			Role:     role,
-		},
-		AccessToken: accessToken,
-	}
-	return resp, nil
-}
-
 func (s *apiServer) tenantRole(ctx context.Context, userID uuid.UUID) (string, error) {
 	roles, err := s.queriesFor(ctx).ListTenantUserRoles(ctx, userID)
 	if err != nil {
@@ -239,13 +219,18 @@ func (s *apiServer) Login(
 	if err != nil {
 		return nil, err
 	}
-	response, err := s.issueAccessToken(tenant, user, role)
+	accessToken, err := s.mintAccessToken(tenant, user, role)
 	if err != nil {
 		auth.AuditEvent(ctx, "login", "failure", tenant.PublicID, user.PublicID, "token_issue_failed")
 		return nil, err
 	}
+	account, err := s.ownAccountWithIcon(ctx, s.queriesFor(ctx), tenant.ID, user, role)
+	if err != nil {
+		auth.AuditEvent(ctx, "login", "failure", tenant.PublicID, user.PublicID, "icon_lookup_failed")
+		return nil, err
+	}
 	auth.AuditEvent(ctx, "login", "success", tenant.PublicID, user.PublicID, "token_issued")
-	return response, nil
+	return &publirav1.LoginResponse{User: account, AccessToken: accessToken}, nil
 }
 
 // The reader auth mails are enqueued as outbox_events rows in the

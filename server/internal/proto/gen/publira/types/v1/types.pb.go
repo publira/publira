@@ -607,18 +607,19 @@ type User struct {
 	Role     string                 `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
 	// The reader's own birth date as YYYY-MM-DD, empty when they have given
 	// none. Set where a User stands for the account the request authenticated
-	// as, which is GetMe and UpdateMe; empty everywhere a User names someone the
-	// caller is merely looking at, so a console listing accounts never carries
-	// it.
+	// or signed in as, which is GetMe, UpdateMe, Login and LoginWithIdToken;
+	// empty everywhere a User names someone the caller is merely looking at, so
+	// a console listing accounts never carries it.
 	BirthDate string `protobuf:"bytes,4,opt,name=birth_date,json=birthDate,proto3" json:"birth_date,omitempty"`
 	// The account's email address, under the same rule as birth_date: set by the
-	// public API's GetMe and UpdateMe, so a form can offer the reader their own
-	// address, and empty wherever a User names someone else.
+	// public API's GetMe, UpdateMe, Login and LoginWithIdToken, so a form can
+	// offer the reader their own address, and empty wherever a User names
+	// someone else.
 	Email string `protobuf:"bytes,5,opt,name=email,proto3" json:"email,omitempty"`
 	// The account's icon. Set where the public API answers with the caller's
 	// own account as GetMe reads it — GetMe, UpdateMe, UploadMyIcon,
-	// DeleteMyIcon and LoginWithIdToken — and empty wherever a User names
-	// someone else. The variant list is empty, and icon_image_updated_at with
+	// DeleteMyIcon, Login and LoginWithIdToken — and empty wherever a User
+	// names someone else. The variant list is empty, and icon_image_updated_at with
 	// it, for an account that shows no icon.
 	IconImageUpdatedAt string             `protobuf:"bytes,6,opt,name=icon_image_updated_at,json=iconImageUpdatedAt,proto3" json:"icon_image_updated_at,omitempty"`
 	IconImageVariants  []*UserIconVariant `protobuf:"bytes,7,rep,name=icon_image_variants,json=iconImageVariants,proto3" json:"icon_image_variants,omitempty"`
