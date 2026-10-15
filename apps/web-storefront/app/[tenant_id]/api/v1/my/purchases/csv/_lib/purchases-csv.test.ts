@@ -17,6 +17,7 @@ const purchase = (overrides: Partial<PurchaseItem> = {}): PurchaseItem => ({
   purchasedAt: "2026-10-01T09:00:00Z",
   refundedAmount: 0,
   refundedAt: "",
+  revokedAt: "",
   series: { publicId: "SERIES001", title: "Night Ferry" },
   ...overrides,
 });
@@ -45,6 +46,7 @@ describe("renderPurchasesCsv", () => {
         isActive: false,
         refundedAmount: 499,
         refundedAt: "2026-10-02T09:00:00Z",
+        revokedAt: "2026-10-02T09:00:00Z",
       }),
       purchase({ id: "PURCHASE02", refundedAmount: 200 }),
       purchase({
@@ -59,6 +61,20 @@ describe("renderPurchasesCsv", () => {
       "PURCHASE02,2026-10-01T09:00:00Z,Night Ferry,3,The Harbor,4.99,2.00,USD,,,active",
       "PURCHASE03,2026-10-01T09:00:00Z,Night Ferry,3,The Harbor,4.99,0.00,USD,2026-10-01T10:00:00Z,,expired",
     ]);
+  });
+
+  it("marks a purchase revoked with nothing refunded as canceled, not expired", () => {
+    const csv = renderPurchasesCsv([
+      purchase({
+        expiresAt: "2099-01-01T00:00:00Z",
+        isActive: false,
+        revokedAt: "2026-10-02T09:00:00Z",
+      }),
+    ]);
+
+    expect(csv.split("\r\n")[1]).toBe(
+      "PURCHASE01,2026-10-01T09:00:00Z,Night Ferry,3,The Harbor,4.99,0.00,USD,2099-01-01T00:00:00Z,,canceled"
+    );
   });
 
   it("quotes a title with a comma, a quote, or a line break", () => {

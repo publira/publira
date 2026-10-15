@@ -1,6 +1,7 @@
 -- The member's purchases of the priced Seed Episode 001-10: one that does not
--- expire, a 72-hour rental that ran out, and one refunded in full, so the
--- purchase library shows a readable row, an expired one, and a refunded one.
+-- expire, a 72-hour rental that ran out, one refunded in full, and one revoked
+-- by a dispute, so the purchase library shows a readable row, an expired one,
+-- a refunded one, and a canceled one.
 
 WITH scope AS (
     SELECT
@@ -13,25 +14,39 @@ WITH scope AS (
     JOIN episodes e ON e.series_id = s.id AND e.title = 'Seed Episode 001-10'
     WHERE t.public_id = 'SeedTNNTAAA1'
 ),
-purchase_seed (id, purchased_at, expires_at, refunded_at) AS (
+purchase_seed (id, purchased_at, expires_at, refunded_at, revoked_at, revocation_reason) AS (
     VALUES
         (
             '018f0e8f-1000-7000-8000-000000000001'::uuid,
             '2026-02-01T12:00:00Z'::timestamptz,
             NULL::timestamptz,
-            NULL::timestamptz
+            NULL::timestamptz,
+            NULL::timestamptz,
+            NULL::text
         ),
         (
             '018f0e8f-1000-7000-8000-000000000002'::uuid,
             '2026-01-10T12:00:00Z'::timestamptz,
             '2026-01-13T12:00:00Z'::timestamptz,
-            NULL::timestamptz
+            NULL::timestamptz,
+            NULL::timestamptz,
+            NULL::text
         ),
         (
             '018f0e8f-1000-7000-8000-000000000003'::uuid,
             '2025-12-20T12:00:00Z'::timestamptz,
             NULL::timestamptz,
-            '2025-12-21T12:00:00Z'::timestamptz
+            '2025-12-21T12:00:00Z'::timestamptz,
+            '2025-12-21T12:00:00Z'::timestamptz,
+            'refund'
+        ),
+        (
+            '018f0e8f-1000-7000-8000-000000000004'::uuid,
+            '2025-12-01T12:00:00Z'::timestamptz,
+            NULL::timestamptz,
+            NULL::timestamptz,
+            '2025-12-05T12:00:00Z'::timestamptz,
+            'dispute'
         )
 )
 INSERT INTO purchases (
@@ -59,8 +74,8 @@ SELECT
     ps.expires_at,
     CASE WHEN ps.refunded_at IS NOT NULL THEN 500 END,
     ps.refunded_at,
-    ps.refunded_at,
-    CASE WHEN ps.refunded_at IS NOT NULL THEN 'refund' END
+    ps.revoked_at,
+    ps.revocation_reason
 FROM scope
 CROSS JOIN purchase_seed ps
 ON CONFLICT (id) DO UPDATE

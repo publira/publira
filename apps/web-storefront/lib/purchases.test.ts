@@ -73,7 +73,7 @@ describe("listMyPurchases", () => {
     ]);
   });
 
-  it("keeps what was refunded on each purchase, and when the refunds reached the price", async () => {
+  it("keeps what was refunded on each purchase, and when it was refunded and revoked", async () => {
     mockListMyPurchases.mockResolvedValueOnce({
       nextToken: "",
       previousToken: "",
@@ -82,6 +82,7 @@ describe("listMyPurchases", () => {
           id: "PURCHASE01",
           refundedAmount: 499,
           refundedAt: "2026-10-02T09:00:00Z",
+          revokedAt: "2026-10-02T09:00:00Z",
         },
         { id: "PURCHASE02" },
       ],
@@ -93,8 +94,13 @@ describe("listMyPurchases", () => {
       expect.objectContaining({
         refundedAmount: 499,
         refundedAt: "2026-10-02T09:00:00Z",
+        revokedAt: "2026-10-02T09:00:00Z",
       }),
-      expect.objectContaining({ refundedAmount: 0, refundedAt: "" }),
+      expect.objectContaining({
+        refundedAmount: 0,
+        refundedAt: "",
+        revokedAt: "",
+      }),
     ]);
   });
 });

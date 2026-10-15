@@ -109,7 +109,13 @@ const PurchaseCard = async ({
           <span className="rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">
             {t("storefront.library.refunded")}
           </span>
-        ) : (
+        ) : null}
+        {!purchase.refundedAt && purchase.revokedAt ? (
+          <span className="rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">
+            {t("storefront.library.canceled")}
+          </span>
+        ) : null}
+        {purchase.refundedAt || purchase.revokedAt ? null : (
           <span
             className={
               purchase.isActive

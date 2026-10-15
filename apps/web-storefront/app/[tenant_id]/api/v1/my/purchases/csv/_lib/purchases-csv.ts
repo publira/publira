@@ -47,6 +47,9 @@ const purchaseStatus = (purchase: PurchaseItem): string => {
   if (purchase.refundedAt) {
     return "refunded";
   }
+  if (purchase.revokedAt) {
+    return "canceled";
+  }
   return purchase.isActive ? "active" : "expired";
 };
 
@@ -70,7 +73,7 @@ const HEADER = [
  * CRLF line endings, and RFC 4180 quoting. A header row, then one row per
  * purchase in the order given. The times are RFC 3339 in UTC as the API
  * answers them, and empty where the purchase has none; `status` is `active`,
- * `expired`, or `refunded`.
+ * `expired`, `refunded`, or `canceled`.
  */
 export const renderPurchasesCsv = (
   purchases: readonly PurchaseItem[]

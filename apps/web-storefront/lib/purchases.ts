@@ -32,6 +32,11 @@ export interface PurchaseItem {
   refundedAmount: number;
   /** Set once the refunds reach the price; empty until then. */
   refundedAt: string;
+  /**
+   * Set once the purchase stopped opening its episode before its reading
+   * period ran out — refunded in full, disputed, or refunded by staff.
+   */
+  revokedAt: string;
   series: { publicId: string; title: string };
 }
 
@@ -85,6 +90,7 @@ type RawPurchase = Pick<
   | "purchasedAt"
   | "refundedAmount"
   | "refundedAt"
+  | "revokedAt"
   | "series"
 >;
 
@@ -102,6 +108,7 @@ const mapPurchase = (purchase: RawPurchase): PurchaseItem => ({
   purchasedAt: purchase.purchasedAt ?? "",
   refundedAmount: purchase.refundedAmount ?? 0,
   refundedAt: purchase.refundedAt ?? "",
+  revokedAt: purchase.revokedAt ?? "",
   series: {
     publicId: purchase.series?.publicId ?? "",
     title: purchase.series?.title ?? "",
@@ -192,8 +199,9 @@ export const listMyPurchases = async (
 const maxPurchasePageSize = 100;
 
 /**
- * Every purchase of the reader `accessToken` belongs to, newest first, read
- * page by page for the purchase history download.
+ * Every purchase the library lists for the reader `accessToken` belongs to,
+ * newest first, read page by page for the purchase history download. Like the
+ * library, it leaves out an episode the storefront may not show.
  *
  * Uncached: a download is asked for once and should report the purchases as
  * they stand, a refund recorded a moment ago included. An RPC error is thrown

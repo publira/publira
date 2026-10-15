@@ -35,7 +35,7 @@ Once bought, the episode:
 - Opens on the site and in the tenant's app alike, for the same account, wherever it was bought.
 - Cannot be bought again while it is open. Once its reading period has ended, it can.
 
-**Download as CSV** on **Purchases** saves every purchase the reader has made, refunded ones included, as one CSV file.
+**Download as CSV** on **Purchases** saves every purchase listed there, across all its pages and refunded ones included, as one CSV file.
 
 ### Free reading periods and Free if you wait
 
@@ -176,7 +176,7 @@ A refund that arrives before the purchase it reverses is kept, and applied when 
 
 ## Disputes
 
-When a reader disputes a Stripe payment with their bank, Stripe reports it through the same webhook, which is why its endpoint needs `charge.dispute.created`. The episode closes to the reader as soon as the dispute is opened, whichever way the bank later decides it, and the purchase stays in their history. Respond to the dispute in the Stripe Dashboard; nothing is done in the console. The sale stays on the royalty statement whichever way the bank decides, since only a refund takes a sale off it.
+When a reader disputes a Stripe payment with their bank, Stripe reports it through the same webhook, which is why its endpoint needs `charge.dispute.created`. The episode closes to the reader as soon as the dispute is opened, whichever way the bank later decides it, and the purchase stays in their **Purchase history**, marked **Canceled**. Respond to the dispute in the Stripe Dashboard; nothing is done in the console. The sale stays on the royalty statement whichever way the bank decides, since only a refund takes a sale off it.
 
 ## Abandoned checkouts
 

@@ -3683,13 +3683,14 @@
       "series_pagination_aria": "品牌系列分页"
     },
     "library": {
+      "canceled": "已取消",
       "description": "查看您购买的章节以及它们的阅读期限。",
       "download_csv": "下载CSV",
       "empty_description": "您购买的章节可以随时从这里打开。",
       "empty_title": "您还没有购买任何章节",
       "expired": "已过期",
       "expires_at": "有效期至",
-      "history_description": "阅读期限已结束或已退款的购买记录。您仍然可以打开章节页面。",
+      "history_description": "阅读期限已结束、已退款或已取消的购买记录。您仍然可以打开章节页面。",
       "history_heading": "购买记录",
       "list_error": "无法显示您的购买内容",
       "list_failed": "无法加载您的购买内容。请稍后再试。",

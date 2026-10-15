@@ -14,8 +14,8 @@ import { renderPurchasesCsv } from "./_lib/purchases-csv";
 const LIBRARY_PATH = "/my/library";
 
 /**
- * The signed-in reader's whole purchase history as a CSV attachment, linked
- * from the library.
+ * Every purchase the library lists for the signed-in reader, across all its
+ * pages, as a CSV attachment linked from the library.
  *
  * A Route Handler has no locale segment, so a reader who has to sign in or
  * agree to the tenant's terms first is sent to that screen in the tenant's
