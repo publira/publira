@@ -2938,6 +2938,143 @@ class DeleteMyIconResponse extends $pb.GeneratedMessage {
   $0.User ensureUser() => $_ensure(0);
 }
 
+/// Shows one of the tenant's presets as the caller's icon, in place of the one
+/// it showed.
+class SelectMyIconRequest extends $pb.GeneratedMessage {
+  factory SelectMyIconRequest({
+    $0.TenantContext? tenant,
+    $core.String? presetId,
+  }) {
+    final result = SelectMyIconRequest._();
+    if (tenant != null) result.tenant = tenant;
+    if (presetId != null) result.presetId = presetId;
+    return result;
+  }
+
+  SelectMyIconRequest._();
+
+  factory SelectMyIconRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SelectMyIconRequest()..mergeFromBuffer(data, registry);
+  factory SelectMyIconRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SelectMyIconRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SelectMyIconRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: SelectMyIconRequest.$_createMessage)
+    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $0.TenantContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'presetId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SelectMyIconRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SelectMyIconRequest copyWith(void Function(SelectMyIconRequest) updates) =>
+      super.copyWith((message) => updates(message as SelectMyIconRequest))
+          as SelectMyIconRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core
+      .Deprecated('Use SelectMyIconRequest() / SelectMyIconRequest.new instead')
+  static SelectMyIconRequest create() => SelectMyIconRequest._();
+  static $pb.GeneratedMessage $_createMessage() => SelectMyIconRequest._();
+  @$core.override
+  SelectMyIconRequest createEmptyInstance() => SelectMyIconRequest._();
+  @$core.pragma('dart2js:noInline')
+  static SelectMyIconRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SelectMyIconRequest>(
+          SelectMyIconRequest.$_createMessage);
+  static SelectMyIconRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($0.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.TenantContext ensureTenant() => $_ensure(0);
+
+  /// A ReaderIconPreset.id from TenantService.GetTenantReaderIconPolicy.
+  @$pb.TagNumber(2)
+  $core.String get presetId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set presetId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPresetId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPresetId() => $_clearField(2);
+}
+
+class SelectMyIconResponse extends $pb.GeneratedMessage {
+  factory SelectMyIconResponse({
+    $0.User? user,
+  }) {
+    final result = SelectMyIconResponse._();
+    if (user != null) result.user = user;
+    return result;
+  }
+
+  SelectMyIconResponse._();
+
+  factory SelectMyIconResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SelectMyIconResponse()..mergeFromBuffer(data, registry);
+  factory SelectMyIconResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SelectMyIconResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SelectMyIconResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: SelectMyIconResponse.$_createMessage)
+    ..aOM<$0.User>(1, _omitFieldNames ? '' : 'user',
+        subBuilder: $0.User.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SelectMyIconResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SelectMyIconResponse copyWith(void Function(SelectMyIconResponse) updates) =>
+      super.copyWith((message) => updates(message as SelectMyIconResponse))
+          as SelectMyIconResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use SelectMyIconResponse() / SelectMyIconResponse.new instead')
+  static SelectMyIconResponse create() => SelectMyIconResponse._();
+  static $pb.GeneratedMessage $_createMessage() => SelectMyIconResponse._();
+  @$core.override
+  SelectMyIconResponse createEmptyInstance() => SelectMyIconResponse._();
+  @$core.pragma('dart2js:noInline')
+  static SelectMyIconResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SelectMyIconResponse>(
+          SelectMyIconResponse.$_createMessage);
+  static SelectMyIconResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.User get user => $_getN(0);
+  @$pb.TagNumber(1)
+  set user($0.User value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasUser() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearUser() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.User ensureUser() => $_ensure(0);
+}
+
 class DeleteMeRequest extends $pb.GeneratedMessage {
   factory DeleteMeRequest({
     $0.TenantContext? tenant,
@@ -5012,11 +5149,22 @@ class AuthServiceApi {
 
   /// Sets the caller's icon, replacing the one it showed. failed_precondition,
   /// with the STORAGE_NOT_CONFIGURED reason, while the platform has no object
-  /// store.
+  /// store, and with READER_ICON_NOT_ALLOWED unless the tenant's reader icon
+  /// policy is READER_ICON_POLICY_UPLOAD.
   $async.Future<UploadMyIconResponse> uploadMyIcon(
           $pb.ClientContext? ctx, UploadMyIconRequest request) =>
       _client.invoke<UploadMyIconResponse>(
           ctx, 'AuthService', 'UploadMyIcon', request, UploadMyIconResponse());
+
+  /// failed_precondition, with the READER_ICON_NOT_ALLOWED reason, unless the
+  /// tenant's reader icon policy is READER_ICON_POLICY_PRESET; not_found for a
+  /// preset the tenant does not hold.
+  $async.Future<SelectMyIconResponse> selectMyIcon(
+          $pb.ClientContext? ctx, SelectMyIconRequest request) =>
+      _client.invoke<SelectMyIconResponse>(
+          ctx, 'AuthService', 'SelectMyIcon', request, SelectMyIconResponse());
+
+  /// Accepted under every reader icon policy.
   $async.Future<DeleteMyIconResponse> deleteMyIcon(
           $pb.ClientContext? ctx, DeleteMyIconRequest request) =>
       _client.invoke<DeleteMyIconResponse>(

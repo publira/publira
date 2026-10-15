@@ -96,6 +96,7 @@ class User extends $pb.GeneratedMessage {
     $core.String? email,
     $core.String? iconImageUpdatedAt,
     $core.Iterable<UserIconVariant>? iconImageVariants,
+    $core.String? iconPresetId,
   }) {
     final result = User._();
     if (publicId != null) result.publicId = publicId;
@@ -107,6 +108,7 @@ class User extends $pb.GeneratedMessage {
       result.iconImageUpdatedAt = iconImageUpdatedAt;
     if (iconImageVariants != null)
       result.iconImageVariants.addAll(iconImageVariants);
+    if (iconPresetId != null) result.iconPresetId = iconPresetId;
     return result;
   }
 
@@ -132,6 +134,7 @@ class User extends $pb.GeneratedMessage {
     ..aOS(6, _omitFieldNames ? '' : 'iconImageUpdatedAt')
     ..pPM<UserIconVariant>(7, _omitFieldNames ? '' : 'iconImageVariants',
         subBuilder: UserIconVariant.$_createMessage)
+    ..aOS(8, _omitFieldNames ? '' : 'iconPresetId')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -210,9 +213,13 @@ class User extends $pb.GeneratedMessage {
 
   /// The account's icon. Set where the public API answers with the caller's
   /// own account as GetMe reads it — GetMe, UpdateMe, UploadMyIcon,
-  /// DeleteMyIcon, Login and LoginWithIdToken — and empty wherever a User
-  /// names someone else. The variant list is empty, and icon_image_updated_at with
-  /// it, for an account that shows no icon.
+  /// SelectMyIcon, DeleteMyIcon, Login and LoginWithIdToken — and empty
+  /// wherever a User names someone else. The variant list is empty, and
+  /// icon_image_updated_at with it, for an account that shows no icon.
+  ///
+  /// The icon is either one the reader uploaded or one of the tenant's presets
+  /// (ReaderIconPreset), and the variants carry whichever it is, so a client
+  /// renders both alike.
   @$pb.TagNumber(6)
   $core.String get iconImageUpdatedAt => $_getSZ(5);
   @$pb.TagNumber(6)
@@ -224,6 +231,18 @@ class User extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(7)
   $pb.PbList<UserIconVariant> get iconImageVariants => $_getList(6);
+
+  /// The ReaderIconPreset.id of the preset the account shows, under the same
+  /// rule as icon_image_variants, so a preset picker can mark the one in use.
+  /// Empty for an account that shows an upload or no icon.
+  @$pb.TagNumber(8)
+  $core.String get iconPresetId => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set iconPresetId($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasIconPresetId() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearIconPresetId() => $_clearField(8);
 }
 
 /// One stored rendition of a reader's icon, in the shape the tenant's branding
@@ -2815,6 +2834,86 @@ class PageVersion extends $pb.GeneratedMessage {
   $core.bool hasAgreementRequiredAt() => $_has(9);
   @$pb.TagNumber(10)
   void clearAgreementRequiredAt() => $_clearField(10);
+}
+
+/// An icon the tenant provides for its readers to pick. A reader's account
+/// that shows it carries the same variants in User.icon_image_variants.
+class ReaderIconPreset extends $pb.GeneratedMessage {
+  factory ReaderIconPreset({
+    $core.String? id,
+    $core.String? createdAt,
+    $core.Iterable<UserIconVariant>? variants,
+  }) {
+    final result = ReaderIconPreset._();
+    if (id != null) result.id = id;
+    if (createdAt != null) result.createdAt = createdAt;
+    if (variants != null) result.variants.addAll(variants);
+    return result;
+  }
+
+  ReaderIconPreset._();
+
+  factory ReaderIconPreset.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReaderIconPreset()..mergeFromBuffer(data, registry);
+  factory ReaderIconPreset.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReaderIconPreset()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ReaderIconPreset',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'publira.types.v1'),
+      createEmptyInstance: ReaderIconPreset.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOS(2, _omitFieldNames ? '' : 'createdAt')
+    ..pPM<UserIconVariant>(3, _omitFieldNames ? '' : 'variants',
+        subBuilder: UserIconVariant.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReaderIconPreset clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReaderIconPreset copyWith(void Function(ReaderIconPreset) updates) =>
+      super.copyWith((message) => updates(message as ReaderIconPreset))
+          as ReaderIconPreset;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ReaderIconPreset() / ReaderIconPreset.new instead')
+  static ReaderIconPreset create() => ReaderIconPreset._();
+  static $pb.GeneratedMessage $_createMessage() => ReaderIconPreset._();
+  @$core.override
+  ReaderIconPreset createEmptyInstance() => ReaderIconPreset._();
+  @$core.pragma('dart2js:noInline')
+  static ReaderIconPreset getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ReaderIconPreset>(
+          ReaderIconPreset.$_createMessage);
+  static ReaderIconPreset? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get createdAt => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set createdAt($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCreatedAt() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCreatedAt() => $_clearField(2);
+
+  /// The stored renditions, largest first.
+  @$pb.TagNumber(3)
+  $pb.PbList<UserIconVariant> get variants => $_getList(2);
 }
 
 const $core.bool _omitFieldNames =

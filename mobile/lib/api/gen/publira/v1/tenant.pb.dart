@@ -840,6 +840,153 @@ class TenantGoogleSignIn extends $pb.GeneratedMessage {
   void clearIosClientId() => $_clearField(2);
 }
 
+class GetTenantReaderIconPolicyRequest extends $pb.GeneratedMessage {
+  factory GetTenantReaderIconPolicyRequest({
+    $0.TenantContext? tenant,
+  }) {
+    final result = GetTenantReaderIconPolicyRequest._();
+    if (tenant != null) result.tenant = tenant;
+    return result;
+  }
+
+  GetTenantReaderIconPolicyRequest._();
+
+  factory GetTenantReaderIconPolicyRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetTenantReaderIconPolicyRequest()..mergeFromBuffer(data, registry);
+  factory GetTenantReaderIconPolicyRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetTenantReaderIconPolicyRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetTenantReaderIconPolicyRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: GetTenantReaderIconPolicyRequest.$_createMessage)
+    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $0.TenantContext.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetTenantReaderIconPolicyRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetTenantReaderIconPolicyRequest copyWith(
+          void Function(GetTenantReaderIconPolicyRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as GetTenantReaderIconPolicyRequest))
+          as GetTenantReaderIconPolicyRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use GetTenantReaderIconPolicyRequest() / GetTenantReaderIconPolicyRequest.new instead')
+  static GetTenantReaderIconPolicyRequest create() =>
+      GetTenantReaderIconPolicyRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      GetTenantReaderIconPolicyRequest._();
+  @$core.override
+  GetTenantReaderIconPolicyRequest createEmptyInstance() =>
+      GetTenantReaderIconPolicyRequest._();
+  @$core.pragma('dart2js:noInline')
+  static GetTenantReaderIconPolicyRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetTenantReaderIconPolicyRequest>(
+          GetTenantReaderIconPolicyRequest.$_createMessage);
+  static GetTenantReaderIconPolicyRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($0.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.TenantContext ensureTenant() => $_ensure(0);
+}
+
+/// What a reader of the tenant may show as an icon, which decides the icon
+/// field a settings screen offers: AuthService.UploadMyIcon under UPLOAD,
+/// AuthService.SelectMyIcon with one of presets under PRESET, and none under
+/// DISABLED. AuthService.DeleteMyIcon is accepted under every policy.
+class GetTenantReaderIconPolicyResponse extends $pb.GeneratedMessage {
+  factory GetTenantReaderIconPolicyResponse({
+    $0.ReaderIconPolicy? policy,
+    $core.Iterable<$0.ReaderIconPreset>? presets,
+  }) {
+    final result = GetTenantReaderIconPolicyResponse._();
+    if (policy != null) result.policy = policy;
+    if (presets != null) result.presets.addAll(presets);
+    return result;
+  }
+
+  GetTenantReaderIconPolicyResponse._();
+
+  factory GetTenantReaderIconPolicyResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetTenantReaderIconPolicyResponse()..mergeFromBuffer(data, registry);
+  factory GetTenantReaderIconPolicyResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetTenantReaderIconPolicyResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetTenantReaderIconPolicyResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: GetTenantReaderIconPolicyResponse.$_createMessage)
+    ..aE<$0.ReaderIconPolicy>(1, _omitFieldNames ? '' : 'policy',
+        enumValues: $0.ReaderIconPolicy.values)
+    ..pPM<$0.ReaderIconPreset>(2, _omitFieldNames ? '' : 'presets',
+        subBuilder: $0.ReaderIconPreset.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetTenantReaderIconPolicyResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetTenantReaderIconPolicyResponse copyWith(
+          void Function(GetTenantReaderIconPolicyResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as GetTenantReaderIconPolicyResponse))
+          as GetTenantReaderIconPolicyResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use GetTenantReaderIconPolicyResponse() / GetTenantReaderIconPolicyResponse.new instead')
+  static GetTenantReaderIconPolicyResponse create() =>
+      GetTenantReaderIconPolicyResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      GetTenantReaderIconPolicyResponse._();
+  @$core.override
+  GetTenantReaderIconPolicyResponse createEmptyInstance() =>
+      GetTenantReaderIconPolicyResponse._();
+  @$core.pragma('dart2js:noInline')
+  static GetTenantReaderIconPolicyResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetTenantReaderIconPolicyResponse>(
+          GetTenantReaderIconPolicyResponse.$_createMessage);
+  static GetTenantReaderIconPolicyResponse? _defaultInstance;
+
+  /// Never READER_ICON_POLICY_UNSPECIFIED: a tenant that has chosen nothing
+  /// lets readers upload.
+  @$pb.TagNumber(1)
+  $0.ReaderIconPolicy get policy => $_getN(0);
+  @$pb.TagNumber(1)
+  set policy($0.ReaderIconPolicy value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPolicy() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPolicy() => $_clearField(1);
+
+  /// The presets a reader may pick, oldest first. Empty unless policy is
+  /// READER_ICON_POLICY_PRESET.
+  @$pb.TagNumber(2)
+  $pb.PbList<$0.ReaderIconPreset> get presets => $_getList(1);
+}
+
 class GetTenantMobileAppAssociationRequest extends $pb.GeneratedMessage {
   factory GetTenantMobileAppAssociationRequest({
     $0.TenantContext? tenant,
@@ -1162,6 +1309,14 @@ class TenantServiceApi {
               'GetTenantMobileAppAssociation',
               request,
               GetTenantMobileAppAssociationResponse());
+  $async.Future<GetTenantReaderIconPolicyResponse> getTenantReaderIconPolicy(
+          $pb.ClientContext? ctx, GetTenantReaderIconPolicyRequest request) =>
+      _client.invoke<GetTenantReaderIconPolicyResponse>(
+          ctx,
+          'TenantService',
+          'GetTenantReaderIconPolicy',
+          request,
+          GetTenantReaderIconPolicyResponse());
 }
 
 const $core.bool _omitFieldNames =

@@ -28,6 +28,8 @@ abstract class TenantServiceBase extends $pb.GeneratedService {
   $async.Future<$1.GetTenantMobileAppAssociationResponse>
       getTenantMobileAppAssociation($pb.ServerContext ctx,
           $1.GetTenantMobileAppAssociationRequest request);
+  $async.Future<$1.GetTenantReaderIconPolicyResponse> getTenantReaderIconPolicy(
+      $pb.ServerContext ctx, $1.GetTenantReaderIconPolicyRequest request);
 
   $pb.GeneratedMessage createRequest($core.String methodName) {
     switch (methodName) {
@@ -37,6 +39,8 @@ abstract class TenantServiceBase extends $pb.GeneratedService {
         return $1.GetTenantLegalPagesRequest();
       case 'GetTenantMobileAppAssociation':
         return $1.GetTenantMobileAppAssociationRequest();
+      case 'GetTenantReaderIconPolicy':
+        return $1.GetTenantReaderIconPolicyRequest();
       default:
         throw $core.ArgumentError('Unknown method: $methodName');
     }
@@ -53,6 +57,9 @@ abstract class TenantServiceBase extends $pb.GeneratedService {
       case 'GetTenantMobileAppAssociation':
         return getTenantMobileAppAssociation(
             ctx, request as $1.GetTenantMobileAppAssociationRequest);
+      case 'GetTenantReaderIconPolicy':
+        return getTenantReaderIconPolicy(
+            ctx, request as $1.GetTenantReaderIconPolicyRequest);
       default:
         throw $core.ArgumentError('Unknown method: $methodName');
     }
