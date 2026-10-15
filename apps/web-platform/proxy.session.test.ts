@@ -124,6 +124,22 @@ describe("web-platform proxy session handling", () => {
     ).toBe("/tenants?token=abc");
   });
 
+  it("lets a valid cookie through to /.well-known/change-password and keeps it", async () => {
+    const cookie = await activeCookie();
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request(
+        "https://platform.example.com/.well-known/change-password",
+        cookie
+      )
+    );
+
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+    expect(deletedCookieNames(response)).toEqual([]);
+  });
+
   /**
    * Without the marker the console keeps handing the same dead cookie back to
    * the API: it still decrypts and has not reached its local expiry, so the

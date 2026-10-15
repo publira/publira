@@ -177,6 +177,54 @@ describe("web-platform proxy", () => {
     expect(resolvedLocaleCookie(response)).toBeUndefined();
   });
 
+  it("lets a signed-out request through to /.well-known/change-password", async () => {
+    const { NextRequest } = await import("next/server");
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      new NextRequest(
+        "https://platform.example.com/.well-known/change-password"
+      )
+    );
+
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+
+  it("sends /.well-known/change-password to /setup before setup is completed", async () => {
+    mockResolveSetupState.mockResolvedValue({
+      completed: false,
+      defaultLocale: "none",
+    });
+    const { NextRequest } = await import("next/server");
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      new NextRequest(
+        "https://platform.example.com/.well-known/change-password"
+      )
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "https://platform.example.com/setup"
+    );
+  });
+
+  it("keeps every other /.well-known path behind sign-in", async () => {
+    const { NextRequest } = await import("next/server");
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      new NextRequest("https://platform.example.com/.well-known/security.txt")
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "https://platform.example.com/login?next=%2F.well-known%2Fsecurity.txt"
+    );
+  });
+
   it("keeps the health probes off the platform read", async () => {
     const { NextRequest } = await import("next/server");
     const { proxy } = await import("./proxy");
