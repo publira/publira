@@ -1,11 +1,11 @@
 ---
 title: Settings
-description: Set the site's copy, time zone, languages, reader comments, age verification, legal pages, and refused email addresses, and tighten the platform's limits for the tenant.
+description: Set the site's copy, time zone, languages, reader comments, age verification, legal pages, and refused email addresses, tighten the platform's limits for the tenant, and choose what readers can show as their icon.
 published: 2026-10-07
-updated: 2026-10-14
+updated: 2026-10-15
 ---
 
-**Settings**, under **Administration**, has two tabs. **General** holds what the tenant decides about its own site. **Limits and retention** holds the values the operator sets for every tenant, which a tenant may change within bounds.
+**Settings**, under **Administration**, has three tabs. **General** holds what the tenant decides about its own site. **Limits and retention** holds the values the operator sets for every tenant, which a tenant may change within bounds. **Reader icons** holds what readers can show as their icon, and the icons the tenant offers them to pick from.
 
 Each card on these tabs has its own save button and saves only its own fields, so save one card before you move on to the next. Every member of the staff can open **Settings**, but only a Tenant admin can save it. An Editor or an Auditor sees each card with "Only a tenant administrator can change this setting. You have read-only access."
 
@@ -128,3 +128,36 @@ Each group on these forms starts with **Use the platform default** ticked, and s
 If someone else saved the same form after you opened it, your save is refused with "These settings were changed elsewhere while this page was open. Reload the page and enter the change again."
 
 What each limit and record is, and what each purge leaves in place, is explained from the operator's side in [Platform defaults and policies](../../3-operations/9-platform-policies.md#community). Saves on this tab are recorded in the [audit log](./7-audit-log.md) as **Community limits updated** and **Retention periods updated**.
+
+## Reader icons
+
+### Reader icon policy
+
+**What readers can show** decides what a reader can show as the icon beside their name, on their comments and on their account:
+
+| Choice | What it does |
+| --- | --- |
+| **Upload their own image** | A reader uploads an image of their choice. A new tenant starts here |
+| **Choose a preset icon** | A reader picks one of the icons under [Preset icons](#preset-icons), and cannot upload an image |
+| **No icons** | No reader shows an icon, and the site shows a plain outline for everyone |
+
+Choose **Save the reader icon policy** to save. A choice that allows less than the saved one takes icons down as it is saved, so the console asks first with "Remove readers' icons?":
+
+- From **Upload their own image** to **Choose a preset icon**, every image readers uploaded is removed. Readers who chose a preset keep it.
+- From either of the others to **No icons**, every icon readers show is removed.
+
+Choose **Save and remove** to go ahead. A removed icon cannot be restored, so when the policy allows icons again, each reader chooses one again. A choice that allows more removes nothing, and is saved without asking.
+
+![The Reader icon policy card: What readers can show with Upload their own image, Choose a preset icon, and No icons, and Save the reader icon policy.](./settings-reader-icon-policy.png)
+
+### Preset icons
+
+The icons readers pick from under **Choose a preset icon**, up to 50. Presets can be added under any policy, so fill the set before switching to that policy: while it is empty, readers have nothing to pick.
+
+To add one, choose a JPEG, PNG, or WebP image of 10MB or smaller under **Icon image**, and choose **Add the icon**. A square is cut from the centre of the image, and it has to be at least 128 × 128 px. Each preset is shown as the site draws an icon, with the size it is stored at.
+
+To delete one, choose **Delete** under it and confirm with **Delete**. Readers who chose it are left without an icon, and show the plain outline until they choose another.
+
+![The Preset icons card of a tenant that has none yet: No preset icons yet, the Icon image field, and Add the icon.](./settings-reader-icon-presets.png)
+
+Saves on this tab are recorded in the [audit log](./7-audit-log.md) as **Reader icon policy updated**, **Reader icon preset added**, and **Reader icon preset deleted**.

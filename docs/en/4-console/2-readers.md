@@ -52,6 +52,8 @@ A reader's icon shows beside their comments to everyone who reads the site, so o
 
 **Remove icon** is offered only while the account shows an icon.
 
+Whether readers may upload an icon, pick one of the tenant's own, or show none at all is set under **Settings**, as [Reader icons](./3-setup/1-settings.md#reader-icons) describes.
+
 ### Suspending a reader
 
 **Suspend** signs the reader out on every device and refuses their sign-in, with a password or with Apple or Google, until the suspension is lifted. Nothing else about the account changes: their published comments stay on the site, and their purchases and access tickets stay theirs, unusable only while they cannot sign in.
