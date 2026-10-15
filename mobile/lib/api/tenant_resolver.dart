@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
-import 'package:publira/api/gen/publira/v1/domain.pb.dart';
+import 'package:publira/api/gen/publira/v1/domain.pb.dart' as pb;
 
 /// Resolves the tenant id behind the configured host and keeps it for the rest
 /// of the run.
@@ -66,9 +66,9 @@ class TenantResolver {
 
   Future<String> _fetch() async {
     try {
-      final response = await DomainServiceApi(_client).getTenantByDomain(
+      final response = await pb.DomainServiceApi(_client).getTenantByDomain(
         null,
-        GetTenantByDomainRequest(domains: [tenantHost]),
+        pb.GetTenantByDomainRequest(domains: [tenantHost]),
       );
       final tenantId = response.tenantId.trim();
       if (tenantId.isEmpty) {
