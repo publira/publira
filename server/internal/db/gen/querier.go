@@ -105,10 +105,13 @@ type Querier interface {
 	// FOR UPDATE is not allowed in an IN subquery.
 	ClaimPendingOutboxEvents(ctx context.Context, limit int32) ([]OutboxEvent, error)
 	// Claims the audit entry of a refund the provider carried out under the given
-	// staff attempt, for the one request that moves the recorded attempt to it.
+	// staff attempt, for the one request that moves the recorded attempt up to it.
 	// Every other request seeing the same attempt through answers no row: one
-	// racing the claimant, or one that finished the attempt first. A purchase
-	// that has moved on to a later attempt since is left to that attempt.
+	// racing the claimant, or one that finished the attempt first. The attempt is
+	// compared with the one recorded rather than with the purchase's current one,
+	// since a notification that the refund failed can move the purchase on to its
+	// next attempt before the request that made the refund gets here, and the
+	// refund it made is still staff's to record.
 	ClaimStaffRefundRecord(ctx context.Context, arg ClaimStaffRefundRecordParams) (uuid.UUID, error)
 	// Spends the reader's ticket on the series and starts the next recharge, when
 	// one is ready. No row means none was: the update's condition failed on a row

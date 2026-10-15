@@ -562,6 +562,36 @@ func TestDBRevokePurchaseForStaffTakesOverOnlyTheRefundsOwnNotification(t *testi
 	}
 }
 
+// The refund an attempt made is claimed for the audit log once, even after a
+// notification that it failed has moved the purchase on to the next attempt
+// before the request that made it got to the claim, and the next attempt is
+// still claimed after it.
+func TestDBClaimStaffRefundRecordClaimsEachAttemptOnce(t *testing.T) {
+	f := newPurchaseFixture(t)
+	purchaseID := f.seedPurchase(t, purchaseSeed{reader: f.alice, episode: f.episodeA, purchasedAt: time.Now().Add(-time.Hour), paymentID: "pi_claimed"})
+	queries := dbmodels.New(f.env.PG.DB)
+	claim := func(attempt int32) error {
+		_, err := queries.ClaimStaffRefundRecord(context.Background(), dbmodels.ClaimStaffRefundRecordParams{TenantID: f.admin.Tenant.ID, ID: purchaseID, Attempt: attempt})
+		return err
+	}
+	if _, err := f.env.PG.DB.ExecContext(context.Background(), "UPDATE purchases SET staff_refund_attempt = 1 WHERE id = $1", purchaseID); err != nil {
+		t.Fatalf("move the purchase on to its next attempt: %v", err)
+	}
+
+	if err := claim(0); err != nil {
+		t.Fatalf("claim the attempt the purchase has moved on from: %v", err)
+	}
+	if err := claim(0); !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("claim the same attempt again: %v, want no row", err)
+	}
+	if err := claim(1); err != nil {
+		t.Fatalf("claim the next attempt: %v", err)
+	}
+	if err := claim(0); !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("claim an earlier attempt after a later one: %v, want no row", err)
+	}
+}
+
 // Once Stripe has refused or failed a staff refund, asking again is a new
 // attempt under a new idempotency key: under the old one Stripe would only
 // answer the failure again.
