@@ -373,6 +373,7 @@
         "reader_deleted": "Reader deleted",
         "access_ticket_issued": "Access ticket issued",
         "access_ticket_revoked": "Access ticket revoked",
+        "purchase_refund_requested": "Purchase refund requested",
         "purchase_refunded": "Purchase refunded",
         "royalty_config_updated": "Royalty closing settings updated",
         "royalty_statement_closed": "Royalty month closed",

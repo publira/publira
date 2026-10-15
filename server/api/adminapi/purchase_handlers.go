@@ -443,9 +443,10 @@ func (s *adminServer) RefundPurchase(
 	if err != nil {
 		return nil, err
 	}
-	// recordRefundNotMade follows this request's audit entry with one saying
-	// the provider made no refund for it.
-	recordRefundNotMade := func(why string) {
+	// recordRefundOutcome follows the request entry this request wrote with what
+	// the provider did about it: the refund made, with staff's reason, or no
+	// refund and why.
+	recordRefundOutcome := func(outcome, why string) {
 		if !revokedHere {
 			return
 		}
@@ -456,7 +457,7 @@ func (s *adminServer) RefundPurchase(
 			Action:      "purchase_refunded",
 			TargetType:  "purchase",
 			TargetID:    row.ID.String(),
-			Outcome:     auditlog.OutcomeFailure,
+			Outcome:     outcome,
 			Reason:      why,
 			ClientIP:    clientip.FromContext(ctx),
 		})
@@ -493,7 +494,7 @@ func (s *adminServer) RefundPurchase(
 			return nil, liftErr
 		}
 		if refused {
-			recordRefundNotMade("the payment provider refused the refund")
+			recordRefundOutcome(auditlog.OutcomeFailure, "the payment provider refused the refund")
 			s.logger.WarnContext(ctx, "the payment provider refused a refund",
 				"tenant_id", tenant.ID,
 				"purchase_id", row.ID,
@@ -518,12 +519,14 @@ func (s *adminServer) RefundPurchase(
 		if err := liftRevocation(false); err != nil {
 			return nil, err
 		}
-		recordRefundNotMade("the payment provider reports the payment refunded in full already")
+		recordRefundOutcome(auditlog.OutcomeFailure, "the payment provider reports the payment refunded in full already")
 		s.logger.InfoContext(ctx, "the payment provider reports a purchase refunded in full already",
 			"tenant_id", tenant.ID,
 			"purchase_id", row.ID,
 			"provider", row.Provider.String,
 		)
+	} else {
+		recordRefundOutcome(auditlog.OutcomeSuccess, reason)
 	}
 
 	revoked, err := s.loadPurchase(ctx, tenant.ID, row.ID)
@@ -536,17 +539,17 @@ func (s *adminServer) RefundPurchase(
 }
 
 // revokePurchaseForStaffRefund revokes a purchase staff are about to refund
-// and records their decision, reason included, in the same transaction, and
+// and records their request, reason included, in the same transaction, and
 // reports whether this request made the revocation. No row is a purchase
-// something revoked in the meantime, whose entry, if staff's, was written
+// something revoked in the meantime, whose request, if staff's, was recorded
 // with that revocation.
 //
-// The entry is the only record of who gave the reader their money back and
-// why, so it is written before the provider is asked rather than after: a
-// request cut off after the provider refunded, or one the provider then
-// answers with nothing left to refund, would otherwise leave a refund no
-// entry names. A refund the provider then does not make is followed by an
-// entry saying so.
+// The request entry is the only record of who gave the reader their money
+// back and why, so it is written before the provider is asked rather than
+// after: a request cut off after the provider refunded, or one the provider
+// then answers with nothing left to refund, would otherwise leave a refund no
+// entry names. It records the request rather than the refund, which the
+// provider has yet to make; the entry that follows says whether it did.
 func (s *adminServer) revokePurchaseForStaffRefund(
 	ctx context.Context,
 	sessionCtx rpcmiddleware.SessionContext,
@@ -573,7 +576,7 @@ func (s *adminServer) revokePurchaseForStaffRefund(
 		TenantID:    tenantID,
 		ActorUserID: sessionCtx.User.ID,
 		ActorRole:   sessionCtx.Role,
-		Action:      "purchase_refunded",
+		Action:      "purchase_refund_requested",
 		TargetType:  "purchase",
 		TargetID:    purchaseID.String(),
 		Outcome:     auditlog.OutcomeSuccess,

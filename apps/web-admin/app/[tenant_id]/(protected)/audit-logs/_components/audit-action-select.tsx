@@ -265,6 +265,10 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "access_ticket_revoked",
             },
             {
+              label: t("admin.audit.actions.purchase_refund_requested"),
+              value: "purchase_refund_requested",
+            },
+            {
               label: t("admin.audit.actions.purchase_refunded"),
               value: "purchase_refunded",
             },

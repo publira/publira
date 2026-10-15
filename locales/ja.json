@@ -373,6 +373,7 @@
         "reader_deleted": "読者削除",
         "access_ticket_issued": "アクセスチケット発行",
         "access_ticket_revoked": "アクセスチケット失効",
+        "purchase_refund_requested": "購入の返金依頼",
         "purchase_refunded": "購入の返金",
         "royalty_config_updated": "印税の締めの設定更新",
         "royalty_statement_closed": "印税の月締め",
