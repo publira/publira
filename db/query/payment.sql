@@ -737,16 +737,16 @@ RETURNING id;
 
 -- name: ClaimStaffRefundRecord :one
 -- Claims the audit entry of a refund the provider carried out under the given
--- staff attempt, for the one request that moves the recorded attempt up to it.
+-- staff attempt, for the one request that adds the attempt to those recorded.
 -- Every other request seeing the same attempt through answers no row: one
--- racing the claimant, or one that finished the attempt first. The attempt is
--- compared with the one recorded rather than with the purchase's current one,
--- since a notification that the refund failed can move the purchase on to its
--- next attempt before the request that made the refund gets here, and the
--- refund it made is still staff's to record.
+-- racing the claimant waits for it on the row and then finds the attempt
+-- there, and one coming after it finds it at once. Attempts are claimed apart
+-- from the purchase's current one and from each other, so a refund is still
+-- recorded after a notification that it failed has moved the purchase on, and
+-- after the next attempt has been recorded.
 UPDATE purchases
-SET staff_refund_recorded_attempt = sqlc.arg('attempt')::integer
+SET staff_refund_recorded_attempts = array_append(staff_refund_recorded_attempts, sqlc.arg('attempt')::integer)
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND id = sqlc.arg('id')
-    AND COALESCE(staff_refund_recorded_attempt, -1) < sqlc.arg('attempt')::integer
+    AND NOT sqlc.arg('attempt')::integer = ANY(staff_refund_recorded_attempts)
 RETURNING id;

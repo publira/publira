@@ -19,6 +19,7 @@ import (
 	"github.com/publira/publira/server/internal/paymentsettings"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
+	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
 const (
@@ -509,30 +510,8 @@ func (s *adminServer) RefundPurchase(
 			"provider", row.Provider.String,
 		)
 	default:
-		// The refund is recorded by whichever request claims it, not by the
-		// one that revoked the purchase: a request finishing what an
-		// interrupted one left unasked revoked nothing, and its staff and
-		// reason are the only ones the refund has.
-		_, err := queries.ClaimStaffRefundRecord(ctx, dbmodels.ClaimStaffRefundRecordParams{
-			TenantID: tenant.ID,
-			ID:       row.ID,
-			Attempt:  row.StaffRefundAttempt,
-		})
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return nil, s.internalDBError(ctx, "failed to claim the audit entry of a staff refund", err, "tenant_id", tenant.ID.String(), "purchase_id", row.ID.String())
-		}
-		if err == nil {
-			s.recorderFor(ctx).RecordTenant(ctx, auditlog.TenantEntry{
-				TenantID:    tenant.ID,
-				ActorUserID: sessionCtx.User.ID,
-				ActorRole:   sessionCtx.Role,
-				Action:      "purchase_refunded",
-				TargetType:  "purchase",
-				TargetID:    row.ID.String(),
-				Outcome:     auditlog.OutcomeSuccess,
-				Reason:      reason,
-				ClientIP:    clientip.FromContext(ctx),
-			})
+		if err := s.recordStaffRefund(ctx, sessionCtx, tenant.ID, row.ID, row.StaffRefundAttempt, reason); err != nil {
+			return nil, err
 		}
 	}
 
@@ -543,4 +522,58 @@ func (s *adminServer) RefundPurchase(
 	return &publiraadminv1.RefundPurchaseResponse{
 		Purchase: mapPurchase(revoked, payments),
 	}, nil
+}
+
+// recordStaffRefund writes the audit entry of a refund the provider carried
+// out under a staff attempt, once for the attempt. The entry is recorded by
+// whichever request claims the attempt, not by the one that revoked the
+// purchase: a request finishing what an interrupted one left unasked revoked
+// nothing, and its staff and reason are the only ones the refund has.
+//
+// The entry is the only record of who gave the reader their money back and
+// why, so it is written in the claim's transaction rather than queued: a claim
+// that committed without its entry would leave every later request for the
+// attempt nothing to record. When the write fails the claim goes with it, and
+// asking for the refund again records it.
+func (s *adminServer) recordStaffRefund(
+	ctx context.Context,
+	sessionCtx rpcmiddleware.SessionContext,
+	tenantID, purchaseID uuid.UUID,
+	attempt int32,
+	reason string,
+) error {
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return s.internalDBError(ctx, "failed to begin the audit of a staff refund", err, "tenant_id", tenantID.String(), "purchase_id", purchaseID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	queries := dbmodels.New(tx)
+	_, err = queries.ClaimStaffRefundRecord(ctx, dbmodels.ClaimStaffRefundRecordParams{
+		TenantID: tenantID,
+		ID:       purchaseID,
+		Attempt:  attempt,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return s.internalDBError(ctx, "failed to claim the audit entry of a staff refund", err, "tenant_id", tenantID.String(), "purchase_id", purchaseID.String())
+	}
+	if err := auditlog.WriteTenant(ctx, queries, s.logger, auditlog.TenantEntry{
+		TenantID:    tenantID,
+		ActorUserID: sessionCtx.User.ID,
+		ActorRole:   sessionCtx.Role,
+		Action:      "purchase_refunded",
+		TargetType:  "purchase",
+		TargetID:    purchaseID.String(),
+		Outcome:     auditlog.OutcomeSuccess,
+		Reason:      reason,
+		ClientIP:    clientip.FromContext(ctx),
+	}); err != nil {
+		return s.internalDBError(ctx, "failed to record a staff refund", err, "tenant_id", tenantID.String(), "purchase_id", purchaseID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		return s.internalDBError(ctx, "failed to commit the audit of a staff refund", err, "tenant_id", tenantID.String(), "purchase_id", purchaseID.String())
+	}
+	return nil
 }

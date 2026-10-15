@@ -562,10 +562,10 @@ func TestDBRevokePurchaseForStaffTakesOverOnlyTheRefundsOwnNotification(t *testi
 	}
 }
 
-// The refund an attempt made is claimed for the audit log once, even after a
-// notification that it failed has moved the purchase on to the next attempt
-// before the request that made it got to the claim, and the next attempt is
-// still claimed after it.
+// The refund each attempt made is claimed for the audit log once, whatever
+// the order: a notification that the refund failed can move the purchase on,
+// and the next attempt be claimed, before the request that made the earlier
+// refund gets to the claim.
 func TestDBClaimStaffRefundRecordClaimsEachAttemptOnce(t *testing.T) {
 	f := newPurchaseFixture(t)
 	purchaseID := f.seedPurchase(t, purchaseSeed{reader: f.alice, episode: f.episodeA, purchasedAt: time.Now().Add(-time.Hour), paymentID: "pi_claimed"})
@@ -578,17 +578,16 @@ func TestDBClaimStaffRefundRecordClaimsEachAttemptOnce(t *testing.T) {
 		t.Fatalf("move the purchase on to its next attempt: %v", err)
 	}
 
-	if err := claim(0); err != nil {
-		t.Fatalf("claim the attempt the purchase has moved on from: %v", err)
-	}
-	if err := claim(0); !errors.Is(err, sql.ErrNoRows) {
-		t.Fatalf("claim the same attempt again: %v, want no row", err)
-	}
 	if err := claim(1); err != nil {
 		t.Fatalf("claim the next attempt: %v", err)
 	}
-	if err := claim(0); !errors.Is(err, sql.ErrNoRows) {
-		t.Fatalf("claim an earlier attempt after a later one: %v, want no row", err)
+	if err := claim(0); err != nil {
+		t.Fatalf("claim the attempt the purchase has moved on from, after the next one: %v", err)
+	}
+	for _, attempt := range []int32{0, 1} {
+		if err := claim(attempt); !errors.Is(err, sql.ErrNoRows) {
+			t.Fatalf("claim attempt %d again: %v, want no row", attempt, err)
+		}
 	}
 }
 
