@@ -64,7 +64,7 @@ readinessProbe:
   timeoutSeconds: 8
 ```
 
-On ECS, every check acts as a liveness probe, since ECS replaces a task that fails one; [Health checks](../2-deployments/6-ecs-fargate.md#health-checks) points them all at `/livez`.
+On ECS, every health check of a service's tasks acts as a liveness probe, since the service replaces a task that fails one; [Health checks](../2-deployments/6-ecs-fargate.md#health-checks) points them all at `/livez`.
 
 The images declare no Docker `HEALTHCHECK`, and the web images carry no shell to run one from, so the [Docker Compose](../2-deployments/3-docker-compose.md) install probes none of Publira's processes: Compose restarts a process that exits, not one that hangs. Probe it from outside instead, from a monitor that can reach the containers' network. The tenant site's `/livez` and `/readyz` are also reachable through the reverse proxy on every tenant's domain, such as `https://comics.example.com/readyz`, which an uptime monitor on the internet can use; the API's and the worker's are not, since the proxy forwards only `/rpc`, `/api`, and `/images` to `publira server`.
 
