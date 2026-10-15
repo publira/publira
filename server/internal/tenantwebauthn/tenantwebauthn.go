@@ -7,8 +7,9 @@
 // tenant has two origins, its storefront and its console, and each is a
 // relying party of its own. Both share the storefront's host as their RP ID
 // when the console's host is that host or under it, so one passkey answers
-// either; a console on a host outside the storefront's domain is its own RP
-// ID, and its passkeys answer it alone. Each relying party accepts a ceremony
+// either; a console on a host outside the storefront's domain, or under a
+// storefront host that is no registrable domain, is its own RP ID, and its
+// passkeys answer it alone. Each relying party accepts a ceremony
 // from its own origin and no other, so an assertion made on the storefront is
 // refused by the console even where the two share an RP ID.
 //
@@ -29,6 +30,7 @@ import (
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
+	"golang.org/x/net/publicsuffix"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/tenantorigin"
@@ -97,8 +99,8 @@ func Site(tenant dbmodels.Tenant) (*RelyingParty, error) {
 }
 
 // AdminConsoleRPID is the RP ID the console's passkeys are bound to: the
-// storefront's host when the console is served on it or under it, and the
-// console's own host otherwise.
+// storefront's host when the console is served on it or under it and that
+// host is a registrable domain, and the console's own host otherwise.
 func AdminConsoleRPID(tenant dbmodels.Tenant) (string, error) {
 	console, err := tenantorigin.AdminConsole(tenant)
 	if err != nil {
@@ -109,10 +111,20 @@ func AdminConsoleRPID(tenant dbmodels.Tenant) (string, error) {
 		return "", err
 	}
 	consoleHost, siteHost := hostname(console), hostname(site)
-	if consoleHost == siteHost || strings.HasSuffix(consoleHost, "."+siteHost) {
+	if registrable(siteHost) && (consoleHost == siteHost || strings.HasSuffix(consoleHost, "."+siteHost)) {
 		return siteHost, nil
 	}
 	return consoleHost, nil
+}
+
+// registrable reports whether host is a domain a page under it may name as
+// its RP ID. A browser refuses an RP ID that is a public suffix rather than a
+// registrable domain, and it treats a single-label host such as `localhost`
+// the same way: a console on `admin.localhost` may not name `localhost`, the
+// Dev Container's and the E2E stack's storefront host, but may name itself.
+func registrable(host string) bool {
+	_, err := publicsuffix.EffectiveTLDPlusOne(host)
+	return err == nil
 }
 
 func hostname(origin *url.URL) string {

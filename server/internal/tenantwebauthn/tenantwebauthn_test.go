@@ -25,6 +25,8 @@ func TestAdminConsoleRPID(t *testing.T) {
 		{name: "keeps a console outside the storefront's domain to itself", domain: "comics.example", adminDomain: sql.NullString{String: "console.publisher.example", Valid: true}, want: "console.publisher.example"},
 		{name: "does not mistake a sibling for a subdomain", domain: "comics.example", adminDomain: sql.NullString{String: "admincomics.example", Valid: true}, want: "admincomics.example"},
 		{name: "leaves the port out", domain: "comics.localhost:3180", want: "comics.localhost"},
+		{name: "keeps a console to itself under a storefront host that is no registrable domain", domain: "localhost:3080", want: "admin.localhost"},
+		{name: "keeps a console to itself under a storefront on a public suffix", domain: "github.io", adminDomain: sql.NullString{String: "admin.github.io", Valid: true}, want: "admin.github.io"},
 		{name: "folds the case of a saved host", domain: "Comics.Example", want: "comics.example"},
 	}
 	for _, tt := range tests {
