@@ -9,12 +9,11 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
-	"github.com/publira/publira/server/internal/tenantwebauthn"
 )
 
 // ErrMFANotSetUp refuses a reset for an account that has no authenticator,
-// confirmed or not, and no passkey for the console, so an operator who named
-// the wrong account hears so.
+// confirmed or not, and no passkey, so an operator who named the wrong account
+// hears so.
 var ErrMFANotSetUp = errors.New("user has no two-step verification set up")
 
 // ResetMFAParams names the user whose second factors and recovery codes are
@@ -35,8 +34,11 @@ func (p ResetMFAParams) Validate() error {
 }
 
 // ResetMFA deletes the user's authenticator, whether it was confirmed or only
-// started, the passkeys it registered for the console, every recovery code it
-// holds, and the count of its refused attempts, inside tx. It is what
+// started, every passkey it registered, every recovery code it holds, and the
+// count of its refused attempts, inside tx. The passkeys go whatever relying
+// party ID they were registered for: one made while the console was served on
+// another host would otherwise come back as a factor the day the console moved
+// back, after the operator had taken it away. It is what
 // DisableMfa and DeletePasskey do without the factor they ask for, for the
 // account that has lost all of them: the next sign-in takes the password
 // alone, and asks for an enrollment wherever the platform requires one of the
@@ -51,14 +53,6 @@ func ResetMFA(ctx context.Context, tx *sql.Tx, p ResetMFAParams) (Member, error)
 	if err != nil {
 		return Member{}, err
 	}
-	tenant, err := q.GetTenantByID(ctx, p.TenantID)
-	if err != nil {
-		return Member{}, fmt.Errorf("get tenant: %w", err)
-	}
-	rpID, err := tenantwebauthn.AdminConsoleRPID(tenant)
-	if err != nil {
-		return Member{}, fmt.Errorf("derive the console's relying party id: %w", err)
-	}
 
 	hasTotp := true
 	if _, err := q.GetUserMfaTotpByUserID(ctx, member.UserID); err != nil {
@@ -67,10 +61,7 @@ func ResetMFA(ctx context.Context, tx *sql.Tx, p ResetMFAParams) (Member, error)
 		}
 		hasTotp = false
 	}
-	passkeys, err := q.DeleteUserWebauthnCredentialsForRPID(ctx, dbmodels.DeleteUserWebauthnCredentialsForRPIDParams{
-		UserID: member.UserID,
-		RpID:   rpID,
-	})
+	passkeys, err := q.DeleteUserWebauthnCredentialsByUserID(ctx, member.UserID)
 	if err != nil {
 		return Member{}, fmt.Errorf("delete passkeys: %w", err)
 	}

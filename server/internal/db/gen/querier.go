@@ -427,7 +427,10 @@ type Querier interface {
 	// who holds the session, so a token cannot be dropped from another account.
 	DeleteUserPushDeviceForUser(ctx context.Context, arg DeleteUserPushDeviceForUserParams) (int64, error)
 	DeleteUserWebauthnCredential(ctx context.Context, id uuid.UUID) (int64, error)
-	DeleteUserWebauthnCredentialsForRPID(ctx context.Context, arg DeleteUserWebauthnCredentialsForRPIDParams) (int64, error)
+	// Every RP ID, not only the one the console derives now: a credential
+	// registered while the console was served on another host is dormant rather
+	// than gone, and moving the console back would let it sign in again.
+	DeleteUserWebauthnCredentialsByUserID(ctx context.Context, userID uuid.UUID) (int64, error)
 	// last_verified_step is left alone: the code that confirmed the enrollment
 	// was accepted through the same path a sign-in code is, which stored it.
 	//

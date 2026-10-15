@@ -136,19 +136,16 @@ func (q *Queries) DeleteUserWebauthnCredential(ctx context.Context, id uuid.UUID
 	return result.RowsAffected()
 }
 
-const DeleteUserWebauthnCredentialsForRPID = `-- name: DeleteUserWebauthnCredentialsForRPID :execrows
+const DeleteUserWebauthnCredentialsByUserID = `-- name: DeleteUserWebauthnCredentialsByUserID :execrows
 DELETE FROM user_webauthn_credentials
 WHERE user_id = $1
-    AND rp_id = $2
 `
 
-type DeleteUserWebauthnCredentialsForRPIDParams struct {
-	UserID uuid.UUID `json:"user_id"`
-	RpID   string    `json:"rp_id"`
-}
-
-func (q *Queries) DeleteUserWebauthnCredentialsForRPID(ctx context.Context, arg DeleteUserWebauthnCredentialsForRPIDParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, DeleteUserWebauthnCredentialsForRPID, arg.UserID, arg.RpID)
+// Every RP ID, not only the one the console derives now: a credential
+// registered while the console was served on another host is dormant rather
+// than gone, and moving the console back would let it sign in again.
+func (q *Queries) DeleteUserWebauthnCredentialsByUserID(ctx context.Context, userID uuid.UUID) (int64, error) {
+	result, err := q.db.ExecContext(ctx, DeleteUserWebauthnCredentialsByUserID, userID)
 	if err != nil {
 		return 0, err
 	}

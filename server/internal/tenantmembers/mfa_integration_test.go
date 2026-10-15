@@ -148,16 +148,19 @@ func countRows(t *testing.T, pg *testutil.PostgresEnv, query string, args ...any
 }
 
 // An account whose only factor is a passkey is reset like one with an
-// authenticator. The tenant's console is served outside its storefront's
-// domain, so a passkey registered for the storefront is no factor of the
-// console's and stays; the count of refused attempts goes with the factors.
-func TestResetMFARemovesTheConsolePasskeysAndTheLock(t *testing.T) {
+// authenticator, and every passkey goes, whatever relying party ID it was
+// registered for: one made while the console was served on another host is
+// dormant rather than gone, and would sign in again were the console moved
+// back. The count of refused attempts goes with the factors.
+func TestResetMFARemovesEveryPasskeyAndTheLock(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 	tenant := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	admin := pg.SeedTenantAdmin(t, tenant.ID, "TAADMIN", "admin@tenant-a.example.com", "Admin")
+	other := pg.SeedTenantAdmin(t, tenant.ID, "TAOTHER", "other@tenant-a.example.com", "Other")
 	seedPasskey(t, pg, tenant.ID, admin.ID, "PASSKEY00001", "admin-tenant-a.example.com")
 	seedPasskey(t, pg, tenant.ID, admin.ID, "PASSKEY00002", "tenant-a.example.com")
+	seedPasskey(t, pg, tenant.ID, other.ID, "PASSKEY00003", "admin-tenant-a.example.com")
 	if _, err := pg.DB.ExecContext(context.Background(), `
 		INSERT INTO user_mfa_lockouts (user_id, tenant_id, failed_attempts, locked_until)
 		VALUES ($1, $2, 0, now() + interval '15 minutes')
@@ -171,11 +174,11 @@ func TestResetMFARemovesTheConsolePasskeysAndTheLock(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("ResetMFA: %v", err)
 	}
-	if got := countRows(t, pg, "SELECT count(*) FROM user_webauthn_credentials WHERE user_id = $1 AND rp_id = 'admin-tenant-a.example.com'", admin.ID); got != 0 {
-		t.Fatalf("console passkeys = %d, want none", got)
+	if got := countRows(t, pg, "SELECT count(*) FROM user_webauthn_credentials WHERE user_id = $1", admin.ID); got != 0 {
+		t.Fatalf("passkeys = %d, want none", got)
 	}
-	if got := countRows(t, pg, "SELECT count(*) FROM user_webauthn_credentials WHERE user_id = $1 AND rp_id = 'tenant-a.example.com'", admin.ID); got != 1 {
-		t.Fatalf("storefront passkeys = %d, want the one untouched", got)
+	if got := countRows(t, pg, "SELECT count(*) FROM user_webauthn_credentials WHERE user_id = $1", other.ID); got != 1 {
+		t.Fatalf("other admin's passkeys = %d, want them untouched", got)
 	}
 	if got := countRows(t, pg, "SELECT count(*) FROM user_mfa_lockouts WHERE user_id = $1", admin.ID); got != 0 {
 		t.Fatalf("lockout rows = %d, want none", got)

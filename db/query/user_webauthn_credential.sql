@@ -99,7 +99,9 @@ RETURNING *;
 DELETE FROM user_webauthn_credentials
 WHERE id = sqlc.arg('id');
 
--- name: DeleteUserWebauthnCredentialsForRPID :execrows
+-- name: DeleteUserWebauthnCredentialsByUserID :execrows
+-- Every RP ID, not only the one the console derives now: a credential
+-- registered while the console was served on another host is dormant rather
+-- than gone, and moving the console back would let it sign in again.
 DELETE FROM user_webauthn_credentials
-WHERE user_id = sqlc.arg('user_id')
-    AND rp_id = sqlc.arg('rp_id');
+WHERE user_id = sqlc.arg('user_id');
