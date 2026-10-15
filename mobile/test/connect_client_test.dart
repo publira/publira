@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:fixnum/fixnum.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -10,9 +11,10 @@ import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/auth.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/catalog.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/domain.pb.dart' as pb;
-import 'package:publira/api/proto_json.dart';
+import 'package:publira/api/unknown_enum.dart';
 
 import 'support/connect_fixture_server.dart';
+import 'support/proto_response.dart';
 
 void main() {
   late ConnectFixtureServer server;
@@ -29,7 +31,7 @@ void main() {
     await server.close();
   });
 
-  test('a call decodes a Connect JSON success body', () async {
+  test('a call round-trips a binary request and answer', () async {
     final client = ConnectClient(baseUrl: server.baseUrl);
     final response = await _listSeries(
       client,
@@ -77,10 +79,10 @@ void main() {
     );
   });
 
-  test('a call maps a malformed success response to internal', () async {
+  test('a call maps a success body that does not decode to internal', () async {
     final client = ConnectClient(
       baseUrl: 'https://example.test',
-      httpClient: MockClient((_) async => http.Response('not JSON', 200)),
+      httpClient: MockClient((_) async => protoBytesResponse(undecodableBody)),
     );
 
     expect(
@@ -121,7 +123,7 @@ void main() {
       timeout: const Duration(milliseconds: 20),
       httpClient: MockClient((_) async {
         await Future<void>.delayed(const Duration(seconds: 1));
-        return http.Response('{}', 200);
+        return protoBytesResponse(const []);
       }),
     );
 
@@ -138,7 +140,7 @@ void main() {
   test('a call reads an empty success body as an empty message', () async {
     final client = ConnectClient(
       baseUrl: 'https://example.test',
-      httpClient: MockClient((_) async => http.Response('', 200)),
+      httpClient: MockClient((_) async => protoBytesResponse(const [])),
     );
 
     final response = await _listSeries(client);
@@ -146,22 +148,33 @@ void main() {
     expect(response, pb.ListPublishedSeriesResponse());
   });
 
-  test('a call rejects a success body that is not a JSON object', () async {
-    final client = ConnectClient(
-      baseUrl: 'https://example.test',
-      httpClient: MockClient((_) async => http.Response('[1, 2]', 200)),
-    );
-
-    expect(
-      () => _listSeries(client),
-      throwsA(
-        isA<ConnectException>().having(
-          (error) => error.code,
-          'code',
-          'internal',
-        ),
+  test('a call rejects a success in another codec', () async {
+    for (final response in [
+      http.Response('{}', 200, headers: {'content-type': 'application/json'}),
+      http.Response(
+        '<html>Sign in to the network</html>',
+        200,
+        headers: {'content-type': 'text/html'},
       ),
-    );
+      http.Response('', 200),
+    ]) {
+      final client = ConnectClient(
+        baseUrl: 'https://example.test',
+        httpClient: MockClient((_) async => response),
+      );
+
+      await expectLater(
+        _listSeries(client),
+        throwsA(
+          isA<ConnectException>().having(
+            (error) => error.code,
+            'code',
+            'internal',
+          ),
+        ),
+        reason: 'content-type ${response.headers['content-type']}',
+      );
+    }
   });
 
   test('a call keeps the code and message an error body carries', () async {
@@ -283,7 +296,7 @@ void main() {
       baseUrl: 'https://example.test',
       httpClient: MockClient((request) async {
         sent = request;
-        return http.Response('{}', 200);
+        return protoBytesResponse(const []);
       }),
     );
 
@@ -301,7 +314,11 @@ void main() {
     expect(sent.headers['connect-protocol-version'], '1');
     expect(sent.headers['X-Publira-Tenant-Id'], 'tenant-1');
     expect(sent.headers.containsKey('authorization'), isFalse);
-    expect(jsonDecode(sent.body), const {'limit': 20});
+    expect(sent.headers['content-type'], 'application/proto');
+    expect(
+      pb.ListPublishedSeriesRequest.fromBuffer(sent.bodyBytes),
+      pb.ListPublishedSeriesRequest(limit: 20),
+    );
   });
 
   test('a call sends the procedure under /rpc on the base origin', () async {
@@ -310,7 +327,7 @@ void main() {
       baseUrl: 'http://127.0.0.1:8000',
       httpClient: MockClient((request) async {
         sent = request;
-        return http.Response('{}', 200);
+        return protoBytesResponse(const []);
       }),
     );
 
@@ -330,7 +347,7 @@ void main() {
       baseUrl: 'https://example.test',
       httpClient: MockClient((request) async {
         sent = request;
-        return http.Response('{}', 200);
+        return protoBytesResponse(const []);
       }),
     );
 
@@ -350,7 +367,7 @@ void main() {
       accessToken: () => token,
       httpClient: MockClient((request) async {
         authorizations.add(request.headers['authorization']);
-        return http.Response('{}', 200);
+        return protoBytesResponse(const []);
       }),
     );
 
@@ -369,7 +386,7 @@ void main() {
       accessToken: () => 'stored-token',
       httpClient: MockClient((request) async {
         sent = request;
-        return http.Response('{}', 200);
+        return protoBytesResponse(const []);
       }),
     );
 
@@ -385,23 +402,22 @@ void main() {
       baseUrl: 'https://example.test',
       httpClient: MockClient((request) async {
         sent = request;
-        return http.Response('{}', 200);
+        return protoBytesResponse(const []);
       }),
     );
 
     await _getMe(client, ConnectCallContext(headers: {'cookie': 'a=b'}));
 
     expect(sent.headers['cookie'], 'a=b');
-    expect(sent.headers['content-type'], 'application/json');
+    expect(sent.headers['content-type'], 'application/proto');
   });
 
   test('a call hands the answer\'s headers back on its context', () async {
     final client = ConnectClient(
       baseUrl: 'https://example.test',
       httpClient: MockClient(
-        (_) async => http.Response(
-          '{}',
-          200,
+        (_) async => protoBytesResponse(
+          const [],
           headers: {'set-cookie': 'publira_aid=minted'},
         ),
       ),
@@ -418,7 +434,7 @@ void main() {
       baseUrl: 'https://example.test',
       httpClient: MockClient((_) async {
         await Future<void>.delayed(const Duration(milliseconds: 100));
-        return http.Response('{}', 200);
+        return protoBytesResponse(const []);
       }),
     );
 
@@ -437,33 +453,13 @@ void main() {
     );
   });
 
-  test('a call fails as internal on a field of the wrong type', () async {
-    final client = ConnectClient(
-      baseUrl: 'https://example.test',
-      httpClient: MockClient(
-        (_) async => http.Response(jsonEncode({'nextToken': 1}), 200),
-      ),
-    );
-
-    await expectLater(
-      _listSeries(client),
-      throwsA(
-        isA<ConnectException>().having(
-          (error) => error.code,
-          'code',
-          'internal',
-        ),
-      ),
-    );
-  });
-
   test('a call skips a field this build does not know', () async {
     final client = ConnectClient(
       baseUrl: 'https://example.test',
       httpClient: MockClient(
-        (_) async => http.Response(
-          jsonEncode({'nextToken': '20', 'addedLater': true}),
-          200,
+        (_) async => protoResponse(
+          pb.ListPublishedSeriesResponse(nextToken: '20')
+            ..unknownFields.mergeVarintField(_addedLaterField, Int64.ONE),
         ),
       ),
     );
@@ -471,6 +467,7 @@ void main() {
     final response = await _listSeries(client);
 
     expect(response.nextToken, '20');
+    expect(response.unknownFields.hasField(_addedLaterField), isTrue);
   });
 
   test(
@@ -479,19 +476,25 @@ void main() {
       final client = ConnectClient(
         baseUrl: 'https://example.test',
         httpClient: MockClient(
-          (_) async => http.Response(
-            jsonEncode({
-              'series': [
-                {'publicId': 'omitted'},
-                {'publicId': 'known', 'ageRating': 'SERIES_AGE_RATING_R15'},
-                {'publicId': 'later', 'ageRating': 'SERIES_AGE_RATING_R20'},
+          (_) async => protoResponse(
+            pb.ListPublishedSeriesResponse(
+              series: [
+                pb.Series(publicId: 'omitted'),
+                pb.Series(
+                  publicId: 'known',
+                  ageRating: pb.SeriesAgeRating.SERIES_AGE_RATING_R15,
+                ),
+                // A value a later API numbers, which no enum here names.
+                pb.Series(publicId: 'later')
+                  ..unknownFields.mergeVarintField(
+                    _ageRatingField,
+                    Int64(_unnamedEnumValue),
+                  ),
               ],
-            }),
-            200,
+            ),
           ),
         ),
       );
-      const ageRatingField = 15;
 
       final series = (await _listSeries(client)).series;
 
@@ -504,12 +507,22 @@ void main() {
         ],
       );
       expect(
-        [for (final item in series) carriesUnknownEnum(item, ageRatingField)],
+        [for (final item in series) carriesUnknownEnum(item, _ageRatingField)],
         [false, false, true],
       );
     },
   );
 }
+
+/// `Series.age_rating`.
+const _ageRatingField = 15;
+
+/// A field number no message here declares, standing for one a later API
+/// adds.
+const _addedLaterField = 999;
+
+/// An enum number no enum here names, standing for a value a later API adds.
+const _unnamedEnumValue = 999;
 
 /// `ListPublishedSeries` with [request], the call most of these go through.
 Future<pb.ListPublishedSeriesResponse> _listSeries(

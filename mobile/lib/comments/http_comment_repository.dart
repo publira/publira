@@ -236,7 +236,7 @@ class HttpCommentRepository implements CommentRepository {
   }
 
   /// The name the episode credits the comment's author as, empty when it
-  /// credits them as nothing: protojson omits the unset `creator` message
+  /// credits them as nothing: the wire format omits the unset `creator` message
   /// every other comment carries, which reads as one without a name.
   String _creatorName(pb.EpisodeCommentCreator creator) => creator.name.trim();
 

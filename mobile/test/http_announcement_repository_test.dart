@@ -23,7 +23,7 @@ void main() {
       title: 'Notice $id',
       body: 'Body of $id',
       linkUrl: linkUrl,
-      // protojson omits a false.
+      // The wire format omits a false.
       isRead: isRead ? true : null,
       createdAt: '2026-09-20T09:00:00Z',
       pinned: pinnedUntil.isNotEmpty ? true : null,

@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:protobuf/protobuf.dart';
 import 'package:publira/api/connect_exception.dart';
 import 'package:publira/api/error_details.dart';
-import 'package:publira/api/proto_json.dart';
+import 'package:publira/api/unknown_enum.dart';
 import 'package:publira/tenant/tenant_availability.dart';
 
 /// Reads the public-audience JWT the app holds right now.
@@ -41,12 +41,16 @@ class ConnectCallContext extends ClientContext {
   Map<String, String> responseHeaders = const {};
 }
 
-/// Connect unary client for the public API, speaking the JSON codec.
+/// Connect unary client for the public API, speaking the binary protobuf
+/// codec.
 ///
 /// The repositories call it through the `*ServiceApi` stubs `buf generate`
 /// writes into `lib/api/gen/` from `proto/`, so a request and an answer are
-/// the generated messages, written and read as protojson (`publicId`,
-/// `tenantId`), the way connect-go reads and writes them.
+/// the generated messages, written and read in the protobuf wire format,
+/// which connect-go answers every handler in.
+///
+/// A refusal is JSON whichever codec the request used: the Connect protocol
+/// writes a unary error as its own envelope rather than as a message.
 class ConnectClient implements RpcClient {
   ConnectClient({
     required this.baseUrl,
@@ -76,6 +80,10 @@ class ConnectClient implements RpcClient {
   final http.Client _http;
 
   static const _tenantHeader = 'X-Publira-Tenant-Id';
+
+  /// The content type of the binary protobuf codec, which a Connect unary
+  /// request names and a success answers with.
+  static const _protoContentType = 'application/proto';
 
   /// The package of every service the stubs name: `buf.gen.yaml` generates
   /// `publira.v1` alone for the app, and a stub passes its service by its
@@ -107,7 +115,7 @@ class ConnectClient implements RpcClient {
     ).replace(path: '/rpc/$_package.$serviceName/$methodName');
     final requestHeaders = <String, String>{
       ...?call?.headers,
-      'content-type': 'application/json',
+      'content-type': _protoContentType,
       'connect-protocol-version': '1',
     };
     final trimmedTenant = call?.tenantId?.trim() ?? '';
@@ -122,11 +130,7 @@ class ConnectClient implements RpcClient {
     late final http.Response response;
     try {
       response = await _http
-          .post(
-            uri,
-            headers: requestHeaders,
-            body: jsonEncode(request.toProto3Json()),
-          )
+          .post(uri, headers: requestHeaders, body: request.writeToBuffer())
           .timeout(ctx?.timeout ?? timeout);
     } on TimeoutException {
       throw const ConnectException(
@@ -142,6 +146,12 @@ class ConnectClient implements RpcClient {
       throw ConnectException(code: 'unavailable', message: error.message);
     }
 
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      _availability?.reportServed();
+      call?.responseHeaders = response.headers;
+      return _decodeMessage(response, emptyResponse);
+    }
+
     late final Map<String, Object?> decoded;
     try {
       decoded = _decodeBody(response.body);
@@ -151,19 +161,6 @@ class ConnectClient implements RpcClient {
         message: 'HTTP ${response.statusCode} returned a non-JSON response',
       );
     }
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      _availability?.reportServed();
-      call?.responseHeaders = response.headers;
-      try {
-        return mergeProto3Json(emptyResponse, decoded);
-      } on FormatException catch (error) {
-        // A field of the wrong type is as unusable as a body that is not
-        // JSON, and reaches the caller as a Connect error rather than as an
-        // exception no repository is catching.
-        throw ConnectException(code: 'internal', message: error.message);
-      }
-    }
-
     final responseCode = _readString(decoded, 'code');
     final responseMessage = _readString(decoded, 'message');
     final error = ConnectException(
@@ -183,6 +180,37 @@ class ConnectClient implements RpcClient {
       _onLegalPageAgreementRequired?.call();
     }
     throw error;
+  }
+
+  /// Merges the binary success body of [response] into [emptyResponse].
+  ///
+  /// A field this build does not know is kept in
+  /// [GeneratedMessage.unknownFields] rather than failing the call, so a
+  /// server that has grown a field still answers an older app, and so is an
+  /// enum value this build does not know, which [carriesUnknownEnum] reads.
+  /// An empty body is the empty message.
+  T _decodeMessage<T extends GeneratedMessage>(
+    http.Response response,
+    T emptyResponse,
+  ) {
+    // A success in another codec is not a message this client can read, and
+    // a page some proxy answered in the API's place could otherwise decode
+    // into a message that merely looks wrong.
+    final contentType = response.headers['content-type'] ?? '';
+    if (contentType.split(';').first.trim().toLowerCase() !=
+        _protoContentType) {
+      throw ConnectException(
+        code: 'internal',
+        message: 'HTTP ${response.statusCode} returned "$contentType"',
+      );
+    }
+    try {
+      return emptyResponse..mergeFromBuffer(response.bodyBytes);
+    } on InvalidProtocolBufferException catch (error) {
+      // A body that does not decode reaches the caller as a Connect error
+      // rather than as an exception no repository is catching.
+      throw ConnectException(code: 'internal', message: error.message);
+    }
   }
 
   String _fallbackCode(int statusCode) {

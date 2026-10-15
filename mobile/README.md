@@ -292,7 +292,7 @@ mobile/
 │   ├── app.dart                  # MaterialApp.router + AuthScope + CatalogScope
 │   ├── router.dart               # go_router definition
 │   ├── config.dart               # --dart-define API / image / tenant configuration
-│   ├── api/                      # Connect JSON client and its generated messages (gen/), tenant lookup, page fetch and decryption
+│   ├── api/                      # Connect client and its generated messages (gen/), tenant lookup, page fetch and decryption
 │   ├── auth/                     # Session, secure storage, AuthController
 │   ├── announcements/            # AnnouncementBoard: the tenant's announcements and the pinned banner
 │   ├── catalog/                  # CatalogRepository, eye-catch rendition choice and cover widget
@@ -627,7 +627,7 @@ An iOS build also needs the APNs auth key uploaded to the Firebase project; with
 
 ## API client
 
-The app calls the public API's `publira.v1` services through the messages and the `*ServiceApi` stubs `buf generate` writes into `lib/api/gen/` from `proto/`, the way the web apps call it through `packages/api-client/src/gen`. `ConnectClient` in `lib/api/connect_client.dart` is the transport the stubs are given: it posts each request to `/rpc/publira.v1.<Service>/<Method>` in the Connect protocol's JSON codec and decodes the answer into the generated response message.
+The app calls the public API's `publira.v1` services through the messages and the `*ServiceApi` stubs `buf generate` writes into `lib/api/gen/` from `proto/`, the way the web apps call it through `packages/api-client/src/gen`. `ConnectClient` in `lib/api/connect_client.dart` is the transport the stubs are given: it posts each request to `/rpc/publira.v1.<Service>/<Method>` in the Connect protocol's binary protobuf codec (`application/proto`) and decodes the answer into the generated response message. A refusal comes back as the Connect protocol's JSON error envelope whichever codec the request used.
 
 The generated directory is checked in and holds nothing but `buf` output. After a change under `proto/`, regenerate it from the repository root together with the server's Go and the web apps' TypeScript:
 

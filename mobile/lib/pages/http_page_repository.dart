@@ -40,7 +40,7 @@ class HttpPageRepository implements PageRepository {
     return PublishedPage(
       slug: page.slug,
       title: page.title,
-      // protojson omits an empty body, and a page may have been published
+      // The wire format omits an empty body, and a page may have been published
       // with nothing written yet.
       contentMarkdown: body.version.contentMarkdown,
       locale: page.locale,

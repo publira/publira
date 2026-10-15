@@ -24,7 +24,7 @@ void main() {
       id: id,
       notificationType: type,
       payload: payload,
-      // protojson omits a false.
+      // The wire format omits a false.
       isRead: isRead ? true : null,
       createdAt: createdAt,
     );

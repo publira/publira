@@ -326,7 +326,7 @@ void main() {
       currency: 'USD',
       purchasedAt: '2026-01-10T12:00:00Z',
       expiresAt: expiresAt.isNotEmpty ? expiresAt : null,
-      // protojson omits a false.
+      // The wire format omits a false.
       isActive: active ? true : null,
     );
 
