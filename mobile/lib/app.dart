@@ -461,7 +461,8 @@ class PubliraApp extends StatefulWidget {
   /// incoming links, or to inject a stream it writes itself.
   final IncomingLinks? incomingLinks;
 
-  /// The platform share sheet a series or an episode is handed to.
+  /// The platform share sheet a series or an episode is handed to, and the
+  /// purchase history is exported through.
   ///
   /// [PubliraApp.fromConfig] always supplies one. It is nullable for the
   /// direct constructor, which a widget test uses to build the app with no

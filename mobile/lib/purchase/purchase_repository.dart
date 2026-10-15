@@ -4,6 +4,14 @@ import 'package:publira/models/my_purchase.dart';
 import 'package:publira/purchase/checkout_launcher.dart';
 import 'package:publira/purchase/store_purchaser.dart';
 
+/// How many rows one page of the reader's purchases holds unless a read asks
+/// for another number, which is also the API's own fallback for a request
+/// naming no limit.
+const myPurchasePageLimit = 20;
+
+/// The most rows `ListMyPurchases` answers in one page.
+const myPurchasePageLimitMax = 100;
+
 /// How a checkout the browser handed back ended, as the `status` of the
 /// return URL the API built for the app names it.
 enum CheckoutOutcome {
@@ -125,11 +133,15 @@ abstract class PurchaseRepository {
   });
 
   /// The page of the signed-in reader's purchases [token] names, newest
-  /// first, and the first page for an empty one. A guest has bought nothing,
-  /// so they are answered [MyPurchasePage.empty] without a request.
+  /// first, and the first page for an empty one, holding at most [limit]
+  /// rows. A guest has bought nothing, so they are answered
+  /// [MyPurchasePage.empty] without a request.
   ///
   /// Throws [PurchaseFailure] on a transport or unexpected server error.
-  Future<MyPurchasePage> listMyPurchases({String token = ''});
+  Future<MyPurchasePage> listMyPurchases({
+    String token = '',
+    int limit = myPurchasePageLimit,
+  });
 }
 
 /// Looks up the [PurchaseRepository], [CheckoutLauncher], and

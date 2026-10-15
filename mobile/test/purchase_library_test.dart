@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/app.dart';
 import 'package:publira/auth/auth_session.dart';
+import 'package:publira/links/app_link.dart';
 import 'package:publira/models/my_purchase.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/purchase/purchase_failure.dart';
@@ -10,6 +11,7 @@ import 'package:publira/router.dart';
 
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
+import 'support/fake_links.dart';
 import 'support/fake_purchase.dart';
 import 'support/pump_until.dart';
 
@@ -22,6 +24,9 @@ void main() {
     bool isActive = true,
     DateTime? expiresAt,
     String? episodeTitle,
+    int refundedAmount = 0,
+    DateTime? refundedAt,
+    DateTime? revokedAt,
   }) => MyPurchase(
     id: id,
     seriesId: series.id,
@@ -32,15 +37,20 @@ void main() {
     price: 500,
     currency: 'JPY',
     isActive: isActive,
+    refundedAmount: refundedAmount,
     purchasedAt: DateTime.utc(2026, 1, 10, 12),
     expiresAt: expiresAt,
+    refundedAt: refundedAt,
+    revokedAt: revokedAt,
   );
 
   late GoRouter router;
   late FakePurchaseRepository purchases;
+  late FakeShareSheet share;
 
   setUp(() {
     purchases = FakePurchaseRepository();
+    share = FakeShareSheet();
   });
 
   Future<void> pumpApp(
@@ -48,6 +58,7 @@ void main() {
     required String initialLocation,
     AuthSession? session = fakeSession,
     bool withPurchases = true,
+    bool withShare = true,
   }) async {
     tester.view
       ..physicalSize = const Size(400, 900)
@@ -65,6 +76,8 @@ void main() {
         auth: fakeAuthController(session: session),
         purchases: withPurchases ? purchases : null,
         checkoutLauncher: withPurchases ? FakeCheckoutLauncher() : null,
+        site: const PublicSite(host: 'localhost'),
+        share: withShare ? share : null,
       ),
     );
     await tester.pump();
@@ -74,11 +87,13 @@ void main() {
   Future<void> openPurchases(
     WidgetTester tester, {
     AuthSession? session = fakeSession,
+    bool withShare = true,
   }) async {
     await pumpApp(
       tester,
       initialLocation: AppRoutes.accountPurchases,
       session: session,
+      withShare: withShare,
     );
     await pumpUntilRouteSettled(tester, find.text('Purchases'));
   }
@@ -165,6 +180,51 @@ void main() {
         find.descendant(of: active, matching: find.textContaining('Paid ¥500')),
         findsOne,
       );
+    });
+
+    testWidgets('marks a refunded purchase and a canceled one', (tester) async {
+      purchases.pages = [
+        [
+          purchase(
+            'purchase-refunded',
+            isActive: false,
+            refundedAmount: 500,
+            refundedAt: DateTime.utc(2026, 1, 11, 12),
+            revokedAt: DateTime.utc(2026, 1, 11, 12),
+          ),
+          purchase(
+            'purchase-canceled',
+            isActive: false,
+            expiresAt: DateTime.utc(2099, 1, 1),
+            revokedAt: DateTime.utc(2026, 1, 11, 12),
+          ),
+        ],
+      ];
+      await openPurchases(tester);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('purchases-list')),
+      );
+
+      final refunded = find.byKey(
+        const ValueKey('purchase-row-purchase-refunded'),
+      );
+      final canceled = find.byKey(
+        const ValueKey('purchase-row-purchase-canceled'),
+      );
+      expect(
+        find.descendant(of: refunded, matching: find.text('Refunded')),
+        findsOne,
+      );
+      expect(
+        find.descendant(of: canceled, matching: find.text('Canceled')),
+        findsOne,
+      );
+      expect(find.text('Expired'), findsNothing);
+      // Neither closed when a reading period did, so neither names one.
+      expect(find.textContaining('No expiry'), findsNothing);
+      expect(find.textContaining('Ended '), findsNothing);
+      expect(find.textContaining('Readable until '), findsNothing);
     });
 
     testWidgets('names the date a readable rental ends', (tester) async {
@@ -370,6 +430,115 @@ void main() {
       await pumpUntilFound(tester, find.byKey(const ValueKey('sign-in-email')));
 
       expect(router.state.uri.path, AppTab.account.locate(AppRoutes.signIn));
+    });
+  });
+
+  group('the purchase history export', () {
+    testWidgets('hands every purchase to the share sheet as one CSV file', (
+      tester,
+    ) async {
+      purchases.pages = [
+        [
+          purchase('purchase-active', episodeTitle: 'Still open'),
+          purchase(
+            'purchase-refunded',
+            isActive: false,
+            episodeTitle: 'Paid back',
+            refundedAmount: 500,
+            refundedAt: DateTime.utc(2026, 1, 11, 12),
+            revokedAt: DateTime.utc(2026, 1, 11, 12),
+          ),
+        ],
+        [
+          purchase(
+            'purchase-canceled',
+            isActive: false,
+            episodeTitle: 'Disputed',
+            revokedAt: DateTime.utc(2026, 1, 12, 12),
+          ),
+        ],
+      ];
+      await openPurchases(tester);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('purchase-row-purchase-active')),
+      );
+      purchases.limits.clear();
+
+      await tester.tap(find.byKey(const ValueKey('purchases-export')));
+      await tester.pump();
+      await tester.pump();
+
+      final file = share.files.single;
+      expect(file.name, 'purchases.csv');
+      expect(file.mimeType, 'text/csv');
+      expect(file.bytes.take(3), [0xEF, 0xBB, 0xBF]);
+      final lines = file.text.split('\r\n');
+      expect(lines.first, startsWith('purchase_id,purchased_at,'));
+      final episode = '${series.title},${series.episodeCount}';
+      expect(lines.sublist(1), [
+        'purchase-active,2026-01-10T12:00:00Z,$episode,Still open,'
+            '500,0,JPY,,,active',
+        'purchase-refunded,2026-01-10T12:00:00Z,$episode,Paid back,'
+            '500,500,JPY,,2026-01-11T12:00:00Z,refunded',
+        'purchase-canceled,2026-01-10T12:00:00Z,$episode,Disputed,'
+            '500,0,JPY,,,canceled',
+        '',
+      ]);
+      // The whole history, read in the largest pages the API answers rather
+      // than the ones the list shows.
+      expect(purchases.limits, [100, 100]);
+    });
+
+    testWidgets('says so when the history could not be read', (tester) async {
+      purchases.pages = [
+        [purchase('purchase-1')],
+      ];
+      await openPurchases(tester);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('purchase-row-purchase-1')),
+      );
+
+      purchases.listFailure = const PurchaseFailure(
+        PurchaseFailureKind.unexpected,
+      );
+      await tester.tap(find.byKey(const ValueKey('purchases-export')));
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('purchases-export-failed')),
+      );
+
+      expect(
+        find.text('Could not export your purchases. Try again.'),
+        findsOne,
+      );
+      expect(share.files, isEmpty);
+    });
+
+    testWidgets('is not offered for a reader who bought nothing', (
+      tester,
+    ) async {
+      await openPurchases(tester);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('purchases-empty')),
+      );
+
+      expect(find.byKey(const ValueKey('purchases-export')), findsNothing);
+    });
+
+    testWidgets('is not offered in a run with no share sheet', (tester) async {
+      purchases.pages = [
+        [purchase('purchase-1')],
+      ];
+      await openPurchases(tester, withShare: false);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('purchase-row-purchase-1')),
+      );
+
+      expect(find.byKey(const ValueKey('purchases-export')), findsNothing);
     });
   });
 }
