@@ -160,7 +160,7 @@ Confirm all applicable invariants:
 - parent Epics have `epic`, valid Sub-issues, and no Effort
 - dependencies represent prerequisites rather than mere association
 - no Issue has multiple parents
-- every open reader-facing `area/web-storefront` Issue has an `area/mobile` counterpart under the same parent and in the same milestone, or states in its body why it does not
+- every open reader-facing `area/web-storefront` Issue has an `area/mobile` counterpart under the same parent, or states in its body why it does not; the counterpart is in the same milestone, or in a later one with its own body saying why the app waits
 - counts and sampled read-backs match the migration plan
 - repository files remain unchanged unless configuration changes were explicitly required
 
