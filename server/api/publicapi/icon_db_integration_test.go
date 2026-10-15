@@ -248,6 +248,34 @@ func TestDBMyIconLeavesEveryOtherReadersIconAlone(t *testing.T) {
 	}
 }
 
+// A password sign-in answers with the account as GetMe reads it, icon
+// included, so a client that keeps the icon in its session has it from the
+// sign-in on rather than from the next GetMe.
+func TestDBLoginAnswersWithTheReadersIcon(t *testing.T) {
+	env := newIconDBEnv(t, openReaderGuards(), &iconStore{})
+	tenant := env.seedTenant(t, "ICONLOGIN", "icon-login.example.com", "Icon Tenant")
+	withIcon := env.PG.SeedEndUser(t, tenant.ID, "ICONSIGNIN", "icon-login-with@example.com", "Icon Reader")
+	withoutIcon := env.PG.SeedEndUser(t, tenant.ID, "PLAINSIGNIN", "icon-login-none@example.com", "Plain Reader")
+
+	uploaded := env.mustUploadMyIcon(t, tenant, withIcon)
+
+	signedIn, err := loginReader(env.authClient(), tenant, withIcon.Email)
+	if err != nil {
+		t.Fatalf("Login with an icon: %v", err)
+	}
+	if got := signedIn.User; iconURL(t, got.IconImageVariants) != iconURL(t, uploaded.IconImageVariants) || got.IconImageUpdatedAt != uploaded.IconImageUpdatedAt {
+		t.Fatalf("Login with an icon = %v at %q, want %v at %q", got.IconImageVariants, got.IconImageUpdatedAt, uploaded.IconImageVariants, uploaded.IconImageUpdatedAt)
+	}
+
+	signedIn, err = loginReader(env.authClient(), tenant, withoutIcon.Email)
+	if err != nil {
+		t.Fatalf("Login without an icon: %v", err)
+	}
+	if got := signedIn.User; len(got.IconImageVariants) != 0 || got.IconImageUpdatedAt != "" {
+		t.Fatalf("Login without an icon = %v at %q, want no icon", got.IconImageVariants, got.IconImageUpdatedAt)
+	}
+}
+
 func TestDBUploadMyIconRefusesAnUploadItCannotStore(t *testing.T) {
 	env := newIconDBEnv(t, openReaderGuards(), &iconStore{})
 	tenant := env.seedTenant(t, "ICONBAD", "icon-bad.example.com", "Icon Tenant")

@@ -60,9 +60,9 @@ export type User = Message<"publira.types.v1.User"> & {
   /**
    * The reader's own birth date as YYYY-MM-DD, empty when they have given
    * none. Set where a User stands for the account the request authenticated
-   * as, which is GetMe and UpdateMe; empty everywhere a User names someone the
-   * caller is merely looking at, so a console listing accounts never carries
-   * it.
+   * or signed in as, which is GetMe, UpdateMe, Login and LoginWithIdToken;
+   * empty everywhere a User names someone the caller is merely looking at, so
+   * a console listing accounts never carries it.
    *
    * @generated from field: string birth_date = 4;
    */
@@ -70,8 +70,9 @@ export type User = Message<"publira.types.v1.User"> & {
 
   /**
    * The account's email address, under the same rule as birth_date: set by the
-   * public API's GetMe and UpdateMe, so a form can offer the reader their own
-   * address, and empty wherever a User names someone else.
+   * public API's GetMe, UpdateMe, Login and LoginWithIdToken, so a form can
+   * offer the reader their own address, and empty wherever a User names
+   * someone else.
    *
    * @generated from field: string email = 5;
    */
@@ -80,8 +81,8 @@ export type User = Message<"publira.types.v1.User"> & {
   /**
    * The account's icon. Set where the public API answers with the caller's
    * own account as GetMe reads it — GetMe, UpdateMe, UploadMyIcon,
-   * DeleteMyIcon and LoginWithIdToken — and empty wherever a User names
-   * someone else. The variant list is empty, and icon_image_updated_at with
+   * DeleteMyIcon, Login and LoginWithIdToken — and empty wherever a User
+   * names someone else. The variant list is empty, and icon_image_updated_at with
    * it, for an account that shows no icon.
    *
    * @generated from field: string icon_image_updated_at = 6;
