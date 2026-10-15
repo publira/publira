@@ -21,6 +21,9 @@ import {
 import { resolveTenantRouting, SUSPENDED_TENANT } from "./lib/tenant";
 
 const PUBLIC_PATHS = new Set([
+  // A password manager opens it signed in or not, and it only redirects to
+  // `/forgot-password`, which is public too.
+  "/.well-known/change-password",
   "/accept-invite",
   "/confirm-email",
   "/confirm-password",

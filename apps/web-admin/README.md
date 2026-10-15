@@ -77,6 +77,10 @@ Required environment variables:
 
 - `PUBLIRA_AUTH_SECRET` (32 bytes or more) — the key that seals the console's session cookie. There is no fallback: an unset or too short value raises. For the details and how to issue one, see the [repository README](../../README.md#session-cookie-encryption-key-publira_auth_secret)
 
+### `/.well-known/change-password`
+
+The [change-password URL](https://www.w3.org/TR/change-password-url/) a password manager opens for the console, served by `app/[tenant_id]/.well-known/change-password/route.ts` as a `302` to `/forgot-password` on the same host. It is a public path in `proxy.ts`, so a member is sent there whether signed in or not.
+
 ### Second factor (MFA)
 
 A password that is accepted but still owes a second factor earns a short-lived challenge instead of a session. `/mfa` is the screen that spends it — a public path in `proxy.ts`, because it is reached without a session — and an administrator manages their own factor from the Two-step verification card on `/settings/account`.
