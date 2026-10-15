@@ -56,6 +56,8 @@ A page there is written for a reader with a task — an operator deploying an in
 
 Enforced by `node scripts/check-docs.ts` in the `Check` job, for everything but the choice of where a text belongs, which is a review judgement.
 
+Authoring rules for the pages themselves, including when a change bumps a page's `updated` date: see [`docs/AGENTS.md`](docs/AGENTS.md).
+
 ## Git commits
 
 Commit subjects and PR titles use Conventional Commits (see `.github/pull_request_template.md`).
