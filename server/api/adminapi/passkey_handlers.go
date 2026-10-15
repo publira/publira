@@ -104,9 +104,23 @@ func (s *adminServer) passkeyUser(ctx context.Context, rp *tenantwebauthn.Relyin
 	}, nil
 }
 
-// startCeremony keeps the server's half of a ceremony until its finish.
+// startCeremony keeps the server's half of a ceremony until its finish, in a
+// transaction of its own that holds the account's lock on ceremonies of that
+// kind, so begins arriving together cannot each count the same open
+// ceremonies and pass passkeyOpenCeremonies between them.
 func (s *adminServer) startCeremony(ctx context.Context, actor mfaActor, kind string, ceremony tenantwebauthn.Ceremony) error {
-	if err := s.queriesFor(ctx).StartUserWebauthnCeremony(ctx, dbmodels.StartUserWebauthnCeremonyParams{
+	userID := actor.User.ID.String()
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return s.internalDBError(ctx, "failed to begin passkey ceremony transaction", err, "user_id", userID)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	q := dbmodels.New(tx)
+	if err := q.LockUserWebauthnCeremonies(ctx, dbmodels.LockUserWebauthnCeremoniesParams{UserID: actor.User.ID, Ceremony: kind}); err != nil {
+		return s.internalDBError(ctx, "failed to lock passkey ceremonies", err, "user_id", userID)
+	}
+	if err := q.StartUserWebauthnCeremony(ctx, dbmodels.StartUserWebauthnCeremonyParams{
 		MaxOpen:   passkeyOpenCeremonies,
 		Challenge: ceremony.Challenge,
 		TenantID:  actor.Tenant.ID,
@@ -115,7 +129,10 @@ func (s *adminServer) startCeremony(ctx context.Context, actor mfaActor, kind st
 		RpID:      ceremony.RPID,
 		ExpiresAt: ceremony.ExpiresAt,
 	}); err != nil {
-		return s.internalDBError(ctx, "failed to store the passkey ceremony", err, "user_id", actor.User.ID.String())
+		return s.internalDBError(ctx, "failed to store the passkey ceremony", err, "user_id", userID)
+	}
+	if err := tx.Commit(); err != nil {
+		return s.internalDBError(ctx, "failed to commit the passkey ceremony", err, "user_id", userID)
 	}
 	return nil
 }

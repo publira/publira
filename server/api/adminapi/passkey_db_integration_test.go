@@ -717,6 +717,48 @@ func TestAdminPasskeyBeginBoundsTheOpenCeremonies(t *testing.T) {
 	}
 }
 
+// Begins arriving together keep to the same bound: a begin counts the open
+// ceremonies only once no other begin of the account is between its count and
+// its insert, so it waits while one holds the account's ceremony lock.
+func TestAdminPasskeyBeginWaitsForAConcurrentBegin(t *testing.T) {
+	env := newPasskeyDBEnv(t)
+	tenant := seedMfaTenant(t, env)
+	registerPasskey(t, env, tenant, "")
+	challenge := verifyChallenge(t, env, tenant)
+
+	concurrent, err := env.PG.DB.BeginTx(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("BeginTx: %v", err)
+	}
+	defer concurrent.Rollback() //nolint:errcheck
+	if err := dbmodels.New(concurrent).LockUserWebauthnCeremonies(context.Background(), dbmodels.LockUserWebauthnCeremoniesParams{
+		UserID:   tenant.User.ID,
+		Ceremony: "authentication",
+	}); err != nil {
+		t.Fatalf("LockUserWebauthnCeremonies: %v", err)
+	}
+
+	begun := make(chan error, 1)
+	go func() {
+		_, err := env.authClient().BeginPasskeyVerification(context.Background(), &publiraadminv1.AdminAuthServiceBeginPasskeyVerificationRequest{
+			Tenant:         tenant.tenantContext(),
+			ChallengeToken: challenge.Token,
+		})
+		begun <- err
+	}()
+	select {
+	case err := <-begun:
+		t.Fatalf("BeginPasskeyVerification = %v while another begin held the lock, want it to wait", err)
+	case <-time.After(500 * time.Millisecond):
+	}
+	if err := concurrent.Commit(); err != nil {
+		t.Fatalf("Commit: %v", err)
+	}
+	if err := <-begun; err != nil {
+		t.Fatalf("BeginPasskeyVerification: %v", err)
+	}
+}
+
 // An enroll challenge stands for an account with no second factor. Once the
 // owner enrolls one under their own login, another login's enroll challenge
 // can neither finish a passkey registration it had already begun nor start an

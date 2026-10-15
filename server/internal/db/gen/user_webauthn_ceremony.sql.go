@@ -12,6 +12,31 @@ import (
 	"github.com/google/uuid"
 )
 
+const LockUserWebauthnCeremonies = `-- name: LockUserWebauthnCeremonies :exec
+
+SELECT pg_advisory_xact_lock(
+    hashtextextended(
+        'user_webauthn_ceremonies:' || $1::uuid::text || ':' || $2::text,
+        0
+    )
+)
+`
+
+type LockUserWebauthnCeremoniesParams struct {
+	UserID   uuid.UUID `json:"user_id"`
+	Ceremony string    `json:"ceremony"`
+}
+
+// WebAuthn ceremonies between their begin and their finish.
+// Serialises the begins of one account's ceremonies of one kind for the rest
+// of the transaction. StartUserWebauthnCeremony counts what is open and adds to
+// it in one statement, and two of those running at once would each count from
+// the same snapshot and both stay within the cap they then exceed together.
+func (q *Queries) LockUserWebauthnCeremonies(ctx context.Context, arg LockUserWebauthnCeremoniesParams) error {
+	_, err := q.db.ExecContext(ctx, LockUserWebauthnCeremonies, arg.UserID, arg.Ceremony)
+	return err
+}
+
 const SpendUserWebauthnCeremony = `-- name: SpendUserWebauthnCeremony :one
 DELETE FROM user_webauthn_ceremonies
 WHERE challenge = $1
@@ -46,7 +71,6 @@ func (q *Queries) SpendUserWebauthnCeremony(ctx context.Context, arg SpendUserWe
 }
 
 const StartUserWebauthnCeremony = `-- name: StartUserWebauthnCeremony :exec
-
 WITH abandoned AS (
     DELETE FROM user_webauthn_ceremonies
     WHERE user_webauthn_ceremonies.challenge IN (
@@ -92,12 +116,13 @@ type StartUserWebauthnCeremonyParams struct {
 	MaxOpen   int32     `json:"max_open"`
 }
 
-// WebAuthn ceremonies between their begin and their finish.
 // Ceremonies of one account run side by side, so a second tab or device does
 // not void the first. Beginning one drops the account's expired ceremonies of
 // the same kind and all but the newest that, with this one, make up
 // max_open, which bounds what a caller who keeps calling a begin can leave in
 // the table.
+// The caller holds LockUserWebauthnCeremonies, so the open ceremonies this
+// counts are the ones there are.
 func (q *Queries) StartUserWebauthnCeremony(ctx context.Context, arg StartUserWebauthnCeremonyParams) error {
 	_, err := q.db.ExecContext(ctx, StartUserWebauthnCeremony,
 		arg.Challenge,

@@ -2455,6 +2455,12 @@ type Querier interface {
 	// covers both factor tables and the codes, and the first factor has no row to
 	// lock yet, so the lock is taken on the account's identity instead.
 	LockUserMfaFactors(ctx context.Context, userID uuid.UUID) error
+	// WebAuthn ceremonies between their begin and their finish.
+	// Serialises the begins of one account's ceremonies of one kind for the rest
+	// of the transaction. StartUserWebauthnCeremony counts what is open and adds to
+	// it in one statement, and two of those running at once would each count from
+	// the same snapshot and both stay within the cap they then exceed together.
+	LockUserWebauthnCeremonies(ctx context.Context, arg LockUserWebauthnCeremoniesParams) error
 	// Inserts a read row for every announcement of the caller's tenant that lacks
 	// one.
 	MarkAllAnnouncementsAsRead(ctx context.Context, arg MarkAllAnnouncementsAsReadParams) (int64, error)
@@ -2896,12 +2902,13 @@ type Querier interface {
 	// may verify against it. A ceremony is spent whatever the verification then
 	// answers, so a refused response cannot be retried against the same challenge.
 	SpendUserWebauthnCeremony(ctx context.Context, arg SpendUserWebauthnCeremonyParams) (UserWebauthnCeremony, error)
-	// WebAuthn ceremonies between their begin and their finish.
 	// Ceremonies of one account run side by side, so a second tab or device does
 	// not void the first. Beginning one drops the account's expired ceremonies of
 	// the same kind and all but the newest that, with this one, make up
 	// max_open, which bounds what a caller who keeps calling a begin can leave in
 	// the table.
+	// The caller holds LockUserWebauthnCeremonies, so the open ceremonies this
+	// counts are the ones there are.
 	StartUserWebauthnCeremony(ctx context.Context, arg StartUserWebauthnCeremonyParams) error
 	// Suspends an account and invalidates the sessions it holds. An account that
 	// is already suspended is no rows, like another tenant's. Keeping the tenant an

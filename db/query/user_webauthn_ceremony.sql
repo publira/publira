@@ -1,11 +1,25 @@
 -- WebAuthn ceremonies between their begin and their finish.
 
+-- name: LockUserWebauthnCeremonies :exec
+-- Serialises the begins of one account's ceremonies of one kind for the rest
+-- of the transaction. StartUserWebauthnCeremony counts what is open and adds to
+-- it in one statement, and two of those running at once would each count from
+-- the same snapshot and both stay within the cap they then exceed together.
+SELECT pg_advisory_xact_lock(
+    hashtextextended(
+        'user_webauthn_ceremonies:' || sqlc.arg('user_id')::uuid::text || ':' || sqlc.arg('ceremony')::text,
+        0
+    )
+);
+
 -- name: StartUserWebauthnCeremony :exec
 -- Ceremonies of one account run side by side, so a second tab or device does
 -- not void the first. Beginning one drops the account's expired ceremonies of
 -- the same kind and all but the newest that, with this one, make up
 -- max_open, which bounds what a caller who keeps calling a begin can leave in
 -- the table.
+-- The caller holds LockUserWebauthnCeremonies, so the open ceremonies this
+-- counts are the ones there are.
 WITH abandoned AS (
     DELETE FROM user_webauthn_ceremonies
     WHERE user_webauthn_ceremonies.challenge IN (
