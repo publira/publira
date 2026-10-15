@@ -284,7 +284,23 @@ func (s *adminServer) mfaActorFor(
 	challengeToken string,
 ) (mfaActor, error) {
 	if strings.TrimSpace(challengeToken) != "" {
-		return s.actorFromChallenge(ctx, tenantCtx, challengeToken, auth.AudienceAdminMFAEnroll)
+		actor, err := s.actorFromChallenge(ctx, tenantCtx, challengeToken, auth.AudienceAdminMFAEnroll)
+		if err != nil {
+			return mfaActor{}, err
+		}
+		// An enroll challenge was minted for an account with no second
+		// factor. Once the account has one, through this challenge or another
+		// login's, the challenge no longer stands for what it was issued for:
+		// honouring it would let whoever holds it enroll a factor of their own
+		// and sign in past the one the owner set up.
+		factors, err := s.mfaFactorsFor(ctx, actor.Tenant, actor.User.ID)
+		if err != nil {
+			return mfaActor{}, err
+		}
+		if factors.any() {
+			return mfaActor{}, invalidSessionError()
+		}
+		return actor, nil
 	}
 	tenant, user, role, err := s.currentUserFromSession(ctx, tenantCtx, headers)
 	if err != nil {
@@ -505,6 +521,20 @@ func replaceRecoveryCodes(ctx context.Context, queries Querier, tenantID, userID
 	return codes, nil
 }
 
+// currentPasskeys counts the passkeys the account holds for the console's
+// relying party ID now, on q.
+func (s *adminServer) currentPasskeys(ctx context.Context, q Querier, actor mfaActor) (int64, error) {
+	rpID, err := s.adminRPID(ctx, actor.Tenant)
+	if err != nil {
+		return 0, err
+	}
+	passkeys, err := q.CountUserWebauthnCredentialsForRPID(ctx, dbmodels.CountUserWebauthnCredentialsForRPIDParams{UserID: actor.User.ID, RpID: rpID})
+	if err != nil {
+		return 0, s.internalDBError(ctx, "failed to count passkeys", err, "user_id", actor.User.ID.String())
+	}
+	return passkeys, nil
+}
+
 // lockMfaFactors serialises the transaction behind q with every other change
 // to the account's second factors and recovery codes. Anything the
 // transaction decides from what else the account holds has to be read after
@@ -647,6 +677,9 @@ func (s *adminServer) ConfirmMfaEnrollment(
 	case errors.Is(err, errMfaChallengeSpent):
 		s.recordMfaAudit(ctx, actor, auditActionMfaEnrolled, auditlog.OutcomeFailure, "challenge_spent")
 		return nil, invalidSessionError()
+	case errors.Is(err, errMfaEnrollChallengeStale):
+		s.recordMfaAudit(ctx, actor, auditActionMfaEnrolled, auditlog.OutcomeFailure, "challenge_stale")
+		return nil, invalidSessionError()
 	case errors.Is(err, errMfaAlreadyEnabled):
 		s.recordMfaAudit(ctx, actor, auditActionMfaEnrolled, auditlog.OutcomeFailure, "already_enabled")
 		return nil, connect.NewError(connect.CodeFailedPrecondition, "mfa is already enabled")
@@ -674,12 +707,14 @@ func (s *adminServer) ConfirmMfaEnrollment(
 	return resp, nil
 }
 
-// The two refusals enableMfa reaches only by losing a race with a concurrent
-// confirmation, which ConfirmMfaEnrollment answers apart from a database
-// failure.
+// The refusals enableMfa and storePasskey reach only by losing a race with a
+// concurrent enrollment, which their RPCs answer apart from a database
+// failure. errMfaEnrollChallengeStale is an enroll challenge presented after
+// the account gained a factor through another one.
 var (
-	errMfaChallengeSpent = errors.New("mfa challenge already spent")
-	errMfaAlreadyEnabled = errors.New("mfa already enabled")
+	errMfaChallengeSpent       = errors.New("mfa challenge already spent")
+	errMfaAlreadyEnabled       = errors.New("mfa already enabled")
+	errMfaEnrollChallengeStale = errors.New("mfa enroll challenge stale")
 )
 
 // enableMfa marks the authenticator confirmed and issues the recovery codes
@@ -715,6 +750,13 @@ func (s *adminServer) enableMfa(ctx context.Context, actor mfaActor) ([]string, 
 		}
 		if claimed == 0 {
 			return nil, errMfaChallengeSpent
+		}
+		// mfaActorFor checked this before the lock; a passkey registered
+		// since, under another login's enroll challenge, is seen here.
+		if passkeys, err := s.currentPasskeys(ctx, q, actor); err != nil {
+			return nil, err
+		} else if passkeys > 0 {
+			return nil, errMfaEnrollChallengeStale
 		}
 	}
 	enabled, err := q.EnableUserMfaTotp(ctx, actor.User.ID)

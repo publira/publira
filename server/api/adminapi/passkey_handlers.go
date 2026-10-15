@@ -222,6 +222,9 @@ func (s *adminServer) FinishPasskeyRegistration(
 	case errors.Is(err, errMfaChallengeSpent):
 		s.recordMfaAudit(ctx, actor, auditActionMfaPasskeyRegistered, auditlog.OutcomeFailure, "challenge_spent")
 		return nil, invalidSessionError()
+	case errors.Is(err, errMfaEnrollChallengeStale):
+		s.recordMfaAudit(ctx, actor, auditActionMfaPasskeyRegistered, auditlog.OutcomeFailure, "challenge_stale")
+		return nil, invalidSessionError()
 	case errors.Is(err, errPasskeyAlreadyRegistered):
 		s.recordMfaAudit(ctx, actor, auditActionMfaPasskeyRegistered, auditlog.OutcomeFailure, "already_registered")
 		return nil, connect.NewError(connect.CodeAlreadyExists, "passkey is already registered")
@@ -295,6 +298,19 @@ func (s *adminServer) storePasskey(
 		}
 		if claimed == 0 {
 			return dbmodels.UserWebauthnCredential{}, nil, errMfaChallengeSpent
+		}
+		// mfaActorFor checked this before the lock; a factor enrolled since,
+		// under another login's enroll challenge, is seen here.
+		totp, err := q.GetUserMfaTotpByUserID(ctx, actor.User.ID)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return dbmodels.UserWebauthnCredential{}, nil, s.internalDBError(ctx, "failed to get user mfa totp", err, "user_id", userID)
+		}
+		passkeys, err := s.currentPasskeys(ctx, q, actor)
+		if err != nil {
+			return dbmodels.UserWebauthnCredential{}, nil, err
+		}
+		if totp.EnabledAt.Valid || passkeys > 0 {
+			return dbmodels.UserWebauthnCredential{}, nil, errMfaEnrollChallengeStale
 		}
 	}
 	id, err := uuid.NewV7()

@@ -330,21 +330,13 @@ func TestAdminPasskeyRegistrationFinishesALoginStoppedAtEnrollment(t *testing.T)
 		t.Fatalf("recovery codes = %d, want %d", len(finished.RecoveryCodes), mfa.RecoveryCodeCount)
 	}
 
-	// The enroll challenge bought that session and no other.
-	begun, err = env.authClient().BeginPasskeyRegistration(context.Background(), &publiraadminv1.AdminAuthServiceBeginPasskeyRegistrationRequest{
+	// The enroll challenge bought that session and no other: the account now
+	// holds a factor, so the challenge does not even begin another ceremony.
+	if _, err := env.authClient().BeginPasskeyRegistration(context.Background(), &publiraadminv1.AdminAuthServiceBeginPasskeyRegistrationRequest{
 		Tenant:         tenant.tenantContext(),
 		ChallengeToken: login.MfaChallenge.Token,
-	})
-	if err != nil {
-		t.Fatalf("BeginPasskeyRegistration again: %v", err)
-	}
-	_, err = env.authClient().FinishPasskeyRegistration(context.Background(), &publiraadminv1.AdminAuthServiceFinishPasskeyRegistrationRequest{
-		Tenant:         tenant.tenantContext(),
-		ChallengeToken: login.MfaChallenge.Token,
-		CredentialJson: webauthntest.New(t, passkeyConsoleOrigin).Register(t, begun.CreationOptionsJson),
-	})
-	if connect.CodeOf(err) != connect.CodeUnauthenticated {
-		t.Fatalf("FinishPasskeyRegistration with a spent enroll challenge = %v, want unauthenticated", err)
+	}); connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("BeginPasskeyRegistration with a spent enroll challenge = %v, want unauthenticated", err)
 	}
 	if got := env.countRows(t, "SELECT count(*) FROM user_webauthn_credentials WHERE user_id = $1", tenant.User.ID); got != 1 {
 		t.Fatalf("passkeys = %d, want only the one the challenge bought", got)
@@ -722,5 +714,67 @@ func TestAdminPasskeyBeginBoundsTheOpenCeremonies(t *testing.T) {
 	}
 	if got := env.countRows(t, "SELECT count(*) FROM user_webauthn_ceremonies WHERE user_id = $1 AND ceremony = 'authentication'", tenant.User.ID); got != passkeyOpenCeremonies {
 		t.Fatalf("open ceremonies = %d, want %d", got, passkeyOpenCeremonies)
+	}
+}
+
+// An enroll challenge stands for an account with no second factor. Once the
+// owner enrolls one under their own login, another login's enroll challenge
+// can neither finish a passkey registration it had already begun nor start an
+// authenticator, so whoever holds it cannot enroll a factor of their own and
+// sign in past the owner's.
+func TestAdminMfaEnrollChallengeGoesStaleOnceAFactorIsEnrolled(t *testing.T) {
+	env := newPasskeyDBEnv(t)
+	requireTenantAdminMFA(t, env)
+	tenant := seedMfaTenant(t, env)
+
+	owner := mfaLogin(t, env, tenant).MfaChallenge
+	other := mfaLogin(t, env, tenant).MfaChallenge
+	if owner == nil || other == nil || owner.Kind != publiraadminv1.MfaChallengeKind_MFA_CHALLENGE_KIND_ENROLL || other.Kind != publiraadminv1.MfaChallengeKind_MFA_CHALLENGE_KIND_ENROLL {
+		t.Fatalf("challenges = %v and %v, want two ENROLL challenges", owner, other)
+	}
+
+	// The other login begins its own registration first.
+	begunByOther, err := env.authClient().BeginPasskeyRegistration(context.Background(), &publiraadminv1.AdminAuthServiceBeginPasskeyRegistrationRequest{
+		Tenant:         tenant.tenantContext(),
+		ChallengeToken: other.Token,
+	})
+	if err != nil {
+		t.Fatalf("BeginPasskeyRegistration under the other challenge: %v", err)
+	}
+
+	begun, err := env.authClient().BeginPasskeyRegistration(context.Background(), &publiraadminv1.AdminAuthServiceBeginPasskeyRegistrationRequest{
+		Tenant:         tenant.tenantContext(),
+		ChallengeToken: owner.Token,
+	})
+	if err != nil {
+		t.Fatalf("BeginPasskeyRegistration: %v", err)
+	}
+	if _, err := env.authClient().FinishPasskeyRegistration(context.Background(), &publiraadminv1.AdminAuthServiceFinishPasskeyRegistrationRequest{
+		Tenant:         tenant.tenantContext(),
+		ChallengeToken: owner.Token,
+		CredentialJson: webauthntest.New(t, passkeyConsoleOrigin).Register(t, begun.CreationOptionsJson),
+	}); err != nil {
+		t.Fatalf("FinishPasskeyRegistration: %v", err)
+	}
+
+	_, err = env.authClient().FinishPasskeyRegistration(context.Background(), &publiraadminv1.AdminAuthServiceFinishPasskeyRegistrationRequest{
+		Tenant:         tenant.tenantContext(),
+		ChallengeToken: other.Token,
+		CredentialJson: webauthntest.New(t, passkeyConsoleOrigin).Register(t, begunByOther.CreationOptionsJson),
+	})
+	if connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("FinishPasskeyRegistration under a stale enroll challenge = %v, want unauthenticated", err)
+	}
+	if _, err := env.authClient().StartMfaEnrollment(context.Background(), &publiraadminv1.AdminAuthServiceStartMfaEnrollmentRequest{
+		Tenant:         tenant.tenantContext(),
+		ChallengeToken: other.Token,
+	}); connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("StartMfaEnrollment under a stale enroll challenge = %v, want unauthenticated", err)
+	}
+	if got := env.countRows(t, "SELECT count(*) FROM user_webauthn_credentials WHERE user_id = $1", tenant.User.ID); got != 1 {
+		t.Fatalf("passkeys = %d, want only the owner's", got)
+	}
+	if got := env.countRows(t, "SELECT count(*) FROM user_mfa_totp WHERE user_id = $1", tenant.User.ID); got != 0 {
+		t.Fatalf("authenticators = %d, want none", got)
 	}
 }
