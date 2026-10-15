@@ -6793,7 +6793,19 @@ type MyPurchase struct {
 	// The ISO 4217 code, in capitals, of the currency price_at_purchase is in:
 	// the one the reader paid in, which is the tenant's unless the payment was
 	// started before the tenant changed it.
-	Currency      string `protobuf:"bytes,8,opt,name=currency,proto3" json:"currency,omitempty"`
+	Currency string `protobuf:"bytes,8,opt,name=currency,proto3" json:"currency,omitempty"`
+	// The total the payment provider has reported refunded to the reader so
+	// far, in the same minor unit as price_at_purchase. Zero while no refund
+	// has been reported.
+	RefundedAmount int32 `protobuf:"varint,9,opt,name=refunded_amount,json=refundedAmount,proto3" json:"refunded_amount,omitempty"`
+	// RFC3339; set once refunded_amount reaches price_at_purchase. A purchase
+	// refunded in full is never active.
+	RefundedAt string `protobuf:"bytes,10,opt,name=refunded_at,json=refundedAt,proto3" json:"refunded_at,omitempty"`
+	// RFC3339; set once the purchase stops opening its episode before its
+	// reading period runs out: refunded in full, disputed with the reader's
+	// bank, or refunded by staff, which revokes it before the provider reports
+	// the refund. A purchase revoked here is never active.
+	RevokedAt     string `protobuf:"bytes,11,opt,name=revoked_at,json=revokedAt,proto3" json:"revoked_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6880,6 +6892,27 @@ func (x *MyPurchase) GetIsActive() bool {
 func (x *MyPurchase) GetCurrency() string {
 	if x != nil {
 		return x.Currency
+	}
+	return ""
+}
+
+func (x *MyPurchase) GetRefundedAmount() int32 {
+	if x != nil {
+		return x.RefundedAmount
+	}
+	return 0
+}
+
+func (x *MyPurchase) GetRefundedAt() string {
+	if x != nil {
+		return x.RefundedAt
+	}
+	return ""
+}
+
+func (x *MyPurchase) GetRevokedAt() string {
+	if x != nil {
+		return x.RevokedAt
 	}
 	return ""
 }
@@ -8224,7 +8257,7 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"CLIENT_WEB\x10\x01\x12\x11\n" +
 	"\rCLIENT_MOBILE\x10\x02J\x04\b\x02\x10\x03R\x11episode_public_id\"A\n" +
 	"\x1cStartEpisodeCheckoutResponse\x12!\n" +
-	"\fcheckout_url\x18\x01 \x01(\tR\vcheckoutUrl\"\xaa\x02\n" +
+	"\fcheckout_url\x18\x01 \x01(\tR\vcheckoutUrl\"\x93\x03\n" +
 	"\n" +
 	"MyPurchase\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x123\n" +
@@ -8235,7 +8268,13 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\n" +
 	"expires_at\x18\x06 \x01(\tR\texpiresAt\x12\x1b\n" +
 	"\tis_active\x18\a \x01(\bR\bisActive\x12\x1a\n" +
-	"\bcurrency\x18\b \x01(\tR\bcurrency\"\xb8\x01\n" +
+	"\bcurrency\x18\b \x01(\tR\bcurrency\x12'\n" +
+	"\x0frefunded_amount\x18\t \x01(\x05R\x0erefundedAmount\x12\x1f\n" +
+	"\vrefunded_at\x18\n" +
+	" \x01(\tR\n" +
+	"refundedAt\x12\x1d\n" +
+	"\n" +
+	"revoked_at\x18\v \x01(\tR\trevokedAt\"\xb8\x01\n" +
 	"\x16ListMyPurchasesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +

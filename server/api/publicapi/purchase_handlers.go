@@ -230,6 +230,8 @@ type purchasePageRow struct {
 	currency          string
 	expiresAt         sql.NullTime
 	revokedAt         sql.NullTime
+	refundedAmount    sql.NullInt32
+	refundedAt        sql.NullTime
 	purchasedAt       time.Time
 	episodeID         uuid.UUID
 	episodePublicID   string
@@ -249,6 +251,8 @@ func mapPurchaseDescRows(rows []dbmodels.ListMyPurchasesDescRow) []purchasePageR
 			currency:          row.Currency,
 			expiresAt:         row.ExpiresAt,
 			revokedAt:         row.RevokedAt,
+			refundedAmount:    row.RefundedAmount,
+			refundedAt:        row.RefundedAt,
 			purchasedAt:       row.PurchasedAt,
 			episodeID:         row.EpisodeID,
 			episodePublicID:   row.EpisodePublicID,
@@ -271,6 +275,8 @@ func mapPurchaseAscRows(rows []dbmodels.ListMyPurchasesAscRow) []purchasePageRow
 			currency:          row.Currency,
 			expiresAt:         row.ExpiresAt,
 			revokedAt:         row.RevokedAt,
+			refundedAmount:    row.RefundedAmount,
+			refundedAt:        row.RefundedAt,
 			purchasedAt:       row.PurchasedAt,
 			episodeID:         row.EpisodeID,
 			episodePublicID:   row.EpisodePublicID,
@@ -326,6 +332,14 @@ func purchaseItemFromRow(row purchasePageRow, now time.Time) *publirav1.MyPurcha
 		expiresAt = row.expiresAt.Time.UTC().Format(time.RFC3339)
 		isActive = isActive && row.expiresAt.Time.After(now)
 	}
+	refundedAt := ""
+	if row.refundedAt.Valid {
+		refundedAt = row.refundedAt.Time.UTC().Format(time.RFC3339)
+	}
+	revokedAt := ""
+	if row.revokedAt.Valid {
+		revokedAt = row.revokedAt.Time.UTC().Format(time.RFC3339)
+	}
 
 	return &publirav1.MyPurchase{
 		Id: row.id.String(),
@@ -340,6 +354,9 @@ func purchaseItemFromRow(row purchasePageRow, now time.Time) *publirav1.MyPurcha
 		IsActive:        isActive,
 		PriceAtPurchase: row.priceAtPurchase,
 		PurchasedAt:     row.purchasedAt.UTC().Format(time.RFC3339),
+		RefundedAmount:  row.refundedAmount.Int32,
+		RefundedAt:      refundedAt,
+		RevokedAt:       revokedAt,
 		Series: &publirattypesv1.Series{
 			Id:       row.seriesID.String(),
 			PublicId: row.seriesPublicID,

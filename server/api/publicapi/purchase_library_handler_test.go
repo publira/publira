@@ -38,6 +38,8 @@ func TestPurchaseListReturnsOnlySessionUsersPurchases(t *testing.T) {
 			"USD",
 			now.Add(time.Hour),
 			nil,
+			nil,
+			nil,
 			now,
 			uuid.Must(uuid.NewV7()),
 			"EPISODE001",
@@ -68,12 +70,15 @@ func TestPurchaseListReturnsOnlySessionUsersPurchases(t *testing.T) {
 	if purchase.PriceAtPurchase != 500 || purchase.Currency != "USD" {
 		t.Fatalf("price_at_purchase = %d %s, want 500 USD", purchase.PriceAtPurchase, purchase.Currency)
 	}
+	if purchase.RefundedAmount != 0 || purchase.RefundedAt != "" {
+		t.Fatalf("refund = %d at %q, want none", purchase.RefundedAmount, purchase.RefundedAt)
+	}
 	assertPublicExpectations(t, mock)
 }
 
 // A refunded purchase opens nothing, so the library must not offer it as one
-// the reader can still open.
-func TestPurchaseListReportsARevokedPurchaseAsInactive(t *testing.T) {
+// the reader can still open, and says when the money went back.
+func TestPurchaseListReportsAFullyRefundedPurchase(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
 	purchaseID := uuid.Must(uuid.NewV7())
@@ -89,6 +94,8 @@ func TestPurchaseListReportsARevokedPurchaseAsInactive(t *testing.T) {
 			int32(500),
 			"JPY",
 			nil,
+			now.Add(-time.Hour),
+			int32(500),
 			now.Add(-time.Hour),
 			now.Add(-2*time.Hour),
 			uuid.Must(uuid.NewV7()),
@@ -110,8 +117,118 @@ func TestPurchaseListReportsARevokedPurchaseAsInactive(t *testing.T) {
 	if len(response.Purchases) != 1 {
 		t.Fatalf("purchase count = %d, want 1", len(response.Purchases))
 	}
-	if response.Purchases[0].IsActive {
+	purchase := response.Purchases[0]
+	if purchase.IsActive {
+		t.Fatal("is_active = true for a refunded purchase, want false")
+	}
+	if want := now.Add(-time.Hour).Format(time.RFC3339); purchase.RefundedAmount != 500 || purchase.RefundedAt != want {
+		t.Fatalf("refund = %d at %q, want 500 at %q", purchase.RefundedAmount, purchase.RefundedAt, want)
+	}
+	if want := now.Add(-time.Hour).Format(time.RFC3339); purchase.RevokedAt != want {
+		t.Fatalf("revoked_at = %q, want %q", purchase.RevokedAt, want)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+// A dispute revokes the purchase with nothing refunded, so the reader learns it
+// was revoked rather than that its reading period ran out.
+func TestPurchaseListReportsAPurchaseRevokedWithoutARefund(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	testServer, mock := newTestPublicServer(t)
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectAuthSession(mock, tenantID, userID, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyPurchasesDesc)).
+		WithArgs(tenantID, userID, "web", sql.NullTime{}, false, uuid.NullUUID{}, int32(21)).
+		WillReturnRows(purchaseRows().AddRow(
+			uuid.Must(uuid.NewV7()),
+			int32(500),
+			"USD",
+			nil,
+			now.Add(-time.Hour),
+			nil,
+			nil,
+			now.Add(-2*time.Hour),
+			uuid.Must(uuid.NewV7()),
+			"EPISODE001",
+			"Episode title",
+			int32(3),
+			uuid.Must(uuid.NewV7()),
+			"SERIES001",
+			"Series title",
+		))
+
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	response, err := client.ListMyPurchases(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.ListMyPurchasesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	})
+	if err != nil {
+		t.Fatalf("ListMyPurchases: %v", err)
+	}
+	if len(response.Purchases) != 1 {
+		t.Fatalf("purchase count = %d, want 1", len(response.Purchases))
+	}
+	purchase := response.Purchases[0]
+	if purchase.IsActive {
 		t.Fatal("is_active = true for a revoked purchase, want false")
+	}
+	if want := now.Add(-time.Hour).Format(time.RFC3339); purchase.RevokedAt != want || purchase.RefundedAt != "" {
+		t.Fatalf("revoked_at = %q, refunded_at = %q, want %q and none", purchase.RevokedAt, purchase.RefundedAt, want)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+// A partial refund leaves the purchase open, so it reports the amount and no
+// refunded_at.
+func TestPurchaseListReportsAPartlyRefundedPurchase(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	testServer, mock := newTestPublicServer(t)
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectAuthSession(mock, tenantID, userID, now)
+
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyPurchasesDesc)).
+		WithArgs(tenantID, userID, "web", sql.NullTime{}, false, uuid.NullUUID{}, int32(21)).
+		WillReturnRows(purchaseRows().AddRow(
+			uuid.Must(uuid.NewV7()),
+			int32(500),
+			"USD",
+			nil,
+			nil,
+			int32(200),
+			nil,
+			now.Add(-2*time.Hour),
+			uuid.Must(uuid.NewV7()),
+			"EPISODE001",
+			"Episode title",
+			int32(3),
+			uuid.Must(uuid.NewV7()),
+			"SERIES001",
+			"Series title",
+		))
+
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	response, err := client.ListMyPurchases(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.ListMyPurchasesRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	})
+	if err != nil {
+		t.Fatalf("ListMyPurchases: %v", err)
+	}
+	if len(response.Purchases) != 1 {
+		t.Fatalf("purchase count = %d, want 1", len(response.Purchases))
+	}
+	purchase := response.Purchases[0]
+	if !purchase.IsActive {
+		t.Fatal("is_active = false for a partly refunded purchase, want true")
+	}
+	if purchase.RefundedAmount != 200 || purchase.RefundedAt != "" {
+		t.Fatalf("refund = %d at %q, want 200 and no refunded_at", purchase.RefundedAmount, purchase.RefundedAt)
+	}
+	if purchase.RevokedAt != "" {
+		t.Fatalf("revoked_at = %q, want none", purchase.RevokedAt)
 	}
 	assertPublicExpectations(t, mock)
 }
@@ -319,7 +436,7 @@ func TestPurchaseListRequiresSignIn(t *testing.T) {
 
 func purchaseRows() *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
-		"id", "price_at_purchase", "currency", "expires_at", "revoked_at", "purchased_at", "episode_id", "episode_public_id", "episode_title", "episode_order_index", "series_id", "series_public_id", "series_title",
+		"id", "price_at_purchase", "currency", "expires_at", "revoked_at", "refunded_amount", "refunded_at", "purchased_at", "episode_id", "episode_public_id", "episode_title", "episode_order_index", "series_id", "series_public_id", "series_title",
 	})
 }
 
@@ -328,6 +445,8 @@ func addPurchaseRow(rows *sqlmock.Rows, id uuid.UUID, purchasedAt time.Time) *sq
 		id,
 		int32(500),
 		"JPY",
+		nil,
+		nil,
 		nil,
 		nil,
 		purchasedAt,
