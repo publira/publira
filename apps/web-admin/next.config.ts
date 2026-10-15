@@ -21,8 +21,18 @@ const nextConfig: NextConfig = {
       process.env.PUBLIRA_EXPOSE_TESTING_API === "1",
     // Unmatched URLs skip the [tenant_id] layout tree.
     globalNotFound: true,
+    // The console's image uploads reach their Server Actions as an image of up
+    // to 10 MiB: a branding image (`BRANDING_IMAGE_MAX_BYTES` in
+    // `branding/_lib/actions.ts`), and an eye-catch or an author icon, which
+    // publira server holds to the same size. Both limits below apply to the
+    // whole body, so each sits one MiB above the image to hold the multipart
+    // framing and the fields sent beside it. `proxy.ts` runs ahead of those
+    // pages, and Next.js buffers each body it sees up to
+    // `proxyClientMaxBodySize`, cutting a longer one short without an error,
+    // so that limit has to admit the same body as the Server Action's.
+    proxyClientMaxBodySize: "11mb",
     serverActions: {
-      bodySizeLimit: "10mb",
+      bodySizeLimit: "11mb",
     },
     turbopackRustReactCompiler: true,
     // Retries Next-managed navigation, prefetch, and Server Actions; not direct client requests.
