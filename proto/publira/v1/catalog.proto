@@ -1524,6 +1524,11 @@ message MyPurchase {
   // RFC3339; set once refunded_amount reaches price_at_purchase. A purchase
   // refunded in full is never active.
   string refunded_at = 10;
+  // RFC3339; set once the purchase stops opening its episode before its
+  // reading period runs out: refunded in full, disputed with the reader's
+  // bank, or refunded by staff, which revokes it before the provider reports
+  // the refund. A purchase revoked here is never active.
+  string revoked_at = 11;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.

@@ -336,6 +336,10 @@ func purchaseItemFromRow(row purchasePageRow, now time.Time) *publirav1.MyPurcha
 	if row.refundedAt.Valid {
 		refundedAt = row.refundedAt.Time.UTC().Format(time.RFC3339)
 	}
+	revokedAt := ""
+	if row.revokedAt.Valid {
+		revokedAt = row.revokedAt.Time.UTC().Format(time.RFC3339)
+	}
 
 	return &publirav1.MyPurchase{
 		Id: row.id.String(),
@@ -352,6 +356,7 @@ func purchaseItemFromRow(row purchasePageRow, now time.Time) *publirav1.MyPurcha
 		PurchasedAt:     row.purchasedAt.UTC().Format(time.RFC3339),
 		RefundedAmount:  row.refundedAmount.Int32,
 		RefundedAt:      refundedAt,
+		RevokedAt:       revokedAt,
 		Series: &publirattypesv1.Series{
 			Id:       row.seriesID.String(),
 			PublicId: row.seriesPublicID,
