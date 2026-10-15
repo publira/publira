@@ -59,6 +59,8 @@ The edge terminates TLS for every host name it serves, and needs a certificate f
 
 A wildcard certificate for `*.comics.example.com` covers the console host but not `comics.example.com` itself, and a tenant on a domain of its own needs names of its own: no one certificate covers every tenant. Where the certificates come from is the edge's choice: a load balancer or a CDN that issues and renews them itself, an ACME client such as one built into a proxy, or a certificate issued elsewhere that you install and renew.
 
+Every certificate a public certificate authority issues is published in the Certificate Transparency logs, where anyone can search them by domain, so a console host under a tenant's domain can be found from the site's domain. A console host on a domain of its own, as [A console host on a domain of its own](../3-operations/2-tenants.md#a-console-host-on-a-domain-of-its-own) recommends, needs a certificate of its own to stay apart: one that also names the site's hosts links the two again.
+
 Send plain HTTP to HTTPS with a redirect, so a reader who types the bare host name still arrives. Behind the hop that terminates TLS, the edge may reach the processes over plain HTTP: `PUBLIRA_TENANT_URL_SCHEME` stays `https`, since it describes the address readers open, not how the edge reaches the processes.
 
 ### Adding a tenant
