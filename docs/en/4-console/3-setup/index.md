@@ -2,7 +2,7 @@
 title: Setting up the tenant
 description: Take a new tenant to a site that carries the publisher's name, look, legal pages, and staff, in the order the console needs them.
 published: 2026-10-07
-updated: 2026-10-09
+updated: 2026-10-15
 ---
 
 A new tenant starts as a bare site. It has the operator's choice of language and time zone, Publira's default colors, no logo, no pages, no comments, and only the administrators the operator invited. These pages take a Tenant admin through making it the publisher's own. Most of the screens involved are in the sidebar's **Administration** group. The site's pages and announcements are under **Site**, and the tenant's own mail server is under **Integrations** › **Email**.
@@ -36,7 +36,7 @@ Only a Tenant admin changes the settings these pages describe. Editors and Audit
 
 ## In this section
 
-- [Settings](./1-settings.md): the site's copy, time zone, default language, reader comments, age verification, the terms and privacy policy, refused email addresses, and the community limits and retention periods the tenant can tighten.
+- [Settings](./1-settings.md): the site's copy, time zone, default language, reader comments, age verification, the terms and privacy policy, refused email addresses, the community limits and retention periods the tenant can tighten, and what readers can show as their icon.
 - [Branding](./2-branding.md): the logo, the icon, the theme colors, the typefaces, and the preview.
 - [Pages](./3-pages.md): the site's own pages, their versions and translations, and the terms of service and privacy policy readers agree to.
 - [Announcements](./4-announcements.md): announcing something to every reader, and the banner shown above every page of the site.

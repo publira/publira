@@ -2277,7 +2277,8 @@
       "delete_action": "Delete",
       "tabs": {
         "basic": "General",
-        "policy": "Limits and retention"
+        "policy": "Limits and retention",
+        "reader_icons": "Reader icons"
       },
       "image": {
         "file_required": "Select an image file.",
@@ -3017,6 +3018,70 @@
           "daily_ranking_legend": "Daily ranking snapshots",
           "weekly_ranking_legend": "Weekly ranking snapshots",
           "days_label": "Days kept"
+        }
+      },
+      "reader_icons_title": "Settings — Reader icons",
+      "reader_icons_description": "Choose what readers can show as their icon, and manage the icons they can pick from.",
+      "reader_icons": {
+        "policy": {
+          "title": "Reader icon policy",
+          "description": "What a reader can show as the icon beside their name, on their comments and their account.",
+          "label": "What readers can show",
+          "options": {
+            "upload": {
+              "label": "Upload their own image",
+              "description": "A reader uploads an image of their choice. A new tenant starts here."
+            },
+            "preset": {
+              "label": "Choose a preset icon",
+              "description": "A reader picks one of the icons under Preset icons, and cannot upload an image."
+            },
+            "disabled": {
+              "label": "No icons",
+              "description": "No reader shows an icon, and the site shows a plain outline for everyone."
+            }
+          },
+          "load_error_hint": "Saving now would overwrite the stored policy, so reload the page before changing it.",
+          "submit": "Save the reader icon policy",
+          "saved": "The reader icon policy was saved.",
+          "load_failed": "Could not load the reader icon policy. Please try again later.",
+          "save_failed": "Could not save the reader icon policy. Please try again later.",
+          "confirm_title": "Remove readers' icons?",
+          "confirm_clears_uploads": "Saving removes any image readers uploaded as their icon, and it cannot be restored. Readers who chose a preset icon keep it.",
+          "confirm_clears_all": "Saving removes any icon readers show, uploaded or chosen from the presets, and it cannot be restored.",
+          "confirm_action": "Save and remove",
+          "validation": {
+            "required": "Select what readers can show."
+          }
+        },
+        "presets": {
+          "title": "Preset icons",
+          "description": "The icons readers pick from under Choose a preset icon, up to {$limit}. You can add them before switching to that policy.",
+          "list_error": "Could not show the preset icons",
+          "empty_title": "No preset icons yet",
+          "empty_description": "Add an image below. Readers have nothing to pick while this list is empty.",
+          "image_alt": "Preset icon {$position}",
+          "variant_size": "{$width} × {$height} px",
+          "file": "Icon image",
+          "file_description": "A JPEG, PNG, or WebP image of 10MB or smaller, at least 128 × 128 px. A square is cut from its centre.",
+          "submit": "Add the icon",
+          "uploading": "Adding…",
+          "uploaded": "The preset icon was added.",
+          "upload_failed": "Could not add the preset icon. Please try again later.",
+          "rejected": "Could not read the image. Choose a JPEG, PNG, or WebP image at least 128 × 128 px.",
+          "limit_reached": "This tenant has {$limit} preset icons, the most it can hold. Delete one to add another.",
+          "load_failed": "Could not load the preset icons. Please try again later.",
+          "delete": "Delete",
+          "deleting": "Deleting…",
+          "delete_confirm_title": "Delete preset icon {$position}?",
+          "delete_confirm_description": "Readers who chose this icon are left without one, and show a plain outline until they choose another. This cannot be undone.",
+          "delete_confirm_action": "Delete",
+          "deleted": "The preset icon was deleted.",
+          "delete_failed": "Could not delete the preset icon. Please try again later.",
+          "already_deleted": "This preset icon has already been deleted. Reload the page to see the current list.",
+          "validation": {
+            "id_missing": "The preset icon could not be identified. Reload the page and try again."
+          }
         }
       }
     },

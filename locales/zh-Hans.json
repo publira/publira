@@ -2277,7 +2277,8 @@
       "delete_action": "删除",
       "tabs": {
         "basic": "常规",
-        "policy": "限制与保留"
+        "policy": "限制与保留",
+        "reader_icons": "读者头像"
       },
       "image": {
         "file_required": "请选择图片文件。",
@@ -3017,6 +3018,70 @@
           "daily_ranking_legend": "每日排行榜快照",
           "weekly_ranking_legend": "每周排行榜快照",
           "days_label": "保留天数"
+        }
+      },
+      "reader_icons_title": "设置 — 读者头像",
+      "reader_icons_description": "选择读者可以显示的头像，并管理可供读者选择的头像。",
+      "reader_icons": {
+        "policy": {
+          "title": "读者头像设置",
+          "description": "决定读者在评论和账号中，名字旁边可以显示的头像。",
+          "label": "读者可以显示的内容",
+          "options": {
+            "upload": {
+              "label": "上传自己的图片",
+              "description": "读者上传自己喜欢的图片。新租户默认使用此设置。"
+            },
+            "preset": {
+              "label": "从预设中选择",
+              "description": "读者从“预设头像”中选择一个，不能上传图片。"
+            },
+            "disabled": {
+              "label": "不显示头像",
+              "description": "所有读者都不显示头像，网站对所有人显示默认图片。"
+            }
+          },
+          "load_error_hint": "此时保存会覆盖已保存的设置，请先重新加载页面，然后再修改。",
+          "submit": "保存读者头像设置",
+          "saved": "读者头像设置已保存。",
+          "load_failed": "无法加载读者头像设置。请稍后再试。",
+          "save_failed": "无法保存读者头像设置。请稍后再试。",
+          "confirm_title": "要删除读者的头像吗？",
+          "confirm_clears_uploads": "保存后，读者作为头像上传的图片（如有）将全部删除，且无法恢复。选择了预设头像的读者将保留其头像。",
+          "confirm_clears_all": "保存后，读者显示的所有头像（包括上传的图片和预设头像，如有）都将删除，且无法恢复。",
+          "confirm_action": "保存并删除",
+          "validation": {
+            "required": "请选择读者可以显示的内容。"
+          }
+        },
+        "presets": {
+          "title": "预设头像",
+          "description": "读者在“从预设中选择”下可以选择的头像，最多{$limit}个。可以在切换设置之前先添加。",
+          "list_error": "无法显示预设头像",
+          "empty_title": "还没有预设头像",
+          "empty_description": "请在下方添加图片。列表为空时，读者无法选择任何头像。",
+          "image_alt": "预设头像{$position}",
+          "variant_size": "{$width} × {$height} px",
+          "file": "头像图片",
+          "file_description": "请选择不超过10MB、尺寸至少为128×128px的JPEG、PNG或WebP图片。图片会从中心裁切为正方形。",
+          "submit": "添加头像",
+          "uploading": "正在添加…",
+          "uploaded": "预设头像已添加。",
+          "upload_failed": "无法添加预设头像。请稍后再试。",
+          "rejected": "无法读取该图片。请选择尺寸至少为128×128px的JPEG、PNG或WebP图片。",
+          "limit_reached": "预设头像已达到上限{$limit}个。如需添加，请先删除一个。",
+          "load_failed": "无法加载预设头像。请稍后再试。",
+          "delete": "删除",
+          "deleting": "正在删除…",
+          "delete_confirm_title": "要删除预设头像{$position}吗？",
+          "delete_confirm_description": "选择了此头像的读者将不再有头像，在选择其他头像之前显示默认图片。此操作无法撤销。",
+          "delete_confirm_action": "删除",
+          "deleted": "预设头像已删除。",
+          "delete_failed": "无法删除预设头像。请稍后再试。",
+          "already_deleted": "此预设头像已被删除。请重新加载页面查看最新列表。",
+          "validation": {
+            "id_missing": "无法识别该预设头像。请重新加载页面后再试。"
+          }
         }
       }
     },

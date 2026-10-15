@@ -2277,7 +2277,8 @@
       "delete_action": "삭제하기",
       "tabs": {
         "basic": "기본 정보",
-        "policy": "제한 및 보존"
+        "policy": "제한 및 보존",
+        "reader_icons": "독자 아이콘"
       },
       "image": {
         "file_required": "이미지 파일을 선택해 주세요.",
@@ -3017,6 +3018,70 @@
           "daily_ranking_legend": "일간 랭킹 스냅샷",
           "weekly_ranking_legend": "주간 랭킹 스냅샷",
           "days_label": "보존 일수"
+        }
+      },
+      "reader_icons_title": "설정 — 독자 아이콘",
+      "reader_icons_description": "독자가 아이콘으로 표시할 수 있는 것과 독자가 고를 수 있는 아이콘을 관리합니다.",
+      "reader_icons": {
+        "policy": {
+          "title": "독자 아이콘 설정",
+          "description": "독자가 댓글과 계정에서 이름 옆에 표시할 수 있는 아이콘을 정합니다.",
+          "label": "독자가 표시할 수 있는 것",
+          "options": {
+            "upload": {
+              "label": "직접 이미지 업로드",
+              "description": "독자가 원하는 이미지를 업로드합니다. 새 테넌트는 이 설정으로 시작합니다."
+            },
+            "preset": {
+              "label": "프리셋에서 선택",
+              "description": "독자는 '프리셋 아이콘'에서 하나를 고르며, 이미지를 업로드할 수 없습니다."
+            },
+            "disabled": {
+              "label": "아이콘 없음",
+              "description": "어떤 독자도 아이콘을 표시하지 않으며, 사이트에는 모두에게 기본 이미지가 표시됩니다."
+            }
+          },
+          "load_error_hint": "지금 저장하면 저장된 설정을 덮어쓰게 되므로, 페이지를 새로 고친 뒤에 변경해 주세요.",
+          "submit": "독자 아이콘 설정 저장",
+          "saved": "독자 아이콘 설정을 저장했습니다.",
+          "load_failed": "독자 아이콘 설정을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+          "save_failed": "독자 아이콘 설정을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+          "confirm_title": "독자의 아이콘을 삭제할까요?",
+          "confirm_clears_uploads": "저장하면 독자가 아이콘으로 업로드한 이미지가 있으면 모두 삭제되며 되돌릴 수 없습니다. 프리셋을 고른 독자의 아이콘은 그대로 유지됩니다.",
+          "confirm_clears_all": "저장하면 업로드한 이미지와 프리셋을 포함해 독자가 표시하는 아이콘이 있으면 모두 삭제되며 되돌릴 수 없습니다.",
+          "confirm_action": "저장하고 삭제",
+          "validation": {
+            "required": "독자가 표시할 수 있는 것을 선택해 주세요."
+          }
+        },
+        "presets": {
+          "title": "프리셋 아이콘",
+          "description": "'프리셋에서 선택'에서 독자가 고를 수 있는 아이콘입니다(최대 {$limit}개). 설정을 바꾸기 전에 미리 추가해 둘 수 있습니다.",
+          "list_error": "프리셋 아이콘을 표시하지 못했습니다",
+          "empty_title": "아직 프리셋 아이콘이 없습니다",
+          "empty_description": "아래에서 이미지를 추가해 주세요. 목록이 비어 있는 동안 독자는 아무것도 고를 수 없습니다.",
+          "image_alt": "프리셋 아이콘 {$position}",
+          "variant_size": "{$width} × {$height} px",
+          "file": "아이콘 이미지",
+          "file_description": "JPEG, PNG, WebP 형식으로 10MB 이하, 128×128px 이상인 이미지를 선택해 주세요. 가운데를 정사각형으로 잘라 저장합니다.",
+          "submit": "아이콘 추가",
+          "uploading": "추가하는 중…",
+          "uploaded": "프리셋 아이콘을 추가했습니다.",
+          "upload_failed": "프리셋 아이콘을 추가하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+          "rejected": "이미지를 읽지 못했습니다. 128×128px 이상인 JPEG, PNG, WebP를 선택해 주세요.",
+          "limit_reached": "프리셋 아이콘이 최대 개수인 {$limit}개에 도달했습니다. 추가하려면 하나를 삭제해 주세요.",
+          "load_failed": "프리셋 아이콘을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+          "delete": "삭제",
+          "deleting": "삭제하는 중…",
+          "delete_confirm_title": "프리셋 아이콘 {$position}을(를) 삭제할까요?",
+          "delete_confirm_description": "이 아이콘을 고른 독자는 아이콘이 없어지며, 다른 아이콘을 고를 때까지 기본 이미지가 표시됩니다. 이 작업은 되돌릴 수 없습니다.",
+          "delete_confirm_action": "삭제",
+          "deleted": "프리셋 아이콘을 삭제했습니다.",
+          "delete_failed": "프리셋 아이콘을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+          "already_deleted": "이 프리셋 아이콘은 이미 삭제되었습니다. 페이지를 새로 고쳐 최신 목록을 확인해 주세요.",
+          "validation": {
+            "id_missing": "프리셋 아이콘을 확인하지 못했습니다. 페이지를 새로 고친 뒤 다시 시도해 주세요."
+          }
         }
       }
     },

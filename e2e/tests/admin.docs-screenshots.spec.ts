@@ -200,6 +200,22 @@ for (const locale of DOCS_LOCALES) {
           });
         });
       }
+
+      for (const [subject, title] of [
+        ["reader-icon-policy", "admin.settings.reader_icons.policy.title"],
+        ["reader-icon-presets", "admin.settings.reader_icons.presets.title"],
+      ] as const) {
+        test(`the ${subject} card on Reader icons`, async ({ page }) => {
+          await openScreen(page, locale, "/settings/reader-icons");
+
+          await expectDocsScreenshot(page, {
+            element: docsSection(page, t(title)),
+            locale,
+            page: "console/setup/settings",
+            subject,
+          });
+        });
+      }
     });
 
     test.describe("branding", () => {

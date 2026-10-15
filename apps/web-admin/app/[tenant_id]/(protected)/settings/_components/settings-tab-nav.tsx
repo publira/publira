@@ -6,7 +6,7 @@ import { Suspense } from "react";
 import { Message } from "#components/message";
 
 interface SettingsTabNavProps {
-  current: "basic" | "policy";
+  current: "basic" | "policy" | "reader-icons";
 }
 
 export const SettingsTabNav = ({ current }: SettingsTabNavProps) => (
@@ -25,6 +25,14 @@ export const SettingsTabNav = ({ current }: SettingsTabNavProps) => (
     >
       <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
         <Message message="admin.settings.tabs.policy" />
+      </Suspense>
+    </LinkButton>
+    <LinkButton
+      render={<Link href="/settings/reader-icons" />}
+      variant={current === "reader-icons" ? "default" : "outline"}
+    >
+      <Suspense fallback={<SkeletonLine className="h-5 w-24" />}>
+        <Message message="admin.settings.tabs.reader_icons" />
       </Suspense>
     </LinkButton>
   </div>
