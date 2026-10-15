@@ -61,7 +61,7 @@ func setupDBRoles(f *commandFlags) func(context.Context, *commandEnv) error {
 					continue
 				}
 				if !env.console.isTerminal() {
-					return &missingValueError{flags: "--" + s.name + "-file or --" + s.name + "-stdin"}
+					return &missingValueError{flags: s.flags()}
 				}
 			}
 			password, err := s.read(env.console)

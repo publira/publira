@@ -279,7 +279,7 @@ A task started with `run-task` runs once, and ECS does not start it again when i
 
 ### Create the database roles
 
-`db roles` reads each role's password from a file, from stdin, or from a prompt, and a Fargate task offers it neither a stdin nor a terminal. Nor does ECS write a secret to a file: it sets it as an environment variable. So the task runs a container before `publiractl` that writes each password ECS gave it into a file on a volume the two share, and `publiractl` reads the files with its `--<role>-password-file` flags. Reading a secret straight from an environment variable is tracked in [#4374](https://github.com/publira/publira/issues/4374), which would make this one container.
+`db roles` reads each role's password from a file, from stdin, or from a prompt, and a Fargate task offers it neither a stdin nor a terminal. Nor does ECS write a secret to a file: it sets it as an environment variable. So the task runs a container before `publiractl` that writes each password ECS gave it into a file on a volume the two share, and `publiractl` reads the files with its `--<role>-password-file` flags.
 
 That first container runs the `publira` image of the same release, which carries `bash`; the `publiractl` image carries no shell. It runs as root, since a volume ECS creates belongs to root, and hands each file to the user `publiractl` runs as, `65532`, readable by that user alone. The volume is the task's own storage, and is gone when the task stops.
 

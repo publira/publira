@@ -294,7 +294,7 @@ func (r *setupRun) value(name, label, flagValue, def string, required bool) (str
 // reports it missing where there is neither.
 func (r *setupRun) readSecret(s *secret) (string, error) {
 	if !s.given() && !r.interactive {
-		return "", &missingValueError{flags: "--" + s.name + "-file or --" + s.name + "-stdin"}
+		return "", &missingValueError{flags: s.flags()}
 	}
 	return s.read(r.env.console)
 }
@@ -833,7 +833,7 @@ func (r *setupRun) adminPassword() (string, error) {
 	generate := flags.generateAdminPassword
 	if !generate && !flags.adminPassword.given() {
 		if !r.interactive {
-			return "", &missingValueError{flags: "--admin-password-file, --admin-password-stdin, or --generate-admin-password"}
+			return "", &missingValueError{flags: "--admin-password-file, --admin-password-env, --admin-password-stdin, or --generate-admin-password"}
 		}
 		var err error
 		if generate, err = r.confirm("Generate the administrator's password?", true); err != nil {

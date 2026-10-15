@@ -324,7 +324,7 @@ func TestSMTPSetReadsThePasswordFromAFile(t *testing.T) {
 	file := writeSecretFile(t, testSecretValue+"\n")
 
 	code, _, stderr := smtpCommand(t, "other", smtpSetArgs(server, "--password-file", file, "--password-stdin")...)
-	if code != 2 || !strings.HasPrefix(stderr, "publiractl: --password-stdin and --password-file cannot both be given\n") {
+	if code != 2 || !strings.HasPrefix(stderr, "publiractl: --password-stdin and --password-file cannot be given together\n") {
 		t.Fatalf("both flags: exit code = %d, stderr = %q", code, stderr)
 	}
 	var rows int
@@ -338,6 +338,53 @@ func TestSMTPSetReadsThePasswordFromAFile(t *testing.T) {
 	mustSMTPCommand(t, "", smtpSetArgs(server, "--password-file", file)...)
 	if got := storedSMTPPassword(t, pg); got != testSecretValue {
 		t.Fatalf("stored password = %q, want the file's contents", got)
+	}
+}
+
+// A password in a variable is stored as it would be from a file. Giving it
+// through a second flag, or naming a variable that holds nothing, writes
+// nothing and names the variable rather than its value.
+func TestSMTPSetReadsThePasswordFromAVariable(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	t.Setenv("PUBLIRA_PLATFORM_DB_URL", pg.PlatformURL)
+	setEncryptionKeys(t)
+	server := testutil.StartSMTPServer(t)
+	t.Setenv("SMTP_PASSWORD", testSecretValue)
+	t.Setenv("EMPTY_SMTP_PASSWORD", "")
+
+	for _, tc := range []struct {
+		name  string
+		stdin string
+		args  []string
+		want  string
+	}{
+		{name: "with a file", args: []string{"--password-env", "SMTP_PASSWORD", "--password-file", writeSecretFile(t, "other")}, want: "--password-file and --password-env cannot be given together"},
+		{name: "with stdin", stdin: "other", args: []string{"--password-env", "SMTP_PASSWORD", "--password-stdin"}, want: "--password-stdin and --password-env cannot be given together"},
+		{name: "unset", args: []string{"--password-env", "UNSET_SMTP_PASSWORD"}, want: "--password-env names UNSET_SMTP_PASSWORD, which is not set"},
+		{name: "empty", args: []string{"--password-env", "EMPTY_SMTP_PASSWORD"}, want: "--password-env names EMPTY_SMTP_PASSWORD, which is empty"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			code, _, stderr := smtpCommand(t, tc.stdin, smtpSetArgs(server, tc.args...)...)
+			if code != 2 || !strings.HasPrefix(stderr, "publiractl: "+tc.want+"\n") {
+				t.Fatalf("exit code = %d, stderr = %q; want 2 and %q", code, stderr, tc.want)
+			}
+			if strings.Contains(stderr, testSecretValue) {
+				t.Fatalf("stderr = %q, which holds the variable's value", stderr)
+			}
+		})
+	}
+	var rows int
+	if err := pg.DB.QueryRowContext(context.Background(), `SELECT count(*) FROM platform_smtp_config`).Scan(&rows); err != nil {
+		t.Fatalf("count platform_smtp_config: %v", err)
+	}
+	if rows != 0 {
+		t.Fatalf("platform_smtp_config rows = %d after a usage error, want 0", rows)
+	}
+
+	mustSMTPCommand(t, "", smtpSetArgs(server, "--password-env", "SMTP_PASSWORD")...)
+	if got := storedSMTPPassword(t, pg); got != testSecretValue {
+		t.Fatalf("stored password = %q, want the variable's value", got)
 	}
 }
 
