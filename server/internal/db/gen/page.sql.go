@@ -247,7 +247,7 @@ type GetPagePublicationForTenantRow struct {
 }
 
 // Whether the storefront serves the page, which it does while any translation
-// of it is published.
+// of it in a locale the tenant offers is published.
 func (q *Queries) GetPagePublicationForTenant(ctx context.Context, arg GetPagePublicationForTenantParams) (GetPagePublicationForTenantRow, error) {
 	row := q.db.QueryRowContext(ctx, GetPagePublicationForTenant, arg.ID, arg.TenantID)
 	var i GetPagePublicationForTenantRow
@@ -686,8 +686,9 @@ ORDER BY p.slug ASC
 
 // Every published page, footer or not: the public site routes a path to a page
 // by this set, so a page left out of the footer is still reachable at its slug.
-// A page with any published translation is served in every locale, so the
-// locale handed to published_page_translation_for does not matter here.
+// A page with any published translation in a locale the tenant offers is
+// served in every locale, so the locale handed to published_page_translation_for
+// does not matter here.
 func (q *Queries) ListPublishedPageSlugsForTenant(ctx context.Context, tenantID uuid.UUID) ([]string, error) {
 	rows, err := q.db.QueryContext(ctx, ListPublishedPageSlugsForTenant, tenantID)
 	if err != nil {

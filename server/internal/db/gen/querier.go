@@ -647,7 +647,7 @@ type Querier interface {
 	// The page with the translation page_translation_for picks for the locale.
 	GetPageByIDForTenant(ctx context.Context, arg GetPageByIDForTenantParams) (GetPageByIDForTenantRow, error)
 	// Whether the storefront serves the page, which it does while any translation
-	// of it is published.
+	// of it in a locale the tenant offers is published.
 	GetPagePublicationForTenant(ctx context.Context, arg GetPagePublicationForTenantParams) (GetPagePublicationForTenantRow, error)
 	GetPageVersionByIDForTranslation(ctx context.Context, arg GetPageVersionByIDForTranslationParams) (PageVersion, error)
 	// The page with its translation in exactly this locale, and no row when the
@@ -890,10 +890,11 @@ type Querier interface {
 	//   every query -> tenant_inbound_email_config_pkey
 	GetTenantInboundEmailConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantInboundEmailConfig, error)
 	// The pages a tenant names as its terms of service and its privacy policy. A
-	// page is published when any translation of it is, as the storefront serves it
-	// then, and is read in the translation published_page_translation_for picks for
-	// the locale; an unpublished page is read in the one page_translation_for
-	// picks. No row where the tenant has no config.
+	// page is published when any translation of it in a locale the tenant offers
+	// is, as the storefront serves it then, and is read in the translation
+	// published_page_translation_for picks for the locale; an unpublished page is
+	// read in the one page_translation_for picks. No row where the tenant has no
+	// config.
 	GetTenantLegalPages(ctx context.Context, arg GetTenantLegalPagesParams) (GetTenantLegalPagesRow, error)
 	GetTenantPaymentConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantPaymentConfig, error)
 	// GetTenantReaderByPublicID keyed by the primary key. An account of another
@@ -1867,8 +1868,9 @@ type Querier interface {
 	ListPublishedLabelsDesc(ctx context.Context, arg ListPublishedLabelsDescParams) ([]ListPublishedLabelsDescRow, error)
 	// Every published page, footer or not: the public site routes a path to a page
 	// by this set, so a page left out of the footer is still reachable at its slug.
-	// A page with any published translation is served in every locale, so the
-	// locale handed to published_page_translation_for does not matter here.
+	// A page with any published translation in a locale the tenant offers is
+	// served in every locale, so the locale handed to published_page_translation_for
+	// does not matter here.
 	ListPublishedPageSlugsForTenant(ctx context.Context, tenantID uuid.UUID) ([]string, error)
 	// The versions among the given ids that the tenant has published, current or
 	// superseded, each with its page. A draft is left out: no reader was shown it.

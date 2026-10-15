@@ -52,7 +52,7 @@ The site shows a change moments after it is published.
 
 ## Translations
 
-The edit screen has a tab under **Languages** for each language the site offers, which a Tenant admin chooses under [**Settings**](./1-settings.md#languages). A translation in a language the site no longer offers has no tab, and is kept: its tab comes back, with the translation as it was, when the language is offered again. A language without its own translation is marked **(not added)**, and readers browsing the site in that language see the page in another language, with a note saying so. To add one, open its tab, enter a title, and choose **Add translation**. Then write and publish its body as above.
+The edit screen has a tab under **Languages** for each language the site offers, which a Tenant admin chooses under [**Settings**](./1-settings.md#languages). A translation in a language the site no longer offers has no tab, and is kept: its tab comes back, with the translation as it was, when the language is offered again. Readers are not shown it either, so a page published only in languages the site no longer offers is off the site, and out of its sitemap, until one of them is offered again or the page is published in one the site offers. A language without its own translation is marked **(not added)**, and readers browsing the site in that language see the page in another language, with a note saying so. To add one, open its tab, enter a title, and choose **Add translation**. Then write and publish its body as above.
 
 Each translation has its own title, versions, and published version, so a correction to one does not reach the others until it is made there too. **Delete this translation** removes one, but not the last.
 

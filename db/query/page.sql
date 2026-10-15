@@ -20,7 +20,7 @@ WHERE p.id = sqlc.arg('id')
 
 -- name: GetPagePublicationForTenant :one
 -- Whether the storefront serves the page, which it does while any translation
--- of it is published.
+-- of it in a locale the tenant offers is published.
 SELECT p.id,
 	(published_page_translation_for(p.id, t.default_locale) IS NOT NULL)::boolean AS published
 FROM pages p
@@ -180,8 +180,9 @@ ORDER BY p.created_at ASC;
 -- name: ListPublishedPageSlugsForTenant :many
 -- Every published page, footer or not: the public site routes a path to a page
 -- by this set, so a page left out of the footer is still reachable at its slug.
--- A page with any published translation is served in every locale, so the
--- locale handed to published_page_translation_for does not matter here.
+-- A page with any published translation in a locale the tenant offers is
+-- served in every locale, so the locale handed to published_page_translation_for
+-- does not matter here.
 SELECT p.slug
 FROM pages p
 	JOIN tenants t ON t.id = p.tenant_id
