@@ -1,11 +1,16 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:fixnum/fixnum.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/error_details.dart';
+import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/catalog.pb.dart' as pb;
+import 'package:protobuf/protobuf.dart';
+import 'package:publira/api/gen/publira/v1/domain.pb.dart' as pb;
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/http_catalog_repository.dart';
 import 'package:publira/config.dart';
@@ -14,6 +19,25 @@ import 'package:publira/models/series_classification.dart';
 import 'package:publira/models/series_item.dart';
 
 import 'support/connect_fixture_server.dart';
+
+/// [message] as the protojson object it goes out as, for a test that puts a
+/// value no generated message can hold in place of one of its fields.
+Map<String, Object?> protojsonOf(GeneratedMessage message) =>
+    message.toProto3Json()! as Map<String, Object?>;
+
+/// [genre], as a `Series` carries it, as `ListPublishedGenres` answers it,
+/// with the covers a test gives it.
+pb.PublishedGenre publishedGenreOf(
+  pb.Genre genre, {
+  Iterable<pb.PublishedGenreFeaturedSeries>? featuredSeries,
+  Iterable<pb.SeriesEyeCatchVariant>? eyeCatchImageVariants,
+}) => pb.PublishedGenre(
+  publicId: genre.publicId,
+  name: genre.name,
+  slug: genre.slug,
+  featuredSeries: featuredSeries,
+  eyeCatchImageVariants: eyeCatchImageVariants,
+);
 
 void main() {
   late ConnectFixtureServer server;
@@ -50,7 +74,7 @@ void main() {
     'listSeries rejects an aggregate rating above the score ceiling',
     () async {
       server.series = [
-        {...ConnectFixtureServer.populatedSeries().first, 'ratingAverage': 6},
+        ConnectFixtureServer.populatedSeries().first..ratingAverage = 6,
       ];
 
       expect(
@@ -69,11 +93,11 @@ void main() {
   test('listSeries asks for the catalog by title', () async {
     await catalog.listSeries();
 
-    final request = server.requestsTo('ListPublishedSeries').single;
-    expect(request.body['order'], 'SERIES_ORDER_TITLE_ASC');
-    expect(request.body['limit'], 20);
+    final request = server.requestsOf(pb.ListPublishedSeriesRequest.new).single;
+    expect(request.order, pb.SeriesOrder.SERIES_ORDER_TITLE_ASC);
+    expect(request.limit, 20);
     // protojson omits a default, and an omitted token is the first page.
-    expect(request.body.containsKey('token'), isFalse);
+    expect(request.hasToken(), isFalse);
   });
 
   test('listSeries carries the token of the page under the first', () async {
@@ -92,16 +116,11 @@ void main() {
     final second = await catalog.listSeries(token: first.nextToken);
 
     expect(second.series.single.id, 'series-kitchen');
-    expect(
-      server.requestsTo('ListPublishedSeries').last.body['token'],
-      first.nextToken,
-    );
+    final request = server.requestsOf(pb.ListPublishedSeriesRequest.new).last;
+    expect(request.token, first.nextToken);
     // The order travels with every page: a token is only good for the list it
     // was cut from.
-    expect(
-      server.requestsTo('ListPublishedSeries').last.body['order'],
-      'SERIES_ORDER_TITLE_ASC',
-    );
+    expect(request.order, pb.SeriesOrder.SERIES_ORDER_TITLE_ASC);
   });
 
   test('listSeries reads the last page as the end of the catalog', () async {
@@ -127,18 +146,20 @@ void main() {
   test('searchSeries asks for the keyword the reader typed', () async {
     await catalog.searchSeries(query: 'Kitchen');
 
-    final request = server.requestsTo('SearchPublishedSeries').single;
-    expect(request.body['query'], 'Kitchen');
-    expect(request.body['limit'], 20);
+    final request = server
+        .requestsOf(pb.SearchPublishedSeriesRequest.new)
+        .single;
+    expect(request.query, 'Kitchen');
+    expect(request.limit, 20);
     // protojson omits a default, and an omitted token is the first page.
-    expect(request.body.containsKey('token'), isFalse);
+    expect(request.hasToken(), isFalse);
   });
 
   test('searchSeries asks for the page its token names', () async {
     server.seriesPageSize = 1;
     server.series = [
       ...ConnectFixtureServer.populatedSeries(),
-      {'publicId': 'series-second-kitchen', 'title': 'Kitchen Nights'},
+      pb.Series(publicId: 'series-second-kitchen', title: 'Kitchen Nights'),
     ];
 
     final first = await catalog.searchSeries(query: 'Kitchen');
@@ -155,11 +176,11 @@ void main() {
 
     expect(second.series.single.id, 'series-kitchen');
     expect(second.nextToken, isEmpty);
-    final request = server.requestsTo('SearchPublishedSeries').last;
-    expect(request.body['token'], first.nextToken);
+    final request = server.requestsOf(pb.SearchPublishedSeriesRequest.new).last;
+    expect(request.token, first.nextToken);
     // The token belongs to the keyword it was built for, so it travels with
     // the same query rather than on its own.
-    expect(request.body['query'], 'Kitchen');
+    expect(request.query, 'Kitchen');
   });
 
   test('searchSeries reads a keyword nothing matches as empty', () async {
@@ -188,9 +209,9 @@ void main() {
     final items = await catalog.listNewestSeries(limit: 10);
 
     expect(items.first.id, ConnectFixtureServer.seedSeriesId);
-    final request = server.requestsTo('ListPublishedSeries').single;
-    expect(request.body['order'], 'SERIES_ORDER_PUBLISHED_AT_DESC');
-    expect(request.body['limit'], 10);
+    final request = server.requestsOf(pb.ListPublishedSeriesRequest.new).single;
+    expect(request.order, pb.SeriesOrder.SERIES_ORDER_PUBLISHED_AT_DESC);
+    expect(request.limit, 10);
   });
 
   test('listRankedSeries maps a snapshot onto its positions', () async {
@@ -210,12 +231,12 @@ void main() {
     expect(positions.last.rank, 3);
     expect(ranked.nextToken, isEmpty);
 
-    final request = server.requestsTo('ListRankedSeries').single;
-    expect(request.body['period'], 'RANKING_PERIOD_WEEKLY');
-    expect(request.body['limit'], 10);
-    expect(request.body['ageRating'], 'SERIES_AGE_RATING_ALL');
+    final request = server.requestsOf(pb.ListRankedSeriesRequest.new).single;
+    expect(request.period, pb.RankingPeriod.RANKING_PERIOD_WEEKLY);
+    expect(request.limit, 10);
+    expect(request.ageRating, pb.SeriesAgeRating.SERIES_AGE_RATING_ALL);
     // The first page names no token, as every list RPC's first page does.
-    expect(request.body.containsKey('token'), isFalse);
+    expect(request.hasToken(), isFalse);
   });
 
   test('listRankedSeries hands the next token back unchanged', () async {
@@ -238,7 +259,7 @@ void main() {
     expect([for (final item in second.rankedSeries) item.rank], [3]);
     expect(second.nextToken, isEmpty);
     expect(
-      server.requestsTo('ListRankedSeries').last.body['token'],
+      server.requestsOf(pb.ListRankedSeriesRequest.new).last.token,
       first.nextToken,
     );
   });
@@ -251,8 +272,8 @@ void main() {
     );
 
     expect(
-      server.requestsTo('ListRankedSeries').single.body['period'],
-      'RANKING_PERIOD_DAILY',
+      server.requestsOf(pb.ListRankedSeriesRequest.new).single.period,
+      pb.RankingPeriod.RANKING_PERIOD_DAILY,
     );
   });
 
@@ -275,7 +296,7 @@ void main() {
       ['series-kitchen'],
     );
     expect(
-      server.requestsTo('ListRankedSeries').single.body['genrePublicId'],
+      server.requestsOf(pb.ListRankedSeriesRequest.new).single.genrePublicId,
       'SeedGENRAAA1',
     );
   });
@@ -290,10 +311,9 @@ void main() {
     // protojson omits an empty string, so the tenant-wide chart sends none.
     expect(
       server
-          .requestsTo('ListRankedSeries')
+          .requestsOf(pb.ListRankedSeriesRequest.new)
           .single
-          .body
-          .containsKey('genrePublicId'),
+          .hasGenrePublicId(),
       isFalse,
     );
   });
@@ -377,13 +397,13 @@ void main() {
 
     expect(related.map((item) => item.id), ['series-kitchen']);
     expect(related.single.title, 'The Little Kitchen');
-    final request = server.requestsTo('ListRelatedSeries').single;
+    final request = server.requestsOf(pb.ListRelatedSeriesRequest.new).single;
     expect(
-      request.body['seriesId'],
+      request.seriesId,
       ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
     );
-    expect(request.body['limit'], 10);
-    expect(request.body['surface'], 'CLIENT_SURFACE_APP');
+    expect(request.limit, 10);
+    expect(request.surface, pb.ClientSurface.CLIENT_SURFACE_APP);
   });
 
   test('a series with nothing to go on to reads as an empty row', () async {
@@ -426,13 +446,11 @@ void main() {
     late HttpCatalogRepository signedIn;
 
     /// [count] published series, each with an id starting [prefix].
-    List<Map<String, Object?>> order(String prefix, int count) => [
+    List<pb.Series> order(String prefix, int count) => [
       for (var index = 1; index <= count; index++)
-        {
-          ...server.series.first,
-          'publicId': '$prefix-$index',
-          'title': 'Series $prefix $index',
-        },
+        server.series.first.deepCopy()
+          ..publicId = '$prefix-$index'
+          ..title = 'Series $prefix $index',
     ];
 
     setUp(() {
@@ -464,10 +482,10 @@ void main() {
         expect(idsOf(first), ['tenant-1', 'tenant-2']);
         expect(idsOf(second), ['tenant-3']);
         expect(second.nextToken, isEmpty);
-        final requests = server.requestsTo('ListRecommendedSeries');
-        expect(requests.first.body['limit'], 2);
-        expect(requests.first.body.containsKey('token'), isFalse);
-        expect(requests.last.body['token'], first.nextToken);
+        final requests = server.requestsOf(pb.ListRecommendedSeriesRequest.new);
+        expect(requests.first.limit, 2);
+        expect(requests.first.hasToken(), isFalse);
+        expect(requests.last.token, first.nextToken);
       },
     );
 
@@ -481,7 +499,10 @@ void main() {
         request.headers[HttpHeaders.authorizationHeader],
         'Bearer ${ConnectFixtureServer.memberAccessToken}',
       );
-      expect(request.body['surface'], 'CLIENT_SURFACE_APP');
+      expect(
+        request.decode(pb.ListMyRecommendedSeriesRequest()).surface,
+        pb.ClientSurface.CLIENT_SURFACE_APP,
+      );
       expect(server.requestsTo('ListRecommendedSeries'), isEmpty);
     });
 
@@ -567,13 +588,13 @@ void main() {
 
   test('listSeries reads a credit with no role as carrying none', () async {
     server.series = [
-      {
-        'publicId': ConnectFixtureServer.seedSeriesId,
-        'title': ConnectFixtureServer.seedSeriesTitle,
-        'creators': [
-          {'publicId': 'SeedAUTHAAA1', 'name': 'Seed Author 001'},
+      pb.Series(
+        publicId: ConnectFixtureServer.seedSeriesId,
+        title: ConnectFixtureServer.seedSeriesTitle,
+        creators: [
+          pb.Creator(publicId: 'SeedAUTHAAA1', name: 'Seed Author 001'),
         ],
-      },
+      ),
     ];
 
     final items = (await catalog.listSeries()).series;
@@ -592,14 +613,14 @@ void main() {
 
   test('listSeries drops a credit with no name', () async {
     server.series = [
-      {
-        'publicId': ConnectFixtureServer.seedSeriesId,
-        'title': ConnectFixtureServer.seedSeriesTitle,
-        'creators': [
-          {'publicId': 'SeedAUTHAAA1', 'name': ''},
-          {'publicId': 'SeedAUTHAAA2', 'name': 'Seed Author 002'},
+      pb.Series(
+        publicId: ConnectFixtureServer.seedSeriesId,
+        title: ConnectFixtureServer.seedSeriesTitle,
+        creators: [
+          pb.Creator(publicId: 'SeedAUTHAAA1', name: ''),
+          pb.Creator(publicId: 'SeedAUTHAAA2', name: 'Seed Author 002'),
         ],
-      },
+      ),
     ];
 
     final items = (await catalog.listSeries()).series;
@@ -610,13 +631,17 @@ void main() {
   });
 
   test('listSeries rejects a credits field that is not a list', () async {
-    server.series = [
-      {
-        'publicId': ConnectFixtureServer.seedSeriesId,
-        'title': ConnectFixtureServer.seedSeriesTitle,
-        'creators': 'not a list',
-      },
-    ];
+    // No generated message holds a string where a list belongs, so the body
+    // goes out raw.
+    server.listResponse = const {
+      'series': [
+        {
+          'publicId': ConnectFixtureServer.seedSeriesId,
+          'title': ConnectFixtureServer.seedSeriesTitle,
+          'creators': 'not a list',
+        },
+      ],
+    };
 
     expect(
       () => catalog.listSeries(),
@@ -662,14 +687,13 @@ void main() {
 
   test('listSeries drops a tag with no slug or no name', () async {
     server.series = [
-      {
-        ...ConnectFixtureServer.populatedSeries().first,
-        'tags': [
-          {'name': 'Nameless slug', 'slug': ''},
-          {'name': '', 'slug': 'no-name'},
-          {'name': 'Slow burn', 'slug': 'slow-burn'},
-        ],
-      },
+      ConnectFixtureServer.populatedSeries().first
+        ..tags.clear()
+        ..tags.addAll([
+          pb.Tag(name: 'Nameless slug', slug: ''),
+          pb.Tag(name: '', slug: 'no-name'),
+          pb.Tag(name: 'Slow burn', slug: 'slow-burn'),
+        ]),
     ];
 
     final tags = (await catalog.listSeries()).series.single.tags;
@@ -687,11 +711,11 @@ void main() {
 
   test('listSeries maps a restricted age rating', () async {
     server.series = [
-      {
-        'publicId': ConnectFixtureServer.seedSeriesId,
-        'title': ConnectFixtureServer.seedSeriesTitle,
-        'ageRating': 'SERIES_AGE_RATING_R15',
-      },
+      pb.Series(
+        publicId: ConnectFixtureServer.seedSeriesId,
+        title: ConnectFixtureServer.seedSeriesTitle,
+        ageRating: pb.SeriesAgeRating.SERIES_AGE_RATING_R15,
+      ),
     ];
 
     final items = (await catalog.listSeries()).series;
@@ -700,13 +724,21 @@ void main() {
   });
 
   test('listSeries maps an unrecognized age rating as unknown', () async {
-    server.series = [
-      {
-        'publicId': ConnectFixtureServer.seedSeriesId,
-        'title': ConnectFixtureServer.seedSeriesTitle,
-        'ageRating': 'SERIES_AGE_RATING_R20',
-      },
-    ];
+    // No generated enum holds a name this build does not know, so the body
+    // goes out raw.
+    server.listResponse = {
+      'series': [
+        {
+          ...protojsonOf(
+            pb.Series(
+              publicId: ConnectFixtureServer.seedSeriesId,
+              title: ConnectFixtureServer.seedSeriesTitle,
+            ),
+          ),
+          'ageRating': 'SERIES_AGE_RATING_R20',
+        },
+      ],
+    };
 
     final items = (await catalog.listSeries()).series;
 
@@ -715,15 +747,15 @@ void main() {
 
   test('listSeries drops a genre with no name or public id', () async {
     server.series = [
-      {
-        'publicId': ConnectFixtureServer.seedSeriesId,
-        'title': ConnectFixtureServer.seedSeriesTitle,
-        'genres': [
-          {'publicId': '', 'name': 'Fantasy'},
-          {'publicId': 'SeedGENRAAA2', 'name': ''},
-          {'publicId': 'SeedGENRAAA1', 'name': 'Fantasy'},
+      pb.Series(
+        publicId: ConnectFixtureServer.seedSeriesId,
+        title: ConnectFixtureServer.seedSeriesTitle,
+        genres: [
+          pb.Genre(publicId: '', name: 'Fantasy'),
+          pb.Genre(publicId: 'SeedGENRAAA2', name: ''),
+          pb.Genre(publicId: 'SeedGENRAAA1', name: 'Fantasy'),
         ],
-      },
+      ),
     ];
 
     final items = (await catalog.listSeries()).series;
@@ -736,11 +768,11 @@ void main() {
     'listSeries drops a weekday that is not Sunday through Saturday',
     () async {
       server.series = [
-        {
-          'publicId': ConnectFixtureServer.seedSeriesId,
-          'title': ConnectFixtureServer.seedSeriesTitle,
-          'scheduleWeekdays': [1, 9, 4],
-        },
+        pb.Series(
+          publicId: ConnectFixtureServer.seedSeriesId,
+          title: ConnectFixtureServer.seedSeriesTitle,
+          scheduleWeekdays: [1, 9, 4],
+        ),
       ];
 
       final items = (await catalog.listSeries()).series;
@@ -751,21 +783,20 @@ void main() {
 
   test('getEpisode carries the series age rating', () async {
     server.episodes = {
-      ConnectFixtureServer.seedEpisodeId: {
-        'episode': {
-          'publicId': ConnectFixtureServer.seedEpisodeId,
-          'title': ConnectFixtureServer.seedEpisodeTitle,
-          'orderIndex': 1,
-          'price': 0,
-        },
-        'series': {
-          'publicId': ConnectFixtureServer.seedSeriesId,
-          'title': ConnectFixtureServer.seedSeriesTitle,
-          'ageRating': 'SERIES_AGE_RATING_R18',
-        },
-        'access': 'EPISODE_ACCESS_FREE',
-        'images': const <Object?>[],
-      },
+      ConnectFixtureServer.seedEpisodeId: pb.GetEpisodeDetailResponse(
+        episode: pb.Episode(
+          publicId: ConnectFixtureServer.seedEpisodeId,
+          title: ConnectFixtureServer.seedEpisodeTitle,
+          orderIndex: 1,
+          price: 0,
+        ),
+        series: pb.Series(
+          publicId: ConnectFixtureServer.seedSeriesId,
+          title: ConnectFixtureServer.seedSeriesTitle,
+          ageRating: pb.SeriesAgeRating.SERIES_AGE_RATING_R18,
+        ),
+        access: pb.EpisodeAccess.EPISODE_ACCESS_FREE,
+      ),
     };
 
     final detail = await catalog.getEpisode(
@@ -800,13 +831,17 @@ void main() {
 
   test('listSeries rejects a cover rendition without a url', () async {
     server.series = [
-      {
-        'publicId': ConnectFixtureServer.seedSeriesId,
-        'title': ConnectFixtureServer.seedSeriesTitle,
-        'eyeCatchImageVariants': [
-          {'variantType': 'portrait', 'width': 400, 'height': 533},
+      pb.Series(
+        publicId: ConnectFixtureServer.seedSeriesId,
+        title: ConnectFixtureServer.seedSeriesTitle,
+        eyeCatchImageVariants: [
+          pb.SeriesEyeCatchVariant(
+            variantType: 'portrait',
+            width: 400,
+            height: 533,
+          ),
         ],
-      },
+      ),
     ];
 
     expect(
@@ -827,7 +862,7 @@ void main() {
   });
 
   test('listSeries accepts an omitted empty repeated field', () async {
-    server.listResponse = const <String, Object?>{};
+    server.listResponse = pb.ListPublishedSeriesResponse();
     expect((await catalog.listSeries()).series, isEmpty);
   });
 
@@ -841,17 +876,10 @@ void main() {
   });
 
   test('getSeries carries until when a free window holds an episode', () async {
-    final detail =
+    server.detailResponse =
         ConnectFixtureServer.populatedDetails()[ConnectFixtureServer
-            .seedSeriesId]!;
-    final episodes = detail['episodes']! as List<Map<String, Object?>>;
-    server.detailResponse = {
-      ...detail,
-      'episodes': [
-        episodes.first,
-        {...episodes.last, 'freeUntil': '2026-10-12T14:59:00Z'},
-      ],
-    };
+              .seedSeriesId]!
+          ..episodes.last.freeUntil = '2026-10-12T14:59:00Z';
 
     final read = await catalog.getSeries(ConnectFixtureServer.seedSeriesId);
 
@@ -872,16 +900,15 @@ void main() {
       isNull,
     );
 
-    server.detailResponse = {
-      ...ConnectFixtureServer.populatedDetails()[ConnectFixtureServer
-          .seedSeriesId]!,
-      'waitFree': {
-        'rechargeHours': 23,
-        'accessHours': 72,
-        'excludedLatestCount': 1,
-        'excludedEpisodeIds': ['internal-SeedEPSDAA1A'],
-      },
-    };
+    server.detailResponse =
+        ConnectFixtureServer.populatedDetails()[ConnectFixtureServer
+              .seedSeriesId]!
+          ..waitFree = pb.WaitFreeRule(
+            rechargeHours: 23,
+            accessHours: 72,
+            excludedLatestCount: 1,
+            excludedEpisodeIds: ['internal-SeedEPSDAA1A'],
+          );
 
     final rule = (await catalog.getSeries(
       ConnectFixtureServer.seedSeriesId,
@@ -934,10 +961,12 @@ void main() {
       expect(creator.seriesCount, 1);
       expect(page.nextToken, isEmpty);
 
-      final request = server.requestsTo('SearchPublishedCreators').single;
-      expect(request.body['query'], 'author 002');
-      expect(request.body['limit'], 20);
-      expect(request.body.containsKey('token'), isFalse);
+      final request = server
+          .requestsOf(pb.SearchPublishedCreatorsRequest.new)
+          .single;
+      expect(request.query, 'author 002');
+      expect(request.limit, 20);
+      expect(request.hasToken(), isFalse);
     },
   );
 
@@ -958,24 +987,26 @@ void main() {
 
     expect(second.creators.single.id, 'SeedAUTHAAA3');
     expect(second.nextToken, isEmpty);
-    final request = server.requestsTo('SearchPublishedCreators').last;
-    expect(request.body['token'], first.nextToken);
-    expect(request.body['query'], 'Seed Author');
+    final request = server
+        .requestsOf(pb.SearchPublishedCreatorsRequest.new)
+        .last;
+    expect(request.token, first.nextToken);
+    expect(request.query, 'Seed Author');
   });
 
   test('searchCreators resolves a portrait against the image base', () async {
     server.series = [
-      {
-        'publicId': 'series-portrait',
-        'title': 'Portrait',
-        'creators': [
-          {
-            'publicId': 'author-portrait',
-            'name': 'Portrait Author',
-            'iconImageUrl': '/images/creators/portrait',
-          },
+      pb.Series(
+        publicId: 'series-portrait',
+        title: 'Portrait',
+        creators: [
+          pb.Creator(
+            publicId: 'author-portrait',
+            name: 'Portrait Author',
+            iconImageUrl: '/images/creators/portrait',
+          ),
         ],
-      },
+      ),
     ];
     final page = await catalog.searchCreators(query: 'Portrait');
 
@@ -1004,7 +1035,7 @@ void main() {
     // `Label` answers without a count, which is not a count of zero.
     expect(label.seriesCount, isNull);
     expect(
-      server.requestsTo('SearchPublishedLabels').single.body['query'],
+      server.requestsOf(pb.SearchPublishedLabelsRequest.new).single.query,
       'label 01',
     );
   });
@@ -1038,10 +1069,12 @@ void main() {
       expect(page.creators.first.seriesCount, 1);
       expect(page.nextToken, isEmpty);
 
-      final request = server.requestsTo('ListPublishedCreators').single;
-      expect(request.body['limit'], 20);
-      expect(request.body['surface'], 'CLIENT_SURFACE_APP');
-      expect(request.body.containsKey('token'), isFalse);
+      final request = server
+          .requestsOf(pb.ListPublishedCreatorsRequest.new)
+          .single;
+      expect(request.limit, 20);
+      expect(request.surface, pb.ClientSurface.CLIENT_SURFACE_APP);
+      expect(request.hasToken(), isFalse);
     },
   );
 
@@ -1053,9 +1086,9 @@ void main() {
 
     expect(second.creators.single.id, 'SeedAUTHAAA3');
     expect(second.nextToken, isEmpty);
-    final request = server.requestsTo('ListPublishedCreators').last;
-    expect(request.body['limit'], 2);
-    expect(request.body['token'], first.nextToken);
+    final request = server.requestsOf(pb.ListPublishedCreatorsRequest.new).last;
+    expect(request.limit, 2);
+    expect(request.token, first.nextToken);
   });
 
   test('listLabels maps every label onto PublishedLabel', () async {
@@ -1065,7 +1098,10 @@ void main() {
     expect(label.id, 'SeedLABLAAA1');
     expect(label.name, 'Seed Label 01');
     expect(page.nextToken, isEmpty);
-    expect(server.requestsTo('ListPublishedLabels').single.body['limit'], 20);
+    expect(
+      server.requestsOf(pb.ListPublishedLabelsRequest.new).single.limit,
+      20,
+    );
   });
 
   test(
@@ -1102,21 +1138,23 @@ void main() {
     expect(detail.series.series.single.id, ConnectFixtureServer.seedSeriesId);
     expect(detail.series.nextToken, isEmpty);
 
-    final request = server.requestsTo('GetPublishedCreatorDetail').single;
-    expect(request.body['publicId'], 'SeedAUTHAAA1');
-    expect(request.body['limit'], 20);
-    expect(request.body.containsKey('token'), isFalse);
+    final request = server
+        .requestsOf(pb.GetPublishedCreatorDetailRequest.new)
+        .single;
+    expect(request.publicId, 'SeedAUTHAAA1');
+    expect(request.limit, 20);
+    expect(request.hasToken(), isFalse);
   });
 
   test('getCreatorDetail asks for the page its token names', () async {
     server.seriesPageSize = 1;
     server.series = [
       ...ConnectFixtureServer.populatedSeries(),
-      {
-        'publicId': 'series-second',
-        'title': 'Second Series',
-        'creators': ConnectFixtureServer.seedCreators(),
-      },
+      pb.Series(
+        publicId: 'series-second',
+        title: 'Second Series',
+        creators: ConnectFixtureServer.seedCreators(),
+      ),
     ];
 
     final first = await catalog.getCreatorDetail('SeedAUTHAAA1');
@@ -1128,7 +1166,7 @@ void main() {
     expect(first.series.nextToken, isNotEmpty);
     expect(second!.series.series.single.id, 'series-second');
     expect(
-      server.requestsTo('GetPublishedCreatorDetail').last.body['token'],
+      server.requestsOf(pb.GetPublishedCreatorDetailRequest.new).last.token,
       first.series.nextToken,
     );
   });
@@ -1148,7 +1186,7 @@ void main() {
     expect(detail.label.seriesCount, 1);
     expect(detail.series.series.single.id, ConnectFixtureServer.seedSeriesId);
     expect(
-      server.requestsTo('GetPublishedLabelDetail').single.body['publicId'],
+      server.requestsOf(pb.GetPublishedLabelDetailRequest.new).single.publicId,
       'SeedLABLAAA1',
     );
   });
@@ -1175,30 +1213,37 @@ void main() {
     expect(genres.first.seriesCount, 1);
     // A genre nothing published carries is listed at zero.
     expect(genres.last.seriesCount, 0);
-    final requests = server.requestsTo('ListPublishedGenres');
+    final requests = server.requestsOf(pb.ListPublishedGenresRequest.new);
     expect(requests, hasLength(2));
-    expect(requests.first.body['limit'], 100);
-    expect(requests.first.body['surface'], 'CLIENT_SURFACE_APP');
-    expect(requests.last.body['token'], '1');
+    expect(requests.first.limit, 100);
+    expect(requests.first.surface, pb.ClientSurface.CLIENT_SURFACE_APP);
+    expect(requests.last.token, '1');
   });
 
   test(
     'listGenres carries each genre\'s covers in the order they came',
     () async {
       server.genres = [
-        {
-          ...ConnectFixtureServer.seedGenres().first,
-          'featuredSeries': [
-            {
-              'publicId': ConnectFixtureServer.seedSeriesId,
-              'title': ConnectFixtureServer.seedSeriesTitle,
-              'eyeCatchImageVariants':
+        publishedGenreOf(
+          ConnectFixtureServer.seedGenres().first,
+          featuredSeries: [
+            pb.PublishedGenreFeaturedSeries(
+              publicId: ConnectFixtureServer.seedSeriesId,
+              title: ConnectFixtureServer.seedSeriesTitle,
+              eyeCatchImageVariants:
                   ConnectFixtureServer.seedEyeCatchVariants(),
-            },
-            {'publicId': 'series-kitchen', 'title': 'The Little Kitchen'},
+            ),
+            pb.PublishedGenreFeaturedSeries(
+              publicId: 'series-kitchen',
+              title: 'The Little Kitchen',
+            ),
           ],
-        },
-        {'publicId': 'SeedGENRAAA2', 'name': 'Romance', 'slug': 'romance'},
+        ),
+        pb.PublishedGenre(
+          publicId: 'SeedGENRAAA2',
+          name: 'Romance',
+          slug: 'romance',
+        ),
       ];
 
       final genres = await catalog.listGenres();
@@ -1228,20 +1273,24 @@ void main() {
     'without',
     () async {
       server.genres = [
-        {
-          ...ConnectFixtureServer.seedGenres().first,
-          'eyeCatchImageVariants': [
-            {
-              'label': 'portrait_600w',
-              'variantType': 'portrait',
-              'url': '/images/genres/SeedGENRAAA1/portrait/600',
-              'contentType': 'image/webp',
-              'width': 600,
-              'height': 800,
-            },
+        publishedGenreOf(
+          ConnectFixtureServer.seedGenres().first,
+          eyeCatchImageVariants: [
+            pb.SeriesEyeCatchVariant(
+              label: 'portrait_600w',
+              variantType: 'portrait',
+              url: '/images/genres/SeedGENRAAA1/portrait/600',
+              contentType: 'image/webp',
+              width: 600,
+              height: 800,
+            ),
           ],
-        },
-        {'publicId': 'SeedGENRAAA2', 'name': 'Romance', 'slug': 'romance'},
+        ),
+        pb.PublishedGenre(
+          publicId: 'SeedGENRAAA2',
+          name: 'Romance',
+          slug: 'romance',
+        ),
       ];
 
       final genres = await catalog.listGenres();
@@ -1260,13 +1309,16 @@ void main() {
 
   test('listGenres drops a cover that names no series', () async {
     server.genres = [
-      {
-        ...ConnectFixtureServer.seedGenres().first,
-        'featuredSeries': [
-          {'publicId': '  ', 'title': 'Nameless'},
-          {'publicId': 'series-kitchen', 'title': 'The Little Kitchen'},
+      publishedGenreOf(
+        ConnectFixtureServer.seedGenres().first,
+        featuredSeries: [
+          pb.PublishedGenreFeaturedSeries(publicId: '  ', title: 'Nameless'),
+          pb.PublishedGenreFeaturedSeries(
+            publicId: 'series-kitchen',
+            title: 'The Little Kitchen',
+          ),
         ],
-      },
+      ),
     ];
 
     final genres = await catalog.listGenres();
@@ -1285,13 +1337,12 @@ void main() {
     server
       ..seriesPageSize = 1
       ..series = [
-        {
-          ...ConnectFixtureServer.populatedSeries().first,
-          'tags': [
-            {'name': 'Found family', 'slug': 'found-family'},
-            {'name': 'Time travel', 'slug': 'time-travel'},
-          ],
-        },
+        ConnectFixtureServer.populatedSeries().first
+          ..tags.clear()
+          ..tags.addAll([
+            pb.Tag(name: 'Found family', slug: 'found-family'),
+            pb.Tag(name: 'Time travel', slug: 'time-travel'),
+          ]),
       ];
 
     final tag = await catalog.getTag('time-travel');
@@ -1318,13 +1369,13 @@ void main() {
     );
 
     expect(page!.series.single.id, ConnectFixtureServer.seedSeriesId);
-    final body = server.requestsTo('ListPublishedSeries').single.body;
-    expect(body['genrePublicId'], 'SeedGENRAAA1');
-    expect(body['order'], 'SERIES_ORDER_LATEST_EPISODE_AT_DESC');
-    expect(body['status'], 'SERIES_STATUS_ONGOING');
-    expect(body['hasFreeEpisodes'], isTrue);
-    expect(body['surface'], 'CLIENT_SURFACE_APP');
-    expect(body.containsKey('tagSlug'), isFalse);
+    final body = server.requestsOf(pb.ListPublishedSeriesRequest.new).single;
+    expect(body.genrePublicId, 'SeedGENRAAA1');
+    expect(body.order, pb.SeriesOrder.SERIES_ORDER_LATEST_EPISODE_AT_DESC);
+    expect(body.status, pb.SeriesStatus.SERIES_STATUS_ONGOING);
+    expect(body.hasFreeEpisodes, isTrue);
+    expect(body.surface, pb.ClientSurface.CLIENT_SURFACE_APP);
+    expect(body.hasTagSlug(), isFalse);
   });
 
   test('listGenreSeries leaves an unnarrowed list to the newest', () async {
@@ -1332,12 +1383,12 @@ void main() {
 
     await catalog.listGenreSeries('SeedGENRAAA1');
 
-    final body = server.requestsTo('ListPublishedSeries').single.body;
-    expect(body['order'], 'SERIES_ORDER_PUBLISHED_AT_DESC');
+    final body = server.requestsOf(pb.ListPublishedSeriesRequest.new).single;
+    expect(body.order, pb.SeriesOrder.SERIES_ORDER_PUBLISHED_AT_DESC);
     // protojson omits a default, and an omitted filter keeps everything.
-    expect(body.containsKey('status'), isFalse);
-    expect(body.containsKey('hasFreeEpisodes'), isFalse);
-    expect(body.containsKey('token'), isFalse);
+    expect(body.hasStatus(), isFalse);
+    expect(body.hasHasFreeEpisodes(), isFalse);
+    expect(body.hasToken(), isFalse);
   });
 
   test(
@@ -1352,7 +1403,9 @@ void main() {
       ..seriesPageSize = 1
       ..series = [
         for (final item in ConnectFixtureServer.populatedSeries())
-          {...item, 'tags': ConnectFixtureServer.seedTags()},
+          item
+            ..tags.clear()
+            ..tags.addAll(ConnectFixtureServer.seedTags()),
       ];
     final first = await catalog.listTagSeries('time-travel');
 
@@ -1362,9 +1415,9 @@ void main() {
     );
 
     expect(second!.series.single.id, 'series-kitchen');
-    final body = server.requestsTo('ListPublishedSeries').last.body;
-    expect(body['tagSlug'], 'time-travel');
-    expect(body['token'], first.nextToken);
+    final body = server.requestsOf(pb.ListPublishedSeriesRequest.new).last;
+    expect(body.tagSlug, 'time-travel');
+    expect(body.token, first.nextToken);
   });
 
   test('listTagSeries returns null for a tag the API does not know', () async {
@@ -1408,10 +1461,9 @@ void main() {
   });
 
   test('getSeries rejects a detail without a public id', () async {
-    server.detailResponse = const {
-      'series': {'title': 'Missing public id'},
-      'episodes': <Object?>[],
-    };
+    server.detailResponse = pb.GetSeriesDetailResponse(
+      series: pb.Series(title: 'Missing public id'),
+    );
 
     expect(
       () => catalog.getSeries(ConnectFixtureServer.seedSeriesId),
@@ -1456,17 +1508,20 @@ void main() {
   });
 
   test('getEpisode keeps the media token the API attached', () async {
-    server.episodeResponse = {
-      'episode': {'publicId': 'EP', 'title': 'Paid', 'price': 500},
-      'series': {
-        'publicId': ConnectFixtureServer.seedSeriesId,
-        'title': ConnectFixtureServer.seedSeriesTitle,
-      },
-      'access': 'EPISODE_ACCESS_ENTITLED',
-      'images': [
-        {'id': 'page-1', 'imageUrl': '/images/episodes/page-1?t=token-value'},
+    server.episodeResponse = pb.GetEpisodeDetailResponse(
+      episode: pb.Episode(publicId: 'EP', title: 'Paid', price: 500),
+      series: pb.Series(
+        publicId: ConnectFixtureServer.seedSeriesId,
+        title: ConnectFixtureServer.seedSeriesTitle,
+      ),
+      access: pb.EpisodeAccess.EPISODE_ACCESS_ENTITLED,
+      images: [
+        pb.EpisodeImage(
+          id: 'page-1',
+          imageUrl: '/images/episodes/page-1?t=token-value',
+        ),
       ],
-    };
+    );
 
     final detail = await catalog.getEpisode(
       ConnectFixtureServer.seedSeriesId,
@@ -1478,16 +1533,19 @@ void main() {
   });
 
   test('getEpisode reads why an entitled reader may open the body', () async {
-    Future<EpisodeDetail?> read(String? source) {
-      server.episodeResponse = {
-        'episode': {'publicId': 'EP', 'title': 'Paid', 'price': 500},
-        'series': {
-          'publicId': ConnectFixtureServer.seedSeriesId,
-          'title': ConnectFixtureServer.seedSeriesTitle,
-        },
-        'access': 'EPISODE_ACCESS_ENTITLED',
-        'entitlementSource': ?source,
-      };
+    pb.GetEpisodeDetailResponse entitled([
+      pb.EpisodeEntitlementSource? source,
+    ]) => pb.GetEpisodeDetailResponse(
+      episode: pb.Episode(publicId: 'EP', title: 'Paid', price: 500),
+      series: pb.Series(
+        publicId: ConnectFixtureServer.seedSeriesId,
+        title: ConnectFixtureServer.seedSeriesTitle,
+      ),
+      access: pb.EpisodeAccess.EPISODE_ACCESS_ENTITLED,
+      entitlementSource: source,
+    );
+    Future<EpisodeDetail?> read(Object response) {
+      server.episodeResponse = response;
       return catalog.getEpisode(
         ConnectFixtureServer.seedSeriesId,
         ConnectFixtureServer.seedEpisodeId,
@@ -1495,43 +1553,66 @@ void main() {
     }
 
     expect(
-      (await read('EPISODE_ENTITLEMENT_SOURCE_CREATOR'))!.entitlementSource,
+      (await read(
+        entitled(
+          pb.EpisodeEntitlementSource.EPISODE_ENTITLEMENT_SOURCE_CREATOR,
+        ),
+      ))!.entitlementSource,
       EpisodeEntitlementSource.creator,
     );
     expect(
-      (await read('EPISODE_ENTITLEMENT_SOURCE_PURCHASE'))!.entitlementSource,
+      (await read(
+        entitled(
+          pb.EpisodeEntitlementSource.EPISODE_ENTITLEMENT_SOURCE_PURCHASE,
+        ),
+      ))!.entitlementSource,
       EpisodeEntitlementSource.purchase,
     );
     expect(
       (await read(
-        'EPISODE_ENTITLEMENT_SOURCE_ACCESS_TICKET',
+        entitled(
+          pb.EpisodeEntitlementSource.EPISODE_ENTITLEMENT_SOURCE_ACCESS_TICKET,
+        ),
       ))!.entitlementSource,
       EpisodeEntitlementSource.accessTicket,
     );
     // protojson omits the zero value, and a name this build does not know is
     // read the same way: the body still opens as entitled.
     expect(
-      (await read(null))!.entitlementSource,
+      (await read(entitled()))!.entitlementSource,
       EpisodeEntitlementSource.unspecified,
     );
-    final unknown = await read('EPISODE_ENTITLEMENT_SOURCE_GIFT');
+    // No generated enum holds a name this build does not know, so the body
+    // goes out raw.
+    final unknown = await read({
+      ...protojsonOf(entitled()),
+      'entitlementSource': 'EPISODE_ENTITLEMENT_SOURCE_GIFT',
+    });
     expect(unknown!.access, EpisodeAccess.entitled);
     expect(unknown.entitlementSource, EpisodeEntitlementSource.unspecified);
   });
 
   test('getEpisode orders pages by displayOrder', () async {
-    server.episodeResponse = {
-      'episode': {'publicId': 'EP', 'title': 'Shuffled'},
-      'series': {
-        'publicId': ConnectFixtureServer.seedSeriesId,
-        'title': ConnectFixtureServer.seedSeriesTitle,
-      },
-      'access': 'EPISODE_ACCESS_FREE',
-      'images': [
-        {'id': 'b', 'imageUrl': '/images/episodes/b', 'displayOrder': 2},
-        {'id': 'a', 'imageUrl': '/images/episodes/a', 'displayOrder': 1},
+    server.episodeResponse = pb.GetEpisodeDetailResponse(
+      episode: pb.Episode(publicId: 'EP', title: 'Shuffled'),
+      series: pb.Series(
+        publicId: ConnectFixtureServer.seedSeriesId,
+        title: ConnectFixtureServer.seedSeriesTitle,
+      ),
+      access: pb.EpisodeAccess.EPISODE_ACCESS_FREE,
+      images: [
+        pb.EpisodeImage(
+          id: 'b',
+          imageUrl: '/images/episodes/b',
+          displayOrder: 2,
+        ),
+        pb.EpisodeImage(
+          id: 'a',
+          imageUrl: '/images/episodes/a',
+          displayOrder: 1,
+        ),
       ],
-    };
+    );
 
     final detail = await catalog.getEpisode(
       ConnectFixtureServer.seedSeriesId,
@@ -1542,26 +1623,26 @@ void main() {
   });
 
   test('getEpisode carries the episodes either side of this one', () async {
-    server.episodeResponse = {
-      'episode': {'publicId': 'EP', 'title': 'Middle', 'orderIndex': 2},
-      'series': {
-        'publicId': ConnectFixtureServer.seedSeriesId,
-        'title': ConnectFixtureServer.seedSeriesTitle,
-      },
-      'access': 'EPISODE_ACCESS_FREE',
-      'previousEpisode': {
-        'publicId': 'EP01',
-        'title': 'First',
-        'orderIndex': 1,
-        'isFree': true,
-      },
-      'nextEpisode': {
-        'publicId': 'EP03',
-        'title': 'Third',
-        'orderIndex': 3,
-        'price': 500,
-      },
-    };
+    server.episodeResponse = pb.GetEpisodeDetailResponse(
+      episode: pb.Episode(publicId: 'EP', title: 'Middle', orderIndex: 2),
+      series: pb.Series(
+        publicId: ConnectFixtureServer.seedSeriesId,
+        title: ConnectFixtureServer.seedSeriesTitle,
+      ),
+      access: pb.EpisodeAccess.EPISODE_ACCESS_FREE,
+      previousEpisode: pb.EpisodeNeighbor(
+        publicId: 'EP01',
+        title: 'First',
+        orderIndex: 1,
+        isFree: true,
+      ),
+      nextEpisode: pb.EpisodeNeighbor(
+        publicId: 'EP03',
+        title: 'Third',
+        orderIndex: 3,
+        price: 500,
+      ),
+    );
 
     final detail = await catalog.getEpisode(
       ConnectFixtureServer.seedSeriesId,
@@ -1579,33 +1660,33 @@ void main() {
   test(
     'getEpisode reads where the episode and its neighbours are sold',
     () async {
-      server.episodeResponse = {
-        'episode': {
-          'publicId': 'EP',
-          'title': 'Middle',
-          'orderIndex': 2,
-          'price': 300,
-          'purchaseAvailability': 'SURFACE_AVAILABILITY_WEB',
-        },
-        'series': {
-          'publicId': ConnectFixtureServer.seedSeriesId,
-          'title': ConnectFixtureServer.seedSeriesTitle,
-        },
-        'access': 'EPISODE_ACCESS_LOCKED',
-        'previousEpisode': {
-          'publicId': 'EP01',
-          'title': 'First',
-          'orderIndex': 1,
-          'price': 300,
-          'purchaseAvailability': 'SURFACE_AVAILABILITY_APP',
-        },
-        'nextEpisode': {
-          'publicId': 'EP03',
-          'title': 'Third',
-          'orderIndex': 3,
-          'price': 300,
-        },
-      };
+      server.episodeResponse = pb.GetEpisodeDetailResponse(
+        episode: pb.Episode(
+          publicId: 'EP',
+          title: 'Middle',
+          orderIndex: 2,
+          price: 300,
+          purchaseAvailability: pb.SurfaceAvailability.SURFACE_AVAILABILITY_WEB,
+        ),
+        series: pb.Series(
+          publicId: ConnectFixtureServer.seedSeriesId,
+          title: ConnectFixtureServer.seedSeriesTitle,
+        ),
+        access: pb.EpisodeAccess.EPISODE_ACCESS_LOCKED,
+        previousEpisode: pb.EpisodeNeighbor(
+          publicId: 'EP01',
+          title: 'First',
+          orderIndex: 1,
+          price: 300,
+          purchaseAvailability: pb.SurfaceAvailability.SURFACE_AVAILABILITY_APP,
+        ),
+        nextEpisode: pb.EpisodeNeighbor(
+          publicId: 'EP03',
+          title: 'Third',
+          orderIndex: 3,
+          price: 300,
+        ),
+      );
 
       final detail = await catalog.getEpisode(
         ConnectFixtureServer.seedSeriesId,
@@ -1640,36 +1721,36 @@ void main() {
   test(
     'getEpisode hands a withheld body its preview and the next free episode',
     () async {
-      server.episodeResponse = {
-        'episode': {'publicId': 'EP', 'title': 'Paid', 'price': 300},
-        'series': {
-          'publicId': ConnectFixtureServer.seedSeriesId,
-          'title': ConnectFixtureServer.seedSeriesTitle,
-        },
-        'access': 'EPISODE_ACCESS_LOCKED',
-        'previewImages': [
-          {
-            'id': 'page-2',
-            'imageUrl': '/images/episodes/page-2/preview',
-            'displayOrder': 2,
-            'width': 45,
-            'height': 64,
-          },
-          {
-            'id': 'page-1',
-            'imageUrl': '/images/episodes/page-1/preview',
-            'displayOrder': 1,
-            'width': 45,
-            'height': 64,
-          },
+      server.episodeResponse = pb.GetEpisodeDetailResponse(
+        episode: pb.Episode(publicId: 'EP', title: 'Paid', price: 300),
+        series: pb.Series(
+          publicId: ConnectFixtureServer.seedSeriesId,
+          title: ConnectFixtureServer.seedSeriesTitle,
+        ),
+        access: pb.EpisodeAccess.EPISODE_ACCESS_LOCKED,
+        previewImages: [
+          pb.EpisodeImage(
+            id: 'page-2',
+            imageUrl: '/images/episodes/page-2/preview',
+            displayOrder: 2,
+            width: 45,
+            height: 64,
+          ),
+          pb.EpisodeImage(
+            id: 'page-1',
+            imageUrl: '/images/episodes/page-1/preview',
+            displayOrder: 1,
+            width: 45,
+            height: 64,
+          ),
         ],
-        'nextFreeEpisode': {
-          'publicId': 'EP05',
-          'title': 'Fifth',
-          'orderIndex': 5,
-          'isFree': true,
-        },
-      };
+        nextFreeEpisode: pb.EpisodeNeighbor(
+          publicId: 'EP05',
+          title: 'Fifth',
+          orderIndex: 5,
+          isFree: true,
+        ),
+      );
       final authenticated = HttpCatalogRepository(
         config: AppConfig(baseUrl: server.baseUrl, tenantHost: 'localhost'),
         client: ConnectClient(
@@ -1708,19 +1789,19 @@ void main() {
   test(
     'getEpisode hands the viewer the episode\'s resolved reading direction and spread start',
     () async {
-      server.episodeResponse = {
-        'episode': {
-          'publicId': 'EP',
-          'title': 'Left to right',
-          'readingDirection': 'READING_DIRECTION_LEFT_TO_RIGHT',
-          'spreadStartIndex': 0,
-        },
-        'series': {
-          'publicId': ConnectFixtureServer.seedSeriesId,
-          'title': ConnectFixtureServer.seedSeriesTitle,
-        },
-        'access': 'EPISODE_ACCESS_FREE',
-      };
+      server.episodeResponse = pb.GetEpisodeDetailResponse(
+        episode: pb.Episode(
+          publicId: 'EP',
+          title: 'Left to right',
+          readingDirection: pb.ReadingDirection.READING_DIRECTION_LEFT_TO_RIGHT,
+          spreadStartIndex: 0,
+        ),
+        series: pb.Series(
+          publicId: ConnectFixtureServer.seedSeriesId,
+          title: ConnectFixtureServer.seedSeriesTitle,
+        ),
+        access: pb.EpisodeAccess.EPISODE_ACCESS_FREE,
+      );
 
       final detail = await catalog.getEpisode(
         ConnectFixtureServer.seedSeriesId,
@@ -1735,14 +1816,14 @@ void main() {
   test(
     'getEpisode reads an omitted direction as right to left and an omitted spread start as pairing from the first page',
     () async {
-      server.episodeResponse = {
-        'episode': {'publicId': 'EP', 'title': 'Omitted layout'},
-        'series': {
-          'publicId': ConnectFixtureServer.seedSeriesId,
-          'title': ConnectFixtureServer.seedSeriesTitle,
-        },
-        'access': 'EPISODE_ACCESS_FREE',
-      };
+      server.episodeResponse = pb.GetEpisodeDetailResponse(
+        episode: pb.Episode(publicId: 'EP', title: 'Omitted layout'),
+        series: pb.Series(
+          publicId: ConnectFixtureServer.seedSeriesId,
+          title: ConnectFixtureServer.seedSeriesTitle,
+        ),
+        access: pb.EpisodeAccess.EPISODE_ACCESS_FREE,
+      );
 
       final detail = await catalog.getEpisode(
         ConnectFixtureServer.seedSeriesId,
@@ -1759,19 +1840,19 @@ void main() {
   test(
     'getEpisode reads a never-edited series as right to left from the cover',
     () async {
-      server.episodeResponse = {
-        'episode': {
-          'publicId': 'EP',
-          'title': 'Never edited',
-          'readingDirection': 'READING_DIRECTION_RIGHT_TO_LEFT',
-          'spreadStartIndex': 1,
-        },
-        'series': {
-          'publicId': ConnectFixtureServer.seedSeriesId,
-          'title': ConnectFixtureServer.seedSeriesTitle,
-        },
-        'access': 'EPISODE_ACCESS_FREE',
-      };
+      server.episodeResponse = pb.GetEpisodeDetailResponse(
+        episode: pb.Episode(
+          publicId: 'EP',
+          title: 'Never edited',
+          readingDirection: pb.ReadingDirection.READING_DIRECTION_RIGHT_TO_LEFT,
+          spreadStartIndex: 1,
+        ),
+        series: pb.Series(
+          publicId: ConnectFixtureServer.seedSeriesId,
+          title: ConnectFixtureServer.seedSeriesTitle,
+        ),
+        access: pb.EpisodeAccess.EPISODE_ACCESS_FREE,
+      );
 
       final detail = await catalog.getEpisode(
         ConnectFixtureServer.seedSeriesId,
@@ -1826,14 +1907,14 @@ void main() {
   });
 
   test('getEpisode reports a body withheld over the reader\'s age', () async {
-    server.episodeResponse = {
-      'episode': {'publicId': 'EP', 'title': 'Rated'},
-      'series': {
-        'publicId': ConnectFixtureServer.seedSeriesId,
-        'title': ConnectFixtureServer.seedSeriesTitle,
-      },
-      'access': 'EPISODE_ACCESS_AGE_RESTRICTED',
-    };
+    server.episodeResponse = pb.GetEpisodeDetailResponse(
+      episode: pb.Episode(publicId: 'EP', title: 'Rated'),
+      series: pb.Series(
+        publicId: ConnectFixtureServer.seedSeriesId,
+        title: ConnectFixtureServer.seedSeriesTitle,
+      ),
+      access: pb.EpisodeAccess.EPISODE_ACCESS_AGE_RESTRICTED,
+    );
 
     final detail = await catalog.getEpisode(
       ConnectFixtureServer.seedSeriesId,
@@ -1998,20 +2079,24 @@ void main() {
       list.headers['x-publira-tenant-id'],
       ConnectFixtureServer.defaultTenantId,
     );
-    expect(list.body['limit'], 20);
-    expect(list.body['tenant'], {
-      'tenantId': ConnectFixtureServer.defaultTenantId,
-    });
+    final listBody = list.decode(pb.ListPublishedSeriesRequest());
+    expect(listBody.limit, 20);
+    expect(
+      listBody.tenant,
+      pb.TenantContext(tenantId: ConnectFixtureServer.defaultTenantId),
+    );
 
     final detail = server.requestsTo('GetSeriesDetail').single;
     expect(
       detail.headers['x-publira-tenant-id'],
       ConnectFixtureServer.defaultTenantId,
     );
-    expect(detail.body['publicId'], ConnectFixtureServer.seedSeriesId);
-    expect(detail.body['tenant'], {
-      'tenantId': ConnectFixtureServer.defaultTenantId,
-    });
+    final detailBody = detail.decode(pb.GetSeriesDetailRequest());
+    expect(detailBody.publicId, ConnectFixtureServer.seedSeriesId);
+    expect(
+      detailBody.tenant,
+      pb.TenantContext(tenantId: ConnectFixtureServer.defaultTenantId),
+    );
   });
 
   group('the surface the app names', () {
@@ -2020,12 +2105,12 @@ void main() {
 
     setUp(() {
       server.seriesAvailability = {
-        webOnly: 'SURFACE_AVAILABILITY_WEB',
-        appOnly: 'SURFACE_AVAILABILITY_APP',
+        webOnly: pb.SurfaceAvailability.SURFACE_AVAILABILITY_WEB,
+        appOnly: pb.SurfaceAvailability.SURFACE_AVAILABILITY_APP,
       };
       server.rankedSeries = [
         for (final (index, series) in server.series.indexed)
-          {'rank': index + 1, 'series': series},
+          pb.RankedSeries(rank: index + 1, series: series),
       ];
     });
 
@@ -2070,7 +2155,33 @@ void main() {
         },
       );
       for (final read in reads) {
-        expect(read.body['surface'], 'CLIENT_SURFACE_APP', reason: read.path);
+        final surface = switch (read.path.split('/').last) {
+          'ListPublishedSeries' =>
+            read.decode(pb.ListPublishedSeriesRequest()).surface,
+          'ListRankedSeries' =>
+            read.decode(pb.ListRankedSeriesRequest()).surface,
+          'ListRecommendedSeries' =>
+            read.decode(pb.ListRecommendedSeriesRequest()).surface,
+          'SearchPublishedSeries' =>
+            read.decode(pb.SearchPublishedSeriesRequest()).surface,
+          'SearchPublishedCreators' =>
+            read.decode(pb.SearchPublishedCreatorsRequest()).surface,
+          'SearchPublishedLabels' =>
+            read.decode(pb.SearchPublishedLabelsRequest()).surface,
+          'ListPublishedCreators' =>
+            read.decode(pb.ListPublishedCreatorsRequest()).surface,
+          'ListPublishedLabels' =>
+            read.decode(pb.ListPublishedLabelsRequest()).surface,
+          'GetSeriesDetail' => read.decode(pb.GetSeriesDetailRequest()).surface,
+          'GetPublishedCreatorDetail' =>
+            read.decode(pb.GetPublishedCreatorDetailRequest()).surface,
+          'GetPublishedLabelDetail' =>
+            read.decode(pb.GetPublishedLabelDetailRequest()).surface,
+          'GetEpisodeDetail' =>
+            read.decode(pb.GetEpisodeDetailRequest()).surface,
+          final procedure => fail('no request message for $procedure'),
+        };
+        expect(surface, pb.ClientSurface.CLIENT_SURFACE_APP, reason: read.path);
       }
     });
 
@@ -2119,7 +2230,9 @@ void main() {
     );
 
     test('a series shown on both surfaces reads as it always has', () async {
-      server.seriesAvailability = {webOnly: 'SURFACE_AVAILABILITY_ALL'};
+      server.seriesAvailability = {
+        webOnly: pb.SurfaceAvailability.SURFACE_AVAILABILITY_ALL,
+      };
 
       expect(await catalog.getSeries(webOnly), isNotNull);
       expect(
@@ -2186,14 +2299,19 @@ void main() {
         httpClient: MockClient((request) async {
           if (request.url.path.endsWith('/GetTenantByDomain')) {
             return http.Response(
-              jsonEncode(const {
-                'tenantId': ConnectFixtureServer.defaultTenantId,
-              }),
+              jsonEncode(
+                pb.GetTenantByDomainResponse(
+                  tenantId: ConnectFixtureServer.defaultTenantId,
+                ).toProto3Json(),
+              ),
               200,
             );
           }
           await Future<void>.delayed(const Duration(seconds: 1));
-          return http.Response('{}', 200);
+          return http.Response(
+            jsonEncode(pb.ListPublishedSeriesResponse().toProto3Json()),
+            200,
+          );
         }),
       ),
     );
@@ -2242,9 +2360,7 @@ void main() {
   });
 
   test('listSeries rejects a series with a blank public id', () async {
-    server.series = [
-      {'publicId': '   ', 'title': 'Blank public id'},
-    ];
+    server.series = [pb.Series(publicId: '   ', title: 'Blank public id')];
 
     expect(
       () => catalog.listSeries(),
@@ -2259,16 +2375,21 @@ void main() {
   });
 
   test('getSeries orders episodes by orderIndex', () async {
-    server.detailResponse = {
-      'series': {
-        'publicId': ConnectFixtureServer.seedSeriesId,
-        'title': ConnectFixtureServer.seedSeriesTitle,
-      },
-      'episodes': [
-        {'publicId': 'EP10', 'title': 'Tenth', 'orderIndex': 10, 'price': 500},
-        {'publicId': 'EP01', 'title': 'First', 'orderIndex': 1, 'price': 0},
+    server.detailResponse = pb.GetSeriesDetailResponse(
+      series: pb.Series(
+        publicId: ConnectFixtureServer.seedSeriesId,
+        title: ConnectFixtureServer.seedSeriesTitle,
+      ),
+      episodes: [
+        pb.Episode(
+          publicId: 'EP10',
+          title: 'Tenth',
+          orderIndex: 10,
+          price: 500,
+        ),
+        pb.Episode(publicId: 'EP01', title: 'First', orderIndex: 1, price: 0),
       ],
-    };
+    );
 
     final detail = await catalog.getSeries(ConnectFixtureServer.seedSeriesId);
 
@@ -2279,15 +2400,13 @@ void main() {
   test('getSeries reads omitted numbers as zero', () async {
     // protojson omits a zero, so an episode that is first and free arrives
     // without `orderIndex` and without `price`.
-    server.detailResponse = {
-      'series': {
-        'publicId': ConnectFixtureServer.seedSeriesId,
-        'title': ConnectFixtureServer.seedSeriesTitle,
-      },
-      'episodes': [
-        {'publicId': 'EP01', 'title': 'First'},
-      ],
-    };
+    server.detailResponse = pb.GetSeriesDetailResponse(
+      series: pb.Series(
+        publicId: ConnectFixtureServer.seedSeriesId,
+        title: ConnectFixtureServer.seedSeriesTitle,
+      ),
+      episodes: [pb.Episode(publicId: 'EP01', title: 'First')],
+    );
 
     final detail = await catalog.getSeries(ConnectFixtureServer.seedSeriesId);
 
@@ -2321,15 +2440,13 @@ void main() {
   });
 
   test('getSeries rejects an episode without a public id', () async {
-    server.detailResponse = {
-      'series': {
-        'publicId': ConnectFixtureServer.seedSeriesId,
-        'title': ConnectFixtureServer.seedSeriesTitle,
-      },
-      'episodes': [
-        {'title': 'No public id'},
-      ],
-    };
+    server.detailResponse = pb.GetSeriesDetailResponse(
+      series: pb.Series(
+        publicId: ConnectFixtureServer.seedSeriesId,
+        title: ConnectFixtureServer.seedSeriesTitle,
+      ),
+      episodes: [pb.Episode(title: 'No public id')],
+    );
 
     expect(
       () => catalog.getSeries(ConnectFixtureServer.seedSeriesId),
@@ -2365,12 +2482,18 @@ void main() {
   });
 
   test('getEpisode reports an access value this build does not know', () async {
+    // No generated enum holds a name this build does not know, so the body
+    // goes out raw.
     server.episodeResponse = {
-      'episode': {'publicId': 'EP', 'title': 'Newly gated'},
-      'series': {
-        'publicId': ConnectFixtureServer.seedSeriesId,
-        'title': ConnectFixtureServer.seedSeriesTitle,
-      },
+      ...protojsonOf(
+        pb.GetEpisodeDetailResponse(
+          episode: pb.Episode(publicId: 'EP', title: 'Newly gated'),
+          series: pb.Series(
+            publicId: ConnectFixtureServer.seedSeriesId,
+            title: ConnectFixtureServer.seedSeriesTitle,
+          ),
+        ),
+      ),
       'access': 'EPISODE_ACCESS_SUBSCRIBED',
     };
 
@@ -2384,13 +2507,13 @@ void main() {
   });
 
   test('getEpisode reads an omitted access as unknown', () async {
-    server.episodeResponse = {
-      'episode': {'publicId': 'EP', 'title': 'No access field'},
-      'series': {
-        'publicId': ConnectFixtureServer.seedSeriesId,
-        'title': ConnectFixtureServer.seedSeriesTitle,
-      },
-    };
+    server.episodeResponse = pb.GetEpisodeDetailResponse(
+      episode: pb.Episode(publicId: 'EP', title: 'No access field'),
+      series: pb.Series(
+        publicId: ConnectFixtureServer.seedSeriesId,
+        title: ConnectFixtureServer.seedSeriesTitle,
+      ),
+    );
 
     final detail = await catalog.getEpisode(
       ConnectFixtureServer.seedSeriesId,
@@ -2401,17 +2524,15 @@ void main() {
   });
 
   test('getEpisode reads omitted page sizes as zero', () async {
-    server.episodeResponse = {
-      'episode': {'publicId': 'EP', 'title': 'Sizeless pages'},
-      'series': {
-        'publicId': ConnectFixtureServer.seedSeriesId,
-        'title': ConnectFixtureServer.seedSeriesTitle,
-      },
-      'access': 'EPISODE_ACCESS_FREE',
-      'images': [
-        {'id': 'a', 'imageUrl': '/images/episodes/a'},
-      ],
-    };
+    server.episodeResponse = pb.GetEpisodeDetailResponse(
+      episode: pb.Episode(publicId: 'EP', title: 'Sizeless pages'),
+      series: pb.Series(
+        publicId: ConnectFixtureServer.seedSeriesId,
+        title: ConnectFixtureServer.seedSeriesTitle,
+      ),
+      access: pb.EpisodeAccess.EPISODE_ACCESS_FREE,
+      images: [pb.EpisodeImage(id: 'a', imageUrl: '/images/episodes/a')],
+    );
 
     final detail = await catalog.getEpisode(
       ConnectFixtureServer.seedSeriesId,
@@ -2424,17 +2545,15 @@ void main() {
   });
 
   test('getEpisode rejects a page without an image url', () async {
-    server.episodeResponse = {
-      'episode': {'publicId': 'EP', 'title': 'Unreachable page'},
-      'series': {
-        'publicId': ConnectFixtureServer.seedSeriesId,
-        'title': ConnectFixtureServer.seedSeriesTitle,
-      },
-      'access': 'EPISODE_ACCESS_FREE',
-      'images': [
-        {'id': 'a'},
-      ],
-    };
+    server.episodeResponse = pb.GetEpisodeDetailResponse(
+      episode: pb.Episode(publicId: 'EP', title: 'Unreachable page'),
+      series: pb.Series(
+        publicId: ConnectFixtureServer.seedSeriesId,
+        title: ConnectFixtureServer.seedSeriesTitle,
+      ),
+      access: pb.EpisodeAccess.EPISODE_ACCESS_FREE,
+      images: [pb.EpisodeImage(id: 'a')],
+    );
 
     expect(
       () => catalog.getEpisode(
@@ -2520,7 +2639,27 @@ void main() {
         },
       );
       for (final call in calls) {
-        expect(call.body['surface'], 'CLIENT_SURFACE_APP', reason: call.path);
+        final surface = switch (call.path.split('/').last) {
+          'GetMyReadingPosition' =>
+            call.decode(pb.GetMyReadingPositionRequest()).surface,
+          'SaveReadingPosition' =>
+            call.decode(pb.SaveReadingPositionRequest()).surface,
+          'MarkEpisodeAsRead' =>
+            call.decode(pb.MarkEpisodeAsReadRequest()).surface,
+          'ListMyRecentSeries' =>
+            call.decode(pb.ListMyRecentSeriesRequest()).surface,
+          'GetMySeriesProgress' =>
+            call.decode(pb.GetMySeriesProgressRequest()).surface,
+          'ListMyEpisodeReads' =>
+            call.decode(pb.ListMyEpisodeReadsRequest()).surface,
+          'GetMyEpisodeRating' =>
+            call.decode(pb.GetMyEpisodeRatingRequest()).surface,
+          'RateEpisode' => call.decode(pb.RateEpisodeRequest()).surface,
+          'GetMySeriesRating' =>
+            call.decode(pb.GetMySeriesRatingRequest()).surface,
+          final procedure => fail('no request message for $procedure'),
+        };
+        expect(surface, pb.ClientSurface.CLIENT_SURFACE_APP, reason: call.path);
       }
     });
 
@@ -2535,10 +2674,10 @@ void main() {
           isFalse,
         );
 
-        server.episodeRatingResponse = const {
-          'ratingCount': '3',
-          'readerCredited': true,
-        };
+        server.episodeRatingResponse = pb.GetMyEpisodeRatingResponse(
+          ratingCount: Int64(3),
+          readerCredited: true,
+        );
         final credited = await signedIn.getEpisodeReaction(internalId);
 
         expect(credited!.readerCredited, isTrue);
@@ -2616,7 +2755,7 @@ void main() {
         'Bearer ${ConnectFixtureServer.memberAccessToken}',
       );
       expect(
-        (recorded.body['tenant']! as Map)['tenantId'],
+        recorded.decode(pb.SaveReadingPositionRequest()).tenant.tenantId,
         ConnectFixtureServer.defaultTenantId,
       );
     });
@@ -2636,7 +2775,7 @@ void main() {
         'Bearer ${ConnectFixtureServer.memberAccessToken}',
       );
       expect(
-        (recorded.body['tenant']! as Map)['tenantId'],
+        recorded.decode(pb.MarkEpisodeAsReadRequest()).tenant.tenantId,
         ConnectFixtureServer.defaultTenantId,
       );
     });
@@ -2674,19 +2813,17 @@ void main() {
       expect(items.single.series.id, ConnectFixtureServer.seedSeriesId);
       expect(items.single.series.eyeCatchVariants, isNotEmpty);
       expect(items.single.episode.id, ConnectFixtureServer.seedEpisodeId);
-      expect(server.requestsTo('ListMyRecentSeries').single.body['limit'], 6);
+      expect(
+        server.requestsOf(pb.ListMyRecentSeriesRequest.new).single.limit,
+        6,
+      );
     });
 
     test('listRecentSeries asks for the page the token names', () async {
+      final recent = server.recentSeries.single;
       server.recentSeries = [
         for (final id in ['series-a', 'series-b', 'series-c'])
-          {
-            ...server.recentSeries.single,
-            'series': {
-              ...server.recentSeries.single['series']! as Map<String, Object?>,
-              'publicId': id,
-            },
-          },
+          recent.deepCopy()..series.publicId = id,
       ];
 
       final first = await signedIn.listRecentSeries(limit: 2);
@@ -2702,9 +2839,9 @@ void main() {
       expect(first.nextToken, isNotEmpty);
       expect(second.series.single.series.id, 'series-c');
       expect(second.nextToken, isEmpty);
-      final requests = server.requestsTo('ListMyRecentSeries');
-      expect(requests.first.body.containsKey('token'), isFalse);
-      expect(requests.last.body['token'], first.nextToken);
+      final requests = server.requestsOf(pb.ListMyRecentSeriesRequest.new);
+      expect(requests.first.hasToken(), isFalse);
+      expect(requests.last.token, first.nextToken);
     });
 
     test('a position or a finish that lands is announced', () async {
@@ -2778,14 +2915,17 @@ void main() {
       () async {
         server
           ..seriesProgress = {
-            ConnectFixtureServer.seedSeriesId: {
-              'episode': {
-                'publicId': 'SeedEPSDAAA3',
-                'title': 'Seed Episode 001-03',
-                'orderIndex': 3,
-              },
-              'position': {'episodePublicId': 'SeedEPSDAAA3', 'pageIndex': 2},
-            },
+            ConnectFixtureServer.seedSeriesId: pb.SeriesProgress(
+              episode: pb.Episode(
+                publicId: 'SeedEPSDAAA3',
+                title: 'Seed Episode 001-03',
+                orderIndex: 3,
+              ),
+              position: pb.ReadingPosition(
+                episodePublicId: 'SeedEPSDAAA3',
+                pageIndex: 2,
+              ),
+            ),
           }
           ..episodeReads.addAll({
             ConnectFixtureServer.seedEpisodeId: '2026-09-01T00:00:00Z',
@@ -2806,7 +2946,7 @@ void main() {
         });
         final request = server.requestsTo('GetMySeriesProgress').single;
         expect(
-          request.body['seriesId'],
+          request.decode(pb.GetMySeriesProgressRequest()).seriesId,
           ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
         );
         expect(
@@ -2818,13 +2958,13 @@ void main() {
 
     test('getSeriesProgress reads a finished episode as finished', () async {
       server.seriesProgress = {
-        ConnectFixtureServer.seedSeriesId: {
-          'episode': {
-            'publicId': ConnectFixtureServer.seedEpisodeId,
-            'orderIndex': 1,
-          },
-          'isFinished': true,
-        },
+        ConnectFixtureServer.seedSeriesId: pb.SeriesProgress(
+          episode: pb.Episode(
+            publicId: ConnectFixtureServer.seedEpisodeId,
+            orderIndex: 1,
+          ),
+          isFinished: true,
+        ),
       };
 
       final progress = await signedIn.getSeriesProgress(
@@ -2850,10 +2990,10 @@ void main() {
 
     test('getMySeriesRating reads the mean of the member\'s scores', () async {
       server.seriesRatings = {
-        ConnectFixtureServer.seedSeriesId: {
-          'ratingAverage': 4.3,
-          'ratedEpisodeCount': 3,
-        },
+        ConnectFixtureServer.seedSeriesId: pb.GetMySeriesRatingResponse(
+          ratingAverage: 4.3,
+          ratedEpisodeCount: 3,
+        ),
       };
 
       final rating = await signedIn.getMySeriesRating(
@@ -2863,7 +3003,7 @@ void main() {
       expect(rating, 4.3);
       final request = server.requestsTo('GetMySeriesRating').single;
       expect(
-        request.body['seriesId'],
+        request.decode(pb.GetMySeriesRatingRequest()).seriesId,
         ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
       );
       expect(
@@ -2886,10 +3026,10 @@ void main() {
 
     test('a series rating outside the scale is refused', () async {
       server.seriesRatings = {
-        ConnectFixtureServer.seedSeriesId: {
-          'ratingAverage': 7,
-          'ratedEpisodeCount': 1,
-        },
+        ConnectFixtureServer.seedSeriesId: pb.GetMySeriesRatingResponse(
+          ratingAverage: 7,
+          ratedEpisodeCount: 1,
+        ),
       };
 
       await expectLater(
@@ -2916,7 +3056,7 @@ void main() {
       expect(reads.single.episode.orderIndex, 1);
       expect(reads.single.readAt, DateTime.utc(2026, 9, 1).toLocal());
       final request = server.requestsTo('ListMyEpisodeReads').single;
-      expect(request.body['limit'], 20);
+      expect(request.decode(pb.ListMyEpisodeReadsRequest()).limit, 20);
       expect(
         request.headers['authorization'],
         'Bearer ${ConnectFixtureServer.memberAccessToken}',
@@ -2927,13 +3067,7 @@ void main() {
       final read = server.episodeReadHistory.single;
       server.episodeReadHistory = [
         for (final id in ['episode-a', 'episode-b', 'episode-c'])
-          {
-            ...read,
-            'episode': {
-              ...read['episode']! as Map<String, Object?>,
-              'publicId': id,
-            },
-          },
+          read.deepCopy()..episode.publicId = id,
       ];
 
       final first = await signedIn.listEpisodeReads(limit: 2);
@@ -2948,9 +3082,9 @@ void main() {
       ]);
       expect(second.reads.single.episode.id, 'episode-c');
       expect(second.nextToken, isEmpty);
-      final requests = server.requestsTo('ListMyEpisodeReads');
-      expect(requests.first.body.containsKey('token'), isFalse);
-      expect(requests.last.body['token'], first.nextToken);
+      final requests = server.requestsOf(pb.ListMyEpisodeReadsRequest.new);
+      expect(requests.first.hasToken(), isFalse);
+      expect(requests.last.token, first.nextToken);
     });
 
     test('a member who finished nothing has an empty history', () async {
@@ -3056,17 +3190,17 @@ void main() {
     late HttpCatalogRepository signedIn;
 
     /// A newly published episode of [seriesId].
-    Map<String, Object?> arrival(String seriesId, String episodeId) {
-      return {
-        'series': {'publicId': seriesId, 'title': 'Series $seriesId'},
-        'episode': {
-          'publicId': episodeId,
-          'title': 'Episode $episodeId',
-          'orderIndex': 3,
-          'price': 0,
-          'publishedAt': '2026-09-01T00:00:00Z',
-        },
-      };
+    pb.FollowUpdate arrival(String seriesId, String episodeId) {
+      return pb.FollowUpdate(
+        series: pb.Series(publicId: seriesId, title: 'Series $seriesId'),
+        episode: pb.Episode(
+          publicId: episodeId,
+          title: 'Episode $episodeId',
+          orderIndex: 3,
+          price: 0,
+          publishedAt: '2026-09-01T00:00:00Z',
+        ),
+      );
     }
 
     setUp(() {
@@ -3092,8 +3226,9 @@ void main() {
       expect(updates.first.episode.orderIndex, 3);
       expect(updates.first.publishedAt, DateTime.utc(2026, 9, 1).toLocal());
       final request = server.requestsTo('ListMyFollowUpdates').single;
-      expect(request.body['limit'], 20);
-      expect(request.body['surface'], 'CLIENT_SURFACE_APP');
+      final body = request.decode(pb.ListMyFollowUpdatesRequest());
+      expect(body.limit, 20);
+      expect(body.surface, pb.ClientSurface.CLIENT_SURFACE_APP);
       expect(
         request.headers['authorization'],
         'Bearer ${ConnectFixtureServer.memberAccessToken}',
@@ -3110,9 +3245,9 @@ void main() {
       expect(first.updates.single.episode.id, 'episode-a');
       expect(second.updates.single.episode.id, 'episode-b');
       expect(second.nextToken, isEmpty);
-      final requests = server.requestsTo('ListMyFollowUpdates');
-      expect(requests.first.body.containsKey('token'), isFalse);
-      expect(requests.last.body['token'], first.nextToken);
+      final requests = server.requestsOf(pb.ListMyFollowUpdatesRequest.new);
+      expect(requests.first.hasToken(), isFalse);
+      expect(requests.last.token, first.nextToken);
     });
 
     test('a member with nothing new has an empty list', () async {
@@ -3125,15 +3260,9 @@ void main() {
     });
 
     test('an episode without a readable publish time still lists', () async {
-      final update = server.followUpdates.first;
       server.followUpdates = [
-        {
-          ...update,
-          'episode': {
-            ...update['episode']! as Map<String, Object?>,
-            'publishedAt': 'not a time',
-          },
-        },
+        server.followUpdates.first.deepCopy()
+          ..episode.publishedAt = 'not a time',
       ];
 
       final updates = (await signedIn.listFollowUpdates(limit: 20)).updates;
@@ -3163,10 +3292,10 @@ void main() {
   });
 
   test('getEpisode rejects a body without a series', () async {
-    server.episodeResponse = {
-      'episode': {'publicId': 'EP', 'title': 'Orphan'},
-      'access': 'EPISODE_ACCESS_FREE',
-    };
+    server.episodeResponse = pb.GetEpisodeDetailResponse(
+      episode: pb.Episode(publicId: 'EP', title: 'Orphan'),
+      access: pb.EpisodeAccess.EPISODE_ACCESS_FREE,
+    );
 
     expect(
       () => catalog.getEpisode(

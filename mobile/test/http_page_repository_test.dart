@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:publira/api/connect_client.dart';
+import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/page.pb.dart' as pb;
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/pages/http_page_repository.dart';
 import 'package:publira/pages/page_failure.dart';
@@ -50,11 +52,16 @@ void main() {
     expect(page.title, 'Terms of service');
     expect(page.contentMarkdown, '## Terms');
     expect(page.locale, 'en');
-    expect(server.requestsTo('GetPublishedPage').single.body, {
-      'tenant': {'tenantId': ConnectFixtureServer.defaultTenantId},
-      'slug': '/legal/terms',
-      'locale': 'en',
-    });
+    expect(
+      server.requestsOf(pb.GetPublishedPageRequest.new).single,
+      pb.GetPublishedPageRequest(
+        tenant: pb.TenantContext(
+          tenantId: ConnectFixtureServer.defaultTenantId,
+        ),
+        slug: '/legal/terms',
+        locale: 'en',
+      ),
+    );
   });
 
   test('get reads the locale of the translation served', () async {
@@ -106,10 +113,15 @@ void main() {
         PublishedPageLink(slug: '/blank', title: 'Blank'),
         PublishedPageLink(slug: '/legal/privacy', title: 'Privacy policy'),
       ]);
-      expect(server.requestsTo('ListPublishedPages').single.body, {
-        'tenant': {'tenantId': ConnectFixtureServer.defaultTenantId},
-        'locale': 'ja',
-      });
+      expect(
+        server.requestsOf(pb.ListPublishedPagesRequest.new).single,
+        pb.ListPublishedPagesRequest(
+          tenant: pb.TenantContext(
+            tenantId: ConnectFixtureServer.defaultTenantId,
+          ),
+          locale: 'ja',
+        ),
+      );
     },
   );
 

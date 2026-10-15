@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:publira/api/gen/publira/v1/auth.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/tenant.pb.dart' as pb;
 import 'package:publira/api/error_details.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_session.dart';
@@ -27,7 +29,7 @@ void main() {
     String nonce = 'google-nonce-1',
   }) {
     server.idTokens[idToken] = FixtureIdToken(
-      provider: 'IDENTITY_PROVIDER_GOOGLE',
+      provider: pb.IdentityProvider.IDENTITY_PROVIDER_GOOGLE,
       subject: subject,
       email: email,
       nonce: nonce,
@@ -45,12 +47,12 @@ void main() {
 
   setUp(() async {
     server = ConnectFixtureServer()
-      ..appleSignIn = const {}
+      ..appleSignIn = pb.TenantAppleSignIn()
       ..iosAppBundleIdentifier = 'com.example.reader'
-      ..googleSignIn = const {
-        'webClientId': '1-web.apps.googleusercontent.com',
-        'iosClientId': '1-ios.apps.googleusercontent.com',
-      };
+      ..googleSignIn = pb.TenantGoogleSignIn(
+        webClientId: '1-web.apps.googleusercontent.com',
+        iosClientId: '1-ios.apps.googleusercontent.com',
+      );
     await server.start();
     auth = HttpAuthRepository(
       config: AppConfig(baseUrl: server.baseUrl, tenantHost: 'localhost'),
@@ -106,7 +108,9 @@ void main() {
   test('readSignInProviders reads the Services ID and the Android app the '
       'storefront hands Apple\'s answer to', () async {
     server
-      ..appleSignIn = const {'servicesId': ' com.example.reader.web '}
+      ..appleSignIn = pb.TenantAppleSignIn(
+        servicesId: ' com.example.reader.web ',
+      )
       ..androidApplicationId = 'com.example.reader';
 
     final providers = await auth.readSignInProviders();
@@ -121,9 +125,9 @@ void main() {
     () async {
       // The site linked the member's Google account when it created the
       // account, so the app's token finds it by the provider's subject.
-      server.memberIdentities['IDENTITY_PROVIDER_GOOGLE'] =
+      server.memberIdentities[pb.IdentityProvider.IDENTITY_PROVIDER_GOOGLE] =
           const FixtureIdToken(
-            provider: 'IDENTITY_PROVIDER_GOOGLE',
+            provider: pb.IdentityProvider.IDENTITY_PROVIDER_GOOGLE,
             subject: 'google-subject-1',
             email: 'another-address@example.com',
             nonce: '',
@@ -135,18 +139,18 @@ void main() {
 
       expect(session.accessToken, ConnectFixtureServer.memberAccessToken);
       expect(session.userPublicId, ConnectFixtureServer.memberPublicId);
-      final sent = server.requestsTo('LoginWithIdToken').single.body;
-      expect(sent['provider'], 'IDENTITY_PROVIDER_GOOGLE');
-      expect(sent['idToken'], 'google-id-token-1');
-      expect(sent['nonce'], 'google-nonce-1');
-      expect(sent.containsKey('authorizationCode'), isFalse);
+      final sent = server.requestsOf(pb.LoginWithIdTokenRequest.new).single;
+      expect(sent.provider, pb.IdentityProvider.IDENTITY_PROVIDER_GOOGLE);
+      expect(sent.idToken, 'google-id-token-1');
+      expect(sent.nonce, 'google-nonce-1');
+      expect(sent.hasAuthorizationCode(), isFalse);
     },
   );
 
   test('signInWithProvider sends Apple the code and the name it handed '
       'over', () async {
     server.idTokens['apple-id-token'] = const FixtureIdToken(
-      provider: 'IDENTITY_PROVIDER_APPLE',
+      provider: pb.IdentityProvider.IDENTITY_PROVIDER_APPLE,
       subject: 'apple-subject',
       email: ConnectFixtureServer.memberEmail,
       nonce: 'raw-nonce',
@@ -162,12 +166,12 @@ void main() {
       ),
     );
 
-    final sent = server.requestsTo('LoginWithIdToken').single.body;
-    expect(sent['provider'], 'IDENTITY_PROVIDER_APPLE');
-    expect(sent['nonce'], 'raw-nonce');
-    expect(sent['authorizationCode'], 'apple-code');
-    expect(sent['name'], 'Taylor Reader');
-    expect(sent.containsKey('redirectUri'), isFalse);
+    final sent = server.requestsOf(pb.LoginWithIdTokenRequest.new).single;
+    expect(sent.provider, pb.IdentityProvider.IDENTITY_PROVIDER_APPLE);
+    expect(sent.nonce, 'raw-nonce');
+    expect(sent.authorizationCode, 'apple-code');
+    expect(sent.name, 'Taylor Reader');
+    expect(sent.hasRedirectUri(), isFalse);
   });
 
   test('signInWithProvider holds the icon the account shows', () async {
@@ -190,14 +194,15 @@ void main() {
       'the Android app, with the redirect its code is exchanged at', () async {
     // The site linked the member's Apple account through the Services ID, and
     // the Android app's web flow is issued to the same one.
-    server.memberIdentities['IDENTITY_PROVIDER_APPLE'] = const FixtureIdToken(
-      provider: 'IDENTITY_PROVIDER_APPLE',
-      subject: 'apple-subject-1',
-      email: 'relay@privaterelay.appleid.com',
-      nonce: '',
-    );
+    server.memberIdentities[pb.IdentityProvider.IDENTITY_PROVIDER_APPLE] =
+        const FixtureIdToken(
+          provider: pb.IdentityProvider.IDENTITY_PROVIDER_APPLE,
+          subject: 'apple-subject-1',
+          email: 'relay@privaterelay.appleid.com',
+          nonce: '',
+        );
     server.idTokens['apple-id-token'] = const FixtureIdToken(
-      provider: 'IDENTITY_PROVIDER_APPLE',
+      provider: pb.IdentityProvider.IDENTITY_PROVIDER_APPLE,
       subject: 'apple-subject-1',
       email: 'relay@privaterelay.appleid.com',
       nonce: 'raw-nonce',
@@ -214,21 +219,21 @@ void main() {
     );
 
     expect(session.userPublicId, ConnectFixtureServer.memberPublicId);
-    final sent = server.requestsTo('LoginWithIdToken').single.body;
-    expect(sent['authorizationCode'], 'apple-code');
+    final sent = server.requestsOf(pb.LoginWithIdTokenRequest.new).single;
+    expect(sent.authorizationCode, 'apple-code');
     expect(
-      sent['redirectUri'],
+      sent.redirectUri,
       'https://localhost/api/v1/auth/apple/callback/android',
     );
   });
 
   test('a first sign-in the tenant asks consent for is consentRequired, and '
       'the same token signs up with it', () async {
-    server.termsPage = const {
-      'slug': '/terms',
-      'title': 'Terms',
-      'versionId': 'terms-v1',
-    };
+    server.termsPage = pb.TenantLegalPage(
+      slug: '/terms',
+      title: 'Terms',
+      versionId: 'terms-v1',
+    );
     final credential = issueGoogleToken(email: 'new-reader@example.com');
 
     await expectLater(
@@ -261,12 +266,13 @@ void main() {
       'password', () async {
     server
       ..memberHasPassword = false
-      ..memberIdentities['IDENTITY_PROVIDER_GOOGLE'] = const FixtureIdToken(
-        provider: 'IDENTITY_PROVIDER_GOOGLE',
-        subject: 'google-subject-1',
-        email: 'member@gmail.example',
-        nonce: '',
-      );
+      ..memberIdentities[pb.IdentityProvider.IDENTITY_PROVIDER_GOOGLE] =
+          const FixtureIdToken(
+            provider: pb.IdentityProvider.IDENTITY_PROVIDER_GOOGLE,
+            subject: 'google-subject-1',
+            email: 'member@gmail.example',
+            nonce: '',
+          );
 
     final linked = await auth.readLinkedIdentities(member);
 
@@ -284,12 +290,13 @@ void main() {
       'already gone to success', () async {
     server
       ..memberHasPassword = false
-      ..memberIdentities['IDENTITY_PROVIDER_GOOGLE'] = const FixtureIdToken(
-        provider: 'IDENTITY_PROVIDER_GOOGLE',
-        subject: 'google-subject-1',
-        email: 'member@gmail.example',
-        nonce: '',
-      );
+      ..memberIdentities[pb.IdentityProvider.IDENTITY_PROVIDER_GOOGLE] =
+          const FixtureIdToken(
+            provider: pb.IdentityProvider.IDENTITY_PROVIDER_GOOGLE,
+            subject: 'google-subject-1',
+            email: 'member@gmail.example',
+            nonce: '',
+          );
 
     await expectLater(
       auth.unlinkIdentity(member, IdentityProvider.google),
@@ -310,13 +317,15 @@ void main() {
         issueGoogleToken(email: 'reader@gmail.example'),
       );
 
-      final sent = server.requestsTo('LinkIdentity').single.body;
-      expect(sent['provider'], 'IDENTITY_PROVIDER_GOOGLE');
-      expect(sent['idToken'], 'google-id-token-1');
-      expect(sent['nonce'], 'google-nonce-1');
-      expect(sent.containsKey('authorizationCode'), isFalse);
+      final sent = server.requestsOf(pb.LinkIdentityRequest.new).single;
+      expect(sent.provider, pb.IdentityProvider.IDENTITY_PROVIDER_GOOGLE);
+      expect(sent.idToken, 'google-id-token-1');
+      expect(sent.nonce, 'google-nonce-1');
+      expect(sent.hasAuthorizationCode(), isFalse);
       expect(
-        server.memberIdentities['IDENTITY_PROVIDER_GOOGLE']?.email,
+        server
+            .memberIdentities[pb.IdentityProvider.IDENTITY_PROVIDER_GOOGLE]
+            ?.email,
         'reader@gmail.example',
       );
 
@@ -334,7 +343,7 @@ void main() {
       'sends Apple the code and the redirect its web flow ran with',
       () async {
         server.idTokens['apple-id-token'] = const FixtureIdToken(
-          provider: 'IDENTITY_PROVIDER_APPLE',
+          provider: pb.IdentityProvider.IDENTITY_PROVIDER_APPLE,
           subject: 'apple-subject',
           email: 'abc123@privaterelay.appleid.com',
           nonce: 'raw-nonce',
@@ -352,14 +361,15 @@ void main() {
           ),
         );
 
-        final sent = server.requestsTo('LinkIdentity').single.body;
-        expect(sent['provider'], 'IDENTITY_PROVIDER_APPLE');
-        expect(sent['authorizationCode'], 'apple-code');
+        // LinkIdentityRequest has no name field, so decoding the request
+        // strictly already fails on one sent.
+        final sent = server.requestsOf(pb.LinkIdentityRequest.new).single;
+        expect(sent.provider, pb.IdentityProvider.IDENTITY_PROVIDER_APPLE);
+        expect(sent.authorizationCode, 'apple-code');
         expect(
-          sent['redirectUri'],
+          sent.redirectUri,
           'https://localhost/api/v1/auth/apple/callback/android',
         );
-        expect(sent.containsKey('name'), isFalse);
       },
     );
 
@@ -376,9 +386,9 @@ void main() {
 
     test('maps a provider the account already has linked to '
         'providerAlreadyLinked', () async {
-      server.memberIdentities['IDENTITY_PROVIDER_GOOGLE'] =
+      server.memberIdentities[pb.IdentityProvider.IDENTITY_PROVIDER_GOOGLE] =
           const FixtureIdToken(
-            provider: 'IDENTITY_PROVIDER_GOOGLE',
+            provider: pb.IdentityProvider.IDENTITY_PROVIDER_GOOGLE,
             subject: 'google-subject-0',
             email: 'member@gmail.example',
             nonce: '',
@@ -434,12 +444,13 @@ void main() {
       'account', () async {
     server
       ..memberHasPassword = false
-      ..memberIdentities['IDENTITY_PROVIDER_GOOGLE'] = const FixtureIdToken(
-        provider: 'IDENTITY_PROVIDER_GOOGLE',
-        subject: 'google-subject-1',
-        email: 'member@gmail.example',
-        nonce: '',
-      );
+      ..memberIdentities[pb.IdentityProvider.IDENTITY_PROVIDER_GOOGLE] =
+          const FixtureIdToken(
+            provider: pb.IdentityProvider.IDENTITY_PROVIDER_GOOGLE,
+            subject: 'google-subject-1',
+            email: 'member@gmail.example',
+            nonce: '',
+          );
 
     await expectLater(
       auth.deleteAccountWithProvider(
@@ -478,12 +489,13 @@ void main() {
     setUp(() {
       server
         ..memberHasPassword = false
-        ..memberIdentities['IDENTITY_PROVIDER_GOOGLE'] = const FixtureIdToken(
-          provider: 'IDENTITY_PROVIDER_GOOGLE',
-          subject: 'google-subject-1',
-          email: 'member@gmail.example',
-          nonce: '',
-        );
+        ..memberIdentities[pb.IdentityProvider.IDENTITY_PROVIDER_GOOGLE] =
+            const FixtureIdToken(
+              provider: pb.IdentityProvider.IDENTITY_PROVIDER_GOOGLE,
+              subject: 'google-subject-1',
+              email: 'member@gmail.example',
+              nonce: '',
+            );
     });
 
     Future<void> requestWith(ProviderCredential credential) =>

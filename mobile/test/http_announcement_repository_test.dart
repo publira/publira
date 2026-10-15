@@ -4,30 +4,31 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:publira/announcements/announcement_failure.dart';
 import 'package:publira/announcements/http_announcement_repository.dart';
 import 'package:publira/api/connect_client.dart';
+import 'package:publira/api/gen/publira/v1/auth.pb.dart' as pb;
 import 'package:publira/api/tenant_resolver.dart';
 
 import 'support/connect_fixture_server.dart';
 
 void main() {
   /// One `AnnouncementItem` as the API answers it.
-  Map<String, Object?> row(
+  pb.AnnouncementItem row(
     String id, {
     bool isRead = false,
     String linkUrl = '/series/SeedSERSAAA1',
     String pinnedUntil = '',
   }) {
-    return {
-      'id': id,
-      'announcementType': 'info',
-      'title': 'Notice $id',
-      'body': 'Body of $id',
-      'linkUrl': linkUrl,
+    return pb.AnnouncementItem(
+      id: id,
+      announcementType: 'info',
+      title: 'Notice $id',
+      body: 'Body of $id',
+      linkUrl: linkUrl,
       // protojson omits a false.
-      if (isRead) 'isRead': true,
-      'createdAt': '2026-09-20T09:00:00Z',
-      if (pinnedUntil.isNotEmpty) 'pinned': true,
-      if (pinnedUntil.isNotEmpty) 'pinnedUntil': pinnedUntil,
-    };
+      isRead: isRead ? true : null,
+      createdAt: '2026-09-20T09:00:00Z',
+      pinned: pinnedUntil.isNotEmpty ? true : null,
+      pinnedUntil: pinnedUntil.isNotEmpty ? pinnedUntil : null,
+    );
   }
 
   Matcher failsWith(AnnouncementFailureKind kind) => throwsA(
@@ -73,9 +74,12 @@ void main() {
     expect(page.announcements.last.isRead, isTrue);
     expect(page.nextToken, isEmpty);
 
-    final request = server.requestsTo('ListAnnouncements').single;
-    expect(request.body['limit'], HttpAnnouncementRepository.pageSize);
-    expect(request.headers['authorization'], 'Bearer $accessToken');
+    final call = server.requestsTo('ListAnnouncements').single;
+    expect(
+      call.decode(pb.ListAnnouncementsRequest()).limit,
+      HttpAnnouncementRepository.pageSize,
+    );
+    expect(call.headers['authorization'], 'Bearer $accessToken');
   });
 
   test('a page carries the token of the page under it', () async {
@@ -89,7 +93,7 @@ void main() {
     final second = await repository().list(token: first.nextToken);
     expect(second.announcements.single.id, 'a-2');
     expect(second.nextToken, isEmpty);
-    expect(server.requestsTo('ListAnnouncements').last.body['token'], '1');
+    expect(server.requestsOf(pb.ListAnnouncementsRequest.new).last.token, '1');
   });
 
   test('a row naming no id is left out of the list', () async {
@@ -118,7 +122,7 @@ void main() {
 
     expect(announcement.title, 'Notice a-2');
     expect(
-      server.requestsTo('GetAnnouncement').single.body['announcementId'],
+      server.requestsOf(pb.GetAnnouncementRequest.new).single.announcementId,
       'a-2',
     );
   });
@@ -160,7 +164,10 @@ void main() {
     await repository().markRead('a-1');
 
     expect(
-      server.requestsTo('MarkAnnouncementAsRead').single.body['announcementId'],
+      server
+          .requestsOf(pb.MarkAnnouncementAsReadRequest.new)
+          .single
+          .announcementId,
       'a-1',
     );
     final page = await repository().list();

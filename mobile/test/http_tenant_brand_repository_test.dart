@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:publira/api/connect_client.dart';
+import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/tenant.pb.dart' as pb;
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/config.dart';
 import 'package:publira/tenant/tenant_brand.dart';
@@ -32,18 +34,18 @@ void main() {
   }
 
   test('reads the name, colours, and logo the tenant stored', () async {
-    server.tenantTheme = {
-      'primaryColor': '#0b6e4f',
-      'logoImageVariants': [
-        {
-          'label': 'logo',
-          'variantType': 'logo',
-          'url': '/images/tenants/LOGO/logo',
-          'width': 320,
-          'height': 80,
-        },
+    server.tenantTheme = pb.TenantTheme(
+      primaryColor: '#0b6e4f',
+      logoImageVariants: [
+        pb.TenantImageVariant(
+          label: 'logo',
+          variantType: 'logo',
+          url: '/images/tenants/LOGO/logo',
+          width: 320,
+          height: 80,
+        ),
       ],
-    };
+    );
 
     final brand = await repository().read();
 
@@ -54,10 +56,10 @@ void main() {
       Uri.parse('${server.baseUrl}/images/tenants/LOGO/logo'),
     );
     expect(brand?.logo?.width, 320);
-    final request = server.requestsTo('GetTenant').single;
-    expect(request.body['tenant'], {
-      'tenantId': ConnectFixtureServer.defaultTenantId,
-    });
+    expect(
+      server.requestsOf(pb.GetTenantRequest.new).single.tenant,
+      pb.TenantContext(tenantId: ConnectFixtureServer.defaultTenantId),
+    );
   });
 
   test('a tenant with no theme reads as the brand defaults', () async {
@@ -68,11 +70,15 @@ void main() {
   });
 
   test('a logo with no size to lay out is no logo', () async {
-    server.tenantTheme = {
-      'logoImageVariants': [
-        {'url': '/images/tenants/LOGO/logo', 'width': 0, 'height': 0},
+    server.tenantTheme = pb.TenantTheme(
+      logoImageVariants: [
+        pb.TenantImageVariant(
+          url: '/images/tenants/LOGO/logo',
+          width: 0,
+          height: 0,
+        ),
       ],
-    };
+    );
 
     expect((await repository().read())?.logo, isNull);
   });

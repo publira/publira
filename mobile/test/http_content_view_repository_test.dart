@@ -2,7 +2,10 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:publira/api/connect_client.dart';
+import 'package:publira/api/client_surface.dart';
 import 'package:publira/api/connect_exception.dart';
+import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/catalog.pb.dart' as pb;
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/content_views/anonymous_id_store.dart';
 import 'package:publira/content_views/content_view_repository.dart';
@@ -50,16 +53,19 @@ void main() {
       ConnectFixtureServer.internalIdOf(seriesId),
     );
 
-    final request = server.requestsTo('RecordContentView').single;
-    expect(request.body, {
-      'tenant': {'tenantId': server.tenantId},
-      'target': {
-        'type': 'CONTENT_VIEW_TARGET_TYPE_SERIES',
-        'id': ConnectFixtureServer.internalIdOf(seriesId),
-      },
-      'surface': 'CLIENT_SURFACE_APP',
-    });
-    expect(request.headers['x-publira-tenant-id'], server.tenantId);
+    final call = server.requestsTo('RecordContentView').single;
+    expect(
+      call.decode(pb.RecordContentViewRequest()),
+      pb.RecordContentViewRequest(
+        tenant: pb.TenantContext(tenantId: server.tenantId),
+        target: pb.ContentViewTarget(
+          type: pb.ContentViewTargetType.CONTENT_VIEW_TARGET_TYPE_SERIES,
+          id: ConnectFixtureServer.internalIdOf(seriesId),
+        ),
+        surface: appClientSurface,
+      ),
+    );
+    expect(call.headers['x-publira-tenant-id'], server.tenantId);
   });
 
   test('an episode view names the episode', () async {
@@ -68,11 +74,13 @@ void main() {
       ConnectFixtureServer.internalIdOf(episodeId),
     );
 
-    final request = server.requestsTo('RecordContentView').single;
-    expect(request.body['target'], {
-      'type': 'CONTENT_VIEW_TARGET_TYPE_EPISODE',
-      'id': ConnectFixtureServer.internalIdOf(episodeId),
-    });
+    expect(
+      server.requestsOf(pb.RecordContentViewRequest.new).single.target,
+      pb.ContentViewTarget(
+        type: pb.ContentViewTargetType.CONTENT_VIEW_TARGET_TYPE_EPISODE,
+        id: ConnectFixtureServer.internalIdOf(episodeId),
+      ),
+    );
   });
 
   test('a signed-in reader is attributed by the session', () async {

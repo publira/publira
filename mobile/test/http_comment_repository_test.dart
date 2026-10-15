@@ -1,7 +1,10 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:publira/api/client_surface.dart';
 import 'package:publira/api/connect_client.dart';
+import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/comment.pb.dart' as pb;
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/comments/comment_failure.dart';
 import 'package:publira/comments/http_comment_repository.dart';
@@ -35,13 +38,13 @@ void main() {
     server = ConnectFixtureServer(
       episodeComments: {
         episodeId: [
-          {
-            'publicId': 'SeedCMNTAAA1',
-            'body': 'The first one.',
-            'createdAt': '2026-09-08T10:30:00Z',
-            'authorPublicId': 'SeedMMBRBBB2',
-            'authorName': 'Another Member',
-          },
+          pb.EpisodeComment(
+            publicId: 'SeedCMNTAAA1',
+            body: 'The first one.',
+            createdAt: '2026-09-08T10:30:00Z',
+            authorPublicId: 'SeedMMBRBBB2',
+            authorName: 'Another Member',
+          ),
         ],
       },
     );
@@ -53,13 +56,15 @@ void main() {
   });
 
   test('the tenant answers how it publishes comments', () async {
-    server.commentMode = 'COMMENT_MODE_APPROVAL_REQUIRED';
+    server.commentMode = pb.CommentMode.COMMENT_MODE_APPROVAL_REQUIRED;
 
     expect(await repository().commentMode(), CommentMode.approvalRequired);
   });
 
   test('a mode this build cannot name takes no comments', () async {
-    server.commentMode = 'COMMENT_MODE_SOMETHING_ELSE';
+    // A name this build does not know decodes as the zero value, which is
+    // what the fixture answers here: the generated enum cannot carry one.
+    server.commentMode = pb.CommentMode.COMMENT_MODE_UNSPECIFIED;
 
     expect(await repository().commentMode(), CommentMode.disabled);
   });
@@ -79,25 +84,25 @@ void main() {
   test('a comment by a credited creator carries the credited name', () async {
     server.episodeComments = {
       episodeId: [
-        {
-          'publicId': 'SeedCMNTAAA3',
-          'body': 'Thank you for reading.',
-          'createdAt': '2026-09-08T10:45:00Z',
-          'authorPublicId': 'SeedMMBRCCC3',
-          'authorName': 'Sample Member',
-          'creator': {
-            'id': 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
-            'publicId': 'SeedCRTRAAA1',
-            'name': 'Sample Author',
-          },
-        },
-        {
-          'publicId': 'SeedCMNTAAA1',
-          'body': 'The first one.',
-          'createdAt': '2026-09-08T10:30:00Z',
-          'authorPublicId': 'SeedMMBRBBB2',
-          'authorName': 'Another Member',
-        },
+        pb.EpisodeComment(
+          publicId: 'SeedCMNTAAA3',
+          body: 'Thank you for reading.',
+          createdAt: '2026-09-08T10:45:00Z',
+          authorPublicId: 'SeedMMBRCCC3',
+          authorName: 'Sample Member',
+          creator: pb.EpisodeCommentCreator(
+            id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+            publicId: 'SeedCRTRAAA1',
+            name: 'Sample Author',
+          ),
+        ),
+        pb.EpisodeComment(
+          publicId: 'SeedCMNTAAA1',
+          body: 'The first one.',
+          createdAt: '2026-09-08T10:30:00Z',
+          authorPublicId: 'SeedMMBRBBB2',
+          authorName: 'Another Member',
+        ),
       ],
     };
 
@@ -114,29 +119,29 @@ void main() {
   test('an author icon resolves against the image server', () async {
     server.episodeComments = {
       episodeId: [
-        {
-          'publicId': 'SeedCMNTAAA3',
-          'body': 'I have a face.',
-          'createdAt': '2026-09-08T10:45:00Z',
-          'authorPublicId': 'SeedMMBRCCC3',
-          'authorName': 'Sample Member',
-          'authorIconImageVariants': [
-            {
-              'label': 'icon',
-              'url': '/images/users/0190a0c0-0000-7000-8000-000000000001',
-              'contentType': 'image/webp',
-              'width': 512,
-              'height': 512,
-            },
+        pb.EpisodeComment(
+          publicId: 'SeedCMNTAAA3',
+          body: 'I have a face.',
+          createdAt: '2026-09-08T10:45:00Z',
+          authorPublicId: 'SeedMMBRCCC3',
+          authorName: 'Sample Member',
+          authorIconImageVariants: [
+            pb.UserIconVariant(
+              label: 'icon',
+              url: '/images/users/0190a0c0-0000-7000-8000-000000000001',
+              contentType: 'image/webp',
+              width: 512,
+              height: 512,
+            ),
           ],
-        },
-        {
-          'publicId': 'SeedCMNTAAA1',
-          'body': 'The first one.',
-          'createdAt': '2026-09-08T10:30:00Z',
-          'authorPublicId': 'SeedMMBRBBB2',
-          'authorName': 'Another Member',
-        },
+        ),
+        pb.EpisodeComment(
+          publicId: 'SeedCMNTAAA1',
+          body: 'The first one.',
+          createdAt: '2026-09-08T10:30:00Z',
+          authorPublicId: 'SeedMMBRBBB2',
+          authorName: 'Another Member',
+        ),
       ],
     };
 
@@ -159,10 +164,11 @@ void main() {
 
     await repository().listComments(episodeInternalId, token: 'page-2');
 
-    final request = server.requestsTo('ListEpisodeComments').single;
-    expect(request.body['episodeId'], episodeInternalId);
-    expect(request.body['token'], 'page-2');
-    expect(request.headers.containsKey('authorization'), isFalse);
+    final call = server.requestsTo('ListEpisodeComments').single;
+    final request = call.decode(pb.ListEpisodeCommentsRequest());
+    expect(request.episodeId, episodeInternalId);
+    expect(request.token, 'page-2');
+    expect(call.headers.containsKey('authorization'), isFalse);
   });
 
   test(
@@ -179,12 +185,12 @@ void main() {
       accessToken = ConnectFixtureServer.memberAccessToken;
       server.myEpisodeComments = {
         episodeId: [
-          {
-            'publicId': 'SeedCMNTAAA2',
-            'body': 'Still waiting.',
-            'createdAt': '2026-09-08T11:00:00Z',
-            'awaitingApproval': true,
-          },
+          pb.MyEpisodeComment(
+            publicId: 'SeedCMNTAAA2',
+            body: 'Still waiting.',
+            createdAt: '2026-09-08T11:00:00Z',
+            awaitingApproval: true,
+          ),
         ],
       };
 
@@ -204,17 +210,17 @@ void main() {
       accessToken = ConnectFixtureServer.memberAccessToken;
       server.myEpisodeComments = {
         episodeId: [
-          {
-            'publicId': 'SeedCMNTAAA2',
-            'body': 'Thank you for reading.',
-            'createdAt': '2026-09-08T11:00:00Z',
-            'awaitingApproval': true,
-            'creator': {
-              'id': 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
-              'publicId': 'SeedCRTRAAA1',
-              'name': 'Sample Author',
-            },
-          },
+          pb.MyEpisodeComment(
+            publicId: 'SeedCMNTAAA2',
+            body: 'Thank you for reading.',
+            createdAt: '2026-09-08T11:00:00Z',
+            awaitingApproval: true,
+            creator: pb.EpisodeCommentCreator(
+              id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+              publicId: 'SeedCRTRAAA1',
+              name: 'Sample Author',
+            ),
+          ),
         ],
       };
 
@@ -228,7 +234,7 @@ void main() {
 
   test('posting sends the body and answers with what was stored', () async {
     accessToken = ConnectFixtureServer.memberAccessToken;
-    server.commentMode = 'COMMENT_MODE_APPROVAL_REQUIRED';
+    server.commentMode = pb.CommentMode.COMMENT_MODE_APPROVAL_REQUIRED;
 
     final posted = await repository().post(
       episodeInternalId: episodeInternalId,
@@ -238,7 +244,7 @@ void main() {
     expect(posted.body, 'What an episode.');
     expect(posted.awaitingApproval, isTrue);
     expect(
-      server.requestsTo('PostEpisodeComment').single.body['body'],
+      server.requestsOf(pb.PostEpisodeCommentRequest.new).single.body,
       'What an episode.',
     );
   });
@@ -289,7 +295,7 @@ void main() {
     await repository().withdraw('SeedCMNTAAA1');
 
     expect(
-      server.requestsTo('WithdrawEpisodeComment').single.body['commentId'],
+      server.requestsOf(pb.WithdrawEpisodeCommentRequest.new).single.commentId,
       'SeedCMNTAAA1',
     );
   });
@@ -303,9 +309,14 @@ void main() {
       note: 'It gives the ending away.',
     );
 
-    final request = server.requestsTo('ReportEpisodeComment').single;
-    expect(request.body['reason'], 'COMMENT_REPORT_REASON_SPOILER');
-    expect(request.body['note'], 'It gives the ending away.');
+    final request = server
+        .requestsOf(pb.ReportEpisodeCommentRequest.new)
+        .single;
+    expect(
+      request.reason,
+      pb.CommentReportReason.COMMENT_REPORT_REASON_SPOILER,
+    );
+    expect(request.note, 'It gives the ending away.');
   });
 
   test(
@@ -325,17 +336,26 @@ void main() {
         reason: CommentReportReason.spam,
       );
 
-      final calls = [
-        for (final procedure in [
-          'ListEpisodeComments',
-          'ListMyEpisodeComments',
-          'PostEpisodeComment',
-          'ReportEpisodeComment',
-        ])
-          server.requestsTo(procedure).single,
-      ];
-      for (final call in calls) {
-        expect(call.body['surface'], 'CLIENT_SURFACE_APP', reason: call.path);
+      final surfaces = {
+        'ListEpisodeComments': server
+            .requestsOf(pb.ListEpisodeCommentsRequest.new)
+            .single
+            .surface,
+        'ListMyEpisodeComments': server
+            .requestsOf(pb.ListMyEpisodeCommentsRequest.new)
+            .single
+            .surface,
+        'PostEpisodeComment': server
+            .requestsOf(pb.PostEpisodeCommentRequest.new)
+            .single
+            .surface,
+        'ReportEpisodeComment': server
+            .requestsOf(pb.ReportEpisodeCommentRequest.new)
+            .single
+            .surface,
+      };
+      for (final MapEntry(key: procedure, value: surface) in surfaces.entries) {
+        expect(surface, appClientSurface, reason: procedure);
       }
     },
   );

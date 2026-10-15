@@ -1,7 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:publira/api/client_surface.dart';
 import 'package:publira/api/connect_client.dart';
+import 'package:publira/api/gen/publira/v1/catalog.pb.dart' as pb;
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/follow/follow_failure.dart';
 import 'package:publira/follow/http_follow_repository.dart';
@@ -14,19 +16,21 @@ void main() {
   const creatorId = 'SeedAUTHAAA1';
 
   /// One `MyFollow` row as the API answers it.
-  Map<String, Object?> row(
+  pb.MyFollow row(
     FollowTargetKind kind,
     String targetId, {
     String followedAt = '2026-09-08T10:30:00Z',
   }) {
-    return {
-      'targetType': switch (kind) {
-        FollowTargetKind.series => 'FOLLOW_TARGET_TYPE_SERIES',
-        FollowTargetKind.creator => 'FOLLOW_TARGET_TYPE_CREATOR',
+    return pb.MyFollow(
+      targetType: switch (kind) {
+        FollowTargetKind.series =>
+          pb.FollowTargetType.FOLLOW_TARGET_TYPE_SERIES,
+        FollowTargetKind.creator =>
+          pb.FollowTargetType.FOLLOW_TARGET_TYPE_CREATOR,
       },
-      'targetPublicId': targetId,
-      'followedAt': followedAt,
-    };
+      targetPublicId: targetId,
+      followedAt: followedAt,
+    );
   }
 
   late ConnectFixtureServer server;
@@ -77,12 +81,15 @@ void main() {
       isTrue,
     );
 
-    final request = server.requestsTo('GetMyFollowStatus').single;
-    expect(request.body['target'], {
-      'id': ConnectFixtureServer.internalIdOf(seriesId),
-      'type': 'FOLLOW_TARGET_TYPE_SERIES',
-    });
-    expect(request.headers['authorization'], 'Bearer $accessToken');
+    final call = server.requestsTo('GetMyFollowStatus').single;
+    expect(
+      call.decode(pb.GetMyFollowStatusRequest()).target,
+      pb.FollowTarget(
+        id: ConnectFixtureServer.internalIdOf(seriesId),
+        type: pb.FollowTargetType.FOLLOW_TARGET_TYPE_SERIES,
+      ),
+    );
+    expect(call.headers['authorization'], 'Bearer $accessToken');
   });
 
   test('every follow call names the app', () async {
@@ -111,7 +118,15 @@ void main() {
       {'GetMyFollowStatus', 'Follow', 'Unfollow', 'ListMyFollows'},
     );
     for (final call in calls) {
-      expect(call.body['surface'], 'CLIENT_SURFACE_APP', reason: call.path);
+      final surface = switch (call.path.split('/').last) {
+        'GetMyFollowStatus' =>
+          call.decode(pb.GetMyFollowStatusRequest()).surface,
+        'Follow' => call.decode(pb.FollowRequest()).surface,
+        'Unfollow' => call.decode(pb.UnfollowRequest()).surface,
+        'ListMyFollows' => call.decode(pb.ListMyFollowsRequest()).surface,
+        final procedure => throw StateError('unexpected $procedure'),
+      };
+      expect(surface, appClientSurface, reason: call.path);
     }
   });
 
@@ -138,10 +153,13 @@ void main() {
       isTrue,
     );
 
-    expect(server.requestsTo('Follow').single.body['target'], {
-      'id': ConnectFixtureServer.internalIdOf(creatorId),
-      'type': 'FOLLOW_TARGET_TYPE_CREATOR',
-    });
+    expect(
+      server.requestsOf(pb.FollowRequest.new).single.target,
+      pb.FollowTarget(
+        id: ConnectFixtureServer.internalIdOf(creatorId),
+        type: pb.FollowTargetType.FOLLOW_TARGET_TYPE_CREATOR,
+      ),
+    );
     final follow = (await repository().listMyFollows()).follows.single;
     expect(follow.kind, FollowTargetKind.creator);
     expect(follow.targetId, creatorId);
@@ -206,11 +224,11 @@ void main() {
   test('a row this build cannot show is left out of the list', () async {
     accessToken = ConnectFixtureServer.memberAccessToken;
     server.myFollows = [
-      {
-        'targetType': 'FOLLOW_TARGET_TYPE_EPISODE',
-        'targetPublicId': ConnectFixtureServer.seedEpisodeId,
-        'followedAt': '2026-09-08T10:30:00Z',
-      },
+      pb.MyFollow(
+        targetType: pb.FollowTargetType.FOLLOW_TARGET_TYPE_EPISODE,
+        targetPublicId: ConnectFixtureServer.seedEpisodeId,
+        followedAt: '2026-09-08T10:30:00Z',
+      ),
       row(FollowTargetKind.series, seriesId),
     ];
 

@@ -1,7 +1,10 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:publira/api/client_surface.dart';
 import 'package:publira/api/connect_client.dart';
+import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/catalog.pb.dart' as pb;
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/my_purchase.dart';
@@ -84,13 +87,13 @@ void main() {
       AppPurchaseRoute.externalCheckout,
     );
 
-    server.appPurchaseRoute = 'APP_PURCHASE_ROUTE_STORE';
+    server.appPurchaseRoute = pb.AppPurchaseRoute.APP_PURCHASE_ROUTE_STORE;
     expect(await repository().appPurchaseRoute(), AppPurchaseRoute.store);
   });
 
   test('on the store route payments follow the store of the device', () async {
     server
-      ..appPurchaseRoute = 'APP_PURCHASE_ROUTE_STORE'
+      ..appPurchaseRoute = pb.AppPurchaseRoute.APP_PURCHASE_ROUTE_STORE
       // The web checkout is ready, which the store route does not use.
       ..acceptsPayments = true
       ..acceptsAppStorePayments = true;
@@ -115,13 +118,14 @@ void main() {
     );
     expect(intent.intentId, ConnectFixtureServer.storeIntentId);
     expect(intent.productId, ConnectFixtureServer.storeProductId);
-    final request = server.requestsTo('StartStorePurchase').single;
+    final call = server.requestsTo('StartStorePurchase').single;
+    final request = call.decode(pb.StartStorePurchaseRequest());
+    expect(request.episodeId, ConnectFixtureServer.internalIdOf(paidEpisodeId));
     expect(
-      request.body['episodeId'],
-      ConnectFixtureServer.internalIdOf(paidEpisodeId),
+      request.store,
+      pb.InAppPurchaseStore.IN_APP_PURCHASE_STORE_GOOGLE_PLAY,
     );
-    expect(request.body['store'], 'IN_APP_PURCHASE_STORE_GOOGLE_PLAY');
-    expect(request.headers['authorization'], 'Bearer $accessToken');
+    expect(call.headers['authorization'], 'Bearer $accessToken');
   });
 
   test('a store that is not ready does not sell the episode', () async {
@@ -145,11 +149,15 @@ void main() {
       transaction: 'signed-transaction',
       productId: 'episode_500',
     );
-    final request = server.requestsTo('ConfirmStorePurchase').single;
-    expect(request.body['store'], 'IN_APP_PURCHASE_STORE_APP_STORE');
-    expect(request.body['transaction'], 'signed-transaction');
-    expect(request.body['productId'], 'episode_500');
-    expect(request.headers['authorization'], 'Bearer $accessToken');
+    final call = server.requestsTo('ConfirmStorePurchase').single;
+    final request = call.decode(pb.ConfirmStorePurchaseRequest());
+    expect(
+      request.store,
+      pb.InAppPurchaseStore.IN_APP_PURCHASE_STORE_APP_STORE,
+    );
+    expect(request.transaction, 'signed-transaction');
+    expect(request.productId, 'episode_500');
+    expect(call.headers['authorization'], 'Bearer $accessToken');
   });
 
   test('a transaction the store has not settled is confirmed later', () async {
@@ -199,12 +207,12 @@ void main() {
         paidEpisodeId: EpisodeAccess.entitled,
       },
     );
-    final request = server.requestsTo('GetSeriesEpisodeAccess').single;
+    final call = server.requestsTo('GetSeriesEpisodeAccess').single;
     expect(
-      request.body['seriesId'],
+      call.decode(pb.GetSeriesEpisodeAccessRequest()).seriesId,
       ConnectFixtureServer.internalIdOf(seriesId),
     );
-    expect(request.headers['authorization'], 'Bearer $accessToken');
+    expect(call.headers['authorization'], 'Bearer $accessToken');
   });
 
   test('a checkout asks to come back to the app', () async {
@@ -216,13 +224,11 @@ void main() {
       ),
       ConnectFixtureServer.checkoutUrlFor(paidEpisodeId),
     );
-    final request = server.requestsTo('StartEpisodeCheckout').single;
-    expect(request.body['client'], 'CLIENT_MOBILE');
-    expect(
-      request.body['episodeId'],
-      ConnectFixtureServer.internalIdOf(paidEpisodeId),
-    );
-    expect(request.headers['authorization'], 'Bearer $accessToken');
+    final call = server.requestsTo('StartEpisodeCheckout').single;
+    final request = call.decode(pb.StartEpisodeCheckoutRequest());
+    expect(request.client, pb.StartEpisodeCheckoutRequest_Client.CLIENT_MOBILE);
+    expect(request.episodeId, ConnectFixtureServer.internalIdOf(paidEpisodeId));
+    expect(call.headers['authorization'], 'Bearer $accessToken');
   });
 
   test('a guest is not sent to the API for a checkout', () async {
@@ -282,17 +288,19 @@ void main() {
     await repository().seriesOfEpisode(paidEpisodeId);
 
     expect(
-      server.requestsTo('GetSeriesEpisodeAccess').single.body['surface'],
-      'CLIENT_SURFACE_APP',
+      server.requestsOf(pb.GetSeriesEpisodeAccessRequest.new).single.surface,
+      appClientSurface,
     );
     expect(
-      server.requestsTo('GetEpisodeDetail').single.body['surface'],
-      'CLIENT_SURFACE_APP',
+      server.requestsOf(pb.GetEpisodeDetailRequest.new).single.surface,
+      appClientSurface,
     );
   });
 
   test('a series the storefront alone shows offers nothing to buy', () async {
-    server.seriesAvailability = {seriesId: 'SURFACE_AVAILABILITY_WEB'};
+    server.seriesAvailability = {
+      seriesId: pb.SurfaceAvailability.SURFACE_AVAILABILITY_WEB,
+    };
 
     await expectLater(
       repository().seriesEpisodeAccess(seriesId),
@@ -302,25 +310,25 @@ void main() {
   });
 
   group('the purchase library', () {
-    Map<String, Object?> purchase(
+    pb.MyPurchase purchase(
       String id, {
       required bool active,
       String expiresAt = '',
-    }) => {
-      'id': id,
-      'episode': {
-        'publicId': paidEpisodeId,
-        'title': 'Seed Episode 001-10',
-        'orderIndex': 10,
-      },
-      'series': {'publicId': seriesId, 'title': 'Seed Series 001'},
-      'priceAtPurchase': 500,
-      'currency': 'USD',
-      'purchasedAt': '2026-01-10T12:00:00Z',
-      if (expiresAt.isNotEmpty) 'expiresAt': expiresAt,
+    }) => pb.MyPurchase(
+      id: id,
+      episode: pb.Episode(
+        publicId: paidEpisodeId,
+        title: 'Seed Episode 001-10',
+        orderIndex: 10,
+      ),
+      series: pb.Series(publicId: seriesId, title: 'Seed Series 001'),
+      priceAtPurchase: 500,
+      currency: 'USD',
+      purchasedAt: '2026-01-10T12:00:00Z',
+      expiresAt: expiresAt.isNotEmpty ? expiresAt : null,
       // protojson omits a false.
-      if (active) 'isActive': true,
-    };
+      isActive: active ? true : null,
+    );
 
     test('reads the reader\'s own purchases', () async {
       accessToken = ConnectFixtureServer.memberAccessToken;
@@ -351,25 +359,22 @@ void main() {
       expect(active.purchasedAt?.toUtc(), DateTime.utc(2026, 1, 10, 12));
       expect(expired.isActive, isFalse);
       expect(expired.expiresAt?.toUtc(), DateTime.utc(2026, 1, 13, 12));
-      final request = server.requestsTo('ListMyPurchases').single;
-      expect(request.headers['authorization'], 'Bearer $accessToken');
-      expect(request.body['surface'], 'CLIENT_SURFACE_APP');
-      expect(request.body['limit'], myPurchasePageLimit);
+      final call = server.requestsTo('ListMyPurchases').single;
+      expect(call.headers['authorization'], 'Bearer $accessToken');
+      final request = call.decode(pb.ListMyPurchasesRequest());
+      expect(request.surface, appClientSurface);
+      expect(request.limit, myPurchasePageLimit);
     });
 
     test('reads what was refunded and when the purchase closed', () async {
       accessToken = ConnectFixtureServer.memberAccessToken;
       server.myPurchases = [
-        {
-          ...purchase('purchase-refunded', active: false),
-          'refundedAmount': 500,
-          'refundedAt': '2026-01-11T12:00:00Z',
-          'revokedAt': '2026-01-11T12:00:00Z',
-        },
-        {
-          ...purchase('purchase-canceled', active: false),
-          'revokedAt': '2026-01-12T12:00:00Z',
-        },
+        purchase('purchase-refunded', active: false)
+          ..refundedAmount = 500
+          ..refundedAt = '2026-01-11T12:00:00Z'
+          ..revokedAt = '2026-01-11T12:00:00Z',
+        purchase('purchase-canceled', active: false)
+          ..revokedAt = '2026-01-12T12:00:00Z',
         purchase('purchase-active', active: true),
       ];
 
@@ -393,7 +398,7 @@ void main() {
       await repository().listMyPurchases(limit: myPurchasePageLimitMax);
 
       expect(
-        server.requestsTo('ListMyPurchases').single.body['limit'],
+        server.requestsOf(pb.ListMyPurchasesRequest.new).single.limit,
         myPurchasePageLimitMax,
       );
     });
