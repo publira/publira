@@ -136,7 +136,7 @@ services:
   # under one origin on `localhost:3080`, as in the Dev Container, routed by the
   # committed infra/proxy/traefik/dynamic with the host's backend addresses.
   traefik:
-    image: traefik:v3.7.14@sha256:575fa15b135078fe5e50aa847987d96dbddd7b093c172429618404df73f3fa7c
+    image: traefik:v3.7.15@sha256:de7431ff85f306b709256819aaacd153e189ee25f8e86bb895aef1becbacf628
     restart: unless-stopped
     command:
       - "--entrypoints.web.address=:3080"
