@@ -49,8 +49,20 @@ const StartUserWebauthnCeremony = `-- name: StartUserWebauthnCeremony :exec
 
 WITH abandoned AS (
     DELETE FROM user_webauthn_ceremonies
-    WHERE user_webauthn_ceremonies.user_id = $3
-        AND user_webauthn_ceremonies.ceremony = $4
+    WHERE user_webauthn_ceremonies.challenge IN (
+            SELECT c.challenge
+            FROM user_webauthn_ceremonies c
+            WHERE c.user_id = $3
+                AND c.ceremony = $4
+            ORDER BY c.created_at DESC,
+                c.challenge
+            OFFSET $7::int - 1
+        )
+        OR (
+            user_webauthn_ceremonies.user_id = $3
+            AND user_webauthn_ceremonies.ceremony = $4
+            AND user_webauthn_ceremonies.expires_at < now()
+        )
 )
 INSERT INTO user_webauthn_ceremonies (
         challenge,
@@ -77,12 +89,15 @@ type StartUserWebauthnCeremonyParams struct {
 	Ceremony  string    `json:"ceremony"`
 	RpID      string    `json:"rp_id"`
 	ExpiresAt time.Time `json:"expires_at"`
+	MaxOpen   int32     `json:"max_open"`
 }
 
 // WebAuthn ceremonies between their begin and their finish.
-// Beginning a ceremony replaces any of the same kind the account left
-// unfinished, so the table holds at most one per account and kind however
-// often a begin is called.
+// Ceremonies of one account run side by side, so a second tab or device does
+// not void the first. Beginning one drops the account's expired ceremonies of
+// the same kind and all but the newest that, with this one, make up
+// max_open, which bounds what a caller who keeps calling a begin can leave in
+// the table.
 func (q *Queries) StartUserWebauthnCeremony(ctx context.Context, arg StartUserWebauthnCeremonyParams) error {
 	_, err := q.db.ExecContext(ctx, StartUserWebauthnCeremony,
 		arg.Challenge,
@@ -91,6 +106,7 @@ func (q *Queries) StartUserWebauthnCeremony(ctx context.Context, arg StartUserWe
 		arg.Ceremony,
 		arg.RpID,
 		arg.ExpiresAt,
+		arg.MaxOpen,
 	)
 	return err
 }

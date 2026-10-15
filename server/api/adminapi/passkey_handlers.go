@@ -24,6 +24,11 @@ import (
 	"github.com/publira/publira/server/internal/tenantwebauthn"
 )
 
+// passkeyOpenCeremonies is how many ceremonies of one kind an account may
+// have open at once: enough for a few tabs or devices begun side by side, few
+// enough that calling a begin over and over leaves next to nothing behind.
+const passkeyOpenCeremonies = 5
+
 // passkeyNameMaxLength bounds what an owner may call a passkey, in
 // characters, as user_webauthn_credentials_name_check does.
 const passkeyNameMaxLength = 64
@@ -102,6 +107,7 @@ func (s *adminServer) passkeyUser(ctx context.Context, rp *tenantwebauthn.Relyin
 // startCeremony keeps the server's half of a ceremony until its finish.
 func (s *adminServer) startCeremony(ctx context.Context, actor mfaActor, kind string, ceremony tenantwebauthn.Ceremony) error {
 	if err := s.queriesFor(ctx).StartUserWebauthnCeremony(ctx, dbmodels.StartUserWebauthnCeremonyParams{
+		MaxOpen:   passkeyOpenCeremonies,
 		Challenge: ceremony.Challenge,
 		TenantID:  actor.Tenant.ID,
 		UserID:    actor.User.ID,
@@ -403,14 +409,14 @@ func (s *adminServer) FinishPasskeyVerification(
 
 	parsed, challenge, err := tenantwebauthn.ParseAssertion([]byte(req.CredentialJson))
 	if err != nil {
-		return s.refusePasskeyAssertion(ctx, actor, refuse, "credential_malformed")
+		return refuse("credential_malformed", passkeyRefusedError())
 	}
 	ceremony, found, err := s.spendCeremony(ctx, actor, tenantwebauthn.CeremonyAuthentication, challenge)
 	if err != nil {
 		return nil, err
 	}
 	if !found {
-		return s.refusePasskeyAssertion(ctx, actor, refuse, "ceremony_unknown")
+		return refuse("ceremony_unknown", passkeyRefusedError())
 	}
 	user, err := s.passkeyUser(ctx, rp, actor.User)
 	if err != nil {
@@ -480,6 +486,12 @@ func (s *adminServer) FinishPasskeyVerification(
 // refusePasskeyAssertion counts a refused assertion toward the lock a wrong
 // code counts toward, and answers the error the client gets: the lock, when
 // this was the attempt that started it.
+//
+// Only an assertion checked against a ceremony the account had open is
+// counted. One that does not parse, or names a challenge with no open
+// ceremony, could never have signed anyone in, so it guesses nothing; it is
+// also what a ceremony spent or dropped in another tab looks like, and
+// counting it would lock out an owner whose every assertion was genuine.
 func (s *adminServer) refusePasskeyAssertion(
 	ctx context.Context,
 	actor mfaActor,

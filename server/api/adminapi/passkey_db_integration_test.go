@@ -674,3 +674,53 @@ func TestAdminPasskeyKeepsTheRecoveryCodesOfADormantPasskey(t *testing.T) {
 		t.Fatalf("passkeys = %+v, want the dormant one left out", listed.Passkeys)
 	}
 }
+
+// A second tab or device beginning its own verification does not void the
+// first: each ceremony is spent by its own finish. An assertion over a
+// ceremony that is no longer open is refused without counting toward the
+// lock, since it could never have signed anyone in.
+func TestAdminPasskeyCeremoniesRunSideBySide(t *testing.T) {
+	env := newPasskeyDBEnv(t)
+	tenant := seedMfaTenant(t, env)
+	authenticator, _ := registerPasskey(t, env, tenant, "")
+
+	challenge := verifyChallenge(t, env, tenant)
+	first := beginPasskeyVerification(t, env, tenant, challenge.Token)
+	second := beginPasskeyVerification(t, env, tenant, challenge.Token)
+	firstAssertion := authenticator.Assert(t, first)
+	secondAssertion := authenticator.Assert(t, second)
+
+	if _, err := finishPasskeyVerification(env, tenant, challenge.Token, firstAssertion); err != nil {
+		t.Fatalf("FinishPasskeyVerification of the first tab's ceremony: %v", err)
+	}
+	if got := env.countRows(t, "SELECT count(*) FROM user_webauthn_ceremonies WHERE user_id = $1", tenant.User.ID); got != 1 {
+		t.Fatalf("open ceremonies = %d, want the second tab's still open", got)
+	}
+
+	again := verifyChallenge(t, env, tenant)
+	for range mfa.MaxFailedAttempts {
+		_, err := finishPasskeyVerification(env, tenant, again.Token, firstAssertion)
+		assertPasskeyRefused(t, err, "FinishPasskeyVerification over a spent ceremony")
+	}
+	if got := env.countRows(t, "SELECT count(*) FROM user_mfa_lockouts WHERE user_id = $1", tenant.User.ID); got != 0 {
+		t.Fatalf("lockout rows = %d, want none for assertions over ceremonies no longer open", got)
+	}
+	if _, err := finishPasskeyVerification(env, tenant, again.Token, secondAssertion); err != nil {
+		t.Fatalf("FinishPasskeyVerification of the second tab's ceremony: %v", err)
+	}
+}
+
+// Calling a begin over and over keeps no more than a handful of ceremonies.
+func TestAdminPasskeyBeginBoundsTheOpenCeremonies(t *testing.T) {
+	env := newPasskeyDBEnv(t)
+	tenant := seedMfaTenant(t, env)
+	registerPasskey(t, env, tenant, "")
+
+	challenge := verifyChallenge(t, env, tenant)
+	for range passkeyOpenCeremonies + 3 {
+		beginPasskeyVerification(t, env, tenant, challenge.Token)
+	}
+	if got := env.countRows(t, "SELECT count(*) FROM user_webauthn_ceremonies WHERE user_id = $1 AND ceremony = 'authentication'", tenant.User.ID); got != passkeyOpenCeremonies {
+		t.Fatalf("open ceremonies = %d, want %d", got, passkeyOpenCeremonies)
+	}
+}

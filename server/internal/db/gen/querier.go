@@ -2897,9 +2897,11 @@ type Querier interface {
 	// answers, so a refused response cannot be retried against the same challenge.
 	SpendUserWebauthnCeremony(ctx context.Context, arg SpendUserWebauthnCeremonyParams) (UserWebauthnCeremony, error)
 	// WebAuthn ceremonies between their begin and their finish.
-	// Beginning a ceremony replaces any of the same kind the account left
-	// unfinished, so the table holds at most one per account and kind however
-	// often a begin is called.
+	// Ceremonies of one account run side by side, so a second tab or device does
+	// not void the first. Beginning one drops the account's expired ceremonies of
+	// the same kind and all but the newest that, with this one, make up
+	// max_open, which bounds what a caller who keeps calling a begin can leave in
+	// the table.
 	StartUserWebauthnCeremony(ctx context.Context, arg StartUserWebauthnCeremonyParams) error
 	// Suspends an account and invalidates the sessions it holds. An account that
 	// is already suspended is no rows, like another tenant's. Keeping the tenant an

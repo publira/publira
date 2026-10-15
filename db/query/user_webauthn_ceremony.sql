@@ -1,13 +1,27 @@
 -- WebAuthn ceremonies between their begin and their finish.
 
 -- name: StartUserWebauthnCeremony :exec
--- Beginning a ceremony replaces any of the same kind the account left
--- unfinished, so the table holds at most one per account and kind however
--- often a begin is called.
+-- Ceremonies of one account run side by side, so a second tab or device does
+-- not void the first. Beginning one drops the account's expired ceremonies of
+-- the same kind and all but the newest that, with this one, make up
+-- max_open, which bounds what a caller who keeps calling a begin can leave in
+-- the table.
 WITH abandoned AS (
     DELETE FROM user_webauthn_ceremonies
-    WHERE user_webauthn_ceremonies.user_id = sqlc.arg('user_id')
-        AND user_webauthn_ceremonies.ceremony = sqlc.arg('ceremony')
+    WHERE user_webauthn_ceremonies.challenge IN (
+            SELECT c.challenge
+            FROM user_webauthn_ceremonies c
+            WHERE c.user_id = sqlc.arg('user_id')
+                AND c.ceremony = sqlc.arg('ceremony')
+            ORDER BY c.created_at DESC,
+                c.challenge
+            OFFSET sqlc.arg('max_open')::int - 1
+        )
+        OR (
+            user_webauthn_ceremonies.user_id = sqlc.arg('user_id')
+            AND user_webauthn_ceremonies.ceremony = sqlc.arg('ceremony')
+            AND user_webauthn_ceremonies.expires_at < now()
+        )
 )
 INSERT INTO user_webauthn_ceremonies (
         challenge,
