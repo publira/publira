@@ -142,8 +142,9 @@ func (q *Queries) GetUserIconImageByIDForTenant(ctx context.Context, arg GetUser
 	return i, err
 }
 
-const ListUserIconVariantsByIDs = `-- name: ListUserIconVariantsByIDs :many
-SELECT ui.id AS icon_id,
+const ListUserIconVariantsByUserIDs = `-- name: ListUserIconVariantsByUserIDs :many
+SELECT u.id AS user_id,
+    ui.id AS icon_id,
     false AS preset,
     ui.updated_at,
     uiv.label,
@@ -151,15 +152,16 @@ SELECT ui.id AS icon_id,
     uiv.width,
     uiv.height,
     uiv.file_size_bytes
-FROM user_images ui
-    JOIN users u ON u.tenant_id = ui.tenant_id
-        AND u.icon_image_id = ui.id
+FROM users u
+    JOIN user_images ui ON ui.tenant_id = u.tenant_id
+        AND ui.id = u.icon_image_id
     JOIN user_image_variants uiv ON uiv.tenant_id = ui.tenant_id
         AND uiv.user_image_id = ui.id
 WHERE ui.tenant_id = $1
-    AND ui.id = ANY($2::uuid[])
+    AND u.id = ANY($2::uuid[])
 UNION ALL
-SELECT p.id AS icon_id,
+SELECT u.id AS user_id,
+    p.id AS icon_id,
     true AS preset,
     p.created_at AS updated_at,
     v.label,
@@ -167,22 +169,25 @@ SELECT p.id AS icon_id,
     v.width,
     v.height,
     v.file_size_bytes
-FROM reader_icon_presets p
+FROM users u
+    JOIN reader_icon_presets p ON p.tenant_id = u.tenant_id
+        AND p.id = u.icon_preset_id
     JOIN reader_icon_preset_variants v ON v.tenant_id = p.tenant_id
         AND v.reader_icon_preset_id = p.id
 WHERE p.tenant_id = $1
-    AND p.id = ANY($2::uuid[])
-ORDER BY icon_id,
+    AND u.id = ANY($2::uuid[])
+ORDER BY user_id,
     width DESC,
     label
 `
 
-type ListUserIconVariantsByIDsParams struct {
+type ListUserIconVariantsByUserIDsParams struct {
 	TenantID uuid.UUID   `json:"tenant_id"`
-	IconIds  []uuid.UUID `json:"icon_ids"`
+	UserIds  []uuid.UUID `json:"user_ids"`
 }
 
-type ListUserIconVariantsByIDsRow struct {
+type ListUserIconVariantsByUserIDsRow struct {
+	UserID        uuid.UUID `json:"user_id"`
 	IconID        uuid.UUID `json:"icon_id"`
 	Preset        bool      `json:"preset"`
 	UpdatedAt     time.Time `json:"updated_at"`
@@ -193,28 +198,29 @@ type ListUserIconVariantsByIDsRow struct {
 	FileSizeBytes int64     `json:"file_size_bytes"`
 }
 
-// The stored variants of the given icons, with the time each was stored. An
-// account's icon is either an image it uploaded or one of the tenant's
-// presets, and icon_ids may name both: the ids are UUIDv7s of the one
-// generator, so an id names a row in one table only, and preset says which.
-// A caller reads the ids off the accounts it is answering for, so one query
-// covers a whole page of them; an id the tenant does not hold answers no rows.
+// The stored variants of the icon each of the given accounts elects now, with
+// the time it was stored. An account's icon is either an image it uploaded or
+// one of the tenant's presets, and preset says which. A caller reads the
+// accounts off the page it is answering for, so one query covers all of them;
+// an account that elects no icon, or one the tenant does not hold, answers no
+// rows.
 //
-// An uploaded image no account elects any longer answers no rows either, and
-// neither does a deleted preset. The ids were read by an earlier statement,
-// and an icon replaced since then is one image-server already refuses, so its
-// URL would be a broken image in an answer the storefront may cache after the
-// replacement's drop has passed.
-func (q *Queries) ListUserIconVariantsByIDs(ctx context.Context, arg ListUserIconVariantsByIDsParams) ([]ListUserIconVariantsByIDsRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListUserIconVariantsByIDs, arg.TenantID, pq.Array(arg.IconIds))
+// The election is read here rather than taken from the statement that read
+// the page. An icon changed in between would otherwise be answered as it was
+// before the change, into an answer the storefront may cache after the
+// change's drop has passed: a replaced upload as a URL image-server already
+// refuses, and a preset the reader left as the icon they no longer show.
+func (q *Queries) ListUserIconVariantsByUserIDs(ctx context.Context, arg ListUserIconVariantsByUserIDsParams) ([]ListUserIconVariantsByUserIDsRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListUserIconVariantsByUserIDs, arg.TenantID, pq.Array(arg.UserIds))
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListUserIconVariantsByIDsRow
+	var items []ListUserIconVariantsByUserIDsRow
 	for rows.Next() {
-		var i ListUserIconVariantsByIDsRow
+		var i ListUserIconVariantsByUserIDsRow
 		if err := rows.Scan(
+			&i.UserID,
 			&i.IconID,
 			&i.Preset,
 			&i.UpdatedAt,

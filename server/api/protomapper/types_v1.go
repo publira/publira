@@ -469,28 +469,17 @@ type UserIcon struct {
 	Variants []*publirattypesv1.UserIconVariant
 }
 
-// UserIconID is the icon an account elects, whichever of its two columns
-// elects it: an upload of its own or one of the tenant's presets. The two are
-// keyed alike in UserIconsByID, so a caller collecting a page of accounts
-// collects one id per account.
-func UserIconID(imageID, presetID uuid.NullUUID) uuid.NullUUID {
-	if imageID.Valid {
-		return imageID
-	}
-	return presetID
-}
-
-// UserIconsByID groups the stored variants of several icons by the icon they
-// belong to. The query returns them largest first, so nothing here reorders
-// them.
+// UserIconsByUserID groups the stored variants of the icons several accounts
+// elect by the account that elects them. The query returns them largest
+// first, so nothing here reorders them.
 //
 // Every variant is served at the icon's one URL: image-server answers an icon
 // with its largest variant and scales it for each size a page asks for, so the
 // URL names the icon rather than the rendition.
-func UserIconsByID(rows []dbmodels.ListUserIconVariantsByIDsRow) map[uuid.UUID]UserIcon {
+func UserIconsByUserID(rows []dbmodels.ListUserIconVariantsByUserIDsRow) map[uuid.UUID]UserIcon {
 	icons := make(map[uuid.UUID]UserIcon)
 	for _, row := range rows {
-		icon := icons[row.IconID]
+		icon := icons[row.UserID]
 		icon.UpdatedAt = row.UpdatedAt.UTC().Format(time.RFC3339)
 		url := fmt.Sprintf("/images/users/%s", row.IconID.String())
 		if row.Preset {
@@ -505,7 +494,7 @@ func UserIconsByID(rows []dbmodels.ListUserIconVariantsByIDsRow) map[uuid.UUID]U
 			Height:        row.Height,
 			FileSizeBytes: row.FileSizeBytes,
 		})
-		icons[row.IconID] = icon
+		icons[row.UserID] = icon
 	}
 	return icons
 }

@@ -25,21 +25,21 @@ import (
 // larger than the binary one, and the fields sent beside it.
 const uploadMyIconReadMaxBytes = (imageproc.UserIconMaxBytes+2)/3*4 + rpcmiddleware.DefaultReadMaxBytes
 
-// userIcons reads the icons with the given ids, uploads and presets alike,
-// keyed by id. An id with no stored variant is absent, and so answers the zero
-// icon.
-func (s *apiServer) userIcons(ctx context.Context, q Querier, tenantID uuid.UUID, iconIDs []uuid.UUID) (map[uuid.UUID]protomapper.UserIcon, error) {
-	if len(iconIDs) == 0 {
+// userIcons reads the icons the given accounts elect now, uploads and presets
+// alike, keyed by account. An account that shows none is absent, and so
+// answers the zero icon.
+func (s *apiServer) userIcons(ctx context.Context, q Querier, tenantID uuid.UUID, userIDs []uuid.UUID) (map[uuid.UUID]protomapper.UserIcon, error) {
+	if len(userIDs) == 0 {
 		return nil, nil
 	}
-	rows, err := q.ListUserIconVariantsByIDs(ctx, dbmodels.ListUserIconVariantsByIDsParams{
+	rows, err := q.ListUserIconVariantsByUserIDs(ctx, dbmodels.ListUserIconVariantsByUserIDsParams{
 		TenantID: tenantID,
-		IconIds:  iconIDs,
+		UserIds:  userIDs,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list user icon variants", err, "tenant_id", tenantID.String())
 	}
-	return protomapper.UserIconsByID(rows), nil
+	return protomapper.UserIconsByUserID(rows), nil
 }
 
 // ownAccountWithIcon is ownAccount with the icon the account elects, read
@@ -47,12 +47,12 @@ func (s *apiServer) userIcons(ctx context.Context, q Querier, tenantID uuid.UUID
 // stored.
 func (s *apiServer) ownAccountWithIcon(ctx context.Context, q Querier, tenantID uuid.UUID, user dbmodels.User, role string) (*publirattypesv1.User, error) {
 	var icon protomapper.UserIcon
-	if iconID := protomapper.UserIconID(user.IconImageID, user.IconPresetID); iconID.Valid {
-		icons, err := s.userIcons(ctx, q, tenantID, []uuid.UUID{iconID.UUID})
+	if user.IconImageID.Valid || user.IconPresetID.Valid {
+		icons, err := s.userIcons(ctx, q, tenantID, []uuid.UUID{user.ID})
 		if err != nil {
 			return nil, err
 		}
-		icon = icons[iconID.UUID]
+		icon = icons[user.ID]
 	}
 	return ownAccount(user, role, icon), nil
 }
@@ -172,7 +172,7 @@ func (s *apiServer) changeMyIcon(ctx context.Context, tenantCtx *publirattypesv1
 		return nil, err
 	}
 	clearing := change.upload == nil && !change.presetID.Valid
-	if clearing && !protomapper.UserIconID(user.IconImageID, user.IconPresetID).Valid {
+	if clearing && !user.IconImageID.Valid && !user.IconPresetID.Valid {
 		return s.ownAccountWithIcon(ctx, s.queriesFor(ctx), tenant.ID, user, role)
 	}
 	if err := s.chargeReaderAction(ctx, actionChangeIcon, tenant.ID, user.ID); err != nil {

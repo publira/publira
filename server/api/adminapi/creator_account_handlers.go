@@ -30,11 +30,11 @@ func (s *adminServer) creatorAccounts(ctx context.Context, tenantID, creatorID u
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list creator accounts", err, "tenant_id", tenantID.String(), "creator_id", creatorID.String())
 	}
-	iconImageIDs := make([]uuid.UUID, 0, len(rows))
+	accountIDs := make([]uuid.UUID, 0, len(rows))
 	for _, row := range rows {
-		iconImageIDs = appendIconID(iconImageIDs, row.IconImageID, row.IconPresetID)
+		accountIDs = appendIconUserID(accountIDs, row.ID)
 	}
-	icons, err := userIcons(ctx, s.queriesFor(ctx), tenantID, iconImageIDs)
+	icons, err := userIcons(ctx, s.queriesFor(ctx), tenantID, accountIDs)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list creator account icons", err, "tenant_id", tenantID.String(), "creator_id", creatorID.String())
 	}

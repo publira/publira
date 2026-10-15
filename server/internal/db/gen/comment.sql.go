@@ -253,8 +253,6 @@ const GetEpisodeCommentForModerationByIDForTenant = `-- name: GetEpisodeCommentF
 SELECT c.id, c.tenant_id, c.public_id, c.episode_id, c.user_id, c.body, c.status, c.approved_by, c.hidden_by, c.hidden_reason, c.created_at, c.updated_at, c.published_at, c.hidden_at, c.withdrawn_at, c.open_report_count,
     u.public_id AS author_public_id,
     u.name AS author_name,
-    u.icon_image_id AS author_icon_image_id,
-    u.icon_preset_id AS author_icon_preset_id,
     EXISTS (
         SELECT 1
         FROM tenant_user_roles tur
@@ -285,34 +283,32 @@ type GetEpisodeCommentForModerationByIDForTenantParams struct {
 }
 
 type GetEpisodeCommentForModerationByIDForTenantRow struct {
-	ID                 uuid.UUID      `json:"id"`
-	TenantID           uuid.UUID      `json:"tenant_id"`
-	PublicID           string         `json:"public_id"`
-	EpisodeID          uuid.UUID      `json:"episode_id"`
-	UserID             uuid.UUID      `json:"user_id"`
-	Body               string         `json:"body"`
-	Status             string         `json:"status"`
-	ApprovedBy         uuid.NullUUID  `json:"approved_by"`
-	HiddenBy           uuid.NullUUID  `json:"hidden_by"`
-	HiddenReason       sql.NullString `json:"hidden_reason"`
-	CreatedAt          time.Time      `json:"created_at"`
-	UpdatedAt          time.Time      `json:"updated_at"`
-	PublishedAt        sql.NullTime   `json:"published_at"`
-	HiddenAt           sql.NullTime   `json:"hidden_at"`
-	WithdrawnAt        sql.NullTime   `json:"withdrawn_at"`
-	OpenReportCount    int32          `json:"open_report_count"`
-	AuthorPublicID     string         `json:"author_public_id"`
-	AuthorName         string         `json:"author_name"`
-	AuthorIconImageID  uuid.NullUUID  `json:"author_icon_image_id"`
-	AuthorIconPresetID uuid.NullUUID  `json:"author_icon_preset_id"`
-	AuthorIsStaff      bool           `json:"author_is_staff"`
-	EpisodePublicID    string         `json:"episode_public_id"`
-	EpisodeTitle       string         `json:"episode_title"`
-	SeriesPublicID     string         `json:"series_public_id"`
-	SeriesTitle        string         `json:"series_title"`
-	CreatorID          uuid.NullUUID  `json:"creator_id"`
-	CreatorPublicID    sql.NullString `json:"creator_public_id"`
-	CreatorName        sql.NullString `json:"creator_name"`
+	ID              uuid.UUID      `json:"id"`
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	PublicID        string         `json:"public_id"`
+	EpisodeID       uuid.UUID      `json:"episode_id"`
+	UserID          uuid.UUID      `json:"user_id"`
+	Body            string         `json:"body"`
+	Status          string         `json:"status"`
+	ApprovedBy      uuid.NullUUID  `json:"approved_by"`
+	HiddenBy        uuid.NullUUID  `json:"hidden_by"`
+	HiddenReason    sql.NullString `json:"hidden_reason"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at"`
+	PublishedAt     sql.NullTime   `json:"published_at"`
+	HiddenAt        sql.NullTime   `json:"hidden_at"`
+	WithdrawnAt     sql.NullTime   `json:"withdrawn_at"`
+	OpenReportCount int32          `json:"open_report_count"`
+	AuthorPublicID  string         `json:"author_public_id"`
+	AuthorName      string         `json:"author_name"`
+	AuthorIsStaff   bool           `json:"author_is_staff"`
+	EpisodePublicID string         `json:"episode_public_id"`
+	EpisodeTitle    string         `json:"episode_title"`
+	SeriesPublicID  string         `json:"series_public_id"`
+	SeriesTitle     string         `json:"series_title"`
+	CreatorID       uuid.NullUUID  `json:"creator_id"`
+	CreatorPublicID sql.NullString `json:"creator_public_id"`
+	CreatorName     sql.NullString `json:"creator_name"`
 }
 
 // One comment in the shape the moderation list returns. Every moderation action
@@ -340,8 +336,6 @@ func (q *Queries) GetEpisodeCommentForModerationByIDForTenant(ctx context.Contex
 		&i.OpenReportCount,
 		&i.AuthorPublicID,
 		&i.AuthorName,
-		&i.AuthorIconImageID,
-		&i.AuthorIconPresetID,
 		&i.AuthorIsStaff,
 		&i.EpisodePublicID,
 		&i.EpisodeTitle,
@@ -409,8 +403,6 @@ const ListEpisodeCommentsForModerationByCreatedAtAsc = `-- name: ListEpisodeComm
 SELECT c.id, c.tenant_id, c.public_id, c.episode_id, c.user_id, c.body, c.status, c.approved_by, c.hidden_by, c.hidden_reason, c.created_at, c.updated_at, c.published_at, c.hidden_at, c.withdrawn_at, c.open_report_count,
     u.public_id AS author_public_id,
     u.name AS author_name,
-    u.icon_image_id AS author_icon_image_id,
-    u.icon_preset_id AS author_icon_preset_id,
     EXISTS (
         SELECT 1
         FROM tenant_user_roles tur
@@ -471,34 +463,32 @@ type ListEpisodeCommentsForModerationByCreatedAtAscParams struct {
 }
 
 type ListEpisodeCommentsForModerationByCreatedAtAscRow struct {
-	ID                 uuid.UUID      `json:"id"`
-	TenantID           uuid.UUID      `json:"tenant_id"`
-	PublicID           string         `json:"public_id"`
-	EpisodeID          uuid.UUID      `json:"episode_id"`
-	UserID             uuid.UUID      `json:"user_id"`
-	Body               string         `json:"body"`
-	Status             string         `json:"status"`
-	ApprovedBy         uuid.NullUUID  `json:"approved_by"`
-	HiddenBy           uuid.NullUUID  `json:"hidden_by"`
-	HiddenReason       sql.NullString `json:"hidden_reason"`
-	CreatedAt          time.Time      `json:"created_at"`
-	UpdatedAt          time.Time      `json:"updated_at"`
-	PublishedAt        sql.NullTime   `json:"published_at"`
-	HiddenAt           sql.NullTime   `json:"hidden_at"`
-	WithdrawnAt        sql.NullTime   `json:"withdrawn_at"`
-	OpenReportCount    int32          `json:"open_report_count"`
-	AuthorPublicID     string         `json:"author_public_id"`
-	AuthorName         string         `json:"author_name"`
-	AuthorIconImageID  uuid.NullUUID  `json:"author_icon_image_id"`
-	AuthorIconPresetID uuid.NullUUID  `json:"author_icon_preset_id"`
-	AuthorIsStaff      bool           `json:"author_is_staff"`
-	EpisodePublicID    string         `json:"episode_public_id"`
-	EpisodeTitle       string         `json:"episode_title"`
-	SeriesPublicID     string         `json:"series_public_id"`
-	SeriesTitle        string         `json:"series_title"`
-	CreatorID          uuid.NullUUID  `json:"creator_id"`
-	CreatorPublicID    sql.NullString `json:"creator_public_id"`
-	CreatorName        sql.NullString `json:"creator_name"`
+	ID              uuid.UUID      `json:"id"`
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	PublicID        string         `json:"public_id"`
+	EpisodeID       uuid.UUID      `json:"episode_id"`
+	UserID          uuid.UUID      `json:"user_id"`
+	Body            string         `json:"body"`
+	Status          string         `json:"status"`
+	ApprovedBy      uuid.NullUUID  `json:"approved_by"`
+	HiddenBy        uuid.NullUUID  `json:"hidden_by"`
+	HiddenReason    sql.NullString `json:"hidden_reason"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at"`
+	PublishedAt     sql.NullTime   `json:"published_at"`
+	HiddenAt        sql.NullTime   `json:"hidden_at"`
+	WithdrawnAt     sql.NullTime   `json:"withdrawn_at"`
+	OpenReportCount int32          `json:"open_report_count"`
+	AuthorPublicID  string         `json:"author_public_id"`
+	AuthorName      string         `json:"author_name"`
+	AuthorIsStaff   bool           `json:"author_is_staff"`
+	EpisodePublicID string         `json:"episode_public_id"`
+	EpisodeTitle    string         `json:"episode_title"`
+	SeriesPublicID  string         `json:"series_public_id"`
+	SeriesTitle     string         `json:"series_title"`
+	CreatorID       uuid.NullUUID  `json:"creator_id"`
+	CreatorPublicID sql.NullString `json:"creator_public_id"`
+	CreatorName     sql.NullString `json:"creator_name"`
 }
 
 // The previous-page half of ListEpisodeCommentsForModerationByCreatedAtDesc.
@@ -540,8 +530,6 @@ func (q *Queries) ListEpisodeCommentsForModerationByCreatedAtAsc(ctx context.Con
 			&i.OpenReportCount,
 			&i.AuthorPublicID,
 			&i.AuthorName,
-			&i.AuthorIconImageID,
-			&i.AuthorIconPresetID,
 			&i.AuthorIsStaff,
 			&i.EpisodePublicID,
 			&i.EpisodeTitle,
@@ -568,8 +556,6 @@ const ListEpisodeCommentsForModerationByCreatedAtDesc = `-- name: ListEpisodeCom
 SELECT c.id, c.tenant_id, c.public_id, c.episode_id, c.user_id, c.body, c.status, c.approved_by, c.hidden_by, c.hidden_reason, c.created_at, c.updated_at, c.published_at, c.hidden_at, c.withdrawn_at, c.open_report_count,
     u.public_id AS author_public_id,
     u.name AS author_name,
-    u.icon_image_id AS author_icon_image_id,
-    u.icon_preset_id AS author_icon_preset_id,
     EXISTS (
         SELECT 1
         FROM tenant_user_roles tur
@@ -630,34 +616,32 @@ type ListEpisodeCommentsForModerationByCreatedAtDescParams struct {
 }
 
 type ListEpisodeCommentsForModerationByCreatedAtDescRow struct {
-	ID                 uuid.UUID      `json:"id"`
-	TenantID           uuid.UUID      `json:"tenant_id"`
-	PublicID           string         `json:"public_id"`
-	EpisodeID          uuid.UUID      `json:"episode_id"`
-	UserID             uuid.UUID      `json:"user_id"`
-	Body               string         `json:"body"`
-	Status             string         `json:"status"`
-	ApprovedBy         uuid.NullUUID  `json:"approved_by"`
-	HiddenBy           uuid.NullUUID  `json:"hidden_by"`
-	HiddenReason       sql.NullString `json:"hidden_reason"`
-	CreatedAt          time.Time      `json:"created_at"`
-	UpdatedAt          time.Time      `json:"updated_at"`
-	PublishedAt        sql.NullTime   `json:"published_at"`
-	HiddenAt           sql.NullTime   `json:"hidden_at"`
-	WithdrawnAt        sql.NullTime   `json:"withdrawn_at"`
-	OpenReportCount    int32          `json:"open_report_count"`
-	AuthorPublicID     string         `json:"author_public_id"`
-	AuthorName         string         `json:"author_name"`
-	AuthorIconImageID  uuid.NullUUID  `json:"author_icon_image_id"`
-	AuthorIconPresetID uuid.NullUUID  `json:"author_icon_preset_id"`
-	AuthorIsStaff      bool           `json:"author_is_staff"`
-	EpisodePublicID    string         `json:"episode_public_id"`
-	EpisodeTitle       string         `json:"episode_title"`
-	SeriesPublicID     string         `json:"series_public_id"`
-	SeriesTitle        string         `json:"series_title"`
-	CreatorID          uuid.NullUUID  `json:"creator_id"`
-	CreatorPublicID    sql.NullString `json:"creator_public_id"`
-	CreatorName        sql.NullString `json:"creator_name"`
+	ID              uuid.UUID      `json:"id"`
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	PublicID        string         `json:"public_id"`
+	EpisodeID       uuid.UUID      `json:"episode_id"`
+	UserID          uuid.UUID      `json:"user_id"`
+	Body            string         `json:"body"`
+	Status          string         `json:"status"`
+	ApprovedBy      uuid.NullUUID  `json:"approved_by"`
+	HiddenBy        uuid.NullUUID  `json:"hidden_by"`
+	HiddenReason    sql.NullString `json:"hidden_reason"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at"`
+	PublishedAt     sql.NullTime   `json:"published_at"`
+	HiddenAt        sql.NullTime   `json:"hidden_at"`
+	WithdrawnAt     sql.NullTime   `json:"withdrawn_at"`
+	OpenReportCount int32          `json:"open_report_count"`
+	AuthorPublicID  string         `json:"author_public_id"`
+	AuthorName      string         `json:"author_name"`
+	AuthorIsStaff   bool           `json:"author_is_staff"`
+	EpisodePublicID string         `json:"episode_public_id"`
+	EpisodeTitle    string         `json:"episode_title"`
+	SeriesPublicID  string         `json:"series_public_id"`
+	SeriesTitle     string         `json:"series_title"`
+	CreatorID       uuid.NullUUID  `json:"creator_id"`
+	CreatorPublicID sql.NullString `json:"creator_public_id"`
+	CreatorName     sql.NullString `json:"creator_name"`
 }
 
 // The console queues: 'pending' is the approval queue, 'hidden' the removed
@@ -711,8 +695,6 @@ func (q *Queries) ListEpisodeCommentsForModerationByCreatedAtDesc(ctx context.Co
 			&i.OpenReportCount,
 			&i.AuthorPublicID,
 			&i.AuthorName,
-			&i.AuthorIconImageID,
-			&i.AuthorIconPresetID,
 			&i.AuthorIsStaff,
 			&i.EpisodePublicID,
 			&i.EpisodeTitle,
@@ -826,8 +808,6 @@ SELECT c.id,
     c.user_id,
     u.public_id AS author_public_id,
     u.name AS author_name,
-    u.icon_image_id AS author_icon_image_id,
-    u.icon_preset_id AS author_icon_preset_id,
     cc.id AS creator_id,
     cc.public_id AS creator_public_id,
     cc.name AS creator_name
@@ -870,18 +850,16 @@ type ListPublishedEpisodeCommentsByCreatedAtAscParams struct {
 }
 
 type ListPublishedEpisodeCommentsByCreatedAtAscRow struct {
-	ID                 uuid.UUID      `json:"id"`
-	PublicID           string         `json:"public_id"`
-	Body               string         `json:"body"`
-	CreatedAt          time.Time      `json:"created_at"`
-	UserID             uuid.UUID      `json:"user_id"`
-	AuthorPublicID     string         `json:"author_public_id"`
-	AuthorName         string         `json:"author_name"`
-	AuthorIconImageID  uuid.NullUUID  `json:"author_icon_image_id"`
-	AuthorIconPresetID uuid.NullUUID  `json:"author_icon_preset_id"`
-	CreatorID          uuid.NullUUID  `json:"creator_id"`
-	CreatorPublicID    sql.NullString `json:"creator_public_id"`
-	CreatorName        sql.NullString `json:"creator_name"`
+	ID              uuid.UUID      `json:"id"`
+	PublicID        string         `json:"public_id"`
+	Body            string         `json:"body"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UserID          uuid.UUID      `json:"user_id"`
+	AuthorPublicID  string         `json:"author_public_id"`
+	AuthorName      string         `json:"author_name"`
+	CreatorID       uuid.NullUUID  `json:"creator_id"`
+	CreatorPublicID sql.NullString `json:"creator_public_id"`
+	CreatorName     sql.NullString `json:"creator_name"`
 }
 
 // The previous-page half of ListPublishedEpisodeCommentsByCreatedAtDesc. The
@@ -910,8 +888,6 @@ func (q *Queries) ListPublishedEpisodeCommentsByCreatedAtAsc(ctx context.Context
 			&i.UserID,
 			&i.AuthorPublicID,
 			&i.AuthorName,
-			&i.AuthorIconImageID,
-			&i.AuthorIconPresetID,
 			&i.CreatorID,
 			&i.CreatorPublicID,
 			&i.CreatorName,
@@ -937,8 +913,6 @@ SELECT c.id,
     c.user_id,
     u.public_id AS author_public_id,
     u.name AS author_name,
-    u.icon_image_id AS author_icon_image_id,
-    u.icon_preset_id AS author_icon_preset_id,
     cc.id AS creator_id,
     cc.public_id AS creator_public_id,
     cc.name AS creator_name
@@ -981,18 +955,16 @@ type ListPublishedEpisodeCommentsByCreatedAtDescParams struct {
 }
 
 type ListPublishedEpisodeCommentsByCreatedAtDescRow struct {
-	ID                 uuid.UUID      `json:"id"`
-	PublicID           string         `json:"public_id"`
-	Body               string         `json:"body"`
-	CreatedAt          time.Time      `json:"created_at"`
-	UserID             uuid.UUID      `json:"user_id"`
-	AuthorPublicID     string         `json:"author_public_id"`
-	AuthorName         string         `json:"author_name"`
-	AuthorIconImageID  uuid.NullUUID  `json:"author_icon_image_id"`
-	AuthorIconPresetID uuid.NullUUID  `json:"author_icon_preset_id"`
-	CreatorID          uuid.NullUUID  `json:"creator_id"`
-	CreatorPublicID    sql.NullString `json:"creator_public_id"`
-	CreatorName        sql.NullString `json:"creator_name"`
+	ID              uuid.UUID      `json:"id"`
+	PublicID        string         `json:"public_id"`
+	Body            string         `json:"body"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UserID          uuid.UUID      `json:"user_id"`
+	AuthorPublicID  string         `json:"author_public_id"`
+	AuthorName      string         `json:"author_name"`
+	CreatorID       uuid.NullUUID  `json:"creator_id"`
+	CreatorPublicID sql.NullString `json:"creator_public_id"`
+	CreatorName     sql.NullString `json:"creator_name"`
 }
 
 // The public list of one episode. Only 'published' rows appear here, so a
@@ -1027,8 +999,6 @@ func (q *Queries) ListPublishedEpisodeCommentsByCreatedAtDesc(ctx context.Contex
 			&i.UserID,
 			&i.AuthorPublicID,
 			&i.AuthorName,
-			&i.AuthorIconImageID,
-			&i.AuthorIconPresetID,
 			&i.CreatorID,
 			&i.CreatorPublicID,
 			&i.CreatorName,

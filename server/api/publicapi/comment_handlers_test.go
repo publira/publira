@@ -191,16 +191,17 @@ func TestListEpisodeCommentsReadsTheCreatorMarkWithThePage(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_eye_catch_image_id", "series_eye_catch_image_updated_at", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "is_free", "free_until", "rating_count", "purchase_availability"}).
 			AddRow(episodeID, "EPISODE001", "Episode Title", int32(1), seriesID, int32(0), nil, "published", nil, now, "SERIES001", "Series Title", nil, nil, nil, nil, nil, nil, nil, nil, true, nil, int64(0), "all"))
 	authorID := uuid.Must(uuid.NewV7())
-	rows := sqlmock.NewRows([]string{"id", "public_id", "body", "created_at", "user_id", "author_public_id", "author_name", "author_icon_image_id", "author_icon_preset_id", "creator_id", "creator_public_id", "creator_name"}).
-		AddRow(uuid.Must(uuid.NewV7()), "COMMENT00001", "From the author.", now, authorID, "USERCREATOR1", "Account Name", iconImageID, nil, creatorID, "CREATOR00001", "Pen Name").
-		AddRow(uuid.Must(uuid.NewV7()), "COMMENT00002", "From a reader.", now, uuid.Must(uuid.NewV7()), "USERREADER01", "Reader", nil, nil, nil, nil, nil).
-		AddRow(uuid.Must(uuid.NewV7()), "COMMENT00003", "From the author again.", now, authorID, "USERCREATOR1", "Account Name", iconImageID, nil, creatorID, "CREATOR00001", "Pen Name")
+	readerID := uuid.Must(uuid.NewV7())
+	rows := sqlmock.NewRows([]string{"id", "public_id", "body", "created_at", "user_id", "author_public_id", "author_name", "creator_id", "creator_public_id", "creator_name"}).
+		AddRow(uuid.Must(uuid.NewV7()), "COMMENT00001", "From the author.", now, authorID, "USERCREATOR1", "Account Name", creatorID, "CREATOR00001", "Pen Name").
+		AddRow(uuid.Must(uuid.NewV7()), "COMMENT00002", "From a reader.", now, readerID, "USERREADER01", "Reader", nil, nil, nil).
+		AddRow(uuid.Must(uuid.NewV7()), "COMMENT00003", "From the author again.", now, authorID, "USERCREATOR1", "Account Name", creatorID, "CREATOR00001", "Pen Name")
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedEpisodeCommentsByCreatedAtDesc)).
 		WillReturnRows(rows)
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListUserIconVariantsByIDs)).
-		WithArgs(tenantID, pq.Array([]uuid.UUID{iconImageID})).
-		WillReturnRows(sqlmock.NewRows([]string{"icon_id", "preset", "updated_at", "label", "content_type", "width", "height", "file_size_bytes"}).
-			AddRow(iconImageID, false, now, "original", "image/png", int32(256), int32(256), int64(1024)))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListUserIconVariantsByUserIDs)).
+		WithArgs(tenantID, pq.Array([]uuid.UUID{authorID, readerID})).
+		WillReturnRows(sqlmock.NewRows([]string{"user_id", "icon_id", "preset", "updated_at", "label", "content_type", "width", "height", "file_size_bytes"}).
+			AddRow(authorID, iconImageID, false, now, "original", "image/png", int32(256), int32(256), int64(1024)))
 
 	client := publirav1connect.NewCommentServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	res, err := client.ListEpisodeComments(context.Background(), &publirav1.ListEpisodeCommentsRequest{

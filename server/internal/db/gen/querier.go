@@ -2285,19 +2285,19 @@ type Querier interface {
 	// longer visible, or that the calling surface may not show, disappear from
 	// this member's list without revealing why.
 	ListUserFollowsByCreatedAtDesc(ctx context.Context, arg ListUserFollowsByCreatedAtDescParams) ([]ListUserFollowsByCreatedAtDescRow, error)
-	// The stored variants of the given icons, with the time each was stored. An
-	// account's icon is either an image it uploaded or one of the tenant's
-	// presets, and icon_ids may name both: the ids are UUIDv7s of the one
-	// generator, so an id names a row in one table only, and preset says which.
-	// A caller reads the ids off the accounts it is answering for, so one query
-	// covers a whole page of them; an id the tenant does not hold answers no rows.
+	// The stored variants of the icon each of the given accounts elects now, with
+	// the time it was stored. An account's icon is either an image it uploaded or
+	// one of the tenant's presets, and preset says which. A caller reads the
+	// accounts off the page it is answering for, so one query covers all of them;
+	// an account that elects no icon, or one the tenant does not hold, answers no
+	// rows.
 	//
-	// An uploaded image no account elects any longer answers no rows either, and
-	// neither does a deleted preset. The ids were read by an earlier statement,
-	// and an icon replaced since then is one image-server already refuses, so its
-	// URL would be a broken image in an answer the storefront may cache after the
-	// replacement's drop has passed.
-	ListUserIconVariantsByIDs(ctx context.Context, arg ListUserIconVariantsByIDsParams) ([]ListUserIconVariantsByIDsRow, error)
+	// The election is read here rather than taken from the statement that read
+	// the page. An icon changed in between would otherwise be answered as it was
+	// before the change, into an answer the storefront may cache after the
+	// change's drop has passed: a replaced upload as a URL image-server already
+	// refuses, and a preset the reader left as the icon they no longer show.
+	ListUserIconVariantsByUserIDs(ctx context.Context, arg ListUserIconVariantsByUserIDsParams) ([]ListUserIconVariantsByUserIDsRow, error)
 	ListUserIdentitiesForUser(ctx context.Context, arg ListUserIdentitiesForUserParams) ([]UserIdentity, error)
 	// The previous-page half of
 	// ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc.

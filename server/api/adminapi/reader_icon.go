@@ -16,43 +16,41 @@ import (
 	"github.com/publira/publira/server/internal/usericon"
 )
 
-// appendIconID adds the icon an account elects, the upload of imageID or the
-// preset of presetID, to the ids one read of icons covers, once however many
-// rows of a page name the same account, and not at all for an account that
-// shows none.
-func appendIconID(iconIDs []uuid.UUID, imageID, presetID uuid.NullUUID) []uuid.UUID {
-	iconID := protomapper.UserIconID(imageID, presetID)
-	if !iconID.Valid || slices.Contains(iconIDs, iconID.UUID) {
-		return iconIDs
+// appendIconUserID adds an account to the ones one read of icons covers, once
+// however many rows of a page name it. Every account named is read, the ones
+// whose row showed no icon included: the read answers the icon each elects at
+// that moment, which an icon chosen since the page was read may have changed.
+func appendIconUserID(userIDs []uuid.UUID, userID uuid.UUID) []uuid.UUID {
+	if slices.Contains(userIDs, userID) {
+		return userIDs
 	}
-	return append(iconIDs, iconID.UUID)
+	return append(userIDs, userID)
 }
 
-// userIcons reads the icons with the given ids, uploads and presets alike,
-// keyed by id. They are
-// read in one query rather than joined into the rows that name the accounts:
-// an icon has a row per stored variant, and a page has a row per account or
-// comment. An id with no stored variant is absent, and so answers the zero
-// icon.
-func userIcons(ctx context.Context, q Querier, tenantID uuid.UUID, iconIDs []uuid.UUID) (map[uuid.UUID]protomapper.UserIcon, error) {
-	if len(iconIDs) == 0 {
+// userIcons reads the icons the given accounts elect, uploads and presets
+// alike, keyed by account. They are read in one query rather than joined into
+// the rows that name the accounts: an icon has a row per stored variant, and a
+// page has a row per account or comment. An account that shows none is
+// absent, and so answers the zero icon.
+func userIcons(ctx context.Context, q Querier, tenantID uuid.UUID, userIDs []uuid.UUID) (map[uuid.UUID]protomapper.UserIcon, error) {
+	if len(userIDs) == 0 {
 		return nil, nil
 	}
-	rows, err := q.ListUserIconVariantsByIDs(ctx, dbmodels.ListUserIconVariantsByIDsParams{
+	rows, err := q.ListUserIconVariantsByUserIDs(ctx, dbmodels.ListUserIconVariantsByUserIDsParams{
 		TenantID: tenantID,
-		IconIds:  iconIDs,
+		UserIds:  userIDs,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("list user icon variants: %w", err)
 	}
-	return protomapper.UserIconsByID(rows), nil
+	return protomapper.UserIconsByUserID(rows), nil
 }
 
 // adminReaderWithIcon projects one account with the icon it shows, read
 // through q so a reader action inside a transaction answers from what it has
 // just written.
 func adminReaderWithIcon(ctx context.Context, q Querier, tenantID uuid.UUID, row readerRow) (*publiraadminv1.AdminReader, error) {
-	icons, err := userIcons(ctx, q, tenantID, appendIconID(nil, row.IconImageID, row.IconPresetID))
+	icons, err := userIcons(ctx, q, tenantID, []uuid.UUID{row.ID})
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +109,7 @@ func (s *adminServer) RemoveReaderIcon(
 		if err != nil {
 			return "", err
 		}
-		if !protomapper.UserIconID(row.IconImageID, row.IconPresetID).Valid {
+		if !row.IconImageID.Valid && !row.IconPresetID.Valid {
 			return "", sql.ErrNoRows
 		}
 		if err := usericon.Clear(ctx, queries, tenant.ID, readerID); err != nil {

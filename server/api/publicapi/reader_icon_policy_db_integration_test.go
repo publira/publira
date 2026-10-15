@@ -186,6 +186,20 @@ func TestDBSelectMyIconShowsThePresetUntilItIsDeleted(t *testing.T) {
 		t.Fatalf("public comments = %v, want the one comment with the preset %s", comments, presetURL)
 	}
 
+	// Picking another preset moves every list that names the reader to it;
+	// the one left is not answered for the reader any more, though it is
+	// still the tenant's and still served.
+	anotherID := env.seedReaderIconPreset(t, tenant)
+	if _, err := env.selectMyIcon(t, tenant, reader, anotherID); err != nil {
+		t.Fatalf("SelectMyIcon %s: %v", anotherID, err)
+	}
+	if comments := env.listComments(t, tenant, episode.ID.String(), 0, "").Comments; len(comments) != 1 || iconURL(t, comments[0].AuthorIconImageVariants) != "/images/reader-icon-presets/"+anotherID {
+		t.Fatalf("public comments after picking another preset = %v, want %s", comments, anotherID)
+	}
+	if _, err := env.selectMyIcon(t, tenant, reader, presetID); err != nil {
+		t.Fatalf("SelectMyIcon %s: %v", presetID, err)
+	}
+
 	if _, err := env.PG.DB.ExecContext(context.Background(), "DELETE FROM reader_icon_presets WHERE id = $1", uuid.MustParse(presetID)); err != nil {
 		t.Fatalf("delete the preset: %v", err)
 	}

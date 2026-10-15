@@ -61,8 +61,6 @@ SELECT c.id,
     c.user_id,
     u.public_id AS author_public_id,
     u.name AS author_name,
-    u.icon_image_id AS author_icon_image_id,
-    u.icon_preset_id AS author_icon_preset_id,
     cc.id AS creator_id,
     cc.public_id AS creator_public_id,
     cc.name AS creator_name
@@ -104,8 +102,6 @@ SELECT c.id,
     c.user_id,
     u.public_id AS author_public_id,
     u.name AS author_name,
-    u.icon_image_id AS author_icon_image_id,
-    u.icon_preset_id AS author_icon_preset_id,
     cc.id AS creator_id,
     cc.public_id AS creator_public_id,
     cc.name AS creator_name
@@ -283,8 +279,6 @@ WHERE cc.id = credited_creator_of_account(
 SELECT c.*,
     u.public_id AS author_public_id,
     u.name AS author_name,
-    u.icon_image_id AS author_icon_image_id,
-    u.icon_preset_id AS author_icon_preset_id,
     EXISTS (
         SELECT 1
         FROM tenant_user_roles tur
@@ -336,8 +330,6 @@ LIMIT sqlc.arg('limit');
 SELECT c.*,
     u.public_id AS author_public_id,
     u.name AS author_name,
-    u.icon_image_id AS author_icon_image_id,
-    u.icon_preset_id AS author_icon_preset_id,
     EXISTS (
         SELECT 1
         FROM tenant_user_roles tur
@@ -401,8 +393,6 @@ WHERE tenant_id = sqlc.arg('tenant_id')
 SELECT c.*,
     u.public_id AS author_public_id,
     u.name AS author_name,
-    u.icon_image_id AS author_icon_image_id,
-    u.icon_preset_id AS author_icon_preset_id,
     EXISTS (
         SELECT 1
         FROM tenant_user_roles tur
