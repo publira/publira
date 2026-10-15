@@ -8,6 +8,13 @@ import { unexpectedServerLogLines } from "../src/server-log";
  * or navigated away mid-stream closes the response React is still rendering
  * into.
  *
+ * A reader can also close a request before the server has read it. After every
+ * client-side navigation the site asks again whether a signed-in reader owes an
+ * agreement, through a Server Action nothing on the page waits for, so a reader
+ * who moves on or closes the page straight after one — a spec ending on the
+ * announcement list it just paged through, for one — leaves its body unread,
+ * and Next.js reports the connection reset as `aborted`.
+ *
  * `catalog.outage.spec.ts` renders the site while the API is down, and any
  * cached site-chrome read whose entry is missing or stale at that moment
  * reports that it could not ask: it finds nothing listening, and so does a
@@ -19,6 +26,7 @@ import { unexpectedServerLogLines } from "../src/server-log";
 const EXPECTED_ERRORS = [
   /^⨯ Error \[ConnectError\]: \[unauthenticated\] invalid token$/u,
   /^⨯ Error: The destination stream closed early\.$/u,
+  /^⨯ Error: aborted$/u,
   /^\[web-storefront\] \w+ failed Error \[ConnectError\]: \[unavailable\] connect ECONNREFUSED \S+$/u,
 ];
 
