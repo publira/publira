@@ -141,9 +141,13 @@ type AdminComment struct {
 	// Set when the author is a creator this episode credits, and unset for
 	// every other comment. It changes nothing about how the comment is
 	// moderated.
-	Creator       *AdminCommentCreator `protobuf:"bytes,19,opt,name=creator,proto3" json:"creator,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Creator *AdminCommentCreator `protobuf:"bytes,19,opt,name=creator,proto3" json:"creator,omitempty"`
+	// The author's icon as their account shows it now, and empty for an account
+	// that shows none. AdminUserService.RemoveReaderIcon is how staff take down
+	// one that breaks the tenant's rules.
+	AuthorIconImageVariants []*v1.UserIconVariant `protobuf:"bytes,20,rep,name=author_icon_image_variants,json=authorIconImageVariants,proto3" json:"author_icon_image_variants,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *AdminComment) Reset() {
@@ -305,6 +309,13 @@ func (x *AdminComment) GetId() string {
 func (x *AdminComment) GetCreator() *AdminCommentCreator {
 	if x != nil {
 		return x.Creator
+	}
+	return nil
+}
+
+func (x *AdminComment) GetAuthorIconImageVariants() []*v1.UserIconVariant {
+	if x != nil {
+		return x.AuthorIconImageVariants
 	}
 	return nil
 }
@@ -1375,7 +1386,7 @@ const file_publira_admin_v1_comment_proto_rawDesc = "" +
 	"\x13AdminCommentCreator\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x12\n" +
-	"\x04name\x18\x03 \x01(\tR\x04name\"\xae\x05\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\"\x8e\x06\n" +
 	"\fAdminComment\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04body\x18\x02 \x01(\tR\x04body\x12\x16\n" +
@@ -1399,7 +1410,8 @@ const file_publira_admin_v1_comment_proto_rawDesc = "" +
 	"\x11open_report_count\x18\x10 \x01(\x05R\x0fopenReportCount\x12&\n" +
 	"\x0fauthor_is_staff\x18\x11 \x01(\bR\rauthorIsStaff\x12\x0e\n" +
 	"\x02id\x18\x12 \x01(\tR\x02id\x12?\n" +
-	"\acreator\x18\x13 \x01(\v2%.publira.admin.v1.AdminCommentCreatorR\acreator\"\xbd\x02\n" +
+	"\acreator\x18\x13 \x01(\v2%.publira.admin.v1.AdminCommentCreatorR\acreator\x12^\n" +
+	"\x1aauthor_icon_image_variants\x18\x14 \x03(\v2!.publira.types.v1.UserIconVariantR\x17authorIconImageVariants\"\xbd\x02\n" +
 	"\rCommentReport\x12\x1b\n" +
 	"\treport_id\x18\x01 \x01(\tR\breportId\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x12\n" +
@@ -1518,46 +1530,48 @@ var file_publira_admin_v1_comment_proto_goTypes = []any{
 	(*ListCommentReportsResponse)(nil),   // 16: publira.admin.v1.ListCommentReportsResponse
 	(*ResolveCommentReportRequest)(nil),  // 17: publira.admin.v1.ResolveCommentReportRequest
 	(*ResolveCommentReportResponse)(nil), // 18: publira.admin.v1.ResolveCommentReportResponse
-	(*v1.TenantContext)(nil),             // 19: publira.types.v1.TenantContext
+	(*v1.UserIconVariant)(nil),           // 19: publira.types.v1.UserIconVariant
+	(*v1.TenantContext)(nil),             // 20: publira.types.v1.TenantContext
 }
 var file_publira_admin_v1_comment_proto_depIdxs = []int32{
 	0,  // 0: publira.admin.v1.AdminComment.creator:type_name -> publira.admin.v1.AdminCommentCreator
-	1,  // 1: publira.admin.v1.CommentReport.comment:type_name -> publira.admin.v1.AdminComment
-	19, // 2: publira.admin.v1.ListCommentsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	1,  // 3: publira.admin.v1.ListCommentsResponse.comments:type_name -> publira.admin.v1.AdminComment
-	19, // 4: publira.admin.v1.CountPendingCommentsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	19, // 5: publira.admin.v1.ApproveCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
-	1,  // 6: publira.admin.v1.ApproveCommentResponse.comment:type_name -> publira.admin.v1.AdminComment
-	19, // 7: publira.admin.v1.HideCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
-	1,  // 8: publira.admin.v1.HideCommentResponse.comment:type_name -> publira.admin.v1.AdminComment
-	19, // 9: publira.admin.v1.RestoreCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
-	1,  // 10: publira.admin.v1.RestoreCommentResponse.comment:type_name -> publira.admin.v1.AdminComment
-	19, // 11: publira.admin.v1.PurgeCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
-	19, // 12: publira.admin.v1.ListCommentReportsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	2,  // 13: publira.admin.v1.ListCommentReportsResponse.reports:type_name -> publira.admin.v1.CommentReport
-	19, // 14: publira.admin.v1.ResolveCommentReportRequest.tenant:type_name -> publira.types.v1.TenantContext
-	2,  // 15: publira.admin.v1.ResolveCommentReportResponse.report:type_name -> publira.admin.v1.CommentReport
-	3,  // 16: publira.admin.v1.AdminCommentService.ListComments:input_type -> publira.admin.v1.ListCommentsRequest
-	5,  // 17: publira.admin.v1.AdminCommentService.CountPendingComments:input_type -> publira.admin.v1.CountPendingCommentsRequest
-	7,  // 18: publira.admin.v1.AdminCommentService.ApproveComment:input_type -> publira.admin.v1.ApproveCommentRequest
-	9,  // 19: publira.admin.v1.AdminCommentService.HideComment:input_type -> publira.admin.v1.HideCommentRequest
-	11, // 20: publira.admin.v1.AdminCommentService.RestoreComment:input_type -> publira.admin.v1.RestoreCommentRequest
-	13, // 21: publira.admin.v1.AdminCommentService.PurgeComment:input_type -> publira.admin.v1.PurgeCommentRequest
-	15, // 22: publira.admin.v1.AdminCommentService.ListCommentReports:input_type -> publira.admin.v1.ListCommentReportsRequest
-	17, // 23: publira.admin.v1.AdminCommentService.ResolveCommentReport:input_type -> publira.admin.v1.ResolveCommentReportRequest
-	4,  // 24: publira.admin.v1.AdminCommentService.ListComments:output_type -> publira.admin.v1.ListCommentsResponse
-	6,  // 25: publira.admin.v1.AdminCommentService.CountPendingComments:output_type -> publira.admin.v1.CountPendingCommentsResponse
-	8,  // 26: publira.admin.v1.AdminCommentService.ApproveComment:output_type -> publira.admin.v1.ApproveCommentResponse
-	10, // 27: publira.admin.v1.AdminCommentService.HideComment:output_type -> publira.admin.v1.HideCommentResponse
-	12, // 28: publira.admin.v1.AdminCommentService.RestoreComment:output_type -> publira.admin.v1.RestoreCommentResponse
-	14, // 29: publira.admin.v1.AdminCommentService.PurgeComment:output_type -> publira.admin.v1.PurgeCommentResponse
-	16, // 30: publira.admin.v1.AdminCommentService.ListCommentReports:output_type -> publira.admin.v1.ListCommentReportsResponse
-	18, // 31: publira.admin.v1.AdminCommentService.ResolveCommentReport:output_type -> publira.admin.v1.ResolveCommentReportResponse
-	24, // [24:32] is the sub-list for method output_type
-	16, // [16:24] is the sub-list for method input_type
-	16, // [16:16] is the sub-list for extension type_name
-	16, // [16:16] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	19, // 1: publira.admin.v1.AdminComment.author_icon_image_variants:type_name -> publira.types.v1.UserIconVariant
+	1,  // 2: publira.admin.v1.CommentReport.comment:type_name -> publira.admin.v1.AdminComment
+	20, // 3: publira.admin.v1.ListCommentsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	1,  // 4: publira.admin.v1.ListCommentsResponse.comments:type_name -> publira.admin.v1.AdminComment
+	20, // 5: publira.admin.v1.CountPendingCommentsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	20, // 6: publira.admin.v1.ApproveCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
+	1,  // 7: publira.admin.v1.ApproveCommentResponse.comment:type_name -> publira.admin.v1.AdminComment
+	20, // 8: publira.admin.v1.HideCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
+	1,  // 9: publira.admin.v1.HideCommentResponse.comment:type_name -> publira.admin.v1.AdminComment
+	20, // 10: publira.admin.v1.RestoreCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
+	1,  // 11: publira.admin.v1.RestoreCommentResponse.comment:type_name -> publira.admin.v1.AdminComment
+	20, // 12: publira.admin.v1.PurgeCommentRequest.tenant:type_name -> publira.types.v1.TenantContext
+	20, // 13: publira.admin.v1.ListCommentReportsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	2,  // 14: publira.admin.v1.ListCommentReportsResponse.reports:type_name -> publira.admin.v1.CommentReport
+	20, // 15: publira.admin.v1.ResolveCommentReportRequest.tenant:type_name -> publira.types.v1.TenantContext
+	2,  // 16: publira.admin.v1.ResolveCommentReportResponse.report:type_name -> publira.admin.v1.CommentReport
+	3,  // 17: publira.admin.v1.AdminCommentService.ListComments:input_type -> publira.admin.v1.ListCommentsRequest
+	5,  // 18: publira.admin.v1.AdminCommentService.CountPendingComments:input_type -> publira.admin.v1.CountPendingCommentsRequest
+	7,  // 19: publira.admin.v1.AdminCommentService.ApproveComment:input_type -> publira.admin.v1.ApproveCommentRequest
+	9,  // 20: publira.admin.v1.AdminCommentService.HideComment:input_type -> publira.admin.v1.HideCommentRequest
+	11, // 21: publira.admin.v1.AdminCommentService.RestoreComment:input_type -> publira.admin.v1.RestoreCommentRequest
+	13, // 22: publira.admin.v1.AdminCommentService.PurgeComment:input_type -> publira.admin.v1.PurgeCommentRequest
+	15, // 23: publira.admin.v1.AdminCommentService.ListCommentReports:input_type -> publira.admin.v1.ListCommentReportsRequest
+	17, // 24: publira.admin.v1.AdminCommentService.ResolveCommentReport:input_type -> publira.admin.v1.ResolveCommentReportRequest
+	4,  // 25: publira.admin.v1.AdminCommentService.ListComments:output_type -> publira.admin.v1.ListCommentsResponse
+	6,  // 26: publira.admin.v1.AdminCommentService.CountPendingComments:output_type -> publira.admin.v1.CountPendingCommentsResponse
+	8,  // 27: publira.admin.v1.AdminCommentService.ApproveComment:output_type -> publira.admin.v1.ApproveCommentResponse
+	10, // 28: publira.admin.v1.AdminCommentService.HideComment:output_type -> publira.admin.v1.HideCommentResponse
+	12, // 29: publira.admin.v1.AdminCommentService.RestoreComment:output_type -> publira.admin.v1.RestoreCommentResponse
+	14, // 30: publira.admin.v1.AdminCommentService.PurgeComment:output_type -> publira.admin.v1.PurgeCommentResponse
+	16, // 31: publira.admin.v1.AdminCommentService.ListCommentReports:output_type -> publira.admin.v1.ListCommentReportsResponse
+	18, // 32: publira.admin.v1.AdminCommentService.ResolveCommentReport:output_type -> publira.admin.v1.ResolveCommentReportResponse
+	25, // [25:33] is the sub-list for method output_type
+	17, // [17:25] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_comment_proto_init() }

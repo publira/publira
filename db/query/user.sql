@@ -406,6 +406,7 @@ SELECT u.id,
     u.created_at,
     u.email_verified_at,
     NULL::date AS birth_date,
+    u.icon_image_id,
     COALESCE(
         (
             SELECT tur.role
@@ -453,6 +454,7 @@ SELECT u.id,
     u.created_at,
     u.email_verified_at,
     NULL::date AS birth_date,
+    u.icon_image_id,
     COALESCE(
         (
             SELECT tur.role
@@ -502,6 +504,7 @@ SELECT u.id,
     u.created_at,
     u.email_verified_at,
     u.birth_date,
+    u.icon_image_id,
     COALESCE(
         (
             SELECT tur.role
@@ -533,6 +536,7 @@ SELECT u.id,
     u.created_at,
     u.email_verified_at,
     u.birth_date,
+    u.icon_image_id,
     COALESCE(
         (
             SELECT tur.role
@@ -571,6 +575,7 @@ RETURNING users.id,
     users.created_at,
     users.email_verified_at,
     users.birth_date,
+    users.icon_image_id,
     COALESCE(
         (
             SELECT tur.role
@@ -604,6 +609,7 @@ RETURNING users.id,
     users.created_at,
     users.email_verified_at,
     users.birth_date,
+    users.icon_image_id,
     COALESCE(
         (
             SELECT tur.role
@@ -638,6 +644,7 @@ RETURNING users.id,
     users.created_at,
     users.email_verified_at,
     users.birth_date,
+    users.icon_image_id,
     COALESCE(
         (
             SELECT tur.role

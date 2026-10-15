@@ -55,6 +55,7 @@ export const auditActions = [
   "reader_unsuspended",
   "reader_birth_date_changed",
   "reader_birth_date_cleared",
+  "reader_icon_removed",
   "reader_deleted",
   "access_ticket_issued",
   "access_ticket_revoked",

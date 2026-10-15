@@ -287,6 +287,12 @@ func TestDBAdminReaderRPCsRequireTheAdminRole(t *testing.T) {
 	}); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("SetReaderBirthDate as an editor error = %v, want permission_denied", err)
 	}
+	if _, err := client.RemoveReaderIcon(testutil.WithBearer(context.Background(), asEditor.token()), &publiraadminv1.RemoveReaderIconRequest{
+		Tenant:   asEditor.tenantContext(),
+		ReaderId: reader.ID.String(),
+	}); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("RemoveReaderIcon as an editor error = %v, want permission_denied", err)
+	}
 	if count := env.countRows(t, "SELECT count(*) FROM users WHERE id = $1 AND birth_date IS NULL", reader.ID); count != 1 {
 		t.Fatal("an editor's attempt stored a birth date")
 	}

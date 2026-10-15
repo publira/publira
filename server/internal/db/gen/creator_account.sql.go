@@ -73,6 +73,7 @@ SELECT u.id,
     u.status,
     u.created_at,
     u.email_verified_at,
+    u.icon_image_id,
     COALESCE(
         (
             SELECT tur.role
@@ -104,15 +105,16 @@ type ListCreatorAccountsByCreatorIDParams struct {
 }
 
 type ListCreatorAccountsByCreatorIDRow struct {
-	ID              uuid.UUID    `json:"id"`
-	PublicID        string       `json:"public_id"`
-	Name            string       `json:"name"`
-	Email           string       `json:"email"`
-	Status          string       `json:"status"`
-	CreatedAt       time.Time    `json:"created_at"`
-	EmailVerifiedAt sql.NullTime `json:"email_verified_at"`
-	Role            string       `json:"role"`
-	LinkedAt        time.Time    `json:"linked_at"`
+	ID              uuid.UUID     `json:"id"`
+	PublicID        string        `json:"public_id"`
+	Name            string        `json:"name"`
+	Email           string        `json:"email"`
+	Status          string        `json:"status"`
+	CreatedAt       time.Time     `json:"created_at"`
+	EmailVerifiedAt sql.NullTime  `json:"email_verified_at"`
+	IconImageID     uuid.NullUUID `json:"icon_image_id"`
+	Role            string        `json:"role"`
+	LinkedAt        time.Time     `json:"linked_at"`
 }
 
 // The accounts linked to one creator, oldest link first. The account columns
@@ -134,6 +136,7 @@ func (q *Queries) ListCreatorAccountsByCreatorID(ctx context.Context, arg ListCr
 			&i.Status,
 			&i.CreatedAt,
 			&i.EmailVerifiedAt,
+			&i.IconImageID,
 			&i.Role,
 			&i.LinkedAt,
 		); err != nil {

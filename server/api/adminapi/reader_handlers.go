@@ -11,6 +11,7 @@ import (
 	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/api/protomapper"
 	"github.com/publira/publira/server/internal/ageverification"
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/clientip"
@@ -19,6 +20,7 @@ import (
 	"github.com/publira/publira/server/internal/pagination"
 	"github.com/publira/publira/server/internal/platformconfig"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/tenantmembers"
@@ -68,17 +70,24 @@ func (filters readerListFilters) key() pagination.ListKey {
 		Value("status", filters.status.String)
 }
 
-func adminReader(row readerRow) *publiraadminv1.AdminReader {
+// adminReader projects one account for the readers screen, with the icon it
+// shows out of icons, which userIcons read for the page it is on.
+func adminReader(row readerRow, icons map[uuid.UUID]protomapper.UserIcon) *publiraadminv1.AdminReader {
+	var iconVariants []*publirattypesv1.UserIconVariant
+	if row.IconImageID.Valid {
+		iconVariants = icons[row.IconImageID.UUID].Variants
+	}
 	return &publiraadminv1.AdminReader{
-		Id:              row.ID.String(),
-		PublicId:        row.PublicID,
-		Name:            row.Name,
-		Email:           row.Email,
-		Status:          row.Status,
-		CreatedAt:       row.CreatedAt.UTC().Format(time.RFC3339),
-		EmailVerifiedAt: formatOptionalTime(row.EmailVerifiedAt),
-		BirthDate:       formatOptionalBirthDate(row.BirthDate),
-		Role:            row.Role,
+		Id:                row.ID.String(),
+		PublicId:          row.PublicID,
+		Name:              row.Name,
+		Email:             row.Email,
+		Status:            row.Status,
+		CreatedAt:         row.CreatedAt.UTC().Format(time.RFC3339),
+		EmailVerifiedAt:   formatOptionalTime(row.EmailVerifiedAt),
+		BirthDate:         formatOptionalBirthDate(row.BirthDate),
+		Role:              row.Role,
+		IconImageVariants: iconVariants,
 	}
 }
 
@@ -177,9 +186,17 @@ func (s *adminServer) ListReaders(
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
+	iconImageIDs := make([]uuid.UUID, 0, len(rows))
+	for _, row := range rows {
+		iconImageIDs = appendIconImageID(iconImageIDs, row.IconImageID)
+	}
+	icons, err := userIcons(ctx, s.queriesFor(ctx), tenant.ID, iconImageIDs)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list reader icons", err, "tenant_id", tenant.ID.String())
+	}
 	readers := make([]*publiraadminv1.AdminReader, 0, len(rows))
 	for _, row := range rows {
-		readers = append(readers, adminReader(row))
+		readers = append(readers, adminReader(row, icons))
 	}
 
 	res := &publiraadminv1.ListReadersResponse{Readers: readers}
@@ -227,8 +244,12 @@ func (s *adminServer) GetReader(
 	if err != nil {
 		return nil, err
 	}
+	reader, err := adminReaderWithIcon(ctx, s.queriesFor(ctx), tenant.ID, row)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to read the reader icon", err, "tenant_id", tenant.ID.String())
+	}
 
-	return &publiraadminv1.GetReaderResponse{Reader: adminReader(row)}, nil
+	return &publiraadminv1.GetReaderResponse{Reader: reader}, nil
 }
 
 func readerPublicIDArg(raw string) (string, error) {
@@ -389,15 +410,19 @@ func (s *adminServer) SuspendReader(
 		return nil, err
 	}
 
-	var updated dbmodels.SuspendTenantReaderRow
+	var reader *publiraadminv1.AdminReader
 	err = s.changeReader(ctx, sessionCtx, "reader_suspended", readerID, func(tx *sql.Tx, queries *dbmodels.Queries) (string, error) {
 		if err := keepAnAdmin(ctx, tx, tenant.ID, readerID); err != nil {
 			return "", err
 		}
-		updated, err = queries.SuspendTenantReader(ctx, dbmodels.SuspendTenantReaderParams{
+		updated, err := queries.SuspendTenantReader(ctx, dbmodels.SuspendTenantReaderParams{
 			TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
 			ID:       readerID,
 		})
+		if err != nil {
+			return "", err
+		}
+		reader, err = adminReaderWithIcon(ctx, queries, tenant.ID, readerRow(updated))
 		return updated.PublicID, err
 	})
 	if errors.Is(err, errReaderUnchanged) {
@@ -406,13 +431,17 @@ func (s *adminServer) SuspendReader(
 		if err != nil {
 			return nil, err
 		}
-		return &publiraadminv1.SuspendReaderResponse{Reader: adminReader(row)}, nil
+		unchanged, err := adminReaderWithIcon(ctx, s.queriesFor(ctx), tenant.ID, row)
+		if err != nil {
+			return nil, s.internalDBError(ctx, "failed to read the reader icon", err, "tenant_id", tenant.ID.String(), "reader_id", readerID.String())
+		}
+		return &publiraadminv1.SuspendReaderResponse{Reader: unchanged}, nil
 	}
 	if err != nil {
 		return nil, err
 	}
 
-	return &publiraadminv1.SuspendReaderResponse{Reader: adminReader(readerRow(updated))}, nil
+	return &publiraadminv1.SuspendReaderResponse{Reader: reader}, nil
 }
 
 // UnsuspendReader lifts a suspension of a reader of the tenant.
@@ -433,12 +462,16 @@ func (s *adminServer) UnsuspendReader(
 		return nil, err
 	}
 
-	var updated dbmodels.UnsuspendTenantReaderRow
+	var reader *publiraadminv1.AdminReader
 	err = s.changeReader(ctx, sessionCtx, "reader_unsuspended", readerID, func(_ *sql.Tx, queries *dbmodels.Queries) (string, error) {
-		updated, err = queries.UnsuspendTenantReader(ctx, dbmodels.UnsuspendTenantReaderParams{
+		updated, err := queries.UnsuspendTenantReader(ctx, dbmodels.UnsuspendTenantReaderParams{
 			TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
 			ID:       readerID,
 		})
+		if err != nil {
+			return "", err
+		}
+		reader, err = adminReaderWithIcon(ctx, queries, tenant.ID, readerRow(updated))
 		return updated.PublicID, err
 	})
 	if errors.Is(err, errReaderUnchanged) {
@@ -447,13 +480,17 @@ func (s *adminServer) UnsuspendReader(
 		if err != nil {
 			return nil, err
 		}
-		return &publiraadminv1.UnsuspendReaderResponse{Reader: adminReader(row)}, nil
+		unchanged, err := adminReaderWithIcon(ctx, s.queriesFor(ctx), tenant.ID, row)
+		if err != nil {
+			return nil, s.internalDBError(ctx, "failed to read the reader icon", err, "tenant_id", tenant.ID.String(), "reader_id", readerID.String())
+		}
+		return &publiraadminv1.UnsuspendReaderResponse{Reader: unchanged}, nil
 	}
 	if err != nil {
 		return nil, err
 	}
 
-	return &publiraadminv1.UnsuspendReaderResponse{Reader: adminReader(readerRow(updated))}, nil
+	return &publiraadminv1.UnsuspendReaderResponse{Reader: reader}, nil
 }
 
 // SetReaderBirthDate sets or clears a reader's birth date. The age gates read
@@ -491,13 +528,17 @@ func (s *adminServer) SetReaderBirthDate(
 		action = "reader_birth_date_changed"
 	}
 
-	var updated dbmodels.SetTenantReaderBirthDateRow
+	var reader *publiraadminv1.AdminReader
 	err = s.changeReader(ctx, sessionCtx, action, readerID, func(_ *sql.Tx, queries *dbmodels.Queries) (string, error) {
-		updated, err = queries.SetTenantReaderBirthDate(ctx, dbmodels.SetTenantReaderBirthDateParams{
+		updated, err := queries.SetTenantReaderBirthDate(ctx, dbmodels.SetTenantReaderBirthDateParams{
 			BirthDate: birthDate,
 			TenantID:  uuid.NullUUID{UUID: tenant.ID, Valid: true},
 			ID:        readerID,
 		})
+		if err != nil {
+			return "", err
+		}
+		reader, err = adminReaderWithIcon(ctx, queries, tenant.ID, readerRow(updated))
 		return updated.PublicID, err
 	})
 	if errors.Is(err, errReaderUnchanged) {
@@ -507,13 +548,17 @@ func (s *adminServer) SetReaderBirthDate(
 		if err != nil {
 			return nil, err
 		}
-		return &publiraadminv1.SetReaderBirthDateResponse{Reader: adminReader(row)}, nil
+		unchanged, err := adminReaderWithIcon(ctx, s.queriesFor(ctx), tenant.ID, row)
+		if err != nil {
+			return nil, s.internalDBError(ctx, "failed to read the reader icon", err, "tenant_id", tenant.ID.String(), "reader_id", readerID.String())
+		}
+		return &publiraadminv1.SetReaderBirthDateResponse{Reader: unchanged}, nil
 	}
 	if err != nil {
 		return nil, err
 	}
 
-	return &publiraadminv1.SetReaderBirthDateResponse{Reader: adminReader(readerRow(updated))}, nil
+	return &publiraadminv1.SetReaderBirthDateResponse{Reader: reader}, nil
 }
 
 // tenantToday is the calendar day the tenant is living through, which is what

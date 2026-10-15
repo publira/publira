@@ -49,6 +49,9 @@ message AdminReader {
   // or tenant_auditor — as TenantMember.role names it. Empty for an account
   // with none.
   string role = 10;
+  // The account's icon as it shows it now, the way the storefront renders it
+  // next to the account's comments. Empty for an account that shows none.
+  repeated publira.types.v1.UserIconVariant icon_image_variants = 11;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -125,6 +128,15 @@ message SetReaderBirthDateResponse {
   AdminReader reader = 1;
 }
 
+message RemoveReaderIconRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string reader_id = 2;
+}
+
+message RemoveReaderIconResponse {
+  AdminReader reader = 1;
+}
+
 message DeleteReaderRequest {
   reserved 2;
   reserved "public_id";
@@ -171,6 +183,13 @@ service AdminUserService {
   //
   // Minimum role: tenant_admin.
   rpc SetReaderBirthDate(SetReaderBirthDateRequest) returns (SetReaderBirthDateResponse) {}
+  // Leaves an account with no icon, for one that breaks the tenant's rules.
+  // The reader can set another one afterwards, as they could after removing
+  // their own. Removing the icon of an account that shows none changes
+  // nothing. not_found as GetReader.
+  //
+  // Minimum role: tenant_admin.
+  rpc RemoveReaderIcon(RemoveReaderIconRequest) returns (RemoveReaderIconResponse) {}
   // Deletes an account the way its own DeleteMe does; a staff account's roles
   // go with it. The tenant's audit entries keep the name and public ID of a
   // staff account they name, and its page versions stop naming it. not_found

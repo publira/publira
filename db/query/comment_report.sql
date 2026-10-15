@@ -192,6 +192,7 @@ SELECT r.id AS report_id,
     c.open_report_count,
     u.public_id AS author_public_id,
     u.name AS author_name,
+    u.icon_image_id AS author_icon_image_id,
     EXISTS (
         SELECT 1
         FROM tenant_user_roles tur
@@ -262,6 +263,7 @@ SELECT r.id AS report_id,
     c.open_report_count,
     u.public_id AS author_public_id,
     u.name AS author_name,
+    u.icon_image_id AS author_icon_image_id,
     EXISTS (
         SELECT 1
         FROM tenant_user_roles tur
@@ -333,6 +335,7 @@ SELECT r.id AS report_id,
     c.open_report_count,
     u.public_id AS author_public_id,
     u.name AS author_name,
+    u.icon_image_id AS author_icon_image_id,
     EXISTS (
         SELECT 1
         FROM tenant_user_roles tur

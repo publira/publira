@@ -259,6 +259,7 @@ SELECT u.id,
     u.created_at,
     u.email_verified_at,
     u.birth_date,
+    u.icon_image_id,
     COALESCE(
         (
             SELECT tur.role
@@ -286,15 +287,16 @@ type GetTenantReaderByIDParams struct {
 }
 
 type GetTenantReaderByIDRow struct {
-	ID              uuid.UUID    `json:"id"`
-	PublicID        string       `json:"public_id"`
-	Name            string       `json:"name"`
-	Email           string       `json:"email"`
-	Status          string       `json:"status"`
-	CreatedAt       time.Time    `json:"created_at"`
-	EmailVerifiedAt sql.NullTime `json:"email_verified_at"`
-	BirthDate       sql.NullTime `json:"birth_date"`
-	Role            string       `json:"role"`
+	ID              uuid.UUID     `json:"id"`
+	PublicID        string        `json:"public_id"`
+	Name            string        `json:"name"`
+	Email           string        `json:"email"`
+	Status          string        `json:"status"`
+	CreatedAt       time.Time     `json:"created_at"`
+	EmailVerifiedAt sql.NullTime  `json:"email_verified_at"`
+	BirthDate       sql.NullTime  `json:"birth_date"`
+	IconImageID     uuid.NullUUID `json:"icon_image_id"`
+	Role            string        `json:"role"`
 }
 
 // GetTenantReaderByPublicID keyed by the primary key. An account of another
@@ -311,6 +313,7 @@ func (q *Queries) GetTenantReaderByID(ctx context.Context, arg GetTenantReaderBy
 		&i.CreatedAt,
 		&i.EmailVerifiedAt,
 		&i.BirthDate,
+		&i.IconImageID,
 		&i.Role,
 	)
 	return i, err
@@ -325,6 +328,7 @@ SELECT u.id,
     u.created_at,
     u.email_verified_at,
     u.birth_date,
+    u.icon_image_id,
     COALESCE(
         (
             SELECT tur.role
@@ -352,15 +356,16 @@ type GetTenantReaderByPublicIDParams struct {
 }
 
 type GetTenantReaderByPublicIDRow struct {
-	ID              uuid.UUID    `json:"id"`
-	PublicID        string       `json:"public_id"`
-	Name            string       `json:"name"`
-	Email           string       `json:"email"`
-	Status          string       `json:"status"`
-	CreatedAt       time.Time    `json:"created_at"`
-	EmailVerifiedAt sql.NullTime `json:"email_verified_at"`
-	BirthDate       sql.NullTime `json:"birth_date"`
-	Role            string       `json:"role"`
+	ID              uuid.UUID     `json:"id"`
+	PublicID        string        `json:"public_id"`
+	Name            string        `json:"name"`
+	Email           string        `json:"email"`
+	Status          string        `json:"status"`
+	CreatedAt       time.Time     `json:"created_at"`
+	EmailVerifiedAt sql.NullTime  `json:"email_verified_at"`
+	BirthDate       sql.NullTime  `json:"birth_date"`
+	IconImageID     uuid.NullUUID `json:"icon_image_id"`
+	Role            string        `json:"role"`
 }
 
 // One account in the shape ListTenantReaders* returns. An account of another
@@ -377,6 +382,7 @@ func (q *Queries) GetTenantReaderByPublicID(ctx context.Context, arg GetTenantRe
 		&i.CreatedAt,
 		&i.EmailVerifiedAt,
 		&i.BirthDate,
+		&i.IconImageID,
 		&i.Role,
 	)
 	return i, err
@@ -1131,6 +1137,7 @@ SELECT u.id,
     u.created_at,
     u.email_verified_at,
     NULL::date AS birth_date,
+    u.icon_image_id,
     COALESCE(
         (
             SELECT tur.role
@@ -1181,15 +1188,16 @@ type ListTenantReadersAscParams struct {
 }
 
 type ListTenantReadersAscRow struct {
-	ID              uuid.UUID    `json:"id"`
-	PublicID        string       `json:"public_id"`
-	Name            string       `json:"name"`
-	Email           string       `json:"email"`
-	Status          string       `json:"status"`
-	CreatedAt       time.Time    `json:"created_at"`
-	EmailVerifiedAt sql.NullTime `json:"email_verified_at"`
-	BirthDate       sql.NullTime `json:"birth_date"`
-	Role            string       `json:"role"`
+	ID              uuid.UUID     `json:"id"`
+	PublicID        string        `json:"public_id"`
+	Name            string        `json:"name"`
+	Email           string        `json:"email"`
+	Status          string        `json:"status"`
+	CreatedAt       time.Time     `json:"created_at"`
+	EmailVerifiedAt sql.NullTime  `json:"email_verified_at"`
+	BirthDate       sql.NullTime  `json:"birth_date"`
+	IconImageID     uuid.NullUUID `json:"icon_image_id"`
+	Role            string        `json:"role"`
 }
 
 func (q *Queries) ListTenantReadersAsc(ctx context.Context, arg ListTenantReadersAscParams) ([]ListTenantReadersAscRow, error) {
@@ -1218,6 +1226,7 @@ func (q *Queries) ListTenantReadersAsc(ctx context.Context, arg ListTenantReader
 			&i.CreatedAt,
 			&i.EmailVerifiedAt,
 			&i.BirthDate,
+			&i.IconImageID,
 			&i.Role,
 		); err != nil {
 			return nil, err
@@ -1242,6 +1251,7 @@ SELECT u.id,
     u.created_at,
     u.email_verified_at,
     NULL::date AS birth_date,
+    u.icon_image_id,
     COALESCE(
         (
             SELECT tur.role
@@ -1292,15 +1302,16 @@ type ListTenantReadersDescParams struct {
 }
 
 type ListTenantReadersDescRow struct {
-	ID              uuid.UUID    `json:"id"`
-	PublicID        string       `json:"public_id"`
-	Name            string       `json:"name"`
-	Email           string       `json:"email"`
-	Status          string       `json:"status"`
-	CreatedAt       time.Time    `json:"created_at"`
-	EmailVerifiedAt sql.NullTime `json:"email_verified_at"`
-	BirthDate       sql.NullTime `json:"birth_date"`
-	Role            string       `json:"role"`
+	ID              uuid.UUID     `json:"id"`
+	PublicID        string        `json:"public_id"`
+	Name            string        `json:"name"`
+	Email           string        `json:"email"`
+	Status          string        `json:"status"`
+	CreatedAt       time.Time     `json:"created_at"`
+	EmailVerifiedAt sql.NullTime  `json:"email_verified_at"`
+	BirthDate       sql.NullTime  `json:"birth_date"`
+	IconImageID     uuid.NullUUID `json:"icon_image_id"`
+	Role            string        `json:"role"`
 }
 
 // Admin ListReaders lists every account of the tenant, staff included: a staff
@@ -1338,6 +1349,7 @@ func (q *Queries) ListTenantReadersDesc(ctx context.Context, arg ListTenantReade
 			&i.CreatedAt,
 			&i.EmailVerifiedAt,
 			&i.BirthDate,
+			&i.IconImageID,
 			&i.Role,
 		); err != nil {
 			return nil, err
@@ -1683,6 +1695,7 @@ RETURNING users.id,
     users.created_at,
     users.email_verified_at,
     users.birth_date,
+    users.icon_image_id,
     COALESCE(
         (
             SELECT tur.role
@@ -1708,15 +1721,16 @@ type SetTenantReaderBirthDateParams struct {
 }
 
 type SetTenantReaderBirthDateRow struct {
-	ID              uuid.UUID    `json:"id"`
-	PublicID        string       `json:"public_id"`
-	Name            string       `json:"name"`
-	Email           string       `json:"email"`
-	Status          string       `json:"status"`
-	CreatedAt       time.Time    `json:"created_at"`
-	EmailVerifiedAt sql.NullTime `json:"email_verified_at"`
-	BirthDate       sql.NullTime `json:"birth_date"`
-	Role            string       `json:"role"`
+	ID              uuid.UUID     `json:"id"`
+	PublicID        string        `json:"public_id"`
+	Name            string        `json:"name"`
+	Email           string        `json:"email"`
+	Status          string        `json:"status"`
+	CreatedAt       time.Time     `json:"created_at"`
+	EmailVerifiedAt sql.NullTime  `json:"email_verified_at"`
+	BirthDate       sql.NullTime  `json:"birth_date"`
+	IconImageID     uuid.NullUUID `json:"icon_image_id"`
+	Role            string        `json:"role"`
 }
 
 // Sets or clears a reader's birth date past the written-once guard of
@@ -1734,6 +1748,7 @@ func (q *Queries) SetTenantReaderBirthDate(ctx context.Context, arg SetTenantRea
 		&i.CreatedAt,
 		&i.EmailVerifiedAt,
 		&i.BirthDate,
+		&i.IconImageID,
 		&i.Role,
 	)
 	return i, err
@@ -1791,6 +1806,7 @@ RETURNING users.id,
     users.created_at,
     users.email_verified_at,
     users.birth_date,
+    users.icon_image_id,
     COALESCE(
         (
             SELECT tur.role
@@ -1815,15 +1831,16 @@ type SuspendTenantReaderParams struct {
 }
 
 type SuspendTenantReaderRow struct {
-	ID              uuid.UUID    `json:"id"`
-	PublicID        string       `json:"public_id"`
-	Name            string       `json:"name"`
-	Email           string       `json:"email"`
-	Status          string       `json:"status"`
-	CreatedAt       time.Time    `json:"created_at"`
-	EmailVerifiedAt sql.NullTime `json:"email_verified_at"`
-	BirthDate       sql.NullTime `json:"birth_date"`
-	Role            string       `json:"role"`
+	ID              uuid.UUID     `json:"id"`
+	PublicID        string        `json:"public_id"`
+	Name            string        `json:"name"`
+	Email           string        `json:"email"`
+	Status          string        `json:"status"`
+	CreatedAt       time.Time     `json:"created_at"`
+	EmailVerifiedAt sql.NullTime  `json:"email_verified_at"`
+	BirthDate       sql.NullTime  `json:"birth_date"`
+	IconImageID     uuid.NullUUID `json:"icon_image_id"`
+	Role            string        `json:"role"`
 }
 
 // Suspends an account and invalidates the sessions it holds. An account that
@@ -1841,6 +1858,7 @@ func (q *Queries) SuspendTenantReader(ctx context.Context, arg SuspendTenantRead
 		&i.CreatedAt,
 		&i.EmailVerifiedAt,
 		&i.BirthDate,
+		&i.IconImageID,
 		&i.Role,
 	)
 	return i, err
@@ -1897,6 +1915,7 @@ RETURNING users.id,
     users.created_at,
     users.email_verified_at,
     users.birth_date,
+    users.icon_image_id,
     COALESCE(
         (
             SELECT tur.role
@@ -1921,15 +1940,16 @@ type UnsuspendTenantReaderParams struct {
 }
 
 type UnsuspendTenantReaderRow struct {
-	ID              uuid.UUID    `json:"id"`
-	PublicID        string       `json:"public_id"`
-	Name            string       `json:"name"`
-	Email           string       `json:"email"`
-	Status          string       `json:"status"`
-	CreatedAt       time.Time    `json:"created_at"`
-	EmailVerifiedAt sql.NullTime `json:"email_verified_at"`
-	BirthDate       sql.NullTime `json:"birth_date"`
-	Role            string       `json:"role"`
+	ID              uuid.UUID     `json:"id"`
+	PublicID        string        `json:"public_id"`
+	Name            string        `json:"name"`
+	Email           string        `json:"email"`
+	Status          string        `json:"status"`
+	CreatedAt       time.Time     `json:"created_at"`
+	EmailVerifiedAt sql.NullTime  `json:"email_verified_at"`
+	BirthDate       sql.NullTime  `json:"birth_date"`
+	IconImageID     uuid.NullUUID `json:"icon_image_id"`
+	Role            string        `json:"role"`
 }
 
 // A reader who never confirmed their address goes back to inactive, the state
@@ -1946,6 +1966,7 @@ func (q *Queries) UnsuspendTenantReader(ctx context.Context, arg UnsuspendTenant
 		&i.CreatedAt,
 		&i.EmailVerifiedAt,
 		&i.BirthDate,
+		&i.IconImageID,
 		&i.Role,
 	)
 	return i, err

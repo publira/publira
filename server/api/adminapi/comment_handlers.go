@@ -11,6 +11,7 @@ import (
 	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/api/protomapper"
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/clientip"
 	"github.com/publira/publira/server/internal/contentevents"
@@ -253,75 +254,78 @@ func (s *adminServer) commentReportPage(
 // is about — so the projection names what it reads instead of one of them, and
 // purge_due_at is derived in one place for both.
 type commentProjection struct {
-	id              uuid.UUID
-	publicID        string
-	body            string
-	status          string
-	createdAt       time.Time
-	publishedAt     sql.NullTime
-	hiddenAt        sql.NullTime
-	hiddenReason    sql.NullString
-	withdrawnAt     sql.NullTime
-	openReportCount int32
-	authorPublicID  string
-	authorName      string
-	authorIsStaff   bool
-	episodePublicID string
-	episodeTitle    string
-	seriesPublicID  string
-	seriesTitle     string
-	creatorID       uuid.NullUUID
-	creatorPublicID sql.NullString
-	creatorName     sql.NullString
+	id                uuid.UUID
+	publicID          string
+	body              string
+	status            string
+	createdAt         time.Time
+	publishedAt       sql.NullTime
+	hiddenAt          sql.NullTime
+	hiddenReason      sql.NullString
+	withdrawnAt       sql.NullTime
+	openReportCount   int32
+	authorPublicID    string
+	authorName        string
+	authorIsStaff     bool
+	authorIconImageID uuid.NullUUID
+	episodePublicID   string
+	episodeTitle      string
+	seriesPublicID    string
+	seriesTitle       string
+	creatorID         uuid.NullUUID
+	creatorPublicID   sql.NullString
+	creatorName       sql.NullString
 }
 
 func commentProjectionOf(row moderationCommentRow) commentProjection {
 	return commentProjection{
-		id:              row.ID,
-		publicID:        row.PublicID,
-		body:            row.Body,
-		status:          row.Status,
-		createdAt:       row.CreatedAt,
-		publishedAt:     row.PublishedAt,
-		hiddenAt:        row.HiddenAt,
-		hiddenReason:    row.HiddenReason,
-		withdrawnAt:     row.WithdrawnAt,
-		openReportCount: row.OpenReportCount,
-		authorPublicID:  row.AuthorPublicID,
-		authorName:      row.AuthorName,
-		authorIsStaff:   row.AuthorIsStaff,
-		episodePublicID: row.EpisodePublicID,
-		episodeTitle:    row.EpisodeTitle,
-		seriesPublicID:  row.SeriesPublicID,
-		seriesTitle:     row.SeriesTitle,
-		creatorID:       row.CreatorID,
-		creatorPublicID: row.CreatorPublicID,
-		creatorName:     row.CreatorName,
+		id:                row.ID,
+		publicID:          row.PublicID,
+		body:              row.Body,
+		status:            row.Status,
+		createdAt:         row.CreatedAt,
+		publishedAt:       row.PublishedAt,
+		hiddenAt:          row.HiddenAt,
+		hiddenReason:      row.HiddenReason,
+		withdrawnAt:       row.WithdrawnAt,
+		openReportCount:   row.OpenReportCount,
+		authorPublicID:    row.AuthorPublicID,
+		authorName:        row.AuthorName,
+		authorIsStaff:     row.AuthorIsStaff,
+		authorIconImageID: row.AuthorIconImageID,
+		episodePublicID:   row.EpisodePublicID,
+		episodeTitle:      row.EpisodeTitle,
+		seriesPublicID:    row.SeriesPublicID,
+		seriesTitle:       row.SeriesTitle,
+		creatorID:         row.CreatorID,
+		creatorPublicID:   row.CreatorPublicID,
+		creatorName:       row.CreatorName,
 	}
 }
 
 func commentProjectionOfReport(row commentReportRow) commentProjection {
 	return commentProjection{
-		id:              row.ID,
-		publicID:        row.PublicID,
-		body:            row.Body,
-		status:          row.Status,
-		createdAt:       row.CreatedAt,
-		publishedAt:     row.PublishedAt,
-		hiddenAt:        row.HiddenAt,
-		hiddenReason:    row.HiddenReason,
-		withdrawnAt:     row.WithdrawnAt,
-		openReportCount: row.OpenReportCount,
-		authorPublicID:  row.AuthorPublicID,
-		authorName:      row.AuthorName,
-		authorIsStaff:   row.AuthorIsStaff,
-		episodePublicID: row.EpisodePublicID,
-		episodeTitle:    row.EpisodeTitle,
-		seriesPublicID:  row.SeriesPublicID,
-		seriesTitle:     row.SeriesTitle,
-		creatorID:       row.CreatorID,
-		creatorPublicID: row.CreatorPublicID,
-		creatorName:     row.CreatorName,
+		id:                row.ID,
+		publicID:          row.PublicID,
+		body:              row.Body,
+		status:            row.Status,
+		createdAt:         row.CreatedAt,
+		publishedAt:       row.PublishedAt,
+		hiddenAt:          row.HiddenAt,
+		hiddenReason:      row.HiddenReason,
+		withdrawnAt:       row.WithdrawnAt,
+		openReportCount:   row.OpenReportCount,
+		authorPublicID:    row.AuthorPublicID,
+		authorName:        row.AuthorName,
+		authorIsStaff:     row.AuthorIsStaff,
+		authorIconImageID: row.AuthorIconImageID,
+		episodePublicID:   row.EpisodePublicID,
+		episodeTitle:      row.EpisodeTitle,
+		seriesPublicID:    row.SeriesPublicID,
+		seriesTitle:       row.SeriesTitle,
+		creatorID:         row.CreatorID,
+		creatorPublicID:   row.CreatorPublicID,
+		creatorName:       row.CreatorName,
 	}
 }
 
@@ -336,12 +340,13 @@ func (s *adminServer) commentRetention(ctx context.Context, tenantID uuid.UUID) 
 	return settings.Effective(), nil
 }
 
-// adminComment projects one stored comment for the console.
+// adminComment projects one stored comment for the console, with its author's
+// icon out of icons, which commentAuthorIcons read for the page it is on.
 //
 // purge_due_at is derived here rather than stored: the retention period is a
 // setting, so a deadline written into the row when the author withdrew it
 // would keep promising a date the purge batch no longer honours.
-func adminComment(row commentProjection, periods retention.Periods) *publiraadminv1.AdminComment {
+func adminComment(row commentProjection, periods retention.Periods, icons map[uuid.UUID]protomapper.UserIcon) *publiraadminv1.AdminComment {
 	comment := &publiraadminv1.AdminComment{
 		Id:              row.id.String(),
 		PublicId:        row.publicID,
@@ -361,6 +366,9 @@ func adminComment(row commentProjection, periods retention.Periods) *publiraadmi
 		SeriesTitle:     row.seriesTitle,
 		OpenReportCount: row.openReportCount,
 		Creator:         adminCommentCreator(row),
+	}
+	if row.authorIconImageID.Valid {
+		comment.AuthorIconImageVariants = icons[row.authorIconImageID.UUID].Variants
 	}
 	if row.withdrawnAt.Valid {
 		comment.PurgeDueAt = periods.WithdrawnCommentPurgeDueAt(row.withdrawnAt.Time).Format(time.RFC3339)
@@ -384,7 +392,7 @@ func adminCommentCreator(row commentProjection) *publiraadminv1.AdminCommentCrea
 }
 
 // adminCommentReport projects one stored report, with the comment it is about.
-func adminCommentReport(row commentReportRow, periods retention.Periods) *publiraadminv1.CommentReport {
+func adminCommentReport(row commentReportRow, periods retention.Periods, icons map[uuid.UUID]protomapper.UserIcon) *publiraadminv1.CommentReport {
 	return &publiraadminv1.CommentReport{
 		ReportId:         row.ReportID.String(),
 		Reason:           row.Reason,
@@ -394,8 +402,21 @@ func adminCommentReport(row commentReportRow, periods retention.Periods) *publir
 		ResolvedAt:       formatOptionalTime(row.ResolvedAt),
 		ReporterPublicId: row.ReporterPublicID,
 		ReporterName:     row.ReporterName,
-		Comment:          adminComment(commentProjectionOfReport(row), periods),
+		Comment:          adminComment(commentProjectionOfReport(row), periods, icons),
 	}
+}
+
+// commentAuthorIcons reads the icons of the authors the given images belong
+// to. A moderation action reads it before its write, beside the retention
+// periods and for the same reason: the author's icon is not what the action
+// changes, and a failed read must not report a moderation that has already
+// committed as an error.
+func (s *adminServer) commentAuthorIcons(ctx context.Context, tenantID uuid.UUID, imageIDs []uuid.UUID) (map[uuid.UUID]protomapper.UserIcon, error) {
+	icons, err := userIcons(ctx, s.queriesFor(ctx), tenantID, imageIDs)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list comment author icons", err, "tenant_id", tenantID.String())
+	}
+	return icons, nil
 }
 
 // loadCommentForModeration reads the comment an action names. The tenant is part
@@ -478,8 +499,13 @@ func commentAuditEntry(
 // reach web-storefront's cache itself, so the invalidation is owed here, beside
 // the write.
 func (s *adminServer) recordCommentListRevalidation(ctx context.Context, q *dbmodels.Queries, tenantID uuid.UUID, episodePublicID string) (revalidate.Owed, error) {
-	tag := fmt.Sprintf("tenant:%s:episode:%s:comments", tenantID.String(), episodePublicID)
-	return s.reval.Record(ctx, q, tenantID, []string{tag})
+	return s.reval.Record(ctx, q, tenantID, []string{commentListRevalidateTag(tenantID, episodePublicID)})
+}
+
+// commentListRevalidateTag names web-storefront's cached comment list of one
+// episode.
+func commentListRevalidateTag(tenantID uuid.UUID, episodePublicID string) string {
+	return fmt.Sprintf("tenant:%s:episode:%s:comments", tenantID.String(), episodePublicID)
 }
 
 // recordCommentAction writes that row the ordinary way: best-effort, so a
@@ -593,9 +619,17 @@ func (s *adminServer) ListComments(
 	if err != nil {
 		return nil, err
 	}
+	iconImageIDs := make([]uuid.UUID, 0, len(rows))
+	for _, row := range rows {
+		iconImageIDs = appendIconImageID(iconImageIDs, row.AuthorIconImageID)
+	}
+	icons, err := s.commentAuthorIcons(ctx, tenant.ID, iconImageIDs)
+	if err != nil {
+		return nil, err
+	}
 	comments := make([]*publiraadminv1.AdminComment, 0, len(rows))
 	for _, row := range rows {
-		comments = append(comments, adminComment(commentProjectionOf(row), periods))
+		comments = append(comments, adminComment(commentProjectionOf(row), periods, icons))
 	}
 
 	res := &publiraadminv1.ListCommentsResponse{Comments: comments}
@@ -681,6 +715,10 @@ func (s *adminServer) ApproveComment(
 	if current.Status != commentStatusPending {
 		return nil, commentStateError("approved", current.Status)
 	}
+	icons, err := s.commentAuthorIcons(ctx, tenant.ID, appendIconImageID(nil, current.AuthorIconImageID))
+	if err != nil {
+		return nil, err
+	}
 
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
@@ -717,7 +755,7 @@ func (s *adminServer) ApproveComment(
 	}
 	s.recordCommentAction(ctx, sessionCtx, "comment_approved", current.PublicID, strings.TrimSpace(req.Reason))
 
-	return &publiraadminv1.ApproveCommentResponse{Comment: adminComment(commentProjectionOf(updated), periods)}, nil
+	return &publiraadminv1.ApproveCommentResponse{Comment: adminComment(commentProjectionOf(updated), periods, icons)}, nil
 }
 
 // HideComment removes one comment from every reader-facing response but its
@@ -748,6 +786,10 @@ func (s *adminServer) HideComment(
 	}
 	if current.Status != commentStatusPending && current.Status != commentStatusPublished {
 		return nil, commentStateError("removed", current.Status)
+	}
+	icons, err := s.commentAuthorIcons(ctx, tenant.ID, appendIconImageID(nil, current.AuthorIconImageID))
+	if err != nil {
+		return nil, err
 	}
 
 	tx, err := s.beginTenantTx(ctx)
@@ -780,7 +822,7 @@ func (s *adminServer) HideComment(
 	}
 	s.recordCommentAction(ctx, sessionCtx, "comment_hidden", current.PublicID, strings.TrimSpace(req.Reason))
 
-	return &publiraadminv1.HideCommentResponse{Comment: adminComment(commentProjectionOf(updated), periods)}, nil
+	return &publiraadminv1.HideCommentResponse{Comment: adminComment(commentProjectionOf(updated), periods, icons)}, nil
 }
 
 // RestoreComment puts a removed comment back into the state its removal
@@ -813,6 +855,10 @@ func (s *adminServer) RestoreComment(
 	}
 	if current.Status != commentStatusHidden {
 		return nil, commentStateError("restored", current.Status)
+	}
+	icons, err := s.commentAuthorIcons(ctx, tenant.ID, appendIconImageID(nil, current.AuthorIconImageID))
+	if err != nil {
+		return nil, err
 	}
 
 	// The restore and the reports it settles are one transaction. Putting the
@@ -864,7 +910,7 @@ func (s *adminServer) RestoreComment(
 	}
 	s.recordCommentAction(ctx, sessionCtx, "comment_restored", current.PublicID, strings.TrimSpace(req.Reason))
 
-	return &publiraadminv1.RestoreCommentResponse{Comment: adminComment(commentProjectionOf(updated), periods)}, nil
+	return &publiraadminv1.RestoreCommentResponse{Comment: adminComment(commentProjectionOf(updated), periods, icons)}, nil
 }
 
 // PurgeComment deletes one comment for good, whatever state it is in.
@@ -978,9 +1024,17 @@ func (s *adminServer) ListCommentReports(
 	if err != nil {
 		return nil, err
 	}
+	iconImageIDs := make([]uuid.UUID, 0, len(rows))
+	for _, row := range rows {
+		iconImageIDs = appendIconImageID(iconImageIDs, row.AuthorIconImageID)
+	}
+	icons, err := s.commentAuthorIcons(ctx, tenant.ID, iconImageIDs)
+	if err != nil {
+		return nil, err
+	}
 	reports := make([]*publiraadminv1.CommentReport, 0, len(rows))
 	for _, row := range rows {
-		reports = append(reports, adminCommentReport(row, periods))
+		reports = append(reports, adminCommentReport(row, periods, icons))
 	}
 
 	res := &publiraadminv1.ListCommentReportsResponse{Reports: reports}
@@ -1048,6 +1102,10 @@ func (s *adminServer) ResolveCommentReport(
 	if current.ReportStatus != commentReportStatusOpen {
 		return nil, connect.Errorf(connect.CodeFailedPrecondition, "a %s report cannot be decided again", current.ReportStatus)
 	}
+	icons, err := s.commentAuthorIcons(ctx, tenant.ID, appendIconImageID(nil, current.AuthorIconImageID))
+	if err != nil {
+		return nil, err
+	}
 
 	// The decision and the counter it moves are one write, for the reason the
 	// report itself was: open_report_count is what the removal threshold reads
@@ -1093,7 +1151,7 @@ func (s *adminServer) ResolveCommentReport(
 	// target. The action says which way this decision went.
 	s.recordCommentAction(ctx, sessionCtx, commentReportAuditAction(resolution), updated.PublicID, strings.TrimSpace(req.Reason))
 
-	return &publiraadminv1.ResolveCommentReportResponse{Report: adminCommentReport(updated, periods)}, nil
+	return &publiraadminv1.ResolveCommentReportResponse{Report: adminCommentReport(updated, periods, icons)}, nil
 }
 
 // commentReportAuditAction names the decision in the audit log.

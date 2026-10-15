@@ -30,6 +30,14 @@ func (s *adminServer) creatorAccounts(ctx context.Context, tenantID, creatorID u
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list creator accounts", err, "tenant_id", tenantID.String(), "creator_id", creatorID.String())
 	}
+	iconImageIDs := make([]uuid.UUID, 0, len(rows))
+	for _, row := range rows {
+		iconImageIDs = appendIconImageID(iconImageIDs, row.IconImageID)
+	}
+	icons, err := userIcons(ctx, s.queriesFor(ctx), tenantID, iconImageIDs)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list creator account icons", err, "tenant_id", tenantID.String(), "creator_id", creatorID.String())
+	}
 	accounts := make([]*publiraadminv1.CreatorAccount, 0, len(rows))
 	for _, row := range rows {
 		accounts = append(accounts, &publiraadminv1.CreatorAccount{
@@ -41,8 +49,9 @@ func (s *adminServer) creatorAccounts(ctx context.Context, tenantID, creatorID u
 				Status:          row.Status,
 				CreatedAt:       row.CreatedAt,
 				EmailVerifiedAt: row.EmailVerifiedAt,
+				IconImageID:     row.IconImageID,
 				Role:            row.Role,
-			}),
+			}, icons),
 			LinkedAt: row.LinkedAt.UTC().Format(time.RFC3339),
 		})
 	}

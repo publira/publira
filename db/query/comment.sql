@@ -268,6 +268,7 @@ WHERE cc.id = credited_creator_of_account(
 SELECT c.*,
     u.public_id AS author_public_id,
     u.name AS author_name,
+    u.icon_image_id AS author_icon_image_id,
     EXISTS (
         SELECT 1
         FROM tenant_user_roles tur
@@ -319,6 +320,7 @@ LIMIT sqlc.arg('limit');
 SELECT c.*,
     u.public_id AS author_public_id,
     u.name AS author_name,
+    u.icon_image_id AS author_icon_image_id,
     EXISTS (
         SELECT 1
         FROM tenant_user_roles tur
@@ -382,6 +384,7 @@ WHERE tenant_id = sqlc.arg('tenant_id')
 SELECT c.*,
     u.public_id AS author_public_id,
     u.name AS author_name,
+    u.icon_image_id AS author_icon_image_id,
     EXISTS (
         SELECT 1
         FROM tenant_user_roles tur

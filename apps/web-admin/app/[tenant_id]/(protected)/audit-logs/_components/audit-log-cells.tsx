@@ -238,6 +238,9 @@ const readerActionName = (action: string) => {
         <Message message="admin.audit.actions.reader_birth_date_cleared" />
       );
     }
+    case "reader_icon_removed": {
+      return <Message message="admin.audit.actions.reader_icon_removed" />;
+    }
     case "reader_deleted": {
       return <Message message="admin.audit.actions.reader_deleted" />;
     }

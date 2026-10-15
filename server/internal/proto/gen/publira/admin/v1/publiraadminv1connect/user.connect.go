@@ -41,6 +41,9 @@ const (
 	// AdminUserServiceSetReaderBirthDateProcedure is the procedure name of the AdminUserService's
 	// SetReaderBirthDate RPC.
 	AdminUserServiceSetReaderBirthDateProcedure = "/publira.admin.v1.AdminUserService/SetReaderBirthDate"
+	// AdminUserServiceRemoveReaderIconProcedure is the procedure name of the AdminUserService's
+	// RemoveReaderIcon RPC.
+	AdminUserServiceRemoveReaderIconProcedure = "/publira.admin.v1.AdminUserService/RemoveReaderIcon"
 	// AdminUserServiceDeleteReaderProcedure is the procedure name of the AdminUserService's
 	// DeleteReader RPC.
 	AdminUserServiceDeleteReaderProcedure = "/publira.admin.v1.AdminUserService/DeleteReader"
@@ -89,6 +92,13 @@ var (
 			Procedure:  AdminUserServiceSetReaderBirthDateProcedure,
 		}
 	})
+	adminUserServiceRemoveReaderIconSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_user_proto.Services().ByName("AdminUserService").Methods().ByName("RemoveReaderIcon"),
+			Procedure:  AdminUserServiceRemoveReaderIconProcedure,
+		}
+	})
 	adminUserServiceDeleteReaderSpec = sync.OnceValue(func() connect.Spec {
 		return connect.Spec{
 			StreamType: connect.StreamTypeUnary,
@@ -132,6 +142,13 @@ type AdminUserServiceClient interface {
 	//
 	// Minimum role: tenant_admin.
 	SetReaderBirthDate(context.Context, *v1.SetReaderBirthDateRequest) (*v1.SetReaderBirthDateResponse, error)
+	// Leaves an account with no icon, for one that breaks the tenant's rules.
+	// The reader can set another one afterwards, as they could after removing
+	// their own. Removing the icon of an account that shows none changes
+	// nothing. not_found as GetReader.
+	//
+	// Minimum role: tenant_admin.
+	RemoveReaderIcon(context.Context, *v1.RemoveReaderIconRequest) (*v1.RemoveReaderIconResponse, error)
 	// Deletes an account the way its own DeleteMe does; a staff account's roles
 	// go with it. The tenant's audit entries keep the name and public ID of a
 	// staff account they name, and its page versions stop naming it. not_found
@@ -181,6 +198,13 @@ type AdminUserServiceHandler interface {
 	//
 	// Minimum role: tenant_admin.
 	SetReaderBirthDate(context.Context, *v1.SetReaderBirthDateRequest) (*v1.SetReaderBirthDateResponse, error)
+	// Leaves an account with no icon, for one that breaks the tenant's rules.
+	// The reader can set another one afterwards, as they could after removing
+	// their own. Removing the icon of an account that shows none changes
+	// nothing. not_found as GetReader.
+	//
+	// Minimum role: tenant_admin.
+	RemoveReaderIcon(context.Context, *v1.RemoveReaderIconRequest) (*v1.RemoveReaderIconResponse, error)
 	// Deletes an account the way its own DeleteMe does; a staff account's roles
 	// go with it. The tenant's audit entries keep the name and public ID of a
 	// staff account they name, and its page versions stop naming it. not_found
@@ -201,6 +225,7 @@ func RegisterAdminUserServiceHandler(server *connect.Server, svc AdminUserServic
 		connect.Method{Spec: adminUserServiceSuspendReaderSpec(), Handler: adapter.suspendReader},
 		connect.Method{Spec: adminUserServiceUnsuspendReaderSpec(), Handler: adapter.unsuspendReader},
 		connect.Method{Spec: adminUserServiceSetReaderBirthDateSpec(), Handler: adapter.setReaderBirthDate},
+		connect.Method{Spec: adminUserServiceRemoveReaderIconSpec(), Handler: adapter.removeReaderIcon},
 		connect.Method{Spec: adminUserServiceDeleteReaderSpec(), Handler: adapter.deleteReader},
 	)
 }
@@ -230,6 +255,10 @@ func (UnimplementedAdminUserServiceHandler) UnsuspendReader(context.Context, *v1
 
 func (UnimplementedAdminUserServiceHandler) SetReaderBirthDate(context.Context, *v1.SetReaderBirthDateRequest) (*v1.SetReaderBirthDateResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminUserService.SetReaderBirthDate is not implemented")
+}
+
+func (UnimplementedAdminUserServiceHandler) RemoveReaderIcon(context.Context, *v1.RemoveReaderIconRequest) (*v1.RemoveReaderIconResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminUserService.RemoveReaderIcon is not implemented")
 }
 
 func (UnimplementedAdminUserServiceHandler) DeleteReader(context.Context, *v1.DeleteReaderRequest) (*v1.DeleteReaderResponse, error) {
@@ -283,6 +312,14 @@ func (c *adminUserServiceClient) UnsuspendReader(ctx context.Context, req *v1.Un
 func (c *adminUserServiceClient) SetReaderBirthDate(ctx context.Context, req *v1.SetReaderBirthDateRequest) (*v1.SetReaderBirthDateResponse, error) {
 	var res v1.SetReaderBirthDateResponse
 	if err := c.client.CallUnary(ctx, adminUserServiceSetReaderBirthDateSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminUserServiceClient) RemoveReaderIcon(ctx context.Context, req *v1.RemoveReaderIconRequest) (*v1.RemoveReaderIconResponse, error) {
+	var res v1.RemoveReaderIconResponse
+	if err := c.client.CallUnary(ctx, adminUserServiceRemoveReaderIconSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -364,6 +401,18 @@ func (h adminUserServiceHandler) setReaderBirthDate(ctx context.Context, _ conne
 		return err
 	}
 	res, err := h.svc.SetReaderBirthDate(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminUserServiceHandler) removeReaderIcon(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.RemoveReaderIconRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.RemoveReaderIcon(ctx, &req)
 	if err != nil {
 		return err
 	}

@@ -71,6 +71,10 @@ message AdminComment {
   // every other comment. It changes nothing about how the comment is
   // moderated.
   AdminCommentCreator creator = 19;
+  // The author's icon as their account shows it now, and empty for an account
+  // that shows none. AdminUserService.RemoveReaderIcon is how staff take down
+  // one that breaks the tenant's rules.
+  repeated publira.types.v1.UserIconVariant author_icon_image_variants = 20;
 }
 
 // One reader's report on one comment, as the report queue reads it.

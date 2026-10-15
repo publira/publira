@@ -249,6 +249,10 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "reader_birth_date_cleared",
             },
             {
+              label: t("admin.audit.actions.reader_icon_removed"),
+              value: "reader_icon_removed",
+            },
+            {
               label: t("admin.audit.actions.reader_deleted"),
               value: "reader_deleted",
             },
