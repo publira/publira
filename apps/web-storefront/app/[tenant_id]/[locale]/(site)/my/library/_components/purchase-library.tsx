@@ -25,8 +25,10 @@ import type { PurchaseItem } from "#lib/purchases";
 import { purchasesListHref } from "../_lib/search-params";
 
 /**
- * The Route Handler that answers the reader's whole purchase history as CSV.
- * It sits outside the locale tree, so the path carries no prefix.
+ * The Route Handler that answers every purchase the library lists as CSV. It
+ * sits outside the locale tree, so the path carries no prefix. The link is a
+ * plain navigation: the CSV arrives as an attachment and the sign-in redirect
+ * as a page, which a `download` attribute would save as a file instead.
  */
 const PURCHASES_CSV_PATH = "/api/v1/my/purchases/csv";
 
@@ -216,7 +218,7 @@ export const PurchaseLibrary = ({
       ) : null}
       {!listErrorMessage && purchases.length > 0 ? (
         <div className="flex justify-end">
-          <LinkButton download href={PURCHASES_CSV_PATH} variant="outline">
+          <LinkButton href={PURCHASES_CSV_PATH} variant="outline">
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="storefront.library.download_csv" />
             </Suspense>
