@@ -34,7 +34,7 @@ The processes call one another by the names Cloud Map service discovery gives th
 You need:
 
 - **The AWS CLI version 2**, signed in to the account with permission to manage ECS, Cloud Map, Elastic Load Balancing, CloudFront, ACM, IAM roles, Systems Manager parameters, EC2 security groups, and CloudWatch Logs.
-- **A VPC** with private subnets in at least two Availability Zones for the tasks and the load balancer, and an internet gateway attached, which CloudFront requires of a VPC whose load balancer it reaches as a VPC origin, even though nothing is routed through it. The tasks have to reach the GitHub Container Registry to pull the images, the Systems Manager and CloudWatch Logs APIs, Amazon S3, and your SMTP server: give the private subnets a NAT gateway, or VPC endpoints for the AWS services and a pull-through cache for the images.
+- **A VPC** with private subnets in at least two Availability Zones for the tasks and the load balancer, with at least one free address in each for the network interface CloudFront creates there, and an internet gateway attached, which CloudFront requires of a VPC whose load balancer it reaches as a VPC origin, even though nothing is routed through it. The tasks have to reach the GitHub Container Registry to pull the images, the Systems Manager and CloudWatch Logs APIs, Amazon S3, and your SMTP server: give the private subnets a NAT gateway, or VPC endpoints for the AWS services and a pull-through cache for the images.
 - **The services the install depends on**, provisioned as [Provision the services](./2-installing.md#provision-the-services) lists:
   - **Amazon RDS for PostgreSQL or Aurora PostgreSQL**, with the database created as its initial database. The master user is the administrative login: it is not a superuser, but it owns that database and may create roles, which is all `publiractl db` needs.
   - **Amazon ElastiCache for Valkey or Redis OSS**, as a node-based cluster with cluster mode disabled, encryption in transit turned on, and an AUTH token. Publira connects to its primary endpoint as to a single server, so ElastiCache Serverless, which accepts only clients that speak cluster mode, does not work.
@@ -99,7 +99,7 @@ Write your ElastiCache primary endpoint and your RDS endpoint in place of the on
 | `db-url/master` | The `db` tasks alone: the `db` commands are the only ones that read the [administrative login](./2-installing.md#provision-the-services)'s connection, so nothing kept running is given it | `PUBLIRA_DB_URL` |
 | `db-password/*` | The `db roles` task | Files, as [Create the database roles](#create-the-database-roles) describes |
 
-The parameters are not a backup. Keep the encryption keys in your own secret store as well: lose them and every credential the install stored has to be entered again, as [Generate the secrets](./2-installing.md#generate-the-secrets) says. ECS reads a value when a container starts, so a changed parameter reaches a service only with its next deployment. If you keep the values in AWS Secrets Manager instead, name each secret, or a JSON key of one, in `valueFrom` in place of the parameter name, and grant `secretsmanager:GetSecretValue` below.
+The parameters are not a backup. Keep the encryption keys in your own secret store as well: lose them and every credential the install stored has to be entered again, as [Generate the secrets](./2-installing.md#generate-the-secrets) says. ECS reads a value when a container starts, so a changed parameter reaches a service only with its next deployment. If you keep the values in AWS Secrets Manager instead, name each secret, or a JSON key of one, in `valueFrom` in place of the parameter name, and grant the task execution role `secretsmanager:GetSecretValue` on those secrets in place of the `ssm:GetParameters` statement below.
 
 ## 2. Create the IAM roles
 
@@ -221,18 +221,21 @@ The `db` commands run as one-off tasks from the `publiractl` image of the releas
 
 ```bash
 run_publiractl() {
-  local task
+  local task code
   task=$(aws ecs run-task --cluster publira --launch-type FARGATE --task-definition "$1" \
     --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$PUBLIRACTL_SG],assignPublicIp=DISABLED}" \
-    --query 'tasks[0].taskArn' --output text)
-  aws ecs wait tasks-stopped --cluster publira --tasks "$task"
+    --query 'tasks[0].taskArn' --output text) || return
+  echo "$task"
+  aws ecs wait tasks-stopped --cluster publira --tasks "$task" || return
   aws logs tail /publira --log-stream-name-prefix "$1/publiractl/${task##*/}"
-  aws ecs describe-tasks --cluster publira --tasks "$task" \
-    --query "tasks[0].containers[?name=='publiractl'].exitCode" --output text
+  code=$(aws ecs describe-tasks --cluster publira --tasks "$task" \
+    --query "tasks[0].containers[?name=='publiractl'].exitCode | [0]" --output text)
+  echo "exit code: $code"
+  [ "$code" = 0 ]
 }
 ```
 
-It prints the command's log, and then its exit code: `0` when it succeeded. `aws ecs wait tasks-stopped` gives up after ten minutes whether the task has stopped or not; if it does, wait again before reading the log. A task that never started, such as one whose image could not be pulled, has no exit code, and `aws ecs describe-tasks` names why in `tasks[0].stoppedReason`.
+It prints the task's ARN, the command's log, and its exit code, and fails unless that code is `0`, so a script that runs it can stop there. `aws ecs wait tasks-stopped` gives up after ten minutes whether the task has stopped or not, and the function fails with it; wait again with the ARN it printed before reading the log. A task that never started, such as one whose image could not be pulled, has no exit code, which the function prints as `None`, and `aws ecs describe-tasks --cluster publira --tasks <its ARN> --query 'tasks[0].stoppedReason'` names why.
 
 ### Apply the migrations
 
@@ -394,7 +397,7 @@ run_publiractl publiractl-db-roles
 
 Every variable whose name starts with `SECRET_FILE_` becomes a file named after the rest of its name, so the files follow the `secrets` list and the command never changes. `publiractl` starts only once that container has exited with `0`.
 
-The log has one line per role. The same task is how a role's password is rotated later: put the new password in its `db-password/` parameter and in the `db-url/` parameter that carries it, run the task again, and deploy the service that connects as that role again, so its tasks start with the new URL. For `publira_admin`, whose URL `publira-server` carries:
+The log has one line per role. The same task is how a role's password is rotated later: put the new password in its `db-password/` parameter and in the `db-url/` parameter that carries it, with `aws ssm put-parameter --overwrite`, which `put` above leaves out so that it never replaces a value by accident, run the task again, and deploy the service that connects as that role again, so its tasks start with the new URL. For `publira_admin`, whose URL `publira-server` carries:
 
 ```bash
 run_publiractl publiractl-db-roles
@@ -543,6 +546,15 @@ Each service gets its secrets from the parameters and the rest of the variables 
           "valueFrom": "/publira/db-url/platform"
         }
       ],
+      "healthCheck": {
+        "command": [
+          "CMD",
+          "/usr/bin/bash",
+          "-c",
+          "exec 3<>/dev/tcp/127.0.0.1/8000 && printf 'GET /livez HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q '^HTTP/1\\.[01] 200' <&3"
+        ],
+        "startPeriod": 30
+      },
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
@@ -558,7 +570,7 @@ Each service gets its secrets from the parameters and the rest of the variables 
 
 [The client address](#the-client-address) gives the value of `PUBLIRA_TRUSTED_PROXIES`.
 
-`publira-worker.json` runs the same image with `worker` as its command, and is the one task definition with a health check of its own:
+`publira-worker.json` runs the same image with `worker` as its command, and its health check probes port `8003`:
 
 ```json
 {
@@ -669,6 +681,15 @@ Each service gets its secrets from the parameters and the rest of the variables 
         },
         { "name": "PNCH_REDIS_URL", "valueFrom": "/publira/redis-url" }
       ],
+      "healthCheck": {
+        "command": [
+          "CMD",
+          "/nodejs/bin/node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/livez').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+        ],
+        "startPeriod": 30
+      },
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
@@ -682,7 +703,7 @@ Each service gets its secrets from the parameters and the rest of the variables 
 }
 ```
 
-`web-admin.json` is the same with `web-admin` everywhere `web-storefront` appears, port `4000` in place of `3000`, `/publira/admin-auth-secret` as its `PUBLIRA_AUTH_SECRET`, and one more secret, `PUBLIRA_WEB_SERVICE_TOKEN` from `/publira/web-service-token`.
+`web-admin.json` is the same with `web-admin` everywhere `web-storefront` appears, port `4000` in place of `3000`, in its health check too, `/publira/admin-auth-secret` as its `PUBLIRA_AUTH_SECRET`, and one more secret, `PUBLIRA_WEB_SERVICE_TOKEN` from `/publira/web-service-token`.
 
 Register the four, and create a service for each, with the security group, the target group, and the Cloud Map name each one takes:
 
@@ -717,8 +738,8 @@ aws ecs wait services-stable --cluster publira \
 
 ECS replaces a task that fails its health check, whichever kind it is, so every health check on this page probes `/livez`, which fails only when the process itself stops answering. Pointing one at `/readyz` would have ECS replace every task of a service together the moment the database stops answering, which is what [Probing from an orchestrator](../3-operations/11-monitoring.md#probing-from-an-orchestrator) warns against.
 
-- **`publira-server` and the web apps** are probed by their target groups, which `--health-check-path /livez` points at `/livez` on the port each one forwards to. ECS waits `--health-check-grace-period-seconds` after a task starts before it acts on that check, and a new task receives requests once it passes.
-- **`publira-worker`** is behind no target group, so the health check in its task definition probes it from inside the task. The `publira` image carries no HTTP client, but it does carry `bash`, whose `/dev/tcp` opens the connection: the check sends `GET /livez` to port `8003` and passes when the answer is `200`. It runs every 30 seconds, gives up after 5, and marks the task unhealthy after three failures in a row, the defaults of an ECS health check; `startPeriod` gives the worker 30 seconds to start before a failure counts.
+- **Every service** has a health check in its task definition, which ECS runs inside the task. The images carry no HTTP client, so each check uses what its image does carry: `bash`, whose `/dev/tcp` opens the connection, in the `publira` image, and `node`, whose `fetch` makes the request, in the web images, which have no shell. Each check asks for `/livez` on the container's own port and passes on a `200`. It runs every 30 seconds, gives up after 5, and marks the task unhealthy after three failures in a row, the defaults of an ECS health check; `startPeriod` gives the process 30 seconds to start before a failure counts. Cloud Map marks a task's address healthy once that check passes, and removes it when the check fails, so the names the services call one another by follow the same check.
+- **`publira-server` and the web apps** are also probed by their target groups, which `--health-check-path /livez` points at the same path. ECS waits `--health-check-grace-period-seconds` after a task starts before it acts on that check, and the load balancer sends a new task requests once it passes.
 
 Readiness is still worth looking at, from outside the services rather than as a health check: `https://<domain>/readyz` answers with the readiness of `web-storefront`, which includes that of `publira server` and Valkey, once the edge is up. The worker's `/readyz` is reached by nothing; a login of its own that fails shows in its log, as the jobs that use it fail.
 
@@ -1122,28 +1143,32 @@ The tenant's domain answers `404`, since the process behind it does not serve th
 
 [Upgrading](./7-upgrading.md) brings an install to a new release: a backup, the migrations and the roles with the new release's `publiractl`, and then the processes. Read it, and its release notes, first. On ECS its steps become:
 
+Every step below acts on every service the install runs. List them once, adding `web-platform`, `email-renderer`, and `publira-storefront` if you run them:
+
+```bash
+SERVICES="publira-server publira-worker web-storefront web-admin"
+```
+
 1. **Stop the services** when you decided to stop them first, which [Decide whether to stop the processes first](./7-upgrading.md#decide-whether-to-stop-the-processes-first) weighs, by setting every one of them to no tasks:
 
    ```bash
-   for name in publira-server publira-worker web-storefront web-admin; do
+   for name in $SERVICES; do
      aws ecs update-service --cluster publira --service "$name" --desired-count 0 > /dev/null
    done
-   aws ecs wait services-stable --cluster publira \
-     --services publira-server publira-worker web-storefront web-admin
+   aws ecs wait services-stable --cluster publira --services $SERVICES
    ```
 
 2. **Back up the database** with a snapshot of the RDS instance or the Aurora cluster, or with `pg_dump` from a host that reaches it, as [Back up the database](./7-upgrading.md#1-back-up-the-database) describes.
-3. **Apply the migrations and the roles**: change `<tag>` in `publiractl-db-migrate.json` and `publiractl-db-roles.json` to the new release, register both, and run them in that order with `run_publiractl`, going on only when each prints `0`. The roles task gives each role the password its parameter holds, which is the one it already has, so it runs unchanged. A release that adds a role needs a parameter for that role's password, its `SECRET_FILE_` entry, and its flag.
+3. **Apply the migrations and the roles**: change `<tag>` in `publiractl-db-migrate.json` and `publiractl-db-roles.json` to the new release, register both, and run them in that order with `run_publiractl`, going on only when each succeeds. The roles task gives each role the password its parameter holds, which is the one it already has, so it runs unchanged. A release that adds a role needs a parameter for that role's password, its `SECRET_FILE_` entry, and its flag.
 4. **Start the new release**: change `<tag>` in every service's task definition, add the variables the release notes name, register them, and update each service to its new revision, and to the number of tasks it ran before if you stopped it:
 
    ```bash
-   for name in publira-server publira-worker web-storefront web-admin; do
+   for name in $SERVICES; do
      aws ecs register-task-definition --cli-input-json "file://$name.json" > /dev/null
      aws ecs update-service --cluster publira --service "$name" \
        --task-definition "$name" --desired-count 2 > /dev/null
    done
-   aws ecs wait services-stable --cluster publira \
-     --services publira-server publira-worker web-storefront web-admin
+   aws ecs wait services-stable --cluster publira --services $SERVICES
    ```
 
 5. **Check the install**, as [Check the install](./7-upgrading.md#5-check-the-install) describes.
