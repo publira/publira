@@ -1,7 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:publira/api/client_surface.dart';
 import 'package:publira/api/connect_client.dart';
+import 'package:publira/api/gen/publira/v1/notification.pb.dart' as pb;
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/models/inbox_notification.dart';
 import 'package:publira/notifications/http_notification_repository.dart';
@@ -11,21 +13,21 @@ import 'support/connect_fixture_server.dart';
 
 void main() {
   /// One `NotificationItem` as the API answers it.
-  Map<String, Object?> row(
+  pb.NotificationItem row(
     String id, {
     String type = 'episode_published',
     String payload = '{"series_id":"SeedSERSAAA1","episode_id":"SeedEPSDAAA1"}',
     bool isRead = false,
     String createdAt = '2026-09-08T10:30:00Z',
   }) {
-    return {
-      'id': id,
-      'notificationType': type,
-      'payload': payload,
+    return pb.NotificationItem(
+      id: id,
+      notificationType: type,
+      payload: payload,
       // protojson omits a false.
-      if (isRead) 'isRead': true,
-      'createdAt': createdAt,
-    };
+      isRead: isRead ? true : null,
+      createdAt: createdAt,
+    );
   }
 
   late ConnectFixtureServer server;
@@ -71,9 +73,12 @@ void main() {
     expect(page.notifications.last.isRead, isTrue);
     expect(page.nextToken, isEmpty);
 
-    final request = server.requestsTo('ListNotifications').single;
-    expect(request.body['limit'], HttpNotificationRepository.pageSize);
-    expect(request.headers['authorization'], 'Bearer $accessToken');
+    final call = server.requestsTo('ListNotifications').single;
+    expect(
+      call.decode(pb.ListNotificationsRequest()).limit,
+      HttpNotificationRepository.pageSize,
+    );
+    expect(call.headers['authorization'], 'Bearer $accessToken');
   });
 
   test('a page carries the token of the page under it', () async {
@@ -88,7 +93,7 @@ void main() {
     final second = await repository().list(token: first.nextToken);
     expect(second.notifications.single.id, 'n-2');
     expect(second.nextToken, isEmpty);
-    expect(server.requestsTo('ListNotifications').last.body['token'], '1');
+    expect(server.requestsOf(pb.ListNotificationsRequest.new).last.token, '1');
   });
 
   test('a row naming no id is left out of the list', () async {
@@ -116,7 +121,10 @@ void main() {
     await repository().markRead('n-1');
 
     expect(
-      server.requestsTo('MarkNotificationAsRead').single.body['notificationId'],
+      server
+          .requestsOf(pb.MarkNotificationAsReadRequest.new)
+          .single
+          .notificationId,
       'n-1',
     );
     expect(await repository().countUnread(), 1);
@@ -138,16 +146,22 @@ void main() {
     await repository().countUnread();
     await repository().markAllRead();
 
-    for (final procedure in [
-      'ListNotifications',
-      'CountUnreadNotifications',
-      'MarkAllNotificationsAsRead',
-    ]) {
-      expect(
-        server.requestsTo(procedure).first.body['surface'],
-        'CLIENT_SURFACE_APP',
-        reason: procedure,
-      );
+    final surfaces = {
+      'ListNotifications': server
+          .requestsOf(pb.ListNotificationsRequest.new)
+          .first
+          .surface,
+      'CountUnreadNotifications': server
+          .requestsOf(pb.CountUnreadNotificationsRequest.new)
+          .first
+          .surface,
+      'MarkAllNotificationsAsRead': server
+          .requestsOf(pb.MarkAllNotificationsAsReadRequest.new)
+          .first
+          .surface,
+    };
+    for (final MapEntry(key: procedure, value: surface) in surfaces.entries) {
+      expect(surface, appClientSurface, reason: procedure);
     }
   });
 

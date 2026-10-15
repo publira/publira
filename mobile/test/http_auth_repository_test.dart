@@ -4,6 +4,9 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:protobuf/protobuf.dart';
 import 'package:publira/api/connect_client.dart';
+import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/auth.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/tenant.pb.dart' as pb;
 import 'package:publira/auth/account_icon.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_session.dart';
@@ -144,7 +147,7 @@ void main() {
   });
 
   test('readReaderAge reports an account that holds none', () async {
-    server.ageVerification = 'AGE_VERIFICATION_NONE';
+    server.ageVerification = pb.AgeVerification.AGE_VERIFICATION_NONE;
 
     final age = await auth.readReaderAge(stored);
 
@@ -218,9 +221,9 @@ void main() {
 
     expect(written, '2001-02-03');
     expect(server.memberBirthDate, '2001-02-03');
-    final request = server.requestsTo('UpdateMe').single;
-    expect(request.body['name'], ConnectFixtureServer.memberName);
-    expect(request.body['birthDate'], '2001-02-03');
+    final request = server.requestsOf(pb.UpdateMeRequest.new).single;
+    expect(request.name, ConnectFixtureServer.memberName);
+    expect(request.birthDate, '2001-02-03');
   });
 
   test('recordBirthDate maps a date the API refuses to birthDateInvalid', () {
@@ -261,11 +264,11 @@ void main() {
       birthDate: '1998-07-06',
     );
 
-    final request = server.requestsTo('CreateUser').single;
-    expect(request.body['name'], 'New Reader');
-    expect(request.body['email'], 'new@example.com');
-    expect(request.body['password'], 'newpassword');
-    expect(request.body['birthDate'], '1998-07-06');
+    final request = server.requestsOf(pb.CreateUserRequest.new).single;
+    expect(request.name, 'New Reader');
+    expect(request.email, 'new@example.com');
+    expect(request.password, 'newpassword');
+    expect(request.birthDate, '1998-07-06');
   });
 
   test('signUp sends the page versions the reader agreed to', () async {
@@ -289,9 +292,9 @@ void main() {
       password: 'newpassword',
     );
 
-    final body = server.requestsTo('CreateUser').single.body;
-    expect(body.containsKey('birthDate'), isFalse);
-    expect(body.containsKey('agreedPageVersionIds'), isFalse);
+    final request = server.requestsOf(pb.CreateUserRequest.new).single;
+    expect(request.hasBirthDate(), isFalse);
+    expect(request.agreedPageVersionIds, isEmpty);
   });
 
   test('signUp maps a refused address to invalidInput', () async {
@@ -395,7 +398,7 @@ void main() {
     await auth.requestEmailVerification('new@example.com');
 
     expect(
-      server.requestsTo('RequestEmailVerification').single.body['email'],
+      server.requestsOf(pb.RequestEmailVerificationRequest.new).single.email,
       'new@example.com',
     );
   });
@@ -420,7 +423,7 @@ void main() {
     await auth.requestPasswordReset(ConnectFixtureServer.memberEmail);
 
     expect(
-      server.requestsTo('RequestPasswordReset').single.body['email'],
+      server.requestsOf(pb.RequestPasswordResetRequest.new).single.email,
       ConnectFixtureServer.memberEmail,
     );
   });
@@ -510,7 +513,7 @@ void main() {
         AgeVerification.checked,
       );
 
-      server.ageVerification = 'AGE_VERIFICATION_NONE';
+      server.ageVerification = pb.AgeVerification.AGE_VERIFICATION_NONE;
 
       expect(
         (await auth.readSignUpRequirements(locale: 'en')).ageVerification,
@@ -522,12 +525,15 @@ void main() {
 
   test('readSignUpRequirements reads the pages the tenant names', () async {
     server
-      ..termsPage = {
-        'slug': '/legal/terms',
-        'title': ' Terms of service ',
-        'versionId': 'terms-v2',
-      }
-      ..privacyPage = {'slug': '/privacy', 'title': 'Privacy policy'};
+      ..termsPage = pb.TenantLegalPage(
+        slug: '/legal/terms',
+        title: ' Terms of service ',
+        versionId: 'terms-v2',
+      )
+      ..privacyPage = pb.TenantLegalPage(
+        slug: '/privacy',
+        title: 'Privacy policy',
+      );
 
     final requirements = await auth.readSignUpRequirements(locale: 'en');
 
@@ -545,20 +551,20 @@ void main() {
   });
 
   test('readSignUpRequirements reads the pages in a locale', () async {
-    server.termsPage = {
-      'slug': '/legal/terms',
-      'title': 'Terms of service',
-      'versionId': 'terms-ja-v1',
-      'locale': 'ja',
-    };
+    server.termsPage = pb.TenantLegalPage(
+      slug: '/legal/terms',
+      title: 'Terms of service',
+      versionId: 'terms-ja-v1',
+      locale: 'ja',
+    );
 
     final requirements = await auth.readSignUpRequirements(locale: 'ja');
 
     expect(requirements.termsPage?.versionId, 'terms-ja-v1');
-    expect(server.requestsTo('GetTenantLegalPages').single.body, {
-      'tenant': {'tenantId': ConnectFixtureServer.defaultTenantId},
-      'locale': 'ja',
-    });
+    expect(
+      server.requestsOf(pb.GetTenantLegalPagesRequest.new).single,
+      pb.GetTenantLegalPagesRequest(tenant: _defaultTenant(), locale: 'ja'),
+    );
   });
 
   test(
@@ -582,16 +588,16 @@ void main() {
   );
 
   group('legal page agreements', () {
-    const terms = {
-      'slug': '/legal/terms',
-      'title': 'Terms of service',
-      'versionId': 'terms-v2',
-    };
-    const privacy = {
-      'slug': '/privacy',
-      'title': 'Privacy policy',
-      'versionId': 'privacy-v3',
-    };
+    final terms = pb.TenantLegalPage(
+      slug: '/legal/terms',
+      title: 'Terms of service',
+      versionId: 'terms-v2',
+    );
+    final privacy = pb.TenantLegalPage(
+      slug: '/privacy',
+      title: 'Privacy policy',
+      versionId: 'privacy-v3',
+    );
 
     test('reads the pages the reader owes, terms first', () async {
       server
@@ -602,10 +608,13 @@ void main() {
 
       expect(owed.map((page) => page.versionId), ['terms-v2', 'privacy-v3']);
       final request = server.requestsTo('GetMyLegalPageAgreements').single;
-      expect(request.body, {
-        'tenant': {'tenantId': ConnectFixtureServer.defaultTenantId},
-        'locale': 'ja',
-      });
+      expect(
+        request.decode(pb.GetMyLegalPageAgreementsRequest()),
+        pb.GetMyLegalPageAgreementsRequest(
+          tenant: _defaultTenant(),
+          locale: 'ja',
+        ),
+      );
       expect(
         request.headers['authorization'],
         'Bearer ${ConnectFixtureServer.memberAccessToken}',
@@ -638,11 +647,14 @@ void main() {
       );
 
       expect(owed.map((page) => page.versionId), ['privacy-v3']);
-      expect(server.requestsTo('AgreeToLegalPages').single.body, {
-        'tenant': {'tenantId': ConnectFixtureServer.defaultTenantId},
-        'agreedPageVersionIds': ['terms-v2'],
-        'locale': 'en',
-      });
+      expect(
+        server.requestsOf(pb.AgreeToLegalPagesRequest.new).single,
+        pb.AgreeToLegalPagesRequest(
+          tenant: _defaultTenant(),
+          agreedPageVersionIds: ['terms-v2'],
+          locale: 'en',
+        ),
+      );
     });
 
     test('maps a version the tenant no longer asks about to invalidInput', () {
@@ -710,8 +722,8 @@ void main() {
     expect(updated.userName, 'Renamed Reader');
     expect(updated.accessToken, stored.accessToken);
     expect(server.memberCurrentName, 'Renamed Reader');
-    final request = server.requestsTo('UpdateMe').single;
-    expect(request.body.containsKey('birthDate'), isFalse);
+    final request = server.requestsOf(pb.UpdateMeRequest.new).single;
+    expect(request.hasBirthDate(), isFalse);
   });
 
   test('updateName keeps the icon the account shows', () async {
@@ -979,9 +991,7 @@ void main() {
 
       final request = server.requestsTo('Logout').single;
       expect(request.headers['authorization'], 'Bearer ${stored.accessToken}');
-      expect(request.body['tenant'], {
-        'tenantId': ConnectFixtureServer.defaultTenantId,
-      });
+      expect(request.decode(pb.LogoutRequest()).tenant, _defaultTenant());
     },
   );
 
@@ -1008,10 +1018,13 @@ void main() {
           request.headers['authorization'],
           'Bearer ${stored.accessToken}',
         );
-        expect(request.body, {
-          'tenant': {'tenantId': ConnectFixtureServer.defaultTenantId},
-          'emailNotificationsEnabled': false,
-        });
+        expect(
+          request.decode(pb.UpdateNotificationSettingsRequest()),
+          pb.UpdateNotificationSettingsRequest(
+            tenant: _defaultTenant(),
+            emailNotificationsEnabled: false,
+          ),
+        );
 
         expect(
           await auth.updateEmailNotifications(stored, enabled: true),
@@ -1061,6 +1074,10 @@ void main() {
     );
   });
 }
+
+/// The tenant every request names, as the fixture serves it.
+pb.TenantContext _defaultTenant() =>
+    pb.TenantContext(tenantId: ConnectFixtureServer.defaultTenantId);
 
 /// Sends [held] only once [release] completes, so a test can decide which of
 /// two reads settles first.

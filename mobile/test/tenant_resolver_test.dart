@@ -6,9 +6,13 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
+import 'package:publira/api/gen/publira/v1/domain.pb.dart' as pb;
 import 'package:publira/api/tenant_resolver.dart';
 
 const _tenantId = '018f0e6a-1000-7000-8000-000000000001';
+
+http.Response _answer(pb.GetTenantByDomainResponse response) =>
+    http.Response(jsonEncode(response.toProto3Json()), 200);
 
 TenantResolver _resolverOver(MockClient httpClient) {
   return TenantResolver(
@@ -26,15 +30,16 @@ void main() {
     final resolver = _resolverOver(
       MockClient((request) async {
         sent = request;
-        return http.Response(jsonEncode(const {'tenantId': _tenantId}), 200);
+        return _answer(pb.GetTenantByDomainResponse(tenantId: _tenantId));
       }),
     );
 
     expect(await resolver.resolve(), _tenantId);
     expect(sent.url.path, '/rpc/publira.v1.DomainService/GetTenantByDomain');
-    expect(jsonDecode(sent.body), const {
-      'domains': ['localhost'],
-    });
+    expect(
+      pb.GetTenantByDomainRequest()..mergeFromProto3Json(jsonDecode(sent.body)),
+      pb.GetTenantByDomainRequest(domains: ['localhost']),
+    );
   });
 
   test('a resolved tenant id is answered without asking again', () async {
@@ -42,7 +47,7 @@ void main() {
     final resolver = _resolverOver(
       MockClient((_) async {
         lookups++;
-        return http.Response(jsonEncode(const {'tenantId': _tenantId}), 200);
+        return _answer(pb.GetTenantByDomainResponse(tenantId: _tenantId));
       }),
     );
 
@@ -58,7 +63,7 @@ void main() {
       final resolver = _resolverOver(
         MockClient((_) async {
           lookups++;
-          return http.Response(jsonEncode(const {'tenantId': _tenantId}), 200);
+          return _answer(pb.GetTenantByDomainResponse(tenantId: _tenantId));
         }),
       );
 
@@ -78,7 +83,7 @@ void main() {
       MockClient((_) async {
         lookups++;
         await released.future;
-        return http.Response(jsonEncode(const {'tenantId': _tenantId}), 200);
+        return _answer(pb.GetTenantByDomainResponse(tenantId: _tenantId));
       }),
     );
 
@@ -102,7 +107,7 @@ void main() {
             503,
           );
         }
-        return http.Response(jsonEncode(const {'tenantId': _tenantId}), 200);
+        return _answer(pb.GetTenantByDomainResponse(tenantId: _tenantId));
       }),
     );
 
@@ -121,10 +126,11 @@ void main() {
   });
 
   test('an answer without a usable id fails as a Connect error', () async {
-    for (final body in const <Map<String, Object?>>[
-      {},
-      {'tenantId': '   '},
-      {'tenantId': 1},
+    for (final body in [
+      pb.GetTenantByDomainResponse().toProto3Json(),
+      pb.GetTenantByDomainResponse(tenantId: '   ').toProto3Json(),
+      // Not a string: no generated message can carry it.
+      const {'tenantId': 1},
     ]) {
       final resolver = _resolverOver(
         MockClient((_) async => http.Response(jsonEncode(body), 200)),
@@ -149,9 +155,11 @@ void main() {
     () async {
       final resolver = _resolverOver(
         MockClient(
-          (_) async => http.Response(
-            jsonEncode(const {'tenantId': _tenantId, 'defaultLocale': 'ja'}),
-            200,
+          (_) async => _answer(
+            pb.GetTenantByDomainResponse(
+              tenantId: _tenantId,
+              defaultLocale: 'ja',
+            ),
           ),
         ),
       );
@@ -169,17 +177,21 @@ void main() {
   test(
     'an answer naming no locale leaves the default locale unknown',
     () async {
-      for (final body in const <Map<String, Object?>>[
-        {'tenantId': _tenantId},
-        {'tenantId': _tenantId, 'defaultLocale': '  '},
+      for (final response in [
+        pb.GetTenantByDomainResponse(tenantId: _tenantId),
+        pb.GetTenantByDomainResponse(tenantId: _tenantId, defaultLocale: '  '),
       ]) {
         final resolver = _resolverOver(
-          MockClient((_) async => http.Response(jsonEncode(body), 200)),
+          MockClient((_) async => _answer(response)),
         );
 
         await resolver.resolve();
 
-        expect(resolver.defaultLocale.value, isNull, reason: 'body $body');
+        expect(
+          resolver.defaultLocale.value,
+          isNull,
+          reason: 'body ${response.toProto3Json()}',
+        );
       }
     },
   );
@@ -187,13 +199,12 @@ void main() {
   test('the locales the tenant offers are kept for the app', () async {
     final resolver = _resolverOver(
       MockClient(
-        (_) async => http.Response(
-          jsonEncode(const {
-            'tenantId': _tenantId,
-            'defaultLocale': 'ja',
-            'supportedLocales': ['ja', 'en'],
-          }),
-          200,
+        (_) async => _answer(
+          pb.GetTenantByDomainResponse(
+            tenantId: _tenantId,
+            defaultLocale: 'ja',
+            supportedLocales: ['ja', 'en'],
+          ),
         ),
       ),
     );
@@ -215,21 +226,24 @@ void main() {
   test(
     'an answer naming no locale leaves the offered locales unknown',
     () async {
-      for (final body in const <Map<String, Object?>>[
-        {'tenantId': _tenantId},
-        {'tenantId': _tenantId, 'supportedLocales': <String>[]},
-        {
-          'tenantId': _tenantId,
-          'supportedLocales': ['  '],
-        },
+      for (final response in [
+        pb.GetTenantByDomainResponse(tenantId: _tenantId),
+        pb.GetTenantByDomainResponse(
+          tenantId: _tenantId,
+          supportedLocales: ['  '],
+        ),
       ]) {
         final resolver = _resolverOver(
-          MockClient((_) async => http.Response(jsonEncode(body), 200)),
+          MockClient((_) async => _answer(response)),
         );
 
         await resolver.resolve();
 
-        expect(resolver.supportedLocales.value, isNull, reason: 'body $body');
+        expect(
+          resolver.supportedLocales.value,
+          isNull,
+          reason: 'body ${response.toProto3Json()}',
+        );
       }
     },
   );

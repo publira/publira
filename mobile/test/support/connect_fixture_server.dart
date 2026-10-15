@@ -3,6 +3,17 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:fixnum/fixnum.dart';
+import 'package:protobuf/protobuf.dart';
+import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/auth.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/catalog.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/comment.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/contact.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/domain.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/notification.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/page.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/tenant.pb.dart' as pb;
 import 'package:publira/api/image_cipher.dart';
 import 'package:publira/auth/reader_age.dart';
 
@@ -10,6 +21,11 @@ import 'package:publira/auth/reader_age.dart';
 ///
 /// Used by widget-adjacent HTTP tests and by `integration_test` so both
 /// exercise the same client against a repeatable fixture.
+///
+/// What it stores and answers are the messages `buf generate` writes from
+/// `proto/`, so a fixture that no longer matches the API fails to compile.
+/// Every request is decoded strictly into its generated message: a field the
+/// proto does not define is answered `invalid_argument` and fails the test.
 class ConnectFixtureServer {
   ConnectFixtureServer({
     this.tenantId = defaultTenantId,
@@ -32,7 +48,7 @@ class ConnectFixtureServer {
     this.myRecommendedSeries = const [],
     this.seriesProgress = const {},
     this.seriesRatings = const {},
-    this.commentMode = 'COMMENT_MODE_IMMEDIATE',
+    this.commentMode = pb.CommentMode.COMMENT_MODE_IMMEDIATE,
     this.episodeComments = const {},
     this.myEpisodeComments = const {},
     this.myFollows = const [],
@@ -70,13 +86,14 @@ class ConnectFixtureServer {
     this.passwordResetRequestErrorCode = 'unavailable',
     this.acceptsPayments = false,
     this.currency = 'JPY',
-    this.appPurchaseRoute = 'APP_PURCHASE_ROUTE_EXTERNAL_CHECKOUT',
+    this.appPurchaseRoute =
+        pb.AppPurchaseRoute.APP_PURCHASE_ROUTE_EXTERNAL_CHECKOUT,
     this.acceptsAppStorePayments = false,
     this.acceptsGooglePlayPayments = false,
     this.checkoutStatus = HttpStatus.ok,
     this.activeAccessToken = memberAccessToken,
     this.memberBirthDate = '',
-    this.ageVerification = 'AGE_VERIFICATION_R18',
+    this.ageVerification = pb.AgeVerification.AGE_VERIFICATION_R18,
     this.tenantTimeZone = 'UTC',
     this.tenantName = seedTenantName,
     this.tenantTheme,
@@ -104,7 +121,8 @@ class ConnectFixtureServer {
   static const seedEpisodeId = 'SeedEPSDAAA1';
 
   /// The internal id this server answers a record with beside its public id
-  /// [publicId]. Derived rather than stored, so every record carries one.
+  /// [publicId]. Derived rather than stored, so every record whose message
+  /// has an `id` carries one.
   static String internalIdOf(String publicId) => 'internal-$publicId';
 
   /// The public id of the record [internalId] names, or an empty string for
@@ -227,259 +245,267 @@ class ConnectFixtureServer {
     'hwGA60e6kgAAAABJRU5ErkJggg==',
   );
 
-  /// Cover renditions of the seed series, in the shape
-  /// `SeriesEyeCatchVariant` arrives in: a host-relative URL the app resolves
-  /// against its image base.
-  static List<Map<String, Object?>> seedEyeCatchVariants() {
+  /// Cover renditions of the seed series, as `SeriesEyeCatchVariant`
+  /// messages: a host-relative URL the app resolves against its image base.
+  static List<pb.SeriesEyeCatchVariant> seedEyeCatchVariants() {
     return [
       for (final width in [400, 800, 1200])
-        {
-          'label': 'portrait_${width}w',
-          'variantType': 'portrait',
-          'url': '/images/series/$seedSeriesImageId/portrait/$width',
-          'contentType': 'image/webp',
-          'width': width,
-          'height': width * 4 ~/ 3,
-        },
+        pb.SeriesEyeCatchVariant(
+          label: 'portrait_${width}w',
+          variantType: 'portrait',
+          url: '/images/series/$seedSeriesImageId/portrait/$width',
+          contentType: 'image/webp',
+          width: width,
+          height: width * 4 ~/ 3,
+        ),
       for (final width in [800, 1600])
-        {
-          'label': 'landscape_${width}w',
-          'variantType': 'landscape',
-          'url': '/images/series/$seedSeriesImageId/landscape/$width',
-          'contentType': 'image/webp',
-          'width': width,
-          'height': width * 9 ~/ 16,
-        },
+        pb.SeriesEyeCatchVariant(
+          label: 'landscape_${width}w',
+          variantType: 'landscape',
+          url: '/images/series/$seedSeriesImageId/landscape/$width',
+          contentType: 'image/webp',
+          width: width,
+          height: width * 9 ~/ 16,
+        ),
     ];
   }
 
-  /// Credits of the seed series, in the shape `Creator` arrives in and in the
-  /// tenant's role priority order.
-  static List<Map<String, Object?>> seedCreators() {
+  /// Credits of the seed series, as `Creator` messages in the tenant's role
+  /// priority order.
+  static List<pb.Creator> seedCreators() {
     return [
       for (final (index, role) in [(1, 'Story'), (2, 'Art'), (3, 'Art')])
-        {
-          'publicId': 'SeedAUTHAAA$index',
-          'name': 'Seed Author 00$index',
-          'role': {'publicId': 'SeedROLEAAA$index', 'name': role},
-          'profileText': 'Profile text for Seed Author 00$index',
-        },
+        pb.Creator(
+          publicId: 'SeedAUTHAAA$index',
+          name: 'Seed Author 00$index',
+          role: pb.CreatorRole(publicId: 'SeedROLEAAA$index', name: role),
+          profileText: 'Profile text for Seed Author 00$index',
+        ),
     ];
   }
 
-  /// Classification of the seed series, in the shape `Series` arrives in.
-  static List<Map<String, Object?>> seedGenres() {
+  /// Classification of the seed series, as the `Genre` messages a `Series`
+  /// carries.
+  static List<pb.Genre> seedGenres() {
     return [
-      {'publicId': 'SeedGENRAAA1', 'name': 'Fantasy', 'slug': 'fantasy'},
+      pb.Genre(publicId: 'SeedGENRAAA1', name: 'Fantasy', slug: 'fantasy'),
     ];
   }
 
-  /// The tags of the seed series, in the shape `Series` arrives in.
-  static List<Map<String, Object?>> seedTags() {
+  /// The tags of the seed series, as the `Tag` messages a `Series` carries.
+  static List<pb.Tag> seedTags() {
+    return [pb.Tag(name: 'Time travel', slug: 'time-travel')];
+  }
+
+  /// The genres the development seed curates first, in its order, as the
+  /// `PublishedGenre` messages [genres] holds. The second carries nothing
+  /// [populatedSeries] holds, which a genre still listed at zero is.
+  static List<pb.PublishedGenre> populatedGenres() {
     return [
-      {'name': 'Time travel', 'slug': 'time-travel'},
+      for (final genre in seedGenres())
+        pb.PublishedGenre(
+          publicId: genre.publicId,
+          name: genre.name,
+          slug: genre.slug,
+        ),
+      pb.PublishedGenre(
+        publicId: 'SeedGENRAAA2',
+        name: 'Romance',
+        slug: 'romance',
+      ),
     ];
   }
 
-  /// The genres the development seed curates first, in its order. The second
-  /// carries nothing [populatedSeries] holds, which a genre still listed at
-  /// zero is.
-  static List<Map<String, Object?>> populatedGenres() {
+  static List<pb.Series> populatedSeries() {
     return [
-      ...seedGenres(),
-      {'publicId': 'SeedGENRAAA2', 'name': 'Romance', 'slug': 'romance'},
+      pb.Series(
+        publicId: seedSeriesId,
+        title: seedSeriesTitle,
+        synopsis: seedSeriesSynopsis,
+        label: pb.Label(name: 'Seed Label 01', publicId: 'SeedLABLAAA1'),
+        creators: seedCreators(),
+        eyeCatchImageVariants: seedEyeCatchVariants(),
+        status: pb.SeriesStatus.SERIES_STATUS_ONGOING,
+        scheduleWeekdays: [1, 4],
+        genres: seedGenres(),
+        tags: seedTags(),
+      ),
+      pb.Series(
+        publicId: 'series-kitchen',
+        title: 'The Little Kitchen',
+        synopsis: 'Everyday cooking, one plate at a time.',
+      ),
     ];
   }
 
-  static List<Map<String, Object?>> populatedSeries() {
-    return [
-      {
-        'publicId': seedSeriesId,
-        'title': seedSeriesTitle,
-        'synopsis': seedSeriesSynopsis,
-        'label': {'name': 'Seed Label 01', 'publicId': 'SeedLABLAAA1'},
-        'creators': seedCreators(),
-        'eyeCatchImageVariants': seedEyeCatchVariants(),
-        'status': 'SERIES_STATUS_ONGOING',
-        'scheduleWeekdays': [1, 4],
-        'genres': seedGenres(),
-        'tags': seedTags(),
-      },
-      {
-        'publicId': 'series-kitchen',
-        'title': 'The Little Kitchen',
-        'synopsis': 'Everyday cooking, one plate at a time.',
-      },
-    ];
-  }
-
-  /// `GetEpisodeDetail` bodies: the seed episode is free and has pages, the
+  /// `GetEpisodeDetail` answers: the seed episode is free and has pages, the
   /// paid one is locked and has none.
-  static Map<String, Map<String, Object?>> populatedEpisodes() {
+  static Map<String, pb.GetEpisodeDetailResponse> populatedEpisodes() {
     return {
-      seedEpisodeId: {
-        'episode': {
-          'publicId': seedEpisodeId,
-          'title': seedEpisodeTitle,
-          'orderIndex': 1,
-          'price': 0,
-          'creators': seedCreators(),
-        },
-        'series': {'publicId': seedSeriesId, 'title': seedSeriesTitle},
-        'access': 'EPISODE_ACCESS_FREE',
-        'images': [
+      seedEpisodeId: pb.GetEpisodeDetailResponse(
+        episode: pb.Episode(
+          publicId: seedEpisodeId,
+          title: seedEpisodeTitle,
+          orderIndex: 1,
+          price: 0,
+          creators: seedCreators(),
+        ),
+        series: pb.Series(publicId: seedSeriesId, title: seedSeriesTitle),
+        access: pb.EpisodeAccess.EPISODE_ACCESS_FREE,
+        images: [
           for (var page = 1; page <= seedEpisodePageCount; page++)
-            {
-              'id': '$seedEpisodeId-page-$page',
-              'imageUrl':
+            pb.EpisodeImage(
+              id: '$seedEpisodeId-page-$page',
+              imageUrl:
                   '/images/episodes/$seedEpisodeId-page-$page'
                   '?$mediaTokenQueryParam=$freeEpisodeMediaToken',
-              'contentType': 'image/png',
-              'displayOrder': page,
-              'width': 800,
-              'height': 1200,
-            },
+              contentType: 'image/png',
+              displayOrder: page,
+              width: 800,
+              height: 1200,
+            ),
         ],
-      },
-      paidEpisodeId: {
-        'episode': {
-          'publicId': paidEpisodeId,
-          'title': 'Seed Episode 001-10',
-          'orderIndex': 10,
-          'price': 500,
-        },
-        'series': {'publicId': seedSeriesId, 'title': seedSeriesTitle},
-        'access': 'EPISODE_ACCESS_LOCKED',
-      },
+      ),
+      paidEpisodeId: pb.GetEpisodeDetailResponse(
+        episode: pb.Episode(
+          publicId: paidEpisodeId,
+          title: 'Seed Episode 001-10',
+          orderIndex: 10,
+          price: 500,
+        ),
+        series: pb.Series(publicId: seedSeriesId, title: seedSeriesTitle),
+        access: pb.EpisodeAccess.EPISODE_ACCESS_LOCKED,
+      ),
     };
   }
 
-  /// `GetEpisodeDetail` bodies served instead of [populatedEpisodes] once the
-  /// request carries [activeAccessToken]: the paid episode is entitled and has
-  /// pages, the way an access ticket makes it read for a signed-in member.
-  static Map<String, Map<String, Object?>> populatedEntitledEpisodes() {
+  /// `GetEpisodeDetail` answers served instead of [populatedEpisodes] once
+  /// the request carries [activeAccessToken]: the paid episode is entitled
+  /// and has pages, the way an access ticket makes it read for a signed-in
+  /// member.
+  static Map<String, pb.GetEpisodeDetailResponse> populatedEntitledEpisodes() {
     return {
-      paidEpisodeId: {
-        'episode': {
-          'publicId': paidEpisodeId,
-          'title': 'Seed Episode 001-10',
-          'orderIndex': 10,
-          'price': 500,
-        },
-        'series': {'publicId': seedSeriesId, 'title': seedSeriesTitle},
-        'access': 'EPISODE_ACCESS_ENTITLED',
-        'images': [
+      paidEpisodeId: pb.GetEpisodeDetailResponse(
+        episode: pb.Episode(
+          publicId: paidEpisodeId,
+          title: 'Seed Episode 001-10',
+          orderIndex: 10,
+          price: 500,
+        ),
+        series: pb.Series(publicId: seedSeriesId, title: seedSeriesTitle),
+        access: pb.EpisodeAccess.EPISODE_ACCESS_ENTITLED,
+        images: [
           for (var page = 1; page <= seedEpisodePageCount; page++)
-            {
-              'id': '$paidEpisodeId-page-$page',
-              'imageUrl': '/images/episodes/$paidEpisodeId-page-$page',
-              'contentType': 'image/png',
-              'displayOrder': page,
-              'width': 800,
-              'height': 1200,
-            },
+            pb.EpisodeImage(
+              id: '$paidEpisodeId-page-$page',
+              imageUrl: '/images/episodes/$paidEpisodeId-page-$page',
+              contentType: 'image/png',
+              displayOrder: page,
+              width: 800,
+              height: 1200,
+            ),
         ],
-      },
+      ),
     };
   }
 
   /// A week's chart over [populatedSeries]. The positions run 1 and 3 because
   /// they are a snapshot's own: a series ranked second and unpublished since
   /// leaves the gap behind.
-  static List<Map<String, Object?>> populatedRankedSeries() {
+  static List<pb.RankedSeries> populatedRankedSeries() {
     return [
-      {
-        'rank': 1,
-        'series': {
-          'publicId': seedSeriesId,
-          'title': seedSeriesTitle,
-          'synopsis': seedSeriesSynopsis,
-          'creators': seedCreators(),
-          'eyeCatchImageVariants': seedEyeCatchVariants(),
-        },
-      },
-      {
-        'rank': 3,
-        'series': {
-          'publicId': 'series-kitchen',
-          'title': 'The Little Kitchen',
-          'synopsis': 'Everyday cooking, one plate at a time.',
-        },
-      },
+      pb.RankedSeries(
+        rank: 1,
+        series: pb.Series(
+          publicId: seedSeriesId,
+          title: seedSeriesTitle,
+          synopsis: seedSeriesSynopsis,
+          creators: seedCreators(),
+          eyeCatchImageVariants: seedEyeCatchVariants(),
+        ),
+      ),
+      pb.RankedSeries(
+        rank: 3,
+        series: pb.Series(
+          publicId: 'series-kitchen',
+          title: 'The Little Kitchen',
+          synopsis: 'Everyday cooking, one plate at a time.',
+        ),
+      ),
     ];
   }
 
   /// One `RecentSeries`: the seed series, offering the free episode the member
   /// was last reading.
-  static List<Map<String, Object?>> populatedRecentSeries() {
+  static List<pb.RecentSeries> populatedRecentSeries() {
     return [
-      {
-        'series': {
-          'publicId': seedSeriesId,
-          'title': seedSeriesTitle,
-          'synopsis': seedSeriesSynopsis,
-          'eyeCatchImageVariants': seedEyeCatchVariants(),
-        },
-        'episode': {
-          'publicId': seedEpisodeId,
-          'title': seedEpisodeTitle,
-          'orderIndex': 1,
-          'price': 0,
-        },
-        'lastActivityAt': '2026-09-01T00:00:00Z',
-      },
+      pb.RecentSeries(
+        series: pb.Series(
+          publicId: seedSeriesId,
+          title: seedSeriesTitle,
+          synopsis: seedSeriesSynopsis,
+          eyeCatchImageVariants: seedEyeCatchVariants(),
+        ),
+        episode: pb.Episode(
+          publicId: seedEpisodeId,
+          title: seedEpisodeTitle,
+          orderIndex: 1,
+          price: 0,
+        ),
+        lastActivityAt: '2026-09-01T00:00:00Z',
+      ),
     ];
   }
 
-  static List<Map<String, Object?>> populatedEpisodeReads() {
+  static List<pb.MyEpisodeRead> populatedEpisodeReads() {
     return [
-      {
-        'series': {
-          'publicId': seedSeriesId,
-          'title': seedSeriesTitle,
-          'synopsis': seedSeriesSynopsis,
-          'eyeCatchImageVariants': seedEyeCatchVariants(),
-        },
-        'episode': {
-          'publicId': seedEpisodeId,
-          'title': seedEpisodeTitle,
-          'orderIndex': 1,
-          'price': 0,
-        },
-        'readAt': '2026-09-01T00:00:00Z',
-      },
+      pb.MyEpisodeRead(
+        series: pb.Series(
+          publicId: seedSeriesId,
+          title: seedSeriesTitle,
+          synopsis: seedSeriesSynopsis,
+          eyeCatchImageVariants: seedEyeCatchVariants(),
+        ),
+        episode: pb.Episode(
+          publicId: seedEpisodeId,
+          title: seedEpisodeTitle,
+          orderIndex: 1,
+          price: 0,
+        ),
+        readAt: '2026-09-01T00:00:00Z',
+      ),
     ];
   }
 
-  static Map<String, Map<String, Object?>> populatedDetails() {
+  static Map<String, pb.GetSeriesDetailResponse> populatedDetails() {
     return {
-      seedSeriesId: {
-        'series': {
-          'publicId': seedSeriesId,
-          'title': seedSeriesTitle,
-          'synopsis': seedSeriesSynopsis,
-          'creators': seedCreators(),
-          'eyeCatchImageVariants': seedEyeCatchVariants(),
-          'status': 'SERIES_STATUS_ONGOING',
-          'scheduleWeekdays': [1, 4],
-          'genres': seedGenres(),
-          'tags': seedTags(),
-        },
-        'episodes': [
-          {
-            'publicId': seedEpisodeId,
-            'title': seedEpisodeTitle,
-            'orderIndex': 1,
-            'price': 0,
-          },
-          {
-            'publicId': 'SeedEPSDAA1A',
-            'title': 'Seed Episode 001-10',
-            'orderIndex': 10,
-            'price': 500,
-          },
+      seedSeriesId: pb.GetSeriesDetailResponse(
+        series: pb.Series(
+          publicId: seedSeriesId,
+          title: seedSeriesTitle,
+          synopsis: seedSeriesSynopsis,
+          creators: seedCreators(),
+          eyeCatchImageVariants: seedEyeCatchVariants(),
+          status: pb.SeriesStatus.SERIES_STATUS_ONGOING,
+          scheduleWeekdays: [1, 4],
+          genres: seedGenres(),
+          tags: seedTags(),
+        ),
+        episodes: [
+          pb.Episode(
+            publicId: seedEpisodeId,
+            title: seedEpisodeTitle,
+            orderIndex: 1,
+            price: 0,
+          ),
+          pb.Episode(
+            publicId: 'SeedEPSDAA1A',
+            title: 'Seed Episode 001-10',
+            orderIndex: 10,
+            price: 500,
+          ),
         ],
-      },
+      ),
     };
   }
 
@@ -489,7 +515,7 @@ class ConnectFixtureServer {
   /// The `defaultLocale` `GetTenantByDomain` answers with, which is what the
   /// app renders in when the device asks for no supported language.
   final String defaultLocale;
-  List<Map<String, Object?>> series;
+  List<pb.Series> series;
 
   /// How many of [series] one `ListPublishedSeries` page holds. `0` answers
   /// the whole of it at once, which is what every read that is not about
@@ -499,28 +525,27 @@ class ConnectFixtureServer {
   /// the page's first row, written out.
   int seriesPageSize;
 
-  /// Where each series may be shown, as the `SurfaceAvailability` name the
-  /// console stored, keyed by public id. A series missing here is shown on
-  /// both surfaces.
+  /// Where each series may be shown, as the console stored it, keyed by
+  /// public id. A series missing here is shown on both surfaces.
   ///
   /// Every catalog read answers only with what the surface its request names
   /// may show, and a request naming none is answered as the storefront, the
   /// way the API answers it.
-  Map<String, String> seriesAvailability;
+  Map<String, pb.SurfaceAvailability> seriesAvailability;
 
-  /// The genres the tenant curates, in the shape `Genre` arrives in and in the
-  /// tenant's order. `ListPublishedGenres` counts each over the series shown.
-  List<Map<String, Object?>> genres;
+  /// The genres the tenant curates, in the tenant's order.
+  /// `ListPublishedGenres` counts each over the series shown, replacing the
+  /// `publishedSeriesCount` stored here.
+  List<pb.PublishedGenre> genres;
 
-  /// `RankedSeries` entries `ListRankedSeries` answers with, whichever period
-  /// is asked for. Empty acts out a tenant the ranking batch has not run for.
-  List<Map<String, Object?>> rankedSeries;
+  /// What `ListRankedSeries` answers with, whichever period is asked for.
+  /// Empty acts out a tenant the ranking batch has not run for.
+  List<pb.RankedSeries> rankedSeries;
 
-  /// `RankedSeries` entries `ListRankedSeries` answers a request naming a
-  /// genre with, by the genre's public id. A genre of [genres] missing here is
-  /// one the batch has not ranked, and a genre missing from [genres] is
-  /// answered `not_found`.
-  Map<String, List<Map<String, Object?>>> genreRankedSeries;
+  /// What `ListRankedSeries` answers a request naming a genre with, by the
+  /// genre's public id. A genre of [genres] missing here is one the batch has
+  /// not ranked, and a genre missing from [genres] is answered `not_found`.
+  Map<String, List<pb.RankedSeries>> genreRankedSeries;
 
   /// The most positions one page of `ListRankedSeries` holds, under the
   /// request's own `limit`, with the token written the way [followsPageSize]
@@ -534,18 +559,19 @@ class ConnectFixtureServer {
   /// answered `not_found`.
   Map<String, List<String>> relatedSeries;
 
-  Map<String, Map<String, Object?>> details;
+  /// `GetSeriesDetail` answers keyed by series public id.
+  Map<String, pb.GetSeriesDetailResponse> details;
 
-  /// `GetEpisodeDetail` bodies keyed by episode public id.
-  Map<String, Map<String, Object?>> episodes;
+  /// `GetEpisodeDetail` answers keyed by episode public id.
+  Map<String, pb.GetEpisodeDetailResponse> episodes;
 
-  /// The bodies a request carrying [activeAccessToken] gets instead, keyed the
-  /// same way. An episode missing here answers from [episodes].
-  Map<String, Map<String, Object?>> entitledEpisodes;
+  /// The answers a request carrying [activeAccessToken] gets instead, keyed
+  /// the same way. An episode missing here answers from [episodes].
+  Map<String, pb.GetEpisodeDetailResponse> entitledEpisodes;
 
   /// What `GetMyTicketState` answers the signed-in member on whichever series
   /// is asked about. Empty is a ticket ready now and none open.
-  Map<String, Object?> ticketState = const {};
+  pb.GetMyTicketStateResponse ticketState = pb.GetMyTicketStateResponse();
 
   /// The ErrorInfo reason both `WaitFreeService` calls are refused with under
   /// `failed_precondition`, or `null` to answer them.
@@ -571,59 +597,57 @@ class ConnectFixtureServer {
   /// finish.
   String? markReadErrorCode;
 
-  /// `RecentSeries` entries `ListMyRecentSeries` answers a signed-in member
-  /// with, in the order they are given, at most the request's `limit` to a
-  /// page with the token written the way [followsPageSize] writes one.
-  List<Map<String, Object?>> recentSeries;
+  /// What `ListMyRecentSeries` answers a signed-in member with, in the order
+  /// given, at most the request's `limit` to a page with the token written
+  /// the way [followsPageSize] writes one.
+  List<pb.RecentSeries> recentSeries;
 
-  /// `Series` entries `ListRecommendedSeries` answers anyone with, in the
-  /// tenant's recommendation order, at most the request's `limit` to a page
-  /// with the token written the way [followsPageSize] writes one.
-  List<Map<String, Object?>> recommendedSeries;
+  /// What `ListRecommendedSeries` answers anyone with, in the tenant's
+  /// recommendation order, at most the request's `limit` to a page with the
+  /// token written the way [followsPageSize] writes one.
+  List<pb.Series> recommendedSeries;
 
-  /// `Series` entries `ListMyRecommendedSeries` answers a signed-in member
-  /// with, paged the way [recommendedSeries] is. A request without the active
-  /// token is refused `unauthenticated`, as the API refuses one.
-  List<Map<String, Object?>> myRecommendedSeries;
+  /// What `ListMyRecommendedSeries` answers a signed-in member with, paged the
+  /// way [recommendedSeries] is. A request without the active token is
+  /// refused `unauthenticated`, as the API refuses one.
+  List<pb.Series> myRecommendedSeries;
 
-  /// The `SeriesProgress` `GetMySeriesProgress` answers a signed-in member
-  /// with, keyed by series public id. A series missing here is one they have
-  /// opened nothing of. The finished episodes beside it are the series'
-  /// episodes [episodeReads] holds, so a finish the viewer records shows on the
-  /// next read.
-  Map<String, Map<String, Object?>> seriesProgress;
+  /// The progress `GetMySeriesProgress` answers a signed-in member with,
+  /// keyed by series public id. A series missing here is one they have opened
+  /// nothing of. The finished episodes beside it are the series' episodes
+  /// [episodeReads] holds, so a finish the viewer records shows on the next
+  /// read.
+  Map<String, pb.SeriesProgress> seriesProgress;
 
-  /// The `GetMySeriesRating` body a signed-in member is answered with, keyed
-  /// by series public id. A series missing here is one they have reacted to
+  /// What `GetMySeriesRating` answers a signed-in member with, keyed by
+  /// series public id. A series missing here is one they have reacted to
   /// nothing of, which protojson answers with an empty body.
-  Map<String, Map<String, Object?>> seriesRatings;
+  Map<String, pb.GetMySeriesRatingResponse> seriesRatings;
 
-  /// `MyEpisodeRead` entries `ListMyEpisodeReads` answers a signed-in member
-  /// with, in the order they are given, at most the request's `limit` to a
-  /// page.
-  List<Map<String, Object?>> episodeReadHistory = const [];
+  /// What `ListMyEpisodeReads` answers a signed-in member with, in the order
+  /// given, at most the request's `limit` to a page.
+  List<pb.MyEpisodeRead> episodeReadHistory = const [];
 
   /// The tenant's comment policy, as `GetTenant` answers it. Set it to
   /// `COMMENT_MODE_DISABLED` to act out a tenant that takes no comments.
-  String commentMode;
+  pb.CommentMode commentMode;
 
-  /// Published `EpisodeComment` rows keyed by episode public id, newest first.
-  Map<String, List<Map<String, Object?>>> episodeComments;
+  /// Published comments keyed by episode public id, newest first.
+  Map<String, List<pb.EpisodeComment>> episodeComments;
 
-  /// `MyEpisodeComment` rows the public list omits, keyed the same way.
+  /// The member's own comments the public list omits, keyed the same way.
   /// `PostEpisodeComment` adds to them, so a test can read back what the app
   /// sent and see it in the next list.
-  Map<String, List<Map<String, Object?>>> myEpisodeComments;
+  Map<String, List<pb.MyEpisodeComment>> myEpisodeComments;
 
-  /// `MyFollow` rows of the signed-in member, newest follow first. `Follow`
-  /// and `Unfollow` write here, so a test can read back what the app sent and
-  /// see it in the next list.
-  List<Map<String, Object?>> myFollows;
+  /// The follows of the signed-in member, newest follow first. `Follow` and
+  /// `Unfollow` write here, so a test can read back what the app sent and see
+  /// it in the next list.
+  List<pb.MyFollow> myFollows;
 
-  /// `FollowUpdate` entries `ListMyFollowUpdates` answers a signed-in member
-  /// with, in the order they are given, at most the request's `limit` to a
-  /// page.
-  List<Map<String, Object?>> followUpdates = const [];
+  /// What `ListMyFollowUpdates` answers a signed-in member with, in the order
+  /// given, at most the request's `limit` to a page.
+  List<pb.FollowUpdate> followUpdates = const [];
 
   /// How many of [myFollows] one `ListMyFollows` page holds. `0` answers the
   /// whole of it at once, which is what every read that is not about paging
@@ -633,28 +657,28 @@ class ConnectFixtureServer {
   /// the page's first row, written out.
   int followsPageSize;
 
-  /// `MyPurchase` rows of the signed-in member, newest purchase first.
-  List<Map<String, Object?>> myPurchases;
+  /// The purchases of the signed-in member, newest purchase first.
+  List<pb.MyPurchase> myPurchases;
 
   /// How many of [myPurchases] one `ListMyPurchases` page holds, with the
   /// token written the way [followsPageSize] writes one. `0` answers the whole
   /// of it at once.
   int purchasesPageSize;
 
-  /// `NotificationItem` rows of the signed-in member, newest first. The read
-  /// RPCs write `isRead` here, so the next list and count agree with what the
-  /// app marked.
-  List<Map<String, Object?>> notifications;
+  /// The inbox of the signed-in member, newest first. The read RPCs write
+  /// `isRead` here, so the next list and count agree with what the app
+  /// marked.
+  List<pb.NotificationItem> notifications;
 
   /// How many of [notifications] one `ListNotifications` page holds, with the
   /// token written the way [followsPageSize] writes one. `0` answers the whole
   /// of it at once.
   int notificationsPageSize;
 
-  /// `AnnouncementItem` rows of the tenant, newest first, carrying the
-  /// signed-in member's read state. A caller with no session the fixture
-  /// accepts is answered the rows without it, as the API answers a visitor.
-  List<Map<String, Object?>> announcements;
+  /// The announcements of the tenant, newest first, carrying the signed-in
+  /// member's read state. A caller with no session the fixture accepts is
+  /// answered them without it, as the API answers a visitor.
+  List<pb.AnnouncementItem> announcements;
 
   /// How many of [announcements] one `ListAnnouncements` page holds, with the
   /// token written the way [followsPageSize] writes one. `0` answers the whole
@@ -742,20 +766,18 @@ class ConnectFixtureServer {
   /// does not, the way the API answers it.
   String? memberIconPath;
 
-  /// The icon fields of the member's own account, spread into every response
-  /// that reports [memberIconPath].
-  Map<String, Object?> get _memberIcon => {
+  /// The icon renditions of the member's own account, which every response
+  /// that reports [memberIconPath] carries.
+  List<pb.UserIconVariant> get _memberIcon => [
     if (memberIconPath case final iconPath?)
-      'iconImageVariants': [
-        {
-          'label': 'icon',
-          'url': iconPath,
-          'contentType': 'image/webp',
-          'width': 512,
-          'height': 512,
-        },
-      ],
-  };
+      pb.UserIconVariant(
+        label: 'icon',
+        url: iconPath,
+        contentType: 'image/webp',
+        width: 512,
+        height: 512,
+      ),
+  ];
 
   /// The images `UploadMyIcon` has stored, in order, each as the bytes and
   /// the content type it was sent with.
@@ -773,8 +795,8 @@ class ConnectFixtureServer {
 
   /// What `GetTenant` answers for `apple_sign_in` and `google_sign_in`.
   /// `null` is a provider the tenant has not enabled, which the API omits.
-  Map<String, Object?>? appleSignIn;
-  Map<String, Object?>? googleSignIn;
+  pb.TenantAppleSignIn? appleSignIn;
+  pb.TenantGoogleSignIn? googleSignIn;
 
   /// The bundle identifier `GetTenantMobileAppAssociation` names for the
   /// tenant's iOS app. `null` is a tenant with no iOS app, which it omits.
@@ -790,9 +812,9 @@ class ConnectFixtureServer {
   /// nonce they carry.
   final idTokens = <String, FixtureIdToken>{};
 
-  /// The provider accounts linked to the member, keyed by the provider's
-  /// wire name, as `ListMyIdentities` reports them.
-  final memberIdentities = <String, FixtureIdToken>{};
+  /// The provider accounts linked to the member, keyed by provider, as
+  /// `ListMyIdentities` reports them.
+  final memberIdentities = <pb.IdentityProvider, FixtureIdToken>{};
 
   /// The subjects of provider accounts that sign in to another reader, which
   /// `LinkIdentity` refuses to link to the member.
@@ -841,28 +863,28 @@ class ConnectFixtureServer {
   var _signedUpEmailNotifications = true;
 
   /// The tenant's age rule and display zone, as `GetTenant` answers them.
-  String ageVerification;
+  pb.AgeVerification ageVerification;
   String tenantTimeZone;
 
   /// The pages `GetTenantLegalPages` names as the tenant's terms of service
-  /// and privacy policy, as `TenantLegalPage` JSON. `null` is a role named for
-  /// no page, which the API omits.
-  Map<String, Object?>? termsPage;
-  Map<String, Object?>? privacyPage;
+  /// and privacy policy. `null` is a role named for no page, which the API
+  /// omits.
+  pb.TenantLegalPage? termsPage;
+  pb.TenantLegalPage? privacyPage;
 
-  /// The pages `GetMyLegalPageAgreements` reports the member owes, as
-  /// `TenantLegalPage` JSON, until `AgreeToLegalPages` is sent its version.
-  /// `null` is a role the member owes nothing for.
-  Map<String, Object?>? owedTermsPage;
-  Map<String, Object?>? owedPrivacyPage;
+  /// The pages `GetMyLegalPageAgreements` reports the member owes, until
+  /// `AgreeToLegalPages` is sent its version. `null` is a role the member owes
+  /// nothing for.
+  pb.TenantLegalPage? owedTermsPage;
+  pb.TenantLegalPage? owedPrivacyPage;
 
   /// The versions `AgreeToLegalPages` was sent, one list per call.
   final legalPageAgreements = <List<String>>[];
 
-  /// The tenant's name and `TenantTheme`, as `GetTenant` answers them. A
-  /// `null` theme is a tenant that has stored none, which the API omits.
+  /// The tenant's name and theme, as `GetTenant` answers them. A `null` theme
+  /// is a tenant that has stored none, which the API omits.
   String tenantName;
-  Map<String, Object?>? tenantTheme;
+  pb.TenantTheme? tenantTheme;
 
   /// Whether a page leaves as ciphertext. Set it to false to act out a
   /// server instance a rolling deploy has not replaced yet, which the
@@ -878,7 +900,7 @@ class ConnectFixtureServer {
 
   /// What `GetTenant` answers for the app purchase route and whether each
   /// store can take the app's payment.
-  String appPurchaseRoute;
+  pb.AppPurchaseRoute appPurchaseRoute;
   bool acceptsAppStorePayments;
   bool acceptsGooglePlayPayments;
 
@@ -906,15 +928,23 @@ class ConnectFixtureServer {
   /// Replace the whole body of the matching RPC, whichever status the RPC is
   /// answering with, so a test can send a shape the client is not expecting or
   /// an error code other than the default `unavailable`.
+  ///
+  /// These hooks hold raw JSON (a decoded `Map`, `List`, or scalar) because a
+  /// body of the wrong shape, such as a string where a list belongs, is what
+  /// they are for, and no generated message can hold one. Every record in it
+  /// that names a `publicId` is still answered with the internal `id` beside
+  /// it. A generated message is accepted as well and sent as its protojson,
+  /// for a well-formed body that only replaces the stored one.
   Object? listResponse;
   Object? detailResponse;
   Object? episodeResponse;
 
   /// Replaces the whole `GetTenantByDomain` body, so a test can answer with a
-  /// shape the client is not expecting.
+  /// shape the client is not expecting. Raw JSON, as [listResponse] is.
   Object? tenantResponse;
 
-  /// Replaces the whole `GetMyEpisodeRating` body.
+  /// Replaces the whole `GetMyEpisodeRating` body. Raw JSON, as
+  /// [listResponse] is.
   Object? episodeRatingResponse;
 
   /// The error `RateEpisode` answers with in place of a score, as the status
@@ -945,6 +975,23 @@ class ConnectFixtureServer {
   /// `GetTenantByDomain`.
   Iterable<RecordedRequest> requestsTo(String procedure) =>
       requests.where((request) => request.path.endsWith('/$procedure'));
+
+  /// The recorded requests to the procedure whose request message [create]
+  /// makes, each decoded into a fresh one, such as
+  /// `requestsOf(pb.ListPublishedSeriesRequest.new)` for every
+  /// `ListPublishedSeries` call.
+  ///
+  /// The procedure is the message's name without its `Request` suffix, which
+  /// is how every RPC of the public API names its request.
+  Iterable<T> requestsOf<T extends GeneratedMessage>(T Function() create) {
+    final name = create().info_.messageName;
+    if (!name.endsWith('Request')) {
+      throw ArgumentError.value(name, 'create', 'is not a request message');
+    }
+    return requestsTo(
+      name.substring(0, name.length - 'Request'.length),
+    ).map((request) => request.decode(create()));
+  }
 
   HttpServer? _server;
 
@@ -985,390 +1032,505 @@ class ConnectFixtureServer {
       return;
     }
 
-    final body = await _readBody(request);
-    requests.add(
-      RecordedRequest(
-        path: path,
-        headers: _snapshotHeaders(request.headers),
-        body: body,
-      ),
+    final recorded = RecordedRequest(
+      path: path,
+      headers: _snapshotHeaders(request.headers),
+      json: await _readBody(request),
     );
+    requests.add(recorded);
+    try {
+      await _answer(request, recorded);
+    } on FormatException catch (error, stackTrace) {
+      // A request the generated message cannot hold is a client that no
+      // longer matches `proto/`. Answer it the way connect-go would, and fail
+      // the test that sent it rather than leave it waiting on a timeout.
+      await _writeError(
+        request,
+        HttpStatus.badRequest,
+        'invalid_argument',
+        error.message,
+      );
+      Zone.current.handleUncaughtError(error, stackTrace);
+    }
+  }
+
+  Future<void> _answer(HttpRequest request, RecordedRequest recorded) async {
+    final path = recorded.path;
 
     if (path.endsWith('/GetTenantByDomain')) {
-      await _write(
-        request,
-        tenantStatus,
-        tenantResponse ??
-            {
-              if (tenantStatus == HttpStatus.ok) 'tenantId': tenantId,
-              if (tenantStatus == HttpStatus.ok) 'defaultLocale': defaultLocale,
-              if (tenantStatus != HttpStatus.ok) 'code': 'not_found',
-              if (tenantStatus != HttpStatus.ok) 'message': 'tenant not found',
-            },
-      );
-      return;
-    }
-
-    final missing = path.endsWith('/ListPublishedSeries')
-        ? _classifiedMissing(body)
-        : null;
-    if (missing != null) {
-      await _write(request, HttpStatus.notFound, {
-        'code': 'not_found',
-        'message': '$missing not found',
-      });
+      recorded.decode(pb.GetTenantByDomainRequest());
+      if (tenantResponse case final response?) {
+        await _writeRaw(request, tenantStatus, response);
+      } else if (tenantStatus != HttpStatus.ok) {
+        await _writeError(
+          request,
+          tenantStatus,
+          'not_found',
+          'tenant not found',
+        );
+      } else {
+        await _writeMessage(
+          request,
+          pb.GetTenantByDomainResponse(
+            tenantId: tenantId,
+            defaultLocale: defaultLocale,
+          ),
+        );
+      }
       return;
     }
 
     if (path.endsWith('/ListPublishedGenres')) {
-      final shown = _seriesShownTo(body);
-      await _write(request, HttpStatus.ok, {
-        ..._pageOf('genres', [
-          for (final genre in genres)
-            {
-              ...genre,
-              'publishedSeriesCount': shown
-                  .where(
-                    (item) =>
-                        _carries(item, 'genres', 'publicId', genre['publicId']),
-                  )
-                  .length,
-            },
-        ], body['token']),
-      });
+      final body = recorded.decode(pb.ListPublishedGenresRequest());
+      final shown = _seriesShownTo(body.surface);
+      final page = _pageOf([
+        for (final genre in genres)
+          genre.deepCopy()
+            ..publishedSeriesCount = shown
+                .where(
+                  (item) => item.genres.any(
+                    (entry) => entry.publicId == genre.publicId,
+                  ),
+                )
+                .length,
+      ], body.token);
+      await _writeMessage(
+        request,
+        pb.ListPublishedGenresResponse(
+          genres: page.items,
+          nextToken: page.nextToken,
+        ),
+      );
       return;
     }
 
     if (path.endsWith('/ListPublishedTags')) {
-      await _write(request, HttpStatus.ok, {
-        ..._pageOf('tags', _publishedTags(_seriesShownTo(body)), body['token']),
-      });
+      final body = recorded.decode(pb.ListPublishedTagsRequest());
+      final page = _pageOf(
+        _publishedTags(_seriesShownTo(body.surface)),
+        body.token,
+      );
+      await _writeMessage(
+        request,
+        pb.ListPublishedTagsResponse(
+          tags: page.items,
+          nextToken: page.nextToken,
+        ),
+      );
       return;
     }
 
     if (path.endsWith('/ListPublishedSeries')) {
-      await _write(
+      final body = recorded.decode(pb.ListPublishedSeriesRequest());
+      final missing = _classifiedMissing(body.genrePublicId, body.tagSlug);
+      if (missing != null) {
+        await _writeError(
+          request,
+          HttpStatus.notFound,
+          'not_found',
+          '$missing not found',
+        );
+        return;
+      }
+      if (listResponse case final response?) {
+        await _writeRaw(request, listStatus, response);
+        return;
+      }
+      if (listStatus != HttpStatus.ok) {
+        await _writeUnavailable(request, listStatus);
+        return;
+      }
+      final page = _pageOf(_classified(body), body.token);
+      await _writeMessage(
         request,
-        listStatus,
-        listResponse ??
-            {
-              if (listStatus == HttpStatus.ok)
-                ..._seriesPage(_classified(body), body['token']),
-              if (listStatus != HttpStatus.ok) 'code': 'unavailable',
-              if (listStatus != HttpStatus.ok) 'message': 'unavailable',
-            },
+        pb.ListPublishedSeriesResponse(
+          series: page.items,
+          nextToken: page.nextToken,
+        ),
       );
       return;
     }
 
     if (path.endsWith('/SearchPublishedSeries')) {
-      await _write(request, searchStatus, {
-        if (searchStatus == HttpStatus.ok)
-          ..._searchPage(_seriesShownTo(body), body['query'], body['token']),
-        if (searchStatus != HttpStatus.ok) 'code': 'unavailable',
-        if (searchStatus != HttpStatus.ok) 'message': 'unavailable',
-      });
+      final body = recorded.decode(pb.SearchPublishedSeriesRequest());
+      if (searchStatus != HttpStatus.ok) {
+        await _writeUnavailable(request, searchStatus);
+        return;
+      }
+      final page = _searchPage(
+        _seriesShownTo(body.surface),
+        body.query,
+        body.token,
+      );
+      await _writeMessage(
+        request,
+        pb.SearchPublishedSeriesResponse(
+          series: page.items,
+          nextToken: page.nextToken,
+        ),
+      );
       return;
     }
 
     if (path.endsWith('/ListRankedSeries')) {
-      final genre = body['genrePublicId'] as String? ?? '';
-      if (genre.isNotEmpty &&
-          !genres.any((item) => item['publicId'] == genre)) {
-        await _write(request, HttpStatus.notFound, {
-          'code': 'not_found',
-          'message': 'genre not found',
-        });
+      final body = recorded.decode(pb.ListRankedSeriesRequest());
+      final genre = body.genrePublicId;
+      if (genre.isNotEmpty && !genres.any((item) => item.publicId == genre)) {
+        await _writeError(
+          request,
+          HttpStatus.notFound,
+          'not_found',
+          'genre not found',
+        );
         return;
       }
       // A genre is ranked for all ages alone, and the API refuses any other
       // rating beside it rather than answering an empty chart.
-      if (genre.isNotEmpty && body['ageRating'] != 'SERIES_AGE_RATING_ALL') {
-        await _write(request, HttpStatus.badRequest, {
-          'code': 'invalid_argument',
-          'message': 'a genre is ranked for all ages alone',
-        });
+      if (genre.isNotEmpty &&
+          body.ageRating != pb.SeriesAgeRating.SERIES_AGE_RATING_ALL) {
+        await _writeError(
+          request,
+          HttpStatus.badRequest,
+          'invalid_argument',
+          'a genre is ranked for all ages alone',
+        );
         return;
       }
       final shown = [
         for (final entry
             in genre.isEmpty
                 ? rankedSeries
-                : genreRankedSeries[genre] ?? const [])
-          if (_shows(body, (entry['series'] as Map?)?['publicId'])) entry,
+                : genreRankedSeries[genre] ?? const <pb.RankedSeries>[])
+          if (_shows(body.surface, entry.series.publicId)) entry,
       ];
-      final limit = body['limit'] as int? ?? 0;
-      var pageSize = limit > 0 ? limit : shown.length;
+      var pageSize = body.limit > 0 ? body.limit : shown.length;
       if (rankedSeriesPageSize > 0) {
         pageSize = min(pageSize, rankedSeriesPageSize);
       }
-      final token = body['token'] as String? ?? '';
-      final start = min(token.isEmpty ? 0 : int.parse(token), shown.length);
-      final end = min(start + pageSize, shown.length);
-      final ranked = shown.sublist(start, end);
-      await _write(request, rankedStatus, {
-        // protojson omits an empty repeated field, which is how a tenant the
-        // ranking batch has not run for is answered.
-        if (rankedStatus == HttpStatus.ok && ranked.isNotEmpty)
-          'rankedSeries': ranked,
-        if (rankedStatus == HttpStatus.ok && end < shown.length)
-          'nextToken': '$end',
-        if (rankedStatus != HttpStatus.ok) 'code': 'unavailable',
-        if (rankedStatus != HttpStatus.ok) 'message': 'unavailable',
-      });
+      final page = _paged(shown, body.token, pageSize);
+      if (rankedStatus != HttpStatus.ok) {
+        await _writeUnavailable(request, rankedStatus);
+        return;
+      }
+      // protojson omits an empty repeated field, which is how a tenant the
+      // ranking batch has not run for is answered.
+      await _writeMessage(
+        request,
+        pb.ListRankedSeriesResponse(
+          rankedSeries: page.items,
+          nextToken: page.nextToken,
+        ),
+      );
       return;
     }
 
     if (path.endsWith('/ListRelatedSeries')) {
+      final body = recorded.decode(pb.ListRelatedSeriesRequest());
       if (relatedStatus != HttpStatus.ok) {
-        await _write(request, relatedStatus, {
-          'code': 'unavailable',
-          'message': 'unavailable',
-        });
+        await _writeUnavailable(request, relatedStatus);
         return;
       }
-      final subject = publicIdOf(body['seriesId']);
-      if (!_shows(body, subject) || !details.containsKey(subject)) {
-        await _write(request, HttpStatus.notFound, {
-          'code': 'not_found',
-          'message': 'series not found',
-        });
+      final subject = publicIdOf(body.seriesId);
+      if (!_shows(body.surface, subject) || !details.containsKey(subject)) {
+        await _writeError(
+          request,
+          HttpStatus.notFound,
+          'not_found',
+          'series not found',
+        );
         return;
       }
-      final shown = _seriesShownTo(body);
+      final shown = _seriesShownTo(body.surface);
       final related = [
         for (final id in relatedSeries[subject] ?? const <String>[])
-          ...shown.where((item) => item['publicId'] == id),
+          ...shown.where((item) => item.publicId == id),
       ];
-      final limit = body['limit'] as int? ?? 0;
-      final page = limit > 0 ? related.take(limit).toList() : related;
-      await _write(request, HttpStatus.ok, {
-        // protojson omits an empty repeated field.
-        if (page.isNotEmpty) 'series': page,
-      });
+      final page = body.limit > 0 ? related.take(body.limit) : related;
+      await _writeMessage(request, pb.ListRelatedSeriesResponse(series: page));
       return;
     }
 
-    if (path.endsWith('/ListRecommendedSeries') ||
-        path.endsWith('/ListMyRecommendedSeries')) {
-      final mine = path.endsWith('/ListMyRecommendedSeries');
-      if (mine && !await _writeUnlessAuthorized(request)) {
+    if (path.endsWith('/ListRecommendedSeries')) {
+      final body = recorded.decode(pb.ListRecommendedSeriesRequest());
+      final page = _paged(
+        [
+          for (final item in recommendedSeries)
+            if (_shows(body.surface, item.publicId)) item,
+        ],
+        body.token,
+        body.limit,
+      );
+      await _writeMessage(
+        request,
+        pb.ListRecommendedSeriesResponse(
+          series: page.items,
+          nextToken: page.nextToken,
+          source: pb.RecommendationSource.RECOMMENDATION_SOURCE_RANKING,
+        ),
+      );
+      return;
+    }
+
+    if (path.endsWith('/ListMyRecommendedSeries')) {
+      final body = recorded.decode(pb.ListMyRecommendedSeriesRequest());
+      if (!await _writeUnlessAuthorized(request)) {
         return;
       }
-      final order = [
-        for (final series in mine ? myRecommendedSeries : recommendedSeries)
-          if (_shows(body, series['publicId'])) series,
-      ];
-      final limit = body['limit'] as int? ?? 0;
-      final token = body['token'] as String? ?? '';
-      final start = min(token.isEmpty ? 0 : int.parse(token), order.length);
-      final end = limit <= 0 ? order.length : min(start + limit, order.length);
-      final page = order.sublist(start, end);
-      await _write(request, HttpStatus.ok, {
-        // protojson omits an empty repeated field.
-        if (page.isNotEmpty) 'series': page,
-        if (end < order.length) 'nextToken': '$end',
-        'source': mine
-            ? 'RECOMMENDATION_SOURCE_READER_FEATURES'
-            : 'RECOMMENDATION_SOURCE_RANKING',
-      });
+      final page = _paged(
+        [
+          for (final item in myRecommendedSeries)
+            if (_shows(body.surface, item.publicId)) item,
+        ],
+        body.token,
+        body.limit,
+      );
+      await _writeMessage(
+        request,
+        pb.ListMyRecommendedSeriesResponse(
+          series: page.items,
+          nextToken: page.nextToken,
+          source: pb.RecommendationSource.RECOMMENDATION_SOURCE_READER_FEATURES,
+        ),
+      );
       return;
     }
 
     if (path.endsWith('/Login')) {
-      await _writeLogin(request, body);
+      await _writeLogin(request, recorded.decode(pb.LoginRequest()));
       return;
     }
 
     if (path.endsWith('/CreateUser')) {
-      await _writeCreateUser(request, body);
+      await _writeCreateUser(request, recorded.decode(pb.CreateUserRequest()));
       return;
     }
 
     if (path.endsWith('/VerifyUserEmail')) {
-      await _writeVerifyUserEmail(request, body);
+      await _writeVerifyUserEmail(
+        request,
+        recorded.decode(pb.VerifyUserEmailRequest()),
+      );
       return;
     }
 
     if (path.endsWith('/RequestEmailVerification')) {
+      recorded.decode(pb.RequestEmailVerificationRequest());
       // Every address is answered the same way, the way the API answers one,
       // so nothing here reports whether an account exists.
-      await _write(
+      if (verificationRequestStatus != HttpStatus.ok) {
+        await _writeError(
+          request,
+          verificationRequestStatus,
+          verificationRequestErrorCode,
+          verificationRequestErrorCode,
+        );
+        return;
+      }
+      await _writeMessage(
         request,
-        verificationRequestStatus,
-        verificationRequestStatus == HttpStatus.ok
-            ? const {'requested': true}
-            : {
-                'code': verificationRequestErrorCode,
-                'message': verificationRequestErrorCode,
-              },
+        pb.RequestEmailVerificationResponse(requested: true),
       );
       return;
     }
 
     if (path.endsWith('/RequestPasswordReset')) {
+      recorded.decode(pb.RequestPasswordResetRequest());
       // Every address is answered the same way, the way the API answers one.
-      await _write(
+      if (passwordResetRequestStatus != HttpStatus.ok) {
+        await _writeError(
+          request,
+          passwordResetRequestStatus,
+          passwordResetRequestErrorCode,
+          passwordResetRequestErrorCode,
+        );
+        return;
+      }
+      await _writeMessage(
         request,
-        passwordResetRequestStatus,
-        passwordResetRequestStatus == HttpStatus.ok
-            ? const {'requested': true}
-            : {
-                'code': passwordResetRequestErrorCode,
-                'message': passwordResetRequestErrorCode,
-              },
+        pb.RequestPasswordResetResponse(requested: true),
       );
       return;
     }
 
     if (path.endsWith('/ConfirmPasswordReset')) {
-      await _writeConfirmPasswordReset(request, body);
+      await _writeConfirmPasswordReset(
+        request,
+        recorded.decode(pb.ConfirmPasswordResetRequest()),
+      );
       return;
     }
 
-    final signedUp = _signedUpSession;
-    if (path.endsWith('/GetMe') &&
-        signedUp != null &&
-        request.headers.value(HttpHeaders.authorizationHeader) ==
-            'Bearer $signedUpAccessToken') {
-      final birthDate = signedUp.signup.birthDate;
-      await _write(request, HttpStatus.ok, {
-        'user': {
-          'publicId': signedUpPublicId,
-          'name': signedUp.signup.name,
-          'role': 'member',
-          if (birthDate.isNotEmpty) 'birthDate': birthDate,
-          'email': signedUp.email,
-        },
-      });
-      return;
-    }
     if (path.endsWith('/GetMe')) {
-      if (!_isAuthorized(request)) {
-        await _write(request, HttpStatus.unauthorized, {
-          'code': 'unauthenticated',
-          'message': 'invalid token',
-        });
+      recorded.decode(pb.GetMeRequest());
+      if (_signedUpSession case final signedUp?
+          when _isSignedUpSession(request)) {
+        final birthDate = signedUp.signup.birthDate;
+        await _writeMessage(
+          request,
+          pb.GetMeResponse(
+            user: pb.User(
+              publicId: signedUpPublicId,
+              name: signedUp.signup.name,
+              role: 'member',
+              birthDate: birthDate.isNotEmpty ? birthDate : null,
+              email: signedUp.email,
+            ),
+          ),
+        );
         return;
       }
-      await _write(request, HttpStatus.ok, {
-        'user': {
-          'publicId': memberPublicId,
-          'name': memberCurrentName,
-          'role': 'member',
-          // protojson omits an empty string, the way the API does for a
-          // reader who has recorded no date.
-          if (memberBirthDate.isNotEmpty) 'birthDate': memberBirthDate,
-          'email': memberEmail,
-          ..._memberIcon,
-        },
-      });
+      if (!await _writeUnlessAuthorized(request)) {
+        return;
+      }
+      await _writeMessage(
+        request,
+        pb.GetMeResponse(
+          user: pb.User(
+            publicId: memberPublicId,
+            name: memberCurrentName,
+            role: 'member',
+            // protojson omits an empty string, the way the API does for a
+            // reader who has recorded no date.
+            birthDate: memberBirthDate.isNotEmpty ? memberBirthDate : null,
+            email: memberEmail,
+            iconImageVariants: _memberIcon,
+          ),
+        ),
+      );
       return;
     }
 
-    if (path.endsWith('/GetMyLegalPageAgreements') ||
-        path.endsWith('/AgreeToLegalPages')) {
-      await _writeLegalPageAgreements(request, path, body);
+    if (path.endsWith('/GetMyLegalPageAgreements')) {
+      recorded.decode(pb.GetMyLegalPageAgreementsRequest());
+      await _writeLegalPageAgreements(request, null);
+      return;
+    }
+
+    if (path.endsWith('/AgreeToLegalPages')) {
+      await _writeLegalPageAgreements(
+        request,
+        recorded.decode(pb.AgreeToLegalPagesRequest()),
+      );
       return;
     }
 
     if (path.endsWith('/GetPublishedPage')) {
-      final slug = _trimmed(body['slug']);
+      final body = recorded.decode(pb.GetPublishedPageRequest());
+      final slug = body.slug.trim();
       final page = publishedPages[slug];
       if (pageStatus != HttpStatus.ok) {
-        await _write(request, pageStatus, {
-          'code': 'unavailable',
-          'message': 'unavailable',
-        });
+        await _writeUnavailable(request, pageStatus);
       } else if (page == null) {
-        await _write(request, HttpStatus.notFound, {
-          'code': 'not_found',
-          'message': 'page not found',
-        });
+        await _writeError(
+          request,
+          HttpStatus.notFound,
+          'not_found',
+          'page not found',
+        );
       } else {
-        await _write(request, HttpStatus.ok, {
-          'page': {'slug': slug, 'title': page.title, 'locale': page.locale},
-          // protojson omits an empty body.
-          'version': {
-            if (page.contentMarkdown.isNotEmpty)
-              'contentMarkdown': page.contentMarkdown,
-          },
-        });
+        await _writeMessage(
+          request,
+          pb.GetPublishedPageResponse(
+            page: pb.Page(slug: slug, title: page.title, locale: page.locale),
+            // protojson omits an empty body.
+            version: pb.PageVersion(
+              contentMarkdown: page.contentMarkdown.isNotEmpty
+                  ? page.contentMarkdown
+                  : null,
+            ),
+          ),
+        );
       }
       return;
     }
 
     if (path.endsWith('/ListPublishedPages')) {
-      await _write(
+      recorded.decode(pb.ListPublishedPagesRequest());
+      if (pageStatus != HttpStatus.ok) {
+        await _writeUnavailable(request, pageStatus);
+        return;
+      }
+      await _writeMessage(
         request,
-        pageStatus,
-        pageStatus == HttpStatus.ok
-            ? {
-                'pages': [
-                  for (final MapEntry(key: slug, value: page)
-                      in publishedPages.entries)
-                    {
-                      'slug': slug,
-                      'title': page.title,
-                      'locale': page.locale,
-                      'displayInFooter': true,
-                    },
-                ],
-              }
-            : {'code': 'unavailable', 'message': 'unavailable'},
+        pb.ListPublishedPagesResponse(
+          pages: [
+            for (final MapEntry(key: slug, value: page)
+                in publishedPages.entries)
+              pb.Page(
+                slug: slug,
+                title: page.title,
+                locale: page.locale,
+                displayInFooter: true,
+              ),
+          ],
+        ),
       );
       return;
     }
 
     if (path.endsWith('/ListPublishedPageSlugs')) {
-      await _write(
+      recorded.decode(pb.ListPublishedPageSlugsRequest());
+      if (pageStatus != HttpStatus.ok) {
+        await _writeUnavailable(request, pageStatus);
+        return;
+      }
+      await _writeMessage(
         request,
-        pageStatus,
-        pageStatus == HttpStatus.ok
-            ? {'slugs': publishedPages.keys.toList()}
-            : {'code': 'unavailable', 'message': 'unavailable'},
+        pb.ListPublishedPageSlugsResponse(slugs: publishedPages.keys),
       );
       return;
     }
 
     if (path.endsWith('/SubmitContactMessage')) {
+      recorded.decode(pb.SubmitContactMessageRequest());
       // A session is optional, and the response deliberately empty.
-      await _write(
-        request,
-        contactStatus,
-        contactStatus == HttpStatus.ok
-            ? const <String, Object?>{}
-            : {'code': contactErrorCode, 'message': contactErrorCode},
-      );
+      if (contactStatus != HttpStatus.ok) {
+        await _writeError(
+          request,
+          contactStatus,
+          contactErrorCode,
+          contactErrorCode,
+        );
+        return;
+      }
+      await _writeMessage(request, pb.SubmitContactMessageResponse());
       return;
     }
 
     if (path.endsWith('/UpdateMe')) {
-      await _writeUpdateMe(request, body);
+      await _writeUpdateMe(request, recorded.decode(pb.UpdateMeRequest()));
       return;
     }
 
-    if (path.endsWith('/UploadMyIcon') || path.endsWith('/DeleteMyIcon')) {
+    if (path.endsWith('/UploadMyIcon')) {
       await _writeChangeMyIcon(
         request,
-        body,
-        upload: path.endsWith('/UploadMyIcon'),
+        recorded.decode(pb.UploadMyIconRequest()),
       );
+      return;
+    }
+
+    if (path.endsWith('/DeleteMyIcon')) {
+      recorded.decode(pb.DeleteMyIconRequest());
+      await _writeChangeMyIcon(request, null);
       return;
     }
 
     if (path.endsWith('/GetNotificationSettings') ||
         path.endsWith('/UpdateNotificationSettings')) {
-      final isSignedUp =
-          _signedUpSession != null &&
-          request.headers.value(HttpHeaders.authorizationHeader) ==
-              'Bearer $signedUpAccessToken';
+      final update = path.endsWith('/UpdateNotificationSettings')
+          ? recorded.decode(pb.UpdateNotificationSettingsRequest())
+          : null;
+      if (update == null) {
+        recorded.decode(pb.GetNotificationSettingsRequest());
+      }
+      final isSignedUp = _isSignedUpSession(request);
       if (!isSignedUp && !await _writeUnlessAuthorized(request)) {
         return;
       }
-      if (path.endsWith('/UpdateNotificationSettings')) {
+      if (update != null) {
         // protojson omits a false, so an absent field turns the mail off.
-        final enabled = body['emailNotificationsEnabled'] == true;
+        final enabled = update.emailNotificationsEnabled;
         if (isSignedUp) {
           _signedUpEmailNotifications = enabled;
         } else {
@@ -1378,138 +1540,164 @@ class ConnectFixtureServer {
       final enabled = isSignedUp
           ? _signedUpEmailNotifications
           : memberEmailNotifications;
-      await _write(request, HttpStatus.ok, {
-        if (enabled) 'emailNotificationsEnabled': true,
-      });
+      await _writeMessage(
+        request,
+        update != null
+            ? pb.UpdateNotificationSettingsResponse(
+                emailNotificationsEnabled: enabled ? true : null,
+              )
+            : pb.GetNotificationSettingsResponse(
+                emailNotificationsEnabled: enabled ? true : null,
+              ),
+      );
       return;
     }
 
     if (path.endsWith('/ChangePassword')) {
-      await _writeChangePassword(request, body);
+      await _writeChangePassword(
+        request,
+        recorded.decode(pb.ChangePasswordRequest()),
+      );
       return;
     }
 
     if (path.endsWith('/RequestEmailChange')) {
-      await _writeRequestEmailChange(request, body);
+      await _writeRequestEmailChange(
+        request,
+        recorded.decode(pb.RequestEmailChangeRequest()),
+      );
       return;
     }
 
     if (path.endsWith('/ConfirmEmailChange')) {
-      await _writeConfirmEmailChange(request, body);
+      await _writeConfirmEmailChange(
+        request,
+        recorded.decode(pb.ConfirmEmailChangeRequest()),
+      );
       return;
     }
 
     if (path.endsWith('/DeleteMe')) {
-      await _writeDeleteMe(request, body);
+      await _writeDeleteMe(request, recorded.decode(pb.DeleteMeRequest()));
       return;
     }
 
     if (path.endsWith('/LoginWithIdToken')) {
-      await _writeLoginWithIdToken(request, body);
+      await _writeLoginWithIdToken(
+        request,
+        recorded.decode(pb.LoginWithIdTokenRequest()),
+      );
       return;
     }
 
     if (path.endsWith('/ListMyIdentities')) {
+      recorded.decode(pb.ListMyIdentitiesRequest());
       if (!await _writeUnlessAuthorized(request)) {
         return;
       }
-      await _write(request, HttpStatus.ok, {
-        if (memberIdentities.isNotEmpty)
-          'identities': [
+      await _writeMessage(
+        request,
+        pb.ListMyIdentitiesResponse(
+          identities: [
             for (final MapEntry(key: provider, value: token)
                 in memberIdentities.entries)
-              {
-                'provider': provider,
-                'email': token.email,
-                'linkedAt': '2026-01-02T03:04:05Z',
-              },
+              pb.LinkedIdentity(
+                provider: provider,
+                email: token.email,
+                linkedAt: '2026-01-02T03:04:05Z',
+              ),
           ],
-        if (memberHasPassword) 'hasPassword': true,
-      });
+          hasPassword: memberHasPassword ? true : null,
+        ),
+      );
       return;
     }
 
     if (path.endsWith('/UnlinkIdentity')) {
+      final body = recorded.decode(pb.UnlinkIdentityRequest());
       if (!await _writeUnlessAuthorized(request)) {
         return;
       }
-      final provider = _trimmed(body['provider']);
+      final provider = body.provider;
       if (!memberIdentities.containsKey(provider)) {
-        await _write(request, HttpStatus.notFound, {
-          'code': 'not_found',
-          'message': 'no account of this provider is linked',
-        });
+        await _writeError(
+          request,
+          HttpStatus.notFound,
+          'not_found',
+          'no account of this provider is linked',
+        );
         return;
       }
       if (!memberHasPassword && memberIdentities.length == 1) {
-        await _write(request, HttpStatus.badRequest, {
-          'code': 'failed_precondition',
-          'message': 'the account keeps its last linked provider',
-        });
+        await _writeError(
+          request,
+          HttpStatus.badRequest,
+          'failed_precondition',
+          'the account keeps its last linked provider',
+        );
         return;
       }
       memberIdentities.remove(provider);
-      await _write(request, HttpStatus.ok, const <String, Object?>{});
+      await _writeMessage(request, pb.UnlinkIdentityResponse());
       return;
     }
 
     if (path.endsWith('/LinkIdentity')) {
-      await _writeLinkIdentity(request, body);
+      await _writeLinkIdentity(
+        request,
+        recorded.decode(pb.LinkIdentityRequest()),
+      );
       return;
     }
 
     if (path.endsWith('/Logout')) {
+      recorded.decode(pb.LogoutRequest());
       // The API answers every token alike: it only records the sign-out.
-      await _write(request, HttpStatus.ok, const <String, Object?>{});
+      await _writeMessage(request, pb.LogoutResponse());
       return;
     }
 
     if (path.endsWith('/GetSeriesDetail')) {
+      final body = recorded.decode(pb.GetSeriesDetailRequest());
       if (detailStatus != HttpStatus.ok) {
-        await _write(
+        await _writeRawOrUnavailable(request, detailStatus, detailResponse);
+        return;
+      }
+      final publicId = body.publicId;
+      final detail = _shows(body.surface, publicId) ? details[publicId] : null;
+      if (detail == null) {
+        await _writeError(
           request,
-          detailStatus,
-          detailResponse ??
-              const {'code': 'unavailable', 'message': 'unavailable'},
+          HttpStatus.notFound,
+          'not_found',
+          'series not found',
         );
         return;
       }
-      final publicId = _publicIdOf(body);
-      final detail = _shows(body, publicId) ? details[publicId] : null;
-      if (detail == null) {
-        await _write(request, HttpStatus.notFound, {
-          'code': 'not_found',
-          'message': 'series not found',
-        });
-        return;
-      }
-      await _write(request, HttpStatus.ok, detailResponse ?? detail);
+      await _writeRaw(request, HttpStatus.ok, detailResponse ?? detail);
       return;
     }
 
     if (path.endsWith('/GetEpisodeDetail')) {
+      final body = recorded.decode(pb.GetEpisodeDetailRequest());
       if (episodeStatus != HttpStatus.ok) {
-        await _write(
-          request,
-          episodeStatus,
-          episodeResponse ??
-              const {'code': 'unavailable', 'message': 'unavailable'},
-        );
+        await _writeRawOrUnavailable(request, episodeStatus, episodeResponse);
         return;
       }
-      final publicId = _publicIdOf(body);
+      final publicId = body.publicId;
       final episode = _isAuthorized(request)
           ? entitledEpisodes[publicId] ?? episodes[publicId]
           : episodes[publicId];
-      if (episode == null ||
-          !_shows(body, (episode['series'] as Map?)?['publicId'])) {
-        await _write(request, HttpStatus.notFound, {
-          'code': 'not_found',
-          'message': 'episode not found',
-        });
+      if (episode == null || !_shows(body.surface, episode.series.publicId)) {
+        await _writeError(
+          request,
+          HttpStatus.notFound,
+          'not_found',
+          'episode not found',
+        );
         return;
       }
-      await _write(request, HttpStatus.ok, episodeResponse ?? episode);
+      await _writeRaw(request, HttpStatus.ok, episodeResponse ?? episode);
       return;
     }
 
@@ -1521,196 +1709,298 @@ class ConnectFixtureServer {
         path.endsWith('/ListMyEpisodeReads') ||
         path.endsWith('/ListMyRecentSeries') ||
         path.endsWith('/GetMySeriesProgress')) {
-      if (!_isAuthorized(request)) {
-        await _write(request, HttpStatus.unauthorized, {
-          'code': 'unauthenticated',
-          'message': 'invalid token',
-        });
-        return;
-      }
-      await _writeEpisodeRead(request, path, body);
+      await _writeEpisodeRead(request, recorded);
       return;
     }
 
     if (path.endsWith('/GetTenant')) {
-      await _write(request, tenantStatus, {
-        if (tenantStatus == HttpStatus.ok) 'tenantPublicId': tenantId,
-        if (tenantStatus == HttpStatus.ok) 'tenantName': tenantName,
-        if (tenantStatus == HttpStatus.ok && tenantTheme != null)
-          'theme': tenantTheme,
-        if (tenantStatus == HttpStatus.ok) 'defaultLocale': defaultLocale,
-        if (tenantStatus == HttpStatus.ok) 'commentMode': commentMode,
-        if (tenantStatus == HttpStatus.ok) 'ageVerification': ageVerification,
-        if (tenantStatus == HttpStatus.ok) 'timezone': tenantTimeZone,
-        // protojson omits a false.
-        if (tenantStatus == HttpStatus.ok && acceptsPayments)
-          'acceptsPayments': true,
-        if (tenantStatus == HttpStatus.ok) 'currency': currency,
-        if (tenantStatus == HttpStatus.ok) 'appPurchaseRoute': appPurchaseRoute,
-        if (tenantStatus == HttpStatus.ok && acceptsAppStorePayments)
-          'acceptsAppStorePayments': true,
-        if (tenantStatus == HttpStatus.ok && acceptsGooglePlayPayments)
-          'acceptsGooglePlayPayments': true,
-        if (tenantStatus == HttpStatus.ok && appleSignIn != null)
-          'appleSignIn': appleSignIn,
-        if (tenantStatus == HttpStatus.ok && googleSignIn != null)
-          'googleSignIn': googleSignIn,
-        if (tenantStatus != HttpStatus.ok) 'code': 'unavailable',
-        if (tenantStatus != HttpStatus.ok) 'message': 'unavailable',
-      });
+      recorded.decode(pb.GetTenantRequest());
+      if (tenantStatus != HttpStatus.ok) {
+        await _writeUnavailable(request, tenantStatus);
+        return;
+      }
+      await _writeMessage(
+        request,
+        pb.GetTenantResponse(
+          tenantPublicId: tenantId,
+          tenantName: tenantName,
+          theme: tenantTheme,
+          defaultLocale: defaultLocale,
+          commentMode: commentMode,
+          ageVerification: ageVerification,
+          timezone: tenantTimeZone,
+          // protojson omits a false.
+          acceptsPayments: acceptsPayments ? true : null,
+          currency: currency,
+          appPurchaseRoute: appPurchaseRoute,
+          acceptsAppStorePayments: acceptsAppStorePayments ? true : null,
+          acceptsGooglePlayPayments: acceptsGooglePlayPayments ? true : null,
+          appleSignIn: appleSignIn,
+          googleSignIn: googleSignIn,
+        ),
+      );
       return;
     }
 
     if (path.endsWith('/GetTenantMobileAppAssociation')) {
-      await _write(request, tenantStatus, {
-        if (tenantStatus == HttpStatus.ok && androidApplicationId != null)
-          'android': {
-            'applicationId': androidApplicationId,
-            'sha256CertFingerprints': <String>[],
-          },
-        if (tenantStatus == HttpStatus.ok && iosAppBundleIdentifier != null)
-          'ios': {
-            'teamId': 'ABCDE12345',
-            'bundleIdentifier': iosAppBundleIdentifier,
-          },
-        if (tenantStatus != HttpStatus.ok) 'code': 'unavailable',
-        if (tenantStatus != HttpStatus.ok) 'message': 'unavailable',
-      });
+      recorded.decode(pb.GetTenantMobileAppAssociationRequest());
+      if (tenantStatus != HttpStatus.ok) {
+        await _writeUnavailable(request, tenantStatus);
+        return;
+      }
+      await _writeMessage(
+        request,
+        pb.GetTenantMobileAppAssociationResponse(
+          android: androidApplicationId == null
+              ? null
+              : pb.TenantAndroidAppAssociation(
+                  applicationId: androidApplicationId,
+                ),
+          ios: iosAppBundleIdentifier == null
+              ? null
+              : pb.TenantIosAppAssociation(
+                  teamId: 'ABCDE12345',
+                  bundleIdentifier: iosAppBundleIdentifier,
+                ),
+        ),
+      );
       return;
     }
 
     if (path.endsWith('/GetTenantLegalPages')) {
-      await _write(request, tenantStatus, {
-        if (tenantStatus == HttpStatus.ok && termsPage != null)
-          'termsPage': termsPage,
-        if (tenantStatus == HttpStatus.ok && privacyPage != null)
-          'privacyPage': privacyPage,
-        if (tenantStatus != HttpStatus.ok) 'code': 'unavailable',
-        if (tenantStatus != HttpStatus.ok) 'message': 'unavailable',
-      });
+      recorded.decode(pb.GetTenantLegalPagesRequest());
+      if (tenantStatus != HttpStatus.ok) {
+        await _writeUnavailable(request, tenantStatus);
+        return;
+      }
+      await _writeMessage(
+        request,
+        pb.GetTenantLegalPagesResponse(
+          termsPage: termsPage,
+          privacyPage: privacyPage,
+        ),
+      );
       return;
     }
 
     if (path.endsWith('/GetSeriesEpisodeAccess')) {
-      await _writeSeriesEpisodeAccess(request, body);
+      await _writeSeriesEpisodeAccess(
+        request,
+        recorded.decode(pb.GetSeriesEpisodeAccessRequest()),
+      );
       return;
     }
 
     if (path.endsWith('/StartEpisodeCheckout')) {
-      await _writeCheckout(request, body);
+      await _writeCheckout(
+        request,
+        recorded.decode(pb.StartEpisodeCheckoutRequest()),
+      );
       return;
     }
 
-    if (path.endsWith('/StartStorePurchase') ||
-        path.endsWith('/ConfirmStorePurchase')) {
-      await _writeStorePurchase(request, path);
+    if (path.endsWith('/StartStorePurchase')) {
+      recorded.decode(pb.StartStorePurchaseRequest());
+      await _writeStorePurchase(request, start: true);
+      return;
+    }
+
+    if (path.endsWith('/ConfirmStorePurchase')) {
+      recorded.decode(pb.ConfirmStorePurchaseRequest());
+      await _writeStorePurchase(request, start: false);
       return;
     }
 
     if (path.endsWith('/ListMyPurchases')) {
-      if (!_isAuthorized(request)) {
-        await _write(request, HttpStatus.unauthorized, {
-          'code': 'unauthenticated',
-          'message': 'invalid token',
-        });
+      final body = recorded.decode(pb.ListMyPurchasesRequest());
+      if (!await _writeUnlessAuthorized(request)) {
         return;
       }
-      await _write(request, HttpStatus.ok, _purchasesPage(body['token']));
+      final page = _paged(
+        myPurchases,
+        purchasesPageSize > 0 ? body.token : '',
+        purchasesPageSize,
+      );
+      await _writeMessage(
+        request,
+        pb.ListMyPurchasesResponse(
+          purchases: page.items,
+          nextToken: page.nextToken,
+        ),
+      );
       return;
     }
 
     if (path.contains('/publira.v1.WaitFreeService/')) {
-      await _writeWaitFree(request, path, body);
+      await _writeWaitFree(request, recorded);
       return;
     }
 
     if (path.contains('/publira.v1.CommentService/')) {
-      await _writeComment(request, path, body);
+      await _writeComment(request, recorded);
       return;
     }
 
     if (path.contains('/publira.v1.FollowService/')) {
-      await _writeFollow(request, path, body);
+      await _writeFollow(request, recorded);
       return;
     }
 
-    if (path.endsWith('/SearchPublishedCreators') ||
-        path.endsWith('/SearchPublishedLabels')) {
-      final creators = path.endsWith('/SearchPublishedCreators');
-      await _write(request, searchStatus, {
-        if (searchStatus == HttpStatus.ok)
-          ..._namedPage(
-            creators ? 'creators' : 'labels',
-            creators
-                ? _publishedCreators(
-                    _seriesShownTo(body),
-                  ).where(_hasPublishedSeries)
-                : _publishedLabels(_seriesShownTo(body)),
-            body['query'],
-            body['token'],
-          ),
-        if (searchStatus != HttpStatus.ok) 'code': 'unavailable',
-        if (searchStatus != HttpStatus.ok) 'message': 'unavailable',
-      });
-      return;
-    }
-
-    if (path.endsWith('/ListPublishedCreators') ||
-        path.endsWith('/ListPublishedLabels')) {
-      final creators = path.endsWith('/ListPublishedCreators');
-      final shown = _seriesShownTo(body);
-      await _write(request, directoryStatus, {
-        // Authors come in name order, which the empty keyword leaves every
-        // one of. Labels come newest first, which the fixture has no record
-        // of, so they stay in the order the series carry them.
-        if (directoryStatus == HttpStatus.ok)
-          if (creators)
-            ..._namedPage(
-              'creators',
-              _publishedCreators(shown).where(_hasPublishedSeries),
-              '',
-              body['token'],
-            )
-          else
-            ..._pageOf('labels', _publishedLabels(shown), body['token']),
-        if (directoryStatus != HttpStatus.ok) 'code': 'unavailable',
-        if (directoryStatus != HttpStatus.ok) 'message': 'unavailable',
-      });
-      return;
-    }
-
-    if (path.endsWith('/GetPublishedCreatorDetail') ||
-        path.endsWith('/GetPublishedLabelDetail')) {
-      final creators = path.endsWith('/GetPublishedCreatorDetail');
-      final publicId = _publicIdOf(body);
-      final shown = _seriesShownTo(body);
-      // A label is found among every series, shown or not, because the API
-      // answers one with none of its series on this surface as well.
-      final target =
-          (creators ? _publishedCreators(shown) : _publishedLabels(series))
-              .where((item) => item['publicId'] == publicId)
-              .firstOrNull;
-      if (target == null) {
-        await _write(request, HttpStatus.notFound, {
-          'code': 'not_found',
-          'message': creators ? 'creator not found' : 'label not found',
-        });
+    if (path.endsWith('/SearchPublishedCreators')) {
+      final body = recorded.decode(pb.SearchPublishedCreatorsRequest());
+      if (searchStatus != HttpStatus.ok) {
+        await _writeUnavailable(request, searchStatus);
         return;
       }
-      final credited = shown.where((item) {
-        if (!creators) {
-          return (item['label'] as Map?)?['publicId'] == publicId;
-        }
-        final credits = item['creators'] as List? ?? const [];
-        return credits.any((credit) => (credit as Map)['publicId'] == publicId);
-      }).toList();
-      await _write(request, HttpStatus.ok, {
-        if (creators)
-          'creator': target
-        else
-          'label': {...target, 'publishedSeriesCount': credited.length},
-        ..._pageOf('series', credited, body['token']),
-      });
+      final page = _namedPage(
+        _publishedCreators(
+          _seriesShownTo(body.surface),
+        ).where((item) => item.publishedSeriesCount > 0),
+        (item) => item.name,
+        body.query,
+        body.token,
+      );
+      await _writeMessage(
+        request,
+        pb.SearchPublishedCreatorsResponse(
+          creators: page.items,
+          nextToken: page.nextToken,
+        ),
+      );
+      return;
+    }
+
+    if (path.endsWith('/SearchPublishedLabels')) {
+      final body = recorded.decode(pb.SearchPublishedLabelsRequest());
+      if (searchStatus != HttpStatus.ok) {
+        await _writeUnavailable(request, searchStatus);
+        return;
+      }
+      final page = _namedPage(
+        _publishedLabels(_seriesShownTo(body.surface)),
+        (item) => item.name,
+        body.query,
+        body.token,
+      );
+      await _writeMessage(
+        request,
+        pb.SearchPublishedLabelsResponse(
+          labels: page.items,
+          nextToken: page.nextToken,
+        ),
+      );
+      return;
+    }
+
+    // Authors come in name order, which the empty keyword leaves every one
+    // of. Labels come newest first, which the fixture has no record of, so
+    // they stay in the order the series carry them.
+    if (path.endsWith('/ListPublishedCreators')) {
+      final body = recorded.decode(pb.ListPublishedCreatorsRequest());
+      if (directoryStatus != HttpStatus.ok) {
+        await _writeUnavailable(request, directoryStatus);
+        return;
+      }
+      final page = _namedPage(
+        _publishedCreators(
+          _seriesShownTo(body.surface),
+        ).where((item) => item.publishedSeriesCount > 0),
+        (item) => item.name,
+        '',
+        body.token,
+      );
+      await _writeMessage(
+        request,
+        pb.ListPublishedCreatorsResponse(
+          creators: page.items,
+          nextToken: page.nextToken,
+        ),
+      );
+      return;
+    }
+
+    if (path.endsWith('/ListPublishedLabels')) {
+      final body = recorded.decode(pb.ListPublishedLabelsRequest());
+      if (directoryStatus != HttpStatus.ok) {
+        await _writeUnavailable(request, directoryStatus);
+        return;
+      }
+      final page = _pageOf(
+        _publishedLabels(_seriesShownTo(body.surface)),
+        body.token,
+      );
+      await _writeMessage(
+        request,
+        pb.ListPublishedLabelsResponse(
+          labels: page.items,
+          nextToken: page.nextToken,
+        ),
+      );
+      return;
+    }
+
+    if (path.endsWith('/GetPublishedCreatorDetail')) {
+      final body = recorded.decode(pb.GetPublishedCreatorDetailRequest());
+      final publicId = body.publicId;
+      final shown = _seriesShownTo(body.surface);
+      final target = _publishedCreators(
+        shown,
+      ).where((item) => item.publicId == publicId).firstOrNull;
+      if (target == null) {
+        await _writeError(
+          request,
+          HttpStatus.notFound,
+          'not_found',
+          'creator not found',
+        );
+        return;
+      }
+      final page = _pageOf([
+        for (final item in shown)
+          if (item.creators.any((credit) => credit.publicId == publicId)) item,
+      ], body.token);
+      await _writeMessage(
+        request,
+        pb.GetPublishedCreatorDetailResponse(
+          creator: target,
+          series: page.items,
+          nextToken: page.nextToken,
+        ),
+      );
+      return;
+    }
+
+    if (path.endsWith('/GetPublishedLabelDetail')) {
+      final body = recorded.decode(pb.GetPublishedLabelDetailRequest());
+      final publicId = body.publicId;
+      final shown = _seriesShownTo(body.surface);
+      // A label is found among every series, shown or not, because the API
+      // answers one with none of its series on this surface as well.
+      final target = _publishedLabels(
+        series,
+      ).where((item) => item.publicId == publicId).firstOrNull;
+      if (target == null) {
+        await _writeError(
+          request,
+          HttpStatus.notFound,
+          'not_found',
+          'label not found',
+        );
+        return;
+      }
+      final credited = [
+        for (final item in shown)
+          if (item.hasLabel() && item.label.publicId == publicId) item,
+      ];
+      final page = _pageOf(credited, body.token);
+      await _writeMessage(
+        request,
+        pb.GetPublishedLabelDetailResponse(
+          label: target..publishedSeriesCount = credited.length,
+          series: page.items,
+          nextToken: page.nextToken,
+        ),
+      );
       return;
     }
 
@@ -1718,7 +2008,7 @@ class ConnectFixtureServer {
         path.endsWith('/CountUnreadNotifications') ||
         path.endsWith('/MarkNotificationAsRead') ||
         path.endsWith('/MarkAllNotificationsAsRead')) {
-      await _writeNotification(request, path, body);
+      await _writeNotification(request, recorded);
       return;
     }
 
@@ -1727,30 +2017,40 @@ class ConnectFixtureServer {
         path.endsWith('/GetPinnedAnnouncement') ||
         path.endsWith('/MarkAnnouncementAsRead') ||
         path.endsWith('/MarkAllAnnouncementsAsRead')) {
-      await _writeAnnouncement(request, path, body);
+      await _writeAnnouncement(request, recorded);
       return;
     }
 
-    if (path.endsWith('/RegisterPushDevice') ||
-        path.endsWith('/UnregisterPushDevice')) {
-      final registering = path.endsWith('/RegisterPushDevice');
-      await _write(request, pushDeviceStatus, {
-        if (pushDeviceStatus == HttpStatus.ok && registering)
-          'registered': true,
-        if (pushDeviceStatus == HttpStatus.ok && !registering)
-          'unregistered': true,
-        if (pushDeviceStatus != HttpStatus.ok) 'code': 'unavailable',
-        if (pushDeviceStatus != HttpStatus.ok) 'message': 'unavailable',
-      });
+    if (path.endsWith('/RegisterPushDevice')) {
+      recorded.decode(pb.RegisterPushDeviceRequest());
+      if (pushDeviceStatus != HttpStatus.ok) {
+        await _writeUnavailable(request, pushDeviceStatus);
+        return;
+      }
+      await _writeMessage(
+        request,
+        pb.RegisterPushDeviceResponse(registered: true),
+      );
+      return;
+    }
+
+    if (path.endsWith('/UnregisterPushDevice')) {
+      recorded.decode(pb.UnregisterPushDeviceRequest());
+      if (pushDeviceStatus != HttpStatus.ok) {
+        await _writeUnavailable(request, pushDeviceStatus);
+        return;
+      }
+      await _writeMessage(
+        request,
+        pb.UnregisterPushDeviceResponse(unregistered: true),
+      );
       return;
     }
 
     if (path.endsWith('/RecordContentView')) {
+      recorded.decode(pb.RecordContentViewRequest());
       if (contentViewStatus != HttpStatus.ok) {
-        await _write(request, contentViewStatus, const {
-          'code': 'unavailable',
-          'message': 'unavailable',
-        });
+        await _writeUnavailable(request, contentViewStatus);
         return;
       }
       final identified =
@@ -1762,41 +2062,45 @@ class ConnectFixtureServer {
           mintedAnonymousIdCookie,
         );
       }
-      await _write(request, HttpStatus.ok, const <String, Object?>{});
-      return;
-    }
-
-    if (path.endsWith('/RateEpisode') && rateEpisodeError != null) {
-      final error = rateEpisodeError!;
-      await _write(request, error.status, error.body);
+      await _writeMessage(request, pb.RecordContentViewResponse());
       return;
     }
 
     if (path.endsWith('/GetMySeriesRating')) {
-      if (!_isAuthorized(request)) {
-        await _write(request, HttpStatus.unauthorized, {
-          'code': 'unauthenticated',
-          'message': 'invalid token',
-        });
+      final body = recorded.decode(pb.GetMySeriesRatingRequest());
+      if (!await _writeUnlessAuthorized(request)) {
         return;
       }
-      await _write(
+      await _writeMessage(
         request,
-        HttpStatus.ok,
-        seriesRatings[publicIdOf(body['seriesId'])] ??
-            const <String, Object?>{},
+        seriesRatings[publicIdOf(body.seriesId)] ??
+            pb.GetMySeriesRatingResponse(),
       );
       return;
     }
 
     // Both rating RPCs answer with the reader's score, which is all a test
     // reads back from them unless it replaces the answer.
-    if (path.endsWith('/GetMyEpisodeRating') || path.endsWith('/RateEpisode')) {
-      await _write(
+    if (path.endsWith('/RateEpisode')) {
+      recorded.decode(pb.RateEpisodeRequest());
+      if (rateEpisodeError case final error?) {
+        await _writeJson(request, error.status, error.body);
+        return;
+      }
+      await _writeMessage(
+        request,
+        pb.RateEpisodeResponse(score: 1, ratingCount: Int64.ONE),
+      );
+      return;
+    }
+
+    if (path.endsWith('/GetMyEpisodeRating')) {
+      recorded.decode(pb.GetMyEpisodeRatingRequest());
+      await _writeRaw(
         request,
         HttpStatus.ok,
-        (path.endsWith('/GetMyEpisodeRating') ? episodeRatingResponse : null) ??
-            const {'score': 1, 'ratingCount': '1'},
+        episodeRatingResponse ??
+            pb.GetMyEpisodeRatingResponse(score: 1, ratingCount: Int64.ONE),
       );
       return;
     }
@@ -1809,76 +2113,89 @@ class ConnectFixtureServer {
   /// detail lists, for whoever the request is.
   Future<void> _writeSeriesEpisodeAccess(
     HttpRequest request,
-    Map<String, Object?> body,
+    pb.GetSeriesEpisodeAccessRequest body,
   ) async {
-    final seriesPublicId = publicIdOf(body['seriesId']);
-    final detail = _shows(body, seriesPublicId)
+    final seriesPublicId = publicIdOf(body.seriesId);
+    final detail = _shows(body.surface, seriesPublicId)
         ? details[seriesPublicId]
         : null;
     if (detail == null) {
-      await _write(request, HttpStatus.notFound, {
-        'code': 'not_found',
-        'message': 'series not found',
-      });
+      await _writeError(
+        request,
+        HttpStatus.notFound,
+        'not_found',
+        'series not found',
+      );
       return;
     }
     final authorized = _isAuthorized(request);
-    final listed = detail['episodes'];
-    await _write(request, HttpStatus.ok, {
-      'episodes': [
-        if (listed is List)
-          for (final episode in listed.whereType<Map<Object?, Object?>>())
-            if (episode['publicId'] case final String id)
-              {
-                'episodeId': internalIdOf(id),
-                'episodePublicId': id,
-                'access':
-                    (authorized ? entitledEpisodes[id] : null)?['access'] ??
-                    episodes[id]?['access'] ??
-                    'EPISODE_ACCESS_FREE',
-              },
-      ],
-    });
+    pb.EpisodeAccess? accessOf(pb.GetEpisodeDetailResponse? episode) =>
+        episode != null && episode.hasAccess() ? episode.access : null;
+    await _writeMessage(
+      request,
+      pb.GetSeriesEpisodeAccessResponse(
+        episodes: [
+          for (final episode in detail.episodes)
+            if (episode.hasPublicId())
+              pb.SeriesEpisodeAccess(
+                episodeId: internalIdOf(episode.publicId),
+                episodePublicId: episode.publicId,
+                access:
+                    accessOf(
+                      authorized ? entitledEpisodes[episode.publicId] : null,
+                    ) ??
+                    accessOf(episodes[episode.publicId]) ??
+                    pb.EpisodeAccess.EPISODE_ACCESS_FREE,
+              ),
+        ],
+      ),
+    );
   }
 
   /// A checkout for the signed-in member, refused the way the API refuses
   /// one for an episode they already hold.
   Future<void> _writeCheckout(
     HttpRequest request,
-    Map<String, Object?> body,
+    pb.StartEpisodeCheckoutRequest body,
   ) async {
-    if (!_isAuthorized(request)) {
-      await _write(request, HttpStatus.unauthorized, {
-        'code': 'unauthenticated',
-        'message': 'invalid token',
-      });
+    if (!await _writeUnlessAuthorized(request)) {
       return;
     }
-    final episodeId = publicIdOf(body['episodeId']);
+    final episodeId = publicIdOf(body.episodeId);
     if (episodes[episodeId] == null) {
-      await _write(request, HttpStatus.notFound, {
-        'code': 'not_found',
-        'message': 'episode not found',
-      });
+      await _writeError(
+        request,
+        HttpStatus.notFound,
+        'not_found',
+        'episode not found',
+      );
       return;
     }
-    if (entitledEpisodes[episodeId]?['access'] == 'EPISODE_ACCESS_ENTITLED') {
-      await _write(request, HttpStatus.conflict, {
-        'code': 'already_exists',
-        'message': 'episode is already purchased',
-      });
+    if (entitledEpisodes[episodeId]?.access ==
+        pb.EpisodeAccess.EPISODE_ACCESS_ENTITLED) {
+      await _writeError(
+        request,
+        HttpStatus.conflict,
+        'already_exists',
+        'episode is already purchased',
+      );
       return;
     }
     if (checkoutStatus != HttpStatus.ok) {
-      await _write(request, checkoutStatus, {
-        'code': 'unavailable',
-        'message': 'failed to start checkout',
-      });
+      await _writeError(
+        request,
+        checkoutStatus,
+        'unavailable',
+        'failed to start checkout',
+      );
       return;
     }
-    await _write(request, HttpStatus.ok, {
-      'checkoutUrl': checkoutUrlFor(episodeId).toString(),
-    });
+    await _writeMessage(
+      request,
+      pb.StartEpisodeCheckoutResponse(
+        checkoutUrl: checkoutUrlFor(episodeId).toString(),
+      ),
+    );
   }
 
   /// `GetMyTicketState` and `UseTicket` for the signed-in member. A ticket
@@ -1887,135 +2204,129 @@ class ConnectFixtureServer {
   /// away.
   Future<void> _writeWaitFree(
     HttpRequest request,
-    String path,
-    Map<String, Object?> body,
+    RecordedRequest recorded,
   ) async {
-    if (!_isAuthorized(request)) {
-      await _write(request, HttpStatus.unauthorized, {
-        'code': 'unauthenticated',
-        'message': 'invalid token',
-      });
+    final use = recorded.path.endsWith('/UseTicket')
+        ? recorded.decode(pb.UseTicketRequest())
+        : null;
+    if (use == null) {
+      recorded.decode(pb.GetMyTicketStateRequest());
+    }
+    if (!await _writeUnlessAuthorized(request)) {
       return;
     }
     if (waitFreeRefusal case final reason?) {
-      await _write(request, HttpStatus.badRequest, {
-        'code': 'failed_precondition',
-        'message': reason,
-        'details': [errorInfoDetail(reason)],
-      });
+      await _writeError(
+        request,
+        HttpStatus.badRequest,
+        'failed_precondition',
+        reason,
+        details: [errorInfoDetail(reason)],
+      );
       return;
     }
-    if (path.endsWith('/GetMyTicketState')) {
-      await _write(request, HttpStatus.ok, ticketState);
+    if (use == null) {
+      await _writeMessage(request, ticketState);
       return;
     }
-    final episodeId = publicIdOf(body['episodeId']);
+    final episodeId = publicIdOf(use.episodeId);
     final episode = episodes[episodeId];
     if (episode == null) {
-      await _write(request, HttpStatus.notFound, {
-        'code': 'not_found',
-        'message': 'episode not found',
-      });
+      await _writeError(
+        request,
+        HttpStatus.notFound,
+        'not_found',
+        'episode not found',
+      );
       return;
     }
-    if (entitledEpisodes[episodeId]?['access'] == 'EPISODE_ACCESS_ENTITLED') {
-      await _write(request, HttpStatus.conflict, {
-        'code': 'already_exists',
-        'message': 'episode is already open',
-      });
+    if (entitledEpisodes[episodeId]?.access ==
+        pb.EpisodeAccess.EPISODE_ACCESS_ENTITLED) {
+      await _writeError(
+        request,
+        HttpStatus.conflict,
+        'already_exists',
+        'episode is already open',
+      );
       return;
     }
     final now = DateTime.now().toUtc();
-    final ticket = {
-      'episodeId': internalIdOf(episodeId),
-      'expiresAt': now.add(ticketAccess).toIso8601String(),
-    };
+    final ticket = pb.WaitFreeTicket(
+      episodeId: internalIdOf(episodeId),
+      expiresAt: now.add(ticketAccess).toIso8601String(),
+    );
     final nextAvailableAt = now
         .add(const Duration(hours: 23))
         .toIso8601String();
     ticketsUsed.add(episodeId);
     entitledEpisodes = {
       ...entitledEpisodes,
-      episodeId: {
-        ...episode,
-        'access': 'EPISODE_ACCESS_ENTITLED',
-        'entitlementSource': 'EPISODE_ENTITLEMENT_SOURCE_ACCESS_TICKET',
-        'images': populatedEntitledEpisodes()[paidEpisodeId]!['images'],
-      },
+      episodeId: episode.deepCopy()
+        ..access = pb.EpisodeAccess.EPISODE_ACCESS_ENTITLED
+        ..entitlementSource =
+            pb.EpisodeEntitlementSource.EPISODE_ENTITLEMENT_SOURCE_ACCESS_TICKET
+        ..images.clear()
+        ..images.addAll(populatedEntitledEpisodes()[paidEpisodeId]!.images),
     };
-    ticketState = {
-      'nextAvailableAt': nextAvailableAt,
-      'openTickets': [ticket],
-    };
-    await _write(request, HttpStatus.ok, {
-      'ticket': ticket,
-      'nextAvailableAt': nextAvailableAt,
-    });
+    ticketState = pb.GetMyTicketStateResponse(
+      nextAvailableAt: nextAvailableAt,
+      openTickets: [ticket],
+    );
+    await _writeMessage(
+      request,
+      pb.UseTicketResponse(ticket: ticket, nextAvailableAt: nextAvailableAt),
+    );
   }
 
   /// An intent, or the confirmation of a transaction, for the signed-in
   /// member.
-  Future<void> _writeStorePurchase(HttpRequest request, String path) async {
-    if (!_isAuthorized(request)) {
-      await _write(request, HttpStatus.unauthorized, {
-        'code': 'unauthenticated',
-        'message': 'invalid token',
-      });
+  Future<void> _writeStorePurchase(
+    HttpRequest request, {
+    required bool start,
+  }) async {
+    if (!await _writeUnlessAuthorized(request)) {
       return;
     }
-    final start = path.endsWith('/StartStorePurchase');
     final status = start ? storeStartStatus : storeConfirmStatus;
     if (status != HttpStatus.ok) {
-      await _write(request, status, {
-        'code': start ? storeStartErrorCode : storeConfirmErrorCode,
-        'message': 'refused',
-      });
+      await _writeError(
+        request,
+        status,
+        start ? storeStartErrorCode : storeConfirmErrorCode,
+        'refused',
+      );
       return;
     }
-    await _write(
+    await _writeMessage(
       request,
-      HttpStatus.ok,
       start
-          ? {'intentId': storeIntentId, 'productId': storeProductId}
-          : {'purchase': <String, Object?>{}},
+          ? pb.StartStorePurchaseResponse(
+              intentId: storeIntentId,
+              productId: storeProductId,
+            )
+          : pb.ConfirmStorePurchaseResponse(purchase: pb.MyPurchase()),
     );
   }
 
-  /// Whether the surface [body] names may show the series [seriesPublicId].
-  bool _shows(Map<String, Object?> body, Object? seriesPublicId) {
-    final app = body['surface'] == 'CLIENT_SURFACE_APP';
+  /// Whether [surface] may show the series [seriesPublicId].
+  bool _shows(pb.ClientSurface surface, String seriesPublicId) {
+    final app = surface == pb.ClientSurface.CLIENT_SURFACE_APP;
     return switch (seriesAvailability[seriesPublicId]) {
-      'SURFACE_AVAILABILITY_WEB' => !app,
-      'SURFACE_AVAILABILITY_APP' => app,
+      pb.SurfaceAvailability.SURFACE_AVAILABILITY_WEB => !app,
+      pb.SurfaceAvailability.SURFACE_AVAILABILITY_APP => app,
       _ => true,
     };
   }
 
-  /// Whether [item] carries the classification whose [key] is [value] in its
-  /// [field]: a genre by public id, a tag by slug.
-  static bool _carries(
-    Map<String, Object?> item,
-    String field,
-    String key,
-    Object? value,
-  ) => (item[field] as List? ?? const []).any(
-    (entry) => (entry as Map)[key] == value,
-  );
-
-  /// The genre or tag a `ListPublishedSeries` [body] narrows to when the
+  /// The genre or tag a `ListPublishedSeries` request narrows to when the
   /// tenant has no such one, which the API answers `not_found`; `null` when it
   /// narrows to nothing or to one that exists.
-  String? _classifiedMissing(Map<String, Object?> body) {
-    final genre = body['genrePublicId'];
-    if (genre is String &&
-        genre.isNotEmpty &&
-        !genres.any((item) => item['publicId'] == genre)) {
+  String? _classifiedMissing(String genre, String tag) {
+    if (genre.isNotEmpty && !genres.any((item) => item.publicId == genre)) {
       return 'genre';
     }
-    final tag = body['tagSlug'];
-    if (tag is String &&
-        tag.isNotEmpty &&
-        !series.any((item) => _carries(item, 'tags', 'slug', tag))) {
+    if (tag.isNotEmpty &&
+        !series.any((item) => item.tags.any((entry) => entry.slug == tag))) {
       return 'tag';
     }
     return null;
@@ -2023,210 +2334,171 @@ class ConnectFixtureServer {
 
   /// The series shown to [body], narrowed by the genre, tag, and status it
   /// names. The order and the free-to-start filter are left to the API.
-  List<Map<String, Object?>> _classified(Map<String, Object?> body) {
-    final genre = body['genrePublicId'];
-    final tag = body['tagSlug'];
-    final status = body['status'];
+  List<pb.Series> _classified(pb.ListPublishedSeriesRequest body) {
+    final genre = body.genrePublicId;
+    final tag = body.tagSlug;
     return [
-      for (final item in _seriesShownTo(body))
-        if ((genre is! String ||
-                genre.isEmpty ||
-                _carries(item, 'genres', 'publicId', genre)) &&
-            (tag is! String ||
-                tag.isEmpty ||
-                _carries(item, 'tags', 'slug', tag)) &&
-            (status == null || item['status'] == status))
+      for (final item in _seriesShownTo(body.surface))
+        if ((genre.isEmpty ||
+                item.genres.any((entry) => entry.publicId == genre)) &&
+            (tag.isEmpty || item.tags.any((entry) => entry.slug == tag)) &&
+            (!body.hasStatus() ||
+                (item.hasStatus() && item.status == body.status)))
           item,
     ];
   }
 
   /// The tags [series] carry, counted, most carried first and then by slug,
   /// the way `ListPublishedTags` orders them.
-  List<Map<String, Object?>> _publishedTags(List<Map<String, Object?>> series) {
-    final tags = <String, Map<String, Object?>>{};
+  List<pb.PublishedTag> _publishedTags(List<pb.Series> series) {
+    final tags = <String, pb.PublishedTag>{};
     for (final item in series) {
-      for (final entry in item['tags'] as List? ?? const []) {
-        final tag = entry as Map;
-        final counted = tags.putIfAbsent(
-          tag['slug'] as String,
-          () => {
-            'name': tag['name'],
-            'slug': tag['slug'],
-            'publishedSeriesCount': 0,
-          },
-        );
-        counted['publishedSeriesCount'] =
-            (counted['publishedSeriesCount']! as int) + 1;
+      for (final tag in item.tags) {
+        tags
+            .putIfAbsent(
+              tag.slug,
+              () => pb.PublishedTag(
+                name: tag.name,
+                slug: tag.slug,
+                publishedSeriesCount: 0,
+              ),
+            )
+            .publishedSeriesCount++;
       }
     }
     return tags.values.toList()..sort((a, b) {
-      final byCount = (b['publishedSeriesCount']! as int).compareTo(
-        a['publishedSeriesCount']! as int,
-      );
-      return byCount != 0
-          ? byCount
-          : (a['slug']! as String).compareTo(b['slug']! as String);
+      final byCount = b.publishedSeriesCount.compareTo(a.publishedSeriesCount);
+      return byCount != 0 ? byCount : a.slug.compareTo(b.slug);
     });
   }
 
-  /// The [series] the surface [body] names may show.
-  List<Map<String, Object?>> _seriesShownTo(Map<String, Object?> body) => [
+  /// The [series] [surface] may show.
+  List<pb.Series> _seriesShownTo(pb.ClientSurface surface) => [
     for (final item in series)
-      if (_shows(body, item['publicId'])) item,
+      if (_shows(surface, item.publicId)) item,
   ];
 
-  /// The page of [series] the request's token asks for, with the token of the
-  /// page under it when there is one.
-  ///
-  /// protojson omits an empty string, so the last page carries no `nextToken`.
-  Map<String, Object?> _seriesPage(
-    List<Map<String, Object?>> series,
-    Object? token,
-  ) {
-    if (seriesPageSize <= 0) {
-      return {'series': series};
-    }
-    final start = token is String && token.isNotEmpty ? int.parse(token) : 0;
-    final end = min(start + seriesPageSize, series.length);
-    return {
-      'series': series.sublist(min(start, series.length), end),
-      if (end < series.length) 'nextToken': '$end',
-    };
-  }
-
-  /// The creators credited on [series], once each, in the shape
-  /// `PublishedCreator` arrives in, followed by the rest of [seedCreators],
-  /// which a follow row can still name with nothing published.
-  List<Map<String, Object?>> _publishedCreators(
-    List<Map<String, Object?>> series,
-  ) {
-    final creators = <String, Map<String, Object?>>{};
+  /// The creators credited on [series], once each, followed by the rest of
+  /// [seedCreators], which a follow row can still name with nothing
+  /// published.
+  List<pb.PublishedCreator> _publishedCreators(List<pb.Series> series) {
+    final creators = <String, pb.PublishedCreator>{};
     final counted = <String>{};
     for (final item in series) {
-      for (final credit in item['creators'] as List? ?? const []) {
-        final json = credit as Map;
-        final publicId = json['publicId'] as String;
+      for (final credit in item.creators) {
         final creator = creators.putIfAbsent(
-          publicId,
-          () => {
-            'publicId': publicId,
-            'name': json['name'],
-            if (json['profileText'] != null) 'profileText': json['profileText'],
-            if (json['iconImageUrl'] != null)
-              'iconImageUrl': json['iconImageUrl'],
-            'publishedSeriesCount': 0,
-          },
+          credit.publicId,
+          () => pb.PublishedCreator(
+            publicId: credit.publicId,
+            name: credit.name,
+            profileText: credit.hasProfileText() ? credit.profileText : null,
+            iconImageUrl: credit.hasIconImageUrl() ? credit.iconImageUrl : null,
+            publishedSeriesCount: 0,
+          ),
         );
         // Credited in two roles on one series is still one series.
-        if (counted.add('$publicId/${item['publicId']}')) {
-          creator['publishedSeriesCount'] =
-              (creator['publishedSeriesCount']! as int) + 1;
+        if (counted.add('${credit.publicId}/${item.publicId}')) {
+          creator.publishedSeriesCount++;
         }
       }
     }
     for (final credit in seedCreators()) {
-      creators.putIfAbsent(credit['publicId']! as String, () {
-        return {
-          'publicId': credit['publicId'],
-          'name': credit['name'],
-          'profileText': credit['profileText'],
-        };
-      });
+      creators.putIfAbsent(
+        credit.publicId,
+        () => pb.PublishedCreator(
+          publicId: credit.publicId,
+          name: credit.name,
+          profileText: credit.profileText,
+        ),
+      );
     }
     return creators.values.toList();
   }
 
-  /// The labels of [series], once each, in the shape `PublishedLabel` arrives
-  /// in. A label is known here only through a series that carries it, so
-  /// every one of them holds a published series.
-  List<Map<String, Object?>> _publishedLabels(
-    List<Map<String, Object?>> series,
-  ) {
-    final labels = <String, Map<String, Object?>>{};
+  /// The labels of [series], once each. A label is known here only through a
+  /// series that carries it, so every one of them holds a published series.
+  List<pb.PublishedLabel> _publishedLabels(List<pb.Series> series) {
+    final labels = <String, pb.PublishedLabel>{};
     for (final item in series) {
-      final json = item['label'] as Map?;
-      if (json == null) {
+      if (!item.hasLabel()) {
         continue;
       }
-      final label = labels.putIfAbsent(
-        json['publicId'] as String,
-        () => {...json.cast<String, Object?>(), 'publishedSeriesCount': 0},
-      );
-      label['publishedSeriesCount'] =
-          (label['publishedSeriesCount']! as int) + 1;
+      final label = item.label;
+      labels
+          .putIfAbsent(
+            label.publicId,
+            () => pb.PublishedLabel(
+              publicId: label.hasPublicId() ? label.publicId : null,
+              name: label.hasName() ? label.name : null,
+              eyeCatchImageUpdatedAt: label.hasEyeCatchImageUpdatedAt()
+                  ? label.eyeCatchImageUpdatedAt
+                  : null,
+              eyeCatchImageVariants: label.eyeCatchImageVariants,
+              publishedSeriesCount: 0,
+            ),
+          )
+          .publishedSeriesCount++;
     }
     return labels.values.toList();
   }
 
-  bool _hasPublishedSeries(Map<String, Object?> item) =>
-      ((item['publishedSeriesCount'] as int?) ?? 0) > 0;
-
   /// One page of the [items] whose name contains [query], the
   /// case-insensitive substring match the creator and label searches perform,
-  /// in the name order they answer in, under [field].
-  Map<String, Object?> _namedPage(
-    String field,
-    Iterable<Map<String, Object?>> items,
-    Object? query,
-    Object? token,
+  /// in the name order they answer in.
+  ({List<T> items, String? nextToken}) _namedPage<T>(
+    Iterable<T> items,
+    String Function(T item) name,
+    String query,
+    String token,
   ) {
-    final keyword = query is String ? query.trim().toLowerCase() : '';
+    final keyword = query.trim().toLowerCase();
     final matches =
-        items.where((item) {
-          return '${item['name'] ?? ''}'.toLowerCase().contains(keyword);
-        }).toList()..sort(
-          (left, right) =>
-              '${left['name'] ?? ''}'.compareTo('${right['name'] ?? ''}'),
-        );
-    return _pageOf(field, matches, token);
+        items
+            .where((item) => name(item).toLowerCase().contains(keyword))
+            .toList()
+          ..sort((left, right) => name(left).compareTo(name(right)));
+    return _pageOf(matches, token);
   }
 
-  /// One page of [items] under [field], [seriesPageSize] at a time, with the
-  /// token the index of the page's first row written out.
-  Map<String, Object?> _pageOf(
-    String field,
-    List<Map<String, Object?>> items,
-    Object? token,
+  /// One page of [items], [seriesPageSize] at a time, with the token the
+  /// index of the page's first row written out.
+  ({List<T> items, String? nextToken}) _pageOf<T>(
+    List<T> items,
+    String token,
+  ) => _paged(items, seriesPageSize > 0 ? token : '', seriesPageSize);
+
+  /// The page of [items] starting at the row [token] names, at most [size]
+  /// rows long, or every row from there for a [size] of zero, with the token
+  /// of the page under it when there is one.
+  ///
+  /// protojson omits an empty string, so the last page carries no `nextToken`.
+  static ({List<T> items, String? nextToken}) _paged<T>(
+    List<T> items,
+    String token,
+    int size,
   ) {
-    if (seriesPageSize <= 0) {
-      return {if (items.isNotEmpty) field: items};
-    }
-    final start = token is String && token.isNotEmpty ? int.parse(token) : 0;
-    final end = min(start + seriesPageSize, items.length);
-    final page = items.sublist(min(start, items.length), end);
-    return {
-      if (page.isNotEmpty) field: page,
-      if (end < items.length) 'nextToken': '$end',
-    };
+    final start = min(token.isEmpty ? 0 : int.parse(token), items.length);
+    final end = size <= 0 ? items.length : min(start + size, items.length);
+    return (
+      items: items.sublist(start, end),
+      nextToken: end < items.length ? '$end' : null,
+    );
   }
 
   /// One page of the series whose title or synopsis contains [query], the
   /// case-insensitive substring match `SearchPublishedSeries` performs, in the
   /// title order it answers them in.
-  Map<String, Object?> _searchPage(
-    List<Map<String, Object?>> series,
-    Object? query,
-    Object? token,
+  ({List<pb.Series> items, String? nextToken}) _searchPage(
+    List<pb.Series> series,
+    String query,
+    String token,
   ) {
-    final keyword = query is String ? query.trim().toLowerCase() : '';
-    final matches =
-        series.where((item) {
-          final title = '${item['title'] ?? ''}'.toLowerCase();
-          final synopsis = '${item['synopsis'] ?? ''}'.toLowerCase();
-          return title.contains(keyword) || synopsis.contains(keyword);
-        }).toList()..sort(
-          (left, right) =>
-              '${left['title'] ?? ''}'.compareTo('${right['title'] ?? ''}'),
-        );
-    if (seriesPageSize <= 0) {
-      return {'series': matches};
-    }
-    final start = token is String && token.isNotEmpty ? int.parse(token) : 0;
-    final end = min(start + seriesPageSize, matches.length);
-    return {
-      'series': matches.sublist(min(start, matches.length), end),
-      if (end < matches.length) 'nextToken': '$end',
-    };
+    final keyword = query.trim().toLowerCase();
+    final matches = series.where((item) {
+      return item.title.toLowerCase().contains(keyword) ||
+          item.synopsis.toLowerCase().contains(keyword);
+    }).toList()..sort((left, right) => left.title.compareTo(right.title));
+    return _pageOf(matches, token);
   }
 
   /// Answers the reader-facing comment RPCs of one episode.
@@ -2235,466 +2507,515 @@ class ConnectFixtureServer {
   /// API refuses one without it.
   Future<void> _writeComment(
     HttpRequest request,
-    String path,
-    Map<String, Object?> body,
+    RecordedRequest recorded,
   ) async {
+    final path = recorded.path;
+    final list = path.endsWith('/ListEpisodeComments')
+        ? recorded.decode(pb.ListEpisodeCommentsRequest())
+        : null;
+    final listMine = path.endsWith('/ListMyEpisodeComments')
+        ? recorded.decode(pb.ListMyEpisodeCommentsRequest())
+        : null;
+    final post = path.endsWith('/PostEpisodeComment')
+        ? recorded.decode(pb.PostEpisodeCommentRequest())
+        : null;
+    if (path.endsWith('/WithdrawEpisodeComment')) {
+      recorded.decode(pb.WithdrawEpisodeCommentRequest());
+    }
+    if (path.endsWith('/ReportEpisodeComment')) {
+      recorded.decode(pb.ReportEpisodeCommentRequest());
+    }
     if (commentStatus != HttpStatus.ok) {
-      await _write(request, commentStatus, const {
-        'code': 'unavailable',
-        'message': 'unavailable',
-      });
+      await _writeUnavailable(request, commentStatus);
       return;
     }
-    final episodeId = publicIdOf(body['episodeId']);
-    if (path.endsWith('/ListEpisodeComments')) {
-      await _write(request, HttpStatus.ok, {
-        // protojson omits an empty repeated field, which is what an episode
-        // nobody has commented on is answered with.
-        'comments': ?episodeComments[episodeId],
-      });
+    if (list != null) {
+      // protojson omits an empty repeated field, which is what an episode
+      // nobody has commented on is answered with.
+      await _writeMessage(
+        request,
+        pb.ListEpisodeCommentsResponse(
+          comments: episodeComments[publicIdOf(list.episodeId)],
+        ),
+      );
       return;
     }
 
-    if (!_isAuthorized(request)) {
-      await _write(request, HttpStatus.unauthorized, {
-        'code': 'unauthenticated',
-        'message': 'invalid token',
-      });
+    if (!await _writeUnlessAuthorized(request)) {
       return;
     }
-    if (path.endsWith('/ListMyEpisodeComments')) {
-      await _write(request, HttpStatus.ok, {
-        'comments': ?myEpisodeComments[episodeId],
-      });
+    if (listMine != null) {
+      await _writeMessage(
+        request,
+        pb.ListMyEpisodeCommentsResponse(
+          comments: myEpisodeComments[publicIdOf(listMine.episodeId)],
+        ),
+      );
       return;
     }
-    if (path.endsWith('/PostEpisodeComment')) {
+    if (post != null) {
+      final episodeId = publicIdOf(post.episodeId);
       // The API refuses a body the reader has just posted on the same episode;
       // a body already among their own comments here stands in for one still
       // inside the duplicate comment window.
       final repeated = (myEpisodeComments[episodeId] ?? const []).any(
-        (comment) => comment['body'] == body['body'],
+        (comment) => comment.body == post.body,
       );
       if (repeated) {
-        await _write(request, HttpStatus.conflict, const {
-          'code': 'already_exists',
-          'message': 'the same comment was posted a moment ago',
-        });
+        await _writeError(
+          request,
+          HttpStatus.conflict,
+          'already_exists',
+          'the same comment was posted a moment ago',
+        );
         return;
       }
-      final comment = {
-        'publicId':
-            'SeedCMNT${(myEpisodeComments[episodeId]?.length ?? 0) + 1}',
-        'body': body['body'],
-        'createdAt': DateTime.now().toUtc().toIso8601String(),
-        if (commentMode == 'COMMENT_MODE_APPROVAL_REQUIRED')
-          'awaitingApproval': true,
-      };
+      final comment = pb.MyEpisodeComment(
+        publicId: 'SeedCMNT${(myEpisodeComments[episodeId]?.length ?? 0) + 1}',
+        body: post.body,
+        createdAt: DateTime.now().toUtc().toIso8601String(),
+        awaitingApproval:
+            commentMode == pb.CommentMode.COMMENT_MODE_APPROVAL_REQUIRED
+            ? true
+            : null,
+      );
       myEpisodeComments = {
         ...myEpisodeComments,
         episodeId: [comment, ...?myEpisodeComments[episodeId]],
       };
-      await _write(request, HttpStatus.ok, {'comment': comment});
+      await _writeMessage(
+        request,
+        pb.PostEpisodeCommentResponse(comment: comment),
+      );
       return;
     }
     // Withdrawing and reporting are both deliberately empty answers.
-    await _write(request, HttpStatus.ok, const {});
+    await _writeMessage(
+      request,
+      path.endsWith('/WithdrawEpisodeComment')
+          ? pb.WithdrawEpisodeCommentResponse()
+          : pb.ReportEpisodeCommentResponse(),
+    );
   }
 
   /// Answers the follow RPCs of one member, every one of which needs their
   /// session the way the API refuses one without it.
   Future<void> _writeFollow(
     HttpRequest request,
-    String path,
-    Map<String, Object?> body,
+    RecordedRequest recorded,
   ) async {
+    final path = recorded.path;
+    final updates = path.endsWith('/ListMyFollowUpdates')
+        ? recorded.decode(pb.ListMyFollowUpdatesRequest())
+        : null;
+    final follows = path.endsWith('/ListMyFollows')
+        ? recorded.decode(pb.ListMyFollowsRequest())
+        : null;
+    final target = switch (path) {
+      _ when path.endsWith('/Follow') =>
+        recorded.decode(pb.FollowRequest()).target,
+      _ when path.endsWith('/Unfollow') =>
+        recorded.decode(pb.UnfollowRequest()).target,
+      _ when path.endsWith('/GetMyFollowStatus') =>
+        recorded.decode(pb.GetMyFollowStatusRequest()).target,
+      _ => null,
+    };
     if (followStatus != HttpStatus.ok) {
-      await _write(request, followStatus, const {
-        'code': 'unavailable',
-        'message': 'unavailable',
-      });
+      await _writeUnavailable(request, followStatus);
       return;
     }
-    if (!_isAuthorized(request)) {
-      await _write(request, HttpStatus.unauthorized, {
-        'code': 'unauthenticated',
-        'message': 'invalid token',
-      });
+    if (!await _writeUnlessAuthorized(request)) {
       return;
     }
-    if (path.endsWith('/ListMyFollowUpdates')) {
-      await _write(request, HttpStatus.ok, _followUpdatesPage(body));
+    if (updates != null) {
+      final page = _paged(followUpdates, updates.token, updates.limit);
+      // protojson omits an empty repeated field.
+      await _writeMessage(
+        request,
+        pb.ListMyFollowUpdatesResponse(
+          updates: page.items,
+          nextToken: page.nextToken,
+        ),
+      );
       return;
     }
-    if (path.endsWith('/ListMyFollows')) {
-      await _write(request, HttpStatus.ok, _followsPage(body['token']));
+    if (follows != null) {
+      // protojson omits an empty repeated field, which is how a reader who
+      // follows nothing is answered.
+      final page = _paged(
+        myFollows,
+        followsPageSize > 0 ? follows.token : '',
+        followsPageSize,
+      );
+      await _writeMessage(
+        request,
+        pb.ListMyFollowsResponse(
+          follows: page.items,
+          nextToken: page.nextToken,
+        ),
+      );
+      return;
+    }
+    if (target == null) {
+      request.response.statusCode = HttpStatus.notFound;
+      await request.response.close();
       return;
     }
 
-    final target = body['target'];
-    final targetType = target is Map ? target['type'] : null;
-    final targetPublicId = target is Map ? publicIdOf(target['id']) : null;
-    final followed = myFollows.where((follow) {
-      return follow['targetType'] == targetType &&
-          follow['targetPublicId'] == targetPublicId;
-    });
+    final targetType = target.type;
+    final targetPublicId = publicIdOf(target.id);
+    bool isTarget(pb.MyFollow follow) =>
+        follow.targetType == targetType &&
+        follow.targetPublicId == targetPublicId;
     if (path.endsWith('/Follow')) {
-      if (followed.isEmpty) {
+      if (!myFollows.any(isTarget)) {
         myFollows = [
-          {
-            'targetType': targetType,
-            'targetPublicId': targetPublicId,
-            'followedAt': DateTime.now().toUtc().toIso8601String(),
-          },
+          pb.MyFollow(
+            targetType: targetType,
+            targetPublicId: targetPublicId,
+            followedAt: DateTime.now().toUtc().toIso8601String(),
+          ),
           ...myFollows,
         ];
       }
-      await _write(request, HttpStatus.ok, const {'isFollowing': true});
+      await _writeMessage(request, pb.FollowResponse(isFollowing: true));
       return;
     }
     if (path.endsWith('/Unfollow')) {
-      myFollows = myFollows.where((follow) {
-        return follow['targetType'] != targetType ||
-            follow['targetPublicId'] != targetPublicId;
-      }).toList();
+      myFollows = myFollows.where((follow) => !isTarget(follow)).toList();
       // protojson omits a false, which is what every Unfollow answers with.
-      await _write(request, HttpStatus.ok, const {});
+      await _writeMessage(request, pb.UnfollowResponse());
       return;
     }
-    await _write(request, HttpStatus.ok, {
-      if (followed.isNotEmpty) 'isFollowing': true,
-    });
-  }
-
-  /// The page of [followUpdates] the request's limit and token ask for.
-  Map<String, Object?> _followUpdatesPage(Map<String, Object?> body) {
-    final limit = body['limit'] as int? ?? 0;
-    final token = body['token'] as String? ?? '';
-    final start = min(
-      token.isEmpty ? 0 : int.parse(token),
-      followUpdates.length,
+    await _writeMessage(
+      request,
+      pb.GetMyFollowStatusResponse(
+        isFollowing: myFollows.any(isTarget) ? true : null,
+      ),
     );
-    final end = limit <= 0
-        ? followUpdates.length
-        : min(start + limit, followUpdates.length);
-    return {
-      // protojson omits an empty repeated field.
-      if (end > start) 'updates': followUpdates.sublist(start, end),
-      if (end < followUpdates.length) 'nextToken': '$end',
-    };
-  }
-
-  /// The page of [myFollows] the request's token asks for, with the token of
-  /// the page under it when there is one.
-  Map<String, Object?> _followsPage(Object? token) {
-    if (followsPageSize <= 0) {
-      // protojson omits an empty repeated field, which is how a reader who
-      // follows nothing is answered.
-      return {if (myFollows.isNotEmpty) 'follows': myFollows};
-    }
-    final start = token is String && token.isNotEmpty ? int.parse(token) : 0;
-    final end = min(start + followsPageSize, myFollows.length);
-    final page = myFollows.sublist(min(start, myFollows.length), end);
-    return {
-      if (page.isNotEmpty) 'follows': page,
-      if (end < myFollows.length) 'nextToken': '$end',
-    };
-  }
-
-  /// The page of [myPurchases] the request's token asks for, with the token of
-  /// the page under it when there is one.
-  Map<String, Object?> _purchasesPage(Object? token) {
-    if (purchasesPageSize <= 0) {
-      return {if (myPurchases.isNotEmpty) 'purchases': myPurchases};
-    }
-    final start = token is String && token.isNotEmpty ? int.parse(token) : 0;
-    final end = min(start + purchasesPageSize, myPurchases.length);
-    final page = myPurchases.sublist(min(start, myPurchases.length), end);
-    return {
-      if (page.isNotEmpty) 'purchases': page,
-      if (end < myPurchases.length) 'nextToken': '$end',
-    };
   }
 
   /// Answers the inbox RPCs of one member, every one of which needs their
   /// session the way the API refuses one without it.
   Future<void> _writeNotification(
     HttpRequest request,
-    String path,
-    Map<String, Object?> body,
+    RecordedRequest recorded,
   ) async {
+    final path = recorded.path;
+    final list = path.endsWith('/ListNotifications')
+        ? recorded.decode(pb.ListNotificationsRequest())
+        : null;
+    final mark = path.endsWith('/MarkNotificationAsRead')
+        ? recorded.decode(pb.MarkNotificationAsReadRequest())
+        : null;
+    if (path.endsWith('/CountUnreadNotifications')) {
+      recorded.decode(pb.CountUnreadNotificationsRequest());
+    }
+    if (path.endsWith('/MarkAllNotificationsAsRead')) {
+      recorded.decode(pb.MarkAllNotificationsAsReadRequest());
+    }
     if (notificationStatus != HttpStatus.ok) {
-      await _write(request, notificationStatus, const {
-        'code': 'unavailable',
-        'message': 'unavailable',
-      });
+      await _writeUnavailable(request, notificationStatus);
       return;
     }
-    if (!_isAuthorized(request)) {
-      await _write(request, HttpStatus.unauthorized, {
-        'code': 'unauthenticated',
-        'message': 'invalid token',
-      });
+    if (!await _writeUnlessAuthorized(request)) {
       return;
     }
-    if (path.endsWith('/ListNotifications')) {
-      await _write(request, HttpStatus.ok, _notificationsPage(body['token']));
+    if (list != null) {
+      final page = _paged(
+        notifications,
+        notificationsPageSize > 0 ? list.token : '',
+        notificationsPageSize,
+      );
+      await _writeMessage(
+        request,
+        pb.ListNotificationsResponse(
+          notifications: page.items,
+          nextToken: page.nextToken,
+        ),
+      );
       return;
     }
-    final unread = notifications.where((item) => item['isRead'] != true);
+    final unread = notifications.where((item) => !item.isRead);
     if (path.endsWith('/CountUnreadNotifications')) {
       // protojson omits a zero.
-      await _write(request, HttpStatus.ok, {
-        if (unread.isNotEmpty) 'unreadCount': unread.length,
-      });
+      await _writeMessage(
+        request,
+        pb.CountUnreadNotificationsResponse(
+          unreadCount: unread.isNotEmpty ? unread.length : null,
+        ),
+      );
       return;
     }
-    Map<String, Object?> read(Map<String, Object?> item) => {
-      ...item,
-      'isRead': true,
-      'readAt': DateTime.now().toUtc().toIso8601String(),
-    };
-    if (path.endsWith('/MarkAllNotificationsAsRead')) {
+    pb.NotificationItem read(pb.NotificationItem item) => item.deepCopy()
+      ..isRead = true
+      ..readAt = DateTime.now().toUtc().toIso8601String();
+    if (mark == null) {
       final marked = unread.length;
       notifications = [
-        for (final item in notifications)
-          item['isRead'] == true ? item : read(item),
+        for (final item in notifications) item.isRead ? item : read(item),
       ];
-      await _write(request, HttpStatus.ok, {
-        if (marked > 0) 'markedCount': marked,
-      });
+      await _writeMessage(
+        request,
+        pb.MarkAllNotificationsAsReadResponse(
+          markedCount: marked > 0 ? marked : null,
+        ),
+      );
       return;
     }
-    final id = body['notificationId'];
-    if (!notifications.any((item) => item['id'] == id)) {
-      await _write(request, HttpStatus.notFound, {
-        'code': 'not_found',
-        'message': 'notification not found',
-      });
+    final id = mark.notificationId;
+    if (!notifications.any((item) => item.id == id)) {
+      await _writeError(
+        request,
+        HttpStatus.notFound,
+        'not_found',
+        'notification not found',
+      );
       return;
     }
     notifications = [
       for (final item in notifications)
-        item['id'] == id && item['isRead'] != true ? read(item) : item,
+        item.id == id && !item.isRead ? read(item) : item,
     ];
-    await _write(request, HttpStatus.ok, const {'marked': true});
-  }
-
-  /// The page of [notifications] the request's token asks for, with the token
-  /// of the page under it when there is one.
-  Map<String, Object?> _notificationsPage(Object? token) {
-    if (notificationsPageSize <= 0) {
-      return {if (notifications.isNotEmpty) 'notifications': notifications};
-    }
-    final start = token is String && token.isNotEmpty ? int.parse(token) : 0;
-    final end = min(start + notificationsPageSize, notifications.length);
-    final page = notifications.sublist(min(start, notifications.length), end);
-    return {
-      if (page.isNotEmpty) 'notifications': page,
-      if (end < notifications.length) 'nextToken': '$end',
-    };
+    await _writeMessage(
+      request,
+      pb.MarkNotificationAsReadResponse(marked: true),
+    );
   }
 
   /// Answers the announcement RPCs. The reads take any caller and answer read
   /// state only to the member's session; the marks need that session.
   Future<void> _writeAnnouncement(
     HttpRequest request,
-    String path,
-    Map<String, Object?> body,
+    RecordedRequest recorded,
   ) async {
+    final path = recorded.path;
+    final list = path.endsWith('/ListAnnouncements')
+        ? recorded.decode(pb.ListAnnouncementsRequest())
+        : null;
+    final get = path.endsWith('/GetAnnouncement')
+        ? recorded.decode(pb.GetAnnouncementRequest())
+        : null;
+    final mark = path.endsWith('/MarkAnnouncementAsRead')
+        ? recorded.decode(pb.MarkAnnouncementAsReadRequest())
+        : null;
+    if (path.endsWith('/GetPinnedAnnouncement')) {
+      recorded.decode(pb.GetPinnedAnnouncementRequest());
+    }
+    if (path.endsWith('/MarkAllAnnouncementsAsRead')) {
+      recorded.decode(pb.MarkAllAnnouncementsAsReadRequest());
+    }
     if (announcementStatus != HttpStatus.ok) {
-      await _write(request, announcementStatus, const {
-        'code': 'unavailable',
-        'message': 'unavailable',
-      });
+      await _writeUnavailable(request, announcementStatus);
       return;
     }
     final member = _isAuthorized(request);
     // A token the API rejects is answered as a visitor, the way the API does.
-    Map<String, Object?> shown(Map<String, Object?> item) => member
+    pb.AnnouncementItem shown(pb.AnnouncementItem item) => member
         ? item
-        : {
-            for (final entry in item.entries)
-              if (entry.key != 'isRead' && entry.key != 'readAt')
-                entry.key: entry.value,
-          };
-    if (path.endsWith('/ListAnnouncements')) {
-      final all = [for (final item in announcements) shown(item)];
-      if (announcementsPageSize <= 0) {
-        await _write(request, HttpStatus.ok, {
-          if (all.isNotEmpty) 'announcements': all,
-        });
-        return;
-      }
-      final token = body['token'];
-      final start = token is String && token.isNotEmpty ? int.parse(token) : 0;
-      final end = min(start + announcementsPageSize, all.length);
-      final page = all.sublist(min(start, all.length), end);
-      await _write(request, HttpStatus.ok, {
-        if (page.isNotEmpty) 'announcements': page,
-        if (end < all.length) 'nextToken': '$end',
-      });
+        : (item.deepCopy()
+            ..clearIsRead()
+            ..clearReadAt());
+    if (list != null) {
+      final page = _paged(
+        [for (final item in announcements) shown(item)],
+        announcementsPageSize > 0 ? list.token : '',
+        announcementsPageSize,
+      );
+      await _writeMessage(
+        request,
+        pb.ListAnnouncementsResponse(
+          announcements: page.items,
+          nextToken: page.nextToken,
+        ),
+      );
       return;
     }
     if (path.endsWith('/GetPinnedAnnouncement')) {
       final pinned = announcements.where(
-        (item) => item['id'] == pinnedAnnouncementId,
+        (item) => item.id == pinnedAnnouncementId,
       );
-      await _write(request, HttpStatus.ok, {
-        if (pinned.isNotEmpty) 'announcement': shown(pinned.first),
-      });
+      await _writeMessage(
+        request,
+        pb.GetPinnedAnnouncementResponse(
+          announcement: pinned.isNotEmpty ? shown(pinned.first) : null,
+        ),
+      );
       return;
     }
-    final notFound = {'code': 'not_found', 'message': 'announcement not found'};
-    if (path.endsWith('/GetAnnouncement')) {
+    if (get != null) {
       final found = announcements.where(
-        (item) => item['id'] == body['announcementId'],
+        (item) => item.id == get.announcementId,
       );
       if (found.isEmpty) {
-        await _write(request, HttpStatus.notFound, notFound);
+        await _writeAnnouncementNotFound(request);
         return;
       }
-      await _write(request, HttpStatus.ok, {
-        'announcement': shown(found.first),
-      });
+      await _writeMessage(
+        request,
+        pb.GetAnnouncementResponse(announcement: shown(found.first)),
+      );
       return;
     }
     if (!member) {
-      await _write(request, HttpStatus.unauthorized, {
-        'code': 'unauthenticated',
-        'message': 'invalid token',
-      });
+      await _writeUnauthenticated(request);
       return;
     }
-    Map<String, Object?> read(Map<String, Object?> item) =>
-        item['isRead'] == true
+    pb.AnnouncementItem read(pb.AnnouncementItem item) => item.isRead
         ? item
-        : {
-            ...item,
-            'isRead': true,
-            'readAt': DateTime.now().toUtc().toIso8601String(),
-          };
-    if (path.endsWith('/MarkAllAnnouncementsAsRead')) {
-      final marked = announcements.where((item) => item['isRead'] != true);
-      final count = marked.length;
+        : (item.deepCopy()
+            ..isRead = true
+            ..readAt = DateTime.now().toUtc().toIso8601String());
+    if (mark == null) {
+      final count = announcements.where((item) => !item.isRead).length;
       announcements = [for (final item in announcements) read(item)];
-      await _write(request, HttpStatus.ok, {
-        if (count > 0) 'markedCount': count,
-      });
+      await _writeMessage(
+        request,
+        pb.MarkAllAnnouncementsAsReadResponse(
+          markedCount: count > 0 ? count : null,
+        ),
+      );
       return;
     }
-    final id = body['announcementId'];
-    if (!announcements.any((item) => item['id'] == id)) {
-      await _write(request, HttpStatus.notFound, notFound);
+    final id = mark.announcementId;
+    if (!announcements.any((item) => item.id == id)) {
+      await _writeAnnouncementNotFound(request);
       return;
     }
     announcements = [
-      for (final item in announcements) item['id'] == id ? read(item) : item,
+      for (final item in announcements) item.id == id ? read(item) : item,
     ];
-    await _write(request, HttpStatus.ok, const {'marked': true});
+    await _writeMessage(
+      request,
+      pb.MarkAnnouncementAsReadResponse(marked: true),
+    );
   }
+
+  Future<void> _writeAnnouncementNotFound(HttpRequest request) => _writeError(
+    request,
+    HttpStatus.notFound,
+    'not_found',
+    'announcement not found',
+  );
 
   /// Answers the reading-position, finished-episode, and continue-reading RPCs
   /// of one member.
   Future<void> _writeEpisodeRead(
     HttpRequest request,
-    String path,
-    Map<String, Object?> body,
+    RecordedRequest recorded,
   ) async {
-    if (path.endsWith('/ListMyRecentSeries')) {
-      final limit = body['limit'] as int? ?? 0;
-      final token = body['token'] as String? ?? '';
-      final start = min(
-        token.isEmpty ? 0 : int.parse(token),
-        recentSeries.length,
-      );
-      final end = limit <= 0
-          ? recentSeries.length
-          : min(start + limit, recentSeries.length);
-      await _write(request, HttpStatus.ok, {
-        'series': recentSeries.sublist(start, end),
-        if (end < recentSeries.length) 'nextToken': '$end',
-      });
+    final path = recorded.path;
+    final recent = path.endsWith('/ListMyRecentSeries')
+        ? recorded.decode(pb.ListMyRecentSeriesRequest())
+        : null;
+    final progress = path.endsWith('/GetMySeriesProgress')
+        ? recorded.decode(pb.GetMySeriesProgressRequest())
+        : null;
+    final reads = path.endsWith('/ListMyEpisodeReads')
+        ? recorded.decode(pb.ListMyEpisodeReadsRequest())
+        : null;
+    final markRead = path.endsWith('/MarkEpisodeAsRead')
+        ? recorded.decode(pb.MarkEpisodeAsReadRequest())
+        : null;
+    final save = path.endsWith('/SaveReadingPosition')
+        ? recorded.decode(pb.SaveReadingPositionRequest())
+        : null;
+    final position = path.endsWith('/GetMyReadingPosition')
+        ? recorded.decode(pb.GetMyReadingPositionRequest())
+        : null;
+    if (!await _writeUnlessAuthorized(request)) {
       return;
     }
-    if (path.endsWith('/GetMySeriesProgress')) {
-      final seriesId = publicIdOf(body['seriesId']);
-      final episodes = details[seriesId]?['episodes'] as List? ?? const [];
+    if (recent != null) {
+      final page = _paged(recentSeries, recent.token, recent.limit);
+      await _writeMessage(
+        request,
+        pb.ListMyRecentSeriesResponse(
+          series: page.items,
+          nextToken: page.nextToken,
+        ),
+      );
+      return;
+    }
+    if (progress != null) {
+      final seriesId = publicIdOf(progress.seriesId);
       final finished = [
-        for (final episode in episodes)
-          if ((episode as Map)['publicId'] case final String id
-              when episodeReads.containsKey(id))
-            id,
+        for (final episode
+            in details[seriesId]?.episodes ?? const <pb.Episode>[])
+          if (episode.hasPublicId() &&
+              episodeReads.containsKey(episode.publicId))
+            episode.publicId,
       ];
-      final progress = seriesProgress[seriesId];
-      await _write(request, HttpStatus.ok, {
-        // protojson omits an unset message and an empty repeated field.
-        'progress': ?progress,
-        if (finished.isNotEmpty) 'finishedEpisodePublicIds': finished,
-      });
-      return;
-    }
-    if (path.endsWith('/ListMyEpisodeReads')) {
-      final limit = body['limit'] as int? ?? 0;
-      final token = body['token'] as String? ?? '';
-      final start = min(
-        token.isEmpty ? 0 : int.parse(token),
-        episodeReadHistory.length,
+      // protojson omits an unset message and an empty repeated field.
+      await _writeMessage(
+        request,
+        pb.GetMySeriesProgressResponse(
+          progress: seriesProgress[seriesId],
+          finishedEpisodePublicIds: finished,
+        ),
       );
-      final end = limit <= 0
-          ? episodeReadHistory.length
-          : min(start + limit, episodeReadHistory.length);
-      await _write(request, HttpStatus.ok, {
-        // protojson omits an empty repeated field.
-        if (end > start) 'reads': episodeReadHistory.sublist(start, end),
-        if (end < episodeReadHistory.length) 'nextToken': '$end',
-      });
       return;
     }
-    final episodeId = publicIdOf(body['episodeId']);
-    if (path.endsWith('/MarkEpisodeAsRead')) {
+    if (reads != null) {
+      final page = _paged(episodeReadHistory, reads.token, reads.limit);
+      // protojson omits an empty repeated field.
+      await _writeMessage(
+        request,
+        pb.ListMyEpisodeReadsResponse(
+          reads: page.items,
+          nextToken: page.nextToken,
+        ),
+      );
+      return;
+    }
+    if (markRead != null) {
       final errorCode = markReadErrorCode;
       if (errorCode != null) {
-        await _write(request, HttpStatus.badRequest, {
-          'code': errorCode,
-          'message': errorCode,
-        });
+        await _writeError(request, HttpStatus.badRequest, errorCode, errorCode);
         return;
       }
       final readAt = episodeReads.putIfAbsent(
-        episodeId,
+        publicIdOf(markRead.episodeId),
         () => DateTime.now().toUtc().toIso8601String(),
       );
-      await _write(request, HttpStatus.ok, {'readAt': readAt});
+      await _writeMessage(
+        request,
+        pb.MarkEpisodeAsReadResponse(readAt: readAt),
+      );
       return;
     }
-    if (path.endsWith('/SaveReadingPosition')) {
-      final pageIndex = body['pageIndex'] as int? ?? 0;
-      readingPositions = {...readingPositions, episodeId: pageIndex};
-      await _write(request, HttpStatus.ok, {
-        'position': _readingPosition(episodeId, pageIndex),
-      });
+    if (save != null) {
+      final episodeId = publicIdOf(save.episodeId);
+      readingPositions = {...readingPositions, episodeId: save.pageIndex};
+      await _writeMessage(
+        request,
+        pb.SaveReadingPositionResponse(
+          position: _readingPosition(episodeId, save.pageIndex),
+        ),
+      );
       return;
     }
+    final episodeId = publicIdOf(position?.episodeId);
     final pageIndex = readingPositions[episodeId];
-    await _write(request, HttpStatus.ok, {
-      // protojson omits an unset message, which is what a member who never
-      // opened the episode is answered with.
-      if (pageIndex != null) 'position': _readingPosition(episodeId, pageIndex),
-    });
+    // protojson omits an unset message, which is what a member who never
+    // opened the episode is answered with.
+    await _writeMessage(
+      request,
+      pb.GetMyReadingPositionResponse(
+        position: pageIndex == null
+            ? null
+            : _readingPosition(episodeId, pageIndex),
+      ),
+    );
   }
 
-  Map<String, Object?> _readingPosition(String episodeId, int pageIndex) {
-    return {
-      'episodePublicId': episodeId,
-      'pageIndex': pageIndex,
-      'pageCount': seedEpisodePageCount,
-      'updatedAt': DateTime.now().toUtc().toIso8601String(),
-    };
-  }
-
-  String _publicIdOf(Map<String, Object?> body) {
-    return body['publicId'] as String? ?? '';
+  pb.ReadingPosition _readingPosition(String episodeId, int pageIndex) {
+    return pb.ReadingPosition(
+      episodePublicId: episodeId,
+      pageIndex: pageIndex,
+      pageCount: seedEpisodePageCount,
+      updatedAt: DateTime.now().toUtc().toIso8601String(),
+    );
   }
 
   Map<String, String> _snapshotHeaders(HttpHeaders headers) {
@@ -2722,50 +3043,64 @@ class ConnectFixtureServer {
   /// refuses one, with `failed_precondition` rather than `unauthenticated`,
   /// because that is what tells the reader to open their mail rather than to
   /// check their password.
-  Future<void> _writeLogin(
-    HttpRequest request,
-    Map<String, Object?> body,
-  ) async {
-    final email = _trimmed(body['email']);
-    final password = _trimmed(body['password']);
+  Future<void> _writeLogin(HttpRequest request, pb.LoginRequest body) async {
+    final email = body.email.trim();
+    final password = body.password.trim();
     if (!memberDeleted &&
         email == memberEmail &&
         password == memberCurrentPassword) {
-      await _write(request, HttpStatus.ok, {
-        'user': {
-          'publicId': memberPublicId,
-          'name': memberCurrentName,
-          'role': 'member',
-        },
-        'accessToken': _accessToken(memberAccessToken),
-      });
+      await _writeMessage(
+        request,
+        pb.LoginResponse(
+          user: pb.User(
+            publicId: memberPublicId,
+            name: memberCurrentName,
+            role: 'member',
+          ),
+          accessToken: _accessToken(memberAccessToken),
+        ),
+      );
       return;
     }
     final signup = signups[email];
     if (signup == null || signup.password != password) {
-      await _write(request, HttpStatus.unauthorized, {
-        'code': 'unauthenticated',
-        'message': 'invalid credentials',
-      });
+      await _writeError(
+        request,
+        HttpStatus.unauthorized,
+        'unauthenticated',
+        'invalid credentials',
+      );
       return;
     }
     if (!signup.verified) {
-      await _write(request, HttpStatus.badRequest, {
-        'code': 'failed_precondition',
-        'message': 'email address is not verified',
-      });
+      await _writeError(
+        request,
+        HttpStatus.badRequest,
+        'failed_precondition',
+        'email address is not verified',
+      );
       return;
     }
     _signedUpSession = (email: email, signup: signup);
-    await _write(request, HttpStatus.ok, {
-      'user': {
-        'publicId': signedUpPublicId,
-        'name': signup.name,
-        'role': 'member',
-      },
-      'accessToken': _accessToken(signedUpAccessToken),
-    });
+    await _writeMessage(
+      request,
+      pb.LoginResponse(
+        user: pb.User(
+          publicId: signedUpPublicId,
+          name: signup.name,
+          role: 'member',
+        ),
+        accessToken: _accessToken(signedUpAccessToken),
+      ),
+    );
   }
+
+  /// Whether the tenant signs readers in with [provider].
+  bool _signsInWith(pb.IdentityProvider provider) => switch (provider) {
+    pb.IdentityProvider.IDENTITY_PROVIDER_APPLE => appleSignIn != null,
+    pb.IdentityProvider.IDENTITY_PROVIDER_GOOGLE => googleSignIn != null,
+    _ => false,
+  };
 
   /// `LoginWithIdToken` as the API answers it: a token linked to the member,
   /// or carrying the member's address, signs the member in; any other opens
@@ -2773,31 +3108,30 @@ class ConnectFixtureServer {
   /// tenant's pages ask for comes with it.
   Future<void> _writeLoginWithIdToken(
     HttpRequest request,
-    Map<String, Object?> body,
+    pb.LoginWithIdTokenRequest body,
   ) async {
-    final provider = _trimmed(body['provider']);
-    final nonce = _trimmed(body['nonce']);
-    final token = idTokens[_trimmed(body['idToken'])];
+    final provider = body.provider;
+    final nonce = body.nonce.trim();
+    final token = idTokens[body.idToken.trim()];
     if (token == null ||
         token.provider != provider ||
         token.nonce != nonce ||
         spentNonces.contains(nonce)) {
-      await _write(request, HttpStatus.unauthorized, {
-        'code': 'unauthenticated',
-        'message': 'invalid ID token',
-      });
+      await _writeError(
+        request,
+        HttpStatus.unauthorized,
+        'unauthenticated',
+        'invalid ID token',
+      );
       return;
     }
-    final enabled = switch (provider) {
-      'IDENTITY_PROVIDER_APPLE' => appleSignIn != null,
-      'IDENTITY_PROVIDER_GOOGLE' => googleSignIn != null,
-      _ => false,
-    };
-    if (!enabled) {
-      await _write(request, HttpStatus.badRequest, {
-        'code': 'failed_precondition',
-        'message': 'the tenant does not sign readers in with this provider',
-      });
+    if (!_signsInWith(provider)) {
+      await _writeError(
+        request,
+        HttpStatus.badRequest,
+        'failed_precondition',
+        'the tenant does not sign readers in with this provider',
+      );
       return;
     }
     final linked = memberIdentities[provider];
@@ -2808,49 +3142,54 @@ class ConnectFixtureServer {
     if (isMember) {
       memberIdentities[provider] = token;
       spentNonces.add(nonce);
-      await _write(request, HttpStatus.ok, {
-        'user': {
-          'publicId': memberPublicId,
-          'name': memberCurrentName,
-          'role': 'member',
-          ..._memberIcon,
-        },
-        'accessToken': _accessToken(memberAccessToken),
-      });
+      await _writeMessage(
+        request,
+        pb.LoginWithIdTokenResponse(
+          user: pb.User(
+            publicId: memberPublicId,
+            name: memberCurrentName,
+            role: 'member',
+            iconImageVariants: _memberIcon,
+          ),
+          accessToken: _accessToken(memberAccessToken),
+        ),
+      );
       return;
     }
-    final agreed = [
-      for (final id in (body['agreedPageVersionIds'] as List?) ?? const [])
-        '$id',
-    ];
+    final agreed = body.agreedPageVersionIds.toList();
     if ((termsPage != null || privacyPage != null) && agreed.isEmpty) {
       // Refused before the nonce is spent, so the same token comes again.
-      await _write(request, HttpStatus.badRequest, {
-        'code': 'invalid_argument',
-        'message': 'agreed_page_version_ids is required',
-        'details': [badRequestDetail('agreed_page_version_ids')],
-      });
+      await _writeError(
+        request,
+        HttpStatus.badRequest,
+        'invalid_argument',
+        'agreed_page_version_ids is required',
+        details: [badRequestDetail('agreed_page_version_ids')],
+      );
       return;
     }
     spentNonces.add(nonce);
-    final name = _trimmed(body['name']);
+    final name = body.name.trim();
     final signup = FixtureSignup(
       name: name.isEmpty ? token.email.split('@').first : name,
       password: '',
-      birthDate: _trimmed(body['birthDate']),
+      birthDate: body.birthDate.trim(),
       agreedPageVersionIds: agreed,
     )..verified = true;
     signups[token.email] = signup;
     _signedUpSession = (email: token.email, signup: signup);
-    await _write(request, HttpStatus.ok, {
-      'user': {
-        'publicId': signedUpPublicId,
-        'name': signup.name,
-        'role': 'member',
-      },
-      'accessToken': _accessToken(signedUpAccessToken),
-      'accountCreated': true,
-    });
+    await _writeMessage(
+      request,
+      pb.LoginWithIdTokenResponse(
+        user: pb.User(
+          publicId: signedUpPublicId,
+          name: signup.name,
+          role: 'member',
+        ),
+        accessToken: _accessToken(signedUpAccessToken),
+        accountCreated: true,
+      ),
+    );
   }
 
   /// `LinkIdentity` as the API answers it, in the API's order: a token it
@@ -2861,74 +3200,80 @@ class ConnectFixtureServer {
   /// ErrorInfo reason that says which.
   Future<void> _writeLinkIdentity(
     HttpRequest request,
-    Map<String, Object?> body,
+    pb.LinkIdentityRequest body,
   ) async {
     if (!await _writeUnlessAuthorized(request)) {
       return;
     }
-    final provider = _trimmed(body['provider']);
-    final nonce = _trimmed(body['nonce']);
-    final token = idTokens[_trimmed(body['idToken'])];
+    final provider = body.provider;
+    final nonce = body.nonce.trim();
+    final token = idTokens[body.idToken.trim()];
     if (token == null || token.provider != provider || token.nonce != nonce) {
-      await _write(request, HttpStatus.badRequest, {
-        'code': 'invalid_argument',
-        'message': 'invalid ID token',
-        'details': [badRequestDetail('id_token')],
-      });
+      await _writeError(
+        request,
+        HttpStatus.badRequest,
+        'invalid_argument',
+        'invalid ID token',
+        details: [badRequestDetail('id_token')],
+      );
       return;
     }
-    final enabled = switch (provider) {
-      'IDENTITY_PROVIDER_APPLE' => appleSignIn != null,
-      'IDENTITY_PROVIDER_GOOGLE' => googleSignIn != null,
-      _ => false,
-    };
-    if (!enabled) {
-      await _write(request, HttpStatus.badRequest, {
-        'code': 'failed_precondition',
-        'message': 'the tenant does not sign readers in with this provider',
-      });
+    if (!_signsInWith(provider)) {
+      await _writeError(
+        request,
+        HttpStatus.badRequest,
+        'failed_precondition',
+        'the tenant does not sign readers in with this provider',
+      );
       return;
     }
     if (otherReaderSubjects.contains(token.subject)) {
-      await _write(request, HttpStatus.badRequest, {
-        'code': 'failed_precondition',
-        'message': 'the provider account signs in to another account',
-        'details': [errorInfoDetail('IDENTITY_LINKED_TO_ANOTHER_ACCOUNT')],
-      });
+      await _writeError(
+        request,
+        HttpStatus.badRequest,
+        'failed_precondition',
+        'the provider account signs in to another account',
+        details: [errorInfoDetail('IDENTITY_LINKED_TO_ANOTHER_ACCOUNT')],
+      );
       return;
     }
-    final linked = memberIdentities[provider];
-    if (linked != null) {
-      await _write(request, HttpStatus.badRequest, {
-        'code': 'failed_precondition',
-        'message': 'the account already has an account of this provider',
-        'details': [errorInfoDetail('PROVIDER_ALREADY_LINKED')],
-      });
+    if (memberIdentities.containsKey(provider)) {
+      await _writeError(
+        request,
+        HttpStatus.badRequest,
+        'failed_precondition',
+        'the account already has an account of this provider',
+        details: [errorInfoDetail('PROVIDER_ALREADY_LINKED')],
+      );
       return;
     }
     if (spentNonces.contains(nonce)) {
-      await _write(request, HttpStatus.badRequest, {
-        'code': 'invalid_argument',
-        'message': 'the nonce has been used',
-        'details': [badRequestDetail('nonce')],
-      });
+      await _writeError(
+        request,
+        HttpStatus.badRequest,
+        'invalid_argument',
+        'the nonce has been used',
+        details: [badRequestDetail('nonce')],
+      );
       return;
     }
     spentNonces.add(nonce);
     memberIdentities[provider] = token;
-    await _write(request, HttpStatus.ok, {
-      'identity': {
-        'provider': provider,
-        'email': token.email,
-        'linkedAt': '2026-01-02T03:04:05Z',
-      },
-    });
+    await _writeMessage(
+      request,
+      pb.LinkIdentityResponse(
+        identity: pb.LinkedIdentity(
+          provider: provider,
+          email: token.email,
+          linkedAt: '2026-01-02T03:04:05Z',
+        ),
+      ),
+    );
   }
 
-  /// A Connect `google.rpc.BadRequest` detail naming [field], as connect-go
-  /// writes one: the message in protobuf binary, base64 without padding.
   /// A `google.rpc.ErrorInfo` detail naming [reason] under [domain], encoded
-  /// the way connect-go puts it in an error body.
+  /// the way connect-go puts it in an error body: the message in protobuf
+  /// binary, base64 without padding.
   static Map<String, Object?> errorInfoDetail(
     String reason, {
     String domain = 'publira',
@@ -2949,6 +3294,8 @@ class ConnectFixtureServer {
     };
   }
 
+  /// A Connect `google.rpc.BadRequest` detail naming [field], as connect-go
+  /// writes one: the message in protobuf binary, base64 without padding.
   static Map<String, Object?> badRequestDetail(String field) {
     final name = utf8.encode(field);
     final violation = [0x0a, name.length, ...name];
@@ -2963,29 +3310,27 @@ class ConnectFixtureServer {
   /// accepted exactly like a free one, so nothing here says which it was.
   Future<void> _writeCreateUser(
     HttpRequest request,
-    Map<String, Object?> body,
+    pb.CreateUserRequest body,
   ) async {
     if (signupStatus != HttpStatus.ok) {
-      await _write(request, signupStatus, {
-        'code': signupErrorCode,
-        'message': signupErrorCode,
-      });
+      await _writeError(
+        request,
+        signupStatus,
+        signupErrorCode,
+        signupErrorCode,
+      );
       return;
     }
-    final email = _trimmed(body['email']);
     signups.putIfAbsent(
-      email,
+      body.email.trim(),
       () => FixtureSignup(
-        name: _trimmed(body['name']),
-        password: _trimmed(body['password']),
-        birthDate: _trimmed(body['birthDate']),
-        agreedPageVersionIds: [
-          for (final id in body['agreedPageVersionIds'] as List? ?? const [])
-            '$id',
-        ],
+        name: body.name.trim(),
+        password: body.password.trim(),
+        birthDate: body.birthDate.trim(),
+        agreedPageVersionIds: body.agreedPageVersionIds.toList(),
       ),
     );
-    await _write(request, HttpStatus.ok, {'accepted': true});
+    await _writeMessage(request, pb.CreateUserResponse(accepted: true));
   }
 
   /// `VerifyUserEmail` for the one token [verificationToken] a sign-up here
@@ -2994,27 +3339,31 @@ class ConnectFixtureServer {
   /// issued on anything else.
   Future<void> _writeVerifyUserEmail(
     HttpRequest request,
-    Map<String, Object?> body,
+    pb.VerifyUserEmailRequest body,
   ) async {
-    final token = _trimmed(body['token']);
+    final token = body.token.trim();
     if (token == expiredVerificationToken) {
-      await _write(request, HttpStatus.badRequest, {
-        'code': 'failed_precondition',
-        'message': 'verification token expired',
-      });
+      await _writeError(
+        request,
+        HttpStatus.badRequest,
+        'failed_precondition',
+        'verification token expired',
+      );
       return;
     }
     if (token != verificationToken || signups.isEmpty) {
-      await _write(request, HttpStatus.notFound, {
-        'code': 'not_found',
-        'message': 'verification token not found',
-      });
+      await _writeError(
+        request,
+        HttpStatus.notFound,
+        'not_found',
+        'verification token not found',
+      );
       return;
     }
     for (final signup in signups.values) {
       signup.verified = true;
     }
-    await _write(request, HttpStatus.ok, {'verified': true});
+    await _writeMessage(request, pb.VerifyUserEmailResponse(verified: true));
   }
 
   /// `ConfirmPasswordReset` for the member's [passwordResetToken]. Everything
@@ -3023,160 +3372,152 @@ class ConnectFixtureServer {
   /// else.
   Future<void> _writeConfirmPasswordReset(
     HttpRequest request,
-    Map<String, Object?> body,
+    pb.ConfirmPasswordResetRequest body,
   ) async {
-    final token = _trimmed(body['token']);
-    final newPassword = _trimmed(body['newPassword']);
+    final token = body.token.trim();
+    final newPassword = body.newPassword.trim();
     if (token.isEmpty || newPassword.isEmpty) {
-      await _write(request, HttpStatus.badRequest, {
-        'code': 'invalid_argument',
-        'message': 'token and new_password are required',
-      });
+      await _writeInvalidArgument(
+        request,
+        'token and new_password are required',
+      );
       return;
     }
     if (token == expiredPasswordResetToken) {
-      await _write(request, HttpStatus.badRequest, {
-        'code': 'failed_precondition',
-        'message': 'password reset token expired',
-      });
+      await _writeError(
+        request,
+        HttpStatus.badRequest,
+        'failed_precondition',
+        'password reset token expired',
+      );
       return;
     }
     if (token != passwordResetToken) {
-      await _write(request, HttpStatus.notFound, {
-        'code': 'not_found',
-        'message': 'password reset token not found',
-      });
+      await _writeError(
+        request,
+        HttpStatus.notFound,
+        'not_found',
+        'password reset token not found',
+      );
       return;
     }
     memberCurrentPassword = newPassword;
-    await _write(request, HttpStatus.ok, {'confirmed': true});
+    await _writeMessage(
+      request,
+      pb.ConfirmPasswordResetResponse(confirmed: true),
+    );
   }
 
-  Map<String, Object?> _accessToken(String token) => {
-    'token': token,
-    'expiresAt': DateTime.now()
+  pb.AccessToken _accessToken(String token) => pb.AccessToken(
+    token: token,
+    expiresAt: DateTime.now()
         .toUtc()
         .add(const Duration(hours: 24))
         .toIso8601String(),
-  };
+  );
 
-  String _trimmed(Object? value) => value is String ? value.trim() : '';
+  /// The member's own account as `UpdateMe`, `UploadMyIcon`, and
+  /// `DeleteMyIcon` answer it.
+  pb.User _memberUser() => pb.User(
+    publicId: memberPublicId,
+    name: memberCurrentName,
+    role: 'member',
+    birthDate: memberBirthDate.isNotEmpty ? memberBirthDate : null,
+    iconImageVariants: _memberIcon,
+  );
 
   /// `UpdateMe` as the API applies a birth date: once, and only as a calendar
   /// date the tenant has reached and no more than 130 years back.
   Future<void> _writeUpdateMe(
     HttpRequest request,
-    Map<String, Object?> body,
+    pb.UpdateMeRequest body,
   ) async {
-    if (!_isAuthorized(request)) {
-      await _write(request, HttpStatus.unauthorized, {
-        'code': 'unauthenticated',
-        'message': 'invalid token',
-      });
+    if (!await _writeUnlessAuthorized(request)) {
       return;
     }
-    final name = _trimmed(body['name']);
+    final name = body.name.trim();
     if (name.isEmpty || name.runes.length > 100) {
-      await _write(request, HttpStatus.badRequest, {
-        'code': 'invalid_argument',
-        'message': 'name is required',
-      });
+      await _writeInvalidArgument(request, 'name is required');
       return;
     }
-    final birthDate = body['birthDate'];
+    final birthDate = body.birthDate;
     // A date is sent beside the name the account already holds, so a form
     // recording one that sent any other name has lost track of the account.
-    if (birthDate is String &&
-        birthDate.isNotEmpty &&
-        name != memberCurrentName) {
-      await _write(request, HttpStatus.badRequest, {
-        'code': 'invalid_argument',
-        'message': 'unexpected name beside a birth date',
-      });
+    if (birthDate.isNotEmpty && name != memberCurrentName) {
+      await _writeInvalidArgument(
+        request,
+        'unexpected name beside a birth date',
+      );
       return;
     }
-    if (birthDate is String && birthDate.isNotEmpty) {
+    if (birthDate.isNotEmpty) {
       if (memberBirthDate.isNotEmpty) {
-        await _write(request, HttpStatus.badRequest, {
-          'code': 'failed_precondition',
-          'message': 'birth date is already set',
-        });
+        await _writeError(
+          request,
+          HttpStatus.badRequest,
+          'failed_precondition',
+          'birth date is already set',
+        );
         return;
       }
       final born = parseBirthDate(birthDate);
       final today = calendarDayIn(tenantTimeZone, DateTime.now())!;
       if (born == null || born.isAfter(today) || ageOn(born, today) > 130) {
-        await _write(request, HttpStatus.badRequest, {
-          'code': 'invalid_argument',
-          'message': 'invalid birth date',
-        });
+        await _writeInvalidArgument(request, 'invalid birth date');
         return;
       }
       memberBirthDate = birthDate;
     }
     memberCurrentName = name;
-    await _write(request, HttpStatus.ok, {
-      'user': {
-        'publicId': memberPublicId,
-        'name': memberCurrentName,
-        'role': 'member',
-        if (memberBirthDate.isNotEmpty) 'birthDate': memberBirthDate,
-        ..._memberIcon,
-      },
-    });
+    await _writeMessage(request, pb.UpdateMeResponse(user: _memberUser()));
   }
 
   /// `UploadMyIcon` and `DeleteMyIcon` as the API answers them: an upload has
   /// to be an `image/*` with bytes in it, and is stored under a new path each
-  /// time, since the API never stores a replaced icon over the old one.
+  /// time, since the API never stores a replaced icon over the old one. A
+  /// `null` [upload] is `DeleteMyIcon`.
   Future<void> _writeChangeMyIcon(
     HttpRequest request,
-    Map<String, Object?> body, {
-    required bool upload,
-  }) async {
-    if (!_isAuthorized(request)) {
-      await _write(request, HttpStatus.unauthorized, {
-        'code': 'unauthenticated',
-        'message': 'invalid token',
-      });
+    pb.UploadMyIconRequest? upload,
+  ) async {
+    if (!await _writeUnlessAuthorized(request)) {
       return;
     }
-    if (upload) {
-      final data = body['iconData'];
-      final contentType = _trimmed(body['iconContentType']);
-      final bytes = data is String ? base64.decode(data) : const <int>[];
+    if (upload != null) {
+      final bytes = upload.iconData.toList();
+      final contentType = upload.iconContentType.trim();
       if (bytes.isEmpty || !contentType.startsWith('image/')) {
-        await _write(request, HttpStatus.badRequest, {
-          'code': 'invalid_argument',
-          'message': 'invalid icon image',
-          'details': [badRequestDetail('icon_data')],
-        });
+        await _writeError(
+          request,
+          HttpStatus.badRequest,
+          'invalid_argument',
+          'invalid icon image',
+          details: [badRequestDetail('icon_data')],
+        );
         return;
       }
       if (!iconStorageConfigured) {
-        await _write(request, HttpStatus.badRequest, {
-          'code': 'failed_precondition',
-          'message': 'storage is not configured',
-          'details': [errorInfoDetail('STORAGE_NOT_CONFIGURED')],
-        });
+        await _writeError(
+          request,
+          HttpStatus.badRequest,
+          'failed_precondition',
+          'storage is not configured',
+          details: [errorInfoDetail('STORAGE_NOT_CONFIGURED')],
+        );
         return;
       }
       iconUploads.add((bytes: bytes, contentType: contentType));
       memberIconPath =
           '/images/users/0190a0c0-0000-7000-8000-${iconUploads.length.toString().padLeft(12, '0')}';
-    } else {
-      iconRemovals++;
-      memberIconPath = null;
+      await _writeMessage(
+        request,
+        pb.UploadMyIconResponse(user: _memberUser()),
+      );
+      return;
     }
-    await _write(request, HttpStatus.ok, {
-      'user': {
-        'publicId': memberPublicId,
-        'name': memberCurrentName,
-        'role': 'member',
-        if (memberBirthDate.isNotEmpty) 'birthDate': memberBirthDate,
-        ..._memberIcon,
-      },
-    });
+    iconRemovals++;
+    memberIconPath = null;
+    await _writeMessage(request, pb.DeleteMyIconResponse(user: _memberUser()));
   }
 
   /// `ChangePassword` as the API answers it: the current password has to be
@@ -3184,22 +3525,25 @@ class ConnectFixtureServer {
   /// with is replaced by the one handed back.
   Future<void> _writeChangePassword(
     HttpRequest request,
-    Map<String, Object?> body,
+    pb.ChangePasswordRequest body,
   ) async {
     if (!await _writeUnlessAuthorized(request)) {
       return;
     }
-    final current = _trimmed(body['currentPassword']);
-    final next = _trimmed(body['newPassword']);
+    final current = body.currentPassword.trim();
+    final next = body.newPassword.trim();
     if (current != memberCurrentPassword || next.isEmpty || next == current) {
       await _writeInvalidArgument(request, 'invalid password change');
       return;
     }
     memberCurrentPassword = next;
     activeAccessToken = changedPasswordAccessToken;
-    await _write(request, HttpStatus.ok, {
-      'accessToken': _accessToken(changedPasswordAccessToken),
-    });
+    await _writeMessage(
+      request,
+      pb.ChangePasswordResponse(
+        accessToken: _accessToken(changedPasswordAccessToken),
+      ),
+    );
   }
 
   /// `RequestEmailChange` as the API answers it: the current address has to
@@ -3208,69 +3552,89 @@ class ConnectFixtureServer {
   /// `already_exists`.
   Future<void> _writeRequestEmailChange(
     HttpRequest request,
-    Map<String, Object?> body,
+    pb.RequestEmailChangeRequest body,
   ) async {
     if (!await _writeUnlessAuthorized(request)) {
       return;
     }
-    final current = _trimmed(body['currentEmail']);
-    final next = _trimmed(body['newEmail']);
+    final current = body.currentEmail.trim();
+    final next = body.newEmail.trim();
     if (current != memberEmail || next.isEmpty || next == current) {
       await _writeInvalidArgument(request, 'invalid email change');
       return;
     }
-    if (_trimmed(body['provider']).isNotEmpty) {
-      if (!await _writeUnlessConfirmedWithIdentity(request, body)) {
+    if (body.hasProvider()) {
+      final confirmed = await _writeUnlessConfirmedWithIdentity(
+        request,
+        provider: body.provider,
+        idToken: body.idToken,
+        nonce: body.nonce,
+      );
+      if (!confirmed) {
         return;
       }
-    } else if (_trimmed(body['currentPassword']) != memberCurrentPassword) {
+    } else if (body.currentPassword.trim() != memberCurrentPassword) {
       await _writeInvalidArgument(request, 'invalid email change');
       return;
     }
     if (next == takenEmail) {
-      await _write(request, HttpStatus.conflict, {
-        'code': 'already_exists',
-        'message': 'email already exists',
-      });
+      await _writeError(
+        request,
+        HttpStatus.conflict,
+        'already_exists',
+        'email already exists',
+      );
       return;
     }
     requestedEmailChanges.add(next);
-    await _write(request, HttpStatus.ok, {'requested': true});
+    await _writeMessage(
+      request,
+      pb.RequestEmailChangeResponse(requested: true),
+    );
   }
 
   /// `ConfirmEmailChange` for the tokens this fixture names, which needs no
   /// session the way the API needs none.
   Future<void> _writeConfirmEmailChange(
     HttpRequest request,
-    Map<String, Object?> body,
+    pb.ConfirmEmailChangeRequest body,
   ) async {
-    switch (_trimmed(body['token'])) {
+    switch (body.token.trim()) {
       case emailChangeToken:
-        await _write(request, HttpStatus.ok, {
-          'confirmed': true,
-          'changed': true,
-        });
+        await _writeMessage(
+          request,
+          pb.ConfirmEmailChangeResponse(confirmed: true, changed: true),
+        );
       case pendingEmailChangeToken:
         // protojson omits `changed` while it is false.
-        await _write(request, HttpStatus.ok, {
-          'confirmed': true,
-          'pendingConfirmationFor': 'current_email',
-        });
+        await _writeMessage(
+          request,
+          pb.ConfirmEmailChangeResponse(
+            confirmed: true,
+            pendingConfirmationFor: 'current_email',
+          ),
+        );
       case conflictingEmailChangeToken:
-        await _write(request, HttpStatus.conflict, {
-          'code': 'already_exists',
-          'message': 'email already exists',
-        });
+        await _writeError(
+          request,
+          HttpStatus.conflict,
+          'already_exists',
+          'email already exists',
+        );
       case expiredEmailChangeToken:
-        await _write(request, HttpStatus.badRequest, {
-          'code': 'failed_precondition',
-          'message': 'email change token expired',
-        });
+        await _writeError(
+          request,
+          HttpStatus.badRequest,
+          'failed_precondition',
+          'email change token expired',
+        );
       default:
-        await _write(request, HttpStatus.notFound, {
-          'code': 'not_found',
-          'message': 'email change token not found',
-        });
+        await _writeError(
+          request,
+          HttpStatus.notFound,
+          'not_found',
+          'email change token not found',
+        );
     }
   }
 
@@ -3279,30 +3643,38 @@ class ConnectFixtureServer {
   /// then gone along with every token it held.
   Future<void> _writeDeleteMe(
     HttpRequest request,
-    Map<String, Object?> body,
+    pb.DeleteMeRequest body,
   ) async {
     if (!await _writeUnlessAuthorized(request)) {
       return;
     }
-    if (_trimmed(body['provider']).isNotEmpty) {
-      if (!await _writeUnlessConfirmedWithIdentity(request, body)) {
+    if (body.hasProvider()) {
+      final confirmed = await _writeUnlessConfirmedWithIdentity(
+        request,
+        provider: body.provider,
+        idToken: body.idToken,
+        nonce: body.nonce,
+      );
+      if (!confirmed) {
         return;
       }
-    } else if (_trimmed(body['password']) != memberCurrentPassword) {
+    } else if (body.password.trim() != memberCurrentPassword) {
       await _writeInvalidArgument(request, 'invalid password');
       return;
     }
     if (memberIsLastTenantAdmin) {
-      await _write(request, HttpStatus.badRequest, {
-        'code': 'failed_precondition',
-        'message': 'the last tenant admin cannot be deleted',
-        'details': [errorInfoDetail('LAST_TENANT_ADMIN')],
-      });
+      await _writeError(
+        request,
+        HttpStatus.badRequest,
+        'failed_precondition',
+        'the last tenant admin cannot be deleted',
+        details: [errorInfoDetail('LAST_TENANT_ADMIN')],
+      );
       return;
     }
     memberDeleted = true;
     activeAccessToken = null;
-    await _write(request, HttpStatus.ok, const <String, Object?>{});
+    await _writeMessage(request, pb.DeleteMeResponse());
   }
 
   /// Checks the fresh sign-in an account without a password confirms a step
@@ -3311,18 +3683,22 @@ class ConnectFixtureServer {
   /// `invalid_argument` for a token of an account not linked to the member.
   /// Reports whether the request may go on.
   Future<bool> _writeUnlessConfirmedWithIdentity(
-    HttpRequest request,
-    Map<String, Object?> body,
-  ) async {
-    final token = idTokens[_trimmed(body['idToken'])];
-    if (token == null || token.nonce != _trimmed(body['nonce'])) {
-      await _write(request, HttpStatus.unauthorized, {
-        'code': 'unauthenticated',
-        'message': 'invalid ID token',
-      });
+    HttpRequest request, {
+    required pb.IdentityProvider provider,
+    required String idToken,
+    required String nonce,
+  }) async {
+    final token = idTokens[idToken.trim()];
+    if (token == null || token.nonce != nonce.trim()) {
+      await _writeError(
+        request,
+        HttpStatus.unauthorized,
+        'unauthenticated',
+        'invalid ID token',
+      );
       return false;
     }
-    final linked = memberIdentities[_trimmed(body['provider'])];
+    final linked = memberIdentities[provider];
     if (linked == null || token.subject != linked.subject) {
       await _writeInvalidArgument(request, 'the ID token is not the account');
       return false;
@@ -3336,71 +3712,78 @@ class ConnectFixtureServer {
     if (_isAuthorized(request)) {
       return true;
     }
-    await _write(request, HttpStatus.unauthorized, {
-      'code': 'unauthenticated',
-      'message': 'invalid token',
-    });
+    await _writeUnauthenticated(request);
     return false;
   }
 
-  Future<void> _writeInvalidArgument(HttpRequest request, String message) {
-    return _write(request, HttpStatus.badRequest, {
-      'code': 'invalid_argument',
-      'message': message,
-    });
-  }
+  Future<void> _writeUnauthenticated(HttpRequest request) => _writeError(
+    request,
+    HttpStatus.unauthorized,
+    'unauthenticated',
+    'invalid token',
+  );
+
+  Future<void> _writeInvalidArgument(HttpRequest request, String message) =>
+      _writeError(request, HttpStatus.badRequest, 'invalid_argument', message);
+
+  /// Answers [status] as the API answers a dependency it cannot reach.
+  Future<void> _writeUnavailable(HttpRequest request, int status) =>
+      _writeError(request, status, 'unavailable', 'unavailable');
 
   /// Answers both legal page agreement RPCs with the pages the member owes
   /// afterwards, the way the API does. An agreement to a version the member
   /// is not asked about is refused as the API refuses one the tenant does
-  /// not name.
+  /// not name. A `null` [agree] is `GetMyLegalPageAgreements`.
   ///
   /// The account a sign-up opened agreed to the pages it was shown, so it
   /// owes nothing; its session is accepted rather than refused, which the app
   /// would take as a session the API has stopped accepting.
   Future<void> _writeLegalPageAgreements(
     HttpRequest request,
-    String path,
-    Map<String, Object?> body,
+    pb.AgreeToLegalPagesRequest? agree,
   ) async {
-    if (_signedUpSession != null &&
-        request.headers.value(HttpHeaders.authorizationHeader) ==
-            'Bearer $signedUpAccessToken') {
-      await _write(request, HttpStatus.ok, const <String, Object?>{});
+    if (_isSignedUpSession(request)) {
+      await _writeMessage(
+        request,
+        agree == null
+            ? pb.GetMyLegalPageAgreementsResponse()
+            : pb.AgreeToLegalPagesResponse(),
+      );
       return;
     }
-    if (!_isAuthorized(request)) {
-      await _write(request, HttpStatus.unauthorized, {
-        'code': 'unauthenticated',
-        'message': 'invalid token',
-      });
+    if (!await _writeUnlessAuthorized(request)) {
       return;
     }
-    if (path.endsWith('/AgreeToLegalPages')) {
-      final agreed = [
-        for (final id in body['agreedPageVersionIds'] as List? ?? const [])
-          '$id',
-      ];
+    if (agree != null) {
+      final agreed = agree.agreedPageVersionIds.toList();
       final owed = {
-        for (final page in [?owedTermsPage, ?owedPrivacyPage])
-          page['versionId'],
+        for (final page in [?owedTermsPage, ?owedPrivacyPage]) page.versionId,
       };
       if (agreed.isEmpty || !agreed.every(owed.contains)) {
         await _writeInvalidArgument(request, 'unknown page version');
         return;
       }
       legalPageAgreements.add(agreed);
-      if (agreed.contains(owedTermsPage?['versionId'])) {
+      if (owedTermsPage case final page? when agreed.contains(page.versionId)) {
         owedTermsPage = null;
       }
-      if (agreed.contains(owedPrivacyPage?['versionId'])) {
+      if (owedPrivacyPage case final page?
+          when agreed.contains(page.versionId)) {
         owedPrivacyPage = null;
       }
     }
-    await _write(request, HttpStatus.ok, {
-      'termsPage': ?owedTermsPage,
-      'privacyPage': ?owedPrivacyPage,
-    });
+    await _writeMessage(
+      request,
+      agree == null
+          ? pb.GetMyLegalPageAgreementsResponse(
+              termsPage: owedTermsPage,
+              privacyPage: owedPrivacyPage,
+            )
+          : pb.AgreeToLegalPagesResponse(
+              termsPage: owedTermsPage,
+              privacyPage: owedPrivacyPage,
+            ),
+    );
   }
 
   bool _isAuthorized(HttpRequest request) {
@@ -3411,6 +3794,13 @@ class ConnectFixtureServer {
     return request.headers.value(HttpHeaders.authorizationHeader) ==
         'Bearer $token';
   }
+
+  /// Whether [request] carries the session `Login` issued for an account a
+  /// test signed up here.
+  bool _isSignedUpSession(HttpRequest request) =>
+      _signedUpSession != null &&
+      request.headers.value(HttpHeaders.authorizationHeader) ==
+          'Bearer $signedUpAccessToken';
 
   /// Answers a page the way image-server does.
   ///
@@ -3472,18 +3862,103 @@ class ConnectFixtureServer {
     return (_currentWindowMediaToken, freeEpisodeMediaSubject);
   }
 
-  Future<void> _write(HttpRequest request, int status, Object body) async {
+  /// Answers [message] with 200, every record in it carrying the internal id
+  /// derived from its public id.
+  Future<void> _writeMessage(HttpRequest request, GeneratedMessage message) =>
+      _writeJson(
+        request,
+        HttpStatus.ok,
+        _withInternalIds(message.deepCopy()).toProto3Json(),
+      );
+
+  /// Answers [status] with a Connect error body. The envelope is the Connect
+  /// protocol's own rather than a proto message, so it stays JSON.
+  Future<void> _writeError(
+    HttpRequest request,
+    int status,
+    String code,
+    String message, {
+    List<Map<String, Object?>>? details,
+  }) => _writeJson(request, status, {
+    'code': code,
+    'message': message,
+    'details': ?details,
+  });
+
+  /// Answers one of the raw override hooks such as [listResponse]: a
+  /// generated message as its protojson, and anything else as the JSON it is.
+  Future<void> _writeRaw(HttpRequest request, int status, Object body) =>
+      body is GeneratedMessage
+      ? _writeJson(
+          request,
+          status,
+          _withInternalIds(body.deepCopy()).toProto3Json(),
+        )
+      : _writeJson(request, status, _withInternalIdsInJson(body));
+
+  /// Answers [status] with the raw override [body] when a test set one, and
+  /// as an unavailable dependency otherwise.
+  Future<void> _writeRawOrUnavailable(
+    HttpRequest request,
+    int status,
+    Object? body,
+  ) => body == null
+      ? _writeUnavailable(request, status)
+      : _writeRaw(request, status, body);
+
+  Future<void> _writeJson(HttpRequest request, int status, Object? body) async {
     request.response.statusCode = status;
     request.response.headers.contentType = ContentType.json;
-    request.response.write(jsonEncode(_withInternalIds(body)));
+    request.response.write(jsonEncode(body));
     await request.response.close();
   }
 
-  /// [body] with every record that names a public id also carrying the
-  /// internal id the API answers beside it.
-  static Object? _withInternalIds(Object? body) => switch (body) {
+  /// [message] with every record in it whose message has both a public id
+  /// and an internal id field carrying the internal id derived from the
+  /// public one, unless it already holds one: `id` beside `publicId`, and
+  /// `targetId` beside `targetPublicId`.
+  static T _withInternalIds<T extends GeneratedMessage>(T message) {
+    final info = message.info_;
+    void derive(String from, String to) {
+      final source = info.byName[from];
+      final target = info.byName[to];
+      if (source == null ||
+          target == null ||
+          !message.hasField(source.tagNumber) ||
+          message.hasField(target.tagNumber)) {
+        return;
+      }
+      if (message.getField(source.tagNumber) case final String publicId) {
+        message.setField(target.tagNumber, internalIdOf(publicId));
+      }
+    }
+
+    derive('publicId', 'id');
+    derive('targetPublicId', 'targetId');
+    for (final field in info.fieldInfo.values) {
+      if (!message.hasField(field.tagNumber)) {
+        continue;
+      }
+      switch (message.getField(field.tagNumber)) {
+        case final GeneratedMessage child:
+          _withInternalIds(child);
+        case final List<Object?> children:
+          children.whereType<GeneratedMessage>().forEach(_withInternalIds);
+        case final Map<Object?, Object?> children:
+          children.values.whereType<GeneratedMessage>().forEach(
+            _withInternalIds,
+          );
+      }
+    }
+    return message;
+  }
+
+  /// [body], raw JSON, with every record that names a public id also carrying
+  /// the internal id the API answers beside it.
+  static Object? _withInternalIdsInJson(Object? body) => switch (body) {
     final Map<Object?, Object?> map => {
-      for (final entry in map.entries) entry.key: _withInternalIds(entry.value),
+      for (final entry in map.entries)
+        entry.key: _withInternalIdsInJson(entry.value),
       if (map['publicId'] case final String publicId
           when !map.containsKey('id'))
         'id': internalIdOf(publicId),
@@ -3492,7 +3967,7 @@ class ConnectFixtureServer {
         'targetId': internalIdOf(publicId),
     },
     final List<Object?> list => [
-      for (final item in list) _withInternalIds(item),
+      for (final item in list) _withInternalIdsInJson(item),
     ],
     _ => body,
   };
@@ -3530,8 +4005,8 @@ class FixtureIdToken {
     required this.nonce,
   });
 
-  /// The provider's wire name (`IDENTITY_PROVIDER_GOOGLE`).
-  final String provider;
+  /// The provider that issued the token.
+  final pb.IdentityProvider provider;
 
   /// The provider's stable id for the account, which a link is keyed on.
   final String subject;
@@ -3542,10 +4017,10 @@ class FixtureIdToken {
 /// One Connect request [ConnectFixtureServer] answered, kept so a test can
 /// assert what the client sent and not only what it did with the answer.
 class RecordedRequest {
-  const RecordedRequest({
+  RecordedRequest({
     required this.path,
     required this.headers,
-    required this.body,
+    required this._json,
   });
 
   /// Request path, ending in the Connect procedure name.
@@ -3554,6 +4029,19 @@ class RecordedRequest {
   /// Request headers, under lower-cased names.
   final Map<String, String> headers;
 
-  /// Decoded JSON request body, empty when the request carried none.
-  final Map<String, Object?> body;
+  /// The protojson body as it arrived, empty when the request carried none.
+  final Map<String, Object?> _json;
+
+  /// Merges the body into [message], which is the request message of the
+  /// procedure this request called, and returns it.
+  ///
+  /// The merge is strict: a field the message does not define, or a value of
+  /// the wrong type, throws a [FormatException], so a client that sends what
+  /// `proto/` does not describe fails the test. A field the client set is
+  /// present on the message even when it holds its default, so `hasToken()`
+  /// tells a sent empty token from one left out.
+  T decode<T extends GeneratedMessage>(T message) {
+    message.mergeFromProto3Json(_json);
+    return message;
+  }
 }

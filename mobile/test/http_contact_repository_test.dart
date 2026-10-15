@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:publira/api/connect_client.dart';
+import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/contact.pb.dart' as pb;
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/contact/contact_failure.dart';
 import 'package:publira/contact/http_contact_repository.dart';
@@ -41,14 +43,19 @@ void main() {
       body: 'My date of birth is wrong.',
     );
 
-    final request = server.requestsTo('SubmitContactMessage').single;
-    expect(request.body, {
-      'tenant': {'tenantId': ConnectFixtureServer.defaultTenantId},
-      'replyToEmail': 'reader@example.com',
-      'subject': 'About my account',
-      'body': 'My date of birth is wrong.',
-    });
-    expect(request.headers['authorization'], isNull);
+    final call = server.requestsTo('SubmitContactMessage').single;
+    expect(
+      call.decode(pb.SubmitContactMessageRequest()),
+      pb.SubmitContactMessageRequest(
+        tenant: pb.TenantContext(
+          tenantId: ConnectFixtureServer.defaultTenantId,
+        ),
+        replyToEmail: 'reader@example.com',
+        subject: 'About my account',
+        body: 'My date of birth is wrong.',
+      ),
+    );
+    expect(call.headers['authorization'], isNull);
   });
 
   test('a signed-in reader sends their session along', () async {
@@ -60,9 +67,9 @@ void main() {
       body: 'Hello.',
     );
 
-    final request = server.requestsTo('SubmitContactMessage').single;
-    expect(request.headers['authorization'], 'Bearer $accessToken');
-    expect(request.body.containsKey('subject'), isFalse);
+    final call = server.requestsTo('SubmitContactMessage').single;
+    expect(call.headers['authorization'], 'Bearer $accessToken');
+    expect(call.decode(pb.SubmitContactMessageRequest()).hasSubject(), isFalse);
   });
 
   for (final (code, status, kind) in [

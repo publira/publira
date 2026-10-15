@@ -41,7 +41,14 @@ void main() {
         httpClient: MockClient((_) async {
           return suspended
               ? _suspendedResponse()
-              : http.Response(jsonEncode(const {'tenantId': _tenantId}), 200);
+              : http.Response(
+                  jsonEncode(
+                    pb.GetTenantByDomainResponse(
+                      tenantId: _tenantId,
+                    ).toProto3Json(),
+                  ),
+                  200,
+                );
         }),
       );
 

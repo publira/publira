@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:fixnum/fixnum.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:integration_test/integration_test.dart';
@@ -12,6 +13,8 @@ import 'package:publira/api/gen/publira/types/v1/types.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/auth.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/catalog.pb.dart' as pb;
 import 'package:publira/api/gen/publira/v1/notification.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/page.pb.dart' as pb;
+import 'package:publira/api/gen/publira/v1/tenant.pb.dart' as pb;
 import 'package:publira/api/episode_page_store.dart';
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/app.dart';
@@ -565,9 +568,11 @@ void main() {
           find.byKey(const ValueKey('series-tile-series-kitchen')),
           findsNothing,
         );
-        final request = server.requestsTo('ListPublishedSeries').last;
-        expect(request.body['genrePublicId'], 'SeedGENRAAA1');
-        expect(request.body['surface'], appClientSurface.name);
+        final request = server
+            .requestsOf(pb.ListPublishedSeriesRequest.new)
+            .last;
+        expect(request.genrePublicId, 'SeedGENRAAA1');
+        expect(request.surface, appClientSurface);
       });
     });
 
@@ -587,11 +592,11 @@ void main() {
 
         expect(find.byKey(const ValueKey('genre-ranking-error')), findsNothing);
         final request = server
-            .requestsTo('ListRankedSeries')
-            .lastWhere((request) => request.body['genrePublicId'] != null);
-        expect(request.body['genrePublicId'], 'SeedGENRAAA1');
-        expect(request.body['period'], 'RANKING_PERIOD_WEEKLY');
-        expect(request.body['ageRating'], 'SERIES_AGE_RATING_ALL');
+            .requestsOf(pb.ListRankedSeriesRequest.new)
+            .lastWhere((request) => request.hasGenrePublicId());
+        expect(request.genrePublicId, 'SeedGENRAAA1');
+        expect(request.period, pb.RankingPeriod.RANKING_PERIOD_WEEKLY);
+        expect(request.ageRating, pb.SeriesAgeRating.SERIES_AGE_RATING_ALL);
 
         await tapVisible(tester, leader);
         await pumpUntilRouteSettled(
@@ -630,13 +635,11 @@ void main() {
 
           expect(find.text('Fantasy ranking'), findsOneWidget);
           final request = server
-              .requestsTo('ListRankedSeries')
-              .lastWhere(
-                (request) => request.body['limit'] == rankingPageLimit,
-              );
-          expect(request.body['genrePublicId'], 'SeedGENRAAA1');
-          expect(request.body['period'], 'RANKING_PERIOD_WEEKLY');
-          expect(request.body['ageRating'], 'SERIES_AGE_RATING_ALL');
+              .requestsOf(pb.ListRankedSeriesRequest.new)
+              .lastWhere((request) => request.limit == rankingPageLimit);
+          expect(request.genrePublicId, 'SeedGENRAAA1');
+          expect(request.period, pb.RankingPeriod.RANKING_PERIOD_WEEKLY);
+          expect(request.ageRating, pb.SeriesAgeRating.SERIES_AGE_RATING_ALL);
         },
       );
     });
@@ -714,8 +717,8 @@ void main() {
 
         expect(
           server
-              .requestsTo('ListPublishedCreators')
-              .map((request) => request.body['token']),
+              .requestsOf(pb.ListPublishedCreatorsRequest.new)
+              .map((request) => request.token),
           contains('2'),
         );
         await tapVisible(tester, third);
@@ -746,8 +749,10 @@ void main() {
         );
 
         expect(find.byKey(const ValueKey('label-body')), findsOneWidget);
-        final request = server.requestsTo('ListPublishedLabels').last;
-        expect(request.body['surface'], appClientSurface.name);
+        final request = server
+            .requestsOf(pb.ListPublishedLabelsRequest.new)
+            .last;
+        expect(request.surface, appClientSurface);
       });
     });
 
@@ -772,13 +777,16 @@ void main() {
           );
 
           final pages = server
-              .requestsTo('ListRankedSeries')
-              .where((request) => request.body['limit'] == rankingPageLimit);
-          expect(pages.map((request) => request.body['token']), [null, '1']);
+              .requestsOf(pb.ListRankedSeriesRequest.new)
+              .where((request) => request.limit == rankingPageLimit);
+          expect(
+            pages.map((request) => request.hasToken() ? request.token : null),
+            [null, '1'],
+          );
           for (final page in pages) {
-            expect(page.body['period'], 'RANKING_PERIOD_WEEKLY');
-            expect(page.body['ageRating'], 'SERIES_AGE_RATING_ALL');
-            expect(page.body['surface'], appClientSurface.name);
+            expect(page.period, pb.RankingPeriod.RANKING_PERIOD_WEEKLY);
+            expect(page.ageRating, pb.SeriesAgeRating.SERIES_AGE_RATING_ALL);
+            expect(page.surface, appClientSurface);
           }
 
           await tapVisible(
@@ -1080,8 +1088,8 @@ void main() {
           ),
         ]);
         expect(
-          server.requestsTo('StartEpisodeCheckout').single.body['client'],
-          'CLIENT_MOBILE',
+          server.requestsOf(pb.StartEpisodeCheckoutRequest.new).single.client,
+          pb.StartEpisodeCheckoutRequest_Client.CLIENT_MOBILE,
         );
         await pumpUntilNoPendingFrameCallbacks(tester);
       });
@@ -1095,10 +1103,8 @@ void main() {
               .seedSeriesId]!;
       server
         ..details = {
-          ConnectFixtureServer.seedSeriesId: {
-            ...detail,
-            'waitFree': {'rechargeHours': 23, 'accessHours': 72},
-          },
+          ConnectFixtureServer.seedSeriesId: detail
+            ..waitFree = pb.WaitFreeRule(rechargeHours: 23, accessHours: 72),
         }
         ..entitledEpisodes = const {};
     }
@@ -1124,8 +1130,8 @@ void main() {
 
         expect(server.ticketsUsed, [ConnectFixtureServer.paidEpisodeId]);
         expect(
-          server.requestsTo('UseTicket').single.body['surface'],
-          'CLIENT_SURFACE_APP',
+          server.requestsOf(pb.UseTicketRequest.new).single.surface,
+          pb.ClientSurface.CLIENT_SURFACE_APP,
         );
         await pumpUntilNoPendingFrameCallbacks(tester);
       });
@@ -1136,12 +1142,12 @@ void main() {
     ) async {
       offerWaitFree();
       // Spent on the site, which the API answers the app with as well.
-      server.ticketState = {
-        'nextAvailableAt': DateTime.now()
+      server.ticketState = pb.GetMyTicketStateResponse(
+        nextAvailableAt: DateTime.now()
             .toUtc()
             .add(const Duration(hours: 5))
             .toIso8601String(),
-      };
+      );
       await withFailureScreenshot(
         tester,
         'fixture-wait-free-recharging',
@@ -1341,7 +1347,10 @@ void main() {
         );
 
         expect(
-          server.requestsTo('RequestEmailVerification').single.body['email'],
+          server
+              .requestsOf(pb.RequestEmailVerificationRequest.new)
+              .single
+              .email,
           email,
         );
       });
@@ -1438,7 +1447,7 @@ void main() {
           find.byKey(const ValueKey('reset-password-sent')),
         );
         expect(
-          server.requestsTo('RequestPasswordReset').single.body['email'],
+          server.requestsOf(pb.RequestPasswordResetRequest.new).single.email,
           ConnectFixtureServer.memberEmail,
         );
 
@@ -1851,7 +1860,8 @@ void main() {
       tester,
     ) async {
       server.seriesAvailability = {
-        ConnectFixtureServer.seedSeriesId: 'SURFACE_AVAILABILITY_WEB',
+        ConnectFixtureServer.seedSeriesId:
+            pb.SurfaceAvailability.SURFACE_AVAILABILITY_WEB,
       };
       await withFailureScreenshot(tester, 'fixture-web-only', () async {
         await pumpApp(tester);
@@ -1874,7 +1884,8 @@ void main() {
       tester,
     ) async {
       server.seriesAvailability = {
-        ConnectFixtureServer.seedSeriesId: 'SURFACE_AVAILABILITY_WEB',
+        ConnectFixtureServer.seedSeriesId:
+            pb.SurfaceAvailability.SURFACE_AVAILABILITY_WEB,
       };
       final links = FakeIncomingLinks(
         initialUri: Uri.parse(
@@ -1907,7 +1918,8 @@ void main() {
       tester,
     ) async {
       server.seriesAvailability = {
-        ConnectFixtureServer.seedSeriesId: 'SURFACE_AVAILABILITY_APP',
+        ConnectFixtureServer.seedSeriesId:
+            pb.SurfaceAvailability.SURFACE_AVAILABILITY_APP,
       };
       await withFailureScreenshot(tester, 'fixture-app-only', () async {
         await pumpApp(tester);
@@ -2027,14 +2039,14 @@ void main() {
           }
           ..details = {
             ...ConnectFixtureServer.populatedDetails(),
-            'series-kitchen': {
-              'series': {
-                'publicId': 'series-kitchen',
-                'title': 'The Little Kitchen',
-                'synopsis': 'Everyday cooking, one plate at a time.',
-              },
-              'episodes': <Object?>[],
-            },
+            'series-kitchen': pb.GetSeriesDetailResponse(
+              series: pb.Series(
+                publicId: 'series-kitchen',
+                title: 'The Little Kitchen',
+                synopsis: 'Everyday cooking, one plate at a time.',
+              ),
+              episodes: [],
+            ),
           };
         await pumpApp(
           tester,
@@ -2055,12 +2067,14 @@ void main() {
         await pumpUntilFound(tester, card);
         await scrollSeriesTo(tester, card);
 
-        final request = server.requestsTo('ListRelatedSeries').single;
+        final request = server
+            .requestsOf(pb.ListRelatedSeriesRequest.new)
+            .single;
         expect(
-          request.body['seriesId'],
+          request.seriesId,
           ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
         );
-        expect(request.body['surface'], appClientSurface.name);
+        expect(request.surface, appClientSurface);
         expect(
           find.descendant(
             of: find.byKey(const ValueKey('series-related')),
@@ -2143,8 +2157,10 @@ void main() {
           findsOne,
         );
         expect(find.text('Top 10 this week'), findsNothing);
-        final request = server.requestsTo('ListRecommendedSeries').single;
-        expect(request.body['surface'], appClientSurface.name);
+        final request = server
+            .requestsOf(pb.ListRecommendedSeriesRequest.new)
+            .single;
+        expect(request.surface, appClientSurface);
         expect(server.requestsTo('ListMyRecommendedSeries'), isEmpty);
 
         await tapReachable(
@@ -2214,7 +2230,10 @@ void main() {
             request.headers[HttpHeaders.authorizationHeader],
             'Bearer ${ConnectFixtureServer.memberAccessToken}',
           );
-          expect(request.body['surface'], appClientSurface.name);
+          expect(
+            request.decode(pb.ListMyRecommendedSeriesRequest()).surface,
+            appClientSurface,
+          );
         },
       );
     });
@@ -2261,17 +2280,17 @@ void main() {
         server
           ..readingPositions = {ConnectFixtureServer.seedEpisodeId: 1}
           ..seriesProgress = {
-            ConnectFixtureServer.seedSeriesId: {
-              'episode': {
-                'publicId': ConnectFixtureServer.seedEpisodeId,
-                'title': ConnectFixtureServer.seedEpisodeTitle,
-                'orderIndex': 1,
-              },
-              'position': {
-                'episodePublicId': ConnectFixtureServer.seedEpisodeId,
-                'pageIndex': 1,
-              },
-            },
+            ConnectFixtureServer.seedSeriesId: pb.SeriesProgress(
+              episode: pb.Episode(
+                publicId: ConnectFixtureServer.seedEpisodeId,
+                title: ConnectFixtureServer.seedEpisodeTitle,
+                orderIndex: 1,
+              ),
+              position: pb.ReadingPosition(
+                episodePublicId: ConnectFixtureServer.seedEpisodeId,
+                pageIndex: 1,
+              ),
+            ),
           };
         await pumpApp(
           tester,
@@ -2308,14 +2327,14 @@ void main() {
           ..episodeReads[ConnectFixtureServer.seedEpisodeId] =
               '2026-09-01T00:00:00Z'
           ..seriesProgress = {
-            ConnectFixtureServer.seedSeriesId: {
-              'episode': {
-                'publicId': ConnectFixtureServer.seedEpisodeId,
-                'title': ConnectFixtureServer.seedEpisodeTitle,
-                'orderIndex': 1,
-              },
-              'isFinished': true,
-            },
+            ConnectFixtureServer.seedSeriesId: pb.SeriesProgress(
+              episode: pb.Episode(
+                publicId: ConnectFixtureServer.seedEpisodeId,
+                title: ConnectFixtureServer.seedEpisodeTitle,
+                orderIndex: 1,
+              ),
+              isFinished: true,
+            ),
           };
         await pumpApp(
           tester,
@@ -2356,10 +2375,9 @@ void main() {
       tester,
     ) async {
       await withFailureScreenshot(tester, 'fixture-series-rating', () async {
-        (server.details[ConnectFixtureServer.seedSeriesId]!['series']!
-              as Map<String, Object?>)
-          ..['ratingAverage'] = 4.2
-          ..['ratingCount'] = '12';
+        server.details[ConnectFixtureServer.seedSeriesId]!.series
+          ..ratingAverage = 4.2
+          ..ratingCount = Int64(12);
         await pumpApp(
           tester,
           initialLocation: AppRoutes.seriesDetailPath(
@@ -2386,16 +2404,15 @@ void main() {
         tester,
         'fixture-series-own-rating',
         () async {
-          (server.details[ConnectFixtureServer.seedSeriesId]!['series']!
-                as Map<String, Object?>)
-            ..['ratingAverage'] = 4.2
-            ..['ratingCount'] = '12';
+          server.details[ConnectFixtureServer.seedSeriesId]!.series
+            ..ratingAverage = 4.2
+            ..ratingCount = Int64(12);
           // What the member's reactions on the website make of the series.
           server.seriesRatings = {
-            ConnectFixtureServer.seedSeriesId: {
-              'ratingAverage': 3.5,
-              'ratedEpisodeCount': 2,
-            },
+            ConnectFixtureServer.seedSeriesId: pb.GetMySeriesRatingResponse(
+              ratingAverage: 3.5,
+              ratedEpisodeCount: 2,
+            ),
           };
           await pumpApp(
             tester,
@@ -2413,7 +2430,7 @@ void main() {
           );
           expect(find.text('Rating: 4.2 · 12 readers'), findsOne);
           expect(
-            server.requestsTo('GetMySeriesRating').single.body['seriesId'],
+            server.requestsOf(pb.GetMySeriesRatingRequest.new).single.seriesId,
             ConnectFixtureServer.internalIdOf(
               ConnectFixtureServer.seedSeriesId,
             ),
@@ -2490,23 +2507,23 @@ void main() {
       // The fixture app carries no Firebase project, so nothing but the inbox
       // can tell the reader about this episode.
       server.notifications = [
-        {
-          'id': 'fixture-notification-1',
-          'notificationType': 'episode_published',
-          'payload':
+        pb.NotificationItem(
+          id: 'fixture-notification-1',
+          notificationType: 'episode_published',
+          payload:
               '{"series_id":"${ConnectFixtureServer.seedSeriesId}",'
               '"episode_id":"${ConnectFixtureServer.seedEpisodeId}",'
               '"series_title":"${ConnectFixtureServer.seedSeriesTitle}",'
               '"episode_title":"${ConnectFixtureServer.seedEpisodeTitle}"}',
-          'createdAt': '2026-09-08T10:30:00Z',
-        },
-        {
-          'id': 'fixture-notification-2',
-          'notificationType': 'comment_approved',
-          'payload': '{}',
-          'isRead': true,
-          'createdAt': '2026-09-01T10:30:00Z',
-        },
+          createdAt: '2026-09-08T10:30:00Z',
+        ),
+        pb.NotificationItem(
+          id: 'fixture-notification-2',
+          notificationType: 'comment_approved',
+          payload: '{}',
+          isRead: true,
+          createdAt: '2026-09-01T10:30:00Z',
+        ),
       ];
       await withFailureScreenshot(tester, 'fixture-notifications', () async {
         await pumpApp(tester, session: memberSession());
@@ -2530,7 +2547,7 @@ void main() {
         await pumpUntilPagesDrawn(tester);
         await pumpUntilTrue(
           tester,
-          () => server.notifications.every((item) => item['isRead'] == true),
+          () => server.notifications.every((item) => item.isRead),
           description: 'the read mark to reach the API',
         );
       });
@@ -2541,22 +2558,22 @@ void main() {
     ) async {
       server
         ..announcements = [
-          {
-            'id': 'fixture-announcement-1',
-            'announcementType': 'system',
-            'title': 'Scheduled maintenance',
-            'body': 'The site pauses for an hour tonight.',
-            'createdAt': '2026-09-20T09:00:00Z',
-            'pinned': true,
-          },
-          {
-            'id': 'fixture-announcement-2',
-            'announcementType': 'system',
-            'title': 'A new series has started',
-            'body': 'Read the first episode today.',
-            'linkUrl': '/series/${ConnectFixtureServer.seedSeriesId}',
-            'createdAt': '2026-09-19T09:00:00Z',
-          },
+          pb.AnnouncementItem(
+            id: 'fixture-announcement-1',
+            announcementType: 'system',
+            title: 'Scheduled maintenance',
+            body: 'The site pauses for an hour tonight.',
+            createdAt: '2026-09-20T09:00:00Z',
+            pinned: true,
+          ),
+          pb.AnnouncementItem(
+            id: 'fixture-announcement-2',
+            announcementType: 'system',
+            title: 'A new series has started',
+            body: 'Read the first episode today.',
+            linkUrl: '/series/${ConnectFixtureServer.seedSeriesId}',
+            createdAt: '2026-09-19T09:00:00Z',
+          ),
         ]
         ..pinnedAnnouncementId = 'fixture-announcement-1';
       await withFailureScreenshot(tester, 'fixture-announcements', () async {
@@ -2578,7 +2595,7 @@ void main() {
         );
         await pumpUntilTrue(
           tester,
-          () => server.announcements.first['isRead'] == true,
+          () => server.announcements.first.isRead,
           description: 'the opened announcement to be marked read',
         );
         await tapBack(tester);
@@ -2621,7 +2638,7 @@ void main() {
         );
         await pumpUntilTrue(
           tester,
-          () => server.announcements.every((item) => item['isRead'] == true),
+          () => server.announcements.every((item) => item.isRead),
           description: 'mark all read to reach the API',
         );
       });
@@ -2650,7 +2667,7 @@ void main() {
           find.byKey(const ValueKey('pages-list')),
         );
         expect(
-          server.requestsTo('ListPublishedPages').single.body['locale'],
+          server.requestsOf(pb.ListPublishedPagesRequest.new).single.locale,
           'en',
         );
 
@@ -2680,12 +2697,12 @@ void main() {
             locale: 'en',
           ),
         }
-        ..owedTermsPage = {
-          'slug': '/legal/terms',
-          'title': 'Terms of service',
-          'versionId': 'terms-v2',
-          'locale': 'en',
-        };
+        ..owedTermsPage = pb.TenantLegalPage(
+          slug: '/legal/terms',
+          title: 'Terms of service',
+          versionId: 'terms-v2',
+          locale: 'en',
+        );
       await withFailureScreenshot(tester, 'fixture-legal-agreement', () async {
         await pumpApp(tester, session: memberSession());
         await pumpUntilRouteSettled(

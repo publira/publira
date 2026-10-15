@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:publira/api/connect_client.dart';
 import 'package:publira/api/connect_exception.dart';
+import 'package:publira/api/gen/publira/v1/notification.pb.dart' as pb;
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/push/http_push_repository.dart';
 import 'package:publira/push/push_repository.dart';
@@ -30,21 +31,18 @@ void main() {
   test('register names the tenant, the token, and the platform', () async {
     await push.register(token: 'device-token', platform: PushPlatform.android);
 
-    final request = server.requestsTo('RegisterPushDevice').single;
-    expect(request.body['token'], 'device-token');
-    expect(request.body['platform'], 'PUSH_PLATFORM_ANDROID');
-    expect(
-      (request.body['tenant']! as Map)['tenantId'],
-      ConnectFixtureServer.defaultTenantId,
-    );
+    final request = server.requestsOf(pb.RegisterPushDeviceRequest.new).single;
+    expect(request.token, 'device-token');
+    expect(request.platform, pb.PushPlatform.PUSH_PLATFORM_ANDROID);
+    expect(request.tenant.tenantId, ConnectFixtureServer.defaultTenantId);
   });
 
   test('an iOS device registers as the platform the server knows', () async {
     await push.register(token: 'device-token', platform: PushPlatform.ios);
 
     expect(
-      server.requestsTo('RegisterPushDevice').single.body['platform'],
-      'PUSH_PLATFORM_IOS',
+      server.requestsOf(pb.RegisterPushDeviceRequest.new).single.platform,
+      pb.PushPlatform.PUSH_PLATFORM_IOS,
     );
   });
 
@@ -52,7 +50,7 @@ void main() {
     await push.unregister('device-token');
 
     expect(
-      server.requestsTo('UnregisterPushDevice').single.body['token'],
+      server.requestsOf(pb.UnregisterPushDeviceRequest.new).single.token,
       'device-token',
     );
   });

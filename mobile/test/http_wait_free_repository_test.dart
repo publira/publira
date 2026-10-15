@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:publira/api/client_surface.dart';
 import 'package:publira/api/connect_client.dart';
+import 'package:publira/api/gen/publira/v1/catalog.pb.dart' as pb;
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/wait_free/http_wait_free_repository.dart';
 import 'package:publira/wait_free/wait_free_failure.dart';
@@ -50,10 +52,11 @@ void main() {
     expect(state.nextAvailableAt, isNull);
     expect(state.openTickets, isEmpty);
     expect(state.isReadyAt(DateTime.now()), isTrue);
-    final request = server.requestsTo('GetMyTicketState').single;
-    expect(request.body['seriesId'], seriesInternalId);
-    expect(request.body['surface'], 'CLIENT_SURFACE_APP');
-    expect(request.headers['authorization'], 'Bearer $accessToken');
+    final call = server.requestsTo('GetMyTicketState').single;
+    final request = call.decode(pb.GetMyTicketStateRequest());
+    expect(request.seriesId, seriesInternalId);
+    expect(request.surface, appClientSurface);
+    expect(call.headers['authorization'], 'Bearer $accessToken');
   });
 
   test('a ticket spent opens its episode until it expires', () async {
@@ -68,8 +71,8 @@ void main() {
     );
     expect(server.ticketsUsed, [paidEpisodeId]);
     expect(
-      server.requestsTo('UseTicket').single.body['surface'],
-      'CLIENT_SURFACE_APP',
+      server.requestsOf(pb.UseTicketRequest.new).single.surface,
+      appClientSurface,
     );
 
     final state = await repository().ticketState(seriesInternalId);
