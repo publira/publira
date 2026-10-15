@@ -84,7 +84,7 @@ http:
       service: api
 
     # The public API under the prefix it had before /rpc, kept for the clients
-    # not yet on /rpc and removed in 0.2.0. `/api/v1` is excluded: that space
+    # not yet on /rpc and removed in 0.3.0. `/api/v1` is excluded: that space
     # belongs to the Next.js Route Handlers of whichever app the host routers
     # picked.
     api:

@@ -11,7 +11,7 @@ The binary behind both of a deployment's long-lived Go processes. The first argu
 
 ## publira server
 
-One process serves all three Connect namespaces — `publira.v1`, `publira.admin.v1`, and `publira.platform.v1` — under `/rpc`, and image delivery under `/images`, on one listener, `PUBLIRA_PUBLIC_API_ADDR` (`:8000` when unset). It also answers `/livez` and `/readyz`, and registers nothing else at the root. The same namespaces are answered under `/api`, the prefix they had before `/rpc`, for the clients not yet on `/rpc`; 0.2.0 removes it.
+One process serves all three Connect namespaces — `publira.v1`, `publira.admin.v1`, and `publira.platform.v1` — under `/rpc`, and image delivery under `/images`, on one listener, `PUBLIRA_PUBLIC_API_ADDR` (`:8000` when unset). It also answers `/livez` and `/readyz`, and registers nothing else at the root. The same namespaces are answered under `/api`, the prefix they had before `/rpc`, for the clients not yet on `/rpc`; 0.3.0 removes it.
 
 | Reached by | Through |
 | --- | --- |

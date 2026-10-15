@@ -2,7 +2,7 @@
 title: Securing an install
 description: How an install keeps tenants and credentials apart, how to rotate its encryption keys, database passwords, signing keys, and tokens, and what two-step verification and the audit logs cover.
 published: 2026-10-07
-updated: 2026-10-13
+updated: 2026-10-15
 ---
 
 An install holds the credentials of every tenant's payment provider and mail server, the personal data of every reader, and the keys that seal them. This page is for the operator who keeps them safe: what the install relies on to keep them apart, where each secret may go, how to replace each one, and what two-step verification and the audit logs give you. Read it before you need it — each procedure below is easier to run on a quiet day than during an incident.
@@ -19,7 +19,7 @@ That only holds while each process has the connection URLs of its own roles and 
 
 ### The console APIs
 
-`publira server` serves the tenant console's and the Platform Console's APIs under `/rpc` on every host, and under `/api` until 0.2.0, beside the public API, and the edge forwards both to it, so anyone can reach them. Each of their requests is refused before it runs unless it carries an operator's session or the web service token, the few that run before there is a session — signing in, resetting a password, and confirming an email address — are limited per client or guarded by the server itself, and creating the Platform Console's first operator takes the web service token, which only the Platform Console's server sends. The web service token is therefore what stands between the internet and every tenant's catalog and the platform's list of readers: keep it to the processes the table below names. To take the consoles' APIs, their database logins, and the token out of the process the tenants' domains reach, run that process with `publira server --role storefront`, as the [Overview](../2-deployments/1-overview.md#what-an-install-runs) describes.
+`publira server` serves the tenant console's and the Platform Console's APIs under `/rpc` on every host, and under `/api` until 0.3.0, beside the public API, and the edge forwards both to it, so anyone can reach them. Each of their requests is refused before it runs unless it carries an operator's session or the web service token, the few that run before there is a session — signing in, resetting a password, and confirming an email address — are limited per client or guarded by the server itself, and creating the Platform Console's first operator takes the web service token, which only the Platform Console's server sends. The web service token is therefore what stands between the internet and every tenant's catalog and the platform's list of readers: keep it to the processes the table below names. To take the consoles' APIs, their database logins, and the token out of the process the tenants' domains reach, run that process with `publira server --role storefront`, as the [Overview](../2-deployments/1-overview.md#what-an-install-runs) describes.
 
 ### Where each secret may go
 

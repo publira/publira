@@ -13,7 +13,7 @@ const ADMIN_PROCEDURE = "/publira.admin.v1.AdminSeriesService/ListSeries";
 const PLATFORM_PROCEDURE =
   "/publira.platform.v1.PlatformTenantService/ListTenants";
 
-/** `/api` is the prefix before `/rpc`, served beside it until 0.2.0. */
+/** `/api` is the prefix before `/rpc`, served beside it until 0.3.0. */
 const prefixes = ["/rpc", "/api"] as const;
 
 const edgeHosts = [

@@ -2,7 +2,7 @@
 title: Kubernetes
 description: Run an install on a Kubernetes cluster, from its Secrets and Deployments and a Gateway or an Ingress in front of them to the first sign-in to the tenant console.
 published: 2026-10-13
-updated: 2026-10-14
+updated: 2026-10-15
 ---
 
 This page takes an install from an empty namespace on a Kubernetes cluster to the first sign-in to the tenant console. It runs the same steps as [Installing](./2-installing.md), which explains why each step exists, what every secret protects, and what each database role can reach, and it puts the edge in front the way [Edge](./4-edge.md#what-the-edge-has-to-do) requires. This page covers what is particular to a cluster: which resources each part becomes, and how each requirement of those two pages is met with them.
@@ -504,7 +504,7 @@ The edge routes each host and path to the right Service, terminates TLS, and rem
 | The tenant's console host | `/images`, `/rpc`, `/api` | `publira-server`, port `8000` |
 | The tenant's console host | `/api/v1`, and everything else | `web-admin`, port `4000` |
 
-`/rpc` is the API's prefix, and `/api` the one it had before, which `publira server` answers until 0.2.0 for the clients not yet on `/rpc`; route both until then. `/api/v1` is longer than `/api`, so it wins on a path both match. A Gateway's `PathPrefix` matches whole path segments, so `/api/v10` stays with `publira-server`; [With an Ingress](#with-an-ingress) says how to get the same from a controller that does not. The path and the `Host` header reach the Service as the browser sent them; add no rewrite of either.
+`/rpc` is the API's prefix, and `/api` the one it had before, which `publira server` answers until 0.3.0 for the clients not yet on `/rpc`; route both until then. `/api/v1` is longer than `/api`, so it wins on a path both match. A Gateway's `PathPrefix` matches whole path segments, so `/api/v10` stays with `publira-server`; [With an Ingress](#with-an-ingress) says how to get the same from a controller that does not. The path and the `Host` header reach the Service as the browser sent them; add no rewrite of either.
 
 ### Certificates
 
