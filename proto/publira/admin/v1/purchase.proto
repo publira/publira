@@ -108,6 +108,10 @@ message GetPurchaseResponse {
 message RefundPurchaseRequest {
   publira.types.v1.TenantContext tenant = 1;
   string purchase_id = 2;
+  // Required. Why staff are giving the reader their money back, recorded on
+  // the audit log entry of the refund, which is the only record of who
+  // decided it and why.
+  string reason = 3;
 }
 
 message RefundPurchaseResponse {
@@ -134,7 +138,8 @@ service AdminPurchaseService {
   // records nothing more. A store purchase, a purchase made without a
   // payment, a disputed one, and one paid through a provider the tenant no
   // longer has enabled are failed_precondition, as is a refund the provider
-  // refuses.
+  // refuses. An empty reason is invalid_argument with a field violation on
+  // reason.
   //
   // Minimum role: tenant_admin.
   rpc RefundPurchase(RefundPurchaseRequest) returns (RefundPurchaseResponse) {}

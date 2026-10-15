@@ -373,6 +373,7 @@
         "reader_deleted": "독자 삭제",
         "access_ticket_issued": "이용권 발급",
         "access_ticket_revoked": "이용권 취소",
+        "purchase_refund_requested": "구매 환불 요청",
         "purchase_refunded": "구매 환불",
         "royalty_config_updated": "인세 마감 설정 변경",
         "royalty_statement_closed": "인세 월 마감",

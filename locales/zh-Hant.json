@@ -373,6 +373,7 @@
         "reader_deleted": "刪除了讀者",
         "access_ticket_issued": "發放了閱讀券",
         "access_ticket_revoked": "撤銷了閱讀券",
+        "purchase_refund_requested": "申請退還購買款項",
         "purchase_refunded": "退還了購買款項",
         "royalty_config_updated": "更新了版稅結算設定",
         "royalty_statement_closed": "結算了版稅月份",

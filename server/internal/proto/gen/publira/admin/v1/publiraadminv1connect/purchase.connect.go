@@ -80,7 +80,8 @@ type AdminPurchaseServiceClient interface {
 	// records nothing more. A store purchase, a purchase made without a
 	// payment, a disputed one, and one paid through a provider the tenant no
 	// longer has enabled are failed_precondition, as is a refund the provider
-	// refuses.
+	// refuses. An empty reason is invalid_argument with a field violation on
+	// reason.
 	//
 	// Minimum role: tenant_admin.
 	RefundPurchase(context.Context, *v1.RefundPurchaseRequest) (*v1.RefundPurchaseResponse, error)
@@ -114,7 +115,8 @@ type AdminPurchaseServiceHandler interface {
 	// records nothing more. A store purchase, a purchase made without a
 	// payment, a disputed one, and one paid through a provider the tenant no
 	// longer has enabled are failed_precondition, as is a refund the provider
-	// refuses.
+	// refuses. An empty reason is invalid_argument with a field violation on
+	// reason.
 	//
 	// Minimum role: tenant_admin.
 	RefundPurchase(context.Context, *v1.RefundPurchaseRequest) (*v1.RefundPurchaseResponse, error)

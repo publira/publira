@@ -219,6 +219,26 @@ const contactMessageActionName = (action: string) => {
   }
 };
 
+/**
+ * A staff refund of a reader's purchase: the request, and what the provider
+ * did about it.
+ */
+const purchaseActionName = (action: string) => {
+  switch (action) {
+    case "purchase_refund_requested": {
+      return (
+        <Message message="admin.audit.actions.purchase_refund_requested" />
+      );
+    }
+    case "purchase_refunded": {
+      return <Message message="admin.audit.actions.purchase_refunded" />;
+    }
+    default: {
+      return null;
+    }
+  }
+};
+
 /** An action on readers, access tickets, royalties, or members. */
 const readerActionName = (action: string) => {
   switch (action) {
@@ -249,9 +269,6 @@ const readerActionName = (action: string) => {
     }
     case "access_ticket_revoked": {
       return <Message message="admin.audit.actions.access_ticket_revoked" />;
-    }
-    case "purchase_refunded": {
-      return <Message message="admin.audit.actions.purchase_refunded" />;
     }
     case "royalty_config_updated": {
       return <Message message="admin.audit.actions.royalty_config_updated" />;
@@ -451,6 +468,7 @@ const actionName = (action: string) =>
   siteActionName(action) ??
   contactMessageActionName(action) ??
   readerActionName(action) ??
+  purchaseActionName(action) ??
   settingsActionName(action) ??
   integrationActionName(action) ??
   mfaActionName(action);
