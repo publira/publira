@@ -242,46 +242,6 @@ func (q *Queries) ListUserWebauthnCredentialsForRPID(ctx context.Context, arg Li
 	return items, nil
 }
 
-const LockUserWebauthnCredentialsForRPID = `-- name: LockUserWebauthnCredentialsForRPID :many
-SELECT id
-FROM user_webauthn_credentials
-WHERE user_id = $1
-    AND rp_id = $2
-ORDER BY id
-FOR UPDATE
-`
-
-type LockUserWebauthnCredentialsForRPIDParams struct {
-	UserID uuid.UUID `json:"user_id"`
-	RpID   string    `json:"rp_id"`
-}
-
-// Taken before removing one of them, so two removals racing over an
-// account's last two credentials see each other's delete before counting
-// what is left, rather than each counting the other's row as still there.
-func (q *Queries) LockUserWebauthnCredentialsForRPID(ctx context.Context, arg LockUserWebauthnCredentialsForRPIDParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, LockUserWebauthnCredentialsForRPID, arg.UserID, arg.RpID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []uuid.UUID
-	for rows.Next() {
-		var id uuid.UUID
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		items = append(items, id)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const MarkUserWebauthnCredentialUsed = `-- name: MarkUserWebauthnCredentialUsed :execrows
 UPDATE user_webauthn_credentials
 SET sign_count = $1,

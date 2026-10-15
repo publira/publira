@@ -125,3 +125,16 @@ RETURNING *;
 -- enrollment, so a stalled attempt never blocks the next one.
 DELETE FROM user_mfa_lockouts
 WHERE user_id = $1;
+
+-- name: LockUserMfaFactors :exec
+-- Serialises, for the rest of the transaction, every change to an account's
+-- second factors and to the recovery codes that stand in for them. Whether a
+-- change issues codes or deletes them depends on what else the account holds,
+-- and a concurrent change to that is invisible until it commits: a passkey
+-- registered while the last other factor is being removed would count the
+-- codes that removal is about to delete, and be left with none. No single row
+-- covers both factor tables and the codes, and the first factor has no row to
+-- lock yet, so the lock is taken on the account's identity instead.
+SELECT pg_advisory_xact_lock(
+    hashtextextended('user_mfa_factors:' || sqlc.arg('user_id')::uuid::text, 0)
+);

@@ -2442,10 +2442,15 @@ type Querier interface {
 	// Candidates for the sweep: the tags of this tenant no series carries. Locked
 	// in id order so two saves sweeping at once queue up rather than deadlock.
 	LockUnusedTagsForTenant(ctx context.Context, tenantID uuid.UUID) ([]uuid.UUID, error)
-	// Taken before removing one of them, so two removals racing over an
-	// account's last two credentials see each other's delete before counting
-	// what is left, rather than each counting the other's row as still there.
-	LockUserWebauthnCredentialsForRPID(ctx context.Context, arg LockUserWebauthnCredentialsForRPIDParams) ([]uuid.UUID, error)
+	// Serialises, for the rest of the transaction, every change to an account's
+	// second factors and to the recovery codes that stand in for them. Whether a
+	// change issues codes or deletes them depends on what else the account holds,
+	// and a concurrent change to that is invisible until it commits: a passkey
+	// registered while the last other factor is being removed would count the
+	// codes that removal is about to delete, and be left with none. No single row
+	// covers both factor tables and the codes, and the first factor has no row to
+	// lock yet, so the lock is taken on the account's identity instead.
+	LockUserMfaFactors(ctx context.Context, userID uuid.UUID) error
 	// Inserts a read row for every announcement of the caller's tenant that lacks
 	// one.
 	MarkAllAnnouncementsAsRead(ctx context.Context, arg MarkAllAnnouncementsAsReadParams) (int64, error)

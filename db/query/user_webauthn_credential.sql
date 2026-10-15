@@ -50,17 +50,6 @@ FROM user_webauthn_credentials
 WHERE user_id = sqlc.arg('user_id')
     AND rp_id = sqlc.arg('rp_id');
 
--- name: LockUserWebauthnCredentialsForRPID :many
--- Taken before removing one of them, so two removals racing over an
--- account's last two credentials see each other's delete before counting
--- what is left, rather than each counting the other's row as still there.
-SELECT id
-FROM user_webauthn_credentials
-WHERE user_id = sqlc.arg('user_id')
-    AND rp_id = sqlc.arg('rp_id')
-ORDER BY id
-FOR UPDATE;
-
 -- name: GetUserWebauthnCredentialByPublicID :one
 SELECT *
 FROM user_webauthn_credentials

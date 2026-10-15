@@ -4,9 +4,11 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect/v2"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/mfa"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
@@ -560,5 +562,73 @@ func TestAdminPasskeyBelongsToItsOwner(t *testing.T) {
 		Id:     registered.Passkey.Id,
 	}); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("DeletePasskey of another member's passkey = %v, want not_found", err)
+	}
+}
+
+// A passkey registered while the account's last other factor is being removed
+// waits for that removal, and then finds the recovery codes gone with it and
+// issues a batch of its own, rather than counting codes that are about to
+// disappear and being left with none.
+func TestAdminPasskeyRegistrationWaitsForARemovalOfTheLastFactor(t *testing.T) {
+	env := newPasskeyDBEnv(t)
+	tenant := seedMfaTenant(t, env)
+	registerPasskey(t, env, tenant, "")
+	ctx := testutil.WithBearer(context.Background(), tenant.token())
+
+	begun, err := env.authClient().BeginPasskeyRegistration(ctx, &publiraadminv1.AdminAuthServiceBeginPasskeyRegistrationRequest{Tenant: tenant.tenantContext()})
+	if err != nil {
+		t.Fatalf("BeginPasskeyRegistration: %v", err)
+	}
+	credential := webauthntest.New(t, passkeyConsoleOrigin).Register(t, begun.CreationOptionsJson)
+
+	// The removal of the last passkey, half done: its credential and the
+	// recovery codes are deleted and not yet committed.
+	removal, err := env.PG.DB.BeginTx(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("BeginTx: %v", err)
+	}
+	defer removal.Rollback() //nolint:errcheck
+	if err := dbmodels.New(removal).LockUserMfaFactors(context.Background(), tenant.User.ID); err != nil {
+		t.Fatalf("LockUserMfaFactors: %v", err)
+	}
+	for _, statement := range []string{
+		"DELETE FROM user_webauthn_credentials WHERE user_id = $1",
+		"DELETE FROM user_mfa_recovery_codes WHERE user_id = $1",
+	} {
+		if _, err := removal.ExecContext(context.Background(), statement, tenant.User.ID); err != nil {
+			t.Fatalf("%s: %v", statement, err)
+		}
+	}
+
+	type result struct {
+		resp *publiraadminv1.AdminAuthServiceFinishPasskeyRegistrationResponse
+		err  error
+	}
+	finished := make(chan result, 1)
+	go func() {
+		resp, err := env.authClient().FinishPasskeyRegistration(ctx, &publiraadminv1.AdminAuthServiceFinishPasskeyRegistrationRequest{
+			Tenant:         tenant.tenantContext(),
+			CredentialJson: credential,
+		})
+		finished <- result{resp, err}
+	}()
+	select {
+	case got := <-finished:
+		t.Fatalf("FinishPasskeyRegistration = %+v, %v before the removal committed, want it to wait", got.resp, got.err)
+	case <-time.After(500 * time.Millisecond):
+	}
+	if err := removal.Commit(); err != nil {
+		t.Fatalf("Commit: %v", err)
+	}
+
+	got := <-finished
+	if got.err != nil {
+		t.Fatalf("FinishPasskeyRegistration: %v", got.err)
+	}
+	if len(got.resp.RecoveryCodes) != mfa.RecoveryCodeCount {
+		t.Fatalf("recovery codes = %d, want %d for the account's only factor", len(got.resp.RecoveryCodes), mfa.RecoveryCodeCount)
+	}
+	if n := env.countRows(t, "SELECT count(*) FROM user_mfa_recovery_codes WHERE user_id = $1 AND used_at IS NULL", tenant.User.ID); n != mfa.RecoveryCodeCount {
+		t.Fatalf("stored recovery codes = %d, want %d", n, mfa.RecoveryCodeCount)
 	}
 }

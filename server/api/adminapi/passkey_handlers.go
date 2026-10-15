@@ -271,6 +271,12 @@ func (s *adminServer) storePasskey(
 	defer tx.Rollback() //nolint:errcheck
 
 	q := dbmodels.New(tx)
+	// The count of unused codes below decides whether this passkey brings a
+	// batch of its own, so no removal of another factor may be half done
+	// while it is read.
+	if err := s.lockMfaFactors(ctx, q, actor.User.ID); err != nil {
+		return dbmodels.UserWebauthnCredential{}, nil, err
+	}
 	if actor.FromChallenge {
 		claimed, err := q.MarkUserMfaChallengeUsed(ctx, dbmodels.MarkUserMfaChallengeUsedParams{
 			Jti:       actor.ChallengeID,
@@ -611,9 +617,9 @@ func (s *adminServer) DeletePasskey(
 
 // deletePasskey removes one passkey, and with the account's last second
 // factor the recovery codes that stood in for it, unless required keeps the
-// account from going without one. The account's passkeys are locked first, so
+// account from going without one. The account's factors are locked first, so
 // two removals racing over its last two cannot both find the other still
-// there.
+// there, and a factor added meanwhile is seen before the codes go.
 func (s *adminServer) deletePasskey(ctx context.Context, userID uuid.UUID, rpID string, id uuid.UUID, required bool) error {
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
@@ -622,8 +628,8 @@ func (s *adminServer) deletePasskey(ctx context.Context, userID uuid.UUID, rpID 
 	defer tx.Rollback() //nolint:errcheck
 
 	q := dbmodels.New(tx)
-	if _, err := q.LockUserWebauthnCredentialsForRPID(ctx, dbmodels.LockUserWebauthnCredentialsForRPIDParams{UserID: userID, RpID: rpID}); err != nil {
-		return s.internalDBError(ctx, "failed to lock passkeys", err, "user_id", userID.String())
+	if err := s.lockMfaFactors(ctx, q, userID); err != nil {
+		return err
 	}
 	deleted, err := q.DeleteUserWebauthnCredential(ctx, id)
 	if err != nil {

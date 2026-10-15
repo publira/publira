@@ -54,6 +54,10 @@ func ResetMFA(ctx context.Context, tx *sql.Tx, p ResetMFAParams) (Member, error)
 		return Member{}, err
 	}
 
+	if err := q.LockUserMfaFactors(ctx, member.UserID); err != nil {
+		return Member{}, fmt.Errorf("lock mfa factors: %w", err)
+	}
+
 	hasTotp := true
 	if _, err := q.GetUserMfaTotpByUserID(ctx, member.UserID); err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {

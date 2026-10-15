@@ -505,6 +505,17 @@ func replaceRecoveryCodes(ctx context.Context, queries Querier, tenantID, userID
 	return codes, nil
 }
 
+// lockMfaFactors serialises the transaction behind q with every other change
+// to the account's second factors and recovery codes. Anything the
+// transaction decides from what else the account holds has to be read after
+// it.
+func (s *adminServer) lockMfaFactors(ctx context.Context, q Querier, userID uuid.UUID) error {
+	if err := q.LockUserMfaFactors(ctx, userID); err != nil {
+		return s.internalDBError(ctx, "failed to lock mfa factors", err, "user_id", userID.String())
+	}
+	return nil
+}
+
 func (s *adminServer) remainingRecoveryCodes(ctx context.Context, userID uuid.UUID) (int32, error) {
 	count, err := s.queriesFor(ctx).CountUnusedUserMfaRecoveryCodes(ctx, userID)
 	if err != nil {
@@ -689,6 +700,9 @@ func (s *adminServer) enableMfa(ctx context.Context, actor mfaActor) ([]string, 
 	defer tx.Rollback() //nolint:errcheck
 
 	q := dbmodels.New(tx)
+	if err := s.lockMfaFactors(ctx, q, actor.User.ID); err != nil {
+		return nil, err
+	}
 	if actor.FromChallenge {
 		claimed, err := q.MarkUserMfaChallengeUsed(ctx, dbmodels.MarkUserMfaChallengeUsedParams{
 			Jti:       actor.ChallengeID,
@@ -860,9 +874,20 @@ func (s *adminServer) DisableMfa(
 	defer tx.Rollback() //nolint:errcheck
 
 	q := dbmodels.New(tx)
+	if err := s.lockMfaFactors(ctx, q, user.ID); err != nil {
+		return nil, err
+	}
+	rpID, err := s.adminRPID(ctx, tenant)
+	if err != nil {
+		return nil, err
+	}
+	passkeys, err := q.CountUserWebauthnCredentialsForRPID(ctx, dbmodels.CountUserWebauthnCredentialsForRPIDParams{UserID: user.ID, RpID: rpID})
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to count passkeys", err, "user_id", user.ID.String())
+	}
 	// The recovery codes stand in for every factor the account holds, so they
 	// go only with the last of them.
-	if factors.Passkeys == 0 {
+	if passkeys == 0 {
 		if err := q.DeleteUserMfaRecoveryCodesByUserID(ctx, user.ID); err != nil {
 			return nil, s.internalDBError(ctx, "failed to delete mfa recovery codes", err, "user_id", user.ID.String())
 		}
@@ -913,7 +938,20 @@ func (s *adminServer) RegenerateMfaRecoveryCodes(
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	codes, err := replaceRecoveryCodes(ctx, dbmodels.New(tx), tenant.ID, user.ID)
+	q := dbmodels.New(tx)
+	if err := s.lockMfaFactors(ctx, q, user.ID); err != nil {
+		return nil, err
+	}
+	// A batch outlives the authenticator that minted it only if the
+	// authenticator is still there once nothing else can take it off.
+	current, err := q.GetUserMfaTotpByUserID(ctx, user.ID)
+	if errors.Is(err, sql.ErrNoRows) || (err == nil && !current.EnabledAt.Valid) {
+		return nil, mfaNotEnabledError()
+	}
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to get user mfa totp", err, "user_id", user.ID.String())
+	}
+	codes, err := replaceRecoveryCodes(ctx, q, tenant.ID, user.ID)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to regenerate mfa recovery codes", err, "user_id", user.ID.String())
 	}
