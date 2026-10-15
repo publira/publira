@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://chachamaru.publira.dev/schemas/regenerate/v1.json
+#
 # How Chachamaru, the maintenance bot, regenerates generated output on Renovate pull requests.
 triggers:
   - buf.gen.yaml
