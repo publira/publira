@@ -56,6 +56,6 @@ Everything is sent over HTTPS to the install, at the address the app was built w
 
 ## Once the app is listed
 
-Enter each store listing's address under **Integrations** › **Payments** › **Where episodes are sold**, as the **App Store address** and the **Google Play address**. An episode sold in the app alone sends a reader on the web to these addresses.
+Enter each store listing's address under **Payments** › **Payment methods** › **Where episodes are sold**, as the **App Store address** and the **Google Play address**. An episode sold in the app alone sends a reader on the web to these addresses.
 
 A later release repeats only part of this: build both apps from the checkout of the release the install now runs, with a higher build number, and submit each as a new version. The manifest, the keys, the Firebase project, and everything in the tenant console stay as they are.

@@ -206,7 +206,7 @@ test.describe("web-admin auth", () => {
       page.getByRole("heading", { name: "Page not found" })
     ).toBeVisible();
     await expect(
-      page.getByRole("heading", { exact: true, name: "Payments" })
+      page.getByRole("heading", { exact: true, name: "Payment methods" })
     ).toHaveCount(0);
   });
 });

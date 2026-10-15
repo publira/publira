@@ -3,12 +3,14 @@ import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockCacheLife,
   mockCacheTag,
   mockGetAccessToken,
   mockGetPurchase,
   mockListPurchases,
   mockRefundPurchase,
 } = vi.hoisted(() => ({
+  mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetPurchase: vi.fn(),
@@ -34,7 +36,7 @@ vi.mock("./api", () => ({
 }));
 
 vi.mock("next/cache", () => ({
-  cacheLife: vi.fn(),
+  cacheLife: mockCacheLife,
   cacheTag: mockCacheTag,
 }));
 
@@ -109,6 +111,7 @@ describe("listPurchases", () => {
       { headers: { Authorization: "Bearer session-token" } }
     );
     expect(mockCacheTag).toHaveBeenCalledWith("purchases-TENANT001");
+    expect(mockCacheLife).toHaveBeenCalledWith("minutes");
     expect(result).toMatchObject({
       nextToken: "next-page",
       ok: true,
@@ -167,6 +170,7 @@ describe("getPurchase", () => {
       { headers: { Authorization: "Bearer session-token" } }
     );
     expect(mockCacheTag).toHaveBeenCalledWith("purchases-TENANT001");
+    expect(mockCacheLife).toHaveBeenCalledWith("minutes");
     expect(result).toMatchObject({
       ok: true,
       purchase: { refundable: false, revocationReason: "staff" },

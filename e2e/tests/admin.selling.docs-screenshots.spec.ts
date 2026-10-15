@@ -24,7 +24,7 @@ import {
  * `docs/<locale>/4-console/4-selling-episodes.md` and
  * `5-reports-and-royalties.md` show them.
  *
- * Payments are photographed on the seed tenant with Stripe chosen and nothing
+ * Payment methods are photographed on the seed tenant with Stripe chosen and nothing
  * saved, which is what the form shows while a Tenant admin follows the
  * setup. The royalties are photographed on the royalty tenant of
  * `db/seeds/scenarios/260_royalties.sql`, whose sales all fall in one past

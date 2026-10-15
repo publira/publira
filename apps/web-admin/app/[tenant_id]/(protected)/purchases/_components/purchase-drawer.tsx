@@ -17,7 +17,8 @@ interface PurchaseDrawerProps {
  *
  * The URL is what opens it, so a link to a purchase can be shared and the
  * back button closes it. Closing it waits for the sheet to slide out and then
- * navigates to `closeHref`, which re-renders the list without it; the caller
+ * replaces the purchase's history entry with `closeHref`, which re-renders the
+ * list without it and leaves the back button nothing to reopen. The caller
  * keys the drawer on the purchase, so another one opens fresh.
  */
 export const PurchaseDrawer = ({
@@ -32,7 +33,7 @@ export const PurchaseDrawer = ({
       onOpenChange={setOpen}
       onOpenChangeComplete={(isOpen) => {
         if (!isOpen) {
-          router.push(closeHref, { scroll: false });
+          router.replace(closeHref, { scroll: false });
         }
       }}
       open={open}

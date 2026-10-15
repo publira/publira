@@ -8,7 +8,7 @@ import {
 } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
-import { cacheTag } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 
 import {
   isUnauthenticatedError,
@@ -148,6 +148,11 @@ export const mapPurchase = (item: RawPurchase): PurchaseItem => ({
  * The tag the purchase list and every purchase read carry. A refund changes
  * the row in the list as well as the purchase it was made from, so one tag
  * reaches both.
+ *
+ * The tag reaches only what this console changes. A checkout on the
+ * storefront and a payment provider's notification of a refund or a dispute
+ * change purchases without it, so both reads also declare
+ * `cacheLife("minutes")` and are refetched once they are a minute old.
  */
 export const purchasesCacheTag = (tenantId: string): string =>
   `purchases-${tenantId}`;
@@ -160,6 +165,7 @@ const listPurchasesForSession = async (
 ): Promise<CachedRead<ListPurchasesResult>> => {
   "use cache: private";
   cacheTag(purchasesCacheTag(tenantId));
+  cacheLife("minutes");
 
   const t = await getMessagesFor(locale);
   if (!sessionId) {
@@ -233,6 +239,7 @@ const getPurchaseForSession = async (
 ): Promise<CachedRead<GetPurchaseResult>> => {
   "use cache: private";
   cacheTag(purchasesCacheTag(tenantId));
+  cacheLife("minutes");
 
   const t = await getMessagesFor(locale);
   if (!sessionId) {

@@ -9,7 +9,7 @@ Selling an episode on the site takes three things that have to agree: the episod
 
 The tenant's app sells either through the same provider, or through the App Store's and Google Play's own payment, which needs no provider and is verified with the stores instead. [Selling in the app](#selling-in-the-app) covers that choice, and a tenant that sells only in its app through the stores can skip the provider sections.
 
-Everything here under **Integrations** › **Payments** is for a **Tenant admin**; an Editor or an Auditor does not see that screen. Pricing an episode is done by whoever creates it.
+Everything here under **Payments** › **Payment methods** is for a **Tenant admin**; an Editor or an Auditor does not see that screen. Pricing an episode is done by whoever creates it.
 
 ## How a reader buys an episode
 
@@ -48,7 +48,7 @@ An [access ticket](./2-readers.md#access-tickets), issued by staff under **Acces
 
 ## Choosing a payment provider
 
-A tenant takes payment on the site through one provider at a time, chosen under **Payment settings** on **Integrations** › **Payments**:
+A tenant takes payment on the site through one provider at a time, chosen under **Payment settings** on **Payments** › **Payment methods**:
 
 | Provider | What a reader can pay with |
 | --- | --- |

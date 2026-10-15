@@ -25,8 +25,8 @@ const sidebarEntries = [
   "Read-through",
   "Royalties",
   "Purchases",
+  "Payment methods",
   "Email",
-  "Payments",
   "Mobile push",
   "App links",
   "Sign-in",
@@ -147,7 +147,7 @@ test.describe("web-admin console navigation", () => {
     await signInAsSeedAdmin(page, "/");
 
     await expectIntegrationOpens(page, "Email", "email");
-    await expectIntegrationOpens(page, "Payments", "payment");
+    await expectIntegrationOpens(page, "Payment methods", "payment");
     await expectIntegrationOpens(page, "Mobile push", "mobile-push");
     await expectIntegrationOpens(page, "App links", "app-links");
     await expectIntegrationOpens(page, "Sign-in", "sign-in");

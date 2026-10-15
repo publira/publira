@@ -49,7 +49,7 @@ When a hidden series becomes public, for the first time or again, the episodes p
 
 **Shown on** decides where readers can find the series: **Web and app**, **Web only**, or **App only**. A new series starts on **Web and app**. On a surface it is not shown on, the series and its episodes do not exist for the reader, and an episode can narrow this setting but never widen it.
 
-**Sold on** decides where its paid episodes can be bought. It starts on **Follow the tenant setting**, which follows **Where episodes are sold** under **Integrations** › **Payments**, including after that changes. [Selling episodes](../4-selling-episodes.md#where-episodes-are-sold) covers both settings and why a tenant with an app might keep a series on the site alone.
+**Sold on** decides where its paid episodes can be bought. It starts on **Follow the tenant setting**, which follows **Where episodes are sold** under **Payments** › **Payment methods**, including after that changes. [Selling episodes](../4-selling-episodes.md#where-episodes-are-sold) covers both settings and why a tenant with an app might keep a series on the site alone.
 
 ![The Shown on field set to Web and app, and the Sold on field set to Follow the tenant setting.](./series-shown-on-and-sold-on.png)
 

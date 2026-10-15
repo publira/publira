@@ -66,8 +66,8 @@ const hrefs = [
   "/engagement",
   "/royalties",
   "/purchases",
-  "/integrations/email",
   "/integrations/payment",
+  "/integrations/email",
   "/integrations/mobile-push",
   "/integrations/app-links",
   "/integrations/sign-in",
@@ -329,6 +329,18 @@ export const AdminNavigation = () => (
                 </ConsoleSidebarNavigationItemLabel>
               </ConsoleSidebarNavigationItemHeading>
             </ConsoleSidebarNavigationItem>
+            <ConsoleSidebarNavigationItem href="/integrations/payment">
+              <ConsoleSidebarNavigationItemIcon>
+                <CreditCardIcon className="size-4" />
+              </ConsoleSidebarNavigationItemIcon>
+              <ConsoleSidebarNavigationItemHeading>
+                <ConsoleSidebarNavigationItemLabel>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                    <Message message="admin.nav.payment_label" />
+                  </Suspense>
+                </ConsoleSidebarNavigationItemLabel>
+              </ConsoleSidebarNavigationItemHeading>
+            </ConsoleSidebarNavigationItem>
           </ConsoleSidebarNavigationItems>
         </ConsoleSidebarNavigationSection>
       </TenantAdminOnly>
@@ -350,18 +362,6 @@ export const AdminNavigation = () => (
                 <ConsoleSidebarNavigationItemLabel>
                   <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                     <Message message="admin.nav.email_label" />
-                  </Suspense>
-                </ConsoleSidebarNavigationItemLabel>
-              </ConsoleSidebarNavigationItemHeading>
-            </ConsoleSidebarNavigationItem>
-            <ConsoleSidebarNavigationItem href="/integrations/payment">
-              <ConsoleSidebarNavigationItemIcon>
-                <CreditCardIcon className="size-4" />
-              </ConsoleSidebarNavigationItemIcon>
-              <ConsoleSidebarNavigationItemHeading>
-                <ConsoleSidebarNavigationItemLabel>
-                  <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-                    <Message message="admin.nav.payment_label" />
                   </Suspense>
                 </ConsoleSidebarNavigationItemLabel>
               </ConsoleSidebarNavigationItemHeading>

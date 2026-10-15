@@ -142,6 +142,11 @@ test.describe("Purchases", () => {
     await drawer(page).getByRole("button", { name: "Close" }).click();
     await expect(drawer(page)).toBeHidden();
     await expect(page).toHaveURL(/\/purchases$/u);
+    // Closing took the purchase out of the history, so going back does not
+    // open it again.
+    await page.goBack();
+    await expect(page).toHaveURL(/\/purchases$/u);
+    await expect(drawer(page)).toBeHidden();
 
     // A link to a purchase opens the drawer on its own, whatever the page.
     await page.goto(
