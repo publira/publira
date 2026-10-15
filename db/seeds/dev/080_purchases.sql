@@ -1,6 +1,6 @@
 -- The member's purchases of the priced Seed Episode 001-10: one that does not
--- expire and a 72-hour rental that ran out, so the purchase library shows a
--- readable row and an expired one.
+-- expire, a 72-hour rental that ran out, and one refunded in full, so the
+-- purchase library shows a readable row, an expired one, and a refunded one.
 
 WITH scope AS (
     SELECT
@@ -13,17 +13,25 @@ WITH scope AS (
     JOIN episodes e ON e.series_id = s.id AND e.title = 'Seed Episode 001-10'
     WHERE t.public_id = 'SeedTNNTAAA1'
 ),
-purchase_seed (id, purchased_at, expires_at) AS (
+purchase_seed (id, purchased_at, expires_at, refunded_at) AS (
     VALUES
         (
             '018f0e8f-1000-7000-8000-000000000001'::uuid,
             '2026-02-01T12:00:00Z'::timestamptz,
+            NULL::timestamptz,
             NULL::timestamptz
         ),
         (
             '018f0e8f-1000-7000-8000-000000000002'::uuid,
             '2026-01-10T12:00:00Z'::timestamptz,
-            '2026-01-13T12:00:00Z'::timestamptz
+            '2026-01-13T12:00:00Z'::timestamptz,
+            NULL::timestamptz
+        ),
+        (
+            '018f0e8f-1000-7000-8000-000000000003'::uuid,
+            '2025-12-20T12:00:00Z'::timestamptz,
+            NULL::timestamptz,
+            '2025-12-21T12:00:00Z'::timestamptz
         )
 )
 INSERT INTO purchases (
@@ -34,7 +42,11 @@ INSERT INTO purchases (
     price_at_purchase,
     currency,
     purchased_at,
-    expires_at
+    expires_at,
+    refunded_amount,
+    refunded_at,
+    revoked_at,
+    revocation_reason
 )
 SELECT
     ps.id,
@@ -44,7 +56,11 @@ SELECT
     500,
     'JPY',
     ps.purchased_at,
-    ps.expires_at
+    ps.expires_at,
+    CASE WHEN ps.refunded_at IS NOT NULL THEN 500 END,
+    ps.refunded_at,
+    ps.refunded_at,
+    CASE WHEN ps.refunded_at IS NOT NULL THEN 'refund' END
 FROM scope
 CROSS JOIN purchase_seed ps
 ON CONFLICT (id) DO UPDATE
@@ -53,4 +69,8 @@ SET user_id = EXCLUDED.user_id,
     price_at_purchase = EXCLUDED.price_at_purchase,
     currency = EXCLUDED.currency,
     purchased_at = EXCLUDED.purchased_at,
-    expires_at = EXCLUDED.expires_at;
+    expires_at = EXCLUDED.expires_at,
+    refunded_amount = EXCLUDED.refunded_amount,
+    refunded_at = EXCLUDED.refunded_at,
+    revoked_at = EXCLUDED.revoked_at,
+    revocation_reason = EXCLUDED.revocation_reason;
