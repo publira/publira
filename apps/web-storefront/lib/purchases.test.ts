@@ -72,4 +72,29 @@ describe("listMyPurchases", () => {
       expect.objectContaining({ currency: "USD", priceAtPurchase: 499 }),
     ]);
   });
+
+  it("keeps what was refunded on each purchase, and when the refunds reached the price", async () => {
+    mockListMyPurchases.mockResolvedValueOnce({
+      nextToken: "",
+      previousToken: "",
+      purchases: [
+        {
+          id: "PURCHASE01",
+          refundedAmount: 499,
+          refundedAt: "2026-10-02T09:00:00Z",
+        },
+        { id: "PURCHASE02" },
+      ],
+    });
+
+    const result = await listMyPurchases(TENANT_ID, { locale: "en" });
+
+    expect(result.purchases).toEqual([
+      expect.objectContaining({
+        refundedAmount: 499,
+        refundedAt: "2026-10-02T09:00:00Z",
+      }),
+      expect.objectContaining({ refundedAmount: 0, refundedAt: "" }),
+    ]);
+  });
 });

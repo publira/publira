@@ -3684,11 +3684,12 @@
     },
     "library": {
       "description": "查看您購買的章節以及它們的閱讀期限。",
+      "download_csv": "下載CSV",
       "empty_description": "您購買的章節可以隨時從這裡開啟。",
       "empty_title": "您還沒有購買任何章節",
       "expired": "已過期",
       "expires_at": "有效期至",
-      "history_description": "閱讀期限已結束的購買記錄。您仍然可以開啟章節頁面。",
+      "history_description": "閱讀期限已結束或已退款的購買記錄。您仍然可以開啟章節頁面。",
       "history_heading": "購買記錄",
       "list_error": "無法顯示您購買的內容",
       "list_failed": "無法載入您購買的內容。請稍後再試。",
@@ -3698,6 +3699,7 @@
       "price": "支付金額",
       "purchased_at": "購買日期",
       "readable": "可閱讀",
+      "refunded": "已退款",
       "shelf_description": "目前可以閱讀的已購買章節。",
       "shelf_heading": "書架",
       "title": "已購買"

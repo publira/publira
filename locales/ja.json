@@ -3684,11 +3684,12 @@
     },
     "library": {
       "description": "購入したエピソードと、その閲覧期限を確認できます。",
+      "download_csv": "CSVでダウンロード",
       "empty_description": "購入したエピソードは、ここからいつでも開けます。",
       "empty_title": "購入済みのエピソードはありません",
       "expired": "期限切れ",
       "expires_at": "有効期限",
-      "history_description": "有効期限が終了した購入です。エピソードの詳細を確認できます。",
+      "history_description": "有効期限が終了した購入と、返金された購入です。エピソードの詳細を確認できます。",
       "history_heading": "購入履歴",
       "list_error": "購入済み一覧を表示できませんでした",
       "list_failed": "購入済み一覧を取得できませんでした。時間をおいて再試行してください。",
@@ -3698,6 +3699,7 @@
       "price": "購入価格",
       "purchased_at": "購入日",
       "readable": "閲覧可能",
+      "refunded": "返金済み",
       "shelf_description": "現在閲覧できる購入済みエピソードです。",
       "shelf_heading": "本棚",
       "title": "購入済み一覧"

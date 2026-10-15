@@ -3684,11 +3684,12 @@
     },
     "library": {
       "description": "Review the episodes you bought and how long you can read them.",
+      "download_csv": "Download as CSV",
       "empty_description": "Episodes you buy can be opened from here at any time.",
       "empty_title": "You have not bought any episodes",
       "expired": "Expired",
       "expires_at": "Expires",
-      "history_description": "Purchases whose reading period has ended. You can still open the episode page.",
+      "history_description": "Purchases whose reading period has ended or that were refunded. You can still open the episode page.",
       "history_heading": "Purchase history",
       "list_error": "Could not display your purchases",
       "list_failed": "Could not load your purchases. Please try again later.",
@@ -3698,6 +3699,7 @@
       "price": "Price paid",
       "purchased_at": "Purchased",
       "readable": "Readable",
+      "refunded": "Refunded",
       "shelf_description": "Purchased episodes you can read right now.",
       "shelf_heading": "Bookshelf",
       "title": "Purchases"

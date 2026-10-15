@@ -35,6 +35,8 @@ Once bought, the episode:
 - Opens on the site and in the tenant's app alike, for the same account, wherever it was bought.
 - Cannot be bought again while it is open. Once its reading period has ended, it can.
 
+**Download as CSV** on **Purchases** saves every purchase the reader has made, refunded ones included, as one CSV file.
+
 ### Free reading periods and Free if you wait
 
 A price is what a reader pays when nothing else opens the episode. Two other things can, and while either has the episode open to a reader, the site offers that reader no purchase:
@@ -161,7 +163,7 @@ What each store needs, from the key the install verifies purchases with to testi
 
 A refund is made where the reader paid: in the Stripe or PAY.JP dashboard for a purchase on the site, and by Apple or Google for a purchase in the app. Nothing is done in the console, and Publira does not tell the reader.
 
-- **A full refund** closes the episode to the reader. The purchase stays in their history, and they can buy the episode again.
+- **A full refund** closes the episode to the reader. The purchase stays in their **Purchase history**, marked **Refunded**, and they can buy the episode again.
 - **A partial refund** leaves the episode open until the refunds on the payment add up to its price. It still lowers the sales the episode's Authors are paid royalties on.
 
 Each refund reaches the install the way its purchase did:

@@ -3684,11 +3684,12 @@
     },
     "library": {
       "description": "구매한 에피소드와 열람 가능 기간을 확인할 수 있습니다.",
+      "download_csv": "CSV로 다운로드",
       "empty_description": "구매한 에피소드는 여기에서 언제든지 열 수 있습니다.",
       "empty_title": "구매한 에피소드가 없습니다",
       "expired": "기한 만료",
       "expires_at": "만료일",
-      "history_description": "열람 기간이 끝난 구매입니다. 에피소드 페이지는 계속 열 수 있습니다.",
+      "history_description": "열람 기간이 끝났거나 환불된 구매입니다. 에피소드 페이지는 계속 열 수 있습니다.",
       "history_heading": "구매 내역",
       "list_error": "구매 목록을 표시할 수 없습니다",
       "list_failed": "구매 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
@@ -3698,6 +3699,7 @@
       "price": "구매 가격",
       "purchased_at": "구매일",
       "readable": "열람 가능",
+      "refunded": "환불됨",
       "shelf_description": "지금 읽을 수 있는 구매한 에피소드입니다.",
       "shelf_heading": "내 책장",
       "title": "구매 목록"

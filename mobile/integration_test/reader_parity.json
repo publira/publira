@@ -434,6 +434,14 @@
       ]
     },
     {
+      "name": "Saving the purchase history as a CSV file",
+      "web": {
+        "routes": ["api/v1/my/purchases/csv"],
+        "rpcs": ["ListMyPurchases"]
+      },
+      "exception": "Not in the app yet: #4341."
+    },
+    {
       "name": "Signing in",
       "web": {
         "routes": ["[locale]/(auth)/login"],
