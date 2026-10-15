@@ -288,6 +288,17 @@ export const WEB_ADMIN_PAYMENT_SETTINGS_BASE_URL = envUrl(
 );
 
 /**
+ * Admin console of the purchases tenant from
+ * `db/seeds/scenarios/520_purchases.sql`. Its suite takes the tenant's payments
+ * through Stripe, which decides which of its purchases can be refunded, so it
+ * needs a console of its own.
+ */
+export const WEB_ADMIN_PURCHASES_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_ADMIN_PURCHASES_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.purchases.localhost")
+);
+
+/**
  * Admin console of the app links tenant from
  * `db/seeds/scenarios/280_app_links.sql`. Its suite saves and clears the apps
  * the tenant's links open in, so it needs a console of its own.

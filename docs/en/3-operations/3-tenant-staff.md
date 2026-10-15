@@ -22,11 +22,11 @@ Two things follow from this:
 
 | Role | What it may do |
 | --- | --- |
-| **Tenant admin** | Everything in the console: the staff and their invitations, every setting of the tenant, its site and branding, the mail, payment, push notification, and sign-in integrations, readers' accounts and contact messages, access tickets, royalties, and the audit log |
+| **Tenant admin** | Everything in the console: the staff and their invitations, every setting of the tenant, its site and branding, the mail, payment, push notification, and sign-in integrations, readers' accounts and contact messages, access tickets, purchases and their refunds, royalties, and the audit log |
 | **Editor** | Write the catalog — series, episodes, Authors, labels, genres — and the tenant's pages and announcements, and moderate comments |
 | **Auditor** | See what an Editor works on, and the tenant's settings, without changing any of it |
 
-Each role includes everything the roles below it may do. The console hides what a role may not use: an Editor sees no **Members**, **Readers**, or **Royalties** in its sidebar, and an Auditor sees no button that changes anything.
+Each role includes everything the roles below it may do. The console hides what a role may not use: an Editor sees no **Members**, **Readers**, **Royalties**, or **Purchases** in its sidebar, and an Auditor sees no button that changes anything.
 
 A tenant needs at least one Tenant admin, since only a Tenant admin can give anyone else a role.
 

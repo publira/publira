@@ -40,6 +40,7 @@ Add it as a workspace dependency and load the styles from the global CSS.
 
 - [Badge / StatusChip](./src/badge) - status indicators and supplementary labels
 - [Dialog / ConfirmDialog](./src/dialog) - the dialogs used to confirm an action
+- [Drawer](./src/drawer) - a sheet along the right edge, for the detail of one row of a list
 - [Table / TableHeader / TableBody / TableRow / TableHead / TableCell / TableEmptyRow / TableLoadingRow / TableSkeleton](./src/table) - the table primitives
 - [Card / CardHeader / CardTitle / CardDescription / CardContent / CardFooter](./src/card) - cards
 - [Tabs / TabsList / TabsTab / TabsPanel](./src/tabs) - one panel at a time, with the row of tabs that switches them

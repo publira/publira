@@ -12,6 +12,7 @@ export default defineConfig({
     "src/checkbox/index.ts",
     "src/combobox/index.ts",
     "src/dialog/index.ts",
+    "src/drawer/index.ts",
     "src/empty-state/index.ts",
     "src/field/index.ts",
     "src/fieldset/index.ts",

@@ -11,7 +11,7 @@ Both rely on **Integrations** › **App links**: the store sections of in-app pu
 
 ## Selling episodes in the app
 
-Under **Integrations** › **Payments**, two settings decide what the app offers on a paid episode:
+Under **Payments** › **Payment methods**, two settings decide what the app offers on a paid episode:
 
 - **Where episodes are sold** decides whether an episode can be bought in the app at all: **Web and app**, **Web only**, or **App only**. A series or an episode can override it.
 - **How the app sells episodes**, in the **In-app purchase** section, decides how the app sells an episode it may sell. **Web checkout** opens the site's checkout in the phone's browser and brings the reader back to the episode once paid. **In-app purchase** sells with the store's own payment sheet, and the store charges the reader and keeps its commission.

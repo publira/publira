@@ -21,8 +21,9 @@ const ADMIN_ONLY_ENTRIES = [
   "Contact messages",
   "Access tickets",
   "Royalties",
+  "Purchases",
+  "Payment methods",
   "Email",
-  "Payments",
   "Mobile push",
   "Sign-in",
   "Members",
@@ -187,6 +188,7 @@ test.describe("tenant roles in the console", () => {
 
     await expectNotFound(page, "/audit-logs");
     await expectNotFound(page, "/integrations/sign-in");
+    await expectNotFound(page, "/purchases");
   });
 
   test("an administrator is offered every entry", async ({ page }) => {

@@ -14,6 +14,7 @@ import {
   MegaphoneIcon,
   PaletteIcon,
   PenLineIcon,
+  ReceiptIcon,
   ScrollTextIcon,
   SendIcon,
   SettingsIcon,
@@ -64,8 +65,9 @@ const hrefs = [
   "/access-tickets",
   "/engagement",
   "/royalties",
-  "/integrations/email",
+  "/purchases",
   "/integrations/payment",
+  "/integrations/email",
   "/integrations/mobile-push",
   "/integrations/app-links",
   "/integrations/sign-in",
@@ -304,6 +306,45 @@ export const AdminNavigation = () => (
         </Suspense>
       </ConsoleSidebarNavigationItems>
     </ConsoleSidebarNavigationSection>
+    {/* Every entry here is a tenant admin's, so the section title goes with
+        them rather than heading an empty list for anyone else. */}
+    <Suspense fallback={null}>
+      <TenantAdminOnly>
+        <ConsoleSidebarNavigationSection>
+          <ConsoleSidebarNavigationTitle>
+            <Suspense fallback={<SkeletonLine className="h-3 w-14" />}>
+              <Message message="admin.nav.payments" />
+            </Suspense>
+          </ConsoleSidebarNavigationTitle>
+          <ConsoleSidebarNavigationItems>
+            <ConsoleSidebarNavigationItem href="/purchases">
+              <ConsoleSidebarNavigationItemIcon>
+                <ReceiptIcon className="size-4" />
+              </ConsoleSidebarNavigationItemIcon>
+              <ConsoleSidebarNavigationItemHeading>
+                <ConsoleSidebarNavigationItemLabel>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                    <Message message="admin.nav.purchases_label" />
+                  </Suspense>
+                </ConsoleSidebarNavigationItemLabel>
+              </ConsoleSidebarNavigationItemHeading>
+            </ConsoleSidebarNavigationItem>
+            <ConsoleSidebarNavigationItem href="/integrations/payment">
+              <ConsoleSidebarNavigationItemIcon>
+                <CreditCardIcon className="size-4" />
+              </ConsoleSidebarNavigationItemIcon>
+              <ConsoleSidebarNavigationItemHeading>
+                <ConsoleSidebarNavigationItemLabel>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                    <Message message="admin.nav.payment_label" />
+                  </Suspense>
+                </ConsoleSidebarNavigationItemLabel>
+              </ConsoleSidebarNavigationItemHeading>
+            </ConsoleSidebarNavigationItem>
+          </ConsoleSidebarNavigationItems>
+        </ConsoleSidebarNavigationSection>
+      </TenantAdminOnly>
+    </Suspense>
     <ConsoleSidebarNavigationSection>
       <ConsoleSidebarNavigationTitle>
         <Suspense fallback={<SkeletonLine className="h-3 w-16" />}>
@@ -321,18 +362,6 @@ export const AdminNavigation = () => (
                 <ConsoleSidebarNavigationItemLabel>
                   <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                     <Message message="admin.nav.email_label" />
-                  </Suspense>
-                </ConsoleSidebarNavigationItemLabel>
-              </ConsoleSidebarNavigationItemHeading>
-            </ConsoleSidebarNavigationItem>
-            <ConsoleSidebarNavigationItem href="/integrations/payment">
-              <ConsoleSidebarNavigationItemIcon>
-                <CreditCardIcon className="size-4" />
-              </ConsoleSidebarNavigationItemIcon>
-              <ConsoleSidebarNavigationItemHeading>
-                <ConsoleSidebarNavigationItemLabel>
-                  <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-                    <Message message="admin.nav.payment_label" />
                   </Suspense>
                 </ConsoleSidebarNavigationItemLabel>
               </ConsoleSidebarNavigationItemHeading>

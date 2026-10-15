@@ -195,6 +195,7 @@ services:
         other.localhost
         payment.localhost
         policy.localhost
+        purchases.localhost
         reject.localhost
         royalty.localhost
         shared-consent.localhost
@@ -224,6 +225,7 @@ services:
         admin.other.localhost
         admin.payment.localhost
         admin.policy.localhost
+        admin.purchases.localhost
         admin.reject.localhost
         admin.royalty.localhost
         admin.shared-consent.localhost

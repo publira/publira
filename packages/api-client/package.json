@@ -83,6 +83,10 @@
       "types": "./dist/admin/access-ticket.d.mts",
       "default": "./dist/admin/access-ticket.mjs"
     },
+    "./admin/purchase": {
+      "types": "./dist/admin/purchase.d.mts",
+      "default": "./dist/admin/purchase.mjs"
+    },
     "./admin/royalty": {
       "types": "./dist/admin/royalty.d.mts",
       "default": "./dist/admin/royalty.mjs"

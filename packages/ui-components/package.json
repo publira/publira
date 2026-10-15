@@ -39,6 +39,10 @@
       "types": "./dist/dialog/index.d.mts",
       "default": "./dist/dialog/index.mjs"
     },
+    "./drawer": {
+      "types": "./dist/drawer/index.d.mts",
+      "default": "./dist/drawer/index.mjs"
+    },
     "./empty-state": {
       "types": "./dist/empty-state/index.d.mts",
       "default": "./dist/empty-state/index.mjs"
