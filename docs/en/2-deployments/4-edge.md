@@ -2,7 +2,7 @@
 title: Edge
 description: What the load balancer, proxy, or CDN in front of an install has to do, and the sample proxy configurations that do it.
 published: 2026-10-06
-updated: 2026-10-13
+updated: 2026-10-15
 redirect_from:
   - /deployments/reverse-proxy
 ---
