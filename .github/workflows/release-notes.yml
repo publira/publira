@@ -43,7 +43,7 @@ jobs:
       - name: Setup / Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 24.21.0
+          node-version: 24.22.0
 
       - name: Collect the description and the diff
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
@@ -93,7 +93,7 @@ jobs:
       - name: Setup / Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 24.21.0
+          node-version: 24.22.0
 
       # The Git tag carries a `v` in front of the version, and nothing else
       # does: the package.json files, the image tags, and the binaries carry
@@ -141,7 +141,7 @@ jobs:
       - name: Setup / Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 24.21.0
+          node-version: 24.22.0
 
       - name: Find the previous release
         id: previous
