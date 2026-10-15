@@ -322,7 +322,7 @@ func serverHandler(clientIPs *clientip.Resolver, served servedAPIs, pools server
 		served.platform.Register(api)
 	}
 	// /api serves the same namespaces for the clients not yet on /rpc, and is
-	// removed in 0.2.0.
+	// removed in 0.3.0.
 	for _, prefix := range []string{"/rpc", "/api"} {
 		mux.Handle(prefix+"/", http.StripPrefix(prefix, api))
 	}

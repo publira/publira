@@ -54,7 +54,7 @@ assert_route "rpc on a platform host of no convention" GET operators.example.net
 assert_route "rpcabc stays on web-storefront" GET localhost /rpcabc web-storefront /rpcabc
 
 # /api, the prefix the server had before /rpc, is routed the same way until
-# 0.2.0, for the clients not yet on /rpc.
+# 0.3.0, for the clients not yet on /rpc.
 assert_route "api keeps /api" GET localhost /api api /api
 assert_route "api keeps /api/" GET localhost /api/ api /api/
 assert_route "api keeps a procedure path" GET localhost /api/publira.v1.CatalogService/ListPublishedSeries api /api/publira.v1.CatalogService/ListPublishedSeries

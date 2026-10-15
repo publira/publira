@@ -12,7 +12,7 @@ Every release publishes its images as `ghcr.io/publira/<name>:<version>`, built 
 | --- | --- | --- | --- |
 | `web-storefront` | [`infra/docker/web`](../docker/web/Dockerfile) with `APP_NAME=web-storefront` | The public tenant site | The edge, on each tenant's domain |
 | `web-admin` | [`infra/docker/web`](../docker/web/Dockerfile) with `APP_NAME=web-admin` | The tenant console | The edge, on each tenant's console host: the one it was given with `--admin-domain`, or `admin.<domain>` without one |
-| `publira server` | [`infra/docker/server`](../docker/server/Dockerfile), no container argument | Every Connect namespace under `/rpc`, and under `/api` until 0.2.0, and image delivery under `/images`, on `:8000` | The edge, on `/rpc`, `/api`, and `/images`; `web-storefront` and `web-admin`, on `/rpc` |
+| `publira server` | [`infra/docker/server`](../docker/server/Dockerfile), no container argument | Every Connect namespace under `/rpc`, and under `/api` until 0.3.0, and image delivery under `/images`, on `:8000` | The edge, on `/rpc`, `/api`, and `/images`; `web-storefront` and `web-admin`, on `/rpc` |
 | `publira worker` | [`infra/docker/server`](../docker/server/Dockerfile), with `worker` as the container argument | The Outbox drain — mail, push, cache revalidation — and every scheduled job | Nothing; it serves `/livez` and `/readyz` on `:8003` |
 
 Every one of them serves `GET /livez` and `GET /readyz` for the orchestrator's probes.

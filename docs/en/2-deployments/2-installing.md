@@ -2,7 +2,7 @@
 title: Installing
 description: Bring an empty install into service, from the services it depends on to the first sign-in to the tenant console.
 published: 2026-10-06
-updated: 2026-10-13
+updated: 2026-10-15
 ---
 
 This page takes an install from nothing to a tenant console its first administrator signs in to. It follows the order the steps have to run in and explains what each one decides; the full list of variables each process reads, and every flag of `publiractl`, stay in the reference linked from each step.
@@ -126,7 +126,7 @@ The edge is whatever receives readers' requests and forwards them to the process
 
 - `admin.<domain>`, or the console host you chose, to `web-admin`.
 - The tenant's domain to `web-storefront`.
-- `/rpc`, `/api`, and `/images` on either host to `publira server`, port `8000` by default, except `/api/v1`, which belongs to the web app the host picked. `/api` is the API's prefix before `/rpc`, forwarded until 0.2.0 removes it.
+- `/rpc`, `/api`, and `/images` on either host to `publira server`, port `8000` by default, except `/api/v1`, which belongs to the web app the host picked. `/api` is the API's prefix before `/rpc`, forwarded until 0.3.0 removes it.
 
 Terminate TLS for both host names at the edge. [What the edge has to do](./4-edge.md#what-the-edge-has-to-do) states the rest of what it needs, whatever it is built from: the headers it passes on and the ones it removes, the client address, and the uploads and webhooks it has to let through. The repository's [sample configurations](./4-edge.md#the-sample-configurations) for Traefik, nginx, and Caddy are one way of doing all of it.
 

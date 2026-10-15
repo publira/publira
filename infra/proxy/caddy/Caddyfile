@@ -92,7 +92,7 @@
 
 	# Everything under /api except the Next.js Route Handlers on /api/v1, the
 	# public API under the prefix it had before /rpc, kept for the clients not
-	# yet on /rpc and removed in 0.2.0. The Route Handlers are
+	# yet on /rpc and removed in 0.3.0. The Route Handlers are
 	# /api/v1/revalidate on every app, plus the view beacon, the read beacon,
 	# and the payment and inbound email webhooks on the public site.
 	@api {

@@ -21,7 +21,7 @@ Image builds are a separate concern and live under [`infra/docker/`](../docker/R
 | `web-storefront` | The public tenant site | `3000` |
 | `web-admin` | The tenant console | `4000` |
 | `web-platform` | The platform console | `4100` |
-| `api` | `publira server`: every Connect namespace under `/rpc`, and under `/api` until 0.2.0, and image delivery for the tenant site and the tenant console alike | `8000` |
+| `api` | `publira server`: every Connect namespace under `/rpc`, and under `/api` until 0.3.0, and image delivery for the tenant site and the tenant console alike | `8000` |
 
 ### Host rules
 
@@ -53,7 +53,7 @@ An install that runs no `web-platform` leaves `PUBLIRA_EDGE_PLATFORM_HOSTS` empt
 
 No rule rewrites the path.
 
-`/rpc` is the public API's prefix. `/api` is the prefix it had before, still forwarded so that a client not yet on `/rpc`, a mobile build among them, keeps reaching the server; 0.2.0 stops serving it, and the `/api` rows above, `/api/v1…` included, go with it.
+`/rpc` is the public API's prefix. `/api` is the prefix it had before, still forwarded so that a client not yet on `/rpc`, a mobile build among them, keeps reaching the server; 0.3.0 stops serving it, and the `/api` rows above, `/api/v1…` included, go with it.
 
 The path rules apply on every listed host: the public API and image delivery answer on the tenant site, the tenant console, and the platform console alike, from the same backend. Both reach it as they are, because the server's own routes carry the prefixes: the Connect endpoints are `/rpc/publira.v1.<Service>/<Method>`, so a client addresses the same paths whether it comes through the edge or dials the server directly. The host name the edge forwards unrewritten is what picks the rules an image is served under.
 

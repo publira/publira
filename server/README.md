@@ -761,7 +761,7 @@ The rate is `complete_count / member_view_count` over a range of days. A period 
 
 ## API namespace separation
 
-`publira server` (`server/cmd/publira`) serves all three Connect namespaces under `/rpc` on one listener, and under `/api` as well until 0.2.0 removes it, `:8000` (changeable with `PUBLIRA_PUBLIC_API_ADDR`), beside `GET /images/…`, `/livez`, and `/readyz`:
+`publira server` (`server/cmd/publira`) serves all three Connect namespaces under `/rpc` on one listener, and under `/api` as well until 0.3.0 removes it, `:8000` (changeable with `PUBLIRA_PUBLIC_API_ADDR`), beside `GET /images/…`, `/livez`, and `/readyz`:
 
 - `publira.v1` — `CatalogService`, `AuthService`, and the rest of the public API
 - `publira.admin.v1` — `AdminSeriesService`, `AdminAuthService`, `AdminEngagementService`, and the rest of the tenant console's API
