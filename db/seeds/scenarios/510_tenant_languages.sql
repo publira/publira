@@ -12,11 +12,11 @@
 -- written again with the languages it started with.
 -- Password hash matches the dev seed (`adminpass`). public_id values and ids
 -- are hard-coded in e2e/src/scenarios/tenant-languages.ts.
---   tenant LangTNNTAAA1 (langs.localhost / admin.langs.localhost)
+--   tenant LngsTNNTAAA1 (langs.localhost / admin.langs.localhost)
 --   admin  LangADMNAAA1 (langs-admin@example.com)
 
 DELETE FROM tenants
-WHERE public_id = 'LangTNNTAAA1';
+WHERE public_id = 'LngsTNNTAAA1';
 
 INSERT INTO tenants (
     id,
@@ -30,7 +30,7 @@ INSERT INTO tenants (
 )
 VALUES (
     '018f10c0-0001-7000-8000-000000000001'::uuid,
-    'LangTNNTAAA1',
+    'LngsTNNTAAA1',
     'langs.localhost:' || :'tenant_port',
     'admin.langs.localhost:' || :'tenant_port',
     'Languages Tenant',
