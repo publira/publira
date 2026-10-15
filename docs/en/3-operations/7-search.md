@@ -100,7 +100,7 @@ Before a definition is saved, the engine is asked to create an empty index with 
 
 The worker keeps the index up to date as tenants publish and edit, and builds a new one whenever the engine or the text analysis changes, so an index rarely needs rebuilding by hand. `publiractl search reindex` is for the two cases that are left:
 
-- **A release changed the index.** When the [release notes](../2-deployments/6-upgrading.md#read-the-release-notes) say the catalog index changed, run it once the upgrade is done.
+- **A release changed the index.** When the [release notes](../2-deployments/7-upgrading.md#read-the-release-notes) say the catalog index changed, run it once the upgrade is done.
 - **The index was lost**, because the cluster was replaced or the index deleted.
 
 ```bash

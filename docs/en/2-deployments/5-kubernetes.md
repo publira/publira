@@ -152,7 +152,7 @@ kubectl wait --for=condition=Complete --timeout=10m job/publira-db-migrate
 kubectl logs job/publira-db-migrate
 ```
 
-`backoffLimit: 0` keeps Kubernetes from running a failed migration again on its own: a failed run leaves the database marked dirty, which [When a migration fails](./6-upgrading.md#when-a-migration-fails) resolves by hand. `kubectl wait` gives up after ten minutes whether the Job failed or is still running, so read its log either way.
+`backoffLimit: 0` keeps Kubernetes from running a failed migration again on its own: a failed run leaves the database marked dirty, which [When a migration fails](./7-upgrading.md#when-a-migration-fails) resolves by hand. `kubectl wait` gives up after ten minutes whether the Job failed or is still running, so read its log either way.
 
 A Job cannot be changed once it exists, and one that has finished, whether it completed or failed, does not run again when its manifest is applied. This one is deleted a day after it finishes. Until then, running it again, as the last step of that recovery does, starts by deleting it:
 
@@ -906,9 +906,9 @@ The tenant's domain answers `404`, since the process behind it does not serve th
 
 ## Upgrading
 
-[Upgrading](./6-upgrading.md) brings an install to a new release: a backup, the migrations and the roles with the new release's `publiractl`, and then the processes. Read it, and its release notes, first. On a cluster its steps become:
+[Upgrading](./7-upgrading.md) brings an install to a new release: a backup, the migrations and the roles with the new release's `publiractl`, and then the processes. Read it, and its release notes, first. On a cluster its steps become:
 
-1. **Stop the processes** when you decided to stop them first, which [Decide whether to stop the processes first](./6-upgrading.md#decide-whether-to-stop-the-processes-first) weighs, by scaling every Deployment of the install to zero:
+1. **Stop the processes** when you decided to stop them first, which [Decide whether to stop the processes first](./7-upgrading.md#decide-whether-to-stop-the-processes-first) weighs, by scaling every Deployment of the install to zero:
 
    ```bash
    kubectl scale deployment --all --replicas=0
@@ -917,7 +917,7 @@ The tenant's domain answers `404`, since the process behind it does not serve th
 
    The label selects the Pods of every Deployment above and leaves out those of the Jobs, which have finished and are kept for their logs.
 
-2. **Back up the database**, with `pg_dump` from a host that reaches it, or a snapshot of the managed database, as [Back up the database](./6-upgrading.md#1-back-up-the-database) describes.
+2. **Back up the database**, with `pg_dump` from a host that reaches it, or a snapshot of the managed database, as [Back up the database](./7-upgrading.md#1-back-up-the-database) describes.
 3. **Apply the migrations and the roles**: delete the previous release's Jobs if they are still there, since a Job cannot be changed, then change `<tag>` in the two Jobs of [Apply the migrations](#2-apply-the-migrations) and [Create the roles](#3-create-the-roles) to the new release, and run them in that order, waiting for each to complete:
 
    ```bash
@@ -927,7 +927,7 @@ The tenant's domain answers `404`, since the process behind it does not serve th
    The roles Job gives each role the password `publira-db-roles` holds for it, which is the one it already has, so it runs with its flags unchanged. A release that adds a role needs that role's password in `publira-db-roles` and its flag added.
 
 4. **Start the new release**: change `<tag>` in every Deployment, add the variables the release notes name, and apply them. Applying the manifests restores the replicas you scaled to zero.
-5. **Check the install**, as [Check the install](./6-upgrading.md#5-check-the-install) describes.
+5. **Check the install**, as [Check the install](./7-upgrading.md#5-check-the-install) describes.
 
 When the processes keep running through the upgrade instead, apply every Deployment at once after the roles Job: a Deployment rolls one replica at a time, so the two releases serve side by side until the last replica is replaced, and the shorter that is the better, as the same page explains.
 
