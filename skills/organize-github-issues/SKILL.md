@@ -107,6 +107,17 @@ Such work lands as two stacked pull requests, one per layer, and every pull requ
 
 Give each its own title naming its layer's outcome, its own Effort, its own `area/*` label, and its own milestone, and put both under the same parent when the work has one. When a single Issue already covers both layers, split it rather than filing a second one next to it: narrow the existing Issue to one layer, including its title and purpose, and move the other layer's scope and acceptance criteria to the new Issue.
 
+### A reader-facing feature: the storefront and the mobile app together
+
+The storefront (`apps/web-storefront`) and the mobile app (`mobile/`) are two clients of the same public API in `proto/publira/v1`, and a reader expects to find the same features in both. A reader-facing feature therefore has two frontend Issues, not one: the storefront one (`area/web-storefront`) and the mobile one (`area/mobile`), both under the same parent, and both `blocked by` the backend Issue when the feature needs a change to `proto/`, `db/`, or `server/`. A feature built on a public RPC that already exists has no backend Issue, and the two client Issues stand on their own. Each gets the milestone its own work matches; the feature is the same to a reader in either client, so the two match the same description, and a mobile Issue placed in a later milestone than its storefront counterpart says in its body why the app waits. File both in the same run: an app Issue filed later, on its own, is how the app falls behind the storefront without anyone deciding that it should. The storefront's pull request needs that number too — `pnpm reader-parity:check` holds every reader-facing page and public API call of the storefront to an entry in `mobile/integration_test/reader_parity.json`, and an entry for a feature the app does not have yet is an `exception` naming the mobile Issue (`"Not in the app yet: #NNNN."`).
+
+Only one client gets an Issue when the feature exists because of that client's medium:
+
+- the storefront alone: the sitemap, `robots.txt`, payment webhooks, Open Graph cards, and anything else that serves a crawler, a payment provider, or a link preview rather than a reader
+- the app alone: offline downloads, push notifications, store purchases, and anything else the operating system or an app store provides
+
+When a feature is left to one client for any other reason, that client's Issue says why in its body. The admin and platform consoles have no mobile counterpart, so none of this applies to them.
+
 ## [Create an Issue](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/creating-an-issue)
 
 1. Search for duplicates, bot-managed equivalents, and suitable existing parents.
@@ -149,6 +160,7 @@ Confirm all applicable invariants:
 - parent Epics have `epic`, valid Sub-issues, and no Effort
 - dependencies represent prerequisites rather than mere association
 - no Issue has multiple parents
+- every open reader-facing `area/web-storefront` Issue has an `area/mobile` counterpart under the same parent, or states in its body why it does not; the counterpart is in the same milestone, or in a later one with its own body saying why the app waits
 - counts and sampled read-backs match the migration plan
 - repository files remain unchanged unless configuration changes were explicitly required
 
