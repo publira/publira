@@ -36,6 +36,7 @@ const (
 // Querier is the generated set of queries one reclamation run needs.
 type Querier interface {
 	ListReferencedObjectKeys(ctx context.Context, objectKeys []string) ([]string, error)
+	DeleteUnreferencedCampaignBannerImages(ctx context.Context, createdBefore time.Time) (int64, error)
 	DeleteUnreferencedCreatorImages(ctx context.Context, createdBefore time.Time) (int64, error)
 	DeleteUnreferencedEpisodeEyeCatchImages(ctx context.Context, createdBefore time.Time) (int64, error)
 	DeleteUnreferencedGenreImages(ctx context.Context, createdBefore time.Time) (int64, error)
@@ -178,6 +179,7 @@ func (r *Reclaimer) deleteUnreferencedImages(ctx context.Context, cutoff time.Ti
 		name string
 		run  func(context.Context, time.Time) (int64, error)
 	}{
+		{"campaign_banner_images", r.queries.DeleteUnreferencedCampaignBannerImages},
 		{"creator_images", r.queries.DeleteUnreferencedCreatorImages},
 		{"episode_eye_catch_images", r.queries.DeleteUnreferencedEpisodeEyeCatchImages},
 		{"genre_images", r.queries.DeleteUnreferencedGenreImages},

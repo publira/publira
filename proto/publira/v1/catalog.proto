@@ -904,6 +904,30 @@ message ListSitemapEntriesResponse {
   string next_token = 3;
 }
 
+// A campaign banner showing on the storefront now: an image the tenant
+// scheduled, linking wherever the operator pointed it.
+message CampaignBanner {
+  string public_id = 1;
+  // A path on the tenant's own site ("/series/…"), which the client resolves
+  // against the storefront it is showing, or an absolute http(s) URL.
+  string link_url = 2;
+  // The image, stored the way an eye-catch is: every ratio at several widths,
+  // so a client picks the ratio its band is drawn in.
+  string image_updated_at = 3;
+  repeated publira.types.v1.SeriesEyeCatchVariant image_variants = 4;
+}
+
+message ListCampaignBannersRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+// The banners showing at the moment of the read, in the tenant's own order. A
+// tenant holds at most 50 banners, so the list is never paged. Empty when
+// nothing is scheduled now, which a client draws as no band at all.
+message ListCampaignBannersResponse {
+  repeated CampaignBanner banners = 1;
+}
+
 service CatalogService {
   // Every label of the tenant, including one with no published series, so a
   // label's URL keeps working after its last series is taken down. A label
@@ -1012,6 +1036,13 @@ service CatalogService {
   // last changed, for the storefront's sitemap. It reads nothing about the
   // caller, so a response can be cached and shared.
   rpc ListSitemapEntries(ListSitemapEntriesRequest) returns (ListSitemapEntriesResponse) {}
+  // The banners whose display window is open at the moment of the read:
+  // published, and with the read inside the half-open window. The window is a
+  // pair of instants the console entered in the tenant's own time zone, so the
+  // answer turns over at the same moment for every reader wherever they are.
+  // It reads nothing about the caller and needs no session, so a response can
+  // be cached and shared until the next boundary.
+  rpc ListCampaignBanners(ListCampaignBannersRequest) returns (ListCampaignBannersResponse) {}
 }
 
 message MarkEpisodeAsReadRequest {

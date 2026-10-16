@@ -98,6 +98,7 @@ type TenantScopedQuerier interface {
 	GetReaderIconPresetImageForTenant(ctx context.Context, arg dbmodels.GetReaderIconPresetImageForTenantParams) (dbmodels.GetReaderIconPresetImageForTenantRow, error)
 	GetTenantImageVariantByTypeForTenant(ctx context.Context, arg dbmodels.GetTenantImageVariantByTypeForTenantParams) (dbmodels.GetTenantImageVariantByTypeForTenantRow, error)
 	GetGenreImageVariantByTypeAndWidthForTenant(ctx context.Context, arg dbmodels.GetGenreImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetGenreImageVariantByTypeAndWidthForTenantRow, error)
+	GetCampaignBannerImageVariantByTypeAndWidthForTenant(ctx context.Context, arg dbmodels.GetCampaignBannerImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetCampaignBannerImageVariantByTypeAndWidthForTenantRow, error)
 	GetEpisodeEyeCatchImageVariantByTypeAndWidthForTenant(ctx context.Context, arg dbmodels.GetEpisodeEyeCatchImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetEpisodeEyeCatchImageVariantByTypeAndWidthForTenantRow, error)
 	GetLabelImageVariantByTypeAndWidthForTenant(ctx context.Context, arg dbmodels.GetLabelImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetLabelImageVariantByTypeAndWidthForTenantRow, error)
 	GetSeriesImageVariantByTypeAndWidthForTenant(ctx context.Context, arg dbmodels.GetSeriesImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetSeriesImageVariantByTypeAndWidthForTenantRow, error)
@@ -196,6 +197,7 @@ func NewHandler(public, admin SiteDB, logger *slog.Logger, tokens *auth.TokenMan
 	}
 	h.proxy = proxy
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /images/campaign-banners/{media_id}/{variant_type}/{width}", h.handleGetCampaignBannerImage)
 	mux.HandleFunc("GET /images/creators/{media_id}", h.handleGetCreatorImage)
 	mux.HandleFunc("GET /images/episodes/{media_id}", h.handleGetEpisodeImage)
 	mux.HandleFunc("GET /images/episodes/{media_id}/preview", h.handleGetEpisodePreviewImage)
@@ -905,6 +907,63 @@ func (h *Handler) handleGetEpisodeEyeCatchImage(w http.ResponseWriter, r *http.R
 			return
 		}
 		h.logger.ErrorContext(ctx, "failed to load episode eye catch image metadata", "error", err, "media_id", mediaID.String())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	if strings.TrimSpace(imageRow.ObjectKey) == "" {
+		http.Error(w, "image not found", http.StatusNotFound)
+		return
+	}
+
+	// The row is read; the conversion below runs without the connection.
+	cleanup()
+	h.serveConverted(w, r, adminHost, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600", nil)
+}
+
+func (h *Handler) handleGetCampaignBannerImage(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	tenant, adminHost, ok := h.tenantFromHost(w, r)
+	if !ok {
+		return
+	}
+
+	mediaID, err := uuid.Parse(r.PathValue("media_id"))
+	variantType := strings.TrimSpace(r.PathValue("variant_type"))
+	if variantType == "" {
+		http.Error(w, "variant_type is required", http.StatusBadRequest)
+		return
+	}
+	width, widthErr := strconv.Atoi(strings.TrimSpace(r.PathValue("width")))
+	if widthErr != nil || width <= 0 {
+		http.Error(w, "invalid width", http.StatusBadRequest)
+		return
+	}
+	if err != nil {
+		http.Error(w, "invalid media_id", http.StatusBadRequest)
+		return
+	}
+
+	tenantQueries, cleanup, err := h.tenantQueries(ctx, adminHost, tenant.ID)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer cleanup()
+
+	imageRow, err := tenantQueries.GetCampaignBannerImageVariantByTypeAndWidthForTenant(ctx, dbmodels.GetCampaignBannerImageVariantByTypeAndWidthForTenantParams{
+		CampaignBannerImageID: mediaID,
+		TenantID:              tenant.ID,
+		VariantType:           variantType,
+		Width:                 int32(width),
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "image not found", http.StatusNotFound)
+			return
+		}
+		h.logger.ErrorContext(ctx, "failed to load campaign banner image metadata", "error", err, "media_id", mediaID.String())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}

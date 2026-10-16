@@ -110,6 +110,15 @@ func TestReadLimitsAdmitTheLargestDocumentedUpload(t *testing.T) {
 		publiraadminv1connect.AdminGenreServiceUploadGenreEyeCatchAspectImageProcedure: &publiraadminv1.UploadGenreEyeCatchAspectImageRequest{
 			Tenant: tenant, ImageData: image(imageproc.EyeCatchMaxBytes),
 		},
+		publiraadminv1connect.AdminCampaignBannerServiceCreateCampaignBannerProcedure: &publiraadminv1.CreateCampaignBannerRequest{
+			Tenant: tenant, ImageData: image(imageproc.EyeCatchMaxBytes),
+		},
+		publiraadminv1connect.AdminCampaignBannerServiceUpdateCampaignBannerProcedure: &publiraadminv1.UpdateCampaignBannerRequest{
+			Tenant: tenant, ImageData: image(imageproc.EyeCatchMaxBytes),
+		},
+		publiraadminv1connect.AdminCampaignBannerServiceUploadCampaignBannerAspectImageProcedure: &publiraadminv1.UploadCampaignBannerAspectImageRequest{
+			Tenant: tenant, ImageData: image(imageproc.EyeCatchMaxBytes),
+		},
 		publiraadminv1connect.AdminCreatorServiceCreateCreatorProcedure: &publiraadminv1.CreateCreatorRequest{
 			Tenant: tenant, IconImageData: image(creatorIconMaxUploadBytes),
 		},

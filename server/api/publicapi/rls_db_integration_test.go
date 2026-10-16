@@ -122,6 +122,8 @@ var publicDataTables = []struct {
 	{name: "label_image_variants", count: "SELECT count(*) FROM label_image_variants"},
 	{name: "genre_images", count: "SELECT count(*) FROM genre_images"},
 	{name: "genre_image_variants", count: "SELECT count(*) FROM genre_image_variants"},
+	{name: "campaign_banner_images", count: "SELECT count(*) FROM campaign_banner_images"},
+	{name: "campaign_banner_image_variants", count: "SELECT count(*) FROM campaign_banner_image_variants"},
 	{name: "tenant_images", count: "SELECT count(*) FROM tenant_images"},
 	{name: "tenant_image_variants", count: "SELECT count(*) FROM tenant_image_variants"},
 	{name: "episode_images", count: "SELECT count(*) FROM episode_images"},
@@ -134,6 +136,8 @@ var publicDataTables = []struct {
 	{name: "tenant_community_limit_overrides", count: "SELECT count(*) FROM tenant_community_limit_overrides"},
 	{name: "series_listings", count: "SELECT count(*) FROM series_listings"},
 	{name: "episode_free_windows", count: "SELECT count(*) FROM episode_free_windows"},
+	// The banners above the top page's catalog sections.
+	{name: "campaign_banners", count: "SELECT count(*) FROM campaign_banners"},
 	{name: "access_tickets", count: "SELECT count(*) FROM access_tickets"},
 	// A series' wait-for-free rule, which the series page reads, and one
 	// reader's wait for their next ticket, which spending one writes on this
@@ -330,6 +334,7 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 		(id, tenant_id, episode_eye_catch_image_id, label, variant_type, storage_provider, object_key, content_type, file_size_bytes, width, height)
 		VALUES ($1, $2, $3, 'portrait-320', 'portrait', 's3', 'tenants/episode-eye-catch.webp', 'image/webp', 1, 320, 480)`,
 		uuid.Must(uuid.NewV7()), first.ID, episodeEyeCatchImageID)
+	env.PG.SeedCampaignBanner(t, first.ID, testutil.CampaignBannerSeed{Published: true})
 	tenantImageID := uuid.Must(uuid.NewV7())
 	seed("tenant image", "INSERT INTO tenant_images (id, tenant_id) VALUES ($1, $2)", tenantImageID, first.ID)
 	seed("tenant image variant", `INSERT INTO tenant_image_variants

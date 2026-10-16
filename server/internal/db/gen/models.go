@@ -62,6 +62,45 @@ type AuditLog struct {
 	ActorName     sql.NullString `json:"actor_name"`
 }
 
+type CampaignBanner struct {
+	ID                 uuid.UUID     `json:"id"`
+	TenantID           uuid.UUID     `json:"tenant_id"`
+	PublicID           string        `json:"public_id"`
+	LinkUrl            string        `json:"link_url"`
+	StartsAt           time.Time     `json:"starts_at"`
+	EndsAt             time.Time     `json:"ends_at"`
+	DisplayOrder       int32         `json:"display_order"`
+	IsPublished        bool          `json:"is_published"`
+	ImageID            uuid.NullUUID `json:"image_id"`
+	StartRevalidatedAt sql.NullTime  `json:"start_revalidated_at"`
+	EndRevalidatedAt   sql.NullTime  `json:"end_revalidated_at"`
+	CreatedAt          time.Time     `json:"created_at"`
+	UpdatedAt          time.Time     `json:"updated_at"`
+}
+
+type CampaignBannerImage struct {
+	ID               uuid.UUID `json:"id"`
+	TenantID         uuid.UUID `json:"tenant_id"`
+	CampaignBannerID uuid.UUID `json:"campaign_banner_id"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	CreatedAt        time.Time `json:"created_at"`
+}
+
+type CampaignBannerImageVariant struct {
+	ID                    uuid.UUID `json:"id"`
+	TenantID              uuid.UUID `json:"tenant_id"`
+	CampaignBannerImageID uuid.UUID `json:"campaign_banner_image_id"`
+	Label                 string    `json:"label"`
+	VariantType           string    `json:"variant_type"`
+	StorageProvider       string    `json:"storage_provider"`
+	ObjectKey             string    `json:"object_key"`
+	ContentType           string    `json:"content_type"`
+	FileSizeBytes         int64     `json:"file_size_bytes"`
+	Width                 int32     `json:"width"`
+	Height                int32     `json:"height"`
+	CreatedAt             time.Time `json:"created_at"`
+}
+
 type ContactMessage struct {
 	ID           uuid.UUID      `json:"id"`
 	TenantID     uuid.UUID      `json:"tenant_id"`

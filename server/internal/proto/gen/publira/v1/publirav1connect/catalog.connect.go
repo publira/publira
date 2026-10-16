@@ -90,6 +90,9 @@ const (
 	// CatalogServiceListSitemapEntriesProcedure is the procedure name of the CatalogService's
 	// ListSitemapEntries RPC.
 	CatalogServiceListSitemapEntriesProcedure = "/publira.v1.CatalogService/ListSitemapEntries"
+	// CatalogServiceListCampaignBannersProcedure is the procedure name of the CatalogService's
+	// ListCampaignBanners RPC.
+	CatalogServiceListCampaignBannersProcedure = "/publira.v1.CatalogService/ListCampaignBanners"
 	// EpisodeReadServiceMarkEpisodeAsReadProcedure is the procedure name of the EpisodeReadService's
 	// MarkEpisodeAsRead RPC.
 	EpisodeReadServiceMarkEpisodeAsReadProcedure = "/publira.v1.EpisodeReadService/MarkEpisodeAsRead"
@@ -284,6 +287,13 @@ var (
 			Procedure:  CatalogServiceListSitemapEntriesProcedure,
 		}
 	})
+	catalogServiceListCampaignBannersSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("CatalogService").Methods().ByName("ListCampaignBanners"),
+			Procedure:  CatalogServiceListCampaignBannersProcedure,
+		}
+	})
 )
 
 // CatalogServiceClient is a client for the publira.v1.CatalogService service.
@@ -395,6 +405,13 @@ type CatalogServiceClient interface {
 	// last changed, for the storefront's sitemap. It reads nothing about the
 	// caller, so a response can be cached and shared.
 	ListSitemapEntries(context.Context, *v1.ListSitemapEntriesRequest) (*v1.ListSitemapEntriesResponse, error)
+	// The banners whose display window is open at the moment of the read:
+	// published, and with the read inside the half-open window. The window is a
+	// pair of instants the console entered in the tenant's own time zone, so the
+	// answer turns over at the same moment for every reader wherever they are.
+	// It reads nothing about the caller and needs no session, so a response can
+	// be cached and shared until the next boundary.
+	ListCampaignBanners(context.Context, *v1.ListCampaignBannersRequest) (*v1.ListCampaignBannersResponse, error)
 }
 
 // NewCatalogServiceClient constructs a client for the publira.v1.CatalogService service. Multiple
@@ -512,6 +529,13 @@ type CatalogServiceHandler interface {
 	// last changed, for the storefront's sitemap. It reads nothing about the
 	// caller, so a response can be cached and shared.
 	ListSitemapEntries(context.Context, *v1.ListSitemapEntriesRequest) (*v1.ListSitemapEntriesResponse, error)
+	// The banners whose display window is open at the moment of the read:
+	// published, and with the read inside the half-open window. The window is a
+	// pair of instants the console entered in the tenant's own time zone, so the
+	// answer turns over at the same moment for every reader wherever they are.
+	// It reads nothing about the caller and needs no session, so a response can
+	// be cached and shared until the next boundary.
+	ListCampaignBanners(context.Context, *v1.ListCampaignBannersRequest) (*v1.ListCampaignBannersResponse, error)
 }
 
 // RegisterCatalogServiceHandler registers svc as the publira.v1.CatalogService implementation on
@@ -537,6 +561,7 @@ func RegisterCatalogServiceHandler(server *connect.Server, svc CatalogServiceHan
 		connect.Method{Spec: catalogServiceListRankedSeriesSpec(), Handler: adapter.listRankedSeries},
 		connect.Method{Spec: catalogServiceListRelatedSeriesSpec(), Handler: adapter.listRelatedSeries},
 		connect.Method{Spec: catalogServiceListSitemapEntriesSpec(), Handler: adapter.listSitemapEntries},
+		connect.Method{Spec: catalogServiceListCampaignBannersSpec(), Handler: adapter.listCampaignBanners},
 	)
 }
 
@@ -613,6 +638,10 @@ func (UnimplementedCatalogServiceHandler) ListRelatedSeries(context.Context, *v1
 
 func (UnimplementedCatalogServiceHandler) ListSitemapEntries(context.Context, *v1.ListSitemapEntriesRequest) (*v1.ListSitemapEntriesResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.CatalogService.ListSitemapEntries is not implemented")
+}
+
+func (UnimplementedCatalogServiceHandler) ListCampaignBanners(context.Context, *v1.ListCampaignBannersRequest) (*v1.ListCampaignBannersResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.CatalogService.ListCampaignBanners is not implemented")
 }
 
 type catalogServiceClient struct {
@@ -758,6 +787,14 @@ func (c *catalogServiceClient) ListRelatedSeries(ctx context.Context, req *v1.Li
 func (c *catalogServiceClient) ListSitemapEntries(ctx context.Context, req *v1.ListSitemapEntriesRequest) (*v1.ListSitemapEntriesResponse, error) {
 	var res v1.ListSitemapEntriesResponse
 	if err := c.client.CallUnary(ctx, catalogServiceListSitemapEntriesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *catalogServiceClient) ListCampaignBanners(ctx context.Context, req *v1.ListCampaignBannersRequest) (*v1.ListCampaignBannersResponse, error) {
+	var res v1.ListCampaignBannersResponse
+	if err := c.client.CallUnary(ctx, catalogServiceListCampaignBannersSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -975,6 +1012,18 @@ func (h catalogServiceHandler) listSitemapEntries(ctx context.Context, _ connect
 		return err
 	}
 	res, err := h.svc.ListSitemapEntries(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h catalogServiceHandler) listCampaignBanners(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListCampaignBannersRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListCampaignBanners(ctx, &req)
 	if err != nil {
 		return err
 	}

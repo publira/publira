@@ -193,6 +193,28 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "announcement_unpinned",
             },
             {
+              label: t("admin.audit.actions.campaign_banner_created"),
+              value: "campaign_banner_created",
+            },
+            {
+              label: t("admin.audit.actions.campaign_banner_updated"),
+              value: "campaign_banner_updated",
+            },
+            {
+              label: t("admin.audit.actions.campaign_banner_deleted"),
+              value: "campaign_banner_deleted",
+            },
+            {
+              label: t("admin.audit.actions.campaign_banners_reordered"),
+              value: "campaign_banners_reordered",
+            },
+            {
+              label: t(
+                "admin.audit.actions.campaign_banner_aspect_image_uploaded"
+              ),
+              value: "campaign_banner_aspect_image_uploaded",
+            },
+            {
               label: t("admin.audit.actions.comment_approved"),
               value: "comment_approved",
             },

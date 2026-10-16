@@ -5337,6 +5337,226 @@ class ListSitemapEntriesResponse extends $pb.GeneratedMessage {
   void clearNextToken() => $_clearField(3);
 }
 
+/// A campaign banner showing on the storefront now: an image the tenant
+/// scheduled, linking wherever the operator pointed it.
+class CampaignBanner extends $pb.GeneratedMessage {
+  factory CampaignBanner({
+    $core.String? publicId,
+    $core.String? linkUrl,
+    $core.String? imageUpdatedAt,
+    $core.Iterable<$0.SeriesEyeCatchVariant>? imageVariants,
+  }) {
+    final result = CampaignBanner._();
+    if (publicId != null) result.publicId = publicId;
+    if (linkUrl != null) result.linkUrl = linkUrl;
+    if (imageUpdatedAt != null) result.imageUpdatedAt = imageUpdatedAt;
+    if (imageVariants != null) result.imageVariants.addAll(imageVariants);
+    return result;
+  }
+
+  CampaignBanner._();
+
+  factory CampaignBanner.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CampaignBanner()..mergeFromBuffer(data, registry);
+  factory CampaignBanner.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CampaignBanner()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'CampaignBanner',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: CampaignBanner.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'publicId')
+    ..aOS(2, _omitFieldNames ? '' : 'linkUrl')
+    ..aOS(3, _omitFieldNames ? '' : 'imageUpdatedAt')
+    ..pPM<$0.SeriesEyeCatchVariant>(4, _omitFieldNames ? '' : 'imageVariants',
+        subBuilder: $0.SeriesEyeCatchVariant.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CampaignBanner clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CampaignBanner copyWith(void Function(CampaignBanner) updates) =>
+      super.copyWith((message) => updates(message as CampaignBanner))
+          as CampaignBanner;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use CampaignBanner() / CampaignBanner.new instead')
+  static CampaignBanner create() => CampaignBanner._();
+  static $pb.GeneratedMessage $_createMessage() => CampaignBanner._();
+  @$core.override
+  CampaignBanner createEmptyInstance() => CampaignBanner._();
+  @$core.pragma('dart2js:noInline')
+  static CampaignBanner getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<CampaignBanner>(
+          CampaignBanner.$_createMessage);
+  static CampaignBanner? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get publicId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set publicId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPublicId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPublicId() => $_clearField(1);
+
+  /// A path on the tenant's own site ("/series/…"), which the client resolves
+  /// against the storefront it is showing, or an absolute http(s) URL.
+  @$pb.TagNumber(2)
+  $core.String get linkUrl => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set linkUrl($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasLinkUrl() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearLinkUrl() => $_clearField(2);
+
+  /// The image, stored the way an eye-catch is: every ratio at several widths,
+  /// so a client picks the ratio its band is drawn in.
+  @$pb.TagNumber(3)
+  $core.String get imageUpdatedAt => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set imageUpdatedAt($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasImageUpdatedAt() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearImageUpdatedAt() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $pb.PbList<$0.SeriesEyeCatchVariant> get imageVariants => $_getList(3);
+}
+
+class ListCampaignBannersRequest extends $pb.GeneratedMessage {
+  factory ListCampaignBannersRequest({
+    $0.TenantContext? tenant,
+  }) {
+    final result = ListCampaignBannersRequest._();
+    if (tenant != null) result.tenant = tenant;
+    return result;
+  }
+
+  ListCampaignBannersRequest._();
+
+  factory ListCampaignBannersRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ListCampaignBannersRequest()..mergeFromBuffer(data, registry);
+  factory ListCampaignBannersRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ListCampaignBannersRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListCampaignBannersRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: ListCampaignBannersRequest.$_createMessage)
+    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $0.TenantContext.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListCampaignBannersRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListCampaignBannersRequest copyWith(
+          void Function(ListCampaignBannersRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as ListCampaignBannersRequest))
+          as ListCampaignBannersRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ListCampaignBannersRequest() / ListCampaignBannersRequest.new instead')
+  static ListCampaignBannersRequest create() => ListCampaignBannersRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ListCampaignBannersRequest._();
+  @$core.override
+  ListCampaignBannersRequest createEmptyInstance() =>
+      ListCampaignBannersRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ListCampaignBannersRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ListCampaignBannersRequest>(
+          ListCampaignBannersRequest.$_createMessage);
+  static ListCampaignBannersRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($0.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.TenantContext ensureTenant() => $_ensure(0);
+}
+
+/// The banners showing at the moment of the read, in the tenant's own order. A
+/// tenant holds at most 50 banners, so the list is never paged. Empty when
+/// nothing is scheduled now, which a client draws as no band at all.
+class ListCampaignBannersResponse extends $pb.GeneratedMessage {
+  factory ListCampaignBannersResponse({
+    $core.Iterable<CampaignBanner>? banners,
+  }) {
+    final result = ListCampaignBannersResponse._();
+    if (banners != null) result.banners.addAll(banners);
+    return result;
+  }
+
+  ListCampaignBannersResponse._();
+
+  factory ListCampaignBannersResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ListCampaignBannersResponse()..mergeFromBuffer(data, registry);
+  factory ListCampaignBannersResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ListCampaignBannersResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListCampaignBannersResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: ListCampaignBannersResponse.$_createMessage)
+    ..pPM<CampaignBanner>(1, _omitFieldNames ? '' : 'banners',
+        subBuilder: CampaignBanner.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListCampaignBannersResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListCampaignBannersResponse copyWith(
+          void Function(ListCampaignBannersResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as ListCampaignBannersResponse))
+          as ListCampaignBannersResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ListCampaignBannersResponse() / ListCampaignBannersResponse.new instead')
+  static ListCampaignBannersResponse create() =>
+      ListCampaignBannersResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ListCampaignBannersResponse._();
+  @$core.override
+  ListCampaignBannersResponse createEmptyInstance() =>
+      ListCampaignBannersResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ListCampaignBannersResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ListCampaignBannersResponse>(
+          ListCampaignBannersResponse.$_createMessage);
+  static ListCampaignBannersResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<CampaignBanner> get banners => $_getList(0);
+}
+
 class MarkEpisodeAsReadRequest extends $pb.GeneratedMessage {
   factory MarkEpisodeAsReadRequest({
     $0.TenantContext? tenant,
@@ -10535,6 +10755,17 @@ class CatalogServiceApi {
           $pb.ClientContext? ctx, ListSitemapEntriesRequest request) =>
       _client.invoke<ListSitemapEntriesResponse>(ctx, 'CatalogService',
           'ListSitemapEntries', request, ListSitemapEntriesResponse());
+
+  /// The banners whose display window is open at the moment of the read:
+  /// published, and with the read inside the half-open window. The window is a
+  /// pair of instants the console entered in the tenant's own time zone, so the
+  /// answer turns over at the same moment for every reader wherever they are.
+  /// It reads nothing about the caller and needs no session, so a response can
+  /// be cached and shared until the next boundary.
+  $async.Future<ListCampaignBannersResponse> listCampaignBanners(
+          $pb.ClientContext? ctx, ListCampaignBannersRequest request) =>
+      _client.invoke<ListCampaignBannersResponse>(ctx, 'CatalogService',
+          'ListCampaignBanners', request, ListCampaignBannersResponse());
 }
 
 class EpisodeReadServiceApi {

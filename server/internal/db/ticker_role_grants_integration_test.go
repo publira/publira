@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 
+	"github.com/publira/publira/server/internal/campaignbanners"
 	"github.com/publira/publira/server/internal/dayroll"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/freewindows"
@@ -177,6 +178,58 @@ func TestTickerRoleCannotRewriteASeries(t *testing.T) {
 	var pgErr *pgconn.PgError
 	if !errors.As(err, &pgErr) || pgErr.Code != insufficientPrivilegeCode {
 		t.Fatalf("update series title error = %v, want SQLSTATE %s", err, insufficientPrivilegeCode)
+	}
+}
+
+func TestTickerRoleRunsApplyCampaignBanners(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenant := pg.SeedTenant(t, "TICKTENANT08", "banners.example.com", "Banner Tenant")
+	banner := pg.SeedCampaignBanner(t, tenant.ID, testutil.CampaignBannerSeed{
+		StartsAt:  time.Now().Add(-2 * time.Hour),
+		EndsAt:    time.Now().Add(-time.Hour),
+		Published: true,
+	})
+
+	ticker := pg.OpenTickerDB(t)
+	campaignbanners.New(dbmodels.New(ticker), nil, discardLogger()).RunOnce(ctx)
+
+	var startApplied, endApplied sql.NullTime
+	if err := pg.DB.QueryRowContext(ctx,
+		"SELECT start_revalidated_at, end_revalidated_at FROM campaign_banners WHERE id = $1", banner.ID,
+	).Scan(&startApplied, &endApplied); err != nil {
+		t.Fatalf("read campaign banner: %v", err)
+	}
+	if !startApplied.Valid || !endApplied.Valid {
+		t.Fatalf("start_revalidated_at = %v, end_revalidated_at = %v, want both passed boundaries recorded", startApplied, endApplied)
+	}
+}
+
+// A banner carries the tenant's own link and schedule, and this role bypasses
+// RLS, so the grant names the two columns the job writes rather than the table.
+func TestTickerRoleCannotRewriteACampaignBanner(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenant := pg.SeedTenant(t, "TICKTENANT09", "banner-links.example.com", "Banner Link Tenant")
+	banner := pg.SeedCampaignBanner(t, tenant.ID, testutil.CampaignBannerSeed{Published: true})
+
+	ticker := pg.OpenTickerDB(t)
+	_, err := ticker.ExecContext(ctx,
+		"UPDATE campaign_banners SET link_url = 'https://attacker.example' WHERE id = $1", banner.ID)
+	if err == nil {
+		t.Fatal("rewriting a campaign banner's link as the ticker role succeeded, want a permission denied error")
+	}
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) || pgErr.Code != insufficientPrivilegeCode {
+		t.Fatalf("update campaign banner link error = %v, want SQLSTATE %s", err, insufficientPrivilegeCode)
 	}
 }
 
