@@ -71,8 +71,11 @@ func (s *apiServer) searchRequest(
 			TenantID: tenant.ID,
 			Surface:  surface,
 			Query:    query,
-			Limit:    pagination.NormalizeLimit(requestedLimit, defaultLimit, maxLimit),
-			Cursor:   cursor,
+			// A creator or a label is the same in every locale, and its RPC
+			// names none; a series search sets the reader's.
+			Locale: tenant.DefaultLocale,
+			Limit:  pagination.NormalizeLimit(requestedLimit, defaultLimit, maxLimit),
+			Cursor: cursor,
 		},
 	}, nil
 }
@@ -104,7 +107,8 @@ func (s *apiServer) SearchPublishedSeries(
 	if err != nil {
 		return nil, err
 	}
-	seriesReq := catalogsearch.SeriesRequest{Request: search.backend, Locale: readerLocale}
+	search.backend.Locale = readerLocale
+	seriesReq := catalogsearch.SeriesRequest{Request: search.backend}
 	// Unspecified leaves the order to the backend, which is what a search
 	// answered before it could be sorted; a list's newest-first default is not.
 	if req.Order != publirav1.SeriesOrder_SERIES_ORDER_UNSPECIFIED {

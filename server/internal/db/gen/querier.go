@@ -1310,9 +1310,9 @@ type Querier interface {
 	// ride a btree, so the scan reads the tenant's published series while the
 	// LIMIT still bites after narrowing by tenant and is_published. Once the row
 	// count makes the latency visible, add a pg_trgm GIN index on
-	// series_translations.title and synopsis. It matches the translation in the
-	// tenant's default locale whatever the reader's locale, as the OpenSearch
-	// index does.
+	// series_translations.title and synopsis. It matches the translation
+	// series_translation_for picks for the reader's locale, the one the reader is
+	// shown, as the OpenSearch index of that locale holds.
 	//
 	// Every query also keeps only what the calling surface may show, through
 	// series_surfaces for the series and episode_surfaces for the episodes counted
@@ -1376,7 +1376,9 @@ type Querier interface {
 	// under it publish.
 	ListCatalogIndexLabels(ctx context.Context, arg ListCatalogIndexLabelsParams) ([]ListCatalogIndexLabelsRow, error)
 	// Every series of the tenant, or the one series_id names, with the title and
-	// the synopsis of its translation in the tenant's default locale.
+	// the synopsis of its translation in the tenant's default locale, and those of
+	// the translation series_translation_for picks for each of locales: what a
+	// reader in that locale is shown, the translation it falls back to included.
 	ListCatalogIndexSeries(ctx context.Context, arg ListCatalogIndexSeriesParams) ([]ListCatalogIndexSeriesRow, error)
 	ListCatalogIndexTenantIDs(ctx context.Context) ([]uuid.UUID, error)
 	// One message's exchange as the console shows it under the message, oldest
@@ -3011,10 +3013,11 @@ type Querier interface {
 	// writes the current page on a timer would otherwise reorder the reader's
 	// recent activity without the reader having moved.
 	SaveEpisodeReadingPosition(ctx context.Context, arg SaveEpisodeReadingPositionParams) (SaveEpisodeReadingPositionRow, error)
-	// Moves the search onto the saved configuration once the index it names has
-	// been built, provided it is still the one built: no rows when a save has
-	// moved the revision on since the build read it, whose own build comes next.
-	ServePlatformSearchConfig(ctx context.Context, revision int64) (PlatformSearchConfig, error)
+	// Moves the search onto the saved configuration once the indices it names
+	// have been built, one for each of locales, provided it is still the one
+	// built: no rows when a save has moved the revision on since the build read
+	// it, whose own build comes next.
+	ServePlatformSearchConfig(ctx context.Context, arg ServePlatformSearchConfigParams) (PlatformSearchConfig, error)
 	// Points a banner at the upload it shows.
 	SetCampaignBannerImage(ctx context.Context, arg SetCampaignBannerImageParams) error
 	// Hands a message to a member of staff, or back to nobody with a NULL. Stated

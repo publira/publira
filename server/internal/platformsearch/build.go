@@ -35,10 +35,11 @@ type BuildParams struct {
 	DB      *sql.DB
 	Secrets Decrypter
 	Logger  *slog.Logger
-	// Force rebuilds the index of the saved configuration even when the search
-	// already answers from it, for a mapping a new release changed or an index
-	// that was lost. Without it a build is made only while one is due, which a
-	// save of another target or another analysis leaves.
+	// Force rebuilds the indices of the saved configuration even when the
+	// search already answers from them, for a mapping a new release changed or
+	// an index that was lost. Without it a build is made only while one is
+	// due, which a save of another target or another analysis leaves, and so
+	// do indices built for other languages than IndexLocales.
 	Force bool
 }
 
@@ -46,17 +47,20 @@ type BuildParams struct {
 type BuildResult struct {
 	// Built is false when there was nothing to build.
 	Built bool
-	// Index is the index the alias names once the build is done.
-	Index string
-	// Alias is the alias it was built behind.
+	// Indices are the indices the aliases of each language name once the
+	// build is done.
+	Indices []string
+	// Alias is the saved alias they were built behind, which each language's
+	// alias is named after.
 	Alias string
 	// Serving reports whether the search moved onto the build, which it does
 	// unless a save moved the revision on while it ran.
 	Serving bool
 }
 
-// Build builds the index the saved configuration names from the database and
-// moves the search onto it once the index holds the catalog. A failure is
+// Build builds the index of each of IndexLocales the saved configuration names
+// from the database and moves the search onto them once they hold the
+// catalog. A failure is
 // recorded on the row, where the platform API reports it, and leaves the
 // search answering from where it was.
 func Build(ctx context.Context, p BuildParams) (BuildResult, error) {
@@ -89,7 +93,7 @@ func Build(ctx context.Context, p BuildParams) (BuildResult, error) {
 	}
 	defer unlock()
 
-	backend, index, err := build(ctx, p, row, logger)
+	backend, indices, err := build(ctx, p, row, logger)
 	if err != nil {
 		recordCtx := context.WithoutCancel(ctx)
 		if _, recordErr := q.RecordPlatformSearchBuildFailure(recordCtx, dbmodels.RecordPlatformSearchBuildFailureParams{
@@ -100,8 +104,8 @@ func Build(ctx context.Context, p BuildParams) (BuildResult, error) {
 		}
 		return BuildResult{}, err
 	}
-	result := BuildResult{Built: true, Index: index, Alias: row.IndexAlias.String}
-	_, err = q.ServePlatformSearchConfig(ctx, row.Revision)
+	result := BuildResult{Built: true, Indices: indices, Alias: row.IndexAlias.String}
+	_, err = q.ServePlatformSearchConfig(ctx, dbmodels.ServePlatformSearchConfigParams{Revision: row.Revision, Locales: IndexLocales})
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		// A save moved the revision on while this ran. Its own build comes
@@ -112,7 +116,7 @@ func Build(ctx context.Context, p BuildParams) (BuildResult, error) {
 		return BuildResult{}, fmt.Errorf("move the search onto revision %d: %w", row.Revision, err)
 	}
 	result.Serving = true
-	logger.InfoContext(ctx, "catalog search moved onto the built index", "revision", row.Revision, "engine", row.Engine, "index", index)
+	logger.InfoContext(ctx, "catalog search moved onto the built indices", "revision", row.Revision, "engine", row.Engine, "indices", indices)
 
 	// Every tenant is written once more now that the search answers from the
 	// new index. The worker writes into an index being built only while its
@@ -121,7 +125,7 @@ func Build(ctx context.Context, p BuildParams) (BuildResult, error) {
 	// previous engine alone. From the move on, every event reads the row and
 	// writes here, and any write that committed before it is read again below.
 	if err := resync(ctx, p.DB, backend); err != nil {
-		return result, fmt.Errorf("the search moved onto %s, but writing every tenant again failed, which may leave a write made during the build out of it; run publiractl search reindex: %w", index, err)
+		return result, fmt.Errorf("the search moved onto %v, but writing every tenant again failed, which may leave a write made during the build out of it; run publiractl search reindex: %w", indices, err)
 	}
 	return result, nil
 }
@@ -139,16 +143,16 @@ func resync(ctx context.Context, db *sql.DB, backend *opensearchbackend.Backend)
 	return nil
 }
 
-func build(ctx context.Context, p BuildParams, row dbmodels.PlatformSearchConfig, logger *slog.Logger) (*opensearchbackend.Backend, string, error) {
+func build(ctx context.Context, p BuildParams, row dbmodels.PlatformSearchConfig, logger *slog.Logger) (*opensearchbackend.Backend, []string, error) {
 	stored := FromConfig(row)
-	cfg := opensearchbackend.Config{URL: stored.URL, Index: stored.Index, Username: stored.Username, Analysis: stored.Analysis}
+	cfg := opensearchbackend.Config{URL: stored.URL, Index: stored.Index, Username: stored.Username, Analysis: stored.Analysis, Locales: IndexLocales}
 	if encrypted := strings.TrimSpace(row.PasswordEncrypted.String); encrypted != "" {
 		if p.Secrets == nil {
-			return nil, "", ErrSecretManagerUnavailable
+			return nil, nil, ErrSecretManagerUnavailable
 		}
 		password, err := p.Secrets.DecryptString(encrypted)
 		if err != nil {
-			return nil, "", fmt.Errorf("decrypt the search engine password: %w", err)
+			return nil, nil, fmt.Errorf("decrypt the search engine password: %w", err)
 		}
 		cfg.Password = password
 	}
@@ -156,11 +160,11 @@ func build(ctx context.Context, p BuildParams, row dbmodels.PlatformSearchConfig
 	backend, err := opensearchbackend.New(connectCtx, cfg)
 	cancel()
 	if err != nil {
-		return nil, "", err
+		return nil, nil, err
 	}
-	logger.InfoContext(ctx, "catalog index build started", "revision", row.Revision, "engine", row.Engine, "alias", cfg.Index)
-	index, err := catalogindex.Rebuild(ctx, p.DB, backend, logger)
-	return backend, index, err
+	logger.InfoContext(ctx, "catalog index build started", "revision", row.Revision, "engine", row.Engine, "alias", cfg.Index, "locales", cfg.Locales)
+	indices, err := catalogindex.Rebuild(ctx, p.DB, backend, logger)
+	return backend, indices, err
 }
 
 // lockBuild takes the build lock on a connection of its own, which holds it

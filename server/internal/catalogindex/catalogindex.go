@@ -1,12 +1,14 @@
-// Package catalogindex keeps the catalog index of an OpenSearch or
+// Package catalogindex keeps the catalog indices of an OpenSearch or
 // Elasticsearch engine in step with the catalog. A write to a series, a
 // creator, or a label, or to an episode or a free window of a series, queues a
 // catalog_index_sync outbox event in its own transaction (Queue), and so does a
 // ticker job whose boundary changes what a series is narrowed or sorted by: a
-// free window opening or closing, and a scheduled episode being published. The
-// worker rewrites the named row's document from the row (Syncer), and the
-// search index build and publiractl rebuild the whole index, or one tenant's
-// documents, from the database (Rebuild, SyncTenant).
+// free window opening or closing, and a scheduled episode being published. A
+// change of a tenant's default locale queues one for the whole tenant, since
+// the translation a series falls back to in a language it has none in moves
+// with it. The worker rewrites the named row's document from the row
+// (Syncer), and the search index build and publiractl rebuild the whole
+// index, or one tenant's documents, from the database (Rebuild, SyncTenant).
 //
 // Every document is written with the instant its row was read at as its
 // version, and the engine refuses a write below the version a document holds.
@@ -28,6 +30,7 @@ import (
 
 	"github.com/publira/publira/server/internal/catalogsearch/opensearchbackend"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/outbox"
 )
 
@@ -40,6 +43,13 @@ type Ref struct {
 func SeriesRef(id uuid.UUID) Ref  { return Ref{Kind: opensearchbackend.KindSeries, ID: id} }
 func CreatorRef(id uuid.UUID) Ref { return Ref{Kind: opensearchbackend.KindCreator, ID: id} }
 func LabelRef(id uuid.UUID) Ref   { return Ref{Kind: opensearchbackend.KindLabel, ID: id} }
+
+// KindTenant names every document of a tenant rather than one row's. It is
+// the kind of an event, never of a document.
+const KindTenant opensearchbackend.Kind = "tenant"
+
+// TenantRef names every document of the tenant whose id it is given.
+func TenantRef(id uuid.UUID) Ref { return Ref{Kind: KindTenant, ID: id} }
 
 // OutboxInserter is the statement Queue runs, on the querier of the write it
 // answers for.
@@ -123,13 +133,21 @@ func NewSyncer(db *sql.DB, index Writer) *Syncer {
 }
 
 // Sync reads the row and writes its document, or a tombstone in its place when
-// the row is gone or no longer published anywhere.
+// the row is gone or no longer published anywhere. A KindTenant event rewrites
+// every document of the tenant the way SyncTenant does.
 func (s *Syncer) Sync(ctx context.Context, tenantID uuid.UUID, kind string, id uuid.UUID) error {
 	ref := Ref{Kind: opensearchbackend.Kind(kind), ID: id}
+	only := &ref
+	if ref.Kind == KindTenant {
+		if id != tenantID {
+			return outbox.Permanent(fmt.Errorf("catalogindex: a tenant event for %s names the tenant %s", tenantID, id))
+		}
+		only = nil
+	}
 	var docs []opensearchbackend.Document
 	err := inSnapshot(ctx, s.db, func(q *dbmodels.Queries, version int64) error {
 		var err error
-		docs, err = readDocuments(ctx, q, tenantID, &ref, version)
+		docs, err = readDocuments(ctx, q, tenantID, only, version)
 		return err
 	})
 	if err != nil {
@@ -169,6 +187,9 @@ func inSnapshot(ctx context.Context, db *sql.DB, read func(q *dbmodels.Queries, 
 // readDocuments reads the documents of a tenant's rows, or of the one row only
 // names. A row published on no surface comes back with none, which the writer
 // stores as a tombstone, and so does a row only names that no longer exists.
+//
+// A series carries its translation for every locale a reader can search in,
+// which is every locale the backend keeps an index for.
 func readDocuments(ctx context.Context, q *dbmodels.Queries, tenantID uuid.UUID, only *Ref, version int64) ([]opensearchbackend.Document, error) {
 	var docs []opensearchbackend.Document
 	filter := func(kind opensearchbackend.Kind) (uuid.NullUUID, bool) {
@@ -179,7 +200,7 @@ func readDocuments(ctx context.Context, q *dbmodels.Queries, tenantID uuid.UUID,
 	}
 
 	if id, ok := filter(opensearchbackend.KindSeries); ok {
-		rows, err := q.ListCatalogIndexSeries(ctx, dbmodels.ListCatalogIndexSeriesParams{TenantID: tenantID, SeriesID: id})
+		rows, err := q.ListCatalogIndexSeries(ctx, dbmodels.ListCatalogIndexSeriesParams{TenantID: tenantID, SeriesID: id, Locales: locale.Supported})
 		if err != nil {
 			return nil, fmt.Errorf("catalogindex: list series: %w", err)
 		}
@@ -188,9 +209,14 @@ func readDocuments(ctx context.Context, q *dbmodels.Queries, tenantID uuid.UUID,
 			if err := json.Unmarshal(row.LatestEpisodeAtBySurface, &latestEpisodeAt); err != nil {
 				return nil, fmt.Errorf("catalogindex: decode the latest episode instants of series %s: %w", row.ID, err)
 			}
+			var translations map[string]opensearchbackend.Translation
+			if err := json.Unmarshal(row.Translations, &translations); err != nil {
+				return nil, fmt.Errorf("catalogindex: decode the translations of series %s: %w", row.ID, err)
+			}
 			docs = append(docs, opensearchbackend.Document{
 				Kind: opensearchbackend.KindSeries, TenantID: tenantID, ID: row.ID, Version: version,
-				Title: row.Title, Synopsis: row.Synopsis, Surfaces: row.Surfaces, PublishedAt: row.PublishedAt,
+				Title: row.Title, Synopsis: row.Synopsis, Translations: translations,
+				Surfaces: row.Surfaces, PublishedAt: row.PublishedAt,
 				GenrePublicIDs: row.GenrePublicIds, TagSlugs: row.TagSlugs, Status: row.Status,
 				ScheduleWeekdays: row.ScheduleWeekdays, FreeEpisodeSurfaces: row.FreeEpisodeSurfaces,
 				LatestEpisodeAt: latestEpisodeAt,
@@ -271,35 +297,35 @@ func SyncTenant(ctx context.Context, db *sql.DB, w Writer, tenantID uuid.UUID) (
 // committed after its tenant was read is read again there, and one that did
 // not change is written again at a version that replaces it.
 //
-// It answers the name of the index the alias names once it is done.
-func Rebuild(ctx context.Context, db *sql.DB, backend *opensearchbackend.Backend, logger *slog.Logger) (string, error) {
+// It answers the names of the indices the aliases name once it is done.
+func Rebuild(ctx context.Context, db *sql.DB, backend *opensearchbackend.Backend, logger *slog.Logger) ([]string, error) {
 	tenantIDs, err := dbmodels.New(db).ListCatalogIndexTenantIDs(ctx)
 	if err != nil {
-		return "", fmt.Errorf("catalogindex: list tenants: %w", err)
+		return nil, fmt.Errorf("catalogindex: list tenants: %w", err)
 	}
 
 	rebuild, err := backend.StartRebuild(ctx)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	logger.InfoContext(ctx, "catalog index rebuild started", "index", rebuild.Index(), "tenants", len(tenantIDs))
+	logger.InfoContext(ctx, "catalog index rebuild started", "indices", rebuild.Indices(), "tenants", len(tenantIDs))
 	if err := fill(ctx, db, rebuild, tenantIDs, logger); err != nil {
 		if abortErr := rebuild.Abort(context.WithoutCancel(ctx)); abortErr != nil {
-			return "", errors.Join(err, abortErr)
+			return nil, errors.Join(err, abortErr)
 		}
-		return "", err
+		return nil, err
 	}
 	if err := rebuild.Swap(ctx); err != nil {
-		return "", err
+		return nil, err
 	}
-	logger.InfoContext(ctx, "catalog index alias moved", "index", rebuild.Index())
+	logger.InfoContext(ctx, "catalog index aliases moved", "indices", rebuild.Indices())
 
 	for _, tenantID := range tenantIDs {
 		if _, _, err := SyncTenant(ctx, db, backend, tenantID); err != nil {
-			return "", fmt.Errorf("catalogindex: sync tenant %s after the swap: %w", tenantID, err)
+			return nil, fmt.Errorf("catalogindex: sync tenant %s after the swap: %w", tenantID, err)
 		}
 	}
-	return rebuild.Index(), nil
+	return rebuild.Indices(), nil
 }
 
 func fill(ctx context.Context, db *sql.DB, rebuild *opensearchbackend.Rebuild, tenantIDs []uuid.UUID, logger *slog.Logger) error {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 
 	"github.com/google/uuid"
 
@@ -22,7 +23,8 @@ const EventTypeCatalogIndexSync = "catalog_index_sync"
 // out of order.
 type CatalogIndexSyncPayload struct {
 	TenantID string `json:"tenant_id"`
-	// Kind is "series", "creator", or "label".
+	// Kind is "series", "creator", or "label", or "tenant" for every document
+	// of the tenant, whose id ID then is.
 	Kind string `json:"kind"`
 	ID   string `json:"id"`
 }
@@ -52,9 +54,10 @@ type CacheInvalidationRecorder interface {
 
 // catalogSearchCacheTags names the tag web-storefront holds the public search
 // of kind under. A search answers documents of one kind, and a document changes
-// only through an event naming its kind, so that kind's tag reaches every
-// search the event can have changed. The other tags a search carries answer for
-// what the database tells it, and the writes that change it drop them.
+// only through an event naming its kind or its tenant, so that kind's tag, or
+// every kind's, reaches every search the event can have changed. The other tags
+// a search carries answer for what the database tells it, and the writes that
+// change it drop them.
 func catalogSearchCacheTags(tenantID uuid.UUID, kind string) []string {
 	switch kind {
 	case "series":
@@ -63,6 +66,8 @@ func catalogSearchCacheTags(tenantID uuid.UUID, kind string) []string {
 		return []string{fmt.Sprintf("tenant:%s:creators", tenantID)}
 	case "label":
 		return []string{fmt.Sprintf("tenant:%s:labels", tenantID)}
+	case "tenant":
+		return slices.Concat(catalogSearchCacheTags(tenantID, "series"), catalogSearchCacheTags(tenantID, "creator"), catalogSearchCacheTags(tenantID, "label"))
 	default:
 		return nil
 	}

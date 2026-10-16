@@ -35,6 +35,12 @@ type Request struct {
 	Surface string
 	// Query is the trimmed, non-empty keyword the reader typed.
 	Query string
+	// Locale is the language the search is made in: a series is matched by
+	// the title and the synopsis a reader in it is shown, and the title order
+	// sorts by that title. A creator or a label is the same in every
+	// language, and its search, whose RPC names no locale, is made in the
+	// tenant's default one.
+	Locale string
 	// Limit is the page size.
 	Limit int32
 	// Cursor is the request's token with the surface already taken off. The
@@ -52,11 +58,6 @@ type SeriesRequest struct {
 	Order publishedseries.Order
 	// Filter keeps only the hits the list would keep under it.
 	Filter publishedseries.Filter
-	// Locale is the reader's locale, which picks the translation whose title
-	// a title order sorts by. The OpenSearch backend sorts by the title in the
-	// tenant's default locale whatever it is, because that is the only title
-	// its documents carry until #4401 indexes each language.
-	Locale string
 }
 
 // Page is the hits of one page in display order, with the pagination.Encode

@@ -104,6 +104,29 @@ func TestCatalogIndexSyncHandlerRecordsTheSearchCacheDropOnceTheSearchCanFindThe
 	}
 }
 
+// A tenant's event rewrites the documents of every kind, so it owes the drop
+// of every kind's search.
+func TestCatalogIndexSyncHandlerRecordsEveryKindsDropForATenantEvent(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	recorder := &stubCacheRecorder{}
+	err := NewCatalogIndexSyncHandler(&stubCatalogIndexer{searched: true}, recorder)(context.Background(), catalogIndexSyncEvent(t, CatalogIndexSyncPayload{
+		TenantID: tenantID.String(),
+		Kind:     "tenant",
+		ID:       tenantID.String(),
+	}))
+	if err != nil {
+		t.Fatalf("handler error = %v", err)
+	}
+	want := []string{
+		"tenant:" + tenantID.String() + ":series:list",
+		"tenant:" + tenantID.String() + ":creators",
+		"tenant:" + tenantID.String() + ":labels",
+	}
+	if len(recorder.calls) != 1 || !slices.Equal(recorder.calls[0].tags, want) {
+		t.Fatalf("recorded %v, want %v", recorder.calls, want)
+	}
+}
+
 // The search still answers from the SQL engine, which read the committed rows
 // and was dropped by the write itself, or the only write went into an index
 // being built: either way no search was answered from what changed.

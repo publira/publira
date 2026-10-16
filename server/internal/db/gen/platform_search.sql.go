@@ -8,10 +8,12 @@ package dbmodels
 import (
 	"context"
 	"database/sql"
+
+	"github.com/lib/pq"
 )
 
 const GetPlatformSearchConfig = `-- name: GetPlatformSearchConfig :one
-SELECT singleton, engine, url, index_alias, username, password_encrypted, revision, serving_revision, serving_engine, serving_url, serving_index_alias, serving_username, serving_password_encrypted, serving_since, build_failed_revision, build_error, build_failed_at, created_at, updated_at, analysis, serving_analysis
+SELECT singleton, engine, url, index_alias, username, password_encrypted, revision, serving_revision, serving_engine, serving_url, serving_index_alias, serving_username, serving_password_encrypted, serving_since, build_failed_revision, build_error, build_failed_at, created_at, updated_at, analysis, serving_analysis, serving_locales
 FROM platform_search_config
 WHERE singleton = TRUE
 `
@@ -43,6 +45,7 @@ func (q *Queries) GetPlatformSearchConfig(ctx context.Context) (PlatformSearchCo
 		&i.UpdatedAt,
 		&i.Analysis,
 		&i.ServingAnalysis,
+		pq.Array(&i.ServingLocales),
 	)
 	return i, err
 }
@@ -84,7 +87,7 @@ VALUES (
         CASE WHEN $7::boolean THEN NOW() END,
         NOW()
     )
-RETURNING singleton, engine, url, index_alias, username, password_encrypted, revision, serving_revision, serving_engine, serving_url, serving_index_alias, serving_username, serving_password_encrypted, serving_since, build_failed_revision, build_error, build_failed_at, created_at, updated_at, analysis, serving_analysis
+RETURNING singleton, engine, url, index_alias, username, password_encrypted, revision, serving_revision, serving_engine, serving_url, serving_index_alias, serving_username, serving_password_encrypted, serving_since, build_failed_revision, build_error, build_failed_at, created_at, updated_at, analysis, serving_analysis, serving_locales
 `
 
 type InsertPlatformSearchConfigParams struct {
@@ -136,12 +139,13 @@ func (q *Queries) InsertPlatformSearchConfig(ctx context.Context, arg InsertPlat
 		&i.UpdatedAt,
 		&i.Analysis,
 		&i.ServingAnalysis,
+		pq.Array(&i.ServingLocales),
 	)
 	return i, err
 }
 
 const LockPlatformSearchConfig = `-- name: LockPlatformSearchConfig :one
-SELECT singleton, engine, url, index_alias, username, password_encrypted, revision, serving_revision, serving_engine, serving_url, serving_index_alias, serving_username, serving_password_encrypted, serving_since, build_failed_revision, build_error, build_failed_at, created_at, updated_at, analysis, serving_analysis
+SELECT singleton, engine, url, index_alias, username, password_encrypted, revision, serving_revision, serving_engine, serving_url, serving_index_alias, serving_username, serving_password_encrypted, serving_since, build_failed_revision, build_error, build_failed_at, created_at, updated_at, analysis, serving_analysis, serving_locales
 FROM platform_search_config
 WHERE singleton = TRUE
 FOR UPDATE
@@ -174,6 +178,7 @@ func (q *Queries) LockPlatformSearchConfig(ctx context.Context) (PlatformSearchC
 		&i.UpdatedAt,
 		&i.Analysis,
 		&i.ServingAnalysis,
+		pq.Array(&i.ServingLocales),
 	)
 	return i, err
 }
@@ -211,20 +216,27 @@ SET serving_revision = revision,
     serving_username = username,
     serving_password_encrypted = password_encrypted,
     serving_analysis = analysis,
+    serving_locales = $1::text [],
     serving_since = NOW(),
     build_failed_revision = NULL,
     build_error = NULL,
     build_failed_at = NULL
 WHERE singleton = TRUE
-    AND revision = $1
-RETURNING singleton, engine, url, index_alias, username, password_encrypted, revision, serving_revision, serving_engine, serving_url, serving_index_alias, serving_username, serving_password_encrypted, serving_since, build_failed_revision, build_error, build_failed_at, created_at, updated_at, analysis, serving_analysis
+    AND revision = $2
+RETURNING singleton, engine, url, index_alias, username, password_encrypted, revision, serving_revision, serving_engine, serving_url, serving_index_alias, serving_username, serving_password_encrypted, serving_since, build_failed_revision, build_error, build_failed_at, created_at, updated_at, analysis, serving_analysis, serving_locales
 `
 
-// Moves the search onto the saved configuration once the index it names has
-// been built, provided it is still the one built: no rows when a save has
-// moved the revision on since the build read it, whose own build comes next.
-func (q *Queries) ServePlatformSearchConfig(ctx context.Context, revision int64) (PlatformSearchConfig, error) {
-	row := q.db.QueryRowContext(ctx, ServePlatformSearchConfig, revision)
+type ServePlatformSearchConfigParams struct {
+	Locales  []string `json:"locales"`
+	Revision int64    `json:"revision"`
+}
+
+// Moves the search onto the saved configuration once the indices it names
+// have been built, one for each of locales, provided it is still the one
+// built: no rows when a save has moved the revision on since the build read
+// it, whose own build comes next.
+func (q *Queries) ServePlatformSearchConfig(ctx context.Context, arg ServePlatformSearchConfigParams) (PlatformSearchConfig, error) {
+	row := q.db.QueryRowContext(ctx, ServePlatformSearchConfig, pq.Array(arg.Locales), arg.Revision)
 	var i PlatformSearchConfig
 	err := row.Scan(
 		&i.Singleton,
@@ -248,6 +260,7 @@ func (q *Queries) ServePlatformSearchConfig(ctx context.Context, revision int64)
 		&i.UpdatedAt,
 		&i.Analysis,
 		&i.ServingAnalysis,
+		pq.Array(&i.ServingLocales),
 	)
 	return i, err
 }
@@ -268,13 +281,16 @@ SET engine = $1,
     serving_username = CASE WHEN $7::boolean THEN $4 ELSE serving_username END,
     serving_password_encrypted = CASE WHEN $7::boolean THEN $5 ELSE serving_password_encrypted END,
     serving_analysis = CASE WHEN $7::boolean THEN $6 ELSE serving_analysis END,
+    -- A save served at once on an engine with an index keeps the indices it
+    -- serves, so it keeps the languages they were built for as well.
+    serving_locales = CASE WHEN $7::boolean AND $1 = 'sql' THEN NULL ELSE serving_locales END,
     serving_since = CASE WHEN $7::boolean THEN NOW() ELSE serving_since END,
     build_failed_revision = NULL,
     build_error = NULL,
     build_failed_at = NULL,
     updated_at = NOW()
 WHERE singleton = TRUE
-RETURNING singleton, engine, url, index_alias, username, password_encrypted, revision, serving_revision, serving_engine, serving_url, serving_index_alias, serving_username, serving_password_encrypted, serving_since, build_failed_revision, build_error, build_failed_at, created_at, updated_at, analysis, serving_analysis
+RETURNING singleton, engine, url, index_alias, username, password_encrypted, revision, serving_revision, serving_engine, serving_url, serving_index_alias, serving_username, serving_password_encrypted, serving_since, build_failed_revision, build_error, build_failed_at, created_at, updated_at, analysis, serving_analysis, serving_locales
 `
 
 type UpdatePlatformSearchConfigParams struct {
@@ -326,6 +342,7 @@ func (q *Queries) UpdatePlatformSearchConfig(ctx context.Context, arg UpdatePlat
 		&i.UpdatedAt,
 		&i.Analysis,
 		&i.ServingAnalysis,
+		pq.Array(&i.ServingLocales),
 	)
 	return i, err
 }

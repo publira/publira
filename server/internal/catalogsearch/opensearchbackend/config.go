@@ -1,5 +1,7 @@
 package opensearchbackend
 
+import "strings"
+
 // DefaultIndex is the alias a saved configuration keeps its catalog behind when
 // it names none.
 const DefaultIndex = "publira-catalog"
@@ -16,8 +18,22 @@ type Config struct {
 	Index    string
 	// Analysis is the settings.analysis of an index the backend creates, as
 	// JSON. Empty is [DefaultAnalysis]. A search never depends on it: the
-	// index it searches was created with whatever it was created with.
+	// index it searches was created with whatever it was created with. Every
+	// language's index is created with the same one.
 	Analysis string
+	// Locales are the languages the catalog keeps an index for, each behind
+	// the alias [LocaleAlias] names after Index, holding the series in that
+	// language. Empty is the one index an install built before the catalog was
+	// indexed per language, behind Index itself, whose series are in their
+	// tenant's default language whatever the reader's.
+	Locales []string
+}
+
+// LocaleAlias is the alias of the catalog index of one language, named after
+// the alias the platform saved. An index name has no capital letters, so the
+// language is lowercased: zh-Hans is behind publira-catalog-zh-hans.
+func LocaleAlias(index, locale string) string {
+	return index + "-" + strings.ToLower(locale)
 }
 
 // String leaves the password out, so a Config that reaches a log line or an

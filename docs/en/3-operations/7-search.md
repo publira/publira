@@ -2,7 +2,7 @@
 title: Search
 description: Choose the engine the storefront search finds works, authors, and labels with, move from the database to OpenSearch or Elasticsearch, and rebuild the index.
 published: 2026-10-06
-updated: 2026-10-09
+updated: 2026-10-16
 ---
 
 The search on every tenant's site finds series, authors, and labels through one engine, shared by every tenant. An install starts on the database itself and needs nothing more; OpenSearch or Elasticsearch is an option for an install that wants results ranked by relevance. This page compares the engines, moves the search from one to another, and covers the index an engine keeps.
@@ -19,6 +19,8 @@ Every `publiractl` command here is shown bare; run it the way [The Platform Cons
 
 Whichever engine finds the results, what the storefront shows of each one is read from the database, so a series never shows a stale title, price, or cover because the engine has not caught up. A search can be narrowed and sorted the same ways on every engine.
 
+Every engine finds a series by the title and the synopsis shown in the reader's language: a reader browsing in English finds a series by its English title, and not by a word only its Japanese title has. A series with no English title is found by the one shown in its place, the title in the site's default language. Authors and labels have one name in every language, and are found by it whatever the reader's.
+
 PostgreSQL is enough for a catalog readers browse more than they search, or whose titles they type exactly. Move to an engine when readers look for a title by its reading or misspell it, and come away with nothing.
 
 ## Preparing OpenSearch or Elasticsearch
@@ -27,8 +29,8 @@ Publira does not run the engine for you. Use a cluster you operate or a managed 
 
 - **The plugins.** With the default text analysis, every node needs `analysis-kuromoji` and `analysis-icu`, and neither the official OpenSearch image nor the Elasticsearch one ships them. Install them on every node while it is stopped, with `bin/opensearch-plugin install analysis-kuromoji analysis-icu` or `bin/elasticsearch-plugin install analysis-kuromoji analysis-icu`. The repository's [OpenSearch image for development](https://github.com/publira/publira/blob/main/infra/docker/opensearch/Dockerfile) shows the same step as a Dockerfile. A catalog in a language other than Japanese may need other plugins instead, as [Text analysis](#text-analysis) describes.
 - **The URL** the engine answers on, `http://` or `https://`, which `publira server`, `publira worker`, and `publiractl` all have to reach.
-- **A user**, when the engine requires one. Publira signs in with HTTP basic authentication, which it sends only to an `https://` URL; it does not support API keys, nor a certificate authority of your own, so an engine with security turned on needs a certificate the servers already trust. The user needs to create, write, and delete indices, and move aliases, under the index alias below.
-- **An index alias**, the name Publira reaches its index by: `publira-catalog` unless you give another. Publira creates the index and the alias itself. Give each install that shares a cluster an alias of its own, since two installs on one alias would overwrite each other's catalog.
+- **A user**, when the engine requires one. Publira signs in with HTTP basic authentication, which it sends only to an `https://` URL; it does not support API keys, nor a certificate authority of your own, so an engine with security turned on needs a certificate the servers already trust. The user needs to create, write, and delete indices, and move aliases, whose names start with the index alias below.
+- **An index alias**, the name Publira's indices are named after: `publira-catalog` unless you give another. Publira keeps one index for each language a reader can choose, each behind the alias with the language appended — `publira-catalog-en`, `publira-catalog-ja`, `publira-catalog-zh-hans`, and so on — and creates the indices and their aliases itself. Give each install that shares a cluster an alias of its own, since two installs on one alias would overwrite each other's catalog.
 
 ## Testing the engine
 
@@ -85,7 +87,7 @@ Saving **PostgreSQL**, or `publiractl search set --engine sql`, moves the search
 
 ## Text analysis
 
-How the engine splits titles, names, and synopses into words is the text analysis, one definition for every tenant, since they share the index. The default is built for Japanese, on `analysis-kuromoji` and `analysis-icu`. For a catalog whose titles are in another language, replace it with a definition built on that language's plugin, such as `analysis-nori` for Korean or `analysis-smartcn` for Chinese.
+How the engine splits titles, names, and synopses into words is the text analysis, one definition for every tenant, since they share the indices, and the index of every language is built from it. The default is built for Japanese, on `analysis-kuromoji` and `analysis-icu`. For a catalog whose titles are in another language, replace it with a definition built on that language's plugin, such as `analysis-nori` for Korean or `analysis-smartcn` for Chinese.
 
 A definition is the `settings.analysis` object of the index, as JSON of at most 64 KiB, and has to define three names the index refers to: the analyzers `written_form` and `alternate_form` and the normalizer `exact_match`. What each one is for is in the [text analysis reference](https://github.com/publira/publira/blob/main/server/README.md#text-analysis).
 
@@ -98,7 +100,7 @@ Before a definition is saved, the engine is asked to create an empty index with 
 
 ## Rebuilding the index
 
-The worker keeps the index up to date as tenants publish and edit, and builds a new one whenever the engine or the text analysis changes, so an index rarely needs rebuilding by hand. `publiractl search reindex` is for the two cases that are left:
+The worker keeps the indices up to date as tenants publish, edit, and change their default language, and builds new ones whenever the engine or the text analysis changes, or a release changes the languages a reader can choose, so an index rarely needs rebuilding by hand. While it builds them, **Search status** and `publiractl search show` show a build under way, and the storefront keeps answering from the indices it has. `publiractl search reindex` is for the two cases that are left:
 
 - **A release changed the index.** When the [release notes](../2-deployments/7-upgrading.md#read-the-release-notes) say the catalog index changed, run it once the upgrade is done.
 - **The index was lost**, because the cluster was replaced or the index deleted.
@@ -107,6 +109,6 @@ The worker keeps the index up to date as tenants publish and edit, and builds a 
 publiractl search reindex
 ```
 
-It builds a new index beside the current one, fills it with every tenant's catalog, moves the alias onto it, and deletes the old one, so the storefront keeps searching while it runs. It reads the catalog as the `publira_content_stats` role, so give it `PUBLIRA_CONTENT_STATS_DB_URL` for that role, along with the encryption keys when the engine has a saved password. It cannot run while the worker is building an index, and exits `1` if one is under way; run it again once the build is done. On PostgreSQL there is no index to rebuild, and it exits `1`.
+It builds a new index for each language beside the current one, fills them with every tenant's catalog, moves every alias onto its new index at once, and deletes the old ones, so the storefront keeps searching while it runs. It reads the catalog as the `publira_content_stats` role, so give it `PUBLIRA_CONTENT_STATS_DB_URL` for that role, along with the encryption keys when the engine has a saved password. It cannot run while the worker is building an index, and exits `1` if one is under way; run it again once the build is done. On PostgreSQL there is no index to rebuild, and it exits `1`.
 
 `publiractl search reindex --tenant comics.example.com` writes one tenant's catalog again, in the index the search answers from, without building a new one. It is for one tenant whose results look wrong, and cannot apply a change to the index itself.

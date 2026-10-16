@@ -7,13 +7,16 @@ import (
 
 	"connectrpc.com/connect/v2"
 
+	"github.com/publira/publira/server/internal/outbox"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
 // The default and the locales the site offers are saved by one request, and a
-// save that changes either of them is one the audit log answers for. A request
-// whose set leaves out its default changes neither.
+// save that changes either of them is one the audit log answers for. A save
+// that moves the default rewrites the tenant's search documents, whose
+// fallback translation moves with it. A request whose set leaves out its
+// default changes neither.
 func TestDBUpdateTenantDefaultLocaleSavesTheSetWithTheDefault(t *testing.T) {
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TLCTNNT1", "locales.example.com", "Locales", "TLCUSER1", "admin@locales.example.com")
@@ -31,15 +34,28 @@ func TestDBUpdateTenantDefaultLocaleSavesTheSetWithTheDefault(t *testing.T) {
 		}
 	}
 
+	tenantSyncs := func(t *testing.T) int {
+		t.Helper()
+		var queued int
+		if err := env.PG.DB.QueryRowContext(context.Background(),
+			"SELECT count(*) FROM outbox_events WHERE event_type = $1 AND payload->>'kind' = 'tenant' AND payload->>'id' = $2",
+			outbox.EventTypeCatalogIndexSync, tenant.Tenant.ID.String(),
+		).Scan(&queued); err != nil {
+			t.Fatalf("count the catalog index syncs of the tenant: %v", err)
+		}
+		return queued
+	}
+
 	saves := []struct {
 		name             string
 		defaultLocale    string
 		supportedLocales []string
 		wantSupported    []string
+		wantTenantSyncs  int
 	}{
-		{name: "both", defaultLocale: "en", supportedLocales: []string{"en", "ja"}, wantSupported: []string{"ja", "en"}},
-		{name: "the set alone", defaultLocale: "en", supportedLocales: []string{"zh-Hans", "en"}, wantSupported: []string{"en", "zh-Hans"}},
-		{name: "the default to a locale that was off", defaultLocale: "ko", supportedLocales: []string{"ko", "en", "zh-Hans"}, wantSupported: []string{"en", "ko", "zh-Hans"}},
+		{name: "both", defaultLocale: "en", supportedLocales: []string{"en", "ja"}, wantSupported: []string{"ja", "en"}, wantTenantSyncs: 1},
+		{name: "the set alone", defaultLocale: "en", supportedLocales: []string{"zh-Hans", "en"}, wantSupported: []string{"en", "zh-Hans"}, wantTenantSyncs: 1},
+		{name: "the default to a locale that was off", defaultLocale: "ko", supportedLocales: []string{"ko", "en", "zh-Hans"}, wantSupported: []string{"en", "ko", "zh-Hans"}, wantTenantSyncs: 2},
 	}
 	for i, save := range saves {
 		resp, err := settings.UpdateTenantDefaultLocale(ctx, &publiraadminv1.UpdateTenantDefaultLocaleRequest{
@@ -56,6 +72,9 @@ func TestDBUpdateTenantDefaultLocaleSavesTheSetWithTheDefault(t *testing.T) {
 		assertLocales(t, save.defaultLocale, save.wantSupported)
 		if got := tenantSettingAuditCount(t, env, tenant, "tenant_default_locale_updated", "tenant_default_locale"); got != i+1 {
 			t.Fatalf("after save %s: audit entries = %d, want %d", save.name, got, i+1)
+		}
+		if got := tenantSyncs(t); got != save.wantTenantSyncs {
+			t.Fatalf("after save %s: tenant search syncs = %d, want %d", save.name, got, save.wantTenantSyncs)
 		}
 	}
 

@@ -100,7 +100,7 @@ func TestSearchSetSavesTheEngineAndReindexMovesTheSearchOntoIt(t *testing.T) {
 	}
 
 	stdout := mustSearchCommand(t, "", "reindex")
-	if !strings.HasPrefix(stdout, "Rebuilt the catalog index; "+alias+" now names "+alias+"-") || !strings.HasSuffix(stdout, "The search answers from it.\n") {
+	if !strings.HasPrefix(stdout, "Rebuilt the catalog indices behind "+alias+"; their aliases now name "+alias+"-") || !strings.HasSuffix(stdout, "The search answers from it.\n") {
 		t.Fatalf("reindex stdout = %q, want the index the alias names and the search on it", stdout)
 	}
 	if show := mustSearchCommand(t, "", "show"); !strings.Contains(show, "none due") || !strings.Contains(show, "opensearch at "+search.URL) {
@@ -170,7 +170,7 @@ func TestSearchReindexBuildsTheIndexOnElasticsearch(t *testing.T) {
 		t.Fatalf("test = %q, want Elasticsearch named", test)
 	}
 	stdout := mustSearchCommand(t, "", "reindex")
-	if !strings.HasPrefix(stdout, "Rebuilt the catalog index; "+alias+" now names "+alias+"-") {
+	if !strings.HasPrefix(stdout, "Rebuilt the catalog indices behind "+alias+"; their aliases now name "+alias+"-") {
 		t.Fatalf("reindex stdout = %q", stdout)
 	}
 	if show := mustSearchCommand(t, "", "show"); !strings.Contains(show, "elasticsearch at "+search.URL) || !strings.Contains(show, "none due") {
