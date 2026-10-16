@@ -168,8 +168,10 @@ const PasskeyRenameButton = ({
 /**
  * Removes one passkey, once the operator has confirmed it. The refusal worth
  * reading is the last second factor of an account the tenant requires one
- * of; success needs no message under the form, since the row it sat in is
- * gone.
+ * of, and it stays on the row. Success is reported to the card instead, since
+ * the row is gone: removing the last factor deletes the recovery codes with
+ * it, so a batch an earlier addition left on screen has to go as well, as it
+ * does when the authenticator app is turned off.
  */
 const PasskeyRemoveButton = ({
   passkeyId,
@@ -189,7 +191,7 @@ const PasskeyRemoveButton = ({
     >
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="passkey_id" type="hidden" value={passkeyId} />
-      <SettledToast />
+      <ReportMfaSettingsChange />
       <ActionFormFieldset className="grid">
         <ConfirmDialog>
           <ConfirmDialogTrigger

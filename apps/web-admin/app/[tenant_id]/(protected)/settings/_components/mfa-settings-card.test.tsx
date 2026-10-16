@@ -511,6 +511,46 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
     expect(finishPasskey).not.toHaveBeenCalled();
   });
 
+  // Removing the last factor deletes the recovery codes on the server, so the
+  // batch the first passkey brought must not stay on screen to be saved.
+  it("drops the codes a first passkey brought once a passkey is removed", async () => {
+    beginPasskey.mockResolvedValue({
+      message: "",
+      ok: true,
+      optionsJson: "{}",
+    });
+    startRegistration.mockResolvedValue({ id: "credential" });
+    finishPasskey.mockResolvedValue({
+      message: "The passkey has been added.",
+      ok: true,
+      passkeyId: "PASSKEY00001",
+      recoveryCodes: ["AAAAA-BBBBB"],
+    });
+    deletePasskey.mockResolvedValue({
+      message: "The passkey has been removed.",
+      ok: true,
+    });
+
+    const { rerender } = renderCard(disabled);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Add a passkey" }, onScreen)
+    );
+    expect(await screen.findByText("AAAAA-BBBBB", {}, onScreen)).toBeDefined();
+
+    rerender(<Card status={{ ...passkeyOnly, required: false }} />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Remove" }, onScreen)
+    );
+    const dialog = within(await screen.findByRole("alertdialog"));
+    fireEvent.click(await dialog.findByRole("button", { name: "Remove" }));
+
+    expect(
+      await screen.findByText("The passkey has been removed.", {}, onScreen)
+    ).toBeDefined();
+    expect(screen.queryByText("AAAAA-BBBBB")).toBeNull();
+  });
+
   // The API refuses the last factor of an account the tenant requires one
   // of, and the row that is still on screen is where that is said.
   it("asks before removing a passkey and shows a refusal next to it", async () => {
