@@ -41,8 +41,9 @@ const deleteSeriesDocuments = async (
   `)
     .split("\n")
     .filter(Boolean);
-  // The alias `publiractl search set` saves when it is given none.
-  const index = "publira-catalog";
+  // The index of every locale behind the alias `publiractl search set` saves
+  // when it is given none: a series has a document in each of them.
+  const index = "publira-catalog-*";
   // The worker may still be rewriting one of them for an event a later write
   // queued, which the engine reports as a version conflict; the next attempt
   // deletes what that write left.
