@@ -432,7 +432,7 @@ func parsePurchaseMetadata(metadata map[string]string) (paymentprovider.Purchase
 			return paymentprovider.Purchase{}, errors.New("invalid reading period metadata")
 		}
 	}
-	kind, err := paymentprovider.ParseKind(metadata[MetadataKind])
+	kind, err := paymentprovider.ParseKind(metadata[MetadataKind], readingPeriodHours)
 	if err != nil {
 		return paymentprovider.Purchase{}, fmt.Errorf("invalid kind metadata: %w", err)
 	}

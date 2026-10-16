@@ -477,7 +477,7 @@ func parsePurchaseMetadata(metadata map[string]json.RawMessage) (paymentprovider
 	if _, present := metadata[MetadataKind]; present && !ok {
 		return paymentprovider.Purchase{}, errors.New("invalid kind metadata")
 	}
-	kind, err := paymentprovider.ParseKind(kindValue)
+	kind, err := paymentprovider.ParseKind(kindValue, readingPeriodHours)
 	if err != nil {
 		return paymentprovider.Purchase{}, fmt.Errorf("invalid kind metadata: %w", err)
 	}

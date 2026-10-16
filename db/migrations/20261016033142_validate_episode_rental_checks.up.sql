@@ -10,3 +10,6 @@ ALTER TABLE ONLY series_listings
 
 ALTER TABLE ONLY purchases
     VALIDATE CONSTRAINT purchases_kind_check;
+
+ALTER TABLE ONLY purchases
+    VALIDATE CONSTRAINT purchases_rental_expires_check;

@@ -30,10 +30,13 @@ ALTER TABLE ONLY series_listings
 -- COLUMN: purchases kind
 -- What the reader bought: the rental or the permanent copy. Every purchase
 -- recorded before this column was the permanent copy, the only one sold, and
--- so is every purchase a store or staff records, so the default stays.
+-- so is every purchase a store or staff records, so the default stays. A
+-- rental always expires: one without an expiry would open the episode for
+-- good at the rental's price.
 ALTER TABLE ONLY purchases
     ADD COLUMN kind text DEFAULT 'purchase'::text NOT NULL,
-    ADD CONSTRAINT purchases_kind_check CHECK ((kind = ANY (ARRAY['rental'::text, 'purchase'::text]))) NOT VALID;
+    ADD CONSTRAINT purchases_kind_check CHECK ((kind = ANY (ARRAY['rental'::text, 'purchase'::text]))) NOT VALID,
+    ADD CONSTRAINT purchases_rental_expires_check CHECK (((kind <> 'rental'::text) OR (expires_at IS NOT NULL))) NOT VALID;
 
 -- VIEW: episode_content_grants
 -- purchase_kind names which of the two a purchase grant is, and is NULL on

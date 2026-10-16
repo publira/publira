@@ -11,3 +11,7 @@ ALTER TABLE ONLY series_listings
 ALTER TABLE ONLY purchases
     DROP CONSTRAINT purchases_kind_check,
     ADD CONSTRAINT purchases_kind_check CHECK ((kind = ANY (ARRAY['rental'::text, 'purchase'::text]))) NOT VALID;
+
+ALTER TABLE ONLY purchases
+    DROP CONSTRAINT purchases_rental_expires_check,
+    ADD CONSTRAINT purchases_rental_expires_check CHECK (((kind <> 'rental'::text) OR (expires_at IS NOT NULL))) NOT VALID;

@@ -68,8 +68,8 @@ func TestEpisodeListingRentalUndercutsThePermanentCopy(t *testing.T) {
 }
 
 // Every purchase written without a kind is the permanent copy, as every
-// purchase recorded before rentals was, and a kind naming neither sale is
-// refused.
+// purchase recorded before rentals was, a kind naming neither sale is refused,
+// and so is a rental that does not expire.
 func TestPurchaseKindDefaultsToThePermanentCopy(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
@@ -97,6 +97,16 @@ func TestPurchaseKindDefaultsToThePermanentCopy(t *testing.T) {
 	`, uuid.Must(uuid.NewV7()), tenant.ID, reader.ID, episode.ID)
 	if !isCheckViolation(err) || checkName(err) != "purchases_kind_check" {
 		t.Fatalf("insert error = %v, want purchases_kind_check violated", err)
+	}
+
+	// A rental that never expired would open the episode for good at the
+	// rental's price.
+	_, err = pg.DB.ExecContext(ctx, `
+		INSERT INTO purchases (id, tenant_id, user_id, episode_id, price_at_purchase, currency, kind)
+		VALUES ($1, $2, $3, $4, 200, 'JPY', 'rental')
+	`, uuid.Must(uuid.NewV7()), tenant.ID, reader.ID, episode.ID)
+	if !isCheckViolation(err) || checkName(err) != "purchases_rental_expires_check" {
+		t.Fatalf("insert error = %v, want purchases_rental_expires_check violated", err)
 	}
 }
 

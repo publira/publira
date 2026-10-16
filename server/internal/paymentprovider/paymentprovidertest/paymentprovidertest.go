@@ -167,6 +167,17 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 		}
 	})
 
+	t.Run("a rental that names no period is malformed", func(t *testing.T) {
+		unbounded := checkout
+		unbounded.CheckoutID = "checkout_contract_unbounded_rental"
+		unbounded.Purchase.Kind = paymentprovider.KindRental
+		unbounded.Purchase.ReadingPeriodHours = 0
+		payload, headers := fixture.CheckoutCompleted(t, credentials, unbounded)
+		if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
+			t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
+		}
+	})
+
 	t.Run("a checkout that names no kind sold the permanent copy", func(t *testing.T) {
 		unnamed := checkout
 		unnamed.CheckoutID = "checkout_contract_unnamed"

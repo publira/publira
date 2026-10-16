@@ -116,14 +116,19 @@ const (
 	KindRental Kind = "rental"
 )
 
-// ParseKind answers the kind a checkout's metadata names. Empty is
-// [KindPurchase], what a checkout started before kinds existed sold; anything
-// else it does not know is an error.
-func ParseKind(value string) (Kind, error) {
+// ParseKind answers the kind a checkout's metadata names, beside the reading
+// period the same metadata names. Empty is [KindPurchase], what a checkout
+// started before kinds existed sold; anything else it does not know is an
+// error. So is a rental without a positive period: recorded, it would be a
+// purchase that never expires, sold at the rental's price.
+func ParseKind(value string, readingPeriodHours int64) (Kind, error) {
 	switch Kind(value) {
 	case "", KindPurchase:
 		return KindPurchase, nil
 	case KindRental:
+		if readingPeriodHours <= 0 {
+			return "", errors.New("a rental names no reading period")
+		}
 		return KindRental, nil
 	}
 	return "", fmt.Errorf("unknown purchase kind %q", value)
