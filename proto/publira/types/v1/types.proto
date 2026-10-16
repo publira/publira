@@ -257,6 +257,12 @@ message Series {
   // `reading_period_hours` is for the permanent copy's. Zero states none. Set
   // on the console's reads and 0 on the public ones.
   int32 rental_period_hours = 23;
+  // The locale of the translation `title` and `synopsis` come from. A public
+  // read names the one it served, which differs from the one asked for when
+  // the series has no translation in that locale, and may be a locale the
+  // tenant no longer offers when the series has none in its default locale
+  // either. Empty on the console's reads.
+  string locale = 24;
 }
 
 message Episode {
@@ -337,6 +343,10 @@ message Episode {
   // console's episode reads and writes; 0 elsewhere.
   int32 rental_price = 19;
   int32 rental_period_hours = 20;
+  // The locale of the translation `title` comes from, named the way
+  // Series.locale is: a public read names the one it served, and the
+  // console's reads leave it empty.
+  string locale = 21;
 }
 
 // Which way the pages of a work are turned. A series states it for every one

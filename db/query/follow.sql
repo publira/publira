@@ -454,6 +454,7 @@ SELECT series_id,
     episode_id,
     episode_public_id,
     episode_title,
+    episode_title_locale,
     episode_order_index,
     published_at
 FROM (
@@ -461,6 +462,7 @@ FROM (
         e.id AS episode_id,
         e.public_id AS episode_public_id,
         et.title AS episode_title,
+        et.locale AS episode_title_locale,
         e.order_index AS episode_order_index,
         el.published_at AS published_at
     FROM series_follows sf
@@ -482,6 +484,7 @@ FROM (
         e.id AS episode_id,
         e.public_id AS episode_public_id,
         et.title AS episode_title,
+        et.locale AS episode_title_locale,
         e.order_index AS episode_order_index,
         el.published_at AS published_at
     FROM creator_follows cf
@@ -526,6 +529,7 @@ SELECT series_id,
     episode_id,
     episode_public_id,
     episode_title,
+    episode_title_locale,
     episode_order_index,
     published_at
 FROM (
@@ -533,6 +537,7 @@ FROM (
         e.id AS episode_id,
         e.public_id AS episode_public_id,
         et.title AS episode_title,
+        et.locale AS episode_title_locale,
         e.order_index AS episode_order_index,
         el.published_at AS published_at
     FROM series_follows sf
@@ -554,6 +559,7 @@ FROM (
         e.id AS episode_id,
         e.public_id AS episode_public_id,
         et.title AS episode_title,
+        et.locale AS episode_title_locale,
         e.order_index AS episode_order_index,
         el.published_at AS published_at
     FROM creator_follows cf

@@ -279,12 +279,14 @@ SELECT g.genre_id::uuid AS genre_id,
     f.id,
     f.public_id,
     f.title,
+    f.title_locale,
     f.eye_catch_image_id
 FROM unnest(sqlc.arg('genre_ids')::uuid[]) AS g(genre_id)
     CROSS JOIN LATERAL (
         SELECT s.id,
             s.public_id,
             str.title,
+            str.locale AS title_locale,
             s.eye_catch_image_id,
             r.rank,
             s.published_at

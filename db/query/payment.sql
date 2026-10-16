@@ -122,10 +122,12 @@ SELECT p.id,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
     et.title AS episode_title,
+    et.locale AS episode_title_locale,
     e.order_index AS episode_order_index,
     s.id AS series_id,
     s.public_id AS series_public_id,
-    str.title AS series_title
+    str.title AS series_title,
+    str.locale AS series_title_locale
 FROM purchases p
     JOIN episodes e ON e.id = p.episode_id
     CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et
@@ -176,10 +178,12 @@ SELECT p.id,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
     et.title AS episode_title,
+    et.locale AS episode_title_locale,
     e.order_index AS episode_order_index,
     s.id AS series_id,
     s.public_id AS series_public_id,
-    str.title AS series_title
+    str.title AS series_title,
+    str.locale AS series_title_locale
 FROM purchases p
     JOIN episodes e ON e.id = p.episode_id
     CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et

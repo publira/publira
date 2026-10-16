@@ -98,9 +98,9 @@ func expectEpisodeNeighborsLookup(
 	episodeID uuid.UUID,
 	neighbors ...episodeNeighbor,
 ) {
-	rows := sqlmock.NewRows([]string{"direction", "id", "public_id", "title", "order_index", "price", "is_free", "purchase_availability"})
+	rows := sqlmock.NewRows([]string{"direction", "id", "public_id", "title", "title_locale", "order_index", "price", "is_free", "purchase_availability"})
 	for _, neighbor := range neighbors {
-		rows.AddRow(neighbor.direction, neighbor.id, neighbor.publicID, neighbor.title, neighbor.orderIndex, neighbor.price, neighbor.isFree, "all")
+		rows.AddRow(neighbor.direction, neighbor.id, neighbor.publicID, neighbor.title, "ja", neighbor.orderIndex, neighbor.price, neighbor.isFree, "all")
 	}
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedEpisodeNeighborsForTenant)).
 		WithArgs("ja", tenantID, seriesID, orderIndex, episodeID, "web").
@@ -118,9 +118,9 @@ func expectNextFreeEpisodeLookup(
 	episodeID uuid.UUID,
 	next ...episodeNeighbor,
 ) {
-	rows := sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "price", "purchase_availability"})
+	rows := sqlmock.NewRows([]string{"id", "public_id", "title", "title_locale", "order_index", "price", "purchase_availability"})
 	for _, episode := range next {
-		rows.AddRow(episode.id, episode.publicID, episode.title, episode.orderIndex, episode.price, "all")
+		rows.AddRow(episode.id, episode.publicID, episode.title, "ja", episode.orderIndex, episode.price, "all")
 	}
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetNextPublishedFreeEpisodeForTenant)).
 		WithArgs("ja", tenantID, seriesID, orderIndex, episodeID, "web").

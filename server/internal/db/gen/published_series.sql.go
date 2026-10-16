@@ -20,6 +20,7 @@ SELECT s.id,
     s.public_id,
     tr.title,
     tr.synopsis,
+    tr.locale AS title_locale,
     sl.status,
     sl.schedule_weekdays,
     sl.age_rating,
@@ -153,6 +154,7 @@ WHERE s.tenant_id = $2
 GROUP BY s.id,
     tr.title,
     tr.synopsis,
+    tr.locale,
     sl.series_id,
     sl.status,
     sl.schedule_weekdays,
@@ -173,6 +175,7 @@ type ListActiveSeriesByIDsRow struct {
 	PublicID               string          `json:"public_id"`
 	Title                  string          `json:"title"`
 	Synopsis               string          `json:"synopsis"`
+	TitleLocale            string          `json:"title_locale"`
 	Status                 sql.NullString  `json:"status"`
 	ScheduleWeekdays       []int32         `json:"schedule_weekdays"`
 	AgeRating              sql.NullString  `json:"age_rating"`
@@ -209,6 +212,7 @@ func (q *Queries) ListActiveSeriesByIDs(ctx context.Context, arg ListActiveSerie
 			&i.PublicID,
 			&i.Title,
 			&i.Synopsis,
+			&i.TitleLocale,
 			&i.Status,
 			pq.Array(&i.ScheduleWeekdays),
 			&i.AgeRating,

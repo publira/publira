@@ -32,10 +32,13 @@ func TestDBGetSeriesDetailFallsBackToTheDefaultLocale(t *testing.T) {
 	if detail.Series.Title != "Hoshi no Toshokan" || detail.Series.Synopsis != "Yoru ni hiraku toshokan." {
 		t.Fatalf("series in en = (%q, %q), want the ja translation it falls back to", detail.Series.Title, detail.Series.Synopsis)
 	}
+	if detail.Series.Locale != "ja" {
+		t.Fatalf("series locale in en = %q, want ja, the translation it falls back to", detail.Series.Locale)
+	}
 	if !slices.Equal(detail.PublishedLocales, []string{"ja"}) {
 		t.Fatalf("published_locales = %v, want [ja]", detail.PublishedLocales)
 	}
-	if len(detail.Episodes) != 1 || detail.Episodes[0].Title != "Daiichiya" {
+	if len(detail.Episodes) != 1 || detail.Episodes[0].Title != "Daiichiya" || detail.Episodes[0].Locale != "ja" {
 		t.Fatalf("episodes in en = %+v, want the ja title", detail.Episodes)
 	}
 
@@ -53,11 +56,14 @@ func TestDBGetSeriesDetailFallsBackToTheDefaultLocale(t *testing.T) {
 	if detail.Series.Title != "Starlit Library" || detail.Series.Synopsis != "A library that opens at night." {
 		t.Fatalf("series in en = (%q, %q), want the en translation", detail.Series.Title, detail.Series.Synopsis)
 	}
+	if detail.Series.Locale != "en" {
+		t.Fatalf("series locale in en = %q, want en", detail.Series.Locale)
+	}
 	if !slices.Equal(detail.PublishedLocales, []string{"en", "ja"}) {
 		t.Fatalf("published_locales = %v, want [en ja]", detail.PublishedLocales)
 	}
-	if detail.Episodes[0].Title != "The First Night" {
-		t.Fatalf("episode in en = %q, want The First Night", detail.Episodes[0].Title)
+	if detail.Episodes[0].Title != "The First Night" || detail.Episodes[0].Locale != "en" {
+		t.Fatalf("episode in en = (%q, %q), want The First Night in en", detail.Episodes[0].Title, detail.Episodes[0].Locale)
 	}
 
 	// No locale is the tenant's default.
@@ -83,8 +89,111 @@ func TestDBGetSeriesDetailFallsBackToTheDefaultLocale(t *testing.T) {
 	if episodeDetail.Episode.Title != "The First Night" || episodeDetail.Series.Title != "Starlit Library" {
 		t.Fatalf("episode in en = (%q, %q), want the en translations", episodeDetail.Episode.Title, episodeDetail.Series.Title)
 	}
+	if episodeDetail.Episode.Locale != "en" || episodeDetail.Series.Locale != "en" {
+		t.Fatalf("episode locales in en = (%q, %q), want en for both", episodeDetail.Episode.Locale, episodeDetail.Series.Locale)
+	}
 	if !slices.Equal(episodeDetail.PublishedLocales, []string{"en", "ja"}) {
 		t.Fatalf("episode published_locales = %v, want [en ja]", episodeDetail.PublishedLocales)
+	}
+}
+
+// A series with no translation in the reader's locale or in the tenant's
+// default answers its oldest translation, which only the locale it names says,
+// since that locale may be one the tenant no longer offers and so is in no
+// list of alternates. It is how a series reads after its tenant changes its
+// default language.
+func TestDBCatalogReadsNameTheLocaleOfTheOldestTranslation(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Hoshi no Toshokan", Published: true})
+	episode := env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODEA0001", Title: "Daiichiya", Status: testutil.EpisodeStatusPublished})
+	// The next episode has only the translation it was written in, so it falls
+	// back to another locale than the episode before it.
+	env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EPISODEA0002", Title: "Dainiya", Status: testutil.EpisodeStatusPublished})
+	genre := env.PG.SeedGenre(t, tenant.ID, testutil.GenreSeed{PublicID: "GENREFANTA01", Name: "Fantasy", DisplayOrder: 1})
+	env.PG.SeedSeriesGenre(t, tenant.ID, series.ID, genre.ID)
+	env.PG.SeedSeriesTranslation(t, tenant.ID, series.ID, "ko", "Byeorui Doseogwan", "")
+	env.PG.SeedEpisodeTranslation(t, tenant.ID, episode.ID, "ko", "Cheot Bam")
+	for _, statement := range []string{
+		`UPDATE series_translations SET created_at = created_at - interval '1 day' WHERE tenant_id = $1 AND locale = 'ko'`,
+		`UPDATE episode_translations SET created_at = created_at - interval '1 day' WHERE tenant_id = $1 AND locale = 'ko'`,
+		`UPDATE tenants SET default_locale = 'en', supported_locales = '{en,ja,ko,zh-Hans}' WHERE id = $1`,
+	} {
+		if _, err := env.PG.DB.ExecContext(context.Background(), statement, tenant.ID); err != nil {
+			t.Fatalf("%s: %v", statement, err)
+		}
+	}
+
+	client := env.catalogClient()
+	detail, err := client.GetSeriesDetail(context.Background(), &publirav1.GetSeriesDetailRequest{
+		Tenant:   tenantContext(tenant),
+		PublicId: series.PublicID,
+		Locale:   "zh-Hans",
+	})
+	if err != nil {
+		t.Fatalf("GetSeriesDetail in zh-Hans: %v", err)
+	}
+	if detail.Series.Title != "Byeorui Doseogwan" || detail.Series.Locale != "ko" {
+		t.Fatalf("series in zh-Hans = (%q, %q), want the older ko translation", detail.Series.Title, detail.Series.Locale)
+	}
+	if len(detail.Episodes) != 2 || detail.Episodes[0].Title != "Cheot Bam" || detail.Episodes[0].Locale != "ko" || detail.Episodes[1].Locale != "ja" {
+		t.Fatalf("episodes in zh-Hans = %+v, want the first in its older ko translation and the second in ja", detail.Episodes)
+	}
+
+	episodeDetail, err := client.GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
+		Tenant:   tenantContext(tenant),
+		PublicId: episode.PublicID,
+		Locale:   "zh-Hans",
+	})
+	if err != nil {
+		t.Fatalf("GetEpisodeDetail in zh-Hans: %v", err)
+	}
+	if episodeDetail.Episode.Locale != "ko" || episodeDetail.Series.Locale != "ko" {
+		t.Fatalf("episode locales in zh-Hans = (%q, %q), want ko for both", episodeDetail.Episode.Locale, episodeDetail.Series.Locale)
+	}
+	if next := episodeDetail.NextEpisode; next == nil || next.Title != "Dainiya" || next.Locale != "ja" {
+		t.Fatalf("next episode in zh-Hans = %+v, want Dainiya in ja", next)
+	}
+	if next := episodeDetail.NextFreeEpisode; next == nil || next.Locale != "ja" {
+		t.Fatalf("next free episode in zh-Hans = %+v, want Dainiya in ja", next)
+	}
+
+	list, err := client.ListPublishedSeries(context.Background(), &publirav1.ListPublishedSeriesRequest{
+		Tenant: tenantContext(tenant),
+		Locale: "zh-Hans",
+	})
+	if err != nil {
+		t.Fatalf("ListPublishedSeries in zh-Hans: %v", err)
+	}
+	if len(list.Series) != 1 || list.Series[0].Locale != "ko" {
+		t.Fatalf("series list in zh-Hans = %+v, want the series in ko", list.Series)
+	}
+
+	genres, err := client.ListPublishedGenres(context.Background(), &publirav1.ListPublishedGenresRequest{
+		Tenant: tenantContext(tenant),
+		Locale: "zh-Hans",
+	})
+	if err != nil {
+		t.Fatalf("ListPublishedGenres in zh-Hans: %v", err)
+	}
+	if len(genres.Genres) != 1 || len(genres.Genres[0].FeaturedSeries) != 1 || genres.Genres[0].FeaturedSeries[0].Locale != "ko" {
+		t.Fatalf("genres in zh-Hans = %+v, want the featured series in ko", genres.Genres)
+	}
+
+	// Switched off, ko is no alternate, and the locale is still named.
+	if _, err := env.PG.DB.ExecContext(context.Background(), `UPDATE tenants SET supported_locales = '{en,zh-Hans}' WHERE id = $1`, tenant.ID); err != nil {
+		t.Fatalf("narrow the offered locales: %v", err)
+	}
+	detail, err = client.GetSeriesDetail(context.Background(), &publirav1.GetSeriesDetailRequest{
+		Tenant:   tenantContext(tenant),
+		PublicId: series.PublicID,
+		Locale:   "zh-Hans",
+	})
+	if err != nil {
+		t.Fatalf("GetSeriesDetail in zh-Hans: %v", err)
+	}
+	if detail.Series.Locale != "ko" || len(detail.PublishedLocales) != 0 {
+		t.Fatalf("series in zh-Hans = (%q, %v), want ko with no alternates", detail.Series.Locale, detail.PublishedLocales)
 	}
 }
 
@@ -144,7 +253,7 @@ func TestDBListPublishedSeriesSortsTitlesInTheReadersLocale(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListPublishedSeries in en: %v", err)
 	}
-	if got := seriesPublicIDs(english.Series); !slices.Equal(got, []string{second.PublicID}) || english.Series[0].Title != "Yankee" {
+	if got := seriesPublicIDs(english.Series); !slices.Equal(got, []string{second.PublicID}) || english.Series[0].Title != "Yankee" || english.Series[0].Locale != "en" {
 		t.Fatalf("first en page = %v, want Yankee first", got)
 	}
 

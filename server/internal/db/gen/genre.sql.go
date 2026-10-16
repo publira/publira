@@ -207,12 +207,14 @@ SELECT g.genre_id::uuid AS genre_id,
     f.id,
     f.public_id,
     f.title,
+    f.title_locale,
     f.eye_catch_image_id
 FROM unnest($1::uuid[]) AS g(genre_id)
     CROSS JOIN LATERAL (
         SELECT s.id,
             s.public_id,
             str.title,
+            str.locale AS title_locale,
             s.eye_catch_image_id,
             r.rank,
             s.published_at
@@ -258,6 +260,7 @@ type ListGenreFeaturedSeriesRow struct {
 	ID              uuid.UUID     `json:"id"`
 	PublicID        string        `json:"public_id"`
 	Title           string        `json:"title"`
+	TitleLocale     string        `json:"title_locale"`
 	EyeCatchImageID uuid.NullUUID `json:"eye_catch_image_id"`
 }
 
@@ -287,6 +290,7 @@ func (q *Queries) ListGenreFeaturedSeries(ctx context.Context, arg ListGenreFeat
 			&i.ID,
 			&i.PublicID,
 			&i.Title,
+			&i.TitleLocale,
 			&i.EyeCatchImageID,
 		); err != nil {
 			return nil, err

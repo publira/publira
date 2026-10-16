@@ -71,6 +71,7 @@ const GetMySeriesReadingProgress = `-- name: GetMySeriesReadingProgress :one
 SELECT e.id AS episode_id,
     e.public_id AS episode_public_id,
     et.title AS episode_title,
+    et.locale AS episode_title_locale,
     e.order_index,
     el.price,
     el.reading_period_hours,
@@ -122,6 +123,7 @@ type GetMySeriesReadingProgressRow struct {
 	EpisodeID          uuid.UUID     `json:"episode_id"`
 	EpisodePublicID    string        `json:"episode_public_id"`
 	EpisodeTitle       string        `json:"episode_title"`
+	EpisodeTitleLocale string        `json:"episode_title_locale"`
 	OrderIndex         int32         `json:"order_index"`
 	Price              int32         `json:"price"`
 	ReadingPeriodHours sql.NullInt32 `json:"reading_period_hours"`
@@ -156,6 +158,7 @@ func (q *Queries) GetMySeriesReadingProgress(ctx context.Context, arg GetMySerie
 		&i.EpisodeID,
 		&i.EpisodePublicID,
 		&i.EpisodeTitle,
+		&i.EpisodeTitleLocale,
 		&i.OrderIndex,
 		&i.Price,
 		&i.ReadingPeriodHours,
@@ -256,6 +259,7 @@ SELECT cf.series_id,
     cf.last_activity_at,
     e.public_id AS episode_public_id,
     et.title AS episode_title,
+    et.locale AS episode_title_locale,
     e.order_index,
     el.price,
     el.reading_period_hours,
@@ -314,6 +318,7 @@ type ListMyRecentSeriesAscRow struct {
 	LastActivityAt     time.Time     `json:"last_activity_at"`
 	EpisodePublicID    string        `json:"episode_public_id"`
 	EpisodeTitle       string        `json:"episode_title"`
+	EpisodeTitleLocale string        `json:"episode_title_locale"`
 	OrderIndex         int32         `json:"order_index"`
 	Price              int32         `json:"price"`
 	ReadingPeriodHours sql.NullInt32 `json:"reading_period_hours"`
@@ -351,6 +356,7 @@ func (q *Queries) ListMyRecentSeriesAsc(ctx context.Context, arg ListMyRecentSer
 			&i.LastActivityAt,
 			&i.EpisodePublicID,
 			&i.EpisodeTitle,
+			&i.EpisodeTitleLocale,
 			&i.OrderIndex,
 			&i.Price,
 			&i.ReadingPeriodHours,
@@ -460,6 +466,7 @@ SELECT cf.series_id,
     cf.last_activity_at,
     e.public_id AS episode_public_id,
     et.title AS episode_title,
+    et.locale AS episode_title_locale,
     e.order_index,
     el.price,
     el.reading_period_hours,
@@ -518,6 +525,7 @@ type ListMyRecentSeriesDescRow struct {
 	LastActivityAt     time.Time     `json:"last_activity_at"`
 	EpisodePublicID    string        `json:"episode_public_id"`
 	EpisodeTitle       string        `json:"episode_title"`
+	EpisodeTitleLocale string        `json:"episode_title_locale"`
 	OrderIndex         int32         `json:"order_index"`
 	Price              int32         `json:"price"`
 	ReadingPeriodHours sql.NullInt32 `json:"reading_period_hours"`
@@ -585,6 +593,7 @@ func (q *Queries) ListMyRecentSeriesDesc(ctx context.Context, arg ListMyRecentSe
 			&i.LastActivityAt,
 			&i.EpisodePublicID,
 			&i.EpisodeTitle,
+			&i.EpisodeTitleLocale,
 			&i.OrderIndex,
 			&i.Price,
 			&i.ReadingPeriodHours,

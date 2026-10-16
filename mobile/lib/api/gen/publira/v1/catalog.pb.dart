@@ -870,8 +870,9 @@ class GetSeriesDetailResponse extends $pb.GeneratedMessage {
   @$pb.TagNumber(5)
   WaitFreeRule ensureWaitFree() => $_ensure(4);
 
-  /// Every locale the series has a translation in that the tenant offers, the
-  /// served one included, in code order: the language alternates of the series.
+  /// Every locale the series has a translation in that the tenant offers, in
+  /// code order: the language alternates of the series. It includes
+  /// Series.locale whenever the tenant offers that locale.
   @$pb.TagNumber(6)
   $pb.PbList<$core.String> get publishedLocales => $_getList(5);
 }
@@ -1230,6 +1231,7 @@ class EpisodeNeighbor extends $pb.GeneratedMessage {
     $core.bool? isFree,
     $core.Iterable<$0.Creator>? creators,
     $0.SurfaceAvailability? purchaseAvailability,
+    $core.String? locale,
   }) {
     final result = EpisodeNeighbor._();
     if (publicId != null) result.publicId = publicId;
@@ -1240,6 +1242,7 @@ class EpisodeNeighbor extends $pb.GeneratedMessage {
     if (creators != null) result.creators.addAll(creators);
     if (purchaseAvailability != null)
       result.purchaseAvailability = purchaseAvailability;
+    if (locale != null) result.locale = locale;
     return result;
   }
 
@@ -1266,6 +1269,7 @@ class EpisodeNeighbor extends $pb.GeneratedMessage {
     ..aE<$0.SurfaceAvailability>(
         7, _omitFieldNames ? '' : 'purchaseAvailability',
         enumValues: $0.SurfaceAvailability.values)
+    ..aOS(8, _omitFieldNames ? '' : 'locale')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1360,6 +1364,18 @@ class EpisodeNeighbor extends $pb.GeneratedMessage {
   $core.bool hasPurchaseAvailability() => $_has(6);
   @$pb.TagNumber(7)
   void clearPurchaseAvailability() => $_clearField(7);
+
+  /// The locale of the translation `title` comes from, named the way
+  /// Episode.locale is. Each episode falls back on its own, so it may differ
+  /// from the locale of the episode it is a neighbour of.
+  @$pb.TagNumber(8)
+  $core.String get locale => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set locale($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasLocale() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearLocale() => $_clearField(8);
 }
 
 /// Episode detail for public viewing.
@@ -1574,8 +1590,9 @@ class GetEpisodeDetailResponse extends $pb.GeneratedMessage {
   @$pb.TagNumber(10)
   EpisodeNeighbor ensureNextFreeEpisode() => $_ensure(9);
 
-  /// Every locale the episode has a translation in that the tenant offers, the
-  /// served one included, in code order: the language alternates of the episode.
+  /// Every locale the episode has a translation in that the tenant offers, in
+  /// code order: the language alternates of the episode. It includes
+  /// Episode.locale whenever the tenant offers that locale.
   @$pb.TagNumber(11)
   $pb.PbList<$core.String> get publishedLocales => $_getList(10);
 }
@@ -2639,12 +2656,14 @@ class PublishedGenreFeaturedSeries extends $pb.GeneratedMessage {
     $core.String? publicId,
     $core.String? title,
     $core.Iterable<$0.SeriesEyeCatchVariant>? eyeCatchImageVariants,
+    $core.String? locale,
   }) {
     final result = PublishedGenreFeaturedSeries._();
     if (publicId != null) result.publicId = publicId;
     if (title != null) result.title = title;
     if (eyeCatchImageVariants != null)
       result.eyeCatchImageVariants.addAll(eyeCatchImageVariants);
+    if (locale != null) result.locale = locale;
     return result;
   }
 
@@ -2666,6 +2685,7 @@ class PublishedGenreFeaturedSeries extends $pb.GeneratedMessage {
     ..pPM<$0.SeriesEyeCatchVariant>(
         3, _omitFieldNames ? '' : 'eyeCatchImageVariants',
         subBuilder: $0.SeriesEyeCatchVariant.$_createMessage)
+    ..aOS(4, _omitFieldNames ? '' : 'locale')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2717,6 +2737,17 @@ class PublishedGenreFeaturedSeries extends $pb.GeneratedMessage {
   @$pb.TagNumber(3)
   $pb.PbList<$0.SeriesEyeCatchVariant> get eyeCatchImageVariants =>
       $_getList(2);
+
+  /// The locale of the translation `title` comes from, named the way
+  /// Series.locale is.
+  @$pb.TagNumber(4)
+  $core.String get locale => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set locale($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasLocale() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearLocale() => $_clearField(4);
 }
 
 /// Cursor pagination. Field shape and token rules: proto/README.md.

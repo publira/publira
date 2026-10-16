@@ -338,10 +338,12 @@ LIMIT 1;
 -- name: GetPublishedEpisodeForTenant :one
 -- A URL names the episode by its public ID and a reader's request by its ID;
 -- the caller passes the one it holds. The episode's title and its series' are
--- those of the translations picked for the reader's locale.
+-- those of the translations picked for the reader's locale, each beside the
+-- locale it was picked in.
 SELECT e.id,
     e.public_id,
     et.title,
+    et.locale AS title_locale,
     e.order_index,
     e.series_id,
     el.price,
@@ -353,6 +355,7 @@ SELECT e.id,
     el.published_at,
     s.public_id AS series_public_id,
     str.title AS series_title,
+    str.locale AS series_title_locale,
     -- The work's artwork, which the links to the neighbouring episodes show.
     s.eye_catch_image_id AS series_eye_catch_image_id,
     si.updated_at AS series_eye_catch_image_updated_at,
@@ -381,9 +384,9 @@ SELECT e.id,
     -- Where the episode may be bought, resolved through its series and the
     -- tenant, so a client draws the purchase action without resolving it.
     epa.purchase_availability,
-    -- Every locale the episode has a translation in that the tenant offers,
-    -- the served one included, in code order: the language alternates of the
-    -- episode.
+    -- Every locale the episode has a translation in that the tenant offers, in
+    -- code order: the language alternates of the episode. It includes the
+    -- served locale whenever the tenant offers it.
     ARRAY(
         SELECT alternate.locale
         FROM episode_translations alternate
@@ -437,6 +440,7 @@ LIMIT 1;
         e.id,
         e.public_id,
         et.title,
+        et.locale AS title_locale,
         e.order_index,
         el.price,
         EXISTS (
@@ -469,6 +473,7 @@ UNION ALL
         e.id,
         e.public_id,
         et.title,
+        et.locale AS title_locale,
         e.order_index,
         el.price,
         EXISTS (
@@ -507,6 +512,7 @@ UNION ALL
 SELECT e.id,
     e.public_id,
     et.title,
+    et.locale AS title_locale,
     e.order_index,
     el.price,
     epa.purchase_availability
@@ -574,10 +580,12 @@ SELECT r.id,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
     et.title AS episode_title,
+    et.locale AS episode_title_locale,
     e.order_index AS episode_order_index,
     s.id AS series_id,
     s.public_id AS series_public_id,
-    str.title AS series_title
+    str.title AS series_title,
+    str.locale AS series_title_locale
 FROM episode_reads r
     JOIN episodes e ON e.id = r.episode_id
     CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et
@@ -619,10 +627,12 @@ SELECT r.id,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
     et.title AS episode_title,
+    et.locale AS episode_title_locale,
     e.order_index AS episode_order_index,
     s.id AS series_id,
     s.public_id AS series_public_id,
-    str.title AS series_title
+    str.title AS series_title,
+    str.locale AS series_title_locale
 FROM episode_reads r
     JOIN episodes e ON e.id = r.episode_id
     CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et

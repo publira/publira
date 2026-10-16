@@ -576,6 +576,7 @@ const Series$json = {
       '5': 5,
       '10': 'rentalPeriodHours'
     },
+    {'1': 'locale', '3': 24, '4': 1, '5': 9, '10': 'locale'},
   ],
   '9': [
     {'1': 7, '2': 8},
@@ -602,7 +603,8 @@ final $typed_data.Uint8List seriesDescriptor = $convert.base64Decode(
     'YXRpbmdfYXZlcmFnZRgTIAEoAVINcmF0aW5nQXZlcmFnZRIhCgxyYXRpbmdfY291bnQYFCABKA'
     'NSC3JhdGluZ0NvdW50EkkKDGF2YWlsYWJpbGl0eRgVIAEoDjIlLnB1YmxpcmEudHlwZXMudjEu'
     'U3VyZmFjZUF2YWlsYWJpbGl0eVIMYXZhaWxhYmlsaXR5Eg4KAmlkGBYgASgJUgJpZBIuChNyZW'
-    '50YWxfcGVyaW9kX2hvdXJzGBcgASgFUhFyZW50YWxQZXJpb2RIb3Vyc0oECAcQCEoECAgQCQ==');
+    '50YWxfcGVyaW9kX2hvdXJzGBcgASgFUhFyZW50YWxQZXJpb2RIb3VycxIWCgZsb2NhbGUYGCAB'
+    'KAlSBmxvY2FsZUoECAcQCEoECAgQCQ==');
 
 @$core.Deprecated('Use episodeDescriptor instead')
 const Episode$json = {
@@ -687,6 +689,7 @@ const Episode$json = {
       '5': 5,
       '10': 'rentalPeriodHours'
     },
+    {'1': 'locale', '3': 21, '4': 1, '5': 9, '10': 'locale'},
   ],
 };
 
@@ -708,7 +711,8 @@ final $typed_data.Uint8List episodeDescriptor = $convert.base64Decode(
     'EgASgJUhZleWVDYXRjaEltYWdlVXBkYXRlZEF0EmAKGGV5ZV9jYXRjaF9pbWFnZV92YXJpYW50'
     'cxgSIAMoCzInLnB1YmxpcmEudHlwZXMudjEuU2VyaWVzRXllQ2F0Y2hWYXJpYW50UhVleWVDYX'
     'RjaEltYWdlVmFyaWFudHMSIQoMcmVudGFsX3ByaWNlGBMgASgFUgtyZW50YWxQcmljZRIuChNy'
-    'ZW50YWxfcGVyaW9kX2hvdXJzGBQgASgFUhFyZW50YWxQZXJpb2RIb3Vycw==');
+    'ZW50YWxfcGVyaW9kX2hvdXJzGBQgASgFUhFyZW50YWxQZXJpb2RIb3VycxIWCgZsb2NhbGUYFS'
+    'ABKAlSBmxvY2FsZQ==');
 
 @$core.Deprecated('Use episodeImageDescriptor instead')
 const EpisodeImage$json = {

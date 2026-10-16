@@ -301,10 +301,12 @@ type purchasePageRow struct {
 	episodeID         uuid.UUID
 	episodePublicID   string
 	episodeTitle      string
+	episodeLocale     string
 	episodeOrderIndex int32
 	seriesID          uuid.UUID
 	seriesPublicID    string
 	seriesTitle       string
+	seriesLocale      string
 }
 
 func mapPurchaseDescRows(rows []dbmodels.ListMyPurchasesDescRow) []purchasePageRow {
@@ -323,10 +325,12 @@ func mapPurchaseDescRows(rows []dbmodels.ListMyPurchasesDescRow) []purchasePageR
 			episodeID:         row.EpisodeID,
 			episodePublicID:   row.EpisodePublicID,
 			episodeTitle:      row.EpisodeTitle,
+			episodeLocale:     row.EpisodeTitleLocale,
 			episodeOrderIndex: row.EpisodeOrderIndex,
 			seriesID:          row.SeriesID,
 			seriesPublicID:    row.SeriesPublicID,
 			seriesTitle:       row.SeriesTitle,
+			seriesLocale:      row.SeriesTitleLocale,
 		})
 	}
 	return mapped
@@ -348,10 +352,12 @@ func mapPurchaseAscRows(rows []dbmodels.ListMyPurchasesAscRow) []purchasePageRow
 			episodeID:         row.EpisodeID,
 			episodePublicID:   row.EpisodePublicID,
 			episodeTitle:      row.EpisodeTitle,
+			episodeLocale:     row.EpisodeTitleLocale,
 			episodeOrderIndex: row.EpisodeOrderIndex,
 			seriesID:          row.SeriesID,
 			seriesPublicID:    row.SeriesPublicID,
 			seriesTitle:       row.SeriesTitle,
+			seriesLocale:      row.SeriesTitleLocale,
 		})
 	}
 	return mapped
@@ -421,6 +427,7 @@ func purchaseItemFromRow(row purchasePageRow, now time.Time) (*publirav1.MyPurch
 			OrderIndex: row.episodeOrderIndex,
 			PublicId:   row.episodePublicID,
 			Title:      row.episodeTitle,
+			Locale:     row.episodeLocale,
 		},
 		Currency:        row.currency,
 		ExpiresAt:       expiresAt,
@@ -435,6 +442,7 @@ func purchaseItemFromRow(row purchasePageRow, now time.Time) (*publirav1.MyPurch
 			Id:       row.seriesID.String(),
 			PublicId: row.seriesPublicID,
 			Title:    row.seriesTitle,
+			Locale:   row.seriesLocale,
 		},
 	}, nil
 }

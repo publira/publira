@@ -268,6 +268,7 @@ SELECT series_id,
     episode_id,
     episode_public_id,
     episode_title,
+    episode_title_locale,
     episode_order_index,
     published_at
 FROM (
@@ -275,6 +276,7 @@ FROM (
         e.id AS episode_id,
         e.public_id AS episode_public_id,
         et.title AS episode_title,
+        et.locale AS episode_title_locale,
         e.order_index AS episode_order_index,
         el.published_at AS published_at
     FROM series_follows sf
@@ -296,6 +298,7 @@ FROM (
         e.id AS episode_id,
         e.public_id AS episode_public_id,
         et.title AS episode_title,
+        et.locale AS episode_title_locale,
         e.order_index AS episode_order_index,
         el.published_at AS published_at
     FROM creator_follows cf
@@ -347,12 +350,13 @@ type ListMyFollowUpdatesAscParams struct {
 }
 
 type ListMyFollowUpdatesAscRow struct {
-	SeriesID          uuid.UUID    `json:"series_id"`
-	EpisodeID         uuid.UUID    `json:"episode_id"`
-	EpisodePublicID   string       `json:"episode_public_id"`
-	EpisodeTitle      string       `json:"episode_title"`
-	EpisodeOrderIndex int32        `json:"episode_order_index"`
-	PublishedAt       sql.NullTime `json:"published_at"`
+	SeriesID           uuid.UUID    `json:"series_id"`
+	EpisodeID          uuid.UUID    `json:"episode_id"`
+	EpisodePublicID    string       `json:"episode_public_id"`
+	EpisodeTitle       string       `json:"episode_title"`
+	EpisodeTitleLocale string       `json:"episode_title_locale"`
+	EpisodeOrderIndex  int32        `json:"episode_order_index"`
+	PublishedAt        sql.NullTime `json:"published_at"`
 }
 
 // The backward direction of ListMyFollowUpdatesDesc.
@@ -379,6 +383,7 @@ func (q *Queries) ListMyFollowUpdatesAsc(ctx context.Context, arg ListMyFollowUp
 			&i.EpisodeID,
 			&i.EpisodePublicID,
 			&i.EpisodeTitle,
+			&i.EpisodeTitleLocale,
 			&i.EpisodeOrderIndex,
 			&i.PublishedAt,
 		); err != nil {
@@ -400,6 +405,7 @@ SELECT series_id,
     episode_id,
     episode_public_id,
     episode_title,
+    episode_title_locale,
     episode_order_index,
     published_at
 FROM (
@@ -407,6 +413,7 @@ FROM (
         e.id AS episode_id,
         e.public_id AS episode_public_id,
         et.title AS episode_title,
+        et.locale AS episode_title_locale,
         e.order_index AS episode_order_index,
         el.published_at AS published_at
     FROM series_follows sf
@@ -428,6 +435,7 @@ FROM (
         e.id AS episode_id,
         e.public_id AS episode_public_id,
         et.title AS episode_title,
+        et.locale AS episode_title_locale,
         e.order_index AS episode_order_index,
         el.published_at AS published_at
     FROM creator_follows cf
@@ -479,12 +487,13 @@ type ListMyFollowUpdatesDescParams struct {
 }
 
 type ListMyFollowUpdatesDescRow struct {
-	SeriesID          uuid.UUID    `json:"series_id"`
-	EpisodeID         uuid.UUID    `json:"episode_id"`
-	EpisodePublicID   string       `json:"episode_public_id"`
-	EpisodeTitle      string       `json:"episode_title"`
-	EpisodeOrderIndex int32        `json:"episode_order_index"`
-	PublishedAt       sql.NullTime `json:"published_at"`
+	SeriesID           uuid.UUID    `json:"series_id"`
+	EpisodeID          uuid.UUID    `json:"episode_id"`
+	EpisodePublicID    string       `json:"episode_public_id"`
+	EpisodeTitle       string       `json:"episode_title"`
+	EpisodeTitleLocale string       `json:"episode_title_locale"`
+	EpisodeOrderIndex  int32        `json:"episode_order_index"`
+	PublishedAt        sql.NullTime `json:"published_at"`
 }
 
 // The episodes that have arrived in what this member follows, most recently
@@ -534,6 +543,7 @@ func (q *Queries) ListMyFollowUpdatesDesc(ctx context.Context, arg ListMyFollowU
 			&i.EpisodeID,
 			&i.EpisodePublicID,
 			&i.EpisodeTitle,
+			&i.EpisodeTitleLocale,
 			&i.EpisodeOrderIndex,
 			&i.PublishedAt,
 		); err != nil {

@@ -435,6 +435,7 @@ SELECT s.id,
     s.eye_catch_image_id,
     NULL::timestamp AS eye_catch_image_updated_at,
     tr.synopsis,
+    tr.locale AS title_locale,
     sl.status,
     sl.schedule_weekdays,
     sl.age_rating,
@@ -542,6 +543,8 @@ SELECT s.id,
                         e.public_id,
                         'title',
                         et.title,
+                        'locale',
+                        et.locale,
                         'order_index',
                         e.order_index,
                         'price',
@@ -585,9 +588,9 @@ SELECT s.id,
         ),
         '[]'
     )::jsonb AS episodes,
-    -- Every locale the series has a translation in that the tenant offers,
-    -- the served one included, in code order: the language alternates of the
-    -- series.
+    -- Every locale the series has a translation in that the tenant offers, in
+    -- code order: the language alternates of the series. It includes the
+    -- served locale whenever the tenant offers it.
     ARRAY(
         SELECT alternate.locale
         FROM series_translations alternate
@@ -617,6 +620,7 @@ WHERE s.public_id = $3
 GROUP BY s.id,
     tr.title,
     tr.synopsis,
+    tr.locale,
     l.id,
     sl.series_id,
     sl.status,
@@ -641,6 +645,7 @@ type GetSeriesDetailRow struct {
 	EyeCatchImageID        uuid.NullUUID   `json:"eye_catch_image_id"`
 	EyeCatchImageUpdatedAt sql.NullTime    `json:"eye_catch_image_updated_at"`
 	Synopsis               string          `json:"synopsis"`
+	TitleLocale            string          `json:"title_locale"`
 	Status                 sql.NullString  `json:"status"`
 	ScheduleWeekdays       []int32         `json:"schedule_weekdays"`
 	AgeRating              sql.NullString  `json:"age_rating"`
@@ -657,7 +662,8 @@ type GetSeriesDetailRow struct {
 
 // The title and the synopsis are those of the translation
 // series_translation_for picks for the reader's locale, and each episode's
-// title is picked the same way.
+// title is picked the same way. Each names the locale of the translation it
+// came from.
 func (q *Queries) GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams) (GetSeriesDetailRow, error) {
 	row := q.db.QueryRowContext(ctx, GetSeriesDetail,
 		arg.Surface,
@@ -675,6 +681,7 @@ func (q *Queries) GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams
 		&i.EyeCatchImageID,
 		&i.EyeCatchImageUpdatedAt,
 		&i.Synopsis,
+		&i.TitleLocale,
 		&i.Status,
 		pq.Array(&i.ScheduleWeekdays),
 		&i.AgeRating,

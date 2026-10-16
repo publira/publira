@@ -674,10 +674,12 @@ SELECT p.id,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
     et.title AS episode_title,
+    et.locale AS episode_title_locale,
     e.order_index AS episode_order_index,
     s.id AS series_id,
     s.public_id AS series_public_id,
-    str.title AS series_title
+    str.title AS series_title,
+    str.locale AS series_title_locale
 FROM purchases p
     JOIN episodes e ON e.id = p.episode_id
     CROSS JOIN LATERAL episode_translation_for(e.id, $1::text) et
@@ -728,22 +730,24 @@ type ListMyPurchasesAscParams struct {
 }
 
 type ListMyPurchasesAscRow struct {
-	ID                uuid.UUID     `json:"id"`
-	Kind              string        `json:"kind"`
-	PriceAtPurchase   int32         `json:"price_at_purchase"`
-	Currency          string        `json:"currency"`
-	ExpiresAt         sql.NullTime  `json:"expires_at"`
-	RevokedAt         sql.NullTime  `json:"revoked_at"`
-	RefundedAmount    sql.NullInt32 `json:"refunded_amount"`
-	RefundedAt        sql.NullTime  `json:"refunded_at"`
-	PurchasedAt       time.Time     `json:"purchased_at"`
-	EpisodeID         uuid.UUID     `json:"episode_id"`
-	EpisodePublicID   string        `json:"episode_public_id"`
-	EpisodeTitle      string        `json:"episode_title"`
-	EpisodeOrderIndex int32         `json:"episode_order_index"`
-	SeriesID          uuid.UUID     `json:"series_id"`
-	SeriesPublicID    string        `json:"series_public_id"`
-	SeriesTitle       string        `json:"series_title"`
+	ID                 uuid.UUID     `json:"id"`
+	Kind               string        `json:"kind"`
+	PriceAtPurchase    int32         `json:"price_at_purchase"`
+	Currency           string        `json:"currency"`
+	ExpiresAt          sql.NullTime  `json:"expires_at"`
+	RevokedAt          sql.NullTime  `json:"revoked_at"`
+	RefundedAmount     sql.NullInt32 `json:"refunded_amount"`
+	RefundedAt         sql.NullTime  `json:"refunded_at"`
+	PurchasedAt        time.Time     `json:"purchased_at"`
+	EpisodeID          uuid.UUID     `json:"episode_id"`
+	EpisodePublicID    string        `json:"episode_public_id"`
+	EpisodeTitle       string        `json:"episode_title"`
+	EpisodeTitleLocale string        `json:"episode_title_locale"`
+	EpisodeOrderIndex  int32         `json:"episode_order_index"`
+	SeriesID           uuid.UUID     `json:"series_id"`
+	SeriesPublicID     string        `json:"series_public_id"`
+	SeriesTitle        string        `json:"series_title"`
+	SeriesTitleLocale  string        `json:"series_title_locale"`
 }
 
 func (q *Queries) ListMyPurchasesAsc(ctx context.Context, arg ListMyPurchasesAscParams) ([]ListMyPurchasesAscRow, error) {
@@ -777,10 +781,12 @@ func (q *Queries) ListMyPurchasesAsc(ctx context.Context, arg ListMyPurchasesAsc
 			&i.EpisodeID,
 			&i.EpisodePublicID,
 			&i.EpisodeTitle,
+			&i.EpisodeTitleLocale,
 			&i.EpisodeOrderIndex,
 			&i.SeriesID,
 			&i.SeriesPublicID,
 			&i.SeriesTitle,
+			&i.SeriesTitleLocale,
 		); err != nil {
 			return nil, err
 		}
@@ -808,10 +814,12 @@ SELECT p.id,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
     et.title AS episode_title,
+    et.locale AS episode_title_locale,
     e.order_index AS episode_order_index,
     s.id AS series_id,
     s.public_id AS series_public_id,
-    str.title AS series_title
+    str.title AS series_title,
+    str.locale AS series_title_locale
 FROM purchases p
     JOIN episodes e ON e.id = p.episode_id
     CROSS JOIN LATERAL episode_translation_for(e.id, $1::text) et
@@ -862,22 +870,24 @@ type ListMyPurchasesDescParams struct {
 }
 
 type ListMyPurchasesDescRow struct {
-	ID                uuid.UUID     `json:"id"`
-	Kind              string        `json:"kind"`
-	PriceAtPurchase   int32         `json:"price_at_purchase"`
-	Currency          string        `json:"currency"`
-	ExpiresAt         sql.NullTime  `json:"expires_at"`
-	RevokedAt         sql.NullTime  `json:"revoked_at"`
-	RefundedAmount    sql.NullInt32 `json:"refunded_amount"`
-	RefundedAt        sql.NullTime  `json:"refunded_at"`
-	PurchasedAt       time.Time     `json:"purchased_at"`
-	EpisodeID         uuid.UUID     `json:"episode_id"`
-	EpisodePublicID   string        `json:"episode_public_id"`
-	EpisodeTitle      string        `json:"episode_title"`
-	EpisodeOrderIndex int32         `json:"episode_order_index"`
-	SeriesID          uuid.UUID     `json:"series_id"`
-	SeriesPublicID    string        `json:"series_public_id"`
-	SeriesTitle       string        `json:"series_title"`
+	ID                 uuid.UUID     `json:"id"`
+	Kind               string        `json:"kind"`
+	PriceAtPurchase    int32         `json:"price_at_purchase"`
+	Currency           string        `json:"currency"`
+	ExpiresAt          sql.NullTime  `json:"expires_at"`
+	RevokedAt          sql.NullTime  `json:"revoked_at"`
+	RefundedAmount     sql.NullInt32 `json:"refunded_amount"`
+	RefundedAt         sql.NullTime  `json:"refunded_at"`
+	PurchasedAt        time.Time     `json:"purchased_at"`
+	EpisodeID          uuid.UUID     `json:"episode_id"`
+	EpisodePublicID    string        `json:"episode_public_id"`
+	EpisodeTitle       string        `json:"episode_title"`
+	EpisodeTitleLocale string        `json:"episode_title_locale"`
+	EpisodeOrderIndex  int32         `json:"episode_order_index"`
+	SeriesID           uuid.UUID     `json:"series_id"`
+	SeriesPublicID     string        `json:"series_public_id"`
+	SeriesTitle        string        `json:"series_title"`
+	SeriesTitleLocale  string        `json:"series_title_locale"`
 }
 
 // The reader's library, newest purchase first. Publication is not re-checked,
@@ -915,10 +925,12 @@ func (q *Queries) ListMyPurchasesDesc(ctx context.Context, arg ListMyPurchasesDe
 			&i.EpisodeID,
 			&i.EpisodePublicID,
 			&i.EpisodeTitle,
+			&i.EpisodeTitleLocale,
 			&i.EpisodeOrderIndex,
 			&i.SeriesID,
 			&i.SeriesPublicID,
 			&i.SeriesTitle,
+			&i.SeriesTitleLocale,
 		); err != nil {
 			return nil, err
 		}

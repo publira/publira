@@ -1191,8 +1191,9 @@ type GetSeriesDetailResponse struct {
 	// The series' wait-for-free rule, and unset when the series does not offer
 	// one. Like the rest of this response it says nothing about the reader.
 	WaitFree *WaitFreeRule `protobuf:"bytes,5,opt,name=wait_free,json=waitFree,proto3" json:"wait_free,omitempty"`
-	// Every locale the series has a translation in that the tenant offers, the
-	// served one included, in code order: the language alternates of the series.
+	// Every locale the series has a translation in that the tenant offers, in
+	// code order: the language alternates of the series. It includes
+	// Series.locale whenever the tenant offers that locale.
 	PublishedLocales []string `protobuf:"bytes,6,rep,name=published_locales,json=publishedLocales,proto3" json:"published_locales,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
@@ -1538,8 +1539,12 @@ type EpisodeNeighbor struct {
 	// Episode.purchase_availability is, so a link to a paid episode sold on the
 	// other surface alone does not quote a price this surface cannot take.
 	PurchaseAvailability v1.SurfaceAvailability `protobuf:"varint,7,opt,name=purchase_availability,json=purchaseAvailability,proto3,enum=publira.types.v1.SurfaceAvailability" json:"purchase_availability,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// The locale of the translation `title` comes from, named the way
+	// Episode.locale is. Each episode falls back on its own, so it may differ
+	// from the locale of the episode it is a neighbour of.
+	Locale        string `protobuf:"bytes,8,opt,name=locale,proto3" json:"locale,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *EpisodeNeighbor) Reset() {
@@ -1621,6 +1626,13 @@ func (x *EpisodeNeighbor) GetPurchaseAvailability() v1.SurfaceAvailability {
 	return v1.SurfaceAvailability(0)
 }
 
+func (x *EpisodeNeighbor) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
 // Episode detail for public viewing.
 // Body/content is represented as ordered images for the reader UI.
 type GetEpisodeDetailResponse struct {
@@ -1666,8 +1678,9 @@ type GetEpisodeDetailResponse struct {
 	// the moment of the read: price is 0, or a free window is open on it. It may
 	// be the same episode as next_episode. Unset when no later episode is free.
 	NextFreeEpisode *EpisodeNeighbor `protobuf:"bytes,10,opt,name=next_free_episode,json=nextFreeEpisode,proto3" json:"next_free_episode,omitempty"`
-	// Every locale the episode has a translation in that the tenant offers, the
-	// served one included, in code order: the language alternates of the episode.
+	// Every locale the episode has a translation in that the tenant offers, in
+	// code order: the language alternates of the episode. It includes
+	// Episode.locale whenever the tenant offers that locale.
 	PublishedLocales []string `protobuf:"bytes,11,rep,name=published_locales,json=publishedLocales,proto3" json:"published_locales,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
@@ -2535,8 +2548,11 @@ type PublishedGenreFeaturedSeries struct {
 	PublicId              string                      `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
 	Title                 string                      `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
 	EyeCatchImageVariants []*v1.SeriesEyeCatchVariant `protobuf:"bytes,3,rep,name=eye_catch_image_variants,json=eyeCatchImageVariants,proto3" json:"eye_catch_image_variants,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// The locale of the translation `title` comes from, named the way
+	// Series.locale is.
+	Locale        string `protobuf:"bytes,4,opt,name=locale,proto3" json:"locale,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PublishedGenreFeaturedSeries) Reset() {
@@ -2588,6 +2604,13 @@ func (x *PublishedGenreFeaturedSeries) GetEyeCatchImageVariants() []*v1.SeriesEy
 		return x.EyeCatchImageVariants
 	}
 	return nil
+}
+
+func (x *PublishedGenreFeaturedSeries) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -8287,7 +8310,7 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x129\n" +
 	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x16\n" +
-	"\x06locale\x18\x04 \x01(\tR\x06locale\"\xa7\x02\n" +
+	"\x06locale\x18\x04 \x01(\tR\x06locale\"\xbf\x02\n" +
 	"\x0fEpisodeNeighbor\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1f\n" +
@@ -8296,7 +8319,8 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x05price\x18\x04 \x01(\x05R\x05price\x12\x17\n" +
 	"\ais_free\x18\x05 \x01(\bR\x06isFree\x125\n" +
 	"\bcreators\x18\x06 \x03(\v2\x19.publira.types.v1.CreatorR\bcreators\x12Z\n" +
-	"\x15purchase_availability\x18\a \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\x14purchaseAvailability\"\xa5\x05\n" +
+	"\x15purchase_availability\x18\a \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\x14purchaseAvailability\x12\x16\n" +
+	"\x06locale\x18\b \x01(\tR\x06locale\"\xa5\x05\n" +
 	"\x18GetEpisodeDetailResponse\x123\n" +
 	"\aepisode\x18\x01 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\x120\n" +
 	"\x06series\x18\x02 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\x126\n" +
@@ -8368,11 +8392,12 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x04slug\x18\x03 \x01(\tR\x04slug\x124\n" +
 	"\x16published_series_count\x18\x04 \x01(\x05R\x14publishedSeriesCount\x12Q\n" +
 	"\x0ffeatured_series\x18\x05 \x03(\v2(.publira.v1.PublishedGenreFeaturedSeriesR\x0efeaturedSeries\x12`\n" +
-	"\x18eye_catch_image_variants\x18\x06 \x03(\v2'.publira.types.v1.SeriesEyeCatchVariantR\x15eyeCatchImageVariants\"\xb3\x01\n" +
+	"\x18eye_catch_image_variants\x18\x06 \x03(\v2'.publira.types.v1.SeriesEyeCatchVariantR\x15eyeCatchImageVariants\"\xcb\x01\n" +
 	"\x1cPublishedGenreFeaturedSeries\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12`\n" +
-	"\x18eye_catch_image_variants\x18\x03 \x03(\v2'.publira.types.v1.SeriesEyeCatchVariantR\x15eyeCatchImageVariants\"\xd4\x01\n" +
+	"\x18eye_catch_image_variants\x18\x03 \x03(\v2'.publira.types.v1.SeriesEyeCatchVariantR\x15eyeCatchImageVariants\x12\x16\n" +
+	"\x06locale\x18\x04 \x01(\tR\x06locale\"\xd4\x01\n" +
 	"\x1aListPublishedGenresRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
