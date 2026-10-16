@@ -23,6 +23,7 @@ const {
   mockLoginWithIdToken,
   mockRequestEmailChange,
   mockResolveAccessToken,
+  mockSelectMyIcon,
   mockUpdateMe,
   mockUploadMyIcon,
   mockVerifyUserEmail,
@@ -42,6 +43,7 @@ const {
   mockLogout: vi.fn(),
   mockRequestEmailChange: vi.fn(),
   mockResolveAccessToken: vi.fn(),
+  mockSelectMyIcon: vi.fn(),
   mockUpdateMe: vi.fn(),
   mockUploadMyIcon: vi.fn(),
   mockVerifyUserEmail: vi.fn(),
@@ -69,6 +71,7 @@ vi.mock("./api-client", () => ({
       loginWithIdToken: mockLoginWithIdToken,
       logout: mockLogout,
       requestEmailChange: mockRequestEmailChange,
+      selectMyIcon: mockSelectMyIcon,
       updateMe: mockUpdateMe,
       uploadMyIcon: mockUploadMyIcon,
       verifyUserEmail: mockVerifyUserEmail,
@@ -624,6 +627,7 @@ describe("web-storefront auth", () => {
       birthDate: "1990-04-02",
       email: "alice@example.com",
       icon: null,
+      iconPresetId: null,
       name: "Alice",
       publicId: "U001",
       role: "reader",
@@ -788,6 +792,66 @@ describe("web-storefront auth", () => {
       })
     ).resolves.toEqual({ ok: false, refusal: "unauthenticated" });
     expect(mockUploadMyIcon).not.toHaveBeenCalled();
+  });
+
+  it("uploadMyIcon: names a change the tenant's icon policy no longer allows", async () => {
+    const { uploadMyIcon } = await importAuth();
+    mockUploadMyIcon.mockRejectedValueOnce(
+      new ConnectError("not allowed", Code.FailedPrecondition, undefined, [
+        {
+          desc: ErrorInfoSchema,
+          value: { domain: "publira", reason: "READER_ICON_NOT_ALLOWED" },
+        },
+      ])
+    );
+
+    await expect(
+      uploadMyIcon("TENANT001", {
+        contentType: "image/png",
+        data: new Uint8Array([1]),
+      })
+    ).resolves.toEqual({ ok: false, refusal: "not-allowed" });
+  });
+
+  it("selectMyIcon: sends the preset and answers the account showing it", async () => {
+    const { selectMyIcon } = await importAuth();
+    mockSelectMyIcon.mockResolvedValueOnce({
+      user: { ...ICON_USER, iconPresetId: "PRESET_001" },
+    });
+
+    await expect(
+      selectMyIcon("TENANT001", "PRESET_001")
+    ).resolves.toMatchObject({
+      me: { icon: { url: ICON_URL }, iconPresetId: "PRESET_001" },
+      ok: true,
+    });
+    expect(mockSelectMyIcon).toHaveBeenCalledWith(
+      { presetId: "PRESET_001", tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer sid_001" } }
+    );
+  });
+
+  it("selectMyIcon: hands a preset that is gone back by its disposition", async () => {
+    const { selectMyIcon } = await importAuth();
+    mockSelectMyIcon.mockRejectedValueOnce(
+      new ConnectError("gone", Code.NotFound)
+    );
+
+    await expect(selectMyIcon("TENANT001", "PRESET_001")).resolves.toEqual({
+      ok: false,
+      refusal: "not-found",
+    });
+  });
+
+  it("selectMyIcon: refuses without asking when the browser holds no session", async () => {
+    const { selectMyIcon } = await importAuth();
+    mockResolveAccessToken.mockResolvedValueOnce("");
+
+    await expect(selectMyIcon("TENANT001", "PRESET_001")).resolves.toEqual({
+      ok: false,
+      refusal: "unauthenticated",
+    });
+    expect(mockSelectMyIcon).not.toHaveBeenCalled();
   });
 
   it("deleteMyIcon: answers the account with no icon", async () => {

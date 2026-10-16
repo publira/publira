@@ -8,7 +8,12 @@ import { z } from "zod";
 
 import { checkAccountIconFile } from "#lib/account-icon";
 import type { AccountIconFileProblem } from "#lib/account-icon";
-import { accountCacheTag, deleteMyIcon, uploadMyIcon } from "#lib/auth";
+import {
+  accountCacheTag,
+  deleteMyIcon,
+  selectMyIcon,
+  uploadMyIcon,
+} from "#lib/auth";
 import type { IconChangeOutcome } from "#lib/auth";
 import { tenantIdFormSchema } from "#lib/auth-input";
 import { assertSameOrigin } from "#lib/csrf";
@@ -56,6 +61,9 @@ const settle = async (
   switch (outcome.refusal) {
     case "image": {
       return { message: t("storefront.settings.icon_refused"), ok: false };
+    }
+    case "not-allowed": {
+      return { message: t("storefront.settings.icon_not_allowed"), ok: false };
     }
     case "storage-not-configured": {
       return {
@@ -114,6 +122,48 @@ export const uploadIconAction = async (
     {
       done: "storefront.settings.icon_uploaded",
       failed: "storefront.settings.icon_upload_failed",
+    }
+  );
+};
+
+/** Shows the tenant preset the form's `presetId` names as the reader's icon. */
+export const selectIconAction = async (
+  formData: FormData
+): Promise<IconActionResult> => {
+  await assertSameOrigin();
+  const submittedLocale = requireFormLocale(formData.get("locale"));
+  const [t, schema] = await Promise.all([
+    getMessagesFor(submittedLocale),
+    iconFormSchema(submittedLocale),
+  ]);
+  const parsed = schema
+    .extend({ presetId: z.string().trim().min(1) })
+    .safeParse(
+      toFormDataInput(formData, {
+        locale: "value",
+        presetId: "value",
+        tenantId: "value",
+      })
+    );
+  if (!parsed.success) {
+    return { message: t("storefront.settings.icon_select_failed"), ok: false };
+  }
+  const { locale, presetId, tenantId } = parsed.data;
+
+  const outcome = await selectMyIcon(tenantId, presetId);
+  // The preset was deleted after the screen listed it.
+  if (!outcome.ok && outcome.refusal === "not-found") {
+    return {
+      message: t("storefront.settings.icon_preset_unavailable"),
+      ok: false,
+    };
+  }
+  return settle(
+    outcome,
+    { locale, tenantId },
+    {
+      done: "storefront.settings.icon_selected",
+      failed: "storefront.settings.icon_select_failed",
     }
   );
 };
