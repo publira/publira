@@ -164,7 +164,7 @@ func (s *adminServer) DeleteSeriesTranslation(
 			return nil, s.internalDBError(ctx, "failed to lock series for translation deletion", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
 		}
 		publicID = locked.PublicID
-		count, err := queries.CountSeriesTranslations(txCtx, seriesID)
+		count, err := queries.CountSeriesTranslations(txCtx, dbmodels.CountSeriesTranslationsParams{TenantID: tenant.ID, SeriesID: seriesID})
 		if err != nil {
 			return nil, s.internalDBError(ctx, "failed to count series translations", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
 		}
@@ -240,7 +240,7 @@ func (s *adminServer) DeleteEpisodeTranslation(
 			return nil, s.internalDBError(ctx, "failed to lock episode for translation deletion", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
 		}
 		publicID = locked.PublicID
-		count, err := queries.CountEpisodeTranslations(txCtx, episodeID)
+		count, err := queries.CountEpisodeTranslations(txCtx, dbmodels.CountEpisodeTranslationsParams{TenantID: tenant.ID, EpisodeID: episodeID})
 		if err != nil {
 			return nil, s.internalDBError(ctx, "failed to count episode translations", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
 		}

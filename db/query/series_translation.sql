@@ -43,7 +43,8 @@ ORDER BY created_at ASC,
 -- name: CountSeriesTranslations :one
 SELECT COUNT(*)::int AS translation_count
 FROM series_translations
-WHERE series_id = $1;
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND series_id = sqlc.arg('series_id');
 
 -- name: DeleteSeriesTranslation :execrows
 DELETE FROM series_translations

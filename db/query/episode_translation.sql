@@ -34,7 +34,8 @@ ORDER BY created_at ASC,
 -- name: CountEpisodeTranslations :one
 SELECT COUNT(*)::int AS translation_count
 FROM episode_translations
-WHERE episode_id = $1;
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND episode_id = sqlc.arg('episode_id');
 
 -- name: DeleteEpisodeTranslation :execrows
 DELETE FROM episode_translations

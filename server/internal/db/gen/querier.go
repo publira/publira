@@ -140,7 +140,7 @@ type Querier interface {
 	CountEpisodeCreatorsByRoleIDForTenant(ctx context.Context, arg CountEpisodeCreatorsByRoleIDForTenantParams) (int32, error)
 	// How many pages the body has, which bounds where its spreads may start.
 	CountEpisodeImagesByEpisodeID(ctx context.Context, episodeID uuid.UUID) (int32, error)
-	CountEpisodeTranslations(ctx context.Context, episodeID uuid.UUID) (int32, error)
+	CountEpisodeTranslations(ctx context.Context, arg CountEpisodeTranslationsParams) (int32, error)
 	// CountOtherActiveTenantAdmins counts the active tenant_admin members of a
 	// tenant other than one user: who is left to sign in to the console once that
 	// user is removed or demoted.
@@ -166,7 +166,7 @@ type Querier interface {
 	// Whether a role may still be deleted. The refusal is the handler's, and this
 	// is what it is based on.
 	CountSeriesCreatorsByRoleIDForTenant(ctx context.Context, arg CountSeriesCreatorsByRoleIDForTenantParams) (int32, error)
-	CountSeriesTranslations(ctx context.Context, seriesID uuid.UUID) (int32, error)
+	CountSeriesTranslations(ctx context.Context, arg CountSeriesTranslationsParams) (int32, error)
 	CountSuspendedTenants(ctx context.Context) (int32, error)
 	CountUnreadNotificationsForUser(ctx context.Context, arg CountUnreadNotificationsForUserParams) (int32, error)
 	CountUnreadPlatformNotificationsForUser(ctx context.Context, platformUserID uuid.UUID) (int32, error)

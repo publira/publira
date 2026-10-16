@@ -14,11 +14,17 @@ import (
 const CountEpisodeTranslations = `-- name: CountEpisodeTranslations :one
 SELECT COUNT(*)::int AS translation_count
 FROM episode_translations
-WHERE episode_id = $1
+WHERE tenant_id = $1
+    AND episode_id = $2
 `
 
-func (q *Queries) CountEpisodeTranslations(ctx context.Context, episodeID uuid.UUID) (int32, error) {
-	row := q.db.QueryRowContext(ctx, CountEpisodeTranslations, episodeID)
+type CountEpisodeTranslationsParams struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
+}
+
+func (q *Queries) CountEpisodeTranslations(ctx context.Context, arg CountEpisodeTranslationsParams) (int32, error) {
+	row := q.db.QueryRowContext(ctx, CountEpisodeTranslations, arg.TenantID, arg.EpisodeID)
 	var translation_count int32
 	err := row.Scan(&translation_count)
 	return translation_count, err
