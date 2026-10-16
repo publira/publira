@@ -98,5 +98,9 @@ ALTER TABLE ONLY episodes
 -- FK CONSTRAINT: episodes episodes_tenant_eye_catch_image_id_fkey
 -- Deleting an image leaves the episode without an eye-catch rather than
 -- pointing at nothing. Only the reference is nulled: tenant_id is NOT NULL.
+--
+-- Added NOT VALID so this file takes its locks on episodes without scanning
+-- it; the next migration validates the constraint under a lock that lets
+-- reads and writes continue.
 ALTER TABLE ONLY episodes
-    ADD CONSTRAINT episodes_tenant_eye_catch_image_id_fkey FOREIGN KEY (tenant_id, eye_catch_image_id) REFERENCES episode_eye_catch_images(tenant_id, id) ON DELETE SET NULL (eye_catch_image_id);
+    ADD CONSTRAINT episodes_tenant_eye_catch_image_id_fkey FOREIGN KEY (tenant_id, eye_catch_image_id) REFERENCES episode_eye_catch_images(tenant_id, id) ON DELETE SET NULL (eye_catch_image_id) NOT VALID;
