@@ -42,6 +42,14 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
+vi.mock("#lib/access-ticket", () => ({
+  accessTicketsCacheTag: (tenantId: string) => `access-tickets-${tenantId}`,
+}));
+
+vi.mock("#lib/purchase", () => ({
+  purchasesCacheTag: (tenantId: string) => `purchases-${tenantId}`,
+}));
+
 vi.mock("#lib/dashboard", () => ({
   tenantDashboardCacheTag: (tenantId: string) => `tenant:${tenantId}:dashboard`,
 }));
@@ -1174,6 +1182,10 @@ describe("a series' title and synopsis per language", () => {
     );
     expect(mockUpdateTag).toHaveBeenCalledWith("series-TENANT001-SERIES001");
     expect(mockUpdateTag).toHaveBeenCalledWith("series-list-TENANT001");
+    // The access tickets and the purchases name the series in the title the
+    // deleted translation may have given them.
+    expect(mockUpdateTag).toHaveBeenCalledWith("access-tickets-TENANT001");
+    expect(mockUpdateTag).toHaveBeenCalledWith("purchases-TENANT001");
     expect(mockRedirect).toHaveBeenCalledWith(
       "/series/SERIES001?translation_deleted=1"
     );

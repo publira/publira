@@ -12,6 +12,7 @@ import { z } from "zod";
 
 import { eyeCatchAspectImageInvalidMessage } from "#components/eye-catch/aspects";
 import type { EyeCatchAspectActionState } from "#components/eye-catch/types";
+import { accessTicketsCacheTag } from "#lib/access-ticket";
 import { getActionLocale } from "#lib/action-messages";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { CROP_RECT_FIELD } from "#lib/crop-rect";
@@ -33,6 +34,7 @@ import {
   trimmedStringListFormSchema,
 } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
+import { purchasesCacheTag } from "#lib/purchase";
 import { PURCHASE_AVAILABILITY_OVERRIDES } from "#lib/purchase-availability";
 import { READING_DIRECTIONS } from "#lib/reading-layout";
 import {
@@ -591,6 +593,10 @@ export const deleteSeriesTranslationAction = async (
   updateTag(seriesCacheTag(tenantId, publicId));
   updateTag(seriesListCacheTag(tenantId));
   updateTag(tenantDashboardCacheTag(tenantId));
+  // The access tickets and the purchases name the series they belong to, and
+  // the translation deleted may be the one they named it in.
+  updateTag(accessTicketsCacheTag(tenantId));
+  updateTag(purchasesCacheTag(tenantId));
 
   redirect(
     translationEditPath(`/series/${publicId}`, undefined, "translation_deleted")

@@ -85,6 +85,10 @@ vi.mock("#lib/access-ticket", () => ({
   accessTicketsCacheTag: (tenantId: string) => `access-tickets-${tenantId}`,
 }));
 
+vi.mock("#lib/purchase", () => ({
+  purchasesCacheTag: (tenantId: string) => `purchases-${tenantId}`,
+}));
+
 vi.mock("#lib/episode", () => ({
   deleteEpisodeImage: mockDeleteEpisodeImage,
   deleteEpisodeTranslation: mockDeleteEpisodeTranslation,
@@ -889,6 +893,7 @@ describe("episode actions", () => {
         "episode-TENANT001-018f0e6a-4000-7000-8000-000000000001"
       );
       expect(mockUpdateTag).toHaveBeenCalledWith("access-tickets-TENANT001");
+      expect(mockUpdateTag).toHaveBeenCalledWith("purchases-TENANT001");
       expect(mockRedirect).toHaveBeenCalledWith(
         "/series/SERIES001/episodes/EP001?translation_deleted=1"
       );

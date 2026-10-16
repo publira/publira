@@ -48,6 +48,7 @@ import {
 import { toFreeWindowPeriod } from "#lib/free-window-period";
 import { getMessagesFor } from "#lib/messages";
 import { parseTenantPrice, rawPriceFormSchema } from "#lib/price-action";
+import { purchasesCacheTag } from "#lib/purchase";
 import { PURCHASE_AVAILABILITY_OVERRIDES } from "#lib/purchase-availability";
 import { READING_DIRECTIONS } from "#lib/reading-layout";
 import { EPISODE_AVAILABILITY_OVERRIDES } from "#lib/surface-availability";
@@ -408,7 +409,10 @@ export const deleteEpisodeTranslationAction = async (
 
   updateTag(episodesCacheTag(tenantId));
   updateTag(episodeCacheTag(tenantId, episodeId));
+  // The access tickets and the purchases name the episode they open, and the
+  // translation deleted may be the one they named it in.
   updateTag(accessTicketsCacheTag(tenantId));
+  updateTag(purchasesCacheTag(tenantId));
 
   redirect(
     translationEditPath(
