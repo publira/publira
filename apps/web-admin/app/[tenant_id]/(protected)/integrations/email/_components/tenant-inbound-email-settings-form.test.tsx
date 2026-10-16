@@ -74,6 +74,13 @@ const mailgun: InboundEmailProvider = {
   webhookPath: "/api/v1/webhook/email/mailgun/json",
 };
 
+const mime: InboundEmailProvider = {
+  displayName: "Raw MIME over HTTPS",
+  fields: [{ name: "webhook_token", required: true, secret: true }],
+  id: "mime",
+  webhookPath: "/api/v1/webhook/email/mime",
+};
+
 // A provider no catalog has copy for, so its fields are named as declared.
 const exampleMail: InboundEmailProvider = {
   displayName: "Example Mail",
@@ -85,7 +92,7 @@ const exampleMail: InboundEmailProvider = {
   webhookPath: "/api/v1/webhook/email/examplemail",
 };
 
-const providers = [mailgun, resend, sendgrid];
+const providers = [mailgun, mime, resend, sendgrid];
 
 const resendFields = (
   apiKeyHint: string,
@@ -302,6 +309,38 @@ describe("TenantInboundEmailSettingsForm", () => {
     expect(
       screen.getByText(
         "In Mailgun, create a route under Receiving with the expression type Match Recipient for every address on the inbound domain, such as .*@reply.example.com, and Forward set to this URL."
+      )
+    ).toBeDefined();
+  });
+
+  it("names the raw MIME token and says how a mail is posted to the webhook URL", async () => {
+    render(
+      <TenantInboundEmailSettingsForm
+        canEdit
+        initialSettings={emptyTenantInboundEmailSettings}
+        providers={providers}
+        tenantId="TENANT001"
+        webhookOrigin="https://comics.example"
+      />
+    );
+
+    await chooseProvider("Raw MIME over HTTPS");
+
+    expect(await screen.findByLabelText("Webhook token")).toBeDefined();
+    expect(screen.queryByLabelText("HTTP webhook signing key")).toBeNull();
+    expect(
+      screen.getByText(
+        "https://inbound:<token>@comics.example/api/v1/webhook/email/mime"
+      )
+    ).toBeDefined();
+    expect(
+      screen.getByText(
+        "A long random string you choose yourself. Whatever posts the mail sends it back as the password in the webhook URL below, and a mail that does not carry it is refused."
+      )
+    ).toBeDefined();
+    expect(
+      screen.getByText(
+        "Have every mail on the inbound domain posted whole to this URL with the content type message/rfc822, putting the webhook token stored above in place of <token> and naming the address the mail was delivered to in an X-Envelope-To header."
       )
     ).toBeDefined();
   });

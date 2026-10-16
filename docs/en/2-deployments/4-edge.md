@@ -2,7 +2,7 @@
 title: Edge
 description: What the load balancer, proxy, or CDN in front of an install has to do, and the sample proxy configurations that do it.
 published: 2026-10-06
-updated: 2026-10-15
+updated: 2026-10-16
 redirect_from:
   - /deployments/reverse-proxy
 ---
@@ -129,7 +129,7 @@ The upload also needs time to arrive: 300 seconds, which is enough for 256 MiB o
 Outside services post to a URL on the tenant's site, under `/api/v1/webhook/`:
 
 - **Payment providers** report payments under `/api/v1/webhook/payment/`, such as `https://comics.example.com/api/v1/webhook/payment/stripe`. The tenant console shows the exact URL to register with each provider: **Webhook URL** under **Payment settings**, and **App Store Server Notifications URL** under **In-app purchase**.
-- **Inbound email providers** post a reader's emailed reply to a contact message under `/api/v1/webhook/email/`: `/api/v1/webhook/email/sendgrid` for SendGrid Inbound Parse, `/api/v1/webhook/email/resend` for Resend, `/api/v1/webhook/email/mailgun/json` for a Mailgun Route.
+- **Inbound email providers** post a reader's emailed reply to a contact message under `/api/v1/webhook/email/`: `/api/v1/webhook/email/sendgrid` for SendGrid Inbound Parse, `/api/v1/webhook/email/resend` for Resend, `/api/v1/webhook/email/mailgun/json` for a Mailgun Route, `/api/v1/webhook/email/mime` for a whole mail posted by a Cloudflare Email Worker or a mail server of the publisher's own.
 
 [Routing](#routing) already sends every one of them to `web-storefront`, so no rule names a webhook path. What every hop has to allow:
 

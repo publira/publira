@@ -2,7 +2,7 @@
 title: Email
 description: Send the tenant's mail through the publisher's own SMTP server, and receive readers' replies to contact messages back in the console.
 published: 2026-10-07
-updated: 2026-10-14
+updated: 2026-10-16
 ---
 
 The tenant sends mail to its readers and its staff: address confirmations, password resets, purchase receipts, invitations, replies to contact messages. Until a Tenant admin sets up a server of the tenant's own, all of it goes out through the platform's mail server, from the platform's address, which the operator chooses. **Integrations** › **Email** sends it through the publisher's own SMTP server instead, from an address on the publisher's domain.
@@ -57,11 +57,11 @@ Every save is recorded in the [audit log](./7-audit-log.md) as **Email settings 
 
 ## Readers' replies to contact messages
 
-An answer to a contact message reaches the reader by mail. Until the tenant receives mail of its own, the answer's reply-to address is the address of the staff member who answered, so a reader who writes back reaches that person's mailbox and the console never sees the reply. The **Inbound email** section of **Integrations** › **Email** brings those replies back into the console, under the message they answer, through SendGrid, Resend, or Mailgun.
+An answer to a contact message reaches the reader by mail. Until the tenant receives mail of its own, the answer's reply-to address is the address of the staff member who answered, so a reader who writes back reaches that person's mailbox and the console never sees the reply. The **Inbound email** section of **Integrations** › **Email** brings those replies back into the console, under the message they answer, through SendGrid, Resend, or Mailgun, or through any mail service or server that can post a whole mail to an HTTPS URL, such as Cloudflare Email Routing or a Postfix server of the publisher's own.
 
 ### Before you start
 
-- An account with SendGrid, Resend, or Mailgun.
+- An account with SendGrid, Resend, or Mailgun, or a mail service or server that hands each mail it receives to code of your own: Cloudflare Email Routing, or a Postfix server.
 - A domain for replies whose DNS you can change, such as `reply.comics.example.com`. Its MX record will point at the provider, so mail sent to it reaches no other mailbox. A subdomain of its own keeps the mail the publisher's main domain already receives where it is.
 - The site reachable from the internet: the provider posts each reply to the site's own domain. An IP allowlist, a sign-in prompt, or a bot challenge in front of the site has to let these requests through, as [Webhooks](../../2-deployments/4-edge.md#webhooks) describes for the operator.
 
@@ -71,6 +71,7 @@ An answer to a contact message reaches the reader by mail. Until the tenant rece
 2. Set up the provider. The section shows a **Webhook URL** on the site's domain, with a button to copy it.
    - **SendGrid**: make up a long random string and enter it as **Webhook token**. In your DNS, point the domain's MX record at `mx.sendgrid.net` with priority 10. In SendGrid, add the domain under **Settings** › **Inbound Parse** with the **Webhook URL** as the destination URL, putting the token in place of `<token>`: SendGrid signs nothing, so the token in the URL is how the site tells its requests from anyone else's.
    - **Resend**: create an API key with **Full access** under **API Keys** and enter it as **API key**; replies are read from Resend with it. Add the domain under **Domains**, turn on receiving for it, and add the MX record Resend shows to your DNS. Under **Webhooks**, add the **Webhook URL** for the `email.received` event, and enter the signing secret Resend shows for it (`whsec_…`) as **Webhook signing secret**.
+   - **Raw MIME over HTTPS**: make up a long random string and enter it as **Webhook token**. Point the domain's MX records at the service or server that receives the mail, and have it post every mail on the domain, whole and unchanged, to the **Webhook URL** with the content type `message/rfc822`, the token in place of `<token>`, and the address the mail was delivered to in an `X-Envelope-To` header. A forward or an alias on the reader's side often leaves the reply without the message's own address in its **To**, and that header is what still matches it. [Cloudflare Email Routing](#posting-raw-mail-from-cloudflare-email-routing) and [Postfix](#posting-raw-mail-from-postfix) below do all of this.
    - **Mailgun**: copy the **HTTP webhook signing key** from **Settings** › **API Security** and enter it under the same name; Mailgun signs every reply it posts with it, and a post whose signature does not match is refused. For a domain on a subaccount, the subaccount's key and the primary account's key both work. Add the domain under **Domains** and add the MX records Mailgun shows for receiving to your DNS. Under **Receiving**, create a route with the expression type **Match Recipient** and a recipient that covers every address on the domain, such as `.*@reply.comics.example.com`, and tick **Forward** with the **Webhook URL** exactly as shown, ending in `/json`: Mailgun signs the whole mail it posts only to a URL that ends that way, and a post to any other URL is refused. The same steps apply to an account in Mailgun's EU region.
 3. Choose **Save**. The section turns **Ready** and shows the **Reply address**, `contact+*@` followed by the domain: each answer from then on asks the reader to reply to an address of that form, where `*` is the message's ID, and the reply appears under that message.
 
@@ -81,3 +82,60 @@ Until the section is **Ready**, answers keep the answering staff member's addres
 The tokens and keys are never shown again once saved: each field shows a mask, and **Change** replaces it. Saving with another provider chosen deletes the credentials stored for the previous one.
 
 To stop receiving replies, clear **Enable** and choose **Save**. The next answer names the staff member's address again, and the settings are kept for when you turn it back on. Every save is recorded in the [audit log](./7-audit-log.md) as **Inbound email settings updated**.
+
+### Posting raw mail from Cloudflare Email Routing
+
+Cloudflare Email Routing hands each mail to an Email Worker, which posts it to the **Webhook URL**. The inbound domain's DNS has to be on Cloudflare.
+
+1. Under Email Routing, turn on routing for the inbound domain; a subdomain such as `reply.comics.example.com` is added under **Settings** › **Subdomains**. Cloudflare adds its MX records itself. Turn on **Subaddressing** in the same settings, so that mail to `contact+<message ID>@` reaches the rule for `contact@`.
+2. Create a Worker with the code below. Give it the **Webhook URL** without the `inbound:<token>@` part as the variable `WEBHOOK_URL`, and the token as the secret `WEBHOOK_TOKEN`.
+3. Under Email Routing's routing rules, create a custom address `contact` on the inbound domain with the action **Send to a Worker** and the Worker you created.
+
+```js
+export default {
+  async email(message, env) {
+    const response = await fetch(env.WEBHOOK_URL, {
+      body: await new Response(message.raw).arrayBuffer(),
+      headers: {
+        Authorization: `Basic ${btoa(`inbound:${env.WEBHOOK_TOKEN}`)}`,
+        "Content-Type": "message/rfc822",
+        "X-Envelope-To": message.to,
+      },
+      method: "POST",
+    });
+    if (!response.ok) {
+      message.setReject(`The reply was not accepted (${response.status})`);
+    }
+  },
+};
+```
+
+`message.to` is the address the mail was delivered to, `+<message ID>` included. A mail the site does not accept is rejected, so the reader gets a bounce instead of a reply that went nowhere.
+
+### Posting raw mail from Postfix
+
+A Postfix server that receives the inbound domain's mail can post each mail with `curl` through a `pipe` transport. Point the domain's MX record at the server, and add the transport to `/etc/postfix/master.cf`, with the **Webhook URL** split into the token and the URL without it:
+
+```text
+publira   unix  -       n       n       -       -       pipe
+  user=nobody argv=/usr/bin/curl --silent --show-error --fail --max-time 60
+  --user inbound:<token> --header Content-Type:message/rfc822
+  --header X-Envelope-To:${recipient} --data-binary @-
+  https://comics.example.com/api/v1/webhook/email/mime
+```
+
+Then send the domain's mail to it, one recipient per post so that `${recipient}` names one address, in `/etc/postfix/main.cf`:
+
+```text
+relay_domains = reply.comics.example.com
+transport_maps = hash:/etc/postfix/transport
+publira_destination_recipient_limit = 1
+```
+
+and in `/etc/postfix/transport`:
+
+```text
+reply.comics.example.com  publira:
+```
+
+Run `postmap /etc/postfix/transport` and `postfix reload`.

@@ -68,6 +68,15 @@ describe("inboundEmailWebhookUrl", () => {
     );
   });
 
+  it("puts the token in the URL a raw mail is posted to as the basic auth password", () => {
+    expect(
+      inboundEmailWebhookUrl("https://comics.example", {
+        id: "mime",
+        webhookPath: "/api/v1/webhook/email/mime",
+      })
+    ).toBe("https://inbound:<token>@comics.example/api/v1/webhook/email/mime");
+  });
+
   it("keeps the port of a storefront that has one", () => {
     expect(
       inboundEmailWebhookUrl("http://comics.localhost:3080", {
