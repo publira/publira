@@ -7,6 +7,7 @@ import { AdminAccessTicketService } from "../gen/publira/admin/v1/access_ticket_
 import { AdminAnnouncementService } from "../gen/publira/admin/v1/announcement_pb.js";
 import { AdminAuditLogService } from "../gen/publira/admin/v1/audit_pb.js";
 import { AdminAuthService } from "../gen/publira/admin/v1/auth_pb.js";
+import { AdminCampaignBannerService } from "../gen/publira/admin/v1/campaign_banner_pb.js";
 import { AdminCommentService } from "../gen/publira/admin/v1/comment_pb.js";
 import { AdminContactService } from "../gen/publira/admin/v1/contact_pb.js";
 import { AdminCreatorService } from "../gen/publira/admin/v1/creator_pb.js";
@@ -46,6 +47,7 @@ export interface AdminApiClient {
   accessTickets: Client<typeof AdminAccessTicketService>;
   audit: Client<typeof AdminAuditLogService>;
   auth: Client<typeof AdminAuthService>;
+  campaignBanners: Client<typeof AdminCampaignBannerService>;
   comments: Client<typeof AdminCommentService>;
   contact: Client<typeof AdminContactService>;
   creator: Client<typeof AdminCreatorService>;
@@ -107,6 +109,10 @@ export const createAdminApiClient = (
     announcement: createClient(AdminAnnouncementService, transportInstance),
     audit: createClient(AdminAuditLogService, transportInstance),
     auth: createClient(AdminAuthService, transportInstance),
+    campaignBanners: createClient(
+      AdminCampaignBannerService,
+      transportInstance
+    ),
     comments: createClient(AdminCommentService, transportInstance),
     contact: createClient(AdminContactService, transportInstance),
     creator: createClient(AdminCreatorService, transportInstance),
