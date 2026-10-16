@@ -31,8 +31,9 @@ func withSetupToken(ctx context.Context) context.Context {
 	return testutil.WithBearer(ctx, testWebServiceToken)
 }
 
-// The edge forwards /api on every host, so creating the first operator is
-// refused to whoever lacks the web service token, before the handler runs:
+// Whoever reaches the server first would otherwise claim the platform, so
+// creating the first operator is refused to whoever lacks the web service
+// token, before the handler runs:
 // no bearer, another bearer, an operator's access token, or any bearer on a
 // server given no token at all. Whether setup is complete stays readable to
 // anyone, since the setup screen asks it before anyone has signed in.

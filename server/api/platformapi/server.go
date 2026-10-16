@@ -145,12 +145,12 @@ func (s *platformServer) shareLoginGuard() {
 	s.login = loginguard.NewShared(platformpolicy.NewResolver(dbmodels.New(s.db), platformpolicy.CacheTTL, s.logger), s.logger)
 }
 
-// Register mounts the publira.platform.v1 services on mux. The edge forwards
-// /api host-agnostically, so whatever mux this is reached through puts the
-// platform console's RPCs on every tenant site. Every one of them refuses a
-// caller without an operator session or the web service token before its
-// handler runs, except the few that run before a session exists, which guard
-// themselves.
+// Register mounts the publira.platform.v1 services on mux. Whatever mux this
+// is reached through answers the platform console's RPCs on whatever host a
+// request names, and the edge forwards only publira.v1. Behind it, every one
+// of them refuses a caller without an operator session or the web service
+// token before its handler runs, except the few that run before a session
+// exists, which guard themselves.
 func (a *API) Register(mux *http.ServeMux) {
 	registerPlatformRoutes(mux, a.server)
 }

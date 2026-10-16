@@ -335,7 +335,7 @@ On the platform API it runs as a service principal with no operator and no platf
 - `PlatformOperatorService/ListOperators`, `GetOperator`
 - `PlatformUserService/ListEndUsers`, `GetEndUser`
 
-`PlatformSetupService/CreateInitialUser`, which creates the first operator with the `platform_super_admin` role while the platform has none, takes the credential as well, and is refused with `unauthenticated` to any caller without it. The edge forwards `/rpc` and `/api` on every host, so an install whose first operator has not been created yet, or that runs no Platform Console at all, would otherwise hand the platform to whoever reaches a tenant's site first. The Platform Console's setup screen sends the credential from its server. `CheckSetupStatus` stays open, since the setup screen asks it before anyone has signed in.
+`PlatformSetupService/CreateInitialUser`, which creates the first operator with the `platform_super_admin` role while the platform has none, takes the credential as well, and is refused with `unauthenticated` to any caller without it. An install whose first operator has not been created yet, or that runs no Platform Console at all, would otherwise hand the platform to whoever reaches `publira server` first: the edge answers the Platform Console's API itself, but a caller on the private network, or an edge that forwards that API after all, reaches it. The Platform Console's setup screen sends the credential from its server. `CheckSetupStatus` stays open, since the setup screen asks it before anyone has signed in.
 
 ## Email renderer
 

@@ -57,9 +57,10 @@ type PlatformSetupServiceClient interface {
 	// Creates the first operator account, allowed only while no user exists.
 	// The request carries the web service token as
 	// `Authorization: Bearer <token>`, which the Platform Console's setup screen
-	// sends from its server; without it the call is UNAUTHENTICATED, because the
-	// edge forwards /api on every host and anyone reaching a tenant's site would
-	// otherwise claim the platform.
+	// sends from its server; without it the call is UNAUTHENTICATED, because
+	// whoever reaches the server first, from the private network or through an
+	// edge that forwards the Platform Console's API after all, would otherwise
+	// claim the platform.
 	CreateInitialUser(context.Context, *v1.CreateInitialUserRequest) (*v1.CreateInitialUserResponse, error)
 }
 
@@ -79,9 +80,10 @@ type PlatformSetupServiceHandler interface {
 	// Creates the first operator account, allowed only while no user exists.
 	// The request carries the web service token as
 	// `Authorization: Bearer <token>`, which the Platform Console's setup screen
-	// sends from its server; without it the call is UNAUTHENTICATED, because the
-	// edge forwards /api on every host and anyone reaching a tenant's site would
-	// otherwise claim the platform.
+	// sends from its server; without it the call is UNAUTHENTICATED, because
+	// whoever reaches the server first, from the private network or through an
+	// edge that forwards the Platform Console's API after all, would otherwise
+	// claim the platform.
 	CreateInitialUser(context.Context, *v1.CreateInitialUserRequest) (*v1.CreateInitialUserResponse, error)
 }
 

@@ -145,10 +145,10 @@ func TestServerServiceNamesFollowTheRoles(t *testing.T) {
 
 // One listener serves the namespaces of the roles a process was given under
 // /rpc and /api alike, and the images when a role with a site is among them.
-// The edge forwards /rpc, /api, and /images to it host-agnostically, so a console procedure a
-// process serves is reachable on every tenant site and is kept from an
-// outsider by its own authentication, while one it does not serve is not
-// there at all. Readiness names the pools the roles hold, and no other.
+// The edge forwards only publira.v1 and the images to it, so a console
+// procedure a process serves is kept off the internet by the edge and from
+// whoever reaches the server anyway by its own authentication, while one it
+// does not serve is not there at all. Readiness names the pools the roles hold, and no other.
 func TestServerHandlerServesWhatItsRolesServe(t *testing.T) {
 	const (
 		public   = "/publira.v1.CatalogService/ListPublishedSeries"
