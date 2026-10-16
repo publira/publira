@@ -2,7 +2,7 @@
 title: Email
 description: Set the SMTP account the install sends mail through, let a tenant send through its own, and control what the mail looks like and where its links lead.
 published: 2026-10-06
-updated: 2026-10-15
+updated: 2026-10-16
 ---
 
 The install sends mail for its readers, for each tenant's staff, and for the Platform Console's operators. All of it is sent by `publira worker`, through an SMTP server you provide: `publiractl setup` saved the platform's SMTP account, and a tenant can save one of its own. This page covers both, how to test them, and the settings that decide how a mail looks and where its links go.
@@ -41,7 +41,7 @@ The platform's account is required: without it, no operator can reset a password
 | The SMTP server | `--host`, `--port` | **Host**, **Port** |
 | How the connection is encrypted | `--encryption`: `tls`, `starttls`, or `none` | **Encryption**: **TLS**, **STARTTLS**, or **None** |
 | The user to sign in as | `--username` | **Username** |
-| Its password | `--password-file`, `--password-env`, `--password-stdin`, or a masked prompt | **Password** |
+| Its password | `--password-file`, `--password-stdin`, a masked prompt, or, where the platform sets secrets only as environment variables, `--password-env` | **Password** |
 | The address mail is sent from | `--from-address` | **From address** |
 | The address replies go to, when it is not the sender's | `--reply-to` | **Reply-to address (optional)** |
 

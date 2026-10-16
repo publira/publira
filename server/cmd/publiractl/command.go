@@ -252,11 +252,11 @@ func commandUsage(name string, c *command, f *commandFlags) string {
 		b.WriteString("\nFlags:\n" + flags.String())
 	}
 	if len(f.secrets) > 0 {
-		b.WriteString("\nA secret is read from a masked prompt, from stdin with its --*-stdin flag,\none per invocation, from a file with its --*-file flag, or from an\nenvironment variable named with its --*-env flag. It is never taken as an\nargument.\n")
+		b.WriteString("\nA secret is read from a file with its --*-file flag, from stdin with its\n--*-stdin flag, one per invocation, or from a masked prompt. Where a\nplatform sets secrets only as environment variables, its --*-env flag reads\nthe variable it names. It is never taken as an argument.\n")
 	}
 	for _, s := range f.secrets {
 		if s.keepable {
-			fmt.Fprintf(&b, "The saved %[1]s is kept when it is left blank at the prompt,\nor when stdin is not a terminal and none of --%[2]s-stdin,\n--%[2]s-file, and --%[2]s-env is given.\n", s.label, s.name)
+			fmt.Fprintf(&b, "The saved %[1]s is kept when it is left blank at the prompt,\nor when stdin is not a terminal and none of --%[2]s-file,\n--%[2]s-stdin, and --%[2]s-env is given.\n", s.label, s.name)
 		}
 	}
 	return b.String()

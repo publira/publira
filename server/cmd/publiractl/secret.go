@@ -52,7 +52,7 @@ var (
 	errNoSecretVariable = errors.New("names no variable")
 )
 
-// Secret declares --<name>-stdin, --<name>-file, and --<name>-env, the only
+// Secret declares --<name>-file, --<name>-stdin, and --<name>-env, the only
 // flags through which the secret can be given; without any of them the secret
 // is asked for at a masked prompt. No flag named after the secret itself
 // exists, so --<name>=value is a usage error.
@@ -112,9 +112,10 @@ func (s *secret) sources() []string {
 }
 
 // flags names every flag the secret can be given through, for a message that
-// asks for one of them.
+// asks for one of them. The variable comes last, as the fallback for a
+// platform that cannot hand a container a file.
 func (s *secret) flags() string {
-	return "--" + s.name + "-file, --" + s.name + "-env, or --" + s.name + "-stdin"
+	return "--" + s.name + "-file, --" + s.name + "-stdin, or --" + s.name + "-env"
 }
 
 // source is the flag the secret was given through, and the stdin one when it
@@ -205,7 +206,7 @@ func (s *secret) read(con console) (string, error) {
 	case s.keepable:
 		return "", nil
 	default:
-		return "", fmt.Errorf("stdin is not a terminal to prompt for the %[1]s on; pipe it in with --%[2]s-stdin, name a file with --%[2]s-file, or name an environment variable with --%[2]s-env", s.label, s.name)
+		return "", fmt.Errorf("stdin is not a terminal to prompt for the %[1]s on; name a file with --%[2]s-file, pipe it in with --%[2]s-stdin, or, where secrets are set only as environment variables, name one with --%[2]s-env", s.label, s.name)
 	}
 	if value == "" {
 		return "", errors.New("the " + s.label + " is empty")
