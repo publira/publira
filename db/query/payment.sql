@@ -612,6 +612,21 @@ SET provider = EXCLUDED.provider,
     provider_checkout_id = EXCLUDED.provider_checkout_id,
     expired_at = NOW();
 
+-- name: GetLastPaidCheckoutID :one
+-- The provider checkout of the reader's latest purchase of the episode, which
+-- the next checkout's idempotency key names. No row is a reader who has paid
+-- for none.
+SELECT provider_checkout_id::text
+FROM purchases
+WHERE tenant_id = sqlc.arg('tenant_id')
+    -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's purchase.
+    AND user_id = sqlc.arg('user_id')::uuid
+    AND episode_id = sqlc.arg('episode_id')
+    AND provider_checkout_id IS NOT NULL
+ORDER BY purchased_at DESC,
+    id DESC
+LIMIT 1;
+
 -- name: GetExpiredCheckoutID :one
 -- The checkout the reader last let expire on the episode, which the next
 -- checkout's idempotency key names. No row is a reader who has let none expire.

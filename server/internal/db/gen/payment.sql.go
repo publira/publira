@@ -340,6 +340,35 @@ func (q *Queries) GetExpiredCheckoutID(ctx context.Context, arg GetExpiredChecko
 	return provider_checkout_id, err
 }
 
+const GetLastPaidCheckoutID = `-- name: GetLastPaidCheckoutID :one
+SELECT provider_checkout_id::text
+FROM purchases
+WHERE tenant_id = $1
+    -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's purchase.
+    AND user_id = $2::uuid
+    AND episode_id = $3
+    AND provider_checkout_id IS NOT NULL
+ORDER BY purchased_at DESC,
+    id DESC
+LIMIT 1
+`
+
+type GetLastPaidCheckoutIDParams struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
+}
+
+// The provider checkout of the reader's latest purchase of the episode, which
+// the next checkout's idempotency key names. No row is a reader who has paid
+// for none.
+func (q *Queries) GetLastPaidCheckoutID(ctx context.Context, arg GetLastPaidCheckoutIDParams) (string, error) {
+	row := q.db.QueryRowContext(ctx, GetLastPaidCheckoutID, arg.TenantID, arg.UserID, arg.EpisodeID)
+	var provider_checkout_id string
+	err := row.Scan(&provider_checkout_id)
+	return provider_checkout_id, err
+}
+
 const GetPurchasableEpisodeForTenant = `-- name: GetPurchasableEpisodeForTenant :one
 SELECT e.id,
     e.public_id,

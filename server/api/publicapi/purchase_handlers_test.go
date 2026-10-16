@@ -66,7 +66,7 @@ func TestCheckoutIdempotencyKeyFollowsTheRequest(t *testing.T) {
 		SuccessURL:   "https://tenant.example/series/SERIES001/episodes/EPISODE001?checkout=success",
 		CancelURL:    "https://tenant.example/series/SERIES001/episodes/EPISODE001?checkout=cancelled",
 	}
-	key, err := checkoutIdempotencyKey(request, "")
+	key, err := checkoutIdempotencyKey(request, "", "")
 	if err != nil {
 		t.Fatalf("checkoutIdempotencyKey: %v", err)
 	}
@@ -75,7 +75,7 @@ func TestCheckoutIdempotencyKeyFollowsTheRequest(t *testing.T) {
 	}
 	retried := request
 	retried.IdempotencyKey = "a key from an earlier attempt"
-	if again, err := checkoutIdempotencyKey(retried, ""); err != nil || again != key {
+	if again, err := checkoutIdempotencyKey(retried, "", ""); err != nil || again != key {
 		t.Fatalf("key of the same request = (%q, %v), want %q", again, err, key)
 	}
 
@@ -94,7 +94,7 @@ func TestCheckoutIdempotencyKeyFollowsTheRequest(t *testing.T) {
 	for name, change := range changes {
 		changed := request
 		change(&changed)
-		got, err := checkoutIdempotencyKey(changed, "")
+		got, err := checkoutIdempotencyKey(changed, "", "")
 		if err != nil {
 			t.Fatalf("checkoutIdempotencyKey after a change of %s: %v", name, err)
 		}
@@ -121,7 +121,7 @@ func TestCheckoutIdempotencyKeyMovesPastAnExpiredCheckout(t *testing.T) {
 	}
 	keys := map[string]bool{}
 	for _, expired := range []string{"", "cs_first", "cs_second"} {
-		key, err := checkoutIdempotencyKey(request, expired)
+		key, err := checkoutIdempotencyKey(request, expired, "")
 		if err != nil {
 			t.Fatalf("checkoutIdempotencyKey(%q): %v", expired, err)
 		}
@@ -129,9 +129,55 @@ func TestCheckoutIdempotencyKeyMovesPastAnExpiredCheckout(t *testing.T) {
 			t.Fatalf("key after the expiry of %q = %q, a key already used", expired, key)
 		}
 		keys[key] = true
-		if again, err := checkoutIdempotencyKey(request, expired); err != nil || again != key {
+		if again, err := checkoutIdempotencyKey(request, expired, ""); err != nil || again != key {
 			t.Fatalf("key after the same expiry of %q = (%q, %v), want %q", expired, again, err, key)
 		}
+	}
+}
+
+// Once the reader has paid a checkout, the same request starts a checkout of
+// its own rather than being answered with the completed one, so a rental that
+// ran out can be rented again, and a repeat of the same state keeps the key.
+func TestCheckoutIdempotencyKeyMovesPastAPaidCheckout(t *testing.T) {
+	request := paymentprovider.CheckoutRequest{
+		Purchase: paymentprovider.Purchase{
+			TenantID:           uuid.Must(uuid.NewV7()),
+			ReaderID:           uuid.Must(uuid.NewV7()),
+			EpisodeID:          uuid.Must(uuid.NewV7()),
+			Kind:               paymentprovider.KindRental,
+			Price:              200,
+			ReadingPeriodHours: 1,
+		},
+		LineItemName: "Episode 1 (rental, 1 hour)",
+		SuccessURL:   "https://tenant.example/series/SERIES001/episodes/EPISODE001?checkout=success",
+		CancelURL:    "https://tenant.example/series/SERIES001/episodes/EPISODE001?checkout=cancelled",
+	}
+	keys := map[string]bool{}
+	for _, paid := range []string{"", "cs_first_rental", "cs_second_rental"} {
+		key, err := checkoutIdempotencyKey(request, "", paid)
+		if err != nil {
+			t.Fatalf("checkoutIdempotencyKey(paid %q): %v", paid, err)
+		}
+		if keys[key] {
+			t.Fatalf("key after paying %q = %q, a key already used", paid, key)
+		}
+		keys[key] = true
+		if again, err := checkoutIdempotencyKey(request, "", paid); err != nil || again != key {
+			t.Fatalf("key after the same payment %q = (%q, %v), want %q", paid, again, err, key)
+		}
+	}
+	// An expired checkout and a paid one with the same id are different
+	// states, and key different checkouts.
+	expired, err := checkoutIdempotencyKey(request, "cs_same", "")
+	if err != nil {
+		t.Fatalf("checkoutIdempotencyKey(expired): %v", err)
+	}
+	paid, err := checkoutIdempotencyKey(request, "", "cs_same")
+	if err != nil {
+		t.Fatalf("checkoutIdempotencyKey(paid): %v", err)
+	}
+	if expired == paid {
+		t.Fatalf("an expired and a paid checkout of the same id share the key %q", paid)
 	}
 }
 

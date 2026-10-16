@@ -636,6 +636,10 @@ type Querier interface {
 	GetLabelByIDForTenant(ctx context.Context, arg GetLabelByIDForTenantParams) (GetLabelByIDForTenantRow, error)
 	GetLabelByPublicIDForTenant(ctx context.Context, arg GetLabelByPublicIDForTenantParams) (GetLabelByPublicIDForTenantRow, error)
 	GetLabelImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetLabelImageVariantByTypeAndWidthForTenantParams) (GetLabelImageVariantByTypeAndWidthForTenantRow, error)
+	// The provider checkout of the reader's latest purchase of the episode, which
+	// the next checkout's idempotency key names. No row is a reader who has paid
+	// for none.
+	GetLastPaidCheckoutID(ctx context.Context, arg GetLastPaidCheckoutIDParams) (string, error)
 	// The newest snapshot of one surface for one ranking key and entity type,
 	// ranking every age rating together, whichever period and algorithm version
 	// produced it. This is the order the recommendation list is built on, which

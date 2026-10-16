@@ -186,7 +186,15 @@ func (s *apiServer) StartEpisodeCheckout(
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, s.internalDBError(ctx, "failed to read the reader's expired checkout", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
-	checkout.IdempotencyKey, err = checkoutIdempotencyKey(checkout, expiredCheckoutID)
+	paidCheckoutID, err := s.queriesFor(ctx).GetLastPaidCheckoutID(ctx, dbmodels.GetLastPaidCheckoutIDParams{
+		TenantID:  tenant.ID,
+		UserID:    user.ID,
+		EpisodeID: episode.ID,
+	})
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, s.internalDBError(ctx, "failed to read the reader's last paid checkout", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
+	}
+	checkout.IdempotencyKey, err = checkoutIdempotencyKey(checkout, expiredCheckoutID, paidCheckoutID)
 	if err != nil {
 		return nil, s.internalError(ctx, "failed to build the checkout idempotency key", err, "tenant_id", tenant.ID.String(), "episode_id", episode.ID.String())
 	}
@@ -226,12 +234,21 @@ func rentalLineItemName(code, episodeTitle string, rentalPeriodHours int32) (str
 // names expiredCheckoutID too, the reader's last checkout of the episode the
 // provider reported expired, so each expiry moves the next attempt onto a new
 // checkout. Empty is a reader who has let none expire.
-func checkoutIdempotencyKey(req paymentprovider.CheckoutRequest, expiredCheckoutID string) (string, error) {
+//
+// The same holds for a checkout the reader paid: once the purchase it made
+// stops opening the episode — a rental or a reading period running out — the
+// reader may buy again with the very request they paid with before, and the
+// provider would answer it with the completed checkout. The key therefore
+// names paidCheckoutID as well, the checkout of the reader's latest purchase
+// of the episode, so each payment moves the next attempt onto a new checkout.
+// Empty is a reader who has paid for none.
+func checkoutIdempotencyKey(req paymentprovider.CheckoutRequest, expiredCheckoutID, paidCheckoutID string) (string, error) {
 	req.IdempotencyKey = ""
 	encoded, err := json.Marshal(struct {
 		Request           paymentprovider.CheckoutRequest
 		ExpiredCheckoutID string
-	}{req, expiredCheckoutID})
+		PaidCheckoutID    string
+	}{req, expiredCheckoutID, paidCheckoutID})
 	if err != nil {
 		return "", fmt.Errorf("encode checkout request: %w", err)
 	}

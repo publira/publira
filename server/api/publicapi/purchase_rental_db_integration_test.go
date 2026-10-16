@@ -153,6 +153,25 @@ func TestDBARentalLeavesThePermanentCopyToBuy(t *testing.T) {
 	if err := start(publirattypesv1.PurchaseKind_PURCHASE_KIND_RENTAL); connect.CodeOf(err) != connect.CodeAlreadyExists {
 		t.Fatalf("a second rental over an active one = %v, want already_exists", err)
 	}
+
+	// Once the rental runs out the reader may rent again, with the very
+	// request they paid before, and that has to reach a checkout of its own
+	// rather than the one the provider completed.
+	paidKey := checkout.input.IdempotencyKey
+	if _, err := pg.DB.ExecContext(ctx, `
+		UPDATE purchases
+		SET expires_at = now() - interval '1 minute'
+		WHERE tenant_id = $1
+			AND provider_checkout_id = 'cs_rental'
+	`, tenant.ID); err != nil {
+		t.Fatalf("let the rental run out: %v", err)
+	}
+	if err := start(publirattypesv1.PurchaseKind_PURCHASE_KIND_RENTAL); err != nil {
+		t.Fatalf("StartEpisodeCheckout(rental) after the rental ran out: %v", err)
+	}
+	if checkout.input.IdempotencyKey == paidKey {
+		t.Fatalf("renting again reuses the key %q of the paid rental", paidKey)
+	}
 	if err := start(publirattypesv1.PurchaseKind_PURCHASE_KIND_UNSPECIFIED); err != nil {
 		t.Fatalf("StartEpisodeCheckout(permanent copy) over a rental: %v", err)
 	}
