@@ -66,7 +66,16 @@ Commit subjects and PR titles use Conventional Commits (see `.github/pull_reques
 
 A change that touches both the backend (`proto/`, `db/`, `server/`) and the web apps (`apps/`, `packages/`) is split into one pull request per layer, the backend at the bottom and the frontend stacked on it with `gh stack`, and each layer's pull request closes its own Issue.
 
-No check enforces this; whether a cross-cutting change had to stay atomic is a review judgement.
+A web edit that only follows from the backend change and has no screen of its own is not a layer, and rides in the backend pull request:
+
+- the label of an audit action or target the server now records, in the console and in every `locales/*.json` catalog
+- an entry for a new server value in a table the web apps already keep, such as a reason in `@publira/api-client`'s reason table
+- the entry that exposes a new service on an `@publira/api-client` client
+- a type or a call site re-fitted to code that `task gen` regenerated under it
+
+The code `task gen` writes into `packages/api-client/src/gen/` travels with the `proto/` change it comes from in the same way. Splitting any of these out leaves the backend layer recording something the console cannot name, or failing to compile on its own, and stacks a frontend pull request with no screen behind it. Anything a user sees or operates as new — a screen, a form, a control, a flow that calls the new RPC — is the frontend layer, however small its diff.
+
+No check enforces this; whether a cross-cutting change had to stay atomic, and whether a web edit has a screen of its own, is a review judgement.
 
 ### Upgrade notes: written in the pull request that makes the change
 

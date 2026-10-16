@@ -62,7 +62,7 @@ Use the Conventional Commits type as the prefix and a short English slug, matchi
 
 ## Stack a change that spans the backend and the web apps
 
-A change that touches both the backend and the web apps becomes two pull requests, one per layer: the backend against `main`, the frontend stacked on it. The reviewer reads Go and TypeScript separately, each bucket measures one layer, and the backend can merge while the frontend is still under review. Work that stays inside one layer is not stacked.
+A change that touches both the backend and the web apps becomes two pull requests, one per layer: the backend against `main`, the frontend stacked on it. The reviewer reads Go and TypeScript separately, each bucket measures one layer, and the backend can merge while the frontend is still under review. Work that stays inside one layer is not stacked, and neither is a web edit that only follows from the backend change with no screen of its own — an audit-log label and its catalog entries, a new entry in a table the web apps keep, a new service on an `@publira/api-client` client, a type re-fitted to regenerated code. Those ride in the backend pull request, as the stacking section of `AGENTS.md` lists; what is left to stack is a screen, a form, or a flow a user operates.
 
 Decide this before writing code, not at push time — the vendored `gh-stack` skill explains why a stack is cheaper to plan than to split. Where that skill and this section disagree (`submit`, `merge`), this section wins.
 
@@ -74,8 +74,8 @@ One Issue per pull request still holds, so each layer needs its own Issue, the f
 
 | Layer | Paths |
 | --- | --- |
-| Backend, bottom | `proto/`, `db/`, `server/`, and everything `task gen` writes from them: `server/internal/proto/gen/`, `server/internal/db/gen/`, `packages/api-client/src/gen/` |
-| Frontend, top | `apps/`, `locales/`, the rest of `packages/` (the hand-written `packages/api-client` wrappers included), and the `e2e/` scenarios for those screens |
+| Backend, bottom | `proto/`, `db/`, `server/`, everything `task gen` writes from them (`server/internal/proto/gen/`, `server/internal/db/gen/`, `packages/api-client/src/gen/`), and the web edits with no screen of their own listed above |
+| Frontend, top | the rest of `apps/`, `locales/`, and `packages/`, and the `e2e/` scenarios for those screens |
 
 Generated output travels with its source: the regenerated `packages/api-client/src/gen/` belongs to the pull request that changes `proto/`, even though it lives under `packages/`. The backend layer has to pass on its own — the server tests and `pnpm preflight`, since the regenerated client is TypeScript.
 
@@ -298,7 +298,7 @@ Confirm all of the following, and report anything you could not satisfy:
 - the verification commands for the changed area ran and passed
 - the pushed branch is rebased on the current `origin/main` — and if you took the throwaway-checkout route, report that as the remote branch carrying the rebased commits with the local branch ref still awaiting reconciliation, never as a rebased local branch
 - no throwaway worktree is left behind (`git worktree list`)
-- a change spanning the backend and the web apps is one pull request per layer, each closing its own Issue, and `gh stack view --json` shows them linked bottom to top
+- a change spanning the backend and the web apps, beyond the web edits that ride with the backend, is one pull request per layer, each closing its own Issue, and `gh stack view --json` shows them linked bottom to top
 - a pull request that changes a screen shows a screenshot of it in the body, above the `Assisted-by:` trailer
 - `gh pr view` shows the template's headings intact, an English Conventional Commits title, issue links that match the real relationship, exactly one `size/*` label and the `ai-assisted` label, and the `Assisted-by:` trailer as the last line of the body
 - no temporary body file is left behind
