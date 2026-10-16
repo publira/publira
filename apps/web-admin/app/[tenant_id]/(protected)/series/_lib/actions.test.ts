@@ -165,6 +165,41 @@ describe("series actions", () => {
     expect(mockRedirect).toHaveBeenCalledWith("/series/SERIES001?updated=1");
   });
 
+  it("updating the basics clears every read that shows the series' title", async () => {
+    mockUpdateSeries.mockResolvedValueOnce({
+      ok: true,
+      series: { publicId: "SERIES001", title: "Renamed series" },
+    });
+
+    const { updateSeriesAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("tenant_id", "TENANT001");
+    formData.set("series_id", "018f0e6a-2000-7000-8000-000000000001");
+    formData.set("title", "Renamed series");
+    formData.set("synopsis", "A synopsis");
+    formData.set("reading_period_hours", "24");
+    formData.set("label_id", "018f0e6a-5000-7000-8000-000000000001");
+    formData.set("status", "ongoing");
+    formData.set("age_rating", "all");
+    formData.set("availability", "all");
+    formData.set("comment_mode", "");
+    formData.set("purchase_availability", "");
+    formData.set("reading_direction", "rtl");
+    formData.set("spread_start_page", "1");
+    formData.set("clear_eye_catch_image", "0");
+
+    await updateSeriesAction(null, formData);
+
+    expect(mockUpdateTag).toHaveBeenCalledWith("series-TENANT001-SERIES001");
+    expect(mockUpdateTag).toHaveBeenCalledWith("series-list-TENANT001");
+    expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:dashboard");
+    // The access ticket and purchase lists name the series each row belongs
+    // to.
+    expect(mockUpdateTag).toHaveBeenCalledWith("access-tickets-TENANT001");
+    expect(mockUpdateTag).toHaveBeenCalledWith("purchases-TENANT001");
+    expect(mockRedirect).toHaveBeenCalledWith("/series/SERIES001?updated=1");
+  });
+
   it("updating the basics sends an offset-bearing published_at as the same instant", async () => {
     mockUpdateSeries.mockResolvedValueOnce({
       ok: true,

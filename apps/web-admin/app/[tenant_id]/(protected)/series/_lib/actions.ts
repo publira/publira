@@ -435,6 +435,9 @@ export const updateSeriesAction = async (
   updateTag(seriesCacheTag(parsed.data.tenantId, result.series.publicId));
   updateTag(seriesListCacheTag(parsed.data.tenantId));
   updateTag(tenantDashboardCacheTag(parsed.data.tenantId));
+  // The access tickets and the purchases name the series they belong to.
+  updateTag(accessTicketsCacheTag(parsed.data.tenantId));
+  updateTag(purchasesCacheTag(parsed.data.tenantId));
 
   redirect(
     translationEditPath(
