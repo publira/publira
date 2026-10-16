@@ -88,29 +88,49 @@ To stop receiving replies, clear **Enable** and choose **Save**. The next answer
 Cloudflare Email Routing hands each mail to an Email Worker, which posts it to the **Webhook URL**. The inbound domain's DNS has to be on Cloudflare.
 
 1. Under Email Routing, turn on routing for the inbound domain; a subdomain such as `reply.comics.example.com` is added under **Settings** › **Subdomains**. Cloudflare adds its MX records itself. Turn on **Subaddressing** in the same settings, so that mail to `contact+<message ID>@` reaches the rule for `contact@`.
-2. Create a Worker with the code below. Give it the **Webhook URL** without the `inbound:<token>@` part as the variable `WEBHOOK_URL`, and the token as the secret `WEBHOOK_TOKEN`.
-3. Under Email Routing's routing rules, create a custom address `contact` on the inbound domain with the action **Send to a Worker** and the Worker you created.
+2. Under Email Routing's destination addresses, add a staff mailbox and verify it, for the replies the site cannot take when they arrive.
+3. Create a Worker with the code below. Give it the **Webhook URL** without the `inbound:<token>@` part as the variable `WEBHOOK_URL`, the token as the secret `WEBHOOK_TOKEN`, and the staff mailbox as the variable `FALLBACK_ADDRESS`.
+4. Under Email Routing's routing rules, create a custom address `contact` on the inbound domain with the action **Send to a Worker** and the Worker you created.
 
 ```js
 export default {
   async email(message, env) {
-    const response = await fetch(env.WEBHOOK_URL, {
-      body: await new Response(message.raw).arrayBuffer(),
-      headers: {
-        Authorization: `Basic ${btoa(`inbound:${env.WEBHOOK_TOKEN}`)}`,
-        "Content-Type": "message/rfc822",
-        "X-Envelope-To": message.to,
-      },
-      method: "POST",
-    });
-    if (!response.ok) {
-      message.setReject(`The reply was not accepted (${response.status})`);
+    let status;
+    try {
+      const response = await fetch(env.WEBHOOK_URL, {
+        body: await new Response(message.raw).arrayBuffer(),
+        headers: {
+          Authorization: `Basic ${btoa(`inbound:${env.WEBHOOK_TOKEN}`)}`,
+          "Content-Type": "message/rfc822",
+          "X-Envelope-To": message.to,
+        },
+        method: "POST",
+      });
+      if (response.ok) {
+        return;
+      }
+      status = response.status;
+    } catch {
+      // The site did not answer.
+    }
+    if (status === 400) {
+      message.setReject("The site could not read this mail");
+      return;
+    }
+    try {
+      await message.forward(env.FALLBACK_ADDRESS);
+    } catch {
+      message.setReject(
+        `The reply could not be delivered (${status ?? "no answer"})`
+      );
     }
   },
 };
 ```
 
-`message.to` is the address the mail was delivered to, `+<message ID>` included. When the site answers a post with an error status, such as for a token that does not match or a body that is not a mail, the Worker rejects the mail, so the reader gets a bounce instead of a reply that went nowhere. A mail the site accepts and then drops, such as one that names no message or arrives while **Enable** is cleared, is answered as accepted, and the reader gets no bounce for it.
+`message.to` is the address the mail was delivered to, `+<message ID>` included.
+
+Cloudflare gives an Email Worker no way to ask the sender to try again later: rejecting a mail is permanent, and the reader gets a bounce. So the Worker rejects only a mail the site refuses as not being one it can read. When the site does not answer, or cannot take the mail — a `5xx` while it is down, a `401` while the token stored in the console and the Worker's differ — the Worker forwards the mail to the staff mailbox, where the reply is read instead of in the console, and rejects it only if that fails too. A mail the site accepts and then drops, such as one that names no message or arrives while **Enable** is cleared, is answered as accepted and goes nowhere else.
 
 ### Posting raw mail from Postfix
 
