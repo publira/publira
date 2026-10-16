@@ -103,7 +103,7 @@ An Issue should have only one parent. A parent may still participate in dependen
 Such work lands as two stacked pull requests, one per layer, and every pull request closes its own Issue, so file it as two Issues:
 
 - the backend one — the `proto/` contract, the schema, and the server that serves it
-- the frontend one — the screens that consume it, `blocked by` the backend one
+- the frontend one — the screens, forms, controls, and flows that consume it, `blocked by` the backend one
 
 Web edits that only follow from the backend change and have no screen of their own — an audit-log label and its catalog entries, a new entry in a table the web apps keep, a new service on an `@publira/api-client` client, a type or a call site re-fitted to regenerated code — ride in the backend pull request, as the stacking section of `AGENTS.md` lists. Name them in the backend Issue's scope; they are not a frontend Issue, and work whose web side is only such edits is one backend Issue.
 
