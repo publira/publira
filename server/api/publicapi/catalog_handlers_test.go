@@ -1504,3 +1504,43 @@ func TestListPublishedEpisodeNeighborsQueryHasPublicationGuards(t *testing.T) {
 		}
 	}
 }
+
+// An episode's own eye-catch decorates the page, so a failed read of it leaves
+// the episode without one, as an episode that has none is answered, rather
+// than failing the page.
+func TestCatalogGetEpisodeDetailAnswersWithoutTheEyeCatchWhenItsReadFails(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	episodeID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeForTenant)).
+		WithArgs("ja", tenantID, nil, "EPISODE001", "web").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_eye_catch_image_id", "series_eye_catch_image_updated_at", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "is_free", "free_until", "rating_count", "purchase_availability", "published_locales"}).
+			AddRow(episodeID, "EPISODE001", "Episode Title", int32(1), seriesID, int32(500), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", nil, nil, "r18", nil, nil, nil, nil, nil, false, nil, int64(0), "all", []byte("{ja}")))
+	expectTenantAgeVerification(mock, tenantID, now, ageverification.None)
+	expectEpisodeNeighborsLookup(mock, tenantID, seriesID, int32(1), episodeID)
+	expectNextFreeEpisodeLookup(mock, tenantID, seriesID, int32(1), episodeID)
+	expectEpisodeCreditsLookup(mock)
+	expectEpisodePreviewImagesLookup(mock, episodeID)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodeEyeCatchVariantsByEpisodeIDs)).
+		WithArgs(tenantID, sqlmock.AnyArg()).
+		WillReturnError(errors.New("connection reset"))
+
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "EPISODE001",
+	})
+	if err != nil {
+		t.Fatalf("GetEpisodeDetail: %v", err)
+	}
+	if got := resp.Episode.EyeCatchImageVariants; len(got) != 0 || resp.Episode.EyeCatchImageUpdatedAt != "" {
+		t.Fatalf("episode eye-catch = %v at %q, want both empty", got, resp.Episode.EyeCatchImageUpdatedAt)
+	}
+
+	assertPublicExpectations(t, mock)
+}

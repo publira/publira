@@ -534,7 +534,8 @@ func (s *apiServer) seriesEyeCatchVariantsByImageIDs(
 
 // fillEpisodeEyeCatches puts each episode's own eye-catch onto it, with one
 // statement for all of them. An episode without one keeps both fields empty,
-// and the client draws its series' eye-catch in its place.
+// and the client draws its series' eye-catch in its place — which is also
+// what a failed read leaves, so it is logged rather than failing the page.
 func (s *apiServer) fillEpisodeEyeCatches(ctx context.Context, tenantID uuid.UUID, episodes ...*publirattypesv1.Episode) error {
 	if len(episodes) == 0 {
 		return nil
@@ -548,7 +549,8 @@ func (s *apiServer) fillEpisodeEyeCatches(ctx context.Context, tenantID uuid.UUI
 		EpisodeIds: ids,
 	})
 	if err != nil {
-		return s.internalDBError(ctx, "failed to list episode eye catch variants", err, "tenant_id", tenantID.String())
+		slog.WarnContext(ctx, "episode eye catch variants unavailable", "error", err, "tenant_id", tenantID.String())
+		return nil
 	}
 	protomapper.SetEpisodeEyeCatches(episodes, rows)
 	return nil
