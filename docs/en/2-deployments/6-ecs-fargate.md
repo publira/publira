@@ -2,7 +2,7 @@
 title: Amazon ECS on Fargate
 description: Run an install as Amazon ECS services on AWS Fargate behind CloudFront and an Application Load Balancer, from its parameters and task definitions to the first sign-in to the tenant console.
 published: 2026-10-15
-updated: 2026-10-15
+updated: 2026-10-16
 ---
 
 This page takes an install from a VPC with the managed services provisioned to the first sign-in to the tenant console, with every process an Amazon ECS service on AWS Fargate and CloudFront in front of an Application Load Balancer as the edge. It runs the same steps as [Installing](./2-installing.md), which explains why each step exists, what every secret protects, and what each database role can reach, and it puts the edge in front the way [Edge](./4-edge.md#what-the-edge-has-to-do) requires. This page covers what is particular to ECS and Fargate: which resources each part becomes, and how each requirement of those two pages is met with them.
@@ -411,28 +411,33 @@ The listener's rules follow [Routing](./4-edge.md#routing). A rule takes up to t
 
 | Priority | Host | Path | Forwards to |
 | --- | --- | --- | --- |
-| `1000` | Any | `/images*`, `/rpc`, `/rpc/*` | `publira-server` |
+| `1000` | Any | `/images*`, `/rpc/publira.v1.*`, `/api/publira.v1.*` | `publira-server` |
+| `1100` | Any | `/rpc`, `/rpc/*` | None: a fixed `404` |
 | `2000` to `2999` | A tenant's domain | `/api/v1`, `/api/v1/*` | `web-storefront` |
 | `2000` to `2999` | A tenant's console host | `/api/v1`, `/api/v1/*` | `web-admin` |
-| `3000` | Any | `/api`, `/api/*` | `publira-server` |
+| `3000` | Any | `/api`, `/api/*` | None: a fixed `404` |
 | `4000` to `4999` | A tenant's domain | Any | `web-storefront` |
 | `4000` to `4999` | A tenant's console host | Any | `web-admin` |
 
 ```bash
 rule() { aws elbv2 create-rule --listener-arn "$LISTENER" --priority "$1" \
   --conditions "$2" --actions "Type=forward,TargetGroupArn=$3" > /dev/null; }
+not_found() { aws elbv2 create-rule --listener-arn "$LISTENER" --priority "$1" \
+  --conditions "$2" \
+  --actions 'Type=fixed-response,FixedResponseConfig={StatusCode=404,ContentType=text/plain}' > /dev/null; }
 host_is() { printf '{"Field":"host-header","HostHeaderConfig":{"Values":["%s"]}}' "$1"; }
 path_is() { printf '{"Field":"path-pattern","PathPatternConfig":{"Values":%s}}' "$1"; }
 
-rule 1000 "[$(path_is '["/images*","/rpc","/rpc/*"]')]" "$SERVER_TG"
+rule 1000 "[$(path_is '["/images*","/rpc/publira.v1.*","/api/publira.v1.*"]')]" "$SERVER_TG"
+not_found 1100 "[$(path_is '["/rpc","/rpc/*"]')]"
 rule 2001 "[$(host_is comics.example.com),$(path_is '["/api/v1","/api/v1/*"]')]" "$STOREFRONT_TG"
 rule 2002 "[$(host_is admin.comics.example.com),$(path_is '["/api/v1","/api/v1/*"]')]" "$ADMIN_TG"
-rule 3000 "[$(path_is '["/api","/api/*"]')]" "$SERVER_TG"
+not_found 3000 "[$(path_is '["/api","/api/*"]')]"
 rule 4001 "[$(host_is comics.example.com)]" "$STOREFRONT_TG"
 rule 4002 "[$(host_is admin.comics.example.com)]" "$ADMIN_TG"
 ```
 
-`/rpc` is the API's prefix, and `/api` the one it had before, which `publira server` answers until 0.3.0 for the clients not yet on `/rpc`; route both until then. A path pattern is matched as a string, with `*` standing for any characters, so `/api/v1` and `/api/v1/*` are two values: `/api/v1*` would send `/api/v10` to a web app, where Routing sends it to `publira server`. The rules at `1000` and `3000` name no host, so `/images`, `/rpc`, and `/api` reach `publira server` on every host the load balancer receives, which is what Routing asks of every tenant's hosts; a host in none of the other rules gets the `404` on every other path. The load balancer passes the path and the `Host` header on as the browser sent them; add no rewrite of either.
+`/rpc` is the API's prefix, and `/api` the one it had before, which `publira server` answers until 0.3.0 for the clients not yet on `/rpc`; route both until then. Under either, only the public API, `publira.v1`, is forwarded: the consoles call their own APIs over the VPC, so the load balancer answers the rest with a `404` of its own, as [Only the public API goes through the edge](./4-edge.md#only-the-public-api-goes-through-the-edge) explains. A path pattern is matched as a string, with `*` standing for any characters, so `/rpc/publira.v1.*` names the public API's prefix up to the dot after `v1`, which keeps a namespace such as `publira.v1beta` out, and `/api/v1` and `/api/v1/*` are two values: `/api/v1*` would send `/api/v10` to a web app, where Routing has the edge answer it. The rules at `1000`, `1100`, and `3000` name no host, so they apply on every host the load balancer receives, which is what Routing asks of every tenant's hosts; a host in none of the other rules gets the `404` on every other path. The load balancer passes the path and the `Host` header on as the browser sent them; add no rewrite of either.
 
 The load balancer sets no limit on the size of a body, and lets a request take as long as it keeps sending, so the uploads and webhooks [Edge](./4-edge.md#image-uploads-from-a-page) describes pass it as they are. Its idle timeout is how long it waits for the next byte either way, including for a web app's answer once a request has arrived: 60 seconds unless changed, which the command above raises to the 120 seconds CloudFront waits, as [The distribution](#the-distribution) sets.
 
@@ -1016,10 +1021,12 @@ curl -sI https://comics.example.com/ | head -1
 curl -s https://comics.example.com/readyz
 curl -s -X POST -H 'Content-Type: application/json' -d '{}' \
   https://comics.example.com/rpc/publira.v1.TenantService/GetTenant
+curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Content-Type: application/json' -d '{}' \
+  https://comics.example.com/rpc/publira.admin.v1.AdminAuditLogService/ListAuditLogs
 curl -sI http://comics.example.com/ | grep -i '^location'
 ```
 
-The first answers `200` from `web-storefront`, and the second with its readiness, `"status":"ok"` once it reaches `publira server` and Valkey. The third reaches `publira server`, which refuses the empty request with `invalid_argument`, and the last answers with CloudFront's redirect to `https://comics.example.com/`. Run the same on the console host.
+The first answers `200` from `web-storefront`, and the second with its readiness, `"status":"ok"` once it reaches `publira server` and Valkey. The third reaches `publira server`, which refuses the empty request with `invalid_argument`. The fourth calls the tenant console's API, and the load balancer answers it with `404` without forwarding it. The last answers with CloudFront's redirect to `https://comics.example.com/`. Run the same on the console host, where the console's API answers `404` as well: the console calls it over the VPC, not through the edge.
 
 ## 9. Sign in
 
@@ -1036,31 +1043,21 @@ A tenant created with `publiractl tenant create` or in the Platform Console need
 
 Nothing else changes: the services, the parameters, and the security groups serve every tenant alike.
 
-## Keeping the console APIs off the tenants' domains
+## Keeping the consoles' credentials off the tenants' domains
 
-`publira server` serves the consoles' APIs beside the public API, on every host the edge forwards `/rpc` and `/api` on, and their own authentication is what keeps them from an outsider, as [The console APIs](../3-operations/12-security.md#the-console-apis) describes. To take them, their database logins, and the web service token out of the process the tenants' domains reach, run a second service with `--role storefront`, and route the tenants' domains to it.
+The load balancer already keeps the consoles' APIs off the internet, but the `publira-server` it forwards the tenants' domains to still serves them, and holds their database logins and the web service token to do so. To take all three out of the process readers reach, a layer apart from the edge rule as [Only the public API goes through the edge](./4-edge.md#only-the-public-api-goes-through-the-edge) describes, run a second service with `--role storefront`, and route the tenants' domains to it.
 
 Its task definition is `publira-server.json` with the family and the container named `publira-storefront`, `["server", "--role", "storefront"]` as its command, and only the secrets that role reads: the encryption keys, `PUBLIRA_AUTH_JWT_SECRET`, `PUBLIRA_REVALIDATE_TOKEN`, `PUBLIRA_REDIS_URL`, and `PUBLIRA_PUBLIC_DB_URL`. Give it a target group of its own, `publira-storefront` on port `8000`, and create its service with the `publira-server` security group and no Cloud Map name, since nothing but the load balancer calls it.
 
-Then add two rules ahead of the server's, which send the tenants' domains to it:
+Then add rules ahead of the server's, which send the tenants' domains to it:
 
 | Priority | Host | Path | Forwards to |
 | --- | --- | --- | --- |
-| `900` | A tenant's domain | `/images*`, `/rpc`, `/rpc/*` | `publira-storefront` |
-| `2900` | A tenant's domain | `/api`, `/api/*` | `publira-storefront` |
+| `900` to `999` | A tenant's domain | `/images*`, `/rpc/publira.v1.*`, `/api/publira.v1.*` | `publira-storefront` |
 
-`2900` comes after the `/api/v1` rules and before the server's `/api` rule. The console hosts and the web apps keep reaching `publira-server`, which serves every role: `web-admin` calls the public API as well as the console's, through its one `PUBLIRA_GRPC_URL`. Each new tenant's domain is then added to these two rules as well.
+The console hosts and the web apps keep reaching `publira-server`, which serves every role: `web-admin` calls the public API as well as the console's, through its one `PUBLIRA_GRPC_URL`. The three paths leave room for two host names among the five values a rule takes, so a rule in this band serves the domains of two tenants at most: add a new tenant's domain to a rule that names one, or give it a rule of its own at the next free priority in the band.
 
-To check it, call a console API on the tenant's domain and on its console host:
-
-```bash
-curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Content-Type: application/json' -d '{}' \
-  https://comics.example.com/rpc/publira.admin.v1.AdminAuditLogService/ListAuditLogs
-curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Content-Type: application/json' -d '{}' \
-  https://admin.comics.example.com/rpc/publira.admin.v1.AdminAuditLogService/ListAuditLogs
-```
-
-The tenant's domain answers `404`, since the process behind it does not serve that API. The console host answers `400`: the API is served there, and refuses the empty request.
+The load balancer answers a console API with `404` on every host either way, so check that the tenants' domains reach the new service instead: `aws elbv2 describe-target-health --target-group-arn <the publira-storefront target group ARN>` lists its tasks as `healthy`, and the public API call in [Check the edge](#check-the-edge) still answers `invalid_argument` on the tenant's domain, now from `publira-storefront`.
 
 ## Upgrading
 

@@ -55,6 +55,10 @@ export PUBLIRA_ROUTING_SITE_HOSTS="localhost  reader.example.org admin.reader.ex
 export PUBLIRA_ROUTING_ADMIN_HOSTS="admin.localhost studio.example.com"
 export PUBLIRA_ROUTING_PLATFORM_HOSTS="${PUBLIRA_ROUTING_PLATFORM_HOSTS-platform.localhost operators.example.net}"
 
+# A procedure of the public API, the one namespace the edge forwards under /rpc
+# and /api, for the probes that need a request to reach the server.
+PUBLIRA_ROUTING_PUBLIC_PROCEDURE="publira.v1.CatalogService/ListPublishedSeries"
+
 # Logs for one stack run. Concurrent stacks that override ports or
 # PUBLIRA_ROUTING_PROJECT_NAME must not share diagnostics: a failure would overwrite
 # the other run. When PUBLIRA_ROUTING_RUN_DIR is unset and any of those knobs leave
@@ -338,8 +342,9 @@ assert_route() {
   routing_log "ok: ${name} → ${want_backend}${want_path}"
 }
 
-# A host in no list: the edge has to answer it with its own 404, whatever the
-# path, rather than hand it to any backend.
+# A request the edge has to answer with its own 404 rather than hand to any
+# backend: a host in no list, whatever the path, and a path under /rpc or /api
+# outside the public API, whatever the host.
 assert_unrouted() {
   local name="$1" method="$2" host="$3" path="$4"
   local out code body actual_backend

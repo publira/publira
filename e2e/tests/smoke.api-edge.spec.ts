@@ -31,7 +31,7 @@ interface EdgeAnswer {
  * The request is sent from inside the page so it carries that page's Host, and
  * because `*.localhost` names are resolved by Chromium rather than by the
  * machine the runner is on. It carries no session cookie of the API's own, so
- * a console procedure sees an anonymous caller.
+ * a console procedure that reached the server would see an anonymous caller.
  */
 const postThroughEdge = (
   page: Page,
@@ -65,30 +65,30 @@ const postThroughEdge = (
   );
 
 /**
- * One process serves all three Connect namespaces under `/rpc` and `/api`, and
- * the edge forwards both to it on every host, so the console namespaces are reachable
- * from the internet. What keeps an outsider out of them is their own
- * authentication, which refuses an anonymous caller before any handler runs.
- * The tenant console's procedure names a tenant that exists, because the
- * tenant is looked up before the caller is.
+ * One process serves all three Connect namespaces under `/rpc` and `/api`, but
+ * the edge forwards only the public one: the consoles call theirs over the
+ * private network, so no host needs them, and the edge answers them itself on
+ * every host. The tenant console's procedure names a tenant that exists, so a
+ * request that did reach the server would be refused for its caller, with a
+ * `401`, rather than for its tenant.
  */
-test.describe("the edge forwards every API namespace", () => {
+test.describe("the edge forwards only the public API namespace", () => {
   for (const [label, baseUrl] of edgeHosts) {
     for (const prefix of prefixes) {
-      test(`refuses an anonymous caller of the console namespaces under ${prefix} on ${label}`, async ({
+      test(`answers the console namespaces under ${prefix} with 404 on ${label}`, async ({
         page,
       }) => {
         await page.goto(baseUrl);
 
-        const unauthenticated = { code: "unauthenticated", status: 401 };
+        const answeredByTheEdge = { code: undefined, status: 404 };
         expect(
           await postThroughEdge(page, prefix + ADMIN_PROCEDURE, {
             tenant: { tenantId: SEED_TENANT_ID },
           })
-        ).toEqual(unauthenticated);
+        ).toEqual(answeredByTheEdge);
         expect(
           await postThroughEdge(page, prefix + PLATFORM_PROCEDURE)
-        ).toEqual(unauthenticated);
+        ).toEqual(answeredByTheEdge);
         // The public namespace is answered on the same host and path prefix.
         const catalog = await postThroughEdge(page, prefix + CATALOG_PROCEDURE);
         expect(catalog.status).not.toBe(404);
