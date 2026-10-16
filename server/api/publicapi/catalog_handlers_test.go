@@ -764,6 +764,7 @@ func TestCatalogGetSeriesDetailContract(t *testing.T) {
 			AddRow(seriesID, true, int32(23), int32(72), int32(1)))
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	expectNoEpisodeEyeCatches(mock, tenantID)
 	resp, err := client.GetSeriesDetail(context.Background(), &publirav1.GetSeriesDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "SERIESPUB",
@@ -849,6 +850,7 @@ func TestCatalogGetEpisodeDetailReportsTheSeriesAgeRating(t *testing.T) {
 	expectEpisodePreviewImagesLookup(mock, episodeID)
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	expectNoEpisodeEyeCatches(mock, tenantID)
 	resp, err := client.GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "EPISODE001",
@@ -1070,6 +1072,7 @@ func TestCatalogGetEpisodeDetailTenantBoundary(t *testing.T) {
 				expectNextFreeEpisodeLookup(mock, tenantID, normalSeriesID, int32(1), normalEpisodeID)
 				expectEpisodeCreditsLookup(mock)
 				expectEpisodePreviewImagesLookup(mock, normalEpisodeID)
+				expectNoEpisodeEyeCatches(mock, tenantID)
 			}
 
 			client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
@@ -1284,6 +1287,7 @@ func TestCatalogGetEpisodeDetailAccessEvaluation(t *testing.T) {
 				ctx = testutil.WithBearer(ctx, "not-a-valid-jwt")
 			}
 
+			expectNoEpisodeEyeCatches(mock, tenantID)
 			resp, err := client.GetEpisodeDetail(ctx, &publirav1.GetEpisodeDetailRequest{
 				Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 				PublicId: "EPISODE001",
@@ -1363,6 +1367,7 @@ func TestCatalogGetEpisodeDetailCarriesItsNeighbors(t *testing.T) {
 	expectEpisodePreviewImagesLookup(mock, episodeID)
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	expectNoEpisodeEyeCatches(mock, tenantID)
 	resp, err := client.GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "EPISODE002",
@@ -1416,6 +1421,7 @@ func TestCatalogGetEpisodeDetailMarksAPricedNeighborInAFreeWindowAsFree(t *testi
 	expectEpisodePreviewImagesLookup(mock, episodeID)
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	expectNoEpisodeEyeCatches(mock, tenantID)
 	resp, err := client.GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "EPISODE001",
@@ -1465,6 +1471,7 @@ func TestCatalogGetEpisodeDetailLeavesAMissingNeighborUnset(t *testing.T) {
 	expectEpisodePreviewImagesLookup(mock, episodeID)
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	expectNoEpisodeEyeCatches(mock, tenantID)
 	resp, err := client.GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "EPISODE001",
@@ -1496,4 +1503,44 @@ func TestListPublishedEpisodeNeighborsQueryHasPublicationGuards(t *testing.T) {
 			t.Fatalf("dbmodels.ListPublishedEpisodeNeighborsForTenant does not contain %q on both sides", snippet)
 		}
 	}
+}
+
+// An episode's own eye-catch decorates the page, so a failed read of it leaves
+// the episode without one, as an episode that has none is answered, rather
+// than failing the page.
+func TestCatalogGetEpisodeDetailAnswersWithoutTheEyeCatchWhenItsReadFails(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	episodeID := uuid.Must(uuid.NewV7())
+	seriesID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeForTenant)).
+		WithArgs("ja", tenantID, nil, "EPISODE001", "web").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "order_index", "series_id", "price", "reading_period_hours", "status", "scheduled_at", "published_at", "series_public_id", "series_title", "series_eye_catch_image_id", "series_eye_catch_image_updated_at", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "is_free", "free_until", "rating_count", "purchase_availability", "published_locales"}).
+			AddRow(episodeID, "EPISODE001", "Episode Title", int32(1), seriesID, int32(500), int32(24), "published", nil, now.UTC(), "SERIES001", "Series Title", nil, nil, "r18", nil, nil, nil, nil, nil, false, nil, int64(0), "all", []byte("{ja}")))
+	expectTenantAgeVerification(mock, tenantID, now, ageverification.None)
+	expectEpisodeNeighborsLookup(mock, tenantID, seriesID, int32(1), episodeID)
+	expectNextFreeEpisodeLookup(mock, tenantID, seriesID, int32(1), episodeID)
+	expectEpisodeCreditsLookup(mock)
+	expectEpisodePreviewImagesLookup(mock, episodeID)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodeEyeCatchVariantsByEpisodeIDs)).
+		WithArgs(tenantID, sqlmock.AnyArg()).
+		WillReturnError(errors.New("connection reset"))
+
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.GetEpisodeDetail(context.Background(), &publirav1.GetEpisodeDetailRequest{
+		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		PublicId: "EPISODE001",
+	})
+	if err != nil {
+		t.Fatalf("GetEpisodeDetail: %v", err)
+	}
+	if got := resp.Episode.EyeCatchImageVariants; len(got) != 0 || resp.Episode.EyeCatchImageUpdatedAt != "" {
+		t.Fatalf("episode eye-catch = %v at %q, want both empty", got, resp.Episode.EyeCatchImageUpdatedAt)
+	}
+
+	assertPublicExpectations(t, mock)
 }

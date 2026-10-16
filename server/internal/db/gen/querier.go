@@ -271,6 +271,8 @@ type Querier interface {
 	// the column admits NULL for the credits baked from ones that predate roles,
 	// and a credit written through here always names one.
 	CreateEpisodeCreator(ctx context.Context, arg CreateEpisodeCreatorParams) error
+	CreateEpisodeEyeCatchImage(ctx context.Context, arg CreateEpisodeEyeCatchImageParams) (EpisodeEyeCatchImage, error)
+	CreateEpisodeEyeCatchImageVariant(ctx context.Context, arg CreateEpisodeEyeCatchImageVariantParams) (EpisodeEyeCatchImageVariant, error)
 	// Durable member follows. Episode, series, and creator follows have
 	// distinct source tables; content_events must not be used to model any of them.
 	CreateEpisodeFollow(ctx context.Context, arg CreateEpisodeFollowParams) (EpisodeFollow, error)
@@ -375,6 +377,8 @@ type Querier interface {
 	// state it is in, and the reversible removal is a different query.
 	DeleteEpisodeCommentByIDForTenant(ctx context.Context, arg DeleteEpisodeCommentByIDForTenantParams) (int64, error)
 	DeleteEpisodeCreatorsByEpisodeID(ctx context.Context, episodeID uuid.UUID) error
+	// Clears one aspect ratio of an eye-catch.
+	DeleteEpisodeEyeCatchImageVariantsByType(ctx context.Context, arg DeleteEpisodeEyeCatchImageVariantsByTypeParams) (int64, error)
 	DeleteEpisodeFollow(ctx context.Context, arg DeleteEpisodeFollowParams) (int64, error)
 	// Returns the deleted row so a concurrent second delete is told apart from a
 	// window that never existed. What the caller audits and revalidates comes
@@ -426,6 +430,7 @@ type Querier interface {
 	// creator_images row behind, referenced by nothing. created_at guards the
 	// upload still in flight, whose row exists before the creator names it.
 	DeleteUnreferencedCreatorImages(ctx context.Context, createdBefore time.Time) (int64, error)
+	DeleteUnreferencedEpisodeEyeCatchImages(ctx context.Context, createdBefore time.Time) (int64, error)
 	DeleteUnreferencedGenreImages(ctx context.Context, createdBefore time.Time) (int64, error)
 	DeleteUnreferencedLabelImages(ctx context.Context, createdBefore time.Time) (int64, error)
 	DeleteUnreferencedSeriesImages(ctx context.Context, createdBefore time.Time) (int64, error)
@@ -571,6 +576,10 @@ type Querier interface {
 	// standing one: it is what the credit line says, where a purchase or a ticket
 	// only says how a reader came to hold the episode. No row means no grant.
 	GetEpisodeEntitlementSource(ctx context.Context, arg GetEpisodeEntitlementSourceParams) (string, error)
+	// The eye-catch an episode shows, read behind LockEpisodeByIDForTenant by the
+	// RPCs that change it.
+	GetEpisodeEyeCatchImageIDForTenant(ctx context.Context, arg GetEpisodeEyeCatchImageIDForTenantParams) (GetEpisodeEyeCatchImageIDForTenantRow, error)
+	GetEpisodeEyeCatchImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetEpisodeEyeCatchImageVariantByTypeAndWidthForTenantParams) (GetEpisodeEyeCatchImageVariantByTypeAndWidthForTenantRow, error)
 	GetEpisodeFreeWindowByIDForTenant(ctx context.Context, arg GetEpisodeFreeWindowByIDForTenantParams) (GetEpisodeFreeWindowByIDForTenantRow, error)
 	GetEpisodeImageAccessByIDForUser(ctx context.Context, arg GetEpisodeImageAccessByIDForUserParams) (GetEpisodeImageAccessByIDForUserRow, error)
 	// Tenant-staff preview: membership and role are evaluated in the handler.
@@ -1438,6 +1447,10 @@ type Querier interface {
 	// existed states none, and it is still a credit. Those come last, which is
 	// where a name with nothing said about it belongs.
 	ListEpisodeCreatorsByEpisodeIDs(ctx context.Context, episodeIds []uuid.UUID) ([]ListEpisodeCreatorsByEpisodeIDsRow, error)
+	// The eye-catch of each listed episode that has one, a row per variant. It is
+	// keyed by episode rather than by image so that every read holding episodes
+	// can fill them with one more statement, whatever query read the episodes.
+	ListEpisodeEyeCatchVariantsByEpisodeIDs(ctx context.Context, arg ListEpisodeEyeCatchVariantsByEpisodeIDsParams) ([]ListEpisodeEyeCatchVariantsByEpisodeIDsRow, error)
 	// Worker fan-out: who is told about a new episode. The union of the follows
 	// that point at the episode, at the series it belongs to, and at a creator
 	// credited on it. UNION rather than UNION ALL, so a reader who follows both
@@ -2091,8 +2104,8 @@ type Querier interface {
 	// in the integration test to confirm the index is eligible):
 	//   ListReferencedObjectKeys
 	//     -> idx_<entity>_image_variants_object_key, once per variant table
-	//   DeleteUnreferencedCreatorImages / ...GenreImages / ...LabelImages /
-	//   ...SeriesImages / ...TenantImages
+	//   DeleteUnreferencedCreatorImages / ...EpisodeEyeCatchImages /
+	//   ...GenreImages / ...LabelImages / ...SeriesImages / ...TenantImages
 	//     -> no index; one anti-join per run over a table that holds one row per
 	//        entity image
 	//   DeleteUnreferencedUserImages
@@ -2957,6 +2970,9 @@ type Querier interface {
 	SetContactMessageHandledByIDForTenant(ctx context.Context, arg SetContactMessageHandledByIDForTenantParams) (ContactMessage, error)
 	// Replaces the one note staff keep on a message, or clears it with a NULL.
 	SetContactMessageStaffNoteByIDForTenant(ctx context.Context, arg SetContactMessageStaffNoteByIDForTenantParams) (ContactMessage, error)
+	// Points the episode at an uploaded eye-catch, or at none. The image it
+	// pointed at before is left for the orphan image sweep.
+	SetEpisodeEyeCatchImageIDForTenant(ctx context.Context, arg SetEpisodeEyeCatchImageIDForTenantParams) error
 	SetPageTranslationPublishedVersion(ctx context.Context, arg SetPageTranslationPublishedVersionParams) (PageTranslation, error)
 	// Sets or clears a reader's birth date past the written-once guard of
 	// SetUserBirthDateByID. Writing the date already stored is no rows, like
@@ -3021,6 +3037,8 @@ type Querier interface {
 	// Whether the tenant has any purchase, from a provider's checkout or a store,
 	// test ones included, which keeps the tenant currency from changing.
 	TenantHasPurchases(ctx context.Context, tenantID uuid.UUID) (bool, error)
+	// Records that the eye-catch changed after one of its ratios was replaced.
+	TouchEpisodeEyeCatchImage(ctx context.Context, id uuid.UUID) error
 	// Records that the eye-catch changed after one of its ratios was replaced.
 	TouchGenreImage(ctx context.Context, id uuid.UUID) error
 	// Records that the eye-catch changed after one of its ratios was replaced.

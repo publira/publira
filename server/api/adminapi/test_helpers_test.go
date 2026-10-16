@@ -616,14 +616,27 @@ func expectResolvedEpisodePurchaseAvailability(mock sqlmock.Sqlmock, tenantID, e
 		WillReturnRows(sqlmock.NewRows([]string{"purchase_availability"}).AddRow(resolved))
 }
 
+// episodeEyeCatchVariantColumns are the columns of
+// ListEpisodeEyeCatchVariantsByEpisodeIDs, the read that fills the eye-catch
+// of every episode an episode RPC answers with.
+var episodeEyeCatchVariantColumns = []string{"episode_id", "episode_eye_catch_image_id", "image_updated_at", "id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}
+
+// expectNoEpisodeEyeCatches answers that read for episodes none of which has
+// an eye-catch of its own.
+func expectNoEpisodeEyeCatches(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodeEyeCatchVariantsByEpisodeIDs)).
+		WithArgs(tenantID, sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows(episodeEyeCatchVariantColumns))
+}
+
 // expectCreateEpisodeBaseInsert expects the insert of the episode row and then
 // the write of its title, in the tenant's default locale.
 func expectCreateEpisodeBaseInsert(mock sqlmock.Sqlmock, seriesID, episodeID, tenantID uuid.UUID, title string, orderIndex int32, now time.Time, publicID string) {
 	expectPublicIDAttempt(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateEpisodeBase)).
 		WithArgs(sqlmock.AnyArg(), seriesID, sqlmock.AnyArg(), orderIndex, tenantID, nil, nil).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "series_id", "public_id", "order_index", "created_at", "tenant_id", "reading_direction", "spread_start_index", "availability", "purchase_availability"}).
-			AddRow(episodeID, seriesID, publicID, orderIndex, now, tenantID, nil, nil, nil, nil))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "series_id", "public_id", "order_index", "created_at", "tenant_id", "reading_direction", "spread_start_index", "availability", "purchase_availability", "eye_catch_image_id"}).
+			AddRow(episodeID, seriesID, publicID, orderIndex, now, tenantID, nil, nil, nil, nil, nil))
 	expectPublicIDAttemptReleased(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertEpisodeTranslation)).
 		WithArgs(sqlmock.AnyArg(), episodeID, tenantID, "ja", title).

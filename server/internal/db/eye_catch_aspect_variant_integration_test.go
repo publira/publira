@@ -296,3 +296,133 @@ func mustInsertGenreImageVariant(t *testing.T, ctx context.Context, db *sql.DB, 
 		t.Fatalf("insert %s variant: %v", variantType, err)
 	}
 }
+
+// The episode side of the ratio isolation above, over the episode's own
+// eye-catch tables, read back the way every episode response is filled.
+func TestDeleteEpisodeEyeCatchImageVariantsByTypeLeavesTheOtherRatios(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	db := pg.DB
+	q := dbmodels.New(db)
+
+	tenantID := mustInsertTenant(t, ctx, db, "TENANTVAR005", "var5.example.com", "admin-var5.example.com", "Variant Tenant 5")
+	episodeID := mustInsertEpisode(t, ctx, db, tenantID, "EPISODEVAR01", "Variant Episode")
+	imageID := mustInsertEpisodeEyeCatchImage(t, ctx, db, tenantID, episodeID)
+
+	mustInsertEpisodeEyeCatchImageVariant(t, ctx, db, tenantID, imageID, "landscape", 800, 450)
+	mustInsertEpisodeEyeCatchImageVariant(t, ctx, db, tenantID, imageID, "landscape", 1600, 900)
+	mustInsertEpisodeEyeCatchImageVariant(t, ctx, db, tenantID, imageID, "portrait", 1200, 1600)
+
+	removed, err := q.DeleteEpisodeEyeCatchImageVariantsByType(ctx, dbmodels.DeleteEpisodeEyeCatchImageVariantsByTypeParams{
+		EpisodeEyeCatchImageID: imageID,
+		VariantType:            "landscape",
+	})
+	if err != nil {
+		t.Fatalf("DeleteEpisodeEyeCatchImageVariantsByType: %v", err)
+	}
+	if removed != 2 {
+		t.Fatalf("deleted %d rows, want 2", removed)
+	}
+
+	rows, err := q.ListEpisodeEyeCatchVariantsByEpisodeIDs(ctx, dbmodels.ListEpisodeEyeCatchVariantsByEpisodeIDsParams{
+		TenantID:   tenantID,
+		EpisodeIds: []uuid.UUID{episodeID},
+	})
+	if err != nil {
+		t.Fatalf("ListEpisodeEyeCatchVariantsByEpisodeIDs: %v", err)
+	}
+	if len(rows) != 1 || rows[0].VariantType != "portrait" || rows[0].EpisodeID != episodeID || rows[0].EpisodeEyeCatchImageID != imageID {
+		t.Fatalf("remaining variants = %v, want only the portrait one of the episode's image", rows)
+	}
+
+	mustInsertEpisodeEyeCatchImageVariant(t, ctx, db, tenantID, imageID, "landscape", 1600, 900)
+	variant, err := q.GetEpisodeEyeCatchImageVariantByTypeAndWidthForTenant(ctx, dbmodels.GetEpisodeEyeCatchImageVariantByTypeAndWidthForTenantParams{
+		EpisodeEyeCatchImageID: imageID,
+		TenantID:               tenantID,
+		VariantType:            "landscape",
+		Width:                  1600,
+	})
+	if err != nil {
+		t.Fatalf("GetEpisodeEyeCatchImageVariantByTypeAndWidthForTenant: %v", err)
+	}
+	if variant.ObjectKey != objectKeyFor("landscape", 1600) {
+		t.Fatalf("object_key = %q, want the replacement", variant.ObjectKey)
+	}
+}
+
+// An episode owns the eye-catches uploaded for it, so deleting the episode
+// leaves no image row or variant row behind.
+func TestDeletingAnEpisodeDeletesItsEyeCatch(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	db := pg.DB
+	tenantID := mustInsertTenant(t, ctx, db, "TENANTVAR006", "var6.example.com", "admin-var6.example.com", "Variant Tenant 6")
+	episodeID := mustInsertEpisode(t, ctx, db, tenantID, "EPISODEVAR02", "Variant Episode")
+	imageID := mustInsertEpisodeEyeCatchImage(t, ctx, db, tenantID, episodeID)
+	mustInsertEpisodeEyeCatchImageVariant(t, ctx, db, tenantID, imageID, "portrait", 1200, 1600)
+
+	if _, err := db.ExecContext(ctx, `DELETE FROM episodes WHERE id = $1`, episodeID); err != nil {
+		t.Fatalf("delete episode: %v", err)
+	}
+
+	var images, variants int
+	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM episode_eye_catch_images WHERE id = $1`, imageID).Scan(&images); err != nil {
+		t.Fatalf("count episode eye-catch images: %v", err)
+	}
+	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM episode_eye_catch_image_variants WHERE episode_eye_catch_image_id = $1`, imageID).Scan(&variants); err != nil {
+		t.Fatalf("count episode eye-catch variants: %v", err)
+	}
+	if images != 0 || variants != 0 {
+		t.Fatalf("left %d image rows and %d variant rows, want none", images, variants)
+	}
+}
+
+func mustInsertEpisodeEyeCatchImage(t *testing.T, ctx context.Context, db *sql.DB, tenantID, episodeID uuid.UUID) uuid.UUID {
+	t.Helper()
+	imageID, err := uuid.NewV7()
+	if err != nil {
+		t.Fatalf("uuid: %v", err)
+	}
+	_, err = db.ExecContext(ctx, `
+		INSERT INTO episode_eye_catch_images (id, tenant_id, episode_id) VALUES ($1, $2, $3)
+	`, imageID, tenantID, episodeID)
+	if err != nil {
+		t.Fatalf("insert episode eye-catch image: %v", err)
+	}
+	_, err = db.ExecContext(ctx, `UPDATE episodes SET eye_catch_image_id = $2 WHERE id = $1`, episodeID, imageID)
+	if err != nil {
+		t.Fatalf("point episode at its eye catch image: %v", err)
+	}
+	return imageID
+}
+
+func mustInsertEpisodeEyeCatchImageVariant(t *testing.T, ctx context.Context, db *sql.DB, tenantID, imageID uuid.UUID, variantType string, width, height int32) {
+	t.Helper()
+	variantID, err := uuid.NewV7()
+	if err != nil {
+		t.Fatalf("uuid: %v", err)
+	}
+	_, err = db.ExecContext(ctx, `
+		INSERT INTO episode_eye_catch_image_variants (
+			id, tenant_id, episode_eye_catch_image_id, label, variant_type,
+			storage_provider, object_key, content_type, file_size_bytes, width, height
+		)
+		VALUES ($1, $2, $3, $4, $5, 's3', $6, 'image/jpeg', 4096, $7, $8)
+	`,
+		variantID, tenantID, imageID,
+		variantType, variantType,
+		objectKeyFor(variantType, int(width)),
+		width, height,
+	)
+	if err != nil {
+		t.Fatalf("insert %s variant: %v", variantType, err)
+	}
+}

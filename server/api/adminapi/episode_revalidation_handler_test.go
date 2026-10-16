@@ -104,6 +104,7 @@ func TestReorderEpisodesRevalidatesTheSeriesDetail(t *testing.T) {
 		ExpectedEpisodeIds: []string{ids[0].String(), ids[1].String()},
 	}
 
+	expectNoEpisodeEyeCatches(mock, tenantID)
 	if _, err := client.ReorderEpisodes(testutil.WithBearer(context.Background(), sessionToken), req); err != nil {
 		t.Fatalf("ReorderEpisodes: %v", err)
 	}
@@ -271,6 +272,7 @@ func TestUpdateEpisodePublishScheduleRevalidatesTheSeriesDetailAndLists(t *testi
 		ScheduledAt: scheduledAt.Format(time.RFC3339),
 	}
 
+	expectNoEpisodeEyeCatches(mock, tenantID)
 	if _, err := client.UpdateEpisodePublishSchedule(testutil.WithBearer(context.Background(), sessionToken), req); err != nil {
 		t.Fatalf("UpdateEpisodePublishSchedule: %v", err)
 	}
@@ -304,6 +306,7 @@ func TestUpdateEpisodeAvailabilityRevalidatesTheSeriesDetailAndLists(t *testing.
 		Availability: publirattypesv1.SurfaceAvailability_SURFACE_AVAILABILITY_APP,
 	}
 
+	expectNoEpisodeEyeCatches(mock, tenantID)
 	if _, err := client.UpdateEpisodeAvailability(testutil.WithBearer(context.Background(), sessionToken), req); err != nil {
 		t.Fatalf("UpdateEpisodeAvailability: %v", err)
 	}
@@ -335,6 +338,7 @@ func TestUpdateEpisodeTitleRevalidatesTheSeriesDetail(t *testing.T) {
 		Title:     "Episode",
 	}
 
+	expectNoEpisodeEyeCatches(mock, tenantID)
 	if _, err := client.UpdateEpisodeTitle(testutil.WithBearer(context.Background(), sessionToken), req); err != nil {
 		t.Fatalf("UpdateEpisodeTitle: %v", err)
 	}
@@ -395,6 +399,7 @@ func TestUpdateEpisodePricingRevalidatesTheSeriesDetailAndLists(t *testing.T) {
 		ReadingPeriodHours: 48,
 	}
 
+	expectNoEpisodeEyeCatches(mock, tenantID)
 	if _, err := client.UpdateEpisodePricing(testutil.WithBearer(context.Background(), sessionToken), req); err != nil {
 		t.Fatalf("UpdateEpisodePricing: %v", err)
 	}

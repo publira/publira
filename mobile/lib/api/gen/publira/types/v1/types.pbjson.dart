@@ -642,6 +642,21 @@ const Episode$json = {
     },
     {'1': 'id', '3': 15, '4': 1, '5': 9, '10': 'id'},
     {'1': 'free_until', '3': 16, '4': 1, '5': 9, '10': 'freeUntil'},
+    {
+      '1': 'eye_catch_image_updated_at',
+      '3': 17,
+      '4': 1,
+      '5': 9,
+      '10': 'eyeCatchImageUpdatedAt'
+    },
+    {
+      '1': 'eye_catch_image_variants',
+      '3': 18,
+      '4': 3,
+      '5': 11,
+      '6': '.publira.types.v1.SeriesEyeCatchVariant',
+      '10': 'eyeCatchImageVariants'
+    },
   ],
 };
 
@@ -659,7 +674,10 @@ final $typed_data.Uint8List episodeDescriptor = $convert.base64Decode(
     'UucHVibGlyYS50eXBlcy52MS5TdXJmYWNlQXZhaWxhYmlsaXR5UgxhdmFpbGFiaWxpdHkSWgoV'
     'cHVyY2hhc2VfYXZhaWxhYmlsaXR5GA4gASgOMiUucHVibGlyYS50eXBlcy52MS5TdXJmYWNlQX'
     'ZhaWxhYmlsaXR5UhRwdXJjaGFzZUF2YWlsYWJpbGl0eRIOCgJpZBgPIAEoCVICaWQSHQoKZnJl'
-    'ZV91bnRpbBgQIAEoCVIJZnJlZVVudGls');
+    'ZV91bnRpbBgQIAEoCVIJZnJlZVVudGlsEjoKGmV5ZV9jYXRjaF9pbWFnZV91cGRhdGVkX2F0GB'
+    'EgASgJUhZleWVDYXRjaEltYWdlVXBkYXRlZEF0EmAKGGV5ZV9jYXRjaF9pbWFnZV92YXJpYW50'
+    'cxgSIAMoCzInLnB1YmxpcmEudHlwZXMudjEuU2VyaWVzRXllQ2F0Y2hWYXJpYW50UhVleWVDYX'
+    'RjaEltYWdlVmFyaWFudHM=');
 
 @$core.Deprecated('Use episodeImageDescriptor instead')
 const EpisodeImage$json = {

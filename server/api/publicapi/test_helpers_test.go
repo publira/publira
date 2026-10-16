@@ -129,6 +129,19 @@ func expectNextFreeEpisodeLookup(
 
 // expectEpisodePreviewImagesLookup registers the read of a withheld body's
 // opening pages, answered with one page per given image id at 1200x1800.
+// episodeEyeCatchVariantColumns are the columns of
+// ListEpisodeEyeCatchVariantsByEpisodeIDs, the read that fills the eye-catch
+// of the episodes an answer carries.
+var episodeEyeCatchVariantColumns = []string{"episode_id", "episode_eye_catch_image_id", "image_updated_at", "id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}
+
+// expectNoEpisodeEyeCatches answers that read for episodes none of which has
+// an eye-catch of its own.
+func expectNoEpisodeEyeCatches(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodeEyeCatchVariantsByEpisodeIDs)).
+		WithArgs(tenantID, sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows(episodeEyeCatchVariantColumns))
+}
+
 func expectEpisodePreviewImagesLookup(mock sqlmock.Sqlmock, episodeID uuid.UUID, imageIDs ...uuid.UUID) {
 	rows := sqlmock.NewRows([]string{"id", "display_order", "width", "height"})
 	for index, imageID := range imageIDs {

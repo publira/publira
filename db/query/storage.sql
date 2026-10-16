@@ -19,8 +19,8 @@
 -- in the integration test to confirm the index is eligible):
 --   ListReferencedObjectKeys
 --     -> idx_<entity>_image_variants_object_key, once per variant table
---   DeleteUnreferencedCreatorImages / ...GenreImages / ...LabelImages /
---   ...SeriesImages / ...TenantImages
+--   DeleteUnreferencedCreatorImages / ...EpisodeEyeCatchImages /
+--   ...GenreImages / ...LabelImages / ...SeriesImages / ...TenantImages
 --     -> no index; one anti-join per run over a table that holds one row per
 --        entity image
 --   DeleteUnreferencedUserImages
@@ -43,6 +43,7 @@ WHERE EXISTS (SELECT 1 FROM tenant_image_variants v WHERE v.object_key = c.objec
     OR EXISTS (SELECT 1 FROM genre_image_variants v WHERE v.object_key = c.object_key)
     OR EXISTS (SELECT 1 FROM creator_image_variants v WHERE v.object_key = c.object_key)
     OR EXISTS (SELECT 1 FROM episode_image_variants v WHERE v.object_key = c.object_key)
+    OR EXISTS (SELECT 1 FROM episode_eye_catch_image_variants v WHERE v.object_key = c.object_key)
     OR EXISTS (SELECT 1 FROM user_image_variants v WHERE v.object_key = c.object_key)
     OR EXISTS (SELECT 1 FROM reader_icon_preset_variants v WHERE v.object_key = c.object_key);
 
@@ -53,6 +54,11 @@ WHERE EXISTS (SELECT 1 FROM tenant_image_variants v WHERE v.object_key = c.objec
 DELETE FROM creator_images ci
 WHERE ci.created_at < @created_before
     AND NOT EXISTS (SELECT 1 FROM creators c WHERE c.icon_image_id = ci.id);
+
+-- name: DeleteUnreferencedEpisodeEyeCatchImages :execrows
+DELETE FROM episode_eye_catch_images ei
+WHERE ei.created_at < @created_before
+    AND NOT EXISTS (SELECT 1 FROM episodes e WHERE e.eye_catch_image_id = ei.id);
 
 -- name: DeleteUnreferencedGenreImages :execrows
 DELETE FROM genre_images gi

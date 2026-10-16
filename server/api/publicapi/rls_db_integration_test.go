@@ -125,6 +125,8 @@ var publicDataTables = []struct {
 	{name: "tenant_images", count: "SELECT count(*) FROM tenant_images"},
 	{name: "tenant_image_variants", count: "SELECT count(*) FROM tenant_image_variants"},
 	{name: "episode_images", count: "SELECT count(*) FROM episode_images"},
+	{name: "episode_eye_catch_images", count: "SELECT count(*) FROM episode_eye_catch_images"},
+	{name: "episode_eye_catch_image_variants", count: "SELECT count(*) FROM episode_eye_catch_image_variants"},
 	// The tenant's own settings, which every storefront page reads to decide
 	// how it looks and what it allows.
 	{name: "tenant_config", count: "SELECT count(*) FROM tenant_config"},
@@ -322,6 +324,12 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 		(id, tenant_id, genre_image_id, label, variant_type, storage_provider, object_key, content_type, file_size_bytes, width, height)
 		VALUES ($1, $2, $3, 'portrait-320', 'portrait', 's3', 'tenants/genre.webp', 'image/webp', 1, 320, 480)`,
 		uuid.Must(uuid.NewV7()), first.ID, genreImageID)
+	episodeEyeCatchImageID := uuid.Must(uuid.NewV7())
+	seed("episode eye-catch image", "INSERT INTO episode_eye_catch_images (id, tenant_id, episode_id) VALUES ($1, $2, $3)", episodeEyeCatchImageID, first.ID, episode.ID)
+	seed("episode eye-catch image variant", `INSERT INTO episode_eye_catch_image_variants
+		(id, tenant_id, episode_eye_catch_image_id, label, variant_type, storage_provider, object_key, content_type, file_size_bytes, width, height)
+		VALUES ($1, $2, $3, 'portrait-320', 'portrait', 's3', 'tenants/episode-eye-catch.webp', 'image/webp', 1, 320, 480)`,
+		uuid.Must(uuid.NewV7()), first.ID, episodeEyeCatchImageID)
 	tenantImageID := uuid.Must(uuid.NewV7())
 	seed("tenant image", "INSERT INTO tenant_images (id, tenant_id) VALUES ($1, $2)", tenantImageID, first.ID)
 	seed("tenant image variant", `INSERT INTO tenant_image_variants

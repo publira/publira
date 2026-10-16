@@ -730,6 +730,56 @@ message UploadSeriesEyeCatchAspectImageResponse {
   publira.types.v1.Series series = 1;
 }
 
+// Gives one episode an eye-catch of its own, replacing the one it has. All
+// four ratios are cut out of the one image, from its centre, the way a series
+// eye-catch uploaded with the series is; UploadEpisodeEyeCatchAspectImage then
+// replaces a ratio on its own.
+message UploadEpisodeEyeCatchImageRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_id = 2;
+  // image/jpeg, image/png, or image/webp, at most 10 MB.
+  bytes image_data = 3;
+  // Empty is detected from image_data.
+  string image_content_type = 4;
+}
+
+message UploadEpisodeEyeCatchImageResponse {
+  // Carries the resolved values, as GetEpisode does.
+  publira.types.v1.Episode episode = 1;
+}
+
+// Replaces the image of one aspect ratio of an episode eye-catch, as
+// UploadSeriesEyeCatchAspectImage does for a series. An episode with no
+// eye-catch yet is failed_precondition.
+message UploadEpisodeEyeCatchAspectImageRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_id = 2;
+  // portrait / square / landscape / og
+  string variant_type = 3;
+  bytes image_data = 4;
+  string image_content_type = 5;
+  // Where in the upload the cut is taken. Omitted, the image is cut from its
+  // centre.
+  publira.types.v1.ImageCropRect crop = 6;
+}
+
+message UploadEpisodeEyeCatchAspectImageResponse {
+  // Carries the resolved values, as GetEpisode does.
+  publira.types.v1.Episode episode = 1;
+}
+
+// Takes an episode's eye-catch away, so a client shows its series' in its
+// place. An episode with none is left as it is.
+message DeleteEpisodeEyeCatchImageRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_id = 2;
+}
+
+message DeleteEpisodeEyeCatchImageResponse {
+  // Carries the resolved values, as GetEpisode does.
+  publira.types.v1.Episode episode = 1;
+}
+
 // A scheduled period during which an episode reads as free to everyone. The
 // episode keeps its price, which is what it costs again once the window closes.
 message AdminEpisodeFreeWindow {
@@ -951,6 +1001,12 @@ service AdminSeriesService {
   rpc BulkEditEpisodeCredits(BulkEditEpisodeCreditsRequest) returns (BulkEditEpisodeCreditsResponse) {}
   // Minimum role: tenant_editor.
   rpc UploadSeriesEyeCatchAspectImage(UploadSeriesEyeCatchAspectImageRequest) returns (UploadSeriesEyeCatchAspectImageResponse) {}
+  // Minimum role: tenant_editor.
+  rpc UploadEpisodeEyeCatchImage(UploadEpisodeEyeCatchImageRequest) returns (UploadEpisodeEyeCatchImageResponse) {}
+  // Minimum role: tenant_editor.
+  rpc UploadEpisodeEyeCatchAspectImage(UploadEpisodeEyeCatchAspectImageRequest) returns (UploadEpisodeEyeCatchAspectImageResponse) {}
+  // Minimum role: tenant_editor.
+  rpc DeleteEpisodeEyeCatchImage(DeleteEpisodeEyeCatchImageRequest) returns (DeleteEpisodeEyeCatchImageResponse) {}
   // Minimum role: tenant_editor.
   rpc CreateEpisodeFreeWindow(CreateEpisodeFreeWindowRequest) returns (CreateEpisodeFreeWindowResponse) {}
   // Minimum role: tenant_editor.

@@ -59,7 +59,7 @@ INSERT INTO episodes (
         purchase_availability
     )
 VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, series_id, public_id, order_index, created_at, tenant_id, reading_direction, spread_start_index, availability, purchase_availability
+RETURNING id, series_id, public_id, order_index, created_at, tenant_id, reading_direction, spread_start_index, availability, purchase_availability, eye_catch_image_id
 `
 
 type CreateEpisodeBaseParams struct {
@@ -94,6 +94,7 @@ func (q *Queries) CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBasePa
 		&i.SpreadStartIndex,
 		&i.Availability,
 		&i.PurchaseAvailability,
+		&i.EyeCatchImageID,
 	)
 	return i, err
 }

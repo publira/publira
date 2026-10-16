@@ -332,6 +332,7 @@
         "episode_updated": "エピソード更新",
         "episode_translation_deleted": "エピソードの翻訳の削除",
         "episode_image_uploaded": "エピソード本文画像のアップロード",
+        "episode_eye_catch_aspect_image_uploaded": "エピソードのアイキャッチ画像アップロード",
         "episode_credits_replaced": "エピソードの著者更新",
         "episode_credits_bulk_edited": "複数エピソードの著者の一括編集",
         "episode_free_window_created": "無料公開期間の追加",

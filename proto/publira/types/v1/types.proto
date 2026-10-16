@@ -316,6 +316,13 @@ message Episode {
   // on the console's reads, and in the lists that carry an episode as a link
   // without a price.
   string free_until = 16;
+  // The episode's own eye-catch, in the shape Series carries one. Empty when
+  // the episode has none, which is not an error to show: the series' eye-catch
+  // stands in for it. Set on GetEpisodeDetail, on the episodes GetSeriesDetail
+  // lists, and on the console's episode reads and the episode writes that
+  // answer in their shape; empty elsewhere.
+  string eye_catch_image_updated_at = 17;
+  repeated SeriesEyeCatchVariant eye_catch_image_variants = 18;
 }
 
 // Which way the pages of a work are turned. A series states it for every one
