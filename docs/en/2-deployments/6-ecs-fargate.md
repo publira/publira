@@ -1049,13 +1049,13 @@ The load balancer already keeps the consoles' APIs off the internet, but the `pu
 
 Its task definition is `publira-server.json` with the family and the container named `publira-storefront`, `["server", "--role", "storefront"]` as its command, and only the secrets that role reads: the encryption keys, `PUBLIRA_AUTH_JWT_SECRET`, `PUBLIRA_REVALIDATE_TOKEN`, `PUBLIRA_REDIS_URL`, and `PUBLIRA_PUBLIC_DB_URL`. Give it a target group of its own, `publira-storefront` on port `8000`, and create its service with the `publira-server` security group and no Cloud Map name, since nothing but the load balancer calls it.
 
-Then add one rule ahead of the server's, which sends the tenants' domains to it:
+Then add rules ahead of the server's, which send the tenants' domains to it:
 
 | Priority | Host | Path | Forwards to |
 | --- | --- | --- | --- |
-| `900` | A tenant's domain | `/images*`, `/rpc/publira.v1.*`, `/api/publira.v1.*` | `publira-storefront` |
+| `900` to `999` | A tenant's domain | `/images*`, `/rpc/publira.v1.*`, `/api/publira.v1.*` | `publira-storefront` |
 
-The console hosts and the web apps keep reaching `publira-server`, which serves every role: `web-admin` calls the public API as well as the console's, through its one `PUBLIRA_GRPC_URL`. Each new tenant's domain is then added to this rule as well.
+The console hosts and the web apps keep reaching `publira-server`, which serves every role: `web-admin` calls the public API as well as the console's, through its one `PUBLIRA_GRPC_URL`. The three paths leave room for two host names among the five values a rule takes, so a rule in this band serves the domains of two tenants at most: add a new tenant's domain to a rule that names one, or give it a rule of its own at the next free priority in the band.
 
 The load balancer answers a console API with `404` on every host either way, so check that the tenants' domains reach the new service instead: `aws elbv2 describe-target-health --target-group-arn <the publira-storefront target group ARN>` lists its tasks as `healthy`, and the public API call in [Check the edge](#check-the-edge) still answers `invalid_argument` on the tenant's domain, now from `publira-storefront`.
 
