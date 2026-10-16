@@ -245,6 +245,22 @@ const requestPage = (url: string, signal: AbortSignal): Promise<Response> =>
   });
 
 /**
+ * The URL `renewPageUrl` answers, or `undefined` where it fails: a renewal
+ * that cannot be had leaves the page refused, with its reload control, rather
+ * than failing it with the renewal's own error.
+ */
+const renewOrNothing = async (
+  renewPageUrl: RenewPageUrl,
+  page: ViewerPage
+): Promise<string | undefined> => {
+  try {
+    return await renewPageUrl(page);
+  } catch {
+    return undefined;
+  }
+};
+
+/**
  * The plugin every page is fetched through: it sends the `Accept` header
  * image-server resizes by, and decrypts a page delivered encrypted.
  *
@@ -264,7 +280,7 @@ export const createImageFetchPlugin = (renewPageUrl?: RenewPageUrl) => {
       let source = renewedUrls.get(page.id) ?? url;
       let response = await requestPage(source, signal);
       if (renewPageUrl && RENEWABLE_STATUSES.has(response.status)) {
-        const renewed = await renewPageUrl(page);
+        const renewed = await renewOrNothing(renewPageUrl, page);
         if (renewed !== undefined && renewed !== source) {
           renewedUrls.set(page.id, renewed);
           source = renewed;

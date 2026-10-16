@@ -291,6 +291,20 @@ describe("createImageFetchPlugin", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it("fails the page as refused when the renewal itself fails", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(null, { status: 403 }))
+    );
+    const plugin = createImageFetchPlugin(() =>
+      Promise.reject(new Error("the session ended"))
+    );
+
+    await expect(fetchWith(plugin, page("?t=expired"))).rejects.toThrow(
+      "page request failed with 403"
+    );
+  });
+
   it("leaves a failure that is not a refusal to the reload control", async () => {
     vi.stubGlobal(
       "fetch",
