@@ -43,12 +43,20 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "series_wait_free_settings_updated",
             },
             {
+              label: t("admin.audit.actions.series_translation_deleted"),
+              value: "series_translation_deleted",
+            },
+            {
               label: t("admin.audit.actions.episode_created"),
               value: "episode_created",
             },
             {
               label: t("admin.audit.actions.episode_updated"),
               value: "episode_updated",
+            },
+            {
+              label: t("admin.audit.actions.episode_translation_deleted"),
+              value: "episode_translation_deleted",
             },
             {
               label: t("admin.audit.actions.episode_image_uploaded"),
