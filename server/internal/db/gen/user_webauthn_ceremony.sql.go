@@ -12,51 +12,34 @@ import (
 	"github.com/google/uuid"
 )
 
-const LockUserWebauthnCeremonies = `-- name: LockUserWebauthnCeremonies :exec
-
-SELECT pg_advisory_xact_lock(
-    hashtextextended(
-        'user_webauthn_ceremonies:' || $1::uuid::text || ':' || $2::text,
-        0
-    )
-)
-`
-
-type LockUserWebauthnCeremoniesParams struct {
-	UserID   uuid.UUID `json:"user_id"`
-	Ceremony string    `json:"ceremony"`
-}
-
-// WebAuthn ceremonies between their begin and their finish.
-// Serialises the begins of one account's ceremonies of one kind for the rest
-// of the transaction. StartUserWebauthnCeremony counts what is open and adds to
-// it in one statement, and two of those running at once would each count from
-// the same snapshot and both stay within the cap they then exceed together.
-func (q *Queries) LockUserWebauthnCeremonies(ctx context.Context, arg LockUserWebauthnCeremoniesParams) error {
-	_, err := q.db.ExecContext(ctx, LockUserWebauthnCeremonies, arg.UserID, arg.Ceremony)
-	return err
-}
-
-const SpendUserWebauthnCeremony = `-- name: SpendUserWebauthnCeremony :one
-DELETE FROM user_webauthn_ceremonies
+const GetUserWebauthnCeremony = `-- name: GetUserWebauthnCeremony :one
+SELECT challenge, tenant_id, user_id, ceremony, rp_id, expires_at, created_at, relying_party
+FROM user_webauthn_ceremonies
 WHERE challenge = $1
-    AND user_id = $2
-    AND ceremony = $3
-RETURNING challenge, tenant_id, user_id, ceremony, rp_id, expires_at, created_at
+    AND user_id = $2::uuid
+    AND relying_party = $3
+    AND ceremony = $4
 `
 
-type SpendUserWebauthnCeremonyParams struct {
-	Challenge string    `json:"challenge"`
-	UserID    uuid.UUID `json:"user_id"`
-	Ceremony  string    `json:"ceremony"`
+type GetUserWebauthnCeremonyParams struct {
+	Challenge    string    `json:"challenge"`
+	UserID       uuid.UUID `json:"user_id"`
+	RelyingParty string    `json:"relying_party"`
+	Ceremony     string    `json:"ceremony"`
 }
 
-// The DELETE is the claim on the ceremony: two finishes presenting the same
-// challenge both look for it, and only the one whose delete returns the row
-// may verify against it. A ceremony is spent whatever the verification then
-// answers, so a refused response cannot be retried against the same challenge.
-func (q *Queries) SpendUserWebauthnCeremony(ctx context.Context, arg SpendUserWebauthnCeremonyParams) (UserWebauthnCeremony, error) {
-	row := q.db.QueryRowContext(ctx, SpendUserWebauthnCeremony, arg.Challenge, arg.UserID, arg.Ceremony)
+// Reads an account's ceremony without spending it, for an assertion that
+// confirms a request and is verified before that request writes anything.
+// SpendUserWebauthnCeremony is still what claims it, inside the request's
+// transaction, so two requests verifying the same assertion cannot both act
+// on it.
+func (q *Queries) GetUserWebauthnCeremony(ctx context.Context, arg GetUserWebauthnCeremonyParams) (UserWebauthnCeremony, error) {
+	row := q.db.QueryRowContext(ctx, GetUserWebauthnCeremony,
+		arg.Challenge,
+		arg.UserID,
+		arg.RelyingParty,
+		arg.Ceremony,
+	)
 	var i UserWebauthnCeremony
 	err := row.Scan(
 		&i.Challenge,
@@ -66,8 +49,153 @@ func (q *Queries) SpendUserWebauthnCeremony(ctx context.Context, arg SpendUserWe
 		&i.RpID,
 		&i.ExpiresAt,
 		&i.CreatedAt,
+		&i.RelyingParty,
 	)
 	return i, err
+}
+
+const LockUserWebauthnCeremonies = `-- name: LockUserWebauthnCeremonies :exec
+
+SELECT pg_advisory_xact_lock(
+    hashtextextended(
+        'user_webauthn_ceremonies:' || $1::uuid::text || ':' || $2::text || ':' || $3::text,
+        0
+    )
+)
+`
+
+type LockUserWebauthnCeremoniesParams struct {
+	UserID       uuid.UUID `json:"user_id"`
+	RelyingParty string    `json:"relying_party"`
+	Ceremony     string    `json:"ceremony"`
+}
+
+// WebAuthn ceremonies between their begin and their finish.
+// Serialises the begins of one account's ceremonies of one kind on one relying
+// party for the rest of the transaction. StartUserWebauthnCeremony counts what is open and adds to
+// it in one statement, and two of those running at once would each count from
+// the same snapshot and both stay within the cap they then exceed together.
+func (q *Queries) LockUserWebauthnCeremonies(ctx context.Context, arg LockUserWebauthnCeremoniesParams) error {
+	_, err := q.db.ExecContext(ctx, LockUserWebauthnCeremonies, arg.UserID, arg.RelyingParty, arg.Ceremony)
+	return err
+}
+
+const SpendSiteSignInCeremony = `-- name: SpendSiteSignInCeremony :one
+DELETE FROM user_webauthn_ceremonies
+WHERE challenge = $1
+    AND user_id IS NULL
+    AND relying_party = 'site'
+    AND ceremony = 'authentication'
+RETURNING challenge, tenant_id, user_id, ceremony, rp_id, expires_at, created_at, relying_party
+`
+
+// The claim on a sign-in ceremony, as SpendUserWebauthnCeremony is on an
+// account's: only the finish whose delete returns the row verifies against it.
+func (q *Queries) SpendSiteSignInCeremony(ctx context.Context, challenge string) (UserWebauthnCeremony, error) {
+	row := q.db.QueryRowContext(ctx, SpendSiteSignInCeremony, challenge)
+	var i UserWebauthnCeremony
+	err := row.Scan(
+		&i.Challenge,
+		&i.TenantID,
+		&i.UserID,
+		&i.Ceremony,
+		&i.RpID,
+		&i.ExpiresAt,
+		&i.CreatedAt,
+		&i.RelyingParty,
+	)
+	return i, err
+}
+
+const SpendUserWebauthnCeremony = `-- name: SpendUserWebauthnCeremony :one
+DELETE FROM user_webauthn_ceremonies
+WHERE challenge = $1
+    AND user_id = $2::uuid
+    AND relying_party = $3
+    AND ceremony = $4
+RETURNING challenge, tenant_id, user_id, ceremony, rp_id, expires_at, created_at, relying_party
+`
+
+type SpendUserWebauthnCeremonyParams struct {
+	Challenge    string    `json:"challenge"`
+	UserID       uuid.UUID `json:"user_id"`
+	RelyingParty string    `json:"relying_party"`
+	Ceremony     string    `json:"ceremony"`
+}
+
+// The DELETE is the claim on the ceremony: two finishes presenting the same
+// challenge both look for it, and only the one whose delete returns the row
+// may verify against it. A ceremony is spent whatever the verification then
+// answers, so a refused response cannot be retried against the same challenge.
+func (q *Queries) SpendUserWebauthnCeremony(ctx context.Context, arg SpendUserWebauthnCeremonyParams) (UserWebauthnCeremony, error) {
+	row := q.db.QueryRowContext(ctx, SpendUserWebauthnCeremony,
+		arg.Challenge,
+		arg.UserID,
+		arg.RelyingParty,
+		arg.Ceremony,
+	)
+	var i UserWebauthnCeremony
+	err := row.Scan(
+		&i.Challenge,
+		&i.TenantID,
+		&i.UserID,
+		&i.Ceremony,
+		&i.RpID,
+		&i.ExpiresAt,
+		&i.CreatedAt,
+		&i.RelyingParty,
+	)
+	return i, err
+}
+
+const StartSiteSignInCeremony = `-- name: StartSiteSignInCeremony :exec
+WITH expired AS (
+    DELETE FROM user_webauthn_ceremonies
+    WHERE user_id IS NULL
+        AND expires_at < now()
+)
+INSERT INTO user_webauthn_ceremonies (
+        challenge,
+        tenant_id,
+        user_id,
+        relying_party,
+        ceremony,
+        rp_id,
+        expires_at
+    )
+VALUES (
+        $1,
+        $2,
+        NULL,
+        'site',
+        'authentication',
+        $3,
+        $4
+    )
+`
+
+type StartSiteSignInCeremonyParams struct {
+	Challenge string    `json:"challenge"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+	RpID      string    `json:"rp_id"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+// A storefront sign-in names no account when it begins: the authenticator
+// picks a discoverable credential, and the credential names the account. The
+// row is therefore the tenant's rather than an account's, and there is no
+// account whose open ceremonies could be capped. The begin that stores it is
+// charged against the caller's sign-in allowance instead, and drops the
+// tenant's sign-in ceremonies that expired unfinished, so what the table
+// holds of them is what was begun in the last few minutes.
+func (q *Queries) StartSiteSignInCeremony(ctx context.Context, arg StartSiteSignInCeremonyParams) error {
+	_, err := q.db.ExecContext(ctx, StartSiteSignInCeremony,
+		arg.Challenge,
+		arg.TenantID,
+		arg.RpID,
+		arg.ExpiresAt,
+	)
+	return err
 }
 
 const StartUserWebauthnCeremony = `-- name: StartUserWebauthnCeremony :exec
@@ -76,15 +204,17 @@ WITH abandoned AS (
     WHERE user_webauthn_ceremonies.challenge IN (
             SELECT c.challenge
             FROM user_webauthn_ceremonies c
-            WHERE c.user_id = $3
-                AND c.ceremony = $4
+            WHERE c.user_id = $3::uuid
+                AND c.relying_party = $4
+                AND c.ceremony = $5
             ORDER BY c.created_at DESC,
                 c.challenge
-            OFFSET $7::int - 1
+            OFFSET $8::int - 1
         )
         OR (
-            user_webauthn_ceremonies.user_id = $3
-            AND user_webauthn_ceremonies.ceremony = $4
+            user_webauthn_ceremonies.user_id = $3::uuid
+            AND user_webauthn_ceremonies.relying_party = $4
+            AND user_webauthn_ceremonies.ceremony = $5
             AND user_webauthn_ceremonies.expires_at < now()
         )
 )
@@ -92,6 +222,7 @@ INSERT INTO user_webauthn_ceremonies (
         challenge,
         tenant_id,
         user_id,
+        relying_party,
         ceremony,
         rp_id,
         expires_at
@@ -99,27 +230,29 @@ INSERT INTO user_webauthn_ceremonies (
 VALUES (
         $1,
         $2,
-        $3,
+        $3::uuid,
         $4,
         $5,
-        $6
+        $6,
+        $7
     )
 `
 
 type StartUserWebauthnCeremonyParams struct {
-	Challenge string    `json:"challenge"`
-	TenantID  uuid.UUID `json:"tenant_id"`
-	UserID    uuid.UUID `json:"user_id"`
-	Ceremony  string    `json:"ceremony"`
-	RpID      string    `json:"rp_id"`
-	ExpiresAt time.Time `json:"expires_at"`
-	MaxOpen   int32     `json:"max_open"`
+	Challenge    string    `json:"challenge"`
+	TenantID     uuid.UUID `json:"tenant_id"`
+	UserID       uuid.UUID `json:"user_id"`
+	RelyingParty string    `json:"relying_party"`
+	Ceremony     string    `json:"ceremony"`
+	RpID         string    `json:"rp_id"`
+	ExpiresAt    time.Time `json:"expires_at"`
+	MaxOpen      int32     `json:"max_open"`
 }
 
 // Ceremonies of one account run side by side, so a second tab or device does
 // not void the first. Beginning one drops the account's expired ceremonies of
-// the same kind and all but the newest that, with this one, make up
-// max_open, which bounds what a caller who keeps calling a begin can leave in
+// the same kind on the same relying party and all but the newest that, with
+// this one, make up max_open, which bounds what a caller who keeps calling a begin can leave in
 // the table.
 // The caller holds LockUserWebauthnCeremonies, so the open ceremonies this
 // counts are the ones there are.
@@ -128,6 +261,7 @@ func (q *Queries) StartUserWebauthnCeremony(ctx context.Context, arg StartUserWe
 		arg.Challenge,
 		arg.TenantID,
 		arg.UserID,
+		arg.RelyingParty,
 		arg.Ceremony,
 		arg.RpID,
 		arg.ExpiresAt,

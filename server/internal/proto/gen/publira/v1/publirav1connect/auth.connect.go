@@ -36,6 +36,27 @@ const (
 	AuthServiceUnlinkIdentityProcedure = "/publira.v1.AuthService/UnlinkIdentity"
 	// AuthServiceLinkIdentityProcedure is the procedure name of the AuthService's LinkIdentity RPC.
 	AuthServiceLinkIdentityProcedure = "/publira.v1.AuthService/LinkIdentity"
+	// AuthServiceBeginPasskeyLoginProcedure is the procedure name of the AuthService's
+	// BeginPasskeyLogin RPC.
+	AuthServiceBeginPasskeyLoginProcedure = "/publira.v1.AuthService/BeginPasskeyLogin"
+	// AuthServiceFinishPasskeyLoginProcedure is the procedure name of the AuthService's
+	// FinishPasskeyLogin RPC.
+	AuthServiceFinishPasskeyLoginProcedure = "/publira.v1.AuthService/FinishPasskeyLogin"
+	// AuthServiceBeginPasskeyRegistrationProcedure is the procedure name of the AuthService's
+	// BeginPasskeyRegistration RPC.
+	AuthServiceBeginPasskeyRegistrationProcedure = "/publira.v1.AuthService/BeginPasskeyRegistration"
+	// AuthServiceFinishPasskeyRegistrationProcedure is the procedure name of the AuthService's
+	// FinishPasskeyRegistration RPC.
+	AuthServiceFinishPasskeyRegistrationProcedure = "/publira.v1.AuthService/FinishPasskeyRegistration"
+	// AuthServiceListMyPasskeysProcedure is the procedure name of the AuthService's ListMyPasskeys RPC.
+	AuthServiceListMyPasskeysProcedure = "/publira.v1.AuthService/ListMyPasskeys"
+	// AuthServiceRenamePasskeyProcedure is the procedure name of the AuthService's RenamePasskey RPC.
+	AuthServiceRenamePasskeyProcedure = "/publira.v1.AuthService/RenamePasskey"
+	// AuthServiceDeletePasskeyProcedure is the procedure name of the AuthService's DeletePasskey RPC.
+	AuthServiceDeletePasskeyProcedure = "/publira.v1.AuthService/DeletePasskey"
+	// AuthServiceBeginPasskeyConfirmationProcedure is the procedure name of the AuthService's
+	// BeginPasskeyConfirmation RPC.
+	AuthServiceBeginPasskeyConfirmationProcedure = "/publira.v1.AuthService/BeginPasskeyConfirmation"
 	// AuthServiceCreateUserProcedure is the procedure name of the AuthService's CreateUser RPC.
 	AuthServiceCreateUserProcedure = "/publira.v1.AuthService/CreateUser"
 	// AuthServiceVerifyUserEmailProcedure is the procedure name of the AuthService's VerifyUserEmail
@@ -141,6 +162,62 @@ var (
 			StreamType: connect.StreamTypeUnary,
 			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("LinkIdentity"),
 			Procedure:  AuthServiceLinkIdentityProcedure,
+		}
+	})
+	authServiceBeginPasskeyLoginSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("BeginPasskeyLogin"),
+			Procedure:  AuthServiceBeginPasskeyLoginProcedure,
+		}
+	})
+	authServiceFinishPasskeyLoginSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("FinishPasskeyLogin"),
+			Procedure:  AuthServiceFinishPasskeyLoginProcedure,
+		}
+	})
+	authServiceBeginPasskeyRegistrationSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("BeginPasskeyRegistration"),
+			Procedure:  AuthServiceBeginPasskeyRegistrationProcedure,
+		}
+	})
+	authServiceFinishPasskeyRegistrationSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("FinishPasskeyRegistration"),
+			Procedure:  AuthServiceFinishPasskeyRegistrationProcedure,
+		}
+	})
+	authServiceListMyPasskeysSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("ListMyPasskeys"),
+			Procedure:  AuthServiceListMyPasskeysProcedure,
+		}
+	})
+	authServiceRenamePasskeySpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("RenamePasskey"),
+			Procedure:  AuthServiceRenamePasskeyProcedure,
+		}
+	})
+	authServiceDeletePasskeySpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("DeletePasskey"),
+			Procedure:  AuthServiceDeletePasskeyProcedure,
+		}
+	})
+	authServiceBeginPasskeyConfirmationSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_auth_proto.Services().ByName("AuthService").Methods().ByName("BeginPasskeyConfirmation"),
+			Procedure:  AuthServiceBeginPasskeyConfirmationProcedure,
 		}
 	})
 	authServiceCreateUserSpec = sync.OnceValue(func() connect.Spec {
@@ -334,6 +411,14 @@ type AuthServiceClient interface {
 	ListMyIdentities(context.Context, *v1.ListMyIdentitiesRequest) (*v1.ListMyIdentitiesResponse, error)
 	UnlinkIdentity(context.Context, *v1.UnlinkIdentityRequest) (*v1.UnlinkIdentityResponse, error)
 	LinkIdentity(context.Context, *v1.LinkIdentityRequest) (*v1.LinkIdentityResponse, error)
+	BeginPasskeyLogin(context.Context, *v1.BeginPasskeyLoginRequest) (*v1.BeginPasskeyLoginResponse, error)
+	FinishPasskeyLogin(context.Context, *v1.FinishPasskeyLoginRequest) (*v1.FinishPasskeyLoginResponse, error)
+	BeginPasskeyRegistration(context.Context, *v1.BeginPasskeyRegistrationRequest) (*v1.BeginPasskeyRegistrationResponse, error)
+	FinishPasskeyRegistration(context.Context, *v1.FinishPasskeyRegistrationRequest) (*v1.FinishPasskeyRegistrationResponse, error)
+	ListMyPasskeys(context.Context, *v1.ListMyPasskeysRequest) (*v1.ListMyPasskeysResponse, error)
+	RenamePasskey(context.Context, *v1.RenamePasskeyRequest) (*v1.RenamePasskeyResponse, error)
+	DeletePasskey(context.Context, *v1.DeletePasskeyRequest) (*v1.DeletePasskeyResponse, error)
+	BeginPasskeyConfirmation(context.Context, *v1.BeginPasskeyConfirmationRequest) (*v1.BeginPasskeyConfirmationResponse, error)
 	CreateUser(context.Context, *v1.CreateUserRequest) (*v1.CreateUserResponse, error)
 	VerifyUserEmail(context.Context, *v1.VerifyUserEmailRequest) (*v1.VerifyUserEmailResponse, error)
 	RequestEmailVerification(context.Context, *v1.RequestEmailVerificationRequest) (*v1.RequestEmailVerificationResponse, error)
@@ -396,6 +481,14 @@ type AuthServiceHandler interface {
 	ListMyIdentities(context.Context, *v1.ListMyIdentitiesRequest) (*v1.ListMyIdentitiesResponse, error)
 	UnlinkIdentity(context.Context, *v1.UnlinkIdentityRequest) (*v1.UnlinkIdentityResponse, error)
 	LinkIdentity(context.Context, *v1.LinkIdentityRequest) (*v1.LinkIdentityResponse, error)
+	BeginPasskeyLogin(context.Context, *v1.BeginPasskeyLoginRequest) (*v1.BeginPasskeyLoginResponse, error)
+	FinishPasskeyLogin(context.Context, *v1.FinishPasskeyLoginRequest) (*v1.FinishPasskeyLoginResponse, error)
+	BeginPasskeyRegistration(context.Context, *v1.BeginPasskeyRegistrationRequest) (*v1.BeginPasskeyRegistrationResponse, error)
+	FinishPasskeyRegistration(context.Context, *v1.FinishPasskeyRegistrationRequest) (*v1.FinishPasskeyRegistrationResponse, error)
+	ListMyPasskeys(context.Context, *v1.ListMyPasskeysRequest) (*v1.ListMyPasskeysResponse, error)
+	RenamePasskey(context.Context, *v1.RenamePasskeyRequest) (*v1.RenamePasskeyResponse, error)
+	DeletePasskey(context.Context, *v1.DeletePasskeyRequest) (*v1.DeletePasskeyResponse, error)
+	BeginPasskeyConfirmation(context.Context, *v1.BeginPasskeyConfirmationRequest) (*v1.BeginPasskeyConfirmationResponse, error)
 	CreateUser(context.Context, *v1.CreateUserRequest) (*v1.CreateUserResponse, error)
 	VerifyUserEmail(context.Context, *v1.VerifyUserEmailRequest) (*v1.VerifyUserEmailResponse, error)
 	RequestEmailVerification(context.Context, *v1.RequestEmailVerificationRequest) (*v1.RequestEmailVerificationResponse, error)
@@ -454,6 +547,14 @@ func RegisterAuthServiceHandler(server *connect.Server, svc AuthServiceHandler) 
 		connect.Method{Spec: authServiceListMyIdentitiesSpec(), Handler: adapter.listMyIdentities},
 		connect.Method{Spec: authServiceUnlinkIdentitySpec(), Handler: adapter.unlinkIdentity},
 		connect.Method{Spec: authServiceLinkIdentitySpec(), Handler: adapter.linkIdentity},
+		connect.Method{Spec: authServiceBeginPasskeyLoginSpec(), Handler: adapter.beginPasskeyLogin},
+		connect.Method{Spec: authServiceFinishPasskeyLoginSpec(), Handler: adapter.finishPasskeyLogin},
+		connect.Method{Spec: authServiceBeginPasskeyRegistrationSpec(), Handler: adapter.beginPasskeyRegistration},
+		connect.Method{Spec: authServiceFinishPasskeyRegistrationSpec(), Handler: adapter.finishPasskeyRegistration},
+		connect.Method{Spec: authServiceListMyPasskeysSpec(), Handler: adapter.listMyPasskeys},
+		connect.Method{Spec: authServiceRenamePasskeySpec(), Handler: adapter.renamePasskey},
+		connect.Method{Spec: authServiceDeletePasskeySpec(), Handler: adapter.deletePasskey},
+		connect.Method{Spec: authServiceBeginPasskeyConfirmationSpec(), Handler: adapter.beginPasskeyConfirmation},
 		connect.Method{Spec: authServiceCreateUserSpec(), Handler: adapter.createUser},
 		connect.Method{Spec: authServiceVerifyUserEmailSpec(), Handler: adapter.verifyUserEmail},
 		connect.Method{Spec: authServiceRequestEmailVerificationSpec(), Handler: adapter.requestEmailVerification},
@@ -504,6 +605,38 @@ func (UnimplementedAuthServiceHandler) UnlinkIdentity(context.Context, *v1.Unlin
 
 func (UnimplementedAuthServiceHandler) LinkIdentity(context.Context, *v1.LinkIdentityRequest) (*v1.LinkIdentityResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.LinkIdentity is not implemented")
+}
+
+func (UnimplementedAuthServiceHandler) BeginPasskeyLogin(context.Context, *v1.BeginPasskeyLoginRequest) (*v1.BeginPasskeyLoginResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.BeginPasskeyLogin is not implemented")
+}
+
+func (UnimplementedAuthServiceHandler) FinishPasskeyLogin(context.Context, *v1.FinishPasskeyLoginRequest) (*v1.FinishPasskeyLoginResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.FinishPasskeyLogin is not implemented")
+}
+
+func (UnimplementedAuthServiceHandler) BeginPasskeyRegistration(context.Context, *v1.BeginPasskeyRegistrationRequest) (*v1.BeginPasskeyRegistrationResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.BeginPasskeyRegistration is not implemented")
+}
+
+func (UnimplementedAuthServiceHandler) FinishPasskeyRegistration(context.Context, *v1.FinishPasskeyRegistrationRequest) (*v1.FinishPasskeyRegistrationResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.FinishPasskeyRegistration is not implemented")
+}
+
+func (UnimplementedAuthServiceHandler) ListMyPasskeys(context.Context, *v1.ListMyPasskeysRequest) (*v1.ListMyPasskeysResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.ListMyPasskeys is not implemented")
+}
+
+func (UnimplementedAuthServiceHandler) RenamePasskey(context.Context, *v1.RenamePasskeyRequest) (*v1.RenamePasskeyResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.RenamePasskey is not implemented")
+}
+
+func (UnimplementedAuthServiceHandler) DeletePasskey(context.Context, *v1.DeletePasskeyRequest) (*v1.DeletePasskeyResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.DeletePasskey is not implemented")
+}
+
+func (UnimplementedAuthServiceHandler) BeginPasskeyConfirmation(context.Context, *v1.BeginPasskeyConfirmationRequest) (*v1.BeginPasskeyConfirmationResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.AuthService.BeginPasskeyConfirmation is not implemented")
 }
 
 func (UnimplementedAuthServiceHandler) CreateUser(context.Context, *v1.CreateUserRequest) (*v1.CreateUserResponse, error) {
@@ -649,6 +782,70 @@ func (c *authServiceClient) UnlinkIdentity(ctx context.Context, req *v1.UnlinkId
 func (c *authServiceClient) LinkIdentity(ctx context.Context, req *v1.LinkIdentityRequest) (*v1.LinkIdentityResponse, error) {
 	var res v1.LinkIdentityResponse
 	if err := c.client.CallUnary(ctx, authServiceLinkIdentitySpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) BeginPasskeyLogin(ctx context.Context, req *v1.BeginPasskeyLoginRequest) (*v1.BeginPasskeyLoginResponse, error) {
+	var res v1.BeginPasskeyLoginResponse
+	if err := c.client.CallUnary(ctx, authServiceBeginPasskeyLoginSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) FinishPasskeyLogin(ctx context.Context, req *v1.FinishPasskeyLoginRequest) (*v1.FinishPasskeyLoginResponse, error) {
+	var res v1.FinishPasskeyLoginResponse
+	if err := c.client.CallUnary(ctx, authServiceFinishPasskeyLoginSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) BeginPasskeyRegistration(ctx context.Context, req *v1.BeginPasskeyRegistrationRequest) (*v1.BeginPasskeyRegistrationResponse, error) {
+	var res v1.BeginPasskeyRegistrationResponse
+	if err := c.client.CallUnary(ctx, authServiceBeginPasskeyRegistrationSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) FinishPasskeyRegistration(ctx context.Context, req *v1.FinishPasskeyRegistrationRequest) (*v1.FinishPasskeyRegistrationResponse, error) {
+	var res v1.FinishPasskeyRegistrationResponse
+	if err := c.client.CallUnary(ctx, authServiceFinishPasskeyRegistrationSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) ListMyPasskeys(ctx context.Context, req *v1.ListMyPasskeysRequest) (*v1.ListMyPasskeysResponse, error) {
+	var res v1.ListMyPasskeysResponse
+	if err := c.client.CallUnary(ctx, authServiceListMyPasskeysSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) RenamePasskey(ctx context.Context, req *v1.RenamePasskeyRequest) (*v1.RenamePasskeyResponse, error) {
+	var res v1.RenamePasskeyResponse
+	if err := c.client.CallUnary(ctx, authServiceRenamePasskeySpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) DeletePasskey(ctx context.Context, req *v1.DeletePasskeyRequest) (*v1.DeletePasskeyResponse, error) {
+	var res v1.DeletePasskeyResponse
+	if err := c.client.CallUnary(ctx, authServiceDeletePasskeySpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *authServiceClient) BeginPasskeyConfirmation(ctx context.Context, req *v1.BeginPasskeyConfirmationRequest) (*v1.BeginPasskeyConfirmationResponse, error) {
+	var res v1.BeginPasskeyConfirmationResponse
+	if err := c.client.CallUnary(ctx, authServiceBeginPasskeyConfirmationSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -918,6 +1115,102 @@ func (h authServiceHandler) linkIdentity(ctx context.Context, _ connect.Spec, st
 		return err
 	}
 	res, err := h.svc.LinkIdentity(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) beginPasskeyLogin(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.BeginPasskeyLoginRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.BeginPasskeyLogin(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) finishPasskeyLogin(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.FinishPasskeyLoginRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.FinishPasskeyLogin(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) beginPasskeyRegistration(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.BeginPasskeyRegistrationRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.BeginPasskeyRegistration(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) finishPasskeyRegistration(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.FinishPasskeyRegistrationRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.FinishPasskeyRegistration(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) listMyPasskeys(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListMyPasskeysRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListMyPasskeys(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) renamePasskey(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.RenamePasskeyRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.RenamePasskey(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) deletePasskey(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.DeletePasskeyRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DeletePasskey(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h authServiceHandler) beginPasskeyConfirmation(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.BeginPasskeyConfirmationRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.BeginPasskeyConfirmation(ctx, &req)
 	if err != nil {
 		return err
 	}

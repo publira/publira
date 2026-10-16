@@ -721,20 +721,21 @@ type User struct {
 	Role     string                 `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
 	// The reader's own birth date as YYYY-MM-DD, empty when they have given
 	// none. Set where a User stands for the account the request authenticated
-	// or signed in as, which is GetMe, UpdateMe, Login and LoginWithIdToken;
-	// empty everywhere a User names someone the caller is merely looking at, so
+	// or signed in as, which is GetMe, UpdateMe, Login, LoginWithIdToken and
+	// FinishPasskeyLogin; empty everywhere a User names someone the caller is merely looking at, so
 	// a console listing accounts never carries it.
 	BirthDate string `protobuf:"bytes,4,opt,name=birth_date,json=birthDate,proto3" json:"birth_date,omitempty"`
 	// The account's email address, under the same rule as birth_date: set by the
-	// public API's GetMe, UpdateMe, Login and LoginWithIdToken, so a form can
-	// offer the reader their own address, and empty wherever a User names
-	// someone else.
+	// public API's GetMe, UpdateMe, Login, LoginWithIdToken and
+	// FinishPasskeyLogin, so a form can offer the reader their own address, and
+	// empty wherever a User names someone else.
 	Email string `protobuf:"bytes,5,opt,name=email,proto3" json:"email,omitempty"`
 	// The account's icon. Set where the public API answers with the caller's
 	// own account as GetMe reads it — GetMe, UpdateMe, UploadMyIcon,
-	// SelectMyIcon, DeleteMyIcon, Login and LoginWithIdToken — and empty
-	// wherever a User names someone else. The variant list is empty, and
-	// icon_image_updated_at with it, for an account that shows no icon.
+	// SelectMyIcon, DeleteMyIcon, Login, LoginWithIdToken and
+	// FinishPasskeyLogin — and empty wherever a User names someone else. The
+	// variant list is empty, and icon_image_updated_at with it, for an account
+	// that shows no icon.
 	//
 	// The icon is either one the reader uploaded or one of the tenant's presets
 	// (ReaderIconPreset), and the variants carry whichever it is, so a client

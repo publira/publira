@@ -600,10 +600,12 @@ class ListMyIdentitiesResponse extends $pb.GeneratedMessage {
   factory ListMyIdentitiesResponse({
     $core.Iterable<LinkedIdentity>? identities,
     $core.bool? hasPassword,
+    $core.bool? hasPasskey,
   }) {
     final result = ListMyIdentitiesResponse._();
     if (identities != null) result.identities.addAll(identities);
     if (hasPassword != null) result.hasPassword = hasPassword;
+    if (hasPasskey != null) result.hasPasskey = hasPasskey;
     return result;
   }
 
@@ -623,6 +625,7 @@ class ListMyIdentitiesResponse extends $pb.GeneratedMessage {
     ..pPM<LinkedIdentity>(1, _omitFieldNames ? '' : 'identities',
         subBuilder: LinkedIdentity.$_createMessage)
     ..aOB(2, _omitFieldNames ? '' : 'hasPassword')
+    ..aOB(3, _omitFieldNames ? '' : 'hasPasskey')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -663,6 +666,18 @@ class ListMyIdentitiesResponse extends $pb.GeneratedMessage {
   $core.bool hasHasPassword() => $_has(1);
   @$pb.TagNumber(2)
   void clearHasPassword() => $_clearField(2);
+
+  /// True when the reader holds a passkey the storefront signs them in with,
+  /// which ListMyPasskeys lists and which confirms DeleteMe and an email change
+  /// through BeginPasskeyConfirmation.
+  @$pb.TagNumber(3)
+  $core.bool get hasPasskey => $_getBF(2);
+  @$pb.TagNumber(3)
+  set hasPasskey($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasHasPasskey() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearHasPasskey() => $_clearField(3);
 }
 
 class UnlinkIdentityRequest extends $pb.GeneratedMessage {
@@ -732,7 +747,8 @@ class UnlinkIdentityRequest extends $pb.GeneratedMessage {
 
   /// not_found where the reader has no account of this provider linked, and
   /// failed_precondition where it is the last way the reader signs in: an
-  /// account without a password keeps one linked provider.
+  /// account without a password and without a passkey keeps one linked
+  /// provider.
   @$pb.TagNumber(2)
   IdentityProvider get provider => $_getN(1);
   @$pb.TagNumber(2)
@@ -983,6 +999,1241 @@ class LinkIdentityResponse extends $pb.GeneratedMessage {
   void clearIdentity() => $_clearField(1);
   @$pb.TagNumber(1)
   LinkedIdentity ensureIdentity() => $_ensure(0);
+}
+
+/// A passkey the reader signs in to the storefront with. The storefront and the
+/// tenant's console are two relying parties, so a passkey registered on one is
+/// never listed, counted, or accepted on the other.
+class Passkey extends $pb.GeneratedMessage {
+  factory Passkey({
+    $core.String? id,
+    $core.String? name,
+    $core.String? createdAt,
+    $core.String? lastUsedAt,
+    $core.bool? backedUp,
+  }) {
+    final result = Passkey._();
+    if (id != null) result.id = id;
+    if (name != null) result.name = name;
+    if (createdAt != null) result.createdAt = createdAt;
+    if (lastUsedAt != null) result.lastUsedAt = lastUsedAt;
+    if (backedUp != null) result.backedUp = backedUp;
+    return result;
+  }
+
+  Passkey._();
+
+  factory Passkey.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      Passkey()..mergeFromBuffer(data, registry);
+  factory Passkey.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      Passkey()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'Passkey',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: Passkey.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOS(2, _omitFieldNames ? '' : 'name')
+    ..aOS(3, _omitFieldNames ? '' : 'createdAt')
+    ..aOS(4, _omitFieldNames ? '' : 'lastUsedAt')
+    ..aOB(5, _omitFieldNames ? '' : 'backedUp')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Passkey clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Passkey copyWith(void Function(Passkey) updates) =>
+      super.copyWith((message) => updates(message as Passkey)) as Passkey;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Passkey() / Passkey.new instead')
+  static Passkey create() => Passkey._();
+  static $pb.GeneratedMessage $_createMessage() => Passkey._();
+  @$core.override
+  Passkey createEmptyInstance() => Passkey._();
+  @$core.pragma('dart2js:noInline')
+  static Passkey getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Passkey>(Passkey.$_createMessage);
+  static Passkey? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  /// What its owner called it. Empty until they name it.
+  @$pb.TagNumber(2)
+  $core.String get name => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set name($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearName() => $_clearField(2);
+
+  /// RFC 3339.
+  @$pb.TagNumber(3)
+  $core.String get createdAt => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set createdAt($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasCreatedAt() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCreatedAt() => $_clearField(3);
+
+  /// RFC 3339. Empty until it first signs the reader in or confirms a step.
+  @$pb.TagNumber(4)
+  $core.String get lastUsedAt => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set lastUsedAt($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasLastUsedAt() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearLastUsedAt() => $_clearField(4);
+
+  /// The authenticator syncs it to the owner's other devices, as a passkey in
+  /// a password manager does; false for one bound to a single device, such as
+  /// a security key.
+  @$pb.TagNumber(5)
+  $core.bool get backedUp => $_getBF(4);
+  @$pb.TagNumber(5)
+  set backedUp($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasBackedUp() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearBackedUp() => $_clearField(5);
+}
+
+/// Begins a sign-in with a passkey alone. The options name no account and
+/// allow no credential in particular, so the browser offers whichever passkey
+/// the reader holds for the storefront, and the credential the reader picks is
+/// what names the account. Each begin spends one of the caller's sign-in
+/// attempts, as a password Login does, and a sign-in that succeeds gives it
+/// back; past the limit it is resource_exhausted with Retry-After.
+class BeginPasskeyLoginRequest extends $pb.GeneratedMessage {
+  factory BeginPasskeyLoginRequest({
+    $0.TenantContext? tenant,
+  }) {
+    final result = BeginPasskeyLoginRequest._();
+    if (tenant != null) result.tenant = tenant;
+    return result;
+  }
+
+  BeginPasskeyLoginRequest._();
+
+  factory BeginPasskeyLoginRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      BeginPasskeyLoginRequest()..mergeFromBuffer(data, registry);
+  factory BeginPasskeyLoginRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      BeginPasskeyLoginRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'BeginPasskeyLoginRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: BeginPasskeyLoginRequest.$_createMessage)
+    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $0.TenantContext.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  BeginPasskeyLoginRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  BeginPasskeyLoginRequest copyWith(
+          void Function(BeginPasskeyLoginRequest) updates) =>
+      super.copyWith((message) => updates(message as BeginPasskeyLoginRequest))
+          as BeginPasskeyLoginRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use BeginPasskeyLoginRequest() / BeginPasskeyLoginRequest.new instead')
+  static BeginPasskeyLoginRequest create() => BeginPasskeyLoginRequest._();
+  static $pb.GeneratedMessage $_createMessage() => BeginPasskeyLoginRequest._();
+  @$core.override
+  BeginPasskeyLoginRequest createEmptyInstance() =>
+      BeginPasskeyLoginRequest._();
+  @$core.pragma('dart2js:noInline')
+  static BeginPasskeyLoginRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<BeginPasskeyLoginRequest>(
+          BeginPasskeyLoginRequest.$_createMessage);
+  static BeginPasskeyLoginRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($0.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.TenantContext ensureTenant() => $_ensure(0);
+}
+
+class BeginPasskeyLoginResponse extends $pb.GeneratedMessage {
+  factory BeginPasskeyLoginResponse({
+    $core.String? requestOptionsJson,
+  }) {
+    final result = BeginPasskeyLoginResponse._();
+    if (requestOptionsJson != null)
+      result.requestOptionsJson = requestOptionsJson;
+    return result;
+  }
+
+  BeginPasskeyLoginResponse._();
+
+  factory BeginPasskeyLoginResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      BeginPasskeyLoginResponse()..mergeFromBuffer(data, registry);
+  factory BeginPasskeyLoginResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      BeginPasskeyLoginResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'BeginPasskeyLoginResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: BeginPasskeyLoginResponse.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'requestOptionsJson')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  BeginPasskeyLoginResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  BeginPasskeyLoginResponse copyWith(
+          void Function(BeginPasskeyLoginResponse) updates) =>
+      super.copyWith((message) => updates(message as BeginPasskeyLoginResponse))
+          as BeginPasskeyLoginResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use BeginPasskeyLoginResponse() / BeginPasskeyLoginResponse.new instead')
+  static BeginPasskeyLoginResponse create() => BeginPasskeyLoginResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      BeginPasskeyLoginResponse._();
+  @$core.override
+  BeginPasskeyLoginResponse createEmptyInstance() =>
+      BeginPasskeyLoginResponse._();
+  @$core.pragma('dart2js:noInline')
+  static BeginPasskeyLoginResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<BeginPasskeyLoginResponse>(
+          BeginPasskeyLoginResponse.$_createMessage);
+  static BeginPasskeyLoginResponse? _defaultInstance;
+
+  /// PublicKeyCredentialRequestOptionsJSON, for
+  /// PublicKeyCredential.parseRequestOptionsFromJSON. User verification is
+  /// required. The challenge is good for five minutes and one finish.
+  @$pb.TagNumber(1)
+  $core.String get requestOptionsJson => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set requestOptionsJson($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasRequestOptionsJson() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRequestOptionsJson() => $_clearField(1);
+}
+
+class FinishPasskeyLoginRequest extends $pb.GeneratedMessage {
+  factory FinishPasskeyLoginRequest({
+    $0.TenantContext? tenant,
+    $core.String? credentialJson,
+  }) {
+    final result = FinishPasskeyLoginRequest._();
+    if (tenant != null) result.tenant = tenant;
+    if (credentialJson != null) result.credentialJson = credentialJson;
+    return result;
+  }
+
+  FinishPasskeyLoginRequest._();
+
+  factory FinishPasskeyLoginRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      FinishPasskeyLoginRequest()..mergeFromBuffer(data, registry);
+  factory FinishPasskeyLoginRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      FinishPasskeyLoginRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'FinishPasskeyLoginRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: FinishPasskeyLoginRequest.$_createMessage)
+    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $0.TenantContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'credentialJson')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  FinishPasskeyLoginRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  FinishPasskeyLoginRequest copyWith(
+          void Function(FinishPasskeyLoginRequest) updates) =>
+      super.copyWith((message) => updates(message as FinishPasskeyLoginRequest))
+          as FinishPasskeyLoginRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use FinishPasskeyLoginRequest() / FinishPasskeyLoginRequest.new instead')
+  static FinishPasskeyLoginRequest create() => FinishPasskeyLoginRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      FinishPasskeyLoginRequest._();
+  @$core.override
+  FinishPasskeyLoginRequest createEmptyInstance() =>
+      FinishPasskeyLoginRequest._();
+  @$core.pragma('dart2js:noInline')
+  static FinishPasskeyLoginRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<FinishPasskeyLoginRequest>(
+          FinishPasskeyLoginRequest.$_createMessage);
+  static FinishPasskeyLoginRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($0.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.TenantContext ensureTenant() => $_ensure(0);
+
+  /// The PublicKeyCredential the authenticator asserted with, as its toJSON()
+  /// serializes it. Unauthenticated, as a wrong password is, when the
+  /// assertion was not made on the storefront's origin over a challenge
+  /// BeginPasskeyLogin issued and no finish has spent, when the passkey is not
+  /// one this tenant's storefront registered, when the user handle it carries
+  /// is not its account's, or when its signature counter did not move forward.
+  /// An account that is suspended, or whose address was never verified, is
+  /// failed_precondition as Login answers it: a passkey proves the reader holds
+  /// an authenticator registered from a session, not that the address is
+  /// theirs, so it confirms no address.
+  @$pb.TagNumber(2)
+  $core.String get credentialJson => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set credentialJson($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCredentialJson() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCredentialJson() => $_clearField(2);
+}
+
+class FinishPasskeyLoginResponse extends $pb.GeneratedMessage {
+  factory FinishPasskeyLoginResponse({
+    $0.User? user,
+    $0.AccessToken? accessToken,
+  }) {
+    final result = FinishPasskeyLoginResponse._();
+    if (user != null) result.user = user;
+    if (accessToken != null) result.accessToken = accessToken;
+    return result;
+  }
+
+  FinishPasskeyLoginResponse._();
+
+  factory FinishPasskeyLoginResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      FinishPasskeyLoginResponse()..mergeFromBuffer(data, registry);
+  factory FinishPasskeyLoginResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      FinishPasskeyLoginResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'FinishPasskeyLoginResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: FinishPasskeyLoginResponse.$_createMessage)
+    ..aOM<$0.User>(1, _omitFieldNames ? '' : 'user',
+        subBuilder: $0.User.$_createMessage)
+    ..aOM<$0.AccessToken>(2, _omitFieldNames ? '' : 'accessToken',
+        subBuilder: $0.AccessToken.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  FinishPasskeyLoginResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  FinishPasskeyLoginResponse copyWith(
+          void Function(FinishPasskeyLoginResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as FinishPasskeyLoginResponse))
+          as FinishPasskeyLoginResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use FinishPasskeyLoginResponse() / FinishPasskeyLoginResponse.new instead')
+  static FinishPasskeyLoginResponse create() => FinishPasskeyLoginResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      FinishPasskeyLoginResponse._();
+  @$core.override
+  FinishPasskeyLoginResponse createEmptyInstance() =>
+      FinishPasskeyLoginResponse._();
+  @$core.pragma('dart2js:noInline')
+  static FinishPasskeyLoginResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<FinishPasskeyLoginResponse>(
+          FinishPasskeyLoginResponse.$_createMessage);
+  static FinishPasskeyLoginResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.User get user => $_getN(0);
+  @$pb.TagNumber(1)
+  set user($0.User value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasUser() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearUser() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.User ensureUser() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $0.AccessToken get accessToken => $_getN(1);
+  @$pb.TagNumber(2)
+  set accessToken($0.AccessToken value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAccessToken() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAccessToken() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $0.AccessToken ensureAccessToken() => $_ensure(1);
+}
+
+class BeginPasskeyRegistrationRequest extends $pb.GeneratedMessage {
+  factory BeginPasskeyRegistrationRequest({
+    $0.TenantContext? tenant,
+  }) {
+    final result = BeginPasskeyRegistrationRequest._();
+    if (tenant != null) result.tenant = tenant;
+    return result;
+  }
+
+  BeginPasskeyRegistrationRequest._();
+
+  factory BeginPasskeyRegistrationRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      BeginPasskeyRegistrationRequest()..mergeFromBuffer(data, registry);
+  factory BeginPasskeyRegistrationRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      BeginPasskeyRegistrationRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'BeginPasskeyRegistrationRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: BeginPasskeyRegistrationRequest.$_createMessage)
+    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $0.TenantContext.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  BeginPasskeyRegistrationRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  BeginPasskeyRegistrationRequest copyWith(
+          void Function(BeginPasskeyRegistrationRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as BeginPasskeyRegistrationRequest))
+          as BeginPasskeyRegistrationRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use BeginPasskeyRegistrationRequest() / BeginPasskeyRegistrationRequest.new instead')
+  static BeginPasskeyRegistrationRequest create() =>
+      BeginPasskeyRegistrationRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      BeginPasskeyRegistrationRequest._();
+  @$core.override
+  BeginPasskeyRegistrationRequest createEmptyInstance() =>
+      BeginPasskeyRegistrationRequest._();
+  @$core.pragma('dart2js:noInline')
+  static BeginPasskeyRegistrationRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<BeginPasskeyRegistrationRequest>(
+          BeginPasskeyRegistrationRequest.$_createMessage);
+  static BeginPasskeyRegistrationRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($0.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.TenantContext ensureTenant() => $_ensure(0);
+}
+
+class BeginPasskeyRegistrationResponse extends $pb.GeneratedMessage {
+  factory BeginPasskeyRegistrationResponse({
+    $core.String? creationOptionsJson,
+  }) {
+    final result = BeginPasskeyRegistrationResponse._();
+    if (creationOptionsJson != null)
+      result.creationOptionsJson = creationOptionsJson;
+    return result;
+  }
+
+  BeginPasskeyRegistrationResponse._();
+
+  factory BeginPasskeyRegistrationResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      BeginPasskeyRegistrationResponse()..mergeFromBuffer(data, registry);
+  factory BeginPasskeyRegistrationResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      BeginPasskeyRegistrationResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'BeginPasskeyRegistrationResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: BeginPasskeyRegistrationResponse.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'creationOptionsJson')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  BeginPasskeyRegistrationResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  BeginPasskeyRegistrationResponse copyWith(
+          void Function(BeginPasskeyRegistrationResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as BeginPasskeyRegistrationResponse))
+          as BeginPasskeyRegistrationResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use BeginPasskeyRegistrationResponse() / BeginPasskeyRegistrationResponse.new instead')
+  static BeginPasskeyRegistrationResponse create() =>
+      BeginPasskeyRegistrationResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      BeginPasskeyRegistrationResponse._();
+  @$core.override
+  BeginPasskeyRegistrationResponse createEmptyInstance() =>
+      BeginPasskeyRegistrationResponse._();
+  @$core.pragma('dart2js:noInline')
+  static BeginPasskeyRegistrationResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<BeginPasskeyRegistrationResponse>(
+          BeginPasskeyRegistrationResponse.$_createMessage);
+  static BeginPasskeyRegistrationResponse? _defaultInstance;
+
+  /// PublicKeyCredentialCreationOptionsJSON, for
+  /// PublicKeyCredential.parseCreationOptionsFromJSON. A resident key and user
+  /// verification are required, since the passkey has to sign the reader in
+  /// without an address typed, and the reader's existing passkeys are
+  /// excluded. failed_precondition once the reader holds as many passkeys as an
+  /// account may.
+  @$pb.TagNumber(1)
+  $core.String get creationOptionsJson => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set creationOptionsJson($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasCreationOptionsJson() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearCreationOptionsJson() => $_clearField(1);
+}
+
+class FinishPasskeyRegistrationRequest extends $pb.GeneratedMessage {
+  factory FinishPasskeyRegistrationRequest({
+    $0.TenantContext? tenant,
+    $core.String? credentialJson,
+    $core.String? name,
+  }) {
+    final result = FinishPasskeyRegistrationRequest._();
+    if (tenant != null) result.tenant = tenant;
+    if (credentialJson != null) result.credentialJson = credentialJson;
+    if (name != null) result.name = name;
+    return result;
+  }
+
+  FinishPasskeyRegistrationRequest._();
+
+  factory FinishPasskeyRegistrationRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      FinishPasskeyRegistrationRequest()..mergeFromBuffer(data, registry);
+  factory FinishPasskeyRegistrationRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      FinishPasskeyRegistrationRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'FinishPasskeyRegistrationRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: FinishPasskeyRegistrationRequest.$_createMessage)
+    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $0.TenantContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'credentialJson')
+    ..aOS(3, _omitFieldNames ? '' : 'name')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  FinishPasskeyRegistrationRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  FinishPasskeyRegistrationRequest copyWith(
+          void Function(FinishPasskeyRegistrationRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as FinishPasskeyRegistrationRequest))
+          as FinishPasskeyRegistrationRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use FinishPasskeyRegistrationRequest() / FinishPasskeyRegistrationRequest.new instead')
+  static FinishPasskeyRegistrationRequest create() =>
+      FinishPasskeyRegistrationRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      FinishPasskeyRegistrationRequest._();
+  @$core.override
+  FinishPasskeyRegistrationRequest createEmptyInstance() =>
+      FinishPasskeyRegistrationRequest._();
+  @$core.pragma('dart2js:noInline')
+  static FinishPasskeyRegistrationRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<FinishPasskeyRegistrationRequest>(
+          FinishPasskeyRegistrationRequest.$_createMessage);
+  static FinishPasskeyRegistrationRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($0.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.TenantContext ensureTenant() => $_ensure(0);
+
+  /// The PublicKeyCredential the authenticator created, as its toJSON()
+  /// serializes it. invalid_argument on credential_json when it does not
+  /// verify against a ceremony BeginPasskeyRegistration began for the caller,
+  /// and already_exists when the tenant holds the credential already.
+  @$pb.TagNumber(2)
+  $core.String get credentialJson => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set credentialJson($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCredentialJson() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCredentialJson() => $_clearField(2);
+
+  /// At most 64 characters; empty leaves it unnamed.
+  @$pb.TagNumber(3)
+  $core.String get name => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set name($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasName() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearName() => $_clearField(3);
+}
+
+class FinishPasskeyRegistrationResponse extends $pb.GeneratedMessage {
+  factory FinishPasskeyRegistrationResponse({
+    Passkey? passkey,
+  }) {
+    final result = FinishPasskeyRegistrationResponse._();
+    if (passkey != null) result.passkey = passkey;
+    return result;
+  }
+
+  FinishPasskeyRegistrationResponse._();
+
+  factory FinishPasskeyRegistrationResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      FinishPasskeyRegistrationResponse()..mergeFromBuffer(data, registry);
+  factory FinishPasskeyRegistrationResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      FinishPasskeyRegistrationResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'FinishPasskeyRegistrationResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: FinishPasskeyRegistrationResponse.$_createMessage)
+    ..aOM<Passkey>(1, _omitFieldNames ? '' : 'passkey',
+        subBuilder: Passkey.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  FinishPasskeyRegistrationResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  FinishPasskeyRegistrationResponse copyWith(
+          void Function(FinishPasskeyRegistrationResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as FinishPasskeyRegistrationResponse))
+          as FinishPasskeyRegistrationResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use FinishPasskeyRegistrationResponse() / FinishPasskeyRegistrationResponse.new instead')
+  static FinishPasskeyRegistrationResponse create() =>
+      FinishPasskeyRegistrationResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      FinishPasskeyRegistrationResponse._();
+  @$core.override
+  FinishPasskeyRegistrationResponse createEmptyInstance() =>
+      FinishPasskeyRegistrationResponse._();
+  @$core.pragma('dart2js:noInline')
+  static FinishPasskeyRegistrationResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<FinishPasskeyRegistrationResponse>(
+          FinishPasskeyRegistrationResponse.$_createMessage);
+  static FinishPasskeyRegistrationResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  Passkey get passkey => $_getN(0);
+  @$pb.TagNumber(1)
+  set passkey(Passkey value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPasskey() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPasskey() => $_clearField(1);
+  @$pb.TagNumber(1)
+  Passkey ensurePasskey() => $_ensure(0);
+}
+
+class ListMyPasskeysRequest extends $pb.GeneratedMessage {
+  factory ListMyPasskeysRequest({
+    $0.TenantContext? tenant,
+  }) {
+    final result = ListMyPasskeysRequest._();
+    if (tenant != null) result.tenant = tenant;
+    return result;
+  }
+
+  ListMyPasskeysRequest._();
+
+  factory ListMyPasskeysRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ListMyPasskeysRequest()..mergeFromBuffer(data, registry);
+  factory ListMyPasskeysRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ListMyPasskeysRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListMyPasskeysRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: ListMyPasskeysRequest.$_createMessage)
+    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $0.TenantContext.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListMyPasskeysRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListMyPasskeysRequest copyWith(
+          void Function(ListMyPasskeysRequest) updates) =>
+      super.copyWith((message) => updates(message as ListMyPasskeysRequest))
+          as ListMyPasskeysRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ListMyPasskeysRequest() / ListMyPasskeysRequest.new instead')
+  static ListMyPasskeysRequest create() => ListMyPasskeysRequest._();
+  static $pb.GeneratedMessage $_createMessage() => ListMyPasskeysRequest._();
+  @$core.override
+  ListMyPasskeysRequest createEmptyInstance() => ListMyPasskeysRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ListMyPasskeysRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ListMyPasskeysRequest>(
+          ListMyPasskeysRequest.$_createMessage);
+  static ListMyPasskeysRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($0.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.TenantContext ensureTenant() => $_ensure(0);
+}
+
+class ListMyPasskeysResponse extends $pb.GeneratedMessage {
+  factory ListMyPasskeysResponse({
+    $core.Iterable<Passkey>? passkeys,
+  }) {
+    final result = ListMyPasskeysResponse._();
+    if (passkeys != null) result.passkeys.addAll(passkeys);
+    return result;
+  }
+
+  ListMyPasskeysResponse._();
+
+  factory ListMyPasskeysResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ListMyPasskeysResponse()..mergeFromBuffer(data, registry);
+  factory ListMyPasskeysResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ListMyPasskeysResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListMyPasskeysResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: ListMyPasskeysResponse.$_createMessage)
+    ..pPM<Passkey>(1, _omitFieldNames ? '' : 'passkeys',
+        subBuilder: Passkey.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListMyPasskeysResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListMyPasskeysResponse copyWith(
+          void Function(ListMyPasskeysResponse) updates) =>
+      super.copyWith((message) => updates(message as ListMyPasskeysResponse))
+          as ListMyPasskeysResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ListMyPasskeysResponse() / ListMyPasskeysResponse.new instead')
+  static ListMyPasskeysResponse create() => ListMyPasskeysResponse._();
+  static $pb.GeneratedMessage $_createMessage() => ListMyPasskeysResponse._();
+  @$core.override
+  ListMyPasskeysResponse createEmptyInstance() => ListMyPasskeysResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ListMyPasskeysResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ListMyPasskeysResponse>(
+          ListMyPasskeysResponse.$_createMessage);
+  static ListMyPasskeysResponse? _defaultInstance;
+
+  /// Oldest first.
+  @$pb.TagNumber(1)
+  $pb.PbList<Passkey> get passkeys => $_getList(0);
+}
+
+class RenamePasskeyRequest extends $pb.GeneratedMessage {
+  factory RenamePasskeyRequest({
+    $0.TenantContext? tenant,
+    $core.String? id,
+    $core.String? name,
+  }) {
+    final result = RenamePasskeyRequest._();
+    if (tenant != null) result.tenant = tenant;
+    if (id != null) result.id = id;
+    if (name != null) result.name = name;
+    return result;
+  }
+
+  RenamePasskeyRequest._();
+
+  factory RenamePasskeyRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RenamePasskeyRequest()..mergeFromBuffer(data, registry);
+  factory RenamePasskeyRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RenamePasskeyRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RenamePasskeyRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: RenamePasskeyRequest.$_createMessage)
+    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $0.TenantContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'id')
+    ..aOS(3, _omitFieldNames ? '' : 'name')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RenamePasskeyRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RenamePasskeyRequest copyWith(void Function(RenamePasskeyRequest) updates) =>
+      super.copyWith((message) => updates(message as RenamePasskeyRequest))
+          as RenamePasskeyRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use RenamePasskeyRequest() / RenamePasskeyRequest.new instead')
+  static RenamePasskeyRequest create() => RenamePasskeyRequest._();
+  static $pb.GeneratedMessage $_createMessage() => RenamePasskeyRequest._();
+  @$core.override
+  RenamePasskeyRequest createEmptyInstance() => RenamePasskeyRequest._();
+  @$core.pragma('dart2js:noInline')
+  static RenamePasskeyRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<RenamePasskeyRequest>(
+          RenamePasskeyRequest.$_createMessage);
+  static RenamePasskeyRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($0.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.TenantContext ensureTenant() => $_ensure(0);
+
+  /// not_found for a passkey that is not the caller's.
+  @$pb.TagNumber(2)
+  $core.String get id => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set id($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearId() => $_clearField(2);
+
+  /// At most 64 characters; empty leaves it unnamed.
+  @$pb.TagNumber(3)
+  $core.String get name => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set name($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasName() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearName() => $_clearField(3);
+}
+
+class RenamePasskeyResponse extends $pb.GeneratedMessage {
+  factory RenamePasskeyResponse({
+    Passkey? passkey,
+  }) {
+    final result = RenamePasskeyResponse._();
+    if (passkey != null) result.passkey = passkey;
+    return result;
+  }
+
+  RenamePasskeyResponse._();
+
+  factory RenamePasskeyResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RenamePasskeyResponse()..mergeFromBuffer(data, registry);
+  factory RenamePasskeyResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RenamePasskeyResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RenamePasskeyResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: RenamePasskeyResponse.$_createMessage)
+    ..aOM<Passkey>(1, _omitFieldNames ? '' : 'passkey',
+        subBuilder: Passkey.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RenamePasskeyResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RenamePasskeyResponse copyWith(
+          void Function(RenamePasskeyResponse) updates) =>
+      super.copyWith((message) => updates(message as RenamePasskeyResponse))
+          as RenamePasskeyResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use RenamePasskeyResponse() / RenamePasskeyResponse.new instead')
+  static RenamePasskeyResponse create() => RenamePasskeyResponse._();
+  static $pb.GeneratedMessage $_createMessage() => RenamePasskeyResponse._();
+  @$core.override
+  RenamePasskeyResponse createEmptyInstance() => RenamePasskeyResponse._();
+  @$core.pragma('dart2js:noInline')
+  static RenamePasskeyResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<RenamePasskeyResponse>(
+          RenamePasskeyResponse.$_createMessage);
+  static RenamePasskeyResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  Passkey get passkey => $_getN(0);
+  @$pb.TagNumber(1)
+  set passkey(Passkey value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPasskey() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPasskey() => $_clearField(1);
+  @$pb.TagNumber(1)
+  Passkey ensurePasskey() => $_ensure(0);
+}
+
+class DeletePasskeyRequest extends $pb.GeneratedMessage {
+  factory DeletePasskeyRequest({
+    $0.TenantContext? tenant,
+    $core.String? id,
+  }) {
+    final result = DeletePasskeyRequest._();
+    if (tenant != null) result.tenant = tenant;
+    if (id != null) result.id = id;
+    return result;
+  }
+
+  DeletePasskeyRequest._();
+
+  factory DeletePasskeyRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DeletePasskeyRequest()..mergeFromBuffer(data, registry);
+  factory DeletePasskeyRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DeletePasskeyRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DeletePasskeyRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: DeletePasskeyRequest.$_createMessage)
+    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $0.TenantContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'id')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeletePasskeyRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeletePasskeyRequest copyWith(void Function(DeletePasskeyRequest) updates) =>
+      super.copyWith((message) => updates(message as DeletePasskeyRequest))
+          as DeletePasskeyRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use DeletePasskeyRequest() / DeletePasskeyRequest.new instead')
+  static DeletePasskeyRequest create() => DeletePasskeyRequest._();
+  static $pb.GeneratedMessage $_createMessage() => DeletePasskeyRequest._();
+  @$core.override
+  DeletePasskeyRequest createEmptyInstance() => DeletePasskeyRequest._();
+  @$core.pragma('dart2js:noInline')
+  static DeletePasskeyRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DeletePasskeyRequest>(
+          DeletePasskeyRequest.$_createMessage);
+  static DeletePasskeyRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($0.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.TenantContext ensureTenant() => $_ensure(0);
+
+  /// not_found for a passkey that is not the caller's, and
+  /// failed_precondition where it is the last way the reader signs in: an
+  /// account without a password and without a linked provider keeps one
+  /// passkey.
+  @$pb.TagNumber(2)
+  $core.String get id => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set id($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearId() => $_clearField(2);
+}
+
+class DeletePasskeyResponse extends $pb.GeneratedMessage {
+  factory DeletePasskeyResponse() => DeletePasskeyResponse._();
+
+  DeletePasskeyResponse._();
+
+  factory DeletePasskeyResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DeletePasskeyResponse()..mergeFromBuffer(data, registry);
+  factory DeletePasskeyResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DeletePasskeyResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DeletePasskeyResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: DeletePasskeyResponse.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeletePasskeyResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeletePasskeyResponse copyWith(
+          void Function(DeletePasskeyResponse) updates) =>
+      super.copyWith((message) => updates(message as DeletePasskeyResponse))
+          as DeletePasskeyResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use DeletePasskeyResponse() / DeletePasskeyResponse.new instead')
+  static DeletePasskeyResponse create() => DeletePasskeyResponse._();
+  static $pb.GeneratedMessage $_createMessage() => DeletePasskeyResponse._();
+  @$core.override
+  DeletePasskeyResponse createEmptyInstance() => DeletePasskeyResponse._();
+  @$core.pragma('dart2js:noInline')
+  static DeletePasskeyResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DeletePasskeyResponse>(
+          DeletePasskeyResponse.$_createMessage);
+  static DeletePasskeyResponse? _defaultInstance;
+}
+
+/// Begins the fresh assertion that confirms DeleteMe or RequestEmailChange in
+/// place of a password, allowing the caller's own passkeys alone.
+/// failed_precondition for a reader who holds none.
+class BeginPasskeyConfirmationRequest extends $pb.GeneratedMessage {
+  factory BeginPasskeyConfirmationRequest({
+    $0.TenantContext? tenant,
+  }) {
+    final result = BeginPasskeyConfirmationRequest._();
+    if (tenant != null) result.tenant = tenant;
+    return result;
+  }
+
+  BeginPasskeyConfirmationRequest._();
+
+  factory BeginPasskeyConfirmationRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      BeginPasskeyConfirmationRequest()..mergeFromBuffer(data, registry);
+  factory BeginPasskeyConfirmationRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      BeginPasskeyConfirmationRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'BeginPasskeyConfirmationRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: BeginPasskeyConfirmationRequest.$_createMessage)
+    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $0.TenantContext.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  BeginPasskeyConfirmationRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  BeginPasskeyConfirmationRequest copyWith(
+          void Function(BeginPasskeyConfirmationRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as BeginPasskeyConfirmationRequest))
+          as BeginPasskeyConfirmationRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use BeginPasskeyConfirmationRequest() / BeginPasskeyConfirmationRequest.new instead')
+  static BeginPasskeyConfirmationRequest create() =>
+      BeginPasskeyConfirmationRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      BeginPasskeyConfirmationRequest._();
+  @$core.override
+  BeginPasskeyConfirmationRequest createEmptyInstance() =>
+      BeginPasskeyConfirmationRequest._();
+  @$core.pragma('dart2js:noInline')
+  static BeginPasskeyConfirmationRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<BeginPasskeyConfirmationRequest>(
+          BeginPasskeyConfirmationRequest.$_createMessage);
+  static BeginPasskeyConfirmationRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($0.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.TenantContext ensureTenant() => $_ensure(0);
+}
+
+class BeginPasskeyConfirmationResponse extends $pb.GeneratedMessage {
+  factory BeginPasskeyConfirmationResponse({
+    $core.String? requestOptionsJson,
+  }) {
+    final result = BeginPasskeyConfirmationResponse._();
+    if (requestOptionsJson != null)
+      result.requestOptionsJson = requestOptionsJson;
+    return result;
+  }
+
+  BeginPasskeyConfirmationResponse._();
+
+  factory BeginPasskeyConfirmationResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      BeginPasskeyConfirmationResponse()..mergeFromBuffer(data, registry);
+  factory BeginPasskeyConfirmationResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      BeginPasskeyConfirmationResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'BeginPasskeyConfirmationResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: BeginPasskeyConfirmationResponse.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'requestOptionsJson')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  BeginPasskeyConfirmationResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  BeginPasskeyConfirmationResponse copyWith(
+          void Function(BeginPasskeyConfirmationResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as BeginPasskeyConfirmationResponse))
+          as BeginPasskeyConfirmationResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use BeginPasskeyConfirmationResponse() / BeginPasskeyConfirmationResponse.new instead')
+  static BeginPasskeyConfirmationResponse create() =>
+      BeginPasskeyConfirmationResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      BeginPasskeyConfirmationResponse._();
+  @$core.override
+  BeginPasskeyConfirmationResponse createEmptyInstance() =>
+      BeginPasskeyConfirmationResponse._();
+  @$core.pragma('dart2js:noInline')
+  static BeginPasskeyConfirmationResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<BeginPasskeyConfirmationResponse>(
+          BeginPasskeyConfirmationResponse.$_createMessage);
+  static BeginPasskeyConfirmationResponse? _defaultInstance;
+
+  /// PublicKeyCredentialRequestOptionsJSON, as BeginPasskeyLoginResponse
+  /// answers it. The assertion made over it goes in the passkey_credential_json
+  /// of the request it confirms, and confirms that one request.
+  @$pb.TagNumber(1)
+  $core.String get requestOptionsJson => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set requestOptionsJson($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasRequestOptionsJson() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRequestOptionsJson() => $_clearField(1);
 }
 
 class CreateUserRequest extends $pb.GeneratedMessage {
@@ -1466,6 +2717,7 @@ class RequestEmailChangeRequest extends $pb.GeneratedMessage {
     IdentityProvider? provider,
     $core.String? idToken,
     $core.String? nonce,
+    $core.String? passkeyCredentialJson,
   }) {
     final result = RequestEmailChangeRequest._();
     if (tenant != null) result.tenant = tenant;
@@ -1475,6 +2727,8 @@ class RequestEmailChangeRequest extends $pb.GeneratedMessage {
     if (provider != null) result.provider = provider;
     if (idToken != null) result.idToken = idToken;
     if (nonce != null) result.nonce = nonce;
+    if (passkeyCredentialJson != null)
+      result.passkeyCredentialJson = passkeyCredentialJson;
     return result;
   }
 
@@ -1500,6 +2754,7 @@ class RequestEmailChangeRequest extends $pb.GeneratedMessage {
         enumValues: IdentityProvider.values)
     ..aOS(6, _omitFieldNames ? '' : 'idToken')
     ..aOS(7, _omitFieldNames ? '' : 'nonce')
+    ..aOS(8, _omitFieldNames ? '' : 'passkeyCredentialJson')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1563,7 +2818,12 @@ class RequestEmailChangeRequest extends $pb.GeneratedMessage {
 
   /// The account's password. An account without one confirms with a fresh
   /// sign-in instead: an ID token and its nonce, as LoginWithIdTokenRequest
-  /// takes them, from a provider linked to the account.
+  /// takes them, from a provider linked to the account, or an assertion made
+  /// with one of its passkeys over a challenge BeginPasskeyConfirmation issued,
+  /// as its toJSON() serializes it. Exactly one of the three is sent. An
+  /// assertion that does not verify is invalid_argument on
+  /// passkey_credential_json, so a client does not mistake it for the end of
+  /// its session.
   @$pb.TagNumber(4)
   $core.String get currentPassword => $_getSZ(3);
   @$pb.TagNumber(4)
@@ -1599,6 +2859,15 @@ class RequestEmailChangeRequest extends $pb.GeneratedMessage {
   $core.bool hasNonce() => $_has(6);
   @$pb.TagNumber(7)
   void clearNonce() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get passkeyCredentialJson => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set passkeyCredentialJson($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasPasskeyCredentialJson() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearPasskeyCredentialJson() => $_clearField(8);
 }
 
 class RequestEmailChangeResponse extends $pb.GeneratedMessage {
@@ -3082,6 +4351,7 @@ class DeleteMeRequest extends $pb.GeneratedMessage {
     IdentityProvider? provider,
     $core.String? idToken,
     $core.String? nonce,
+    $core.String? passkeyCredentialJson,
   }) {
     final result = DeleteMeRequest._();
     if (tenant != null) result.tenant = tenant;
@@ -3089,6 +4359,8 @@ class DeleteMeRequest extends $pb.GeneratedMessage {
     if (provider != null) result.provider = provider;
     if (idToken != null) result.idToken = idToken;
     if (nonce != null) result.nonce = nonce;
+    if (passkeyCredentialJson != null)
+      result.passkeyCredentialJson = passkeyCredentialJson;
     return result;
   }
 
@@ -3112,6 +4384,7 @@ class DeleteMeRequest extends $pb.GeneratedMessage {
         enumValues: IdentityProvider.values)
     ..aOS(4, _omitFieldNames ? '' : 'idToken')
     ..aOS(5, _omitFieldNames ? '' : 'nonce')
+    ..aOS(6, _omitFieldNames ? '' : 'passkeyCredentialJson')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -3148,8 +4421,9 @@ class DeleteMeRequest extends $pb.GeneratedMessage {
   $0.TenantContext ensureTenant() => $_ensure(0);
 
   /// The account's password. An account without one confirms with a fresh
-  /// sign-in instead: an ID token and its nonce, as LoginWithIdTokenRequest
-  /// takes them, from a provider linked to the account.
+  /// sign-in instead, as RequestEmailChangeRequest describes: an ID token and
+  /// its nonce from a provider linked to the account, or an assertion made
+  /// with one of its passkeys.
   @$pb.TagNumber(2)
   $core.String get password => $_getSZ(1);
   @$pb.TagNumber(2)
@@ -3185,6 +4459,15 @@ class DeleteMeRequest extends $pb.GeneratedMessage {
   $core.bool hasNonce() => $_has(4);
   @$pb.TagNumber(5)
   void clearNonce() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get passkeyCredentialJson => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set passkeyCredentialJson($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasPasskeyCredentialJson() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearPasskeyCredentialJson() => $_clearField(6);
 }
 
 class DeleteMeResponse extends $pb.GeneratedMessage {
@@ -5098,6 +6381,50 @@ class AuthServiceApi {
           $pb.ClientContext? ctx, LinkIdentityRequest request) =>
       _client.invoke<LinkIdentityResponse>(
           ctx, 'AuthService', 'LinkIdentity', request, LinkIdentityResponse());
+  $async.Future<BeginPasskeyLoginResponse> beginPasskeyLogin(
+          $pb.ClientContext? ctx, BeginPasskeyLoginRequest request) =>
+      _client.invoke<BeginPasskeyLoginResponse>(ctx, 'AuthService',
+          'BeginPasskeyLogin', request, BeginPasskeyLoginResponse());
+  $async.Future<FinishPasskeyLoginResponse> finishPasskeyLogin(
+          $pb.ClientContext? ctx, FinishPasskeyLoginRequest request) =>
+      _client.invoke<FinishPasskeyLoginResponse>(ctx, 'AuthService',
+          'FinishPasskeyLogin', request, FinishPasskeyLoginResponse());
+  $async.Future<BeginPasskeyRegistrationResponse> beginPasskeyRegistration(
+          $pb.ClientContext? ctx, BeginPasskeyRegistrationRequest request) =>
+      _client.invoke<BeginPasskeyRegistrationResponse>(
+          ctx,
+          'AuthService',
+          'BeginPasskeyRegistration',
+          request,
+          BeginPasskeyRegistrationResponse());
+  $async.Future<FinishPasskeyRegistrationResponse> finishPasskeyRegistration(
+          $pb.ClientContext? ctx, FinishPasskeyRegistrationRequest request) =>
+      _client.invoke<FinishPasskeyRegistrationResponse>(
+          ctx,
+          'AuthService',
+          'FinishPasskeyRegistration',
+          request,
+          FinishPasskeyRegistrationResponse());
+  $async.Future<ListMyPasskeysResponse> listMyPasskeys(
+          $pb.ClientContext? ctx, ListMyPasskeysRequest request) =>
+      _client.invoke<ListMyPasskeysResponse>(ctx, 'AuthService',
+          'ListMyPasskeys', request, ListMyPasskeysResponse());
+  $async.Future<RenamePasskeyResponse> renamePasskey(
+          $pb.ClientContext? ctx, RenamePasskeyRequest request) =>
+      _client.invoke<RenamePasskeyResponse>(ctx, 'AuthService', 'RenamePasskey',
+          request, RenamePasskeyResponse());
+  $async.Future<DeletePasskeyResponse> deletePasskey(
+          $pb.ClientContext? ctx, DeletePasskeyRequest request) =>
+      _client.invoke<DeletePasskeyResponse>(ctx, 'AuthService', 'DeletePasskey',
+          request, DeletePasskeyResponse());
+  $async.Future<BeginPasskeyConfirmationResponse> beginPasskeyConfirmation(
+          $pb.ClientContext? ctx, BeginPasskeyConfirmationRequest request) =>
+      _client.invoke<BeginPasskeyConfirmationResponse>(
+          ctx,
+          'AuthService',
+          'BeginPasskeyConfirmation',
+          request,
+          BeginPasskeyConfirmationResponse());
   $async.Future<CreateUserResponse> createUser(
           $pb.ClientContext? ctx, CreateUserRequest request) =>
       _client.invoke<CreateUserResponse>(

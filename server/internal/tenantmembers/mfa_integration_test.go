@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/tenantwebauthn"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -125,15 +126,15 @@ func TestResetMFARefusals(t *testing.T) {
 	}
 }
 
-// seedPasskey writes a passkey for userID registered for rpID, as the
-// superuser the test seeds with.
-func seedPasskey(t *testing.T, pg *testutil.PostgresEnv, tenantID, userID uuid.UUID, publicID, rpID string) {
+// seedPasskey writes a passkey for userID registered with relyingParty for
+// rpID, as the superuser the test seeds with.
+func seedPasskey(t *testing.T, pg *testutil.PostgresEnv, tenantID, userID uuid.UUID, publicID, relyingParty, rpID string) {
 	t.Helper()
 	if _, err := pg.DB.ExecContext(context.Background(), `
 		INSERT INTO user_webauthn_credentials (
-			id, public_id, tenant_id, user_id, rp_id, credential_id, public_key, aaguid, backup_eligible, backed_up
-		) VALUES ($1, $2, $3, $4, $5, $6, '\x00', '00000000-0000-0000-0000-000000000000', false, false)
-	`, uuid.Must(uuid.NewV7()), publicID, tenantID, userID, rpID, []byte(publicID)); err != nil {
+			id, public_id, tenant_id, user_id, relying_party, rp_id, credential_id, public_key, aaguid, backup_eligible, backed_up
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, '\x00', '00000000-0000-0000-0000-000000000000', false, false)
+	`, uuid.Must(uuid.NewV7()), publicID, tenantID, userID, relyingParty, rpID, []byte(publicID)); err != nil {
 		t.Fatalf("insert user_webauthn_credentials: %v", err)
 	}
 }
@@ -148,19 +149,21 @@ func countRows(t *testing.T, pg *testutil.PostgresEnv, query string, args ...any
 }
 
 // An account whose only factor is a passkey is reset like one with an
-// authenticator, and every passkey goes, whatever relying party ID it was
-// registered for: one made while the console was served on another host is
-// dormant rather than gone, and would sign in again were the console moved
-// back. The count of refused attempts goes with the factors.
+// authenticator, and every console passkey goes, whatever relying party ID it
+// was registered for: one made while the console was served on another host
+// is dormant rather than gone, and would sign in again were the console moved
+// back. The passkey the account signs in to the storefront with is no factor
+// and stays. The count of refused attempts goes with the factors.
 func TestResetMFARemovesEveryPasskeyAndTheLock(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 	tenant := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	admin := pg.SeedTenantAdmin(t, tenant.ID, "TAADMIN", "admin@tenant-a.example.com", "Admin")
 	other := pg.SeedTenantAdmin(t, tenant.ID, "TAOTHER", "other@tenant-a.example.com", "Other")
-	seedPasskey(t, pg, tenant.ID, admin.ID, "PASSKEY00001", "admin-tenant-a.example.com")
-	seedPasskey(t, pg, tenant.ID, admin.ID, "PASSKEY00002", "tenant-a.example.com")
-	seedPasskey(t, pg, tenant.ID, other.ID, "PASSKEY00003", "admin-tenant-a.example.com")
+	seedPasskey(t, pg, tenant.ID, admin.ID, "PASSKEY00001", tenantwebauthn.KindAdminConsole, "admin-tenant-a.example.com")
+	seedPasskey(t, pg, tenant.ID, admin.ID, "PASSKEY00002", tenantwebauthn.KindAdminConsole, "tenant-a.example.com")
+	seedPasskey(t, pg, tenant.ID, other.ID, "PASSKEY00003", tenantwebauthn.KindAdminConsole, "admin-tenant-a.example.com")
+	seedPasskey(t, pg, tenant.ID, admin.ID, "PASSKEY00004", tenantwebauthn.KindSite, "tenant-a.example.com")
 	if _, err := pg.DB.ExecContext(context.Background(), `
 		INSERT INTO user_mfa_lockouts (user_id, tenant_id, failed_attempts, locked_until)
 		VALUES ($1, $2, 0, now() + interval '15 minutes')
@@ -174,8 +177,11 @@ func TestResetMFARemovesEveryPasskeyAndTheLock(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("ResetMFA: %v", err)
 	}
-	if got := countRows(t, pg, "SELECT count(*) FROM user_webauthn_credentials WHERE user_id = $1", admin.ID); got != 0 {
-		t.Fatalf("passkeys = %d, want none", got)
+	if got := countRows(t, pg, "SELECT count(*) FROM user_webauthn_credentials WHERE user_id = $1 AND relying_party = 'admin_console'", admin.ID); got != 0 {
+		t.Fatalf("console passkeys = %d, want none", got)
+	}
+	if got := countRows(t, pg, "SELECT count(*) FROM user_webauthn_credentials WHERE user_id = $1 AND relying_party = 'site'", admin.ID); got != 1 {
+		t.Fatalf("storefront passkeys = %d, want the one there was", got)
 	}
 	if got := countRows(t, pg, "SELECT count(*) FROM user_webauthn_credentials WHERE user_id = $1", other.ID); got != 1 {
 		t.Fatalf("other admin's passkeys = %d, want them untouched", got)

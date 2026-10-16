@@ -1,11 +1,14 @@
 package tenantwebauthn
 
 import (
+	"bytes"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
 
+	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -209,6 +212,123 @@ func TestFinishRegistrationRequiresUserVerification(t *testing.T) {
 	}
 	if _, err := console.FinishRegistration(user, ceremony, parsed); err == nil {
 		t.Fatal("FinishRegistration accepted a credential created without user verification")
+	}
+}
+
+// The storefront signs a reader in with a passkey alone, so it asks for a
+// discoverable credential, where the console, asking for a second factor after
+// a password, only prefers one.
+func TestSiteRequiresAResidentKey(t *testing.T) {
+	t.Setenv(tenantorigin.SchemeEnv, "")
+	tenant := dbmodels.Tenant{Domain: "comics.example"}
+	user := User{Handle: UserHandle("USER00000001"), Name: "reader@comics.example", DisplayName: "Reader"}
+
+	for _, tt := range []struct {
+		name        string
+		rp          func(dbmodels.Tenant) (*RelyingParty, error)
+		residentKey string
+		require     bool
+	}{
+		{name: "storefront", rp: Site, residentKey: "required", require: true},
+		{name: "console", rp: AdminConsole, residentKey: "preferred", require: false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			rp, err := tt.rp(tenant)
+			if err != nil {
+				t.Fatalf("relying party: %v", err)
+			}
+			options, _, err := rp.BeginRegistration(user)
+			if err != nil {
+				t.Fatalf("BeginRegistration: %v", err)
+			}
+			var creation struct {
+				AuthenticatorSelection struct {
+					ResidentKey        string `json:"residentKey"`
+					RequireResidentKey bool   `json:"requireResidentKey"`
+					UserVerification   string `json:"userVerification"`
+				} `json:"authenticatorSelection"`
+			}
+			if err := json.Unmarshal(options, &creation); err != nil {
+				t.Fatalf("read creation options: %v", err)
+			}
+			selection := creation.AuthenticatorSelection
+			if selection.ResidentKey != tt.residentKey || selection.RequireResidentKey != tt.require || selection.UserVerification != "required" {
+				t.Fatalf("authenticatorSelection = %+v, want residentKey %q, requireResidentKey %v, userVerification required", selection, tt.residentKey, tt.require)
+			}
+		})
+	}
+}
+
+// A sign-in that names no account allows no credential in particular, and the
+// account the authenticator's credential names is the one it signs in to, so
+// long as the user handle the authenticator returns is that account's.
+func TestFinishDiscoverableAuthenticationNamesTheAccountByItsCredential(t *testing.T) {
+	t.Setenv(tenantorigin.SchemeEnv, "")
+	site, err := Site(dbmodels.Tenant{Domain: "comics.example"})
+	if err != nil {
+		t.Fatalf("Site: %v", err)
+	}
+	authenticator := webauthntest.New(t, site.Origin)
+	user := User{Handle: UserHandle("USER00000001"), Name: "reader@comics.example", DisplayName: "Reader"}
+	user.Credentials = []dbmodels.UserWebauthnCredential{register(t, site, authenticator, user)}
+
+	begin := func() (*protocol.ParsedCredentialAssertionData, Ceremony) {
+		t.Helper()
+		options, ceremony, err := site.BeginDiscoverableAuthentication()
+		if err != nil {
+			t.Fatalf("BeginDiscoverableAuthentication: %v", err)
+		}
+		var request struct {
+			AllowCredentials []any  `json:"allowCredentials"`
+			RPID             string `json:"rpId"`
+			UserVerification string `json:"userVerification"`
+		}
+		if err := json.Unmarshal(options, &request); err != nil {
+			t.Fatalf("read request options: %v", err)
+		}
+		if len(request.AllowCredentials) != 0 || request.RPID != site.ID || request.UserVerification != "required" {
+			t.Fatalf("request options = %+v, want no credential named, the storefront's RP ID, and user verification", request)
+		}
+		parsed, _, err := ParseAssertion([]byte(authenticator.Assert(t, string(options))))
+		if err != nil {
+			t.Fatalf("ParseAssertion: %v", err)
+		}
+		return parsed, ceremony
+	}
+
+	parsed, ceremony := begin()
+	var handed []byte
+	credential, err := site.FinishDiscoverableAuthentication(ceremony, parsed, func(credentialID, userHandle []byte) (User, error) {
+		handed = userHandle
+		if !bytes.Equal(credentialID, authenticator.CredentialID) {
+			return User{}, errors.New("unknown credential")
+		}
+		return user, nil
+	})
+	if err != nil {
+		t.Fatalf("FinishDiscoverableAuthentication: %v", err)
+	}
+	if !bytes.Equal(credential.ID, authenticator.CredentialID) || !bytes.Equal(handed, user.Handle) {
+		t.Fatalf("credential %x for handle %q, want %x for %q", credential.ID, handed, authenticator.CredentialID, user.Handle)
+	}
+
+	// An account the lookup answers for the credential that is not the one the
+	// handle names is refused.
+	parsed, ceremony = begin()
+	other := user
+	other.Handle = UserHandle("USER00000002")
+	if _, err := site.FinishDiscoverableAuthentication(ceremony, parsed, func([]byte, []byte) (User, error) {
+		return other, nil
+	}); err == nil {
+		t.Fatal("FinishDiscoverableAuthentication accepted a user handle of another account")
+	}
+
+	// A credential the lookup does not know is refused.
+	parsed, ceremony = begin()
+	if _, err := site.FinishDiscoverableAuthentication(ceremony, parsed, func([]byte, []byte) (User, error) {
+		return User{}, errors.New("unknown credential")
+	}); err == nil {
+		t.Fatal("FinishDiscoverableAuthentication accepted a credential the lookup did not know")
 	}
 }
 

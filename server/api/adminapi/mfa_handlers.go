@@ -134,8 +134,9 @@ func (s *adminServer) mfaFactorsFor(ctx context.Context, tenant dbmodels.Tenant,
 		return mfaFactors{}, err
 	}
 	passkeys, err := s.queriesFor(ctx).CountUserWebauthnCredentialsForRPID(ctx, dbmodels.CountUserWebauthnCredentialsForRPIDParams{
-		UserID: userID,
-		RpID:   rpID,
+		UserID:       userID,
+		RelyingParty: tenantwebauthn.KindAdminConsole,
+		RpID:         rpID,
 	})
 	if err != nil {
 		return mfaFactors{}, s.internalDBError(ctx, "failed to count passkeys", err, "user_id", userID.String())
@@ -528,7 +529,7 @@ func (s *adminServer) currentPasskeys(ctx context.Context, q Querier, actor mfaA
 	if err != nil {
 		return 0, err
 	}
-	passkeys, err := q.CountUserWebauthnCredentialsForRPID(ctx, dbmodels.CountUserWebauthnCredentialsForRPIDParams{UserID: actor.User.ID, RpID: rpID})
+	passkeys, err := q.CountUserWebauthnCredentialsForRPID(ctx, dbmodels.CountUserWebauthnCredentialsForRPIDParams{UserID: actor.User.ID, RelyingParty: tenantwebauthn.KindAdminConsole, RpID: rpID})
 	if err != nil {
 		return 0, s.internalDBError(ctx, "failed to count passkeys", err, "user_id", actor.User.ID.String())
 	}

@@ -138,6 +138,47 @@ func (a *Attempt) Verified(ctx context.Context) {
 	a.guard.limiter.Refund(ctx, a.source)
 }
 
+// BeginPasskey spends one of the origin's allowances for a passkey sign-in
+// about to begin.
+//
+// A passkey sign-in names no address, so there is no account allowance to
+// charge, and an assertion is nothing anyone can guess. What the origin's
+// allowance bounds here is the ceremonies a stranger can make the server begin
+// and keep, each of which is a row until it expires. The allowance is the one
+// a password sign-in spends, since both are attempts to sign in from that
+// origin, and like a password that verifies, a passkey that signs the reader
+// in gives its charge back.
+func (g *Guard) BeginPasskey(ctx context.Context, scope string) error {
+	policy, err := g.policy.Policy(ctx)
+	if err != nil {
+		g.logger.ErrorContext(ctx, "failed to resolve the login rate limit", "scope", scope, "error", err)
+		return connect.NewError(connect.CodeInternal, "internal server error")
+	}
+	decision, err := g.limiter.Allow(ctx, sourceSubject(clientip.FromContext(ctx)), hourDayRules(policy.LoginAttemptsPerSource)...)
+	if err != nil {
+		g.logger.ErrorContext(ctx, "failed to charge the login rate limit", "scope", scope, "error", err)
+		return connect.NewError(connect.CodeInternal, "internal server error")
+	}
+	if !decision.Allowed {
+		return rpcerrors.NewRateLimitedError(ctx, decision.RetryAfter)
+	}
+	return nil
+}
+
+// PasskeyVerified gives back the charge BeginPasskey made at charged, for the
+// passkey sign-in that went through. It is made by the request that finishes
+// the sign-in, which holds no Decision of the one that began it, and is from
+// the same origin for as long as the reader's network does not change in
+// between.
+func (g *Guard) PasskeyVerified(ctx context.Context, charged time.Time) {
+	policy, err := g.policy.Policy(ctx)
+	if err != nil {
+		g.logger.WarnContext(ctx, "failed to resolve the login rate limit to give a passkey sign-in back", "error", err)
+		return
+	}
+	g.limiter.RefundAt(ctx, sourceSubject(clientip.FromContext(ctx)), charged, hourDayRules(policy.LoginAttemptsPerSource)...)
+}
+
 // accountSubject names the allowance of one address within scope.
 //
 // The scope is part of it: one address may hold an account on many tenants, and

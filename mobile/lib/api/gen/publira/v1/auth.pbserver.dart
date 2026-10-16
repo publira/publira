@@ -31,6 +31,22 @@ abstract class AuthServiceBase extends $pb.GeneratedService {
       $pb.ServerContext ctx, $2.UnlinkIdentityRequest request);
   $async.Future<$2.LinkIdentityResponse> linkIdentity(
       $pb.ServerContext ctx, $2.LinkIdentityRequest request);
+  $async.Future<$2.BeginPasskeyLoginResponse> beginPasskeyLogin(
+      $pb.ServerContext ctx, $2.BeginPasskeyLoginRequest request);
+  $async.Future<$2.FinishPasskeyLoginResponse> finishPasskeyLogin(
+      $pb.ServerContext ctx, $2.FinishPasskeyLoginRequest request);
+  $async.Future<$2.BeginPasskeyRegistrationResponse> beginPasskeyRegistration(
+      $pb.ServerContext ctx, $2.BeginPasskeyRegistrationRequest request);
+  $async.Future<$2.FinishPasskeyRegistrationResponse> finishPasskeyRegistration(
+      $pb.ServerContext ctx, $2.FinishPasskeyRegistrationRequest request);
+  $async.Future<$2.ListMyPasskeysResponse> listMyPasskeys(
+      $pb.ServerContext ctx, $2.ListMyPasskeysRequest request);
+  $async.Future<$2.RenamePasskeyResponse> renamePasskey(
+      $pb.ServerContext ctx, $2.RenamePasskeyRequest request);
+  $async.Future<$2.DeletePasskeyResponse> deletePasskey(
+      $pb.ServerContext ctx, $2.DeletePasskeyRequest request);
+  $async.Future<$2.BeginPasskeyConfirmationResponse> beginPasskeyConfirmation(
+      $pb.ServerContext ctx, $2.BeginPasskeyConfirmationRequest request);
   $async.Future<$2.CreateUserResponse> createUser(
       $pb.ServerContext ctx, $2.CreateUserRequest request);
   $async.Future<$2.VerifyUserEmailResponse> verifyUserEmail(
@@ -98,6 +114,22 @@ abstract class AuthServiceBase extends $pb.GeneratedService {
         return $2.UnlinkIdentityRequest();
       case 'LinkIdentity':
         return $2.LinkIdentityRequest();
+      case 'BeginPasskeyLogin':
+        return $2.BeginPasskeyLoginRequest();
+      case 'FinishPasskeyLogin':
+        return $2.FinishPasskeyLoginRequest();
+      case 'BeginPasskeyRegistration':
+        return $2.BeginPasskeyRegistrationRequest();
+      case 'FinishPasskeyRegistration':
+        return $2.FinishPasskeyRegistrationRequest();
+      case 'ListMyPasskeys':
+        return $2.ListMyPasskeysRequest();
+      case 'RenamePasskey':
+        return $2.RenamePasskeyRequest();
+      case 'DeletePasskey':
+        return $2.DeletePasskeyRequest();
+      case 'BeginPasskeyConfirmation':
+        return $2.BeginPasskeyConfirmationRequest();
       case 'CreateUser':
         return $2.CreateUserRequest();
       case 'VerifyUserEmail':
@@ -168,6 +200,25 @@ abstract class AuthServiceBase extends $pb.GeneratedService {
         return unlinkIdentity(ctx, request as $2.UnlinkIdentityRequest);
       case 'LinkIdentity':
         return linkIdentity(ctx, request as $2.LinkIdentityRequest);
+      case 'BeginPasskeyLogin':
+        return beginPasskeyLogin(ctx, request as $2.BeginPasskeyLoginRequest);
+      case 'FinishPasskeyLogin':
+        return finishPasskeyLogin(ctx, request as $2.FinishPasskeyLoginRequest);
+      case 'BeginPasskeyRegistration':
+        return beginPasskeyRegistration(
+            ctx, request as $2.BeginPasskeyRegistrationRequest);
+      case 'FinishPasskeyRegistration':
+        return finishPasskeyRegistration(
+            ctx, request as $2.FinishPasskeyRegistrationRequest);
+      case 'ListMyPasskeys':
+        return listMyPasskeys(ctx, request as $2.ListMyPasskeysRequest);
+      case 'RenamePasskey':
+        return renamePasskey(ctx, request as $2.RenamePasskeyRequest);
+      case 'DeletePasskey':
+        return deletePasskey(ctx, request as $2.DeletePasskeyRequest);
+      case 'BeginPasskeyConfirmation':
+        return beginPasskeyConfirmation(
+            ctx, request as $2.BeginPasskeyConfirmationRequest);
       case 'CreateUser':
         return createUser(ctx, request as $2.CreateUserRequest);
       case 'VerifyUserEmail':

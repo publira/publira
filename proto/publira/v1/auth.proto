@@ -84,13 +84,18 @@ message ListMyIdentitiesResponse {
   // False for an account a provider sign-in created, which confirms DeleteMe
   // with a fresh sign-in and keeps its last linked provider.
   bool has_password = 2;
+  // True when the reader holds a passkey the storefront signs them in with,
+  // which ListMyPasskeys lists and which confirms DeleteMe and an email change
+  // through BeginPasskeyConfirmation.
+  bool has_passkey = 3;
 }
 
 message UnlinkIdentityRequest {
   publira.types.v1.TenantContext tenant = 1;
   // not_found where the reader has no account of this provider linked, and
   // failed_precondition where it is the last way the reader signs in: an
-  // account without a password keeps one linked provider.
+  // account without a password and without a passkey keeps one linked
+  // provider.
   IdentityProvider provider = 2;
 }
 
@@ -123,6 +128,135 @@ message LinkIdentityRequest {
 // holds no session, so it is refused unauthenticated before either.
 message LinkIdentityResponse {
   LinkedIdentity identity = 1;
+}
+
+// A passkey the reader signs in to the storefront with. The storefront and the
+// tenant's console are two relying parties, so a passkey registered on one is
+// never listed, counted, or accepted on the other.
+message Passkey {
+  string id = 1;
+  // What its owner called it. Empty until they name it.
+  string name = 2;
+  // RFC 3339.
+  string created_at = 3;
+  // RFC 3339. Empty until it first signs the reader in or confirms a step.
+  string last_used_at = 4;
+  // The authenticator syncs it to the owner's other devices, as a passkey in
+  // a password manager does; false for one bound to a single device, such as
+  // a security key.
+  bool backed_up = 5;
+}
+
+// Begins a sign-in with a passkey alone. The options name no account and
+// allow no credential in particular, so the browser offers whichever passkey
+// the reader holds for the storefront, and the credential the reader picks is
+// what names the account. Each begin spends one of the caller's sign-in
+// attempts, as a password Login does, and a sign-in that succeeds gives it
+// back; past the limit it is resource_exhausted with Retry-After.
+message BeginPasskeyLoginRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message BeginPasskeyLoginResponse {
+  // PublicKeyCredentialRequestOptionsJSON, for
+  // PublicKeyCredential.parseRequestOptionsFromJSON. User verification is
+  // required. The challenge is good for five minutes and one finish.
+  string request_options_json = 1;
+}
+
+message FinishPasskeyLoginRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The PublicKeyCredential the authenticator asserted with, as its toJSON()
+  // serializes it. Unauthenticated, as a wrong password is, when the
+  // assertion was not made on the storefront's origin over a challenge
+  // BeginPasskeyLogin issued and no finish has spent, when the passkey is not
+  // one this tenant's storefront registered, when the user handle it carries
+  // is not its account's, or when its signature counter did not move forward.
+  // An account that is suspended, or whose address was never verified, is
+  // failed_precondition as Login answers it: a passkey proves the reader holds
+  // an authenticator registered from a session, not that the address is
+  // theirs, so it confirms no address.
+  string credential_json = 2;
+}
+
+message FinishPasskeyLoginResponse {
+  publira.types.v1.User user = 1;
+  publira.types.v1.AccessToken access_token = 2;
+}
+
+message BeginPasskeyRegistrationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message BeginPasskeyRegistrationResponse {
+  // PublicKeyCredentialCreationOptionsJSON, for
+  // PublicKeyCredential.parseCreationOptionsFromJSON. A resident key and user
+  // verification are required, since the passkey has to sign the reader in
+  // without an address typed, and the reader's existing passkeys are
+  // excluded. failed_precondition once the reader holds as many passkeys as an
+  // account may.
+  string creation_options_json = 1;
+}
+
+message FinishPasskeyRegistrationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The PublicKeyCredential the authenticator created, as its toJSON()
+  // serializes it. invalid_argument on credential_json when it does not
+  // verify against a ceremony BeginPasskeyRegistration began for the caller,
+  // and already_exists when the tenant holds the credential already.
+  string credential_json = 2;
+  // At most 64 characters; empty leaves it unnamed.
+  string name = 3;
+}
+
+message FinishPasskeyRegistrationResponse {
+  Passkey passkey = 1;
+}
+
+message ListMyPasskeysRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message ListMyPasskeysResponse {
+  // Oldest first.
+  repeated Passkey passkeys = 1;
+}
+
+message RenamePasskeyRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // not_found for a passkey that is not the caller's.
+  string id = 2;
+  // At most 64 characters; empty leaves it unnamed.
+  string name = 3;
+}
+
+message RenamePasskeyResponse {
+  Passkey passkey = 1;
+}
+
+message DeletePasskeyRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // not_found for a passkey that is not the caller's, and
+  // failed_precondition where it is the last way the reader signs in: an
+  // account without a password and without a linked provider keeps one
+  // passkey.
+  string id = 2;
+}
+
+message DeletePasskeyResponse {}
+
+// Begins the fresh assertion that confirms DeleteMe or RequestEmailChange in
+// place of a password, allowing the caller's own passkeys alone.
+// failed_precondition for a reader who holds none.
+message BeginPasskeyConfirmationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message BeginPasskeyConfirmationResponse {
+  // PublicKeyCredentialRequestOptionsJSON, as BeginPasskeyLoginResponse
+  // answers it. The assertion made over it goes in the passkey_credential_json
+  // of the request it confirms, and confirms that one request.
+  string request_options_json = 1;
 }
 
 message CreateUserRequest {
@@ -193,11 +327,17 @@ message RequestEmailChangeRequest {
   string new_email = 3;
   // The account's password. An account without one confirms with a fresh
   // sign-in instead: an ID token and its nonce, as LoginWithIdTokenRequest
-  // takes them, from a provider linked to the account.
+  // takes them, from a provider linked to the account, or an assertion made
+  // with one of its passkeys over a challenge BeginPasskeyConfirmation issued,
+  // as its toJSON() serializes it. Exactly one of the three is sent. An
+  // assertion that does not verify is invalid_argument on
+  // passkey_credential_json, so a client does not mistake it for the end of
+  // its session.
   string current_password = 4;
   IdentityProvider provider = 5;
   string id_token = 6;
   string nonce = 7;
+  string passkey_credential_json = 8;
 }
 
 message RequestEmailChangeResponse {
@@ -323,12 +463,14 @@ message SelectMyIconResponse {
 message DeleteMeRequest {
   publira.types.v1.TenantContext tenant = 1;
   // The account's password. An account without one confirms with a fresh
-  // sign-in instead: an ID token and its nonce, as LoginWithIdTokenRequest
-  // takes them, from a provider linked to the account.
+  // sign-in instead, as RequestEmailChangeRequest describes: an ID token and
+  // its nonce from a provider linked to the account, or an assertion made
+  // with one of its passkeys.
   string password = 2;
   IdentityProvider provider = 3;
   string id_token = 4;
   string nonce = 5;
+  string passkey_credential_json = 6;
 }
 
 message DeleteMeResponse {}
@@ -505,6 +647,14 @@ service AuthService {
   rpc ListMyIdentities(ListMyIdentitiesRequest) returns (ListMyIdentitiesResponse) {}
   rpc UnlinkIdentity(UnlinkIdentityRequest) returns (UnlinkIdentityResponse) {}
   rpc LinkIdentity(LinkIdentityRequest) returns (LinkIdentityResponse) {}
+  rpc BeginPasskeyLogin(BeginPasskeyLoginRequest) returns (BeginPasskeyLoginResponse) {}
+  rpc FinishPasskeyLogin(FinishPasskeyLoginRequest) returns (FinishPasskeyLoginResponse) {}
+  rpc BeginPasskeyRegistration(BeginPasskeyRegistrationRequest) returns (BeginPasskeyRegistrationResponse) {}
+  rpc FinishPasskeyRegistration(FinishPasskeyRegistrationRequest) returns (FinishPasskeyRegistrationResponse) {}
+  rpc ListMyPasskeys(ListMyPasskeysRequest) returns (ListMyPasskeysResponse) {}
+  rpc RenamePasskey(RenamePasskeyRequest) returns (RenamePasskeyResponse) {}
+  rpc DeletePasskey(DeletePasskeyRequest) returns (DeletePasskeyResponse) {}
+  rpc BeginPasskeyConfirmation(BeginPasskeyConfirmationRequest) returns (BeginPasskeyConfirmationResponse) {}
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {}
   rpc VerifyUserEmail(VerifyUserEmailRequest) returns (VerifyUserEmailResponse) {}
   rpc RequestEmailVerification(RequestEmailVerificationRequest) returns (RequestEmailVerificationResponse) {}

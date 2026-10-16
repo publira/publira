@@ -219,8 +219,8 @@ func TestAdminPasskeyVerificationRefusesAStorefrontPasskeyUnderTheStorefrontDoma
 	}
 	if _, err := env.PG.DB.ExecContext(context.Background(), `
 		INSERT INTO user_webauthn_credentials (
-			id, public_id, tenant_id, user_id, rp_id, credential_id, public_key, sign_count, aaguid, backup_eligible, backed_up
-		) VALUES (gen_random_uuid(), 'STOREFRONT01', $1, $2, $3, $4, $5, $6, $7, false, false)
+			id, public_id, tenant_id, user_id, relying_party, rp_id, credential_id, public_key, sign_count, aaguid, backup_eligible, backed_up
+		) VALUES (gen_random_uuid(), 'STOREFRONT01', $1, $2, 'site', $3, $4, $5, $6, $7, false, false)
 	`, tenant.Tenant.ID, tenant.User.ID, site.ID, credential.ID, credential.PublicKey,
 		int64(credential.Authenticator.SignCount), tenantwebauthn.AAGUID(credential)); err != nil {
 		t.Fatalf("store the storefront passkey: %v", err)
@@ -705,8 +705,8 @@ func TestAdminPasskeyKeepsTheRecoveryCodesOfADormantPasskey(t *testing.T) {
 	secret, _ := enrollMfa(t, env, tenant)
 	if _, err := env.PG.DB.ExecContext(context.Background(), `
 		INSERT INTO user_webauthn_credentials (
-			id, public_id, tenant_id, user_id, rp_id, credential_id, public_key, aaguid, backup_eligible, backed_up
-		) VALUES (gen_random_uuid(), 'DORMANT00001', $1, $2, 'console.elsewhere.example', '\x01', '\x00', '00000000-0000-0000-0000-000000000000', false, false)
+			id, public_id, tenant_id, user_id, relying_party, rp_id, credential_id, public_key, aaguid, backup_eligible, backed_up
+		) VALUES (gen_random_uuid(), 'DORMANT00001', $1, $2, 'admin_console', 'console.elsewhere.example', '\x01', '\x00', '00000000-0000-0000-0000-000000000000', false, false)
 	`, tenant.Tenant.ID, tenant.User.ID); err != nil {
 		t.Fatalf("insert dormant passkey: %v", err)
 	}
@@ -801,8 +801,9 @@ func TestAdminPasskeyBeginWaitsForAConcurrentBegin(t *testing.T) {
 	}
 	defer concurrent.Rollback() //nolint:errcheck
 	if err := dbmodels.New(concurrent).LockUserWebauthnCeremonies(context.Background(), dbmodels.LockUserWebauthnCeremoniesParams{
-		UserID:   tenant.User.ID,
-		Ceremony: "authentication",
+		UserID:       tenant.User.ID,
+		RelyingParty: tenantwebauthn.KindAdminConsole,
+		Ceremony:     "authentication",
 	}); err != nil {
 		t.Fatalf("LockUserWebauthnCeremonies: %v", err)
 	}

@@ -16,13 +16,20 @@ const CountUserWebauthnCredentials = `-- name: CountUserWebauthnCredentials :one
 SELECT count(*)
 FROM user_webauthn_credentials
 WHERE user_id = $1
+    AND relying_party = $2
 `
 
-// Every RP ID. A credential registered for an RP ID the console no longer
-// derives is no factor now, but it becomes one again if the console moves
-// back, and the recovery codes have to still be there when it does.
-func (q *Queries) CountUserWebauthnCredentials(ctx context.Context, userID uuid.UUID) (int64, error) {
-	row := q.db.QueryRowContext(ctx, CountUserWebauthnCredentials, userID)
+type CountUserWebauthnCredentialsParams struct {
+	UserID       uuid.UUID `json:"user_id"`
+	RelyingParty string    `json:"relying_party"`
+}
+
+// Every RP ID of the relying party. A credential registered for an RP ID the
+// console no longer derives is no factor now, but it becomes one again if the
+// console moves back, and the recovery codes have to still be there when it
+// does.
+func (q *Queries) CountUserWebauthnCredentials(ctx context.Context, arg CountUserWebauthnCredentialsParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, CountUserWebauthnCredentials, arg.UserID, arg.RelyingParty)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -32,16 +39,18 @@ const CountUserWebauthnCredentialsForRPID = `-- name: CountUserWebauthnCredentia
 SELECT count(*)
 FROM user_webauthn_credentials
 WHERE user_id = $1
-    AND rp_id = $2
+    AND relying_party = $2
+    AND rp_id = $3
 `
 
 type CountUserWebauthnCredentialsForRPIDParams struct {
-	UserID uuid.UUID `json:"user_id"`
-	RpID   string    `json:"rp_id"`
+	UserID       uuid.UUID `json:"user_id"`
+	RelyingParty string    `json:"relying_party"`
+	RpID         string    `json:"rp_id"`
 }
 
 func (q *Queries) CountUserWebauthnCredentialsForRPID(ctx context.Context, arg CountUserWebauthnCredentialsForRPIDParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, CountUserWebauthnCredentialsForRPID, arg.UserID, arg.RpID)
+	row := q.db.QueryRowContext(ctx, CountUserWebauthnCredentialsForRPID, arg.UserID, arg.RelyingParty, arg.RpID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -54,6 +63,7 @@ INSERT INTO user_webauthn_credentials (
         public_id,
         tenant_id,
         user_id,
+        relying_party,
         rp_id,
         credential_id,
         public_key,
@@ -74,12 +84,13 @@ VALUES (
         $7,
         $8,
         $9,
-        $10::text[],
-        $11,
+        $10,
+        $11::text[],
         $12,
-        $13
+        $13,
+        $14
     )
-RETURNING id, public_id, tenant_id, user_id, rp_id, credential_id, public_key, sign_count, aaguid, transports, backup_eligible, backed_up, name, created_at, last_used_at
+RETURNING id, public_id, tenant_id, user_id, rp_id, credential_id, public_key, sign_count, aaguid, transports, backup_eligible, backed_up, name, created_at, last_used_at, relying_party
 `
 
 type CreateUserWebauthnCredentialParams struct {
@@ -87,6 +98,7 @@ type CreateUserWebauthnCredentialParams struct {
 	PublicID       string    `json:"public_id"`
 	TenantID       uuid.UUID `json:"tenant_id"`
 	UserID         uuid.UUID `json:"user_id"`
+	RelyingParty   string    `json:"relying_party"`
 	RpID           string    `json:"rp_id"`
 	CredentialID   []byte    `json:"credential_id"`
 	PublicKey      []byte    `json:"public_key"`
@@ -98,16 +110,19 @@ type CreateUserWebauthnCredentialParams struct {
 	Name           string    `json:"name"`
 }
 
-// WebAuthn credentials. Every statement is keyed by the user, and the
-// row-level security policy confines it to the tenant the connection is scoped
-// to. A credential answers only the relying party ID it was registered for,
-// so every read that offers credentials to a ceremony names that RP ID too.
+// WebAuthn credentials. Every statement is keyed by the user or by the
+// credential, and the row-level security policy confines it to the tenant the
+// connection is scoped to. A credential belongs to one of the tenant's two
+// relying parties, the console or the storefront, and answers only the relying
+// party ID it was registered for, so every statement names the relying party
+// and every read that offers credentials to a ceremony names that RP ID too.
 func (q *Queries) CreateUserWebauthnCredential(ctx context.Context, arg CreateUserWebauthnCredentialParams) (UserWebauthnCredential, error) {
 	row := q.db.QueryRowContext(ctx, CreateUserWebauthnCredential,
 		arg.ID,
 		arg.PublicID,
 		arg.TenantID,
 		arg.UserID,
+		arg.RelyingParty,
 		arg.RpID,
 		arg.CredentialID,
 		arg.PublicKey,
@@ -135,6 +150,7 @@ func (q *Queries) CreateUserWebauthnCredential(ctx context.Context, arg CreateUs
 		&i.Name,
 		&i.CreatedAt,
 		&i.LastUsedAt,
+		&i.RelyingParty,
 	)
 	return i, err
 }
@@ -155,13 +171,20 @@ func (q *Queries) DeleteUserWebauthnCredential(ctx context.Context, id uuid.UUID
 const DeleteUserWebauthnCredentialsByUserID = `-- name: DeleteUserWebauthnCredentialsByUserID :execrows
 DELETE FROM user_webauthn_credentials
 WHERE user_id = $1
+    AND relying_party = $2
 `
 
-// Every RP ID, not only the one the console derives now: a credential
-// registered while the console was served on another host is dormant rather
-// than gone, and moving the console back would let it sign in again.
-func (q *Queries) DeleteUserWebauthnCredentialsByUserID(ctx context.Context, userID uuid.UUID) (int64, error) {
-	result, err := q.db.ExecContext(ctx, DeleteUserWebauthnCredentialsByUserID, userID)
+type DeleteUserWebauthnCredentialsByUserIDParams struct {
+	UserID       uuid.UUID `json:"user_id"`
+	RelyingParty string    `json:"relying_party"`
+}
+
+// Every RP ID of the relying party, not only the one the console derives now:
+// a credential registered while the console was served on another host is
+// dormant rather than gone, and moving the console back would let it sign in
+// again.
+func (q *Queries) DeleteUserWebauthnCredentialsByUserID(ctx context.Context, arg DeleteUserWebauthnCredentialsByUserIDParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, DeleteUserWebauthnCredentialsByUserID, arg.UserID, arg.RelyingParty)
 	if err != nil {
 		return 0, err
 	}
@@ -169,21 +192,28 @@ func (q *Queries) DeleteUserWebauthnCredentialsByUserID(ctx context.Context, use
 }
 
 const GetUserWebauthnCredentialByPublicID = `-- name: GetUserWebauthnCredentialByPublicID :one
-SELECT id, public_id, tenant_id, user_id, rp_id, credential_id, public_key, sign_count, aaguid, transports, backup_eligible, backed_up, name, created_at, last_used_at
+SELECT id, public_id, tenant_id, user_id, rp_id, credential_id, public_key, sign_count, aaguid, transports, backup_eligible, backed_up, name, created_at, last_used_at, relying_party
 FROM user_webauthn_credentials
 WHERE user_id = $1
-    AND rp_id = $2
-    AND public_id = $3
+    AND relying_party = $2
+    AND rp_id = $3
+    AND public_id = $4
 `
 
 type GetUserWebauthnCredentialByPublicIDParams struct {
-	UserID   uuid.UUID `json:"user_id"`
-	RpID     string    `json:"rp_id"`
-	PublicID string    `json:"public_id"`
+	UserID       uuid.UUID `json:"user_id"`
+	RelyingParty string    `json:"relying_party"`
+	RpID         string    `json:"rp_id"`
+	PublicID     string    `json:"public_id"`
 }
 
 func (q *Queries) GetUserWebauthnCredentialByPublicID(ctx context.Context, arg GetUserWebauthnCredentialByPublicIDParams) (UserWebauthnCredential, error) {
-	row := q.db.QueryRowContext(ctx, GetUserWebauthnCredentialByPublicID, arg.UserID, arg.RpID, arg.PublicID)
+	row := q.db.QueryRowContext(ctx, GetUserWebauthnCredentialByPublicID,
+		arg.UserID,
+		arg.RelyingParty,
+		arg.RpID,
+		arg.PublicID,
+	)
 	var i UserWebauthnCredential
 	err := row.Scan(
 		&i.ID,
@@ -201,26 +231,70 @@ func (q *Queries) GetUserWebauthnCredentialByPublicID(ctx context.Context, arg G
 		&i.Name,
 		&i.CreatedAt,
 		&i.LastUsedAt,
+		&i.RelyingParty,
+	)
+	return i, err
+}
+
+const GetUserWebauthnCredentialForSignIn = `-- name: GetUserWebauthnCredentialForSignIn :one
+SELECT id, public_id, tenant_id, user_id, rp_id, credential_id, public_key, sign_count, aaguid, transports, backup_eligible, backed_up, name, created_at, last_used_at, relying_party
+FROM user_webauthn_credentials
+WHERE credential_id = $1
+    AND relying_party = $2
+    AND rp_id = $3
+`
+
+type GetUserWebauthnCredentialForSignInParams struct {
+	CredentialID []byte `json:"credential_id"`
+	RelyingParty string `json:"relying_party"`
+	RpID         string `json:"rp_id"`
+}
+
+// The credential a discoverable assertion names, before any account is known.
+// The tenant's row-level security policy is what keeps another tenant's
+// credential out of reach.
+func (q *Queries) GetUserWebauthnCredentialForSignIn(ctx context.Context, arg GetUserWebauthnCredentialForSignInParams) (UserWebauthnCredential, error) {
+	row := q.db.QueryRowContext(ctx, GetUserWebauthnCredentialForSignIn, arg.CredentialID, arg.RelyingParty, arg.RpID)
+	var i UserWebauthnCredential
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.TenantID,
+		&i.UserID,
+		&i.RpID,
+		&i.CredentialID,
+		&i.PublicKey,
+		&i.SignCount,
+		&i.Aaguid,
+		pq.Array(&i.Transports),
+		&i.BackupEligible,
+		&i.BackedUp,
+		&i.Name,
+		&i.CreatedAt,
+		&i.LastUsedAt,
+		&i.RelyingParty,
 	)
 	return i, err
 }
 
 const ListUserWebauthnCredentialsForRPID = `-- name: ListUserWebauthnCredentialsForRPID :many
-SELECT id, public_id, tenant_id, user_id, rp_id, credential_id, public_key, sign_count, aaguid, transports, backup_eligible, backed_up, name, created_at, last_used_at
+SELECT id, public_id, tenant_id, user_id, rp_id, credential_id, public_key, sign_count, aaguid, transports, backup_eligible, backed_up, name, created_at, last_used_at, relying_party
 FROM user_webauthn_credentials
 WHERE user_id = $1
-    AND rp_id = $2
+    AND relying_party = $2
+    AND rp_id = $3
 ORDER BY created_at,
     id
 `
 
 type ListUserWebauthnCredentialsForRPIDParams struct {
-	UserID uuid.UUID `json:"user_id"`
-	RpID   string    `json:"rp_id"`
+	UserID       uuid.UUID `json:"user_id"`
+	RelyingParty string    `json:"relying_party"`
+	RpID         string    `json:"rp_id"`
 }
 
 func (q *Queries) ListUserWebauthnCredentialsForRPID(ctx context.Context, arg ListUserWebauthnCredentialsForRPIDParams) ([]UserWebauthnCredential, error) {
-	rows, err := q.db.QueryContext(ctx, ListUserWebauthnCredentialsForRPID, arg.UserID, arg.RpID)
+	rows, err := q.db.QueryContext(ctx, ListUserWebauthnCredentialsForRPID, arg.UserID, arg.RelyingParty, arg.RpID)
 	if err != nil {
 		return nil, err
 	}
@@ -244,6 +318,7 @@ func (q *Queries) ListUserWebauthnCredentialsForRPID(ctx context.Context, arg Li
 			&i.Name,
 			&i.CreatedAt,
 			&i.LastUsedAt,
+			&i.RelyingParty,
 		); err != nil {
 			return nil, err
 		}
@@ -298,7 +373,7 @@ const RenameUserWebauthnCredential = `-- name: RenameUserWebauthnCredential :one
 UPDATE user_webauthn_credentials
 SET name = $1
 WHERE id = $2
-RETURNING id, public_id, tenant_id, user_id, rp_id, credential_id, public_key, sign_count, aaguid, transports, backup_eligible, backed_up, name, created_at, last_used_at
+RETURNING id, public_id, tenant_id, user_id, rp_id, credential_id, public_key, sign_count, aaguid, transports, backup_eligible, backed_up, name, created_at, last_used_at, relying_party
 `
 
 type RenameUserWebauthnCredentialParams struct {
@@ -325,6 +400,7 @@ func (q *Queries) RenameUserWebauthnCredential(ctx context.Context, arg RenameUs
 		&i.Name,
 		&i.CreatedAt,
 		&i.LastUsedAt,
+		&i.RelyingParty,
 	)
 	return i, err
 }

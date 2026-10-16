@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/tenantwebauthn"
 )
 
 // ErrMFANotSetUp refuses a reset for an account that has no authenticator,
@@ -34,11 +35,14 @@ func (p ResetMFAParams) Validate() error {
 }
 
 // ResetMFA deletes the user's authenticator, whether it was confirmed or only
-// started, every passkey it registered, every recovery code it holds, and the
-// count of its refused attempts, inside tx. The passkeys go whatever relying
-// party ID they were registered for: one made while the console was served on
-// another host would otherwise come back as a factor the day the console moved
-// back, after the operator had taken it away. It is what
+// started, every passkey it registered on the console, every recovery code it
+// holds, and the count of its refused attempts, inside tx. The passkeys go
+// whatever relying party ID they were registered for: one made while the
+// console was served on another host would otherwise come back as a factor the
+// day the console moved back, after the operator had taken it away. The
+// passkeys the account signs in to the storefront with stay: they are no
+// second factor, and an account without a password may have no other way in
+// there. It is what
 // DisableMfa and DeletePasskey do without the factor they ask for, for the
 // account that has lost all of them: the next sign-in takes the password
 // alone, and asks for an enrollment wherever the platform requires one of the
@@ -65,7 +69,10 @@ func ResetMFA(ctx context.Context, tx *sql.Tx, p ResetMFAParams) (Member, error)
 		}
 		hasTotp = false
 	}
-	passkeys, err := q.DeleteUserWebauthnCredentialsByUserID(ctx, member.UserID)
+	passkeys, err := q.DeleteUserWebauthnCredentialsByUserID(ctx, dbmodels.DeleteUserWebauthnCredentialsByUserIDParams{
+		UserID:       member.UserID,
+		RelyingParty: tenantwebauthn.KindAdminConsole,
+	})
 	if err != nil {
 		return Member{}, fmt.Errorf("delete passkeys: %w", err)
 	}

@@ -666,9 +666,10 @@ func (s *apiServer) RequestEmailChange(
 	currentPassword := req.CurrentPassword
 	withPassword := strings.TrimSpace(currentPassword) != ""
 	withIdentity := strings.TrimSpace(req.IdToken) != ""
-	if currentEmail == "" || newEmail == "" || withPassword == withIdentity {
+	withPasskey := strings.TrimSpace(req.PasskeyCredentialJson) != ""
+	if currentEmail == "" || newEmail == "" || confirmationsGiven(withPassword, withIdentity, withPasskey) != 1 {
 		auth.AuditEvent(ctx, "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_input")
-		return nil, connect.NewError(connect.CodeInvalidArgument, "current_email, new_email and either current_password or id_token are required")
+		return nil, connect.NewError(connect.CodeInvalidArgument, "current_email, new_email and one of current_password, id_token or passkey_credential_json are required")
 	}
 	if _, err := mail.ParseAddress(currentEmail); err != nil {
 		auth.AuditEvent(ctx, "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_current_email")
@@ -694,8 +695,12 @@ func (s *apiServer) RequestEmailChange(
 		auth.AuditEvent(ctx, "email_change_request", "failure", tenant.PublicID, user.PublicID, reason)
 		return nil, err
 	}
-	var identityClaims signin.Claims
-	if withPassword {
+	var (
+		identityClaims   signin.Claims
+		confirmedPasskey passkeyConfirmation
+	)
+	switch {
+	case withPassword:
 		// Charged here rather than at the top: every check above refuses on what the
 		// caller typed instead of on the account's password, so none of them is a
 		// guess and none of them should cost an allowance.
@@ -708,12 +713,20 @@ func (s *apiServer) RequestEmailChange(
 			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("invalid current password"), "current_password")
 		}
 		s.clearReaderAction(ctx, actionVerifyPassword, tenant.ID, user.ID)
-	} else {
+	case withIdentity:
 		// Verified before the mail guard is charged and spent inside the
 		// transaction below, since spending the nonce is a write.
 		identityClaims, err = s.verifyIdentityConfirmation(ctx, s.queriesFor(ctx), tenant.ID, user.ID, req.Provider, req.IdToken, req.Nonce)
 		if err != nil {
 			auth.AuditEvent(ctx, "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_identity_confirmation")
+			return nil, err
+		}
+	default:
+		// Verified and spent the way an identity confirmation is, for the same
+		// reason: spending the ceremony is a write.
+		confirmedPasskey, err = s.verifyPasskeyConfirmation(ctx, s.queriesFor(ctx), tenant, user, req.PasskeyCredentialJson)
+		if err != nil {
+			auth.AuditEvent(ctx, "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_passkey_confirmation")
 			return nil, err
 		}
 	}
@@ -805,6 +818,12 @@ func (s *apiServer) RequestEmailChange(
 	if withIdentity {
 		if err := s.spendConfirmationNonce(ctx, txq, tenant.ID, req.Nonce, identityClaims); err != nil {
 			auth.AuditEvent(ctx, "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_identity_confirmation")
+			return nil, err
+		}
+	}
+	if withPasskey {
+		if err := s.spendPasskeyConfirmation(ctx, txq, user.ID, confirmedPasskey); err != nil {
+			auth.AuditEvent(ctx, "email_change_request", "failure", tenant.PublicID, user.PublicID, "invalid_passkey_confirmation")
 			return nil, err
 		}
 	}
@@ -1367,6 +1386,18 @@ func (s *apiServer) UpdateMe(
 	return &publirav1.UpdateMeResponse{User: account}, nil
 }
 
+// confirmationsGiven counts the ways a request confirmed itself with, of
+// which DeleteMe and RequestEmailChange take exactly one.
+func confirmationsGiven(given ...bool) int {
+	count := 0
+	for _, g := range given {
+		if g {
+			count++
+		}
+	}
+	return count
+}
+
 func (s *apiServer) DeleteMe(
 	ctx context.Context,
 	req *publirav1.DeleteMeRequest,
@@ -1379,9 +1410,10 @@ func (s *apiServer) DeleteMe(
 	password := req.Password
 	withPassword := strings.TrimSpace(password) != ""
 	withIdentity := strings.TrimSpace(req.IdToken) != ""
-	if withPassword == withIdentity {
+	withPasskey := strings.TrimSpace(req.PasskeyCredentialJson) != ""
+	if confirmationsGiven(withPassword, withIdentity, withPasskey) != 1 {
 		auth.AuditEvent(ctx, "delete_me", "failure", tenant.PublicID, user.PublicID, "invalid_input")
-		return nil, connect.NewError(connect.CodeInvalidArgument, "either password or id_token is required")
+		return nil, connect.NewError(connect.CodeInvalidArgument, "one of password, id_token or passkey_credential_json is required")
 	}
 	if withPassword {
 		if err := s.chargeReaderAction(ctx, actionVerifyPassword, tenant.ID, user.ID); err != nil {
@@ -1409,6 +1441,12 @@ func (s *apiServer) DeleteMe(
 	if withIdentity {
 		if err := s.confirmWithIdentity(ctx, txq, tenant.ID, user.ID, req.Provider, req.IdToken, req.Nonce); err != nil {
 			auth.AuditEvent(ctx, "delete_me", "failure", tenant.PublicID, user.PublicID, "invalid_identity_confirmation")
+			return nil, err
+		}
+	}
+	if withPasskey {
+		if err := s.confirmWithPasskey(ctx, txq, tenant, user, req.PasskeyCredentialJson); err != nil {
+			auth.AuditEvent(ctx, "delete_me", "failure", tenant.PublicID, user.PublicID, "invalid_passkey_confirmation")
 			return nil, err
 		}
 	}

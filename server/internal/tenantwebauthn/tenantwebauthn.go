@@ -14,6 +14,12 @@
 // would let anyone holding that password register a passkey on the
 // storefront and answer the console's second factor with it.
 //
+// The storefront signs a reader in with a passkey alone, so its credentials
+// are discoverable: registration requires a resident key, and a sign-in
+// begins with no account named and learns the account from the credential
+// the authenticator picks. The console asks for a passkey only as a second
+// factor, after a password has named the account, and merely prefers one.
+//
 // A ceremony's server-side state is a challenge, an RP ID, a user handle, and
 // an expiry. The caller stores those between begin and finish and spends them
 // once; this package rebuilds the rest of what the library verifies against
@@ -40,6 +46,13 @@ import (
 const (
 	CeremonyRegistration   = "registration"
 	CeremonyAuthentication = "authentication"
+)
+
+// The tenant's two relying parties, as the relying_party column of
+// user_webauthn_credentials and user_webauthn_ceremonies names them.
+const (
+	KindAdminConsole = "admin_console"
+	KindSite         = "site"
 )
 
 // CeremonyTimeout is how long an authenticator is given, and how long the
@@ -69,6 +82,9 @@ var credentialParameters = webauthn.CredentialParametersDefault()
 
 // RelyingParty is one origin of a tenant, as WebAuthn sees it.
 type RelyingParty struct {
+	// Kind is which of the tenant's two relying parties this is: KindSite or
+	// KindAdminConsole.
+	Kind string
 	// ID is the RP ID a credential is bound to.
 	ID string
 	// Origin is the only origin a ceremony is accepted from.
@@ -82,7 +98,7 @@ func AdminConsole(tenant dbmodels.Tenant) (*RelyingParty, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newRelyingParty(tenant, hostname(console), console)
+	return newRelyingParty(tenant, KindAdminConsole, hostname(console), console, protocol.ResidentKeyRequirementPreferred)
 }
 
 // Site is the relying party of the tenant's storefront.
@@ -91,7 +107,17 @@ func Site(tenant dbmodels.Tenant) (*RelyingParty, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newRelyingParty(tenant, hostname(site), site)
+	return newRelyingParty(tenant, KindSite, hostname(site), site, protocol.ResidentKeyRequirementRequired)
+}
+
+// SiteRPID is the RP ID the storefront's passkeys are bound to: the
+// storefront's own host.
+func SiteRPID(tenant dbmodels.Tenant) (string, error) {
+	site, err := tenantorigin.Site(tenant)
+	if err != nil {
+		return "", err
+	}
+	return hostname(site), nil
 }
 
 // AdminConsoleRPID is the RP ID the console's passkeys are bound to: the
@@ -108,27 +134,33 @@ func hostname(origin *url.URL) string {
 	return strings.ToLower(origin.Hostname())
 }
 
-func newRelyingParty(tenant dbmodels.Tenant, rpID string, origin *url.URL) (*RelyingParty, error) {
+func newRelyingParty(tenant dbmodels.Tenant, kind, rpID string, origin *url.URL, residentKey protocol.ResidentKeyRequirement) (*RelyingParty, error) {
 	displayName := strings.TrimSpace(tenant.Name)
 	if displayName == "" {
 		displayName = defaultDisplayName
 	}
 	timeout := webauthn.TimeoutConfig{Enforce: true, Timeout: CeremonyTimeout, TimeoutUVD: CeremonyTimeout}
+	selection := protocol.AuthenticatorSelection{
+		ResidentKey:      residentKey,
+		UserVerification: protocol.VerificationRequired,
+	}
+	// The Level 1 spelling of the same requirement, which a browser that
+	// predates residentKey reads instead.
+	if residentKey == protocol.ResidentKeyRequirementRequired {
+		selection.RequireResidentKey = protocol.ResidentKeyRequired()
+	}
 	webAuthn, err := webauthn.New(&webauthn.Config{
-		RPID:                  rpID,
-		RPDisplayName:         displayName,
-		RPOrigins:             []string{origin.String()},
-		AttestationPreference: protocol.PreferNoAttestation,
-		AuthenticatorSelection: protocol.AuthenticatorSelection{
-			ResidentKey:      protocol.ResidentKeyRequirementPreferred,
-			UserVerification: protocol.VerificationRequired,
-		},
-		Timeouts: webauthn.TimeoutsConfig{Login: timeout, Registration: timeout},
+		RPID:                   rpID,
+		RPDisplayName:          displayName,
+		RPOrigins:              []string{origin.String()},
+		AttestationPreference:  protocol.PreferNoAttestation,
+		AuthenticatorSelection: selection,
+		Timeouts:               webauthn.TimeoutsConfig{Login: timeout, Registration: timeout},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("tenantwebauthn: relying party %q: %w", rpID, err)
 	}
-	return &RelyingParty{ID: rpID, Origin: origin.String(), webAuthn: webAuthn}, nil
+	return &RelyingParty{Kind: kind, ID: rpID, Origin: origin.String(), webAuthn: webAuthn}, nil
 }
 
 // User is the account a ceremony is for, with the credentials it holds for
@@ -231,6 +263,22 @@ func (rp *RelyingParty) BeginAuthentication(user User) ([]byte, Ceremony, error)
 	return options, Ceremony{Challenge: session.Challenge, RPID: rp.ID, ExpiresAt: session.Expires}, nil
 }
 
+// BeginDiscoverableAuthentication answers request options that name no
+// account and allow no credential in particular, so the authenticator offers
+// whichever discoverable credential it holds for the RP ID, together with the
+// ceremony to keep.
+func (rp *RelyingParty) BeginDiscoverableAuthentication() ([]byte, Ceremony, error) {
+	assertion, session, err := rp.webAuthn.BeginDiscoverableLogin()
+	if err != nil {
+		return nil, Ceremony{}, fmt.Errorf("tenantwebauthn: begin discoverable authentication: %w", err)
+	}
+	options, err := json.Marshal(assertion.Response)
+	if err != nil {
+		return nil, Ceremony{}, fmt.Errorf("tenantwebauthn: encode request options: %w", err)
+	}
+	return options, Ceremony{Challenge: session.Challenge, RPID: rp.ID, ExpiresAt: session.Expires}, nil
+}
+
 // ParseRegistration reads the PublicKeyCredential an authenticator created,
 // as its toJSON() serializes it, and answers the challenge it was made over,
 // which is what names the stored ceremony to finish it against.
@@ -286,6 +334,42 @@ func (rp *RelyingParty) FinishAuthentication(user User, ceremony Ceremony, parse
 		UserVerification: protocol.VerificationRequired,
 	}
 	credential, err := rp.webAuthn.ValidateLogin(user, session, parsed)
+	if err != nil {
+		return nil, err
+	}
+	if credential.Authenticator.CloneWarning {
+		return nil, ErrSignCountRegressed
+	}
+	return credential, nil
+}
+
+// DiscoverableUser answers the account a discoverable assertion names: the
+// credential its ID identifies, and the account that credential belongs to,
+// with every credential that account holds for the relying party. It is
+// handed the user handle the authenticator returned, and the account it
+// answers has to be the one that handle names, which the verification checks
+// against User.Handle.
+type DiscoverableUser func(credentialID, userHandle []byte) (User, error)
+
+// FinishDiscoverableAuthentication verifies an assertion made against a
+// ceremony begun with no account named. lookup names the account from the
+// credential the authenticator picked; the assertion is then verified as
+// FinishAuthentication verifies one, user verification and the counter
+// included, and with the user handle it returned required to be the
+// account's.
+func (rp *RelyingParty) FinishDiscoverableAuthentication(ceremony Ceremony, parsed *protocol.ParsedCredentialAssertionData, lookup DiscoverableUser) (*webauthn.Credential, error) {
+	if err := rp.checkCeremony(ceremony); err != nil {
+		return nil, err
+	}
+	session := webauthn.SessionData{
+		Challenge:        ceremony.Challenge,
+		RelyingPartyID:   ceremony.RPID,
+		Expires:          ceremony.ExpiresAt,
+		UserVerification: protocol.VerificationRequired,
+	}
+	credential, err := rp.webAuthn.ValidateDiscoverableLogin(func(rawID, userHandle []byte) (webauthn.User, error) {
+		return lookup(rawID, userHandle)
+	}, session, parsed)
 	if err != nil {
 		return nil, err
 	}
