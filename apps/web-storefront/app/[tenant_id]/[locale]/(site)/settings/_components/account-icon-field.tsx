@@ -16,8 +16,13 @@ import {
 import type { AccountIconFileProblem } from "#lib/account-icon";
 import type { AccountIcon as AccountIconValue } from "#lib/auth";
 import type { StorefrontClientMessageKey } from "#lib/messages";
+import type { TenantReaderIconChoice } from "#lib/reader-icon-policy";
 
-import { removeIconAction, uploadIconAction } from "../_lib/icon-actions";
+import {
+  removeIconAction,
+  selectIconAction,
+  uploadIconAction,
+} from "../_lib/icon-actions";
 import type { IconActionResult } from "../_lib/icon-actions";
 
 const FILE_PROBLEM_MESSAGES: Record<
@@ -29,31 +34,40 @@ const FILE_PROBLEM_MESSAGES: Record<
   unsupported: "storefront.settings.icon_unsupported",
 };
 
+type IconChange = "remove" | "select" | "upload";
+
 /**
  * The reader's icon on the settings screen: the icon or the stand-in for one,
- * a control that uploads a new one, and one that removes it.
+ * the way the tenant's policy lets the reader set it — a control that uploads
+ * an image, or a picker of the tenant's presets — and a control that removes
+ * it. The screen leaves the field out where the policy allows no icon, so
+ * nothing here offers a change the API would refuse.
  *
  * Each change is saved as soon as it is made rather than with the profile form
  * below it. The Action that saves it refreshes the account read, so the icon
  * here and the one in the header's account menu are both drawn again.
  */
 export const AccountIconField = ({
+  choice,
   icon,
+  iconPresetId,
   locale,
   tenantId,
 }: {
+  choice: Exclude<TenantReaderIconChoice, { kind: "disabled" }>;
   icon: AccountIconValue | null;
+  iconPresetId: string | null;
   locale: Locale;
   tenantId: string;
 }) => {
   const t = useClientMessages();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [outcome, setOutcome] = useState<IconActionResult | null>(null);
-  const [action, setAction] = useState<"remove" | "upload" | null>(null);
+  const [action, setAction] = useState<IconChange | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const change = (
-    next: "remove" | "upload",
+    next: IconChange,
     send: () => Promise<IconActionResult>,
     failed: string
   ) => {
@@ -102,6 +116,18 @@ export const AccountIconField = ({
     );
   };
 
+  const onSelect = (presetId: string) => {
+    change(
+      "select",
+      () => {
+        const body = formFor();
+        body.set("presetId", presetId);
+        return selectIconAction(body);
+      },
+      t("storefront.settings.icon_select_failed")
+    );
+  };
+
   const onRemove = () => {
     change(
       "remove",
@@ -131,37 +157,41 @@ export const AccountIconField = ({
           size={80}
         />
         <div className="flex flex-wrap gap-2">
-          <input
-            accept={ACCOUNT_ICON_CONTENT_TYPES.join(",")}
-            aria-label={t(
-              icon
-                ? "storefront.settings.icon_replace"
-                : "storefront.settings.icon_upload"
-            )}
-            className="hidden"
-            onChange={onFileChange}
-            ref={fileInputRef}
-            type="file"
-          />
-          <Button
-            disabled={isPending}
-            onClick={() => fileInputRef.current?.click()}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            {isPending && action === "upload" ? (
-              <ClientMessage message="storefront.settings.icon_uploading" />
-            ) : (
-              <ClientMessage
-                message={
+          {choice.kind === "upload" ? (
+            <>
+              <input
+                accept={ACCOUNT_ICON_CONTENT_TYPES.join(",")}
+                aria-label={t(
                   icon
                     ? "storefront.settings.icon_replace"
                     : "storefront.settings.icon_upload"
-                }
+                )}
+                className="hidden"
+                onChange={onFileChange}
+                ref={fileInputRef}
+                type="file"
               />
-            )}
-          </Button>
+              <Button
+                disabled={isPending}
+                onClick={() => fileInputRef.current?.click()}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                {isPending && action === "upload" ? (
+                  <ClientMessage message="storefront.settings.icon_uploading" />
+                ) : (
+                  <ClientMessage
+                    message={
+                      icon
+                        ? "storefront.settings.icon_replace"
+                        : "storefront.settings.icon_upload"
+                    }
+                  />
+                )}
+              </Button>
+            </>
+          ) : null}
           {icon ? (
             <Button
               disabled={isPending}
@@ -179,8 +209,57 @@ export const AccountIconField = ({
           ) : null}
         </div>
       </div>
+      {choice.kind === "preset" ? (
+        <ul
+          aria-busy={isPending && action === "select"}
+          aria-label={t("storefront.settings.icon_presets_label")}
+          className="flex flex-wrap gap-2"
+        >
+          {choice.presets.map((preset, index) => {
+            const current = preset.id === iconPresetId;
+            return (
+              <li key={preset.id}>
+                <button
+                  aria-label={t("storefront.settings.icon_preset_option", {
+                    number: index + 1,
+                  })}
+                  aria-pressed={current}
+                  className="flex size-12 items-center justify-center overflow-hidden rounded-full border border-border bg-muted transition-shadow duration-state ease-state hover:ring-2 hover:ring-border focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-60 aria-pressed:ring-2 aria-pressed:ring-primary"
+                  disabled={isPending}
+                  onClick={() => {
+                    if (!current) {
+                      onSelect(preset.id);
+                    }
+                  }}
+                  type="button"
+                >
+                  {/* The button's label names the choice. */}
+                  <AccountIcon
+                    alt=""
+                    className="size-full object-cover"
+                    fallback={
+                      <UserIcon
+                        aria-hidden="true"
+                        className="size-5 text-muted-foreground"
+                      />
+                    }
+                    icon={preset.icon}
+                    size={48}
+                  />
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
       <p className="text-xs text-muted-foreground">
-        <ClientMessage message="storefront.settings.icon_help" />
+        <ClientMessage
+          message={
+            choice.kind === "preset"
+              ? "storefront.settings.icon_preset_help"
+              : "storefront.settings.icon_help"
+          }
+        />
       </p>
       {outcome ? (
         <FormMessage variant={outcome.ok ? "success" : "destructive"}>

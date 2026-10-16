@@ -27,6 +27,7 @@ export const RPC_ERROR_REASON = {
   ownAccount: "OWN_ACCOUNT",
   providerAlreadyLinked: "PROVIDER_ALREADY_LINKED",
   readerCreditedOnEpisode: "READER_CREDITED_ON_EPISODE",
+  readerIconNotAllowed: "READER_ICON_NOT_ALLOWED",
   readerIconPresetLimit: "READER_ICON_PRESET_LIMIT",
   smtpTestAuthentication: "SMTP_TEST_AUTHENTICATION",
   smtpTestConnection: "SMTP_TEST_CONNECTION",

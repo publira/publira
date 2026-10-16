@@ -3,11 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockAssertSameOrigin,
   mockDeleteMyIcon,
+  mockSelectMyIcon,
   mockUpdateTag,
   mockUploadMyIcon,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
   mockDeleteMyIcon: vi.fn(),
+  mockSelectMyIcon: vi.fn(),
   mockUpdateTag: vi.fn(),
   mockUploadMyIcon: vi.fn(),
 }));
@@ -17,12 +19,14 @@ vi.mock("next/cache", () => ({ updateTag: mockUpdateTag }));
 vi.mock("#lib/auth", () => ({
   accountCacheTag: (tenantId: string) => `tenant:${tenantId}:account`,
   deleteMyIcon: mockDeleteMyIcon,
+  selectMyIcon: mockSelectMyIcon,
   uploadMyIcon: mockUploadMyIcon,
 }));
 
 vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
-const { removeIconAction, uploadIconAction } = await import("./icon-actions");
+const { removeIconAction, selectIconAction, uploadIconAction } =
+  await import("./icon-actions");
 
 const TENANT_ID = "11111111-1111-4111-8111-111111111111";
 const ACCOUNT_TAG = `tenant:${TENANT_ID}:account`;
@@ -123,6 +127,10 @@ describe("uploadIconAction", () => {
     ],
     ["unavailable", "Could not connect to the server. Please try again later."],
     ["precondition", "Could not update your icon. Please try again later."],
+    [
+      "not-allowed",
+      "This site no longer allows this change to your icon. Reload the page.",
+    ],
   ] as const)("shows the API's %s refusal", async (refusal, message) => {
     mockUploadMyIcon.mockResolvedValueOnce({ ok: false, refusal });
 
@@ -130,6 +138,51 @@ describe("uploadIconAction", () => {
       message,
       ok: false,
     });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+});
+
+describe("selectIconAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSelectMyIcon.mockResolvedValue({ me: null, ok: true });
+  });
+
+  it("shows the preset and refreshes the account read", async () => {
+    await expect(
+      selectIconAction(form({ presetId: "P1" }, { icon: null }))
+    ).resolves.toEqual({ message: "Your icon has been updated.", ok: true });
+    expect(mockAssertSameOrigin).toHaveBeenCalledOnce();
+    expect(mockSelectMyIcon).toHaveBeenCalledWith(TENANT_ID, "P1");
+    expect(mockUpdateTag).toHaveBeenCalledWith(ACCOUNT_TAG);
+  });
+
+  it("sends nothing when the form names no preset", async () => {
+    await expect(
+      selectIconAction(form({ presetId: " " }, { icon: null }))
+    ).resolves.toEqual({
+      message: "Could not update your icon. Please try again later.",
+      ok: false,
+    });
+    expect(mockSelectMyIcon).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [
+      "not-found",
+      "This icon is no longer available. Reload the page and choose another.",
+    ],
+    [
+      "not-allowed",
+      "This site no longer allows this change to your icon. Reload the page.",
+    ],
+    ["precondition", "Could not update your icon. Please try again later."],
+  ] as const)("shows the API's %s refusal", async (refusal, message) => {
+    mockSelectMyIcon.mockResolvedValueOnce({ ok: false, refusal });
+
+    await expect(
+      selectIconAction(form({ presetId: "P1" }, { icon: null }))
+    ).resolves.toEqual({ message, ok: false });
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
 });

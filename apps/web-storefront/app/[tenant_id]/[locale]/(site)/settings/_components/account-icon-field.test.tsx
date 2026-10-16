@@ -7,14 +7,17 @@ import { renderWithClientMessages } from "#lib/render-with-client-messages";
 
 import { AccountIconField } from "./account-icon-field";
 
-const { mockCheckImage, mockRemoveIcon, mockUploadIcon } = vi.hoisted(() => ({
-  mockCheckImage: vi.fn(),
-  mockRemoveIcon: vi.fn(),
-  mockUploadIcon: vi.fn(),
-}));
+const { mockCheckImage, mockRemoveIcon, mockSelectIcon, mockUploadIcon } =
+  vi.hoisted(() => ({
+    mockCheckImage: vi.fn(),
+    mockRemoveIcon: vi.fn(),
+    mockSelectIcon: vi.fn(),
+    mockUploadIcon: vi.fn(),
+  }));
 
 vi.mock("../_lib/icon-actions", () => ({
   removeIconAction: mockRemoveIcon,
+  selectIconAction: mockSelectIcon,
   uploadIconAction: mockUploadIcon,
 }));
 
@@ -26,6 +29,24 @@ vi.mock("#lib/account-icon", async (importOriginal) => ({
 const TENANT_ID = "11111111-1111-4111-8111-111111111111";
 
 const ICON = { height: 512, url: "/images/users/U001/icon-1.png", width: 512 };
+
+const UPLOAD = { kind: "upload" } as const;
+
+const PRESETS = {
+  kind: "preset",
+  presets: [
+    {
+      icon: { height: 256, url: "/images/presets/P1/icon.png", width: 256 },
+      id: "P1",
+    },
+    {
+      icon: { height: 256, url: "/images/presets/P2/icon.png", width: 256 },
+      id: "P2",
+    },
+  ],
+} as const;
+
+const PRESET_ICON = PRESETS.presets[1].icon;
 
 const fileInput = () =>
   document.querySelector<HTMLInputElement>('input[type="file"]');
@@ -65,7 +86,13 @@ afterEach(() => {
 describe("AccountIconField", () => {
   it("offers an upload and no removal to an account with no icon", async () => {
     await renderWithClientMessages(
-      <AccountIconField icon={null} locale="en" tenantId={TENANT_ID} />
+      <AccountIconField
+        choice={UPLOAD}
+        iconPresetId={null}
+        icon={null}
+        locale="en"
+        tenantId={TENANT_ID}
+      />
     );
 
     expect(
@@ -77,7 +104,13 @@ describe("AccountIconField", () => {
 
   it("shows the icon with a change and a removal once one is set", async () => {
     await renderWithClientMessages(
-      <AccountIconField icon={ICON} locale="en" tenantId={TENANT_ID} />
+      <AccountIconField
+        choice={UPLOAD}
+        iconPresetId={null}
+        icon={ICON}
+        locale="en"
+        tenantId={TENANT_ID}
+      />
     );
 
     expect(
@@ -95,7 +128,13 @@ describe("AccountIconField", () => {
       ok: true,
     });
     await renderWithClientMessages(
-      <AccountIconField icon={null} locale="en" tenantId={TENANT_ID} />
+      <AccountIconField
+        choice={UPLOAD}
+        iconPresetId={null}
+        icon={null}
+        locale="en"
+        tenantId={TENANT_ID}
+      />
     );
     await screen.findByRole("button", { name: "Upload icon" });
 
@@ -121,7 +160,13 @@ describe("AccountIconField", () => {
     async (problem, message) => {
       mockCheckImage.mockResolvedValueOnce(problem);
       await renderWithClientMessages(
-        <AccountIconField icon={null} locale="en" tenantId={TENANT_ID} />
+        <AccountIconField
+          choice={UPLOAD}
+          iconPresetId={null}
+          icon={null}
+          locale="en"
+          tenantId={TENANT_ID}
+        />
       );
       await screen.findByRole("button", { name: "Upload icon" });
 
@@ -139,7 +184,13 @@ describe("AccountIconField", () => {
       ok: false,
     });
     await renderWithClientMessages(
-      <AccountIconField icon={null} locale="en" tenantId={TENANT_ID} />
+      <AccountIconField
+        choice={UPLOAD}
+        iconPresetId={null}
+        icon={null}
+        locale="en"
+        tenantId={TENANT_ID}
+      />
     );
     await screen.findByRole("button", { name: "Upload icon" });
 
@@ -155,7 +206,13 @@ describe("AccountIconField", () => {
   it("words an Action that never answered as a failed upload", async () => {
     mockUploadIcon.mockRejectedValueOnce(new TypeError("Failed to fetch"));
     await renderWithClientMessages(
-      <AccountIconField icon={null} locale="en" tenantId={TENANT_ID} />
+      <AccountIconField
+        choice={UPLOAD}
+        iconPresetId={null}
+        icon={null}
+        locale="en"
+        tenantId={TENANT_ID}
+      />
     );
     await screen.findByRole("button", { name: "Upload icon" });
 
@@ -174,7 +231,13 @@ describe("AccountIconField", () => {
       ok: true,
     });
     await renderWithClientMessages(
-      <AccountIconField icon={ICON} locale="ja" tenantId={TENANT_ID} />,
+      <AccountIconField
+        choice={UPLOAD}
+        iconPresetId={null}
+        icon={ICON}
+        locale="ja"
+        tenantId={TENANT_ID}
+      />,
       "ja"
     );
 
@@ -189,5 +252,128 @@ describe("AccountIconField", () => {
     const form = sentForm(mockRemoveIcon);
     expect(form.get("locale")).toBe("ja");
     expect(form.get("tenantId")).toBe(TENANT_ID);
+  });
+
+  describe("under a tenant that offers presets", () => {
+    it("offers the presets and no upload", async () => {
+      await renderWithClientMessages(
+        <AccountIconField
+          choice={PRESETS}
+          icon={null}
+          iconPresetId={null}
+          locale="en"
+          tenantId={TENANT_ID}
+        />
+      );
+
+      const list = await screen.findByRole("list", {
+        name: "Icons to choose from",
+      });
+      expect(list.querySelectorAll("li")).toHaveLength(2);
+      expect(screen.getByRole("button", { name: "Icon 1" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Icon 2" })).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Upload icon" })).toBeNull();
+      expect(fileInput()).toBeNull();
+      expect(screen.queryByRole("button", { name: "Remove icon" })).toBeNull();
+      expect(
+        screen.getByText("Choose one of the icons this site provides.")
+      ).toBeTruthy();
+    });
+
+    it("marks the preset the account shows and offers its removal", async () => {
+      await renderWithClientMessages(
+        <AccountIconField
+          choice={PRESETS}
+          icon={PRESET_ICON}
+          iconPresetId="P2"
+          locale="en"
+          tenantId={TENANT_ID}
+        />
+      );
+
+      const current = await screen.findByRole("button", { name: "Icon 2" });
+      expect(current.getAttribute("aria-pressed")).toBe("true");
+      expect(
+        screen
+          .getByRole("button", { name: "Icon 1" })
+          .getAttribute("aria-pressed")
+      ).toBe("false");
+      expect(screen.getByRole("button", { name: "Remove icon" })).toBeTruthy();
+      expect(screen.getByAltText<HTMLImageElement>("Your icon").src).toContain(
+        "P2"
+      );
+    });
+
+    it("shows the picked preset for this tenant and locale", async () => {
+      mockSelectIcon.mockResolvedValueOnce({
+        message: "Your icon has been updated.",
+        ok: true,
+      });
+      await renderWithClientMessages(
+        <AccountIconField
+          choice={PRESETS}
+          icon={null}
+          iconPresetId={null}
+          locale="en"
+          tenantId={TENANT_ID}
+        />
+      );
+
+      const preset = await screen.findByRole("button", { name: "Icon 1" });
+      await act(() => {
+        fireEvent.click(preset);
+      });
+
+      expect(
+        await screen.findByText("Your icon has been updated.")
+      ).toBeTruthy();
+      const form = sentForm(mockSelectIcon);
+      expect(form.get("presetId")).toBe("P1");
+      expect(form.get("locale")).toBe("en");
+      expect(form.get("tenantId")).toBe(TENANT_ID);
+    });
+
+    it("sends nothing for the preset the account already shows", async () => {
+      await renderWithClientMessages(
+        <AccountIconField
+          choice={PRESETS}
+          icon={PRESET_ICON}
+          iconPresetId="P2"
+          locale="en"
+          tenantId={TENANT_ID}
+        />
+      );
+
+      const current = await screen.findByRole("button", { name: "Icon 2" });
+      await act(() => {
+        fireEvent.click(current);
+      });
+
+      expect(mockSelectIcon).not.toHaveBeenCalled();
+    });
+
+    it("words an Action that never answered as a failed change", async () => {
+      mockSelectIcon.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+      await renderWithClientMessages(
+        <AccountIconField
+          choice={PRESETS}
+          icon={null}
+          iconPresetId={null}
+          locale="en"
+          tenantId={TENANT_ID}
+        />
+      );
+
+      const preset = await screen.findByRole("button", { name: "Icon 1" });
+      await act(() => {
+        fireEvent.click(preset);
+      });
+
+      expect(
+        await screen.findByText(
+          "Could not update your icon. Please try again later."
+        )
+      ).toBeTruthy();
+    });
   });
 });

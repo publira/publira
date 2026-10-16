@@ -72,6 +72,11 @@ export interface MeInfo {
    * the account rather than kept.
    */
   icon: AccountIcon | null;
+  /**
+   * The tenant preset the account shows, so a preset picker can mark it, or
+   * `null` for an account that shows an upload or no icon.
+   */
+  iconPresetId: string | null;
   name: string;
   publicId: string;
   role: string;
@@ -806,7 +811,13 @@ const GET_ME_RETRY_MIN_TIMEOUT_MS = 100;
 
 type RawMe = Pick<
   User,
-  "birthDate" | "email" | "iconImageVariants" | "name" | "publicId" | "role"
+  | "birthDate"
+  | "email"
+  | "iconImageVariants"
+  | "iconPresetId"
+  | "name"
+  | "publicId"
+  | "role"
 >;
 
 /** The account as the profile screens read it. */
@@ -814,6 +825,7 @@ const toMeInfo = (user: RawMe): MeInfo => ({
   birthDate: user.birthDate,
   email: user.email,
   icon: toAccountIcon(user.iconImageVariants),
+  iconPresetId: user.iconPresetId || null,
   name: user.name,
   publicId: user.publicId,
   role: user.role,
@@ -980,9 +992,11 @@ export interface IconUpload {
 
 /**
  * What became of an icon change. `image` is an upload the API would not make
- * an icon of, and `storage-not-configured` an install with no object store
- * saved yet, which the reader can do nothing about; every other refusal keeps
- * its disposition so it is worded the way the shared RPC copy words it.
+ * an icon of, `storage-not-configured` an install with no object store saved
+ * yet, which the reader can do nothing about, and `not-allowed` a change the
+ * tenant's reader icon policy stopped allowing after the screen was drawn;
+ * every other refusal keeps its disposition so it is worded the way the shared
+ * RPC copy words it.
  *
  * A session the API turns away is one of those refusals rather than a throw:
  * the change is sent by a `fetch` from the settings screen, which shows the
@@ -992,7 +1006,11 @@ export type IconChangeOutcome =
   | { me: MeInfo | null; ok: true }
   | {
       ok: false;
-      refusal: "image" | "storage-not-configured" | RpcErrorDisposition;
+      refusal:
+        | "image"
+        | "not-allowed"
+        | "storage-not-configured"
+        | RpcErrorDisposition;
     };
 
 const iconChangeRefusal = (
@@ -1007,6 +1025,9 @@ const iconChangeRefusal = (
   }
   if (rpcErrorHasReason(error, RPC_ERROR_REASON.storageNotConfigured)) {
     return { ok: false, refusal: "storage-not-configured" };
+  }
+  if (rpcErrorHasReason(error, RPC_ERROR_REASON.readerIconNotAllowed)) {
+    return { ok: false, refusal: "not-allowed" };
   }
   return { ok: false, refusal: rpcErrorDisposition(error) };
 };
@@ -1028,6 +1049,29 @@ export const uploadMyIcon = async (
   try {
     const response = await apiClient.auth.uploadMyIcon(
       { iconContentType: contentType, iconData: data, tenant: { tenantId } },
+      buildSessionHeaders(sid)
+    );
+
+    return { me: response.user ? toMeInfo(response.user) : null, ok: true };
+  } catch (error) {
+    return iconChangeRefusal(error);
+  }
+};
+
+/** Show one of the tenant's presets as the signed-in reader's icon. */
+export const selectMyIcon = async (
+  tenantId: string,
+  presetId: string,
+  accessToken?: string
+): Promise<IconChangeOutcome> => {
+  const sid = await resolveAccessToken(accessToken);
+  if (!sid) {
+    return { ok: false, refusal: "unauthenticated" };
+  }
+
+  try {
+    const response = await apiClient.auth.selectMyIcon(
+      { presetId, tenant: { tenantId } },
       buildSessionHeaders(sid)
     );
 

@@ -609,6 +609,11 @@
       "tests": ["a member uploads, replaces, and removes the icon in the app"]
     },
     {
+      "name": "Account settings: the icon field the tenant's reader icon policy allows, and a preset chosen from the tenant's",
+      "web": { "rpcs": ["GetTenantReaderIconPolicy", "SelectMyIcon"] },
+      "exception": "Not in the app yet: #2262."
+    },
+    {
       "name": "Confirming a new email address",
       "web": {
         "routes": ["[locale]/(auth)/confirm-email"],

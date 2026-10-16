@@ -18,6 +18,10 @@ import { assertSameOrigin } from "#lib/csrf";
 import { getLocale } from "#lib/locale";
 import { requireFormLocale } from "#lib/locale-form";
 import { getMessagesFor } from "#lib/messages";
+import {
+  getTenantReaderIconChoice,
+  offersReaderIconField,
+} from "#lib/reader-icon-policy";
 import { getTenantAgeVerification, getTenantSignInClients } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
@@ -156,7 +160,7 @@ const BirthDateRow = async ({
 
 const ProfileSection = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-  const [me, t] = await Promise.all([
+  const [me, t, iconChoice] = await Promise.all([
     withPublicSessionReauth(
       locale,
       SETTINGS_RETURN_TO,
@@ -164,8 +168,10 @@ const ProfileSection = async () => {
       tenantId
     ),
     getMessagesFor(locale),
+    getTenantReaderIconChoice(tenantId),
   ]);
   const displayName = me?.name?.trim() ?? "";
+  const icon = me?.icon ?? null;
 
   return (
     <section className="border border-border bg-card p-6">
@@ -173,13 +179,17 @@ const ProfileSection = async () => {
         {t("storefront.settings.profile_heading")}
       </h2>
       {/* Saved as soon as it changes, so it stands outside the form's Save. */}
-      <div className="mb-6">
-        <AccountIconField
-          icon={me?.icon ?? null}
-          locale={locale}
-          tenantId={tenantId}
-        />
-      </div>
+      {offersReaderIconField(iconChoice, icon !== null) ? (
+        <div className="mb-6">
+          <AccountIconField
+            choice={iconChoice}
+            icon={icon}
+            iconPresetId={me?.iconPresetId ?? null}
+            locale={locale}
+            tenantId={tenantId}
+          />
+        </div>
+      ) : null}
       <form action={updateProfileAction} className="space-y-4">
         <LocaleField />
         <input name="tenantId" type="hidden" value={tenantId} />
