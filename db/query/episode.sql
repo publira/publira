@@ -440,6 +440,7 @@ LIMIT 1;
         e.id,
         e.public_id,
         et.title,
+        et.locale AS title_locale,
         e.order_index,
         el.price,
         EXISTS (
@@ -472,6 +473,7 @@ UNION ALL
         e.id,
         e.public_id,
         et.title,
+        et.locale AS title_locale,
         e.order_index,
         el.price,
         EXISTS (
@@ -510,6 +512,7 @@ UNION ALL
 SELECT e.id,
     e.public_id,
     et.title,
+    et.locale AS title_locale,
     e.order_index,
     el.price,
     epa.purchase_availability

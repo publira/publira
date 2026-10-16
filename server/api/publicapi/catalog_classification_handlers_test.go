@@ -301,7 +301,7 @@ func publishedGenreRows(rows ...[]driver.Value) *sqlmock.Rows {
 }
 
 func genreFeaturedSeriesRows(rows ...[]driver.Value) *sqlmock.Rows {
-	built := sqlmock.NewRows([]string{"genre_id", "id", "public_id", "title", "eye_catch_image_id"})
+	built := sqlmock.NewRows([]string{"genre_id", "id", "public_id", "title", "title_locale", "eye_catch_image_id"})
 	for _, row := range rows {
 		built.AddRow(row...)
 	}
@@ -401,8 +401,8 @@ func TestCatalogListPublishedGenresCarriesEachGenresFeaturedSeries(t *testing.T)
 			[]driver.Value{mysteryID, "GENRE0000002", "Mystery", "mystery", int32(2), nil, int32(0)},
 		))
 	expectGenreFeaturedSeries(mock, tenantID, "app", genreFeaturedSeriesRows(
-		[]driver.Value{fantasyID, uuid.Must(uuid.NewV7()), "SERIES000001", "Dragon Road", imageID},
-		[]driver.Value{fantasyID, uuid.Must(uuid.NewV7()), "SERIES000002", "Untitled Sky", nil},
+		[]driver.Value{fantasyID, uuid.Must(uuid.NewV7()), "SERIES000001", "Dragon Road", "ja", imageID},
+		[]driver.Value{fantasyID, uuid.Must(uuid.NewV7()), "SERIES000002", "Untitled Sky", "ja", nil},
 	))
 	variantID := uuid.Must(uuid.NewV7())
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesImageVariantsByImageIDs)).

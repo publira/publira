@@ -619,6 +619,7 @@ const EpisodeNeighbor$json = {
       '6': '.publira.types.v1.SurfaceAvailability',
       '10': 'purchaseAvailability'
     },
+    {'1': 'locale', '3': 8, '4': 1, '5': 9, '10': 'locale'},
   ],
 };
 
@@ -629,7 +630,7 @@ final $typed_data.Uint8List episodeNeighborDescriptor = $convert.base64Decode(
     'BCABKAVSBXByaWNlEhcKB2lzX2ZyZWUYBSABKAhSBmlzRnJlZRI1CghjcmVhdG9ycxgGIAMoCz'
     'IZLnB1YmxpcmEudHlwZXMudjEuQ3JlYXRvclIIY3JlYXRvcnMSWgoVcHVyY2hhc2VfYXZhaWxh'
     'YmlsaXR5GAcgASgOMiUucHVibGlyYS50eXBlcy52MS5TdXJmYWNlQXZhaWxhYmlsaXR5UhRwdX'
-    'JjaGFzZUF2YWlsYWJpbGl0eQ==');
+    'JjaGFzZUF2YWlsYWJpbGl0eRIWCgZsb2NhbGUYCCABKAlSBmxvY2FsZQ==');
 
 @$core.Deprecated('Use getEpisodeDetailResponseDescriptor instead')
 const GetEpisodeDetailResponse$json = {
@@ -1064,6 +1065,7 @@ const PublishedGenreFeaturedSeries$json = {
       '6': '.publira.types.v1.SeriesEyeCatchVariant',
       '10': 'eyeCatchImageVariants'
     },
+    {'1': 'locale', '3': 4, '4': 1, '5': 9, '10': 'locale'},
   ],
 };
 
@@ -1072,7 +1074,7 @@ final $typed_data.Uint8List publishedGenreFeaturedSeriesDescriptor = $convert.ba
     'ChxQdWJsaXNoZWRHZW5yZUZlYXR1cmVkU2VyaWVzEhsKCXB1YmxpY19pZBgBIAEoCVIIcHVibG'
     'ljSWQSFAoFdGl0bGUYAiABKAlSBXRpdGxlEmAKGGV5ZV9jYXRjaF9pbWFnZV92YXJpYW50cxgD'
     'IAMoCzInLnB1YmxpcmEudHlwZXMudjEuU2VyaWVzRXllQ2F0Y2hWYXJpYW50UhVleWVDYXRjaE'
-    'ltYWdlVmFyaWFudHM=');
+    'ltYWdlVmFyaWFudHMSFgoGbG9jYWxlGAQgASgJUgZsb2NhbGU=');
 
 @$core.Deprecated('Use listPublishedGenresRequestDescriptor instead')
 const ListPublishedGenresRequest$json = {

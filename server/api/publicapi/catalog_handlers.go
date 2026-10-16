@@ -1371,6 +1371,7 @@ func episodeNeighborFromNextFreeRow(
 	return &publirav1.EpisodeNeighbor{
 		PublicId:             row.PublicID,
 		Title:                row.Title,
+		Locale:               row.TitleLocale,
 		OrderIndex:           row.OrderIndex,
 		Price:                row.Price,
 		IsFree:               true,
@@ -1393,6 +1394,7 @@ func episodeNeighborsFromRows(
 		mapped := &publirav1.EpisodeNeighbor{
 			PublicId:             neighbor.PublicID,
 			Title:                neighbor.Title,
+			Locale:               neighbor.TitleLocale,
 			OrderIndex:           neighbor.OrderIndex,
 			Price:                neighbor.Price,
 			IsFree:               neighbor.IsFree,

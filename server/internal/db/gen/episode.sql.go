@@ -420,6 +420,7 @@ const GetNextPublishedFreeEpisodeForTenant = `-- name: GetNextPublishedFreeEpiso
 SELECT e.id,
     e.public_id,
     et.title,
+    et.locale AS title_locale,
     e.order_index,
     el.price,
     epa.purchase_availability
@@ -456,6 +457,7 @@ type GetNextPublishedFreeEpisodeForTenantRow struct {
 	ID                   uuid.UUID `json:"id"`
 	PublicID             string    `json:"public_id"`
 	Title                string    `json:"title"`
+	TitleLocale          string    `json:"title_locale"`
 	OrderIndex           int32     `json:"order_index"`
 	Price                int32     `json:"price"`
 	PurchaseAvailability string    `json:"purchase_availability"`
@@ -482,6 +484,7 @@ func (q *Queries) GetNextPublishedFreeEpisodeForTenant(ctx context.Context, arg 
 		&i.ID,
 		&i.PublicID,
 		&i.Title,
+		&i.TitleLocale,
 		&i.OrderIndex,
 		&i.Price,
 		&i.PurchaseAvailability,
@@ -1275,6 +1278,7 @@ const ListPublishedEpisodeNeighborsForTenant = `-- name: ListPublishedEpisodeNei
         e.id,
         e.public_id,
         et.title,
+        et.locale AS title_locale,
         e.order_index,
         el.price,
         EXISTS (
@@ -1307,6 +1311,7 @@ UNION ALL
         e.id,
         e.public_id,
         et.title,
+        et.locale AS title_locale,
         e.order_index,
         el.price,
         EXISTS (
@@ -1349,6 +1354,7 @@ type ListPublishedEpisodeNeighborsForTenantRow struct {
 	ID                   uuid.UUID `json:"id"`
 	PublicID             string    `json:"public_id"`
 	Title                string    `json:"title"`
+	TitleLocale          string    `json:"title_locale"`
 	OrderIndex           int32     `json:"order_index"`
 	Price                int32     `json:"price"`
 	IsFree               bool      `json:"is_free"`
@@ -1391,6 +1397,7 @@ func (q *Queries) ListPublishedEpisodeNeighborsForTenant(ctx context.Context, ar
 			&i.ID,
 			&i.PublicID,
 			&i.Title,
+			&i.TitleLocale,
 			&i.OrderIndex,
 			&i.Price,
 			&i.IsFree,

@@ -158,7 +158,7 @@ func (s *apiServer) genreFeaturedSeries(
 
 	featured := make(map[uuid.UUID][]*publirav1.PublishedGenreFeaturedSeries, len(genres))
 	for _, row := range rows {
-		series := &publirav1.PublishedGenreFeaturedSeries{PublicId: row.PublicID, Title: row.Title}
+		series := &publirav1.PublishedGenreFeaturedSeries{PublicId: row.PublicID, Title: row.Title, Locale: row.TitleLocale}
 		if row.EyeCatchImageID.Valid {
 			series.EyeCatchImageVariants = variantsByImageID[row.EyeCatchImageID.UUID]
 		}
