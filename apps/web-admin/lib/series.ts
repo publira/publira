@@ -604,7 +604,15 @@ export const listAllSeries = async (): Promise<ListSeriesResult> => {
   return listAllSeriesForTenant(tenantId, locale);
 };
 
-const getSeriesForTenant = async (
+/**
+ * The cached body of {@link getSeries}, keyed on the tenant and locale it is given.
+ *
+ * Exported for a Server Action, which cannot read the `[tenant_id]` segment
+ * and is given the tenant by the client: it calls `verifyAdminSession` with
+ * that tenant first, because the service credential this reads with answers
+ * for any tenant.
+ */
+export const getSeriesForTenant = async (
   input: {
     tenantId: string;
     publicId: string;

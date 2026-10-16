@@ -14,7 +14,7 @@ import { eyeCatchAspectImageInvalidMessage } from "#components/eye-catch/aspects
 import type { EyeCatchAspectActionState } from "#components/eye-catch/types";
 import { accessTicketsCacheTag } from "#lib/access-ticket";
 import { getActionLocale } from "#lib/action-messages";
-import { withAdminSessionReauth } from "#lib/auth-session";
+import { verifyAdminSession, withAdminSessionReauth } from "#lib/auth-session";
 import { CROP_RECT_FIELD } from "#lib/crop-rect";
 import { assertSameOrigin } from "#lib/csrf";
 import { tenantDashboardCacheTag } from "#lib/dashboard";
@@ -40,6 +40,7 @@ import { READING_DIRECTIONS } from "#lib/reading-layout";
 import {
   createSeries,
   deleteSeriesTranslation,
+  getSeriesForTenant,
   seriesCacheTag,
   seriesListCacheTag,
   updateSeries,
@@ -548,7 +549,6 @@ const deleteTranslationSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
   return z.object({
-    id: requiredRecordId(t("admin.series.validation.id_missing")),
     publicId: requiredTrimmedString(t("admin.series.validation.id_missing")),
     tenantId: requiredTrimmedString(
       t("admin.series.validation.tenant_missing")
@@ -562,6 +562,10 @@ const deleteTranslationSchema = async (locale: Locale) => {
 /**
  * Deletes the series' title and synopsis in one language, and opens the series
  * on the translation the screen picks without one.
+ *
+ * The form names the series by the public id alone, and the record id the API
+ * deletes by is read back from it, so the series whose translation is deleted
+ * is the one whose caches are cleared and whose screen opens.
  */
 export const deleteSeriesTranslationAction = async (
   _prevState: FormActionState,
@@ -572,7 +576,6 @@ export const deleteSeriesTranslationAction = async (
   const schema = await deleteTranslationSchema(locale);
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
-      id: { kind: "value", name: "series_id" },
       publicId: { kind: "value", name: "series_public_id" },
       tenantId: { kind: "value", name: "tenant_id" },
       translationLocale: { kind: "value", name: "translation_locale" },
@@ -582,9 +585,21 @@ export const deleteSeriesTranslationAction = async (
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
-  const { id, publicId, tenantId, translationLocale } = parsed.data;
+  const { publicId, tenantId, translationLocale } = parsed.data;
+  await verifyAdminSession(tenantId);
+  const series = await getSeriesForTenant({ publicId, tenantId }, locale);
+  if (!series.ok) {
+    const t = await getMessagesFor(locale);
+    return {
+      message: series.notFound ? t("admin.series.not_found") : series.message,
+      ok: false,
+    };
+  }
   const result = await withAdminSessionReauth(() =>
-    deleteSeriesTranslation({ id, tenantId, translationLocale }, locale)
+    deleteSeriesTranslation(
+      { id: series.series.id, tenantId, translationLocale },
+      locale
+    )
   );
   if (!result.ok) {
     return { message: result.message, ok: false };

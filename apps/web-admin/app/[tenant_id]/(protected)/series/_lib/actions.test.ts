@@ -5,21 +5,30 @@ const {
   mockCreateSeries,
   mockDeleteSeriesTranslation,
   mockGetAccessToken,
+  mockGetSeriesForTenant,
   mockGetTenantDisplayTimeZone,
   mockRedirect,
   mockUpdateSeries,
   mockUpdateSeriesWaitFreeSettings,
   mockUpdateTag,
+  mockVerifyAdminSession,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
   mockCreateSeries: vi.fn(),
   mockDeleteSeriesTranslation: vi.fn(),
   mockGetAccessToken: vi.fn(),
+  mockGetSeriesForTenant: vi.fn(),
   mockGetTenantDisplayTimeZone: vi.fn(),
   mockRedirect: vi.fn(),
   mockUpdateSeries: vi.fn(),
   mockUpdateSeriesWaitFreeSettings: vi.fn(),
   mockUpdateTag: vi.fn(),
+  mockVerifyAdminSession: vi.fn(),
+}));
+
+vi.mock("#lib/auth-session", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  verifyAdminSession: mockVerifyAdminSession,
 }));
 
 vi.mock("#lib/action-messages", async () => {
@@ -61,6 +70,7 @@ vi.mock("#lib/session", () => ({
 vi.mock("#lib/series", () => ({
   createSeries: mockCreateSeries,
   deleteSeriesTranslation: mockDeleteSeriesTranslation,
+  getSeriesForTenant: mockGetSeriesForTenant,
   seriesCacheTag: (tenantId: string, publicId: string) =>
     `series-${tenantId}-${publicId}`,
   seriesListCacheTag: (tenantId: string) => `series-list-${tenantId}`,
@@ -1164,18 +1174,32 @@ describe("a series' title and synopsis per language", () => {
     );
   });
 
+  /** The delete form, which names the series by its public id alone. */
+  const deleteForm = (translationLocale: string): FormData => {
+    const formData = new FormData();
+    formData.set("tenant_id", "TENANT001");
+    formData.set("series_public_id", "SERIES001");
+    formData.set("translation_locale", translationLocale);
+    return formData;
+  };
+
   it("deletes one language's translation and opens the series on another", async () => {
+    mockGetSeriesForTenant.mockResolvedValueOnce({
+      ok: true,
+      series: { id: SERIES_ID, publicId: "SERIES001" },
+    });
     mockDeleteSeriesTranslation.mockResolvedValueOnce({ ok: true });
 
     const { deleteSeriesTranslationAction } = await import("./actions");
-    const formData = new FormData();
-    formData.set("tenant_id", "TENANT001");
-    formData.set("series_id", SERIES_ID);
-    formData.set("series_public_id", "SERIES001");
-    formData.set("translation_locale", "en");
+    await deleteSeriesTranslationAction(null, deleteForm("en"));
 
-    await deleteSeriesTranslationAction(null, formData);
-
+    // The tenant the client named is confirmed before the series is read with
+    // the service credential.
+    expect(mockVerifyAdminSession).toHaveBeenCalledWith("TENANT001");
+    expect(mockGetSeriesForTenant).toHaveBeenCalledWith(
+      { publicId: "SERIES001", tenantId: "TENANT001" },
+      "en"
+    );
     expect(mockDeleteSeriesTranslation).toHaveBeenCalledWith(
       { id: SERIES_ID, tenantId: "TENANT001", translationLocale: "en" },
       "en"
@@ -1191,7 +1215,46 @@ describe("a series' title and synopsis per language", () => {
     );
   });
 
+  // The id the API deletes by is read back from the public id the caches and
+  // the redirect use, so a record id posted beside it cannot point elsewhere.
+  it("deletes the translation of the series the public id names, whatever record id the form also carries", async () => {
+    mockGetSeriesForTenant.mockResolvedValueOnce({
+      ok: true,
+      series: { id: SERIES_ID, publicId: "SERIES001" },
+    });
+    mockDeleteSeriesTranslation.mockResolvedValueOnce({ ok: true });
+
+    const { deleteSeriesTranslationAction } = await import("./actions");
+    const formData = deleteForm("en");
+    formData.set("series_id", "018f0e6a-2000-7000-8000-0000000000ff");
+    await deleteSeriesTranslationAction(null, formData);
+
+    expect(mockDeleteSeriesTranslation).toHaveBeenCalledWith(
+      { id: SERIES_ID, tenantId: "TENANT001", translationLocale: "en" },
+      "en"
+    );
+  });
+
+  it("refuses to delete when the series the public id names is not found", async () => {
+    mockGetSeriesForTenant.mockResolvedValueOnce({ notFound: true, ok: false });
+
+    const { deleteSeriesTranslationAction } = await import("./actions");
+    const result = await deleteSeriesTranslationAction(null, deleteForm("en"));
+
+    expect(result).toEqual({
+      message: "The series could not be found. Reload the page and try again.",
+      ok: false,
+    });
+    expect(mockDeleteSeriesTranslation).not.toHaveBeenCalled();
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+
   it("keeps the screen with the API's wording when the delete is refused", async () => {
+    mockGetSeriesForTenant.mockResolvedValueOnce({
+      ok: true,
+      series: { id: SERIES_ID, publicId: "SERIES001" },
+    });
     mockDeleteSeriesTranslation.mockResolvedValueOnce({
       message:
         "A series keeps at least one translation, so its last one cannot be deleted.",
@@ -1199,13 +1262,7 @@ describe("a series' title and synopsis per language", () => {
     });
 
     const { deleteSeriesTranslationAction } = await import("./actions");
-    const formData = new FormData();
-    formData.set("tenant_id", "TENANT001");
-    formData.set("series_id", SERIES_ID);
-    formData.set("series_public_id", "SERIES001");
-    formData.set("translation_locale", "ja");
-
-    const result = await deleteSeriesTranslationAction(null, formData);
+    const result = await deleteSeriesTranslationAction(null, deleteForm("ja"));
 
     expect(result).toEqual({
       message:

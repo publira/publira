@@ -28,7 +28,6 @@ interface SeriesTranslationDeleteButtonProps {
     prevState: FormActionState,
     formData: FormData
   ) => Promise<FormActionState>;
-  seriesId: string;
   seriesPublicId: string;
   tenantId: string;
   translationLocale: Locale;
@@ -40,7 +39,6 @@ interface SeriesTranslationDeleteButtonProps {
  */
 export const SeriesTranslationDeleteButton = ({
   action,
-  seriesId,
   seriesPublicId,
   tenantId,
   translationLocale,
@@ -51,7 +49,6 @@ export const SeriesTranslationDeleteButton = ({
   return (
     <ActionForm action={action} className="grid gap-1" id={formId}>
       <input name="tenant_id" type="hidden" value={tenantId} />
-      <input name="series_id" type="hidden" value={seriesId} />
       <input name="series_public_id" type="hidden" value={seriesPublicId} />
       <input
         name="translation_locale"

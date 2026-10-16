@@ -363,7 +363,6 @@ const EditSeriesFormData = async ({
           {translation && translations.length > 1 ? (
             <SeriesTranslationDeleteButton
               action={deleteSeriesTranslationAction}
-              seriesId={result.series.id}
               seriesPublicId={result.series.publicId}
               tenantId={tenantId}
               translationLocale={translation.locale}
