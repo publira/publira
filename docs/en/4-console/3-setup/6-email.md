@@ -110,7 +110,7 @@ export default {
 };
 ```
 
-`message.to` is the address the mail was delivered to, `+<message ID>` included. A mail the site does not accept is rejected, so the reader gets a bounce instead of a reply that went nowhere.
+`message.to` is the address the mail was delivered to, `+<message ID>` included. When the site answers a post with an error status, such as for a token that does not match or a body that is not a mail, the Worker rejects the mail, so the reader gets a bounce instead of a reply that went nowhere. A mail the site accepts and then drops, such as one that names no message or arrives while **Enable** is cleared, is answered as accepted, and the reader gets no bounce for it.
 
 ### Posting raw mail from Postfix
 
