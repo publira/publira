@@ -111,6 +111,12 @@ const (
 	// AdminSeriesServiceUpdateSeriesWaitFreeSettingsProcedure is the procedure name of the
 	// AdminSeriesService's UpdateSeriesWaitFreeSettings RPC.
 	AdminSeriesServiceUpdateSeriesWaitFreeSettingsProcedure = "/publira.admin.v1.AdminSeriesService/UpdateSeriesWaitFreeSettings"
+	// AdminSeriesServiceDeleteSeriesTranslationProcedure is the procedure name of the
+	// AdminSeriesService's DeleteSeriesTranslation RPC.
+	AdminSeriesServiceDeleteSeriesTranslationProcedure = "/publira.admin.v1.AdminSeriesService/DeleteSeriesTranslation"
+	// AdminSeriesServiceDeleteEpisodeTranslationProcedure is the procedure name of the
+	// AdminSeriesService's DeleteEpisodeTranslation RPC.
+	AdminSeriesServiceDeleteEpisodeTranslationProcedure = "/publira.admin.v1.AdminSeriesService/DeleteEpisodeTranslation"
 )
 
 var (
@@ -317,6 +323,20 @@ var (
 			Procedure:  AdminSeriesServiceUpdateSeriesWaitFreeSettingsProcedure,
 		}
 	})
+	adminSeriesServiceDeleteSeriesTranslationSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("DeleteSeriesTranslation"),
+			Procedure:  AdminSeriesServiceDeleteSeriesTranslationProcedure,
+		}
+	})
+	adminSeriesServiceDeleteEpisodeTranslationSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("DeleteEpisodeTranslation"),
+			Procedure:  AdminSeriesServiceDeleteEpisodeTranslationProcedure,
+		}
+	})
 )
 
 // AdminSeriesServiceClient is a client for the publira.admin.v1.AdminSeriesService service.
@@ -391,6 +411,10 @@ type AdminSeriesServiceClient interface {
 	GetSeriesWaitFreeSettings(context.Context, *v1.GetSeriesWaitFreeSettingsRequest) (*v1.GetSeriesWaitFreeSettingsResponse, error)
 	// Minimum role: tenant_editor.
 	UpdateSeriesWaitFreeSettings(context.Context, *v1.UpdateSeriesWaitFreeSettingsRequest) (*v1.UpdateSeriesWaitFreeSettingsResponse, error)
+	// Minimum role: tenant_editor.
+	DeleteSeriesTranslation(context.Context, *v1.DeleteSeriesTranslationRequest) (*v1.DeleteSeriesTranslationResponse, error)
+	// Minimum role: tenant_editor.
+	DeleteEpisodeTranslation(context.Context, *v1.DeleteEpisodeTranslationRequest) (*v1.DeleteEpisodeTranslationResponse, error)
 }
 
 // NewAdminSeriesServiceClient constructs a client for the publira.admin.v1.AdminSeriesService
@@ -472,6 +496,10 @@ type AdminSeriesServiceHandler interface {
 	GetSeriesWaitFreeSettings(context.Context, *v1.GetSeriesWaitFreeSettingsRequest) (*v1.GetSeriesWaitFreeSettingsResponse, error)
 	// Minimum role: tenant_editor.
 	UpdateSeriesWaitFreeSettings(context.Context, *v1.UpdateSeriesWaitFreeSettingsRequest) (*v1.UpdateSeriesWaitFreeSettingsResponse, error)
+	// Minimum role: tenant_editor.
+	DeleteSeriesTranslation(context.Context, *v1.DeleteSeriesTranslationRequest) (*v1.DeleteSeriesTranslationResponse, error)
+	// Minimum role: tenant_editor.
+	DeleteEpisodeTranslation(context.Context, *v1.DeleteEpisodeTranslationRequest) (*v1.DeleteEpisodeTranslationResponse, error)
 }
 
 // RegisterAdminSeriesServiceHandler registers svc as the publira.admin.v1.AdminSeriesService
@@ -508,6 +536,8 @@ func RegisterAdminSeriesServiceHandler(server *connect.Server, svc AdminSeriesSe
 		connect.Method{Spec: adminSeriesServiceDeleteEpisodeFreeWindowSpec(), Handler: adapter.deleteEpisodeFreeWindow},
 		connect.Method{Spec: adminSeriesServiceGetSeriesWaitFreeSettingsSpec(), Handler: adapter.getSeriesWaitFreeSettings},
 		connect.Method{Spec: adminSeriesServiceUpdateSeriesWaitFreeSettingsSpec(), Handler: adapter.updateSeriesWaitFreeSettings},
+		connect.Method{Spec: adminSeriesServiceDeleteSeriesTranslationSpec(), Handler: adapter.deleteSeriesTranslation},
+		connect.Method{Spec: adminSeriesServiceDeleteEpisodeTranslationSpec(), Handler: adapter.deleteEpisodeTranslation},
 	)
 }
 
@@ -628,6 +658,14 @@ func (UnimplementedAdminSeriesServiceHandler) GetSeriesWaitFreeSettings(context.
 
 func (UnimplementedAdminSeriesServiceHandler) UpdateSeriesWaitFreeSettings(context.Context, *v1.UpdateSeriesWaitFreeSettingsRequest) (*v1.UpdateSeriesWaitFreeSettingsResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.UpdateSeriesWaitFreeSettings is not implemented")
+}
+
+func (UnimplementedAdminSeriesServiceHandler) DeleteSeriesTranslation(context.Context, *v1.DeleteSeriesTranslationRequest) (*v1.DeleteSeriesTranslationResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.DeleteSeriesTranslation is not implemented")
+}
+
+func (UnimplementedAdminSeriesServiceHandler) DeleteEpisodeTranslation(context.Context, *v1.DeleteEpisodeTranslationRequest) (*v1.DeleteEpisodeTranslationResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.DeleteEpisodeTranslation is not implemented")
 }
 
 type adminSeriesServiceClient struct {
@@ -861,6 +899,22 @@ func (c *adminSeriesServiceClient) GetSeriesWaitFreeSettings(ctx context.Context
 func (c *adminSeriesServiceClient) UpdateSeriesWaitFreeSettings(ctx context.Context, req *v1.UpdateSeriesWaitFreeSettingsRequest) (*v1.UpdateSeriesWaitFreeSettingsResponse, error) {
 	var res v1.UpdateSeriesWaitFreeSettingsResponse
 	if err := c.client.CallUnary(ctx, adminSeriesServiceUpdateSeriesWaitFreeSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) DeleteSeriesTranslation(ctx context.Context, req *v1.DeleteSeriesTranslationRequest) (*v1.DeleteSeriesTranslationResponse, error) {
+	var res v1.DeleteSeriesTranslationResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceDeleteSeriesTranslationSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) DeleteEpisodeTranslation(ctx context.Context, req *v1.DeleteEpisodeTranslationRequest) (*v1.DeleteEpisodeTranslationResponse, error) {
+	var res v1.DeleteEpisodeTranslationResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceDeleteEpisodeTranslationSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1210,6 +1264,30 @@ func (h adminSeriesServiceHandler) updateSeriesWaitFreeSettings(ctx context.Cont
 		return err
 	}
 	res, err := h.svc.UpdateSeriesWaitFreeSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) deleteSeriesTranslation(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.DeleteSeriesTranslationRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DeleteSeriesTranslation(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) deleteEpisodeTranslation(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.DeleteEpisodeTranslationRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DeleteEpisodeTranslation(ctx, &req)
 	if err != nil {
 		return err
 	}

@@ -9,7 +9,6 @@ import (
 	"connectrpc.com/connect/v2"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
-	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/pageslug"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -56,20 +55,6 @@ func pageVersionFromPublishedRow(row dbmodels.GetPublishedPageBySlugForTenantRow
 	return item
 }
 
-// readerPageLocale is the locale a reader asked to read pages in: the tenant's
-// default for an empty value, since that is what the unprefixed public URLs
-// are served in.
-func readerPageLocale(raw string, tenant dbmodels.Tenant) (string, error) {
-	if strings.TrimSpace(raw) == "" {
-		return tenant.DefaultLocale, nil
-	}
-	code, err := locale.Normalize(raw)
-	if err != nil {
-		return "", connect.NewError(connect.CodeInvalidArgument, "locale must be a supported locale")
-	}
-	return code, nil
-}
-
 func (s *apiServer) ListPublishedPages(
 	ctx context.Context,
 	req *publirav1.ListPublishedPagesRequest,
@@ -79,7 +64,7 @@ func (s *apiServer) ListPublishedPages(
 		return nil, err
 	}
 
-	readerLocale, err := readerPageLocale(req.Locale, tenant)
+	readerLocale, err := readerLocaleOf(req.Locale, tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +142,7 @@ func (s *apiServer) GetPublishedPage(
 		return nil, err
 	}
 
-	readerLocale, err := readerPageLocale(req.Locale, tenant)
+	readerLocale, err := readerLocaleOf(req.Locale, tenant)
 	if err != nil {
 		return nil, err
 	}

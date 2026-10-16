@@ -26,13 +26,15 @@ SELECT w.id,
     w.created_at,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     s.id AS series_id,
     s.public_id AS series_public_id,
-    s.title AS series_title
+    str.title AS series_title
 FROM episode_free_windows w
     JOIN episodes e ON e.id = w.episode_id
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.id = e.series_id
+    CROSS JOIN LATERAL series_translation_for(s.id, '') str
 WHERE w.tenant_id = $1
     AND w.id = $2
 LIMIT 1;
@@ -59,11 +61,12 @@ SELECT w.id,
     w.created_at,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     s.id AS series_id,
     s.public_id AS series_public_id
 FROM episode_free_windows w
     JOIN episodes e ON e.id = w.episode_id
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.id = e.series_id
 WHERE w.tenant_id = sqlc.arg('tenant_id')
     AND w.episode_id = sqlc.arg('episode_id')
@@ -90,11 +93,12 @@ SELECT w.id,
     w.created_at,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     s.id AS series_id,
     s.public_id AS series_public_id
 FROM episode_free_windows w
     JOIN episodes e ON e.id = w.episode_id
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.id = e.series_id
 WHERE w.tenant_id = sqlc.arg('tenant_id')
     AND w.episode_id = sqlc.arg('episode_id')
@@ -121,11 +125,12 @@ SELECT w.id,
     w.created_at,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     s.id AS series_id,
     s.public_id AS series_public_id
 FROM series s
     JOIN episodes e ON e.series_id = s.id
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     CROSS JOIN LATERAL (
         SELECT fw.id,
             fw.public_id,
@@ -163,11 +168,12 @@ SELECT w.id,
     w.created_at,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     s.id AS series_id,
     s.public_id AS series_public_id
 FROM series s
     JOIN episodes e ON e.series_id = s.id
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     CROSS JOIN LATERAL (
         SELECT fw.id,
             fw.public_id,
@@ -230,7 +236,7 @@ SELECT w.id,
     w.starts_at,
     w.ends_at,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     s.id AS series_id,
     s.public_id AS series_public_id,
     (
@@ -243,6 +249,7 @@ SELECT w.id,
     ) AS end_due
 FROM episode_free_windows w
     JOIN episodes e ON e.id = w.episode_id
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.id = e.series_id
 WHERE (
         w.start_revalidated_at IS NULL

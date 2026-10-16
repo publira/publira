@@ -113,13 +113,15 @@ func (s *apiServer) publishedGenrePage(
 	return mapPublishedGenreAscRows(rows), nil
 }
 
-// genreFeaturedSeries reads the covers of a whole page of genres in one query.
+// genreFeaturedSeries reads the covers of a whole page of genres in one query,
+// each titled in locale.
 // The weekly leaderboard orders them, since a daily one cut per genre is
 // mostly empty and would reshuffle the tiles every day.
 func (s *apiServer) genreFeaturedSeries(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	surface string,
+	locale string,
 	genres []publishedGenreRow,
 ) (map[uuid.UUID][]*publirav1.PublishedGenreFeaturedSeries, error) {
 	if len(genres) == 0 {
@@ -134,6 +136,7 @@ func (s *apiServer) genreFeaturedSeries(
 		GenreIds:    genreIDs,
 		TenantID:    tenantID,
 		Surface:     surface,
+		Locale:      locale,
 		SeriesLimit: genreFeaturedSeriesLimit,
 		RankingKey:  contentranking.WeeklyRankingKey,
 	})
@@ -179,6 +182,10 @@ func (s *apiServer) ListPublishedGenres(
 	if err != nil {
 		return nil, err
 	}
+	readerLocale, err := readerLocaleOf(req.Locale, tenant)
+	if err != nil {
+		return nil, err
+	}
 	limit := pagination.NormalizeLimit(req.Limit, defaultGenrePageSize, maxGenrePageSize)
 	cursor, err := decodeSurfaceToken(req.Token, surface)
 	if err != nil {
@@ -206,7 +213,7 @@ func (s *apiServer) ListPublishedGenres(
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
-	featured, err := s.genreFeaturedSeries(ctx, tenant.ID, surface, rows)
+	featured, err := s.genreFeaturedSeries(ctx, tenant.ID, surface, readerLocale, rows)
 	if err != nil {
 		return nil, err
 	}

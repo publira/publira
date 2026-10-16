@@ -145,6 +145,10 @@ func (s *apiServer) ListMyEpisodeReads(
 	if err := s.scopeEpisodeReadUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
+	readerLocale, err := readerLocaleOf(req.Locale, tenant)
+	if err != nil {
+		return nil, err
+	}
 	limit := pagination.NormalizeLimit(req.Limit, defaultEpisodeReadPageSize, maxEpisodeReadPageSize)
 	cursor, err := decodeSurfaceToken(req.Token, surface)
 	if err != nil {
@@ -159,7 +163,7 @@ func (s *apiServer) ListMyEpisodeReads(
 	}
 
 	// One row past the page: its presence is what says another page exists.
-	rows, err := s.episodeReadPage(ctx, tenant.ID, user.ID, surface, keys, cursor.Direction, limit+1)
+	rows, err := s.episodeReadPage(ctx, tenant.ID, user.ID, surface, readerLocale, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list episode reads", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
@@ -203,6 +207,7 @@ func (s *apiServer) episodeReadPage(
 	ctx context.Context,
 	tenantID, userID uuid.UUID,
 	surface string,
+	locale string,
 	keys pagination.TimeUUIDKeys,
 	direction pagination.Direction,
 	limit int32,
@@ -212,6 +217,7 @@ func (s *apiServer) episodeReadPage(
 		TenantID:        tenantID,
 		UserID:          userID,
 		Surface:         surface,
+		Locale:          locale,
 		CursorReadAt:    sql.NullTime{Time: keys.Time, Valid: keys.Valid},
 		CursorInclusive: keys.Inclusive,
 		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},

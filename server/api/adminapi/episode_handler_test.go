@@ -60,6 +60,7 @@ func TestCreateEpisodeSuccess(t *testing.T) {
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.InsertAuditLog)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
+	expectEpisodeTranslationsList(mock, tenantID, episodeID, "ja", "Episode")
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	req := &publiraadminv1.CreateEpisodeRequest{
 		Tenant:             &publirattypesv1.TenantContext{TenantId: tenantID.String()},
@@ -126,6 +127,7 @@ func TestCreateEpisodePublishesAtOnceWhenScheduledAtHasPassed(t *testing.T) {
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.InsertAuditLog)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
+	expectEpisodeTranslationsList(mock, tenantID, episodeID, "ja", "Episode")
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	req := &publiraadminv1.CreateEpisodeRequest{
 		Tenant:      &publirattypesv1.TenantContext{TenantId: tenantID.String()},
@@ -213,6 +215,7 @@ func TestCreateEpisodeAppendsWhenOrderIndexUnset(t *testing.T) {
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.InsertAuditLog)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
+	expectEpisodeTranslationsList(mock, tenantID, episodeID, "ja", "Episode")
 	client := publiraadminv1connect.NewAdminSeriesServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	req := &publiraadminv1.CreateEpisodeRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
@@ -1749,6 +1752,9 @@ func TestAdminGetEpisode(t *testing.T) {
 			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEpisodeByPublicIDForTenantAndSeries)).
 				WithArgs(tenantID, tc.seriesPublicID, tc.publicID).
 				WillReturnRows(tc.rows)
+			if tc.wantCode == 0 {
+				expectEpisodeTranslationsList(mock, tenantID, sqlmock.AnyArg(), "ja", "Episode")
+			}
 
 			req := &publiraadminv1.GetEpisodeRequest{
 				Tenant:         &publirattypesv1.TenantContext{TenantId: tenantID.String()},

@@ -87,7 +87,7 @@ func TestCatalogListPublishedSeriesTokenNamesTheFilteredList(t *testing.T) {
 		WithArgs(tenantID, "web", false, "GENRE0000001", nil, nil, int16(1), nil, nil, false, nil, int32(2)).
 		WillReturnRows(seriesScanRows(seriesID, uuid.Must(uuid.NewV7())))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, sqlmock.AnyArg()).
+		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailRows(now, []uuid.UUID{seriesID}))
 
 	weekday := int32(1)
@@ -232,7 +232,7 @@ func TestCatalogListPublishedSeriesLatestUpdateOrderCarriesTheEpisodeInstant(t *
 			AddRow(seriesID, latestEpisodeAt).
 			AddRow(uuid.Must(uuid.NewV7()), latestEpisodeAt.Add(-time.Hour)))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, sqlmock.AnyArg()).
+		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailRows(now, []uuid.UUID{seriesID}))
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
@@ -310,7 +310,7 @@ func genreFeaturedSeriesRows(rows ...[]driver.Value) *sqlmock.Rows {
 
 func expectGenreFeaturedSeries(mock sqlmock.Sqlmock, tenantID uuid.UUID, surface string, rows *sqlmock.Rows) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListGenreFeaturedSeries)).
-		WithArgs(sqlmock.AnyArg(), tenantID, surface, int32(4), "weekly").
+		WithArgs(sqlmock.AnyArg(), "ja", tenantID, surface, int32(4), "weekly").
 		WillReturnRows(rows)
 }
 

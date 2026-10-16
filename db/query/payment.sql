@@ -57,7 +57,7 @@ SELECT EXISTS (
 -- name: GetPurchasableEpisodeForTenant :one
 SELECT e.id,
     e.public_id,
-    e.title,
+    et.title,
     s.public_id AS series_public_id,
     el.price,
     el.reading_period_hours,
@@ -65,6 +65,7 @@ SELECT e.id,
     -- surface the checkout is started from.
     epa.purchase_availability
 FROM episodes e
+    CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
     JOIN episode_purchase_availability epa ON epa.episode_id = e.id
@@ -108,14 +109,16 @@ SELECT p.id,
     p.purchased_at,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     e.order_index AS episode_order_index,
     s.id AS series_id,
     s.public_id AS series_public_id,
-    s.title AS series_title
+    str.title AS series_title
 FROM purchases p
     JOIN episodes e ON e.id = p.episode_id
+    CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et
     JOIN series s ON s.id = e.series_id
+    CROSS JOIN LATERAL series_translation_for(s.id, sqlc.arg('locale')::text) str
 WHERE p.tenant_id = sqlc.arg('tenant_id')
     -- The cast keeps this a plain uuid: a deleted buyer's NULL is in nobody's library.
     AND p.user_id = sqlc.arg('user_id')::uuid
@@ -159,14 +162,16 @@ SELECT p.id,
     p.purchased_at,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     e.order_index AS episode_order_index,
     s.id AS series_id,
     s.public_id AS series_public_id,
-    s.title AS series_title
+    str.title AS series_title
 FROM purchases p
     JOIN episodes e ON e.id = p.episode_id
+    CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et
     JOIN series s ON s.id = e.series_id
+    CROSS JOIN LATERAL series_translation_for(s.id, sqlc.arg('locale')::text) str
 WHERE p.tenant_id = sqlc.arg('tenant_id')
     -- The cast keeps this a plain uuid: a deleted buyer's NULL is in nobody's library.
     AND p.user_id = sqlc.arg('user_id')::uuid
@@ -245,16 +250,18 @@ SELECT
     p.purchased_at,
     p.expires_at,
     p.is_test,
-    e.title AS episode_title,
-    s.title AS series_title,
+    et.title AS episode_title,
+    str.title AS series_title,
     u.email AS reader_email
 FROM purchases p
 JOIN episodes e
     ON e.tenant_id = p.tenant_id
     AND e.id = p.episode_id
+CROSS JOIN LATERAL episode_translation_for(e.id, '') et
 JOIN series s
     ON s.tenant_id = e.tenant_id
     AND s.id = e.series_id
+CROSS JOIN LATERAL series_translation_for(s.id, '') str
 LEFT JOIN users u
     ON u.tenant_id = p.tenant_id
     AND u.id = p.user_id
@@ -718,9 +725,9 @@ LIMIT sqlc.arg('limit');
 SELECT p.id,
     p.episode_id,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     s.public_id AS series_public_id,
-    s.title AS series_title,
+    str.title AS series_title,
     u.public_id AS reader_public_id,
     u.name AS reader_name,
     u.email AS reader_email,
@@ -740,8 +747,10 @@ SELECT p.id,
 FROM purchases p
     JOIN episodes e ON e.tenant_id = p.tenant_id
     AND e.id = p.episode_id
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.tenant_id = e.tenant_id
     AND s.id = e.series_id
+    CROSS JOIN LATERAL series_translation_for(s.id, '') str
     LEFT JOIN users u ON u.tenant_id = p.tenant_id
     AND u.id = p.user_id
 WHERE p.tenant_id = sqlc.arg('tenant_id')

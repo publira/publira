@@ -837,7 +837,13 @@ type ListPublishedSeriesRequest struct {
 	// invalid_argument.
 	Weekday *int32 `protobuf:"varint,10,opt,name=weekday,proto3,oneof" json:"weekday,omitempty"`
 	// The client making the read. Unspecified is answered as the web storefront.
-	Surface       v1.ClientSurface `protobuf:"varint,11,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	Surface v1.ClientSurface `protobuf:"varint,11,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	// The reader's locale. Every series and episode title and synopsis in the
+	// answer is that of the translation in this locale, else the tenant's default
+	// locale's, else the oldest one. Empty means the tenant's default locale.
+	// The title orders sort by those titles, so a token of a title order carries
+	// the locale as well, and sending it in another locale is invalid_argument.
+	Locale        string `protobuf:"bytes,12,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -942,6 +948,13 @@ func (x *ListPublishedSeriesRequest) GetSurface() v1.ClientSurface {
 	return v1.ClientSurface(0)
 }
 
+func (x *ListPublishedSeriesRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
 type ListPublishedSeriesResponse struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Series []*v1.Series           `protobuf:"bytes,1,rep,name=series,proto3" json:"series,omitempty"`
@@ -1009,7 +1022,11 @@ type GetSeriesDetailRequest struct {
 	Tenant   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	PublicId string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
 	// The client making the read. Unspecified is answered as the web storefront.
-	Surface       v1.ClientSurface `protobuf:"varint,3,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	Surface v1.ClientSurface `protobuf:"varint,3,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	// The reader's locale. Every series and episode title and synopsis in the
+	// answer is that of the translation in this locale, else the tenant's default
+	// locale's, else the oldest one. Empty means the tenant's default locale.
+	Locale        string `protobuf:"bytes,4,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1063,6 +1080,13 @@ func (x *GetSeriesDetailRequest) GetSurface() v1.ClientSurface {
 		return x.Surface
 	}
 	return v1.ClientSurface(0)
+}
+
+func (x *GetSeriesDetailRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
 }
 
 // A series' wait-for-free rule as a reader is told it: a signed-in reader may
@@ -1166,9 +1190,12 @@ type GetSeriesDetailResponse struct {
 	CommentMode v1.CommentMode `protobuf:"varint,4,opt,name=comment_mode,json=commentMode,proto3,enum=publira.types.v1.CommentMode" json:"comment_mode,omitempty"`
 	// The series' wait-for-free rule, and unset when the series does not offer
 	// one. Like the rest of this response it says nothing about the reader.
-	WaitFree      *WaitFreeRule `protobuf:"bytes,5,opt,name=wait_free,json=waitFree,proto3" json:"wait_free,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	WaitFree *WaitFreeRule `protobuf:"bytes,5,opt,name=wait_free,json=waitFree,proto3" json:"wait_free,omitempty"`
+	// Every locale the series has a translation in that the tenant offers, the
+	// served one included, in code order: the language alternates of the series.
+	PublishedLocales []string `protobuf:"bytes,6,rep,name=published_locales,json=publishedLocales,proto3" json:"published_locales,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *GetSeriesDetailResponse) Reset() {
@@ -1232,6 +1259,13 @@ func (x *GetSeriesDetailResponse) GetCommentMode() v1.CommentMode {
 func (x *GetSeriesDetailResponse) GetWaitFree() *WaitFreeRule {
 	if x != nil {
 		return x.WaitFree
+	}
+	return nil
+}
+
+func (x *GetSeriesDetailResponse) GetPublishedLocales() []string {
+	if x != nil {
+		return x.PublishedLocales
 	}
 	return nil
 }
@@ -1410,7 +1444,11 @@ type GetEpisodeDetailRequest struct {
 	Tenant   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	PublicId string                 `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
 	// The client making the read. Unspecified is answered as the web storefront.
-	Surface       v1.ClientSurface `protobuf:"varint,3,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	Surface v1.ClientSurface `protobuf:"varint,3,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	// The reader's locale. Every series and episode title and synopsis in the
+	// answer is that of the translation in this locale, else the tenant's default
+	// locale's, else the oldest one. Empty means the tenant's default locale.
+	Locale        string `protobuf:"bytes,4,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1464,6 +1502,13 @@ func (x *GetEpisodeDetailRequest) GetSurface() v1.ClientSurface {
 		return x.Surface
 	}
 	return v1.ClientSurface(0)
+}
+
+func (x *GetEpisodeDetailRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
 }
 
 // A published episode of the series being read that the episode detail links
@@ -1621,8 +1666,11 @@ type GetEpisodeDetailResponse struct {
 	// the moment of the read: price is 0, or a free window is open on it. It may
 	// be the same episode as next_episode. Unset when no later episode is free.
 	NextFreeEpisode *EpisodeNeighbor `protobuf:"bytes,10,opt,name=next_free_episode,json=nextFreeEpisode,proto3" json:"next_free_episode,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Every locale the episode has a translation in that the tenant offers, the
+	// served one included, in code order: the language alternates of the episode.
+	PublishedLocales []string `protobuf:"bytes,11,rep,name=published_locales,json=publishedLocales,proto3" json:"published_locales,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *GetEpisodeDetailResponse) Reset() {
@@ -1721,6 +1769,13 @@ func (x *GetEpisodeDetailResponse) GetPreviewImages() []*v1.EpisodeImage {
 func (x *GetEpisodeDetailResponse) GetNextFreeEpisode() *EpisodeNeighbor {
 	if x != nil {
 		return x.NextFreeEpisode
+	}
+	return nil
+}
+
+func (x *GetEpisodeDetailResponse) GetPublishedLocales() []string {
+	if x != nil {
+		return x.PublishedLocales
 	}
 	return nil
 }
@@ -1976,7 +2031,13 @@ type GetPublishedCreatorDetailRequest struct {
 	// Opaque token from a previous response. Empty for the first page.
 	Token string `protobuf:"bytes,4,opt,name=token,proto3" json:"token,omitempty"`
 	// The client making the read. Unspecified is answered as the web storefront.
-	Surface       v1.ClientSurface `protobuf:"varint,5,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	Surface v1.ClientSurface `protobuf:"varint,5,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	// The reader's locale. Every series and episode title and synopsis in the
+	// answer is that of the translation in this locale, else the tenant's default
+	// locale's, else the oldest one. Empty means the tenant's default locale.
+	// The series are sorted by those titles, so a token carries the locale as
+	// well, and sending it in another locale is invalid_argument.
+	Locale        string `protobuf:"bytes,6,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2044,6 +2105,13 @@ func (x *GetPublishedCreatorDetailRequest) GetSurface() v1.ClientSurface {
 		return x.Surface
 	}
 	return v1.ClientSurface(0)
+}
+
+func (x *GetPublishedCreatorDetailRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
 }
 
 type GetPublishedCreatorDetailResponse struct {
@@ -2213,7 +2281,13 @@ type GetPublishedLabelDetailRequest struct {
 	// Opaque token from a previous response. Empty for the first page.
 	Token string `protobuf:"bytes,4,opt,name=token,proto3" json:"token,omitempty"`
 	// The client making the read. Unspecified is answered as the web storefront.
-	Surface       v1.ClientSurface `protobuf:"varint,5,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	Surface v1.ClientSurface `protobuf:"varint,5,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	// The reader's locale. Every series and episode title and synopsis in the
+	// answer is that of the translation in this locale, else the tenant's default
+	// locale's, else the oldest one. Empty means the tenant's default locale.
+	// The series are sorted by those titles, so a token carries the locale as
+	// well, and sending it in another locale is invalid_argument.
+	Locale        string `protobuf:"bytes,6,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2281,6 +2355,13 @@ func (x *GetPublishedLabelDetailRequest) GetSurface() v1.ClientSurface {
 		return x.Surface
 	}
 	return v1.ClientSurface(0)
+}
+
+func (x *GetPublishedLabelDetailRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
 }
 
 type GetPublishedLabelDetailResponse struct {
@@ -2524,7 +2605,11 @@ type ListPublishedGenresRequest struct {
 	// Opaque token from a previous response. Empty for the first page.
 	Token string `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
 	// The client making the read. Unspecified is answered as the web storefront.
-	Surface       v1.ClientSurface `protobuf:"varint,4,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	Surface v1.ClientSurface `protobuf:"varint,4,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	// The reader's locale. Every series and episode title and synopsis in the
+	// answer is that of the translation in this locale, else the tenant's default
+	// locale's, else the oldest one. Empty means the tenant's default locale.
+	Locale        string `protobuf:"bytes,5,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2585,6 +2670,13 @@ func (x *ListPublishedGenresRequest) GetSurface() v1.ClientSurface {
 		return x.Surface
 	}
 	return v1.ClientSurface(0)
+}
+
+func (x *ListPublishedGenresRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
 }
 
 type ListPublishedGenresResponse struct {
@@ -2863,6 +2955,9 @@ func (x *ListPublishedTagsResponse) GetNextToken() string {
 // The token carries the order and the filters as well, under the rule
 // ListPublishedSeriesRequest states for them: sending it with a different
 // order or filter is invalid_argument, and changing either restarts at page 1.
+// The query is matched against the title and the synopsis in the tenant's
+// default locale whatever `locale` asks for, until #4401 makes the search
+// match the reader's language.
 type SearchPublishedSeriesRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -2897,7 +2992,11 @@ type SearchPublishedSeriesRequest struct {
 	// Keep only the series expecting an episode on this weekday, as
 	// ListPublishedSeriesRequest.weekday does: 0 is Sunday, and a weekday
 	// outside 0 to 6 is invalid_argument.
-	Weekday       *int32 `protobuf:"varint,11,opt,name=weekday,proto3,oneof" json:"weekday,omitempty"`
+	Weekday *int32 `protobuf:"varint,11,opt,name=weekday,proto3,oneof" json:"weekday,omitempty"`
+	// The reader's locale. Every series and episode title and synopsis in the
+	// answer is that of the translation in this locale, else the tenant's default
+	// locale's, else the oldest one. Empty means the tenant's default locale.
+	Locale        string `protobuf:"bytes,12,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3007,6 +3106,13 @@ func (x *SearchPublishedSeriesRequest) GetWeekday() int32 {
 		return *x.Weekday
 	}
 	return 0
+}
+
+func (x *SearchPublishedSeriesRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
 }
 
 type SearchPublishedSeriesResponse struct {
@@ -3390,7 +3496,11 @@ type ListRecommendedSeriesRequest struct {
 	// Opaque token from a previous response. Empty for the first page.
 	Token string `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
 	// The client making the read. Unspecified is answered as the web storefront.
-	Surface       v1.ClientSurface `protobuf:"varint,4,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	Surface v1.ClientSurface `protobuf:"varint,4,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	// The reader's locale. Every series and episode title and synopsis in the
+	// answer is that of the translation in this locale, else the tenant's default
+	// locale's, else the oldest one. Empty means the tenant's default locale.
+	Locale        string `protobuf:"bytes,5,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3451,6 +3561,13 @@ func (x *ListRecommendedSeriesRequest) GetSurface() v1.ClientSurface {
 		return x.Surface
 	}
 	return v1.ClientSurface(0)
+}
+
+func (x *ListRecommendedSeriesRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
 }
 
 type ListRecommendedSeriesResponse struct {
@@ -3540,7 +3657,11 @@ type ListMyRecommendedSeriesRequest struct {
 	// Opaque token from a previous response. Empty for the first page.
 	Token string `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
 	// The client making the read. Unspecified is answered as the web storefront.
-	Surface       v1.ClientSurface `protobuf:"varint,4,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	Surface v1.ClientSurface `protobuf:"varint,4,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	// The reader's locale. Every series and episode title and synopsis in the
+	// answer is that of the translation in this locale, else the tenant's default
+	// locale's, else the oldest one. Empty means the tenant's default locale.
+	Locale        string `protobuf:"bytes,5,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3601,6 +3722,13 @@ func (x *ListMyRecommendedSeriesRequest) GetSurface() v1.ClientSurface {
 		return x.Surface
 	}
 	return v1.ClientSurface(0)
+}
+
+func (x *ListMyRecommendedSeriesRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
 }
 
 type ListMyRecommendedSeriesResponse struct {
@@ -3788,6 +3916,10 @@ type ListRankedSeriesRequest struct {
 	// with any other age_rating is invalid_argument rather than an empty chart
 	// that would read as a genre nobody has engaged with.
 	GenrePublicId string `protobuf:"bytes,7,opt,name=genre_public_id,json=genrePublicId,proto3" json:"genre_public_id,omitempty"`
+	// The reader's locale. Every series and episode title and synopsis in the
+	// answer is that of the translation in this locale, else the tenant's default
+	// locale's, else the oldest one. Empty means the tenant's default locale.
+	Locale        string `protobuf:"bytes,8,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3867,6 +3999,13 @@ func (x *ListRankedSeriesRequest) GetAgeRating() v1.SeriesAgeRating {
 func (x *ListRankedSeriesRequest) GetGenrePublicId() string {
 	if x != nil {
 		return x.GenrePublicId
+	}
+	return ""
+}
+
+func (x *ListRankedSeriesRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
 	}
 	return ""
 }
@@ -3984,7 +4123,11 @@ type ListRelatedSeriesRequest struct {
 	// The series to find neighbours for. Unpublished, cross-tenant, and missing
 	// series, and a series the calling surface may not show, are all surfaced as
 	// not_found, the way every other public read of a series is.
-	SeriesId      string `protobuf:"bytes,6,opt,name=series_id,json=seriesId,proto3" json:"series_id,omitempty"`
+	SeriesId string `protobuf:"bytes,6,opt,name=series_id,json=seriesId,proto3" json:"series_id,omitempty"`
+	// The reader's locale. Every series and episode title and synopsis in the
+	// answer is that of the translation in this locale, else the tenant's default
+	// locale's, else the oldest one. Empty means the tenant's default locale.
+	Locale        string `protobuf:"bytes,7,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4050,6 +4193,13 @@ func (x *ListRelatedSeriesRequest) GetSurface() v1.ClientSurface {
 func (x *ListRelatedSeriesRequest) GetSeriesId() string {
 	if x != nil {
 		return x.SeriesId
+	}
+	return ""
+}
+
+func (x *ListRelatedSeriesRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
 	}
 	return ""
 }
@@ -4743,8 +4893,12 @@ type GetMySeriesProgressRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	// The client making the read. Unspecified is answered as the web storefront.
-	Surface       v1.ClientSurface `protobuf:"varint,3,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
-	SeriesId      string           `protobuf:"bytes,4,opt,name=series_id,json=seriesId,proto3" json:"series_id,omitempty"`
+	Surface  v1.ClientSurface `protobuf:"varint,3,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	SeriesId string           `protobuf:"bytes,4,opt,name=series_id,json=seriesId,proto3" json:"series_id,omitempty"`
+	// The reader's locale. Every series and episode title and synopsis in the
+	// answer is that of the translation in this locale, else the tenant's default
+	// locale's, else the oldest one. Empty means the tenant's default locale.
+	Locale        string `protobuf:"bytes,5,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4796,6 +4950,13 @@ func (x *GetMySeriesProgressRequest) GetSurface() v1.ClientSurface {
 func (x *GetMySeriesProgressRequest) GetSeriesId() string {
 	if x != nil {
 		return x.SeriesId
+	}
+	return ""
+}
+
+func (x *GetMySeriesProgressRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
 	}
 	return ""
 }
@@ -5019,7 +5180,11 @@ type ListMyRecentSeriesRequest struct {
 	// Opaque token from a previous response. Empty for the first page.
 	Token string `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
 	// The client making the read. Unspecified is answered as the web storefront.
-	Surface       v1.ClientSurface `protobuf:"varint,4,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	Surface v1.ClientSurface `protobuf:"varint,4,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	// The reader's locale. Every series and episode title and synopsis in the
+	// answer is that of the translation in this locale, else the tenant's default
+	// locale's, else the oldest one. Empty means the tenant's default locale.
+	Locale        string `protobuf:"bytes,5,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5080,6 +5245,13 @@ func (x *ListMyRecentSeriesRequest) GetSurface() v1.ClientSurface {
 		return x.Surface
 	}
 	return v1.ClientSurface(0)
+}
+
+func (x *ListMyRecentSeriesRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
 }
 
 type ListMyRecentSeriesResponse struct {
@@ -5221,7 +5393,11 @@ type ListMyEpisodeReadsRequest struct {
 	// Opaque token from a previous response. Empty for the first page.
 	Token string `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
 	// The client making the read. Unspecified is answered as the web storefront.
-	Surface       v1.ClientSurface `protobuf:"varint,4,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	Surface v1.ClientSurface `protobuf:"varint,4,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	// The reader's locale. Every series and episode title and synopsis in the
+	// answer is that of the translation in this locale, else the tenant's default
+	// locale's, else the oldest one. Empty means the tenant's default locale.
+	Locale        string `protobuf:"bytes,5,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5282,6 +5458,13 @@ func (x *ListMyEpisodeReadsRequest) GetSurface() v1.ClientSurface {
 		return x.Surface
 	}
 	return v1.ClientSurface(0)
+}
+
+func (x *ListMyEpisodeReadsRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
 }
 
 type ListMyEpisodeReadsResponse struct {
@@ -5986,7 +6169,11 @@ type ListMyFollowUpdatesRequest struct {
 	// Opaque token from a previous response. Empty for the first page.
 	Token string `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
 	// The client making the read. Unspecified is answered as the web storefront.
-	Surface       v1.ClientSurface `protobuf:"varint,4,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	Surface v1.ClientSurface `protobuf:"varint,4,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	// The reader's locale. Every series and episode title and synopsis in the
+	// answer is that of the translation in this locale, else the tenant's default
+	// locale's, else the oldest one. Empty means the tenant's default locale.
+	Locale        string `protobuf:"bytes,5,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6047,6 +6234,13 @@ func (x *ListMyFollowUpdatesRequest) GetSurface() v1.ClientSurface {
 		return x.Surface
 	}
 	return v1.ClientSurface(0)
+}
+
+func (x *ListMyFollowUpdatesRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
 }
 
 type ListMyFollowUpdatesResponse struct {
@@ -6675,8 +6869,12 @@ type StartEpisodeCheckoutRequest struct {
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	// Where the provider should return the reader after checkout, and the
 	// surface the episode has to be sold on. Unspecified is the storefront.
-	Client        StartEpisodeCheckoutRequest_Client `protobuf:"varint,3,opt,name=client,proto3,enum=publira.v1.StartEpisodeCheckoutRequest_Client" json:"client,omitempty"`
-	EpisodeId     string                             `protobuf:"bytes,4,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
+	Client    StartEpisodeCheckoutRequest_Client `protobuf:"varint,3,opt,name=client,proto3,enum=publira.v1.StartEpisodeCheckoutRequest_Client" json:"client,omitempty"`
+	EpisodeId string                             `protobuf:"bytes,4,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
+	// The reader's locale. Every series and episode title and synopsis in the
+	// answer is that of the translation in this locale, else the tenant's default
+	// locale's, else the oldest one. Empty means the tenant's default locale.
+	Locale        string `protobuf:"bytes,5,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6728,6 +6926,13 @@ func (x *StartEpisodeCheckoutRequest) GetClient() StartEpisodeCheckoutRequest_Cl
 func (x *StartEpisodeCheckoutRequest) GetEpisodeId() string {
 	if x != nil {
 		return x.EpisodeId
+	}
+	return ""
+}
+
+func (x *StartEpisodeCheckoutRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
 	}
 	return ""
 }
@@ -6926,7 +7131,11 @@ type ListMyPurchasesRequest struct {
 	// Opaque token from a previous response. Empty for the first page.
 	Token string `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
 	// The client making the read. Unspecified is answered as the web storefront.
-	Surface       v1.ClientSurface `protobuf:"varint,4,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	Surface v1.ClientSurface `protobuf:"varint,4,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
+	// The reader's locale. Every series and episode title and synopsis in the
+	// answer is that of the translation in this locale, else the tenant's default
+	// locale's, else the oldest one. Empty means the tenant's default locale.
+	Locale        string `protobuf:"bytes,5,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6987,6 +7196,13 @@ func (x *ListMyPurchasesRequest) GetSurface() v1.ClientSurface {
 		return x.Surface
 	}
 	return v1.ClientSurface(0)
+}
+
+func (x *ListMyPurchasesRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
 }
 
 type ListMyPurchasesResponse struct {
@@ -7311,7 +7527,11 @@ type ConfirmStorePurchaseRequest struct {
 	// IN_APP_PURCHASE_STORE_GOOGLE_PLAY: the product the token was bought as,
 	// which the Google Play Developer API looks a purchase up by. Unused for the
 	// App Store, whose signed transaction names its product.
-	ProductId     string `protobuf:"bytes,4,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	ProductId string `protobuf:"bytes,4,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	// The reader's locale. Every series and episode title and synopsis in the
+	// answer is that of the translation in this locale, else the tenant's default
+	// locale's, else the oldest one. Empty means the tenant's default locale.
+	Locale        string `protobuf:"bytes,5,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7370,6 +7590,13 @@ func (x *ConfirmStorePurchaseRequest) GetTransaction() string {
 func (x *ConfirmStorePurchaseRequest) GetProductId() string {
 	if x != nil {
 		return x.ProductId
+	}
+	return ""
+}
+
+func (x *ConfirmStorePurchaseRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
 	}
 	return ""
 }
@@ -7818,7 +8045,7 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x06labels\x18\x01 \x03(\v2\x1a.publira.v1.PublishedLabelR\x06labels\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\xcb\x03\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\xe3\x03\n" +
 	"\x1aListPublishedSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
@@ -7830,29 +8057,32 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x06status\x18\t \x01(\x0e2\x1e.publira.types.v1.SeriesStatusR\x06status\x12\x1d\n" +
 	"\aweekday\x18\n" +
 	" \x01(\x05H\x00R\aweekday\x88\x01\x01\x129\n" +
-	"\asurface\x18\v \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurfaceB\n" +
+	"\asurface\x18\v \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x16\n" +
+	"\x06locale\x18\f \x01(\tR\x06localeB\n" +
 	"\n" +
 	"\b_weekdayJ\x04\b\x03\x10\x04R\x06offset\"\x95\x01\n" +
 	"\x1bListPublishedSeriesResponse\x120\n" +
 	"\x06series\x18\x01 \x03(\v2\x18.publira.types.v1.SeriesR\x06series\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\xa9\x01\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\xc1\x01\n" +
 	"\x16GetSeriesDetailRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x129\n" +
-	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"\xbe\x01\n" +
+	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x16\n" +
+	"\x06locale\x18\x04 \x01(\tR\x06locale\"\xbe\x01\n" +
 	"\fWaitFreeRule\x12%\n" +
 	"\x0erecharge_hours\x18\x01 \x01(\x05R\rrechargeHours\x12!\n" +
 	"\faccess_hours\x18\x02 \x01(\x05R\vaccessHours\x122\n" +
 	"\x15excluded_latest_count\x18\x03 \x01(\x05R\x13excludedLatestCount\x120\n" +
-	"\x14excluded_episode_ids\x18\x04 \x03(\tR\x12excludedEpisodeIds\"\xad\x02\n" +
+	"\x14excluded_episode_ids\x18\x04 \x03(\tR\x12excludedEpisodeIds\"\xda\x02\n" +
 	"\x17GetSeriesDetailResponse\x120\n" +
 	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\x125\n" +
 	"\bepisodes\x18\x02 \x03(\v2\x19.publira.types.v1.EpisodeR\bepisodes\x120\n" +
 	"\x14required_minimum_age\x18\x03 \x01(\x05R\x12requiredMinimumAge\x12@\n" +
 	"\fcomment_mode\x18\x04 \x01(\x0e2\x1d.publira.types.v1.CommentModeR\vcommentMode\x125\n" +
-	"\twait_free\x18\x05 \x01(\v2\x18.publira.v1.WaitFreeRuleR\bwaitFree\"\xc8\x01\n" +
+	"\twait_free\x18\x05 \x01(\v2\x18.publira.v1.WaitFreeRuleR\bwaitFree\x12+\n" +
+	"\x11published_locales\x18\x06 \x03(\tR\x10publishedLocales\"\xc8\x01\n" +
 	"\x1dGetSeriesEpisodeAccessRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x129\n" +
 	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x1b\n" +
@@ -7863,11 +8093,12 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\n" +
 	"episode_id\x18\x03 \x01(\tR\tepisodeId\"]\n" +
 	"\x1eGetSeriesEpisodeAccessResponse\x12;\n" +
-	"\bepisodes\x18\x01 \x03(\v2\x1f.publira.v1.SeriesEpisodeAccessR\bepisodes\"\xaa\x01\n" +
+	"\bepisodes\x18\x01 \x03(\v2\x1f.publira.v1.SeriesEpisodeAccessR\bepisodes\"\xc2\x01\n" +
 	"\x17GetEpisodeDetailRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x129\n" +
-	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"\xa7\x02\n" +
+	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x16\n" +
+	"\x06locale\x18\x04 \x01(\tR\x06locale\"\xa7\x02\n" +
 	"\x0fEpisodeNeighbor\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1f\n" +
@@ -7876,7 +8107,7 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x05price\x18\x04 \x01(\x05R\x05price\x12\x17\n" +
 	"\ais_free\x18\x05 \x01(\bR\x06isFree\x125\n" +
 	"\bcreators\x18\x06 \x03(\v2\x19.publira.types.v1.CreatorR\bcreators\x12Z\n" +
-	"\x15purchase_availability\x18\a \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\x14purchaseAvailability\"\xf8\x04\n" +
+	"\x15purchase_availability\x18\a \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\x14purchaseAvailability\"\xa5\x05\n" +
 	"\x18GetEpisodeDetailResponse\x123\n" +
 	"\aepisode\x18\x01 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\x120\n" +
 	"\x06series\x18\x02 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\x126\n" +
@@ -7889,7 +8120,8 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x12entitlement_source\x18\b \x01(\x0e2$.publira.v1.EpisodeEntitlementSourceR\x11entitlementSource\x12E\n" +
 	"\x0epreview_images\x18\t \x03(\v2\x1e.publira.types.v1.EpisodeImageR\rpreviewImages\x12G\n" +
 	"\x11next_free_episode\x18\n" +
-	" \x01(\v2\x1b.publira.v1.EpisodeNeighborR\x0fnextFreeEpisode\"\xc1\x02\n" +
+	" \x01(\v2\x1b.publira.v1.EpisodeNeighborR\x0fnextFreeEpisode\x12+\n" +
+	"\x11published_locales\x18\v \x03(\tR\x10publishedLocales\"\xc1\x02\n" +
 	"\x10PublishedCreator\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12!\n" +
@@ -7908,13 +8140,14 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\bcreators\x18\x01 \x03(\v2\x1c.publira.v1.PublishedCreatorR\bcreators\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\xdf\x01\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\xf7\x01\n" +
 	" GetPublishedCreatorDetailRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x14\n" +
 	"\x05token\x18\x04 \x01(\tR\x05token\x129\n" +
-	"\asurface\x18\x05 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"\xd3\x01\n" +
+	"\asurface\x18\x05 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x16\n" +
+	"\x06locale\x18\x06 \x01(\tR\x06locale\"\xd3\x01\n" +
 	"!GetPublishedCreatorDetailResponse\x126\n" +
 	"\acreator\x18\x01 \x01(\v2\x1c.publira.v1.PublishedCreatorR\acreator\x120\n" +
 	"\x06series\x18\x02 \x03(\v2\x18.publira.types.v1.SeriesR\x06series\x12%\n" +
@@ -7926,13 +8159,14 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12:\n" +
 	"\x1aeye_catch_image_updated_at\x18\x03 \x01(\tR\x16eyeCatchImageUpdatedAt\x12`\n" +
 	"\x18eye_catch_image_variants\x18\x04 \x03(\v2'.publira.types.v1.SeriesEyeCatchVariantR\x15eyeCatchImageVariants\x124\n" +
-	"\x16published_series_count\x18\x05 \x01(\x05R\x14publishedSeriesCount\"\xdd\x01\n" +
+	"\x16published_series_count\x18\x05 \x01(\x05R\x14publishedSeriesCount\"\xf5\x01\n" +
 	"\x1eGetPublishedLabelDetailRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x14\n" +
 	"\x05token\x18\x04 \x01(\tR\x05token\x129\n" +
-	"\asurface\x18\x05 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"\xcb\x01\n" +
+	"\asurface\x18\x05 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x16\n" +
+	"\x06locale\x18\x06 \x01(\tR\x06locale\"\xcb\x01\n" +
 	"\x1fGetPublishedLabelDetailResponse\x120\n" +
 	"\x05label\x18\x01 \x01(\v2\x1a.publira.v1.PublishedLabelR\x05label\x120\n" +
 	"\x06series\x18\x02 \x03(\v2\x18.publira.types.v1.SeriesR\x06series\x12%\n" +
@@ -7949,12 +8183,13 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x1cPublishedGenreFeaturedSeries\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12`\n" +
-	"\x18eye_catch_image_variants\x18\x03 \x03(\v2'.publira.types.v1.SeriesEyeCatchVariantR\x15eyeCatchImageVariants\"\xbc\x01\n" +
+	"\x18eye_catch_image_variants\x18\x03 \x03(\v2'.publira.types.v1.SeriesEyeCatchVariantR\x15eyeCatchImageVariants\"\xd4\x01\n" +
 	"\x1aListPublishedGenresRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
 	"\x05token\x18\x03 \x01(\tR\x05token\x129\n" +
-	"\asurface\x18\x04 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"\x97\x01\n" +
+	"\asurface\x18\x04 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x16\n" +
+	"\x06locale\x18\x05 \x01(\tR\x06locale\"\x97\x01\n" +
 	"\x1bListPublishedGenresResponse\x122\n" +
 	"\x06genres\x18\x01 \x03(\v2\x1a.publira.v1.PublishedGenreR\x06genres\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
@@ -7973,7 +8208,7 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x04tags\x18\x01 \x03(\v2\x18.publira.v1.PublishedTagR\x04tags\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\xd5\x03\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\xed\x03\n" +
 	"\x1cSearchPublishedSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05query\x18\x02 \x01(\tR\x05query\x12\x14\n" +
@@ -7986,7 +8221,8 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\btag_slug\x18\t \x01(\tR\atagSlug\x126\n" +
 	"\x06status\x18\n" +
 	" \x01(\x0e2\x1e.publira.types.v1.SeriesStatusR\x06status\x12\x1d\n" +
-	"\aweekday\x18\v \x01(\x05H\x00R\aweekday\x88\x01\x01B\n" +
+	"\aweekday\x18\v \x01(\x05H\x00R\aweekday\x88\x01\x01\x12\x16\n" +
+	"\x06locale\x18\f \x01(\tR\x06localeB\n" +
 	"\n" +
 	"\b_weekday\"\x97\x01\n" +
 	"\x1dSearchPublishedSeriesResponse\x120\n" +
@@ -8015,23 +8251,25 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x06labels\x18\x01 \x03(\v2\x1a.publira.v1.PublishedLabelR\x06labels\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\xbe\x01\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\xd6\x01\n" +
 	"\x1cListRecommendedSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
 	"\x05token\x18\x03 \x01(\tR\x05token\x129\n" +
-	"\asurface\x18\x04 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"\xd1\x01\n" +
+	"\asurface\x18\x04 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x16\n" +
+	"\x06locale\x18\x05 \x01(\tR\x06locale\"\xd1\x01\n" +
 	"\x1dListRecommendedSeriesResponse\x120\n" +
 	"\x06series\x18\x01 \x03(\v2\x18.publira.types.v1.SeriesR\x06series\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
 	"next_token\x18\x03 \x01(\tR\tnextToken\x128\n" +
-	"\x06source\x18\x04 \x01(\x0e2 .publira.v1.RecommendationSourceR\x06source\"\xc0\x01\n" +
+	"\x06source\x18\x04 \x01(\x0e2 .publira.v1.RecommendationSourceR\x06source\"\xd8\x01\n" +
 	"\x1eListMyRecommendedSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
 	"\x05token\x18\x03 \x01(\tR\x05token\x129\n" +
-	"\asurface\x18\x04 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"\xd3\x01\n" +
+	"\asurface\x18\x04 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x16\n" +
+	"\x06locale\x18\x05 \x01(\tR\x06locale\"\xd3\x01\n" +
 	"\x1fListMyRecommendedSeriesResponse\x120\n" +
 	"\x06series\x18\x01 \x03(\v2\x18.publira.types.v1.SeriesR\x06series\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
@@ -8042,7 +8280,7 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x04rank\x18\x01 \x01(\x05R\x04rank\x120\n" +
 	"\x06series\x18\x02 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\x12(\n" +
 	"\rprevious_rank\x18\x03 \x01(\x05H\x00R\fpreviousRank\x88\x01\x01B\x10\n" +
-	"\x0e_previous_rank\"\xd6\x02\n" +
+	"\x0e_previous_rank\"\xee\x02\n" +
 	"\x17ListRankedSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x121\n" +
 	"\x06period\x18\x02 \x01(\x0e2\x19.publira.v1.RankingPeriodR\x06period\x12\x14\n" +
@@ -8051,7 +8289,8 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\asurface\x18\x05 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12@\n" +
 	"\n" +
 	"age_rating\x18\x06 \x01(\x0e2!.publira.types.v1.SeriesAgeRatingR\tageRating\x12&\n" +
-	"\x0fgenre_public_id\x18\a \x01(\tR\rgenrePublicId\"\x82\x02\n" +
+	"\x0fgenre_public_id\x18\a \x01(\tR\rgenrePublicId\x12\x16\n" +
+	"\x06locale\x18\b \x01(\tR\x06locale\"\x82\x02\n" +
 	"\x18ListRankedSeriesResponse\x12=\n" +
 	"\rranked_series\x18\x01 \x03(\v2\x18.publira.v1.RankedSeriesR\frankedSeries\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
@@ -8061,13 +8300,14 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"computedAt\x12!\n" +
 	"\fperiod_start\x18\x05 \x01(\tR\vperiodStart\x12\x1d\n" +
 	"\n" +
-	"period_end\x18\x06 \x01(\tR\tperiodEnd\"\xef\x01\n" +
+	"period_end\x18\x06 \x01(\tR\tperiodEnd\"\x87\x02\n" +
 	"\x18ListRelatedSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x14\n" +
 	"\x05token\x18\x04 \x01(\tR\x05token\x129\n" +
 	"\asurface\x18\x05 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x1b\n" +
-	"\tseries_id\x18\x06 \x01(\tR\bseriesIdJ\x04\b\x02\x10\x03R\x10series_public_id\"\x93\x01\n" +
+	"\tseries_id\x18\x06 \x01(\tR\bseriesId\x12\x16\n" +
+	"\x06locale\x18\a \x01(\tR\x06localeJ\x04\b\x02\x10\x03R\x10series_public_id\"\x93\x01\n" +
 	"\x19ListRelatedSeriesResponse\x120\n" +
 	"\x06series\x18\x01 \x03(\v2\x18.publira.types.v1.SeriesR\x06series\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
@@ -8118,11 +8358,12 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\n" +
 	"episode_id\x18\x04 \x01(\tR\tepisodeIdJ\x04\b\x02\x10\x03R\x11episode_public_id\"W\n" +
 	"\x1cGetMyReadingPositionResponse\x127\n" +
-	"\bposition\x18\x01 \x01(\v2\x1b.publira.v1.ReadingPositionR\bposition\"\xc5\x01\n" +
+	"\bposition\x18\x01 \x01(\v2\x1b.publira.v1.ReadingPositionR\bposition\"\xdd\x01\n" +
 	"\x1aGetMySeriesProgressRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x129\n" +
 	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x1b\n" +
-	"\tseries_id\x18\x04 \x01(\tR\bseriesIdJ\x04\b\x02\x10\x03R\x10series_public_id\"\x9f\x01\n" +
+	"\tseries_id\x18\x04 \x01(\tR\bseriesId\x12\x16\n" +
+	"\x06locale\x18\x05 \x01(\tR\x06localeJ\x04\b\x02\x10\x03R\x10series_public_id\"\x9f\x01\n" +
 	"\x0eSeriesProgress\x123\n" +
 	"\aepisode\x18\x01 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\x127\n" +
 	"\bposition\x18\x02 \x01(\v2\x1b.publira.v1.ReadingPositionR\bposition\x12\x1f\n" +
@@ -8135,12 +8376,13 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\x123\n" +
 	"\aepisode\x18\x02 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\x127\n" +
 	"\bposition\x18\x03 \x01(\v2\x1b.publira.v1.ReadingPositionR\bposition\x12(\n" +
-	"\x10last_activity_at\x18\x04 \x01(\tR\x0elastActivityAt\"\xbb\x01\n" +
+	"\x10last_activity_at\x18\x04 \x01(\tR\x0elastActivityAt\"\xd3\x01\n" +
 	"\x19ListMyRecentSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
 	"\x05token\x18\x03 \x01(\tR\x05token\x129\n" +
-	"\asurface\x18\x04 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"\x94\x01\n" +
+	"\asurface\x18\x04 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x16\n" +
+	"\x06locale\x18\x05 \x01(\tR\x06locale\"\x94\x01\n" +
 	"\x1aListMyRecentSeriesResponse\x120\n" +
 	"\x06series\x18\x01 \x03(\v2\x18.publira.v1.RecentSeriesR\x06series\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
@@ -8149,12 +8391,13 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\rMyEpisodeRead\x120\n" +
 	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\x123\n" +
 	"\aepisode\x18\x02 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\x12\x17\n" +
-	"\aread_at\x18\x03 \x01(\tR\x06readAt\"\xbb\x01\n" +
+	"\aread_at\x18\x03 \x01(\tR\x06readAt\"\xd3\x01\n" +
 	"\x19ListMyEpisodeReadsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
 	"\x05token\x18\x03 \x01(\tR\x05token\x129\n" +
-	"\asurface\x18\x04 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"\x93\x01\n" +
+	"\asurface\x18\x04 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x16\n" +
+	"\x06locale\x18\x05 \x01(\tR\x06locale\"\x93\x01\n" +
 	"\x1aListMyEpisodeReadsResponse\x12/\n" +
 	"\x05reads\x18\x01 \x03(\v2\x19.publira.v1.MyEpisodeReadR\x05reads\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
@@ -8200,12 +8443,13 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"next_token\x18\x03 \x01(\tR\tnextToken\"u\n" +
 	"\fFollowUpdate\x120\n" +
 	"\x06series\x18\x01 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\x123\n" +
-	"\aepisode\x18\x02 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\"\xbc\x01\n" +
+	"\aepisode\x18\x02 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\"\xd4\x01\n" +
 	"\x1aListMyFollowUpdatesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
 	"\x05token\x18\x03 \x01(\tR\x05token\x129\n" +
-	"\asurface\x18\x04 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"\x97\x01\n" +
+	"\asurface\x18\x04 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x16\n" +
+	"\x06locale\x18\x05 \x01(\tR\x06locale\"\x97\x01\n" +
 	"\x1bListMyFollowUpdatesResponse\x122\n" +
 	"\aupdates\x18\x01 \x03(\v2\x18.publira.v1.FollowUpdateR\aupdates\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
@@ -8245,12 +8489,13 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x125\n" +
 	"\x06target\x18\x02 \x01(\v2\x1d.publira.v1.ContentViewTargetR\x06target\x129\n" +
 	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"\x1b\n" +
-	"\x19RecordContentViewResponse\"\x9b\x02\n" +
+	"\x19RecordContentViewResponse\"\xb3\x02\n" +
 	"\x1bStartEpisodeCheckoutRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12F\n" +
 	"\x06client\x18\x03 \x01(\x0e2..publira.v1.StartEpisodeCheckoutRequest.ClientR\x06client\x12\x1d\n" +
 	"\n" +
-	"episode_id\x18\x04 \x01(\tR\tepisodeId\"C\n" +
+	"episode_id\x18\x04 \x01(\tR\tepisodeId\x12\x16\n" +
+	"\x06locale\x18\x05 \x01(\tR\x06locale\"C\n" +
 	"\x06Client\x12\x16\n" +
 	"\x12CLIENT_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +
@@ -8274,12 +8519,13 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	" \x01(\tR\n" +
 	"refundedAt\x12\x1d\n" +
 	"\n" +
-	"revoked_at\x18\v \x01(\tR\trevokedAt\"\xb8\x01\n" +
+	"revoked_at\x18\v \x01(\tR\trevokedAt\"\xd0\x01\n" +
 	"\x16ListMyPurchasesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
 	"\x05token\x18\x03 \x01(\tR\x05token\x129\n" +
-	"\asurface\x18\x04 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\"\x95\x01\n" +
+	"\asurface\x18\x04 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x16\n" +
+	"\x06locale\x18\x05 \x01(\tR\x06locale\"\x95\x01\n" +
 	"\x17ListMyPurchasesResponse\x124\n" +
 	"\tpurchases\x18\x01 \x03(\v2\x16.publira.v1.MyPurchaseR\tpurchases\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
@@ -8302,13 +8548,14 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x1aStartStorePurchaseResponse\x12\x1b\n" +
 	"\tintent_id\x18\x01 \x01(\tR\bintentId\x12\x1d\n" +
 	"\n" +
-	"product_id\x18\x02 \x01(\tR\tproductId\"\xcd\x01\n" +
+	"product_id\x18\x02 \x01(\tR\tproductId\"\xe5\x01\n" +
 	"\x1bConfirmStorePurchaseRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x124\n" +
 	"\x05store\x18\x02 \x01(\x0e2\x1e.publira.v1.InAppPurchaseStoreR\x05store\x12 \n" +
 	"\vtransaction\x18\x03 \x01(\tR\vtransaction\x12\x1d\n" +
 	"\n" +
-	"product_id\x18\x04 \x01(\tR\tproductId\"R\n" +
+	"product_id\x18\x04 \x01(\tR\tproductId\x12\x16\n" +
+	"\x06locale\x18\x05 \x01(\tR\x06locale\"R\n" +
 	"\x1cConfirmStorePurchaseResponse\x122\n" +
 	"\bpurchase\x18\x01 \x01(\v2\x16.publira.v1.MyPurchaseR\bpurchase\"w\n" +
 	"\"ProcessAppStoreNotificationRequest\x127\n" +

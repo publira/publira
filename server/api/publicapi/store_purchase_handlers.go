@@ -199,6 +199,10 @@ func (s *apiServer) ConfirmStorePurchase(
 	if err != nil {
 		return nil, err
 	}
+	readerLocale, err := readerLocaleOf(req.Locale, tenant)
+	if err != nil {
+		return nil, err
+	}
 	if err := s.chargeReaderAction(ctx, actionConfirmStorePurchase, tenant.ID, user.ID); err != nil {
 		return nil, err
 	}
@@ -213,7 +217,7 @@ func (s *apiServer) ConfirmStorePurchase(
 			s.logger.WarnContext(ctx, "store transaction does not verify", "tenant_id", tenant.ID, "store", storeAppStore, "error", err)
 			return nil, connect.NewError(connect.CodeInvalidArgument, "transaction does not verify")
 		}
-		if purchase, found, err := s.recordedStorePurchase(ctx, s.queriesFor(ctx), tenant.ID, user.ID, storeAppStore, claimed.TransactionID); err != nil || found {
+		if purchase, found, err := s.recordedStorePurchase(ctx, s.queriesFor(ctx), tenant.ID, user.ID, readerLocale, storeAppStore, claimed.TransactionID); err != nil || found {
 			return confirmedStorePurchase(ctx, purchase, err)
 		}
 		transaction, err = s.verifyAppStoreTransaction(ctx, tenant.ID, claimed)
@@ -225,7 +229,7 @@ func (s *apiServer) ConfirmStorePurchase(
 		if productID == "" {
 			return nil, connect.NewError(connect.CodeInvalidArgument, "product_id is required for Google Play")
 		}
-		if purchase, found, err := s.recordedStorePurchase(ctx, s.queriesFor(ctx), tenant.ID, user.ID, storeGooglePlay, signed); err != nil || found {
+		if purchase, found, err := s.recordedStorePurchase(ctx, s.queriesFor(ctx), tenant.ID, user.ID, readerLocale, storeGooglePlay, signed); err != nil || found {
 			return confirmedStorePurchase(ctx, purchase, err)
 		}
 		transaction, err = s.verifyGooglePlayPurchase(ctx, tenant.ID, productID, signed)
@@ -236,7 +240,7 @@ func (s *apiServer) ConfirmStorePurchase(
 		return nil, connect.NewError(connect.CodeInvalidArgument, "store is required")
 	}
 
-	purchase, err := s.recordStorePurchase(ctx, tenant.ID, user.ID, transaction)
+	purchase, err := s.recordStorePurchase(ctx, tenant.ID, user.ID, readerLocale, transaction)
 	return confirmedStorePurchase(ctx, purchase, err)
 }
 
@@ -248,13 +252,13 @@ func confirmedStorePurchase(ctx context.Context, purchase *publirav1.MyPurchase,
 }
 
 // recordedStorePurchase answers the purchase a transaction was already
-// recorded as. Another reader's purchase is permission_denied: the store
+// recorded as, titled in locale. Another reader's purchase is permission_denied: the store
 // charged whoever opened the intent, and the caller is not them.
 func (s *apiServer) recordedStorePurchase(
 	ctx context.Context,
 	queries Querier,
 	tenantID, userID uuid.UUID,
-	store, transactionID string,
+	locale, store, transactionID string,
 ) (*publirav1.MyPurchase, bool, error) {
 	existing, err := queries.GetStorePurchaseByTransaction(ctx, dbmodels.GetStorePurchaseByTransactionParams{
 		TenantID:           tenantID,
@@ -270,15 +274,16 @@ func (s *apiServer) recordedStorePurchase(
 	if !existing.UserID.Valid || existing.UserID.UUID != userID {
 		return nil, false, connect.NewError(connect.CodePermissionDenied, "transaction belongs to another reader")
 	}
-	purchase, err := s.myPurchase(ctx, queries, tenantID, userID, existing.ID)
+	purchase, err := s.myPurchase(ctx, queries, tenantID, userID, locale, existing.ID)
 	return purchase, err == nil, err
 }
 
-func (s *apiServer) myPurchase(ctx context.Context, queries Querier, tenantID, userID, purchaseID uuid.UUID) (*publirav1.MyPurchase, error) {
+func (s *apiServer) myPurchase(ctx context.Context, queries Querier, tenantID, userID uuid.UUID, locale string, purchaseID uuid.UUID) (*publirav1.MyPurchase, error) {
 	row, err := queries.GetMyPurchase(ctx, dbmodels.GetMyPurchaseParams{
 		TenantID: tenantID,
 		UserID:   userID,
 		ID:       purchaseID,
+		Locale:   locale,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to read a store purchase", err, "tenant_id", tenantID.String(), "purchase_id", purchaseID.String())
@@ -411,8 +416,8 @@ func (s *apiServer) verifyGooglePlayPurchase(ctx context.Context, tenantID uuid.
 }
 
 // recordStorePurchase turns a verified transaction into the purchase of the
-// intent it names, once.
-func (s *apiServer) recordStorePurchase(ctx context.Context, tenantID, userID uuid.UUID, transaction storeTransaction) (*publirav1.MyPurchase, error) {
+// intent it names, once, and answers it titled in locale.
+func (s *apiServer) recordStorePurchase(ctx context.Context, tenantID, userID uuid.UUID, locale string, transaction storeTransaction) (*publirav1.MyPurchase, error) {
 	intentID, err := uuid.Parse(transaction.accountToken)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, "transaction names no purchase intent")
@@ -439,7 +444,7 @@ func (s *apiServer) recordStorePurchase(ctx context.Context, tenantID, userID uu
 	}
 	// Checked under the intent's lock: a concurrent confirmation of the same
 	// transaction has committed its purchase by the time this one holds it.
-	if purchase, found, err := s.recordedStorePurchase(ctx, txq, tenantID, userID, transaction.store, transaction.transactionID); err != nil || found {
+	if purchase, found, err := s.recordedStorePurchase(ctx, txq, tenantID, userID, locale, transaction.store, transaction.transactionID); err != nil || found {
 		return purchase, err
 	}
 	if intent.UserID != userID {
@@ -514,5 +519,5 @@ func (s *apiServer) recordStorePurchase(ctx context.Context, tenantID, userID uu
 		"store", transaction.store,
 		"is_test", transaction.isTest,
 	)
-	return s.myPurchase(ctx, s.queriesFor(ctx), tenantID, userID, purchase.ID)
+	return s.myPurchase(ctx, s.queriesFor(ctx), tenantID, userID, locale, purchase.ID)
 }

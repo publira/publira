@@ -117,30 +117,27 @@ WITH tenant_scope AS (
     FROM tenants t
     WHERE t.public_id = 'BndrTNNTAAA1'
 ),
-series_seed (id, public_id, title, is_published, published_at) AS (
+series_seed (id, public_id, is_published, published_at) AS (
     VALUES
         (
             '018f0f03-0001-7000-8000-000000000001'::uuid,
             'BndrSERSAAA1',
-            'Boundary Series 001',
             true,
             NOW() - INTERVAL '1 day'
         ),
         (
             '018f0f03-0002-7000-8000-000000000002'::uuid,
             'BndrSERSAAA2',
-            'Boundary Draft Series 900',
             false,
             NULL::timestamptz
         )
 )
-INSERT INTO series (id, tenant_id, label_id, public_id, title, is_published, published_at)
+INSERT INTO series (id, tenant_id, label_id, public_id, is_published, published_at)
 SELECT
     ss.id AS series_id,
     ts.id AS tenant_id,
     l.id AS label_id,
     ss.public_id,
-    ss.title,
     ss.is_published,
     ss.published_at
 FROM series_seed ss
@@ -149,17 +146,45 @@ JOIN labels l ON l.id = '018f0f01-0001-7000-8000-000000000001'::uuid
 ON CONFLICT (public_id) DO UPDATE
 SET tenant_id = EXCLUDED.tenant_id,
     label_id = EXCLUDED.label_id,
-    title = EXCLUDED.title,
     is_published = EXCLUDED.is_published,
     published_at = EXCLUDED.published_at,
     updated_at = NOW();
 
+-- Each series' title and synopsis, as its translation in the tenant's default
+-- locale.
+WITH translation_seed (id, series_id, title) AS (
+    VALUES
+        (
+            '018f0f06-0001-7000-8000-000000000001'::uuid,
+            '018f0f03-0001-7000-8000-000000000001'::uuid,
+            'Boundary Series 001'
+        ),
+        (
+            '018f0f06-0002-7000-8000-000000000002'::uuid,
+            '018f0f03-0002-7000-8000-000000000002'::uuid,
+            'Boundary Draft Series 900'
+        )
+)
+INSERT INTO series_translations (id, series_id, tenant_id, locale, title, synopsis)
+SELECT
+    tr.id,
+    s.id AS series_id,
+    s.tenant_id,
+    t.default_locale,
+    tr.title,
+    FORMAT('Boundary series synopsis for %s', tr.title)
+FROM translation_seed tr
+JOIN series s ON s.id = tr.series_id
+JOIN tenants t ON t.id = s.tenant_id
+ON CONFLICT (series_id, locale) DO UPDATE
+SET title = EXCLUDED.title,
+    synopsis = EXCLUDED.synopsis;
+
 -- Fixture UUIDs rather than a title/tenant predicate: another scenario seed
 -- adding rows to this tenant must not be picked up here.
-INSERT INTO series_listings (series_id, synopsis, reading_period_hours, tenant_id)
+INSERT INTO series_listings (series_id, reading_period_hours, tenant_id)
 SELECT
     s.id AS series_id,
-    FORMAT('Boundary series synopsis for %s', s.title),
     72,
     s.tenant_id
 FROM series s
@@ -168,8 +193,7 @@ WHERE s.id IN (
     '018f0f03-0002-7000-8000-000000000002'::uuid
 )
 ON CONFLICT (series_id) DO UPDATE
-SET synopsis = EXCLUDED.synopsis,
-    reading_period_hours = EXCLUDED.reading_period_hours,
+SET reading_period_hours = EXCLUDED.reading_period_hours,
     tenant_id = EXCLUDED.tenant_id;
 
 \set seed_tenant BndrTNNTAAA1
@@ -193,27 +217,44 @@ ON CONFLICT (series_id, creator_id, role_id) DO UPDATE
 SET display_order = EXCLUDED.display_order,
     tenant_id = EXCLUDED.tenant_id;
 
-WITH episode_seed (id, public_id, title, order_index) AS (
+WITH episode_seed (id, public_id, order_index) AS (
     VALUES
-        ('018f0f04-0001-7000-8000-000000000001'::uuid, 'BndrEPSDAAA1', 'Boundary Episode 001-01', 1),
-        ('018f0f04-0002-7000-8000-000000000002'::uuid, 'BndrEPSDAAA2', 'Boundary Episode 001-02', 2),
-        ('018f0f04-0003-7000-8000-000000000003'::uuid, 'BndrEPSDAAA3', 'Boundary Episode 001-90', 90)
+        ('018f0f04-0001-7000-8000-000000000001'::uuid, 'BndrEPSDAAA1', 1),
+        ('018f0f04-0002-7000-8000-000000000002'::uuid, 'BndrEPSDAAA2', 2),
+        ('018f0f04-0003-7000-8000-000000000003'::uuid, 'BndrEPSDAAA3', 90)
 )
-INSERT INTO episodes (id, series_id, public_id, title, order_index, tenant_id)
+INSERT INTO episodes (id, series_id, public_id, order_index, tenant_id)
 SELECT
     es.id AS episode_id,
     s.id AS series_id,
     es.public_id,
-    es.title,
     es.order_index,
     s.tenant_id
 FROM episode_seed es
 JOIN series s ON s.id = '018f0f03-0001-7000-8000-000000000001'::uuid
 ON CONFLICT (public_id) DO UPDATE
 SET series_id = EXCLUDED.series_id,
-    title = EXCLUDED.title,
     order_index = EXCLUDED.order_index,
     tenant_id = EXCLUDED.tenant_id;
+
+WITH translation_seed (id, episode_id, title) AS (
+    VALUES
+        ('018f0f07-0001-7000-8000-000000000001'::uuid, '018f0f04-0001-7000-8000-000000000001'::uuid, 'Boundary Episode 001-01'),
+        ('018f0f07-0002-7000-8000-000000000002'::uuid, '018f0f04-0002-7000-8000-000000000002'::uuid, 'Boundary Episode 001-02'),
+        ('018f0f07-0003-7000-8000-000000000003'::uuid, '018f0f04-0003-7000-8000-000000000003'::uuid, 'Boundary Episode 001-90')
+)
+INSERT INTO episode_translations (id, episode_id, tenant_id, locale, title)
+SELECT
+    tr.id,
+    e.id AS episode_id,
+    e.tenant_id,
+    t.default_locale,
+    tr.title
+FROM translation_seed tr
+JOIN episodes e ON e.id = tr.episode_id
+JOIN tenants t ON t.id = e.tenant_id
+ON CONFLICT (episode_id, locale) DO UPDATE
+SET title = EXCLUDED.title;
 
 -- Episodes 01/02 are published; 90 stays scheduled so the catalog must hide it.
 WITH listing_seed (episode_id, price, status, scheduled_at, published_at) AS (

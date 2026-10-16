@@ -3,13 +3,12 @@ INSERT INTO episodes (
         id,
         series_id,
         public_id,
-        title,
         order_index,
         tenant_id,
         availability,
         purchase_availability
     )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 -- name: UpsertEpisodeListing :one
@@ -35,7 +34,7 @@ RETURNING *;
 SELECT e.id,
     e.series_id,
     e.public_id,
-    e.title,
+    et.title,
     e.order_index,
     e.created_at,
     el.price,
@@ -44,6 +43,7 @@ SELECT e.id,
     el.scheduled_at,
     el.published_at
 FROM episodes e
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON e.id = el.episode_id
 WHERE s.tenant_id = $1
@@ -59,7 +59,7 @@ ORDER BY e.order_index ASC;
 -- name: ListEpisodesBySeriesForTenant :many
 SELECT e.id,
     e.public_id,
-    e.title,
+    et.title,
     e.order_index,
     el.price,
     el.reading_period_hours,
@@ -68,6 +68,7 @@ SELECT e.id,
     el.published_at,
     e.availability
 FROM episodes e
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
 WHERE s.tenant_id = $1
@@ -83,7 +84,7 @@ ORDER BY e.order_index ASC,
 -- name: ListEpisodesBySeriesForTenantAsc :many
 SELECT e.id,
     e.public_id,
-    e.title,
+    et.title,
     e.order_index,
     el.price,
     el.reading_period_hours,
@@ -93,6 +94,7 @@ SELECT e.id,
     -- The episode's own availability, NULL where it follows the series.
     e.availability
 FROM episodes e
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
 WHERE s.tenant_id = sqlc.arg('tenant_id')
@@ -115,7 +117,7 @@ LIMIT sqlc.arg('limit');
 -- name: ListEpisodesBySeriesForTenantDesc :many
 SELECT e.id,
     e.public_id,
-    e.title,
+    et.title,
     e.order_index,
     el.price,
     el.reading_period_hours,
@@ -125,6 +127,7 @@ SELECT e.id,
     -- The episode's own availability, NULL where it follows the series.
     e.availability
 FROM episodes e
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
 WHERE s.tenant_id = sqlc.arg('tenant_id')
@@ -201,7 +204,7 @@ FOR UPDATE OF e;
 -- name: GetEpisodeByPublicIDForTenant :one
 SELECT e.id,
     e.public_id,
-    e.title,
+    et.title,
     e.order_index,
     el.price,
     el.reading_period_hours,
@@ -223,6 +226,7 @@ SELECT e.id,
     epa.purchase_availability AS resolved_purchase_availability,
     e.series_id
 FROM episodes e
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
     JOIN episode_purchase_availability epa ON epa.episode_id = e.id
@@ -234,7 +238,7 @@ LIMIT 1;
 -- name: GetEpisodeByIDForTenant :one
 SELECT e.id,
     e.public_id,
-    e.title,
+    et.title,
     e.order_index,
     el.price,
     el.reading_period_hours,
@@ -256,6 +260,7 @@ SELECT e.id,
     epa.purchase_availability AS resolved_purchase_availability,
     e.series_id
 FROM episodes e
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
     JOIN episode_purchase_availability epa ON epa.episode_id = e.id
@@ -278,7 +283,7 @@ LIMIT 1;
 -- name: GetEpisodeByPublicIDForTenantAndSeries :one
 SELECT e.id,
     e.public_id,
-    e.title,
+    et.title,
     e.order_index,
     el.price,
     el.reading_period_hours,
@@ -294,6 +299,7 @@ SELECT e.id,
     e.purchase_availability,
     epa.purchase_availability AS resolved_purchase_availability
 FROM episodes e
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
     JOIN episode_purchase_availability epa ON epa.episode_id = e.id
@@ -305,10 +311,11 @@ LIMIT 1;
 
 -- name: GetPublishedEpisodeForTenant :one
 -- A URL names the episode by its public ID and a reader's request by its ID;
--- the caller passes the one it holds.
+-- the caller passes the one it holds. The episode's title and its series' are
+-- those of the translations picked for the reader's locale.
 SELECT e.id,
     e.public_id,
-    e.title,
+    et.title,
     e.order_index,
     e.series_id,
     el.price,
@@ -317,7 +324,7 @@ SELECT e.id,
     el.scheduled_at,
     el.published_at,
     s.public_id AS series_public_id,
-    s.title AS series_title,
+    str.title AS series_title,
     -- The work's artwork, which the links to the neighbouring episodes show.
     s.eye_catch_image_id AS series_eye_catch_image_id,
     si.updated_at AS series_eye_catch_image_updated_at,
@@ -345,9 +352,22 @@ SELECT e.id,
     COALESCE(erc.count, 0)::bigint AS rating_count,
     -- Where the episode may be bought, resolved through its series and the
     -- tenant, so a client draws the purchase action without resolving it.
-    epa.purchase_availability
+    epa.purchase_availability,
+    -- Every locale the episode has a translation in that the tenant offers,
+    -- the served one included, in code order: the language alternates of the
+    -- episode.
+    ARRAY(
+        SELECT alternate.locale
+        FROM episode_translations alternate
+            JOIN tenants t ON t.id = alternate.tenant_id
+        WHERE alternate.episode_id = e.id
+            AND alternate.locale = ANY (t.supported_locales)
+        ORDER BY alternate.locale
+    )::text [] AS published_locales
 FROM episodes e
+    CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et
     JOIN series s ON s.id = e.series_id
+    CROSS JOIN LATERAL series_translation_for(s.id, sqlc.arg('locale')::text) str
     JOIN episode_listings el ON el.episode_id = e.id
     JOIN episode_purchase_availability epa ON epa.episode_id = e.id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
@@ -388,7 +408,7 @@ LIMIT 1;
     SELECT -1::int4 AS direction,
         e.id,
         e.public_id,
-        e.title,
+        et.title,
         e.order_index,
         el.price,
         EXISTS (
@@ -398,6 +418,7 @@ LIMIT 1;
         ) AS is_free,
         epa.purchase_availability
     FROM episodes e
+        CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et
         JOIN series s ON s.id = e.series_id
         JOIN episode_listings el ON el.episode_id = e.id
         JOIN episode_purchase_availability epa ON epa.episode_id = e.id
@@ -419,7 +440,7 @@ UNION ALL
     SELECT 1::int4 AS direction,
         e.id,
         e.public_id,
-        e.title,
+        et.title,
         e.order_index,
         el.price,
         EXISTS (
@@ -429,6 +450,7 @@ UNION ALL
         ) AS is_free,
         epa.purchase_availability
     FROM episodes e
+        CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et
         JOIN series s ON s.id = e.series_id
         JOIN episode_listings el ON el.episode_id = e.id
         JOIN episode_purchase_availability epa ON epa.episode_id = e.id
@@ -456,11 +478,12 @@ UNION ALL
 -- series has no such episode.
 SELECT e.id,
     e.public_id,
-    e.title,
+    et.title,
     e.order_index,
     el.price,
     epa.purchase_availability
 FROM episodes e
+    CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
     JOIN episode_purchase_availability epa ON epa.episode_id = e.id
@@ -522,14 +545,16 @@ SELECT r.id,
     r.read_at,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     e.order_index AS episode_order_index,
     s.id AS series_id,
     s.public_id AS series_public_id,
-    s.title AS series_title
+    str.title AS series_title
 FROM episode_reads r
     JOIN episodes e ON e.id = r.episode_id
+    CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et
     JOIN series s ON s.id = e.series_id
+    CROSS JOIN LATERAL series_translation_for(s.id, sqlc.arg('locale')::text) str
 WHERE r.tenant_id = sqlc.arg('tenant_id')
     AND r.user_id = sqlc.arg('user_id')
     AND EXISTS (
@@ -565,14 +590,16 @@ SELECT r.id,
     r.read_at,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     e.order_index AS episode_order_index,
     s.id AS series_id,
     s.public_id AS series_public_id,
-    s.title AS series_title
+    str.title AS series_title
 FROM episode_reads r
     JOIN episodes e ON e.id = r.episode_id
+    CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et
     JOIN series s ON s.id = e.series_id
+    CROSS JOIN LATERAL series_translation_for(s.id, sqlc.arg('locale')::text) str
 WHERE r.tenant_id = sqlc.arg('tenant_id')
     AND r.user_id = sqlc.arg('user_id')
     AND EXISTS (
@@ -619,12 +646,6 @@ WHERE r.tenant_id = sqlc.arg('tenant_id')
     AND s.id = sqlc.arg('series_id')
 ORDER BY e.order_index ASC,
     e.id ASC;
-
--- name: UpdateEpisodeTitleByIDForTenant :execrows
-UPDATE episodes
-SET title = sqlc.arg('title')
-WHERE tenant_id = sqlc.arg('tenant_id')
-    AND id = sqlc.arg('id');
 
 -- name: UpdateEpisodePricingByIDForTenant :execrows
 -- NULL gives a purchase of the episode no expiry.
@@ -687,13 +708,15 @@ WHERE s.tenant_id = $1
 -- dashboard.
 SELECT
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     s.public_id AS series_public_id,
-    s.title AS series_title,
+    str.title AS series_title,
     el.status,
     el.scheduled_at
 FROM episodes e
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.id = e.series_id
+    CROSS JOIN LATERAL series_translation_for(s.id, '') str
     JOIN episode_listings el ON el.episode_id = e.id
 WHERE s.tenant_id = $1
     AND el.status IN ('draft', 'scheduled')

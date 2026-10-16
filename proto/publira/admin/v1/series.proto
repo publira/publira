@@ -21,6 +21,25 @@ message SeriesCreatorCredit {
   string role_id = 5;
 }
 
+// One locale's title and synopsis of a series.
+message SeriesTranslation {
+  string locale = 1;
+  string title = 2;
+  string synopsis = 3;
+  // RFC 3339.
+  string created_at = 4;
+  string updated_at = 5;
+}
+
+// One locale's title of an episode.
+message EpisodeTranslation {
+  string locale = 1;
+  string title = 2;
+  // RFC 3339.
+  string created_at = 3;
+  string updated_at = 4;
+}
+
 message CreateSeriesRequest {
   // 7 held `creator_public_ids`, a creator list with no way to state a role.
   reserved 7;
@@ -76,6 +95,10 @@ message CreateSeriesRequest {
   // invalid_argument; the assignment carries no order of its own, because the
   // series presents them in the tenant's genre order.
   repeated string genre_ids = 25;
+  // The locale title and synopsis are written in, which becomes the series'
+  // first translation. Empty means the tenant's default locale; a locale the
+  // tenant does not offer is invalid_argument.
+  string locale = 26;
 }
 
 message CreateSeriesResponse {
@@ -94,6 +117,10 @@ message CreateSeriesResponse {
   // The series' own purchase availability as it was stored, and
   // SURFACE_AVAILABILITY_UNSPECIFIED while it follows the tenant's default.
   publira.types.v1.SurfaceAvailability purchase_availability = 6;
+  // Every translation of the series, oldest first. Series.title and
+  // Series.synopsis are those of the one in the tenant's default locale, else the
+  // oldest.
+  repeated SeriesTranslation translations = 7;
 }
 
 // The weekdays a series expects a new episode on. It wraps the list so an
@@ -169,6 +196,11 @@ message UpdateSeriesRequest {
   string label_id = 26;
   // Likewise the whole genre assignment.
   repeated string genre_ids = 27;
+  // The locale title and synopsis are written in. A locale the series has no
+  // translation in yet gets one, with an empty synopsis where synopsis is unset.
+  // Empty means the tenant's default locale; a locale the tenant does not offer
+  // is invalid_argument.
+  string locale = 28;
 }
 
 message UpdateSeriesResponse {
@@ -184,6 +216,10 @@ message UpdateSeriesResponse {
   // The series' own purchase availability as it was stored, and
   // SURFACE_AVAILABILITY_UNSPECIFIED while it follows the tenant's default.
   publira.types.v1.SurfaceAvailability purchase_availability = 6;
+  // Every translation of the series, oldest first. Series.title and
+  // Series.synopsis are those of the one in the tenant's default locale, else the
+  // oldest.
+  repeated SeriesTranslation translations = 7;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -235,6 +271,10 @@ message GetSeriesResponse {
   // The series' own purchase availability, and SURFACE_AVAILABILITY_UNSPECIFIED
   // while it follows the tenant's default.
   publira.types.v1.SurfaceAvailability purchase_availability = 6;
+  // Every translation of the series, oldest first. Series.title and
+  // Series.synopsis are those of the one in the tenant's default locale, else the
+  // oldest.
+  repeated SeriesTranslation translations = 7;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -275,6 +315,9 @@ message GetEpisodeResponse {
   // SURFACE_AVAILABILITY_UNSPECIFIED where it follows its series. The resolved
   // value is Episode.purchase_availability.
   publira.types.v1.SurfaceAvailability purchase_availability = 4;
+  // Every translation of the episode, oldest first. Episode.title is that of
+  // the one in the tenant's default locale, else the oldest.
+  repeated EpisodeTranslation translations = 5;
 }
 
 // Renames one episode. Only the title is written: its place in the series,
@@ -285,11 +328,18 @@ message UpdateEpisodeTitleRequest {
   // Stored as it is sent. A title of nothing but white space is
   // invalid_argument, as it is to CreateEpisode.
   string title = 3;
+  // The locale title is written in. A locale the episode has no translation in
+  // yet gets one. Empty means the tenant's default locale; a locale the tenant
+  // does not offer is invalid_argument.
+  string locale = 4;
 }
 
 message UpdateEpisodeTitleResponse {
   // Carries the resolved values, as GetEpisode does.
   publira.types.v1.Episode episode = 1;
+  // Every translation of the episode, oldest first. Episode.title is that of
+  // the one in the tenant's default locale, else the oldest.
+  repeated EpisodeTranslation translations = 2;
 }
 
 // Sets what one episode is sold on: its price and the reading period a
@@ -421,12 +471,19 @@ message CreateEpisodeRequest {
   // The ISO 4217 code price was entered in, checked as
   // UpdateEpisodePricingRequest.currency is.
   string currency = 11;
+  // The locale title is written in, which becomes the episode's first
+  // translation. Empty means the tenant's default locale; a locale the tenant does
+  // not offer is invalid_argument.
+  string locale = 12;
 }
 
 message CreateEpisodeResponse {
   publira.types.v1.Episode episode = 1;
   // The episode's own purchase availability, as it was stored.
   publira.types.v1.SurfaceAvailability purchase_availability = 2;
+  // Every translation of the episode, oldest first. Episode.title is that of
+  // the one in the tenant's default locale, else the oldest.
+  repeated EpisodeTranslation translations = 3;
 }
 
 message EpisodeImageUpload {
@@ -808,6 +865,33 @@ message UpdateSeriesWaitFreeSettingsResponse {
   SeriesWaitFreeSettings settings = 1;
 }
 
+// Deletes one locale's translation of a series. The last translation of a
+// series cannot be deleted (failed_precondition), and a locale the series has
+// no translation in is not_found.
+message DeleteSeriesTranslationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string series_id = 2;
+  string locale = 3;
+}
+
+message DeleteSeriesTranslationResponse {
+  // The translations left, oldest first.
+  repeated SeriesTranslation translations = 1;
+}
+
+// Deletes one locale's translation of an episode, under the rules
+// DeleteSeriesTranslation follows.
+message DeleteEpisodeTranslationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_id = 2;
+  string locale = 3;
+}
+
+message DeleteEpisodeTranslationResponse {
+  // The translations left, oldest first.
+  repeated EpisodeTranslation translations = 1;
+}
+
 service AdminSeriesService {
   // Minimum role: tenant_editor.
   rpc CreateSeries(CreateSeriesRequest) returns (CreateSeriesResponse) {}
@@ -879,4 +963,8 @@ service AdminSeriesService {
   rpc GetSeriesWaitFreeSettings(GetSeriesWaitFreeSettingsRequest) returns (GetSeriesWaitFreeSettingsResponse) {}
   // Minimum role: tenant_editor.
   rpc UpdateSeriesWaitFreeSettings(UpdateSeriesWaitFreeSettingsRequest) returns (UpdateSeriesWaitFreeSettingsResponse) {}
+  // Minimum role: tenant_editor.
+  rpc DeleteSeriesTranslation(DeleteSeriesTranslationRequest) returns (DeleteSeriesTranslationResponse) {}
+  // Minimum role: tenant_editor.
+  rpc DeleteEpisodeTranslation(DeleteEpisodeTranslationRequest) returns (DeleteEpisodeTranslationResponse) {}
 }

@@ -3,6 +3,7 @@ package adminapi
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"regexp"
 	"testing"
 	"time"
@@ -40,6 +41,35 @@ func expectPublishedEpisodeLookup(mock sqlmock.Sqlmock, tenantID uuid.UUID, avai
 		WithArgs(tenantID, testEpisodeID).
 		WillReturnRows(sqlmock.NewRows(getEpisodeByIDColumns).
 			AddRow(testEpisodeID, "EPISODE001", "Episode", int32(1), int32(100), int32(24), "published", nil, time.Now().UTC(), nil, nil, nil, nil, availability, nil, "all", testSeriesID))
+}
+
+// expectEpisodeLock expects the lookup that finds testEpisodeID and locks it.
+func expectEpisodeLock(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockEpisodeByIDForTenant)).
+		WithArgs(tenantID, testEpisodeID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id"}).AddRow(testEpisodeID, "EPISODE001"))
+}
+
+var episodeTranslationColumns = []string{"id", "episode_id", "tenant_id", "locale", "title", "created_at", "updated_at"}
+
+// expectEpisodeTranslationUpsert expects the write of testEpisodeID's title in
+// locale.
+func expectEpisodeTranslationUpsert(mock sqlmock.Sqlmock, tenantID uuid.UUID, locale, title string) {
+	now := time.Now().UTC()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertEpisodeTranslation)).
+		WithArgs(sqlmock.AnyArg(), testEpisodeID, tenantID, locale, title).
+		WillReturnRows(sqlmock.NewRows(episodeTranslationColumns).
+			AddRow(uuid.Must(uuid.NewV7()), testEpisodeID, tenantID, locale, title, now, now))
+}
+
+// expectEpisodeTranslationsList expects the read of an episode's
+// translations, answered with the one in locale.
+func expectEpisodeTranslationsList(mock sqlmock.Sqlmock, tenantID uuid.UUID, episodeID driver.Value, locale, title string) {
+	now := time.Now().UTC()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListEpisodeTranslationsForTenant)).
+		WithArgs(tenantID, episodeID).
+		WillReturnRows(sqlmock.NewRows(episodeTranslationColumns).
+			AddRow(uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), tenantID, locale, title, now, now))
 }
 
 // The series page lists the episodes in their order and numbers them by it, so
@@ -291,13 +321,13 @@ func TestUpdateEpisodeTitleRevalidatesTheSeriesDetail(t *testing.T) {
 	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
 
 	mock.ExpectBegin()
-	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateEpisodeTitleByIDForTenant)).
-		WithArgs("Episode", tenantID, testEpisodeID).
-		WillReturnResult(sqlmock.NewResult(0, 1))
+	expectEpisodeLock(mock, tenantID)
+	expectEpisodeTranslationUpsert(mock, tenantID, "ja", "Episode")
 	expectRevalidationRecord(mock, tenantID)
 	mock.ExpectCommit()
 	expectPublishedEpisodeLookup(mock, tenantID, nil)
 	expectAdminAuditLogInsert(mock)
+	expectEpisodeTranslationsList(mock, tenantID, testEpisodeID, "ja", "Episode")
 
 	req := &publiraadminv1.UpdateEpisodeTitleRequest{
 		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
@@ -312,8 +342,8 @@ func TestUpdateEpisodeTitleRevalidatesTheSeriesDetail(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
-// A rename that reaches no row is not_found, and rolls back before any drop is
-// recorded: nothing a cache holds has changed.
+// A rename of an episode the tenant does not have is not_found, and rolls back
+// before any drop is recorded: nothing a cache holds has changed.
 func TestUpdateEpisodeTitleOfNoEpisodeIsNotFound(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
@@ -321,9 +351,9 @@ func TestUpdateEpisodeTitleOfNoEpisodeIsNotFound(t *testing.T) {
 	client, mock, sessionToken := newEpisodeClient(t, tenantID, userID, now)
 
 	mock.ExpectBegin()
-	mock.ExpectExec(regexp.QuoteMeta(dbmodels.UpdateEpisodeTitleByIDForTenant)).
-		WithArgs("Episode", tenantID, testEpisodeID).
-		WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockEpisodeByIDForTenant)).
+		WithArgs(tenantID, testEpisodeID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id"}))
 	mock.ExpectRollback()
 
 	req := &publiraadminv1.UpdateEpisodeTitleRequest{

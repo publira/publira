@@ -99,6 +99,12 @@ message ListPublishedSeriesRequest {
   optional int32 weekday = 10;
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 11;
+  // The reader's locale. Every series and episode title and synopsis in the
+  // answer is that of the translation in this locale, else the tenant's default
+  // locale's, else the oldest one. Empty means the tenant's default locale.
+  // The title orders sort by those titles, so a token of a title order carries
+  // the locale as well, and sending it in another locale is invalid_argument.
+  string locale = 12;
 }
 
 message ListPublishedSeriesResponse {
@@ -114,6 +120,10 @@ message GetSeriesDetailRequest {
   string public_id = 2;
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 3;
+  // The reader's locale. Every series and episode title and synopsis in the
+  // answer is that of the translation in this locale, else the tenant's default
+  // locale's, else the oldest one. Empty means the tenant's default locale.
+  string locale = 4;
 }
 
 // A series' wait-for-free rule as a reader is told it: a signed-in reader may
@@ -156,6 +166,9 @@ message GetSeriesDetailResponse {
   // The series' wait-for-free rule, and unset when the series does not offer
   // one. Like the rest of this response it says nothing about the reader.
   WaitFreeRule wait_free = 5;
+  // Every locale the series has a translation in that the tenant offers, the
+  // served one included, in code order: the language alternates of the series.
+  repeated string published_locales = 6;
 }
 
 message GetSeriesEpisodeAccessRequest {
@@ -187,6 +200,10 @@ message GetEpisodeDetailRequest {
   string public_id = 2;
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 3;
+  // The reader's locale. Every series and episode title and synopsis in the
+  // answer is that of the translation in this locale, else the tenant's default
+  // locale's, else the oldest one. Empty means the tenant's default locale.
+  string locale = 4;
 }
 
 // Viewer access state for an episode body on GetEpisodeDetail.
@@ -294,6 +311,9 @@ message GetEpisodeDetailResponse {
   // the moment of the read: price is 0, or a free window is open on it. It may
   // be the same episode as next_episode. Unset when no later episode is free.
   EpisodeNeighbor next_free_episode = 10;
+  // Every locale the episode has a translation in that the tenant offers, the
+  // served one included, in code order: the language alternates of the episode.
+  repeated string published_locales = 11;
 }
 
 // A creator that currently has at least one published series.
@@ -343,6 +363,12 @@ message GetPublishedCreatorDetailRequest {
   string token = 4;
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 5;
+  // The reader's locale. Every series and episode title and synopsis in the
+  // answer is that of the translation in this locale, else the tenant's default
+  // locale's, else the oldest one. Empty means the tenant's default locale.
+  // The series are sorted by those titles, so a token carries the locale as
+  // well, and sending it in another locale is invalid_argument.
+  string locale = 6;
 }
 
 message GetPublishedCreatorDetailResponse {
@@ -383,6 +409,12 @@ message GetPublishedLabelDetailRequest {
   string token = 4;
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 5;
+  // The reader's locale. Every series and episode title and synopsis in the
+  // answer is that of the translation in this locale, else the tenant's default
+  // locale's, else the oldest one. Empty means the tenant's default locale.
+  // The series are sorted by those titles, so a token carries the locale as
+  // well, and sending it in another locale is invalid_argument.
+  string locale = 6;
 }
 
 message GetPublishedLabelDetailResponse {
@@ -436,6 +468,10 @@ message ListPublishedGenresRequest {
   string token = 3;
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 4;
+  // The reader's locale. Every series and episode title and synopsis in the
+  // answer is that of the translation in this locale, else the tenant's default
+  // locale's, else the oldest one. Empty means the tenant's default locale.
+  string locale = 5;
 }
 
 message ListPublishedGenresResponse {
@@ -491,6 +527,9 @@ message ListPublishedTagsResponse {
 // The token carries the order and the filters as well, under the rule
 // ListPublishedSeriesRequest states for them: sending it with a different
 // order or filter is invalid_argument, and changing either restarts at page 1.
+// The query is matched against the title and the synopsis in the tenant's
+// default locale whatever `locale` asks for, until #4401 makes the search
+// match the reader's language.
 message SearchPublishedSeriesRequest {
   publira.types.v1.TenantContext tenant = 1;
   // Trimmed keyword. Empty after trim is invalid_argument. Max 100 runes.
@@ -525,6 +564,10 @@ message SearchPublishedSeriesRequest {
   // ListPublishedSeriesRequest.weekday does: 0 is Sunday, and a weekday
   // outside 0 to 6 is invalid_argument.
   optional int32 weekday = 11;
+  // The reader's locale. Every series and episode title and synopsis in the
+  // answer is that of the translation in this locale, else the tenant's default
+  // locale's, else the oldest one. Empty means the tenant's default locale.
+  string locale = 12;
 }
 
 message SearchPublishedSeriesResponse {
@@ -626,6 +669,10 @@ message ListRecommendedSeriesRequest {
   string token = 3;
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 4;
+  // The reader's locale. Every series and episode title and synopsis in the
+  // answer is that of the translation in this locale, else the tenant's default
+  // locale's, else the oldest one. Empty means the tenant's default locale.
+  string locale = 5;
 }
 
 message ListRecommendedSeriesResponse {
@@ -654,6 +701,10 @@ message ListMyRecommendedSeriesRequest {
   string token = 3;
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 4;
+  // The reader's locale. Every series and episode title and synopsis in the
+  // answer is that of the translation in this locale, else the tenant's default
+  // locale's, else the oldest one. Empty means the tenant's default locale.
+  string locale = 5;
 }
 
 message ListMyRecommendedSeriesResponse {
@@ -736,6 +787,10 @@ message ListRankedSeriesRequest {
   // with any other age_rating is invalid_argument rather than an empty chart
   // that would read as a genre nobody has engaged with.
   string genre_public_id = 7;
+  // The reader's locale. Every series and episode title and synopsis in the
+  // answer is that of the translation in this locale, else the tenant's default
+  // locale's, else the oldest one. Empty means the tenant's default locale.
+  string locale = 8;
 }
 
 message ListRankedSeriesResponse {
@@ -779,6 +834,10 @@ message ListRelatedSeriesRequest {
   // series, and a series the calling surface may not show, are all surfaced as
   // not_found, the way every other public read of a series is.
   string series_id = 6;
+  // The reader's locale. Every series and episode title and synopsis in the
+  // answer is that of the translation in this locale, else the tenant's default
+  // locale's, else the oldest one. Empty means the tenant's default locale.
+  string locale = 7;
 }
 
 message ListRelatedSeriesResponse {
@@ -1025,6 +1084,10 @@ message GetMySeriesProgressRequest {
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 3;
   string series_id = 4;
+  // The reader's locale. Every series and episode title and synopsis in the
+  // answer is that of the translation in this locale, else the tenant's default
+  // locale's, else the oldest one. Empty means the tenant's default locale.
+  string locale = 5;
 }
 
 // The member's standing in one series: the episode they last moved in, where
@@ -1084,6 +1147,10 @@ message ListMyRecentSeriesRequest {
   string token = 3;
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 4;
+  // The reader's locale. Every series and episode title and synopsis in the
+  // answer is that of the translation in this locale, else the tenant's default
+  // locale's, else the oldest one. Empty means the tenant's default locale.
+  string locale = 5;
 }
 
 message ListMyRecentSeriesResponse {
@@ -1117,6 +1184,10 @@ message ListMyEpisodeReadsRequest {
   string token = 3;
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 4;
+  // The reader's locale. Every series and episode title and synopsis in the
+  // answer is that of the translation in this locale, else the tenant's default
+  // locale's, else the oldest one. Empty means the tenant's default locale.
+  string locale = 5;
 }
 
 message ListMyEpisodeReadsResponse {
@@ -1259,6 +1330,10 @@ message ListMyFollowUpdatesRequest {
   string token = 3;
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 4;
+  // The reader's locale. Every series and episode title and synopsis in the
+  // answer is that of the translation in this locale, else the tenant's default
+  // locale's, else the oldest one. Empty means the tenant's default locale.
+  string locale = 5;
 }
 
 message ListMyFollowUpdatesResponse {
@@ -1494,6 +1569,10 @@ message StartEpisodeCheckoutRequest {
   // surface the episode has to be sold on. Unspecified is the storefront.
   Client client = 3;
   string episode_id = 4;
+  // The reader's locale. Every series and episode title and synopsis in the
+  // answer is that of the translation in this locale, else the tenant's default
+  // locale's, else the oldest one. Empty means the tenant's default locale.
+  string locale = 5;
 }
 
 message StartEpisodeCheckoutResponse {
@@ -1540,6 +1619,10 @@ message ListMyPurchasesRequest {
   string token = 3;
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 4;
+  // The reader's locale. Every series and episode title and synopsis in the
+  // answer is that of the translation in this locale, else the tenant's default
+  // locale's, else the oldest one. Empty means the tenant's default locale.
+  string locale = 5;
 }
 
 message ListMyPurchasesResponse {
@@ -1624,6 +1707,10 @@ message ConfirmStorePurchaseRequest {
   // which the Google Play Developer API looks a purchase up by. Unused for the
   // App Store, whose signed transaction names its product.
   string product_id = 4;
+  // The reader's locale. Every series and episode title and synopsis in the
+  // answer is that of the translation in this locale, else the tenant's default
+  // locale's, else the oldest one. Empty means the tenant's default locale.
+  string locale = 5;
 }
 
 message ConfirmStorePurchaseResponse {

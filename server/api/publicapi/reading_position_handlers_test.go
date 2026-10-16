@@ -240,7 +240,7 @@ func TestGetMySeriesProgressReturnsTheLastOpenedEpisode(t *testing.T) {
 	fixture := newReadingPositionFixture(t)
 	fixture.expectFinishedEpisodes(series001ID, "EPISODE001", "EPISODE002")
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMySeriesReadingProgress)).
-		WithArgs(fixture.tenantID, fixture.userID, series001ID, "web").
+		WithArgs("ja", fixture.tenantID, fixture.userID, series001ID, "web").
 		WillReturnRows(sqlmock.NewRows([]string{
 			"episode_id", "episode_public_id", "episode_title", "order_index", "price", "reading_period_hours",
 			"status", "scheduled_at", "published_at", "free_until", "page_index", "page_count", "updated_at", "is_finished",
@@ -276,7 +276,7 @@ func TestGetMySeriesProgressIsEmptyForAnUnopenedSeries(t *testing.T) {
 	fixture := newReadingPositionFixture(t)
 	fixture.expectFinishedEpisodes(series001ID)
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMySeriesReadingProgress)).
-		WithArgs(fixture.tenantID, fixture.userID, series001ID, "web").
+		WithArgs("ja", fixture.tenantID, fixture.userID, series001ID, "web").
 		WillReturnError(sql.ErrNoRows)
 
 	response, err := fixture.progress(series001ID.String())
@@ -298,7 +298,7 @@ func TestGetMySeriesProgressReportsFinishedEpisodesWithoutAPosition(t *testing.T
 	fixture := newReadingPositionFixture(t)
 	fixture.expectFinishedEpisodes(series001ID, "EPISODE001")
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMySeriesReadingProgress)).
-		WithArgs(fixture.tenantID, fixture.userID, series001ID, "web").
+		WithArgs("ja", fixture.tenantID, fixture.userID, series001ID, "web").
 		WillReturnError(sql.ErrNoRows)
 
 	response, err := fixture.progress(series001ID.String())
@@ -352,12 +352,12 @@ func TestListMyRecentSeriesReturnsTheEpisodeToContinueFrom(t *testing.T) {
 	activity := fixture.now.Add(-time.Hour)
 
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyRecentSeriesDesc)).
-		WithArgs(fixture.tenantID, fixture.userID, sql.NullTime{}, false, uuid.NullUUID{}, int32(3), "web").
+		WithArgs("ja", fixture.tenantID, fixture.userID, sql.NullTime{}, false, uuid.NullUUID{}, int32(3), "web").
 		WillReturnRows(recentSeriesColumns().
 			AddRow(resumed, uuid.Must(uuid.NewV7()), fixture.now, "EPISODE003", "Episode 3", int32(3), int32(0), nil, "published", nil, fixture.now, nil, int32(11), int32(40), fixture.now).
 			AddRow(started, uuid.Must(uuid.NewV7()), activity, "EPISODE004", "Episode 4", int32(4), int32(500), nil, "published", nil, activity, nil, nil, nil, nil))
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", fixture.tenantID, sqlmock.AnyArg()).
+		WithArgs("web", fixture.tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
 			AddRow(started, "SERIES002", "Started", "", "ongoing", []byte("{}"), "all", fixture.now, nil, nil, int32(0), []byte("[]"), []byte("[]"), []byte("[]"), []byte("{}")).
 			AddRow(resumed, "SERIES001", "Resumed", "", "ongoing", []byte("{}"), "all", fixture.now, nil, nil, int32(0), []byte("[]"), []byte("[]"), []byte("[]"), []byte("{}")))
@@ -414,12 +414,12 @@ func TestListMyRecentSeriesPagesForwardOnTheActivityCursor(t *testing.T) {
 	activity := fixture.now.Add(-2 * time.Hour)
 
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyRecentSeriesDesc)).
-		WithArgs(fixture.tenantID, fixture.userID, sql.NullTime{}, false, uuid.NullUUID{}, int32(2), "web").
+		WithArgs("ja", fixture.tenantID, fixture.userID, sql.NullTime{}, false, uuid.NullUUID{}, int32(2), "web").
 		WillReturnRows(recentSeriesColumns().
 			AddRow(series, uuid.Must(uuid.NewV7()), fixture.now, "EPISODE001", "Episode 1", int32(1), int32(0), nil, "published", nil, fixture.now, nil, int32(2), int32(20), fixture.now).
 			AddRow(boundary, uuid.Must(uuid.NewV7()), activity, "EPISODE009", "Episode 9", int32(9), int32(0), nil, "published", nil, activity, nil, nil, nil, nil))
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", fixture.tenantID, sqlmock.AnyArg()).
+		WithArgs("web", fixture.tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
 			AddRow(series, "SERIES001", "Resumed", "", "ongoing", []byte("{}"), "all", fixture.now, nil, nil, int32(0), []byte("[]"), []byte("[]"), []byte("[]"), []byte("{}")))
 
@@ -446,11 +446,11 @@ func TestListMyRecentSeriesReadsTheBackwardDirectionAscending(t *testing.T) {
 	token := onWeb(pagination.EncodeTimeUUID(pagination.Backward, fixture.now, boundary))
 
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyRecentSeriesAsc)).
-		WithArgs(fixture.tenantID, fixture.userID, sql.NullTime{Time: fixture.now, Valid: true}, false, uuid.NullUUID{UUID: boundary, Valid: true}, int32(21), "web").
+		WithArgs("ja", fixture.tenantID, fixture.userID, sql.NullTime{Time: fixture.now, Valid: true}, false, uuid.NullUUID{UUID: boundary, Valid: true}, int32(21), "web").
 		WillReturnRows(recentSeriesColumns().
 			AddRow(series, uuid.Must(uuid.NewV7()), fixture.now, "EPISODE001", "Episode 1", int32(1), int32(0), nil, "published", nil, fixture.now, nil, int32(2), int32(20), fixture.now))
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", fixture.tenantID, sqlmock.AnyArg()).
+		WithArgs("web", fixture.tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
 			AddRow(series, "SERIES001", "Resumed", "", "ongoing", []byte("{}"), "all", fixture.now, nil, nil, int32(0), []byte("[]"), []byte("[]"), []byte("[]"), []byte("{}")))
 
@@ -477,7 +477,7 @@ func TestListMyRecentSeriesRecoversOnceFromAnEmptyPage(t *testing.T) {
 	token := onWeb(pagination.EncodeTimeUUID(pagination.Forward, fixture.now, boundary))
 
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyRecentSeriesDesc)).
-		WithArgs(fixture.tenantID, fixture.userID, sql.NullTime{Time: fixture.now, Valid: true}, false, uuid.NullUUID{UUID: boundary, Valid: true}, int32(21), "web").
+		WithArgs("ja", fixture.tenantID, fixture.userID, sql.NullTime{Time: fixture.now, Valid: true}, false, uuid.NullUUID{UUID: boundary, Valid: true}, int32(21), "web").
 		WillReturnRows(recentSeriesColumns())
 
 	response, err := fixture.recent(0, token)
@@ -503,7 +503,7 @@ func TestListMyRecentSeriesRecoversOnceFromAnEmptyBackwardPage(t *testing.T) {
 	token := onWeb(pagination.EncodeTimeUUID(pagination.Backward, fixture.now, boundary))
 
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyRecentSeriesAsc)).
-		WithArgs(fixture.tenantID, fixture.userID, sql.NullTime{Time: fixture.now, Valid: true}, false, uuid.NullUUID{UUID: boundary, Valid: true}, int32(21), "web").
+		WithArgs("ja", fixture.tenantID, fixture.userID, sql.NullTime{Time: fixture.now, Valid: true}, false, uuid.NullUUID{UUID: boundary, Valid: true}, int32(21), "web").
 		WillReturnRows(recentSeriesColumns())
 
 	response, err := fixture.recent(0, token)

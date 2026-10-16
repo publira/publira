@@ -285,9 +285,9 @@ SELECT c.*,
         WHERE tur.user_id = u.id
     ) AS author_is_staff,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     s.public_id AS series_public_id,
-    s.title AS series_title,
+    str.title AS series_title,
     cc.id AS creator_id,
     cc.public_id AS creator_public_id,
     cc.name AS creator_name
@@ -296,8 +296,10 @@ FROM episode_comments c
         AND u.id = c.user_id
     JOIN episodes e ON e.tenant_id = c.tenant_id
         AND e.id = c.episode_id
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.tenant_id = e.tenant_id
         AND s.id = e.series_id
+    CROSS JOIN LATERAL series_translation_for(s.id, '') str
     LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
 WHERE c.tenant_id = sqlc.arg('tenant_id')
     AND (sqlc.narg('status')::text IS NULL OR c.status = sqlc.narg('status')::text)
@@ -336,9 +338,9 @@ SELECT c.*,
         WHERE tur.user_id = u.id
     ) AS author_is_staff,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     s.public_id AS series_public_id,
-    s.title AS series_title,
+    str.title AS series_title,
     cc.id AS creator_id,
     cc.public_id AS creator_public_id,
     cc.name AS creator_name
@@ -347,8 +349,10 @@ FROM episode_comments c
         AND u.id = c.user_id
     JOIN episodes e ON e.tenant_id = c.tenant_id
         AND e.id = c.episode_id
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.tenant_id = e.tenant_id
         AND s.id = e.series_id
+    CROSS JOIN LATERAL series_translation_for(s.id, '') str
     LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
 WHERE c.tenant_id = sqlc.arg('tenant_id')
     AND (sqlc.narg('status')::text IS NULL OR c.status = sqlc.narg('status')::text)
@@ -399,9 +403,9 @@ SELECT c.*,
         WHERE tur.user_id = u.id
     ) AS author_is_staff,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     s.public_id AS series_public_id,
-    s.title AS series_title,
+    str.title AS series_title,
     cc.id AS creator_id,
     cc.public_id AS creator_public_id,
     cc.name AS creator_name
@@ -410,8 +414,10 @@ FROM episode_comments c
         AND u.id = c.user_id
     JOIN episodes e ON e.tenant_id = c.tenant_id
         AND e.id = c.episode_id
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.tenant_id = e.tenant_id
         AND s.id = e.series_id
+    CROSS JOIN LATERAL series_translation_for(s.id, '') str
     LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
 WHERE c.tenant_id = sqlc.arg('tenant_id')
     AND c.id = sqlc.arg('id');

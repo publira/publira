@@ -41,6 +41,10 @@ func (s *apiServer) ListMyFollowUpdates(
 	if err != nil {
 		return nil, err
 	}
+	readerLocale, err := readerLocaleOf(req.Locale, tenant)
+	if err != nil {
+		return nil, err
+	}
 	if err := s.scopeFollowUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
@@ -58,13 +62,13 @@ func (s *apiServer) ListMyFollowUpdates(
 	}
 
 	// One row past the page: its presence is what says another page exists.
-	rows, err := s.followUpdatePage(ctx, tenant.ID, user.ID, surface, keys, cursor.Direction, limit+1)
+	rows, err := s.followUpdatePage(ctx, tenant.ID, user.ID, surface, readerLocale, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list follow updates", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
 
-	seriesByID, err := s.followUpdateSeriesByID(ctx, tenant.ID, surface, rows)
+	seriesByID, err := s.followUpdateSeriesByID(ctx, tenant.ID, surface, readerLocale, rows)
 	if err != nil {
 		return nil, err
 	}
@@ -122,6 +126,7 @@ func (s *apiServer) followUpdatePage(
 	ctx context.Context,
 	tenantID, userID uuid.UUID,
 	surface string,
+	locale string,
 	keys pagination.TimeUUIDKeys,
 	direction pagination.Direction,
 	limit int32,
@@ -131,6 +136,7 @@ func (s *apiServer) followUpdatePage(
 		TenantID:          tenantID,
 		UserID:            userID,
 		Surface:           surface,
+		Locale:            locale,
 		CursorPublishedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
 		CursorInclusive:   keys.Inclusive,
 		CursorEpisodeID:   uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
@@ -157,6 +163,7 @@ func (s *apiServer) followUpdateSeriesByID(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	surface string,
+	locale string,
 	rows []dbmodels.ListMyFollowUpdatesDescRow,
 ) (map[uuid.UUID]*publirattypesv1.Series, error) {
 	ids := make([]uuid.UUID, 0, len(rows))
@@ -169,7 +176,7 @@ func (s *apiServer) followUpdateSeriesByID(
 		ids = append(ids, row.SeriesID)
 	}
 
-	seriesRows, err := s.activeSeriesRowsInOrder(ctx, tenantID, surface, ids)
+	seriesRows, err := s.activeSeriesRowsInOrder(ctx, tenantID, surface, locale, ids)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list follow update series", err, "tenant_id", tenantID.String())
 	}

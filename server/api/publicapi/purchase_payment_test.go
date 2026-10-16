@@ -260,8 +260,10 @@ func expectPurchasableEpisode(mock sqlmock.Sqlmock, tenantID, episodeID uuid.UUI
 // expectPurchasableEpisodeTitled is [expectPurchasableEpisode] for an episode
 // of the given title.
 func expectPurchasableEpisodeTitled(mock sqlmock.Sqlmock, tenantID, episodeID uuid.UUID, surface, purchaseAvailability, title string) {
+	// The locale is the reader's for a checkout and empty for a store purchase,
+	// whose answer names no title; what these tests assert does not turn on it.
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPurchasableEpisodeForTenant)).
-		WithArgs(episodeID, tenantID, surface).
+		WithArgs(sqlmock.AnyArg(), episodeID, tenantID, surface).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "series_public_id", "price", "reading_period_hours", "purchase_availability"}).
 			AddRow(episodeID, "EPISODE001", title, "SERIES001", int32(500), sql.NullInt32{}, purchaseAvailability))
 }

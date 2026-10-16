@@ -133,7 +133,7 @@ func (s *apiServer) GetMyLegalPageAgreements(
 	if err != nil {
 		return nil, err
 	}
-	readerLocale, err := readerPageLocale(req.Locale, tenant)
+	readerLocale, err := readerLocaleOf(req.Locale, tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +153,7 @@ func (s *apiServer) AgreeToLegalPages(
 	if err != nil {
 		return nil, err
 	}
-	readerLocale, err := readerPageLocale(req.Locale, tenant)
+	readerLocale, err := readerLocaleOf(req.Locale, tenant)
 	if err != nil {
 		return nil, err
 	}

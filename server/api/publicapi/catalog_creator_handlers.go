@@ -252,6 +252,10 @@ func (s *apiServer) GetPublishedCreatorDetail(
 	if err != nil {
 		return nil, err
 	}
+	readerLocale, err := readerLocaleOf(req.Locale, tenant)
+	if err != nil {
+		return nil, err
+	}
 	row, err := s.queriesFor(ctx).GetPublishedCreatorForTenant(ctx, dbmodels.GetPublishedCreatorForTenantParams{
 		TenantID: tenant.ID,
 		Surface:  surface,
@@ -268,6 +272,7 @@ func (s *apiServer) GetPublishedCreatorDetail(
 		ctx,
 		tenant.ID,
 		surface,
+		readerLocale,
 		row.ID,
 		req.Limit,
 		req.Token,
@@ -291,6 +296,7 @@ func (s *apiServer) publishedCreatorSeriesPage(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	surface string,
+	locale string,
 	creatorID uuid.UUID,
 	requestedLimit int32,
 	token string,
@@ -303,18 +309,18 @@ func (s *apiServer) publishedCreatorSeriesPage(
 	}
 	var keys seriesCursorKeys
 	if !cursor.IsZero() {
-		keys, err = decodeSeriesCursorKeys(cursor, order, publishedseries.Filter{})
+		keys, err = decodeSeriesCursorKeys(cursor, order, publishedseries.Filter{}, locale)
 		if err != nil {
 			return nil, "", "", err
 		}
 	}
 	descending := cursor.Direction == pagination.Backward
-	ids, err := s.publishedCreatorSeriesPageIDs(ctx, tenantID, surface, creatorID, descending, keys, limit+1)
+	ids, err := s.publishedCreatorSeriesPageIDs(ctx, tenantID, surface, locale, creatorID, descending, keys, limit+1)
 	if err != nil {
 		return nil, "", "", s.internalDBError(ctx, "failed to list published creator series", err, "tenant_id", tenantID.String(), "creator_id", creatorID.String())
 	}
 	ids, hasMore := pagination.Page(ids, limit, cursor.Direction)
-	rows, err := s.activeSeriesRowsInOrder(ctx, tenantID, surface, ids)
+	rows, err := s.activeSeriesRowsInOrder(ctx, tenantID, surface, locale, ids)
 	if err != nil {
 		return nil, "", "", s.internalDBError(ctx, "failed to list published creator series", err, "tenant_id", tenantID.String(), "creator_id", creatorID.String())
 	}
@@ -328,15 +334,15 @@ func (s *apiServer) publishedCreatorSeriesPage(
 	case len(rows) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
-			previousToken = encodeSeriesCursor(pagination.Backward, order, publishedseries.Filter{}, seriesBoundary{row: rows[0]})
+			previousToken = encodeSeriesCursor(pagination.Backward, order, publishedseries.Filter{}, locale, seriesBoundary{row: rows[0]})
 		}
 		if hasNext {
-			nextToken = encodeSeriesCursor(pagination.Forward, order, publishedseries.Filter{}, seriesBoundary{row: rows[len(rows)-1]})
+			nextToken = encodeSeriesCursor(pagination.Forward, order, publishedseries.Filter{}, locale, seriesBoundary{row: rows[len(rows)-1]})
 		}
 	case cursor.Direction == pagination.Forward && !keys.inclusive:
-		previousToken = encodeSeriesRecoveryToken(pagination.Backward, order, publishedseries.Filter{}, keys)
+		previousToken = encodeSeriesRecoveryToken(pagination.Backward, order, publishedseries.Filter{}, locale, keys)
 	case cursor.Direction == pagination.Backward && !keys.inclusive:
-		nextToken = encodeSeriesRecoveryToken(pagination.Forward, order, publishedseries.Filter{}, keys)
+		nextToken = encodeSeriesRecoveryToken(pagination.Forward, order, publishedseries.Filter{}, locale, keys)
 	}
 	bindSurfaceTokens(surface, &previousToken, &nextToken)
 	return items, previousToken, nextToken, nil
@@ -346,6 +352,7 @@ func (s *apiServer) publishedCreatorSeriesPageIDs(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	surface string,
+	locale string,
 	creatorID uuid.UUID,
 	descending bool,
 	keys seriesCursorKeys,
@@ -355,6 +362,7 @@ func (s *apiServer) publishedCreatorSeriesPageIDs(
 	if descending {
 		return queries.ListPublishedSeriesIDsByCreatorTitleDesc(ctx, dbmodels.ListPublishedSeriesIDsByCreatorTitleDescParams{
 			Surface:         surface,
+			Locale:          locale,
 			CreatorID:       creatorID,
 			TenantID:        tenantID,
 			CursorID:        keys.id,
@@ -365,6 +373,7 @@ func (s *apiServer) publishedCreatorSeriesPageIDs(
 	}
 	return queries.ListPublishedSeriesIDsByCreatorTitleAsc(ctx, dbmodels.ListPublishedSeriesIDsByCreatorTitleAscParams{
 		Surface:         surface,
+		Locale:          locale,
 		CreatorID:       creatorID,
 		TenantID:        tenantID,
 		CursorID:        keys.id,

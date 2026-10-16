@@ -385,11 +385,16 @@ func (s *adminServer) GetEpisode(
 		return nil, s.internalError(ctx, "episode holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", row.PublicID)
 	}
 
+	translations, err := s.episodeTranslations(ctx, tenant.ID, row.ID)
+	if err != nil {
+		return nil, err
+	}
 	return &publiraadminv1.GetEpisodeResponse{
 		Episode:              episode,
 		ReadingDirection:     readingDirection,
 		SpreadStartIndex:     spreadStartIndex,
 		PurchaseAvailability: purchaseAvailability,
+		Translations:         translations,
 	}, nil
 }
 
@@ -560,6 +565,10 @@ func (s *adminServer) CreateEpisode(
 	if strings.TrimSpace(req.Title) == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, "title is required")
 	}
+	translationLocale, err := catalogLocale(req.Locale, tenant)
+	if err != nil {
+		return nil, err
+	}
 	if req.OrderIndex < 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, "order_index must be greater than or equal to 0")
 	}
@@ -640,13 +649,15 @@ func (s *adminServer) CreateEpisode(
 			PublicID:             publicID,
 			SeriesID:             seriesID,
 			TenantID:             tenant.ID,
-			Title:                req.Title,
 			Availability:         availability,
 			PurchaseAvailability: purchaseAvailability,
 		})
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to create episode", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
+	}
+	if err := s.upsertEpisodeTranslation(txCtx, tenant.ID, base.ID, translationLocale, req.Title); err != nil {
+		return nil, err
 	}
 	status := "draft"
 	publishedAt := sql.NullTime{}
@@ -704,7 +715,7 @@ func (s *adminServer) CreateEpisode(
 	if err := tx.Commit(); err != nil {
 		return nil, s.internalDBError(ctx, "failed to commit create episode", err, "tenant_id", tenant.ID.String(), "episode_id", base.ID.String())
 	}
-	episode := &publirattypesv1.Episode{Id: base.ID.String(), PublicId: base.PublicID, Title: base.Title, OrderIndex: base.OrderIndex, Price: listing.Price, Status: listing.Status}
+	episode := &publirattypesv1.Episode{Id: base.ID.String(), PublicId: base.PublicID, Title: req.Title, OrderIndex: base.OrderIndex, Price: listing.Price, Status: listing.Status}
 	if listing.ReadingPeriodHours.Valid {
 		episode.ReadingPeriodHours = listing.ReadingPeriodHours.Int32
 	}
@@ -734,7 +745,11 @@ func (s *adminServer) CreateEpisode(
 		})
 	}
 	s.reval.Send(ctx, owed)
-	return &publiraadminv1.CreateEpisodeResponse{Episode: episode, PurchaseAvailability: savedPurchaseAvailability}, nil
+	translations, err := s.episodeTranslations(ctx, tenant.ID, base.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &publiraadminv1.CreateEpisodeResponse{Episode: episode, PurchaseAvailability: savedPurchaseAvailability, Translations: translations}, nil
 }
 
 // recordEpisodePublication writes down, in the transaction that publishes the
@@ -1256,21 +1271,25 @@ func (s *adminServer) UpdateEpisodeTitle(
 	if strings.TrimSpace(req.Title) == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, "title is required")
 	}
+	translationLocale, err := catalogLocale(req.Locale, tenant)
+	if err != nil {
+		return nil, err
+	}
 
 	// The series page lists its episodes by title, and the viewer heads the body
 	// with it. No series list shows it and neither does the search document, so
 	// the lists stay cached and no sync is queued.
 	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
-		updated, err := s.queriesFor(txCtx).UpdateEpisodeTitleByIDForTenant(txCtx, dbmodels.UpdateEpisodeTitleByIDForTenantParams{
-			TenantID: tenant.ID,
-			ID:       episodeID,
-			Title:    req.Title,
-		})
-		if err != nil {
-			return nil, s.internalDBError(ctx, "failed to update episode title", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
+		// The episode is looked up first, because a translation of an episode
+		// that does not exist is a foreign key violation rather than a not_found.
+		if _, err := s.queriesFor(txCtx).LockEpisodeByIDForTenant(txCtx, dbmodels.LockEpisodeByIDForTenantParams{TenantID: tenant.ID, ID: episodeID}); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, connect.NewError(connect.CodeNotFound, "episode not found")
+			}
+			return nil, s.internalDBError(ctx, "failed to find episode for title update", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
 		}
-		if updated == 0 {
-			return nil, connect.NewError(connect.CodeNotFound, "episode not found")
+		if err := s.upsertEpisodeTranslation(txCtx, tenant.ID, episodeID, translationLocale, req.Title); err != nil {
+			return nil, err
 		}
 		return episodeRevalidateTags(tenant.ID.String()), nil
 	}); err != nil {
@@ -1288,7 +1307,11 @@ func (s *adminServer) UpdateEpisodeTitle(
 		return nil, s.internalError(ctx, "episode holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "episode_public_id", updated.PublicID)
 	}
 	s.recordEpisodeUpdated(ctx, tenant.ID, updated.PublicID)
-	return &publiraadminv1.UpdateEpisodeTitleResponse{Episode: mapped}, nil
+	translations, err := s.episodeTranslations(ctx, tenant.ID, episodeID)
+	if err != nil {
+		return nil, err
+	}
+	return &publiraadminv1.UpdateEpisodeTitleResponse{Episode: mapped, Translations: translations}, nil
 }
 
 func (s *adminServer) UpdateEpisodePricing(

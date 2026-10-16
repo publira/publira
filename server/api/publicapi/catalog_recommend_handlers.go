@@ -243,7 +243,11 @@ func (s *apiServer) ListRecommendedSeries(
 		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 
-	res, err := s.tenantRecommendedSeriesPage(ctx, tenant.ID, surface, limit, cursor)
+	readerLocale, err := readerLocaleOf(req.Locale, tenant)
+	if err != nil {
+		return nil, err
+	}
+	res, err := s.tenantRecommendedSeriesPage(ctx, tenant.ID, surface, readerLocale, limit, cursor)
 	if err != nil {
 		return nil, err
 	}
@@ -259,6 +263,7 @@ func (s *apiServer) tenantRecommendedSeriesPage(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	surface string,
+	locale string,
 	limit int32,
 	cursor pagination.Cursor,
 ) (*publirav1.ListRecommendedSeriesResponse, error) {
@@ -298,7 +303,7 @@ func (s *apiServer) tenantRecommendedSeriesPage(
 		sortRankByID[pageRow.id] = pageRow.sortRank
 	}
 
-	rows, err := s.activeSeriesRowsInOrder(ctx, tenantID, surface, ids)
+	rows, err := s.activeSeriesRowsInOrder(ctx, tenantID, surface, locale, ids)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list recommended series", err, "tenant_id", tenantID.String())
 	}

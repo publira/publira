@@ -34,11 +34,21 @@ const catalogActionName = (action: string) => {
         <Message message="admin.audit.actions.series_wait_free_settings_updated" />
       );
     }
+    case "series_translation_deleted": {
+      return (
+        <Message message="admin.audit.actions.series_translation_deleted" />
+      );
+    }
     case "episode_created": {
       return <Message message="admin.audit.actions.episode_created" />;
     }
     case "episode_updated": {
       return <Message message="admin.audit.actions.episode_updated" />;
+    }
+    case "episode_translation_deleted": {
+      return (
+        <Message message="admin.audit.actions.episode_translation_deleted" />
+      );
     }
     case "episode_image_uploaded": {
       return <Message message="admin.audit.actions.episode_image_uploaded" />;

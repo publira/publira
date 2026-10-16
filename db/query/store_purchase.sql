@@ -91,13 +91,15 @@ SELECT p.id,
     p.revoked_at,
     p.purchased_at,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     e.order_index AS episode_order_index,
     s.public_id AS series_public_id,
-    s.title AS series_title
+    str.title AS series_title
 FROM purchases p
     JOIN episodes e ON e.tenant_id = p.tenant_id AND e.id = p.episode_id
+    CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et
     JOIN series s ON s.tenant_id = e.tenant_id AND s.id = e.series_id
+    CROSS JOIN LATERAL series_translation_for(s.id, sqlc.arg('locale')::text) str
 WHERE p.tenant_id = sqlc.arg('tenant_id')
     AND p.user_id = sqlc.arg('user_id')::uuid
     AND p.id = sqlc.arg('id');

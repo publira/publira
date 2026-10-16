@@ -140,6 +140,7 @@ type Querier interface {
 	CountEpisodeCreatorsByRoleIDForTenant(ctx context.Context, arg CountEpisodeCreatorsByRoleIDForTenantParams) (int32, error)
 	// How many pages the body has, which bounds where its spreads may start.
 	CountEpisodeImagesByEpisodeID(ctx context.Context, episodeID uuid.UUID) (int32, error)
+	CountEpisodeTranslations(ctx context.Context, arg CountEpisodeTranslationsParams) (int32, error)
 	// CountOtherActiveTenantAdmins counts the active tenant_admin members of a
 	// tenant other than one user: who is left to sign in to the console once that
 	// user is removed or demoted.
@@ -165,6 +166,7 @@ type Querier interface {
 	// Whether a role may still be deleted. The refusal is the handler's, and this
 	// is what it is based on.
 	CountSeriesCreatorsByRoleIDForTenant(ctx context.Context, arg CountSeriesCreatorsByRoleIDForTenantParams) (int32, error)
+	CountSeriesTranslations(ctx context.Context, arg CountSeriesTranslationsParams) (int32, error)
 	CountSuspendedTenants(ctx context.Context) (int32, error)
 	CountUnreadNotificationsForUser(ctx context.Context, arg CountUnreadNotificationsForUserParams) (int32, error)
 	CountUnreadPlatformNotificationsForUser(ctx context.Context, platformUserID uuid.UUID) (int32, error)
@@ -386,6 +388,7 @@ type Querier interface {
 	// relative to the rest. The objects the renditions named are left for the
 	// orphan image sweep, which deletes them once no row names them.
 	DeleteEpisodeImageByIDForEpisode(ctx context.Context, arg DeleteEpisodeImageByIDForEpisodeParams) (int32, error)
+	DeleteEpisodeTranslation(ctx context.Context, arg DeleteEpisodeTranslationParams) (int64, error)
 	DeleteGenre(ctx context.Context, id uuid.UUID) error
 	// Clears one aspect ratio of an eye-catch.
 	DeleteGenreImageVariantsByType(ctx context.Context, arg DeleteGenreImageVariantsByTypeParams) (int64, error)
@@ -411,6 +414,7 @@ type Querier interface {
 	// `publiractl job purge-orphan-images`.
 	DeleteSeriesImageVariantsByType(ctx context.Context, arg DeleteSeriesImageVariantsByTypeParams) (int64, error)
 	DeleteSeriesTagsBySeriesID(ctx context.Context, seriesID uuid.UUID) error
+	DeleteSeriesTranslation(ctx context.Context, arg DeleteSeriesTranslationParams) (int64, error)
 	DeleteTenantEmailRejectionEntries(ctx context.Context, tenantID uuid.UUID) error
 	DeleteTenantFcmConfig(ctx context.Context, tenantID uuid.UUID) (int64, error)
 	DeleteTenantImage(ctx context.Context, arg DeleteTenantImageParams) error
@@ -739,7 +743,8 @@ type Querier interface {
 	// the time the event drains answers no row, so its followers are not told.
 	GetPublishedEpisodeForFollowerNotification(ctx context.Context, arg GetPublishedEpisodeForFollowerNotificationParams) (GetPublishedEpisodeForFollowerNotificationRow, error)
 	// A URL names the episode by its public ID and a reader's request by its ID;
-	// the caller passes the one it holds.
+	// the caller passes the one it holds. The episode's title and its series' are
+	// those of the translations picked for the reader's locale.
 	GetPublishedEpisodeForTenant(ctx context.Context, arg GetPublishedEpisodeForTenantParams) (GetPublishedEpisodeForTenantRow, error)
 	// Returns a label of the tenant that label_surfaces puts on the surface. The
 	// row comes back even when the label has no published series, because a label
@@ -838,6 +843,9 @@ type Querier interface {
 	GetRoyaltyStatementByPeriod(ctx context.Context, arg GetRoyaltyStatementByPeriodParams) (GetRoyaltyStatementByPeriodRow, error)
 	GetSeriesByIDForTenant(ctx context.Context, arg GetSeriesByIDForTenantParams) (GetSeriesByIDForTenantRow, error)
 	GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSeriesByPublicIDForTenantParams) (GetSeriesByPublicIDForTenantRow, error)
+	// The title and the synopsis are those of the translation
+	// series_translation_for picks for the reader's locale, and each episode's
+	// title is picked the same way.
 	GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams) (GetSeriesDetailRow, error)
 	GetSeriesImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetSeriesImageVariantByTypeAndWidthForTenantParams) (GetSeriesImageVariantByTypeAndWidthForTenantRow, error)
 	// What a series is rated, and what one reader's own reactions say about it.
@@ -1243,10 +1251,12 @@ type Querier interface {
 	// (latest_episode_at, id); id is a UUIDv7, so the order stays unique even when
 	// the sorted value ties. Every sort order gets its own query with a fixed
 	// ORDER BY, because branching with CASE stops the rows from being read in
-	// index order and puts a full sort ahead of the LIMIT. The published_at and
-	// title queries walk idx_series_tenant_published_at or idx_series_tenant_title
-	// directly. Backward calls the query of the reversed order, and the caller
-	// sorts the rows back.
+	// index order and puts a full sort ahead of the LIMIT. The published_at
+	// queries walk idx_series_tenant_published_at directly. The title queries sort
+	// on the title of the translation series_translation_for picks for the
+	// reader's locale, which no index holds, so they sort the tenant's published
+	// series ahead of the LIMIT. Backward calls the query of the reversed order,
+	// and the caller sorts the rows back.
 	//
 	// Stage two is ListActiveSeriesByIDs, which builds the display data for the
 	// ids stage one settled on.
@@ -1265,8 +1275,10 @@ type Querier interface {
 	// '%q%' and makes the ILIKE %/_ literal with ESCAPE '!'. ILIKE '%q%' cannot
 	// ride a btree, so the scan reads the tenant's published series while the
 	// LIMIT still bites after narrowing by tenant and is_published. Once the row
-	// count makes the latency visible, add a pg_trgm GIN index on title and
-	// series_listings.synopsis.
+	// count makes the latency visible, add a pg_trgm GIN index on
+	// series_translations.title and synopsis. It matches the translation in the
+	// tenant's default locale whatever the reader's locale, as the OpenSearch
+	// index does.
 	//
 	// Every query also keeps only what the calling surface may show, through
 	// series_surfaces for the series and episode_surfaces for the episodes counted
@@ -1317,7 +1329,8 @@ type Querier interface {
 	// Every label of the tenant, or the one label_id names, with what the series
 	// under it publish.
 	ListCatalogIndexLabels(ctx context.Context, arg ListCatalogIndexLabelsParams) ([]ListCatalogIndexLabelsRow, error)
-	// Every series of the tenant, or the one series_id names.
+	// Every series of the tenant, or the one series_id names, with the title and
+	// the synopsis of its translation in the tenant's default locale.
 	ListCatalogIndexSeries(ctx context.Context, arg ListCatalogIndexSeriesParams) ([]ListCatalogIndexSeriesRow, error)
 	ListCatalogIndexTenantIDs(ctx context.Context) ([]uuid.UUID, error)
 	// One message's exchange as the console shows it under the message, oldest
@@ -1516,6 +1529,8 @@ type Querier interface {
 	// (complete_count, entity_id) is unique because entity_id alone is, so the
 	// keyset scan can neither skip nor repeat episodes that tie on completions.
 	ListEpisodeReadThroughDesc(ctx context.Context, arg ListEpisodeReadThroughDescParams) ([]ListEpisodeReadThroughDescRow, error)
+	// Oldest first, the order episode_translation_for falls back through.
+	ListEpisodeTranslationsForTenant(ctx context.Context, arg ListEpisodeTranslationsForTenantParams) ([]EpisodeTranslation, error)
 	// Reordering has to see every episode under the series, so this stays a list
 	// without pagination. The list on screen uses the keyset scan below.
 	// The order is (order_index, id), the same as ListEpisodes: ReorderEpisodes
@@ -1944,7 +1959,6 @@ type Querier interface {
 	// uses. Same shape as ListActiveSeriesIDsByTitleAsc, narrowed by label_id.
 	// Backward calls ListPublishedSeriesIDsByLabelTitleDesc, and the caller
 	// sorts the rows back.
-	// Index: idx_series_tenant_label_title
 	ListPublishedSeriesIDsByLabelTitleAsc(ctx context.Context, arg ListPublishedSeriesIDsByLabelTitleAscParams) ([]uuid.UUID, error)
 	// The backward direction of ListPublishedSeriesIDsByLabelTitleAsc.
 	ListPublishedSeriesIDsByLabelTitleDesc(ctx context.Context, arg ListPublishedSeriesIDsByLabelTitleDescParams) ([]uuid.UUID, error)
@@ -2166,6 +2180,9 @@ type Querier interface {
 	// reverse. The handler flips ASC rows back into display order. id is a
 	// UUIDv7, so the order stays unique even when created_at ties.
 	// cursor rules: proto/README.md.
+	//
+	// The console's reads carry the translation in the tenant's default locale;
+	// each translation is read on its own through series_translation.sql.
 	ListSeriesByTenantDesc(ctx context.Context, arg ListSeriesByTenantDescParams) ([]ListSeriesByTenantDescRow, error)
 	// Credits are presented in role priority first, so the leading role opens the
 	// list on every series without anyone ordering it by hand. display_order sorts
@@ -2190,6 +2207,8 @@ type Querier interface {
 	// shows the same list every time, and two series sharing tags show them in the
 	// same places.
 	ListSeriesTagsBySeriesIDs(ctx context.Context, seriesIds []uuid.UUID) ([]ListSeriesTagsBySeriesIDsRow, error)
+	// Oldest first, the order series_translation_for falls back through.
+	ListSeriesTranslationsForTenant(ctx context.Context, arg ListSeriesTranslationsForTenantParams) ([]SeriesTranslation, error)
 	// The sitemap reads sitemap_entries, which states what a sitemap holds. The
 	// list is sorted by (kind, id): kind is the SitemapEntryKind number, and id the
 	// UUIDv7 of the row, which is unique within a kind. Backward calls the
@@ -3011,6 +3030,10 @@ type Querier interface {
 	// URL is cache-busted from the variant row, so the ratios that were not
 	// replaced keep the URLs they had.
 	TouchSeriesImage(ctx context.Context, id uuid.UUID) error
+	// A deleted translation changes what the series page shows in its locale,
+	// and the sitemap's last_modified_at reads that from series.updated_at, which
+	// every other write to a translation moves through UpdateSeriesBase.
+	TouchSeriesUpdatedAt(ctx context.Context, arg TouchSeriesUpdatedAtParams) error
 	// Release a claim when River already has an in-flight process job for
 	// this event (unique skip). attempts and available_at stay as they were.
 	UnclaimOutboxEvent(ctx context.Context, id uuid.UUID) (OutboxEvent, error)
@@ -3042,7 +3065,6 @@ type Querier interface {
 	UpdateEpisodePublishScheduleByIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByIDForTenantParams) error
 	// NULL returns the episode to following its series.
 	UpdateEpisodePurchaseAvailabilityByIDForTenant(ctx context.Context, arg UpdateEpisodePurchaseAvailabilityByIDForTenantParams) error
-	UpdateEpisodeTitleByIDForTenant(ctx context.Context, arg UpdateEpisodeTitleByIDForTenantParams) (int64, error)
 	UpdateGenre(ctx context.Context, arg UpdateGenreParams) error
 	UpdateGenreDisplayOrder(ctx context.Context, arg UpdateGenreDisplayOrderParams) error
 	UpdateLabel(ctx context.Context, arg UpdateLabelParams) error
@@ -3127,10 +3149,21 @@ type Querier interface {
 	UpsertContentDailyStats(ctx context.Context, arg UpsertContentDailyStatsParams) (ContentDailyStat, error)
 	UpsertContentRankingSnapshot(ctx context.Context, arg UpsertContentRankingSnapshotParams) (ContentRankingSnapshot, error)
 	UpsertEpisodeListing(ctx context.Context, arg UpsertEpisodeListingParams) (EpisodeListing, error)
+	// The translations of an episode, one per locale, as the console writes them.
+	// What a reader is shown is picked by episode_translation_for in the reads
+	// themselves.
+	UpsertEpisodeTranslation(ctx context.Context, arg UpsertEpisodeTranslationParams) (EpisodeTranslation, error)
 	UpsertItemRecommendFeatures(ctx context.Context, arg UpsertItemRecommendFeaturesParams) (ItemRecommendFeature, error)
 	// Starting enrollment replaces whatever unconfirmed secret was there and
 	// clears the lock, so a stalled attempt never blocks the next one.
 	UpsertPlatformUserMfaTotpSecret(ctx context.Context, arg UpsertPlatformUserMfaTotpSecretParams) (PlatformUserMfaTotp, error)
+	// The translations of a series, one per locale, as the console writes them.
+	// What a reader is shown is picked by series_translation_for in the reads
+	// themselves.
+	// Writes one locale's title, and its synopsis when write_synopsis says the
+	// save stated one. A locale the series has no translation in yet gets one,
+	// with an empty synopsis where none was stated.
+	UpsertSeriesTranslation(ctx context.Context, arg UpsertSeriesTranslationParams) (SeriesTranslation, error)
 	UpsertSeriesWaitFreeSettings(ctx context.Context, arg UpsertSeriesWaitFreeSettingsParams) (UpsertSeriesWaitFreeSettingsRow, error)
 	// Resolves one tag name the series form carried, creating the tag when this is
 	// its first use.

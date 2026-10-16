@@ -181,11 +181,11 @@ WITH leaderboards AS (
     SELECT DISTINCT ON (crs.genre_id) crs.genre_id,
         crs.items
     FROM content_ranking_snapshots crs
-    WHERE crs.tenant_id = $2
+    WHERE crs.tenant_id = $3
         AND crs.genre_id = ANY($1::uuid[])
-        AND crs.surface = $3::text
+        AND crs.surface = $4::text
         AND crs.age_rating = 'all'
-        AND crs.ranking_key = $5::text
+        AND crs.ranking_key = $6::text
         AND crs.entity_type = 'series'
     ORDER BY crs.genre_id,
         crs.period_start DESC,
@@ -212,15 +212,16 @@ FROM unnest($1::uuid[]) AS g(genre_id)
     CROSS JOIN LATERAL (
         SELECT s.id,
             s.public_id,
-            s.title,
+            str.title,
             s.eye_catch_image_id,
             r.rank,
             s.published_at
         FROM series_genres sg
             JOIN series s ON s.tenant_id = sg.tenant_id AND s.id = sg.series_id
+            CROSS JOIN LATERAL series_translation_for(s.id, $2::text) str
             JOIN series_listings sl ON sl.series_id = s.id
             LEFT JOIN ranked r ON r.genre_id = sg.genre_id AND r.series_id = s.id
-        WHERE sg.tenant_id = $2
+        WHERE sg.tenant_id = $3
             AND sg.genre_id = g.genre_id
             AND s.is_published = true
             AND s.published_at IS NOT NULL
@@ -230,12 +231,12 @@ FROM unnest($1::uuid[]) AS g(genre_id)
                 SELECT 1
                 FROM series_surfaces ss
                 WHERE ss.series_id = s.id
-                    AND ss.surface = $3::text
+                    AND ss.surface = $4::text
             )
         ORDER BY r.rank ASC NULLS LAST,
             s.published_at DESC,
             s.id DESC
-        LIMIT $4::int
+        LIMIT $5::int
     ) f
 ORDER BY g.genre_id,
     f.rank ASC NULLS LAST,
@@ -245,6 +246,7 @@ ORDER BY g.genre_id,
 
 type ListGenreFeaturedSeriesParams struct {
 	GenreIds    []uuid.UUID `json:"genre_ids"`
+	Locale      string      `json:"locale"`
 	TenantID    uuid.UUID   `json:"tenant_id"`
 	Surface     string      `json:"surface"`
 	SeriesLimit int32       `json:"series_limit"`
@@ -267,6 +269,7 @@ type ListGenreFeaturedSeriesRow struct {
 func (q *Queries) ListGenreFeaturedSeries(ctx context.Context, arg ListGenreFeaturedSeriesParams) ([]ListGenreFeaturedSeriesRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListGenreFeaturedSeries,
 		pq.Array(arg.GenreIds),
+		arg.Locale,
 		arg.TenantID,
 		arg.Surface,
 		arg.SeriesLimit,

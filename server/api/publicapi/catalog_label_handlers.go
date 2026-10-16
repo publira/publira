@@ -41,6 +41,10 @@ func (s *apiServer) GetPublishedLabelDetail(
 	if err != nil {
 		return nil, err
 	}
+	readerLocale, err := readerLocaleOf(req.Locale, tenant)
+	if err != nil {
+		return nil, err
+	}
 	row, err := s.queriesFor(ctx).GetPublishedLabelByPublicID(ctx, dbmodels.GetPublishedLabelByPublicIDParams{
 		TenantID: tenant.ID,
 		Surface:  surface,
@@ -68,6 +72,7 @@ func (s *apiServer) GetPublishedLabelDetail(
 		ctx,
 		tenant.ID,
 		surface,
+		readerLocale,
 		row.ID,
 		req.Limit,
 		req.Token,
@@ -91,6 +96,7 @@ func (s *apiServer) publishedLabelSeriesPage(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	surface string,
+	locale string,
 	labelID uuid.UUID,
 	requestedLimit int32,
 	token string,
@@ -103,18 +109,18 @@ func (s *apiServer) publishedLabelSeriesPage(
 	}
 	var keys seriesCursorKeys
 	if !cursor.IsZero() {
-		keys, err = decodeSeriesCursorKeys(cursor, order, publishedseries.Filter{})
+		keys, err = decodeSeriesCursorKeys(cursor, order, publishedseries.Filter{}, locale)
 		if err != nil {
 			return nil, "", "", err
 		}
 	}
 	descending := cursor.Direction == pagination.Backward
-	ids, err := s.publishedLabelSeriesPageIDs(ctx, tenantID, surface, labelID, descending, keys, limit+1)
+	ids, err := s.publishedLabelSeriesPageIDs(ctx, tenantID, surface, locale, labelID, descending, keys, limit+1)
 	if err != nil {
 		return nil, "", "", s.internalDBError(ctx, "failed to list published label series", err, "tenant_id", tenantID.String(), "label_id", labelID.String())
 	}
 	ids, hasMore := pagination.Page(ids, limit, cursor.Direction)
-	rows, err := s.activeSeriesRowsInOrder(ctx, tenantID, surface, ids)
+	rows, err := s.activeSeriesRowsInOrder(ctx, tenantID, surface, locale, ids)
 	if err != nil {
 		return nil, "", "", s.internalDBError(ctx, "failed to list published label series", err, "tenant_id", tenantID.String(), "label_id", labelID.String())
 	}
@@ -128,15 +134,15 @@ func (s *apiServer) publishedLabelSeriesPage(
 	case len(rows) > 0:
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
-			previousToken = encodeSeriesCursor(pagination.Backward, order, publishedseries.Filter{}, seriesBoundary{row: rows[0]})
+			previousToken = encodeSeriesCursor(pagination.Backward, order, publishedseries.Filter{}, locale, seriesBoundary{row: rows[0]})
 		}
 		if hasNext {
-			nextToken = encodeSeriesCursor(pagination.Forward, order, publishedseries.Filter{}, seriesBoundary{row: rows[len(rows)-1]})
+			nextToken = encodeSeriesCursor(pagination.Forward, order, publishedseries.Filter{}, locale, seriesBoundary{row: rows[len(rows)-1]})
 		}
 	case cursor.Direction == pagination.Forward && !keys.inclusive:
-		previousToken = encodeSeriesRecoveryToken(pagination.Backward, order, publishedseries.Filter{}, keys)
+		previousToken = encodeSeriesRecoveryToken(pagination.Backward, order, publishedseries.Filter{}, locale, keys)
 	case cursor.Direction == pagination.Backward && !keys.inclusive:
-		nextToken = encodeSeriesRecoveryToken(pagination.Forward, order, publishedseries.Filter{}, keys)
+		nextToken = encodeSeriesRecoveryToken(pagination.Forward, order, publishedseries.Filter{}, locale, keys)
 	}
 	bindSurfaceTokens(surface, &previousToken, &nextToken)
 	return items, previousToken, nextToken, nil
@@ -146,6 +152,7 @@ func (s *apiServer) publishedLabelSeriesPageIDs(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	surface string,
+	locale string,
 	labelID uuid.UUID,
 	descending bool,
 	keys seriesCursorKeys,
@@ -155,6 +162,7 @@ func (s *apiServer) publishedLabelSeriesPageIDs(
 	if descending {
 		return queries.ListPublishedSeriesIDsByLabelTitleDesc(ctx, dbmodels.ListPublishedSeriesIDsByLabelTitleDescParams{
 			Surface:         surface,
+			Locale:          locale,
 			LabelID:         labelID,
 			TenantID:        tenantID,
 			CursorID:        keys.id,
@@ -165,6 +173,7 @@ func (s *apiServer) publishedLabelSeriesPageIDs(
 	}
 	return queries.ListPublishedSeriesIDsByLabelTitleAsc(ctx, dbmodels.ListPublishedSeriesIDsByLabelTitleAscParams{
 		Surface:         surface,
+		Locale:          locale,
 		LabelID:         labelID,
 		TenantID:        tenantID,
 		CursorID:        keys.id,

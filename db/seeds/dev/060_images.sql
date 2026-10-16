@@ -91,10 +91,11 @@ seed_series AS (
     SELECT
         s.id,
         s.tenant_id,
-        ROW_NUMBER() OVER (ORDER BY s.title) AS series_no
+        ROW_NUMBER() OVER (ORDER BY st.title) AS series_no
     FROM series s
     JOIN tenant_scope ts ON ts.id = s.tenant_id
-    WHERE s.title LIKE 'Seed Series %'
+    CROSS JOIN LATERAL series_translation_for(s.id, '') st
+    WHERE st.title LIKE 'Seed Series %'
 ),
 series_image AS (
     INSERT INTO series_images (id, tenant_id, series_id)
@@ -246,10 +247,11 @@ WITH tenant_scope AS (
 seed_series AS (
     SELECT
         s.tenant_id,
-        ROW_NUMBER() OVER (ORDER BY s.title) AS series_no
+        ROW_NUMBER() OVER (ORDER BY st.title) AS series_no
     FROM series s
     JOIN tenant_scope ts ON ts.id = s.tenant_id
-    WHERE s.title LIKE 'Seed Series %'
+    CROSS JOIN LATERAL series_translation_for(s.id, '') st
+    WHERE st.title LIKE 'Seed Series %'
 ),
 series_variant AS (
     SELECT
@@ -393,11 +395,12 @@ seed_episode AS (
     SELECT
         e.id,
         e.tenant_id,
-        ROW_NUMBER() OVER (ORDER BY s.title, e.order_index) AS episode_no
+        ROW_NUMBER() OVER (ORDER BY st.title, e.order_index) AS episode_no
     FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN tenant_scope ts ON ts.id = s.tenant_id
-    WHERE s.title LIKE 'Seed Series %'
+    CROSS JOIN LATERAL series_translation_for(s.id, '') st
+    WHERE st.title LIKE 'Seed Series %'
 )
 INSERT INTO episode_images (id, tenant_id, episode_id, display_order)
 SELECT
@@ -425,11 +428,12 @@ WITH tenant_scope AS (
 seed_episode AS (
     SELECT
         e.tenant_id,
-        ROW_NUMBER() OVER (ORDER BY s.title, e.order_index) AS episode_no
+        ROW_NUMBER() OVER (ORDER BY st.title, e.order_index) AS episode_no
     FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN tenant_scope ts ON ts.id = s.tenant_id
-    WHERE s.title LIKE 'Seed Series %'
+    CROSS JOIN LATERAL series_translation_for(s.id, '') st
+    WHERE st.title LIKE 'Seed Series %'
 ),
 seed_page AS (
     SELECT

@@ -148,6 +148,7 @@ func encodeSeriesCursor(
 	direction pagination.Direction,
 	order publishedseries.Order,
 	filters publishedseries.Filter,
+	locale string,
 	boundary seriesBoundary,
 ) string {
 	var sortValue string
@@ -159,12 +160,12 @@ func encodeSeriesCursor(
 	default:
 		sortValue = boundary.row.PublishedAt.Time.UTC().Format(time.RFC3339Nano)
 	}
-	return pagination.Encode(direction, publishedseries.ListKey(order, filters), sortValue, boundary.row.ID.String())
+	return pagination.Encode(direction, publishedseries.ListKeyIn(order, filters, locale), sortValue, boundary.row.ID.String())
 }
 
 // A recovery token includes the boundary once. That keeps the boundary row in
 // the page when rows beyond it were deleted after the original token was issued.
-func encodeSeriesRecoveryToken(direction pagination.Direction, order publishedseries.Order, filters publishedseries.Filter, keys seriesCursorKeys) string {
+func encodeSeriesRecoveryToken(direction pagination.Direction, order publishedseries.Order, filters publishedseries.Filter, locale string, keys seriesCursorKeys) string {
 	var sortValue string
 	switch order.Column {
 	case publishedseries.ColumnTitle:
@@ -174,14 +175,14 @@ func encodeSeriesRecoveryToken(direction pagination.Direction, order publishedse
 	default:
 		sortValue = keys.publishedAt.Time.UTC().Format(time.RFC3339Nano)
 	}
-	return pagination.Encode(direction, publishedseries.ListKey(order, filters), sortValue, keys.id.UUID.String(), seriesInclusiveKey)
+	return pagination.Encode(direction, publishedseries.ListKeyIn(order, filters, locale), sortValue, keys.id.UUID.String(), seriesInclusiveKey)
 }
 
 // decodeSeriesCursorKeys reads a token into the keyset the query compares
-// against. A token built for another order or another filter is rejected
-// rather than reinterpreted: its keys point into a page that does not exist in
-// the requested list.
-func decodeSeriesCursorKeys(cursor pagination.Cursor, order publishedseries.Order, filters publishedseries.Filter) (seriesCursorKeys, error) {
+// against. A token built for another order or another filter, or for a title
+// order in another locale, is rejected rather than reinterpreted: its keys
+// point into a page that does not exist in the requested list.
+func decodeSeriesCursorKeys(cursor pagination.Cursor, order publishedseries.Order, filters publishedseries.Filter, locale string) (seriesCursorKeys, error) {
 	invalid := connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	if len(cursor.Keys) != 3 && len(cursor.Keys) != 4 {
 		return seriesCursorKeys{}, invalid
@@ -190,7 +191,7 @@ func decodeSeriesCursorKeys(cursor pagination.Cursor, order publishedseries.Orde
 	if inclusive && cursor.Keys[3] != seriesInclusiveKey {
 		return seriesCursorKeys{}, invalid
 	}
-	if cursor.Keys[0] != publishedseries.ListKey(order, filters) {
+	if cursor.Keys[0] != publishedseries.ListKeyIn(order, filters, locale) {
 		return seriesCursorKeys{}, connect.NewError(connect.CodeInvalidArgument, "token was issued for another order or filter")
 	}
 
@@ -225,6 +226,7 @@ func (s *apiServer) activeSeriesPage(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	surface string,
+	locale string,
 	order publishedseries.Order,
 	filters publishedseries.Filter,
 	descending bool,
@@ -234,6 +236,7 @@ func (s *apiServer) activeSeriesPage(
 	return publishedseries.Page(ctx, s.queriesFor(ctx), publishedseries.Scan{
 		TenantID:   tenantID,
 		Surface:    surface,
+		Locale:     locale,
 		Order:      order,
 		Filter:     filters,
 		Descending: descending,
@@ -248,12 +251,14 @@ func (s *apiServer) activeSeriesPage(
 	})
 }
 
-// activeSeriesRowsInOrder fetches the display rows for a page and puts them back
-// in the order the keyset query decided; the detail query is unordered.
+// activeSeriesRowsInOrder fetches the display rows for a page, titled in
+// locale, and puts them back in the order the keyset query decided; the detail
+// query is unordered.
 func (s *apiServer) activeSeriesRowsInOrder(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	surface string,
+	locale string,
 	ids []uuid.UUID,
 ) ([]dbmodels.ListActiveSeriesByIDsRow, error) {
 	if len(ids) == 0 {
@@ -263,6 +268,7 @@ func (s *apiServer) activeSeriesRowsInOrder(
 	rows, err := s.queriesFor(ctx).ListActiveSeriesByIDs(ctx, dbmodels.ListActiveSeriesByIDsParams{
 		TenantID: tenantID,
 		Surface:  surface,
+		Locale:   locale,
 		Ids:      ids,
 	})
 	if err != nil {
@@ -385,11 +391,9 @@ func publishedSeriesFromRow(row dbmodels.ListActiveSeriesByIDsRow) (*publirattyp
 		Id:               row.ID.String(),
 		PublicId:         row.PublicID,
 		Title:            row.Title,
+		Synopsis:         row.Synopsis,
 		ScheduleWeekdays: protomapper.ScheduleWeekdaysFromStored(row.ScheduleWeekdays),
 		FreeEpisodeCount: row.FreeEpisodeCount,
-	}
-	if row.Synopsis.Valid {
-		item.Synopsis = row.Synopsis.String
 	}
 	if row.Status.Valid {
 		status, err := protomapper.SeriesStatusFromStored(row.Status.String)
@@ -752,6 +756,10 @@ func (s *apiServer) ListPublishedSeries(
 	if err != nil {
 		return nil, err
 	}
+	readerLocale, err := readerLocaleOf(req.Locale, tenant)
+	if err != nil {
+		return nil, err
+	}
 	order, err := resolveSeriesOrder(req.Order)
 	if err != nil {
 		return nil, err
@@ -773,7 +781,7 @@ func (s *apiServer) ListPublishedSeries(
 	}
 	var keys seriesCursorKeys
 	if !cursor.IsZero() {
-		keys, err = decodeSeriesCursorKeys(cursor, order, filters)
+		keys, err = decodeSeriesCursorKeys(cursor, order, filters, readerLocale)
 		if err != nil {
 			return nil, err
 		}
@@ -781,7 +789,7 @@ func (s *apiServer) ListPublishedSeries(
 	// Walking back through the list runs against the sort order.
 	descending := order.Descending != (cursor.Direction == pagination.Backward)
 	// One id past the page: its presence is what says another page exists.
-	pageRows, err := s.activeSeriesPage(ctx, tenant.ID, surface, order, filters, descending, keys, limit+1)
+	pageRows, err := s.activeSeriesPage(ctx, tenant.ID, surface, readerLocale, order, filters, descending, keys, limit+1)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list published series", err, "tenant_id", tenant.ID.String())
 	}
@@ -792,7 +800,7 @@ func (s *apiServer) ListPublishedSeries(
 		ids = append(ids, pageRow.ID)
 		latestEpisodeAtByID[pageRow.ID] = pageRow.LatestEpisodeAt
 	}
-	rows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, surface, ids)
+	rows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, surface, readerLocale, ids)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list published series", err, "tenant_id", tenant.ID.String())
 	}
@@ -807,11 +815,11 @@ func (s *apiServer) ListPublishedSeries(
 		hasPrevious, hasNext := pagination.Neighbors(cursor, hasMore)
 		if hasPrevious {
 			first := rows[0]
-			res.PreviousToken = encodeSeriesCursor(pagination.Backward, order, filters, seriesBoundary{row: first, latestEpisodeAt: latestEpisodeAtByID[first.ID]})
+			res.PreviousToken = encodeSeriesCursor(pagination.Backward, order, filters, readerLocale, seriesBoundary{row: first, latestEpisodeAt: latestEpisodeAtByID[first.ID]})
 		}
 		if hasNext {
 			last := rows[len(rows)-1]
-			res.NextToken = encodeSeriesCursor(pagination.Forward, order, filters, seriesBoundary{row: last, latestEpisodeAt: latestEpisodeAtByID[last.ID]})
+			res.NextToken = encodeSeriesCursor(pagination.Forward, order, filters, readerLocale, seriesBoundary{row: last, latestEpisodeAt: latestEpisodeAtByID[last.ID]})
 		}
 	// An empty page means the boundary row was removed after the token was
 	// issued. Hand back a token to where the client came from, so the only way
@@ -819,9 +827,9 @@ func (s *apiServer) ListPublishedSeries(
 	// back empty means the boundary row is gone too: recover once, then leave
 	// both tokens empty rather than bouncing the client between empty pages.
 	case cursor.Direction == pagination.Forward && !keys.inclusive:
-		res.PreviousToken = encodeSeriesRecoveryToken(pagination.Backward, order, filters, keys)
+		res.PreviousToken = encodeSeriesRecoveryToken(pagination.Backward, order, filters, readerLocale, keys)
 	case cursor.Direction == pagination.Backward && !keys.inclusive:
-		res.NextToken = encodeSeriesRecoveryToken(pagination.Forward, order, filters, keys)
+		res.NextToken = encodeSeriesRecoveryToken(pagination.Forward, order, filters, readerLocale, keys)
 	}
 	bindSurfaceTokens(surface, &res.PreviousToken, &res.NextToken)
 	return res, nil
@@ -839,7 +847,11 @@ func (s *apiServer) GetSeriesDetail(
 	if err != nil {
 		return nil, err
 	}
-	row, err := s.queriesFor(ctx).GetSeriesDetail(ctx, dbmodels.GetSeriesDetailParams{PublicID: req.PublicId, TenantID: tenant.ID, Surface: surface})
+	readerLocale, err := readerLocaleOf(req.Locale, tenant)
+	if err != nil {
+		return nil, err
+	}
+	row, err := s.queriesFor(ctx).GetSeriesDetail(ctx, dbmodels.GetSeriesDetailParams{PublicID: req.PublicId, TenantID: tenant.ID, Surface: surface, Locale: readerLocale})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, "series not found")
@@ -895,10 +907,12 @@ func (s *apiServer) GetSeriesDetail(
 	res := &publirav1.GetSeriesDetailResponse{
 		RequiredMinimumAge: int32(requiredMinimumAge),
 		CommentMode:        commentMode,
+		PublishedLocales:   row.PublishedLocales,
 		Series: &publirattypesv1.Series{
 			Id:               row.ID.String(),
 			PublicId:         row.PublicID,
 			Title:            row.Title,
+			Synopsis:         row.Synopsis,
 			ScheduleWeekdays: protomapper.ScheduleWeekdaysFromStored(row.ScheduleWeekdays),
 			FreeEpisodeCount: row.FreeEpisodeCount,
 			Genres:           genres,
@@ -907,9 +921,6 @@ func (s *apiServer) GetSeriesDetail(
 			RatingCount:      rating.RatingCount,
 		},
 		Episodes: make([]*publirattypesv1.Episode, 0, len(episodes)),
-	}
-	if row.Synopsis.Valid {
-		res.Series.Synopsis = row.Synopsis.String
 	}
 	if row.Status.Valid {
 		status, statusErr := protomapper.SeriesStatusFromStored(row.Status.String)
@@ -1007,7 +1018,11 @@ func (s *apiServer) GetEpisodeDetail(
 	if err != nil {
 		return nil, err
 	}
-	row, err := s.queriesFor(ctx).GetPublishedEpisodeForTenant(ctx, dbmodels.GetPublishedEpisodeForTenantParams{TenantID: tenant.ID, PublicID: publicIDKey(req.PublicId), Surface: surface})
+	readerLocale, err := readerLocaleOf(req.Locale, tenant)
+	if err != nil {
+		return nil, err
+	}
+	row, err := s.queriesFor(ctx).GetPublishedEpisodeForTenant(ctx, dbmodels.GetPublishedEpisodeForTenantParams{TenantID: tenant.ID, PublicID: publicIDKey(req.PublicId), Surface: surface, Locale: readerLocale})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, "episode not found")
@@ -1136,11 +1151,11 @@ func (s *apiServer) GetEpisodeDetail(
 			series.EyeCatchImageVariants = variants[row.SeriesEyeCatchImageID.UUID]
 		}
 	}
-	neighborRows, err := s.publishedEpisodeNeighborRows(ctx, tenant.ID, surface, row)
+	neighborRows, err := s.publishedEpisodeNeighborRows(ctx, tenant.ID, surface, readerLocale, row)
 	if err != nil {
 		return nil, err
 	}
-	nextFreeRow, hasNextFree, err := s.nextPublishedFreeEpisodeRow(ctx, tenant.ID, surface, row)
+	nextFreeRow, hasNextFree, err := s.nextPublishedFreeEpisodeRow(ctx, tenant.ID, surface, readerLocale, row)
 	if err != nil {
 		return nil, err
 	}
@@ -1196,6 +1211,7 @@ func (s *apiServer) GetEpisodeDetail(
 		EntitlementSource: entitlementSource,
 		PreviewImages:     make([]*publirattypesv1.EpisodeImage, 0),
 		NextFreeEpisode:   nextFreeEpisode,
+		PublishedLocales:  row.PublishedLocales,
 	}
 	res.FreeUntil = episode.FreeUntil
 	if includeImages {
@@ -1257,11 +1273,13 @@ func (s *apiServer) publishedEpisodeNeighborRows(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	surface string,
+	locale string,
 	row dbmodels.GetPublishedEpisodeForTenantRow,
 ) ([]dbmodels.ListPublishedEpisodeNeighborsForTenantRow, error) {
 	rows, err := s.queriesFor(ctx).ListPublishedEpisodeNeighborsForTenant(ctx, dbmodels.ListPublishedEpisodeNeighborsForTenantParams{
 		TenantID:   tenantID,
 		Surface:    surface,
+		Locale:     locale,
 		SeriesID:   row.SeriesID,
 		OrderIndex: row.OrderIndex,
 		EpisodeID:  row.ID,
@@ -1279,6 +1297,7 @@ func (s *apiServer) nextPublishedFreeEpisodeRow(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	surface string,
+	locale string,
 	row dbmodels.GetPublishedEpisodeForTenantRow,
 ) (dbmodels.GetNextPublishedFreeEpisodeForTenantRow, bool, error) {
 	next, err := s.queriesFor(ctx).GetNextPublishedFreeEpisodeForTenant(ctx, dbmodels.GetNextPublishedFreeEpisodeForTenantParams{
@@ -1287,6 +1306,7 @@ func (s *apiServer) nextPublishedFreeEpisodeRow(
 		OrderIndex: row.OrderIndex,
 		EpisodeID:  row.ID,
 		Surface:    surface,
+		Locale:     locale,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return dbmodels.GetNextPublishedFreeEpisodeForTenantRow{}, false, nil

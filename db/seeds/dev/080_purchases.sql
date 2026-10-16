@@ -10,8 +10,12 @@ WITH scope AS (
         e.id AS episode_id
     FROM tenants t
     JOIN users u ON u.tenant_id = t.id AND u.email = 'member@example.com'
-    JOIN series s ON s.tenant_id = t.id AND s.title = 'Seed Series 001'
-    JOIN episodes e ON e.series_id = s.id AND e.title = 'Seed Episode 001-10'
+    JOIN series s ON s.tenant_id = t.id
+    JOIN LATERAL series_translation_for(s.id, '') st
+        ON st.title = 'Seed Series 001'
+    JOIN episodes e ON e.series_id = s.id
+    JOIN LATERAL episode_translation_for(e.id, '') et
+        ON et.title = 'Seed Episode 001-10'
     WHERE t.public_id = 'SeedTNNTAAA1'
 ),
 purchase_seed (id, purchased_at, expires_at, refunded_at, revoked_at, revocation_reason) AS (

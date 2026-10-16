@@ -13,10 +13,12 @@
 -- (latest_episode_at, id); id is a UUIDv7, so the order stays unique even when
 -- the sorted value ties. Every sort order gets its own query with a fixed
 -- ORDER BY, because branching with CASE stops the rows from being read in
--- index order and puts a full sort ahead of the LIMIT. The published_at and
--- title queries walk idx_series_tenant_published_at or idx_series_tenant_title
--- directly. Backward calls the query of the reversed order, and the caller
--- sorts the rows back.
+-- index order and puts a full sort ahead of the LIMIT. The published_at
+-- queries walk idx_series_tenant_published_at directly. The title queries sort
+-- on the title of the translation series_translation_for picks for the
+-- reader's locale, which no index holds, so they sort the tenant's published
+-- series ahead of the LIMIT. Backward calls the query of the reversed order,
+-- and the caller sorts the rows back.
 --
 -- Stage two is ListActiveSeriesByIDs, which builds the display data for the
 -- ids stage one settled on.
@@ -35,8 +37,10 @@
 -- '%q%' and makes the ILIKE %/_ literal with ESCAPE '!'. ILIKE '%q%' cannot
 -- ride a btree, so the scan reads the tenant's published series while the
 -- LIMIT still bites after narrowing by tenant and is_published. Once the row
--- count makes the latency visible, add a pg_trgm GIN index on title and
--- series_listings.synopsis.
+-- count makes the latency visible, add a pg_trgm GIN index on
+-- series_translations.title and synopsis. It matches the translation in the
+-- tenant's default locale whatever the reader's locale, as the OpenSearch
+-- index does.
 --
 -- Every query also keeps only what the calling surface may show, through
 -- series_surfaces for the series and episode_surfaces for the episodes counted
@@ -121,13 +125,11 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
     )
     AND (
         sqlc.narg('query_pattern')::text IS NULL
-        OR s.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
         OR EXISTS (
             SELECT 1
-            FROM series_listings sl
-            WHERE sl.tenant_id = sqlc.arg('tenant_id')
-                AND sl.series_id = s.id
-                AND sl.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
+            FROM series_translation_for(s.id, '') qt
+            WHERE qt.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
+                OR qt.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
         )
     )
     AND (
@@ -223,13 +225,11 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
     )
     AND (
         sqlc.narg('query_pattern')::text IS NULL
-        OR s.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
         OR EXISTS (
             SELECT 1
-            FROM series_listings sl
-            WHERE sl.tenant_id = sqlc.arg('tenant_id')
-                AND sl.series_id = s.id
-                AND sl.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
+            FROM series_translation_for(s.id, '') qt
+            WHERE qt.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
+                OR qt.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
         )
     )
     AND (
@@ -255,8 +255,9 @@ LIMIT sqlc.arg('limit');
 
 -- name: ListActiveSeriesIDsByTitleAsc :many
 SELECT s.id,
-    s.title
+    tr.title
 FROM series s
+    CROSS JOIN LATERAL series_translation_for(s.id, sqlc.arg('locale')::text) tr
 WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND s.is_published = true
     AND s.published_at IS NOT NULL
@@ -325,40 +326,39 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
     )
     AND (
         sqlc.narg('query_pattern')::text IS NULL
-        OR s.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
         OR EXISTS (
             SELECT 1
-            FROM series_listings sl
-            WHERE sl.tenant_id = sqlc.arg('tenant_id')
-                AND sl.series_id = s.id
-                AND sl.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
+            FROM series_translation_for(s.id, '') qt
+            WHERE qt.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
+                OR qt.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
         )
     )
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
             sqlc.arg('cursor_inclusive')::boolean
-            AND (s.title, s.id) >= (
+            AND (tr.title, s.id) >= (
                 sqlc.narg('cursor_title')::text,
                 sqlc.narg('cursor_id')::uuid
             )
         )
         OR (
             NOT sqlc.arg('cursor_inclusive')::boolean
-            AND (s.title, s.id) > (
+            AND (tr.title, s.id) > (
                 sqlc.narg('cursor_title')::text,
                 sqlc.narg('cursor_id')::uuid
             )
         )
     )
-ORDER BY s.title ASC,
+ORDER BY tr.title ASC,
     s.id ASC
 LIMIT sqlc.arg('limit');
 
 -- name: ListActiveSeriesIDsByTitleDesc :many
 SELECT s.id,
-    s.title
+    tr.title
 FROM series s
+    CROSS JOIN LATERAL series_translation_for(s.id, sqlc.arg('locale')::text) tr
 WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND s.is_published = true
     AND s.published_at IS NOT NULL
@@ -427,33 +427,31 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
     )
     AND (
         sqlc.narg('query_pattern')::text IS NULL
-        OR s.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
         OR EXISTS (
             SELECT 1
-            FROM series_listings sl
-            WHERE sl.tenant_id = sqlc.arg('tenant_id')
-                AND sl.series_id = s.id
-                AND sl.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
+            FROM series_translation_for(s.id, '') qt
+            WHERE qt.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
+                OR qt.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
         )
     )
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
             sqlc.arg('cursor_inclusive')::boolean
-            AND (s.title, s.id) <= (
+            AND (tr.title, s.id) <= (
                 sqlc.narg('cursor_title')::text,
                 sqlc.narg('cursor_id')::uuid
             )
         )
         OR (
             NOT sqlc.arg('cursor_inclusive')::boolean
-            AND (s.title, s.id) < (
+            AND (tr.title, s.id) < (
                 sqlc.narg('cursor_title')::text,
                 sqlc.narg('cursor_id')::uuid
             )
         )
     )
-ORDER BY s.title DESC,
+ORDER BY tr.title DESC,
     s.id DESC
 LIMIT sqlc.arg('limit');
 
@@ -556,13 +554,11 @@ WITH candidate AS (
         )
         AND (
             sqlc.narg('query_pattern')::text IS NULL
-            OR s.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
             OR EXISTS (
                 SELECT 1
-                FROM series_listings sl
-                WHERE sl.tenant_id = sqlc.arg('tenant_id')
-                    AND sl.series_id = s.id
-                    AND sl.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
+                FROM series_translation_for(s.id, '') qt
+                WHERE qt.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
+                    OR qt.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
             )
         )
 )
@@ -673,13 +669,11 @@ WITH candidate AS (
         )
         AND (
             sqlc.narg('query_pattern')::text IS NULL
-            OR s.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
             OR EXISTS (
                 SELECT 1
-                FROM series_listings sl
-                WHERE sl.tenant_id = sqlc.arg('tenant_id')
-                    AND sl.series_id = s.id
-                    AND sl.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
+                FROM series_translation_for(s.id, '') qt
+                WHERE qt.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
+                    OR qt.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
             )
         )
 )
@@ -714,8 +708,8 @@ LIMIT sqlc.arg('limit');
 -- on.
 SELECT s.id,
     s.public_id,
-    s.title,
-    sl.synopsis,
+    tr.title,
+    tr.synopsis,
     sl.status,
     sl.schedule_weekdays,
     sl.age_rating,
@@ -828,6 +822,7 @@ SELECT s.id,
         ELSE '{}'::json
     END::jsonb AS label_info
 FROM series s
+    CROSS JOIN LATERAL series_translation_for(s.id, sqlc.arg('locale')::text) tr
     LEFT JOIN series_listings sl ON sl.series_id = s.id
     LEFT JOIN labels l ON s.label_id = l.id
     LEFT JOIN series_creators sc ON s.id = sc.series_id
@@ -846,8 +841,9 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
             AND ss.surface = sqlc.arg('surface')::text
     )
 GROUP BY s.id,
+    tr.title,
+    tr.synopsis,
     sl.series_id,
-    sl.synopsis,
     sl.status,
     sl.schedule_weekdays,
     sl.age_rating,
@@ -862,6 +858,7 @@ GROUP BY s.id,
 -- sorts the rows back.
 SELECT s.id
 FROM series s
+    CROSS JOIN LATERAL series_translation_for(s.id, sqlc.arg('locale')::text) tr
     JOIN series_creators sc ON sc.series_id = s.id
 WHERE sc.creator_id = sqlc.arg('creator_id')
     AND s.tenant_id = sqlc.arg('tenant_id')
@@ -878,20 +875,20 @@ WHERE sc.creator_id = sqlc.arg('creator_id')
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
             sqlc.arg('cursor_inclusive')::boolean
-            AND (s.title, s.id) >= (
+            AND (tr.title, s.id) >= (
                 sqlc.narg('cursor_title')::text,
                 sqlc.narg('cursor_id')::uuid
             )
         )
         OR (
             NOT sqlc.arg('cursor_inclusive')::boolean
-            AND (s.title, s.id) > (
+            AND (tr.title, s.id) > (
                 sqlc.narg('cursor_title')::text,
                 sqlc.narg('cursor_id')::uuid
             )
         )
     )
-ORDER BY s.title ASC,
+ORDER BY tr.title ASC,
     s.id ASC
 LIMIT sqlc.arg('limit');
 
@@ -899,6 +896,7 @@ LIMIT sqlc.arg('limit');
 -- The backward direction of ListPublishedSeriesIDsByCreatorTitleAsc.
 SELECT s.id
 FROM series s
+    CROSS JOIN LATERAL series_translation_for(s.id, sqlc.arg('locale')::text) tr
     JOIN series_creators sc ON sc.series_id = s.id
 WHERE sc.creator_id = sqlc.arg('creator_id')
     AND s.tenant_id = sqlc.arg('tenant_id')
@@ -915,20 +913,20 @@ WHERE sc.creator_id = sqlc.arg('creator_id')
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
             sqlc.arg('cursor_inclusive')::boolean
-            AND (s.title, s.id) <= (
+            AND (tr.title, s.id) <= (
                 sqlc.narg('cursor_title')::text,
                 sqlc.narg('cursor_id')::uuid
             )
         )
         OR (
             NOT sqlc.arg('cursor_inclusive')::boolean
-            AND (s.title, s.id) < (
+            AND (tr.title, s.id) < (
                 sqlc.narg('cursor_title')::text,
                 sqlc.narg('cursor_id')::uuid
             )
         )
     )
-ORDER BY s.title DESC,
+ORDER BY tr.title DESC,
     s.id DESC
 LIMIT sqlc.arg('limit');
 
@@ -938,9 +936,9 @@ LIMIT sqlc.arg('limit');
 -- uses. Same shape as ListActiveSeriesIDsByTitleAsc, narrowed by label_id.
 -- Backward calls ListPublishedSeriesIDsByLabelTitleDesc, and the caller
 -- sorts the rows back.
--- Index: idx_series_tenant_label_title
 SELECT s.id
 FROM series s
+    CROSS JOIN LATERAL series_translation_for(s.id, sqlc.arg('locale')::text) tr
 WHERE s.label_id = sqlc.arg('label_id')::uuid
     AND s.tenant_id = sqlc.arg('tenant_id')
     AND s.is_published = true
@@ -956,20 +954,20 @@ WHERE s.label_id = sqlc.arg('label_id')::uuid
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
             sqlc.arg('cursor_inclusive')::boolean
-            AND (s.title, s.id) >= (
+            AND (tr.title, s.id) >= (
                 sqlc.narg('cursor_title')::text,
                 sqlc.narg('cursor_id')::uuid
             )
         )
         OR (
             NOT sqlc.arg('cursor_inclusive')::boolean
-            AND (s.title, s.id) > (
+            AND (tr.title, s.id) > (
                 sqlc.narg('cursor_title')::text,
                 sqlc.narg('cursor_id')::uuid
             )
         )
     )
-ORDER BY s.title ASC,
+ORDER BY tr.title ASC,
     s.id ASC
 LIMIT sqlc.arg('limit');
 
@@ -977,6 +975,7 @@ LIMIT sqlc.arg('limit');
 -- The backward direction of ListPublishedSeriesIDsByLabelTitleAsc.
 SELECT s.id
 FROM series s
+    CROSS JOIN LATERAL series_translation_for(s.id, sqlc.arg('locale')::text) tr
 WHERE s.label_id = sqlc.arg('label_id')::uuid
     AND s.tenant_id = sqlc.arg('tenant_id')
     AND s.is_published = true
@@ -992,19 +991,19 @@ WHERE s.label_id = sqlc.arg('label_id')::uuid
         sqlc.narg('cursor_id')::uuid IS NULL
         OR (
             sqlc.arg('cursor_inclusive')::boolean
-            AND (s.title, s.id) <= (
+            AND (tr.title, s.id) <= (
                 sqlc.narg('cursor_title')::text,
                 sqlc.narg('cursor_id')::uuid
             )
         )
         OR (
             NOT sqlc.arg('cursor_inclusive')::boolean
-            AND (s.title, s.id) < (
+            AND (tr.title, s.id) < (
                 sqlc.narg('cursor_title')::text,
                 sqlc.narg('cursor_id')::uuid
             )
         )
     )
-ORDER BY s.title DESC,
+ORDER BY tr.title DESC,
     s.id DESC
 LIMIT sqlc.arg('limit');

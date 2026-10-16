@@ -18,8 +18,8 @@ import (
 const ListActiveSeriesByIDs = `-- name: ListActiveSeriesByIDs :many
 SELECT s.id,
     s.public_id,
-    s.title,
-    sl.synopsis,
+    tr.title,
+    tr.synopsis,
     sl.status,
     sl.schedule_weekdays,
     sl.age_rating,
@@ -132,6 +132,7 @@ SELECT s.id,
         ELSE '{}'::json
     END::jsonb AS label_info
 FROM series s
+    CROSS JOIN LATERAL series_translation_for(s.id, $3::text) tr
     LEFT JOIN series_listings sl ON sl.series_id = s.id
     LEFT JOIN labels l ON s.label_id = l.id
     LEFT JOIN series_creators sc ON s.id = sc.series_id
@@ -139,7 +140,7 @@ FROM series s
     LEFT JOIN creator_roles cr ON cr.id = sc.role_id
     LEFT JOIN creator_images ci ON ci.id = c.icon_image_id
 WHERE s.tenant_id = $2
-    AND s.id = ANY($3::uuid [])
+    AND s.id = ANY($4::uuid [])
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
@@ -150,8 +151,9 @@ WHERE s.tenant_id = $2
             AND ss.surface = $1::text
     )
 GROUP BY s.id,
+    tr.title,
+    tr.synopsis,
     sl.series_id,
-    sl.synopsis,
     sl.status,
     sl.schedule_weekdays,
     sl.age_rating,
@@ -162,6 +164,7 @@ GROUP BY s.id,
 type ListActiveSeriesByIDsParams struct {
 	Surface  string      `json:"surface"`
 	TenantID uuid.UUID   `json:"tenant_id"`
+	Locale   string      `json:"locale"`
 	Ids      []uuid.UUID `json:"ids"`
 }
 
@@ -169,7 +172,7 @@ type ListActiveSeriesByIDsRow struct {
 	ID                     uuid.UUID       `json:"id"`
 	PublicID               string          `json:"public_id"`
 	Title                  string          `json:"title"`
-	Synopsis               sql.NullString  `json:"synopsis"`
+	Synopsis               string          `json:"synopsis"`
 	Status                 sql.NullString  `json:"status"`
 	ScheduleWeekdays       []int32         `json:"schedule_weekdays"`
 	AgeRating              sql.NullString  `json:"age_rating"`
@@ -188,7 +191,12 @@ type ListActiveSeriesByIDsRow struct {
 // No ORDER BY: the caller sorts the rows into the id order stage one settled
 // on.
 func (q *Queries) ListActiveSeriesByIDs(ctx context.Context, arg ListActiveSeriesByIDsParams) ([]ListActiveSeriesByIDsRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListActiveSeriesByIDs, arg.Surface, arg.TenantID, pq.Array(arg.Ids))
+	rows, err := q.db.QueryContext(ctx, ListActiveSeriesByIDs,
+		arg.Surface,
+		arg.TenantID,
+		arg.Locale,
+		pq.Array(arg.Ids),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -309,13 +317,11 @@ WITH candidate AS (
         )
         AND (
             $12::text IS NULL
-            OR s.title ILIKE $12::text ESCAPE '!'
             OR EXISTS (
                 SELECT 1
-                FROM series_listings sl
-                WHERE sl.tenant_id = $6
-                    AND sl.series_id = s.id
-                    AND sl.synopsis ILIKE $12::text ESCAPE '!'
+                FROM series_translation_for(s.id, '') qt
+                WHERE qt.title ILIKE $12::text ESCAPE '!'
+                    OR qt.synopsis ILIKE $12::text ESCAPE '!'
             )
         )
 )
@@ -483,13 +489,11 @@ WITH candidate AS (
         )
         AND (
             $12::text IS NULL
-            OR s.title ILIKE $12::text ESCAPE '!'
             OR EXISTS (
                 SELECT 1
-                FROM series_listings sl
-                WHERE sl.tenant_id = $6
-                    AND sl.series_id = s.id
-                    AND sl.synopsis ILIKE $12::text ESCAPE '!'
+                FROM series_translation_for(s.id, '') qt
+                WHERE qt.title ILIKE $12::text ESCAPE '!'
+                    OR qt.synopsis ILIKE $12::text ESCAPE '!'
             )
         )
 )
@@ -662,13 +666,11 @@ WHERE s.tenant_id = $1
     )
     AND (
         $8::text IS NULL
-        OR s.title ILIKE $8::text ESCAPE '!'
         OR EXISTS (
             SELECT 1
-            FROM series_listings sl
-            WHERE sl.tenant_id = $1
-                AND sl.series_id = s.id
-                AND sl.synopsis ILIKE $8::text ESCAPE '!'
+            FROM series_translation_for(s.id, '') qt
+            WHERE qt.title ILIKE $8::text ESCAPE '!'
+                OR qt.synopsis ILIKE $8::text ESCAPE '!'
         )
     )
     AND (
@@ -821,13 +823,11 @@ WHERE s.tenant_id = $1
     )
     AND (
         $8::text IS NULL
-        OR s.title ILIKE $8::text ESCAPE '!'
         OR EXISTS (
             SELECT 1
-            FROM series_listings sl
-            WHERE sl.tenant_id = $1
-                AND sl.series_id = s.id
-                AND sl.synopsis ILIKE $8::text ESCAPE '!'
+            FROM series_translation_for(s.id, '') qt
+            WHERE qt.title ILIKE $8::text ESCAPE '!'
+                OR qt.synopsis ILIKE $8::text ESCAPE '!'
         )
     )
     AND (
@@ -887,10 +887,12 @@ type ListActiveSeriesIDsByPublishedAtDescRow struct {
 // (latest_episode_at, id); id is a UUIDv7, so the order stays unique even when
 // the sorted value ties. Every sort order gets its own query with a fixed
 // ORDER BY, because branching with CASE stops the rows from being read in
-// index order and puts a full sort ahead of the LIMIT. The published_at and
-// title queries walk idx_series_tenant_published_at or idx_series_tenant_title
-// directly. Backward calls the query of the reversed order, and the caller
-// sorts the rows back.
+// index order and puts a full sort ahead of the LIMIT. The published_at
+// queries walk idx_series_tenant_published_at directly. The title queries sort
+// on the title of the translation series_translation_for picks for the
+// reader's locale, which no index holds, so they sort the tenant's published
+// series ahead of the LIMIT. Backward calls the query of the reversed order,
+// and the caller sorts the rows back.
 //
 // Stage two is ListActiveSeriesByIDs, which builds the display data for the
 // ids stage one settled on.
@@ -909,8 +911,10 @@ type ListActiveSeriesIDsByPublishedAtDescRow struct {
 // '%q%' and makes the ILIKE %/_ literal with ESCAPE '!'. ILIKE '%q%' cannot
 // ride a btree, so the scan reads the tenant's published series while the
 // LIMIT still bites after narrowing by tenant and is_published. Once the row
-// count makes the latency visible, add a pg_trgm GIN index on title and
-// series_listings.synopsis.
+// count makes the latency visible, add a pg_trgm GIN index on
+// series_translations.title and synopsis. It matches the translation in the
+// tenant's default locale whatever the reader's locale, as the OpenSearch
+// index does.
 //
 // Every query also keeps only what the calling surface may show, through
 // series_surfaces for the series and episode_surfaces for the episodes counted
@@ -961,9 +965,10 @@ func (q *Queries) ListActiveSeriesIDsByPublishedAtDesc(ctx context.Context, arg 
 
 const ListActiveSeriesIDsByTitleAsc = `-- name: ListActiveSeriesIDsByTitleAsc :many
 SELECT s.id,
-    s.title
+    tr.title
 FROM series s
-WHERE s.tenant_id = $1
+    CROSS JOIN LATERAL series_translation_for(s.id, $1::text) tr
+WHERE s.tenant_id = $2
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
@@ -971,10 +976,10 @@ WHERE s.tenant_id = $1
         SELECT 1
         FROM series_surfaces ss
         WHERE ss.series_id = s.id
-            AND ss.surface = $2::text
+            AND ss.surface = $3::text
     )
     AND (
-        NOT $3::boolean
+        NOT $4::boolean
         OR EXISTS (
             SELECT 1
             FROM published_free_episodes fe
@@ -983,86 +988,85 @@ WHERE s.tenant_id = $1
                     SELECT 1
                     FROM episode_surfaces es
                     WHERE es.episode_id = fe.episode_id
-                        AND es.surface = $2::text
+                        AND es.surface = $3::text
                 )
-        )
-    )
-    AND (
-        $4::text IS NULL
-        OR EXISTS (
-            SELECT 1
-            FROM series_genres sg
-                JOIN genres g ON g.id = sg.genre_id
-            WHERE sg.tenant_id = $1
-                AND sg.series_id = s.id
-                AND g.public_id = $4::text
         )
     )
     AND (
         $5::text IS NULL
         OR EXISTS (
             SELECT 1
-            FROM series_tags st
-                JOIN tags t ON t.id = st.tag_id
-            WHERE st.tenant_id = $1
-                AND st.series_id = s.id
-                AND t.slug = $5::text
+            FROM series_genres sg
+                JOIN genres g ON g.id = sg.genre_id
+            WHERE sg.tenant_id = $2
+                AND sg.series_id = s.id
+                AND g.public_id = $5::text
         )
     )
     AND (
         $6::text IS NULL
         OR EXISTS (
             SELECT 1
-            FROM series_listings sl
-            WHERE sl.tenant_id = $1
-                AND sl.series_id = s.id
-                AND sl.status = $6::text
+            FROM series_tags st
+                JOIN tags t ON t.id = st.tag_id
+            WHERE st.tenant_id = $2
+                AND st.series_id = s.id
+                AND t.slug = $6::text
         )
     )
     AND (
-        $7::int2 IS NULL
+        $7::text IS NULL
         OR EXISTS (
             SELECT 1
             FROM series_listings sl
-            WHERE sl.tenant_id = $1
+            WHERE sl.tenant_id = $2
                 AND sl.series_id = s.id
-                AND sl.schedule_weekdays @> ARRAY[$7::int2]
+                AND sl.status = $7::text
         )
     )
     AND (
-        $8::text IS NULL
-        OR s.title ILIKE $8::text ESCAPE '!'
+        $8::int2 IS NULL
         OR EXISTS (
             SELECT 1
             FROM series_listings sl
-            WHERE sl.tenant_id = $1
+            WHERE sl.tenant_id = $2
                 AND sl.series_id = s.id
-                AND sl.synopsis ILIKE $8::text ESCAPE '!'
+                AND sl.schedule_weekdays @> ARRAY[$8::int2]
         )
     )
     AND (
-        $9::uuid IS NULL
+        $9::text IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM series_translation_for(s.id, '') qt
+            WHERE qt.title ILIKE $9::text ESCAPE '!'
+                OR qt.synopsis ILIKE $9::text ESCAPE '!'
+        )
+    )
+    AND (
+        $10::uuid IS NULL
         OR (
-            $10::boolean
-            AND (s.title, s.id) >= (
-                $11::text,
-                $9::uuid
+            $11::boolean
+            AND (tr.title, s.id) >= (
+                $12::text,
+                $10::uuid
             )
         )
         OR (
-            NOT $10::boolean
-            AND (s.title, s.id) > (
-                $11::text,
-                $9::uuid
+            NOT $11::boolean
+            AND (tr.title, s.id) > (
+                $12::text,
+                $10::uuid
             )
         )
     )
-ORDER BY s.title ASC,
+ORDER BY tr.title ASC,
     s.id ASC
-LIMIT $12
+LIMIT $13
 `
 
 type ListActiveSeriesIDsByTitleAscParams struct {
+	Locale          string         `json:"locale"`
 	TenantID        uuid.UUID      `json:"tenant_id"`
 	Surface         string         `json:"surface"`
 	HasFreeEpisodes bool           `json:"has_free_episodes"`
@@ -1084,6 +1088,7 @@ type ListActiveSeriesIDsByTitleAscRow struct {
 
 func (q *Queries) ListActiveSeriesIDsByTitleAsc(ctx context.Context, arg ListActiveSeriesIDsByTitleAscParams) ([]ListActiveSeriesIDsByTitleAscRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListActiveSeriesIDsByTitleAsc,
+		arg.Locale,
 		arg.TenantID,
 		arg.Surface,
 		arg.HasFreeEpisodes,
@@ -1120,9 +1125,10 @@ func (q *Queries) ListActiveSeriesIDsByTitleAsc(ctx context.Context, arg ListAct
 
 const ListActiveSeriesIDsByTitleDesc = `-- name: ListActiveSeriesIDsByTitleDesc :many
 SELECT s.id,
-    s.title
+    tr.title
 FROM series s
-WHERE s.tenant_id = $1
+    CROSS JOIN LATERAL series_translation_for(s.id, $1::text) tr
+WHERE s.tenant_id = $2
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
@@ -1130,10 +1136,10 @@ WHERE s.tenant_id = $1
         SELECT 1
         FROM series_surfaces ss
         WHERE ss.series_id = s.id
-            AND ss.surface = $2::text
+            AND ss.surface = $3::text
     )
     AND (
-        NOT $3::boolean
+        NOT $4::boolean
         OR EXISTS (
             SELECT 1
             FROM published_free_episodes fe
@@ -1142,86 +1148,85 @@ WHERE s.tenant_id = $1
                     SELECT 1
                     FROM episode_surfaces es
                     WHERE es.episode_id = fe.episode_id
-                        AND es.surface = $2::text
+                        AND es.surface = $3::text
                 )
-        )
-    )
-    AND (
-        $4::text IS NULL
-        OR EXISTS (
-            SELECT 1
-            FROM series_genres sg
-                JOIN genres g ON g.id = sg.genre_id
-            WHERE sg.tenant_id = $1
-                AND sg.series_id = s.id
-                AND g.public_id = $4::text
         )
     )
     AND (
         $5::text IS NULL
         OR EXISTS (
             SELECT 1
-            FROM series_tags st
-                JOIN tags t ON t.id = st.tag_id
-            WHERE st.tenant_id = $1
-                AND st.series_id = s.id
-                AND t.slug = $5::text
+            FROM series_genres sg
+                JOIN genres g ON g.id = sg.genre_id
+            WHERE sg.tenant_id = $2
+                AND sg.series_id = s.id
+                AND g.public_id = $5::text
         )
     )
     AND (
         $6::text IS NULL
         OR EXISTS (
             SELECT 1
-            FROM series_listings sl
-            WHERE sl.tenant_id = $1
-                AND sl.series_id = s.id
-                AND sl.status = $6::text
+            FROM series_tags st
+                JOIN tags t ON t.id = st.tag_id
+            WHERE st.tenant_id = $2
+                AND st.series_id = s.id
+                AND t.slug = $6::text
         )
     )
     AND (
-        $7::int2 IS NULL
+        $7::text IS NULL
         OR EXISTS (
             SELECT 1
             FROM series_listings sl
-            WHERE sl.tenant_id = $1
+            WHERE sl.tenant_id = $2
                 AND sl.series_id = s.id
-                AND sl.schedule_weekdays @> ARRAY[$7::int2]
+                AND sl.status = $7::text
         )
     )
     AND (
-        $8::text IS NULL
-        OR s.title ILIKE $8::text ESCAPE '!'
+        $8::int2 IS NULL
         OR EXISTS (
             SELECT 1
             FROM series_listings sl
-            WHERE sl.tenant_id = $1
+            WHERE sl.tenant_id = $2
                 AND sl.series_id = s.id
-                AND sl.synopsis ILIKE $8::text ESCAPE '!'
+                AND sl.schedule_weekdays @> ARRAY[$8::int2]
         )
     )
     AND (
-        $9::uuid IS NULL
+        $9::text IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM series_translation_for(s.id, '') qt
+            WHERE qt.title ILIKE $9::text ESCAPE '!'
+                OR qt.synopsis ILIKE $9::text ESCAPE '!'
+        )
+    )
+    AND (
+        $10::uuid IS NULL
         OR (
-            $10::boolean
-            AND (s.title, s.id) <= (
-                $11::text,
-                $9::uuid
+            $11::boolean
+            AND (tr.title, s.id) <= (
+                $12::text,
+                $10::uuid
             )
         )
         OR (
-            NOT $10::boolean
-            AND (s.title, s.id) < (
-                $11::text,
-                $9::uuid
+            NOT $11::boolean
+            AND (tr.title, s.id) < (
+                $12::text,
+                $10::uuid
             )
         )
     )
-ORDER BY s.title DESC,
+ORDER BY tr.title DESC,
     s.id DESC
-LIMIT $12
+LIMIT $13
 `
 
 type ListActiveSeriesIDsByTitleDescParams struct {
+	Locale          string         `json:"locale"`
 	TenantID        uuid.UUID      `json:"tenant_id"`
 	Surface         string         `json:"surface"`
 	HasFreeEpisodes bool           `json:"has_free_episodes"`
@@ -1243,6 +1248,7 @@ type ListActiveSeriesIDsByTitleDescRow struct {
 
 func (q *Queries) ListActiveSeriesIDsByTitleDesc(ctx context.Context, arg ListActiveSeriesIDsByTitleDescParams) ([]ListActiveSeriesIDsByTitleDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListActiveSeriesIDsByTitleDesc,
+		arg.Locale,
 		arg.TenantID,
 		arg.Surface,
 		arg.HasFreeEpisodes,
@@ -1280,9 +1286,10 @@ func (q *Queries) ListActiveSeriesIDsByTitleDesc(ctx context.Context, arg ListAc
 const ListPublishedSeriesIDsByCreatorTitleAsc = `-- name: ListPublishedSeriesIDsByCreatorTitleAsc :many
 SELECT s.id
 FROM series s
+    CROSS JOIN LATERAL series_translation_for(s.id, $1::text) tr
     JOIN series_creators sc ON sc.series_id = s.id
-WHERE sc.creator_id = $1
-    AND s.tenant_id = $2
+WHERE sc.creator_id = $2
+    AND s.tenant_id = $3
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
@@ -1290,31 +1297,32 @@ WHERE sc.creator_id = $1
         SELECT 1
         FROM series_surfaces ss
         WHERE ss.series_id = s.id
-            AND ss.surface = $3::text
+            AND ss.surface = $4::text
     )
     AND (
-        $4::uuid IS NULL
+        $5::uuid IS NULL
         OR (
-            $5::boolean
-            AND (s.title, s.id) >= (
-                $6::text,
-                $4::uuid
+            $6::boolean
+            AND (tr.title, s.id) >= (
+                $7::text,
+                $5::uuid
             )
         )
         OR (
-            NOT $5::boolean
-            AND (s.title, s.id) > (
-                $6::text,
-                $4::uuid
+            NOT $6::boolean
+            AND (tr.title, s.id) > (
+                $7::text,
+                $5::uuid
             )
         )
     )
-ORDER BY s.title ASC,
+ORDER BY tr.title ASC,
     s.id ASC
-LIMIT $7
+LIMIT $8
 `
 
 type ListPublishedSeriesIDsByCreatorTitleAscParams struct {
+	Locale          string         `json:"locale"`
 	CreatorID       uuid.UUID      `json:"creator_id"`
 	TenantID        uuid.UUID      `json:"tenant_id"`
 	Surface         string         `json:"surface"`
@@ -1331,6 +1339,7 @@ type ListPublishedSeriesIDsByCreatorTitleAscParams struct {
 // sorts the rows back.
 func (q *Queries) ListPublishedSeriesIDsByCreatorTitleAsc(ctx context.Context, arg ListPublishedSeriesIDsByCreatorTitleAscParams) ([]uuid.UUID, error) {
 	rows, err := q.db.QueryContext(ctx, ListPublishedSeriesIDsByCreatorTitleAsc,
+		arg.Locale,
 		arg.CreatorID,
 		arg.TenantID,
 		arg.Surface,
@@ -1363,9 +1372,10 @@ func (q *Queries) ListPublishedSeriesIDsByCreatorTitleAsc(ctx context.Context, a
 const ListPublishedSeriesIDsByCreatorTitleDesc = `-- name: ListPublishedSeriesIDsByCreatorTitleDesc :many
 SELECT s.id
 FROM series s
+    CROSS JOIN LATERAL series_translation_for(s.id, $1::text) tr
     JOIN series_creators sc ON sc.series_id = s.id
-WHERE sc.creator_id = $1
-    AND s.tenant_id = $2
+WHERE sc.creator_id = $2
+    AND s.tenant_id = $3
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
@@ -1373,31 +1383,32 @@ WHERE sc.creator_id = $1
         SELECT 1
         FROM series_surfaces ss
         WHERE ss.series_id = s.id
-            AND ss.surface = $3::text
+            AND ss.surface = $4::text
     )
     AND (
-        $4::uuid IS NULL
+        $5::uuid IS NULL
         OR (
-            $5::boolean
-            AND (s.title, s.id) <= (
-                $6::text,
-                $4::uuid
+            $6::boolean
+            AND (tr.title, s.id) <= (
+                $7::text,
+                $5::uuid
             )
         )
         OR (
-            NOT $5::boolean
-            AND (s.title, s.id) < (
-                $6::text,
-                $4::uuid
+            NOT $6::boolean
+            AND (tr.title, s.id) < (
+                $7::text,
+                $5::uuid
             )
         )
     )
-ORDER BY s.title DESC,
+ORDER BY tr.title DESC,
     s.id DESC
-LIMIT $7
+LIMIT $8
 `
 
 type ListPublishedSeriesIDsByCreatorTitleDescParams struct {
+	Locale          string         `json:"locale"`
 	CreatorID       uuid.UUID      `json:"creator_id"`
 	TenantID        uuid.UUID      `json:"tenant_id"`
 	Surface         string         `json:"surface"`
@@ -1410,6 +1421,7 @@ type ListPublishedSeriesIDsByCreatorTitleDescParams struct {
 // The backward direction of ListPublishedSeriesIDsByCreatorTitleAsc.
 func (q *Queries) ListPublishedSeriesIDsByCreatorTitleDesc(ctx context.Context, arg ListPublishedSeriesIDsByCreatorTitleDescParams) ([]uuid.UUID, error) {
 	rows, err := q.db.QueryContext(ctx, ListPublishedSeriesIDsByCreatorTitleDesc,
+		arg.Locale,
 		arg.CreatorID,
 		arg.TenantID,
 		arg.Surface,
@@ -1442,8 +1454,9 @@ func (q *Queries) ListPublishedSeriesIDsByCreatorTitleDesc(ctx context.Context, 
 const ListPublishedSeriesIDsByLabelTitleAsc = `-- name: ListPublishedSeriesIDsByLabelTitleAsc :many
 SELECT s.id
 FROM series s
-WHERE s.label_id = $1::uuid
-    AND s.tenant_id = $2
+    CROSS JOIN LATERAL series_translation_for(s.id, $1::text) tr
+WHERE s.label_id = $2::uuid
+    AND s.tenant_id = $3
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
@@ -1451,31 +1464,32 @@ WHERE s.label_id = $1::uuid
         SELECT 1
         FROM series_surfaces ss
         WHERE ss.series_id = s.id
-            AND ss.surface = $3::text
+            AND ss.surface = $4::text
     )
     AND (
-        $4::uuid IS NULL
+        $5::uuid IS NULL
         OR (
-            $5::boolean
-            AND (s.title, s.id) >= (
-                $6::text,
-                $4::uuid
+            $6::boolean
+            AND (tr.title, s.id) >= (
+                $7::text,
+                $5::uuid
             )
         )
         OR (
-            NOT $5::boolean
-            AND (s.title, s.id) > (
-                $6::text,
-                $4::uuid
+            NOT $6::boolean
+            AND (tr.title, s.id) > (
+                $7::text,
+                $5::uuid
             )
         )
     )
-ORDER BY s.title ASC,
+ORDER BY tr.title ASC,
     s.id ASC
-LIMIT $7
+LIMIT $8
 `
 
 type ListPublishedSeriesIDsByLabelTitleAscParams struct {
+	Locale          string         `json:"locale"`
 	LabelID         uuid.UUID      `json:"label_id"`
 	TenantID        uuid.UUID      `json:"tenant_id"`
 	Surface         string         `json:"surface"`
@@ -1490,9 +1504,9 @@ type ListPublishedSeriesIDsByLabelTitleAscParams struct {
 // uses. Same shape as ListActiveSeriesIDsByTitleAsc, narrowed by label_id.
 // Backward calls ListPublishedSeriesIDsByLabelTitleDesc, and the caller
 // sorts the rows back.
-// Index: idx_series_tenant_label_title
 func (q *Queries) ListPublishedSeriesIDsByLabelTitleAsc(ctx context.Context, arg ListPublishedSeriesIDsByLabelTitleAscParams) ([]uuid.UUID, error) {
 	rows, err := q.db.QueryContext(ctx, ListPublishedSeriesIDsByLabelTitleAsc,
+		arg.Locale,
 		arg.LabelID,
 		arg.TenantID,
 		arg.Surface,
@@ -1525,8 +1539,9 @@ func (q *Queries) ListPublishedSeriesIDsByLabelTitleAsc(ctx context.Context, arg
 const ListPublishedSeriesIDsByLabelTitleDesc = `-- name: ListPublishedSeriesIDsByLabelTitleDesc :many
 SELECT s.id
 FROM series s
-WHERE s.label_id = $1::uuid
-    AND s.tenant_id = $2
+    CROSS JOIN LATERAL series_translation_for(s.id, $1::text) tr
+WHERE s.label_id = $2::uuid
+    AND s.tenant_id = $3
     AND s.is_published = true
     AND s.published_at IS NOT NULL
     AND s.published_at <= NOW()
@@ -1534,31 +1549,32 @@ WHERE s.label_id = $1::uuid
         SELECT 1
         FROM series_surfaces ss
         WHERE ss.series_id = s.id
-            AND ss.surface = $3::text
+            AND ss.surface = $4::text
     )
     AND (
-        $4::uuid IS NULL
+        $5::uuid IS NULL
         OR (
-            $5::boolean
-            AND (s.title, s.id) <= (
-                $6::text,
-                $4::uuid
+            $6::boolean
+            AND (tr.title, s.id) <= (
+                $7::text,
+                $5::uuid
             )
         )
         OR (
-            NOT $5::boolean
-            AND (s.title, s.id) < (
-                $6::text,
-                $4::uuid
+            NOT $6::boolean
+            AND (tr.title, s.id) < (
+                $7::text,
+                $5::uuid
             )
         )
     )
-ORDER BY s.title DESC,
+ORDER BY tr.title DESC,
     s.id DESC
-LIMIT $7
+LIMIT $8
 `
 
 type ListPublishedSeriesIDsByLabelTitleDescParams struct {
+	Locale          string         `json:"locale"`
 	LabelID         uuid.UUID      `json:"label_id"`
 	TenantID        uuid.UUID      `json:"tenant_id"`
 	Surface         string         `json:"surface"`
@@ -1571,6 +1587,7 @@ type ListPublishedSeriesIDsByLabelTitleDescParams struct {
 // The backward direction of ListPublishedSeriesIDsByLabelTitleAsc.
 func (q *Queries) ListPublishedSeriesIDsByLabelTitleDesc(ctx context.Context, arg ListPublishedSeriesIDsByLabelTitleDescParams) ([]uuid.UUID, error) {
 	rows, err := q.db.QueryContext(ctx, ListPublishedSeriesIDsByLabelTitleDesc,
+		arg.Locale,
 		arg.LabelID,
 		arg.TenantID,
 		arg.Surface,

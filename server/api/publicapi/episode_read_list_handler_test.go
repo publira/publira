@@ -71,7 +71,7 @@ func TestEpisodeReadListReturnsTheReadersOwnHistory(t *testing.T) {
 	expectAuthSession(mock, tenantID, userID, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyEpisodeReadsDesc)).
-		WithArgs(tenantID, userID, "web", sql.NullTime{}, false, uuid.NullUUID{}, int32(21)).
+		WithArgs("ja", tenantID, userID, "web", sql.NullTime{}, false, uuid.NullUUID{}, int32(21)).
 		WillReturnRows(addEpisodeReadRow(episodeReadRows(), readID, now))
 
 	client := publirav1connect.NewEpisodeReadServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
@@ -118,6 +118,7 @@ func TestEpisodeReadListForwardPageReturnsNeighborTokens(t *testing.T) {
 	expectAuthSession(mock, tenantID, userID, now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyEpisodeReadsDesc)).
 		WithArgs(
+			"ja",
 			tenantID,
 			userID,
 			"web",
@@ -160,6 +161,7 @@ func TestEpisodeReadListBackwardPageReturnsDisplayOrderAndNeighborTokens(t *test
 	expectAuthSession(mock, tenantID, userID, now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyEpisodeReadsAsc)).
 		WithArgs(
+			"ja",
 			tenantID,
 			userID,
 			"web",
@@ -227,6 +229,7 @@ func TestEpisodeReadListEmptyPagesReturnRecoveryTokens(t *testing.T) {
 			expectAuthSession(mock, tenantID, userID, now)
 			mock.ExpectQuery(regexp.QuoteMeta(tt.query)).
 				WithArgs(
+					"ja",
 					tenantID,
 					userID,
 					"web",

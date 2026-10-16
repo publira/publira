@@ -46,12 +46,13 @@ func mustInsertSeries(t *testing.T, ctx context.Context, db *sql.DB, tenantID uu
 		t.Fatalf("uuid: %v", err)
 	}
 	_, err = db.ExecContext(ctx, `
-		INSERT INTO series (id, tenant_id, public_id, title, is_published)
-		VALUES ($1, $2, $3, $4, false)
-	`, seriesID, tenantID, seriesPublicID, seriesPublicID+" series")
+		INSERT INTO series (id, tenant_id, public_id, is_published)
+		VALUES ($1, $2, $3, false)
+	`, seriesID, tenantID, seriesPublicID)
 	if err != nil {
 		t.Fatalf("insert series %s: %v", seriesPublicID, err)
 	}
+	mustInsertSeriesTranslation(t, ctx, db, tenantID, seriesID, seriesPublicID+" series")
 	return seriesID
 }
 
@@ -63,13 +64,42 @@ func mustInsertSeriesAndEpisode(t *testing.T, ctx context.Context, db *sql.DB, t
 		t.Fatalf("uuid: %v", err)
 	}
 	_, err = db.ExecContext(ctx, `
-		INSERT INTO episodes (id, series_id, public_id, title, order_index, tenant_id)
-		VALUES ($1, $2, $3, $4, 1, $5)
-	`, episodeID, seriesID, episodePublicID, episodePublicID, tenantID)
+		INSERT INTO episodes (id, series_id, public_id, order_index, tenant_id)
+		VALUES ($1, $2, $3, 1, $4)
+	`, episodeID, seriesID, episodePublicID, tenantID)
 	if err != nil {
 		t.Fatalf("insert episode %s: %v", episodePublicID, err)
 	}
+	mustInsertEpisodeTranslation(t, ctx, db, tenantID, episodeID, episodePublicID)
 	return seriesID, episodeID
+}
+
+// mustInsertSeriesTranslation gives a series inserted by hand its title, in
+// its tenant's default locale.
+func mustInsertSeriesTranslation(t *testing.T, ctx context.Context, db *sql.DB, tenantID, seriesID uuid.UUID, title string) {
+	t.Helper()
+	if _, err := db.ExecContext(ctx, `
+		INSERT INTO series_translations (id, series_id, tenant_id, locale, title)
+		SELECT $1, $2, t.id, t.default_locale, $3
+		FROM tenants t
+		WHERE t.id = $4
+	`, uuid.Must(uuid.NewV7()), seriesID, title, tenantID); err != nil {
+		t.Fatalf("insert series translation %s: %v", seriesID, err)
+	}
+}
+
+// mustInsertEpisodeTranslation gives an episode inserted by hand its title, in
+// its tenant's default locale.
+func mustInsertEpisodeTranslation(t *testing.T, ctx context.Context, db *sql.DB, tenantID, episodeID uuid.UUID, title string) {
+	t.Helper()
+	if _, err := db.ExecContext(ctx, `
+		INSERT INTO episode_translations (id, episode_id, tenant_id, locale, title)
+		SELECT $1, $2, t.id, t.default_locale, $3
+		FROM tenants t
+		WHERE t.id = $4
+	`, uuid.Must(uuid.NewV7()), episodeID, title, tenantID); err != nil {
+		t.Fatalf("insert episode translation %s: %v", episodeID, err)
+	}
 }
 
 func withAdminTenant(t *testing.T, pg *testutil.PostgresEnv, tenantID uuid.UUID, fn func(ctx context.Context, conn *sql.Conn)) {

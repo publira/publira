@@ -36,12 +36,11 @@ INSERT INTO series (
         tenant_id,
         label_id,
         public_id,
-        title,
         availability,
         purchase_availability
     )
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, tenant_id, label_id, public_id, title, created_at, is_published, published_at, updated_at, eye_catch_image_id, availability, purchase_availability, publication_revalidated_at
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, tenant_id, label_id, public_id, created_at, is_published, published_at, updated_at, eye_catch_image_id, availability, purchase_availability, publication_revalidated_at
 `
 
 type CreateSeriesBaseParams struct {
@@ -49,7 +48,6 @@ type CreateSeriesBaseParams struct {
 	TenantID             uuid.UUID      `json:"tenant_id"`
 	LabelID              uuid.NullUUID  `json:"label_id"`
 	PublicID             string         `json:"public_id"`
-	Title                string         `json:"title"`
 	Availability         string         `json:"availability"`
 	PurchaseAvailability sql.NullString `json:"purchase_availability"`
 }
@@ -60,7 +58,6 @@ func (q *Queries) CreateSeriesBase(ctx context.Context, arg CreateSeriesBasePara
 		arg.TenantID,
 		arg.LabelID,
 		arg.PublicID,
-		arg.Title,
 		arg.Availability,
 		arg.PurchaseAvailability,
 	)
@@ -70,7 +67,6 @@ func (q *Queries) CreateSeriesBase(ctx context.Context, arg CreateSeriesBasePara
 		&i.TenantID,
 		&i.LabelID,
 		&i.PublicID,
-		&i.Title,
 		&i.CreatedAt,
 		&i.IsPublished,
 		&i.PublishedAt,
@@ -87,7 +83,6 @@ const CreateSeriesListing = `-- name: CreateSeriesListing :one
 INSERT INTO series_listings (
         tenant_id,
         series_id,
-        synopsis,
         reading_period_hours,
         status,
         schedule_weekdays,
@@ -105,16 +100,14 @@ VALUES (
         $6,
         $7,
         $8,
-        $9,
-        $10
+        $9
     )
-RETURNING series_id, synopsis, reading_period_hours, is_published, published_at, tenant_id, status, schedule_weekdays, age_rating, episode_rating_mode, comment_mode, reading_direction, spread_start_index
+RETURNING series_id, reading_period_hours, is_published, published_at, tenant_id, status, schedule_weekdays, age_rating, episode_rating_mode, comment_mode, reading_direction, spread_start_index
 `
 
 type CreateSeriesListingParams struct {
 	TenantID           uuid.UUID      `json:"tenant_id"`
 	SeriesID           uuid.UUID      `json:"series_id"`
-	Synopsis           sql.NullString `json:"synopsis"`
 	ReadingPeriodHours sql.NullInt32  `json:"reading_period_hours"`
 	Status             string         `json:"status"`
 	ScheduleWeekdays   []int32        `json:"schedule_weekdays"`
@@ -128,7 +121,6 @@ func (q *Queries) CreateSeriesListing(ctx context.Context, arg CreateSeriesListi
 	row := q.db.QueryRowContext(ctx, CreateSeriesListing,
 		arg.TenantID,
 		arg.SeriesID,
-		arg.Synopsis,
 		arg.ReadingPeriodHours,
 		arg.Status,
 		pq.Array(arg.ScheduleWeekdays),
@@ -140,7 +132,6 @@ func (q *Queries) CreateSeriesListing(ctx context.Context, arg CreateSeriesListi
 	var i SeriesListing
 	err := row.Scan(
 		&i.SeriesID,
-		&i.Synopsis,
 		&i.ReadingPeriodHours,
 		&i.IsPublished,
 		&i.PublishedAt,
@@ -231,11 +222,11 @@ func (q *Queries) GetPublishedSeriesID(ctx context.Context, arg GetPublishedSeri
 const GetSeriesByIDForTenant = `-- name: GetSeriesByIDForTenant :one
 SELECT s.id,
     s.public_id,
-    s.title,
+    tr.title,
     l.id AS label_id,
     l.public_id AS label_public_id,
     l.name AS label_name,
-    sl.synopsis,
+    tr.synopsis,
     sl.reading_period_hours,
     sl.status,
     sl.schedule_weekdays,
@@ -252,6 +243,7 @@ SELECT s.id,
     -- The series' own purchase availability, NULL where it follows the tenant.
     s.purchase_availability
 FROM series s
+    CROSS JOIN LATERAL series_translation_for(s.id, '') tr
     LEFT JOIN labels l ON l.id = s.label_id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
     LEFT JOIN series_images si ON si.id = s.eye_catch_image_id
@@ -279,7 +271,7 @@ type GetSeriesByIDForTenantRow struct {
 	LabelID                    uuid.NullUUID  `json:"label_id"`
 	LabelPublicID              sql.NullString `json:"label_public_id"`
 	LabelName                  sql.NullString `json:"label_name"`
-	Synopsis                   sql.NullString `json:"synopsis"`
+	Synopsis                   string         `json:"synopsis"`
 	ReadingPeriodHours         sql.NullInt32  `json:"reading_period_hours"`
 	Status                     sql.NullString `json:"status"`
 	ScheduleWeekdays           []int32        `json:"schedule_weekdays"`
@@ -328,11 +320,11 @@ func (q *Queries) GetSeriesByIDForTenant(ctx context.Context, arg GetSeriesByIDF
 const GetSeriesByPublicIDForTenant = `-- name: GetSeriesByPublicIDForTenant :one
 SELECT s.id,
     s.public_id,
-    s.title,
+    tr.title,
     l.id AS label_id,
     l.public_id AS label_public_id,
     l.name AS label_name,
-    sl.synopsis,
+    tr.synopsis,
     sl.reading_period_hours,
     sl.status,
     sl.schedule_weekdays,
@@ -349,6 +341,7 @@ SELECT s.id,
     -- The series' own purchase availability, NULL where it follows the tenant.
     s.purchase_availability
 FROM series s
+    CROSS JOIN LATERAL series_translation_for(s.id, '') tr
     LEFT JOIN labels l ON l.id = s.label_id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
     LEFT JOIN series_images si ON si.id = s.eye_catch_image_id
@@ -376,7 +369,7 @@ type GetSeriesByPublicIDForTenantRow struct {
 	LabelID                    uuid.NullUUID  `json:"label_id"`
 	LabelPublicID              sql.NullString `json:"label_public_id"`
 	LabelName                  sql.NullString `json:"label_name"`
-	Synopsis                   sql.NullString `json:"synopsis"`
+	Synopsis                   string         `json:"synopsis"`
 	ReadingPeriodHours         sql.NullInt32  `json:"reading_period_hours"`
 	Status                     sql.NullString `json:"status"`
 	ScheduleWeekdays           []int32        `json:"schedule_weekdays"`
@@ -425,12 +418,12 @@ func (q *Queries) GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSerie
 const GetSeriesDetail = `-- name: GetSeriesDetail :one
 SELECT s.id,
     s.public_id,
-    s.title,
+    tr.title,
     l.public_id AS label_public_id,
     l.name AS label_name,
     s.eye_catch_image_id,
     NULL::timestamp AS eye_catch_image_updated_at,
-    sl.synopsis,
+    tr.synopsis,
     sl.status,
     sl.schedule_weekdays,
     sl.age_rating,
@@ -537,7 +530,7 @@ SELECT s.id,
                         'public_id',
                         e.public_id,
                         'title',
-                        e.title,
+                        et.title,
                         'order_index',
                         e.order_index,
                         'price',
@@ -567,6 +560,7 @@ SELECT s.id,
                         e.id ASC
                 )
             FROM episodes e
+                CROSS JOIN LATERAL episode_translation_for(e.id, $2::text) et
                 JOIN episode_listings el ON el.episode_id = e.id
                 JOIN published_episode_surfaces pes ON pes.episode_id = e.id
                 JOIN episode_purchase_availability epa ON epa.episode_id = e.id
@@ -575,16 +569,28 @@ SELECT s.id,
                 AND pes.surface = $1::text
         ),
         '[]'
-    )::jsonb AS episodes
+    )::jsonb AS episodes,
+    -- Every locale the series has a translation in that the tenant offers,
+    -- the served one included, in code order: the language alternates of the
+    -- series.
+    ARRAY(
+        SELECT alternate.locale
+        FROM series_translations alternate
+            JOIN tenants t ON t.id = alternate.tenant_id
+        WHERE alternate.series_id = s.id
+            AND alternate.locale = ANY (t.supported_locales)
+        ORDER BY alternate.locale
+    )::text [] AS published_locales
 FROM series s
+    CROSS JOIN LATERAL series_translation_for(s.id, $2::text) tr
     LEFT JOIN series_listings sl ON sl.series_id = s.id
     LEFT JOIN labels l ON s.label_id = l.id
     LEFT JOIN series_creators sc ON s.id = sc.series_id
     LEFT JOIN creators c ON sc.creator_id = c.id
     LEFT JOIN creator_roles cr ON cr.id = sc.role_id
     LEFT JOIN creator_images ci ON ci.id = c.icon_image_id
-WHERE s.public_id = $2
-    AND s.tenant_id = $3
+WHERE s.public_id = $3
+    AND s.tenant_id = $4
     -- A series the calling surface may not show is no row, which the caller
     -- answers exactly as it answers an unpublished one.
     AND EXISTS (
@@ -594,9 +600,10 @@ WHERE s.public_id = $2
             AND ss.surface = $1::text
     )
 GROUP BY s.id,
+    tr.title,
+    tr.synopsis,
     l.id,
     sl.series_id,
-    sl.synopsis,
     sl.status,
     sl.schedule_weekdays,
     sl.age_rating,
@@ -605,6 +612,7 @@ GROUP BY s.id,
 
 type GetSeriesDetailParams struct {
 	Surface  string    `json:"surface"`
+	Locale   string    `json:"locale"`
 	PublicID string    `json:"public_id"`
 	TenantID uuid.UUID `json:"tenant_id"`
 }
@@ -617,7 +625,7 @@ type GetSeriesDetailRow struct {
 	LabelName              sql.NullString  `json:"label_name"`
 	EyeCatchImageID        uuid.NullUUID   `json:"eye_catch_image_id"`
 	EyeCatchImageUpdatedAt sql.NullTime    `json:"eye_catch_image_updated_at"`
-	Synopsis               sql.NullString  `json:"synopsis"`
+	Synopsis               string          `json:"synopsis"`
 	Status                 sql.NullString  `json:"status"`
 	ScheduleWeekdays       []int32         `json:"schedule_weekdays"`
 	AgeRating              sql.NullString  `json:"age_rating"`
@@ -629,10 +637,19 @@ type GetSeriesDetailRow struct {
 	Genres                 json.RawMessage `json:"genres"`
 	Tags                   json.RawMessage `json:"tags"`
 	Episodes               json.RawMessage `json:"episodes"`
+	PublishedLocales       []string        `json:"published_locales"`
 }
 
+// The title and the synopsis are those of the translation
+// series_translation_for picks for the reader's locale, and each episode's
+// title is picked the same way.
 func (q *Queries) GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams) (GetSeriesDetailRow, error) {
-	row := q.db.QueryRowContext(ctx, GetSeriesDetail, arg.Surface, arg.PublicID, arg.TenantID)
+	row := q.db.QueryRowContext(ctx, GetSeriesDetail,
+		arg.Surface,
+		arg.Locale,
+		arg.PublicID,
+		arg.TenantID,
+	)
 	var i GetSeriesDetailRow
 	err := row.Scan(
 		&i.ID,
@@ -654,6 +671,7 @@ func (q *Queries) GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams
 		&i.Genres,
 		&i.Tags,
 		&i.Episodes,
+		pq.Array(&i.PublishedLocales),
 	)
 	return i, err
 }
@@ -661,10 +679,10 @@ func (q *Queries) GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams
 const ListSeriesByTenantAsc = `-- name: ListSeriesByTenantAsc :many
 SELECT s.id,
     s.public_id,
-    s.title,
+    tr.title,
     l.public_id AS label_public_id,
     l.name AS label_name,
-    sl.synopsis,
+    tr.synopsis,
     sl.reading_period_hours,
     sl.status,
     sl.schedule_weekdays,
@@ -677,6 +695,7 @@ SELECT s.id,
     COALESCE(siv.file_size_bytes, 0)::bigint AS eye_catch_image_file_size_bytes,
     s.availability
 FROM series s
+    CROSS JOIN LATERAL series_translation_for(s.id, '') tr
     LEFT JOIN labels l ON l.id = s.label_id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
     LEFT JOIN series_images si ON si.id = s.eye_catch_image_id
@@ -727,7 +746,7 @@ type ListSeriesByTenantAscRow struct {
 	Title                      string         `json:"title"`
 	LabelPublicID              sql.NullString `json:"label_public_id"`
 	LabelName                  sql.NullString `json:"label_name"`
-	Synopsis                   sql.NullString `json:"synopsis"`
+	Synopsis                   string         `json:"synopsis"`
 	ReadingPeriodHours         sql.NullInt32  `json:"reading_period_hours"`
 	Status                     sql.NullString `json:"status"`
 	ScheduleWeekdays           []int32        `json:"schedule_weekdays"`
@@ -793,10 +812,10 @@ func (q *Queries) ListSeriesByTenantAsc(ctx context.Context, arg ListSeriesByTen
 const ListSeriesByTenantDesc = `-- name: ListSeriesByTenantDesc :many
 SELECT s.id,
     s.public_id,
-    s.title,
+    tr.title,
     l.public_id AS label_public_id,
     l.name AS label_name,
-    sl.synopsis,
+    tr.synopsis,
     sl.reading_period_hours,
     sl.status,
     sl.schedule_weekdays,
@@ -809,6 +828,7 @@ SELECT s.id,
     COALESCE(siv.file_size_bytes, 0)::bigint AS eye_catch_image_file_size_bytes,
     s.availability
 FROM series s
+    CROSS JOIN LATERAL series_translation_for(s.id, '') tr
     LEFT JOIN labels l ON l.id = s.label_id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
     LEFT JOIN series_images si ON si.id = s.eye_catch_image_id
@@ -859,7 +879,7 @@ type ListSeriesByTenantDescRow struct {
 	Title                      string         `json:"title"`
 	LabelPublicID              sql.NullString `json:"label_public_id"`
 	LabelName                  sql.NullString `json:"label_name"`
-	Synopsis                   sql.NullString `json:"synopsis"`
+	Synopsis                   string         `json:"synopsis"`
 	ReadingPeriodHours         sql.NullInt32  `json:"reading_period_hours"`
 	Status                     sql.NullString `json:"status"`
 	ScheduleWeekdays           []int32        `json:"schedule_weekdays"`
@@ -878,6 +898,9 @@ type ListSeriesByTenantDescRow struct {
 // reverse. The handler flips ASC rows back into display order. id is a
 // UUIDv7, so the order stays unique even when created_at ties.
 // cursor rules: proto/README.md.
+//
+// The console's reads carry the translation in the tenant's default locale;
+// each translation is read on its own through series_translation.sql.
 func (q *Queries) ListSeriesByTenantDesc(ctx context.Context, arg ListSeriesByTenantDescParams) ([]ListSeriesByTenantDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListSeriesByTenantDesc,
 		arg.TenantID,
@@ -931,9 +954,10 @@ const ListSeriesPublicationsDue = `-- name: ListSeriesPublicationsDue :many
 SELECT s.id,
     s.tenant_id,
     s.public_id,
-    s.title,
+    tr.title,
     s.published_at
 FROM series s
+    CROSS JOIN LATERAL series_translation_for(s.id, '') tr
 WHERE s.is_published
     AND s.publication_revalidated_at IS NULL
     AND s.published_at <= NOW()
@@ -1033,17 +1057,15 @@ func (q *Queries) MarkSeriesPublicationRevalidated(ctx context.Context, id uuid.
 
 const UpdateSeriesBase = `-- name: UpdateSeriesBase :exec
 UPDATE series
-SET title = $2,
-    label_id = $3,
-    availability = $4,
-    purchase_availability = $5,
+SET label_id = $2,
+    availability = $3,
+    purchase_availability = $4,
     updated_at = NOW()
 WHERE id = $1
 `
 
 type UpdateSeriesBaseParams struct {
 	ID                   uuid.UUID      `json:"id"`
-	Title                string         `json:"title"`
 	LabelID              uuid.NullUUID  `json:"label_id"`
 	Availability         string         `json:"availability"`
 	PurchaseAvailability sql.NullString `json:"purchase_availability"`
@@ -1052,7 +1074,6 @@ type UpdateSeriesBaseParams struct {
 func (q *Queries) UpdateSeriesBase(ctx context.Context, arg UpdateSeriesBaseParams) error {
 	_, err := q.db.ExecContext(ctx, UpdateSeriesBase,
 		arg.ID,
-		arg.Title,
 		arg.LabelID,
 		arg.Availability,
 		arg.PurchaseAvailability,
@@ -1064,7 +1085,6 @@ const UpdateSeriesListing = `-- name: UpdateSeriesListing :one
 INSERT INTO series_listings (
         tenant_id,
         series_id,
-        synopsis,
         reading_period_hours,
         status,
         schedule_weekdays,
@@ -1082,49 +1102,43 @@ VALUES (
         $6,
         $7,
         $8,
-        $9,
-        $10
+        $9
     ) ON CONFLICT (series_id) DO
 UPDATE
-SET synopsis = CASE
-        WHEN $11::boolean THEN EXCLUDED.synopsis
-        ELSE series_listings.synopsis
-    END,
-    reading_period_hours = CASE
-        WHEN $12::boolean THEN EXCLUDED.reading_period_hours
+SET reading_period_hours = CASE
+        WHEN $10::boolean THEN EXCLUDED.reading_period_hours
         ELSE series_listings.reading_period_hours
     END,
     status = CASE
-        WHEN $13::boolean THEN EXCLUDED.status
+        WHEN $11::boolean THEN EXCLUDED.status
         ELSE series_listings.status
     END,
     schedule_weekdays = CASE
-        WHEN $14::boolean THEN EXCLUDED.schedule_weekdays
+        WHEN $12::boolean THEN EXCLUDED.schedule_weekdays
         ELSE series_listings.schedule_weekdays
     END,
     age_rating = CASE
-        WHEN $15::boolean THEN EXCLUDED.age_rating
+        WHEN $13::boolean THEN EXCLUDED.age_rating
         ELSE series_listings.age_rating
     END,
     comment_mode = CASE
-        WHEN $16::boolean THEN EXCLUDED.comment_mode
+        WHEN $14::boolean THEN EXCLUDED.comment_mode
         ELSE series_listings.comment_mode
     END,
     reading_direction = CASE
-        WHEN $17::boolean THEN EXCLUDED.reading_direction
+        WHEN $15::boolean THEN EXCLUDED.reading_direction
         ELSE series_listings.reading_direction
     END,
     spread_start_index = CASE
-        WHEN $18::boolean THEN EXCLUDED.spread_start_index
+        WHEN $16::boolean THEN EXCLUDED.spread_start_index
         ELSE series_listings.spread_start_index
     END
-RETURNING series_id, synopsis, reading_period_hours, is_published, published_at, tenant_id, status, schedule_weekdays, age_rating, episode_rating_mode, comment_mode, reading_direction, spread_start_index
+RETURNING series_id, reading_period_hours, is_published, published_at, tenant_id, status, schedule_weekdays, age_rating, episode_rating_mode, comment_mode, reading_direction, spread_start_index
 `
 
 type UpdateSeriesListingParams struct {
 	TenantID                uuid.UUID      `json:"tenant_id"`
 	SeriesID                uuid.UUID      `json:"series_id"`
-	Synopsis                sql.NullString `json:"synopsis"`
 	ReadingPeriodHours      sql.NullInt32  `json:"reading_period_hours"`
 	Status                  string         `json:"status"`
 	ScheduleWeekdays        []int32        `json:"schedule_weekdays"`
@@ -1132,7 +1146,6 @@ type UpdateSeriesListingParams struct {
 	CommentMode             sql.NullString `json:"comment_mode"`
 	ReadingDirection        string         `json:"reading_direction"`
 	SpreadStartIndex        int32          `json:"spread_start_index"`
-	WriteSynopsis           bool           `json:"write_synopsis"`
 	WriteReadingPeriodHours bool           `json:"write_reading_period_hours"`
 	WriteStatus             bool           `json:"write_status"`
 	WriteScheduleWeekdays   bool           `json:"write_schedule_weekdays"`
@@ -1149,7 +1162,6 @@ func (q *Queries) UpdateSeriesListing(ctx context.Context, arg UpdateSeriesListi
 	row := q.db.QueryRowContext(ctx, UpdateSeriesListing,
 		arg.TenantID,
 		arg.SeriesID,
-		arg.Synopsis,
 		arg.ReadingPeriodHours,
 		arg.Status,
 		pq.Array(arg.ScheduleWeekdays),
@@ -1157,7 +1169,6 @@ func (q *Queries) UpdateSeriesListing(ctx context.Context, arg UpdateSeriesListi
 		arg.CommentMode,
 		arg.ReadingDirection,
 		arg.SpreadStartIndex,
-		arg.WriteSynopsis,
 		arg.WriteReadingPeriodHours,
 		arg.WriteStatus,
 		arg.WriteScheduleWeekdays,
@@ -1169,7 +1180,6 @@ func (q *Queries) UpdateSeriesListing(ctx context.Context, arg UpdateSeriesListi
 	var i SeriesListing
 	err := row.Scan(
 		&i.SeriesID,
-		&i.Synopsis,
 		&i.ReadingPeriodHours,
 		&i.IsPublished,
 		&i.PublishedAt,

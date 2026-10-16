@@ -31,10 +31,11 @@ FROM tenants
 ORDER BY id;
 
 -- name: ListCatalogIndexSeries :many
--- Every series of the tenant, or the one series_id names.
+-- Every series of the tenant, or the one series_id names, with the title and
+-- the synopsis of its translation in the tenant's default locale.
 SELECT s.id,
-    s.title,
-    COALESCE(sl.synopsis, '')::text AS synopsis,
+    tr.title,
+    tr.synopsis,
     COALESCE(s.published_at, 'epoch')::timestamptz AS published_at,
     ARRAY(
         SELECT ss.surface
@@ -108,6 +109,7 @@ SELECT s.id,
         '{}'
     )::jsonb AS latest_episode_at_by_surface
 FROM series s
+    CROSS JOIN LATERAL series_translation_for(s.id, '') tr
     LEFT JOIN series_listings sl ON sl.series_id = s.id
 WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND (

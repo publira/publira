@@ -274,27 +274,28 @@ FROM (
     SELECT e.series_id,
         e.id AS episode_id,
         e.public_id AS episode_public_id,
-        e.title AS episode_title,
+        et.title AS episode_title,
         e.order_index AS episode_order_index,
         el.published_at AS published_at
     FROM series_follows sf
         JOIN episodes e ON e.tenant_id = sf.tenant_id
             AND e.series_id = sf.series_id
+        CROSS JOIN LATERAL episode_translation_for(e.id, $1::text) et
         JOIN episode_listings el ON el.tenant_id = e.tenant_id
             AND el.episode_id = e.id
-    WHERE sf.tenant_id = $1
-        AND sf.user_id = $2
+    WHERE sf.tenant_id = $2
+        AND sf.user_id = $3
         AND EXISTS (
             SELECT 1
             FROM published_episode_surfaces pes
             WHERE pes.episode_id = e.id
-                AND pes.surface = $3::text
+                AND pes.surface = $4::text
         )
     UNION
     SELECT e.series_id,
         e.id AS episode_id,
         e.public_id AS episode_public_id,
-        e.title AS episode_title,
+        et.title AS episode_title,
         e.order_index AS episode_order_index,
         el.published_at AS published_at
     FROM creator_follows cf
@@ -302,38 +303,40 @@ FROM (
             AND ec.creator_id = cf.creator_id
         JOIN episodes e ON e.tenant_id = ec.tenant_id
             AND e.id = ec.episode_id
+        CROSS JOIN LATERAL episode_translation_for(e.id, $1::text) et
         JOIN episode_listings el ON el.tenant_id = e.tenant_id
             AND el.episode_id = e.id
-    WHERE cf.tenant_id = $1
-        AND cf.user_id = $2
+    WHERE cf.tenant_id = $2
+        AND cf.user_id = $3
         AND EXISTS (
             SELECT 1
             FROM published_episode_surfaces pes
             WHERE pes.episode_id = e.id
-                AND pes.surface = $3::text
+                AND pes.surface = $4::text
         )
 ) AS updates
-WHERE $4::timestamptz IS NULL
+WHERE $5::timestamptz IS NULL
     OR (
-        $5::boolean
+        $6::boolean
         AND (published_at, episode_id) >= (
-            $4::timestamptz,
-            $6::uuid
+            $5::timestamptz,
+            $7::uuid
         )
     )
     OR (
-        NOT $5::boolean
+        NOT $6::boolean
         AND (published_at, episode_id) > (
-            $4::timestamptz,
-            $6::uuid
+            $5::timestamptz,
+            $7::uuid
         )
     )
 ORDER BY published_at ASC,
     episode_id ASC
-LIMIT $7
+LIMIT $8
 `
 
 type ListMyFollowUpdatesAscParams struct {
+	Locale            string        `json:"locale"`
 	TenantID          uuid.UUID     `json:"tenant_id"`
 	UserID            uuid.UUID     `json:"user_id"`
 	Surface           string        `json:"surface"`
@@ -355,6 +358,7 @@ type ListMyFollowUpdatesAscRow struct {
 // The backward direction of ListMyFollowUpdatesDesc.
 func (q *Queries) ListMyFollowUpdatesAsc(ctx context.Context, arg ListMyFollowUpdatesAscParams) ([]ListMyFollowUpdatesAscRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListMyFollowUpdatesAsc,
+		arg.Locale,
 		arg.TenantID,
 		arg.UserID,
 		arg.Surface,
@@ -402,27 +406,28 @@ FROM (
     SELECT e.series_id,
         e.id AS episode_id,
         e.public_id AS episode_public_id,
-        e.title AS episode_title,
+        et.title AS episode_title,
         e.order_index AS episode_order_index,
         el.published_at AS published_at
     FROM series_follows sf
         JOIN episodes e ON e.tenant_id = sf.tenant_id
             AND e.series_id = sf.series_id
+        CROSS JOIN LATERAL episode_translation_for(e.id, $1::text) et
         JOIN episode_listings el ON el.tenant_id = e.tenant_id
             AND el.episode_id = e.id
-    WHERE sf.tenant_id = $1
-        AND sf.user_id = $2
+    WHERE sf.tenant_id = $2
+        AND sf.user_id = $3
         AND EXISTS (
             SELECT 1
             FROM published_episode_surfaces pes
             WHERE pes.episode_id = e.id
-                AND pes.surface = $3::text
+                AND pes.surface = $4::text
         )
     UNION
     SELECT e.series_id,
         e.id AS episode_id,
         e.public_id AS episode_public_id,
-        e.title AS episode_title,
+        et.title AS episode_title,
         e.order_index AS episode_order_index,
         el.published_at AS published_at
     FROM creator_follows cf
@@ -430,38 +435,40 @@ FROM (
             AND ec.creator_id = cf.creator_id
         JOIN episodes e ON e.tenant_id = ec.tenant_id
             AND e.id = ec.episode_id
+        CROSS JOIN LATERAL episode_translation_for(e.id, $1::text) et
         JOIN episode_listings el ON el.tenant_id = e.tenant_id
             AND el.episode_id = e.id
-    WHERE cf.tenant_id = $1
-        AND cf.user_id = $2
+    WHERE cf.tenant_id = $2
+        AND cf.user_id = $3
         AND EXISTS (
             SELECT 1
             FROM published_episode_surfaces pes
             WHERE pes.episode_id = e.id
-                AND pes.surface = $3::text
+                AND pes.surface = $4::text
         )
 ) AS updates
-WHERE $4::timestamptz IS NULL
+WHERE $5::timestamptz IS NULL
     OR (
-        $5::boolean
+        $6::boolean
         AND (published_at, episode_id) <= (
-            $4::timestamptz,
-            $6::uuid
+            $5::timestamptz,
+            $7::uuid
         )
     )
     OR (
-        NOT $5::boolean
+        NOT $6::boolean
         AND (published_at, episode_id) < (
-            $4::timestamptz,
-            $6::uuid
+            $5::timestamptz,
+            $7::uuid
         )
     )
 ORDER BY published_at DESC,
     episode_id DESC
-LIMIT $7
+LIMIT $8
 `
 
 type ListMyFollowUpdatesDescParams struct {
+	Locale            string        `json:"locale"`
 	TenantID          uuid.UUID     `json:"tenant_id"`
 	UserID            uuid.UUID     `json:"user_id"`
 	Surface           string        `json:"surface"`
@@ -506,6 +513,7 @@ type ListMyFollowUpdatesDescRow struct {
 // cursor rules: proto/README.md.
 func (q *Queries) ListMyFollowUpdatesDesc(ctx context.Context, arg ListMyFollowUpdatesDescParams) ([]ListMyFollowUpdatesDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListMyFollowUpdatesDesc,
+		arg.Locale,
 		arg.TenantID,
 		arg.UserID,
 		arg.Surface,
