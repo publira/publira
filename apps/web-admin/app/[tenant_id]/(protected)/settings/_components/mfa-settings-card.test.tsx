@@ -11,6 +11,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
   within,
 } from "@testing-library/react";
 import { Activity } from "react";
@@ -511,25 +512,40 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
     expect(finishPasskey).not.toHaveBeenCalled();
   });
 
-  // Removing the last factor deletes the recovery codes on the server, so the
-  // batch the first passkey brought must not stay on screen to be saved.
-  it("drops the codes a first passkey brought once a passkey is removed", async () => {
+  // The batch on screen is the only plaintext copy. A second passkey issues
+  // none and removing one of two leaves the first batch valid, so both keep
+  // it; once the status read again says no factor is left, the codes went
+  // with the last one on the server and must not stay on screen to be saved.
+  it("keeps the codes a first passkey brought until the last factor is gone", async () => {
     beginPasskey.mockResolvedValue({
       message: "",
       ok: true,
       optionsJson: "{}",
     });
     startRegistration.mockResolvedValue({ id: "credential" });
-    finishPasskey.mockResolvedValue({
-      message: "The passkey has been added.",
-      ok: true,
-      passkeyId: "PASSKEY00001",
-      recoveryCodes: ["AAAAA-BBBBB"],
-    });
+    finishPasskey
+      .mockResolvedValueOnce({
+        message: "The passkey has been added.",
+        ok: true,
+        passkeyId: "PASSKEY00001",
+        recoveryCodes: ["AAAAA-BBBBB"],
+      })
+      .mockResolvedValueOnce({
+        message: "The passkey has been added.",
+        ok: true,
+        passkeyId: "PASSKEY00002",
+        recoveryCodes: [],
+      });
     deletePasskey.mockResolvedValue({
       message: "The passkey has been removed.",
       ok: true,
     });
+    const phonePasskey = { ...laptopPasskey, id: "PASSKEY00002", name: "" };
+    const twoPasskeys: AdminMfaStatus = {
+      ...passkeyOnly,
+      passkeys: [laptopPasskey, phonePasskey],
+      required: false,
+    };
 
     const { rerender } = renderCard(disabled);
 
@@ -537,14 +553,38 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
       await screen.findByRole("button", { name: "Add a passkey" }, onScreen)
     );
     expect(await screen.findByText("AAAAA-BBBBB", {}, onScreen)).toBeDefined();
-
     rerender(<Card status={{ ...passkeyOnly, required: false }} />);
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Remove" }, onScreen)
-    );
-    const dialog = within(await screen.findByRole("alertdialog"));
-    fireEvent.click(await dialog.findByRole("button", { name: "Remove" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Skip" }));
 
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Add a passkey" }, onScreen)
+    );
+    await waitFor(() => {
+      expect(finishPasskey).toHaveBeenCalledTimes(2);
+    });
+    rerender(<Card status={twoPasskeys} />);
+    expect(screen.getByText("AAAAA-BBBBB")).toBeDefined();
+
+    const rows = await screen.findAllByRole("listitem", {}, onScreen);
+    const phoneRow = within(
+      rows.find((row) =>
+        row.textContent?.includes("Unnamed passkey")
+      ) as HTMLElement
+    );
+    fireEvent.click(phoneRow.getByRole("button", { name: "Remove" }));
+    fireEvent.click(
+      await within(await screen.findByRole("alertdialog")).findByRole(
+        "button",
+        { name: "Remove" }
+      )
+    );
+    expect(
+      await screen.findByText("The passkey has been removed.", {}, onScreen)
+    ).toBeDefined();
+    rerender(<Card status={{ ...passkeyOnly, required: false }} />);
+    expect(screen.getByText("AAAAA-BBBBB")).toBeDefined();
+
+    rerender(<Card status={disabled} />);
     expect(
       await screen.findByText("The passkey has been removed.", {}, onScreen)
     ).toBeDefined();

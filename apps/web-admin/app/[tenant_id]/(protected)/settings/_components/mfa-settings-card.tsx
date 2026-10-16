@@ -249,7 +249,10 @@ export const MfaSettingsCard = ({
     </AdminSectionHeader>
     <MfaStatusSummary status={status} />
 
-    <MfaSettingsOutcome recoveryCodes={<MfaRecoveryCodes />}>
+    <MfaSettingsOutcome
+      hasSecondFactor={status.enabled || status.passkeys.length > 0}
+      recoveryCodes={<MfaRecoveryCodes />}
+    >
       <div className="grid gap-3">
         <h3 className="text-sm font-medium text-foreground">
           <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>

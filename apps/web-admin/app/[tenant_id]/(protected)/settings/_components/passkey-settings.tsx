@@ -169,9 +169,8 @@ const PasskeyRenameButton = ({
  * Removes one passkey, once the operator has confirmed it. The refusal worth
  * reading is the last second factor of an account the tenant requires one
  * of, and it stays on the row. Success is reported to the card instead, since
- * the row is gone: removing the last factor deletes the recovery codes with
- * it, so a batch an earlier addition left on screen has to go as well, as it
- * does when the authenticator app is turned off.
+ * the row is gone, and the card is what drops a batch an earlier addition
+ * left on screen once the last factor, and the codes with it, are gone.
  */
 const PasskeyRemoveButton = ({
   passkeyId,
