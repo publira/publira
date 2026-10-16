@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
@@ -36,6 +37,15 @@ func (s *adminServer) storedReaderIconPolicy(ctx context.Context, tenantID uuid.
 		return "", s.internalDBError(ctx, "failed to get the tenant's reader icon policy", err, "tenant_id", tenantID.String())
 	}
 	return stored, nil
+}
+
+// readerIconSettingsRevalidateTag names the storefront's cache of the tenant
+// settings the site branches on, which is where it keeps
+// TenantService.GetTenantReaderIconPolicy and the presets it answers. A copy
+// left cached would keep offering an upload or a preset the API already
+// refuses.
+func readerIconSettingsRevalidateTag(tenantID uuid.UUID) string {
+	return fmt.Sprintf("tenant:%s:site", tenantID.String())
 }
 
 // clearedIconCommentListRevalidateTags names the storefront's cached comment
@@ -141,7 +151,11 @@ func (s *adminServer) UpdateTenantReaderIconPolicy(
 		if err := s.writeTenantSettingAudit(txCtx, tenant, session, "tenant_reader_icon_policy_updated", "tenant_reader_icon_policy"); err != nil {
 			return nil, err
 		}
-		return s.clearedIconCommentListRevalidateTags(txCtx, tenant.ID, cleared)
+		commentListTags, err := s.clearedIconCommentListRevalidateTags(txCtx, tenant.ID, cleared)
+		if err != nil {
+			return nil, err
+		}
+		return append([]string{readerIconSettingsRevalidateTag(tenant.ID)}, commentListTags...), nil
 	}); err != nil {
 		return nil, err
 	}
@@ -230,7 +244,7 @@ func (s *adminServer) UploadReaderIconPreset(
 				preset = stored
 			}
 		}
-		return nil, nil
+		return []string{readerIconSettingsRevalidateTag(tenant.ID)}, nil
 	}); err != nil {
 		return nil, err
 	}
@@ -299,7 +313,11 @@ func (s *adminServer) DeleteReaderIconPreset(
 		if err := s.writeTenantSettingAudit(txCtx, tenant, session, "tenant_reader_icon_preset_deleted", "tenant_reader_icon_presets"); err != nil {
 			return nil, err
 		}
-		return s.clearedIconCommentListRevalidateTags(txCtx, tenant.ID, cleared)
+		commentListTags, err := s.clearedIconCommentListRevalidateTags(txCtx, tenant.ID, cleared)
+		if err != nil {
+			return nil, err
+		}
+		return append([]string{readerIconSettingsRevalidateTag(tenant.ID)}, commentListTags...), nil
 	}); err != nil {
 		return nil, err
 	}
