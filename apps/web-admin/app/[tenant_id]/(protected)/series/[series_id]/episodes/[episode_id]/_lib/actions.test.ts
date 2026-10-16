@@ -788,8 +788,9 @@ describe("episode actions", () => {
       expect(mockUpdateTag).toHaveBeenCalledWith(
         "episode-TENANT001-018f0e6a-4000-7000-8000-000000000001"
       );
-      // The access ticket list names the episode each ticket opens.
+      // The access ticket and purchase lists name the episode each row opens.
       expect(mockUpdateTag).toHaveBeenCalledWith("access-tickets-TENANT001");
+      expect(mockUpdateTag).toHaveBeenCalledWith("purchases-TENANT001");
       expect(mockRedirect).toHaveBeenCalledWith(
         "/series/SERIES001/episodes/EP001?title_updated=1"
       );

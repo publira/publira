@@ -357,7 +357,9 @@ export const updateEpisodeTitleAction = async (
 
   updateTag(episodesCacheTag(tenantId));
   updateTag(episodeCacheTag(tenantId, episodeId));
+  // The access tickets and the purchases name the episode they open.
   updateTag(accessTicketsCacheTag(tenantId));
+  updateTag(purchasesCacheTag(tenantId));
 
   redirect(
     translationEditPath(
