@@ -1,3 +1,5 @@
+import { getLocales } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
 import {
   SectionError,
@@ -12,6 +14,8 @@ import {
   parseRouteParams,
   routeParamString,
 } from "@publira/utils/route-params";
+import { searchParamEnum } from "@publira/utils/search-params";
+import type { SearchParamValue } from "@publira/utils/search-params";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -32,7 +36,9 @@ import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { TenantEditorFieldset } from "#components/tenant-role-gate";
+import { TranslationTabs } from "#components/translation-tabs";
 import { isSignedInTenantEditor } from "#lib/auth-session";
+import type { SeriesTranslationItem } from "#lib/catalog-translation";
 import { listAllCreators } from "#lib/creator";
 import { listCreatorRoles } from "#lib/creator-roles";
 import { parseEditTab } from "#lib/edit-tab-search-params";
@@ -45,18 +51,26 @@ import { getSeriesWaitFreeSettings } from "#lib/series-wait-free";
 import { listTagSuggestions } from "#lib/tag";
 import { getTenantCommentSettings } from "#lib/tenant-comment-settings";
 import { getTenantId } from "#lib/tenant-id";
+import { findTenantLocales } from "#lib/tenant-locales";
+import type { TenantLocales } from "#lib/tenant-locales";
 import { getTenantPurchaseSettings } from "#lib/tenant-purchase-settings";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
+import {
+  resolveTranslationToEdit,
+  translationEditPath,
+} from "#lib/translation-locales";
 
 import { SeriesEyeCatchForm } from "../_components/series-eye-catch-form";
 import { SeriesForm } from "../_components/series-form";
 import { SeriesTabNav } from "../_components/series-tab-nav";
 import {
+  deleteSeriesTranslationAction,
   updateSeriesAction,
   updateSeriesEyeCatchAction,
   updateSeriesWaitFreeSettingsAction,
   uploadSeriesEyeCatchAspectImageAction,
 } from "../_lib/actions";
+import { SeriesTranslationDeleteButton } from "./_components/series-translation-delete-button";
 import { SeriesWaitFreeForm } from "./_components/series-wait-free-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
@@ -85,6 +99,7 @@ interface EditSeriesPageProps {
     tenant_id: string;
   }>;
   searchParams: Promise<{
+    locale?: SearchParamValue;
     tab?: string;
   }>;
 }
@@ -92,6 +107,33 @@ interface EditSeriesPageProps {
 const editSeriesParamsSchema = z.object({
   series_id: routeParamString(),
 });
+
+/**
+ * The language whose title and synopsis the basic tab edits. Absent, or naming
+ * a locale this build does not serve or the site does not offer, it is the one
+ * {@link resolveTranslationToEdit} picks.
+ */
+const editSeriesSearchParamsSchema = z.object({
+  locale: searchParamEnum(getLocales(), { fallback: "" }),
+});
+
+const requestedTranslationLocale = (
+  searchParams: Awaited<EditSeriesPageProps["searchParams"]>
+): Locale | undefined =>
+  editSeriesSearchParamsSchema.parse(searchParams).locale || undefined;
+
+/**
+ * The translation the cover image tab sends the title back in: the one
+ * `Series.title` was read from, which is the default language's, else the
+ * oldest.
+ */
+const titleTranslation = (
+  translations: readonly SeriesTranslationItem[],
+  tenantLocales: TenantLocales | null
+): SeriesTranslationItem | undefined =>
+  translations.find(
+    (translation) => translation.locale === tenantLocales?.defaultLocale
+  ) ?? translations[0];
 
 const resolveActiveTab = async (
   searchParams: EditSeriesPageProps["searchParams"]
@@ -192,6 +234,51 @@ const SeriesWaitFreeSection = async ({
   );
 };
 
+const SeriesEyeCatchTabData = async ({
+  seriesId,
+  tenantId,
+}: {
+  seriesId: string;
+  tenantId: string;
+}) => {
+  const [result, tenantLocales] = await Promise.all([
+    getSeries({ publicId: seriesId }),
+    findTenantLocales(tenantId),
+  ]);
+  if (!result.ok) {
+    if (result.notFound) {
+      // Missing, or another tenant's series — never told apart. Renders
+      // `(protected)/not-found.tsx` inside the console chrome.
+      notFound();
+    }
+    return <SeriesLoadError message={result.message} />;
+  }
+  const translation = titleTranslation(result.translations, tenantLocales);
+  return (
+    // Both cards hold the picked file and the chosen ratio in local state,
+    // so the tab is keyed by the series it belongs to: moving to another
+    // series remounts it rather than leaving that state behind.
+    <div className="grid gap-6" key={result.series.publicId}>
+      <SeriesEyeCatchForm
+        action={updateSeriesEyeCatchAction}
+        series={{
+          ...result.series,
+          title: translation?.title ?? result.series.title,
+        }}
+        tenantId={tenantId}
+        translationLocale={translation?.locale}
+      />
+      <EyeCatchAspectImages
+        id={result.series.id}
+        entity="series"
+        tenantId={tenantId}
+        uploadAction={uploadSeriesEyeCatchAspectImageAction}
+        variants={result.series.eyeCatchImageVariants}
+      />
+    </div>
+  );
+};
+
 const EditSeriesFormData = async ({
   params,
   searchParams,
@@ -206,37 +293,10 @@ const EditSeriesFormData = async ({
     notFound();
   }
   const { series_id: seriesId } = parsedParams;
-  const locale = await getLocale(tenantId);
   if (activeTab === "eye-catch") {
-    const result = await getSeries({ publicId: seriesId });
-    if (!result.ok) {
-      if (result.notFound) {
-        // Missing, or another tenant's series — never told apart. Renders
-        // `(protected)/not-found.tsx` inside the console chrome.
-        notFound();
-      }
-      return <SeriesLoadError message={result.message} />;
-    }
-    return (
-      // Both cards hold the picked file and the chosen ratio in local state,
-      // so the tab is keyed by the series it belongs to: moving to another
-      // series remounts it rather than leaving that state behind.
-      <div className="grid gap-6" key={result.series.publicId}>
-        <SeriesEyeCatchForm
-          action={updateSeriesEyeCatchAction}
-          series={result.series}
-          tenantId={tenantId}
-        />
-        <EyeCatchAspectImages
-          id={result.series.id}
-          entity="series"
-          tenantId={tenantId}
-          uploadAction={uploadSeriesEyeCatchAspectImageAction}
-          variants={result.series.eyeCatchImageVariants}
-        />
-      </div>
-    );
+    return <SeriesEyeCatchTabData seriesId={seriesId} tenantId={tenantId} />;
   }
+  const locale = await getLocale(tenantId);
 
   const [
     result,
@@ -250,6 +310,8 @@ const EditSeriesFormData = async ({
     timeZone,
     t,
     canCreateLabel,
+    tenantLocales,
+    rawSearchParams,
   ] = await Promise.all([
     getSeries({ publicId: seriesId }),
     // Walk every cursor page so the Combobox can search past the first 100.
@@ -270,6 +332,8 @@ const EditSeriesFormData = async ({
     // The placeholders are attributes, which cannot stream in as nodes.
     getMessagesFor(locale),
     isSignedInTenantEditor(tenantId),
+    findTenantLocales(tenantId),
+    searchParams,
   ]);
 
   if (!result.ok) {
@@ -279,8 +343,34 @@ const EditSeriesFormData = async ({
     return <SeriesLoadError message={result.message} />;
   }
 
+  const { translations } = result;
+  const { locales, shownLocale, translation, visibleLocales } =
+    resolveTranslationToEdit({
+      requestedLocale: requestedTranslationLocale(rawSearchParams),
+      tenantLocales,
+      translations,
+    });
+
   return (
     <div className="grid gap-6">
+      {shownLocale ? (
+        <TranslationTabs
+          hrefFor={(code) => translationEditPath(`/series/${seriesId}`, code)}
+          locales={locales}
+          selectedLocale={shownLocale}
+          translatedLocales={visibleLocales}
+        >
+          {translation && translations.length > 1 ? (
+            <SeriesTranslationDeleteButton
+              action={deleteSeriesTranslationAction}
+              seriesId={result.series.id}
+              seriesPublicId={result.series.publicId}
+              tenantId={tenantId}
+              translationLocale={translation.locale}
+            />
+          ) : null}
+        </TranslationTabs>
+      ) : null}
       <SeriesForm
         action={updateSeriesAction}
         canCreateLabel={canCreateLabel}
@@ -297,8 +387,14 @@ const EditSeriesFormData = async ({
         initialCommentMode={result.commentMode}
         initialPurchaseAvailability={result.purchaseAvailability}
         initialReadingLayout={result.readingLayout}
-        initialSeries={result.series}
-        key={result.series.publicId}
+        initialSeries={{
+          ...result.series,
+          synopsis: translation?.synopsis ?? "",
+          title: translation?.title ?? "",
+        }}
+        // A key per translation, so a title typed on one language's tab never
+        // carries over to another.
+        key={`${result.series.publicId}:${shownLocale ?? ""}`}
         labels={labelsResult.labels}
         labelsErrorMessage={labelsResult.ok ? undefined : labelsResult.message}
         mode="update"
@@ -320,6 +416,8 @@ const EditSeriesFormData = async ({
         tenantId={tenantId}
         timeZone={timeZone}
         titlePlaceholder={t("admin.series.form.title_placeholder")}
+        translated={translation !== undefined}
+        translationLocale={shownLocale}
       />
       <SectionErrorBoundary
         title={
@@ -366,6 +464,10 @@ const EditSeriesPage = ({ params, searchParams }: EditSeriesPageProps) => (
     <AdminPageContent>
       <FlashToast message="admin.series.created" />
       <FlashToast keyName="updated" message="admin.series.updated" />
+      <FlashToast
+        keyName="translation_deleted"
+        message="admin.series.translations.deleted"
+      />
       <FlashToast
         keyName="wait_free_updated"
         message="admin.series.wait_free.updated"

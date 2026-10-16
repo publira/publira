@@ -35,6 +35,7 @@ import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { TenantEditorFieldset } from "#components/tenant-role-gate";
+import { TranslationTabs } from "#components/translation-tabs";
 import {
   isSignedInTenantAdmin,
   redirectToLoginIfSessionRejected,
@@ -45,8 +46,8 @@ import { getPage, listPageTranslations, listPageVersions } from "#lib/page";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantLegalPages } from "#lib/tenant-legal-pages";
 import { findTenantLocales } from "#lib/tenant-locales";
-import type { TenantLocales } from "#lib/tenant-locales";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
+import { resolveTranslationLocales } from "#lib/translation-locales";
 
 import { PageWorkspace } from "../_components/page-workspace";
 import {
@@ -57,9 +58,9 @@ import {
   savePageAction,
   unpublishPageAction,
 } from "../_lib/actions";
+import { pageEditPath } from "../page-types";
 import { PageTranslationAddForm } from "./_components/page-translation-add-form";
 import { PageTranslationDeleteButton } from "./_components/page-translation-delete-button";
-import { PageTranslationTabs } from "./_components/page-translation-tabs";
 
 interface EditPagePageProps {
   params: Promise<{
@@ -75,7 +76,7 @@ const editPageParamsSchema = z.object({
 
 /**
  * The translation to show. Absent, or naming a locale this build does not
- * serve or the site does not offer, it is the one {@link translationToShow}
+ * serve or the site does not offer, it is the one {@link resolveTranslationLocales}
  * picks.
  */
 const editPageSearchParamsSchema = z.object({
@@ -140,33 +141,6 @@ const canAskReadersToAgree = async (
   );
 };
 
-/**
- * The languages that have a tab: the ones the site offers, or every one this
- * build serves when they cannot be read, since a tab too many is a smaller
- * fault than a translation nobody can reach.
- */
-const tabLocales = (locales: TenantLocales | null): readonly Locale[] =>
-  locales?.supportedLocales ?? getLocales();
-
-/**
- * The translation the screen opens on when the URL names none it can show: the
- * default language's, else the first offered language the page has one in,
- * else the form that adds the default one. The API's own choice falls back to
- * any translation, a hidden one included, so it is left to make only when the
- * tenant's languages cannot be read.
- */
-const translationToShow = (
-  locales: TenantLocales | null,
-  visibleLocales: readonly Locale[]
-): Locale | undefined => {
-  if (!locales) {
-    return undefined;
-  }
-  return visibleLocales.includes(locales.defaultLocale)
-    ? locales.defaultLocale
-    : (visibleLocales[0] ?? locales.defaultLocale);
-};
-
 const PageWorkspaceData = async ({
   params,
   searchParams,
@@ -202,20 +176,19 @@ const PageWorkspaceData = async ({
   const translatedLocales = translationsResult.translations.map(
     (translation) => translation.locale
   );
-  const locales = tabLocales(tenantLocales);
-  const offered = new Set(locales);
-  const visibleLocales = translatedLocales.filter((code) => offered.has(code));
-  const shownLocale =
-    requestedLocale && offered.has(requestedLocale)
-      ? requestedLocale
-      : translationToShow(tenantLocales, visibleLocales);
+  const { locales, shownLocale, visibleLocales } = resolveTranslationLocales({
+    requestedLocale,
+    tenantLocales,
+    translatedLocales,
+  });
+  const hrefFor = (code: Locale) => pageEditPath(pageId, code);
 
   if (shownLocale && !visibleLocales.includes(shownLocale)) {
     return (
       <AdminSections>
-        <PageTranslationTabs
+        <TranslationTabs
+          hrefFor={hrefFor}
           locales={locales}
-          pageId={pageId}
           selectedLocale={shownLocale}
           translatedLocales={visibleLocales}
         />
@@ -261,9 +234,9 @@ const PageWorkspaceData = async ({
   return (
     <AdminSections>
       {selectedLocale ? (
-        <PageTranslationTabs
+        <TranslationTabs
+          hrefFor={hrefFor}
           locales={locales}
-          pageId={pageId}
           selectedLocale={selectedLocale}
           translatedLocales={visibleLocales}
         >
@@ -275,7 +248,7 @@ const PageWorkspaceData = async ({
               translationLocale={selectedLocale}
             />
           ) : null}
-        </PageTranslationTabs>
+        </TranslationTabs>
       ) : null}
       {/* A key per translation, so the editor's unsaved body never carries over to another language. */}
       <PageWorkspace

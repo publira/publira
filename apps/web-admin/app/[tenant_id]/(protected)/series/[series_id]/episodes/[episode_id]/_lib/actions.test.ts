@@ -5,6 +5,7 @@ const {
   mockCreateEpisodeFreeWindow,
   mockDeleteEpisodeFreeWindow,
   mockDeleteEpisodeImage,
+  mockDeleteEpisodeTranslation,
   mockGetAccessToken,
   mockGetEpisode,
   mockGetTenantDisplayTimeZone,
@@ -25,6 +26,7 @@ const {
   mockCreateEpisodeFreeWindow: vi.fn(),
   mockDeleteEpisodeFreeWindow: vi.fn(),
   mockDeleteEpisodeImage: vi.fn(),
+  mockDeleteEpisodeTranslation: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetEpisode: vi.fn(),
   mockGetTenantDisplayTimeZone: vi.fn(),
@@ -85,6 +87,7 @@ vi.mock("#lib/access-ticket", () => ({
 
 vi.mock("#lib/episode", () => ({
   deleteEpisodeImage: mockDeleteEpisodeImage,
+  deleteEpisodeTranslation: mockDeleteEpisodeTranslation,
   episodeCacheTag: (tenantId: string, episodeId: string) =>
     `episode-${tenantId}-${episodeId}`,
   episodesCacheTag: (tenantId: string) => `episodes-${tenantId}`,
@@ -817,6 +820,114 @@ describe("episode actions", () => {
       });
       expect(mockUpdateTag).not.toHaveBeenCalled();
       expect(mockRedirect).not.toHaveBeenCalled();
+    });
+
+    it("saves the title in the language of the tab the form is on, and returns to that tab", async () => {
+      mockUpdateEpisodeTitle.mockResolvedValueOnce({
+        episode: { title: "Episode 1 — Morning" },
+        ok: true,
+      });
+
+      const { updateEpisodeTitleAction } = await import("./actions");
+      await updateEpisodeTitleAction(
+        null,
+        layoutFormData({
+          title: "Episode 1 — Morning",
+          translation_locale: "en",
+        })
+      );
+
+      expect(mockUpdateEpisodeTitle).toHaveBeenCalledWith(
+        {
+          episodeId: "018f0e6a-4000-7000-8000-000000000001",
+          tenantId: "TENANT001",
+          title: "Episode 1 — Morning",
+          translationLocale: "en",
+        },
+        "en"
+      );
+      expect(mockRedirect).toHaveBeenCalledWith(
+        "/series/SERIES001/episodes/EP001?locale=en&title_updated=1"
+      );
+    });
+
+    it("refuses a language this build serves no catalog for", async () => {
+      const { updateEpisodeTitleAction } = await import("./actions");
+      const result = await updateEpisodeTitleAction(
+        null,
+        layoutFormData({ title: "Episode 1", translation_locale: "xx" })
+      );
+
+      expect(result).toEqual({
+        message: "Choose a supported language.",
+        ok: false,
+      });
+      expect(mockUpdateEpisodeTitle).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("deleting one language's title", () => {
+    it("deletes the translation, clears every read that shows the title, and opens the episode on another", async () => {
+      mockDeleteEpisodeTranslation.mockResolvedValueOnce({ ok: true });
+
+      const { deleteEpisodeTranslationAction } = await import("./actions");
+      await deleteEpisodeTranslationAction(
+        null,
+        layoutFormData({ translation_locale: "en" })
+      );
+
+      expect(mockDeleteEpisodeTranslation).toHaveBeenCalledWith(
+        {
+          episodeId: "018f0e6a-4000-7000-8000-000000000001",
+          tenantId: "TENANT001",
+          translationLocale: "en",
+        },
+        "en"
+      );
+      expect(mockUpdateTag).toHaveBeenCalledWith("episodes-TENANT001");
+      expect(mockUpdateTag).toHaveBeenCalledWith(
+        "episode-TENANT001-018f0e6a-4000-7000-8000-000000000001"
+      );
+      expect(mockUpdateTag).toHaveBeenCalledWith("access-tickets-TENANT001");
+      expect(mockRedirect).toHaveBeenCalledWith(
+        "/series/SERIES001/episodes/EP001?translation_deleted=1"
+      );
+    });
+
+    it("shows the refusal the API gave and stays on the screen", async () => {
+      mockDeleteEpisodeTranslation.mockResolvedValueOnce({
+        message:
+          "An episode keeps at least one translation, so its last one cannot be deleted.",
+        ok: false,
+      });
+
+      const { deleteEpisodeTranslationAction } = await import("./actions");
+      const result = await deleteEpisodeTranslationAction(
+        null,
+        layoutFormData({ translation_locale: "ja" })
+      );
+
+      expect(result).toEqual({
+        message:
+          "An episode keeps at least one translation, so its last one cannot be deleted.",
+        ok: false,
+      });
+      expect(mockUpdateTag).not.toHaveBeenCalled();
+      expect(mockRedirect).not.toHaveBeenCalled();
+    });
+
+    it("refuses a delete that names no language", async () => {
+      const { deleteEpisodeTranslationAction } = await import("./actions");
+      const result = await deleteEpisodeTranslationAction(
+        null,
+        layoutFormData({})
+      );
+
+      expect(result).toEqual({
+        message: "Choose a supported language.",
+        ok: false,
+      });
+      expect(mockDeleteEpisodeTranslation).not.toHaveBeenCalled();
     });
   });
 

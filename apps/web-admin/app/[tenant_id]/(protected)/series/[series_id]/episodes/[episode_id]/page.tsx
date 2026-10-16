@@ -1,4 +1,5 @@
 import { toViewerPages } from "@publira/comic-viewer-shell";
+import { getLocales } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
 import {
@@ -13,6 +14,7 @@ import {
   parseRouteParams,
   routeParamString,
 } from "@publira/utils/route-params";
+import { searchParamEnum } from "@publira/utils/search-params";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -41,6 +43,7 @@ import {
   TenantEditorFieldset,
   TenantEditorOnly,
 } from "#components/tenant-role-gate";
+import { TranslationTabs } from "#components/translation-tabs";
 import {
   isSignedInTenantEditor,
   redirectToLoginIfSessionRejected,
@@ -60,8 +63,13 @@ import { resolvePurchaseAvailability } from "#lib/purchase-availability";
 import { resolveReadingLayout } from "#lib/reading-layout";
 import { getSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
+import { findTenantLocales } from "#lib/tenant-locales";
 import { getTenantPurchaseSettings } from "#lib/tenant-purchase-settings";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
+import {
+  resolveTranslationToEdit,
+  translationEditPath,
+} from "#lib/translation-locales";
 
 import { EpisodeAvailabilityForm } from "./_components/episode-availability-form";
 import { EpisodeCreatorCreditsForm } from "./_components/episode-creator-credits-form";
@@ -74,9 +82,11 @@ import { EpisodePurchaseAvailabilityForm } from "./_components/episode-purchase-
 import { EpisodeReadingLayoutForm } from "./_components/episode-reading-layout-form";
 import { EpisodeScheduleForm } from "./_components/episode-schedule-form";
 import { EpisodeTitleForm } from "./_components/episode-title-form";
+import { EpisodeTranslationDeleteButton } from "./_components/episode-translation-delete-button";
 import {
   createEpisodeFreeWindowAction,
   deleteEpisodeFreeWindowAction,
+  deleteEpisodeTranslationAction,
   deleteEpisodeImageAction,
   renewEpisodePreviewUrlsAction,
   reorderEpisodeImagesAction,
@@ -108,6 +118,15 @@ type EditEpisodeSectionProps = Pick<EditEpisodePageProps, "params">;
 const editEpisodeParamsSchema = z.object({
   episode_id: routeParamString(),
   series_id: routeParamString(),
+});
+
+/**
+ * The language whose title the title section edits. Absent, or naming a
+ * locale this build does not serve or the site does not offer, it is the one
+ * {@link resolveTranslationToEdit} picks.
+ */
+const editEpisodeSearchParamsSchema = z.object({
+  locale: searchParamEnum(getLocales(), { fallback: "" }),
 });
 
 interface EditEpisodeContext {
@@ -198,9 +217,16 @@ const EditEpisodeActions = async ({ params }: EditEpisodeSectionProps) => {
   );
 };
 
-const EpisodeTitleSection = async ({ params }: EditEpisodeSectionProps) => {
+const EpisodeTitleSection = async ({
+  params,
+  searchParams,
+}: Pick<EditEpisodePageProps, "params" | "searchParams">) => {
   const context = await resolveEditEpisodeContext(params);
-  const episodeResult = await loadEpisode(context);
+  const [episodeResult, tenantLocales, rawSearchParams] = await Promise.all([
+    loadEpisode(context),
+    findTenantLocales(context.tenantId),
+    searchParams,
+  ]);
 
   if (!episodeResult.ok) {
     return (
@@ -211,16 +237,52 @@ const EpisodeTitleSection = async ({ params }: EditEpisodeSectionProps) => {
     );
   }
 
+  const { translations } = episodeResult;
+  const { locales, shownLocale, translation, visibleLocales } =
+    resolveTranslationToEdit({
+      requestedLocale:
+        editEpisodeSearchParamsSchema.parse(rawSearchParams).locale ||
+        undefined,
+      tenantLocales,
+      translations,
+    });
+  const title = translation?.title ?? "";
+  const episodePath = `/series/${context.seriesId}/episodes/${context.episodeId}`;
+
   return (
     <EpisodeTitleForm
       action={updateEpisodeTitleAction}
       episodeId={episodeResult.episode.id}
       episodePublicId={context.episodeId}
-      initialTitle={episodeResult.episode.title}
-      key={`${context.episodeId}:title:${episodeResult.episode.title}`}
+      initialTitle={title}
+      // A key per translation and title, so a saved change, or another
+      // language's tab, remounts the field with what it holds.
+      key={`${context.episodeId}:title:${shownLocale ?? ""}:${title}`}
       seriesPublicId={context.seriesId}
       tenantId={context.tenantId}
-    />
+      translated={translation !== undefined}
+      translationLocale={shownLocale}
+    >
+      {shownLocale ? (
+        <TranslationTabs
+          hrefFor={(code) => translationEditPath(episodePath, code)}
+          locales={locales}
+          selectedLocale={shownLocale}
+          translatedLocales={visibleLocales}
+        >
+          {translation && translations.length > 1 ? (
+            <EpisodeTranslationDeleteButton
+              action={deleteEpisodeTranslationAction}
+              episodeId={episodeResult.episode.id}
+              episodePublicId={context.episodeId}
+              seriesPublicId={context.seriesId}
+              tenantId={context.tenantId}
+              translationLocale={translation.locale}
+            />
+          ) : null}
+        </TranslationTabs>
+      ) : null}
+    </EpisodeTitleForm>
   );
 };
 
@@ -700,7 +762,7 @@ const EditEpisodeSectionsSkeleton = () => (
   </div>
 );
 
-const EditEpisodePage = ({ params }: EditEpisodePageProps) => (
+const EditEpisodePage = ({ params, searchParams }: EditEpisodePageProps) => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
@@ -738,6 +800,10 @@ const EditEpisodePage = ({ params }: EditEpisodePageProps) => (
       <FlashToast
         keyName="title_updated"
         message="admin.series.episodes.rename.updated"
+      />
+      <FlashToast
+        keyName="translation_deleted"
+        message="admin.series.episodes.translations.deleted"
       />
       <FlashToast
         keyName="pricing_updated"
@@ -780,7 +846,10 @@ const EditEpisodePage = ({ params }: EditEpisodePageProps) => (
         <TenantEditorFieldset>
           <div className="grid gap-6">
             <Suspense fallback={<Skeleton className="h-40" />}>
-              <EpisodeTitleSection params={params} />
+              <EpisodeTitleSection
+                params={params}
+                searchParams={searchParams}
+              />
             </Suspense>
             <Suspense fallback={<Skeleton className="h-40" />}>
               <EpisodePricingSection params={params} />

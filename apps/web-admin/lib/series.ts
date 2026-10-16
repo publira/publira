@@ -12,6 +12,7 @@ import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   isMissingResourceRpcError,
   rethrowUnclassifiedRpcError,
+  rpcErrorHasFieldViolation,
 } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
 import { toIntlLocale } from "@publira/i18n";
@@ -22,6 +23,8 @@ import { cacheTag } from "next/cache";
 import { rethrowUnauthenticatedRpcError } from "./admin-auth-shared";
 import { verifyAdminPageSession } from "./admin-page-session";
 import { apiClient, withServiceHeaders, withSessionHeaders } from "./api";
+import { toSeriesTranslations } from "./catalog-translation";
+import type { SeriesTranslationItem } from "./catalog-translation";
 import type { CropRect } from "./crop-rect";
 import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
 import {
@@ -198,6 +201,12 @@ export type GetSeriesResult =
        * comment mode does.
        */
       purchaseAvailability: PurchaseAvailabilityOverride;
+      /**
+       * Every translation of the series, oldest first. `series.title` and
+       * `series.synopsis` are those of the one in the tenant's default
+       * language, else the oldest.
+       */
+      translations: SeriesTranslationItem[];
     }
   | { notFound: true; ok: false }
   | {
@@ -205,6 +214,10 @@ export type GetSeriesResult =
       notFound?: false;
       ok: false;
     };
+
+export type DeleteSeriesTranslationResult =
+  | { ok: true }
+  | { ok: false; message: string };
 
 const invalidArgumentMessage = async (
   error: unknown,
@@ -227,7 +240,9 @@ const mapErrorToMessage = async (
   return rpcErrorMessage(error, fallbackMessage, {
     locale,
     overrides: {
-      "invalid-argument": await invalidArgumentMessage(error, locale),
+      "invalid-argument": rpcErrorHasFieldViolation(error, "locale")
+        ? t("admin.series.translations.locale_not_offered")
+        : await invalidArgumentMessage(error, locale),
       "not-found": t("admin.series.not_found"),
       precondition: mentionsStorageNotConfigured(error)
         ? t("admin.errors.storage_not_configured")
@@ -645,6 +660,7 @@ const getSeriesForTenant = async (
       purchaseAvailability,
       readingLayout,
       series: mapSeries(response.series, response.creatorCredits),
+      translations: toSeriesTranslations(response.translations),
     };
   } catch (error) {
     if (isMissingResourceRpcError(error)) {
@@ -802,6 +818,12 @@ export const updateSeries = async (
      * absent keeps the value stored, for the reason `availability` gives.
      */
     purchaseAvailability?: PurchaseAvailabilityOverride;
+    /**
+     * The language the title and synopsis are written in, which gains a
+     * translation if the series has none in it. Absent writes the tenant's
+     * default language.
+     */
+    translationLocale?: Locale;
   } & Partial<SeriesListingInput> &
     SeriesTaxonomyInput,
   locale: Locale
@@ -839,6 +861,7 @@ export const updateSeries = async (
         genreIds: input.genreIds,
         isPublished: input.isPublished,
         labelId: input.labelId,
+        locale: input.translationLocale,
         publishedAt: input.publishedAt,
         purchaseAvailability:
           input.purchaseAvailability === undefined
@@ -889,6 +912,60 @@ export const updateSeries = async (
         error,
         t("admin.series.save_failed"),
         locale
+      ),
+      ok: false,
+    };
+  }
+};
+
+/**
+ * Deletes the series' translation in one language. The API keeps a series'
+ * last translation, and refuses to delete it.
+ */
+export const deleteSeriesTranslation = async (
+  input: {
+    tenantId: string;
+    id: string;
+    translationLocale: Locale;
+  },
+  locale: Locale
+): Promise<DeleteSeriesTranslationResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    await apiClient.series.deleteSeriesTranslation(
+      {
+        locale: input.translationLocale,
+        seriesId: input.id,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    return { ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: rpcErrorMessage(
+        error,
+        t("admin.series.translations.delete_failed"),
+        {
+          locale,
+          overrides: {
+            "not-found": t("admin.series.translations.not_found"),
+            precondition: t("admin.series.translations.last_translation"),
+          },
+        }
       ),
       ok: false,
     };

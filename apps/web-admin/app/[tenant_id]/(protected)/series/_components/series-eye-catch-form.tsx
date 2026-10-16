@@ -1,3 +1,4 @@
+import type { Locale } from "@publira/i18n";
 import {
   ActionForm,
   ActionFormIdle,
@@ -19,17 +20,32 @@ interface SeriesEyeCatchFormProps {
   ) => Promise<SeriesActionState>;
   series: SeriesListItem;
   tenantId: string;
+  /**
+   * The language `series.title` is written in. An update writes a title, so
+   * this tab sends one back in the language it was read in: without it, the
+   * API files the title under the tenant's default language and adds a
+   * translation there when the series has none in it.
+   */
+  translationLocale?: Locale;
 }
 
 export const SeriesEyeCatchForm = ({
   action,
   series,
   tenantId,
+  translationLocale,
 }: SeriesEyeCatchFormProps) => (
   <ActionForm action={action} className="grid gap-4">
     <input name="tenant_id" type="hidden" value={tenantId} />
     <input name="series_id" type="hidden" value={series.id} />
     <input name="title" type="hidden" value={series.title} />
+    {translationLocale ? (
+      <input
+        name="translation_locale"
+        type="hidden"
+        value={translationLocale}
+      />
+    ) : null}
     <input name="label_id" type="hidden" value={series.labelId} />
     <input name="published_at" type="hidden" value={series.publishedAt} />
     {series.genreIds.map((id) => (

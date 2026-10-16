@@ -8,39 +8,39 @@ import type { ReactNode } from "react";
 import { Message } from "#components/message";
 import { getMessages } from "#lib/get-messages";
 
-import { pageEditPath } from "../../page-types";
-
-interface PageTranslationTabsProps {
+interface TranslationTabsProps {
   /** Shown at the end of the row, for the control that acts on the selected translation. */
   children?: ReactNode;
+  /** The URL of the screen that shows the record's translation in a locale. */
+  hrefFor: (locale: Locale) => string;
   /** The languages the tenant's site offers, in the registry's order. */
   locales: readonly Locale[];
-  pageId: string;
   selectedLocale: Locale;
   translatedLocales: readonly Locale[];
 }
 
 /**
- * One link per language the site offers. Each translation has its own title,
- * history, and published version, so a locale is a screen of its own rather
- * than a panel of this one; a locale the page has no translation in opens the
- * form that adds it. A translation in a language the site no longer offers has
- * no link, and has one again once the language is switched back on.
+ * One link per language the site offers, for a record written once per
+ * language: a page, a series, an episode. The language is part of the URL, so
+ * each translation opens in a form of its own and an unsaved edit never
+ * carries over to another; a locale the record has no translation in is
+ * marked as not added. A translation in a language the site no longer offers
+ * has no link, and has one again once the language is switched back on.
  */
-export const PageTranslationTabs = async ({
+export const TranslationTabs = async ({
   children,
+  hrefFor,
   locales,
-  pageId,
   selectedLocale,
   translatedLocales,
-}: PageTranslationTabsProps) => {
+}: TranslationTabsProps) => {
   const t = await getMessages();
   const translated = new Set(translatedLocales);
 
   return (
     <div className="flex flex-wrap items-end justify-between gap-2 border-b border-border">
       <nav
-        aria-label={t("admin.pages.translations.tabs_label")}
+        aria-label={t("admin.translations.tabs_label")}
         className="flex flex-wrap items-center gap-1"
       >
         {locales.map((code) => {
@@ -50,7 +50,7 @@ export const PageTranslationTabs = async ({
             <Link
               aria-current={code === selectedLocale ? "page" : undefined}
               className="-mb-px inline-flex items-center gap-1 border-b-2 border-transparent px-3 py-2 text-sm font-medium text-muted-foreground transition-colors duration-state ease-state hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none aria-[current=page]:border-primary aria-[current=page]:text-foreground"
-              href={pageEditPath(pageId, code)}
+              href={hrefFor(code)}
               key={code}
             >
               {hasTranslation ? null : (
@@ -61,7 +61,7 @@ export const PageTranslationTabs = async ({
               {hasTranslation ? null : (
                 <span className="sr-only">
                   <Suspense fallback={null}>
-                    <Message message="admin.pages.translations.not_added" />
+                    <Message message="admin.translations.not_added" />
                   </Suspense>
                 </span>
               )}

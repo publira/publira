@@ -1,6 +1,6 @@
 ---
 title: Episodes
-description: Create an episode, add, replace, and delete its pages, change its title, price, and reading period, set its layout and preview its pages, set its credits and where it is shown and sold, give it free reading periods, and publish it now or on time.
+description: Create an episode, add, replace, and delete its pages, change its title in each language, its price, and its reading period, set its layout and preview its pages, set its credits and where it is shown and sold, give it free reading periods, and publish it now or on time.
 published: 2026-10-07
 updated: 2026-10-16
 ---
@@ -25,7 +25,7 @@ A new order reaches the site as soon as it is saved.
 
 Choose **Create** on the episode list and fill in:
 
-- **Title**: the episode's title, such as `Episode 1 — A beginning morning`. It can be [changed later](#changing-the-title).
+- **Title**: the episode's title in the site's default language, such as `Episode 1 — A beginning morning`. It can be [changed later](#changing-the-title), and given in the site's other languages there.
 - **Price**: the price in the tenant's currency, which the field names, with no more decimal places than the currency has: `500` for 500 yen, `4.99` for 4.99 US dollars. `0` makes the episode free.
 - **Reading period**: how many hours a purchase keeps the episode open. `0` keeps it open with no end. It starts at the series' [Reading period](./1-series.md#reading-period).
 - **Publication date and time**: when the episode is published, read in the tenant's time zone. Leave it empty to create a draft. A time that has already passed publishes the episode as soon as it is created.
@@ -39,9 +39,13 @@ Choose **Create episode**. The episode is created with the Authors credited on t
 
 ## Changing the title
 
-**Title**, at the top of the episode's edit screen, holds the episode's title. Change it and choose **Update title**. The site and the app show the new title as soon as it is saved. A title cannot be left empty.
+**Title**, at the top of the episode's edit screen, holds the episode's title in each language the site offers. **Languages** has a tab for each of them, and the field below holds the title in the one selected. Change it and choose **Update title**. The site and the app show the new title as soon as it is saved. A title cannot be left empty.
 
-![The Title section of an episode: the Title field holding the episode's title, and Update title.](./episodes-title.png)
+![The Title section of an episode: the Languages tabs with English selected and the other languages marked as not added, the Title field holding the episode's English title, and Update title.](./episodes-title.png)
+
+A language the episode has no title in yet is marked **(not added)**. Its tab opens the field empty: enter the title and choose **Add translation**. Until then, readers of the site and the app in that language see the episode's title in another language. **Delete this translation**, beside the tabs, removes the selected language's title, but not the last one an episode has.
+
+The episode list, and the console's other screens that name an episode, show its title in the site's default language.
 
 ## Changing the price and reading period
 

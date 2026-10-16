@@ -1,5 +1,6 @@
 "use server";
 
+import { getLocales } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toInstantIsoString } from "@publira/utils";
@@ -36,6 +37,7 @@ import { PURCHASE_AVAILABILITY_OVERRIDES } from "#lib/purchase-availability";
 import { READING_DIRECTIONS } from "#lib/reading-layout";
 import {
   createSeries,
+  deleteSeriesTranslation,
   seriesCacheTag,
   seriesListCacheTag,
   updateSeries,
@@ -57,6 +59,7 @@ import {
 } from "#lib/series-wait-free-shared";
 import { SURFACE_AVAILABILITIES } from "#lib/surface-availability";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
+import { translationEditPath } from "#lib/translation-locales";
 
 import type {
   SeriesActionState,
@@ -180,6 +183,16 @@ const seriesCommonSchema = async (locale: Locale) => {
     title: requiredTrimmedString(t("admin.series.validation.title_required")),
   });
 };
+/**
+ * The language a form writes the title and synopsis in. Blank writes the
+ * tenant's default language, which is what the API takes an absent one for.
+ */
+const translationLocaleFormSchema = (message: string) =>
+  z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.enum(getLocales(), { error: message }).optional()
+  );
+
 const seriesUpdateSchema = async (locale: Locale) => {
   const [t, base] = await Promise.all([
     getMessagesFor(locale),
@@ -188,6 +201,9 @@ const seriesUpdateSchema = async (locale: Locale) => {
 
   return base.extend({
     id: requiredRecordId(t("admin.series.validation.id_missing")),
+    translationLocale: translationLocaleFormSchema(
+      t("admin.series.translations.locale_invalid")
+    ),
   });
 };
 const seriesEyeCatchSchema = async (locale: Locale) => {
@@ -358,6 +374,7 @@ export const updateSeriesAction = async (
     toFormDataInput(formData, {
       ...seriesFormFields,
       id: { kind: "value", name: "series_id" },
+      translationLocale: { kind: "value", name: "translation_locale" },
     })
   );
   if (!parsed.success) {
@@ -402,6 +419,7 @@ export const updateSeriesAction = async (
         tagNames: parsed.data.tagNames,
         tenantId: parsed.data.tenantId,
         title: parsed.data.title,
+        translationLocale: parsed.data.translationLocale,
       },
       locale
     )
@@ -415,7 +433,13 @@ export const updateSeriesAction = async (
   updateTag(seriesListCacheTag(parsed.data.tenantId));
   updateTag(tenantDashboardCacheTag(parsed.data.tenantId));
 
-  redirect(`/series/${result.series.publicId}?updated=1`);
+  redirect(
+    translationEditPath(
+      `/series/${result.series.publicId}`,
+      parsed.data.translationLocale,
+      "updated"
+    )
+  );
 };
 
 export const updateSeriesEyeCatchAction = async (
@@ -437,6 +461,7 @@ export const updateSeriesEyeCatchAction = async (
         name: "current_eye_catch_image_updated_at",
       },
       id: { kind: "value", name: "series_id" },
+      translationLocale: { kind: "value", name: "translation_locale" },
     })
   );
   if (!parsed.success) {
@@ -476,6 +501,7 @@ export const updateSeriesEyeCatchAction = async (
         tagNames: parsed.data.tagNames,
         tenantId: parsed.data.tenantId,
         title: parsed.data.title,
+        translationLocale: parsed.data.translationLocale,
       },
       locale
     )
@@ -514,6 +540,61 @@ export const updateSeriesEyeCatchAction = async (
     mode: "update",
     ok: true,
   };
+};
+
+const deleteTranslationSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
+    id: requiredRecordId(t("admin.series.validation.id_missing")),
+    publicId: requiredTrimmedString(t("admin.series.validation.id_missing")),
+    tenantId: requiredTrimmedString(
+      t("admin.series.validation.tenant_missing")
+    ),
+    translationLocale: z.enum(getLocales(), {
+      error: t("admin.series.translations.locale_invalid"),
+    }),
+  });
+};
+
+/**
+ * Deletes the series' title and synopsis in one language, and opens the series
+ * on the translation the screen picks without one.
+ */
+export const deleteSeriesTranslationAction = async (
+  _prevState: FormActionState,
+  formData: FormData
+): Promise<FormActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const schema = await deleteTranslationSchema(locale);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      id: { kind: "value", name: "series_id" },
+      publicId: { kind: "value", name: "series_public_id" },
+      tenantId: { kind: "value", name: "tenant_id" },
+      translationLocale: { kind: "value", name: "translation_locale" },
+    })
+  );
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
+  }
+
+  const { id, publicId, tenantId, translationLocale } = parsed.data;
+  const result = await withAdminSessionReauth(() =>
+    deleteSeriesTranslation({ id, tenantId, translationLocale }, locale)
+  );
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  updateTag(seriesCacheTag(tenantId, publicId));
+  updateTag(seriesListCacheTag(tenantId));
+  updateTag(tenantDashboardCacheTag(tenantId));
+
+  redirect(
+    translationEditPath(`/series/${publicId}`, undefined, "translation_deleted")
+  );
 };
 
 const eyeCatchAspectSchema = async (locale: Locale) => {

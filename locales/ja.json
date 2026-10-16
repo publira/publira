@@ -1439,8 +1439,6 @@
         }
       },
       "translations": {
-        "tabs_label": "言語",
-        "not_added": "（未追加）",
         "add_title": "{$language}の翻訳はまだありません",
         "add_description": "{$language}の翻訳を公開するまで、{$language}のサイトの読者にはこのページが別の言語で表示されます。タイトルを入力して翻訳を追加し、本文を書いて公開してください。",
         "add_action": "翻訳を追加",
@@ -2068,7 +2066,24 @@
           }
         },
         "currency_changed": "このフォームを開いた後にテナントの通貨が変わりました。ページを再読み込みして、価格を入力し直してください。",
-        "currency_unavailable": "テナントの通貨を読み込めなかったため、いまは価格を入力できません。"
+        "currency_unavailable": "テナントの通貨を読み込めなかったため、いまは価格を入力できません。",
+        "translations": {
+          "title_description": "{$language}のサイトとアプリで読者に表示されるタイトルです。",
+          "not_added": "このエピソードには{$language}のタイトルがまだないため、{$language}のサイトとアプリの読者には別の言語で表示されます。タイトルを入力して追加してください。",
+          "add_action": "翻訳を追加",
+          "adding": "追加中...",
+          "locale_invalid": "対応している言語を選んでください。",
+          "locale_not_offered": "このサイトはその言語を提供していません。先に設定で提供する言語に加えてください。",
+          "delete_action": "この翻訳を削除",
+          "deleting": "削除中...",
+          "delete_confirm_title": "{$language}のタイトルを削除しますか?",
+          "delete_confirm_description": "{$language}のサイトとアプリの読者にはこのエピソードが別の言語で表示されます。この操作は取り消せません。",
+          "delete_confirm_action": "削除",
+          "deleted": "翻訳を削除しました。",
+          "delete_failed": "翻訳を削除できませんでした。時間をおいて再試行してください。",
+          "not_found": "この翻訳はすでに削除されています。ページを再読み込みしてください。",
+          "last_translation": "エピソードには少なくとも1つの翻訳が必要なため、最後の翻訳は削除できません。"
+        }
       },
       "status": {
         "ongoing": "連載中",
@@ -2108,6 +2123,21 @@
           "access_hours_invalid": "エピソードを読める時間は1〜{$max}の整数で入力してください。",
           "excluded_latest_count_invalid": "チケットで読めない最新話の数は0以上の整数で入力してください。"
         }
+      },
+      "translations": {
+        "title_language": "{$language}で入力します。概要も同じです。ほかの項目はすべての言語で共通です。",
+        "not_added": "このシリーズには{$language}のタイトルがまだないため、{$language}のサイトの読者には別の言語で表示されます。タイトルと概要を入力し、「シリーズを更新」を選んで追加してください。",
+        "locale_invalid": "対応している言語を選んでください。",
+        "locale_not_offered": "このサイトはその言語を提供していません。先に設定で提供する言語に加えてください。",
+        "delete_action": "この翻訳を削除",
+        "deleting": "削除中...",
+        "delete_confirm_title": "{$language}のタイトルと概要を削除しますか?",
+        "delete_confirm_description": "{$language}のサイトの読者にはこのシリーズが別の言語で表示されます。この操作は取り消せません。",
+        "delete_confirm_action": "削除",
+        "deleted": "翻訳を削除しました。",
+        "delete_failed": "翻訳を削除できませんでした。時間をおいて再試行してください。",
+        "not_found": "この翻訳はすでに削除されています。ページを再読み込みしてください。",
+        "last_translation": "シリーズには少なくとも1つの翻訳が必要なため、最後の翻訳は削除できません。"
       }
     },
     "settings": {
@@ -3528,6 +3558,10 @@
         "reason_required": "返金の理由を入力してください。",
         "reason_too_long": "理由は1,000文字以内で入力してください。"
       }
+    },
+    "translations": {
+      "tabs_label": "言語",
+      "not_added": "（未追加）"
     }
   },
   "storefront": {

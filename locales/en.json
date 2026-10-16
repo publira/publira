@@ -1439,8 +1439,6 @@
         }
       },
       "translations": {
-        "tabs_label": "Languages",
-        "not_added": "(not added)",
         "add_title": "No {$language} translation yet",
         "add_description": "Until a {$language} translation is published, readers of the {$language} site see this page in another language. Enter a title to add one, then write and publish its content.",
         "add_action": "Add translation",
@@ -2068,7 +2066,24 @@
           }
         },
         "currency_changed": "The tenant's currency changed after this form was opened. Reload the page and enter the price again.",
-        "currency_unavailable": "The tenant's currency could not be read, so a price cannot be entered right now."
+        "currency_unavailable": "The tenant's currency could not be read, so a price cannot be entered right now.",
+        "translations": {
+          "title_description": "The title readers of the {$language} site and app see.",
+          "not_added": "This episode has no {$language} title yet, so readers of the {$language} site and app see it in another language. Enter one to add it.",
+          "add_action": "Add translation",
+          "adding": "Adding...",
+          "locale_invalid": "Choose a supported language.",
+          "locale_not_offered": "This site does not offer that language. Switch it on under Settings first.",
+          "delete_action": "Delete this translation",
+          "deleting": "Deleting...",
+          "delete_confirm_title": "Delete the {$language} title?",
+          "delete_confirm_description": "Readers of the {$language} site and app then see this episode in another language. This cannot be undone.",
+          "delete_confirm_action": "Delete",
+          "deleted": "Translation deleted.",
+          "delete_failed": "Could not delete the translation. Please try again later.",
+          "not_found": "This translation has already been deleted. Reload the page.",
+          "last_translation": "An episode keeps at least one translation, so its last one cannot be deleted."
+        }
       },
       "status": {
         "ongoing": "Ongoing",
@@ -2108,6 +2123,21 @@
           "access_hours_invalid": "Enter the hours an episode stays open as a whole number from 1 to {$max}.",
           "excluded_latest_count_invalid": "Enter the number of newest episodes as a whole number, 0 or more."
         }
+      },
+      "translations": {
+        "title_language": "Written in {$language}, as is the synopsis. Every other field is shared by all languages.",
+        "not_added": "This series has no {$language} title yet, so readers of the {$language} site see it in another language. Enter its title and synopsis, then choose Update series to add them.",
+        "locale_invalid": "Choose a supported language.",
+        "locale_not_offered": "This site does not offer that language. Switch it on under Settings first.",
+        "delete_action": "Delete this translation",
+        "deleting": "Deleting...",
+        "delete_confirm_title": "Delete the {$language} title and synopsis?",
+        "delete_confirm_description": "Readers of the {$language} site then see this series in another language. This cannot be undone.",
+        "delete_confirm_action": "Delete",
+        "deleted": "Translation deleted.",
+        "delete_failed": "Could not delete the translation. Please try again later.",
+        "not_found": "This translation has already been deleted. Reload the page.",
+        "last_translation": "A series keeps at least one translation, so its last one cannot be deleted."
       }
     },
     "settings": {
@@ -3528,6 +3558,10 @@
         "reason_required": "Enter the reason for the refund.",
         "reason_too_long": "Keep the reason to 1,000 characters or fewer."
       }
+    },
+    "translations": {
+      "tabs_label": "Languages",
+      "not_added": "(not added)"
     }
   },
   "storefront": {

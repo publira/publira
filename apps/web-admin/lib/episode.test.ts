@@ -33,6 +33,7 @@ const {
   mockCacheTag,
   mockCreateEpisode,
   mockDeleteEpisodeImage,
+  mockDeleteEpisodeTranslation,
   mockGetAccessToken,
   mockGetEpisode,
   mockListEpisodeCredits,
@@ -51,6 +52,7 @@ const {
   mockCacheTag: vi.fn(),
   mockCreateEpisode: vi.fn(),
   mockDeleteEpisodeImage: vi.fn(),
+  mockDeleteEpisodeTranslation: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetEpisode: vi.fn(),
   mockListEpisodeCredits: vi.fn(),
@@ -80,6 +82,7 @@ vi.mock("./api", () => ({
       bulkEditEpisodeCredits: mockBulkEditEpisodeCredits,
       createEpisode: mockCreateEpisode,
       deleteEpisodeImage: mockDeleteEpisodeImage,
+      deleteEpisodeTranslation: mockDeleteEpisodeTranslation,
       getEpisode: mockGetEpisode,
       listEpisodeCredits: mockListEpisodeCredits,
       listEpisodeImages: mockListEpisodeImages,
@@ -322,8 +325,35 @@ describe("getEpisode", () => {
       layout: { readingDirection: "" },
       ok: true,
       purchaseAvailability: "",
+      translations: [],
     });
     expect(mockCacheLife).not.toHaveBeenCalled();
+  });
+
+  it("reads every translation back beside the episode, oldest first", async () => {
+    mockGetEpisode.mockResolvedValue({
+      episode: episode("EPISODE001", 1),
+      translations: [
+        { locale: "ja", title: "EPISODE001" },
+        { locale: "en", title: "Episode 1 — Morning" },
+        // No catalog of this build names it, so no tab could show it.
+        { locale: "xx", title: "Unknown" },
+      ],
+    });
+
+    const { getEpisode } = await import("./episode");
+    const result = await getEpisode({
+      publicId: "EPISODE001",
+      seriesPublicId: "SERIES001",
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      translations: [
+        { locale: "ja", title: "EPISODE001" },
+        { locale: "en", title: "Episode 1 — Morning" },
+      ],
+    });
   });
 
   // The resolved layout rides on `episode`; the form reads the overrides beside
@@ -960,6 +990,117 @@ describe("updateEpisodeTitle", () => {
 
     expect(result).toEqual({
       message: "Could not update the title. Please try again later.",
+      ok: false,
+    });
+  });
+
+  it("writes the title in the language the save names", async () => {
+    mockUpdateEpisodeTitle.mockResolvedValue({
+      episode: episode("EPISODE001", 1),
+    });
+
+    const { updateEpisodeTitle } = await import("./episode");
+    await updateEpisodeTitle(
+      {
+        episodeId: "EPISODE001-ID",
+        tenantId: "TENANT001",
+        title: "Episode 1 — Morning",
+        translationLocale: "en",
+      },
+      "en"
+    );
+
+    expect(mockUpdateEpisodeTitle).toHaveBeenCalledWith(
+      {
+        episodeId: "EPISODE001-ID",
+        locale: "en",
+        tenant: { tenantId: "TENANT001" },
+        title: "Episode 1 — Morning",
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("words a language the site does not offer", async () => {
+    mockUpdateEpisodeTitle.mockRejectedValue(
+      new ConnectError(
+        "locale must be a locale the tenant offers",
+        Code.InvalidArgument,
+        undefined,
+        [
+          {
+            desc: BadRequestSchema,
+            value: { fieldViolations: [{ field: "locale" }] },
+          },
+        ]
+      )
+    );
+
+    const { updateEpisodeTitle } = await import("./episode");
+    const result = await updateEpisodeTitle(
+      {
+        episodeId: "EPISODE001-ID",
+        tenantId: "TENANT001",
+        title: "Episode 1",
+        translationLocale: "ko",
+      },
+      "en"
+    );
+
+    expect(result).toEqual({
+      message:
+        "This site does not offer that language. Switch it on under Settings first.",
+      ok: false,
+    });
+  });
+});
+
+describe("deleteEpisodeTranslation", () => {
+  it("deletes the title in the language it names", async () => {
+    mockDeleteEpisodeTranslation.mockResolvedValue({ translations: [] });
+
+    const { deleteEpisodeTranslation } = await import("./episode");
+    const result = await deleteEpisodeTranslation(
+      {
+        episodeId: "EPISODE001-ID",
+        tenantId: "TENANT001",
+        translationLocale: "en",
+      },
+      "en"
+    );
+
+    expect(result).toEqual({ ok: true });
+    expect(mockDeleteEpisodeTranslation).toHaveBeenCalledWith(
+      {
+        episodeId: "EPISODE001-ID",
+        locale: "en",
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("says why the last translation cannot be deleted", async () => {
+    mockDeleteEpisodeTranslation.mockRejectedValue(
+      new ConnectError(
+        "an episode must keep at least one translation",
+        Code.FailedPrecondition
+      )
+    );
+
+    const { deleteEpisodeTranslation } = await import("./episode");
+    const result = await deleteEpisodeTranslation(
+      {
+        episodeId: "EPISODE001-ID",
+        tenantId: "TENANT001",
+        translationLocale: "ja",
+      },
+      "en"
+    );
+
+    expect(result).toEqual({
+      message:
+        "An episode keeps at least one translation, so its last one cannot be deleted.",
       ok: false,
     });
   });

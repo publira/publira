@@ -1,3 +1,5 @@
+import { getLocaleLabel } from "@publira/i18n";
+import type { Locale } from "@publira/i18n";
 import {
   ActionForm,
   ActionFormFieldset,
@@ -124,6 +126,19 @@ interface SeriesFormProps {
   tenantId: string;
   timeZone: string;
   titlePlaceholder: string;
+  /**
+   * The language the title and synopsis are written in, on the edit screen.
+   * Every other field is the series' own, and is saved from whichever
+   * language's form submits it. Absent on create, which writes the tenant's
+   * default language.
+   */
+  translationLocale?: Locale;
+  /**
+   * Whether the series has a translation in {@link translationLocale} yet.
+   * Without one, the form opens with an empty title and synopsis, and saving it
+   * adds them.
+   */
+  translated?: boolean;
 }
 
 /** The fields of a series this form opens on. */
@@ -217,6 +232,32 @@ const LabelField = ({
 );
 
 /**
+ * The language the form writes the title and synopsis in, and, until the
+ * series has them in it, what saving the form does.
+ */
+const TranslationFields = ({
+  translated,
+  translationLocale,
+}: {
+  translated: boolean;
+  translationLocale: Locale;
+}) => (
+  <>
+    <input name="translation_locale" type="hidden" value={translationLocale} />
+    {translated ? null : (
+      <FormMessage>
+        <Suspense fallback={<SkeletonLine className="h-4 w-96" />}>
+          <Message
+            message="admin.series.translations.not_added"
+            values={{ language: getLocaleLabel(translationLocale) }}
+          />
+        </Suspense>
+      </FormMessage>
+    )}
+  </>
+);
+
+/**
  * The form is composed on the server. Each control that holds what the editor
  * changes is a client component seeding its own state once per mount, which is
  * why the edit route keys this form by the series' public id.
@@ -245,6 +286,8 @@ export const SeriesForm = ({
   tenantPurchaseAvailability,
   timeZone,
   titlePlaceholder,
+  translationLocale,
+  translated = true,
 }: SeriesFormProps) => {
   const values: SeriesFormValues = initialSeries ?? NEW_SERIES_VALUES;
 
@@ -253,6 +296,12 @@ export const SeriesForm = ({
       <input name="tenant_id" type="hidden" value={tenantId} />
       {initialSeries ? (
         <input name="series_id" type="hidden" value={initialSeries.id} />
+      ) : null}
+      {translationLocale ? (
+        <TranslationFields
+          translated={translated}
+          translationLocale={translationLocale}
+        />
       ) : null}
 
       {/* The stored shares already passed the server's cap, so the form opens
@@ -273,6 +322,16 @@ export const SeriesForm = ({
                 required
                 type="text"
               />
+              {translationLocale ? (
+                <FieldDescription>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+                    <Message
+                      message="admin.series.translations.title_language"
+                      values={{ language: getLocaleLabel(translationLocale) }}
+                    />
+                  </Suspense>
+                </FieldDescription>
+              ) : null}
             </FieldContent>
           </Field>
 

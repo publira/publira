@@ -774,3 +774,80 @@ it("points a tenant with no labels at creating one while keeping the picker", ()
     screen.queryByText("Select a label to associate with this series.")
   ).toBeNull();
 });
+
+it("writes the title and synopsis in the language of its tab, and says so under the title", () => {
+  render(
+    <SeriesForm
+      action={action}
+      creatorRoles={creatorRoles}
+      creators={creators}
+      genres={genres}
+      initialSeries={series}
+      labels={labels}
+      mode="update"
+      synopsisPlaceholder="Synopsis"
+      tagSuggestions={tagSuggestions}
+      tenantId="TENANT001"
+      timeZone="UTC"
+      titlePlaceholder="Title"
+      translationLocale="en"
+    />
+  );
+
+  expect(posted("translation_locale")).toEqual(["en"]);
+  expect(
+    screen.getByText(
+      "Written in English, as is the synopsis. Every other field is shared by all languages."
+    )
+  ).toBeDefined();
+  expect(screen.queryByRole("status")).toBeNull();
+});
+
+it("opens empty on a language the series has no title in yet, and says saving adds it", () => {
+  render(
+    <SeriesForm
+      action={action}
+      creatorRoles={creatorRoles}
+      creators={creators}
+      genres={genres}
+      initialSeries={{ ...series, synopsis: "", title: "" }}
+      labels={labels}
+      mode="update"
+      synopsisPlaceholder="Synopsis"
+      tagSuggestions={tagSuggestions}
+      tenantId="TENANT001"
+      timeZone="UTC"
+      titlePlaceholder="Title"
+      translated={false}
+      translationLocale="en"
+    />
+  );
+
+  expect(posted("translation_locale")).toEqual(["en"]);
+  expect(
+    screen.getByRole<HTMLInputElement>("textbox", { name: /^Title/u }).value
+  ).toBe("");
+  expect(screen.getByRole("status").textContent).toContain(
+    "This series has no English title yet"
+  );
+});
+
+it("leaves a new series to the site's default language", () => {
+  render(
+    <SeriesForm
+      action={action}
+      creatorRoles={creatorRoles}
+      creators={creators}
+      genres={genres}
+      labels={labels}
+      mode="create"
+      synopsisPlaceholder="Synopsis"
+      tagSuggestions={tagSuggestions}
+      tenantId="TENANT001"
+      timeZone="UTC"
+      titlePlaceholder="Title"
+    />
+  );
+
+  expect(posted("translation_locale")).toEqual([]);
+});
