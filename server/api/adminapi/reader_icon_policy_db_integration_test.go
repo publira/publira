@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/outbox"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
@@ -152,6 +153,53 @@ func TestDBReaderIconPolicyChangeClearsTheIconsItNoLongerAllows(t *testing.T) {
 	if presets := env.listReaderIconPresets(t, tenant); len(presets) != 1 || presets[0].Id != preset.Id {
 		t.Fatalf("presets after disabling icons = %v, want %s kept", presets, preset.Id)
 	}
+}
+
+// takeRevalidatedTags answers the cache tags the tenant's writes have recorded
+// an invalidation of since the last take, so each write is checked on its own.
+func (e *adminDBEnv) takeRevalidatedTags(t *testing.T, tenant testutil.Tenant) []string {
+	t.Helper()
+
+	tags := e.revalidatedTags(t, tenant)
+	if _, err := e.PG.DB.ExecContext(context.Background(),
+		`DELETE FROM outbox_events WHERE tenant_id = $1 AND event_type = $2`,
+		tenant.ID, outbox.EventTypeNextCacheRevalidation,
+	); err != nil {
+		t.Fatalf("clear cache invalidations: %v", err)
+	}
+	return tags
+}
+
+// Every change to the policy or the presets drops the storefront's cache of
+// the site settings it reads them under, and saving the policy the tenant
+// already has changes nothing and drops nothing.
+func TestDBReaderIconSettingsRevalidateTheSiteSettings(t *testing.T) {
+	env := newReaderIconDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "RIVTENANT01", "reader-icon-revalidate.example.com", "Revalidate", "RIVADMIN001", "admin@reader-icon-revalidate.example.com")
+	siteTag := "tenant:" + tenant.Tenant.ID.String() + ":site"
+	want := func(write string, want []string) {
+		t.Helper()
+		if got := env.takeRevalidatedTags(t, tenant.Tenant); !slices.Equal(got, want) {
+			t.Fatalf("invalidations recorded by %s = %v, want %v", write, got, want)
+		}
+	}
+
+	preset := env.uploadReaderIconPreset(t, tenant)
+	want("UploadReaderIconPreset", []string{siteTag})
+
+	env.updateReaderIconPolicy(t, tenant, publirattypesv1.ReaderIconPolicy_READER_ICON_POLICY_PRESET)
+	want("UpdateTenantReaderIconPolicy", []string{siteTag})
+
+	env.updateReaderIconPolicy(t, tenant, publirattypesv1.ReaderIconPolicy_READER_ICON_POLICY_PRESET)
+	want("UpdateTenantReaderIconPolicy to the policy already saved", nil)
+
+	if _, err := env.tenantSettingsClient().DeleteReaderIconPreset(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.DeleteReaderIconPresetRequest{
+		Tenant:   tenant.tenantContext(),
+		PresetId: preset.Id,
+	}); err != nil {
+		t.Fatalf("DeleteReaderIconPreset: %v", err)
+	}
+	want("DeleteReaderIconPreset", []string{siteTag})
 }
 
 // A preset is stored the way a reader's upload is, listed with its variants,
