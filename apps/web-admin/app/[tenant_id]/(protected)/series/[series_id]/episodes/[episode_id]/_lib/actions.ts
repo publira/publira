@@ -1,5 +1,6 @@
 "use server";
 
+import { getLocales } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { parseInstant, toInstantIsoString } from "@publira/utils";
@@ -16,6 +17,7 @@ import { assertSameOrigin } from "#lib/csrf";
 import { tenantDashboardCacheTag } from "#lib/dashboard";
 import {
   deleteEpisodeImage,
+  deleteEpisodeTranslation,
   episodeCacheTag,
   episodesCacheTag,
   getEpisodeForTenant,
@@ -46,10 +48,12 @@ import {
 import { toFreeWindowPeriod } from "#lib/free-window-period";
 import { getMessagesFor } from "#lib/messages";
 import { parseTenantPrice, rawPriceFormSchema } from "#lib/price-action";
+import { purchasesCacheTag } from "#lib/purchase";
 import { PURCHASE_AVAILABILITY_OVERRIDES } from "#lib/purchase-availability";
 import { READING_DIRECTIONS } from "#lib/reading-layout";
 import { EPISODE_AVAILABILITY_OVERRIDES } from "#lib/surface-availability";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
+import { translationEditPath } from "#lib/translation-locales";
 
 import type { EpisodeEditActionState } from "../episode-edit-types";
 
@@ -285,6 +289,29 @@ const titleFormSchema = async (locale: Locale) => {
     title: requiredTrimmedString(
       t("admin.series.episodes.validation.title_required")
     ),
+    // Blank writes the tenant's default language, which is what the API takes
+    // an absent one for.
+    translationLocale: z.preprocess(
+      (value) => (value === "" ? undefined : value),
+      z
+        .enum(getLocales(), {
+          error: t("admin.series.episodes.translations.locale_invalid"),
+        })
+        .optional()
+    ),
+  });
+};
+
+const deleteTranslationSchema = async (locale: Locale) => {
+  const [t, base] = await Promise.all([
+    getMessagesFor(locale),
+    hiddenParamsSchema(locale),
+  ]);
+
+  return base.extend({
+    translationLocale: z.enum(getLocales(), {
+      error: t("admin.series.episodes.translations.locale_invalid"),
+    }),
   });
 };
 
@@ -299,20 +326,30 @@ export const updateEpisodeTitleAction = async (
     toFormDataInput(formData, {
       ...hiddenFormFields,
       title: "value",
+      translationLocale: { kind: "value", name: "translation_locale" },
     })
   );
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
-  const { episodeId, episodePublicId, seriesPublicId, tenantId, title } =
-    parsed.data;
+  const {
+    episodeId,
+    episodePublicId,
+    seriesPublicId,
+    tenantId,
+    title,
+    translationLocale,
+  } = parsed.data;
   const mismatch = await confirmEpisodeTarget(parsed.data, locale);
   if (mismatch) {
     return { message: mismatch, ok: false };
   }
   const result = await withAdminSessionReauth(() =>
-    updateEpisodeTitle({ episodeId, tenantId, title }, locale)
+    updateEpisodeTitle(
+      { episodeId, tenantId, title, translationLocale },
+      locale
+    )
   );
   if (!result.ok) {
     return { message: result.message, ok: false };
@@ -323,7 +360,66 @@ export const updateEpisodeTitleAction = async (
   updateTag(accessTicketsCacheTag(tenantId));
 
   redirect(
-    `/series/${seriesPublicId}/episodes/${episodePublicId}?title_updated=1`
+    translationEditPath(
+      `/series/${seriesPublicId}/episodes/${episodePublicId}`,
+      translationLocale,
+      "title_updated"
+    )
+  );
+};
+
+/**
+ * Deletes the episode's title in one language, and opens the episode on the
+ * translation the screen picks without one.
+ */
+export const deleteEpisodeTranslationAction = async (
+  _prevState: FormActionState,
+  formData: FormData
+): Promise<FormActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const schema = await deleteTranslationSchema(locale);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      ...hiddenFormFields,
+      translationLocale: { kind: "value", name: "translation_locale" },
+    })
+  );
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
+  }
+
+  const {
+    episodeId,
+    episodePublicId,
+    seriesPublicId,
+    tenantId,
+    translationLocale,
+  } = parsed.data;
+  const mismatch = await confirmEpisodeTarget(parsed.data, locale);
+  if (mismatch) {
+    return { message: mismatch, ok: false };
+  }
+  const result = await withAdminSessionReauth(() =>
+    deleteEpisodeTranslation({ episodeId, tenantId, translationLocale }, locale)
+  );
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  updateTag(episodesCacheTag(tenantId));
+  updateTag(episodeCacheTag(tenantId, episodeId));
+  // The access tickets and the purchases name the episode they open, and the
+  // translation deleted may be the one they named it in.
+  updateTag(accessTicketsCacheTag(tenantId));
+  updateTag(purchasesCacheTag(tenantId));
+
+  redirect(
+    translationEditPath(
+      `/series/${seriesPublicId}/episodes/${episodePublicId}`,
+      undefined,
+      "translation_deleted"
+    )
   );
 };
 

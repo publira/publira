@@ -1439,8 +1439,6 @@
         }
       },
       "translations": {
-        "tabs_label": "語言",
-        "not_added": "（未新增）",
         "add_title": "尚無{$language}翻譯",
         "add_description": "在發布{$language}翻譯之前，{$language}網站的讀者會看到此頁面的其他語言版本。輸入標題以新增翻譯，然後撰寫並發布內文。",
         "add_action": "新增翻譯",
@@ -2068,7 +2066,24 @@
           }
         },
         "currency_changed": "開啟此表單後，租戶的貨幣已變更。請重新載入頁面並重新輸入價格。",
-        "currency_unavailable": "無法讀取租戶的貨幣，目前無法輸入價格。"
+        "currency_unavailable": "無法讀取租戶的貨幣，目前無法輸入價格。",
+        "translations": {
+          "title_description": "讀者在{$language}網站與應用程式中看到的標題。",
+          "not_added": "此章節尚無{$language}標題，因此{$language}網站與應用程式的讀者會看到其他語言版本。輸入標題即可新增。",
+          "add_action": "新增翻譯",
+          "adding": "正在新增…",
+          "locale_invalid": "請選擇支援的語言。",
+          "locale_not_offered": "此網站未提供該語言。請先在設定中將其加入提供的語言。",
+          "delete_action": "刪除此翻譯",
+          "deleting": "正在刪除…",
+          "delete_confirm_title": "要刪除{$language}標題嗎？",
+          "delete_confirm_description": "{$language}網站與應用程式的讀者將看到此章節的其他語言版本。此操作無法復原。",
+          "delete_confirm_action": "刪除",
+          "deleted": "翻譯已刪除。",
+          "delete_failed": "無法刪除翻譯。請稍後再試。",
+          "not_found": "此翻譯已被刪除。請重新載入頁面。",
+          "last_translation": "章節至少需要保留一個翻譯，因此無法刪除最後一個翻譯。"
+        }
       },
       "status": {
         "ongoing": "連載中",
@@ -2108,6 +2123,21 @@
           "access_hours_invalid": "劇集可閱讀的時間請輸入1～{$max}之間的整數。",
           "excluded_latest_count_invalid": "免費券不可閱讀的最新劇集數請輸入0或以上的整數。"
         }
+      },
+      "translations": {
+        "title_language": "以{$language}填寫，簡介也是如此。其他欄位由所有語言共用。",
+        "not_added": "此系列尚無{$language}標題，因此{$language}網站的讀者會看到其他語言版本。輸入標題與簡介，然後選擇「更新系列」即可新增。",
+        "locale_invalid": "請選擇支援的語言。",
+        "locale_not_offered": "此網站未提供該語言。請先在設定中將其加入提供的語言。",
+        "delete_action": "刪除此翻譯",
+        "deleting": "正在刪除…",
+        "delete_confirm_title": "要刪除{$language}標題與簡介嗎？",
+        "delete_confirm_description": "{$language}網站的讀者將看到此系列的其他語言版本。此操作無法復原。",
+        "delete_confirm_action": "刪除",
+        "deleted": "翻譯已刪除。",
+        "delete_failed": "無法刪除翻譯。請稍後再試。",
+        "not_found": "此翻譯已被刪除。請重新載入頁面。",
+        "last_translation": "系列至少需要保留一個翻譯，因此無法刪除最後一個翻譯。"
       }
     },
     "settings": {
@@ -3528,6 +3558,10 @@
         "reason_required": "請輸入退款理由。",
         "reason_too_long": "理由請控制在1,000個字元以內。"
       }
+    },
+    "translations": {
+      "tabs_label": "語言",
+      "not_added": "（未新增）"
     }
   },
   "storefront": {

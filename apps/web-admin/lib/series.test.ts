@@ -5,7 +5,11 @@ import {
   SeriesStatus,
   SurfaceAvailability,
 } from "@publira/api-client/admin/types";
-import { Code, ConnectError } from "@publira/api-client/errors";
+import {
+  BadRequestSchema,
+  Code,
+  ConnectError,
+} from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { updateSeries as UpdateSeries } from "./series";
@@ -30,6 +34,7 @@ vi.mock("./auth-session", () => ({
 const {
   mockCacheLife,
   mockCacheTag,
+  mockDeleteSeriesTranslation,
   mockGetAccessToken,
   mockGetSeries,
   mockListSeries,
@@ -37,6 +42,7 @@ const {
 } = vi.hoisted(() => ({
   mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
+  mockDeleteSeriesTranslation: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetSeries: vi.fn(),
   mockListSeries: vi.fn(),
@@ -55,6 +61,7 @@ vi.mock("./session", () => ({
 vi.mock("./api", () => ({
   apiClient: {
     series: {
+      deleteSeriesTranslation: mockDeleteSeriesTranslation,
       getSeries: mockGetSeries,
       listSeries: mockListSeries,
       updateSeries: mockUpdateSeries,
@@ -1061,6 +1068,174 @@ describe("getSeries", () => {
       expire: 0,
       revalidate: 0,
       stale: 0,
+    });
+  });
+});
+
+describe("a series' translations", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("reads every translation back beside the series, oldest first", async () => {
+    mockGetSeries.mockResolvedValue({
+      series: { publicId: "SERIES001", synopsis: "", title: "Series title" },
+      translations: [
+        {
+          locale: "ja",
+          synopsis: "The first synopsis.",
+          title: "Series title",
+        },
+        { locale: "en", synopsis: "", title: "Sea Breeze" },
+      ],
+    });
+
+    const { getSeries } = await import("./series");
+    const result = await getSeries({ publicId: "SERIES001" });
+
+    expect(result).toMatchObject({
+      ok: true,
+      translations: [
+        {
+          locale: "ja",
+          synopsis: "The first synopsis.",
+          title: "Series title",
+        },
+        { locale: "en", synopsis: "", title: "Sea Breeze" },
+      ],
+    });
+  });
+
+  // A tab names a language from the catalogs this build ships, so a
+  // translation in any other has nowhere to be shown.
+  it("leaves out a translation in a language this build serves no catalog for", async () => {
+    mockGetSeries.mockResolvedValue({
+      series: { publicId: "SERIES001", synopsis: "", title: "Series title" },
+      translations: [
+        { locale: "ja", synopsis: "", title: "Series title" },
+        { locale: "xx", synopsis: "", title: "Unknown" },
+      ],
+    });
+
+    const { getSeries } = await import("./series");
+    const result = await getSeries({ publicId: "SERIES001" });
+
+    expect(result).toMatchObject({
+      ok: true,
+      translations: [{ locale: "ja", synopsis: "", title: "Series title" }],
+    });
+  });
+
+  it("writes the title and synopsis in the language the save names", async () => {
+    mockUpdateSeries.mockResolvedValue({
+      series: { publicId: "SERIES001", synopsis: "", title: "" },
+    });
+
+    const { updateSeries } = await import("./series");
+    await updateSeries(
+      {
+        creatorCredits: [],
+        genreIds: [],
+        id: "SERIES001-ID",
+        isPublished: true,
+        labelId: "LABEL001",
+        synopsis: "A print shop by the sea.",
+        tagNames: [],
+        tenantId: "TENANT001",
+        title: "Sea Breeze",
+        translationLocale: "en",
+      },
+      "en"
+    );
+
+    expect(mockUpdateSeries).toHaveBeenCalledWith(
+      expect.objectContaining({
+        locale: "en",
+        synopsis: "A print shop by the sea.",
+        title: "Sea Breeze",
+      }),
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("words a language the site does not offer apart from other refused input", async () => {
+    mockUpdateSeries.mockRejectedValue(
+      new ConnectError(
+        "locale must be a locale the tenant offers",
+        Code.InvalidArgument,
+        undefined,
+        [
+          {
+            desc: BadRequestSchema,
+            value: { fieldViolations: [{ field: "locale" }] },
+          },
+        ]
+      )
+    );
+
+    const { updateSeries } = await import("./series");
+    const result = await updateSeries(
+      {
+        creatorCredits: [],
+        genreIds: [],
+        id: "SERIES001-ID",
+        isPublished: true,
+        labelId: "LABEL001",
+        tagNames: [],
+        tenantId: "TENANT001",
+        title: "Sea Breeze",
+        translationLocale: "ko",
+      },
+      "en"
+    );
+
+    expect(result).toEqual({
+      message:
+        "This site does not offer that language. Switch it on under Settings first.",
+      ok: false,
+    });
+  });
+
+  it("deletes the translation in the language it names", async () => {
+    mockDeleteSeriesTranslation.mockResolvedValue({ translations: [] });
+
+    const { deleteSeriesTranslation } = await import("./series");
+    const result = await deleteSeriesTranslation(
+      { id: "SERIES001-ID", tenantId: "TENANT001", translationLocale: "en" },
+      "en"
+    );
+
+    expect(result).toEqual({ ok: true });
+    expect(mockDeleteSeriesTranslation).toHaveBeenCalledWith(
+      {
+        locale: "en",
+        seriesId: "SERIES001-ID",
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("says why the last translation cannot be deleted", async () => {
+    mockDeleteSeriesTranslation.mockRejectedValue(
+      new ConnectError(
+        "a series must keep at least one translation",
+        Code.FailedPrecondition
+      )
+    );
+
+    const { deleteSeriesTranslation } = await import("./series");
+    const result = await deleteSeriesTranslation(
+      { id: "SERIES001-ID", tenantId: "TENANT001", translationLocale: "ja" },
+      "en"
+    );
+
+    expect(result).toEqual({
+      message:
+        "A series keeps at least one translation, so its last one cannot be deleted.",
+      ok: false,
     });
   });
 });

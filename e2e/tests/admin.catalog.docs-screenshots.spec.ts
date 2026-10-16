@@ -263,6 +263,24 @@ for (const locale of DOCS_LOCALES) {
         });
       });
 
+      test("the language tabs above the series form", async ({ page }) => {
+        await openScreen(page, locale, `/series/${SERIES}`);
+
+        await expectDocsScreenshot(page, {
+          element: [
+            page.getByRole("navigation", {
+              name: t("admin.translations.tabs_label"),
+            }),
+            docsField(
+              page.getByRole("textbox", { name: t("admin.series.form.title") })
+            ),
+          ],
+          locale,
+          page: "console/catalog/series",
+          subject: "languages",
+        });
+      });
+
       test("the cover image tab, with its four shapes", async ({ page }) => {
         await openScreen(page, locale, `/series/${SERIES}?tab=eye-catch`);
 

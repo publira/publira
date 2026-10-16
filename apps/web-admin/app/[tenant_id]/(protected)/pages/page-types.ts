@@ -2,6 +2,7 @@ import type { Locale } from "@publira/i18n";
 import { formatDateTime } from "@publira/utils";
 
 import type { PageItem, PageVersionItem } from "#lib/page";
+import { translationEditPath } from "#lib/translation-locales";
 
 /**
  * Page timestamps used to be formatted in UTC while every other admin screen
@@ -52,18 +53,7 @@ export const pageEditPath = (
   pageId: string,
   translationLocale: Locale | undefined,
   flash?: string
-): string => {
-  const query = new URLSearchParams();
-  if (translationLocale) {
-    query.set("locale", translationLocale);
-  }
-  if (flash) {
-    query.set(flash, "1");
-  }
-  const search = query.toString();
-
-  return search ? `/pages/${pageId}?${search}` : `/pages/${pageId}`;
-};
+): string => translationEditPath(`/pages/${pageId}`, translationLocale, flash);
 
 /** `fieldErrors.slug` puts the reason beside the slug input. */
 export type PageFormState = {

@@ -31,6 +31,8 @@ import { verifyAdminPageSession } from "./admin-page-session";
 import { apiClient, withServiceHeaders, withSessionHeaders } from "./api";
 import type { CachedRead } from "./cached-read";
 import { settleCachedRead } from "./cached-read";
+import { toEpisodeTranslations } from "./catalog-translation";
+import type { EpisodeTranslationItem } from "./catalog-translation";
 import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
 import {
   cursorPageRequest,
@@ -113,6 +115,11 @@ export type GetEpisodeResult =
        * this apart from the resolved value.
        */
       purchaseAvailability: PurchaseAvailabilityOverride;
+      /**
+       * Every translation of the episode, oldest first. `episode.title` is
+       * that of the one in the tenant's default language, else the oldest.
+       */
+      translations: EpisodeTranslationItem[];
     }
   | { notFound: true; ok: false }
   | { message: string; notFound?: false; ok: false };
@@ -165,6 +172,10 @@ export type ReplaceEpisodeImageResult =
 
 export type UpdateEpisodeTitleResult =
   | { ok: true; episode: EpisodeItem }
+  | { ok: false; message: string };
+
+export type DeleteEpisodeTranslationResult =
+  | { ok: true }
   | { ok: false; message: string };
 
 export type UpdateEpisodePricingResult =
@@ -233,6 +244,9 @@ const mapErrorToMessage = async (
   return rpcErrorMessage(error, fallbackMessage, {
     locale,
     overrides: {
+      "invalid-argument": rpcErrorHasFieldViolation(error, "locale")
+        ? t("admin.series.episodes.translations.locale_not_offered")
+        : undefined,
       "not-found": t("admin.series.episodes.series_not_found"),
     },
   });
@@ -854,6 +868,7 @@ export const getEpisodeForTenant = async (
       layout,
       ok: true,
       purchaseAvailability,
+      translations: toEpisodeTranslations(response.translations),
     };
   } catch (error) {
     if (isMissingResourceRpcError(error)) {
@@ -1719,14 +1734,17 @@ export const replaceEpisodeImage = async (
 };
 
 /**
- * Renames the episode. The title is sent as the caller hands it over, already
- * trimmed: the API stores what it is given.
+ * Renames the episode in one language, adding its translation in that
+ * language when it has none. The title is sent as the caller hands it over,
+ * already trimmed: the API stores what it is given.
  */
 export const updateEpisodeTitle = async (
   input: {
     tenantId: string;
     episodeId: string;
     title: string;
+    /** Absent writes the tenant's default language. */
+    translationLocale?: Locale;
   },
   locale: Locale
 ): Promise<UpdateEpisodeTitleResult> => {
@@ -1745,6 +1763,7 @@ export const updateEpisodeTitle = async (
     const response = await apiClient.series.updateEpisodeTitle(
       {
         episodeId: input.episodeId,
+        locale: input.translationLocale,
         tenant: { tenantId: input.tenantId },
         title: input.title,
       },
@@ -1770,6 +1789,62 @@ export const updateEpisodeTitle = async (
         error,
         t("admin.series.episodes.rename.failed"),
         locale
+      ),
+      ok: false,
+    };
+  }
+};
+
+/**
+ * Deletes the episode's title in one language. The API keeps an episode's last
+ * translation, and refuses to delete it.
+ */
+export const deleteEpisodeTranslation = async (
+  input: {
+    tenantId: string;
+    episodeId: string;
+    translationLocale: Locale;
+  },
+  locale: Locale
+): Promise<DeleteEpisodeTranslationResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    await apiClient.series.deleteEpisodeTranslation(
+      {
+        episodeId: input.episodeId,
+        locale: input.translationLocale,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    return { ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: rpcErrorMessage(
+        error,
+        t("admin.series.episodes.translations.delete_failed"),
+        {
+          locale,
+          overrides: {
+            "not-found": t("admin.series.episodes.translations.not_found"),
+            precondition: t(
+              "admin.series.episodes.translations.last_translation"
+            ),
+          },
+        }
       ),
       ok: false,
     };

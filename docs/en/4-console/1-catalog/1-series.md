@@ -1,8 +1,8 @@
 ---
 title: Series
-description: Create a series, decide when and where it is shown, and set its age rating, reading direction, comments, cover image, and Free if you wait.
+description: Create a series, give it a title and synopsis in each of the site's languages, decide when and where it is shown, and set its age rating, reading direction, comments, cover image, and Free if you wait.
 published: 2026-10-07
-updated: 2026-10-11
+updated: 2026-10-16
 ---
 
 A series is the work a reader follows: it has a title, a synopsis, a cover, a label, and its Authors, and it holds the episodes readers open. **Series**, in the sidebar's **Catalog** group, lists the tenant's series, newest first, twenty to a page. **Serialization status** and **Age rating** above the list narrow it.
@@ -14,6 +14,8 @@ Each row opens the series with **Edit**, or **View** for an Auditor, and its epi
 ## Creating a series
 
 Choose **Create series**. The form is the same one the series is edited with later, and every field on it can be changed afterwards. Choose **Create series** at the bottom to save it, which opens its edit page.
+
+The title and synopsis are written in the site's default language. A title and synopsis in the site's other languages are added once the series exists, as [Titles in other languages](#titles-in-other-languages) describes.
 
 ![The top of the Create series form: Title, Reading period, Synopsis, Authors with Add author, and Label.](./series-create-form.png)
 
@@ -92,6 +94,16 @@ An episode can set its own of either, as [Page layout](./2-episodes.md#page-layo
 **Reading period**, in hours, is where the **Reading period** of each new episode in the series starts. A purchase keeps an episode open for the episode's own period, not the series': an episode can be given a different one when it is created or [changed later](./2-episodes.md#changing-the-price-and-reading-period), and changing the series' period later leaves the episodes already created as they are. A new series starts at `0`, which keeps a purchase open with no end. [Selling episodes](../4-selling-episodes.md#price-and-reading-period) describes how the period is used.
 
 ![The Reading period field set to 0, with the note that new episodes start with this period.](./series-reading-period.png)
+
+## Titles in other languages
+
+A series has a title and a synopsis in each language the site offers, which a Tenant admin chooses under [**Settings**](../3-setup/1-settings.md#languages). Above the form on the **Basic information** tab, **Languages** has a tab for each of them, and the form below edits the title and synopsis of the one selected. The note under **Title** names that language. A language the series has no title in yet is marked **(not added)**: its tab opens the form with **Title** and **Synopsis** empty, and choosing **Update series** there adds them. Until it has one, readers of the site in that language see the series in another language.
+
+![The Languages tabs above the series form, English selected and the other languages marked as not added, and the Title field with the note naming the language it is written in.](./series-languages.png)
+
+Every other field on the form belongs to the series rather than to one language, so changing it on any language's tab changes it for all of them. **Delete this translation**, beside the tabs, removes the selected language's title and synopsis, but not the last ones a series has.
+
+The **Series** list, and the console's other screens that name a series, show its title in the site's default language. A series that has none in it is named in the language it was first written in.
 
 ## The cover image
 

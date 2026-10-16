@@ -7,7 +7,7 @@ import type { SharedMessages } from "@publira/i18n/catalog";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { PageTranslationTabs } from "./page-translation-tabs";
+import { TranslationTabs } from "./translation-tabs";
 
 vi.mock("#components/message", () => ({
   Message: ({
@@ -31,17 +31,17 @@ const renderTabs = async (
   locales: readonly Locale[] = ["ja", "en", "ko", "zh-Hans", "zh-Hant"]
 ) =>
   render(
-    await PageTranslationTabs({
+    await TranslationTabs({
       children: <button type="button">Delete this translation</button>,
+      hrefFor: (code) => `/pages/PAGE001?locale=${code}`,
       locales,
-      pageId: "PAGE001",
       selectedLocale: "en",
       translatedLocales: ["ja", "en"],
     })
   );
 
-describe("PageTranslationTabs", () => {
-  it("links every language the site offers to that translation of the page", async () => {
+describe("TranslationTabs", () => {
+  it("links every language the site offers to that translation of the record", async () => {
     await renderTabs();
 
     const languages = screen.getByRole("navigation", { name: "Languages" });
@@ -80,7 +80,7 @@ describe("PageTranslationTabs", () => {
     ).toBe("/pages/PAGE001?locale=en");
   });
 
-  it("names the locales the page has no translation in yet", async () => {
+  it("names the locales the record has no translation in yet", async () => {
     await renderTabs();
 
     expect(screen.getByRole("link", { name: "English" })).toBeDefined();

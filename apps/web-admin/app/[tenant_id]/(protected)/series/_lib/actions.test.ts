@@ -3,21 +3,32 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockAssertSameOrigin,
   mockCreateSeries,
+  mockDeleteSeriesTranslation,
   mockGetAccessToken,
+  mockGetSeriesForTenant,
   mockGetTenantDisplayTimeZone,
   mockRedirect,
   mockUpdateSeries,
   mockUpdateSeriesWaitFreeSettings,
   mockUpdateTag,
+  mockVerifyAdminSession,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
   mockCreateSeries: vi.fn(),
+  mockDeleteSeriesTranslation: vi.fn(),
   mockGetAccessToken: vi.fn(),
+  mockGetSeriesForTenant: vi.fn(),
   mockGetTenantDisplayTimeZone: vi.fn(),
   mockRedirect: vi.fn(),
   mockUpdateSeries: vi.fn(),
   mockUpdateSeriesWaitFreeSettings: vi.fn(),
   mockUpdateTag: vi.fn(),
+  mockVerifyAdminSession: vi.fn(),
+}));
+
+vi.mock("#lib/auth-session", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  verifyAdminSession: mockVerifyAdminSession,
 }));
 
 vi.mock("#lib/action-messages", async () => {
@@ -40,6 +51,14 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
+vi.mock("#lib/access-ticket", () => ({
+  accessTicketsCacheTag: (tenantId: string) => `access-tickets-${tenantId}`,
+}));
+
+vi.mock("#lib/purchase", () => ({
+  purchasesCacheTag: (tenantId: string) => `purchases-${tenantId}`,
+}));
+
 vi.mock("#lib/dashboard", () => ({
   tenantDashboardCacheTag: (tenantId: string) => `tenant:${tenantId}:dashboard`,
 }));
@@ -50,6 +69,8 @@ vi.mock("#lib/session", () => ({
 
 vi.mock("#lib/series", () => ({
   createSeries: mockCreateSeries,
+  deleteSeriesTranslation: mockDeleteSeriesTranslation,
+  getSeriesForTenant: mockGetSeriesForTenant,
   seriesCacheTag: (tenantId: string, publicId: string) =>
     `series-${tenantId}-${publicId}`,
   seriesListCacheTag: (tenantId: string) => `series-list-${tenantId}`,
@@ -1053,6 +1074,199 @@ describe("updateSeriesWaitFreeSettingsAction", () => {
 
     expect(result).toEqual({
       message: "Could not save the free-if-you-wait settings.",
+      ok: false,
+    });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+});
+
+/** The translation delete form, which names the series by its public id alone. */
+const deleteForm = (translationLocale: string): FormData => {
+  const formData = new FormData();
+  formData.set("tenant_id", "TENANT001");
+  formData.set("series_public_id", "SERIES001");
+  formData.set("translation_locale", translationLocale);
+  return formData;
+};
+
+describe("a series' title and synopsis per language", () => {
+  const SERIES_ID = "018f0e6a-2000-7000-8000-000000000001";
+
+  /** The basic tab's form as the English tab posts it. */
+  const basicsForm = (translationLocale: string): FormData => {
+    const formData = new FormData();
+    formData.set("tenant_id", "TENANT001");
+    formData.set("series_id", SERIES_ID);
+    formData.set("translation_locale", translationLocale);
+    formData.set("title", "Sea Breeze and Letterpress");
+    formData.set("synopsis", "A print shop by the sea.");
+    formData.set("reading_period_hours", "24");
+    formData.set("label_id", "018f0e6a-5000-7000-8000-000000000001");
+    formData.set("status", "ongoing");
+    formData.set("age_rating", "all");
+    formData.set("availability", "all");
+    formData.set("comment_mode", "");
+    formData.set("purchase_availability", "");
+    formData.set("reading_direction", "rtl");
+    formData.set("spread_start_page", "2");
+    return formData;
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetTenantDisplayTimeZone.mockResolvedValue("Asia/Seoul");
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("saves the title and synopsis in the language of the tab the form is on, and returns to that tab", async () => {
+    mockUpdateSeries.mockResolvedValueOnce({
+      ok: true,
+      series: { publicId: "SERIES001" },
+    });
+
+    const { updateSeriesAction } = await import("./actions");
+    await updateSeriesAction(null, basicsForm("en"));
+
+    expect(mockUpdateSeries).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: SERIES_ID,
+        synopsis: "A print shop by the sea.",
+        title: "Sea Breeze and Letterpress",
+        translationLocale: "en",
+      }),
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith("series-TENANT001-SERIES001");
+    expect(mockUpdateTag).toHaveBeenCalledWith("series-list-TENANT001");
+    expect(mockRedirect).toHaveBeenCalledWith(
+      "/series/SERIES001?locale=en&updated=1"
+    );
+  });
+
+  it("refuses a language this build serves no catalog for", async () => {
+    const { updateSeriesAction } = await import("./actions");
+    const result = await updateSeriesAction(null, basicsForm("xx"));
+
+    expect(result).toEqual({
+      message: "Choose a supported language.",
+      mode: "update",
+      ok: false,
+    });
+    expect(mockUpdateSeries).not.toHaveBeenCalled();
+  });
+
+  it("sends the cover image tab's title back in the language it was read in", async () => {
+    mockUpdateSeries.mockResolvedValueOnce({
+      ok: true,
+      series: { eyeCatchImageVariants: [], publicId: "SERIES001" },
+    });
+
+    const { updateSeriesEyeCatchAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("tenant_id", "TENANT001");
+    formData.set("series_id", SERIES_ID);
+    formData.set("translation_locale", "ja");
+    formData.set("title", "The title in the default language");
+    formData.set("label_id", "018f0e6a-5000-7000-8000-000000000001");
+    formData.set("clear_eye_catch_image", "1");
+
+    await updateSeriesEyeCatchAction(null, formData);
+
+    expect(mockUpdateSeries).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "The title in the default language",
+        translationLocale: "ja",
+      }),
+      "en"
+    );
+  });
+
+  it("deletes one language's translation and opens the series on another", async () => {
+    mockGetSeriesForTenant.mockResolvedValueOnce({
+      ok: true,
+      series: { id: SERIES_ID, publicId: "SERIES001" },
+    });
+    mockDeleteSeriesTranslation.mockResolvedValueOnce({ ok: true });
+
+    const { deleteSeriesTranslationAction } = await import("./actions");
+    await deleteSeriesTranslationAction(null, deleteForm("en"));
+
+    // The tenant the client named is confirmed before the series is read with
+    // the service credential.
+    expect(mockVerifyAdminSession).toHaveBeenCalledWith("TENANT001");
+    expect(mockGetSeriesForTenant).toHaveBeenCalledWith(
+      { publicId: "SERIES001", tenantId: "TENANT001" },
+      "en"
+    );
+    expect(mockDeleteSeriesTranslation).toHaveBeenCalledWith(
+      { id: SERIES_ID, tenantId: "TENANT001", translationLocale: "en" },
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith("series-TENANT001-SERIES001");
+    expect(mockUpdateTag).toHaveBeenCalledWith("series-list-TENANT001");
+    // The access tickets and the purchases name the series in the title the
+    // deleted translation may have given them.
+    expect(mockUpdateTag).toHaveBeenCalledWith("access-tickets-TENANT001");
+    expect(mockUpdateTag).toHaveBeenCalledWith("purchases-TENANT001");
+    expect(mockRedirect).toHaveBeenCalledWith(
+      "/series/SERIES001?translation_deleted=1"
+    );
+  });
+
+  // The id the API deletes by is read back from the public id the caches and
+  // the redirect use, so a record id posted beside it cannot point elsewhere.
+  it("deletes the translation of the series the public id names, whatever record id the form also carries", async () => {
+    mockGetSeriesForTenant.mockResolvedValueOnce({
+      ok: true,
+      series: { id: SERIES_ID, publicId: "SERIES001" },
+    });
+    mockDeleteSeriesTranslation.mockResolvedValueOnce({ ok: true });
+
+    const { deleteSeriesTranslationAction } = await import("./actions");
+    const formData = deleteForm("en");
+    formData.set("series_id", "018f0e6a-2000-7000-8000-0000000000ff");
+    await deleteSeriesTranslationAction(null, formData);
+
+    expect(mockDeleteSeriesTranslation).toHaveBeenCalledWith(
+      { id: SERIES_ID, tenantId: "TENANT001", translationLocale: "en" },
+      "en"
+    );
+  });
+
+  it("refuses to delete when the series the public id names is not found", async () => {
+    mockGetSeriesForTenant.mockResolvedValueOnce({ notFound: true, ok: false });
+
+    const { deleteSeriesTranslationAction } = await import("./actions");
+    const result = await deleteSeriesTranslationAction(null, deleteForm("en"));
+
+    expect(result).toEqual({
+      message: "The series could not be found. Reload the page and try again.",
+      ok: false,
+    });
+    expect(mockDeleteSeriesTranslation).not.toHaveBeenCalled();
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+
+  it("keeps the screen with the API's wording when the delete is refused", async () => {
+    mockGetSeriesForTenant.mockResolvedValueOnce({
+      ok: true,
+      series: { id: SERIES_ID, publicId: "SERIES001" },
+    });
+    mockDeleteSeriesTranslation.mockResolvedValueOnce({
+      message:
+        "A series keeps at least one translation, so its last one cannot be deleted.",
+      ok: false,
+    });
+
+    const { deleteSeriesTranslationAction } = await import("./actions");
+    const result = await deleteSeriesTranslationAction(null, deleteForm("ja"));
+
+    expect(result).toEqual({
+      message:
+        "A series keeps at least one translation, so its last one cannot be deleted.",
       ok: false,
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();

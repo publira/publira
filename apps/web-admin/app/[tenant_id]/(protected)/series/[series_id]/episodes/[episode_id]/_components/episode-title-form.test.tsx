@@ -95,4 +95,71 @@ describe("EpisodeTitleForm", () => {
       )
     ).toBeTruthy();
   });
+
+  it("writes the title in the language of its tab", async () => {
+    const action = vi.fn((_prevState: FormActionState, _formData: FormData) =>
+      Promise.resolve(null)
+    );
+    render(
+      <EpisodeTitleForm
+        action={action}
+        episodeId="EP001-ID"
+        episodePublicId="EP001"
+        initialTitle="Episode 1 — Morning"
+        seriesPublicId="SERIES001"
+        tenantId="TENANT001"
+        translationLocale="en"
+      >
+        <nav aria-label="Languages" />
+      </EpisodeTitleForm>
+    );
+
+    expect(screen.getByRole("navigation", { name: "Languages" })).toBeTruthy();
+    expect(
+      screen.getByText("The title readers of the English site and app see.")
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Update title" }));
+
+    await waitFor(() => {
+      expect(action).toHaveBeenCalledOnce();
+    });
+    expect(action.mock.calls[0]?.[1].get("translation_locale")).toBe("en");
+  });
+
+  it("adds the title in a language the episode has none in yet", async () => {
+    const action = vi.fn((_prevState: FormActionState, _formData: FormData) =>
+      Promise.resolve(null)
+    );
+    render(
+      <EpisodeTitleForm
+        action={action}
+        episodeId="EP001-ID"
+        episodePublicId="EP001"
+        initialTitle=""
+        seriesPublicId="SERIES001"
+        tenantId="TENANT001"
+        translated={false}
+        translationLocale="en"
+      />
+    );
+
+    expect(
+      screen.getByText("This episode has no English title yet", {
+        exact: false,
+      })
+    ).toBeTruthy();
+    const input = screen.getByRole<HTMLInputElement>("textbox", {
+      name: /Title/u,
+    });
+    expect(input.value).toBe("");
+    fireEvent.change(input, { target: { value: "Episode 1 — Morning" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add translation" }));
+
+    await waitFor(() => {
+      expect(action).toHaveBeenCalledOnce();
+    });
+    const formData = action.mock.calls[0]?.[1];
+    expect(formData?.get("title")).toBe("Episode 1 — Morning");
+    expect(formData?.get("translation_locale")).toBe("en");
+  });
 });
