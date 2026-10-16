@@ -196,6 +196,12 @@ The tenant points the inbound domain's MX records at the provider. A domain of i
 
 `internal/inboundprovider/mailgun` reads what a Route's `forward()` action posts to a URL ending in `json`: the mail already parsed into one JSON document, attachments included, signed over the whole body in `X-Mailgun-Signature`. The post carries the whole mail, so nothing is read from Mailgun's API, and the EU and US regions need no setting. Its one field is the HTTP webhook signing key (`webhook_signing_key`, secret and required), found under **Settings → API Security** in Mailgun; for a domain on a subaccount, the subaccount's key and the primary account's both work. In Mailgun, add the inbound domain under **Domains** and point its MX records at the ones Mailgun shows for receiving, then create a Route under **Receiving** with the filter `match_recipient(".*@<inbound domain>")` and the action `forward("https://<tenant-domain>/api/v1/webhook/email/mailgun/json")`.
 
+### Raw MIME over HTTPS
+
+`internal/inboundprovider/mime` reads one whole RFC 5322 mail posted as the request body with `Content-Type: message/rfc822`, for anything that can hand a received mail to an HTTPS endpoint and has no provider of its own: a Cloudflare Email Worker, a Postfix `pipe` transport running `curl`, a script. Nothing on that side signs what it posts, so its one field is a webhook token (`webhook_token`, secret and required) that the tenant chooses and the sender sends as the basic auth password, the same way SendGrid does: `https://inbound:<token>@<tenant-domain>/api/v1/webhook/email/mime`. A post with another token is refused as unsigned, and one whose body is not a mail with a `From` is refused as malformed.
+
+The `X-Envelope-To` request header names the envelope recipients, comma-separated, and they are matched ahead of the mail's `To` and `Cc`. A mail an alias or a forward passed on often no longer names `contact+<message public id>@<inbound domain>` in its headers, while the side that received it still knows the address it was delivered to: a Cloudflare Email Worker's `message.to`, Postfix's `${recipient}`. The Worker and the Postfix transport that post this way are on the [Email page](../docs/en/4-console/3-setup/6-email.md#posting-raw-mail-from-cloudflare-email-routing) of the documentation.
+
 The **Email** page under **Integrations** in `web-admin` is where a tenant administrator does this: it shows the webhook URL to register on the tenant's domain and, once a domain is saved, the reply address pattern `contact+*@<inbound domain>`.
 
 ### Receiving replies on a development machine
@@ -210,11 +216,30 @@ ngrok http 3080 --host-header=localhost:3080
 
 The console shows the webhook URL on the tenant's own domain, which no provider can reach on a development machine, so register the tunnel's host in its place: `https://inbound:<token>@<tunnel-host>/api/v1/webhook/email/sendgrid` for SendGrid, `https://<tunnel-host>/api/v1/webhook/email/resend` for Resend, and a Route forwarding to `https://<tunnel-host>/api/v1/webhook/email/mailgun/json` for Mailgun. The inbound domain still has to be a real one whose MX records you control, such as `reply-dev.<a domain you own>`, pointed at `mx.sendgrid.net` with priority 10 or at the MX records Resend or Mailgun shows for it.
 
+The raw MIME provider needs neither a tunnel nor an account anywhere: post a mail to the edge on the development machine yourself. Save the provider with any inbound domain, such as `reply.localhost`, and a token of your choice, answer a contact message from the console, and post a reply to it:
+
+```bash
+cat > reply.eml <<'MAIL'
+From: Reader <reader@example.net>
+To: contact+<message public id>@reply.localhost
+Subject: Re: About my purchase
+Content-Type: text/plain; charset=UTF-8
+
+It opens now, thank you.
+MAIL
+
+curl --fail --user inbound:<token> \
+  --header 'Content-Type: message/rfc822' \
+  --header 'X-Envelope-To: contact+<message public id>@reply.localhost' \
+  --data-binary @reply.eml \
+  http://localhost:3080/api/v1/webhook/email/mime
+```
+
 ### Adding an inbound provider
 
 The layout follows `internal/paymentprovider`: implement `inboundprovider.Provider` in `internal/inboundprovider/<id>`, register it in `providers.Registry()`, and add a fixture implementing `inboundprovidertest.Fixture` in `<id>/<id>test` to the map in `providers/providerstest`. `TestEveryRegisteredProviderReadsItsWebhook` in `providers` runs `RunParse` against the fixture, and `TestDBEveryRegisteredInboundProviderStoresAReply` in `api/publicapi` delivers its requests through `ProcessInboundEmailWebhook` to PostgreSQL; both fail, naming the provider, while it has no fixture.
 
-The **Email** page lists the provider under its `DisplayName` and labels each field with `admin.settings.inbound_email.fields.<id>.<field>`, a key every catalog in `locales/` carries and `InboundEmailCredentialName` in `apps/web-admin/app/[tenant_id]/(protected)/integrations/email/_components/tenant-inbound-email-settings-form.tsx` renders; a field with no key shows the name it is declared under. Document its setup in a section beside [SendGrid Inbound Parse](#sendgrid-inbound-parse), including how to reach it from a development machine.
+The **Email** page lists the provider under its `DisplayName` and labels each field with `admin.settings.inbound_email.fields.<id>.<field>`, a key every catalog in `locales/` carries and `InboundEmailCredentialName` in `apps/web-admin/app/[tenant_id]/(protected)/integrations/email/_components/tenant-inbound-email-settings-form.tsx` renders; a field with no key shows the name it is declared under. Document its setup in a section beside [SendGrid Inbound Parse](#sendgrid-inbound-parse), including how to reach it from a development machine. A service that can post the whole mail to a URL needs no package of its own: [Raw MIME over HTTPS](#raw-mime-over-https) already reads it.
 
 ## Image storage configuration
 

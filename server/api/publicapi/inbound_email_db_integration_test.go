@@ -20,6 +20,8 @@ import (
 	"github.com/publira/publira/server/internal/inboundemail"
 	"github.com/publira/publira/server/internal/inboundprovider"
 	"github.com/publira/publira/server/internal/inboundprovider/inboundprovidertest"
+	inboundmime "github.com/publira/publira/server/internal/inboundprovider/mime"
+	"github.com/publira/publira/server/internal/inboundprovider/mime/mimetest"
 	inboundproviders "github.com/publira/publira/server/internal/inboundprovider/providers"
 	"github.com/publira/publira/server/internal/inboundprovider/providers/providerstest"
 	"github.com/publira/publira/server/internal/outbox"
@@ -453,4 +455,63 @@ func TestDBInboundEmailWebhookBoundsWhatItReads(t *testing.T) {
 		t.Fatalf("a payload past the webhook's own limit: %v, want it acknowledged", err)
 	}
 	harness.assertNothingStored(t, seeded)
+}
+
+// A mail forwarded or aliased on its way to the webhook no longer names the
+// message's own address in its To header, and names no answer either; the
+// envelope recipient the forwarding side posts beside it is what matches it.
+func TestDBMIMEInboundEmailIsMatchedByItsEnvelopeRecipient(t *testing.T) {
+	harness := newInboundHarness(t)
+	fixture := mimetest.Fixture{}
+	harness.server.inboundProviders = inboundprovider.NewRegistry(fixture.Provider())
+	token := fixture.Credentials()[inboundmime.FieldWebhookToken]
+	forwarded := func() []byte {
+		return mimetest.Raw(inboundprovidertest.Mail{
+			From:      "reader.alt@example.org",
+			To:        "support@comics.example.com",
+			Subject:   "Re: About my purchase",
+			Text:      "It opens on my phone too.\n",
+			MessageID: "forwarded-" + uuid.NewString() + "@example.org",
+		})
+	}
+
+	t.Run("the envelope recipient matches the message", func(t *testing.T) {
+		seeded := harness.newTenant(t, fixture, true)
+		payload, headers := mimetest.Post(token, forwarded(), "contact+"+seeded.messagePublicID+"@"+inboundTestDomain)
+		if err := harness.deliver(t, seeded.tenant, inboundmime.ID, payload, headers); err != nil {
+			t.Fatalf("ProcessInboundEmailWebhook: %v", err)
+		}
+		entries := harness.readerEntries(t, seeded.tenant.ID)
+		if len(entries) != 1 || entries[0].contactMessageID != seeded.messageID {
+			t.Fatalf("reader entries = %+v, want one under message %s", entries, seeded.messageID)
+		}
+		if entries[0].body != "It opens on my phone too." {
+			t.Errorf("body = %q", entries[0].body)
+		}
+		if handledAt := harness.handledAt(t, seeded.tenant.ID, seeded.messageID); handledAt.Valid {
+			t.Errorf("the message is still handled at %v, want it waiting again", handledAt.Time)
+		}
+		if notices := harness.staffNotices(t, seeded.tenant.ID); len(notices) != 1 {
+			t.Fatalf("queued %d staff mails, want 1", len(notices))
+		}
+	})
+
+	t.Run("without it the same mail matches nothing", func(t *testing.T) {
+		seeded := harness.newTenant(t, fixture, true)
+		payload, headers := mimetest.Post(token, forwarded())
+		if err := harness.deliver(t, seeded.tenant, inboundmime.ID, payload, headers); err != nil {
+			t.Fatalf("ProcessInboundEmailWebhook: %v", err)
+		}
+		harness.assertNothingStored(t, seeded)
+	})
+
+	t.Run("a body that is not a mail is invalid", func(t *testing.T) {
+		seeded := harness.newTenant(t, fixture, true)
+		payload, headers := mimetest.Post(token, []byte("this is not a mail"), "contact+"+seeded.messagePublicID+"@"+inboundTestDomain)
+		err := harness.deliver(t, seeded.tenant, inboundmime.ID, payload, headers)
+		if connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Fatalf("ProcessInboundEmailWebhook error = %v, want invalid_argument", err)
+		}
+		harness.assertNothingStored(t, seeded)
+	})
 }

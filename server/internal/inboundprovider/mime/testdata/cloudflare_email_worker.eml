@@ -1,0 +1,37 @@
+Received: from mail-sor-f41.google.com (mail-sor-f41.google.com [209.85.220.41])
+        by mx.cloudflare.net (Postfix) with ESMTPS id 4XKq2m0Wb3z9sJ
+        for <contact+7Hn3QzW9kPfa@reply.example.com>; Thu, 15 Oct 2026 09:12:31 +0000 (UTC)
+ARC-Seal: i=1; a=rsa-sha256; s=2024; d=cloudflare-email.net; cv=none; b=Zm9vYmFy
+ARC-Authentication-Results: i=1; mx.cloudflare.net; dkim=pass header.d=example.net; spf=pass smtp.mailfrom=alex.reader@example.net
+Received-SPF: pass (mx.cloudflare.net: domain of alex.reader@example.net designates 209.85.220.41 as permitted sender)
+MIME-Version: 1.0
+From: Alex Reader <alex.reader@example.net>
+Date: Thu, 15 Oct 2026 18:12:20 +0900
+Message-ID: <CAJ4k2m1+9xQ@mail.example.net>
+Subject: =?UTF-8?Q?Re:_About_my_purchase?=
+To: Example Comics <contact+7Hn3QzW9kPfa@reply.example.com>
+In-Reply-To: <0f3c2b8e-1d7a-4c55-9a3e-4b1f0d2c9e11@shop.example.com>
+References: <0f3c2b8e-1d7a-4c55-9a3e-4b1f0d2c9e11@shop.example.com>
+Content-Type: multipart/alternative; boundary="000000000000c0ffee0123456789"
+
+--000000000000c0ffee0123456789
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+Thanks, the episode opens now.
+
+Alex
+
+On Thu, Oct 15, 2026 at 5:40=E2=80=AFPM Example Comics <contact+7Hn3QzW9kPfa@re=
+ply.example.com> wrote:
+> We have restored your purchase. Please try opening the episode again.
+
+--000000000000c0ffee0123456789
+Content-Type: text/html; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+<div dir=3D"ltr">Thanks, the episode opens now.<div><br></div><div>Alex</div=
+></div><br><div class=3D"gmail_quote"><blockquote>We have restored your purc=
+hase. Please try opening the episode again.</blockquote></div>
+
+--000000000000c0ffee0123456789--

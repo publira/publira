@@ -2569,7 +2569,7 @@
       },
       "inbound_email": {
         "title": "受信メール",
-        "description": "お問い合わせへの回答に読者が返信したメールを、SendGrid、Resend、またはMailgun経由でコンソールに取り込みます。秘密情報は書き込み専用で、再表示時は状態とマスキングだけが見えます。",
+        "description": "お問い合わせへの回答に読者が返信したメールを、SendGrid、Resend、Mailgun、またはメール全体をHTTPSのURLに送信できるサービス経由でコンソールに取り込みます。秘密情報は書き込み専用で、再表示時は状態とマスキングだけが見えます。",
         "section_error": "受信メールの設定を表示できませんでした",
         "provider": "受信メールのプロバイダ",
         "provider_description": "読者からの返信は、ここで選んだプロバイダで受信します。認証情報は下の欄で登録します。",
@@ -2582,6 +2582,7 @@
         "domain_sendgrid_description": "DNSで、このドメインのMXレコードを優先度10でmx.sendgrid.netに向けてください。",
         "domain_resend_description": "ResendのDomainsでこのドメインを追加して受信を有効にし、Resendに表示されるMXレコードをDNSに追加してください。",
         "domain_mailgun_description": "MailgunのDomainsでこのドメインを追加し、Mailgunに表示される受信用のMXレコードをDNSに追加してください。",
+        "domain_mime_description": "DNSで、このドメインのMXレコードを、メールを受信して下のWebhook URLに送信するメールサーバーやサービス（Cloudflare Email Routingや自前のPostfixサーバーなど）に向けてください。",
         "fields": {
           "sendgrid": {
             "webhook_token": "Webhookトークン"
@@ -2592,6 +2593,9 @@
           },
           "mailgun": {
             "webhook_signing_key": "HTTP Webhook署名キー"
+          },
+          "mime": {
+            "webhook_token": "Webhookトークン"
           }
         },
         "field_sources": {
@@ -2604,6 +2608,9 @@
           },
           "mailgun": {
             "webhook_signing_key": "Mailgun管理画面のSettings → API Securityに表示されるHTTP webhook signing keyです。Mailgunは転送するメールに毎回このキーで署名し、署名が一致しないメールは拒否されます。"
+          },
+          "mime": {
+            "webhook_token": "ご自身で決める十分に長いランダムな文字列です。メールを送信する側は下のWebhook URLのパスワードとして毎回これを送り返し、これを含まないメールは拒否されます。"
           }
         },
         "webhook_url": "Webhook URL",
@@ -2611,6 +2618,7 @@
         "webhook_url_sendgrid_description": "SendGridのSettings → Inbound Parseで受信ドメインを追加し、このURLをDestination URLに指定してください。<token>の部分は上で保存したWebhookトークンに置き換えます。",
         "webhook_url_resend_description": "ResendのWebhooksでこのURLをemail.receivedイベントの送信先として追加し、表示される署名シークレットを上の欄に保存してください。",
         "webhook_url_mailgun_description": "MailgunのReceivingでルートを作成し、Expression typeをMatch Recipientにして受信ドメインのすべてのアドレス（例：.*@reply.example.com）を指定し、ForwardにこのURLを指定してください。",
+        "webhook_url_mime_description": "受信ドメインに届いたメールを、Content-Typeをmessage/rfc822として、全体をそのままこのURLに送信するよう設定してください。<token>の部分は上で保存したWebhookトークンに置き換え、メールの配送先アドレスはX-Envelope-Toヘッダーで渡します。",
         "reply_address": "返信先アドレス",
         "reply_address_description": "回答では、読者にこの形式のアドレスへの返信を求めます。*の部分はお問い合わせのIDです。受信ドメインのすべてのアドレスがプロバイダに届くようにしてください。",
         "copy_webhook_url": "Webhook URLをコピー",

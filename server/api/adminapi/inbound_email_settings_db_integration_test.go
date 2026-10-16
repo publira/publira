@@ -10,6 +10,7 @@ import (
 
 	"github.com/publira/publira/server/internal/inboundemail"
 	"github.com/publira/publira/server/internal/inboundprovider/mailgun"
+	"github.com/publira/publira/server/internal/inboundprovider/mime"
 	"github.com/publira/publira/server/internal/inboundprovider/resend"
 	"github.com/publira/publira/server/internal/inboundprovider/sendgrid"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
@@ -60,17 +61,26 @@ func TestDBInboundEmailProvidersAreListedWithTheirFields(t *testing.T) {
 		t.Fatalf("ListInboundEmailProviders: %v", err)
 	}
 	providers := resp.Providers
-	if len(providers) != 3 || providers[0].Id != mailgun.ID || providers[1].Id != resend.ID || providers[2].Id != sendgrid.ID {
-		t.Fatalf("providers = %v, want mailgun, resend, and sendgrid in id order", providers)
+	if len(providers) != 4 || providers[0].Id != mailgun.ID || providers[1].Id != mime.ID || providers[2].Id != resend.ID || providers[3].Id != sendgrid.ID {
+		t.Fatalf("providers = %v, want mailgun, mime, resend, and sendgrid in id order", providers)
 	}
-	if providers[2].WebhookPath != "/api/v1/webhook/email/sendgrid" {
-		t.Errorf("webhook_path = %q", providers[2].WebhookPath)
+	if providers[3].WebhookPath != "/api/v1/webhook/email/sendgrid" {
+		t.Errorf("webhook_path = %q", providers[3].WebhookPath)
 	}
 	if providers[0].WebhookPath != "/api/v1/webhook/email/mailgun/json" {
 		t.Errorf("mailgun webhook_path = %q, want the URL a Route posts JSON to", providers[0].WebhookPath)
 	}
-	if len(providers[2].Fields) != 1 || providers[2].Fields[0].Name != sendgrid.FieldWebhookToken || !providers[2].Fields[0].Secret || !providers[2].Fields[0].Required {
-		t.Errorf("sendgrid fields = %v", providers[2].Fields)
+	if providers[1].WebhookPath != "/api/v1/webhook/email/mime" {
+		t.Errorf("mime webhook_path = %q", providers[1].WebhookPath)
+	}
+	tokens := map[*publiraadminv1.InboundEmailProvider]string{
+		providers[1]: mime.FieldWebhookToken,
+		providers[3]: sendgrid.FieldWebhookToken,
+	}
+	for provider, field := range tokens {
+		if len(provider.Fields) != 1 || provider.Fields[0].Name != field || !provider.Fields[0].Secret || !provider.Fields[0].Required {
+			t.Errorf("%s fields = %v, want the one secret, required %s", provider.Id, provider.Fields, field)
+		}
 	}
 }
 

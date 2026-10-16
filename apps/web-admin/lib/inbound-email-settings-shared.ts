@@ -80,23 +80,26 @@ export const inboundReplyAddressPattern = (domain: string): string =>
   `contact+*@${domain}`;
 
 /**
- * What stands in the SendGrid webhook URL for the token the tenant stores,
- * which the console never shows back.
+ * What stands in the webhook URL for the token the tenant stores, which the
+ * console never shows back.
  */
-export const SENDGRID_WEBHOOK_TOKEN_PLACEHOLDER = "<token>";
+export const WEBHOOK_TOKEN_PLACEHOLDER = "<token>";
 
 /**
- * The URL to register with the provider, on the storefront `origin`. Inbound
- * Parse signs nothing, so SendGrid's carries the webhook token as the password
- * of its basic auth, which SendGrid sends back on every request.
+ * The providers that sign nothing, whose webhook URL carries the token as the
+ * password of its basic auth instead: SendGrid sends it back on every request,
+ * and so does whatever posts a raw mail to `mime`.
  */
+const BASIC_AUTH_PROVIDERS: ReadonlySet<string> = new Set(["mime", "sendgrid"]);
+
+/** The URL to register with the provider, on the storefront `origin`. */
 export const inboundEmailWebhookUrl = (
   origin: string,
   provider: Pick<InboundEmailProvider, "id" | "webhookPath">
 ): string => {
-  if (provider.id === "sendgrid") {
+  if (BASIC_AUTH_PROVIDERS.has(provider.id)) {
     const url = new URL(provider.webhookPath, origin);
-    return `${url.protocol}//inbound:${SENDGRID_WEBHOOK_TOKEN_PLACEHOLDER}@${url.host}${url.pathname}`;
+    return `${url.protocol}//inbound:${WEBHOOK_TOKEN_PLACEHOLDER}@${url.host}${url.pathname}`;
   }
   return `${origin}${provider.webhookPath}`;
 };

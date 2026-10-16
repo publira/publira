@@ -2569,7 +2569,7 @@
       },
       "inbound_email": {
         "title": "收件",
-        "description": "透過SendGrid、Resend或Mailgun，將讀者對諮詢答覆的回信接收到主控台。密鑰為唯寫：再次進入時，您只能看到它的狀態與遮罩，看不到實際的值。",
+        "description": "透過SendGrid、Resend、Mailgun，或任何能將整封郵件傳送到HTTPS URL的服務，將讀者對諮詢答覆的回信接收到主控台。密鑰為唯寫：再次進入時，您只能看到它的狀態與遮罩，看不到實際的值。",
         "section_error": "無法顯示收件設定",
         "provider": "收件服務商",
         "provider_description": "讀者的回信將透過此處選擇的服務商接收，憑證在下方填寫。",
@@ -2582,6 +2582,7 @@
         "domain_sendgrid_description": "請在DNS中將該網域的MX記錄指向mx.sendgrid.net，優先順序為10。",
         "domain_resend_description": "請在Resend的Domains中新增該網域並開啟接收，然後將Resend顯示的MX記錄新增到DNS。",
         "domain_mailgun_description": "請在Mailgun的Domains中新增該網域，然後將Mailgun顯示的接收用MX記錄新增到DNS。",
+        "domain_mime_description": "請在DNS中將該網域的MX記錄指向接收郵件並將其傳送到下方webhook URL的郵件伺服器或服務，例如Cloudflare Email Routing或您自己的Postfix伺服器。",
         "fields": {
           "sendgrid": {
             "webhook_token": "Webhook權杖"
@@ -2592,6 +2593,9 @@
           },
           "mailgun": {
             "webhook_signing_key": "HTTP Webhook簽章金鑰"
+          },
+          "mime": {
+            "webhook_token": "Webhook權杖"
           }
         },
         "field_sources": {
@@ -2604,6 +2608,9 @@
           },
           "mailgun": {
             "webhook_signing_key": "Mailgun管理後台Settings → API Security中顯示的HTTP webhook signing key。Mailgun轉寄每封郵件時都會以它簽章，簽章不符的郵件將被拒絕。"
+          },
+          "mime": {
+            "webhook_token": "由您自行決定的足夠長的隨機字串。傳送郵件的一方每次都會將它作為下方webhook URL中的密碼傳回，不含此值的郵件將被拒絕。"
           }
         },
         "webhook_url": "Webhook URL",
@@ -2611,6 +2618,7 @@
         "webhook_url_sendgrid_description": "請在SendGrid的Settings → Inbound Parse中新增收件網域，並將此URL指定為Destination URL，同時把<token>替換為上方儲存的webhook權杖。",
         "webhook_url_resend_description": "請在Resend的Webhooks中將此URL新增為email.received事件的傳送位址，然後在上方儲存其顯示的簽章密鑰。",
         "webhook_url_mailgun_description": "請在Mailgun的Receiving中建立路由，將Expression type設為Match Recipient並指定收件網域的所有位址（例如.*@reply.example.com），然後將Forward指定為此URL。",
+        "webhook_url_mime_description": "請將收件網域收到的每封郵件以message/rfc822內容類型完整傳送到此URL，把<token>替換為上方儲存的webhook權杖，並在X-Envelope-To標頭中註明郵件的投遞位址。",
         "reply_address": "回覆地址",
         "reply_address_description": "答覆會請讀者回信到此格式的地址，其中*為諮詢的ID。收件網域上的所有地址都必須能送達服務商。",
         "copy_webhook_url": "複製webhook URL",
