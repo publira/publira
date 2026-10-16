@@ -462,9 +462,14 @@ func (s *apiServer) ListMyIdentities(
 			LinkedAt: row.CreatedAt.UTC().Format(time.RFC3339),
 		})
 	}
+	passkeys, err := s.countSignInPasskeys(ctx, s.queriesFor(ctx), tenant, user.ID)
+	if err != nil {
+		return nil, err
+	}
 	return &publirav1.ListMyIdentitiesResponse{
 		Identities:  identities,
 		HasPassword: user.PasswordHash.Valid,
+		HasPasskey:  passkeys > 0,
 	}, nil
 }
 
@@ -520,7 +525,15 @@ func (s *apiServer) UnlinkIdentity(
 		return fail("not_linked", connect.NewError(connect.CodeNotFound, "no account of this provider is linked"))
 	}
 	if !locked.PasswordHash.Valid && len(identities) == 1 {
-		return fail("last_sign_in_method", connect.NewError(connect.CodeFailedPrecondition, "the account has no password, so it keeps its last linked provider"))
+		// The account row's lock orders this against DeletePasskey, which
+		// takes it before counting the same ways in.
+		passkeys, err := s.countSignInPasskeys(ctx, txq, tenant, user.ID)
+		if err != nil {
+			return fail("passkey_count_failed", err)
+		}
+		if passkeys == 0 {
+			return fail("last_sign_in_method", connect.NewError(connect.CodeFailedPrecondition, "the account has no password or passkey, so it keeps its last linked provider"))
+		}
 	}
 	if err := outbox.QueueAppleSignInTokenRevocation(ctx, txq, *target); err != nil {
 		return fail("revocation_enqueue_failed", s.internalError(ctx, "failed to queue the apple token revocation", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String()))

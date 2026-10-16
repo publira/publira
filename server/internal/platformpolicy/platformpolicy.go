@@ -78,6 +78,11 @@ type Policy struct {
 	// Each upload leaves an object in the bucket until the orphan sweep runs,
 	// so what this bounds is the objects one account can leave there.
 	IconChange MinuteDay
+	// Passkey bounds the passkey registrations and confirmations one reader
+	// may begin, and the passkeys they may rename or remove. Each begin stores
+	// a ceremony until it expires, so what this bounds is the rows one account
+	// can make the storefront keep and the writes it can make it repeat.
+	Passkey MinuteDay
 	// LoginAttemptsPerAccount bounds the passwords tried at sign-in for one
 	// address within its tenant, or within the platform console. A sign-in
 	// whose password is right clears it.
@@ -133,6 +138,7 @@ func Defaults() Policy {
 		LegalPageAgreement:        MinuteDay{PerMinute: 10, PerDay: 50},
 		IdentityLink:              MinuteDay{PerMinute: 5, PerDay: 20},
 		IconChange:                MinuteDay{PerMinute: 5, PerDay: 20},
+		Passkey:                   MinuteDay{PerMinute: 10, PerDay: 50},
 		LoginAttemptsPerAccount:   MinuteDay{PerMinute: 5, PerDay: 50},
 		LoginAttemptsPerSource:    HourDay{PerHour: 60, PerDay: 300},
 	}
@@ -163,6 +169,7 @@ func (p Policy) Validate() error {
 		{"legal_page_agreement", "per_minute", p.LegalPageAgreement.PerMinute, p.LegalPageAgreement.PerDay},
 		{"identity_link", "per_minute", p.IdentityLink.PerMinute, p.IdentityLink.PerDay},
 		{"icon_change", "per_minute", p.IconChange.PerMinute, p.IconChange.PerDay},
+		{"passkey", "per_minute", p.Passkey.PerMinute, p.Passkey.PerDay},
 		{"login_attempts_per_account", "per_minute", p.LoginAttemptsPerAccount.PerMinute, p.LoginAttemptsPerAccount.PerDay},
 		{"login_attempts_per_source", "per_hour", p.LoginAttemptsPerSource.PerHour, p.LoginAttemptsPerSource.PerDay},
 	} {
@@ -225,6 +232,7 @@ func FromConfig(config dbmodels.PlatformPolicyConfig) Policy {
 		LegalPageAgreement:        MinuteDay{PerMinute: int(config.LegalPageAgreementLimitPerMinute), PerDay: int(config.LegalPageAgreementLimitPerDay)},
 		IdentityLink:              MinuteDay{PerMinute: int(config.IdentityLinkLimitPerMinute), PerDay: int(config.IdentityLinkLimitPerDay)},
 		IconChange:                MinuteDay{PerMinute: int(config.IconChangeLimitPerMinute), PerDay: int(config.IconChangeLimitPerDay)},
+		Passkey:                   MinuteDay{PerMinute: int(config.PasskeyLimitPerMinute), PerDay: int(config.PasskeyLimitPerDay)},
 		LoginAttemptsPerAccount:   MinuteDay{PerMinute: int(config.LoginAccountLimitPerMinute), PerDay: int(config.LoginAccountLimitPerDay)},
 		LoginAttemptsPerSource:    HourDay{PerHour: int(config.LoginSourceLimitPerHour), PerDay: int(config.LoginSourceLimitPerDay)},
 		DisposableEmailDomainsURL: config.DisposableEmailDomainsUrl,
@@ -268,6 +276,8 @@ func (p Policy) ConfigParams() dbmodels.UpdatePlatformPolicyConfigParams {
 		IdentityLinkLimitPerDay:              int32(policy.IdentityLink.PerDay),
 		IconChangeLimitPerMinute:             int32(policy.IconChange.PerMinute),
 		IconChangeLimitPerDay:                int32(policy.IconChange.PerDay),
+		PasskeyLimitPerMinute:                int32(policy.Passkey.PerMinute),
+		PasskeyLimitPerDay:                   int32(policy.Passkey.PerDay),
 		LoginAccountLimitPerMinute:           int32(policy.LoginAttemptsPerAccount.PerMinute),
 		LoginAccountLimitPerDay:              int32(policy.LoginAttemptsPerAccount.PerDay),
 		LoginSourceLimitPerHour:              int32(policy.LoginAttemptsPerSource.PerHour),

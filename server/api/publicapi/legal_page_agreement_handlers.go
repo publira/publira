@@ -23,7 +23,7 @@ var errLegalPageAgreementRequired = errors.New("agree to the tenant's revised te
 // reader who owes an agreement may still call: what reads their account and
 // what they own, the writes that only record their reading of it, finishing a
 // store purchase the store has already charged for, signing out, deleting the
-// account, and agreeing. Everything else that requires a session is refused,
+// account and beginning the passkey assertion that confirms it, and agreeing. Everything else that requires a session is refused,
 // so an RPC added later is refused until it is listed here, rather than open to
 // a reader the tenant is waiting on.
 //
@@ -31,12 +31,17 @@ var errLegalPageAgreementRequired = errors.New("agree to the tenant's revised te
 // not where it is optional: those RPCs answer a guest too, and the catalog, an
 // announcement, and an episode the reader owns read the same either way.
 var proceduresWithoutLegalPageAgreement = map[string]bool{
-	publirav1connect.AuthServiceGetMyLegalPageAgreementsProcedure:         true,
-	publirav1connect.AuthServiceAgreeToLegalPagesProcedure:                true,
-	publirav1connect.AuthServiceGetMeProcedure:                            true,
-	publirav1connect.AuthServiceLogoutProcedure:                           true,
-	publirav1connect.AuthServiceDeleteMeProcedure:                         true,
-	publirav1connect.AuthServiceListMyIdentitiesProcedure:                 true,
+	publirav1connect.AuthServiceGetMyLegalPageAgreementsProcedure: true,
+	publirav1connect.AuthServiceAgreeToLegalPagesProcedure:        true,
+	publirav1connect.AuthServiceGetMeProcedure:                    true,
+	publirav1connect.AuthServiceLogoutProcedure:                   true,
+	publirav1connect.AuthServiceDeleteMeProcedure:                 true,
+	publirav1connect.AuthServiceListMyIdentitiesProcedure:         true,
+	publirav1connect.AuthServiceListMyPasskeysProcedure:           true,
+	// An account with neither a password nor a linked provider confirms
+	// DeleteMe with a passkey alone, so refusing this would leave it unable to
+	// close itself until it agreed.
+	publirav1connect.AuthServiceBeginPasskeyConfirmationProcedure:         true,
 	publirav1connect.AuthServiceGetNotificationSettingsProcedure:          true,
 	publirav1connect.AuthServiceGetViewerPreferencesProcedure:             true,
 	publirav1connect.NotificationServiceListNotificationsProcedure:        true,

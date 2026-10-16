@@ -2,7 +2,7 @@
 title: Platform defaults and policies
 description: Choose the defaults, security limits, community limits, and retention periods every tenant inherits, and what a tenant can change for itself.
 published: 2026-10-06
-updated: 2026-10-12
+updated: 2026-10-16
 ---
 
 An install runs on a handful of settings that no tenant owns: the language, time zone, and currency new tenants start from, the limits that keep one reader or one address from overwhelming the platform, and how long expiring records are kept. This page says what each group protects against, how to change it, and which parts a tenant's administrators can change for their own tenant.
@@ -82,7 +82,7 @@ Each limit is a count per minute or per hour, with a second count per day, and t
 
 ![The rate limits on Security: password verifications, email requests per address and per source, in-app purchase confirmations, and wait-for-free ticket uses, each per minute or per hour and per day.](./platform-policies-rate-limits.png)
 
-Three more limits of this kind have no field on the Security page yet: the agreements one reader sends to their tenant's terms of service and privacy policy when asked to agree to a revised version, 10 per minute and 50 per day unless set with `publiractl policy set --legal-page-agreement-per-minute` and `--legal-page-agreement-per-day`; the requests one reader makes to link an Apple or Google account to their account, 5 per minute and 20 per day unless set with `--identity-link-per-minute` and `--identity-link-per-day`; and the times one reader uploads, picks, or removes their icon, 5 per minute and 20 per day unless set with `--icon-change-per-minute` and `--icon-change-per-day`. Saving the Security page keeps whatever they are set to.
+Four more limits of this kind have no field on the Security page yet: the agreements one reader sends to their tenant's terms of service and privacy policy when asked to agree to a revised version, 10 per minute and 50 per day unless set with `publiractl policy set --legal-page-agreement-per-minute` and `--legal-page-agreement-per-day`; the requests one reader makes to link an Apple or Google account to their account, 5 per minute and 20 per day unless set with `--identity-link-per-minute` and `--identity-link-per-day`; the times one reader uploads, picks, or removes their icon, 5 per minute and 20 per day unless set with `--icon-change-per-minute` and `--icon-change-per-day`; and the times one reader begins registering a passkey or confirming a request with one, or renames or removes one, 10 per minute and 50 per day unless set with `--passkey-per-minute` and `--passkey-per-day`. Saving the Security page keeps whatever they are set to.
 
 Each invitation counts as one request, including every **Initial admin emails** address on **Create tenant**, which are all counted before the tenant is created: if one is over a limit, no tenant is created and no mail is sent. `publiractl` sends through no form and counts against none of these limits.
 

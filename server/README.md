@@ -568,7 +568,7 @@ Notes:
 
 ## Authentication (JWT access tokens)
 
-The API issues **HS256 JWT access tokens** from an email address and a password (`Login` / `Logout`), or from an Apple or Google ID token (`LoginWithIdToken`).  
+The API issues **HS256 JWT access tokens** from an email address and a password (`Login` / `Logout`), from an Apple or Google ID token (`LoginWithIdToken`), or, on the storefront, from a passkey alone (`BeginPasskeyLogin` / `FinishPasskeyLogin`).  
 Browser cookies are managed on the Next.js side as JWE with `jose`, and only `Authorization: Bearer <token>` is sent to the API.
 
 | Item | Value |
@@ -583,9 +583,24 @@ Browser cookies are managed on the Next.js side as JWE with `jose`, and only `Au
 
 Each tenant enables the providers its readers may sign in with through the Admin API's `TenantSettingsService.UpdateTenantSignInSettings`: for Google, the OAuth client IDs of its web application and its iOS app; for Apple, the Services ID the storefront signs in with, and the team, key ID, and `.p8` key of a Sign in with Apple key. The iOS app signs in with the bundle identifier of the tenant's iOS app association. The key is sealed with `PUBLIRA_SECRET_ENCRYPTION_KEYS` before it is stored, and no RPC returns it. `TenantService.GetTenant` answers the providers that are ready and their public client IDs.
 
-`AuthService.LoginWithIdToken` verifies the token against the provider's published keys (`https://appleid.apple.com/auth/keys`, `https://www.googleapis.com/oauth2/v3/certs`), refuses a nonce it has accepted before, and finds the reader by the linked provider account, by the address the provider vouches for, or creates one. `LinkIdentity` links a provider account to the signed-in reader from a fresh ID token checked the same way, whatever address it carries, so a reader whose provider hides or differs from the account's address can still sign in to that account with it. `ListMyIdentities` and `UnlinkIdentity` manage the links; an account without a password keeps its last one, and confirms `DeleteMe` with a fresh ID token instead of a password.
+`AuthService.LoginWithIdToken` verifies the token against the provider's published keys (`https://appleid.apple.com/auth/keys`, `https://www.googleapis.com/oauth2/v3/certs`), refuses a nonce it has accepted before, and finds the reader by the linked provider account, by the address the provider vouches for, or creates one. `LinkIdentity` links a provider account to the signed-in reader from a fresh ID token checked the same way, whatever address it carries, so a reader whose provider hides or differs from the account's address can still sign in to that account with it. `ListMyIdentities` and `UnlinkIdentity` manage the links; an account without a password or a passkey keeps its last one, and an account without a password confirms `DeleteMe` and `RequestEmailChange` with a fresh ID token or a passkey assertion instead.
 
 An Apple sign-in or link may carry its authorization code. `publira worker` exchanges it at `https://appleid.apple.com/auth/token` for a refresh token the link keeps, sealed, and revokes that token at `https://appleid.apple.com/auth/revoke` when the link or the account is deleted (`apple_sign_in_code_exchange` / `apple_sign_in_token_revoke` outbox events).
+
+### Passkeys on the storefront
+
+A signed-in reader registers passkeys (WebAuthn) with `BeginPasskeyRegistration` / `FinishPasskeyRegistration` and manages them with `ListMyPasskeys` / `RenamePasskey` / `DeletePasskey`; `ListMyIdentities` reports `has_passkey`. The library, the ceremony storage, and the stored credential are the console's, described under **Passkeys** below.
+
+| Item | Value |
+| --- | --- |
+| Relying party | The storefront's own host as the RP ID and its origin as the only one accepted, derived from the tenant row. Credentials and ceremonies carry `relying_party` (`site` or `admin_console`), so a console passkey never signs a reader in, and a storefront passkey is never a console factor, even where the two hosts share a hostname |
+| Registration | A resident key and user verification required, since the passkey has to name the account by itself; the reader's existing passkeys excluded. At most 20 per account |
+| Sign-in | `BeginPasskeyLogin` answers request options that name no account. `FinishPasskeyLogin` spends the ceremony, looks the credential up by its ID within the tenant and the storefront's RP ID, checks the assertion against the user handle, and issues a session as `Login` does. A refused assertion is `unauthenticated`, as a wrong password is |
+| Sign-in ceremony | Kept in `user_webauthn_ceremonies` with no account until its finish. Each begin spends one of the origin's sign-in allowance (`login_attempts_per_source`) and keeps a digest of that origin, and a sign-in that succeeds gives the charge back when it finishes from the same origin; a begin also drops the tenant's sign-in ceremonies that expired unfinished |
+| Address | A passkey sign-in is refused for a suspended account and for one without `email_verified_at`, as `Login` refuses them. A passkey is registered from a session, and a session always began with a confirmed address, so registering one confirms nothing: it proves the reader holds the authenticator, not that the address is theirs |
+| Last way in | `DeletePasskey` is `failed_precondition` for the last passkey of an account with neither a password nor a linked provider, and `UnlinkIdentity` lets such an account unlink its last provider while it holds a passkey. Only a passkey for the storefront's current host counts |
+| Confirmation | `BeginPasskeyConfirmation` begins an assertion over the reader's own passkeys; its result goes in `passkey_credential_json` of `DeleteMe` or `RequestEmailChange` in place of a password or an ID token, and confirms that one request. A reader who owes an agreement to revised legal pages may still call it, as they may call `DeleteMe` |
+| Flood control | `BeginPasskeyRegistration`, `RenamePasskey`, `DeletePasskey`, and `BeginPasskeyConfirmation` spend the reader's `passkey` allowance in the platform policy |
 
 ### Media tokens (audience `media`)
 
@@ -660,7 +675,7 @@ Taking the authenticator off needs the authenticator or a recovery code. Removin
 | Relying party | Derived from the tenant row through `tenantorigin`, never from the request. The RP ID is the console's own host, never the storefront's, even when the console is served under the storefront's domain, so a passkey registered on the storefront never answers the console; the only origin accepted is the console's. The RP name is the tenant's name |
 | Registration | User verification required, a discoverable credential preferred, no attestation requested, the account's existing credentials excluded |
 | Ceremony state | The challenge, the account, the RP ID, and the expiry, five minutes after the begin, in `user_webauthn_ceremonies`. Nothing of it is handed to the client: the finish finds the row by the challenge the response was signed over and deletes it, which spends it whatever the verification then answers. An account may have up to five ceremonies of each kind open at once, so several tabs or devices can sign in side by side; a begin past that drops the oldest |
-| Stored per credential | `user_webauthn_credentials`: the RP ID, the credential ID (unique per tenant), the COSE public key, the signature counter, the AAGUID, the transports, the backup-eligible and backed-up flags, its owner's name for it, `created_at`, `last_used_at` |
+| Stored per credential | `user_webauthn_credentials`: the relying party (`admin_console` here), the RP ID, the credential ID (unique per tenant), the COSE public key, the signature counter, the AAGUID, the transports, the backup-eligible and backed-up flags, its owner's name for it, `created_at`, `last_used_at` |
 | Counter | An assertion whose counter does not move past the stored one is refused, unless both are zero, which is what an authenticator that keeps no counter reports |
 | Errors | A refused assertion is `unauthenticated` with the reason `MFA_PASSKEY_REFUSED`; a refused registration is `invalid_argument` with the same reason. An assertion counts toward the failure limit only when it was checked against a ceremony the account had open |
 

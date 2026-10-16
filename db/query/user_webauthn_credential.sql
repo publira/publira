@@ -1,7 +1,9 @@
--- WebAuthn credentials. Every statement is keyed by the user, and the
--- row-level security policy confines it to the tenant the connection is scoped
--- to. A credential answers only the relying party ID it was registered for,
--- so every read that offers credentials to a ceremony names that RP ID too.
+-- WebAuthn credentials. Every statement is keyed by the user or by the
+-- credential, and the row-level security policy confines it to the tenant the
+-- connection is scoped to. A credential belongs to one of the tenant's two
+-- relying parties, the console or the storefront, and answers only the relying
+-- party ID it was registered for, so every statement names the relying party
+-- and every read that offers credentials to a ceremony names that RP ID too.
 
 -- name: CreateUserWebauthnCredential :one
 INSERT INTO user_webauthn_credentials (
@@ -9,6 +11,7 @@ INSERT INTO user_webauthn_credentials (
         public_id,
         tenant_id,
         user_id,
+        relying_party,
         rp_id,
         credential_id,
         public_key,
@@ -24,6 +27,7 @@ VALUES (
         sqlc.arg('public_id'),
         sqlc.arg('tenant_id'),
         sqlc.arg('user_id'),
+        sqlc.arg('relying_party'),
         sqlc.arg('rp_id'),
         sqlc.arg('credential_id'),
         sqlc.arg('public_key'),
@@ -40,6 +44,7 @@ RETURNING *;
 SELECT *
 FROM user_webauthn_credentials
 WHERE user_id = sqlc.arg('user_id')
+    AND relying_party = sqlc.arg('relying_party')
     AND rp_id = sqlc.arg('rp_id')
 ORDER BY created_at,
     id;
@@ -48,20 +53,34 @@ ORDER BY created_at,
 SELECT count(*)
 FROM user_webauthn_credentials
 WHERE user_id = sqlc.arg('user_id')
+    AND relying_party = sqlc.arg('relying_party')
     AND rp_id = sqlc.arg('rp_id');
 
 -- name: CountUserWebauthnCredentials :one
--- Every RP ID. A credential registered for an RP ID the console no longer
--- derives is no factor now, but it becomes one again if the console moves
--- back, and the recovery codes have to still be there when it does.
+-- Every RP ID of the relying party. A credential registered for an RP ID the
+-- console no longer derives is no factor now, but it becomes one again if the
+-- console moves back, and the recovery codes have to still be there when it
+-- does.
 SELECT count(*)
 FROM user_webauthn_credentials
-WHERE user_id = sqlc.arg('user_id');
+WHERE user_id = sqlc.arg('user_id')
+    AND relying_party = sqlc.arg('relying_party');
+
+-- name: GetUserWebauthnCredentialForSignIn :one
+-- The credential a discoverable assertion names, before any account is known.
+-- The tenant's row-level security policy is what keeps another tenant's
+-- credential out of reach.
+SELECT *
+FROM user_webauthn_credentials
+WHERE credential_id = sqlc.arg('credential_id')
+    AND relying_party = sqlc.arg('relying_party')
+    AND rp_id = sqlc.arg('rp_id');
 
 -- name: GetUserWebauthnCredentialByPublicID :one
 SELECT *
 FROM user_webauthn_credentials
 WHERE user_id = sqlc.arg('user_id')
+    AND relying_party = sqlc.arg('relying_party')
     AND rp_id = sqlc.arg('rp_id')
     AND public_id = sqlc.arg('public_id');
 
@@ -97,8 +116,10 @@ DELETE FROM user_webauthn_credentials
 WHERE id = sqlc.arg('id');
 
 -- name: DeleteUserWebauthnCredentialsByUserID :execrows
--- Every RP ID, not only the one the console derives now: a credential
--- registered while the console was served on another host is dormant rather
--- than gone, and moving the console back would let it sign in again.
+-- Every RP ID of the relying party, not only the one the console derives now:
+-- a credential registered while the console was served on another host is
+-- dormant rather than gone, and moving the console back would let it sign in
+-- again.
 DELETE FROM user_webauthn_credentials
-WHERE user_id = sqlc.arg('user_id');
+WHERE user_id = sqlc.arg('user_id')
+    AND relying_party = sqlc.arg('relying_party');

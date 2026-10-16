@@ -173,10 +173,11 @@ type Querier interface {
 	CountUnreadPlatformNotificationsForUser(ctx context.Context, platformUserID uuid.UUID) (int32, error)
 	CountUnusedPlatformUserMfaRecoveryCodes(ctx context.Context, platformUserID uuid.UUID) (int64, error)
 	CountUnusedUserMfaRecoveryCodes(ctx context.Context, userID uuid.UUID) (int64, error)
-	// Every RP ID. A credential registered for an RP ID the console no longer
-	// derives is no factor now, but it becomes one again if the console moves
-	// back, and the recovery codes have to still be there when it does.
-	CountUserWebauthnCredentials(ctx context.Context, userID uuid.UUID) (int64, error)
+	// Every RP ID of the relying party. A credential registered for an RP ID the
+	// console no longer derives is no factor now, but it becomes one again if the
+	// console moves back, and the recovery codes have to still be there when it
+	// does.
+	CountUserWebauthnCredentials(ctx context.Context, arg CountUserWebauthnCredentialsParams) (int64, error)
 	CountUserWebauthnCredentialsForRPID(ctx context.Context, arg CountUserWebauthnCredentialsForRPIDParams) (int64, error)
 	// How much of one tenant's backlog the retention purge is about to take. It
 	// answers that batch's dry run, which reports the total and deletes nothing.
@@ -366,10 +367,12 @@ type Querier interface {
 	// way both times.
 	CreateUserPageConsent(ctx context.Context, arg CreateUserPageConsentParams) error
 	CreateUserPasswordResetToken(ctx context.Context, arg CreateUserPasswordResetTokenParams) (UserPasswordResetToken, error)
-	// WebAuthn credentials. Every statement is keyed by the user, and the
-	// row-level security policy confines it to the tenant the connection is scoped
-	// to. A credential answers only the relying party ID it was registered for,
-	// so every read that offers credentials to a ceremony names that RP ID too.
+	// WebAuthn credentials. Every statement is keyed by the user or by the
+	// credential, and the row-level security policy confines it to the tenant the
+	// connection is scoped to. A credential belongs to one of the tenant's two
+	// relying parties, the console or the storefront, and answers only the relying
+	// party ID it was registered for, so every statement names the relying party
+	// and every read that offers credentials to a ceremony names that RP ID too.
 	CreateUserWebauthnCredential(ctx context.Context, arg CreateUserWebauthnCredentialParams) (UserWebauthnCredential, error)
 	// The grant a spent ticket opens. It is an access_tickets row so every read
 	// that decides access sees it through episode_content_grants, and it expires
@@ -475,10 +478,11 @@ type Querier interface {
 	// who holds the session, so a token cannot be dropped from another account.
 	DeleteUserPushDeviceForUser(ctx context.Context, arg DeleteUserPushDeviceForUserParams) (int64, error)
 	DeleteUserWebauthnCredential(ctx context.Context, id uuid.UUID) (int64, error)
-	// Every RP ID, not only the one the console derives now: a credential
-	// registered while the console was served on another host is dormant rather
-	// than gone, and moving the console back would let it sign in again.
-	DeleteUserWebauthnCredentialsByUserID(ctx context.Context, userID uuid.UUID) (int64, error)
+	// Every RP ID of the relying party, not only the one the console derives now:
+	// a credential registered while the console was served on another host is
+	// dormant rather than gone, and moving the console back would let it sign in
+	// again.
+	DeleteUserWebauthnCredentialsByUserID(ctx context.Context, arg DeleteUserWebauthnCredentialsByUserIDParams) (int64, error)
 	// last_verified_step is left alone: the code that confirmed the enrollment
 	// was accepted through the same path a sign-in code is, which stored it.
 	//
@@ -1025,7 +1029,17 @@ type Querier interface {
 	GetUserPasswordResetTokenByHashForTenant(ctx context.Context, arg GetUserPasswordResetTokenByHashForTenantParams) (UserPasswordResetToken, error)
 	GetUserRecommendFeatures(ctx context.Context, arg GetUserRecommendFeaturesParams) (UserRecommendFeature, error)
 	GetUserViewerPreferences(ctx context.Context, arg GetUserViewerPreferencesParams) (UserViewerPreference, error)
+	// Reads an account's ceremony without spending it, for an assertion that
+	// confirms a request and is verified before that request writes anything.
+	// SpendUserWebauthnCeremony is still what claims it, inside the request's
+	// transaction, so two requests verifying the same assertion cannot both act
+	// on it.
+	GetUserWebauthnCeremony(ctx context.Context, arg GetUserWebauthnCeremonyParams) (UserWebauthnCeremony, error)
 	GetUserWebauthnCredentialByPublicID(ctx context.Context, arg GetUserWebauthnCredentialByPublicIDParams) (UserWebauthnCredential, error)
+	// The credential a discoverable assertion names, before any account is known.
+	// The tenant's row-level security policy is what keeps another tenant's
+	// credential out of reach.
+	GetUserWebauthnCredentialForSignIn(ctx context.Context, arg GetUserWebauthnCredentialForSignInParams) (UserWebauthnCredential, error)
 	// A published episode of a published series, both shown on the calling
 	// surface, with what UseTicket decides from. free_to_everyone reads
 	// published_free_episodes, so an episode a free window has opened needs no
@@ -2614,8 +2628,8 @@ type Querier interface {
 	// lock yet, so the lock is taken on the account's identity instead.
 	LockUserMfaFactors(ctx context.Context, userID uuid.UUID) error
 	// WebAuthn ceremonies between their begin and their finish.
-	// Serialises the begins of one account's ceremonies of one kind for the rest
-	// of the transaction. StartUserWebauthnCeremony counts what is open and adds to
+	// Serialises the begins of one account's ceremonies of one kind on one relying
+	// party for the rest of the transaction. StartUserWebauthnCeremony counts what is open and adds to
 	// it in one statement, and two of those running at once would each count from
 	// the same snapshot and both stay within the cap they then exceed together.
 	LockUserWebauthnCeremonies(ctx context.Context, arg LockUserWebauthnCeremoniesParams) error
@@ -3079,15 +3093,26 @@ type Querier interface {
 	// expired nonces are dropped in the same statement, so the table holds only
 	// what can still be replayed.
 	SpendSignInNonce(ctx context.Context, arg SpendSignInNonceParams) (int64, error)
+	// The claim on a sign-in ceremony, as SpendUserWebauthnCeremony is on an
+	// account's: only the finish whose delete returns the row verifies against it.
+	SpendSiteSignInCeremony(ctx context.Context, challenge string) (UserWebauthnCeremony, error)
 	// The DELETE is the claim on the ceremony: two finishes presenting the same
 	// challenge both look for it, and only the one whose delete returns the row
 	// may verify against it. A ceremony is spent whatever the verification then
 	// answers, so a refused response cannot be retried against the same challenge.
 	SpendUserWebauthnCeremony(ctx context.Context, arg SpendUserWebauthnCeremonyParams) (UserWebauthnCeremony, error)
+	// A storefront sign-in names no account when it begins: the authenticator
+	// picks a discoverable credential, and the credential names the account. The
+	// row is therefore the tenant's rather than an account's, and there is no
+	// account whose open ceremonies could be capped. The begin that stores it is
+	// charged against the caller's sign-in allowance instead, and drops the
+	// tenant's sign-in ceremonies that expired unfinished, so what the table
+	// holds of them is what was begun in the last few minutes.
+	StartSiteSignInCeremony(ctx context.Context, arg StartSiteSignInCeremonyParams) error
 	// Ceremonies of one account run side by side, so a second tab or device does
 	// not void the first. Beginning one drops the account's expired ceremonies of
-	// the same kind and all but the newest that, with this one, make up
-	// max_open, which bounds what a caller who keeps calling a begin can leave in
+	// the same kind on the same relying party and all but the newest that, with
+	// this one, make up max_open, which bounds what a caller who keeps calling a begin can leave in
 	// the table.
 	// The caller holds LockUserWebauthnCeremonies, so the open ceremonies this
 	// counts are the ones there are.

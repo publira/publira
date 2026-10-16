@@ -20,6 +20,7 @@ import (
 	"github.com/publira/publira/server/internal/secretupdate"
 	"github.com/publira/publira/server/internal/signin"
 	"github.com/publira/publira/server/internal/signin/signintest"
+	"github.com/publira/publira/server/internal/tenantorigin"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -465,6 +466,47 @@ func TestDBUnlinkIdentityKeepsTheLastWayIn(t *testing.T) {
 	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("unlinking a provider not linked code = %v, want not_found", connect.CodeOf(err))
+	}
+}
+
+// A passkey is a way in of its own, so an account without a password that
+// holds one may unlink its last provider, and then keeps the passkey as that
+// provider was kept.
+func TestDBUnlinkIdentityLeavesAnAccountItsPasskey(t *testing.T) {
+	t.Setenv(tenantorigin.SchemeEnv, "")
+	env := newIdentityDBEnv(t)
+	env.enableProviders(t)
+	signedIn := env.mustSignIn(t, publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE,
+		env.googleToken(t, "google-subject", "reader@example.com", "nonce-1"), "nonce-1")
+	ctx := testutil.WithBearer(context.Background(), signedIn.AccessToken.Token)
+	client := env.authClient()
+
+	listed, err := client.ListMyIdentities(ctx, &publirav1.ListMyIdentitiesRequest{Tenant: tenantContext(env.tenant)})
+	if err != nil {
+		t.Fatalf("ListMyIdentities: %v", err)
+	}
+	if listed.HasPasskey {
+		t.Fatal("has_passkey = true before any passkey was registered")
+	}
+	passkeys := &passkeyDBEnv{publicDBEnv: env.publicDBEnv, tenant: env.tenant}
+	_, registered := passkeys.register(t, ctx, passkeySiteOrigin, "")
+	listed, err = client.ListMyIdentities(ctx, &publirav1.ListMyIdentitiesRequest{Tenant: tenantContext(env.tenant)})
+	if err != nil {
+		t.Fatalf("ListMyIdentities: %v", err)
+	}
+	if !listed.HasPasskey {
+		t.Fatal("has_passkey = false for an account holding a passkey")
+	}
+
+	if _, err := client.UnlinkIdentity(ctx, &publirav1.UnlinkIdentityRequest{
+		Tenant:   tenantContext(env.tenant),
+		Provider: publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE,
+	}); err != nil {
+		t.Fatalf("UnlinkIdentity beside a passkey: %v", err)
+	}
+	_, err = client.DeletePasskey(ctx, &publirav1.DeletePasskeyRequest{Tenant: tenantContext(env.tenant), Id: registered.Id})
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("removing the last way in code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
 }
 

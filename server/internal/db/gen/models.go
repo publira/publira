@@ -687,6 +687,8 @@ type PlatformPolicyConfig struct {
 	IdentityLinkLimitPerDay              int32     `json:"identity_link_limit_per_day"`
 	IconChangeLimitPerMinute             int32     `json:"icon_change_limit_per_minute"`
 	IconChangeLimitPerDay                int32     `json:"icon_change_limit_per_day"`
+	PasskeyLimitPerMinute                int32     `json:"passkey_limit_per_minute"`
+	PasskeyLimitPerDay                   int32     `json:"passkey_limit_per_day"`
 }
 
 type PlatformRetentionConfig struct {
@@ -1549,13 +1551,15 @@ type UserViewerPreference struct {
 }
 
 type UserWebauthnCeremony struct {
-	Challenge string    `json:"challenge"`
-	TenantID  uuid.UUID `json:"tenant_id"`
-	UserID    uuid.UUID `json:"user_id"`
-	Ceremony  string    `json:"ceremony"`
-	RpID      string    `json:"rp_id"`
-	ExpiresAt time.Time `json:"expires_at"`
-	CreatedAt time.Time `json:"created_at"`
+	Challenge    string        `json:"challenge"`
+	TenantID     uuid.UUID     `json:"tenant_id"`
+	UserID       uuid.NullUUID `json:"user_id"`
+	Ceremony     string        `json:"ceremony"`
+	RpID         string        `json:"rp_id"`
+	ExpiresAt    time.Time     `json:"expires_at"`
+	CreatedAt    time.Time     `json:"created_at"`
+	RelyingParty string        `json:"relying_party"`
+	SourceDigest []byte        `json:"source_digest"`
 }
 
 type UserWebauthnCredential struct {
@@ -1574,6 +1578,7 @@ type UserWebauthnCredential struct {
 	Name           string       `json:"name"`
 	CreatedAt      time.Time    `json:"created_at"`
 	LastUsedAt     sql.NullTime `json:"last_used_at"`
+	RelyingParty   string       `json:"relying_party"`
 }
 
 type WaitFreeTicketState struct {

@@ -226,6 +226,7 @@ const ListMyIdentitiesResponse$json = {
       '10': 'identities'
     },
     {'1': 'has_password', '3': 2, '4': 1, '5': 8, '10': 'hasPassword'},
+    {'1': 'has_passkey', '3': 3, '4': 1, '5': 8, '10': 'hasPasskey'},
   ],
 };
 
@@ -233,7 +234,7 @@ const ListMyIdentitiesResponse$json = {
 final $typed_data.Uint8List listMyIdentitiesResponseDescriptor = $convert.base64Decode(
     'ChhMaXN0TXlJZGVudGl0aWVzUmVzcG9uc2USOgoKaWRlbnRpdGllcxgBIAMoCzIaLnB1Ymxpcm'
     'EudjEuTGlua2VkSWRlbnRpdHlSCmlkZW50aXRpZXMSIQoMaGFzX3Bhc3N3b3JkGAIgASgIUgto'
-    'YXNQYXNzd29yZA==');
+    'YXNQYXNzd29yZBIfCgtoYXNfcGFzc2tleRgDIAEoCFIKaGFzUGFzc2tleQ==');
 
 @$core.Deprecated('Use unlinkIdentityRequestDescriptor instead')
 const UnlinkIdentityRequest$json = {
@@ -333,6 +334,358 @@ const LinkIdentityResponse$json = {
 final $typed_data.Uint8List linkIdentityResponseDescriptor = $convert.base64Decode(
     'ChRMaW5rSWRlbnRpdHlSZXNwb25zZRI2CghpZGVudGl0eRgBIAEoCzIaLnB1YmxpcmEudjEuTG'
     'lua2VkSWRlbnRpdHlSCGlkZW50aXR5');
+
+@$core.Deprecated('Use passkeyDescriptor instead')
+const Passkey$json = {
+  '1': 'Passkey',
+  '2': [
+    {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
+    {'1': 'name', '3': 2, '4': 1, '5': 9, '10': 'name'},
+    {'1': 'created_at', '3': 3, '4': 1, '5': 9, '10': 'createdAt'},
+    {'1': 'last_used_at', '3': 4, '4': 1, '5': 9, '10': 'lastUsedAt'},
+    {'1': 'backed_up', '3': 5, '4': 1, '5': 8, '10': 'backedUp'},
+  ],
+};
+
+/// Descriptor for `Passkey`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List passkeyDescriptor = $convert.base64Decode(
+    'CgdQYXNza2V5Eg4KAmlkGAEgASgJUgJpZBISCgRuYW1lGAIgASgJUgRuYW1lEh0KCmNyZWF0ZW'
+    'RfYXQYAyABKAlSCWNyZWF0ZWRBdBIgCgxsYXN0X3VzZWRfYXQYBCABKAlSCmxhc3RVc2VkQXQS'
+    'GwoJYmFja2VkX3VwGAUgASgIUghiYWNrZWRVcA==');
+
+@$core.Deprecated('Use beginPasskeyLoginRequestDescriptor instead')
+const BeginPasskeyLoginRequest$json = {
+  '1': 'BeginPasskeyLoginRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+  ],
+};
+
+/// Descriptor for `BeginPasskeyLoginRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List beginPasskeyLoginRequestDescriptor =
+    $convert.base64Decode(
+        'ChhCZWdpblBhc3NrZXlMb2dpblJlcXVlc3QSNwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eX'
+        'Blcy52MS5UZW5hbnRDb250ZXh0UgZ0ZW5hbnQ=');
+
+@$core.Deprecated('Use beginPasskeyLoginResponseDescriptor instead')
+const BeginPasskeyLoginResponse$json = {
+  '1': 'BeginPasskeyLoginResponse',
+  '2': [
+    {
+      '1': 'request_options_json',
+      '3': 1,
+      '4': 1,
+      '5': 9,
+      '10': 'requestOptionsJson'
+    },
+  ],
+};
+
+/// Descriptor for `BeginPasskeyLoginResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List beginPasskeyLoginResponseDescriptor =
+    $convert.base64Decode(
+        'ChlCZWdpblBhc3NrZXlMb2dpblJlc3BvbnNlEjAKFHJlcXVlc3Rfb3B0aW9uc19qc29uGAEgAS'
+        'gJUhJyZXF1ZXN0T3B0aW9uc0pzb24=');
+
+@$core.Deprecated('Use finishPasskeyLoginRequestDescriptor instead')
+const FinishPasskeyLoginRequest$json = {
+  '1': 'FinishPasskeyLoginRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+    {'1': 'credential_json', '3': 2, '4': 1, '5': 9, '10': 'credentialJson'},
+  ],
+};
+
+/// Descriptor for `FinishPasskeyLoginRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List finishPasskeyLoginRequestDescriptor = $convert.base64Decode(
+    'ChlGaW5pc2hQYXNza2V5TG9naW5SZXF1ZXN0EjcKBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudH'
+    'lwZXMudjEuVGVuYW50Q29udGV4dFIGdGVuYW50EicKD2NyZWRlbnRpYWxfanNvbhgCIAEoCVIO'
+    'Y3JlZGVudGlhbEpzb24=');
+
+@$core.Deprecated('Use finishPasskeyLoginResponseDescriptor instead')
+const FinishPasskeyLoginResponse$json = {
+  '1': 'FinishPasskeyLoginResponse',
+  '2': [
+    {
+      '1': 'user',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.User',
+      '10': 'user'
+    },
+    {
+      '1': 'access_token',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.AccessToken',
+      '10': 'accessToken'
+    },
+  ],
+};
+
+/// Descriptor for `FinishPasskeyLoginResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List finishPasskeyLoginResponseDescriptor =
+    $convert.base64Decode(
+        'ChpGaW5pc2hQYXNza2V5TG9naW5SZXNwb25zZRIqCgR1c2VyGAEgASgLMhYucHVibGlyYS50eX'
+        'Blcy52MS5Vc2VyUgR1c2VyEkAKDGFjY2Vzc190b2tlbhgCIAEoCzIdLnB1YmxpcmEudHlwZXMu'
+        'djEuQWNjZXNzVG9rZW5SC2FjY2Vzc1Rva2Vu');
+
+@$core.Deprecated('Use beginPasskeyRegistrationRequestDescriptor instead')
+const BeginPasskeyRegistrationRequest$json = {
+  '1': 'BeginPasskeyRegistrationRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+  ],
+};
+
+/// Descriptor for `BeginPasskeyRegistrationRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List beginPasskeyRegistrationRequestDescriptor =
+    $convert.base64Decode(
+        'Ch9CZWdpblBhc3NrZXlSZWdpc3RyYXRpb25SZXF1ZXN0EjcKBnRlbmFudBgBIAEoCzIfLnB1Ym'
+        'xpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dFIGdGVuYW50');
+
+@$core.Deprecated('Use beginPasskeyRegistrationResponseDescriptor instead')
+const BeginPasskeyRegistrationResponse$json = {
+  '1': 'BeginPasskeyRegistrationResponse',
+  '2': [
+    {
+      '1': 'creation_options_json',
+      '3': 1,
+      '4': 1,
+      '5': 9,
+      '10': 'creationOptionsJson'
+    },
+  ],
+};
+
+/// Descriptor for `BeginPasskeyRegistrationResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List beginPasskeyRegistrationResponseDescriptor =
+    $convert.base64Decode(
+        'CiBCZWdpblBhc3NrZXlSZWdpc3RyYXRpb25SZXNwb25zZRIyChVjcmVhdGlvbl9vcHRpb25zX2'
+        'pzb24YASABKAlSE2NyZWF0aW9uT3B0aW9uc0pzb24=');
+
+@$core.Deprecated('Use finishPasskeyRegistrationRequestDescriptor instead')
+const FinishPasskeyRegistrationRequest$json = {
+  '1': 'FinishPasskeyRegistrationRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+    {'1': 'credential_json', '3': 2, '4': 1, '5': 9, '10': 'credentialJson'},
+    {'1': 'name', '3': 3, '4': 1, '5': 9, '10': 'name'},
+  ],
+};
+
+/// Descriptor for `FinishPasskeyRegistrationRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List finishPasskeyRegistrationRequestDescriptor =
+    $convert.base64Decode(
+        'CiBGaW5pc2hQYXNza2V5UmVnaXN0cmF0aW9uUmVxdWVzdBI3CgZ0ZW5hbnQYASABKAsyHy5wdW'
+        'JsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHRSBnRlbmFudBInCg9jcmVkZW50aWFsX2pzb24Y'
+        'AiABKAlSDmNyZWRlbnRpYWxKc29uEhIKBG5hbWUYAyABKAlSBG5hbWU=');
+
+@$core.Deprecated('Use finishPasskeyRegistrationResponseDescriptor instead')
+const FinishPasskeyRegistrationResponse$json = {
+  '1': 'FinishPasskeyRegistrationResponse',
+  '2': [
+    {
+      '1': 'passkey',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.v1.Passkey',
+      '10': 'passkey'
+    },
+  ],
+};
+
+/// Descriptor for `FinishPasskeyRegistrationResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List finishPasskeyRegistrationResponseDescriptor =
+    $convert.base64Decode(
+        'CiFGaW5pc2hQYXNza2V5UmVnaXN0cmF0aW9uUmVzcG9uc2USLQoHcGFzc2tleRgBIAEoCzITLn'
+        'B1YmxpcmEudjEuUGFzc2tleVIHcGFzc2tleQ==');
+
+@$core.Deprecated('Use listMyPasskeysRequestDescriptor instead')
+const ListMyPasskeysRequest$json = {
+  '1': 'ListMyPasskeysRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+  ],
+};
+
+/// Descriptor for `ListMyPasskeysRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listMyPasskeysRequestDescriptor = $convert.base64Decode(
+    'ChVMaXN0TXlQYXNza2V5c1JlcXVlc3QSNwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy'
+    '52MS5UZW5hbnRDb250ZXh0UgZ0ZW5hbnQ=');
+
+@$core.Deprecated('Use listMyPasskeysResponseDescriptor instead')
+const ListMyPasskeysResponse$json = {
+  '1': 'ListMyPasskeysResponse',
+  '2': [
+    {
+      '1': 'passkeys',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.publira.v1.Passkey',
+      '10': 'passkeys'
+    },
+  ],
+};
+
+/// Descriptor for `ListMyPasskeysResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listMyPasskeysResponseDescriptor =
+    $convert.base64Decode(
+        'ChZMaXN0TXlQYXNza2V5c1Jlc3BvbnNlEi8KCHBhc3NrZXlzGAEgAygLMhMucHVibGlyYS52MS'
+        '5QYXNza2V5UghwYXNza2V5cw==');
+
+@$core.Deprecated('Use renamePasskeyRequestDescriptor instead')
+const RenamePasskeyRequest$json = {
+  '1': 'RenamePasskeyRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+    {'1': 'id', '3': 2, '4': 1, '5': 9, '10': 'id'},
+    {'1': 'name', '3': 3, '4': 1, '5': 9, '10': 'name'},
+  ],
+};
+
+/// Descriptor for `RenamePasskeyRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List renamePasskeyRequestDescriptor = $convert.base64Decode(
+    'ChRSZW5hbWVQYXNza2V5UmVxdWVzdBI3CgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLn'
+    'YxLlRlbmFudENvbnRleHRSBnRlbmFudBIOCgJpZBgCIAEoCVICaWQSEgoEbmFtZRgDIAEoCVIE'
+    'bmFtZQ==');
+
+@$core.Deprecated('Use renamePasskeyResponseDescriptor instead')
+const RenamePasskeyResponse$json = {
+  '1': 'RenamePasskeyResponse',
+  '2': [
+    {
+      '1': 'passkey',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.v1.Passkey',
+      '10': 'passkey'
+    },
+  ],
+};
+
+/// Descriptor for `RenamePasskeyResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List renamePasskeyResponseDescriptor = $convert.base64Decode(
+    'ChVSZW5hbWVQYXNza2V5UmVzcG9uc2USLQoHcGFzc2tleRgBIAEoCzITLnB1YmxpcmEudjEuUG'
+    'Fzc2tleVIHcGFzc2tleQ==');
+
+@$core.Deprecated('Use deletePasskeyRequestDescriptor instead')
+const DeletePasskeyRequest$json = {
+  '1': 'DeletePasskeyRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+    {'1': 'id', '3': 2, '4': 1, '5': 9, '10': 'id'},
+  ],
+};
+
+/// Descriptor for `DeletePasskeyRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List deletePasskeyRequestDescriptor = $convert.base64Decode(
+    'ChREZWxldGVQYXNza2V5UmVxdWVzdBI3CgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLn'
+    'YxLlRlbmFudENvbnRleHRSBnRlbmFudBIOCgJpZBgCIAEoCVICaWQ=');
+
+@$core.Deprecated('Use deletePasskeyResponseDescriptor instead')
+const DeletePasskeyResponse$json = {
+  '1': 'DeletePasskeyResponse',
+};
+
+/// Descriptor for `DeletePasskeyResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List deletePasskeyResponseDescriptor =
+    $convert.base64Decode('ChVEZWxldGVQYXNza2V5UmVzcG9uc2U=');
+
+@$core.Deprecated('Use beginPasskeyConfirmationRequestDescriptor instead')
+const BeginPasskeyConfirmationRequest$json = {
+  '1': 'BeginPasskeyConfirmationRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+  ],
+};
+
+/// Descriptor for `BeginPasskeyConfirmationRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List beginPasskeyConfirmationRequestDescriptor =
+    $convert.base64Decode(
+        'Ch9CZWdpblBhc3NrZXlDb25maXJtYXRpb25SZXF1ZXN0EjcKBnRlbmFudBgBIAEoCzIfLnB1Ym'
+        'xpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dFIGdGVuYW50');
+
+@$core.Deprecated('Use beginPasskeyConfirmationResponseDescriptor instead')
+const BeginPasskeyConfirmationResponse$json = {
+  '1': 'BeginPasskeyConfirmationResponse',
+  '2': [
+    {
+      '1': 'request_options_json',
+      '3': 1,
+      '4': 1,
+      '5': 9,
+      '10': 'requestOptionsJson'
+    },
+  ],
+};
+
+/// Descriptor for `BeginPasskeyConfirmationResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List beginPasskeyConfirmationResponseDescriptor =
+    $convert.base64Decode(
+        'CiBCZWdpblBhc3NrZXlDb25maXJtYXRpb25SZXNwb25zZRIwChRyZXF1ZXN0X29wdGlvbnNfan'
+        'NvbhgBIAEoCVIScmVxdWVzdE9wdGlvbnNKc29u');
 
 @$core.Deprecated('Use createUserRequestDescriptor instead')
 const CreateUserRequest$json = {
@@ -483,6 +836,13 @@ const RequestEmailChangeRequest$json = {
     },
     {'1': 'id_token', '3': 6, '4': 1, '5': 9, '10': 'idToken'},
     {'1': 'nonce', '3': 7, '4': 1, '5': 9, '10': 'nonce'},
+    {
+      '1': 'passkey_credential_json',
+      '3': 8,
+      '4': 1,
+      '5': 9,
+      '10': 'passkeyCredentialJson'
+    },
   ],
 };
 
@@ -493,7 +853,8 @@ final $typed_data.Uint8List requestEmailChangeRequestDescriptor = $convert.base6
     'cnJlbnRFbWFpbBIbCgluZXdfZW1haWwYAyABKAlSCG5ld0VtYWlsEikKEGN1cnJlbnRfcGFzc3'
     'dvcmQYBCABKAlSD2N1cnJlbnRQYXNzd29yZBI4Cghwcm92aWRlchgFIAEoDjIcLnB1YmxpcmEu'
     'djEuSWRlbnRpdHlQcm92aWRlclIIcHJvdmlkZXISGQoIaWRfdG9rZW4YBiABKAlSB2lkVG9rZW'
-    '4SFAoFbm9uY2UYByABKAlSBW5vbmNl');
+    '4SFAoFbm9uY2UYByABKAlSBW5vbmNlEjYKF3Bhc3NrZXlfY3JlZGVudGlhbF9qc29uGAggASgJ'
+    'UhVwYXNza2V5Q3JlZGVudGlhbEpzb24=');
 
 @$core.Deprecated('Use requestEmailChangeResponseDescriptor instead')
 const RequestEmailChangeResponse$json = {
@@ -940,6 +1301,13 @@ const DeleteMeRequest$json = {
     },
     {'1': 'id_token', '3': 4, '4': 1, '5': 9, '10': 'idToken'},
     {'1': 'nonce', '3': 5, '4': 1, '5': 9, '10': 'nonce'},
+    {
+      '1': 'passkey_credential_json',
+      '3': 6,
+      '4': 1,
+      '5': 9,
+      '10': 'passkeyCredentialJson'
+    },
   ],
 };
 
@@ -948,7 +1316,8 @@ final $typed_data.Uint8List deleteMeRequestDescriptor = $convert.base64Decode(
     'Cg9EZWxldGVNZVJlcXVlc3QSNwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW'
     '5hbnRDb250ZXh0UgZ0ZW5hbnQSGgoIcGFzc3dvcmQYAiABKAlSCHBhc3N3b3JkEjgKCHByb3Zp'
     'ZGVyGAMgASgOMhwucHVibGlyYS52MS5JZGVudGl0eVByb3ZpZGVyUghwcm92aWRlchIZCghpZF'
-    '90b2tlbhgEIAEoCVIHaWRUb2tlbhIUCgVub25jZRgFIAEoCVIFbm9uY2U=');
+    '90b2tlbhgEIAEoCVIHaWRUb2tlbhIUCgVub25jZRgFIAEoCVIFbm9uY2USNgoXcGFzc2tleV9j'
+    'cmVkZW50aWFsX2pzb24YBiABKAlSFXBhc3NrZXlDcmVkZW50aWFsSnNvbg==');
 
 @$core.Deprecated('Use deleteMeResponseDescriptor instead')
 const DeleteMeResponse$json = {
@@ -1545,6 +1914,46 @@ const $core.Map<$core.String, $core.dynamic> AuthServiceBase$json = {
       '3': '.publira.v1.LinkIdentityResponse'
     },
     {
+      '1': 'BeginPasskeyLogin',
+      '2': '.publira.v1.BeginPasskeyLoginRequest',
+      '3': '.publira.v1.BeginPasskeyLoginResponse'
+    },
+    {
+      '1': 'FinishPasskeyLogin',
+      '2': '.publira.v1.FinishPasskeyLoginRequest',
+      '3': '.publira.v1.FinishPasskeyLoginResponse'
+    },
+    {
+      '1': 'BeginPasskeyRegistration',
+      '2': '.publira.v1.BeginPasskeyRegistrationRequest',
+      '3': '.publira.v1.BeginPasskeyRegistrationResponse'
+    },
+    {
+      '1': 'FinishPasskeyRegistration',
+      '2': '.publira.v1.FinishPasskeyRegistrationRequest',
+      '3': '.publira.v1.FinishPasskeyRegistrationResponse'
+    },
+    {
+      '1': 'ListMyPasskeys',
+      '2': '.publira.v1.ListMyPasskeysRequest',
+      '3': '.publira.v1.ListMyPasskeysResponse'
+    },
+    {
+      '1': 'RenamePasskey',
+      '2': '.publira.v1.RenamePasskeyRequest',
+      '3': '.publira.v1.RenamePasskeyResponse'
+    },
+    {
+      '1': 'DeletePasskey',
+      '2': '.publira.v1.DeletePasskeyRequest',
+      '3': '.publira.v1.DeletePasskeyResponse'
+    },
+    {
+      '1': 'BeginPasskeyConfirmation',
+      '2': '.publira.v1.BeginPasskeyConfirmationRequest',
+      '3': '.publira.v1.BeginPasskeyConfirmationResponse'
+    },
+    {
       '1': 'CreateUser',
       '2': '.publira.v1.CreateUserRequest',
       '3': '.publira.v1.CreateUserResponse'
@@ -1695,6 +2104,29 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.v1.UnlinkIdentityResponse': UnlinkIdentityResponse$json,
   '.publira.v1.LinkIdentityRequest': LinkIdentityRequest$json,
   '.publira.v1.LinkIdentityResponse': LinkIdentityResponse$json,
+  '.publira.v1.BeginPasskeyLoginRequest': BeginPasskeyLoginRequest$json,
+  '.publira.v1.BeginPasskeyLoginResponse': BeginPasskeyLoginResponse$json,
+  '.publira.v1.FinishPasskeyLoginRequest': FinishPasskeyLoginRequest$json,
+  '.publira.v1.FinishPasskeyLoginResponse': FinishPasskeyLoginResponse$json,
+  '.publira.v1.BeginPasskeyRegistrationRequest':
+      BeginPasskeyRegistrationRequest$json,
+  '.publira.v1.BeginPasskeyRegistrationResponse':
+      BeginPasskeyRegistrationResponse$json,
+  '.publira.v1.FinishPasskeyRegistrationRequest':
+      FinishPasskeyRegistrationRequest$json,
+  '.publira.v1.FinishPasskeyRegistrationResponse':
+      FinishPasskeyRegistrationResponse$json,
+  '.publira.v1.Passkey': Passkey$json,
+  '.publira.v1.ListMyPasskeysRequest': ListMyPasskeysRequest$json,
+  '.publira.v1.ListMyPasskeysResponse': ListMyPasskeysResponse$json,
+  '.publira.v1.RenamePasskeyRequest': RenamePasskeyRequest$json,
+  '.publira.v1.RenamePasskeyResponse': RenamePasskeyResponse$json,
+  '.publira.v1.DeletePasskeyRequest': DeletePasskeyRequest$json,
+  '.publira.v1.DeletePasskeyResponse': DeletePasskeyResponse$json,
+  '.publira.v1.BeginPasskeyConfirmationRequest':
+      BeginPasskeyConfirmationRequest$json,
+  '.publira.v1.BeginPasskeyConfirmationResponse':
+      BeginPasskeyConfirmationResponse$json,
   '.publira.v1.CreateUserRequest': CreateUserRequest$json,
   '.publira.v1.CreateUserResponse': CreateUserResponse$json,
   '.publira.v1.VerifyUserEmailRequest': VerifyUserEmailRequest$json,
@@ -1777,50 +2209,65 @@ final $typed_data.Uint8List authServiceDescriptor = $convert.base64Decode(
     'cXVlc3QaJC5wdWJsaXJhLnYxLkxpc3RNeUlkZW50aXRpZXNSZXNwb25zZRJXCg5VbmxpbmtJZG'
     'VudGl0eRIhLnB1YmxpcmEudjEuVW5saW5rSWRlbnRpdHlSZXF1ZXN0GiIucHVibGlyYS52MS5V'
     'bmxpbmtJZGVudGl0eVJlc3BvbnNlElEKDExpbmtJZGVudGl0eRIfLnB1YmxpcmEudjEuTGlua0'
-    'lkZW50aXR5UmVxdWVzdBogLnB1YmxpcmEudjEuTGlua0lkZW50aXR5UmVzcG9uc2USSwoKQ3Jl'
-    'YXRlVXNlchIdLnB1YmxpcmEudjEuQ3JlYXRlVXNlclJlcXVlc3QaHi5wdWJsaXJhLnYxLkNyZW'
-    'F0ZVVzZXJSZXNwb25zZRJaCg9WZXJpZnlVc2VyRW1haWwSIi5wdWJsaXJhLnYxLlZlcmlmeVVz'
-    'ZXJFbWFpbFJlcXVlc3QaIy5wdWJsaXJhLnYxLlZlcmlmeVVzZXJFbWFpbFJlc3BvbnNlEnUKGF'
-    'JlcXVlc3RFbWFpbFZlcmlmaWNhdGlvbhIrLnB1YmxpcmEudjEuUmVxdWVzdEVtYWlsVmVyaWZp'
-    'Y2F0aW9uUmVxdWVzdBosLnB1YmxpcmEudjEuUmVxdWVzdEVtYWlsVmVyaWZpY2F0aW9uUmVzcG'
-    '9uc2USYwoSUmVxdWVzdEVtYWlsQ2hhbmdlEiUucHVibGlyYS52MS5SZXF1ZXN0RW1haWxDaGFu'
-    'Z2VSZXF1ZXN0GiYucHVibGlyYS52MS5SZXF1ZXN0RW1haWxDaGFuZ2VSZXNwb25zZRJjChJDb2'
-    '5maXJtRW1haWxDaGFuZ2USJS5wdWJsaXJhLnYxLkNvbmZpcm1FbWFpbENoYW5nZVJlcXVlc3Qa'
-    'Ji5wdWJsaXJhLnYxLkNvbmZpcm1FbWFpbENoYW5nZVJlc3BvbnNlEmkKFFJlcXVlc3RQYXNzd2'
-    '9yZFJlc2V0EicucHVibGlyYS52MS5SZXF1ZXN0UGFzc3dvcmRSZXNldFJlcXVlc3QaKC5wdWJs'
-    'aXJhLnYxLlJlcXVlc3RQYXNzd29yZFJlc2V0UmVzcG9uc2USaQoUQ29uZmlybVBhc3N3b3JkUm'
-    'VzZXQSJy5wdWJsaXJhLnYxLkNvbmZpcm1QYXNzd29yZFJlc2V0UmVxdWVzdBooLnB1YmxpcmEu'
-    'djEuQ29uZmlybVBhc3N3b3JkUmVzZXRSZXNwb25zZRJXCg5DaGFuZ2VQYXNzd29yZBIhLnB1Ym'
-    'xpcmEudjEuQ2hhbmdlUGFzc3dvcmRSZXF1ZXN0GiIucHVibGlyYS52MS5DaGFuZ2VQYXNzd29y'
-    'ZFJlc3BvbnNlEj8KBkxvZ291dBIZLnB1YmxpcmEudjEuTG9nb3V0UmVxdWVzdBoaLnB1Ymxpcm'
-    'EudjEuTG9nb3V0UmVzcG9uc2USPAoFR2V0TWUSGC5wdWJsaXJhLnYxLkdldE1lUmVxdWVzdBoZ'
-    'LnB1YmxpcmEudjEuR2V0TWVSZXNwb25zZRJFCghVcGRhdGVNZRIbLnB1YmxpcmEudjEuVXBkYX'
-    'RlTWVSZXF1ZXN0GhwucHVibGlyYS52MS5VcGRhdGVNZVJlc3BvbnNlElEKDFVwbG9hZE15SWNv'
-    'bhIfLnB1YmxpcmEudjEuVXBsb2FkTXlJY29uUmVxdWVzdBogLnB1YmxpcmEudjEuVXBsb2FkTX'
-    'lJY29uUmVzcG9uc2USUQoMU2VsZWN0TXlJY29uEh8ucHVibGlyYS52MS5TZWxlY3RNeUljb25S'
-    'ZXF1ZXN0GiAucHVibGlyYS52MS5TZWxlY3RNeUljb25SZXNwb25zZRJRCgxEZWxldGVNeUljb2'
-    '4SHy5wdWJsaXJhLnYxLkRlbGV0ZU15SWNvblJlcXVlc3QaIC5wdWJsaXJhLnYxLkRlbGV0ZU15'
-    'SWNvblJlc3BvbnNlEkUKCERlbGV0ZU1lEhsucHVibGlyYS52MS5EZWxldGVNZVJlcXVlc3QaHC'
-    '5wdWJsaXJhLnYxLkRlbGV0ZU1lUmVzcG9uc2UScgoXR2V0Tm90aWZpY2F0aW9uU2V0dGluZ3MS'
-    'Ki5wdWJsaXJhLnYxLkdldE5vdGlmaWNhdGlvblNldHRpbmdzUmVxdWVzdBorLnB1YmxpcmEudj'
-    'EuR2V0Tm90aWZpY2F0aW9uU2V0dGluZ3NSZXNwb25zZRJ7ChpVcGRhdGVOb3RpZmljYXRpb25T'
-    'ZXR0aW5ncxItLnB1YmxpcmEudjEuVXBkYXRlTm90aWZpY2F0aW9uU2V0dGluZ3NSZXF1ZXN0Gi'
-    '4ucHVibGlyYS52MS5VcGRhdGVOb3RpZmljYXRpb25TZXR0aW5nc1Jlc3BvbnNlEmkKFEdldFZp'
-    'ZXdlclByZWZlcmVuY2VzEicucHVibGlyYS52MS5HZXRWaWV3ZXJQcmVmZXJlbmNlc1JlcXVlc3'
-    'QaKC5wdWJsaXJhLnYxLkdldFZpZXdlclByZWZlcmVuY2VzUmVzcG9uc2UScgoXVXBkYXRlVmll'
-    'd2VyUHJlZmVyZW5jZXMSKi5wdWJsaXJhLnYxLlVwZGF0ZVZpZXdlclByZWZlcmVuY2VzUmVxdW'
-    'VzdBorLnB1YmxpcmEudjEuVXBkYXRlVmlld2VyUHJlZmVyZW5jZXNSZXNwb25zZRJaCg9HZXRB'
-    'bm5vdW5jZW1lbnQSIi5wdWJsaXJhLnYxLkdldEFubm91bmNlbWVudFJlcXVlc3QaIy5wdWJsaX'
-    'JhLnYxLkdldEFubm91bmNlbWVudFJlc3BvbnNlEmwKFUdldFBpbm5lZEFubm91bmNlbWVudBIo'
-    'LnB1YmxpcmEudjEuR2V0UGlubmVkQW5ub3VuY2VtZW50UmVxdWVzdBopLnB1YmxpcmEudjEuR2'
-    'V0UGlubmVkQW5ub3VuY2VtZW50UmVzcG9uc2USYAoRTGlzdEFubm91bmNlbWVudHMSJC5wdWJs'
-    'aXJhLnYxLkxpc3RBbm5vdW5jZW1lbnRzUmVxdWVzdBolLnB1YmxpcmEudjEuTGlzdEFubm91bm'
-    'NlbWVudHNSZXNwb25zZRJvChZNYXJrQW5ub3VuY2VtZW50QXNSZWFkEikucHVibGlyYS52MS5N'
-    'YXJrQW5ub3VuY2VtZW50QXNSZWFkUmVxdWVzdBoqLnB1YmxpcmEudjEuTWFya0Fubm91bmNlbW'
-    'VudEFzUmVhZFJlc3BvbnNlEnsKGk1hcmtBbGxBbm5vdW5jZW1lbnRzQXNSZWFkEi0ucHVibGly'
-    'YS52MS5NYXJrQWxsQW5ub3VuY2VtZW50c0FzUmVhZFJlcXVlc3QaLi5wdWJsaXJhLnYxLk1hcm'
-    'tBbGxBbm5vdW5jZW1lbnRzQXNSZWFkUmVzcG9uc2USdQoYR2V0TXlMZWdhbFBhZ2VBZ3JlZW1l'
-    'bnRzEisucHVibGlyYS52MS5HZXRNeUxlZ2FsUGFnZUFncmVlbWVudHNSZXF1ZXN0GiwucHVibG'
-    'lyYS52MS5HZXRNeUxlZ2FsUGFnZUFncmVlbWVudHNSZXNwb25zZRJgChFBZ3JlZVRvTGVnYWxQ'
-    'YWdlcxIkLnB1YmxpcmEudjEuQWdyZWVUb0xlZ2FsUGFnZXNSZXF1ZXN0GiUucHVibGlyYS52MS'
-    '5BZ3JlZVRvTGVnYWxQYWdlc1Jlc3BvbnNl');
+    'lkZW50aXR5UmVxdWVzdBogLnB1YmxpcmEudjEuTGlua0lkZW50aXR5UmVzcG9uc2USYAoRQmVn'
+    'aW5QYXNza2V5TG9naW4SJC5wdWJsaXJhLnYxLkJlZ2luUGFzc2tleUxvZ2luUmVxdWVzdBolLn'
+    'B1YmxpcmEudjEuQmVnaW5QYXNza2V5TG9naW5SZXNwb25zZRJjChJGaW5pc2hQYXNza2V5TG9n'
+    'aW4SJS5wdWJsaXJhLnYxLkZpbmlzaFBhc3NrZXlMb2dpblJlcXVlc3QaJi5wdWJsaXJhLnYxLk'
+    'ZpbmlzaFBhc3NrZXlMb2dpblJlc3BvbnNlEnUKGEJlZ2luUGFzc2tleVJlZ2lzdHJhdGlvbhIr'
+    'LnB1YmxpcmEudjEuQmVnaW5QYXNza2V5UmVnaXN0cmF0aW9uUmVxdWVzdBosLnB1YmxpcmEudj'
+    'EuQmVnaW5QYXNza2V5UmVnaXN0cmF0aW9uUmVzcG9uc2USeAoZRmluaXNoUGFzc2tleVJlZ2lz'
+    'dHJhdGlvbhIsLnB1YmxpcmEudjEuRmluaXNoUGFzc2tleVJlZ2lzdHJhdGlvblJlcXVlc3QaLS'
+    '5wdWJsaXJhLnYxLkZpbmlzaFBhc3NrZXlSZWdpc3RyYXRpb25SZXNwb25zZRJXCg5MaXN0TXlQ'
+    'YXNza2V5cxIhLnB1YmxpcmEudjEuTGlzdE15UGFzc2tleXNSZXF1ZXN0GiIucHVibGlyYS52MS'
+    '5MaXN0TXlQYXNza2V5c1Jlc3BvbnNlElQKDVJlbmFtZVBhc3NrZXkSIC5wdWJsaXJhLnYxLlJl'
+    'bmFtZVBhc3NrZXlSZXF1ZXN0GiEucHVibGlyYS52MS5SZW5hbWVQYXNza2V5UmVzcG9uc2USVA'
+    'oNRGVsZXRlUGFzc2tleRIgLnB1YmxpcmEudjEuRGVsZXRlUGFzc2tleVJlcXVlc3QaIS5wdWJs'
+    'aXJhLnYxLkRlbGV0ZVBhc3NrZXlSZXNwb25zZRJ1ChhCZWdpblBhc3NrZXlDb25maXJtYXRpb2'
+    '4SKy5wdWJsaXJhLnYxLkJlZ2luUGFzc2tleUNvbmZpcm1hdGlvblJlcXVlc3QaLC5wdWJsaXJh'
+    'LnYxLkJlZ2luUGFzc2tleUNvbmZpcm1hdGlvblJlc3BvbnNlEksKCkNyZWF0ZVVzZXISHS5wdW'
+    'JsaXJhLnYxLkNyZWF0ZVVzZXJSZXF1ZXN0Gh4ucHVibGlyYS52MS5DcmVhdGVVc2VyUmVzcG9u'
+    'c2USWgoPVmVyaWZ5VXNlckVtYWlsEiIucHVibGlyYS52MS5WZXJpZnlVc2VyRW1haWxSZXF1ZX'
+    'N0GiMucHVibGlyYS52MS5WZXJpZnlVc2VyRW1haWxSZXNwb25zZRJ1ChhSZXF1ZXN0RW1haWxW'
+    'ZXJpZmljYXRpb24SKy5wdWJsaXJhLnYxLlJlcXVlc3RFbWFpbFZlcmlmaWNhdGlvblJlcXVlc3'
+    'QaLC5wdWJsaXJhLnYxLlJlcXVlc3RFbWFpbFZlcmlmaWNhdGlvblJlc3BvbnNlEmMKElJlcXVl'
+    'c3RFbWFpbENoYW5nZRIlLnB1YmxpcmEudjEuUmVxdWVzdEVtYWlsQ2hhbmdlUmVxdWVzdBomLn'
+    'B1YmxpcmEudjEuUmVxdWVzdEVtYWlsQ2hhbmdlUmVzcG9uc2USYwoSQ29uZmlybUVtYWlsQ2hh'
+    'bmdlEiUucHVibGlyYS52MS5Db25maXJtRW1haWxDaGFuZ2VSZXF1ZXN0GiYucHVibGlyYS52MS'
+    '5Db25maXJtRW1haWxDaGFuZ2VSZXNwb25zZRJpChRSZXF1ZXN0UGFzc3dvcmRSZXNldBInLnB1'
+    'YmxpcmEudjEuUmVxdWVzdFBhc3N3b3JkUmVzZXRSZXF1ZXN0GigucHVibGlyYS52MS5SZXF1ZX'
+    'N0UGFzc3dvcmRSZXNldFJlc3BvbnNlEmkKFENvbmZpcm1QYXNzd29yZFJlc2V0EicucHVibGly'
+    'YS52MS5Db25maXJtUGFzc3dvcmRSZXNldFJlcXVlc3QaKC5wdWJsaXJhLnYxLkNvbmZpcm1QYX'
+    'Nzd29yZFJlc2V0UmVzcG9uc2USVwoOQ2hhbmdlUGFzc3dvcmQSIS5wdWJsaXJhLnYxLkNoYW5n'
+    'ZVBhc3N3b3JkUmVxdWVzdBoiLnB1YmxpcmEudjEuQ2hhbmdlUGFzc3dvcmRSZXNwb25zZRI/Cg'
+    'ZMb2dvdXQSGS5wdWJsaXJhLnYxLkxvZ291dFJlcXVlc3QaGi5wdWJsaXJhLnYxLkxvZ291dFJl'
+    'c3BvbnNlEjwKBUdldE1lEhgucHVibGlyYS52MS5HZXRNZVJlcXVlc3QaGS5wdWJsaXJhLnYxLk'
+    'dldE1lUmVzcG9uc2USRQoIVXBkYXRlTWUSGy5wdWJsaXJhLnYxLlVwZGF0ZU1lUmVxdWVzdBoc'
+    'LnB1YmxpcmEudjEuVXBkYXRlTWVSZXNwb25zZRJRCgxVcGxvYWRNeUljb24SHy5wdWJsaXJhLn'
+    'YxLlVwbG9hZE15SWNvblJlcXVlc3QaIC5wdWJsaXJhLnYxLlVwbG9hZE15SWNvblJlc3BvbnNl'
+    'ElEKDFNlbGVjdE15SWNvbhIfLnB1YmxpcmEudjEuU2VsZWN0TXlJY29uUmVxdWVzdBogLnB1Ym'
+    'xpcmEudjEuU2VsZWN0TXlJY29uUmVzcG9uc2USUQoMRGVsZXRlTXlJY29uEh8ucHVibGlyYS52'
+    'MS5EZWxldGVNeUljb25SZXF1ZXN0GiAucHVibGlyYS52MS5EZWxldGVNeUljb25SZXNwb25zZR'
+    'JFCghEZWxldGVNZRIbLnB1YmxpcmEudjEuRGVsZXRlTWVSZXF1ZXN0GhwucHVibGlyYS52MS5E'
+    'ZWxldGVNZVJlc3BvbnNlEnIKF0dldE5vdGlmaWNhdGlvblNldHRpbmdzEioucHVibGlyYS52MS'
+    '5HZXROb3RpZmljYXRpb25TZXR0aW5nc1JlcXVlc3QaKy5wdWJsaXJhLnYxLkdldE5vdGlmaWNh'
+    'dGlvblNldHRpbmdzUmVzcG9uc2USewoaVXBkYXRlTm90aWZpY2F0aW9uU2V0dGluZ3MSLS5wdW'
+    'JsaXJhLnYxLlVwZGF0ZU5vdGlmaWNhdGlvblNldHRpbmdzUmVxdWVzdBouLnB1YmxpcmEudjEu'
+    'VXBkYXRlTm90aWZpY2F0aW9uU2V0dGluZ3NSZXNwb25zZRJpChRHZXRWaWV3ZXJQcmVmZXJlbm'
+    'NlcxInLnB1YmxpcmEudjEuR2V0Vmlld2VyUHJlZmVyZW5jZXNSZXF1ZXN0GigucHVibGlyYS52'
+    'MS5HZXRWaWV3ZXJQcmVmZXJlbmNlc1Jlc3BvbnNlEnIKF1VwZGF0ZVZpZXdlclByZWZlcmVuY2'
+    'VzEioucHVibGlyYS52MS5VcGRhdGVWaWV3ZXJQcmVmZXJlbmNlc1JlcXVlc3QaKy5wdWJsaXJh'
+    'LnYxLlVwZGF0ZVZpZXdlclByZWZlcmVuY2VzUmVzcG9uc2USWgoPR2V0QW5ub3VuY2VtZW50Ei'
+    'IucHVibGlyYS52MS5HZXRBbm5vdW5jZW1lbnRSZXF1ZXN0GiMucHVibGlyYS52MS5HZXRBbm5v'
+    'dW5jZW1lbnRSZXNwb25zZRJsChVHZXRQaW5uZWRBbm5vdW5jZW1lbnQSKC5wdWJsaXJhLnYxLk'
+    'dldFBpbm5lZEFubm91bmNlbWVudFJlcXVlc3QaKS5wdWJsaXJhLnYxLkdldFBpbm5lZEFubm91'
+    'bmNlbWVudFJlc3BvbnNlEmAKEUxpc3RBbm5vdW5jZW1lbnRzEiQucHVibGlyYS52MS5MaXN0QW'
+    '5ub3VuY2VtZW50c1JlcXVlc3QaJS5wdWJsaXJhLnYxLkxpc3RBbm5vdW5jZW1lbnRzUmVzcG9u'
+    'c2USbwoWTWFya0Fubm91bmNlbWVudEFzUmVhZBIpLnB1YmxpcmEudjEuTWFya0Fubm91bmNlbW'
+    'VudEFzUmVhZFJlcXVlc3QaKi5wdWJsaXJhLnYxLk1hcmtBbm5vdW5jZW1lbnRBc1JlYWRSZXNw'
+    'b25zZRJ7ChpNYXJrQWxsQW5ub3VuY2VtZW50c0FzUmVhZBItLnB1YmxpcmEudjEuTWFya0FsbE'
+    'Fubm91bmNlbWVudHNBc1JlYWRSZXF1ZXN0Gi4ucHVibGlyYS52MS5NYXJrQWxsQW5ub3VuY2Vt'
+    'ZW50c0FzUmVhZFJlc3BvbnNlEnUKGEdldE15TGVnYWxQYWdlQWdyZWVtZW50cxIrLnB1Ymxpcm'
+    'EudjEuR2V0TXlMZWdhbFBhZ2VBZ3JlZW1lbnRzUmVxdWVzdBosLnB1YmxpcmEudjEuR2V0TXlM'
+    'ZWdhbFBhZ2VBZ3JlZW1lbnRzUmVzcG9uc2USYAoRQWdyZWVUb0xlZ2FsUGFnZXMSJC5wdWJsaX'
+    'JhLnYxLkFncmVlVG9MZWdhbFBhZ2VzUmVxdWVzdBolLnB1YmxpcmEudjEuQWdyZWVUb0xlZ2Fs'
+    'UGFnZXNSZXNwb25zZQ==');

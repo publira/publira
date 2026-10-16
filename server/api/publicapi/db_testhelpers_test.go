@@ -140,6 +140,7 @@ func openPolicy() platformpolicy.Policy {
 	policy.LegalPageAgreement = open
 	policy.IdentityLink = open
 	policy.IconChange = open
+	policy.Passkey = open
 	return policy
 }
 

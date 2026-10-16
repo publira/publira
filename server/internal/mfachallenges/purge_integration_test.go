@@ -222,8 +222,8 @@ func insertWebauthnCeremony(t *testing.T, db *sql.DB, tenantID, userID uuid.UUID
 
 	challenge := uuid.Must(uuid.NewV7()).String()
 	if _, err := db.ExecContext(ctx, `
-		INSERT INTO user_webauthn_ceremonies (challenge, tenant_id, user_id, ceremony, rp_id, expires_at)
-		VALUES ($1, $2, $3, 'authentication', 'mfa-purge.example.com', $4)
+		INSERT INTO user_webauthn_ceremonies (challenge, tenant_id, user_id, relying_party, ceremony, rp_id, expires_at)
+		VALUES ($1, $2, $3, 'admin_console', 'authentication', 'mfa-purge.example.com', $4)
 	`, challenge, tenantID, userID, expiresAt); err != nil {
 		t.Fatalf("insert webauthn ceremony: %v", err)
 	}

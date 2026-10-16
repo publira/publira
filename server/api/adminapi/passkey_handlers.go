@@ -86,8 +86,9 @@ func (s *adminServer) adminRelyingParty(ctx context.Context, tenant dbmodels.Ten
 // for rp.
 func (s *adminServer) passkeyUser(ctx context.Context, rp *tenantwebauthn.RelyingParty, user dbmodels.User) (tenantwebauthn.User, error) {
 	credentials, err := s.queriesFor(ctx).ListUserWebauthnCredentialsForRPID(ctx, dbmodels.ListUserWebauthnCredentialsForRPIDParams{
-		UserID: user.ID,
-		RpID:   rp.ID,
+		UserID:       user.ID,
+		RelyingParty: rp.Kind,
+		RpID:         rp.ID,
 	})
 	if err != nil {
 		return tenantwebauthn.User{}, s.internalDBError(ctx, "failed to list passkeys", err, "user_id", user.ID.String())
@@ -117,17 +118,18 @@ func (s *adminServer) startCeremony(ctx context.Context, actor mfaActor, kind st
 	defer tx.Rollback() //nolint:errcheck
 
 	q := dbmodels.New(tx)
-	if err := q.LockUserWebauthnCeremonies(ctx, dbmodels.LockUserWebauthnCeremoniesParams{UserID: actor.User.ID, Ceremony: kind}); err != nil {
+	if err := q.LockUserWebauthnCeremonies(ctx, dbmodels.LockUserWebauthnCeremoniesParams{UserID: actor.User.ID, RelyingParty: tenantwebauthn.KindAdminConsole, Ceremony: kind}); err != nil {
 		return s.internalDBError(ctx, "failed to lock passkey ceremonies", err, "user_id", userID)
 	}
 	if err := q.StartUserWebauthnCeremony(ctx, dbmodels.StartUserWebauthnCeremonyParams{
-		MaxOpen:   passkeyOpenCeremonies,
-		Challenge: ceremony.Challenge,
-		TenantID:  actor.Tenant.ID,
-		UserID:    actor.User.ID,
-		Ceremony:  kind,
-		RpID:      ceremony.RPID,
-		ExpiresAt: ceremony.ExpiresAt,
+		MaxOpen:      passkeyOpenCeremonies,
+		Challenge:    ceremony.Challenge,
+		TenantID:     actor.Tenant.ID,
+		UserID:       actor.User.ID,
+		RelyingParty: tenantwebauthn.KindAdminConsole,
+		Ceremony:     kind,
+		RpID:         ceremony.RPID,
+		ExpiresAt:    ceremony.ExpiresAt,
 	}); err != nil {
 		return s.internalDBError(ctx, "failed to store the passkey ceremony", err, "user_id", userID)
 	}
@@ -142,9 +144,10 @@ func (s *adminServer) startCeremony(ctx context.Context, actor mfaActor, kind st
 // spent.
 func (s *adminServer) spendCeremony(ctx context.Context, actor mfaActor, kind, challenge string) (ceremony tenantwebauthn.Ceremony, found bool, err error) {
 	row, err := s.queriesFor(ctx).SpendUserWebauthnCeremony(ctx, dbmodels.SpendUserWebauthnCeremonyParams{
-		Challenge: challenge,
-		UserID:    actor.User.ID,
-		Ceremony:  kind,
+		Challenge:    challenge,
+		UserID:       actor.User.ID,
+		RelyingParty: tenantwebauthn.KindAdminConsole,
+		Ceremony:     kind,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -340,6 +343,7 @@ func (s *adminServer) storePasskey(
 			PublicID:       publicID,
 			TenantID:       actor.Tenant.ID,
 			UserID:         actor.User.ID,
+			RelyingParty:   rp.Kind,
 			RpID:           rp.ID,
 			CredentialID:   credential.ID,
 			PublicKey:      credential.PublicKey,
@@ -554,8 +558,9 @@ func (s *adminServer) ListPasskeys(
 		return nil, err
 	}
 	rows, err := s.queriesFor(ctx).ListUserWebauthnCredentialsForRPID(ctx, dbmodels.ListUserWebauthnCredentialsForRPIDParams{
-		UserID: user.ID,
-		RpID:   rpID,
+		UserID:       user.ID,
+		RelyingParty: tenantwebauthn.KindAdminConsole,
+		RpID:         rpID,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list passkeys", err, "user_id", user.ID.String())
@@ -580,9 +585,10 @@ func (s *adminServer) ownPasskey(ctx context.Context, tenant dbmodels.Tenant, us
 		return dbmodels.UserWebauthnCredential{}, "", err
 	}
 	row, err := s.queriesFor(ctx).GetUserWebauthnCredentialByPublicID(ctx, dbmodels.GetUserWebauthnCredentialByPublicIDParams{
-		UserID:   userID,
-		RpID:     rpID,
-		PublicID: publicID,
+		UserID:       userID,
+		RelyingParty: tenantwebauthn.KindAdminConsole,
+		RpID:         rpID,
+		PublicID:     publicID,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -685,7 +691,7 @@ func (s *adminServer) deletePasskey(ctx context.Context, userID uuid.UUID, rpID 
 	if deleted == 0 {
 		return sql.ErrNoRows
 	}
-	remaining, err := q.CountUserWebauthnCredentialsForRPID(ctx, dbmodels.CountUserWebauthnCredentialsForRPIDParams{UserID: userID, RpID: rpID})
+	remaining, err := q.CountUserWebauthnCredentialsForRPID(ctx, dbmodels.CountUserWebauthnCredentialsForRPIDParams{UserID: userID, RelyingParty: tenantwebauthn.KindAdminConsole, RpID: rpID})
 	if err != nil {
 		return s.internalDBError(ctx, "failed to count passkeys", err, "user_id", userID.String())
 	}
@@ -710,11 +716,12 @@ func (s *adminServer) deletePasskey(ctx context.Context, userID uuid.UUID, rpID 
 }
 
 // deleteRecoveryCodesWithTheLastFactor deletes the account's recovery codes
-// once nothing they could stand in for is left, counting a passkey of any RP
-// ID. The caller holds lockMfaFactors and has already removed what it is
+// once nothing they could stand in for is left, counting a console passkey of
+// any RP ID. A passkey the account signs in to the storefront with is no
+// second factor and keeps no code. The caller holds lockMfaFactors and has already removed what it is
 // removing.
 func (s *adminServer) deleteRecoveryCodesWithTheLastFactor(ctx context.Context, q Querier, userID uuid.UUID) error {
-	passkeys, err := q.CountUserWebauthnCredentials(ctx, userID)
+	passkeys, err := q.CountUserWebauthnCredentials(ctx, dbmodels.CountUserWebauthnCredentialsParams{UserID: userID, RelyingParty: tenantwebauthn.KindAdminConsole})
 	if err != nil {
 		return s.internalDBError(ctx, "failed to count passkeys", err, "user_id", userID.String())
 	}

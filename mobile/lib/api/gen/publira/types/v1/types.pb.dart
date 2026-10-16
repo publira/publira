@@ -186,8 +186,8 @@ class User extends $pb.GeneratedMessage {
 
   /// The reader's own birth date as YYYY-MM-DD, empty when they have given
   /// none. Set where a User stands for the account the request authenticated
-  /// or signed in as, which is GetMe, UpdateMe, Login and LoginWithIdToken;
-  /// empty everywhere a User names someone the caller is merely looking at, so
+  /// or signed in as, which is GetMe, UpdateMe, Login, LoginWithIdToken and
+  /// FinishPasskeyLogin; empty everywhere a User names someone the caller is merely looking at, so
   /// a console listing accounts never carries it.
   @$pb.TagNumber(4)
   $core.String get birthDate => $_getSZ(3);
@@ -199,9 +199,9 @@ class User extends $pb.GeneratedMessage {
   void clearBirthDate() => $_clearField(4);
 
   /// The account's email address, under the same rule as birth_date: set by the
-  /// public API's GetMe, UpdateMe, Login and LoginWithIdToken, so a form can
-  /// offer the reader their own address, and empty wherever a User names
-  /// someone else.
+  /// public API's GetMe, UpdateMe, Login, LoginWithIdToken and
+  /// FinishPasskeyLogin, so a form can offer the reader their own address, and
+  /// empty wherever a User names someone else.
   @$pb.TagNumber(5)
   $core.String get email => $_getSZ(4);
   @$pb.TagNumber(5)
@@ -213,9 +213,10 @@ class User extends $pb.GeneratedMessage {
 
   /// The account's icon. Set where the public API answers with the caller's
   /// own account as GetMe reads it — GetMe, UpdateMe, UploadMyIcon,
-  /// SelectMyIcon, DeleteMyIcon, Login and LoginWithIdToken — and empty
-  /// wherever a User names someone else. The variant list is empty, and
-  /// icon_image_updated_at with it, for an account that shows no icon.
+  /// SelectMyIcon, DeleteMyIcon, Login, LoginWithIdToken and
+  /// FinishPasskeyLogin — and empty wherever a User names someone else. The
+  /// variant list is empty, and icon_image_updated_at with it, for an account
+  /// that shows no icon.
   ///
   /// The icon is either one the reader uploaded or one of the tenant's presets
   /// (ReaderIconPreset), and the variants carry whichever it is, so a client
