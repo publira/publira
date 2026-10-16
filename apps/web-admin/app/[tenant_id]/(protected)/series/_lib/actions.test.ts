@@ -1081,6 +1081,15 @@ describe("updateSeriesWaitFreeSettingsAction", () => {
   });
 });
 
+/** The translation delete form, which names the series by its public id alone. */
+const deleteForm = (translationLocale: string): FormData => {
+  const formData = new FormData();
+  formData.set("tenant_id", "TENANT001");
+  formData.set("series_public_id", "SERIES001");
+  formData.set("translation_locale", translationLocale);
+  return formData;
+};
+
 describe("a series' title and synopsis per language", () => {
   const SERIES_ID = "018f0e6a-2000-7000-8000-000000000001";
 
@@ -1173,15 +1182,6 @@ describe("a series' title and synopsis per language", () => {
       "en"
     );
   });
-
-  /** The delete form, which names the series by its public id alone. */
-  const deleteForm = (translationLocale: string): FormData => {
-    const formData = new FormData();
-    formData.set("tenant_id", "TENANT001");
-    formData.set("series_public_id", "SERIES001");
-    formData.set("translation_locale", translationLocale);
-    return formData;
-  };
 
   it("deletes one language's translation and opens the series on another", async () => {
     mockGetSeriesForTenant.mockResolvedValueOnce({
