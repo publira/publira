@@ -66,6 +66,13 @@ enum AuthFailureKind {
   /// The API would not make an icon of the uploaded image.
   iconRefused,
 
+  /// The tenant's reader icon policy does not allow the change, because it
+  /// changed after the account screen read it.
+  iconNotAllowed,
+
+  /// The tenant no longer holds the preset the reader picked.
+  iconPresetUnavailable,
+
   /// The install has no object store to keep an icon in, which the reader
   /// can do nothing about.
   storageNotConfigured,

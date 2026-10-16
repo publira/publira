@@ -1666,6 +1666,57 @@ void main() {
       });
     });
 
+    testApp('a member picks a preset icon the tenant offers in the app', (
+      tester,
+    ) async {
+      server
+        ..readerIconPolicy = pb.ReaderIconPolicy.READER_ICON_POLICY_PRESET
+        ..readerIconPresets = [
+          ConnectFixtureServer.readerIconPreset('preset-a'),
+          ConnectFixtureServer.readerIconPreset('preset-b'),
+        ];
+      await withFailureScreenshot(
+        tester,
+        'fixture-account-icon-preset',
+        () async {
+          await pumpApp(
+            tester,
+            initialLocation: AppRoutes.signIn,
+            iconPicker: FakeAccountIconPicker([]),
+          );
+          await pumpUntilRouteSettled(
+            tester,
+            find.byKey(const ValueKey('sign-in-submit')),
+          );
+          await signIn(tester);
+          await pumpUntilFound(tester, signedInAccountEntry());
+          await tapReachable(tester, find.byKey(const ValueKey('tab-account')));
+          await pumpUntilRouteSettled(
+            tester,
+            find.byKey(const ValueKey('account-icon-presets')),
+          );
+          // The tenant takes no upload, so the app offers none.
+          expect(
+            find.byKey(const ValueKey('account-icon-upload')),
+            findsNothing,
+          );
+
+          await tapReachable(
+            tester,
+            find.byKey(const ValueKey(('account-icon-preset', 'preset-b'))),
+          );
+          await pumpUntilFound(
+            tester,
+            find.byKey(const ValueKey('account-icon')),
+          );
+          expect(server.iconSelections, ['preset-b']);
+          expect(server.memberIconPresetId, 'preset-b');
+          expect(server.iconUploads, isEmpty);
+          await pumpUntilNoPendingFrameCallbacks(tester);
+        },
+      );
+    });
+
     testApp('an email change is requested and its link opens the app', (
       tester,
     ) async {

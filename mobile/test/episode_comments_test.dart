@@ -194,6 +194,7 @@ void main() {
           userPublicId: fakeSession.userPublicId,
           userName: fakeSession.userName,
           userIconUrl: Uri.parse('http://127.0.0.1:8000/images/users/2'),
+          userIconPresetId: null,
         ),
       );
 
@@ -225,6 +226,7 @@ void main() {
           userPublicId: fakeSession.userPublicId,
           userName: fakeSession.userName,
           userIconUrl: Uri.parse('http://127.0.0.1:8000/images/users/3'),
+          userIconPresetId: null,
         ),
       )..refreshGate = Completer<void>();
       await pumpComments(

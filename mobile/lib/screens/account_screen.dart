@@ -8,6 +8,7 @@ import 'package:publira/auth/account_icon_picker.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/auth/reader_age.dart';
+import 'package:publira/auth/reader_icon_policy.dart';
 import 'package:publira/contact/contact_repository.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
@@ -70,8 +71,8 @@ class AccountScreen extends StatelessWidget {
                       key: ValueKey(('icon', session.userPublicId)),
                       readerId: session.userPublicId,
                       iconUrl: session.userIconUrl,
+                      iconPresetId: session.userIconPresetId,
                     ),
-                    const Divider(height: 1),
                     ListTile(
                       key: const ValueKey('account-name'),
                       title: AutospacedText(messages.accountName),
@@ -184,7 +185,12 @@ Future<void> signOut(BuildContext context) async {
 }
 
 /// The reader's icon, or the fallback an account without one gets, and the
-/// controls that upload, replace, and remove it.
+/// controls the tenant's reader icon policy allows: an upload from the
+/// device, a pick from the tenant's presets, or no icon at all.
+///
+/// The policy is read with the screen, so no control here leads to a change
+/// the API refuses under it. Removing the icon is accepted under every policy
+/// that shows one.
 ///
 /// Each change is saved as soon as it is made, the way the site's settings
 /// save it, and the session takes the icon the API answers with, so every
@@ -194,20 +200,24 @@ class _IconSection extends StatefulWidget {
     super.key,
     required this.readerId,
     required this.iconUrl,
+    required this.iconPresetId,
   });
 
   final String readerId;
   final Uri? iconUrl;
+  final String? iconPresetId;
 
   @override
   State<_IconSection> createState() => _IconSectionState();
 }
 
-enum _IconChange { upload, remove }
+enum _IconChange { upload, select, remove }
 
 class _IconSectionState extends State<_IconSection> {
   static const _radius = 40.0;
+  static const _presetRadius = 24.0;
 
+  late Future<ReaderIconChoice> _choice;
   _IconChange? _changing;
   String? _failure;
   var _started = false;
@@ -224,6 +234,7 @@ class _IconSectionState extends State<_IconSection> {
       return;
     }
     _started = true;
+    _choice = AuthScope.of(context).readIconChoice();
     final picker = AccountIconPickerScope.maybeOf(context);
     if (picker != null) {
       _recovering = _recover(picker);
@@ -231,11 +242,211 @@ class _IconSectionState extends State<_IconSection> {
     }
   }
 
+  void _reload() {
+    setState(() {
+      _choice = AuthScope.of(context).readIconChoice();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
-    final theme = Theme.of(context);
+    return FutureBuilder<ReaderIconChoice>(
+      future: _choice,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return _section(
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 24, 16, 16),
+              child: SizedBox(
+                height: _radius * 2,
+                child: Center(
+                  child: CircularProgressIndicator(
+                    key: ValueKey('account-icon-loading'),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+        if (snapshot.hasError) {
+          return _section(
+            ListTile(
+              key: const ValueKey('account-icon-error'),
+              title: AutospacedText(messages.accountIconAlt),
+              subtitle: AutospacedText(messages.accountIconLoadFailed),
+              trailing: TextButton(
+                key: const ValueKey('account-icon-retry'),
+                onPressed: _reload,
+                child: AutospacedText(messages.commonRetry),
+              ),
+            ),
+          );
+        }
+        return switch (snapshot.requireData) {
+          ReaderIconUpload() => _section(_uploadField(context)),
+          ReaderIconPresets(:final presets)
+              when presets.isNotEmpty || widget.iconUrl != null =>
+            _section(_presetField(context, presets)),
+          // Nothing to show and nothing to do: a tenant that allows no icon
+          // cleared the account's, and one with no presets yet offers none.
+          ReaderIconPresets() ||
+          ReaderIconDisabled() => const SizedBox.shrink(),
+        };
+      },
+    );
+  }
+
+  Widget _section(Widget content) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [content, const Divider(height: 1)],
+    );
+  }
+
+  /// The icon with the controls that upload, replace, and remove it, which a
+  /// build carrying no picker leaves out.
+  Widget _uploadField(BuildContext context) {
+    final messages = AppMessages.of(context);
     final picker = AccountIconPickerScope.maybeOf(context);
+    return _field(
+      context,
+      controls: picker == null
+          ? const []
+          : [
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton(
+                    key: const ValueKey('account-icon-upload'),
+                    onPressed: _changing == null
+                        ? () => unawaited(_upload(picker))
+                        : null,
+                    child: AutospacedText(
+                      _changing == _IconChange.upload
+                          ? messages.accountIconUploading
+                          : widget.iconUrl == null
+                          ? messages.accountIconUpload
+                          : messages.accountIconReplace,
+                    ),
+                  ),
+                  if (widget.iconUrl != null) _removeButton(messages),
+                ],
+              ),
+              _help(context, messages.accountIconHelp),
+            ],
+    );
+  }
+
+  /// The icon with the tenant's presets to pick from in place of an upload,
+  /// the one the account shows marked, and the control that removes it.
+  Widget _presetField(BuildContext context, List<ReaderIconPreset> presets) {
+    final messages = AppMessages.of(context);
+    return _field(
+      context,
+      controls: [
+        if (widget.iconUrl != null) _removeButton(messages),
+        if (presets.isNotEmpty) ...[
+          Semantics(
+            container: true,
+            label: messages.accountIconPresetsLabel,
+            child: Wrap(
+              key: const ValueKey('account-icon-presets'),
+              alignment: WrapAlignment.center,
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                for (final (index, preset) in presets.indexed)
+                  _presetButton(context, preset, number: index + 1),
+              ],
+            ),
+          ),
+          _help(context, messages.accountIconPresetHelp),
+        ],
+      ],
+    );
+  }
+
+  Widget _presetButton(
+    BuildContext context,
+    ReaderIconPreset preset, {
+    required int number,
+  }) {
+    final messages = AppMessages.of(context);
+    final colors = Theme.of(context).colorScheme;
+    final current = preset.id == widget.iconPresetId;
+    final enabled = _changing == null;
+    // The image carries no label of its own, so the number names the choice.
+    return Semantics(
+      container: true,
+      button: true,
+      selected: current,
+      enabled: enabled,
+      label: messages.accountIconPresetOption(number: number),
+      child: Opacity(
+        opacity: enabled ? 1 : 0.6,
+        child: InkWell(
+          key: ValueKey(('account-icon-preset', preset.id)),
+          customBorder: const CircleBorder(),
+          // The one the account shows is already the answer, so picking it
+          // again sends nothing.
+          onTap: enabled
+              ? () {
+                  if (!current) {
+                    unawaited(_select(preset.id));
+                  }
+                }
+              : null,
+          child: Container(
+            padding: const EdgeInsets.all(2),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: current ? colors.primary : colors.outlineVariant,
+                width: current ? 3 : 1,
+              ),
+            ),
+            child: _avatar(
+              context,
+              iconUrl: preset.iconUrl,
+              radius: _presetRadius,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _removeButton(AppMessages messages) {
+    return TextButton(
+      key: const ValueKey('account-icon-remove'),
+      onPressed: _changing == null ? () => unawaited(_remove()) : null,
+      child: AutospacedText(
+        _changing == _IconChange.remove
+            ? messages.accountIconRemoving
+            : messages.accountIconRemove,
+      ),
+    );
+  }
+
+  Widget _help(BuildContext context, String text) {
+    final theme = Theme.of(context);
+    return AutospacedText(
+      text,
+      textAlign: TextAlign.center,
+      style: theme.textTheme.bodySmall?.copyWith(
+        color: theme.colorScheme.onSurfaceVariant,
+      ),
+    );
+  }
+
+  /// The account's icon above [controls], and why the last change failed
+  /// below them.
+  Widget _field(BuildContext context, {required List<Widget> controls}) {
+    final messages = AppMessages.of(context);
+    final theme = Theme.of(context);
     final iconUrl = widget.iconUrl;
     final failure = _failure;
     return Padding(
@@ -245,75 +456,18 @@ class _IconSectionState extends State<_IconSection> {
           Semantics(
             image: true,
             label: messages.accountIconAlt,
-            child: CircleAvatar(
+            child: _avatar(
+              context,
               key: ValueKey(
                 iconUrl == null ? 'account-icon-fallback' : 'account-icon',
               ),
+              iconUrl: iconUrl,
               radius: _radius,
-              backgroundColor: theme.colorScheme.surfaceContainerHighest,
-              // Decoded no larger than the circle, for the reason a cover is.
-              foregroundImage: iconUrl == null
-                  ? null
-                  : ResizeImage.resizeIfNeeded(
-                      (_radius * 2 * MediaQuery.devicePixelRatioOf(context))
-                          .round(),
-                      null,
-                      NetworkImage(
-                        iconUrl.toString(),
-                        headers: AuthScope.of(context).imageRequestHeaders,
-                      ),
-                    ),
-              // A URL that has stopped answering leaves the fallback showing.
-              onForegroundImageError: iconUrl == null ? null : (_, _) {},
-              child: Icon(
-                Icons.person_outline,
-                size: _radius,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
             ),
           ),
-          if (picker != null) ...[
-            const SizedBox(height: 16),
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                OutlinedButton(
-                  key: const ValueKey('account-icon-upload'),
-                  onPressed: _changing == null
-                      ? () => unawaited(_upload(picker))
-                      : null,
-                  child: AutospacedText(
-                    _changing == _IconChange.upload
-                        ? messages.accountIconUploading
-                        : iconUrl == null
-                        ? messages.accountIconUpload
-                        : messages.accountIconReplace,
-                  ),
-                ),
-                if (iconUrl != null)
-                  TextButton(
-                    key: const ValueKey('account-icon-remove'),
-                    onPressed: _changing == null
-                        ? () => unawaited(_remove())
-                        : null,
-                    child: AutospacedText(
-                      _changing == _IconChange.remove
-                          ? messages.accountIconRemoving
-                          : messages.accountIconRemove,
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            AutospacedText(
-              messages.accountIconHelp,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
+          for (final control in controls) ...[
+            const SizedBox(height: 12),
+            control,
           ],
           if (failure != null) ...[
             const SizedBox(height: 8),
@@ -325,6 +479,40 @@ class _IconSectionState extends State<_IconSection> {
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  /// The image at [iconUrl] in a circle of [radius], or the fallback an
+  /// account without an icon gets.
+  Widget _avatar(
+    BuildContext context, {
+    Key? key,
+    required Uri? iconUrl,
+    required double radius,
+  }) {
+    final theme = Theme.of(context);
+    return CircleAvatar(
+      key: key,
+      radius: radius,
+      backgroundColor: theme.colorScheme.surfaceContainerHighest,
+      // Decoded no larger than the circle, for the reason a cover is.
+      foregroundImage: iconUrl == null
+          ? null
+          : ResizeImage.resizeIfNeeded(
+              (radius * 2 * MediaQuery.devicePixelRatioOf(context)).round(),
+              null,
+              NetworkImage(
+                iconUrl.toString(),
+                headers: AuthScope.of(context).imageRequestHeaders,
+              ),
+            ),
+      // A URL that has stopped answering leaves the fallback showing.
+      onForegroundImageError: iconUrl == null ? null : (_, _) {},
+      child: Icon(
+        Icons.person_outline,
+        size: radius,
+        color: theme.colorScheme.onSurfaceVariant,
       ),
     );
   }
@@ -363,7 +551,8 @@ class _IconSectionState extends State<_IconSection> {
   }
 
   /// Sends the image a pick handed over after the platform had ended the app
-  /// under the picker, which is what the reader asked for when they chose it.
+  /// under the picker, which is what the reader asked for when they chose it,
+  /// as long as the tenant still takes an upload.
   Future<void> _recover(AccountIconPicker picker) async {
     final Uint8List? bytes;
     try {
@@ -372,6 +561,15 @@ class _IconSectionState extends State<_IconSection> {
       return;
     }
     if (bytes == null || !mounted || _changing != null) {
+      return;
+    }
+    final ReaderIconChoice choice;
+    try {
+      choice = await _choice;
+    } on Exception {
+      return;
+    }
+    if (choice is! ReaderIconUpload || !mounted || _changing != null) {
       return;
     }
     setState(() => _changing = _IconChange.upload);
@@ -403,6 +601,24 @@ class _IconSectionState extends State<_IconSection> {
     );
   }
 
+  Future<void> _select(String presetId) async {
+    final messages = AppMessages.of(context);
+    final auth = AuthScope.of(context);
+    await _recovering;
+    if (!mounted || _changing != null) {
+      return;
+    }
+    setState(() {
+      _changing = _IconChange.select;
+      _failure = null;
+    });
+    await _change(
+      () => auth.selectIcon(presetId),
+      done: messages.accountIconSelected,
+      failed: messages.accountIconSelectFailed,
+    );
+  }
+
   Future<void> _remove() async {
     final messages = AppMessages.of(context);
     final auth = AuthScope.of(context);
@@ -424,6 +640,11 @@ class _IconSectionState extends State<_IconSection> {
   /// Runs [call] and says how it went: [done] in a snack bar, or why it
   /// failed below the controls, with [failed] for anything the reader can do
   /// nothing about but try again.
+  ///
+  /// A change the tenant's policy no longer allows, or a preset it no longer
+  /// holds, means the controls were drawn from a policy that has changed
+  /// since. The policy is read again and the controls drawn anew, which may
+  /// leave no field to word the refusal under, so it goes to a snack bar.
   Future<void> _change(
     Future<void> Function() call, {
     required String done,
@@ -439,6 +660,18 @@ class _IconSectionState extends State<_IconSection> {
       }
     } on AuthFailure catch (failure) {
       if (!mounted) {
+        return;
+      }
+      final outdated = switch (failure.kind) {
+        AuthFailureKind.iconNotAllowed => messages.accountIconNotAllowed,
+        AuthFailureKind.iconPresetUnavailable =>
+          messages.accountIconPresetUnavailable,
+        _ => null,
+      };
+      if (outdated != null) {
+        messenger?.showSnackBar(SnackBar(content: AutospacedText(outdated)));
+        _changing = null;
+        _reload();
         return;
       }
       setState(() {

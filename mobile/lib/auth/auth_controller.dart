@@ -9,6 +9,7 @@ import 'package:publira/auth/email_change.dart';
 import 'package:publira/auth/identity_provider.dart';
 import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/reader_age.dart';
+import 'package:publira/auth/reader_icon_policy.dart';
 import 'package:publira/auth/session_store.dart';
 import 'package:publira/auth/sign_up_requirements.dart';
 
@@ -353,6 +354,7 @@ class AuthController extends ChangeNotifier {
       userPublicId: current.userPublicId,
       userName: renamed.userName,
       userIconUrl: current.userIconUrl,
+      userIconPresetId: current.userIconPresetId,
     ),
   );
 
@@ -363,6 +365,16 @@ class AuthController extends ChangeNotifier {
   /// is signed in.
   Future<void> uploadIcon(AccountIconUpload upload) => _replaceSession(
     (session) => _repository.uploadIcon(session, upload),
+    _withIconOf,
+  );
+
+  /// Shows the tenant's preset [presetId] as the signed-in account's icon, so
+  /// every screen that draws the reader shows it without another round trip.
+  ///
+  /// Throws [AuthFailure], with [AuthFailureKind.sessionExpired] when nobody
+  /// is signed in.
+  Future<void> selectIcon(String presetId) => _replaceSession(
+    (session) => _repository.selectIcon(session, presetId),
     _withIconOf,
   );
 
@@ -387,7 +399,13 @@ class AuthController extends ChangeNotifier {
         userPublicId: current.userPublicId,
         userName: current.userName,
         userIconUrl: changed.userIconUrl,
+        userIconPresetId: changed.userIconPresetId,
       );
+
+  /// What the tenant lets its readers show as an icon.
+  ///
+  /// Throws [AuthFailure].
+  Future<ReaderIconChoice> readIconChoice() => _repository.readIconChoice();
 
   /// Replaces the signed-in account's password and holds on to the token the
   /// API hands back, because the change ends the one this device had.

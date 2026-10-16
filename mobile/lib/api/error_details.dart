@@ -41,6 +41,10 @@ const legalPageAgreementRequiredReason = 'LEGAL_PAGE_AGREEMENT_REQUIRED';
 /// `failed_precondition`, while the platform has no object store.
 const storageNotConfiguredReason = 'STORAGE_NOT_CONFIGURED';
 
+/// The ErrorInfo reason the API refuses an icon change with, under
+/// `failed_precondition`, that the tenant's reader icon policy does not allow.
+const readerIconNotAllowedReason = 'READER_ICON_NOT_ALLOWED';
+
 /// The ErrorInfo reason `WaitFreeService` refuses a series with when its
 /// wait-for-free rule is off.
 const waitFreeNotOfferedReason = 'WAIT_FREE_NOT_OFFERED';

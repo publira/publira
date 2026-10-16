@@ -611,7 +611,11 @@
     {
       "name": "Account settings: the icon field the tenant's reader icon policy allows, and a preset chosen from the tenant's",
       "web": { "rpcs": ["GetTenantReaderIconPolicy", "SelectMyIcon"] },
-      "exception": "Not in the app yet: #2262."
+      "mobile": {
+        "routes": ["/account"],
+        "rpcs": ["GetTenantReaderIconPolicy", "SelectMyIcon"]
+      },
+      "tests": ["a member picks a preset icon the tenant offers in the app"]
     },
     {
       "name": "Confirming a new email address",

@@ -17,6 +17,7 @@ import 'package:publira/auth/email_change.dart';
 import 'package:publira/auth/identity_provider.dart';
 import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/reader_age.dart';
+import 'package:publira/auth/reader_icon_policy.dart';
 import 'package:publira/auth/sign_up_requirements.dart';
 import 'package:publira/config.dart';
 
@@ -45,6 +46,9 @@ class HttpAuthRepository implements AuthRepository {
 
   /// `GetTenantResponse.age_verification`'s field number.
   static const _ageVerificationField = 12;
+
+  /// `GetTenantReaderIconPolicyResponse.policy`'s field number.
+  static const _readerIconPolicyField = 1;
 
   final AppConfig _config;
   final ConnectClient _client;
@@ -472,11 +476,7 @@ class HttpAuthRepository implements AuthRepository {
   @override
   Future<AuthSession> refresh(AuthSession session) async {
     final user = await _getMe(session);
-    return session.withUser(
-      userPublicId: user.publicId.trim(),
-      userName: user.name.trim(),
-      userIconUrl: userIconUrl(user.iconImageVariants, _config),
-    );
+    return _withUserOf(session, user);
   }
 
   @override
@@ -602,11 +602,7 @@ class HttpAuthRepository implements AuthRepository {
         ),
       );
       final user = _required(body.hasUser(), body.user, 'user');
-      return session.withUser(
-        userPublicId: user.publicId.trim(),
-        userName: user.name.trim(),
-        userIconUrl: userIconUrl(user.iconImageVariants, _config),
-      );
+      return _withUserOf(session, user);
     } on ConnectException catch (error) {
       throw _toAccountFailure(error);
     }
@@ -643,8 +639,62 @@ class HttpAuthRepository implements AuthRepository {
         return _required<pb.User>(body.hasUser(), body.user, 'user');
       });
 
-  /// Sends [send] for the reader behind [session], both of whose answers are
-  /// the account with the icon it then shows.
+  @override
+  Future<AuthSession> selectIcon(AuthSession session, String presetId) =>
+      _changeIcon(session, (ctx, tenant) async {
+        final pb.SelectMyIconResponse body;
+        try {
+          body = await _auth.selectMyIcon(
+            ctx,
+            pb.SelectMyIconRequest(tenant: tenant, presetId: presetId),
+          );
+        } on ConnectException catch (error) {
+          if (error.code == 'not_found') {
+            throw AuthFailure(
+              AuthFailureKind.iconPresetUnavailable,
+              message: error.message,
+            );
+          }
+          rethrow;
+        }
+        return _required<pb.User>(body.hasUser(), body.user, 'user');
+      });
+
+  @override
+  Future<ReaderIconChoice> readIconChoice() async {
+    final body = await _readTenant(
+      (service, ctx, tenant) => service.getTenantReaderIconPolicy(
+        ctx,
+        pb.GetTenantReaderIconPolicyRequest(tenant: tenant),
+      ),
+    );
+    // A policy this build does not know offers nothing, the one choice whose
+    // every control the API is sure to accept.
+    if (carriesUnknownEnum(body, _readerIconPolicyField)) {
+      return const ReaderIconDisabled();
+    }
+    return switch (body.policy) {
+      pb.ReaderIconPolicy.READER_ICON_POLICY_UPLOAD => const ReaderIconUpload(),
+      pb.ReaderIconPolicy.READER_ICON_POLICY_PRESET => ReaderIconPresets([
+        for (final preset in body.presets) ?_presetOf(preset),
+      ]),
+      _ => const ReaderIconDisabled(),
+    };
+  }
+
+  /// [preset] as the account screen offers it, or `null` for one with no id
+  /// to send or no image to draw.
+  ReaderIconPreset? _presetOf(pb.ReaderIconPreset preset) {
+    final id = preset.id.trim();
+    final iconUrl = userIconUrl(preset.variants, _config);
+    if (id.isEmpty || iconUrl == null) {
+      return null;
+    }
+    return ReaderIconPreset(id: id, iconUrl: iconUrl);
+  }
+
+  /// Sends [send] for the reader behind [session], every one of whose answers
+  /// is the account with the icon it then shows.
   Future<AuthSession> _changeIcon(
     AuthSession session,
     Future<pb.User> Function(ConnectCallContext ctx, pb.TenantContext tenant)
@@ -661,11 +711,7 @@ class HttpAuthRepository implements AuthRepository {
         ),
         pb.TenantContext(tenantId: tenantId),
       );
-      return session.withUser(
-        userPublicId: user.publicId.trim(),
-        userName: user.name.trim(),
-        userIconUrl: userIconUrl(user.iconImageVariants, _config),
-      );
+      return _withUserOf(session, user);
     } on ConnectException catch (error) {
       final fields = error.fieldViolations;
       if (error.code == 'invalid_argument' &&
@@ -676,6 +722,13 @@ class HttpAuthRepository implements AuthRepository {
           error.reasons.contains(storageNotConfiguredReason)) {
         throw AuthFailure(
           AuthFailureKind.storageNotConfigured,
+          message: error.message,
+        );
+      }
+      if (error.code == 'failed_precondition' &&
+          error.reasons.contains(readerIconNotAllowedReason)) {
+        throw AuthFailure(
+          AuthFailureKind.iconNotAllowed,
           message: error.message,
         );
       }
@@ -967,6 +1020,20 @@ class HttpAuthRepository implements AuthRepository {
     }
   }
 
+  /// [session] carrying the account [user] answers with.
+  AuthSession _withUserOf(AuthSession session, pb.User user) =>
+      session.withUser(
+        userPublicId: user.publicId.trim(),
+        userName: user.name.trim(),
+        userIconUrl: userIconUrl(user.iconImageVariants, _config),
+        userIconPresetId: _iconPresetId(user),
+      );
+
+  static String? _iconPresetId(pb.User user) {
+    final id = user.iconPresetId.trim();
+    return id.isEmpty ? null : id;
+  }
+
   AuthSession _sessionFromLogin(pb.User user, pb.AccessToken accessToken) {
     final token = accessToken.token.trim();
     if (token.isEmpty) {
@@ -980,6 +1047,7 @@ class HttpAuthRepository implements AuthRepository {
       userPublicId: user.publicId.trim(),
       userName: user.name.trim(),
       userIconUrl: userIconUrl(user.iconImageVariants, _config),
+      userIconPresetId: _iconPresetId(user),
       expiresAt: DateTime.tryParse(accessToken.expiresAt.trim())?.toUtc(),
     );
   }

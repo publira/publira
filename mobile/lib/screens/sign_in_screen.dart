@@ -222,6 +222,8 @@ class _SignInScreenState extends State<SignInScreen> {
       AuthFailureKind.linkInvalid ||
       AuthFailureKind.linkExpired ||
       AuthFailureKind.iconRefused ||
+      AuthFailureKind.iconNotAllowed ||
+      AuthFailureKind.iconPresetUnavailable ||
       AuthFailureKind.storageNotConfigured ||
       AuthFailureKind.unexpected => messages.signInFailed,
     };
