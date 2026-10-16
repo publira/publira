@@ -184,6 +184,7 @@ go -C server run ./cmd/publiractl policy show
 | `--legal-page-agreement-per-minute`, `--legal-page-agreement-per-day` | How many times one reader may send an agreement to the tenant's terms and privacy policy | 10, 50 |
 | `--identity-link-per-minute`, `--identity-link-per-day` | How many times one reader may ask to link an Apple or Google account to their account | 5, 20 |
 | `--icon-change-per-minute`, `--icon-change-per-day` | How many times one reader may upload, pick, or remove their icon | 5, 20 |
+| `--passkey-per-minute`, `--passkey-per-day` | How many times one reader may begin registering a passkey or confirming a request with one, or rename or remove one | 10, 50 |
 | `--login-attempts-per-account-per-minute`, `--login-attempts-per-account-per-day` | How many passwords may be tried at sign-in for one address, per tenant or for the Platform Console. A sign-in whose password is right clears the count | 5, 50 |
 | `--login-attempts-per-source-per-hour`, `--login-attempts-per-source-per-day` | How many sign-ins one origin may fail, across every address, tenant and console | 60, 300 |
 | `--mail-requests-per-address-per-hour`, `--mail-requests-per-address-per-day` | How much mail the forms that take an address may send one address | 5, 20 |

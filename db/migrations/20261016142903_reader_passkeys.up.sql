@@ -26,3 +26,13 @@ ALTER TABLE user_webauthn_ceremonies
 
 ALTER TABLE user_webauthn_ceremonies
     ALTER COLUMN relying_party DROP DEFAULT;
+
+-- source_digest is a SHA-256 digest of the origin a storefront sign-in was
+-- begun from, whose sign-in allowance the begin charged. A sign-in that
+-- succeeds gives that charge back, and only to the origin that paid it: a
+-- finish arriving from another origin gives nothing back rather than clearing
+-- the failed sign-ins of the origin it comes from. The digest is enough to
+-- tell the two apart, so the row keeps no client address.
+ALTER TABLE user_webauthn_ceremonies
+    ADD COLUMN source_digest bytea,
+    ADD CONSTRAINT user_webauthn_ceremonies_source_digest_check CHECK (((source_digest IS NULL) = (user_id IS NOT NULL)));

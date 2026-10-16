@@ -90,7 +90,8 @@ INSERT INTO user_webauthn_ceremonies (
         relying_party,
         ceremony,
         rp_id,
-        expires_at
+        expires_at,
+        source_digest
     )
 VALUES (
         sqlc.arg('challenge'),
@@ -99,7 +100,8 @@ VALUES (
         'site',
         'authentication',
         sqlc.arg('rp_id'),
-        sqlc.arg('expires_at')
+        sqlc.arg('expires_at'),
+        sqlc.arg('source_digest')
     );
 
 -- name: SpendSiteSignInCeremony :one

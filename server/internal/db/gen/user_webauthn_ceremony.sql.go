@@ -13,7 +13,7 @@ import (
 )
 
 const GetUserWebauthnCeremony = `-- name: GetUserWebauthnCeremony :one
-SELECT challenge, tenant_id, user_id, ceremony, rp_id, expires_at, created_at, relying_party
+SELECT challenge, tenant_id, user_id, ceremony, rp_id, expires_at, created_at, relying_party, source_digest
 FROM user_webauthn_ceremonies
 WHERE challenge = $1
     AND user_id = $2::uuid
@@ -50,6 +50,7 @@ func (q *Queries) GetUserWebauthnCeremony(ctx context.Context, arg GetUserWebaut
 		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.RelyingParty,
+		&i.SourceDigest,
 	)
 	return i, err
 }
@@ -86,7 +87,7 @@ WHERE challenge = $1
     AND user_id IS NULL
     AND relying_party = 'site'
     AND ceremony = 'authentication'
-RETURNING challenge, tenant_id, user_id, ceremony, rp_id, expires_at, created_at, relying_party
+RETURNING challenge, tenant_id, user_id, ceremony, rp_id, expires_at, created_at, relying_party, source_digest
 `
 
 // The claim on a sign-in ceremony, as SpendUserWebauthnCeremony is on an
@@ -103,6 +104,7 @@ func (q *Queries) SpendSiteSignInCeremony(ctx context.Context, challenge string)
 		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.RelyingParty,
+		&i.SourceDigest,
 	)
 	return i, err
 }
@@ -113,7 +115,7 @@ WHERE challenge = $1
     AND user_id = $2::uuid
     AND relying_party = $3
     AND ceremony = $4
-RETURNING challenge, tenant_id, user_id, ceremony, rp_id, expires_at, created_at, relying_party
+RETURNING challenge, tenant_id, user_id, ceremony, rp_id, expires_at, created_at, relying_party, source_digest
 `
 
 type SpendUserWebauthnCeremonyParams struct {
@@ -144,6 +146,7 @@ func (q *Queries) SpendUserWebauthnCeremony(ctx context.Context, arg SpendUserWe
 		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.RelyingParty,
+		&i.SourceDigest,
 	)
 	return i, err
 }
@@ -161,7 +164,8 @@ INSERT INTO user_webauthn_ceremonies (
         relying_party,
         ceremony,
         rp_id,
-        expires_at
+        expires_at,
+        source_digest
     )
 VALUES (
         $1,
@@ -170,15 +174,17 @@ VALUES (
         'site',
         'authentication',
         $3,
-        $4
+        $4,
+        $5
     )
 `
 
 type StartSiteSignInCeremonyParams struct {
-	Challenge string    `json:"challenge"`
-	TenantID  uuid.UUID `json:"tenant_id"`
-	RpID      string    `json:"rp_id"`
-	ExpiresAt time.Time `json:"expires_at"`
+	Challenge    string    `json:"challenge"`
+	TenantID     uuid.UUID `json:"tenant_id"`
+	RpID         string    `json:"rp_id"`
+	ExpiresAt    time.Time `json:"expires_at"`
+	SourceDigest []byte    `json:"source_digest"`
 }
 
 // A storefront sign-in names no account when it begins: the authenticator
@@ -194,6 +200,7 @@ func (q *Queries) StartSiteSignInCeremony(ctx context.Context, arg StartSiteSign
 		arg.TenantID,
 		arg.RpID,
 		arg.ExpiresAt,
+		arg.SourceDigest,
 	)
 	return err
 }

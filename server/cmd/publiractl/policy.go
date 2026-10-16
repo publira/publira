@@ -65,6 +65,8 @@ var policyFlags = slices.Concat(
 		func(p *policySettings) *platformpolicy.MinuteDay { return &p.IdentityLink }),
 	minuteDayFlags("icon_change", "icon-change", "icon uploads and removals by one reader", false,
 		func(p *policySettings) *platformpolicy.MinuteDay { return &p.IconChange }),
+	minuteDayFlags("passkey", "passkey", "passkey registrations, confirmations, renames and removals by one reader", false,
+		func(p *policySettings) *platformpolicy.MinuteDay { return &p.Passkey }),
 	minuteDayFlags("login_attempts_per_account", "login-attempts-per-account", "sign-in attempts for one address", false,
 		func(p *policySettings) *platformpolicy.MinuteDay { return &p.LoginAttemptsPerAccount }),
 	hourDayFlags("login_attempts_per_source", "login-attempts-per-source", "failed sign-ins from one source", false,
@@ -176,6 +178,7 @@ func setupPolicyShow(_ *commandFlags) func(context.Context, *commandEnv) error {
 		fmt.Fprintf(&b, "Terms and privacy policy agreements per reader:\t%s\n", perMinute(p.LegalPageAgreement))
 		fmt.Fprintf(&b, "Provider account links per reader:\t%s\n", perMinute(p.IdentityLink))
 		fmt.Fprintf(&b, "Icon changes per reader:\t%s\n", perMinute(p.IconChange))
+		fmt.Fprintf(&b, "Passkey changes per reader:\t%s\n", perMinute(p.Passkey))
 		fmt.Fprintf(&b, "Sign-in attempts per address:\t%s\n", perMinute(p.LoginAttemptsPerAccount))
 		fmt.Fprintf(&b, "Failed sign-ins per source:\t%s\n", perHour(p.LoginAttemptsPerSource))
 		fmt.Fprintf(&b, "Email requests per address:\t%s\n", perHour(p.MailRequestsPerAddress))

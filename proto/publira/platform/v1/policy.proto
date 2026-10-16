@@ -118,6 +118,14 @@ message PlatformPolicy {
   // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
   // when a request leaves it unset.
   MinuteDayLimit icon_change = 14;
+  // How often one reader may ask AuthService.BeginPasskeyRegistration,
+  // RenamePasskey, DeletePasskey or BeginPasskeyConfirmation to begin
+  // registering, rename, or remove a passkey, or to begin confirming a request
+  // with one.
+  //
+  // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
+  // when a request leaves it unset.
+  MinuteDayLimit passkey = 15;
 }
 
 message GetPlatformPolicyRequest {}

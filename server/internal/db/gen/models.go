@@ -687,6 +687,8 @@ type PlatformPolicyConfig struct {
 	IdentityLinkLimitPerDay              int32     `json:"identity_link_limit_per_day"`
 	IconChangeLimitPerMinute             int32     `json:"icon_change_limit_per_minute"`
 	IconChangeLimitPerDay                int32     `json:"icon_change_limit_per_day"`
+	PasskeyLimitPerMinute                int32     `json:"passkey_limit_per_minute"`
+	PasskeyLimitPerDay                   int32     `json:"passkey_limit_per_day"`
 }
 
 type PlatformRetentionConfig struct {
@@ -1557,6 +1559,7 @@ type UserWebauthnCeremony struct {
 	ExpiresAt    time.Time     `json:"expires_at"`
 	CreatedAt    time.Time     `json:"created_at"`
 	RelyingParty string        `json:"relying_party"`
+	SourceDigest []byte        `json:"source_digest"`
 }
 
 type UserWebauthnCredential struct {

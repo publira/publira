@@ -524,3 +524,87 @@ func TestDBBeginPasskeyConfirmationRefusesAReaderWithoutOne(t *testing.T) {
 		t.Fatalf("a confirmation with no passkey code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
 }
+
+// A reader who owes an agreement to revised terms may still close their
+// account, and one with neither a password nor a linked provider confirms
+// that with a passkey, so beginning the assertion is allowed too.
+func TestDBDeleteMeIsConfirmedByAPasskeyWhileAnAgreementIsOwed(t *testing.T) {
+	env := newPasskeyDBEnv(t)
+	ctx := env.session(t)
+	authenticator, _ := env.register(t, ctx, passkeySiteOrigin, "")
+	env.dropPassword(t)
+	terms := env.PG.SeedPage(t, env.tenant.ID, testutil.PageSeed{Slug: "tos", Title: "Terms of Service", Published: true})
+	privacy := env.PG.SeedPage(t, env.tenant.ID, testutil.PageSeed{Slug: "privacy", Title: "Privacy Policy", Published: true})
+	nameLegalPages(t, env.publicDBEnv, env.tenant.ID, terms.ID, privacy.ID)
+	publishRevision(t, env.publicDBEnv, env.tenant.ID, terms, true)
+
+	_, err := env.authClient().RenamePasskey(ctx, &publirav1.RenamePasskeyRequest{Tenant: tenantContext(env.tenant), Id: "ANYPASSKEY01", Name: "Phone"})
+	assertLegalPageAgreementRequired(t, "RenamePasskey", err)
+	if _, err := env.authClient().ListMyPasskeys(ctx, &publirav1.ListMyPasskeysRequest{Tenant: tenantContext(env.tenant)}); err != nil {
+		t.Fatalf("ListMyPasskeys while an agreement is owed: %v", err)
+	}
+	if _, err := env.authClient().DeleteMe(ctx, &publirav1.DeleteMeRequest{
+		Tenant:                tenantContext(env.tenant),
+		PasskeyCredentialJson: authenticator.Assert(t, env.beginConfirmation(t, ctx)),
+	}); err != nil {
+		t.Fatalf("DeleteMe confirmed by a passkey while an agreement is owed: %v", err)
+	}
+	if got := env.countRows(t, "SELECT count(*) FROM users WHERE id = $1", env.reader.ID); got != 0 {
+		t.Fatalf("accounts = %d, want the account closed", got)
+	}
+}
+
+// Beginning a registration or a confirmation, renaming, and removing spend one
+// allowance, so alternating them is no way around it.
+func TestDBPasskeyChangesChargeThePasskeyLimit(t *testing.T) {
+	t.Setenv(tenantorigin.SchemeEnv, "")
+	env := seedPasskeyReader(t, newPublicDBEnvWithGuards(t, guardsWith(func(policy *platformpolicy.Policy) {
+		policy.Passkey = platformpolicy.MinuteDay{PerMinute: 3, PerDay: 3}
+	})))
+	ctx := env.session(t)
+	_, passkey := env.register(t, ctx, passkeySiteOrigin, "Phone")
+	if _, err := env.authClient().RenamePasskey(ctx, &publirav1.RenamePasskeyRequest{Tenant: tenantContext(env.tenant), Id: passkey.Id, Name: "Old phone"}); err != nil {
+		t.Fatalf("RenamePasskey: %v", err)
+	}
+	env.beginConfirmation(t, ctx)
+
+	for name, call := range map[string]func() error{
+		"BeginPasskeyRegistration": func() error {
+			_, err := env.authClient().BeginPasskeyRegistration(ctx, &publirav1.BeginPasskeyRegistrationRequest{Tenant: tenantContext(env.tenant)})
+			return err
+		},
+		"RenamePasskey": func() error {
+			_, err := env.authClient().RenamePasskey(ctx, &publirav1.RenamePasskeyRequest{Tenant: tenantContext(env.tenant), Id: passkey.Id, Name: "Phone"})
+			return err
+		},
+		"DeletePasskey": func() error {
+			_, err := env.authClient().DeletePasskey(ctx, &publirav1.DeletePasskeyRequest{Tenant: tenantContext(env.tenant), Id: passkey.Id})
+			return err
+		},
+		"BeginPasskeyConfirmation": func() error {
+			_, err := env.authClient().BeginPasskeyConfirmation(ctx, &publirav1.BeginPasskeyConfirmationRequest{Tenant: tenantContext(env.tenant)})
+			return err
+		},
+	} {
+		if err := call(); connect.CodeOf(err) != connect.CodeResourceExhausted {
+			t.Fatalf("%s past the allowance code = %v, want resource_exhausted (err=%v)", name, connect.CodeOf(err), err)
+		}
+	}
+	listed, err := env.authClient().ListMyPasskeys(ctx, &publirav1.ListMyPasskeysRequest{Tenant: tenantContext(env.tenant)})
+	if err != nil {
+		t.Fatalf("ListMyPasskeys: %v", err)
+	}
+	if len(listed.Passkeys) != 1 || listed.Passkeys[0].Name != "Old phone" {
+		t.Fatalf("passkeys = %+v, want the one renamed before the allowance ran out", listed.Passkeys)
+	}
+}
+
+// A sign-in ceremony keeps a digest of the origin its begin charged, so the
+// finish can give the charge back to that origin alone, and no address.
+func TestDBPasskeySignInCeremonyKeepsADigestOfItsOrigin(t *testing.T) {
+	env := newPasskeyDBEnv(t)
+	env.beginSignIn(t, env.tenant)
+	if got := env.countRows(t, "SELECT count(*) FROM user_webauthn_ceremonies WHERE user_id IS NULL AND octet_length(source_digest) = 32"); got != 1 {
+		t.Fatalf("sign-in ceremonies with a source digest = %d, want 1", got)
+	}
+}

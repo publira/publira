@@ -82,6 +82,13 @@ const (
 	// orphan sweep reclaims it, so the budget bounds what one account can leave
 	// there; a removal shares it, so alternating the two is no way around it.
 	actionChangeIcon readerAction = "icon.change"
+	// A passkey registration or confirmation begun, or a passkey renamed or
+	// removed. A begin stores a ceremony until it expires, and the account's
+	// cap on open ceremonies drops the oldest rather than refusing, so without
+	// this an account could make the storefront write one as fast as it asks.
+	// A registration is charged as it begins and not again as it finishes,
+	// since its finish needs a ceremony that a begin stored.
+	actionPasskey readerAction = "passkey"
 )
 
 // readerGuards is the flood control the reader-writable RPCs charge against.
@@ -119,6 +126,7 @@ func readerRules(policy platformpolicy.Policy) map[readerAction][]ratelimit.Rule
 		actionAgreeToLegalPages:              minuteDayRules(policy.LegalPageAgreement),
 		actionLinkIdentity:                   minuteDayRules(policy.IdentityLink),
 		actionChangeIcon:                     minuteDayRules(policy.IconChange),
+		actionPasskey:                        minuteDayRules(policy.Passkey),
 	}
 }
 

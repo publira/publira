@@ -162,18 +162,19 @@ func TestGuardPasskeySignInSpendsTheOriginsAllowance(t *testing.T) {
 
 	for signIn := 1; signIn <= 5; signIn++ {
 		began := clock.Now()
-		if err := guard.BeginPasskey(callFrom(t, testSource), testScope); err != nil {
+		source, err := guard.BeginPasskey(callFrom(t, testSource), testScope)
+		if err != nil {
 			t.Fatalf("sign-in %d = %v, want the origin's allowance untouched by the ones before", signIn, err)
 		}
 		clock.advance(time.Minute)
-		guard.PasskeyVerified(callFrom(t, testSource), began)
+		guard.PasskeyVerified(callFrom(t, testSource), began, source)
 	}
 	for abandoned := 1; abandoned <= 2; abandoned++ {
-		if err := guard.BeginPasskey(callFrom(t, testSource), testScope); err != nil {
+		if _, err := guard.BeginPasskey(callFrom(t, testSource), testScope); err != nil {
 			t.Fatalf("abandoned sign-in %d = %v, want it allowed", abandoned, err)
 		}
 	}
-	err := guard.BeginPasskey(callFrom(t, testSource), testOtherScope)
+	_, err := guard.BeginPasskey(callFrom(t, testSource), testOtherScope)
 	if connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("a sign-in after two abandoned ones code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
 	}
@@ -181,8 +182,38 @@ func TestGuardPasskeySignInSpendsTheOriginsAllowance(t *testing.T) {
 	if _, err := guard.Begin(callFrom(t, testSource), testScope, testAddress); connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("a password sign-in after them code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
 	}
-	if err := guard.BeginPasskey(callFrom(t, testOtherSrc), testScope); err != nil {
+	if _, err := guard.BeginPasskey(callFrom(t, testOtherSrc), testScope); err != nil {
 		t.Fatalf("a sign-in from another origin = %v, want it allowed", err)
+	}
+}
+
+// A passkey sign-in finished from another origin than the one it began from
+// gives nothing back to either: the origin it finishes from paid nothing, and
+// refunding it would clear the failed passwords it did pay for.
+func TestGuardPasskeySignInGivesBackOnlyToTheOriginThatPaid(t *testing.T) {
+	guard, clock := newTestGuard(t, openAccount, platformpolicy.HourDay{PerHour: 2, PerDay: 2})
+
+	for failed := 1; failed <= 2; failed++ {
+		if _, err := guard.Begin(callFrom(t, testSource), testScope, testAddress); err != nil {
+			t.Fatalf("failed sign-in %d = %v, want it allowed", failed, err)
+		}
+	}
+	began := clock.Now()
+	source, err := guard.BeginPasskey(callFrom(t, testOtherSrc), testScope)
+	if err != nil {
+		t.Fatalf("BeginPasskey from the other origin = %v", err)
+	}
+	clock.advance(time.Minute)
+	guard.PasskeyVerified(callFrom(t, testSource), began, source)
+
+	if _, err := guard.Begin(callFrom(t, testSource), testScope, testAddress); connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("a password sign-in after two failed ones code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
+	}
+	if _, err := guard.BeginPasskey(callFrom(t, testOtherSrc), testScope); err != nil {
+		t.Fatalf("a second begin from the other origin = %v, want its second allowance", err)
+	}
+	if _, err := guard.BeginPasskey(callFrom(t, testOtherSrc), testScope); connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("a third begin from the other origin code = %v, want resource_exhausted with no charge given back (err=%v)", connect.CodeOf(err), err)
 	}
 }
 

@@ -195,7 +195,8 @@ func (s *apiServer) BeginPasskeyLogin(
 		auth.AuditEvent(ctx, action, "failure", "", "", "tenant_not_found")
 		return nil, err
 	}
-	if err := s.login.BeginPasskey(ctx, tenant.ID.String()); err != nil {
+	source, err := s.login.BeginPasskey(ctx, tenant.ID.String())
+	if err != nil {
 		auth.AuditEvent(ctx, action, "failure", tenant.PublicID, "", "rate_limited")
 		return nil, err
 	}
@@ -208,10 +209,11 @@ func (s *apiServer) BeginPasskeyLogin(
 		return nil, s.internalError(ctx, "failed to begin a passkey sign-in", err, "tenant_id", tenant.ID.String())
 	}
 	if err := s.queriesFor(ctx).StartSiteSignInCeremony(ctx, dbmodels.StartSiteSignInCeremonyParams{
-		Challenge: ceremony.Challenge,
-		TenantID:  tenant.ID,
-		RpID:      ceremony.RPID,
-		ExpiresAt: ceremony.ExpiresAt,
+		Challenge:    ceremony.Challenge,
+		TenantID:     tenant.ID,
+		RpID:         ceremony.RPID,
+		ExpiresAt:    ceremony.ExpiresAt,
+		SourceDigest: source,
 	}); err != nil {
 		return nil, s.internalDBError(ctx, "failed to store the passkey sign-in ceremony", err, "tenant_id", tenant.ID.String())
 	}
@@ -335,7 +337,7 @@ func (s *apiServer) FinishPasskeyLogin(
 	}
 	// Given back once the assertion verifies, whatever is answered after, as a
 	// password that verifies gives its attempt back.
-	s.login.PasskeyVerified(ctx, ceremony.ExpiresAt.Add(-tenantwebauthn.CeremonyTimeout))
+	s.login.PasskeyVerified(ctx, ceremony.ExpiresAt.Add(-tenantwebauthn.CeremonyTimeout), row.SourceDigest)
 
 	// Refused as Login refuses the same account once its password verifies. A
 	// passkey is registered from a session, and every session began with an
@@ -367,6 +369,9 @@ func (s *apiServer) BeginPasskeyRegistration(
 ) (*publirav1.BeginPasskeyRegistrationResponse, error) {
 	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
+		return nil, err
+	}
+	if err := s.chargeReaderAction(ctx, actionPasskey, tenant.ID, user.ID); err != nil {
 		return nil, err
 	}
 	rp, err := s.siteRelyingParty(ctx, tenant)
@@ -580,6 +585,9 @@ func (s *apiServer) RenamePasskey(
 	if err != nil {
 		return nil, err
 	}
+	if err := s.chargeReaderAction(ctx, actionPasskey, tenant.ID, user.ID); err != nil {
+		return nil, err
+	}
 	q := s.queriesFor(ctx)
 	row, err := s.ownPasskey(ctx, q, tenant, user.ID, req.Id)
 	if err != nil {
@@ -616,6 +624,9 @@ func (s *apiServer) DeletePasskey(
 	fail := func(reason string, err error) (*publirav1.DeletePasskeyResponse, error) {
 		auth.AuditEvent(ctx, action, "failure", tenant.PublicID, user.PublicID, reason)
 		return nil, err
+	}
+	if err := s.chargeReaderAction(ctx, actionPasskey, tenant.ID, user.ID); err != nil {
+		return fail("rate_limited", err)
 	}
 
 	tx, err := s.beginTenantTx(ctx)
@@ -689,6 +700,9 @@ func (s *apiServer) BeginPasskeyConfirmation(
 ) (*publirav1.BeginPasskeyConfirmationResponse, error) {
 	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
+		return nil, err
+	}
+	if err := s.chargeReaderAction(ctx, actionPasskey, tenant.ID, user.ID); err != nil {
 		return nil, err
 	}
 	rp, err := s.siteRelyingParty(ctx, tenant)

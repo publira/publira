@@ -2,6 +2,8 @@ DELETE FROM user_webauthn_ceremonies
 WHERE relying_party <> 'admin_console';
 
 ALTER TABLE user_webauthn_ceremonies
+    DROP CONSTRAINT IF EXISTS user_webauthn_ceremonies_source_digest_check,
+    DROP COLUMN IF EXISTS source_digest,
     DROP CONSTRAINT IF EXISTS user_webauthn_ceremonies_user_id_check,
     ALTER COLUMN user_id SET NOT NULL,
     DROP CONSTRAINT IF EXISTS user_webauthn_ceremonies_relying_party_check,
