@@ -70,7 +70,7 @@ func TestCatalogSearchPublishedSeriesSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
-			AddRow(seriesID, "SERIESPUB", "Seed Series", "A seed synopsis", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
+			AddRow(seriesID, "SERIESPUB", "Seed Series", "A seed synopsis", "ja", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	resp, err := client.SearchPublishedSeries(context.Background(), &publirav1.SearchPublishedSeriesRequest{
@@ -142,8 +142,8 @@ func TestCatalogSearchPublishedSeriesFirstPageReportsNextToken(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
-			AddRow(ids[0], "SERIESALPHA", "Alpha Seed", "", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)).
-			AddRow(ids[1], "SERIESBETA0", "Beta Seed", "", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
+			AddRow(ids[0], "SERIESALPHA", "Alpha Seed", "", "ja", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)).
+			AddRow(ids[1], "SERIESBETA0", "Beta Seed", "", "ja", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	resp, err := client.SearchPublishedSeries(context.Background(), &publirav1.SearchPublishedSeriesRequest{
@@ -183,7 +183,7 @@ func TestCatalogSearchPublishedSeriesFollowsNextToken(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
-			AddRow(ids[0], "SERIESZETA0", "Zeta Seed", "", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
+			AddRow(ids[0], "SERIESZETA0", "Zeta Seed", "", "ja", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	resp, err := client.SearchPublishedSeries(context.Background(), &publirav1.SearchPublishedSeriesRequest{
@@ -244,7 +244,7 @@ func TestCatalogSearchPublishedSeriesAcceptsRecasedQueryOnToken(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
-			AddRow(ids[0], "SERIESZETA0", "Zeta Seed", "", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
+			AddRow(ids[0], "SERIESZETA0", "Zeta Seed", "", "ja", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	resp, err := client.SearchPublishedSeries(context.Background(), &publirav1.SearchPublishedSeriesRequest{
@@ -280,8 +280,8 @@ func TestCatalogSearchPublishedSeriesFollowsPreviousTokenBackwards(t *testing.T)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
-			AddRow(alphaID, "SERIESALPHA", "Alpha Seed", "", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)).
-			AddRow(betaID, "SERIESBETA0", "Beta Seed", "", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
+			AddRow(alphaID, "SERIESALPHA", "Alpha Seed", "", "ja", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)).
+			AddRow(betaID, "SERIESBETA0", "Beta Seed", "", "ja", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	resp, err := client.SearchPublishedSeries(context.Background(), &publirav1.SearchPublishedSeriesRequest{
@@ -1009,7 +1009,7 @@ func TestCatalogSearchPublishedSeriesNarrowsTheListScan(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
-			AddRow(ids[0], "SERIESNEW01", "Newer Seed", "", "ongoing", []byte("{}"), "all", now, nil, nil, int32(1), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
+			AddRow(ids[0], "SERIESNEW01", "Newer Seed", "", "ja", "ongoing", []byte("{}"), "all", now, nil, nil, int32(1), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	resp, err := client.SearchPublishedSeries(context.Background(), &publirav1.SearchPublishedSeriesRequest{

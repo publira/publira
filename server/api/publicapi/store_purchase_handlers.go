@@ -300,9 +300,11 @@ func (s *apiServer) myPurchase(ctx context.Context, queries Querier, tenantID, u
 		purchasedAt:       row.PurchasedAt,
 		episodePublicID:   row.EpisodePublicID,
 		episodeTitle:      row.EpisodeTitle,
+		episodeLocale:     row.EpisodeTitleLocale,
 		episodeOrderIndex: row.EpisodeOrderIndex,
 		seriesPublicID:    row.SeriesPublicID,
 		seriesTitle:       row.SeriesTitle,
+		seriesLocale:      row.SeriesTitleLocale,
 	}, time.Now())
 	if err != nil {
 		return nil, s.internalError(ctx, "purchase holds a kind this build does not know", err, "tenant_id", tenantID.String(), "purchase_id", purchaseID.String())

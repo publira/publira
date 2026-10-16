@@ -778,7 +778,8 @@ type Querier interface {
 	GetPublishedEpisodeForFollowerNotification(ctx context.Context, arg GetPublishedEpisodeForFollowerNotificationParams) (GetPublishedEpisodeForFollowerNotificationRow, error)
 	// A URL names the episode by its public ID and a reader's request by its ID;
 	// the caller passes the one it holds. The episode's title and its series' are
-	// those of the translations picked for the reader's locale.
+	// those of the translations picked for the reader's locale, each beside the
+	// locale it was picked in.
 	GetPublishedEpisodeForTenant(ctx context.Context, arg GetPublishedEpisodeForTenantParams) (GetPublishedEpisodeForTenantRow, error)
 	// Returns a label of the tenant that label_surfaces puts on the surface. The
 	// row comes back even when the label has no published series, because a label
@@ -879,7 +880,8 @@ type Querier interface {
 	GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSeriesByPublicIDForTenantParams) (GetSeriesByPublicIDForTenantRow, error)
 	// The title and the synopsis are those of the translation
 	// series_translation_for picks for the reader's locale, and each episode's
-	// title is picked the same way.
+	// title is picked the same way. Each names the locale of the translation it
+	// came from.
 	GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams) (GetSeriesDetailRow, error)
 	GetSeriesImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetSeriesImageVariantByTypeAndWidthForTenantParams) (GetSeriesImageVariantByTypeAndWidthForTenantRow, error)
 	// What a series is rated, and what one reader's own reactions say about it.

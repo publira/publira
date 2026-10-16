@@ -45,10 +45,12 @@ func TestPurchaseListReturnsOnlySessionUsersPurchases(t *testing.T) {
 			uuid.Must(uuid.NewV7()),
 			"EPISODE001",
 			"Episode title",
+			"ja",
 			int32(3),
 			uuid.Must(uuid.NewV7()),
 			"SERIES001",
 			"Series title",
+			"ja",
 		))
 
 	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
@@ -103,10 +105,12 @@ func TestPurchaseListReportsAFullyRefundedPurchase(t *testing.T) {
 			uuid.Must(uuid.NewV7()),
 			"EPISODE001",
 			"Episode title",
+			"ja",
 			int32(3),
 			uuid.Must(uuid.NewV7()),
 			"SERIES001",
 			"Series title",
+			"ja",
 		))
 
 	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
@@ -157,10 +161,12 @@ func TestPurchaseListReportsAPurchaseRevokedWithoutARefund(t *testing.T) {
 			uuid.Must(uuid.NewV7()),
 			"EPISODE001",
 			"Episode title",
+			"ja",
 			int32(3),
 			uuid.Must(uuid.NewV7()),
 			"SERIES001",
 			"Series title",
+			"ja",
 		))
 
 	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
@@ -208,10 +214,12 @@ func TestPurchaseListReportsAPartlyRefundedPurchase(t *testing.T) {
 			uuid.Must(uuid.NewV7()),
 			"EPISODE001",
 			"Episode title",
+			"ja",
 			int32(3),
 			uuid.Must(uuid.NewV7()),
 			"SERIES001",
 			"Series title",
+			"ja",
 		))
 
 	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
@@ -443,7 +451,7 @@ func TestPurchaseListRequiresSignIn(t *testing.T) {
 
 func purchaseRows() *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
-		"id", "kind", "price_at_purchase", "currency", "expires_at", "revoked_at", "refunded_amount", "refunded_at", "purchased_at", "episode_id", "episode_public_id", "episode_title", "episode_order_index", "series_id", "series_public_id", "series_title",
+		"id", "kind", "price_at_purchase", "currency", "expires_at", "revoked_at", "refunded_amount", "refunded_at", "purchased_at", "episode_id", "episode_public_id", "episode_title", "episode_title_locale", "episode_order_index", "series_id", "series_public_id", "series_title", "series_title_locale",
 	})
 }
 
@@ -461,10 +469,12 @@ func addPurchaseRow(rows *sqlmock.Rows, id uuid.UUID, purchasedAt time.Time) *sq
 		uuid.Must(uuid.NewV7()),
 		"EPISODE"+id.String(),
 		"Episode title",
+		"ja",
 		int32(3),
 		uuid.Must(uuid.NewV7()),
 		"SERIES001",
 		"Series title",
+		"ja",
 	)
 }
 

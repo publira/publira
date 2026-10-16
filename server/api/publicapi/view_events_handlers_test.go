@@ -80,13 +80,13 @@ func newContentViewFixture(t *testing.T) *contentViewFixture {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeForTenant)).
 		WithArgs("", fixture.tenantID, viewedEpisodeID, nil, "web").
 		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "public_id", "title", "order_index", "series_id", "price",
+			"id", "public_id", "title", "title_locale", "order_index", "series_id", "price",
 			"reading_period_hours", "rental_price", "rental_period_hours", "status", "scheduled_at", "published_at",
-			"series_public_id", "series_title", "series_eye_catch_image_id", "series_eye_catch_image_updated_at", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "is_free", "free_until", "rating_count",
+			"series_public_id", "series_title", "series_title_locale", "series_eye_catch_image_id", "series_eye_catch_image_updated_at", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "is_free", "free_until", "rating_count",
 			"purchase_availability", "published_locales",
 		}).AddRow(
-			fixture.episodeID, "EPISODE001", "Episode Title", int32(1), fixture.seriesID,
-			int32(0), int32(24), nil, nil, "published", nil, now.UTC(), "SERIES001", "Series Title", nil, nil, "all", nil, nil, nil, nil, nil, true, nil, int64(0), "all", []byte("{ja}")))
+			fixture.episodeID, "EPISODE001", "Episode Title", "ja", int32(1), fixture.seriesID,
+			int32(0), int32(24), nil, nil, "published", nil, now.UTC(), "SERIES001", "Series Title", "ja", nil, nil, "all", nil, nil, nil, nil, nil, true, nil, int64(0), "all", []byte("{ja}")))
 	return fixture
 }
 
@@ -424,13 +424,13 @@ func TestGetEpisodeDetailRecordsNoViewEvent(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedEpisodeForTenant)).
 		WithArgs("ja", tenantID, nil, "EPISODE001", "web").
 		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "public_id", "title", "order_index", "series_id", "price",
+			"id", "public_id", "title", "title_locale", "order_index", "series_id", "price",
 			"reading_period_hours", "rental_price", "rental_period_hours", "status", "scheduled_at", "published_at",
-			"series_public_id", "series_title", "series_eye_catch_image_id", "series_eye_catch_image_updated_at", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "is_free", "free_until", "rating_count",
+			"series_public_id", "series_title", "series_title_locale", "series_eye_catch_image_id", "series_eye_catch_image_updated_at", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "is_free", "free_until", "rating_count",
 			"purchase_availability", "published_locales",
 		}).AddRow(
-			episodeID, "EPISODE001", "Episode Title", int32(1), seriesID,
-			int32(0), int32(24), nil, nil, "published", nil, now.UTC(), "SERIES001", "Series Title", nil, nil, "all", nil, nil, nil, nil, nil, true, nil, int64(0), "all", []byte("{ja}")))
+			episodeID, "EPISODE001", "Episode Title", "ja", int32(1), seriesID,
+			int32(0), int32(24), nil, nil, "published", nil, now.UTC(), "SERIES001", "Series Title", "ja", nil, nil, "all", nil, nil, nil, nil, nil, true, nil, int64(0), "all", []byte("{ja}")))
 	expectEpisodeNeighborsLookup(mock, tenantID, seriesID, int32(1), episodeID)
 	expectNextFreeEpisodeLookup(mock, tenantID, seriesID, int32(1), episodeID)
 	expectEpisodeCreditsLookup(mock)
@@ -482,13 +482,13 @@ func TestGetSeriesDetailRecordsNoViewEvent(t *testing.T) {
 		WithArgs("web", "ja", "SERIES001", tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "public_id", "title", "label_public_id", "label_name",
-			"eye_catch_image_id", "eye_catch_image_updated_at", "synopsis",
+			"eye_catch_image_id", "eye_catch_image_updated_at", "synopsis", "title_locale",
 			"status", "schedule_weekdays", "age_rating", "comment_mode",
 			"is_published", "published_at", "free_episode_count", "creators",
 			"genres", "tags", "episodes", "published_locales",
 		}).AddRow(
 			seriesID, "SERIES001", "Series Title", nil, nil, nil, nil,
-			"Synopsis", "ongoing", []byte("{}"), "all", nil, true, now.UTC(), int32(0), []byte(`[]`),
+			"Synopsis", "ja", "ongoing", []byte("{}"), "all", nil, true, now.UTC(), int32(0), []byte(`[]`),
 			[]byte(`[]`), []byte(`[]`), []byte(`[]`), []byte("{ja}"),
 		))
 	// The series states no comment mode, so the tenant's own is what the

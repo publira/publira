@@ -244,11 +244,13 @@ func myEpisodeReadFromRow(row dbmodels.ListMyEpisodeReadsDescRow) *publirav1.MyE
 			Id:       row.SeriesID.String(),
 			PublicId: row.SeriesPublicID,
 			Title:    row.SeriesTitle,
+			Locale:   row.SeriesTitleLocale,
 		},
 		Episode: &publirattypesv1.Episode{
 			Id:         row.EpisodeID.String(),
 			PublicId:   row.EpisodePublicID,
 			Title:      row.EpisodeTitle,
+			Locale:     row.EpisodeTitleLocale,
 			OrderIndex: row.EpisodeOrderIndex,
 		},
 		ReadAt: row.ReadAt.UTC().Format(time.RFC3339Nano),

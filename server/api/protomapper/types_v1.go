@@ -131,6 +131,7 @@ func EpisodeFromGetPublishedEpisodeForTenantRow(row dbmodels.GetPublishedEpisode
 		Id:          row.ID.String(),
 		PublicId:    row.PublicID,
 		Title:       row.Title,
+		Locale:      row.TitleLocale,
 		OrderIndex:  row.OrderIndex,
 		Price:       row.Price,
 		Status:      row.Status,
@@ -179,6 +180,7 @@ func EpisodeFromGetMySeriesReadingProgressRow(row dbmodels.GetMySeriesReadingPro
 		Id:         row.EpisodeID.String(),
 		PublicId:   row.EpisodePublicID,
 		Title:      row.EpisodeTitle,
+		Locale:     row.EpisodeTitleLocale,
 		OrderIndex: row.OrderIndex,
 		Price:      row.Price,
 		Status:     row.Status,
@@ -206,6 +208,7 @@ func EpisodeFromListMyRecentSeriesRow(row dbmodels.ListMyRecentSeriesDescRow) *p
 		Id:         row.EpisodeID.String(),
 		PublicId:   row.EpisodePublicID,
 		Title:      row.EpisodeTitle,
+		Locale:     row.EpisodeTitleLocale,
 		OrderIndex: row.OrderIndex,
 		Price:      row.Price,
 		Status:     row.Status,
@@ -286,6 +289,7 @@ func SeriesFromGetPublishedEpisodeForTenantRow(row dbmodels.GetPublishedEpisodeF
 		Id:       row.SeriesID.String(),
 		PublicId: row.SeriesPublicID,
 		Title:    row.SeriesTitle,
+		Locale:   row.SeriesTitleLocale,
 	}
 	if row.SeriesAgeRating.Valid {
 		ageRating, err := SeriesAgeRatingFromStored(row.SeriesAgeRating.String)

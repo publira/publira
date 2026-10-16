@@ -1249,6 +1249,7 @@ class Series extends $pb.GeneratedMessage {
     SurfaceAvailability? availability,
     $core.String? id,
     $core.int? rentalPeriodHours,
+    $core.String? locale,
   }) {
     final result = Series._();
     if (publicId != null) result.publicId = publicId;
@@ -1276,6 +1277,7 @@ class Series extends $pb.GeneratedMessage {
     if (availability != null) result.availability = availability;
     if (id != null) result.id = id;
     if (rentalPeriodHours != null) result.rentalPeriodHours = rentalPeriodHours;
+    if (locale != null) result.locale = locale;
     return result;
   }
 
@@ -1324,6 +1326,7 @@ class Series extends $pb.GeneratedMessage {
         enumValues: SurfaceAvailability.values)
     ..aOS(22, _omitFieldNames ? '' : 'id')
     ..aI(23, _omitFieldNames ? '' : 'rentalPeriodHours')
+    ..aOS(24, _omitFieldNames ? '' : 'locale')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1537,6 +1540,20 @@ class Series extends $pb.GeneratedMessage {
   $core.bool hasRentalPeriodHours() => $_has(20);
   @$pb.TagNumber(23)
   void clearRentalPeriodHours() => $_clearField(23);
+
+  /// The locale of the translation `title` and `synopsis` come from. A public
+  /// read names the one it served, which differs from the one asked for when
+  /// the series has no translation in that locale, and may be a locale the
+  /// tenant no longer offers when the series has none in its default locale
+  /// either. Empty on the console's reads.
+  @$pb.TagNumber(24)
+  $core.String get locale => $_getSZ(21);
+  @$pb.TagNumber(24)
+  set locale($core.String value) => $_setString(21, value);
+  @$pb.TagNumber(24)
+  $core.bool hasLocale() => $_has(21);
+  @$pb.TagNumber(24)
+  void clearLocale() => $_clearField(24);
 }
 
 class Episode extends $pb.GeneratedMessage {
@@ -1561,6 +1578,7 @@ class Episode extends $pb.GeneratedMessage {
     $core.Iterable<SeriesEyeCatchVariant>? eyeCatchImageVariants,
     $core.int? rentalPrice,
     $core.int? rentalPeriodHours,
+    $core.String? locale,
   }) {
     final result = Episode._();
     if (publicId != null) result.publicId = publicId;
@@ -1587,6 +1605,7 @@ class Episode extends $pb.GeneratedMessage {
       result.eyeCatchImageVariants.addAll(eyeCatchImageVariants);
     if (rentalPrice != null) result.rentalPrice = rentalPrice;
     if (rentalPeriodHours != null) result.rentalPeriodHours = rentalPeriodHours;
+    if (locale != null) result.locale = locale;
     return result;
   }
 
@@ -1630,6 +1649,7 @@ class Episode extends $pb.GeneratedMessage {
         subBuilder: SeriesEyeCatchVariant.$_createMessage)
     ..aI(19, _omitFieldNames ? '' : 'rentalPrice')
     ..aI(20, _omitFieldNames ? '' : 'rentalPeriodHours')
+    ..aOS(21, _omitFieldNames ? '' : 'locale')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1876,6 +1896,18 @@ class Episode extends $pb.GeneratedMessage {
   $core.bool hasRentalPeriodHours() => $_has(19);
   @$pb.TagNumber(20)
   void clearRentalPeriodHours() => $_clearField(20);
+
+  /// The locale of the translation `title` comes from, named the way
+  /// Series.locale is: a public read names the one it served, and the
+  /// console's reads leave it empty.
+  @$pb.TagNumber(21)
+  $core.String get locale => $_getSZ(20);
+  @$pb.TagNumber(21)
+  set locale($core.String value) => $_setString(20, value);
+  @$pb.TagNumber(21)
+  $core.bool hasLocale() => $_has(20);
+  @$pb.TagNumber(21)
+  void clearLocale() => $_clearField(21);
 }
 
 class EpisodeImage extends $pb.GeneratedMessage {

@@ -373,8 +373,9 @@ export type GetSeriesDetailResponse = Message<"publira.v1.GetSeriesDetailRespons
   waitFree?: WaitFreeRule | undefined;
 
   /**
-   * Every locale the series has a translation in that the tenant offers, the
-   * served one included, in code order: the language alternates of the series.
+   * Every locale the series has a translation in that the tenant offers, in
+   * code order: the language alternates of the series. It includes
+   * Series.locale whenever the tenant offers that locale.
    *
    * @generated from field: repeated string published_locales = 6;
    */
@@ -672,8 +673,9 @@ export type GetEpisodeDetailResponse = Message<"publira.v1.GetEpisodeDetailRespo
   nextFreeEpisode?: EpisodeNeighbor | undefined;
 
   /**
-   * Every locale the episode has a translation in that the tenant offers, the
-   * served one included, in code order: the language alternates of the episode.
+   * Every locale the episode has a translation in that the tenant offers, in
+   * code order: the language alternates of the episode. It includes
+   * Episode.locale whenever the tenant offers that locale.
    *
    * @generated from field: repeated string published_locales = 11;
    */

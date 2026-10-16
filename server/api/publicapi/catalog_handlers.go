@@ -374,6 +374,7 @@ type episodeJSON struct {
 	ID                 string  `json:"id"`
 	PublicID           string  `json:"public_id"`
 	Title              string  `json:"title"`
+	Locale             string  `json:"locale"`
 	OrderIndex         int32   `json:"order_index"`
 	Price              int32   `json:"price"`
 	ReadingPeriodHours *int32  `json:"reading_period_hours"`
@@ -394,6 +395,7 @@ func publishedSeriesFromRow(row dbmodels.ListActiveSeriesByIDsRow) (*publirattyp
 		PublicId:         row.PublicID,
 		Title:            row.Title,
 		Synopsis:         row.Synopsis,
+		Locale:           row.TitleLocale,
 		ScheduleWeekdays: protomapper.ScheduleWeekdaysFromStored(row.ScheduleWeekdays),
 		FreeEpisodeCount: row.FreeEpisodeCount,
 	}
@@ -939,6 +941,7 @@ func (s *apiServer) GetSeriesDetail(
 			PublicId:         row.PublicID,
 			Title:            row.Title,
 			Synopsis:         row.Synopsis,
+			Locale:           row.TitleLocale,
 			ScheduleWeekdays: protomapper.ScheduleWeekdaysFromStored(row.ScheduleWeekdays),
 			FreeEpisodeCount: row.FreeEpisodeCount,
 			Genres:           genres,
@@ -993,6 +996,7 @@ func (s *apiServer) GetSeriesDetail(
 			Id:         episode.ID,
 			PublicId:   episode.PublicID,
 			Title:      episode.Title,
+			Locale:     episode.Locale,
 			OrderIndex: episode.OrderIndex,
 			Price:      episode.Price,
 			Status:     episode.Status,

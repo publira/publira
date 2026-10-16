@@ -870,8 +870,9 @@ class GetSeriesDetailResponse extends $pb.GeneratedMessage {
   @$pb.TagNumber(5)
   WaitFreeRule ensureWaitFree() => $_ensure(4);
 
-  /// Every locale the series has a translation in that the tenant offers, the
-  /// served one included, in code order: the language alternates of the series.
+  /// Every locale the series has a translation in that the tenant offers, in
+  /// code order: the language alternates of the series. It includes
+  /// Series.locale whenever the tenant offers that locale.
   @$pb.TagNumber(6)
   $pb.PbList<$core.String> get publishedLocales => $_getList(5);
 }
@@ -1574,8 +1575,9 @@ class GetEpisodeDetailResponse extends $pb.GeneratedMessage {
   @$pb.TagNumber(10)
   EpisodeNeighbor ensureNextFreeEpisode() => $_ensure(9);
 
-  /// Every locale the episode has a translation in that the tenant offers, the
-  /// served one included, in code order: the language alternates of the episode.
+  /// Every locale the episode has a translation in that the tenant offers, in
+  /// code order: the language alternates of the episode. It includes
+  /// Episode.locale whenever the tenant offers that locale.
   @$pb.TagNumber(11)
   $pb.PbList<$core.String> get publishedLocales => $_getList(10);
 }

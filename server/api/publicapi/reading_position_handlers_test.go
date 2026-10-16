@@ -242,9 +242,9 @@ func TestGetMySeriesProgressReturnsTheLastOpenedEpisode(t *testing.T) {
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetMySeriesReadingProgress)).
 		WithArgs("ja", fixture.tenantID, fixture.userID, series001ID, "web").
 		WillReturnRows(sqlmock.NewRows([]string{
-			"episode_id", "episode_public_id", "episode_title", "order_index", "price", "reading_period_hours",
+			"episode_id", "episode_public_id", "episode_title", "episode_title_locale", "order_index", "price", "reading_period_hours",
 			"status", "scheduled_at", "published_at", "free_until", "page_index", "page_count", "updated_at", "is_finished",
-		}).AddRow(uuid.Must(uuid.NewV7()), "EPISODE003", "Episode 3", int32(3), int32(0), nil, "published", nil, fixture.now, nil, int32(11), int32(40), fixture.now, false))
+		}).AddRow(uuid.Must(uuid.NewV7()), "EPISODE003", "Episode 3", "ja", int32(3), int32(0), nil, "published", nil, fixture.now, nil, int32(11), int32(40), fixture.now, false))
 
 	response, err := fixture.progress(series001ID.String())
 	if err != nil {
@@ -329,7 +329,7 @@ func TestGetMySeriesProgressRejectsABlankSeriesID(t *testing.T) {
 // reader may still open that episode's body.
 func recentSeriesColumns() *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
-		"series_id", "episode_id", "last_activity_at", "episode_public_id", "episode_title", "order_index",
+		"series_id", "episode_id", "last_activity_at", "episode_public_id", "episode_title", "episode_title_locale", "order_index",
 		"price", "reading_period_hours", "status", "scheduled_at", "published_at", "free_until",
 		"page_index", "page_count", "position_updated_at",
 	})
@@ -354,13 +354,13 @@ func TestListMyRecentSeriesReturnsTheEpisodeToContinueFrom(t *testing.T) {
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyRecentSeriesDesc)).
 		WithArgs("ja", fixture.tenantID, fixture.userID, sql.NullTime{}, false, uuid.NullUUID{}, int32(3), "web").
 		WillReturnRows(recentSeriesColumns().
-			AddRow(resumed, uuid.Must(uuid.NewV7()), fixture.now, "EPISODE003", "Episode 3", int32(3), int32(0), nil, "published", nil, fixture.now, nil, int32(11), int32(40), fixture.now).
-			AddRow(started, uuid.Must(uuid.NewV7()), activity, "EPISODE004", "Episode 4", int32(4), int32(500), nil, "published", nil, activity, nil, nil, nil, nil))
+			AddRow(resumed, uuid.Must(uuid.NewV7()), fixture.now, "EPISODE003", "Episode 3", "ja", int32(3), int32(0), nil, "published", nil, fixture.now, nil, int32(11), int32(40), fixture.now).
+			AddRow(started, uuid.Must(uuid.NewV7()), activity, "EPISODE004", "Episode 4", "ja", int32(4), int32(500), nil, "published", nil, activity, nil, nil, nil, nil))
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", fixture.tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
-			AddRow(started, "SERIES002", "Started", "", "ongoing", []byte("{}"), "all", fixture.now, nil, nil, int32(0), []byte("[]"), []byte("[]"), []byte("[]"), []byte("{}")).
-			AddRow(resumed, "SERIES001", "Resumed", "", "ongoing", []byte("{}"), "all", fixture.now, nil, nil, int32(0), []byte("[]"), []byte("[]"), []byte("[]"), []byte("{}")))
+			AddRow(started, "SERIES002", "Started", "", "ja", "ongoing", []byte("{}"), "all", fixture.now, nil, nil, int32(0), []byte("[]"), []byte("[]"), []byte("[]"), []byte("{}")).
+			AddRow(resumed, "SERIES001", "Resumed", "", "ja", "ongoing", []byte("{}"), "all", fixture.now, nil, nil, int32(0), []byte("[]"), []byte("[]"), []byte("[]"), []byte("{}")))
 
 	response, err := fixture.recent(2, "")
 	if err != nil {
@@ -416,12 +416,12 @@ func TestListMyRecentSeriesPagesForwardOnTheActivityCursor(t *testing.T) {
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyRecentSeriesDesc)).
 		WithArgs("ja", fixture.tenantID, fixture.userID, sql.NullTime{}, false, uuid.NullUUID{}, int32(2), "web").
 		WillReturnRows(recentSeriesColumns().
-			AddRow(series, uuid.Must(uuid.NewV7()), fixture.now, "EPISODE001", "Episode 1", int32(1), int32(0), nil, "published", nil, fixture.now, nil, int32(2), int32(20), fixture.now).
-			AddRow(boundary, uuid.Must(uuid.NewV7()), activity, "EPISODE009", "Episode 9", int32(9), int32(0), nil, "published", nil, activity, nil, nil, nil, nil))
+			AddRow(series, uuid.Must(uuid.NewV7()), fixture.now, "EPISODE001", "Episode 1", "ja", int32(1), int32(0), nil, "published", nil, fixture.now, nil, int32(2), int32(20), fixture.now).
+			AddRow(boundary, uuid.Must(uuid.NewV7()), activity, "EPISODE009", "Episode 9", "ja", int32(9), int32(0), nil, "published", nil, activity, nil, nil, nil, nil))
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", fixture.tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
-			AddRow(series, "SERIES001", "Resumed", "", "ongoing", []byte("{}"), "all", fixture.now, nil, nil, int32(0), []byte("[]"), []byte("[]"), []byte("[]"), []byte("{}")))
+			AddRow(series, "SERIES001", "Resumed", "", "ja", "ongoing", []byte("{}"), "all", fixture.now, nil, nil, int32(0), []byte("[]"), []byte("[]"), []byte("[]"), []byte("{}")))
 
 	response, err := fixture.recent(1, "")
 	if err != nil {
@@ -448,11 +448,11 @@ func TestListMyRecentSeriesReadsTheBackwardDirectionAscending(t *testing.T) {
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyRecentSeriesAsc)).
 		WithArgs("ja", fixture.tenantID, fixture.userID, sql.NullTime{Time: fixture.now, Valid: true}, false, uuid.NullUUID{UUID: boundary, Valid: true}, int32(21), "web").
 		WillReturnRows(recentSeriesColumns().
-			AddRow(series, uuid.Must(uuid.NewV7()), fixture.now, "EPISODE001", "Episode 1", int32(1), int32(0), nil, "published", nil, fixture.now, nil, int32(2), int32(20), fixture.now))
+			AddRow(series, uuid.Must(uuid.NewV7()), fixture.now, "EPISODE001", "Episode 1", "ja", int32(1), int32(0), nil, "published", nil, fixture.now, nil, int32(2), int32(20), fixture.now))
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
 		WithArgs("web", fixture.tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
-			AddRow(series, "SERIES001", "Resumed", "", "ongoing", []byte("{}"), "all", fixture.now, nil, nil, int32(0), []byte("[]"), []byte("[]"), []byte("[]"), []byte("{}")))
+			AddRow(series, "SERIES001", "Resumed", "", "ja", "ongoing", []byte("{}"), "all", fixture.now, nil, nil, int32(0), []byte("[]"), []byte("[]"), []byte("[]"), []byte("{}")))
 
 	response, err := fixture.recent(0, token)
 	if err != nil {

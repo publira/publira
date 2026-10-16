@@ -87,6 +87,7 @@ func (s *apiServer) ListMyFollowUpdates(
 				Id:          row.EpisodeID.String(),
 				PublicId:    row.EpisodePublicID,
 				Title:       row.EpisodeTitle,
+				Locale:      row.EpisodeTitleLocale,
 				OrderIndex:  row.EpisodeOrderIndex,
 				PublishedAt: row.PublishedAt.Time.UTC().Format(time.RFC3339),
 			},

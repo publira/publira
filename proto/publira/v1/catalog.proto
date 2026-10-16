@@ -166,8 +166,9 @@ message GetSeriesDetailResponse {
   // The series' wait-for-free rule, and unset when the series does not offer
   // one. Like the rest of this response it says nothing about the reader.
   WaitFreeRule wait_free = 5;
-  // Every locale the series has a translation in that the tenant offers, the
-  // served one included, in code order: the language alternates of the series.
+  // Every locale the series has a translation in that the tenant offers, in
+  // code order: the language alternates of the series. It includes
+  // Series.locale whenever the tenant offers that locale.
   repeated string published_locales = 6;
 }
 
@@ -311,8 +312,9 @@ message GetEpisodeDetailResponse {
   // the moment of the read: price is 0, or a free window is open on it. It may
   // be the same episode as next_episode. Unset when no later episode is free.
   EpisodeNeighbor next_free_episode = 10;
-  // Every locale the episode has a translation in that the tenant offers, the
-  // served one included, in code order: the language alternates of the episode.
+  // Every locale the episode has a translation in that the tenant offers, in
+  // code order: the language alternates of the episode. It includes
+  // Episode.locale whenever the tenant offers that locale.
   repeated string published_locales = 11;
 }
 

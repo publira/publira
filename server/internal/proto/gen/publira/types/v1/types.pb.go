@@ -1608,8 +1608,14 @@ type Series struct {
 	// `reading_period_hours` is for the permanent copy's. Zero states none. Set
 	// on the console's reads and 0 on the public ones.
 	RentalPeriodHours int32 `protobuf:"varint,23,opt,name=rental_period_hours,json=rentalPeriodHours,proto3" json:"rental_period_hours,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// The locale of the translation `title` and `synopsis` come from. A public
+	// read names the one it served, which differs from the one asked for when
+	// the series has no translation in that locale, and may be a locale the
+	// tenant no longer offers when the series has none in its default locale
+	// either. Empty on the console's reads.
+	Locale        string `protobuf:"bytes,24,opt,name=locale,proto3" json:"locale,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Series) Reset() {
@@ -1789,6 +1795,13 @@ func (x *Series) GetRentalPeriodHours() int32 {
 	return 0
 }
 
+func (x *Series) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
 type Episode struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
 	PublicId           string                 `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
@@ -1868,8 +1881,12 @@ type Episode struct {
 	// console's episode reads and writes; 0 elsewhere.
 	RentalPrice       int32 `protobuf:"varint,19,opt,name=rental_price,json=rentalPrice,proto3" json:"rental_price,omitempty"`
 	RentalPeriodHours int32 `protobuf:"varint,20,opt,name=rental_period_hours,json=rentalPeriodHours,proto3" json:"rental_period_hours,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// The locale of the translation `title` comes from, named the way
+	// Series.locale is: a public read names the one it served, and the
+	// console's reads leave it empty.
+	Locale        string `protobuf:"bytes,21,opt,name=locale,proto3" json:"locale,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Episode) Reset() {
@@ -2040,6 +2057,13 @@ func (x *Episode) GetRentalPeriodHours() int32 {
 		return x.RentalPeriodHours
 	}
 	return 0
+}
+
+func (x *Episode) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
 }
 
 type EpisodeImage struct {
@@ -3066,7 +3090,7 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x02id\x18\x06 \x01(\tR\x02id\"-\n" +
 	"\x03Tag\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
-	"\x04slug\x18\x02 \x01(\tR\x04slug\"\xe5\a\n" +
+	"\x04slug\x18\x02 \x01(\tR\x04slug\"\xfd\a\n" +
 	"\x06Series\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1a\n" +
@@ -3090,7 +3114,8 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\frating_count\x18\x14 \x01(\x03R\vratingCount\x12I\n" +
 	"\favailability\x18\x15 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\favailability\x12\x0e\n" +
 	"\x02id\x18\x16 \x01(\tR\x02id\x12.\n" +
-	"\x13rental_period_hours\x18\x17 \x01(\x05R\x11rentalPeriodHoursJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\xa3\a\n" +
+	"\x13rental_period_hours\x18\x17 \x01(\x05R\x11rentalPeriodHours\x12\x16\n" +
+	"\x06locale\x18\x18 \x01(\tR\x06localeJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\xbb\a\n" +
 	"\aEpisode\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1f\n" +
@@ -3114,7 +3139,8 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x1aeye_catch_image_updated_at\x18\x11 \x01(\tR\x16eyeCatchImageUpdatedAt\x12`\n" +
 	"\x18eye_catch_image_variants\x18\x12 \x03(\v2'.publira.types.v1.SeriesEyeCatchVariantR\x15eyeCatchImageVariants\x12!\n" +
 	"\frental_price\x18\x13 \x01(\x05R\vrentalPrice\x12.\n" +
-	"\x13rental_period_hours\x18\x14 \x01(\x05R\x11rentalPeriodHours\"\xd9\x01\n" +
+	"\x13rental_period_hours\x18\x14 \x01(\x05R\x11rentalPeriodHours\x12\x16\n" +
+	"\x06locale\x18\x15 \x01(\tR\x06locale\"\xd9\x01\n" +
 	"\fEpisodeImage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\timage_url\x18\x02 \x01(\tR\bimageUrl\x12!\n" +

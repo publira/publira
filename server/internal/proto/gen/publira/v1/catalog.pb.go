@@ -1191,8 +1191,9 @@ type GetSeriesDetailResponse struct {
 	// The series' wait-for-free rule, and unset when the series does not offer
 	// one. Like the rest of this response it says nothing about the reader.
 	WaitFree *WaitFreeRule `protobuf:"bytes,5,opt,name=wait_free,json=waitFree,proto3" json:"wait_free,omitempty"`
-	// Every locale the series has a translation in that the tenant offers, the
-	// served one included, in code order: the language alternates of the series.
+	// Every locale the series has a translation in that the tenant offers, in
+	// code order: the language alternates of the series. It includes
+	// Series.locale whenever the tenant offers that locale.
 	PublishedLocales []string `protobuf:"bytes,6,rep,name=published_locales,json=publishedLocales,proto3" json:"published_locales,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
@@ -1666,8 +1667,9 @@ type GetEpisodeDetailResponse struct {
 	// the moment of the read: price is 0, or a free window is open on it. It may
 	// be the same episode as next_episode. Unset when no later episode is free.
 	NextFreeEpisode *EpisodeNeighbor `protobuf:"bytes,10,opt,name=next_free_episode,json=nextFreeEpisode,proto3" json:"next_free_episode,omitempty"`
-	// Every locale the episode has a translation in that the tenant offers, the
-	// served one included, in code order: the language alternates of the episode.
+	// Every locale the episode has a translation in that the tenant offers, in
+	// code order: the language alternates of the episode. It includes
+	// Episode.locale whenever the tenant offers that locale.
 	PublishedLocales []string `protobuf:"bytes,11,rep,name=published_locales,json=publishedLocales,proto3" json:"published_locales,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
