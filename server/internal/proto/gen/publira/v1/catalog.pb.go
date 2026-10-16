@@ -2952,12 +2952,13 @@ func (x *ListPublishedTagsResponse) GetNextToken() string {
 // string is the ILIKE pattern. Sending the token with a query that lowers to
 // a different string is invalid_argument. ASCII case changes of the same
 // query are the same search. Changing to a different query restarts at page 1.
-// The token carries the order and the filters as well, under the rule
-// ListPublishedSeriesRequest states for them: sending it with a different
-// order or filter is invalid_argument, and changing either restarts at page 1.
-// The query is matched against the title and the synopsis in the tenant's
-// default locale whatever `locale` asks for, until #4401 makes the search
-// match the reader's language.
+// The token carries the order, the filters, and the locale as well, under
+// the rule ListPublishedSeriesRequest states for the order and the filters:
+// sending it with a different order, filter, or locale is invalid_argument,
+// and changing any of them restarts at page 1.
+// The query is matched against the title and the synopsis a reader in
+// `locale` is shown: those of the translation in it, else the tenant's
+// default locale's, else the oldest one's.
 type SearchPublishedSeriesRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`

@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"maps"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -18,15 +19,17 @@ import (
 	"github.com/publira/publira/server/internal/catalogsearch"
 	"github.com/publira/publira/server/internal/catalogsearch/opensearchbackend"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
 const testSurface = "web"
 
-// index is a catalog index of the test's own on the shared node, and a plain
-// client for what the backend does not expose: refreshing, and deleting every
-// index the alias has named once the test is done.
+// index is the catalog indices of the test's own on the shared node, one for
+// each locale a reader searches in, and a plain client for what the backend
+// does not expose: refreshing, and deleting every index the aliases have named
+// once the test is done.
 type index struct {
 	backend *opensearchbackend.Backend
 	client  *opensearchapi.Client
@@ -37,7 +40,7 @@ func newIndex(t *testing.T, engine testutil.SearchEngine) index {
 	t.Helper()
 	ctx := context.Background()
 	alias := "catalog-index-test-" + uuid.NewString()
-	backend, err := opensearchbackend.New(ctx, opensearchbackend.Config{URL: engine.URL, Index: alias})
+	backend, err := opensearchbackend.New(ctx, opensearchbackend.Config{URL: engine.URL, Index: alias, Locales: locale.Supported})
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -57,16 +60,22 @@ func newIndex(t *testing.T, engine testutil.SearchEngine) index {
 	return index{backend: backend, client: client, alias: alias}
 }
 
+// every names the index of every locale.
+func (i index) every() []string {
+	return []string{i.alias + "-*"}
+}
+
 // refresh makes what was written visible to the next search.
 func (i index) refresh(t *testing.T) {
 	t.Helper()
-	if _, err := i.client.Indices.Refresh(context.Background(), &opensearchapi.IndicesRefreshReq{Indices: []string{i.alias}}); err != nil {
+	if _, err := i.client.Indices.Refresh(context.Background(), &opensearchapi.IndicesRefreshReq{Indices: i.every()}); err != nil {
 		t.Fatalf("refresh: %v", err)
 	}
 }
 
-// backdate rewrites the instant an entity's indexed document was published at,
-// as if that much time had passed since it was written, and refreshes.
+// backdate rewrites the instant an entity's indexed documents were published
+// at, in every locale's index, as if that much time had passed since they were
+// written, and refreshes.
 func (i index) backdate(t *testing.T, entityID uuid.UUID, publishedAt time.Time) {
 	t.Helper()
 	body, err := json.Marshal(map[string]any{
@@ -80,7 +89,7 @@ func (i index) backdate(t *testing.T, entityID uuid.UUID, publishedAt time.Time)
 		t.Fatalf("backdate body: %v", err)
 	}
 	resp, err := i.client.UpdateByQuery(context.Background(), &opensearchapi.UpdateByQueryReq{
-		Indices:    []string{i.alias},
+		Indices:    i.every(),
 		BodyReader: bytes.NewReader(body),
 		Params:     &opensearchapi.UpdateByQueryParams{Refresh: "true"},
 	})
@@ -93,8 +102,8 @@ func (i index) backdate(t *testing.T, entityID uuid.UUID, publishedAt time.Time)
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
 		t.Fatalf("backdate %s: decode response: %v", entityID, err)
 	}
-	if result.Updated != 1 {
-		t.Fatalf("backdate %s updated %d documents, want 1", entityID, result.Updated)
+	if result.Updated != len(locale.Supported) {
+		t.Fatalf("backdate %s updated %d documents, want %d", entityID, result.Updated, len(locale.Supported))
 	}
 }
 
@@ -110,14 +119,23 @@ var (
 	searchLabels   searchFunc = (*opensearchbackend.Backend).SearchLabels
 )
 
+// assertHits searches in every locale, which find the same hits wherever no
+// series has a translation of its own in one.
 func (i index) assertHits(t *testing.T, search searchFunc, tenantID uuid.UUID, query string, want ...uuid.UUID) {
 	t.Helper()
-	page, err := search(i.backend, context.Background(), catalogsearch.Request{TenantID: tenantID, Surface: testSurface, Query: query, Limit: 10})
+	for _, code := range locale.Supported {
+		i.assertHitsIn(t, search, tenantID, code, query, want...)
+	}
+}
+
+func (i index) assertHitsIn(t *testing.T, search searchFunc, tenantID uuid.UUID, code, query string, want ...uuid.UUID) {
+	t.Helper()
+	page, err := search(i.backend, context.Background(), catalogsearch.Request{TenantID: tenantID, Surface: testSurface, Query: query, Locale: code, Limit: 10})
 	if err != nil {
-		t.Fatalf("search %q: %v", query, err)
+		t.Fatalf("search %q in %s: %v", query, code, err)
 	}
 	if !slices.Equal(page.IDs, want) {
-		t.Fatalf("search %q = %v, want %v", query, page.IDs, want)
+		t.Fatalf("search %q in %s = %v, want %v", query, code, page.IDs, want)
 	}
 }
 
@@ -295,12 +313,17 @@ func TestRebuildFillsANewIndexFromTheDatabase(t *testing.T) {
 			t.Fatalf("Put: %v", err)
 		}
 
-		name, err := catalogindex.Rebuild(ctx, pg.OpenContentStatsDB(t), idx.backend, slog.New(slog.DiscardHandler))
+		names, err := catalogindex.Rebuild(ctx, pg.OpenContentStatsDB(t), idx.backend, slog.New(slog.DiscardHandler))
 		if err != nil {
 			t.Fatalf("Rebuild: %v", err)
 		}
-		if name == idx.alias+"-initial" {
-			t.Fatalf("Rebuild left the alias on %s", name)
+		if len(names) != len(locale.Supported) {
+			t.Fatalf("Rebuild answered %v, want an index for each of %v", names, locale.Supported)
+		}
+		for _, name := range names {
+			if strings.HasSuffix(name, "-initial") {
+				t.Fatalf("Rebuild left an alias on %s", name)
+			}
 		}
 		idx.refresh(t)
 		idx.assertHits(t, searchSeries, tenant.ID, "seed", series.ID)
@@ -345,5 +368,75 @@ func TestSyncTenantRewritesOneTenantInPlace(t *testing.T) {
 		idx.refresh(t)
 		idx.assertHits(t, searchSeries, tenant.ID, "seed", published.ID)
 		idx.assertHits(t, searchSeries, other.ID, "seed", untouched.ID)
+	})
+}
+
+// A series document in a locale's index carries the translation a reader in
+// that locale is shown: its own where it has one, and the one it falls back
+// to where it has none. A search in English finds a series by its English
+// title and not by a word only its Japanese one has, and finds a series with
+// no English translation by its Japanese title.
+func TestASearchInALocaleFindsASeriesByTheTextShownInIt(t *testing.T) {
+	testutil.EachSearchEngine(t, func(t *testing.T, engine testutil.SearchEngine) {
+		pg := testutil.StartPostgres(t)
+		pg.Reset(t)
+		idx := newIndex(t, engine)
+		ctx := context.Background()
+
+		tenant := pg.SeedTenant(t, "INDEXLOCALE1", "index-locale.example.com", "Index Locale Tenant")
+		translated := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "INDEXLOCALE2", Title: "銀河鉄道の夜", Synopsis: "ジョバンニの旅", Published: true})
+		pg.SeedSeriesTranslation(t, tenant.ID, translated.ID, "en", "Night on the Galactic Railroad", "Giovanni rides among the stars")
+		untranslated := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "INDEXLOCALE3", Title: "風の又三郎", Published: true})
+
+		if _, _, err := catalogindex.SyncTenant(ctx, pg.OpenContentStatsDB(t), idx.backend, tenant.ID); err != nil {
+			t.Fatalf("SyncTenant: %v", err)
+		}
+		idx.refresh(t)
+
+		idx.assertHitsIn(t, searchSeries, tenant.ID, "en", "galactic", translated.ID)
+		idx.assertHitsIn(t, searchSeries, tenant.ID, "en", "giovanni", translated.ID)
+		idx.assertHitsIn(t, searchSeries, tenant.ID, "en", "銀河鉄道")
+		idx.assertHitsIn(t, searchSeries, tenant.ID, "en", "又三郎", untranslated.ID)
+		idx.assertHitsIn(t, searchSeries, tenant.ID, "ja", "銀河鉄道", translated.ID)
+		idx.assertHitsIn(t, searchSeries, tenant.ID, "ja", "galactic")
+		// Korean has no translation of either, and falls back to Japanese,
+		// the tenant's default.
+		idx.assertHitsIn(t, searchSeries, tenant.ID, "ko", "銀河鉄道", translated.ID)
+	})
+}
+
+// The translation a series falls back to in a locale it has none in is the
+// tenant default's, so the event a change of the default queues rewrites every
+// document of the tenant.
+func TestATenantEventRewritesWhatTheDefaultLocaleFallsBackTo(t *testing.T) {
+	testutil.EachSearchEngine(t, func(t *testing.T, engine testutil.SearchEngine) {
+		pg := testutil.StartPostgres(t)
+		pg.Reset(t)
+		idx := newIndex(t, engine)
+		ctx := context.Background()
+		handler := syncHandler(t, pg, idx)
+
+		tenant := pg.SeedTenant(t, "INDEXDEFLT01", "index-default.example.com", "Index Default Tenant")
+		series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "INDEXDEFLT02", Title: "Seed Garden", Published: true})
+		pg.SeedSeriesTranslation(t, tenant.ID, series.ID, "en", "Seed Harbor", "")
+		if err := catalogindex.Queue(ctx, dbmodels.New(pg.DB), tenant.ID, catalogindex.SeriesRef(series.ID)); err != nil {
+			t.Fatalf("Queue: %v", err)
+		}
+		drain(t, pg, handler)
+		idx.refresh(t)
+		idx.assertHitsIn(t, searchSeries, tenant.ID, "ko", "garden", series.ID)
+		idx.assertHitsIn(t, searchSeries, tenant.ID, "ko", "harbor")
+
+		if _, err := pg.DB.ExecContext(ctx, "UPDATE tenants SET default_locale = 'en' WHERE id = $1", tenant.ID); err != nil {
+			t.Fatalf("change the default locale: %v", err)
+		}
+		if err := catalogindex.Queue(ctx, dbmodels.New(pg.DB), tenant.ID, catalogindex.TenantRef(tenant.ID)); err != nil {
+			t.Fatalf("Queue: %v", err)
+		}
+		drain(t, pg, handler)
+		idx.refresh(t)
+		idx.assertHitsIn(t, searchSeries, tenant.ID, "ko", "harbor", series.ID)
+		idx.assertHitsIn(t, searchSeries, tenant.ID, "ko", "garden")
+		idx.assertHitsIn(t, searchSeries, tenant.ID, "ja", "garden", series.ID)
 	})
 }

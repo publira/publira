@@ -32,10 +32,23 @@ ORDER BY id;
 
 -- name: ListCatalogIndexSeries :many
 -- Every series of the tenant, or the one series_id names, with the title and
--- the synopsis of its translation in the tenant's default locale.
+-- the synopsis of its translation in the tenant's default locale, and those of
+-- the translation series_translation_for picks for each of locales: what a
+-- reader in that locale is shown, the translation it falls back to included.
 SELECT s.id,
     tr.title,
     tr.synopsis,
+    (
+        SELECT COALESCE(
+                jsonb_object_agg(
+                    l.locale,
+                    jsonb_build_object('title', lt.title, 'synopsis', lt.synopsis)
+                ),
+                '{}'
+            )
+        FROM unnest(sqlc.arg('locales')::text []) AS l(locale)
+            CROSS JOIN LATERAL series_translation_for(s.id, l.locale) lt
+    )::jsonb AS translations,
     COALESCE(s.published_at, 'epoch')::timestamptz AS published_at,
     ARRAY(
         SELECT ss.surface

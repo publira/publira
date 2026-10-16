@@ -15,6 +15,7 @@ import (
 	"github.com/opensearch-project/opensearch-go/v5/opensearchapi"
 
 	"github.com/publira/publira/server/internal/auditlog"
+	"github.com/publira/publira/server/internal/catalogindex"
 	"github.com/publira/publira/server/internal/catalogsearch"
 	"github.com/publira/publira/server/internal/catalogsearch/opensearchbackend"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -62,6 +63,8 @@ type env struct {
 	marker   sqlMarker
 	searcher platformsearch.Searcher
 	tenantID uuid.UUID
+	// locale is the tenant's default locale, which a search is made in.
+	locale string
 }
 
 // newEnv is a test's database and engine, OpenSearch unless engine names
@@ -95,6 +98,7 @@ func newEnv(t *testing.T, engine ...testutil.SearchEngine) *env {
 			SQL: marker,
 		},
 		tenantID: tenant.ID,
+		locale:   tenant.DefaultLocale,
 	}
 }
 
@@ -141,11 +145,16 @@ func (e *env) build(t *testing.T) (platformsearch.BuildResult, error) {
 
 func (e *env) searchSeries(t *testing.T, query string) []uuid.UUID {
 	t.Helper()
+	return e.searchSeriesIn(t, e.locale, query)
+}
+
+func (e *env) searchSeriesIn(t *testing.T, locale, query string) []uuid.UUID {
+	t.Helper()
 	page, err := e.searcher.SearchSeries(context.Background(), catalogsearch.SeriesRequest{Request: catalogsearch.Request{
-		TenantID: e.tenantID, Surface: testSurface, Query: query, Limit: 10,
+		TenantID: e.tenantID, Surface: testSurface, Query: query, Locale: locale, Limit: 10,
 	}})
 	if err != nil {
-		t.Fatalf("SearchSeries(%q): %v", query, err)
+		t.Fatalf("SearchSeries(%q in %s): %v", query, locale, err)
 	}
 	return page.IDs
 }
@@ -295,16 +304,16 @@ func TestTheIndexerWritesIntoBothEnginesWhileABuildIsDue(t *testing.T) {
 		// The index being built is not searched yet, so nothing waited for
 		// it to show the write.
 		if alias == second {
-			if _, err := client.Indices.Refresh(context.Background(), &opensearchapi.IndicesRefreshReq{Indices: []string{alias}}); err != nil {
+			if _, err := client.Indices.Refresh(context.Background(), &opensearchapi.IndicesRefreshReq{Indices: []string{alias + "-*"}}); err != nil {
 				t.Fatalf("refresh %s: %v", alias, err)
 			}
 		}
-		backend, err := opensearchbackend.New(context.Background(), opensearchbackend.Config{URL: e.engine.URL, Index: alias})
+		backend, err := opensearchbackend.New(context.Background(), opensearchbackend.Config{URL: e.engine.URL, Index: alias, Locales: platformsearch.IndexLocales})
 		if err != nil {
 			t.Fatalf("New(%s): %v", alias, err)
 		}
 		page, err := backend.SearchSeries(context.Background(), catalogsearch.SeriesRequest{Request: catalogsearch.Request{
-			TenantID: e.tenantID, Surface: testSurface, Query: "Seed", Limit: 10,
+			TenantID: e.tenantID, Surface: testSurface, Query: "Seed", Locale: e.locale, Limit: 10,
 		}})
 		if err != nil {
 			t.Fatalf("search %s: %v", alias, err)
@@ -313,6 +322,96 @@ func TestTheIndexerWritesIntoBothEnginesWhileABuildIsDue(t *testing.T) {
 			t.Fatalf("search %s = %v, want %v", alias, page.IDs, series.ID)
 		}
 	}
+}
+
+// An install that served the one index from before the catalog was indexed
+// per language keeps searching it, whatever the reader's locale, while the
+// worker builds an index for each locale, which it does with nothing saved:
+// the serving indices were built for other locales than it searches in. Once
+// they are built the search reads the reader's, and the old index is left
+// where it was.
+func TestAnIndexFromBeforeLanguagesIsRebuiltPerLanguageWithoutASave(t *testing.T) {
+	testutil.EachSearchEngine(t, func(t *testing.T, engine testutil.SearchEngine) {
+		e := newEnv(t, engine)
+		ctx := context.Background()
+		series := e.pg.SeedSeries(t, e.tenantID, testutil.SeriesSeed{PublicID: "SEARCHSET005", Title: "銀河鉄道の夜", Published: true})
+		e.pg.SeedSeriesTranslation(t, e.tenantID, series.ID, "en", "Night on the Galactic Railroad", "")
+		alias := e.alias(t)
+
+		// The row and the index as the release before this one left them.
+		saved := e.save(t, e.saved(alias))
+		legacy, err := opensearchbackend.New(ctx, opensearchbackend.Config{URL: e.engine.URL, Index: alias})
+		if err != nil {
+			t.Fatalf("New: %v", err)
+		}
+		if _, _, err := catalogindex.SyncTenant(ctx, e.pg.OpenContentStatsDB(t), legacy, e.tenantID); err != nil {
+			t.Fatalf("SyncTenant: %v", err)
+		}
+		if _, err := e.client(t).Indices.Refresh(ctx, &opensearchapi.IndicesRefreshReq{Indices: []string{alias}}); err != nil {
+			t.Fatalf("refresh: %v", err)
+		}
+		if _, err := e.pg.DB.ExecContext(ctx,
+			`UPDATE platform_search_config SET serving_revision = revision, serving_engine = engine, serving_url = url, serving_index_alias = index_alias, serving_locales = NULL, serving_since = now()`,
+		); err != nil {
+			t.Fatalf("serve the single index: %v", err)
+		}
+
+		if stored := e.stored(t); stored.State != platformsearch.Building || stored.Serving.Revision != saved.Revision || len(stored.Serving.Locales) != 0 {
+			t.Fatalf("stored = %+v, want a build due on the revision the search answers from", stored)
+		}
+		// The single index carries the tenant's default locale for everyone.
+		for _, code := range []string{"ja", "en"} {
+			if got := e.searchSeriesIn(t, code, "銀河鉄道"); !slices.Equal(got, []uuid.UUID{series.ID}) {
+				t.Fatalf("search in %s before the build = %v, want %v from the single index", code, got, series.ID)
+			}
+		}
+
+		// While the build is due, a write reaches the aliases of every locale
+		// as well, so a worker that reads the row only after the build moved
+		// the search does not leave its writes out of them.
+		outbox := e.pg.OpenOutboxDB(t)
+		indexer := platformsearch.Indexer{
+			DB:       outbox,
+			Resolver: platformsearch.NewResolver(platformsearch.ResolverConfig{Queries: dbmodels.New(outbox), Secrets: e.secrets, Interval: -1}),
+		}
+		if searched, err := indexer.Sync(ctx, e.tenantID, string(opensearchbackend.KindSeries), series.ID); err != nil || !searched {
+			t.Fatalf("Sync = (%v, %v), want a write the search answers from", searched, err)
+		}
+		if _, err := e.client(t).Indices.Refresh(ctx, &opensearchapi.IndicesRefreshReq{Indices: []string{alias + "-*"}}); err != nil {
+			t.Fatalf("refresh: %v", err)
+		}
+		perLocale, err := opensearchbackend.Open(opensearchbackend.Config{URL: e.engine.URL, Index: alias, Locales: platformsearch.IndexLocales})
+		if err != nil {
+			t.Fatalf("Open: %v", err)
+		}
+		page, err := perLocale.SearchSeries(ctx, catalogsearch.SeriesRequest{Request: catalogsearch.Request{TenantID: e.tenantID, Surface: testSurface, Query: "galactic", Locale: "en", Limit: 10}})
+		if err != nil || !slices.Equal(page.IDs, []uuid.UUID{series.ID}) {
+			t.Fatalf("search in en behind the alias of en while the build is due = (%v, %v), want %v", page.IDs, err, series.ID)
+		}
+
+		result, err := e.build(t)
+		if err != nil {
+			t.Fatalf("Build: %v", err)
+		}
+		if !result.Built || !result.Serving || len(result.Indices) != len(platformsearch.IndexLocales) {
+			t.Fatalf("Build = %+v, want an index for each of %v, served", result, platformsearch.IndexLocales)
+		}
+		if stored := e.stored(t); stored.State != platformsearch.Serving || !slices.Equal(stored.Serving.Locales, platformsearch.IndexLocales) {
+			t.Fatalf("stored = %+v, want the search on an index for each locale", stored)
+		}
+		if got := e.searchSeriesIn(t, "en", "galactic"); !slices.Equal(got, []uuid.UUID{series.ID}) {
+			t.Fatalf("search in en after the build = %v, want %v", got, series.ID)
+		}
+		if got := e.searchSeriesIn(t, "en", "銀河鉄道"); len(got) != 0 {
+			t.Fatalf("search in en for the Japanese title after the build = %v, want nothing", got)
+		}
+		if result, err := e.build(t); err != nil || result.Built {
+			t.Fatalf("Build with nothing due = (%+v, %v), want nothing built", result, err)
+		}
+		if _, err := e.client(t).Indices.Exists(ctx, &opensearchapi.IndicesExistsReq{Indices: []string{alias}}); err != nil {
+			t.Fatalf("the single index is gone after the build: %v", err)
+		}
+	})
 }
 
 // The password is stored encrypted and kept, replaced, or cleared the way the
@@ -359,7 +458,7 @@ func TestSaveKeepsReplacesAndClearsThePassword(t *testing.T) {
 	}
 
 	// Make the saved engine the one the search answers from, as a build would.
-	if _, err := dbmodels.New(e.pg.OpenContentStatsDB(t)).ServePlatformSearchConfig(ctx, saved.Revision); err != nil {
+	if _, err := dbmodels.New(e.pg.OpenContentStatsDB(t)).ServePlatformSearchConfig(ctx, dbmodels.ServePlatformSearchConfigParams{Revision: saved.Revision, Locales: platformsearch.IndexLocales}); err != nil {
 		t.Fatalf("serve: %v", err)
 	}
 	rotated, err := save(platformsearch.SaveParams{Settings: withUser, SecretMode: secretupdate.Replace, Password: "second-password"})

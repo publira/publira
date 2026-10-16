@@ -722,6 +722,7 @@ type PlatformSearchConfig struct {
 	UpdatedAt                time.Time      `json:"updated_at"`
 	Analysis                 sql.NullString `json:"analysis"`
 	ServingAnalysis          sql.NullString `json:"serving_analysis"`
+	ServingLocales           []string       `json:"serving_locales"`
 }
 
 type PlatformSmtpConfig struct {

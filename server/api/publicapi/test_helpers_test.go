@@ -292,14 +292,15 @@ func onWeb(token string) string {
 	return token
 }
 
-// withScanLocale is the arguments of a published series scan, with the
-// reader's locale ahead of them where the scan sorts by title: the title
-// scans sort by the title of the translation picked for it, and no other scan
-// takes one.
+// withScanLocale is the arguments of a published-at scan with the reader's
+// locale where the scan of query takes it: ahead of them in a title scan,
+// which sorts by the title of the translation picked for it, and after the
+// query pattern in a published-at scan, which matches the pattern against
+// that translation.
 func withScanLocale(query string, args ...driver.Value) []driver.Value {
 	switch query {
 	case dbmodels.ListActiveSeriesIDsByTitleAsc, dbmodels.ListActiveSeriesIDsByTitleDesc:
 		return append([]driver.Value{"ja"}, args...)
 	}
-	return args
+	return slices.Insert(slices.Clone(args), 8, driver.Value("ja"))
 }

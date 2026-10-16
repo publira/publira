@@ -93,8 +93,12 @@ const fuzzyQueryFindsSeedSeries = async (): Promise<boolean> => {
   return series.some((item) => item.publicId === SEED_TENANT.series.publicId);
 };
 
-/** The alias `scripts/db-setup.sh` saves, which the server defaults to. */
-const OPENSEARCH_ALIAS = "publira-catalog";
+/**
+ * The alias of the Korean index behind the one `scripts/db-setup.sh` saves,
+ * which the server defaults to. Every locale's index is built from the same
+ * definition, so any of them answers what the analysis makes of a text.
+ */
+const OPENSEARCH_ALIAS = "publira-catalog-ko";
 
 /**
  * A definition built on analysis-nori, which the E2E engine has installed

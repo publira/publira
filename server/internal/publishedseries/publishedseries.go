@@ -98,6 +98,14 @@ func ListKeyIn(order Order, filter Filter, locale string) string {
 	return key
 }
 
+// SearchKeyIn is ListKey for a keyword search made in a locale. A search
+// matches the titles and the synopses of the translations picked for that
+// locale, so another locale's search is another set of series under every
+// order, and the key names the locale whatever the order is.
+func SearchKeyIn(order Order, filter Filter, locale string) string {
+	return ListKey(order, filter) + "+locale:" + locale
+}
+
 // Keys is the boundary row a token names, in the shape the scans compare
 // against. Only the column of the order and the id are read; the zero value is
 // the first page.
@@ -122,7 +130,8 @@ type Row struct {
 type Scan struct {
 	TenantID uuid.UUID
 	Surface  string
-	// Locale picks the translation whose title a title order sorts by.
+	// Locale picks the translation whose title a title order sorts by, and
+	// whose title and synopsis QueryPattern is matched against.
 	Locale string
 	Order  Order
 	Filter Filter
@@ -153,6 +162,7 @@ func Page(ctx context.Context, queries dbmodels.Querier, scan Scan) ([]Row, erro
 			Status:                filter.Status,
 			Weekday:               filter.Weekday,
 			QueryPattern:          scan.QueryPattern,
+			Locale:                scan.Locale,
 			CursorLatestEpisodeAt: keys.LatestEpisodeAt,
 			CursorID:              keys.ID,
 			CursorInclusive:       keys.Inclusive,
@@ -171,6 +181,7 @@ func Page(ctx context.Context, queries dbmodels.Querier, scan Scan) ([]Row, erro
 			Status:                filter.Status,
 			Weekday:               filter.Weekday,
 			QueryPattern:          scan.QueryPattern,
+			Locale:                scan.Locale,
 			CursorLatestEpisodeAt: keys.LatestEpisodeAt,
 			CursorID:              keys.ID,
 			CursorInclusive:       keys.Inclusive,
@@ -227,6 +238,7 @@ func Page(ctx context.Context, queries dbmodels.Querier, scan Scan) ([]Row, erro
 			Status:            filter.Status,
 			Weekday:           filter.Weekday,
 			QueryPattern:      scan.QueryPattern,
+			Locale:            scan.Locale,
 			CursorPublishedAt: keys.PublishedAt,
 			CursorID:          keys.ID,
 			CursorInclusive:   keys.Inclusive,
@@ -245,6 +257,7 @@ func Page(ctx context.Context, queries dbmodels.Querier, scan Scan) ([]Row, erro
 			Status:            filter.Status,
 			Weekday:           filter.Weekday,
 			QueryPattern:      scan.QueryPattern,
+			Locale:            scan.Locale,
 			CursorPublishedAt: keys.PublishedAt,
 			CursorID:          keys.ID,
 			CursorInclusive:   keys.Inclusive,

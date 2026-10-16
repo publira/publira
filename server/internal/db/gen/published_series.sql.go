@@ -319,7 +319,7 @@ WITH candidate AS (
             $12::text IS NULL
             OR EXISTS (
                 SELECT 1
-                FROM series_translation_for(s.id, '') qt
+                FROM series_translation_for(s.id, $13::text) qt
                 WHERE qt.title ILIKE $12::text ESCAPE '!'
                     OR qt.synopsis ILIKE $12::text ESCAPE '!'
             )
@@ -363,6 +363,7 @@ type ListActiveSeriesIDsByLatestEpisodeAtAscParams struct {
 	Status                sql.NullString `json:"status"`
 	Weekday               sql.NullInt16  `json:"weekday"`
 	QueryPattern          sql.NullString `json:"query_pattern"`
+	Locale                string         `json:"locale"`
 }
 
 type ListActiveSeriesIDsByLatestEpisodeAtAscRow struct {
@@ -384,6 +385,7 @@ func (q *Queries) ListActiveSeriesIDsByLatestEpisodeAtAsc(ctx context.Context, a
 		arg.Status,
 		arg.Weekday,
 		arg.QueryPattern,
+		arg.Locale,
 	)
 	if err != nil {
 		return nil, err
@@ -491,7 +493,7 @@ WITH candidate AS (
             $12::text IS NULL
             OR EXISTS (
                 SELECT 1
-                FROM series_translation_for(s.id, '') qt
+                FROM series_translation_for(s.id, $13::text) qt
                 WHERE qt.title ILIKE $12::text ESCAPE '!'
                     OR qt.synopsis ILIKE $12::text ESCAPE '!'
             )
@@ -535,6 +537,7 @@ type ListActiveSeriesIDsByLatestEpisodeAtDescParams struct {
 	Status                sql.NullString `json:"status"`
 	Weekday               sql.NullInt16  `json:"weekday"`
 	QueryPattern          sql.NullString `json:"query_pattern"`
+	Locale                string         `json:"locale"`
 }
 
 type ListActiveSeriesIDsByLatestEpisodeAtDescRow struct {
@@ -572,6 +575,7 @@ func (q *Queries) ListActiveSeriesIDsByLatestEpisodeAtDesc(ctx context.Context, 
 		arg.Status,
 		arg.Weekday,
 		arg.QueryPattern,
+		arg.Locale,
 	)
 	if err != nil {
 		return nil, err
@@ -668,31 +672,31 @@ WHERE s.tenant_id = $1
         $8::text IS NULL
         OR EXISTS (
             SELECT 1
-            FROM series_translation_for(s.id, '') qt
+            FROM series_translation_for(s.id, $9::text) qt
             WHERE qt.title ILIKE $8::text ESCAPE '!'
                 OR qt.synopsis ILIKE $8::text ESCAPE '!'
         )
     )
     AND (
-        $9::uuid IS NULL
+        $10::uuid IS NULL
         OR (
-            $10::boolean
+            $11::boolean
             AND (s.published_at, s.id) >= (
-                $11::timestamptz,
-                $9::uuid
+                $12::timestamptz,
+                $10::uuid
             )
         )
         OR (
-            NOT $10::boolean
+            NOT $11::boolean
             AND (s.published_at, s.id) > (
-                $11::timestamptz,
-                $9::uuid
+                $12::timestamptz,
+                $10::uuid
             )
         )
     )
 ORDER BY s.published_at ASC,
     s.id ASC
-LIMIT $12
+LIMIT $13
 `
 
 type ListActiveSeriesIDsByPublishedAtAscParams struct {
@@ -704,6 +708,7 @@ type ListActiveSeriesIDsByPublishedAtAscParams struct {
 	Status            sql.NullString `json:"status"`
 	Weekday           sql.NullInt16  `json:"weekday"`
 	QueryPattern      sql.NullString `json:"query_pattern"`
+	Locale            string         `json:"locale"`
 	CursorID          uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive   bool           `json:"cursor_inclusive"`
 	CursorPublishedAt sql.NullTime   `json:"cursor_published_at"`
@@ -725,6 +730,7 @@ func (q *Queries) ListActiveSeriesIDsByPublishedAtAsc(ctx context.Context, arg L
 		arg.Status,
 		arg.Weekday,
 		arg.QueryPattern,
+		arg.Locale,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorPublishedAt,
@@ -825,31 +831,31 @@ WHERE s.tenant_id = $1
         $8::text IS NULL
         OR EXISTS (
             SELECT 1
-            FROM series_translation_for(s.id, '') qt
+            FROM series_translation_for(s.id, $9::text) qt
             WHERE qt.title ILIKE $8::text ESCAPE '!'
                 OR qt.synopsis ILIKE $8::text ESCAPE '!'
         )
     )
     AND (
-        $9::uuid IS NULL
+        $10::uuid IS NULL
         OR (
-            $10::boolean
+            $11::boolean
             AND (s.published_at, s.id) <= (
-                $11::timestamptz,
-                $9::uuid
+                $12::timestamptz,
+                $10::uuid
             )
         )
         OR (
-            NOT $10::boolean
+            NOT $11::boolean
             AND (s.published_at, s.id) < (
-                $11::timestamptz,
-                $9::uuid
+                $12::timestamptz,
+                $10::uuid
             )
         )
     )
 ORDER BY s.published_at DESC,
     s.id DESC
-LIMIT $12
+LIMIT $13
 `
 
 type ListActiveSeriesIDsByPublishedAtDescParams struct {
@@ -861,6 +867,7 @@ type ListActiveSeriesIDsByPublishedAtDescParams struct {
 	Status            sql.NullString `json:"status"`
 	Weekday           sql.NullInt16  `json:"weekday"`
 	QueryPattern      sql.NullString `json:"query_pattern"`
+	Locale            string         `json:"locale"`
 	CursorID          uuid.NullUUID  `json:"cursor_id"`
 	CursorInclusive   bool           `json:"cursor_inclusive"`
 	CursorPublishedAt sql.NullTime   `json:"cursor_published_at"`
@@ -912,9 +919,9 @@ type ListActiveSeriesIDsByPublishedAtDescRow struct {
 // ride a btree, so the scan reads the tenant's published series while the
 // LIMIT still bites after narrowing by tenant and is_published. Once the row
 // count makes the latency visible, add a pg_trgm GIN index on
-// series_translations.title and synopsis. It matches the translation in the
-// tenant's default locale whatever the reader's locale, as the OpenSearch
-// index does.
+// series_translations.title and synopsis. It matches the translation
+// series_translation_for picks for the reader's locale, the one the reader is
+// shown, as the OpenSearch index of that locale holds.
 //
 // Every query also keeps only what the calling surface may show, through
 // series_surfaces for the series and episode_surfaces for the episodes counted
@@ -937,6 +944,7 @@ func (q *Queries) ListActiveSeriesIDsByPublishedAtDesc(ctx context.Context, arg 
 		arg.Status,
 		arg.Weekday,
 		arg.QueryPattern,
+		arg.Locale,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorPublishedAt,
@@ -1038,7 +1046,7 @@ WHERE s.tenant_id = $2
         $9::text IS NULL
         OR EXISTS (
             SELECT 1
-            FROM series_translation_for(s.id, '') qt
+            FROM series_translation_for(s.id, $1::text) qt
             WHERE qt.title ILIKE $9::text ESCAPE '!'
                 OR qt.synopsis ILIKE $9::text ESCAPE '!'
         )
@@ -1198,7 +1206,7 @@ WHERE s.tenant_id = $2
         $9::text IS NULL
         OR EXISTS (
             SELECT 1
-            FROM series_translation_for(s.id, '') qt
+            FROM series_translation_for(s.id, $1::text) qt
             WHERE qt.title ILIKE $9::text ESCAPE '!'
                 OR qt.synopsis ILIKE $9::text ESCAPE '!'
         )

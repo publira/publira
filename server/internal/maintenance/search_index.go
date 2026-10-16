@@ -40,7 +40,7 @@ func (SearchIndexBuild) Run(ctx context.Context, deps Deps) error {
 	}
 	logger.InfoContext(ctx, "search index build completed",
 		"alias", result.Alias,
-		"index", result.Index,
+		"indices", result.Indices,
 		"serving", result.Serving,
 	)
 	return nil

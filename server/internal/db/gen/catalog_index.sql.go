@@ -192,6 +192,17 @@ const ListCatalogIndexSeries = `-- name: ListCatalogIndexSeries :many
 SELECT s.id,
     tr.title,
     tr.synopsis,
+    (
+        SELECT COALESCE(
+                jsonb_object_agg(
+                    l.locale,
+                    jsonb_build_object('title', lt.title, 'synopsis', lt.synopsis)
+                ),
+                '{}'
+            )
+        FROM unnest($1::text []) AS l(locale)
+            CROSS JOIN LATERAL series_translation_for(s.id, l.locale) lt
+    )::jsonb AS translations,
     COALESCE(s.published_at, 'epoch')::timestamptz AS published_at,
     ARRAY(
         SELECT ss.surface
@@ -267,15 +278,16 @@ SELECT s.id,
 FROM series s
     CROSS JOIN LATERAL series_translation_for(s.id, '') tr
     LEFT JOIN series_listings sl ON sl.series_id = s.id
-WHERE s.tenant_id = $1
+WHERE s.tenant_id = $2
     AND (
-        $2::uuid IS NULL
-        OR s.id = $2::uuid
+        $3::uuid IS NULL
+        OR s.id = $3::uuid
     )
 ORDER BY s.id
 `
 
 type ListCatalogIndexSeriesParams struct {
+	Locales  []string      `json:"locales"`
 	TenantID uuid.UUID     `json:"tenant_id"`
 	SeriesID uuid.NullUUID `json:"series_id"`
 }
@@ -284,6 +296,7 @@ type ListCatalogIndexSeriesRow struct {
 	ID                       uuid.UUID       `json:"id"`
 	Title                    string          `json:"title"`
 	Synopsis                 string          `json:"synopsis"`
+	Translations             json.RawMessage `json:"translations"`
 	PublishedAt              time.Time       `json:"published_at"`
 	Surfaces                 []string        `json:"surfaces"`
 	Status                   string          `json:"status"`
@@ -295,9 +308,11 @@ type ListCatalogIndexSeriesRow struct {
 }
 
 // Every series of the tenant, or the one series_id names, with the title and
-// the synopsis of its translation in the tenant's default locale.
+// the synopsis of its translation in the tenant's default locale, and those of
+// the translation series_translation_for picks for each of locales: what a
+// reader in that locale is shown, the translation it falls back to included.
 func (q *Queries) ListCatalogIndexSeries(ctx context.Context, arg ListCatalogIndexSeriesParams) ([]ListCatalogIndexSeriesRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListCatalogIndexSeries, arg.TenantID, arg.SeriesID)
+	rows, err := q.db.QueryContext(ctx, ListCatalogIndexSeries, pq.Array(arg.Locales), arg.TenantID, arg.SeriesID)
 	if err != nil {
 		return nil, err
 	}
@@ -309,6 +324,7 @@ func (q *Queries) ListCatalogIndexSeries(ctx context.Context, arg ListCatalogInd
 			&i.ID,
 			&i.Title,
 			&i.Synopsis,
+			&i.Translations,
 			&i.PublishedAt,
 			pq.Array(&i.Surfaces),
 			&i.Status,

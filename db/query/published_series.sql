@@ -38,9 +38,9 @@
 -- ride a btree, so the scan reads the tenant's published series while the
 -- LIMIT still bites after narrowing by tenant and is_published. Once the row
 -- count makes the latency visible, add a pg_trgm GIN index on
--- series_translations.title and synopsis. It matches the translation in the
--- tenant's default locale whatever the reader's locale, as the OpenSearch
--- index does.
+-- series_translations.title and synopsis. It matches the translation
+-- series_translation_for picks for the reader's locale, the one the reader is
+-- shown, as the OpenSearch index of that locale holds.
 --
 -- Every query also keeps only what the calling surface may show, through
 -- series_surfaces for the series and episode_surfaces for the episodes counted
@@ -127,7 +127,7 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
         sqlc.narg('query_pattern')::text IS NULL
         OR EXISTS (
             SELECT 1
-            FROM series_translation_for(s.id, '') qt
+            FROM series_translation_for(s.id, sqlc.arg('locale')::text) qt
             WHERE qt.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
                 OR qt.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
         )
@@ -227,7 +227,7 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
         sqlc.narg('query_pattern')::text IS NULL
         OR EXISTS (
             SELECT 1
-            FROM series_translation_for(s.id, '') qt
+            FROM series_translation_for(s.id, sqlc.arg('locale')::text) qt
             WHERE qt.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
                 OR qt.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
         )
@@ -328,7 +328,7 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
         sqlc.narg('query_pattern')::text IS NULL
         OR EXISTS (
             SELECT 1
-            FROM series_translation_for(s.id, '') qt
+            FROM series_translation_for(s.id, sqlc.arg('locale')::text) qt
             WHERE qt.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
                 OR qt.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
         )
@@ -429,7 +429,7 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
         sqlc.narg('query_pattern')::text IS NULL
         OR EXISTS (
             SELECT 1
-            FROM series_translation_for(s.id, '') qt
+            FROM series_translation_for(s.id, sqlc.arg('locale')::text) qt
             WHERE qt.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
                 OR qt.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
         )
@@ -556,7 +556,7 @@ WITH candidate AS (
             sqlc.narg('query_pattern')::text IS NULL
             OR EXISTS (
                 SELECT 1
-                FROM series_translation_for(s.id, '') qt
+                FROM series_translation_for(s.id, sqlc.arg('locale')::text) qt
                 WHERE qt.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
                     OR qt.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
             )
@@ -671,7 +671,7 @@ WITH candidate AS (
             sqlc.narg('query_pattern')::text IS NULL
             OR EXISTS (
                 SELECT 1
-                FROM series_translation_for(s.id, '') qt
+                FROM series_translation_for(s.id, sqlc.arg('locale')::text) qt
                 WHERE qt.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
                     OR qt.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
             )

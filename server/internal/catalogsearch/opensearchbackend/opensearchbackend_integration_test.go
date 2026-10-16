@@ -348,7 +348,7 @@ func TestEnsureIndexCreatesTheIndexBehindAnAlias(t *testing.T) {
 	testutil.EachSearchEngine(t, func(t *testing.T, engine testutil.SearchEngine) {
 		backend := newTestBackend(t, engine)
 
-		indices, err := backend.aliasIndices(context.Background())
+		indices, err := backend.aliasIndices(context.Background(), backend.index)
 		if err != nil {
 			t.Fatalf("aliasIndices: %v", err)
 		}
@@ -426,11 +426,11 @@ func TestRebuildMovesTheAliasOntoTheNewIndex(t *testing.T) {
 			t.Fatalf("Swap: %v", err)
 		}
 		assertIDs(t, "seed", searchSeries(t, backend, tenantID, "seed", 10, pagination.Cursor{}).IDs, rebuilt.ID)
-		indices, err := backend.aliasIndices(ctx)
+		indices, err := backend.aliasIndices(ctx, backend.index)
 		if err != nil {
 			t.Fatalf("aliasIndices: %v", err)
 		}
-		if want := []string{rebuild.Index()}; !slices.Equal(indices, want) {
+		if want := rebuild.Indices(); !slices.Equal(indices, want) {
 			t.Fatalf("alias names %v after the swap, want %v", indices, want)
 		}
 		if exists, err := backend.nameExists(ctx, backend.index+initialIndexSuffix); err != nil || exists {
@@ -452,10 +452,10 @@ func TestAbortedRebuildLeavesTheAliasWhereItWas(t *testing.T) {
 		if err := rebuild.Abort(ctx); err != nil {
 			t.Fatalf("Abort: %v", err)
 		}
-		if exists, err := backend.nameExists(ctx, rebuild.Index()); err != nil || exists {
+		if exists, err := backend.nameExists(ctx, rebuild.Indices()[0]); err != nil || exists {
 			t.Fatalf("aborted index exists = %v (%v), want it deleted", exists, err)
 		}
-		indices, err := backend.aliasIndices(ctx)
+		indices, err := backend.aliasIndices(ctx, backend.index)
 		if err != nil {
 			t.Fatalf("aliasIndices: %v", err)
 		}
@@ -492,11 +492,11 @@ func TestRebuildReplacesAnIndexThatHasTheAliasName(t *testing.T) {
 		if err := rebuild.Swap(ctx); err != nil {
 			t.Fatalf("Swap: %v", err)
 		}
-		indices, err := backend.aliasIndices(ctx)
+		indices, err := backend.aliasIndices(ctx, backend.index)
 		if err != nil {
 			t.Fatalf("aliasIndices: %v", err)
 		}
-		if want := []string{rebuild.Index()}; !slices.Equal(indices, want) {
+		if want := rebuild.Indices(); !slices.Equal(indices, want) {
 			t.Fatalf("alias names %v, want %v", indices, want)
 		}
 	})
@@ -881,6 +881,181 @@ func TestCheckAnalysisReportsTheEnginesReason(t *testing.T) {
 		var refused *AnalysisRefusedError
 		if !errors.As(err, &refused) || !strings.Contains(refused.Reason, "no_such_tokenizer") {
 			t.Fatalf("CheckAnalysis error = %v, want the engine's refusal naming no_such_tokenizer", err)
+		}
+	})
+}
+
+// newLocaleBackend is newTestBackend with an index for each of locales.
+func newLocaleBackend(t *testing.T, engine testutil.SearchEngine, locales ...string) *Backend {
+	t.Helper()
+	backend, err := New(context.Background(), Config{URL: engine.URL, Index: "catalog-test-" + uuid.NewString(), Locales: locales})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	t.Cleanup(func() { deleteIndices(backend) })
+	return backend
+}
+
+func refreshAll(t *testing.T, backend *Backend) {
+	t.Helper()
+	if _, err := backend.client.Indices.Refresh(context.Background(), &opensearchapi.IndicesRefreshReq{Indices: []string{backend.index + "-*"}}); err != nil {
+		t.Fatalf("refresh: %v", err)
+	}
+}
+
+func searchIn(t *testing.T, backend *Backend, search func(*Backend, context.Context, catalogsearch.Request) (catalogsearch.Page, error), tenantID uuid.UUID, locale, query string) []uuid.UUID {
+	t.Helper()
+	page, err := search(backend, context.Background(), catalogsearch.Request{TenantID: tenantID, Surface: testSurface, Query: query, Locale: locale, Limit: 10})
+	if err != nil {
+		t.Fatalf("search %q in %s: %v", query, locale, err)
+	}
+	return page.IDs
+}
+
+func searchSeriesIn(b *Backend, ctx context.Context, req catalogsearch.Request) (catalogsearch.Page, error) {
+	return b.SearchSeries(ctx, catalogsearch.SeriesRequest{Request: req})
+}
+
+// Each language's index carries the title and the synopsis a reader in it is
+// shown, so a search in one language finds a series by its text in that
+// language and not by a word only in another's. A creator is the same in every
+// index.
+func TestASearchInALanguageMatchesTheTextShownInIt(t *testing.T) {
+	t.Parallel()
+	testutil.EachSearchEngine(t, func(t *testing.T, engine testutil.SearchEngine) {
+		backend := newLocaleBackend(t, engine, "ja", "en")
+		tenantID := uuid.Must(uuid.NewV7())
+
+		railroad := publishedSeries(tenantID, "銀河鉄道の夜", "")
+		railroad.Translations = map[string]Translation{
+			"ja": {Title: "銀河鉄道の夜", Synopsis: "ジョバンニの旅"},
+			"en": {Title: "Night on the Galactic Railroad", Synopsis: "Giovanni travels the stars"},
+		}
+		creator := Document{Kind: KindCreator, TenantID: tenantID, ID: uuid.Must(uuid.NewV7()), Name: "Kenji Miyazawa", Surfaces: []string{testSurface}, PublishedAt: time.Now().Add(-time.Hour)}
+		if err := backend.PutAll(context.Background(), []Document{railroad, creator}); err != nil {
+			t.Fatalf("PutAll: %v", err)
+		}
+		refreshAll(t, backend)
+
+		assertIDs(t, "galactic in en", searchIn(t, backend, searchSeriesIn, tenantID, "en", "galactic"), railroad.ID)
+		assertIDs(t, "giovanni in en", searchIn(t, backend, searchSeriesIn, tenantID, "en", "giovanni"), railroad.ID)
+		assertIDs(t, "銀河鉄道 in en", searchIn(t, backend, searchSeriesIn, tenantID, "en", "銀河鉄道"))
+		assertIDs(t, "銀河鉄道 in ja", searchIn(t, backend, searchSeriesIn, tenantID, "ja", "銀河鉄道"), railroad.ID)
+		assertIDs(t, "galactic in ja", searchIn(t, backend, searchSeriesIn, tenantID, "ja", "galactic"))
+		for _, locale := range []string{"ja", "en"} {
+			assertIDs(t, "miyazawa in "+locale, searchIn(t, backend, (*Backend).SearchCreators, tenantID, locale, "miyazawa"), creator.ID)
+		}
+	})
+}
+
+// A title order sorts by the title shown in the language searched in.
+func TestATitleOrderSortsByTheTitleOfTheLanguage(t *testing.T) {
+	t.Parallel()
+	testutil.EachSearchEngine(t, func(t *testing.T, engine testutil.SearchEngine) {
+		backend := newLocaleBackend(t, engine, "ja", "en")
+		tenantID := uuid.Must(uuid.NewV7())
+
+		one := publishedSeries(tenantID, "Seed B", "")
+		one.Translations = map[string]Translation{"ja": {Title: "Seed B"}, "en": {Title: "Seed A"}}
+		two := publishedSeries(tenantID, "Seed A", "")
+		two.Translations = map[string]Translation{"ja": {Title: "Seed A"}, "en": {Title: "Seed B"}}
+		if err := backend.PutAll(context.Background(), []Document{one, two}); err != nil {
+			t.Fatalf("PutAll: %v", err)
+		}
+		refreshAll(t, backend)
+
+		for locale, want := range map[string][]uuid.UUID{"ja": {two.ID, one.ID}, "en": {one.ID, two.ID}} {
+			req := narrowed(tenantID, publishedseries.TitleAsc, publishedseries.Filter{}, 10, pagination.Cursor{})
+			req.Locale = locale
+			assertIDs(t, "seed by title in "+locale, searchNarrowed(t, backend, req).IDs, want...)
+		}
+	})
+}
+
+// A token is bound to the language it was issued in, since another
+// language's search is another list of hits.
+func TestATokenIsBoundToItsLanguage(t *testing.T) {
+	t.Parallel()
+	testutil.EachSearchEngine(t, func(t *testing.T, engine testutil.SearchEngine) {
+		backend := newLocaleBackend(t, engine, "ja", "en")
+		tenantID := uuid.Must(uuid.NewV7())
+		if err := backend.PutAll(context.Background(), []Document{publishedSeries(tenantID, "Seed One", ""), publishedSeries(tenantID, "Seed Two", "")}); err != nil {
+			t.Fatalf("PutAll: %v", err)
+		}
+		refreshAll(t, backend)
+
+		first := catalogsearch.SeriesRequest{Request: catalogsearch.Request{TenantID: tenantID, Surface: testSurface, Query: "seed", Locale: "ja", Limit: 1}}
+		page := searchNarrowed(t, backend, first)
+		next := first
+		next.Locale = "en"
+		next.Cursor = decodeToken(t, page.NextToken)
+		if _, err := backend.SearchSeries(context.Background(), next); !errors.Is(err, catalogsearch.ErrTokenForAnotherNarrowing) {
+			t.Fatalf("SearchSeries with a token from another language = %v, want ErrTokenForAnotherNarrowing", err)
+		}
+	})
+}
+
+// A first start puts each language's index behind an alias of its own,
+// lowercased the way an index name has to be.
+func TestEnsureIndexCreatesAnIndexBehindEveryLanguagesAlias(t *testing.T) {
+	t.Parallel()
+	testutil.EachSearchEngine(t, func(t *testing.T, engine testutil.SearchEngine) {
+		backend := newLocaleBackend(t, engine, "ja", "zh-Hans")
+		for _, alias := range []string{backend.index + "-ja", backend.index + "-zh-hans"} {
+			indices, err := backend.aliasIndices(context.Background(), alias)
+			if err != nil {
+				t.Fatalf("aliasIndices: %v", err)
+			}
+			if want := []string{alias + initialIndexSuffix}; !slices.Equal(indices, want) {
+				t.Fatalf("alias %q names %v, want %v", alias, indices, want)
+			}
+		}
+	})
+}
+
+// A rebuild fills a new index for every language and moves every alias onto
+// its own in one step.
+func TestRebuildMovesEveryLanguagesAlias(t *testing.T) {
+	t.Parallel()
+	testutil.EachSearchEngine(t, func(t *testing.T, engine testutil.SearchEngine) {
+		backend := newLocaleBackend(t, engine, "ja", "en")
+		tenantID := uuid.Must(uuid.NewV7())
+		ctx := context.Background()
+
+		rebuild, err := backend.StartRebuild(ctx)
+		if err != nil {
+			t.Fatalf("StartRebuild: %v", err)
+		}
+		seed := publishedSeries(tenantID, "Seed", "")
+		if err := rebuild.PutAll(ctx, []Document{seed}); err != nil {
+			t.Fatalf("PutAll: %v", err)
+		}
+		if err := rebuild.Swap(ctx); err != nil {
+			t.Fatalf("Swap: %v", err)
+		}
+		var named []string
+		for _, locale := range []string{"ja", "en"} {
+			indices, err := backend.aliasIndices(ctx, LocaleAlias(backend.index, locale))
+			if err != nil {
+				t.Fatalf("aliasIndices: %v", err)
+			}
+			named = append(named, indices...)
+			assertIDs(t, "seed in "+locale, searchIn(t, backend, searchSeriesIn, tenantID, locale, "seed"), seed.ID)
+		}
+		if slices.Sort(named); !slices.Equal(named, rebuild.Indices()) {
+			t.Fatalf("aliases name %v after the swap, want %v", named, rebuild.Indices())
+		}
+	})
+}
+
+// A language the catalog keeps no index for is not searched in another's.
+func TestASearchInALanguageWithNoIndexFails(t *testing.T) {
+	t.Parallel()
+	testutil.EachSearchEngine(t, func(t *testing.T, engine testutil.SearchEngine) {
+		backend := newLocaleBackend(t, engine, "ja")
+		_, err := backend.SearchSeries(context.Background(), catalogsearch.SeriesRequest{Request: catalogsearch.Request{TenantID: uuid.Must(uuid.NewV7()), Surface: testSurface, Query: "seed", Locale: "en", Limit: 10}})
+		if err == nil {
+			t.Fatal("SearchSeries in a language with no index succeeded, want an error")
 		}
 	})
 }

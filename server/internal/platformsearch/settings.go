@@ -5,12 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/publira/publira/server/internal/catalogsearch/opensearchbackend"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/fielderr"
+	"github.com/publira/publira/server/internal/locale"
 )
 
 // Engine is the stored name of a search engine.
@@ -213,6 +215,23 @@ type ServingSettings struct {
 	Revision int64
 	// Since is when the search moved onto it, zero at revision zero.
 	Since time.Time
+	// Locales are the languages its catalog indices were built for, empty on
+	// the SQL engine and for the one index of an install that predates
+	// per-language indices.
+	Locales []string
+}
+
+// IndexLocales are the languages a build makes a catalog index for: every
+// locale a reader can search in. A serving configuration whose indices were
+// built for others has a build due, so a release that adds a locale, or the
+// one that brought per-language indices to an install serving a single one,
+// gets the indices it searches without an operator rebuilding them.
+var IndexLocales = locale.Supported
+
+// indicesCurrent reports whether the configuration keeps no index, or keeps
+// one for each of IndexLocales and no other.
+func (s ServingSettings) indicesCurrent() bool {
+	return !s.Engine.HasIndex() || slices.Equal(s.Locales, IndexLocales)
 }
 
 // BuildFailure is the last build of the saved revision that failed.
@@ -258,11 +277,12 @@ func FromConfig(row dbmodels.PlatformSearchConfig) Stored {
 			Analysis: row.ServingAnalysis.String,
 			Revision: row.ServingRevision,
 			Since:    row.ServingSince.Time,
+			Locales:  row.ServingLocales,
 		},
 		State: Serving,
 	}
 	switch {
-	case row.ServingRevision == row.Revision:
+	case row.ServingRevision == row.Revision && stored.Serving.indicesCurrent():
 	case row.BuildFailedRevision.Valid && row.BuildFailedRevision.Int64 == row.Revision:
 		stored.State = BuildFailed
 		stored.Failure = &BuildFailure{Error: row.BuildError.String, FailedAt: row.BuildFailedAt.Time}

@@ -319,3 +319,43 @@ func TestDBSearchPublishedSeriesRefusesAFilterNamingNothing(t *testing.T) {
 		})
 	}
 }
+
+// The SQL engine matches the translation shown in the reader's locale under
+// every order the search can be sorted by: a search in English finds a series
+// by its English title and not by a word only its Japanese one has, and finds
+// a series with no English translation by its Japanese title.
+func TestDBSearchPublishedSeriesMatchesTheTranslationOfTheLocale(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	translated := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESGALAX1", Title: "銀河鉄道の夜", Synopsis: "ジョバンニの旅", Published: true})
+	env.PG.SeedSeriesTranslation(t, tenant.ID, translated.ID, "en", "Night on the Galactic Railroad", "Giovanni rides among the stars")
+	env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESWIND01", Title: "風の又三郎", Published: true})
+
+	for _, order := range []publirav1.SeriesOrder{
+		publirav1.SeriesOrder_SERIES_ORDER_UNSPECIFIED,
+		publirav1.SeriesOrder_SERIES_ORDER_PUBLISHED_AT_DESC,
+		publirav1.SeriesOrder_SERIES_ORDER_TITLE_DESC,
+		publirav1.SeriesOrder_SERIES_ORDER_LATEST_EPISODE_AT_DESC,
+	} {
+		t.Run(order.String(), func(t *testing.T) {
+			for _, search := range []struct {
+				locale, query string
+				want          []string
+			}{
+				{locale: "en", query: "galactic", want: []string{"SERIESGALAX1"}},
+				{locale: "en", query: "giovanni", want: []string{"SERIESGALAX1"}},
+				{locale: "en", query: "銀河鉄道", want: nil},
+				{locale: "en", query: "又三郎", want: []string{"SERIESWIND01"}},
+				{locale: "ja", query: "銀河鉄道", want: []string{"SERIESGALAX1"}},
+				{locale: "ja", query: "galactic", want: nil},
+			} {
+				assertSeriesIDs(t, search.query+" in "+search.locale, searchPublishedSeriesIDs(t, env, &publirav1.SearchPublishedSeriesRequest{
+					Tenant: tenantContext(tenant),
+					Query:  search.query,
+					Locale: search.locale,
+					Order:  order,
+				}), search.want)
+			}
+		})
+	}
+}

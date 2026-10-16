@@ -52,7 +52,24 @@ type Resolver struct {
 	row        dbmodels.PlatformSearchConfig
 	found      bool
 	nextReadAt time.Time
-	open       map[opensearchbackend.Config]*opensearchbackend.Backend
+	open       map[openKey]*opensearchbackend.Backend
+}
+
+// openKey tells apart the configurations a Resolver opens a backend for: a
+// Config holds a slice, which a map cannot key on.
+type openKey struct {
+	url, username, password, index, analysis, locales string
+}
+
+func keyOf(cfg opensearchbackend.Config) openKey {
+	return openKey{
+		url:      cfg.URL,
+		username: cfg.Username,
+		password: cfg.Password,
+		index:    cfg.Index,
+		analysis: cfg.Analysis,
+		locales:  strings.Join(cfg.Locales, ","),
+	}
 }
 
 // NewResolver returns a Resolver over cfg.
@@ -74,7 +91,7 @@ func NewResolver(cfg ResolverConfig) *Resolver {
 		interval: interval,
 		now:      time.Now,
 		logger:   logger,
-		open:     map[opensearchbackend.Config]*opensearchbackend.Backend{},
+		open:     map[openKey]*opensearchbackend.Backend{},
 	}
 }
 
@@ -90,7 +107,7 @@ func (r *Resolver) Serving(ctx context.Context) (*opensearchbackend.Backend, err
 		r.prune()
 		return nil, nil
 	}
-	cfg, err := r.config(stored.Serving.Settings, r.row.ServingPasswordEncrypted.String, stored.Serving.Analysis)
+	cfg, err := r.config(stored.Serving.Settings, r.row.ServingPasswordEncrypted.String, stored.Serving.Analysis, stored.Serving.Locales)
 	if err != nil {
 		return nil, err
 	}
@@ -111,10 +128,13 @@ type Targets struct {
 
 // Targets answers every backend a catalog write goes to: the one the search
 // answers from, and the one being built while a build is due on a target of
-// its own. A build on the target the search answers from, of another
-// analysis, fills a new index behind the same alias and writes every tenant
-// again once it has moved the alias, so the writes go to that alias alone
-// meanwhile. A target whose
+// its own or for other locales than the search answers from. A build on the
+// target the search answers from, of another analysis, fills new indices
+// behind the same aliases and writes every tenant again once it has moved
+// them, so the writes go to the serving aliases alone meanwhile. One for other
+// locales writes behind aliases the search does not read yet, which a process
+// that has not read the row since the build moved the search keeps writing
+// to as well. A target whose
 // build failed is left out, so an engine that refused the index does not hold
 // up every write until an operator fixes it; the build that follows the fix
 // writes the whole catalog there anyway.
@@ -127,8 +147,8 @@ func (r *Resolver) Targets(ctx context.Context) (Targets, error) {
 	stored := r.stored()
 	var configs []opensearchbackend.Config
 	var targets Targets
-	add := func(settings Settings, encrypted, analysis string, building bool) (*opensearchbackend.Backend, error) {
-		cfg, err := r.config(settings, encrypted, analysis)
+	add := func(settings Settings, encrypted, analysis string, locales []string, building bool) (*opensearchbackend.Backend, error) {
+		cfg, err := r.config(settings, encrypted, analysis, locales)
 		if err != nil {
 			return nil, err
 		}
@@ -140,14 +160,14 @@ func (r *Resolver) Targets(ctx context.Context) (Targets, error) {
 		return backend, nil
 	}
 	if stored.Serving.Engine.HasIndex() {
-		backend, err := add(stored.Serving.Settings, r.row.ServingPasswordEncrypted.String, stored.Serving.Analysis, false)
+		backend, err := add(stored.Serving.Settings, r.row.ServingPasswordEncrypted.String, stored.Serving.Analysis, stored.Serving.Locales, false)
 		if err != nil {
 			return Targets{}, err
 		}
 		targets.Serving = backend
 	}
-	if stored.State == Building && stored.Engine.HasIndex() && stored.Target() != stored.Serving.Target() {
-		backend, err := add(stored.Settings, r.row.PasswordEncrypted.String, stored.Analysis, true)
+	if stored.State == Building && stored.Engine.HasIndex() && (stored.Target() != stored.Serving.Target() || !stored.Serving.indicesCurrent()) {
+		backend, err := add(stored.Settings, r.row.PasswordEncrypted.String, stored.Analysis, IndexLocales, true)
 		if err != nil {
 			return Targets{}, err
 		}
@@ -190,10 +210,11 @@ func (r *Resolver) stored() Stored {
 	return FromConfig(r.row)
 }
 
-// config is the client configuration of settings, with encrypted decrypted
-// and the analysis an index it creates is built with.
-func (r *Resolver) config(settings Settings, encrypted, analysis string) (opensearchbackend.Config, error) {
-	cfg := opensearchbackend.Config{URL: settings.URL, Index: settings.Index, Username: settings.Username, Analysis: analysis}
+// config is the client configuration of settings, with encrypted decrypted,
+// the analysis an index it creates is built with, and the languages it keeps
+// an index for.
+func (r *Resolver) config(settings Settings, encrypted, analysis string, locales []string) (opensearchbackend.Config, error) {
+	cfg := opensearchbackend.Config{URL: settings.URL, Index: settings.Index, Username: settings.Username, Analysis: analysis, Locales: locales}
 	if strings.TrimSpace(encrypted) == "" {
 		return cfg, nil
 	}
@@ -218,7 +239,7 @@ func (r *Resolver) config(settings Settings, encrypted, analysis string) (opense
 // mapping the document implies, so it is connected to and its index ensured
 // first. A failed open is not kept, so the next call tries again.
 func (r *Resolver) backend(ctx context.Context, cfg opensearchbackend.Config, building bool) (*opensearchbackend.Backend, error) {
-	if backend, ok := r.open[cfg]; ok {
+	if backend, ok := r.open[keyOf(cfg)]; ok {
 		return backend, nil
 	}
 	var backend *opensearchbackend.Backend
@@ -233,19 +254,19 @@ func (r *Resolver) backend(ctx context.Context, cfg opensearchbackend.Config, bu
 	if err != nil {
 		return nil, err
 	}
-	r.open[cfg] = backend
+	r.open[keyOf(cfg)] = backend
 	return backend, nil
 }
 
 // prune drops every open backend but keep's, which is what the row names now.
 func (r *Resolver) prune(keep ...opensearchbackend.Config) {
-	for cfg := range r.open {
+	for key := range r.open {
 		kept := false
 		for _, k := range keep {
-			kept = kept || cfg == k
+			kept = kept || key == keyOf(k)
 		}
 		if !kept {
-			delete(r.open, cfg)
+			delete(r.open, key)
 		}
 	}
 }

@@ -326,6 +326,9 @@ func TestUpdateTenantDefaultLocalePersistsSupportedCode(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(tenantColumns()).
 			AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", now, "active", nil, "UTC", "en", "{en,ko}"))
 	expectAdminAuditLogInsert(mock)
+	// The save changed the row, so every search document of the tenant is
+	// written again.
+	expectCatalogIndexSync(mock, tenantID, "tenant", tenantID)
 	mock.ExpectCommit()
 
 	client := publiraadminv1connect.NewTenantSettingsServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))

@@ -15,25 +15,28 @@ import (
 	"github.com/publira/publira/server/internal/catalogsearch"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/freewindows"
+	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/publishedseries"
 	"github.com/publira/publira/server/internal/publishepisodes"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
-// assertSeries runs a narrowed or sorted series search for "seed" and compares
-// the hits, in order.
+// assertSeries runs a narrowed or sorted series search for "seed" in every
+// locale and compares the hits, in order.
 func (i index) assertSeries(t *testing.T, tenantID uuid.UUID, surface string, order publishedseries.Order, filter publishedseries.Filter, want ...uuid.UUID) {
 	t.Helper()
-	page, err := i.backend.SearchSeries(context.Background(), catalogsearch.SeriesRequest{
-		Request: catalogsearch.Request{TenantID: tenantID, Surface: surface, Query: "seed", Limit: 10},
-		Order:   order,
-		Filter:  filter,
-	})
-	if err != nil {
-		t.Fatalf("search %s %+v on %s: %v", order.Name, filter, surface, err)
-	}
-	if !slices.Equal(page.IDs, want) {
-		t.Fatalf("search %s %+v on %s = %v, want %v", order.Name, filter, surface, page.IDs, want)
+	for _, code := range locale.Supported {
+		page, err := i.backend.SearchSeries(context.Background(), catalogsearch.SeriesRequest{
+			Request: catalogsearch.Request{TenantID: tenantID, Surface: surface, Query: "seed", Locale: code, Limit: 10},
+			Order:   order,
+			Filter:  filter,
+		})
+		if err != nil {
+			t.Fatalf("search %s %+v on %s in %s: %v", order.Name, filter, surface, code, err)
+		}
+		if !slices.Equal(page.IDs, want) {
+			t.Fatalf("search %s %+v on %s in %s = %v, want %v", order.Name, filter, surface, code, page.IDs, want)
+		}
 	}
 }
 

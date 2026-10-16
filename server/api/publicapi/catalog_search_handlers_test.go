@@ -991,8 +991,8 @@ func TestCatalogSearchPublishedSeriesRefusesAGenreTheTenantDoesNotHave(t *testin
 }
 
 // The SQL backend runs the list's scan of the requested order with the filters
-// beside the keyword, and the token it hands back names that order and those
-// filters after the query.
+// beside the keyword, and the token it hands back names that order, those
+// filters, and the locale the keyword was matched in after the query.
 func TestCatalogSearchPublishedSeriesNarrowsTheListScan(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 
@@ -1002,7 +1002,7 @@ func TestCatalogSearchPublishedSeriesNarrowsTheListScan(t *testing.T) {
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	expectGenreLookup(mock, tenantID, "GENRE0000001", true)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesIDsByPublishedAtDesc)).
-		WithArgs(tenantID, "web", true, "GENRE0000001", nil, "ongoing", nil, "%seed%", nil, false, nil, int32(2)).
+		WithArgs(tenantID, "web", true, "GENRE0000001", nil, "ongoing", nil, "%seed%", "ja", nil, false, nil, int32(2)).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "published_at"}).
 			AddRow(ids[0], now).
 			AddRow(ids[1], now.Add(-time.Hour)))
@@ -1024,7 +1024,7 @@ func TestCatalogSearchPublishedSeriesNarrowsTheListScan(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SearchPublishedSeries: %v", err)
 	}
-	wantToken := webToken(pagination.Forward, "seed", "published_at_desc+has_free_episodes+genre:GENRE0000001+status:ongoing", now.Format(time.RFC3339Nano), ids[0].String())
+	wantToken := webToken(pagination.Forward, "seed", "published_at_desc+has_free_episodes+genre:GENRE0000001+status:ongoing+locale:ja", now.Format(time.RFC3339Nano), ids[0].String())
 	if resp.NextToken != wantToken {
 		t.Fatalf("next_token = %q, want %q", resp.NextToken, wantToken)
 	}

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,14 +16,19 @@ import (
 )
 
 // The catalog index is the mapping in mappings.json with the analysis the
-// platform saved, the default one where it saved none (analysis.go). Every
-// tenant shares the one index, and tenant_id is both the filter every search
+// platform saved, the default one where it saved none (analysis.go). There is
+// one for each language a reader searches in, built from the same definition,
+// and a search reads the index of the reader's language. A series document in
+// it carries the title and the synopsis a reader in that language is shown,
+// so a series with no translation in the language is found by the one shown
+// in its place; a creator's or a label's is the same in every index. Every
+// tenant shares the indices, and tenant_id is both the filter every search
 // carries and the routing key every request is sent with, so a tenant's
 // documents sit on one shard and a search reads only that shard.
 //
-// The configured name is an alias rather than the index itself, so a rebuild
-// can fill a new index under a name of its own and move the alias onto it in
-// one step.
+// Each language's index is reached by an alias named after the configured
+// one rather than by its own name, so a rebuild can fill new indices under
+// names of their own and move every alias onto them in one step.
 //
 // The title and the name are analyzed twice: as they are written, and in the
 // alternate form a query may be typed in, which the reading an administrator
@@ -54,15 +60,22 @@ const (
 	KindLabel   Kind = "label"
 )
 
-// Document is one searchable row of a tenant's catalog.
+// Document is one searchable row of a tenant's catalog, which the backend
+// writes into the index of every language.
 type Document struct {
 	Kind     Kind
 	TenantID uuid.UUID
 	ID       uuid.UUID
-	// Title and Synopsis are a series' text. Name is a creator's or a label's.
+	// Title and Synopsis are a series' text in its tenant's default language,
+	// which the one index of an install that predates per-language indices
+	// carries. Name is a creator's or a label's.
 	Title    string
 	Synopsis string
 	Name     string
+	// Translations are a series' title and synopsis in each language, as a
+	// reader in it is shown them, which that language's index carries. A
+	// language they leave out is given Title and Synopsis.
+	Translations map[string]Translation
 	// Reading is the kana reading an administrator entered for the title or
 	// the name, and empty where there is none.
 	Reading string
@@ -102,6 +115,51 @@ type Document struct {
 	Version int64
 }
 
+// Translation is a series' text in one language.
+type Translation struct {
+	Title    string
+	Synopsis string
+}
+
+// text is the title and the synopsis doc carries in the index of locale.
+func (d Document) text(locale string) (string, string) {
+	if translation, ok := d.Translations[locale]; ok && locale != "" {
+		return translation.Title, translation.Synopsis
+	}
+	return d.Title, d.Synopsis
+}
+
+// target is one catalog index the backend writes into: the alias it is
+// reached by, and the language its series are in, empty for the one index of
+// an install that predates per-language indices.
+type target struct {
+	alias  string
+	locale string
+}
+
+// targets are the backend's catalog indices, in the order of its locales.
+func (b *Backend) targets() []target {
+	if len(b.locales) == 0 {
+		return []target{{alias: b.index}}
+	}
+	targets := make([]target, len(b.locales))
+	for index, locale := range b.locales {
+		targets[index] = target{alias: LocaleAlias(b.index, locale), locale: locale}
+	}
+	return targets
+}
+
+// searchIndex is the alias a search in locale reads.
+func (b *Backend) searchIndex(locale string) (string, error) {
+	if len(b.locales) == 0 {
+		return b.index, nil
+	}
+	if !slices.Contains(b.locales, locale) {
+		return "", fmt.Errorf("opensearchbackend: no catalog index is built for the locale %q", locale)
+	}
+	return LocaleAlias(b.index, locale), nil
+}
+
 type documentSource struct {
 	Kind        Kind       `json:"kind"`
 	TenantID    string     `json:"tenant_id"`
@@ -135,29 +193,31 @@ func documentID(kind Kind, id uuid.UUID) string {
 	return string(kind) + ":" + id.String()
 }
 
-// initialIndexSuffix names the index a first start creates behind the alias. A
+// initialIndexSuffix names the index a first start creates behind an alias. A
 // fixed name is what keeps two processes starting at once from creating two.
 const initialIndexSuffix = "-initial"
 
-// EnsureIndex creates the catalog index behind its alias, with the analysis
-// the backend was configured with, unless the alias, or an index of that name,
-// already exists. What exists is left as it is, its analysis and mappings
-// included: changing them is a rebuild, not something a starting process does
-// on its own.
+// EnsureIndex creates the catalog index of each language behind its alias,
+// with the analysis the backend was configured with, unless the alias, or an
+// index of that name, already exists. What exists is left as it is, its
+// analysis and mappings included: changing them is a rebuild, not something a
+// starting process does on its own.
 func (b *Backend) EnsureIndex(ctx context.Context) error {
-	exists, err := b.nameExists(ctx, b.index)
-	if err != nil {
-		return err
-	}
-	if exists {
-		return nil
-	}
-	body, err := indexDefinition(b.analysis, b.index)
-	if err != nil {
-		return err
-	}
-	if err := b.createIndex(ctx, b.index+initialIndexSuffix, body); err != nil && !alreadyExists(err) {
-		return err
+	for _, t := range b.targets() {
+		exists, err := b.nameExists(ctx, t.alias)
+		if err != nil {
+			return err
+		}
+		if exists {
+			continue
+		}
+		body, err := indexDefinition(b.analysis, t.alias)
+		if err != nil {
+			return err
+		}
+		if err := b.createIndex(ctx, t.alias+initialIndexSuffix, body); err != nil && !alreadyExists(err) {
+			return err
+		}
 	}
 	return nil
 }
@@ -189,10 +249,15 @@ func alreadyExists(err error) bool {
 	return errors.As(err, &structErr) && structErr.Err.Type == "resource_already_exists_exception"
 }
 
-// Put writes doc, replacing the document of the same row, or a tombstone in
-// its place when doc is published on no surface.
+// Put writes doc into every language's index, replacing the document of the
+// same row, or a tombstone in its place when doc is published on no surface.
 func (b *Backend) Put(ctx context.Context, doc Document) error {
-	return b.write(ctx, b.index, []Document{doc}, "")
+	return b.write(ctx, liveIndex, []Document{doc}, "")
+}
+
+// liveIndex writes into the index an alias names.
+func liveIndex(t target) string {
+	return t.alias
 }
 
 // Delete replaces the document of a row with a tombstone, unless the document
@@ -203,7 +268,7 @@ func (b *Backend) Delete(ctx context.Context, kind Kind, tenantID, id uuid.UUID,
 
 // PutAll writes docs the way Put writes each of them.
 func (b *Backend) PutAll(ctx context.Context, docs []Document) error {
-	return b.write(ctx, b.index, docs, "")
+	return b.write(ctx, liveIndex, docs, "")
 }
 
 // PutAllSearchable writes docs the way PutAll does, and returns only once a
@@ -213,11 +278,11 @@ func (b *Backend) PutAll(ctx context.Context, docs []Document) error {
 // changed waits one refresh interval at most, and costs the engine no refresh
 // of its own.
 func (b *Backend) PutAllSearchable(ctx context.Context, docs []Document) error {
-	return b.write(ctx, b.index, docs, "wait_for")
+	return b.write(ctx, liveIndex, docs, "wait_for")
 }
 
-// bulkBatchSize bounds the documents one bulk request carries, so a tenant's
-// whole catalog is not one request body.
+// bulkBatchSize bounds the documents one bulk request carries, counting each
+// language's copy apart, so a tenant's whole catalog is not one request body.
 const bulkBatchSize = 500
 
 // versionType makes a write of an equal version replace the document: two
@@ -232,64 +297,31 @@ type bulkAction struct {
 	VersionType string `json:"version_type"`
 }
 
-// write sends docs to index in batches. refresh is the bulk request's refresh
-// parameter, empty to answer as soon as the engine holds the documents.
-func (b *Backend) write(ctx context.Context, index string, docs []Document, refresh string) error {
-	for start := 0; start < len(docs); start += bulkBatchSize {
-		if err := b.bulk(ctx, index, docs[start:min(start+bulkBatchSize, len(docs))], refresh); err != nil {
+// write sends docs in batches to the index into names for each of the
+// backend's targets. refresh is the bulk request's refresh parameter, empty to
+// answer as soon as the engine holds the documents.
+func (b *Backend) write(ctx context.Context, into func(target) string, docs []Document, refresh string) error {
+	targets := b.targets()
+	batch := max(1, bulkBatchSize/len(targets))
+	for start := 0; start < len(docs); start += batch {
+		if err := b.bulk(ctx, targets, into, docs[start:min(start+batch, len(docs))], refresh); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (b *Backend) bulk(ctx context.Context, index string, docs []Document, refresh string) error {
+func (b *Backend) bulk(ctx context.Context, targets []target, into func(target) string, docs []Document, refresh string) error {
 	var body bytes.Buffer
 	encoder := json.NewEncoder(&body)
 	for _, doc := range docs {
 		if !doc.Kind.valid() {
 			return fmt.Errorf("opensearchbackend: unknown document kind %q", doc.Kind)
 		}
-		action := bulkAction{
-			Index:       index,
-			ID:          documentID(doc.Kind, doc.ID),
-			Routing:     doc.TenantID.String(),
-			Version:     doc.Version,
-			VersionType: versionType,
-		}
-		source := documentSource{
-			Kind:     doc.Kind,
-			TenantID: doc.TenantID.String(),
-			EntityID: doc.ID.String(),
-			Surfaces: []string{},
-		}
-		if len(doc.Surfaces) > 0 {
-			source.Surfaces = doc.Surfaces
-			source.Title = doc.Title
-			source.Synopsis = doc.Synopsis
-			source.Name = doc.Name
-			source.Reading = doc.Reading
-			if !doc.PublishedAt.IsZero() {
-				at := doc.PublishedAt.UTC()
-				source.PublishedAt = &at
+		for _, t := range targets {
+			if err := encodeDocument(encoder, into(t), t.locale, doc); err != nil {
+				return err
 			}
-			source.GenrePublicIDs = doc.GenrePublicIDs
-			source.TagSlugs = doc.TagSlugs
-			source.Status = doc.Status
-			source.ScheduleWeekdays = doc.ScheduleWeekdays
-			source.FreeEpisodeSurfaces = doc.FreeEpisodeSurfaces
-			if len(doc.LatestEpisodeAt) > 0 {
-				source.LatestEpisodeAt = make(map[string]time.Time, len(doc.LatestEpisodeAt))
-				for surface, at := range doc.LatestEpisodeAt {
-					source.LatestEpisodeAt[surface] = at.UTC()
-				}
-			}
-		}
-		if err := encoder.Encode(map[string]bulkAction{"index": action}); err != nil {
-			return fmt.Errorf("opensearchbackend: encode index: %w", err)
-		}
-		if err := encoder.Encode(source); err != nil {
-			return fmt.Errorf("opensearchbackend: encode document: %w", err)
 		}
 	}
 
@@ -303,7 +335,7 @@ func (b *Backend) bulk(ctx context.Context, index string, docs []Document, refre
 	resp, err := b.client.Doc.Bulk(ctx, req)
 	var partial *opensearchapi.PartialBulkError
 	if err != nil && !errors.As(err, &partial) {
-		return fmt.Errorf("opensearchbackend: write to %q: %w", index, err)
+		return fmt.Errorf("opensearchbackend: write the catalog behind %q: %w", b.index, err)
 	}
 	failures := resp.BulkItemFailures()
 	if failures == nil {
@@ -323,7 +355,53 @@ func (b *Backend) bulk(ctx context.Context, index string, docs []Document, refre
 		if item.Error.Reason != nil {
 			reason += ": " + *item.Error.Reason
 		}
-		return fmt.Errorf("opensearchbackend: index %s in %q: status %d: %s", id, index, item.Status, reason)
+		return fmt.Errorf("opensearchbackend: index %s in %q: status %d: %s", id, item.Index, item.Status, reason)
+	}
+	return nil
+}
+
+// encodeDocument writes the bulk action that puts doc into index, the index of
+// locale, and the source it puts there.
+func encodeDocument(encoder *json.Encoder, index, locale string, doc Document) error {
+	action := bulkAction{
+		Index:       index,
+		ID:          documentID(doc.Kind, doc.ID),
+		Routing:     doc.TenantID.String(),
+		Version:     doc.Version,
+		VersionType: versionType,
+	}
+	source := documentSource{
+		Kind:     doc.Kind,
+		TenantID: doc.TenantID.String(),
+		EntityID: doc.ID.String(),
+		Surfaces: []string{},
+	}
+	if len(doc.Surfaces) > 0 {
+		source.Surfaces = doc.Surfaces
+		source.Title, source.Synopsis = doc.text(locale)
+		source.Name = doc.Name
+		source.Reading = doc.Reading
+		if !doc.PublishedAt.IsZero() {
+			at := doc.PublishedAt.UTC()
+			source.PublishedAt = &at
+		}
+		source.GenrePublicIDs = doc.GenrePublicIDs
+		source.TagSlugs = doc.TagSlugs
+		source.Status = doc.Status
+		source.ScheduleWeekdays = doc.ScheduleWeekdays
+		source.FreeEpisodeSurfaces = doc.FreeEpisodeSurfaces
+		if len(doc.LatestEpisodeAt) > 0 {
+			source.LatestEpisodeAt = make(map[string]time.Time, len(doc.LatestEpisodeAt))
+			for surface, at := range doc.LatestEpisodeAt {
+				source.LatestEpisodeAt[surface] = at.UTC()
+			}
+		}
+	}
+	if err := encoder.Encode(map[string]bulkAction{"index": action}); err != nil {
+		return fmt.Errorf("opensearchbackend: encode index: %w", err)
+	}
+	if err := encoder.Encode(source); err != nil {
+		return fmt.Errorf("opensearchbackend: encode document: %w", err)
 	}
 	return nil
 }

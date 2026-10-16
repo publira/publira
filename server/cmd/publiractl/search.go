@@ -313,7 +313,7 @@ func setupSearchReindex(f *commandFlags) func(context.Context, *commandEnv) erro
 		if !result.Serving {
 			suffix = " The settings were saved again while it ran, so the worker builds the index of the newer ones next."
 		}
-		_, err = fmt.Fprintf(env.stdout, "Rebuilt the catalog index; %s now names %s.%s\n", result.Alias, result.Index, suffix)
+		_, err = fmt.Fprintf(env.stdout, "Rebuilt the catalog indices behind %s; their aliases now name %s.%s\n", result.Alias, strings.Join(result.Indices, ", "), suffix)
 		return err
 	}
 }

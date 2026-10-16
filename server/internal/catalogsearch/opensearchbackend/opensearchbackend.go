@@ -44,18 +44,22 @@ const inclusiveKey = "inclusive"
 // a busy node, and its caller sets its own deadline.
 const searchTimeout = 10 * time.Second
 
-// Backend searches one index of an OpenSearch or Elasticsearch cluster.
+// Backend searches the catalog indices of an OpenSearch or Elasticsearch
+// cluster, one for each language.
 type Backend struct {
 	client *opensearchapi.Client
 	index  string
 	// analysis is what an index the backend creates is built with.
 	analysis string
+	// locales are the languages it keeps an index for, none for the one index
+	// of an install that predates per-language indices.
+	locales []string
 }
 
 var _ catalogsearch.Backend = (*Backend)(nil)
 
-// New connects to the engine cfg names and creates the catalog index when it
-// does not exist yet. An engine that does not answer is an error here rather
+// New connects to the engine cfg names and creates the catalog index of each
+// language that does not exist yet. An engine that does not answer is an error here rather
 // than on the first search, so a process configured for it does not start
 // without it.
 func New(ctx context.Context, cfg Config) (*Backend, error) {
@@ -66,14 +70,14 @@ func New(ctx context.Context, cfg Config) (*Backend, error) {
 	if _, err := client.Info(ctx, nil); err != nil {
 		return nil, fmt.Errorf("opensearchbackend: the search engine at %s does not answer: %w", cfg.URL, err)
 	}
-	backend := &Backend{client: client, index: cfg.Index, analysis: cfg.Analysis}
+	backend := newBackend(client, cfg)
 	if err := backend.EnsureIndex(ctx); err != nil {
 		return nil, err
 	}
 	return backend, nil
 }
 
-// Open is a backend over an index that has already been created, such as one
+// Open is a backend over indices that have already been created, such as ones
 // a build has filled. It sends nothing until it is used, so an engine that has
 // stopped answering fails each search on its own timeout rather than the
 // caller that opens it.
@@ -82,7 +86,11 @@ func Open(cfg Config) (*Backend, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Backend{client: client, index: cfg.Index, analysis: cfg.Analysis}, nil
+	return newBackend(client, cfg), nil
+}
+
+func newBackend(client *opensearchapi.Client, cfg Config) *Backend {
+	return &Backend{client: client, index: cfg.Index, analysis: cfg.Analysis, locales: slices.Clone(cfg.Locales)}
 }
 
 func newClient(cfg Config) (*opensearchapi.Client, error) {
@@ -105,7 +113,8 @@ func newClient(cfg Config) (*opensearchapi.Client, error) {
 	return client, nil
 }
 
-// Index is the alias the backend searches and writes through.
+// Index is the alias the platform saved, which the alias of each language's
+// index is named after.
 func (b *Backend) Index() string {
 	return b.index
 }
@@ -187,10 +196,10 @@ var (
 // list key its tokens carry, beside the names of the orders the list has.
 const relevanceOrder = "relevance"
 
-// SearchSeries matches the title, its reading, and the synopsis, keeps the
-// hits the published series list would keep under the request's filters, and
-// orders them the way that list orders under the request's order, or by
-// relevance where it asks for none.
+// SearchSeries matches the title, its reading, and the synopsis a reader in
+// the request's locale is shown, keeps the hits the published series list
+// would keep under the request's filters, and orders them the way that list
+// orders under the request's order, or by relevance where it asks for none.
 func (b *Backend) SearchSeries(ctx context.Context, req catalogsearch.SeriesRequest) (catalogsearch.Page, error) {
 	order := orderFor(seriesSearch)
 	name := relevanceOrder
@@ -202,16 +211,18 @@ func (b *Backend) SearchSeries(ctx context.Context, req catalogsearch.SeriesRequ
 		}
 		name = req.Order.Name
 	}
-	identity := []string{queryKey(req.Query), publishedseries.ListKey(publishedseries.Order{Name: name}, req.Filter)}
+	identity := []string{queryKey(req.Query), publishedseries.SearchKeyIn(publishedseries.Order{Name: name}, req.Filter, req.Locale)}
 	return b.search(ctx, req.Request, seriesSearch, identity, order, seriesFilters(req))
 }
 
-// SearchCreators matches the name and its reading.
+// SearchCreators matches the name and its reading, in the index of the
+// request's locale, which holds the same creators as every other.
 func (b *Backend) SearchCreators(ctx context.Context, req catalogsearch.Request) (catalogsearch.Page, error) {
 	return b.search(ctx, req, creatorSearch, []string{queryKey(req.Query)}, orderFor(creatorSearch), nil)
 }
 
-// SearchLabels matches the name and its reading.
+// SearchLabels matches the name and its reading, in the index of the
+// request's locale, which holds the same labels as every other.
 func (b *Backend) SearchLabels(ctx context.Context, req catalogsearch.Request) (catalogsearch.Page, error) {
 	return b.search(ctx, req, labelSearch, []string{queryKey(req.Query)}, orderFor(labelSearch), nil)
 }
@@ -504,6 +515,10 @@ func (b *Backend) search(ctx context.Context, req catalogsearch.Request, search 
 		}
 	}
 	backward := req.Cursor.Direction == pagination.Backward
+	index, err := b.searchIndex(req.Locale)
+	if err != nil {
+		return catalogsearch.Page{}, err
+	}
 
 	body := searchBody{
 		Size:  req.Limit + 1,
@@ -520,7 +535,7 @@ func (b *Backend) search(ctx context.Context, req catalogsearch.Request, search 
 	ctx, cancel := context.WithTimeout(ctx, searchTimeout)
 	defer cancel()
 	resp, err := b.client.Search(ctx, &opensearchapi.SearchReq{
-		Indices:    []string{b.index},
+		Indices:    []string{index},
 		BodyReader: bytes.NewReader(encoded),
 		Params:     &opensearchapi.SearchParams{Routing: []string{req.TenantID.String()}},
 	})

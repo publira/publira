@@ -175,15 +175,16 @@ func hitsOf[T any](rows []T, convert func(T) hit) []hit {
 	return hits
 }
 
-// SearchSeries matches the title or the synopsis, narrowed and sorted by the
-// scans of the published series list, which take the keyword as one more
-// filter. Its own order, which it cannot rank by, is the title.
+// SearchSeries matches the title or the synopsis a reader in the request's
+// locale is shown, narrowed and sorted by the scans of the published series
+// list, which take the keyword as one more filter. Its own order, which it
+// cannot rank by, is the title.
 func (b *Backend) SearchSeries(ctx context.Context, req catalogsearch.SeriesRequest) (catalogsearch.Page, error) {
 	order := req.Order
 	if order == (publishedseries.Order{}) {
 		order = publishedseries.TitleAsc
 	}
-	identity := []string{queryKey(req.Query), publishedseries.ListKeyIn(order, req.Filter, req.Locale)}
+	identity := []string{queryKey(req.Query), publishedseries.SearchKeyIn(order, req.Filter, req.Locale)}
 	return b.search(ctx, req.Request, identity, func(ctx context.Context, queries dbmodels.Querier, backward bool, pattern string, keys boundary, limit int32) ([]hit, error) {
 		scanKeys, err := seriesKeys(order, keys)
 		if err != nil {
