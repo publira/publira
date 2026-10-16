@@ -37,6 +37,19 @@ func TestAppendRecipientsLeavesOutDuplicatesInAnyCase(t *testing.T) {
 	}
 }
 
+func TestRawHeaderEndsAtTheFirstBlankLine(t *testing.T) {
+	cases := map[string]string{
+		"From: a@example.com\r\nTo: b@example.com\r\n\r\nHello\r\n\r\nBye": "From: a@example.com\r\nTo: b@example.com",
+		"From: a@example.com\nTo: b@example.com\n\nHello\r\n\r\nBye":       "From: a@example.com\nTo: b@example.com",
+		"From: a@example.com\r\n": "From: a@example.com\r\n",
+	}
+	for raw, want := range cases {
+		if got := string(RawHeader([]byte(raw))); got != want {
+			t.Errorf("RawHeader(%q) = %q, want %q", raw, got, want)
+		}
+	}
+}
+
 func TestReadMIMEPrefersThePlainTextPart(t *testing.T) {
 	raw := strings.ReplaceAll(`From: Reader <reader@example.net>
 To: contact@reply.example.com
