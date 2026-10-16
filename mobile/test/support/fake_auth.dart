@@ -9,6 +9,7 @@ import 'package:publira/auth/email_change.dart';
 import 'package:publira/auth/identity_provider.dart';
 import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/reader_age.dart';
+import 'package:publira/auth/reader_icon_policy.dart';
 import 'package:publira/auth/session_store.dart';
 import 'package:publira/auth/sign_up_requirements.dart';
 
@@ -224,6 +225,24 @@ class FakeAuthRepository implements AuthRepository {
   /// upload, since the API stores a replaced icon under a new URL.
   static Uri uploadedIconUrl(int upload) =>
       Uri.parse('http://images.test/user-icons/$upload.png');
+
+  /// The presets [selectIcon] has been asked for, in order.
+  final iconSelections = <String>[];
+
+  /// What [readIconChoice] answers with, which a test changes to stand in
+  /// for a tenant that changes its policy while the screen is open.
+  ReaderIconChoice iconChoice = const ReaderIconUpload();
+
+  /// Thrown by [readIconChoice] in place of [iconChoice].
+  AuthFailure? iconChoiceFailure;
+
+  /// How many times [readIconChoice] has been asked.
+  var iconChoiceReads = 0;
+
+  /// The URL a preset is drawn from, and the one the account shows once the
+  /// preset is picked.
+  static Uri presetIconUrl(String presetId) =>
+      Uri.parse('http://images.test/reader-icon-presets/$presetId.png');
 
   /// Held open by a test that needs to act while [changePassword] is in
   /// flight.
@@ -495,6 +514,7 @@ class FakeAuthRepository implements AuthRepository {
       userPublicId: this.session.userPublicId,
       userName: this.session.userName,
       userIconUrl: this.session.userIconUrl,
+      userIconPresetId: this.session.userIconPresetId,
     );
   }
 
@@ -572,11 +592,13 @@ class FakeAuthRepository implements AuthRepository {
       userPublicId: this.session.userPublicId,
       userName: name,
       userIconUrl: this.session.userIconUrl,
+      userIconPresetId: this.session.userIconPresetId,
     );
     return session.withUser(
       userPublicId: session.userPublicId,
       userName: name,
       userIconUrl: session.userIconUrl,
+      userIconPresetId: session.userIconPresetId,
     );
   }
 
@@ -590,12 +612,32 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<AuthSession> selectIcon(AuthSession session, String presetId) async {
+    iconSelections.add(presetId);
+    return _changeIcon(session, presetIconUrl(presetId), presetId: presetId);
+  }
+
+  @override
   Future<AuthSession> removeIcon(AuthSession session) async {
     iconRemovals++;
     return _changeIcon(session, null);
   }
 
-  Future<AuthSession> _changeIcon(AuthSession session, Uri? iconUrl) async {
+  @override
+  Future<ReaderIconChoice> readIconChoice() async {
+    iconChoiceReads++;
+    final failure = iconChoiceFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return iconChoice;
+  }
+
+  Future<AuthSession> _changeIcon(
+    AuthSession session,
+    Uri? iconUrl, {
+    String? presetId,
+  }) async {
     await iconGate?.future;
     final failure = iconFailure;
     if (failure != null) {
@@ -605,11 +647,13 @@ class FakeAuthRepository implements AuthRepository {
       userPublicId: this.session.userPublicId,
       userName: this.session.userName,
       userIconUrl: iconUrl,
+      userIconPresetId: presetId,
     );
     return session.withUser(
       userPublicId: session.userPublicId,
       userName: session.userName,
       userIconUrl: iconUrl,
+      userIconPresetId: presetId,
     );
   }
 

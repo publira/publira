@@ -9,6 +9,7 @@ class AuthSession {
     required this.userPublicId,
     required this.userName,
     this.userIconUrl,
+    this.userIconPresetId,
     this.expiresAt,
   });
 
@@ -26,6 +27,7 @@ class AuthSession {
     }
     final rawExpiresAt = decoded['expiresAt'];
     final rawIconUrl = decoded['userIconUrl'];
+    final rawIconPresetId = decoded['userIconPresetId'];
     return AuthSession(
       accessToken: accessToken,
       userPublicId: decoded['userPublicId'] is String
@@ -35,6 +37,9 @@ class AuthSession {
           ? decoded['userName']! as String
           : '',
       userIconUrl: rawIconUrl is String ? Uri.tryParse(rawIconUrl) : null,
+      userIconPresetId: rawIconPresetId is String && rawIconPresetId.isNotEmpty
+          ? rawIconPresetId
+          : null,
       expiresAt: rawExpiresAt is String
           ? DateTime.tryParse(rawExpiresAt)?.toUtc()
           : null,
@@ -54,6 +59,10 @@ class AuthSession {
   /// drawn as the fallback an account without an icon gets.
   final Uri? userIconUrl;
 
+  /// The tenant preset [userIconUrl] shows, as `AuthService.SelectMyIcon`
+  /// names it, and `null` for an uploaded icon or none.
+  final String? userIconPresetId;
+
   /// When the API stops accepting [accessToken]. `null` when the server sent a
   /// timestamp this build could not read, in which case only the API can say
   /// whether the token is still good.
@@ -70,12 +79,14 @@ class AuthSession {
     required String userPublicId,
     required String userName,
     required Uri? userIconUrl,
+    required String? userIconPresetId,
   }) {
     return AuthSession(
       accessToken: accessToken,
       userPublicId: userPublicId,
       userName: userName,
       userIconUrl: userIconUrl,
+      userIconPresetId: userIconPresetId,
       expiresAt: expiresAt,
     );
   }
@@ -88,6 +99,7 @@ class AuthSession {
       userPublicId: userPublicId,
       userName: userName,
       userIconUrl: userIconUrl,
+      userIconPresetId: userIconPresetId,
       expiresAt: expiresAt,
     );
   }
@@ -98,6 +110,7 @@ class AuthSession {
       'userPublicId': userPublicId,
       'userName': userName,
       if (userIconUrl != null) 'userIconUrl': userIconUrl!.toString(),
+      if (userIconPresetId != null) 'userIconPresetId': userIconPresetId,
       if (expiresAt != null) 'expiresAt': expiresAt!.toIso8601String(),
     };
   }

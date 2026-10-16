@@ -103,6 +103,7 @@ void main() {
         userPublicId: 'OtherRDRAAA1',
         userName: 'Other Reader',
         userIconUrl: null,
+        userIconPresetId: null,
       )
       ..emailNotifications = true;
     await auth.signIn(email: 'other@example.com', password: 'password');

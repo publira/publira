@@ -5,6 +5,7 @@ import 'package:publira/auth/email_change.dart';
 import 'package:publira/auth/identity_provider.dart';
 import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/reader_age.dart';
+import 'package:publira/auth/reader_icon_policy.dart';
 import 'package:publira/auth/sign_up_requirements.dart';
 
 /// Sign-up, sign-in, password reset, session checks, and the signed-in
@@ -215,11 +216,24 @@ abstract class AuthRepository {
   /// the API would not make an icon of.
   Future<AuthSession> uploadIcon(AuthSession session, AccountIconUpload upload);
 
+  /// Shows the tenant's preset [presetId] as the icon of the account behind
+  /// [session], in place of the one it showed, and returns the session
+  /// carrying it.
+  ///
+  /// Throws [AuthFailure], with [AuthFailureKind.iconPresetUnavailable] for a
+  /// preset the tenant no longer holds.
+  Future<AuthSession> selectIcon(AuthSession session, String presetId);
+
   /// Leaves the account behind [session] with no icon and returns the session
   /// carrying none.
   ///
   /// Throws [AuthFailure].
   Future<AuthSession> removeIcon(AuthSession session);
+
+  /// What the tenant lets its readers show as an icon.
+  ///
+  /// Throws [AuthFailure].
+  Future<ReaderIconChoice> readIconChoice();
 
   /// Replaces the password of the account behind [session] and returns the
   /// session to keep.

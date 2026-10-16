@@ -8,6 +8,7 @@ import 'package:publira/auth/account_icon_picker.dart';
 import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_session.dart';
+import 'package:publira/auth/reader_icon_policy.dart';
 import 'package:publira/router.dart';
 
 import 'support/fake_account_icon_picker.dart';
@@ -22,6 +23,7 @@ void main() {
     userPublicId: fakeSession.userPublicId,
     userName: fakeSession.userName,
     userIconUrl: shownIcon,
+    userIconPresetId: null,
   );
 
   late FakeAuthRepository repository;
@@ -310,5 +312,191 @@ void main() {
     expect(shown, findsOneWidget);
     expect(upload, findsNothing);
     expect(remove, findsNothing);
+  });
+
+  group('under the tenant reader icon policy', () {
+    ReaderIconPreset preset(String id) =>
+        ReaderIconPreset(id: id, iconUrl: FakeAuthRepository.presetIconUrl(id));
+
+    Finder presetButton(String id) =>
+        find.byKey(ValueKey(('account-icon-preset', id)));
+
+    final presets = find.byKey(const ValueKey('account-icon-presets'));
+    final loadError = find.byKey(const ValueKey('account-icon-error'));
+
+    testWidgets('a preset policy offers the presets in place of an upload', (
+      tester,
+    ) async {
+      repository.iconChoice = ReaderIconPresets([
+        preset('a'),
+        preset('b'),
+        preset('c'),
+      ]);
+      await pumpAccount(tester, picker: FakeAccountIconPicker([pngIcon()]));
+
+      expect(fallback, findsOneWidget);
+      expect(upload, findsNothing);
+      expect(remove, findsNothing);
+      expect(presets, findsOneWidget);
+      expect(
+        find.text('Choose one of the icons this site provides.'),
+        findsOneWidget,
+      );
+      expect(
+        tester.getSemantics(find.bySemanticsLabel('Icon 2')),
+        isSemantics(
+          isButton: true,
+          isSelected: false,
+          isEnabled: true,
+          hasTapAction: true,
+        ),
+      );
+
+      await tester.tap(presetButton('b'));
+      await pumpUntilFound(tester, shown);
+
+      expect(repository.iconSelections, ['b']);
+      expect(repository.iconUploads, isEmpty);
+      expect(auth.session?.userIconUrl, FakeAuthRepository.presetIconUrl('b'));
+      expect(auth.session?.userIconPresetId, 'b');
+      expect(store.session?.userIconPresetId, 'b');
+      expect(find.text('Your icon has been updated.'), findsOneWidget);
+      expect(
+        tester.getSemantics(find.bySemanticsLabel('Icon 2')),
+        isSemantics(isSelected: true),
+      );
+      expect(remove, findsOneWidget);
+
+      // The one the account shows is already the answer.
+      await tester.tap(presetButton('b'));
+      await tester.pump();
+      expect(repository.iconSelections, ['b']);
+
+      await tester.tap(presetButton('c'));
+      await pumpUntilTrue(
+        tester,
+        () => auth.session?.userIconPresetId == 'c',
+        description: 'the second preset taken',
+      );
+      expect(repository.iconSelections, ['b', 'c']);
+
+      await tester.tap(remove);
+      await pumpUntilFound(tester, fallback);
+      expect(repository.iconRemovals, 1);
+      expect(auth.session?.userIconPresetId, isNull);
+      expect(presets, findsOneWidget);
+    });
+
+    testWidgets('a preset policy with no presets yet offers only a removal', (
+      tester,
+    ) async {
+      repository.iconChoice = const ReaderIconPresets([]);
+      await pumpAccount(tester, picker: FakeAccountIconPicker([]));
+
+      expect(fallback, findsNothing);
+      expect(upload, findsNothing);
+      expect(presets, findsNothing);
+
+      signInAs(withIcon);
+      repository.iconChoice = const ReaderIconPresets([]);
+      await pumpAccount(tester, picker: FakeAccountIconPicker([]));
+
+      expect(shown, findsOneWidget);
+      expect(remove, findsOneWidget);
+      expect(upload, findsNothing);
+      expect(presets, findsNothing);
+    });
+
+    testWidgets('a disabled policy leaves the icon off the screen', (
+      tester,
+    ) async {
+      repository.iconChoice = const ReaderIconDisabled();
+      await pumpAccount(tester, picker: FakeAccountIconPicker([]));
+
+      expect(find.byKey(const ValueKey('account-name')), findsOneWidget);
+      expect(fallback, findsNothing);
+      expect(shown, findsNothing);
+      expect(upload, findsNothing);
+      expect(remove, findsNothing);
+      expect(presets, findsNothing);
+    });
+
+    testWidgets('a policy that cannot be read offers nothing but a retry', (
+      tester,
+    ) async {
+      repository.iconChoiceFailure = const AuthFailure(AuthFailureKind.network);
+      await pumpAccount(tester, picker: FakeAccountIconPicker([]));
+
+      expect(loadError, findsOneWidget);
+      expect(find.text('Could not load your icon settings.'), findsOneWidget);
+      expect(fallback, findsNothing);
+      expect(upload, findsNothing);
+
+      repository.iconChoiceFailure = null;
+      await tester.tap(find.byKey(const ValueKey('account-icon-retry')));
+      await pumpUntilFound(tester, upload);
+      expect(loadError, findsNothing);
+      expect(fallback, findsOneWidget);
+    });
+
+    testWidgets(
+      'a change the tenant stopped allowing redraws the field from the policy '
+      'read again',
+      (tester) async {
+        signInAs(withIcon);
+        await pumpAccount(tester, picker: FakeAccountIconPicker([pngIcon()]));
+        expect(repository.iconChoiceReads, 1);
+
+        repository
+          ..iconFailure = const AuthFailure(AuthFailureKind.iconNotAllowed)
+          ..iconChoice = const ReaderIconDisabled();
+        await tester.tap(upload);
+        await pumpUntilFound(
+          tester,
+          find.text('This site no longer allows this change to your icon.'),
+        );
+        await tester.pump();
+
+        expect(repository.iconChoiceReads, 2);
+        expect(upload, findsNothing);
+        expect(shown, findsNothing);
+        expect(failure, findsNothing);
+      },
+    );
+
+    testWidgets('a preset the tenant deleted is dropped from the field', (
+      tester,
+    ) async {
+      repository.iconChoice = ReaderIconPresets([preset('a'), preset('b')]);
+      await pumpAccount(tester, picker: FakeAccountIconPicker([]));
+
+      repository
+        ..iconFailure = const AuthFailure(AuthFailureKind.iconPresetUnavailable)
+        ..iconChoice = ReaderIconPresets([preset('a')]);
+      await tester.tap(presetButton('b'));
+      await pumpUntilFound(
+        tester,
+        find.text('This icon is no longer available. Choose another.'),
+      );
+      await tester.pump();
+
+      expect(presetButton('a'), findsOneWidget);
+      expect(presetButton('b'), findsNothing);
+      expect(auth.session?.userIconUrl, isNull);
+    });
+
+    testWidgets(
+      'an image Android kept is dropped where the tenant takes no upload',
+      (tester) async {
+        repository.iconChoice = ReaderIconPresets([preset('a')]);
+        final picker = FakeAccountIconPicker([])..lost = pngIcon();
+        await pumpAccount(tester, picker: picker);
+        await tester.pump(const Duration(milliseconds: 50));
+
+        expect(picker.recoveredFor, [fakeSession.userPublicId]);
+        expect(repository.iconUploads, isEmpty);
+        expect(fallback, findsOneWidget);
+      },
+    );
   });
 }

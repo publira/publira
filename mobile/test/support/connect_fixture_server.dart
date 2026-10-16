@@ -797,6 +797,46 @@ class ConnectFixtureServer {
   /// is refused with `STORAGE_NOT_CONFIGURED`.
   var iconStorageConfigured = true;
 
+  /// The tenant's reader icon policy as `GetTenantReaderIconPolicy` answers
+  /// it. `UploadMyIcon` is refused with `READER_ICON_NOT_ALLOWED` under any
+  /// other than upload, and `SelectMyIcon` under any other than preset.
+  var readerIconPolicy = pb.ReaderIconPolicy.READER_ICON_POLICY_UPLOAD;
+
+  /// The presets the tenant offers, which `GetTenantReaderIconPolicy` lists
+  /// only under the preset policy.
+  var readerIconPresets = <pb.ReaderIconPreset>[];
+
+  /// Answered by `GetTenantReaderIconPolicy` in place of the one built from
+  /// [readerIconPolicy] and [readerIconPresets], for a test that needs one
+  /// the API could send but no setting here builds.
+  pb.GetTenantReaderIconPolicyResponse? readerIconPolicyResponse;
+
+  /// The preset the member's icon is, and `null` for an upload or none.
+  String? memberIconPresetId;
+
+  /// The presets `SelectMyIcon` has shown as the member's icon, in order.
+  final iconSelections = <String>[];
+
+  /// A preset of the tenant's, whose one rendition is served under
+  /// [readerIconPresetPath].
+  static pb.ReaderIconPreset readerIconPreset(String id) => pb.ReaderIconPreset(
+    id: id,
+    createdAt: '2026-10-01T00:00:00Z',
+    variants: [
+      pb.UserIconVariant(
+        label: 'icon',
+        url: readerIconPresetPath(id),
+        contentType: 'image/webp',
+        width: 512,
+        height: 512,
+      ),
+    ],
+  );
+
+  /// The image-server path of preset [id]'s image.
+  static String readerIconPresetPath(String id) =>
+      '/images/reader-icon-presets/$id';
+
   /// The addresses `RequestEmailChange` has accepted a move to, in order.
   final requestedEmailChanges = <String>[];
 
@@ -1407,6 +1447,7 @@ class ConnectFixtureServer {
             birthDate: memberBirthDate.isNotEmpty ? memberBirthDate : null,
             email: memberEmail,
             iconImageVariants: _memberIcon,
+            iconPresetId: memberIconPresetId,
           ),
         ),
       );
@@ -1526,6 +1567,14 @@ class ConnectFixtureServer {
     if (path.endsWith('/DeleteMyIcon')) {
       recorded.decode(pb.DeleteMyIconRequest());
       await _writeChangeMyIcon(request, null);
+      return;
+    }
+
+    if (path.endsWith('/SelectMyIcon')) {
+      await _writeSelectMyIcon(
+        request,
+        recorded.decode(pb.SelectMyIconRequest()),
+      );
       return;
     }
 
@@ -1776,6 +1825,27 @@ class ConnectFixtureServer {
                   bundleIdentifier: iosAppBundleIdentifier,
                 ),
         ),
+      );
+      return;
+    }
+
+    if (path.endsWith('/GetTenantReaderIconPolicy')) {
+      recorded.decode(pb.GetTenantReaderIconPolicyRequest());
+      if (tenantStatus != HttpStatus.ok) {
+        await _writeUnavailable(request, tenantStatus);
+        return;
+      }
+      await _writeMessage(
+        request,
+        readerIconPolicyResponse ??
+            pb.GetTenantReaderIconPolicyResponse(
+              policy: readerIconPolicy,
+              presets:
+                  readerIconPolicy ==
+                      pb.ReaderIconPolicy.READER_ICON_POLICY_PRESET
+                  ? readerIconPresets
+                  : null,
+            ),
       );
       return;
     }
@@ -3160,6 +3230,7 @@ class ConnectFixtureServer {
             name: memberCurrentName,
             role: 'member',
             iconImageVariants: _memberIcon,
+            iconPresetId: memberIconPresetId,
           ),
           accessToken: _accessToken(memberAccessToken),
         ),
@@ -3434,6 +3505,7 @@ class ConnectFixtureServer {
     role: 'member',
     birthDate: memberBirthDate.isNotEmpty ? memberBirthDate : null,
     iconImageVariants: _memberIcon,
+    iconPresetId: memberIconPresetId,
   );
 
   /// `UpdateMe` as the API applies a birth date: once, and only as a calendar
@@ -3506,6 +3578,10 @@ class ConnectFixtureServer {
         );
         return;
       }
+      if (readerIconPolicy != pb.ReaderIconPolicy.READER_ICON_POLICY_UPLOAD) {
+        await _writeIconNotAllowed(request);
+        return;
+      }
       if (!iconStorageConfigured) {
         await _writeError(
           request,
@@ -3517,6 +3593,7 @@ class ConnectFixtureServer {
         return;
       }
       iconUploads.add((bytes: bytes, contentType: contentType));
+      memberIconPresetId = null;
       memberIconPath =
           '/images/users/0190a0c0-0000-7000-8000-${iconUploads.length.toString().padLeft(12, '0')}';
       await _writeMessage(
@@ -3527,8 +3604,52 @@ class ConnectFixtureServer {
     }
     iconRemovals++;
     memberIconPath = null;
+    memberIconPresetId = null;
     await _writeMessage(request, pb.DeleteMyIconResponse(user: _memberUser()));
   }
+
+  /// `SelectMyIcon` as the API answers it: only under the preset policy, and
+  /// only for a preset the tenant holds, whose renditions the account then
+  /// carries.
+  Future<void> _writeSelectMyIcon(
+    HttpRequest request,
+    pb.SelectMyIconRequest body,
+  ) async {
+    if (!await _writeUnlessAuthorized(request)) {
+      return;
+    }
+    if (readerIconPolicy != pb.ReaderIconPolicy.READER_ICON_POLICY_PRESET) {
+      await _writeIconNotAllowed(request);
+      return;
+    }
+    final presetId = body.presetId.trim();
+    final preset = readerIconPresets
+        .where((preset) => preset.id == presetId)
+        .firstOrNull;
+    if (preset == null) {
+      await _writeError(
+        request,
+        HttpStatus.notFound,
+        'not_found',
+        'reader icon preset not found',
+      );
+      return;
+    }
+    iconSelections.add(presetId);
+    memberIconPath = preset.variants.first.url;
+    memberIconPresetId = presetId;
+    await _writeMessage(request, pb.SelectMyIconResponse(user: _memberUser()));
+  }
+
+  /// The refusal of an icon change the tenant's reader icon policy does not
+  /// allow.
+  Future<void> _writeIconNotAllowed(HttpRequest request) => _writeError(
+    request,
+    HttpStatus.badRequest,
+    'failed_precondition',
+    'reader icon policy does not allow this change',
+    details: [errorInfoDetail('READER_ICON_NOT_ALLOWED')],
+  );
 
   /// `ChangePassword` as the API answers it: the current password has to be
   /// the member's, the new one has to differ, and the token the request came

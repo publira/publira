@@ -318,6 +318,36 @@ final class AppMessages {
     return _format('mobile.account.icon_help');
   }
 
+  /// `mobile.account.icon_load_failed`
+  String get accountIconLoadFailed {
+    return _format('mobile.account.icon_load_failed');
+  }
+
+  /// `mobile.account.icon_not_allowed`
+  String get accountIconNotAllowed {
+    return _format('mobile.account.icon_not_allowed');
+  }
+
+  /// `mobile.account.icon_preset_help`
+  String get accountIconPresetHelp {
+    return _format('mobile.account.icon_preset_help');
+  }
+
+  /// `mobile.account.icon_preset_option`
+  String accountIconPresetOption({required num number}) {
+    return _format('mobile.account.icon_preset_option', {'number': number});
+  }
+
+  /// `mobile.account.icon_preset_unavailable`
+  String get accountIconPresetUnavailable {
+    return _format('mobile.account.icon_preset_unavailable');
+  }
+
+  /// `mobile.account.icon_presets_label`
+  String get accountIconPresetsLabel {
+    return _format('mobile.account.icon_presets_label');
+  }
+
   /// `mobile.account.icon_refused`
   String get accountIconRefused {
     return _format('mobile.account.icon_refused');
@@ -346,6 +376,16 @@ final class AppMessages {
   /// `mobile.account.icon_replace`
   String get accountIconReplace {
     return _format('mobile.account.icon_replace');
+  }
+
+  /// `mobile.account.icon_select_failed`
+  String get accountIconSelectFailed {
+    return _format('mobile.account.icon_select_failed');
+  }
+
+  /// `mobile.account.icon_selected`
+  String get accountIconSelected {
+    return _format('mobile.account.icon_selected');
   }
 
   /// `mobile.account.icon_storage_unavailable`
@@ -3156,6 +3196,12 @@ const _jaSources = <String, String>{
   'mobile.account.icon_alt': 'あなたのアイコン',
   'mobile.account.icon_help':
       'JPEG/PNG/WebP、10MB以下、128x128px以上の画像を選択してください。中央から正方形に切り抜かれます。',
+  'mobile.account.icon_load_failed': 'アイコンの設定を読み込めませんでした。',
+  'mobile.account.icon_not_allowed': 'このサイトでは現在このアイコンの変更はできません。',
+  'mobile.account.icon_preset_help': 'このサイトが用意したアイコンから選んでください。',
+  'mobile.account.icon_preset_option': 'アイコン{\$number :integer}',
+  'mobile.account.icon_preset_unavailable': 'このアイコンは選べなくなりました。別のアイコンを選んでください。',
+  'mobile.account.icon_presets_label': '選べるアイコン',
   'mobile.account.icon_refused':
       'この画像はアイコンに使用できません。JPEG/PNG/WebP、10MB以下、128x128px以上の画像を選択してください。',
   'mobile.account.icon_remove': 'アイコンを削除',
@@ -3163,6 +3209,8 @@ const _jaSources = <String, String>{
   'mobile.account.icon_removed': 'アイコンを削除しました。',
   'mobile.account.icon_removing': '削除中…',
   'mobile.account.icon_replace': 'アイコンを変更',
+  'mobile.account.icon_select_failed': 'アイコンを更新できませんでした。もう一度お試しください。',
+  'mobile.account.icon_selected': 'アイコンを更新しました。',
   'mobile.account.icon_storage_unavailable':
       '現在このサイトではアイコンをアップロードできません。解決しない場合はサイトにお問い合わせください。',
   'mobile.account.icon_too_large': '画像が10MBを超えています。より小さい画像を選択してください。',
@@ -3822,6 +3870,15 @@ const _enSources = <String, String>{
   'mobile.account.icon_alt': 'Your icon',
   'mobile.account.icon_help':
       'Select a JPEG, PNG, or WebP image no larger than 10MB and at least 128x128px. It is cropped to a square from the center.',
+  'mobile.account.icon_load_failed': 'Could not load your icon settings.',
+  'mobile.account.icon_not_allowed':
+      'This site no longer allows this change to your icon.',
+  'mobile.account.icon_preset_help':
+      'Choose one of the icons this site provides.',
+  'mobile.account.icon_preset_option': 'Icon {\$number :integer}',
+  'mobile.account.icon_preset_unavailable':
+      'This icon is no longer available. Choose another.',
+  'mobile.account.icon_presets_label': 'Icons to choose from',
   'mobile.account.icon_refused':
       'This image cannot be used as an icon. Select a JPEG, PNG, or WebP image no larger than 10MB and at least 128x128px.',
   'mobile.account.icon_remove': 'Remove icon',
@@ -3829,6 +3886,8 @@ const _enSources = <String, String>{
   'mobile.account.icon_removed': 'Your icon has been removed.',
   'mobile.account.icon_removing': 'Removing…',
   'mobile.account.icon_replace': 'Change icon',
+  'mobile.account.icon_select_failed': 'Could not update your icon. Try again.',
+  'mobile.account.icon_selected': 'Your icon has been updated.',
   'mobile.account.icon_storage_unavailable':
       'Icons cannot be uploaded on this site right now. Contact the site if this continues.',
   'mobile.account.icon_too_large':
@@ -4582,6 +4641,13 @@ const _koSources = <String, String>{
   'mobile.account.icon_alt': '내 아이콘',
   'mobile.account.icon_help':
       'JPEG, PNG, WebP 형식으로 10MB 이하, 128x128px 이상인 이미지를 선택해 주세요. 가운데를 기준으로 정사각형으로 잘립니다.',
+  'mobile.account.icon_load_failed': '아이콘 설정을 불러오지 못했습니다.',
+  'mobile.account.icon_not_allowed': '이 사이트에서는 지금 이 아이콘 변경을 할 수 없습니다.',
+  'mobile.account.icon_preset_help': '이 사이트에서 제공하는 아이콘 중에서 선택해 주세요.',
+  'mobile.account.icon_preset_option': '아이콘 {\$number :integer}',
+  'mobile.account.icon_preset_unavailable':
+      '이 아이콘은 더 이상 선택할 수 없습니다. 다른 아이콘을 선택해 주세요.',
+  'mobile.account.icon_presets_label': '선택할 수 있는 아이콘',
   'mobile.account.icon_refused':
       '이 이미지는 아이콘으로 사용할 수 없습니다. JPEG, PNG, WebP 형식으로 10MB 이하, 128x128px 이상인 이미지를 선택해 주세요.',
   'mobile.account.icon_remove': '아이콘 삭제',
@@ -4589,6 +4655,8 @@ const _koSources = <String, String>{
   'mobile.account.icon_removed': '아이콘을 삭제했습니다.',
   'mobile.account.icon_removing': '삭제 중…',
   'mobile.account.icon_replace': '아이콘 변경',
+  'mobile.account.icon_select_failed': '아이콘을 변경하지 못했습니다. 다시 시도해 주세요.',
+  'mobile.account.icon_selected': '아이콘을 변경했습니다.',
   'mobile.account.icon_storage_unavailable':
       '지금은 이 사이트에서 아이콘을 업로드할 수 없습니다. 계속되면 사이트에 문의해 주세요.',
   'mobile.account.icon_too_large': '이미지가 10MB를 넘습니다. 더 작은 이미지를 선택해 주세요.',
@@ -5236,6 +5304,12 @@ const _zhHansSources = <String, String>{
   'mobile.account.icon_alt': '您的头像',
   'mobile.account.icon_help':
       '请选择不超过10MB、尺寸至少为128x128px的JPEG、PNG或WebP图片。图片将从中心裁剪为正方形。',
+  'mobile.account.icon_load_failed': '无法加载您的头像设置。',
+  'mobile.account.icon_not_allowed': '此网站已不再允许这样更改头像。',
+  'mobile.account.icon_preset_help': '请从此网站提供的头像中选择一个。',
+  'mobile.account.icon_preset_option': '头像{\$number :integer}',
+  'mobile.account.icon_preset_unavailable': '此头像已无法选择。请选择其他头像。',
+  'mobile.account.icon_presets_label': '可选择的头像',
   'mobile.account.icon_refused':
       '此图片无法用作头像。请选择不超过10MB、尺寸至少为128x128px的JPEG、PNG或WebP图片。',
   'mobile.account.icon_remove': '删除头像',
@@ -5243,6 +5317,8 @@ const _zhHansSources = <String, String>{
   'mobile.account.icon_removed': '您的头像已删除。',
   'mobile.account.icon_removing': '正在删除…',
   'mobile.account.icon_replace': '更换头像',
+  'mobile.account.icon_select_failed': '无法更新您的头像。请重试。',
+  'mobile.account.icon_selected': '您的头像已更新。',
   'mobile.account.icon_storage_unavailable': '此网站目前无法上传头像。如果问题持续，请联系网站。',
   'mobile.account.icon_too_large': '图片超过10MB。请选择更小的图片。',
   'mobile.account.icon_too_small': '图片小于128x128px。请选择更大的图片。',
@@ -5839,6 +5915,12 @@ const _zhHantSources = <String, String>{
   'mobile.account.icon_alt': '您的頭像',
   'mobile.account.icon_help':
       '請選擇不超過10MB、尺寸至少為128x128px的JPEG、PNG或WebP圖片。圖片將從中心裁切為正方形。',
+  'mobile.account.icon_load_failed': '無法載入您的頭像設定。',
+  'mobile.account.icon_not_allowed': '此網站已不再允許這樣變更頭像。',
+  'mobile.account.icon_preset_help': '請從此網站提供的頭像中選擇一個。',
+  'mobile.account.icon_preset_option': '頭像{\$number :integer}',
+  'mobile.account.icon_preset_unavailable': '此頭像已無法選擇。請選擇其他頭像。',
+  'mobile.account.icon_presets_label': '可選擇的頭像',
   'mobile.account.icon_refused':
       '此圖片無法用作頭像。請選擇不超過10MB、尺寸至少為128x128px的JPEG、PNG或WebP圖片。',
   'mobile.account.icon_remove': '刪除頭像',
@@ -5846,6 +5928,8 @@ const _zhHantSources = <String, String>{
   'mobile.account.icon_removed': '您的頭像已刪除。',
   'mobile.account.icon_removing': '正在刪除…',
   'mobile.account.icon_replace': '更換頭像',
+  'mobile.account.icon_select_failed': '無法更新您的頭像。請重試。',
+  'mobile.account.icon_selected': '您的頭像已更新。',
   'mobile.account.icon_storage_unavailable': '此網站目前無法上傳頭像。如果問題持續，請聯絡網站。',
   'mobile.account.icon_too_large': '圖片超過10MB。請選擇更小的圖片。',
   'mobile.account.icon_too_small': '圖片小於128x128px。請選擇更大的圖片。',

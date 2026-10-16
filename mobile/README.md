@@ -582,7 +582,15 @@ The sign-in screen also offers a button for each provider `GetTenant` answers in
 
 ## Account icon
 
-The account screen shows the reader's icon and changes it: an image from the photo library ([`image_picker`](https://pub.dev/packages/image_picker)) goes to `AuthService/UploadMyIcon`, and removal sends `AuthService/DeleteMyIcon`.
+The account screen shows the reader's icon and changes it the way the tenant's reader icon policy, read from `TenantService/GetTenantReaderIconPolicy` with the screen, allows:
+
+| Policy | What the screen offers |
+| --- | --- |
+| Upload | An image from the photo library ([`image_picker`](https://pub.dev/packages/image_picker)), sent to `AuthService/UploadMyIcon` |
+| Preset | The tenant's presets, one of which `AuthService/SelectMyIcon` shows |
+| Disabled | No icon at all |
+
+Removal sends `AuthService/DeleteMyIcon` under either of the first two. A policy this build does not know offers nothing, and a change the API refuses because the policy or the presets changed since the screen read them reads the policy again.
 
 ## Sign-up
 
@@ -727,6 +735,7 @@ PUBLIRA_MOBILE_SCREENSHOT_READER= task mobile:screenshot -- /sign-in
 - A notification and an announcement opened by the seed member, and the read mark each sends reaching the API
 - Every page the storefront's footer lists opening from the account screen
 - An icon uploaded, replaced, and removed from the account screen
+- A preset icon picked from the account screen of a tenant that offers presets in place of an upload
 
 `integration_test/reader_parity.json` is the public-reader parity matrix: every capability `web-storefront` serves a reader, with the app route and call that do the same, or an exception saying why the app has none. `pnpm reader-parity:check` fails when a `web-storefront` page, route handler, or public API call is not in it, and `test/reader_parity_test.dart` resolves every app route it names against the router. An entry whose record both surfaces read (`sharedRecord`) names the tests here that cover it.
 

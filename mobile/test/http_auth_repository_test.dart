@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:fixnum/fixnum.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:protobuf/protobuf.dart';
 import 'package:publira/api/connect_client.dart';
@@ -13,6 +14,7 @@ import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/email_change.dart';
 import 'package:publira/auth/http_auth_repository.dart';
 import 'package:publira/auth/reader_age.dart';
+import 'package:publira/auth/reader_icon_policy.dart';
 import 'package:publira/auth/sign_up_requirements.dart';
 import 'package:publira/config.dart';
 
@@ -215,6 +217,7 @@ void main() {
         userPublicId: stored.userPublicId,
         userName: 'Stale',
         userIconUrl: null,
+        userIconPresetId: null,
       ),
       DateTime.utc(2001, 2, 3),
     );
@@ -780,6 +783,7 @@ void main() {
         userIconUrl: Uri.parse(
           '${server.baseUrl}/images/users/0190a0c0-0000-7000-8000-000000000003',
         ),
+        userIconPresetId: null,
       ),
     );
 
@@ -808,6 +812,129 @@ void main() {
       ),
       failsWith(AuthFailureKind.storageNotConfigured),
     );
+  });
+
+  test('uploadIcon maps a tenant that takes no upload to iconNotAllowed', () {
+    server.readerIconPolicy = pb.ReaderIconPolicy.READER_ICON_POLICY_PRESET;
+
+    expect(
+      () => auth.uploadIcon(
+        stored,
+        AccountIconUpload(bytes: pngIcon(), contentType: 'image/png'),
+      ),
+      failsWith(AuthFailureKind.iconNotAllowed),
+    );
+  });
+
+  group('the reader icon policy', () {
+    test('readIconChoice reads an upload policy', () async {
+      expect(await auth.readIconChoice(), isA<ReaderIconUpload>());
+    });
+
+    test('readIconChoice reads the presets that have an image', () async {
+      server
+        ..readerIconPolicy = pb.ReaderIconPolicy.READER_ICON_POLICY_PRESET
+        ..readerIconPresets = [
+          ConnectFixtureServer.readerIconPreset('preset-a'),
+          pb.ReaderIconPreset(id: 'preset-without-image'),
+          ConnectFixtureServer.readerIconPreset('preset-b'),
+        ];
+
+      final choice = await auth.readIconChoice();
+
+      expect(choice, isA<ReaderIconPresets>());
+      final presets = (choice as ReaderIconPresets).presets;
+      expect(presets.map((preset) => preset.id), ['preset-a', 'preset-b']);
+      expect(
+        presets.first.iconUrl,
+        Uri.parse(
+          '${server.baseUrl}'
+          '${ConnectFixtureServer.readerIconPresetPath('preset-a')}',
+        ),
+      );
+    });
+
+    test('readIconChoice reads a disabled policy', () async {
+      server.readerIconPolicy = pb.ReaderIconPolicy.READER_ICON_POLICY_DISABLED;
+
+      expect(await auth.readIconChoice(), isA<ReaderIconDisabled>());
+    });
+
+    test(
+      'readIconChoice offers nothing under a policy it does not know',
+      () async {
+        server.readerIconPolicyResponse = pb.GetTenantReaderIconPolicyResponse()
+          ..unknownFields.mergeVarintField(1, Int64(999));
+
+        expect(await auth.readIconChoice(), isA<ReaderIconDisabled>());
+      },
+    );
+
+    test('readIconChoice maps an unreachable API to network', () async {
+      final closedBaseUrl = server.baseUrl;
+      await server.close();
+      final offline = HttpAuthRepository(
+        config: AppConfig(baseUrl: closedBaseUrl, tenantHost: 'localhost'),
+      );
+
+      await expectLater(
+        offline.readIconChoice,
+        failsWith(AuthFailureKind.network),
+      );
+    });
+
+    test(
+      'selectIcon shows the preset and takes the icon the API answers with',
+      () async {
+        server
+          ..readerIconPolicy = pb.ReaderIconPolicy.READER_ICON_POLICY_PRESET
+          ..readerIconPresets = [
+            ConnectFixtureServer.readerIconPreset('preset-a'),
+          ];
+
+        final updated = await auth.selectIcon(stored, 'preset-a');
+
+        expect(server.iconSelections, ['preset-a']);
+        expect(updated.userIconPresetId, 'preset-a');
+        expect(
+          updated.userIconUrl,
+          Uri.parse(
+            '${server.baseUrl}'
+            '${ConnectFixtureServer.readerIconPresetPath('preset-a')}',
+          ),
+        );
+        // The session is what a restart reads back, the preset included.
+        expect(
+          AuthSession.fromJson(updated.toJson())?.userIconPresetId,
+          'preset-a',
+        );
+
+        final refreshed = await auth.refresh(stored);
+        expect(refreshed.userIconPresetId, 'preset-a');
+
+        final removed = await auth.removeIcon(updated);
+        expect(removed.userIconPresetId, isNull);
+        expect(removed.userIconUrl, isNull);
+      },
+    );
+
+    test('selectIcon maps a preset the tenant does not hold to '
+        'iconPresetUnavailable', () {
+      server.readerIconPolicy = pb.ReaderIconPolicy.READER_ICON_POLICY_PRESET;
+
+      expect(
+        () => auth.selectIcon(stored, 'deleted-preset'),
+        failsWith(AuthFailureKind.iconPresetUnavailable),
+      );
+    });
+
+    test('selectIcon maps a tenant that offers no presets to '
+        'iconNotAllowed', () {
+      expect(
+        () => auth.selectIcon(stored, 'preset-a'),
+        failsWith(AuthFailureKind.iconNotAllowed),
+      );
+    });
   });
 
   test('removeIcon maps a session the API refuses to sessionExpired', () {
