@@ -99,13 +99,12 @@ WITH tenant_scope AS (
     FROM tenants t
     WHERE t.public_id = 'CmntTNNTAAA1'
 )
-INSERT INTO series (id, tenant_id, label_id, public_id, title, is_published, published_at)
+INSERT INTO series (id, tenant_id, label_id, public_id, is_published, published_at)
 SELECT
     '018f0f63-0001-7000-8000-000000000001'::uuid,
     ts.id AS tenant_id,
     l.id AS label_id,
     'CmntSERSAAA1',
-    'Comment Series 001',
     true,
     NOW() - INTERVAL '1 day'
 FROM tenant_scope ts
@@ -113,22 +112,36 @@ JOIN labels l ON l.id = '018f0f61-0001-7000-8000-000000000001'::uuid
 ON CONFLICT (public_id) DO UPDATE
 SET tenant_id = EXCLUDED.tenant_id,
     label_id = EXCLUDED.label_id,
-    title = EXCLUDED.title,
     is_published = EXCLUDED.is_published,
     published_at = EXCLUDED.published_at,
     updated_at = NOW();
 
-INSERT INTO series_listings (series_id, synopsis, reading_period_hours, tenant_id)
+-- The series' title and synopsis, as its translation in the tenant's default
+-- locale.
+INSERT INTO series_translations (id, series_id, tenant_id, locale, title, synopsis)
+SELECT
+    '018f0f68-0001-7000-8000-000000000001'::uuid,
+    s.id AS series_id,
+    s.tenant_id,
+    t.default_locale,
+    'Comment Series 001',
+    'Comment series synopsis for Comment Series 001'
+FROM series s
+JOIN tenants t ON t.id = s.tenant_id
+WHERE s.id = '018f0f63-0001-7000-8000-000000000001'::uuid
+ON CONFLICT (series_id, locale) DO UPDATE
+SET title = EXCLUDED.title,
+    synopsis = EXCLUDED.synopsis;
+
+INSERT INTO series_listings (series_id, reading_period_hours, tenant_id)
 SELECT
     s.id AS series_id,
-    'Comment series synopsis for Comment Series 001',
     72,
     s.tenant_id
 FROM series s
 WHERE s.id = '018f0f63-0001-7000-8000-000000000001'::uuid
 ON CONFLICT (series_id) DO UPDATE
-SET synopsis = EXCLUDED.synopsis,
-    reading_period_hours = EXCLUDED.reading_period_hours,
+SET reading_period_hours = EXCLUDED.reading_period_hours,
     tenant_id = EXCLUDED.tenant_id;
 
 \set seed_tenant CmntTNNTAAA1
@@ -149,21 +162,32 @@ ON CONFLICT (series_id, creator_id, role_id) DO UPDATE
 SET display_order = EXCLUDED.display_order,
     tenant_id = EXCLUDED.tenant_id;
 
-INSERT INTO episodes (id, series_id, public_id, title, order_index, tenant_id)
+INSERT INTO episodes (id, series_id, public_id, order_index, tenant_id)
 SELECT
     '018f0f64-0001-7000-8000-000000000001'::uuid,
     s.id AS series_id,
     'CmntEPSDAAA1',
-    'Comment Episode 001-01',
     1,
     s.tenant_id
 FROM series s
 WHERE s.id = '018f0f63-0001-7000-8000-000000000001'::uuid
 ON CONFLICT (public_id) DO UPDATE
 SET series_id = EXCLUDED.series_id,
-    title = EXCLUDED.title,
     order_index = EXCLUDED.order_index,
     tenant_id = EXCLUDED.tenant_id;
+
+INSERT INTO episode_translations (id, episode_id, tenant_id, locale, title)
+SELECT
+    '018f0f69-0001-7000-8000-000000000001'::uuid,
+    e.id AS episode_id,
+    e.tenant_id,
+    t.default_locale,
+    'Comment Episode 001-01'
+FROM episodes e
+JOIN tenants t ON t.id = e.tenant_id
+WHERE e.id = '018f0f64-0001-7000-8000-000000000001'::uuid
+ON CONFLICT (episode_id, locale) DO UPDATE
+SET title = EXCLUDED.title;
 
 -- Free, so posting depends on the comment mode alone: a paid episode nobody
 -- bought would refuse the post for a reason this suite is not about.

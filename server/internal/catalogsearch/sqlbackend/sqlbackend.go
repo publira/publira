@@ -183,7 +183,7 @@ func (b *Backend) SearchSeries(ctx context.Context, req catalogsearch.SeriesRequ
 	if order == (publishedseries.Order{}) {
 		order = publishedseries.TitleAsc
 	}
-	identity := []string{queryKey(req.Query), publishedseries.ListKey(order, req.Filter)}
+	identity := []string{queryKey(req.Query), publishedseries.ListKeyIn(order, req.Filter, req.Locale)}
 	return b.search(ctx, req.Request, identity, func(ctx context.Context, queries dbmodels.Querier, backward bool, pattern string, keys boundary, limit int32) ([]hit, error) {
 		scanKeys, err := seriesKeys(order, keys)
 		if err != nil {
@@ -192,6 +192,7 @@ func (b *Backend) SearchSeries(ctx context.Context, req catalogsearch.SeriesRequ
 		rows, err := publishedseries.Page(ctx, queries, publishedseries.Scan{
 			TenantID:     req.TenantID,
 			Surface:      req.Surface,
+			Locale:       req.Locale,
 			Order:        order,
 			Filter:       req.Filter,
 			QueryPattern: sql.NullString{String: pattern, Valid: true},

@@ -296,7 +296,7 @@ func (q *Queries) GetExpiredCheckoutID(ctx context.Context, arg GetExpiredChecko
 const GetPurchasableEpisodeForTenant = `-- name: GetPurchasableEpisodeForTenant :one
 SELECT e.id,
     e.public_id,
-    e.title,
+    et.title,
     s.public_id AS series_public_id,
     el.price,
     el.reading_period_hours,
@@ -304,24 +304,26 @@ SELECT e.id,
     -- surface the checkout is started from.
     epa.purchase_availability
 FROM episodes e
+    JOIN episode_translations et ON et.id = episode_translation_for(e.id, $1::text)
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
     JOIN episode_purchase_availability epa ON epa.episode_id = e.id
-WHERE e.id = $1
-    AND e.tenant_id = $2
-    AND s.tenant_id = $2
+WHERE e.id = $2
+    AND e.tenant_id = $3
+    AND s.tenant_id = $3
     -- An episode the calling surface may not show is no row, as it is in the
     -- catalog: a surface cannot sell what it cannot show.
     AND EXISTS (
         SELECT 1
         FROM published_episode_surfaces pes
         WHERE pes.episode_id = e.id
-            AND pes.surface = $3::text
+            AND pes.surface = $4::text
     )
 LIMIT 1
 `
 
 type GetPurchasableEpisodeForTenantParams struct {
+	Locale   string    `json:"locale"`
 	ID       uuid.UUID `json:"id"`
 	TenantID uuid.UUID `json:"tenant_id"`
 	Surface  string    `json:"surface"`
@@ -338,7 +340,12 @@ type GetPurchasableEpisodeForTenantRow struct {
 }
 
 func (q *Queries) GetPurchasableEpisodeForTenant(ctx context.Context, arg GetPurchasableEpisodeForTenantParams) (GetPurchasableEpisodeForTenantRow, error) {
-	row := q.db.QueryRowContext(ctx, GetPurchasableEpisodeForTenant, arg.ID, arg.TenantID, arg.Surface)
+	row := q.db.QueryRowContext(ctx, GetPurchasableEpisodeForTenant,
+		arg.Locale,
+		arg.ID,
+		arg.TenantID,
+		arg.Surface,
+	)
 	var i GetPurchasableEpisodeForTenantRow
 	err := row.Scan(
 		&i.ID,
@@ -360,16 +367,18 @@ SELECT
     p.purchased_at,
     p.expires_at,
     p.is_test,
-    e.title AS episode_title,
-    s.title AS series_title,
+    et.title AS episode_title,
+    str.title AS series_title,
     u.email AS reader_email
 FROM purchases p
 JOIN episodes e
     ON e.tenant_id = p.tenant_id
     AND e.id = p.episode_id
+JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
 JOIN series s
     ON s.tenant_id = e.tenant_id
     AND s.id = e.series_id
+JOIN series_translations str ON str.id = series_translation_for(s.id, '')
 LEFT JOIN users u
     ON u.tenant_id = p.tenant_id
     AND u.id = p.user_id
@@ -581,48 +590,51 @@ SELECT p.id,
     p.purchased_at,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     e.order_index AS episode_order_index,
     s.id AS series_id,
     s.public_id AS series_public_id,
-    s.title AS series_title
+    str.title AS series_title
 FROM purchases p
     JOIN episodes e ON e.id = p.episode_id
+    JOIN episode_translations et ON et.id = episode_translation_for(e.id, $1::text)
     JOIN series s ON s.id = e.series_id
-WHERE p.tenant_id = $1
+    JOIN series_translations str ON str.id = series_translation_for(s.id, $1::text)
+WHERE p.tenant_id = $2
     -- The cast keeps this a plain uuid: a deleted buyer's NULL is in nobody's library.
-    AND p.user_id = $2::uuid
-    AND e.tenant_id = $1
-    AND s.tenant_id = $1
+    AND p.user_id = $3::uuid
+    AND e.tenant_id = $2
+    AND s.tenant_id = $2
     AND EXISTS (
         SELECT 1
         FROM episode_surfaces es
         WHERE es.episode_id = e.id
-            AND es.surface = $3::text
+            AND es.surface = $4::text
     )
     AND (
-        $4::timestamptz IS NULL
+        $5::timestamptz IS NULL
         OR (
-            $5::boolean
+            $6::boolean
             AND (p.purchased_at, p.id) >= (
-                $4::timestamptz,
-                $6::uuid
+                $5::timestamptz,
+                $7::uuid
             )
         )
         OR (
-            NOT $5::boolean
+            NOT $6::boolean
             AND (p.purchased_at, p.id) > (
-                $4::timestamptz,
-                $6::uuid
+                $5::timestamptz,
+                $7::uuid
             )
         )
     )
 ORDER BY p.purchased_at ASC,
     p.id ASC
-LIMIT $7
+LIMIT $8
 `
 
 type ListMyPurchasesAscParams struct {
+	Locale            string        `json:"locale"`
 	TenantID          uuid.UUID     `json:"tenant_id"`
 	UserID            uuid.UUID     `json:"user_id"`
 	Surface           string        `json:"surface"`
@@ -652,6 +664,7 @@ type ListMyPurchasesAscRow struct {
 
 func (q *Queries) ListMyPurchasesAsc(ctx context.Context, arg ListMyPurchasesAscParams) ([]ListMyPurchasesAscRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListMyPurchasesAsc,
+		arg.Locale,
 		arg.TenantID,
 		arg.UserID,
 		arg.Surface,
@@ -708,48 +721,51 @@ SELECT p.id,
     p.purchased_at,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     e.order_index AS episode_order_index,
     s.id AS series_id,
     s.public_id AS series_public_id,
-    s.title AS series_title
+    str.title AS series_title
 FROM purchases p
     JOIN episodes e ON e.id = p.episode_id
+    JOIN episode_translations et ON et.id = episode_translation_for(e.id, $1::text)
     JOIN series s ON s.id = e.series_id
-WHERE p.tenant_id = $1
+    JOIN series_translations str ON str.id = series_translation_for(s.id, $1::text)
+WHERE p.tenant_id = $2
     -- The cast keeps this a plain uuid: a deleted buyer's NULL is in nobody's library.
-    AND p.user_id = $2::uuid
-    AND e.tenant_id = $1
-    AND s.tenant_id = $1
+    AND p.user_id = $3::uuid
+    AND e.tenant_id = $2
+    AND s.tenant_id = $2
     AND EXISTS (
         SELECT 1
         FROM episode_surfaces es
         WHERE es.episode_id = e.id
-            AND es.surface = $3::text
+            AND es.surface = $4::text
     )
     AND (
-        $4::timestamptz IS NULL
+        $5::timestamptz IS NULL
         OR (
-            $5::boolean
+            $6::boolean
             AND (p.purchased_at, p.id) <= (
-                $4::timestamptz,
-                $6::uuid
+                $5::timestamptz,
+                $7::uuid
             )
         )
         OR (
-            NOT $5::boolean
+            NOT $6::boolean
             AND (p.purchased_at, p.id) < (
-                $4::timestamptz,
-                $6::uuid
+                $5::timestamptz,
+                $7::uuid
             )
         )
     )
 ORDER BY p.purchased_at DESC,
     p.id DESC
-LIMIT $7
+LIMIT $8
 `
 
 type ListMyPurchasesDescParams struct {
+	Locale            string        `json:"locale"`
 	TenantID          uuid.UUID     `json:"tenant_id"`
 	UserID            uuid.UUID     `json:"user_id"`
 	Surface           string        `json:"surface"`
@@ -783,6 +799,7 @@ type ListMyPurchasesDescRow struct {
 // there, as it is left out of the catalog.
 func (q *Queries) ListMyPurchasesDesc(ctx context.Context, arg ListMyPurchasesDescParams) ([]ListMyPurchasesDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListMyPurchasesDesc,
+		arg.Locale,
 		arg.TenantID,
 		arg.UserID,
 		arg.Surface,
@@ -1049,9 +1066,9 @@ const ListPurchasesForTenantByIDs = `-- name: ListPurchasesForTenantByIDs :many
 SELECT p.id,
     p.episode_id,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     s.public_id AS series_public_id,
-    s.title AS series_title,
+    str.title AS series_title,
     u.public_id AS reader_public_id,
     u.name AS reader_name,
     u.email AS reader_email,
@@ -1071,8 +1088,10 @@ SELECT p.id,
 FROM purchases p
     JOIN episodes e ON e.tenant_id = p.tenant_id
     AND e.id = p.episode_id
+    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
     JOIN series s ON s.tenant_id = e.tenant_id
     AND s.id = e.series_id
+    JOIN series_translations str ON str.id = series_translation_for(s.id, '')
     LEFT JOIN users u ON u.tenant_id = p.tenant_id
     AND u.id = p.user_id
 WHERE p.tenant_id = $1

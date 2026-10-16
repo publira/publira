@@ -52,6 +52,11 @@ type SeriesRequest struct {
 	Order publishedseries.Order
 	// Filter keeps only the hits the list would keep under it.
 	Filter publishedseries.Filter
+	// Locale is the reader's locale, which picks the translation whose title
+	// a title order sorts by. The OpenSearch backend sorts by the title in the
+	// tenant's default locale whatever it is, because that is the only title
+	// its documents carry until #4401 indexes each language.
+	Locale string
 }
 
 // Page is the hits of one page in display order, with the pagination.Encode

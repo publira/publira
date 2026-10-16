@@ -63,12 +63,16 @@ event_row AS (
         ((scope.today - es.days_ago) + es.time_of_day) AT TIME ZONE scope.timezone AS occurred_at
     FROM event_seed es
     CROSS JOIN scope
-    JOIN series s
-        ON s.tenant_id = scope.tenant_id
-        AND s.title = FORMAT('Seed Series %s', LPAD(es.series_number::text, 3, '0'))
-    LEFT JOIN episodes e
+    JOIN series s ON s.tenant_id = scope.tenant_id
+    JOIN series_translations st
+        ON st.id = series_translation_for(s.id, '')
+        AND st.title = FORMAT('Seed Series %s', LPAD(es.series_number::text, 3, '0'))
+    LEFT JOIN (
+        episodes e
+        JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+    )
         ON e.series_id = s.id
-        AND e.title = FORMAT(
+        AND et.title = FORMAT(
             'Seed Episode %s-%s',
             LPAD(es.series_number::text, 3, '0'),
             LPAD(es.episode_number::text, 2, '0')

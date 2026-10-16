@@ -417,10 +417,10 @@ func TestCatalogGetPublishedCreatorDetailSuccess(t *testing.T) {
 		WillReturnRows(creatorListColumns().
 			AddRow(creatorID, "CREATOR00001", "Aoi Sakura", "Draws things", nil, nil, int64(0), int32(1)))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedSeriesIDsByCreatorTitleAsc)).
-		WithArgs(creatorID, tenantID, "web", nil, false, nil, int32(21)).
+		WithArgs("ja", creatorID, tenantID, "web", nil, false, nil, int32(21)).
 		WillReturnRows(seriesIDRows(seriesID))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, sqlmock.AnyArg()).
+		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
 			AddRow(seriesID, "SERIESPUB", "Public Series", "Public Synopsis", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 
@@ -463,13 +463,13 @@ func TestCatalogGetPublishedCreatorDetailFirstPageReportsNextToken(t *testing.T)
 		WillReturnRows(creatorListColumns().
 			AddRow(creatorID, "CREATOR00001", "Aoi Sakura", nil, nil, nil, int64(0), int32(3)))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedSeriesIDsByCreatorTitleAsc)).
-		WithArgs(creatorID, tenantID, "web", nil, false, nil, int32(3)).
+		WithArgs("ja", creatorID, tenantID, "web", nil, false, nil, int32(3)).
 		WillReturnRows(seriesIDRows(ids...))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, sqlmock.AnyArg()).
+		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
-			AddRow(ids[0], "SERIESALPHA", "Alpha", nil, "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)).
-			AddRow(ids[1], "SERIESBETA0", "Beta", nil, "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
+			AddRow(ids[0], "SERIESALPHA", "Alpha", "", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)).
+			AddRow(ids[1], "SERIESBETA0", "Beta", "", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	resp, err := client.GetPublishedCreatorDetail(context.Background(), &publirav1.GetPublishedCreatorDetailRequest{
@@ -489,7 +489,7 @@ func TestCatalogGetPublishedCreatorDetailFirstPageReportsNextToken(t *testing.T)
 	if resp.NextToken == "" {
 		t.Fatal("next_token is empty, want a token for the next page")
 	}
-	wantToken := webToken(pagination.Forward, "title_asc", "Beta", ids[1].String())
+	wantToken := webToken(pagination.Forward, "title_asc+locale:ja", "Beta", ids[1].String())
 	if resp.NextToken != wantToken {
 		t.Fatalf("next_token = %q, want the last returned title cursor", resp.NextToken)
 	}
@@ -503,7 +503,7 @@ func TestCatalogGetPublishedCreatorDetailFollowsNextToken(t *testing.T) {
 	creatorID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	boundaryID := uuid.Must(uuid.NewV7())
-	token := webToken(pagination.Forward, "title_asc", "Beta", boundaryID.String())
+	token := webToken(pagination.Forward, "title_asc+locale:ja", "Beta", boundaryID.String())
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	ids := newSeriesIDs(1)
@@ -512,12 +512,12 @@ func TestCatalogGetPublishedCreatorDetailFollowsNextToken(t *testing.T) {
 		WillReturnRows(creatorListColumns().
 			AddRow(creatorID, "CREATOR00001", "Aoi Sakura", nil, nil, nil, int64(0), int32(3)))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedSeriesIDsByCreatorTitleAsc)).
-		WithArgs(creatorID, tenantID, "web", boundaryID, false, "Beta", int32(3)).
+		WithArgs("ja", creatorID, tenantID, "web", boundaryID, false, "Beta", int32(3)).
 		WillReturnRows(seriesIDRows(ids...))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, sqlmock.AnyArg()).
+		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
-			AddRow(ids[0], "SERIESZETA0", "Zeta", nil, "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
+			AddRow(ids[0], "SERIESZETA0", "Zeta", "", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	resp, err := client.GetPublishedCreatorDetail(context.Background(), &publirav1.GetPublishedCreatorDetailRequest{
@@ -548,7 +548,7 @@ func TestCatalogGetPublishedCreatorDetailFollowsPreviousTokenBackwards(t *testin
 	creatorID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	boundaryID := uuid.Must(uuid.NewV7())
-	token := webToken(pagination.Backward, "title_asc", "Zeta", boundaryID.String())
+	token := webToken(pagination.Backward, "title_asc+locale:ja", "Zeta", boundaryID.String())
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	alphaID := uuid.Must(uuid.NewV7())
@@ -560,13 +560,13 @@ func TestCatalogGetPublishedCreatorDetailFollowsPreviousTokenBackwards(t *testin
 		WillReturnRows(creatorListColumns().
 			AddRow(creatorID, "CREATOR00001", "Aoi Sakura", nil, nil, nil, int64(0), int32(3)))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedSeriesIDsByCreatorTitleDesc)).
-		WithArgs(creatorID, tenantID, "web", boundaryID, false, "Zeta", int32(3)).
+		WithArgs("ja", creatorID, tenantID, "web", boundaryID, false, "Zeta", int32(3)).
 		WillReturnRows(seriesIDRows(betaID, alphaID))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, sqlmock.AnyArg()).
+		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
-			AddRow(alphaID, "SERIESALPHA", "Alpha", nil, "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)).
-			AddRow(betaID, "SERIESBETA0", "Beta", nil, "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
+			AddRow(alphaID, "SERIESALPHA", "Alpha", "", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)).
+			AddRow(betaID, "SERIESBETA0", "Beta", "", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	resp, err := client.GetPublishedCreatorDetail(context.Background(), &publirav1.GetPublishedCreatorDetailRequest{
@@ -622,7 +622,7 @@ func TestCatalogGetPublishedCreatorDetailEmptyPageKeepsAWayBack(t *testing.T) {
 			creatorID := uuid.Must(uuid.NewV7())
 			now := time.Now().UTC()
 			boundaryID := uuid.Must(uuid.NewV7())
-			token := webToken(test.direction, "title_asc", "Beta", boundaryID.String())
+			token := webToken(test.direction, "title_asc+locale:ja", "Beta", boundaryID.String())
 
 			expectTenantLookup(mock, tenantID, "TENANT", now)
 			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedCreatorForTenant)).
@@ -630,7 +630,7 @@ func TestCatalogGetPublishedCreatorDetailEmptyPageKeepsAWayBack(t *testing.T) {
 				WillReturnRows(creatorListColumns().
 					AddRow(creatorID, "CREATOR00001", "Aoi Sakura", nil, nil, nil, int64(0), int32(1)))
 			mock.ExpectQuery(regexp.QuoteMeta(test.wantQuery)).
-				WithArgs(creatorID, tenantID, "web", boundaryID, false, "Beta", int32(21)).
+				WithArgs("ja", creatorID, tenantID, "web", boundaryID, false, "Beta", int32(21)).
 				WillReturnRows(seriesIDRows())
 
 			client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
@@ -672,7 +672,7 @@ func TestCatalogGetPublishedCreatorDetailEmptyRecoveryPageDropsBothTokens(t *tes
 	creatorID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC()
 	boundaryID := uuid.Must(uuid.NewV7())
-	token := webToken(pagination.Forward, "title_asc", "Beta", boundaryID.String(), seriesInclusiveKey)
+	token := webToken(pagination.Forward, "title_asc+locale:ja", "Beta", boundaryID.String(), seriesInclusiveKey)
 
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPublishedCreatorForTenant)).
@@ -680,7 +680,7 @@ func TestCatalogGetPublishedCreatorDetailEmptyRecoveryPageDropsBothTokens(t *tes
 		WillReturnRows(creatorListColumns().
 			AddRow(creatorID, "CREATOR00001", "Aoi Sakura", nil, nil, nil, int64(0), int32(1)))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedSeriesIDsByCreatorTitleAsc)).
-		WithArgs(creatorID, tenantID, "web", boundaryID, true, "Beta", int32(21)).
+		WithArgs("ja", creatorID, tenantID, "web", boundaryID, true, "Beta", int32(21)).
 		WillReturnRows(seriesIDRows())
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
@@ -760,7 +760,7 @@ func TestCatalogGetPublishedCreatorDetailLimitOutOfRangeUsesDefault(t *testing.T
 		WillReturnRows(creatorListColumns().
 			AddRow(creatorID, "CREATOR00001", "Aoi Sakura", nil, nil, nil, int64(0), int32(1)))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedSeriesIDsByCreatorTitleAsc)).
-		WithArgs(creatorID, tenantID, "web", nil, false, nil, int32(21)).
+		WithArgs("ja", creatorID, tenantID, "web", nil, false, nil, int32(21)).
 		WillReturnRows(seriesIDRows())
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))

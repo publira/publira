@@ -158,6 +158,11 @@ func (s *apiServer) GetMySeriesProgress(
 		return nil, err
 	}
 
+	readerLocale, err := readerLocaleOf(req.Locale, tenant)
+	if err != nil {
+		return nil, err
+	}
+
 	finished, err := s.queriesFor(ctx).ListMyFinishedEpisodePublicIDsInSeries(ctx, dbmodels.ListMyFinishedEpisodePublicIDsInSeriesParams{
 		TenantID: tenant.ID,
 		UserID:   user.ID,
@@ -173,6 +178,7 @@ func (s *apiServer) GetMySeriesProgress(
 		UserID:   user.ID,
 		SeriesID: seriesID,
 		Surface:  surface,
+		Locale:   readerLocale,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return noStorePrivateResponse(ctx, res), nil
@@ -216,6 +222,10 @@ func (s *apiServer) ListMyRecentSeries(
 	if err := s.scopeEpisodeReadUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
+	readerLocale, err := readerLocaleOf(req.Locale, tenant)
+	if err != nil {
+		return nil, err
+	}
 	limit := pagination.NormalizeLimit(req.Limit, defaultRecentSeriesPageSize, maxRecentSeriesPageSize)
 	cursor, err := decodeSurfaceToken(req.Token, surface)
 	if err != nil {
@@ -230,7 +240,7 @@ func (s *apiServer) ListMyRecentSeries(
 	}
 
 	// One row past the page: its presence is what says another page exists.
-	rows, err := s.recentSeriesPage(ctx, tenant.ID, user.ID, surface, keys, cursor.Direction, limit+1)
+	rows, err := s.recentSeriesPage(ctx, tenant.ID, user.ID, surface, readerLocale, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list recent series", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
@@ -242,7 +252,7 @@ func (s *apiServer) ListMyRecentSeries(
 		ids = append(ids, row.SeriesID)
 		rowBySeriesID[row.SeriesID] = row
 	}
-	seriesRows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, surface, ids)
+	seriesRows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, surface, readerLocale, ids)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list recent series", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
@@ -288,6 +298,7 @@ func (s *apiServer) recentSeriesPage(
 	ctx context.Context,
 	tenantID, userID uuid.UUID,
 	surface string,
+	locale string,
 	keys pagination.TimeUUIDKeys,
 	direction pagination.Direction,
 	limit int32,
@@ -297,6 +308,7 @@ func (s *apiServer) recentSeriesPage(
 		TenantID:             tenantID,
 		UserID:               userID,
 		Surface:              surface,
+		Locale:               locale,
 		CursorLastActivityAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
 		CursorInclusive:      keys.Inclusive,
 		CursorSeriesID:       uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},

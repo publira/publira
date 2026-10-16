@@ -508,7 +508,7 @@ func TestDBUpdateSeriesOfAnotherTenantReturnsNotFound(t *testing.T) {
 	}
 
 	// The write must not have landed anyway.
-	if count := env.countRows(t, "SELECT count(*) FROM series WHERE title = $1", "Hijacked Title"); count != 0 {
+	if count := env.countRows(t, "SELECT count(*) FROM series_translations WHERE title = $1", "Hijacked Title"); count != 0 {
 		t.Fatalf("series titled Hijacked Title = %d, want 0", count)
 	}
 }
@@ -636,7 +636,7 @@ func TestDBUpdateSeriesUnknownCreatorPreservesExistingLinks(t *testing.T) {
 	if count := env.countRows(t, "SELECT count(*) FROM series_creators WHERE tenant_id = $1", tenant.Tenant.ID); count != 1 {
 		t.Fatalf("series_creators rows = %d, want 1 after a rejected update", count)
 	}
-	if count := env.countRows(t, "SELECT count(*) FROM series WHERE title = $1", "Hijacked Title"); count != 0 {
+	if count := env.countRows(t, "SELECT count(*) FROM series_translations WHERE title = $1", "Hijacked Title"); count != 0 {
 		t.Fatalf("series titled Hijacked Title = %d, want 0", count)
 	}
 }

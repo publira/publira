@@ -521,13 +521,42 @@ func expectPublicIDAttemptRolledBack(mock sqlmock.Sqlmock) {
 	mock.ExpectExec("^ROLLBACK TO SAVEPOINT publira_public_id$").WillReturnResult(sqlmock.NewResult(0, 0))
 }
 
-func expectCreateSeriesBaseInsert(mock sqlmock.Sqlmock, seriesID, tenantID uuid.UUID, title, publicID string, now time.Time, labelID uuid.NullUUID) {
+// seriesBaseColumns are the columns CreateSeriesBase returns.
+var seriesBaseColumns = []string{"id", "tenant_id", "label_id", "public_id", "created_at", "is_published", "published_at", "updated_at", "eye_catch_image_id", "availability", "purchase_availability", "publication_revalidated_at"}
+
+// expectCreateSeriesBaseInsert expects the insert of the series row and then
+// the write of its title, in the tenant's default locale, which every test
+// tenant has as ja.
+func expectCreateSeriesBaseInsert(mock sqlmock.Sqlmock, seriesID, tenantID uuid.UUID, title, synopsis, publicID string, now time.Time, labelID uuid.NullUUID) {
 	expectPublicIDAttempt(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateSeriesBase)).
-		WithArgs(sqlmock.AnyArg(), tenantID, labelID, sqlmock.AnyArg(), title, "all", nil).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "label_id", "public_id", "title", "created_at", "is_published", "published_at", "updated_at", "eye_catch_image_id", "availability", "purchase_availability", "publication_revalidated_at"}).
-			AddRow(seriesID, tenantID, labelID, publicID, title, now, false, nil, now, nil, "all", nil, nil))
+		WithArgs(sqlmock.AnyArg(), tenantID, labelID, sqlmock.AnyArg(), "all", nil).
+		WillReturnRows(sqlmock.NewRows(seriesBaseColumns).
+			AddRow(seriesID, tenantID, labelID, publicID, now, false, nil, now, nil, "all", nil, nil))
 	expectPublicIDAttemptReleased(mock)
+	expectSeriesTranslationUpsert(mock, tenantID, seriesID, "ja", title, synopsis, true)
+}
+
+var seriesTranslationColumns = []string{"id", "series_id", "tenant_id", "locale", "title", "synopsis", "created_at", "updated_at"}
+
+// expectSeriesTranslationUpsert expects the write of one locale's title, and
+// of its synopsis where writeSynopsis says the save stated one.
+func expectSeriesTranslationUpsert(mock sqlmock.Sqlmock, tenantID, seriesID uuid.UUID, locale, title, synopsis string, writeSynopsis bool) {
+	now := time.Now().UTC()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertSeriesTranslation)).
+		WithArgs(sqlmock.AnyArg(), seriesID, tenantID, locale, title, synopsis, writeSynopsis).
+		WillReturnRows(sqlmock.NewRows(seriesTranslationColumns).
+			AddRow(uuid.Must(uuid.NewV7()), seriesID, tenantID, locale, title, synopsis, now, now))
+}
+
+// expectSeriesTranslationsList expects the read of a series' translations,
+// answered with the one in ja.
+func expectSeriesTranslationsList(mock sqlmock.Sqlmock, tenantID uuid.UUID, seriesID driver.Value, title, synopsis string) {
+	now := time.Now().UTC()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesTranslationsForTenant)).
+		WithArgs(tenantID, seriesID).
+		WillReturnRows(sqlmock.NewRows(seriesTranslationColumns).
+			AddRow(uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7()), tenantID, "ja", title, synopsis, now, now))
 }
 
 func expectLockSeriesByID(mock sqlmock.Sqlmock, tenantID, seriesID uuid.UUID) {
@@ -587,13 +616,19 @@ func expectResolvedEpisodePurchaseAvailability(mock sqlmock.Sqlmock, tenantID, e
 		WillReturnRows(sqlmock.NewRows([]string{"purchase_availability"}).AddRow(resolved))
 }
 
+// expectCreateEpisodeBaseInsert expects the insert of the episode row and then
+// the write of its title, in the tenant's default locale.
 func expectCreateEpisodeBaseInsert(mock sqlmock.Sqlmock, seriesID, episodeID, tenantID uuid.UUID, title string, orderIndex int32, now time.Time, publicID string) {
 	expectPublicIDAttempt(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateEpisodeBase)).
-		WithArgs(sqlmock.AnyArg(), seriesID, sqlmock.AnyArg(), title, orderIndex, tenantID, nil, nil).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "series_id", "public_id", "title", "order_index", "created_at", "tenant_id", "reading_direction", "spread_start_index", "availability", "purchase_availability"}).
-			AddRow(episodeID, seriesID, publicID, title, orderIndex, now, tenantID, nil, nil, nil, nil))
+		WithArgs(sqlmock.AnyArg(), seriesID, sqlmock.AnyArg(), orderIndex, tenantID, nil, nil).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "series_id", "public_id", "order_index", "created_at", "tenant_id", "reading_direction", "spread_start_index", "availability", "purchase_availability"}).
+			AddRow(episodeID, seriesID, publicID, orderIndex, now, tenantID, nil, nil, nil, nil))
 	expectPublicIDAttemptReleased(mock)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertEpisodeTranslation)).
+		WithArgs(sqlmock.AnyArg(), episodeID, tenantID, "ja", title).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "episode_id", "tenant_id", "locale", "title", "created_at", "updated_at"}).
+			AddRow(uuid.Must(uuid.NewV7()), episodeID, tenantID, "ja", title, now, now))
 }
 
 // mailGuardWith is a mail guard over in-process counters whose mail-request

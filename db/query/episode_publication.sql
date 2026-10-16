@@ -8,17 +8,19 @@ WHERE el.status = 'scheduled'
 -- name: ListEpisodesReadyToPublishWithTenantInfo :many
 SELECT el.episode_id,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     s.id AS series_id,
     s.public_id AS series_public_id,
-    s.title AS series_title,
+    str.title AS series_title,
     t.id AS tenant_id,
     t.public_id AS tenant_public_id,
     t.name AS tenant_name,
     t.domain AS tenant_domain
 FROM episode_listings el
     JOIN episodes e ON e.id = el.episode_id
+    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
     JOIN series s ON s.id = e.series_id
+    JOIN series_translations str ON str.id = series_translation_for(s.id, '')
     JOIN tenants t ON t.id = el.tenant_id
 WHERE el.status = 'scheduled'
     AND el.scheduled_at IS NOT NULL
@@ -30,11 +32,13 @@ WHERE el.status = 'scheduled'
 -- the time the event drains answers no row, so its followers are not told.
 SELECT e.id AS episode_id,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     s.public_id AS series_public_id,
-    s.title AS series_title
+    str.title AS series_title
 FROM episodes e
+    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
     JOIN series s ON s.id = e.series_id
+    JOIN series_translations str ON str.id = series_translation_for(s.id, '')
     JOIN episode_listings el ON el.episode_id = e.id
 WHERE e.tenant_id = $1
     AND e.id = $2

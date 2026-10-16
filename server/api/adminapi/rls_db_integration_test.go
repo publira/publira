@@ -33,11 +33,12 @@ func seedSeriesOwnedBy(t *testing.T, env *adminDBEnv, tenantID uuid.UUID, public
 
 	seriesID := uuid.Must(uuid.NewV7())
 	if _, err := env.PG.DB.ExecContext(ctx, `
-		INSERT INTO series (id, tenant_id, public_id, title)
-		VALUES ($1, $2, $3, $4)
-	`, seriesID, tenantID, publicID, title); err != nil {
+		INSERT INTO series (id, tenant_id, public_id)
+		VALUES ($1, $2, $3)
+	`, seriesID, tenantID, publicID); err != nil {
 		t.Fatalf("insert series %s: %v", publicID, err)
 	}
+	env.PG.SeedSeriesTranslation(t, tenantID, seriesID, "ja", title, "")
 	return seriesID
 }
 
@@ -58,7 +59,7 @@ func TestDBRLSHidesRowsOfAnotherTenant(t *testing.T) {
 		}
 
 		var title string
-		err := conn.QueryRowContext(ctx, "SELECT title FROM series WHERE id = $1", theirs).Scan(&title)
+		err := conn.QueryRowContext(ctx, "SELECT title FROM series_translations WHERE series_id = $1", theirs).Scan(&title)
 		if err == nil {
 			t.Fatalf("read tenant B series as tenant A: got %q, want no rows", title)
 		}
@@ -66,7 +67,7 @@ func TestDBRLSHidesRowsOfAnotherTenant(t *testing.T) {
 			t.Fatalf("read tenant B series error = %v, want sql.ErrNoRows", err)
 		}
 
-		if err := conn.QueryRowContext(ctx, "SELECT title FROM series WHERE id = $1", mine).Scan(&title); err != nil {
+		if err := conn.QueryRowContext(ctx, "SELECT title FROM series_translations WHERE series_id = $1", mine).Scan(&title); err != nil {
 			t.Fatalf("read own series: %v", err)
 		}
 		if title != "Tenant A Series" {
@@ -222,7 +223,7 @@ func TestDBRLSRefusesWritesToAnotherTenant(t *testing.T) {
 	env.withTenantConn(t, first.Tenant.ID, func(ctx context.Context, conn *sql.Conn) {
 		// An UPDATE / DELETE that forgets its tenant predicate must not silently
 		// reach across: the policy hides the row, so nothing matches.
-		updated, err := conn.ExecContext(ctx, "UPDATE series SET title = 'Hijacked' WHERE id = $1", theirs)
+		updated, err := conn.ExecContext(ctx, "UPDATE series_translations SET title = 'Hijacked' WHERE series_id = $1", theirs)
 		if err != nil {
 			t.Fatalf("update tenant B series: %v", err)
 		}
@@ -241,16 +242,16 @@ func TestDBRLSRefusesWritesToAnotherTenant(t *testing.T) {
 		// Writing a row stamped with someone else's tenant is rejected outright
 		// by the policy's WITH CHECK clause.
 		_, err = conn.ExecContext(ctx, `
-			INSERT INTO series (id, tenant_id, public_id, title)
-			VALUES ($1, $2, $3, $4)
-		`, uuid.Must(uuid.NewV7()), second.Tenant.ID, "SERIESB0002", "Planted Series")
+			INSERT INTO series (id, tenant_id, public_id)
+			VALUES ($1, $2, $3)
+		`, uuid.Must(uuid.NewV7()), second.Tenant.ID, "SERIESB0002")
 		var pgErr *pgconn.PgError
 		if !errors.As(err, &pgErr) || pgErr.Code != insufficientPrivilege {
 			t.Fatalf("insert for another tenant error = %v, want SQLSTATE %s", err, insufficientPrivilege)
 		}
 	})
 
-	if count := env.countRows(t, "SELECT count(*) FROM series WHERE title = $1", "Tenant B Series"); count != 1 {
+	if count := env.countRows(t, "SELECT count(*) FROM series_translations WHERE title = $1", "Tenant B Series"); count != 1 {
 		t.Fatalf("tenant B series survived = %d, want 1", count)
 	}
 	if count := env.countRows(t, "SELECT count(*) FROM series WHERE public_id = $1", "SERIESB0002"); count != 0 {

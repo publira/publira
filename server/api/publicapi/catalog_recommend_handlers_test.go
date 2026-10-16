@@ -97,7 +97,7 @@ func TestCatalogListRecommendedSeriesLeadsWithTheRanking(t *testing.T) {
 	// The display query is unordered; the handler puts the rows back in the
 	// order the keyset scan decided.
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, sqlmock.AnyArg()).
+		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(
 			recommendedSeriesRow(
 				recommendedSeriesRow(seriesDetailColumns(), newest, "NEWEST", "Newest", now),
@@ -150,7 +150,7 @@ func TestCatalogListRecommendedSeriesPagesPastTheRanking(t *testing.T) {
 		WithArgs(boundary, unrankedSortRank, false, sqlmock.AnyArg(), int32(3), rankingItemsJSON(ranked), tenantID, "web").
 		WillReturnRows(recommendedSeriesIDRows(rankedID{id: older, rank: unrankedSortRank}))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, sqlmock.AnyArg()).
+		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(seriesDetailColumns(), older, "OLDER", "Older", publishedAt.Add(-time.Hour)))
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
@@ -195,7 +195,7 @@ func TestCatalogListRecommendedSeriesFallsBackToNewArrivals(t *testing.T) {
 		WithArgs(nil, nil, false, nil, int32(3), []byte("[]"), tenantID, "web").
 		WillReturnRows(recommendedSeriesIDRows(rankedID{id: seriesID, rank: unrankedSortRank}))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, sqlmock.AnyArg()).
+		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(seriesDetailColumns(), seriesID, "NEWEST", "Newest", now))
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
@@ -229,7 +229,7 @@ func TestCatalogListRecommendedSeriesFallsBackWhenTheSnapshotIsMalformed(t *test
 		WithArgs(nil, nil, false, nil, int32(3), []byte("[]"), tenantID, "web").
 		WillReturnRows(recommendedSeriesIDRows(rankedID{id: seriesID, rank: unrankedSortRank}))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, sqlmock.AnyArg()).
+		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(seriesDetailColumns(), seriesID, "NEWEST", "Newest", now))
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))

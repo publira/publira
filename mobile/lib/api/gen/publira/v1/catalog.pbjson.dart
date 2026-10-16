@@ -311,6 +311,7 @@ const ListPublishedSeriesRequest$json = {
       '6': '.publira.types.v1.ClientSurface',
       '10': 'surface'
     },
+    {'1': 'locale', '3': 12, '4': 1, '5': 9, '10': 'locale'},
   ],
   '8': [
     {'1': '_weekday'},
@@ -330,8 +331,8 @@ final $typed_data.Uint8List listPublishedSeriesRequestDescriptor = $convert.base
     'Cg9nZW5yZV9wdWJsaWNfaWQYByABKAlSDWdlbnJlUHVibGljSWQSGQoIdGFnX3NsdWcYCCABKA'
     'lSB3RhZ1NsdWcSNgoGc3RhdHVzGAkgASgOMh4ucHVibGlyYS50eXBlcy52MS5TZXJpZXNTdGF0'
     'dXNSBnN0YXR1cxIdCgd3ZWVrZGF5GAogASgFSABSB3dlZWtkYXmIAQESOQoHc3VyZmFjZRgLIA'
-    'EoDjIfLnB1YmxpcmEudHlwZXMudjEuQ2xpZW50U3VyZmFjZVIHc3VyZmFjZUIKCghfd2Vla2Rh'
-    'eUoECAMQBFIGb2Zmc2V0');
+    'EoDjIfLnB1YmxpcmEudHlwZXMudjEuQ2xpZW50U3VyZmFjZVIHc3VyZmFjZRIWCgZsb2NhbGUY'
+    'DCABKAlSBmxvY2FsZUIKCghfd2Vla2RheUoECAMQBFIGb2Zmc2V0');
 
 @$core.Deprecated('Use listPublishedSeriesResponseDescriptor instead')
 const ListPublishedSeriesResponse$json = {
@@ -378,6 +379,7 @@ const GetSeriesDetailRequest$json = {
       '6': '.publira.types.v1.ClientSurface',
       '10': 'surface'
     },
+    {'1': 'locale', '3': 4, '4': 1, '5': 9, '10': 'locale'},
   ],
 };
 
@@ -386,7 +388,7 @@ final $typed_data.Uint8List getSeriesDetailRequestDescriptor = $convert.base64De
     'ChZHZXRTZXJpZXNEZXRhaWxSZXF1ZXN0EjcKBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZX'
     'MudjEuVGVuYW50Q29udGV4dFIGdGVuYW50EhsKCXB1YmxpY19pZBgCIAEoCVIIcHVibGljSWQS'
     'OQoHc3VyZmFjZRgDIAEoDjIfLnB1YmxpcmEudHlwZXMudjEuQ2xpZW50U3VyZmFjZVIHc3VyZm'
-    'FjZQ==');
+    'FjZRIWCgZsb2NhbGUYBCABKAlSBmxvY2FsZQ==');
 
 @$core.Deprecated('Use waitFreeRuleDescriptor instead')
 const WaitFreeRule$json = {
@@ -461,6 +463,13 @@ const GetSeriesDetailResponse$json = {
       '6': '.publira.v1.WaitFreeRule',
       '10': 'waitFree'
     },
+    {
+      '1': 'published_locales',
+      '3': 6,
+      '4': 3,
+      '5': 9,
+      '10': 'publishedLocales'
+    },
   ],
 };
 
@@ -471,7 +480,8 @@ final $typed_data.Uint8List getSeriesDetailResponseDescriptor = $convert.base64D
     'MS5FcGlzb2RlUghlcGlzb2RlcxIwChRyZXF1aXJlZF9taW5pbXVtX2FnZRgDIAEoBVIScmVxdW'
     'lyZWRNaW5pbXVtQWdlEkAKDGNvbW1lbnRfbW9kZRgEIAEoDjIdLnB1YmxpcmEudHlwZXMudjEu'
     'Q29tbWVudE1vZGVSC2NvbW1lbnRNb2RlEjUKCXdhaXRfZnJlZRgFIAEoCzIYLnB1YmxpcmEudj'
-    'EuV2FpdEZyZWVSdWxlUgh3YWl0RnJlZQ==');
+    'EuV2FpdEZyZWVSdWxlUgh3YWl0RnJlZRIrChFwdWJsaXNoZWRfbG9jYWxlcxgGIAMoCVIQcHVi'
+    'bGlzaGVkTG9jYWxlcw==');
 
 @$core.Deprecated('Use getSeriesEpisodeAccessRequestDescriptor instead')
 const GetSeriesEpisodeAccessRequest$json = {
@@ -573,6 +583,7 @@ const GetEpisodeDetailRequest$json = {
       '6': '.publira.types.v1.ClientSurface',
       '10': 'surface'
     },
+    {'1': 'locale', '3': 4, '4': 1, '5': 9, '10': 'locale'},
   ],
 };
 
@@ -581,7 +592,7 @@ final $typed_data.Uint8List getEpisodeDetailRequestDescriptor = $convert.base64D
     'ChdHZXRFcGlzb2RlRGV0YWlsUmVxdWVzdBI3CgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cG'
     'VzLnYxLlRlbmFudENvbnRleHRSBnRlbmFudBIbCglwdWJsaWNfaWQYAiABKAlSCHB1YmxpY0lk'
     'EjkKB3N1cmZhY2UYAyABKA4yHy5wdWJsaXJhLnR5cGVzLnYxLkNsaWVudFN1cmZhY2VSB3N1cm'
-    'ZhY2U=');
+    'ZhY2USFgoGbG9jYWxlGAQgASgJUgZsb2NhbGU=');
 
 @$core.Deprecated('Use episodeNeighborDescriptor instead')
 const EpisodeNeighbor$json = {
@@ -697,6 +708,13 @@ const GetEpisodeDetailResponse$json = {
       '6': '.publira.v1.EpisodeNeighbor',
       '10': 'nextFreeEpisode'
     },
+    {
+      '1': 'published_locales',
+      '3': 11,
+      '4': 3,
+      '5': 9,
+      '10': 'publishedLocales'
+    },
   ],
 };
 
@@ -713,7 +731,8 @@ final $typed_data.Uint8List getEpisodeDetailResponseDescriptor = $convert.base64
     'LkVwaXNvZGVFbnRpdGxlbWVudFNvdXJjZVIRZW50aXRsZW1lbnRTb3VyY2USRQoOcHJldmlld1'
     '9pbWFnZXMYCSADKAsyHi5wdWJsaXJhLnR5cGVzLnYxLkVwaXNvZGVJbWFnZVINcHJldmlld0lt'
     'YWdlcxJHChFuZXh0X2ZyZWVfZXBpc29kZRgKIAEoCzIbLnB1YmxpcmEudjEuRXBpc29kZU5laW'
-    'doYm9yUg9uZXh0RnJlZUVwaXNvZGU=');
+    'doYm9yUg9uZXh0RnJlZUVwaXNvZGUSKwoRcHVibGlzaGVkX2xvY2FsZXMYCyADKAlSEHB1Ymxp'
+    'c2hlZExvY2FsZXM=');
 
 @$core.Deprecated('Use publishedCreatorDescriptor instead')
 const PublishedCreator$json = {
@@ -836,6 +855,7 @@ const GetPublishedCreatorDetailRequest$json = {
       '6': '.publira.types.v1.ClientSurface',
       '10': 'surface'
     },
+    {'1': 'locale', '3': 6, '4': 1, '5': 9, '10': 'locale'},
   ],
 };
 
@@ -845,7 +865,7 @@ final $typed_data.Uint8List getPublishedCreatorDetailRequestDescriptor = $conver
     'JsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHRSBnRlbmFudBIbCglwdWJsaWNfaWQYAiABKAlS'
     'CHB1YmxpY0lkEhQKBWxpbWl0GAMgASgFUgVsaW1pdBIUCgV0b2tlbhgEIAEoCVIFdG9rZW4SOQ'
     'oHc3VyZmFjZRgFIAEoDjIfLnB1YmxpcmEudHlwZXMudjEuQ2xpZW50U3VyZmFjZVIHc3VyZmFj'
-    'ZQ==');
+    'ZRIWCgZsb2NhbGUYBiABKAlSBmxvY2FsZQ==');
 
 @$core.Deprecated('Use getPublishedCreatorDetailResponseDescriptor instead')
 const GetPublishedCreatorDetailResponse$json = {
@@ -943,6 +963,7 @@ const GetPublishedLabelDetailRequest$json = {
       '6': '.publira.types.v1.ClientSurface',
       '10': 'surface'
     },
+    {'1': 'locale', '3': 6, '4': 1, '5': 9, '10': 'locale'},
   ],
 };
 
@@ -951,7 +972,8 @@ final $typed_data.Uint8List getPublishedLabelDetailRequestDescriptor = $convert.
     'Ch5HZXRQdWJsaXNoZWRMYWJlbERldGFpbFJlcXVlc3QSNwoGdGVuYW50GAEgASgLMh8ucHVibG'
     'lyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0UgZ0ZW5hbnQSGwoJcHVibGljX2lkGAIgASgJUghw'
     'dWJsaWNJZBIUCgVsaW1pdBgDIAEoBVIFbGltaXQSFAoFdG9rZW4YBCABKAlSBXRva2VuEjkKB3'
-    'N1cmZhY2UYBSABKA4yHy5wdWJsaXJhLnR5cGVzLnYxLkNsaWVudFN1cmZhY2VSB3N1cmZhY2U=');
+    'N1cmZhY2UYBSABKA4yHy5wdWJsaXJhLnR5cGVzLnYxLkNsaWVudFN1cmZhY2VSB3N1cmZhY2US'
+    'FgoGbG9jYWxlGAYgASgJUgZsb2NhbGU=');
 
 @$core.Deprecated('Use getPublishedLabelDetailResponseDescriptor instead')
 const GetPublishedLabelDetailResponse$json = {
@@ -1074,6 +1096,7 @@ const ListPublishedGenresRequest$json = {
       '6': '.publira.types.v1.ClientSurface',
       '10': 'surface'
     },
+    {'1': 'locale', '3': 5, '4': 1, '5': 9, '10': 'locale'},
   ],
 };
 
@@ -1082,7 +1105,7 @@ final $typed_data.Uint8List listPublishedGenresRequestDescriptor = $convert.base
     'ChpMaXN0UHVibGlzaGVkR2VucmVzUmVxdWVzdBI3CgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLn'
     'R5cGVzLnYxLlRlbmFudENvbnRleHRSBnRlbmFudBIUCgVsaW1pdBgCIAEoBVIFbGltaXQSFAoF'
     'dG9rZW4YAyABKAlSBXRva2VuEjkKB3N1cmZhY2UYBCABKA4yHy5wdWJsaXJhLnR5cGVzLnYxLk'
-    'NsaWVudFN1cmZhY2VSB3N1cmZhY2U=');
+    'NsaWVudFN1cmZhY2VSB3N1cmZhY2USFgoGbG9jYWxlGAUgASgJUgZsb2NhbGU=');
 
 @$core.Deprecated('Use listPublishedGenresResponseDescriptor instead')
 const ListPublishedGenresResponse$json = {
@@ -1235,6 +1258,7 @@ const SearchPublishedSeriesRequest$json = {
       '10': 'weekday',
       '17': true
     },
+    {'1': 'locale', '3': 12, '4': 1, '5': 9, '10': 'locale'},
   ],
   '8': [
     {'1': '_weekday'},
@@ -1251,7 +1275,7 @@ final $typed_data.Uint8List searchPublishedSeriesRequestDescriptor = $convert.ba
     'RlcxgHIAEoCFIPaGFzRnJlZUVwaXNvZGVzEiYKD2dlbnJlX3B1YmxpY19pZBgIIAEoCVINZ2Vu'
     'cmVQdWJsaWNJZBIZCgh0YWdfc2x1ZxgJIAEoCVIHdGFnU2x1ZxI2CgZzdGF0dXMYCiABKA4yHi'
     '5wdWJsaXJhLnR5cGVzLnYxLlNlcmllc1N0YXR1c1IGc3RhdHVzEh0KB3dlZWtkYXkYCyABKAVI'
-    'AFIHd2Vla2RheYgBAUIKCghfd2Vla2RheQ==');
+    'AFIHd2Vla2RheYgBARIWCgZsb2NhbGUYDCABKAlSBmxvY2FsZUIKCghfd2Vla2RheQ==');
 
 @$core.Deprecated('Use searchPublishedSeriesResponseDescriptor instead')
 const SearchPublishedSeriesResponse$json = {
@@ -1414,6 +1438,7 @@ const ListRecommendedSeriesRequest$json = {
       '6': '.publira.types.v1.ClientSurface',
       '10': 'surface'
     },
+    {'1': 'locale', '3': 5, '4': 1, '5': 9, '10': 'locale'},
   ],
 };
 
@@ -1422,7 +1447,7 @@ final $typed_data.Uint8List listRecommendedSeriesRequestDescriptor = $convert.ba
     'ChxMaXN0UmVjb21tZW5kZWRTZXJpZXNSZXF1ZXN0EjcKBnRlbmFudBgBIAEoCzIfLnB1Ymxpcm'
     'EudHlwZXMudjEuVGVuYW50Q29udGV4dFIGdGVuYW50EhQKBWxpbWl0GAIgASgFUgVsaW1pdBIU'
     'CgV0b2tlbhgDIAEoCVIFdG9rZW4SOQoHc3VyZmFjZRgEIAEoDjIfLnB1YmxpcmEudHlwZXMudj'
-    'EuQ2xpZW50U3VyZmFjZVIHc3VyZmFjZQ==');
+    'EuQ2xpZW50U3VyZmFjZVIHc3VyZmFjZRIWCgZsb2NhbGUYBSABKAlSBmxvY2FsZQ==');
 
 @$core.Deprecated('Use listRecommendedSeriesResponseDescriptor instead')
 const ListRecommendedSeriesResponse$json = {
@@ -1478,6 +1503,7 @@ const ListMyRecommendedSeriesRequest$json = {
       '6': '.publira.types.v1.ClientSurface',
       '10': 'surface'
     },
+    {'1': 'locale', '3': 5, '4': 1, '5': 9, '10': 'locale'},
   ],
 };
 
@@ -1487,7 +1513,7 @@ final $typed_data.Uint8List listMyRecommendedSeriesRequestDescriptor =
         'Ch5MaXN0TXlSZWNvbW1lbmRlZFNlcmllc1JlcXVlc3QSNwoGdGVuYW50GAEgASgLMh8ucHVibG'
         'lyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0UgZ0ZW5hbnQSFAoFbGltaXQYAiABKAVSBWxpbWl0'
         'EhQKBXRva2VuGAMgASgJUgV0b2tlbhI5CgdzdXJmYWNlGAQgASgOMh8ucHVibGlyYS50eXBlcy'
-        '52MS5DbGllbnRTdXJmYWNlUgdzdXJmYWNl');
+        '52MS5DbGllbnRTdXJmYWNlUgdzdXJmYWNlEhYKBmxvY2FsZRgFIAEoCVIGbG9jYWxl');
 
 @$core.Deprecated('Use listMyRecommendedSeriesResponseDescriptor instead')
 const ListMyRecommendedSeriesResponse$json = {
@@ -1595,6 +1621,7 @@ const ListRankedSeriesRequest$json = {
       '10': 'ageRating'
     },
     {'1': 'genre_public_id', '3': 7, '4': 1, '5': 9, '10': 'genrePublicId'},
+    {'1': 'locale', '3': 8, '4': 1, '5': 9, '10': 'locale'},
   ],
 };
 
@@ -1606,7 +1633,7 @@ final $typed_data.Uint8List listRankedSeriesRequestDescriptor = $convert.base64D
     'ABKAlSBXRva2VuEjkKB3N1cmZhY2UYBSABKA4yHy5wdWJsaXJhLnR5cGVzLnYxLkNsaWVudFN1'
     'cmZhY2VSB3N1cmZhY2USQAoKYWdlX3JhdGluZxgGIAEoDjIhLnB1YmxpcmEudHlwZXMudjEuU2'
     'VyaWVzQWdlUmF0aW5nUglhZ2VSYXRpbmcSJgoPZ2VucmVfcHVibGljX2lkGAcgASgJUg1nZW5y'
-    'ZVB1YmxpY0lk');
+    'ZVB1YmxpY0lkEhYKBmxvY2FsZRgIIAEoCVIGbG9jYWxl');
 
 @$core.Deprecated('Use listRankedSeriesResponseDescriptor instead')
 const ListRankedSeriesResponse$json = {
@@ -1659,6 +1686,7 @@ const ListRelatedSeriesRequest$json = {
       '10': 'surface'
     },
     {'1': 'series_id', '3': 6, '4': 1, '5': 9, '10': 'seriesId'},
+    {'1': 'locale', '3': 7, '4': 1, '5': 9, '10': 'locale'},
   ],
   '9': [
     {'1': 2, '2': 3},
@@ -1671,8 +1699,8 @@ final $typed_data.Uint8List listRelatedSeriesRequestDescriptor = $convert.base64
     'ChhMaXN0UmVsYXRlZFNlcmllc1JlcXVlc3QSNwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eX'
     'Blcy52MS5UZW5hbnRDb250ZXh0UgZ0ZW5hbnQSFAoFbGltaXQYAyABKAVSBWxpbWl0EhQKBXRv'
     'a2VuGAQgASgJUgV0b2tlbhI5CgdzdXJmYWNlGAUgASgOMh8ucHVibGlyYS50eXBlcy52MS5DbG'
-    'llbnRTdXJmYWNlUgdzdXJmYWNlEhsKCXNlcmllc19pZBgGIAEoCVIIc2VyaWVzSWRKBAgCEANS'
-    'EHNlcmllc19wdWJsaWNfaWQ=');
+    'llbnRTdXJmYWNlUgdzdXJmYWNlEhsKCXNlcmllc19pZBgGIAEoCVIIc2VyaWVzSWQSFgoGbG9j'
+    'YWxlGAcgASgJUgZsb2NhbGVKBAgCEANSEHNlcmllc19wdWJsaWNfaWQ=');
 
 @$core.Deprecated('Use listRelatedSeriesResponseDescriptor instead')
 const ListRelatedSeriesResponse$json = {
@@ -1970,6 +1998,7 @@ const GetMySeriesProgressRequest$json = {
       '10': 'surface'
     },
     {'1': 'series_id', '3': 4, '4': 1, '5': 9, '10': 'seriesId'},
+    {'1': 'locale', '3': 5, '4': 1, '5': 9, '10': 'locale'},
   ],
   '9': [
     {'1': 2, '2': 3},
@@ -1982,7 +2011,7 @@ final $typed_data.Uint8List getMySeriesProgressRequestDescriptor = $convert.base
     'ChpHZXRNeVNlcmllc1Byb2dyZXNzUmVxdWVzdBI3CgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLn'
     'R5cGVzLnYxLlRlbmFudENvbnRleHRSBnRlbmFudBI5CgdzdXJmYWNlGAMgASgOMh8ucHVibGly'
     'YS50eXBlcy52MS5DbGllbnRTdXJmYWNlUgdzdXJmYWNlEhsKCXNlcmllc19pZBgEIAEoCVIIc2'
-    'VyaWVzSWRKBAgCEANSEHNlcmllc19wdWJsaWNfaWQ=');
+    'VyaWVzSWQSFgoGbG9jYWxlGAUgASgJUgZsb2NhbGVKBAgCEANSEHNlcmllc19wdWJsaWNfaWQ=');
 
 @$core.Deprecated('Use seriesProgressDescriptor instead')
 const SeriesProgress$json = {
@@ -2104,6 +2133,7 @@ const ListMyRecentSeriesRequest$json = {
       '6': '.publira.types.v1.ClientSurface',
       '10': 'surface'
     },
+    {'1': 'locale', '3': 5, '4': 1, '5': 9, '10': 'locale'},
   ],
 };
 
@@ -2112,7 +2142,7 @@ final $typed_data.Uint8List listMyRecentSeriesRequestDescriptor = $convert.base6
     'ChlMaXN0TXlSZWNlbnRTZXJpZXNSZXF1ZXN0EjcKBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudH'
     'lwZXMudjEuVGVuYW50Q29udGV4dFIGdGVuYW50EhQKBWxpbWl0GAIgASgFUgVsaW1pdBIUCgV0'
     'b2tlbhgDIAEoCVIFdG9rZW4SOQoHc3VyZmFjZRgEIAEoDjIfLnB1YmxpcmEudHlwZXMudjEuQ2'
-    'xpZW50U3VyZmFjZVIHc3VyZmFjZQ==');
+    'xpZW50U3VyZmFjZVIHc3VyZmFjZRIWCgZsb2NhbGUYBSABKAlSBmxvY2FsZQ==');
 
 @$core.Deprecated('Use listMyRecentSeriesResponseDescriptor instead')
 const ListMyRecentSeriesResponse$json = {
@@ -2190,6 +2220,7 @@ const ListMyEpisodeReadsRequest$json = {
       '6': '.publira.types.v1.ClientSurface',
       '10': 'surface'
     },
+    {'1': 'locale', '3': 5, '4': 1, '5': 9, '10': 'locale'},
   ],
 };
 
@@ -2198,7 +2229,7 @@ final $typed_data.Uint8List listMyEpisodeReadsRequestDescriptor = $convert.base6
     'ChlMaXN0TXlFcGlzb2RlUmVhZHNSZXF1ZXN0EjcKBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudH'
     'lwZXMudjEuVGVuYW50Q29udGV4dFIGdGVuYW50EhQKBWxpbWl0GAIgASgFUgVsaW1pdBIUCgV0'
     'b2tlbhgDIAEoCVIFdG9rZW4SOQoHc3VyZmFjZRgEIAEoDjIfLnB1YmxpcmEudHlwZXMudjEuQ2'
-    'xpZW50U3VyZmFjZVIHc3VyZmFjZQ==');
+    'xpZW50U3VyZmFjZVIHc3VyZmFjZRIWCgZsb2NhbGUYBSABKAlSBmxvY2FsZQ==');
 
 @$core.Deprecated('Use listMyEpisodeReadsResponseDescriptor instead')
 const ListMyEpisodeReadsResponse$json = {
@@ -2532,6 +2563,7 @@ const ListMyFollowUpdatesRequest$json = {
       '6': '.publira.types.v1.ClientSurface',
       '10': 'surface'
     },
+    {'1': 'locale', '3': 5, '4': 1, '5': 9, '10': 'locale'},
   ],
 };
 
@@ -2540,7 +2572,7 @@ final $typed_data.Uint8List listMyFollowUpdatesRequestDescriptor = $convert.base
     'ChpMaXN0TXlGb2xsb3dVcGRhdGVzUmVxdWVzdBI3CgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLn'
     'R5cGVzLnYxLlRlbmFudENvbnRleHRSBnRlbmFudBIUCgVsaW1pdBgCIAEoBVIFbGltaXQSFAoF'
     'dG9rZW4YAyABKAlSBXRva2VuEjkKB3N1cmZhY2UYBCABKA4yHy5wdWJsaXJhLnR5cGVzLnYxLk'
-    'NsaWVudFN1cmZhY2VSB3N1cmZhY2U=');
+    'NsaWVudFN1cmZhY2VSB3N1cmZhY2USFgoGbG9jYWxlGAUgASgJUgZsb2NhbGU=');
 
 @$core.Deprecated('Use listMyFollowUpdatesResponseDescriptor instead')
 const ListMyFollowUpdatesResponse$json = {
@@ -2834,6 +2866,7 @@ const StartEpisodeCheckoutRequest$json = {
       '10': 'client'
     },
     {'1': 'episode_id', '3': 4, '4': 1, '5': 9, '10': 'episodeId'},
+    {'1': 'locale', '3': 5, '4': 1, '5': 9, '10': 'locale'},
   ],
   '4': [StartEpisodeCheckoutRequest_Client$json],
   '9': [
@@ -2857,9 +2890,9 @@ final $typed_data.Uint8List startEpisodeCheckoutRequestDescriptor = $convert.bas
     'ChtTdGFydEVwaXNvZGVDaGVja291dFJlcXVlc3QSNwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS'
     '50eXBlcy52MS5UZW5hbnRDb250ZXh0UgZ0ZW5hbnQSRgoGY2xpZW50GAMgASgOMi4ucHVibGly'
     'YS52MS5TdGFydEVwaXNvZGVDaGVja291dFJlcXVlc3QuQ2xpZW50UgZjbGllbnQSHQoKZXBpc2'
-    '9kZV9pZBgEIAEoCVIJZXBpc29kZUlkIkMKBkNsaWVudBIWChJDTElFTlRfVU5TUEVDSUZJRUQQ'
-    'ABIOCgpDTElFTlRfV0VCEAESEQoNQ0xJRU5UX01PQklMRRACSgQIAhADUhFlcGlzb2RlX3B1Ym'
-    'xpY19pZA==');
+    '9kZV9pZBgEIAEoCVIJZXBpc29kZUlkEhYKBmxvY2FsZRgFIAEoCVIGbG9jYWxlIkMKBkNsaWVu'
+    'dBIWChJDTElFTlRfVU5TUEVDSUZJRUQQABIOCgpDTElFTlRfV0VCEAESEQoNQ0xJRU5UX01PQk'
+    'lMRRACSgQIAhADUhFlcGlzb2RlX3B1YmxpY19pZA==');
 
 @$core.Deprecated('Use startEpisodeCheckoutResponseDescriptor instead')
 const StartEpisodeCheckoutResponse$json = {
@@ -2940,6 +2973,7 @@ const ListMyPurchasesRequest$json = {
       '6': '.publira.types.v1.ClientSurface',
       '10': 'surface'
     },
+    {'1': 'locale', '3': 5, '4': 1, '5': 9, '10': 'locale'},
   ],
 };
 
@@ -2948,7 +2982,7 @@ final $typed_data.Uint8List listMyPurchasesRequestDescriptor = $convert.base64De
     'ChZMaXN0TXlQdXJjaGFzZXNSZXF1ZXN0EjcKBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZX'
     'MudjEuVGVuYW50Q29udGV4dFIGdGVuYW50EhQKBWxpbWl0GAIgASgFUgVsaW1pdBIUCgV0b2tl'
     'bhgDIAEoCVIFdG9rZW4SOQoHc3VyZmFjZRgEIAEoDjIfLnB1YmxpcmEudHlwZXMudjEuQ2xpZW'
-    '50U3VyZmFjZVIHc3VyZmFjZQ==');
+    '50U3VyZmFjZVIHc3VyZmFjZRIWCgZsb2NhbGUYBSABKAlSBmxvY2FsZQ==');
 
 @$core.Deprecated('Use listMyPurchasesResponseDescriptor instead')
 const ListMyPurchasesResponse$json = {
@@ -3099,6 +3133,7 @@ const ConfirmStorePurchaseRequest$json = {
     },
     {'1': 'transaction', '3': 3, '4': 1, '5': 9, '10': 'transaction'},
     {'1': 'product_id', '3': 4, '4': 1, '5': 9, '10': 'productId'},
+    {'1': 'locale', '3': 5, '4': 1, '5': 9, '10': 'locale'},
   ],
 };
 
@@ -3107,7 +3142,8 @@ final $typed_data.Uint8List confirmStorePurchaseRequestDescriptor = $convert.bas
     'ChtDb25maXJtU3RvcmVQdXJjaGFzZVJlcXVlc3QSNwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS'
     '50eXBlcy52MS5UZW5hbnRDb250ZXh0UgZ0ZW5hbnQSNAoFc3RvcmUYAiABKA4yHi5wdWJsaXJh'
     'LnYxLkluQXBwUHVyY2hhc2VTdG9yZVIFc3RvcmUSIAoLdHJhbnNhY3Rpb24YAyABKAlSC3RyYW'
-    '5zYWN0aW9uEh0KCnByb2R1Y3RfaWQYBCABKAlSCXByb2R1Y3RJZA==');
+    '5zYWN0aW9uEh0KCnByb2R1Y3RfaWQYBCABKAlSCXByb2R1Y3RJZBIWCgZsb2NhbGUYBSABKAlS'
+    'BmxvY2FsZQ==');
 
 @$core.Deprecated('Use confirmStorePurchaseResponseDescriptor instead')
 const ConfirmStorePurchaseResponse$json = {

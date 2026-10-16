@@ -86,6 +86,18 @@ func ListKey(order Order, filter Filter) string {
 	return key
 }
 
+// ListKeyIn is ListKey for a list read in a locale. A title order sorts by the
+// titles of the translations picked for that locale, so the same boundary row
+// sits somewhere else in another locale's list, and the key names the locale
+// as well. The other orders sort by instants every locale shares.
+func ListKeyIn(order Order, filter Filter, locale string) string {
+	key := ListKey(order, filter)
+	if order.Column == ColumnTitle {
+		key += "+locale:" + locale
+	}
+	return key
+}
+
 // Keys is the boundary row a token names, in the shape the scans compare
 // against. Only the column of the order and the id are read; the zero value is
 // the first page.
@@ -110,8 +122,10 @@ type Row struct {
 type Scan struct {
 	TenantID uuid.UUID
 	Surface  string
-	Order    Order
-	Filter   Filter
+	// Locale picks the translation whose title a title order sorts by.
+	Locale string
+	Order  Order
+	Filter Filter
 	// QueryPattern narrows the list to the series whose title or synopsis
 	// ILIKE-matches it, with '!' as the escape character. Invalid is a list
 	// rather than a search.
@@ -175,6 +189,7 @@ func Page(ctx context.Context, queries dbmodels.Querier, scan Scan) ([]Row, erro
 			Status:          filter.Status,
 			Weekday:         filter.Weekday,
 			QueryPattern:    scan.QueryPattern,
+			Locale:          scan.Locale,
 			CursorTitle:     keys.Title,
 			CursorID:        keys.ID,
 			CursorInclusive: keys.Inclusive,
@@ -193,6 +208,7 @@ func Page(ctx context.Context, queries dbmodels.Querier, scan Scan) ([]Row, erro
 			Status:          filter.Status,
 			Weekday:         filter.Weekday,
 			QueryPattern:    scan.QueryPattern,
+			Locale:          scan.Locale,
 			CursorTitle:     keys.Title,
 			CursorID:        keys.ID,
 			CursorInclusive: keys.Inclusive,

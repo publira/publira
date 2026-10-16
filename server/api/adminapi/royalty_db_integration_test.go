@@ -431,7 +431,7 @@ func TestDBAdminRoyaltyStatementSurvivesDeletedCatalogRows(t *testing.T) {
 	if _, err := env.PG.DB.ExecContext(ctx, "DELETE FROM creators WHERE id = $1", creator.ID); err != nil {
 		t.Fatalf("delete creator: %v", err)
 	}
-	if _, err := env.PG.DB.ExecContext(ctx, "UPDATE episodes SET title = 'Renamed' WHERE id = $1", f.episode.ID); err != nil {
+	if _, err := env.PG.DB.ExecContext(ctx, "UPDATE episode_translations SET title = 'Renamed' WHERE episode_id = $1", f.episode.ID); err != nil {
 		t.Fatalf("rename episode: %v", err)
 	}
 
@@ -614,10 +614,10 @@ func TestDBAdminExportRoyaltyStatementWritesTheClosedLines(t *testing.T) {
 	ctx := context.Background()
 	// Japanese titles are the point here: the file has to open readable in a
 	// spreadsheet, which is what the byte order mark is for.
-	if _, err := env.PG.DB.ExecContext(ctx, "UPDATE series SET title = '星の図書館' WHERE id = $1", f.series.ID); err != nil {
+	if _, err := env.PG.DB.ExecContext(ctx, "UPDATE series_translations SET title = '星の図書館' WHERE series_id = $1", f.series.ID); err != nil {
 		t.Fatalf("title series: %v", err)
 	}
-	if _, err := env.PG.DB.ExecContext(ctx, "UPDATE episodes SET title = '第1話, \"はじまり\"' WHERE id = $1", f.episode.ID); err != nil {
+	if _, err := env.PG.DB.ExecContext(ctx, "UPDATE episode_translations SET title = '第1話, \"はじまり\"' WHERE episode_id = $1", f.episode.ID); err != nil {
 		t.Fatalf("title episode: %v", err)
 	}
 	artist := env.PG.SeedCreator(t, f.admin.Tenant.ID, testutil.CreatorSeed{PublicID: "RYXARTIST001", Name: `Kim, "Ink" Lee`})
@@ -651,7 +651,7 @@ func TestDBAdminExportRoyaltyStatementWritesTheClosedLines(t *testing.T) {
 
 	// The export reads the lines as closed: a rename and a deleted creator leave
 	// every byte, the deleted creator's ID included, as it was.
-	if _, err := env.PG.DB.ExecContext(ctx, "UPDATE episodes SET title = 'Renamed' WHERE id = $1", f.episode.ID); err != nil {
+	if _, err := env.PG.DB.ExecContext(ctx, "UPDATE episode_translations SET title = 'Renamed' WHERE episode_id = $1", f.episode.ID); err != nil {
 		t.Fatalf("rename episode: %v", err)
 	}
 	if _, err := env.PG.DB.ExecContext(ctx, "DELETE FROM creators WHERE id = $1", guest.ID); err != nil {

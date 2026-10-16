@@ -15,14 +15,17 @@ WHERE tenant_id = $1
 FOR UPDATE;
 
 -- name: GetSeriesDetail :one
+-- The title and the synopsis are those of the translation
+-- series_translation_for picks for the reader's locale, and each episode's
+-- title is picked the same way.
 SELECT s.id,
     s.public_id,
-    s.title,
+    tr.title,
     l.public_id AS label_public_id,
     l.name AS label_name,
     s.eye_catch_image_id,
     NULL::timestamp AS eye_catch_image_updated_at,
-    sl.synopsis,
+    tr.synopsis,
     sl.status,
     sl.schedule_weekdays,
     sl.age_rating,
@@ -129,7 +132,7 @@ SELECT s.id,
                         'public_id',
                         e.public_id,
                         'title',
-                        e.title,
+                        et.title,
                         'order_index',
                         e.order_index,
                         'price',
@@ -159,6 +162,7 @@ SELECT s.id,
                         e.id ASC
                 )
             FROM episodes e
+                JOIN episode_translations et ON et.id = episode_translation_for(e.id, sqlc.arg('locale')::text)
                 JOIN episode_listings el ON el.episode_id = e.id
                 JOIN published_episode_surfaces pes ON pes.episode_id = e.id
                 JOIN episode_purchase_availability epa ON epa.episode_id = e.id
@@ -167,8 +171,20 @@ SELECT s.id,
                 AND pes.surface = sqlc.arg('surface')::text
         ),
         '[]'
-    )::jsonb AS episodes
+    )::jsonb AS episodes,
+    -- Every locale the series has a translation in that the tenant offers,
+    -- the served one included, in code order: the language alternates of the
+    -- series.
+    ARRAY(
+        SELECT alternate.locale
+        FROM series_translations alternate
+            JOIN tenants t ON t.id = alternate.tenant_id
+        WHERE alternate.series_id = s.id
+            AND alternate.locale = ANY (t.supported_locales)
+        ORDER BY alternate.locale
+    )::text [] AS published_locales
 FROM series s
+    JOIN series_translations tr ON tr.id = series_translation_for(s.id, sqlc.arg('locale')::text)
     LEFT JOIN series_listings sl ON sl.series_id = s.id
     LEFT JOIN labels l ON s.label_id = l.id
     LEFT JOIN series_creators sc ON s.id = sc.series_id
@@ -186,9 +202,9 @@ WHERE s.public_id = sqlc.arg('public_id')
             AND ss.surface = sqlc.arg('surface')::text
     )
 GROUP BY s.id,
+    tr.id,
     l.id,
     sl.series_id,
-    sl.synopsis,
     sl.status,
     sl.schedule_weekdays,
     sl.age_rating,
@@ -200,19 +216,17 @@ INSERT INTO series (
         tenant_id,
         label_id,
         public_id,
-        title,
         availability,
         purchase_availability
     )
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
 -- name: UpdateSeriesBase :exec
 UPDATE series
-SET title = $2,
-    label_id = $3,
-    availability = $4,
-    purchase_availability = $5,
+SET label_id = $2,
+    availability = $3,
+    purchase_availability = $4,
     updated_at = NOW()
 WHERE id = $1;
 
@@ -220,7 +234,6 @@ WHERE id = $1;
 INSERT INTO series_listings (
         tenant_id,
         series_id,
-        synopsis,
         reading_period_hours,
         status,
         schedule_weekdays,
@@ -232,7 +245,6 @@ INSERT INTO series_listings (
 VALUES (
         sqlc.arg('tenant_id'),
         sqlc.arg('series_id'),
-        sqlc.arg('synopsis'),
         sqlc.arg('reading_period_hours'),
         sqlc.arg('status'),
         sqlc.arg('schedule_weekdays'),
@@ -250,7 +262,6 @@ RETURNING *;
 INSERT INTO series_listings (
         tenant_id,
         series_id,
-        synopsis,
         reading_period_hours,
         status,
         schedule_weekdays,
@@ -262,7 +273,6 @@ INSERT INTO series_listings (
 VALUES (
         sqlc.arg('tenant_id'),
         sqlc.arg('series_id'),
-        sqlc.arg('synopsis'),
         sqlc.arg('reading_period_hours'),
         sqlc.arg('status'),
         sqlc.arg('schedule_weekdays'),
@@ -272,11 +282,7 @@ VALUES (
         sqlc.arg('spread_start_index')
     ) ON CONFLICT (series_id) DO
 UPDATE
-SET synopsis = CASE
-        WHEN sqlc.arg('write_synopsis')::boolean THEN EXCLUDED.synopsis
-        ELSE series_listings.synopsis
-    END,
-    reading_period_hours = CASE
+SET reading_period_hours = CASE
         WHEN sqlc.arg('write_reading_period_hours')::boolean THEN EXCLUDED.reading_period_hours
         ELSE series_listings.reading_period_hours
     END,
@@ -344,9 +350,10 @@ RETURNING (
 SELECT s.id,
     s.tenant_id,
     s.public_id,
-    s.title,
+    tr.title,
     s.published_at
 FROM series s
+    JOIN series_translations tr ON tr.id = series_translation_for(s.id, '')
 WHERE s.is_published
     AND s.publication_revalidated_at IS NULL
     AND s.published_at <= NOW()
@@ -367,13 +374,16 @@ WHERE id = $1
 -- reverse. The handler flips ASC rows back into display order. id is a
 -- UUIDv7, so the order stays unique even when created_at ties.
 -- cursor rules: proto/README.md.
+--
+-- The console's reads carry the translation in the tenant's default locale;
+-- each translation is read on its own through series_translation.sql.
 -- name: ListSeriesByTenantDesc :many
 SELECT s.id,
     s.public_id,
-    s.title,
+    tr.title,
     l.public_id AS label_public_id,
     l.name AS label_name,
-    sl.synopsis,
+    tr.synopsis,
     sl.reading_period_hours,
     sl.status,
     sl.schedule_weekdays,
@@ -386,6 +396,7 @@ SELECT s.id,
     COALESCE(siv.file_size_bytes, 0)::bigint AS eye_catch_image_file_size_bytes,
     s.availability
 FROM series s
+    JOIN series_translations tr ON tr.id = series_translation_for(s.id, '')
     LEFT JOIN labels l ON l.id = s.label_id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
     LEFT JOIN series_images si ON si.id = s.eye_catch_image_id
@@ -422,10 +433,10 @@ LIMIT sqlc.arg('limit');
 -- name: ListSeriesByTenantAsc :many
 SELECT s.id,
     s.public_id,
-    s.title,
+    tr.title,
     l.public_id AS label_public_id,
     l.name AS label_name,
-    sl.synopsis,
+    tr.synopsis,
     sl.reading_period_hours,
     sl.status,
     sl.schedule_weekdays,
@@ -438,6 +449,7 @@ SELECT s.id,
     COALESCE(siv.file_size_bytes, 0)::bigint AS eye_catch_image_file_size_bytes,
     s.availability
 FROM series s
+    JOIN series_translations tr ON tr.id = series_translation_for(s.id, '')
     LEFT JOIN labels l ON l.id = s.label_id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
     LEFT JOIN series_images si ON si.id = s.eye_catch_image_id
@@ -513,11 +525,11 @@ LIMIT 1;
 -- name: GetSeriesByPublicIDForTenant :one
 SELECT s.id,
     s.public_id,
-    s.title,
+    tr.title,
     l.id AS label_id,
     l.public_id AS label_public_id,
     l.name AS label_name,
-    sl.synopsis,
+    tr.synopsis,
     sl.reading_period_hours,
     sl.status,
     sl.schedule_weekdays,
@@ -534,6 +546,7 @@ SELECT s.id,
     -- The series' own purchase availability, NULL where it follows the tenant.
     s.purchase_availability
 FROM series s
+    JOIN series_translations tr ON tr.id = series_translation_for(s.id, '')
     LEFT JOIN labels l ON l.id = s.label_id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
     LEFT JOIN series_images si ON si.id = s.eye_catch_image_id
@@ -551,11 +564,11 @@ LIMIT 1;
 -- name: GetSeriesByIDForTenant :one
 SELECT s.id,
     s.public_id,
-    s.title,
+    tr.title,
     l.id AS label_id,
     l.public_id AS label_public_id,
     l.name AS label_name,
-    sl.synopsis,
+    tr.synopsis,
     sl.reading_period_hours,
     sl.status,
     sl.schedule_weekdays,
@@ -572,6 +585,7 @@ SELECT s.id,
     -- The series' own purchase availability, NULL where it follows the tenant.
     s.purchase_availability
 FROM series s
+    JOIN series_translations tr ON tr.id = series_translation_for(s.id, '')
     LEFT JOIN labels l ON l.id = s.label_id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
     LEFT JOIN series_images si ON si.id = s.eye_catch_image_id

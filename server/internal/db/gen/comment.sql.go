@@ -259,9 +259,9 @@ SELECT c.id, c.tenant_id, c.public_id, c.episode_id, c.user_id, c.body, c.status
         WHERE tur.user_id = u.id
     ) AS author_is_staff,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     s.public_id AS series_public_id,
-    s.title AS series_title,
+    str.title AS series_title,
     cc.id AS creator_id,
     cc.public_id AS creator_public_id,
     cc.name AS creator_name
@@ -270,8 +270,10 @@ FROM episode_comments c
         AND u.id = c.user_id
     JOIN episodes e ON e.tenant_id = c.tenant_id
         AND e.id = c.episode_id
+    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
     JOIN series s ON s.tenant_id = e.tenant_id
         AND s.id = e.series_id
+    JOIN series_translations str ON str.id = series_translation_for(s.id, '')
     LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
 WHERE c.tenant_id = $1
     AND c.id = $2
@@ -409,9 +411,9 @@ SELECT c.id, c.tenant_id, c.public_id, c.episode_id, c.user_id, c.body, c.status
         WHERE tur.user_id = u.id
     ) AS author_is_staff,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     s.public_id AS series_public_id,
-    s.title AS series_title,
+    str.title AS series_title,
     cc.id AS creator_id,
     cc.public_id AS creator_public_id,
     cc.name AS creator_name
@@ -420,8 +422,10 @@ FROM episode_comments c
         AND u.id = c.user_id
     JOIN episodes e ON e.tenant_id = c.tenant_id
         AND e.id = c.episode_id
+    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
     JOIN series s ON s.tenant_id = e.tenant_id
         AND s.id = e.series_id
+    JOIN series_translations str ON str.id = series_translation_for(s.id, '')
     LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
 WHERE c.tenant_id = $1
     AND ($2::text IS NULL OR c.status = $2::text)
@@ -562,9 +566,9 @@ SELECT c.id, c.tenant_id, c.public_id, c.episode_id, c.user_id, c.body, c.status
         WHERE tur.user_id = u.id
     ) AS author_is_staff,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     s.public_id AS series_public_id,
-    s.title AS series_title,
+    str.title AS series_title,
     cc.id AS creator_id,
     cc.public_id AS creator_public_id,
     cc.name AS creator_name
@@ -573,8 +577,10 @@ FROM episode_comments c
         AND u.id = c.user_id
     JOIN episodes e ON e.tenant_id = c.tenant_id
         AND e.id = c.episode_id
+    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
     JOIN series s ON s.tenant_id = e.tenant_id
         AND s.id = e.series_id
+    JOIN series_translations str ON str.id = series_translation_for(s.id, '')
     LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
 WHERE c.tenant_id = $1
     AND ($2::text IS NULL OR c.status = $2::text)

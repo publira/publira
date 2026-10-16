@@ -82,11 +82,17 @@ func (s *apiServer) StartEpisodeCheckout(
 	if err != nil {
 		return nil, err
 	}
+	readerLocale, err := readerLocaleOf(req.Locale, tenant)
+	if err != nil {
+		return nil, err
+	}
 
+	// The checkout page names the episode in the reader's language.
 	episode, err := s.queriesFor(ctx).GetPurchasableEpisodeForTenant(ctx, dbmodels.GetPurchasableEpisodeForTenantParams{
 		TenantID: tenant.ID,
 		ID:       episodeID,
 		Surface:  surface,
+		Locale:   readerLocale,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -294,6 +300,7 @@ func (s *apiServer) purchasePage(
 	ctx context.Context,
 	tenantID, userID uuid.UUID,
 	surface string,
+	locale string,
 	keys pagination.TimeUUIDKeys,
 	direction pagination.Direction,
 	limit int32,
@@ -303,6 +310,7 @@ func (s *apiServer) purchasePage(
 		TenantID:          tenantID,
 		UserID:            userID,
 		Surface:           surface,
+		Locale:            locale,
 		CursorPurchasedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
 		CursorInclusive:   keys.Inclusive,
 		CursorID:          uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
@@ -378,6 +386,10 @@ func (s *apiServer) ListMyPurchases(
 	if err != nil {
 		return nil, err
 	}
+	readerLocale, err := readerLocaleOf(req.Locale, tenant)
+	if err != nil {
+		return nil, err
+	}
 
 	limit := pagination.NormalizeLimit(req.Limit, defaultPurchasePageSize, maxPurchasePageSize)
 	cursor, err := decodeSurfaceToken(req.Token, surface)
@@ -392,7 +404,7 @@ func (s *apiServer) ListMyPurchases(
 		}
 	}
 
-	rows, err := s.purchasePage(ctx, tenant.ID, user.ID, surface, keys, cursor.Direction, limit+1)
+	rows, err := s.purchasePage(ctx, tenant.ID, user.ID, surface, readerLocale, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list purchases", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}

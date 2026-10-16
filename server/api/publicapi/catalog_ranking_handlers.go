@@ -464,6 +464,10 @@ func (s *apiServer) ListRankedSeries(
 	if err != nil {
 		return nil, err
 	}
+	readerLocale, err := readerLocaleOf(req.Locale, tenant)
+	if err != nil {
+		return nil, err
+	}
 	rankingKey, err := rankingKeyForPeriod(req.Period)
 	if err != nil {
 		return nil, err
@@ -547,7 +551,7 @@ func (s *apiServer) ListRankedSeries(
 		rankByID[pageRow.id] = pageRow.rank
 	}
 
-	rows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, surface, ids)
+	rows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, surface, readerLocale, ids)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list ranked series", err, "tenant_id", tenant.ID.String())
 	}

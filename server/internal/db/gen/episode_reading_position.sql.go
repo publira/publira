@@ -70,7 +70,7 @@ func (q *Queries) GetMyEpisodeReadingPosition(ctx context.Context, arg GetMyEpis
 const GetMySeriesReadingProgress = `-- name: GetMySeriesReadingProgress :one
 SELECT e.id AS episode_id,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     e.order_index,
     el.price,
     el.reading_period_hours,
@@ -92,24 +92,26 @@ SELECT e.id AS episode_id,
     ) AS is_finished
 FROM episode_reading_positions rp
     JOIN episodes e ON e.id = rp.episode_id
+    JOIN episode_translations et ON et.id = episode_translation_for(e.id, $1::text)
     JOIN episode_listings el ON el.episode_id = e.id
     LEFT JOIN published_free_episodes fe ON fe.episode_id = e.id
-WHERE rp.tenant_id = $1
-    AND rp.user_id = $2
-    AND e.series_id = $3
+WHERE rp.tenant_id = $2
+    AND rp.user_id = $3
+    AND e.series_id = $4
     AND EXISTS (
         SELECT 1
         FROM published_episode_surfaces pes
         WHERE pes.episode_id = e.id
-            AND pes.surface = $4::text
+            AND pes.surface = $5::text
     )
-    AND reader_may_open_episode($1, $2::uuid, e.id)
+    AND reader_may_open_episode($2, $3::uuid, e.id)
 ORDER BY rp.updated_at DESC,
     rp.episode_id DESC
 LIMIT 1
 `
 
 type GetMySeriesReadingProgressParams struct {
+	Locale   string    `json:"locale"`
 	TenantID uuid.UUID `json:"tenant_id"`
 	UserID   uuid.UUID `json:"user_id"`
 	SeriesID uuid.UUID `json:"series_id"`
@@ -143,6 +145,7 @@ type GetMySeriesReadingProgressRow struct {
 // position they cannot act on.
 func (q *Queries) GetMySeriesReadingProgress(ctx context.Context, arg GetMySeriesReadingProgressParams) (GetMySeriesReadingProgressRow, error) {
 	row := q.db.QueryRowContext(ctx, GetMySeriesReadingProgress,
+		arg.Locale,
 		arg.TenantID,
 		arg.UserID,
 		arg.SeriesID,
@@ -173,14 +176,14 @@ WITH touched AS (
     SELECT rp.episode_id,
         rp.updated_at AS activity_at
     FROM episode_reading_positions rp
-    WHERE rp.tenant_id = $1
-        AND rp.user_id = $2
+    WHERE rp.tenant_id = $2
+        AND rp.user_id = $3
     UNION ALL
     SELECT er.episode_id,
         er.read_at AS activity_at
     FROM episode_reads er
-    WHERE er.tenant_id = $1
-        AND er.user_id = $2
+    WHERE er.tenant_id = $2
+        AND er.user_id = $3
 ),
 touched_episodes AS (
     SELECT e.series_id,
@@ -189,12 +192,12 @@ touched_episodes AS (
         MAX(t.activity_at)::timestamptz AS activity_at
     FROM touched t
         JOIN episodes e ON e.id = t.episode_id
-    WHERE e.tenant_id = $1
+    WHERE e.tenant_id = $2
         AND EXISTS (
             SELECT 1
             FROM published_episode_surfaces pes
             WHERE pes.episode_id = e.id
-                AND pes.surface = $7::text
+                AND pes.surface = $8::text
         )
     GROUP BY e.series_id,
         e.id,
@@ -218,27 +221,27 @@ continue_from AS (
             WHEN NOT EXISTS (
                 SELECT 1
                 FROM episode_reads cr
-                WHERE cr.tenant_id = $1
-                    AND cr.user_id = $2
+                WHERE cr.tenant_id = $2
+                    AND cr.user_id = $3
                     AND cr.episode_id = ce.episode_id
             ) THEN ce.episode_id
             ELSE (
                 SELECT n.id
                 FROM episodes n
-                WHERE n.tenant_id = $1
+                WHERE n.tenant_id = $2
                     AND n.series_id = ce.series_id
                     AND (n.order_index, n.id) > (ce.order_index, ce.episode_id)
                     AND EXISTS (
                         SELECT 1
                         FROM published_episode_surfaces pes
                         WHERE pes.episode_id = n.id
-                            AND pes.surface = $7::text
+                            AND pes.surface = $8::text
                     )
                     AND NOT EXISTS (
                         SELECT 1
                         FROM episode_reads nr
-                        WHERE nr.tenant_id = $1
-                            AND nr.user_id = $2
+                        WHERE nr.tenant_id = $2
+                            AND nr.user_id = $3
                             AND nr.episode_id = n.id
                     )
                 ORDER BY n.order_index ASC,
@@ -252,7 +255,7 @@ SELECT cf.series_id,
     e.id AS episode_id,
     cf.last_activity_at,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     e.order_index,
     el.price,
     el.reading_period_hours,
@@ -265,35 +268,37 @@ SELECT cf.series_id,
     rp.updated_at AS position_updated_at
 FROM continue_from cf
     JOIN episodes e ON e.id = cf.episode_id
+    JOIN episode_translations et ON et.id = episode_translation_for(e.id, $1::text)
     JOIN episode_listings el ON el.episode_id = e.id
     LEFT JOIN published_free_episodes fe ON fe.episode_id = e.id
-    LEFT JOIN episode_reading_positions rp ON rp.tenant_id = $1
-        AND rp.user_id = $2
+    LEFT JOIN episode_reading_positions rp ON rp.tenant_id = $2
+        AND rp.user_id = $3
         AND rp.episode_id = e.id
-        AND reader_may_open_episode($1, $2::uuid, e.id)
+        AND reader_may_open_episode($2, $3::uuid, e.id)
 WHERE (
-        $3::timestamptz IS NULL
+        $4::timestamptz IS NULL
         OR (
-            $4::boolean
+            $5::boolean
             AND (cf.last_activity_at, cf.series_id) >= (
-                $3::timestamptz,
-                $5::uuid
+                $4::timestamptz,
+                $6::uuid
             )
         )
         OR (
-            NOT $4::boolean
+            NOT $5::boolean
             AND (cf.last_activity_at, cf.series_id) > (
-                $3::timestamptz,
-                $5::uuid
+                $4::timestamptz,
+                $6::uuid
             )
         )
     )
 ORDER BY cf.last_activity_at ASC,
     cf.series_id ASC
-LIMIT $6
+LIMIT $7
 `
 
 type ListMyRecentSeriesAscParams struct {
+	Locale               string        `json:"locale"`
 	TenantID             uuid.UUID     `json:"tenant_id"`
 	UserID               uuid.UUID     `json:"user_id"`
 	CursorLastActivityAt sql.NullTime  `json:"cursor_last_activity_at"`
@@ -324,6 +329,7 @@ type ListMyRecentSeriesAscRow struct {
 // The backward direction of ListMyRecentSeriesDesc.
 func (q *Queries) ListMyRecentSeriesAsc(ctx context.Context, arg ListMyRecentSeriesAscParams) ([]ListMyRecentSeriesAscRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListMyRecentSeriesAsc,
+		arg.Locale,
 		arg.TenantID,
 		arg.UserID,
 		arg.CursorLastActivityAt,
@@ -374,14 +380,14 @@ WITH touched AS (
     SELECT rp.episode_id,
         rp.updated_at AS activity_at
     FROM episode_reading_positions rp
-    WHERE rp.tenant_id = $1
-        AND rp.user_id = $2
+    WHERE rp.tenant_id = $2
+        AND rp.user_id = $3
     UNION ALL
     SELECT er.episode_id,
         er.read_at AS activity_at
     FROM episode_reads er
-    WHERE er.tenant_id = $1
-        AND er.user_id = $2
+    WHERE er.tenant_id = $2
+        AND er.user_id = $3
 ),
 touched_episodes AS (
     SELECT e.series_id,
@@ -390,12 +396,12 @@ touched_episodes AS (
         MAX(t.activity_at)::timestamptz AS activity_at
     FROM touched t
         JOIN episodes e ON e.id = t.episode_id
-    WHERE e.tenant_id = $1
+    WHERE e.tenant_id = $2
         AND EXISTS (
             SELECT 1
             FROM published_episode_surfaces pes
             WHERE pes.episode_id = e.id
-                AND pes.surface = $7::text
+                AND pes.surface = $8::text
         )
     GROUP BY e.series_id,
         e.id,
@@ -419,27 +425,27 @@ continue_from AS (
             WHEN NOT EXISTS (
                 SELECT 1
                 FROM episode_reads cr
-                WHERE cr.tenant_id = $1
-                    AND cr.user_id = $2
+                WHERE cr.tenant_id = $2
+                    AND cr.user_id = $3
                     AND cr.episode_id = ce.episode_id
             ) THEN ce.episode_id
             ELSE (
                 SELECT n.id
                 FROM episodes n
-                WHERE n.tenant_id = $1
+                WHERE n.tenant_id = $2
                     AND n.series_id = ce.series_id
                     AND (n.order_index, n.id) > (ce.order_index, ce.episode_id)
                     AND EXISTS (
                         SELECT 1
                         FROM published_episode_surfaces pes
                         WHERE pes.episode_id = n.id
-                            AND pes.surface = $7::text
+                            AND pes.surface = $8::text
                     )
                     AND NOT EXISTS (
                         SELECT 1
                         FROM episode_reads nr
-                        WHERE nr.tenant_id = $1
-                            AND nr.user_id = $2
+                        WHERE nr.tenant_id = $2
+                            AND nr.user_id = $3
                             AND nr.episode_id = n.id
                     )
                 ORDER BY n.order_index ASC,
@@ -453,7 +459,7 @@ SELECT cf.series_id,
     e.id AS episode_id,
     cf.last_activity_at,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     e.order_index,
     el.price,
     el.reading_period_hours,
@@ -466,35 +472,37 @@ SELECT cf.series_id,
     rp.updated_at AS position_updated_at
 FROM continue_from cf
     JOIN episodes e ON e.id = cf.episode_id
+    JOIN episode_translations et ON et.id = episode_translation_for(e.id, $1::text)
     JOIN episode_listings el ON el.episode_id = e.id
     LEFT JOIN published_free_episodes fe ON fe.episode_id = e.id
-    LEFT JOIN episode_reading_positions rp ON rp.tenant_id = $1
-        AND rp.user_id = $2
+    LEFT JOIN episode_reading_positions rp ON rp.tenant_id = $2
+        AND rp.user_id = $3
         AND rp.episode_id = e.id
-        AND reader_may_open_episode($1, $2::uuid, e.id)
+        AND reader_may_open_episode($2, $3::uuid, e.id)
 WHERE (
-        $3::timestamptz IS NULL
+        $4::timestamptz IS NULL
         OR (
-            $4::boolean
+            $5::boolean
             AND (cf.last_activity_at, cf.series_id) <= (
-                $3::timestamptz,
-                $5::uuid
+                $4::timestamptz,
+                $6::uuid
             )
         )
         OR (
-            NOT $4::boolean
+            NOT $5::boolean
             AND (cf.last_activity_at, cf.series_id) < (
-                $3::timestamptz,
-                $5::uuid
+                $4::timestamptz,
+                $6::uuid
             )
         )
     )
 ORDER BY cf.last_activity_at DESC,
     cf.series_id DESC
-LIMIT $6
+LIMIT $7
 `
 
 type ListMyRecentSeriesDescParams struct {
+	Locale               string        `json:"locale"`
 	TenantID             uuid.UUID     `json:"tenant_id"`
 	UserID               uuid.UUID     `json:"user_id"`
 	CursorLastActivityAt sql.NullTime  `json:"cursor_last_activity_at"`
@@ -555,6 +563,7 @@ type ListMyRecentSeriesDescRow struct {
 // cursor rules: proto/README.md.
 func (q *Queries) ListMyRecentSeriesDesc(ctx context.Context, arg ListMyRecentSeriesDescParams) ([]ListMyRecentSeriesDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListMyRecentSeriesDesc,
+		arg.Locale,
 		arg.TenantID,
 		arg.UserID,
 		arg.CursorLastActivityAt,

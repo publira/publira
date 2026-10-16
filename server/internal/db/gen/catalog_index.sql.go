@@ -190,8 +190,8 @@ func (q *Queries) ListCatalogIndexLabels(ctx context.Context, arg ListCatalogInd
 
 const ListCatalogIndexSeries = `-- name: ListCatalogIndexSeries :many
 SELECT s.id,
-    s.title,
-    COALESCE(sl.synopsis, '')::text AS synopsis,
+    tr.title,
+    tr.synopsis,
     COALESCE(s.published_at, 'epoch')::timestamptz AS published_at,
     ARRAY(
         SELECT ss.surface
@@ -265,6 +265,7 @@ SELECT s.id,
         '{}'
     )::jsonb AS latest_episode_at_by_surface
 FROM series s
+    JOIN series_translations tr ON tr.id = series_translation_for(s.id, '')
     LEFT JOIN series_listings sl ON sl.series_id = s.id
 WHERE s.tenant_id = $1
     AND (
@@ -293,7 +294,8 @@ type ListCatalogIndexSeriesRow struct {
 	LatestEpisodeAtBySurface json.RawMessage `json:"latest_episode_at_by_surface"`
 }
 
-// Every series of the tenant, or the one series_id names.
+// Every series of the tenant, or the one series_id names, with the title and
+// the synopsis of its translation in the tenant's default locale.
 func (q *Queries) ListCatalogIndexSeries(ctx context.Context, arg ListCatalogIndexSeriesParams) ([]ListCatalogIndexSeriesRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListCatalogIndexSeries, arg.TenantID, arg.SeriesID)
 	if err != nil {

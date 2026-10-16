@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -102,7 +103,7 @@ func expectEpisodeNeighborsLookup(
 		rows.AddRow(neighbor.direction, neighbor.id, neighbor.publicID, neighbor.title, neighbor.orderIndex, neighbor.price, neighbor.isFree, "all")
 	}
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedEpisodeNeighborsForTenant)).
-		WithArgs(tenantID, seriesID, orderIndex, episodeID, "web").
+		WithArgs("ja", tenantID, seriesID, orderIndex, episodeID, "web").
 		WillReturnRows(rows)
 }
 
@@ -122,7 +123,7 @@ func expectNextFreeEpisodeLookup(
 		rows.AddRow(episode.id, episode.publicID, episode.title, episode.orderIndex, episode.price, "all")
 	}
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetNextPublishedFreeEpisodeForTenant)).
-		WithArgs(tenantID, seriesID, orderIndex, episodeID, "web").
+		WithArgs("ja", tenantID, seriesID, orderIndex, episodeID, "web").
 		WillReturnRows(rows)
 }
 
@@ -276,4 +277,16 @@ func webToken(direction pagination.Direction, keys ...string) string {
 func onWeb(token string) string {
 	bindSurfaceTokens("web", &token)
 	return token
+}
+
+// withScanLocale is the arguments of a published series scan, with the
+// reader's locale ahead of them where the scan sorts by title: the title
+// scans sort by the title of the translation picked for it, and no other scan
+// takes one.
+func withScanLocale(query string, args ...driver.Value) []driver.Value {
+	switch query {
+	case dbmodels.ListActiveSeriesIDsByTitleAsc, dbmodels.ListActiveSeriesIDsByTitleDesc:
+		return append([]driver.Value{"ja"}, args...)
+	}
+	return args
 }

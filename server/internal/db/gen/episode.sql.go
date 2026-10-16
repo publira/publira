@@ -53,21 +53,19 @@ INSERT INTO episodes (
         id,
         series_id,
         public_id,
-        title,
         order_index,
         tenant_id,
         availability,
         purchase_availability
     )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, series_id, public_id, title, order_index, created_at, tenant_id, reading_direction, spread_start_index, availability, purchase_availability
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, series_id, public_id, order_index, created_at, tenant_id, reading_direction, spread_start_index, availability, purchase_availability
 `
 
 type CreateEpisodeBaseParams struct {
 	ID                   uuid.UUID      `json:"id"`
 	SeriesID             uuid.UUID      `json:"series_id"`
 	PublicID             string         `json:"public_id"`
-	Title                string         `json:"title"`
 	OrderIndex           int32          `json:"order_index"`
 	TenantID             uuid.UUID      `json:"tenant_id"`
 	Availability         sql.NullString `json:"availability"`
@@ -79,7 +77,6 @@ func (q *Queries) CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBasePa
 		arg.ID,
 		arg.SeriesID,
 		arg.PublicID,
-		arg.Title,
 		arg.OrderIndex,
 		arg.TenantID,
 		arg.Availability,
@@ -90,7 +87,6 @@ func (q *Queries) CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBasePa
 		&i.ID,
 		&i.SeriesID,
 		&i.PublicID,
-		&i.Title,
 		&i.OrderIndex,
 		&i.CreatedAt,
 		&i.TenantID,
@@ -105,7 +101,7 @@ func (q *Queries) CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBasePa
 const GetEpisodeByIDForTenant = `-- name: GetEpisodeByIDForTenant :one
 SELECT e.id,
     e.public_id,
-    e.title,
+    et.title,
     e.order_index,
     el.price,
     el.reading_period_hours,
@@ -127,6 +123,7 @@ SELECT e.id,
     epa.purchase_availability AS resolved_purchase_availability,
     e.series_id
 FROM episodes e
+    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
     JOIN episode_purchase_availability epa ON epa.episode_id = e.id
@@ -189,7 +186,7 @@ func (q *Queries) GetEpisodeByIDForTenant(ctx context.Context, arg GetEpisodeByI
 const GetEpisodeByPublicIDForTenant = `-- name: GetEpisodeByPublicIDForTenant :one
 SELECT e.id,
     e.public_id,
-    e.title,
+    et.title,
     e.order_index,
     el.price,
     el.reading_period_hours,
@@ -211,6 +208,7 @@ SELECT e.id,
     epa.purchase_availability AS resolved_purchase_availability,
     e.series_id
 FROM episodes e
+    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
     JOIN episode_purchase_availability epa ON epa.episode_id = e.id
@@ -273,7 +271,7 @@ func (q *Queries) GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpis
 const GetEpisodeByPublicIDForTenantAndSeries = `-- name: GetEpisodeByPublicIDForTenantAndSeries :one
 SELECT e.id,
     e.public_id,
-    e.title,
+    et.title,
     e.order_index,
     el.price,
     el.reading_period_hours,
@@ -289,6 +287,7 @@ SELECT e.id,
     e.purchase_availability,
     epa.purchase_availability AS resolved_purchase_availability
 FROM episodes e
+    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
     JOIN episode_purchase_availability epa ON epa.episode_id = e.id
@@ -401,23 +400,24 @@ func (q *Queries) GetMaxEpisodeOrderIndexBySeriesForTenant(ctx context.Context, 
 const GetNextPublishedFreeEpisodeForTenant = `-- name: GetNextPublishedFreeEpisodeForTenant :one
 SELECT e.id,
     e.public_id,
-    e.title,
+    et.title,
     e.order_index,
     el.price,
     epa.purchase_availability
 FROM episodes e
+    JOIN episode_translations et ON et.id = episode_translation_for(e.id, $1::text)
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
     JOIN episode_purchase_availability epa ON epa.episode_id = e.id
     JOIN published_free_episodes fe ON fe.episode_id = e.id
-WHERE s.tenant_id = $1
-    AND e.series_id = $2
-    AND (e.order_index, e.id) > ($3::int4, $4::uuid)
+WHERE s.tenant_id = $2
+    AND e.series_id = $3
+    AND (e.order_index, e.id) > ($4::int4, $5::uuid)
     AND EXISTS (
         SELECT 1
         FROM published_episode_surfaces pes
         WHERE pes.episode_id = e.id
-            AND pes.surface = $5::text
+            AND pes.surface = $6::text
     )
 ORDER BY e.order_index ASC,
     e.id ASC
@@ -425,6 +425,7 @@ LIMIT 1
 `
 
 type GetNextPublishedFreeEpisodeForTenantParams struct {
+	Locale     string    `json:"locale"`
 	TenantID   uuid.UUID `json:"tenant_id"`
 	SeriesID   uuid.UUID `json:"series_id"`
 	OrderIndex int32     `json:"order_index"`
@@ -450,6 +451,7 @@ type GetNextPublishedFreeEpisodeForTenantRow struct {
 // series has no such episode.
 func (q *Queries) GetNextPublishedFreeEpisodeForTenant(ctx context.Context, arg GetNextPublishedFreeEpisodeForTenantParams) (GetNextPublishedFreeEpisodeForTenantRow, error) {
 	row := q.db.QueryRowContext(ctx, GetNextPublishedFreeEpisodeForTenant,
+		arg.Locale,
 		arg.TenantID,
 		arg.SeriesID,
 		arg.OrderIndex,
@@ -471,7 +473,7 @@ func (q *Queries) GetNextPublishedFreeEpisodeForTenant(ctx context.Context, arg 
 const GetPublishedEpisodeForTenant = `-- name: GetPublishedEpisodeForTenant :one
 SELECT e.id,
     e.public_id,
-    e.title,
+    et.title,
     e.order_index,
     e.series_id,
     el.price,
@@ -480,7 +482,7 @@ SELECT e.id,
     el.scheduled_at,
     el.published_at,
     s.public_id AS series_public_id,
-    s.title AS series_title,
+    str.title AS series_title,
     -- The work's artwork, which the links to the neighbouring episodes show.
     s.eye_catch_image_id AS series_eye_catch_image_id,
     si.updated_at AS series_eye_catch_image_updated_at,
@@ -508,9 +510,22 @@ SELECT e.id,
     COALESCE(erc.count, 0)::bigint AS rating_count,
     -- Where the episode may be bought, resolved through its series and the
     -- tenant, so a client draws the purchase action without resolving it.
-    epa.purchase_availability
+    epa.purchase_availability,
+    -- Every locale the episode has a translation in that the tenant offers,
+    -- the served one included, in code order: the language alternates of the
+    -- episode.
+    ARRAY(
+        SELECT alternate.locale
+        FROM episode_translations alternate
+            JOIN tenants t ON t.id = alternate.tenant_id
+        WHERE alternate.episode_id = e.id
+            AND alternate.locale = ANY (t.supported_locales)
+        ORDER BY alternate.locale
+    )::text [] AS published_locales
 FROM episodes e
+    JOIN episode_translations et ON et.id = episode_translation_for(e.id, $1::text)
     JOIN series s ON s.id = e.series_id
+    JOIN series_translations str ON str.id = series_translation_for(s.id, $1::text)
     JOIN episode_listings el ON el.episode_id = e.id
     JOIN episode_purchase_availability epa ON epa.episode_id = e.id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
@@ -518,21 +533,22 @@ FROM episodes e
     LEFT JOIN published_free_episodes fe ON fe.episode_id = e.id
     LEFT JOIN episode_rating_counts erc ON erc.tenant_id = s.tenant_id
     AND erc.episode_id = e.id
-WHERE s.tenant_id = $1
+WHERE s.tenant_id = $2
     AND (
-        e.id = $2::uuid
-        OR e.public_id = $3::text
+        e.id = $3::uuid
+        OR e.public_id = $4::text
     )
     AND EXISTS (
         SELECT 1
         FROM published_episode_surfaces pes
         WHERE pes.episode_id = e.id
-            AND pes.surface = $4::text
+            AND pes.surface = $5::text
     )
 LIMIT 1
 `
 
 type GetPublishedEpisodeForTenantParams struct {
+	Locale   string         `json:"locale"`
 	TenantID uuid.UUID      `json:"tenant_id"`
 	ID       uuid.NullUUID  `json:"id"`
 	PublicID sql.NullString `json:"public_id"`
@@ -564,12 +580,15 @@ type GetPublishedEpisodeForTenantRow struct {
 	FreeUntil                    sql.NullTime   `json:"free_until"`
 	RatingCount                  int64          `json:"rating_count"`
 	PurchaseAvailability         string         `json:"purchase_availability"`
+	PublishedLocales             []string       `json:"published_locales"`
 }
 
 // A URL names the episode by its public ID and a reader's request by its ID;
-// the caller passes the one it holds.
+// the caller passes the one it holds. The episode's title and its series' are
+// those of the translations picked for the reader's locale.
 func (q *Queries) GetPublishedEpisodeForTenant(ctx context.Context, arg GetPublishedEpisodeForTenantParams) (GetPublishedEpisodeForTenantRow, error) {
 	row := q.db.QueryRowContext(ctx, GetPublishedEpisodeForTenant,
+		arg.Locale,
 		arg.TenantID,
 		arg.ID,
 		arg.PublicID,
@@ -601,6 +620,7 @@ func (q *Queries) GetPublishedEpisodeForTenant(ctx context.Context, arg GetPubli
 		&i.FreeUntil,
 		&i.RatingCount,
 		&i.PurchaseAvailability,
+		pq.Array(&i.PublishedLocales),
 	)
 	return i, err
 }
@@ -628,7 +648,7 @@ func (q *Queries) GetResolvedEpisodePurchaseAvailability(ctx context.Context, ar
 const ListEpisodesBySeriesForTenant = `-- name: ListEpisodesBySeriesForTenant :many
 SELECT e.id,
     e.public_id,
-    e.title,
+    et.title,
     e.order_index,
     el.price,
     el.reading_period_hours,
@@ -637,6 +657,7 @@ SELECT e.id,
     el.published_at,
     e.availability
 FROM episodes e
+    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
 WHERE s.tenant_id = $1
@@ -705,7 +726,7 @@ func (q *Queries) ListEpisodesBySeriesForTenant(ctx context.Context, arg ListEpi
 const ListEpisodesBySeriesForTenantAsc = `-- name: ListEpisodesBySeriesForTenantAsc :many
 SELECT e.id,
     e.public_id,
-    e.title,
+    et.title,
     e.order_index,
     el.price,
     el.reading_period_hours,
@@ -715,6 +736,7 @@ SELECT e.id,
     -- The episode's own availability, NULL where it follows the series.
     e.availability
 FROM episodes e
+    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
 WHERE s.tenant_id = $1
@@ -806,7 +828,7 @@ func (q *Queries) ListEpisodesBySeriesForTenantAsc(ctx context.Context, arg List
 const ListEpisodesBySeriesForTenantDesc = `-- name: ListEpisodesBySeriesForTenantDesc :many
 SELECT e.id,
     e.public_id,
-    e.title,
+    et.title,
     e.order_index,
     el.price,
     el.reading_period_hours,
@@ -816,6 +838,7 @@ SELECT e.id,
     -- The episode's own availability, NULL where it follows the series.
     e.availability
 FROM episodes e
+    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
 WHERE s.tenant_id = $1
@@ -904,45 +927,48 @@ SELECT r.id,
     r.read_at,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     e.order_index AS episode_order_index,
     s.id AS series_id,
     s.public_id AS series_public_id,
-    s.title AS series_title
+    str.title AS series_title
 FROM episode_reads r
     JOIN episodes e ON e.id = r.episode_id
+    JOIN episode_translations et ON et.id = episode_translation_for(e.id, $1::text)
     JOIN series s ON s.id = e.series_id
-WHERE r.tenant_id = $1
-    AND r.user_id = $2
+    JOIN series_translations str ON str.id = series_translation_for(s.id, $1::text)
+WHERE r.tenant_id = $2
+    AND r.user_id = $3
     AND EXISTS (
         SELECT 1
         FROM published_episode_surfaces pes
         WHERE pes.episode_id = e.id
-            AND pes.surface = $3::text
+            AND pes.surface = $4::text
     )
     AND (
-        $4::timestamptz IS NULL
+        $5::timestamptz IS NULL
         OR (
-            $5::boolean
+            $6::boolean
             AND (r.read_at, r.id) >= (
-                $4::timestamptz,
-                $6::uuid
+                $5::timestamptz,
+                $7::uuid
             )
         )
         OR (
-            NOT $5::boolean
+            NOT $6::boolean
             AND (r.read_at, r.id) > (
-                $4::timestamptz,
-                $6::uuid
+                $5::timestamptz,
+                $7::uuid
             )
         )
     )
 ORDER BY r.read_at ASC,
     r.id ASC
-LIMIT $7
+LIMIT $8
 `
 
 type ListMyEpisodeReadsAscParams struct {
+	Locale          string        `json:"locale"`
 	TenantID        uuid.UUID     `json:"tenant_id"`
 	UserID          uuid.UUID     `json:"user_id"`
 	Surface         string        `json:"surface"`
@@ -967,6 +993,7 @@ type ListMyEpisodeReadsAscRow struct {
 // The backward direction of ListMyEpisodeReadsDesc.
 func (q *Queries) ListMyEpisodeReadsAsc(ctx context.Context, arg ListMyEpisodeReadsAscParams) ([]ListMyEpisodeReadsAscRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListMyEpisodeReadsAsc,
+		arg.Locale,
 		arg.TenantID,
 		arg.UserID,
 		arg.Surface,
@@ -1011,45 +1038,48 @@ SELECT r.id,
     r.read_at,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     e.order_index AS episode_order_index,
     s.id AS series_id,
     s.public_id AS series_public_id,
-    s.title AS series_title
+    str.title AS series_title
 FROM episode_reads r
     JOIN episodes e ON e.id = r.episode_id
+    JOIN episode_translations et ON et.id = episode_translation_for(e.id, $1::text)
     JOIN series s ON s.id = e.series_id
-WHERE r.tenant_id = $1
-    AND r.user_id = $2
+    JOIN series_translations str ON str.id = series_translation_for(s.id, $1::text)
+WHERE r.tenant_id = $2
+    AND r.user_id = $3
     AND EXISTS (
         SELECT 1
         FROM published_episode_surfaces pes
         WHERE pes.episode_id = e.id
-            AND pes.surface = $3::text
+            AND pes.surface = $4::text
     )
     AND (
-        $4::timestamptz IS NULL
+        $5::timestamptz IS NULL
         OR (
-            $5::boolean
+            $6::boolean
             AND (r.read_at, r.id) <= (
-                $4::timestamptz,
-                $6::uuid
+                $5::timestamptz,
+                $7::uuid
             )
         )
         OR (
-            NOT $5::boolean
+            NOT $6::boolean
             AND (r.read_at, r.id) < (
-                $4::timestamptz,
-                $6::uuid
+                $5::timestamptz,
+                $7::uuid
             )
         )
     )
 ORDER BY r.read_at DESC,
     r.id DESC
-LIMIT $7
+LIMIT $8
 `
 
 type ListMyEpisodeReadsDescParams struct {
+	Locale          string        `json:"locale"`
 	TenantID        uuid.UUID     `json:"tenant_id"`
 	UserID          uuid.UUID     `json:"user_id"`
 	Surface         string        `json:"surface"`
@@ -1089,6 +1119,7 @@ type ListMyEpisodeReadsDescRow struct {
 // cursor rules: proto/README.md.
 func (q *Queries) ListMyEpisodeReadsDesc(ctx context.Context, arg ListMyEpisodeReadsDescParams) ([]ListMyEpisodeReadsDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListMyEpisodeReadsDesc,
+		arg.Locale,
 		arg.TenantID,
 		arg.UserID,
 		arg.Surface,
@@ -1181,7 +1212,7 @@ const ListPublishedEpisodeNeighborsForTenant = `-- name: ListPublishedEpisodeNei
     SELECT -1::int4 AS direction,
         e.id,
         e.public_id,
-        e.title,
+        et.title,
         e.order_index,
         el.price,
         EXISTS (
@@ -1191,17 +1222,18 @@ const ListPublishedEpisodeNeighborsForTenant = `-- name: ListPublishedEpisodeNei
         ) AS is_free,
         epa.purchase_availability
     FROM episodes e
+        JOIN episode_translations et ON et.id = episode_translation_for(e.id, $1::text)
         JOIN series s ON s.id = e.series_id
         JOIN episode_listings el ON el.episode_id = e.id
         JOIN episode_purchase_availability epa ON epa.episode_id = e.id
-    WHERE s.tenant_id = $1
-        AND e.series_id = $2
-        AND (e.order_index, e.id) < ($3::int4, $4::uuid)
+    WHERE s.tenant_id = $2
+        AND e.series_id = $3
+        AND (e.order_index, e.id) < ($4::int4, $5::uuid)
         AND EXISTS (
             SELECT 1
             FROM published_episode_surfaces pes
             WHERE pes.episode_id = e.id
-                AND pes.surface = $5::text
+                AND pes.surface = $6::text
         )
     ORDER BY e.order_index DESC,
         e.id DESC
@@ -1212,7 +1244,7 @@ UNION ALL
     SELECT 1::int4 AS direction,
         e.id,
         e.public_id,
-        e.title,
+        et.title,
         e.order_index,
         el.price,
         EXISTS (
@@ -1222,17 +1254,18 @@ UNION ALL
         ) AS is_free,
         epa.purchase_availability
     FROM episodes e
+        JOIN episode_translations et ON et.id = episode_translation_for(e.id, $1::text)
         JOIN series s ON s.id = e.series_id
         JOIN episode_listings el ON el.episode_id = e.id
         JOIN episode_purchase_availability epa ON epa.episode_id = e.id
-    WHERE s.tenant_id = $1
-        AND e.series_id = $2
-        AND (e.order_index, e.id) > ($3::int4, $4::uuid)
+    WHERE s.tenant_id = $2
+        AND e.series_id = $3
+        AND (e.order_index, e.id) > ($4::int4, $5::uuid)
         AND EXISTS (
             SELECT 1
             FROM published_episode_surfaces pes
             WHERE pes.episode_id = e.id
-                AND pes.surface = $5::text
+                AND pes.surface = $6::text
         )
     ORDER BY e.order_index ASC,
         e.id ASC
@@ -1241,6 +1274,7 @@ UNION ALL
 `
 
 type ListPublishedEpisodeNeighborsForTenantParams struct {
+	Locale     string    `json:"locale"`
 	TenantID   uuid.UUID `json:"tenant_id"`
 	SeriesID   uuid.UUID `json:"series_id"`
 	OrderIndex int32     `json:"order_index"`
@@ -1276,6 +1310,7 @@ type ListPublishedEpisodeNeighborsForTenantRow struct {
 // through the series and the tenant as the episode read resolves it.
 func (q *Queries) ListPublishedEpisodeNeighborsForTenant(ctx context.Context, arg ListPublishedEpisodeNeighborsForTenantParams) ([]ListPublishedEpisodeNeighborsForTenantRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListPublishedEpisodeNeighborsForTenant,
+		arg.Locale,
 		arg.TenantID,
 		arg.SeriesID,
 		arg.OrderIndex,
@@ -1316,7 +1351,7 @@ const ListPublishedEpisodesBySeries = `-- name: ListPublishedEpisodesBySeries :m
 SELECT e.id,
     e.series_id,
     e.public_id,
-    e.title,
+    et.title,
     e.order_index,
     e.created_at,
     el.price,
@@ -1325,6 +1360,7 @@ SELECT e.id,
     el.scheduled_at,
     el.published_at
 FROM episodes e
+    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON e.id = el.episode_id
 WHERE s.tenant_id = $1
@@ -1390,13 +1426,15 @@ func (q *Queries) ListPublishedEpisodesBySeries(ctx context.Context, arg ListPub
 const ListRecentEpisodesForDashboard = `-- name: ListRecentEpisodesForDashboard :many
 SELECT
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     s.public_id AS series_public_id,
-    s.title AS series_title,
+    str.title AS series_title,
     el.status,
     el.scheduled_at
 FROM episodes e
+    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
     JOIN series s ON s.id = e.series_id
+    JOIN series_translations str ON str.id = series_translation_for(s.id, '')
     JOIN episode_listings el ON el.episode_id = e.id
 WHERE s.tenant_id = $1
     AND el.status IN ('draft', 'scheduled')
@@ -1714,27 +1752,6 @@ type UpdateEpisodePurchaseAvailabilityByIDForTenantParams struct {
 func (q *Queries) UpdateEpisodePurchaseAvailabilityByIDForTenant(ctx context.Context, arg UpdateEpisodePurchaseAvailabilityByIDForTenantParams) error {
 	_, err := q.db.ExecContext(ctx, UpdateEpisodePurchaseAvailabilityByIDForTenant, arg.PurchaseAvailability, arg.TenantID, arg.ID)
 	return err
-}
-
-const UpdateEpisodeTitleByIDForTenant = `-- name: UpdateEpisodeTitleByIDForTenant :execrows
-UPDATE episodes
-SET title = $1
-WHERE tenant_id = $2
-    AND id = $3
-`
-
-type UpdateEpisodeTitleByIDForTenantParams struct {
-	Title    string    `json:"title"`
-	TenantID uuid.UUID `json:"tenant_id"`
-	ID       uuid.UUID `json:"id"`
-}
-
-func (q *Queries) UpdateEpisodeTitleByIDForTenant(ctx context.Context, arg UpdateEpisodeTitleByIDForTenantParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, UpdateEpisodeTitleByIDForTenant, arg.Title, arg.TenantID, arg.ID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
 }
 
 const UpsertEpisodeListing = `-- name: UpsertEpisodeListing :one

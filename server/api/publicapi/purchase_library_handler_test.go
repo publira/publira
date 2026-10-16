@@ -31,7 +31,7 @@ func TestPurchaseListReturnsOnlySessionUsersPurchases(t *testing.T) {
 	expectAuthSession(mock, tenantID, userID, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyPurchasesDesc)).
-		WithArgs(tenantID, userID, "web", sql.NullTime{}, false, uuid.NullUUID{}, int32(21)).
+		WithArgs("ja", tenantID, userID, "web", sql.NullTime{}, false, uuid.NullUUID{}, int32(21)).
 		WillReturnRows(purchaseRows().AddRow(
 			purchaseID,
 			int32(500),
@@ -88,7 +88,7 @@ func TestPurchaseListReportsAFullyRefundedPurchase(t *testing.T) {
 	expectAuthSession(mock, tenantID, userID, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyPurchasesDesc)).
-		WithArgs(tenantID, userID, "web", sql.NullTime{}, false, uuid.NullUUID{}, int32(21)).
+		WithArgs("ja", tenantID, userID, "web", sql.NullTime{}, false, uuid.NullUUID{}, int32(21)).
 		WillReturnRows(purchaseRows().AddRow(
 			purchaseID,
 			int32(500),
@@ -141,7 +141,7 @@ func TestPurchaseListReportsAPurchaseRevokedWithoutARefund(t *testing.T) {
 	expectAuthSession(mock, tenantID, userID, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyPurchasesDesc)).
-		WithArgs(tenantID, userID, "web", sql.NullTime{}, false, uuid.NullUUID{}, int32(21)).
+		WithArgs("ja", tenantID, userID, "web", sql.NullTime{}, false, uuid.NullUUID{}, int32(21)).
 		WillReturnRows(purchaseRows().AddRow(
 			uuid.Must(uuid.NewV7()),
 			int32(500),
@@ -191,7 +191,7 @@ func TestPurchaseListReportsAPartlyRefundedPurchase(t *testing.T) {
 	expectAuthSession(mock, tenantID, userID, now)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyPurchasesDesc)).
-		WithArgs(tenantID, userID, "web", sql.NullTime{}, false, uuid.NullUUID{}, int32(21)).
+		WithArgs("ja", tenantID, userID, "web", sql.NullTime{}, false, uuid.NullUUID{}, int32(21)).
 		WillReturnRows(purchaseRows().AddRow(
 			uuid.Must(uuid.NewV7()),
 			int32(500),
@@ -250,6 +250,7 @@ func TestPurchaseListForwardPageReturnsNeighborTokens(t *testing.T) {
 	expectAuthSession(mock, tenantID, userID, now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyPurchasesDesc)).
 		WithArgs(
+			"ja",
 			tenantID,
 			userID,
 			"web",
@@ -292,6 +293,7 @@ func TestPurchaseListBackwardPageReturnsDisplayOrderAndNeighborTokens(t *testing
 	expectAuthSession(mock, tenantID, userID, now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyPurchasesAsc)).
 		WithArgs(
+			"ja",
 			tenantID,
 			userID,
 			"web",
@@ -359,6 +361,7 @@ func TestPurchaseListEmptyPagesReturnRecoveryTokens(t *testing.T) {
 			expectAuthSession(mock, tenantID, userID, now)
 			mock.ExpectQuery(regexp.QuoteMeta(tt.query)).
 				WithArgs(
+					"ja",
 					tenantID,
 					userID,
 					"web",

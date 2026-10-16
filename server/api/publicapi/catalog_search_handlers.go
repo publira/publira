@@ -100,7 +100,11 @@ func (s *apiServer) SearchPublishedSeries(
 	if err != nil {
 		return nil, err
 	}
-	seriesReq := catalogsearch.SeriesRequest{Request: search.backend}
+	readerLocale, err := readerLocaleOf(req.Locale, search.tenant)
+	if err != nil {
+		return nil, err
+	}
+	seriesReq := catalogsearch.SeriesRequest{Request: search.backend, Locale: readerLocale}
 	// Unspecified leaves the order to the backend, which is what a search
 	// answered before it could be sorted; a list's newest-first default is not.
 	if req.Order != publirav1.SeriesOrder_SERIES_ORDER_UNSPECIFIED {
@@ -123,7 +127,7 @@ func (s *apiServer) SearchPublishedSeries(
 	if err != nil {
 		return nil, s.searchError(ctx, "failed to search published series", err, search.tenant.ID)
 	}
-	rows, err := s.activeSeriesRowsInOrder(ctx, search.tenant.ID, search.backend.Surface, page.IDs)
+	rows, err := s.activeSeriesRowsInOrder(ctx, search.tenant.ID, search.backend.Surface, readerLocale, page.IDs)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to search published series", err, "tenant_id", search.tenant.ID.String())
 	}

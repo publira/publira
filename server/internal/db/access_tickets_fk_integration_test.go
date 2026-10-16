@@ -122,19 +122,21 @@ func mustInsertEpisode(t *testing.T, ctx context.Context, db *sql.DB, tenantID u
 	}
 
 	_, err = db.ExecContext(ctx, `
-		INSERT INTO series (id, tenant_id, public_id, title, is_published)
-		VALUES ($1, $2, $3, $4, false)
-	`, seriesID, tenantID, seriesPublicID, title+" series")
+		INSERT INTO series (id, tenant_id, public_id, is_published)
+		VALUES ($1, $2, $3, false)
+	`, seriesID, tenantID, seriesPublicID)
 	if err != nil {
 		t.Fatalf("insert series for %s: %v", publicID, err)
 	}
+	mustInsertSeriesTranslation(t, ctx, db, tenantID, seriesID, title+" series")
 	_, err = db.ExecContext(ctx, `
-		INSERT INTO episodes (id, series_id, public_id, title, order_index, tenant_id)
-		VALUES ($1, $2, $3, $4, 1, $5)
-	`, episodeID, seriesID, publicID, title, tenantID)
+		INSERT INTO episodes (id, series_id, public_id, order_index, tenant_id)
+		VALUES ($1, $2, $3, 1, $4)
+	`, episodeID, seriesID, publicID, tenantID)
 	if err != nil {
 		t.Fatalf("insert episode %s: %v", publicID, err)
 	}
+	mustInsertEpisodeTranslation(t, ctx, db, tenantID, episodeID, title)
 	return episodeID
 }
 

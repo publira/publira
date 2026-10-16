@@ -245,6 +245,7 @@ class ListPublishedSeriesRequest extends $pb.GeneratedMessage {
     $0.SeriesStatus? status,
     $core.int? weekday,
     $0.ClientSurface? surface,
+    $core.String? locale,
   }) {
     final result = ListPublishedSeriesRequest._();
     if (tenant != null) result.tenant = tenant;
@@ -257,6 +258,7 @@ class ListPublishedSeriesRequest extends $pb.GeneratedMessage {
     if (status != null) result.status = status;
     if (weekday != null) result.weekday = weekday;
     if (surface != null) result.surface = surface;
+    if (locale != null) result.locale = locale;
     return result;
   }
 
@@ -287,6 +289,7 @@ class ListPublishedSeriesRequest extends $pb.GeneratedMessage {
     ..aI(10, _omitFieldNames ? '' : 'weekday')
     ..aE<$0.ClientSurface>(11, _omitFieldNames ? '' : 'surface',
         enumValues: $0.ClientSurface.values)
+    ..aOS(12, _omitFieldNames ? '' : 'locale')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -435,6 +438,20 @@ class ListPublishedSeriesRequest extends $pb.GeneratedMessage {
   $core.bool hasSurface() => $_has(9);
   @$pb.TagNumber(11)
   void clearSurface() => $_clearField(11);
+
+  /// The reader's locale. Every series and episode title and synopsis in the
+  /// answer is that of the translation in this locale, else the tenant's default
+  /// locale's, else the oldest one. Empty means the tenant's default locale.
+  /// The title orders sort by those titles, so a token of a title order carries
+  /// the locale as well, and sending it in another locale is invalid_argument.
+  @$pb.TagNumber(12)
+  $core.String get locale => $_getSZ(10);
+  @$pb.TagNumber(12)
+  set locale($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(12)
+  $core.bool hasLocale() => $_has(10);
+  @$pb.TagNumber(12)
+  void clearLocale() => $_clearField(12);
 }
 
 class ListPublishedSeriesResponse extends $pb.GeneratedMessage {
@@ -526,11 +543,13 @@ class GetSeriesDetailRequest extends $pb.GeneratedMessage {
     $0.TenantContext? tenant,
     $core.String? publicId,
     $0.ClientSurface? surface,
+    $core.String? locale,
   }) {
     final result = GetSeriesDetailRequest._();
     if (tenant != null) result.tenant = tenant;
     if (publicId != null) result.publicId = publicId;
     if (surface != null) result.surface = surface;
+    if (locale != null) result.locale = locale;
     return result;
   }
 
@@ -552,6 +571,7 @@ class GetSeriesDetailRequest extends $pb.GeneratedMessage {
     ..aOS(2, _omitFieldNames ? '' : 'publicId')
     ..aE<$0.ClientSurface>(3, _omitFieldNames ? '' : 'surface',
         enumValues: $0.ClientSurface.values)
+    ..aOS(4, _omitFieldNames ? '' : 'locale')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -607,6 +627,18 @@ class GetSeriesDetailRequest extends $pb.GeneratedMessage {
   $core.bool hasSurface() => $_has(2);
   @$pb.TagNumber(3)
   void clearSurface() => $_clearField(3);
+
+  /// The reader's locale. Every series and episode title and synopsis in the
+  /// answer is that of the translation in this locale, else the tenant's default
+  /// locale's, else the oldest one. Empty means the tenant's default locale.
+  @$pb.TagNumber(4)
+  $core.String get locale => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set locale($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasLocale() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearLocale() => $_clearField(4);
 }
 
 /// A series' wait-for-free rule as a reader is told it: a signed-in reader may
@@ -713,6 +745,7 @@ class GetSeriesDetailResponse extends $pb.GeneratedMessage {
     $core.int? requiredMinimumAge,
     $0.CommentMode? commentMode,
     WaitFreeRule? waitFree,
+    $core.Iterable<$core.String>? publishedLocales,
   }) {
     final result = GetSeriesDetailResponse._();
     if (series != null) result.series = series;
@@ -721,6 +754,8 @@ class GetSeriesDetailResponse extends $pb.GeneratedMessage {
       result.requiredMinimumAge = requiredMinimumAge;
     if (commentMode != null) result.commentMode = commentMode;
     if (waitFree != null) result.waitFree = waitFree;
+    if (publishedLocales != null)
+      result.publishedLocales.addAll(publishedLocales);
     return result;
   }
 
@@ -746,6 +781,7 @@ class GetSeriesDetailResponse extends $pb.GeneratedMessage {
         enumValues: $0.CommentMode.values)
     ..aOM<WaitFreeRule>(5, _omitFieldNames ? '' : 'waitFree',
         subBuilder: WaitFreeRule.$_createMessage)
+    ..pPS(6, _omitFieldNames ? '' : 'publishedLocales')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -833,6 +869,11 @@ class GetSeriesDetailResponse extends $pb.GeneratedMessage {
   void clearWaitFree() => $_clearField(5);
   @$pb.TagNumber(5)
   WaitFreeRule ensureWaitFree() => $_ensure(4);
+
+  /// Every locale the series has a translation in that the tenant offers, the
+  /// served one included, in code order: the language alternates of the series.
+  @$pb.TagNumber(6)
+  $pb.PbList<$core.String> get publishedLocales => $_getList(5);
 }
 
 class GetSeriesEpisodeAccessRequest extends $pb.GeneratedMessage {
@@ -1077,11 +1118,13 @@ class GetEpisodeDetailRequest extends $pb.GeneratedMessage {
     $0.TenantContext? tenant,
     $core.String? publicId,
     $0.ClientSurface? surface,
+    $core.String? locale,
   }) {
     final result = GetEpisodeDetailRequest._();
     if (tenant != null) result.tenant = tenant;
     if (publicId != null) result.publicId = publicId;
     if (surface != null) result.surface = surface;
+    if (locale != null) result.locale = locale;
     return result;
   }
 
@@ -1103,6 +1146,7 @@ class GetEpisodeDetailRequest extends $pb.GeneratedMessage {
     ..aOS(2, _omitFieldNames ? '' : 'publicId')
     ..aE<$0.ClientSurface>(3, _omitFieldNames ? '' : 'surface',
         enumValues: $0.ClientSurface.values)
+    ..aOS(4, _omitFieldNames ? '' : 'locale')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1158,6 +1202,18 @@ class GetEpisodeDetailRequest extends $pb.GeneratedMessage {
   $core.bool hasSurface() => $_has(2);
   @$pb.TagNumber(3)
   void clearSurface() => $_clearField(3);
+
+  /// The reader's locale. Every series and episode title and synopsis in the
+  /// answer is that of the translation in this locale, else the tenant's default
+  /// locale's, else the oldest one. Empty means the tenant's default locale.
+  @$pb.TagNumber(4)
+  $core.String get locale => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set locale($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasLocale() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearLocale() => $_clearField(4);
 }
 
 /// A published episode of the series being read that the episode detail links
@@ -1320,6 +1376,7 @@ class GetEpisodeDetailResponse extends $pb.GeneratedMessage {
     EpisodeEntitlementSource? entitlementSource,
     $core.Iterable<$0.EpisodeImage>? previewImages,
     EpisodeNeighbor? nextFreeEpisode,
+    $core.Iterable<$core.String>? publishedLocales,
   }) {
     final result = GetEpisodeDetailResponse._();
     if (episode != null) result.episode = episode;
@@ -1332,6 +1389,8 @@ class GetEpisodeDetailResponse extends $pb.GeneratedMessage {
     if (entitlementSource != null) result.entitlementSource = entitlementSource;
     if (previewImages != null) result.previewImages.addAll(previewImages);
     if (nextFreeEpisode != null) result.nextFreeEpisode = nextFreeEpisode;
+    if (publishedLocales != null)
+      result.publishedLocales.addAll(publishedLocales);
     return result;
   }
 
@@ -1368,6 +1427,7 @@ class GetEpisodeDetailResponse extends $pb.GeneratedMessage {
         subBuilder: $0.EpisodeImage.$_createMessage)
     ..aOM<EpisodeNeighbor>(10, _omitFieldNames ? '' : 'nextFreeEpisode',
         subBuilder: EpisodeNeighbor.$_createMessage)
+    ..pPS(11, _omitFieldNames ? '' : 'publishedLocales')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1513,6 +1573,11 @@ class GetEpisodeDetailResponse extends $pb.GeneratedMessage {
   void clearNextFreeEpisode() => $_clearField(10);
   @$pb.TagNumber(10)
   EpisodeNeighbor ensureNextFreeEpisode() => $_ensure(9);
+
+  /// Every locale the episode has a translation in that the tenant offers, the
+  /// served one included, in code order: the language alternates of the episode.
+  @$pb.TagNumber(11)
+  $pb.PbList<$core.String> get publishedLocales => $_getList(10);
 }
 
 /// A creator that currently has at least one published series.
@@ -1865,6 +1930,7 @@ class GetPublishedCreatorDetailRequest extends $pb.GeneratedMessage {
     $core.int? limit,
     $core.String? token,
     $0.ClientSurface? surface,
+    $core.String? locale,
   }) {
     final result = GetPublishedCreatorDetailRequest._();
     if (tenant != null) result.tenant = tenant;
@@ -1872,6 +1938,7 @@ class GetPublishedCreatorDetailRequest extends $pb.GeneratedMessage {
     if (limit != null) result.limit = limit;
     if (token != null) result.token = token;
     if (surface != null) result.surface = surface;
+    if (locale != null) result.locale = locale;
     return result;
   }
 
@@ -1896,6 +1963,7 @@ class GetPublishedCreatorDetailRequest extends $pb.GeneratedMessage {
     ..aOS(4, _omitFieldNames ? '' : 'token')
     ..aE<$0.ClientSurface>(5, _omitFieldNames ? '' : 'surface',
         enumValues: $0.ClientSurface.values)
+    ..aOS(6, _omitFieldNames ? '' : 'locale')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1975,6 +2043,20 @@ class GetPublishedCreatorDetailRequest extends $pb.GeneratedMessage {
   $core.bool hasSurface() => $_has(4);
   @$pb.TagNumber(5)
   void clearSurface() => $_clearField(5);
+
+  /// The reader's locale. Every series and episode title and synopsis in the
+  /// answer is that of the translation in this locale, else the tenant's default
+  /// locale's, else the oldest one. Empty means the tenant's default locale.
+  /// The series are sorted by those titles, so a token carries the locale as
+  /// well, and sending it in another locale is invalid_argument.
+  @$pb.TagNumber(6)
+  $core.String get locale => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set locale($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasLocale() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearLocale() => $_clearField(6);
 }
 
 class GetPublishedCreatorDetailResponse extends $pb.GeneratedMessage {
@@ -2201,6 +2283,7 @@ class GetPublishedLabelDetailRequest extends $pb.GeneratedMessage {
     $core.int? limit,
     $core.String? token,
     $0.ClientSurface? surface,
+    $core.String? locale,
   }) {
     final result = GetPublishedLabelDetailRequest._();
     if (tenant != null) result.tenant = tenant;
@@ -2208,6 +2291,7 @@ class GetPublishedLabelDetailRequest extends $pb.GeneratedMessage {
     if (limit != null) result.limit = limit;
     if (token != null) result.token = token;
     if (surface != null) result.surface = surface;
+    if (locale != null) result.locale = locale;
     return result;
   }
 
@@ -2231,6 +2315,7 @@ class GetPublishedLabelDetailRequest extends $pb.GeneratedMessage {
     ..aOS(4, _omitFieldNames ? '' : 'token')
     ..aE<$0.ClientSurface>(5, _omitFieldNames ? '' : 'surface',
         enumValues: $0.ClientSurface.values)
+    ..aOS(6, _omitFieldNames ? '' : 'locale')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2310,6 +2395,20 @@ class GetPublishedLabelDetailRequest extends $pb.GeneratedMessage {
   $core.bool hasSurface() => $_has(4);
   @$pb.TagNumber(5)
   void clearSurface() => $_clearField(5);
+
+  /// The reader's locale. Every series and episode title and synopsis in the
+  /// answer is that of the translation in this locale, else the tenant's default
+  /// locale's, else the oldest one. Empty means the tenant's default locale.
+  /// The series are sorted by those titles, so a token carries the locale as
+  /// well, and sending it in another locale is invalid_argument.
+  @$pb.TagNumber(6)
+  $core.String get locale => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set locale($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasLocale() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearLocale() => $_clearField(6);
 }
 
 class GetPublishedLabelDetailResponse extends $pb.GeneratedMessage {
@@ -2633,12 +2732,14 @@ class ListPublishedGenresRequest extends $pb.GeneratedMessage {
     $core.int? limit,
     $core.String? token,
     $0.ClientSurface? surface,
+    $core.String? locale,
   }) {
     final result = ListPublishedGenresRequest._();
     if (tenant != null) result.tenant = tenant;
     if (limit != null) result.limit = limit;
     if (token != null) result.token = token;
     if (surface != null) result.surface = surface;
+    if (locale != null) result.locale = locale;
     return result;
   }
 
@@ -2661,6 +2762,7 @@ class ListPublishedGenresRequest extends $pb.GeneratedMessage {
     ..aOS(3, _omitFieldNames ? '' : 'token')
     ..aE<$0.ClientSurface>(4, _omitFieldNames ? '' : 'surface',
         enumValues: $0.ClientSurface.values)
+    ..aOS(5, _omitFieldNames ? '' : 'locale')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2730,6 +2832,18 @@ class ListPublishedGenresRequest extends $pb.GeneratedMessage {
   $core.bool hasSurface() => $_has(3);
   @$pb.TagNumber(4)
   void clearSurface() => $_clearField(4);
+
+  /// The reader's locale. Every series and episode title and synopsis in the
+  /// answer is that of the translation in this locale, else the tenant's default
+  /// locale's, else the oldest one. Empty means the tenant's default locale.
+  @$pb.TagNumber(5)
+  $core.String get locale => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set locale($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasLocale() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearLocale() => $_clearField(5);
 }
 
 class ListPublishedGenresResponse extends $pb.GeneratedMessage {
@@ -3104,6 +3218,9 @@ class ListPublishedTagsResponse extends $pb.GeneratedMessage {
 /// The token carries the order and the filters as well, under the rule
 /// ListPublishedSeriesRequest states for them: sending it with a different
 /// order or filter is invalid_argument, and changing either restarts at page 1.
+/// The query is matched against the title and the synopsis in the tenant's
+/// default locale whatever `locale` asks for, until #4401 makes the search
+/// match the reader's language.
 class SearchPublishedSeriesRequest extends $pb.GeneratedMessage {
   factory SearchPublishedSeriesRequest({
     $0.TenantContext? tenant,
@@ -3117,6 +3234,7 @@ class SearchPublishedSeriesRequest extends $pb.GeneratedMessage {
     $core.String? tagSlug,
     $0.SeriesStatus? status,
     $core.int? weekday,
+    $core.String? locale,
   }) {
     final result = SearchPublishedSeriesRequest._();
     if (tenant != null) result.tenant = tenant;
@@ -3130,6 +3248,7 @@ class SearchPublishedSeriesRequest extends $pb.GeneratedMessage {
     if (tagSlug != null) result.tagSlug = tagSlug;
     if (status != null) result.status = status;
     if (weekday != null) result.weekday = weekday;
+    if (locale != null) result.locale = locale;
     return result;
   }
 
@@ -3161,6 +3280,7 @@ class SearchPublishedSeriesRequest extends $pb.GeneratedMessage {
     ..aE<$0.SeriesStatus>(10, _omitFieldNames ? '' : 'status',
         enumValues: $0.SeriesStatus.values)
     ..aI(11, _omitFieldNames ? '' : 'weekday')
+    ..aOS(12, _omitFieldNames ? '' : 'locale')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -3313,6 +3433,18 @@ class SearchPublishedSeriesRequest extends $pb.GeneratedMessage {
   $core.bool hasWeekday() => $_has(10);
   @$pb.TagNumber(11)
   void clearWeekday() => $_clearField(11);
+
+  /// The reader's locale. Every series and episode title and synopsis in the
+  /// answer is that of the translation in this locale, else the tenant's default
+  /// locale's, else the oldest one. Empty means the tenant's default locale.
+  @$pb.TagNumber(12)
+  $core.String get locale => $_getSZ(11);
+  @$pb.TagNumber(12)
+  set locale($core.String value) => $_setString(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasLocale() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearLocale() => $_clearField(12);
 }
 
 class SearchPublishedSeriesResponse extends $pb.GeneratedMessage {
@@ -3838,12 +3970,14 @@ class ListRecommendedSeriesRequest extends $pb.GeneratedMessage {
     $core.int? limit,
     $core.String? token,
     $0.ClientSurface? surface,
+    $core.String? locale,
   }) {
     final result = ListRecommendedSeriesRequest._();
     if (tenant != null) result.tenant = tenant;
     if (limit != null) result.limit = limit;
     if (token != null) result.token = token;
     if (surface != null) result.surface = surface;
+    if (locale != null) result.locale = locale;
     return result;
   }
 
@@ -3866,6 +4000,7 @@ class ListRecommendedSeriesRequest extends $pb.GeneratedMessage {
     ..aOS(3, _omitFieldNames ? '' : 'token')
     ..aE<$0.ClientSurface>(4, _omitFieldNames ? '' : 'surface',
         enumValues: $0.ClientSurface.values)
+    ..aOS(5, _omitFieldNames ? '' : 'locale')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -3936,6 +4071,18 @@ class ListRecommendedSeriesRequest extends $pb.GeneratedMessage {
   $core.bool hasSurface() => $_has(3);
   @$pb.TagNumber(4)
   void clearSurface() => $_clearField(4);
+
+  /// The reader's locale. Every series and episode title and synopsis in the
+  /// answer is that of the translation in this locale, else the tenant's default
+  /// locale's, else the oldest one. Empty means the tenant's default locale.
+  @$pb.TagNumber(5)
+  $core.String get locale => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set locale($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasLocale() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearLocale() => $_clearField(5);
 }
 
 class ListRecommendedSeriesResponse extends $pb.GeneratedMessage {
@@ -4050,12 +4197,14 @@ class ListMyRecommendedSeriesRequest extends $pb.GeneratedMessage {
     $core.int? limit,
     $core.String? token,
     $0.ClientSurface? surface,
+    $core.String? locale,
   }) {
     final result = ListMyRecommendedSeriesRequest._();
     if (tenant != null) result.tenant = tenant;
     if (limit != null) result.limit = limit;
     if (token != null) result.token = token;
     if (surface != null) result.surface = surface;
+    if (locale != null) result.locale = locale;
     return result;
   }
 
@@ -4078,6 +4227,7 @@ class ListMyRecommendedSeriesRequest extends $pb.GeneratedMessage {
     ..aOS(3, _omitFieldNames ? '' : 'token')
     ..aE<$0.ClientSurface>(4, _omitFieldNames ? '' : 'surface',
         enumValues: $0.ClientSurface.values)
+    ..aOS(5, _omitFieldNames ? '' : 'locale')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -4148,6 +4298,18 @@ class ListMyRecommendedSeriesRequest extends $pb.GeneratedMessage {
   $core.bool hasSurface() => $_has(3);
   @$pb.TagNumber(4)
   void clearSurface() => $_clearField(4);
+
+  /// The reader's locale. Every series and episode title and synopsis in the
+  /// answer is that of the translation in this locale, else the tenant's default
+  /// locale's, else the oldest one. Empty means the tenant's default locale.
+  @$pb.TagNumber(5)
+  $core.String get locale => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set locale($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasLocale() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearLocale() => $_clearField(5);
 }
 
 class ListMyRecommendedSeriesResponse extends $pb.GeneratedMessage {
@@ -4363,6 +4525,7 @@ class ListRankedSeriesRequest extends $pb.GeneratedMessage {
     $0.ClientSurface? surface,
     $0.SeriesAgeRating? ageRating,
     $core.String? genrePublicId,
+    $core.String? locale,
   }) {
     final result = ListRankedSeriesRequest._();
     if (tenant != null) result.tenant = tenant;
@@ -4372,6 +4535,7 @@ class ListRankedSeriesRequest extends $pb.GeneratedMessage {
     if (surface != null) result.surface = surface;
     if (ageRating != null) result.ageRating = ageRating;
     if (genrePublicId != null) result.genrePublicId = genrePublicId;
+    if (locale != null) result.locale = locale;
     return result;
   }
 
@@ -4399,6 +4563,7 @@ class ListRankedSeriesRequest extends $pb.GeneratedMessage {
     ..aE<$0.SeriesAgeRating>(6, _omitFieldNames ? '' : 'ageRating',
         enumValues: $0.SeriesAgeRating.values)
     ..aOS(7, _omitFieldNames ? '' : 'genrePublicId')
+    ..aOS(8, _omitFieldNames ? '' : 'locale')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -4512,6 +4677,18 @@ class ListRankedSeriesRequest extends $pb.GeneratedMessage {
   $core.bool hasGenrePublicId() => $_has(6);
   @$pb.TagNumber(7)
   void clearGenrePublicId() => $_clearField(7);
+
+  /// The reader's locale. Every series and episode title and synopsis in the
+  /// answer is that of the translation in this locale, else the tenant's default
+  /// locale's, else the oldest one. Empty means the tenant's default locale.
+  @$pb.TagNumber(8)
+  $core.String get locale => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set locale($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasLocale() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearLocale() => $_clearField(8);
 }
 
 class ListRankedSeriesResponse extends $pb.GeneratedMessage {
@@ -4651,6 +4828,7 @@ class ListRelatedSeriesRequest extends $pb.GeneratedMessage {
     $core.String? token,
     $0.ClientSurface? surface,
     $core.String? seriesId,
+    $core.String? locale,
   }) {
     final result = ListRelatedSeriesRequest._();
     if (tenant != null) result.tenant = tenant;
@@ -4658,6 +4836,7 @@ class ListRelatedSeriesRequest extends $pb.GeneratedMessage {
     if (token != null) result.token = token;
     if (surface != null) result.surface = surface;
     if (seriesId != null) result.seriesId = seriesId;
+    if (locale != null) result.locale = locale;
     return result;
   }
 
@@ -4681,6 +4860,7 @@ class ListRelatedSeriesRequest extends $pb.GeneratedMessage {
     ..aE<$0.ClientSurface>(5, _omitFieldNames ? '' : 'surface',
         enumValues: $0.ClientSurface.values)
     ..aOS(6, _omitFieldNames ? '' : 'seriesId')
+    ..aOS(7, _omitFieldNames ? '' : 'locale')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -4762,6 +4942,18 @@ class ListRelatedSeriesRequest extends $pb.GeneratedMessage {
   $core.bool hasSeriesId() => $_has(4);
   @$pb.TagNumber(6)
   void clearSeriesId() => $_clearField(6);
+
+  /// The reader's locale. Every series and episode title and synopsis in the
+  /// answer is that of the translation in this locale, else the tenant's default
+  /// locale's, else the oldest one. Empty means the tenant's default locale.
+  @$pb.TagNumber(7)
+  $core.String get locale => $_getSZ(5);
+  @$pb.TagNumber(7)
+  set locale($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(7)
+  $core.bool hasLocale() => $_has(5);
+  @$pb.TagNumber(7)
+  void clearLocale() => $_clearField(7);
 }
 
 class ListRelatedSeriesResponse extends $pb.GeneratedMessage {
@@ -5732,11 +5924,13 @@ class GetMySeriesProgressRequest extends $pb.GeneratedMessage {
     $0.TenantContext? tenant,
     $0.ClientSurface? surface,
     $core.String? seriesId,
+    $core.String? locale,
   }) {
     final result = GetMySeriesProgressRequest._();
     if (tenant != null) result.tenant = tenant;
     if (surface != null) result.surface = surface;
     if (seriesId != null) result.seriesId = seriesId;
+    if (locale != null) result.locale = locale;
     return result;
   }
 
@@ -5758,6 +5952,7 @@ class GetMySeriesProgressRequest extends $pb.GeneratedMessage {
     ..aE<$0.ClientSurface>(3, _omitFieldNames ? '' : 'surface',
         enumValues: $0.ClientSurface.values)
     ..aOS(4, _omitFieldNames ? '' : 'seriesId')
+    ..aOS(5, _omitFieldNames ? '' : 'locale')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -5816,6 +6011,18 @@ class GetMySeriesProgressRequest extends $pb.GeneratedMessage {
   $core.bool hasSeriesId() => $_has(2);
   @$pb.TagNumber(4)
   void clearSeriesId() => $_clearField(4);
+
+  /// The reader's locale. Every series and episode title and synopsis in the
+  /// answer is that of the translation in this locale, else the tenant's default
+  /// locale's, else the oldest one. Empty means the tenant's default locale.
+  @$pb.TagNumber(5)
+  $core.String get locale => $_getSZ(3);
+  @$pb.TagNumber(5)
+  set locale($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(5)
+  $core.bool hasLocale() => $_has(3);
+  @$pb.TagNumber(5)
+  void clearLocale() => $_clearField(5);
 }
 
 /// The member's standing in one series: the episode they last moved in, where
@@ -6117,12 +6324,14 @@ class ListMyRecentSeriesRequest extends $pb.GeneratedMessage {
     $core.int? limit,
     $core.String? token,
     $0.ClientSurface? surface,
+    $core.String? locale,
   }) {
     final result = ListMyRecentSeriesRequest._();
     if (tenant != null) result.tenant = tenant;
     if (limit != null) result.limit = limit;
     if (token != null) result.token = token;
     if (surface != null) result.surface = surface;
+    if (locale != null) result.locale = locale;
     return result;
   }
 
@@ -6145,6 +6354,7 @@ class ListMyRecentSeriesRequest extends $pb.GeneratedMessage {
     ..aOS(3, _omitFieldNames ? '' : 'token')
     ..aE<$0.ClientSurface>(4, _omitFieldNames ? '' : 'surface',
         enumValues: $0.ClientSurface.values)
+    ..aOS(5, _omitFieldNames ? '' : 'locale')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -6213,6 +6423,18 @@ class ListMyRecentSeriesRequest extends $pb.GeneratedMessage {
   $core.bool hasSurface() => $_has(3);
   @$pb.TagNumber(4)
   void clearSurface() => $_clearField(4);
+
+  /// The reader's locale. Every series and episode title and synopsis in the
+  /// answer is that of the translation in this locale, else the tenant's default
+  /// locale's, else the oldest one. Empty means the tenant's default locale.
+  @$pb.TagNumber(5)
+  $core.String get locale => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set locale($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasLocale() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearLocale() => $_clearField(5);
 }
 
 class ListMyRecentSeriesResponse extends $pb.GeneratedMessage {
@@ -6400,12 +6622,14 @@ class ListMyEpisodeReadsRequest extends $pb.GeneratedMessage {
     $core.int? limit,
     $core.String? token,
     $0.ClientSurface? surface,
+    $core.String? locale,
   }) {
     final result = ListMyEpisodeReadsRequest._();
     if (tenant != null) result.tenant = tenant;
     if (limit != null) result.limit = limit;
     if (token != null) result.token = token;
     if (surface != null) result.surface = surface;
+    if (locale != null) result.locale = locale;
     return result;
   }
 
@@ -6428,6 +6652,7 @@ class ListMyEpisodeReadsRequest extends $pb.GeneratedMessage {
     ..aOS(3, _omitFieldNames ? '' : 'token')
     ..aE<$0.ClientSurface>(4, _omitFieldNames ? '' : 'surface',
         enumValues: $0.ClientSurface.values)
+    ..aOS(5, _omitFieldNames ? '' : 'locale')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -6496,6 +6721,18 @@ class ListMyEpisodeReadsRequest extends $pb.GeneratedMessage {
   $core.bool hasSurface() => $_has(3);
   @$pb.TagNumber(4)
   void clearSurface() => $_clearField(4);
+
+  /// The reader's locale. Every series and episode title and synopsis in the
+  /// answer is that of the translation in this locale, else the tenant's default
+  /// locale's, else the oldest one. Empty means the tenant's default locale.
+  @$pb.TagNumber(5)
+  $core.String get locale => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set locale($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasLocale() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearLocale() => $_clearField(5);
 }
 
 class ListMyEpisodeReadsResponse extends $pb.GeneratedMessage {
@@ -7462,12 +7699,14 @@ class ListMyFollowUpdatesRequest extends $pb.GeneratedMessage {
     $core.int? limit,
     $core.String? token,
     $0.ClientSurface? surface,
+    $core.String? locale,
   }) {
     final result = ListMyFollowUpdatesRequest._();
     if (tenant != null) result.tenant = tenant;
     if (limit != null) result.limit = limit;
     if (token != null) result.token = token;
     if (surface != null) result.surface = surface;
+    if (locale != null) result.locale = locale;
     return result;
   }
 
@@ -7490,6 +7729,7 @@ class ListMyFollowUpdatesRequest extends $pb.GeneratedMessage {
     ..aOS(3, _omitFieldNames ? '' : 'token')
     ..aE<$0.ClientSurface>(4, _omitFieldNames ? '' : 'surface',
         enumValues: $0.ClientSurface.values)
+    ..aOS(5, _omitFieldNames ? '' : 'locale')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -7559,6 +7799,18 @@ class ListMyFollowUpdatesRequest extends $pb.GeneratedMessage {
   $core.bool hasSurface() => $_has(3);
   @$pb.TagNumber(4)
   void clearSurface() => $_clearField(4);
+
+  /// The reader's locale. Every series and episode title and synopsis in the
+  /// answer is that of the translation in this locale, else the tenant's default
+  /// locale's, else the oldest one. Empty means the tenant's default locale.
+  @$pb.TagNumber(5)
+  $core.String get locale => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set locale($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasLocale() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearLocale() => $_clearField(5);
 }
 
 class ListMyFollowUpdatesResponse extends $pb.GeneratedMessage {
@@ -8428,11 +8680,13 @@ class StartEpisodeCheckoutRequest extends $pb.GeneratedMessage {
     $0.TenantContext? tenant,
     StartEpisodeCheckoutRequest_Client? client,
     $core.String? episodeId,
+    $core.String? locale,
   }) {
     final result = StartEpisodeCheckoutRequest._();
     if (tenant != null) result.tenant = tenant;
     if (client != null) result.client = client;
     if (episodeId != null) result.episodeId = episodeId;
+    if (locale != null) result.locale = locale;
     return result;
   }
 
@@ -8454,6 +8708,7 @@ class StartEpisodeCheckoutRequest extends $pb.GeneratedMessage {
     ..aE<StartEpisodeCheckoutRequest_Client>(3, _omitFieldNames ? '' : 'client',
         enumValues: StartEpisodeCheckoutRequest_Client.values)
     ..aOS(4, _omitFieldNames ? '' : 'episodeId')
+    ..aOS(5, _omitFieldNames ? '' : 'locale')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -8514,6 +8769,18 @@ class StartEpisodeCheckoutRequest extends $pb.GeneratedMessage {
   $core.bool hasEpisodeId() => $_has(2);
   @$pb.TagNumber(4)
   void clearEpisodeId() => $_clearField(4);
+
+  /// The reader's locale. Every series and episode title and synopsis in the
+  /// answer is that of the translation in this locale, else the tenant's default
+  /// locale's, else the oldest one. Empty means the tenant's default locale.
+  @$pb.TagNumber(5)
+  $core.String get locale => $_getSZ(3);
+  @$pb.TagNumber(5)
+  set locale($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(5)
+  $core.bool hasLocale() => $_has(3);
+  @$pb.TagNumber(5)
+  void clearLocale() => $_clearField(5);
 }
 
 class StartEpisodeCheckoutResponse extends $pb.GeneratedMessage {
@@ -8784,12 +9051,14 @@ class ListMyPurchasesRequest extends $pb.GeneratedMessage {
     $core.int? limit,
     $core.String? token,
     $0.ClientSurface? surface,
+    $core.String? locale,
   }) {
     final result = ListMyPurchasesRequest._();
     if (tenant != null) result.tenant = tenant;
     if (limit != null) result.limit = limit;
     if (token != null) result.token = token;
     if (surface != null) result.surface = surface;
+    if (locale != null) result.locale = locale;
     return result;
   }
 
@@ -8812,6 +9081,7 @@ class ListMyPurchasesRequest extends $pb.GeneratedMessage {
     ..aOS(3, _omitFieldNames ? '' : 'token')
     ..aE<$0.ClientSurface>(4, _omitFieldNames ? '' : 'surface',
         enumValues: $0.ClientSurface.values)
+    ..aOS(5, _omitFieldNames ? '' : 'locale')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -8878,6 +9148,18 @@ class ListMyPurchasesRequest extends $pb.GeneratedMessage {
   $core.bool hasSurface() => $_has(3);
   @$pb.TagNumber(4)
   void clearSurface() => $_clearField(4);
+
+  /// The reader's locale. Every series and episode title and synopsis in the
+  /// answer is that of the translation in this locale, else the tenant's default
+  /// locale's, else the oldest one. Empty means the tenant's default locale.
+  @$pb.TagNumber(5)
+  $core.String get locale => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set locale($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasLocale() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearLocale() => $_clearField(5);
 }
 
 class ListMyPurchasesResponse extends $pb.GeneratedMessage {
@@ -9311,12 +9593,14 @@ class ConfirmStorePurchaseRequest extends $pb.GeneratedMessage {
     InAppPurchaseStore? store,
     $core.String? transaction,
     $core.String? productId,
+    $core.String? locale,
   }) {
     final result = ConfirmStorePurchaseRequest._();
     if (tenant != null) result.tenant = tenant;
     if (store != null) result.store = store;
     if (transaction != null) result.transaction = transaction;
     if (productId != null) result.productId = productId;
+    if (locale != null) result.locale = locale;
     return result;
   }
 
@@ -9339,6 +9623,7 @@ class ConfirmStorePurchaseRequest extends $pb.GeneratedMessage {
         enumValues: InAppPurchaseStore.values)
     ..aOS(3, _omitFieldNames ? '' : 'transaction')
     ..aOS(4, _omitFieldNames ? '' : 'productId')
+    ..aOS(5, _omitFieldNames ? '' : 'locale')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -9411,6 +9696,18 @@ class ConfirmStorePurchaseRequest extends $pb.GeneratedMessage {
   $core.bool hasProductId() => $_has(3);
   @$pb.TagNumber(4)
   void clearProductId() => $_clearField(4);
+
+  /// The reader's locale. Every series and episode title and synopsis in the
+  /// answer is that of the translation in this locale, else the tenant's default
+  /// locale's, else the oldest one. Empty means the tenant's default locale.
+  @$pb.TagNumber(5)
+  $core.String get locale => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set locale($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasLocale() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearLocale() => $_clearField(5);
 }
 
 class ConfirmStorePurchaseResponse extends $pb.GeneratedMessage {

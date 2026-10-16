@@ -214,6 +214,10 @@ func (s *apiServer) ListRelatedSeries(
 	if err != nil {
 		return nil, err
 	}
+	readerLocale, err := readerLocaleOf(req.Locale, tenant)
+	if err != nil {
+		return nil, err
+	}
 	subjectID, err := requestRecordID("series_id", req.SeriesId)
 	if err != nil {
 		return nil, err
@@ -275,7 +279,7 @@ func (s *apiServer) ListRelatedSeries(
 		sortKeysByID[pageRow.id] = pageRow.sortKeys
 	}
 
-	rows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, surface, ids)
+	rows, err := s.activeSeriesRowsInOrder(ctx, tenant.ID, surface, readerLocale, ids)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list related series", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
 	}

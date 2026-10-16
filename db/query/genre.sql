@@ -284,12 +284,13 @@ FROM unnest(sqlc.arg('genre_ids')::uuid[]) AS g(genre_id)
     CROSS JOIN LATERAL (
         SELECT s.id,
             s.public_id,
-            s.title,
+            str.title,
             s.eye_catch_image_id,
             r.rank,
             s.published_at
         FROM series_genres sg
             JOIN series s ON s.tenant_id = sg.tenant_id AND s.id = sg.series_id
+            JOIN series_translations str ON str.id = series_translation_for(s.id, sqlc.arg('locale')::text)
             JOIN series_listings sl ON sl.series_id = s.id
             LEFT JOIN ranked r ON r.genre_id = sg.genre_id AND r.series_id = s.id
         WHERE sg.tenant_id = sqlc.arg('tenant_id')

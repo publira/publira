@@ -7,8 +7,12 @@ WITH scope AS (
         e.id AS episode_id
     FROM tenants t
     JOIN users u ON u.tenant_id = t.id AND u.email = 'member@example.com'
-    JOIN series s ON s.tenant_id = t.id AND s.title = 'Seed Series 001'
-    JOIN episodes e ON e.series_id = s.id AND e.title = 'Seed Episode 001-10'
+    JOIN series s ON s.tenant_id = t.id
+    JOIN series_translations st ON st.id = series_translation_for(s.id, '')
+        AND st.title = 'Seed Series 001'
+    JOIN episodes e ON e.series_id = s.id
+    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+        AND et.title = 'Seed Episode 001-10'
     WHERE t.public_id = 'SeedTNNTAAA1'
 )
 INSERT INTO access_tickets (

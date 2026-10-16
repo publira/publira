@@ -86,13 +86,12 @@ series_seed AS (
         ((gs.n - 1) % 10) + 1 AS label_no
     FROM GENERATE_SERIES(1, 100) AS gs(n)
 )
-INSERT INTO series (id, tenant_id, label_id, public_id, title, is_published, published_at)
+INSERT INTO series (id, tenant_id, label_id, public_id, is_published, published_at)
 SELECT
     ss.id,
     ts.id,
     lp.id,
     'SeedSERS' || TRANSLATE(LPAD(ss.n::text, 4, '0'), '0', 'A'),
-    FORMAT('Seed Series %s', LPAD(ss.n::text, 3, '0')),
     true,
     (
         date_trunc('day', NOW() AT TIME ZONE ts.timezone)
@@ -106,10 +105,43 @@ CROSS JOIN tenant_scope ts
 ON CONFLICT (public_id) DO UPDATE
 SET tenant_id = EXCLUDED.tenant_id,
     label_id = EXCLUDED.label_id,
-    title = EXCLUDED.title,
     is_published = EXCLUDED.is_published,
     published_at = EXCLUDED.published_at,
     updated_at = NOW();
+
+-- A series' title and synopsis are its translation in the tenant's default
+-- locale.
+WITH tenant_scope AS (
+    SELECT t.id, t.default_locale
+    FROM tenants t
+    WHERE t.public_id = 'SeedTNNTAAA1'
+),
+series_seed AS (
+    SELECT
+        gs.n,
+        'SeedSERS' || TRANSLATE(LPAD(gs.n::text, 4, '0'), '0', 'A') AS public_id,
+        (
+            '018f0e81-'
+            || LPAD(TO_HEX(gs.n), 4, '0')
+            || '-7000-8000-'
+            || LPAD(TO_HEX(gs.n), 12, '0')
+        )::uuid AS id
+    FROM GENERATE_SERIES(1, 100) AS gs(n)
+)
+INSERT INTO series_translations (id, series_id, tenant_id, locale, title, synopsis)
+SELECT
+    ss.id,
+    s.id,
+    ts.id,
+    ts.default_locale,
+    FORMAT('Seed Series %s', LPAD(ss.n::text, 3, '0')),
+    FORMAT('Seed series synopsis for %s', ss.public_id)
+FROM series_seed ss
+CROSS JOIN tenant_scope ts
+JOIN series s ON s.tenant_id = ts.id AND s.public_id = ss.public_id
+ON CONFLICT (series_id, locale) DO UPDATE
+SET title = EXCLUDED.title,
+    synopsis = EXCLUDED.synopsis;
 
 -- Every tenth series has ended and every tenth-but-five is paused, so the
 -- storefront's status filter has all three states to select between and each
@@ -135,16 +167,15 @@ WITH tenant_scope AS (
 seed_series AS (
     SELECT
         s.id,
-        s.public_id,
         s.tenant_id,
-        ROW_NUMBER() OVER (ORDER BY s.title) AS series_no
+        ROW_NUMBER() OVER (ORDER BY st.title) AS series_no
     FROM series s
     JOIN tenant_scope ts ON ts.id = s.tenant_id
-    WHERE s.title LIKE 'Seed Series %'
+    JOIN series_translations st ON st.id = series_translation_for(s.id, '')
+    WHERE st.title LIKE 'Seed Series %'
 )
 INSERT INTO series_listings (
     series_id,
-    synopsis,
     reading_period_hours,
     status,
     schedule_weekdays,
@@ -153,7 +184,6 @@ INSERT INTO series_listings (
 )
 SELECT
     ss.id,
-    FORMAT('Seed series synopsis for %s', ss.public_id),
     72,
     CASE ss.series_no % 10
         WHEN 0 THEN 'completed'
@@ -179,8 +209,7 @@ SELECT
     ss.tenant_id
 FROM seed_series ss
 ON CONFLICT (series_id) DO UPDATE
-SET synopsis = EXCLUDED.synopsis,
-    reading_period_hours = EXCLUDED.reading_period_hours,
+SET reading_period_hours = EXCLUDED.reading_period_hours,
     status = EXCLUDED.status,
     schedule_weekdays = EXCLUDED.schedule_weekdays,
     age_rating = EXCLUDED.age_rating,
@@ -194,10 +223,11 @@ WITH tenant_scope AS (
 seed_series AS (
     SELECT
         s.id AS series_id,
-        ROW_NUMBER() OVER (ORDER BY s.title) AS series_no
+        ROW_NUMBER() OVER (ORDER BY st.title) AS series_no
     FROM series s
     JOIN tenant_scope ts ON ts.id = s.tenant_id
-    WHERE s.title LIKE 'Seed Series %'
+    JOIN series_translations st ON st.id = series_translation_for(s.id, '')
+    WHERE st.title LIKE 'Seed Series %'
 ),
 seed_creators AS (
     SELECT
@@ -230,10 +260,11 @@ WITH tenant_scope AS (
 seed_series AS (
     SELECT
         s.id,
-        ROW_NUMBER() OVER (ORDER BY s.title) AS series_no
+        ROW_NUMBER() OVER (ORDER BY st.title) AS series_no
     FROM series s
     JOIN tenant_scope ts ON ts.id = s.tenant_id
-    WHERE s.title LIKE 'Seed Series %'
+    JOIN series_translations st ON st.id = series_translation_for(s.id, '')
+    WHERE st.title LIKE 'Seed Series %'
 ),
 episode_seed AS (
     SELECT
@@ -250,25 +281,67 @@ episode_seed AS (
     FROM seed_series ss
     CROSS JOIN GENERATE_SERIES(1, 10) AS ep(ep_no)
 )
-INSERT INTO episodes (id, series_id, public_id, title, order_index, tenant_id)
+INSERT INTO episodes (id, series_id, public_id, order_index, tenant_id)
 SELECT
     es.id,
     es.series_id,
     'SeedEPSD' || TRANSLATE(LPAD(es.seq_no::text, 4, '0'), '0', 'A'),
-    FORMAT(
-        'Seed Episode %s-%s',
-        LPAD(es.series_no::text, 3, '0'),
-        LPAD(es.ep_no::text, 2, '0')
-    ),
     es.ep_no,
     s.tenant_id
 FROM episode_seed es
 JOIN series s ON s.id = es.series_id
 ON CONFLICT (public_id) DO UPDATE
 SET series_id = EXCLUDED.series_id,
-    title = EXCLUDED.title,
     order_index = EXCLUDED.order_index,
     tenant_id = EXCLUDED.tenant_id;
+
+-- An episode's title is its translation in the tenant's default locale, the
+-- way a series' is.
+WITH tenant_scope AS (
+    SELECT t.id, t.default_locale
+    FROM tenants t
+    WHERE t.public_id = 'SeedTNNTAAA1'
+),
+seed_series AS (
+    SELECT
+        s.id,
+        ROW_NUMBER() OVER (ORDER BY st.title) AS series_no
+    FROM series s
+    JOIN tenant_scope ts ON ts.id = s.tenant_id
+    JOIN series_translations st ON st.id = series_translation_for(s.id, '')
+    WHERE st.title LIKE 'Seed Series %'
+),
+episode_seed AS (
+    SELECT
+        ss.series_no,
+        ep.ep_no,
+        ((ss.series_no - 1) * 10 + ep.ep_no) AS seq_no
+    FROM seed_series ss
+    CROSS JOIN GENERATE_SERIES(1, 10) AS ep(ep_no)
+)
+INSERT INTO episode_translations (id, episode_id, tenant_id, locale, title)
+SELECT
+    (
+        '018f0e82-'
+        || LPAD(TO_HEX(es.seq_no), 4, '0')
+        || '-7000-8000-'
+        || LPAD(TO_HEX(es.seq_no), 12, '0')
+    )::uuid,
+    e.id,
+    ts.id,
+    ts.default_locale,
+    FORMAT(
+        'Seed Episode %s-%s',
+        LPAD(es.series_no::text, 3, '0'),
+        LPAD(es.ep_no::text, 2, '0')
+    )
+FROM episode_seed es
+CROSS JOIN tenant_scope ts
+JOIN episodes e
+    ON e.tenant_id = ts.id
+    AND e.public_id = 'SeedEPSD' || TRANSLATE(LPAD(es.seq_no::text, 4, '0'), '0', 'A')
+ON CONFLICT (episode_id, locale) DO UPDATE
+SET title = EXCLUDED.title;
 
 WITH tenant_scope AS (
     SELECT t.id
@@ -295,7 +368,8 @@ SELECT
 FROM episodes e
 JOIN series s ON s.id = e.series_id
 JOIN tenant_scope ts ON ts.id = s.tenant_id
-WHERE s.title LIKE 'Seed Series %'
+JOIN series_translations st ON st.id = series_translation_for(s.id, '')
+WHERE st.title LIKE 'Seed Series %'
 ON CONFLICT (episode_id) DO UPDATE
 SET price = EXCLUDED.price,
     reading_period_hours = EXCLUDED.reading_period_hours,
@@ -307,10 +381,11 @@ SET price = EXCLUDED.price,
 UPDATE series s
 SET is_published = (s.published_at IS NOT NULL),
         updated_at = NOW()
-FROM tenants t
+FROM tenants t, series_translations st
 WHERE t.id = s.tenant_id
     AND t.public_id = 'SeedTNNTAAA1'
-    AND s.title LIKE 'Seed Series %'
+    AND st.id = series_translation_for(s.id, '')
+    AND st.title LIKE 'Seed Series %'
     AND s.is_published IS DISTINCT FROM (s.published_at IS NOT NULL);
 
 -- Paid episode for access-ticket / purchase testing (Seed Episode 001-10).
@@ -320,9 +395,10 @@ SET price = 500,
 FROM episodes e
 JOIN series s ON s.id = e.series_id
 JOIN tenants t ON t.id = s.tenant_id
+JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
 WHERE el.episode_id = e.id
     AND t.public_id = 'SeedTNNTAAA1'
-    AND e.title = 'Seed Episode 001-10';
+    AND et.title = 'Seed Episode 001-10';
 
 -- The two ways into the catalogue other than the alphabet. Genres are the
 -- classification the tenant curates, so they are fixed rows in a fixed order;
@@ -403,10 +479,11 @@ seed_series AS (
     SELECT
         s.id,
         s.tenant_id,
-        ROW_NUMBER() OVER (ORDER BY s.title) AS series_no
+        ROW_NUMBER() OVER (ORDER BY st.title) AS series_no
     FROM series s
     JOIN tenant_scope ts ON ts.id = s.tenant_id
-    WHERE s.title LIKE 'Seed Series %'
+    JOIN series_translations st ON st.id = series_translation_for(s.id, '')
+    WHERE st.title LIKE 'Seed Series %'
 ),
 seed_genres AS (
     SELECT
@@ -437,10 +514,11 @@ seed_series AS (
     SELECT
         s.id,
         s.tenant_id,
-        ROW_NUMBER() OVER (ORDER BY s.title) AS series_no
+        ROW_NUMBER() OVER (ORDER BY st.title) AS series_no
     FROM series s
     JOIN tenant_scope ts ON ts.id = s.tenant_id
-    WHERE s.title LIKE 'Seed Series %'
+    JOIN series_translations st ON st.id = series_translation_for(s.id, '')
+    WHERE st.title LIKE 'Seed Series %'
 ),
 seed_tags AS (
     SELECT

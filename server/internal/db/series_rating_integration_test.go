@@ -86,11 +86,12 @@ func mustInsertEpisodeOfSeries(
 	t.Helper()
 	episodeID := uuid.Must(uuid.NewV7())
 	if _, err := db.ExecContext(ctx, `
-		INSERT INTO episodes (id, series_id, public_id, title, order_index, tenant_id)
-		VALUES ($1, $2, $3, $4, $5, $6)
-	`, episodeID, seriesID, publicID, publicID, orderIndex, tenantID); err != nil {
+		INSERT INTO episodes (id, series_id, public_id, order_index, tenant_id)
+		VALUES ($1, $2, $3, $4, $5)
+	`, episodeID, seriesID, publicID, orderIndex, tenantID); err != nil {
 		t.Fatalf("insert episode %s: %v", publicID, err)
 	}
+	mustInsertEpisodeTranslation(t, ctx, db, tenantID, episodeID, publicID)
 	return episodeID
 }
 

@@ -77,9 +77,9 @@ SELECT
     c.id,
     c.name,
     s.id,
-    s.title,
+    st.title,
     e.id,
-    e.title,
+    et.title,
     r.id,
     r.name,
     8,
@@ -93,7 +93,9 @@ FROM (
         (2, 'RoyaAUTHAAA2', 'Original Author', 2000)
 ) AS line (line_number, creator_public_id, role_name, share_bps)
 JOIN episodes e ON e.public_id = 'RoyaEPSDAAA1'
+JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
 JOIN series s ON s.id = e.series_id
+JOIN series_translations st ON st.id = series_translation_for(s.id, '')
 JOIN creators c ON c.public_id = line.creator_public_id
 JOIN creator_roles r ON r.tenant_id = e.tenant_id AND r.name = line.role_name
 ON CONFLICT (statement_id, line_number) DO NOTHING;

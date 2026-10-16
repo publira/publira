@@ -82,35 +82,46 @@ WITH tenant_scope AS (
     FROM tenants t
     WHERE t.public_id = 'WtfrTNNTAAA1'
 )
-INSERT INTO series (id, tenant_id, label_id, public_id, title, is_published, published_at)
+INSERT INTO series (id, tenant_id, label_id, public_id, is_published, published_at)
 SELECT
     '018f1083-0001-7000-8000-000000000001'::uuid,
     ts.id,
     '018f1081-0001-7000-8000-000000000001'::uuid,
     'WtfrSERSAAA1',
-    'Wait Free Series 001',
     true,
     NOW() - INTERVAL '3 days'
 FROM tenant_scope ts
 ON CONFLICT (public_id) DO UPDATE
 SET tenant_id = EXCLUDED.tenant_id,
     label_id = EXCLUDED.label_id,
-    title = EXCLUDED.title,
     is_published = EXCLUDED.is_published,
     published_at = EXCLUDED.published_at,
     updated_at = NOW();
 
-INSERT INTO series_listings (series_id, synopsis, reading_period_hours, tenant_id)
+INSERT INTO series_translations (id, series_id, tenant_id, locale, title, synopsis)
+SELECT
+    '018f1088-0001-7000-8000-000000000001'::uuid,
+    s.id,
+    s.tenant_id,
+    t.default_locale,
+    'Wait Free Series 001',
+    'Synopsis for Wait Free Series 001'
+FROM series s
+JOIN tenants t ON t.id = s.tenant_id
+WHERE s.id = '018f1083-0001-7000-8000-000000000001'::uuid
+ON CONFLICT (series_id, locale) DO UPDATE
+SET title = EXCLUDED.title,
+    synopsis = EXCLUDED.synopsis;
+
+INSERT INTO series_listings (series_id, reading_period_hours, tenant_id)
 SELECT
     s.id,
-    'Synopsis for Wait Free Series 001',
     72,
     s.tenant_id
 FROM series s
 WHERE s.id = '018f1083-0001-7000-8000-000000000001'::uuid
 ON CONFLICT (series_id) DO UPDATE
-SET synopsis = EXCLUDED.synopsis,
-    reading_period_hours = EXCLUDED.reading_period_hours,
+SET reading_period_hours = EXCLUDED.reading_period_hours,
     tenant_id = EXCLUDED.tenant_id;
 
 -- A ticket is ready 23 hours after it is used and opens an episode for 72,
@@ -156,27 +167,44 @@ ON CONFLICT (series_id, creator_id, role_id) DO UPDATE
 SET display_order = EXCLUDED.display_order,
     tenant_id = EXCLUDED.tenant_id;
 
-WITH episode_seed (id, public_id, title, order_index) AS (
+WITH episode_seed (id, public_id, order_index) AS (
     VALUES
-        ('018f1084-0001-7000-8000-000000000001'::uuid, 'WtfrEPSDAAA1', 'Wait Free Episode 001-01', 1),
-        ('018f1084-0002-7000-8000-000000000002'::uuid, 'WtfrEPSDAAA2', 'Wait Free Episode 001-02', 2),
-        ('018f1084-0003-7000-8000-000000000003'::uuid, 'WtfrEPSDAAA3', 'Wait Free Episode 001-03', 3)
+        ('018f1084-0001-7000-8000-000000000001'::uuid, 'WtfrEPSDAAA1', 1),
+        ('018f1084-0002-7000-8000-000000000002'::uuid, 'WtfrEPSDAAA2', 2),
+        ('018f1084-0003-7000-8000-000000000003'::uuid, 'WtfrEPSDAAA3', 3)
 )
-INSERT INTO episodes (id, series_id, public_id, title, order_index, tenant_id)
+INSERT INTO episodes (id, series_id, public_id, order_index, tenant_id)
 SELECT
     es.id,
     s.id,
     es.public_id,
-    es.title,
     es.order_index,
     s.tenant_id
 FROM episode_seed es
 JOIN series s ON s.id = '018f1083-0001-7000-8000-000000000001'::uuid
 ON CONFLICT (public_id) DO UPDATE
 SET series_id = EXCLUDED.series_id,
-    title = EXCLUDED.title,
     order_index = EXCLUDED.order_index,
     tenant_id = EXCLUDED.tenant_id;
+
+WITH translation_seed (id, episode_id, title) AS (
+    VALUES
+        ('018f1089-0001-7000-8000-000000000001'::uuid, '018f1084-0001-7000-8000-000000000001'::uuid, 'Wait Free Episode 001-01'),
+        ('018f1089-0002-7000-8000-000000000002'::uuid, '018f1084-0002-7000-8000-000000000002'::uuid, 'Wait Free Episode 001-02'),
+        ('018f1089-0003-7000-8000-000000000003'::uuid, '018f1084-0003-7000-8000-000000000003'::uuid, 'Wait Free Episode 001-03')
+)
+INSERT INTO episode_translations (id, episode_id, tenant_id, locale, title)
+SELECT
+    tr.id,
+    e.id,
+    e.tenant_id,
+    t.default_locale,
+    tr.title
+FROM translation_seed tr
+JOIN episodes e ON e.id = tr.episode_id
+JOIN tenants t ON t.id = e.tenant_id
+ON CONFLICT (episode_id, locale) DO UPDATE
+SET title = EXCLUDED.title;
 
 -- Priced, so the gate closes over every one of them, and published a day
 -- apart in reading order, so the third is the latest.

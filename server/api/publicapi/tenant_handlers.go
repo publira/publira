@@ -170,7 +170,7 @@ func (s *apiServer) GetTenantLegalPages(
 		return nil, err
 	}
 
-	readerLocale, err := readerPageLocale(req.Locale, tenant)
+	readerLocale, err := readerLocaleOf(req.Locale, tenant)
 	if err != nil {
 		return nil, err
 	}

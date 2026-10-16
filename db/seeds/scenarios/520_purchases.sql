@@ -109,32 +109,57 @@ SELECT
 FROM users u
 WHERE u.public_id = 'PrchADMNAAA1';
 
-INSERT INTO series (id, tenant_id, public_id, title, is_published, published_at)
+INSERT INTO series (id, tenant_id, public_id, is_published, published_at)
 SELECT
     '018f10d0-0004-7000-8000-000000000001'::uuid,
     t.id,
     'PrchSERSAAA1',
-    'Purchase Series 001',
     true,
     '2026-01-01T00:00:00Z'::timestamptz
 FROM tenants t
 WHERE t.public_id = 'PrchTNNTAAA1';
 
-INSERT INTO episodes (id, series_id, public_id, title, order_index, tenant_id)
+INSERT INTO series_translations (id, series_id, tenant_id, locale, title, synopsis)
+SELECT
+    '018f10d0-0007-7000-8000-000000000001'::uuid,
+    s.id,
+    s.tenant_id,
+    t.default_locale,
+    'Purchase Series 001',
+    ''
+FROM series s
+JOIN tenants t ON t.id = s.tenant_id
+WHERE s.public_id = 'PrchSERSAAA1';
+
+INSERT INTO episodes (id, series_id, public_id, order_index, tenant_id)
 SELECT
     e.id,
     s.id,
     e.public_id,
-    e.title,
     e.order_index,
     s.tenant_id
 FROM series s
 CROSS JOIN (
     VALUES
-        ('018f10d0-0005-7000-8000-000000000001'::uuid, 'PrchEPSDAAA1', 'Purchase Episode 001-01', 1),
-        ('018f10d0-0005-7000-8000-000000000002'::uuid, 'PrchEPSDAAA2', 'Purchase Episode 001-02', 2)
-) AS e(id, public_id, title, order_index)
+        ('018f10d0-0005-7000-8000-000000000001'::uuid, 'PrchEPSDAAA1', 1),
+        ('018f10d0-0005-7000-8000-000000000002'::uuid, 'PrchEPSDAAA2', 2)
+) AS e(id, public_id, order_index)
 WHERE s.public_id = 'PrchSERSAAA1';
+
+INSERT INTO episode_translations (id, episode_id, tenant_id, locale, title)
+SELECT
+    tr.id,
+    e.id,
+    e.tenant_id,
+    t.default_locale,
+    tr.title
+FROM (
+    VALUES
+        ('018f10d0-0008-7000-8000-000000000001'::uuid, 'PrchEPSDAAA1', 'Purchase Episode 001-01'),
+        ('018f10d0-0008-7000-8000-000000000002'::uuid, 'PrchEPSDAAA2', 'Purchase Episode 001-02')
+) AS tr(id, episode_public_id, title)
+JOIN episodes e ON e.public_id = tr.episode_public_id
+JOIN tenants t ON t.id = e.tenant_id;
 
 INSERT INTO episode_listings (episode_id, price, status, published_at, tenant_id)
 SELECT

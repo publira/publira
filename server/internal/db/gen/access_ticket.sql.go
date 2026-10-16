@@ -83,9 +83,9 @@ SELECT at.id,
     at.public_id,
     at.episode_id,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     s.public_id AS series_public_id,
-    s.title AS series_title,
+    str.title AS series_title,
     at.user_id,
     u.public_id AS user_public_id,
     u.name AS user_name,
@@ -97,7 +97,9 @@ SELECT at.id,
     at.created_at
 FROM access_tickets at
     JOIN episodes e ON e.id = at.episode_id
+    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
     JOIN series s ON s.id = e.series_id
+    JOIN series_translations str ON str.id = series_translation_for(s.id, '')
     JOIN users u ON u.id = at.user_id
 WHERE at.tenant_id = $1
     AND at.id = $2
@@ -216,9 +218,9 @@ SELECT at.id,
     at.public_id,
     at.episode_id,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     s.public_id AS series_public_id,
-    s.title AS series_title,
+    str.title AS series_title,
     at.user_id,
     u.public_id AS user_public_id,
     u.name AS user_name,
@@ -230,7 +232,9 @@ SELECT at.id,
     at.created_at
 FROM access_tickets at
     JOIN episodes e ON e.id = at.episode_id
+    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
     JOIN series s ON s.id = e.series_id
+    JOIN series_translations str ON str.id = series_translation_for(s.id, '')
     JOIN users u ON u.id = at.user_id
 WHERE at.tenant_id = $1
     AND at.source = 'staff'
@@ -355,9 +359,9 @@ SELECT at.id,
     at.public_id,
     at.episode_id,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     s.public_id AS series_public_id,
-    s.title AS series_title,
+    str.title AS series_title,
     at.user_id,
     u.public_id AS user_public_id,
     u.name AS user_name,
@@ -369,7 +373,9 @@ SELECT at.id,
     at.created_at
 FROM access_tickets at
     JOIN episodes e ON e.id = at.episode_id
+    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
     JOIN series s ON s.id = e.series_id
+    JOIN series_translations str ON str.id = series_translation_for(s.id, '')
     JOIN users u ON u.id = at.user_id
 WHERE at.tenant_id = $1
     AND at.source = 'staff'

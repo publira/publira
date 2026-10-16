@@ -157,7 +157,7 @@ func TestCatalogListRankedSeriesReportsSnapshotPositionsAndMovement(t *testing.T
 			rankedID{id: entered, rank: 3},
 		))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, sqlmock.AnyArg()).
+		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(
 			recommendedSeriesRow(
 				recommendedSeriesRow(seriesDetailColumns(), entered, "ENTERED", "Entered", now),
@@ -218,7 +218,7 @@ func TestCatalogListRankedSeriesKeepsSnapshotPositionsOverAGap(t *testing.T) {
 			rankedID{id: third, rank: 3},
 		))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, sqlmock.AnyArg()).
+		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(
 			recommendedSeriesRow(seriesDetailColumns(), third, "THIRD", "Third", now),
 			first, "FIRST", "First", now))
@@ -250,7 +250,7 @@ func TestCatalogListRankedSeriesReadsTheWeeklySnapshotForTheWeeklyPeriod(t *test
 		WithArgs(tenantID, "all", "web", nil, nil, false, nil, int32(3), sqlmock.AnyArg()).
 		WillReturnRows(rankedSeriesIDRows(rankedID{id: seriesID, rank: 1}))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, sqlmock.AnyArg()).
+		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(seriesDetailColumns(), seriesID, "WEEKLY", "Weekly", now))
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
@@ -318,7 +318,7 @@ func TestCatalogListRankedSeriesServesTheRankingWhenTheEarlierSnapshotIsMalforme
 		WithArgs(tenantID, "all", "web", nil, nil, false, nil, int32(3), sqlmock.AnyArg()).
 		WillReturnRows(rankedSeriesIDRows(rankedID{id: seriesID, rank: 1}))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, sqlmock.AnyArg()).
+		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(seriesDetailColumns(), seriesID, "RANKED", "Ranked", now))
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
@@ -508,7 +508,7 @@ func TestCatalogListRankedSeriesKeepsALaterPageInThePinnedSnapshot(t *testing.T)
 		WithArgs(tenantID, "all", "web", nil, boundary, false, int32(1), int32(3), rankingItemsJSON(boundary, tail)).
 		WillReturnRows(rankedSeriesIDRows(rankedID{id: tail, rank: 2}))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, sqlmock.AnyArg()).
+		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(seriesDetailColumns(), tail, "TAIL", "Tail", now))
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
@@ -578,7 +578,7 @@ func TestCatalogListRankedSeriesReadsTheLeaderboardOfTheNamedGenre(t *testing.T)
 			rankedID{id: slipped, rank: 2},
 		))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, sqlmock.AnyArg()).
+		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(
 			recommendedSeriesRow(seriesDetailColumns(), slipped, "SLIPPED", "Slipped", now),
 			climbed, "CLIMBED", "Climbed", now))
@@ -628,7 +628,7 @@ func TestCatalogListRankedSeriesKeepsALaterGenrePageInThePinnedSnapshot(t *testi
 		WithArgs(tenantID, "all", "web", genreID, boundary, false, int32(1), int32(3), rankingItemsJSON(boundary, tail)).
 		WillReturnRows(rankedSeriesIDRows(rankedID{id: tail, rank: 2}))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, sqlmock.AnyArg()).
+		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(seriesDetailColumns(), tail, "TAIL", "Tail", now))
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))

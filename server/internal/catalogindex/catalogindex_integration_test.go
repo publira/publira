@@ -211,7 +211,7 @@ func TestEventsKeepTheIndexInStepWithTheCatalog(t *testing.T) {
 		idx.assertHits(t, searchCreators, tenant.ID, "lindqvist", creator.ID)
 		idx.assertHits(t, searchLabels, tenant.ID, "harbor", label.ID)
 
-		if _, err := pg.DB.ExecContext(ctx, "UPDATE series SET title = 'Night Train' WHERE id = $1", series.ID); err != nil {
+		if _, err := pg.DB.ExecContext(ctx, "UPDATE series_translations SET title = 'Night Train' WHERE series_id = $1", series.ID); err != nil {
 			t.Fatalf("rename series: %v", err)
 		}
 		queue(catalogindex.SeriesRef(series.ID))

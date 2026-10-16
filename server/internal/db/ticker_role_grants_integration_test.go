@@ -170,7 +170,7 @@ func TestTickerRoleCannotRewriteASeries(t *testing.T) {
 
 	ticker := pg.OpenTickerDB(t)
 	_, err := ticker.ExecContext(ctx,
-		"UPDATE series SET title = 'rewritten' WHERE id = $1", series.ID)
+		"UPDATE series_translations SET title = 'rewritten' WHERE series_id = $1", series.ID)
 	if err == nil {
 		t.Fatal("rewriting a series' title as the ticker role succeeded, want a permission denied error")
 	}

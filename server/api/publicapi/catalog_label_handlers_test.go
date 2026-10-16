@@ -384,10 +384,10 @@ func TestCatalogGetPublishedLabelDetailSuccess(t *testing.T) {
 		WillReturnRows(labelDetailColumns().
 			AddRow(labelID, "LABEL000001", "Weekly Jump", nil, nil, int32(1)))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedSeriesIDsByLabelTitleAsc)).
-		WithArgs(labelID, tenantID, "web", nil, false, nil, int32(21)).
+		WithArgs("ja", labelID, tenantID, "web", nil, false, nil, int32(21)).
 		WillReturnRows(seriesIDRows(seriesID))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, sqlmock.AnyArg()).
+		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
 			AddRow(seriesID, "SERIESPUB", "Public Series", "Public Synopsis", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 
@@ -432,7 +432,7 @@ func TestCatalogGetPublishedLabelDetailReturnsLabelWithNoSeries(t *testing.T) {
 		WillReturnRows(labelDetailColumns().
 			AddRow(labelID, "LABELEMPTY1", "Empty Label", nil, nil, int32(0)))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedSeriesIDsByLabelTitleAsc)).
-		WithArgs(labelID, tenantID, "web", nil, false, nil, int32(21)).
+		WithArgs("ja", labelID, tenantID, "web", nil, false, nil, int32(21)).
 		WillReturnRows(seriesIDRows())
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
@@ -486,13 +486,13 @@ func TestCatalogGetPublishedLabelDetailFirstPageReportsNextToken(t *testing.T) {
 		WillReturnRows(labelDetailColumns().
 			AddRow(labelID, "LABEL000001", "Weekly Jump", nil, nil, int32(3)))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedSeriesIDsByLabelTitleAsc)).
-		WithArgs(labelID, tenantID, "web", nil, false, nil, int32(3)).
+		WithArgs("ja", labelID, tenantID, "web", nil, false, nil, int32(3)).
 		WillReturnRows(seriesIDRows(ids...))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, sqlmock.AnyArg()).
+		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
-			AddRow(ids[0], "SERIESALPHA", "Alpha", nil, "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)).
-			AddRow(ids[1], "SERIESBETA0", "Beta", nil, "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
+			AddRow(ids[0], "SERIESALPHA", "Alpha", "", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)).
+			AddRow(ids[1], "SERIESBETA0", "Beta", "", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	resp, err := client.GetPublishedLabelDetail(context.Background(), &publirav1.GetPublishedLabelDetailRequest{
@@ -509,7 +509,7 @@ func TestCatalogGetPublishedLabelDetailFirstPageReportsNextToken(t *testing.T) {
 	if resp.PreviousToken != "" {
 		t.Fatalf("previous_token = %q, want empty on the first page", resp.PreviousToken)
 	}
-	wantToken := webToken(pagination.Forward, "title_asc", "Beta", ids[1].String())
+	wantToken := webToken(pagination.Forward, "title_asc+locale:ja", "Beta", ids[1].String())
 	if resp.NextToken != wantToken {
 		t.Fatalf("next_token = %q, want the last returned title cursor", resp.NextToken)
 	}

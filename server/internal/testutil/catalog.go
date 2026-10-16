@@ -164,18 +164,30 @@ func (e *PostgresEnv) SeedSeries(t *testing.T, tenantID uuid.UUID, seed SeriesSe
 	defer cancel()
 
 	labelID := uuid.NullUUID{UUID: seed.LabelID, Valid: seed.LabelID != uuid.Nil}
-	if _, err := e.DB.ExecContext(ctx, `
-		INSERT INTO series (id, tenant_id, public_id, title, is_published, published_at, label_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-	`, seriesID, tenantID, publicID, title, seed.Published, publishedAt, labelID); err != nil {
-		t.Fatalf("insert series %s: %v", publicID, err)
+	// A schema rolled back to before the translations keeps the title on the
+	// series and the synopsis on its listing.
+	untranslated := e.hasColumn(t, "series", "title")
+	if untranslated {
+		if _, err := e.DB.ExecContext(ctx, `
+			INSERT INTO series (id, tenant_id, public_id, title, is_published, published_at, label_id)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)
+		`, seriesID, tenantID, publicID, title, seed.Published, publishedAt, labelID); err != nil {
+			t.Fatalf("insert series %s: %v", publicID, err)
+		}
+	} else {
+		if _, err := e.DB.ExecContext(ctx, `
+			INSERT INTO series (id, tenant_id, public_id, is_published, published_at, label_id)
+			VALUES ($1, $2, $3, $4, $5, $6)
+		`, seriesID, tenantID, publicID, seed.Published, publishedAt, labelID); err != nil {
+			t.Fatalf("insert series %s: %v", publicID, err)
+		}
+		e.SeedSeriesTranslation(t, tenantID, seriesID, e.tenantDefaultLocale(t, tenantID), title, seed.Synopsis)
 	}
 
-	synopsis := sql.NullString{String: seed.Synopsis, Valid: seed.Synopsis != ""}
 	if _, err := e.DB.ExecContext(ctx, `
-		INSERT INTO series_listings (series_id, tenant_id, synopsis, is_published, published_at, status, schedule_weekdays, age_rating)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-	`, seriesID, tenantID, synopsis, seed.Published, publishedAt,
+		INSERT INTO series_listings (series_id, tenant_id, is_published, published_at, status, schedule_weekdays, age_rating)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+	`, seriesID, tenantID, seed.Published, publishedAt,
 		defaultIfEmpty(seed.Status, "ongoing"),
 		// pq sends a nil slice as NULL, and the column is NOT NULL: a seed with
 		// no schedule stores the empty array the default would have given it.
@@ -183,6 +195,13 @@ func (e *PostgresEnv) SeedSeries(t *testing.T, tenantID uuid.UUID, seed SeriesSe
 		defaultIfEmpty(seed.AgeRating, "all"),
 	); err != nil {
 		t.Fatalf("insert series_listings %s: %v", publicID, err)
+	}
+	if untranslated && seed.Synopsis != "" {
+		if _, err := e.DB.ExecContext(ctx, `
+			UPDATE series_listings SET synopsis = $2 WHERE series_id = $1
+		`, seriesID, seed.Synopsis); err != nil {
+			t.Fatalf("set series synopsis %s: %v", publicID, err)
+		}
 	}
 	// Written separately, and only for a seed that asks for it, because a test
 	// that rolls the schema back to an older migration seeds series through
@@ -542,6 +561,68 @@ func (e *PostgresEnv) SeedSeriesTag(t *testing.T, tenantID, seriesID, tagID uuid
 	}
 }
 
+// SeedSeriesTranslation adds a series' title and synopsis in one more locale.
+func (e *PostgresEnv) SeedSeriesTranslation(t *testing.T, tenantID, seriesID uuid.UUID, locale, title, synopsis string) {
+	t.Helper()
+	e.requireDB(t)
+	ctx, cancel := seedContext()
+	defer cancel()
+	if _, err := e.DB.ExecContext(ctx, `
+		INSERT INTO series_translations (id, series_id, tenant_id, locale, title, synopsis)
+		VALUES ($1, $2, $3, $4, $5, $6)
+	`, uuid.Must(uuid.NewV7()), seriesID, tenantID, locale, title, synopsis); err != nil {
+		t.Fatalf("insert series translation %s %s: %v", seriesID, locale, err)
+	}
+}
+
+// SeedEpisodeTranslation adds an episode's title in one more locale.
+func (e *PostgresEnv) SeedEpisodeTranslation(t *testing.T, tenantID, episodeID uuid.UUID, locale, title string) {
+	t.Helper()
+	e.requireDB(t)
+	ctx, cancel := seedContext()
+	defer cancel()
+	if _, err := e.DB.ExecContext(ctx, `
+		INSERT INTO episode_translations (id, episode_id, tenant_id, locale, title)
+		VALUES ($1, $2, $3, $4, $5)
+	`, uuid.Must(uuid.NewV7()), episodeID, tenantID, locale, title); err != nil {
+		t.Fatalf("insert episode translation %s %s: %v", episodeID, locale, err)
+	}
+}
+
+// tenantDefaultLocale is the locale a seeded title is written in when the
+// test names none.
+func (e *PostgresEnv) tenantDefaultLocale(t *testing.T, tenantID uuid.UUID) string {
+	t.Helper()
+	ctx, cancel := seedContext()
+	defer cancel()
+	var code string
+	if err := e.DB.QueryRowContext(ctx, "SELECT default_locale FROM tenants WHERE id = $1", tenantID).Scan(&code); err != nil {
+		t.Fatalf("default locale of tenant %s: %v", tenantID, err)
+	}
+	return code
+}
+
+// hasColumn reports whether the schema the database is migrated to has the
+// column, for a seeder a test also calls on a schema rolled back past it.
+func (e *PostgresEnv) hasColumn(t *testing.T, table, column string) bool {
+	t.Helper()
+	ctx, cancel := seedContext()
+	defer cancel()
+	var exists bool
+	if err := e.DB.QueryRowContext(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM information_schema.columns
+			WHERE table_schema = current_schema()
+				AND table_name = $1
+				AND column_name = $2
+		)
+	`, table, column).Scan(&exists); err != nil {
+		t.Fatalf("look up column %s.%s: %v", table, column, err)
+	}
+	return exists
+}
+
 // SeedEpisode inserts an episode of the series and the episode_listings row that
 // carries its price and publication state.
 func (e *PostgresEnv) SeedEpisode(t *testing.T, tenantID, seriesID uuid.UUID, seed EpisodeSeed) Episode {
@@ -569,11 +650,23 @@ func (e *PostgresEnv) SeedEpisode(t *testing.T, tenantID, seriesID uuid.UUID, se
 		orderIndex = lastOrderIndex + 1
 	}
 
-	if _, err := e.DB.ExecContext(ctx, `
-		INSERT INTO episodes (id, tenant_id, series_id, public_id, title, order_index)
-		VALUES ($1, $2, $3, $4, $5, $6)
-	`, episodeID, tenantID, seriesID, publicID, title, orderIndex); err != nil {
-		t.Fatalf("insert episode %s: %v", publicID, err)
+	// A schema rolled back to before the translations still keeps the title on
+	// the episode.
+	if e.hasColumn(t, "episodes", "title") {
+		if _, err := e.DB.ExecContext(ctx, `
+			INSERT INTO episodes (id, tenant_id, series_id, public_id, title, order_index)
+			VALUES ($1, $2, $3, $4, $5, $6)
+		`, episodeID, tenantID, seriesID, publicID, title, orderIndex); err != nil {
+			t.Fatalf("insert episode %s: %v", publicID, err)
+		}
+	} else {
+		if _, err := e.DB.ExecContext(ctx, `
+			INSERT INTO episodes (id, tenant_id, series_id, public_id, order_index)
+			VALUES ($1, $2, $3, $4, $5)
+		`, episodeID, tenantID, seriesID, publicID, orderIndex); err != nil {
+			t.Fatalf("insert episode %s: %v", publicID, err)
+		}
+		e.SeedEpisodeTranslation(t, tenantID, episodeID, e.tenantDefaultLocale(t, tenantID), title)
 	}
 	// Written separately, and only for a seed that asks for it, for the reason
 	// SeedSeries writes the comment mode that way.

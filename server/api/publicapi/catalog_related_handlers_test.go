@@ -86,7 +86,7 @@ func TestCatalogListRelatedSeriesLeadsWithTheScoredRows(t *testing.T) {
 	// The display query is unordered; the handler puts the rows back in the
 	// order the keyset scan decided.
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, sqlmock.AnyArg()).
+		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(
 			recommendedSeriesRow(
 				recommendedSeriesRow(seriesDetailColumns(), unrelated, "UNRELATED", "Unrelated", now),
@@ -178,7 +178,7 @@ func TestCatalogListRelatedSeriesPagesOnTheScoreAndTheRank(t *testing.T) {
 			"web").
 		WillReturnRows(relatedSeriesIDRows(scoredID{id: next, score: 2, sortRank: unrankedSortRank}))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, sqlmock.AnyArg()).
+		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(recommendedSeriesRow(seriesDetailColumns(), next, "NEXT", "Next", publishedAt))
 
 	resp, err := listRelatedSeries(t, testServer, &publirav1.ListRelatedSeriesRequest{

@@ -21,12 +21,11 @@ WHERE id IN (
     '018f1090-0005-7000-8000-000000000002'::uuid
 );
 
-INSERT INTO episodes (id, series_id, public_id, title, order_index, tenant_id, created_at)
+INSERT INTO episodes (id, series_id, public_id, order_index, tenant_id, created_at)
 SELECT
     e.id,
     s.id,
     e.public_id,
-    e.title,
     e.order_index,
     s.tenant_id,
     e.created_at
@@ -35,19 +34,46 @@ FROM (
         (
             '018f1090-0005-7000-8000-000000000001'::uuid,
             'DocsEPSDAAA1',
-            'Moderation Episode 001-02',
             2,
             '2026-02-05T09:00:00Z'::timestamptz
         ),
         (
             '018f1090-0005-7000-8000-000000000002'::uuid,
             'DocsEPSDAAA2',
-            'Moderation Episode 001-03',
             3,
             '2026-02-06T09:00:00Z'::timestamptz
         )
-) AS e (id, public_id, title, order_index, created_at)
+) AS e (id, public_id, order_index, created_at)
 JOIN series s ON s.id = '018f0f73-0001-7000-8000-000000000001'::uuid;
+
+-- Each title, as the episode's translation in the tenant's default locale,
+-- dated with the episode so the screens print no time of the run.
+INSERT INTO episode_translations (id, episode_id, tenant_id, locale, title, created_at, updated_at)
+SELECT
+    tr.id,
+    e.id,
+    e.tenant_id,
+    t.default_locale,
+    tr.title,
+    e.created_at,
+    e.created_at
+FROM (
+    VALUES
+        (
+            '018f1090-0005-7000-8000-000000000003'::uuid,
+            '018f1090-0005-7000-8000-000000000001'::uuid,
+            'Moderation Episode 001-02'
+        ),
+        (
+            '018f1090-0005-7000-8000-000000000004'::uuid,
+            '018f1090-0005-7000-8000-000000000002'::uuid,
+            'Moderation Episode 001-03'
+        )
+) AS tr (id, episode_id, title)
+JOIN episodes e ON e.id = tr.episode_id
+JOIN tenants t ON t.id = e.tenant_id
+ON CONFLICT (episode_id, locale) DO UPDATE
+SET title = EXCLUDED.title;
 
 INSERT INTO episode_listings (
     episode_id,

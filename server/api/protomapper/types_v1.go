@@ -24,15 +24,13 @@ func SeriesFromGetSeriesByPublicIDForTenantRow(row dbmodels.GetSeriesByPublicIDF
 		Id:               row.ID.String(),
 		PublicId:         row.PublicID,
 		Title:            row.Title,
+		Synopsis:         row.Synopsis,
 		IsPublished:      row.IsPublished,
 		ScheduleWeekdays: ScheduleWeekdaysFromStored(row.ScheduleWeekdays),
 	}
 	if row.LabelPublicID.Valid {
 		series.Label = Label(row.LabelPublicID.String, row.LabelName.String)
 		series.Label.Id = row.LabelID.UUID.String()
-	}
-	if row.Synopsis.Valid {
-		series.Synopsis = row.Synopsis.String
 	}
 	if row.ReadingPeriodHours.Valid {
 		series.ReadingPeriodHours = row.ReadingPeriodHours.Int32

@@ -220,7 +220,7 @@ func (s *apiServer) readerRecommendedPageRows(
 func (s *apiServer) readerRecommendedSeriesPage(
 	ctx context.Context,
 	tenantID, userID uuid.UUID,
-	surface, timeZone string,
+	surface, locale, timeZone string,
 	limit int32,
 	cursor pagination.Cursor,
 ) (*publirav1.ListMyRecommendedSeriesResponse, error) {
@@ -256,7 +256,7 @@ func (s *apiServer) readerRecommendedSeriesPage(
 		sortKeysByID[pageRow.id] = pageRow.sortKeys
 	}
 
-	rows, err := s.activeSeriesRowsInOrder(ctx, tenantID, surface, ids)
+	rows, err := s.activeSeriesRowsInOrder(ctx, tenantID, surface, locale, ids)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list the reader's recommended series", err, "tenant_id", tenantID.String(), "user_id", userID.String())
 	}
@@ -318,6 +318,10 @@ func (s *apiServer) ListMyRecommendedSeries(
 		return nil, connect.NewError(connect.CodeInvalidArgument, "token is invalid")
 	}
 
+	readerLocale, err := readerLocaleOf(req.Locale, tenant)
+	if err != nil {
+		return nil, err
+	}
 	hasFeatures, err := s.queriesFor(ctx).HasUserRecommendFeatures(ctx, dbmodels.HasUserRecommendFeaturesParams{
 		FeatureVersion: recommendfeatures.FeatureVersion,
 		TenantID:       tenant.ID,
@@ -338,12 +342,12 @@ func (s *apiServer) ListMyRecommendedSeries(
 	var res *publirav1.ListMyRecommendedSeriesResponse
 	if hasFeatures {
 		zone := tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, s.queriesFor(ctx)))
-		res, err = s.readerRecommendedSeriesPage(ctx, tenant.ID, user.ID, surface, zone, limit, cursor)
+		res, err = s.readerRecommendedSeriesPage(ctx, tenant.ID, user.ID, surface, readerLocale, zone, limit, cursor)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		page, err := s.tenantRecommendedSeriesPage(ctx, tenant.ID, surface, limit, cursor)
+		page, err := s.tenantRecommendedSeriesPage(ctx, tenant.ID, surface, readerLocale, limit, cursor)
 		if err != nil {
 			return nil, err
 		}

@@ -217,7 +217,6 @@ type Episode struct {
 	ID                   uuid.UUID      `json:"id"`
 	SeriesID             uuid.UUID      `json:"series_id"`
 	PublicID             string         `json:"public_id"`
-	Title                string         `json:"title"`
 	OrderIndex           int32          `json:"order_index"`
 	CreatedAt            time.Time      `json:"created_at"`
 	TenantID             uuid.UUID      `json:"tenant_id"`
@@ -372,6 +371,16 @@ type EpisodeSurface struct {
 	SeriesID  uuid.UUID `json:"series_id"`
 	TenantID  uuid.UUID `json:"tenant_id"`
 	Surface   string    `json:"surface"`
+}
+
+type EpisodeTranslation struct {
+	ID        uuid.UUID `json:"id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+	Locale    string    `json:"locale"`
+	Title     string    `json:"title"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type ExpiredCheckout struct {
@@ -874,7 +883,6 @@ type Series struct {
 	TenantID                 uuid.UUID      `json:"tenant_id"`
 	LabelID                  uuid.NullUUID  `json:"label_id"`
 	PublicID                 string         `json:"public_id"`
-	Title                    string         `json:"title"`
 	CreatedAt                time.Time      `json:"created_at"`
 	IsPublished              bool           `json:"is_published"`
 	PublishedAt              sql.NullTime   `json:"published_at"`
@@ -933,7 +941,6 @@ type SeriesImageVariant struct {
 
 type SeriesListing struct {
 	SeriesID           uuid.UUID      `json:"series_id"`
-	Synopsis           sql.NullString `json:"synopsis"`
 	ReadingPeriodHours sql.NullInt32  `json:"reading_period_hours"`
 	IsPublished        sql.NullBool   `json:"is_published"`
 	PublishedAt        sql.NullTime   `json:"published_at"`
@@ -964,6 +971,17 @@ type SeriesTag struct {
 	SeriesID  uuid.UUID `json:"series_id"`
 	TagID     uuid.UUID `json:"tag_id"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+type SeriesTranslation struct {
+	ID        uuid.UUID `json:"id"`
+	SeriesID  uuid.UUID `json:"series_id"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+	Locale    string    `json:"locale"`
+	Title     string    `json:"title"`
+	Synopsis  string    `json:"synopsis"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type SeriesWaitFreeSetting struct {

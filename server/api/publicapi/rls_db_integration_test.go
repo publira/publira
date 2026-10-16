@@ -53,12 +53,12 @@ func TestDBPublicRoleSeesOnlyTheScopedTenant(t *testing.T) {
 		}
 
 		var title string
-		err := conn.QueryRowContext(ctx, "SELECT title FROM series WHERE id = $1", theirs.ID).Scan(&title)
+		err := conn.QueryRowContext(ctx, "SELECT title FROM series_translations WHERE series_id = $1", theirs.ID).Scan(&title)
 		if !errors.Is(err, sql.ErrNoRows) {
 			t.Fatalf("read tenant B series as tenant A: err = %v (title %q), want sql.ErrNoRows", err, title)
 		}
 
-		if err := conn.QueryRowContext(ctx, "SELECT title FROM series WHERE id = $1", mine.ID).Scan(&title); err != nil {
+		if err := conn.QueryRowContext(ctx, "SELECT title FROM series_translations WHERE series_id = $1", mine.ID).Scan(&title); err != nil {
 			t.Fatalf("read own series: %v", err)
 		}
 		if title != "Tenant A Series" {
@@ -77,6 +77,9 @@ var publicDataTables = []struct {
 }{
 	{name: "series", count: "SELECT count(*) FROM series"},
 	{name: "episodes", count: "SELECT count(*) FROM episodes"},
+	// The title and the synopsis every catalog read shows, picked by locale.
+	{name: "series_translations", count: "SELECT count(*) FROM series_translations"},
+	{name: "episode_translations", count: "SELECT count(*) FROM episode_translations"},
 	{name: "episode_listings", count: "SELECT count(*) FROM episode_listings"},
 	// A view answers with its owner's rights unless it is declared
 	// security_invoker, and this one's owner applies the migrations and

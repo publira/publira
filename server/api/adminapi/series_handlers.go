@@ -638,6 +638,10 @@ func (s *adminServer) CreateSeries(
 	if strings.TrimSpace(req.Title) == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, "title is required")
 	}
+	translationLocale, err := catalogLocale(req.Locale, tenant)
+	if err != nil {
+		return nil, err
+	}
 	if req.ReadingPeriodHours < 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, "reading_period_hours must be greater than or equal to 0")
 	}
@@ -702,17 +706,19 @@ func (s *adminServer) CreateSeries(
 	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
 	base, err := publicid.InsertTx(txCtx, tx, func(publicID string) (dbmodels.Series, error) {
 		return s.queriesFor(txCtx).CreateSeriesBase(txCtx, dbmodels.CreateSeriesBaseParams{
-			ID: seriesID, TenantID: tenant.ID, LabelID: labelID, PublicID: publicID, Title: req.Title, Availability: availability,
+			ID: seriesID, TenantID: tenant.ID, LabelID: labelID, PublicID: publicID, Availability: availability,
 			PurchaseAvailability: purchaseAvailability,
 		})
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to create series", err, "tenant_id", tenant.ID.String())
 	}
+	if err := s.upsertSeriesTranslation(txCtx, tenant.ID, base.ID, translationLocale, req.Title, new(storedSynopsis(req.Synopsis))); err != nil {
+		return nil, err
+	}
 	_, err = s.queriesFor(txCtx).CreateSeriesListing(txCtx, dbmodels.CreateSeriesListingParams{
 		TenantID:           tenant.ID,
 		SeriesID:           base.ID,
-		Synopsis:           sql.NullString{String: req.Synopsis, Valid: strings.TrimSpace(req.Synopsis) != ""},
 		ReadingPeriodHours: sql.NullInt32{Int32: req.ReadingPeriodHours, Valid: req.ReadingPeriodHours > 0},
 		Status:             listingMetadata.status,
 		ScheduleWeekdays:   listingMetadata.scheduleWeekdays,
@@ -815,6 +821,10 @@ func (s *adminServer) CreateSeries(
 	if err != nil {
 		return nil, s.internalError(ctx, "series holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "series_public_id", created.PublicID)
 	}
+	translations, err := s.seriesTranslations(ctx, tenant.ID, base.ID)
+	if err != nil {
+		return nil, err
+	}
 	return &publiraadminv1.CreateSeriesResponse{
 		Series:               series,
 		CommentMode:          commentMode,
@@ -822,6 +832,7 @@ func (s *adminServer) CreateSeries(
 		SpreadStartIndex:     spreadStartIndex,
 		CreatorCredits:       creatorCredits,
 		PurchaseAvailability: savedPurchaseAvailability,
+		Translations:         translations,
 	}, nil
 }
 
@@ -838,6 +849,10 @@ func (s *adminServer) UpdateSeries(
 	}
 	if strings.TrimSpace(req.Title) == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, "title is required")
+	}
+	translationLocale, err := catalogLocale(req.Locale, tenant)
+	if err != nil {
+		return nil, err
 	}
 	if req.GetReadingPeriodHours() < 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, "reading_period_hours must be greater than or equal to 0")
@@ -922,14 +937,20 @@ func (s *adminServer) UpdateSeries(
 	defer tx.Rollback() //nolint:errcheck
 
 	txCtx := rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(tx))
-	err = s.queriesFor(txCtx).UpdateSeriesBase(txCtx, dbmodels.UpdateSeriesBaseParams{ID: current.ID, Title: req.Title, LabelID: labelID, Availability: availability, PurchaseAvailability: purchaseAvailability})
+	err = s.queriesFor(txCtx).UpdateSeriesBase(txCtx, dbmodels.UpdateSeriesBaseParams{ID: current.ID, LabelID: labelID, Availability: availability, PurchaseAvailability: purchaseAvailability})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to update series", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
+	}
+	var synopsis *string
+	if req.Synopsis != nil {
+		synopsis = new(storedSynopsis(req.GetSynopsis()))
+	}
+	if err := s.upsertSeriesTranslation(txCtx, tenant.ID, current.ID, translationLocale, req.Title, synopsis); err != nil {
+		return nil, err
 	}
 	_, err = s.queriesFor(txCtx).UpdateSeriesListing(txCtx, dbmodels.UpdateSeriesListingParams{
 		TenantID:                tenant.ID,
 		SeriesID:                current.ID,
-		Synopsis:                sql.NullString{String: req.GetSynopsis(), Valid: strings.TrimSpace(req.GetSynopsis()) != ""},
 		ReadingPeriodHours:      sql.NullInt32{Int32: req.GetReadingPeriodHours(), Valid: req.GetReadingPeriodHours() > 0},
 		Status:                  listingMetadata.status,
 		ScheduleWeekdays:        listingMetadata.scheduleWeekdays,
@@ -937,7 +958,6 @@ func (s *adminServer) UpdateSeries(
 		CommentMode:             listingMetadata.commentMode,
 		ReadingDirection:        listingMetadata.readingDirection,
 		SpreadStartIndex:        listingMetadata.spreadStartIndex,
-		WriteSynopsis:           req.Synopsis != nil,
 		WriteReadingPeriodHours: req.ReadingPeriodHours != nil,
 		WriteStatus:             req.Status != nil,
 		WriteScheduleWeekdays:   req.WeeklySchedule != nil,
@@ -1054,6 +1074,10 @@ func (s *adminServer) UpdateSeries(
 	if err != nil {
 		return nil, s.internalError(ctx, "series holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "series_public_id", updated.PublicID)
 	}
+	translations, err := s.seriesTranslations(ctx, tenant.ID, current.ID)
+	if err != nil {
+		return nil, err
+	}
 	return &publiraadminv1.UpdateSeriesResponse{
 		Series:               series,
 		CommentMode:          commentMode,
@@ -1061,6 +1085,7 @@ func (s *adminServer) UpdateSeries(
 		SpreadStartIndex:     spreadStartIndex,
 		CreatorCredits:       creatorCredits,
 		PurchaseAvailability: savedPurchaseAvailability,
+		Translations:         translations,
 	}, nil
 }
 
@@ -1077,7 +1102,7 @@ type seriesPageRow struct {
 	title                  string
 	labelPublicID          sql.NullString
 	labelName              sql.NullString
-	synopsis               sql.NullString
+	synopsis               string
 	readingPeriodHours     sql.NullInt32
 	status                 sql.NullString
 	scheduleWeekdays       []int32
@@ -1264,14 +1289,12 @@ func (s *adminServer) ListSeries(
 			Id:               row.id.String(),
 			PublicId:         row.publicID,
 			Title:            row.title,
+			Synopsis:         row.synopsis,
 			IsPublished:      row.isPublished,
 			ScheduleWeekdays: protomapper.ScheduleWeekdaysFromStored(row.scheduleWeekdays),
 		}
 		if row.labelPublicID.Valid {
 			item.Label = protomapper.Label(row.labelPublicID.String, row.labelName.String)
-		}
-		if row.synopsis.Valid {
-			item.Synopsis = row.synopsis.String
 		}
 		if row.readingPeriodHours.Valid {
 			item.ReadingPeriodHours = row.readingPeriodHours.Int32
@@ -1428,6 +1451,10 @@ func (s *adminServer) GetSeries(
 	if err != nil {
 		return nil, s.internalError(ctx, "series holds a purchase availability this build does not know", err, "tenant_id", tenant.ID.String(), "series_public_id", row.PublicID)
 	}
+	translations, err := s.seriesTranslations(ctx, tenant.ID, row.ID)
+	if err != nil {
+		return nil, err
+	}
 	return &publiraadminv1.GetSeriesResponse{
 		Series:               series,
 		CommentMode:          commentMode,
@@ -1435,5 +1462,6 @@ func (s *adminServer) GetSeries(
 		SpreadStartIndex:     spreadStartIndex,
 		CreatorCredits:       seriesCreatorCreditsFromRows(creatorRows),
 		PurchaseAvailability: purchaseAvailability,
+		Translations:         translations,
 	}, nil
 }

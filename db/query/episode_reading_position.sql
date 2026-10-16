@@ -93,7 +93,7 @@ LIMIT 1;
 -- position they cannot act on.
 SELECT e.id AS episode_id,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     e.order_index,
     el.price,
     el.reading_period_hours,
@@ -115,6 +115,7 @@ SELECT e.id AS episode_id,
     ) AS is_finished
 FROM episode_reading_positions rp
     JOIN episodes e ON e.id = rp.episode_id
+    JOIN episode_translations et ON et.id = episode_translation_for(e.id, sqlc.arg('locale')::text)
     JOIN episode_listings el ON el.episode_id = e.id
     LEFT JOIN published_free_episodes fe ON fe.episode_id = e.id
 WHERE rp.tenant_id = sqlc.arg('tenant_id')
@@ -246,7 +247,7 @@ SELECT cf.series_id,
     e.id AS episode_id,
     cf.last_activity_at,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     e.order_index,
     el.price,
     el.reading_period_hours,
@@ -259,6 +260,7 @@ SELECT cf.series_id,
     rp.updated_at AS position_updated_at
 FROM continue_from cf
     JOIN episodes e ON e.id = cf.episode_id
+    JOIN episode_translations et ON et.id = episode_translation_for(e.id, sqlc.arg('locale')::text)
     JOIN episode_listings el ON el.episode_id = e.id
     LEFT JOIN published_free_episodes fe ON fe.episode_id = e.id
     LEFT JOIN episode_reading_positions rp ON rp.tenant_id = sqlc.arg('tenant_id')
@@ -371,7 +373,7 @@ SELECT cf.series_id,
     e.id AS episode_id,
     cf.last_activity_at,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     e.order_index,
     el.price,
     el.reading_period_hours,
@@ -384,6 +386,7 @@ SELECT cf.series_id,
     rp.updated_at AS position_updated_at
 FROM continue_from cf
     JOIN episodes e ON e.id = cf.episode_id
+    JOIN episode_translations et ON et.id = episode_translation_for(e.id, sqlc.arg('locale')::text)
     JOIN episode_listings el ON el.episode_id = e.id
     LEFT JOIN published_free_episodes fe ON fe.episode_id = e.id
     LEFT JOIN episode_reading_positions rp ON rp.tenant_id = sqlc.arg('tenant_id')

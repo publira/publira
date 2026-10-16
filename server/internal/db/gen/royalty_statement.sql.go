@@ -555,10 +555,10 @@ SELECT
     c.name AS creator_name,
     s.id AS series_id,
     s.public_id AS series_public_id,
-    s.title AS series_title,
+    str.title AS series_title,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
-    e.title AS episode_title,
+    et.title AS episode_title,
     ec.role_id,
     r.public_id AS role_public_id,
     r.name AS role_name,
@@ -569,7 +569,9 @@ SELECT
     ((sum(p.price_at_purchase) - sum(COALESCE(p.refunded_amount, 0))) * ec.share_bps / 10000)::bigint AS payout_amount
 FROM purchases p
 JOIN episodes e ON e.tenant_id = p.tenant_id AND e.id = p.episode_id
+JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
 JOIN series s ON s.tenant_id = e.tenant_id AND s.id = e.series_id
+JOIN series_translations str ON str.id = series_translation_for(s.id, '')
 JOIN episode_creators ec ON ec.tenant_id = p.tenant_id AND ec.episode_id = p.episode_id
 JOIN creators c ON c.tenant_id = ec.tenant_id AND c.id = ec.creator_id
 LEFT JOIN creator_roles r ON r.tenant_id = ec.tenant_id AND r.id = ec.role_id
@@ -581,12 +583,12 @@ WHERE p.tenant_id = $1
     AND p.purchased_at >= $3::timestamptz
     AND p.purchased_at < $4::timestamptz
 GROUP BY
-    s.id, s.public_id, s.title,
-    e.id, e.public_id, e.title, e.order_index,
+    s.id, s.public_id, str.title,
+    e.id, e.public_id, et.title, e.order_index,
     ec.creator_id, c.public_id, c.name,
     ec.role_id, r.public_id, r.name,
     ec.display_order, ec.share_bps
-ORDER BY s.title, s.id, e.order_index, e.id, ec.display_order, ec.creator_id, ec.role_id NULLS FIRST
+ORDER BY str.title, s.id, e.order_index, e.id, ec.display_order, ec.creator_id, ec.role_id NULLS FIRST
 `
 
 type ListRoyaltyLinesForPeriodParams struct {
