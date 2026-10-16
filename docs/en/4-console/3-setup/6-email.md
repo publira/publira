@@ -114,14 +114,32 @@ export default {
 
 ### Posting raw mail from Postfix
 
-A Postfix server that receives the inbound domain's mail can post each mail with `curl` through a `pipe` transport. Point the domain's MX record at the server, and add the transport to `/etc/postfix/master.cf`, with the **Webhook URL** split into the token and the URL without it:
+A Postfix server that receives the inbound domain's mail can post each mail with `curl` through a `pipe` transport. Point the domain's MX record at the server, and save this script as `/usr/local/bin/publira-inbound`, with the **Webhook URL** split into the token and the URL without it:
+
+```sh
+#!/bin/sh
+# Posts the mail on standard input for the recipient named as $1, and tells
+# Postfix whether a failure is worth retrying.
+status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+  --max-time 60 --user 'inbound:<token>' \
+  --header 'Content-Type: message/rfc822' \
+  --header "X-Envelope-To: $1" \
+  --data-binary @- \
+  https://comics.example.com/api/v1/webhook/email/mime)
+case "$status" in
+  2??) exit 0 ;;
+  400) exit 65 ;; # EX_DATAERR: not a mail the site can read; bounce it
+  *) exit 75 ;;   # EX_TEMPFAIL: keep it queued and try again later
+esac
+```
+
+Postfix bounces a mail whose command ends with a status it does not know, such as the ones `curl` exits with, so the script answers with the two it does. Only a post the site refuses as not being a mail bounces. Anything else — no answer, a `5xx` while the site is down, a `401` while the token stored in the console and the one in the script differ — leaves the mail queued, and Postfix retries it until its queue lifetime runs out. The script holds the token, so make it readable by the transport's user alone: `chown nobody /usr/local/bin/publira-inbound` and `chmod 700 /usr/local/bin/publira-inbound`.
+
+Add the transport to `/etc/postfix/master.cf`:
 
 ```text
 publira   unix  -       n       n       -       -       pipe
-  user=nobody argv=/usr/bin/curl --silent --show-error --fail --max-time 60
-  --user inbound:<token> --header Content-Type:message/rfc822
-  --header X-Envelope-To:${recipient} --data-binary @-
-  https://comics.example.com/api/v1/webhook/email/mime
+  user=nobody argv=/usr/local/bin/publira-inbound ${recipient}
 ```
 
 Then send the domain's mail to it, one recipient per post so that `${recipient}` names one address, in `/etc/postfix/main.cf`:
