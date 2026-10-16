@@ -2,7 +2,7 @@
 title: Tenants
 description: Create a tenant, choose its domain and console host, change them later, and suspend a tenant.
 published: 2026-10-06
-updated: 2026-10-15
+updated: 2026-10-16
 ---
 
 Each publisher an install serves is a tenant, with a public site on its own domain and a console on a second host name. `publiractl setup` created the first one. This page adds the next, and covers what can be changed about a tenant afterwards.
@@ -27,7 +27,7 @@ Then make both host names reach the install, in the order [Adding a tenant](../2
 
 The console host does not have to be under the tenant's domain: a site on `example.com` can have its console on `admin.example.net`, given with **Admin domain** or `--admin-domain` below. When you can register a second domain for it, that is the safer choice. Every certificate a public certificate authority issues is published in the Certificate Transparency logs, which services such as crt.sh let anyone search by domain, so a console host under the site's domain is listed beside the site from the moment its certificate is issued, whatever it is named. A wildcard certificate keeps the name out of the logs, but `admin.<domain>` is the first name anyone tries. A console host on another registrable domain, with a certificate that names none of the site's hosts, is not linked to the site that way. The console still asks its staff to sign in, so what this keeps out of sight is its sign-in page. `admin.<domain>` stays the default, and works as it is.
 
-Choose it before staff register passkeys: once the console host is outside the tenant's domain, a passkey is bound to that host, so moving the console there later leaves the passkeys already registered unusable, as [Two-step verification](./12-security.md#tenant-staff) describes.
+Choose it before staff register passkeys: a passkey is bound to the console's host, so moving the console to another host later leaves the passkeys already registered unusable, as [Two-step verification](./12-security.md#tenant-staff) describes.
 
 The edge can go further and accept the console host only from your staff's IP addresses; the [sample configurations](../2-deployments/4-edge.md#the-sample-configurations) do not do this for you. That covers the console's pages but not its APIs, which `publira server` answers on the site's host too unless it runs with `--role storefront`, as [The console APIs are under `/rpc` too](../2-deployments/4-edge.md#the-console-apis-are-under-rpc-too) describes.
 
@@ -93,7 +93,7 @@ Each web app keeps the host names it has looked up for up to five minutes, so a 
 Moving the domain also moves everything built on it:
 
 - Readers and staff are signed in on one host name, so they sign in again on the new one.
-- Staff passkeys belong to the domain, or to the console's host when it is not under the domain, so a move that changes it leaves them unusable, as [Two-step verification](./12-security.md#tenant-staff) describes.
+- Staff passkeys belong to the console's host, so a move that changes it — a new admin domain, or a new domain for a tenant whose console is on `admin.<domain>` — leaves them unusable, as [Two-step verification](./12-security.md#tenant-staff) describes.
 - The tenant's mobile app is built for one host, and opens links only on that host. Build and submit it again with the new host in its [app manifest](../5-mobile-app/1-app-manifest.md).
 - The **Webhook URL** the tenant console shows for payments, and the return URLs it shows for sign-in with Apple and Google, are on the domain. Register the new ones with each provider.
 - Mail sent before the change links to the old host.

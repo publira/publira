@@ -4,14 +4,15 @@
 // The relying party is derived from the tenant row, never from the request:
 // the Go API sits behind the Next.js apps and does not see the browser's
 // origin, so a value taken from the request would be one the caller chose. A
-// tenant has two origins, its storefront and its console, and each is a
-// relying party of its own. Both share the storefront's host as their RP ID
-// when the console's host is that host or under it, so one passkey answers
-// either; a console on a host outside the storefront's domain, or under a
-// storefront host that is no registrable domain, is its own RP ID, and its
-// passkeys answer it alone. Each relying party accepts a ceremony
-// from its own origin and no other, so an assertion made on the storefront is
-// refused by the console even where the two share an RP ID.
+// tenant has two origins, its storefront and its console, and they are always
+// two relying parties: each takes its own host as its RP ID and accepts a
+// ceremony from its own origin and no other. A console served under the
+// storefront's domain could name the storefront's host as its RP ID, but it
+// never does, so a passkey registered on one surface never answers the
+// other. The storefront signs a reader in with a password alone, and every
+// console account can sign in there too, so a credential the two shared
+// would let anyone holding that password register a passkey on the
+// storefront and answer the console's second factor with it.
 //
 // A ceremony's server-side state is a challenge, an RP ID, a user handle, and
 // an expiry. The caller stores those between begin and finish and spends them
@@ -30,7 +31,6 @@ import (
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
-	"golang.org/x/net/publicsuffix"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/tenantorigin"
@@ -82,11 +82,7 @@ func AdminConsole(tenant dbmodels.Tenant) (*RelyingParty, error) {
 	if err != nil {
 		return nil, err
 	}
-	rpID, err := AdminConsoleRPID(tenant)
-	if err != nil {
-		return nil, err
-	}
-	return newRelyingParty(tenant, rpID, console)
+	return newRelyingParty(tenant, hostname(console), console)
 }
 
 // Site is the relying party of the tenant's storefront.
@@ -99,32 +95,13 @@ func Site(tenant dbmodels.Tenant) (*RelyingParty, error) {
 }
 
 // AdminConsoleRPID is the RP ID the console's passkeys are bound to: the
-// storefront's host when the console is served on it or under it and that
-// host is a registrable domain, and the console's own host otherwise.
+// console's own host, wherever it is served.
 func AdminConsoleRPID(tenant dbmodels.Tenant) (string, error) {
 	console, err := tenantorigin.AdminConsole(tenant)
 	if err != nil {
 		return "", err
 	}
-	site, err := tenantorigin.Site(tenant)
-	if err != nil {
-		return "", err
-	}
-	consoleHost, siteHost := hostname(console), hostname(site)
-	if registrable(siteHost) && (consoleHost == siteHost || strings.HasSuffix(consoleHost, "."+siteHost)) {
-		return siteHost, nil
-	}
-	return consoleHost, nil
-}
-
-// registrable reports whether host is a domain a page under it may name as
-// its RP ID. A browser refuses an RP ID that is a public suffix rather than a
-// registrable domain, and it treats a single-label host such as `localhost`
-// the same way: a console on `admin.localhost` may not name `localhost`, the
-// Dev Container's and the E2E stack's storefront host, but may name itself.
-func registrable(host string) bool {
-	_, err := publicsuffix.EffectiveTLDPlusOne(host)
-	return err == nil
+	return hostname(console), nil
 }
 
 func hostname(origin *url.URL) string {

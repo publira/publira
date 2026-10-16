@@ -630,14 +630,14 @@ Taking the authenticator off needs the authenticator or a recovery code. Removin
 | Item | Value |
 | --- | --- |
 | Library | `github.com/go-webauthn/webauthn`, through `internal/tenantwebauthn`, which also carries the software authenticator the tests sign with (`webauthntest`) |
-| Relying party | Derived from the tenant row through `tenantorigin`, never from the request. The RP ID is the storefront's host when the console's host is that host or under it and the storefront's host is a registrable domain, and the console's own host otherwise; the only origin accepted is the console's. The RP name is the tenant's name |
+| Relying party | Derived from the tenant row through `tenantorigin`, never from the request. The RP ID is the console's own host, never the storefront's, even when the console is served under the storefront's domain, so a passkey registered on the storefront never answers the console; the only origin accepted is the console's. The RP name is the tenant's name |
 | Registration | User verification required, a discoverable credential preferred, no attestation requested, the account's existing credentials excluded |
 | Ceremony state | The challenge, the account, the RP ID, and the expiry, five minutes after the begin, in `user_webauthn_ceremonies`. Nothing of it is handed to the client: the finish finds the row by the challenge the response was signed over and deletes it, which spends it whatever the verification then answers. An account may have up to five ceremonies of each kind open at once, so several tabs or devices can sign in side by side; a begin past that drops the oldest |
 | Stored per credential | `user_webauthn_credentials`: the RP ID, the credential ID (unique per tenant), the COSE public key, the signature counter, the AAGUID, the transports, the backup-eligible and backed-up flags, its owner's name for it, `created_at`, `last_used_at` |
 | Counter | An assertion whose counter does not move past the stored one is refused, unless both are zero, which is what an authenticator that keeps no counter reports |
 | Errors | A refused assertion is `unauthenticated` with the reason `MFA_PASSKEY_REFUSED`; a refused registration is `invalid_argument` with the same reason. An assertion counts toward the failure limit only when it was checked against a ceremony the account had open |
 
-A passkey registered for an RP ID the console no longer derives — after the tenant's domain changes, or its console host moves into or out of that domain — is not counted as a factor and is not listed, and the account's recovery codes stay while one is stored, since moving the console back makes it a factor again.
+A passkey registered for an RP ID the console no longer derives — after its console host moves, whether to a new `admin_domain` or with the tenant's domain under the default `admin.` host — is not counted as a factor and is not listed, and the account's recovery codes stay while one is stored, since moving the console back makes it a factor again.
 
 ## Platform operator MFA (TOTP)
 

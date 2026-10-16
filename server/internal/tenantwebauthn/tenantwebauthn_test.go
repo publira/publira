@@ -20,14 +20,13 @@ func TestAdminConsoleRPID(t *testing.T) {
 		adminDomain sql.NullString
 		want        string
 	}{
-		{name: "shares the storefront's host under the default console host", domain: "comics.example", want: "comics.example"},
-		{name: "shares the storefront's host under a saved subdomain", domain: "comics.example", adminDomain: sql.NullString{String: "staff.comics.example", Valid: true}, want: "comics.example"},
+		{name: "keeps the default console host to itself", domain: "comics.example", want: "admin.comics.example"},
+		{name: "keeps a saved subdomain of the storefront to itself", domain: "comics.example", adminDomain: sql.NullString{String: "staff.comics.example", Valid: true}, want: "staff.comics.example"},
 		{name: "keeps a console outside the storefront's domain to itself", domain: "comics.example", adminDomain: sql.NullString{String: "console.publisher.example", Valid: true}, want: "console.publisher.example"},
-		{name: "does not mistake a sibling for a subdomain", domain: "comics.example", adminDomain: sql.NullString{String: "admincomics.example", Valid: true}, want: "admincomics.example"},
-		{name: "leaves the port out", domain: "comics.localhost:3180", want: "comics.localhost"},
+		{name: "keeps a console on the storefront's own host to itself", domain: "comics.example", adminDomain: sql.NullString{String: "comics.example", Valid: true}, want: "comics.example"},
+		{name: "leaves the port out", domain: "comics.localhost:3180", want: "admin.comics.localhost"},
 		{name: "keeps a console to itself under a storefront host that is no registrable domain", domain: "localhost:3080", want: "admin.localhost"},
-		{name: "keeps a console to itself under a storefront on a public suffix", domain: "github.io", adminDomain: sql.NullString{String: "admin.github.io", Valid: true}, want: "admin.github.io"},
-		{name: "folds the case of a saved host", domain: "Comics.Example", want: "comics.example"},
+		{name: "folds the case of a saved host", domain: "Comics.Example", want: "admin.comics.example"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -43,7 +42,11 @@ func TestAdminConsoleRPID(t *testing.T) {
 	}
 }
 
-func TestRelyingPartiesAcceptTheirOwnOriginAlone(t *testing.T) {
+// A console served under the storefront's domain is still a relying party of
+// its own, so a passkey registered on the storefront answers the console in
+// no way: not through the storefront's RP ID, and not from the console's
+// origin either.
+func TestRelyingPartiesShareNoCredentials(t *testing.T) {
 	t.Setenv(tenantorigin.SchemeEnv, "")
 	tenant := dbmodels.Tenant{Domain: "comics.example", Name: "Comics"}
 
@@ -55,11 +58,38 @@ func TestRelyingPartiesAcceptTheirOwnOriginAlone(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Site: %v", err)
 	}
-	if console.ID != site.ID {
-		t.Fatalf("RP IDs = %q and %q, want one shared by the console under the storefront", console.ID, site.ID)
+	if console.ID != "admin.comics.example" || site.ID != "comics.example" {
+		t.Fatalf("RP IDs = %q and %q, want each surface's own host", console.ID, site.ID)
 	}
 	if console.Origin != "https://admin.comics.example" || site.Origin != "https://comics.example" {
 		t.Fatalf("origins = %q and %q", console.Origin, site.Origin)
+	}
+
+	user := User{Handle: UserHandle("USER00000001"), Name: "staff@comics.example", DisplayName: "Staff"}
+	storefront := webauthntest.New(t, site.Origin)
+	user.Credentials = []dbmodels.UserWebauthnCredential{register(t, site, storefront, user)}
+
+	for _, origin := range []string{site.Origin, console.Origin} {
+		storefront.Origin = origin
+		options, ceremony, err := console.BeginAuthentication(user)
+		if err != nil {
+			t.Fatalf("BeginAuthentication: %v", err)
+		}
+		parsed, _, err := ParseAssertion([]byte(storefront.Assert(t, string(options))))
+		if err != nil {
+			t.Fatalf("ParseAssertion: %v", err)
+		}
+		if _, err := console.FinishAuthentication(user, ceremony, parsed); err == nil {
+			t.Fatalf("the console accepted a storefront passkey asserted on %s", origin)
+		}
+	}
+}
+
+func TestRelyingPartiesAcceptTheirOwnOriginAlone(t *testing.T) {
+	t.Setenv(tenantorigin.SchemeEnv, "")
+	console, err := AdminConsole(dbmodels.Tenant{Domain: "comics.example", Name: "Comics"})
+	if err != nil {
+		t.Fatalf("AdminConsole: %v", err)
 	}
 
 	authenticator := webauthntest.New(t, console.Origin)
@@ -67,9 +97,9 @@ func TestRelyingPartiesAcceptTheirOwnOriginAlone(t *testing.T) {
 	row := register(t, console, authenticator, user)
 	user.Credentials = []dbmodels.UserWebauthnCredential{row}
 
-	// The same credential, asserted on the storefront, is the console's to
-	// refuse even though the RP ID is the same.
-	authenticator.Origin = site.Origin
+	// The console's own credential, asserted on the storefront, is the
+	// console's to refuse.
+	authenticator.Origin = "https://comics.example"
 	options, ceremony, err := console.BeginAuthentication(user)
 	if err != nil {
 		t.Fatalf("BeginAuthentication: %v", err)

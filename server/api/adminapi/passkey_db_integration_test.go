@@ -13,6 +13,7 @@ import (
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/tenantorigin"
+	"github.com/publira/publira/server/internal/tenantwebauthn"
 	"github.com/publira/publira/server/internal/tenantwebauthn/webauthntest"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -23,8 +24,8 @@ import (
 // rows that are left behind.
 
 // The two origins of the tenant seedMfaTenant creates. Its console is served
-// on admin-tenant.example.com, outside the storefront's domain, so the console
-// is a relying party ID of its own.
+// on admin-tenant.example.com, and that host is the RP ID its passkeys are
+// bound to.
 const (
 	passkeyConsoleOrigin    = "https://admin-tenant.example.com"
 	passkeyStorefrontOrigin = "https://tenant.example.com"
@@ -42,6 +43,12 @@ func newPasskeyDBEnv(t *testing.T) *adminDBEnv {
 // credential, together with what the finish answered.
 func registerPasskey(t *testing.T, env *adminDBEnv, tenant adminDBTenant, name string) (*webauthntest.Authenticator, *publiraadminv1.AdminAuthServiceFinishPasskeyRegistrationResponse) {
 	t.Helper()
+	return registerPasskeyOn(t, env, tenant, passkeyConsoleOrigin, name)
+}
+
+// registerPasskeyOn is registerPasskey for a console served on origin.
+func registerPasskeyOn(t *testing.T, env *adminDBEnv, tenant adminDBTenant, origin, name string) (*webauthntest.Authenticator, *publiraadminv1.AdminAuthServiceFinishPasskeyRegistrationResponse) {
+	t.Helper()
 
 	ctx := testutil.WithBearer(context.Background(), tenant.token())
 	begun, err := env.authClient().BeginPasskeyRegistration(ctx, &publiraadminv1.AdminAuthServiceBeginPasskeyRegistrationRequest{
@@ -50,7 +57,7 @@ func registerPasskey(t *testing.T, env *adminDBEnv, tenant adminDBTenant, name s
 	if err != nil {
 		t.Fatalf("BeginPasskeyRegistration: %v", err)
 	}
-	authenticator := webauthntest.New(t, passkeyConsoleOrigin)
+	authenticator := webauthntest.New(t, origin)
 	finished, err := env.authClient().FinishPasskeyRegistration(ctx, &publiraadminv1.AdminAuthServiceFinishPasskeyRegistrationRequest{
 		Tenant:         tenant.tenantContext(),
 		CredentialJson: authenticator.Register(t, begun.CreationOptionsJson),
@@ -172,6 +179,68 @@ func TestAdminPasskeyVerificationRefusesAnAssertionFromTheStorefront(t *testing.
 	authenticator.Origin = passkeyStorefrontOrigin
 	_, err := finishPasskeyVerification(env, tenant, challenge.Token, authenticator.Assert(t, options))
 	assertPasskeyRefused(t, err, "FinishPasskeyVerification from the storefront's origin")
+}
+
+// A console served under the storefront's domain could name the storefront's
+// host as its RP ID, but it keeps its own, so a passkey registered on the
+// storefront is no factor of the console's: it is not counted or listed, and
+// an assertion made with it is refused, whether a browser makes it on the
+// storefront or on the console naming the storefront's host.
+func TestAdminPasskeyVerificationRefusesAStorefrontPasskeyUnderTheStorefrontDomain(t *testing.T) {
+	env := newPasskeyDBEnv(t)
+	tenant := seedMfaTenant(t, env)
+	const consoleOrigin = "https://admin.tenant.example.com"
+	if _, err := env.PG.DB.ExecContext(context.Background(),
+		"UPDATE tenants SET admin_domain = 'admin.tenant.example.com' WHERE id = $1", tenant.Tenant.ID); err != nil {
+		t.Fatalf("move the console under the storefront's domain: %v", err)
+	}
+	_, registered := registerPasskeyOn(t, env, tenant, consoleOrigin, "Console")
+	if got := env.countRows(t, "SELECT count(*) FROM user_webauthn_credentials WHERE user_id = $1 AND rp_id = 'admin.tenant.example.com'", tenant.User.ID); got != 1 {
+		t.Fatalf("passkeys bound to the console's host = %d, want 1", got)
+	}
+
+	site, err := tenantwebauthn.Site(dbmodels.Tenant{Domain: tenant.Tenant.Domain, Name: tenant.Tenant.Name})
+	if err != nil {
+		t.Fatalf("Site: %v", err)
+	}
+	user := tenantwebauthn.User{Handle: tenantwebauthn.UserHandle(tenant.User.PublicID), Name: tenant.User.Email, DisplayName: tenant.User.Email}
+	options, ceremony, err := site.BeginRegistration(user)
+	if err != nil {
+		t.Fatalf("BeginRegistration on the storefront: %v", err)
+	}
+	storefront := webauthntest.New(t, passkeyStorefrontOrigin)
+	parsed, _, err := tenantwebauthn.ParseRegistration([]byte(storefront.Register(t, string(options))))
+	if err != nil {
+		t.Fatalf("ParseRegistration: %v", err)
+	}
+	credential, err := site.FinishRegistration(user, ceremony, parsed)
+	if err != nil {
+		t.Fatalf("FinishRegistration on the storefront: %v", err)
+	}
+	if _, err := env.PG.DB.ExecContext(context.Background(), `
+		INSERT INTO user_webauthn_credentials (
+			id, public_id, tenant_id, user_id, rp_id, credential_id, public_key, sign_count, aaguid, backup_eligible, backed_up
+		) VALUES (gen_random_uuid(), 'STOREFRONT01', $1, $2, $3, $4, $5, $6, $7, false, false)
+	`, tenant.Tenant.ID, tenant.User.ID, site.ID, credential.ID, credential.PublicKey,
+		int64(credential.Authenticator.SignCount), tenantwebauthn.AAGUID(credential)); err != nil {
+		t.Fatalf("store the storefront passkey: %v", err)
+	}
+
+	listed, err := env.authClient().ListPasskeys(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.AdminAuthServiceListPasskeysRequest{Tenant: tenant.tenantContext()})
+	if err != nil {
+		t.Fatalf("ListPasskeys: %v", err)
+	}
+	if len(listed.Passkeys) != 1 || listed.Passkeys[0].Id != registered.Passkey.Id {
+		t.Fatalf("passkeys = %+v, want the console's alone", listed.Passkeys)
+	}
+
+	challenge := verifyChallenge(t, env, tenant)
+	for _, origin := range []string{passkeyStorefrontOrigin, consoleOrigin} {
+		storefront.Origin = origin
+		options := beginPasskeyVerification(t, env, tenant, challenge.Token)
+		_, err := finishPasskeyVerification(env, tenant, challenge.Token, storefront.Assert(t, options))
+		assertPasskeyRefused(t, err, "FinishPasskeyVerification with a storefront passkey asserted on "+origin)
+	}
 }
 
 func TestAdminPasskeyVerificationRefusesAnUnknownCredential(t *testing.T) {
