@@ -219,6 +219,24 @@ func TestRunGroupHelpListsTheSecretFlag(t *testing.T) {
 	}
 }
 
+// A file is the way to hand a secret over, so the usage names --*-file first
+// and leaves --*-env to the platforms that set secrets only in the
+// environment.
+func TestRunGroupHelpNamesTheVariableLastAsTheFallback(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	if code := runGroup((&testGroup{}).group(), []string{"save", "-h"}, pipedConsole("", &stderr), &stdout); code != 0 {
+		t.Fatalf("exit code = %d, want 0", code)
+	}
+	usage := stderr.String()
+	file, stdin, env := strings.Index(usage, "--*-file"), strings.Index(usage, "--*-stdin"), strings.Index(usage, "--*-env")
+	if file < 0 || file > stdin || stdin > env {
+		t.Fatalf("usage = %q, want --*-file, then --*-stdin, then --*-env", usage)
+	}
+	if !strings.Contains(usage, "sets secrets only as environment variables") {
+		t.Fatalf("usage = %q, want --*-env given as the fallback", usage)
+	}
+}
+
 // Every other role's variable and PUBLIRA_DB_URL are set throughout, and none
 // of them may be picked up: the settings commands write as publira_platform,
 // and a forgotten variable leaves them on its development URL rather than on

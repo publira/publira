@@ -67,6 +67,13 @@ func TestSecretWithoutATerminalOrItsFlagNamesTheFlag(t *testing.T) {
 	}
 }
 
+func TestSecretFlagsNameTheVariableLast(t *testing.T) {
+	s := &secret{name: "smtp-password", label: "SMTP password"}
+	if got, want := s.flags(), "--smtp-password-file, --smtp-password-stdin, or --smtp-password-env"; got != want {
+		t.Fatalf("flags() = %q, want %q", got, want)
+	}
+}
+
 func TestSecretRefusesAnEmptyValue(t *testing.T) {
 	for _, tc := range []struct {
 		name string

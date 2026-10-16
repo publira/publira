@@ -2,7 +2,7 @@
 title: Object storage
 description: Choose the bucket every uploaded image is kept in, how Publira signs in to it, and how images are delivered and cached.
 published: 2026-10-06
-updated: 2026-10-15
+updated: 2026-10-16
 ---
 
 Every image the install keeps — covers, episode pages, author photos, each tenant's logo — is stored in one S3-compatible bucket shared by every tenant. `publiractl setup` saved that bucket. This page explains each of its settings, how to test them, and how to change them later, and how the stored images reach readers.
@@ -39,7 +39,7 @@ Publira signs every request to the bucket in one of two ways.
 
 **The credential each process finds for itself**, with no key saved. Each process signs the way the AWS SDK does on its own: `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` in its environment, a web identity token, or the instance role of the machine it runs on. This keeps every long-lived secret out of the database on AWS, but then `publira server`, `publira worker`, and the `publiractl` you run all need that credential: the server uploads and reads images, the worker deletes the ones nothing uses any more, and `publiractl storage test` signs as well.
 
-In the Platform Console, **Credentials** offers the two as **Use an access key** and **Use each server's own credentials**. With `publiractl storage set`, giving `--access-key-id` saves a key, with the secret read from a masked prompt, from a file with `--secret-access-key-file`, from an environment variable with `--secret-access-key-env`, or from stdin with `--secret-access-key-stdin`; leaving `--access-key-id` out signs with each process's own credential and removes a saved key.
+In the Platform Console, **Credentials** offers the two as **Use an access key** and **Use each server's own credentials**. With `publiractl storage set`, giving `--access-key-id` saves a key, with the secret read from a file with `--secret-access-key-file`, from stdin with `--secret-access-key-stdin`, from a masked prompt, or, where the platform sets secrets only as environment variables, from one with `--secret-access-key-env`; leaving `--access-key-id` out signs with each process's own credential and removes a saved key.
 
 ![Credentials: Use each server's own credentials, and Use an access key, each with what it means.](./object-storage-credentials.png)
 

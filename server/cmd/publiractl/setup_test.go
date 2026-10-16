@@ -219,7 +219,7 @@ func TestSetupNonInteractiveNamesTheFirstMissingValue(t *testing.T) {
 		// Stdin that is not a terminal asks nothing either.
 		{name: "no terminal", args: nil, want: "--default-locale is required"},
 		{name: "no bucket", args: []string{"--non-interactive", "--default-locale", "en"}, want: "--bucket is required"},
-		{name: "no secret access key", args: append([]string{"--non-interactive"}, storage...), want: "--secret-access-key-file, --secret-access-key-env, or --secret-access-key-stdin is required"},
+		{name: "no secret access key", args: append([]string{"--non-interactive"}, storage...), want: "--secret-access-key-file, --secret-access-key-stdin, or --secret-access-key-env is required"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var stderr bytes.Buffer

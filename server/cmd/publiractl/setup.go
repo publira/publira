@@ -833,7 +833,7 @@ func (r *setupRun) adminPassword() (string, error) {
 	generate := flags.generateAdminPassword
 	if !generate && !flags.adminPassword.given() {
 		if !r.interactive {
-			return "", &missingValueError{flags: "--admin-password-file, --admin-password-env, --admin-password-stdin, or --generate-admin-password"}
+			return "", &missingValueError{flags: "--admin-password-file, --admin-password-stdin, --generate-admin-password, or --admin-password-env"}
 		}
 		var err error
 		if generate, err = r.confirm("Generate the administrator's password?", true); err != nil {
