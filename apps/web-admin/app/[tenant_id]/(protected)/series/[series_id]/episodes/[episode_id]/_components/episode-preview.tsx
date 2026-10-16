@@ -1,6 +1,7 @@
 "use client";
 
 import type { PageStatusValue, ViewerPage } from "@publira/comic-viewer";
+import type { RenewPageUrl } from "@publira/comic-viewer-shell";
 import {
   describeVisiblePages,
   useBoxHeight,
@@ -20,7 +21,7 @@ import {
   ViewerRoot,
   ViewerToolbar,
 } from "@publira/comic-viewer-shell";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { ClientMessage, useClientMessages } from "#components/client-message";
 import type { AdminClientMessageAccessor } from "#lib/messages";
@@ -61,6 +62,37 @@ const buildPageStatusFormatter =
   };
 
 /**
+ * Answers each refused page from one read of the episode's URLs, shared by
+ * every page refused while that read is in flight: the pages of a rail that
+ * expired together ask together.
+ */
+const shareRenewals = (
+  renewPageUrls: () => Promise<Record<string, string>>
+): RenewPageUrl => {
+  let pending: Promise<Record<string, string>> | undefined;
+
+  const readOnce = async (): Promise<Record<string, string>> => {
+    try {
+      return await renewPageUrls();
+    } catch {
+      // The page stays failed, with its reload control.
+      return {};
+    } finally {
+      pending = undefined;
+    }
+  };
+
+  return async (page) => {
+    if (pending === undefined) {
+      pending = readOnce();
+    }
+    const urls = await pending;
+
+    return urls[page.id];
+  };
+};
+
+/**
  * The episode's pages in the reader the storefront uses, so a misordered or
  * mis-paired page shows before the episode goes live.
  *
@@ -69,6 +101,9 @@ const buildPageStatusFormatter =
  * keys this component by the pages and the layout, so a saved change remounts
  * it on the first page.
  *
+ * `renewPageUrls` reads the pages' URLs again, for a page the viewer reaches
+ * after the admin media token in its URL has expired.
+ *
  * The mat is the console's muted ground rather than the storefront's Sumi, so
  * the preview sits among the forms around it as one more surface of the
  * console; the controls are the same outline buttons.
@@ -76,11 +111,18 @@ const buildPageStatusFormatter =
 export const EpisodePreview = ({
   layout,
   pages,
+  renewPageUrls,
 }: {
   layout: ReadingLayout;
   pages: readonly ViewerPage[];
+  /** Fresh URLs by image id; empty when there are none to give. */
+  renewPageUrls: () => Promise<Record<string, string>>;
 }) => {
   const t = useClientMessages();
+  const renewPageUrl = useMemo(
+    () => shareRenewals(renewPageUrls),
+    [renewPageUrls]
+  );
   const [box, setBox] = useState<HTMLDivElement | null>(null);
   const boxHeight = useBoxHeight(box);
   const formatPageStatus = buildPageStatusFormatter(t);
@@ -93,6 +135,7 @@ export const EpisodePreview = ({
       <ViewerRoot
         pages={pages}
         readingDirection={layout.readingDirection}
+        renewPageUrl={renewPageUrl}
         spreadStartIndex={layout.spreadStartIndex}
       >
         <ViewerRail boxHeight={boxHeight}>

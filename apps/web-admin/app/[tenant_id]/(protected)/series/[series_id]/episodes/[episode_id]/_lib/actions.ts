@@ -19,6 +19,7 @@ import {
   episodeCacheTag,
   episodesCacheTag,
   getEpisodeForTenant,
+  renewEpisodeImageUrls,
   reorderEpisodeImages,
   updateEpisodeAvailability,
   updateEpisodeLayout,
@@ -843,4 +844,29 @@ export const deleteEpisodeFreeWindowAction = async (
       : t("admin.series.episodes.free_windows.deleted"),
     ok: true,
   };
+};
+
+const renewPreviewUrlsSchema = z.object({
+  episodeId: z.guid(),
+  tenantId: z.string().trim().min(1),
+});
+
+/**
+ * Fresh image URLs for the preview, by image id, for pages whose URLs' admin
+ * media tokens expired while the screen stayed open. An empty answer leaves
+ * those pages failed, with their reload control.
+ */
+export const renewEpisodePreviewUrlsAction = async (
+  tenantId: string,
+  episodeId: string
+): Promise<Record<string, string>> => {
+  // This Server Action only reads; the same-origin check applies to mutations.
+  const parsed = renewPreviewUrlsSchema.safeParse({ episodeId, tenantId });
+  if (!parsed.success) {
+    return {};
+  }
+
+  // The tenant comes from the client, so the session is checked against it.
+  await verifyAdminSession(parsed.data.tenantId);
+  return (await renewEpisodeImageUrls(parsed.data)) ?? {};
 };

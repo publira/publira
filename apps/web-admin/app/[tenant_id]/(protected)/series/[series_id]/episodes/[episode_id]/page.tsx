@@ -78,6 +78,7 @@ import {
   createEpisodeFreeWindowAction,
   deleteEpisodeFreeWindowAction,
   deleteEpisodeImageAction,
+  renewEpisodePreviewUrlsAction,
   reorderEpisodeImagesAction,
   updateEpisodeAvailabilityAction,
   updateEpisodeLayoutAction,
@@ -681,6 +682,11 @@ const EpisodePreviewSection = async ({ params }: EditEpisodeSectionProps) => {
       key={`${layout.readingDirection}:${layout.spreadStartIndex}:${pages.map((page) => page.id).join(",")}`}
       layout={layout}
       pages={pages}
+      renewPageUrls={renewEpisodePreviewUrlsAction.bind(
+        null,
+        context.tenantId,
+        episodeResult.episode.id
+      )}
     />
   );
 };

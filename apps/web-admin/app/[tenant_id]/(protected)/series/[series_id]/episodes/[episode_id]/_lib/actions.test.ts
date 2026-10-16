@@ -9,6 +9,7 @@ const {
   mockGetEpisode,
   mockGetTenantDisplayTimeZone,
   mockRedirect,
+  mockRenewEpisodeImageUrls,
   mockReorderEpisodeImages,
   mockReplaceEpisodeCredits,
   mockUpdateEpisodeAvailability,
@@ -28,6 +29,7 @@ const {
   mockGetEpisode: vi.fn(),
   mockGetTenantDisplayTimeZone: vi.fn(),
   mockRedirect: vi.fn(),
+  mockRenewEpisodeImageUrls: vi.fn(),
   mockReorderEpisodeImages: vi.fn(),
   mockReplaceEpisodeCredits: vi.fn(),
   mockUpdateEpisodeAvailability: vi.fn(),
@@ -87,6 +89,7 @@ vi.mock("#lib/episode", () => ({
     `episode-${tenantId}-${episodeId}`,
   episodesCacheTag: (tenantId: string) => `episodes-${tenantId}`,
   getEpisodeForTenant: mockGetEpisode,
+  renewEpisodeImageUrls: mockRenewEpisodeImageUrls,
   reorderEpisodeImages: mockReorderEpisodeImages,
   replaceEpisodeCredits: mockReplaceEpisodeCredits,
   updateEpisodeAvailability: mockUpdateEpisodeAvailability,
@@ -1080,5 +1083,52 @@ describe("episode actions", () => {
       expect(result).toMatchObject({ ok: false });
       expect(mockDeleteEpisodeFreeWindow).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("renewEpisodePreviewUrlsAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
+
+  it("checks the session against the tenant before reading the URLs", async () => {
+    mockRenewEpisodeImageUrls.mockResolvedValueOnce({
+      IMG001: "/images/episodes/IMG001?t=fresh",
+    });
+    const { renewEpisodePreviewUrlsAction } = await import("./actions");
+
+    await expect(
+      renewEpisodePreviewUrlsAction(
+        "TENANT001",
+        "018f0e6a-4000-7000-8000-000000000001"
+      )
+    ).resolves.toEqual({ IMG001: "/images/episodes/IMG001?t=fresh" });
+    expect(mockVerifyAdminSession).toHaveBeenCalledWith("TENANT001");
+    expect(mockRenewEpisodeImageUrls).toHaveBeenCalledWith({
+      episodeId: "018f0e6a-4000-7000-8000-000000000001",
+      tenantId: "TENANT001",
+    });
+  });
+
+  it("answers no URL for an episode ID that is not one", async () => {
+    const { renewEpisodePreviewUrlsAction } = await import("./actions");
+
+    await expect(
+      renewEpisodePreviewUrlsAction("TENANT001", "EP001")
+    ).resolves.toEqual({});
+    expect(mockRenewEpisodeImageUrls).not.toHaveBeenCalled();
+  });
+
+  it("answers no URL when the pages could not be read", async () => {
+    mockRenewEpisodeImageUrls.mockImplementationOnce(() => Promise.resolve());
+    const { renewEpisodePreviewUrlsAction } = await import("./actions");
+
+    await expect(
+      renewEpisodePreviewUrlsAction(
+        "TENANT001",
+        "018f0e6a-4000-7000-8000-000000000001"
+      )
+    ).resolves.toEqual({});
   });
 });

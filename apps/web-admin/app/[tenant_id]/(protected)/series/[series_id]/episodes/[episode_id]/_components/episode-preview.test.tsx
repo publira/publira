@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 
@@ -9,6 +9,7 @@ import { EpisodePreview } from "./episode-preview";
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
 });
 
 const pages = [
@@ -18,10 +19,16 @@ const pages = [
   { id: "page-4", src: "https://example.test/4.avif", title: "Pilot, page 4" },
 ];
 
-const renderPreview = (props: Parameters<typeof EpisodePreview>[0]) =>
+const noRenewal = () => Promise.resolve({});
+
+const renderPreview = ({
+  renewPageUrls = noRenewal,
+  ...props
+}: Omit<Parameters<typeof EpisodePreview>[0], "renewPageUrls"> &
+  Partial<Pick<Parameters<typeof EpisodePreview>[0], "renewPageUrls">>) =>
   render(
     <AdminLocaleTestProvider locale="en">
-      <EpisodePreview {...props} />
+      <EpisodePreview {...props} renewPageUrls={renewPageUrls} />
     </AdminLocaleTestProvider>
   );
 
@@ -87,5 +94,37 @@ describe("EpisodePreview", () => {
         "This episode has no pages yet. Add page images to preview them."
       )
     ).toBeDefined();
+  });
+
+  it("reads the pages' URLs again, once, for pages whose own were refused", async () => {
+    const fetchMock = vi.fn<typeof fetch>((input) =>
+      Promise.resolve(
+        new Response(null, {
+          status: String(input).includes("expired") ? 403 : 200,
+        })
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const renewPageUrls = vi.fn(() =>
+      Promise.resolve(
+        Object.fromEntries(
+          pages.map((page) => [page.id, `${page.src}?t=fresh`])
+        )
+      )
+    );
+
+    renderPreview({
+      layout: { readingDirection: "rtl", spreadStartIndex: 1 },
+      pages: pages.map((page) => ({ ...page, src: `${page.src}?t=expired` })),
+      renewPageUrls,
+    });
+
+    await vi.waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "https://example.test/1.avif?t=fresh",
+        expect.anything()
+      );
+    });
+    expect(renewPageUrls).toHaveBeenCalledTimes(1);
   });
 });

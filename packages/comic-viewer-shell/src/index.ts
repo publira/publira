@@ -15,6 +15,7 @@ export {
   ViewerPageNavigation,
   ViewerPreviousPageButton,
 } from "./viewer-page-navigation";
+export type { RenewPageUrl } from "./viewer-fetch";
 export { toViewerPages } from "./viewer-pages";
 export type { ViewerPageImage } from "./viewer-pages";
 export { useBoxHeight, ViewerRail } from "./viewer-rail";
