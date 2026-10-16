@@ -13,10 +13,10 @@ import (
 )
 
 // The default and the locales the site offers are saved by one request, and a
-// save that changes either of them is one the audit log answers for. A save
-// that moves the default rewrites the tenant's search documents, whose
-// fallback translation moves with it. A request whose set leaves out its
-// default changes neither.
+// save that changes either of them is one the audit log answers for, and one
+// that rewrites the tenant's search documents, whose fallback translation
+// moves with the default. A request whose set leaves out its default changes
+// neither.
 func TestDBUpdateTenantDefaultLocaleSavesTheSetWithTheDefault(t *testing.T) {
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TLCTNNT1", "locales.example.com", "Locales", "TLCUSER1", "admin@locales.example.com")
@@ -54,8 +54,8 @@ func TestDBUpdateTenantDefaultLocaleSavesTheSetWithTheDefault(t *testing.T) {
 		wantTenantSyncs  int
 	}{
 		{name: "both", defaultLocale: "en", supportedLocales: []string{"en", "ja"}, wantSupported: []string{"ja", "en"}, wantTenantSyncs: 1},
-		{name: "the set alone", defaultLocale: "en", supportedLocales: []string{"zh-Hans", "en"}, wantSupported: []string{"en", "zh-Hans"}, wantTenantSyncs: 1},
-		{name: "the default to a locale that was off", defaultLocale: "ko", supportedLocales: []string{"ko", "en", "zh-Hans"}, wantSupported: []string{"en", "ko", "zh-Hans"}, wantTenantSyncs: 2},
+		{name: "the set alone", defaultLocale: "en", supportedLocales: []string{"zh-Hans", "en"}, wantSupported: []string{"en", "zh-Hans"}, wantTenantSyncs: 2},
+		{name: "the default to a locale that was off", defaultLocale: "ko", supportedLocales: []string{"ko", "en", "zh-Hans"}, wantSupported: []string{"en", "ko", "zh-Hans"}, wantTenantSyncs: 3},
 	}
 	for i, save := range saves {
 		resp, err := settings.UpdateTenantDefaultLocale(ctx, &publiraadminv1.UpdateTenantDefaultLocaleRequest{
@@ -87,4 +87,7 @@ func TestDBUpdateTenantDefaultLocaleSavesTheSetWithTheDefault(t *testing.T) {
 		t.Fatalf("a set without its default: code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 	}
 	assertLocales(t, "ko", []string{"en", "ko", "zh-Hans"})
+	if got := tenantSyncs(t); got != 3 {
+		t.Fatalf("after a refused save: tenant search syncs = %d, want 3", got)
+	}
 }

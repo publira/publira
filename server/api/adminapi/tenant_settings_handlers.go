@@ -195,11 +195,12 @@ func (s *adminServer) UpdateTenantDefaultLocale(
 		}
 		// A series with no translation in a language is searched there by
 		// the one in the default locale, so every document of the tenant
-		// moves with it.
-		if row.DefaultLocale != tenant.DefaultLocale {
-			if err := catalogindex.Queue(txCtx, s.queriesFor(txCtx), tenant.ID, catalogindex.TenantRef(tenant.ID)); err != nil {
-				return nil, s.internalDBError(ctx, "failed to queue the search index sync for the default locale", err, "tenant_id", tenant.ID.String())
-			}
+		// moves with it. The sync is queued for every save that changed the
+		// row rather than only for one whose default differs from the tenant
+		// read before this transaction: a concurrent save may have moved the
+		// default since, and this one may be moving it back.
+		if err := catalogindex.Queue(txCtx, s.queriesFor(txCtx), tenant.ID, catalogindex.TenantRef(tenant.ID)); err != nil {
+			return nil, s.internalDBError(ctx, "failed to queue the search index sync for the default locale", err, "tenant_id", tenant.ID.String())
 		}
 		return tenantDefaultLocaleRevalidateTags(tenant.ID.String()), nil
 	}); err != nil {

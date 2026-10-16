@@ -4,9 +4,9 @@
 // catalog_index_sync outbox event in its own transaction (Queue), and so does a
 // ticker job whose boundary changes what a series is narrowed or sorted by: a
 // free window opening or closing, and a scheduled episode being published. A
-// change of a tenant's default locale queues one for the whole tenant, since
+// save that changes a tenant's locales queues one for the whole tenant, since
 // the translation a series falls back to in a language it has none in moves
-// with it. The worker rewrites the named row's document from the row
+// with the default locale. The worker rewrites the named row's document from the row
 // (Syncer), and the search index build and publiractl rebuild the whole
 // index, or one tenant's documents, from the database (Rebuild, SyncTenant).
 //
