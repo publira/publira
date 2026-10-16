@@ -234,6 +234,26 @@ func TestCrossTenantParentReferencesAreRejected(t *testing.T) {
 			args:       []any{first.episodeID, second.episodeEyeCatchImageID},
 		},
 		{
+			name:       "campaign_banner_images.campaign_banner_id",
+			constraint: "campaign_banner_images_tenant_campaign_banner_id_fkey",
+			statement:  `INSERT INTO campaign_banner_images (id, tenant_id, campaign_banner_id) VALUES ($1, $2, $3)`,
+			args:       []any{mustUUID(t), first.tenantID, second.campaignBannerID},
+		},
+		{
+			name:       "campaign_banner_image_variants.campaign_banner_image_id",
+			constraint: "campaign_banner_image_variants_tenant_image_id_fkey",
+			statement: `INSERT INTO campaign_banner_image_variants
+				(id, tenant_id, campaign_banner_image_id, label, variant_type, storage_provider, object_key, content_type, file_size_bytes, width, height)
+				VALUES ($1, $2, $3, 'landscape_800w', 'landscape', 's3', 'tenants/banner.webp', 'image/webp', 1, 800, 450)`,
+			args: []any{mustUUID(t), first.tenantID, second.campaignBannerImageID},
+		},
+		{
+			name:       "campaign_banners.image_id",
+			constraint: "campaign_banners_tenant_image_id_fkey",
+			statement:  `UPDATE campaign_banners SET image_id = $2 WHERE id = $1`,
+			args:       []any{first.campaignBannerID, second.campaignBannerImageID},
+		},
+		{
 			name:       "series.label_id",
 			constraint: "series_tenant_label_id_fkey",
 			statement:  `UPDATE series SET label_id = $2 WHERE id = $1`,
@@ -342,6 +362,7 @@ func TestDeletingAnElectedParentNullsOnlyTheReference(t *testing.T) {
 	mustExec(t, ctx, db, `UPDATE labels SET eye_catch_image_id = $2 WHERE id = $1`, seeded.labelID, seeded.labelImageID)
 	mustExec(t, ctx, db, `UPDATE genres SET eye_catch_image_id = $2 WHERE id = $1`, seeded.genreID, seeded.genreImageID)
 	mustExec(t, ctx, db, `UPDATE episodes SET eye_catch_image_id = $2 WHERE id = $1`, seeded.episodeID, seeded.episodeEyeCatchImageID)
+	mustExec(t, ctx, db, `UPDATE campaign_banners SET image_id = $2 WHERE id = $1`, seeded.campaignBannerID, seeded.campaignBannerImageID)
 	mustExec(t, ctx, db, `UPDATE creators SET icon_image_id = $2 WHERE id = $1`, seeded.creatorID, seeded.creatorImageID)
 	mustExec(t, ctx, db, `UPDATE users SET icon_image_id = $2 WHERE id = $1`, seeded.userID, seeded.userImageID)
 	// An account shows one icon, so the preset is elected by an account of its
@@ -411,6 +432,13 @@ func TestDeletingAnElectedParentNullsOnlyTheReference(t *testing.T) {
 			owner:    seeded.episodeID,
 		},
 		{
+			name:     "campaign_banners.image_id",
+			delete:   `DELETE FROM campaign_banner_images WHERE id = $1`,
+			deleted:  seeded.campaignBannerImageID,
+			survivor: `SELECT tenant_id, image_id FROM campaign_banners WHERE id = $1`,
+			owner:    seeded.campaignBannerID,
+		},
+		{
 			name:     "series.eye_catch_image_id",
 			delete:   `DELETE FROM series_images WHERE id = $1`,
 			deleted:  seeded.seriesImageID,
@@ -470,6 +498,8 @@ type foreignKeyTenant struct {
 	labelImageID           uuid.UUID
 	genreID                uuid.UUID
 	genreImageID           uuid.UUID
+	campaignBannerID       uuid.UUID
+	campaignBannerImageID  uuid.UUID
 	tenantImageID          uuid.UUID
 	pageID                 uuid.UUID
 	pageTranslationID      uuid.UUID
@@ -528,6 +558,15 @@ func seedForeignKeyTenant(t *testing.T, ctx context.Context, db *sql.DB, prefix 
 	seeded.genreImageID = mustUUID(t)
 	mustExec(t, ctx, db, `INSERT INTO genre_images (id, tenant_id, genre_id) VALUES ($1, $2, $3)`,
 		seeded.genreImageID, seeded.tenantID, seeded.genreID)
+
+	seeded.campaignBannerID = mustUUID(t)
+	mustExec(t, ctx, db, `
+		INSERT INTO campaign_banners (id, tenant_id, public_id, link_url, starts_at, ends_at, display_order)
+		VALUES ($1, $2, $3, '/series', NOW(), NOW() + interval '1 day', 1)`,
+		seeded.campaignBannerID, seeded.tenantID, prefix+"BANNER001")
+	seeded.campaignBannerImageID = mustUUID(t)
+	mustExec(t, ctx, db, `INSERT INTO campaign_banner_images (id, tenant_id, campaign_banner_id) VALUES ($1, $2, $3)`,
+		seeded.campaignBannerImageID, seeded.tenantID, seeded.campaignBannerID)
 
 	seeded.tenantImageID = mustUUID(t)
 	mustExec(t, ctx, db, `INSERT INTO tenant_images (id, tenant_id) VALUES ($1, $2)`,

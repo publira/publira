@@ -65,6 +65,8 @@ type stubTenantQueries struct {
 	tenantParams     *dbmodels.GetTenantImageVariantByTypeForTenantParams
 	genre            dbmodels.GetGenreImageVariantByTypeAndWidthForTenantRow
 	genreKey         genreVariantKey
+	banner           dbmodels.GetCampaignBannerImageVariantByTypeAndWidthForTenantRow
+	bannerKey        bannerVariantKey
 	episodeEyeCatch  dbmodels.GetEpisodeEyeCatchImageVariantByTypeAndWidthForTenantRow
 	episodeEyeKey    episodeEyeCatchVariantKey
 	series           dbmodels.GetSeriesImageVariantByTypeAndWidthForTenantRow
@@ -175,6 +177,28 @@ func (s stubTenantQueries) GetEpisodeEyeCatchImageVariantByTypeAndWidthForTenant
 // episodeEyeCatchVariantKey is the tuple the episode eye-catch variant query
 // filters on, matched exactly for the reason tenantVariantKey is.
 type episodeEyeCatchVariantKey struct {
+	imageID     uuid.UUID
+	tenantID    uuid.UUID
+	variantType string
+	width       int32
+}
+
+func (s stubTenantQueries) GetCampaignBannerImageVariantByTypeAndWidthForTenant(_ context.Context, arg dbmodels.GetCampaignBannerImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetCampaignBannerImageVariantByTypeAndWidthForTenantRow, error) {
+	requested := bannerVariantKey{
+		imageID:     arg.CampaignBannerImageID,
+		tenantID:    arg.TenantID,
+		variantType: arg.VariantType,
+		width:       arg.Width,
+	}
+	if s.banner.ObjectKey == "" || requested != s.bannerKey {
+		return dbmodels.GetCampaignBannerImageVariantByTypeAndWidthForTenantRow{}, sql.ErrNoRows
+	}
+	return s.banner, nil
+}
+
+// bannerVariantKey is the tuple the campaign banner variant query filters on,
+// matched exactly for the reason genreVariantKey is.
+type bannerVariantKey struct {
 	imageID     uuid.UUID
 	tenantID    uuid.UUID
 	variantType string
@@ -1391,6 +1415,56 @@ func TestEpisodeEyeCatchImageServesTheStoredVariant(t *testing.T) {
 		{path: "/images/episode-eye-catches/" + mediaID.String() + "/portrait/900", want: http.StatusNotFound},
 		{path: "/images/episode-eye-catches/" + mediaID.String() + "/square/600", want: http.StatusNotFound},
 		{path: "/images/episode-eye-catches/" + mediaID.String() + "/portrait/wide", want: http.StatusBadRequest},
+	}
+	for _, tc := range cases {
+		t.Run(tc.path, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tc.path, nil)
+			req.Host = "example.test"
+			rec := httptest.NewRecorder()
+			srv.ServeHTTP(rec, req)
+			if rec.Code != tc.want {
+				t.Fatalf("status = %d, want %d (body %q)", rec.Code, tc.want, rec.Body.String())
+			}
+		})
+	}
+}
+
+// A campaign banner image is addressed by image, ratio, and width, the way a
+// genre eye-catch is, and only the variant stored under all three is served.
+func TestCampaignBannerImageServesTheStoredVariant(t *testing.T) {
+	tenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	mediaID := uuid.MustParse("99999999-9999-9999-9999-999999999999")
+	queries := stubTenantQueries{
+		banner: dbmodels.GetCampaignBannerImageVariantByTypeAndWidthForTenantRow{
+			ObjectKey:   "tenants/acme/campaign-banners/BANNER000001/landscape_800w.jpg",
+			ContentType: "image/jpeg",
+		},
+		bannerKey: bannerVariantKey{
+			imageID:     mediaID,
+			tenantID:    tenantID,
+			variantType: "landscape",
+			width:       800,
+		},
+	}
+	store := &countingStore{objects: map[string]storedObject{
+		"tenants/acme/campaign-banners/BANNER000001/landscape_800w.jpg": {data: testJPEG(), contentType: "image/jpeg"},
+	}}
+	srv := newTestServer(t,
+		stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test"}},
+		stubFactory{q: queries},
+		store,
+	)
+
+	cases := []struct {
+		path string
+		want int
+	}{
+		{path: "/images/campaign-banners/" + mediaID.String() + "/landscape/800", want: http.StatusOK},
+		{path: "/images/campaign-banners/" + mediaID.String() + "/landscape/800?v=11111111-1111-4111-8111-111111111111", want: http.StatusOK},
+		{path: "/images/campaign-banners/" + mediaID.String() + "/landscape/1200", want: http.StatusNotFound},
+		{path: "/images/campaign-banners/" + mediaID.String() + "/square/800", want: http.StatusNotFound},
+		{path: "/images/campaign-banners/" + mediaID.String() + "/landscape/wide", want: http.StatusBadRequest},
+		{path: "/images/campaign-banners/not-a-uuid/landscape/800", want: http.StatusBadRequest},
 	}
 	for _, tc := range cases {
 		t.Run(tc.path, func(t *testing.T) {

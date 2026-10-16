@@ -418,24 +418,27 @@ const (
 // request than rpcmiddleware.DefaultReadMaxBytes: the ones whose request
 // carries an upload.
 var readLimits = map[string]int{
-	publiraadminv1connect.AdminSeriesServiceUploadEpisodeImagesProcedure:              episodeUploadReadMaxBytes,
-	publiraadminv1connect.AdminSeriesServiceReplaceEpisodeImageProcedure:              episodePageReadMaxBytes,
-	publiraadminv1connect.AdminSeriesServiceCreateSeriesProcedure:                     imageUploadReadMaxBytes,
-	publiraadminv1connect.AdminSeriesServiceUpdateSeriesProcedure:                     imageUploadReadMaxBytes,
-	publiraadminv1connect.AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure:  imageUploadReadMaxBytes,
-	publiraadminv1connect.AdminSeriesServiceUploadEpisodeEyeCatchImageProcedure:       imageUploadReadMaxBytes,
-	publiraadminv1connect.AdminSeriesServiceUploadEpisodeEyeCatchAspectImageProcedure: imageUploadReadMaxBytes,
-	publiraadminv1connect.AdminLabelServiceCreateLabelProcedure:                       imageUploadReadMaxBytes,
-	publiraadminv1connect.AdminLabelServiceUpdateLabelProcedure:                       imageUploadReadMaxBytes,
-	publiraadminv1connect.AdminLabelServiceUploadLabelEyeCatchAspectImageProcedure:    imageUploadReadMaxBytes,
-	publiraadminv1connect.AdminGenreServiceCreateGenreProcedure:                       imageUploadReadMaxBytes,
-	publiraadminv1connect.AdminGenreServiceUpdateGenreProcedure:                       imageUploadReadMaxBytes,
-	publiraadminv1connect.AdminGenreServiceUploadGenreEyeCatchAspectImageProcedure:    imageUploadReadMaxBytes,
-	publiraadminv1connect.AdminCreatorServiceCreateCreatorProcedure:                   imageUploadReadMaxBytes,
-	publiraadminv1connect.AdminCreatorServiceUpdateCreatorProcedure:                   imageUploadReadMaxBytes,
-	publiraadminv1connect.TenantThemeServiceUploadTenantIconProcedure:                 imageUploadReadMaxBytes,
-	publiraadminv1connect.TenantThemeServiceUploadTenantLogoProcedure:                 imageUploadReadMaxBytes,
-	publiraadminv1connect.TenantSettingsServiceUploadReaderIconPresetProcedure:        imageUploadReadMaxBytes,
+	publiraadminv1connect.AdminSeriesServiceUploadEpisodeImagesProcedure:                     episodeUploadReadMaxBytes,
+	publiraadminv1connect.AdminSeriesServiceReplaceEpisodeImageProcedure:                     episodePageReadMaxBytes,
+	publiraadminv1connect.AdminSeriesServiceCreateSeriesProcedure:                            imageUploadReadMaxBytes,
+	publiraadminv1connect.AdminSeriesServiceUpdateSeriesProcedure:                            imageUploadReadMaxBytes,
+	publiraadminv1connect.AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure:         imageUploadReadMaxBytes,
+	publiraadminv1connect.AdminSeriesServiceUploadEpisodeEyeCatchImageProcedure:              imageUploadReadMaxBytes,
+	publiraadminv1connect.AdminSeriesServiceUploadEpisodeEyeCatchAspectImageProcedure:        imageUploadReadMaxBytes,
+	publiraadminv1connect.AdminLabelServiceCreateLabelProcedure:                              imageUploadReadMaxBytes,
+	publiraadminv1connect.AdminLabelServiceUpdateLabelProcedure:                              imageUploadReadMaxBytes,
+	publiraadminv1connect.AdminLabelServiceUploadLabelEyeCatchAspectImageProcedure:           imageUploadReadMaxBytes,
+	publiraadminv1connect.AdminGenreServiceCreateGenreProcedure:                              imageUploadReadMaxBytes,
+	publiraadminv1connect.AdminGenreServiceUpdateGenreProcedure:                              imageUploadReadMaxBytes,
+	publiraadminv1connect.AdminGenreServiceUploadGenreEyeCatchAspectImageProcedure:           imageUploadReadMaxBytes,
+	publiraadminv1connect.AdminCampaignBannerServiceCreateCampaignBannerProcedure:            imageUploadReadMaxBytes,
+	publiraadminv1connect.AdminCampaignBannerServiceUpdateCampaignBannerProcedure:            imageUploadReadMaxBytes,
+	publiraadminv1connect.AdminCampaignBannerServiceUploadCampaignBannerAspectImageProcedure: imageUploadReadMaxBytes,
+	publiraadminv1connect.AdminCreatorServiceCreateCreatorProcedure:                          imageUploadReadMaxBytes,
+	publiraadminv1connect.AdminCreatorServiceUpdateCreatorProcedure:                          imageUploadReadMaxBytes,
+	publiraadminv1connect.TenantThemeServiceUploadTenantIconProcedure:                        imageUploadReadMaxBytes,
+	publiraadminv1connect.TenantThemeServiceUploadTenantLogoProcedure:                        imageUploadReadMaxBytes,
+	publiraadminv1connect.TenantSettingsServiceUploadReaderIconPresetProcedure:               imageUploadReadMaxBytes,
 }
 
 func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
@@ -450,6 +453,7 @@ func registerAdminRoutes(mux *http.ServeMux, server *adminServer) {
 	publiraadminv1connect.RegisterAdminCreatorServiceHandler(services, server)
 	publiraadminv1connect.RegisterAdminLabelServiceHandler(services, server)
 	publiraadminv1connect.RegisterAdminGenreServiceHandler(services, server)
+	publiraadminv1connect.RegisterAdminCampaignBannerServiceHandler(services, server)
 	publiraadminv1connect.RegisterAdminCreatorRoleServiceHandler(services, server)
 	publiraadminv1connect.RegisterAdminAuditLogServiceHandler(services, server)
 	publiraadminv1connect.RegisterAdminUserServiceHandler(services, server)

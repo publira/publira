@@ -24,7 +24,10 @@ const (
 	ReasonArchiveInvalidEPUB      = "ARCHIVE_INVALID_EPUB"
 	ReasonArchiveInvalidEPUBSpine = "ARCHIVE_INVALID_EPUB_SPINE"
 	ReasonArchiveInvalidPath      = "ARCHIVE_INVALID_PATH"
-	ReasonCreatorRoleInUse        = "CREATOR_ROLE_IN_USE"
+	// ReasonCampaignBannerLimit refuses creating a campaign banner for a
+	// tenant that holds as many as it may.
+	ReasonCampaignBannerLimit = "CAMPAIGN_BANNER_LIMIT"
+	ReasonCreatorRoleInUse    = "CREATOR_ROLE_IN_USE"
 	// ReasonIdentityLinkedToAnotherAccount refuses linking a provider account
 	// that signs in to another reader of the tenant.
 	ReasonIdentityLinkedToAnotherAccount = "IDENTITY_LINKED_TO_ANOTHER_ACCOUNT"

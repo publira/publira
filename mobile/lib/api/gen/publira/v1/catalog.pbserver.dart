@@ -57,6 +57,8 @@ abstract class CatalogServiceBase extends $pb.GeneratedService {
       $pb.ServerContext ctx, $1.ListRelatedSeriesRequest request);
   $async.Future<$1.ListSitemapEntriesResponse> listSitemapEntries(
       $pb.ServerContext ctx, $1.ListSitemapEntriesRequest request);
+  $async.Future<$1.ListCampaignBannersResponse> listCampaignBanners(
+      $pb.ServerContext ctx, $1.ListCampaignBannersRequest request);
 
   $pb.GeneratedMessage createRequest($core.String methodName) {
     switch (methodName) {
@@ -96,6 +98,8 @@ abstract class CatalogServiceBase extends $pb.GeneratedService {
         return $1.ListRelatedSeriesRequest();
       case 'ListSitemapEntries':
         return $1.ListSitemapEntriesRequest();
+      case 'ListCampaignBanners':
+        return $1.ListCampaignBannersRequest();
       default:
         throw $core.ArgumentError('Unknown method: $methodName');
     }
@@ -152,6 +156,9 @@ abstract class CatalogServiceBase extends $pb.GeneratedService {
         return listRelatedSeries(ctx, request as $1.ListRelatedSeriesRequest);
       case 'ListSitemapEntries':
         return listSitemapEntries(ctx, request as $1.ListSitemapEntriesRequest);
+      case 'ListCampaignBanners':
+        return listCampaignBanners(
+            ctx, request as $1.ListCampaignBannersRequest);
       default:
         throw $core.ArgumentError('Unknown method: $methodName');
     }

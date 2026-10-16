@@ -57,6 +57,8 @@ func TestReclaimerRunIntegration(t *testing.T) {
 	seedLabelImage(t, env.DB, tenant.ID, label.ID, liveLabelEyeCatch, true)
 	liveGenreEyeCatch := "tenants/TENANT001/genres/GENRE0000001/live-portrait.webp"
 	seedGenreImage(t, env.DB, tenant.ID, genre.ID, liveGenreEyeCatch, true)
+	liveBanner := env.SeedCampaignBanner(t, tenant.ID, testutil.CampaignBannerSeed{PublicID: "BANNER000001"})
+	liveBannerImage := liveBanner.ObjectKey
 	liveTenantIcon := "tenants/TENANT001/icons/live-icon.webp"
 	seedTenantImage(t, env.DB, tenant.ID, liveTenantIcon, true)
 	liveEpisodePage := "tenants/TENANT001/episodes/EPISODE00001/live-original.webp"
@@ -89,6 +91,10 @@ func TestReclaimerRunIntegration(t *testing.T) {
 	removedEpisodeEyeCatch := "tenants/TENANT001/episode-eye-catches/EPISODE00001/removed-portrait.webp"
 	removedEpisodeEyeCatchID := seedEpisodeEyeCatchImage(t, env.DB, tenant.ID, episode.ID, removedEpisodeEyeCatch, false)
 
+	// The image a banner was pointed away from when the console replaced it.
+	replacedBannerImage := "tenants/TENANT001/campaign-banners/BANNER000001/replaced-landscape.webp"
+	replacedBannerImageID := seedCampaignBannerImage(t, env.DB, tenant.ID, liveBanner.ID, replacedBannerImage)
+
 	// The icon a reader replaced, which the account stopped electing when it
 	// elected the live one, and the icon a reader removed, which the account
 	// was left electing nothing in its place.
@@ -105,6 +111,7 @@ func TestReclaimerRunIntegration(t *testing.T) {
 		liveCreatorIcon, liveSeriesEyeCatch, liveLabelEyeCatch, liveGenreEyeCatch, liveTenantIcon,
 		liveEpisodePage, liveEpisodeEyeCatch, liveReaderIcon, supersededCreatorIcon, clearedGenreEyeCatch,
 		removedEpisodeEyeCatch, supersededReaderIcon, removedReaderIcon, abandonedObject, unpickedPreset, deletedPreset,
+		liveBannerImage, replacedBannerImage,
 	}
 	for _, key := range stored {
 		if _, err := store.Upload(ctx, storage.UploadRequest{
@@ -145,11 +152,11 @@ func TestReclaimerRunIntegration(t *testing.T) {
 		t.Fatalf("Run with a cutoff ahead of every object: %v", err)
 	}
 
-	if result.RowCount != 5 {
-		t.Fatalf("row count = %d, want the superseded creator image, the cleared genre image, the removed episode eye-catch, and the replaced and the removed reader icon", result.RowCount)
+	if result.RowCount != 6 {
+		t.Fatalf("row count = %d, want the superseded creator image, the cleared genre image, the removed episode eye-catch, the replaced banner image, and the replaced and the removed reader icon", result.RowCount)
 	}
-	if result.DeletedCount != 7 {
-		t.Fatalf("deleted count = %d, want the superseded, the cleared, the removed eye-catch's, the replaced, the removed icon's, the deleted preset's, and the abandoned object", result.DeletedCount)
+	if result.DeletedCount != 8 {
+		t.Fatalf("deleted count = %d, want the superseded, the cleared, the removed eye-catch's, the replaced banner's, the replaced, the removed icon's, the deleted preset's, and the abandoned object", result.DeletedCount)
 	}
 	if result.ScannedCount != int64(len(stored)) {
 		t.Fatalf("scanned count = %d, want %d", result.ScannedCount, len(stored))
@@ -157,7 +164,7 @@ func TestReclaimerRunIntegration(t *testing.T) {
 
 	want := slices.Sorted(slices.Values([]string{
 		liveCreatorIcon, liveSeriesEyeCatch, liveLabelEyeCatch, liveGenreEyeCatch, liveTenantIcon, liveEpisodePage,
-		liveEpisodeEyeCatch, liveReaderIcon, unpickedPreset,
+		liveEpisodeEyeCatch, liveReaderIcon, unpickedPreset, liveBannerImage,
 	}))
 	if got := listKeys(t, ctx, store); !slices.Equal(got, want) {
 		t.Fatalf("stored keys = %v, want %v", got, want)
@@ -170,6 +177,9 @@ func TestReclaimerRunIntegration(t *testing.T) {
 	}
 	if imageRowExists(t, env.DB, "episode_eye_catch_images", removedEpisodeEyeCatchID) {
 		t.Fatal("the removed episode_eye_catch_images row survived the run")
+	}
+	if imageRowExists(t, env.DB, "campaign_banner_images", replacedBannerImageID) {
+		t.Fatal("the replaced campaign_banner_images row survived the run")
 	}
 	if imageRowExists(t, env.DB, "user_images", supersededUserImageID) {
 		t.Fatal("the replaced user_images row survived the run")
@@ -331,6 +341,26 @@ func seedEpisodeEyeCatchImage(t *testing.T, db *sql.DB, tenantID, episodeID uuid
 	if inUse {
 		exec(t, db, `UPDATE episodes SET eye_catch_image_id = $1 WHERE id = $2`, imageID, episodeID)
 	}
+	return imageID
+}
+
+// seedCampaignBannerImage stores an image of a banner the banner does not
+// point at, the way an image replacement leaves the previous one behind.
+func seedCampaignBannerImage(t *testing.T, db *sql.DB, tenantID, bannerID uuid.UUID, objectKey string) uuid.UUID {
+	t.Helper()
+
+	imageID := uuid.Must(uuid.NewV7())
+	exec(t, db, `
+		INSERT INTO campaign_banner_images (id, tenant_id, campaign_banner_id)
+		VALUES ($1, $2, $3)
+	`, imageID, tenantID, bannerID)
+	exec(t, db, `
+		INSERT INTO campaign_banner_image_variants (
+			id, tenant_id, campaign_banner_image_id, label, variant_type, storage_provider,
+			object_key, content_type, file_size_bytes, width, height
+		)
+		VALUES ($1, $2, $3, 'landscape_800w', 'landscape', 's3', $4, 'image/webp', 1024, 800, 450)
+	`, uuid.Must(uuid.NewV7()), tenantID, imageID, objectKey)
 	return imageID
 }
 

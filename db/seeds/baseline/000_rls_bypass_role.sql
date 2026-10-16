@@ -433,11 +433,11 @@ GRANT CREATE ON SCHEMA public TO publira_outbox;
 -- when someone puts it in this list, and a job that starts reading a table it
 -- was never granted fails in its integration test rather than in production.
 --
--- Reads: the due listings, series, windows and pinned banners, the catalog
--- rows the log lines name, the recipients each notification fans out to, and
--- the views that decide whether a published episode is announced at all. A
--- security_invoker view reads its tables with this role's own rights, so the
--- views it is built on are granted alongside it.
+-- Reads: the due listings, series, windows, pinned and campaign banners, the
+-- catalog rows the log lines name, the recipients each notification fans out
+-- to, and the views that decide whether a published episode is announced at
+-- all. A security_invoker view reads its tables with this role's own rights,
+-- so the views it is built on are granted alongside it.
 GRANT SELECT ON
     episode_listings,
     announcements,
@@ -451,6 +451,7 @@ GRANT SELECT ON
     tenants,
     platform_config,
     episode_free_windows,
+    campaign_banners,
     episode_follows,
     series_follows,
     creator_follows,
@@ -474,4 +475,7 @@ GRANT UPDATE (pinned) ON announcements TO publira_ticker;
 -- owed for a series whose publication instant has passed, and writes nothing
 -- else of a row that carries the tenant's own catalog.
 GRANT UPDATE (publication_revalidated_at) ON series TO publira_ticker;
+-- And for a campaign banner: apply-campaign-banners records the drop it owed at
+-- each end of the window, and writes nothing of the link or the window itself.
+GRANT UPDATE (start_revalidated_at, end_revalidated_at) ON campaign_banners TO publira_ticker;
 GRANT SELECT, INSERT ON notifications, platform_notifications, outbox_events TO publira_ticker;

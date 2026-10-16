@@ -133,6 +133,7 @@ type Querier interface {
 	ConsumeStorePurchaseIntent(ctx context.Context, arg ConsumeStorePurchaseIntentParams) error
 	CountActiveTenants(ctx context.Context) (int32, error)
 	CountAllTenants(ctx context.Context) (int32, error)
+	CountCampaignBannersForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
 	// For the tenant dashboard.
 	CountDraftEpisodesForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
 	// Whether a role may still be deleted, counted over the episodes. The refusal
@@ -182,6 +183,13 @@ type Querier interface {
 	CountWithdrawnEpisodeCommentsBefore(ctx context.Context, arg CountWithdrawnEpisodeCommentsBeforeParams) (int64, error)
 	CreateAccessTicket(ctx context.Context, arg CreateAccessTicketParams) (AccessTicket, error)
 	CreateAnnouncement(ctx context.Context, arg CreateAnnouncementParams) (Announcement, error)
+	// A save writes both boundary marks along with the window. The save itself
+	// drops the caches the banner is held under, so a boundary it stores in the
+	// past is already applied, and one it stores in the future is owed again —
+	// including a boundary the ticker had applied for the window being replaced.
+	CreateCampaignBanner(ctx context.Context, arg CreateCampaignBannerParams) (CreateCampaignBannerRow, error)
+	CreateCampaignBannerImage(ctx context.Context, arg CreateCampaignBannerImageParams) (CampaignBannerImage, error)
+	CreateCampaignBannerImageVariant(ctx context.Context, arg CreateCampaignBannerImageVariantParams) (CampaignBannerImageVariant, error)
 	// Messages readers send the tenant through the contact form, and the staff
 	// addresses the mail announcing one goes to.
 	//
@@ -367,6 +375,9 @@ type Querier interface {
 	// that decides access sees it through episode_content_grants, and it expires
 	// by the series' access period from the same clock.
 	CreateWaitFreeAccessTicket(ctx context.Context, arg CreateWaitFreeAccessTicketParams) (CreateWaitFreeAccessTicketRow, error)
+	DeleteCampaignBanner(ctx context.Context, arg DeleteCampaignBannerParams) (int64, error)
+	// Clears one aspect ratio of a banner image.
+	DeleteCampaignBannerImageVariantsByType(ctx context.Context, arg DeleteCampaignBannerImageVariantsByTypeParams) (int64, error)
 	// A pair that is not linked is no rows. The account's public_id is what the
 	// audit entry names it by.
 	DeleteCreatorAccount(ctx context.Context, arg DeleteCreatorAccountParams) (string, error)
@@ -426,6 +437,9 @@ type Querier interface {
 	// account's tenant_user_roles rows go with it through their ON DELETE CASCADE.
 	DeleteTenantReader(ctx context.Context, arg DeleteTenantReaderParams) (DeleteTenantReaderRow, error)
 	DeleteTenantUserRolesByUserID(ctx context.Context, userID uuid.UUID) error
+	// A replaced banner image is left behind by the banner that now points at the
+	// new upload; deleting the banner takes its images with it.
+	DeleteUnreferencedCampaignBannerImages(ctx context.Context, createdBefore time.Time) (int64, error)
 	// An upload points its creator at the new icon and leaves the previous
 	// creator_images row behind, referenced by nothing. created_at guards the
 	// upload still in flight, whose row exists before the creator names it.
@@ -496,6 +510,8 @@ type Querier interface {
 	// Returns the announcement with the caller's read state. A row owned by another
 	// tenant comes back as no rows, so its existence is not disclosed.
 	GetAnnouncementForUser(ctx context.Context, arg GetAnnouncementForUserParams) (GetAnnouncementForUserRow, error)
+	GetCampaignBannerByIDForTenant(ctx context.Context, arg GetCampaignBannerByIDForTenantParams) (GetCampaignBannerByIDForTenantRow, error)
+	GetCampaignBannerImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetCampaignBannerImageVariantByTypeAndWidthForTenantParams) (GetCampaignBannerImageVariantByTypeAndWidthForTenantRow, error)
 	// What the OpenSearch catalog index is written from: the outbox handler reads
 	// one row, and the reindex every row of a tenant. Both run in one REPEATABLE
 	// READ transaction and read GetCatalogIndexSnapshotTime first, because that
@@ -649,6 +665,8 @@ type Querier interface {
 	// files its snapshots beside the old ones rather than replacing them, and wins
 	// here because it was computed later.
 	GetLatestContentRankingSnapshot(ctx context.Context, arg GetLatestContentRankingSnapshotParams) (ContentRankingSnapshot, error)
+	// Where a newly created banner goes: after everything that already exists.
+	GetMaxCampaignBannerDisplayOrderForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
 	// Where a newly created role goes: after everything that already exists.
 	GetMaxCreatorRoleDisplayPriorityForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
 	GetMaxEpisodeImageDisplayOrderByEpisodeID(ctx context.Context, episodeID uuid.UUID) (int32, error)
@@ -1339,6 +1357,18 @@ type Querier interface {
 	// Every tenant that chose automatic closing, for the maintenance pass that
 	// closes their months across tenants.
 	ListAutomaticRoyaltyConfigs(ctx context.Context) ([]TenantRoyaltyConfig, error)
+	// Every published banner with a boundary the ticker has not dropped the site
+	// caches for yet. A banner whose start and end both passed while the ticker
+	// was down comes back with both flags set, and one drop answers for both. An
+	// unpublished banner is in no cached answer, and publishing it is a save that
+	// drops the caches itself, so its boundaries are not owed.
+	//
+	// This spans every tenant, so the connection must bypass RLS.
+	ListCampaignBannerBoundariesDue(ctx context.Context) ([]ListCampaignBannerBoundariesDueRow, error)
+	ListCampaignBannerImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListCampaignBannerImageVariantsByImageIDsRow, error)
+	// Every banner of the tenant, in the order the console put them in. The admin
+	// API caps how many a tenant holds, so the list is read whole.
+	ListCampaignBannersForTenant(ctx context.Context, tenantID uuid.UUID) ([]ListCampaignBannersForTenantRow, error)
 	// Every creator of the tenant, or the one creator_id names, with what the
 	// series that credit it publish.
 	ListCatalogIndexCreators(ctx context.Context, arg ListCatalogIndexCreatorsParams) ([]ListCatalogIndexCreatorsRow, error)
@@ -2111,8 +2141,9 @@ type Querier interface {
 	// in the integration test to confirm the index is eligible):
 	//   ListReferencedObjectKeys
 	//     -> idx_<entity>_image_variants_object_key, once per variant table
-	//   DeleteUnreferencedCreatorImages / ...EpisodeEyeCatchImages /
-	//   ...GenreImages / ...LabelImages / ...SeriesImages / ...TenantImages
+	//   DeleteUnreferencedCampaignBannerImages / ...CreatorImages /
+	//   ...EpisodeEyeCatchImages / ...GenreImages / ...LabelImages /
+	//   ...SeriesImages / ...TenantImages
 	//     -> no index; one anti-join per run over a table that holds one row per
 	//        entity image
 	//   DeleteUnreferencedUserImages
@@ -2229,6 +2260,11 @@ type Querier interface {
 	ListSeriesTagsBySeriesIDs(ctx context.Context, seriesIds []uuid.UUID) ([]ListSeriesTagsBySeriesIDsRow, error)
 	// Oldest first, the order series_translation_for falls back through.
 	ListSeriesTranslationsForTenant(ctx context.Context, arg ListSeriesTranslationsForTenantParams) ([]SeriesTranslation, error)
+	// The banners a storefront shows at this moment: published, with an image,
+	// and with NOW() inside the half-open window, in the console's order. The
+	// window is a pair of instants, so the comparison needs no time zone: the
+	// tenant's own one is where the console turned the operator's dates into them.
+	ListShowingCampaignBannersForTenant(ctx context.Context, tenantID uuid.UUID) ([]ListShowingCampaignBannersForTenantRow, error)
 	// The sitemap reads sitemap_entries, which states what a sitemap holds. The
 	// list is sorted by (kind, id): kind is the SitemapEntryKind number, and id the
 	// UUIDv7 of the row, which is unique within a kind. Backward calls the
@@ -2366,6 +2402,13 @@ type Querier interface {
 	// Every tenant, whose site starts offering browser notifications once the
 	// first subject is saved. Read as publira_platform, which bypasses RLS.
 	ListWebPushTenantIDs(ctx context.Context) ([]uuid.UUID, error)
+	// Serializes the image writes on one banner; the caller re-reads image_id
+	// behind it.
+	LockCampaignBannerByIDForTenant(ctx context.Context, arg LockCampaignBannerByIDForTenantParams) (uuid.UUID, error)
+	// Locks every banner of the tenant and hands back the order they are in now,
+	// so a reorder can check the client's expected order against a list no
+	// concurrent write can move underneath it.
+	LockCampaignBannersForTenant(ctx context.Context, tenantID uuid.UUID) ([]uuid.UUID, error)
 	// Serialises, for the rest of the transaction, every attempt to give an account
 	// of the tenant the inbox an address reaches. The unique index on users only
 	// refuses the same address twice, so two sign-ups as john@ and john+2@ arriving
@@ -2505,6 +2548,11 @@ type Querier interface {
 	// tenant's currency (LockTenantCurrency), while letting other price writes of
 	// the same tenant go on.
 	LockTenantCurrencyShared(ctx context.Context, tenantID uuid.UUID) error
+	// Serializes the creates of one tenant, so two of them cannot both count one
+	// short of the cap and both be stored, nor both take the same next position.
+	// NO KEY UPDATE rather than UPDATE, so it does not hold back the foreign key
+	// checks every write naming the tenant makes.
+	LockTenantForCampaignBanners(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
 	// Taken by a reader's icon change before it reads the policy, which is the
 	// next statement rather than this one: READ COMMITTED freezes a statement's
 	// snapshot when it starts, so a read waiting on the lock here would still see
@@ -2575,6 +2623,10 @@ type Querier interface {
 	// Upserts, so marking an already-read announcement refreshes read_at instead
 	// of failing. The SELECT confines the insert to the caller's own tenant.
 	MarkAnnouncementAsRead(ctx context.Context, arg MarkAnnouncementAsReadParams) (AnnouncementRead, error)
+	MarkCampaignBannerEndRevalidated(ctx context.Context, id uuid.UUID) error
+	// The marks re-check the instant, so a banner rescheduled ahead between the
+	// listing and the mark keeps its drop owed.
+	MarkCampaignBannerStartRevalidated(ctx context.Context, id uuid.UUID) error
 	MarkEpisodeFreeWindowEndRevalidated(ctx context.Context, id uuid.UUID) error
 	MarkEpisodeFreeWindowStartRevalidated(ctx context.Context, id uuid.UUID) error
 	// The scheduled publication job's promotion of an episode it listed as due.
@@ -2963,6 +3015,8 @@ type Querier interface {
 	// been built, provided it is still the one built: no rows when a save has
 	// moved the revision on since the build read it, whose own build comes next.
 	ServePlatformSearchConfig(ctx context.Context, revision int64) (PlatformSearchConfig, error)
+	// Points a banner at the upload it shows.
+	SetCampaignBannerImage(ctx context.Context, arg SetCampaignBannerImageParams) error
 	// Hands a message to a member of staff, or back to nobody with a NULL. Stated
 	// rather than toggled like the handled flag, and independent of it: marking a
 	// message handled or reopening it leaves the assignee where it is.
@@ -3044,6 +3098,8 @@ type Querier interface {
 	// Whether the tenant has any purchase, from a provider's checkout or a store,
 	// test ones included, which keeps the tenant currency from changing.
 	TenantHasPurchases(ctx context.Context, tenantID uuid.UUID) (bool, error)
+	// Records that the image changed after one of its ratios was replaced.
+	TouchCampaignBannerImage(ctx context.Context, id uuid.UUID) error
 	// Records that the eye-catch changed after one of its ratios was replaced.
 	TouchEpisodeEyeCatchImage(ctx context.Context, id uuid.UUID) error
 	// Records that the eye-catch changed after one of its ratios was replaced.
@@ -3072,6 +3128,8 @@ type Querier interface {
 	// A user who never confirmed their address goes back to inactive, the state
 	// VerifyUserEmail activates.
 	UnsuspendUserByID(ctx context.Context, id uuid.UUID) (User, error)
+	UpdateCampaignBanner(ctx context.Context, arg UpdateCampaignBannerParams) error
+	UpdateCampaignBannerDisplayOrder(ctx context.Context, arg UpdateCampaignBannerDisplayOrderParams) error
 	UpdateCreator(ctx context.Context, arg UpdateCreatorParams) error
 	UpdateCreatorRole(ctx context.Context, arg UpdateCreatorRoleParams) error
 	UpdateCreatorRoleDisplayPriority(ctx context.Context, arg UpdateCreatorRoleDisplayPriorityParams) error

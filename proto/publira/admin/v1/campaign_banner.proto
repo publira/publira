@@ -1,0 +1,158 @@
+syntax = "proto3";
+
+package publira.admin.v1;
+
+option go_package = "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1";
+
+import "publira/types/v1/types.proto";
+
+// A campaign banner is an image the tenant schedules at the top of its
+// storefront and the app's catalog for a window of time, linking wherever the
+// operator points it. The storefront reads the ones showing now through
+// publira.v1.CatalogService.ListCampaignBanners.
+message AdminCampaignBanner {
+  // The banner's primary key, which every RPC below addresses it by.
+  string id = 1;
+  string public_id = 2;
+  // A path on the tenant's own site ("/series/…") or an absolute http(s) URL.
+  string link_url = 3;
+  // RFC 3339 instants of the display window. It is half-open: the banner shows
+  // from starts_at up to, and not at, ends_at. The console enters and shows
+  // both in the tenant's time zone (GetTenantTimezone), as it does a free
+  // window, and the instants are what a read is judged against.
+  string starts_at = 4;
+  string ends_at = 5;
+  // Whether the banner may show at all. An unpublished banner is never in the
+  // public answer, whatever its window.
+  bool published = 6;
+  // The image, stored the way an eye-catch is: every ratio at several widths.
+  string image_updated_at = 7;
+  repeated publira.types.v1.SeriesEyeCatchVariant image_variants = 8;
+  string created_at = 9;
+  string updated_at = 10;
+}
+
+message ListCampaignBannersRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+// Every banner of the tenant, expired and unpublished ones included, in the
+// tenant's own order, which is what ReorderCampaignBanners writes. A tenant
+// holds at most 50, so the list is never paged.
+message ListCampaignBannersResponse {
+  repeated AdminCampaignBanner banners = 1;
+}
+
+message GetCampaignBannerRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string campaign_banner_id = 2;
+}
+
+message GetCampaignBannerResponse {
+  AdminCampaignBanner banner = 1;
+}
+
+// Creates a banner at the end of the tenant's order. A tenant that already
+// holds 50 is refused with failed_precondition and the
+// CAMPAIGN_BANNER_LIMIT reason: an expired banner has to be deleted first.
+message CreateCampaignBannerRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Required. A path that starts with a single "/", or an absolute http:// or
+  // https:// URL, of at most 2048 characters.
+  string link_url = 2;
+  // Required, RFC 3339 both. ends_at must be after starts_at and in the
+  // future; starts_at may be in the past, which shows the banner at once.
+  string starts_at = 3;
+  string ends_at = 4;
+  bool published = 5;
+  // Required: a banner with no image would be a band that shows nothing. It
+  // is cropped into every ratio, and UploadCampaignBannerAspectImage replaces
+  // one of them afterwards.
+  bytes image_data = 6;
+  string image_content_type = 7;
+}
+
+message CreateCampaignBannerResponse {
+  AdminCampaignBanner banner = 1;
+}
+
+// Replaces the link, the window, and the published flag together.
+message UpdateCampaignBannerRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string campaign_banner_id = 2;
+  // Held to what CreateCampaignBannerRequest holds it to.
+  string link_url = 3;
+  // Held to what CreateCampaignBannerRequest holds them to, except that a
+  // window the banner already has may stay in the past, so an expired banner
+  // can still be edited without being rescheduled.
+  string starts_at = 4;
+  string ends_at = 5;
+  bool published = 6;
+  // Replaces the whole image. Empty keeps the one the banner has; there is no
+  // clearing it.
+  bytes image_data = 7;
+  string image_content_type = 8;
+}
+
+message UpdateCampaignBannerResponse {
+  AdminCampaignBanner banner = 1;
+}
+
+message ReorderCampaignBannersRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Desired order after the write, by primary key. Must be a permutation of
+  // expected_campaign_banner_ids.
+  repeated string campaign_banner_ids = 2;
+  // The order the client read before composing campaign_banner_ids. The RPC
+  // locks the tenant's banners, re-reads the current order, and rejects the
+  // write with failed_precondition when this no longer matches.
+  repeated string expected_campaign_banner_ids = 3;
+}
+
+message ReorderCampaignBannersResponse {
+  repeated AdminCampaignBanner banners = 1;
+}
+
+// Removes a banner and its image. The image server stops serving it at once,
+// and the orphan sweep reclaims the stored objects.
+message DeleteCampaignBannerRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string campaign_banner_id = 2;
+}
+
+message DeleteCampaignBannerResponse {}
+
+// Replaces the image of one aspect ratio of a banner. The other ratios keep
+// the images they already hold.
+message UploadCampaignBannerAspectImageRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string campaign_banner_id = 2;
+  // portrait / square / landscape / og
+  string variant_type = 3;
+  bytes image_data = 4;
+  string image_content_type = 5;
+  // Where in the upload the cut is taken. Omitted, the image is cut from its
+  // centre.
+  publira.types.v1.ImageCropRect crop = 6;
+}
+
+message UploadCampaignBannerAspectImageResponse {
+  AdminCampaignBanner banner = 1;
+}
+
+service AdminCampaignBannerService {
+  // Minimum role: tenant_auditor.
+  rpc ListCampaignBanners(ListCampaignBannersRequest) returns (ListCampaignBannersResponse) {}
+  // Minimum role: tenant_auditor.
+  rpc GetCampaignBanner(GetCampaignBannerRequest) returns (GetCampaignBannerResponse) {}
+  // Minimum role: tenant_editor.
+  rpc CreateCampaignBanner(CreateCampaignBannerRequest) returns (CreateCampaignBannerResponse) {}
+  // Minimum role: tenant_editor.
+  rpc UpdateCampaignBanner(UpdateCampaignBannerRequest) returns (UpdateCampaignBannerResponse) {}
+  // Minimum role: tenant_editor.
+  rpc ReorderCampaignBanners(ReorderCampaignBannersRequest) returns (ReorderCampaignBannersResponse) {}
+  // Minimum role: tenant_editor.
+  rpc DeleteCampaignBanner(DeleteCampaignBannerRequest) returns (DeleteCampaignBannerResponse) {}
+  // Minimum role: tenant_editor.
+  rpc UploadCampaignBannerAspectImage(UploadCampaignBannerAspectImageRequest) returns (UploadCampaignBannerAspectImageResponse) {}
+}

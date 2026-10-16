@@ -25,6 +25,7 @@ func TestPeriodicJobsTakeTheConfiguredIntervals(t *testing.T) {
 		TenantDayInterval:          11 * time.Second,
 		PinnedAnnouncementInterval: 13 * time.Second,
 		SeriesPublicationInterval:  17 * time.Second,
+		CampaignBannerInterval:     19 * time.Second,
 	})
 	if err != nil {
 		t.Fatalf("New: %v", err)
@@ -36,6 +37,7 @@ func TestPeriodicJobsTakeTheConfiguredIntervals(t *testing.T) {
 		kindRollTenantDay:             11 * time.Second,
 		kindExpirePinnedAnnouncements: 13 * time.Second,
 		kindApplySeriesPublications:   17 * time.Second,
+		kindApplyCampaignBanners:      19 * time.Second,
 	})
 }
 
@@ -51,6 +53,7 @@ func TestPeriodicJobsFallBackToTheDefaultIntervals(t *testing.T) {
 		kindRollTenantDay:             DefaultTenantDayInterval,
 		kindExpirePinnedAnnouncements: DefaultPinnedAnnouncementInterval,
 		kindApplySeriesPublications:   DefaultSeriesPublicationInterval,
+		kindApplyCampaignBanners:      DefaultCampaignBannerInterval,
 	})
 }
 
@@ -103,6 +106,7 @@ func TestEveryJobIsUniqueWhileOneIsInFlight(t *testing.T) {
 		RollTenantDayArgs{},
 		ExpirePinnedAnnouncementsArgs{},
 		ApplySeriesPublicationsArgs{},
+		ApplyCampaignBannersArgs{},
 	} {
 		withOpts, ok := args.(river.JobArgsWithInsertOpts)
 		if !ok {
@@ -137,8 +141,8 @@ func TestJobsRunOnTheirOwnQueue(t *testing.T) {
 	if !ok {
 		t.Fatalf("queues = %v, want one named %q", queues, QueueName)
 	}
-	if queue.MaxWorkers != 5 {
-		t.Fatalf("%s max workers = %d, want 5", QueueName, queue.MaxWorkers)
+	if queue.MaxWorkers != 6 {
+		t.Fatalf("%s max workers = %d, want 6", QueueName, queue.MaxWorkers)
 	}
 	if _, ok := queues[river.QueueDefault]; ok {
 		t.Fatalf("queues = %v, want the default queue left to the outbox drain", queues)
@@ -152,6 +156,7 @@ func TestServiceNamesCoverEveryJob(t *testing.T) {
 		"publira-roll-tenant-day",
 		"publira-expire-pinned-announcements",
 		"publira-apply-series-publications",
+		"publira-apply-campaign-banners",
 	}
 	if got := ServiceNames(); !slices.Equal(got, want) {
 		t.Fatalf("ServiceNames() = %v, want %v", got, want)

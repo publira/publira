@@ -203,6 +203,34 @@ const siteActionName = (action: string) => {
   }
 };
 
+/** An action on campaign banners. */
+const campaignBannerActionName = (action: string) => {
+  switch (action) {
+    case "campaign_banner_created": {
+      return <Message message="admin.audit.actions.campaign_banner_created" />;
+    }
+    case "campaign_banner_updated": {
+      return <Message message="admin.audit.actions.campaign_banner_updated" />;
+    }
+    case "campaign_banner_deleted": {
+      return <Message message="admin.audit.actions.campaign_banner_deleted" />;
+    }
+    case "campaign_banners_reordered": {
+      return (
+        <Message message="admin.audit.actions.campaign_banners_reordered" />
+      );
+    }
+    case "campaign_banner_aspect_image_uploaded": {
+      return (
+        <Message message="admin.audit.actions.campaign_banner_aspect_image_uploaded" />
+      );
+    }
+    default: {
+      return null;
+    }
+  }
+};
+
 /** An action on contact messages. */
 const contactMessageActionName = (action: string) => {
   switch (action) {
@@ -511,6 +539,7 @@ const actionName = (action: string) =>
   catalogActionName(action) ??
   taxonomyActionName(action) ??
   siteActionName(action) ??
+  campaignBannerActionName(action) ??
   contactMessageActionName(action) ??
   readerActionName(action) ??
   purchaseActionName(action) ??
@@ -526,6 +555,9 @@ const catalogTargetName = (targetType: string) => {
     }
     case "announcement": {
       return <Message message="admin.audit.targets.announcement" />;
+    }
+    case "campaign_banner": {
+      return <Message message="admin.audit.targets.campaign_banner" />;
     }
     case "comment": {
       return <Message message="admin.audit.targets.comment" />;

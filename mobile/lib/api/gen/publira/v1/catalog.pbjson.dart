@@ -1798,6 +1798,73 @@ final $typed_data.Uint8List listSitemapEntriesResponseDescriptor =
         '52MS5TaXRlbWFwRW50cnlSB2VudHJpZXMSJQoOcHJldmlvdXNfdG9rZW4YAiABKAlSDXByZXZp'
         'b3VzVG9rZW4SHQoKbmV4dF90b2tlbhgDIAEoCVIJbmV4dFRva2Vu');
 
+@$core.Deprecated('Use campaignBannerDescriptor instead')
+const CampaignBanner$json = {
+  '1': 'CampaignBanner',
+  '2': [
+    {'1': 'public_id', '3': 1, '4': 1, '5': 9, '10': 'publicId'},
+    {'1': 'link_url', '3': 2, '4': 1, '5': 9, '10': 'linkUrl'},
+    {'1': 'image_updated_at', '3': 3, '4': 1, '5': 9, '10': 'imageUpdatedAt'},
+    {
+      '1': 'image_variants',
+      '3': 4,
+      '4': 3,
+      '5': 11,
+      '6': '.publira.types.v1.SeriesEyeCatchVariant',
+      '10': 'imageVariants'
+    },
+  ],
+};
+
+/// Descriptor for `CampaignBanner`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List campaignBannerDescriptor = $convert.base64Decode(
+    'Cg5DYW1wYWlnbkJhbm5lchIbCglwdWJsaWNfaWQYASABKAlSCHB1YmxpY0lkEhkKCGxpbmtfdX'
+    'JsGAIgASgJUgdsaW5rVXJsEigKEGltYWdlX3VwZGF0ZWRfYXQYAyABKAlSDmltYWdlVXBkYXRl'
+    'ZEF0Ek4KDmltYWdlX3ZhcmlhbnRzGAQgAygLMicucHVibGlyYS50eXBlcy52MS5TZXJpZXNFeW'
+    'VDYXRjaFZhcmlhbnRSDWltYWdlVmFyaWFudHM=');
+
+@$core.Deprecated('Use listCampaignBannersRequestDescriptor instead')
+const ListCampaignBannersRequest$json = {
+  '1': 'ListCampaignBannersRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+  ],
+};
+
+/// Descriptor for `ListCampaignBannersRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listCampaignBannersRequestDescriptor =
+    $convert.base64Decode(
+        'ChpMaXN0Q2FtcGFpZ25CYW5uZXJzUmVxdWVzdBI3CgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLn'
+        'R5cGVzLnYxLlRlbmFudENvbnRleHRSBnRlbmFudA==');
+
+@$core.Deprecated('Use listCampaignBannersResponseDescriptor instead')
+const ListCampaignBannersResponse$json = {
+  '1': 'ListCampaignBannersResponse',
+  '2': [
+    {
+      '1': 'banners',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.publira.v1.CampaignBanner',
+      '10': 'banners'
+    },
+  ],
+};
+
+/// Descriptor for `ListCampaignBannersResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listCampaignBannersResponseDescriptor =
+    $convert.base64Decode(
+        'ChtMaXN0Q2FtcGFpZ25CYW5uZXJzUmVzcG9uc2USNAoHYmFubmVycxgBIAMoCzIaLnB1Ymxpcm'
+        'EudjEuQ2FtcGFpZ25CYW5uZXJSB2Jhbm5lcnM=');
+
 @$core.Deprecated('Use markEpisodeAsReadRequestDescriptor instead')
 const MarkEpisodeAsReadRequest$json = {
   '1': 'MarkEpisodeAsReadRequest',
@@ -3429,6 +3496,11 @@ const $core.Map<$core.String, $core.dynamic> CatalogServiceBase$json = {
       '2': '.publira.v1.ListSitemapEntriesRequest',
       '3': '.publira.v1.ListSitemapEntriesResponse'
     },
+    {
+      '1': 'ListCampaignBanners',
+      '2': '.publira.v1.ListCampaignBannersRequest',
+      '3': '.publira.v1.ListCampaignBannersResponse'
+    },
   ],
 };
 
@@ -3505,6 +3577,9 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.v1.ListSitemapEntriesRequest': ListSitemapEntriesRequest$json,
   '.publira.v1.ListSitemapEntriesResponse': ListSitemapEntriesResponse$json,
   '.publira.v1.SitemapEntry': SitemapEntry$json,
+  '.publira.v1.ListCampaignBannersRequest': ListCampaignBannersRequest$json,
+  '.publira.v1.ListCampaignBannersResponse': ListCampaignBannersResponse$json,
+  '.publira.v1.CampaignBanner': CampaignBanner$json,
 };
 
 /// Descriptor for `CatalogService`. Decode as a `google.protobuf.ServiceDescriptorProto`.
@@ -3543,7 +3618,9 @@ final $typed_data.Uint8List catalogServiceDescriptor = $convert.base64Decode(
     'llc1Jlc3BvbnNlEmAKEUxpc3RSZWxhdGVkU2VyaWVzEiQucHVibGlyYS52MS5MaXN0UmVsYXRl'
     'ZFNlcmllc1JlcXVlc3QaJS5wdWJsaXJhLnYxLkxpc3RSZWxhdGVkU2VyaWVzUmVzcG9uc2USYw'
     'oSTGlzdFNpdGVtYXBFbnRyaWVzEiUucHVibGlyYS52MS5MaXN0U2l0ZW1hcEVudHJpZXNSZXF1'
-    'ZXN0GiYucHVibGlyYS52MS5MaXN0U2l0ZW1hcEVudHJpZXNSZXNwb25zZQ==');
+    'ZXN0GiYucHVibGlyYS52MS5MaXN0U2l0ZW1hcEVudHJpZXNSZXNwb25zZRJmChNMaXN0Q2FtcG'
+    'FpZ25CYW5uZXJzEiYucHVibGlyYS52MS5MaXN0Q2FtcGFpZ25CYW5uZXJzUmVxdWVzdBonLnB1'
+    'YmxpcmEudjEuTGlzdENhbXBhaWduQmFubmVyc1Jlc3BvbnNl');
 
 const $core.Map<$core.String, $core.dynamic> EpisodeReadServiceBase$json = {
   '1': 'EpisodeReadService',

@@ -12,6 +12,22 @@ import (
 	"github.com/lib/pq"
 )
 
+const DeleteUnreferencedCampaignBannerImages = `-- name: DeleteUnreferencedCampaignBannerImages :execrows
+DELETE FROM campaign_banner_images bi
+WHERE bi.created_at < $1
+    AND NOT EXISTS (SELECT 1 FROM campaign_banners b WHERE b.image_id = bi.id)
+`
+
+// A replaced banner image is left behind by the banner that now points at the
+// new upload; deleting the banner takes its images with it.
+func (q *Queries) DeleteUnreferencedCampaignBannerImages(ctx context.Context, createdBefore time.Time) (int64, error) {
+	result, err := q.db.ExecContext(ctx, DeleteUnreferencedCampaignBannerImages, createdBefore)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const DeleteUnreferencedCreatorImages = `-- name: DeleteUnreferencedCreatorImages :execrows
 DELETE FROM creator_images ci
 WHERE ci.created_at < $1
@@ -136,6 +152,7 @@ WHERE EXISTS (SELECT 1 FROM tenant_image_variants v WHERE v.object_key = c.objec
     OR EXISTS (SELECT 1 FROM series_image_variants v WHERE v.object_key = c.object_key)
     OR EXISTS (SELECT 1 FROM label_image_variants v WHERE v.object_key = c.object_key)
     OR EXISTS (SELECT 1 FROM genre_image_variants v WHERE v.object_key = c.object_key)
+    OR EXISTS (SELECT 1 FROM campaign_banner_image_variants v WHERE v.object_key = c.object_key)
     OR EXISTS (SELECT 1 FROM creator_image_variants v WHERE v.object_key = c.object_key)
     OR EXISTS (SELECT 1 FROM episode_image_variants v WHERE v.object_key = c.object_key)
     OR EXISTS (SELECT 1 FROM episode_eye_catch_image_variants v WHERE v.object_key = c.object_key)
@@ -165,8 +182,9 @@ WHERE EXISTS (SELECT 1 FROM tenant_image_variants v WHERE v.object_key = c.objec
 //
 //	ListReferencedObjectKeys
 //	  -> idx_<entity>_image_variants_object_key, once per variant table
-//	DeleteUnreferencedCreatorImages / ...EpisodeEyeCatchImages /
-//	...GenreImages / ...LabelImages / ...SeriesImages / ...TenantImages
+//	DeleteUnreferencedCampaignBannerImages / ...CreatorImages /
+//	...EpisodeEyeCatchImages / ...GenreImages / ...LabelImages /
+//	...SeriesImages / ...TenantImages
 //	  -> no index; one anti-join per run over a table that holds one row per
 //	     entity image
 //	DeleteUnreferencedUserImages
