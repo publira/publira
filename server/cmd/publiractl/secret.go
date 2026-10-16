@@ -112,9 +112,8 @@ func (s *secret) sources() []string {
 }
 
 // flags names every flag the secret can be given through, for a message that
-// asks for one of them. The variable comes last: it is for a platform that
-// cannot hand a container a file, since a value in the environment is
-// inherited by every child process and shown wherever the environment is.
+// asks for one of them. The variable comes last, as the fallback for a
+// platform that cannot hand a container a file.
 func (s *secret) flags() string {
 	return "--" + s.name + "-file, --" + s.name + "-stdin, or --" + s.name + "-env"
 }

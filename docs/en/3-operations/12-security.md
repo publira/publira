@@ -2,7 +2,7 @@
 title: Securing an install
 description: How an install keeps tenants and credentials apart, how to rotate its encryption keys, database passwords, signing keys, and tokens, and what two-step verification and the audit logs cover.
 published: 2026-10-07
-updated: 2026-10-15
+updated: 2026-10-16
 ---
 
 An install holds the credentials of every tenant's payment provider and mail server, the personal data of every reader, and the keys that seal them. This page is for the operator who keeps them safe: what the install relies on to keep them apart, where each secret may go, how to replace each one, and what two-step verification and the audit logs give you. Read it before you need it — each procedure below is easier to run on a quiet day than during an incident.
@@ -36,6 +36,12 @@ Give each secret only to the processes that read it. A process that does not nee
 | Each role's password | The processes that connect as that role | The others | What that role reaches |
 
 The web apps may share one session key, but give each its own, as the Compose file does: then replacing one signs out only that app's users.
+
+### Handing a secret to publiractl
+
+`publiractl` never takes a secret as an argument. Give it one as a file, with the secret's `--<name>-file` flag, wherever the platform can mount secrets as files, as Kubernetes and Docker do under `/run/secrets/`. A file can be made readable by the one user `publiractl` runs as, and kept on a tmpfs. A value in an environment variable is inherited by every process started from the one that holds it, and can be read from `/proc/<pid>/environ`, from `docker inspect` or the orchestrator's description of the task, and from a crash report or debug dump that records the environment.
+
+Use the secret's `--<name>-env` flag only on a platform that sets secrets as environment variables alone, such as [Amazon ECS](../2-deployments/6-ecs-fargate.md).
 
 ### One set of secrets per install
 
