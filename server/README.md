@@ -196,6 +196,23 @@ The tenant points the inbound domain's MX records at the provider. A domain of i
 
 `internal/inboundprovider/mailgun` reads what a Route's `forward()` action posts to a URL ending in `json`: the mail already parsed into one JSON document, attachments included, signed over the whole body in `X-Mailgun-Signature`. The post carries the whole mail, so nothing is read from Mailgun's API, and the EU and US regions need no setting. Its one field is the HTTP webhook signing key (`webhook_signing_key`, secret and required), found under **Settings → API Security** in Mailgun; for a domain on a subaccount, the subaccount's key and the primary account's both work. In Mailgun, add the inbound domain under **Domains** and point its MX records at the ones Mailgun shows for receiving, then create a Route under **Receiving** with the filter `match_recipient(".*@<inbound domain>")` and the action `forward("https://<tenant-domain>/api/v1/webhook/email/mailgun/json")`.
 
+### Amazon SES
+
+`internal/inboundprovider/ses` reads what an SNS topic delivers to an HTTPS subscription when an SES receipt rule publishes to it. A rule's SNS action puts the mail in the notification's `content`, base64 when the action's encoding is `BASE64`, and SES fails that action for a mail over 150 KB. A rule's S3 action writes the mail to a bucket and publishes where it is, and the provider reads it from there with the tenant's AWS access key. Either way the envelope recipients come from `receipt.recipients` and are matched ahead of the mail's `To` and `Cc`, and the SES message id is the delivery key.
+
+The SNS signature (`SignatureVersion` 1 or 2) proves only that SNS sent the request, and any AWS account can subscribe its own topic to the URL. A request is therefore the tenant's when it also carries the webhook token as the basic auth password of the subscription URL and names the stored topic ARN; the signing certificate is fetched only from an HTTPS URL on an `sns.<region>.amazonaws.com` host. A `SubscriptionConfirmation` that passes all three is confirmed by fetching its `SubscribeURL`, and anything but a `Received` notification is ignored. SNS sends the credentials in the subscription URL only once a response challenges it for them, which `web-storefront` does on every 401 from this path.
+
+| Field |  |  |
+| --- | --- | --- |
+| `webhook_token` | secret, required | The basic auth password of the subscription URL |
+| `topic_arn` | required | The topic the receipt rule publishes to |
+| `access_key_id` |  | The S3 action only: the access key of an IAM user allowed `s3:GetObject` on the bucket, and `kms:Decrypt` on the key when the bucket's default encryption is SSE-KMS. A notification from the S3 action with no key stored is answered as unavailable |
+| `secret_access_key` | secret | The secret of that access key |
+| `region` |  | The bucket's region, when it is not the topic's |
+| `bucket` |  | When stored, the one bucket a mail is read from |
+
+In SES, in a region that [receives email](https://docs.aws.amazon.com/general/latest/gr/ses.html#ses_inbound_endpoints), verify the inbound domain and point its MX record at `inbound-smtp.<region>.amazonaws.com`, create an SNS topic in the same region, and add a receipt rule for the domain with an S3 action that names the topic, or with an SNS action whose encoding is Base64. Save the provider in the console, then subscribe `https://inbound:<token>@<tenant-domain>/api/v1/webhook/email/ses` to the topic over HTTPS with raw message delivery off.
+
 ### Raw MIME over HTTPS
 
 `internal/inboundprovider/mime` reads one whole RFC 5322 mail posted as the request body with `Content-Type: message/rfc822`, for anything that can hand a received mail to an HTTPS endpoint and has no provider of its own: a Cloudflare Email Worker, a Postfix `pipe` transport running `curl`, a script. Nothing on that side signs what it posts, so its one field is a webhook token (`webhook_token`, secret and required) that the tenant chooses and the sender sends as the basic auth password, the same way SendGrid does: `https://inbound:<token>@<tenant-domain>/api/v1/webhook/email/mime`. A post with another token is refused as unsigned, and one whose body is not a mail with a `From` is refused as malformed.
@@ -214,7 +231,7 @@ cloudflared tunnel --url http://localhost:3080 --http-host-header localhost:3080
 ngrok http 3080 --host-header=localhost:3080
 ```
 
-The console shows the webhook URL on the tenant's own domain, which no provider can reach on a development machine, so register the tunnel's host in its place: `https://inbound:<token>@<tunnel-host>/api/v1/webhook/email/sendgrid` for SendGrid, `https://<tunnel-host>/api/v1/webhook/email/resend` for Resend, and a Route forwarding to `https://<tunnel-host>/api/v1/webhook/email/mailgun/json` for Mailgun. The inbound domain still has to be a real one whose MX records you control, such as `reply-dev.<a domain you own>`, pointed at `mx.sendgrid.net` with priority 10 or at the MX records Resend or Mailgun shows for it.
+The console shows the webhook URL on the tenant's own domain, which no provider can reach on a development machine, so register the tunnel's host in its place: `https://inbound:<token>@<tunnel-host>/api/v1/webhook/email/sendgrid` for SendGrid, `https://<tunnel-host>/api/v1/webhook/email/resend` for Resend, a Route forwarding to `https://<tunnel-host>/api/v1/webhook/email/mailgun/json` for Mailgun, and an SNS subscription to `https://inbound:<token>@<tunnel-host>/api/v1/webhook/email/ses` for Amazon SES; SNS posts its confirmation as soon as the subscription is created, so save the provider first, and choose **Request confirmation** on the subscription in SNS if it stays pending. The inbound domain still has to be a real one whose MX records you control, such as `reply-dev.<a domain you own>`, pointed at `mx.sendgrid.net` with priority 10, at `inbound-smtp.<region>.amazonaws.com`, or at the MX records Resend or Mailgun shows for it.
 
 The raw MIME provider needs neither a tunnel nor an account anywhere: post a mail to the edge on the development machine yourself. Save the provider with any inbound domain, such as `reply.localhost`, and a token of your choice, answer a contact message from the console, and post a reply to it:
 

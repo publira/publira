@@ -57,11 +57,11 @@ Every save is recorded in the [audit log](./7-audit-log.md) as **Email settings 
 
 ## Readers' replies to contact messages
 
-An answer to a contact message reaches the reader by mail. Until the tenant receives mail of its own, the answer's reply-to address is the address of the staff member who answered, so a reader who writes back reaches that person's mailbox and the console never sees the reply. The **Inbound email** section of **Integrations** › **Email** brings those replies back into the console, under the message they answer, through SendGrid, Resend, or Mailgun, or through any mail service or server that can post a whole mail to an HTTPS URL, such as Cloudflare Email Routing or a Postfix server of the publisher's own.
+An answer to a contact message reaches the reader by mail. Until the tenant receives mail of its own, the answer's reply-to address is the address of the staff member who answered, so a reader who writes back reaches that person's mailbox and the console never sees the reply. The **Inbound email** section of **Integrations** › **Email** brings those replies back into the console, under the message they answer, through SendGrid, Resend, Mailgun, or Amazon SES, or through any mail service or server that can post a whole mail to an HTTPS URL, such as Cloudflare Email Routing or a Postfix server of the publisher's own.
 
 ### Before you start
 
-- An account with SendGrid, Resend, or Mailgun, or a mail service or server that hands each mail it receives to code of your own: Cloudflare Email Routing, or a Postfix server.
+- An account with SendGrid, Resend, or Mailgun, an AWS account that can use Amazon SES in a region that receives email, or a mail service or server that hands each mail it receives to code of your own: Cloudflare Email Routing, or a Postfix server.
 - A domain for replies whose DNS you can change, such as `reply.comics.example.com`. Its MX record will point at the provider, so mail sent to it reaches no other mailbox. A subdomain of its own keeps the mail the publisher's main domain already receives where it is.
 - The site reachable from the internet: the provider posts each reply to the site's own domain. An IP allowlist, a sign-in prompt, or a bot challenge in front of the site has to let these requests through, as [Webhooks](../../2-deployments/4-edge.md#webhooks) describes for the operator.
 
@@ -71,6 +71,7 @@ An answer to a contact message reaches the reader by mail. Until the tenant rece
 2. Set up the provider. The section shows a **Webhook URL** on the site's domain, with a button to copy it.
    - **SendGrid**: make up a long random string and enter it as **Webhook token**. In your DNS, point the domain's MX record at `mx.sendgrid.net` with priority 10. In SendGrid, add the domain under **Settings** › **Inbound Parse** with the **Webhook URL** as the destination URL, putting the token in place of `<token>`: SendGrid signs nothing, so the token in the URL is how the site tells its requests from anyone else's.
    - **Resend**: create an API key with **Full access** under **API Keys** and enter it as **API key**; replies are read from Resend with it. Add the domain under **Domains**, turn on receiving for it, and add the MX record Resend shows to your DNS. Under **Webhooks**, add the **Webhook URL** for the `email.received` event, and enter the signing secret Resend shows for it (`whsec_…`) as **Webhook signing secret**.
+   - **Amazon SES**: make up a long random string and enter it as **Webhook token**, and enter the ARN of the SNS topic the mail is published to as **SNS topic ARN**. Set up the domain, the topic, and the receipt rule in AWS, then save, and subscribe the topic to the **Webhook URL** as [Receiving through Amazon SES](#receiving-through-amazon-ses) below describes.
    - **Raw MIME over HTTPS**: make up a long random string and enter it as **Webhook token**. Point the domain's MX records at the service or server that receives the mail, and have it post every mail on the domain, whole and unchanged, to the **Webhook URL** with the content type `message/rfc822`, the token in place of `<token>`, and the address the mail was delivered to in an `X-Envelope-To` header. A forward or an alias on the reader's side often leaves the reply without the message's own address in its **To**, and that header is what still matches it. [Cloudflare Email Routing](#posting-raw-mail-from-cloudflare-email-routing) and [Postfix](#posting-raw-mail-from-postfix) below do all of this.
    - **Mailgun**: copy the **HTTP webhook signing key** from **Settings** › **API Security** and enter it under the same name; Mailgun signs every reply it posts with it, and a post whose signature does not match is refused. For a domain on a subaccount, the subaccount's key and the primary account's key both work. Add the domain under **Domains** and add the MX records Mailgun shows for receiving to your DNS. Under **Receiving**, create a route with the expression type **Match Recipient** and a recipient that covers every address on the domain, such as `.*@reply.comics.example.com`, and tick **Forward** with the **Webhook URL** exactly as shown, ending in `/json`: Mailgun signs the whole mail it posts only to a URL that ends that way, and a post to any other URL is refused. The same steps apply to an account in Mailgun's EU region.
 3. Choose **Save**. The section turns **Ready** and shows the **Reply address**, `contact+*@` followed by the domain: each answer from then on asks the reader to reply to an address of that form, where `*` is the message's ID, and the reply appears under that message.
@@ -82,6 +83,39 @@ Until the section is **Ready**, answers keep the answering staff member's addres
 The tokens and keys are never shown again once saved: each field shows a mask, and **Change** replaces it. Saving with another provider chosen deletes the credentials stored for the previous one.
 
 To stop receiving replies, clear **Enable** and choose **Save**. The next answer names the staff member's address again, and the settings are kept for when you turn it back on. Every save is recorded in the [audit log](./7-audit-log.md) as **Inbound email settings updated**.
+
+### Receiving through Amazon SES
+
+Amazon SES receives the domain's mail and hands each one to a receipt rule. The rule publishes a notification of the mail to an Amazon SNS topic, and the topic delivers it to the **Webhook URL** through an HTTPS subscription. SNS signs every delivery, but any AWS account could subscribe a topic of its own to the URL, so the site also checks the token in the URL and the topic the delivery comes from.
+
+SES receives mail only in some AWS regions, listed under [Email receiving endpoints](https://docs.aws.amazon.com/general/latest/gr/ses.html#ses_inbound_endpoints). Use one of them for the domain, the topic, and the rule below; the bucket can be in another region.
+
+1. In SES, under **Identities**, verify the inbound domain. In your DNS, point its MX record at `inbound-smtp.<region>.amazonaws.com`, such as `inbound-smtp.us-east-1.amazonaws.com`, with priority 10.
+2. In SNS, create a standard topic, such as `publira-inbound`. Enter its ARN as **SNS topic ARN** in the console.
+3. In SES, under **Email receiving**, create a rule in the active rule set with the inbound domain as its recipient condition, and give it one of these actions:
+   - **Deliver to Amazon S3 bucket**, with the SNS topic chosen under **SNS topic**. SES writes each mail to the bucket and tells the topic where it is, and the site reads it from there. This is the action to use: it carries a reply of any size SES receives, up to 40 MB. The bucket's policy has to let SES write to it, as [Giving permissions to Amazon SES for email receiving](https://docs.aws.amazon.com/ses/latest/dg/receiving-email-permissions.html) describes. Leave **Message encryption** cleared: SES then encrypts each mail on the client side, which the site cannot undo. Then, in IAM, create a user with an access key and a policy that allows `s3:GetObject` on the bucket's objects, and enter the key as **AWS access key ID** and **AWS secret access key**. Enter **S3 bucket** to have the site read from that bucket and no other, and **S3 bucket region** when the bucket is in another region than the topic.
+   - **Publish to Amazon SNS topic**, with the topic and the encoding **Base64**, which keeps a mail in any character set as it was sent. The mail travels inside the notification, so no bucket or access key is needed, but SES bounces every mail over 150 KB, which a reply with an image or an attachment soon is.
+4. Choose **Save** in the console: the subscription is confirmed when SNS posts its confirmation to the site, and the site confirms only for the token and the topic it has stored.
+5. In SNS, create a subscription to the topic with the protocol **HTTPS** and the **Webhook URL** as its endpoint, the token in place of `<token>`. Leave **Enable raw message delivery** cleared: a delivery without SNS's signature around it is refused. The subscription turns **Confirmed** within a minute. If it stays **Pending confirmation**, check the token and the topic in the console, save, and choose **Request confirmation** on the subscription.
+
+An IAM policy for the user in step 3, with the bucket's name in place of `publira-inbound-mail`:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::publira-inbound-mail/*"
+    }
+  ]
+}
+```
+
+Add `kms:Decrypt` on the key, too, when the bucket encrypts what is written to it with a KMS key by default.
+
+SNS retries a delivery the site cannot take — a `5xx` while the site is down, or while the mail cannot be read from the bucket — three times, 20 seconds apart, and then drops it. A [delivery policy](https://docs.aws.amazon.com/sns/latest/dg/sns-message-delivery-retries.html) on the subscription can keep it retrying for up to an hour, and a dead-letter queue keeps what it drops. A mail the S3 action wrote stays in the bucket either way.
 
 ### Posting raw mail from Cloudflare Email Routing
 

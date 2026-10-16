@@ -161,6 +161,36 @@ const InboundEmailCredentialName = ({
         <Message message="admin.settings.inbound_email.fields.mime.webhook_token" />
       );
     }
+    case "ses.webhook_token": {
+      return (
+        <Message message="admin.settings.inbound_email.fields.ses.webhook_token" />
+      );
+    }
+    case "ses.topic_arn": {
+      return (
+        <Message message="admin.settings.inbound_email.fields.ses.topic_arn" />
+      );
+    }
+    case "ses.access_key_id": {
+      return (
+        <Message message="admin.settings.inbound_email.fields.ses.access_key_id" />
+      );
+    }
+    case "ses.secret_access_key": {
+      return (
+        <Message message="admin.settings.inbound_email.fields.ses.secret_access_key" />
+      );
+    }
+    case "ses.region": {
+      return (
+        <Message message="admin.settings.inbound_email.fields.ses.region" />
+      );
+    }
+    case "ses.bucket": {
+      return (
+        <Message message="admin.settings.inbound_email.fields.ses.bucket" />
+      );
+    }
     default: {
       return field;
     }
@@ -221,6 +251,60 @@ const InboundEmailCredentialSource = ({
         </FieldDescription>
       );
     }
+    case "ses.webhook_token": {
+      return (
+        <FieldDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+            <Message message="admin.settings.inbound_email.field_sources.ses.webhook_token" />
+          </Suspense>
+        </FieldDescription>
+      );
+    }
+    case "ses.topic_arn": {
+      return (
+        <FieldDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+            <Message message="admin.settings.inbound_email.field_sources.ses.topic_arn" />
+          </Suspense>
+        </FieldDescription>
+      );
+    }
+    case "ses.access_key_id": {
+      return (
+        <FieldDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+            <Message message="admin.settings.inbound_email.field_sources.ses.access_key_id" />
+          </Suspense>
+        </FieldDescription>
+      );
+    }
+    case "ses.secret_access_key": {
+      return (
+        <FieldDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+            <Message message="admin.settings.inbound_email.field_sources.ses.secret_access_key" />
+          </Suspense>
+        </FieldDescription>
+      );
+    }
+    case "ses.region": {
+      return (
+        <FieldDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+            <Message message="admin.settings.inbound_email.field_sources.ses.region" />
+          </Suspense>
+        </FieldDescription>
+      );
+    }
+    case "ses.bucket": {
+      return (
+        <FieldDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+            <Message message="admin.settings.inbound_email.field_sources.ses.bucket" />
+          </Suspense>
+        </FieldDescription>
+      );
+    }
     default: {
       return null;
     }
@@ -266,6 +350,15 @@ const InboundEmailDomainNote = ({ provider }: { provider: string }) => {
         </FieldDescription>
       );
     }
+    case "ses": {
+      return (
+        <FieldDescription>
+          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+            <Message message="admin.settings.inbound_email.domain_ses_description" />
+          </Suspense>
+        </FieldDescription>
+      );
+    }
     default: {
       return null;
     }
@@ -297,6 +390,11 @@ const InboundEmailWebhookNote = ({
     case "mime": {
       return (
         <Message message="admin.settings.inbound_email.webhook_url_mime_description" />
+      );
+    }
+    case "ses": {
+      return (
+        <Message message="admin.settings.inbound_email.webhook_url_ses_description" />
       );
     }
     default: {

@@ -2569,7 +2569,7 @@
       },
       "inbound_email": {
         "title": "收件",
-        "description": "透過SendGrid、Resend、Mailgun，或任何能將整封郵件傳送到HTTPS URL的服務，將讀者對諮詢答覆的回信接收到主控台。密鑰為唯寫：再次進入時，您只能看到它的狀態與遮罩，看不到實際的值。",
+        "description": "透過SendGrid、Resend、Mailgun、Amazon SES，或任何能將整封郵件傳送到HTTPS URL的服務，將讀者對諮詢答覆的回信接收到主控台。密鑰為唯寫：再次進入時，您只能看到它的狀態與遮罩，看不到實際的值。",
         "section_error": "無法顯示收件設定",
         "provider": "收件服務商",
         "provider_description": "讀者的回信將透過此處選擇的服務商接收，憑證在下方填寫。",
@@ -2583,6 +2583,7 @@
         "domain_resend_description": "請在Resend的Domains中新增該網域並開啟接收，然後將Resend顯示的MX記錄新增到DNS。",
         "domain_mailgun_description": "請在Mailgun的Domains中新增該網域，然後將Mailgun顯示的接收用MX記錄新增到DNS。",
         "domain_mime_description": "請在DNS中將該網域的MX記錄指向接收郵件並將其傳送到下方webhook URL的郵件伺服器或服務，例如Cloudflare Email Routing或您自己的Postfix伺服器。",
+        "domain_ses_description": "請在Amazon SES中於支援接收郵件的區域的Identities下驗證該網域，然後在DNS中將其MX記錄指向inbound-smtp.<region>.amazonaws.com，優先順序為10。",
         "fields": {
           "sendgrid": {
             "webhook_token": "Webhook權杖"
@@ -2596,6 +2597,14 @@
           },
           "mime": {
             "webhook_token": "Webhook權杖"
+          },
+          "ses": {
+            "webhook_token": "Webhook權杖",
+            "topic_arn": "SNS主題ARN",
+            "access_key_id": "AWS存取金鑰ID",
+            "secret_access_key": "AWS私密存取金鑰",
+            "region": "S3儲存貯體區域",
+            "bucket": "S3儲存貯體"
           }
         },
         "field_sources": {
@@ -2611,6 +2620,14 @@
           },
           "mime": {
             "webhook_token": "由您自行決定的足夠長的隨機字串。傳送郵件的一方每次都會將它作為下方webhook URL中的密碼傳回，不含此值的郵件將被拒絕。"
+          },
+          "ses": {
+            "webhook_token": "由您自行決定的足夠長的隨機字串。SNS每次傳送通知時都會將它作為下方webhook URL中的密碼傳回，不含此值的通知將被拒絕。",
+            "topic_arn": "接收規則發布通知的SNS主題的ARN，例如arn:aws:sns:us-east-1:123456789012:publira-inbound。來自其他主題的通知將被拒絕。",
+            "access_key_id": "僅在接收規則將郵件寫入S3儲存貯體時需要：允許對該儲存貯體執行s3:GetObject的IAM使用者的存取金鑰。回信會使用此金鑰從儲存貯體讀取。",
+            "secret_access_key": "建立該存取金鑰時IAM僅顯示一次的私密存取金鑰。",
+            "region": "儲存貯體所在區域與主題不同時填寫。留空時使用主題的區域。",
+            "bucket": "接收規則寫入郵件的儲存貯體。留空時從每則通知指明的儲存貯體讀取。"
           }
         },
         "webhook_url": "Webhook URL",
@@ -2619,6 +2636,7 @@
         "webhook_url_resend_description": "請在Resend的Webhooks中將此URL新增為email.received事件的傳送位址，然後在上方儲存其顯示的簽章密鑰。",
         "webhook_url_mailgun_description": "請在Mailgun的Receiving中建立路由，將Expression type設為Match Recipient並指定收件網域的所有位址（例如.*@reply.example.com），然後將Forward指定為此URL。",
         "webhook_url_mime_description": "請將收件網域收到的每封郵件以message/rfc822內容類型完整傳送到此URL，把<token>替換為上方儲存的webhook權杖，並在X-Envelope-To標頭中註明郵件的投遞位址。",
+        "webhook_url_ses_description": "請在Amazon SNS中為接收規則發布通知的主題建立HTTPS訂閱，將此URL指定為端點，並把<token>替換為上方儲存的webhook權杖。請保持raw message delivery關閉。訂閱會在SNS向此處傳送確認時完成確認，因此請先儲存這些設定。",
         "reply_address": "回覆地址",
         "reply_address_description": "答覆會請讀者回信到此格式的地址，其中*為諮詢的ID。收件網域上的所有地址都必須能送達服務商。",
         "copy_webhook_url": "複製webhook URL",
