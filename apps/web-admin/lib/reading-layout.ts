@@ -44,3 +44,16 @@ export interface EpisodeReadingLayoutOverrides {
  */
 export const spreadStartPageOf = (spreadStartIndex: number): number =>
   spreadStartIndex + 1;
+
+/**
+ * The layout one episode is read in: each value from the episode where it
+ * states one, and from its series where it does not — the same resolution the
+ * public read applies, so a preview turns the way the storefront will.
+ */
+export const resolveReadingLayout = (
+  episode: EpisodeReadingLayoutOverrides,
+  series: ReadingLayout
+): ReadingLayout => ({
+  readingDirection: episode.readingDirection || series.readingDirection,
+  spreadStartIndex: episode.spreadStartIndex ?? series.spreadStartIndex,
+});

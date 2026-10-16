@@ -1,4 +1,5 @@
 import { definePlugin } from "@publira/comic-viewer";
+import type { ViewerPage } from "@publira/comic-viewer";
 import { decodeBase64Url } from "@publira/utils";
 
 /**
@@ -225,24 +226,83 @@ const decryptImageResponse = async (
   };
 };
 
-export const acceptNegotiatedImages = definePlugin({
-  customFetch: async ({ page, signal, url }) => {
-    const response = await fetch(url, {
-      headers: { Accept: IMAGE_ACCEPT },
-      signal,
-    });
-    if (!response.ok) {
-      throw new Error(`page request failed with ${response.status}`);
-    }
+/**
+ * Answers a fresh URL for `page`, whose own was refused, or `undefined` when
+ * there is none to offer.
+ */
+export type RenewPageUrl = (page: ViewerPage) => Promise<string | undefined>;
 
-    const image = await decryptImageResponse(response, url);
-    // Manael may have converted a JPEG/PNG source to WebP or AVIF. The viewer
-    // decodes its buffer using this page metadata, so make its MIME type agree
-    // with the post-decryption response rather than the original upload.
-    if (image.contentType) {
-      page.mimeType = image.contentType;
-    }
-    return image.buffer;
-  },
-  name: "decrypt-and-accept-negotiated-images",
-});
+/**
+ * The statuses image-server refuses a URL with once the media token it
+ * carries has expired, or no longer admits the viewer.
+ */
+const RENEWABLE_STATUSES = new Set([401, 403]);
+
+const requestPage = (url: string, signal: AbortSignal): Promise<Response> =>
+  fetch(url, {
+    headers: { Accept: IMAGE_ACCEPT },
+    signal,
+  });
+
+/**
+ * The URL `renewPageUrl` answers, or `undefined` where it fails: a renewal
+ * that cannot be had leaves the page refused, with its reload control, rather
+ * than failing it with the renewal's own error.
+ */
+const renewOrNothing = async (
+  renewPageUrl: RenewPageUrl,
+  page: ViewerPage
+): Promise<string | undefined> => {
+  try {
+    return await renewPageUrl(page);
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * The plugin every page is fetched through: it sends the `Accept` header
+ * image-server resizes by, and decrypts a page delivered encrypted.
+ *
+ * A media token in a page's URL expires a while after the page list was read,
+ * so a page the viewer reaches only later can be refused. Given
+ * `renewPageUrl`, a refused page is asked for once more at the URL it answers,
+ * and the plugin fetches that page from there from then on, so the reload
+ * control a failed page offers retries the fresh URL rather than the one
+ * already refused. The page's own `src` is left alone: the viewer keys a
+ * page's load by it, and a load whose key changed under it would be dropped.
+ */
+export const createImageFetchPlugin = (renewPageUrl?: RenewPageUrl) => {
+  const renewedUrls = new Map<string, string>();
+
+  return definePlugin({
+    customFetch: async ({ page, signal, url }) => {
+      let source = renewedUrls.get(page.id) ?? url;
+      let response = await requestPage(source, signal);
+      if (renewPageUrl && RENEWABLE_STATUSES.has(response.status)) {
+        const renewed = await renewOrNothing(renewPageUrl, page);
+        if (renewed !== undefined && renewed !== source) {
+          renewedUrls.set(page.id, renewed);
+          source = renewed;
+          response = await requestPage(source, signal);
+        }
+      }
+      if (!response.ok) {
+        throw new Error(`page request failed with ${response.status}`);
+      }
+
+      const image = await decryptImageResponse(response, source);
+      // Manael may have converted a JPEG/PNG source to WebP or AVIF. The viewer
+      // decodes its buffer using this page metadata, so make its MIME type agree
+      // with the post-decryption response rather than the original upload.
+      if (image.contentType) {
+        page.mimeType = image.contentType;
+      }
+      return image.buffer;
+    },
+    name: "decrypt-and-accept-negotiated-images",
+  });
+};
+
+/** {@link createImageFetchPlugin} for pages whose URLs nothing renews. */
+export const acceptNegotiatedImages = createImageFetchPlugin();

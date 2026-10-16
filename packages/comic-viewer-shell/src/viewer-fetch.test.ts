@@ -1,10 +1,17 @@
 import type { ViewerPage } from "@publira/comic-viewer";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { acceptNegotiatedImages, decryptImageBuffer } from "./viewer-fetch";
+import {
+  acceptNegotiatedImages,
+  createImageFetchPlugin,
+  decryptImageBuffer,
+} from "./viewer-fetch";
+import type { RenewPageUrl } from "./viewer-fetch";
 
 const hex = (value: string): Uint8Array<ArrayBuffer> =>
-  Uint8Array.from(Buffer.from(value, "hex"));
+  Uint8Array.from(value.match(/../gu) ?? [], (byte) =>
+    Number.parseInt(byte, 16)
+  );
 
 /**
  * An entitled body: the media token names the reader who bought or borrowed
@@ -221,5 +228,93 @@ describe("acceptNegotiatedImages", () => {
     await expect(fetchPage(page(`?t=${free.token}`))).rejects.toThrow(
       "encrypted image response is missing decryption metadata"
     );
+  });
+});
+
+const fetchWith = (
+  plugin: ReturnType<typeof createImageFetchPlugin>,
+  viewerPage: ViewerPage
+): Promise<ArrayBuffer | undefined> | undefined =>
+  plugin.customFetch?.({
+    page: viewerPage,
+    signal: new AbortController().signal,
+    url: viewerPage.src,
+  });
+
+describe("createImageFetchPlugin", () => {
+  it("asks again at a renewed URL once the page's own is refused, and goes there from then on", async () => {
+    const imageBuffer = Uint8Array.from([7, 8, 9]).buffer;
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 403 }))
+      .mockResolvedValueOnce(new Response(imageBuffer))
+      .mockResolvedValueOnce(new Response(imageBuffer));
+    vi.stubGlobal("fetch", fetchMock);
+    const viewerPage = page("?t=expired");
+    const renewPageUrl = vi.fn<RenewPageUrl>(() =>
+      Promise.resolve("/images/episodes/page-1?t=fresh")
+    );
+    const plugin = createImageFetchPlugin(renewPageUrl);
+
+    await expect(fetchWith(plugin, viewerPage)).resolves.toEqual(imageBuffer);
+    expect(renewPageUrl).toHaveBeenCalledWith(viewerPage);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      "/images/episodes/page-1?t=fresh",
+      expect.anything()
+    );
+    // The viewer keys the page's load by its own URL.
+    expect(viewerPage.src).toBe("/images/episodes/page-1?t=expired");
+
+    // A reload of the page goes straight to the URL that worked.
+    await fetchWith(plugin, viewerPage);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      "/images/episodes/page-1?t=fresh",
+      expect.anything()
+    );
+    expect(renewPageUrl).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails the page when no fresher URL is to be had", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(null, { status: 403 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const viewerPage = page("?t=expired");
+    const plugin = createImageFetchPlugin(() =>
+      Promise.resolve(viewerPage.src)
+    );
+
+    await expect(fetchWith(plugin, viewerPage)).rejects.toThrow(
+      "page request failed with 403"
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails the page as refused when the renewal itself fails", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(null, { status: 403 }))
+    );
+    const plugin = createImageFetchPlugin(() =>
+      Promise.reject(new Error("the session ended"))
+    );
+
+    await expect(fetchWith(plugin, page("?t=expired"))).rejects.toThrow(
+      "page request failed with 403"
+    );
+  });
+
+  it("leaves a failure that is not a refusal to the reload control", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(null, { status: 503 }))
+    );
+    const renewPageUrl = vi.fn<RenewPageUrl>();
+
+    await expect(
+      fetchWith(createImageFetchPlugin(renewPageUrl), page())
+    ).rejects.toThrow("page request failed with 503");
+    expect(renewPageUrl).not.toHaveBeenCalled();
   });
 });

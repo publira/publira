@@ -1,0 +1,43 @@
+{
+  "name": "@publira/comic-viewer-shell",
+  "version": "0.2.0",
+  "private": true,
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./styles.css": "./styles.css"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsdown",
+    "test": "vitest --run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@publira/comic-viewer": "catalog:",
+    "@publira/icons": "workspace:*",
+    "@publira/ui-components": "workspace:*",
+    "@publira/utils": "workspace:*"
+  },
+  "devDependencies": {
+    "@publira/tsconfig": "workspace:*",
+    "@publira/tsdown-config": "workspace:*",
+    "@testing-library/dom": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "jsdom": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}

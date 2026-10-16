@@ -1,8 +1,8 @@
 ---
 title: Episodes
-description: Create an episode, add, replace, and delete its pages, change its title, price, and reading period, set its layout, credits, and where it is shown and sold, give it free reading periods, and publish it now or on time.
+description: Create an episode, add, replace, and delete its pages, change its title, price, and reading period, set its layout and preview its pages, set its credits and where it is shown and sold, give it free reading periods, and publish it now or on time.
 published: 2026-10-07
-updated: 2026-10-11
+updated: 2026-10-16
 ---
 
 An episode is what a reader opens and pays for: a run of page images with a title, a price, and a time it is published at. Episodes live inside their series. On the **Series** list, choose **Episodes** on the series' row to open them.
@@ -89,6 +89,18 @@ Choose **Update page layout** to save. A value that follows the series changes w
 
 The site shows two pages side by side only in a viewer at least 768 pixels wide and no taller than it is wide, and the app only on a tablet or a phone held sideways. Elsewhere pages are shown one at a time.
 
+## Previewing the pages
+
+**Preview**, at the bottom of the episode's edit screen, shows the episode's pages in the viewer the site uses: in their saved order, turned in the episode's reading direction, and paired into spreads from the page its layout starts them at. A draft or a scheduled episode previews the same way as a published one, so the pages can be checked before readers see them.
+
+Turn the pages as a reader does on the site: with the arrow keys, by clicking near either edge of the viewer, or by clicking the middle of it to show **Previous page**, **Next page**, and the reading progress slider under the pages. The preview follows the same rule for spreads as the site, so a wide enough window shows two pages side by side.
+
+![The Preview section of an episode: the first page alone on the viewer, as the episode's spreads start from the second.](./episodes-preview.png)
+
+A change saved on the edit screen — pages added, replaced, deleted, or moved, or an update to **Page layout** — shows in the preview once it is saved, and the preview starts again from the first page. A value chosen in **Page layout** but not saved yet does not show. An episode with no pages says so in the preview.
+
+Everyone who can open the episode can turn its pages in the preview, including those who cannot change it.
+
 ## Credits
 
 **Authors**, on the episode's edit screen, lists the Authors credited on this episode, each in a role, with their share of its sales. A new episode starts with the series' credits, and is changed here on its own: a later change to the series' credits does not reach it. A credit added here is marked **Episode only**, for a guest who worked on this episode alone. Choose **Save authors** to save.
@@ -162,7 +174,7 @@ A published episode is taken off the site by the last two, as [Taking an episode
 The usual way to publish a new episode of a public series is therefore:
 
 1. Create the episode with **Publication date and time** empty, as a draft.
-2. Add its pages, and check them and its layout.
+2. Add its pages, set its layout, and check both in [Preview](#previewing-the-pages).
 3. Under **Publishing settings**, enter the current time to publish it now, or the time it should go out, and save.
 
 ### When a scheduled episode appears

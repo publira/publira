@@ -1,3 +1,4 @@
+import { toViewerPages } from "@publira/comic-viewer-shell";
 import {
   EmptyState,
   EmptyStateDescription,
@@ -28,7 +29,6 @@ import { getMyViewerPreferences } from "#lib/viewer-preferences";
 import { episodePath } from "../_lib/episode-path";
 import { resumePageIndex } from "../_lib/reading-position";
 import { VIEWER_HEIGHT_CLASS } from "../_lib/viewer-layout";
-import { toViewerPages } from "../_lib/viewer-pages";
 import { saveWideViewerAction } from "../_lib/wide-viewer-action";
 import { EpisodeBodyNotice } from "./episode-body-notice";
 import { EpisodeComicViewer } from "./episode-comic-viewer";

@@ -1909,6 +1909,23 @@
           "updated": "页面布局已更新。",
           "failed": "无法更新页面布局。请稍后再试。"
         },
+        "preview": {
+          "title": "预览",
+          "description": "按读者翻阅的样子显示页面，采用已保存的顺序、阅读方向和跨页起始。在此画面保存的变更，保存后也会显示在这里。",
+          "error": "无法显示预览",
+          "empty": "该章节还没有页面。添加页面图片后即可预览。",
+          "loading": "正在加载…",
+          "page_error": "网络错误或服务器暂时出现问题，导致本页无法加载。请重新加载。",
+          "reload": "重新加载",
+          "progress": "阅读进度",
+          "navigation": "翻页导航",
+          "previous_page": "上一页",
+          "next_page": "下一页",
+          "no_pages": "暂无页面",
+          "page_status": "第{$first}页，共{$total}页",
+          "page_status_range": "第{$first}–{$last}页，共{$total}页",
+          "page_title": "{$title}第{$page}页"
+        },
         "credits": {
           "title": "作者",
           "description": "编辑本集署名作者。标为“仅本集”的行不会受到之后范围编辑的影响。",

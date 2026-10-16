@@ -1909,6 +1909,23 @@
           "updated": "頁面版面已更新。",
           "failed": "無法更新頁面版面。請稍後再試。"
         },
+        "preview": {
+          "title": "預覽",
+          "description": "依讀者翻閱的樣子顯示頁面，採用已儲存的順序、閱讀方向與跨頁起始。在此畫面儲存的變更，儲存後也會顯示在這裡。",
+          "error": "無法顯示預覽",
+          "empty": "該章節還沒有頁面。新增頁面圖片後即可預覽。",
+          "loading": "正在載入…",
+          "page_error": "網路錯誤或伺服器暫時發生問題，導致本頁無法載入。請重新載入。",
+          "reload": "重新載入",
+          "progress": "閱讀進度",
+          "navigation": "翻頁導覽",
+          "previous_page": "上一頁",
+          "next_page": "下一頁",
+          "no_pages": "目前沒有頁面",
+          "page_status": "第{$first}頁，共{$total}頁",
+          "page_status_range": "第{$first}–{$last}頁，共{$total}頁",
+          "page_title": "{$title}第{$page}頁"
+        },
         "credits": {
           "title": "作者",
           "description": "編輯本集署名作者。標為「僅本集」的列不會受到之後範圍編輯的影響。",

@@ -1,6 +1,16 @@
 import type { ViewerPage } from "@publira/comic-viewer";
 
-import type { EpisodeImageItem } from "#lib/catalog";
+/**
+ * The fields of an episode body image the viewer reads, as both the public and
+ * the admin API answer them.
+ */
+export interface ViewerPageImage {
+  contentType: string;
+  height: number;
+  id: string;
+  imageUrl: string;
+  width: number;
+}
 
 /**
  * A stored dimension of `0` means the record predates the size columns, not
@@ -13,7 +23,7 @@ const positiveOrUndefined = (value: number): number | undefined =>
 
 /**
  * Map episode body images onto the viewer's page list. `images` is already in
- * `displayOrder`, and that order is the reading order the viewer paginates.
+ * display order, and that order is the reading order the viewer paginates.
  *
  * No `placeholder`: image-server resizes a page only while converting it, and
  * it decides to convert from the request's `Accept`. The viewer loads a
@@ -24,7 +34,7 @@ const positiveOrUndefined = (value: number): number | undefined =>
  */
 export const toViewerPages = (
   episodeTitle: string,
-  images: EpisodeImageItem[],
+  images: readonly ViewerPageImage[],
   /** Titles one page, e.g. `{$title}, page {$page}`, from the caller's catalog. */
   formatPageTitle: (values: { page: number; title: string }) => string
 ): ViewerPage[] =>

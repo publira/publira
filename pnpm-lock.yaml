@@ -398,6 +398,12 @@ importers:
       '@publira/brand':
         specifier: workspace:*
         version: link:../../packages/brand
+      '@publira/comic-viewer':
+        specifier: 'catalog:'
+        version: 0.10.0(react@19.3.0)
+      '@publira/comic-viewer-shell':
+        specifier: workspace:*
+        version: link:../../packages/comic-viewer-shell
       '@publira/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
@@ -586,6 +592,9 @@ importers:
       '@publira/comic-viewer':
         specifier: 'catalog:'
         version: 0.10.0(react@19.3.0)
+      '@publira/comic-viewer-shell':
+        specifier: workspace:*
+        version: link:../../packages/comic-viewer-shell
       '@publira/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
@@ -749,6 +758,58 @@ importers:
         version: 5.0.4(@opentelemetry/api@1.9.1)(@types/node@24.19.2)(jsdom@30.1.2)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
 
   packages/brand: {}
+
+  packages/comic-viewer-shell:
+    dependencies:
+      '@publira/comic-viewer':
+        specifier: 'catalog:'
+        version: 0.10.0(react@19.3.0)
+      '@publira/icons':
+        specifier: workspace:*
+        version: link:../icons
+      '@publira/ui-components':
+        specifier: workspace:*
+        version: link:../ui-components
+      '@publira/utils':
+        specifier: workspace:*
+        version: link:../utils
+      react:
+        specifier: ^19.0.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.3.0(react@19.3.0)
+    devDependencies:
+      '@publira/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@publira/tsdown-config':
+        specifier: workspace:*
+        version: link:../tsdown-config
+      '@testing-library/dom':
+        specifier: 'catalog:'
+        version: 10.4.2
+      '@testing-library/react':
+        specifier: 'catalog:'
+        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: 'catalog:'
+        version: 19.3.0(@types/react@19.3.0)
+      jsdom:
+        specifier: 'catalog:'
+        version: 30.1.2
+      tsdown:
+        specifier: 'catalog:'
+        version: 0.23.1(typescript@6.0.3)
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.4(@opentelemetry/api@1.9.1)(@types/node@24.19.2)(jsdom@30.1.2)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
 
   packages/email-templates:
     dependencies:

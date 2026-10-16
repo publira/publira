@@ -1242,6 +1242,38 @@ export const listEpisodeImages = async (
     await listEpisodeImagesForSession(input, locale, await getAccessToken())
   );
 
+/**
+ * The current image URL of each of an episode's pages, by image id, read
+ * uncached: the admin media token a URL carries expires a while after it was
+ * issued, and a cached answer would hand back the one that already has.
+ * `undefined` when the pages could not be read.
+ */
+export const renewEpisodeImageUrls = async (input: {
+  tenantId: string;
+  episodeId: string;
+}): Promise<Record<string, string> | undefined> => {
+  const sessionId = await getAccessToken();
+  if (!sessionId) {
+    return;
+  }
+
+  try {
+    const response = await apiClient.series.listEpisodeImages(
+      {
+        episodeId: input.episodeId,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    return Object.fromEntries(
+      (response.images ?? []).map((image) => [image.id, image.imageUrl])
+    );
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+  }
+};
+
 const reorderEpisodes = async (
   input: {
     tenantId: string;

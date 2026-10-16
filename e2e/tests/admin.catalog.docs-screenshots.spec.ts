@@ -366,6 +366,29 @@ for (const locale of DOCS_LOCALES) {
         });
       }
 
+      test("the preview on the episode's edit screen", async ({ page }) => {
+        await openScreen(page, locale, editPath);
+
+        const preview = docsSection(
+          page,
+          t("admin.series.episodes.preview.title")
+        );
+        // The canvas reports the page it has drawn, so the shot waits for
+        // pixels rather than for the element that will hold them — every
+        // page the rail holds, the spreads either side included.
+        await expect(preview.locator("canvas").first()).toBeVisible();
+        await expect(
+          preview.locator('canvas:not([data-page-status="loaded"])')
+        ).toHaveCount(0);
+
+        await expectDocsScreenshot(page, {
+          element: preview,
+          locale,
+          page: "console/catalog/episodes",
+          subject: "preview",
+        });
+      });
+
       test("Shown on and Sold on, on the episode's edit screen", async ({
         page,
       }) => {
