@@ -291,6 +291,38 @@ class SurfaceAvailability extends $pb.ProtobufEnum {
   const SurfaceAvailability._(super.value, super.name);
 }
 
+/// Which of an episode's two sales a purchase is (purchases.kind).
+class PurchaseKind extends $pb.ProtobufEnum {
+  /// On a request, the permanent copy, which is what every client that names no
+  /// kind buys.
+  static const PurchaseKind PURCHASE_KIND_UNSPECIFIED =
+      PurchaseKind._(0, _omitEnumNames ? '' : 'PURCHASE_KIND_UNSPECIFIED');
+
+  /// The permanent copy, at Episode.price, which opens the episode for its
+  /// reading period if it has one and for good if it does not. A store purchase
+  /// and a grant staff record are always this.
+  static const PurchaseKind PURCHASE_KIND_PURCHASE =
+      PurchaseKind._(1, _omitEnumNames ? '' : 'PURCHASE_KIND_PURCHASE');
+
+  /// The rental, at Episode.rental_price, which opens the episode for
+  /// Episode.rental_period_hours.
+  static const PurchaseKind PURCHASE_KIND_RENTAL =
+      PurchaseKind._(2, _omitEnumNames ? '' : 'PURCHASE_KIND_RENTAL');
+
+  static const $core.List<PurchaseKind> values = <PurchaseKind>[
+    PURCHASE_KIND_UNSPECIFIED,
+    PURCHASE_KIND_PURCHASE,
+    PURCHASE_KIND_RENTAL,
+  ];
+
+  static final $core.List<PurchaseKind?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 2);
+  static PurchaseKind? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
+
+  const PurchaseKind._(super.value, super.name);
+}
+
 /// What a tenant lets a reader show as an icon (tenant_config.reader_icon_policy).
 class ReaderIconPolicy extends $pb.ProtobufEnum {
   static const ReaderIconPolicy READER_ICON_POLICY_UNSPECIFIED =

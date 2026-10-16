@@ -61,6 +61,8 @@ SELECT e.id,
     s.public_id AS series_public_id,
     el.price,
     el.reading_period_hours,
+    el.rental_price,
+    el.rental_period_hours,
     -- Where the episode may be bought, which the caller holds against the
     -- surface the checkout is started from.
     epa.purchase_availability
@@ -82,17 +84,26 @@ WHERE e.id = sqlc.arg('id')
     )
 LIMIT 1;
 
--- name: UserHasValidPurchaseForEpisode :one
+-- name: GetActiveEpisodePurchaseKinds :one
+-- Which of the episode's two sales the reader holds an active purchase of.
 -- Only a purchase counts: an access ticket does not stop the reader buying.
 SELECT EXISTS (
-    SELECT 1
-    FROM episode_content_grants g
-    WHERE g.tenant_id = sqlc.arg('tenant_id')
-        -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
-        AND g.user_id = sqlc.arg('user_id')::uuid
-        AND g.episode_id = sqlc.arg('episode_id')
-        AND g.kind = 'purchase'
-) AS has_purchase;
+        SELECT 1
+        FROM episode_content_grants g
+        WHERE g.tenant_id = sqlc.arg('tenant_id')
+            -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
+            AND g.user_id = sqlc.arg('user_id')::uuid
+            AND g.episode_id = sqlc.arg('episode_id')
+            AND g.purchase_kind = 'purchase'
+    ) AS holds_purchase,
+    EXISTS (
+        SELECT 1
+        FROM episode_content_grants g
+        WHERE g.tenant_id = sqlc.arg('tenant_id')
+            AND g.user_id = sqlc.arg('user_id')::uuid
+            AND g.episode_id = sqlc.arg('episode_id')
+            AND g.purchase_kind = 'rental'
+    ) AS holds_rental;
 
 -- name: ListMyPurchasesDesc :many
 -- The reader's library, newest purchase first. Publication is not re-checked,
@@ -100,6 +111,7 @@ SELECT EXISTS (
 -- is: an episode that surface may not show is left out of the library read
 -- there, as it is left out of the catalog.
 SELECT p.id,
+    p.kind,
     p.price_at_purchase,
     p.currency,
     p.expires_at,
@@ -153,6 +165,7 @@ LIMIT sqlc.arg('limit');
 
 -- name: ListMyPurchasesAsc :many
 SELECT p.id,
+    p.kind,
     p.price_at_purchase,
     p.currency,
     p.expires_at,
@@ -220,7 +233,8 @@ INSERT INTO purchases (
     provider_checkout_id,
     provider_payment_id,
     is_test,
-    currency
+    currency,
+    kind
 )
 VALUES (
     sqlc.arg('id')::uuid,
@@ -233,7 +247,8 @@ VALUES (
     sqlc.arg('provider_checkout_id')::text,
     sqlc.narg('provider_payment_id')::text,
     sqlc.arg('is_test')::boolean,
-    sqlc.arg('currency')::text
+    sqlc.arg('currency')::text,
+    sqlc.arg('kind')::text
 )
 ON CONFLICT (provider, provider_checkout_id) DO NOTHING
 RETURNING *;
@@ -596,6 +611,21 @@ UPDATE
 SET provider = EXCLUDED.provider,
     provider_checkout_id = EXCLUDED.provider_checkout_id,
     expired_at = NOW();
+
+-- name: GetLastPaidCheckoutID :one
+-- The provider checkout of the reader's latest purchase of the episode, which
+-- the next checkout's idempotency key names. No row is a reader who has paid
+-- for none.
+SELECT provider_checkout_id::text
+FROM purchases
+WHERE tenant_id = sqlc.arg('tenant_id')
+    -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's purchase.
+    AND user_id = sqlc.arg('user_id')::uuid
+    AND episode_id = sqlc.arg('episode_id')
+    AND provider_checkout_id IS NOT NULL
+ORDER BY purchased_at DESC,
+    id DESC
+LIMIT 1;
 
 -- name: GetExpiredCheckoutID :one
 -- The checkout the reader last let expire on the episode, which the next

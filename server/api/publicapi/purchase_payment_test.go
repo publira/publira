@@ -260,18 +260,47 @@ func expectPurchasableEpisode(mock sqlmock.Sqlmock, tenantID, episodeID uuid.UUI
 // expectPurchasableEpisodeTitled is [expectPurchasableEpisode] for an episode
 // of the given title.
 func expectPurchasableEpisodeTitled(mock sqlmock.Sqlmock, tenantID, episodeID uuid.UUID, surface, purchaseAvailability, title string) {
+	expectPurchasableEpisodeRow(mock, tenantID, episodeID, surface, purchaseAvailability, title, sql.NullInt32{}, sql.NullInt32{})
+}
+
+// expectRentedEpisode is [expectPurchasableEpisode] for an episode also rented
+// at 200 for 48 hours.
+func expectRentedEpisode(mock sqlmock.Sqlmock, tenantID, episodeID uuid.UUID, surface string) {
+	expectPurchasableEpisodeRow(mock, tenantID, episodeID, surface, "all", "Paid episode",
+		sql.NullInt32{Int32: 200, Valid: true}, sql.NullInt32{Int32: 48, Valid: true})
+}
+
+func expectPurchasableEpisodeRow(mock sqlmock.Sqlmock, tenantID, episodeID uuid.UUID, surface, purchaseAvailability, title string, rentalPrice, rentalPeriodHours sql.NullInt32) {
 	// The locale is the reader's for a checkout and empty for a store purchase,
 	// whose answer names no title; what these tests assert does not turn on it.
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPurchasableEpisodeForTenant)).
 		WithArgs(sqlmock.AnyArg(), episodeID, tenantID, surface).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "series_public_id", "price", "reading_period_hours", "purchase_availability"}).
-			AddRow(episodeID, "EPISODE001", title, "SERIES001", int32(500), sql.NullInt32{}, purchaseAvailability))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "series_public_id", "price", "reading_period_hours", "rental_price", "rental_period_hours", "purchase_availability"}).
+			AddRow(episodeID, "EPISODE001", title, "SERIES001", int32(500), sql.NullInt32{}, rentalPrice, rentalPeriodHours, purchaseAvailability))
 }
 
-// expectNoExpiredCheckout answers that the reader has let no checkout of the
-// episode expire, so the checkout is keyed by its request alone.
-func expectNoExpiredCheckout(mock sqlmock.Sqlmock, tenantID, userID, episodeID uuid.UUID) {
+// expectNoActivePurchase answers that the reader holds neither of the
+// episode's sales.
+func expectNoActivePurchase(mock sqlmock.Sqlmock, tenantID, userID, episodeID uuid.UUID) {
+	expectActivePurchases(mock, tenantID, userID, episodeID, false, false)
+}
+
+// expectActivePurchases answers which of the episode's sales the reader holds
+// an active purchase of.
+func expectActivePurchases(mock sqlmock.Sqlmock, tenantID, userID, episodeID uuid.UUID, purchase, rental bool) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetActiveEpisodePurchaseKinds)).
+		WithArgs(tenantID, userID, episodeID).
+		WillReturnRows(sqlmock.NewRows([]string{"holds_purchase", "holds_rental"}).AddRow(purchase, rental))
+}
+
+// expectNoEarlierCheckout answers that the reader has neither let a checkout
+// of the episode expire nor paid one, so the checkout is keyed by its request
+// alone.
+func expectNoEarlierCheckout(mock sqlmock.Sqlmock, tenantID, userID, episodeID uuid.UUID) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetExpiredCheckoutID)).
+		WithArgs(tenantID, userID, episodeID).
+		WillReturnError(sql.ErrNoRows)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetLastPaidCheckoutID)).
 		WithArgs(tenantID, userID, episodeID).
 		WillReturnError(sql.ErrNoRows)
 }
@@ -345,10 +374,8 @@ func TestStartEpisodeCheckoutSellsAnAppOnlyEpisodeInTheApp(t *testing.T) {
 	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 	expectPurchasableEpisode(env.mock, tenantID, episodeID, "app", "app")
 	expectNoEpisodeGrant(env.mock, tenantID, userID, episodeID)
-	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UserHasValidPurchaseForEpisode)).
-		WithArgs(tenantID, userID, episodeID).
-		WillReturnRows(sqlmock.NewRows([]string{"has_purchase"}).AddRow(false))
-	expectNoExpiredCheckout(env.mock, tenantID, userID, episodeID)
+	expectNoActivePurchase(env.mock, tenantID, userID, episodeID)
+	expectNoEarlierCheckout(env.mock, tenantID, userID, episodeID)
 
 	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
 	resp, err := client.StartEpisodeCheckout(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.StartEpisodeCheckoutRequest{
@@ -407,10 +434,8 @@ func TestStartEpisodeCheckoutSellsOnTheWebOfATenantWhoseAppSellsThroughTheStore(
 	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 	expectPurchasableEpisode(env.mock, tenantID, episodeID, "web", "all")
 	expectNoEpisodeGrant(env.mock, tenantID, userID, episodeID)
-	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UserHasValidPurchaseForEpisode)).
-		WithArgs(tenantID, userID, episodeID).
-		WillReturnRows(sqlmock.NewRows([]string{"has_purchase"}).AddRow(false))
-	expectNoExpiredCheckout(env.mock, tenantID, userID, episodeID)
+	expectNoActivePurchase(env.mock, tenantID, userID, episodeID)
+	expectNoEarlierCheckout(env.mock, tenantID, userID, episodeID)
 
 	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
 	if _, err := client.StartEpisodeCheckout(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.StartEpisodeCheckoutRequest{
@@ -437,10 +462,8 @@ func TestStartEpisodeCheckoutUsesTenantSecret(t *testing.T) {
 	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 	expectPurchasableEpisode(env.mock, tenantID, episodeID, "web", "all")
 	expectNoEpisodeGrant(env.mock, tenantID, userID, episodeID)
-	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UserHasValidPurchaseForEpisode)).
-		WithArgs(tenantID, userID, episodeID).
-		WillReturnRows(sqlmock.NewRows([]string{"has_purchase"}).AddRow(false))
-	expectNoExpiredCheckout(env.mock, tenantID, userID, episodeID)
+	expectNoActivePurchase(env.mock, tenantID, userID, episodeID)
+	expectNoEarlierCheckout(env.mock, tenantID, userID, episodeID)
 
 	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
 	resp, err := client.StartEpisodeCheckout(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.StartEpisodeCheckoutRequest{
@@ -485,10 +508,8 @@ func TestStartEpisodeCheckoutReturnsMobileCheckoutToApp(t *testing.T) {
 	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 	expectPurchasableEpisode(env.mock, tenantID, episodeID, "app", "all")
 	expectNoEpisodeGrant(env.mock, tenantID, userID, episodeID)
-	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UserHasValidPurchaseForEpisode)).
-		WithArgs(tenantID, userID, episodeID).
-		WillReturnRows(sqlmock.NewRows([]string{"has_purchase"}).AddRow(false))
-	expectNoExpiredCheckout(env.mock, tenantID, userID, episodeID)
+	expectNoActivePurchase(env.mock, tenantID, userID, episodeID)
+	expectNoEarlierCheckout(env.mock, tenantID, userID, episodeID)
 
 	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
 	_, err := client.StartEpisodeCheckout(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.StartEpisodeCheckoutRequest{
@@ -509,6 +530,162 @@ func TestStartEpisodeCheckoutReturnsMobileCheckoutToApp(t *testing.T) {
 	assertPublicExpectations(t, env.mock)
 }
 
+// startRentalCheckout has the reader ask for a checkout of the episode rented
+// at 200 for 48 hours, holding the given active purchases of it, and answers
+// the RPC's error.
+func startRentalCheckout(t *testing.T, env publicPaymentServer, encryptor *secretcrypto.Manager, kind publirattypesv1.PurchaseKind, holdsPurchase, holdsRental bool) error {
+	t.Helper()
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	episodeID := uuid.Must(uuid.NewV7())
+	expectTenantLookupWithDefaultLocale(env.mock, tenantID, "TENANT", now, "en")
+	expectAuthSession(env.mock, tenantID, userID, now)
+	expectLegalPagesAgreed(env.mock, tenantID, userID)
+	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
+	expectRentedEpisode(env.mock, tenantID, episodeID, "web")
+	expectNoEpisodeGrant(env.mock, tenantID, userID, episodeID)
+	expectActivePurchases(env.mock, tenantID, userID, episodeID, holdsPurchase, holdsRental)
+	refused := holdsPurchase || (holdsRental && kind == publirattypesv1.PurchaseKind_PURCHASE_KIND_RENTAL)
+	if !refused {
+		expectNoEarlierCheckout(env.mock, tenantID, userID, episodeID)
+	}
+
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
+	_, err := client.StartEpisodeCheckout(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.StartEpisodeCheckoutRequest{
+		EpisodeId: episodeID.String(),
+		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Client:    publirav1.StartEpisodeCheckoutRequest_CLIENT_WEB,
+		Kind:      kind,
+	})
+	assertPublicExpectations(t, env.mock)
+	return err
+}
+
+// A rental is checked out at its own price and period, under a name that says
+// it is one, and the purchase the provider reports back carries its kind.
+func TestStartEpisodeCheckoutSellsTheRental(t *testing.T) {
+	encryptor := newPublicTestEncryptor(t)
+	env := newPublicPaymentServer(t, encryptor)
+
+	if err := startRentalCheckout(t, env, encryptor, publirattypesv1.PurchaseKind_PURCHASE_KIND_RENTAL, false, false); err != nil {
+		t.Fatalf("StartEpisodeCheckout: %v", err)
+	}
+	purchase := env.checkout.input.Purchase
+	if purchase.Kind != paymentprovider.KindRental || purchase.Price != 200 || purchase.ReadingPeriodHours != 48 {
+		t.Fatalf("checkout purchase = %+v, want a rental at 200 for 48 hours", purchase)
+	}
+	if got, want := env.checkout.input.LineItemName, "Paid episode (rental, 48 hours)"; got != want {
+		t.Fatalf("line item = %q, want %q", got, want)
+	}
+}
+
+// A client that names no kind buys the permanent copy, at its price and
+// period, under the episode's own title, whether or not the episode is rented.
+func TestStartEpisodeCheckoutSellsThePermanentCopyByDefault(t *testing.T) {
+	for _, kind := range []publirattypesv1.PurchaseKind{
+		publirattypesv1.PurchaseKind_PURCHASE_KIND_UNSPECIFIED,
+		publirattypesv1.PurchaseKind_PURCHASE_KIND_PURCHASE,
+	} {
+		t.Run(kind.String(), func(t *testing.T) {
+			encryptor := newPublicTestEncryptor(t)
+			env := newPublicPaymentServer(t, encryptor)
+
+			if err := startRentalCheckout(t, env, encryptor, kind, false, false); err != nil {
+				t.Fatalf("StartEpisodeCheckout: %v", err)
+			}
+			purchase := env.checkout.input.Purchase
+			if purchase.Kind != paymentprovider.KindPurchase || purchase.Price != 500 || purchase.ReadingPeriodHours != 0 {
+				t.Fatalf("checkout purchase = %+v, want the permanent copy at 500 that does not expire", purchase)
+			}
+			if got := env.checkout.input.LineItemName; got != "Paid episode" {
+				t.Fatalf("line item = %q, want the episode title", got)
+			}
+		})
+	}
+}
+
+// An active permanent copy leaves nothing to buy, while an active rental keeps
+// the reader from renting again and not from buying the permanent copy.
+func TestStartEpisodeCheckoutRefusesWhatTheReaderAlreadyHolds(t *testing.T) {
+	const (
+		purchase = publirattypesv1.PurchaseKind_PURCHASE_KIND_PURCHASE
+		rental   = publirattypesv1.PurchaseKind_PURCHASE_KIND_RENTAL
+	)
+	cases := []struct {
+		name                       string
+		kind                       publirattypesv1.PurchaseKind
+		holdsPurchase, holdsRental bool
+		want                       connect.Code
+	}{
+		{name: "the permanent copy over the permanent copy", kind: purchase, holdsPurchase: true, want: connect.CodeAlreadyExists},
+		{name: "a rental over the permanent copy", kind: rental, holdsPurchase: true, want: connect.CodeAlreadyExists},
+		{name: "a rental over a rental", kind: rental, holdsRental: true, want: connect.CodeAlreadyExists},
+		{name: "the permanent copy over a rental", kind: purchase, holdsRental: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			encryptor := newPublicTestEncryptor(t)
+			env := newPublicPaymentServer(t, encryptor)
+
+			err := startRentalCheckout(t, env, encryptor, tc.kind, tc.holdsPurchase, tc.holdsRental)
+			if tc.want == 0 {
+				if err != nil {
+					t.Fatalf("StartEpisodeCheckout: %v", err)
+				}
+				return
+			}
+			if connect.CodeOf(err) != tc.want {
+				t.Fatalf("StartEpisodeCheckout code = %v, want %v", connect.CodeOf(err), tc.want)
+			}
+			if env.checkout.input.SuccessURL != "" {
+				t.Fatalf("checkout created a session returning to %q, want none", env.checkout.input.SuccessURL)
+			}
+		})
+	}
+}
+
+func TestStartEpisodeCheckoutRefusesTheRentalOfAnEpisodeThatIsNotRented(t *testing.T) {
+	encryptor := newPublicTestEncryptor(t)
+	env := newPublicPaymentServer(t, encryptor)
+
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	episodeID := uuid.Must(uuid.NewV7())
+	expectTenantLookup(env.mock, tenantID, "TENANT", now)
+	expectAuthSession(env.mock, tenantID, userID, now)
+	expectLegalPagesAgreed(env.mock, tenantID, userID)
+	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
+	expectPurchasableEpisode(env.mock, tenantID, episodeID, "web", "all")
+
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
+	_, err := client.StartEpisodeCheckout(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.StartEpisodeCheckoutRequest{
+		EpisodeId: episodeID.String(),
+		Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Kind:      publirattypesv1.PurchaseKind_PURCHASE_KIND_RENTAL,
+	})
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("StartEpisodeCheckout code = %v, want failed_precondition", connect.CodeOf(err))
+	}
+	assertPublicExpectations(t, env.mock)
+}
+
+func TestStartEpisodeCheckoutRefusesAKindItDoesNotKnow(t *testing.T) {
+	env := newPublicPaymentServer(t, nil)
+
+	client := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
+	_, err := client.StartEpisodeCheckout(context.Background(), &publirav1.StartEpisodeCheckoutRequest{
+		EpisodeId: uuid.NewString(),
+		Tenant:    &publirattypesv1.TenantContext{TenantId: uuid.NewString()},
+		Kind:      publirattypesv1.PurchaseKind(99),
+	})
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("StartEpisodeCheckout code = %v, want invalid_argument", connect.CodeOf(err))
+	}
+	assertPublicExpectations(t, env.mock)
+}
+
 // startCheckoutOn has the reader start a checkout of the episode from client,
 // reading the episode under the given title, and answers the checkout URL.
 func startCheckoutOn(t *testing.T, env publicPaymentServer, encryptor *secretcrypto.Manager, tenantID, userID, episodeID uuid.UUID, client publirav1.StartEpisodeCheckoutRequest_Client, title string) string {
@@ -525,10 +702,8 @@ func startCheckoutOn(t *testing.T, env publicPaymentServer, encryptor *secretcry
 	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 	expectPurchasableEpisodeTitled(env.mock, tenantID, episodeID, surface, "all", title)
 	expectNoEpisodeGrant(env.mock, tenantID, userID, episodeID)
-	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UserHasValidPurchaseForEpisode)).
-		WithArgs(tenantID, userID, episodeID).
-		WillReturnRows(sqlmock.NewRows([]string{"has_purchase"}).AddRow(false))
-	expectNoExpiredCheckout(env.mock, tenantID, userID, episodeID)
+	expectNoActivePurchase(env.mock, tenantID, userID, episodeID)
+	expectNoEarlierCheckout(env.mock, tenantID, userID, episodeID)
 
 	purchases := publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(env.ts.Client(), env.ts.URL)))
 	resp, err := purchases.StartEpisodeCheckout(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.StartEpisodeCheckoutRequest{

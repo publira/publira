@@ -85,6 +85,7 @@ RETURNING *;
 -- name: GetMyPurchase :one
 -- One purchase of the reader's, shaped as the library lists it.
 SELECT p.id,
+    p.kind,
     p.price_at_purchase,
     p.currency,
     p.expires_at,

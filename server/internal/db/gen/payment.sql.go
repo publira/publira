@@ -27,7 +27,7 @@ WHERE d.tenant_id = p.tenant_id
     AND p.tenant_id = $1
     AND p.provider = $2::text
     AND p.provider_payment_id = $3::text
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind
 `
 
 type ApplyUnappliedDisputeToPurchaseParams struct {
@@ -65,6 +65,7 @@ func (q *Queries) ApplyUnappliedDisputeToPurchase(ctx context.Context, arg Apply
 		&i.RevocationReason,
 		&i.StaffRefundAttempt,
 		&i.DisputeLostAt,
+		&i.Kind,
 	)
 	return i, err
 }
@@ -113,7 +114,7 @@ SET refunded_amount = refund.amount,
     END
 FROM refund
 WHERE p.id = refund.id
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind
 `
 
 type ApplyUnappliedRefundToPurchaseParams struct {
@@ -153,6 +154,7 @@ func (q *Queries) ApplyUnappliedRefundToPurchase(ctx context.Context, arg ApplyU
 		&i.RevocationReason,
 		&i.StaffRefundAttempt,
 		&i.DisputeLostAt,
+		&i.Kind,
 	)
 	return i, err
 }
@@ -169,7 +171,8 @@ INSERT INTO purchases (
     provider_checkout_id,
     provider_payment_id,
     is_test,
-    currency
+    currency,
+    kind
 )
 VALUES (
     $1::uuid,
@@ -182,10 +185,11 @@ VALUES (
     $8::text,
     $9::text,
     $10::boolean,
-    $11::text
+    $11::text,
+    $12::text
 )
 ON CONFLICT (provider, provider_checkout_id) DO NOTHING
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind
 `
 
 type CreatePurchaseFromProviderCheckoutParams struct {
@@ -200,6 +204,7 @@ type CreatePurchaseFromProviderCheckoutParams struct {
 	ProviderPaymentID  sql.NullString `json:"provider_payment_id"`
 	IsTest             bool           `json:"is_test"`
 	Currency           string         `json:"currency"`
+	Kind               string         `json:"kind"`
 }
 
 // Every checkout the provider reports paid is a purchase of its own, even for a
@@ -219,6 +224,7 @@ func (q *Queries) CreatePurchaseFromProviderCheckout(ctx context.Context, arg Cr
 		arg.ProviderPaymentID,
 		arg.IsTest,
 		arg.Currency,
+		arg.Kind,
 	)
 	var i Purchase
 	err := row.Scan(
@@ -242,7 +248,48 @@ func (q *Queries) CreatePurchaseFromProviderCheckout(ctx context.Context, arg Cr
 		&i.RevocationReason,
 		&i.StaffRefundAttempt,
 		&i.DisputeLostAt,
+		&i.Kind,
 	)
+	return i, err
+}
+
+const GetActiveEpisodePurchaseKinds = `-- name: GetActiveEpisodePurchaseKinds :one
+SELECT EXISTS (
+        SELECT 1
+        FROM episode_content_grants g
+        WHERE g.tenant_id = $1
+            -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
+            AND g.user_id = $2::uuid
+            AND g.episode_id = $3
+            AND g.purchase_kind = 'purchase'
+    ) AS holds_purchase,
+    EXISTS (
+        SELECT 1
+        FROM episode_content_grants g
+        WHERE g.tenant_id = $1
+            AND g.user_id = $2::uuid
+            AND g.episode_id = $3
+            AND g.purchase_kind = 'rental'
+    ) AS holds_rental
+`
+
+type GetActiveEpisodePurchaseKindsParams struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
+}
+
+type GetActiveEpisodePurchaseKindsRow struct {
+	HoldsPurchase bool `json:"holds_purchase"`
+	HoldsRental   bool `json:"holds_rental"`
+}
+
+// Which of the episode's two sales the reader holds an active purchase of.
+// Only a purchase counts: an access ticket does not stop the reader buying.
+func (q *Queries) GetActiveEpisodePurchaseKinds(ctx context.Context, arg GetActiveEpisodePurchaseKindsParams) (GetActiveEpisodePurchaseKindsRow, error) {
+	row := q.db.QueryRowContext(ctx, GetActiveEpisodePurchaseKinds, arg.TenantID, arg.UserID, arg.EpisodeID)
+	var i GetActiveEpisodePurchaseKindsRow
+	err := row.Scan(&i.HoldsPurchase, &i.HoldsRental)
 	return i, err
 }
 
@@ -293,6 +340,35 @@ func (q *Queries) GetExpiredCheckoutID(ctx context.Context, arg GetExpiredChecko
 	return provider_checkout_id, err
 }
 
+const GetLastPaidCheckoutID = `-- name: GetLastPaidCheckoutID :one
+SELECT provider_checkout_id::text
+FROM purchases
+WHERE tenant_id = $1
+    -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's purchase.
+    AND user_id = $2::uuid
+    AND episode_id = $3
+    AND provider_checkout_id IS NOT NULL
+ORDER BY purchased_at DESC,
+    id DESC
+LIMIT 1
+`
+
+type GetLastPaidCheckoutIDParams struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
+}
+
+// The provider checkout of the reader's latest purchase of the episode, which
+// the next checkout's idempotency key names. No row is a reader who has paid
+// for none.
+func (q *Queries) GetLastPaidCheckoutID(ctx context.Context, arg GetLastPaidCheckoutIDParams) (string, error) {
+	row := q.db.QueryRowContext(ctx, GetLastPaidCheckoutID, arg.TenantID, arg.UserID, arg.EpisodeID)
+	var provider_checkout_id string
+	err := row.Scan(&provider_checkout_id)
+	return provider_checkout_id, err
+}
+
 const GetPurchasableEpisodeForTenant = `-- name: GetPurchasableEpisodeForTenant :one
 SELECT e.id,
     e.public_id,
@@ -300,6 +376,8 @@ SELECT e.id,
     s.public_id AS series_public_id,
     el.price,
     el.reading_period_hours,
+    el.rental_price,
+    el.rental_period_hours,
     -- Where the episode may be bought, which the caller holds against the
     -- surface the checkout is started from.
     epa.purchase_availability
@@ -336,6 +414,8 @@ type GetPurchasableEpisodeForTenantRow struct {
 	SeriesPublicID       string        `json:"series_public_id"`
 	Price                int32         `json:"price"`
 	ReadingPeriodHours   sql.NullInt32 `json:"reading_period_hours"`
+	RentalPrice          sql.NullInt32 `json:"rental_price"`
+	RentalPeriodHours    sql.NullInt32 `json:"rental_period_hours"`
 	PurchaseAvailability string        `json:"purchase_availability"`
 }
 
@@ -354,6 +434,8 @@ func (q *Queries) GetPurchasableEpisodeForTenant(ctx context.Context, arg GetPur
 		&i.SeriesPublicID,
 		&i.Price,
 		&i.ReadingPeriodHours,
+		&i.RentalPrice,
+		&i.RentalPeriodHours,
 		&i.PurchaseAvailability,
 	)
 	return i, err
@@ -581,6 +663,7 @@ func (q *Queries) LiftStaffRevocation(ctx context.Context, arg LiftStaffRevocati
 
 const ListMyPurchasesAsc = `-- name: ListMyPurchasesAsc :many
 SELECT p.id,
+    p.kind,
     p.price_at_purchase,
     p.currency,
     p.expires_at,
@@ -646,6 +729,7 @@ type ListMyPurchasesAscParams struct {
 
 type ListMyPurchasesAscRow struct {
 	ID                uuid.UUID     `json:"id"`
+	Kind              string        `json:"kind"`
 	PriceAtPurchase   int32         `json:"price_at_purchase"`
 	Currency          string        `json:"currency"`
 	ExpiresAt         sql.NullTime  `json:"expires_at"`
@@ -682,6 +766,7 @@ func (q *Queries) ListMyPurchasesAsc(ctx context.Context, arg ListMyPurchasesAsc
 		var i ListMyPurchasesAscRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.Kind,
 			&i.PriceAtPurchase,
 			&i.Currency,
 			&i.ExpiresAt,
@@ -712,6 +797,7 @@ func (q *Queries) ListMyPurchasesAsc(ctx context.Context, arg ListMyPurchasesAsc
 
 const ListMyPurchasesDesc = `-- name: ListMyPurchasesDesc :many
 SELECT p.id,
+    p.kind,
     p.price_at_purchase,
     p.currency,
     p.expires_at,
@@ -777,6 +863,7 @@ type ListMyPurchasesDescParams struct {
 
 type ListMyPurchasesDescRow struct {
 	ID                uuid.UUID     `json:"id"`
+	Kind              string        `json:"kind"`
 	PriceAtPurchase   int32         `json:"price_at_purchase"`
 	Currency          string        `json:"currency"`
 	ExpiresAt         sql.NullTime  `json:"expires_at"`
@@ -817,6 +904,7 @@ func (q *Queries) ListMyPurchasesDesc(ctx context.Context, arg ListMyPurchasesDe
 		var i ListMyPurchasesDescRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.Kind,
 			&i.PriceAtPurchase,
 			&i.Currency,
 			&i.ExpiresAt,
@@ -1211,7 +1299,7 @@ SET revoked_at = COALESCE(revoked_at, NOW()),
 WHERE tenant_id = $1
     AND provider = $2::text
     AND provider_payment_id = $3::text
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind
 `
 
 type RecordDisputeOnPurchaseParams struct {
@@ -1249,6 +1337,7 @@ func (q *Queries) RecordDisputeOnPurchase(ctx context.Context, arg RecordDispute
 		&i.RevocationReason,
 		&i.StaffRefundAttempt,
 		&i.DisputeLostAt,
+		&i.Kind,
 	)
 	return i, err
 }
@@ -1329,7 +1418,7 @@ WHERE p.tenant_id = $2
     AND p.provider = $3::text
     AND p.provider_payment_id = $4::text
     AND p.currency = $5::text
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind
 `
 
 type RecordFailedRefundOnPurchaseParams struct {
@@ -1385,6 +1474,7 @@ func (q *Queries) RecordFailedRefundOnPurchase(ctx context.Context, arg RecordFa
 		&i.RevocationReason,
 		&i.StaffRefundAttempt,
 		&i.DisputeLostAt,
+		&i.Kind,
 	)
 	return i, err
 }
@@ -1397,7 +1487,7 @@ SET dispute_lost_at = COALESCE(dispute_lost_at, NOW()),
 WHERE tenant_id = $1
     AND provider = $2::text
     AND provider_payment_id = $3::text
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind
 `
 
 type RecordLostDisputeOnPurchaseParams struct {
@@ -1437,6 +1527,7 @@ func (q *Queries) RecordLostDisputeOnPurchase(ctx context.Context, arg RecordLos
 		&i.RevocationReason,
 		&i.StaffRefundAttempt,
 		&i.DisputeLostAt,
+		&i.Kind,
 	)
 	return i, err
 }
@@ -1474,7 +1565,7 @@ SET refunded_amount = refund.amount,
     END
 FROM refund
 WHERE p.id = refund.id
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind
 `
 
 type RecordRefundOnPurchaseParams struct {
@@ -1529,6 +1620,7 @@ func (q *Queries) RecordRefundOnPurchase(ctx context.Context, arg RecordRefundOn
 		&i.RevocationReason,
 		&i.StaffRefundAttempt,
 		&i.DisputeLostAt,
+		&i.Kind,
 	)
 	return i, err
 }
@@ -1699,30 +1791,4 @@ func (q *Queries) UpsertTenantPaymentConfig(ctx context.Context, arg UpsertTenan
 		&i.Currency,
 	)
 	return i, err
-}
-
-const UserHasValidPurchaseForEpisode = `-- name: UserHasValidPurchaseForEpisode :one
-SELECT EXISTS (
-    SELECT 1
-    FROM episode_content_grants g
-    WHERE g.tenant_id = $1
-        -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's grant.
-        AND g.user_id = $2::uuid
-        AND g.episode_id = $3
-        AND g.kind = 'purchase'
-) AS has_purchase
-`
-
-type UserHasValidPurchaseForEpisodeParams struct {
-	TenantID  uuid.UUID `json:"tenant_id"`
-	UserID    uuid.UUID `json:"user_id"`
-	EpisodeID uuid.UUID `json:"episode_id"`
-}
-
-// Only a purchase counts: an access ticket does not stop the reader buying.
-func (q *Queries) UserHasValidPurchaseForEpisode(ctx context.Context, arg UserHasValidPurchaseForEpisodeParams) (bool, error) {
-	row := q.db.QueryRowContext(ctx, UserHasValidPurchaseForEpisode, arg.TenantID, arg.UserID, arg.EpisodeID)
-	var has_purchase bool
-	err := row.Scan(&has_purchase)
-	return has_purchase, err
 }

@@ -14,8 +14,8 @@ const catalogs = (
   english: Record<string, unknown>
 ): Map<string, unknown> =>
   new Map<string, unknown>([
-    ["ja", { email: japanese }],
-    ["en", { email: english }],
+    ["ja", { checkout: {}, email: japanese }],
+    ["en", { checkout: {}, email: english }],
   ]);
 
 describe("goString", () => {

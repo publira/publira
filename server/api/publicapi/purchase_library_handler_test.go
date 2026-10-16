@@ -34,6 +34,7 @@ func TestPurchaseListReturnsOnlySessionUsersPurchases(t *testing.T) {
 		WithArgs("ja", tenantID, userID, "web", sql.NullTime{}, false, uuid.NullUUID{}, int32(21)).
 		WillReturnRows(purchaseRows().AddRow(
 			purchaseID,
+			"purchase",
 			int32(500),
 			"USD",
 			now.Add(time.Hour),
@@ -91,6 +92,7 @@ func TestPurchaseListReportsAFullyRefundedPurchase(t *testing.T) {
 		WithArgs("ja", tenantID, userID, "web", sql.NullTime{}, false, uuid.NullUUID{}, int32(21)).
 		WillReturnRows(purchaseRows().AddRow(
 			purchaseID,
+			"purchase",
 			int32(500),
 			"JPY",
 			nil,
@@ -144,6 +146,7 @@ func TestPurchaseListReportsAPurchaseRevokedWithoutARefund(t *testing.T) {
 		WithArgs("ja", tenantID, userID, "web", sql.NullTime{}, false, uuid.NullUUID{}, int32(21)).
 		WillReturnRows(purchaseRows().AddRow(
 			uuid.Must(uuid.NewV7()),
+			"purchase",
 			int32(500),
 			"USD",
 			nil,
@@ -194,6 +197,7 @@ func TestPurchaseListReportsAPartlyRefundedPurchase(t *testing.T) {
 		WithArgs("ja", tenantID, userID, "web", sql.NullTime{}, false, uuid.NullUUID{}, int32(21)).
 		WillReturnRows(purchaseRows().AddRow(
 			uuid.Must(uuid.NewV7()),
+			"purchase",
 			int32(500),
 			"USD",
 			nil,
@@ -439,13 +443,14 @@ func TestPurchaseListRequiresSignIn(t *testing.T) {
 
 func purchaseRows() *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
-		"id", "price_at_purchase", "currency", "expires_at", "revoked_at", "refunded_amount", "refunded_at", "purchased_at", "episode_id", "episode_public_id", "episode_title", "episode_order_index", "series_id", "series_public_id", "series_title",
+		"id", "kind", "price_at_purchase", "currency", "expires_at", "revoked_at", "refunded_amount", "refunded_at", "purchased_at", "episode_id", "episode_public_id", "episode_title", "episode_order_index", "series_id", "series_public_id", "series_title",
 	})
 }
 
 func addPurchaseRow(rows *sqlmock.Rows, id uuid.UUID, purchasedAt time.Time) *sqlmock.Rows {
 	return rows.AddRow(
 		id,
+		"purchase",
 		int32(500),
 		"JPY",
 		nil,

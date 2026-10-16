@@ -210,6 +210,9 @@
       "subject": ".input {$role :string}\n.match $role\ntenant_editor {{{$tenant_name} 편집 담당 초대}}\ntenant_auditor {{{$tenant_name} 감사 담당 초대}}\n* {{{$tenant_name} 관리자 초대}}"
     }
   },
+  "checkout": {
+    "rental_line_item": "{$episode_title} (대여, {$hours :integer}시간)"
+  },
   "errors": {
     "disallowed_value": "허용되지 않는 값입니다.",
     "rpc": {

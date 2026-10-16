@@ -35,6 +35,9 @@ func SeriesFromGetSeriesByPublicIDForTenantRow(row dbmodels.GetSeriesByPublicIDF
 	if row.ReadingPeriodHours.Valid {
 		series.ReadingPeriodHours = row.ReadingPeriodHours.Int32
 	}
+	if row.RentalPeriodHours.Valid {
+		series.RentalPeriodHours = row.RentalPeriodHours.Int32
+	}
 	if row.Status.Valid {
 		status, err := SeriesStatusFromStored(row.Status.String)
 		if err != nil {
@@ -81,6 +84,7 @@ func EpisodeFromGetEpisodeByPublicIDForTenantRow(row dbmodels.GetEpisodeByPublic
 	if row.ReadingPeriodHours.Valid {
 		episode.ReadingPeriodHours = row.ReadingPeriodHours.Int32
 	}
+	SetEpisodeRental(episode, row.RentalPrice, row.RentalPeriodHours)
 	if row.ScheduledAt.Valid {
 		episode.ScheduledAt = row.ScheduledAt.Time.UTC().Format(time.RFC3339)
 	}
@@ -108,6 +112,7 @@ func EpisodeFromGetEpisodeByPublicIDForTenantAndSeriesRow(row dbmodels.GetEpisod
 	if row.ReadingPeriodHours.Valid {
 		episode.ReadingPeriodHours = row.ReadingPeriodHours.Int32
 	}
+	SetEpisodeRental(episode, row.RentalPrice, row.RentalPeriodHours)
 	if row.ScheduledAt.Valid {
 		episode.ScheduledAt = row.ScheduledAt.Time.UTC().Format(time.RFC3339)
 	}
@@ -134,6 +139,7 @@ func EpisodeFromGetPublishedEpisodeForTenantRow(row dbmodels.GetPublishedEpisode
 	if row.ReadingPeriodHours.Valid {
 		episode.ReadingPeriodHours = row.ReadingPeriodHours.Int32
 	}
+	SetEpisodeRental(episode, row.RentalPrice, row.RentalPeriodHours)
 	if row.ScheduledAt.Valid {
 		episode.ScheduledAt = row.ScheduledAt.Time.UTC().Format(time.RFC3339)
 	}
@@ -158,6 +164,7 @@ func EpisodeFromListEpisodesBySeriesForTenantRow(row dbmodels.ListEpisodesBySeri
 	if row.ReadingPeriodHours.Valid {
 		episode.ReadingPeriodHours = row.ReadingPeriodHours.Int32
 	}
+	SetEpisodeRental(episode, row.RentalPrice, row.RentalPeriodHours)
 	if row.ScheduledAt.Valid {
 		episode.ScheduledAt = row.ScheduledAt.Time.UTC().Format(time.RFC3339)
 	}
@@ -216,6 +223,16 @@ func EpisodeFromListMyRecentSeriesRow(row dbmodels.ListMyRecentSeriesDescRow) *p
 		episode.FreeUntil = row.FreeUntil.Time.UTC().Format(time.RFC3339)
 	}
 	return episode
+}
+
+// SetEpisodeRental puts the episode's rental onto it. The listing holds both
+// columns or neither, so an episode that is not rented keeps both at 0.
+func SetEpisodeRental(episode *publirattypesv1.Episode, price, periodHours sql.NullInt32) {
+	if !price.Valid || !periodHours.Valid {
+		return
+	}
+	episode.RentalPrice = price.Int32
+	episode.RentalPeriodHours = periodHours.Int32
 }
 
 func EpisodeImageFromEpisodeImage(row dbmodels.ListEpisodeImagesByEpisodeIDRow) *publirattypesv1.EpisodeImage {

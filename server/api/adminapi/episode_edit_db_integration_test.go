@@ -381,3 +381,127 @@ func TestDBReplaceEpisodeImageRefusesWithoutTouchingThePages(t *testing.T) {
 		})
 	}
 }
+
+// The console writes an episode's rental beside its permanent copy, reads it
+// back on every episode read, and stops renting the episode when a pricing
+// change states no rental. A rental that would not undercut the permanent copy
+// is refused without writing.
+func TestDBEpisodeRentalIsPricedBesideThePermanentCopy(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.seriesClient()
+	ctx := testutil.WithBearer(context.Background(), tenant.token())
+	seriesPublicID := createDBSeries(t, client, tenant, "Rented Series")
+
+	created, err := client.CreateEpisode(ctx, &publiraadminv1.CreateEpisodeRequest{
+		Tenant:            tenant.tenantContext(),
+		SeriesId:          env.seriesID(t, seriesPublicID),
+		Title:             "Chapter One",
+		Price:             500,
+		RentalPrice:       200,
+		RentalPeriodHours: 48,
+	})
+	if err != nil {
+		t.Fatalf("CreateEpisode: %v", err)
+	}
+	if got := created.Episode; got.RentalPrice != 200 || got.RentalPeriodHours != 48 {
+		t.Fatalf("created rental = (%d, %d), want (200, 48)", got.RentalPrice, got.RentalPeriodHours)
+	}
+	if got := getDBEpisode(t, env, tenant, seriesPublicID, created.Episode.PublicId).Episode; got.RentalPrice != 200 || got.RentalPeriodHours != 48 {
+		t.Fatalf("stored rental = (%d, %d), want (200, 48)", got.RentalPrice, got.RentalPeriodHours)
+	}
+	listed, err := client.ListEpisodes(ctx, &publiraadminv1.ListEpisodesRequest{
+		Tenant:   tenant.tenantContext(),
+		SeriesId: env.seriesID(t, seriesPublicID),
+	})
+	if err != nil {
+		t.Fatalf("ListEpisodes: %v", err)
+	}
+	if len(listed.Episodes) != 1 || listed.Episodes[0].RentalPrice != 200 || listed.Episodes[0].RentalPeriodHours != 48 {
+		t.Fatalf("listed episodes = %v, want the one rented at 200 for 48 hours", listed.Episodes)
+	}
+
+	episodeID := env.episodeID(t, created.Episode.PublicId)
+	if _, err := client.UpdateEpisodePricing(ctx, &publiraadminv1.UpdateEpisodePricingRequest{
+		Tenant:            tenant.tenantContext(),
+		EpisodeId:         episodeID,
+		Price:             100,
+		RentalPrice:       200,
+		RentalPeriodHours: 48,
+	}); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("UpdateEpisodePricing below the rental error = %v, want invalid_argument", err)
+	}
+	if got := getDBEpisode(t, env, tenant, seriesPublicID, created.Episode.PublicId).Episode; got.Price != 500 || got.RentalPrice != 200 {
+		t.Fatalf("prices after the refused change = (%d, rental %d), want (500, rental 200)", got.Price, got.RentalPrice)
+	}
+
+	if _, err := client.UpdateEpisodePricing(ctx, &publiraadminv1.UpdateEpisodePricingRequest{
+		Tenant:    tenant.tenantContext(),
+		EpisodeId: episodeID,
+		Price:     500,
+	}); err != nil {
+		t.Fatalf("UpdateEpisodePricing without a rental: %v", err)
+	}
+	if got := env.countRows(t, "SELECT count(*) FROM episode_listings WHERE episode_id = $1 AND rental_price IS NULL AND rental_period_hours IS NULL", episodeID); got != 1 {
+		t.Fatalf("listings that are not rented = %d, want 1", got)
+	}
+}
+
+// A series states where the rental period of its new episodes starts, as it
+// does the reading period: a save that leaves the field out keeps it, and zero
+// clears it.
+func TestDBSeriesKeepsADefaultRentalPeriod(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.seriesClient()
+	ctx := testutil.WithBearer(context.Background(), tenant.token())
+
+	created, err := client.CreateSeries(ctx, &publiraadminv1.CreateSeriesRequest{
+		Tenant:            tenant.tenantContext(),
+		Title:             "Rented Series",
+		RentalPeriodHours: 72,
+	})
+	if err != nil {
+		t.Fatalf("CreateSeries: %v", err)
+	}
+	if created.Series.RentalPeriodHours != 72 {
+		t.Fatalf("created rental period = %d, want 72", created.Series.RentalPeriodHours)
+	}
+	rentalPeriod := func() int32 {
+		t.Helper()
+		got, err := client.GetSeries(ctx, &publiraadminv1.GetSeriesRequest{Tenant: tenant.tenantContext(), PublicId: created.Series.PublicId})
+		if err != nil {
+			t.Fatalf("GetSeries: %v", err)
+		}
+		return got.Series.RentalPeriodHours
+	}
+	update := func(hours *int32) {
+		t.Helper()
+		if _, err := client.UpdateSeries(ctx, &publiraadminv1.UpdateSeriesRequest{
+			Tenant:            tenant.tenantContext(),
+			SeriesId:          created.Series.Id,
+			Title:             "Rented Series",
+			RentalPeriodHours: hours,
+		}); err != nil {
+			t.Fatalf("UpdateSeries: %v", err)
+		}
+	}
+
+	update(nil)
+	if got := rentalPeriod(); got != 72 {
+		t.Fatalf("rental period after a save that leaves it out = %d, want 72", got)
+	}
+	update(new(int32))
+	if got := rentalPeriod(); got != 0 {
+		t.Fatalf("rental period after clearing it = %d, want 0", got)
+	}
+	negative := int32(-1)
+	if _, err := client.UpdateSeries(ctx, &publiraadminv1.UpdateSeriesRequest{
+		Tenant:            tenant.tenantContext(),
+		SeriesId:          created.Series.Id,
+		Title:             "Rented Series",
+		RentalPeriodHours: &negative,
+	}); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("UpdateSeries with a negative rental period error = %v, want invalid_argument", err)
+	}
+}

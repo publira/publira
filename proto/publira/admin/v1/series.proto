@@ -54,6 +54,9 @@ message CreateSeriesRequest {
   // Where the reading period of each new episode in the series starts. Zero
   // starts them with no limit.
   int32 reading_period_hours = 6;
+  // Where the rental period of each new episode in the series starts. Zero
+  // states none. Negative is invalid_argument.
+  int32 rental_period_hours = 27;
   bytes eye_catch_image_data = 8;
   string eye_catch_image_content_type = 9;
   string published_at = 12;
@@ -157,6 +160,10 @@ message UpdateSeriesRequest {
   // episode keeps the value it was created with. Zero, sent explicitly, clears
   // it, so new episodes start with no limit.
   optional int32 reading_period_hours = 6;
+  // Where the rental period of each new episode in the series starts; an
+  // episode keeps the value it was created with. Zero, sent explicitly, clears
+  // it. Negative is invalid_argument.
+  optional int32 rental_period_hours = 29;
   bytes eye_catch_image_data = 9;
   string eye_catch_image_content_type = 10;
   bool clear_eye_catch_image = 11;
@@ -361,6 +368,12 @@ message UpdateEpisodePricingRequest {
   // currency, rather than stored as an amount of the currency it changed to.
   // Empty states none, and the price is written unchecked.
   string currency = 5;
+  // The rental, written with the permanent copy's terms on every call: both
+  // zero stop renting the episode. Otherwise both have to be positive and
+  // rental_price below price, or the call is invalid_argument, so a free
+  // episode is never rented.
+  int32 rental_price = 6;
+  int32 rental_period_hours = 7;
 }
 
 message UpdateEpisodePricingResponse {
@@ -475,6 +488,10 @@ message CreateEpisodeRequest {
   // translation. Empty means the tenant's default locale; a locale the tenant does
   // not offer is invalid_argument.
   string locale = 12;
+  // The rental, validated as UpdateEpisodePricingRequest's is. Both zero
+  // create an episode that is not rented.
+  int32 rental_price = 13;
+  int32 rental_period_hours = 14;
 }
 
 message CreateEpisodeResponse {

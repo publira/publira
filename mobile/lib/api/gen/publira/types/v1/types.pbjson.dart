@@ -146,6 +146,21 @@ final $typed_data.Uint8List surfaceAvailabilityDescriptor = $convert.base64Decod
     'VEEAASHAoYU1VSRkFDRV9BVkFJTEFCSUxJVFlfQUxMEAESHAoYU1VSRkFDRV9BVkFJTEFCSUxJ'
     'VFlfV0VCEAISHAoYU1VSRkFDRV9BVkFJTEFCSUxJVFlfQVBQEAM=');
 
+@$core.Deprecated('Use purchaseKindDescriptor instead')
+const PurchaseKind$json = {
+  '1': 'PurchaseKind',
+  '2': [
+    {'1': 'PURCHASE_KIND_UNSPECIFIED', '2': 0},
+    {'1': 'PURCHASE_KIND_PURCHASE', '2': 1},
+    {'1': 'PURCHASE_KIND_RENTAL', '2': 2},
+  ],
+};
+
+/// Descriptor for `PurchaseKind`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List purchaseKindDescriptor = $convert.base64Decode(
+    'CgxQdXJjaGFzZUtpbmQSHQoZUFVSQ0hBU0VfS0lORF9VTlNQRUNJRklFRBAAEhoKFlBVUkNIQV'
+    'NFX0tJTkRfUFVSQ0hBU0UQARIYChRQVVJDSEFTRV9LSU5EX1JFTlRBTBAC');
+
 @$core.Deprecated('Use readerIconPolicyDescriptor instead')
 const ReaderIconPolicy$json = {
   '1': 'ReaderIconPolicy',
@@ -554,6 +569,13 @@ const Series$json = {
       '10': 'availability'
     },
     {'1': 'id', '3': 22, '4': 1, '5': 9, '10': 'id'},
+    {
+      '1': 'rental_period_hours',
+      '3': 23,
+      '4': 1,
+      '5': 5,
+      '10': 'rentalPeriodHours'
+    },
   ],
   '9': [
     {'1': 7, '2': 8},
@@ -579,8 +601,8 @@ final $typed_data.Uint8List seriesDescriptor = $convert.base64Decode(
     'R0YWdzEiwKEmZyZWVfZXBpc29kZV9jb3VudBgSIAEoBVIQZnJlZUVwaXNvZGVDb3VudBIlCg5y'
     'YXRpbmdfYXZlcmFnZRgTIAEoAVINcmF0aW5nQXZlcmFnZRIhCgxyYXRpbmdfY291bnQYFCABKA'
     'NSC3JhdGluZ0NvdW50EkkKDGF2YWlsYWJpbGl0eRgVIAEoDjIlLnB1YmxpcmEudHlwZXMudjEu'
-    'U3VyZmFjZUF2YWlsYWJpbGl0eVIMYXZhaWxhYmlsaXR5Eg4KAmlkGBYgASgJUgJpZEoECAcQCE'
-    'oECAgQCQ==');
+    'U3VyZmFjZUF2YWlsYWJpbGl0eVIMYXZhaWxhYmlsaXR5Eg4KAmlkGBYgASgJUgJpZBIuChNyZW'
+    '50YWxfcGVyaW9kX2hvdXJzGBcgASgFUhFyZW50YWxQZXJpb2RIb3Vyc0oECAcQCEoECAgQCQ==');
 
 @$core.Deprecated('Use episodeDescriptor instead')
 const Episode$json = {
@@ -657,6 +679,14 @@ const Episode$json = {
       '6': '.publira.types.v1.SeriesEyeCatchVariant',
       '10': 'eyeCatchImageVariants'
     },
+    {'1': 'rental_price', '3': 19, '4': 1, '5': 5, '10': 'rentalPrice'},
+    {
+      '1': 'rental_period_hours',
+      '3': 20,
+      '4': 1,
+      '5': 5,
+      '10': 'rentalPeriodHours'
+    },
   ],
 };
 
@@ -677,7 +707,8 @@ final $typed_data.Uint8List episodeDescriptor = $convert.base64Decode(
     'ZV91bnRpbBgQIAEoCVIJZnJlZVVudGlsEjoKGmV5ZV9jYXRjaF9pbWFnZV91cGRhdGVkX2F0GB'
     'EgASgJUhZleWVDYXRjaEltYWdlVXBkYXRlZEF0EmAKGGV5ZV9jYXRjaF9pbWFnZV92YXJpYW50'
     'cxgSIAMoCzInLnB1YmxpcmEudHlwZXMudjEuU2VyaWVzRXllQ2F0Y2hWYXJpYW50UhVleWVDYX'
-    'RjaEltYWdlVmFyaWFudHM=');
+    'RjaEltYWdlVmFyaWFudHMSIQoMcmVudGFsX3ByaWNlGBMgASgFUgtyZW50YWxQcmljZRIuChNy'
+    'ZW50YWxfcGVyaW9kX2hvdXJzGBQgASgFUhFyZW50YWxQZXJpb2RIb3Vycw==');
 
 @$core.Deprecated('Use episodeImageDescriptor instead')
 const EpisodeImage$json = {

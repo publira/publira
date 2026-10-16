@@ -44,6 +44,7 @@ func TestParseNotification(t *testing.T) {
 		TenantID:  uuid.New(),
 		ReaderID:  uuid.New(),
 		EpisodeID: uuid.New(),
+		Kind:      paymentprovider.KindPurchase,
 		Price:     500,
 		Currency:  "JPY",
 	}
@@ -112,6 +113,7 @@ func TestParseNotificationReadsDisputesAndExpiredCheckouts(t *testing.T) {
 			TenantID:           uuid.New(),
 			ReaderID:           uuid.New(),
 			EpisodeID:          uuid.New(),
+			Kind:               paymentprovider.KindPurchase,
 			Price:              500,
 			Currency:           "JPY",
 			ReadingPeriodHours: 72,

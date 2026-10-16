@@ -27,6 +27,7 @@ func testPurchase() paymentprovider.Purchase {
 		TenantID:           uuid.New(),
 		ReaderID:           uuid.New(),
 		EpisodeID:          uuid.New(),
+		Kind:               paymentprovider.KindPurchase,
 		Price:              500,
 		Currency:           "JPY",
 		ReadingPeriodHours: 72,
@@ -38,7 +39,7 @@ func TestStartCheckoutAsksForACardPaymentWithThreeDSecure(t *testing.T) {
 	purchase := testPurchase()
 	checkoutURL, err := payjp.New(payjp.WithBaseURL(api.URL())).StartCheckout(t.Context(), testCredentials, paymentprovider.CheckoutRequest{
 		Purchase:       purchase,
-		EpisodeTitle:   "Episode 1",
+		LineItemName:   "Episode 1",
 		SuccessURL:     "https://store.example/series/SR01/episodes/EP01?checkout=success",
 		CancelURL:      "https://store.example/series/SR01/episodes/EP01?checkout=cancelled",
 		IdempotencyKey: "episode-checkout:key",

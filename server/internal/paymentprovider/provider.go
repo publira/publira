@@ -7,6 +7,7 @@ package paymentprovider
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"slices"
@@ -103,12 +104,44 @@ func (d Declaration) Missing(c Credentials) []string {
 	return missing
 }
 
+// Kind is which of an episode's two sales a purchase is, spelled as
+// purchases.kind stores it.
+type Kind string
+
+const (
+	// KindPurchase is the permanent copy, which a checkout that names no kind
+	// sells.
+	KindPurchase Kind = "purchase"
+	// KindRental is the rental, which always expires.
+	KindRental Kind = "rental"
+)
+
+// ParseKind answers the kind a checkout's metadata names, beside the reading
+// period the same metadata names. Empty is [KindPurchase], what a checkout
+// started before kinds existed sold; anything else it does not know is an
+// error. So is a rental without a positive period: recorded, it would be a
+// purchase that never expires, sold at the rental's price.
+func ParseKind(value string, readingPeriodHours int64) (Kind, error) {
+	switch Kind(value) {
+	case "", KindPurchase:
+		return KindPurchase, nil
+	case KindRental:
+		if readingPeriodHours <= 0 {
+			return "", errors.New("a rental names no reading period")
+		}
+		return KindRental, nil
+	}
+	return "", fmt.Errorf("unknown purchase kind %q", value)
+}
+
 // Purchase names what a completed checkout sells. The provider carries it
 // from [CheckoutRequest] to the notification that confirms it.
 type Purchase struct {
 	TenantID  uuid.UUID
 	ReaderID  uuid.UUID
 	EpisodeID uuid.UUID
+	// Kind is which of the episode's sales the checkout is for.
+	Kind Kind
 	// Price is the episode's price at the time of checkout, in the minor unit
 	// of Currency.
 	Price int32
@@ -118,14 +151,16 @@ type Purchase struct {
 	// currency the reader actually paid in.
 	Currency string
 	// ReadingPeriodHours limits how long the purchase opens the episode; zero
-	// means it does not expire.
+	// means it does not expire. A rental carries its rental period here.
 	ReadingPeriodHours int32
 }
 
 // CheckoutRequest starts one reader's checkout of one episode.
 type CheckoutRequest struct {
-	Purchase     Purchase
-	EpisodeTitle string
+	Purchase Purchase
+	// LineItemName is what the checkout names the sale: the episode's title,
+	// and for a rental the period it is rented for besides.
+	LineItemName string
 	// SuccessURL and CancelURL are where the reader returns to afterwards.
 	SuccessURL string
 	CancelURL  string

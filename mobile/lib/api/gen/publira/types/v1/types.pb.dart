@@ -1248,6 +1248,7 @@ class Series extends $pb.GeneratedMessage {
     $fixnum.Int64? ratingCount,
     SurfaceAvailability? availability,
     $core.String? id,
+    $core.int? rentalPeriodHours,
   }) {
     final result = Series._();
     if (publicId != null) result.publicId = publicId;
@@ -1274,6 +1275,7 @@ class Series extends $pb.GeneratedMessage {
     if (ratingCount != null) result.ratingCount = ratingCount;
     if (availability != null) result.availability = availability;
     if (id != null) result.id = id;
+    if (rentalPeriodHours != null) result.rentalPeriodHours = rentalPeriodHours;
     return result;
   }
 
@@ -1321,6 +1323,7 @@ class Series extends $pb.GeneratedMessage {
     ..aE<SurfaceAvailability>(21, _omitFieldNames ? '' : 'availability',
         enumValues: SurfaceAvailability.values)
     ..aOS(22, _omitFieldNames ? '' : 'id')
+    ..aI(23, _omitFieldNames ? '' : 'rentalPeriodHours')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1522,6 +1525,18 @@ class Series extends $pb.GeneratedMessage {
   $core.bool hasId() => $_has(19);
   @$pb.TagNumber(22)
   void clearId() => $_clearField(22);
+
+  /// Where the rental period of each new episode in the series starts, as
+  /// `reading_period_hours` is for the permanent copy's. Zero states none. Set
+  /// on the console's reads and 0 on the public ones.
+  @$pb.TagNumber(23)
+  $core.int get rentalPeriodHours => $_getIZ(20);
+  @$pb.TagNumber(23)
+  set rentalPeriodHours($core.int value) => $_setSignedInt32(20, value);
+  @$pb.TagNumber(23)
+  $core.bool hasRentalPeriodHours() => $_has(20);
+  @$pb.TagNumber(23)
+  void clearRentalPeriodHours() => $_clearField(23);
 }
 
 class Episode extends $pb.GeneratedMessage {
@@ -1544,6 +1559,8 @@ class Episode extends $pb.GeneratedMessage {
     $core.String? freeUntil,
     $core.String? eyeCatchImageUpdatedAt,
     $core.Iterable<SeriesEyeCatchVariant>? eyeCatchImageVariants,
+    $core.int? rentalPrice,
+    $core.int? rentalPeriodHours,
   }) {
     final result = Episode._();
     if (publicId != null) result.publicId = publicId;
@@ -1568,6 +1585,8 @@ class Episode extends $pb.GeneratedMessage {
       result.eyeCatchImageUpdatedAt = eyeCatchImageUpdatedAt;
     if (eyeCatchImageVariants != null)
       result.eyeCatchImageVariants.addAll(eyeCatchImageVariants);
+    if (rentalPrice != null) result.rentalPrice = rentalPrice;
+    if (rentalPeriodHours != null) result.rentalPeriodHours = rentalPeriodHours;
     return result;
   }
 
@@ -1609,6 +1628,8 @@ class Episode extends $pb.GeneratedMessage {
     ..pPM<SeriesEyeCatchVariant>(
         18, _omitFieldNames ? '' : 'eyeCatchImageVariants',
         subBuilder: SeriesEyeCatchVariant.$_createMessage)
+    ..aI(19, _omitFieldNames ? '' : 'rentalPrice')
+    ..aI(20, _omitFieldNames ? '' : 'rentalPeriodHours')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1829,6 +1850,32 @@ class Episode extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(18)
   $pb.PbList<SeriesEyeCatchVariant> get eyeCatchImageVariants => $_getList(17);
+
+  /// The rental: what renting the episode costs, in the minor unit `price` is
+  /// in, and how long the rental opens it. Both are 0 on an episode that is not
+  /// rented, and both are set on one that is: `price` then stays what the
+  /// permanent copy costs, and `reading_period_hours` its expiry, if any. A
+  /// rental is always cheaper than the permanent copy.
+  ///
+  /// Set on GetEpisodeDetail, on the episodes GetSeriesDetail lists, and on the
+  /// console's episode reads and writes; 0 elsewhere.
+  @$pb.TagNumber(19)
+  $core.int get rentalPrice => $_getIZ(18);
+  @$pb.TagNumber(19)
+  set rentalPrice($core.int value) => $_setSignedInt32(18, value);
+  @$pb.TagNumber(19)
+  $core.bool hasRentalPrice() => $_has(18);
+  @$pb.TagNumber(19)
+  void clearRentalPrice() => $_clearField(19);
+
+  @$pb.TagNumber(20)
+  $core.int get rentalPeriodHours => $_getIZ(19);
+  @$pb.TagNumber(20)
+  set rentalPeriodHours($core.int value) => $_setSignedInt32(19, value);
+  @$pb.TagNumber(20)
+  $core.bool hasRentalPeriodHours() => $_has(19);
+  @$pb.TagNumber(20)
+  void clearRentalPeriodHours() => $_clearField(20);
 }
 
 class EpisodeImage extends $pb.GeneratedMessage {

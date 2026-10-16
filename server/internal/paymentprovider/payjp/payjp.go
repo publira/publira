@@ -42,6 +42,9 @@ const (
 	MetadataEpisodeID          = "episode_id"
 	MetadataPrice              = "price"
 	MetadataReadingPeriodHours = "reading_period_hours"
+	// MetadataKind is absent on a checkout started before an episode had
+	// two sales, which sold the permanent copy.
+	MetadataKind = "kind"
 
 	// The notification types the purchase flow reads.
 	EventCheckoutSessionCompleted = "checkout.session.completed"
@@ -128,7 +131,7 @@ func (p *Provider) StartCheckout(ctx context.Context, credentials paymentprovide
 		LineItems: &[]payjpv2.LineItemRequest{{
 			PriceData: &payjpv2.PriceDataRequest{
 				Currency:    payjpv2.Currency(strings.ToLower(req.Purchase.Currency)),
-				ProductData: &payjpv2.ProductDataRequest{Name: req.EpisodeTitle},
+				ProductData: &payjpv2.ProductDataRequest{Name: req.LineItemName},
 				UnitAmount:  int(req.Purchase.Price),
 			},
 			Quantity: 1,
@@ -177,6 +180,9 @@ func sessionMetadata(purchase paymentprovider.Purchase) (map[string]payjpv2.Chec
 	}
 	if purchase.ReadingPeriodHours > 0 {
 		values[MetadataReadingPeriodHours] = strconv.FormatInt(int64(purchase.ReadingPeriodHours), 10)
+	}
+	if purchase.Kind != "" {
+		values[MetadataKind] = string(purchase.Kind)
 	}
 	metadata := make(map[string]payjpv2.CheckoutSessionCreateRequest_Metadata_AdditionalProperties, len(values))
 	for key, value := range values {
@@ -467,10 +473,19 @@ func parsePurchaseMetadata(metadata map[string]json.RawMessage) (paymentprovider
 	} else if _, present := metadata[MetadataReadingPeriodHours]; present {
 		return paymentprovider.Purchase{}, errors.New("invalid reading period metadata")
 	}
+	kindValue, ok := value(MetadataKind)
+	if _, present := metadata[MetadataKind]; present && !ok {
+		return paymentprovider.Purchase{}, errors.New("invalid kind metadata")
+	}
+	kind, err := paymentprovider.ParseKind(kindValue, readingPeriodHours)
+	if err != nil {
+		return paymentprovider.Purchase{}, fmt.Errorf("invalid kind metadata: %w", err)
+	}
 	return paymentprovider.Purchase{
 		TenantID:           tenantID,
 		ReaderID:           userID,
 		EpisodeID:          episodeID,
+		Kind:               kind,
 		Price:              int32(price),
 		ReadingPeriodHours: int32(readingPeriodHours),
 	}, nil

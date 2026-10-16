@@ -2867,6 +2867,14 @@ const StartEpisodeCheckoutRequest$json = {
     },
     {'1': 'episode_id', '3': 4, '4': 1, '5': 9, '10': 'episodeId'},
     {'1': 'locale', '3': 5, '4': 1, '5': 9, '10': 'locale'},
+    {
+      '1': 'kind',
+      '3': 6,
+      '4': 1,
+      '5': 14,
+      '6': '.publira.types.v1.PurchaseKind',
+      '10': 'kind'
+    },
   ],
   '4': [StartEpisodeCheckoutRequest_Client$json],
   '9': [
@@ -2890,9 +2898,10 @@ final $typed_data.Uint8List startEpisodeCheckoutRequestDescriptor = $convert.bas
     'ChtTdGFydEVwaXNvZGVDaGVja291dFJlcXVlc3QSNwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS'
     '50eXBlcy52MS5UZW5hbnRDb250ZXh0UgZ0ZW5hbnQSRgoGY2xpZW50GAMgASgOMi4ucHVibGly'
     'YS52MS5TdGFydEVwaXNvZGVDaGVja291dFJlcXVlc3QuQ2xpZW50UgZjbGllbnQSHQoKZXBpc2'
-    '9kZV9pZBgEIAEoCVIJZXBpc29kZUlkEhYKBmxvY2FsZRgFIAEoCVIGbG9jYWxlIkMKBkNsaWVu'
-    'dBIWChJDTElFTlRfVU5TUEVDSUZJRUQQABIOCgpDTElFTlRfV0VCEAESEQoNQ0xJRU5UX01PQk'
-    'lMRRACSgQIAhADUhFlcGlzb2RlX3B1YmxpY19pZA==');
+    '9kZV9pZBgEIAEoCVIJZXBpc29kZUlkEhYKBmxvY2FsZRgFIAEoCVIGbG9jYWxlEjIKBGtpbmQY'
+    'BiABKA4yHi5wdWJsaXJhLnR5cGVzLnYxLlB1cmNoYXNlS2luZFIEa2luZCJDCgZDbGllbnQSFg'
+    'oSQ0xJRU5UX1VOU1BFQ0lGSUVEEAASDgoKQ0xJRU5UX1dFQhABEhEKDUNMSUVOVF9NT0JJTEUQ'
+    'AkoECAIQA1IRZXBpc29kZV9wdWJsaWNfaWQ=');
 
 @$core.Deprecated('Use startEpisodeCheckoutResponseDescriptor instead')
 const StartEpisodeCheckoutResponse$json = {
@@ -2937,6 +2946,14 @@ const MyPurchase$json = {
     {'1': 'refunded_amount', '3': 9, '4': 1, '5': 5, '10': 'refundedAmount'},
     {'1': 'refunded_at', '3': 10, '4': 1, '5': 9, '10': 'refundedAt'},
     {'1': 'revoked_at', '3': 11, '4': 1, '5': 9, '10': 'revokedAt'},
+    {
+      '1': 'kind',
+      '3': 12,
+      '4': 1,
+      '5': 14,
+      '6': '.publira.types.v1.PurchaseKind',
+      '10': 'kind'
+    },
   ],
 };
 
@@ -2949,7 +2966,8 @@ final $typed_data.Uint8List myPurchaseDescriptor = $convert.base64Decode(
     'YXQYBiABKAlSCWV4cGlyZXNBdBIbCglpc19hY3RpdmUYByABKAhSCGlzQWN0aXZlEhoKCGN1cn'
     'JlbmN5GAggASgJUghjdXJyZW5jeRInCg9yZWZ1bmRlZF9hbW91bnQYCSABKAVSDnJlZnVuZGVk'
     'QW1vdW50Eh8KC3JlZnVuZGVkX2F0GAogASgJUgpyZWZ1bmRlZEF0Eh0KCnJldm9rZWRfYXQYCy'
-    'ABKAlSCXJldm9rZWRBdA==');
+    'ABKAlSCXJldm9rZWRBdBIyCgRraW5kGAwgASgOMh4ucHVibGlyYS50eXBlcy52MS5QdXJjaGFz'
+    'ZUtpbmRSBGtpbmQ=');
 
 @$core.Deprecated('Use listMyPurchasesRequestDescriptor instead')
 const ListMyPurchasesRequest$json = {
