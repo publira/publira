@@ -79,6 +79,18 @@ export const authTokenSearchParamSchema = searchParamString({
  */
 export const tenantIdSchema = z.string().trim().refine(isTenantIdFormat);
 
+/**
+ * The `PublicKeyCredential` a passkey ceremony produced, as its `toJSON()`
+ * serialized it. Only its presence and size are checked here: the API parses
+ * and verifies it against the ceremony it began, and an assertion runs to a
+ * few hundred bytes, so the bound only stops a body no authenticator writes.
+ */
+export const passkeyCredentialFormSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(64 * 1024);
+
 export const authTokenFormSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 

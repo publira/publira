@@ -151,6 +151,79 @@ export const loginPublic = async (
   }
 };
 
+/**
+ * Why the API turned a passkey sign-in away. As with a password, too many
+ * attempts is told apart from the rest: it came before the passkey was
+ * checked, so it says nothing about the passkey.
+ */
+export type PasskeyLoginRefusal = "rate-limited" | "refused";
+
+/** The options the browser asks the authenticator with, as JSON. */
+export type PasskeyLoginStartResult =
+  | { ok: true; optionsJson: string }
+  | { ok: false; refusal: PasskeyLoginRefusal };
+
+export type PasskeyLoginResult =
+  | { ok: true; session: PublicSession }
+  | { ok: false; refusal: PasskeyLoginRefusal };
+
+const passkeyLoginRefusal = (error: unknown): PasskeyLoginRefusal => {
+  if (!isRejectedRequestRpcError(error)) {
+    throw error;
+  }
+  return rpcErrorDisposition(error) === "rate-limited"
+    ? "rate-limited"
+    : "refused";
+};
+
+/**
+ * Begin a sign-in with a passkey alone. The options name no account, so the
+ * browser offers whichever passkey the reader holds for the site. Each begin
+ * spends one of the sign-in attempts of the reader's address, which a
+ * sign-in that succeeds gives back.
+ */
+export const beginPasskeyLoginPublic = async (
+  tenantId: string
+): Promise<PasskeyLoginStartResult> => {
+  try {
+    const response = await apiClient.auth.beginPasskeyLogin(
+      { tenant: { tenantId } },
+      await buildClientAddressHeaders()
+    );
+    return { ok: true, optionsJson: response.requestOptionsJson };
+  } catch (error) {
+    return { ok: false, refusal: passkeyLoginRefusal(error) };
+  }
+};
+
+/**
+ * Exchange the assertion the browser made over a challenge
+ * {@link beginPasskeyLoginPublic} issued for a session. A passkey the site
+ * does not know, a spent or expired challenge, and an account that cannot sign
+ * in are all one refusal: the reader's way forward is the same for each.
+ */
+export const finishPasskeyLoginPublic = async (
+  tenantId: string,
+  credentialJson: string
+): Promise<PasskeyLoginResult> => {
+  try {
+    const response = await apiClient.auth.finishPasskeyLogin(
+      { credentialJson, tenant: { tenantId } },
+      await buildClientAddressHeaders()
+    );
+    const { token: accessToken, expiresAt } = response.accessToken ?? {};
+    if (!accessToken || !expiresAt) {
+      return { ok: false, refusal: "refused" };
+    }
+    return {
+      ok: true,
+      session: { accessToken, expiresAt: new Date(expiresAt) },
+    };
+  } catch (error) {
+    return { ok: false, refusal: passkeyLoginRefusal(error) };
+  }
+};
+
 const IDENTITY_PROVIDERS: Record<SignInProvider, IdentityProvider> = {
   apple: IdentityProvider.APPLE,
   google: IdentityProvider.GOOGLE,

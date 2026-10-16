@@ -7,6 +7,11 @@ import {
   AuthScreenTagline,
   AuthScreenTitle,
 } from "@publira/layouts/auth-screen";
+import {
+  ActionFormIdle,
+  ActionFormPending,
+  ActionFormSubmit,
+} from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
@@ -32,6 +37,7 @@ import { getMessagesFor } from "#lib/messages";
 import { getTenantSiteInfo, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
+import { PasskeySignIn } from "./_components/passkey-sign-in";
 import { loginAction } from "./_lib/actions";
 import { parseLoginSearchParams } from "./_lib/search-params";
 
@@ -97,7 +103,7 @@ const LoginForm = ({
           </FieldLabel>
           <FieldContent>
             <Input
-              autoComplete="email"
+              autoComplete="username webauthn"
               name="email"
               placeholder="your@email.com"
               required
@@ -157,7 +163,25 @@ const LoginForm = ({
       </form>
 
       <Suspense fallback={null}>
-        <SocialSignInButtons returnTo={returnToPath} />
+        <SocialSignInButtons returnTo={returnToPath}>
+          <PasskeySignIn>
+            <LocaleField />
+            <TenantIdField />
+            <input name="returnTo" type="hidden" value={returnToPath} />
+            <ActionFormSubmit className="w-full" variant="outline">
+              <ActionFormIdle>
+                <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+                  <Message message="storefront.auth.login.passkey_submit" />
+                </Suspense>
+              </ActionFormIdle>
+              <ActionFormPending>
+                <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+                  <Message message="storefront.auth.login.passkey_pending" />
+                </Suspense>
+              </ActionFormPending>
+            </ActionFormSubmit>
+          </PasskeySignIn>
+        </SocialSignInButtons>
       </Suspense>
     </AuthScreenBody>
 

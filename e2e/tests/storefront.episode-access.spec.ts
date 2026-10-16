@@ -76,12 +76,12 @@ test.describe("web-storefront episode access", () => {
     await expect(page).toHaveURL(/\/login\?returnTo=/u);
     // The login shell is a non-interactive skeleton until searchParams
     // resolve. Wait for the real form's returnTo, not the catalog default.
-    await expect(page.locator('input[name="returnTo"]')).toHaveValue(
+    await expect(page.locator('input[name="returnTo"]').first()).toHaveValue(
       paidEpisodePath
     );
     await page.getByLabel(/Email address/u).fill(SEED_MEMBER.email);
     await page.getByLabel(/Password/u).fill(SEED_MEMBER.password);
-    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.getByRole("button", { exact: true, name: "Sign in" }).click();
 
     await expect(page).toHaveURL(new RegExp(`${paidEpisodePath}$`, "u"));
     await expect(firstPage(page)).toBeVisible();

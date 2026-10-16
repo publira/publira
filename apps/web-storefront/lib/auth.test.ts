@@ -8,10 +8,12 @@ import { IdentityProvider } from "@publira/api-client/public/auth";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockBeginPasskeyLogin,
   mockCacheLife,
   mockCacheTag,
   mockConfirmEmailChange,
   mockCreateUser,
+  mockFinishPasskeyLogin,
   mockLogin,
   mockDeleteMe,
   mockDeleteMyIcon,
@@ -28,12 +30,14 @@ const {
   mockUploadMyIcon,
   mockVerifyUserEmail,
 } = vi.hoisted(() => ({
+  mockBeginPasskeyLogin: vi.fn(),
   mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockConfirmEmailChange: vi.fn(),
   mockCreateUser: vi.fn(),
   mockDeleteMe: vi.fn(),
   mockDeleteMyIcon: vi.fn(),
+  mockFinishPasskeyLogin: vi.fn(),
   mockGetMe: vi.fn(),
   mockGetNotificationSettings: vi.fn(),
   mockLinkIdentity: vi.fn(),
@@ -59,10 +63,12 @@ vi.mock("next/cache", () => ({
 vi.mock("./api-client", () => ({
   apiClient: {
     auth: {
+      beginPasskeyLogin: mockBeginPasskeyLogin,
       confirmEmailChange: mockConfirmEmailChange,
       createUser: mockCreateUser,
       deleteMe: mockDeleteMe,
       deleteMyIcon: mockDeleteMyIcon,
+      finishPasskeyLogin: mockFinishPasskeyLogin,
       getMe: mockGetMe,
       getNotificationSettings: mockGetNotificationSettings,
       linkIdentity: mockLinkIdentity,
@@ -165,6 +171,84 @@ describe("web-storefront auth", () => {
         expiresAt: new Date("2030-01-01T00:00:00Z"),
       },
     });
+  });
+
+  it("beginPasskeyLoginPublic: answers the options, asked for from the reader's address", async () => {
+    const { beginPasskeyLoginPublic } = await importAuth();
+    mockBeginPasskeyLogin.mockResolvedValueOnce({
+      requestOptionsJson: '{"challenge":"abc"}',
+    });
+
+    await expect(beginPasskeyLoginPublic("TENANT001")).resolves.toEqual({
+      ok: true,
+      optionsJson: '{"challenge":"abc"}',
+    });
+    expect(mockBeginPasskeyLogin).toHaveBeenCalledWith(
+      { tenant: { tenantId: "TENANT001" } },
+      { headers: { "X-Forwarded-For": "203.0.113.7" } }
+    );
+  });
+
+  it("beginPasskeyLoginPublic: reports too many attempts", async () => {
+    const { beginPasskeyLoginPublic } = await importAuth();
+    mockBeginPasskeyLogin.mockRejectedValueOnce(
+      new ConnectError("rate limited", Code.ResourceExhausted)
+    );
+
+    await expect(beginPasskeyLoginPublic("TENANT001")).resolves.toEqual({
+      ok: false,
+      refusal: "rate-limited",
+    });
+  });
+
+  it("beginPasskeyLoginPublic: lets a failure it cannot explain through", async () => {
+    const { beginPasskeyLoginPublic } = await importAuth();
+    const failure = new ConnectError("boom", Code.Internal);
+    mockBeginPasskeyLogin.mockRejectedValueOnce(failure);
+
+    await expect(beginPasskeyLoginPublic("TENANT001")).rejects.toBe(failure);
+  });
+
+  it("finishPasskeyLoginPublic: answers the session the API issued", async () => {
+    const { finishPasskeyLoginPublic } = await importAuth();
+    mockFinishPasskeyLogin.mockResolvedValueOnce({
+      accessToken: { expiresAt: "2030-01-01T00:00:00Z", token: "tok" },
+    });
+
+    await expect(
+      finishPasskeyLoginPublic("TENANT001", '{"id":"cred"}')
+    ).resolves.toEqual({
+      ok: true,
+      session: {
+        accessToken: "tok",
+        expiresAt: new Date("2030-01-01T00:00:00Z"),
+      },
+    });
+    expect(mockFinishPasskeyLogin).toHaveBeenCalledWith(
+      { credentialJson: '{"id":"cred"}', tenant: { tenantId: "TENANT001" } },
+      { headers: { "X-Forwarded-For": "203.0.113.7" } }
+    );
+  });
+
+  it.each([
+    ["an assertion the API does not accept", Code.Unauthenticated],
+    ["an account that cannot sign in", Code.FailedPrecondition],
+  ])("finishPasskeyLoginPublic: refuses %s", async (_case, code) => {
+    const { finishPasskeyLoginPublic } = await importAuth();
+    mockFinishPasskeyLogin.mockRejectedValueOnce(new ConnectError("no", code));
+
+    await expect(
+      finishPasskeyLoginPublic("TENANT001", '{"id":"cred"}')
+    ).resolves.toEqual({ ok: false, refusal: "refused" });
+  });
+
+  it("finishPasskeyLoginPublic: refuses an answer without a session", async () => {
+    const { finishPasskeyLoginPublic } = await importAuth();
+    mockFinishPasskeyLogin.mockResolvedValueOnce({ accessToken: {} });
+
+    await expect(
+      finishPasskeyLoginPublic("TENANT001", '{"id":"cred"}')
+    ).resolves.toEqual({ ok: false, refusal: "refused" });
   });
 
   const idTokenSignIn = {

@@ -3631,6 +3631,8 @@
         "email_disposable_domain": "本站不接受一次性邮箱服务的地址。请使用其他电子邮件地址。",
         "email_refused": "本站不接受此电子邮件地址。请使用其他电子邮件地址。",
         "login_failed": "邮箱地址或密码不正确。",
+        "passkey_cancelled": "通行密钥请求已取消或超时。请重试，或使用邮箱地址和密码登录。",
+        "passkey_failed": "无法使用此通行密钥登录。请重试，或使用邮箱地址和密码登录。",
         "name_required": "请输入显示名称。",
         "name_too_long": "显示名称请控制在100个字符以内。",
         "password_confirm_required": "请再次输入密码进行确认。",
@@ -3659,6 +3661,8 @@
       "login": {
         "forgot_password": "忘记密码？",
         "no_account": "还没有账户？",
+        "passkey_pending": "正在等待通行密钥…",
+        "passkey_submit": "使用通行密钥登录",
         "reset_done": "您的密码已重设。请使用新密码登录。",
         "session_revoked": "您的会话已过期。请重新登录。",
         "signup": "注册",

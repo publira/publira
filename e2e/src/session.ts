@@ -49,12 +49,14 @@ export const fillLoginForm = async (
 ): Promise<void> => {
   await page.getByLabel(/Email address/u).fill(credentials.email);
   await page.getByLabel(/Password/u).fill(credentials.password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { exact: true, name: "Sign in" }).click();
 };
 
 export const expectLoginPage = async (page: Page): Promise<void> => {
   await expect(page).toHaveURL(/\/login/u);
-  await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { exact: true, name: "Sign in" })
+  ).toBeVisible();
 };
 
 /**

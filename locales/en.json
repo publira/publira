@@ -3631,6 +3631,8 @@
         "email_disposable_domain": "This site does not accept addresses from disposable email services. Use another email address.",
         "email_refused": "This site does not accept this email address. Use another email address.",
         "login_failed": "That email address or password is incorrect. Check them and try again.",
+        "passkey_cancelled": "The passkey request was cancelled or timed out. Try again, or sign in with your email address and password.",
+        "passkey_failed": "Could not sign in with this passkey. Try again, or sign in with your email address and password.",
         "name_required": "Enter a display name.",
         "name_too_long": "Use 100 characters or fewer for the display name.",
         "password_confirm_required": "Confirm your password.",
@@ -3659,6 +3661,8 @@
       "login": {
         "forgot_password": "Forgot your password?",
         "no_account": "Don't have an account?",
+        "passkey_pending": "Waiting for your passkey…",
+        "passkey_submit": "Sign in with a passkey",
         "reset_done": "Your password has been reset. Sign in with your new password.",
         "session_revoked": "Your session has expired. Please sign in again.",
         "signup": "Sign up",
