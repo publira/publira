@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/publira/publira/server/internal/auditlog"
@@ -58,7 +60,8 @@ func Get(ctx context.Context, q Querier) (dbmodels.PlatformSearchConfig, bool, e
 }
 
 // SaveParams replaces the saved settings. The password is SecretMode applied
-// to Password, and the analysis AnalysisMode applied to Analysis.
+// to Password, the analysis AnalysisMode applied to Analysis, and the analyses
+// of single languages each of LocaleAnalyses applied to the saved ones.
 type SaveParams struct {
 	Settings     Settings
 	SecretMode   secretupdate.Mode
@@ -66,9 +69,22 @@ type SaveParams struct {
 	AnalysisMode AnalysisMode
 	// Analysis is the settings.analysis AnalysisReplace saves, as JSON.
 	Analysis string
+	// LocaleAnalyses change the analyses of single languages, at most one per
+	// language. A language none of them names keeps what it has.
+	LocaleAnalyses []LocaleAnalysisUpdate
 	// ExpectedRevision is the revision Settings were read at, 0 when none were
 	// saved. Nil saves over whatever is stored, for a caller that read nothing.
 	ExpectedRevision *int64
+}
+
+// LocaleAnalysisUpdate is a change to the analysis of one language's index.
+// Mode is an [AnalysisMode] read for that language: AnalysisReplace saves
+// Analysis as its own, and AnalysisDefault drops its own, so its index is
+// built from the shared analysis again.
+type LocaleAnalysisUpdate struct {
+	Locale   string
+	Mode     AnalysisMode
+	Analysis string
 }
 
 // Validate refuses p without reading anything.
@@ -78,6 +94,9 @@ func (p SaveParams) Validate() error {
 		return err
 	}
 	if _, err := p.analysis(settings, ""); err != nil {
+		return err
+	}
+	if _, err := p.localeAnalyses(settings, nil); err != nil {
 		return err
 	}
 	if p.ExpectedRevision != nil && *p.ExpectedRevision < 0 {
@@ -146,7 +165,7 @@ func write(ctx context.Context, q *dbmodels.Queries, encryptor SecretManager, p 
 		if err != nil {
 			return dbmodels.PlatformSearchConfig{}, false, err
 		}
-		if err := checkAnalysis(ctx, settings, params, dbmodels.PlatformSearchConfig{}, encryptor); err != nil {
+		if err := p.checkAnalyses(ctx, settings, params, dbmodels.PlatformSearchConfig{}, encryptor); err != nil {
 			return dbmodels.PlatformSearchConfig{}, false, err
 		}
 		// Nothing saved is the SQL engine, which is all a first save can
@@ -176,13 +195,14 @@ func write(ctx context.Context, q *dbmodels.Queries, encryptor SecretManager, p 
 	if params == storedParams(current) {
 		return current, false, nil
 	}
-	if err := checkAnalysis(ctx, settings, params, current, encryptor); err != nil {
+	if err := p.checkAnalyses(ctx, settings, params, current, encryptor); err != nil {
 		return dbmodels.PlatformSearchConfig{}, false, err
 	}
-	// Another analysis is another index, even on the target the search
-	// answers from: the one it has was built with the analysis it was.
+	// Another analysis of a language is another index of it, even on the
+	// target the search answers from: the one it has was built with the
+	// analysis it was.
 	serving := FromConfig(current).Serving
-	params.Serve = !settings.Engine.HasIndex() || settings.Target() == serving.Target() && params.Analysis.String == serving.Analysis
+	params.Serve = !settings.Engine.HasIndex() || settings.Target() == serving.Target() && sameAnalyses(params, serving)
 	updated, err := q.UpdatePlatformSearchConfig(ctx, params)
 	if err != nil {
 		return dbmodels.PlatformSearchConfig{}, false, fmt.Errorf("update platform search config: %w", err)
@@ -217,19 +237,101 @@ func (p SaveParams) analysis(settings Settings, current string) (string, error) 
 	}
 }
 
-// checkAnalysis has the engine create an empty index from the analysis a save
-// writes, and drop it again, whenever the save changes the analysis or takes a
-// saved one to another target: a definition the engine refuses is refused
+// localeAnalyses answers the definitions of single languages the row ends up
+// holding, given the ones it holds now. The SQL engine keeps none.
+func (p SaveParams) localeAnalyses(settings Settings, current map[string]string) (map[string]string, error) {
+	analyses := maps.Clone(current)
+	named := make(map[string]bool, len(p.LocaleAnalyses))
+	for index, update := range p.LocaleAnalyses {
+		code := strings.TrimSpace(update.Locale)
+		switch {
+		case !slices.Contains(IndexLocales, code):
+			return nil, &fielderr.Invalid{Field: LocaleAnalysisField(index, "locale"), Err: UnknownLocaleError(code)}
+		case named[code]:
+			return nil, &fielderr.Invalid{Field: LocaleAnalysisField(index, "locale"), Err: &LocaleError{Locale: code, Err: errLocaleNamedTwice}}
+		case !update.Mode.known():
+			return nil, &fielderr.Invalid{Field: LocaleAnalysisField(index, "mode"), Err: &LocaleError{Locale: code, Err: fmt.Errorf("%w: %d", errInvalidAnalysisMode, update.Mode)}}
+		case update.Mode == AnalysisReplace && !settings.Engine.HasIndex():
+			return nil, &fielderr.Invalid{Field: LocaleAnalysisField(index, "analysis"), Err: &LocaleError{Locale: code, Err: errSQLTakesNoAnalysis}}
+		}
+		named[code] = true
+		switch update.Mode {
+		case AnalysisReplace:
+			analysis, err := opensearchbackend.ParseAnalysis([]byte(update.Analysis))
+			if err != nil {
+				return nil, &fielderr.Invalid{Field: LocaleAnalysisField(index, "analysis"), Err: &LocaleError{Locale: code, Err: err}}
+			}
+			if analyses == nil {
+				analyses = map[string]string{}
+			}
+			analyses[code] = analysis
+		case AnalysisDefault:
+			delete(analyses, code)
+		}
+	}
+	if !settings.Engine.HasIndex() {
+		return nil, nil
+	}
+	return analyses, nil
+}
+
+// localeField names the field a refusal of the definition of locale is
+// reported on: the change of the request that names the language, or the whole
+// list when the request kept a saved one without naming it.
+func (p SaveParams) localeField(locale string) string {
+	for index, update := range p.LocaleAnalyses {
+		if strings.TrimSpace(update.Locale) == locale {
+			return LocaleAnalysisField(index, "analysis")
+		}
+	}
+	return FieldLocaleAnalyses
+}
+
+// sameAnalyses reports whether params build the index of every language with
+// the analysis serving built it with, which is what lets a save on the target
+// the search answers from serve at once.
+func sameAnalyses(params dbmodels.UpdatePlatformSearchConfigParams, serving ServingSettings) bool {
+	own := decodeLocaleAnalyses(params.LocaleAnalyses.String)
+	for _, locale := range IndexLocales {
+		if analysisFor(params.Analysis.String, own, locale) != analysisFor(serving.Analysis, serving.LocaleAnalyses, locale) {
+			return false
+		}
+	}
+	return true
+}
+
+// checkAnalyses has the engine create an empty index from each analysis a save
+// writes, and drop it again, whenever the save changes that definition or takes
+// a saved one to another target: a definition the engine refuses is refused
 // here, with the engine's reason, rather than by the build that would follow.
-// The default taken to a target of its own is left to the connection test,
-// which names the plugins it needs.
-func checkAnalysis(ctx context.Context, settings Settings, params dbmodels.UpdatePlatformSearchConfigParams, current dbmodels.PlatformSearchConfig, encryptor SecretManager) error {
-	analysis := params.Analysis.String
-	moved := settings.Target() != FromConfig(current).Target()
-	if !settings.Engine.HasIndex() || analysis == current.Analysis.String && (!moved || analysis == "") {
+// The shared analysis is checked first, and then each language's own in the
+// order of IndexLocales. The default taken to a target of its own is left to
+// the connection test, which names the plugins it needs.
+func (p SaveParams) checkAnalyses(ctx context.Context, settings Settings, params dbmodels.UpdatePlatformSearchConfigParams, current dbmodels.PlatformSearchConfig, encryptor SecretManager) error {
+	if !settings.Engine.HasIndex() {
 		return nil
 	}
-	cfg := opensearchbackend.Config{URL: settings.URL, Index: settings.Index, Username: settings.Username, Analysis: analysis}
+	moved := settings.Target() != FromConfig(current).Target()
+	type check struct {
+		analysis string
+		field    string
+		locale   string
+	}
+	var checks []check
+	if analysis := params.Analysis.String; analysis != current.Analysis.String || moved && analysis != "" {
+		checks = append(checks, check{analysis: analysis, field: FieldAnalysis})
+	}
+	own, saved := decodeLocaleAnalyses(params.LocaleAnalyses.String), decodeLocaleAnalyses(current.LocaleAnalyses.String)
+	for _, locale := range IndexLocales {
+		if analysis, ok := own[locale]; ok && (moved || analysis != saved[locale]) {
+			checks = append(checks, check{analysis: analysis, field: p.localeField(locale), locale: locale})
+		}
+	}
+	if len(checks) == 0 {
+		return nil
+	}
+
+	cfg := opensearchbackend.Config{URL: settings.URL, Index: settings.Index, Username: settings.Username}
 	if encrypted := params.PasswordEncrypted.String; encrypted != "" {
 		if encryptor == nil {
 			return ErrSecretManagerUnavailable
@@ -240,15 +342,20 @@ func checkAnalysis(ctx context.Context, settings Settings, params dbmodels.Updat
 		}
 		cfg.Password = password
 	}
-	checkCtx, cancel := context.WithTimeout(ctx, connectTimeout)
-	defer cancel()
-	err := opensearchbackend.CheckAnalysis(checkCtx, cfg)
-	var refused *opensearchbackend.AnalysisRefusedError
-	switch {
-	case errors.As(err, &refused):
-		return &fielderr.Invalid{Field: FieldAnalysis, Err: refused}
-	case err != nil:
-		return fmt.Errorf("%w: %w", ErrAnalysisUnchecked, err)
+	for _, c := range checks {
+		cfg.Analysis = c.analysis
+		checkCtx, cancel := context.WithTimeout(ctx, connectTimeout)
+		err := opensearchbackend.CheckAnalysis(checkCtx, cfg)
+		cancel()
+		var refused *opensearchbackend.AnalysisRefusedError
+		switch {
+		case errors.As(err, &refused) && c.locale != "":
+			return &fielderr.Invalid{Field: c.field, Err: &LocaleError{Locale: c.locale, Err: refused}}
+		case errors.As(err, &refused):
+			return &fielderr.Invalid{Field: c.field, Err: refused}
+		case err != nil:
+			return fmt.Errorf("%w: %w", ErrAnalysisUnchecked, err)
+		}
 	}
 	return nil
 }
@@ -281,6 +388,14 @@ func configParams(settings Settings, p SaveParams, current dbmodels.PlatformSear
 	if err != nil {
 		return dbmodels.UpdatePlatformSearchConfigParams{}, err
 	}
+	analyses, err := p.localeAnalyses(settings, decodeLocaleAnalyses(current.LocaleAnalyses.String))
+	if err != nil {
+		return dbmodels.UpdatePlatformSearchConfigParams{}, err
+	}
+	localeAnalyses, err := encodeLocaleAnalyses(analyses)
+	if err != nil {
+		return dbmodels.UpdatePlatformSearchConfigParams{}, err
+	}
 	encrypted, err := resolvePassword(settings.Username, p.SecretMode, p.Password, current, encryptor)
 	if err != nil {
 		return dbmodels.UpdatePlatformSearchConfigParams{}, err
@@ -292,6 +407,7 @@ func configParams(settings Settings, p SaveParams, current dbmodels.PlatformSear
 		Username:          nullable(settings.Username),
 		PasswordEncrypted: nullable(encrypted),
 		Analysis:          nullable(analysis),
+		LocaleAnalyses:    nullable(localeAnalyses),
 	}, nil
 }
 
@@ -350,5 +466,6 @@ func storedParams(row dbmodels.PlatformSearchConfig) dbmodels.UpdatePlatformSear
 		Username:          row.Username,
 		PasswordEncrypted: row.PasswordEncrypted,
 		Analysis:          row.Analysis,
+		LocaleAnalyses:    row.LocaleAnalyses,
 	}
 }

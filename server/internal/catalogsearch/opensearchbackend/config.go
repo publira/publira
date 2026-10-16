@@ -18,9 +18,12 @@ type Config struct {
 	Index    string
 	// Analysis is the settings.analysis of an index the backend creates, as
 	// JSON. Empty is [DefaultAnalysis]. A search never depends on it: the
-	// index it searches was created with whatever it was created with. Every
-	// language's index is created with the same one.
+	// index it searches was created with whatever it was created with.
 	Analysis string
+	// LocaleAnalyses are the settings.analysis of single languages' indices,
+	// each what [ParseAnalysis] answered, in place of Analysis. The index of a
+	// language this does not name is created with Analysis.
+	LocaleAnalyses map[string]string
 	// Locales are the languages the catalog keeps an index for, each behind
 	// the alias [LocaleAlias] names after Index, holding the series in that
 	// language. Empty is the one index an install built before the catalog was

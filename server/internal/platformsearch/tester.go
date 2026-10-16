@@ -79,9 +79,9 @@ func (t Tester) Test(ctx context.Context, q Querier, actor auditlog.PlatformActo
 	if err != nil {
 		return Result{}, err
 	}
-	// A save from the same form keeps the saved analysis, so that is the one
-	// the engine is tested for.
-	return t.run(ctx, actor, settings, password, saved.Analysis.String == ""), nil
+	// A save from the same form keeps the saved analyses, so those are the
+	// ones the engine is tested for.
+	return t.run(ctx, actor, settings, password, FromConfig(saved).usesDefaultAnalysis()), nil
 }
 
 // TestSaved runs the connection test against the saved settings.
@@ -101,7 +101,7 @@ func (t Tester) TestSaved(ctx context.Context, q Querier, actor auditlog.Platfor
 	if err != nil {
 		return Result{}, err
 	}
-	return t.run(ctx, actor, stored.Settings, password, stored.Analysis == ""), nil
+	return t.run(ctx, actor, stored.Settings, password, stored.usesDefaultAnalysis()), nil
 }
 
 // password is the password a test sends: the one stated, the saved one, or
@@ -143,9 +143,9 @@ func (t Tester) password(username string, mode secretupdate.Mode, password, save
 	return decrypted, nil
 }
 
-// run tests settings. defaultAnalysis says the index is built with the default
-// analysis, whose plugins the engine then has to have; another one names its
-// own, which the engine was asked about when it was saved.
+// run tests settings. defaultAnalysis says the index of some language is built
+// with the default analysis, whose plugins the engine then has to have; another
+// one names its own, which the engine was asked about when it was saved.
 func (t Tester) run(ctx context.Context, actor auditlog.PlatformActor, settings Settings, password string, defaultAnalysis bool) Result {
 	probe := t.Probe
 	if probe == nil {

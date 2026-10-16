@@ -56,6 +56,12 @@ func platformSearchSettingsToProto(stored platformsearch.Stored) *publirasplatfo
 		Analysis:        stored.EffectiveAnalysis(),
 		DefaultAnalysis: stored.Engine.HasIndex() && stored.Analysis == "",
 	}
+	for _, locale := range stored.OwnAnalysisLocales() {
+		settings.LocaleAnalyses = append(settings.LocaleAnalyses, &publirasplatformv1.PlatformSearchLocaleAnalysis{
+			Locale:   locale,
+			Analysis: stored.EffectiveLocaleAnalysis(locale),
+		})
+	}
 	if !stored.Serving.Since.IsZero() {
 		settings.Serving.Since = stored.Serving.Since.UTC().Format(time.RFC3339)
 	}
@@ -126,6 +132,14 @@ func (s *platformServer) UpdatePlatformSearchSettings(
 		AnalysisMode:     platformsearch.AnalysisMode(req.GetAnalysisUpdateMode()),
 		Analysis:         req.GetAnalysis(),
 		ExpectedRevision: &expectedRevision,
+	}
+	// The modes are numbered alike, SHARED as the language's DEFAULT.
+	for _, update := range req.GetLocaleAnalyses() {
+		params.LocaleAnalyses = append(params.LocaleAnalyses, platformsearch.LocaleAnalysisUpdate{
+			Locale:   update.GetLocale(),
+			Mode:     platformsearch.AnalysisMode(update.GetMode()),
+			Analysis: update.GetAnalysis(),
+		})
 	}
 	if err := params.Validate(); err != nil {
 		return nil, s.searchSettingsError(ctx, err)

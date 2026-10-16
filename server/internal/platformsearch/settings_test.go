@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -155,5 +157,76 @@ func TestTruncateKeepsARecordedErrorWhole(t *testing.T) {
 	got := truncate(long)
 	if len(got) > maxBuildError+len("…") || !strings.HasSuffix(got, "…") || strings.ContainsRune(got, '�') {
 		t.Fatalf("truncate cut %d bytes into %d, want at most %d whole characters and an ellipsis", len(long), len(got), maxBuildError)
+	}
+}
+
+// A build on the target the search answers from rebuilds the indices of the
+// languages whose analysis changed, and every index otherwise.
+func TestRebuildLocalesAreTheLanguagesWhoseAnalysisChanged(t *testing.T) {
+	target := Settings{Engine: EngineOpenSearch, URL: "https://search.example.com", Index: "catalog"}
+	serving := ServingSettings{Settings: target, Analysis: "shared", LocaleAnalyses: map[string]string{"ko": "korean"}, Locales: IndexLocales}
+	for _, test := range []struct {
+		name   string
+		stored Stored
+		force  bool
+		want   []string
+	}{
+		{
+			name:   "a language given an analysis of its own",
+			stored: Stored{Settings: target, Analysis: "shared", LocaleAnalyses: map[string]string{"en": "english", "ko": "korean"}, Serving: serving},
+			want:   []string{"en"},
+		},
+		{
+			name:   "a language taken back to a shared analysis that is its own",
+			stored: Stored{Settings: target, Analysis: "korean", Serving: ServingSettings{Settings: target, Analysis: "shared", LocaleAnalyses: map[string]string{"ko": "korean"}, Locales: IndexLocales}},
+			want:   []string{"ja", "en", "zh-Hans", "zh-Hant"},
+		},
+		{
+			name:   "nothing changed",
+			stored: Stored{Settings: target, Analysis: "shared", LocaleAnalyses: map[string]string{"ko": "korean"}, Serving: serving},
+			want:   IndexLocales,
+		},
+		{
+			name:   "forced",
+			stored: Stored{Settings: target, Analysis: "shared", LocaleAnalyses: map[string]string{"en": "english", "ko": "korean"}, Serving: serving},
+			force:  true,
+			want:   IndexLocales,
+		},
+		{
+			name:   "another target",
+			stored: Stored{Settings: Settings{Engine: EngineOpenSearch, URL: "https://search.example.com", Index: "other"}, Analysis: "shared", LocaleAnalyses: map[string]string{"en": "english", "ko": "korean"}, Serving: serving},
+			want:   IndexLocales,
+		},
+		{
+			name:   "indices built for other languages",
+			stored: Stored{Settings: target, Analysis: "shared", LocaleAnalyses: map[string]string{"en": "english", "ko": "korean"}, Serving: ServingSettings{Settings: target, Analysis: "shared", LocaleAnalyses: map[string]string{"ko": "korean"}}},
+			want:   IndexLocales,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if got := rebuildLocales(test.stored, test.force); !slices.Equal(got, test.want) {
+				t.Fatalf("rebuildLocales = %v, want %v", got, test.want)
+			}
+		})
+	}
+}
+
+// The analyses of single languages are stored as one JSON object with its
+// keys sorted, so two saves of the same definitions write the same text, and
+// read back as they were saved.
+func TestLocaleAnalysesAreStoredInOneSpelling(t *testing.T) {
+	analyses := map[string]string{"ko": `{"analyzer":{}}`, "en": `{"normalizer":{}}`}
+	encoded, err := encodeLocaleAnalyses(analyses)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := `{"en":{"normalizer":{}},"ko":{"analyzer":{}}}`; encoded != want {
+		t.Fatalf("encodeLocaleAnalyses = %s, want %s", encoded, want)
+	}
+	if decoded := decodeLocaleAnalyses(encoded); !maps.Equal(decoded, analyses) {
+		t.Fatalf("decodeLocaleAnalyses = %v, want %v", decoded, analyses)
+	}
+	if encoded, err := encodeLocaleAnalyses(nil); err != nil || encoded != "" {
+		t.Fatalf("encodeLocaleAnalyses(nil) = (%q, %v), want nothing stored", encoded, err)
 	}
 }

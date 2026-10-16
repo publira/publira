@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/platform/v1/search.proto.
  */
 export const file_publira_platform_v1_search: GenFile = /*@__PURE__*/
-  fileDesc("CiBwdWJsaXJhL3BsYXRmb3JtL3YxL3NlYXJjaC5wcm90bxITcHVibGlyYS5wbGF0Zm9ybS52MSKPAQoVUGxhdGZvcm1TZWFyY2hTZXJ2aW5nEjkKBmVuZ2luZRgBIAEoDjIpLnB1YmxpcmEucGxhdGZvcm0udjEuUGxhdGZvcm1TZWFyY2hFbmdpbmUSCwoDdXJsGAIgASgJEg0KBWluZGV4GAMgASgJEhAKCHJldmlzaW9uGAQgASgDEg0KBXNpbmNlGAUgASgJIj4KGlBsYXRmb3JtU2VhcmNoQnVpbGRGYWlsdXJlEg0KBWVycm9yGAEgASgJEhEKCWZhaWxlZF9hdBgCIAEoCSKeAwoWUGxhdGZvcm1TZWFyY2hTZXR0aW5ncxI5CgZlbmdpbmUYASABKA4yKS5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtU2VhcmNoRW5naW5lEgsKA3VybBgCIAEoCRINCgVpbmRleBgDIAEoCRIQCgh1c2VybmFtZRgEIAEoCRIUCgxoYXNfcGFzc3dvcmQYBSABKAgSEAoIcmV2aXNpb24YBiABKAMSOwoHc2VydmluZxgHIAEoCzIqLnB1YmxpcmEucGxhdGZvcm0udjEuUGxhdGZvcm1TZWFyY2hTZXJ2aW5nEkIKC2J1aWxkX3N0YXRlGAggASgOMi0ucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybVNlYXJjaEJ1aWxkU3RhdGUSRgoNYnVpbGRfZmFpbHVyZRgJIAEoCzIvLnB1YmxpcmEucGxhdGZvcm0udjEuUGxhdGZvcm1TZWFyY2hCdWlsZEZhaWx1cmUSEAoIYW5hbHlzaXMYCiABKAkSGAoQZGVmYXVsdF9hbmFseXNpcxgLIAEoCCIiCiBHZXRQbGF0Zm9ybVNlYXJjaFNldHRpbmdzUmVxdWVzdCJiCiFHZXRQbGF0Zm9ybVNlYXJjaFNldHRpbmdzUmVzcG9uc2USPQoIc2V0dGluZ3MYASABKAsyKy5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtU2VhcmNoU2V0dGluZ3Mi5wIKI1VwZGF0ZVBsYXRmb3JtU2VhcmNoU2V0dGluZ3NSZXF1ZXN0EjkKBmVuZ2luZRgBIAEoDjIpLnB1YmxpcmEucGxhdGZvcm0udjEuUGxhdGZvcm1TZWFyY2hFbmdpbmUSCwoDdXJsGAIgASgJEg0KBWluZGV4GAMgASgJEhAKCHVzZXJuYW1lGAQgASgJEkMKFHBhc3N3b3JkX3VwZGF0ZV9tb2RlGAUgASgOMiUucHVibGlyYS5wbGF0Zm9ybS52MS5TZWNyZXRVcGRhdGVNb2RlEhAKCHBhc3N3b3JkGAYgASgJEhkKEWV4cGVjdGVkX3JldmlzaW9uGAcgASgDElMKFGFuYWx5c2lzX3VwZGF0ZV9tb2RlGAggASgOMjUucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybVNlYXJjaEFuYWx5c2lzVXBkYXRlTW9kZRIQCghhbmFseXNpcxgJIAEoCSJlCiRVcGRhdGVQbGF0Zm9ybVNlYXJjaFNldHRpbmdzUmVzcG9uc2USPQoIc2V0dGluZ3MYASABKAsyKy5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtU2VhcmNoU2V0dGluZ3Mi1gEKI1Rlc3RQbGF0Zm9ybVNlYXJjaENvbm5lY3Rpb25SZXF1ZXN0EjkKBmVuZ2luZRgBIAEoDjIpLnB1YmxpcmEucGxhdGZvcm0udjEuUGxhdGZvcm1TZWFyY2hFbmdpbmUSCwoDdXJsGAIgASgJEhAKCHVzZXJuYW1lGAMgASgJEkMKFHBhc3N3b3JkX3VwZGF0ZV9tb2RlGAQgASgOMiUucHVibGlyYS5wbGF0Zm9ybS52MS5TZWNyZXRVcGRhdGVNb2RlEhAKCHBhc3N3b3JkGAUgASgJIrABCiRUZXN0UGxhdGZvcm1TZWFyY2hDb25uZWN0aW9uUmVzcG9uc2USEQoJc3VjY2VlZGVkGAEgASgIEg4KBnJlYXNvbhgCIAEoCRIPCgdwcm9kdWN0GAMgASgJEg8KB3ZlcnNpb24YBCABKAkSIwobYW5hbHlzaXNfa3Vyb21vamlfaW5zdGFsbGVkGAUgASgIEh4KFmFuYWx5c2lzX2ljdV9pbnN0YWxsZWQYBiABKAgqrwEKFFBsYXRmb3JtU2VhcmNoRW5naW5lEiYKIlBMQVRGT1JNX1NFQVJDSF9FTkdJTkVfVU5TUEVDSUZJRUQQABIeChpQTEFURk9STV9TRUFSQ0hfRU5HSU5FX1NRTBABEiUKIVBMQVRGT1JNX1NFQVJDSF9FTkdJTkVfT1BFTlNFQVJDSBACEigKJFBMQVRGT1JNX1NFQVJDSF9FTkdJTkVfRUxBU1RJQ1NFQVJDSBADKvABCiBQbGF0Zm9ybVNlYXJjaEFuYWx5c2lzVXBkYXRlTW9kZRI0CjBQTEFURk9STV9TRUFSQ0hfQU5BTFlTSVNfVVBEQVRFX01PREVfVU5TUEVDSUZJRUQQABIyCi5QTEFURk9STV9TRUFSQ0hfQU5BTFlTSVNfVVBEQVRFX01PREVfVU5DSEFOR0VEEAESMAosUExBVEZPUk1fU0VBUkNIX0FOQUxZU0lTX1VQREFURV9NT0RFX1JFUExBQ0UQAhIwCixQTEFURk9STV9TRUFSQ0hfQU5BTFlTSVNfVVBEQVRFX01PREVfREVGQVVMVBADKsIBChhQbGF0Zm9ybVNlYXJjaEJ1aWxkU3RhdGUSKwonUExBVEZPUk1fU0VBUkNIX0JVSUxEX1NUQVRFX1VOU1BFQ0lGSUVEEAASJwojUExBVEZPUk1fU0VBUkNIX0JVSUxEX1NUQVRFX1NFUlZJTkcQARIoCiRQTEFURk9STV9TRUFSQ0hfQlVJTERfU1RBVEVfQlVJTERJTkcQAhImCiJQTEFURk9STV9TRUFSQ0hfQlVJTERfU1RBVEVfRkFJTEVEEAMy3gMKHVBsYXRmb3JtU2VhcmNoU2V0dGluZ3NTZXJ2aWNlEowBChlHZXRQbGF0Zm9ybVNlYXJjaFNldHRpbmdzEjUucHVibGlyYS5wbGF0Zm9ybS52MS5HZXRQbGF0Zm9ybVNlYXJjaFNldHRpbmdzUmVxdWVzdBo2LnB1YmxpcmEucGxhdGZvcm0udjEuR2V0UGxhdGZvcm1TZWFyY2hTZXR0aW5nc1Jlc3BvbnNlIgASlQEKHFVwZGF0ZVBsYXRmb3JtU2VhcmNoU2V0dGluZ3MSOC5wdWJsaXJhLnBsYXRmb3JtLnYxLlVwZGF0ZVBsYXRmb3JtU2VhcmNoU2V0dGluZ3NSZXF1ZXN0GjkucHVibGlyYS5wbGF0Zm9ybS52MS5VcGRhdGVQbGF0Zm9ybVNlYXJjaFNldHRpbmdzUmVzcG9uc2UiABKVAQocVGVzdFBsYXRmb3JtU2VhcmNoQ29ubmVjdGlvbhI4LnB1YmxpcmEucGxhdGZvcm0udjEuVGVzdFBsYXRmb3JtU2VhcmNoQ29ubmVjdGlvblJlcXVlc3QaOS5wdWJsaXJhLnBsYXRmb3JtLnYxLlRlc3RQbGF0Zm9ybVNlYXJjaENvbm5lY3Rpb25SZXNwb25zZSIAQl1aW2dpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9wbGF0Zm9ybS92MTtwdWJsaXJhc3BsYXRmb3JtdjFiBnByb3RvMw", [file_publira_platform_v1_email]);
+  fileDesc("CiBwdWJsaXJhL3BsYXRmb3JtL3YxL3NlYXJjaC5wcm90bxITcHVibGlyYS5wbGF0Zm9ybS52MSKPAQoVUGxhdGZvcm1TZWFyY2hTZXJ2aW5nEjkKBmVuZ2luZRgBIAEoDjIpLnB1YmxpcmEucGxhdGZvcm0udjEuUGxhdGZvcm1TZWFyY2hFbmdpbmUSCwoDdXJsGAIgASgJEg0KBWluZGV4GAMgASgJEhAKCHJldmlzaW9uGAQgASgDEg0KBXNpbmNlGAUgASgJIj4KGlBsYXRmb3JtU2VhcmNoQnVpbGRGYWlsdXJlEg0KBWVycm9yGAEgASgJEhEKCWZhaWxlZF9hdBgCIAEoCSJAChxQbGF0Zm9ybVNlYXJjaExvY2FsZUFuYWx5c2lzEg4KBmxvY2FsZRgBIAEoCRIQCghhbmFseXNpcxgCIAEoCSKRAQoiUGxhdGZvcm1TZWFyY2hMb2NhbGVBbmFseXNpc1VwZGF0ZRIOCgZsb2NhbGUYASABKAkSSQoEbW9kZRgCIAEoDjI7LnB1YmxpcmEucGxhdGZvcm0udjEuUGxhdGZvcm1TZWFyY2hMb2NhbGVBbmFseXNpc1VwZGF0ZU1vZGUSEAoIYW5hbHlzaXMYAyABKAki6gMKFlBsYXRmb3JtU2VhcmNoU2V0dGluZ3MSOQoGZW5naW5lGAEgASgOMikucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybVNlYXJjaEVuZ2luZRILCgN1cmwYAiABKAkSDQoFaW5kZXgYAyABKAkSEAoIdXNlcm5hbWUYBCABKAkSFAoMaGFzX3Bhc3N3b3JkGAUgASgIEhAKCHJldmlzaW9uGAYgASgDEjsKB3NlcnZpbmcYByABKAsyKi5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtU2VhcmNoU2VydmluZxJCCgtidWlsZF9zdGF0ZRgIIAEoDjItLnB1YmxpcmEucGxhdGZvcm0udjEuUGxhdGZvcm1TZWFyY2hCdWlsZFN0YXRlEkYKDWJ1aWxkX2ZhaWx1cmUYCSABKAsyLy5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtU2VhcmNoQnVpbGRGYWlsdXJlEhAKCGFuYWx5c2lzGAogASgJEhgKEGRlZmF1bHRfYW5hbHlzaXMYCyABKAgSSgoPbG9jYWxlX2FuYWx5c2VzGAwgAygLMjEucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybVNlYXJjaExvY2FsZUFuYWx5c2lzIiIKIEdldFBsYXRmb3JtU2VhcmNoU2V0dGluZ3NSZXF1ZXN0ImIKIUdldFBsYXRmb3JtU2VhcmNoU2V0dGluZ3NSZXNwb25zZRI9CghzZXR0aW5ncxgBIAEoCzIrLnB1YmxpcmEucGxhdGZvcm0udjEuUGxhdGZvcm1TZWFyY2hTZXR0aW5ncyK5AwojVXBkYXRlUGxhdGZvcm1TZWFyY2hTZXR0aW5nc1JlcXVlc3QSOQoGZW5naW5lGAEgASgOMikucHVibGlyYS5wbGF0Zm9ybS52MS5QbGF0Zm9ybVNlYXJjaEVuZ2luZRILCgN1cmwYAiABKAkSDQoFaW5kZXgYAyABKAkSEAoIdXNlcm5hbWUYBCABKAkSQwoUcGFzc3dvcmRfdXBkYXRlX21vZGUYBSABKA4yJS5wdWJsaXJhLnBsYXRmb3JtLnYxLlNlY3JldFVwZGF0ZU1vZGUSEAoIcGFzc3dvcmQYBiABKAkSGQoRZXhwZWN0ZWRfcmV2aXNpb24YByABKAMSUwoUYW5hbHlzaXNfdXBkYXRlX21vZGUYCCABKA4yNS5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtU2VhcmNoQW5hbHlzaXNVcGRhdGVNb2RlEhAKCGFuYWx5c2lzGAkgASgJElAKD2xvY2FsZV9hbmFseXNlcxgKIAMoCzI3LnB1YmxpcmEucGxhdGZvcm0udjEuUGxhdGZvcm1TZWFyY2hMb2NhbGVBbmFseXNpc1VwZGF0ZSJlCiRVcGRhdGVQbGF0Zm9ybVNlYXJjaFNldHRpbmdzUmVzcG9uc2USPQoIc2V0dGluZ3MYASABKAsyKy5wdWJsaXJhLnBsYXRmb3JtLnYxLlBsYXRmb3JtU2VhcmNoU2V0dGluZ3Mi1gEKI1Rlc3RQbGF0Zm9ybVNlYXJjaENvbm5lY3Rpb25SZXF1ZXN0EjkKBmVuZ2luZRgBIAEoDjIpLnB1YmxpcmEucGxhdGZvcm0udjEuUGxhdGZvcm1TZWFyY2hFbmdpbmUSCwoDdXJsGAIgASgJEhAKCHVzZXJuYW1lGAMgASgJEkMKFHBhc3N3b3JkX3VwZGF0ZV9tb2RlGAQgASgOMiUucHVibGlyYS5wbGF0Zm9ybS52MS5TZWNyZXRVcGRhdGVNb2RlEhAKCHBhc3N3b3JkGAUgASgJIrABCiRUZXN0UGxhdGZvcm1TZWFyY2hDb25uZWN0aW9uUmVzcG9uc2USEQoJc3VjY2VlZGVkGAEgASgIEg4KBnJlYXNvbhgCIAEoCRIPCgdwcm9kdWN0GAMgASgJEg8KB3ZlcnNpb24YBCABKAkSIwobYW5hbHlzaXNfa3Vyb21vamlfaW5zdGFsbGVkGAUgASgIEh4KFmFuYWx5c2lzX2ljdV9pbnN0YWxsZWQYBiABKAgqrwEKFFBsYXRmb3JtU2VhcmNoRW5naW5lEiYKIlBMQVRGT1JNX1NFQVJDSF9FTkdJTkVfVU5TUEVDSUZJRUQQABIeChpQTEFURk9STV9TRUFSQ0hfRU5HSU5FX1NRTBABEiUKIVBMQVRGT1JNX1NFQVJDSF9FTkdJTkVfT1BFTlNFQVJDSBACEigKJFBMQVRGT1JNX1NFQVJDSF9FTkdJTkVfRUxBU1RJQ1NFQVJDSBADKvABCiBQbGF0Zm9ybVNlYXJjaEFuYWx5c2lzVXBkYXRlTW9kZRI0CjBQTEFURk9STV9TRUFSQ0hfQU5BTFlTSVNfVVBEQVRFX01PREVfVU5TUEVDSUZJRUQQABIyCi5QTEFURk9STV9TRUFSQ0hfQU5BTFlTSVNfVVBEQVRFX01PREVfVU5DSEFOR0VEEAESMAosUExBVEZPUk1fU0VBUkNIX0FOQUxZU0lTX1VQREFURV9NT0RFX1JFUExBQ0UQAhIwCixQTEFURk9STV9TRUFSQ0hfQU5BTFlTSVNfVVBEQVRFX01PREVfREVGQVVMVBADKpECCiZQbGF0Zm9ybVNlYXJjaExvY2FsZUFuYWx5c2lzVXBkYXRlTW9kZRI7CjdQTEFURk9STV9TRUFSQ0hfTE9DQUxFX0FOQUxZU0lTX1VQREFURV9NT0RFX1VOU1BFQ0lGSUVEEAASOQo1UExBVEZPUk1fU0VBUkNIX0xPQ0FMRV9BTkFMWVNJU19VUERBVEVfTU9ERV9VTkNIQU5HRUQQARI3CjNQTEFURk9STV9TRUFSQ0hfTE9DQUxFX0FOQUxZU0lTX1VQREFURV9NT0RFX1JFUExBQ0UQAhI2CjJQTEFURk9STV9TRUFSQ0hfTE9DQUxFX0FOQUxZU0lTX1VQREFURV9NT0RFX1NIQVJFRBADKsIBChhQbGF0Zm9ybVNlYXJjaEJ1aWxkU3RhdGUSKwonUExBVEZPUk1fU0VBUkNIX0JVSUxEX1NUQVRFX1VOU1BFQ0lGSUVEEAASJwojUExBVEZPUk1fU0VBUkNIX0JVSUxEX1NUQVRFX1NFUlZJTkcQARIoCiRQTEFURk9STV9TRUFSQ0hfQlVJTERfU1RBVEVfQlVJTERJTkcQAhImCiJQTEFURk9STV9TRUFSQ0hfQlVJTERfU1RBVEVfRkFJTEVEEAMy3gMKHVBsYXRmb3JtU2VhcmNoU2V0dGluZ3NTZXJ2aWNlEowBChlHZXRQbGF0Zm9ybVNlYXJjaFNldHRpbmdzEjUucHVibGlyYS5wbGF0Zm9ybS52MS5HZXRQbGF0Zm9ybVNlYXJjaFNldHRpbmdzUmVxdWVzdBo2LnB1YmxpcmEucGxhdGZvcm0udjEuR2V0UGxhdGZvcm1TZWFyY2hTZXR0aW5nc1Jlc3BvbnNlIgASlQEKHFVwZGF0ZVBsYXRmb3JtU2VhcmNoU2V0dGluZ3MSOC5wdWJsaXJhLnBsYXRmb3JtLnYxLlVwZGF0ZVBsYXRmb3JtU2VhcmNoU2V0dGluZ3NSZXF1ZXN0GjkucHVibGlyYS5wbGF0Zm9ybS52MS5VcGRhdGVQbGF0Zm9ybVNlYXJjaFNldHRpbmdzUmVzcG9uc2UiABKVAQocVGVzdFBsYXRmb3JtU2VhcmNoQ29ubmVjdGlvbhI4LnB1YmxpcmEucGxhdGZvcm0udjEuVGVzdFBsYXRmb3JtU2VhcmNoQ29ubmVjdGlvblJlcXVlc3QaOS5wdWJsaXJhLnBsYXRmb3JtLnYxLlRlc3RQbGF0Zm9ybVNlYXJjaENvbm5lY3Rpb25SZXNwb25zZSIAQl1aW2dpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9wbGF0Zm9ybS92MTtwdWJsaXJhc3BsYXRmb3JtdjFiBnByb3RvMw", [file_publira_platform_v1_email]);
 
 /**
  * The configuration the search answers from, which trails the saved one while
@@ -86,6 +86,71 @@ export type PlatformSearchBuildFailure = Message<"publira.platform.v1.PlatformSe
  */
 export const PlatformSearchBuildFailureSchema: GenMessage<PlatformSearchBuildFailure> = /*@__PURE__*/
   messageDesc(file_publira_platform_v1_search, 1);
+
+/**
+ * The settings.analysis one language's catalog index is built with in place of
+ * the shared one.
+ *
+ * @generated from message publira.platform.v1.PlatformSearchLocaleAnalysis
+ */
+export type PlatformSearchLocaleAnalysis = Message<"publira.platform.v1.PlatformSearchLocaleAnalysis"> & {
+  /**
+   * A locale the catalog keeps an index for, spelled as the server lists it:
+   * ja, en, ko, zh-Hans, zh-Hant.
+   *
+   * @generated from field: string locale = 1;
+   */
+  locale: string;
+
+  /**
+   * A JSON object, held to what PlatformSearchSettings.analysis is.
+   *
+   * @generated from field: string analysis = 2;
+   */
+  analysis: string;
+};
+
+/**
+ * Describes the message publira.platform.v1.PlatformSearchLocaleAnalysis.
+ * Use `create(PlatformSearchLocaleAnalysisSchema)` to create a new message.
+ */
+export const PlatformSearchLocaleAnalysisSchema: GenMessage<PlatformSearchLocaleAnalysis> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_search, 2);
+
+/**
+ * A change to the analysis of one language's catalog index.
+ *
+ * @generated from message publira.platform.v1.PlatformSearchLocaleAnalysisUpdate
+ */
+export type PlatformSearchLocaleAnalysisUpdate = Message<"publira.platform.v1.PlatformSearchLocaleAnalysisUpdate"> & {
+  /**
+   * A locale the catalog keeps an index for, spelled as
+   * PlatformSearchLocaleAnalysis.locale is.
+   *
+   * @generated from field: string locale = 1;
+   */
+  locale: string;
+
+  /**
+   * @generated from field: publira.platform.v1.PlatformSearchLocaleAnalysisUpdateMode mode = 2;
+   */
+  mode: PlatformSearchLocaleAnalysisUpdateMode;
+
+  /**
+   * The definition REPLACE saves, held to what
+   * UpdatePlatformSearchSettingsRequest.analysis is.
+   *
+   * @generated from field: string analysis = 3;
+   */
+  analysis: string;
+};
+
+/**
+ * Describes the message publira.platform.v1.PlatformSearchLocaleAnalysisUpdate.
+ * Use `create(PlatformSearchLocaleAnalysisUpdateSchema)` to create a new message.
+ */
+export const PlatformSearchLocaleAnalysisUpdateSchema: GenMessage<PlatformSearchLocaleAnalysisUpdate> = /*@__PURE__*/
+  messageDesc(file_publira_platform_v1_search, 3);
 
 /**
  * @generated from message publira.platform.v1.PlatformSearchSettings
@@ -170,6 +235,15 @@ export type PlatformSearchSettings = Message<"publira.platform.v1.PlatformSearch
    * @generated from field: bool default_analysis = 11;
    */
   defaultAnalysis: boolean;
+
+  /**
+   * The languages whose catalog index is built from a definition of their
+   * own, in the order the server lists its locales. The index of every other
+   * language is built from analysis. Empty on the SQL engine.
+   *
+   * @generated from field: repeated publira.platform.v1.PlatformSearchLocaleAnalysis locale_analyses = 12;
+   */
+  localeAnalyses: PlatformSearchLocaleAnalysis[];
 };
 
 /**
@@ -177,7 +251,7 @@ export type PlatformSearchSettings = Message<"publira.platform.v1.PlatformSearch
  * Use `create(PlatformSearchSettingsSchema)` to create a new message.
  */
 export const PlatformSearchSettingsSchema: GenMessage<PlatformSearchSettings> = /*@__PURE__*/
-  messageDesc(file_publira_platform_v1_search, 2);
+  messageDesc(file_publira_platform_v1_search, 4);
 
 /**
  * @generated from message publira.platform.v1.GetPlatformSearchSettingsRequest
@@ -190,7 +264,7 @@ export type GetPlatformSearchSettingsRequest = Message<"publira.platform.v1.GetP
  * Use `create(GetPlatformSearchSettingsRequestSchema)` to create a new message.
  */
 export const GetPlatformSearchSettingsRequestSchema: GenMessage<GetPlatformSearchSettingsRequest> = /*@__PURE__*/
-  messageDesc(file_publira_platform_v1_search, 3);
+  messageDesc(file_publira_platform_v1_search, 5);
 
 /**
  * @generated from message publira.platform.v1.GetPlatformSearchSettingsResponse
@@ -207,14 +281,15 @@ export type GetPlatformSearchSettingsResponse = Message<"publira.platform.v1.Get
  * Use `create(GetPlatformSearchSettingsResponseSchema)` to create a new message.
  */
 export const GetPlatformSearchSettingsResponseSchema: GenMessage<GetPlatformSearchSettingsResponse> = /*@__PURE__*/
-  messageDesc(file_publira_platform_v1_search, 4);
+  messageDesc(file_publira_platform_v1_search, 6);
 
 /**
  * A save takes effect at once when it needs no index built: the SQL engine,
- * or the engine, URL, index, and analysis the search already answers from with
- * other credentials. Any other target, or another analysis, is built by the
- * worker from the database into a new index first, and the search moves onto
- * it once the build has completed.
+ * or the engine, URL, index, and analysis of every language the search already
+ * answers from with other credentials. Any other target is built by the worker
+ * from the database into new indices first, and the search moves onto them
+ * once the build has completed. Another analysis on the same target rebuilds
+ * only the indices of the languages it changes the analysis of.
  *
  * @generated from message publira.platform.v1.UpdatePlatformSearchSettingsRequest
  */
@@ -292,6 +367,21 @@ export type UpdatePlatformSearchSettingsRequest = Message<"publira.platform.v1.U
    * @generated from field: string analysis = 9;
    */
   analysis: string;
+
+  /**
+   * Changes to the analysis of single languages' indices, at most one per
+   * locale; a language this does not name keeps what its index is built from,
+   * so a request that leaves it empty changes none. REPLACE is refused on the
+   * SQL engine, and a save to SQL keeps none. A locale the server keeps no
+   * index for, or one named twice, is refused on locale_analyses[i].locale. A
+   * definition is checked as analysis is, and refused on
+   * locale_analyses[i].analysis with a message naming its locale; one that is
+   * kept but would be built on another target, and so is checked again, is
+   * refused on locale_analyses when the request does not name its locale.
+   *
+   * @generated from field: repeated publira.platform.v1.PlatformSearchLocaleAnalysisUpdate locale_analyses = 10;
+   */
+  localeAnalyses: PlatformSearchLocaleAnalysisUpdate[];
 };
 
 /**
@@ -299,7 +389,7 @@ export type UpdatePlatformSearchSettingsRequest = Message<"publira.platform.v1.U
  * Use `create(UpdatePlatformSearchSettingsRequestSchema)` to create a new message.
  */
 export const UpdatePlatformSearchSettingsRequestSchema: GenMessage<UpdatePlatformSearchSettingsRequest> = /*@__PURE__*/
-  messageDesc(file_publira_platform_v1_search, 5);
+  messageDesc(file_publira_platform_v1_search, 7);
 
 /**
  * @generated from message publira.platform.v1.UpdatePlatformSearchSettingsResponse
@@ -316,7 +406,7 @@ export type UpdatePlatformSearchSettingsResponse = Message<"publira.platform.v1.
  * Use `create(UpdatePlatformSearchSettingsResponseSchema)` to create a new message.
  */
 export const UpdatePlatformSearchSettingsResponseSchema: GenMessage<UpdatePlatformSearchSettingsResponse> = /*@__PURE__*/
-  messageDesc(file_publira_platform_v1_search, 6);
+  messageDesc(file_publira_platform_v1_search, 8);
 
 /**
  * @generated from message publira.platform.v1.TestPlatformSearchConnectionRequest
@@ -359,7 +449,7 @@ export type TestPlatformSearchConnectionRequest = Message<"publira.platform.v1.T
  * Use `create(TestPlatformSearchConnectionRequestSchema)` to create a new message.
  */
 export const TestPlatformSearchConnectionRequestSchema: GenMessage<TestPlatformSearchConnectionRequest> = /*@__PURE__*/
-  messageDesc(file_publira_platform_v1_search, 7);
+  messageDesc(file_publira_platform_v1_search, 9);
 
 /**
  * What the engine answered. The RPC itself succeeds whichever way the test
@@ -371,9 +461,9 @@ export const TestPlatformSearchConnectionRequestSchema: GenMessage<TestPlatformS
 export type TestPlatformSearchConnectionResponse = Message<"publira.platform.v1.TestPlatformSearchConnectionResponse"> & {
   /**
    * Whether the engine answered, is the engine the request names, and, while
-   * the saved analysis is the default, has both plugins it is built from. A
-   * saved analysis of another kind was checked against the engine when it was
-   * saved.
+   * the index of any language is built from the default analysis, has both
+   * plugins it is built from. A saved analysis of another kind was checked
+   * against the engine when it was saved.
    *
    * @generated from field: bool succeeded = 1;
    */
@@ -420,7 +510,7 @@ export type TestPlatformSearchConnectionResponse = Message<"publira.platform.v1.
  * Use `create(TestPlatformSearchConnectionResponseSchema)` to create a new message.
  */
 export const TestPlatformSearchConnectionResponseSchema: GenMessage<TestPlatformSearchConnectionResponse> = /*@__PURE__*/
-  messageDesc(file_publira_platform_v1_search, 8);
+  messageDesc(file_publira_platform_v1_search, 10);
 
 /**
  * The engine the public catalog searches find their hits through. Either way
@@ -508,6 +598,47 @@ export const PlatformSearchAnalysisUpdateModeSchema: GenEnum<PlatformSearchAnaly
   enumDesc(file_publira_platform_v1_search, 1);
 
 /**
+ * What a save does to the analysis of one language's catalog index.
+ *
+ * @generated from enum publira.platform.v1.PlatformSearchLocaleAnalysisUpdateMode
+ */
+export enum PlatformSearchLocaleAnalysisUpdateMode {
+  /**
+   * Keeps what the language's index is built from, as a language the request
+   * does not name keeps it.
+   *
+   * @generated from enum value: PLATFORM_SEARCH_LOCALE_ANALYSIS_UPDATE_MODE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: PLATFORM_SEARCH_LOCALE_ANALYSIS_UPDATE_MODE_UNCHANGED = 1;
+   */
+  UNCHANGED = 1,
+
+  /**
+   * Saves the definition in analysis as the language's own.
+   *
+   * @generated from enum value: PLATFORM_SEARCH_LOCALE_ANALYSIS_UPDATE_MODE_REPLACE = 2;
+   */
+  REPLACE = 2,
+
+  /**
+   * Drops the language's own definition, so its index is built from the
+   * shared one again.
+   *
+   * @generated from enum value: PLATFORM_SEARCH_LOCALE_ANALYSIS_UPDATE_MODE_SHARED = 3;
+   */
+  SHARED = 3,
+}
+
+/**
+ * Describes the enum publira.platform.v1.PlatformSearchLocaleAnalysisUpdateMode.
+ */
+export const PlatformSearchLocaleAnalysisUpdateModeSchema: GenEnum<PlatformSearchLocaleAnalysisUpdateMode> = /*@__PURE__*/
+  enumDesc(file_publira_platform_v1_search, 2);
+
+/**
  * Where a saved configuration stands against the one the search answers from.
  *
  * @generated from enum publira.platform.v1.PlatformSearchBuildState
@@ -546,7 +677,7 @@ export enum PlatformSearchBuildState {
  * Describes the enum publira.platform.v1.PlatformSearchBuildState.
  */
 export const PlatformSearchBuildStateSchema: GenEnum<PlatformSearchBuildState> = /*@__PURE__*/
-  enumDesc(file_publira_platform_v1_search, 2);
+  enumDesc(file_publira_platform_v1_search, 3);
 
 /**
  * @generated from service publira.platform.v1.PlatformSearchSettingsService

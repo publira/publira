@@ -682,3 +682,163 @@ func TestAnAnalysisTheEngineRefusesIsNotSaved(t *testing.T) {
 		t.Fatalf("Save of an analysis on sql = %v, want the analysis refused", err)
 	}
 }
+
+// aliasIndices are the indices each language's alias behind alias names.
+func (e *env) aliasIndices(t *testing.T, alias string) map[string][]string {
+	t.Helper()
+	indices := map[string][]string{}
+	for _, locale := range platformsearch.IndexLocales {
+		name := opensearchbackend.LocaleAlias(alias, locale)
+		resp, err := e.client(t).Indices.GetAlias(context.Background(), &opensearchapi.IndicesGetAliasReq{Name: []string{name}})
+		if err != nil {
+			t.Fatalf("look up alias %s: %v", name, err)
+		}
+		indices[locale] = slices.Sorted(maps.Keys(resp.Entries))
+	}
+	return indices
+}
+
+// A definition saved for one language builds that language's index from it,
+// and every other language's from the shared one. The build that follows the
+// save rebuilds that index alone, and the search moves onto it once it holds
+// the catalog.
+func TestALanguagesAnalysisRebuildsThatLanguagesIndexAlone(t *testing.T) {
+	e := newEnv(t)
+	series := e.pg.SeedSeries(t, e.tenantID, testutil.SeriesSeed{PublicID: "SEARCHSET005", Title: "별을 쫓는 아이", Published: true})
+	alias := e.alias(t)
+	e.save(t, e.saved(alias))
+	if _, err := e.build(t); err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	before := e.aliasIndices(t, alias)
+
+	saved, err := e.saveParams(t, platformsearch.SaveParams{
+		Settings:       e.saved(alias),
+		LocaleAnalyses: []platformsearch.LocaleAnalysisUpdate{{Locale: "en", Mode: platformsearch.AnalysisReplace, Analysis: koreanAnalysis}},
+	})
+	if err != nil {
+		t.Fatalf("Save the Korean analysis for en: %v", err)
+	}
+	if stored := platformsearch.FromConfig(saved); stored.State != platformsearch.Building || stored.Analysis != "" || stored.LocaleAnalyses["en"] == "" || len(stored.Serving.LocaleAnalyses) != 0 {
+		t.Fatalf("saved = %+v, want en's own analysis saved and a build due", stored)
+	}
+	if got := e.searchSeriesIn(t, "en", "별"); len(got) != 0 {
+		t.Fatalf("search in en while the build is due = %v, want the previous index's answer", got)
+	}
+
+	result, err := e.build(t)
+	if err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	if !result.Serving || len(result.Indices) != 1 || !strings.HasPrefix(result.Indices[0], opensearchbackend.LocaleAlias(alias, "en")+"-") {
+		t.Fatalf("Build = %+v, want en's index rebuilt alone and served", result)
+	}
+	after := e.aliasIndices(t, alias)
+	for _, locale := range platformsearch.IndexLocales {
+		if rebuilt := !slices.Equal(after[locale], before[locale]); rebuilt != (locale == "en") {
+			t.Fatalf("alias of %s names %v after the build, %v before; want only en's rebuilt", locale, after[locale], before[locale])
+		}
+	}
+	if stored := e.stored(t); stored.State != platformsearch.Serving || stored.Serving.LocaleAnalyses["en"] != stored.LocaleAnalyses["en"] {
+		t.Fatalf("stored = %+v, want the search on en's own analysis", stored)
+	}
+	if got := e.searchSeriesIn(t, "en", "별"); !slices.Equal(got, []uuid.UUID{series.ID}) {
+		t.Fatalf("search in en after the build = %v, want %v", got, series.ID)
+	}
+	if got := e.searchSeriesIn(t, "ja", "별"); len(got) != 0 {
+		t.Fatalf("search in ja after the build = %v, want nothing from the shared default analysis", got)
+	}
+
+	// A save that names no language keeps its analysis and changes nothing.
+	if kept := e.save(t, e.saved(alias)); kept.Revision != saved.Revision || kept.LocaleAnalyses != saved.LocaleAnalyses {
+		t.Fatalf("save without a language = revision %d, analyses %q, want revision %d kept", kept.Revision, kept.LocaleAnalyses.String, saved.Revision)
+	}
+
+	// A shared analysis that is what en's own is leaves en's index as it is
+	// and rebuilds every other language's.
+	shared, err := e.saveParams(t, platformsearch.SaveParams{
+		Settings:       e.saved(alias),
+		AnalysisMode:   platformsearch.AnalysisReplace,
+		Analysis:       koreanAnalysis,
+		LocaleAnalyses: []platformsearch.LocaleAnalysisUpdate{{Locale: "en", Mode: platformsearch.AnalysisDefault}},
+	})
+	if err != nil {
+		t.Fatalf("Save the Korean analysis for every language: %v", err)
+	}
+	if stored := platformsearch.FromConfig(shared); stored.State != platformsearch.Building || len(stored.LocaleAnalyses) != 0 {
+		t.Fatalf("saved = %+v, want no language's own analysis and a build due", stored)
+	}
+	result, err = e.build(t)
+	if err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	if len(result.Indices) != len(platformsearch.IndexLocales)-1 || slices.ContainsFunc(result.Indices, func(index string) bool {
+		return strings.HasPrefix(index, opensearchbackend.LocaleAlias(alias, "en")+"-")
+	}) {
+		t.Fatalf("Build = %+v, want every index but en's rebuilt", result)
+	}
+	if got := e.searchSeriesIn(t, "ja", "별"); !slices.Equal(got, []uuid.UUID{series.ID}) {
+		t.Fatalf("search in ja after the build = %v, want %v", got, series.ID)
+	}
+}
+
+// A definition of one language that the engine refuses is refused with the
+// engine's reason on the change that gave it, naming its language, and nothing
+// is saved.
+func TestALanguagesAnalysisTheEngineRefusesIsNotSaved(t *testing.T) {
+	e := newEnv(t)
+	alias := e.alias(t)
+	saved := e.save(t, e.saved(alias))
+
+	refused := `{"analyzer":{"written_form":{"type":"custom","tokenizer":"no_such_tokenizer"},"alternate_form":{"type":"standard"}},"normalizer":{"exact_match":{"type":"custom","filter":["lowercase"]}}}`
+	_, err := e.saveParams(t, platformsearch.SaveParams{
+		Settings: e.saved(alias),
+		LocaleAnalyses: []platformsearch.LocaleAnalysisUpdate{
+			{Locale: "ja", Mode: platformsearch.AnalysisReplace, Analysis: koreanAnalysis},
+			{Locale: "en", Mode: platformsearch.AnalysisReplace, Analysis: refused},
+		},
+	})
+	var localeErr *platformsearch.LocaleError
+	if fielderr.Field(err) != platformsearch.LocaleAnalysisField(1, "analysis") || !errors.As(err, &localeErr) || localeErr.Locale != "en" || !strings.Contains(err.Error(), "no_such_tokenizer") {
+		t.Fatalf("Save = %v, want en's analysis refused with the engine's reason", err)
+	}
+	if stored := e.stored(t); stored.Revision != saved.Revision || len(stored.LocaleAnalyses) != 0 {
+		t.Fatalf("stored = %+v, want revision %d with no language's own analysis", stored, saved.Revision)
+	}
+
+	for name, test := range map[string]struct {
+		settings platformsearch.Settings
+		updates  []platformsearch.LocaleAnalysisUpdate
+		field    string
+	}{
+		"a language with no index": {
+			settings: e.saved(alias),
+			updates:  []platformsearch.LocaleAnalysisUpdate{{Locale: "fr", Mode: platformsearch.AnalysisReplace, Analysis: koreanAnalysis}},
+			field:    platformsearch.LocaleAnalysisField(0, "locale"),
+		},
+		"a language named twice": {
+			settings: e.saved(alias),
+			updates: []platformsearch.LocaleAnalysisUpdate{
+				{Locale: "en", Mode: platformsearch.AnalysisReplace, Analysis: koreanAnalysis},
+				{Locale: "en", Mode: platformsearch.AnalysisDefault},
+			},
+			field: platformsearch.LocaleAnalysisField(1, "locale"),
+		},
+		"a definition missing a role": {
+			settings: e.saved(alias),
+			updates:  []platformsearch.LocaleAnalysisUpdate{{Locale: "ko", Mode: platformsearch.AnalysisReplace, Analysis: `{"analyzer":{"written_form":{"type":"standard"}}}`}},
+			field:    platformsearch.LocaleAnalysisField(0, "analysis"),
+		},
+		"a definition on sql": {
+			settings: platformsearch.Settings{Engine: platformsearch.EngineSQL},
+			updates:  []platformsearch.LocaleAnalysisUpdate{{Locale: "en", Mode: platformsearch.AnalysisReplace, Analysis: koreanAnalysis}},
+			field:    platformsearch.LocaleAnalysisField(0, "analysis"),
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := e.saveParams(t, platformsearch.SaveParams{Settings: test.settings, LocaleAnalyses: test.updates}); fielderr.Field(err) != test.field {
+				t.Fatalf("Save = %v (on %q), want it refused on %s", err, fielderr.Field(err), test.field)
+			}
+		})
+	}
+}

@@ -46,10 +46,19 @@ var searchFlags = map[string]string{
 
 var errAnalysisFlags = errors.New("--analysis-file and --default-analysis cannot both be given")
 
-// searchError names the flag behind what platformsearch refused.
-func searchError(err error, flags map[string]string) error {
-	if flag := flags[fielderr.Field(err)]; flag != "" {
+var errLocaleAnalysisFlag = errors.New("give a language and a file as LOCALE=FILE")
+
+// searchError names the flag behind what platformsearch refused. localeFlags
+// name the flag each change to a language's analysis came through, in the
+// order of SaveParams.LocaleAnalyses.
+func searchError(err error, flags map[string]string, localeFlags ...string) error {
+	field := fielderr.Field(err)
+	if flag := flags[field]; flag != "" {
 		return fmt.Errorf("%s: %w", flag, err)
+	}
+	var index int
+	if _, scanErr := fmt.Sscanf(field, platformsearch.FieldLocaleAnalyses+"[%d]", &index); scanErr == nil && index >= 0 && index < len(localeFlags) {
+		return fmt.Errorf("%s: %w", localeFlags[index], err)
 	}
 	return err
 }
@@ -71,13 +80,33 @@ func setupSearchSet(f *commandFlags) func(context.Context, *commandEnv) error {
 	f.StringVar(&settings.Username, "username", "", "the HTTP basic auth user, over https:// only; left out, the engine is reached without credentials")
 	analysisFile := f.String("analysis-file", "", "a JSON file holding the settings.analysis of the catalog index, defining the analyzers written_form and alternate_form and the normalizer exact_match; left out, the saved one is kept")
 	defaultAnalysis := f.Bool("default-analysis", false, "go back to the default analysis, built for Japanese")
+	var localeAnalyses []platformsearch.LocaleAnalysisUpdate
+	var localeFlags []string
+	f.Func("locale-analysis-file", "build the index of one language from its own analysis, read from a JSON file held to what --analysis-file is, as `LOCALE=FILE`, such as en=english.json; repeat it for each language. A language it does not name keeps what its index is built from", func(v string) error {
+		code, path, ok := strings.Cut(v, "=")
+		if !ok || strings.TrimSpace(code) == "" || path == "" {
+			return errLocaleAnalysisFlag
+		}
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("read the analysis of %s: %w", code, err)
+		}
+		localeAnalyses = append(localeAnalyses, platformsearch.LocaleAnalysisUpdate{Locale: code, Mode: platformsearch.AnalysisReplace, Analysis: string(raw)})
+		localeFlags = append(localeFlags, "--locale-analysis-file")
+		return nil
+	})
+	f.Func("shared-analysis-for", "drop the analysis of its own the `LOCALE` has, so its index is built from the shared one again; repeat it for each language", func(v string) error {
+		localeAnalyses = append(localeAnalyses, platformsearch.LocaleAnalysisUpdate{Locale: v, Mode: platformsearch.AnalysisDefault})
+		localeFlags = append(localeFlags, "--shared-analysis-for")
+		return nil
+	})
 	password := f.KeepableSecret("password", "search engine password")
 	named := func(err error) error {
-		return password.refusal(err, platformsearch.FieldPassword, func(err error) error { return searchError(err, searchFlags) })
+		return password.refusal(err, platformsearch.FieldPassword, func(err error) error { return searchError(err, searchFlags, localeFlags...) })
 	}
 	return func(ctx context.Context, env *commandEnv) error {
 		settings.Engine = platformsearch.Engine(engine)
-		params := platformsearch.SaveParams{Settings: settings, SecretMode: secretupdate.Clear}
+		params := platformsearch.SaveParams{Settings: settings, SecretMode: secretupdate.Clear, LocaleAnalyses: localeAnalyses}
 		switch {
 		case *analysisFile != "" && *defaultAnalysis:
 			return errAnalysisFlags
@@ -176,6 +205,7 @@ func setupSearchShow(_ *commandFlags) func(context.Context, *commandEnv) error {
 		}
 		if stored.Engine.HasIndex() {
 			fmt.Fprintf(&b, "Analysis:\t%s\n", analysisName(stored.Analysis))
+			fmt.Fprintf(&b, "Own analysis:\t%s\n", orElse(strings.Join(stored.OwnAnalysisLocales(), ", "), "none"))
 		}
 		fmt.Fprintf(&b, "Revision:\t%d\n", stored.Revision)
 		fmt.Fprintf(&b, "Updated:\t%s\n", formatTime(row.UpdatedAt))

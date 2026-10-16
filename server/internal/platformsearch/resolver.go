@@ -58,17 +58,21 @@ type Resolver struct {
 // openKey tells apart the configurations a Resolver opens a backend for: a
 // Config holds a slice, which a map cannot key on.
 type openKey struct {
-	url, username, password, index, analysis, locales string
+	url, username, password, index, analysis, localeAnalyses, locales string
 }
 
 func keyOf(cfg opensearchbackend.Config) openKey {
+	// Each analysis is what ParseAnalysis answered, so encoding them cannot
+	// fail; and if it did, an empty key only reopens the backend.
+	localeAnalyses, _ := encodeLocaleAnalyses(cfg.LocaleAnalyses)
 	return openKey{
-		url:      cfg.URL,
-		username: cfg.Username,
-		password: cfg.Password,
-		index:    cfg.Index,
-		analysis: cfg.Analysis,
-		locales:  strings.Join(cfg.Locales, ","),
+		url:            cfg.URL,
+		username:       cfg.Username,
+		password:       cfg.Password,
+		index:          cfg.Index,
+		analysis:       cfg.Analysis,
+		localeAnalyses: localeAnalyses,
+		locales:        strings.Join(cfg.Locales, ","),
 	}
 }
 
@@ -107,7 +111,7 @@ func (r *Resolver) Serving(ctx context.Context) (*opensearchbackend.Backend, err
 		r.prune()
 		return nil, nil
 	}
-	cfg, err := r.config(stored.Serving.Settings, r.row.ServingPasswordEncrypted.String, stored.Serving.Analysis, stored.Serving.Locales)
+	cfg, err := r.config(stored.Serving.Settings, r.row.ServingPasswordEncrypted.String, analyses{shared: stored.Serving.Analysis, own: stored.Serving.LocaleAnalyses}, stored.Serving.Locales)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +151,7 @@ func (r *Resolver) Targets(ctx context.Context) (Targets, error) {
 	stored := r.stored()
 	var configs []opensearchbackend.Config
 	var targets Targets
-	add := func(settings Settings, encrypted, analysis string, locales []string, building bool) (*opensearchbackend.Backend, error) {
+	add := func(settings Settings, encrypted string, analysis analyses, locales []string, building bool) (*opensearchbackend.Backend, error) {
 		cfg, err := r.config(settings, encrypted, analysis, locales)
 		if err != nil {
 			return nil, err
@@ -160,14 +164,14 @@ func (r *Resolver) Targets(ctx context.Context) (Targets, error) {
 		return backend, nil
 	}
 	if stored.Serving.Engine.HasIndex() {
-		backend, err := add(stored.Serving.Settings, r.row.ServingPasswordEncrypted.String, stored.Serving.Analysis, stored.Serving.Locales, false)
+		backend, err := add(stored.Serving.Settings, r.row.ServingPasswordEncrypted.String, analyses{shared: stored.Serving.Analysis, own: stored.Serving.LocaleAnalyses}, stored.Serving.Locales, false)
 		if err != nil {
 			return Targets{}, err
 		}
 		targets.Serving = backend
 	}
 	if stored.State == Building && stored.Engine.HasIndex() && (stored.Target() != stored.Serving.Target() || !stored.Serving.indicesCurrent()) {
-		backend, err := add(stored.Settings, r.row.PasswordEncrypted.String, stored.Analysis, IndexLocales, true)
+		backend, err := add(stored.Settings, r.row.PasswordEncrypted.String, analyses{shared: stored.Analysis, own: stored.LocaleAnalyses}, IndexLocales, true)
 		if err != nil {
 			return Targets{}, err
 		}
@@ -210,11 +214,25 @@ func (r *Resolver) stored() Stored {
 	return FromConfig(r.row)
 }
 
+// analyses are what a configuration builds the indices it creates with: the
+// shared analysis, and those of single languages in its place.
+type analyses struct {
+	shared string
+	own    map[string]string
+}
+
 // config is the client configuration of settings, with encrypted decrypted,
-// the analysis an index it creates is built with, and the languages it keeps
+// the analyses an index it creates is built with, and the languages it keeps
 // an index for.
-func (r *Resolver) config(settings Settings, encrypted, analysis string, locales []string) (opensearchbackend.Config, error) {
-	cfg := opensearchbackend.Config{URL: settings.URL, Index: settings.Index, Username: settings.Username, Analysis: analysis, Locales: locales}
+func (r *Resolver) config(settings Settings, encrypted string, analysis analyses, locales []string) (opensearchbackend.Config, error) {
+	cfg := opensearchbackend.Config{
+		URL:            settings.URL,
+		Index:          settings.Index,
+		Username:       settings.Username,
+		Analysis:       analysis.shared,
+		LocaleAnalyses: analysis.own,
+		Locales:        locales,
+	}
 	if strings.TrimSpace(encrypted) == "" {
 		return cfg, nil
 	}

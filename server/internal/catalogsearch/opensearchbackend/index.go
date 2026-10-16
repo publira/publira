@@ -149,6 +149,15 @@ func (b *Backend) targets() []target {
 	return targets
 }
 
+// analysisOf is what the index of t is created with: its language's own
+// analysis, or the backend's.
+func (b *Backend) analysisOf(t target) string {
+	if analysis, ok := b.localeAnalyses[t.locale]; ok && t.locale != "" {
+		return analysis
+	}
+	return b.analysis
+}
+
 // searchIndex is the alias a search in locale reads.
 func (b *Backend) searchIndex(locale string) (string, error) {
 	if len(b.locales) == 0 {
@@ -198,7 +207,7 @@ func documentID(kind Kind, id uuid.UUID) string {
 const initialIndexSuffix = "-initial"
 
 // EnsureIndex creates the catalog index of each language behind its alias,
-// with the analysis the backend was configured with, unless the alias, or an
+// with the analysis the backend was configured with for it, unless the alias, or an
 // index of that name, already exists. What exists is left as it is, its
 // analysis and mappings included: changing them is a rebuild, not something a
 // starting process does on its own.
@@ -211,7 +220,7 @@ func (b *Backend) EnsureIndex(ctx context.Context) error {
 		if exists {
 			continue
 		}
-		body, err := indexDefinition(b.analysis, t.alias)
+		body, err := indexDefinition(b.analysisOf(t), t.alias)
 		if err != nil {
 			return err
 		}

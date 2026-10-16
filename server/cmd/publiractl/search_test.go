@@ -258,3 +258,67 @@ func TestSearchSetSavesAnAnalysisFileAndReindexBuildsIt(t *testing.T) {
 		t.Fatalf("set --default-analysis = %q, want revision 3", saved)
 	}
 }
+
+// A language's own definition is saved from a file given with its locale,
+// show names the languages that have one, and the shared analysis takes the
+// language back.
+func TestSearchSetSavesALanguagesAnalysisFile(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	search := testutil.StartOpenSearch(t)
+	alias := "catalog-publiractl-" + uuid.NewString()
+	t.Setenv("PUBLIRA_PLATFORM_DB_URL", pg.PlatformURL)
+	t.Setenv("PUBLIRA_CONTENT_STATS_DB_URL", pg.ContentStatsURL)
+	t.Cleanup(func() {
+		req, err := http.NewRequest(http.MethodDelete, search.URL+"/"+alias+"-*", nil)
+		if err == nil {
+			if resp, err := http.DefaultClient.Do(req); err == nil {
+				_ = resp.Body.Close()
+			}
+		}
+	})
+	settings := []string{"set", "--engine", "opensearch", "--url", search.URL, "--index", alias}
+	mustSearchCommand(t, "", settings...)
+	mustSearchCommand(t, "", "reindex")
+	if show := mustSearchCommand(t, "", "show"); !strings.Contains(show, "Own analysis:") || !strings.Contains(show, "none") {
+		t.Fatalf("show = %q, want no language with an analysis of its own", show)
+	}
+
+	dir := t.TempDir()
+	write := func(name, content string) string {
+		t.Helper()
+		path := filepath.Join(dir, name)
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	english := write("english.json", `{"analyzer": {"written_form": {"type": "standard"}, "alternate_form": {"type": "standard"}}, "normalizer": {"exact_match": {"type": "custom", "filter": ["lowercase"]}}}`)
+	refused := write("refused.json", `{"analyzer": {"written_form": {"type": "custom", "tokenizer": "no_such_tokenizer"}, "alternate_form": {"type": "standard"}}, "normalizer": {"exact_match": {"type": "custom"}}}`)
+
+	code, _, stderr := searchCommand(t, "", append(settings, "--locale-analysis-file", english)...)
+	if code == 0 || !strings.Contains(stderr, "LOCALE=FILE") {
+		t.Fatalf("set with no locale: exit code = %d, stderr = %q, want the form of the flag named", code, stderr)
+	}
+	code, _, stderr = searchCommand(t, "", append(settings, "--locale-analysis-file", "en="+english, "--locale-analysis-file", "ko="+refused)...)
+	if code != 1 || !strings.Contains(stderr, "--locale-analysis-file") || !strings.Contains(stderr, "ko: ") || !strings.Contains(stderr, "no_such_tokenizer") {
+		t.Fatalf("set with a refused definition: exit code = %d, stderr = %q, want the flag, ko, and the engine's reason", code, stderr)
+	}
+	code, _, stderr = searchCommand(t, "", append(settings, "--shared-analysis-for", "fr")...)
+	if code != 1 || !strings.Contains(stderr, "--shared-analysis-for") || !strings.Contains(stderr, `"fr"`) {
+		t.Fatalf("set for a language with no index: exit code = %d, stderr = %q, want the flag and the language named", code, stderr)
+	}
+
+	if saved := mustSearchCommand(t, "", append(settings, "--locale-analysis-file", "en="+english)...); !strings.Contains(saved, "revision 2.") || !strings.Contains(saved, "The worker builds the index") {
+		t.Fatalf("set with en's analysis = %q, want a build due", saved)
+	}
+	if show := mustSearchCommand(t, "", "show"); !strings.Contains(strings.Join(strings.Fields(show), " "), "Own analysis: en") {
+		t.Fatalf("show = %q, want en named", show)
+	}
+	if saved := mustSearchCommand(t, "", append(settings, "--shared-analysis-for", "en")...); !strings.Contains(saved, "revision 3.") {
+		t.Fatalf("set --shared-analysis-for en = %q, want revision 3", saved)
+	}
+	if show := mustSearchCommand(t, "", "show"); !strings.Contains(strings.Join(strings.Fields(show), " "), "Own analysis: none") {
+		t.Fatalf("show = %q, want no language named", show)
+	}
+}

@@ -37,16 +37,17 @@ const rebuildIndexTime = "20060102150405.000"
 
 // StartRebuild creates an empty index beside the one each alias names, with
 // the mapping this build carries and the analysis the backend was configured
-// with. An alias that names nothing yet, such as that of a language the
-// catalog had no index for, gets one too, and the swap gives it its first.
+// with for its language. An alias that names nothing yet, such as that of a
+// language the catalog had no index for, gets one too, and the swap gives it
+// its first.
 func (b *Backend) StartRebuild(ctx context.Context) (*Rebuild, error) {
 	suffix := "-" + strings.Replace(time.Now().UTC().Format(rebuildIndexTime), ".", "", 1)
 	rebuild := &Rebuild{backend: b, indices: map[string]string{}, previous: map[string][]string{}, concrete: map[string]bool{}}
-	body, err := indexDefinition(b.analysis, "")
-	if err != nil {
-		return nil, err
-	}
 	for _, t := range b.targets() {
+		body, err := indexDefinition(b.analysisOf(t), "")
+		if err != nil {
+			return nil, rebuild.abortAfter(ctx, err)
+		}
 		previous, err := b.aliasIndices(ctx, t.alias)
 		if err != nil {
 			return nil, rebuild.abortAfter(ctx, err)
