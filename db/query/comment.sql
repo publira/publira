@@ -296,10 +296,10 @@ FROM episode_comments c
         AND u.id = c.user_id
     JOIN episodes e ON e.tenant_id = c.tenant_id
         AND e.id = c.episode_id
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.tenant_id = e.tenant_id
         AND s.id = e.series_id
-    JOIN series_translations str ON str.id = series_translation_for(s.id, '')
+    CROSS JOIN LATERAL series_translation_for(s.id, '') str
     LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
 WHERE c.tenant_id = sqlc.arg('tenant_id')
     AND (sqlc.narg('status')::text IS NULL OR c.status = sqlc.narg('status')::text)
@@ -349,10 +349,10 @@ FROM episode_comments c
         AND u.id = c.user_id
     JOIN episodes e ON e.tenant_id = c.tenant_id
         AND e.id = c.episode_id
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.tenant_id = e.tenant_id
         AND s.id = e.series_id
-    JOIN series_translations str ON str.id = series_translation_for(s.id, '')
+    CROSS JOIN LATERAL series_translation_for(s.id, '') str
     LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
 WHERE c.tenant_id = sqlc.arg('tenant_id')
     AND (sqlc.narg('status')::text IS NULL OR c.status = sqlc.narg('status')::text)
@@ -414,10 +414,10 @@ FROM episode_comments c
         AND u.id = c.user_id
     JOIN episodes e ON e.tenant_id = c.tenant_id
         AND e.id = c.episode_id
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.tenant_id = e.tenant_id
         AND s.id = e.series_id
-    JOIN series_translations str ON str.id = series_translation_for(s.id, '')
+    CROSS JOIN LATERAL series_translation_for(s.id, '') str
     LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
 WHERE c.tenant_id = sqlc.arg('tenant_id')
     AND c.id = sqlc.arg('id');

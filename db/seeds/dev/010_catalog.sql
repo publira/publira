@@ -171,7 +171,7 @@ seed_series AS (
         ROW_NUMBER() OVER (ORDER BY st.title) AS series_no
     FROM series s
     JOIN tenant_scope ts ON ts.id = s.tenant_id
-    JOIN series_translations st ON st.id = series_translation_for(s.id, '')
+    CROSS JOIN LATERAL series_translation_for(s.id, '') st
     WHERE st.title LIKE 'Seed Series %'
 )
 INSERT INTO series_listings (
@@ -226,7 +226,7 @@ seed_series AS (
         ROW_NUMBER() OVER (ORDER BY st.title) AS series_no
     FROM series s
     JOIN tenant_scope ts ON ts.id = s.tenant_id
-    JOIN series_translations st ON st.id = series_translation_for(s.id, '')
+    CROSS JOIN LATERAL series_translation_for(s.id, '') st
     WHERE st.title LIKE 'Seed Series %'
 ),
 seed_creators AS (
@@ -263,7 +263,7 @@ seed_series AS (
         ROW_NUMBER() OVER (ORDER BY st.title) AS series_no
     FROM series s
     JOIN tenant_scope ts ON ts.id = s.tenant_id
-    JOIN series_translations st ON st.id = series_translation_for(s.id, '')
+    CROSS JOIN LATERAL series_translation_for(s.id, '') st
     WHERE st.title LIKE 'Seed Series %'
 ),
 episode_seed AS (
@@ -308,7 +308,7 @@ seed_series AS (
         ROW_NUMBER() OVER (ORDER BY st.title) AS series_no
     FROM series s
     JOIN tenant_scope ts ON ts.id = s.tenant_id
-    JOIN series_translations st ON st.id = series_translation_for(s.id, '')
+    CROSS JOIN LATERAL series_translation_for(s.id, '') st
     WHERE st.title LIKE 'Seed Series %'
 ),
 episode_seed AS (
@@ -368,7 +368,7 @@ SELECT
 FROM episodes e
 JOIN series s ON s.id = e.series_id
 JOIN tenant_scope ts ON ts.id = s.tenant_id
-JOIN series_translations st ON st.id = series_translation_for(s.id, '')
+CROSS JOIN LATERAL series_translation_for(s.id, '') st
 WHERE st.title LIKE 'Seed Series %'
 ON CONFLICT (episode_id) DO UPDATE
 SET price = EXCLUDED.price,
@@ -381,11 +381,10 @@ SET price = EXCLUDED.price,
 UPDATE series s
 SET is_published = (s.published_at IS NOT NULL),
         updated_at = NOW()
-FROM tenants t, series_translations st
+FROM tenants t
 WHERE t.id = s.tenant_id
     AND t.public_id = 'SeedTNNTAAA1'
-    AND st.id = series_translation_for(s.id, '')
-    AND st.title LIKE 'Seed Series %'
+    AND (SELECT st.title FROM series_translation_for(s.id, '') st) LIKE 'Seed Series %'
     AND s.is_published IS DISTINCT FROM (s.published_at IS NOT NULL);
 
 -- Paid episode for access-ticket / purchase testing (Seed Episode 001-10).
@@ -395,7 +394,7 @@ SET price = 500,
 FROM episodes e
 JOIN series s ON s.id = e.series_id
 JOIN tenants t ON t.id = s.tenant_id
-JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+CROSS JOIN LATERAL episode_translation_for(e.id, '') et
 WHERE el.episode_id = e.id
     AND t.public_id = 'SeedTNNTAAA1'
     AND et.title = 'Seed Episode 001-10';
@@ -482,7 +481,7 @@ seed_series AS (
         ROW_NUMBER() OVER (ORDER BY st.title) AS series_no
     FROM series s
     JOIN tenant_scope ts ON ts.id = s.tenant_id
-    JOIN series_translations st ON st.id = series_translation_for(s.id, '')
+    CROSS JOIN LATERAL series_translation_for(s.id, '') st
     WHERE st.title LIKE 'Seed Series %'
 ),
 seed_genres AS (
@@ -517,7 +516,7 @@ seed_series AS (
         ROW_NUMBER() OVER (ORDER BY st.title) AS series_no
     FROM series s
     JOIN tenant_scope ts ON ts.id = s.tenant_id
-    JOIN series_translations st ON st.id = series_translation_for(s.id, '')
+    CROSS JOIN LATERAL series_translation_for(s.id, '') st
     WHERE st.title LIKE 'Seed Series %'
 ),
 seed_tags AS (

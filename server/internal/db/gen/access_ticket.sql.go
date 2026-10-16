@@ -97,9 +97,9 @@ SELECT at.id,
     at.created_at
 FROM access_tickets at
     JOIN episodes e ON e.id = at.episode_id
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.id = e.series_id
-    JOIN series_translations str ON str.id = series_translation_for(s.id, '')
+    CROSS JOIN LATERAL series_translation_for(s.id, '') str
     JOIN users u ON u.id = at.user_id
 WHERE at.tenant_id = $1
     AND at.id = $2
@@ -232,9 +232,9 @@ SELECT at.id,
     at.created_at
 FROM access_tickets at
     JOIN episodes e ON e.id = at.episode_id
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.id = e.series_id
-    JOIN series_translations str ON str.id = series_translation_for(s.id, '')
+    CROSS JOIN LATERAL series_translation_for(s.id, '') str
     JOIN users u ON u.id = at.user_id
 WHERE at.tenant_id = $1
     AND at.source = 'staff'
@@ -373,9 +373,9 @@ SELECT at.id,
     at.created_at
 FROM access_tickets at
     JOIN episodes e ON e.id = at.episode_id
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.id = e.series_id
-    JOIN series_translations str ON str.id = series_translation_for(s.id, '')
+    CROSS JOIN LATERAL series_translation_for(s.id, '') str
     JOIN users u ON u.id = at.user_id
 WHERE at.tenant_id = $1
     AND at.source = 'staff'

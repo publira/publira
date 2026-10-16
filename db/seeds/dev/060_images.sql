@@ -94,7 +94,7 @@ seed_series AS (
         ROW_NUMBER() OVER (ORDER BY st.title) AS series_no
     FROM series s
     JOIN tenant_scope ts ON ts.id = s.tenant_id
-    JOIN series_translations st ON st.id = series_translation_for(s.id, '')
+    CROSS JOIN LATERAL series_translation_for(s.id, '') st
     WHERE st.title LIKE 'Seed Series %'
 ),
 series_image AS (
@@ -250,7 +250,7 @@ seed_series AS (
         ROW_NUMBER() OVER (ORDER BY st.title) AS series_no
     FROM series s
     JOIN tenant_scope ts ON ts.id = s.tenant_id
-    JOIN series_translations st ON st.id = series_translation_for(s.id, '')
+    CROSS JOIN LATERAL series_translation_for(s.id, '') st
     WHERE st.title LIKE 'Seed Series %'
 ),
 series_variant AS (
@@ -399,7 +399,7 @@ seed_episode AS (
     FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN tenant_scope ts ON ts.id = s.tenant_id
-    JOIN series_translations st ON st.id = series_translation_for(s.id, '')
+    CROSS JOIN LATERAL series_translation_for(s.id, '') st
     WHERE st.title LIKE 'Seed Series %'
 )
 INSERT INTO episode_images (id, tenant_id, episode_id, display_order)
@@ -432,7 +432,7 @@ seed_episode AS (
     FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN tenant_scope ts ON ts.id = s.tenant_id
-    JOIN series_translations st ON st.id = series_translation_for(s.id, '')
+    CROSS JOIN LATERAL series_translation_for(s.id, '') st
     WHERE st.title LIKE 'Seed Series %'
 ),
 seed_page AS (

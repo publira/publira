@@ -59,9 +59,9 @@ SELECT
     ((sum(p.price_at_purchase) - sum(COALESCE(p.refunded_amount, 0))) * ec.share_bps / 10000)::bigint AS payout_amount
 FROM purchases p
 JOIN episodes e ON e.tenant_id = p.tenant_id AND e.id = p.episode_id
-JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+CROSS JOIN LATERAL episode_translation_for(e.id, '') et
 JOIN series s ON s.tenant_id = e.tenant_id AND s.id = e.series_id
-JOIN series_translations str ON str.id = series_translation_for(s.id, '')
+CROSS JOIN LATERAL series_translation_for(s.id, '') str
 JOIN episode_creators ec ON ec.tenant_id = p.tenant_id AND ec.episode_id = p.episode_id
 JOIN creators c ON c.tenant_id = ec.tenant_id AND c.id = ec.creator_id
 LEFT JOIN creator_roles r ON r.tenant_id = ec.tenant_id AND r.id = ec.role_id

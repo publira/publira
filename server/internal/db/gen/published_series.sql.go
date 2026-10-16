@@ -132,7 +132,7 @@ SELECT s.id,
         ELSE '{}'::json
     END::jsonb AS label_info
 FROM series s
-    JOIN series_translations tr ON tr.id = series_translation_for(s.id, $3::text)
+    CROSS JOIN LATERAL series_translation_for(s.id, $3::text) tr
     LEFT JOIN series_listings sl ON sl.series_id = s.id
     LEFT JOIN labels l ON s.label_id = l.id
     LEFT JOIN series_creators sc ON s.id = sc.series_id
@@ -151,7 +151,8 @@ WHERE s.tenant_id = $2
             AND ss.surface = $1::text
     )
 GROUP BY s.id,
-    tr.id,
+    tr.title,
+    tr.synopsis,
     sl.series_id,
     sl.status,
     sl.schedule_weekdays,
@@ -318,12 +319,9 @@ WITH candidate AS (
             $12::text IS NULL
             OR EXISTS (
                 SELECT 1
-                FROM series_translations qt
-                WHERE qt.id = series_translation_for(s.id, '')
-                    AND (
-                        qt.title ILIKE $12::text ESCAPE '!'
-                        OR qt.synopsis ILIKE $12::text ESCAPE '!'
-                    )
+                FROM series_translation_for(s.id, '') qt
+                WHERE qt.title ILIKE $12::text ESCAPE '!'
+                    OR qt.synopsis ILIKE $12::text ESCAPE '!'
             )
         )
 )
@@ -493,12 +491,9 @@ WITH candidate AS (
             $12::text IS NULL
             OR EXISTS (
                 SELECT 1
-                FROM series_translations qt
-                WHERE qt.id = series_translation_for(s.id, '')
-                    AND (
-                        qt.title ILIKE $12::text ESCAPE '!'
-                        OR qt.synopsis ILIKE $12::text ESCAPE '!'
-                    )
+                FROM series_translation_for(s.id, '') qt
+                WHERE qt.title ILIKE $12::text ESCAPE '!'
+                    OR qt.synopsis ILIKE $12::text ESCAPE '!'
             )
         )
 )
@@ -673,12 +668,9 @@ WHERE s.tenant_id = $1
         $8::text IS NULL
         OR EXISTS (
             SELECT 1
-            FROM series_translations qt
-            WHERE qt.id = series_translation_for(s.id, '')
-                AND (
-                    qt.title ILIKE $8::text ESCAPE '!'
-                    OR qt.synopsis ILIKE $8::text ESCAPE '!'
-                )
+            FROM series_translation_for(s.id, '') qt
+            WHERE qt.title ILIKE $8::text ESCAPE '!'
+                OR qt.synopsis ILIKE $8::text ESCAPE '!'
         )
     )
     AND (
@@ -833,12 +825,9 @@ WHERE s.tenant_id = $1
         $8::text IS NULL
         OR EXISTS (
             SELECT 1
-            FROM series_translations qt
-            WHERE qt.id = series_translation_for(s.id, '')
-                AND (
-                    qt.title ILIKE $8::text ESCAPE '!'
-                    OR qt.synopsis ILIKE $8::text ESCAPE '!'
-                )
+            FROM series_translation_for(s.id, '') qt
+            WHERE qt.title ILIKE $8::text ESCAPE '!'
+                OR qt.synopsis ILIKE $8::text ESCAPE '!'
         )
     )
     AND (
@@ -978,7 +967,7 @@ const ListActiveSeriesIDsByTitleAsc = `-- name: ListActiveSeriesIDsByTitleAsc :m
 SELECT s.id,
     tr.title
 FROM series s
-    JOIN series_translations tr ON tr.id = series_translation_for(s.id, $1::text)
+    CROSS JOIN LATERAL series_translation_for(s.id, $1::text) tr
 WHERE s.tenant_id = $2
     AND s.is_published = true
     AND s.published_at IS NOT NULL
@@ -1049,12 +1038,9 @@ WHERE s.tenant_id = $2
         $9::text IS NULL
         OR EXISTS (
             SELECT 1
-            FROM series_translations qt
-            WHERE qt.id = series_translation_for(s.id, '')
-                AND (
-                    qt.title ILIKE $9::text ESCAPE '!'
-                    OR qt.synopsis ILIKE $9::text ESCAPE '!'
-                )
+            FROM series_translation_for(s.id, '') qt
+            WHERE qt.title ILIKE $9::text ESCAPE '!'
+                OR qt.synopsis ILIKE $9::text ESCAPE '!'
         )
     )
     AND (
@@ -1141,7 +1127,7 @@ const ListActiveSeriesIDsByTitleDesc = `-- name: ListActiveSeriesIDsByTitleDesc 
 SELECT s.id,
     tr.title
 FROM series s
-    JOIN series_translations tr ON tr.id = series_translation_for(s.id, $1::text)
+    CROSS JOIN LATERAL series_translation_for(s.id, $1::text) tr
 WHERE s.tenant_id = $2
     AND s.is_published = true
     AND s.published_at IS NOT NULL
@@ -1212,12 +1198,9 @@ WHERE s.tenant_id = $2
         $9::text IS NULL
         OR EXISTS (
             SELECT 1
-            FROM series_translations qt
-            WHERE qt.id = series_translation_for(s.id, '')
-                AND (
-                    qt.title ILIKE $9::text ESCAPE '!'
-                    OR qt.synopsis ILIKE $9::text ESCAPE '!'
-                )
+            FROM series_translation_for(s.id, '') qt
+            WHERE qt.title ILIKE $9::text ESCAPE '!'
+                OR qt.synopsis ILIKE $9::text ESCAPE '!'
         )
     )
     AND (
@@ -1303,7 +1286,7 @@ func (q *Queries) ListActiveSeriesIDsByTitleDesc(ctx context.Context, arg ListAc
 const ListPublishedSeriesIDsByCreatorTitleAsc = `-- name: ListPublishedSeriesIDsByCreatorTitleAsc :many
 SELECT s.id
 FROM series s
-    JOIN series_translations tr ON tr.id = series_translation_for(s.id, $1::text)
+    CROSS JOIN LATERAL series_translation_for(s.id, $1::text) tr
     JOIN series_creators sc ON sc.series_id = s.id
 WHERE sc.creator_id = $2
     AND s.tenant_id = $3
@@ -1389,7 +1372,7 @@ func (q *Queries) ListPublishedSeriesIDsByCreatorTitleAsc(ctx context.Context, a
 const ListPublishedSeriesIDsByCreatorTitleDesc = `-- name: ListPublishedSeriesIDsByCreatorTitleDesc :many
 SELECT s.id
 FROM series s
-    JOIN series_translations tr ON tr.id = series_translation_for(s.id, $1::text)
+    CROSS JOIN LATERAL series_translation_for(s.id, $1::text) tr
     JOIN series_creators sc ON sc.series_id = s.id
 WHERE sc.creator_id = $2
     AND s.tenant_id = $3
@@ -1471,7 +1454,7 @@ func (q *Queries) ListPublishedSeriesIDsByCreatorTitleDesc(ctx context.Context, 
 const ListPublishedSeriesIDsByLabelTitleAsc = `-- name: ListPublishedSeriesIDsByLabelTitleAsc :many
 SELECT s.id
 FROM series s
-    JOIN series_translations tr ON tr.id = series_translation_for(s.id, $1::text)
+    CROSS JOIN LATERAL series_translation_for(s.id, $1::text) tr
 WHERE s.label_id = $2::uuid
     AND s.tenant_id = $3
     AND s.is_published = true
@@ -1556,7 +1539,7 @@ func (q *Queries) ListPublishedSeriesIDsByLabelTitleAsc(ctx context.Context, arg
 const ListPublishedSeriesIDsByLabelTitleDesc = `-- name: ListPublishedSeriesIDsByLabelTitleDesc :many
 SELECT s.id
 FROM series s
-    JOIN series_translations tr ON tr.id = series_translation_for(s.id, $1::text)
+    CROSS JOIN LATERAL series_translation_for(s.id, $1::text) tr
 WHERE s.label_id = $2::uuid
     AND s.tenant_id = $3
     AND s.is_published = true

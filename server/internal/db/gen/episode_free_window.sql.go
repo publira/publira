@@ -145,9 +145,9 @@ SELECT w.id,
     str.title AS series_title
 FROM episode_free_windows w
     JOIN episodes e ON e.id = w.episode_id
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.id = e.series_id
-    JOIN series_translations str ON str.id = series_translation_for(s.id, '')
+    CROSS JOIN LATERAL series_translation_for(s.id, '') str
 WHERE w.tenant_id = $1
     AND w.id = $2
 LIMIT 1
@@ -210,7 +210,7 @@ SELECT w.id,
     ) AS end_due
 FROM episode_free_windows w
     JOIN episodes e ON e.id = w.episode_id
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.id = e.series_id
 WHERE (
         w.start_revalidated_at IS NULL
@@ -290,7 +290,7 @@ SELECT w.id,
     s.public_id AS series_public_id
 FROM episode_free_windows w
     JOIN episodes e ON e.id = w.episode_id
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.id = e.series_id
 WHERE w.tenant_id = $1
     AND w.episode_id = $2
@@ -386,7 +386,7 @@ SELECT w.id,
     s.public_id AS series_public_id
 FROM episode_free_windows w
     JOIN episodes e ON e.id = w.episode_id
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.id = e.series_id
 WHERE w.tenant_id = $1
     AND w.episode_id = $2
@@ -496,7 +496,7 @@ SELECT w.id,
     s.public_id AS series_public_id
 FROM series s
     JOIN episodes e ON e.series_id = s.id
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     CROSS JOIN LATERAL (
         SELECT fw.id,
             fw.public_id,
@@ -603,7 +603,7 @@ SELECT w.id,
     s.public_id AS series_public_id
 FROM series s
     JOIN episodes e ON e.series_id = s.id
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     CROSS JOIN LATERAL (
         SELECT fw.id,
             fw.public_id,

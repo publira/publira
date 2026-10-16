@@ -32,7 +32,7 @@ func TestCatalogTranslationForFallsBackToTheDefaultThenTheOldest(t *testing.T) {
 		t.Helper()
 		var title string
 		mustQueryRow(t, ctx, pg.DB, `
-			SELECT st.title FROM series_translations st WHERE st.id = series_translation_for($1, $2)
+			SELECT st.title FROM series_translation_for($1, $2) st
 		`, &title, series.ID, locale)
 		return title
 	}
@@ -40,7 +40,7 @@ func TestCatalogTranslationForFallsBackToTheDefaultThenTheOldest(t *testing.T) {
 		t.Helper()
 		var title string
 		mustQueryRow(t, ctx, pg.DB, `
-			SELECT et.title FROM episode_translations et WHERE et.id = episode_translation_for($1, $2)
+			SELECT et.title FROM episode_translation_for($1, $2) et
 		`, &title, episode.ID, locale)
 		return title
 	}

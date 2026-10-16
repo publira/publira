@@ -123,7 +123,7 @@ SELECT e.id,
     epa.purchase_availability AS resolved_purchase_availability,
     e.series_id
 FROM episodes e
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
     JOIN episode_purchase_availability epa ON epa.episode_id = e.id
@@ -208,7 +208,7 @@ SELECT e.id,
     epa.purchase_availability AS resolved_purchase_availability,
     e.series_id
 FROM episodes e
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
     JOIN episode_purchase_availability epa ON epa.episode_id = e.id
@@ -287,7 +287,7 @@ SELECT e.id,
     e.purchase_availability,
     epa.purchase_availability AS resolved_purchase_availability
 FROM episodes e
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
     JOIN episode_purchase_availability epa ON epa.episode_id = e.id
@@ -405,7 +405,7 @@ SELECT e.id,
     el.price,
     epa.purchase_availability
 FROM episodes e
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, $1::text)
+    CROSS JOIN LATERAL episode_translation_for(e.id, $1::text) et
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
     JOIN episode_purchase_availability epa ON epa.episode_id = e.id
@@ -523,9 +523,9 @@ SELECT e.id,
         ORDER BY alternate.locale
     )::text [] AS published_locales
 FROM episodes e
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, $1::text)
+    CROSS JOIN LATERAL episode_translation_for(e.id, $1::text) et
     JOIN series s ON s.id = e.series_id
-    JOIN series_translations str ON str.id = series_translation_for(s.id, $1::text)
+    CROSS JOIN LATERAL series_translation_for(s.id, $1::text) str
     JOIN episode_listings el ON el.episode_id = e.id
     JOIN episode_purchase_availability epa ON epa.episode_id = e.id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
@@ -657,7 +657,7 @@ SELECT e.id,
     el.published_at,
     e.availability
 FROM episodes e
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
 WHERE s.tenant_id = $1
@@ -736,7 +736,7 @@ SELECT e.id,
     -- The episode's own availability, NULL where it follows the series.
     e.availability
 FROM episodes e
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
 WHERE s.tenant_id = $1
@@ -838,7 +838,7 @@ SELECT e.id,
     -- The episode's own availability, NULL where it follows the series.
     e.availability
 FROM episodes e
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
 WHERE s.tenant_id = $1
@@ -934,9 +934,9 @@ SELECT r.id,
     str.title AS series_title
 FROM episode_reads r
     JOIN episodes e ON e.id = r.episode_id
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, $1::text)
+    CROSS JOIN LATERAL episode_translation_for(e.id, $1::text) et
     JOIN series s ON s.id = e.series_id
-    JOIN series_translations str ON str.id = series_translation_for(s.id, $1::text)
+    CROSS JOIN LATERAL series_translation_for(s.id, $1::text) str
 WHERE r.tenant_id = $2
     AND r.user_id = $3
     AND EXISTS (
@@ -1045,9 +1045,9 @@ SELECT r.id,
     str.title AS series_title
 FROM episode_reads r
     JOIN episodes e ON e.id = r.episode_id
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, $1::text)
+    CROSS JOIN LATERAL episode_translation_for(e.id, $1::text) et
     JOIN series s ON s.id = e.series_id
-    JOIN series_translations str ON str.id = series_translation_for(s.id, $1::text)
+    CROSS JOIN LATERAL series_translation_for(s.id, $1::text) str
 WHERE r.tenant_id = $2
     AND r.user_id = $3
     AND EXISTS (
@@ -1222,7 +1222,7 @@ const ListPublishedEpisodeNeighborsForTenant = `-- name: ListPublishedEpisodeNei
         ) AS is_free,
         epa.purchase_availability
     FROM episodes e
-        JOIN episode_translations et ON et.id = episode_translation_for(e.id, $1::text)
+        CROSS JOIN LATERAL episode_translation_for(e.id, $1::text) et
         JOIN series s ON s.id = e.series_id
         JOIN episode_listings el ON el.episode_id = e.id
         JOIN episode_purchase_availability epa ON epa.episode_id = e.id
@@ -1254,7 +1254,7 @@ UNION ALL
         ) AS is_free,
         epa.purchase_availability
     FROM episodes e
-        JOIN episode_translations et ON et.id = episode_translation_for(e.id, $1::text)
+        CROSS JOIN LATERAL episode_translation_for(e.id, $1::text) et
         JOIN series s ON s.id = e.series_id
         JOIN episode_listings el ON el.episode_id = e.id
         JOIN episode_purchase_availability epa ON epa.episode_id = e.id
@@ -1360,7 +1360,7 @@ SELECT e.id,
     el.scheduled_at,
     el.published_at
 FROM episodes e
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON e.id = el.episode_id
 WHERE s.tenant_id = $1
@@ -1432,9 +1432,9 @@ SELECT
     el.status,
     el.scheduled_at
 FROM episodes e
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.id = e.series_id
-    JOIN series_translations str ON str.id = series_translation_for(s.id, '')
+    CROSS JOIN LATERAL series_translation_for(s.id, '') str
     JOIN episode_listings el ON el.episode_id = e.id
 WHERE s.tenant_id = $1
     AND el.status IN ('draft', 'scheduled')

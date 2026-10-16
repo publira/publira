@@ -97,9 +97,9 @@ SELECT p.id,
     str.title AS series_title
 FROM purchases p
     JOIN episodes e ON e.tenant_id = p.tenant_id AND e.id = p.episode_id
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, sqlc.arg('locale')::text)
+    CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et
     JOIN series s ON s.tenant_id = e.tenant_id AND s.id = e.series_id
-    JOIN series_translations str ON str.id = series_translation_for(s.id, sqlc.arg('locale')::text)
+    CROSS JOIN LATERAL series_translation_for(s.id, sqlc.arg('locale')::text) str
 WHERE p.tenant_id = sqlc.arg('tenant_id')
     AND p.user_id = sqlc.arg('user_id')::uuid
     AND p.id = sqlc.arg('id');

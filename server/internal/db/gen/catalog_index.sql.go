@@ -265,7 +265,7 @@ SELECT s.id,
         '{}'
     )::jsonb AS latest_episode_at_by_surface
 FROM series s
-    JOIN series_translations tr ON tr.id = series_translation_for(s.id, '')
+    CROSS JOIN LATERAL series_translation_for(s.id, '') tr
     LEFT JOIN series_listings sl ON sl.series_id = s.id
 WHERE s.tenant_id = $1
     AND (

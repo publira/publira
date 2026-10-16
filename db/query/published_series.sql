@@ -127,12 +127,9 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
         sqlc.narg('query_pattern')::text IS NULL
         OR EXISTS (
             SELECT 1
-            FROM series_translations qt
-            WHERE qt.id = series_translation_for(s.id, '')
-                AND (
-                    qt.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
-                    OR qt.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
-                )
+            FROM series_translation_for(s.id, '') qt
+            WHERE qt.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
+                OR qt.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
         )
     )
     AND (
@@ -230,12 +227,9 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
         sqlc.narg('query_pattern')::text IS NULL
         OR EXISTS (
             SELECT 1
-            FROM series_translations qt
-            WHERE qt.id = series_translation_for(s.id, '')
-                AND (
-                    qt.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
-                    OR qt.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
-                )
+            FROM series_translation_for(s.id, '') qt
+            WHERE qt.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
+                OR qt.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
         )
     )
     AND (
@@ -263,7 +257,7 @@ LIMIT sqlc.arg('limit');
 SELECT s.id,
     tr.title
 FROM series s
-    JOIN series_translations tr ON tr.id = series_translation_for(s.id, sqlc.arg('locale')::text)
+    CROSS JOIN LATERAL series_translation_for(s.id, sqlc.arg('locale')::text) tr
 WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND s.is_published = true
     AND s.published_at IS NOT NULL
@@ -334,12 +328,9 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
         sqlc.narg('query_pattern')::text IS NULL
         OR EXISTS (
             SELECT 1
-            FROM series_translations qt
-            WHERE qt.id = series_translation_for(s.id, '')
-                AND (
-                    qt.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
-                    OR qt.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
-                )
+            FROM series_translation_for(s.id, '') qt
+            WHERE qt.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
+                OR qt.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
         )
     )
     AND (
@@ -367,7 +358,7 @@ LIMIT sqlc.arg('limit');
 SELECT s.id,
     tr.title
 FROM series s
-    JOIN series_translations tr ON tr.id = series_translation_for(s.id, sqlc.arg('locale')::text)
+    CROSS JOIN LATERAL series_translation_for(s.id, sqlc.arg('locale')::text) tr
 WHERE s.tenant_id = sqlc.arg('tenant_id')
     AND s.is_published = true
     AND s.published_at IS NOT NULL
@@ -438,12 +429,9 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
         sqlc.narg('query_pattern')::text IS NULL
         OR EXISTS (
             SELECT 1
-            FROM series_translations qt
-            WHERE qt.id = series_translation_for(s.id, '')
-                AND (
-                    qt.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
-                    OR qt.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
-                )
+            FROM series_translation_for(s.id, '') qt
+            WHERE qt.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
+                OR qt.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
         )
     )
     AND (
@@ -568,12 +556,9 @@ WITH candidate AS (
             sqlc.narg('query_pattern')::text IS NULL
             OR EXISTS (
                 SELECT 1
-                FROM series_translations qt
-                WHERE qt.id = series_translation_for(s.id, '')
-                    AND (
-                        qt.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
-                        OR qt.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
-                    )
+                FROM series_translation_for(s.id, '') qt
+                WHERE qt.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
+                    OR qt.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
             )
         )
 )
@@ -686,12 +671,9 @@ WITH candidate AS (
             sqlc.narg('query_pattern')::text IS NULL
             OR EXISTS (
                 SELECT 1
-                FROM series_translations qt
-                WHERE qt.id = series_translation_for(s.id, '')
-                    AND (
-                        qt.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
-                        OR qt.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
-                    )
+                FROM series_translation_for(s.id, '') qt
+                WHERE qt.title ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
+                    OR qt.synopsis ILIKE sqlc.narg('query_pattern')::text ESCAPE '!'
             )
         )
 )
@@ -840,7 +822,7 @@ SELECT s.id,
         ELSE '{}'::json
     END::jsonb AS label_info
 FROM series s
-    JOIN series_translations tr ON tr.id = series_translation_for(s.id, sqlc.arg('locale')::text)
+    CROSS JOIN LATERAL series_translation_for(s.id, sqlc.arg('locale')::text) tr
     LEFT JOIN series_listings sl ON sl.series_id = s.id
     LEFT JOIN labels l ON s.label_id = l.id
     LEFT JOIN series_creators sc ON s.id = sc.series_id
@@ -859,7 +841,8 @@ WHERE s.tenant_id = sqlc.arg('tenant_id')
             AND ss.surface = sqlc.arg('surface')::text
     )
 GROUP BY s.id,
-    tr.id,
+    tr.title,
+    tr.synopsis,
     sl.series_id,
     sl.status,
     sl.schedule_weekdays,
@@ -875,7 +858,7 @@ GROUP BY s.id,
 -- sorts the rows back.
 SELECT s.id
 FROM series s
-    JOIN series_translations tr ON tr.id = series_translation_for(s.id, sqlc.arg('locale')::text)
+    CROSS JOIN LATERAL series_translation_for(s.id, sqlc.arg('locale')::text) tr
     JOIN series_creators sc ON sc.series_id = s.id
 WHERE sc.creator_id = sqlc.arg('creator_id')
     AND s.tenant_id = sqlc.arg('tenant_id')
@@ -913,7 +896,7 @@ LIMIT sqlc.arg('limit');
 -- The backward direction of ListPublishedSeriesIDsByCreatorTitleAsc.
 SELECT s.id
 FROM series s
-    JOIN series_translations tr ON tr.id = series_translation_for(s.id, sqlc.arg('locale')::text)
+    CROSS JOIN LATERAL series_translation_for(s.id, sqlc.arg('locale')::text) tr
     JOIN series_creators sc ON sc.series_id = s.id
 WHERE sc.creator_id = sqlc.arg('creator_id')
     AND s.tenant_id = sqlc.arg('tenant_id')
@@ -955,7 +938,7 @@ LIMIT sqlc.arg('limit');
 -- sorts the rows back.
 SELECT s.id
 FROM series s
-    JOIN series_translations tr ON tr.id = series_translation_for(s.id, sqlc.arg('locale')::text)
+    CROSS JOIN LATERAL series_translation_for(s.id, sqlc.arg('locale')::text) tr
 WHERE s.label_id = sqlc.arg('label_id')::uuid
     AND s.tenant_id = sqlc.arg('tenant_id')
     AND s.is_published = true
@@ -992,7 +975,7 @@ LIMIT sqlc.arg('limit');
 -- The backward direction of ListPublishedSeriesIDsByLabelTitleAsc.
 SELECT s.id
 FROM series s
-    JOIN series_translations tr ON tr.id = series_translation_for(s.id, sqlc.arg('locale')::text)
+    CROSS JOIN LATERAL series_translation_for(s.id, sqlc.arg('locale')::text) tr
 WHERE s.label_id = sqlc.arg('label_id')::uuid
     AND s.tenant_id = sqlc.arg('tenant_id')
     AND s.is_published = true

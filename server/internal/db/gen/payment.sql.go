@@ -304,7 +304,7 @@ SELECT e.id,
     -- surface the checkout is started from.
     epa.purchase_availability
 FROM episodes e
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, $1::text)
+    CROSS JOIN LATERAL episode_translation_for(e.id, $1::text) et
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
     JOIN episode_purchase_availability epa ON epa.episode_id = e.id
@@ -374,11 +374,11 @@ FROM purchases p
 JOIN episodes e
     ON e.tenant_id = p.tenant_id
     AND e.id = p.episode_id
-JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+CROSS JOIN LATERAL episode_translation_for(e.id, '') et
 JOIN series s
     ON s.tenant_id = e.tenant_id
     AND s.id = e.series_id
-JOIN series_translations str ON str.id = series_translation_for(s.id, '')
+CROSS JOIN LATERAL series_translation_for(s.id, '') str
 LEFT JOIN users u
     ON u.tenant_id = p.tenant_id
     AND u.id = p.user_id
@@ -597,9 +597,9 @@ SELECT p.id,
     str.title AS series_title
 FROM purchases p
     JOIN episodes e ON e.id = p.episode_id
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, $1::text)
+    CROSS JOIN LATERAL episode_translation_for(e.id, $1::text) et
     JOIN series s ON s.id = e.series_id
-    JOIN series_translations str ON str.id = series_translation_for(s.id, $1::text)
+    CROSS JOIN LATERAL series_translation_for(s.id, $1::text) str
 WHERE p.tenant_id = $2
     -- The cast keeps this a plain uuid: a deleted buyer's NULL is in nobody's library.
     AND p.user_id = $3::uuid
@@ -728,9 +728,9 @@ SELECT p.id,
     str.title AS series_title
 FROM purchases p
     JOIN episodes e ON e.id = p.episode_id
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, $1::text)
+    CROSS JOIN LATERAL episode_translation_for(e.id, $1::text) et
     JOIN series s ON s.id = e.series_id
-    JOIN series_translations str ON str.id = series_translation_for(s.id, $1::text)
+    CROSS JOIN LATERAL series_translation_for(s.id, $1::text) str
 WHERE p.tenant_id = $2
     -- The cast keeps this a plain uuid: a deleted buyer's NULL is in nobody's library.
     AND p.user_id = $3::uuid
@@ -1088,10 +1088,10 @@ SELECT p.id,
 FROM purchases p
     JOIN episodes e ON e.tenant_id = p.tenant_id
     AND e.id = p.episode_id
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.tenant_id = e.tenant_id
     AND s.id = e.series_id
-    JOIN series_translations str ON str.id = series_translation_for(s.id, '')
+    CROSS JOIN LATERAL series_translation_for(s.id, '') str
     LEFT JOIN users u ON u.tenant_id = p.tenant_id
     AND u.id = p.user_id
 WHERE p.tenant_id = $1

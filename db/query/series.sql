@@ -162,7 +162,7 @@ SELECT s.id,
                         e.id ASC
                 )
             FROM episodes e
-                JOIN episode_translations et ON et.id = episode_translation_for(e.id, sqlc.arg('locale')::text)
+                CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et
                 JOIN episode_listings el ON el.episode_id = e.id
                 JOIN published_episode_surfaces pes ON pes.episode_id = e.id
                 JOIN episode_purchase_availability epa ON epa.episode_id = e.id
@@ -184,7 +184,7 @@ SELECT s.id,
         ORDER BY alternate.locale
     )::text [] AS published_locales
 FROM series s
-    JOIN series_translations tr ON tr.id = series_translation_for(s.id, sqlc.arg('locale')::text)
+    CROSS JOIN LATERAL series_translation_for(s.id, sqlc.arg('locale')::text) tr
     LEFT JOIN series_listings sl ON sl.series_id = s.id
     LEFT JOIN labels l ON s.label_id = l.id
     LEFT JOIN series_creators sc ON s.id = sc.series_id
@@ -202,7 +202,8 @@ WHERE s.public_id = sqlc.arg('public_id')
             AND ss.surface = sqlc.arg('surface')::text
     )
 GROUP BY s.id,
-    tr.id,
+    tr.title,
+    tr.synopsis,
     l.id,
     sl.series_id,
     sl.status,
@@ -353,7 +354,7 @@ SELECT s.id,
     tr.title,
     s.published_at
 FROM series s
-    JOIN series_translations tr ON tr.id = series_translation_for(s.id, '')
+    CROSS JOIN LATERAL series_translation_for(s.id, '') tr
 WHERE s.is_published
     AND s.publication_revalidated_at IS NULL
     AND s.published_at <= NOW()
@@ -396,7 +397,7 @@ SELECT s.id,
     COALESCE(siv.file_size_bytes, 0)::bigint AS eye_catch_image_file_size_bytes,
     s.availability
 FROM series s
-    JOIN series_translations tr ON tr.id = series_translation_for(s.id, '')
+    CROSS JOIN LATERAL series_translation_for(s.id, '') tr
     LEFT JOIN labels l ON l.id = s.label_id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
     LEFT JOIN series_images si ON si.id = s.eye_catch_image_id
@@ -449,7 +450,7 @@ SELECT s.id,
     COALESCE(siv.file_size_bytes, 0)::bigint AS eye_catch_image_file_size_bytes,
     s.availability
 FROM series s
-    JOIN series_translations tr ON tr.id = series_translation_for(s.id, '')
+    CROSS JOIN LATERAL series_translation_for(s.id, '') tr
     LEFT JOIN labels l ON l.id = s.label_id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
     LEFT JOIN series_images si ON si.id = s.eye_catch_image_id
@@ -546,7 +547,7 @@ SELECT s.id,
     -- The series' own purchase availability, NULL where it follows the tenant.
     s.purchase_availability
 FROM series s
-    JOIN series_translations tr ON tr.id = series_translation_for(s.id, '')
+    CROSS JOIN LATERAL series_translation_for(s.id, '') tr
     LEFT JOIN labels l ON l.id = s.label_id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
     LEFT JOIN series_images si ON si.id = s.eye_catch_image_id
@@ -585,7 +586,7 @@ SELECT s.id,
     -- The series' own purchase availability, NULL where it follows the tenant.
     s.purchase_availability
 FROM series s
-    JOIN series_translations tr ON tr.id = series_translation_for(s.id, '')
+    CROSS JOIN LATERAL series_translation_for(s.id, '') tr
     LEFT JOIN labels l ON l.id = s.label_id
     LEFT JOIN series_listings sl ON sl.series_id = s.id
     LEFT JOIN series_images si ON si.id = s.eye_catch_image_id

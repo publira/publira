@@ -955,9 +955,9 @@ SELECT t.entity_id AS episode_id,
     srtr.title AS series_title
 FROM totals t
     JOIN episodes e ON e.tenant_id = $1 AND e.id = t.entity_id
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series sr ON sr.tenant_id = e.tenant_id AND sr.id = e.series_id
-    JOIN series_translations srtr ON srtr.id = series_translation_for(sr.id, '')
+    CROSS JOIN LATERAL series_translation_for(sr.id, '') srtr
 WHERE (
         $2::uuid IS NULL
         OR (
@@ -1062,9 +1062,9 @@ SELECT t.entity_id AS episode_id,
     srtr.title AS series_title
 FROM totals t
     JOIN episodes e ON e.tenant_id = $1 AND e.id = t.entity_id
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series sr ON sr.tenant_id = e.tenant_id AND sr.id = e.series_id
-    JOIN series_translations srtr ON srtr.id = series_translation_for(sr.id, '')
+    CROSS JOIN LATERAL series_translation_for(sr.id, '') srtr
 WHERE (
         $2::uuid IS NULL
         OR (

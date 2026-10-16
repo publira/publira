@@ -18,9 +18,9 @@ SELECT el.episode_id,
     t.domain AS tenant_domain
 FROM episode_listings el
     JOIN episodes e ON e.id = el.episode_id
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.id = e.series_id
-    JOIN series_translations str ON str.id = series_translation_for(s.id, '')
+    CROSS JOIN LATERAL series_translation_for(s.id, '') str
     JOIN tenants t ON t.id = el.tenant_id
 WHERE el.status = 'scheduled'
     AND el.scheduled_at IS NOT NULL
@@ -36,9 +36,9 @@ SELECT e.id AS episode_id,
     s.public_id AS series_public_id,
     str.title AS series_title
 FROM episodes e
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.id = e.series_id
-    JOIN series_translations str ON str.id = series_translation_for(s.id, '')
+    CROSS JOIN LATERAL series_translation_for(s.id, '') str
     JOIN episode_listings el ON el.episode_id = e.id
 WHERE e.tenant_id = $1
     AND e.id = $2

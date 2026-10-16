@@ -466,7 +466,7 @@ FROM (
     FROM series_follows sf
         JOIN episodes e ON e.tenant_id = sf.tenant_id
             AND e.series_id = sf.series_id
-        JOIN episode_translations et ON et.id = episode_translation_for(e.id, sqlc.arg('locale')::text)
+        CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et
         JOIN episode_listings el ON el.tenant_id = e.tenant_id
             AND el.episode_id = e.id
     WHERE sf.tenant_id = sqlc.arg('tenant_id')
@@ -489,7 +489,7 @@ FROM (
             AND ec.creator_id = cf.creator_id
         JOIN episodes e ON e.tenant_id = ec.tenant_id
             AND e.id = ec.episode_id
-        JOIN episode_translations et ON et.id = episode_translation_for(e.id, sqlc.arg('locale')::text)
+        CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et
         JOIN episode_listings el ON el.tenant_id = e.tenant_id
             AND el.episode_id = e.id
     WHERE cf.tenant_id = sqlc.arg('tenant_id')
@@ -538,7 +538,7 @@ FROM (
     FROM series_follows sf
         JOIN episodes e ON e.tenant_id = sf.tenant_id
             AND e.series_id = sf.series_id
-        JOIN episode_translations et ON et.id = episode_translation_for(e.id, sqlc.arg('locale')::text)
+        CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et
         JOIN episode_listings el ON el.tenant_id = e.tenant_id
             AND el.episode_id = e.id
     WHERE sf.tenant_id = sqlc.arg('tenant_id')
@@ -561,7 +561,7 @@ FROM (
             AND ec.creator_id = cf.creator_id
         JOIN episodes e ON e.tenant_id = ec.tenant_id
             AND e.id = ec.episode_id
-        JOIN episode_translations et ON et.id = episode_translation_for(e.id, sqlc.arg('locale')::text)
+        CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et
         JOIN episode_listings el ON el.tenant_id = e.tenant_id
             AND el.episode_id = e.id
     WHERE cf.tenant_id = sqlc.arg('tenant_id')

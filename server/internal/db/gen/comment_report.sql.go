@@ -179,10 +179,10 @@ FROM episode_comment_reports r
         AND u.id = c.user_id
     JOIN episodes e ON e.tenant_id = c.tenant_id
         AND e.id = c.episode_id
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.tenant_id = e.tenant_id
         AND s.id = e.series_id
-    JOIN series_translations str ON str.id = series_translation_for(s.id, '')
+    CROSS JOIN LATERAL series_translation_for(s.id, '') str
     LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
 WHERE r.tenant_id = $1
     AND r.id = $2
@@ -278,10 +278,10 @@ SELECT c.id,
 FROM episode_comments c
     JOIN episodes e ON e.tenant_id = c.tenant_id
         AND e.id = c.episode_id
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.tenant_id = c.tenant_id
         AND s.id = e.series_id
-    JOIN series_translations str ON str.id = series_translation_for(s.id, '')
+    CROSS JOIN LATERAL series_translation_for(s.id, '') str
 WHERE c.tenant_id = $1
     AND c.id = $2
     AND c.status = 'published'
@@ -414,10 +414,10 @@ FROM episode_comment_reports r
         AND u.id = c.user_id
     JOIN episodes e ON e.tenant_id = c.tenant_id
         AND e.id = c.episode_id
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.tenant_id = e.tenant_id
         AND s.id = e.series_id
-    JOIN series_translations str ON str.id = series_translation_for(s.id, '')
+    CROSS JOIN LATERAL series_translation_for(s.id, '') str
     LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
 WHERE r.tenant_id = $1
     AND ($2::text IS NULL OR r.status = $2::text)
@@ -589,10 +589,10 @@ FROM episode_comment_reports r
         AND u.id = c.user_id
     JOIN episodes e ON e.tenant_id = c.tenant_id
         AND e.id = c.episode_id
-    JOIN episode_translations et ON et.id = episode_translation_for(e.id, '')
+    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
     JOIN series s ON s.tenant_id = e.tenant_id
         AND s.id = e.series_id
-    JOIN series_translations str ON str.id = series_translation_for(s.id, '')
+    CROSS JOIN LATERAL series_translation_for(s.id, '') str
     LEFT JOIN creators cc ON cc.id = credited_creator_of_account(c.tenant_id, c.user_id, c.episode_id)
 WHERE r.tenant_id = $1
     AND ($2::text IS NULL OR r.status = $2::text)

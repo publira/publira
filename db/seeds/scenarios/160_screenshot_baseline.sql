@@ -30,7 +30,7 @@ WITH numbered AS (
         RIGHT(st.title, 3)::int AS number
     FROM series s
         JOIN tenants t ON t.id = s.tenant_id
-        JOIN series_translations st ON st.id = series_translation_for(s.id, '')
+        CROSS JOIN LATERAL series_translation_for(s.id, '') st
     WHERE t.public_id = 'SeedTNNTAAA1'
         AND st.title LIKE 'Seed Series %'
 )
@@ -49,7 +49,7 @@ SET published_at = s.published_at + (e.order_index * INTERVAL '6 hours')
 FROM episodes e
     JOIN series s ON s.id = e.series_id
     JOIN tenants t ON t.id = s.tenant_id
-    JOIN series_translations st ON st.id = series_translation_for(s.id, '')
+    CROSS JOIN LATERAL series_translation_for(s.id, '') st
 WHERE el.episode_id = e.id
     AND t.public_id = 'SeedTNNTAAA1'
     AND st.title LIKE 'Seed Series %'

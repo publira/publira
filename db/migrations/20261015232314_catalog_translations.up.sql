@@ -88,15 +88,20 @@ FROM episodes e
 -- tenant default locale's, else the series' oldest, as page_translation_for
 -- picks a page's. An empty locale asks for the tenant default locale's.
 --
+-- It answers the row itself, and a read joins it with CROSS JOIN LATERAL. The
+-- planner inlines it as a subquery whose LIMIT keeps it out of the join order,
+-- so each series looks its translation up once, through
+-- series_translations_series_id_locale_key, whatever statistics the table has.
+--
 -- SECURITY INVOKER keeps series_translations behind the caller's own row-level
 -- security, as page_translation_for does.
-CREATE FUNCTION series_translation_for(series_id uuid, locale text) RETURNS uuid
+CREATE FUNCTION series_translation_for(series_id uuid, locale text) RETURNS SETOF series_translations
     LANGUAGE sql
     STABLE
     PARALLEL SAFE
     SECURITY INVOKER
 AS $$
-    SELECT st.id
+    SELECT st.*
     FROM series_translations st
         JOIN tenants t ON t.id = st.tenant_id
     WHERE st.series_id = series_translation_for.series_id
@@ -108,15 +113,15 @@ AS $$
 $$;
 
 -- FUNCTION: episode_translation_for
--- The translation of an episode to show for a locale, picked the way
--- series_translation_for picks a series'.
-CREATE FUNCTION episode_translation_for(episode_id uuid, locale text) RETURNS uuid
+-- The translation of an episode to show for a locale, picked and joined the
+-- way series_translation_for's is.
+CREATE FUNCTION episode_translation_for(episode_id uuid, locale text) RETURNS SETOF episode_translations
     LANGUAGE sql
     STABLE
     PARALLEL SAFE
     SECURITY INVOKER
 AS $$
-    SELECT et.id
+    SELECT et.*
     FROM episode_translations et
         JOIN tenants t ON t.id = et.tenant_id
     WHERE et.episode_id = episode_translation_for.episode_id

@@ -218,7 +218,7 @@ FROM unnest($1::uuid[]) AS g(genre_id)
             s.published_at
         FROM series_genres sg
             JOIN series s ON s.tenant_id = sg.tenant_id AND s.id = sg.series_id
-            JOIN series_translations str ON str.id = series_translation_for(s.id, $2::text)
+            CROSS JOIN LATERAL series_translation_for(s.id, $2::text) str
             JOIN series_listings sl ON sl.series_id = s.id
             LEFT JOIN ranked r ON r.genre_id = sg.genre_id AND r.series_id = s.id
         WHERE sg.tenant_id = $3
