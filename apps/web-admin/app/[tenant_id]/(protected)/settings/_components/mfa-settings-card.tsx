@@ -1,3 +1,4 @@
+import type { Locale } from "@publira/i18n";
 import {
   ActionForm,
   ActionFormIdle,
@@ -34,10 +35,14 @@ import {
   MfaSettingsOutcome,
   ReportMfaSettingsChange,
 } from "./mfa-settings-outcome";
+import { PasskeySettings } from "./passkey-settings";
 
 interface MfaSettingsCardProps {
+  /** For the dates a passkey was added and last used. */
+  locale: Locale;
   status: AdminMfaStatus;
   tenantId: string;
+  timeZone: string;
 }
 
 const MfaStartForm = ({ tenantId }: { tenantId: string }) => (
@@ -124,7 +129,17 @@ const MfaRegenerateForm = ({ tenantId }: { tenantId: string }) => (
   </ActionForm>
 );
 
-const MfaDisableForm = ({ tenantId }: { tenantId: string }) => (
+/**
+ * Turning two-step verification off keeps meaning the authenticator app: an
+ * account that also holds passkeys keeps them, and the wording says so.
+ */
+const MfaDisableForm = ({
+  keepsPasskeys,
+  tenantId,
+}: {
+  keepsPasskeys: boolean;
+  tenantId: string;
+}) => (
   <ActionForm
     action={disableAccountMfaAction}
     className="grid gap-3"
@@ -140,7 +155,11 @@ const MfaDisableForm = ({ tenantId }: { tenantId: string }) => (
       </p>
       <p className="text-xs text-muted-foreground">
         <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
-          <Message message="admin.settings.mfa.disable_description" />
+          {keepsPasskeys ? (
+            <Message message="admin.settings.mfa.disable_description_with_passkeys" />
+          ) : (
+            <Message message="admin.settings.mfa.disable_description" />
+          )}
         </Suspense>
       </p>
     </div>
@@ -160,15 +179,25 @@ const MfaDisableForm = ({ tenantId }: { tenantId: string }) => (
   </ActionForm>
 );
 
+const MfaStatusMessage = ({ status }: { status: AdminMfaStatus }) => {
+  const hasPasskey = status.passkeys.length > 0;
+  if (status.enabled && hasPasskey) {
+    return <Message message="admin.settings.mfa.status_both" />;
+  }
+  if (status.enabled) {
+    return <Message message="admin.settings.mfa.status_authenticator" />;
+  }
+  if (hasPasskey) {
+    return <Message message="admin.settings.mfa.status_passkey" />;
+  }
+  return <Message message="admin.settings.mfa.status_disabled" />;
+};
+
 const MfaStatusSummary = ({ status }: { status: AdminMfaStatus }) => (
   <div className="grid gap-1">
     <p className="text-sm text-foreground">
       <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-        {status.enabled ? (
-          <Message message="admin.settings.mfa.status_enabled" />
-        ) : (
-          <Message message="admin.settings.mfa.status_disabled" />
-        )}
+        <MfaStatusMessage status={status} />
       </Suspense>
     </p>
     {status.required ? (
@@ -178,7 +207,7 @@ const MfaStatusSummary = ({ status }: { status: AdminMfaStatus }) => (
         </Suspense>
       </p>
     ) : null}
-    {status.enabled ? (
+    {status.enabled || status.passkeys.length > 0 ? (
       <p className="text-xs text-muted-foreground">
         <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
           <Message
@@ -192,10 +221,17 @@ const MfaStatusSummary = ({ status }: { status: AdminMfaStatus }) => (
 );
 
 /**
- * The operator's own second factor: turn it on, replace the recovery codes, or
- * turn it off.
+ * The operator's own second factors: the authenticator app, which is turned
+ * on, has its recovery codes replaced, and is turned off, and the passkeys,
+ * which are added, named, and removed one by one. The recovery codes stand in
+ * for both, so whichever of them issues a batch shows it in the one place.
  */
-export const MfaSettingsCard = ({ status, tenantId }: MfaSettingsCardProps) => (
+export const MfaSettingsCard = ({
+  locale,
+  status,
+  tenantId,
+  timeZone,
+}: MfaSettingsCardProps) => (
   <AdminSection>
     <AdminSectionHeader>
       <AdminSectionHeading>
@@ -213,18 +249,37 @@ export const MfaSettingsCard = ({ status, tenantId }: MfaSettingsCardProps) => (
     </AdminSectionHeader>
     <MfaStatusSummary status={status} />
 
-    <MfaSettingsOutcome recoveryCodes={<MfaRecoveryCodes />}>
-      {status.enabled ? (
-        <>
-          <MfaRegenerateForm tenantId={tenantId} />
-          <MfaDisableForm tenantId={tenantId} />
-        </>
-      ) : (
-        <MfaEnrollment
-          confirm={<MfaConfirmForm tenantId={tenantId} />}
-          start={<MfaStartForm tenantId={tenantId} />}
-        />
-      )}
+    <MfaSettingsOutcome
+      hasSecondFactor={status.enabled || status.passkeys.length > 0}
+      recoveryCodes={<MfaRecoveryCodes />}
+    >
+      <div className="grid gap-3">
+        <h3 className="text-sm font-medium text-foreground">
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="admin.settings.mfa.authenticator_title" />
+          </Suspense>
+        </h3>
+        {status.enabled ? (
+          <>
+            <MfaRegenerateForm tenantId={tenantId} />
+            <MfaDisableForm
+              keepsPasskeys={status.passkeys.length > 0}
+              tenantId={tenantId}
+            />
+          </>
+        ) : (
+          <MfaEnrollment
+            confirm={<MfaConfirmForm tenantId={tenantId} />}
+            start={<MfaStartForm tenantId={tenantId} />}
+          />
+        )}
+      </div>
+      <PasskeySettings
+        locale={locale}
+        passkeys={status.passkeys}
+        tenantId={tenantId}
+        timeZone={timeZone}
+      />
     </MfaSettingsOutcome>
   </AdminSection>
 );

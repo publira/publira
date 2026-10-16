@@ -9,6 +9,7 @@ import {
   inviteTokenFormSchema,
   nextPathFormSchema,
   nextPathSearchParamSchema,
+  passkeyNameFormSchema,
   passwordFormSchema,
   tenantIdFormSchema,
 } from "./auth-input";
@@ -137,6 +138,35 @@ describe("passwordFormSchema", () => {
     expect(passwordJA.safeParse("").success).toBe(false);
     expect(passwordEN.safeParse("").error?.issues[0]?.message).toBe(
       "Enter your password."
+    );
+  });
+});
+
+describe("passkeyNameFormSchema", () => {
+  it("trims a name and keeps an empty one, which leaves the passkey unnamed", async () => {
+    const name = await passkeyNameFormSchema(EN);
+
+    expect(name.parse("  Work laptop  ")).toBe("Work laptop");
+    expect(name.parse("   ")).toBe("");
+  });
+
+  // An empty name clears the one the passkey has, so a submission that sent
+  // no name at all must not be read as one.
+  it("refuses a missing field and a file rather than reading them as empty", async () => {
+    const name = await passkeyNameFormSchema(EN);
+    const file = new File(["x"], "name.txt");
+
+    expect(name.safeParse(null).success).toBe(false);
+    expect(name.safeParse(file).success).toBe(false);
+  });
+
+  // The API counts characters, so an emoji is one of the 64, not two.
+  it("bounds the name in characters rather than UTF-16 units", async () => {
+    const name = await passkeyNameFormSchema(EN);
+
+    expect(name.safeParse("🔑".repeat(64)).success).toBe(true);
+    expect(name.safeParse("a".repeat(65)).error?.issues[0]?.message).toBe(
+      "Use 64 characters or fewer for the name."
     );
   });
 });

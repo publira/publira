@@ -5,32 +5,57 @@ import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
 import type { FormActionState } from "@publira/ui-components/action-form";
+import { ToastProvider } from "@publira/ui-components/toast";
 import {
   cleanup,
   fireEvent,
   render,
   screen,
+  waitFor,
   within,
 } from "@testing-library/react";
 import { Activity } from "react";
+import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
 import type { AdminMfaStatus } from "#lib/admin-mfa";
 import type {
   MfaEnrollmentConfirmState,
   MfaEnrollmentStartState,
   MfaRecoveryCodesState,
+  PasskeyCeremonyStartState,
+  PasskeyRegistrationState,
 } from "#lib/mfa-action-state";
 
 import { MfaSettingsCard } from "./mfa-settings-card";
 
-const { confirm, disable, regenerate, start } = vi.hoisted(() => ({
+const {
+  beginPasskey,
+  confirm,
+  deletePasskey,
+  disable,
+  finishPasskey,
+  regenerate,
+  renamePasskey,
+  start,
+  startRegistration,
+} = vi.hoisted(() => ({
+  beginPasskey:
+    vi.fn<(formData: FormData) => Promise<PasskeyCeremonyStartState>>(),
   confirm:
     vi.fn<
       (
         previousState: MfaEnrollmentConfirmState,
         formData: FormData
       ) => Promise<MfaEnrollmentConfirmState>
+    >(),
+  deletePasskey:
+    vi.fn<
+      (
+        previousState: FormActionState,
+        formData: FormData
+      ) => Promise<FormActionState>
     >(),
   disable:
     vi.fn<
@@ -39,12 +64,21 @@ const { confirm, disable, regenerate, start } = vi.hoisted(() => ({
         formData: FormData
       ) => Promise<FormActionState>
     >(),
+  finishPasskey:
+    vi.fn<(formData: FormData) => Promise<PasskeyRegistrationState>>(),
   regenerate:
     vi.fn<
       (
         previousState: MfaRecoveryCodesState,
         formData: FormData
       ) => Promise<MfaRecoveryCodesState>
+    >(),
+  renamePasskey:
+    vi.fn<
+      (
+        previousState: FormActionState,
+        formData: FormData
+      ) => Promise<FormActionState>
     >(),
   start:
     vi.fn<
@@ -53,15 +87,28 @@ const { confirm, disable, regenerate, start } = vi.hoisted(() => ({
         formData: FormData
       ) => Promise<MfaEnrollmentStartState>
     >(),
+  startRegistration: vi.fn<(options: unknown) => Promise<unknown>>(),
 }));
 
 // The Actions are `"use server"`, so the module they live in cannot be
 // evaluated here at all.
 vi.mock("../_lib/mfa-actions", () => ({
+  beginAccountPasskeyRegistrationAction: beginPasskey,
   confirmAccountMfaEnrollmentAction: confirm,
+  deleteAccountPasskeyAction: deletePasskey,
   disableAccountMfaAction: disable,
+  finishAccountPasskeyRegistrationAction: finishPasskey,
   regenerateAccountMfaRecoveryCodesAction: regenerate,
+  renameAccountPasskeyAction: renamePasskey,
   startAccountMfaEnrollmentAction: start,
+}));
+
+// jsdom has no WebAuthn; the browser's half of the ceremony is what these
+// stand in for.
+vi.mock("@simplewebauthn/browser", () => ({
+  browserSupportsWebAuthn: () => true,
+  startAuthentication: vi.fn(),
+  startRegistration,
 }));
 
 vi.mock("#components/message", () => ({
@@ -94,15 +141,52 @@ vi.mock("#components/mfa-enrollment-secret", async () => {
 
 const disabled: AdminMfaStatus = {
   enabled: false,
+  passkeys: [],
   remainingRecoveryCodes: 0,
   required: false,
 };
 
 const enabled: AdminMfaStatus = {
   enabled: true,
+  passkeys: [],
   remainingRecoveryCodes: 10,
   required: false,
 };
+
+const laptopPasskey = {
+  createdAt: "2026-10-01T09:30:00Z",
+  id: "PASSKEY00001",
+  lastUsedAt: "",
+  name: "Work laptop",
+};
+
+const passkeyOnly: AdminMfaStatus = {
+  enabled: false,
+  passkeys: [laptopPasskey],
+  remainingRecoveryCodes: 10,
+  required: true,
+};
+
+const both: AdminMfaStatus = { ...enabled, passkeys: [laptopPasskey] };
+
+const Card = ({ status }: { status: AdminMfaStatus }) => (
+  <MfaSettingsCard
+    locale="en"
+    status={status}
+    tenantId="TENANT001"
+    timeZone="UTC"
+  />
+);
+
+/** The ceremony reads the client catalog, and a settled row raises a toast. */
+const Providers = ({ children }: { children: ReactNode }) => (
+  <AdminLocaleTestProvider locale="en">
+    <ToastProvider>{children}</ToastProvider>
+  </AdminLocaleTestProvider>
+);
+
+const renderCard = (status: AdminMfaStatus) =>
+  render(<Card status={status} />, { wrapper: Providers });
 
 /**
  * How long a case waits for something to reach the screen: the card's content
@@ -165,9 +249,7 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
       signedIn: true,
     });
 
-    const { rerender } = render(
-      <MfaSettingsCard status={disabled} tenantId="TENANT001" />
-    );
+    const { rerender } = renderCard(disabled);
 
     fireEvent.click(
       await screen.findByRole("button", { name: "Set up" }, onScreen)
@@ -183,7 +265,7 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
     expect(submitted?.get("code")).toBe("123456");
     expect(submitted?.get("tenant_id")).toBe("TENANT001");
 
-    rerender(<MfaSettingsCard status={enabled} tenantId="TENANT001" />);
+    rerender(<Card status={enabled} />);
 
     expect(
       await screen.findByRole("button", { name: "Regenerate" }, onScreen)
@@ -202,7 +284,7 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
       })
       .mockResolvedValueOnce({ message: "The code is incorrect.", ok: false });
 
-    render(<MfaSettingsCard status={enabled} tenantId="TENANT001" />);
+    renderCard(enabled);
 
     await submitCode("Regenerate", "123456");
     expect(await screen.findByText("EEEEE-FFFFF", {}, onScreen)).toBeDefined();
@@ -228,8 +310,9 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
 
     const { rerender } = render(
       <Activity mode="visible">
-        <MfaSettingsCard status={enabled} tenantId="TENANT001" />
-      </Activity>
+        <Card status={enabled} />
+      </Activity>,
+      { wrapper: Providers }
     );
 
     await submitCode("Regenerate", "123456");
@@ -237,12 +320,12 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
 
     rerender(
       <Activity mode="hidden">
-        <MfaSettingsCard status={enabled} tenantId="TENANT001" />
+        <Card status={enabled} />
       </Activity>
     );
     rerender(
       <Activity mode="visible">
-        <MfaSettingsCard status={enabled} tenantId="TENANT001" />
+        <Card status={enabled} />
       </Activity>
     );
 
@@ -266,9 +349,7 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
       ok: true,
     });
 
-    const { rerender } = render(
-      <MfaSettingsCard status={enabled} tenantId="TENANT001" />
-    );
+    const { rerender } = renderCard(enabled);
 
     await submitCode("Regenerate", "123456");
     expect(await screen.findByText("EEEEE-FFFFF", {}, onScreen)).toBeDefined();
@@ -282,7 +363,7 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
       )
     ).toBeDefined();
 
-    rerender(<MfaSettingsCard status={disabled} tenantId="TENANT001" />);
+    rerender(<Card status={disabled} />);
 
     expect(
       await screen.findByRole("button", { name: "Set up" }, onScreen)
@@ -291,5 +372,244 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
       screen.getByText("Two-step verification has been turned off.")
     ).toBeDefined();
     expect(screen.queryByText("EEEEE-FFFFF")).toBeNull();
+  });
+  it("says which factors an account holds and lists its passkeys", async () => {
+    renderCard(passkeyOnly);
+
+    expect(
+      await screen.findByText(
+        "Two-step verification is on with a passkey.",
+        {},
+        onScreen
+      )
+    ).toBeDefined();
+    expect(screen.getByText("10 recovery codes left")).toBeDefined();
+    expect(screen.getByText("Work laptop")).toBeDefined();
+    expect(screen.getByText(/^Added Oct 1, 2026/u)).toBeDefined();
+    expect(screen.getByText(/· Not used yet$/u)).toBeDefined();
+    // The authenticator app is still there to set up beside the passkey.
+    expect(screen.getByRole("button", { name: "Set up" })).toBeDefined();
+  });
+
+  it("says so when both factors are on, and that turning off leaves the passkeys", async () => {
+    renderCard(both);
+
+    expect(
+      await screen.findByText(
+        "Two-step verification is on with an authenticator app and a passkey.",
+        {},
+        onScreen
+      )
+    ).toBeDefined();
+    expect(
+      screen.getByText(
+        "Removes the authenticator app; your passkeys keep two-step verification on. Enter the current code from your authenticator app, or one of your recovery codes."
+      )
+    ).toBeDefined();
+  });
+
+  // The first passkey of an account with no factor brings the recovery codes,
+  // which are shown once as an enrollment's are, and the passkey is named
+  // after the browser has created it.
+  it("shows the codes a first passkey brought and then asks for its name", async () => {
+    beginPasskey.mockResolvedValue({
+      message: "",
+      ok: true,
+      optionsJson: '{"challenge":"Y2hhbGxlbmdl"}',
+    });
+    startRegistration.mockResolvedValue({ id: "credential" });
+    finishPasskey.mockResolvedValue({
+      message: "The passkey has been added.",
+      ok: true,
+      passkeyId: "PASSKEY00002",
+      recoveryCodes: ["AAAAA-BBBBB"],
+    });
+    renamePasskey.mockResolvedValue({
+      message: "The passkey's name has been saved.",
+      ok: true,
+    });
+
+    renderCard(disabled);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Add a passkey" }, onScreen)
+    );
+
+    expect(await screen.findByText("AAAAA-BBBBB", {}, onScreen)).toBeDefined();
+    expect(screen.getByText("The passkey has been added.")).toBeDefined();
+    expect(finishPasskey.mock.calls[0]?.[0].get("credential")).toBe(
+      '{"id":"credential"}'
+    );
+
+    const name = await screen.findByLabelText("Name", {}, onScreen);
+    fireEvent.change(name, { target: { value: "Phone" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(
+      await screen.findByRole("button", { name: "Add a passkey" }, onScreen)
+    ).toBeDefined();
+    const named = renamePasskey.mock.calls[0]?.[1];
+    expect(named?.get("passkey_id")).toBe("PASSKEY00002");
+    expect(named?.get("name")).toBe("Phone");
+    // Naming is not a change that issues codes, so the batch stays.
+    expect(screen.getByText("AAAAA-BBBBB")).toBeDefined();
+  });
+
+  it("leaves the codes alone when a later passkey brings none", async () => {
+    beginPasskey.mockResolvedValue({
+      message: "",
+      ok: true,
+      optionsJson: "{}",
+    });
+    startRegistration.mockResolvedValue({ id: "credential" });
+    finishPasskey.mockResolvedValue({
+      message: "The passkey has been added.",
+      ok: true,
+      passkeyId: "PASSKEY00002",
+      recoveryCodes: [],
+    });
+
+    renderCard(both);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Add a passkey" }, onScreen)
+    );
+
+    expect(
+      await screen.findByText("The passkey has been added.", {}, onScreen)
+    ).toBeDefined();
+    expect(screen.queryByText("Recovery codes")).toBeNull();
+    fireEvent.click(await screen.findByRole("button", { name: "Skip" }));
+    expect(
+      await screen.findByRole("button", { name: "Add a passkey" }, onScreen)
+    ).toBeDefined();
+    expect(renamePasskey).not.toHaveBeenCalled();
+  });
+
+  it("reports a prompt the operator closed on the add form", async () => {
+    beginPasskey.mockResolvedValue({
+      message: "",
+      ok: true,
+      optionsJson: "{}",
+    });
+    startRegistration.mockRejectedValue(
+      Object.assign(new Error("closed"), { name: "NotAllowedError" })
+    );
+
+    renderCard(disabled);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Add a passkey" }, onScreen)
+    );
+
+    expect(
+      await screen.findByText(
+        "The passkey request was cancelled or timed out. Try again.",
+        {},
+        onScreen
+      )
+    ).toBeDefined();
+    expect(finishPasskey).not.toHaveBeenCalled();
+  });
+
+  // The batch on screen is the only plaintext copy. A second passkey issues
+  // none and removing one of two leaves the first batch valid, so both keep
+  // it; once the status read again says no factor is left, the codes went
+  // with the last one on the server and must not stay on screen to be saved.
+  it("keeps the codes a first passkey brought until the last factor is gone", async () => {
+    beginPasskey.mockResolvedValue({
+      message: "",
+      ok: true,
+      optionsJson: "{}",
+    });
+    startRegistration.mockResolvedValue({ id: "credential" });
+    finishPasskey
+      .mockResolvedValueOnce({
+        message: "The passkey has been added.",
+        ok: true,
+        passkeyId: "PASSKEY00001",
+        recoveryCodes: ["AAAAA-BBBBB"],
+      })
+      .mockResolvedValueOnce({
+        message: "The passkey has been added.",
+        ok: true,
+        passkeyId: "PASSKEY00002",
+        recoveryCodes: [],
+      });
+    deletePasskey.mockResolvedValue({
+      message: "The passkey has been removed.",
+      ok: true,
+    });
+    const phonePasskey = { ...laptopPasskey, id: "PASSKEY00002", name: "" };
+    const twoPasskeys: AdminMfaStatus = {
+      ...passkeyOnly,
+      passkeys: [laptopPasskey, phonePasskey],
+      required: false,
+    };
+
+    const { rerender } = renderCard(disabled);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Add a passkey" }, onScreen)
+    );
+    expect(await screen.findByText("AAAAA-BBBBB", {}, onScreen)).toBeDefined();
+    rerender(<Card status={{ ...passkeyOnly, required: false }} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Skip" }));
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Add a passkey" }, onScreen)
+    );
+    await waitFor(() => {
+      expect(finishPasskey).toHaveBeenCalledTimes(2);
+    });
+    rerender(<Card status={twoPasskeys} />);
+    expect(screen.getByText("AAAAA-BBBBB")).toBeDefined();
+
+    const rows = await screen.findAllByRole("listitem", {}, onScreen);
+    const phoneRow = within(
+      rows.find((row) =>
+        row.textContent?.includes("Unnamed passkey")
+      ) as HTMLElement
+    );
+    fireEvent.click(phoneRow.getByRole("button", { name: "Remove" }));
+    fireEvent.click(
+      await within(await screen.findByRole("alertdialog")).findByRole(
+        "button",
+        { name: "Remove" }
+      )
+    );
+    expect(
+      await screen.findByText("The passkey has been removed.", {}, onScreen)
+    ).toBeDefined();
+    rerender(<Card status={{ ...passkeyOnly, required: false }} />);
+    expect(screen.getByText("AAAAA-BBBBB")).toBeDefined();
+
+    rerender(<Card status={disabled} />);
+    expect(
+      await screen.findByText("The passkey has been removed.", {}, onScreen)
+    ).toBeDefined();
+    expect(screen.queryByText("AAAAA-BBBBB")).toBeNull();
+  });
+
+  // The API refuses the last factor of an account the tenant requires one
+  // of, and the row that is still on screen is where that is said.
+  it("asks before removing a passkey and shows a refusal next to it", async () => {
+    const refusal =
+      "This is the last second factor on your account, and this tenant requires two-step verification for administrators. Add another passkey or set up an authenticator app before removing it.";
+    deletePasskey.mockResolvedValue({ message: refusal, ok: false });
+
+    renderCard(passkeyOnly);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Remove" }, onScreen)
+    );
+    const dialog = within(await screen.findByRole("alertdialog"));
+    expect(dialog.getByText("Remove this passkey?")).toBeDefined();
+    fireEvent.click(await dialog.findByRole("button", { name: "Remove" }));
+
+    expect(await screen.findByText(refusal, {}, onScreen)).toBeDefined();
+    const removed = deletePasskey.mock.calls[0]?.[1];
+    expect(removed?.get("passkey_id")).toBe("PASSKEY00001");
+    expect(removed?.get("tenant_id")).toBe("TENANT001");
   });
 });

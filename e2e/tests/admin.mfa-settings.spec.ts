@@ -7,14 +7,24 @@ import {
   ADMIN_MFA_SETTINGS_SCENARIO,
 } from "../src/scenarios/admin-mfa-settings";
 import { totpCode } from "../src/totp";
+import { addVirtualAuthenticator } from "../src/webauthn";
 
 /**
  * A tenant administrator turning on their own two-step verification from
  * `/settings/account`. The recovery codes that enrollment issues are shown
  * only once, so the page the router keeps for Back must not show them again.
+ * The same administrator, put back to a password alone, then adds a passkey
+ * there instead, from Chromium's virtual authenticator, answers the next
+ * sign-in with it, and removes it.
+ *
+ * Both use the one account the scenario keeps for this screen, since the
+ * documentation photographs the member and reader lists with it in them, so
+ * the tests run in order rather than beside each other.
  */
 
 const ACCOUNT_SETTINGS_PATH = "/settings/account";
+
+test.describe.configure({ mode: "serial" });
 
 test.beforeAll(() => {
   applyScenarioSql(ADMIN_MFA_SETTINGS_SCENARIO);
@@ -67,5 +77,59 @@ test.describe("admin MFA account settings", () => {
     await expect(
       page.getByText("Two-step verification is now on.")
     ).toHaveCount(0);
+  });
+});
+
+test.describe("admin passkey account settings", () => {
+  test("a passkey added from the account settings answers the next sign-in and is removed again", async ({
+    page,
+  }) => {
+    // The test before this one left an authenticator app on the account.
+    applyScenarioSql(ADMIN_MFA_SETTINGS_SCENARIO);
+    await addVirtualAuthenticator(page);
+    await signInAsAdmin(page, ADMIN_MFA_SETTINGS_ADMIN, ACCOUNT_SETTINGS_PATH);
+    await expect(page).toHaveURL(new RegExp(`${ACCOUNT_SETTINGS_PATH}$`, "u"));
+    await expect(page.getByText("No passkeys are registered.")).toBeVisible();
+
+    await page.getByRole("button", { name: "Add a passkey" }).click();
+
+    // The account held no factor, so the passkey brings the recovery codes.
+    await expect(page.getByText("The passkey has been added.")).toBeVisible();
+    await expect(page.getByRole("listitem").getByRole("code")).toHaveCount(10);
+    await expect(
+      page.getByText("Two-step verification is on with a passkey.")
+    ).toBeVisible();
+
+    await page.getByLabel("Name", { exact: true }).fill("E2E authenticator");
+    await page.getByRole("button", { exact: true, name: "Save" }).click();
+    const passkey = page
+      .getByRole("listitem")
+      .filter({ hasText: "E2E authenticator" });
+    await expect(passkey).toContainText("Not used yet");
+
+    // Signing out leaves the passkey in the authenticator, and the next
+    // sign-in stops for it.
+    await page.context().clearCookies();
+    await signInAsAdmin(page, ADMIN_MFA_SETTINGS_ADMIN, ACCOUNT_SETTINGS_PATH);
+    await expect(page).toHaveURL(/\/mfa$/u);
+    await page
+      .getByRole("button", { exact: true, name: "Use a passkey" })
+      .click();
+    await expect(page).toHaveURL(new RegExp(`${ACCOUNT_SETTINGS_PATH}$`, "u"));
+    await expect(passkey).toContainText("Last used");
+
+    await passkey.getByRole("button", { exact: true, name: "Remove" }).click();
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", { exact: true, name: "Remove" })
+      .click();
+
+    await expect(page.getByText("No passkeys are registered.")).toBeVisible();
+    await expect(page.getByText("Two-step verification is off.")).toBeVisible();
+
+    // With the passkey gone, the password alone signs in again.
+    await page.context().clearCookies();
+    await signInAsAdmin(page, ADMIN_MFA_SETTINGS_ADMIN, ACCOUNT_SETTINGS_PATH);
+    await expect(page).toHaveURL(new RegExp(`${ACCOUNT_SETTINGS_PATH}$`, "u"));
   });
 });

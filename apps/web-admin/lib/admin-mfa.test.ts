@@ -10,19 +10,25 @@ const {
   mockBeginPasskeyVerification,
   mockCacheLife,
   mockCacheTag,
+  mockDeletePasskey,
   mockFinishPasskeyRegistration,
   mockFinishPasskeyVerification,
   mockGetAccessToken,
   mockGetMfaStatus,
+  mockListPasskeys,
+  mockRenamePasskey,
 } = vi.hoisted(() => ({
   mockBeginPasskeyRegistration: vi.fn(),
   mockBeginPasskeyVerification: vi.fn(),
   mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
+  mockDeletePasskey: vi.fn(),
   mockFinishPasskeyRegistration: vi.fn(),
   mockFinishPasskeyVerification: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetMfaStatus: vi.fn(),
+  mockListPasskeys: vi.fn(),
+  mockRenamePasskey: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({
@@ -39,9 +45,12 @@ vi.mock("./api", () => ({
     auth: {
       beginPasskeyRegistration: mockBeginPasskeyRegistration,
       beginPasskeyVerification: mockBeginPasskeyVerification,
+      deletePasskey: mockDeletePasskey,
       finishPasskeyRegistration: mockFinishPasskeyRegistration,
       finishPasskeyVerification: mockFinishPasskeyVerification,
       getMfaStatus: mockGetMfaStatus,
+      listPasskeys: mockListPasskeys,
+      renamePasskey: mockRenamePasskey,
     },
   },
   withClientAddressHeaders: () => Promise.resolve({ headers: {} }),
@@ -59,6 +68,7 @@ describe("getAdminMfaStatus", () => {
     vi.clearAllMocks();
     vi.resetModules();
     mockGetAccessToken.mockResolvedValue("session-token");
+    mockListPasskeys.mockResolvedValue({ passkeys: [] });
   });
 
   it("returns the MFA status of the signed-in administrator", async () => {
@@ -67,15 +77,42 @@ describe("getAdminMfaStatus", () => {
       remainingRecoveryCodes: 8,
       required: false,
     });
+    mockListPasskeys.mockResolvedValueOnce({
+      passkeys: [
+        {
+          backedUp: true,
+          createdAt: "2026-10-01T09:30:00Z",
+          id: "PASSKEY00001",
+          lastUsedAt: "2026-10-02T10:00:00Z",
+          name: "Work laptop",
+        },
+      ],
+    });
 
     const { getAdminMfaStatus } = await import("./admin-mfa");
     const result = await getAdminMfaStatus("TENANT001");
 
     expect(result).toEqual({
       ok: true,
-      status: { enabled: true, remainingRecoveryCodes: 8, required: false },
+      status: {
+        enabled: true,
+        passkeys: [
+          {
+            createdAt: "2026-10-01T09:30:00Z",
+            id: "PASSKEY00001",
+            lastUsedAt: "2026-10-02T10:00:00Z",
+            name: "Work laptop",
+          },
+        ],
+        remainingRecoveryCodes: 8,
+        required: false,
+      },
     });
     expect(mockGetMfaStatus).toHaveBeenCalledWith(
+      { tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(mockListPasskeys).toHaveBeenCalledWith(
       { tenant: { tenantId: "TENANT001" } },
       { headers: { Authorization: "Bearer session-token" } }
     );
@@ -302,6 +339,7 @@ describe("passkey registration", () => {
 
     expect(result).toEqual({
       ok: true,
+      passkeyId: "",
       recoveryCodes: ["ABCDE-FGHJK"],
       session: {
         accessToken: "session",
@@ -352,5 +390,168 @@ describe("passkey registration", () => {
     await expect(
       finishAdminPasskeyRegistration("TENANT001", "challenge-token", "{}", "en")
     ).resolves.toEqual({ ...expected, ok: false });
+  });
+});
+
+describe("passkey registration from the account settings", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("begins the ceremony for the signed-in account", async () => {
+    mockBeginPasskeyRegistration.mockResolvedValueOnce({
+      creationOptionsJson: '{"challenge":"abc"}',
+    });
+
+    const { beginAdminPasskeyRegistration } = await import("./admin-mfa");
+
+    await expect(
+      beginAdminPasskeyRegistration("TENANT001", "", "en")
+    ).resolves.toEqual({ ok: true, optionsJson: '{"challenge":"abc"}' });
+    expect(mockBeginPasskeyRegistration).toHaveBeenCalledWith(
+      { challengeToken: "", tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("answers the stored passkey, and no session of its own", async () => {
+    mockFinishPasskeyRegistration.mockResolvedValueOnce({
+      passkey: { id: "PASSKEY00002" },
+      recoveryCodes: [],
+    });
+
+    const { finishAdminPasskeyRegistration } = await import("./admin-mfa");
+
+    await expect(
+      finishAdminPasskeyRegistration("TENANT001", "", "{}", "en")
+    ).resolves.toEqual({
+      ok: true,
+      passkeyId: "PASSKEY00002",
+      recoveryCodes: [],
+      session: null,
+    });
+    expect(mockFinishPasskeyRegistration).toHaveBeenCalledWith(
+      {
+        challengeToken: "",
+        credentialJson: "{}",
+        name: "",
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it.each([
+    [
+      "a credential the API could not verify",
+      reasonError(Code.InvalidArgument, "MFA_PASSKEY_REFUSED"),
+      "The passkey could not be registered. Try again.",
+    ],
+    [
+      "a credential the account already holds",
+      new ConnectError("passkey is already registered", Code.AlreadyExists),
+      "This passkey is already registered to your account.",
+    ],
+  ])("words %s", async (_case, error, message) => {
+    mockFinishPasskeyRegistration.mockRejectedValueOnce(error);
+
+    const { finishAdminPasskeyRegistration } = await import("./admin-mfa");
+
+    await expect(
+      finishAdminPasskeyRegistration("TENANT001", "", "{}", "en")
+    ).resolves.toEqual({ challengeExpired: false, message, ok: false });
+  });
+
+  // A session the API rejected is the login redirect's to handle, not a
+  // challenge that ran out.
+  it("rethrows a rejected session for the re-authentication flow", async () => {
+    const error = new ConnectError("invalid token", Code.Unauthenticated);
+    mockBeginPasskeyRegistration.mockRejectedValueOnce(error);
+
+    const { beginAdminPasskeyRegistration } = await import("./admin-mfa");
+
+    await expect(
+      beginAdminPasskeyRegistration("TENANT001", "", "en")
+    ).rejects.toBe(error);
+  });
+});
+
+describe("renaming and removing a passkey", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("names the passkey the row stands for", async () => {
+    mockRenamePasskey.mockResolvedValueOnce({});
+
+    const { renameAdminPasskey } = await import("./admin-mfa");
+
+    await expect(
+      renameAdminPasskey("TENANT001", "PASSKEY00001", "Phone", "en")
+    ).resolves.toEqual({ ok: true });
+    expect(mockRenamePasskey).toHaveBeenCalledWith(
+      { id: "PASSKEY00001", name: "Phone", tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("words a name the API found too long", async () => {
+    mockRenamePasskey.mockRejectedValueOnce(
+      new ConnectError(
+        "name must be at most 64 characters",
+        Code.InvalidArgument
+      )
+    );
+
+    const { renameAdminPasskey } = await import("./admin-mfa");
+
+    await expect(
+      renameAdminPasskey("TENANT001", "PASSKEY00001", "x", "en")
+    ).resolves.toEqual({
+      message: "Use 64 characters or fewer for the name.",
+      ok: false,
+    });
+  });
+
+  it.each([
+    [
+      "the last second factor the tenant requires",
+      new ConnectError(
+        "the last second factor cannot be removed while two-step verification is required",
+        Code.FailedPrecondition
+      ),
+      "This is the last second factor on your account, and this tenant requires two-step verification for administrators. Add another passkey or set up an authenticator app before removing it.",
+    ],
+    [
+      "a passkey that is already gone",
+      new ConnectError("passkey not found", Code.NotFound),
+      "That passkey is no longer registered to your account.",
+    ],
+  ])("words a removal refused for %s", async (_case, error, message) => {
+    mockDeletePasskey.mockRejectedValueOnce(error);
+
+    const { deleteAdminPasskey } = await import("./admin-mfa");
+
+    await expect(
+      deleteAdminPasskey("TENANT001", "PASSKEY00001", "en")
+    ).resolves.toEqual({ message, ok: false });
+  });
+
+  it("removes the passkey the row stands for", async () => {
+    mockDeletePasskey.mockResolvedValueOnce({});
+
+    const { deleteAdminPasskey } = await import("./admin-mfa");
+
+    await expect(
+      deleteAdminPasskey("TENANT001", "PASSKEY00001", "en")
+    ).resolves.toEqual({ ok: true });
+    expect(mockDeletePasskey).toHaveBeenCalledWith(
+      { id: "PASSKEY00001", tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
   });
 });

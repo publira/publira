@@ -24,6 +24,7 @@ import { redirectToLoginIfSessionRejected } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
+import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { EmailChangeForm } from "../_components/email-change-form";
 import { MfaSettingsCard } from "../_components/mfa-settings-card";
@@ -64,7 +65,11 @@ const EmailChangeSection = async () => {
 
 const MfaSection = async () => {
   const tenantId = await getTenantId();
-  const result = await getAdminMfaStatus(tenantId);
+  const [result, locale, timeZone] = await Promise.all([
+    getAdminMfaStatus(tenantId),
+    getLocale(tenantId),
+    getTenantDisplayTimeZone(tenantId),
+  ]);
 
   if (!result.ok) {
     await redirectToLoginIfSessionRejected(result);
@@ -86,7 +91,14 @@ const MfaSection = async () => {
     );
   }
 
-  return <MfaSettingsCard status={result.status} tenantId={tenantId} />;
+  return (
+    <MfaSettingsCard
+      locale={locale}
+      status={result.status}
+      tenantId={tenantId}
+      timeZone={timeZone}
+    />
+  );
 };
 
 const AccountSettingsPage = () => (

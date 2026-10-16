@@ -46,6 +46,22 @@ export type PasskeyCeremonyStartState =
   | { ok: true; message: string; optionsJson: string }
   | { ok: false; message: string };
 
+/**
+ * What adding a passkey from the account settings answers: the passkey, for
+ * naming it next, and the recovery codes when it was the account's first
+ * factor.
+ */
+export type PasskeyRegistrationState =
+  | {
+      ok: true;
+      message: string;
+      passkeyId: string;
+      /** Empty unless this passkey brought the account's first batch. */
+      recoveryCodes: string[];
+    }
+  | { ok: false; message: string }
+  | null;
+
 export type MfaVerifyState =
   /**
    * Only a recovery code lands here. A code from the authenticator finishes

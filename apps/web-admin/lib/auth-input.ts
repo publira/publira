@@ -22,6 +22,9 @@ import { isTenantIdFormat } from "./tenant-id-format";
 /** Paths in `next` can carry a query string; 255 would clip real ones. */
 const NEXT_PATH_MAX_LENGTH = 2048;
 
+/** `passkeyNameMaxLength` in `server/api/adminapi/passkey_handlers.go`. */
+const PASSKEY_NAME_MAX_LENGTH = 64;
+
 /** 32-byte token encoded as hex (`server/api/adminapi/auth_handlers.go`). */
 const AUTH_TOKEN_PATTERN = /^[0-9a-fA-F]{64}$/u;
 
@@ -137,6 +140,24 @@ export const passkeyCredentialFormSchema = z
   .trim()
   .min(1)
   .max(64 * 1024);
+
+/**
+ * What a member of staff calls one of their passkeys. An empty field leaves
+ * it unnamed, but a missing field or a file is refused rather than read as
+ * empty: renaming with an empty name clears the one the passkey has. The API
+ * bounds it in characters rather than UTF-16 units, so the length is counted
+ * the same way here.
+ */
+export const passkeyNameFormSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z
+    .string({ error: t("admin.settings.mfa.passkey_rename_failed") })
+    .trim()
+    .refine((value) => [...value].length <= PASSKEY_NAME_MAX_LENGTH, {
+      error: t("admin.settings.mfa.passkey_name_too_long"),
+    });
+};
 
 export const passwordFormSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
