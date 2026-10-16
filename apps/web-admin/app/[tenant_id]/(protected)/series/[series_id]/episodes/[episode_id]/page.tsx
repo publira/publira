@@ -1,3 +1,4 @@
+import { toViewerPages } from "@publira/comic-viewer-shell";
 import type { Locale } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
 import {
@@ -28,6 +29,11 @@ import {
   AdminPageHeader,
   AdminPageHeading,
   AdminPageTitle,
+  AdminSection,
+  AdminSectionDescription,
+  AdminSectionHeader,
+  AdminSectionHeading,
+  AdminSectionTitle,
 } from "#components/admin-page";
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
@@ -51,6 +57,7 @@ import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantCurrency } from "#lib/public-api";
 import { resolvePurchaseAvailability } from "#lib/purchase-availability";
+import { resolveReadingLayout } from "#lib/reading-layout";
 import { getSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantPurchaseSettings } from "#lib/tenant-purchase-settings";
@@ -61,6 +68,7 @@ import { EpisodeCreatorCreditsForm } from "./_components/episode-creator-credits
 import { EpisodeFreeWindowsSection } from "./_components/episode-free-windows-section";
 import { EpisodeImagesSortableGrid } from "./_components/episode-images-sortable-grid";
 import { EpisodePagesForm } from "./_components/episode-pages-form";
+import { EpisodePreview } from "./_components/episode-preview";
 import { EpisodePricingForm } from "./_components/episode-pricing-form";
 import { EpisodePurchaseAvailabilityForm } from "./_components/episode-purchase-availability-form";
 import { EpisodeReadingLayoutForm } from "./_components/episode-reading-layout-form";
@@ -601,6 +609,82 @@ const EpisodeReadingLayoutSection = async ({
   );
 };
 
+/**
+ * The pages as the storefront reader turns them, in their saved order and the
+ * layout the episode resolves to. It reads what the image list and the layout
+ * form read, so a reorder, an upload, or a layout update that refreshes them
+ * refreshes this as well.
+ */
+const EpisodePreviewSection = async ({ params }: EditEpisodeSectionProps) => {
+  const context = await resolveEditEpisodeContext(params);
+  const [episodeResult, seriesResult] = await Promise.all([
+    loadEpisode(context),
+    getSeries({ publicId: context.seriesId }),
+  ]);
+
+  if (!episodeResult.ok) {
+    return (
+      <EpisodeSectionError
+        message={episodeResult.message}
+        title={<Message message="admin.series.episodes.preview.error" />}
+      />
+    );
+  }
+  // An episode that follows its series turns the way the series does, so
+  // without the series there is no direction to preview in.
+  if (!seriesResult.ok) {
+    if (seriesResult.notFound) {
+      notFound();
+    }
+    return (
+      <EpisodeSectionError
+        message={seriesResult.message}
+        title={<Message message="admin.series.episodes.preview.error" />}
+      />
+    );
+  }
+
+  const [imagesResult, t] = await Promise.all([
+    listEpisodeImages(
+      { episodeId: episodeResult.episode.id, tenantId: context.tenantId },
+      context.locale
+    ),
+    getMessagesFor(context.locale),
+  ]);
+  await redirectToLoginIfSessionRejected(imagesResult);
+
+  // A failed read hands back an empty `images`, which would preview as an
+  // episode with no pages.
+  if (!imagesResult.ok) {
+    return (
+      <EpisodeSectionError
+        message={imagesResult.message}
+        title={<Message message="admin.series.episodes.preview.error" />}
+      />
+    );
+  }
+
+  const layout = resolveReadingLayout(
+    episodeResult.layout,
+    seriesResult.readingLayout
+  );
+  const pages = toViewerPages(
+    episodeResult.episode.title,
+    imagesResult.images,
+    (values) => t("admin.series.episodes.preview.page_title", values)
+  );
+
+  // The viewer takes the direction and the spread start only as it mounts,
+  // so a change to either, or to the pages, starts it over.
+  return (
+    <EpisodePreview
+      key={`${layout.readingDirection}:${layout.spreadStartIndex}:${pages.map((page) => page.id).join(",")}`}
+      layout={layout}
+      pages={pages}
+    />
+  );
+};
+
 /** The sections below, while the operator's role is read. */
 const EditEpisodeSectionsSkeleton = () => (
   <div className="grid gap-6">
@@ -738,6 +822,28 @@ const EditEpisodePage = ({ params }: EditEpisodePageProps) => (
           </div>
         </TenantEditorFieldset>
       </Suspense>
+
+      {/* Outside the editors' fieldset: turning the pages changes nothing, so
+          every member of staff who can open the episode can read it. */}
+      <AdminSection>
+        <AdminSectionHeader>
+          <AdminSectionHeading>
+            <AdminSectionTitle>
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.series.episodes.preview.title" />
+              </Suspense>
+            </AdminSectionTitle>
+            <AdminSectionDescription>
+              <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+                <Message message="admin.series.episodes.preview.description" />
+              </Suspense>
+            </AdminSectionDescription>
+          </AdminSectionHeading>
+        </AdminSectionHeader>
+        <Suspense fallback={<Skeleton className="h-[min(70svh,40rem)]" />}>
+          <EpisodePreviewSection params={params} />
+        </Suspense>
+      </AdminSection>
     </AdminPageContent>
   </AdminPage>
 );

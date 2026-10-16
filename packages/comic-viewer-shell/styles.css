@@ -1,0 +1,16 @@
+@source "./dist";
+
+/**
+ * The three colours the shell paints with, which the app that mounts it
+ * names: the mat the pages lie on (`--viewer-mat`), the text and the progress
+ * drawn over it (`--viewer-ink`), and the hairline and the unfilled track
+ * between the two (`--viewer-rule`). Set them on any ancestor of the viewer.
+ *
+ * `inline` makes each utility read the variable where it is used rather than
+ * the value it had on `:root`, so an ancestor's setting reaches it.
+ */
+@theme inline {
+  --color-viewer-mat: var(--viewer-mat);
+  --color-viewer-ink: var(--viewer-ink);
+  --color-viewer-rule: var(--viewer-rule);
+}

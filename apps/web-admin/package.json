@@ -28,6 +28,8 @@
     "@opentelemetry/api": "catalog:",
     "@publira/api-client": "workspace:*",
     "@publira/brand": "workspace:*",
+    "@publira/comic-viewer": "catalog:",
+    "@publira/comic-viewer-shell": "workspace:*",
     "@publira/i18n": "workspace:*",
     "@publira/icons": "workspace:*",
     "@publira/layouts": "workspace:*",

@@ -1,32 +1,33 @@
 "use client";
 
-import {
-  EndPage,
-  NextPageButton,
-  PageCanvas,
-  PageNavigation,
-  PageProgress,
-  PageProgressSlider,
-  PageStatus,
-  PreviousPageButton,
-  Root as ComicViewerRoot,
-  Toolbar,
-  usePageLoadState,
-  useViewerContext,
-  Viewport,
-  ViewportPage,
-  ViewportPageSet,
-  ViewportPageSlot,
-  ViewportTrack,
-} from "@publira/comic-viewer";
+import { EndPage, useViewerContext } from "@publira/comic-viewer";
 import type {
   PageStatusValue,
   ReadingDirection,
-  ViewerPage,
+  ViewerPage as ViewerPageItem,
 } from "@publira/comic-viewer";
 import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
+  describeVisiblePages,
+  useBoxHeight,
+  ViewerBackwardIcon,
+  ViewerForwardIcon,
+  ViewerNextPageButton,
+  ViewerPage,
+  ViewerPageError,
+  ViewerPageErrorMessage,
+  ViewerPageLoading,
+  ViewerPageNavigation,
+  ViewerPageRetryButton,
+  ViewerPageStatus,
+  ViewerPreviousPageButton,
+  ViewerProgress,
+  ViewerProgressSlider,
+  ViewerRail,
+  ViewerRoot,
+  ViewerToolbar,
+  ViewerToolbarActions,
+} from "@publira/comic-viewer-shell";
+import {
   FoldHorizontalIcon,
   MaximizeIcon,
   MinimizeIcon,
@@ -42,10 +43,6 @@ import { LocaleLink } from "#components/locale-link";
 import type { StorefrontClientMessageAccessor } from "#lib/messages";
 import { useWebStorage, writeWebStorage } from "#lib/web-storage";
 
-import { acceptNegotiatedImages } from "../_lib/viewer-fetch";
-
-const VIEWER_PLUGINS = [acceptNegotiatedImages];
-
 const stopClick = (event: MouseEvent) => {
   event.stopPropagation();
 };
@@ -58,29 +55,32 @@ const stopClick = (event: MouseEvent) => {
  */
 const buildPageStatusFormatter =
   (t: StorefrontClientMessageAccessor) =>
-  ({ firstPage, lastPage, pageCount, slot }: PageStatusValue): string => {
-    if (pageCount === 0) {
-      return t("storefront.episode.viewer.no_pages");
-    }
-
-    // An extra page is counted in neither the numbers nor the total, so a
-    // screen holding nothing else has no page number to report.
-    if (firstPage === 0) {
-      return slot === "end"
-        ? t("storefront.episode.viewer.end_page")
-        : t("storefront.episode.viewer.no_pages");
-    }
-
-    return firstPage === lastPage
-      ? t("storefront.episode.viewer.page_status", {
-          first: firstPage,
-          total: pageCount,
-        })
-      : t("storefront.episode.viewer.page_status_range", {
-          first: firstPage,
-          last: lastPage,
-          total: pageCount,
+  (value: PageStatusValue): string => {
+    const visible = describeVisiblePages(value);
+    switch (visible.kind) {
+      case "none": {
+        return t("storefront.episode.viewer.no_pages");
+      }
+      case "end-page": {
+        return t("storefront.episode.viewer.end_page");
+      }
+      case "page": {
+        return t("storefront.episode.viewer.page_status", {
+          first: visible.first,
+          total: visible.total,
         });
+      }
+      case "spread": {
+        return t("storefront.episode.viewer.page_status_range", {
+          first: visible.first,
+          last: visible.last,
+          total: visible.total,
+        });
+      }
+      default: {
+        return visible satisfies never;
+      }
+    }
   };
 
 const subscribeToFullscreen = (onStoreChange: () => void) => {
@@ -98,20 +98,6 @@ const isFullscreenAvailable = () => document.fullscreenEnabled;
 /** Neither is knowable while rendering on the server. */
 const isFalseOnServer = () => false;
 
-/** The server lays nothing out, so no box has a size there. */
-const isZeroOnServer = () => 0;
-
-/**
- * The narrowest box that shows two pages side by side, which is the library's
- * own default. A box taller than it is wide shows one page at any width: two
- * pages there would each be drawn at half its width, with the height below
- * them left empty. A square box keeps the spread.
- *
- * The box, not the window, is what is measured, so a window held either way
- * gets the spread exactly when the reader is given the room for one.
- */
-const DOUBLE_PAGE_THRESHOLD = 768;
-
 /**
  * The shape of the end page's sheet when the last page carries no stored
  * dimensions: the B-series proportion print comics are made in.
@@ -119,7 +105,7 @@ const DOUBLE_PAGE_THRESHOLD = 768;
 const FALLBACK_PAGE_ASPECT = 1 / Math.SQRT2;
 
 /** Width over height of the last page, which the end page's sheet takes. */
-const endPageAspect = (pages: readonly ViewerPage[]): number => {
+const endPageAspect = (pages: readonly ViewerPageItem[]): number => {
   const lastPage = pages.at(-1);
 
   return lastPage?.width && lastPage.height
@@ -129,120 +115,6 @@ const endPageAspect = (pages: readonly ViewerPage[]): number => {
 
 /** The wide viewer choice this tab has made, which wins over the stored one. */
 const WIDE_VIEWER_STORAGE_KEY = "publira.wide-viewer";
-
-/**
- * The height of the viewer's box, read again whenever the box resizes — the
- * window turning, or the reader widening the viewer. It is `0` until the box
- * is on the page, which leaves the library's own threshold in charge.
- */
-const useBoxHeight = (box: HTMLElement | null): number => {
-  const subscribe = useCallback(
-    (onStoreChange: () => void) => {
-      if (box === null) {
-        return () => {
-          // Nothing was observed, so there is nothing to stop.
-        };
-      }
-      const observer = new ResizeObserver(onStoreChange);
-      observer.observe(box);
-
-      return () => {
-        observer.disconnect();
-      };
-    },
-    [box]
-  );
-  const getHeight = useCallback(
-    () => box?.getBoundingClientRect().height ?? 0,
-    [box]
-  );
-
-  return useSyncExternalStore(subscribe, getHeight, isZeroOnServer);
-};
-
-/**
- * The rail the reader turns pages on: three viewports wide, holding the
- * spread before this one, the one on screen, and the one after it.
- *
- * The library compares the box's width alone with `doublePageThreshold`, so
- * the box's own height is handed over as the threshold whenever it is the
- * larger of the two: the spread then needs a box at least
- * {@link DOUBLE_PAGE_THRESHOLD} wide and at least as wide as it is tall.
- *
- * `children` is the template every visible page is drawn from.
- */
-const ViewerRail = ({
-  boxHeight,
-  children,
-}: {
-  boxHeight: number;
-  children: ReactNode;
-}) => (
-  <Viewport
-    className="group relative flex size-full min-h-0 min-w-0 flex-1 touch-pan-y items-stretch overflow-hidden data-[pannable]:cursor-grab data-[pannable]:touch-none data-[panning]:cursor-grabbing"
-    doublePageThreshold={Math.max(DOUBLE_PAGE_THRESHOLD, boxHeight)}
-  >
-    <ViewportTrack className="flex h-full w-[300%] shrink-0 basis-[300%] [transform:translateX(calc(-33.3333%_+_var(--pcv-drag-offset,0px)))] items-stretch data-[dragging]:transition-none data-[transition-state=active]:transition-transform data-[transition-state=active]:duration-[260ms] data-[transition-state=active]:ease-out data-[transition-state=active]:data-[slide-direction=left]:[transform:translateX(calc(-66.6667%_+_var(--pcv-drag-offset,0px)))] data-[transition-state=active]:data-[slide-direction=right]:[transform:translateX(var(--pcv-drag-offset,0px))]">
-      <ViewportPageSet className="flex h-full min-w-0 shrink-0 basis-1/3 items-stretch data-[page-side=left]:justify-start data-[page-side=right]:justify-end data-[rail-slot=current]:[transform:translate(var(--pcv-pan-x,0),var(--pcv-pan-y,0))_scale(var(--pcv-zoom-scale,1))]">
-        {/* The two pages of a spread meet at the centre line as they do on a
-            printed sheet, so each hugs the edge of its half that faces the
-            gutter. */}
-        <ViewportPageSlot className="flex min-w-0 flex-1 items-center justify-center data-[page-side=left]:justify-end data-[page-side=right]:justify-start data-[view-mode=double]:max-w-1/2 data-[view-mode=double]:basis-1/2 data-[view-mode=double]:data-[page-layout=spread]:max-w-full data-[view-mode=double]:data-[page-layout=spread]:basis-full">
-          {children}
-        </ViewportPageSlot>
-      </ViewportPageSet>
-    </ViewportTrack>
-  </Viewport>
-);
-
-/**
- * The page template the viewport renders for every managed page. It keeps the
- * canvas the viewer draws into and adds the states the canvas cannot show on
- * its own: a page that has nothing on screen yet, and a page whose fetch or
- * decode failed and needs the reader to ask for another attempt.
- */
-const ViewerPageTemplate = () => {
-  const { retry, status } = usePageLoadState();
-
-  return (
-    <ViewportPage className="relative flex size-full min-w-0 items-center justify-center data-[page-side=left]:justify-end data-[page-side=right]:justify-start">
-      {/* A preview standing in for the full page is faded back toward the mat. */}
-      <PageCanvas className="block h-full max-h-full w-auto max-w-full bg-foreground object-contain group-data-[page-fit-mode=actual]:size-auto group-data-[page-fit-mode=actual]:max-h-none group-data-[page-fit-mode=actual]:max-w-none group-data-[page-fit-mode=width]:h-auto group-data-[page-fit-mode=width]:max-h-none group-data-[page-fit-mode=width]:w-full group-data-[page-fit-mode=width]:max-w-none data-[placeholder]:opacity-70" />
-      {status === "loading" ? (
-        <p className="absolute inset-0 flex items-center justify-center text-sm text-background">
-          <ClientMessage message="storefront.episode.viewer.loading" />
-        </p>
-      ) : null}
-      {status === "error" ? (
-        <div
-          className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-foreground/90 px-6 text-center"
-          role="alert"
-        >
-          <p className="text-sm text-background">
-            <ClientMessage message="storefront.episode.viewer.page_error" />
-          </p>
-          {/* The click stops here. A click near the edge of the viewport turns
-              the page, and an unpaired page keeps the half of the spread its
-              own parity gives it — so this control is drawn inside that zone
-              whenever the page it covers stands alone. Without this the reader
-              would be carried to the next spread by the button they pressed to
-              stay put. The viewport already makes the same exception for
-              keyboard input. */}
-          <Button
-            onClick={(event) => {
-              event.stopPropagation();
-              retry();
-            }}
-            size="sm"
-            variant="outline"
-          >
-            <ClientMessage message="storefront.episode.viewer.reload" />
-          </Button>
-        </div>
-      ) : null}
-    </ViewportPage>
-  );
-};
 
 const FullscreenButton = ({ onToggle }: { onToggle: () => void }) => {
   const t = useClientMessages();
@@ -326,8 +198,8 @@ const WideViewerMarker = () => {
   );
 };
 
-/** A band of the same ink as the mat, told apart from it by a hairline. */
-const ViewerToolbar = ({
+/** The shell's toolbar, with the wide viewer and full screen controls. */
+const EpisodeViewerToolbar = ({
   isWide,
   onToggleFullscreen,
   onToggleWide,
@@ -340,34 +212,16 @@ const ViewerToolbar = ({
   const formatPageStatus = buildPageStatusFormatter(t);
 
   return (
-    // On a narrow screen a centred slider would run under the buttons on the
-    // right, so the toolbar keeps their width clear and the slider takes the
-    // rest — the wider width where a coarse pointer grows the buttons to 44px.
-    <Toolbar className="absolute inset-x-0 bottom-0 z-10 flex items-center gap-2 border-t border-muted-foreground bg-foreground p-3 transition duration-state ease-state aria-hidden:translate-y-2 aria-hidden:opacity-0 max-sm:pr-26 max-sm:pointer-coarse:pr-30">
-      <PageProgress
-        aria-label={t("storefront.episode.viewer.progress")}
-        className="mx-auto min-w-0 shrink basis-3/5 max-sm:basis-full"
-      >
-        {/* The toolbar runs rtl so the thumb moves, and the fill grows, the
-            way pages turn; the status text still reads left to right. The
-            input is taller than its thumb so a finger can catch it, and both
-            grow where the pointer is a finger. */}
-        <PageProgressSlider
-          className="block h-6 w-full cursor-pointer appearance-none rounded-control bg-transparent p-0 [--pcv-page-progress-fill-direction:to_right] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 rtl:[--pcv-page-progress-fill-direction:to_left] pointer-coarse:h-11 [&::-moz-range-thumb]:size-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-background pointer-coarse:[&::-moz-range-thumb]:size-5 [&::-moz-range-track]:h-1 [&::-moz-range-track]:rounded-control [&::-moz-range-track]:bg-muted-foreground [&::-moz-range-track]:[background-image:linear-gradient(var(--pcv-page-progress-fill-direction),var(--color-background)_var(--pcv-page-progress-fill),transparent_var(--pcv-page-progress-fill))] [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:rounded-control [&::-webkit-slider-runnable-track]:bg-muted-foreground [&::-webkit-slider-runnable-track]:[background-image:linear-gradient(var(--pcv-page-progress-fill-direction),var(--color-background)_var(--pcv-page-progress-fill),transparent_var(--pcv-page-progress-fill))] [&::-webkit-slider-thumb]:-mt-[0.3125rem] [&::-webkit-slider-thumb]:size-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-0 [&::-webkit-slider-thumb]:bg-background pointer-coarse:[&::-webkit-slider-thumb]:-mt-2 pointer-coarse:[&::-webkit-slider-thumb]:size-5"
-          format={formatPageStatus}
-        />
-        <PageStatus
-          className="block text-center text-sm text-background tabular-nums [direction:ltr]"
-          format={formatPageStatus}
-        />
-      </PageProgress>
-      {/* Placed against the physical right edge rather than laid out in the
-          toolbar's flow, which runs right to left with the reading direction. */}
-      <div className="absolute right-3 bottom-3 flex gap-2">
+    <ViewerToolbar>
+      <ViewerProgress aria-label={t("storefront.episode.viewer.progress")}>
+        <ViewerProgressSlider format={formatPageStatus} />
+        <ViewerPageStatus format={formatPageStatus} />
+      </ViewerProgress>
+      <ViewerToolbarActions>
         <WideViewerButton isWide={isWide} onToggle={onToggleWide} />
         <FullscreenButton onToggle={onToggleFullscreen} />
-      </div>
-    </Toolbar>
+      </ViewerToolbarActions>
+    </ViewerToolbar>
   );
 };
 
@@ -381,7 +235,7 @@ const ViewerToolbar = ({
  * says in words where it goes, because the chevron alone would promise another
  * page.
  */
-const ViewerPageNavigation = ({
+const EpisodeViewerPageNavigation = ({
   nextEpisodeHref,
   previousEpisodeHref,
 }: {
@@ -389,49 +243,28 @@ const ViewerPageNavigation = ({
   previousEpisodeHref?: string;
 }) => {
   const t = useClientMessages();
-  const { currentIndex, maxIndex, minIndex, readingDirection } =
-    useViewerContext();
-  const buttonClassName = cn(
-    buttonVariants({ size: "icon", variant: "outline" }),
-    "pointer-events-auto absolute top-1/2"
-  );
+  const { currentIndex, maxIndex, minIndex } = useViewerContext();
   const episodeLinkClassName = cn(
     buttonVariants({ variant: "outline" }),
     "pointer-events-auto absolute top-1/2"
   );
-  const backwardIcon =
-    readingDirection === "rtl" ? (
-      <ChevronRightIcon aria-hidden="true" className="size-5" />
-    ) : (
-      <ChevronLeftIcon aria-hidden="true" className="size-5" />
-    );
-  const forwardIcon =
-    readingDirection === "rtl" ? (
-      <ChevronLeftIcon aria-hidden="true" className="size-5" />
-    ) : (
-      <ChevronRightIcon aria-hidden="true" className="size-5" />
-    );
 
   return (
-    <PageNavigation
+    <ViewerPageNavigation
       aria-label={t("storefront.episode.viewer.navigation")}
-      className="pointer-events-none absolute inset-0 z-10 transition duration-state ease-state aria-hidden:translate-y-2 aria-hidden:opacity-0"
     >
       {previousEpisodeHref !== undefined && currentIndex <= minIndex ? (
         <LocaleLink
           className={cn(episodeLinkClassName, "start-3")}
           href={previousEpisodeHref}
         >
-          {backwardIcon}
+          <ViewerBackwardIcon />
           <ClientMessage message="storefront.episode.navigation.previous" />
         </LocaleLink>
       ) : (
-        <PreviousPageButton
+        <ViewerPreviousPageButton
           aria-label={t("storefront.common.previous_page")}
-          className={cn(buttonClassName, "start-3")}
-        >
-          {backwardIcon}
-        </PreviousPageButton>
+        />
       )}
       {nextEpisodeHref !== undefined && currentIndex >= maxIndex ? (
         <LocaleLink
@@ -439,25 +272,20 @@ const ViewerPageNavigation = ({
           href={nextEpisodeHref}
         >
           <ClientMessage message="storefront.episode.navigation.next" />
-          {forwardIcon}
+          <ViewerForwardIcon />
         </LocaleLink>
       ) : (
-        <NextPageButton
-          aria-label={t("storefront.common.next_page")}
-          className={cn(buttonClassName, "end-3")}
-        >
-          {forwardIcon}
-        </NextPageButton>
+        <ViewerNextPageButton aria-label={t("storefront.common.next_page")} />
       )}
-    </PageNavigation>
+    </ViewerPageNavigation>
   );
 };
 
 /**
- * The episode reader. Pages are fetched, decoded, and drawn by
+ * The episode reader, on the shell `@publira/comic-viewer-shell` shares with
+ * the admin console's preview. Pages are fetched, decoded, and drawn by
  * `@publira/comic-viewer`, so the body images never become an `<img>` a reader
- * can drag out of the page, and a later encrypted delivery can be dropped in as
- * a plugin hook without changing this layout.
+ * can drag out of the page.
  *
  * The mat is Sumi rather than paper, which is the one place this design's
  * light scheme does not reach: comics are drawn in black and white, and a page
@@ -507,7 +335,7 @@ export const EpisodeComicViewer = ({
   initialPageIndex?: number;
   /** Absent on the last published episode of the series. */
   nextEpisodeHref?: string;
-  pages: ViewerPage[];
+  pages: ViewerPageItem[];
   /** Absent on the first one. */
   previousEpisodeHref?: string;
   readingDirection: ReadingDirection;
@@ -551,17 +379,30 @@ export const EpisodeComicViewer = ({
   }, [shell]);
 
   return (
-    <div className="size-full bg-foreground" ref={setShell}>
-      <ComicViewerRoot
-        className="relative flex size-full min-h-0 min-w-0 touch-pan-y overflow-hidden bg-foreground text-background"
-        initialIndex={initialPageIndex}
-        initialReadingDirection={readingDirection}
+    <div
+      className="size-full bg-foreground [--viewer-ink:var(--color-background)] [--viewer-mat:var(--color-foreground)] [--viewer-rule:var(--color-muted-foreground)]"
+      ref={setShell}
+    >
+      <ViewerRoot
+        initialPageIndex={initialPageIndex}
         pages={pages}
-        plugins={VIEWER_PLUGINS}
+        readingDirection={readingDirection}
         spreadStartIndex={spreadStartIndex}
       >
         <ViewerRail boxHeight={boxHeight}>
-          <ViewerPageTemplate />
+          <ViewerPage>
+            <ViewerPageLoading>
+              <ClientMessage message="storefront.episode.viewer.loading" />
+            </ViewerPageLoading>
+            <ViewerPageError>
+              <ViewerPageErrorMessage>
+                <ClientMessage message="storefront.episode.viewer.page_error" />
+              </ViewerPageErrorMessage>
+              <ViewerPageRetryButton>
+                <ClientMessage message="storefront.episode.viewer.reload" />
+              </ViewerPageRetryButton>
+            </ViewerPageError>
+          </ViewerPage>
         </ViewerRail>
         {endPage === undefined ? null : (
           /* A click here reads and scrolls rather than turns: the reader
@@ -588,18 +429,18 @@ export const EpisodeComicViewer = ({
             </section>
           </EndPage>
         )}
-        <ViewerToolbar
+        <EpisodeViewerToolbar
           isWide={isWide}
           onToggleFullscreen={toggleFullscreen}
           onToggleWide={toggleWide}
         />
-        <ViewerPageNavigation
+        <EpisodeViewerPageNavigation
           nextEpisodeHref={nextEpisodeHref}
           previousEpisodeHref={previousEpisodeHref}
         />
         {isWide ? <WideViewerMarker /> : null}
         {children}
-      </ComicViewerRoot>
+      </ViewerRoot>
     </div>
   );
 };

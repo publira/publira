@@ -1,19 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import type { EpisodeImageItem } from "#lib/catalog";
-
 import { toViewerPages } from "./viewer-pages";
+import type { ViewerPageImage } from "./viewer-pages";
 
-/** Stands in for the caller's catalog entry (`storefront.episode.viewer.page_title`). */
+/** Stands in for the caller's catalog entry. */
 const formatPageTitle = ({ page, title }: { page: number; title: string }) =>
   `${title}, page ${page}`;
 
-const image = (
-  overrides: Partial<EpisodeImageItem> = {}
-): EpisodeImageItem => ({
+const image = (overrides: Partial<ViewerPageImage> = {}): ViewerPageImage => ({
   contentType: "image/jpeg",
-  displayOrder: 1,
-  fileSizeBytes: 1024,
   height: 1800,
   id: "IMG_001",
   imageUrl: "/images/episodes/IMG_001?token=abc",
@@ -25,7 +20,7 @@ describe("toViewerPages", () => {
   it("Assign sequential page names to the distribution order", () => {
     const pages = toViewerPages(
       "Episode 1",
-      [image({ id: "IMG_001" }), image({ displayOrder: 2, id: "IMG_002" })],
+      [image({ id: "IMG_001" }), image({ id: "IMG_002" })],
       formatPageTitle
     );
 

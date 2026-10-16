@@ -1903,6 +1903,23 @@
           "updated": "Page layout updated.",
           "failed": "Could not update the page layout. Please try again later."
         },
+        "preview": {
+          "title": "Preview",
+          "description": "The pages as a reader turns them, in their saved order, reading direction, and spread start. A change saved on this screen shows here once it is saved.",
+          "error": "Could not display the preview",
+          "empty": "This episode has no pages yet. Add page images to preview them.",
+          "loading": "Loading…",
+          "page_error": "This page could not be loaded because of a network error or a temporary problem on the server. Reload to try again.",
+          "reload": "Reload",
+          "progress": "Reading progress",
+          "navigation": "Page navigation",
+          "previous_page": "Previous page",
+          "next_page": "Next page",
+          "no_pages": "No pages",
+          "page_status": "Page {$first} of {$total}",
+          "page_status_range": "Pages {$first}–{$last} of {$total}",
+          "page_title": "{$title}, page {$page}"
+        },
         "credits": {
           "title": "Authors",
           "description": "Edit the authors credited on this episode. Rows marked Episode only are not changed by later range edits.",

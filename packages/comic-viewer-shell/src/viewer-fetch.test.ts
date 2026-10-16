@@ -4,7 +4,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { acceptNegotiatedImages, decryptImageBuffer } from "./viewer-fetch";
 
 const hex = (value: string): Uint8Array<ArrayBuffer> =>
-  Uint8Array.from(Buffer.from(value, "hex"));
+  Uint8Array.from(value.match(/../gu) ?? [], (byte) =>
+    Number.parseInt(byte, 16)
+  );
 
 /**
  * An entitled body: the media token names the reader who bought or borrowed
