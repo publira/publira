@@ -31,37 +31,52 @@ assert_unrouted "unlisted numbered admin host" GET admin2.localhost /series
 assert_unrouted "unlisted platform host" GET platform.example.com /tenants
 assert_unrouted "unlisted site host" GET unknown-tenant.localhost /
 assert_unrouted "unlisted host with port" GET unknown-tenant.localhost:3080 /
-assert_unrouted "unlisted host on /rpc" GET unknown-tenant.localhost /rpc/foo
+assert_unrouted "unlisted host on /rpc" GET unknown-tenant.localhost "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
 assert_unrouted "unlisted host on bare /rpc" GET unknown-tenant.localhost /rpc
-assert_unrouted "unlisted host on /api" GET unknown-tenant.localhost /api/foo
+assert_unrouted "unlisted host on /api" GET unknown-tenant.localhost "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
 assert_unrouted "unlisted host on /api/v1" POST unknown-tenant.localhost /api/v1/revalidate
 assert_unrouted "unlisted host on /images" GET admin.example.com /images/cover
 
-# /rpc reaches the server :8000 with the path intact, on every listed host:
-# the server's own routes carry the prefix.
-assert_route "rpc keeps /rpc" GET localhost /rpc api /rpc
-assert_route "rpc keeps /rpc/" GET localhost /rpc/ api /rpc/
-assert_route "rpc keeps a procedure path" GET localhost /rpc/publira.v1.CatalogService/ListPublishedSeries api /rpc/publira.v1.CatalogService/ListPublishedSeries
-assert_route "rpc keeps a deeper path" GET localhost /rpc/foo/bar api /rpc/foo/bar
-assert_route "rpc on admin host" GET admin.localhost /rpc/foo api /rpc/foo
-assert_route "rpc on platform host" GET platform.localhost /rpc/foo api /rpc/foo
-assert_route "rpc on a site host of no convention" GET reader.example.org /rpc/foo api /rpc/foo
-assert_route "rpc on a console host of no convention" GET studio.example.com /rpc/foo api /rpc/foo
-assert_route "rpc on a platform host of no convention" GET operators.example.net /rpc/foo api /rpc/foo
+# The public API reaches the server :8000 with the path intact, on every listed
+# host: the server's own routes carry the prefix.
+assert_route "rpc keeps a procedure path" GET localhost "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
+assert_route "rpc on admin host" GET admin.localhost "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
+assert_route "rpc on platform host" GET platform.localhost "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
+assert_route "rpc on a site host of no convention" GET reader.example.org "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
+assert_route "rpc on a console host of no convention" GET studio.example.com "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
+assert_route "rpc on a platform host of no convention" GET operators.example.net "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
 
-# The prefix ends at the path segment: /rpcabc is a path of the app the host
-# rules picked.
+# The public API under /api, the prefix the server had before /rpc, is routed
+# the same way until 0.3.0, for the clients not yet on /rpc.
+assert_route "api keeps a procedure path" GET localhost "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
+assert_route "api on admin host" GET admin.localhost "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
+assert_route "api on platform host" GET platform.localhost "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
+assert_route "api on a console host of no convention" GET studio.example.com "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
+
+# Nothing else under /rpc and /api reaches a backend, on any listed host: the
+# consoles' namespaces are called over the private network, so the edge answers
+# them itself, and every other path there with them. The public API's prefix
+# ends at the dot after v1, so a namespace that only starts like it is answered
+# by the edge too.
+for host in localhost reader.example.org admin.localhost studio.example.com platform.localhost operators.example.net; do
+  for prefix in /rpc /api; do
+    assert_unrouted "${prefix} admin namespace on ${host}" POST "${host}" "${prefix}/publira.admin.v1.AdminSeriesService/ListSeries"
+    assert_unrouted "${prefix} platform namespace on ${host}" POST "${host}" "${prefix}/publira.platform.v1.PlatformTenantService/ListTenants"
+  done
+done
+for prefix in /rpc /api; do
+  assert_unrouted "bare ${prefix}" GET localhost "${prefix}"
+  assert_unrouted "${prefix}/" GET localhost "${prefix}/"
+  assert_unrouted "${prefix} deeper path" GET localhost "${prefix}/foo/bar"
+  assert_unrouted "${prefix} namespace without the dot" GET localhost "${prefix}/publira.v1"
+  assert_unrouted "${prefix} namespace sharing the prefix" POST localhost "${prefix}/publira.v1beta.CatalogService/ListPublishedSeries"
+  assert_unrouted "${prefix} types namespace" POST localhost "${prefix}/publira.types.v1.Foo/Bar"
+done
+
+# The prefixes end at the path segment: /rpcabc and /apiabc are paths of the
+# app the host rules picked.
 assert_route "rpcabc stays on web-storefront" GET localhost /rpcabc web-storefront /rpcabc
-
-# /api, the prefix the server had before /rpc, is routed the same way until
-# 0.3.0, for the clients not yet on /rpc.
-assert_route "api keeps /api" GET localhost /api api /api
-assert_route "api keeps /api/" GET localhost /api/ api /api/
-assert_route "api keeps a procedure path" GET localhost /api/publira.v1.CatalogService/ListPublishedSeries api /api/publira.v1.CatalogService/ListPublishedSeries
-assert_route "api keeps a deeper path" GET localhost /api/foo/bar api /api/foo/bar
-assert_route "api on admin host" GET admin.localhost /api/foo api /api/foo
-assert_route "api on platform host" GET platform.localhost /api/foo api /api/foo
-assert_route "api on a console host of no convention" GET studio.example.com /api/foo api /api/foo
+assert_route "apiabc stays on web-storefront" GET localhost /apiabc web-storefront /apiabc
 
 # /api/v1 is the exception: it is where the Next.js apps mount their Route
 # Handlers, so it stays on the app the host rules picked, prefix intact.
@@ -77,8 +92,9 @@ assert_route "inbound email webhook stays on web-storefront" POST localhost /api
 assert_route "bare /api/v1 stays on web-storefront" GET localhost /api/v1 web-storefront /api/v1
 
 # The exception ends at the path segment: /api/v1abc is not one of the Route
-# Handlers, so it is the public API like any other /api path.
-assert_route "api keeps /api/v1abc" GET localhost /api/v1abc api /api/v1abc
+# Handlers, so the edge answers it like any other /api path outside the public
+# API.
+assert_unrouted "api/v1abc is answered by the edge" GET localhost /api/v1abc
 
 # /images outranks the host routers: the api backend answers it for every
 # listed host with the path intact, and picks the rules it applies from the
@@ -124,9 +140,9 @@ assert_upload_delivered "page upload of 256 MiB over 75 seconds reaches web-admi
 assert_trace_context_stripped "web-storefront drops trace context" GET localhost / web-storefront /
 assert_trace_context_stripped "web-admin drops trace context" GET admin.localhost / web-admin /
 assert_trace_context_stripped "web-platform drops trace context" GET platform.localhost / web-platform /
-assert_trace_context_stripped "rpc drops trace context" GET localhost /rpc/foo api /rpc/foo
-assert_trace_context_stripped "api drops trace context" GET localhost /api/foo api /api/foo
-assert_trace_context_stripped "api on admin host drops trace context" GET admin.localhost /api/foo api /api/foo
+assert_trace_context_stripped "rpc drops trace context" GET localhost "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
+assert_trace_context_stripped "api drops trace context" GET localhost "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
+assert_trace_context_stripped "api on admin host drops trace context" GET admin.localhost "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
 assert_trace_context_stripped "revalidate drops trace context" POST localhost /api/v1/revalidate web-storefront /api/v1/revalidate
 assert_trace_context_stripped "images drop trace context" GET localhost /images/cover api /images/cover
 assert_trace_context_stripped "images on admin host drop trace context" GET admin.localhost /images/cover api /images/cover
@@ -140,8 +156,8 @@ assert_trace_context_stripped "images on admin host drop trace context" GET admi
 assert_forwarded_headers "web-storefront is given the edge's forwarded headers" GET localhost / web-storefront
 assert_forwarded_headers "web-admin is given the edge's forwarded headers" GET admin.localhost / web-admin
 assert_forwarded_headers "web-platform is given the edge's forwarded headers" GET platform.localhost / web-platform
-assert_forwarded_headers "rpc is given the edge's forwarded headers" GET localhost /rpc/foo api
-assert_forwarded_headers "api is given the edge's forwarded headers" GET localhost /api/foo api
+assert_forwarded_headers "rpc is given the edge's forwarded headers" GET localhost "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api
+assert_forwarded_headers "api is given the edge's forwarded headers" GET localhost "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api
 assert_forwarded_headers "images are given the edge's forwarded headers" GET localhost /images/cover api
 assert_forwarded_headers "images on admin host are given the edge's forwarded headers" GET admin.localhost /images/cover api
 

@@ -284,12 +284,13 @@ func assembleServer(deps shared, cfg serverConfig, pools serverPools) (assembled
 }
 
 // serverHandler serves the Connect namespaces under /rpc and image delivery
-// under /images, which the edge forwards with their prefixes kept and the web
-// apps dial on the same paths. Nothing is registered at the root, so a
-// procedure has the same path wherever it is called from. The console
-// namespaces are reachable through the edge on every host, and each of their
-// RPCs refuses a caller without an operator session or the web service token
-// before any handler runs.
+// under /images. The edge forwards the images and publira.v1 with their
+// prefixes kept, and the web apps dial every namespace on the same paths, so
+// nothing is registered at the root and a procedure has the same path wherever
+// it is called from. Every namespace served is answered on every host: the
+// edge is what keeps the consoles' namespaces off the internet, and behind it
+// each console RPC refuses a caller without an operator session or the web
+// service token before any handler runs.
 //
 // Readiness names one check per pool: with up to three logins behind one
 // listener, a single "db" could not say which of them stopped answering. The

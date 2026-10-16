@@ -29,7 +29,7 @@ The console host does not have to be under the tenant's domain: a site on `examp
 
 Choose it before staff register passkeys: a passkey is bound to the console's host, so moving the console to another host later leaves the passkeys already registered unusable, as [Two-step verification](./12-security.md#tenant-staff) describes.
 
-The edge can go further and accept the console host only from your staff's IP addresses; the [sample configurations](../2-deployments/4-edge.md#the-sample-configurations) do not do this for you. That covers the console's pages but not its APIs, which `publira server` answers on the site's host too unless it runs with `--role storefront`, as [The console APIs are under `/rpc` too](../2-deployments/4-edge.md#the-console-apis-are-under-rpc-too) describes.
+The edge can go further and accept the console host only from your staff's IP addresses; the [sample configurations](../2-deployments/4-edge.md#the-sample-configurations) do not do this for you. That covers the console's pages. Its APIs need no such rule: the console calls them over the private network, and an edge configured as [Only the public API goes through the edge](../2-deployments/4-edge.md#only-the-public-api-goes-through-the-edge) describes forwards them on no host.
 
 ## Creating a tenant
 
