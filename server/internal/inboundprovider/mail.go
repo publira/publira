@@ -195,18 +195,6 @@ func HeaderDeliveryKey(header []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// RawHeader answers the header of a raw mail as it was received: everything
-// before the blank line that ends it, or the whole mail when it has no body.
-func RawHeader(raw []byte) []byte {
-	end := len(raw)
-	for _, separator := range []string{"\r\n\r\n", "\n\n"} {
-		if i := bytes.Index(raw, []byte(separator)); i >= 0 && i < end {
-			end = i
-		}
-	}
-	return raw[:end]
-}
-
 // ReadHeaderBlock reads a raw header block, as SendGrid posts it apart from the
 // body.
 func ReadHeaderBlock(raw string) (mail.Header, error) {

@@ -64,9 +64,6 @@ func TestParseWebhookReadsAMailACloudflareEmailWorkerPosts(t *testing.T) {
 	if got := inboundprovider.StripQuoted(msg.Text); got != "Thanks, the episode opens now.\n\nAlex" {
 		t.Errorf("StripQuoted(Text) = %q", got)
 	}
-	if msg.DeliveryKey != inboundprovider.HeaderDeliveryKey(inboundprovider.RawHeader(raw)) {
-		t.Errorf("DeliveryKey = %q, want the hash of the mail's header", msg.DeliveryKey)
-	}
 }
 
 func TestParseWebhookPutsTheEnvelopeRecipientsFirst(t *testing.T) {
@@ -112,6 +109,27 @@ func TestParseWebhookReadsAMailWithBareLineFeeds(t *testing.T) {
 	}
 	if got := inboundprovider.StripQuoted(msg.Text); got != "It opens now, thank you." {
 		t.Errorf("StripQuoted(Text) = %q", got)
+	}
+}
+
+// A script posts mails whose headers can be the same; only the bytes of the
+// whole post name a delivery.
+func TestParseWebhookNamesADeliveryByTheWholeMail(t *testing.T) {
+	header := "From: Reader <reader@example.net>\r\nTo: contact+7Hn3QzW9kPfa@reply.localhost\r\nSubject: Re: About my purchase\r\n\r\n"
+	read := func(body string) inboundprovider.Message {
+		t.Helper()
+		payload, headers := mimetest.Post(token, []byte(header+body))
+		return parse(t, payload, headers)
+	}
+	first := read("It opens now, thank you.\r\n")
+	if first.DeliveryKey == "" || first.ID != first.DeliveryKey {
+		t.Fatalf("DeliveryKey = %q, ID = %q, want the key standing in for the missing Message-ID", first.DeliveryKey, first.ID)
+	}
+	if again := read("It opens now, thank you.\r\n"); again.DeliveryKey != first.DeliveryKey {
+		t.Errorf("DeliveryKey of the same post again = %q, want %q", again.DeliveryKey, first.DeliveryKey)
+	}
+	if other := read("One more question.\r\n"); other.DeliveryKey == first.DeliveryKey {
+		t.Errorf("DeliveryKey of a mail with the same header and another body = %q, the same as the first", other.DeliveryKey)
 	}
 }
 

@@ -12,6 +12,8 @@ package mime
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	stdmime "mime"
 	"net/http"
@@ -79,7 +81,7 @@ func (*Provider) ParseWebhook(_ context.Context, payload []byte, headers http.He
 	}
 	msg := inboundprovider.Message{
 		Text:        text,
-		DeliveryKey: inboundprovider.HeaderDeliveryKey(inboundprovider.RawHeader(payload)),
+		DeliveryKey: deliveryKey(payload),
 	}
 	for _, value := range headers.Values(HeaderEnvelopeTo) {
 		msg.Recipients = inboundprovider.AppendRecipients(msg.Recipients, inboundprovider.ParseAddressList(value)...)
@@ -93,4 +95,14 @@ func (*Provider) ParseWebhook(_ context.Context, payload []byte, headers http.He
 		msg.ID = msg.DeliveryKey
 	}
 	return msg, nil
+}
+
+// deliveryKey names one delivery by the SHA-256 of the whole mail, in hex. A
+// retry posts the same bytes and repeats it. A mail that passed through a mail
+// server carries the Received line that server added, so the same text mailed
+// again does not repeat it either; the body is in the hash because a script
+// may post mails whose headers are the same and whose bodies are not.
+func deliveryKey(payload []byte) string {
+	sum := sha256.Sum256(payload)
+	return hex.EncodeToString(sum[:])
 }

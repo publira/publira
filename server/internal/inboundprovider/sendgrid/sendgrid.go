@@ -104,7 +104,7 @@ func (*Provider) ParseWebhook(_ context.Context, payload []byte, headers http.He
 			return nil, fmt.Errorf("%w: read raw mail: %w", inboundprovider.ErrMalformedRequest, err)
 		}
 		msg.Text = text
-		msg.DeliveryKey = inboundprovider.HeaderDeliveryKey(inboundprovider.RawHeader(raw))
+		msg.DeliveryKey = inboundprovider.HeaderDeliveryKey(rawHeader(raw))
 		readEnvelope(&msg, form["envelope"])
 		inboundprovider.ApplyHeader(&msg, header)
 	} else {
@@ -160,6 +160,18 @@ func (*Provider) ParseWebhook(_ context.Context, payload []byte, headers http.He
 		msg.ID = msg.DeliveryKey
 	}
 	return msg, nil
+}
+
+// rawHeader answers the header of a raw mail: everything before the blank
+// line that ends it, or the whole mail when it has no body.
+func rawHeader(raw []byte) []byte {
+	end := len(raw)
+	for _, separator := range []string{"\r\n\r\n", "\n\n"} {
+		if i := bytes.Index(raw, []byte(separator)); i >= 0 && i < end {
+			end = i
+		}
+	}
+	return raw[:end]
 }
 
 // readForm reads the form fields SendGrid's request carries that ParseWebhook
