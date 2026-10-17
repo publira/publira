@@ -1,9 +1,9 @@
 "use client";
 
 import type { PageStatusValue, ViewerPage } from "@publira/comic-viewer";
-import type { RenewPageUrl } from "@publira/comic-viewer-shell";
 import {
   describeVisiblePages,
+  renewFromPageUrls,
   useBoxHeight,
   ViewerEmpty,
   ViewerNextPageButton,
@@ -62,37 +62,6 @@ const buildPageStatusFormatter =
   };
 
 /**
- * Answers each refused page from one read of the episode's URLs, shared by
- * every page refused while that read is in flight: the pages of a rail that
- * expired together ask together.
- */
-const shareRenewals = (
-  renewPageUrls: () => Promise<Record<string, string>>
-): RenewPageUrl => {
-  let pending: Promise<Record<string, string>> | undefined;
-
-  const readOnce = async (): Promise<Record<string, string>> => {
-    try {
-      return await renewPageUrls();
-    } catch {
-      // The page stays failed, with its reload control.
-      return {};
-    } finally {
-      pending = undefined;
-    }
-  };
-
-  return async (page) => {
-    if (pending === undefined) {
-      pending = readOnce();
-    }
-    const urls = await pending;
-
-    return urls[page.id];
-  };
-};
-
-/**
  * The episode's pages in the reader the storefront uses, so a misordered or
  * mis-paired page shows before the episode goes live.
  *
@@ -120,7 +89,7 @@ export const EpisodePreview = ({
 }) => {
   const t = useClientMessages();
   const renewPageUrl = useMemo(
-    () => shareRenewals(renewPageUrls),
+    () => renewFromPageUrls(renewPageUrls),
     [renewPageUrls]
   );
   const [box, setBox] = useState<HTMLDivElement | null>(null);
