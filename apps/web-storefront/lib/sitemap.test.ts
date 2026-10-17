@@ -76,8 +76,13 @@ const entry = (overrides: {
   ...overrides,
 });
 
+/** A series translated into every locale. */
 const seriesEntry = (publicId: string) =>
-  entry({ kind: SitemapEntryKind.SERIES, publicId });
+  entry({
+    kind: SitemapEntryKind.SERIES,
+    publicId,
+    publishedLocales: [...getLocales()],
+  });
 
 /**
  * A catalogue of `pageCount` API pages of `limit` entries each, addressed by a
@@ -130,20 +135,28 @@ describe("toSitemapEntryItem", () => {
         entry({
           kind: SitemapEntryKind.EPISODE,
           publicId: "EPISODE00001",
+          publishedLocales: ["en"],
           seriesPublicId: "SERIES000001",
         }),
         entry({ kind: SitemapEntryKind.LABEL, publicId: "LABEL0000001" }),
         entry({ kind: SitemapEntryKind.CREATOR, publicId: "CREATOR00001" }),
         entry({ kind: SitemapEntryKind.GENRE, publicId: "GENRE0000001" }),
-        entry({ kind: SitemapEntryKind.PAGE, slug: "/legal/terms" }),
+        entry({
+          kind: SitemapEntryKind.PAGE,
+          publishedLocales: ["en"],
+          slug: "/legal/terms",
+        }),
       ].flatMap(toSitemapEntryItem)
     ).toStrictEqual([
-      { href: "/series/SERIES000001" },
-      { href: "/series/SERIES000001/episodes/EPISODE00001" },
+      { href: "/series/SERIES000001", publishedLocales: getLocales() },
+      {
+        href: "/series/SERIES000001/episodes/EPISODE00001",
+        publishedLocales: ["en"],
+      },
       { href: "/labels/LABEL0000001" },
       { href: "/creators/CREATOR00001" },
       { href: "/genres/GENRE0000001" },
-      { href: "/legal/terms" },
+      { href: "/legal/terms", publishedLocales: ["en"] },
     ]);
   });
 
@@ -154,10 +167,15 @@ describe("toSitemapEntryItem", () => {
           kind: SitemapEntryKind.SERIES,
           lastModifiedAt: "2026-09-28T01:02:03Z",
           publicId: "SERIES000001",
+          publishedLocales: ["en"],
         })
       )
     ).toStrictEqual([
-      { href: "/series/SERIES000001", lastModifiedAt: "2026-09-28T01:02:03Z" },
+      {
+        href: "/series/SERIES000001",
+        lastModifiedAt: "2026-09-28T01:02:03Z",
+        publishedLocales: ["en"],
+      },
     ]);
   });
 
@@ -173,6 +191,21 @@ describe("toSitemapEntryItem", () => {
     ).toStrictEqual([
       { href: "/series/SERIES000001", publishedLocales: ["ja", "en"] },
     ]);
+  });
+
+  it("drops a series, an episode, or a page with no translation the API names in a locale this build knows", () => {
+    expect(
+      [
+        entry({ kind: SitemapEntryKind.SERIES, publicId: "SERIES000001" }),
+        entry({
+          kind: SitemapEntryKind.EPISODE,
+          publicId: "EPISODE00001",
+          publishedLocales: ["xx"],
+          seriesPublicId: "SERIES000001",
+        }),
+        entry({ kind: SitemapEntryKind.PAGE, slug: "/legal/terms" }),
+      ].flatMap(toSitemapEntryItem)
+    ).toStrictEqual([]);
   });
 
   it("drops an entry its URL cannot be made for", () => {
@@ -271,13 +304,15 @@ describe("renderSitemapUrlset", () => {
     expect(countOf(xml, "<url>")).toBe(1);
   });
 
-  it("lists in every offered locale a page translated into none the tenant offers", () => {
+  it("lists nowhere a page translated into no locale the tenant offers", () => {
     const xml = renderSitemapUrlset(BILINGUAL_ADDRESS, [
       { href: "/series/SERIES000001", publishedLocales: ["ko"] },
+      { href: "/labels/LABEL0000001" },
     ]);
 
+    expect(xml).not.toContain("/series/SERIES000001");
     expect(countOf(xml, "<url>")).toBe(2);
-    expect(xml).not.toContain('hreflang="ko"');
+    expect(xml).not.toContain("\n\n");
   });
 
   it("names the root in each locale", () => {
@@ -327,8 +362,8 @@ describe("getSitemapChunk", () => {
       ok: true,
       value: {
         entries: [
-          { href: "/series/SERIES000001" },
-          { href: "/series/SERIES000002" },
+          { href: "/series/SERIES000001", publishedLocales: getLocales() },
+          { href: "/series/SERIES000002", publishedLocales: getLocales() },
         ],
         nextToken: "",
       },
@@ -436,6 +471,7 @@ describe("getSitemapChunk", () => {
     answerPages(40, (page, index) =>
       entry({
         kind: SitemapEntryKind.PAGE,
+        publishedLocales: [...getLocales()],
         slug: "/".concat(`${page}-${index}-`.padEnd(254, "p")),
       })
     );

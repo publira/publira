@@ -33,7 +33,8 @@ export interface SitemapEntryItem {
   lastModifiedAt?: string;
   /**
    * The locales a series, an episode, or a page has a translation in, in
-   * registry order. Absent where the page is shown in every offered locale.
+   * registry order. Absent for any other page, which is shown in every offered
+   * locale.
    */
   publishedLocales?: readonly Locale[];
 }
@@ -124,10 +125,19 @@ const sitemapEntryHref = (entry: RawSitemapEntry): string | null => {
   }
 };
 
+/** The kinds whose page is written per locale, and so names its translations. */
+const TRANSLATED_KINDS: ReadonlySet<SitemapEntryKind> = new Set([
+  SitemapEntryKind.SERIES,
+  SitemapEntryKind.EPISODE,
+  SitemapEntryKind.PAGE,
+]);
+
 /**
  * The storefront path an entry names, and the locales it is translated into.
  * An entry missing the identifiers its URL is made of, or of a kind this build
- * does not know, is dropped rather than listed at a path that answers 404.
+ * does not know, is dropped rather than listed at a path that answers 404. So
+ * is a series, an episode, or a page translated into no locale the tenant
+ * offers: its page names no URL of its own to list.
  */
 export const toSitemapEntryItem = (
   entry: RawSitemapEntry
@@ -138,16 +148,17 @@ export const toSitemapEntryItem = (
   }
 
   const lastModifiedAt = entry.lastModifiedAt?.trim();
+  const item: SitemapEntryItem = lastModifiedAt
+    ? { href, lastModifiedAt }
+    : { href };
+  if (!TRANSLATED_KINDS.has(entry.kind)) {
+    return [item];
+  }
+
   const publishedLocales = [
     ...new Set((entry.publishedLocales ?? []).filter(isLocale)),
   ];
-  return [
-    {
-      href,
-      ...(lastModifiedAt ? { lastModifiedAt } : {}),
-      ...(publishedLocales.length > 0 ? { publishedLocales } : {}),
-    },
-  ];
+  return publishedLocales.length > 0 ? [{ ...item, publishedLocales }] : [];
 };
 
 const escapeXml = (value: string): string =>
@@ -163,15 +174,17 @@ const absoluteUrl = (origin: string, href: string): string =>
 
 /**
  * The locales `entry` is listed in: those it is translated into that the
- * tenant offers, or every offered locale where it names none of them.
+ * tenant offers, or every offered locale where it is not written per locale.
  */
 const entryLocales = (
   { supportedLocales }: SitemapAddress,
   { publishedLocales }: SitemapEntryItem
 ): readonly Locale[] => {
+  if (!publishedLocales) {
+    return supportedLocales;
+  }
   const translated = new Set(publishedLocales);
-  const published = supportedLocales.filter((locale) => translated.has(locale));
-  return published.length > 0 ? published : supportedLocales;
+  return supportedLocales.filter((locale) => translated.has(locale));
 };
 
 /**
@@ -219,7 +232,10 @@ export const renderSitemapUrlset = (
   [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">',
-    ...entries.map((entry) => renderEntryUrls(address, entry)),
+    ...entries.flatMap((entry) => {
+      const urls = renderEntryUrls(address, entry);
+      return urls ? [urls] : [];
+    }),
     "</urlset>",
     "",
   ].join("\n");
