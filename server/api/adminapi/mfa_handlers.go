@@ -949,20 +949,71 @@ func (s *adminServer) RegenerateMfaRecoveryCodes(
 		return nil, err
 	}
 	actor := mfaActor{Tenant: tenant, User: user, Role: role}
-	row, found, err := s.mfaTotpRow(ctx, user.ID)
-	if err != nil {
-		return nil, err
-	}
-	if !found || !row.EnabledAt.Valid {
-		return nil, mfaNotEnabledError()
+	factor := "totp"
+	if strings.TrimSpace(req.PasskeyCredentialJson) != "" {
+		if strings.TrimSpace(req.Code) != "" {
+			return nil, connect.NewError(connect.CodeInvalidArgument, "send either code or passkey_credential_json, not both")
+		}
+		factor = "passkey"
 	}
 
-	// Only the authenticator can ask for a new batch. Letting one recovery
-	// code mint ten more would make a single leaked code permanent.
-	outcome, err := s.checkMfaCode(ctx, actor, &row, req.Code, false)
-	if err != nil {
-		s.recordMfaAudit(ctx, actor, auditActionMfaRecoveryCodesRegenerated, auditlog.OutcomeFailure, outcome.Reason)
-		return nil, err
+	// Only a factor can ask for a new batch, never a recovery code: letting
+	// one code mint ten more would make a single leaked code permanent. The
+	// batch outlives the factor that minted it only if that factor is still
+	// there once nothing else can take it off, which stillHeld checks under
+	// the lock.
+	var stillHeld func(Querier) error
+	if factor == "passkey" {
+		passkeys, err := s.currentPasskeys(ctx, s.queriesFor(ctx), actor)
+		if err != nil {
+			return nil, err
+		}
+		if passkeys == 0 {
+			return nil, passkeyNotRegisteredError()
+		}
+		used, reason, err := s.checkPasskeyAssertion(ctx, actor, req.PasskeyCredentialJson)
+		if err != nil {
+			s.recordMfaAudit(ctx, actor, auditActionMfaRecoveryCodesRegenerated, auditlog.OutcomeFailure, reason)
+			return nil, err
+		}
+		stillHeld = func(q Querier) error {
+			_, err := q.GetUserWebauthnCredentialByPublicID(ctx, dbmodels.GetUserWebauthnCredentialByPublicIDParams{
+				UserID:       user.ID,
+				RelyingParty: used.RelyingParty,
+				RpID:         used.RpID,
+				PublicID:     used.PublicID,
+			})
+			if errors.Is(err, sql.ErrNoRows) {
+				return passkeyNotRegisteredError()
+			}
+			if err != nil {
+				return s.internalDBError(ctx, "failed to get passkey", err, "user_id", user.ID.String())
+			}
+			return nil
+		}
+	} else {
+		row, found, err := s.mfaTotpRow(ctx, user.ID)
+		if err != nil {
+			return nil, err
+		}
+		if !found || !row.EnabledAt.Valid {
+			return nil, mfaNotEnabledError()
+		}
+		outcome, err := s.checkMfaCode(ctx, actor, &row, req.Code, false)
+		if err != nil {
+			s.recordMfaAudit(ctx, actor, auditActionMfaRecoveryCodesRegenerated, auditlog.OutcomeFailure, outcome.Reason)
+			return nil, err
+		}
+		stillHeld = func(q Querier) error {
+			current, err := q.GetUserMfaTotpByUserID(ctx, user.ID)
+			if errors.Is(err, sql.ErrNoRows) || (err == nil && !current.EnabledAt.Valid) {
+				return mfaNotEnabledError()
+			}
+			if err != nil {
+				return s.internalDBError(ctx, "failed to get user mfa totp", err, "user_id", user.ID.String())
+			}
+			return nil
+		}
 	}
 
 	tx, err := s.beginTenantTx(ctx)
@@ -975,14 +1026,8 @@ func (s *adminServer) RegenerateMfaRecoveryCodes(
 	if err := s.lockMfaFactors(ctx, q, user.ID); err != nil {
 		return nil, err
 	}
-	// A batch outlives the authenticator that minted it only if the
-	// authenticator is still there once nothing else can take it off.
-	current, err := q.GetUserMfaTotpByUserID(ctx, user.ID)
-	if errors.Is(err, sql.ErrNoRows) || (err == nil && !current.EnabledAt.Valid) {
-		return nil, mfaNotEnabledError()
-	}
-	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to get user mfa totp", err, "user_id", user.ID.String())
+	if err := stillHeld(q); err != nil {
+		return nil, err
 	}
 	codes, err := replaceRecoveryCodes(ctx, q, tenant.ID, user.ID)
 	if err != nil {
@@ -992,6 +1037,6 @@ func (s *adminServer) RegenerateMfaRecoveryCodes(
 		return nil, s.internalDBError(ctx, "failed to commit mfa recovery codes", err, "user_id", user.ID.String())
 	}
 
-	s.recordMfaAudit(ctx, actor, auditActionMfaRecoveryCodesRegenerated, auditlog.OutcomeSuccess, "")
+	s.recordMfaAudit(ctx, actor, auditActionMfaRecoveryCodesRegenerated, auditlog.OutcomeSuccess, factor)
 	return &publiraadminv1.AdminAuthServiceRegenerateMfaRecoveryCodesResponse{RecoveryCodes: codes}, nil
 }

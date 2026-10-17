@@ -890,3 +890,175 @@ func TestAdminMfaEnrollChallengeGoesStaleOnceAFactorIsEnrolled(t *testing.T) {
 		t.Fatalf("authenticators = %d, want none", got)
 	}
 }
+
+func beginPasskeyConfirmation(t *testing.T, env *adminDBEnv, tenant adminDBTenant) string {
+	t.Helper()
+
+	begun, err := env.authClient().BeginPasskeyConfirmation(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.AdminAuthServiceBeginPasskeyConfirmationRequest{
+		Tenant: tenant.tenantContext(),
+	})
+	if err != nil {
+		t.Fatalf("BeginPasskeyConfirmation: %v", err)
+	}
+	return begun.RequestOptionsJson
+}
+
+func regenerateWithPasskey(env *adminDBEnv, tenant adminDBTenant, credential string) (*publiraadminv1.AdminAuthServiceRegenerateMfaRecoveryCodesResponse, error) {
+	return env.authClient().RegenerateMfaRecoveryCodes(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.AdminAuthServiceRegenerateMfaRecoveryCodesRequest{
+		Tenant:                tenant.tenantContext(),
+		PasskeyCredentialJson: credential,
+	})
+}
+
+// An account whose only second factor is a passkey replaces its recovery
+// codes with an assertion made on the console, as one with an authenticator
+// does with a code from it.
+func TestAdminPasskeyRegeneratesTheRecoveryCodes(t *testing.T) {
+	env := newPasskeyDBEnv(t)
+	tenant := seedMfaTenant(t, env)
+	authenticator, registered := registerPasskey(t, env, tenant, "")
+	old := registered.RecoveryCodes
+
+	regenerated, err := regenerateWithPasskey(env, tenant, authenticator.Assert(t, beginPasskeyConfirmation(t, env, tenant)))
+	if err != nil {
+		t.Fatalf("RegenerateMfaRecoveryCodes with a passkey: %v", err)
+	}
+	if len(regenerated.RecoveryCodes) != mfa.RecoveryCodeCount {
+		t.Fatalf("recovery codes = %d, want %d", len(regenerated.RecoveryCodes), mfa.RecoveryCodeCount)
+	}
+	if got := env.countRows(t, "SELECT count(*) FROM user_mfa_recovery_codes WHERE user_id = $1 AND used_at IS NULL", tenant.User.ID); got != mfa.RecoveryCodeCount {
+		t.Fatalf("stored recovery codes = %d, want %d", got, mfa.RecoveryCodeCount)
+	}
+	if got := env.countRows(t,
+		"SELECT count(*) FROM audit_logs WHERE tenant_id = $1 AND actor_user_id = $2 AND action = 'admin_mfa_recovery_codes_regenerated' AND outcome = 'success' AND reason = 'passkey'",
+		tenant.Tenant.ID, tenant.User.ID); got != 1 {
+		t.Fatalf("regeneration audit rows = %d, want 1 naming the passkey", got)
+	}
+	if got := env.countRows(t, "SELECT count(*) FROM user_webauthn_credentials WHERE user_id = $1 AND last_used_at IS NOT NULL", tenant.User.ID); got != 1 {
+		t.Fatalf("passkeys marked used = %d, want the one that confirmed", got)
+	}
+
+	challenge := verifyChallenge(t, env, tenant)
+	_, err = env.authClient().VerifyMfa(context.Background(), &publiraadminv1.AdminAuthServiceVerifyMfaRequest{
+		Tenant:         tenant.tenantContext(),
+		ChallengeToken: challenge.Token,
+		Code:           old[0],
+	})
+	if errorInfoReason(t, err) != rpcerrors.ReasonMfaInvalidCode {
+		t.Fatalf("VerifyMfa with a replaced recovery code = %v, want %s", err, rpcerrors.ReasonMfaInvalidCode)
+	}
+	verified, err := env.authClient().VerifyMfa(context.Background(), &publiraadminv1.AdminAuthServiceVerifyMfaRequest{
+		Tenant:         tenant.tenantContext(),
+		ChallengeToken: challenge.Token,
+		Code:           regenerated.RecoveryCodes[0],
+	})
+	if err != nil || !verified.RecoveryCodeUsed {
+		t.Fatalf("VerifyMfa with a regenerated recovery code = %+v, %v, want a spent recovery code", verified, err)
+	}
+}
+
+// A recovery code mints no batch on a passkey-only account either, and an
+// assertion that does not verify mints none while counting toward the lock.
+func TestAdminPasskeyRegenerationRefusesARecoveryCodeAndARefusedAssertion(t *testing.T) {
+	env := newPasskeyDBEnv(t)
+	tenant := seedMfaTenant(t, env)
+	authenticator, registered := registerPasskey(t, env, tenant, "")
+	unusedBatch := func(what string) {
+		t.Helper()
+		if got := env.countRows(t, "SELECT count(*) FROM user_mfa_recovery_codes WHERE user_id = $1 AND used_at IS NULL", tenant.User.ID); got != mfa.RecoveryCodeCount {
+			t.Fatalf("unused recovery codes after %s = %d, want the batch untouched (%d)", what, got, mfa.RecoveryCodeCount)
+		}
+	}
+
+	_, err := env.authClient().RegenerateMfaRecoveryCodes(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.AdminAuthServiceRegenerateMfaRecoveryCodesRequest{
+		Tenant: tenant.tenantContext(),
+		Code:   registered.RecoveryCodes[0],
+	})
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("RegenerateMfaRecoveryCodes with a recovery code = %v, want failed_precondition", err)
+	}
+	unusedBatch("a recovery code")
+
+	_, err = env.authClient().RegenerateMfaRecoveryCodes(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.AdminAuthServiceRegenerateMfaRecoveryCodesRequest{
+		Tenant:                tenant.tenantContext(),
+		Code:                  registered.RecoveryCodes[0],
+		PasskeyCredentialJson: authenticator.Assert(t, beginPasskeyConfirmation(t, env, tenant)),
+	})
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("RegenerateMfaRecoveryCodes with a code and an assertion = %v, want invalid_argument", err)
+	}
+	unusedBatch("a code and an assertion")
+
+	authenticator.Origin = passkeyStorefrontOrigin
+	_, err = regenerateWithPasskey(env, tenant, authenticator.Assert(t, beginPasskeyConfirmation(t, env, tenant)))
+	assertPasskeyRefused(t, err, "RegenerateMfaRecoveryCodes with an assertion from the storefront's origin")
+	unusedBatch("a refused assertion")
+	if got := env.countRows(t, "SELECT count(*) FROM user_mfa_lockouts WHERE user_id = $1 AND failed_attempts = 1", tenant.User.ID); got != 1 {
+		t.Fatal("the refused assertion was not counted toward the lock")
+	}
+	if got := env.countRows(t,
+		"SELECT count(*) FROM audit_logs WHERE tenant_id = $1 AND actor_user_id = $2 AND action = 'admin_mfa_recovery_codes_regenerated' AND outcome = 'failure' AND reason = 'assertion_invalid'",
+		tenant.Tenant.ID, tenant.User.ID); got != 1 {
+		t.Fatalf("refused regeneration audit rows = %d, want 1", got)
+	}
+
+	// An assertion that already confirmed one regeneration confirms no other.
+	authenticator.Origin = passkeyConsoleOrigin
+	credential := authenticator.Assert(t, beginPasskeyConfirmation(t, env, tenant))
+	if _, err := regenerateWithPasskey(env, tenant, credential); err != nil {
+		t.Fatalf("RegenerateMfaRecoveryCodes with a passkey: %v", err)
+	}
+	_, err = regenerateWithPasskey(env, tenant, credential)
+	assertPasskeyRefused(t, err, "RegenerateMfaRecoveryCodes with a replayed assertion")
+}
+
+// The lock refused assertions and codes share holds for the regeneration too,
+// even for an assertion that would otherwise be accepted.
+func TestAdminPasskeyRegenerationIsHeldByTheLock(t *testing.T) {
+	env := newPasskeyDBEnv(t)
+	tenant := seedMfaTenant(t, env)
+	authenticator, _ := registerPasskey(t, env, tenant, "")
+
+	authenticator.Origin = passkeyStorefrontOrigin
+	for attempt := 1; attempt <= mfa.MaxFailedAttempts; attempt++ {
+		_, err := regenerateWithPasskey(env, tenant, authenticator.Assert(t, beginPasskeyConfirmation(t, env, tenant)))
+		if attempt == mfa.MaxFailedAttempts {
+			if errorInfoReason(t, err) != rpcerrors.ReasonMfaLocked {
+				t.Fatalf("the attempt that reached the limit = %v, want %s", err, rpcerrors.ReasonMfaLocked)
+			}
+			break
+		}
+		assertPasskeyRefused(t, err, "RegenerateMfaRecoveryCodes from the storefront's origin")
+	}
+
+	_, err := env.authClient().BeginPasskeyConfirmation(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.AdminAuthServiceBeginPasskeyConfirmationRequest{
+		Tenant: tenant.tenantContext(),
+	})
+	if errorInfoReason(t, err) != rpcerrors.ReasonMfaLocked {
+		t.Fatalf("BeginPasskeyConfirmation while locked = %v, want %s", err, rpcerrors.ReasonMfaLocked)
+	}
+}
+
+// Without a passkey for the console there is nothing to confirm with.
+func TestAdminPasskeyConfirmationNeedsAPasskey(t *testing.T) {
+	env := newPasskeyDBEnv(t)
+	tenant := seedMfaTenant(t, env)
+	enrollMfa(t, env, tenant)
+
+	_, err := env.authClient().BeginPasskeyConfirmation(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.AdminAuthServiceBeginPasskeyConfirmationRequest{
+		Tenant: tenant.tenantContext(),
+	})
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("BeginPasskeyConfirmation without a passkey = %v, want failed_precondition", err)
+	}
+	_, err = env.authClient().BeginPasskeyConfirmation(context.Background(), &publiraadminv1.AdminAuthServiceBeginPasskeyConfirmationRequest{
+		Tenant: tenant.tenantContext(),
+	})
+	if connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("BeginPasskeyConfirmation without a session = %v, want unauthenticated", err)
+	}
+	_, err = regenerateWithPasskey(env, tenant, `{"id":"x"}`)
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("RegenerateMfaRecoveryCodes with an assertion and no passkey = %v, want failed_precondition", err)
+	}
+}
