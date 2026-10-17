@@ -52,6 +52,9 @@ const ceremonyFailureMessage = (
 const PasskeySignInForm = ({ children }: { children: ReactNode }) => {
   const t = useClientMessages();
   const credentialRef = useRef<HTMLInputElement>(null);
+  // Set once the button asks for a passkey, so an autofill request still being
+  // set up does not start after it and cancel the one the reader asked for.
+  const buttonUsedRef = useRef(false);
 
   // A submission that already carries an assertion is the one autofill made
   // below; any other is the button, which asks for one first.
@@ -63,6 +66,7 @@ const PasskeySignInForm = ({ children }: { children: ReactNode }) => {
       return finishPasskeyLoginAction(formData);
     }
 
+    buttonUsedRef.current = true;
     const started = await beginPasskeyLoginAction(formData);
     if (!started.ok) {
       return started;
@@ -82,9 +86,10 @@ const PasskeySignInForm = ({ children }: { children: ReactNode }) => {
   // carries the `webauthn` token, for as long as the page is open. The prompt
   // only opens when the reader picks a passkey there, and the assertion is then
   // submitted through the form, so it finishes, and fails, as the button does.
-  // The button cancels this request when it asks for one of its own, and
-  // anything that stops it is left unreported: the reader has not asked for
-  // anything yet, and the button is still there to ask with.
+  // The button cancels this request when it asks for one of its own, and one
+  // the button was used before is never started. Anything that stops it is
+  // left unreported: the reader has not asked for anything yet, and the button
+  // is still there to ask with.
   useEffect(() => {
     const field = credentialRef.current;
     const form = field?.form;
@@ -92,13 +97,14 @@ const PasskeySignInForm = ({ children }: { children: ReactNode }) => {
       return;
     }
     let active = true;
+    const offering = () => active && !buttonUsedRef.current;
 
     const offerInAutofill = async () => {
-      if (!(await browserSupportsWebAuthnAutofill())) {
+      if (!(await browserSupportsWebAuthnAutofill()) || !offering()) {
         return;
       }
       const started = await beginPasskeyLoginAction(new FormData(form));
-      if (!active || !started.ok) {
+      if (!offering() || !started.ok) {
         return;
       }
       const credential = await startAuthentication({

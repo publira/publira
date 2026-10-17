@@ -196,6 +196,34 @@ describe("PasskeySignIn in the autofill", () => {
     expect(finished?.get("returnTo")).toBe("/my");
   });
 
+  it("starts no autofill request once the button has asked for a passkey", async () => {
+    browserSupportsWebAuthnAutofill.mockResolvedValue(true);
+    const { promise: autofillStarted, resolve: startAutofill } =
+      Promise.withResolvers<PasskeyLoginStartState>();
+    beginPasskeyLogin.mockReturnValueOnce(autofillStarted);
+
+    await renderControl();
+    await waitFor(() => {
+      expect(beginPasskeyLogin).toHaveBeenCalledTimes(1);
+    });
+    fireEvent.click(signInButton());
+    expect(
+      await screen.findByText("That passkey was not accepted.")
+    ).toBeDefined();
+
+    startAutofill({
+      message: "",
+      ok: true,
+      optionsJson: JSON.stringify(REQUEST_OPTIONS),
+    });
+    await autofillStarted;
+
+    expect(startAuthentication).toHaveBeenCalledTimes(1);
+    expect(startAuthentication).toHaveBeenCalledWith({
+      optionsJSON: REQUEST_OPTIONS,
+    });
+  });
+
   it("leaves the form untouched when the autofill request is stopped", async () => {
     browserSupportsWebAuthnAutofill.mockResolvedValue(true);
     startAuthentication.mockRejectedValue(webAuthnError("AbortError"));
