@@ -7,7 +7,7 @@ const creatorsListSearchParamsSchema = z.object({
 });
 
 interface ParseCreatorsListSearchParamsInput {
-  token?: string | string[] | undefined;
+  token?: string | string[];
 }
 
 export interface CreatorsListSearchParams {

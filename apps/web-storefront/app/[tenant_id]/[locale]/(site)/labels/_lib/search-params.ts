@@ -7,7 +7,7 @@ const labelsListSearchParamsSchema = z.object({
 });
 
 interface ParseLabelsListSearchParamsInput {
-  token?: string | string[] | undefined;
+  token?: string | string[];
 }
 
 export interface LabelsListSearchParams {

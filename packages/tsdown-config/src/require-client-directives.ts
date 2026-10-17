@@ -1,8 +1,26 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-/** `"use client"` as the first statement, after any leading comments. */
-const USE_CLIENT = /^(?:\s|\/\/[^\n]*|\/\*[\s\S]*?\*\/)*["']use client["']/u;
+/** One run of whitespace or one comment, read from `lastIndex`. */
+const LEADING_TRIVIA = /\s+|\/\/[^\n]*|\/\*[\s\S]*?\*\//uy;
+
+const USE_CLIENT = /["']use client["']/uy;
+
+/**
+ * Whether `"use client"` is the first statement, after any leading comments.
+ * The comments are skipped one at a time: a single pattern repeating a choice
+ * of comment forms can split the same text into comments in many ways, and
+ * backtracks through all of them on a source that has no directive.
+ */
+const hasUseClient = (source: string): boolean => {
+  let offset = 0;
+  LEADING_TRIVIA.lastIndex = 0;
+  while (LEADING_TRIVIA.test(source)) {
+    offset = LEADING_TRIVIA.lastIndex;
+  }
+  USE_CLIENT.lastIndex = offset;
+  return USE_CLIENT.test(source);
+};
 
 const DECLARATION_FILE = /\.d\.[cm]?ts$/u;
 
@@ -26,7 +44,7 @@ const startsWithUseClient = async (id: string): Promise<boolean> => {
     return false;
   }
   try {
-    return USE_CLIENT.test(await readFile(id, "utf-8"));
+    return hasUseClient(await readFile(id, "utf-8"));
   } catch {
     return false;
   }
@@ -49,7 +67,7 @@ export const requireClientDirectives = () => ({
       if (
         output.type === "chunk" &&
         !DECLARATION_FILE.test(output.fileName) &&
-        !USE_CLIENT.test(output.code)
+        !hasUseClient(output.code)
       ) {
         for (const id of output.moduleIds) {
           candidates.push({ fileName: output.fileName, id });

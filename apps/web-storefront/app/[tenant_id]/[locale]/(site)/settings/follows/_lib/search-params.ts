@@ -5,7 +5,7 @@ import { cursorPageHref, cursorTokenSchema } from "#lib/cursor-token";
 export const defaultFollowsPageSize = 20;
 
 interface ParseFollowsSearchParamsInput {
-  token?: string | string[] | undefined;
+  token?: string | string[];
 }
 
 export interface FollowsSearchParams {

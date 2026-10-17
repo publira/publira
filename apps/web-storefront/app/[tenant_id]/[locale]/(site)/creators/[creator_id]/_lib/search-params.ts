@@ -7,7 +7,7 @@ const creatorDetailSearchParamsSchema = z.object({
 });
 
 interface ParseCreatorDetailSearchParamsInput {
-  token?: string | string[] | undefined;
+  token?: string | string[];
 }
 
 export interface CreatorDetailSearchParams {

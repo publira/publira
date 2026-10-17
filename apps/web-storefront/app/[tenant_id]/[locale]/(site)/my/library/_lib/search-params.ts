@@ -5,7 +5,7 @@ import { cursorPageHref, cursorTokenSchema } from "#lib/cursor-token";
 export const defaultPurchasesPageSize = 20;
 
 interface ParsePurchasesSearchParamsInput {
-  token?: string | string[] | undefined;
+  token?: string | string[];
 }
 export interface PurchasesSearchParams {
   token: string;
