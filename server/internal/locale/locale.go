@@ -81,7 +81,7 @@ func NormalizeSupported(defaultLocale string, raw []string) ([]string, error) {
 	if !slices.Contains(codes, defaultLocale) {
 		return nil, ErrDefaultNotSupported
 	}
-	return inRegistryOrder(codes), nil
+	return InRegistryOrder(codes), nil
 }
 
 // ResolveSupported returns a stored set of offered locales in the order of
@@ -100,10 +100,13 @@ func ResolveSupported(stored []string) ([]string, error) {
 	if len(codes) == 0 {
 		return nil, ErrSupportedUnresolved
 	}
-	return inRegistryOrder(codes), nil
+	return InRegistryOrder(codes), nil
 }
 
-func inRegistryOrder(codes []string) []string {
+// InRegistryOrder returns the codes of [Supported] that codes holds, once each
+// and in the order of [Supported]. A code the registry does not name is left
+// out: it is no locale a page of this build can be served in.
+func InRegistryOrder(codes []string) []string {
 	ordered := make([]string, 0, len(codes))
 	for _, code := range Supported {
 		if slices.Contains(codes, code) {

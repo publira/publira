@@ -264,6 +264,7 @@ type Episode struct {
 	Availability         sql.NullString `json:"availability"`
 	PurchaseAvailability sql.NullString `json:"purchase_availability"`
 	EyeCatchImageID      uuid.NullUUID  `json:"eye_catch_image_id"`
+	TranslationDeletedAt sql.NullTime   `json:"translation_deleted_at"`
 }
 
 type EpisodeComment struct {
@@ -1073,14 +1074,15 @@ type SignInNonce struct {
 }
 
 type SitemapEntry struct {
-	TenantID       uuid.UUID    `json:"tenant_id"`
-	Surface        string       `json:"surface"`
-	Kind           int32        `json:"kind"`
-	ID             uuid.UUID    `json:"id"`
-	PublicID       string       `json:"public_id"`
-	SeriesPublicID string       `json:"series_public_id"`
-	Slug           string       `json:"slug"`
-	LastModifiedAt sql.NullTime `json:"last_modified_at"`
+	TenantID         uuid.UUID    `json:"tenant_id"`
+	Surface          string       `json:"surface"`
+	Kind             int32        `json:"kind"`
+	ID               uuid.UUID    `json:"id"`
+	PublicID         string       `json:"public_id"`
+	SeriesPublicID   string       `json:"series_public_id"`
+	Slug             string       `json:"slug"`
+	LastModifiedAt   sql.NullTime `json:"last_modified_at"`
+	PublishedLocales []string     `json:"published_locales"`
 }
 
 type StorePurchaseIntent struct {

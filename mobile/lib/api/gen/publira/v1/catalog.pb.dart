@@ -5079,6 +5079,7 @@ class SitemapEntry extends $pb.GeneratedMessage {
     $core.String? seriesPublicId,
     $core.String? slug,
     $core.String? lastModifiedAt,
+    $core.Iterable<$core.String>? publishedLocales,
   }) {
     final result = SitemapEntry._();
     if (kind != null) result.kind = kind;
@@ -5086,6 +5087,8 @@ class SitemapEntry extends $pb.GeneratedMessage {
     if (seriesPublicId != null) result.seriesPublicId = seriesPublicId;
     if (slug != null) result.slug = slug;
     if (lastModifiedAt != null) result.lastModifiedAt = lastModifiedAt;
+    if (publishedLocales != null)
+      result.publishedLocales.addAll(publishedLocales);
     return result;
   }
 
@@ -5108,6 +5111,7 @@ class SitemapEntry extends $pb.GeneratedMessage {
     ..aOS(3, _omitFieldNames ? '' : 'seriesPublicId')
     ..aOS(4, _omitFieldNames ? '' : 'slug')
     ..aOS(5, _omitFieldNames ? '' : 'lastModifiedAt')
+    ..pPS(6, _omitFieldNames ? '' : 'publishedLocales')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -5174,9 +5178,10 @@ class SitemapEntry extends $pb.GeneratedMessage {
   void clearSlug() => $_clearField(4);
 
   /// When what the page shows last changed, RFC 3339. A series counts its
-  /// newest published episode, since its page lists them, and a page counts
-  /// its published translations. Empty for a label, a creator, and a genre,
-  /// whose rows keep no such time.
+  /// newest published episode, since its page lists them, an episode counts
+  /// its translations, a deleted one included, and a page counts its published
+  /// translations. Empty for a label, a creator, and a genre, whose rows keep
+  /// no such time.
   @$pb.TagNumber(5)
   $core.String get lastModifiedAt => $_getSZ(4);
   @$pb.TagNumber(5)
@@ -5185,6 +5190,14 @@ class SitemapEntry extends $pb.GeneratedMessage {
   $core.bool hasLastModifiedAt() => $_has(4);
   @$pb.TagNumber(5)
   void clearLastModifiedAt() => $_clearField(5);
+
+  /// Every locale a series, an episode, or a page has a translation in that the
+  /// tenant offers, in registry order: the language alternates its page names,
+  /// as GetSeriesDetail, GetEpisodeDetail, and GetPublishedPage answer them in
+  /// published_locales. Empty for a label, a creator, and a genre, which are
+  /// shown in every offered language.
+  @$pb.TagNumber(6)
+  $pb.PbList<$core.String> get publishedLocales => $_getList(5);
 }
 
 /// Cursor pagination. Field shape and token rules: proto/README.md.

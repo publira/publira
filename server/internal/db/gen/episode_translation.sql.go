@@ -97,6 +97,27 @@ func (q *Queries) ListEpisodeTranslationsForTenant(ctx context.Context, arg List
 	return items, nil
 }
 
+const TouchEpisodeTranslationDeletedAt = `-- name: TouchEpisodeTranslationDeletedAt :exec
+UPDATE episodes
+SET translation_deleted_at = NOW()
+WHERE tenant_id = $1
+    AND id = $2
+`
+
+type TouchEpisodeTranslationDeletedAtParams struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	ID       uuid.UUID `json:"id"`
+}
+
+// A deleted translation changes what the episode page shows in its locale,
+// and the sitemap's last_modified_at reads that from
+// episodes.translation_deleted_at, as it reads every other write to a
+// translation from the translation's own updated_at.
+func (q *Queries) TouchEpisodeTranslationDeletedAt(ctx context.Context, arg TouchEpisodeTranslationDeletedAtParams) error {
+	_, err := q.db.ExecContext(ctx, TouchEpisodeTranslationDeletedAt, arg.TenantID, arg.ID)
+	return err
+}
+
 const UpsertEpisodeTranslation = `-- name: UpsertEpisodeTranslation :one
 
 INSERT INTO episode_translations (

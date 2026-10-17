@@ -4304,12 +4304,19 @@ type SitemapEntry struct {
 	// A page's slug in storage form ("/privacy"). Empty for every other kind.
 	Slug string `protobuf:"bytes,4,opt,name=slug,proto3" json:"slug,omitempty"`
 	// When what the page shows last changed, RFC 3339. A series counts its
-	// newest published episode, since its page lists them, and a page counts
-	// its published translations. Empty for a label, a creator, and a genre,
-	// whose rows keep no such time.
+	// newest published episode, since its page lists them, an episode counts
+	// its translations, a deleted one included, and a page counts its published
+	// translations. Empty for a label, a creator, and a genre, whose rows keep
+	// no such time.
 	LastModifiedAt string `protobuf:"bytes,5,opt,name=last_modified_at,json=lastModifiedAt,proto3" json:"last_modified_at,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Every locale a series, an episode, or a page has a translation in that the
+	// tenant offers, in registry order: the language alternates its page names,
+	// as GetSeriesDetail, GetEpisodeDetail, and GetPublishedPage answer them in
+	// published_locales. Empty for a label, a creator, and a genre, which are
+	// shown in every offered language.
+	PublishedLocales []string `protobuf:"bytes,6,rep,name=published_locales,json=publishedLocales,proto3" json:"published_locales,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *SitemapEntry) Reset() {
@@ -4375,6 +4382,13 @@ func (x *SitemapEntry) GetLastModifiedAt() string {
 		return x.LastModifiedAt
 	}
 	return ""
+}
+
+func (x *SitemapEntry) GetPublishedLocales() []string {
+	if x != nil {
+		return x.PublishedLocales
+	}
+	return nil
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -8526,13 +8540,14 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x06series\x18\x01 \x03(\v2\x18.publira.types.v1.SeriesR\x06series\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\xc5\x01\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\xf2\x01\n" +
 	"\fSitemapEntry\x120\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x1c.publira.v1.SitemapEntryKindR\x04kind\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12(\n" +
 	"\x10series_public_id\x18\x03 \x01(\tR\x0eseriesPublicId\x12\x12\n" +
 	"\x04slug\x18\x04 \x01(\tR\x04slug\x12(\n" +
-	"\x10last_modified_at\x18\x05 \x01(\tR\x0elastModifiedAt\"\x80\x01\n" +
+	"\x10last_modified_at\x18\x05 \x01(\tR\x0elastModifiedAt\x12+\n" +
+	"\x11published_locales\x18\x06 \x03(\tR\x10publishedLocales\"\x80\x01\n" +
 	"\x19ListSitemapEntriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
