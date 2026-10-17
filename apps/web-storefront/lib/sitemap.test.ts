@@ -64,11 +64,13 @@ const entry = (overrides: {
   kind: SitemapEntryKind;
   lastModifiedAt?: string;
   publicId?: string;
+  publishedLocales?: string[];
   seriesPublicId?: string;
   slug?: string;
 }) => ({
   lastModifiedAt: "",
   publicId: "",
+  publishedLocales: [],
   seriesPublicId: "",
   slug: "",
   ...overrides,
@@ -159,6 +161,20 @@ describe("toSitemapEntryItem", () => {
     ]);
   });
 
+  it("carries the locales an entry is translated into, without a code this build does not know", () => {
+    expect(
+      toSitemapEntryItem(
+        entry({
+          kind: SitemapEntryKind.SERIES,
+          publicId: "SERIES000001",
+          publishedLocales: ["ja", "xx", "en"],
+        })
+      )
+    ).toStrictEqual([
+      { href: "/series/SERIES000001", publishedLocales: ["ja", "en"] },
+    ]);
+  });
+
   it("drops an entry its URL cannot be made for", () => {
     expect(
       [
@@ -212,6 +228,56 @@ describe("renderSitemapUrlset", () => {
     expect(countOf(xml, 'hreflang="en"')).toBe(2);
     expect(xml).not.toContain('hreflang="ko"');
     expect(xml).not.toContain(`${ORIGIN}/ko/`);
+  });
+
+  it("lists a page translated into some locales at those locales' URLs alone", () => {
+    const xml = renderSitemapUrlset(ADDRESS, [
+      { href: "/series/SERIES000001", publishedLocales: ["ja", "en"] },
+    ]);
+
+    expect(
+      xml.split("\n").filter((line) => line.startsWith("<url>"))
+    ).toStrictEqual([
+      [
+        `<url><loc>${ORIGIN}/ja/series/SERIES000001</loc>`,
+        `<xhtml:link rel="alternate" hreflang="ja" href="${ORIGIN}/ja/series/SERIES000001"/>`,
+        `<xhtml:link rel="alternate" hreflang="en" href="${ORIGIN}/series/SERIES000001"/>`,
+        `<xhtml:link rel="alternate" hreflang="x-default" href="${ORIGIN}/series/SERIES000001"/>`,
+        "</url>",
+      ].join(""),
+      [
+        `<url><loc>${ORIGIN}/series/SERIES000001</loc>`,
+        `<xhtml:link rel="alternate" hreflang="ja" href="${ORIGIN}/ja/series/SERIES000001"/>`,
+        `<xhtml:link rel="alternate" hreflang="en" href="${ORIGIN}/series/SERIES000001"/>`,
+        `<xhtml:link rel="alternate" hreflang="x-default" href="${ORIGIN}/series/SERIES000001"/>`,
+        "</url>",
+      ].join(""),
+    ]);
+  });
+
+  it("names as x-default the URL a page names itself where the default locale has no translation", () => {
+    const xml = renderSitemapUrlset(BILINGUAL_ADDRESS, [
+      { href: "/series/SERIES000001", publishedLocales: ["en"] },
+    ]);
+
+    expect(xml).toContain(
+      [
+        `<url><loc>${ORIGIN}/en/series/SERIES000001</loc>`,
+        `<xhtml:link rel="alternate" hreflang="en" href="${ORIGIN}/en/series/SERIES000001"/>`,
+        `<xhtml:link rel="alternate" hreflang="x-default" href="${ORIGIN}/en/series/SERIES000001"/>`,
+        "</url>",
+      ].join("")
+    );
+    expect(countOf(xml, "<url>")).toBe(1);
+  });
+
+  it("lists in every offered locale a page translated into none the tenant offers", () => {
+    const xml = renderSitemapUrlset(BILINGUAL_ADDRESS, [
+      { href: "/series/SERIES000001", publishedLocales: ["ko"] },
+    ]);
+
+    expect(countOf(xml, "<url>")).toBe(2);
+    expect(xml).not.toContain('hreflang="ko"');
   });
 
   it("names the root in each locale", () => {
@@ -326,6 +392,25 @@ describe("getSitemapChunk", () => {
     const entries = chunk.ok ? chunk.value.entries : [];
     expect(entries.length * 2).toBeLessThanOrEqual(SITEMAP_URL_LIMIT);
     expect(entries.length * 2).toBeGreaterThan(SITEMAP_URL_LIMIT - 500 * 2);
+  });
+
+  it("counts a file's URLs by the locales each entry is translated into", async () => {
+    answerPages(200, (page, index) =>
+      entry({
+        kind: SitemapEntryKind.SERIES,
+        publicId: `S${page}-${index}`,
+        publishedLocales: ["ja"],
+      })
+    );
+
+    const chunk = await getSitemapChunk(TENANT_ID, BILINGUAL_ADDRESS, "p1");
+
+    expect(chunk.ok).toBe(true);
+    const entries = chunk.ok ? chunk.value.entries : [];
+    const xml = renderSitemapUrlset(BILINGUAL_ADDRESS, entries);
+    expect(countOf(xml, "<url>")).toBe(entries.length);
+    expect(entries.length).toBeLessThanOrEqual(SITEMAP_URL_LIMIT);
+    expect(entries.length).toBeGreaterThan(SITEMAP_URL_LIMIT - 500 * 2);
   });
 
   // One URL per entry is the most entries a file holds, and the walk still has

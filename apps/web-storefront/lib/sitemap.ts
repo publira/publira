@@ -2,6 +2,7 @@ import { forEachPageWithToken } from "@publira/api-client/pagination";
 import type { CursorWalkStop } from "@publira/api-client/pagination";
 import { SitemapEntryKind } from "@publira/api-client/public/catalog";
 import type { SitemapEntry } from "@publira/api-client/public/catalog";
+import { isLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { cachedReadFailure } from "@publira/utils/cached-read";
 import type { CachedReadResult } from "@publira/utils/cached-read";
@@ -20,7 +21,7 @@ import {
   tenantSeriesDetailTag,
   tenantSeriesListTag,
 } from "./cache-tags";
-import { localeAlternates, withLocalePrefix } from "./locale-path";
+import { localeAlternates, publishedLocaleAlternates } from "./locale-path";
 import { publishedPageHrefFromSlug } from "./pages";
 import { getTenantPublicOrigin, getTenantSiteInfo } from "./tenant";
 import { isTenantIdFormat } from "./tenant-id-format";
@@ -30,6 +31,11 @@ export interface SitemapEntryItem {
   href: string;
   /** RFC 3339; absent where the rows behind the page keep no such time. */
   lastModifiedAt?: string;
+  /**
+   * The locales a series, an episode, or a page has a translation in, in
+   * registry order. Absent where the page is shown in every offered locale.
+   */
+  publishedLocales?: readonly Locale[];
 }
 
 /**
@@ -65,7 +71,8 @@ export const SITEMAP_PAGE_SIZE = 500;
 
 /**
  * The longest path an entry can have: a page slug fills its 255-character
- * column. It bounds what the next API page can add to a file.
+ * column. Written in every offered locale, it bounds what the next API page can
+ * add to a file.
  */
 const LONGEST_ENTRY: SitemapEntryItem = {
   href: `/${"a".repeat(254)}`,
@@ -78,7 +85,12 @@ const MAX_SITEMAP_FILES = 1000;
 /** The generated `SitemapEntry` fields {@link toSitemapEntryItem} reads. */
 type RawSitemapEntry = Pick<
   SitemapEntry,
-  "kind" | "lastModifiedAt" | "publicId" | "seriesPublicId" | "slug"
+  | "kind"
+  | "lastModifiedAt"
+  | "publicId"
+  | "publishedLocales"
+  | "seriesPublicId"
+  | "slug"
 >;
 
 const sitemapEntryHref = (entry: RawSitemapEntry): string | null => {
@@ -113,9 +125,9 @@ const sitemapEntryHref = (entry: RawSitemapEntry): string | null => {
 };
 
 /**
- * The storefront path an entry names. An entry missing the identifiers its URL
- * is made of, or of a kind this build does not know, is dropped rather than
- * listed at a path that answers 404.
+ * The storefront path an entry names, and the locales it is translated into.
+ * An entry missing the identifiers its URL is made of, or of a kind this build
+ * does not know, is dropped rather than listed at a path that answers 404.
  */
 export const toSitemapEntryItem = (
   entry: RawSitemapEntry
@@ -126,7 +138,16 @@ export const toSitemapEntryItem = (
   }
 
   const lastModifiedAt = entry.lastModifiedAt?.trim();
-  return [lastModifiedAt ? { href, lastModifiedAt } : { href }];
+  const publishedLocales = [
+    ...new Set((entry.publishedLocales ?? []).filter(isLocale)),
+  ];
+  return [
+    {
+      href,
+      ...(lastModifiedAt ? { lastModifiedAt } : {}),
+      ...(publishedLocales.length > 0 ? { publishedLocales } : {}),
+    },
+  ];
 };
 
 const escapeXml = (value: string): string =>
@@ -141,37 +162,56 @@ const absoluteUrl = (origin: string, href: string): string =>
   escapeXml(`${origin}${encodeURI(href)}`);
 
 /**
- * One `<url>` for each locale the site serves `entry` in, each naming every
- * such locale's URL and `x-default` as its alternates, itself included.
+ * The locales `entry` is listed in: those it is translated into that the
+ * tenant offers, or every offered locale where it names none of them.
+ */
+const entryLocales = (
+  { supportedLocales }: SitemapAddress,
+  { publishedLocales }: SitemapEntryItem
+): readonly Locale[] => {
+  const translated = new Set(publishedLocales);
+  const published = supportedLocales.filter((locale) => translated.has(locale));
+  return published.length > 0 ? published : supportedLocales;
+};
+
+/**
+ * One `<url>` for each locale {@link entryLocales} lists `entry` in, each naming
+ * the alternates the page at that URL names itself: every listed locale's URL
+ * and `x-default`.
  */
 const renderEntryUrls = (
-  { defaultLocale, origin, supportedLocales }: SitemapAddress,
-  { href, lastModifiedAt }: SitemapEntryItem
+  address: SitemapAddress,
+  entry: SitemapEntryItem
 ): string => {
-  const { languages } = localeAlternates(
-    defaultLocale,
-    defaultLocale,
-    supportedLocales,
-    href
-  );
-  const links = Object.entries(languages)
-    .map(
-      ([hreflang, path]) =>
-        `<xhtml:link rel="alternate" hreflang="${hreflang}" href="${absoluteUrl(origin, path)}"/>`
-    )
-    .join("");
+  const { defaultLocale, origin, supportedLocales } = address;
+  const { href, lastModifiedAt, publishedLocales } = entry;
+  const locales = entryLocales(address, entry);
   const lastmod = lastModifiedAt
     ? `<lastmod>${escapeXml(lastModifiedAt)}</lastmod>`
     : "";
-  return supportedLocales
-    .map(
-      (locale) =>
-        `<url><loc>${absoluteUrl(origin, withLocalePrefix(locale, defaultLocale, href))}</loc>${links}${lastmod}</url>`
-    )
+  return locales
+    .map((locale) => {
+      const { canonical, languages } = publishedLocales
+        ? publishedLocaleAlternates(
+            defaultLocale,
+            supportedLocales,
+            href,
+            locales,
+            locale
+          )
+        : localeAlternates(locale, defaultLocale, supportedLocales, href);
+      const links = Object.entries(languages)
+        .map(
+          ([hreflang, path]) =>
+            `<xhtml:link rel="alternate" hreflang="${hreflang}" href="${absoluteUrl(origin, path)}"/>`
+        )
+        .join("");
+      return `<url><loc>${absoluteUrl(origin, canonical)}</loc>${links}${lastmod}</url>`;
+    })
     .join("\n");
 };
 
-/** A `<urlset>` of `entries`, each in every locale the site serves. */
+/** A `<urlset>` of `entries`, each in the locales {@link entryLocales} lists. */
 export const renderSitemapUrlset = (
   address: SitemapAddress,
   entries: readonly SitemapEntryItem[]
@@ -225,14 +265,15 @@ export const getSitemapChunk = async (
   applyCacheTag(tenantCreatorsTag(normalizedTenantId));
   applyCacheTag(tenantPagesTag(normalizedTenantId));
 
-  const urlsPerEntry = address.supportedLocales.length;
-  const pageUrls = SITEMAP_PAGE_SIZE * urlsPerEntry;
+  const urlsOf = (entry: SitemapEntryItem): number =>
+    entryLocales(address, entry).length;
+  const pageUrls = SITEMAP_PAGE_SIZE * urlsOf(LONGEST_ENTRY);
   const pageBytes =
     SITEMAP_PAGE_SIZE * utf8Bytes(renderEntryUrls(address, LONGEST_ENTRY));
 
   const entries: SitemapEntryItem[] =
     token === "" ? CATALOGUE_INDEX_PATHS.map((href) => ({ href })) : [];
-  let urls = entries.length * urlsPerEntry;
+  let urls = entries.reduce((sum, entry) => sum + urlsOf(entry), 0);
   let bytes = utf8Bytes(renderSitemapUrlset(address, entries));
   let nextToken = "";
   let stop: CursorWalkStop;
@@ -251,7 +292,7 @@ export const getSitemapChunk = async (
       (items) => {
         for (const entry of items.flatMap(toSitemapEntryItem)) {
           entries.push(entry);
-          urls += urlsPerEntry;
+          urls += urlsOf(entry);
           bytes += utf8Bytes(renderEntryUrls(address, entry)) + 1;
         }
         return (

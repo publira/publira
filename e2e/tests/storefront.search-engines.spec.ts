@@ -95,10 +95,6 @@ test.describe("web-storefront robots.txt and sitemap", () => {
       expect(after.status()).toBe(200);
       const xml = await after.text();
       expect(xml).toContain(episodeLoc);
-      // The same episode in another locale is an entry of its own.
-      expect(xml).toContain(
-        `<loc>${SEED_ORIGIN}/ja/series/${seriesId}/episodes/${episodeId}</loc>`
-      );
     }).toPass({ timeout: 30_000 });
   });
 });
@@ -131,6 +127,33 @@ test.describe("web-storefront robots.txt and sitemap on a tenant that offers two
     expect(xml).not.toContain(`${BILINGUAL_ORIGIN}/ko`);
     expect(xml).not.toContain(`${BILINGUAL_ORIGIN}/zh-`);
     expect(xml).not.toContain('hreflang="ko"');
+  });
+
+  test("the sitemap lists a series only in the languages it is translated into", async ({
+    request,
+  }) => {
+    const response = await request.get(
+      `${WEB_STOREFRONT_BILINGUAL_BASE_URL}/sitemap.xml`
+    );
+
+    expect(response.status()).toBe(200);
+    const xml = await response.text();
+    const { translated, untranslated } = BILINGUAL_TENANT;
+    const untranslatedPath = `/series/${untranslated.publicId}`;
+    expect(xml).toContain(`<loc>${BILINGUAL_ORIGIN}${untranslatedPath}</loc>`);
+    expect(xml).not.toContain(`${BILINGUAL_ORIGIN}/en${untranslatedPath}`);
+    expect(xml).toContain(
+      `<xhtml:link rel="alternate" hreflang="ja" href="${BILINGUAL_ORIGIN}${untranslatedPath}"/><xhtml:link rel="alternate" hreflang="x-default" href="${BILINGUAL_ORIGIN}${untranslatedPath}"/>`
+    );
+    expect(xml).toContain(
+      `<loc>${BILINGUAL_ORIGIN}/series/${translated.publicId}</loc>`
+    );
+    expect(xml).toContain(
+      `<loc>${BILINGUAL_ORIGIN}/en/series/${translated.publicId}</loc>`
+    );
+    expect(xml).toContain(
+      `<loc>${BILINGUAL_ORIGIN}/en/series/${translated.publicId}/episodes/${translated.episode.publicId}</loc>`
+    );
   });
 
   test("robots.txt names the prefixes of the two languages alone", async ({

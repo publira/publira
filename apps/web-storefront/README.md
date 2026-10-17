@@ -93,7 +93,7 @@ The [change-password URL](https://www.w3.org/TR/change-password-url/) a password
 
 ### `/robots.txt`, `/sitemap.xml`, and `/sitemap/{n}.xml`
 
-The documents a crawler reads. `robots.txt` (`lib/robots.ts`) opens the catalogue, disallows `/api/` and the reader-only paths in `lib/reader-paths.ts`, and names the sitemap. A published page that takes a reader-only path's place is allowed again. The sitemap (`lib/sitemap.ts`) lists every page `ListSitemapEntries` returns once in each locale the tenant offers, each `<url>` naming every such locale as an alternate. It is one file while it fits the protocol's 50,000 URLs and 50 MB, and a `sitemapindex` of `/sitemap/{n}.xml` files once it does not. An unavailable API answers 503.
+The documents a crawler reads. `robots.txt` (`lib/robots.ts`) opens the catalogue, disallows `/api/` and the reader-only paths in `lib/reader-paths.ts`, and names the sitemap. A published page that takes a reader-only path's place is allowed again. The sitemap (`lib/sitemap.ts`) lists every page `ListSitemapEntries` returns: a series, an episode, or a page once in each offered locale it has a translation in, and anything else once in each locale the tenant offers, each `<url>` naming the alternates the page at that URL names itself. It is one file while it fits the protocol's 50,000 URLs and 50 MB, and a `sitemapindex` of `/sitemap/{n}.xml` files once it does not. An unavailable API answers 503.
 
 ### Image delivery (`next/image`)
 
