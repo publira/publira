@@ -84,7 +84,12 @@ class _PasskeysScreenState extends State<PasskeysScreen> {
       if (!mounted) {
         return;
       }
+      // A read after a change that fails leaves nothing the screen could
+      // still trust: the list from before it would show a passkey just
+      // removed, and offer to act on it.
       setState(() {
+        _passkeys = null;
+        _identities = null;
         _loadFailed = true;
       });
     }

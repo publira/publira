@@ -403,6 +403,38 @@ void main() {
       );
     });
 
+    testWidgets('a list that could not be read again after a removal offers '
+        'a retry rather than the passkey removed', (tester) async {
+      repository
+        ..passkeys = [iphone, unnamed]
+        ..passkeysFailureAfterRemoval = const AuthFailure(
+          AuthFailureKind.network,
+        );
+      await pumpApp(tester, initialLocation: AppRoutes.accountPasskeys);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('passkey-passkey-iphone')),
+      );
+
+      await openActions(tester, iphone);
+      await tester.tap(
+        find.byKey(const ValueKey('passkey-remove-passkey-iphone')),
+      );
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('passkeys-retry')),
+      );
+
+      expect(
+        find.byKey(const ValueKey('passkey-passkey-iphone')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const ValueKey('passkey-passkey-unnamed')),
+        findsNothing,
+      );
+    });
+
     testWidgets('keeps the last one of an account without a password or a '
         'linked account', (tester) async {
       repository

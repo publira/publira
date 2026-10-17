@@ -315,6 +315,10 @@ class FakeAuthRepository implements AuthRepository {
   /// Thrown by [readPasskeys].
   AuthFailure? passkeysFailure;
 
+  /// Becomes [passkeysFailure] once [deletePasskey] has removed a passkey,
+  /// standing in for an API that is gone by the time the list is read again.
+  AuthFailure? passkeysFailureAfterRemoval;
+
   /// Thrown by [signInWithPasskey], standing in for a passkey the site does
   /// not take or an API that cannot be reached.
   AuthFailure? passkeySignInFailure;
@@ -512,6 +516,7 @@ class FakeAuthRepository implements AuthRepository {
       for (final passkey in passkeys)
         if (passkey.id != id) passkey,
     ];
+    passkeysFailure = passkeysFailureAfterRemoval ?? passkeysFailure;
   }
 
   @override
