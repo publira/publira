@@ -201,6 +201,55 @@ void main() {
       expect(library.series!.series.single.title, 'Newer');
     });
 
+    test(
+      'still take a body away when the newer read could not reach the API',
+      () async {
+        final catalog = build();
+        await catalog.getEpisode(_seriesId, _episodeId, locale: 'en');
+        expect(await library.readEpisode(_seriesId, _episodeId), isNotNull);
+        final older = Completer<void>();
+        origin.localeGates['ja'] = older;
+        final key = episodeKey(_seriesId, _episodeId);
+        final saved = origin.episodes[key]!;
+
+        final first = catalog.getEpisode(_seriesId, _episodeId, locale: 'ja');
+        origin.episodeError = _network;
+        await catalog.getEpisode(_seriesId, _episodeId, locale: 'en');
+        origin.episodeError = null;
+        origin.episodes[key] = EpisodeDetail(
+          episode: saved.episode,
+          seriesId: saved.seriesId,
+          seriesTitle: saved.seriesTitle,
+          access: EpisodeAccess.locked,
+          images: const [],
+        );
+        older.complete();
+        await first;
+
+        expect(await library.readEpisode(_seriesId, _episodeId), isNull);
+      },
+    );
+
+    test(
+      'still drop a series when the newer read could not reach the API',
+      () async {
+        final catalog = build();
+        await catalog.getSeries(_seriesId, locale: 'en');
+        final older = Completer<void>();
+        origin.localeGates['ja'] = older;
+
+        final first = catalog.getSeries(_seriesId, locale: 'ja');
+        origin.detailError = _network;
+        await catalog.getSeries(_seriesId, locale: 'en');
+        origin.detailError = null;
+        origin.details = {};
+        older.complete();
+        await first;
+
+        expect(await library.readSeriesDetail(_seriesId), isNull);
+      },
+    );
+
     test('keep the episode the newer read answered', () async {
       final catalog = build();
       final older = Completer<void>();

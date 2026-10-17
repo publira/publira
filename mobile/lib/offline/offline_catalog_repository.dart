@@ -70,20 +70,33 @@ class OfflineCatalogRepository implements CatalogRepository {
     readerId: _readerId,
   );
 
-  /// The latest read started of each record the device keeps, keyed by what
-  /// it reads, so only the answer to the newest one is written down.
+  /// The read whose answer was last written down for each record the device
+  /// keeps, keyed by what it reads, numbered in the order the reads started.
   ///
   /// Two reads of one record can be in flight at once — a screen asks again
   /// in the language the device has just switched to while the read in the
-  /// old one is still on its way — and they can answer in either order.
-  /// Writing whichever answered last would let the older one replace what the
-  /// newer one wrote.
-  final _latestReads = <String, int>{};
+  /// old one is still on its way — and they can answer in either order. An
+  /// answer is written only when no read started after it has been written
+  /// already, so the older one cannot replace what the newer one wrote. A
+  /// newer read that fails writes nothing, which leaves the older answer to be
+  /// written, a revocation included.
+  final _writtenReads = <String, int>{};
   var _readsStarted = 0;
 
-  int _startRead(String key) => _latestReads[key] = ++_readsStarted;
+  int _startRead() => ++_readsStarted;
 
-  bool _isLatest(String key, int read) => _latestReads[key] == read;
+  /// Whether a read started after [read] has already been written for [key].
+  bool _isSuperseded(String key, int read) => (_writtenReads[key] ?? 0) > read;
+
+  /// Records [read] as the one written for [key], unless it is superseded,
+  /// and answers whether it may write.
+  bool _claimWrite(String key, int read) {
+    if (_isSuperseded(key, read)) {
+      return false;
+    }
+    _writtenReads[key] = read;
+    return true;
+  }
 
   /// The catalog list, of which the device keeps the first page.
   ///
@@ -98,11 +111,11 @@ class OfflineCatalogRepository implements CatalogRepository {
     String token = '',
   }) async {
     const key = 'series-list';
-    final read = token.isEmpty ? _startRead(key) : null;
+    final read = token.isEmpty ? _startRead() : null;
     try {
       final page = await _origin.listSeries(locale: locale, token: token);
       _reached();
-      if (read != null && _isLatest(key, read)) {
+      if (read != null && _claimWrite(key, read)) {
         await library.writeSeriesList(page);
       }
       return page;
@@ -234,11 +247,11 @@ class OfflineCatalogRepository implements CatalogRepository {
     required String locale,
   }) async {
     final key = 'series/$publicId';
-    final read = _startRead(key);
+    final read = _startRead();
     try {
       final detail = await _origin.getSeries(publicId, locale: locale);
       _reached();
-      if (!_isLatest(key, read)) {
+      if (!_claimWrite(key, read)) {
         return detail;
       }
       if (detail == null) {
@@ -338,8 +351,7 @@ class OfflineCatalogRepository implements CatalogRepository {
     // changes before the answer arrives.
     final reader = _readerId();
     final key = 'episode/${savedEpisodeKey(seriesPublicId, episodePublicId)}';
-    final read = _startRead(key);
-    bool isLatest() => _isLatest(key, read);
+    final read = _startRead();
     try {
       final detail = await _origin.getEpisode(
         seriesPublicId,
@@ -347,14 +359,16 @@ class OfflineCatalogRepository implements CatalogRepository {
         locale: locale,
       );
       _reached();
-      if (!isLatest()) {
+      if (_isSuperseded(key, read)) {
         return detail;
       }
       if (detail == null) {
-        await library.removeEpisode(seriesPublicId, episodePublicId);
+        if (_claimWrite(key, read)) {
+          await library.removeEpisode(seriesPublicId, episodePublicId);
+        }
         return null;
       }
-      await _remember(detail, reader, locale, isLatest);
+      await _remember(detail, reader, locale, () => _claimWrite(key, read));
       return detail;
     } on CatalogFailure catch (failure) {
       if (failure.kind != CatalogFailureKind.network) {
@@ -623,12 +637,13 @@ class OfflineCatalogRepository implements CatalogRepository {
   /// Records what the API just said about [detail] for [reader], which is as
   /// much about taking a body away as about keeping one. [locale] is the one
   /// [detail] was read in, which a second read of it asks in again, and
-  /// [isLatest] whether a newer read of it has started since.
+  /// [claimWrite] answers whether the answer may still be written once the
+  /// grant has been asked about, a newer read having been written meanwhile.
   Future<void> _remember(
     EpisodeDetail detail,
     String reader,
     String locale,
-    bool Function() isLatest,
+    bool Function() claimWrite,
   ) async {
     // An entitled body is kept only when there is a reader to hold it against:
     // a grant the device cannot name again is a grant it could never re-check.
@@ -640,7 +655,7 @@ class OfflineCatalogRepository implements CatalogRepository {
       EpisodeAccess.unknown => false,
     };
     final grant = keep ? await _grantEnd(detail, locale) : null;
-    if (!isLatest()) {
+    if (!claimWrite()) {
       return;
     }
     if (!keep || grant == _GrantEnd.lapsed) {
