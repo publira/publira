@@ -61,6 +61,7 @@ export const EpisodeViewer = async ({
   images,
   nextEpisode,
   previousEpisode,
+  renewPageUrls,
   sales,
   series,
 }: {
@@ -74,6 +75,8 @@ export const EpisodeViewer = async ({
   nextEpisode?: EpisodeNeighborItem;
   /** Absent on the first one. */
   previousEpisode?: EpisodeNeighborItem;
+  /** Reads the pages' URLs again; see `EpisodeComicViewer`. */
+  renewPageUrls?: () => Promise<Record<string, string>>;
   /** Where the tenant can sell an episode, for what the next one costs. */
   sales: TenantSales;
   series: EpisodeSeriesSummary;
@@ -182,6 +185,7 @@ export const EpisodeViewer = async ({
         )}
         previousEpisodeHref={previousHref}
         readingDirection={episode.readingDirection}
+        renewPageUrls={renewPageUrls}
         saveWideViewer={
           accessToken ? saveWideViewerAction.bind(null, tenantId) : undefined
         }

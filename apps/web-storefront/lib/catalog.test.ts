@@ -28,6 +28,7 @@ import {
   listRankedSeries,
   listReaderRankedSeries,
   listRelatedSeries,
+  renewEpisodeImageUrls,
   toEpisodeAccessState,
   toEpisodeEntitlementSource,
   toEpisodePurchaseSurface,
@@ -2291,5 +2292,100 @@ describe("catalog.listRelatedSeries", () => {
       message: "Could not connect to the server. Please try again later.",
       ok: false,
     });
+  });
+});
+
+/** A body `GetEpisodeDetail` answers with, its pages out of order. */
+const renewedBodyResponse = (access: EpisodeAccess) => ({
+  access,
+  episode: { price: 500, publicId: "EP_010", title: "Episode 10" },
+  images: [
+    {
+      displayOrder: 2,
+      id: "img_2",
+      imageUrl: "/images/episodes/img_2?t=fresh",
+    },
+    {
+      displayOrder: 1,
+      id: "img_1",
+      imageUrl: "/images/episodes/img_1?t=fresh",
+    },
+  ],
+  series: { publicId: "SERIES_001", title: "Series Title" },
+});
+
+describe("catalog.renewEpisodeImageUrls", () => {
+  const input = {
+    accessToken: "session-token",
+    episodePublicId: "EP_010",
+    locale: "en" as const,
+    seriesPublicId: "SERIES_001",
+    tenantId: "TENANT_001",
+  };
+
+  beforeEach(() => {
+    mockGetEpisodeDetail.mockReset();
+    mockCacheTag.mockReset();
+  });
+
+  it("reads an entitled body's URLs again with the reader's bearer, past the cache", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce(
+      renewedBodyResponse(EpisodeAccess.ENTITLED)
+    );
+
+    await expect(renewEpisodeImageUrls(input)).resolves.toEqual({
+      img_1: "/images/episodes/img_1?t=fresh",
+      img_2: "/images/episodes/img_2?t=fresh",
+    });
+    expect(mockGetEpisodeDetail).toHaveBeenCalledWith(
+      {
+        locale: "en",
+        publicId: "EP_010",
+        surface: ClientSurface.WEB,
+        tenant: { tenantId: "TENANT_001" },
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(mockCacheTag).not.toHaveBeenCalled();
+  });
+
+  it("answers no URL once the reader's entitlement has ended", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce(
+      renewedBodyResponse(EpisodeAccess.LOCKED)
+    );
+
+    await expect(renewEpisodeImageUrls(input)).resolves.toEqual({});
+  });
+
+  it("answers no URL for a reader with no session, without asking", async () => {
+    await expect(
+      renewEpisodeImageUrls({ ...input, accessToken: "" })
+    ).resolves.toEqual({});
+    expect(mockGetEpisodeDetail).not.toHaveBeenCalled();
+  });
+
+  it("answers no URL for an episode of another series", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      ...renewedBodyResponse(EpisodeAccess.ENTITLED),
+      series: { publicId: "SERIES_OTHER", title: "Another Series" },
+    });
+
+    await expect(renewEpisodeImageUrls(input)).resolves.toEqual({});
+  });
+
+  it("answers no URL when the read is refused", async () => {
+    mockGetEpisodeDetail.mockRejectedValueOnce(
+      new ConnectError("session expired", Code.Unauthenticated)
+    );
+
+    await expect(renewEpisodeImageUrls(input)).resolves.toEqual({});
+  });
+
+  it("lets a failure nothing explains reach the caller", async () => {
+    mockGetEpisodeDetail.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    await expect(renewEpisodeImageUrls(input)).rejects.toThrow("boom");
   });
 });

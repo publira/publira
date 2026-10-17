@@ -3,6 +3,7 @@ import {
   isMissingResourceRpcError,
   isRpcError,
   isUnauthenticatedRpcError,
+  rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
 import type { CursorWalkStop } from "@publira/api-client/pagination";
@@ -2075,4 +2076,64 @@ export const getEpisodeViewer = async (
       images: mapEpisodeImages(response.images),
     },
   };
+};
+
+/**
+ * The body's image URLs again, by image id, read past every cache: each read
+ * of the episode signs its URLs with a new media token, and that token is what
+ * the reader's open viewer has run out of.
+ *
+ * Answers nothing once the body is no longer the reader's to read, so a page
+ * whose URL expired after the reader's entitlement ended stays refused; and
+ * nothing either where the read is refused or unavailable, which leaves the
+ * page to its reload control.
+ */
+export const renewEpisodeImageUrls = async ({
+  accessToken,
+  episodePublicId,
+  locale,
+  seriesPublicId,
+  tenantId,
+}: {
+  accessToken: string;
+  episodePublicId: string;
+  locale: Locale;
+  seriesPublicId: string;
+  tenantId: string;
+}): Promise<Record<string, string>> => {
+  const sessionId = accessToken.trim();
+  if (!sessionId) {
+    return {};
+  }
+
+  let response;
+  try {
+    response = await apiClient.catalog.getEpisodeDetail(
+      {
+        locale,
+        publicId: episodePublicId.trim(),
+        surface: ClientSurface.WEB,
+        tenant: { tenantId: tenantId.trim() },
+      },
+      buildSessionHeaders(sessionId)
+    );
+  } catch (error) {
+    rethrowUnclassifiedRpcError(error);
+    return {};
+  }
+
+  if (
+    !response.episode ||
+    response.series?.publicId !== seriesPublicId.trim()
+  ) {
+    return {};
+  }
+  const access = toEpisodeAccessState(response.access, response.episode.price);
+  if (access !== "entitled" && !isPublicEpisodeBody(access)) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    mapEpisodeImages(response.images).map((image) => [image.id, image.imageUrl])
+  );
 };
