@@ -45,6 +45,7 @@ describe("listMyPurchases", () => {
     expect(mockListMyPurchases).toHaveBeenCalledWith(
       {
         limit: 20,
+        locale: "en",
         surface: ClientSurface.WEB,
         tenant: { tenantId: TENANT_ID },
         token: "",

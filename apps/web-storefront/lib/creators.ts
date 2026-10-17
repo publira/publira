@@ -222,6 +222,7 @@ export const getPublishedCreatorDetail = async (
   try {
     response = await apiClient.catalog.getPublishedCreatorDetail({
       limit,
+      locale,
       publicId: normalizedCreatorId,
       surface: ClientSurface.WEB,
       tenant: { tenantId: normalizedTenantId },

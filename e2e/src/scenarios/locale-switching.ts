@@ -23,10 +23,30 @@ export const JAPANESE_DEFAULT_TENANT = {
  * Tenant that offers Japanese and English alone, Japanese being its default.
  * Every other seeded tenant offers all five languages, so this is the one
  * whose switcher, sitemap, and redirects show the set rather than the registry.
- * It owns no series and no users.
+ * It owns no users.
+ *
+ * Its two series are what a title in the reader's language is read off:
+ * `translated` and its episode are written in both languages, and
+ * `untranslated` in Japanese alone, so its English URL falls back.
  */
 export const BILINGUAL_TENANT = {
   domain: "bilingual.localhost",
   name: "Bilingual Tenant",
   publicId: "BlngTNNTAAA1",
+  translated: {
+    englishSynopsis: "The English synopsis of Night Train.",
+    englishTitle: "Night Train",
+    episode: {
+      englishTitle: "Departure",
+      japaneseTitle: "Departure (Japanese edition)",
+      publicId: "BlngEPSDAAA1",
+    },
+    japaneseSynopsis: "The Japanese synopsis of Night Train.",
+    japaneseTitle: "Night Train (Japanese edition)",
+    publicId: "BlngSERSAAA1",
+  },
+  untranslated: {
+    japaneseTitle: "Harbor Lights (Japanese edition)",
+    publicId: "BlngSERSAAA2",
+  },
 } as const;

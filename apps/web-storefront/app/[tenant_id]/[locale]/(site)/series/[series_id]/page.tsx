@@ -56,11 +56,12 @@ import { ShareMenuSkeleton } from "#components/share-menu";
 import { adultContentMetadata } from "#lib/age-rating";
 import { getSeriesDetail } from "#lib/catalog";
 import type { SeriesDetail, SeriesSerializationStatus } from "#lib/catalog";
-import { breadcrumbJsonLd, seriesJsonLd } from "#lib/json-ld";
+import { breadcrumbJsonLd, jsonLdSiteIn, seriesJsonLd } from "#lib/json-ld";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { resolveOpenGraphImage } from "#lib/open-graph";
 import { getReaderProvenAgeRating } from "#lib/reader-age";
+import { fallbackLanguage } from "#lib/served-locale";
 import { shareText } from "#lib/share-text";
 import {
   getTenantDisplayTimeZone,
@@ -68,7 +69,7 @@ import {
   getTenantSiteLabel,
 } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
-import { tenantLocaleAlternates } from "#lib/tenant-locale-path";
+import { tenantPublishedLocaleAlternates } from "#lib/tenant-locale-path";
 
 import {
   EpisodeReadMark,
@@ -107,9 +108,8 @@ export const generateMetadata = async (
   }
   const { series_id } = parsedParams;
 
-  const [result, alternates, siteLabel] = await Promise.all([
+  const [result, siteLabel] = await Promise.all([
     getSeriesDetail(tenantId, series_id, locale),
-    tenantLocaleAlternates(tenantId, locale, `/series/${series_id}`),
     getTenantSiteLabel(tenantId, locale),
   ]);
 
@@ -122,6 +122,14 @@ export const generateMetadata = async (
     return {};
   }
 
+  // Alternates wait on the series: only a language it has a translation in is
+  // a language of this URL, and the canonical one is the language served.
+  const alternates = await tenantPublishedLocaleAlternates(
+    tenantId,
+    `/series/${series_id}`,
+    series.publishedLocales,
+    series.locale
+  );
   const description = series.synopsis.trim() || undefined;
   // Relative, like the alternates, so both need the same `metadataBase`.
   const image = alternates
@@ -283,6 +291,23 @@ const SeriesAgeRatingConfirmation = ({ series }: { series: SeriesDetail }) => (
   </AgeRatingGateConfirmation>
 );
 
+/**
+ * What a reader browsing in one language is told when the series has no title
+ * or synopsis written in it, worded as a page's note is. `null` renders
+ * nothing, which is the series shown in the reader's own language.
+ */
+const SeriesFallbackNotice = ({ language }: { language: string | null }) =>
+  language ? (
+    <p className="text-sm leading-6 text-muted-foreground">
+      <Suspense fallback={<SkeletonLine className="h-5 w-full max-w-xl" />}>
+        <Message
+          message="storefront.series.fallback_notice"
+          values={{ language }}
+        />
+      </Suspense>
+    </p>
+  ) : null;
+
 const SeriesDetailContent = async (
   props: PageProps<"/[tenant_id]/[locale]/series/[series_id]">
 ) => {
@@ -333,7 +358,9 @@ const SeriesDetailContent = async (
         <JsonLd build={(site) => seriesJsonLd(site, series)} />
         <JsonLd
           build={(site, t) =>
-            breadcrumbJsonLd(site, [
+            // The trail ends at the page's canonical URL, which is that of
+            // the language the series' title is written in.
+            breadcrumbJsonLd(jsonLdSiteIn(site, series.locale), [
               { href: "/series", name: t("storefront.series.list_title") },
               { href: `/series/${series.publicId}`, name: series.title },
             ])
@@ -348,6 +375,9 @@ const SeriesDetailContent = async (
         <AgeRatingGateContent>
           <div className="mx-auto grid max-w-6xl gap-10 px-6 py-10">
             <ContentViewTracker id={series.id} kind="series" />
+            <SeriesFallbackNotice
+              language={fallbackLanguage(locale, series.locale)}
+            />
 
             <div className="grid gap-6 sm:grid-cols-[15rem_minmax(0,1fr)] sm:items-start sm:gap-8">
               {/* The one image a series page is about, so it keeps its title as its
@@ -361,14 +391,20 @@ const SeriesDetailContent = async (
                 sizes="(max-width: 640px) 160px, 240px"
                 variants={series.eyeCatchImageVariants}
               >
-                <span className="line-clamp-6 font-serif text-sm leading-tight text-muted-foreground">
+                <span
+                  className="line-clamp-6 font-serif text-sm leading-tight text-muted-foreground"
+                  lang={series.locale}
+                >
                   {series.title}
                 </span>
               </EyeCatchFrame>
 
               <div className="grid gap-5">
                 <div className="grid gap-2">
-                  <h1 className="font-serif text-3xl leading-tight">
+                  <h1
+                    className="font-serif text-3xl leading-tight"
+                    lang={series.locale}
+                  >
                     {series.title}
                   </h1>
                   <SeriesRating
@@ -490,7 +526,7 @@ const SeriesDetailContent = async (
                 )}
 
                 {series.synopsis && (
-                  <Prose locale={locale}>{series.synopsis}</Prose>
+                  <Prose locale={series.locale}>{series.synopsis}</Prose>
                 )}
 
                 <div className="flex flex-wrap items-center gap-3">
@@ -635,7 +671,10 @@ const SeriesDetailContent = async (
                             wait-for-free mark goes under it for the same
                             reason, rather than beside it. */}
                             <span className="grid min-w-0 justify-items-start gap-1">
-                              <span className="line-clamp-2 underline-offset-4 group-hover:underline">
+                              <span
+                                className="line-clamp-2 underline-offset-4 group-hover:underline"
+                                lang={episode.locale}
+                              >
                                 {episode.title}
                               </span>
                               {waitFreeExcludedIds.has(episode.id) ? (

@@ -189,6 +189,7 @@ describe("EpisodeComicViewer wide viewer", () => {
 const episode: EpisodeDetail = {
   credits: [],
   id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+  locale: "en",
   orderIndex: 1,
   price: 0,
   publicId: "EPISODE_001",

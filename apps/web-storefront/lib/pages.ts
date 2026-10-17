@@ -1,6 +1,5 @@
 import { isMissingResourceRpcError } from "@publira/api-client/errors";
 import type { Page, PageVersion } from "@publira/api-client/public/types";
-import { getLocaleLabel, isLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import type { CachedReadResult } from "@publira/utils/cached-read";
@@ -9,6 +8,7 @@ import { apiClient } from "./api-client";
 import { applyCacheTag, tenantPageTag, tenantPagesTag } from "./cache-tags";
 import { getMessagesFor } from "./messages";
 import { localizedReadFailure } from "./read-failure";
+import { publishedLocalesFrom, servedLocaleFrom } from "./served-locale";
 
 export interface PublishedPage {
   id: string;
@@ -28,19 +28,6 @@ export interface PublishedPage {
 }
 
 /**
- * The autonym of the language a page is shown in when that is not the language
- * the reader asked for, or `null` when the requested translation was served.
- *
- * The name comes from the locale registry — the same autonym the language
- * switcher shows — so the sentence around it is the only part the catalog owns.
- */
-export const publishedPageFallbackLanguage = (
-  requestedLocale: Locale,
-  servedLocale: Locale
-): string | null =>
-  requestedLocale === servedLocale ? null : getLocaleLabel(servedLocale);
-
-/**
  * The generated `Page` fields a public read keeps. Naming them against the
  * message is what makes a proto rename fail here.
  */
@@ -51,38 +38,6 @@ type PublishedPageVersionFields = Pick<
   PageVersion,
   "contentMarkdown" | "id" | "publishedAt" | "versionNumber"
 >;
-
-const publishedLocalesFrom = (
-  codes: readonly string[] | undefined,
-  servedLocale: Locale
-): readonly Locale[] => {
-  const locales: Locale[] = [];
-  const seen = new Set<Locale>();
-  const add = (code: string) => {
-    if (!isLocale(code) || seen.has(code)) {
-      return;
-    }
-    seen.add(code);
-    locales.push(code);
-  };
-
-  for (const code of codes ?? []) {
-    add(code);
-  }
-  // The served translation is published by definition, even when the list of
-  // alternates omitted it.
-  add(servedLocale);
-  return locales;
-};
-
-/**
- * An unreadable served locale is treated as the one the reader asked for: the
- * page still renders, and it does not claim a fallback it cannot name.
- */
-const servedLocaleFrom = (
-  locale: string | undefined,
-  requestedLocale: Locale
-): Locale => (isLocale(locale) ? locale : requestedLocale);
 
 export interface PublishedPageLink {
   href: string;

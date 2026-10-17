@@ -86,6 +86,7 @@ describe("startEpisodeCheckoutAction", () => {
     );
     expect(mockStartEpisodeCheckout.mock.calls[0]?.[0]).toEqual({
       episodeId,
+      locale: "en",
       tenant: { tenantId },
     });
   });

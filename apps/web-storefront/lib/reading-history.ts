@@ -112,6 +112,7 @@ export const listMyEpisodeReads = async (
     const response = await apiClient.episodeRead.listMyEpisodeReads(
       {
         limit: input.limit ?? defaultEpisodeReadsPageSize,
+        locale,
         surface: ClientSurface.WEB,
         tenant: { tenantId },
         token: input.token ?? "",

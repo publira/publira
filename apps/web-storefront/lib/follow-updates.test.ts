@@ -62,6 +62,7 @@ describe("listMyFollowUpdates", () => {
     expect(mockListMyFollowUpdates).toHaveBeenCalledWith(
       {
         limit: 6,
+        locale: "en",
         surface: ClientSurface.WEB,
         tenant: { tenantId: TENANT_ID },
         token: "",

@@ -8,6 +8,7 @@ import {
   switchStorefrontLocale,
 } from "../src/locale";
 import {
+  BILINGUAL_TENANT,
   JAPANESE_DEFAULT_TENANT,
   LOCALE_SWITCHING_SCENARIO,
 } from "../src/scenarios/locale-switching";
@@ -421,5 +422,123 @@ test.describe("web-storefront locale on a tenant that offers two languages", () 
     await expect(
       page.getByRole("heading", { level: 1, name: "Series" })
     ).toBeVisible();
+  });
+});
+
+/**
+ * A series and its episodes carry a title per language, and the page reads the
+ * one written for the language in the URL. The bilingual tenant's default is
+ * Japanese, so its unprefixed URL reads the Japanese translation and `/en`
+ * reads the English one where the work has it.
+ */
+test.describe("web-storefront series titles in the reader's language", () => {
+  const { translated, untranslated } = BILINGUAL_TENANT;
+
+  test.beforeAll(() => {
+    applyScenarioSql(LOCALE_SWITCHING_SCENARIO);
+  });
+
+  test("the header switcher changes a series' title with the language", async ({
+    page,
+  }) => {
+    await page.goto(
+      bilingualUrl(storefrontPath(`/series/${translated.publicId}`))
+    );
+
+    await expect(
+      page.getByRole("heading", { level: 1, name: translated.japaneseTitle })
+    ).toBeVisible();
+    await expect(page.getByText(translated.japaneseSynopsis)).toBeVisible();
+    await expect(
+      page.getByText(translated.episode.japaneseTitle, { exact: true })
+    ).toBeVisible();
+
+    await switchStorefrontLocale(page, "日本語", "English");
+
+    await expect(page).toHaveURL(
+      (url) =>
+        url.pathname ===
+        localeStorefrontPath("en", `/series/${translated.publicId}`)
+    );
+    await expect(
+      page.getByRole("heading", {
+        exact: true,
+        level: 1,
+        name: translated.englishTitle,
+      })
+    ).toBeVisible();
+    await expect(page.getByText(translated.englishSynopsis)).toBeVisible();
+    await expect(
+      page.getByText(translated.episode.englishTitle, { exact: true })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("main").getByText(translated.japaneseTitle)
+    ).toHaveCount(0);
+    await expect(
+      page.getByText("This series has no title or synopsis")
+    ).toHaveCount(0);
+    // Metadata can stream in after the body, so the title is polled for.
+    await expect.poll(() => page.title()).toContain(translated.englishTitle);
+    expect(await page.title()).not.toContain(translated.japaneseTitle);
+    await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
+      "content",
+      translated.englishTitle
+    );
+  });
+
+  test("an episode is titled in the reader's language", async ({ page }) => {
+    await page.goto(
+      bilingualUrl(
+        localeStorefrontPath(
+          "en",
+          `/series/${translated.publicId}/episodes/${translated.episode.publicId}`
+        )
+      )
+    );
+
+    const heading = page.getByRole("heading", { level: 1 });
+    await expect(heading).toContainText(translated.episode.englishTitle);
+    await expect(heading).not.toContainText(translated.episode.japaneseTitle);
+    await expect
+      .poll(() => page.title())
+      .toContain(translated.episode.englishTitle);
+    expect(await page.title()).not.toContain(translated.episode.japaneseTitle);
+  });
+
+  test("a series with no title in the reader's language shows the default's and says so", async ({
+    page,
+  }) => {
+    await page.goto(
+      bilingualUrl(
+        localeStorefrontPath("en", `/series/${untranslated.publicId}`)
+      )
+    );
+    await expectDocumentLocale(page, "English");
+
+    const heading = page.getByRole("heading", {
+      level: 1,
+      name: untranslated.japaneseTitle,
+    });
+    await expect(heading).toBeVisible();
+    await expect(heading).toHaveAttribute("lang", "ja");
+    await expect(
+      page.getByText(
+        "This series has no title or synopsis in your language, so it is shown in 日本語."
+      )
+    ).toBeVisible();
+    await expect.poll(() => page.title()).toContain(untranslated.japaneseTitle);
+    await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
+      "content",
+      untranslated.japaneseTitle
+    );
+
+    // In its own language the series needs no note.
+    await page.goto(
+      bilingualUrl(storefrontPath(`/series/${untranslated.publicId}`))
+    );
+    await expect(
+      page.getByRole("heading", { level: 1, name: untranslated.japaneseTitle })
+    ).toBeVisible();
+    await expect(page.getByText("このシリーズはお使いの言語")).toHaveCount(0);
   });
 });

@@ -31,7 +31,7 @@ import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { adultContentMetadata } from "#lib/age-rating";
 import { getEpisodeDetail, getSeriesDetail } from "#lib/catalog";
 import type { EpisodeSeriesSummary } from "#lib/catalog";
-import { breadcrumbJsonLd, episodeJsonLd } from "#lib/json-ld";
+import { breadcrumbJsonLd, episodeJsonLd, jsonLdSiteIn } from "#lib/json-ld";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { resolveOpenGraphImage } from "#lib/open-graph";
@@ -42,7 +42,7 @@ import {
   tenantSales,
 } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
-import { tenantLocaleAlternates } from "#lib/tenant-locale-path";
+import { tenantPublishedLocaleAlternates } from "#lib/tenant-locale-path";
 
 import { CheckoutNotice } from "./_components/checkout-notice";
 import { EpisodeBody } from "./_components/episode-body";
@@ -93,14 +93,9 @@ export const generateMetadata = async (
   }
   const { episode_id, series_id } = parsedParams;
 
-  const [result, seriesResult, alternates, siteLabel, t] = await Promise.all([
+  const [result, seriesResult, siteLabel, t] = await Promise.all([
     getEpisodeDetail(tenantId, series_id, episode_id, locale),
     getSeriesDetail(tenantId, series_id, locale),
-    tenantLocaleAlternates(
-      tenantId,
-      locale,
-      episodePath(series_id, episode_id)
-    ),
     getTenantSiteLabel(tenantId, locale),
     getMessagesFor(locale),
   ]);
@@ -113,7 +108,15 @@ export const generateMetadata = async (
     return {};
   }
 
-  const { episode, series } = detail;
+  const { episode, publishedLocales, series } = detail;
+  // Alternates wait on the episode, as a series page's do on the series: its
+  // own title is what the languages of this URL are decided by.
+  const alternates = await tenantPublishedLocaleAlternates(
+    tenantId,
+    episodePath(series_id, episode_id),
+    publishedLocales,
+    episode.locale
+  );
   const title = episodeDisplayTitle(t, episode);
   // Both from the series: an episode carries neither a synopsis nor an
   // eye-catch of its own, and `GetEpisodeDetail` answers with the work's id,
@@ -334,7 +337,9 @@ const EpisodeContent = async (
         />
         <JsonLd
           build={(site) =>
-            breadcrumbJsonLd(site, [
+            // The trail ends at the page's canonical URL, which is that of
+            // the language the episode's title is written in.
+            breadcrumbJsonLd(jsonLdSiteIn(site, episode.locale), [
               { href: "/series", name: t("storefront.series.list_title") },
               { href: `/series/${series.publicId}`, name: series.title },
               {
@@ -421,7 +426,7 @@ const EpisodeContent = async (
                       />
                     </Suspense>
                   </span>{" "}
-                  {episode.title}
+                  <span lang={episode.locale}>{episode.title}</span>
                 </h1>
                 {/* Who made this instalment. The episode's own credits, not the
                 series' — an artist who took over part way through is on the

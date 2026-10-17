@@ -4198,6 +4198,7 @@
       "episode_finished": "読了",
       "episodes_empty": "エピソードはまだ公開されていません。",
       "episodes_heading": "エピソード一覧",
+      "fallback_notice": "このシリーズはお使いの言語のタイトルと概要がないため、{$language}で表示しています。",
       "filter_apply": "絞り込む",
       "filter_aria": "シリーズ一覧の絞り込み",
       "filter_clear": "条件をクリアしてすべて表示",

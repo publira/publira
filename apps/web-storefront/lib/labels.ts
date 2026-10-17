@@ -59,6 +59,7 @@ export const getPublishedLabelDetail = async (
   try {
     response = await apiClient.catalog.getPublishedLabelDetail({
       limit,
+      locale,
       publicId: normalizedLabelId,
       surface: ClientSurface.WEB,
       tenant: { tenantId: normalizedTenantId },

@@ -58,6 +58,7 @@ const PurchaseLibraryData = async ({
   return (
     <PurchaseLibrary
       listErrorMessage={result.ok ? undefined : result.message}
+      locale={locale}
       nextToken={result.nextToken}
       previousToken={result.previousToken}
       purchases={result.purchases}

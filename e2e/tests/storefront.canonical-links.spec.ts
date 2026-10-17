@@ -3,6 +3,7 @@ import type { Page } from "@playwright/test";
 
 import { applyScenarioSql } from "../src/db";
 import {
+  BILINGUAL_TENANT,
   JAPANESE_DEFAULT_TENANT,
   LOCALE_SWITCHING_SCENARIO,
 } from "../src/scenarios/locale-switching";
@@ -11,6 +12,7 @@ import {
   storefrontPath,
   localeStorefrontPath,
   tenantHost,
+  WEB_STOREFRONT_BILINGUAL_BASE_URL,
   WEB_STOREFRONT_JAPANESE_DEFAULT_BASE_URL,
 } from "../src/urls";
 
@@ -22,6 +24,8 @@ const publishedOrigin = (hostname: string): string =>
 const SEED_ORIGIN = publishedOrigin("localhost");
 
 const JAPANESE_DEFAULT_ORIGIN = publishedOrigin(JAPANESE_DEFAULT_TENANT.domain);
+
+const BILINGUAL_ORIGIN = publishedOrigin(BILINGUAL_TENANT.domain);
 
 /** A sort order names a view of the list, not another page. */
 const LIST_QUERY = "?order=title";
@@ -108,13 +112,22 @@ test.describe("web-storefront canonical and language alternate links", () => {
       "content",
       `${SEED_ORIGIN}${seriesPath}`
     );
+    // The seed series is written in English alone, so English is the one
+    // language of its URL.
     await expectLanguageAlternates(page, {
       en: `${SEED_ORIGIN}${seriesPath}`,
-      ja: `${SEED_ORIGIN}/ja${seriesPath}`,
-      ko: `${SEED_ORIGIN}/ko${seriesPath}`,
       "x-default": `${SEED_ORIGIN}${seriesPath}`,
-      "zh-Hans": `${SEED_ORIGIN}/zh-Hans${seriesPath}`,
-      "zh-Hant": `${SEED_ORIGIN}/zh-Hant${seriesPath}`,
+    });
+
+    // The Japanese URL shows the same English title, so it points search
+    // engines back at the English address, as a page published in one
+    // language does.
+    await page.goto(localeStorefrontPath("ja", seriesPath));
+
+    await expectCanonical(page, `${SEED_ORIGIN}${seriesPath}`);
+    await expectLanguageAlternates(page, {
+      en: `${SEED_ORIGIN}${seriesPath}`,
+      "x-default": `${SEED_ORIGIN}${seriesPath}`,
     });
   });
 
@@ -139,6 +152,52 @@ test.describe("web-storefront canonical and language alternate links", () => {
         "zh-Hans": `${JAPANESE_DEFAULT_ORIGIN}/zh-Hans`,
         "zh-Hant": `${JAPANESE_DEFAULT_ORIGIN}/zh-Hant`,
       });
+    });
+  });
+});
+
+/**
+ * A series names as its languages the ones it has a translation in, among the
+ * ones the tenant offers. The bilingual tenant offers Japanese, its default,
+ * and English.
+ */
+test.describe("web-storefront language alternates of a series", () => {
+  const { translated, untranslated } = BILINGUAL_TENANT;
+
+  test.beforeAll(() => {
+    applyScenarioSql(LOCALE_SWITCHING_SCENARIO);
+  });
+
+  test("a series written in both languages alternates both", async ({
+    page,
+  }) => {
+    const seriesPath = `/series/${translated.publicId}`;
+
+    await page.goto(
+      `${WEB_STOREFRONT_BILINGUAL_BASE_URL}${localeStorefrontPath("en", seriesPath)}`
+    );
+
+    await expectCanonical(page, `${BILINGUAL_ORIGIN}/en${seriesPath}`);
+    await expectLanguageAlternates(page, {
+      en: `${BILINGUAL_ORIGIN}/en${seriesPath}`,
+      ja: `${BILINGUAL_ORIGIN}${seriesPath}`,
+      "x-default": `${BILINGUAL_ORIGIN}${seriesPath}`,
+    });
+  });
+
+  test("a series shown in a fallback language is canonical in that language", async ({
+    page,
+  }) => {
+    const seriesPath = `/series/${untranslated.publicId}`;
+
+    await page.goto(
+      `${WEB_STOREFRONT_BILINGUAL_BASE_URL}${localeStorefrontPath("en", seriesPath)}`
+    );
+
+    await expectCanonical(page, `${BILINGUAL_ORIGIN}${seriesPath}`);
+    await expectLanguageAlternates(page, {
+      ja: `${BILINGUAL_ORIGIN}${seriesPath}`,
+      "x-default": `${BILINGUAL_ORIGIN}${seriesPath}`,
     });
   });
 });

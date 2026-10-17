@@ -4198,6 +4198,7 @@
       "episode_finished": "已讀完",
       "episodes_empty": "尚未發布任何章節。",
       "episodes_heading": "章節",
+      "fallback_notice": "此系列沒有以你所使用的語言撰寫的標題和簡介，因此以{$language}顯示。",
       "filter_apply": "套用",
       "filter_aria": "系列列表篩選",
       "filter_clear": "清除條件並顯示全部",

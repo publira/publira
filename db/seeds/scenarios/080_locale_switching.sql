@@ -13,11 +13,21 @@
 -- to the unprefixed path, and the switcher, the sitemap, robots.txt, and the
 -- app-association document name its two languages only.
 --
+-- The bilingual tenant also publishes two series, so the suite can read a
+-- title in the reader's language and one that falls back: the first is
+-- written in Japanese and English, its episode too, and the second in Japanese
+-- alone. The Japanese titles are English text marked as the Japanese edition,
+-- which is all the suite needs to tell the two translations apart.
+--
 -- The public site and the console login screen are both reached without a
--- session, so neither tenant owns series or users. public_id values are
+-- session, so neither tenant owns users, and the Japanese-default tenant owns
+-- no series either: its series list is asserted empty. public_id values are
 -- hard-coded in e2e/src/scenarios/locale-switching.ts.
---   tenant LangTNNTAAA1 (locale.localhost / admin.locale.localhost)
---   tenant BlngTNNTAAA1 (bilingual.localhost / admin.bilingual.localhost)
+--   tenant   LangTNNTAAA1 (locale.localhost / admin.locale.localhost)
+--   tenant   BlngTNNTAAA1 (bilingual.localhost / admin.bilingual.localhost)
+--   label    BlngLABLAAA1
+--   series   BlngSERSAAA1 (Japanese and English) / BlngSERSAAA2 (Japanese)
+--   episode  BlngEPSDAAA1 (of BlngSERSAAA1, Japanese and English)
 
 WITH tenant_seed AS (
     SELECT '018f0f40-0001-7000-8000-000000000001'::uuid AS id
@@ -68,3 +78,157 @@ SET domain = EXCLUDED.domain,
 
 \set seed_tenant BlngTNNTAAA1
 \ir ../creator_roles.sql
+
+WITH tenant_scope AS (
+    SELECT t.id
+    FROM tenants t
+    WHERE t.public_id = 'BlngTNNTAAA1'
+)
+INSERT INTO labels (id, tenant_id, public_id, name)
+SELECT
+    '018f0f41-0001-7000-8000-000000000001'::uuid,
+    ts.id,
+    'BlngLABLAAA1',
+    'Bilingual Label'
+FROM tenant_scope ts
+ON CONFLICT (public_id) DO UPDATE
+SET tenant_id = EXCLUDED.tenant_id,
+    name = EXCLUDED.name;
+
+WITH tenant_scope AS (
+    SELECT t.id
+    FROM tenants t
+    WHERE t.public_id = 'BlngTNNTAAA1'
+),
+series_seed (id, public_id) AS (
+    VALUES
+        ('018f0f42-0001-7000-8000-000000000001'::uuid, 'BlngSERSAAA1'),
+        ('018f0f42-0002-7000-8000-000000000002'::uuid, 'BlngSERSAAA2')
+)
+INSERT INTO series (id, tenant_id, label_id, public_id, is_published, published_at)
+SELECT
+    ss.id,
+    ts.id,
+    '018f0f41-0001-7000-8000-000000000001'::uuid,
+    ss.public_id,
+    true,
+    NOW() - INTERVAL '3 days'
+FROM series_seed ss
+CROSS JOIN tenant_scope ts
+ON CONFLICT (public_id) DO UPDATE
+SET tenant_id = EXCLUDED.tenant_id,
+    label_id = EXCLUDED.label_id,
+    is_published = EXCLUDED.is_published,
+    published_at = EXCLUDED.published_at,
+    updated_at = NOW();
+
+WITH translation_seed (id, series_id, locale, title, synopsis) AS (
+    VALUES
+        (
+            '018f0f43-0001-7000-8000-000000000001'::uuid,
+            '018f0f42-0001-7000-8000-000000000001'::uuid,
+            'ja',
+            'Night Train (Japanese edition)',
+            'The Japanese synopsis of Night Train.'
+        ),
+        (
+            '018f0f43-0002-7000-8000-000000000002'::uuid,
+            '018f0f42-0001-7000-8000-000000000001'::uuid,
+            'en',
+            'Night Train',
+            'The English synopsis of Night Train.'
+        ),
+        (
+            '018f0f43-0003-7000-8000-000000000003'::uuid,
+            '018f0f42-0002-7000-8000-000000000002'::uuid,
+            'ja',
+            'Harbor Lights (Japanese edition)',
+            'The Japanese synopsis of Harbor Lights.'
+        )
+)
+INSERT INTO series_translations (id, series_id, tenant_id, locale, title, synopsis)
+SELECT
+    tr.id,
+    s.id,
+    s.tenant_id,
+    tr.locale,
+    tr.title,
+    tr.synopsis
+FROM translation_seed tr
+JOIN series s ON s.id = tr.series_id
+ON CONFLICT (series_id, locale) DO UPDATE
+SET title = EXCLUDED.title,
+    synopsis = EXCLUDED.synopsis;
+
+INSERT INTO series_listings (series_id, reading_period_hours, tenant_id)
+SELECT
+    s.id,
+    72,
+    s.tenant_id
+FROM series s
+WHERE s.id IN (
+        '018f0f42-0001-7000-8000-000000000001'::uuid,
+        '018f0f42-0002-7000-8000-000000000002'::uuid
+    )
+ON CONFLICT (series_id) DO UPDATE
+SET reading_period_hours = EXCLUDED.reading_period_hours,
+    tenant_id = EXCLUDED.tenant_id;
+
+INSERT INTO episodes (id, series_id, public_id, order_index, tenant_id)
+SELECT
+    '018f0f44-0001-7000-8000-000000000001'::uuid,
+    s.id,
+    'BlngEPSDAAA1',
+    1,
+    s.tenant_id
+FROM series s
+WHERE s.id = '018f0f42-0001-7000-8000-000000000001'::uuid
+ON CONFLICT (public_id) DO UPDATE
+SET series_id = EXCLUDED.series_id,
+    order_index = EXCLUDED.order_index,
+    tenant_id = EXCLUDED.tenant_id;
+
+WITH translation_seed (id, locale, title) AS (
+    VALUES
+        ('018f0f45-0001-7000-8000-000000000001'::uuid, 'ja', 'Departure (Japanese edition)'),
+        ('018f0f45-0002-7000-8000-000000000002'::uuid, 'en', 'Departure')
+)
+INSERT INTO episode_translations (id, episode_id, tenant_id, locale, title)
+SELECT
+    tr.id,
+    e.id,
+    e.tenant_id,
+    tr.locale,
+    tr.title
+FROM translation_seed tr
+JOIN episodes e ON e.id = '018f0f44-0001-7000-8000-000000000001'::uuid
+ON CONFLICT (episode_id, locale) DO UPDATE
+SET title = EXCLUDED.title;
+
+-- Free, so the episode page opens for a reader without a session.
+INSERT INTO episode_listings (
+    episode_id,
+    price,
+    reading_period_hours,
+    status,
+    scheduled_at,
+    published_at,
+    tenant_id
+)
+SELECT
+    e.id,
+    0,
+    72,
+    'published',
+    NULL::timestamptz,
+    NOW() - INTERVAL '2 days',
+    e.tenant_id
+FROM episodes e
+WHERE e.id = '018f0f44-0001-7000-8000-000000000001'::uuid
+ON CONFLICT (episode_id) DO UPDATE
+SET price = EXCLUDED.price,
+    reading_period_hours = EXCLUDED.reading_period_hours,
+    status = EXCLUDED.status,
+    scheduled_at = EXCLUDED.scheduled_at,
+    published_at = EXCLUDED.published_at,
+    tenant_id = EXCLUDED.tenant_id;

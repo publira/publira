@@ -2,7 +2,7 @@
 title: Series
 description: Create a series, give it a title and synopsis in each of the site's languages, decide when and where it is shown, and set its age rating, reading direction, comments, cover image, and Free if you wait.
 published: 2026-10-07
-updated: 2026-10-16
+updated: 2026-10-17
 ---
 
 A series is the work a reader follows: it has a title, a synopsis, a cover, a label, and its Authors, and it holds the episodes readers open. **Series**, in the sidebar's **Catalog** group, lists the tenant's series, newest first, twenty to a page. **Serialization status** and **Age rating** above the list narrow it.
@@ -97,7 +97,7 @@ An episode can set its own of either, as [Page layout](./2-episodes.md#page-layo
 
 ## Titles in other languages
 
-A series has a title and a synopsis in each language the site offers, which a Tenant admin chooses under [**Settings**](../3-setup/1-settings.md#languages). Above the form on the **Basic information** tab, **Languages** has a tab for each of them, and the form below edits the title and synopsis of the one selected. The note under **Title** names that language. A language the series has no title in yet is marked **(not added)**: its tab opens the form with **Title** and **Synopsis** empty, and choosing **Update series** there adds them. Until it has one, readers of the site in that language see the series in another language.
+A series has a title and a synopsis in each language the site offers, which a Tenant admin chooses under [**Settings**](../3-setup/1-settings.md#languages). Above the form on the **Basic information** tab, **Languages** has a tab for each of them, and the form below edits the title and synopsis of the one selected. The note under **Title** names that language. A language the series has no title in yet is marked **(not added)**: its tab opens the form with **Title** and **Synopsis** empty, and choosing **Update series** there adds them. Until it has one, readers of the site in that language see the series in another language, with a note saying so, and search engines are not told the series has a page in that language.
 
 ![The Languages tabs above the series form, English selected and the other languages marked as not added, and the Title field with the note naming the language it is written in.](./series-languages.png)
 

@@ -5,7 +5,6 @@ import {
   getPublishedPage,
   listPublishedPageLinks,
   normalizePublishedPageSlug,
-  publishedPageFallbackLanguage,
   publishedPageHrefFromSlug,
 } from "./pages";
 
@@ -53,17 +52,6 @@ describe("publishedPageHrefFromSlug", () => {
     expect(publishedPageHrefFromSlug("/privacy")).toBe("/privacy");
     expect(publishedPageHrefFromSlug("legal/terms")).toBe("/legal/terms");
     expect(publishedPageHrefFromSlug("")).toBe("/");
-  });
-});
-
-describe("publishedPageFallbackLanguage", () => {
-  it("names the served language when the reader asked for another", () => {
-    expect(publishedPageFallbackLanguage("ja", "en")).toBe("English");
-    expect(publishedPageFallbackLanguage("en", "ja")).toBe("日本語");
-  });
-
-  it("is absent when the requested translation was served", () => {
-    expect(publishedPageFallbackLanguage("en", "en")).toBeNull();
   });
 });
 

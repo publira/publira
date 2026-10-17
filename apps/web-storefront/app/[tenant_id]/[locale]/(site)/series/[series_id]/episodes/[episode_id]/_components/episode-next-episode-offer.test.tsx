@@ -56,6 +56,7 @@ afterEach(cleanup);
 
 const series: EpisodeSeriesSummary = {
   id: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+  locale: "en",
   publicId: "SERIES_001",
   title: "Long nights",
 };
