@@ -225,10 +225,12 @@ message TestPlatformSearchConnectionResponse {
   // neither. A product other than the one the request names fails the test.
   string product = 3;
   string version = 4;
-  // Whether every node has the plugin installed: the two the Japanese
-  // analysis is built on. Both are false when the engine did not answer.
-  bool analysis_kuromoji_installed = 5;
-  bool analysis_icu_installed = 6;
+  reserved 5, 6;
+  reserved "analysis_kuromoji_installed", "analysis_icu_installed";
+  // The plugins every node has installed, in name order, which a language's
+  // own analysis may be built on. Empty when the engine did not answer, and
+  // for an engine that has none.
+  repeated string plugins = 7;
 }
 
 service PlatformSearchSettingsService {

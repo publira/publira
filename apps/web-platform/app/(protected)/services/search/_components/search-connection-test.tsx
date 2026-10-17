@@ -1,20 +1,14 @@
 "use client";
 
-import { CheckIcon, CloseIcon } from "@publira/icons";
 import {
   ActionFormIdle,
   ActionFormPending,
   ActionFormSubmit,
 } from "@publira/ui-components/action-form";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { cn } from "@publira/utils";
 import { useActionState } from "react";
 
 import { ClientMessage, useClientMessages } from "#components/client-message";
-import {
-  SEARCH_PLUGIN_ICU,
-  SEARCH_PLUGIN_KUROMOJI,
-} from "#lib/search-settings-shared";
 
 import type { PlatformSearchTestState } from "../_lib/actions";
 
@@ -26,45 +20,13 @@ interface SearchConnectionTestProps {
   disabled: boolean;
 }
 
-const PluginCheck = ({
-  installed,
-  name,
-}: {
-  installed: boolean;
-  name: string;
-}) => (
-  <li className="flex items-start gap-2">
-    <span
-      className={cn(
-        "mt-0.5 inline-flex size-4 shrink-0 items-center justify-center",
-        installed ? "text-success" : "text-muted-foreground"
-      )}
-    >
-      {installed ? (
-        <CheckIcon aria-hidden className="size-4" />
-      ) : (
-        <CloseIcon aria-hidden className="size-4" />
-      )}
-    </span>
-    <span className="font-medium text-foreground">
-      {name}
-      {": "}
-      {installed ? (
-        <ClientMessage message="platform.search.test.installed" />
-      ) : (
-        <ClientMessage message="platform.search.test.missing" />
-      )}
-    </span>
-  </li>
-);
-
 /**
  * Runs the connection test with whatever the surrounding settings form holds,
  * saved or not, as a second submission of that form. An engine that answered
- * is shown with its version and the two plugins the Japanese text analysis is
- * built on, so an operator about to save that analysis sees here whether the
- * engine can build it. Neither is required, so a missing one is shown as plain
- * information rather than as an error.
+ * is shown with its version and the plugins every node has, so an operator
+ * about to give a language a definition built on its plugin sees here whether
+ * the engine can build it. None is required, so the list is information
+ * rather than a verdict.
  */
 export const SearchConnectionTest = ({
   action,
@@ -120,14 +82,19 @@ export const SearchConnectionTest = ({
               />
             </span>
           </li>
-          <PluginCheck
-            installed={result.kuromojiInstalled}
-            name={SEARCH_PLUGIN_KUROMOJI}
-          />
-          <PluginCheck
-            installed={result.icuInstalled}
-            name={SEARCH_PLUGIN_ICU}
-          />
+          <li className="flex items-start gap-2">
+            <span className="size-4 shrink-0" />
+            <span className="min-w-0 break-words text-foreground">
+              {result.plugins.length > 0 ? (
+                <ClientMessage
+                  message="platform.search.test.plugins"
+                  values={{ plugins: result.plugins.join(", ") }}
+                />
+              ) : (
+                <ClientMessage message="platform.search.test.plugins_none" />
+              )}
+            </span>
+          </li>
         </ul>
       ) : null}
     </div>

@@ -93,7 +93,7 @@ func TestSearchSetSavesTheEngineAndReindexMovesTheSearchOntoIt(t *testing.T) {
 	}
 
 	test := mustSearchCommand(t, "", "test")
-	for _, want := range []string{"OpenSearch", "analysis-kuromoji", "analysis-icu", "installed"} {
+	for _, want := range []string{"OpenSearch", "Plugins:", "analysis-nori"} {
 		if !strings.Contains(test, want) {
 			t.Fatalf("test = %q, want it to contain %q", test, want)
 		}

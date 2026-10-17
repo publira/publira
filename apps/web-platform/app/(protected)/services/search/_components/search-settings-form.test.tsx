@@ -186,14 +186,16 @@ describe("SearchSettingsForm", () => {
     ).toHaveProperty("ariaChecked", "true");
   });
 
-  it("lists which plugins a tested engine has, and passes it without them", async () => {
+  it.each([
+    [["analysis-icu", "analysis-nori"], "Plugins: analysis-icu, analysis-nori"],
+    [[], "Plugins: none"],
+  ])("lists the plugins a tested engine has (%j)", async (plugins, line) => {
     actions.testPlatformSearchConnectionAction.mockResolvedValue({
       message: "The connection works.",
       ok: true,
       result: {
         failure: "",
-        icuInstalled: false,
-        kuromojiInstalled: true,
+        plugins,
         product: "OpenSearch",
         succeeded: true,
         version: "3.2.0",
@@ -210,11 +212,7 @@ describe("SearchSettingsForm", () => {
       within(results)
         .getAllByRole("listitem")
         .map((item) => item.textContent)
-    ).toEqual([
-      "Engine: OpenSearch 3.2.0",
-      "analysis-kuromoji: Installed",
-      "analysis-icu: Missing",
-    ]);
+    ).toEqual(["Engine: OpenSearch 3.2.0", line]);
     expect(screen.getByText("The connection works.")).toBeTruthy();
   });
 
@@ -257,8 +255,7 @@ describe("SearchSettingsForm", () => {
         ok: true,
         result: {
           failure: "",
-          icuInstalled: true,
-          kuromojiInstalled: true,
+          plugins: [],
           product: "OpenSearch",
           succeeded: true,
           version: "3.2.0",
@@ -284,8 +281,7 @@ describe("SearchSettingsForm", () => {
       ok: true,
       result: {
         failure: "",
-        icuInstalled: true,
-        kuromojiInstalled: true,
+        plugins: [],
         product: "OpenSearch",
         succeeded: true,
         version: "3.2.0",

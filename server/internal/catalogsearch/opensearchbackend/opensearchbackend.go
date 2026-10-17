@@ -3,8 +3,7 @@
 // Elasticsearch, which ranks its hits, tolerates a typo in Latin text, and
 // matches a title by an alternate form such as its reading. The text analysis
 // is the platform's to replace; the default one needs no plugin, and a
-// definition built on a language's plugin, such as analysis-kuromoji for a
-// Japanese reading, is saved for that language's index.
+// language may be given a definition of its own built on its plugin.
 //
 // Everything it sends is common to both engines — the index definition, the
 // queries, the bulk writes, the alias swaps — so it never asks which one

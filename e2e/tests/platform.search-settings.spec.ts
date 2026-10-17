@@ -105,9 +105,8 @@ const OPENSEARCH_ALIAS = "publira-catalog-ko";
 const ENGLISH_ALIAS = "publira-catalog-en";
 
 /**
- * A definition built on analysis-nori, which the E2E engine has installed
- * beside the plugins of the Japanese definition `scripts/db-setup.sh` saves for
- * ja: Korean has no alternate form, so that role analyzes the text the way the
+ * A definition built on analysis-nori, which the E2E engine has installed:
+ * Korean has no alternate form, so that role analyzes the text the way the
  * written form does.
  */
 const NORI_DEFINITION = JSON.stringify(
@@ -197,7 +196,7 @@ test.describe("web-platform search settings", () => {
   });
 
   if (onOpenSearch) {
-    test("a connection test reports the engine's version and both plugins", async ({
+    test("a connection test reports the engine's version and its plugins", async ({
       page,
     }) => {
       await openSearchSettings(page);
@@ -214,8 +213,7 @@ test.describe("web-platform search settings", () => {
           .getByRole("listitem")
       ).toHaveText([
         /^Engine: OpenSearch \d/u,
-        "analysis-kuromoji: Installed",
-        "analysis-icu: Installed",
+        /^Plugins: .*\banalysis-nori\b/u,
       ]);
     });
 

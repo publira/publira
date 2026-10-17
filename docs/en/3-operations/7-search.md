@@ -14,7 +14,7 @@ Every `publiractl` command here is shown bare; run it the way [The Platform Cons
 | Engine | `--engine` | How it searches | What it needs |
 | --- | --- | --- | --- |
 | **PostgreSQL** | `sql` | Finds the titles and names that contain what was typed, in title or name order | Nothing: it is the database the install already has |
-| **OpenSearch** | `opensearch` | Ranks the results by relevance, forgives a mistyped letter in a word written in Latin letters, finds a title written in kanji, kana, or Hangul by a part of it, and, with the [Japanese text analysis](#searching-japanese-titles-by-their-reading), finds a title written in kanji from its reading typed in kana | An OpenSearch cluster |
+| **OpenSearch** | `opensearch` | Ranks the results by relevance, forgives a mistyped letter in a word written in Latin letters, and finds a title written in kanji, kana, or Hangul by a part of it. A language given a [text analysis of its own](#giving-a-language-its-own-plugin) is searched the way that analysis does, such as finding a Japanese title written in kanji from its reading typed in kana | An OpenSearch cluster |
 | **Elasticsearch** | `elasticsearch` | The same search as OpenSearch | An Elasticsearch cluster |
 
 Whichever engine finds the results, what the storefront shows of each one is read from the database, so a series never shows a stale title, price, or cover because the engine has not caught up. A search can be narrowed and sorted the same ways on every engine.
@@ -27,14 +27,14 @@ PostgreSQL is enough for a catalog readers browse more than they search, or whos
 
 Publira does not run the engine for you. Use a cluster you operate or a managed one, and prepare these:
 
-- **The plugins, if any.** The default text analysis is built only on what OpenSearch and Elasticsearch include, so an engine from the official image works as it ships. A plugin is needed only for a language's own analysis built on it, such as the [Japanese text analysis](#searching-japanese-titles-by-their-reading).
+- **The plugins, if any.** The default text analysis is built only on what OpenSearch and Elasticsearch include, so an engine from the official image works as it ships. A plugin is needed only for a language you [give a text analysis of its own](#giving-a-language-its-own-plugin) built on one.
 - **The URL** the engine answers on, `http://` or `https://`, which `publira server`, `publira worker`, and `publiractl` all have to reach.
 - **A user**, when the engine requires one. Publira signs in with HTTP basic authentication, which it sends only to an `https://` URL; it does not support API keys, nor a certificate authority of your own, so an engine with security turned on needs a certificate the servers already trust. The user needs to create, write, and delete indices, and move aliases, whose names start with the index alias below.
 - **An index alias**, the name Publira's indices are named after: `publira-catalog` unless you give another. Publira keeps one index for each language a reader can choose, each behind the alias with the language appended — `publira-catalog-en`, `publira-catalog-ja`, `publira-catalog-zh-hans`, and so on — and creates the indices and their aliases itself. Give each install that shares a cluster an alias of its own, since two installs on one alias would overwrite each other's catalog.
 
 ## Testing the engine
 
-The test asks the engine what it is and which plugins every node has, and reports the product, its version, and whether `analysis-kuromoji` and `analysis-icu`, which the Japanese text analysis is built on, are installed. It fails when the engine does not answer, rejects the credentials, or turns out to be the other product than the one chosen. A missing plugin does not fail it: the default text analysis needs none, and a definition of your own is checked against the engine when you save it.
+The test asks the engine what it is and which plugins every node has, and reports the product, its version, and the plugins. It fails when the engine does not answer, rejects the credentials, or turns out to be the other product than the one chosen. No plugin decides it: the default text analysis needs none, and a definition of your own is checked against the engine when you save it.
 
 - In the Platform Console, **Test connection** under **Search** tests the values in the form, before they are saved. It runs from `publira server`.
 - `publiractl search test` tests the engine already saved, from wherever `publiractl` runs, and exits `1` when the test fails. On PostgreSQL there is nothing to test, and it exits `1`.
@@ -87,7 +87,7 @@ Saving **PostgreSQL**, or `publiractl search set --engine sql`, moves the search
 
 ## Text analysis
 
-How the engine splits titles, names, and synopses into words is the text analysis, one definition for every tenant, since they share the indices, and the index of every language is built from it unless that language has a definition of its own. The default needs no plugin and suits every language a little: it finds a title in Latin letters by its words, forgiving a mistyped letter, and a title in kanji, kana, or Hangul by any two or more characters in a row of it, ignoring case and the width of letters and kana. It knows nothing of a language beyond that, so it does not find a title written in kanji from its reading. For that, give the language a definition built on its plugin: the [Japanese text analysis](#searching-japanese-titles-by-their-reading) below for Japanese, or one built on `analysis-nori` for Korean or `analysis-smartcn` for Chinese.
+How the engine splits titles, names, and synopses into words is the text analysis, one definition for every tenant, since they share the indices, and the index of every language is built from it unless that language has a definition of its own. The default needs no plugin and suits every language a little: it finds a title in Latin letters by its words, forgiving a mistyped letter, and a title in kanji, kana, or Hangul by any two or more characters in a row of it, ignoring case and the width of letters and kana. It knows nothing of a language beyond that, so it does not, for example, find a title written in kanji from its reading. A language that needs more can be [given a definition of its own](#giving-a-language-its-own-plugin) built on its plugin.
 
 A definition is the `settings.analysis` object of the index, as JSON of at most 64 KiB, and has to define three names the index refers to: the analyzers `written_form` and `alternate_form` and the normalizer `exact_match`. What each one is for is in the [text analysis reference](https://github.com/publira/publira/blob/main/server/README.md#text-analysis).
 
@@ -109,15 +109,15 @@ publiractl search set --engine opensearch --url https://search.example.com --loc
 
 Before a definition is saved, the engine is asked to create an empty index with it, and a definition it refuses is not saved, with the engine's reason and, for a language's own definition, the language it was given for. A saved definition is built into new indices for the languages it changes, the same way a new engine is, and the search moves onto them when the build is done; the indices of the other languages are left as they are.
 
-### Searching Japanese titles by their reading
+### Giving a language its own plugin
 
-Readers often type a title in kana, the way it is read, rather than in the kanji it is written in. The Japanese text analysis finds 「吾輩は猫である」 from 「わがはいはねこ」, through the reading its dictionary gives the title, and finds a compound by one of its words. Save it as the definition of Japanese, so the index a reader browsing in Japanese searches is built from it:
+Each language is searched with the shared definition until you give it one of its own, and doing so is optional. OpenSearch and Elasticsearch both publish an analysis plugin for many languages — `analysis-kuromoji` and `analysis-icu` for Japanese, which can match a title written in kanji to its reading typed in kana, `analysis-nori` for Korean, and `analysis-smartcn` for Chinese, among others — and a definition built on one searches that language the way the plugin analyzes it:
 
-1. Install `analysis-kuromoji` and `analysis-icu` on every node while it is stopped, with `bin/opensearch-plugin install analysis-kuromoji analysis-icu` or `bin/elasticsearch-plugin install analysis-kuromoji analysis-icu`. The repository's [OpenSearch image for development](https://github.com/publira/publira/blob/main/infra/docker/opensearch/Dockerfile) shows the same step as a Dockerfile. **Test connection** then reports both as installed.
-2. Download the definition, [`japanese-analysis.json`](https://github.com/publira/publira/blob/main/server/internal/catalogsearch/opensearchbackend/japanese-analysis.json).
-3. Save it for Japanese: paste it into the editor of the **日本語** tab of **Text analysis** and choose **Save text analysis**, or run `publiractl search set` with your engine's flags and `--locale-analysis-file ja=japanese-analysis.json`.
+1. Install the plugin on every node while it is stopped, with `bin/opensearch-plugin install` or `bin/elasticsearch-plugin install` and the plugin's name. The repository's [OpenSearch image for development](https://github.com/publira/publira/blob/main/infra/docker/opensearch/Dockerfile) shows the step as a Dockerfile. **Test connection** then lists it among the plugins every node has.
+2. Write a definition that uses the plugin's tokenizer and filters, as the engine's documentation of the plugin describes, and defines the three names above.
+3. Save it in that language's tab of **Text analysis**, or with `publiractl search set --locale-analysis-file`.
 
-The Japanese index is rebuilt with it, and the search in Japanese moves onto the new index once it is ready. The indices of the other languages keep the shared definition. A series without a Japanese title is in the Japanese index under the title shown in its place, so a reader browsing in Japanese finds it from its reading too.
+The language's index is rebuilt with it, and the search in that language moves onto the new index once it is ready. A series without a title in that language is in its index under the title shown in its place, so the language's analysis applies to that title too.
 
 ## Rebuilding the index
 

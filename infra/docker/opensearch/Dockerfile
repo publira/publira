@@ -4,9 +4,9 @@
 # on, for the optional `search` profile of the root compose.yaml and of
 # e2e/compose.yaml, and for the Go integration tests that run the catalog
 # search backend on OpenSearch: analysis-kuromoji and analysis-icu, which the
-# Japanese definition the documentation gives is built on, and analysis-nori
-# and analysis-smartcn, which the tests' definitions for Korean and Chinese
-# titles are. The default text analysis needs none of them. The published
+# tests' definition for Japanese titles is built on, and analysis-nori and
+# analysis-smartcn, which their definitions for Korean and Chinese titles are.
+# The default text analysis needs none of them. The published
 # image ships none of them either, and one can only be installed while the
 # node is stopped, so they are installed here rather than at container start.
 #

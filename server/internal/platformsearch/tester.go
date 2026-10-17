@@ -32,12 +32,11 @@ type Result struct {
 	Reason  string
 	Product string
 	Version string
-	// KuromojiPresent and ICUPresent report the plugins the Japanese
-	// definition is built on. Neither decides the test: the default analysis
-	// needs neither, and a saved definition was checked against the engine
-	// when it was saved.
-	KuromojiPresent bool
-	ICUPresent      bool
+	// Plugins are the plugins every node has, which a language's own
+	// analysis may be built on. None decides the test: the default analysis
+	// needs none, and a saved definition was checked against the engine when
+	// it was saved.
+	Plugins []string
 }
 
 // Succeeded reports whether the engine answered as the one the settings name.
@@ -183,10 +182,9 @@ func evaluate(engine Engine, probe opensearchbackend.Probe, err error) Result {
 		return Result{Reason: ReasonUnreachable}
 	}
 	result := Result{
-		Product:         probe.Product,
-		Version:         probe.Version,
-		KuromojiPresent: probe.HasPlugin(opensearchbackend.PluginAnalysisKuromoji),
-		ICUPresent:      probe.HasPlugin(opensearchbackend.PluginAnalysisICU),
+		Product: probe.Product,
+		Version: probe.Version,
+		Plugins: probe.Plugins,
 	}
 	if probe.Product != products[engine] {
 		result.Reason = ReasonWrongProduct

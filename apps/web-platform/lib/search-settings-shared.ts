@@ -107,10 +107,3 @@ export const SEARCH_ANALYSIS_MAX_BYTES = 64 * 1024;
 export const searchCredentialMode = (
   settings: Pick<PlatformSearchSettings, "username">
 ): SearchCredentialMode => (settings.username ? "basic" : "none");
-
-/**
- * The analysis plugins the connection test reports on, which the Japanese text
- * analysis is built on. The default analysis needs neither.
- */
-export const SEARCH_PLUGIN_KUROMOJI = "analysis-kuromoji";
-export const SEARCH_PLUGIN_ICU = "analysis-icu";

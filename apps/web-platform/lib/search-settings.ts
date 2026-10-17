@@ -87,8 +87,8 @@ export type UpdatePlatformSearchSettingsResult =
 export interface PlatformSearchTestResult {
   /** Why the test failed, empty when it passed. */
   failure: string;
-  icuInstalled: boolean;
-  kuromojiInstalled: boolean;
+  /** The plugins every node has, in name order. */
+  plugins: string[];
   /** The product the engine reported, empty when it did not answer. */
   product: string;
   succeeded: boolean;
@@ -369,18 +369,12 @@ export const searchTestFailureMessage = async (
 const toTestResult = async (
   response: Pick<
     TestPlatformSearchConnectionResponse,
-    | "analysisIcuInstalled"
-    | "analysisKuromojiInstalled"
-    | "product"
-    | "reason"
-    | "succeeded"
-    | "version"
+    "plugins" | "product" | "reason" | "succeeded" | "version"
   >,
   locale: Locale
 ): Promise<PlatformSearchTestResult> => {
   const result = {
-    icuInstalled: response.analysisIcuInstalled,
-    kuromojiInstalled: response.analysisKuromojiInstalled,
+    plugins: response.plugins,
     product: response.product,
     succeeded: response.succeeded,
     version: response.version,

@@ -421,8 +421,7 @@ describe("testPlatformSearchConnectionAction", () => {
     const result = {
       failure:
         "The engine at this URL isn't the one selected above. Choose the engine it reports, or check the URL.",
-      icuInstalled: true,
-      kuromojiInstalled: true,
+      plugins: [],
       product: "Elasticsearch",
       succeeded: false,
       version: "9.5.5",
@@ -454,15 +453,14 @@ describe("testPlatformSearchConnectionAction", () => {
 
   // Neither plugin decides the test, so a pass reads the same with or without
   // them.
-  it.each([true, false])(
-    "words a passing test (plugins installed %s)",
-    async (installed) => {
+  it.each([[["analysis-nori"]], [[]]])(
+    "words a passing test (plugins %j)",
+    async (plugins) => {
       mockTestPlatformSearchConnection.mockResolvedValueOnce({
         ok: true,
         result: {
           failure: "",
-          icuInstalled: installed,
-          kuromojiInstalled: installed,
+          plugins,
           product: "OpenSearch",
           succeeded: true,
           version: "3.9.0",

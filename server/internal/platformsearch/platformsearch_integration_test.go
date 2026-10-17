@@ -483,9 +483,8 @@ func TestSaveKeepsReplacesAndClearsThePassword(t *testing.T) {
 }
 
 // The Platform Console and publiractl search test ask the same question: what
-// the engine is and which of the plugins the Japanese definition is built on it
-// has. An engine that answers as another product than the one named fails the
-// test.
+// the engine is and which plugins every node has. An engine that answers as
+// another product than the one named fails the test.
 func TestTheConnectionTestReportsTheEngineAndItsPlugins(t *testing.T) {
 	products := map[string]string{
 		"opensearch":    opensearchbackend.ProductOpenSearch,
@@ -506,11 +505,19 @@ func TestTheConnectionTestReportsTheEngineAndItsPlugins(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Test: %v", err)
 		}
+		if !result.Succeeded() || result.Product != products[engine.Name] || result.Version == "" {
+			t.Fatalf("Test = %+v, want %s", result, products[engine.Name])
+		}
 		// The Elasticsearch node has no plugin installed, and passes the
 		// test all the same: the default analysis needs none.
-		if !result.Succeeded() || result.Product != products[engine.Name] || result.Version == "" ||
-			result.KuromojiPresent != engine.LanguagePlugins || result.ICUPresent != engine.LanguagePlugins {
-			t.Fatalf("Test = %+v, want %s with the plugins reported as installed: %t", result, products[engine.Name], engine.LanguagePlugins)
+		languagePlugins := []string{"analysis-icu", "analysis-kuromoji", "analysis-nori", "analysis-smartcn"}
+		for _, plugin := range languagePlugins {
+			if slices.Contains(result.Plugins, plugin) != engine.LanguagePlugins {
+				t.Fatalf("Test = %+v, want %s reported as installed: %t", result, plugin, engine.LanguagePlugins)
+			}
+		}
+		if !engine.LanguagePlugins && len(result.Plugins) != 0 {
+			t.Fatalf("Test = %+v, want no plugin on the official image", result)
 		}
 
 		result, err = tester.Test(ctx, e.platform, auditlog.SystemPlatformActor, platformsearch.TestParams{

@@ -532,10 +532,9 @@ describe("updatePlatformSearchSettings with a language's own text analysis", () 
 });
 
 describe("testPlatformSearchConnection", () => {
-  it("reports the engine, its version, and both plugins when the test passed", async () => {
+  it("reports the engine, its version, and its plugins when the test passed", async () => {
     mockTestPlatformSearchConnection.mockResolvedValueOnce({
-      analysisIcuInstalled: true,
-      analysisKuromojiInstalled: true,
+      plugins: ["analysis-icu", "analysis-nori"],
       product: "OpenSearch",
       reason: "",
       succeeded: true,
@@ -546,8 +545,7 @@ describe("testPlatformSearchConnection", () => {
       ok: true,
       result: {
         failure: "",
-        icuInstalled: true,
-        kuromojiInstalled: true,
+        plugins: ["analysis-icu", "analysis-nori"],
         product: "OpenSearch",
         succeeded: true,
         version: "3.2.0",
@@ -565,10 +563,9 @@ describe("testPlatformSearchConnection", () => {
     );
   });
 
-  it("passes an engine that lacks both plugins, and reports them missing", async () => {
+  it("passes an engine that has no plugins", async () => {
     mockTestPlatformSearchConnection.mockResolvedValueOnce({
-      analysisIcuInstalled: false,
-      analysisKuromojiInstalled: false,
+      plugins: [],
       product: "Elasticsearch",
       reason: "",
       succeeded: true,
@@ -579,8 +576,7 @@ describe("testPlatformSearchConnection", () => {
       ok: true,
       result: {
         failure: "",
-        icuInstalled: false,
-        kuromojiInstalled: false,
+        plugins: [],
         product: "Elasticsearch",
         succeeded: true,
         version: "9.5.5",
@@ -590,8 +586,7 @@ describe("testPlatformSearchConnection", () => {
 
   it("words an engine that did not answer by its reason", async () => {
     mockTestPlatformSearchConnection.mockResolvedValueOnce({
-      analysisIcuInstalled: false,
-      analysisKuromojiInstalled: false,
+      plugins: [],
       product: "",
       reason: "SEARCH_TEST_UNREACHABLE",
       succeeded: false,
@@ -605,8 +600,7 @@ describe("testPlatformSearchConnection", () => {
 
   it("falls back to the unknown wording for a reason this console does not know", async () => {
     mockTestPlatformSearchConnection.mockResolvedValueOnce({
-      analysisIcuInstalled: false,
-      analysisKuromojiInstalled: false,
+      plugins: [],
       product: "",
       reason: "SEARCH_TEST_SOMETHING_NEW",
       succeeded: false,

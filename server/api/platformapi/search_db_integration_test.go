@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
@@ -36,7 +37,7 @@ func completeOpenSearch() opensearchbackend.Probe {
 	return opensearchbackend.Probe{
 		Product: opensearchbackend.ProductOpenSearch,
 		Version: "3.9.0",
-		Plugins: []string{opensearchbackend.PluginAnalysisICU, opensearchbackend.PluginAnalysisKuromoji},
+		Plugins: []string{"analysis-icu", "analysis-nori"},
 	}
 }
 
@@ -196,14 +197,14 @@ func TestDBTestPlatformSearchConnectionUsesTheStoredPassword(t *testing.T) {
 	if err != nil {
 		t.Fatalf("TestPlatformSearchConnection: %v", err)
 	}
-	if !resp.GetSucceeded() || resp.GetProduct() != opensearchbackend.ProductOpenSearch || !resp.GetAnalysisKuromojiInstalled() || !resp.GetAnalysisIcuInstalled() {
-		t.Fatalf("response = %+v, want OpenSearch with both plugins", resp)
+	if !resp.GetSucceeded() || resp.GetProduct() != opensearchbackend.ProductOpenSearch || !slices.Equal(resp.GetPlugins(), []string{"analysis-icu", "analysis-nori"}) {
+		t.Fatalf("response = %+v, want OpenSearch with its plugins", resp)
 	}
 	if len(probe.asked) != 1 || probe.asked[0].Password != "the-search-password" || probe.asked[0].Username != "publira" {
 		t.Fatalf("asked = %v, want the stored credential", probe.asked)
 	}
 
-	probe.probe.Plugins = []string{opensearchbackend.PluginAnalysisKuromoji}
+	probe.probe.Plugins = nil
 	resp, err = client.TestPlatformSearchConnection(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.TestPlatformSearchConnectionRequest{
 		Engine: publirasplatformv1.PlatformSearchEngine_PLATFORM_SEARCH_ENGINE_OPENSEARCH,
 		Url:    "http://search.example.com",
@@ -211,10 +212,9 @@ func TestDBTestPlatformSearchConnectionUsesTheStoredPassword(t *testing.T) {
 	if err != nil {
 		t.Fatalf("TestPlatformSearchConnection: %v", err)
 	}
-	// The default analysis needs neither plugin, so a missing one is reported
-	// and fails nothing.
-	if !resp.GetSucceeded() || resp.GetReason() != "" || !resp.GetAnalysisKuromojiInstalled() || resp.GetAnalysisIcuInstalled() {
-		t.Fatalf("response = %+v, want the test passed with the missing plugin reported", resp)
+	// The default analysis needs no plugin, so an engine with none passes.
+	if !resp.GetSucceeded() || resp.GetReason() != "" || len(resp.GetPlugins()) != 0 {
+		t.Fatalf("response = %+v, want the test passed with no plugin reported", resp)
 	}
 	if got := countAuditActions(t, pg, "platform_search_connection_tested"); got != 2 {
 		t.Fatalf("audit entries = %d, want one per test", got)

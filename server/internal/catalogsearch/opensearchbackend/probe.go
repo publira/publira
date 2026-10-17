@@ -16,14 +16,6 @@ const (
 	ProductElasticsearch = "Elasticsearch"
 )
 
-// The analysis plugins the connection test reports on, which the Japanese
-// definition the documentation gives is built on. The default analysis needs
-// neither.
-const (
-	PluginAnalysisKuromoji = "analysis-kuromoji"
-	PluginAnalysisICU      = "analysis-icu"
-)
-
 var (
 	// ErrUnreachable is an engine that did not answer at all.
 	ErrUnreachable = errors.New("opensearchbackend: the engine does not answer")
@@ -40,13 +32,8 @@ type Probe struct {
 	// engine that names neither.
 	Product string
 	Version string
-	// Plugins holds the plugins installed on every node.
+	// Plugins holds the plugins installed on every node, in name order.
 	Plugins []string
-}
-
-// HasPlugin reports whether every node has the plugin installed.
-func (p Probe) HasPlugin(name string) bool {
-	return slices.Contains(p.Plugins, name)
 }
 
 // ProbeEngine asks the engine cfg names what it is and which plugins its nodes

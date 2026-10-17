@@ -197,12 +197,12 @@ The catalog search runs on PostgreSQL until another engine is saved as the platf
 docker compose --profile search up -d
 ```
 
-- The image is built from [`infra/docker/opensearch/Dockerfile`](infra/docker/opensearch/Dockerfile): the published `opensearchproject/opensearch` with the `analysis-kuromoji` and `analysis-icu` plugins the Japanese analysis is built on, and `analysis-nori` and `analysis-smartcn` for a definition built for Korean or Chinese titles. The default analysis needs none of them
+- The image is built from [`infra/docker/opensearch/Dockerfile`](infra/docker/opensearch/Dockerfile): the published `opensearchproject/opensearch` with the `analysis-kuromoji`, `analysis-icu`, `analysis-nori`, and `analysis-smartcn` plugins, which a language's own text analysis can be built on. The default analysis needs none of them
 - One node with the security plugin off, so it answers plain HTTP without credentials on `http://127.0.0.1:9200`, loopback only like the rest of the stack
 - The index is kept in the `opensearch-data` volume
 - Inside the Dev Container, `docker compose --profile search up -d opensearch` starts it on the container's own Docker daemon, which publishes it on the same loopback address
 
-Then save it as the platform's engine with `go -C server run ./cmd/publiractl search set --engine opensearch --url http://127.0.0.1:9200`, adding `--locale-analysis-file ja=server/internal/catalogsearch/opensearchbackend/japanese-analysis.json` to find Japanese titles by their reading. A running worker builds the index from the seeded database within 30 seconds and the search moves onto it once it is built; `go -C server run ./cmd/publiractl search reindex` builds it at once instead. The worker keeps it in step after that, and `publiractl search set --engine sql` moves the search back to PostgreSQL. The settings are described in [server/README.md](server/README.md#catalog-search).
+Then save it as the platform's engine with `go -C server run ./cmd/publiractl search set --engine opensearch --url http://127.0.0.1:9200`. A running worker builds the index from the seeded database within 30 seconds and the search moves onto it once it is built; `go -C server run ./cmd/publiractl search reindex` builds it at once instead. The worker keeps it in step after that, and `publiractl search set --engine sql` moves the search back to PostgreSQL. The settings are described in [server/README.md](server/README.md#catalog-search).
 
 ## Distributed tracing (Jaeger)
 

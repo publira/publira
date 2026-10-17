@@ -155,9 +155,9 @@ func TestTheDefaultFindsATitleByAPartOfIt(t *testing.T) {
 	})
 }
 
-// The Japanese definition matches a kana query to a title written in kanji by
-// the reading entered for it, in hiragana or katakana.
-func TestTheJapaneseDefinitionMatchesAKanjiTitleByItsReading(t *testing.T) {
+// A definition built on analysis-kuromoji matches a kana query to a title
+// written in kanji by the reading entered for it, in hiragana or katakana.
+func TestAJapaneseDefinitionMatchesAKanjiTitleByItsReading(t *testing.T) {
 	t.Parallel()
 	testutil.EachSearchEngineWithLanguagePlugins(t, func(t *testing.T, engine testutil.SearchEngine) {
 		backend := newTestBackend(t, engine, japaneseAnalysis)
@@ -174,9 +174,9 @@ func TestTheJapaneseDefinitionMatchesAKanjiTitleByItsReading(t *testing.T) {
 	})
 }
 
-// Without an entered reading, the Japanese definition matches the one the
-// dictionary gives the title instead.
-func TestTheJapaneseDefinitionMatchesAKanjiTitleByTheDictionaryReading(t *testing.T) {
+// Without an entered reading, a definition built on analysis-kuromoji matches
+// the one the dictionary gives the title instead.
+func TestAJapaneseDefinitionMatchesAKanjiTitleByTheDictionaryReading(t *testing.T) {
 	t.Parallel()
 	testutil.EachSearchEngineWithLanguagePlugins(t, func(t *testing.T, engine testutil.SearchEngine) {
 		backend := newTestBackend(t, engine, japaneseAnalysis)

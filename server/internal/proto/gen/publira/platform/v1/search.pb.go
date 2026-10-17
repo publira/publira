@@ -1039,12 +1039,12 @@ type TestPlatformSearchConnectionResponse struct {
 	// neither. A product other than the one the request names fails the test.
 	Product string `protobuf:"bytes,3,opt,name=product,proto3" json:"product,omitempty"`
 	Version string `protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty"`
-	// Whether every node has the plugin installed: the two the Japanese
-	// analysis is built on. Both are false when the engine did not answer.
-	AnalysisKuromojiInstalled bool `protobuf:"varint,5,opt,name=analysis_kuromoji_installed,json=analysisKuromojiInstalled,proto3" json:"analysis_kuromoji_installed,omitempty"`
-	AnalysisIcuInstalled      bool `protobuf:"varint,6,opt,name=analysis_icu_installed,json=analysisIcuInstalled,proto3" json:"analysis_icu_installed,omitempty"`
-	unknownFields             protoimpl.UnknownFields
-	sizeCache                 protoimpl.SizeCache
+	// The plugins every node has installed, in name order, which a language's
+	// own analysis may be built on. Empty when the engine did not answer, and
+	// for an engine that has none.
+	Plugins       []string `protobuf:"bytes,7,rep,name=plugins,proto3" json:"plugins,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TestPlatformSearchConnectionResponse) Reset() {
@@ -1105,18 +1105,11 @@ func (x *TestPlatformSearchConnectionResponse) GetVersion() string {
 	return ""
 }
 
-func (x *TestPlatformSearchConnectionResponse) GetAnalysisKuromojiInstalled() bool {
+func (x *TestPlatformSearchConnectionResponse) GetPlugins() []string {
 	if x != nil {
-		return x.AnalysisKuromojiInstalled
+		return x.Plugins
 	}
-	return false
-}
-
-func (x *TestPlatformSearchConnectionResponse) GetAnalysisIcuInstalled() bool {
-	if x != nil {
-		return x.AnalysisIcuInstalled
-	}
-	return false
+	return nil
 }
 
 var File_publira_platform_v1_search_proto protoreflect.FileDescriptor
@@ -1177,14 +1170,13 @@ const file_publira_platform_v1_search_proto_rawDesc = "" +
 	"\x03url\x18\x02 \x01(\tR\x03url\x12\x1a\n" +
 	"\busername\x18\x03 \x01(\tR\busername\x12W\n" +
 	"\x14password_update_mode\x18\x04 \x01(\x0e2%.publira.platform.v1.SecretUpdateModeR\x12passwordUpdateMode\x12\x1a\n" +
-	"\bpassword\x18\x05 \x01(\tR\bpassword\"\x86\x02\n" +
+	"\bpassword\x18\x05 \x01(\tR\bpassword\"\xeb\x01\n" +
 	"$TestPlatformSearchConnectionResponse\x12\x1c\n" +
 	"\tsucceeded\x18\x01 \x01(\bR\tsucceeded\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x18\n" +
 	"\aproduct\x18\x03 \x01(\tR\aproduct\x12\x18\n" +
-	"\aversion\x18\x04 \x01(\tR\aversion\x12>\n" +
-	"\x1banalysis_kuromoji_installed\x18\x05 \x01(\bR\x19analysisKuromojiInstalled\x124\n" +
-	"\x16analysis_icu_installed\x18\x06 \x01(\bR\x14analysisIcuInstalled*\xaf\x01\n" +
+	"\aversion\x18\x04 \x01(\tR\aversion\x12\x18\n" +
+	"\aplugins\x18\a \x03(\tR\apluginsJ\x04\b\x05\x10\x06J\x04\b\x06\x10\aR\x1banalysis_kuromoji_installedR\x16analysis_icu_installed*\xaf\x01\n" +
 	"\x14PlatformSearchEngine\x12&\n" +
 	"\"PLATFORM_SEARCH_ENGINE_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aPLATFORM_SEARCH_ENGINE_SQL\x10\x01\x12%\n" +

@@ -120,19 +120,16 @@ e2e_log "applying ${web_push_sql}"
 psql "${PUBLIRA_DB_URL}" -v ON_ERROR_STOP=1 -q -f "${web_push_sql}"
 
 # On OpenSearch the engine is saved as the platform's, the way an operator
-# saves it, with the Japanese definition the documentation gives saved for ja,
-# which the search for a title by its reading in kana runs on. The index is
-# built before any server starts rather than by the worker's first pass: the
-# seed above wrote its rows straight to Postgres, and the suite's first search
-# must not find the storefront still on sql.
+# saves it, and the index is built before any server starts rather than by the
+# worker's first pass: the seed above wrote its rows straight to Postgres, and
+# the suite's first search must not find the storefront still on sql.
 if [[ "${PUBLIRA_E2E_SEARCH_BACKEND}" == "opensearch" ]]; then
   if [[ ! -x "${publiractl}" ]]; then
     e2e_err "publiractl binary not found at ${publiractl}; run: task server:build"
     exit 1
   fi
   e2e_log "saving the search engine ${PUBLIRA_E2E_OPENSEARCH_URL}"
-  "${publiractl}" search set --engine opensearch --url "${PUBLIRA_E2E_OPENSEARCH_URL}" \
-    --locale-analysis-file "ja=${REPO_ROOT}/server/internal/catalogsearch/opensearchbackend/japanese-analysis.json"
+  "${publiractl}" search set --engine opensearch --url "${PUBLIRA_E2E_OPENSEARCH_URL}"
   e2e_log "building the catalog index"
   "${publiractl}" search reindex
 fi

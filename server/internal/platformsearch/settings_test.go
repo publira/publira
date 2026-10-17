@@ -120,7 +120,7 @@ func TestEvaluateNamesWhatTheEngineLacks(t *testing.T) {
 	complete := opensearchbackend.Probe{
 		Product: opensearchbackend.ProductOpenSearch,
 		Version: "3.9.0",
-		Plugins: []string{opensearchbackend.PluginAnalysisICU, opensearchbackend.PluginAnalysisKuromoji},
+		Plugins: []string{"analysis-icu", "analysis-kuromoji"},
 	}
 	for _, test := range []struct {
 		name  string
@@ -128,7 +128,7 @@ func TestEvaluateNamesWhatTheEngineLacks(t *testing.T) {
 		err   error
 		want  string
 	}{
-		{name: "both plugins", probe: complete},
+		{name: "plugins", probe: complete},
 		// The default analysis needs no plugin, and a saved one was checked
 		// against the engine on the save, so no plugin decides the test.
 		{name: "no plugins", probe: opensearchbackend.Probe{Product: opensearchbackend.ProductOpenSearch, Version: "3.9.0"}},
@@ -144,7 +144,7 @@ func TestEvaluateNamesWhatTheEngineLacks(t *testing.T) {
 			if got.Reason != test.want {
 				t.Fatalf("evaluate = %+v, want reason %q", got, test.want)
 			}
-			if test.err == nil && (got.KuromojiPresent != test.probe.HasPlugin(opensearchbackend.PluginAnalysisKuromoji) || got.ICUPresent != test.probe.HasPlugin(opensearchbackend.PluginAnalysisICU)) {
+			if test.err == nil && !slices.Equal(got.Plugins, test.probe.Plugins) {
 				t.Fatalf("evaluate = %+v, want the plugins of %+v reported", got, test.probe)
 			}
 		})
