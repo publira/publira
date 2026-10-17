@@ -7,8 +7,10 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 )
 
-// elasticsearch runs the image infra/docker/elasticsearch/Dockerfile builds,
-// which adds the analysis plugins openSearch has to the published image.
+// elasticsearch runs the image infra/docker/elasticsearch/Dockerfile names,
+// the published one with no plugin added, so the tests that run on it find
+// out what an engine started from the official image does with the default
+// analysis.
 var elasticsearch = searchEngine{
 	name:     "elasticsearch",
 	imageEnv: "PUBLIRA_TEST_ELASTICSEARCH_IMAGE",
@@ -33,10 +35,9 @@ var (
 )
 
 // StartElasticsearch starts or returns a shared single-node Elasticsearch
-// container with the analysis plugins StartOpenSearch installs and security
-// off, so it answers plain HTTP without credentials, the way StartOpenSearch
-// does for OpenSearch. Tests share the node and stay apart by each using an
-// index of its own.
+// container with no plugin installed and security off, so it answers plain
+// HTTP without credentials, the way StartOpenSearch does for OpenSearch.
+// Tests share the node and stay apart by each using an index of its own.
 //
 // The image is PUBLIRA_TEST_ELASTICSEARCH_IMAGE when that is set, and
 // otherwise the one built here from infra/docker/elasticsearch/Dockerfile.
@@ -75,6 +76,22 @@ type SearchEngine struct {
 	Name string
 	// URL is the node's address, without credentials.
 	URL string
+	// LanguagePlugins reports whether the node has analysis-kuromoji,
+	// analysis-icu, analysis-nori, and analysis-smartcn installed. Without
+	// them it is the engine as its official image ships it.
+	LanguagePlugins bool
+}
+
+// searchEngineNode is one engine's shared node.
+type searchEngineNode struct {
+	name    string
+	start   func(*testing.T) string
+	plugins bool
+}
+
+var searchEngineNodes = []searchEngineNode{
+	{name: "opensearch", start: func(t *testing.T) string { return StartOpenSearch(t).URL }, plugins: true},
+	{name: "elasticsearch", start: func(t *testing.T) string { return StartElasticsearch(t).URL }},
 }
 
 // EachSearchEngine runs fn once per engine the catalog search backend runs
@@ -82,16 +99,25 @@ type SearchEngine struct {
 // test asks for it.
 func EachSearchEngine(t *testing.T, fn func(t *testing.T, engine SearchEngine)) {
 	t.Helper()
-	engines := []struct {
-		name  string
-		start func(*testing.T) string
-	}{
-		{name: "opensearch", start: func(t *testing.T) string { return StartOpenSearch(t).URL }},
-		{name: "elasticsearch", start: func(t *testing.T) string { return StartElasticsearch(t).URL }},
-	}
-	for _, engine := range engines {
+	eachSearchEngine(t, false, fn)
+}
+
+// EachSearchEngineWithLanguagePlugins is EachSearchEngine on the engines whose
+// node has the language plugins [SearchEngine.LanguagePlugins] names, for a
+// test of a definition built on one of them.
+func EachSearchEngineWithLanguagePlugins(t *testing.T, fn func(t *testing.T, engine SearchEngine)) {
+	t.Helper()
+	eachSearchEngine(t, true, fn)
+}
+
+func eachSearchEngine(t *testing.T, plugins bool, fn func(t *testing.T, engine SearchEngine)) {
+	t.Helper()
+	for _, engine := range searchEngineNodes {
+		if plugins && !engine.plugins {
+			continue
+		}
 		t.Run(engine.name, func(t *testing.T) {
-			fn(t, SearchEngine{Name: engine.name, URL: engine.start(t)})
+			fn(t, SearchEngine{Name: engine.name, URL: engine.start(t), LanguagePlugins: engine.plugins})
 		})
 	}
 }

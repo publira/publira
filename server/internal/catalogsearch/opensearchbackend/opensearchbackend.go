@@ -2,8 +2,8 @@
 // catalog the SQL backend's substring match no longer serves: OpenSearch or
 // Elasticsearch, which ranks its hits, tolerates a typo in Latin text, and
 // matches a title by an alternate form such as its reading. The text analysis
-// is the platform's to replace; the default one is built for Japanese on the
-// analysis-kuromoji and analysis-icu plugins.
+// is the platform's to replace; the default one needs no plugin, and a
+// language may be given a definition of its own built on its plugin.
 //
 // Everything it sends is common to both engines — the index definition, the
 // queries, the bulk writes, the alias swaps — so it never asks which one

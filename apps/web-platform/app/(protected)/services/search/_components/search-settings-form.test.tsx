@@ -186,43 +186,44 @@ describe("SearchSettingsForm", () => {
     ).toHaveProperty("ariaChecked", "true");
   });
 
-  it("names the plugin a tested engine is missing", async () => {
-    actions.testPlatformSearchConnectionAction.mockResolvedValue({
-      message:
-        "The engine is missing a plugin the catalog index needs: analysis-icu. Install it on every node and test again.",
-      ok: false,
-      result: {
-        failure:
-          "The engine is missing a plugin the catalog index needs: analysis-icu. Install it on every node and test again.",
-        icuInstalled: false,
-        kuromojiInstalled: true,
-        product: "OpenSearch",
-        succeeded: false,
-        version: "3.2.0",
-      },
-    });
-    await renderForm(storedSettings);
+  it.each([
+    [
+      ["analysis-icu", "analysis-nori"],
+      true,
+      "Plugins: analysis-icu, analysis-nori",
+    ],
+    [[], true, "Plugins: none"],
+    [[], false, "Plugins: the engine didn't list them to this user."],
+  ])(
+    "lists the plugins a tested engine has (%j, listed %s)",
+    async (plugins, pluginsListed, line) => {
+      actions.testPlatformSearchConnectionAction.mockResolvedValue({
+        message: "The connection works.",
+        ok: true,
+        result: {
+          failure: "",
+          plugins,
+          pluginsListed,
+          product: "OpenSearch",
+          succeeded: true,
+          version: "3.2.0",
+        },
+      });
+      await renderForm(storedSettings);
 
-    fireEvent.click(screen.getByRole("button", { name: "Test connection" }));
+      fireEvent.click(screen.getByRole("button", { name: "Test connection" }));
 
-    const results = await screen.findByRole("list", {
-      name: "Connection test results",
-    });
-    expect(
-      within(results)
-        .getAllByRole("listitem")
-        .map((item) => item.textContent)
-    ).toEqual([
-      "Engine: OpenSearch 3.2.0",
-      "analysis-kuromoji: Installed",
-      "analysis-icu: Missing",
-    ]);
-    expect(
-      screen.getByText(
-        /missing a plugin the catalog index needs: analysis-icu/u
-      )
-    ).toBeTruthy();
-  });
+      const results = await screen.findByRole("list", {
+        name: "Connection test results",
+      });
+      expect(
+        within(results)
+          .getAllByRole("listitem")
+          .map((item) => item.textContent)
+      ).toEqual(["Engine: OpenSearch 3.2.0", line]);
+      expect(screen.getByText("The connection works.")).toBeTruthy();
+    }
+  );
 
   it.each([
     [
@@ -259,13 +260,12 @@ describe("SearchSettingsForm", () => {
     "drops a connection test result once %s it was run with changes",
     async (_value, change) => {
       actions.testPlatformSearchConnectionAction.mockResolvedValue({
-        message:
-          "The connection works, and the engine has both plugins the catalog index needs.",
+        message: "The connection works.",
         ok: true,
         result: {
           failure: "",
-          icuInstalled: true,
-          kuromojiInstalled: true,
+          plugins: [],
+          pluginsListed: true,
           product: "OpenSearch",
           succeeded: true,
           version: "3.2.0",
@@ -287,13 +287,12 @@ describe("SearchSettingsForm", () => {
 
   it("keeps a connection test result while only the index alias changes", async () => {
     actions.testPlatformSearchConnectionAction.mockResolvedValue({
-      message:
-        "The connection works, and the engine has both plugins the catalog index needs.",
+      message: "The connection works.",
       ok: true,
       result: {
         failure: "",
-        icuInstalled: true,
-        kuromojiInstalled: true,
+        plugins: [],
+        pluginsListed: true,
         product: "OpenSearch",
         succeeded: true,
         version: "3.2.0",

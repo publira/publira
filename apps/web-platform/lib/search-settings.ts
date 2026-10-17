@@ -28,10 +28,6 @@ import { rethrowUnauthenticatedRpcError } from "./auth-shared";
 import { getPlatformLocale } from "./locale";
 import type { PlatformMessageKey } from "./locale";
 import { getMessagesFor } from "./messages";
-import {
-  SEARCH_PLUGIN_ICU,
-  SEARCH_PLUGIN_KUROMOJI,
-} from "./search-settings-shared";
 import type {
   PlatformSearchBuildState,
   PlatformSearchEngine,
@@ -91,8 +87,10 @@ export type UpdatePlatformSearchSettingsResult =
 export interface PlatformSearchTestResult {
   /** Why the test failed, empty when it passed. */
   failure: string;
-  icuInstalled: boolean;
-  kuromojiInstalled: boolean;
+  /** The plugins every node has, in name order. */
+  plugins: string[];
+  /** Whether the engine listed its plugins to the user the test signed in as. */
+  pluginsListed: boolean;
   /** The product the engine reported, empty when it did not answer. */
   product: string;
   succeeded: boolean;
@@ -350,6 +348,8 @@ export const searchTestFailureMessage = async (
     case "SEARCH_TEST_NOT_A_SEARCH_ENGINE": {
       return t("platform.search.test.reasons.not_a_search_engine");
     }
+    // No test fails for it any more, but the audit log keeps the entries of
+    // the tests that did while the default analysis needed both plugins.
     case "SEARCH_TEST_PLUGIN_MISSING": {
       return t("platform.search.test.reasons.plugin_missing");
     }
@@ -371,18 +371,13 @@ export const searchTestFailureMessage = async (
 const toTestResult = async (
   response: Pick<
     TestPlatformSearchConnectionResponse,
-    | "analysisIcuInstalled"
-    | "analysisKuromojiInstalled"
-    | "product"
-    | "reason"
-    | "succeeded"
-    | "version"
+    "plugins" | "pluginsListed" | "product" | "reason" | "succeeded" | "version"
   >,
   locale: Locale
 ): Promise<PlatformSearchTestResult> => {
   const result = {
-    icuInstalled: response.analysisIcuInstalled,
-    kuromojiInstalled: response.analysisKuromojiInstalled,
+    plugins: response.plugins,
+    pluginsListed: response.pluginsListed,
     product: response.product,
     succeeded: response.succeeded,
     version: response.version,
@@ -392,22 +387,6 @@ const toTestResult = async (
   }
 
   const t = await getMessagesFor(locale);
-  // The engine answered and lacks a plugin: name the ones it lacks, which is
-  // what the operator installs before testing again.
-  if (response.reason === "SEARCH_TEST_PLUGIN_MISSING") {
-    const missing = [
-      ...(response.analysisKuromojiInstalled ? [] : [SEARCH_PLUGIN_KUROMOJI]),
-      ...(response.analysisIcuInstalled ? [] : [SEARCH_PLUGIN_ICU]),
-    ];
-    if (missing.length > 0) {
-      return {
-        ...result,
-        failure: t("platform.search.test.missing_plugins", {
-          plugins: missing.join(", "),
-        }),
-      };
-    }
-  }
   return {
     ...result,
     failure:

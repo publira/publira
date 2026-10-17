@@ -89,6 +89,7 @@ SET engine = sqlc.arg('engine'),
     -- A save served at once on an engine with an index keeps the indices it
     -- serves, so it keeps the languages they were built for as well.
     serving_locales = CASE WHEN sqlc.arg('serve')::boolean AND sqlc.arg('engine') = 'sql' THEN NULL ELSE serving_locales END,
+    serving_default_analysis_version = CASE WHEN sqlc.arg('serve')::boolean AND sqlc.arg('engine') = 'sql' THEN NULL ELSE serving_default_analysis_version END,
     serving_since = CASE WHEN sqlc.arg('serve')::boolean THEN NOW() ELSE serving_since END,
     build_failed_revision = NULL,
     build_error = NULL,
@@ -99,9 +100,10 @@ RETURNING *;
 
 -- name: ServePlatformSearchConfig :one
 -- Moves the search onto the saved configuration once the indices it names
--- have been built, one for each of locales, provided it is still the one
--- built: no rows when a save has moved the revision on since the build read
--- it, whose own build comes next.
+-- have been built, one for each of locales, with the version of the default
+-- analysis the build had, provided it is still the one built: no rows when a
+-- save has moved the revision on since the build read it, whose own build
+-- comes next.
 UPDATE platform_search_config
 SET serving_revision = revision,
     serving_engine = engine,
@@ -112,6 +114,7 @@ SET serving_revision = revision,
     serving_analysis = analysis,
     serving_locale_analyses = locale_analyses,
     serving_locales = sqlc.arg('locales')::text [],
+    serving_default_analysis_version = sqlc.arg('default_analysis_version')::integer,
     serving_since = NOW(),
     build_failed_revision = NULL,
     build_error = NULL,

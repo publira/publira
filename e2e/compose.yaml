@@ -104,8 +104,8 @@ services:
       start_period: 2s
 
   # The catalog search engine, for a run on PUBLIRA_E2E_SEARCH_BACKEND=opensearch.
-  # The image the root compose.yaml builds, with the analysis plugins the
-  # catalog index needs. No volume: a run starts from an empty index, which
+  # The image the root compose.yaml builds, with the analysis plugin the
+  # Korean definition the search settings spec saves is built on. No volume: a run starts from an empty index, which
   # db-setup.sh saves as the platform's engine and fills from the seed with
   # `publiractl search reindex`.
   opensearch:

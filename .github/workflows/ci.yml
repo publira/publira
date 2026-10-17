@@ -639,9 +639,10 @@ jobs:
           packages: libvips-dev pkg-config
 
       # Five packages start an OpenSearch and an Elasticsearch node of their
-      # own, on images that carry the analysis plugins. Building the images
-      # here, once, keeps the plugin downloads out of every container start,
-      # and a download the network cuts off is tried again.
+      # own, the OpenSearch one on an image that carries the analysis plugins.
+      # Building the images here, once, keeps the plugin downloads out of
+      # every container start, and a download the network cuts off is tried
+      # again.
       - name: Setup / Search engine images
         run: |
           set -euo pipefail

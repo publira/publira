@@ -379,6 +379,7 @@ GRANT UPDATE (
     serving_analysis,
     serving_locale_analyses,
     serving_locales,
+    serving_default_analysis_version,
     serving_since,
     build_failed_revision,
     build_error,

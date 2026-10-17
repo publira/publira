@@ -101,10 +101,10 @@ const expectSeriesResult = async (
 
 /**
  * The storefront's catalog search, on whichever backend the server runs with.
- * The publish and unpublish case holds on both. The cases only an engine can
- * answer — a reading typed in kana, a word with a wrong character — are
- * registered under `task e2e:search` alone: the SQL backend matches the query
- * as a substring of the title as written, so they have nothing to assert there.
+ * The publish and unpublish case holds on both. The case only an engine can
+ * answer — a word with a wrong character — is registered under
+ * `task e2e:search` alone: the SQL backend matches the query as a substring of
+ * the title as written, so it has nothing to assert there.
  */
 test.describe("catalog search", () => {
   let createdSeriesIds: string[] = [];
@@ -164,18 +164,6 @@ test.describe("catalog search", () => {
   if (!onOpenSearch) {
     return;
   }
-
-  test("finds a title written in kanji from its reading typed in kana", async ({
-    page,
-  }) => {
-    // Japanese on purpose: matching a kana query to a kanji title through the
-    // dictionary's reading is the behaviour under test. No reading is entered
-    // in the console, so the analyzer is the only thing that knows it.
-    const title = "吾輩は猫である";
-    await createPublishedSeries(page, title);
-
-    await expectSeriesResult(page, "わがはいはねこ", title, true);
-  });
 
   test("finds a seeded series from a query with one wrong character", async ({
     page,

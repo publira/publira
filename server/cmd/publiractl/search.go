@@ -26,7 +26,7 @@ var searchGroup = commandGroup{
 	commands: []command{
 		{name: "set", summary: "Save the catalog search engine", setup: setupSearchSet},
 		{name: "show", summary: "Print the saved search engine and the one the search answers from, without the password", setup: setupSearchShow},
-		{name: "test", summary: "Ask the saved search engine what it is and whether it has the analysis plugins", setup: setupSearchTest},
+		{name: "test", summary: "Ask the saved search engine what it is and which plugins every node has", setup: setupSearchTest},
 		{
 			name:    "reindex",
 			summary: "Rebuild the catalog index into a new index and move the alias onto it, or rewrite one tenant's documents in place",
@@ -79,7 +79,7 @@ func setupSearchSet(f *commandFlags) func(context.Context, *commandEnv) error {
 	f.StringVar(&settings.Index, "index", "", "the alias of the index holding the catalog (default \""+opensearchbackend.DefaultIndex+"\")")
 	f.StringVar(&settings.Username, "username", "", "the HTTP basic auth user, over https:// only; left out, the engine is reached without credentials")
 	analysisFile := f.String("analysis-file", "", "a JSON file holding the settings.analysis of the catalog index, defining the analyzers written_form and alternate_form and the normalizer exact_match; left out, the saved one is kept")
-	defaultAnalysis := f.Bool("default-analysis", false, "go back to the default analysis, built for Japanese")
+	defaultAnalysis := f.Bool("default-analysis", false, "go back to the default analysis, which needs no plugin")
 	var localeAnalyses []platformsearch.LocaleAnalysisUpdate
 	var localeFlags []string
 	f.Func("locale-analysis-file", "build the index of one language from its own analysis, read from a JSON file held to what --analysis-file is, as `LOCALE=FILE`, such as en=english.json; repeat it for each language. A language it does not name keeps what its index is built from", func(v string) error {
@@ -277,12 +277,6 @@ func setupSearchTest(_ *commandFlags) func(context.Context, *commandEnv) error {
 // printSearchTest prints what a connection test found, and refuses a test that
 // failed.
 func printSearchTest(w io.Writer, result platformsearch.Result) error {
-	present := func(ok bool) string {
-		if ok {
-			return "installed"
-		}
-		return "missing"
-	}
 	orUnknown := func(value string) string {
 		if value == "" {
 			return "unknown"
@@ -294,8 +288,14 @@ func printSearchTest(w io.Writer, result platformsearch.Result) error {
 		var b strings.Builder
 		fmt.Fprintf(&b, "Product:\t%s\n", orUnknown(result.Product))
 		fmt.Fprintf(&b, "Version:\t%s\n", result.Version)
-		fmt.Fprintf(&b, "%s:\t%s\n", opensearchbackend.PluginAnalysisKuromoji, present(result.KuromojiPresent))
-		fmt.Fprintf(&b, "%s:\t%s\n", opensearchbackend.PluginAnalysisICU, present(result.ICUPresent))
+		plugins := "none"
+		switch {
+		case !result.PluginsListed:
+			plugins = "unknown: the engine would not list them to this user"
+		case len(result.Plugins) > 0:
+			plugins = strings.Join(result.Plugins, ", ")
+		}
+		fmt.Fprintf(&b, "Plugins:\t%s\n", plugins)
 		if err := printTable(w, b.String()); err != nil {
 			return err
 		}

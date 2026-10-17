@@ -107,10 +107,3 @@ export const SEARCH_ANALYSIS_MAX_BYTES = 64 * 1024;
 export const searchCredentialMode = (
   settings: Pick<PlatformSearchSettings, "username">
 ): SearchCredentialMode => (settings.username ? "basic" : "none");
-
-/**
- * The analysis plugins the catalog index is built with, which every engine but
- * SQL has to have on every node.
- */
-export const SEARCH_PLUGIN_KUROMOJI = "analysis-kuromoji";
-export const SEARCH_PLUGIN_ICU = "analysis-icu";

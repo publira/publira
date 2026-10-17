@@ -39,29 +39,34 @@ const (
 const MaxAnalysisBytes = 64 << 10
 
 // defaultAnalysis is the settings.analysis of the catalog index when the
-// platform has saved none, built for Japanese.
+// platform has saved none. It is built only on what OpenSearch and
+// Elasticsearch ship without a plugin, so an engine from either official image
+// builds the index of every language with it.
 //
-// The written form keeps the text as it is written: the kuromoji tokenizer in
-// search mode splits a compound into its parts as well, icu_normalizer (NFKC
-// with case folding) and cjk_width make full-width Latin and half-width kana
-// the same token as their usual forms, and kuromoji_baseform lets an inflected
-// verb match its dictionary form.
+// The written form splits Latin text into words, as the standard tokenizer
+// does in every language, and indexes a run of Han, Hiragana, Katakana, or
+// Hangul as overlapping pairs of characters, which is how a query finds a
+// title written without spaces by a part of it. cjk_width makes full-width
+// Latin and half-width kana the same token as their usual forms, and lowercase
+// makes case no difference.
 //
-// The alternate form is the reading, which a query typed in kana meets a
-// title written in kanji through, and it is also how an entered reading is
-// analyzed. It replaces each token with its reading in katakana, turns the
-// hiragana of a token the dictionary has no reading for into katakana, and
-// indexes the result as overlapping pairs of characters. The pairs are taken
-// across each two neighbouring tokens as well, because the dictionary splits
-// a run of kana where it pleases: 「ぎんがてつどう」 comes out as
-// ギン/ガ/テツ/ドウ where 「銀河鉄道」 comes out as ギンガ/テツドウ, and only
-// the pairs of the joined reading are the same for both.
+// Without a plugin that knows a language there is no other form of it to
+// match, such as a reading, so the alternate form is the written form again,
+// and an entered reading is found when it is typed the way it was entered.
 //
 // The exact match is normalized the way the text is, so neither it nor the
 // order of the hits of one score depends on case or width.
 //
 //go:embed analysis.json
 var defaultAnalysis []byte
+
+// DefaultAnalysisVersion names the definition [DefaultAnalysis] answers. The
+// serving configuration records the version its indices were built with, and
+// one built with another has a build due, so a release that changes the
+// default rebuilds the indices built from it without anyone saving anything.
+// Move it on with every change to analysis.json; a test holds the two
+// together.
+const DefaultAnalysisVersion = 2
 
 // DefaultAnalysis is the definition an index is built with when the platform
 // has saved none, as JSON.

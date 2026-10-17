@@ -1,11 +1,37 @@
 package opensearchbackend
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
 )
+
+// japaneseAnalysis is a definition built on analysis-kuromoji and
+// analysis-icu, whose alternate form is the reading: each token is replaced
+// with its reading in katakana, the hiragana of a token the dictionary has no
+// reading for is turned into katakana, and the result is indexed as
+// overlapping pairs of characters, taken across neighbouring tokens too, since
+// the dictionary splits a run of kana where it pleases.
+const japaneseAnalysis = `{
+  "tokenizer": {
+    "ja_search": {"type": "kuromoji_tokenizer", "mode": "search"},
+    "ja_normal": {"type": "kuromoji_tokenizer", "mode": "normal"}
+  },
+  "filter": {
+    "ja_katakana_reading": {"type": "kuromoji_readingform", "use_romaji": false},
+    "hiragana_to_katakana": {"type": "icu_transform", "id": "Hiragana-Katakana"},
+    "reading_pairs": {"type": "shingle", "min_shingle_size": 2, "max_shingle_size": 2, "output_unigrams": true, "token_separator": ""},
+    "reading_bigrams": {"type": "ngram", "min_gram": 2, "max_gram": 2}
+  },
+  "analyzer": {
+    "written_form": {"type": "custom", "char_filter": ["icu_normalizer"], "tokenizer": "ja_search", "filter": ["cjk_width", "kuromoji_baseform"]},
+    "alternate_form": {"type": "custom", "char_filter": ["icu_normalizer"], "tokenizer": "ja_normal", "filter": ["cjk_width", "ja_katakana_reading", "hiragana_to_katakana", "reading_pairs", "reading_bigrams"]}
+  },
+  "normalizer": {"exact_match": {"type": "custom", "filter": ["cjk_width", "icu_normalizer"]}}
+}`
 
 // koreanAnalysis is a definition built on analysis-nori, with the written form
 // as its alternate form: Korean has no reading of its own to match a title by.
@@ -31,6 +57,27 @@ func TestTheDefaultAnalysisDefinesEveryRole(t *testing.T) {
 
 	if _, err := ParseAnalysis(DefaultAnalysis()); err != nil {
 		t.Fatalf("ParseAnalysis(default): %v", err)
+	}
+}
+
+// A change to the default that leaves DefaultAnalysisVersion where it was
+// would leave the indices built from the earlier default serving as if they
+// were built from this one. Each version is recorded with the definition it
+// names, as ParseAnalysis spells it; a changed default needs the next version
+// and its own line here.
+func TestTheDefaultAnalysisVersionNamesTheDefault(t *testing.T) {
+	t.Parallel()
+
+	versions := map[int]string{
+		2: "e615e2c7add941205c7896aef43923818634bca0fb30be0ce8f57ff4147bfb40",
+	}
+	canonical, err := ParseAnalysis(DefaultAnalysis())
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256([]byte(canonical))
+	if got, want := hex.EncodeToString(sum[:]), versions[DefaultAnalysisVersion]; got != want {
+		t.Fatalf("the default analysis hashes to %s, but version %d names %q: move DefaultAnalysisVersion on and record the new hash", got, DefaultAnalysisVersion, want)
 	}
 }
 

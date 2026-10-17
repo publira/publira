@@ -181,11 +181,11 @@ func (s *platformServer) TestPlatformSearchConnection(
 		return nil, s.searchSettingsError(ctx, err)
 	}
 	return &publirasplatformv1.TestPlatformSearchConnectionResponse{
-		Succeeded:                 result.Succeeded(),
-		Reason:                    result.Reason,
-		Product:                   result.Product,
-		Version:                   result.Version,
-		AnalysisKuromojiInstalled: result.KuromojiPresent,
-		AnalysisIcuInstalled:      result.ICUPresent,
+		Succeeded:     result.Succeeded(),
+		Reason:        result.Reason,
+		Product:       result.Product,
+		Version:       result.Version,
+		Plugins:       result.Plugins,
+		PluginsListed: result.PluginsListed,
 	}, nil
 }

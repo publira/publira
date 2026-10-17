@@ -2,6 +2,7 @@ package platformsearch
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -116,34 +117,91 @@ func TestFromConfigTellsWhereTheSavedConfigurationStands(t *testing.T) {
 	}
 }
 
-func TestEvaluateNamesWhatTheEngineLacks(t *testing.T) {
-	complete := opensearchbackend.Probe{
-		Product: opensearchbackend.ProductOpenSearch,
-		Version: "3.9.0",
-		Plugins: []string{opensearchbackend.PluginAnalysisICU, opensearchbackend.PluginAnalysisKuromoji},
+// Indices built from the default are current only when they were built from
+// the one this server ships, so a release that changes the default rebuilds
+// them with nothing saved, and so does an install whose indices predate the
+// recorded version. Indices built from definitions of their own are left as
+// they are.
+func TestIndicesBuiltFromAnotherDefaultHaveABuildDue(t *testing.T) {
+	served := func(version int32, own map[string]string) dbmodels.PlatformSearchConfig {
+		row := searchRow(3, 3)
+		row.ServingEngine = row.Engine
+		row.ServingUrl, row.ServingIndexAlias = row.Url, row.IndexAlias
+		row.ServingLocales = IndexLocales
+		if version != 0 {
+			row.ServingDefaultAnalysisVersion = sql.NullInt32{Int32: version, Valid: true}
+		}
+		if own != nil {
+			encoded, err := json.Marshal(own)
+			if err != nil {
+				t.Fatal(err)
+			}
+			row.LocaleAnalyses = sql.NullString{String: string(encoded), Valid: true}
+			row.ServingLocaleAnalyses = row.LocaleAnalyses
+		}
+		return row
+	}
+	everyLocale := map[string]string{}
+	for _, locale := range IndexLocales {
+		everyLocale[locale] = `{"analyzer":{}}`
 	}
 	for _, test := range []struct {
-		name   string
-		probe  opensearchbackend.Probe
-		err    error
-		custom bool
-		want   string
+		name string
+		row  dbmodels.PlatformSearchConfig
+		want BuildState
 	}{
-		{name: "both plugins", probe: complete},
+		{name: "the default this server ships", row: served(opensearchbackend.DefaultAnalysisVersion, nil), want: Serving},
+		{name: "an earlier default", row: served(opensearchbackend.DefaultAnalysisVersion-1, nil), want: Building},
+		{name: "no recorded version", row: served(0, nil), want: Building},
+		{name: "no recorded version for one language's own", row: served(0, map[string]string{"ja": `{"analyzer":{}}`}), want: Building},
+		{name: "no recorded version and no language on the default", row: served(0, everyLocale), want: Serving},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			stored := FromConfig(test.row)
+			if stored.State != test.want {
+				t.Fatalf("State = %v, want %v", stored.State, test.want)
+			}
+			if test.want == Building && !slices.Equal(rebuildLocales(stored, false), IndexLocales) {
+				t.Fatalf("rebuildLocales = %v, want every language", rebuildLocales(stored, false))
+			}
+		})
+	}
+}
+
+func TestEvaluateNamesWhatTheEngineLacks(t *testing.T) {
+	complete := opensearchbackend.Probe{
+		Product:       opensearchbackend.ProductOpenSearch,
+		Version:       "3.9.0",
+		Plugins:       []string{"analysis-icu", "analysis-kuromoji"},
+		PluginsListed: true,
+	}
+	for _, test := range []struct {
+		name  string
+		probe opensearchbackend.Probe
+		err   error
+		want  string
+	}{
+		{name: "plugins", probe: complete},
+		// The default analysis needs no plugin, and a saved one was checked
+		// against the engine on the save, so no plugin decides the test.
+		{name: "no plugins", probe: opensearchbackend.Probe{Product: opensearchbackend.ProductOpenSearch, Version: "3.9.0", PluginsListed: true}},
+		// Listing the plugins takes a privilege the user needs for nothing
+		// else, so an engine that will not list them passes too.
+		{name: "plugins not listed", probe: opensearchbackend.Probe{Product: opensearchbackend.ProductOpenSearch, Version: "3.9.0"}},
 		{name: "no answer", err: fmt.Errorf("%w: dial", opensearchbackend.ErrUnreachable), want: ReasonUnreachable},
 		{name: "a context deadline", err: errors.New("context deadline exceeded"), want: ReasonUnreachable},
 		{name: "credentials refused", err: fmt.Errorf("%w: 401", opensearchbackend.ErrUnauthorized), want: ReasonUnauthorized},
 		{name: "not a search engine", err: fmt.Errorf("%w: 404", opensearchbackend.ErrUnexpectedAnswer), want: ReasonNotAnEngine},
 		{name: "another product", probe: opensearchbackend.Probe{Product: opensearchbackend.ProductElasticsearch, Version: "9.1.5", Plugins: complete.Plugins}, want: ReasonWrongProduct},
-		{name: "no ICU", probe: opensearchbackend.Probe{Product: opensearchbackend.ProductOpenSearch, Version: "3.9.0", Plugins: []string{opensearchbackend.PluginAnalysisKuromoji}}, want: ReasonMissingPlugin},
-		// A saved analysis of its own needs whatever plugins it names, which
-		// the engine was asked about on the save.
-		{name: "no plugins for a saved analysis", probe: opensearchbackend.Probe{Product: opensearchbackend.ProductOpenSearch, Version: "3.9.0"}, custom: true},
-		{name: "another product for a saved analysis", probe: opensearchbackend.Probe{Product: opensearchbackend.ProductElasticsearch, Version: "9.1.5"}, custom: true, want: ReasonWrongProduct},
+		{name: "another product without plugins", probe: opensearchbackend.Probe{Product: opensearchbackend.ProductElasticsearch, Version: "9.1.5"}, want: ReasonWrongProduct},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			if got := evaluate(EngineOpenSearch, test.probe, test.err, !test.custom); got.Reason != test.want {
+			got := evaluate(EngineOpenSearch, test.probe, test.err)
+			if got.Reason != test.want {
 				t.Fatalf("evaluate = %+v, want reason %q", got, test.want)
+			}
+			if test.err == nil && (!slices.Equal(got.Plugins, test.probe.Plugins) || got.PluginsListed != test.probe.PluginsListed) {
+				t.Fatalf("evaluate = %+v, want the plugins of %+v reported", got, test.probe)
 			}
 		})
 	}

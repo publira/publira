@@ -99,7 +99,8 @@ services:
       retries: 5
 
   # The optional catalog search engine (`publiractl search set --engine
-  # opensearch`), built with the analysis plugins the catalog index needs. Single node, with
+  # opensearch`), built with the analysis plugins a language's own text
+  # analysis is built on; the default needs none. Single node, with
   # the security plugin off, so it answers plain HTTP without credentials:
   # that is why it is published on loopback alone, like everything here.
   opensearch:

@@ -31,9 +31,8 @@ const (
 	// nothing beside the database and is what an install searches with until
 	// another engine is saved.
 	PlatformSearchEngine_PLATFORM_SEARCH_ENGINE_SQL PlatformSearchEngine = 1
-	// OpenSearch, ranked by relevance. With the default analysis it needs the
-	// analysis-kuromoji and analysis-icu plugins and matches a title written in
-	// kanji from a query typed in kana.
+	// OpenSearch, ranked by relevance. The default analysis needs no plugin;
+	// a language's own analysis needs whatever plugins it is built on.
 	PlatformSearchEngine_PLATFORM_SEARCH_ENGINE_OPENSEARCH PlatformSearchEngine = 2
 	// Elasticsearch, searched and written exactly as OpenSearch is: everything
 	// the backend sends is common to both.
@@ -537,7 +536,7 @@ type PlatformSearchSettings struct {
 	BuildFailure *PlatformSearchBuildFailure `protobuf:"bytes,9,opt,name=build_failure,json=buildFailure,proto3" json:"build_failure,omitempty"`
 	// The settings.analysis the catalog index is built with, as a JSON object:
 	// the saved one, or the default the server ships when none is saved, which
-	// is built for Japanese on analysis-kuromoji and analysis-icu. Empty on the
+	// is built on no plugin and for no language in particular. Empty on the
 	// SQL engine, which has no index. It defines the analyzers written_form and
 	// alternate_form and the normalizer exact_match, which the mapping refers
 	// to.
@@ -1028,10 +1027,9 @@ func (x *TestPlatformSearchConnectionRequest) GetPassword() string {
 // tested at all.
 type TestPlatformSearchConnectionResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Whether the engine answered, is the engine the request names, and, while
-	// the index of any language is built from the default analysis, has both
-	// plugins it is built from. A saved analysis of another kind was checked
-	// against the engine when it was saved.
+	// Whether the engine answered and is the engine the request names. No
+	// plugin decides it: the default analysis needs none, and a saved analysis
+	// was checked against the engine when it was saved.
 	Succeeded bool `protobuf:"varint,1,opt,name=succeeded,proto3" json:"succeeded,omitempty"`
 	// A stable reason code (SEARCH_TEST_*) for a failure, empty on success. It
 	// never carries the engine's own message.
@@ -1041,12 +1039,16 @@ type TestPlatformSearchConnectionResponse struct {
 	// neither. A product other than the one the request names fails the test.
 	Product string `protobuf:"bytes,3,opt,name=product,proto3" json:"product,omitempty"`
 	Version string `protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty"`
-	// Whether every node has the plugin installed. Both are false when the
-	// engine did not answer.
-	AnalysisKuromojiInstalled bool `protobuf:"varint,5,opt,name=analysis_kuromoji_installed,json=analysisKuromojiInstalled,proto3" json:"analysis_kuromoji_installed,omitempty"`
-	AnalysisIcuInstalled      bool `protobuf:"varint,6,opt,name=analysis_icu_installed,json=analysisIcuInstalled,proto3" json:"analysis_icu_installed,omitempty"`
-	unknownFields             protoimpl.UnknownFields
-	sizeCache                 protoimpl.SizeCache
+	// The plugins every node has installed, in name order, which a language's
+	// own analysis may be built on. Empty when the engine did not answer, when
+	// it would not list them, and for an engine that has none.
+	Plugins []string `protobuf:"bytes,7,rep,name=plugins,proto3" json:"plugins,omitempty"`
+	// Whether the engine listed its plugins. Listing them takes a cluster
+	// privilege the user Publira signs in as needs for nothing else, so an
+	// engine that refuses passes the test all the same, with this false.
+	PluginsListed bool `protobuf:"varint,8,opt,name=plugins_listed,json=pluginsListed,proto3" json:"plugins_listed,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TestPlatformSearchConnectionResponse) Reset() {
@@ -1107,16 +1109,16 @@ func (x *TestPlatformSearchConnectionResponse) GetVersion() string {
 	return ""
 }
 
-func (x *TestPlatformSearchConnectionResponse) GetAnalysisKuromojiInstalled() bool {
+func (x *TestPlatformSearchConnectionResponse) GetPlugins() []string {
 	if x != nil {
-		return x.AnalysisKuromojiInstalled
+		return x.Plugins
 	}
-	return false
+	return nil
 }
 
-func (x *TestPlatformSearchConnectionResponse) GetAnalysisIcuInstalled() bool {
+func (x *TestPlatformSearchConnectionResponse) GetPluginsListed() bool {
 	if x != nil {
-		return x.AnalysisIcuInstalled
+		return x.PluginsListed
 	}
 	return false
 }
@@ -1179,14 +1181,14 @@ const file_publira_platform_v1_search_proto_rawDesc = "" +
 	"\x03url\x18\x02 \x01(\tR\x03url\x12\x1a\n" +
 	"\busername\x18\x03 \x01(\tR\busername\x12W\n" +
 	"\x14password_update_mode\x18\x04 \x01(\x0e2%.publira.platform.v1.SecretUpdateModeR\x12passwordUpdateMode\x12\x1a\n" +
-	"\bpassword\x18\x05 \x01(\tR\bpassword\"\x86\x02\n" +
+	"\bpassword\x18\x05 \x01(\tR\bpassword\"\x92\x02\n" +
 	"$TestPlatformSearchConnectionResponse\x12\x1c\n" +
 	"\tsucceeded\x18\x01 \x01(\bR\tsucceeded\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x18\n" +
 	"\aproduct\x18\x03 \x01(\tR\aproduct\x12\x18\n" +
-	"\aversion\x18\x04 \x01(\tR\aversion\x12>\n" +
-	"\x1banalysis_kuromoji_installed\x18\x05 \x01(\bR\x19analysisKuromojiInstalled\x124\n" +
-	"\x16analysis_icu_installed\x18\x06 \x01(\bR\x14analysisIcuInstalled*\xaf\x01\n" +
+	"\aversion\x18\x04 \x01(\tR\aversion\x12\x18\n" +
+	"\aplugins\x18\a \x03(\tR\aplugins\x12%\n" +
+	"\x0eplugins_listed\x18\b \x01(\bR\rpluginsListedJ\x04\b\x05\x10\x06J\x04\b\x06\x10\aR\x1banalysis_kuromoji_installedR\x16analysis_icu_installed*\xaf\x01\n" +
 	"\x14PlatformSearchEngine\x12&\n" +
 	"\"PLATFORM_SEARCH_ENGINE_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aPLATFORM_SEARCH_ENGINE_SQL\x10\x01\x12%\n" +

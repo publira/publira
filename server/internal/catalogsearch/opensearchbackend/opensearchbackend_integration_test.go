@@ -123,10 +123,44 @@ func assertIDs(t *testing.T, query string, got []uuid.UUID, want ...uuid.UUID) {
 	}
 }
 
-func TestKanaQueryMatchesAKanjiTitleByItsReading(t *testing.T) {
+// The default needs no plugin, and splits a title written in Han, kana, or
+// Hangul into pairs of characters, so a part of the title finds it, and so
+// does an entered reading typed the way it was entered. Width and case make
+// no difference.
+func TestTheDefaultFindsATitleByAPartOfIt(t *testing.T) {
 	t.Parallel()
 	testutil.EachSearchEngine(t, func(t *testing.T, engine testutil.SearchEngine) {
 		backend := newTestBackend(t, engine)
+		tenantID := uuid.Must(uuid.NewV7())
+
+		night := publishedSeries(tenantID, "銀河鉄道の夜", "ぎんがてつどうのよる")
+		robot := publishedSeries(tenantID, "ガンダム", "")
+		song := publishedSeries(tenantID, "바다의 노래", "")
+		earth := publishedSeries(tenantID, "流浪地球的故事", "")
+		garden := publishedSeries(tenantID, "ＳＥＥＤ Ｇａｒｄｅｎ", "")
+		put(t, backend, night, robot, song, earth, garden)
+
+		for query, want := range map[string]uuid.UUID{
+			"鉄道":      night.ID,
+			"銀河鉄道の夜":  night.ID,
+			"ぎんがてつどう": night.ID,
+			"ｶﾞﾝﾀﾞﾑ":  robot.ID,
+			"바다":      song.ID,
+			"地球":      earth.ID,
+			"seed":    garden.ID,
+		} {
+			assertIDs(t, query, searchSeries(t, backend, tenantID, query, 10, pagination.Cursor{}).IDs, want)
+		}
+		assertIDs(t, "鉄橋", searchSeries(t, backend, tenantID, "鉄橋", 10, pagination.Cursor{}).IDs)
+	})
+}
+
+// A definition built on analysis-kuromoji matches a kana query to a title
+// written in kanji by the reading entered for it, in hiragana or katakana.
+func TestAJapaneseDefinitionMatchesAKanjiTitleByItsReading(t *testing.T) {
+	t.Parallel()
+	testutil.EachSearchEngineWithLanguagePlugins(t, func(t *testing.T, engine testutil.SearchEngine) {
+		backend := newTestBackend(t, engine, japaneseAnalysis)
 		tenantID := uuid.Must(uuid.NewV7())
 
 		night := publishedSeries(tenantID, "銀河鉄道の夜", "ぎんがてつどうのよる")
@@ -140,12 +174,12 @@ func TestKanaQueryMatchesAKanjiTitleByItsReading(t *testing.T) {
 	})
 }
 
-// Without an entered reading, the one the dictionary gives the title is
-// matched instead.
-func TestKanaQueryMatchesAKanjiTitleByTheDictionaryReading(t *testing.T) {
+// Without an entered reading, a definition built on analysis-kuromoji matches
+// the one the dictionary gives the title instead.
+func TestAJapaneseDefinitionMatchesAKanjiTitleByTheDictionaryReading(t *testing.T) {
 	t.Parallel()
-	testutil.EachSearchEngine(t, func(t *testing.T, engine testutil.SearchEngine) {
-		backend := newTestBackend(t, engine)
+	testutil.EachSearchEngineWithLanguagePlugins(t, func(t *testing.T, engine testutil.SearchEngine) {
+		backend := newTestBackend(t, engine, japaneseAnalysis)
 		tenantID := uuid.Must(uuid.NewV7())
 
 		cat := publishedSeries(tenantID, "吾輩は猫である", "")
@@ -767,7 +801,7 @@ func TestSearchSeriesOrdersWhatTheListTellsApart(t *testing.T) {
 // one word of it finds it.
 func TestAKoreanDefinitionFindsAHangulTitleByOneOfItsWords(t *testing.T) {
 	t.Parallel()
-	testutil.EachSearchEngine(t, func(t *testing.T, engine testutil.SearchEngine) {
+	testutil.EachSearchEngineWithLanguagePlugins(t, func(t *testing.T, engine testutil.SearchEngine) {
 		tenantID := uuid.Must(uuid.NewV7())
 		song := publishedSeries(tenantID, "바다의 노래", "")
 		other := publishedSeries(tenantID, "별을 쫓는 아이", "")
@@ -789,7 +823,7 @@ func TestAKoreanDefinitionFindsAHangulTitleByOneOfItsWords(t *testing.T) {
 // so one word of it finds it.
 func TestAChineseDefinitionFindsATitleByOneOfItsWords(t *testing.T) {
 	t.Parallel()
-	testutil.EachSearchEngine(t, func(t *testing.T, engine testutil.SearchEngine) {
+	testutil.EachSearchEngineWithLanguagePlugins(t, func(t *testing.T, engine testutil.SearchEngine) {
 		tenantID := uuid.Must(uuid.NewV7())
 		earth := publishedSeries(tenantID, "流浪地球的故事", "")
 		other := publishedSeries(tenantID, "三体问题", "")
@@ -808,19 +842,19 @@ func TestAChineseDefinitionFindsATitleByOneOfItsWords(t *testing.T) {
 // finds the title only once the alias names an index built on analysis-nori.
 func TestARebuildBuildsTheIndexWithTheConfiguredAnalysis(t *testing.T) {
 	t.Parallel()
-	testutil.EachSearchEngine(t, func(t *testing.T, engine testutil.SearchEngine) {
+	testutil.EachSearchEngineWithLanguagePlugins(t, func(t *testing.T, engine testutil.SearchEngine) {
 		ctx := context.Background()
 		tenantID := uuid.Must(uuid.NewV7())
 		star := publishedSeries(tenantID, "별을 쫓는 아이", "")
-		japanese := newTestBackend(t, engine)
-		put(t, japanese, star)
-		assertIDs(t, "별", searchSeries(t, japanese, tenantID, "별", 10, pagination.Cursor{}).IDs)
+		original := newTestBackend(t, engine)
+		put(t, original, star)
+		assertIDs(t, "별", searchSeries(t, original, tenantID, "별", 10, pagination.Cursor{}).IDs)
 
 		korean, err := ParseAnalysis([]byte(koreanAnalysis))
 		if err != nil {
 			t.Fatal(err)
 		}
-		reconfigured := &Backend{client: japanese.client, index: japanese.index, analysis: korean}
+		reconfigured := &Backend{client: original.client, index: original.index, analysis: korean}
 		rebuild, err := reconfigured.StartRebuild(ctx)
 		if err != nil {
 			t.Fatalf("StartRebuild: %v", err)
@@ -831,15 +865,21 @@ func TestARebuildBuildsTheIndexWithTheConfiguredAnalysis(t *testing.T) {
 		if err := rebuild.Swap(ctx); err != nil {
 			t.Fatalf("Swap: %v", err)
 		}
-		assertIDs(t, "별", searchSeries(t, japanese, tenantID, "별", 10, pagination.Cursor{}).IDs, star.ID)
+		assertIDs(t, "별", searchSeries(t, original, tenantID, "별", 10, pagination.Cursor{}).IDs, star.ID)
 	})
 }
 
+// The default is accepted by an engine with no plugin installed, and a
+// definition built on a language's plugin by one that has it.
 func TestCheckAnalysisAcceptsWhatTheEngineBuildsAnIndexFrom(t *testing.T) {
 	t.Parallel()
 	testutil.EachSearchEngine(t, func(t *testing.T, engine testutil.SearchEngine) {
 		backend := newTestBackend(t, engine)
-		for name, analysis := range map[string]string{"default": "", "korean": koreanAnalysis, "chinese": chineseAnalysis} {
+		analyses := map[string]string{"default": ""}
+		if engine.LanguagePlugins {
+			analyses["japanese"], analyses["korean"], analyses["chinese"] = japaneseAnalysis, koreanAnalysis, chineseAnalysis
+		}
+		for name, analysis := range analyses {
 			cfg := Config{URL: engine.URL, Index: backend.index}
 			if analysis != "" {
 				canonical, err := ParseAnalysis([]byte(analysis))
@@ -1066,7 +1106,7 @@ func TestASearchInALanguageWithNoIndexFails(t *testing.T) {
 // an index built on analysis-nori.
 func TestALanguagesOwnAnalysisBuildsItsIndexAlone(t *testing.T) {
 	t.Parallel()
-	testutil.EachSearchEngine(t, func(t *testing.T, engine testutil.SearchEngine) {
+	testutil.EachSearchEngineWithLanguagePlugins(t, func(t *testing.T, engine testutil.SearchEngine) {
 		ctx := context.Background()
 		korean, err := ParseAnalysis([]byte(koreanAnalysis))
 		if err != nil {

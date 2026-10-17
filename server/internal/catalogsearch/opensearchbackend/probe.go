@@ -16,13 +16,6 @@ const (
 	ProductElasticsearch = "Elasticsearch"
 )
 
-// The analysis plugins every node needs for the default analysis of the
-// catalog index.
-const (
-	PluginAnalysisKuromoji = "analysis-kuromoji"
-	PluginAnalysisICU      = "analysis-icu"
-)
-
 var (
 	// ErrUnreachable is an engine that did not answer at all.
 	ErrUnreachable = errors.New("opensearchbackend: the engine does not answer")
@@ -39,18 +32,19 @@ type Probe struct {
 	// engine that names neither.
 	Product string
 	Version string
-	// Plugins holds the plugins installed on every node.
+	// Plugins holds the plugins installed on every node, in name order.
 	Plugins []string
-}
-
-// HasPlugin reports whether every node has the plugin installed.
-func (p Probe) HasPlugin(name string) bool {
-	return slices.Contains(p.Plugins, name)
+	// PluginsListed reports whether the engine answered which plugins its
+	// nodes have. Listing them takes a cluster privilege the user Publira
+	// signs in as needs for nothing else, so an engine that refuses it is
+	// still the engine it said it was.
+	PluginsListed bool
 }
 
 // ProbeEngine asks the engine cfg names what it is and which plugins its nodes
 // have, without touching any index. A failure wraps ErrUnreachable,
-// ErrUnauthorized, or ErrUnexpectedAnswer.
+// ErrUnauthorized, or ErrUnexpectedAnswer, and is about what the engine is:
+// one that will not list its plugins answers a probe without them.
 func ProbeEngine(ctx context.Context, cfg Config) (Probe, error) {
 	client, err := newClient(cfg)
 	if err != nil {
@@ -106,14 +100,19 @@ func ProbeEngine(ctx context.Context, cfg Config) (Probe, error) {
 	}
 
 	var nodes struct {
+		Header struct {
+			Failed int `json:"failed"`
+		} `json:"_nodes"`
 		Nodes map[string]struct {
 			Plugins []struct {
 				Name string `json:"name"`
 			} `json:"plugins"`
 		} `json:"nodes"`
 	}
-	if _, err := request("/_nodes/plugins", &nodes); err != nil {
-		return Probe{}, err
+	// A node that did not answer is absent from the list, and may lack a
+	// plugin every node that did answer has.
+	if _, err := request("/_nodes/plugins", &nodes); err != nil || nodes.Header.Failed > 0 {
+		return probe, nil
 	}
 	// A plugin counts once every node has it: an index is created across the
 	// cluster, and one node without the analyzer refuses it.
@@ -129,5 +128,6 @@ func ProbeEngine(ctx context.Context, cfg Config) (Probe, error) {
 		}
 	}
 	slices.Sort(probe.Plugins)
+	probe.PluginsListed = true
 	return probe, nil
 }
