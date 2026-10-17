@@ -535,6 +535,20 @@ describe("getSitemapFileTokens", () => {
     );
   });
 
+  it("leaves out a file whose entries are translated into no locale the tenant offers", async () => {
+    answerPages(201, (page, index) =>
+      entry({
+        kind: SitemapEntryKind.SERIES,
+        publicId: `S${page}-${index}`,
+        publishedLocales: page < 200 ? ["ko"] : ["ja"],
+      })
+    );
+
+    await expect(
+      getSitemapFileTokens(TENANT_ID, BILINGUAL_ADDRESS)
+    ).resolves.toStrictEqual({ ok: true, value: ["", "p200"] });
+  });
+
   it("leaves out a file whose rows write no URL", async () => {
     answerPages(201, (page, index) =>
       page < 200

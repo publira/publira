@@ -348,7 +348,7 @@ export const getSitemapChunk = async (
 /**
  * The start tokens of the files after `tokens`, each file read only for the
  * token that ends it. Each file starts where the one before it ended, so they
- * are read one after another. A file that holds no entry is not a file: a
+ * are read one after another. A file that writes no URL is not a file: a
  * `<urlset>` needs at least one `<url>`, so the next one takes its place.
  * `reads` counts the files read so far, those dropped included.
  */
@@ -367,7 +367,10 @@ const walkSitemapFileTokens = async (
   }
 
   const { entries, nextToken } = chunk.value;
-  const kept = entries.length > 0 ? tokens : tokens.slice(0, -1);
+  const writesUrls = entries.some(
+    (entry) => entryLocales(address, entry).length > 0
+  );
+  const kept = writesUrls ? tokens : tokens.slice(0, -1);
   return nextToken
     ? walkSitemapFileTokens(tenantId, address, [...kept, nextToken], reads + 1)
     : { ok: true, value: [...kept] };
