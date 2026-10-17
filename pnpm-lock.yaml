@@ -258,8 +258,8 @@ catalogs:
       specifier: 4.3.3
       version: 4.3.3
     temporal-polyfill:
-      specifier: 1.0.5
-      version: 1.0.5
+      specifier: 1.0.6
+      version: 1.0.6
     tsdown:
       specifier: 0.23.1
       version: 0.23.1
@@ -324,7 +324,7 @@ importers:
         version: 0.35.5(@types/node@24.19.2)
       temporal-polyfill:
         specifier: 'catalog:'
-        version: 1.0.5
+        version: 1.0.6
       turbo:
         specifier: 2.11.8
         version: 2.11.8
@@ -360,7 +360,7 @@ importers:
         version: link:../../packages/i18n
       temporal-polyfill:
         specifier: 'catalog:'
-        version: 1.0.5
+        version: 1.0.6
     devDependencies:
       '@publira/tsconfig':
         specifier: workspace:*
@@ -448,7 +448,7 @@ importers:
         version: 4.3.3
       temporal-polyfill:
         specifier: 'catalog:'
-        version: 1.0.5
+        version: 1.0.6
       zod:
         specifier: 'catalog:'
         version: 4.6.7
@@ -536,7 +536,7 @@ importers:
         version: 4.3.3
       temporal-polyfill:
         specifier: 'catalog:'
-        version: 1.0.5
+        version: 1.0.6
       zod:
         specifier: 'catalog:'
         version: 4.6.7
@@ -645,7 +645,7 @@ importers:
         version: 4.3.3
       temporal-polyfill:
         specifier: 'catalog:'
-        version: 1.0.5
+        version: 1.0.6
       zod:
         specifier: 'catalog:'
         version: 4.6.7
@@ -706,7 +706,7 @@ importers:
         version: 6.2.12
       temporal-polyfill:
         specifier: 'catalog:'
-        version: 1.0.5
+        version: 1.0.6
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -830,7 +830,7 @@ importers:
         version: 6.11.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)
       temporal-polyfill:
         specifier: 'catalog:'
-        version: 1.0.5
+        version: 1.0.6
       zod:
         specifier: 'catalog:'
         version: 4.6.7
@@ -1127,7 +1127,7 @@ importers:
         version: 16.4.1(@opentelemetry/api@1.9.1)(@playwright/test@1.64.1)(@types/node@24.19.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       temporal-polyfill:
         specifier: 'catalog:'
-        version: 1.0.5
+        version: 1.0.6
       tsdown:
         specifier: 'catalog:'
         version: 0.23.1(typescript@6.0.3)
@@ -5182,8 +5182,8 @@ packages:
     resolution: {integrity: sha512-uxc/zpqFg6x7C8vOE7lh6Lbda8eEL9zmVm/PLeTPBRhh1xCgdWaQ+J1CUieGpIfm2HdtsUpRv+HshiasBMcc6A==}
     engines: {node: '>=6'}
 
-  temporal-polyfill@1.0.5:
-    resolution: {integrity: sha512-+H/mmY74i6wXCMcjIhGuSnODcyZnc4eois2myhOyX0UqRAKNXQY5m9iB1en5jQ/n4SXtjLXo1ElBI5bmn8tZwQ==}
+  temporal-polyfill@1.0.6:
+    resolution: {integrity: sha512-tYyEry1HLGUDbm2356W3iYD0OZdo7rlP7h98Zr/EnjqLZQwTAfcBDUvJnJbfA15v/vQad57hJZScG5O0W2oKEA==}
 
   temporal-spec@1.0.1:
     resolution: {integrity: sha512-wxVoanmDeavXie1vu2JaQ3WIc3JZnWAOYFBsJyATaVsXsycKYUflGsyBmrRSnoCpZJpwPyr38VpgSUlQ8CbFxg==}
@@ -9549,7 +9549,7 @@ snapshots:
 
   tapable@2.3.3: {}
 
-  temporal-polyfill@1.0.5:
+  temporal-polyfill@1.0.6:
     dependencies:
       temporal-spec: 1.0.1
       temporal-utils: 1.0.3
