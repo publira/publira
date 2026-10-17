@@ -2,6 +2,7 @@ import { forEachPageWithToken } from "@publira/api-client/pagination";
 import type { CursorWalkStop } from "@publira/api-client/pagination";
 import { SitemapEntryKind } from "@publira/api-client/public/catalog";
 import type { SitemapEntry } from "@publira/api-client/public/catalog";
+import { isLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { cachedReadFailure } from "@publira/utils/cached-read";
 import type { CachedReadResult } from "@publira/utils/cached-read";
@@ -20,7 +21,7 @@ import {
   tenantSeriesDetailTag,
   tenantSeriesListTag,
 } from "./cache-tags";
-import { localeAlternates, withLocalePrefix } from "./locale-path";
+import { localeAlternates, publishedLocaleAlternates } from "./locale-path";
 import { publishedPageHrefFromSlug } from "./pages";
 import { getTenantPublicOrigin, getTenantSiteInfo } from "./tenant";
 import { isTenantIdFormat } from "./tenant-id-format";
@@ -30,6 +31,12 @@ export interface SitemapEntryItem {
   href: string;
   /** RFC 3339; absent where the rows behind the page keep no such time. */
   lastModifiedAt?: string;
+  /**
+   * The locales a series, an episode, or a page has a translation in, in
+   * registry order. Absent for any other page, which is shown in every offered
+   * locale.
+   */
+  publishedLocales?: readonly Locale[];
 }
 
 /**
@@ -65,7 +72,8 @@ export const SITEMAP_PAGE_SIZE = 500;
 
 /**
  * The longest path an entry can have: a page slug fills its 255-character
- * column. It bounds what the next API page can add to a file.
+ * column. Written in every offered locale, it bounds what the next API page can
+ * add to a file.
  */
 const LONGEST_ENTRY: SitemapEntryItem = {
   href: `/${"a".repeat(254)}`,
@@ -78,7 +86,12 @@ const MAX_SITEMAP_FILES = 1000;
 /** The generated `SitemapEntry` fields {@link toSitemapEntryItem} reads. */
 type RawSitemapEntry = Pick<
   SitemapEntry,
-  "kind" | "lastModifiedAt" | "publicId" | "seriesPublicId" | "slug"
+  | "kind"
+  | "lastModifiedAt"
+  | "publicId"
+  | "publishedLocales"
+  | "seriesPublicId"
+  | "slug"
 >;
 
 const sitemapEntryHref = (entry: RawSitemapEntry): string | null => {
@@ -112,10 +125,19 @@ const sitemapEntryHref = (entry: RawSitemapEntry): string | null => {
   }
 };
 
+/** The kinds whose page is written per locale, and so names its translations. */
+const TRANSLATED_KINDS: ReadonlySet<SitemapEntryKind> = new Set([
+  SitemapEntryKind.SERIES,
+  SitemapEntryKind.EPISODE,
+  SitemapEntryKind.PAGE,
+]);
+
 /**
- * The storefront path an entry names. An entry missing the identifiers its URL
- * is made of, or of a kind this build does not know, is dropped rather than
- * listed at a path that answers 404.
+ * The storefront path an entry names, and the locales it is translated into.
+ * An entry missing the identifiers its URL is made of, or of a kind this build
+ * does not know, is dropped rather than listed at a path that answers 404. So
+ * is a series, an episode, or a page translated into no locale the tenant
+ * offers: its page names no URL of its own to list.
  */
 export const toSitemapEntryItem = (
   entry: RawSitemapEntry
@@ -126,7 +148,17 @@ export const toSitemapEntryItem = (
   }
 
   const lastModifiedAt = entry.lastModifiedAt?.trim();
-  return [lastModifiedAt ? { href, lastModifiedAt } : { href }];
+  const item: SitemapEntryItem = lastModifiedAt
+    ? { href, lastModifiedAt }
+    : { href };
+  if (!TRANSLATED_KINDS.has(entry.kind)) {
+    return [item];
+  }
+
+  const publishedLocales = [
+    ...new Set((entry.publishedLocales ?? []).filter(isLocale)),
+  ];
+  return publishedLocales.length > 0 ? [{ ...item, publishedLocales }] : [];
 };
 
 const escapeXml = (value: string): string =>
@@ -141,37 +173,65 @@ const absoluteUrl = (origin: string, href: string): string =>
   escapeXml(`${origin}${encodeURI(href)}`);
 
 /**
- * One `<url>` for each locale the site serves `entry` in, each naming every
- * such locale's URL and `x-default` as its alternates, itself included.
+ * The locales `entry` is listed in: those it is translated into that the
+ * tenant offers, or every offered locale where it is not written per locale.
+ */
+const entryLocales = (
+  { supportedLocales }: SitemapAddress,
+  { publishedLocales }: SitemapEntryItem
+): readonly Locale[] => {
+  if (!publishedLocales) {
+    return supportedLocales;
+  }
+  const translated = new Set(publishedLocales);
+  return supportedLocales.filter((locale) => translated.has(locale));
+};
+
+/**
+ * One `<url>` for each locale {@link entryLocales} lists `entry` in, each naming
+ * the alternates the page at that URL names itself: every listed locale's URL
+ * and `x-default`.
  */
 const renderEntryUrls = (
-  { defaultLocale, origin, supportedLocales }: SitemapAddress,
-  { href, lastModifiedAt }: SitemapEntryItem
+  address: SitemapAddress,
+  entry: SitemapEntryItem
 ): string => {
-  const { languages } = localeAlternates(
-    defaultLocale,
-    defaultLocale,
-    supportedLocales,
-    href
-  );
-  const links = Object.entries(languages)
-    .map(
-      ([hreflang, path]) =>
-        `<xhtml:link rel="alternate" hreflang="${hreflang}" href="${absoluteUrl(origin, path)}"/>`
-    )
-    .join("");
+  const { defaultLocale, origin, supportedLocales } = address;
+  const { href, lastModifiedAt, publishedLocales } = entry;
+  const locales = entryLocales(address, entry);
   const lastmod = lastModifiedAt
     ? `<lastmod>${escapeXml(lastModifiedAt)}</lastmod>`
     : "";
-  return supportedLocales
-    .map(
-      (locale) =>
-        `<url><loc>${absoluteUrl(origin, withLocalePrefix(locale, defaultLocale, href))}</loc>${links}${lastmod}</url>`
-    )
+  // Its URLs name the same alternates but for `x-default`, which is either
+  // shared or each URL's own, so the links are written once per `x-default`.
+  const linkSets = new Map<string, string>();
+  return locales
+    .map((locale) => {
+      const { canonical, languages } = publishedLocales
+        ? publishedLocaleAlternates(
+            defaultLocale,
+            supportedLocales,
+            href,
+            locales,
+            locale
+          )
+        : localeAlternates(locale, defaultLocale, supportedLocales, href);
+      const linksKey = languages["x-default"];
+      const links =
+        linkSets.get(linksKey) ??
+        Object.entries(languages)
+          .map(
+            ([hreflang, path]) =>
+              `<xhtml:link rel="alternate" hreflang="${hreflang}" href="${absoluteUrl(origin, path)}"/>`
+          )
+          .join("");
+      linkSets.set(linksKey, links);
+      return `<url><loc>${absoluteUrl(origin, canonical)}</loc>${links}${lastmod}</url>`;
+    })
     .join("\n");
 };
 
-/** A `<urlset>` of `entries`, each in every locale the site serves. */
+/** A `<urlset>` of `entries`, each in the locales {@link entryLocales} lists. */
 export const renderSitemapUrlset = (
   address: SitemapAddress,
   entries: readonly SitemapEntryItem[]
@@ -179,7 +239,10 @@ export const renderSitemapUrlset = (
   [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">',
-    ...entries.map((entry) => renderEntryUrls(address, entry)),
+    ...entries.flatMap((entry) => {
+      const urls = renderEntryUrls(address, entry);
+      return urls ? [urls] : [];
+    }),
     "</urlset>",
     "",
   ].join("\n");
@@ -198,15 +261,18 @@ const utf8Bytes = (value: string): number =>
  * The entries of one sitemap file, starting at `token`. The first file opens
  * with the catalogue's index pages. A file ends once another API page could
  * take it past {@link SITEMAP_URL_LIMIT} URLs or {@link SITEMAP_BYTE_LIMIT}
- * bytes, measured on the XML this address renders. A token names a position in
- * the list rather than a row, so a file keeps its place when the rows around
- * its boundary change.
+ * bytes, measured on the XML this address renders, and once the walk has read
+ * as many rows as a file could hold URLs: a row that writes none, a series
+ * translated into no offered locale, still takes its place in the list, so the
+ * file can end with fewer URLs, or none. A token names a position in the list
+ * rather than a row, so a file keeps its place when the rows around its
+ * boundary change.
  *
  * It carries the tags every write that adds, removes, or renames a listed page
  * drops, the worker's publication of a scheduled episode included, so a newly
  * published page is listed without waiting for the entry to age out.
  *
- * `ok: false` when the walk failed or stopped short of its file. A cache fill
+ * `ok: false` when the walk failed or met a token it had already read. A cache fill
  * must not throw, so an error the API answered with is reported rather than
  * rethrown, whatever its code.
  */
@@ -225,14 +291,15 @@ export const getSitemapChunk = async (
   applyCacheTag(tenantCreatorsTag(normalizedTenantId));
   applyCacheTag(tenantPagesTag(normalizedTenantId));
 
-  const urlsPerEntry = address.supportedLocales.length;
-  const pageUrls = SITEMAP_PAGE_SIZE * urlsPerEntry;
+  const urlsOf = (entry: SitemapEntryItem): number =>
+    entryLocales(address, entry).length;
+  const pageUrls = SITEMAP_PAGE_SIZE * urlsOf(LONGEST_ENTRY);
   const pageBytes =
     SITEMAP_PAGE_SIZE * utf8Bytes(renderEntryUrls(address, LONGEST_ENTRY));
 
   const entries: SitemapEntryItem[] =
     token === "" ? CATALOGUE_INDEX_PATHS.map((href) => ({ href })) : [];
-  let urls = entries.length * urlsPerEntry;
+  let urls = entries.reduce((sum, entry) => sum + urlsOf(entry), 0);
   let bytes = utf8Bytes(renderSitemapUrlset(address, entries));
   let nextToken = "";
   let stop: CursorWalkStop;
@@ -251,7 +318,7 @@ export const getSitemapChunk = async (
       (items) => {
         for (const entry of items.flatMap(toSitemapEntryItem)) {
           entries.push(entry);
-          urls += urlsPerEntry;
+          urls += urlsOf(entry);
           bytes += utf8Bytes(renderEntryUrls(address, entry)) + 1;
         }
         return (
@@ -270,25 +337,28 @@ export const getSitemapChunk = async (
     return cachedReadFailure("The sitemap is unavailable.");
   }
 
-  // A full file stops the walk with the rest of the list behind `nextToken`,
-  // which is empty when the list happened to end with it.
-  if (stop === "completed" || stop === "stopped-by-callback") {
-    return { ok: true, value: { entries, nextToken } };
+  // A full file, or a walk that read its budget, stops with the rest of the
+  // list behind `nextToken`, which is empty when the list happened to end there.
+  if (stop === "repeated-token") {
+    return cachedReadFailure("The sitemap is unavailable.");
   }
-  return cachedReadFailure("The sitemap is unavailable.");
+  return { ok: true, value: { entries, nextToken } };
 };
 
 /**
  * The start tokens of the files after `tokens`, each file read only for the
  * token that ends it. Each file starts where the one before it ended, so they
- * are read one after another.
+ * are read one after another. A file that writes no URL is not a file: a
+ * `<urlset>` needs at least one `<url>`, so the next one takes its place.
+ * `reads` counts the files read so far, those dropped included.
  */
 const walkSitemapFileTokens = async (
   tenantId: string,
   address: SitemapAddress,
-  tokens: readonly string[]
+  tokens: readonly string[],
+  reads: number
 ): Promise<CachedReadResult<string[]>> => {
-  if (tokens.length >= MAX_SITEMAP_FILES) {
+  if (reads >= MAX_SITEMAP_FILES) {
     return { message: "The sitemap has too many files.", ok: false };
   }
   const chunk = await getSitemapChunk(tenantId, address, tokens.at(-1) ?? "");
@@ -296,10 +366,14 @@ const walkSitemapFileTokens = async (
     return chunk;
   }
 
-  const { nextToken } = chunk.value;
+  const { entries, nextToken } = chunk.value;
+  const writesUrls = entries.some(
+    (entry) => entryLocales(address, entry).length > 0
+  );
+  const kept = writesUrls ? tokens : tokens.slice(0, -1);
   return nextToken
-    ? walkSitemapFileTokens(tenantId, address, [...tokens, nextToken])
-    : { ok: true, value: [...tokens] };
+    ? walkSitemapFileTokens(tenantId, address, [...kept, nextToken], reads + 1)
+    : { ok: true, value: [...kept] };
 };
 
 /**
@@ -322,7 +396,12 @@ export const getSitemapFileTokens = async (
   applyCacheTag(tenantCreatorsTag(normalizedTenantId));
   applyCacheTag(tenantPagesTag(normalizedTenantId));
 
-  const tokens = await walkSitemapFileTokens(normalizedTenantId, address, [""]);
+  const tokens = await walkSitemapFileTokens(
+    normalizedTenantId,
+    address,
+    [""],
+    0
+  );
   return tokens.ok ? tokens : cachedReadFailure(tokens.message);
 };
 

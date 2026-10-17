@@ -64,17 +64,28 @@ const entry = (overrides: {
   kind: SitemapEntryKind;
   lastModifiedAt?: string;
   publicId?: string;
+  publishedLocales?: string[];
   seriesPublicId?: string;
   slug?: string;
 }) => ({
   lastModifiedAt: "",
   publicId: "",
+  publishedLocales: [],
   seriesPublicId: "",
   slug: "",
   ...overrides,
 });
 
+/** A series translated into every locale. */
 const seriesEntry = (publicId: string) =>
+  entry({
+    kind: SitemapEntryKind.SERIES,
+    publicId,
+    publishedLocales: [...getLocales()],
+  });
+
+/** A series translated into no locale the tenant offers. */
+const untranslatedSeriesEntry = (publicId: string) =>
   entry({ kind: SitemapEntryKind.SERIES, publicId });
 
 /**
@@ -128,20 +139,28 @@ describe("toSitemapEntryItem", () => {
         entry({
           kind: SitemapEntryKind.EPISODE,
           publicId: "EPISODE00001",
+          publishedLocales: ["en"],
           seriesPublicId: "SERIES000001",
         }),
         entry({ kind: SitemapEntryKind.LABEL, publicId: "LABEL0000001" }),
         entry({ kind: SitemapEntryKind.CREATOR, publicId: "CREATOR00001" }),
         entry({ kind: SitemapEntryKind.GENRE, publicId: "GENRE0000001" }),
-        entry({ kind: SitemapEntryKind.PAGE, slug: "/legal/terms" }),
+        entry({
+          kind: SitemapEntryKind.PAGE,
+          publishedLocales: ["en"],
+          slug: "/legal/terms",
+        }),
       ].flatMap(toSitemapEntryItem)
     ).toStrictEqual([
-      { href: "/series/SERIES000001" },
-      { href: "/series/SERIES000001/episodes/EPISODE00001" },
+      { href: "/series/SERIES000001", publishedLocales: getLocales() },
+      {
+        href: "/series/SERIES000001/episodes/EPISODE00001",
+        publishedLocales: ["en"],
+      },
       { href: "/labels/LABEL0000001" },
       { href: "/creators/CREATOR00001" },
       { href: "/genres/GENRE0000001" },
-      { href: "/legal/terms" },
+      { href: "/legal/terms", publishedLocales: ["en"] },
     ]);
   });
 
@@ -152,11 +171,45 @@ describe("toSitemapEntryItem", () => {
           kind: SitemapEntryKind.SERIES,
           lastModifiedAt: "2026-09-28T01:02:03Z",
           publicId: "SERIES000001",
+          publishedLocales: ["en"],
         })
       )
     ).toStrictEqual([
-      { href: "/series/SERIES000001", lastModifiedAt: "2026-09-28T01:02:03Z" },
+      {
+        href: "/series/SERIES000001",
+        lastModifiedAt: "2026-09-28T01:02:03Z",
+        publishedLocales: ["en"],
+      },
     ]);
+  });
+
+  it("carries the locales an entry is translated into, without a code this build does not know", () => {
+    expect(
+      toSitemapEntryItem(
+        entry({
+          kind: SitemapEntryKind.SERIES,
+          publicId: "SERIES000001",
+          publishedLocales: ["ja", "xx", "en"],
+        })
+      )
+    ).toStrictEqual([
+      { href: "/series/SERIES000001", publishedLocales: ["ja", "en"] },
+    ]);
+  });
+
+  it("drops a series, an episode, or a page with no translation the API names in a locale this build knows", () => {
+    expect(
+      [
+        entry({ kind: SitemapEntryKind.SERIES, publicId: "SERIES000001" }),
+        entry({
+          kind: SitemapEntryKind.EPISODE,
+          publicId: "EPISODE00001",
+          publishedLocales: ["xx"],
+          seriesPublicId: "SERIES000001",
+        }),
+        entry({ kind: SitemapEntryKind.PAGE, slug: "/legal/terms" }),
+      ].flatMap(toSitemapEntryItem)
+    ).toStrictEqual([]);
   });
 
   it("drops an entry its URL cannot be made for", () => {
@@ -214,6 +267,58 @@ describe("renderSitemapUrlset", () => {
     expect(xml).not.toContain(`${ORIGIN}/ko/`);
   });
 
+  it("lists a page translated into some locales at those locales' URLs alone", () => {
+    const xml = renderSitemapUrlset(ADDRESS, [
+      { href: "/series/SERIES000001", publishedLocales: ["ja", "en"] },
+    ]);
+
+    expect(
+      xml.split("\n").filter((line) => line.startsWith("<url>"))
+    ).toStrictEqual([
+      [
+        `<url><loc>${ORIGIN}/ja/series/SERIES000001</loc>`,
+        `<xhtml:link rel="alternate" hreflang="ja" href="${ORIGIN}/ja/series/SERIES000001"/>`,
+        `<xhtml:link rel="alternate" hreflang="en" href="${ORIGIN}/series/SERIES000001"/>`,
+        `<xhtml:link rel="alternate" hreflang="x-default" href="${ORIGIN}/series/SERIES000001"/>`,
+        "</url>",
+      ].join(""),
+      [
+        `<url><loc>${ORIGIN}/series/SERIES000001</loc>`,
+        `<xhtml:link rel="alternate" hreflang="ja" href="${ORIGIN}/ja/series/SERIES000001"/>`,
+        `<xhtml:link rel="alternate" hreflang="en" href="${ORIGIN}/series/SERIES000001"/>`,
+        `<xhtml:link rel="alternate" hreflang="x-default" href="${ORIGIN}/series/SERIES000001"/>`,
+        "</url>",
+      ].join(""),
+    ]);
+  });
+
+  it("names as x-default the URL a page names itself where the default locale has no translation", () => {
+    const xml = renderSitemapUrlset(BILINGUAL_ADDRESS, [
+      { href: "/series/SERIES000001", publishedLocales: ["en"] },
+    ]);
+
+    expect(xml).toContain(
+      [
+        `<url><loc>${ORIGIN}/en/series/SERIES000001</loc>`,
+        `<xhtml:link rel="alternate" hreflang="en" href="${ORIGIN}/en/series/SERIES000001"/>`,
+        `<xhtml:link rel="alternate" hreflang="x-default" href="${ORIGIN}/en/series/SERIES000001"/>`,
+        "</url>",
+      ].join("")
+    );
+    expect(countOf(xml, "<url>")).toBe(1);
+  });
+
+  it("lists nowhere a page translated into no locale the tenant offers", () => {
+    const xml = renderSitemapUrlset(BILINGUAL_ADDRESS, [
+      { href: "/series/SERIES000001", publishedLocales: ["ko"] },
+      { href: "/labels/LABEL0000001" },
+    ]);
+
+    expect(xml).not.toContain("/series/SERIES000001");
+    expect(countOf(xml, "<url>")).toBe(2);
+    expect(xml).not.toContain("\n\n");
+  });
+
   it("names the root in each locale", () => {
     const xml = renderSitemapUrlset(ADDRESS, [{ href: "/" }]);
 
@@ -261,8 +366,8 @@ describe("getSitemapChunk", () => {
       ok: true,
       value: {
         entries: [
-          { href: "/series/SERIES000001" },
-          { href: "/series/SERIES000002" },
+          { href: "/series/SERIES000001", publishedLocales: getLocales() },
+          { href: "/series/SERIES000002", publishedLocales: getLocales() },
         ],
         nextToken: "",
       },
@@ -328,6 +433,25 @@ describe("getSitemapChunk", () => {
     expect(entries.length * 2).toBeGreaterThan(SITEMAP_URL_LIMIT - 500 * 2);
   });
 
+  it("counts a file's URLs by the locales each entry is translated into", async () => {
+    answerPages(200, (page, index) =>
+      entry({
+        kind: SitemapEntryKind.SERIES,
+        publicId: `S${page}-${index}`,
+        publishedLocales: ["ja"],
+      })
+    );
+
+    const chunk = await getSitemapChunk(TENANT_ID, BILINGUAL_ADDRESS, "p1");
+
+    expect(chunk.ok).toBe(true);
+    const entries = chunk.ok ? chunk.value.entries : [];
+    const xml = renderSitemapUrlset(BILINGUAL_ADDRESS, entries);
+    expect(countOf(xml, "<url>")).toBe(entries.length);
+    expect(entries.length).toBeLessThanOrEqual(SITEMAP_URL_LIMIT);
+    expect(entries.length).toBeGreaterThan(SITEMAP_URL_LIMIT - 500 * 2);
+  });
+
   // One URL per entry is the most entries a file holds, and the walk still has
   // to end it on the URL limit rather than on its own page cap.
   it("fills a file of a tenant that offers one locale without failing the walk", async () => {
@@ -346,11 +470,25 @@ describe("getSitemapChunk", () => {
     expect(chunk.ok && chunk.value.nextToken).not.toBe("");
   });
 
+  it("ends a file where the walk read as many rows as it could hold, however few URLs they wrote", async () => {
+    answerPages(120, (page, index) =>
+      untranslatedSeriesEntry(`S${page}-${index}`)
+    );
+
+    await expect(
+      getSitemapChunk(TENANT_ID, ADDRESS, "p1")
+    ).resolves.toStrictEqual({
+      ok: true,
+      value: { entries: [], nextToken: "p101" },
+    });
+  });
+
   it("ends a file before it would pass the byte limit", async () => {
     // Pages at slugs as long as the column holds, the most bytes an entry takes.
     answerPages(40, (page, index) =>
       entry({
         kind: SitemapEntryKind.PAGE,
+        publishedLocales: [...getLocales()],
         slug: "/".concat(`${page}-${index}-`.padEnd(254, "p")),
       })
     );
@@ -395,6 +533,32 @@ describe("getSitemapFileTokens", () => {
     expect(mockCacheTag).toHaveBeenCalledWith(
       `tenant:${TENANT_ID}:series:detail`
     );
+  });
+
+  it("leaves out a file whose entries are translated into no locale the tenant offers", async () => {
+    answerPages(201, (page, index) =>
+      entry({
+        kind: SitemapEntryKind.SERIES,
+        publicId: `S${page}-${index}`,
+        publishedLocales: page < 200 ? ["ko"] : ["ja"],
+      })
+    );
+
+    await expect(
+      getSitemapFileTokens(TENANT_ID, BILINGUAL_ADDRESS)
+    ).resolves.toStrictEqual({ ok: true, value: ["", "p200"] });
+  });
+
+  it("leaves out a file whose rows write no URL", async () => {
+    answerPages(201, (page, index) =>
+      page < 200
+        ? untranslatedSeriesEntry(`S${page}-${index}`)
+        : seriesEntry(`S${page}-${index}`)
+    );
+
+    await expect(
+      getSitemapFileTokens(TENANT_ID, ADDRESS)
+    ).resolves.toStrictEqual({ ok: true, value: ["", "p200"] });
   });
 
   it("reports an unavailable API as a failure and keeps it out of the cache", async () => {
