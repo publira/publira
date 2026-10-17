@@ -878,8 +878,9 @@ class ConnectFixtureServer {
   /// `BeginPasskeyRegistration` refuses another.
   var passkeyLimit = 10;
 
-  /// The assertions `FinishPasskeyLogin` signs the member in for. Anything
-  /// else is refused as an unknown passkey is.
+  /// The assertions `FinishPasskeyLogin` signs the member in for, and
+  /// `RequestEmailChange` and `DeleteMe` take as the member's confirmation.
+  /// Anything else is refused as an unknown passkey is.
   final memberPasskeyAssertions = <String>{};
 
   /// The credentials `FinishPasskeyRegistration` refuses as ones the tenant
@@ -893,6 +894,10 @@ class ConnectFixtureServer {
   /// The options `BeginPasskeyRegistration` answers with.
   static const passkeyCreationOptionsJson =
       '{"challenge":"cmVnaXN0ZXI","rp":{"id":"localhost","name":"Fixture"}}';
+
+  /// The options `BeginPasskeyConfirmation` answers with.
+  static const passkeyConfirmationOptionsJson =
+      '{"challenge":"Y29uZmlybQ","rpId":"localhost","allowCredentials":[{"type":"public-key","id":"cGFzc2tleS1h"}]}';
 
   /// The nonces `LoginWithIdToken` has spent; each is accepted once.
   final spentNonces = <String>{};
@@ -1744,6 +1749,29 @@ class ConnectFixtureServer {
       await _writeMessage(
         request,
         pb.ListMyPasskeysResponse(passkeys: memberPasskeys),
+      );
+      return;
+    }
+
+    if (path.endsWith('/BeginPasskeyConfirmation')) {
+      recorded.decode(pb.BeginPasskeyConfirmationRequest());
+      if (!await _writeUnlessAuthorized(request)) {
+        return;
+      }
+      if (memberPasskeys.isEmpty) {
+        await _writeError(
+          request,
+          HttpStatus.badRequest,
+          'failed_precondition',
+          'no passkey is registered',
+        );
+        return;
+      }
+      await _writeMessage(
+        request,
+        pb.BeginPasskeyConfirmationResponse(
+          requestOptionsJson: passkeyConfirmationOptionsJson,
+        ),
       );
       return;
     }
@@ -3859,9 +3887,9 @@ class ConnectFixtureServer {
   }
 
   /// `RequestEmailChange` as the API answers it: the current address has to
-  /// be the member's and confirmed with their password or a fresh sign-in to
-  /// a linked provider, and an address another account holds is refused as
-  /// `already_exists`.
+  /// be the member's and confirmed with their password, a fresh sign-in to a
+  /// linked provider, or one of their passkeys, and an address another
+  /// account holds is refused as `already_exists`.
   Future<void> _writeRequestEmailChange(
     HttpRequest request,
     pb.RequestEmailChangeRequest body,
@@ -3883,6 +3911,13 @@ class ConnectFixtureServer {
         nonce: body.nonce,
       );
       if (!confirmed) {
+        return;
+      }
+    } else if (body.passkeyCredentialJson.isNotEmpty) {
+      if (!await _writeUnlessConfirmedWithPasskey(
+        request,
+        body.passkeyCredentialJson,
+      )) {
         return;
       }
     } else if (body.currentPassword.trim() != memberCurrentPassword) {
@@ -3950,9 +3985,10 @@ class ConnectFixtureServer {
     }
   }
 
-  /// `DeleteMe` as the API answers it: the password has to be the member's,
-  /// the tenant's last active tenant admin is refused, and the account is
-  /// then gone along with every token it held.
+  /// `DeleteMe` as the API answers it: the password, a fresh sign-in to a
+  /// linked provider, or one of the member's passkeys has to confirm it, the
+  /// tenant's last active tenant admin is refused, and the account is then
+  /// gone along with every token it held.
   Future<void> _writeDeleteMe(
     HttpRequest request,
     pb.DeleteMeRequest body,
@@ -3968,6 +4004,13 @@ class ConnectFixtureServer {
         nonce: body.nonce,
       );
       if (!confirmed) {
+        return;
+      }
+    } else if (body.passkeyCredentialJson.isNotEmpty) {
+      if (!await _writeUnlessConfirmedWithPasskey(
+        request,
+        body.passkeyCredentialJson,
+      )) {
         return;
       }
     } else if (body.password.trim() != memberCurrentPassword) {
@@ -3987,6 +4030,26 @@ class ConnectFixtureServer {
     memberDeleted = true;
     activeAccessToken = null;
     await _writeMessage(request, pb.DeleteMeResponse());
+  }
+
+  /// Checks the passkey assertion an account without a password confirms a
+  /// step with, as the API does: one it does not take is `invalid_argument`
+  /// on `passkey_credential_json`. Reports whether the request may go on.
+  Future<bool> _writeUnlessConfirmedWithPasskey(
+    HttpRequest request,
+    String credentialJson,
+  ) async {
+    if (memberPasskeyAssertions.contains(credentialJson)) {
+      return true;
+    }
+    await _writeError(
+      request,
+      HttpStatus.badRequest,
+      'invalid_argument',
+      'passkey refused',
+      details: [badRequestDetail('passkey_credential_json')],
+    );
+    return false;
   }
 
   /// Checks the fresh sign-in an account without a password confirms a step

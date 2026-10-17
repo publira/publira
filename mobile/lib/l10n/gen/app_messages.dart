@@ -733,6 +733,16 @@ final class AppMessages {
     return _format('mobile.catalog.view_all');
   }
 
+  /// `mobile.change_email.confirm_with_passkey`
+  String get changeEmailConfirmWithPasskey {
+    return _format('mobile.change_email.confirm_with_passkey');
+  }
+
+  /// `mobile.change_email.confirm_with_passkey_or_provider`
+  String get changeEmailConfirmWithPasskeyOrProvider {
+    return _format('mobile.change_email.confirm_with_passkey_or_provider');
+  }
+
   /// `mobile.change_email.confirm_with_provider`
   String get changeEmailConfirmWithProvider {
     return _format('mobile.change_email.confirm_with_provider');
@@ -796,6 +806,11 @@ final class AppMessages {
   /// `mobile.change_email.with_google`
   String get changeEmailWithGoogle {
     return _format('mobile.change_email.with_google');
+  }
+
+  /// `mobile.change_email.with_passkey`
+  String get changeEmailWithPasskey {
+    return _format('mobile.change_email.with_passkey');
   }
 
   /// `mobile.change_password.changed`
@@ -1396,6 +1411,16 @@ final class AppMessages {
     return _format('mobile.delete_account.confirm_title');
   }
 
+  /// `mobile.delete_account.confirm_with_passkey`
+  String get deleteAccountConfirmWithPasskey {
+    return _format('mobile.delete_account.confirm_with_passkey');
+  }
+
+  /// `mobile.delete_account.confirm_with_passkey_or_provider`
+  String get deleteAccountConfirmWithPasskeyOrProvider {
+    return _format('mobile.delete_account.confirm_with_passkey_or_provider');
+  }
+
   /// `mobile.delete_account.confirm_with_provider`
   String get deleteAccountConfirmWithProvider {
     return _format('mobile.delete_account.confirm_with_provider');
@@ -1454,6 +1479,11 @@ final class AppMessages {
   /// `mobile.delete_account.with_google`
   String get deleteAccountWithGoogle {
     return _format('mobile.delete_account.with_google');
+  }
+
+  /// `mobile.delete_account.with_passkey`
+  String get deleteAccountWithPasskey {
+    return _format('mobile.delete_account.with_passkey');
   }
 
   /// `mobile.downloads.clear`
@@ -2159,6 +2189,21 @@ final class AppMessages {
   /// `mobile.passkeys.already_registered`
   String get passkeysAlreadyRegistered {
     return _format('mobile.passkeys.already_registered');
+  }
+
+  /// `mobile.passkeys.confirm_cancelled`
+  String get passkeysConfirmCancelled {
+    return _format('mobile.passkeys.confirm_cancelled');
+  }
+
+  /// `mobile.passkeys.confirm_failed`
+  String get passkeysConfirmFailed {
+    return _format('mobile.passkeys.confirm_failed');
+  }
+
+  /// `mobile.passkeys.confirm_none`
+  String get passkeysConfirmNone {
+    return _format('mobile.passkeys.confirm_none');
   }
 
   /// `mobile.passkeys.description`
@@ -3453,6 +3498,10 @@ const _jaSources = <String, String>{
   'mobile.catalog.ranking_failed': '今週のランキングを表示できませんでした。もう一度お試しください。',
   'mobile.catalog.ranking_heading': '今週のトップ10',
   'mobile.catalog.view_all': 'すべて見る',
+  'mobile.change_email.confirm_with_passkey':
+      'このアカウントにはパスワードがありません。パスキーで確認して、確認メールを送信してください。',
+  'mobile.change_email.confirm_with_passkey_or_provider':
+      'このアカウントにはパスワードがありません。パスキーで確認するか、連携しているアカウントでもう一度サインインして、確認メールを送信してください。',
   'mobile.change_email.confirm_with_provider':
       'このアカウントにはパスワードがありません。連携しているアカウントでもう一度サインインして、確認メールを送信してください。',
   'mobile.change_email.current_label': '現在のメールアドレス',
@@ -3469,6 +3518,7 @@ const _jaSources = <String, String>{
   'mobile.change_email.title': 'メールアドレス変更',
   'mobile.change_email.with_apple': 'Appleで確認',
   'mobile.change_email.with_google': 'Googleで確認',
+  'mobile.change_email.with_passkey': 'パスキーで確認',
   'mobile.change_password.changed': 'パスワードを変更しました。他の端末はログアウトされました。',
   'mobile.change_password.current_label': '現在のパスワード',
   'mobile.change_password.failed': 'パスワードの変更に失敗しました。入力内容をご確認ください。',
@@ -3594,6 +3644,10 @@ const _jaSources = <String, String>{
   'mobile.delete_account.confirm': '削除する',
   'mobile.delete_account.confirm_description': 'ログアウトされ、アカウントは元に戻せません。',
   'mobile.delete_account.confirm_title': 'アカウントを削除しますか？',
+  'mobile.delete_account.confirm_with_passkey':
+      'このアカウントにはパスワードがありません。パスキーで確認してください。',
+  'mobile.delete_account.confirm_with_passkey_or_provider':
+      'このアカウントにはパスワードがありません。パスキーで確認するか、連携しているアカウントでもう一度サインインして確認してください。',
   'mobile.delete_account.confirm_with_provider':
       'このアカウントにはパスワードがありません。連携しているアカウントでもう一度サインインして確認してください。',
   'mobile.delete_account.deleted': 'アカウントを削除しました。ご利用ありがとうございました。',
@@ -3610,6 +3664,7 @@ const _jaSources = <String, String>{
   'mobile.delete_account.title': 'アカウントを削除',
   'mobile.delete_account.with_apple': 'Appleで確認',
   'mobile.delete_account.with_google': 'Googleで確認',
+  'mobile.delete_account.with_passkey': 'パスキーで確認',
   'mobile.downloads.clear': 'すべて削除',
   'mobile.downloads.clear_confirm': 'すべて削除',
   'mobile.downloads.clear_confirm_description':
@@ -3760,6 +3815,10 @@ const _jaSources = <String, String>{
   'mobile.passkeys.added': 'パスキーを追加しました。このパスキーでサインインできます。',
   'mobile.passkeys.added_at': '{\$date}に追加',
   'mobile.passkeys.already_registered': 'このパスキーはすでにアカウントに登録されています。',
+  'mobile.passkeys.confirm_cancelled':
+      'パスキーの操作がキャンセルされたか、時間切れになりました。もう一度お試しください。',
+  'mobile.passkeys.confirm_failed': 'このパスキーで確認できませんでした。もう一度お試しください。',
+  'mobile.passkeys.confirm_none': 'このアカウントにはパスキーが登録されていません。別の方法で確認してください。',
   'mobile.passkeys.description':
       'パスワードの代わりに、端末の画面ロックやパスワードマネージャーでこのアプリとサイトにサインインできます。',
   'mobile.passkeys.empty': '登録されているパスキーはありません。',
@@ -4190,6 +4249,10 @@ const _enSources = <String, String>{
       'Could not show this week\'s ranking. Try again.',
   'mobile.catalog.ranking_heading': 'Top 10 this week',
   'mobile.catalog.view_all': 'View all',
+  'mobile.change_email.confirm_with_passkey':
+      'Your account has no password. Confirm with a passkey to send the confirmation emails.',
+  'mobile.change_email.confirm_with_passkey_or_provider':
+      'Your account has no password. Confirm with a passkey, or sign in again with a linked account, to send the confirmation emails.',
   'mobile.change_email.confirm_with_provider':
       'Your account has no password. Sign in again with a linked account to send the confirmation emails.',
   'mobile.change_email.current_label': 'Current email address',
@@ -4208,6 +4271,7 @@ const _enSources = <String, String>{
   'mobile.change_email.title': 'Change email address',
   'mobile.change_email.with_apple': 'Confirm with Apple',
   'mobile.change_email.with_google': 'Confirm with Google',
+  'mobile.change_email.with_passkey': 'Confirm with a passkey',
   'mobile.change_password.changed':
       'Your password has been changed. Your other devices have been signed out.',
   'mobile.change_password.current_label': 'Current password',
@@ -4359,6 +4423,10 @@ const _enSources = <String, String>{
   'mobile.delete_account.confirm_description':
       'You will be signed out, and the account cannot be restored.',
   'mobile.delete_account.confirm_title': 'Delete your account?',
+  'mobile.delete_account.confirm_with_passkey':
+      'Your account has no password. Confirm with a passkey.',
+  'mobile.delete_account.confirm_with_passkey_or_provider':
+      'Your account has no password. Confirm with a passkey, or sign in again with a linked account.',
   'mobile.delete_account.confirm_with_provider':
       'Your account has no password. Sign in again with a linked account to confirm.',
   'mobile.delete_account.deleted':
@@ -4378,6 +4446,7 @@ const _enSources = <String, String>{
   'mobile.delete_account.title': 'Delete account',
   'mobile.delete_account.with_apple': 'Confirm with Apple',
   'mobile.delete_account.with_google': 'Confirm with Google',
+  'mobile.delete_account.with_passkey': 'Confirm with a passkey',
   'mobile.downloads.clear': 'Clear all',
   'mobile.downloads.clear_confirm': 'Clear all',
   'mobile.downloads.clear_confirm_description':
@@ -4556,6 +4625,12 @@ const _enSources = <String, String>{
   'mobile.passkeys.added_at': 'Added on {\$date}',
   'mobile.passkeys.already_registered':
       'This passkey is already registered to your account.',
+  'mobile.passkeys.confirm_cancelled':
+      'The passkey request was cancelled or timed out. Try again.',
+  'mobile.passkeys.confirm_failed':
+      'Could not confirm with this passkey. Try again.',
+  'mobile.passkeys.confirm_none':
+      'No passkey is registered to your account. Confirm another way.',
   'mobile.passkeys.description':
       'Sign in to this app and the site with your device\'s screen lock or a password manager instead of a password.',
   'mobile.passkeys.empty': 'No passkeys are registered.',
@@ -4985,6 +5060,10 @@ const _koSources = <String, String>{
   'mobile.catalog.ranking_failed': '이번 주 랭킹을 표시할 수 없습니다',
   'mobile.catalog.ranking_heading': '이번 주 톱 10',
   'mobile.catalog.view_all': '모두 보기',
+  'mobile.change_email.confirm_with_passkey':
+      '이 계정에는 비밀번호가 없습니다. 패스키로 확인하여 확인 메일을 보내 주세요.',
+  'mobile.change_email.confirm_with_passkey_or_provider':
+      '이 계정에는 비밀번호가 없습니다. 패스키로 확인하거나 연결된 계정으로 다시 로그인하여 확인 메일을 보내 주세요.',
   'mobile.change_email.confirm_with_provider':
       '이 계정에는 비밀번호가 없습니다. 연결된 계정으로 다시 로그인하여 확인 메일을 보내 주세요.',
   'mobile.change_email.current_label': '현재 이메일 주소',
@@ -5001,6 +5080,7 @@ const _koSources = <String, String>{
   'mobile.change_email.title': '이메일 주소 변경',
   'mobile.change_email.with_apple': 'Apple로 확인',
   'mobile.change_email.with_google': 'Google로 확인',
+  'mobile.change_email.with_passkey': '패스키로 확인',
   'mobile.change_password.changed': '비밀번호를 변경했습니다. 다른 기기는 로그아웃되었습니다.',
   'mobile.change_password.current_label': '현재 비밀번호',
   'mobile.change_password.failed': '비밀번호를 변경하지 못했습니다. 입력한 내용을 확인해 주세요.',
@@ -5126,6 +5206,10 @@ const _koSources = <String, String>{
   'mobile.delete_account.confirm': '삭제',
   'mobile.delete_account.confirm_description': '로그아웃되며, 계정은 복구할 수 없습니다.',
   'mobile.delete_account.confirm_title': '계정을 삭제할까요?',
+  'mobile.delete_account.confirm_with_passkey':
+      '이 계정에는 비밀번호가 없습니다. 패스키로 확인해 주세요.',
+  'mobile.delete_account.confirm_with_passkey_or_provider':
+      '이 계정에는 비밀번호가 없습니다. 패스키로 확인하거나 연결된 계정으로 다시 로그인하여 확인해 주세요.',
   'mobile.delete_account.confirm_with_provider':
       '이 계정에는 비밀번호가 없습니다. 연결된 계정으로 다시 로그인하여 확인해 주세요.',
   'mobile.delete_account.deleted': '계정을 삭제했습니다. 그동안 이용해 주셔서 감사합니다.',
@@ -5142,6 +5226,7 @@ const _koSources = <String, String>{
   'mobile.delete_account.title': '계정 삭제',
   'mobile.delete_account.with_apple': 'Apple로 확인',
   'mobile.delete_account.with_google': 'Google로 확인',
+  'mobile.delete_account.with_passkey': '패스키로 확인',
   'mobile.downloads.clear': '모두 삭제',
   'mobile.downloads.clear_confirm': '모두 삭제',
   'mobile.downloads.clear_confirm_description':
@@ -5300,6 +5385,10 @@ const _koSources = <String, String>{
   'mobile.passkeys.added': '패스키를 추가했습니다. 이제 이 패스키로 로그인할 수 있습니다.',
   'mobile.passkeys.added_at': '{\$date}에 추가',
   'mobile.passkeys.already_registered': '이 패스키는 이미 계정에 등록되어 있습니다.',
+  'mobile.passkeys.confirm_cancelled':
+      '패스키 요청이 취소되었거나 시간이 초과되었습니다. 다시 시도해 주세요.',
+  'mobile.passkeys.confirm_failed': '이 패스키로 확인하지 못했습니다. 다시 시도해 주세요.',
+  'mobile.passkeys.confirm_none': '이 계정에는 등록된 패스키가 없습니다. 다른 방법으로 확인해 주세요.',
   'mobile.passkeys.description':
       '비밀번호 대신 기기의 화면 잠금이나 비밀번호 관리자로 이 앱과 사이트에 로그인할 수 있습니다.',
   'mobile.passkeys.empty': '등록된 패스키가 없습니다.',
@@ -5685,6 +5774,9 @@ const _zhHansSources = <String, String>{
   'mobile.catalog.ranking_failed': '无法显示本周排行榜。',
   'mobile.catalog.ranking_heading': '本周前十',
   'mobile.catalog.view_all': '查看全部',
+  'mobile.change_email.confirm_with_passkey': '您的账户没有密码。请使用通行密钥确认以发送确认邮件。',
+  'mobile.change_email.confirm_with_passkey_or_provider':
+      '您的账户没有密码。请使用通行密钥确认，或使用关联的账户重新登录，以发送确认邮件。',
   'mobile.change_email.confirm_with_provider': '您的账户没有密码。请使用关联的账户重新登录以发送确认邮件。',
   'mobile.change_email.current_label': '当前邮箱地址',
   'mobile.change_email.failed': '无法申请邮箱地址变更。请检查您输入的内容。',
@@ -5698,6 +5790,7 @@ const _zhHansSources = <String, String>{
   'mobile.change_email.title': '变更邮箱地址',
   'mobile.change_email.with_apple': '通过Apple确认',
   'mobile.change_email.with_google': '通过Google确认',
+  'mobile.change_email.with_passkey': '使用通行密钥确认',
   'mobile.change_password.changed': '您的密码已变更。您其他设备上的登录已退出。',
   'mobile.change_password.current_label': '当前密码',
   'mobile.change_password.failed': '无法变更您的密码。请检查您输入的内容。',
@@ -5819,6 +5912,9 @@ const _zhHansSources = <String, String>{
   'mobile.delete_account.confirm': '注销',
   'mobile.delete_account.confirm_description': '您将退出登录，且账户无法恢复。',
   'mobile.delete_account.confirm_title': '要注销您的账户吗？',
+  'mobile.delete_account.confirm_with_passkey': '您的账户没有密码。请使用通行密钥确认。',
+  'mobile.delete_account.confirm_with_passkey_or_provider':
+      '您的账户没有密码。请使用通行密钥确认，或使用关联的账户重新登录以确认。',
   'mobile.delete_account.confirm_with_provider': '您的账户没有密码。请使用关联的账户重新登录以确认。',
   'mobile.delete_account.deleted': '您的账户已注销。感谢您的使用。',
   'mobile.delete_account.description': '注销账户会永久取消您对它的访问权限，且无法撤销。',
@@ -5832,6 +5928,7 @@ const _zhHansSources = <String, String>{
   'mobile.delete_account.title': '注销账户',
   'mobile.delete_account.with_apple': '通过Apple确认',
   'mobile.delete_account.with_google': '通过Google确认',
+  'mobile.delete_account.with_passkey': '使用通行密钥确认',
   'mobile.downloads.clear': '全部删除',
   'mobile.downloads.clear_confirm': '全部删除',
   'mobile.downloads.clear_confirm_description':
@@ -5973,6 +6070,9 @@ const _zhHansSources = <String, String>{
   'mobile.passkeys.added': '已添加通行密钥。现在可以使用它登录。',
   'mobile.passkeys.added_at': '添加于{\$date}',
   'mobile.passkeys.already_registered': '此通行密钥已注册到您的账户。',
+  'mobile.passkeys.confirm_cancelled': '通行密钥请求已取消或超时。请重试。',
+  'mobile.passkeys.confirm_failed': '无法使用此通行密钥确认。请重试。',
+  'mobile.passkeys.confirm_none': '您的账户没有注册通行密钥。请使用其他方式确认。',
   'mobile.passkeys.description': '使用设备的屏幕锁定或密码管理器代替密码登录此应用和网站。',
   'mobile.passkeys.empty': '尚未注册通行密钥。',
   'mobile.passkeys.last': '您的账户没有密码，也没有关联的账户，因此无法移除最后一个通行密钥。',
@@ -6330,6 +6430,9 @@ const _zhHantSources = <String, String>{
   'mobile.catalog.ranking_failed': '無法顯示本週排行榜。',
   'mobile.catalog.ranking_heading': '本週前十名',
   'mobile.catalog.view_all': '查看全部',
+  'mobile.change_email.confirm_with_passkey': '您的帳戶沒有密碼。請使用通行金鑰確認以寄送確認郵件。',
+  'mobile.change_email.confirm_with_passkey_or_provider':
+      '您的帳戶沒有密碼。請使用通行金鑰確認，或使用已連結的帳戶重新登入，以寄送確認郵件。',
   'mobile.change_email.confirm_with_provider': '您的帳戶沒有密碼。請使用已連結的帳戶重新登入以寄送確認郵件。',
   'mobile.change_email.current_label': '目前的電子郵件地址',
   'mobile.change_email.failed': '無法申請電子郵件地址變更。請檢查您輸入的內容。',
@@ -6344,6 +6447,7 @@ const _zhHantSources = <String, String>{
   'mobile.change_email.title': '變更電子郵件地址',
   'mobile.change_email.with_apple': '透過Apple確認',
   'mobile.change_email.with_google': '透過Google確認',
+  'mobile.change_email.with_passkey': '使用通行金鑰確認',
   'mobile.change_password.changed': '您的密碼已變更。您其他裝置上的登入已登出。',
   'mobile.change_password.current_label': '目前的密碼',
   'mobile.change_password.failed': '無法變更您的密碼。請檢查您輸入的內容。',
@@ -6466,6 +6570,9 @@ const _zhHantSources = <String, String>{
   'mobile.delete_account.confirm': '刪除',
   'mobile.delete_account.confirm_description': '您將被登出，且帳戶無法復原。',
   'mobile.delete_account.confirm_title': '要刪除您的帳戶嗎？',
+  'mobile.delete_account.confirm_with_passkey': '您的帳戶沒有密碼。請使用通行金鑰確認。',
+  'mobile.delete_account.confirm_with_passkey_or_provider':
+      '您的帳戶沒有密碼。請使用通行金鑰確認，或使用已連結的帳戶重新登入以確認。',
   'mobile.delete_account.confirm_with_provider': '您的帳戶沒有密碼。請使用已連結的帳戶重新登入以確認。',
   'mobile.delete_account.deleted': '您的帳戶已刪除。感謝您的使用。',
   'mobile.delete_account.description': '刪除帳戶會永久取消您對它的存取權限，且無法復原。',
@@ -6479,6 +6586,7 @@ const _zhHantSources = <String, String>{
   'mobile.delete_account.title': '刪除帳戶',
   'mobile.delete_account.with_apple': '透過Apple確認',
   'mobile.delete_account.with_google': '透過Google確認',
+  'mobile.delete_account.with_passkey': '使用通行金鑰確認',
   'mobile.downloads.clear': '全部刪除',
   'mobile.downloads.clear_confirm': '全部刪除',
   'mobile.downloads.clear_confirm_description':
@@ -6620,6 +6728,9 @@ const _zhHantSources = <String, String>{
   'mobile.passkeys.added': '已新增通行金鑰。現在可以使用它登入。',
   'mobile.passkeys.added_at': '新增於{\$date}',
   'mobile.passkeys.already_registered': '此通行金鑰已註冊到您的帳戶。',
+  'mobile.passkeys.confirm_cancelled': '通行金鑰要求已取消或逾時。請重試。',
+  'mobile.passkeys.confirm_failed': '無法使用此通行金鑰確認。請重試。',
+  'mobile.passkeys.confirm_none': '您的帳戶沒有註冊通行金鑰。請使用其他方式確認。',
   'mobile.passkeys.description': '使用裝置的螢幕鎖定或密碼管理工具代替密碼登入此應用程式和網站。',
   'mobile.passkeys.empty': '尚未註冊通行金鑰。',
   'mobile.passkeys.last': '您的帳戶沒有密碼，也沒有已連結的帳戶，因此無法移除最後一個通行金鑰。',

@@ -305,6 +305,9 @@ class FakeAuthRepository implements AuthRepository {
   /// The credentials [deleteAccountWithProvider] was confirmed with.
   final deletionCredentials = <ProviderCredential>[];
 
+  /// The assertions [deleteAccountWithPasskey] was confirmed with.
+  final deletionPasskeyCredentials = <String>[];
+
   /// Held open by a test that needs to act while [signOut] is in flight.
   Completer<void>? signOutGate;
 
@@ -346,6 +349,9 @@ class FakeAuthRepository implements AuthRepository {
 
   /// The options [beginPasskeyRegistration] answers with.
   static const creationOptionsJson = '{"challenge":"registration"}';
+
+  /// The options [beginPasskeyConfirmation] answers with.
+  static const confirmationOptionsJson = '{"challenge":"confirmation"}';
 
   @override
   Future<AuthSession> signIn({
@@ -505,6 +511,14 @@ class FakeAuthRepository implements AuthRepository {
     );
     passkeys = [...passkeys]..[index] = renamed;
     return renamed;
+  }
+
+  @override
+  Future<String> beginPasskeyConfirmation(AuthSession session) async {
+    if (passkeys.isEmpty) {
+      throw const AuthFailure(AuthFailureKind.passkeyNotFound);
+    }
+    return confirmationOptionsJson;
   }
 
   @override
@@ -856,6 +870,29 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<void> requestEmailChangeWithPasskey(
+    AuthSession session, {
+    required String currentEmail,
+    required String newEmail,
+    required String credentialJson,
+  }) async {
+    emailChanges.add(
+      EmailChangeCall(
+        currentEmail: currentEmail,
+        newEmail: newEmail,
+        passkeyCredentialJson: credentialJson,
+      ),
+    );
+    final failure = accountFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    if (currentEmail != email) {
+      throw const AuthFailure(AuthFailureKind.invalidInput);
+    }
+  }
+
+  @override
   Future<EmailChangeProgress> confirmEmailChange(String token) async {
     final failure = confirmEmailChangeFailure;
     if (failure != null) {
@@ -890,6 +927,20 @@ class FakeAuthRepository implements AuthRepository {
     ProviderCredential credential,
   ) async {
     deletionCredentials.add(credential);
+    final failure = accountFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    deleted = true;
+    refreshFailure = const AuthFailure(AuthFailureKind.sessionExpired);
+  }
+
+  @override
+  Future<void> deleteAccountWithPasskey(
+    AuthSession session,
+    String credentialJson,
+  ) async {
+    deletionPasskeyCredentials.add(credentialJson);
     final failure = accountFailure;
     if (failure != null) {
       throw failure;
@@ -1030,14 +1081,16 @@ class FakePasskeyAuthenticator implements PasskeyAuthenticator {
   }
 }
 
-/// One call to [FakeAuthRepository.requestEmailChange] or
-/// [FakeAuthRepository.requestEmailChangeWithProvider].
+/// One call to [FakeAuthRepository.requestEmailChange],
+/// [FakeAuthRepository.requestEmailChangeWithProvider], or
+/// [FakeAuthRepository.requestEmailChangeWithPasskey].
 class EmailChangeCall {
   const EmailChangeCall({
     required this.currentEmail,
     required this.newEmail,
     this.currentPassword = '',
     this.credential,
+    this.passkeyCredentialJson = '',
   });
 
   final String currentEmail;
@@ -1046,6 +1099,9 @@ class EmailChangeCall {
 
   /// The fresh sign-in an account without a password confirmed with.
   final ProviderCredential? credential;
+
+  /// The passkey assertion an account without a password confirmed with.
+  final String passkeyCredentialJson;
 }
 
 /// One call to [FakeAuthRepository.signUp], so a test can assert on what the

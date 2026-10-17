@@ -5059,6 +5059,8 @@
       "updated": "您的个人资料已更新。"
     },
     "change_email": {
+      "confirm_with_passkey": "您的账户没有密码。请使用通行密钥确认以发送确认邮件。",
+      "confirm_with_passkey_or_provider": "您的账户没有密码。请使用通行密钥确认，或使用关联的账户重新登录，以发送确认邮件。",
       "confirm_with_provider": "您的账户没有密码。请使用关联的账户重新登录以发送确认邮件。",
       "current_label": "当前邮箱地址",
       "failed": "无法申请邮箱地址变更。请检查您输入的内容。",
@@ -5071,7 +5073,8 @@
       "submit": "发送确认邮件",
       "title": "变更邮箱地址",
       "with_apple": "通过Apple确认",
-      "with_google": "通过Google确认"
+      "with_google": "通过Google确认",
+      "with_passkey": "使用通行密钥确认"
     },
     "change_password": {
       "changed": "您的密码已变更。您其他设备上的登录已退出。",
@@ -5091,6 +5094,8 @@
       "confirm": "注销",
       "confirm_description": "您将退出登录，且账户无法恢复。",
       "confirm_title": "要注销您的账户吗？",
+      "confirm_with_passkey": "您的账户没有密码。请使用通行密钥确认。",
+      "confirm_with_passkey_or_provider": "您的账户没有密码。请使用通行密钥确认，或使用关联的账户重新登录以确认。",
       "confirm_with_provider": "您的账户没有密码。请使用关联的账户重新登录以确认。",
       "deleted": "您的账户已注销。感谢您的使用。",
       "description": "注销账户会永久取消您对它的访问权限，且无法撤销。",
@@ -5102,7 +5107,8 @@
       "submit": "注销我的账户",
       "title": "注销账户",
       "with_apple": "通过Apple确认",
-      "with_google": "通过Google确认"
+      "with_google": "通过Google确认",
+      "with_passkey": "使用通行密钥确认"
     },
     "confirm_email": {
       "changed": "您的邮箱地址已变更。",
@@ -5147,6 +5153,9 @@
       "added": "已添加通行密钥。现在可以使用它登录。",
       "added_at": "添加于{$date}",
       "already_registered": "此通行密钥已注册到您的账户。",
+      "confirm_cancelled": "通行密钥请求已取消或超时。请重试。",
+      "confirm_failed": "无法使用此通行密钥确认。请重试。",
+      "confirm_none": "您的账户没有注册通行密钥。请使用其他方式确认。",
       "description": "使用设备的屏幕锁定或密码管理器代替密码登录此应用和网站。",
       "empty": "尚未注册通行密钥。",
       "last": "您的账户没有密码，也没有关联的账户，因此无法移除最后一个通行密钥。",

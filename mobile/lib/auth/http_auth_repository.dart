@@ -402,6 +402,29 @@ class HttpAuthRepository implements AuthRepository {
     }
   }
 
+  @override
+  Future<String> beginPasskeyConfirmation(AuthSession session) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _auth.beginPasskeyConfirmation(
+        _sessionContext(tenantId, session),
+        pb.BeginPasskeyConfirmationRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+        ),
+      );
+      return _requiredText(body.requestOptionsJson, 'requestOptionsJson');
+    } on ConnectException catch (error) {
+      // The account holds no passkey to allow.
+      if (error.code == 'failed_precondition') {
+        throw AuthFailure(
+          AuthFailureKind.passkeyNotFound,
+          message: error.message,
+        );
+      }
+      throw _toAccountFailure(error);
+    }
+  }
+
   ConnectCallContext _sessionContext(String tenantId, AuthSession session) =>
       ConnectCallContext(tenantId: tenantId, accessToken: session.accessToken);
 
@@ -971,6 +994,28 @@ class HttpAuthRepository implements AuthRepository {
     }
   }
 
+  @override
+  Future<void> requestEmailChangeWithPasskey(
+    AuthSession session, {
+    required String currentEmail,
+    required String newEmail,
+    required String credentialJson,
+  }) async {
+    try {
+      await _requestEmailChange(
+        session,
+        (tenant) => pb.RequestEmailChangeRequest(
+          tenant: tenant,
+          currentEmail: currentEmail,
+          newEmail: newEmail,
+          passkeyCredentialJson: credentialJson,
+        ),
+      );
+    } on ConnectException catch (error) {
+      throw _toPasskeyConfirmationFailure(error);
+    }
+  }
+
   Future<void> _requestEmailChange(
     AuthSession session,
     pb.RequestEmailChangeRequest Function(pb.TenantContext tenant) request,
@@ -1067,6 +1112,42 @@ class HttpAuthRepository implements AuthRepository {
     } on ConnectException catch (error) {
       throw await _toConfirmationFailure(session, error);
     }
+  }
+
+  @override
+  Future<void> deleteAccountWithPasskey(
+    AuthSession session,
+    String credentialJson,
+  ) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      await _auth.deleteMe(
+        _sessionContext(tenantId, session),
+        pb.DeleteMeRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+          passkeyCredentialJson: credentialJson,
+        ),
+      );
+    } on ConnectException catch (error) {
+      throw _toPasskeyConfirmationFailure(error);
+    }
+  }
+
+  /// What a step confirmed with a passkey refuses with.
+  ///
+  /// An assertion the API does not take is `invalid_argument` on
+  /// `passkey_credential_json`, apart from an address another account holds,
+  /// and never `unauthenticated`, so unlike a provider's token it is never
+  /// mistaken for the session's refusal.
+  AuthFailure _toPasskeyConfirmationFailure(ConnectException error) {
+    if (error.code == 'invalid_argument' &&
+        error.fieldViolations.contains('passkey_credential_json')) {
+      return AuthFailure(
+        AuthFailureKind.passkeyRefused,
+        message: error.message,
+      );
+    }
+    return _toAccountFailure(error);
   }
 
   /// What a step confirmed with a fresh sign-in refuses with.

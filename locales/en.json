@@ -5059,6 +5059,8 @@
       "updated": "Your profile has been updated."
     },
     "change_email": {
+      "confirm_with_passkey": "Your account has no password. Confirm with a passkey to send the confirmation emails.",
+      "confirm_with_passkey_or_provider": "Your account has no password. Confirm with a passkey, or sign in again with a linked account, to send the confirmation emails.",
       "confirm_with_provider": "Your account has no password. Sign in again with a linked account to send the confirmation emails.",
       "current_label": "Current email address",
       "failed": "Could not request the email change. Check what you entered.",
@@ -5071,7 +5073,8 @@
       "submit": "Send confirmation emails",
       "title": "Change email address",
       "with_apple": "Confirm with Apple",
-      "with_google": "Confirm with Google"
+      "with_google": "Confirm with Google",
+      "with_passkey": "Confirm with a passkey"
     },
     "change_password": {
       "changed": "Your password has been changed. Your other devices have been signed out.",
@@ -5091,6 +5094,8 @@
       "confirm": "Delete",
       "confirm_description": "You will be signed out, and the account cannot be restored.",
       "confirm_title": "Delete your account?",
+      "confirm_with_passkey": "Your account has no password. Confirm with a passkey.",
+      "confirm_with_passkey_or_provider": "Your account has no password. Confirm with a passkey, or sign in again with a linked account.",
       "confirm_with_provider": "Your account has no password. Sign in again with a linked account to confirm.",
       "deleted": "Your account has been deleted. Thank you for using the site.",
       "description": "Deleting your account permanently removes your access to it. This cannot be undone.",
@@ -5102,7 +5107,8 @@
       "submit": "Delete my account",
       "title": "Delete account",
       "with_apple": "Confirm with Apple",
-      "with_google": "Confirm with Google"
+      "with_google": "Confirm with Google",
+      "with_passkey": "Confirm with a passkey"
     },
     "confirm_email": {
       "changed": "Your email address has been changed.",
@@ -5147,6 +5153,9 @@
       "added": "The passkey has been added. You can now sign in with it.",
       "added_at": "Added on {$date}",
       "already_registered": "This passkey is already registered to your account.",
+      "confirm_cancelled": "The passkey request was cancelled or timed out. Try again.",
+      "confirm_failed": "Could not confirm with this passkey. Try again.",
+      "confirm_none": "No passkey is registered to your account. Confirm another way.",
       "description": "Sign in to this app and the site with your device's screen lock or a password manager instead of a password.",
       "empty": "No passkeys are registered.",
       "last": "Your account has no password or linked account, so its last passkey stays registered.",

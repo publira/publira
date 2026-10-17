@@ -172,6 +172,88 @@ void main() {
     });
   });
 
+  group('confirming a step with a passkey', () {
+    setUp(() {
+      server
+        ..memberHasPassword = false
+        ..memberPasskeys.add(pb.Passkey(id: 'passkey-a'))
+        ..memberPasskeyAssertions.add('{"id":"member-passkey"}');
+    });
+
+    test('begins with the options the API answers, which an account without '
+        'a passkey has none of', () async {
+      expect(
+        await auth.beginPasskeyConfirmation(member),
+        ConnectFixtureServer.passkeyConfirmationOptionsJson,
+      );
+
+      server.memberPasskeys.clear();
+      expect(
+        auth.beginPasskeyConfirmation(member),
+        failsWith(AuthFailureKind.passkeyNotFound),
+      );
+    });
+
+    test('is refused to a token the API does not accept as an ended '
+        'session', () {
+      expect(
+        auth.beginPasskeyConfirmation(stranger),
+        failsWith(AuthFailureKind.sessionExpired),
+      );
+    });
+
+    test('deletes the account with an assertion the API takes', () async {
+      await auth.deleteAccountWithPasskey(member, '{"id":"member-passkey"}');
+
+      expect(server.memberDeleted, isTrue);
+    });
+
+    test('keeps the account when the API does not take the assertion, '
+        'without ending the session', () async {
+      await expectLater(
+        auth.deleteAccountWithPasskey(member, '{"id":"unknown-passkey"}'),
+        failsWith(AuthFailureKind.passkeyRefused),
+      );
+
+      expect(server.memberDeleted, isFalse);
+    });
+
+    test('requests an email change with an assertion the API takes', () async {
+      await auth.requestEmailChangeWithPasskey(
+        member,
+        currentEmail: ConnectFixtureServer.memberEmail,
+        newEmail: 'moved@example.com',
+        credentialJson: '{"id":"member-passkey"}',
+      );
+
+      expect(server.requestedEmailChanges, ['moved@example.com']);
+    });
+
+    test('tells an assertion the API does not take apart from an address '
+        'another account holds', () async {
+      await expectLater(
+        auth.requestEmailChangeWithPasskey(
+          member,
+          currentEmail: ConnectFixtureServer.memberEmail,
+          newEmail: 'moved@example.com',
+          credentialJson: '{"id":"unknown-passkey"}',
+        ),
+        failsWith(AuthFailureKind.passkeyRefused),
+      );
+      await expectLater(
+        auth.requestEmailChangeWithPasskey(
+          member,
+          currentEmail: ConnectFixtureServer.memberEmail,
+          newEmail: ConnectFixtureServer.takenEmail,
+          credentialJson: '{"id":"member-passkey"}',
+        ),
+        failsWith(AuthFailureKind.invalidInput),
+      );
+
+      expect(server.requestedEmailChanges, isEmpty);
+    });
+  });
+
   test('readLinkedIdentities reads whether the reader holds a passkey, which '
       'lets an account without a password unlink its last provider', () async {
     server

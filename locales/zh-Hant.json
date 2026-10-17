@@ -5059,6 +5059,8 @@
       "updated": "您的個人資料已更新。"
     },
     "change_email": {
+      "confirm_with_passkey": "您的帳戶沒有密碼。請使用通行金鑰確認以寄送確認郵件。",
+      "confirm_with_passkey_or_provider": "您的帳戶沒有密碼。請使用通行金鑰確認，或使用已連結的帳戶重新登入，以寄送確認郵件。",
       "confirm_with_provider": "您的帳戶沒有密碼。請使用已連結的帳戶重新登入以寄送確認郵件。",
       "current_label": "目前的電子郵件地址",
       "failed": "無法申請電子郵件地址變更。請檢查您輸入的內容。",
@@ -5071,7 +5073,8 @@
       "submit": "寄送確認郵件",
       "title": "變更電子郵件地址",
       "with_apple": "透過Apple確認",
-      "with_google": "透過Google確認"
+      "with_google": "透過Google確認",
+      "with_passkey": "使用通行金鑰確認"
     },
     "change_password": {
       "changed": "您的密碼已變更。您其他裝置上的登入已登出。",
@@ -5091,6 +5094,8 @@
       "confirm": "刪除",
       "confirm_description": "您將被登出，且帳戶無法復原。",
       "confirm_title": "要刪除您的帳戶嗎？",
+      "confirm_with_passkey": "您的帳戶沒有密碼。請使用通行金鑰確認。",
+      "confirm_with_passkey_or_provider": "您的帳戶沒有密碼。請使用通行金鑰確認，或使用已連結的帳戶重新登入以確認。",
       "confirm_with_provider": "您的帳戶沒有密碼。請使用已連結的帳戶重新登入以確認。",
       "deleted": "您的帳戶已刪除。感謝您的使用。",
       "description": "刪除帳戶會永久取消您對它的存取權限，且無法復原。",
@@ -5102,7 +5107,8 @@
       "submit": "刪除我的帳戶",
       "title": "刪除帳戶",
       "with_apple": "透過Apple確認",
-      "with_google": "透過Google確認"
+      "with_google": "透過Google確認",
+      "with_passkey": "使用通行金鑰確認"
     },
     "confirm_email": {
       "changed": "您的電子郵件地址已變更。",
@@ -5147,6 +5153,9 @@
       "added": "已新增通行金鑰。現在可以使用它登入。",
       "added_at": "新增於{$date}",
       "already_registered": "此通行金鑰已註冊到您的帳戶。",
+      "confirm_cancelled": "通行金鑰要求已取消或逾時。請重試。",
+      "confirm_failed": "無法使用此通行金鑰確認。請重試。",
+      "confirm_none": "您的帳戶沒有註冊通行金鑰。請使用其他方式確認。",
       "description": "使用裝置的螢幕鎖定或密碼管理工具代替密碼登入此應用程式和網站。",
       "empty": "尚未註冊通行金鑰。",
       "last": "您的帳戶沒有密碼，也沒有已連結的帳戶，因此無法移除最後一個通行金鑰。",

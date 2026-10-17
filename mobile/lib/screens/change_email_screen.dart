@@ -6,6 +6,7 @@ import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/auth/identity_provider.dart';
+import 'package:publira/auth/passkey.dart';
 import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/signed_out_notice.dart';
 import 'package:publira/forms/email_input.dart';
@@ -18,10 +19,10 @@ import 'package:publira/typography/autospaced_text.dart';
 /// `AuthService/RequestEmailChange`.
 ///
 /// The request is confirmed with the account's password, or, for an account
-/// without one, with a fresh sign-in to a provider linked to it. The API mails
-/// a link to the current address and one to the new one, and the account
-/// keeps the current address until both have been opened, so the screen ends
-/// on saying so rather than on a changed address.
+/// without one, with one of its passkeys or a fresh sign-in to a provider
+/// linked to it. The API mails a link to the current address and one to the
+/// new one, and the account keeps the current address until both have been
+/// opened, so the screen ends on saying so rather than on a changed address.
 class ChangeEmailScreen extends StatefulWidget {
   const ChangeEmailScreen({super.key});
 
@@ -43,7 +44,7 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
   var _started = false;
   var _submitting = false;
   var _requested = false;
-  AuthFailureKind? _failure;
+  _Failure? _failure;
 
   @override
   void didChangeDependencies() {
@@ -66,7 +67,11 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
     final auth = AuthScope.of(context);
     final (email, confirmation) = await (
       auth.readEmail(),
-      AccountConfirmation.read(auth, ProviderSignInScope.maybeOf(context)),
+      AccountConfirmation.read(
+        auth,
+        ProviderSignInScope.maybeOf(context),
+        PasskeyAuthenticatorScope.maybeOf(context),
+      ),
     ).wait;
     return email == null ? null : (email: email, confirmation: confirmation);
   }
@@ -121,6 +126,42 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
     });
   }
 
+  /// Confirms with whichever of the reader's passkeys they pick in the
+  /// system's sheet. A closed sheet is said so, because the system answers
+  /// one that timed out the same way and the reader may not have closed it.
+  Future<void> _submitWithPasskey(String currentEmail) async {
+    final passkeys = PasskeyAuthenticatorScope.maybeOf(context);
+    if (_submitting ||
+        passkeys == null ||
+        !(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+    final newEmail = _newEmailController.text.trim();
+    await _request((auth) async {
+      try {
+        await auth.requestEmailChangeWithPasskey(
+          currentEmail: currentEmail,
+          newEmail: newEmail,
+          authenticator: passkeys,
+        );
+      } on PasskeyCancelled {
+        throw const _Refused(_Failure.passkeyCancelled);
+      } on PasskeyFailure {
+        throw const _Refused(_Failure.passkeyFailed);
+      } on AuthFailure catch (error) {
+        throw switch (error.kind) {
+          AuthFailureKind.passkeyNotFound => const _Refused(
+            _Failure.passkeyNone,
+          ),
+          AuthFailureKind.passkeyRefused => const _Refused(
+            _Failure.passkeyFailed,
+          ),
+          _ => error,
+        };
+      }
+    });
+  }
+
   /// Runs [request] and ends on the links having gone out, or keeps the form
   /// and says why they have not.
   Future<void> _request(
@@ -131,16 +172,22 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
       _submitting = true;
       _failure = null;
     });
-    AuthFailureKind? failure;
+    _Failure? failure;
     var cancelled = false;
     try {
       await request(auth);
     } on _Cancelled {
       cancelled = true;
+    } on _Refused catch (refused) {
+      failure = refused.failure;
     } on AuthFailure catch (error) {
-      failure = error.kind;
+      failure = switch (error.kind) {
+        AuthFailureKind.network => _Failure.network,
+        AuthFailureKind.rateLimited => _Failure.rateLimited,
+        _ => _Failure.failed,
+      };
     } on Exception {
-      failure = AuthFailureKind.unexpected;
+      failure = _Failure.failed;
     }
     if (!mounted) {
       return;
@@ -271,11 +318,12 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
           if (providers == null)
             ..._passwordConfirmation(messages, currentEmail)
           else
-            ..._providerConfirmation(
+            ..._signInConfirmation(
               messages,
               currentEmail,
               providers,
               account.confirmation.linked,
+              account.confirmation.passkey,
             ),
         ],
       ),
@@ -311,19 +359,30 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
     ];
   }
 
-  List<Widget> _providerConfirmation(
+  List<Widget> _signInConfirmation(
     AppMessages messages,
     String currentEmail,
     SignInProviders providers,
     List<IdentityProvider> linked,
+    bool passkey,
   ) {
     return [
-      AutospacedText(
-        linked.isEmpty
-            ? messages.changeEmailNoProvider
-            : messages.changeEmailConfirmWithProvider,
-        key: const ValueKey('change-email-provider-note'),
-      ),
+      AutospacedText(switch ((passkey, linked.isNotEmpty)) {
+        (true, true) => messages.changeEmailConfirmWithPasskeyOrProvider,
+        (true, false) => messages.changeEmailConfirmWithPasskey,
+        (false, true) => messages.changeEmailConfirmWithProvider,
+        (false, false) => messages.changeEmailNoProvider,
+      }, key: const ValueKey('change-email-provider-note')),
+      if (passkey) ...[
+        const SizedBox(height: 16),
+        FilledButton(
+          key: const ValueKey('change-email-with-passkey'),
+          onPressed: _submitting
+              ? null
+              : () => unawaited(_submitWithPasskey(currentEmail)),
+          child: AutospacedText(messages.changeEmailWithPasskey),
+        ),
+      ],
       for (final provider in linked) ...[
         const SizedBox(height: 16),
         FilledButton(
@@ -342,16 +401,43 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
     ];
   }
 
-  String _failureCopy(AppMessages messages, AuthFailureKind failure) {
+  String _failureCopy(AppMessages messages, _Failure failure) {
     return switch (failure) {
-      AuthFailureKind.network => messages.errorsRpcUnavailable,
-      AuthFailureKind.rateLimited => messages.errorsRpcRateLimited,
-      _ => messages.changeEmailFailed,
+      _Failure.network => messages.errorsRpcUnavailable,
+      _Failure.rateLimited => messages.errorsRpcRateLimited,
+      _Failure.passkeyCancelled => messages.passkeysConfirmCancelled,
+      _Failure.passkeyFailed => messages.passkeysConfirmFailed,
+      _Failure.passkeyNone => messages.passkeysConfirmNone,
+      _Failure.failed => messages.changeEmailFailed,
     };
   }
+}
+
+/// Why the links did not go out, which the form says above its fields.
+enum _Failure {
+  failed,
+  network,
+  rateLimited,
+
+  /// The reader closed the passkey sheet, or let it time out.
+  passkeyCancelled,
+
+  /// The device could not use the passkey, or the API did not take it.
+  passkeyFailed,
+
+  /// The account holds no passkey any more.
+  passkeyNone,
 }
 
 /// The reader closed the provider's sheet, which leaves the form as it was.
 class _Cancelled implements Exception {
   const _Cancelled();
+}
+
+/// A passkey confirmation that did not go through, for the reason [failure]
+/// names.
+class _Refused implements Exception {
+  const _Refused(this.failure);
+
+  final _Failure failure;
 }
