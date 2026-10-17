@@ -37,7 +37,7 @@ const PluginCheck = ({
     <span
       className={cn(
         "mt-0.5 inline-flex size-4 shrink-0 items-center justify-center",
-        installed ? "text-success" : "text-destructive"
+        installed ? "text-success" : "text-muted-foreground"
       )}
     >
       {installed ? (
@@ -61,8 +61,10 @@ const PluginCheck = ({
 /**
  * Runs the connection test with whatever the surrounding settings form holds,
  * saved or not, as a second submission of that form. An engine that answered
- * is shown with its version and both plugins, so a missing plugin is named
- * here rather than by the first index build.
+ * is shown with its version and the two plugins the Japanese text analysis is
+ * built on, so an operator about to save that analysis sees here whether the
+ * engine can build it. Neither is required, so a missing one is shown as plain
+ * information rather than as an error.
  */
 export const SearchConnectionTest = ({
   action,

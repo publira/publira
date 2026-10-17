@@ -12,7 +12,11 @@ import {
   uniqueSuffix,
 } from "../src/scenarios/admin-publish";
 import { SEED_TENANT } from "../src/scenarios/multi-tenant";
-import { storefrontPath, WEB_ADMIN_BASE_URL } from "../src/urls";
+import {
+  localeStorefrontPath,
+  storefrontPath,
+  WEB_ADMIN_BASE_URL,
+} from "../src/urls";
 
 /**
  * Which engine the server searches with. `scripts/db-setup.sh` saves it from
@@ -67,7 +71,9 @@ const deleteSeriesDocuments = async (
 
 /**
  * Search the storefront for `query` and expect the series titled `title`
- * among the series results, or absent from them.
+ * among the series results, or absent from them. The search runs in the
+ * tenant's default language, English, unless `locale` names another, whose
+ * results are under that language's heading.
  *
  * A write drops the cache tags the search is held under, but revalidation
  * marks the entry stale rather than removing it, so the load right after one
@@ -82,15 +88,20 @@ const expectSeriesResult = async (
   page: Page,
   query: string,
   title: string,
-  found: boolean
+  found: boolean,
+  locale?: { heading: string; locale: string }
 ): Promise<void> => {
   await expect(async () => {
+    const path = `/search?q=${encodeURIComponent(query)}`;
     const response = await page.goto(
-      storefrontPath(`/search?q=${encodeURIComponent(query)}`)
+      locale ? localeStorefrontPath(locale.locale, path) : storefrontPath(path)
     );
     expect(response?.status()).toBe(200);
 
-    const series = page.getByRole("region", { exact: true, name: "Series" });
+    const series = page.getByRole("region", {
+      exact: true,
+      name: locale?.heading ?? "Series",
+    });
     await expect(series).toBeVisible({ timeout: 5000 });
     const link = series.getByRole("link", { name: title });
     await (found
@@ -165,16 +176,22 @@ test.describe("catalog search", () => {
     return;
   }
 
-  test("finds a title written in kanji from its reading typed in kana", async ({
+  test("finds a title written in kanji from its reading typed in kana, in Japanese", async ({
     page,
   }) => {
     // Japanese on purpose: matching a kana query to a kanji title through the
     // dictionary's reading is the behaviour under test. No reading is entered
-    // in the console, so the analyzer is the only thing that knows it.
+    // in the console, so the analyzer is the only thing that knows it. That
+    // analyzer is the Japanese definition `task e2e:db` saves for ja alone,
+    // so the reader searches in Japanese, where the series is indexed under
+    // the title shown in place of a Japanese one.
     const title = "吾輩は猫である";
     await createPublishedSeries(page, title);
 
-    await expectSeriesResult(page, "わがはいはねこ", title, true);
+    await expectSeriesResult(page, "わがはいはねこ", title, true, {
+      heading: "シリーズ",
+      locale: "ja",
+    });
   });
 
   test("finds a seeded series from a query with one wrong character", async ({

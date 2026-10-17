@@ -15,11 +15,10 @@ import (
 // The reasons a connection test fails for. They name what went wrong and never
 // carry the engine's own message.
 const (
-	ReasonUnreachable   = "SEARCH_TEST_UNREACHABLE"
-	ReasonUnauthorized  = "SEARCH_TEST_UNAUTHORIZED"
-	ReasonNotAnEngine   = "SEARCH_TEST_NOT_A_SEARCH_ENGINE"
-	ReasonWrongProduct  = "SEARCH_TEST_WRONG_PRODUCT"
-	ReasonMissingPlugin = "SEARCH_TEST_PLUGIN_MISSING"
+	ReasonUnreachable  = "SEARCH_TEST_UNREACHABLE"
+	ReasonUnauthorized = "SEARCH_TEST_UNAUTHORIZED"
+	ReasonNotAnEngine  = "SEARCH_TEST_NOT_A_SEARCH_ENGINE"
+	ReasonWrongProduct = "SEARCH_TEST_WRONG_PRODUCT"
 )
 
 // ErrNotSaved is what a test of the saved settings finds when there are none.
@@ -30,15 +29,18 @@ var errSQLHasNothingToTest = errors.New("the sql engine connects to nothing besi
 // Result is what a connection test found.
 type Result struct {
 	// Reason is empty on success.
-	Reason          string
-	Product         string
-	Version         string
+	Reason  string
+	Product string
+	Version string
+	// KuromojiPresent and ICUPresent report the plugins the Japanese
+	// definition is built on. Neither decides the test: the default analysis
+	// needs neither, and a saved definition was checked against the engine
+	// when it was saved.
 	KuromojiPresent bool
 	ICUPresent      bool
 }
 
-// Succeeded reports whether the engine answered as the one the settings name,
-// with both plugins the default analysis needs where that is the one saved.
+// Succeeded reports whether the engine answered as the one the settings name.
 func (r Result) Succeeded() bool {
 	return r.Reason == ""
 }
@@ -79,9 +81,7 @@ func (t Tester) Test(ctx context.Context, q Querier, actor auditlog.PlatformActo
 	if err != nil {
 		return Result{}, err
 	}
-	// A save from the same form keeps the saved analyses, so those are the
-	// ones the engine is tested for.
-	return t.run(ctx, actor, settings, password, FromConfig(saved).usesDefaultAnalysis()), nil
+	return t.run(ctx, actor, settings, password), nil
 }
 
 // TestSaved runs the connection test against the saved settings.
@@ -101,7 +101,7 @@ func (t Tester) TestSaved(ctx context.Context, q Querier, actor auditlog.Platfor
 	if err != nil {
 		return Result{}, err
 	}
-	return t.run(ctx, actor, stored.Settings, password, stored.usesDefaultAnalysis()), nil
+	return t.run(ctx, actor, stored.Settings, password), nil
 }
 
 // password is the password a test sends: the one stated, the saved one, or
@@ -143,10 +143,8 @@ func (t Tester) password(username string, mode secretupdate.Mode, password, save
 	return decrypted, nil
 }
 
-// run tests settings. defaultAnalysis says the index of some language is built
-// with the default analysis, whose plugins the engine then has to have; another
-// one names its own, which the engine was asked about when it was saved.
-func (t Tester) run(ctx context.Context, actor auditlog.PlatformActor, settings Settings, password string, defaultAnalysis bool) Result {
+// run tests settings.
+func (t Tester) run(ctx context.Context, actor auditlog.PlatformActor, settings Settings, password string) Result {
 	probe := t.Probe
 	if probe == nil {
 		probe = opensearchbackend.ProbeEngine
@@ -154,7 +152,7 @@ func (t Tester) run(ctx context.Context, actor auditlog.PlatformActor, settings 
 	connectCtx, cancel := context.WithTimeout(ctx, connectTimeout)
 	found, err := probe(connectCtx, opensearchbackend.Config{URL: settings.URL, Username: settings.Username, Password: password})
 	cancel()
-	result := evaluate(settings.Engine, found, err, defaultAnalysis)
+	result := evaluate(settings.Engine, found, err)
 
 	entry := auditlog.PlatformEntry{
 		Action:     "platform_search_connection_tested",
@@ -175,7 +173,7 @@ var products = map[Engine]string{
 	EngineElasticsearch: opensearchbackend.ProductElasticsearch,
 }
 
-func evaluate(engine Engine, probe opensearchbackend.Probe, err error, defaultAnalysis bool) Result {
+func evaluate(engine Engine, probe opensearchbackend.Probe, err error) Result {
 	switch {
 	case errors.Is(err, opensearchbackend.ErrUnauthorized):
 		return Result{Reason: ReasonUnauthorized}
@@ -190,11 +188,8 @@ func evaluate(engine Engine, probe opensearchbackend.Probe, err error, defaultAn
 		KuromojiPresent: probe.HasPlugin(opensearchbackend.PluginAnalysisKuromoji),
 		ICUPresent:      probe.HasPlugin(opensearchbackend.PluginAnalysisICU),
 	}
-	switch {
-	case probe.Product != products[engine]:
+	if probe.Product != products[engine] {
 		result.Reason = ReasonWrongProduct
-	case defaultAnalysis && (!result.KuromojiPresent || !result.ICUPresent):
-		result.Reason = ReasonMissingPlugin
 	}
 	return result
 }

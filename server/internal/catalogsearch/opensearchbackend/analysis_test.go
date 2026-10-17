@@ -1,11 +1,35 @@
 package opensearchbackend
 
 import (
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
 )
+
+// japaneseAnalysis is the definition the Search page of the documentation
+// gives an operator to save as the ja index's own, built on analysis-kuromoji
+// and analysis-icu. The tests hold it to what the page says it does.
+//
+// The written form keeps the text as it is written: the kuromoji tokenizer in
+// search mode splits a compound into its parts as well, icu_normalizer (NFKC
+// with case folding) and cjk_width make full-width Latin and half-width kana
+// the same token as their usual forms, and kuromoji_baseform lets an inflected
+// verb match its dictionary form.
+//
+// The alternate form is the reading, which a query typed in kana meets a
+// title written in kanji through, and it is also how an entered reading is
+// analyzed. It replaces each token with its reading in katakana, turns the
+// hiragana of a token the dictionary has no reading for into katakana, and
+// indexes the result as overlapping pairs of characters. The pairs are taken
+// across each two neighbouring tokens as well, because the dictionary splits
+// a run of kana where it pleases: 「ぎんがてつどう」 comes out as
+// ギン/ガ/テツ/ドウ where 「銀河鉄道」 comes out as ギンガ/テツドウ, and only
+// the pairs of the joined reading are the same for both.
+//
+//go:embed japanese-analysis.json
+var japaneseAnalysis string
 
 // koreanAnalysis is a definition built on analysis-nori, with the written form
 // as its alternate form: Korean has no reading of its own to match a title by.
@@ -26,11 +50,14 @@ const chineseAnalysis = `{
   "normalizer": {"exact_match": {"type": "custom", "filter": ["lowercase"]}}
 }`
 
-func TestTheDefaultAnalysisDefinesEveryRole(t *testing.T) {
+func TestTheDefaultAndTheJapaneseAnalysisDefineEveryRole(t *testing.T) {
 	t.Parallel()
 
 	if _, err := ParseAnalysis(DefaultAnalysis()); err != nil {
 		t.Fatalf("ParseAnalysis(default): %v", err)
+	}
+	if _, err := ParseAnalysis([]byte(japaneseAnalysis)); err != nil {
+		t.Fatalf("ParseAnalysis(japanese): %v", err)
 	}
 }
 

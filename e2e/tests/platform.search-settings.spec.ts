@@ -106,8 +106,9 @@ const ENGLISH_ALIAS = "publira-catalog-en";
 
 /**
  * A definition built on analysis-nori, which the E2E engine has installed
- * beside the default's plugins: Korean has no alternate form, so that role
- * analyzes the text the way the written form does.
+ * beside the plugins of the Japanese definition `scripts/db-setup.sh` saves for
+ * ja: Korean has no alternate form, so that role analyzes the text the way the
+ * written form does.
  */
 const NORI_DEFINITION = JSON.stringify(
   {
@@ -206,11 +207,7 @@ test.describe("web-platform search settings", () => {
 
       await page.getByRole("button", { name: "Test connection" }).click();
 
-      await expect(
-        page.getByText(
-          "The connection works, and the engine has both plugins the catalog index needs."
-        )
-      ).toBeVisible();
+      await expect(page.getByText("The connection works.")).toBeVisible();
       await expect(
         page
           .getByRole("list", { name: "Connection test results" })
@@ -274,7 +271,7 @@ test.describe("web-platform search settings", () => {
       await expect(
         page.getByText("In use: the default definition.")
       ).toBeVisible();
-      await expect(editor).toHaveValue(/"kuromoji_tokenizer"/u);
+      await expect(editor).toHaveValue(/"cjk_bigram"/u);
       await expect.poll(writtenFormTokens).toContain("별을");
 
       // A definition the engine refuses is not saved, and stays in the editor
@@ -334,7 +331,7 @@ test.describe("web-platform search settings", () => {
       await expect(
         page.getByText(/^Saved: the default definition\./u)
       ).toBeVisible();
-      await expect(editor).toHaveValue(/"kuromoji_tokenizer"/u);
+      await expect(editor).toHaveValue(/"cjk_bigram"/u);
 
       await expect(
         page.getByText(/^A new OpenSearch index is being built/u)
@@ -367,7 +364,7 @@ test.describe("web-platform search settings", () => {
           "In use: the shared definition, which the editor starts from."
         )
       ).toBeVisible();
-      await expect(editor).toHaveValue(/"kuromoji_tokenizer"/u);
+      await expect(editor).toHaveValue(/"cjk_bigram"/u);
       await expect(useShared).toHaveCount(0);
       await expect
         .poll(() => writtenFormTokens(ENGLISH_ALIAS))
@@ -438,7 +435,7 @@ test.describe("web-platform search settings", () => {
           "In use: the shared definition, which the editor starts from."
         )
       ).toBeVisible();
-      await expect(editor).toHaveValue(/"kuromoji_tokenizer"/u);
+      await expect(editor).toHaveValue(/"cjk_bigram"/u);
       await expect(useShared).toHaveCount(0);
       await expect
         .poll(() => writtenFormTokens(ENGLISH_ALIAS))

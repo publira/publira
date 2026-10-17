@@ -220,7 +220,7 @@ export type PlatformSearchSettings = Message<"publira.platform.v1.PlatformSearch
   /**
    * The settings.analysis the catalog index is built with, as a JSON object:
    * the saved one, or the default the server ships when none is saved, which
-   * is built for Japanese on analysis-kuromoji and analysis-icu. Empty on the
+   * is built on no plugin and for no language in particular. Empty on the
    * SQL engine, which has no index. It defines the analyzers written_form and
    * alternate_form and the normalizer exact_match, which the mapping refers
    * to.
@@ -460,10 +460,9 @@ export const TestPlatformSearchConnectionRequestSchema: GenMessage<TestPlatformS
  */
 export type TestPlatformSearchConnectionResponse = Message<"publira.platform.v1.TestPlatformSearchConnectionResponse"> & {
   /**
-   * Whether the engine answered, is the engine the request names, and, while
-   * the index of any language is built from the default analysis, has both
-   * plugins it is built from. A saved analysis of another kind was checked
-   * against the engine when it was saved.
+   * Whether the engine answered and is the engine the request names. No
+   * plugin decides it: the default analysis needs none, and a saved analysis
+   * was checked against the engine when it was saved.
    *
    * @generated from field: bool succeeded = 1;
    */
@@ -492,8 +491,8 @@ export type TestPlatformSearchConnectionResponse = Message<"publira.platform.v1.
   version: string;
 
   /**
-   * Whether every node has the plugin installed. Both are false when the
-   * engine did not answer.
+   * Whether every node has the plugin installed: the two the Japanese
+   * analysis is built on. Both are false when the engine did not answer.
    *
    * @generated from field: bool analysis_kuromoji_installed = 5;
    */
@@ -534,9 +533,8 @@ export enum PlatformSearchEngine {
   SQL = 1,
 
   /**
-   * OpenSearch, ranked by relevance. With the default analysis it needs the
-   * analysis-kuromoji and analysis-icu plugins and matches a title written in
-   * kanji from a query typed in kana.
+   * OpenSearch, ranked by relevance. The default analysis needs no plugin;
+   * a language's own analysis needs whatever plugins it is built on.
    *
    * @generated from enum value: PLATFORM_SEARCH_ENGINE_OPENSEARCH = 2;
    */

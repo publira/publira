@@ -1,15 +1,17 @@
 # syntax=docker/dockerfile:1.28.0@sha256:bb22d9815c728170f72750f4e5b0d672e06176142e1d602c7e66c050100b7e5b
 
-# Elasticsearch with the analysis plugins opensearch/Dockerfile installs, for
-# the Go integration tests that run the catalog search backend on
-# Elasticsearch. The published image ships none of them, and one can only be
-# installed while the node is stopped, so they are installed here rather than
-# at container start, where every start would download them again.
+# Elasticsearch as its official image ships it, with no plugin added, for the
+# Go integration tests that run the catalog search backend on Elasticsearch.
+# Those tests are what shows the default text analysis builds every
+# language's index on an engine nobody installed a plugin on; the tests of a
+# definition built on a language's plugin run on OpenSearch, whose image
+# (opensearch/Dockerfile) installs them.
 #
 # This is a test dependency, not a deployment image: single-node discovery and
 # the disabled security are set by server/internal/testutil, which starts it,
 # and nothing here builds it for a registry. The Elasticsearch version is the
-# one major the catalog search backend is tested against.
+# one major the catalog search backend is tested against, and the image is
+# named here so Renovate raises it with the others.
 #
 # testutil builds it from this file when PUBLIRA_TEST_ELASTICSEARCH_IMAGE is
 # unset; to build it by hand, from the repository root:
@@ -20,5 +22,3 @@
 #     .
 
 FROM elasticsearch:9.5.5@sha256:33cae13fc18ef105e960cdd32327d402fbd7c6d4376c0b879ad703ee289d45d8
-
-RUN bin/elasticsearch-plugin install --batch analysis-kuromoji analysis-icu analysis-nori analysis-smartcn

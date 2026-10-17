@@ -8,9 +8,8 @@ import (
 )
 
 // openSearch runs the image infra/docker/opensearch/Dockerfile builds, which
-// adds to the published image the two analysis plugins the catalog index's
-// default analysis is built from, and the Korean and Chinese ones the tests of
-// a replaced analysis are.
+// adds to the published image the analysis plugins the tests of a definition
+// for Japanese, Korean, or Chinese build their indices from.
 var openSearch = searchEngine{
 	name:     "opensearch",
 	imageEnv: "PUBLIRA_TEST_OPENSEARCH_IMAGE",

@@ -183,7 +183,9 @@ func (e *env) saved(alias string) platformsearch.Settings {
 // A switch to OpenSearch does not leave the storefront answering from an empty
 // index: the search stays on SQL while the index is built from the database,
 // moves onto it once the build completes, and moves back to SQL as soon as SQL
-// is saved again.
+// is saved again. The Elasticsearch node has no plugin installed, so there the
+// default builds the index of every language on an engine as its official
+// image ships it.
 func TestTheSearchMovesOntoAnEngineOnceItsIndexIsBuilt(t *testing.T) {
 	testutil.EachSearchEngine(t, func(t *testing.T, engine testutil.SearchEngine) {
 		testTheSearchMovesOntoAnEngineOnceItsIndexIsBuilt(t, newEnv(t, engine))
@@ -481,8 +483,9 @@ func TestSaveKeepsReplacesAndClearsThePassword(t *testing.T) {
 }
 
 // The Platform Console and publiractl search test ask the same question: what
-// the engine is and whether it has the plugins the index is built from. An
-// engine that answers as another product than the one named fails the test.
+// the engine is and which of the plugins the Japanese definition is built on it
+// has. An engine that answers as another product than the one named fails the
+// test.
 func TestTheConnectionTestReportsTheEngineAndItsPlugins(t *testing.T) {
 	products := map[string]string{
 		"opensearch":    opensearchbackend.ProductOpenSearch,
@@ -503,8 +506,11 @@ func TestTheConnectionTestReportsTheEngineAndItsPlugins(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Test: %v", err)
 		}
-		if !result.Succeeded() || result.Product != products[engine.Name] || result.Version == "" || !result.KuromojiPresent || !result.ICUPresent {
-			t.Fatalf("Test = %+v, want %s with both plugins", result, products[engine.Name])
+		// The Elasticsearch node has no plugin installed, and passes the
+		// test all the same: the default analysis needs none.
+		if !result.Succeeded() || result.Product != products[engine.Name] || result.Version == "" ||
+			result.KuromojiPresent != engine.LanguagePlugins || result.ICUPresent != engine.LanguagePlugins {
+			t.Fatalf("Test = %+v, want %s with the plugins reported as installed: %t", result, products[engine.Name], engine.LanguagePlugins)
 		}
 
 		result, err = tester.Test(ctx, e.platform, auditlog.SystemPlatformActor, platformsearch.TestParams{

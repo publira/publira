@@ -109,8 +109,8 @@ export const searchCredentialMode = (
 ): SearchCredentialMode => (settings.username ? "basic" : "none");
 
 /**
- * The analysis plugins the catalog index is built with, which every engine but
- * SQL has to have on every node.
+ * The analysis plugins the connection test reports on, which the Japanese text
+ * analysis is built on. The default analysis needs neither.
  */
 export const SEARCH_PLUGIN_KUROMOJI = "analysis-kuromoji";
 export const SEARCH_PLUGIN_ICU = "analysis-icu";

@@ -216,7 +216,7 @@ describe("SearchAnalysisForm", () => {
     const dialog = await screen.findByRole("alertdialog");
     expect(save.calls).toHaveLength(0);
     expect(
-      within(dialog).getByText(/rebuilt with the default Japanese definition/u)
+      within(dialog).getByText(/rebuilt with the default definition/u)
     ).toBeTruthy();
     fireEvent.click(
       within(dialog).getByRole("button", { name: "Reset and rebuild" })

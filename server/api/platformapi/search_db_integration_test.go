@@ -211,8 +211,10 @@ func TestDBTestPlatformSearchConnectionUsesTheStoredPassword(t *testing.T) {
 	if err != nil {
 		t.Fatalf("TestPlatformSearchConnection: %v", err)
 	}
-	if resp.GetSucceeded() || resp.GetReason() != platformsearch.ReasonMissingPlugin || resp.GetAnalysisIcuInstalled() {
-		t.Fatalf("response = %+v, want the missing plugin reported", resp)
+	// The default analysis needs neither plugin, so a missing one is reported
+	// and fails nothing.
+	if !resp.GetSucceeded() || resp.GetReason() != "" || !resp.GetAnalysisKuromojiInstalled() || resp.GetAnalysisIcuInstalled() {
+		t.Fatalf("response = %+v, want the test passed with the missing plugin reported", resp)
 	}
 	if got := countAuditActions(t, pg, "platform_search_connection_tested"); got != 2 {
 		t.Fatalf("audit entries = %d, want one per test", got)

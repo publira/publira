@@ -217,16 +217,10 @@ export const testPlatformSearchConnectionAction = async (
   }
 
   const t = await getMessagesFor(locale);
-  const { icuInstalled, kuromojiInstalled, succeeded } = result.result;
-  let message = result.result.failure;
-  if (succeeded) {
-    // The API asks for both plugins only while the default analysis is saved,
-    // so a test passing without them was run beside a saved definition that
-    // does not use them.
-    message =
-      kuromojiInstalled && icuInstalled
-        ? t("platform.search.test.succeeded")
-        : t("platform.search.test.succeeded_saved_analysis");
-  }
-  return { message, ok: succeeded, result: result.result };
+  const { failure, succeeded } = result.result;
+  return {
+    message: succeeded ? t("platform.search.test.succeeded") : failure,
+    ok: succeeded,
+    result: result.result,
+  };
 };

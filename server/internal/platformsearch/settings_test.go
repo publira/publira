@@ -123,27 +123,29 @@ func TestEvaluateNamesWhatTheEngineLacks(t *testing.T) {
 		Plugins: []string{opensearchbackend.PluginAnalysisICU, opensearchbackend.PluginAnalysisKuromoji},
 	}
 	for _, test := range []struct {
-		name   string
-		probe  opensearchbackend.Probe
-		err    error
-		custom bool
-		want   string
+		name  string
+		probe opensearchbackend.Probe
+		err   error
+		want  string
 	}{
 		{name: "both plugins", probe: complete},
+		// The default analysis needs no plugin, and a saved one was checked
+		// against the engine on the save, so no plugin decides the test.
+		{name: "no plugins", probe: opensearchbackend.Probe{Product: opensearchbackend.ProductOpenSearch, Version: "3.9.0"}},
 		{name: "no answer", err: fmt.Errorf("%w: dial", opensearchbackend.ErrUnreachable), want: ReasonUnreachable},
 		{name: "a context deadline", err: errors.New("context deadline exceeded"), want: ReasonUnreachable},
 		{name: "credentials refused", err: fmt.Errorf("%w: 401", opensearchbackend.ErrUnauthorized), want: ReasonUnauthorized},
 		{name: "not a search engine", err: fmt.Errorf("%w: 404", opensearchbackend.ErrUnexpectedAnswer), want: ReasonNotAnEngine},
 		{name: "another product", probe: opensearchbackend.Probe{Product: opensearchbackend.ProductElasticsearch, Version: "9.1.5", Plugins: complete.Plugins}, want: ReasonWrongProduct},
-		{name: "no ICU", probe: opensearchbackend.Probe{Product: opensearchbackend.ProductOpenSearch, Version: "3.9.0", Plugins: []string{opensearchbackend.PluginAnalysisKuromoji}}, want: ReasonMissingPlugin},
-		// A saved analysis of its own needs whatever plugins it names, which
-		// the engine was asked about on the save.
-		{name: "no plugins for a saved analysis", probe: opensearchbackend.Probe{Product: opensearchbackend.ProductOpenSearch, Version: "3.9.0"}, custom: true},
-		{name: "another product for a saved analysis", probe: opensearchbackend.Probe{Product: opensearchbackend.ProductElasticsearch, Version: "9.1.5"}, custom: true, want: ReasonWrongProduct},
+		{name: "another product without plugins", probe: opensearchbackend.Probe{Product: opensearchbackend.ProductElasticsearch, Version: "9.1.5"}, want: ReasonWrongProduct},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			if got := evaluate(EngineOpenSearch, test.probe, test.err, !test.custom); got.Reason != test.want {
+			got := evaluate(EngineOpenSearch, test.probe, test.err)
+			if got.Reason != test.want {
 				t.Fatalf("evaluate = %+v, want reason %q", got, test.want)
+			}
+			if test.err == nil && (got.KuromojiPresent != test.probe.HasPlugin(opensearchbackend.PluginAnalysisKuromoji) || got.ICUPresent != test.probe.HasPlugin(opensearchbackend.PluginAnalysisICU)) {
+				t.Fatalf("evaluate = %+v, want the plugins of %+v reported", got, test.probe)
 			}
 		})
 	}

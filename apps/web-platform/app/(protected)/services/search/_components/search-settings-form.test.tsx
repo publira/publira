@@ -186,18 +186,16 @@ describe("SearchSettingsForm", () => {
     ).toHaveProperty("ariaChecked", "true");
   });
 
-  it("names the plugin a tested engine is missing", async () => {
+  it("lists which plugins a tested engine has, and passes it without them", async () => {
     actions.testPlatformSearchConnectionAction.mockResolvedValue({
-      message:
-        "The engine is missing a plugin the catalog index needs: analysis-icu. Install it on every node and test again.",
-      ok: false,
+      message: "The connection works.",
+      ok: true,
       result: {
-        failure:
-          "The engine is missing a plugin the catalog index needs: analysis-icu. Install it on every node and test again.",
+        failure: "",
         icuInstalled: false,
         kuromojiInstalled: true,
         product: "OpenSearch",
-        succeeded: false,
+        succeeded: true,
         version: "3.2.0",
       },
     });
@@ -217,11 +215,7 @@ describe("SearchSettingsForm", () => {
       "analysis-kuromoji: Installed",
       "analysis-icu: Missing",
     ]);
-    expect(
-      screen.getByText(
-        /missing a plugin the catalog index needs: analysis-icu/u
-      )
-    ).toBeTruthy();
+    expect(screen.getByText("The connection works.")).toBeTruthy();
   });
 
   it.each([
@@ -259,8 +253,7 @@ describe("SearchSettingsForm", () => {
     "drops a connection test result once %s it was run with changes",
     async (_value, change) => {
       actions.testPlatformSearchConnectionAction.mockResolvedValue({
-        message:
-          "The connection works, and the engine has both plugins the catalog index needs.",
+        message: "The connection works.",
         ok: true,
         result: {
           failure: "",
@@ -287,8 +280,7 @@ describe("SearchSettingsForm", () => {
 
   it("keeps a connection test result while only the index alias changes", async () => {
     actions.testPlatformSearchConnectionAction.mockResolvedValue({
-      message:
-        "The connection works, and the engine has both plugins the catalog index needs.",
+      message: "The connection works.",
       ok: true,
       result: {
         failure: "",

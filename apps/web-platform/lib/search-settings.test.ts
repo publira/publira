@@ -565,30 +565,28 @@ describe("testPlatformSearchConnection", () => {
     );
   });
 
-  it.each([
-    [false, true, "analysis-kuromoji"],
-    [true, false, "analysis-icu"],
-    [false, false, "analysis-kuromoji, analysis-icu"],
-  ])(
-    "names the plugin the engine lacks (kuromoji %s, icu %s)",
-    async (kuromoji, icu, missing) => {
-      mockTestPlatformSearchConnection.mockResolvedValueOnce({
-        analysisIcuInstalled: icu,
-        analysisKuromojiInstalled: kuromoji,
-        product: "OpenSearch",
-        reason: "SEARCH_TEST_PLUGIN_MISSING",
-        succeeded: false,
-        version: "3.2.0",
-      });
+  it("passes an engine that lacks both plugins, and reports them missing", async () => {
+    mockTestPlatformSearchConnection.mockResolvedValueOnce({
+      analysisIcuInstalled: false,
+      analysisKuromojiInstalled: false,
+      product: "Elasticsearch",
+      reason: "",
+      succeeded: true,
+      version: "9.5.5",
+    });
 
-      const result = await testPlatformSearchConnection(input, "en");
-
-      expect(result).toMatchObject({ ok: true, result: { succeeded: false } });
-      expect(result.ok && result.result.failure).toBe(
-        `The engine is missing a plugin the catalog index needs: ${missing}. Install it on every node and test again.`
-      );
-    }
-  );
+    await expect(testPlatformSearchConnection(input, "en")).resolves.toEqual({
+      ok: true,
+      result: {
+        failure: "",
+        icuInstalled: false,
+        kuromojiInstalled: false,
+        product: "Elasticsearch",
+        succeeded: true,
+        version: "9.5.5",
+      },
+    });
+  });
 
   it("words an engine that did not answer by its reason", async () => {
     mockTestPlatformSearchConnection.mockResolvedValueOnce({
@@ -646,7 +644,7 @@ describe("searchTestFailureMessage", () => {
     ["SEARCH_TEST_UNAUTHORIZED", /^Authentication failed/u],
     ["SEARCH_TEST_NOT_A_SEARCH_ENGINE", /not a search engine/u],
     ["SEARCH_TEST_WRONG_PRODUCT", /isn't the one selected/u],
-    ["SEARCH_TEST_PLUGIN_MISSING", /analysis-kuromoji or analysis-icu/u],
+    ["SEARCH_TEST_PLUGIN_MISSING", /was missing analysis-kuromoji/u],
   ])("words %s for the audit log", async (reason, wording) => {
     await expect(searchTestFailureMessage(reason, "en")).resolves.toMatch(
       wording

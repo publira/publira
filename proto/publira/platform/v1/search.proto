@@ -14,9 +14,8 @@ enum PlatformSearchEngine {
   // nothing beside the database and is what an install searches with until
   // another engine is saved.
   PLATFORM_SEARCH_ENGINE_SQL = 1;
-  // OpenSearch, ranked by relevance. With the default analysis it needs the
-  // analysis-kuromoji and analysis-icu plugins and matches a title written in
-  // kanji from a query typed in kana.
+  // OpenSearch, ranked by relevance. The default analysis needs no plugin;
+  // a language's own analysis needs whatever plugins it is built on.
   PLATFORM_SEARCH_ENGINE_OPENSEARCH = 2;
   // Elasticsearch, searched and written exactly as OpenSearch is: everything
   // the backend sends is common to both.
@@ -125,7 +124,7 @@ message PlatformSearchSettings {
   PlatformSearchBuildFailure build_failure = 9;
   // The settings.analysis the catalog index is built with, as a JSON object:
   // the saved one, or the default the server ships when none is saved, which
-  // is built for Japanese on analysis-kuromoji and analysis-icu. Empty on the
+  // is built on no plugin and for no language in particular. Empty on the
   // SQL engine, which has no index. It defines the analyzers written_form and
   // alternate_form and the normalizer exact_match, which the mapping refers
   // to.
@@ -214,10 +213,9 @@ message TestPlatformSearchConnectionRequest {
 // went; it fails only when the request states a configuration that cannot be
 // tested at all.
 message TestPlatformSearchConnectionResponse {
-  // Whether the engine answered, is the engine the request names, and, while
-  // the index of any language is built from the default analysis, has both
-  // plugins it is built from. A saved analysis of another kind was checked
-  // against the engine when it was saved.
+  // Whether the engine answered and is the engine the request names. No
+  // plugin decides it: the default analysis needs none, and a saved analysis
+  // was checked against the engine when it was saved.
   bool succeeded = 1;
   // A stable reason code (SEARCH_TEST_*) for a failure, empty on success. It
   // never carries the engine's own message.
@@ -227,8 +225,8 @@ message TestPlatformSearchConnectionResponse {
   // neither. A product other than the one the request names fails the test.
   string product = 3;
   string version = 4;
-  // Whether every node has the plugin installed. Both are false when the
-  // engine did not answer.
+  // Whether every node has the plugin installed: the two the Japanese
+  // analysis is built on. Both are false when the engine did not answer.
   bool analysis_kuromoji_installed = 5;
   bool analysis_icu_installed = 6;
 }

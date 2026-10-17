@@ -16,8 +16,9 @@ const (
 	ProductElasticsearch = "Elasticsearch"
 )
 
-// The analysis plugins every node needs for the default analysis of the
-// catalog index.
+// The analysis plugins the connection test reports on, which the Japanese
+// definition the documentation gives is built on. The default analysis needs
+// neither.
 const (
 	PluginAnalysisKuromoji = "analysis-kuromoji"
 	PluginAnalysisICU      = "analysis-icu"

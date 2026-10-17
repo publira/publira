@@ -26,7 +26,7 @@ var searchGroup = commandGroup{
 	commands: []command{
 		{name: "set", summary: "Save the catalog search engine", setup: setupSearchSet},
 		{name: "show", summary: "Print the saved search engine and the one the search answers from, without the password", setup: setupSearchShow},
-		{name: "test", summary: "Ask the saved search engine what it is and whether it has the analysis plugins", setup: setupSearchTest},
+		{name: "test", summary: "Ask the saved search engine what it is and whether it has the plugins the Japanese analysis is built on", setup: setupSearchTest},
 		{
 			name:    "reindex",
 			summary: "Rebuild the catalog index into a new index and move the alias onto it, or rewrite one tenant's documents in place",
@@ -79,7 +79,7 @@ func setupSearchSet(f *commandFlags) func(context.Context, *commandEnv) error {
 	f.StringVar(&settings.Index, "index", "", "the alias of the index holding the catalog (default \""+opensearchbackend.DefaultIndex+"\")")
 	f.StringVar(&settings.Username, "username", "", "the HTTP basic auth user, over https:// only; left out, the engine is reached without credentials")
 	analysisFile := f.String("analysis-file", "", "a JSON file holding the settings.analysis of the catalog index, defining the analyzers written_form and alternate_form and the normalizer exact_match; left out, the saved one is kept")
-	defaultAnalysis := f.Bool("default-analysis", false, "go back to the default analysis, built for Japanese")
+	defaultAnalysis := f.Bool("default-analysis", false, "go back to the default analysis, which needs no plugin")
 	var localeAnalyses []platformsearch.LocaleAnalysisUpdate
 	var localeFlags []string
 	f.Func("locale-analysis-file", "build the index of one language from its own analysis, read from a JSON file held to what --analysis-file is, as `LOCALE=FILE`, such as en=english.json; repeat it for each language. A language it does not name keeps what its index is built from", func(v string) error {

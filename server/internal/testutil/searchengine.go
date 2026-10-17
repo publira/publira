@@ -29,7 +29,7 @@ const searchEngineStartTimeout = 5 * time.Minute
 // StartElasticsearch ask for it.
 type searchEngine struct {
 	// name names the engine in errors, and the directory under infra/docker
-	// whose Dockerfile builds its image with the analysis plugins installed.
+	// whose Dockerfile builds its image.
 	name string
 	// imageEnv is the variable naming an image already built from that
 	// Dockerfile, which is used as it is instead of building one here.

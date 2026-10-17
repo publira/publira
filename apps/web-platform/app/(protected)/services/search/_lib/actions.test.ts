@@ -420,12 +420,12 @@ describe("testPlatformSearchConnectionAction", () => {
   it("returns what the engine answered and clears the audit log, which records every test", async () => {
     const result = {
       failure:
-        "The engine is missing a plugin the catalog index needs: analysis-icu. Install it on every node and test again.",
-      icuInstalled: false,
+        "The engine at this URL isn't the one selected above. Choose the engine it reports, or check the URL.",
+      icuInstalled: true,
       kuromojiInstalled: true,
-      product: "OpenSearch",
+      product: "Elasticsearch",
       succeeded: false,
-      version: "3.2.0",
+      version: "9.5.5",
     };
     mockTestPlatformSearchConnection.mockResolvedValueOnce({
       ok: true,
@@ -452,52 +452,31 @@ describe("testPlatformSearchConnectionAction", () => {
     expect(mockUpdateTag).not.toHaveBeenCalledWith("platform:search-settings");
   });
 
-  it("words a passing test", async () => {
-    mockTestPlatformSearchConnection.mockResolvedValueOnce({
-      ok: true,
-      result: {
-        failure: "",
-        icuInstalled: true,
-        kuromojiInstalled: true,
-        product: "OpenSearch",
-        succeeded: true,
-        version: "3.2.0",
-      },
-    });
+  // Neither plugin decides the test, so a pass reads the same with or without
+  // them.
+  it.each([true, false])(
+    "words a passing test (plugins installed %s)",
+    async (installed) => {
+      mockTestPlatformSearchConnection.mockResolvedValueOnce({
+        ok: true,
+        result: {
+          failure: "",
+          icuInstalled: installed,
+          kuromojiInstalled: installed,
+          product: "OpenSearch",
+          succeeded: true,
+          version: "3.9.0",
+        },
+      });
 
-    const { testPlatformSearchConnectionAction } = await import("./actions");
+      const { testPlatformSearchConnectionAction } = await import("./actions");
 
-    await expect(
-      testPlatformSearchConnectionAction(null, openSearchForm)
-    ).resolves.toMatchObject({
-      message:
-        "The connection works, and the engine has both plugins the catalog index needs.",
-      ok: true,
-    });
-  });
-
-  // The API asks for both plugins only while the default analysis is saved.
-  it("words a passing test that lacks the default analysis' plugins", async () => {
-    mockTestPlatformSearchConnection.mockResolvedValueOnce({
-      ok: true,
-      result: {
-        failure: "",
-        icuInstalled: true,
-        kuromojiInstalled: false,
-        product: "OpenSearch",
-        succeeded: true,
-        version: "3.9.0",
-      },
-    });
-
-    const { testPlatformSearchConnectionAction } = await import("./actions");
-
-    await expect(
-      testPlatformSearchConnectionAction(null, openSearchForm)
-    ).resolves.toMatchObject({
-      message:
-        "The connection works. The engine lacks a plugin the default text analysis needs, which the saved text analysis doesn't use.",
-      ok: true,
-    });
-  });
+      await expect(
+        testPlatformSearchConnectionAction(null, openSearchForm)
+      ).resolves.toMatchObject({
+        message: "The connection works.",
+        ok: true,
+      });
+    }
+  );
 });
