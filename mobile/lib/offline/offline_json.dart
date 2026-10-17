@@ -173,6 +173,7 @@ Map<String, Object?> _seriesToJson(SeriesItem series) => {
   'internalId': series.internalId,
   'title': series.title,
   'description': series.description,
+  'locale': series.locale,
   'episodeCount': series.episodeCount,
   'labelId': series.labelId,
   'labelName': series.labelName,
@@ -205,6 +206,7 @@ SeriesItem? _seriesFromJson(Object? decoded) {
     internalId: _string(decoded['internalId']),
     title: _string(decoded['title']),
     description: _string(decoded['description']),
+    locale: _string(decoded['locale']),
     episodeCount: _int(decoded['episodeCount']),
     labelId: _string(decoded['labelId']),
     labelName: _string(decoded['labelName']),
@@ -347,6 +349,7 @@ Map<String, Object?> _episodeToJson(EpisodeItem episode) => {
   'id': episode.id,
   'internalId': episode.internalId,
   'title': episode.title,
+  'locale': episode.locale,
   'orderIndex': episode.orderIndex,
   'price': episode.price,
   'purchaseAvailability': episode.purchaseSurface.wireName,
@@ -366,6 +369,7 @@ EpisodeItem? _episodeFromJson(Object? decoded) {
     id: id,
     internalId: _string(decoded['internalId']),
     title: _string(decoded['title']),
+    locale: _string(decoded['locale']),
     orderIndex: _int(decoded['orderIndex']),
     price: _int(decoded['price']),
     purchaseSurface: EpisodePurchaseSurface.fromWire(
@@ -378,6 +382,7 @@ EpisodeItem? _episodeFromJson(Object? decoded) {
 Map<String, Object?> _neighborToJson(EpisodeNeighbor neighbor) => {
   'id': neighbor.id,
   'title': neighbor.title,
+  'locale': neighbor.locale,
   'orderIndex': neighbor.orderIndex,
   'price': neighbor.price,
   'isFree': neighbor.isFree,
@@ -396,6 +401,7 @@ EpisodeNeighbor? _neighborFromJson(Object? decoded) {
   return EpisodeNeighbor(
     id: id,
     title: _string(decoded['title']),
+    locale: _string(decoded['locale']),
     orderIndex: _int(decoded['orderIndex']),
     price: _int(decoded['price']),
     isFree: decoded['isFree'] == true,
@@ -462,6 +468,7 @@ Map<String, Object?> _savedEpisodeToJson(SavedEpisode saved) {
       'expiresAt': expiresAt.toUtc().toIso8601String(),
     'seriesId': detail.seriesId,
     'seriesTitle': detail.seriesTitle,
+    'seriesLocale': detail.seriesLocale,
     'access': detail.access.name,
     if (detail.entitlementSource != EpisodeEntitlementSource.unspecified)
       'entitlementSource': detail.entitlementSource.name,
@@ -512,6 +519,7 @@ SavedEpisode? _savedEpisodeFromJson(Object? decoded) {
       episode: episode,
       seriesId: seriesId,
       seriesTitle: _string(decoded['seriesTitle']),
+      seriesLocale: _string(decoded['seriesLocale']),
       access: access,
       entitlementSource: _entitlementSourceFromName(
         _string(decoded['entitlementSource']),

@@ -1,4 +1,7 @@
+import 'dart:ui';
+
 import 'package:publira/api/gen/publira/v1/catalog.pb.dart' as pb;
+import 'package:publira/l10n/locale_negotiation.dart';
 import 'package:publira/models/series_item.dart';
 
 /// Which way the pages of an episode are turned, as
@@ -115,6 +118,7 @@ class EpisodeNeighbor {
   const EpisodeNeighbor({
     required this.id,
     required this.title,
+    this.locale = '',
     required this.orderIndex,
     required this.price,
     required this.isFree,
@@ -124,6 +128,14 @@ class EpisodeNeighbor {
   /// Public id (`public_id`), which addresses the episode.
   final String id;
   final String title;
+
+  /// The locale [title] was answered in, named the way [EpisodeItem.locale]
+  /// is.
+  final String locale;
+
+  /// [locale] as a text widget takes it, the way [SeriesItem.textLocale] is.
+  Locale? get textLocale => supportedLocaleForCode(locale);
+
   final int orderIndex;
 
   /// What the episode costs. It stays the stored price while a free window is
@@ -148,6 +160,7 @@ class EpisodeDetail {
     required this.seriesId,
     this.seriesInternalId = '',
     required this.seriesTitle,
+    this.seriesLocale = '',
     required this.access,
     required this.images,
     this.previewImages = const [],
@@ -171,6 +184,15 @@ class EpisodeDetail {
   final String seriesInternalId;
 
   final String seriesTitle;
+
+  /// The locale [seriesTitle] was answered in, which the series falls back to
+  /// apart from the episode. Empty on a copy saved before the locale was kept.
+  final String seriesLocale;
+
+  /// [seriesLocale] as a text widget takes it, the way
+  /// [SeriesItem.textLocale] is.
+  Locale? get seriesTextLocale => supportedLocaleForCode(seriesLocale);
+
   final EpisodeAccess access;
 
   /// Body pages in `displayOrder`. Empty while access is [EpisodeAccess.locked].

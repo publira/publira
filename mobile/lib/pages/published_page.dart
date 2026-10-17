@@ -1,7 +1,6 @@
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
-import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/l10n/locale_negotiation.dart';
 
 /// A page the tenant has published, as `PublicPagesService/GetPublishedPage`
@@ -26,16 +25,8 @@ class PublishedPage {
 
   /// The name of the language the page is shown in, when that is not
   /// [requested], or `null` when the page is in the language asked for.
-  ///
-  /// The name is the catalog's own label, the one `web-storefront` shows, so a
-  /// served locale no catalog carries has none and is reported as `null`.
-  String? fallbackLanguage(Locale requested) {
-    final served = supportedLocaleForCode(locale);
-    if (served == null || served.toLanguageTag() == requested.toLanguageTag()) {
-      return null;
-    }
-    return AppMessages.forLocale(served)?.localeLabel;
-  }
+  String? fallbackLanguage(Locale requested) =>
+      fallbackLanguageLabel(locale, requested);
 }
 
 /// A page the tenant lists where the storefront's footer does, as

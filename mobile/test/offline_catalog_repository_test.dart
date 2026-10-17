@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/models/episode_detail.dart';
@@ -153,8 +155,136 @@ void main() {
     fail('expected the read to fail');
   }
 
+  group('reads in two languages answering out of order', () {
+    SeriesDetail titled(String title, String locale) {
+      final detail = _seriesDetail();
+      return SeriesDetail(
+        series: SeriesItem(
+          id: _seriesId,
+          title: title,
+          description: detail.series.description,
+          locale: locale,
+        ),
+        episodes: detail.episodes,
+      );
+    }
+
+    test('keep the series the newer read answered', () async {
+      final catalog = build();
+      final older = Completer<void>();
+      origin.localeGates['ja'] = older;
+
+      final first = catalog.getSeries(_seriesId, locale: 'ja');
+      origin.details = {_seriesId: titled('Newer', 'en')};
+      await catalog.getSeries(_seriesId, locale: 'en');
+      origin.details = {_seriesId: titled('Older', 'ja')};
+      older.complete();
+      await first;
+
+      final saved = await library.readSeriesDetail(_seriesId);
+      expect(saved!.series.title, 'Newer');
+      expect(saved.series.locale, 'en');
+    });
+
+    test('keep the catalog the newer read answered', () async {
+      final catalog = build();
+      final older = Completer<void>();
+      origin.localeGates['ja'] = older;
+
+      final first = catalog.listSeries(locale: 'ja');
+      origin.series = [titled('Newer', 'en').series];
+      await catalog.listSeries(locale: 'en');
+      origin.series = [titled('Older', 'ja').series];
+      older.complete();
+      await first;
+
+      expect(library.series!.series.single.title, 'Newer');
+    });
+
+    test(
+      'still take a body away when the newer read could not reach the API',
+      () async {
+        final catalog = build();
+        await catalog.getEpisode(_seriesId, _episodeId, locale: 'en');
+        expect(await library.readEpisode(_seriesId, _episodeId), isNotNull);
+        final older = Completer<void>();
+        origin.localeGates['ja'] = older;
+        final key = episodeKey(_seriesId, _episodeId);
+        final saved = origin.episodes[key]!;
+
+        final first = catalog.getEpisode(_seriesId, _episodeId, locale: 'ja');
+        origin.episodeError = _network;
+        await catalog.getEpisode(_seriesId, _episodeId, locale: 'en');
+        origin.episodeError = null;
+        origin.episodes[key] = EpisodeDetail(
+          episode: saved.episode,
+          seriesId: saved.seriesId,
+          seriesTitle: saved.seriesTitle,
+          access: EpisodeAccess.locked,
+          images: const [],
+        );
+        older.complete();
+        await first;
+
+        expect(await library.readEpisode(_seriesId, _episodeId), isNull);
+      },
+    );
+
+    test(
+      'still drop a series when the newer read could not reach the API',
+      () async {
+        final catalog = build();
+        await catalog.getSeries(_seriesId, locale: 'en');
+        final older = Completer<void>();
+        origin.localeGates['ja'] = older;
+
+        final first = catalog.getSeries(_seriesId, locale: 'ja');
+        origin.detailError = _network;
+        await catalog.getSeries(_seriesId, locale: 'en');
+        origin.detailError = null;
+        origin.details = {};
+        older.complete();
+        await first;
+
+        expect(await library.readSeriesDetail(_seriesId), isNull);
+      },
+    );
+
+    test('keep the episode the newer read answered', () async {
+      final catalog = build();
+      final older = Completer<void>();
+      origin.localeGates['ja'] = older;
+      final key = episodeKey(_seriesId, _episodeId);
+      EpisodeDetail titledEpisode(String title) {
+        final detail = _detail();
+        return EpisodeDetail(
+          episode: EpisodeItem(
+            id: _episodeId,
+            title: title,
+            orderIndex: 1,
+            price: 0,
+          ),
+          seriesId: detail.seriesId,
+          seriesTitle: detail.seriesTitle,
+          access: detail.access,
+          images: detail.images,
+        );
+      }
+
+      final first = catalog.getEpisode(_seriesId, _episodeId, locale: 'ja');
+      origin.episodes[key] = titledEpisode('Newer');
+      await catalog.getEpisode(_seriesId, _episodeId, locale: 'en');
+      origin.episodes[key] = titledEpisode('Older');
+      older.complete();
+      await first;
+
+      final saved = await library.readEpisode(_seriesId, _episodeId);
+      expect(saved!.detail.episode.title, 'Newer');
+    });
+  });
+
   test('listSeries keeps the catalog the API answered', () async {
-    await build().listSeries();
+    await build().listSeries(locale: 'en');
 
     expect(library.series!.series, hasLength(1));
     expect(library.series!.series.single.id, _seriesId);
@@ -163,10 +293,10 @@ void main() {
   test(
     'listSeries answers from the device when the API is unreachable',
     () async {
-      await build().listSeries();
+      await build().listSeries(locale: 'en');
       origin.listError = _network;
 
-      final page = await build().listSeries();
+      final page = await build().listSeries(locale: 'en');
 
       expect(page.series.single.id, _seriesId);
     },
@@ -177,27 +307,30 @@ void main() {
     () async {
       origin.listError = _network;
 
-      expect(await failureOf(build().listSeries), CatalogFailureKind.notSaved);
+      expect(
+        await failureOf(() => build().listSeries(locale: 'en')),
+        CatalogFailureKind.notSaved,
+      );
     },
   );
 
   test('a catalog read off the device can still address its covers', () async {
-    await build().listSeries();
+    await build().listSeries(locale: 'en');
     origin.listError = _network;
 
     // A failed catalog call is not a failed cover request: the saved catalog
     // has to come back with the headers a cover request needs.
-    final page = await build().listSeries();
+    final page = await build().listSeries(locale: 'en');
 
     expect(page.series.single.eyeCatchVariants.single.url, _coverVariant.url);
     expect(page.series.single.imageRequestHeaders, _imageHeaders);
   });
 
   test('a series read off the device can still address its cover', () async {
-    await build().getSeries(_seriesId);
+    await build().getSeries(_seriesId, locale: 'en');
     origin.detailError = _network;
 
-    final detail = await build().getSeries(_seriesId);
+    final detail = await build().getSeries(_seriesId, locale: 'en');
 
     expect(detail!.series.eyeCatchVariants.single.url, _coverVariant.url);
     expect(detail.series.imageRequestHeaders, _imageHeaders);
@@ -209,7 +342,7 @@ void main() {
       ..series = fixtureCatalog(3)
       ..seriesPageSize = 2;
 
-    final page = await build().listSeries();
+    final page = await build().listSeries(locale: 'en');
 
     expect(library.series!.series, hasLength(2));
     expect(page.nextToken, isNotEmpty);
@@ -221,9 +354,9 @@ void main() {
       ..series = fixtureCatalog(3)
       ..seriesPageSize = 2;
     final catalog = build();
-    final first = await catalog.listSeries();
+    final first = await catalog.listSeries(locale: 'en');
 
-    await catalog.listSeries(token: first.nextToken);
+    await catalog.listSeries(token: first.nextToken, locale: 'en');
 
     // The device keeps the page a launch without a network opens on, which is
     // the first one however far the reader scrolled past it.
@@ -235,10 +368,10 @@ void main() {
     origin
       ..series = fixtureCatalog(3)
       ..seriesPageSize = 2;
-    final saved = await build().listSeries();
+    final saved = await build().listSeries(locale: 'en');
     origin.listError = _network;
 
-    final page = await build().listSeries();
+    final page = await build().listSeries(locale: 'en');
 
     expect(page.series, hasLength(2));
     expect(page.nextToken, saved.nextToken);
@@ -248,31 +381,36 @@ void main() {
     origin
       ..series = fixtureCatalog(3)
       ..seriesPageSize = 2;
-    final saved = await build().listSeries();
+    final saved = await build().listSeries(locale: 'en');
     origin.listMoreError = _network;
 
     // The device holds the first page and nothing under it, so scrolling past
     // it reaches the API or nothing at all.
     expect(
-      await failureOf(() => build().listSeries(token: saved.nextToken)),
+      await failureOf(
+        () => build().listSeries(token: saved.nextToken, locale: 'en'),
+      ),
       CatalogFailureKind.network,
     );
   });
 
   test('listSeries does not cover a failure that is not the network', () async {
-    await build().listSeries();
+    await build().listSeries(locale: 'en');
     origin.listError = _unexpected;
 
-    expect(await failureOf(build().listSeries), CatalogFailureKind.unexpected);
+    expect(
+      await failureOf(() => build().listSeries(locale: 'en')),
+      CatalogFailureKind.unexpected,
+    );
   });
 
   test(
     'getSeries answers from the device when the API is unreachable',
     () async {
-      await build().getSeries(_seriesId);
+      await build().getSeries(_seriesId, locale: 'en');
       origin.detailError = _network;
 
-      final detail = await build().getSeries(_seriesId);
+      final detail = await build().getSeries(_seriesId, locale: 'en');
 
       expect(detail?.series.id, _seriesId);
       expect(detail?.episodes, hasLength(1));
@@ -280,40 +418,43 @@ void main() {
   );
 
   test('a name read neither saves a series nor drops a saved one', () async {
-    await build().getEpisode(_seriesId, _episodeId);
+    await build().getEpisode(_seriesId, _episodeId, locale: 'en');
     library.details.clear();
 
-    expect(await build().getSeriesTitle(_seriesId), 'Seed Series 001');
+    expect(
+      (await build().getSeriesTitle(_seriesId, locale: 'en'))?.title,
+      'Seed Series 001',
+    );
     expect(library.details, isEmpty);
 
     // A series the API stopped publishing between the follow and the list is
     // still not a reason to take what the reader downloaded off the device.
     origin.details = const {};
 
-    expect(await build().getSeriesTitle(_seriesId), isNull);
+    expect(await build().getSeriesTitle(_seriesId, locale: 'en'), isNull);
     expect(library.episodes, hasLength(1));
   });
 
   test('getSeries drops a series the API no longer has', () async {
-    await build().getSeries(_seriesId);
+    await build().getSeries(_seriesId, locale: 'en');
     origin.details = const {};
 
-    expect(await build().getSeries(_seriesId), isNull);
+    expect(await build().getSeries(_seriesId, locale: 'en'), isNull);
     expect(library.details, isEmpty);
   });
 
   test('a series the API drops takes its saved episodes with it', () async {
-    await build().getSeries(_seriesId);
-    await build().getEpisode(_seriesId, _episodeId);
+    await build().getSeries(_seriesId, locale: 'en');
+    await build().getEpisode(_seriesId, _episodeId, locale: 'en');
     origin.details = const {};
 
-    expect(await build().getSeries(_seriesId), isNull);
+    expect(await build().getSeries(_seriesId, locale: 'en'), isNull);
     expect(library.details, isEmpty);
     expect(library.episodes, isEmpty);
   });
 
   test('a free body is kept without an owner', () async {
-    await build().getEpisode(_seriesId, _episodeId);
+    await build().getEpisode(_seriesId, _episodeId, locale: 'en');
 
     final saved = library.episodes.values.single;
     expect(saved.ownerId, isEmpty);
@@ -328,7 +469,7 @@ void main() {
       ),
     };
 
-    await build().getEpisode(_seriesId, _episodeId);
+    await build().getEpisode(_seriesId, _episodeId, locale: 'en');
 
     expect(library.episodes.values.single.ownerId, _reader);
   });
@@ -344,7 +485,7 @@ void main() {
         ),
       };
 
-      final read = build().getEpisode(_seriesId, _episodeId);
+      final read = build().getEpisode(_seriesId, _episodeId, locale: 'en');
       readerId = 'SeedMMBRAAA2';
       await read;
 
@@ -359,13 +500,13 @@ void main() {
       ),
     };
 
-    await build().getEpisode(_seriesId, _episodeId);
+    await build().getEpisode(_seriesId, _episodeId, locale: 'en');
 
     expect(library.episodes, isEmpty);
   });
 
   test('a saved body carries no credential to the device', () async {
-    await build().getEpisode(_seriesId, _episodeId);
+    await build().getEpisode(_seriesId, _episodeId, locale: 'en');
 
     final saved = library.episodes.values.single;
     expect(saved.detail.imageRequestHeaders, isEmpty);
@@ -383,20 +524,28 @@ void main() {
         spreadStartIndex: 0,
       ),
     };
-    await build().getEpisode(_seriesId, _episodeId);
+    await build().getEpisode(_seriesId, _episodeId, locale: 'en');
     origin.episodeError = _network;
 
-    final detail = await build().getEpisode(_seriesId, _episodeId);
+    final detail = await build().getEpisode(
+      _seriesId,
+      _episodeId,
+      locale: 'en',
+    );
 
     expect(detail!.readingDirection, ReadingDirection.ltr);
     expect(detail.spreadStartIndex, 0);
   });
 
   test('a saved body keeps the episode after it', () async {
-    await build().getEpisode(_seriesId, _episodeId);
+    await build().getEpisode(_seriesId, _episodeId, locale: 'en');
     origin.episodeError = _network;
 
-    final detail = await build().getEpisode(_seriesId, _episodeId);
+    final detail = await build().getEpisode(
+      _seriesId,
+      _episodeId,
+      locale: 'en',
+    );
 
     // The offer at the end of a body read without a network is the same one
     // the API made when the body was saved.
@@ -411,12 +560,12 @@ void main() {
         access: EpisodeAccess.entitled,
       ),
     };
-    await build().getEpisode(_seriesId, _episodeId);
+    await build().getEpisode(_seriesId, _episodeId, locale: 'en');
 
     origin.episodes = {
       episodeKey(_seriesId, _episodeId): _detail(access: EpisodeAccess.locked),
     };
-    await build().getEpisode(_seriesId, _episodeId);
+    await build().getEpisode(_seriesId, _episodeId, locale: 'en');
 
     expect(library.episodes, isEmpty);
   });
@@ -430,32 +579,39 @@ void main() {
           access: EpisodeAccess.entitled,
         ),
       };
-      await build().getEpisode(_seriesId, _episodeId);
+      await build().getEpisode(_seriesId, _episodeId, locale: 'en');
 
       origin.episodes = {
         episodeKey(_seriesId, _episodeId): _detail(
           access: EpisodeAccess.ageRestricted,
         ),
       };
-      await build().getEpisode(_seriesId, _episodeId);
+      await build().getEpisode(_seriesId, _episodeId, locale: 'en');
 
       expect(library.episodes, isEmpty);
     },
   );
 
   test('a body the API no longer has is taken off the device', () async {
-    await build().getEpisode(_seriesId, _episodeId);
+    await build().getEpisode(_seriesId, _episodeId, locale: 'en');
     origin.episodes = const {};
 
-    expect(await build().getEpisode(_seriesId, _episodeId), isNull);
+    expect(
+      await build().getEpisode(_seriesId, _episodeId, locale: 'en'),
+      isNull,
+    );
     expect(library.episodes, isEmpty);
   });
 
   test('a saved free body opens without the API', () async {
-    await build().getEpisode(_seriesId, _episodeId);
+    await build().getEpisode(_seriesId, _episodeId, locale: 'en');
     origin.episodeError = _network;
 
-    final detail = await build().getEpisode(_seriesId, _episodeId);
+    final detail = await build().getEpisode(
+      _seriesId,
+      _episodeId,
+      locale: 'en',
+    );
 
     expect(detail?.episode.id, _episodeId);
     expect(detail?.images, hasLength(1));
@@ -471,10 +627,14 @@ void main() {
           entitlementSource: EpisodeEntitlementSource.creator,
         ),
       };
-      await build().getEpisode(_seriesId, _episodeId);
+      await build().getEpisode(_seriesId, _episodeId, locale: 'en');
       origin.episodeError = _network;
 
-      final detail = await build().getEpisode(_seriesId, _episodeId);
+      final detail = await build().getEpisode(
+        _seriesId,
+        _episodeId,
+        locale: 'en',
+      );
 
       expect(detail?.access, EpisodeAccess.entitled);
       // The author is still told why the body opens without a network.
@@ -491,13 +651,15 @@ void main() {
           access: EpisodeAccess.entitled,
         ),
       };
-      await build().getEpisode(_seriesId, _episodeId);
+      await build().getEpisode(_seriesId, _episodeId, locale: 'en');
 
       origin.episodeError = _network;
       readerId = '';
 
       expect(
-        await failureOf(() => build().getEpisode(_seriesId, _episodeId)),
+        await failureOf(
+          () => build().getEpisode(_seriesId, _episodeId, locale: 'en'),
+        ),
         CatalogFailureKind.notSaved,
       );
     },
@@ -512,13 +674,15 @@ void main() {
           access: EpisodeAccess.entitled,
         ),
       };
-      await build().getEpisode(_seriesId, _episodeId);
+      await build().getEpisode(_seriesId, _episodeId, locale: 'en');
 
       origin.episodeError = _network;
       now = _checkedAt.add(offlineGracePeriod + const Duration(seconds: 1));
 
       expect(
-        await failureOf(() => build().getEpisode(_seriesId, _episodeId)),
+        await failureOf(
+          () => build().getEpisode(_seriesId, _episodeId, locale: 'en'),
+        ),
         CatalogFailureKind.saveExpired,
       );
       expect(library.episodes, isEmpty);
@@ -543,7 +707,7 @@ void main() {
           price: 500,
         ),
       };
-      await build().getEpisode(_seriesId, _episodeId);
+      await build().getEpisode(_seriesId, _episodeId, locale: 'en');
 
       expect(waitFree.stateReads, [_seriesInternalId]);
       final saved = library.episodes.values.single;
@@ -553,7 +717,11 @@ void main() {
       origin.episodeError = _network;
       now = expiresAt.subtract(const Duration(seconds: 1));
       expect(
-        (await build().getEpisode(_seriesId, _episodeId))?.episode.id,
+        (await build().getEpisode(
+          _seriesId,
+          _episodeId,
+          locale: 'en',
+        ))?.episode.id,
         _episodeId,
       );
 
@@ -561,7 +729,9 @@ void main() {
       // last.
       now = expiresAt;
       expect(
-        await failureOf(() => build().getEpisode(_seriesId, _episodeId)),
+        await failureOf(
+          () => build().getEpisode(_seriesId, _episodeId, locale: 'en'),
+        ),
         CatalogFailureKind.saveExpired,
       );
       expect(library.episodes, isEmpty);
@@ -578,7 +748,7 @@ void main() {
         price: 500,
       ),
     };
-    await build().getEpisode(_seriesId, _episodeId);
+    await build().getEpisode(_seriesId, _episodeId, locale: 'en');
 
     final saved = library.episodes.values.single;
     expect(saved.expiresAt, isNull);
@@ -606,7 +776,7 @@ void main() {
       };
     };
 
-    await build().getEpisode(_seriesId, _episodeId);
+    await build().getEpisode(_seriesId, _episodeId, locale: 'en');
 
     expect(library.episodes, isEmpty);
   });
@@ -620,7 +790,7 @@ void main() {
         price: 500,
       ),
     };
-    await build().getEpisode(_seriesId, _episodeId);
+    await build().getEpisode(_seriesId, _episodeId, locale: 'en');
 
     expect(waitFree.stateReads, isEmpty);
     expect(library.episodes.values.single.expiresAt, isNull);
@@ -636,7 +806,7 @@ void main() {
           freeUntil: freeUntil,
         ),
       };
-      await build().getEpisode(_seriesId, _episodeId);
+      await build().getEpisode(_seriesId, _episodeId, locale: 'en');
 
       final saved = library.episodes.values.single;
       expect(saved.ownerId, isEmpty);
@@ -648,7 +818,9 @@ void main() {
       readerId = _reader;
       now = freeUntil;
       expect(
-        await failureOf(() => build().getEpisode(_seriesId, _episodeId)),
+        await failureOf(
+          () => build().getEpisode(_seriesId, _episodeId, locale: 'en'),
+        ),
         CatalogFailureKind.saveExpired,
       );
       expect(library.episodes, isEmpty);
@@ -661,7 +833,9 @@ void main() {
       origin.episodeError = _network;
 
       expect(
-        await failureOf(() => build().getEpisode(_seriesId, _episodeId)),
+        await failureOf(
+          () => build().getEpisode(_seriesId, _episodeId, locale: 'en'),
+        ),
         CatalogFailureKind.notSaved,
       );
     },
@@ -859,7 +1033,10 @@ void main() {
       ),
     ];
 
-    final items = (await build().listRecentSeries(limit: 10)).series;
+    final items = (await build().listRecentSeries(
+      limit: 10,
+      locale: 'en',
+    )).series;
 
     expect(items.single.episode.id, _episodeId);
     expect(origin.recentSeriesLimits, [10]);
@@ -867,7 +1044,7 @@ void main() {
 
   test('the new-arrivals shelf does not replace the saved catalog', () async {
     final catalog = build();
-    await catalog.listSeries();
+    await catalog.listSeries(locale: 'en');
     origin.newestSeries = const [
       SeriesItem(
         id: 'series-kitchen',
@@ -876,7 +1053,7 @@ void main() {
       ),
     ];
 
-    final shelf = await catalog.listNewestSeries(limit: 10);
+    final shelf = await catalog.listNewestSeries(limit: 10, locale: 'en');
 
     expect(shelf.single.id, 'series-kitchen');
     expect(origin.newestSeriesLimits, [10]);
@@ -889,17 +1066,21 @@ void main() {
     'a shelf the API cannot answer is not answered from the device',
     () async {
       final catalog = build();
-      await catalog.listSeries();
+      await catalog.listSeries(locale: 'en');
       origin
         ..newestSeriesError = _network
         ..rankedSeriesError = _network;
 
-      expect(() => catalog.listNewestSeries(limit: 10), throwsA(_network));
+      expect(
+        () => catalog.listNewestSeries(limit: 10, locale: 'en'),
+        throwsA(_network),
+      );
       expect(
         () => catalog.listRankedSeries(
           limit: 10,
           period: RankingPeriod.weekly,
           ageRating: SeriesAgeRating.all,
+          locale: 'en',
         ),
         throwsA(_network),
       );
@@ -908,7 +1089,7 @@ void main() {
 
   test('a search is answered by the API alone', () async {
     final catalog = build();
-    await catalog.listSeries();
+    await catalog.listSeries(locale: 'en');
     origin.searchResults = const [
       SeriesItem(
         id: 'series-kitchen',
@@ -917,7 +1098,7 @@ void main() {
       ),
     ];
 
-    final results = await catalog.searchSeries(query: 'Kitchen');
+    final results = await catalog.searchSeries(query: 'Kitchen', locale: 'en');
 
     expect(results.series.single.id, 'series-kitchen');
     expect(origin.searchRequests.single.query, 'Kitchen');
@@ -930,7 +1111,10 @@ void main() {
     final catalog = build();
     origin.searchError = _network;
 
-    expect(() => catalog.searchSeries(query: 'Seed'), throwsA(_network));
+    expect(
+      () => catalog.searchSeries(query: 'Seed', locale: 'en'),
+      throwsA(_network),
+    );
   });
 
   test('the ranking is answered by the API alone', () async {
@@ -943,6 +1127,7 @@ void main() {
       period: RankingPeriod.weekly,
       ageRating: SeriesAgeRating.all,
       token: '0',
+      locale: 'en',
     );
 
     expect(ranked.rankedSeries.single.rank, 1);
@@ -961,6 +1146,7 @@ void main() {
       period: RankingPeriod.weekly,
       ageRating: SeriesAgeRating.all,
       genreId: 'SeedGENRAAA1',
+      locale: 'en',
     );
 
     expect(ranked.rankedSeries.single.rank, 2);

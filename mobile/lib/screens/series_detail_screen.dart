@@ -58,17 +58,24 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
   var _started = false;
   var _accessToken = '';
 
+  /// The app's locale the series is read in, as a BCP 47 tag.
+  var _locale = '';
+
   /// Reloads whenever the reader signs in or out, because the rating a birth
-  /// date proves belongs to the reader who was signed in when it was read.
+  /// date proves belongs to the reader who was signed in when it was read,
+  /// and whenever the locale changes, which the title and synopsis are read
+  /// in.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final auth = AuthScope.of(context);
-    if (_started && auth.accessToken == _accessToken) {
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    if (_started && auth.accessToken == _accessToken && locale == _locale) {
       return;
     }
     _started = true;
     _accessToken = auth.accessToken;
+    _locale = locale;
     _future = _load(CatalogScope.of(context), auth);
   }
 
@@ -85,7 +92,7 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
     CatalogRepository catalog,
     AuthController auth,
   ) async {
-    final detail = await catalog.getSeries(widget.seriesId);
+    final detail = await catalog.getSeries(widget.seriesId, locale: _locale);
     if (detail == null) {
       return null;
     }
@@ -144,7 +151,10 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
         final detail = open.detail;
         return Scaffold(
           appBar: AppBar(
-            title: AutospacedText(detail.series.title),
+            title: AutospacedText(
+              detail.series.title,
+              locale: detail.series.textLocale,
+            ),
             actions: [
               if (LinkScope.maybeOf(context)?.share != null)
                 ShareAction(
@@ -463,7 +473,10 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
     final read = ++_progressReads;
     final SeriesProgress progress;
     try {
-      progress = await catalog.getSeriesProgress(seriesId);
+      progress = await catalog.getSeriesProgress(
+        seriesId,
+        locale: Localizations.localeOf(context).toLanguageTag(),
+      );
     } on CatalogFailure {
       return;
     }
@@ -542,9 +555,14 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   ) async {
     final messages = AppMessages.of(context);
     final messenger = ScaffoldMessenger.of(context);
+    final locale = Localizations.localeOf(context).toLanguageTag();
     String copy;
     try {
-      await downloader.save(widget.detail.series.id, episode.id);
+      await downloader.save(
+        widget.detail.series.id,
+        episode.id,
+        locale: locale,
+      );
       copy = messages.seriesSaveOfflineSaved(title: episode.title);
     } on EpisodeDownloadFailure catch (failure) {
       copy = switch (failure.kind) {
@@ -598,6 +616,9 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
     final theme = Theme.of(context);
     final messages = AppMessages.of(context);
     final series = widget.detail.series;
+    final fallbackLanguage = series.fallbackLanguage(
+      Localizations.localeOf(context),
+    );
     // A build with no follow repository offers none of this, so neither the
     // control nor the author rows it would sit in are put on the screen.
     final follows = FollowScope.maybeOf(context) != null;
@@ -614,6 +635,17 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           sliver: SliverList.list(
             children: [
+              if (fallbackLanguage != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: AutospacedText(
+                    messages.seriesFallbackNotice(language: fallbackLanguage),
+                    key: const ValueKey('series-fallback-notice'),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
               // 16:9 is the shape of the rendition, and on a phone it is what the
               // banner takes. The cap is for the wide screen a tablet or a
               // desktop window gives it, where the same ratio would push the
@@ -632,6 +664,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
               const SizedBox(height: 16),
               AutospacedText(
                 series.title,
+                locale: series.textLocale,
                 style: theme.textTheme.headlineSmall,
               ),
               const SizedBox(height: 8),
@@ -771,6 +804,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                 const SizedBox(height: 16),
                 AutospacedText(
                   series.description,
+                  locale: series.textLocale,
                   style: theme.textTheme.bodyLarge,
                 ),
               ],
@@ -821,7 +855,10 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                     textColor: _progress.finishedEpisodeIds.contains(episode.id)
                         ? theme.colorScheme.onSurfaceVariant
                         : null,
-                    title: AutospacedText(episode.title),
+                    title: AutospacedText(
+                      episode.title,
+                      locale: episode.textLocale,
+                    ),
                     // Any subtitle makes the row two lines tall, so a row with
                     // nothing to say under its title is given none.
                     subtitle:
@@ -943,11 +980,12 @@ class _RelatedSeriesShelf extends StatelessWidget {
       reloadToken: series.internalId,
       // A copy saved on this device before the internal id was kept names no
       // series the API can score against.
-      load: (catalog) async => series.internalId.isEmpty
+      load: (catalog, locale) async => series.internalId.isEmpty
           ? const []
           : catalog.listRelatedSeries(
               series.internalId,
               limit: _relatedSeriesLimit,
+              locale: locale,
             ),
       cardBuilder: (context, item) => SeriesShelfCard(
         key: ValueKey('series-related-${item.id}'),

@@ -4852,6 +4852,7 @@
       "related_heading": "你可能也喜欢",
       "episodes_empty": "还没有发布任何章节。",
       "episodes_heading": "章节",
+      "fallback_notice": "此系列没有以你所用的语言撰写的标题和简介，因此以{$language}显示。",
       "load_failed": "无法显示该系列。",
       "not_found": "找不到系列（{$id}）",
       "offline_not_saved": "您当前处于离线状态，且此设备上没有保存该系列的内容。",

@@ -54,7 +54,7 @@ class SeriesTile extends StatelessWidget {
           aspectRatio: 3 / 4,
         ),
       ),
-      title: AutospacedText(series.title),
+      title: AutospacedText(series.title, locale: series.textLocale),
       subtitle:
           series.creators.isEmpty &&
               classification.isEmpty &&
@@ -82,6 +82,7 @@ class SeriesTile extends StatelessWidget {
                 if (series.description.isNotEmpty)
                   AutospacedText(
                     series.description,
+                    locale: series.textLocale,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),

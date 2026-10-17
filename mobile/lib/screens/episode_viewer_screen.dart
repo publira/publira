@@ -101,6 +101,15 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   var _accessToken = '';
   var _readerId = '';
 
+  /// The app's locale the body is read in, as a BCP 47 tag, which names the
+  /// series and the episode in the title bar.
+  var _locale = '';
+
+  /// The page on screen, `null` until the reader has turned one. A body read
+  /// again for a new locale opens on it, rather than on a position whose
+  /// write may not have landed yet.
+  int? _pageOnScreen;
+
   /// Episodes of this series the device could open right now, which is what
   /// marks the next one as saved. Empty on a run with no library, which is
   /// what leaves the mark off.
@@ -154,12 +163,14 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
 
   /// Reloads whenever the reader signs in or out, because who is asking is
   /// what decides whether this body comes back at all — and where they last
-  /// stopped in it.
+  /// stopped in it — and whenever the locale changes, which the titles are
+  /// read in.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final catalog = CatalogScope.of(context);
     final accessToken = AuthScope.of(context).accessToken;
+    final locale = Localizations.localeOf(context).toLanguageTag();
     final active = AppTabScope.isActive(context);
     if (_awaitingBirthDate && !active) {
       _leftForBirthDate = true;
@@ -170,17 +181,25 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       _leftForBirthDate = false;
     }
     if (_started && accessToken == _accessToken) {
-      if (returned) {
+      final relocalized = locale != _locale;
+      if (relocalized) {
+        _locale = locale;
+        _saver?.flush();
+      }
+      if (returned || relocalized) {
         _future = _load(
           catalog,
           AuthScope.of(context),
           waitFree: WaitFreeScope.maybeOf(context),
+          resumeAt: relocalized ? _pageOnScreen : null,
         );
       }
       return;
     }
     _started = true;
     _accessToken = accessToken;
+    _locale = locale;
+    _pageOnScreen = null;
     _readerId = AuthScope.of(context).session?.userPublicId ?? '';
     // A saver belongs to the session it records against. The page the reader
     // before this one was on is theirs and cannot be written with this
@@ -306,13 +325,22 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   /// A body that stays locked is asked what [waitFree] offers on it, before
   /// the gate is drawn rather than after, so the gate does not change under a
   /// reader already reaching for its button.
+  ///
+  /// [resumeAt] is the page to open on in place of the one recorded, for a
+  /// body read again while the reader is in it.
   Future<_OpenEpisode?> _load(
     CatalogRepository catalog,
     AuthController auth, {
     WaitFreeRepository? waitFree,
     bool confirmPurchase = false,
+    int? resumeAt,
   }) async {
-    var detail = await catalog.getEpisode(widget.seriesId, widget.episodeId);
+    final locale = _locale;
+    var detail = await catalog.getEpisode(
+      widget.seriesId,
+      widget.episodeId,
+      locale: locale,
+    );
     if (confirmPurchase) {
       for (final delay in checkoutConfirmationDelays) {
         if (detail?.access != EpisodeAccess.locked) {
@@ -322,14 +350,18 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         if (!mounted) {
           break;
         }
-        detail = await catalog.getEpisode(widget.seriesId, widget.episodeId);
+        detail = await catalog.getEpisode(
+          widget.seriesId,
+          widget.episodeId,
+          locale: locale,
+        );
       }
     }
     if (detail == null) {
       return null;
     }
     _episodeInternalId = detail.episode.internalId;
-    final saved = await _savedPageIndex(catalog);
+    final saved = resumeAt ?? await _savedPageIndex(catalog);
     // Asked only where the answer decides what is shown: a rating to gate, or
     // a body withheld over an age.
     final age =
@@ -344,6 +376,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
             waitFree: waitFree,
             detail: detail,
             signedIn: auth.isSignedIn,
+            locale: locale,
           );
     return _OpenEpisode(
       detail: detail,
@@ -447,6 +480,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         }
         return _shell(
           title: open.detail.episode.title,
+          titleLocale: open.detail.episode.textLocale,
           credits: open.detail.creators,
           share: LinkScope.maybeOf(context)?.share == null
               ? null
@@ -500,7 +534,10 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         readingDirection: detail.readingDirection,
         spreadStartIndex: detail.spreadStartIndex,
         initialPageIndex: open.startPage,
-        onPageChanged: (pageIndex) => _saver?.save(pageIndex),
+        onPageChanged: (pageIndex) {
+          _pageOnScreen = pageIndex;
+          _saver?.save(pageIndex);
+        },
         onFinished: () => _recorder?.record(),
         endScreen: EpisodeEndPanel(
           detail: detail,
@@ -744,6 +781,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   Widget _shell({
     required String title,
     required Widget body,
+    Locale? titleLocale,
     List<SeriesCreator> credits = const [],
     Widget? share,
   }) {
@@ -753,13 +791,14 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         // The episode's own credits under its title, never the series': an
         // artist who took over part way through is on the episodes they drew.
         title: credits.isEmpty
-            ? AutospacedText(title)
+            ? AutospacedText(title, locale: titleLocale)
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   AutospacedText(
                     title,
+                    locale: titleLocale,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),

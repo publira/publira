@@ -24,6 +24,20 @@ Locale? supportedLocaleForCode(String code) {
   return null;
 }
 
+/// The name of the language a translation in [served] is written in, when
+/// that is not [requested], or `null` when it is the language asked for.
+///
+/// The name is the catalog's own label, the one `web-storefront` shows, so a
+/// served locale no catalog carries has none and is reported as `null`, and
+/// so is an empty one.
+String? fallbackLanguageLabel(String served, Locale requested) {
+  final locale = supportedLocaleForCode(served);
+  if (locale == null || locale.toLanguageTag() == requested.toLanguageTag()) {
+    return null;
+  }
+  return AppMessages.forLocale(locale)?.localeLabel;
+}
+
 /// The language and script [locale] stands for once BCP 47 likely subtags
 /// have filled in what it leaves out, or `null` when [likelyScripts] knows no
 /// script for its language.

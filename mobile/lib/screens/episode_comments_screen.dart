@@ -137,11 +137,19 @@ class _EpisodeCommentsScreenState extends State<EpisodeCommentsScreen> {
   }
 
   /// The internal id of the episode the route names by its public id, which
-  /// every comment request takes.
-  Future<String> _episodeInternalId(CatalogRepository catalog) async {
+  /// every comment request takes. The episode is read in [locale], the app's,
+  /// as every read of it is.
+  Future<String> _episodeInternalId(
+    CatalogRepository catalog,
+    String locale,
+  ) async {
     final EpisodeDetail? detail;
     try {
-      detail = await catalog.getEpisode(widget.seriesId, widget.episodeId);
+      detail = await catalog.getEpisode(
+        widget.seriesId,
+        widget.episodeId,
+        locale: locale,
+      );
     } on CatalogFailure catch (failure) {
       throw CommentFailure(switch (failure.kind) {
         CatalogFailureKind.network ||
@@ -168,6 +176,7 @@ class _EpisodeCommentsScreenState extends State<EpisodeCommentsScreen> {
     final viewer = _viewer;
     final episodeInternalId = await _episodeInternalId(
       CatalogScope.of(context),
+      Localizations.localeOf(context).toLanguageTag(),
     );
 
     // All three reads are started before any is awaited: none depends on

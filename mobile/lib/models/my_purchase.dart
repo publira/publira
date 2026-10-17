@@ -1,3 +1,7 @@
+import 'dart:ui';
+
+import 'package:publira/l10n/locale_negotiation.dart';
+
 /// One purchase belonging to the signed-in reader, as `publira.v1.MyPurchase`
 /// describes it.
 class MyPurchase {
@@ -5,8 +9,10 @@ class MyPurchase {
     required this.id,
     required this.seriesId,
     required this.seriesTitle,
+    this.seriesLocale = '',
     required this.episodeId,
     required this.episodeTitle,
+    this.episodeLocale = '',
     required this.orderIndex,
     required this.price,
     required this.currency,
@@ -21,8 +27,23 @@ class MyPurchase {
   final String id;
   final String seriesId;
   final String seriesTitle;
+
+  /// The locale [seriesTitle] was answered in, named the way
+  /// `SeriesItem.locale` is.
+  final String seriesLocale;
+
   final String episodeId;
   final String episodeTitle;
+
+  /// The locale [episodeTitle] was answered in, which falls back apart from
+  /// [seriesLocale].
+  final String episodeLocale;
+
+  /// [seriesLocale] and [episodeLocale] as a text widget takes them, the way
+  /// `SeriesItem.textLocale` is.
+  Locale? get seriesTextLocale => supportedLocaleForCode(seriesLocale);
+  Locale? get episodeTextLocale => supportedLocaleForCode(episodeLocale);
+
   final int orderIndex;
 
   /// What the reader paid, in the minor unit of [currency].

@@ -187,12 +187,13 @@ class _ContinueReadingShelf extends StatelessWidget {
       heading: messages.catalogContinueHeading,
       failureMessage: messages.catalogContinueFailed,
       reloadToken: '$readerId#$refreshes',
-      load: (catalog) async {
+      load: (catalog, locale) async {
         if (readerId.isEmpty) {
           return const [];
         }
         final page = await catalog.listRecentSeries(
           limit: _continueReadingLimit,
+          locale: locale,
         );
         return page.series;
       },
@@ -201,7 +202,10 @@ class _ContinueReadingShelf extends StatelessWidget {
         series: item.series,
         subtitle: item.episode.title.isEmpty
             ? null
-            : AutospacedText(item.episode.title),
+            : AutospacedText(
+                item.episode.title,
+                locale: item.episode.textLocale,
+              ),
         onTap: () => context.pushInTab(
           AppRoutes.episodeViewerPath(item.series.id, item.episode.id),
         ),
@@ -272,11 +276,12 @@ class _PopularShelf extends StatelessWidget {
         heading: messages.recommendedTitle,
         failureMessage: messages.recommendedLoadFailed,
       ),
-      load: (catalog) async {
+      load: (catalog, locale) async {
         final chart = await catalog.listRankedSeries(
           limit: _rankingLimit,
           period: RankingPeriod.weekly,
           ageRating: SeriesAgeRating.all,
+          locale: locale,
         );
         if (chart.rankedSeries.isNotEmpty) {
           return [
@@ -287,8 +292,14 @@ class _PopularShelf extends StatelessWidget {
         final SeriesPage recommended;
         try {
           recommended = readerId.isEmpty
-              ? await catalog.listRecommendedSeries(limit: _rankingLimit)
-              : await catalog.listMyRecommendedSeries(limit: _rankingLimit);
+              ? await catalog.listRecommendedSeries(
+                  limit: _rankingLimit,
+                  locale: locale,
+                )
+              : await catalog.listMyRecommendedSeries(
+                  limit: _rankingLimit,
+                  locale: locale,
+                );
         } on CatalogFailure catch (error) {
           throw ShelfReadFailure(_recommendations, error);
         }
@@ -328,7 +339,8 @@ class _NewArrivalsShelf extends StatelessWidget {
       heading: messages.catalogNewArrivalsHeading,
       failureMessage: messages.catalogNewArrivalsFailed,
       reloadToken: '$refreshes',
-      load: (catalog) => catalog.listNewestSeries(limit: _newArrivalsLimit),
+      load: (catalog, locale) =>
+          catalog.listNewestSeries(limit: _newArrivalsLimit, locale: locale),
       cardBuilder: (context, item) => SeriesShelfCard(
         key: ValueKey('catalog-new-arrivals-${item.id}'),
         series: item,
@@ -369,7 +381,7 @@ class _LabelsShelf extends StatelessWidget {
         onPressed: () => context.pushInTab(AppRoutes.labelsPath),
         child: AutospacedText(messages.catalogViewAll),
       ),
-      load: (catalog) async =>
+      load: (catalog, _) async =>
           (await catalog.listLabels(limit: _directoryShelfLimit)).labels,
       cardBuilder: (context, label) => _NameCard(
         key: ValueKey('catalog-labels-${label.id}'),
@@ -416,7 +428,7 @@ class _CreatorsShelf extends StatelessWidget {
         onPressed: () => context.pushInTab(AppRoutes.creatorsPath),
         child: AutospacedText(messages.catalogViewAll),
       ),
-      load: (catalog) async =>
+      load: (catalog, _) async =>
           (await catalog.listCreators(limit: _directoryShelfLimit)).creators,
       cardBuilder: (context, creator) => _NameCard(
         key: ValueKey('catalog-creators-${creator.id}'),
@@ -586,7 +598,7 @@ class _GenresShelf extends StatelessWidget {
         onPressed: () => context.pushInTab(AppRoutes.genresPath),
         child: AutospacedText(messages.catalogViewAll),
       ),
-      load: (catalog) => catalog.listGenres(),
+      load: (catalog, _) => catalog.listGenres(),
       cardBuilder: (context, genre) => Center(child: GenreChip(genre: genre)),
     );
   }
@@ -673,22 +685,27 @@ class _AllSeriesSectionState extends State<_AllSeriesSection> {
 
   CatalogRepository? _catalog;
 
+  /// The app's locale the list is read in, as a BCP 47 tag.
+  String? _locale;
+
   /// Counts the reads this section has started, so an answer to one it has
   /// stopped waiting for — a refresh, or a repository swapped under it —
   /// cannot land on the screen.
   var _reads = 0;
 
-  /// Reads again when the repository changes, the way every shelf above does:
-  /// a screen keeping the previous one's list under the shelves of the new one
-  /// would be showing two catalogs at once.
+  /// Reads again when the repository or the locale changes, the way every
+  /// shelf above does: a screen keeping the previous one's list under the
+  /// shelves of the new one would be showing two catalogs at once.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final catalog = CatalogScope.of(context);
-    if (identical(catalog, _catalog)) {
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    if (identical(catalog, _catalog) && locale == _locale) {
       return;
     }
     _catalog = catalog;
+    _locale = locale;
     _loadFirstPage();
   }
 
@@ -706,7 +723,7 @@ class _AllSeriesSectionState extends State<_AllSeriesSection> {
     _failure = null;
     _moreFailure = null;
     _reading = true;
-    unawaited(_read(++_reads, _catalog!, ''));
+    unawaited(_read(++_reads, _catalog!, _locale!, ''));
   }
 
   /// Asks for the page under the last one, unless it is already on its way,
@@ -717,16 +734,21 @@ class _AllSeriesSectionState extends State<_AllSeriesSection> {
       return;
     }
     _reading = true;
-    unawaited(_read(++_reads, _catalog!, _nextToken));
+    unawaited(_read(++_reads, _catalog!, _locale!, _nextToken));
   }
 
   /// Reads the page [token] names and puts it under what is already there.
-  Future<void> _read(int read, CatalogRepository catalog, String token) async {
+  Future<void> _read(
+    int read,
+    CatalogRepository catalog,
+    String locale,
+    String token,
+  ) async {
     final isFirstPage = token.isEmpty;
     SeriesPage? page;
     CatalogFailure? failure;
     try {
-      page = await catalog.listSeries(token: token);
+      page = await catalog.listSeries(locale: locale, token: token);
     } on CatalogFailure catch (error) {
       failure = error;
     }

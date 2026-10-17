@@ -249,6 +249,71 @@ void main() {
     expect(series.labelName, 'Seed Label 01');
   });
 
+  test('the locale a saved series was served in survives the round trip', () {
+    final written = OfflineIndex(
+      series: const [
+        SeriesItem(
+          id: 'SeedSERSAAA1',
+          title: 'Seed Series 001',
+          description: 'synopsis',
+          locale: 'ja',
+        ),
+      ],
+    ).toJson();
+
+    expect(OfflineIndex.fromJson(written)!.series!.single.locale, 'ja');
+  });
+
+  test('the locale a saved episode, its series, and its neighbour were served '
+      'in survive the round trip', () {
+    final written = OfflineIndex(
+      episodes: {
+        'SeedSERSAAA1/SeedEPSDAAA1': SavedEpisode(
+          detail: const EpisodeDetail(
+            episode: EpisodeItem(
+              id: 'SeedEPSDAAA1',
+              title: 'Episode 1',
+              locale: 'ja',
+              orderIndex: 1,
+              price: 0,
+            ),
+            seriesId: 'SeedSERSAAA1',
+            seriesTitle: 'Seed Series 001',
+            seriesLocale: 'ko',
+            access: EpisodeAccess.free,
+            images: [],
+            nextEpisode: EpisodeNeighbor(
+              id: 'SeedEPSDAAA2',
+              title: 'Episode 2',
+              locale: 'en',
+              orderIndex: 2,
+              price: 0,
+              isFree: true,
+            ),
+          ),
+          ownerId: '',
+          checkedAt: DateTime.utc(2026, 10, 17),
+        ),
+      },
+    ).toJson();
+
+    final detail = OfflineIndex.fromJson(
+      written,
+    )!.episodes.values.single.detail;
+
+    expect(detail.episode.locale, 'ja');
+    expect(detail.seriesLocale, 'ko');
+    expect(detail.nextEpisode!.locale, 'en');
+  });
+
+  test('a series saved before its locale was kept names none', () {
+    final decoded = OfflineIndex.fromJson(
+      _index(_episode(access: 'free'), series: _series()),
+    );
+
+    expect(decoded!.series!.single.locale, isEmpty);
+  });
+
   test('a label saved before its id was kept is named without one', () {
     final decoded = OfflineIndex.fromJson(
       _index(

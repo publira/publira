@@ -58,6 +58,7 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
   var _reads = 0;
 
   var _accessToken = '';
+  var _locale = '';
   var _started = false;
 
   /// The pull-to-refresh in progress, completed once the first page it asked
@@ -68,17 +69,20 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
   /// a second tap from starting another.
   var _exporting = false;
 
-  /// Reads the list again whenever the reader changes, because what was
-  /// bought belongs to whoever holds the session.
+  /// Reads the list again whenever the reader or the locale changes, because
+  /// what was bought belongs to whoever holds the session and is named in the
+  /// app's language.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final accessToken = AuthScope.of(context).accessToken;
-    if (_started && accessToken == _accessToken) {
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    if (_started && accessToken == _accessToken && locale == _locale) {
       return;
     }
     _started = true;
     _accessToken = accessToken;
+    _locale = locale;
     _readFirstPage();
   }
 
@@ -143,12 +147,16 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
       ),
     );
     final accessToken = _accessToken;
+    // Every page is read in the language the export started in, so a change
+    // of language part way through cannot mix two in one file.
+    final locale = _locale;
     setState(() => _exporting = true);
     try {
       final purchases = <MyPurchase>[];
       var token = '';
       do {
         final page = await repository.listMyPurchases(
+          locale: locale,
           token: token,
           limit: myPurchasePageLimitMax,
         );
@@ -191,7 +199,7 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
     MyPurchasePage? page;
     PurchaseFailure? failure;
     try {
-      page = await repository.listMyPurchases(token: token);
+      page = await repository.listMyPurchases(locale: _locale, token: token);
     } on PurchaseFailure catch (error) {
       failure = error;
     }
@@ -398,13 +406,22 @@ class _PurchaseRow extends StatelessWidget {
       isThreeLine: true,
       title: AutospacedText(
         title,
+        locale: purchase.episodeTextLocale,
         style: purchase.isActive ? null : TextStyle(color: muted),
       ),
-      subtitle: AutospacedText(
-        [
-          if (purchase.seriesTitle.isNotEmpty) purchase.seriesTitle,
-          details.join(' · '),
-        ].join('\n'),
+      // Two lines rather than one joined text: the title is set in the
+      // language it was served in, and the details in the app's.
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (purchase.seriesTitle.isNotEmpty)
+            AutospacedText(
+              purchase.seriesTitle,
+              locale: purchase.seriesTextLocale,
+            ),
+          AutospacedText(details.join(' · ')),
+        ],
       ),
       trailing: _PurchaseState(status: status),
       onTap: () => context.pushInTab(

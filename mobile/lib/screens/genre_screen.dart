@@ -39,8 +39,12 @@ class GenreScreen extends StatelessWidget {
                 imageRequestHeaders: genre.imageRequestHeaders,
               );
       },
-      readSeries: (catalog, filter, token) =>
-          catalog.listGenreSeries(genreId, filter: filter, token: token),
+      readSeries: (catalog, locale, filter, token) => catalog.listGenreSeries(
+        genreId,
+        locale: locale,
+        filter: filter,
+        token: token,
+      ),
       lead: _GenreRankingShelf(genreId: genreId),
     );
   }
@@ -80,10 +84,11 @@ class _GenreRankingShelf extends StatelessWidget {
         ),
         child: AutospacedText(messages.genreRankingLink),
       ),
-      load: (catalog) async => (await catalog.listRankedSeries(
+      load: (catalog, locale) async => (await catalog.listRankedSeries(
         limit: _rankingLimit,
         period: RankingPeriod.weekly,
         ageRating: SeriesAgeRating.all,
+        locale: locale,
         genreId: genreId,
       )).rankedSeries,
       cardBuilder: (context, item) => SeriesShelfCard(

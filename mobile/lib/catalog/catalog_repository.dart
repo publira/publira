@@ -15,7 +15,17 @@ const searchQueryMaxRunes = 100;
 /// naming no limit.
 const directoryPageLimit = 20;
 
+/// What a series is called, and the locale that title was answered in, named
+/// the way [SeriesItem.locale] is.
+typedef SeriesTitle = ({String title, String locale});
+
 /// Public catalog reads. Implementations talk to the Connect API or a fake.
+///
+/// Every read that answers a series title or synopsis, or an episode title,
+/// takes the reader's `locale` as a BCP 47 tag, and answers each work in its
+/// translation in that locale, else the tenant's default locale's, else its
+/// oldest one. [SeriesItem.locale] and [EpisodeItem.locale] name the one each
+/// work was answered in, which every work falls back to on its own.
 abstract class CatalogRepository {
   /// One page of the configured tenant's published series, by title.
   ///
@@ -27,7 +37,7 @@ abstract class CatalogRepository {
   /// [SeriesPage.nextToken] of the page above the one wanted, passed back
   /// unchanged. Returns an empty page when the tenant has no published series.
   /// Throws [CatalogFailure] on a transport or unexpected server error.
-  Future<SeriesPage> listSeries({String token});
+  Future<SeriesPage> listSeries({required String locale, String token});
 
   /// One page of the published series whose title or synopsis contains
   /// [query], by title.
@@ -39,7 +49,11 @@ abstract class CatalogRepository {
   /// so a changed keyword starts again at the first page.
   ///
   /// Throws [CatalogFailure] on a transport or unexpected server error.
-  Future<SeriesPage> searchSeries({required String query, String token});
+  Future<SeriesPage> searchSeries({
+    required String query,
+    required String locale,
+    String token,
+  });
 
   /// One page of the creators whose name contains [query], by name, narrowed
   /// to those credited on a published series.
@@ -76,7 +90,10 @@ abstract class CatalogRepository {
   /// rather than this shelf.
   ///
   /// Throws [CatalogFailure] on a transport or unexpected server error.
-  Future<List<SeriesItem>> listNewestSeries({required int limit});
+  Future<List<SeriesItem>> listNewestSeries({
+    required int limit,
+    required String locale,
+  });
 
   /// One page of the tenant's latest ranking snapshot for [period] and
   /// [ageRating], in the positions that snapshot recorded. Each rating is a
@@ -101,6 +118,7 @@ abstract class CatalogRepository {
     required int limit,
     required RankingPeriod period,
     required SeriesAgeRating ageRating,
+    required String locale,
     String genreId,
     String token,
   });
@@ -118,6 +136,7 @@ abstract class CatalogRepository {
   Future<List<SeriesItem>> listRelatedSeries(
     String seriesInternalId, {
     required int limit,
+    required String locale,
   });
 
   /// One page of every published series in the tenant's recommendation order:
@@ -128,7 +147,11 @@ abstract class CatalogRepository {
   /// one page holds. [token] is empty for the first page, and otherwise the
   /// [SeriesPage.nextToken] of the page above the one wanted.
   /// Throws [CatalogFailure] on a transport or unexpected server error.
-  Future<SeriesPage> listRecommendedSeries({required int limit, String token});
+  Future<SeriesPage> listRecommendedSeries({
+    required int limit,
+    required String locale,
+    String token,
+  });
 
   /// One page of every published series in the order recommended to the
   /// signed-in reader, from what they did over the last 28 days. A reader the
@@ -147,13 +170,14 @@ abstract class CatalogRepository {
   /// Throws [CatalogFailure] on a transport or unexpected server error.
   Future<SeriesPage> listMyRecommendedSeries({
     required int limit,
+    required String locale,
     String token,
   });
 
   /// Detail for [publicId]. Returns `null` when the series is missing,
   /// unpublished, or not in this tenant (same 404 policy as web-storefront).
   /// Throws [CatalogFailure] on a transport or unexpected server error.
-  Future<SeriesDetail?> getSeries(String publicId);
+  Future<SeriesDetail?> getSeries(String publicId, {required String locale});
 
   /// What the series [publicId] is called, or `null` when it is missing,
   /// unpublished, or not in this tenant (same 404 policy as [getSeries]).
@@ -165,7 +189,10 @@ abstract class CatalogRepository {
   /// publishing takes the episodes saved under it away, which is not for a
   /// list of names to do.
   /// Throws [CatalogFailure] on a transport or unexpected server error.
-  Future<String?> getSeriesTitle(String publicId);
+  Future<SeriesTitle?> getSeriesTitle(
+    String publicId, {
+    required String locale,
+  });
 
   /// What the creator [publicId] is called, or `null` when they are missing,
   /// credited on nothing published, or not in this tenant.
@@ -181,7 +208,11 @@ abstract class CatalogRepository {
   /// [token] is empty for the first page, and otherwise the
   /// [SeriesPage.nextToken] of the page above the one wanted.
   /// Throws [CatalogFailure] on a transport or unexpected server error.
-  Future<CreatorDetail?> getCreatorDetail(String publicId, {String token});
+  Future<CreatorDetail?> getCreatorDetail(
+    String publicId, {
+    required String locale,
+    String token,
+  });
 
   /// The label [publicId] and one page of its published series, by title, or
   /// `null` when it is missing or not in this tenant.
@@ -189,7 +220,11 @@ abstract class CatalogRepository {
   /// A label whose last series was taken down still answers, with no series,
   /// so a link kept from before keeps opening it.
   /// Throws [CatalogFailure] on a transport or unexpected server error.
-  Future<LabelDetail?> getLabelDetail(String publicId, {String token});
+  Future<LabelDetail?> getLabelDetail(
+    String publicId, {
+    required String locale,
+    String token,
+  });
 
   /// Every genre the tenant curates, in the tenant's genre order.
   ///
@@ -211,6 +246,7 @@ abstract class CatalogRepository {
   /// Throws [CatalogFailure] on a transport or unexpected server error.
   Future<SeriesPage?> listGenreSeries(
     String genreId, {
+    required String locale,
     SeriesListFilter filter,
     String token,
   });
@@ -221,6 +257,7 @@ abstract class CatalogRepository {
   /// Throws [CatalogFailure] on a transport or unexpected server error.
   Future<SeriesPage?> listTagSeries(
     String slug, {
+    required String locale,
     SeriesListFilter filter,
     String token,
   });
@@ -231,8 +268,9 @@ abstract class CatalogRepository {
   /// Throws [CatalogFailure] on a transport or unexpected server error.
   Future<EpisodeDetail?> getEpisode(
     String seriesPublicId,
-    String episodePublicId,
-  );
+    String episodePublicId, {
+    required String locale,
+  });
 
   /// The zero-based page the signed-in reader stopped on in
   /// [episodePublicId], or `null` when they stopped nowhere.
@@ -301,7 +339,10 @@ abstract class CatalogRepository {
   ///
   /// [SeriesProgress.none] for a reader who is signed out, without a request.
   /// Throws [CatalogFailure] on a transport or unexpected server error.
-  Future<SeriesProgress> getSeriesProgress(String seriesInternalId);
+  Future<SeriesProgress> getSeriesProgress(
+    String seriesInternalId, {
+    required String locale,
+  });
 
   /// The signed-in reader's own rating of the series [seriesInternalId] names:
   /// the mean of the scores they gave its episodes, to one decimal.
@@ -319,6 +360,7 @@ abstract class CatalogRepository {
   /// Throws [CatalogFailure] on a transport or unexpected server error.
   Future<RecentSeriesPage> listRecentSeries({
     required int limit,
+    required String locale,
     String token = '',
   });
 
@@ -330,6 +372,7 @@ abstract class CatalogRepository {
   /// Throws [CatalogFailure] on a transport or unexpected server error.
   Future<EpisodeReadPage> listEpisodeReads({
     required int limit,
+    required String locale,
     String token = '',
   });
 
@@ -341,6 +384,7 @@ abstract class CatalogRepository {
   /// Throws [CatalogFailure] on a transport or unexpected server error.
   Future<FollowUpdatePage> listFollowUpdates({
     required int limit,
+    required String locale,
     String token = '',
   });
 }

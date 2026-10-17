@@ -130,7 +130,10 @@ class HttpPurchaseRepository implements PurchaseRepository {
   }
 
   @override
-  Future<Uri> startEpisodeCheckout(String episodeInternalId) async {
+  Future<Uri> startEpisodeCheckout(
+    String episodeInternalId, {
+    required String locale,
+  }) async {
     // The token is read here and sent explicitly, so a checkout is never
     // started for a reader other than the one who tapped.
     final accessToken = _client.accessToken;
@@ -147,6 +150,7 @@ class HttpPurchaseRepository implements PurchaseRepository {
         pb.StartEpisodeCheckoutRequest(
           client: pb.StartEpisodeCheckoutRequest_Client.CLIENT_MOBILE,
           episodeId: episodeInternalId,
+          locale: locale,
           tenant: pb.TenantContext(tenantId: tenantId),
         ),
       );
@@ -247,6 +251,7 @@ class HttpPurchaseRepository implements PurchaseRepository {
 
   @override
   Future<MyPurchasePage> listMyPurchases({
+    required String locale,
     String token = '',
     int limit = myPurchasePageLimit,
   }) async {
@@ -262,6 +267,7 @@ class HttpPurchaseRepository implements PurchaseRepository {
         ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
         pb.ListMyPurchasesRequest(
           limit: limit,
+          locale: locale,
           surface: appClientSurface,
           tenant: pb.TenantContext(tenantId: tenantId),
           token: token.isEmpty ? null : token,
@@ -294,8 +300,10 @@ class HttpPurchaseRepository implements PurchaseRepository {
       id: purchase.id.trim(),
       seriesId: seriesId,
       seriesTitle: series.title.trim(),
+      seriesLocale: series.locale.trim(),
       episodeId: episodeId,
       episodeTitle: episode.title.trim(),
+      episodeLocale: episode.locale.trim(),
       orderIndex: episode.orderIndex,
       price: purchase.priceAtPurchase,
       currency: purchase.currency.trim(),

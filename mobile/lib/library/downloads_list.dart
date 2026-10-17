@@ -264,6 +264,7 @@ class _SavedEpisodes extends StatelessWidget {
                     'downloads-series-${episodes.first.episode.detail.seriesId}',
                   ),
                   episodes.first.episode.detail.seriesTitle,
+                  locale: episodes.first.episode.detail.seriesTextLocale,
                   style: theme.textTheme.titleMedium,
                 ),
               ),
@@ -296,7 +297,10 @@ class _DownloadTile extends StatelessWidget {
     final until = offlineReadableUntil(episode);
     return ListTile(
       key: ValueKey('downloads-episode-${detail.episode.id}'),
-      title: AutospacedText(detail.episode.title),
+      title: AutospacedText(
+        detail.episode.title,
+        locale: detail.episode.textLocale,
+      ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

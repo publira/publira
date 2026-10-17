@@ -43,6 +43,7 @@ class RankingScreen extends StatefulWidget {
 
 class _RankingScreenState extends State<RankingScreen> {
   CatalogRepository? _catalog;
+  String? _locale;
   CatalogPager<RankedSeriesItem, PublishedGenre>? _pager;
 
   /// The genre the chart is narrowed to once read, which a switch of period
@@ -54,16 +55,18 @@ class _RankingScreenState extends State<RankingScreen> {
   /// would open on whichever positions sat there.
   var _walks = 0;
 
-  /// Reads the chart again whenever the repository changes, for the reason the
-  /// author screen does.
+  /// Reads the chart again whenever the repository or the locale changes, for
+  /// the reason the author screen does.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final catalog = CatalogScope.of(context);
-    if (identical(catalog, _catalog)) {
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    if (identical(catalog, _catalog) && locale == _locale) {
       return;
     }
     _catalog = catalog;
+    _locale = locale;
     _genre = null;
     _read();
   }
@@ -94,6 +97,7 @@ class _RankingScreenState extends State<RankingScreen> {
   void _read() {
     _walks++;
     final catalog = _catalog!;
+    final locale = _locale!;
     final period = widget.period;
     final genreId = widget.genreId;
     final known = _genre;
@@ -119,6 +123,7 @@ class _RankingScreenState extends State<RankingScreen> {
         limit: rankingPageLimit,
         period: period,
         ageRating: SeriesAgeRating.all,
+        locale: locale,
         genreId: genreId,
         token: token,
       );

@@ -64,6 +64,7 @@ Future<WaitFreeOffer?> readWaitFreeOffer({
   required WaitFreeRepository waitFree,
   required EpisodeDetail detail,
   required bool signedIn,
+  required String locale,
   DateTime Function() now = DateTime.now,
 }) async {
   if (detail.access != EpisodeAccess.locked) {
@@ -71,7 +72,7 @@ Future<WaitFreeOffer?> readWaitFreeOffer({
   }
   final SeriesDetail? series;
   try {
-    series = await catalog.getSeries(detail.seriesId);
+    series = await catalog.getSeries(detail.seriesId, locale: locale);
   } on CatalogFailure {
     return null;
   }

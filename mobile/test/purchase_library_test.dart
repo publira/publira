@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,6 +17,7 @@ import 'support/fake_catalog_repository.dart';
 import 'support/fake_links.dart';
 import 'support/fake_purchase.dart';
 import 'support/pump_until.dart';
+import 'support/text_locale.dart';
 
 void main() {
   final series = fixtureSeries.first;
@@ -489,6 +492,70 @@ void main() {
       // The whole history, read in the largest pages the API answers rather
       // than the ones the list shows.
       expect(purchases.limits, [100, 100]);
+    });
+
+    testWidgets('each title is set in the language it was served in', (
+      tester,
+    ) async {
+      purchases.pages = [
+        [
+          MyPurchase(
+            id: 'purchase-1',
+            seriesId: series.id,
+            seriesTitle: series.title,
+            seriesLocale: 'ja',
+            episodeId: paidEpisodeId,
+            episodeTitle: 'The paid episode',
+            episodeLocale: 'ko',
+            orderIndex: 1,
+            price: 500,
+            currency: 'JPY',
+            isActive: true,
+          ),
+        ],
+      ];
+      await openPurchases(tester);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('purchase-row-purchase-1')),
+      );
+
+      expect(textLocaleOf(tester, '#1 The paid episode'), const Locale('ko'));
+      expect(textLocaleOf(tester, series.title), const Locale('ja'));
+    });
+
+    testWidgets('reads every page in the language the export started in', (
+      tester,
+    ) async {
+      addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+      purchases.pages = [
+        [purchase('purchase-1')],
+        [purchase('purchase-2')],
+      ];
+      await openPurchases(tester);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('purchase-row-purchase-1')),
+      );
+      purchases.limits.clear();
+      purchases.listLocales.clear();
+      final gate = Completer<void>();
+      purchases.listGate = gate;
+
+      await tester.tap(find.byKey(const ValueKey('purchases-export')));
+      await tester.pump();
+      tester.platformDispatcher.localesTestValue = const [Locale('ja')];
+      await tester.pump();
+      gate.complete();
+      purchases.listGate = null;
+      await pumpUntilTrue(tester, () => share.files.isNotEmpty);
+
+      final exportLocales = [
+        for (final (index, limit) in purchases.limits.indexed)
+          if (limit == 100) purchases.listLocales[index],
+      ];
+      expect(exportLocales, ['en', 'en']);
+      expect(purchases.listLocales, contains('ja'));
     });
 
     testWidgets('says so when the history could not be read', (tester) async {

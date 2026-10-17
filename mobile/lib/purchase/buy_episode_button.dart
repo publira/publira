@@ -71,6 +71,7 @@ class _BuyEpisodeButtonState extends State<BuyEpisodeButton> {
     }
     final messenger = ScaffoldMessenger.of(context);
     final messages = AppMessages.of(context);
+    final locale = Localizations.localeOf(context).toLanguageTag();
     setState(() {
       _starting = true;
     });
@@ -89,6 +90,7 @@ class _BuyEpisodeButtonState extends State<BuyEpisodeButton> {
       }
       final url = await repository.startEpisodeCheckout(
         widget.episodeInternalId,
+        locale: locale,
       );
       final opened = await purchase.launcher!.open(url);
       if (!opened) {
