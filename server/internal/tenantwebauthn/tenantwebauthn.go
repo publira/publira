@@ -6,13 +6,20 @@
 // origin, so a value taken from the request would be one the caller chose. A
 // tenant has two origins, its storefront and its console, and they are always
 // two relying parties: each takes its own host as its RP ID and accepts a
-// ceremony from its own origin and no other. A console served under the
-// storefront's domain could name the storefront's host as its RP ID, but it
-// never does, so a passkey registered on one surface never answers the
-// other. The storefront signs a reader in with a password alone, and every
+// ceremony from its own origin and no other web origin. A console served
+// under the storefront's domain could name the storefront's host as its RP
+// ID, but it never does, so a passkey registered on one surface never answers
+// the other. The storefront signs a reader in with a password alone, and every
 // console account can sign in there too, so a credential the two shared
 // would let anyone holding that password register a passkey on the
 // storefront and answer the console's second factor with it.
+//
+// The storefront's passkeys are also used by the tenant's Android app, which
+// the storefront's assetlinks.json vouches for. Credential Manager names the
+// app rather than the site as the origin of a ceremony the app makes, so the
+// storefront also accepts the origin each of the app's saved signing
+// certificates produces. iOS needs nothing of the kind: AuthenticationServices
+// reports the RP ID's own https origin for an app the site vouches for.
 //
 // The storefront signs a reader in with a passkey alone, so its credentials
 // are discoverable: registration requires a resident key, and a sign-in
@@ -27,6 +34,9 @@
 package tenantwebauthn
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -87,7 +97,7 @@ type RelyingParty struct {
 	Kind string
 	// ID is the RP ID a credential is bound to.
 	ID string
-	// Origin is the only origin a ceremony is accepted from.
+	// Origin is the only web origin a ceremony is accepted from.
 	Origin   string
 	webAuthn *webauthn.WebAuthn
 }
@@ -98,16 +108,39 @@ func AdminConsole(tenant dbmodels.Tenant) (*RelyingParty, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newRelyingParty(tenant, KindAdminConsole, hostname(console), console, protocol.ResidentKeyRequirementPreferred)
+	return newRelyingParty(tenant, KindAdminConsole, hostname(console), console, nil, protocol.ResidentKeyRequirementPreferred)
 }
 
-// Site is the relying party of the tenant's storefront.
-func Site(tenant dbmodels.Tenant) (*RelyingParty, error) {
+// Site is the relying party of the tenant's storefront. androidCertFingerprints
+// are the SHA-256 fingerprints of the signing certificates of the tenant's
+// Android app, as tenant_config.android_sha256_cert_fingerprints keeps them,
+// and are empty where the tenant has no Android app.
+func Site(tenant dbmodels.Tenant, androidCertFingerprints []string) (*RelyingParty, error) {
 	site, err := tenantorigin.Site(tenant)
 	if err != nil {
 		return nil, err
 	}
-	return newRelyingParty(tenant, KindSite, hostname(site), site, protocol.ResidentKeyRequirementRequired)
+	appOrigins := make([]string, 0, len(androidCertFingerprints))
+	for _, fingerprint := range androidCertFingerprints {
+		origin, err := AndroidAppOrigin(fingerprint)
+		if err != nil {
+			return nil, err
+		}
+		appOrigins = append(appOrigins, origin)
+	}
+	return newRelyingParty(tenant, KindSite, hostname(site), site, appOrigins, protocol.ResidentKeyRequirementRequired)
+}
+
+// AndroidAppOrigin is the origin Credential Manager reports for a ceremony
+// made by an Android app signed with the certificate whose SHA-256
+// fingerprint, as colon-separated hex, is fingerprint: the digest itself,
+// base64url-encoded without padding, after "android:apk-key-hash:".
+func AndroidAppOrigin(fingerprint string) (string, error) {
+	digest, err := hex.DecodeString(strings.ReplaceAll(fingerprint, ":", ""))
+	if err != nil || len(digest) != sha256.Size {
+		return "", fmt.Errorf("tenantwebauthn: %q is not a SHA-256 certificate fingerprint", fingerprint)
+	}
+	return protocol.OpaqueOriginPrefixAndroidAPKKeyHash + base64.RawURLEncoding.EncodeToString(digest), nil
 }
 
 // SiteRPID is the RP ID the storefront's passkeys are bound to: the
@@ -134,7 +167,7 @@ func hostname(origin *url.URL) string {
 	return strings.ToLower(origin.Hostname())
 }
 
-func newRelyingParty(tenant dbmodels.Tenant, kind, rpID string, origin *url.URL, residentKey protocol.ResidentKeyRequirement) (*RelyingParty, error) {
+func newRelyingParty(tenant dbmodels.Tenant, kind, rpID string, origin *url.URL, appOrigins []string, residentKey protocol.ResidentKeyRequirement) (*RelyingParty, error) {
 	displayName := strings.TrimSpace(tenant.Name)
 	if displayName == "" {
 		displayName = defaultDisplayName
@@ -153,6 +186,7 @@ func newRelyingParty(tenant dbmodels.Tenant, kind, rpID string, origin *url.URL,
 		RPID:                   rpID,
 		RPDisplayName:          displayName,
 		RPOrigins:              []string{origin.String()},
+		RPOpaqueOrigins:        appOrigins,
 		AttestationPreference:  protocol.PreferNoAttestation,
 		AuthenticatorSelection: selection,
 		Timeouts:               webauthn.TimeoutsConfig{Login: timeout, Registration: timeout},

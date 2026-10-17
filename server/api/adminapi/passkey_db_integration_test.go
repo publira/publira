@@ -199,7 +199,7 @@ func TestAdminPasskeyVerificationRefusesAStorefrontPasskeyUnderTheStorefrontDoma
 		t.Fatalf("passkeys bound to the console's host = %d, want 1", got)
 	}
 
-	site, err := tenantwebauthn.Site(dbmodels.Tenant{Domain: tenant.Tenant.Domain, Name: tenant.Tenant.Name})
+	site, err := tenantwebauthn.Site(dbmodels.Tenant{Domain: tenant.Tenant.Domain, Name: tenant.Tenant.Name}, nil)
 	if err != nil {
 		t.Fatalf("Site: %v", err)
 	}
