@@ -473,6 +473,11 @@ final class AppMessages {
     return _format('mobile.account.pages_description');
   }
 
+  /// `mobile.account.passkeys`
+  String get accountPasskeys {
+    return _format('mobile.account.passkeys');
+  }
+
   /// `mobile.account.sign_out`
   String get accountSignOut {
     return _format('mobile.account.sign_out');
@@ -2121,6 +2126,151 @@ final class AppMessages {
     return _format('mobile.pages.not_found');
   }
 
+  /// `mobile.passkeys.actions`
+  String passkeysActions({required String name}) {
+    return _format('mobile.passkeys.actions', {'name': name});
+  }
+
+  /// `mobile.passkeys.add`
+  String get passkeysAdd {
+    return _format('mobile.passkeys.add');
+  }
+
+  /// `mobile.passkeys.add_cancelled`
+  String get passkeysAddCancelled {
+    return _format('mobile.passkeys.add_cancelled');
+  }
+
+  /// `mobile.passkeys.add_failed`
+  String get passkeysAddFailed {
+    return _format('mobile.passkeys.add_failed');
+  }
+
+  /// `mobile.passkeys.added`
+  String get passkeysAdded {
+    return _format('mobile.passkeys.added');
+  }
+
+  /// `mobile.passkeys.added_at`
+  String passkeysAddedAt({required String date}) {
+    return _format('mobile.passkeys.added_at', {'date': date});
+  }
+
+  /// `mobile.passkeys.already_registered`
+  String get passkeysAlreadyRegistered {
+    return _format('mobile.passkeys.already_registered');
+  }
+
+  /// `mobile.passkeys.description`
+  String get passkeysDescription {
+    return _format('mobile.passkeys.description');
+  }
+
+  /// `mobile.passkeys.empty`
+  String get passkeysEmpty {
+    return _format('mobile.passkeys.empty');
+  }
+
+  /// `mobile.passkeys.last`
+  String get passkeysLast {
+    return _format('mobile.passkeys.last');
+  }
+
+  /// `mobile.passkeys.last_used_at`
+  String passkeysLastUsedAt({required String date}) {
+    return _format('mobile.passkeys.last_used_at', {'date': date});
+  }
+
+  /// `mobile.passkeys.limit`
+  String get passkeysLimit {
+    return _format('mobile.passkeys.limit');
+  }
+
+  /// `mobile.passkeys.load_failed`
+  String get passkeysLoadFailed {
+    return _format('mobile.passkeys.load_failed');
+  }
+
+  /// `mobile.passkeys.name_description`
+  String get passkeysNameDescription {
+    return _format('mobile.passkeys.name_description');
+  }
+
+  /// `mobile.passkeys.name_failed`
+  String get passkeysNameFailed {
+    return _format('mobile.passkeys.name_failed');
+  }
+
+  /// `mobile.passkeys.name_label`
+  String get passkeysNameLabel {
+    return _format('mobile.passkeys.name_label');
+  }
+
+  /// `mobile.passkeys.name_save`
+  String get passkeysNameSave {
+    return _format('mobile.passkeys.name_save');
+  }
+
+  /// `mobile.passkeys.name_skip`
+  String get passkeysNameSkip {
+    return _format('mobile.passkeys.name_skip');
+  }
+
+  /// `mobile.passkeys.name_title`
+  String get passkeysNameTitle {
+    return _format('mobile.passkeys.name_title');
+  }
+
+  /// `mobile.passkeys.name_too_long`
+  String get passkeysNameTooLong {
+    return _format('mobile.passkeys.name_too_long');
+  }
+
+  /// `mobile.passkeys.named`
+  String get passkeysNamed {
+    return _format('mobile.passkeys.named');
+  }
+
+  /// `mobile.passkeys.never_used`
+  String get passkeysNeverUsed {
+    return _format('mobile.passkeys.never_used');
+  }
+
+  /// `mobile.passkeys.not_found`
+  String get passkeysNotFound {
+    return _format('mobile.passkeys.not_found');
+  }
+
+  /// `mobile.passkeys.remove`
+  String get passkeysRemove {
+    return _format('mobile.passkeys.remove');
+  }
+
+  /// `mobile.passkeys.remove_failed`
+  String get passkeysRemoveFailed {
+    return _format('mobile.passkeys.remove_failed');
+  }
+
+  /// `mobile.passkeys.removed`
+  String get passkeysRemoved {
+    return _format('mobile.passkeys.removed');
+  }
+
+  /// `mobile.passkeys.rename`
+  String get passkeysRename {
+    return _format('mobile.passkeys.rename');
+  }
+
+  /// `mobile.passkeys.title`
+  String get passkeysTitle {
+    return _format('mobile.passkeys.title');
+  }
+
+  /// `mobile.passkeys.unnamed`
+  String get passkeysUnnamed {
+    return _format('mobile.passkeys.unnamed');
+  }
+
   /// `mobile.purchase.buy`
   String purchaseBuy({required String price}) {
     return _format('mobile.purchase.buy', {'price': price});
@@ -2759,6 +2909,16 @@ final class AppMessages {
     return _format('mobile.sign_in.no_account');
   }
 
+  /// `mobile.sign_in.passkey_cancelled`
+  String get signInPasskeyCancelled {
+    return _format('mobile.sign_in.passkey_cancelled');
+  }
+
+  /// `mobile.sign_in.passkey_failed`
+  String get signInPasskeyFailed {
+    return _format('mobile.sign_in.passkey_failed');
+  }
+
   /// `mobile.sign_in.provider_failed`
   String get signInProviderFailed {
     return _format('mobile.sign_in.provider_failed');
@@ -2777,6 +2937,11 @@ final class AppMessages {
   /// `mobile.sign_in.sign_up`
   String get signInSignUp {
     return _format('mobile.sign_in.sign_up');
+  }
+
+  /// `mobile.sign_in.with_passkey`
+  String get signInWithPasskey {
+    return _format('mobile.sign_in.with_passkey');
   }
 
   /// `mobile.sign_up.birth_date_clear`
@@ -3235,6 +3400,7 @@ const _jaSources = <String, String>{
   'mobile.account.notifications_unavailable': '通知をオンにできませんでした。もう一度お試しください。',
   'mobile.account.pages': 'このサイトについて',
   'mobile.account.pages_description': '利用規約やプライバシーポリシーなど、このサイトが公開しているページです。',
+  'mobile.account.passkeys': 'パスキー',
   'mobile.account.sign_out': 'サインアウト',
   'mobile.account.signed_out': 'サインインしていません',
   'mobile.account.title': 'アカウント',
@@ -3519,7 +3685,7 @@ const _jaSources = <String, String>{
   'mobile.library.title': '本棚',
   'mobile.linked_accounts.description': 'サインインに使えるAppleとGoogleのアカウントです。',
   'mobile.linked_accounts.empty': '連携しているAppleやGoogleのアカウントはありません。',
-  'mobile.linked_accounts.last': 'このアカウントにはパスワードがないため、最後の連携アカウントは解除できません。',
+  'mobile.linked_accounts.last': 'このアカウントにはパスワードもパスキーもないため、最後の連携アカウントは解除できません。',
   'mobile.linked_accounts.link': '連携する',
   'mobile.linked_accounts.link_already_linked':
       'このアカウントにはすでに{\$provider}のアカウントが連携されています。別のアカウントを連携するには、先に連携を解除してください。',
@@ -3587,6 +3753,38 @@ const _jaSources = <String, String>{
   'mobile.pages.list_load_failed': 'ページの一覧を読み込めませんでした。もう一度お試しください。',
   'mobile.pages.load_failed': 'このページを表示できませんでした。もう一度お試しください。',
   'mobile.pages.not_found': 'このページは表示できなくなりました。',
+  'mobile.passkeys.actions': '{\$name}の操作',
+  'mobile.passkeys.add': 'パスキーを追加',
+  'mobile.passkeys.add_cancelled': 'パスキーの操作がキャンセルされたか、時間切れになりました。もう一度お試しください。',
+  'mobile.passkeys.add_failed': 'パスキーを追加できませんでした。しばらくしてからもう一度お試しください。',
+  'mobile.passkeys.added': 'パスキーを追加しました。このパスキーでサインインできます。',
+  'mobile.passkeys.added_at': '{\$date}に追加',
+  'mobile.passkeys.already_registered': 'このパスキーはすでにアカウントに登録されています。',
+  'mobile.passkeys.description':
+      'パスワードの代わりに、端末の画面ロックやパスワードマネージャーでこのアプリとサイトにサインインできます。',
+  'mobile.passkeys.empty': '登録されているパスキーはありません。',
+  'mobile.passkeys.last': 'このアカウントにはパスワードも連携アカウントもないため、最後のパスキーは削除できません。',
+  'mobile.passkeys.last_used_at': '{\$date}に最終使用',
+  'mobile.passkeys.limit':
+      'このアカウントに登録できるパスキーの数が上限に達しています。追加する前に、いずれかを削除してください。',
+  'mobile.passkeys.load_failed': 'パスキーを読み込めませんでした。',
+  'mobile.passkeys.name_description':
+      '保存先の端末やパスワードマネージャーの名前を付けておくと、パスキーを見分けられます。',
+  'mobile.passkeys.name_failed': '名前を保存できませんでした。しばらくしてからもう一度お試しください。',
+  'mobile.passkeys.name_label': '名前',
+  'mobile.passkeys.name_save': '保存',
+  'mobile.passkeys.name_skip': 'スキップ',
+  'mobile.passkeys.name_title': 'パスキーの名前',
+  'mobile.passkeys.name_too_long': '名前は64文字以内で入力してください。',
+  'mobile.passkeys.named': 'パスキーの名前を保存しました。',
+  'mobile.passkeys.never_used': '未使用',
+  'mobile.passkeys.not_found': 'そのパスキーはアカウントに登録されていません。',
+  'mobile.passkeys.remove': '削除',
+  'mobile.passkeys.remove_failed': 'パスキーを削除できませんでした。しばらくしてからもう一度お試しください。',
+  'mobile.passkeys.removed': 'パスキーを削除しました。',
+  'mobile.passkeys.rename': '名前を変更',
+  'mobile.passkeys.title': 'パスキー',
+  'mobile.passkeys.unnamed': '名前のないパスキー',
   'mobile.purchase.buy': '{\$price}で購入',
   'mobile.purchase.cancelled': '購入手続きをキャンセルしました。料金は発生していません。',
   'mobile.purchase.check_again': 'もう一度確認',
@@ -3725,10 +3923,15 @@ const _jaSources = <String, String>{
   'mobile.sign_in.invalid_credentials':
       'メールアドレスまたはパスワードが正しくありません。入力内容を確認して再試行してください。',
   'mobile.sign_in.no_account': 'アカウントをお持ちでない方は',
+  'mobile.sign_in.passkey_cancelled':
+      'パスキーの操作がキャンセルされたか、時間切れになりました。もう一度試すか、メールアドレスとパスワードでサインインしてください。',
+  'mobile.sign_in.passkey_failed':
+      'このパスキーではサインインできませんでした。もう一度試すか、メールアドレスとパスワードでサインインしてください。',
   'mobile.sign_in.provider_failed': 'サインインできませんでした。もう一度お試しください。',
   'mobile.sign_in.provider_refused': 'このアカウントではサインインできません。メールアドレスでサインインしてください。',
   'mobile.sign_in.provider_unavailable': 'このサインイン方法は現在利用できません。',
   'mobile.sign_in.sign_up': '新規登録',
+  'mobile.sign_in.with_passkey': 'パスキーでサインイン',
   'mobile.sign_up.birth_date_clear': '生年月日を消す',
   'mobile.sign_up.birth_date_help':
       '年齢制限のある作品を開くときに年齢を確認します。あとから登録することもできますが、一度登録すると変更できません。',
@@ -3920,6 +4123,7 @@ const _enSources = <String, String>{
   'mobile.account.pages': 'About this site',
   'mobile.account.pages_description':
       'Terms of service, privacy policy, and the other pages this site publishes.',
+  'mobile.account.passkeys': 'Passkeys',
   'mobile.account.sign_out': 'Sign out',
   'mobile.account.signed_out': 'You are not signed in.',
   'mobile.account.title': 'Account',
@@ -4264,7 +4468,7 @@ const _enSources = <String, String>{
       'The Apple and Google accounts you can sign in with.',
   'mobile.linked_accounts.empty': 'No Apple or Google account is linked.',
   'mobile.linked_accounts.last':
-      'Your account has no password, so the last linked account stays linked.',
+      'Your account has no password or passkey, so the last linked account stays linked.',
   'mobile.linked_accounts.link': 'Link',
   'mobile.linked_accounts.link_already_linked':
       'Your account already has a {\$provider} account linked. Unlink it first to link another one.',
@@ -4342,6 +4546,44 @@ const _enSources = <String, String>{
       'Could not load this site\'s pages. Try again.',
   'mobile.pages.load_failed': 'Could not show this page. Try again.',
   'mobile.pages.not_found': 'This page is no longer available.',
+  'mobile.passkeys.actions': 'Actions for {\$name}',
+  'mobile.passkeys.add': 'Add a passkey',
+  'mobile.passkeys.add_cancelled':
+      'The passkey request was cancelled or timed out. Try again.',
+  'mobile.passkeys.add_failed': 'Could not add the passkey. Try again later.',
+  'mobile.passkeys.added':
+      'The passkey has been added. You can now sign in with it.',
+  'mobile.passkeys.added_at': 'Added on {\$date}',
+  'mobile.passkeys.already_registered':
+      'This passkey is already registered to your account.',
+  'mobile.passkeys.description':
+      'Sign in to this app and the site with your device\'s screen lock or a password manager instead of a password.',
+  'mobile.passkeys.empty': 'No passkeys are registered.',
+  'mobile.passkeys.last':
+      'Your account has no password or linked account, so its last passkey stays registered.',
+  'mobile.passkeys.last_used_at': 'Last used on {\$date}',
+  'mobile.passkeys.limit':
+      'Your account has as many passkeys as it can hold. Remove one before adding another.',
+  'mobile.passkeys.load_failed': 'Could not load your passkeys.',
+  'mobile.passkeys.name_description':
+      'Name it after the device or password manager that keeps it, to tell your passkeys apart.',
+  'mobile.passkeys.name_failed': 'Could not save the name. Try again later.',
+  'mobile.passkeys.name_label': 'Name',
+  'mobile.passkeys.name_save': 'Save',
+  'mobile.passkeys.name_skip': 'Skip',
+  'mobile.passkeys.name_title': 'Name this passkey',
+  'mobile.passkeys.name_too_long': 'Use 64 characters or fewer for the name.',
+  'mobile.passkeys.named': 'The passkey\'s name has been saved.',
+  'mobile.passkeys.never_used': 'Not used yet',
+  'mobile.passkeys.not_found':
+      'That passkey is no longer registered to your account.',
+  'mobile.passkeys.remove': 'Remove',
+  'mobile.passkeys.remove_failed':
+      'Could not remove the passkey. Try again later.',
+  'mobile.passkeys.removed': 'The passkey has been removed.',
+  'mobile.passkeys.rename': 'Rename',
+  'mobile.passkeys.title': 'Passkeys',
+  'mobile.passkeys.unnamed': 'Unnamed passkey',
   'mobile.purchase.buy': 'Buy for {\$price}',
   'mobile.purchase.cancelled':
       'The purchase was cancelled. You have not been charged.',
@@ -4499,12 +4741,17 @@ const _enSources = <String, String>{
   'mobile.sign_in.invalid_credentials':
       'That email address or password is incorrect. Check them and try again.',
   'mobile.sign_in.no_account': 'Don\'t have an account?',
+  'mobile.sign_in.passkey_cancelled':
+      'The passkey request was cancelled or timed out. Try again, or sign in with your email address and password.',
+  'mobile.sign_in.passkey_failed':
+      'Could not sign in with this passkey. Try again, or sign in with your email address and password.',
   'mobile.sign_in.provider_failed': 'Could not sign in. Try again.',
   'mobile.sign_in.provider_refused':
       'This account cannot sign in here. Sign in with your email address instead.',
   'mobile.sign_in.provider_unavailable':
       'This sign-in method is not available right now.',
   'mobile.sign_in.sign_up': 'Sign up',
+  'mobile.sign_in.with_passkey': 'Sign in with a passkey',
   'mobile.sign_up.birth_date_clear': 'Clear the date of birth',
   'mobile.sign_up.birth_date_help':
       'This site checks your age before opening age-rated works. You can add it later, but it cannot be changed once given.',
@@ -4685,6 +4932,7 @@ const _koSources = <String, String>{
   'mobile.account.notifications_unavailable': '알림을 켜지 못했습니다. 다시 시도해 주세요.',
   'mobile.account.pages': '이 사이트에 대하여',
   'mobile.account.pages_description': '이용약관, 개인정보 처리방침 등 이 사이트가 공개한 페이지입니다.',
+  'mobile.account.passkeys': '패스키',
   'mobile.account.sign_out': '로그아웃',
   'mobile.account.signed_out': '로그인되어 있지 않습니다',
   'mobile.account.title': '계정',
@@ -4974,7 +5222,8 @@ const _koSources = <String, String>{
   'mobile.library.title': '보관함',
   'mobile.linked_accounts.description': '로그인에 사용할 수 있는 Apple 및 Google 계정입니다.',
   'mobile.linked_accounts.empty': '연결된 Apple 또는 Google 계정이 없습니다.',
-  'mobile.linked_accounts.last': '이 계정에는 비밀번호가 없어 마지막으로 연결된 계정은 해제할 수 없습니다.',
+  'mobile.linked_accounts.last':
+      '이 계정에는 비밀번호도 패스키도 없어 마지막으로 연결된 계정은 해제할 수 없습니다.',
   'mobile.linked_accounts.link': '연결',
   'mobile.linked_accounts.link_already_linked':
       '이 계정에는 이미 {\$provider} 계정이 연결되어 있습니다. 다른 계정을 연결하려면 먼저 연결을 해제해 주세요.',
@@ -5044,6 +5293,38 @@ const _koSources = <String, String>{
   'mobile.pages.list_load_failed': '페이지 목록을 불러올 수 없습니다. 다시 시도해 주세요.',
   'mobile.pages.load_failed': '이 페이지를 표시할 수 없습니다. 다시 시도해 주세요.',
   'mobile.pages.not_found': '이 페이지는 더 이상 볼 수 없습니다.',
+  'mobile.passkeys.actions': '{\$name} 작업',
+  'mobile.passkeys.add': '패스키 추가',
+  'mobile.passkeys.add_cancelled': '패스키 요청이 취소되었거나 시간이 초과되었습니다. 다시 시도해 주세요.',
+  'mobile.passkeys.add_failed': '패스키를 추가하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+  'mobile.passkeys.added': '패스키를 추가했습니다. 이제 이 패스키로 로그인할 수 있습니다.',
+  'mobile.passkeys.added_at': '{\$date}에 추가',
+  'mobile.passkeys.already_registered': '이 패스키는 이미 계정에 등록되어 있습니다.',
+  'mobile.passkeys.description':
+      '비밀번호 대신 기기의 화면 잠금이나 비밀번호 관리자로 이 앱과 사이트에 로그인할 수 있습니다.',
+  'mobile.passkeys.empty': '등록된 패스키가 없습니다.',
+  'mobile.passkeys.last': '이 계정에는 비밀번호도 연결된 계정도 없어 마지막 패스키는 삭제할 수 없습니다.',
+  'mobile.passkeys.last_used_at': '마지막 사용 {\$date}',
+  'mobile.passkeys.limit':
+      '이 계정에 등록할 수 있는 패스키 수가 한도에 도달했습니다. 추가하기 전에 하나를 삭제해 주세요.',
+  'mobile.passkeys.load_failed': '패스키를 불러오지 못했습니다.',
+  'mobile.passkeys.name_description':
+      '패스키를 보관하는 기기나 비밀번호 관리자의 이름을 붙여 두면 패스키를 구별할 수 있습니다.',
+  'mobile.passkeys.name_failed': '이름을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+  'mobile.passkeys.name_label': '이름',
+  'mobile.passkeys.name_save': '저장',
+  'mobile.passkeys.name_skip': '건너뛰기',
+  'mobile.passkeys.name_title': '패스키 이름',
+  'mobile.passkeys.name_too_long': '이름은 64자 이내로 입력해 주세요.',
+  'mobile.passkeys.named': '패스키 이름을 저장했습니다.',
+  'mobile.passkeys.never_used': '아직 사용하지 않음',
+  'mobile.passkeys.not_found': '그 패스키는 더 이상 계정에 등록되어 있지 않습니다.',
+  'mobile.passkeys.remove': '삭제',
+  'mobile.passkeys.remove_failed': '패스키를 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+  'mobile.passkeys.removed': '패스키를 삭제했습니다.',
+  'mobile.passkeys.rename': '이름 변경',
+  'mobile.passkeys.title': '패스키',
+  'mobile.passkeys.unnamed': '이름 없는 패스키',
   'mobile.purchase.buy': '{\$price}에 구매',
   'mobile.purchase.cancelled': '구매를 취소했습니다. 요금은 청구되지 않았습니다.',
   'mobile.purchase.check_again': '다시 확인',
@@ -5185,10 +5466,15 @@ const _koSources = <String, String>{
   'mobile.sign_in.forgot_password': '비밀번호를 잊으셨나요?',
   'mobile.sign_in.invalid_credentials': '이메일 주소 또는 비밀번호가 올바르지 않습니다',
   'mobile.sign_in.no_account': '계정이 없으신가요?',
+  'mobile.sign_in.passkey_cancelled':
+      '패스키 요청이 취소되었거나 시간이 초과되었습니다. 다시 시도하거나 이메일 주소와 비밀번호로 로그인해 주세요.',
+  'mobile.sign_in.passkey_failed':
+      '이 패스키로 로그인하지 못했습니다. 다시 시도하거나 이메일 주소와 비밀번호로 로그인해 주세요.',
   'mobile.sign_in.provider_failed': '로그인하지 못했습니다. 다시 시도해 주세요.',
   'mobile.sign_in.provider_refused': '이 계정으로는 로그인할 수 없습니다. 이메일 주소로 로그인해 주세요.',
   'mobile.sign_in.provider_unavailable': '지금은 이 로그인 방법을 사용할 수 없습니다.',
   'mobile.sign_in.sign_up': '회원가입',
+  'mobile.sign_in.with_passkey': '패스키로 로그인',
   'mobile.sign_up.birth_date_clear': '생년월일 지우기',
   'mobile.sign_up.birth_date_help':
       '연령 제한이 있는 작품을 열 때 나이를 확인합니다. 나중에 등록할 수도 있지만, 한 번 등록하면 변경할 수 없습니다.',
@@ -5347,6 +5633,7 @@ const _zhHansSources = <String, String>{
   'mobile.account.notifications_unavailable': '无法开启通知。请重试。',
   'mobile.account.pages': '关于本站点',
   'mobile.account.pages_description': '本站点发布的服务条款、隐私政策等页面。',
+  'mobile.account.passkeys': '通行密钥',
   'mobile.account.sign_out': '退出登录',
   'mobile.account.signed_out': '您尚未登录。',
   'mobile.account.title': '账户',
@@ -5618,7 +5905,7 @@ const _zhHansSources = <String, String>{
   'mobile.library.title': '书架',
   'mobile.linked_accounts.description': '可用于登录的Apple和Google账户。',
   'mobile.linked_accounts.empty': '没有关联的Apple或Google账户。',
-  'mobile.linked_accounts.last': '您的账户没有密码，因此无法解除最后一个关联的账户。',
+  'mobile.linked_accounts.last': '您的账户没有密码，也没有通行密钥，因此无法解除最后一个关联的账户。',
   'mobile.linked_accounts.link': '关联',
   'mobile.linked_accounts.link_already_linked':
       '您的账户已关联了一个{\$provider}账户。如需关联其他账户，请先解除现有关联。',
@@ -5679,6 +5966,35 @@ const _zhHansSources = <String, String>{
   'mobile.pages.list_load_failed': '无法加载页面列表。请重试。',
   'mobile.pages.load_failed': '无法显示该页面。请重试。',
   'mobile.pages.not_found': '该页面已无法查看。',
+  'mobile.passkeys.actions': '{\$name}的操作',
+  'mobile.passkeys.add': '添加通行密钥',
+  'mobile.passkeys.add_cancelled': '通行密钥请求已取消或超时。请重试。',
+  'mobile.passkeys.add_failed': '无法添加通行密钥。请稍后重试。',
+  'mobile.passkeys.added': '已添加通行密钥。现在可以使用它登录。',
+  'mobile.passkeys.added_at': '添加于{\$date}',
+  'mobile.passkeys.already_registered': '此通行密钥已注册到您的账户。',
+  'mobile.passkeys.description': '使用设备的屏幕锁定或密码管理器代替密码登录此应用和网站。',
+  'mobile.passkeys.empty': '尚未注册通行密钥。',
+  'mobile.passkeys.last': '您的账户没有密码，也没有关联的账户，因此无法移除最后一个通行密钥。',
+  'mobile.passkeys.last_used_at': '上次使用于{\$date}',
+  'mobile.passkeys.limit': '您的账户中的通行密钥已达到上限。请先移除一个再添加。',
+  'mobile.passkeys.load_failed': '无法加载通行密钥。',
+  'mobile.passkeys.name_description': '以保存它的设备或密码管理器命名，便于区分您的通行密钥。',
+  'mobile.passkeys.name_failed': '无法保存名称。请稍后重试。',
+  'mobile.passkeys.name_label': '名称',
+  'mobile.passkeys.name_save': '保存',
+  'mobile.passkeys.name_skip': '跳过',
+  'mobile.passkeys.name_title': '为通行密钥命名',
+  'mobile.passkeys.name_too_long': '名称不能超过64个字符。',
+  'mobile.passkeys.named': '已保存通行密钥的名称。',
+  'mobile.passkeys.never_used': '尚未使用',
+  'mobile.passkeys.not_found': '该通行密钥已不再注册到您的账户。',
+  'mobile.passkeys.remove': '移除',
+  'mobile.passkeys.remove_failed': '无法移除通行密钥。请稍后重试。',
+  'mobile.passkeys.removed': '已移除通行密钥。',
+  'mobile.passkeys.rename': '重命名',
+  'mobile.passkeys.title': '通行密钥',
+  'mobile.passkeys.unnamed': '未命名的通行密钥',
   'mobile.purchase.buy': '以{\$price}购买',
   'mobile.purchase.cancelled': '购买已取消，未产生任何扣款。',
   'mobile.purchase.check_again': '再次确认',
@@ -5808,10 +6124,13 @@ const _zhHansSources = <String, String>{
   'mobile.sign_in.forgot_password': '忘记密码？',
   'mobile.sign_in.invalid_credentials': '邮箱地址或密码不正确。',
   'mobile.sign_in.no_account': '还没有账户？',
+  'mobile.sign_in.passkey_cancelled': '通行密钥请求已取消或超时。请重试，或使用邮箱地址和密码登录。',
+  'mobile.sign_in.passkey_failed': '无法使用此通行密钥登录。请重试，或使用邮箱地址和密码登录。',
   'mobile.sign_in.provider_failed': '无法登录。请重试。',
   'mobile.sign_in.provider_refused': '此账户无法在此登录。请使用邮箱地址登录。',
   'mobile.sign_in.provider_unavailable': '此登录方式目前不可用。',
   'mobile.sign_in.sign_up': '注册',
+  'mobile.sign_in.with_passkey': '使用通行密钥登录',
   'mobile.sign_up.birth_date_clear': '清除出生日期',
   'mobile.sign_up.birth_date_help': '本站点在打开有年龄限制的作品前会核对年龄。您也可以稍后登记，但登记后无法更改。',
   'mobile.sign_up.birth_date_label': '出生日期',
@@ -5959,6 +6278,7 @@ const _zhHantSources = <String, String>{
   'mobile.account.notifications_unavailable': '無法開啟通知。請重試。',
   'mobile.account.pages': '關於本網站',
   'mobile.account.pages_description': '本網站發布的服務條款、隱私權政策等頁面。',
+  'mobile.account.passkeys': '通行金鑰',
   'mobile.account.sign_out': '登出',
   'mobile.account.signed_out': '您尚未登入。',
   'mobile.account.title': '帳戶',
@@ -6232,7 +6552,7 @@ const _zhHantSources = <String, String>{
   'mobile.library.title': '書架',
   'mobile.linked_accounts.description': '可用於登入的Apple和Google帳戶。',
   'mobile.linked_accounts.empty': '沒有已連結的Apple或Google帳戶。',
-  'mobile.linked_accounts.last': '您的帳戶沒有密碼，因此無法解除最後一個已連結的帳戶。',
+  'mobile.linked_accounts.last': '您的帳戶沒有密碼，也沒有通行金鑰，因此無法解除最後一個已連結的帳戶。',
   'mobile.linked_accounts.link': '連結',
   'mobile.linked_accounts.link_already_linked':
       '您的帳戶已連結一個{\$provider}帳戶。如需連結其他帳戶，請先解除現有連結。',
@@ -6293,6 +6613,35 @@ const _zhHantSources = <String, String>{
   'mobile.pages.list_load_failed': '無法載入頁面列表。請重試。',
   'mobile.pages.load_failed': '無法顯示該頁面。請重試。',
   'mobile.pages.not_found': '該頁面已無法查看。',
+  'mobile.passkeys.actions': '{\$name}的操作',
+  'mobile.passkeys.add': '新增通行金鑰',
+  'mobile.passkeys.add_cancelled': '通行金鑰要求已取消或逾時。請重試。',
+  'mobile.passkeys.add_failed': '無法新增通行金鑰。請稍後再試。',
+  'mobile.passkeys.added': '已新增通行金鑰。現在可以使用它登入。',
+  'mobile.passkeys.added_at': '新增於{\$date}',
+  'mobile.passkeys.already_registered': '此通行金鑰已註冊到您的帳戶。',
+  'mobile.passkeys.description': '使用裝置的螢幕鎖定或密碼管理工具代替密碼登入此應用程式和網站。',
+  'mobile.passkeys.empty': '尚未註冊通行金鑰。',
+  'mobile.passkeys.last': '您的帳戶沒有密碼，也沒有已連結的帳戶，因此無法移除最後一個通行金鑰。',
+  'mobile.passkeys.last_used_at': '上次使用於{\$date}',
+  'mobile.passkeys.limit': '您的帳戶中的通行金鑰已達上限。請先移除一個再新增。',
+  'mobile.passkeys.load_failed': '無法載入通行金鑰。',
+  'mobile.passkeys.name_description': '以保存它的裝置或密碼管理工具命名，便於區分您的通行金鑰。',
+  'mobile.passkeys.name_failed': '無法儲存名稱。請稍後再試。',
+  'mobile.passkeys.name_label': '名稱',
+  'mobile.passkeys.name_save': '儲存',
+  'mobile.passkeys.name_skip': '略過',
+  'mobile.passkeys.name_title': '為通行金鑰命名',
+  'mobile.passkeys.name_too_long': '名稱不能超過64個字元。',
+  'mobile.passkeys.named': '已儲存通行金鑰的名稱。',
+  'mobile.passkeys.never_used': '尚未使用',
+  'mobile.passkeys.not_found': '該通行金鑰已不再註冊到您的帳戶。',
+  'mobile.passkeys.remove': '移除',
+  'mobile.passkeys.remove_failed': '無法移除通行金鑰。請稍後再試。',
+  'mobile.passkeys.removed': '已移除通行金鑰。',
+  'mobile.passkeys.rename': '重新命名',
+  'mobile.passkeys.title': '通行金鑰',
+  'mobile.passkeys.unnamed': '未命名的通行金鑰',
   'mobile.purchase.buy': '以{\$price}購買',
   'mobile.purchase.cancelled': '購買已取消，未產生任何扣款。',
   'mobile.purchase.check_again': '再次確認',
@@ -6422,10 +6771,13 @@ const _zhHantSources = <String, String>{
   'mobile.sign_in.forgot_password': '忘記密碼？',
   'mobile.sign_in.invalid_credentials': '電子郵件地址或密碼不正確。',
   'mobile.sign_in.no_account': '還沒有帳戶嗎？',
+  'mobile.sign_in.passkey_cancelled': '通行金鑰要求已取消或逾時。請重試，或使用電子郵件地址和密碼登入。',
+  'mobile.sign_in.passkey_failed': '無法使用此通行金鑰登入。請重試，或使用電子郵件地址和密碼登入。',
   'mobile.sign_in.provider_failed': '無法登入。請再試一次。',
   'mobile.sign_in.provider_refused': '此帳戶無法在此登入。請使用電子郵件地址登入。',
   'mobile.sign_in.provider_unavailable': '此登入方式目前無法使用。',
   'mobile.sign_in.sign_up': '註冊',
+  'mobile.sign_in.with_passkey': '使用通行金鑰登入',
   'mobile.sign_up.birth_date_clear': '清除出生日期',
   'mobile.sign_up.birth_date_help': '本網站在開啟有年齡限制的作品前會核對年齡。您也可以稍後登錄，但登錄後無法變更。',
   'mobile.sign_up.birth_date_label': '出生日期',

@@ -475,7 +475,10 @@
         "routes": ["[locale]/(auth)/login"],
         "rpcs": ["BeginPasskeyLogin", "FinishPasskeyLogin"]
       },
-      "exception": "Not in the app yet: #3868."
+      "mobile": {
+        "routes": ["/sign-in"],
+        "rpcs": ["BeginPasskeyLogin", "FinishPasskeyLogin"]
+      }
     },
     {
       "name": "Adding, naming, and removing passkeys from Settings › Security",
@@ -489,7 +492,16 @@
           "DeletePasskey"
         ]
       },
-      "exception": "Not in the app yet: #3868."
+      "mobile": {
+        "routes": ["/account/passkeys"],
+        "rpcs": [
+          "ListMyPasskeys",
+          "BeginPasskeyRegistration",
+          "FinishPasskeyRegistration",
+          "RenamePasskey",
+          "DeletePasskey"
+        ]
+      }
     },
     {
       "name": "Confirming an account deletion or an email change with a passkey",

@@ -11,6 +11,7 @@
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:$(PUBLIRA_ASSOCIATED_DOMAIN)</string>
+		<string>webcredentials:$(PUBLIRA_ASSOCIATED_DOMAIN)</string>
 	</array>
 </dict>
 </plist>

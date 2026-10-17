@@ -7,6 +7,7 @@ import 'package:publira/auth/account_icon.dart';
 import 'package:publira/auth/account_icon_picker.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
+import 'package:publira/auth/passkey.dart';
 import 'package:publira/auth/reader_age.dart';
 import 'package:publira/auth/reader_icon_policy.dart';
 import 'package:publira/contact/contact_repository.dart';
@@ -132,6 +133,17 @@ class AccountScreen extends StatelessWidget {
                           context.push(AppRoutes.accountLinkedAccounts),
                     ),
                     const Divider(height: 1),
+                    // Only where the app has a passkey authenticator, which
+                    // is where the site's passkeys sign the reader in to it.
+                    if (PasskeyAuthenticatorScope.maybeOf(context) != null) ...[
+                      ListTile(
+                        key: const ValueKey('account-passkeys'),
+                        title: AutospacedText(messages.accountPasskeys),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => context.push(AppRoutes.accountPasskeys),
+                      ),
+                      const Divider(height: 1),
+                    ],
                     const _NotificationSwitch(),
                     // Keyed by the reader as well, under a name of its own so
                     // it does not share a key with the birth date row.

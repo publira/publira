@@ -3,6 +3,7 @@ import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/email_change.dart';
 import 'package:publira/auth/identity_provider.dart';
+import 'package:publira/auth/passkey.dart';
 import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/reader_age.dart';
 import 'package:publira/auth/reader_icon_policy.dart';
@@ -45,7 +46,7 @@ abstract class AuthRepository {
   /// Unlinks [provider] from the account behind [session].
   ///
   /// Throws [AuthFailure]; [AuthFailureKind.lastSignInMethod] where it is the
-  /// last way an account without a password signs in.
+  /// last way an account without a password or a passkey signs in.
   Future<void> unlinkIdentity(AuthSession session, IdentityProvider provider);
 
   /// Links the provider account [credential] is a fresh sign-in to, to the
@@ -59,6 +60,62 @@ abstract class AuthRepository {
   /// could not verify, and [AuthFailureKind.providerRefused] where the tenant
   /// no longer offers the provider.
   Future<void> linkIdentity(AuthSession session, ProviderCredential credential);
+
+  /// Begins a sign-in with a passkey alone and returns the
+  /// `PublicKeyCredentialRequestOptionsJSON` the authenticator signs, which
+  /// names no account: the passkey the reader picks does.
+  ///
+  /// Throws [AuthFailure].
+  Future<String> beginPasskeySignIn();
+
+  /// Signs in with [credentialJson], the assertion the authenticator made over
+  /// the challenge [beginPasskeySignIn] began, and returns the session the API
+  /// issued.
+  ///
+  /// Throws [AuthFailure]: [AuthFailureKind.invalidCredentials] for a passkey
+  /// the site does not take, as for a wrong password, and
+  /// [AuthFailureKind.emailNotVerified] for an account [signIn] refuses the
+  /// same way.
+  Future<AuthSession> signInWithPasskey(String credentialJson);
+
+  /// The passkeys of the reader behind [session], oldest first.
+  ///
+  /// Throws [AuthFailure].
+  Future<List<Passkey>> readPasskeys(AuthSession session);
+
+  /// Begins registering a passkey for the reader behind [session] and returns
+  /// the `PublicKeyCredentialCreationOptionsJSON` the authenticator makes it
+  /// over.
+  ///
+  /// Throws [AuthFailure]; [AuthFailureKind.passkeyLimit] once the account
+  /// holds as many as it may.
+  Future<String> beginPasskeyRegistration(AuthSession session);
+
+  /// Stores [credentialJson], the passkey the authenticator made over the
+  /// options [beginPasskeyRegistration] answered, unnamed.
+  ///
+  /// Throws [AuthFailure]: [AuthFailureKind.passkeyAlreadyRegistered] where
+  /// the tenant holds it already, [AuthFailureKind.passkeyLimit] where the
+  /// account filled up meanwhile, and [AuthFailureKind.invalidInput] for a
+  /// credential that does not verify.
+  Future<Passkey> finishPasskeyRegistration(
+    AuthSession session,
+    String credentialJson,
+  );
+
+  /// Names the reader's passkey [id] [name], or leaves it unnamed where
+  /// [name] is empty.
+  ///
+  /// Throws [AuthFailure]; [AuthFailureKind.passkeyNotFound] for one that is
+  /// no longer the reader's.
+  Future<Passkey> renamePasskey(AuthSession session, String id, String name);
+
+  /// Removes the reader's passkey [id], which stops signing them in. One
+  /// removed already is answered as removed.
+  ///
+  /// Throws [AuthFailure]; [AuthFailureKind.lastSignInMethod] where it is the
+  /// last way an account without a password or a linked provider signs in.
+  Future<void> deletePasskey(AuthSession session, String id);
 
   /// Asks the API for an account on [email], which it answers by mailing that
   /// address a confirmation link.

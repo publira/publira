@@ -15,6 +15,8 @@ import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/auth/http_auth_repository.dart';
 import 'package:publira/auth/legal_page_agreements.dart';
 import 'package:publira/auth/native_provider_sign_in.dart';
+import 'package:publira/auth/passkey.dart';
+import 'package:publira/auth/platform_passkey_authenticator.dart';
 import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/session_store.dart';
 import 'package:publira/catalog/catalog_repository.dart';
@@ -82,6 +84,7 @@ class PubliraApp extends StatefulWidget {
     required this.auth,
     this.legalPageAgreements,
     this.providerSignIn,
+    this.passkeyAuthenticator,
     this.iconPicker,
     this.comments,
     this.follows,
@@ -160,6 +163,7 @@ class PubliraApp extends StatefulWidget {
         const FileDismissedAnnouncementStore(),
     AnonymousIdStore anonymousIds = const FileAnonymousIdStore(),
     ProviderSignIn? providerSignIn,
+    PasskeyAuthenticator? passkeyAuthenticator,
     AccountIconPicker? iconPicker,
   }) {
     final resolved = config ?? AppConfig.fromEnvironment();
@@ -218,6 +222,15 @@ class PubliraApp extends StatefulWidget {
             googleIosClientId: resolved.googleIosClientId,
             tenantHost: resolved.tenantHost,
           ),
+      // The passkey plugins implement only the app's own Android and iOS
+      // builds.
+      passkeyAuthenticator:
+          passkeyAuthenticator ??
+          (!kIsWeb &&
+                  (defaultTargetPlatform == TargetPlatform.android ||
+                      defaultTargetPlatform == TargetPlatform.iOS)
+              ? PlatformPasskeyAuthenticator()
+              : null),
       iconPicker: iconPicker ?? PluginAccountIconPicker(),
       comments: HttpCommentRepository(
         config: resolved,
@@ -312,6 +325,14 @@ class PubliraApp extends StatefulWidget {
   /// direct constructor, which a widget test uses to build the app with no
   /// provider sign-in, and no screen then offers one.
   final ProviderSignIn? providerSignIn;
+
+  /// The device's passkey authenticator.
+  ///
+  /// [PubliraApp.fromConfig] supplies one on Android and iOS. It is nullable
+  /// for the other platforms and for the direct constructor, which a widget
+  /// test uses to build the app with no passkeys, and no screen then offers
+  /// one.
+  final PasskeyAuthenticator? passkeyAuthenticator;
 
   /// Where the image a reader makes their icon comes from.
   ///
@@ -890,40 +911,43 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
           agreements: widget.legalPageAgreements,
           child: ProviderSignInScope(
             signIn: widget.providerSignIn,
-            child: AccountIconPickerScope(
-              picker: widget.iconPicker,
-              child: PushScope(
-                controller: widget.push,
-                child: OfflineScope(
-                  library: widget.offline,
-                  downloader: widget.downloader,
-                  child: CatalogScope(
-                    repository: widget.catalog,
-                    child: CommentScope(
-                      repository: widget.comments,
-                      child: FollowScope(
-                        repository: widget.follows,
-                        child: ContentViewScope(
-                          repository: widget.contentViews,
-                          child: NotificationScope(
-                            inbox: widget.notifications,
-                            child: AnnouncementScope(
-                              board: widget.announcements,
-                              child: ContactScope(
-                                repository: widget.contact,
-                                child: PageScope(
-                                  repository: widget.pages,
-                                  child: PurchaseScope(
-                                    repository: widget.purchases,
-                                    launcher: widget.checkoutLauncher,
-                                    storePurchaser: widget.storePurchaser,
-                                    child: WaitFreeScope(
-                                      repository: widget.waitFree,
-                                      child: AgeRatingConfirmationScope(
-                                        controller: _ageRating,
-                                        child: ScreenCaptureScope(
-                                          notices: widget.screenCaptures,
-                                          child: app,
+            child: PasskeyAuthenticatorScope(
+              authenticator: widget.passkeyAuthenticator,
+              child: AccountIconPickerScope(
+                picker: widget.iconPicker,
+                child: PushScope(
+                  controller: widget.push,
+                  child: OfflineScope(
+                    library: widget.offline,
+                    downloader: widget.downloader,
+                    child: CatalogScope(
+                      repository: widget.catalog,
+                      child: CommentScope(
+                        repository: widget.comments,
+                        child: FollowScope(
+                          repository: widget.follows,
+                          child: ContentViewScope(
+                            repository: widget.contentViews,
+                            child: NotificationScope(
+                              inbox: widget.notifications,
+                              child: AnnouncementScope(
+                                board: widget.announcements,
+                                child: ContactScope(
+                                  repository: widget.contact,
+                                  child: PageScope(
+                                    repository: widget.pages,
+                                    child: PurchaseScope(
+                                      repository: widget.purchases,
+                                      launcher: widget.checkoutLauncher,
+                                      storePurchaser: widget.storePurchaser,
+                                      child: WaitFreeScope(
+                                        repository: widget.waitFree,
+                                        child: AgeRatingConfirmationScope(
+                                          controller: _ageRating,
+                                          child: ScreenCaptureScope(
+                                            notices: widget.screenCaptures,
+                                            child: app,
+                                          ),
                                         ),
                                       ),
                                     ),

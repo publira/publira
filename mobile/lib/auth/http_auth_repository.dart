@@ -15,6 +15,7 @@ import 'package:publira/auth/auth_repository.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/email_change.dart';
 import 'package:publira/auth/identity_provider.dart';
+import 'package:publira/auth/passkey.dart';
 import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/reader_age.dart';
 import 'package:publira/auth/reader_icon_policy.dart';
@@ -176,6 +177,7 @@ class HttpAuthRepository implements AuthRepository {
               ),
         ],
         hasPassword: body.hasPassword,
+        hasPasskey: body.hasPasskey,
       );
     } on ConnectException catch (error) {
       throw _toAccountFailure(error);
@@ -265,6 +267,151 @@ class HttpAuthRepository implements AuthRepository {
       };
     }
   }
+
+  @override
+  Future<String> beginPasskeySignIn() async {
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _auth.beginPasskeyLogin(
+        ConnectCallContext(tenantId: tenantId),
+        pb.BeginPasskeyLoginRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+        ),
+      );
+      return _requiredText(body.requestOptionsJson, 'requestOptionsJson');
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
+  @override
+  Future<AuthSession> signInWithPasskey(String credentialJson) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _auth.finishPasskeyLogin(
+        ConnectCallContext(tenantId: tenantId),
+        pb.FinishPasskeyLoginRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+          credentialJson: credentialJson,
+        ),
+      );
+      return _sessionFromLogin(
+        _required(body.hasUser(), body.user, 'user'),
+        _required(body.hasAccessToken(), body.accessToken, 'accessToken'),
+      );
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
+  @override
+  Future<List<Passkey>> readPasskeys(AuthSession session) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _auth.listMyPasskeys(
+        _sessionContext(tenantId, session),
+        pb.ListMyPasskeysRequest(tenant: pb.TenantContext(tenantId: tenantId)),
+      );
+      return [for (final passkey in body.passkeys) _passkey(passkey)];
+    } on ConnectException catch (error) {
+      throw _toAccountFailure(error);
+    }
+  }
+
+  @override
+  Future<String> beginPasskeyRegistration(AuthSession session) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _auth.beginPasskeyRegistration(
+        _sessionContext(tenantId, session),
+        pb.BeginPasskeyRegistrationRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+        ),
+      );
+      return _requiredText(body.creationOptionsJson, 'creationOptionsJson');
+    } on ConnectException catch (error) {
+      throw _toPasskeyFailure(error);
+    }
+  }
+
+  @override
+  Future<Passkey> finishPasskeyRegistration(
+    AuthSession session,
+    String credentialJson,
+  ) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _auth.finishPasskeyRegistration(
+        _sessionContext(tenantId, session),
+        pb.FinishPasskeyRegistrationRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+          credentialJson: credentialJson,
+        ),
+      );
+      return _passkey(_required(body.hasPasskey(), body.passkey, 'passkey'));
+    } on ConnectException catch (error) {
+      throw _toPasskeyFailure(error);
+    }
+  }
+
+  @override
+  Future<Passkey> renamePasskey(
+    AuthSession session,
+    String id,
+    String name,
+  ) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _auth.renamePasskey(
+        _sessionContext(tenantId, session),
+        pb.RenamePasskeyRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+          id: id,
+          name: name,
+        ),
+      );
+      return _passkey(_required(body.hasPasskey(), body.passkey, 'passkey'));
+    } on ConnectException catch (error) {
+      throw _toPasskeyFailure(error);
+    }
+  }
+
+  @override
+  Future<void> deletePasskey(AuthSession session, String id) async {
+    try {
+      final tenantId = await _tenants.resolve();
+      await _auth.deletePasskey(
+        _sessionContext(tenantId, session),
+        pb.DeletePasskeyRequest(
+          tenant: pb.TenantContext(tenantId: tenantId),
+          id: id,
+        ),
+      );
+    } on ConnectException catch (error) {
+      switch (error.code) {
+        // Removed already, from another device or the site.
+        case 'not_found':
+          return;
+        case 'failed_precondition':
+          throw AuthFailure(
+            AuthFailureKind.lastSignInMethod,
+            message: error.message,
+          );
+      }
+      throw _toAccountFailure(error);
+    }
+  }
+
+  ConnectCallContext _sessionContext(String tenantId, AuthSession session) =>
+      ConnectCallContext(tenantId: tenantId, accessToken: session.accessToken);
+
+  static Passkey _passkey(pb.Passkey passkey) => Passkey(
+    id: passkey.id.trim(),
+    name: passkey.name.trim(),
+    createdAt: DateTime.tryParse(passkey.createdAt.trim())?.toUtc(),
+    lastUsedAt: DateTime.tryParse(passkey.lastUsedAt.trim())?.toUtc(),
+    backedUp: passkey.backedUp,
+  );
 
   @override
   Future<void> signUp({
@@ -1129,6 +1276,26 @@ class HttpAuthRepository implements AuthRepository {
     };
   }
 
+  /// What the RPCs that add and name the reader's passkeys refuse with.
+  ///
+  /// A credential that does not verify is `invalid_argument`, which reads as
+  /// invalidInput rather than as an ended session.
+  AuthFailure _toPasskeyFailure(ConnectException error) => switch (error.code) {
+    'failed_precondition' => AuthFailure(
+      AuthFailureKind.passkeyLimit,
+      message: error.message,
+    ),
+    'already_exists' => AuthFailure(
+      AuthFailureKind.passkeyAlreadyRegistered,
+      message: error.message,
+    ),
+    'not_found' => AuthFailure(
+      AuthFailureKind.passkeyNotFound,
+      message: error.message,
+    ),
+    _ => _toAccountFailure(error),
+  };
+
   /// What the RPCs that spend an emailed link's token refuse with.
   AuthFailure _toLinkFailure(ConnectException error) {
     return switch (error.code) {
@@ -1174,4 +1341,9 @@ class HttpAuthRepository implements AuthRepository {
     }
     return message;
   }
+
+  /// [text] where the answer carried any. The options a passkey ceremony
+  /// runs over are nothing the authenticator can read without it.
+  String _requiredText(String text, String path) =>
+      _required(text.trim().isNotEmpty, text, path);
 }

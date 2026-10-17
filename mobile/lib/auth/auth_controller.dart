@@ -7,6 +7,7 @@ import 'package:publira/auth/auth_repository.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/email_change.dart';
 import 'package:publira/auth/identity_provider.dart';
+import 'package:publira/auth/passkey.dart';
 import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/reader_age.dart';
 import 'package:publira/auth/reader_icon_policy.dart';
@@ -133,6 +134,18 @@ class AuthController extends ChangeNotifier {
     );
   }
 
+  /// Signs in with one of the reader's passkeys, which [authenticator] asks
+  /// them for over a challenge the API begins, the way [signIn] does with a
+  /// password.
+  ///
+  /// Throws [PasskeyCancelled] or [PasskeyFailure] from [authenticator], and
+  /// [AuthFailure] from the API, and leaves the current session alone.
+  Future<void> signInWithPasskey(PasskeyAuthenticator authenticator) async {
+    final options = await _repository.beginPasskeySignIn();
+    final credential = await authenticator.authenticate(options);
+    await _adopt(await _repository.signInWithPasskey(credential));
+  }
+
   Future<void> _adopt(AuthSession session) async {
     await _store.write(session);
     _setSession(session);
@@ -166,6 +179,49 @@ class AuthController extends ChangeNotifier {
   Future<void> linkIdentity(ProviderCredential credential) async {
     final session = _requireSession();
     await _whileHeld(() => _repository.linkIdentity(session, credential));
+  }
+
+  /// The signed-in reader's passkeys, oldest first.
+  ///
+  /// Throws [AuthFailure], with [AuthFailureKind.sessionExpired] when nobody
+  /// is signed in, and signs out on a token the API has stopped accepting.
+  Future<List<Passkey>> readPasskeys() async {
+    final session = _requireSession();
+    return _whileHeld(() => _repository.readPasskeys(session));
+  }
+
+  /// Registers a passkey for the signed-in reader, which [authenticator] asks
+  /// them to make, and returns it unnamed.
+  ///
+  /// Throws [PasskeyCancelled], [PasskeyAlreadyRegistered], or
+  /// [PasskeyFailure] from [authenticator], and [AuthFailure] from the API,
+  /// with [AuthFailureKind.sessionExpired] when nobody is signed in.
+  Future<Passkey> registerPasskey(PasskeyAuthenticator authenticator) async {
+    final session = _requireSession();
+    return _whileHeld(() async {
+      final options = await _repository.beginPasskeyRegistration(session);
+      final credential = await authenticator.register(options);
+      return _repository.finishPasskeyRegistration(session, credential);
+    });
+  }
+
+  /// Names the signed-in reader's passkey [id] [name], or leaves it unnamed
+  /// where [name] is empty.
+  ///
+  /// Throws [AuthFailure], with [AuthFailureKind.sessionExpired] when nobody
+  /// is signed in.
+  Future<Passkey> renamePasskey(String id, String name) async {
+    final session = _requireSession();
+    return _whileHeld(() => _repository.renamePasskey(session, id, name));
+  }
+
+  /// Removes the signed-in reader's passkey [id].
+  ///
+  /// Throws [AuthFailure], with [AuthFailureKind.sessionExpired] when nobody
+  /// is signed in.
+  Future<void> deletePasskey(String id) async {
+    final session = _requireSession();
+    await _whileHeld(() => _repository.deletePasskey(session, id));
   }
 
   /// Asks for an account, which the API answers by mailing a confirmation
