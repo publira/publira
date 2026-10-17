@@ -5,6 +5,7 @@ import { selectOption, signInAsAdmin, signInAsSeedAdmin } from "../src/admin";
 import {
   DOCS_LOCALES,
   docsField,
+  docsLabelPattern,
   docsScreenHeader,
   docsSection,
   docsText,
@@ -77,9 +78,10 @@ for (const locale of DOCS_LOCALES) {
           element: [
             docsField(
               page.getByRole("spinbutton", {
-                // Exact, since the rental price's label ends in the same word.
-                exact: true,
-                name: t("admin.series.episodes.form.price"),
+                name: docsLabelPattern(
+                  locale,
+                  "admin.series.episodes.form.price"
+                ),
               })
             ),
             docsField(
