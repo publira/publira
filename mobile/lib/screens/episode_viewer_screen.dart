@@ -480,6 +480,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         }
         return _shell(
           title: open.detail.episode.title,
+          titleLocale: open.detail.episode.textLocale,
           credits: open.detail.creators,
           share: LinkScope.maybeOf(context)?.share == null
               ? null
@@ -780,6 +781,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   Widget _shell({
     required String title,
     required Widget body,
+    Locale? titleLocale,
     List<SeriesCreator> credits = const [],
     Widget? share,
   }) {
@@ -789,13 +791,14 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         // The episode's own credits under its title, never the series': an
         // artist who took over part way through is on the episodes they drew.
         title: credits.isEmpty
-            ? AutospacedText(title)
+            ? AutospacedText(title, locale: titleLocale)
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   AutospacedText(
                     title,
+                    locale: titleLocale,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),

@@ -19,7 +19,6 @@ import 'package:publira/follow/follow_control.dart';
 import 'package:publira/follow/follow_repository.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
-import 'package:publira/l10n/locale_negotiation.dart';
 import 'package:publira/links/link_scope.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/follow.dart';
@@ -152,7 +151,10 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
         final detail = open.detail;
         return Scaffold(
           appBar: AppBar(
-            title: AutospacedText(detail.series.title),
+            title: AutospacedText(
+              detail.series.title,
+              locale: detail.series.textLocale,
+            ),
             actions: [
               if (LinkScope.maybeOf(context)?.share != null)
                 ShareAction(
@@ -617,9 +619,6 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
     final fallbackLanguage = series.fallbackLanguage(
       Localizations.localeOf(context),
     );
-    // The language the title and synopsis are written in, which picks the
-    // glyphs a Han character is drawn with and whether it is autospaced.
-    final seriesLocale = supportedLocaleForCode(series.locale);
     // A build with no follow repository offers none of this, so neither the
     // control nor the author rows it would sit in are put on the screen.
     final follows = FollowScope.maybeOf(context) != null;
@@ -665,7 +664,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
               const SizedBox(height: 16),
               AutospacedText(
                 series.title,
-                locale: seriesLocale,
+                locale: series.textLocale,
                 style: theme.textTheme.headlineSmall,
               ),
               const SizedBox(height: 8),
@@ -805,7 +804,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                 const SizedBox(height: 16),
                 AutospacedText(
                   series.description,
-                  locale: seriesLocale,
+                  locale: series.textLocale,
                   style: theme.textTheme.bodyLarge,
                 ),
               ],
@@ -856,7 +855,10 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                     textColor: _progress.finishedEpisodeIds.contains(episode.id)
                         ? theme.colorScheme.onSurfaceVariant
                         : null,
-                    title: AutospacedText(episode.title),
+                    title: AutospacedText(
+                      episode.title,
+                      locale: episode.textLocale,
+                    ),
                     // Any subtitle makes the row two lines tall, so a row with
                     // nothing to say under its title is given none.
                     subtitle:

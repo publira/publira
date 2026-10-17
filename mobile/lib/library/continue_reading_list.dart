@@ -179,11 +179,12 @@ class _ContinueReadingRow extends StatelessWidget {
           aspectRatio: 3 / 4,
         ),
       ),
-      title: AutospacedText(series.title),
+      title: AutospacedText(series.title, locale: series.textLocale),
       subtitle: episode.title.isEmpty
           ? null
           : AutospacedText(
               episode.title,
+              locale: episode.textLocale,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),

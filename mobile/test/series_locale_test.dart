@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:publira/app.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
@@ -76,6 +77,52 @@ void main() {
       ),
       findsOneWidget,
     );
+  });
+
+  testWidgets('the series and each episode are set in the language they '
+      'were served in', (tester) async {
+    final detail = servedIn('ja');
+    final first = detail.episodes.first;
+    catalog.details = {
+      series.id: SeriesDetail(
+        series: detail.series,
+        episodes: [
+          EpisodeItem(
+            id: first.id,
+            internalId: first.internalId,
+            title: first.title,
+            locale: 'en',
+            orderIndex: first.orderIndex,
+            price: first.price,
+          ),
+          ...detail.episodes.skip(1),
+        ],
+      ),
+    };
+    await openSeries(tester);
+    await tester.scrollUntilVisible(
+      find.byKey(ValueKey('episode-tile-${first.id}')),
+      200,
+      scrollable: find
+          .descendant(
+            of: find.byKey(const ValueKey('series-detail-body')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+
+    Locale? localeOf(String text) => tester
+        .widget<AutospacedText>(
+          find
+              .byWidgetPredicate(
+                (widget) => widget is AutospacedText && widget.data == text,
+              )
+              .last,
+        )
+        .locale;
+
+    expect(localeOf(series.description), const Locale('ja'));
+    expect(localeOf(first.title), const Locale('en'));
   });
 
   testWidgets('a served locale no catalog carries puts up no note', (

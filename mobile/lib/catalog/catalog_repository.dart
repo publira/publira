@@ -20,7 +20,8 @@ const directoryPageLimit = 20;
 /// Every read that answers a series title or synopsis, or an episode title,
 /// takes the reader's `locale` as a BCP 47 tag, and answers each work in its
 /// translation in that locale, else the tenant's default locale's, else its
-/// oldest one. [SeriesItem.locale] names the one a series was answered in.
+/// oldest one. [SeriesItem.locale] and [EpisodeItem.locale] name the one each
+/// work was answered in, which every work falls back to on its own.
 abstract class CatalogRepository {
   /// One page of the configured tenant's published series, by title.
   ///

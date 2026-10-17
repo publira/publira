@@ -292,6 +292,11 @@ class SeriesItem {
     );
   }
 
+  /// [locale] as a text widget takes it, which picks the glyphs a Han
+  /// character is drawn with and whether it is autospaced, or `null` for one
+  /// no catalog carries, which leaves the app's own.
+  Locale? get textLocale => supportedLocaleForCode(locale);
+
   /// The name of the language the series is shown in, when that is not
   /// [requested], or `null` when it is in the language asked for.
   String? fallbackLanguage(Locale requested) =>
@@ -333,6 +338,7 @@ class EpisodeItem {
     required this.id,
     this.internalId = '',
     required this.title,
+    this.locale = '',
     required this.orderIndex,
     required this.price,
     this.purchaseSurface = EpisodePurchaseSurface.all,
@@ -347,6 +353,15 @@ class EpisodeItem {
   /// Empty on a copy saved before the id was kept.
   final String internalId;
   final String title;
+
+  /// The locale [title] was answered in, which an episode falls back to on
+  /// its own, so it may differ from its series'. Empty on a copy saved before
+  /// the locale was kept.
+  final String locale;
+
+  /// [locale] as a text widget takes it, the way [SeriesItem.textLocale] is.
+  Locale? get textLocale => supportedLocaleForCode(locale);
+
   final int orderIndex;
   final int price;
 

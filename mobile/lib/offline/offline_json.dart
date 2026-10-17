@@ -349,6 +349,7 @@ Map<String, Object?> _episodeToJson(EpisodeItem episode) => {
   'id': episode.id,
   'internalId': episode.internalId,
   'title': episode.title,
+  'locale': episode.locale,
   'orderIndex': episode.orderIndex,
   'price': episode.price,
   'purchaseAvailability': episode.purchaseSurface.wireName,
@@ -368,6 +369,7 @@ EpisodeItem? _episodeFromJson(Object? decoded) {
     id: id,
     internalId: _string(decoded['internalId']),
     title: _string(decoded['title']),
+    locale: _string(decoded['locale']),
     orderIndex: _int(decoded['orderIndex']),
     price: _int(decoded['price']),
     purchaseSurface: EpisodePurchaseSurface.fromWire(
@@ -380,6 +382,7 @@ EpisodeItem? _episodeFromJson(Object? decoded) {
 Map<String, Object?> _neighborToJson(EpisodeNeighbor neighbor) => {
   'id': neighbor.id,
   'title': neighbor.title,
+  'locale': neighbor.locale,
   'orderIndex': neighbor.orderIndex,
   'price': neighbor.price,
   'isFree': neighbor.isFree,
@@ -398,6 +401,7 @@ EpisodeNeighbor? _neighborFromJson(Object? decoded) {
   return EpisodeNeighbor(
     id: id,
     title: _string(decoded['title']),
+    locale: _string(decoded['locale']),
     orderIndex: _int(decoded['orderIndex']),
     price: _int(decoded['price']),
     isFree: decoded['isFree'] == true,

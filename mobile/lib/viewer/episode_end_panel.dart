@@ -209,6 +209,7 @@ class _UpNext extends StatelessWidget {
                   const SizedBox(height: 8),
                   AutospacedText(
                     episode.title,
+                    locale: episode.textLocale,
                     style: theme.textTheme.titleLarge?.copyWith(
                       color: Colors.white,
                     ),

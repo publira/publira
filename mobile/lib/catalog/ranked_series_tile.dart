@@ -65,6 +65,7 @@ class RankedSeriesTile extends StatelessWidget {
       ),
       title: AutospacedText(
         series.title,
+        locale: series.textLocale,
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
       ),

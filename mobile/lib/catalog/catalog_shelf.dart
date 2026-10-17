@@ -416,6 +416,7 @@ class SeriesShelfCard extends StatelessWidget {
             Flexible(
               child: AutospacedText(
                 series.title,
+                locale: series.textLocale,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodyMedium,

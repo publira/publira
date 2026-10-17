@@ -3530,5 +3530,41 @@ void main() {
       expect(listed.locale, 'ja');
       expect(detail!.series.locale, 'ja');
     });
+
+    test('each episode names the locale its own title was served in', () async {
+      server.details[ConnectFixtureServer.seedSeriesId]!.episodes.first.locale =
+          'ja';
+      server.episodes[ConnectFixtureServer.seedEpisodeId]!
+        ..episode.locale = 'en'
+        ..nextEpisode = pb.EpisodeNeighbor(
+          publicId: 'EP02',
+          title: 'Second',
+          orderIndex: 2,
+          isFree: true,
+          locale: 'ko',
+        );
+
+      final detail = await catalog.getSeries(
+        ConnectFixtureServer.seedSeriesId,
+        locale: 'en',
+      );
+      final episode = await catalog.getEpisode(
+        ConnectFixtureServer.seedSeriesId,
+        ConnectFixtureServer.seedEpisodeId,
+        locale: 'en',
+      );
+
+      final first = server
+          .details[ConnectFixtureServer.seedSeriesId]!
+          .episodes
+          .first
+          .publicId;
+      expect(
+        detail!.episodes.firstWhere((item) => item.id == first).locale,
+        'ja',
+      );
+      expect(episode!.episode.locale, 'en');
+      expect(episode.nextEpisode!.locale, 'ko');
+    });
   });
 }

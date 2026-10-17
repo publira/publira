@@ -202,7 +202,10 @@ class _ContinueReadingShelf extends StatelessWidget {
         series: item.series,
         subtitle: item.episode.title.isEmpty
             ? null
-            : AutospacedText(item.episode.title),
+            : AutospacedText(
+                item.episode.title,
+                locale: item.episode.textLocale,
+              ),
         onTap: () => context.pushInTab(
           AppRoutes.episodeViewerPath(item.series.id, item.episode.id),
         ),

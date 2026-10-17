@@ -1367,6 +1367,7 @@ class HttpCatalogRepository implements CatalogRepository {
       id: _requiredId(episode.publicId, '$path.publicId'),
       internalId: episode.id.trim(),
       title: episode.title.trim(),
+      locale: episode.locale.trim(),
       orderIndex: episode.orderIndex,
       price: episode.price,
       purchaseSurface: _purchaseSurface(episode.purchaseAvailability),
@@ -1462,6 +1463,7 @@ class HttpCatalogRepository implements CatalogRepository {
     return EpisodeNeighbor(
       id: id,
       title: neighbor.title.trim(),
+      locale: neighbor.locale.trim(),
       orderIndex: neighbor.orderIndex,
       price: neighbor.price,
       isFree: neighbor.isFree,
