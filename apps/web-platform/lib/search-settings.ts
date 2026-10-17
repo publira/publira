@@ -6,10 +6,12 @@ import {
 } from "@publira/api-client/errors";
 import type {
   PlatformSearchBuildFailure,
+  PlatformSearchLocaleAnalysis,
   PlatformSearchServing as RawPlatformSearchServingMessage,
   PlatformSearchSettings as RawPlatformSearchSettingsMessage,
   TestPlatformSearchConnectionResponse,
 } from "@publira/api-client/platform/types";
+import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheLife, cacheTag } from "next/cache";
@@ -47,11 +49,21 @@ export type PlatformSearchAnalysisInput =
   | { definition: string; mode: "replace" }
   | { mode: "default" };
 
+/**
+ * What a save does to the text analysis of one language's index: saves
+ * `definition` as the language's own, or builds the language from the shared
+ * definition again. A language a save names no change for keeps what it has.
+ */
+export type PlatformSearchLocaleAnalysisInput =
+  | { definition: string; locale: Locale; mode: "replace" }
+  | { locale: Locale; mode: "shared" };
+
 /** What a save states: the values the form holds. */
 export interface PlatformSearchInput {
   analysis?: PlatformSearchAnalysisInput;
   engine: PlatformSearchEngine;
   index: string;
+  localeAnalyses?: readonly PlatformSearchLocaleAnalysisInput[];
   password: string;
   passwordUpdateMode: number;
   url: string;
@@ -67,7 +79,8 @@ export type UpdatePlatformSearchSettingsResult =
   | {
       /**
        * The engine's or the server's reason for refusing the text analysis,
-       * set when the refusal names that field.
+       * the shared definition or a language's own, set when the refusal names
+       * that field.
        */
       fieldErrors?: { analysis?: string };
       message: string;
@@ -137,6 +150,21 @@ const toAnalysisRequest = (analysis?: PlatformSearchAnalysisInput) => {
     analysisUpdateMode: analysisModeNumbers[analysis.mode],
   };
 };
+
+/** The generated enum numbers `PlatformSearchLocaleAnalysisUpdateMode`. */
+const localeAnalysisModeNumbers = {
+  replace: 2,
+  shared: 3,
+} as const satisfies Record<PlatformSearchLocaleAnalysisInput["mode"], number>;
+
+const toLocaleAnalysesRequest = (
+  localeAnalyses: readonly PlatformSearchLocaleAnalysisInput[] = []
+) =>
+  localeAnalyses.map((change) => ({
+    analysis: change.mode === "replace" ? change.definition : "",
+    locale: change.locale,
+    mode: localeAnalysisModeNumbers[change.mode],
+  }));
 
 const WHITESPACE_RE = /\s/u;
 
@@ -248,6 +276,7 @@ type RawPlatformSearchSettings = Pick<
   | "username"
 > & {
   buildFailure?: Pick<PlatformSearchBuildFailure, "error" | "failedAt">;
+  localeAnalyses?: Pick<PlatformSearchLocaleAnalysis, "analysis" | "locale">[];
   serving?: RawPlatformSearchServing;
 };
 
@@ -260,6 +289,23 @@ const toServing = (
   since: serving?.since ?? "",
   url: serving?.url ?? "",
 });
+
+/**
+ * The languages' own definitions by language. A locale this console does not
+ * know, which a newer server could list, has no tab to show it in.
+ */
+const toLocaleAnalyses = (
+  settings?: Pick<RawPlatformSearchSettings, "localeAnalyses">
+): PlatformSearchSettings["localeAnalyses"] => {
+  const byLocale: PlatformSearchSettings["localeAnalyses"] = {};
+  for (const { analysis, locale } of settings?.localeAnalyses ?? []) {
+    const code = parseLocale(locale);
+    if (code) {
+      byLocale[code] = indentJson(analysis);
+    }
+  }
+  return byLocale;
+};
 
 const toBuildFailure = (
   failure?: Pick<PlatformSearchBuildFailure, "error" | "failedAt">
@@ -281,6 +327,7 @@ export const toPlatformSearchSettings = (
     engine: toEngine(settings?.engine),
     hasPassword: settings?.hasPassword ?? false,
     index: settings?.index ?? "",
+    localeAnalyses: toLocaleAnalyses(settings),
     revision: String(settings?.revision ?? 0),
     serving: toServing(settings?.serving),
     url: settings?.url ?? "",
@@ -376,12 +423,15 @@ const toTestResult = async (
  *
  * A refused text analysis is that detail too: the engine's own reason for not
  * building an index from the definition, which is what the operator edits the
- * definition by, so it is also handed back as the analysis field's error.
+ * definition by, so it is also handed back as the analysis field's error. A
+ * language's own definition is refused on its place in `locale_analyses`,
+ * which `analysisFields` names alongside the shared one.
  */
 const writeFailure = async (
   error: unknown,
   locale: Locale,
-  fallbackKey: PlatformMessageKey
+  fallbackKey: PlatformMessageKey,
+  analysisFields: readonly string[] = ["analysis"]
 ): Promise<{
   fieldErrors?: { analysis?: string };
   message: string;
@@ -393,7 +443,8 @@ const writeFailure = async (
   const fallback = t(fallbackKey);
   const detail = rpcErrorRawMessage(error)?.trim();
   return {
-    ...(detail && rpcErrorHasFieldViolation(error, "analysis")
+    ...(detail &&
+    analysisFields.some((field) => rpcErrorHasFieldViolation(error, field))
       ? { fieldErrors: { analysis: detail } }
       : {}),
     message: rpcErrorMessage(error, fallback, {
@@ -462,7 +513,8 @@ export const getPlatformSearchSettings =
  * Save the search settings. `expectedRevision` is the revision the screen was
  * rendered at, so a save based on values another operator has since replaced
  * is refused instead of rolling their change back. The text analysis is kept
- * unless `input.analysis` states it.
+ * unless `input.analysis` states it, and each language's unless
+ * `input.localeAnalyses` names that language.
  */
 export const updatePlatformSearchSettings = async (
   input: PlatformSearchInput,
@@ -483,6 +535,7 @@ export const updatePlatformSearchSettings = async (
           engine: toEngineNumber(input.engine),
           expectedRevision,
           index: input.index,
+          localeAnalyses: toLocaleAnalysesRequest(input.localeAnalyses),
           password: input.password,
           passwordUpdateMode: input.passwordUpdateMode,
           url: input.url,
@@ -492,7 +545,12 @@ export const updatePlatformSearchSettings = async (
       );
     return { ok: true, settings: toPlatformSearchSettings(response.settings) };
   } catch (error) {
-    return writeFailure(error, locale, "platform.search.save_failed");
+    return writeFailure(error, locale, "platform.search.save_failed", [
+      "analysis",
+      ...(input.localeAnalyses ?? []).map(
+        (_, index) => `locale_analyses[${index}].analysis`
+      ),
+    ]);
   }
 };
 

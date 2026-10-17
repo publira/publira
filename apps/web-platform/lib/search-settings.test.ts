@@ -131,6 +131,7 @@ describe("getPlatformSearchSettings", () => {
         engine: "opensearch",
         hasPassword: true,
         index: "publira-catalog",
+        localeAnalyses: {},
         revision: "3",
         serving: {
           engine: "opensearch",
@@ -181,6 +182,27 @@ describe("getPlatformSearchSettings", () => {
     }
   }
 }`);
+  });
+
+  it("lays out the definitions of the languages that have their own, by language", async () => {
+    mockGetPlatformSearchSettings.mockResolvedValueOnce({
+      settings: {
+        ...servingSettings,
+        localeAnalyses: [
+          { analysis: '{"analyzer":{}}', locale: "en" },
+          { analysis: '{"tokenizer":{}}', locale: "zh-Hant" },
+          // A language a newer server indexes and this console has no tab for.
+          { analysis: "{}", locale: "fr" },
+        ],
+      },
+    });
+
+    const result = await getPlatformSearchSettings();
+
+    expect(result.ok && result.settings.localeAnalyses).toEqual({
+      en: '{\n  "analyzer": {}\n}',
+      "zh-Hant": '{\n  "tokenizer": {}\n}',
+    });
   });
 
   it("reads a platform with nothing saved as the SQL engine at revision 0", async () => {
@@ -278,6 +300,7 @@ describe("updatePlatformSearchSettings", () => {
         engine: 2,
         expectedRevision: 3n,
         index: "publira-catalog",
+        localeAnalyses: [],
         password: "",
         passwordUpdateMode: SEARCH_PASSWORD_UNCHANGED,
         url: "https://search.example.com",
@@ -408,6 +431,101 @@ describe("updatePlatformSearchSettings with a text analysis", () => {
     ).resolves.toEqual({
       fieldErrors: { analysis: reason },
       message: reason,
+      ok: false,
+    });
+  });
+});
+
+describe("updatePlatformSearchSettings with a language's own text analysis", () => {
+  it("sends a definition to save as the language's own, and leaves the shared one", async () => {
+    mockUpdatePlatformSearchSettings.mockResolvedValueOnce({
+      settings: { ...servingSettings, buildState: 2, revision: 4n },
+    });
+
+    await updatePlatformSearchSettings(
+      {
+        ...input,
+        localeAnalyses: [{ definition: "{}", locale: "en", mode: "replace" }],
+      },
+      3n,
+      "en"
+    );
+
+    const [request] = mockUpdatePlatformSearchSettings.mock.calls[0] ?? [];
+    expect(request).toMatchObject({
+      localeAnalyses: [{ analysis: "{}", locale: "en", mode: 2 }],
+    });
+    expect(request).not.toHaveProperty("analysisUpdateMode");
+  });
+
+  it("builds a language from the shared definition again", async () => {
+    mockUpdatePlatformSearchSettings.mockResolvedValueOnce({
+      settings: { ...servingSettings, buildState: 2, revision: 4n },
+    });
+
+    await updatePlatformSearchSettings(
+      { ...input, localeAnalyses: [{ locale: "ko", mode: "shared" }] },
+      3n,
+      "en"
+    );
+
+    expect(mockUpdatePlatformSearchSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        localeAnalyses: [{ analysis: "", locale: "ko", mode: 3 }],
+      }),
+      expect.anything()
+    );
+  });
+
+  it("hands the engine's reason for a refused definition back as the field's error, naming its language", async () => {
+    const reason =
+      "en: the search engine refused the analysis definition: illegal_argument_exception: Unknown tokenizer type [nori_tokenizer]";
+    mockUpdatePlatformSearchSettings.mockRejectedValueOnce(
+      new ConnectError(reason, Code.InvalidArgument, undefined, [
+        {
+          desc: BadRequestSchema,
+          value: {
+            fieldViolations: [{ field: "locale_analyses[0].analysis" }],
+          },
+        },
+      ])
+    );
+
+    await expect(
+      updatePlatformSearchSettings(
+        {
+          ...input,
+          localeAnalyses: [{ definition: "{}", locale: "en", mode: "replace" }],
+        },
+        3n,
+        "en"
+      )
+    ).resolves.toEqual({
+      fieldErrors: { analysis: reason },
+      message: reason,
+      ok: false,
+    });
+  });
+
+  // An Auditor reads the settings with the service credential like anyone
+  // else, and the API refuses its save.
+  it("says the operator may not save when the API refuses their role", async () => {
+    mockUpdatePlatformSearchSettings.mockRejectedValueOnce(
+      new ConnectError("permission denied", Code.PermissionDenied)
+    );
+
+    const result = await updatePlatformSearchSettings(
+      {
+        ...input,
+        localeAnalyses: [{ definition: "{}", locale: "en", mode: "replace" }],
+      },
+      3n,
+      "en"
+    );
+
+    expect(result).toEqual({
+      message:
+        "You do not have permission to perform this action. Go back or use an account that does.",
       ok: false,
     });
   });

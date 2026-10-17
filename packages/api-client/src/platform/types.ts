@@ -13,6 +13,7 @@ export type {
 } from "../gen/publira/platform/v1/policy_pb.js";
 export type {
   PlatformSearchBuildFailure,
+  PlatformSearchLocaleAnalysis,
   PlatformSearchServing,
   PlatformSearchSettings,
   TestPlatformSearchConnectionResponse,

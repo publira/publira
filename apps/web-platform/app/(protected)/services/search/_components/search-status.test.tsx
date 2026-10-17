@@ -35,6 +35,7 @@ const settings: PlatformSearchSettings = {
   engine: "opensearch",
   hasPassword: false,
   index: "publira-catalog",
+  localeAnalyses: {},
   revision: "4",
   serving: {
     engine: "sql",

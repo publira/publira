@@ -270,4 +270,66 @@ describe("searchAnalysisFormSchema", () => {
       "Choose whether to save the definition or reset to the default.",
     ]);
   });
+
+  it("takes a definition for one language's own", async () => {
+    await expect(
+      parseAnalysis({
+        analysis: '{ "analyzer": {} }',
+        analysis_locale: "zh-Hant",
+        intent: "replace",
+      })
+    ).resolves.toMatchObject({
+      data: {
+        analysis: '{"analyzer":{}}',
+        analysisLocale: "zh-Hant",
+        intent: "replace",
+      },
+      success: true,
+    });
+  });
+
+  it("names the language when its editor is empty", async () => {
+    await expect(
+      analysisIssues({ analysis: "", analysis_locale: "en", intent: "replace" })
+    ).resolves.toEqual(["Enter a definition for this language."]);
+  });
+
+  it("ignores the editor when building a language from the shared definition", async () => {
+    await expect(
+      parseAnalysis({
+        analysis: "not json",
+        analysis_locale: "en",
+        intent: "shared",
+      })
+    ).resolves.toMatchObject({
+      data: { analysisLocale: "en", intent: "shared" },
+      success: true,
+    });
+  });
+
+  it("refuses a language the catalog keeps no index for", async () => {
+    await expect(
+      analysisIssues({
+        analysis: "{}",
+        analysis_locale: "fr",
+        intent: "replace",
+      })
+    ).resolves.toEqual(["Choose a language the catalog keeps an index for."]);
+  });
+
+  // The default replaces the shared definition, and the shared definition a
+  // language's own; neither takes the other's place.
+  it.each([
+    [
+      "the default for a language",
+      { analysis_locale: "en", intent: "default" },
+    ],
+    ["the shared definition for itself", { intent: "shared" }],
+  ])("refuses to reset %s", async (_name, fields) => {
+    await expect(
+      analysisIssues({ analysis: "{}", ...fields })
+    ).resolves.toEqual([
+      "Choose whether to save the definition or reset to the default.",
+    ]);
+  });
 });

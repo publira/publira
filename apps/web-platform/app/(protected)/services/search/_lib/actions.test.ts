@@ -261,6 +261,94 @@ describe("updatePlatformSearchAnalysisAction", () => {
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
 
+  it("saves a definition as one language's own and leaves the shared one as it is", async () => {
+    mockUpdatePlatformSearchSettings.mockResolvedValueOnce({
+      ok: true,
+      settings: { buildState: "building", revision: "4" },
+    });
+
+    const { updatePlatformSearchAnalysisAction } = await import("./actions");
+
+    await expect(
+      updatePlatformSearchAnalysisAction(
+        null,
+        searchFormData({
+          analysis: NORI_DEFINITION,
+          analysis_locale: "en",
+          intent: "replace",
+        })
+      )
+    ).resolves.toMatchObject({ ok: true });
+    expect(mockUpdatePlatformSearchSettings).toHaveBeenCalledWith(
+      {
+        engine: "opensearch",
+        index: "publira-catalog",
+        localeAnalyses: [
+          { definition: NORI_DEFINITION, locale: "en", mode: "replace" },
+        ],
+        password: "",
+        passwordUpdateMode: SEARCH_PASSWORD_UNCHANGED,
+        url: "https://search.example.com",
+        username: "publira",
+      },
+      3n,
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith("platform:search-settings");
+    expect(mockUpdateTag).toHaveBeenCalledWith("platform:audit-logs");
+  });
+
+  it("builds a language from the shared definition again whatever its editor holds", async () => {
+    mockUpdatePlatformSearchSettings.mockResolvedValueOnce({
+      ok: true,
+      settings: { buildState: "building", revision: "4" },
+    });
+
+    const { updatePlatformSearchAnalysisAction } = await import("./actions");
+
+    await updatePlatformSearchAnalysisAction(
+      null,
+      searchFormData({
+        analysis: "not json",
+        analysis_locale: "en",
+        intent: "shared",
+      })
+    );
+
+    const [input] = mockUpdatePlatformSearchSettings.mock.calls[0] ?? [];
+    expect(input).toMatchObject({
+      localeAnalyses: [{ locale: "en", mode: "shared" }],
+    });
+    expect(input).not.toHaveProperty("analysis");
+  });
+
+  // An Auditor is shown the same form, and the API refuses the save.
+  it("reports a save the API refuses to the operator's role and clears nothing", async () => {
+    mockUpdatePlatformSearchSettings.mockResolvedValueOnce({
+      message:
+        "You do not have permission to perform this action. Go back or use an account that does.",
+      ok: false,
+    });
+
+    const { updatePlatformSearchAnalysisAction } = await import("./actions");
+
+    await expect(
+      updatePlatformSearchAnalysisAction(
+        null,
+        searchFormData({
+          analysis: NORI_DEFINITION,
+          analysis_locale: "en",
+          intent: "replace",
+        })
+      )
+    ).resolves.toEqual({
+      message:
+        "You do not have permission to perform this action. Go back or use an account that does.",
+      ok: false,
+    });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+
   it("refuses a definition that is not a JSON object without a round trip", async () => {
     const { updatePlatformSearchAnalysisAction } = await import("./actions");
 

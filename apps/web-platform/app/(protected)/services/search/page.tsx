@@ -71,7 +71,7 @@ const SearchSettingsSections = async () => {
       <SearchSettingsForm settings={result.settings} />
       {/* The SQL engine keeps no index, so it has no analysis to edit. */}
       {result.settings.engine === "sql" ? null : (
-        <SearchAnalysisForm settings={result.settings} />
+        <SearchAnalysisForm locale={locale} settings={result.settings} />
       )}
     </>
   );

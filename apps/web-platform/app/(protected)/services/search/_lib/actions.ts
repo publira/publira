@@ -94,10 +94,11 @@ export const updatePlatformSearchSettingsAction = async (
 };
 
 /**
- * Save the text analysis the editor holds, or go back to the default. The
- * engine, URL, alias, and credential are sent again as they are saved, read
- * at the revision the screen was rendered at, so this form changes the
- * analysis and nothing else.
+ * Save the text analysis the editor holds, or reset it: the shared definition
+ * to the default, a language's own to the shared one. The engine, URL, alias,
+ * and credential are sent again as they are saved, read at the revision the
+ * screen was rendered at, so this form changes the one analysis it is for and
+ * nothing else.
  */
 export const updatePlatformSearchAnalysisAction = async (
   _prevState: FormActionState,
@@ -135,13 +136,30 @@ export const updatePlatformSearchAnalysisAction = async (
   }
 
   const { settings } = current;
+  const { analysis, analysisLocale, intent } = parsed.data;
+  const change: Pick<PlatformSearchInput, "analysis" | "localeAnalyses"> =
+    analysisLocale
+      ? {
+          localeAnalyses: [
+            intent === "replace"
+              ? {
+                  definition: analysis,
+                  locale: analysisLocale,
+                  mode: "replace",
+                }
+              : { locale: analysisLocale, mode: "shared" },
+          ],
+        }
+      : {
+          analysis:
+            intent === "replace"
+              ? { definition: analysis, mode: "replace" }
+              : { mode: "default" },
+        };
   const result = await withPlatformSessionReauth(() =>
     updatePlatformSearchSettings(
       {
-        analysis:
-          parsed.data.intent === "default"
-            ? { mode: "default" }
-            : { definition: parsed.data.analysis, mode: "replace" },
+        ...change,
         engine: settings.engine,
         index: settings.index,
         password: "",

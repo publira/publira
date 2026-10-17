@@ -95,10 +95,14 @@ const fuzzyQueryFindsSeedSeries = async (): Promise<boolean> => {
 
 /**
  * The alias of the Korean index behind the one `scripts/db-setup.sh` saves,
- * which the server defaults to. Every locale's index is built from the same
- * definition, so any of them answers what the analysis makes of a text.
+ * which the server defaults to. Every locale's index without a definition of
+ * its own is built from the shared one, so any of them answers what the
+ * shared analysis makes of a text.
  */
 const OPENSEARCH_ALIAS = "publira-catalog-ko";
+
+/** The alias of the English index, which is given a definition of its own. */
+const ENGLISH_ALIAS = "publira-catalog-en";
 
 /**
  * A definition built on analysis-nori, which the E2E engine has installed
@@ -132,22 +136,21 @@ const UNKNOWN_TOKENIZER_DEFINITION = NORI_DEFINITION.replaceAll(
 );
 
 /**
- * The words the index the alias names makes of a Korean title in the written
+ * The words the index `alias` names makes of a Korean title in the written
  * form. The default definition keeps 「별을」 whole; one built on analysis-nori
  * takes the particle off, which is how a query of 「별」 finds the title.
  */
-const writtenFormTokens = async (): Promise<string[]> => {
-  const response = await fetch(
-    `${OPENSEARCH_URL}/${OPENSEARCH_ALIAS}/_analyze`,
-    {
-      body: JSON.stringify({
-        analyzer: "written_form",
-        text: "별을 쫓는 아이",
-      }),
-      headers: { "content-type": "application/json" },
-      method: "POST",
-    }
-  );
+const writtenFormTokens = async (
+  alias: string = OPENSEARCH_ALIAS
+): Promise<string[]> => {
+  const response = await fetch(`${OPENSEARCH_URL}/${alias}/_analyze`, {
+    body: JSON.stringify({
+      analyzer: "written_form",
+      text: "별을 쫓는 아이",
+    }),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  });
   expect(response.ok, await response.clone().text()).toBe(true);
   const { tokens = [] } = (await response.json()) as {
     tokens?: { token: string }[];
@@ -340,6 +343,106 @@ test.describe("web-platform search settings", () => {
         page.getByText("In use: the default definition.")
       ).toBeVisible();
       await expect.poll(writtenFormTokens).toContain("별을");
+      await expectOpenSearchAnswering(true);
+    });
+
+    test("English is given a definition of its own and built from the shared one again from this page alone", async ({
+      page,
+    }) => {
+      test.setTimeout(SWITCH_TIMEOUT * 3);
+
+      await openSearchSettings(page);
+      await page.getByRole("tab", { name: "English" }).click();
+      // Every tab's panel stays in the page, so what one shows is looked for
+      // in English's.
+      const english = page.getByRole("tabpanel", { name: "English" });
+      const editor = english.getByRole("textbox", { name: /^Definition/u });
+      const useShared = english.getByRole("button", {
+        name: "Use the shared definition",
+      });
+      // A language without a definition of its own starts from the shared
+      // one, which every index is built from.
+      await expect(
+        english.getByText(
+          "In use: the shared definition, which the editor starts from."
+        )
+      ).toBeVisible();
+      await expect(editor).toHaveValue(/"kuromoji_tokenizer"/u);
+      await expect(useShared).toHaveCount(0);
+      await expect
+        .poll(() => writtenFormTokens(ENGLISH_ALIAS))
+        .toContain("별을");
+
+      // A definition the engine refuses is not saved, and is reported in the
+      // tab of the language it was given for, naming that language.
+      await editor.fill(UNKNOWN_TOKENIZER_DEFINITION);
+      await english.getByRole("button", { name: "Save text analysis" }).click();
+      await expect(
+        english.getByText("The definition wasn't saved. Fix it and save again.")
+      ).toBeVisible();
+      await expect(
+        page.getByRole("status").filter({
+          hasText: /en: the search engine refused .*no_such_tokenizer/u,
+        })
+      ).toBeVisible();
+      await expect(editor).toHaveValue(UNKNOWN_TOKENIZER_DEFINITION);
+
+      // English's own definition rebuilds English's index alone.
+      await editor.fill(NORI_DEFINITION);
+      await english.getByRole("button", { name: "Save text analysis" }).click();
+      await expect(
+        english.getByText(/^Text analysis saved\. A new index is being built/u)
+      ).toBeVisible();
+      await expect(
+        page.getByText(/^A new OpenSearch index is being built/u)
+      ).toBeVisible();
+      await expect(
+        page.getByText(/^A new OpenSearch index is being built/u)
+      ).toHaveCount(0, { timeout: SWITCH_TIMEOUT });
+      await expect(
+        english.getByText("In use: a definition of this language's own.")
+      ).toBeVisible();
+      await expect(editor).toHaveValue(/"nori_tokenizer"/u);
+      await expect.poll(() => writtenFormTokens(ENGLISH_ALIAS)).toContain("별");
+      await expect.poll(writtenFormTokens).toContain("별을");
+
+      await page.getByRole("tab", { name: "Shared" }).click();
+      await expect(
+        page
+          .getByRole("tabpanel", { name: "Shared" })
+          .getByText("Used by 日本語, 한국어, 简体中文, and 繁體中文.")
+      ).toBeVisible();
+
+      // Building English from the shared definition again is confirmed
+      // first, since it is a rebuild as well.
+      await page.getByRole("tab", { name: "English" }).click();
+      await useShared.click();
+      const dialog = page.getByRole("alertdialog");
+      await expect(
+        dialog.getByText("Build English from the shared definition?")
+      ).toBeVisible();
+      await dialog
+        .getByRole("button", { name: "Use shared and rebuild" })
+        .click();
+      await expect(
+        english.getByText(/^Text analysis saved\. A new index is being built/u)
+      ).toBeVisible();
+      await expect(
+        page.getByText(/^A new OpenSearch index is being built/u)
+      ).toBeVisible();
+      await expect(
+        page.getByText(/^A new OpenSearch index is being built/u)
+      ).toHaveCount(0, { timeout: SWITCH_TIMEOUT });
+      await expect(
+        english.getByText(
+          "In use: the shared definition, which the editor starts from."
+        )
+      ).toBeVisible();
+      await expect(editor).toHaveValue(/"kuromoji_tokenizer"/u);
+      await expect(useShared).toHaveCount(0);
+      await expect
+        .poll(() => writtenFormTokens(ENGLISH_ALIAS))
+        .toContain("별을");
       await expectOpenSearchAnswering(true);
     });
     return;

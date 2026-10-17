@@ -65,6 +65,12 @@ const NORI_DEFINITION = JSON.stringify({
 const editor = () =>
   screen.getByRole<HTMLTextAreaElement>("textbox", { name: /^Definition/u });
 
+/**
+ * The tab panel on show. Every panel stays mounted, so text a hidden one holds
+ * is in the document too.
+ */
+const shownPanel = () => within(screen.getByRole("tabpanel"));
+
 beforeEach(async () => {
   state.t = await getMessagesFor("en");
 });
@@ -81,10 +87,12 @@ describe("SearchAnalysisForm", () => {
   it("shows the definition in force and the roles it has to define", () => {
     render(
       <SearchAnalysisForm
+        locale="en"
         settings={{
           analysis: DEFINITION,
           buildState: "serving",
           defaultAnalysis: true,
+          localeAnalyses: {},
           revision: "3",
         }}
       />
@@ -92,6 +100,7 @@ describe("SearchAnalysisForm", () => {
 
     expect(editor().value).toBe(DEFINITION);
     expect(screen.getByText("In use: the default definition.")).toBeTruthy();
+    expect(screen.getByText("Used by every language.")).toBeTruthy();
     for (const role of ["written_form", "alternate_form", "exact_match"]) {
       expect(screen.getByText(role)).toBeTruthy();
     }
@@ -112,10 +121,12 @@ describe("SearchAnalysisForm", () => {
     (buildState, defaultAnalysis, wording) => {
       render(
         <SearchAnalysisForm
+          locale="en"
           settings={{
             analysis: DEFINITION,
             buildState,
             defaultAnalysis,
+            localeAnalyses: {},
             revision: "4",
           }}
         />
@@ -129,10 +140,12 @@ describe("SearchAnalysisForm", () => {
   it("saves what the editor holds at the rendered revision", async () => {
     render(
       <SearchAnalysisForm
+        locale="en"
         settings={{
           analysis: DEFINITION,
           buildState: "serving",
           defaultAnalysis: true,
+          localeAnalyses: {},
           revision: "3",
         }}
       />
@@ -146,16 +159,19 @@ describe("SearchAnalysisForm", () => {
     });
     expect(save.calls[0]?.get("intent")).toBe("replace");
     expect(save.calls[0]?.get("analysis")).toBe(NORI_DEFINITION);
+    expect(save.calls[0]?.get("analysis_locale")).toBe("");
     expect(save.calls[0]?.get("revision")).toBe("3");
   });
 
   it("keeps a refused definition in the editor, with the reason beside it", async () => {
     render(
       <SearchAnalysisForm
+        locale="en"
         settings={{
           analysis: DEFINITION,
           buildState: "serving",
           defaultAnalysis: true,
+          localeAnalyses: {},
           revision: "3",
         }}
       />
@@ -184,10 +200,12 @@ describe("SearchAnalysisForm", () => {
   it("goes back to the default only once the operator confirms the rebuild", async () => {
     render(
       <SearchAnalysisForm
+        locale="en"
         settings={{
           analysis: NORI_DEFINITION,
           buildState: "serving",
           defaultAnalysis: false,
+          localeAnalyses: {},
           revision: "5",
         }}
       />
@@ -223,10 +241,12 @@ describe("SearchAnalysisForm", () => {
   it("shows the stored definition once the revision moves", () => {
     const { rerender } = render(
       <SearchAnalysisForm
+        locale="en"
         settings={{
           analysis: DEFINITION,
           buildState: "serving",
           defaultAnalysis: true,
+          localeAnalyses: {},
           revision: "3",
         }}
       />
@@ -235,15 +255,179 @@ describe("SearchAnalysisForm", () => {
 
     rerender(
       <SearchAnalysisForm
+        locale="en"
         settings={{
           analysis: '{\n  "stored": true\n}',
           buildState: "building",
           defaultAnalysis: false,
+          localeAnalyses: {},
           revision: "4",
         }}
       />
     );
 
     expect(editor().value).toBe('{\n  "stored": true\n}');
+  });
+
+  it("says which languages are built from the shared definition", () => {
+    render(
+      <SearchAnalysisForm
+        locale="en"
+        settings={{
+          analysis: DEFINITION,
+          buildState: "serving",
+          defaultAnalysis: true,
+          localeAnalyses: { en: NORI_DEFINITION },
+          revision: "3",
+        }}
+      />
+    );
+
+    expect(
+      screen.getByText("Used by 日本語, 한국어, 简体中文, and 繁體中文.")
+    ).toBeTruthy();
+  });
+
+  it("says when no language is built from the shared definition", () => {
+    render(
+      <SearchAnalysisForm
+        locale="en"
+        settings={{
+          analysis: DEFINITION,
+          buildState: "serving",
+          defaultAnalysis: true,
+          localeAnalyses: {
+            en: NORI_DEFINITION,
+            ja: NORI_DEFINITION,
+            ko: NORI_DEFINITION,
+            "zh-Hans": NORI_DEFINITION,
+            "zh-Hant": NORI_DEFINITION,
+          },
+          revision: "3",
+        }}
+      />
+    );
+
+    expect(
+      screen.getByText(
+        "Used by no language: every language has a definition of its own."
+      )
+    ).toBeTruthy();
+  });
+
+  it("starts a language without its own definition from the shared one, and saves the editor as that language's own", async () => {
+    render(
+      <SearchAnalysisForm
+        locale="en"
+        settings={{
+          analysis: DEFINITION,
+          buildState: "serving",
+          defaultAnalysis: true,
+          localeAnalyses: {},
+          revision: "3",
+        }}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("tab", { name: "English" }));
+
+    expect(editor().value).toBe(DEFINITION);
+    expect(
+      shownPanel().getByText(
+        "In use: the shared definition, which the editor starts from."
+      )
+    ).toBeTruthy();
+    // There is no definition of its own to drop.
+    expect(
+      screen.queryByRole("button", { name: "Use the shared definition" })
+    ).toBeNull();
+
+    fireEvent.change(editor(), { target: { value: NORI_DEFINITION } });
+    fireEvent.click(screen.getByRole("button", { name: "Save text analysis" }));
+
+    await waitFor(() => {
+      expect(save.calls).toHaveLength(1);
+    });
+    expect(save.calls[0]?.get("intent")).toBe("replace");
+    expect(save.calls[0]?.get("analysis")).toBe(NORI_DEFINITION);
+    expect(save.calls[0]?.get("analysis_locale")).toBe("en");
+    expect(save.calls[0]?.get("revision")).toBe("3");
+  });
+
+  it("builds a language from the shared definition again only once the operator confirms the rebuild", async () => {
+    render(
+      <SearchAnalysisForm
+        locale="en"
+        settings={{
+          analysis: DEFINITION,
+          buildState: "serving",
+          defaultAnalysis: true,
+          localeAnalyses: { en: NORI_DEFINITION },
+          revision: "6",
+        }}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("tab", { name: "English" }));
+    expect(editor().value).toBe(NORI_DEFINITION);
+    expect(
+      shownPanel().getByText("In use: a definition of this language's own.")
+    ).toBeTruthy();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Use the shared definition" })
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    expect(save.calls).toHaveLength(0);
+    expect(
+      within(dialog).getByText("Build English from the shared definition?")
+    ).toBeTruthy();
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Use shared and rebuild" })
+    );
+
+    await waitFor(() => {
+      expect(save.calls).toHaveLength(1);
+    });
+    expect(save.calls[0]?.get("intent")).toBe("shared");
+    expect(save.calls[0]?.get("analysis_locale")).toBe("en");
+    expect(save.calls[0]?.get("revision")).toBe("6");
+  });
+
+  it("reports a refused definition in the tab of the language it was given for", async () => {
+    render(
+      <SearchAnalysisForm
+        locale="en"
+        settings={{
+          analysis: DEFINITION,
+          buildState: "serving",
+          defaultAnalysis: true,
+          localeAnalyses: {},
+          revision: "3",
+        }}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("tab", { name: "한국어" }));
+    fireEvent.change(editor(), { target: { value: NORI_DEFINITION } });
+    fireEvent.click(screen.getByRole("button", { name: "Save text analysis" }));
+    save.current.resolve({
+      fieldErrors: {
+        analysis:
+          "ko: the search engine refused the analysis definition: illegal_argument_exception: Unknown tokenizer type [nori_tokenizer] for [written_form]",
+      },
+      message: "The definition wasn't saved. Fix it and save again.",
+      ok: false,
+    });
+
+    expect(
+      await screen.findByText(/^ko: .*Unknown tokenizer type/u)
+    ).toBeTruthy();
+    expect(editor().value).toBe(NORI_DEFINITION);
+
+    // The shared definition's editor is untouched, and shows no refusal.
+    fireEvent.click(screen.getByRole("tab", { name: "Shared" }));
+    expect(editor().value).toBe(DEFINITION);
+    expect(shownPanel().queryByText(/Unknown tokenizer type/u)).toBeNull();
   });
 });

@@ -1,3 +1,4 @@
+import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { z } from "zod";
 
@@ -167,6 +168,7 @@ export const searchFormSchema = async (locale: Locale) => {
 
 export const searchAnalysisFormFields = {
   analysis: "value",
+  analysisLocale: { kind: "value", name: "analysis_locale" },
   intent: "value",
   revision: "value",
 } as const;
@@ -218,11 +220,13 @@ const compactJson = (json: string): string => {
 };
 
 /**
- * The text analysis form: save the definition the editor holds, or go back to
- * the default, which ignores the editor. What the definition has to define,
- * and whether the engine builds an index from it, is the server's to check;
- * this catches only what needs no engine to tell. A definition to save is
- * sent compacted, and its size is measured that way.
+ * The text analysis form, for the shared definition or, with `analysisLocale`,
+ * one language's own: save the definition the editor holds, or reset, which
+ * ignores the editor. The shared definition resets to the default, and a
+ * language's own to the shared one. What the definition has to define, and
+ * whether the engine builds an index from it, is the server's to check; this
+ * catches only what needs no engine to tell. A definition to save is sent
+ * compacted, and its size is measured that way.
  */
 export const searchAnalysisFormSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
@@ -233,19 +237,52 @@ export const searchAnalysisFormSchema = async (locale: Locale) => {
         (value) => (typeof value === "string" ? value.trim() : ""),
         z.string()
       ),
-      intent: z.enum(["replace", "default"], {
+      // Empty is the shared definition.
+      analysisLocale: z.preprocess(
+        (value) => (value === "" || value === undefined ? undefined : value),
+        z
+          .string()
+          .transform((value, ctx) => {
+            const code = parseLocale(value);
+            if (!code) {
+              ctx.addIssue({
+                code: "custom",
+                message: t("platform.search.analysis.locale_invalid"),
+              });
+              return z.NEVER;
+            }
+            return code;
+          })
+          .optional()
+      ),
+      intent: z.enum(["replace", "default", "shared"], {
         error: t("platform.search.analysis.intent_invalid"),
       }),
       revision: revisionFormSchema(t("platform.policy.revision_invalid")),
     })
     .transform((value, ctx) => {
+      // The default replaces the shared definition, and the shared one
+      // replaces a language's own.
+      if (
+        (value.intent === "default" && value.analysisLocale) ||
+        (value.intent === "shared" && !value.analysisLocale)
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          message: t("platform.search.analysis.intent_invalid"),
+          path: ["intent"],
+        });
+        return z.NEVER;
+      }
       if (value.intent !== "replace") {
         return value;
       }
       if (!value.analysis) {
         ctx.addIssue({
           code: "custom",
-          message: t("platform.search.analysis.required"),
+          message: value.analysisLocale
+            ? t("platform.search.analysis.locale_required")
+            : t("platform.search.analysis.required"),
           path: ["analysis"],
         });
         return z.NEVER;

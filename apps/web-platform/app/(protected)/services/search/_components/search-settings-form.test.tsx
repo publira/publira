@@ -50,6 +50,7 @@ const storedSettings: PlatformSearchSettings = {
   engine: "opensearch",
   hasPassword: true,
   index: "publira-catalog",
+  localeAnalyses: {},
   revision: "3",
   serving: {
     engine: "opensearch",
