@@ -202,6 +202,9 @@ const renderEntryUrls = (
   const lastmod = lastModifiedAt
     ? `<lastmod>${escapeXml(lastModifiedAt)}</lastmod>`
     : "";
+  // Its URLs name the same alternates but for `x-default`, which is either
+  // shared or each URL's own, so the links are written once per `x-default`.
+  const linkSets = new Map<string, string>();
   return locales
     .map((locale) => {
       const { canonical, languages } = publishedLocales
@@ -213,12 +216,16 @@ const renderEntryUrls = (
             locale
           )
         : localeAlternates(locale, defaultLocale, supportedLocales, href);
-      const links = Object.entries(languages)
-        .map(
-          ([hreflang, path]) =>
-            `<xhtml:link rel="alternate" hreflang="${hreflang}" href="${absoluteUrl(origin, path)}"/>`
-        )
-        .join("");
+      const linksKey = languages["x-default"];
+      const links =
+        linkSets.get(linksKey) ??
+        Object.entries(languages)
+          .map(
+            ([hreflang, path]) =>
+              `<xhtml:link rel="alternate" hreflang="${hreflang}" href="${absoluteUrl(origin, path)}"/>`
+          )
+          .join("");
+      linkSets.set(linksKey, links);
       return `<url><loc>${absoluteUrl(origin, canonical)}</loc>${links}${lastmod}</url>`;
     })
     .join("\n");
