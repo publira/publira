@@ -31,6 +31,7 @@ import 'package:publira/screens/labels_screen.dart';
 import 'package:publira/screens/legal_page_agreement_screen.dart';
 import 'package:publira/screens/library_screen.dart';
 import 'package:publira/screens/linked_accounts_screen.dart';
+import 'package:publira/screens/passkeys_screen.dart';
 import 'package:publira/screens/not_found_screen.dart';
 import 'package:publira/screens/notifications_screen.dart';
 import 'package:publira/screens/published_page_screen.dart';
@@ -98,6 +99,8 @@ abstract final class AppRoutes {
   static const accountPassword = '$account/$password';
   static const linkedAccounts = 'linked-accounts';
   static const accountLinkedAccounts = '$account/$linkedAccounts';
+  static const passkeys = 'passkeys';
+  static const accountPasskeys = '$account/$passkeys';
   static const delete = 'delete';
   static const accountDelete = '$account/$delete';
   static const contact = 'contact';
@@ -536,6 +539,11 @@ GoRouter createAppRouter({String? initialLocation}) {
                     path: AppRoutes.linkedAccounts,
                     builder: (context, state) =>
                         const ReaderKeyed(child: LinkedAccountsScreen()),
+                  ),
+                  GoRoute(
+                    path: AppRoutes.passkeys,
+                    builder: (context, state) =>
+                        const ReaderKeyed(child: PasskeysScreen()),
                   ),
                   GoRoute(
                     path: AppRoutes.delete,

@@ -28,8 +28,9 @@ enum IdentityProvider {
 }
 
 /// How the tenant lets a reader sign in with Apple and Google, as `GetTenant`
-/// answers it. A provider the tenant has not enabled, or that is not ready,
-/// is absent.
+/// answers it, and the apps it names, which decide where those and its
+/// passkeys sign in. A provider the tenant has not enabled, or that is not
+/// ready, is absent.
 @immutable
 class SignInProviders {
   const SignInProviders({
@@ -47,7 +48,8 @@ class SignInProviders {
 
   /// The bundle identifier of the tenant's iOS app, as
   /// `GetTenantMobileAppAssociation` names it, which is the only app an Apple
-  /// token is accepted from. Empty where the tenant names none.
+  /// token is accepted from and the only one the site shares its passkeys
+  /// with. Empty where the tenant names none.
   final String appleBundleIdentifier;
 
   /// The Services ID the storefront and the Android app run Apple's web flow
@@ -56,8 +58,8 @@ class SignInProviders {
 
   /// The application ID of the tenant's Android app, as
   /// `GetTenantMobileAppAssociation` names it, which is the only app the
-  /// storefront hands Apple's answer back to. Empty where the tenant names
-  /// none.
+  /// storefront hands Apple's answer back to and the only one it shares its
+  /// passkeys with. Empty where the tenant names none.
   final String androidApplicationId;
 
   final GoogleSignInClients? google;
@@ -120,23 +122,37 @@ class LinkedIdentity {
 }
 
 /// The provider accounts linked to the signed-in reader, and whether the
-/// account also has a password.
+/// account also has a password and a passkey.
 @immutable
 class LinkedIdentities {
-  const LinkedIdentities({required this.identities, required this.hasPassword});
+  const LinkedIdentities({
+    required this.identities,
+    required this.hasPassword,
+    this.hasPasskey = false,
+  });
 
   final List<LinkedIdentity> identities;
 
   /// False for an account a provider sign-in created, which confirms an email
   /// change and its deletion with a fresh sign-in, sets a password through
-  /// the password reset, and keeps its last linked provider.
+  /// the password reset, and keeps one way to sign in.
   final bool hasPassword;
+
+  /// Whether the reader holds a passkey the tenant's site and this app sign
+  /// them in with.
+  final bool hasPasskey;
 
   /// Whether [provider] is linked.
   bool links(IdentityProvider provider) =>
       identities.any((identity) => identity.provider == provider);
 
   /// Whether the API refuses to unlink the one provider left, because the
-  /// account has no password to sign in with instead.
-  bool get keepsLast => !hasPassword && identities.length == 1;
+  /// account has neither a password nor a passkey to sign in with instead.
+  bool get keepsLast => !hasPassword && !hasPasskey && identities.length == 1;
+
+  /// Whether the API refuses to remove the one passkey left of [passkeys],
+  /// because the account has neither a password nor a linked provider to sign
+  /// in with instead.
+  bool keepsLastPasskey(int passkeys) =>
+      !hasPassword && identities.isEmpty && passkeys == 1;
 }

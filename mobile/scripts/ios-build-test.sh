@@ -29,17 +29,24 @@ expect_info() {
 }
 
 # A simulator build carries its entitlements in the executable's
-# __TEXT,__entitlements section, where a device build signs them in.
-expect_associated_domain() {
-  local executable="$1/Runner" thin="${work}/Runner" actual
+# __TEXT,__entitlements section, where a device build signs them in. $1 is the
+# app, and every argument after it an associated domain it has to claim, in
+# order.
+expect_associated_domains() {
+  local app="$1" executable="$1/Runner" thin="${work}/Runner" actual index=0
+  shift
   rm -f "${thin}" "${work}/entitlements.plist"
   xcrun lipo "${executable}" -thin "$(xcrun lipo -archs "${executable}" | cut -d' ' -f1)" \
     -output "${thin}" 2> /dev/null || cp "${executable}" "${thin}"
   xcrun segedit "${thin}" -extract __TEXT __entitlements "${work}/entitlements.plist"
-  actual="$(/usr/libexec/PlistBuddy -c 'Print :com.apple.developer.associated-domains:0' \
-    "${work}/entitlements.plist")"
-  [[ "${actual}" == "$2" ]] || fail "$1: the associated domain is '${actual}', not '$2'"
-  echo "$1: com.apple.developer.associated-domains = ${actual}"
+  for expected in "$@"; do
+    actual="$(/usr/libexec/PlistBuddy -c "Print :com.apple.developer.associated-domains:${index}" \
+      "${work}/entitlements.plist")"
+    [[ "${actual}" == "${expected}" ]] ||
+      fail "${app}: associated domain ${index} is '${actual}', not '${expected}'"
+    echo "${app}: com.apple.developer.associated-domains:${index} = ${actual}"
+    index=$((index + 1))
+  done
 }
 
 status_before="$(git status --porcelain --untracked-files=all)"
@@ -51,7 +58,8 @@ expect_info "${simulator_app}" CFBundleIdentifier dev.publira.app.dev
 expect_info "${simulator_app}" CFBundleDisplayName 'Publira Dev'
 # A manifest naming no Google client registers its bundle identifier instead.
 expect_info "${simulator_app}" CFBundleURLTypes:0:CFBundleURLSchemes:0 dev.publira.app
-expect_associated_domain "${simulator_app}" 'applinks:localhost?mode=developer'
+expect_associated_domains "${simulator_app}" 'applinks:localhost?mode=developer' \
+  'webcredentials:localhost?mode=developer'
 
 # `//` starts an xcconfig comment, `$(...)` a reference, and a trailing `;` is
 # dropped, so each reaches the app only when the generator escaped it.
@@ -77,7 +85,9 @@ expect_info "${simulator_app}" CFBundleIdentifier com.example.reader
 expect_info "${simulator_app}" CFBundleDisplayName "${app_name}"
 expect_info "${simulator_app}" CFBundleURLTypes:0:CFBundleURLSchemes:0 \
   com.googleusercontent.apps.123456789012-abc123
-expect_associated_domain "${simulator_app}" 'applinks:reader.example.com?mode=developer'
+expect_associated_domains "${simulator_app}" \
+  'applinks:reader.example.com?mode=developer' \
+  'webcredentials:reader.example.com?mode=developer'
 
 echo '--- production flavor refusing another tenant host'
 # Straight to Flutter, since scripts/build.dart refuses a host of its own.
@@ -110,12 +120,17 @@ entitlements="$(release_setting CODE_SIGN_ENTITLEMENTS)"
   fail "Release-production signs with '${entitlements}', not Runner/RunnerRelease.entitlements"
 [[ "$(release_setting PUBLIRA_ASSOCIATED_DOMAIN)" == reader.example.com ]] ||
   fail "Release-production resolves PUBLIRA_ASSOCIATED_DOMAIN to '$(release_setting PUBLIRA_ASSOCIATED_DOMAIN)'"
-# shellcheck disable=SC2016 # The reference Xcode expands, written literally.
-domain='applinks:$(PUBLIRA_ASSOCIATED_DOMAIN)'
-[[ "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.developer.associated-domains:0' \
-  "ios/${entitlements}")" == "${domain}" ]] ||
-  fail "ios/${entitlements} does not claim ${domain}"
-echo "Release-production: ${entitlements} claims ${domain} = applinks:reader.example.com"
+# The links the app opens, and the site's passkeys it signs in with.
+index=0
+for service in applinks webcredentials; do
+  # shellcheck disable=SC2016 # The reference Xcode expands, written literally.
+  domain="${service}"':$(PUBLIRA_ASSOCIATED_DOMAIN)'
+  [[ "$(/usr/libexec/PlistBuddy -c "Print :com.apple.developer.associated-domains:${index}" \
+    "ios/${entitlements}")" == "${domain}" ]] ||
+    fail "ios/${entitlements} does not claim ${domain}"
+  echo "Release-production: ${entitlements} claims ${domain} = ${service}:reader.example.com"
+  index=$((index + 1))
+done
 
 status_after="$(git status --porcelain --untracked-files=all)"
 if [[ "${status_after}" != "${status_before}" ]]; then

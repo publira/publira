@@ -215,6 +215,9 @@ class _SignInScreenState extends State<SignInScreen> {
       AuthFailureKind.linkedToAnotherAccount ||
       AuthFailureKind.providerAlreadyLinked ||
       AuthFailureKind.lastSignInMethod ||
+      AuthFailureKind.passkeyLimit ||
+      AuthFailureKind.passkeyAlreadyRegistered ||
+      AuthFailureKind.passkeyNotFound ||
       AuthFailureKind.lastTenantAdmin ||
       AuthFailureKind.invalidInput ||
       AuthFailureKind.birthDateInvalid ||

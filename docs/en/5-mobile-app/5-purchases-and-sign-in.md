@@ -1,13 +1,13 @@
 ---
 title: In-app purchase and sign-in
-description: What a tenant's app needs to sell episodes through the App Store and Google Play, and to sign readers in with Apple and Google.
+description: What a tenant's app needs to sell episodes through the App Store and Google Play, and to sign readers in with Apple, Google, and passkeys.
 published: 2026-10-06
-updated: 2026-10-12
+updated: 2026-10-17
 ---
 
 Selling episodes and signing in with Apple or Google are set up once for the whole tenant, in the tenant console, and the site and the app share that setup. This page covers what is particular to the app: the parts of each store's and each provider's console that only the app needs, and how the app decides what to offer. The app's build needs nothing for either beyond the [manifest](./1-app-manifest.md) and [App links](./4-app-links.md), except the Google client named in the manifest for Google sign-in on iOS.
 
-Both rely on **Integrations** › **App links**: the store sections of in-app purchase sell in the apps named there, and Sign in with Apple trusts the apps named there. Fill it in first.
+All of them rely on **Integrations** › **App links**: the store sections of in-app purchase sell in the apps named there, Sign in with Apple trusts the apps named there, and the site shares its passkeys with the apps named there. Fill it in first.
 
 ## Selling episodes in the app
 
@@ -71,5 +71,16 @@ A change to the client therefore takes a new build as well as a change in the co
 Sign in with Apple on Android signs in through Apple's web flow, under the tenant's **Services ID**. Register the **Android app callback URL** the console shows under the Return URLs of that Services ID, beside the site's own callback URL.
 
 Google sign-in on Android uses the **Web client ID** the site signs in with. In the same Google Cloud project, also create an OAuth client of type Android, with the manifest's `android.applicationId` and the SHA-1 fingerprint of the app signing key, which Play Console shows beside the SHA-256 one on the app's **App signing** page. Google uses it to recognise the app; nothing in Publira names it. Google matches the client against the exact certificate the installed app is signed with, so the release APK installed for testing, which the upload key signs, needs a second Android client with the upload key's SHA-1, the `SHA1:` line of the `keytool -list -v` command on the [App links](./4-app-links.md#android) page. Without it, test Google sign-in with a build installed from a Play testing track.
+
+## Sign in with a passkey
+
+A passkey belongs to the tenant's host rather than to the browser or the app that made it, so a reader who added one on the site signs in to the app with it, and one added in the app signs in to the site. The app offers **Sign in with a passkey** on its sign-in screen, and **Passkeys** under **Account**, where a reader lists, adds, renames, and removes them as they do under **Settings** › **Security** on the site.
+
+There is nothing to turn on: passkeys need only the apps named under [App links](./4-app-links.md), whose files the site serves vouch for the app's use of its passkeys. The app offers them only where it is the app named there for the phone it runs on, because the phone refuses any other the site's passkeys:
+
+- On iOS, the store build claims the tenant host for passkeys from the manifest's `tenant.host` when it is built, next to the links it claims, and is named under **App links** by its bundle ID and Team ID.
+- On Android, the server takes a passkey from the app only under a signing certificate whose fingerprint is saved under **App links**. The release APK installed for testing is signed with the upload key, so list the upload key's fingerprint as well to try passkeys with it, or test with a build installed from a Play testing track.
+
+A build under another identity, such as the development build with its `.dev` identifiers, offers no passkey. The reader's phone needs a screen lock, and on Android version 9 or later with Google Play services.
 
 Next: [Submitting to the stores](./6-store-submission.md).

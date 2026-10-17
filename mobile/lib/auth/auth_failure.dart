@@ -54,9 +54,20 @@ enum AuthFailureKind {
   /// for, which it unlinks before linking another.
   providerAlreadyLinked,
 
-  /// The provider is the last way an account without a password signs in,
-  /// so it stays linked.
+  /// The provider or the passkey is the last way an account without a
+  /// password signs in, so it stays.
   lastSignInMethod,
+
+  /// The account holds as many passkeys as it may, so one is removed before
+  /// another is added.
+  passkeyLimit,
+
+  /// The tenant already holds the passkey the authenticator created.
+  passkeyAlreadyRegistered,
+
+  /// The passkey is no longer the reader's, removed from another device or
+  /// the site since the list was read.
+  passkeyNotFound,
 
   /// The account is the tenant's last active tenant admin, which the API keeps
   /// so someone can still sign in to the console. Another member is made a

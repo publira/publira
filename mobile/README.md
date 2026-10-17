@@ -279,7 +279,7 @@ flutter test
 
 When a PR changes `mobile/**`, CI's `Test / Mobile` job runs the same gates. `Test / Mobile E2E (device)` and `Test / Mobile E2E (live)` run the [integration tests](#integration-tests) on Android emulators, and `Test / Mobile Android` builds a tenant's production APK from `config/app.example.yaml` through `task mobile:build`, signed with a throwaway upload key.
 
-`Test / Mobile iOS` builds the iOS app with Xcode on macOS through `task mobile:test-ios-build`, which needs a Mac with Xcode and `task mobile:deps` run first. It builds the `dev` flavor for the simulator from Publira's own manifest and the `production` flavor, unsigned, from a tenant manifest, reads `CFBundleIdentifier`, `CFBundleDisplayName`, and the associated domain back out of each built app — for the unsigned store build, which carries no entitlements, the associated domain of the entitlements file Xcode resolves for it — confirms that a production build for another tenant host is refused, and fails when the builds leave the working tree changed.
+`Test / Mobile iOS` builds the iOS app with Xcode on macOS through `task mobile:test-ios-build`, which needs a Mac with Xcode and `task mobile:deps` run first. It builds the `dev` flavor for the simulator from Publira's own manifest and the `production` flavor, unsigned, from a tenant manifest, reads `CFBundleIdentifier`, `CFBundleDisplayName`, and the associated domains back out of each built app — for the unsigned store build, which carries no entitlements, the associated domains of the entitlements file Xcode resolves for it — confirms that a production build for another tenant host is refused, and fails when the builds leave the working tree changed.
 
 For the full CI job layout, path filters, and triage, see [.github/workflows/README.md](../.github/workflows/README.md).
 
@@ -312,7 +312,7 @@ mobile/
 │   ├── notifications/            # NotificationInbox: the inbox, its unread count, and what a row says and opens
 │   ├── purchase/                 # A paid episode bought through the web checkout in the browser or the store's in-app purchase
 │   ├── push/                     # Firebase Cloud Messaging, device registration, notification routing
-│   ├── screens/                  # Catalog / search / library / series / author / label / viewer / comments / sign-in / sign-up / email confirmation / password reset / account / linked accounts / notifications / contact / announcements / published page
+│   ├── screens/                  # Catalog / search / library / series / author / label / viewer / comments / sign-in / sign-up / email confirmation / password reset / account / linked accounts / passkeys / notifications / contact / announcements / published page
 │   ├── settings/                 # Local preferences, including the age-rating confirmation
 │   ├── tenant/                   # The tenant's brand and theme, the controller that loads them, and whether the API serves the tenant
 │   ├── viewer/                   # Paged reader
@@ -369,6 +369,7 @@ The routes only one tab holds:
 | `/account/email` | Account | Asks to move the account to another address (`AuthService/RequestEmailChange`) |
 | `/account/password` | Account | Replaces the password and keeps this device signed in on the token handed back (`AuthService/ChangePassword`) |
 | `/account/linked-accounts` | Account | The Apple and Google accounts linked to the reader's, each unlinked on its own, and a link for each provider the device offers that the account has none of (`AuthService/ListMyIdentities`, `AuthService/UnlinkIdentity`, `AuthService/LinkIdentity`) |
+| `/account/passkeys` | Account | The reader's passkeys, each renamed or removed on its own, and a way to add one where the device uses the site's (`AuthService/ListMyPasskeys`, `AuthService/RenamePasskey`, `AuthService/DeletePasskey`, `AuthService/BeginPasskeyRegistration`, `AuthService/FinishPasskeyRegistration`) |
 | `/account/delete` | Account | Deletes the account after the password, or a fresh provider sign-in for an account without one, and a second confirmation, then signs out (`AuthService/DeleteMe`) |
 | `/account/contact` | Account | A message to the tenant's staff |
 | `/account/pages` | Account | The pages the storefront's footer lists, each opening `/page/:pageSlug` (`PublicPagesService/ListPublishedPages`) |
@@ -394,7 +395,7 @@ The catalog's app bar carries the way to the announcements.
 
 ### Tenant links and sharing
 
-A link to a series, an episode, the announcements, a checkout return, an email confirmation, a password reset, or an email change on the tenant host opens the app when it is installed, rather than the browser. iOS claims the manifest's `tenant.host` through `com.apple.developer.associated-domains`, from the generated `PUBLIRA_ASSOCIATED_DOMAIN` build setting. Android claims the same host as an App Link (`autoVerify`) for `/series/…`, `/announcements`, `/checkout/return`, `/verify`, `/reset-password`, `/confirm-password`, and `/confirm-email`, including a locale prefix. `assetlinks.json` and `apple-app-site-association` are served by the public site from tenant configuration, not by this app; see [Linking a tenant's app to its site](#linking-a-tenants-app-to-its-site).
+A link to a series, an episode, the announcements, a checkout return, an email confirmation, a password reset, or an email change on the tenant host opens the app when it is installed, rather than the browser. iOS claims the manifest's `tenant.host` through `com.apple.developer.associated-domains`, from the generated `PUBLIRA_ASSOCIATED_DOMAIN` build setting, as `applinks:` for the links and `webcredentials:` for the site's [passkeys](#passkeys). Android claims the same host as an App Link (`autoVerify`) for `/series/…`, `/announcements`, `/checkout/return`, `/verify`, `/reset-password`, `/confirm-password`, and `/confirm-email`, including a locale prefix. `assetlinks.json` and `apple-app-site-association` are served by the public site from tenant configuration, not by this app; see [Linking a tenant's app to its site](#linking-a-tenants-app-to-its-site).
 
 `app_links` receives the URL on a cold or warm start. The host must be `PUBLIRA_TENANT_HOST`; a locale prefix the catalogs know is stripped, and the remainder is an in-app path `go_router` already has. Flutter's own deep linking is off, because the raw `https://…` location would match none of those paths.
 
@@ -577,8 +578,19 @@ The sign-in screen also offers a button for each provider `GetTenant` answers in
 - On Android, Apple posts its answer to the tenant site's `/api/v1/auth/apple/callback/android`, which redirects it to `intent://callback` for the application ID the request's `state` names — the `dev` flavor only where the site runs in development, and on a production site only with an `error` the app reports as a failed sign-in — and the plugin's `SignInWithAppleCallback` activity, declared in `AndroidManifest.xml` for the `signinwithapple` scheme, hands it to the sign-in. Apple returns only to a Return URL registered on the Services ID, which **Integrations** → **Sign-in** in the tenant console shows beside the site's own
 - The iOS app claims `com.apple.developer.applesignin` in both entitlements files, and registers the reversed `ios.googleSignInClientId` as its URL scheme through `PUBLIRA_GOOGLE_URL_SCHEME` in `App.xcconfig` — its own bundle identifier where the manifest names no Google client
 - A first sign-in that would create an account on a tenant asking consent to its pages is refused with a field violation on `agreed_page_version_ids`, and continues on `/sign-up/continue`, which sends the same token with the consent and an optional birth date
-- **Linked accounts** under the account tab lists the providers linked to the account and unlinks one; an account without a password (`ListMyIdentitiesResponse.has_password`) keeps its last one. It links each provider the device offers that the account has none of with a fresh sign-in, whatever address the provider carries (`AuthService/LinkIdentity`)
+- **Linked accounts** under the account tab lists the providers linked to the account and unlinks one; an account without a password or a passkey (`ListMyIdentitiesResponse.has_password`, `has_passkey`) keeps its last one. It links each provider the device offers that the account has none of with a fresh sign-in, whatever address the provider carries (`AuthService/LinkIdentity`)
 - An account without a password confirms an email change and its deletion with a fresh sign-in to a linked provider the device offers (`provider`, `id_token`, and `nonce` on `RequestEmailChangeRequest` and `DeleteMeRequest`), and **Change password** sends it to the password reset to set a first one
+
+### Passkeys
+
+The sign-in screen offers **Sign in with a passkey** below the Apple and Google buttons. `AuthService/BeginPasskeyLogin` answers options that name no account, the system's sheet offers whichever passkey the reader holds for the tenant host — on the device, in iCloud Keychain or Google Password Manager, or on another device — and `AuthService/FinishPasskeyLogin` signs in with the one they pick. **Passkeys** under the account tab lists the reader's passkeys, renames and removes each, and adds one, which is named once it is made. A passkey is bound to the tenant host, so one registered on the site signs in to the app and one registered in the app signs in to the site.
+
+| Platform | Authenticator | What the site vouches for |
+| --- | --- | --- |
+| iOS | AuthenticationServices, through [`passkeys_darwin`](https://pub.dev/packages/passkeys_darwin) | `webcredentials` in `apple-app-site-association`, matched against the `webcredentials:` associated domain the entitlements claim |
+| Android | Credential Manager, through [`passkeys_android`](https://pub.dev/packages/passkeys_android) | `delegate_permission/common.get_login_creds` in `assetlinks.json`; the server accepts the ceremony under the signing certificates saved for the app |
+
+Both are offered only to the app `GetTenantMobileAppAssociation` names for the platform, on a device that can make passkeys: the site vouches for no other, the `dev` flavor among them, so anything else would open a sheet that can only fail. A list the device cannot add to is still listed, renamed, and removed. An account without a password or a linked provider keeps its last passkey.
 
 ## Account icon
 

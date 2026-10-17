@@ -48,6 +48,11 @@ dependencies:
   google_sign_in_ios: 6.3.8
   google_sign_in_platform_interface: 3.1.0
   package_info_plus: 10.2.2
+  # A passkey the tenant's site registered: Credential Manager on Android,
+  # AuthenticationServices on iOS (see lib/auth/platform_passkey_authenticator.dart).
+  passkeys_android: 2.14.1
+  passkeys_darwin: 0.4.5
+  passkeys_platform_interface: 2.10.0
   # The photo a reader picks for their account icon (see
   # lib/auth/account_icon_picker.dart).
   image_picker: 1.2.4

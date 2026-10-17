@@ -7,6 +7,7 @@ import 'package:publira/auth/auth_repository.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/email_change.dart';
 import 'package:publira/auth/identity_provider.dart';
+import 'package:publira/auth/passkey.dart';
 import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/reader_age.dart';
 import 'package:publira/auth/reader_icon_policy.dart';
@@ -307,6 +308,45 @@ class FakeAuthRepository implements AuthRepository {
   /// Held open by a test that needs to act while [signOut] is in flight.
   Completer<void>? signOutGate;
 
+  /// What [readPasskeys] answers, which [finishPasskeyRegistration],
+  /// [renamePasskey], and [deletePasskey] change.
+  List<Passkey> passkeys = const [];
+
+  /// Thrown by [readPasskeys].
+  AuthFailure? passkeysFailure;
+
+  /// Becomes [passkeysFailure] once [deletePasskey] has removed a passkey,
+  /// standing in for an API that is gone by the time the list is read again.
+  AuthFailure? passkeysFailureAfterRemoval;
+
+  /// Thrown by [signInWithPasskey], standing in for a passkey the site does
+  /// not take or an API that cannot be reached.
+  AuthFailure? passkeySignInFailure;
+
+  /// Thrown by [beginPasskeyRegistration], standing in for an account that
+  /// holds as many passkeys as it may.
+  AuthFailure? beginPasskeyRegistrationFailure;
+
+  /// Thrown by [finishPasskeyRegistration] in place of storing the passkey,
+  /// standing in for a refusal.
+  AuthFailure? passkeyRegistrationFailure;
+
+  /// Thrown by [renamePasskey] in place of renaming.
+  AuthFailure? renamePasskeyFailure;
+
+  /// The credentials [signInWithPasskey] and [finishPasskeyRegistration] were
+  /// sent, in order.
+  final passkeyCredentials = <String>[];
+
+  /// The names [renamePasskey] was asked for, by passkey, in order.
+  final passkeyRenames = <(String, String)>[];
+
+  /// The options [beginPasskeySignIn] answers with.
+  static const requestOptionsJson = '{"challenge":"sign-in"}';
+
+  /// The options [beginPasskeyRegistration] answers with.
+  static const creationOptionsJson = '{"challenge":"registration"}';
+
   @override
   Future<AuthSession> signIn({
     required String email,
@@ -350,7 +390,11 @@ class FakeAuthRepository implements AuthRepository {
     if (failure != null) {
       throw failure;
     }
-    return LinkedIdentities(identities: identities, hasPassword: hasPassword);
+    return LinkedIdentities(
+      identities: identities,
+      hasPassword: hasPassword,
+      hasPasskey: passkeys.isNotEmpty,
+    );
   }
 
   @override
@@ -358,7 +402,7 @@ class FakeAuthRepository implements AuthRepository {
     AuthSession session,
     IdentityProvider provider,
   ) async {
-    if (!hasPassword && identities.length == 1) {
+    if (!hasPassword && passkeys.isEmpty && identities.length == 1) {
       throw const AuthFailure(AuthFailureKind.lastSignInMethod);
     }
     identities = [
@@ -384,6 +428,95 @@ class FakeAuthRepository implements AuthRepository {
         email: 'linked@${credential.provider.name}.example',
       ),
     ];
+  }
+
+  @override
+  Future<String> beginPasskeySignIn() async => requestOptionsJson;
+
+  @override
+  Future<AuthSession> signInWithPasskey(String credentialJson) async {
+    passkeyCredentials.add(credentialJson);
+    final failure = passkeySignInFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return session;
+  }
+
+  @override
+  Future<List<Passkey>> readPasskeys(AuthSession session) async {
+    final failure = passkeysFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return passkeys;
+  }
+
+  @override
+  Future<String> beginPasskeyRegistration(AuthSession session) async {
+    final failure = beginPasskeyRegistrationFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return creationOptionsJson;
+  }
+
+  @override
+  Future<Passkey> finishPasskeyRegistration(
+    AuthSession session,
+    String credentialJson,
+  ) async {
+    passkeyCredentials.add(credentialJson);
+    final failure = passkeyRegistrationFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    final passkey = Passkey(
+      id: 'passkey-${passkeyCredentials.length}',
+      name: '',
+      createdAt: DateTime.utc(2026, 10, 17, 9),
+    );
+    passkeys = [...passkeys, passkey];
+    return passkey;
+  }
+
+  @override
+  Future<Passkey> renamePasskey(
+    AuthSession session,
+    String id,
+    String name,
+  ) async {
+    passkeyRenames.add((id, name));
+    final failure = renamePasskeyFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    final index = passkeys.indexWhere((passkey) => passkey.id == id);
+    if (index < 0) {
+      throw const AuthFailure(AuthFailureKind.passkeyNotFound);
+    }
+    final old = passkeys[index];
+    final renamed = Passkey(
+      id: old.id,
+      name: name,
+      createdAt: old.createdAt,
+      lastUsedAt: old.lastUsedAt,
+      backedUp: old.backedUp,
+    );
+    passkeys = [...passkeys]..[index] = renamed;
+    return renamed;
+  }
+
+  @override
+  Future<void> deletePasskey(AuthSession session, String id) async {
+    if (!hasPassword && identities.isEmpty && passkeys.length == 1) {
+      throw const AuthFailure(AuthFailureKind.lastSignInMethod);
+    }
+    passkeys = [
+      for (final passkey in passkeys)
+        if (passkey.id != id) passkey,
+    ];
+    passkeysFailure = passkeysFailureAfterRemoval ?? passkeysFailure;
   }
 
   @override
@@ -805,9 +938,18 @@ class FakeProviderSignIn implements ProviderSignIn {
   /// The providers [signIn] has been asked for, in order.
   final requested = <IdentityProvider>[];
 
+  /// Thrown by [offered] in place of [providers], standing in for a device
+  /// that cannot say which app it is.
+  Exception? offeredFailure;
+
   @override
-  Future<List<IdentityProvider>> offered(SignInProviders providers) async =>
-      this.providers;
+  Future<List<IdentityProvider>> offered(SignInProviders providers) async {
+    final failure = offeredFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return this.providers;
+  }
 
   @override
   Future<ProviderCredential> signIn(
@@ -831,6 +973,61 @@ class FakeProviderSignIn implements ProviderSignIn {
     idToken: '${provider.name}-id-token-$count',
     nonce: '${provider.name}-nonce-$count',
   );
+}
+
+/// [PasskeyAuthenticator] that offers what a test sets and answers at once,
+/// standing in for the system's passkey sheet.
+class FakePasskeyAuthenticator implements PasskeyAuthenticator {
+  FakePasskeyAuthenticator({this.available = true});
+
+  /// What [offered] answers whatever the tenant names, so a test does not
+  /// depend on the platform it runs on.
+  bool available;
+
+  /// Thrown by [register] and [authenticate] in place of a credential: the
+  /// reader closing the sheet, or the authenticator failing.
+  Exception? failure;
+
+  /// The options [register] and [authenticate] were handed, in order.
+  final registered = <String>[];
+  final authenticated = <String>[];
+
+  /// Thrown by [offered] in place of [available], standing in for a device
+  /// that cannot say whether it makes passkeys.
+  Exception? offeredFailure;
+
+  /// The credential the [count]th ceremony answers with.
+  static String credentialFor(String ceremony, int count) =>
+      '{"id":"$ceremony-$count"}';
+
+  @override
+  Future<bool> offered(SignInProviders providers) async {
+    final failure = offeredFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return available;
+  }
+
+  @override
+  Future<String> register(String creationOptionsJson) async {
+    registered.add(creationOptionsJson);
+    final failure = this.failure;
+    if (failure != null) {
+      throw failure;
+    }
+    return credentialFor('created', registered.length);
+  }
+
+  @override
+  Future<String> authenticate(String requestOptionsJson) async {
+    authenticated.add(requestOptionsJson);
+    final failure = this.failure;
+    if (failure != null) {
+      throw failure;
+    }
+    return credentialFor('asserted', authenticated.length);
+  }
 }
 
 /// One call to [FakeAuthRepository.requestEmailChange] or

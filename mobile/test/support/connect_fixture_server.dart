@@ -871,6 +871,29 @@ class ConnectFixtureServer {
   /// provider sign-in created does not.
   var memberHasPassword = true;
 
+  /// The member's passkeys, oldest first, as `ListMyPasskeys` reports them.
+  final memberPasskeys = <pb.Passkey>[];
+
+  /// How many passkeys the member may hold, past which
+  /// `BeginPasskeyRegistration` refuses another.
+  var passkeyLimit = 10;
+
+  /// The assertions `FinishPasskeyLogin` signs the member in for. Anything
+  /// else is refused as an unknown passkey is.
+  final memberPasskeyAssertions = <String>{};
+
+  /// The credentials `FinishPasskeyRegistration` refuses as ones the tenant
+  /// holds already.
+  final registeredPasskeyCredentials = <String>{};
+
+  /// The options `BeginPasskeyLogin` answers with.
+  static const passkeyRequestOptionsJson =
+      '{"challenge":"c2lnbi1pbg","rpId":"localhost","userVerification":"required"}';
+
+  /// The options `BeginPasskeyRegistration` answers with.
+  static const passkeyCreationOptionsJson =
+      '{"challenge":"cmVnaXN0ZXI","rp":{"id":"localhost","name":"Fixture"}}';
+
   /// The nonces `LoginWithIdToken` has spent; each is accepted once.
   final spentNonces = <String>{};
 
@@ -1670,8 +1693,164 @@ class ConnectFixtureServer {
               ),
           ],
           hasPassword: memberHasPassword ? true : null,
+          hasPasskey: memberPasskeys.isNotEmpty ? true : null,
         ),
       );
+      return;
+    }
+
+    if (path.endsWith('/BeginPasskeyLogin')) {
+      recorded.decode(pb.BeginPasskeyLoginRequest());
+      await _writeMessage(
+        request,
+        pb.BeginPasskeyLoginResponse(
+          requestOptionsJson: passkeyRequestOptionsJson,
+        ),
+      );
+      return;
+    }
+
+    if (path.endsWith('/FinishPasskeyLogin')) {
+      final body = recorded.decode(pb.FinishPasskeyLoginRequest());
+      if (memberDeleted ||
+          !memberPasskeyAssertions.contains(body.credentialJson)) {
+        await _writeError(
+          request,
+          HttpStatus.unauthorized,
+          'unauthenticated',
+          'the passkey was not accepted',
+        );
+        return;
+      }
+      await _writeMessage(
+        request,
+        pb.FinishPasskeyLoginResponse(
+          user: pb.User(
+            publicId: memberPublicId,
+            name: memberCurrentName,
+            role: 'member',
+          ),
+          accessToken: _accessToken(memberAccessToken),
+        ),
+      );
+      return;
+    }
+
+    if (path.endsWith('/ListMyPasskeys')) {
+      recorded.decode(pb.ListMyPasskeysRequest());
+      if (!await _writeUnlessAuthorized(request)) {
+        return;
+      }
+      await _writeMessage(
+        request,
+        pb.ListMyPasskeysResponse(passkeys: memberPasskeys),
+      );
+      return;
+    }
+
+    if (path.endsWith('/BeginPasskeyRegistration')) {
+      recorded.decode(pb.BeginPasskeyRegistrationRequest());
+      if (!await _writeUnlessAuthorized(request)) {
+        return;
+      }
+      if (memberPasskeys.length >= passkeyLimit) {
+        await _writeError(
+          request,
+          HttpStatus.badRequest,
+          'failed_precondition',
+          'the account holds as many passkeys as it may',
+        );
+        return;
+      }
+      await _writeMessage(
+        request,
+        pb.BeginPasskeyRegistrationResponse(
+          creationOptionsJson: passkeyCreationOptionsJson,
+        ),
+      );
+      return;
+    }
+
+    if (path.endsWith('/FinishPasskeyRegistration')) {
+      final body = recorded.decode(pb.FinishPasskeyRegistrationRequest());
+      if (!await _writeUnlessAuthorized(request)) {
+        return;
+      }
+      if (body.credentialJson.isEmpty) {
+        await _writeInvalidArgument(request, 'credential_json does not verify');
+        return;
+      }
+      if (registeredPasskeyCredentials.contains(body.credentialJson)) {
+        await _writeError(
+          request,
+          HttpStatus.conflict,
+          'already_exists',
+          'the passkey is registered already',
+        );
+        return;
+      }
+      registeredPasskeyCredentials.add(body.credentialJson);
+      final passkey = pb.Passkey(
+        id: 'passkey-${memberPasskeys.length + 1}',
+        name: body.name.isEmpty ? null : body.name,
+        createdAt: '2026-10-17T09:00:00Z',
+      );
+      memberPasskeys.add(passkey);
+      await _writeMessage(
+        request,
+        pb.FinishPasskeyRegistrationResponse(passkey: passkey),
+      );
+      return;
+    }
+
+    if (path.endsWith('/RenamePasskey')) {
+      final body = recorded.decode(pb.RenamePasskeyRequest());
+      if (!await _writeUnlessAuthorized(request)) {
+        return;
+      }
+      final index = memberPasskeys.indexWhere((p) => p.id == body.id);
+      if (index < 0) {
+        await _writeError(
+          request,
+          HttpStatus.notFound,
+          'not_found',
+          'no such passkey',
+        );
+        return;
+      }
+      final renamed = memberPasskeys[index].deepCopy()..name = body.name;
+      memberPasskeys[index] = renamed;
+      await _writeMessage(request, pb.RenamePasskeyResponse(passkey: renamed));
+      return;
+    }
+
+    if (path.endsWith('/DeletePasskey')) {
+      final body = recorded.decode(pb.DeletePasskeyRequest());
+      if (!await _writeUnlessAuthorized(request)) {
+        return;
+      }
+      if (!memberPasskeys.any((p) => p.id == body.id)) {
+        await _writeError(
+          request,
+          HttpStatus.notFound,
+          'not_found',
+          'no such passkey',
+        );
+        return;
+      }
+      if (!memberHasPassword &&
+          memberIdentities.isEmpty &&
+          memberPasskeys.length == 1) {
+        await _writeError(
+          request,
+          HttpStatus.badRequest,
+          'failed_precondition',
+          'the account keeps its last passkey',
+        );
+        return;
+      }
+      memberPasskeys.removeWhere((p) => p.id == body.id);
+      await _writeMessage(request, pb.DeletePasskeyResponse());
       return;
     }
 
@@ -1690,7 +1869,9 @@ class ConnectFixtureServer {
         );
         return;
       }
-      if (!memberHasPassword && memberIdentities.length == 1) {
+      if (!memberHasPassword &&
+          memberPasskeys.isEmpty &&
+          memberIdentities.length == 1) {
         await _writeError(
           request,
           HttpStatus.badRequest,
