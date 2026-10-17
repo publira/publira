@@ -51,6 +51,7 @@ describe("searchPublishedSeries", () => {
 
     expect(mockSearchPublishedSeries).toHaveBeenCalledWith({
       limit: 12,
+      locale: "en",
       query: "Series",
       surface: ClientSurface.WEB,
       tenant: { tenantId: "TENANT_1" },
@@ -91,6 +92,7 @@ describe("searchPublishedSeries", () => {
 
     expect(mockSearchPublishedSeries).toHaveBeenCalledWith({
       limit: 20,
+      locale: "en",
       query: "Seed",
       surface: ClientSurface.WEB,
       tenant: { tenantId: "TENANT_1" },

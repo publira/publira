@@ -204,9 +204,9 @@ const seriesPublisher = (
 
 /**
  * The site itself, which is what lets a search engine show the tenant's name
- * in place of its domain. `inLanguage` is the UI language the URL names; it
- * describes this document's chrome and is the only document that carries it,
- * because the works' own text is tenant-authored and untranslated.
+ * in place of its domain. `inLanguage` is the UI language the URL names,
+ * which is the language of this document's chrome. A work names its own, since
+ * its title may be served from another language's translation.
  */
 export const websiteJsonLd = (site: JsonLdSite): WithContext<WebSite> => {
   const url = jsonLdUrl(site, "/");
@@ -246,8 +246,20 @@ export const organizationJsonLd = (
 };
 
 /**
- * A work. `aggregateRating` is written only once readers have rated it: a
- * figure of 0 is the API's "no figure yet", not the bottom of the 1–5 scale.
+ * The site as a page written in `locale` addresses itself. A series or an
+ * episode shown in a fallback language is canonical at that language's URL,
+ * so its own `url` and `@id` are written there rather than in the locale of
+ * the route it was reached on.
+ */
+export const jsonLdSiteIn = (site: JsonLdSite, locale: Locale): JsonLdSite => ({
+  ...site,
+  locale,
+});
+
+/**
+ * A work, at the URL of the language its title is written in.
+ * `aggregateRating` is written only once readers have rated it: a figure of 0
+ * is the API's "no figure yet", not the bottom of the 1–5 scale.
  */
 export const seriesJsonLd = (
   site: JsonLdSite,
@@ -258,6 +270,7 @@ export const seriesJsonLd = (
     | "genres"
     | "labelName"
     | "labelPublicId"
+    | "locale"
     | "publicId"
     | "ratingAverage"
     | "ratingCount"
@@ -269,14 +282,16 @@ export const seriesJsonLd = (
   const description = series.synopsis.trim();
   const authors = creditAuthors(site, series.credits);
   const images = workImages(site, series.eyeCatchImageVariants);
+  const served = jsonLdSiteIn(site, series.locale);
 
   return {
     "@context": "https://schema.org",
-    "@id": seriesId(site, series.publicId),
+    "@id": seriesId(served, series.publicId),
     "@type": "ComicSeries",
+    inLanguage: series.locale,
     name: series.title,
     publisher: seriesPublisher(site, series),
-    url: jsonLdUrl(site, seriesHref(series.publicId)),
+    url: jsonLdUrl(served, seriesHref(series.publicId)),
     ...(description ? { description } : {}),
     ...(images.length > 0 ? { image: images } : {}),
     ...(authors.length > 0 ? { author: authors } : {}),
@@ -326,7 +341,8 @@ const isAccessibleForFree = (
 /**
  * One episode, as an issue of its work. The work is referred to by its `@id`
  * rather than described again, and the episode carries no rating: its count
- * is a headcount of readers with no average behind it.
+ * is a headcount of readers with no average behind it. Each is addressed in the
+ * language of its own title, which the two fall back to separately.
  */
 export const episodeJsonLd = (
   site: JsonLdSite,
@@ -338,15 +354,16 @@ export const episodeJsonLd = (
     access: EpisodeAccessState;
     episode: Pick<
       EpisodeDetail,
-      "credits" | "orderIndex" | "publicId" | "publishedAt" | "title"
+      "credits" | "locale" | "orderIndex" | "publicId" | "publishedAt" | "title"
     >;
-    series: Pick<EpisodeSeriesSummary, "publicId" | "title">;
+    series: Pick<EpisodeSeriesSummary, "locale" | "publicId" | "title">;
   }
 ): WithContext<ComicIssue> => {
   const url = jsonLdUrl(
-    site,
+    jsonLdSiteIn(site, episode.locale),
     `${seriesHref(series.publicId)}/episodes/${episode.publicId}`
   );
+  const servedSeries = jsonLdSiteIn(site, series.locale);
   const authors = creditAuthors(site, episode.credits);
   const free = isAccessibleForFree(access);
 
@@ -354,11 +371,13 @@ export const episodeJsonLd = (
     "@context": "https://schema.org",
     "@id": `${url}#issue`,
     "@type": "ComicIssue",
+    inLanguage: episode.locale,
     isPartOf: {
-      "@id": seriesId(site, series.publicId),
+      "@id": seriesId(servedSeries, series.publicId),
       "@type": "ComicSeries",
+      inLanguage: series.locale,
       name: series.title,
-      url: jsonLdUrl(site, seriesHref(series.publicId)),
+      url: jsonLdUrl(servedSeries, seriesHref(series.publicId)),
     },
     issueNumber: episode.orderIndex,
     name: episode.title,

@@ -163,6 +163,7 @@ describe("getPublishedCreatorDetail", () => {
 
     expect(mockGetPublishedCreatorDetail).toHaveBeenCalledWith({
       limit: 12,
+      locale: "en",
       publicId: "CREATOR_A",
       surface: ClientSurface.WEB,
       tenant: { tenantId: "TENANT_1" },

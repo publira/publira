@@ -13,6 +13,7 @@ import {
   SeriesOrder,
 } from "@publira/api-client/public/catalog";
 import type {
+  GetSeriesDetailResponse,
   ListMyRecommendedSeriesResponse,
   ListRankedSeriesResponse,
   ListRecommendedSeriesResponse,
@@ -59,6 +60,7 @@ import {
   tenantSeriesTag,
 } from "./cache-tags";
 import { localizedReadFailure, localizedReadUnavailable } from "./read-failure";
+import { publishedLocalesFrom, servedLocaleFrom } from "./served-locale";
 
 export interface EyeCatchImageVariant {
   variantType: string;
@@ -219,6 +221,11 @@ export interface EpisodeItem {
   id: string;
   publicId: string;
   title: string;
+  /**
+   * The locale `title` is written in. Each episode falls back on its own, so
+   * it may differ from the series' and from its neighbours'.
+   */
+  locale: Locale;
   orderIndex: number;
   price: number;
   purchaseSurface: EpisodePurchaseSurface;
@@ -253,6 +260,11 @@ export interface EpisodeDetail {
    */
   freeUntil?: string;
   id: string;
+  /**
+   * The locale `title` is written in: the reader's, unless the episode has no
+   * translation in it.
+   */
+  locale: Locale;
   orderIndex: number;
   price: number;
   publicId: string;
@@ -288,6 +300,7 @@ type RawEpisode = Pick<
   | "creators"
   | "freeUntil"
   | "id"
+  | "locale"
   | "orderIndex"
   | "price"
   | "publicId"
@@ -346,10 +359,48 @@ export const toEpisodePurchaseSurface = (
   return "all";
 };
 
-const mapEpisodeDetail = (episode: RawEpisode): EpisodeDetail => ({
+/**
+ * The generated `Episode` fields {@link toEpisodeItem} reads, for a row of a
+ * series' episode list.
+ */
+type RawEpisodeItem = Pick<
+  Episode,
+  | "freeUntil"
+  | "id"
+  | "locale"
+  | "orderIndex"
+  | "price"
+  | "publicId"
+  | "publishedAt"
+  | "purchaseAvailability"
+  | "status"
+  | "title"
+>;
+
+const toEpisodeItem = (
+  episode: RawEpisodeItem,
+  requestedLocale: Locale
+): EpisodeItem => ({
+  freeUntil: episode.freeUntil || undefined,
+  id: episode.id ?? "",
+  locale: servedLocaleFrom(episode.locale, requestedLocale),
+  orderIndex: episode.orderIndex ?? 0,
+  price: episode.price ?? 0,
+  publicId: episode.publicId ?? "",
+  publishedAt: episode.publishedAt ?? "",
+  purchaseSurface: toEpisodePurchaseSurface(episode.purchaseAvailability),
+  status: episode.status ?? "",
+  title: episode.title ?? "",
+});
+
+const mapEpisodeDetail = (
+  episode: RawEpisode,
+  requestedLocale: Locale
+): EpisodeDetail => ({
   credits: toCreatorCredits(episode.creators),
   freeUntil: episode.freeUntil || undefined,
   id: episode.id ?? "",
+  locale: servedLocaleFrom(episode.locale, requestedLocale),
   orderIndex: episode.orderIndex ?? 0,
   price: episode.price ?? 0,
   publicId: episode.publicId ?? "",
@@ -517,6 +568,11 @@ export interface EpisodeSeriesSummary {
    */
   eyeCatchImageVariants?: EyeCatchImageVariant[];
   id: string;
+  /**
+   * The locale `title` is written in, which the series falls back to on its
+   * own and so may differ from the episode's.
+   */
+  locale: Locale;
   publicId: string;
   title: string;
 }
@@ -602,6 +658,16 @@ export interface SeriesDetail {
   publicId: string;
   title: string;
   synopsis: string;
+  /**
+   * The locale `title` and `synopsis` are written in: the reader's, else the
+   * tenant's default, else the series' oldest translation.
+   */
+  locale: Locale;
+  /**
+   * Every locale the tenant offers that the series has a translation in, and
+   * `locale` itself: the languages its URL is published in.
+   */
+  publishedLocales: readonly Locale[];
   labelName: string;
   labelPublicId: string;
   /** Who the series is credited to, in role priority order. */
@@ -817,6 +883,7 @@ export const listPublishedSeries = async (
       genrePublicId,
       hasFreeEpisodes,
       limit,
+      locale,
       order: seriesOrders[order],
       status: status ? seriesStatusFilters[status] : SeriesStatus.UNSPECIFIED,
       surface: ClientSurface.WEB,
@@ -956,6 +1023,7 @@ export const listPublishedGenres = async (
       async (token, limit) => {
         const response = await apiClient.catalog.listPublishedGenres({
           limit,
+          locale,
           surface: ClientSurface.WEB,
           tenant: { tenantId: normalizedTenantId },
           token,
@@ -1105,6 +1173,7 @@ export const listRecommendedSeries = async (
   try {
     response = await apiClient.catalog.listRecommendedSeries({
       limit,
+      locale,
       surface: ClientSurface.WEB,
       tenant: { tenantId: normalizedTenantId },
       token,
@@ -1188,6 +1257,7 @@ export const listMyRecommendedSeries = async (
     response = await apiClient.catalog.listMyRecommendedSeries(
       {
         limit,
+        locale,
         surface: ClientSurface.WEB,
         tenant: { tenantId: normalizedTenantId },
         token,
@@ -1271,6 +1341,7 @@ export const listRelatedSeries = async (
   try {
     response = await apiClient.catalog.listRelatedSeries({
       limit,
+      locale,
       seriesId: seriesId.trim(),
       surface: ClientSurface.WEB,
       tenant: { tenantId: normalizedTenantId },
@@ -1432,6 +1503,7 @@ export const listRankedSeries = async (
       ageRating: rankingAgeRatings[ageRating],
       genrePublicId,
       limit,
+      locale,
       period: rankingPeriods[period],
       surface: ClientSurface.WEB,
       tenant: { tenantId: normalizedTenantId },
@@ -1491,6 +1563,7 @@ export const listReaderRankedSeries = async (
       {
         ageRating: rankingAgeRatings[ageRating],
         limit,
+        locale,
         period: rankingPeriods[period],
         surface: ClientSurface.WEB,
         tenant: { tenantId: normalizedTenantId },
@@ -1553,6 +1626,7 @@ export const searchPublishedSeries = async (
   try {
     response = await apiClient.catalog.searchPublishedSeries({
       limit,
+      locale,
       query,
       surface: ClientSurface.WEB,
       tenant: { tenantId: normalizedTenantId },
@@ -1686,6 +1760,53 @@ export const searchPublishedLabels = async (
 };
 
 /**
+ * The series a `GetSeriesDetail` answer describes, or `undefined` when it names
+ * none. `requestedLocale` is what a series that names no served locale is read
+ * as written in.
+ */
+const toSeriesDetail = (
+  response: Pick<
+    GetSeriesDetailResponse,
+    "commentMode" | "publishedLocales" | "series" | "waitFree"
+  >,
+  requestedLocale: Locale
+): SeriesDetail | undefined => {
+  const { series } = response;
+  if (!series) {
+    return undefined;
+  }
+
+  const locale = servedLocaleFrom(series.locale, requestedLocale);
+  return withRestrictedAgeRating(
+    {
+      commentMode: toSeriesCommentMode(response.commentMode),
+      credits: toCreatorCredits(series.creators),
+      eyeCatchImageUpdatedAt: series.eyeCatchImageUpdatedAt || undefined,
+      eyeCatchImageVariants: toEyeCatchImageVariants(
+        series.eyeCatchImageVariants
+      ),
+      genres: (series.genres ?? []).flatMap(toSeriesGenreItem),
+      id: series.id ?? "",
+      labelName: series.label?.name?.trim() ?? "",
+      labelPublicId: series.label?.publicId?.trim() ?? "",
+      locale,
+      publicId: series.publicId ?? "",
+      publishedLocales: publishedLocalesFrom(response.publishedLocales, locale),
+      ratingAverage: series.ratingAverage,
+      ratingCount: Number(series.ratingCount),
+      readingPeriodHours: series.readingPeriodHours ?? 0,
+      scheduleWeekdays: toScheduleWeekdays(series.scheduleWeekdays),
+      status: toSeriesSerializationStatus(series.status),
+      synopsis: series.synopsis ?? "",
+      tags: (series.tags ?? []).flatMap(toSeriesTagItem),
+      title: series.title ?? "",
+      waitFree: toSeriesWaitFreeRule(response.waitFree),
+    },
+    series.ageRating
+  );
+};
+
+/**
  * `ok: true` with a `null` value when the series does not exist, is
  * unpublished, or belongs to another tenant — the server returns `not_found` or
  * `permission_denied` for those and the public site must not tell them apart.
@@ -1711,6 +1832,7 @@ export const getSeriesDetail = async (
   let response;
   try {
     response = await apiClient.catalog.getSeriesDetail({
+      locale,
       publicId: normalizedSeriesPublicId,
       surface: ClientSurface.WEB,
       tenant: { tenantId: normalizedTenantId },
@@ -1726,61 +1848,18 @@ export const getSeriesDetail = async (
     );
   }
 
-  const result = {
-    episodes: (response.episodes ?? [])
-      .map((e) => ({
-        freeUntil: e.freeUntil || undefined,
-        id: e.id ?? "",
-        orderIndex: e.orderIndex ?? 0,
-        price: e.price ?? 0,
-        publicId: e.publicId ?? "",
-        publishedAt: e.publishedAt ?? "",
-        purchaseSurface: toEpisodePurchaseSurface(e.purchaseAvailability),
-        status: e.status ?? "",
-        title: e.title ?? "",
-      }))
-      .toSorted((a, b) => a.orderIndex - b.orderIndex),
-    series: response.series
-      ? withRestrictedAgeRating(
-          {
-            commentMode: toSeriesCommentMode(response.commentMode),
-            credits: toCreatorCredits(response.series.creators),
-            eyeCatchImageUpdatedAt:
-              response.series.eyeCatchImageUpdatedAt || undefined,
-            eyeCatchImageVariants: toEyeCatchImageVariants(
-              response.series.eyeCatchImageVariants
-            ),
-            genres: (response.series.genres ?? []).flatMap(toSeriesGenreItem),
-            id: response.series.id ?? "",
-            labelName: response.series.label?.name?.trim() ?? "",
-            labelPublicId: response.series.label?.publicId?.trim() ?? "",
-            publicId: response.series.publicId ?? "",
-            ratingAverage: response.series.ratingAverage,
-            ratingCount: Number(response.series.ratingCount),
-            readingPeriodHours: response.series.readingPeriodHours ?? 0,
-            scheduleWeekdays: toScheduleWeekdays(
-              response.series.scheduleWeekdays
-            ),
-            status: toSeriesSerializationStatus(response.series.status),
-            synopsis: response.series.synopsis ?? "",
-            tags: (response.series.tags ?? []).flatMap(toSeriesTagItem),
-            title: response.series.title ?? "",
-            waitFree: toSeriesWaitFreeRule(response.waitFree),
-          },
-          response.series.ageRating
-        )
-      : undefined,
-  };
-
-  if (!result.series) {
+  const series = toSeriesDetail(response, locale);
+  if (!series) {
     return { ok: true, value: null };
   }
 
   return {
     ok: true,
     value: {
-      episodes: result.episodes,
-      series: result.series,
+      episodes: (response.episodes ?? [])
+        .map((episode) => toEpisodeItem(episode, locale))
+        .toSorted((a, b) => a.orderIndex - b.orderIndex),
+      series,
     },
   };
 };
@@ -1814,6 +1893,11 @@ export const getEpisodeDetail = async (
      */
     previewImages: EpisodeImageItem[];
     previousEpisode: EpisodeNeighborItem | undefined;
+    /**
+     * Every locale the tenant offers that the episode has a translation in,
+     * and the episode's own `locale`: the languages its URL is published in.
+     */
+    publishedLocales: readonly Locale[];
     series: EpisodeSeriesSummary;
   } | null>
 > => {
@@ -1839,6 +1923,7 @@ export const getEpisodeDetail = async (
   let response;
   try {
     response = await apiClient.catalog.getEpisodeDetail({
+      locale,
       publicId: normalizedEpisodePublicId,
       surface: ClientSurface.WEB,
       tenant: { tenantId: normalizedTenantId },
@@ -1861,6 +1946,7 @@ export const getEpisodeDetail = async (
             response.series.eyeCatchImageVariants
           ),
           id: response.series.id,
+          locale: servedLocaleFrom(response.series.locale, locale),
           publicId: response.series.publicId,
           title: response.series.title,
         },
@@ -1876,7 +1962,7 @@ export const getEpisodeDetail = async (
     return { ok: true, value: null };
   }
 
-  const episode = mapEpisodeDetail(response.episode);
+  const episode = mapEpisodeDetail(response.episode, locale);
 
   return {
     ok: true,
@@ -1888,6 +1974,10 @@ export const getEpisodeDetail = async (
       nextFreeEpisode: mapEpisodeNeighbor(response.nextFreeEpisode),
       previewImages: mapEpisodeImages(response.previewImages),
       previousEpisode: mapEpisodeNeighbor(response.previousEpisode),
+      publishedLocales: publishedLocalesFrom(
+        response.publishedLocales,
+        episode.locale
+      ),
       series,
     },
   };
@@ -1944,6 +2034,7 @@ export const getEpisodeViewer = async (
   try {
     response = await apiClient.catalog.getEpisodeDetail(
       {
+        locale,
         publicId: normalizedEpisodePublicId,
         surface: ClientSurface.WEB,
         tenant: { tenantId: normalizedTenantId },

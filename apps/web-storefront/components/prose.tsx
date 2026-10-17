@@ -9,11 +9,12 @@ import { cn } from "@publira/utils";
  * character measure — so a synopsis on a series page reads like the opening of
  * the work rather than like a field of a record.
  *
- * The line height follows the reader's locale. Which of the two a passage
- * wants is a question about the script it is set in, and the catalogue records
- * no language of its own; the locale the reader chose is the only script
- * signal the page has, and it is the right one wherever a tenant publishes in
- * the language its readers browse in.
+ * `locale` is the language the passage is written in, which the paragraph
+ * names as its `lang` and which picks its line height: which of the two a
+ * passage wants is a question about the script it is set in. A synopsis names
+ * the locale of the translation it was served from. A creator's profile records
+ * no language of its own, so it passes the reader's, the only script signal
+ * that page has.
  */
 export const Prose = ({
   children,
@@ -29,6 +30,7 @@ export const Prose = ({
         ? "leading-(--leading-reading-latin)"
         : "leading-(--leading-reading-cjk)"
     )}
+    lang={locale}
   >
     {children}
   </p>

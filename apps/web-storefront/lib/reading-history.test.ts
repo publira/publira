@@ -54,6 +54,7 @@ describe("listMyEpisodeReads", () => {
     expect(mockListMyEpisodeReads).toHaveBeenCalledWith(
       {
         limit: 20,
+        locale: "en",
         surface: ClientSurface.WEB,
         tenant: { tenantId: TENANT_ID },
         token: "",
@@ -68,6 +69,7 @@ describe("listMyEpisodeReads", () => {
     expect(mockListMyEpisodeReads).toHaveBeenCalledWith(
       {
         limit: 5,
+        locale: "en",
         surface: ClientSurface.WEB,
         tenant: { tenantId: TENANT_ID },
         token: "t",

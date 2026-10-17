@@ -1,3 +1,4 @@
+import type { Locale } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
 import {
   SectionError,
@@ -26,7 +27,8 @@ import { purchasesListHref } from "../_lib/search-params";
 
 /**
  * The Route Handler that answers every purchase the library lists as CSV. It
- * sits outside the locale tree, so the path carries no prefix. The link is a
+ * sits outside the locale tree, so the path carries no prefix and the language
+ * goes in the query instead. The link is a
  * plain navigation: the CSV arrives as an attachment and the sign-in redirect
  * as a page, which a `download` attribute would save as a file instead.
  */
@@ -34,6 +36,8 @@ const PURCHASES_CSV_PATH = "/api/v1/my/purchases/csv";
 
 interface PurchaseLibraryProps {
   listErrorMessage?: string;
+  /** The library's language, which the download reads the titles in. */
+  locale: Locale;
   nextToken: string;
   previousToken: string;
   purchases: PurchaseItem[];
@@ -170,6 +174,7 @@ const PurchaseCard = async ({
 
 export const PurchaseLibrary = ({
   listErrorMessage,
+  locale,
   nextToken,
   previousToken,
   purchases,
@@ -218,7 +223,10 @@ export const PurchaseLibrary = ({
       ) : null}
       {!listErrorMessage && purchases.length > 0 ? (
         <div className="flex justify-end">
-          <LinkButton href={PURCHASES_CSV_PATH} variant="outline">
+          <LinkButton
+            href={`${PURCHASES_CSV_PATH}?${new URLSearchParams({ locale })}`}
+            variant="outline"
+          >
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="storefront.library.download_csv" />
             </Suspense>

@@ -6,6 +6,7 @@ import { resolveContinueOffer } from "./continue-offer";
 
 const episode = (orderIndex: number): EpisodeItem => ({
   id: `episode-${orderIndex}`,
+  locale: "en",
   orderIndex,
   price: 0,
   publicId: `EPISODE_00${orderIndex}`,

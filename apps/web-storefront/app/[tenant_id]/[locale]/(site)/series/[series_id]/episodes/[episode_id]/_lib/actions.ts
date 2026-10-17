@@ -79,6 +79,7 @@ export const startEpisodeCheckoutAction = async (
     const response = await apiClient.purchase.startEpisodeCheckout(
       {
         episodeId,
+        locale,
         tenant: { tenantId },
       },
       buildSessionHeaders(sessionId)

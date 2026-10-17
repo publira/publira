@@ -59,6 +59,7 @@ describe("getPublishedLabelDetail", () => {
 
     expect(mockGetPublishedLabelDetail).toHaveBeenCalledWith({
       limit: 12,
+      locale: "en",
       publicId: "LABEL_A",
       surface: ClientSurface.WEB,
       tenant: { tenantId: "TENANT_1" },

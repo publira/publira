@@ -115,6 +115,7 @@ export const listMyFollowUpdates = async (
     const response = await apiClient.follow.listMyFollowUpdates(
       {
         limit: input.limit ?? defaultFollowUpdatesLimit,
+        locale,
         surface: ClientSurface.WEB,
         tenant: { tenantId },
         token: "",

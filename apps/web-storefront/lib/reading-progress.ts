@@ -159,6 +159,7 @@ export const listMyRecentSeries = async (
     const response = await apiClient.episodeRead.listMyRecentSeries(
       {
         limit: input.limit ?? defaultRecentSeriesLimit,
+        locale: input.locale,
         surface: ClientSurface.WEB,
         tenant: { tenantId },
         token: "",
@@ -221,7 +222,7 @@ export const getMySeriesProgress = cache(
 
     try {
       const response = await apiClient.episodeRead.getMySeriesProgress(
-        { seriesId, surface: ClientSurface.WEB, tenant: { tenantId } },
+        { locale, seriesId, surface: ClientSurface.WEB, tenant: { tenantId } },
         buildSessionHeaders(sessionId)
       );
       return {

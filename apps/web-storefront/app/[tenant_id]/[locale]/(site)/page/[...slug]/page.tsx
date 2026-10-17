@@ -14,11 +14,8 @@ import { z } from "zod";
 import { PageLoadError } from "#components/page-load-error";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
-import {
-  getPublishedPage,
-  publishedPageFallbackLanguage,
-  publishedPageHrefFromSlug,
-} from "#lib/pages";
+import { getPublishedPage, publishedPageHrefFromSlug } from "#lib/pages";
+import { fallbackLanguage } from "#lib/served-locale";
 import { getTenantId } from "#lib/tenant-id";
 import { tenantPublishedLocaleAlternates } from "#lib/tenant-locale-path";
 
@@ -114,10 +111,7 @@ const PublishedPageBody = async (
 
   return (
     <PublishedPageContent
-      fallbackLanguage={publishedPageFallbackLanguage(
-        locale,
-        result.value.locale
-      )}
+      fallbackLanguage={fallbackLanguage(locale, result.value.locale)}
       page={result.value}
     />
   );

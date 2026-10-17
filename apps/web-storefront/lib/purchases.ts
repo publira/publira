@@ -149,6 +149,7 @@ const readPurchaseList = async (
     const response = await apiClient.purchase.listMyPurchases(
       {
         limit: input.limit ?? defaultPurchasePageSize,
+        locale,
         surface: ClientSurface.WEB,
         tenant: { tenantId },
         token: input.token ?? "",
@@ -201,7 +202,8 @@ const maxPurchasePageSize = 100;
 /**
  * Every purchase the library lists for the reader `accessToken` belongs to,
  * newest first, read page by page for the purchase history download. Like the
- * library, it leaves out an episode the storefront may not show.
+ * library, it leaves out an episode the storefront may not show, and names each
+ * work in `locale`.
  *
  * Uncached: a download is asked for once and should report the purchases as
  * they stand, a refund recorded a moment ago included. An RPC error is thrown
@@ -210,11 +212,13 @@ const maxPurchasePageSize = 100;
 export const listAllMyPurchases = async (
   tenantId: string,
   accessToken: string,
+  locale: Locale,
   token = ""
 ): Promise<PurchaseItem[]> => {
   const response = await apiClient.purchase.listMyPurchases(
     {
       limit: maxPurchasePageSize,
+      locale,
       surface: ClientSurface.WEB,
       tenant: { tenantId },
       token,
@@ -226,7 +230,7 @@ export const listAllMyPurchases = async (
   return nextToken
     ? [
         ...purchases,
-        ...(await listAllMyPurchases(tenantId, accessToken, nextToken)),
+        ...(await listAllMyPurchases(tenantId, accessToken, locale, nextToken)),
       ]
     : purchases;
 };

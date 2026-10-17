@@ -82,6 +82,7 @@ describe("listMyRecentSeries", () => {
     expect(mockListMyRecentSeries).toHaveBeenCalledWith(
       {
         limit: 6,
+        locale: "en",
         surface: ClientSurface.WEB,
         tenant: { tenantId: TENANT_ID },
         token: "",
@@ -175,6 +176,7 @@ describe("getMySeriesProgress", () => {
     });
     expect(mockGetMySeriesProgress).toHaveBeenCalledWith(
       {
+        locale: "en",
         seriesId: SERIES_ID,
         surface: ClientSurface.WEB,
         tenant: { tenantId: TENANT_ID },

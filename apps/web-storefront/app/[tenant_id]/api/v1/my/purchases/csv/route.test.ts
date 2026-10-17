@@ -4,11 +4,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockGetTenantDefaultLocale,
+  mockGetTenantSupportedLocales,
   mockListMyPurchases,
   mockRedirect,
   mockResolveAccessToken,
 } = vi.hoisted(() => ({
   mockGetTenantDefaultLocale: vi.fn(),
+  mockGetTenantSupportedLocales: vi.fn(),
   mockListMyPurchases: vi.fn(),
   mockRedirect: vi.fn((path: string) => {
     throw new Error(`NEXT_REDIRECT ${path}`);
@@ -34,6 +36,7 @@ vi.mock("#lib/api-client", () => ({
 
 vi.mock("#lib/tenant", () => ({
   getTenantDefaultLocale: mockGetTenantDefaultLocale,
+  getTenantSupportedLocales: mockGetTenantSupportedLocales,
 }));
 
 const { GET } = await import("./route");
@@ -41,10 +44,11 @@ const { GET } = await import("./route");
 const TENANT_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const SESSION = { Authorization: "Bearer session-token" };
 
-const download = (tenantId = TENANT_ID) =>
-  GET(new Request("https://site.example.test/api/v1/my/purchases/csv"), {
-    params: Promise.resolve({ tenant_id: tenantId }),
-  });
+const download = (tenantId = TENANT_ID, query = "") =>
+  GET(
+    new Request(`https://site.example.test/api/v1/my/purchases/csv${query}`),
+    { params: Promise.resolve({ tenant_id: tenantId }) }
+  );
 
 const page = (ids: string[], nextToken = "") => ({
   nextToken,
@@ -64,6 +68,7 @@ describe("GET /api/v1/my/purchases/csv", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetTenantDefaultLocale.mockResolvedValue("en");
+    mockGetTenantSupportedLocales.mockResolvedValue(["en", "ja"]);
     mockResolveAccessToken.mockResolvedValue("session-token");
   });
 
@@ -78,6 +83,7 @@ describe("GET /api/v1/my/purchases/csv", () => {
       1,
       {
         limit: 100,
+        locale: "en",
         surface: ClientSurface.WEB,
         tenant: { tenantId: TENANT_ID },
         token: "",
@@ -104,6 +110,28 @@ describe("GET /api/v1/my/purchases/csv", () => {
       "PURCHASE02",
       "PURCHASE03",
     ]);
+  });
+
+  it("names the works in the language the library linked from", async () => {
+    mockListMyPurchases.mockResolvedValueOnce(page(["PURCHASE01"]));
+
+    await download(TENANT_ID, "?locale=ja");
+
+    expect(mockListMyPurchases).toHaveBeenCalledWith(
+      expect.objectContaining({ locale: "ja" }),
+      SESSION
+    );
+  });
+
+  it("reads a language the tenant does not offer as its default", async () => {
+    mockListMyPurchases.mockResolvedValueOnce(page(["PURCHASE01"]));
+
+    await download(TENANT_ID, "?locale=ko");
+
+    expect(mockListMyPurchases).toHaveBeenCalledWith(
+      expect.objectContaining({ locale: "en" }),
+      SESSION
+    );
   });
 
   it("sends a signed-out reader to sign in, coming back to the library", async () => {

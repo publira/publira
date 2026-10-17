@@ -152,6 +152,64 @@ describe("catalog.getSeriesDetail", () => {
     });
   });
 
+  it("asks for the reader's locale and names the one each title was served in", async () => {
+    mockGetSeriesDetail.mockResolvedValueOnce({
+      episodes: [
+        { locale: "en", orderIndex: 1, publicId: "EP_001", title: "Arrival" },
+        { locale: "ja", orderIndex: 2, publicId: "EP_002", title: "Untitled" },
+      ],
+      publishedLocales: ["en", "ko"],
+      series: { locale: "en", publicId: "SERIES_001", title: "Night Train" },
+    });
+
+    const result = await getSeriesDetail("TENANT_001", "SERIES_001", "ko");
+
+    expect(mockGetSeriesDetail).toHaveBeenCalledWith({
+      locale: "ko",
+      publicId: "SERIES_001",
+      surface: ClientSurface.WEB,
+      tenant: { tenantId: "TENANT_001" },
+    });
+    expect(result.ok && result.value?.series).toMatchObject({
+      locale: "en",
+      publishedLocales: ["en", "ko"],
+      title: "Night Train",
+    });
+    expect(
+      result.ok && result.value?.episodes.map((episode) => episode.locale)
+    ).toEqual(["en", "ja"]);
+  });
+
+  it("counts the served locale among the published ones when the tenant no longer offers it", async () => {
+    mockGetSeriesDetail.mockResolvedValueOnce({
+      episodes: [],
+      publishedLocales: ["en"],
+      series: { locale: "ko", publicId: "SERIES_001", title: "Night Train" },
+    });
+
+    const result = await getSeriesDetail("TENANT_001", "SERIES_001", "ja");
+
+    expect(result.ok && result.value?.series).toMatchObject({
+      locale: "ko",
+      publishedLocales: ["en", "ko"],
+    });
+  });
+
+  it("reads a series that names no locale as written in the reader's", async () => {
+    mockGetSeriesDetail.mockResolvedValueOnce({
+      episodes: [{ orderIndex: 1, publicId: "EP_001", title: "Arrival" }],
+      series: { publicId: "SERIES_001", title: "Night Train" },
+    });
+
+    const result = await getSeriesDetail("TENANT_001", "SERIES_001", "en");
+
+    expect(result.ok && result.value?.series).toMatchObject({
+      locale: "en",
+      publishedLocales: ["en"],
+    });
+    expect(result.ok && result.value?.episodes[0]?.locale).toBe("en");
+  });
+
   it("Carries the series' wait-for-free rule and the episodes it keeps a ticket off", async () => {
     mockGetSeriesDetail.mockResolvedValueOnce({
       episodes: [],
@@ -299,12 +357,14 @@ describe("catalog.getEpisodeDetail", () => {
     );
 
     expect(mockGetEpisodeDetail).toHaveBeenCalledWith({
+      locale: "en",
       publicId: "EP_001",
       surface: ClientSurface.WEB,
       tenant: { tenantId: "TENANT_001" },
     });
     const detail = result.ok ? result.value : null;
     expect(detail?.series).toEqual({
+      locale: "en",
       publicId: "SERIES_001",
       title: "Series Title",
     });
@@ -317,6 +377,27 @@ describe("catalog.getEpisodeDetail", () => {
     expect(detail?.access).toBe("locked");
     expect(detail?.images.map((image) => image.id)).toEqual(["img_1", "img_2"]);
     expect(detail?.images[0]?.fileSizeBytes).toBe(1024);
+  });
+
+  it("names the locale the episode and its series were each served in", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      access: EpisodeAccess.FREE,
+      episode: { locale: "ja", publicId: "EP_001", title: "Arrival" },
+      publishedLocales: ["ja"],
+      series: { locale: "en", publicId: "SERIES_001", title: "Night Train" },
+    });
+
+    const result = await getEpisodeDetail(
+      "TENANT_001",
+      "SERIES_001",
+      "EP_001",
+      "en"
+    );
+
+    const detail = result.ok ? result.value : null;
+    expect(detail?.episode.locale).toBe("ja");
+    expect(detail?.publishedLocales).toEqual(["ja"]);
+    expect(detail?.series.locale).toBe("en");
   });
 
   it("Carries the end of the free reading period open on the episode", async () => {
@@ -771,6 +852,7 @@ describe("catalog.getEpisodeDetail", () => {
     );
 
     expect(mockGetEpisodeDetail).toHaveBeenCalledWith({
+      locale: "en",
       publicId: "EP_001",
       surface: ClientSurface.WEB,
       tenant: { tenantId: "TENANT_001" },
@@ -878,6 +960,7 @@ describe("catalog.getEpisodeViewer", () => {
 
     expect(mockGetEpisodeDetail).toHaveBeenCalledWith(
       {
+        locale: "en",
         publicId: "EP_010",
         surface: ClientSurface.WEB,
         tenant: { tenantId: "TENANT_001" },
@@ -1076,6 +1159,7 @@ describe("catalog.listPublishedSeries", () => {
       genrePublicId: "",
       hasFreeEpisodes: false,
       limit: 24,
+      locale: "en",
       order: SeriesOrder.PUBLISHED_AT_DESC,
       status: SeriesStatus.UNSPECIFIED,
       surface: ClientSurface.WEB,
@@ -1141,6 +1225,7 @@ describe("catalog.listPublishedSeries", () => {
       genrePublicId: "",
       hasFreeEpisodes: true,
       limit: 6,
+      locale: "en",
       order: SeriesOrder.PUBLISHED_AT_DESC,
       status: SeriesStatus.UNSPECIFIED,
       surface: ClientSurface.WEB,
@@ -1170,6 +1255,7 @@ describe("catalog.listPublishedSeries", () => {
       genrePublicId: "SeedGENRAAA1",
       hasFreeEpisodes: false,
       limit: 24,
+      locale: "en",
       order: SeriesOrder.LATEST_EPISODE_AT_DESC,
       status: SeriesStatus.COMPLETED,
       surface: ClientSurface.WEB,
@@ -1803,6 +1889,7 @@ describe("catalog.listRankedSeries", () => {
       ageRating: SeriesAgeRating.ALL,
       genrePublicId: "",
       limit: 10,
+      locale: "en",
       period: RankingPeriod.WEEKLY,
       surface: ClientSurface.WEB,
       tenant: { tenantId: "TENANT_001" },
@@ -1869,6 +1956,7 @@ describe("catalog.listRankedSeries", () => {
       ageRating: SeriesAgeRating.ALL,
       genrePublicId: "GENRE0000001",
       limit: 6,
+      locale: "en",
       period: RankingPeriod.WEEKLY,
       surface: ClientSurface.WEB,
       tenant: { tenantId: "TENANT_001" },
@@ -1949,6 +2037,7 @@ describe("catalog.listReaderRankedSeries", () => {
       {
         ageRating: SeriesAgeRating.R18,
         limit: 20,
+        locale: "en",
         period: RankingPeriod.DAILY,
         surface: ClientSurface.WEB,
         tenant: { tenantId: "TENANT_001" },
@@ -2065,6 +2154,7 @@ describe("catalog.listMyRecommendedSeries", () => {
     expect(mockListMyRecommendedSeries).toHaveBeenCalledWith(
       {
         limit: 6,
+        locale: "en",
         surface: ClientSurface.WEB,
         tenant: { tenantId: "TENANT_001" },
         token: "",
@@ -2151,6 +2241,7 @@ describe("catalog.listRelatedSeries", () => {
 
     expect(mockListRelatedSeries).toHaveBeenCalledWith({
       limit: 4,
+      locale: "en",
       seriesId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
       surface: ClientSurface.WEB,
       tenant: { tenantId: "TENANT_001" },

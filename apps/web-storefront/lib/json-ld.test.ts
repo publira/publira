@@ -64,6 +64,7 @@ const SERIES = {
   genres: [{ name: "Fantasy", publicId: "GENRE01" }],
   labelName: "",
   labelPublicId: "",
+  locale: "en",
   publicId: "SERIES01",
   ratingAverage: 4.2,
   ratingCount: 31,
@@ -74,11 +75,12 @@ const SERIES = {
 
 const EPISODE = {
   credits: [{ name: "Jane Doe", publicId: "CREATOR01", roleName: "Story" }],
+  locale: "en",
   orderIndex: 3,
   publicId: "EPISODE03",
   publishedAt: "2026-09-01T03:00:00Z",
   title: "The Bridge",
-};
+} satisfies Parameters<typeof episodeJsonLd>[1]["episode"];
 
 beforeEach(() => {
   getTenantPublicOrigin.mockResolvedValue(ORIGIN);
@@ -218,6 +220,7 @@ describe("seriesJsonLd", () => {
       ],
       description: "A long road home.",
       genre: ["Fantasy"],
+      inLanguage: "en",
       keywords: ["Dragons"],
       name: "The Long Road",
       publisher: {
@@ -228,6 +231,14 @@ describe("seriesJsonLd", () => {
       },
       url: `${ORIGIN}/series/SERIES01`,
     });
+  });
+
+  it("addresses a work shown in a fallback language at that language's URL", () => {
+    const document = seriesJsonLd(JAPANESE_SITE, SERIES);
+
+    expect(document["@id"]).toBe(`${ORIGIN}/series/SERIES01#series`);
+    expect(document.url).toBe(`${ORIGIN}/series/SERIES01`);
+    expect(document.inLanguage).toBe("en");
   });
 
   it("carries no aggregateRating for a work nobody has rated", () => {
@@ -290,14 +301,18 @@ describe("seriesJsonLd", () => {
 });
 
 describe("episodeJsonLd", () => {
-  const series = { publicId: "SERIES01", title: "The Long Road" };
+  const series = {
+    locale: "en",
+    publicId: "SERIES01",
+    title: "The Long Road",
+  } satisfies Parameters<typeof episodeJsonLd>[1]["series"];
 
-  it("describes the episode as an issue of the work it belongs to", () => {
+  it("describes the episode as an issue of the work it belongs to, in the language of its title", () => {
     expect(
       episodeJsonLd(JAPANESE_SITE, { access: "free", episode: EPISODE, series })
     ).toStrictEqual({
       "@context": "https://schema.org",
-      "@id": `${ORIGIN}/ja/series/SERIES01/episodes/EPISODE03#issue`,
+      "@id": `${ORIGIN}/series/SERIES01/episodes/EPISODE03#issue`,
       "@type": "ComicIssue",
       author: [
         {
@@ -308,16 +323,34 @@ describe("episodeJsonLd", () => {
         },
       ],
       datePublished: "2026-09-01T03:00:00Z",
+      inLanguage: "en",
       isAccessibleForFree: true,
       isPartOf: {
-        "@id": `${ORIGIN}/ja/series/SERIES01#series`,
+        "@id": `${ORIGIN}/series/SERIES01#series`,
         "@type": "ComicSeries",
+        inLanguage: "en",
         name: "The Long Road",
-        url: `${ORIGIN}/ja/series/SERIES01`,
+        url: `${ORIGIN}/series/SERIES01`,
       },
       issueNumber: 3,
       name: "The Bridge",
-      url: `${ORIGIN}/ja/series/SERIES01/episodes/EPISODE03`,
+      url: `${ORIGIN}/series/SERIES01/episodes/EPISODE03`,
+    });
+  });
+
+  it("addresses the episode and its work each in its own language", () => {
+    const document = episodeJsonLd(JAPANESE_SITE, {
+      access: "free",
+      episode: { ...EPISODE, locale: "ja" },
+      series,
+    });
+
+    expect(document.url).toBe(
+      `${ORIGIN}/ja/series/SERIES01/episodes/EPISODE03`
+    );
+    expect(document.isPartOf).toMatchObject({
+      "@id": `${ORIGIN}/series/SERIES01#series`,
+      inLanguage: "en",
     });
   });
 
