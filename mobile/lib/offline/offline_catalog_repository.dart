@@ -270,8 +270,10 @@ class OfflineCatalogRepository implements CatalogRepository {
   /// they opened, so neither may save a series here nor take the episodes
   /// saved under one away.
   @override
-  Future<String?> getSeriesTitle(String publicId, {required String locale}) =>
-      _origin.getSeriesTitle(publicId, locale: locale);
+  Future<SeriesTitle?> getSeriesTitle(
+    String publicId, {
+    required String locale,
+  }) => _origin.getSeriesTitle(publicId, locale: locale);
 
   @override
   Future<SeriesCreator?> getCreator(String publicId) =>

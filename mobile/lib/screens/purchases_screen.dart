@@ -406,13 +406,22 @@ class _PurchaseRow extends StatelessWidget {
       isThreeLine: true,
       title: AutospacedText(
         title,
+        locale: purchase.episodeTextLocale,
         style: purchase.isActive ? null : TextStyle(color: muted),
       ),
-      subtitle: AutospacedText(
-        [
-          if (purchase.seriesTitle.isNotEmpty) purchase.seriesTitle,
-          details.join(' · '),
-        ].join('\n'),
+      // Two lines rather than one joined text: the title is set in the
+      // language it was served in, and the details in the app's.
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (purchase.seriesTitle.isNotEmpty)
+            AutospacedText(
+              purchase.seriesTitle,
+              locale: purchase.seriesTextLocale,
+            ),
+          AutospacedText(details.join(' · ')),
+        ],
       ),
       trailing: _PurchaseState(status: status),
       onTap: () => context.pushInTab(

@@ -10,6 +10,7 @@ import 'package:publira/follow/follow_failure.dart';
 import 'package:publira/follow/follow_repository.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/l10n/locale_negotiation.dart';
 import 'package:publira/layout/window_width.dart';
 import 'package:publira/models/follow.dart';
 import 'package:publira/navigation/app_tabs.dart';
@@ -155,33 +156,46 @@ class _FollowsListState extends State<FollowsList> {
   ) {
     return Future.wait(
       follows.map((follow) async {
+        final (:name, :nameLocale) = await _name(catalog, locale, follow);
         return _FollowedTarget(
           follow: follow,
-          name: await _name(catalog, locale, follow),
+          name: name,
+          nameLocale: nameLocale,
         );
       }),
     );
   }
 
-  Future<String> _name(
+  /// What [follow] is called, and the language a series title was served
+  /// in. An author's name is a proper name with no language of its own.
+  Future<({String name, Locale? nameLocale})> _name(
     CatalogRepository catalog,
     String locale,
     MyFollow follow,
   ) async {
     try {
-      final name = switch (follow.kind) {
-        FollowTargetKind.series => await catalog.getSeriesTitle(
-          follow.targetId,
-          locale: locale,
-        ),
-        FollowTargetKind.creator => (await catalog.getCreator(
-          follow.targetId,
-        ))?.name,
-      };
-      return name == null || name.isEmpty ? follow.targetId : name;
+      switch (follow.kind) {
+        case FollowTargetKind.series:
+          final series = await catalog.getSeriesTitle(
+            follow.targetId,
+            locale: locale,
+          );
+          if (series != null && series.title.isNotEmpty) {
+            return (
+              name: series.title,
+              nameLocale: supportedLocaleForCode(series.locale),
+            );
+          }
+        case FollowTargetKind.creator:
+          final name = (await catalog.getCreator(follow.targetId))?.name;
+          if (name != null && name.isNotEmpty) {
+            return (name: name, nameLocale: null);
+          }
+      }
     } on CatalogFailure {
-      return follow.targetId;
+      // Named by its public id below, which is still a row to unfollow.
     }
+    return (name: follow.targetId, nameLocale: null);
   }
 
   @override
@@ -276,13 +290,20 @@ class _FollowsListState extends State<FollowsList> {
 
 /// One followed target and what the catalog calls it.
 class _FollowedTarget {
-  const _FollowedTarget({required this.follow, required this.name});
+  const _FollowedTarget({
+    required this.follow,
+    required this.name,
+    this.nameLocale,
+  });
 
   final MyFollow follow;
 
   /// The series title or author name, and the public id when the catalog
   /// could not be asked.
   final String name;
+
+  /// The language a series title was served in, `null` for anything else.
+  final Locale? nameLocale;
 }
 
 class _FollowRow extends StatelessWidget {
@@ -302,7 +323,7 @@ class _FollowRow extends StatelessWidget {
     ];
     return ListTile(
       key: ValueKey('follow-row-${follow.targetId}'),
-      title: AutospacedText(target.name),
+      title: AutospacedText(target.name, locale: target.nameLocale),
       subtitle: AutospacedText(details.join(' · ')),
       trailing: FollowControl(
         kind: follow.kind,

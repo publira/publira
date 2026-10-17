@@ -734,7 +734,7 @@ class FakeCatalogRepository implements CatalogRepository {
   }
 
   @override
-  Future<String?> getSeriesTitle(
+  Future<SeriesTitle?> getSeriesTitle(
     String publicId, {
     required String locale,
   }) async {
@@ -743,7 +743,8 @@ class FakeCatalogRepository implements CatalogRepository {
     if (error != null) {
       throw error;
     }
-    return details[publicId]?.series.title;
+    final series = details[publicId]?.series;
+    return series == null ? null : (title: series.title, locale: series.locale);
   }
 
   @override

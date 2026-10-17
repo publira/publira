@@ -373,7 +373,7 @@ void main() {
     library.details.clear();
 
     expect(
-      await build().getSeriesTitle(_seriesId, locale: 'en'),
+      (await build().getSeriesTitle(_seriesId, locale: 'en'))?.title,
       'Seed Series 001',
     );
     expect(library.details, isEmpty);

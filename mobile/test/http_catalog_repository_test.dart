@@ -965,13 +965,16 @@ void main() {
     expect(await catalog.getSeries('ZZZZZZZZZZZZ', locale: 'en'), isNull);
   });
 
-  test('getSeriesTitle names the series a follow row stands for', () async {
+  test('getSeriesTitle names the series a follow row stands for, and the '
+      'locale its title was served in', () async {
+    server.details[ConnectFixtureServer.seedSeriesId]!.series.locale = 'ja';
+
     expect(
       await catalog.getSeriesTitle(
         ConnectFixtureServer.seedSeriesId,
         locale: 'en',
       ),
-      ConnectFixtureServer.seedSeriesTitle,
+      (title: ConnectFixtureServer.seedSeriesTitle, locale: 'ja'),
     );
   });
 

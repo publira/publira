@@ -429,10 +429,13 @@ class HttpCatalogRepository implements CatalogRepository {
   }
 
   @override
-  Future<String?> getSeriesTitle(
+  Future<SeriesTitle?> getSeriesTitle(
     String publicId, {
     required String locale,
-  }) async => (await getSeries(publicId, locale: locale))?.series.title;
+  }) async {
+    final series = (await getSeries(publicId, locale: locale))?.series;
+    return series == null ? null : (title: series.title, locale: series.locale);
+  }
 
   @override
   Future<SeriesCreator?> getCreator(String publicId) async {

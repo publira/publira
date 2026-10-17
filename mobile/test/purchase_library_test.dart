@@ -17,6 +17,7 @@ import 'support/fake_catalog_repository.dart';
 import 'support/fake_links.dart';
 import 'support/fake_purchase.dart';
 import 'support/pump_until.dart';
+import 'support/text_locale.dart';
 
 void main() {
   final series = fixtureSeries.first;
@@ -491,6 +492,36 @@ void main() {
       // The whole history, read in the largest pages the API answers rather
       // than the ones the list shows.
       expect(purchases.limits, [100, 100]);
+    });
+
+    testWidgets('each title is set in the language it was served in', (
+      tester,
+    ) async {
+      purchases.pages = [
+        [
+          MyPurchase(
+            id: 'purchase-1',
+            seriesId: series.id,
+            seriesTitle: series.title,
+            seriesLocale: 'ja',
+            episodeId: paidEpisodeId,
+            episodeTitle: 'The paid episode',
+            episodeLocale: 'ko',
+            orderIndex: 1,
+            price: 500,
+            currency: 'JPY',
+            isActive: true,
+          ),
+        ],
+      ];
+      await openPurchases(tester);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('purchase-row-purchase-1')),
+      );
+
+      expect(textLocaleOf(tester, '#1 The paid episode'), const Locale('ko'));
+      expect(textLocaleOf(tester, series.title), const Locale('ja'));
     });
 
     testWidgets('reads every page in the language the export started in', (

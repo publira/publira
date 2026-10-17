@@ -3,11 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:publira/app.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/router.dart';
-import 'package:publira/typography/autospaced_text.dart';
 
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
 import 'support/pump_until.dart';
+import 'support/text_locale.dart';
 
 void main() {
   final series = fixtureSeries.first;
@@ -111,18 +111,8 @@ void main() {
           .first,
     );
 
-    Locale? localeOf(String text) => tester
-        .widget<AutospacedText>(
-          find
-              .byWidgetPredicate(
-                (widget) => widget is AutospacedText && widget.data == text,
-              )
-              .last,
-        )
-        .locale;
-
-    expect(localeOf(series.description), const Locale('ja'));
-    expect(localeOf(first.title), const Locale('en'));
+    expect(textLocaleOf(tester, series.description), const Locale('ja'));
+    expect(textLocaleOf(tester, first.title), const Locale('en'));
   });
 
   testWidgets('a served locale no catalog carries puts up no note', (

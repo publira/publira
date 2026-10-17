@@ -12,6 +12,7 @@ import 'package:publira/router.dart';
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
 import 'support/pump_until.dart';
+import 'support/text_locale.dart';
 
 void main() {
   final series = fixtureSeries.first;
@@ -69,6 +70,34 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
   }
+
+  testWidgets('each title is set in the language it was served in', (
+    tester,
+  ) async {
+    catalog.followUpdates = [
+      FollowUpdateItem(
+        series: SeriesItem(
+          id: series.id,
+          title: series.title,
+          description: series.description,
+          locale: 'ja',
+        ),
+        episode: EpisodeItem(
+          id: '${series.id}-ep-1',
+          title: 'Episode 1',
+          locale: 'ko',
+          orderIndex: 1,
+          price: 0,
+        ),
+        publishedAt: DateTime.utc(2026, 9, 1, 12),
+      ),
+    ];
+    await pumpApp(tester);
+    await pumpUntilFound(tester, row(1));
+
+    expect(textLocaleOf(tester, '#1 Episode 1'), const Locale('ko'));
+    expect(textLocaleOf(tester, series.title), const Locale('ja'));
+  });
 
   testWidgets(
     'the account screen leads a signed-in reader to their follow updates',

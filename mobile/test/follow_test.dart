@@ -18,6 +18,7 @@ import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
 import 'support/fake_follow_repository.dart';
 import 'support/pump_until.dart';
+import 'support/text_locale.dart';
 
 void main() {
   final series = fixtureSeries.first;
@@ -400,6 +401,37 @@ void main() {
         ),
         findsOne,
       );
+    });
+
+    testWidgets('names a series in the language its title was served in', (
+      tester,
+    ) async {
+      final detail = fixtureDetail(series);
+      catalog.details = {
+        series.id: SeriesDetail(
+          series: SeriesItem(
+            id: series.id,
+            internalId: fixtureInternalId(series.id),
+            title: series.title,
+            description: series.description,
+            locale: 'ja',
+          ),
+          episodes: detail.episodes,
+        ),
+      };
+      follows.pages = [
+        [
+          MyFollow(
+            kind: FollowTargetKind.series,
+            targetId: series.id,
+            targetInternalId: fixtureInternalId(series.id),
+          ),
+        ],
+      ];
+      await openFollows(tester);
+      await pumpUntilRouteSettled(tester, find.text(series.title));
+
+      expect(textLocaleOf(tester, series.title), const Locale('ja'));
     });
 
     testWidgets('opens the series a row stands for', (tester) async {

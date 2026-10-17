@@ -209,15 +209,22 @@ class _ReadingHistoryRow extends StatelessWidget {
     return ListTile(
       key: ValueKey('reading-history-row-${episode.id}'),
       isThreeLine: true,
-      title: AutospacedText(title),
-      subtitle: AutospacedText(
-        [
-          if (series.title.isNotEmpty) series.title,
+      title: AutospacedText(title, locale: episode.textLocale),
+      // Two lines rather than one joined text: the title is set in the
+      // language it was served in, and the date in the app's.
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (series.title.isNotEmpty)
+            AutospacedText(series.title, locale: series.textLocale),
           if (read.readAt case final readAt?)
-            messages.readingHistoryFinishedAt(
-              date: messages.formatDateTime(readAt),
+            AutospacedText(
+              messages.readingHistoryFinishedAt(
+                date: messages.formatDateTime(readAt),
+              ),
             ),
-        ].join('\n'),
+        ],
       ),
       trailing: AutospacedTooltip(
         message: messages.readingHistoryOpenSeries,

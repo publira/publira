@@ -426,6 +426,22 @@ void main() {
       );
     });
 
+    test('names the locale each title was served in', () async {
+      accessToken = ConnectFixtureServer.memberAccessToken;
+      server.myPurchases = [
+        purchase('purchase-active', active: true)
+          ..series.locale = 'ja'
+          ..episode.locale = 'en',
+      ];
+
+      final [row] = (await repository().listMyPurchases(
+        locale: 'en',
+      )).purchases;
+
+      expect(row.seriesLocale, 'ja');
+      expect(row.episodeLocale, 'en');
+    });
+
     test('asks in the reader\'s locale', () async {
       accessToken = ConnectFixtureServer.memberAccessToken;
 

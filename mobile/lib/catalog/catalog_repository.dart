@@ -15,6 +15,10 @@ const searchQueryMaxRunes = 100;
 /// naming no limit.
 const directoryPageLimit = 20;
 
+/// What a series is called, and the locale that title was answered in, named
+/// the way [SeriesItem.locale] is.
+typedef SeriesTitle = ({String title, String locale});
+
 /// Public catalog reads. Implementations talk to the Connect API or a fake.
 ///
 /// Every read that answers a series title or synopsis, or an episode title,
@@ -185,7 +189,10 @@ abstract class CatalogRepository {
   /// publishing takes the episodes saved under it away, which is not for a
   /// list of names to do.
   /// Throws [CatalogFailure] on a transport or unexpected server error.
-  Future<String?> getSeriesTitle(String publicId, {required String locale});
+  Future<SeriesTitle?> getSeriesTitle(
+    String publicId, {
+    required String locale,
+  });
 
   /// What the creator [publicId] is called, or `null` when they are missing,
   /// credited on nothing published, or not in this tenant.
