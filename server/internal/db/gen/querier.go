@@ -3140,6 +3140,11 @@ type Querier interface {
 	TouchCampaignBannerImage(ctx context.Context, id uuid.UUID) error
 	// Records that the eye-catch changed after one of its ratios was replaced.
 	TouchEpisodeEyeCatchImage(ctx context.Context, id uuid.UUID) error
+	// A deleted translation changes what the episode page shows in its locale,
+	// and the sitemap's last_modified_at reads that from
+	// episodes.translation_deleted_at, as it reads every other write to a
+	// translation from the translation's own updated_at.
+	TouchEpisodeTranslationDeletedAt(ctx context.Context, arg TouchEpisodeTranslationDeletedAtParams) error
 	// Records that the eye-catch changed after one of its ratios was replaced.
 	TouchGenreImage(ctx context.Context, id uuid.UUID) error
 	// Records that the eye-catch changed after one of its ratios was replaced.

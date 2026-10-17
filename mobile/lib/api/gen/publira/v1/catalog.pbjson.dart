@@ -1743,6 +1743,13 @@ const SitemapEntry$json = {
     {'1': 'series_public_id', '3': 3, '4': 1, '5': 9, '10': 'seriesPublicId'},
     {'1': 'slug', '3': 4, '4': 1, '5': 9, '10': 'slug'},
     {'1': 'last_modified_at', '3': 5, '4': 1, '5': 9, '10': 'lastModifiedAt'},
+    {
+      '1': 'published_locales',
+      '3': 6,
+      '4': 3,
+      '5': 9,
+      '10': 'publishedLocales'
+    },
   ],
 };
 
@@ -1751,7 +1758,8 @@ final $typed_data.Uint8List sitemapEntryDescriptor = $convert.base64Decode(
     'CgxTaXRlbWFwRW50cnkSMAoEa2luZBgBIAEoDjIcLnB1YmxpcmEudjEuU2l0ZW1hcEVudHJ5S2'
     'luZFIEa2luZBIbCglwdWJsaWNfaWQYAiABKAlSCHB1YmxpY0lkEigKEHNlcmllc19wdWJsaWNf'
     'aWQYAyABKAlSDnNlcmllc1B1YmxpY0lkEhIKBHNsdWcYBCABKAlSBHNsdWcSKAoQbGFzdF9tb2'
-    'RpZmllZF9hdBgFIAEoCVIObGFzdE1vZGlmaWVkQXQ=');
+    'RpZmllZF9hdBgFIAEoCVIObGFzdE1vZGlmaWVkQXQSKwoRcHVibGlzaGVkX2xvY2FsZXMYBiAD'
+    'KAlSEHB1Ymxpc2hlZExvY2FsZXM=');
 
 @$core.Deprecated('Use listSitemapEntriesRequestDescriptor instead')
 const ListSitemapEntriesRequest$json = {

@@ -9,7 +9,8 @@ SELECT kind::int4 AS kind,
     public_id,
     series_public_id,
     slug,
-    last_modified_at
+    last_modified_at,
+    published_locales
 FROM sitemap_entries
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND surface = sqlc.arg('surface')::text
@@ -41,7 +42,8 @@ SELECT kind::int4 AS kind,
     public_id,
     series_public_id,
     slug,
-    last_modified_at
+    last_modified_at,
+    published_locales
 FROM sitemap_entries
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND surface = sqlc.arg('surface')::text

@@ -254,6 +254,9 @@ func (s *adminServer) DeleteEpisodeTranslation(
 		if count <= 1 {
 			return nil, connect.NewError(connect.CodeFailedPrecondition, "an episode must keep at least one translation")
 		}
+		if err := queries.TouchEpisodeTranslationDeletedAt(txCtx, dbmodels.TouchEpisodeTranslationDeletedAtParams{TenantID: tenant.ID, ID: episodeID}); err != nil {
+			return nil, s.internalDBError(ctx, "failed to touch episode after translation deletion", err, "tenant_id", tenant.ID.String(), "episode_id", episodeID.String())
+		}
 		return episodeRevalidateTags(tenant.ID.String()), nil
 	}); err != nil {
 		return nil, err

@@ -635,8 +635,8 @@ func expectCreateEpisodeBaseInsert(mock sqlmock.Sqlmock, seriesID, episodeID, te
 	expectPublicIDAttempt(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateEpisodeBase)).
 		WithArgs(sqlmock.AnyArg(), seriesID, sqlmock.AnyArg(), orderIndex, tenantID, nil, nil).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "series_id", "public_id", "order_index", "created_at", "tenant_id", "reading_direction", "spread_start_index", "availability", "purchase_availability", "eye_catch_image_id"}).
-			AddRow(episodeID, seriesID, publicID, orderIndex, now, tenantID, nil, nil, nil, nil, nil))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "series_id", "public_id", "order_index", "created_at", "tenant_id", "reading_direction", "spread_start_index", "availability", "purchase_availability", "eye_catch_image_id", "translation_deleted_at"}).
+			AddRow(episodeID, seriesID, publicID, orderIndex, now, tenantID, nil, nil, nil, nil, nil, nil))
 	expectPublicIDAttemptReleased(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertEpisodeTranslation)).
 		WithArgs(sqlmock.AnyArg(), episodeID, tenantID, "ja", title).

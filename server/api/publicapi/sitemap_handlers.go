@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/pageslug"
 	"github.com/publira/publira/server/internal/pagination"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -25,12 +26,13 @@ const (
 // sitemapEntryRow is one row of a sitemap page, shared by the ascending and
 // descending keyset queries so the handler reads a single shape.
 type sitemapEntryRow struct {
-	kind           int32
-	id             uuid.UUID
-	publicID       string
-	seriesPublicID string
-	slug           string
-	lastModifiedAt sql.NullTime
+	kind             int32
+	id               uuid.UUID
+	publicID         string
+	seriesPublicID   string
+	slug             string
+	lastModifiedAt   sql.NullTime
+	publishedLocales []string
 }
 
 // sitemapEntryPage runs the keyset query for one page. The cursor's count is
@@ -61,12 +63,13 @@ func (s *apiServer) sitemapEntryPage(
 		page := make([]sitemapEntryRow, 0, len(rows))
 		for _, row := range rows {
 			page = append(page, sitemapEntryRow{
-				kind:           row.Kind,
-				id:             row.ID,
-				publicID:       row.PublicID,
-				seriesPublicID: row.SeriesPublicID,
-				slug:           row.Slug,
-				lastModifiedAt: row.LastModifiedAt,
+				kind:             row.Kind,
+				id:               row.ID,
+				publicID:         row.PublicID,
+				seriesPublicID:   row.SeriesPublicID,
+				slug:             row.Slug,
+				lastModifiedAt:   row.LastModifiedAt,
+				publishedLocales: row.PublishedLocales,
 			})
 		}
 		return page, nil
@@ -86,12 +89,13 @@ func (s *apiServer) sitemapEntryPage(
 	page := make([]sitemapEntryRow, 0, len(rows))
 	for _, row := range rows {
 		page = append(page, sitemapEntryRow{
-			kind:           row.Kind,
-			id:             row.ID,
-			publicID:       row.PublicID,
-			seriesPublicID: row.SeriesPublicID,
-			slug:           row.Slug,
-			lastModifiedAt: row.LastModifiedAt,
+			kind:             row.Kind,
+			id:               row.ID,
+			publicID:         row.PublicID,
+			seriesPublicID:   row.SeriesPublicID,
+			slug:             row.Slug,
+			lastModifiedAt:   row.LastModifiedAt,
+			publishedLocales: row.PublishedLocales,
 		})
 	}
 	return page, nil
@@ -157,10 +161,11 @@ func (s *apiServer) ListSitemapEntries(
 			continue
 		}
 		entry := &publirav1.SitemapEntry{
-			Kind:           publirav1.SitemapEntryKind(row.kind),
-			PublicId:       row.publicID,
-			SeriesPublicId: row.seriesPublicID,
-			Slug:           row.slug,
+			Kind:             publirav1.SitemapEntryKind(row.kind),
+			PublicId:         row.publicID,
+			SeriesPublicId:   row.seriesPublicID,
+			Slug:             row.slug,
+			PublishedLocales: locale.InRegistryOrder(row.publishedLocales),
 		}
 		if row.lastModifiedAt.Valid {
 			entry.LastModifiedAt = row.lastModifiedAt.Time.UTC().Format(time.RFC3339)

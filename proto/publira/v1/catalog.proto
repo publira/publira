@@ -883,10 +883,17 @@ message SitemapEntry {
   // A page's slug in storage form ("/privacy"). Empty for every other kind.
   string slug = 4;
   // When what the page shows last changed, RFC 3339. A series counts its
-  // newest published episode, since its page lists them, and a page counts
-  // its published translations. Empty for a label, a creator, and a genre,
-  // whose rows keep no such time.
+  // newest published episode, since its page lists them, an episode counts
+  // its translations, a deleted one included, and a page counts its published
+  // translations. Empty for a label, a creator, and a genre, whose rows keep
+  // no such time.
   string last_modified_at = 5;
+  // Every locale a series, an episode, or a page has a translation in that the
+  // tenant offers, in registry order: the language alternates its page names,
+  // as GetSeriesDetail, GetEpisodeDetail, and GetPublishedPage answer them in
+  // published_locales. Empty for a label, a creator, and a genre, which are
+  // shown in every offered language.
+  repeated string published_locales = 6;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.

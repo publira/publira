@@ -10,6 +10,7 @@ import (
 	"database/sql"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 const ListSitemapEntriesAsc = `-- name: ListSitemapEntriesAsc :many
@@ -18,7 +19,8 @@ SELECT kind::int4 AS kind,
     public_id,
     series_public_id,
     slug,
-    last_modified_at
+    last_modified_at,
+    published_locales
 FROM sitemap_entries
 WHERE tenant_id = $1
     AND surface = $2::text
@@ -54,12 +56,13 @@ type ListSitemapEntriesAscParams struct {
 }
 
 type ListSitemapEntriesAscRow struct {
-	Kind           int32        `json:"kind"`
-	ID             uuid.UUID    `json:"id"`
-	PublicID       string       `json:"public_id"`
-	SeriesPublicID string       `json:"series_public_id"`
-	Slug           string       `json:"slug"`
-	LastModifiedAt sql.NullTime `json:"last_modified_at"`
+	Kind             int32        `json:"kind"`
+	ID               uuid.UUID    `json:"id"`
+	PublicID         string       `json:"public_id"`
+	SeriesPublicID   string       `json:"series_public_id"`
+	Slug             string       `json:"slug"`
+	LastModifiedAt   sql.NullTime `json:"last_modified_at"`
+	PublishedLocales []string     `json:"published_locales"`
 }
 
 // The sitemap reads sitemap_entries, which states what a sitemap holds. The
@@ -90,6 +93,7 @@ func (q *Queries) ListSitemapEntriesAsc(ctx context.Context, arg ListSitemapEntr
 			&i.SeriesPublicID,
 			&i.Slug,
 			&i.LastModifiedAt,
+			pq.Array(&i.PublishedLocales),
 		); err != nil {
 			return nil, err
 		}
@@ -110,7 +114,8 @@ SELECT kind::int4 AS kind,
     public_id,
     series_public_id,
     slug,
-    last_modified_at
+    last_modified_at,
+    published_locales
 FROM sitemap_entries
 WHERE tenant_id = $1
     AND surface = $2::text
@@ -146,12 +151,13 @@ type ListSitemapEntriesDescParams struct {
 }
 
 type ListSitemapEntriesDescRow struct {
-	Kind           int32        `json:"kind"`
-	ID             uuid.UUID    `json:"id"`
-	PublicID       string       `json:"public_id"`
-	SeriesPublicID string       `json:"series_public_id"`
-	Slug           string       `json:"slug"`
-	LastModifiedAt sql.NullTime `json:"last_modified_at"`
+	Kind             int32        `json:"kind"`
+	ID               uuid.UUID    `json:"id"`
+	PublicID         string       `json:"public_id"`
+	SeriesPublicID   string       `json:"series_public_id"`
+	Slug             string       `json:"slug"`
+	LastModifiedAt   sql.NullTime `json:"last_modified_at"`
+	PublishedLocales []string     `json:"published_locales"`
 }
 
 // The backward direction of ListSitemapEntriesAsc.
@@ -178,6 +184,7 @@ func (q *Queries) ListSitemapEntriesDesc(ctx context.Context, arg ListSitemapEnt
 			&i.SeriesPublicID,
 			&i.Slug,
 			&i.LastModifiedAt,
+			pq.Array(&i.PublishedLocales),
 		); err != nil {
 			return nil, err
 		}

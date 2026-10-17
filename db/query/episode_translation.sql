@@ -42,3 +42,13 @@ DELETE FROM episode_translations
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND episode_id = sqlc.arg('episode_id')
     AND locale = sqlc.arg('locale');
+
+-- name: TouchEpisodeTranslationDeletedAt :exec
+-- A deleted translation changes what the episode page shows in its locale,
+-- and the sitemap's last_modified_at reads that from
+-- episodes.translation_deleted_at, as it reads every other write to a
+-- translation from the translation's own updated_at.
+UPDATE episodes
+SET translation_deleted_at = NOW()
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND id = sqlc.arg('id');

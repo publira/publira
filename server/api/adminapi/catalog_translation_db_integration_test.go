@@ -2,6 +2,7 @@ package adminapi
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 
 	"connectrpc.com/connect/v2"
@@ -208,6 +209,73 @@ func TestDBDeleteCatalogTranslationKeepsTheLastOne(t *testing.T) {
 	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("DeleteEpisodeTranslation of the last one: code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
+	}
+}
+
+// Deleting an episode's translation dates the episode, since the translations
+// left behind keep no time that says its page changed. A deletion that is
+// refused dates nothing.
+func TestDBDeleteEpisodeTranslationDatesTheEpisode(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.seriesClient()
+	ctx := testutil.WithBearer(context.Background(), tenant.token())
+
+	created, err := client.CreateSeries(ctx, &publiraadminv1.CreateSeriesRequest{Tenant: tenant.tenantContext(), Title: "Hoshi no Toshokan"})
+	if err != nil {
+		t.Fatalf("CreateSeries: %v", err)
+	}
+	episode, err := client.CreateEpisode(ctx, &publiraadminv1.CreateEpisodeRequest{
+		Tenant:   tenant.tenantContext(),
+		SeriesId: created.Series.Id,
+		Title:    "Daiichiya",
+	})
+	if err != nil {
+		t.Fatalf("CreateEpisode: %v", err)
+	}
+	if _, err := client.UpdateEpisodeTitle(ctx, &publiraadminv1.UpdateEpisodeTitleRequest{
+		Tenant:    tenant.tenantContext(),
+		EpisodeId: episode.Episode.Id,
+		Locale:    "en",
+		Title:     "The First Night",
+	}); err != nil {
+		t.Fatalf("UpdateEpisodeTitle in en: %v", err)
+	}
+	deletedAt := func() sql.NullTime {
+		t.Helper()
+		var at sql.NullTime
+		if err := env.PG.DB.QueryRowContext(context.Background(),
+			"SELECT translation_deleted_at FROM episodes WHERE public_id = $1", episode.Episode.PublicId,
+		).Scan(&at); err != nil {
+			t.Fatalf("read translation_deleted_at: %v", err)
+		}
+		return at
+	}
+	if at := deletedAt(); at.Valid {
+		t.Fatalf("translation_deleted_at before any deletion = %v, want NULL", at.Time)
+	}
+
+	if _, err := client.DeleteEpisodeTranslation(ctx, &publiraadminv1.DeleteEpisodeTranslationRequest{
+		Tenant:    tenant.tenantContext(),
+		EpisodeId: episode.Episode.Id,
+		Locale:    "en",
+	}); err != nil {
+		t.Fatalf("DeleteEpisodeTranslation en: %v", err)
+	}
+	first := deletedAt()
+	if !first.Valid {
+		t.Fatal("translation_deleted_at after a deletion = NULL, want the time of the deletion")
+	}
+
+	if _, err := client.DeleteEpisodeTranslation(ctx, &publiraadminv1.DeleteEpisodeTranslationRequest{
+		Tenant:    tenant.tenantContext(),
+		EpisodeId: episode.Episode.Id,
+		Locale:    "ja",
+	}); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("DeleteEpisodeTranslation of the last one: code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
+	}
+	if after := deletedAt(); !after.Valid || !after.Time.Equal(first.Time) {
+		t.Fatalf("translation_deleted_at after a refused deletion = %v, want %v", after, first.Time)
 	}
 }
 
