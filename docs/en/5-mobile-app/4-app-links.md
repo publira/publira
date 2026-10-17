@@ -2,6 +2,7 @@
 title: App links
 description: Make links to a tenant's site open in its app, by naming the published app in the tenant console.
 published: 2026-10-06
+updated: 2026-10-17
 ---
 
 A link to the tenant's site — a series, an episode, the announcements, or the confirmation and password reset links in the site's mail — opens in the app when it is installed, rather than in the browser. Android and iOS allow that only once they have checked that the site vouches for the app. They ask the site for two files:
@@ -10,6 +11,8 @@ A link to the tenant's site — a series, an episode, the announcements, or the 
 - `https://<tenant.host>/.well-known/apple-app-site-association`, for iOS
 
 The site builds both from what is saved under **Integrations** › **App links** in the tenant console. There is nothing to upload to the web server.
+
+The same two files vouch for the app's use of the site's passkeys as well. A passkey a reader registers belongs to the tenant's host, and Android and iOS let an app use a passkey of a host only when that host's files name the app for it: the `delegate_permission/common.get_login_creds` relation in `assetlinks.json`, next to `delegate_permission/common.handle_all_urls` for the links, and the `webcredentials` entry in `apple-app-site-association`, next to `applinks`. The site writes both for every app it names, so there is nothing more to enter for passkeys.
 
 The same page names the app for the rest of the install, too. The App Store and Google Play sections of in-app purchase sell in the apps it names, and Sign in with Apple trusts the apps it names, so fill it in before trying either of those in the app.
 
@@ -60,7 +63,7 @@ curl -i https://reader.example.com/.well-known/assetlinks.json
 curl -i https://reader.example.com/.well-known/apple-app-site-association
 ```
 
-Each answers `200` with the identifiers you saved. Both phones refuse a file reached through a redirect, so the reverse proxy in front of the install has to answer these paths on the tenant host itself, over HTTPS.
+Each answers `200` with the identifiers you saved: `assetlinks.json` lists both relations for the Android app, and `apple-app-site-association` names the iOS app under both `applinks` and `webcredentials`. Both phones refuse a file reached through a redirect, so the reverse proxy in front of the install has to answer these paths on the tenant host itself, over HTTPS.
 
 On Android, the phone checks the site when the app is installed or updated. Install the build, then ask the phone what it decided:
 

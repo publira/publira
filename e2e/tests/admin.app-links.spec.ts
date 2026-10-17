@@ -146,7 +146,10 @@ test.describe("app links", () => {
     ).toStrictEqual({
       body: [
         {
-          relation: ["delegate_permission/common.handle_all_urls"],
+          relation: [
+            "delegate_permission/common.handle_all_urls",
+            "delegate_permission/common.get_login_creds",
+          ],
           target: {
             namespace: "android_app",
             package_name: "com.example.reader",
@@ -174,6 +177,7 @@ test.describe("app links", () => {
             }),
           ],
         },
+        webcredentials: { apps: ["ABCDE12345.com.example.reader"] },
       },
       contentType: "application/json",
       status: 200,

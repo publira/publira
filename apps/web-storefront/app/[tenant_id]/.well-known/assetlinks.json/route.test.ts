@@ -69,7 +69,10 @@ describe("GET /.well-known/assetlinks.json", () => {
     expect(response.headers.get("Content-Type")).toBe("application/json");
     await expect(response.json()).resolves.toStrictEqual([
       {
-        relation: ["delegate_permission/common.handle_all_urls"],
+        relation: [
+          "delegate_permission/common.handle_all_urls",
+          "delegate_permission/common.get_login_creds",
+        ],
         target: {
           namespace: "android_app",
           package_name: "com.tenant_a.reader",

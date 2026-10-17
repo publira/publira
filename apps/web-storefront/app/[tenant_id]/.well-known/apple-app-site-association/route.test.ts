@@ -79,6 +79,9 @@ describe("GET /.well-known/apple-app-site-association", () => {
     expect(document.applinks.details[0].components).not.toContainEqual({
       "/": "/ko/series/*",
     });
+    expect(document.webcredentials).toStrictEqual({
+      apps: ["AAAAA11111.com.tenant-a.reader"],
+    });
   });
 
   it("answers 503 while the tenant's languages cannot be read", async () => {

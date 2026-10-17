@@ -73,10 +73,17 @@ export const getTenantMobileAppAssociation = async (
   }
 };
 
-/** The Digital Asset Links statement that lets the app verify its App Links. */
+/**
+ * The Digital Asset Links statement that lets the app verify its App Links
+ * and share the site's passkeys: Credential Manager offers a passkey bound to
+ * the site in the app only where the site grants it `get_login_creds`.
+ */
 export const toAssetLinks = (android: AndroidAppAssociation) => [
   {
-    relation: ["delegate_permission/common.handle_all_urls"],
+    relation: [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds",
+    ],
     target: {
       namespace: "android_app",
       package_name: android.applicationId,
@@ -110,20 +117,28 @@ const appLinkComponents = (supportedLocales: readonly Locale[]) =>
     APP_LINK_PATHS.map((path) => ({ "/": `${prefix}${path}` }))
   );
 
-/** The apple-app-site-association document that lets the app open Universal Links. */
+/**
+ * The apple-app-site-association document that lets the app open Universal
+ * Links and share the site's passkeys: iOS offers a passkey bound to the site
+ * in the app only where the site lists it under `webcredentials`.
+ */
 export const toAppleAppSiteAssociation = (
   ios: IosAppAssociation,
   supportedLocales: readonly Locale[]
-) => ({
-  applinks: {
-    details: [
-      {
-        appIDs: [`${ios.teamId}.${ios.bundleIdentifier}`],
-        components: appLinkComponents(supportedLocales),
-      },
-    ],
-  },
-});
+) => {
+  const appID = `${ios.teamId}.${ios.bundleIdentifier}`;
+  return {
+    applinks: {
+      details: [
+        {
+          appIDs: [appID],
+          components: appLinkComponents(supportedLocales),
+        },
+      ],
+    },
+    webcredentials: { apps: [appID] },
+  };
+};
 
 /** Short, like `/theme.css`; a save in the console revalidates the read behind it. */
 const CACHE_CONTROL =
