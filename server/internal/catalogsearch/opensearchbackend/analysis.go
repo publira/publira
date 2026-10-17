@@ -60,6 +60,14 @@ const MaxAnalysisBytes = 64 << 10
 //go:embed analysis.json
 var defaultAnalysis []byte
 
+// DefaultAnalysisVersion names the definition [DefaultAnalysis] answers. The
+// serving configuration records the version its indices were built with, and
+// one built with another has a build due, so a release that changes the
+// default rebuilds the indices built from it without anyone saving anything.
+// Move it on with every change to analysis.json; a test holds the two
+// together.
+const DefaultAnalysisVersion = 2
+
 // DefaultAnalysis is the definition an index is built with when the platform
 // has saved none, as JSON.
 func DefaultAnalysis() []byte {

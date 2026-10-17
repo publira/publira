@@ -2,6 +2,7 @@ package platformsearch
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -113,6 +114,57 @@ func TestFromConfigTellsWhereTheSavedConfigurationStands(t *testing.T) {
 	}
 	if !got.HasPassword || got.Serving.Engine != EngineSQL {
 		t.Fatalf("FromConfig(failed) = %+v, want the password saved and the search on sql", got)
+	}
+}
+
+// Indices built from the default are current only when they were built from
+// the one this server ships, so a release that changes the default rebuilds
+// them with nothing saved, and so does an install whose indices predate the
+// recorded version. Indices built from definitions of their own are left as
+// they are.
+func TestIndicesBuiltFromAnotherDefaultHaveABuildDue(t *testing.T) {
+	served := func(version int32, own map[string]string) dbmodels.PlatformSearchConfig {
+		row := searchRow(3, 3)
+		row.ServingEngine = row.Engine
+		row.ServingUrl, row.ServingIndexAlias = row.Url, row.IndexAlias
+		row.ServingLocales = IndexLocales
+		if version != 0 {
+			row.ServingDefaultAnalysisVersion = sql.NullInt32{Int32: version, Valid: true}
+		}
+		if own != nil {
+			encoded, err := json.Marshal(own)
+			if err != nil {
+				t.Fatal(err)
+			}
+			row.LocaleAnalyses = sql.NullString{String: string(encoded), Valid: true}
+			row.ServingLocaleAnalyses = row.LocaleAnalyses
+		}
+		return row
+	}
+	everyLocale := map[string]string{}
+	for _, locale := range IndexLocales {
+		everyLocale[locale] = `{"analyzer":{}}`
+	}
+	for _, test := range []struct {
+		name string
+		row  dbmodels.PlatformSearchConfig
+		want BuildState
+	}{
+		{name: "the default this server ships", row: served(opensearchbackend.DefaultAnalysisVersion, nil), want: Serving},
+		{name: "an earlier default", row: served(opensearchbackend.DefaultAnalysisVersion-1, nil), want: Building},
+		{name: "no recorded version", row: served(0, nil), want: Building},
+		{name: "no recorded version for one language's own", row: served(0, map[string]string{"ja": `{"analyzer":{}}`}), want: Building},
+		{name: "no recorded version and no language on the default", row: served(0, everyLocale), want: Serving},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			stored := FromConfig(test.row)
+			if stored.State != test.want {
+				t.Fatalf("State = %v, want %v", stored.State, test.want)
+			}
+			if test.want == Building && !slices.Equal(rebuildLocales(stored, false), IndexLocales) {
+				t.Fatalf("rebuildLocales = %v, want every language", rebuildLocales(stored, false))
+			}
+		})
 	}
 }
 

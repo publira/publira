@@ -3035,9 +3035,10 @@ type Querier interface {
 	// recent activity without the reader having moved.
 	SaveEpisodeReadingPosition(ctx context.Context, arg SaveEpisodeReadingPositionParams) (SaveEpisodeReadingPositionRow, error)
 	// Moves the search onto the saved configuration once the indices it names
-	// have been built, one for each of locales, provided it is still the one
-	// built: no rows when a save has moved the revision on since the build read
-	// it, whose own build comes next.
+	// have been built, one for each of locales, with the version of the default
+	// analysis the build had, provided it is still the one built: no rows when a
+	// save has moved the revision on since the build read it, whose own build
+	// comes next.
 	ServePlatformSearchConfig(ctx context.Context, arg ServePlatformSearchConfigParams) (PlatformSearchConfig, error)
 	// Points a banner at the upload it shows.
 	SetCampaignBannerImage(ctx context.Context, arg SetCampaignBannerImageParams) error

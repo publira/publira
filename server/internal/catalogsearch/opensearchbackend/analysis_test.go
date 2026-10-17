@@ -1,6 +1,8 @@
 package opensearchbackend
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"strings"
@@ -55,6 +57,27 @@ func TestTheDefaultAnalysisDefinesEveryRole(t *testing.T) {
 
 	if _, err := ParseAnalysis(DefaultAnalysis()); err != nil {
 		t.Fatalf("ParseAnalysis(default): %v", err)
+	}
+}
+
+// A change to the default that leaves DefaultAnalysisVersion where it was
+// would leave the indices built from the earlier default serving as if they
+// were built from this one. Each version is recorded with the definition it
+// names, as ParseAnalysis spells it; a changed default needs the next version
+// and its own line here.
+func TestTheDefaultAnalysisVersionNamesTheDefault(t *testing.T) {
+	t.Parallel()
+
+	versions := map[int]string{
+		2: "e615e2c7add941205c7896aef43923818634bca0fb30be0ce8f57ff4147bfb40",
+	}
+	canonical, err := ParseAnalysis(DefaultAnalysis())
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256([]byte(canonical))
+	if got, want := hex.EncodeToString(sum[:]), versions[DefaultAnalysisVersion]; got != want {
+		t.Fatalf("the default analysis hashes to %s, but version %d names %q: move DefaultAnalysisVersion on and record the new hash", got, DefaultAnalysisVersion, want)
 	}
 }
 

@@ -326,7 +326,7 @@ func TestOnlyTheBuildMovesTheServingSearchEngine(t *testing.T) {
 
 	contentStats := pg.OpenContentStatsDB(t)
 	if _, err := contentStats.ExecContext(ctx,
-		`UPDATE platform_search_config SET serving_revision = revision, serving_engine = engine, serving_url = url, serving_index_alias = index_alias, serving_analysis = analysis, serving_locale_analyses = locale_analyses, serving_locales = ARRAY['ja'], serving_since = now()`,
+		`UPDATE platform_search_config SET serving_revision = revision, serving_engine = engine, serving_url = url, serving_index_alias = index_alias, serving_analysis = analysis, serving_locale_analyses = locale_analyses, serving_locales = ARRAY['ja'], serving_default_analysis_version = 2, serving_since = now()`,
 	); err != nil {
 		t.Fatalf("move the serving configuration as the maintenance role: %v", err)
 	}

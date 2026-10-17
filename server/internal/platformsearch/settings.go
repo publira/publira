@@ -251,6 +251,10 @@ type ServingSettings struct {
 	// the SQL engine and for the one index of an install that predates
 	// per-language indices.
 	Locales []string
+	// DefaultAnalysisVersion is the version of the default analysis its
+	// indices were built with, zero on the SQL engine and for indices built
+	// before the version was recorded.
+	DefaultAnalysisVersion int32
 }
 
 // IndexLocales are the languages a build makes a catalog index for: every
@@ -261,9 +265,18 @@ type ServingSettings struct {
 var IndexLocales = locale.Supported
 
 // indicesCurrent reports whether the configuration keeps no index, or keeps
-// one for each of IndexLocales and no other.
+// one for each of IndexLocales and no other, each built from the definition it
+// names: an index built from the default was built from the one this server
+// ships, which [opensearchbackend.DefaultAnalysisVersion] names.
 func (s ServingSettings) indicesCurrent() bool {
-	return !s.Engine.HasIndex() || slices.Equal(s.Locales, IndexLocales)
+	if !s.Engine.HasIndex() {
+		return true
+	}
+	usesDefault := slices.ContainsFunc(IndexLocales, func(locale string) bool {
+		return analysisFor(s.Analysis, s.LocaleAnalyses, locale) == ""
+	})
+	return slices.Equal(s.Locales, IndexLocales) &&
+		(!usesDefault || s.DefaultAnalysisVersion == opensearchbackend.DefaultAnalysisVersion)
 }
 
 // BuildFailure is the last build of the saved revision that failed.
@@ -310,11 +323,12 @@ func FromConfig(row dbmodels.PlatformSearchConfig) Stored {
 				Index:    row.ServingIndexAlias.String,
 				Username: row.ServingUsername.String,
 			},
-			Analysis:       row.ServingAnalysis.String,
-			LocaleAnalyses: decodeLocaleAnalyses(row.ServingLocaleAnalyses.String),
-			Revision:       row.ServingRevision,
-			Since:          row.ServingSince.Time,
-			Locales:        row.ServingLocales,
+			Analysis:               row.ServingAnalysis.String,
+			LocaleAnalyses:         decodeLocaleAnalyses(row.ServingLocaleAnalyses.String),
+			Revision:               row.ServingRevision,
+			Since:                  row.ServingSince.Time,
+			Locales:                row.ServingLocales,
+			DefaultAnalysisVersion: row.ServingDefaultAnalysisVersion.Int32,
 		},
 		State: Serving,
 	}

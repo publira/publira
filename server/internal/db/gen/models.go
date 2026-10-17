@@ -704,30 +704,31 @@ type PlatformRetentionConfig struct {
 }
 
 type PlatformSearchConfig struct {
-	Singleton                bool           `json:"singleton"`
-	Engine                   string         `json:"engine"`
-	Url                      sql.NullString `json:"url"`
-	IndexAlias               sql.NullString `json:"index_alias"`
-	Username                 sql.NullString `json:"username"`
-	PasswordEncrypted        sql.NullString `json:"password_encrypted"`
-	Revision                 int64          `json:"revision"`
-	ServingRevision          int64          `json:"serving_revision"`
-	ServingEngine            string         `json:"serving_engine"`
-	ServingUrl               sql.NullString `json:"serving_url"`
-	ServingIndexAlias        sql.NullString `json:"serving_index_alias"`
-	ServingUsername          sql.NullString `json:"serving_username"`
-	ServingPasswordEncrypted sql.NullString `json:"serving_password_encrypted"`
-	ServingSince             sql.NullTime   `json:"serving_since"`
-	BuildFailedRevision      sql.NullInt64  `json:"build_failed_revision"`
-	BuildError               sql.NullString `json:"build_error"`
-	BuildFailedAt            sql.NullTime   `json:"build_failed_at"`
-	CreatedAt                time.Time      `json:"created_at"`
-	UpdatedAt                time.Time      `json:"updated_at"`
-	Analysis                 sql.NullString `json:"analysis"`
-	ServingAnalysis          sql.NullString `json:"serving_analysis"`
-	ServingLocales           []string       `json:"serving_locales"`
-	LocaleAnalyses           sql.NullString `json:"locale_analyses"`
-	ServingLocaleAnalyses    sql.NullString `json:"serving_locale_analyses"`
+	Singleton                     bool           `json:"singleton"`
+	Engine                        string         `json:"engine"`
+	Url                           sql.NullString `json:"url"`
+	IndexAlias                    sql.NullString `json:"index_alias"`
+	Username                      sql.NullString `json:"username"`
+	PasswordEncrypted             sql.NullString `json:"password_encrypted"`
+	Revision                      int64          `json:"revision"`
+	ServingRevision               int64          `json:"serving_revision"`
+	ServingEngine                 string         `json:"serving_engine"`
+	ServingUrl                    sql.NullString `json:"serving_url"`
+	ServingIndexAlias             sql.NullString `json:"serving_index_alias"`
+	ServingUsername               sql.NullString `json:"serving_username"`
+	ServingPasswordEncrypted      sql.NullString `json:"serving_password_encrypted"`
+	ServingSince                  sql.NullTime   `json:"serving_since"`
+	BuildFailedRevision           sql.NullInt64  `json:"build_failed_revision"`
+	BuildError                    sql.NullString `json:"build_error"`
+	BuildFailedAt                 sql.NullTime   `json:"build_failed_at"`
+	CreatedAt                     time.Time      `json:"created_at"`
+	UpdatedAt                     time.Time      `json:"updated_at"`
+	Analysis                      sql.NullString `json:"analysis"`
+	ServingAnalysis               sql.NullString `json:"serving_analysis"`
+	ServingLocales                []string       `json:"serving_locales"`
+	LocaleAnalyses                sql.NullString `json:"locale_analyses"`
+	ServingLocaleAnalyses         sql.NullString `json:"serving_locale_analyses"`
+	ServingDefaultAnalysisVersion sql.NullInt32  `json:"serving_default_analysis_version"`
 }
 
 type PlatformSmtpConfig struct {

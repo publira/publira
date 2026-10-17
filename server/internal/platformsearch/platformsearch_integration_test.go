@@ -460,7 +460,7 @@ func TestSaveKeepsReplacesAndClearsThePassword(t *testing.T) {
 	}
 
 	// Make the saved engine the one the search answers from, as a build would.
-	if _, err := dbmodels.New(e.pg.OpenContentStatsDB(t)).ServePlatformSearchConfig(ctx, dbmodels.ServePlatformSearchConfigParams{Revision: saved.Revision, Locales: platformsearch.IndexLocales}); err != nil {
+	if _, err := dbmodels.New(e.pg.OpenContentStatsDB(t)).ServePlatformSearchConfig(ctx, dbmodels.ServePlatformSearchConfigParams{Revision: saved.Revision, Locales: platformsearch.IndexLocales, DefaultAnalysisVersion: opensearchbackend.DefaultAnalysisVersion}); err != nil {
 		t.Fatalf("serve: %v", err)
 	}
 	rotated, err := save(platformsearch.SaveParams{Settings: withUser, SecretMode: secretupdate.Replace, Password: "second-password"})

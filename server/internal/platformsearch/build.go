@@ -106,7 +106,11 @@ func Build(ctx context.Context, p BuildParams) (BuildResult, error) {
 		return BuildResult{}, err
 	}
 	result := BuildResult{Built: true, Indices: indices, Alias: row.IndexAlias.String}
-	_, err = q.ServePlatformSearchConfig(ctx, dbmodels.ServePlatformSearchConfigParams{Revision: row.Revision, Locales: IndexLocales})
+	_, err = q.ServePlatformSearchConfig(ctx, dbmodels.ServePlatformSearchConfigParams{
+		Revision:               row.Revision,
+		Locales:                IndexLocales,
+		DefaultAnalysisVersion: opensearchbackend.DefaultAnalysisVersion,
+	})
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		// A save moved the revision on while this ran. Its own build comes
@@ -146,7 +150,8 @@ func resync(ctx context.Context, db *sql.DB, backend *opensearchbackend.Backend)
 
 // rebuildLocales are the languages a build of stored makes new indices for:
 // every one of IndexLocales when it is forced, when it moves to another
-// target, or when the serving indices were built for other languages, and
+// target, or when the serving indices were built for other languages or from
+// another default analysis than this server ships, and
 // otherwise those whose analysis the save changed. A build due with none of
 // them changed, as a release that moves the revision on for a mapping it
 // changed leaves one, rebuilds every one too.
