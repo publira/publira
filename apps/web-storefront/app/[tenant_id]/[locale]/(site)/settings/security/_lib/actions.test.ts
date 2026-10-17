@@ -284,7 +284,7 @@ describe("unlinkIdentityAction", () => {
 
     expect(lastFlash()).toEqual({
       message:
-        "Your account has no password, so the last linked account stays linked.",
+        "Your account has no password or passkey, so the last linked account stays linked.",
       status: "error",
     });
   });
@@ -424,5 +424,65 @@ describe("confirmEmailChangeWithProviderAction", () => {
 
     expect(mockSendToProvider).not.toHaveBeenCalled();
     expect(lastFlash().status).toBe("error");
+  });
+});
+
+describe("requestEmailChangeWithPasskeyAction", () => {
+  const passkeyCredential = '{"id":"credential","type":"public-key"}';
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRequirePublicSession.mockResolvedValue(accessToken);
+  });
+
+  it("asks for the change with the assertion and reports it on the page", async () => {
+    mockRequestPublicEmailChange.mockResolvedValueOnce({ ok: true });
+    const { requestEmailChangeWithPasskeyAction } = await importActions();
+
+    await expect(
+      requestEmailChangeWithPasskeyAction(
+        emailChangeForm({ passkeyCredential })
+      )
+    ).rejects.toThrow(/NEXT_REDIRECT/u);
+
+    expect(mockAssertSameOrigin).toHaveBeenCalled();
+    expect(mockRequestPublicEmailChange).toHaveBeenCalledWith(
+      tenantId,
+      "reader@example.com",
+      "moved@example.com",
+      { passkeyCredential },
+      accessToken
+    );
+    expect(lastFlash()).toEqual({
+      message:
+        "We sent a confirmation email to both your current and your new address. Open both links to finish the change.",
+      status: "success",
+    });
+  });
+
+  it("keeps a refused change on the form, with the addresses still typed", async () => {
+    mockRequestPublicEmailChange.mockResolvedValueOnce({ ok: false });
+    const { requestEmailChangeWithPasskeyAction } = await importActions();
+
+    await expect(
+      requestEmailChangeWithPasskeyAction(
+        emailChangeForm({ passkeyCredential })
+      )
+    ).resolves.toEqual({
+      message:
+        "Could not request the email change. Please check what you entered.",
+      ok: false,
+    });
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+
+  it("refuses a submission without an assertion before it reaches the session", async () => {
+    const { requestEmailChangeWithPasskeyAction } = await importActions();
+
+    const state = await requestEmailChangeWithPasskeyAction(emailChangeForm());
+
+    expect(state?.ok).toBe(false);
+    expect(mockRequirePublicSession).not.toHaveBeenCalled();
+    expect(mockRequestPublicEmailChange).not.toHaveBeenCalled();
   });
 });

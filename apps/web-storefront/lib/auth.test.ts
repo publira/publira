@@ -8,6 +8,12 @@ import { IdentityProvider } from "@publira/api-client/public/auth";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockBeginPasskeyConfirmation,
+  mockBeginPasskeyRegistration,
+  mockDeletePasskey,
+  mockFinishPasskeyRegistration,
+  mockListMyPasskeys,
+  mockRenamePasskey,
   mockBeginPasskeyLogin,
   mockCacheLife,
   mockCacheTag,
@@ -30,21 +36,27 @@ const {
   mockUploadMyIcon,
   mockVerifyUserEmail,
 } = vi.hoisted(() => ({
+  mockBeginPasskeyConfirmation: vi.fn(),
   mockBeginPasskeyLogin: vi.fn(),
+  mockBeginPasskeyRegistration: vi.fn(),
   mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockConfirmEmailChange: vi.fn(),
   mockCreateUser: vi.fn(),
   mockDeleteMe: vi.fn(),
   mockDeleteMyIcon: vi.fn(),
+  mockDeletePasskey: vi.fn(),
   mockFinishPasskeyLogin: vi.fn(),
+  mockFinishPasskeyRegistration: vi.fn(),
   mockGetMe: vi.fn(),
   mockGetNotificationSettings: vi.fn(),
   mockLinkIdentity: vi.fn(),
   mockListMyIdentities: vi.fn(),
+  mockListMyPasskeys: vi.fn(),
   mockLogin: vi.fn(),
   mockLoginWithIdToken: vi.fn(),
   mockLogout: vi.fn(),
+  mockRenamePasskey: vi.fn(),
   mockRequestEmailChange: vi.fn(),
   mockResolveAccessToken: vi.fn(),
   mockSelectMyIcon: vi.fn(),
@@ -63,19 +75,25 @@ vi.mock("next/cache", () => ({
 vi.mock("./api-client", () => ({
   apiClient: {
     auth: {
+      beginPasskeyConfirmation: mockBeginPasskeyConfirmation,
       beginPasskeyLogin: mockBeginPasskeyLogin,
+      beginPasskeyRegistration: mockBeginPasskeyRegistration,
       confirmEmailChange: mockConfirmEmailChange,
       createUser: mockCreateUser,
       deleteMe: mockDeleteMe,
       deleteMyIcon: mockDeleteMyIcon,
+      deletePasskey: mockDeletePasskey,
       finishPasskeyLogin: mockFinishPasskeyLogin,
+      finishPasskeyRegistration: mockFinishPasskeyRegistration,
       getMe: mockGetMe,
       getNotificationSettings: mockGetNotificationSettings,
       linkIdentity: mockLinkIdentity,
       listMyIdentities: mockListMyIdentities,
+      listMyPasskeys: mockListMyPasskeys,
       login: mockLogin,
       loginWithIdToken: mockLoginWithIdToken,
       logout: mockLogout,
+      renamePasskey: mockRenamePasskey,
       requestEmailChange: mockRequestEmailChange,
       selectMyIcon: mockSelectMyIcon,
       updateMe: mockUpdateMe,
@@ -327,9 +345,10 @@ describe("web-storefront auth", () => {
     ).rejects.toMatchObject({ code: Code.Internal });
   });
 
-  it("listMyIdentities: maps the linked providers and whether a password is set", async () => {
+  it("listMyIdentities: maps the linked providers and whether a password and a passkey are set", async () => {
     const { listMyIdentities } = await importAuth();
     mockListMyIdentities.mockResolvedValueOnce({
+      hasPasskey: true,
       hasPassword: false,
       identities: [
         {
@@ -346,6 +365,7 @@ describe("web-storefront auth", () => {
     });
 
     await expect(listMyIdentities("TENANT001")).resolves.toEqual({
+      hasPasskey: true,
       hasPassword: false,
       identities: [
         {
@@ -460,6 +480,175 @@ describe("web-storefront auth", () => {
     );
   });
 
+  it("deleteMe: confirms an account without a password with a passkey", async () => {
+    const { deleteMe } = await importAuth();
+    mockDeleteMe.mockResolvedValueOnce({});
+
+    await expect(
+      deleteMe("TENANT001", { passkeyCredential: '{"id":"credential"}' })
+    ).resolves.toBe("deleted");
+    expect(mockDeleteMe).toHaveBeenCalledWith(
+      {
+        passkeyCredentialJson: '{"id":"credential"}',
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer sid_001" } }
+    );
+  });
+
+  it("listMyPasskeys: maps the passkeys the API lists", async () => {
+    const { listMyPasskeys } = await importAuth();
+    mockListMyPasskeys.mockResolvedValueOnce({
+      passkeys: [
+        {
+          backedUp: true,
+          createdAt: "2026-10-01T00:00:00Z",
+          id: "PSKY0001",
+          lastUsedAt: "",
+          name: "Laptop",
+        },
+      ],
+    });
+
+    await expect(listMyPasskeys("TENANT001")).resolves.toEqual([
+      {
+        createdAt: "2026-10-01T00:00:00Z",
+        id: "PSKY0001",
+        lastUsedAt: "",
+        name: "Laptop",
+      },
+    ]);
+    expect(mockListMyPasskeys).toHaveBeenCalledWith(
+      { tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer sid_001" } }
+    );
+  });
+
+  it("listMyPasskeys: null without a session", async () => {
+    const { listMyPasskeys } = await importAuth();
+    mockResolveAccessToken.mockResolvedValueOnce("");
+
+    await expect(listMyPasskeys("TENANT001")).resolves.toBeNull();
+    expect(mockListMyPasskeys).not.toHaveBeenCalled();
+  });
+
+  it("beginMyPasskeyRegistration: answers the creation options", async () => {
+    const { beginMyPasskeyRegistration } = await importAuth();
+    mockBeginPasskeyRegistration.mockResolvedValueOnce({
+      creationOptionsJson: '{"challenge":"abc"}',
+    });
+
+    await expect(beginMyPasskeyRegistration("TENANT001")).resolves.toEqual({
+      ok: true,
+      optionsJson: '{"challenge":"abc"}',
+    });
+  });
+
+  it("beginMyPasskeyRegistration: hands a refusal back for the caller to word", async () => {
+    const { beginMyPasskeyRegistration } = await importAuth();
+    const error = new ConnectError("limit", Code.FailedPrecondition);
+    mockBeginPasskeyRegistration.mockRejectedValueOnce(error);
+
+    await expect(beginMyPasskeyRegistration("TENANT001")).resolves.toEqual({
+      error,
+      ok: false,
+    });
+  });
+
+  it("beginMyPasskeyRegistration: rethrows a rejected session for reauthentication", async () => {
+    const { beginMyPasskeyRegistration } = await importAuth();
+    mockBeginPasskeyRegistration.mockRejectedValueOnce(
+      new ConnectError("session ended", Code.Unauthenticated)
+    );
+
+    await expect(beginMyPasskeyRegistration("TENANT001")).rejects.toThrow(
+      "session ended"
+    );
+  });
+
+  it("finishMyPasskeyRegistration: stores the passkey unnamed", async () => {
+    const { finishMyPasskeyRegistration } = await importAuth();
+    mockFinishPasskeyRegistration.mockResolvedValueOnce({
+      passkey: {
+        createdAt: "2026-10-01T00:00:00Z",
+        id: "PSKY0001",
+        lastUsedAt: "",
+        name: "",
+      },
+    });
+
+    await expect(
+      finishMyPasskeyRegistration("TENANT001", '{"id":"credential"}')
+    ).resolves.toEqual({
+      ok: true,
+      passkey: {
+        createdAt: "2026-10-01T00:00:00Z",
+        id: "PSKY0001",
+        lastUsedAt: "",
+        name: "",
+      },
+    });
+    expect(mockFinishPasskeyRegistration).toHaveBeenCalledWith(
+      {
+        credentialJson: '{"id":"credential"}',
+        name: "",
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer sid_001" } }
+    );
+  });
+
+  it("finishMyPasskeyRegistration: lets a failure it cannot explain through", async () => {
+    const { finishMyPasskeyRegistration } = await importAuth();
+    mockFinishPasskeyRegistration.mockRejectedValueOnce(
+      new ConnectError("boom", Code.Internal)
+    );
+
+    await expect(
+      finishMyPasskeyRegistration("TENANT001", '{"id":"credential"}')
+    ).rejects.toMatchObject({ code: Code.Internal });
+  });
+
+  it("renameMyPasskey: names the passkey", async () => {
+    const { renameMyPasskey } = await importAuth();
+    mockRenamePasskey.mockResolvedValueOnce({ passkey: {} });
+
+    await expect(
+      renameMyPasskey("TENANT001", "PSKY0001", "Laptop")
+    ).resolves.toEqual({ ok: true });
+    expect(mockRenamePasskey).toHaveBeenCalledWith(
+      { id: "PSKY0001", name: "Laptop", tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer sid_001" } }
+    );
+  });
+
+  it("deleteMyPasskey: hands the last way in back for the caller to word", async () => {
+    const { deleteMyPasskey } = await importAuth();
+    const error = new ConnectError("last", Code.FailedPrecondition);
+    mockDeletePasskey.mockRejectedValueOnce(error);
+
+    await expect(deleteMyPasskey("TENANT001", "PSKY0001")).resolves.toEqual({
+      error,
+      ok: false,
+    });
+    expect(mockDeletePasskey).toHaveBeenCalledWith(
+      { id: "PSKY0001", tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer sid_001" } }
+    );
+  });
+
+  it("beginMyPasskeyConfirmation: answers the request options", async () => {
+    const { beginMyPasskeyConfirmation } = await importAuth();
+    mockBeginPasskeyConfirmation.mockResolvedValueOnce({
+      requestOptionsJson: '{"challenge":"abc"}',
+    });
+
+    await expect(beginMyPasskeyConfirmation("TENANT001")).resolves.toEqual({
+      ok: true,
+      optionsJson: '{"challenge":"abc"}',
+    });
+  });
+
   it("logoutPublic: accessToken If empty, do not call API", async () => {
     const { logoutPublic } = await importAuth();
     await logoutPublic("   ", "TENANT001");
@@ -569,6 +758,29 @@ describe("web-storefront auth", () => {
         tenantId: "TENANT001",
       })
     ).resolves.toEqual({ emailRefusal: undefined, ok: false });
+  });
+
+  it("requestPublicEmailChange: confirms an account without a password with a passkey", async () => {
+    const { requestPublicEmailChange } = await importAuth();
+    mockRequestEmailChange.mockResolvedValueOnce({ requested: true });
+
+    await expect(
+      requestPublicEmailChange(
+        "TENANT001",
+        "reader@example.com",
+        "moved@example.com",
+        { passkeyCredential: '{"id":"credential"}' }
+      )
+    ).resolves.toEqual({ ok: true });
+    expect(mockRequestEmailChange).toHaveBeenCalledWith(
+      {
+        currentEmail: "reader@example.com",
+        newEmail: "moved@example.com",
+        passkeyCredentialJson: '{"id":"credential"}',
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer sid_001" } }
+    );
   });
 
   it("requestPublicEmailChange: reports a new address the tenant refuses", async () => {

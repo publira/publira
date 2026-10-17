@@ -11,7 +11,7 @@ import {
 } from "@publira/api-client/errors";
 import type { RpcErrorDisposition } from "@publira/api-client/errors";
 import { IdentityProvider } from "@publira/api-client/public/auth";
-import type { LinkedIdentity } from "@publira/api-client/public/auth";
+import type { LinkedIdentity, Passkey } from "@publira/api-client/public/auth";
 import type { User } from "@publira/api-client/public/types";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheLife } from "next/cache";
@@ -332,8 +332,14 @@ export interface MyIdentity {
 
 export interface MyIdentities {
   /**
+   * True when the reader holds a passkey for the site. It confirms a deletion
+   * or an email change in place of a password, and it signs the reader in, so
+   * an account without a password may unlink its last provider.
+   */
+  hasPasskey: boolean;
+  /**
    * False for an account a provider sign-in created: it confirms a deletion
-   * with a fresh sign-in, and keeps its last linked provider.
+   * with a fresh sign-in, and keeps its last way to sign in.
    */
   hasPassword: boolean;
   identities: MyIdentity[];
@@ -362,6 +368,7 @@ export const listMyIdentities = async (
       buildSessionHeaders(sid)
     );
     return {
+      hasPasskey: response.hasPasskey,
       hasPassword: response.hasPassword,
       identities: toMyIdentities(response.identities),
     };
@@ -457,6 +464,182 @@ export const linkMyIdentity = async (
       }
     }
     return { error, kind: "refused" };
+  }
+};
+
+/** The generated `Passkey` fields {@link toMyPasskey} reads. */
+type RawPasskey = Pick<Passkey, "createdAt" | "id" | "lastUsedAt" | "name">;
+
+/** A passkey the reader signs in to the site with. */
+export interface MyPasskey {
+  /** RFC 3339. */
+  createdAt: string;
+  id: string;
+  /** RFC 3339, and empty until it first signs the reader in or confirms a step. */
+  lastUsedAt: string;
+  /** Empty until the reader names it. */
+  name: string;
+}
+
+const toMyPasskey = (passkey: RawPasskey): MyPasskey => ({
+  createdAt: passkey.createdAt,
+  id: passkey.id,
+  lastUsedAt: passkey.lastUsedAt,
+  name: passkey.name,
+});
+
+/**
+ * A change to the reader's passkeys the API refused, with the error for the
+ * form to word. A session the API rejects is not one: it is rethrown for the
+ * caller's reauthentication to handle, as is anything unclassified.
+ */
+export type PasskeyChangeOutcome<Result extends object = object> =
+  | ({ ok: true } & Result)
+  | { error: unknown; ok: false };
+
+const passkeyChangeRefusal = (
+  error: unknown
+): { error: unknown; ok: false } => {
+  if (isUnauthenticatedRpcError(error)) {
+    throw error;
+  }
+  rethrowUnclassifiedRpcError(error);
+  return { error, ok: false };
+};
+
+/** The signed-in reader's passkeys for the site, oldest first. */
+export const listMyPasskeys = async (
+  tenantId: string,
+  accessToken?: string
+): Promise<MyPasskey[] | null> => {
+  const sid = await resolveAccessToken(accessToken);
+  if (!sid) {
+    return null;
+  }
+
+  try {
+    const response = await apiClient.auth.listMyPasskeys(
+      { tenant: { tenantId } },
+      buildSessionHeaders(sid)
+    );
+    return response.passkeys.map(toMyPasskey);
+  } catch (error) {
+    if (isUnauthenticatedRpcError(error)) {
+      throw error;
+    }
+    if (isExpectedNullableRpcError(error)) {
+      return null;
+    }
+    throw error;
+  }
+};
+
+/**
+ * Begin registering a passkey for the signed-in reader. The options exclude
+ * the passkeys the reader holds already, and the API refuses an account that
+ * holds as many as it may.
+ */
+export const beginMyPasskeyRegistration = async (
+  tenantId: string,
+  accessToken?: string
+): Promise<PasskeyChangeOutcome<{ optionsJson: string }>> => {
+  const sid = await resolveAccessToken(accessToken);
+  try {
+    const response = await apiClient.auth.beginPasskeyRegistration(
+      { tenant: { tenantId } },
+      buildSessionHeaders(sid)
+    );
+    return { ok: true, optionsJson: response.creationOptionsJson };
+  } catch (error) {
+    return passkeyChangeRefusal(error);
+  }
+};
+
+/**
+ * Store the passkey the browser created over a ceremony
+ * {@link beginMyPasskeyRegistration} began. It is stored unnamed: the reader
+ * is asked for a name once it exists, so a prompt they close leaves nothing
+ * half-named behind.
+ */
+export const finishMyPasskeyRegistration = async (
+  tenantId: string,
+  credentialJson: string,
+  accessToken?: string
+): Promise<PasskeyChangeOutcome<{ passkey: MyPasskey }>> => {
+  const sid = await resolveAccessToken(accessToken);
+  try {
+    const response = await apiClient.auth.finishPasskeyRegistration(
+      { credentialJson, name: "", tenant: { tenantId } },
+      buildSessionHeaders(sid)
+    );
+    if (!response.passkey) {
+      throw new Error("FinishPasskeyRegistration answered no passkey.");
+    }
+    return { ok: true, passkey: toMyPasskey(response.passkey) };
+  } catch (error) {
+    return passkeyChangeRefusal(error);
+  }
+};
+
+/** Name one of the reader's passkeys; an empty name leaves it unnamed. */
+export const renameMyPasskey = async (
+  tenantId: string,
+  id: string,
+  name: string,
+  accessToken?: string
+): Promise<PasskeyChangeOutcome> => {
+  const sid = await resolveAccessToken(accessToken);
+  try {
+    await apiClient.auth.renamePasskey(
+      { id, name, tenant: { tenantId } },
+      buildSessionHeaders(sid)
+    );
+    return { ok: true };
+  } catch (error) {
+    return passkeyChangeRefusal(error);
+  }
+};
+
+/**
+ * Remove one of the reader's passkeys. The API refuses to take the last way
+ * in from an account without a password, which comes back as the error for
+ * the form to word.
+ */
+export const deleteMyPasskey = async (
+  tenantId: string,
+  id: string,
+  accessToken?: string
+): Promise<PasskeyChangeOutcome> => {
+  const sid = await resolveAccessToken(accessToken);
+  try {
+    await apiClient.auth.deletePasskey(
+      { id, tenant: { tenantId } },
+      buildSessionHeaders(sid)
+    );
+    return { ok: true };
+  } catch (error) {
+    return passkeyChangeRefusal(error);
+  }
+};
+
+/**
+ * Begin the assertion that confirms a deletion or an email change in place of
+ * a password, allowing the reader's own passkeys alone. The API refuses a
+ * reader who holds none.
+ */
+export const beginMyPasskeyConfirmation = async (
+  tenantId: string,
+  accessToken?: string
+): Promise<PasskeyChangeOutcome<{ optionsJson: string }>> => {
+  const sid = await resolveAccessToken(accessToken);
+  try {
+    const response = await apiClient.auth.beginPasskeyConfirmation(
+      { tenant: { tenantId } },
+      buildSessionHeaders(sid)
+    );
+    return { ok: true, optionsJson: response.requestOptionsJson };
+  } catch (error) {
+    return passkeyChangeRefusal(error);
   }
 };
 
@@ -816,20 +999,28 @@ export const getPublicCurrentUser = async (
 /**
  * How the signed-in reader confirms a change to their own account: with its
  * password or, for an account without one, with a fresh sign-in to a linked
- * provider.
+ * provider or an assertion made with one of its passkeys over a challenge
+ * {@link beginMyPasskeyConfirmation} issued.
  */
 export type AccountConfirmation =
   | { password: string }
-  | { idToken: string; nonce: string; provider: SignInProvider };
+  | { idToken: string; nonce: string; provider: SignInProvider }
+  | { passkeyCredential: string };
 
-/** The confirmation fields `RequestEmailChange` and `DeleteMe` both take. */
-const identityConfirmationFields = (
+/**
+ * The confirmation fields other than the password that `RequestEmailChange`
+ * and `DeleteMe` both take.
+ */
+const freshConfirmationFields = (
   confirmation: Exclude<AccountConfirmation, { password: string }>
-) => ({
-  idToken: confirmation.idToken,
-  nonce: confirmation.nonce,
-  provider: IDENTITY_PROVIDERS[confirmation.provider],
-});
+) =>
+  "passkeyCredential" in confirmation
+    ? { passkeyCredentialJson: confirmation.passkeyCredential }
+    : {
+        idToken: confirmation.idToken,
+        nonce: confirmation.nonce,
+        provider: IDENTITY_PROVIDERS[confirmation.provider],
+      };
 
 export const requestPublicEmailChange = async (
   tenantId: string,
@@ -851,7 +1042,7 @@ export const requestPublicEmailChange = async (
         tenant: { tenantId },
         ...("password" in confirmation
           ? { currentPassword: confirmation.password }
-          : identityConfirmationFields(confirmation)),
+          : freshConfirmationFields(confirmation)),
       },
       buildSessionHeaders(sid)
     );
@@ -1200,7 +1391,7 @@ export const deleteMe = async (
         tenant: { tenantId },
         ...("password" in confirmation
           ? { password: confirmation.password }
-          : identityConfirmationFields(confirmation)),
+          : freshConfirmationFields(confirmation)),
       },
       buildSessionHeaders(sid)
     );

@@ -1,5 +1,11 @@
 import type { Locale } from "@publira/i18n";
 import {
+  ActionFormIdle,
+  ActionFormPending,
+  ActionFormSubmit,
+} from "@publira/ui-components/action-form";
+import { FormMessage } from "@publira/ui-components/form-message";
+import {
   PasswordInput,
   PasswordInputControl,
   PasswordInputToggle,
@@ -11,7 +17,7 @@ import { cache, Suspense } from "react";
 import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
-import { listMyIdentities } from "#lib/auth";
+import { listMyIdentities, listMyPasskeys } from "#lib/auth";
 import { withPublicSessionReauth } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
@@ -23,12 +29,29 @@ import { getTenantDisplayTimeZone, getTenantSignInClients } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 import {
+  PasskeyConfirmation,
+  PasskeyConfirmationMessage,
+  PasskeyConfirmationSubmit,
+} from "../_components/passkey-confirmation";
+import { beginPasskeyConfirmationAction } from "../_lib/passkey-confirmation-actions";
+import {
+  PasskeyAddForm,
+  PasskeyAdded,
+  PasskeyAddition,
+  PasskeyNameForm,
+  PasskeyNamed,
+  SkipPasskeyNaming,
+} from "./_components/passkey-addition";
+import {
   changePasswordAction,
   confirmEmailChangeWithProviderAction,
   linkIdentityAction,
   requestEmailChangeAction,
+  requestEmailChangeWithPasskeyAction,
   unlinkIdentityAction,
 } from "./_lib/actions";
+import { deletePasskeyAction } from "./_lib/passkey-actions";
+import { SECURITY_SETTINGS_RETURN_TO } from "./_lib/security-path";
 
 const fieldClassName =
   "w-full rounded-md border border-border bg-background px-3 py-2 text-sm";
@@ -44,6 +67,7 @@ const submitClassName =
  */
 const EMAIL_CHANGE_HEADING_ID = "email-change-heading";
 const LINKED_ACCOUNTS_HEADING_ID = "linked-accounts-heading";
+const PASSKEYS_HEADING_ID = "passkeys-heading";
 const PASSWORD_CHANGE_HEADING_ID = "password-change-heading";
 
 /**
@@ -53,7 +77,7 @@ const PASSWORD_CHANGE_HEADING_ID = "password-change-heading";
 const readMyIdentities = cache((tenantId: string, locale: Locale) =>
   withPublicSessionReauth(
     locale,
-    "/settings/security",
+    SECURITY_SETTINGS_RETURN_TO,
     () => listMyIdentities(tenantId),
     tenantId
   )
@@ -155,11 +179,11 @@ const PasswordEmailChangeForm = ({ tenantId }: { tenantId: string }) => (
 );
 
 /**
- * An account without a password confirms with a fresh sign-in instead, to a
- * linked provider the site can send the reader to. With none of those, the
- * reader is pointed at setting a password first.
+ * An account without a password confirms with one of its passkeys or a fresh
+ * sign-in instead, to a linked provider the site can send the reader to. With
+ * none of those, the reader is pointed at setting a password first.
  */
-const ProviderEmailChangeForm = async ({
+const PasswordlessEmailChangeForm = async ({
   locale,
   tenantId,
 }: {
@@ -173,7 +197,8 @@ const ProviderEmailChangeForm = async ({
   const linked = new Set(mine?.identities.map((identity) => identity.provider));
   const canConfirmWithApple = linked.has("apple") && Boolean(clients.apple);
   const canConfirmWithGoogle = linked.has("google") && Boolean(clients.google);
-  if (!(canConfirmWithApple || canConfirmWithGoogle)) {
+  const canConfirmWithPasskey = mine?.hasPasskey ?? false;
+  if (!(canConfirmWithApple || canConfirmWithGoogle || canConfirmWithPasskey)) {
     return (
       <p className="text-sm text-muted-foreground">
         <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
@@ -188,40 +213,63 @@ const ProviderEmailChangeForm = async ({
       <LocaleField />
       <input name="tenantId" type="hidden" value={tenantId} />
 
+      <input
+        name="returnTo"
+        type="hidden"
+        value={SECURITY_SETTINGS_RETURN_TO}
+      />
+
       <EmailAddressFields />
 
       <p className="text-xs text-muted-foreground">
         <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
-          <Message message="storefront.settings.email_change_confirm_with_provider" />
+          {canConfirmWithPasskey ? (
+            <Message message="storefront.settings.email_change_confirm_with_passkey" />
+          ) : (
+            <Message message="storefront.settings.email_change_confirm_with_provider" />
+          )}
         </Suspense>
       </p>
 
-      <div className="flex flex-wrap justify-end gap-2">
-        {canConfirmWithApple ? (
-          <button
-            className={submitClassName}
-            name="provider"
-            type="submit"
-            value="apple"
-          >
-            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-              <Message message="storefront.settings.email_change_with_apple" />
-            </Suspense>
-          </button>
-        ) : null}
-        {canConfirmWithGoogle ? (
-          <button
-            className={submitClassName}
-            name="provider"
-            type="submit"
-            value="google"
-          >
-            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-              <Message message="storefront.settings.email_change_with_google" />
-            </Suspense>
-          </button>
-        ) : null}
-      </div>
+      <PasskeyConfirmation
+        begin={beginPasskeyConfirmationAction}
+        confirm={requestEmailChangeWithPasskeyAction}
+      >
+        <div className="flex flex-wrap justify-end gap-2">
+          {canConfirmWithPasskey ? (
+            <PasskeyConfirmationSubmit className={submitClassName}>
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message message="storefront.settings.email_change_with_passkey" />
+              </Suspense>
+            </PasskeyConfirmationSubmit>
+          ) : null}
+          {canConfirmWithApple ? (
+            <button
+              className={submitClassName}
+              name="provider"
+              type="submit"
+              value="apple"
+            >
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message message="storefront.settings.email_change_with_apple" />
+              </Suspense>
+            </button>
+          ) : null}
+          {canConfirmWithGoogle ? (
+            <button
+              className={submitClassName}
+              name="provider"
+              type="submit"
+              value="google"
+            >
+              <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+                <Message message="storefront.settings.email_change_with_google" />
+              </Suspense>
+            </button>
+          ) : null}
+        </div>
+        <PasskeyConfirmationMessage />
+      </PasskeyConfirmation>
     </form>
   );
 };
@@ -243,7 +291,7 @@ const EmailChangeSection = async () => {
       {hasPassword ? (
         <PasswordEmailChangeForm tenantId={tenantId} />
       ) : (
-        <ProviderEmailChangeForm locale={locale} tenantId={tenantId} />
+        <PasswordlessEmailChangeForm locale={locale} tenantId={tenantId} />
       )}
     </section>
   );
@@ -409,8 +457,8 @@ const linkedAccountButtonClassName =
 /**
  * The Apple and Google accounts the reader signs in with, and a way to link
  * each provider the tenant offers that the account has none of yet. Shown once
- * there is either to list. The last one of an account without a password
- * cannot be unlinked.
+ * there is either to list. The last one of an account with neither a password
+ * nor a passkey cannot be unlinked.
  */
 const LinkedAccountsSection = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
@@ -432,7 +480,8 @@ const LinkedAccountsSection = async () => {
   if (providers.length === 0) {
     return null;
   }
-  const keepsLast = !mine.hasPassword && mine.identities.length === 1;
+  const keepsLast =
+    !(mine.hasPassword || mine.hasPasskey) && mine.identities.length === 1;
 
   return (
     <section
@@ -524,6 +573,187 @@ const LinkedAccountsSection = async () => {
   );
 };
 
+const PasskeyAddStep = ({ tenantId }: { tenantId: string }) => (
+  <PasskeyAddForm>
+    <LocaleField />
+    <input name="tenantId" type="hidden" value={tenantId} />
+    <PasskeyAdded />
+    <div className="flex justify-end">
+      <ActionFormSubmit variant="outline">
+        <ActionFormIdle>
+          <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+            <Message message="storefront.settings.passkey_add" />
+          </Suspense>
+        </ActionFormIdle>
+        <ActionFormPending>
+          <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+            <Message message="storefront.settings.passkey_waiting" />
+          </Suspense>
+        </ActionFormPending>
+      </ActionFormSubmit>
+    </div>
+  </PasskeyAddForm>
+);
+
+/**
+ * Asks for a name for the passkey just added. It replaces the add form, so it
+ * is also where the addition is reported.
+ */
+const PasskeyNameStep = ({ tenantId }: { tenantId: string }) => (
+  <PasskeyNameForm>
+    <LocaleField />
+    <input name="tenantId" type="hidden" value={tenantId} />
+    <PasskeyNamed />
+    <FormMessage variant="success">
+      <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+        <Message message="storefront.settings.passkey_added" />
+      </Suspense>
+    </FormMessage>
+    <div className="space-y-2">
+      <label className="text-sm font-medium" htmlFor="passkeyName">
+        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+          <Message message="storefront.settings.passkey_name_label" />
+        </Suspense>
+      </label>
+      <input
+        autoComplete="off"
+        className={fieldClassName}
+        id="passkeyName"
+        maxLength={64}
+        name="name"
+      />
+      <p className="text-xs text-muted-foreground">
+        <Suspense fallback={<SkeletonLine className="h-3 w-3/4" />}>
+          <Message message="storefront.settings.passkey_name_description" />
+        </Suspense>
+      </p>
+    </div>
+    <div className="flex flex-wrap justify-end gap-2">
+      <SkipPasskeyNaming className={linkedAccountButtonClassName}>
+        <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+          <Message message="storefront.settings.passkey_name_skip" />
+        </Suspense>
+      </SkipPasskeyNaming>
+      <ActionFormSubmit>
+        <ActionFormIdle>
+          <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+            <Message message="storefront.settings.save" />
+          </Suspense>
+        </ActionFormIdle>
+        <ActionFormPending>
+          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
+            <Message message="storefront.settings.passkey_name_submitting" />
+          </Suspense>
+        </ActionFormPending>
+      </ActionFormSubmit>
+    </div>
+  </PasskeyNameForm>
+);
+
+/**
+ * The passkeys the reader signs in to the site with, each with when it was
+ * added and last used, and the form that adds another. Shown whatever
+ * providers the tenant offers, since a passkey needs nothing configured. The
+ * last one of an account with neither a password nor a linked provider cannot
+ * be removed.
+ */
+const PasskeysSection = async () => {
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+  const [mine, passkeys, t, timeZone] = await Promise.all([
+    readMyIdentities(tenantId, locale),
+    withPublicSessionReauth(
+      locale,
+      SECURITY_SETTINGS_RETURN_TO,
+      () => listMyPasskeys(tenantId),
+      tenantId
+    ),
+    getMessagesFor(locale),
+    getTenantDisplayTimeZone(tenantId),
+  ]);
+  if (!passkeys) {
+    return null;
+  }
+  const keepsLast =
+    mine !== null &&
+    !mine.hasPassword &&
+    mine.identities.length === 0 &&
+    passkeys.length === 1;
+  const dates = { fallback: "-", locale, timeZone };
+
+  return (
+    <section
+      aria-labelledby={PASSKEYS_HEADING_ID}
+      className="border border-border bg-card p-6"
+    >
+      <h2 className="mb-2 text-lg font-semibold" id={PASSKEYS_HEADING_ID}>
+        {t("storefront.settings.passkeys_heading")}
+      </h2>
+      <p className="mb-4 text-sm text-muted-foreground">
+        {t("storefront.settings.passkeys_description")}
+      </p>
+      {passkeys.length > 0 ? (
+        <ul className="grid gap-4">
+          {passkeys.map((passkey) => {
+            const name =
+              passkey.name || t("storefront.settings.passkey_unnamed");
+            return (
+              <li
+                className="flex flex-wrap items-center justify-between gap-3"
+                key={passkey.id}
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-medium break-words">{name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t("storefront.settings.passkey_added_at", {
+                      date: formatDate(passkey.createdAt, dates),
+                    })}
+                    {" · "}
+                    {passkey.lastUsedAt
+                      ? t("storefront.settings.passkey_last_used_at", {
+                          date: formatDate(passkey.lastUsedAt, dates),
+                        })
+                      : t("storefront.settings.passkey_never_used")}
+                  </p>
+                </div>
+                <form action={deletePasskeyAction}>
+                  <LocaleField />
+                  <input name="tenantId" type="hidden" value={tenantId} />
+                  <input name="passkeyId" type="hidden" value={passkey.id} />
+                  <button
+                    aria-label={t("storefront.settings.passkey_remove_aria", {
+                      name,
+                    })}
+                    className={linkedAccountButtonClassName}
+                    disabled={keepsLast}
+                    type="submit"
+                  >
+                    {t("storefront.settings.passkey_remove")}
+                  </button>
+                </form>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          {t("storefront.settings.passkeys_empty")}
+        </p>
+      )}
+      {keepsLast ? (
+        <p className="mt-2 text-xs text-muted-foreground">
+          {t("storefront.settings.passkey_last")}
+        </p>
+      ) : null}
+      <div className="mt-4">
+        <PasskeyAddition
+          add={<PasskeyAddStep tenantId={tenantId} />}
+          name={<PasskeyNameStep tenantId={tenantId} />}
+        />
+      </div>
+    </section>
+  );
+};
+
 const SecuritySettingsPage = () => (
   <div className="space-y-6">
     <Suspense fallback={<EmailChangeSectionFallback />}>
@@ -531,6 +761,9 @@ const SecuritySettingsPage = () => (
     </Suspense>
     <Suspense fallback={<PasswordChangeSectionFallback />}>
       <PasswordChangeSection />
+    </Suspense>
+    <Suspense fallback={null}>
+      <PasskeysSection />
     </Suspense>
     <Suspense fallback={null}>
       <LinkedAccountsSection />

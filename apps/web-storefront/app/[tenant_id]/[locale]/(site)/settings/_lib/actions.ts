@@ -1,21 +1,29 @@
 "use server";
 
 import type { Locale } from "@publira/i18n";
+import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { accountCacheTag, updateMe } from "#lib/auth";
-import { birthDateFormSchema, tenantIdFormSchema } from "#lib/auth-input";
+import { accountCacheTag, deleteMe, updateMe } from "#lib/auth";
 import {
+  birthDateFormSchema,
+  passkeyCredentialFormSchema,
+  tenantIdFormSchema,
+  tenantIdSchema,
+} from "#lib/auth-input";
+import {
+  clearPublicSessionCookie,
   requirePublicSession,
   withPublicSessionReauth,
 } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
 import { getMessagesFor } from "#lib/messages";
+import { tenantLocalePath } from "#lib/tenant-locale-path";
 
 import { buildSettingsPath } from "./settings-form";
 
@@ -101,4 +109,66 @@ export const updateProfileAction = async (
     t("storefront.settings.profile_updated")
   );
   redirect(successPath);
+};
+
+const deleteAccountWithPasskeyFormSchema = z.object({
+  locale: localeFormSchema,
+  passkeyCredential: passkeyCredentialFormSchema,
+  tenantId: tenantIdSchema,
+});
+
+/**
+ * Delete the account of a reader without a password, confirmed with an
+ * assertion one of their passkeys made. A refusal stays in the dialog, beside
+ * the button the reader can try again with; a deletion signs them out and
+ * ends on the sign-in page, as one confirmed with a password does.
+ */
+export const deleteAccountWithPasskeyAction = async (
+  formData: FormData
+): Promise<FormActionState> => {
+  await assertSameOrigin();
+  const submittedLocale = requireFormLocale(formData.get("locale"));
+  const t = await getMessagesFor(submittedLocale);
+  const parsed = deleteAccountWithPasskeyFormSchema.safeParse(
+    toFormDataInput(formData, {
+      locale: "value",
+      passkeyCredential: "value",
+      tenantId: "value",
+    })
+  );
+  if (!parsed.success) {
+    return { message: t("storefront.settings.delete_failed"), ok: false };
+  }
+
+  const { locale, passkeyCredential, tenantId } = parsed.data;
+  const accessToken = await requirePublicSession(
+    locale,
+    SETTINGS_RETURN_TO,
+    tenantId
+  );
+  // An assertion that does not verify is `invalid_argument`, not
+  // `unauthenticated`, so it stays a form error instead of ending the session.
+  const outcome = await withPublicSessionReauth(
+    locale,
+    SETTINGS_RETURN_TO,
+    () => deleteMe(tenantId, { passkeyCredential }, accessToken),
+    tenantId
+  );
+  if (outcome === "last_tenant_admin") {
+    return {
+      message: t("storefront.settings.delete_last_tenant_admin"),
+      ok: false,
+    };
+  }
+  if (outcome !== "deleted") {
+    return { message: t("storefront.settings.delete_failed"), ok: false };
+  }
+
+  await clearPublicSessionCookie();
+  const params = new URLSearchParams({
+    message: t("storefront.settings.deleted"),
+    status: "success",
+  });
+  const loginPath = await tenantLocalePath(tenantId, locale, "/login");
+  redirect(`${loginPath}?${params.toString()}`);
 };
