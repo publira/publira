@@ -15,11 +15,12 @@ import { addVirtualAuthenticator } from "../src/webauthn";
  * A reader signing in to the site with a passkey alone, from Chromium's
  * virtual authenticator.
  *
- * The site has no screen to add a passkey from yet, so the reader registers one
- * the way an API client does: signed in with their password through the public
- * API, from the site's own origin, which is the one the passkey is bound to.
- * The page is left without a session cookie, so the sign-in that follows is
- * the passkey's alone.
+ * The reader registers one the way an API client does: signed in with their
+ * password through the public API, from the site's own origin, which is the
+ * one the passkey is bound to. That keeps this suite to the sign-in page, with
+ * adding a passkey from Settings › Security left to
+ * `storefront.passkey-settings.spec.ts`, and it leaves the page without a
+ * session cookie, so the sign-in that follows is the passkey's alone.
  */
 
 const storefrontUrl = (pathname: string): string =>

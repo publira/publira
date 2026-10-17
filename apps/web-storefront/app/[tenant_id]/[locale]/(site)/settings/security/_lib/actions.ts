@@ -2,6 +2,7 @@
 
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import type { Locale } from "@publira/i18n";
+import type { FormActionState } from "@publira/ui-components/action-form";
 import {
   toFormErrorMessage,
   validationErrorMessage,
@@ -17,6 +18,7 @@ import {
 } from "#lib/auth";
 import {
   emailFormSchema,
+  passkeyCredentialFormSchema,
   passwordFormSchema,
   tenantIdFormSchema,
 } from "#lib/auth-input";
@@ -31,24 +33,11 @@ import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
 import { getMessagesFor } from "#lib/messages";
 import { SIGN_IN_PROVIDERS } from "#lib/sign-in-provider";
 import { sendToProvider } from "#lib/social-sign-in-start";
-import { tenantLocalePath } from "#lib/tenant-locale-path";
 
-const SECURITY_SETTINGS_RETURN_TO = "/settings/security";
-
-const buildSettingsPath = async (
-  locale: Locale,
-  tenantId: string,
-  status: "success" | "error",
-  message: string
-): Promise<string> => {
-  const params = new URLSearchParams({ message, status });
-  const path = await tenantLocalePath(
-    tenantId,
-    locale,
-    SECURITY_SETTINGS_RETURN_TO
-  );
-  return `${path}?${params.toString()}`;
-};
+import {
+  buildSecuritySettingsPath,
+  SECURITY_SETTINGS_RETURN_TO,
+} from "./security-path";
 
 const requestEmailChangeFormSchema = async (locale: Locale) => {
   const [currentEmail, currentPassword, newEmail, tenantId] = await Promise.all(
@@ -90,7 +79,7 @@ export const requestEmailChangeAction = async (
     })
   );
   if (!parsed.success) {
-    const errorPath = await buildSettingsPath(
+    const errorPath = await buildSecuritySettingsPath(
       submittedLocale,
       String(formData.get("tenantId") ?? ""),
       "error",
@@ -125,7 +114,7 @@ export const requestEmailChangeAction = async (
     tenantId
   );
   if (!emailChange.ok) {
-    const errorPath = await buildSettingsPath(
+    const errorPath = await buildSecuritySettingsPath(
       locale,
       tenantId,
       "error",
@@ -138,7 +127,7 @@ export const requestEmailChangeAction = async (
     redirect(errorPath);
   }
 
-  const successPath = await buildSettingsPath(
+  const successPath = await buildSecuritySettingsPath(
     locale,
     tenantId,
     "success",
@@ -185,7 +174,7 @@ export const confirmEmailChangeWithProviderAction = async (
     })
   );
   if (!parsed.success) {
-    const errorPath = await buildSettingsPath(
+    const errorPath = await buildSecuritySettingsPath(
       submittedLocale,
       String(formData.get("tenantId") ?? ""),
       "error",
@@ -212,6 +201,99 @@ export const confirmEmailChangeWithProviderAction = async (
     returnTo: SECURITY_SETTINGS_RETURN_TO,
     tenantId,
   });
+};
+
+const requestEmailChangeWithPasskeyFormSchema = async (locale: Locale) => {
+  const [currentEmail, newEmail, tenantId] = await Promise.all([
+    emailFormSchema(locale),
+    emailFormSchema(locale),
+    tenantIdFormSchema(locale),
+  ]);
+
+  return z.object({
+    currentEmail,
+    locale: localeFormSchema,
+    newEmail,
+    passkeyCredential: passkeyCredentialFormSchema,
+    tenantId,
+  });
+};
+
+/**
+ * The email change of an account without a password, confirmed with an
+ * assertion one of its passkeys made. A refusal stays on the form, with the
+ * addresses the reader typed, beside the button they can try again with.
+ */
+export const requestEmailChangeWithPasskeyAction = async (
+  formData: FormData
+): Promise<FormActionState> => {
+  await assertSameOrigin();
+  const submittedLocale = requireFormLocale(formData.get("locale"));
+  const [t, schema] = await Promise.all([
+    getMessagesFor(submittedLocale),
+    requestEmailChangeWithPasskeyFormSchema(submittedLocale),
+  ]);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      currentEmail: "value",
+      locale: "value",
+      newEmail: "value",
+      passkeyCredential: "value",
+      tenantId: "value",
+    })
+  );
+  if (!parsed.success) {
+    return {
+      message: toFormErrorMessage(parsed.error, {
+        fallback: t("storefront.settings.email_change_failed"),
+        locale: submittedLocale,
+      }),
+      ok: false,
+    };
+  }
+
+  const { currentEmail, locale, newEmail, passkeyCredential, tenantId } =
+    parsed.data;
+  const accessToken = await requirePublicSession(
+    locale,
+    SECURITY_SETTINGS_RETURN_TO,
+    tenantId
+  );
+  // An assertion that does not verify is `invalid_argument` on
+  // `passkey_credential_json`, not `unauthenticated`, so it stays a form error
+  // instead of ending the session.
+  const emailChange = await withPublicSessionReauth(
+    locale,
+    SECURITY_SETTINGS_RETURN_TO,
+    () =>
+      requestPublicEmailChange(
+        tenantId,
+        currentEmail,
+        newEmail,
+        { passkeyCredential },
+        accessToken
+      ),
+    tenantId
+  );
+  if (!emailChange.ok) {
+    return {
+      message: emailRefusalMessage(
+        t,
+        emailChange.emailRefusal,
+        t("storefront.settings.email_change_failed")
+      ),
+      ok: false,
+    };
+  }
+
+  redirect(
+    await buildSecuritySettingsPath(
+      locale,
+      tenantId,
+      "success",
+      t("storefront.settings.email_change_requested")
+    )
+  );
 };
 
 const changePasswordFormSchema = async (locale: Locale) => {
@@ -268,7 +350,7 @@ export const changePasswordAction = async (
     })
   );
   if (!parsed.success) {
-    const errorPath = await buildSettingsPath(
+    const errorPath = await buildSecuritySettingsPath(
       submittedLocale,
       String(formData.get("tenantId") ?? ""),
       "error",
@@ -296,7 +378,7 @@ export const changePasswordAction = async (
     tenantId
   );
   if (!changed) {
-    const errorPath = await buildSettingsPath(
+    const errorPath = await buildSecuritySettingsPath(
       locale,
       tenantId,
       "error",
@@ -310,7 +392,7 @@ export const changePasswordAction = async (
   // cookie's place before the redirect.
   await writePublicSessionCookie(changed, tenantId);
 
-  const successPath = await buildSettingsPath(
+  const successPath = await buildSecuritySettingsPath(
     locale,
     tenantId,
     "success",
@@ -350,7 +432,7 @@ export const linkIdentityAction = async (formData: FormData): Promise<void> => {
     })
   );
   if (!parsed.success) {
-    const errorPath = await buildSettingsPath(
+    const errorPath = await buildSecuritySettingsPath(
       submittedLocale,
       String(formData.get("tenantId") ?? ""),
       "error",
@@ -392,7 +474,7 @@ export const unlinkIdentityAction = async (
     })
   );
   if (!parsed.success) {
-    const errorPath = await buildSettingsPath(
+    const errorPath = await buildSecuritySettingsPath(
       submittedLocale,
       String(formData.get("tenantId") ?? ""),
       "error",
@@ -414,7 +496,7 @@ export const unlinkIdentityAction = async (
     tenantId
   );
   if (!result.ok) {
-    const errorPath = await buildSettingsPath(
+    const errorPath = await buildSecuritySettingsPath(
       locale,
       tenantId,
       "error",
@@ -432,7 +514,7 @@ export const unlinkIdentityAction = async (
     redirect(errorPath);
   }
 
-  const successPath = await buildSettingsPath(
+  const successPath = await buildSecuritySettingsPath(
     locale,
     tenantId,
     "success",

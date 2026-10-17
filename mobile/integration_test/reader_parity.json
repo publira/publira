@@ -478,6 +478,31 @@
       "exception": "Not in the app yet: #3868."
     },
     {
+      "name": "Adding, naming, and removing passkeys from Settings › Security",
+      "web": {
+        "routes": ["[locale]/(site)/settings/security"],
+        "rpcs": [
+          "ListMyPasskeys",
+          "BeginPasskeyRegistration",
+          "FinishPasskeyRegistration",
+          "RenamePasskey",
+          "DeletePasskey"
+        ]
+      },
+      "exception": "Not in the app yet: #3868."
+    },
+    {
+      "name": "Confirming an account deletion or an email change with a passkey",
+      "web": {
+        "routes": [
+          "[locale]/(site)/settings",
+          "[locale]/(site)/settings/security"
+        ],
+        "rpcs": ["BeginPasskeyConfirmation"]
+      },
+      "exception": "Not in the app yet: #4466."
+    },
+    {
       "name": "Signing in and up with Apple or Google",
       "web": {
         "routes": [

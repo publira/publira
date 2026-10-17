@@ -13,14 +13,24 @@ import { LocaleField } from "#components/locale-field";
 import { startSocialSignInAction } from "#lib/social-sign-in-actions";
 import { useTenantId } from "#lib/use-tenant-id";
 
+import {
+  PasskeyConfirmation,
+  PasskeyConfirmationMessage,
+  PasskeyConfirmationSubmit,
+} from "./_components/passkey-confirmation";
+import { deleteAccountWithPasskeyAction } from "./_lib/actions";
+import { beginPasskeyConfirmationAction } from "./_lib/passkey-confirmation-actions";
+
 interface DeleteAccountModalProps {
   /** Whether the site can send the reader to Apple to confirm. */
   canConfirmWithApple: boolean;
   canConfirmWithGoogle: boolean;
+  /** Whether the account holds a passkey to confirm with. */
+  canConfirmWithPasskey: boolean;
   deleteAction: (formData: FormData) => Promise<void>;
   /**
    * False for an account a provider sign-in created, which confirms with a
-   * fresh sign-in to a linked provider instead of a password.
+   * passkey or a fresh sign-in to a linked provider instead of a password.
    */
   hasPassword: boolean;
 }
@@ -48,6 +58,7 @@ const ProviderConfirmFields = ({
 export const DeleteAccountModal = ({
   canConfirmWithApple,
   canConfirmWithGoogle,
+  canConfirmWithPasskey,
   deleteAction,
   hasPassword,
 }: DeleteAccountModalProps) => {
@@ -82,7 +93,11 @@ export const DeleteAccountModal = ({
             <p className="mt-2 text-sm text-muted-foreground">
               {hasPassword ? (
                 <ClientMessage message="storefront.settings.delete_confirm_description" />
-              ) : (
+              ) : null}
+              {!hasPassword && canConfirmWithPasskey ? (
+                <ClientMessage message="storefront.settings.delete_confirm_with_passkey" />
+              ) : null}
+              {hasPassword || canConfirmWithPasskey ? null : (
                 <ClientMessage message="storefront.settings.delete_confirm_with_provider" />
               )}
             </p>
@@ -132,6 +147,24 @@ export const DeleteAccountModal = ({
               </form>
             ) : (
               <div className="mt-5 space-y-3">
+                {canConfirmWithPasskey ? (
+                  <form className="space-y-3">
+                    <LocaleField />
+                    <input name="tenantId" type="hidden" value={tenantId} />
+                    <input name="returnTo" type="hidden" value="/settings" />
+                    <PasskeyConfirmation
+                      begin={beginPasskeyConfirmationAction}
+                      confirm={deleteAccountWithPasskeyAction}
+                    >
+                      <PasskeyConfirmationSubmit
+                        className={confirmButtonClassName}
+                      >
+                        <ClientMessage message="storefront.settings.delete_with_passkey" />
+                      </PasskeyConfirmationSubmit>
+                      <PasskeyConfirmationMessage />
+                    </PasskeyConfirmation>
+                  </form>
+                ) : null}
                 {canConfirmWithApple ? (
                   <form action={startSocialSignInAction}>
                     <ProviderConfirmFields
@@ -154,7 +187,9 @@ export const DeleteAccountModal = ({
                     </button>
                   </form>
                 ) : null}
-                {canConfirmWithApple || canConfirmWithGoogle ? null : (
+                {canConfirmWithApple ||
+                canConfirmWithGoogle ||
+                canConfirmWithPasskey ? null : (
                   <p className="text-sm text-muted-foreground">
                     <ClientMessage message="storefront.settings.delete_no_provider" />
                   </p>

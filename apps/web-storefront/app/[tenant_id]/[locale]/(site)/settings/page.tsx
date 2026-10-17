@@ -265,6 +265,7 @@ const DeleteAccountControl = async () => {
     <DeleteAccountModal
       canConfirmWithApple={linked.has("apple") && Boolean(clients.apple)}
       canConfirmWithGoogle={linked.has("google") && Boolean(clients.google)}
+      canConfirmWithPasskey={mine?.hasPasskey ?? false}
       deleteAction={deleteAccountAction}
       hasPassword={mine?.hasPassword ?? true}
     />
