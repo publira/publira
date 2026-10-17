@@ -128,7 +128,14 @@ message AdminAuthServiceDisableMfaResponse {
 
 message AdminAuthServiceRegenerateMfaRecoveryCodesRequest {
   publira.types.v1.TenantContext tenant = 1;
+  // A code from the authenticator. A recovery code is refused: one leaked
+  // code that could mint ten more would never expire.
   string code = 2;
+  // An assertion made with one of the account's passkeys over a challenge
+  // BeginPasskeyConfirmation issued, as its toJSON() serializes it, sent in
+  // place of code. Exactly one of the two is sent. A refused assertion counts
+  // toward the same lock a wrong code does.
+  string passkey_credential_json = 3;
 }
 
 message AdminAuthServiceRegenerateMfaRecoveryCodesResponse {
@@ -210,6 +217,18 @@ message AdminAuthServiceFinishPasskeyVerificationResponse {
   publira.types.v1.User user = 1;
   publira.types.v1.AccessToken access_token = 2;
   int32 remaining_recovery_codes = 3;
+}
+
+message AdminAuthServiceBeginPasskeyConfirmationRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message AdminAuthServiceBeginPasskeyConfirmationResponse {
+  // PublicKeyCredentialRequestOptionsJSON, as
+  // BeginPasskeyVerificationResponse answers it. The assertion made over it
+  // goes in the passkey_credential_json of the request it confirms, and
+  // confirms that one request.
+  string request_options_json = 1;
 }
 
 message AdminAuthServiceListPasskeysRequest {
@@ -403,6 +422,9 @@ service AdminAuthService {
   rpc StartMfaEnrollment(AdminAuthServiceStartMfaEnrollmentRequest) returns (AdminAuthServiceStartMfaEnrollmentResponse) {}
   rpc ConfirmMfaEnrollment(AdminAuthServiceConfirmMfaEnrollmentRequest) returns (AdminAuthServiceConfirmMfaEnrollmentResponse) {}
   rpc DisableMfa(AdminAuthServiceDisableMfaRequest) returns (AdminAuthServiceDisableMfaResponse) {}
+  // Replaces the recovery codes, for an account that proves its
+  // authenticator or one of its passkeys. failed_precondition when the
+  // account does not hold the factor it answers with.
   rpc RegenerateMfaRecoveryCodes(AdminAuthServiceRegenerateMfaRecoveryCodesRequest) returns (AdminAuthServiceRegenerateMfaRecoveryCodesResponse) {}
   // Starts registering a passkey, for a signed-in account or for one that
   // login stopped at an enroll challenge.
@@ -415,6 +437,11 @@ service AdminAuthService {
   // Exchanges a verify challenge and an assertion for the session. A refused
   // assertion counts toward the same lock a wrong code does.
   rpc FinishPasskeyVerification(AdminAuthServiceFinishPasskeyVerificationRequest) returns (AdminAuthServiceFinishPasskeyVerificationResponse) {}
+  // Begins the fresh assertion a signed-in account confirms
+  // RegenerateMfaRecoveryCodes with in place of a code, allowing its own
+  // passkeys for the console's relying party ID alone. failed_precondition for
+  // an account that holds none.
+  rpc BeginPasskeyConfirmation(AdminAuthServiceBeginPasskeyConfirmationRequest) returns (AdminAuthServiceBeginPasskeyConfirmationResponse) {}
   rpc ListPasskeys(AdminAuthServiceListPasskeysRequest) returns (AdminAuthServiceListPasskeysResponse) {}
   rpc RenamePasskey(AdminAuthServiceRenamePasskeyRequest) returns (AdminAuthServiceRenamePasskeyResponse) {}
   // failed_precondition when it is the account's last second factor and the

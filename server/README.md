@@ -660,7 +660,7 @@ The token only states who the administrator is; on a console host the image rout
 
 ## Admin MFA (TOTP and passkeys)
 
-A tenant member signing in to the admin console can hold a second factor: a TOTP authenticator (RFC 6238), any number of passkeys or security keys (WebAuthn), or both, plus ten one-time recovery codes that stand in for whichever it holds. `AdminAuthService` carries the whole flow — `StartMfaEnrollment` / `ConfirmMfaEnrollment` / `VerifyMfa` / `DisableMfa` / `RegenerateMfaRecoveryCodes` / `GetMfaStatus` for the authenticator, and `BeginPasskeyRegistration` / `FinishPasskeyRegistration` / `BeginPasskeyVerification` / `FinishPasskeyVerification` / `ListPasskeys` / `RenamePasskey` / `DeletePasskey` for passkeys. `DisableMfa` takes the authenticator off and leaves passkeys alone.
+A tenant member signing in to the admin console can hold a second factor: a TOTP authenticator (RFC 6238), any number of passkeys or security keys (WebAuthn), or both, plus ten one-time recovery codes that stand in for whichever it holds. `AdminAuthService` carries the whole flow — `StartMfaEnrollment` / `ConfirmMfaEnrollment` / `VerifyMfa` / `DisableMfa` / `RegenerateMfaRecoveryCodes` / `GetMfaStatus` for the authenticator, and `BeginPasskeyRegistration` / `FinishPasskeyRegistration` / `BeginPasskeyVerification` / `FinishPasskeyVerification` / `BeginPasskeyConfirmation` / `ListPasskeys` / `RenamePasskey` / `DeletePasskey` for passkeys. `DisableMfa` takes the authenticator off and leaves passkeys alone.
 
 | Item | Value |
 | --- | --- |
@@ -670,7 +670,7 @@ A tenant member signing in to the admin console can hold a second factor: a TOTP
 | Secret at rest | Encrypted with `secretcrypto` (`PUBLIRA_SECRET_ENCRYPTION_KEYS`). `StartMfaEnrollment` is the only response the plaintext appears in |
 | Recovery codes | Ten per batch, shown once at enrollment, regeneration, or the registration of a passkey on an account with no unused code, stored as bcrypt hashes. Spending one leaves the row with `used_at` set. They go when the account's last factor does |
 | Failure limit | Five refused codes or passkey assertions lock the account for 15 minutes. The counter is per account in `user_mfa_lockouts`, shared by both factors, and covers login, disabling, and regeneration alike |
-| Audit | `admin_mfa_enrolled`, `admin_mfa_verified` (success and failure, with the factor as the reason: `totp`, `recovery_code`, or `passkey`), `admin_mfa_recovery_code_used`, `admin_mfa_disabled`, `admin_mfa_recovery_codes_regenerated`, `admin_mfa_passkey_registered`, `admin_mfa_passkey_renamed`, `admin_mfa_passkey_removed` in `audit_logs` |
+| Audit | `admin_mfa_enrolled`, `admin_mfa_verified` (success and failure, with the factor as the reason: `totp`, `recovery_code`, or `passkey`), `admin_mfa_recovery_code_used`, `admin_mfa_disabled`, `admin_mfa_recovery_codes_regenerated` (with `totp` or `passkey` as the reason), `admin_mfa_passkey_registered`, `admin_mfa_passkey_renamed`, `admin_mfa_passkey_removed` in `audit_logs` |
 
 ### The challenge that stands in for half a session
 
@@ -684,7 +684,7 @@ A challenge buys one session, claimed by its `jti` in `user_mfa_used_challenges`
 
 `mfa_required_for_tenant_admin` in the platform policy (`PlatformPolicyService` or `publiractl policy set`, off when nothing is saved) turns enrollment from something a tenant admin may do into something it must do before it gets a session. Only `tenant_admin` is covered: an editor or an auditor may enroll and is never held back for not having.
 
-Taking the authenticator off needs the authenticator or a recovery code. Removing a passkey needs the session alone, and is refused with `failed_precondition` when it is the account's last factor and the policy requires one of its role. Minting a new batch of recovery codes needs the authenticator.
+Taking the authenticator off needs the authenticator or a recovery code. Removing a passkey needs the session alone, and is refused with `failed_precondition` when it is the account's last factor and the policy requires one of its role. Minting a new batch of recovery codes needs the authenticator or a passkey, and never a recovery code: `RegenerateMfaRecoveryCodes` takes a code from the authenticator, or an assertion over a challenge `BeginPasskeyConfirmation` issued to the signed-in account. The assertion goes through the same ceremony rows, counter check, and failure limit as a login's.
 
 ### Passkeys
 

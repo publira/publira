@@ -88,6 +88,9 @@ const (
 	// AdminAuthServiceFinishPasskeyVerificationProcedure is the procedure name of the
 	// AdminAuthService's FinishPasskeyVerification RPC.
 	AdminAuthServiceFinishPasskeyVerificationProcedure = "/publira.admin.v1.AdminAuthService/FinishPasskeyVerification"
+	// AdminAuthServiceBeginPasskeyConfirmationProcedure is the procedure name of the AdminAuthService's
+	// BeginPasskeyConfirmation RPC.
+	AdminAuthServiceBeginPasskeyConfirmationProcedure = "/publira.admin.v1.AdminAuthService/BeginPasskeyConfirmation"
 	// AdminAuthServiceListPasskeysProcedure is the procedure name of the AdminAuthService's
 	// ListPasskeys RPC.
 	AdminAuthServiceListPasskeysProcedure = "/publira.admin.v1.AdminAuthService/ListPasskeys"
@@ -261,6 +264,13 @@ var (
 			Procedure:  AdminAuthServiceFinishPasskeyVerificationProcedure,
 		}
 	})
+	adminAuthServiceBeginPasskeyConfirmationSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_auth_proto.Services().ByName("AdminAuthService").Methods().ByName("BeginPasskeyConfirmation"),
+			Procedure:  AdminAuthServiceBeginPasskeyConfirmationProcedure,
+		}
+	})
 	adminAuthServiceListPasskeysSpec = sync.OnceValue(func() connect.Spec {
 		return connect.Spec{
 			StreamType: connect.StreamTypeUnary,
@@ -311,6 +321,9 @@ type AdminAuthServiceClient interface {
 	StartMfaEnrollment(context.Context, *v1.AdminAuthServiceStartMfaEnrollmentRequest) (*v1.AdminAuthServiceStartMfaEnrollmentResponse, error)
 	ConfirmMfaEnrollment(context.Context, *v1.AdminAuthServiceConfirmMfaEnrollmentRequest) (*v1.AdminAuthServiceConfirmMfaEnrollmentResponse, error)
 	DisableMfa(context.Context, *v1.AdminAuthServiceDisableMfaRequest) (*v1.AdminAuthServiceDisableMfaResponse, error)
+	// Replaces the recovery codes, for an account that proves its
+	// authenticator or one of its passkeys. failed_precondition when the
+	// account does not hold the factor it answers with.
 	RegenerateMfaRecoveryCodes(context.Context, *v1.AdminAuthServiceRegenerateMfaRecoveryCodesRequest) (*v1.AdminAuthServiceRegenerateMfaRecoveryCodesResponse, error)
 	// Starts registering a passkey, for a signed-in account or for one that
 	// login stopped at an enroll challenge.
@@ -323,6 +336,11 @@ type AdminAuthServiceClient interface {
 	// Exchanges a verify challenge and an assertion for the session. A refused
 	// assertion counts toward the same lock a wrong code does.
 	FinishPasskeyVerification(context.Context, *v1.AdminAuthServiceFinishPasskeyVerificationRequest) (*v1.AdminAuthServiceFinishPasskeyVerificationResponse, error)
+	// Begins the fresh assertion a signed-in account confirms
+	// RegenerateMfaRecoveryCodes with in place of a code, allowing its own
+	// passkeys for the console's relying party ID alone. failed_precondition for
+	// an account that holds none.
+	BeginPasskeyConfirmation(context.Context, *v1.AdminAuthServiceBeginPasskeyConfirmationRequest) (*v1.AdminAuthServiceBeginPasskeyConfirmationResponse, error)
 	ListPasskeys(context.Context, *v1.AdminAuthServiceListPasskeysRequest) (*v1.AdminAuthServiceListPasskeysResponse, error)
 	RenamePasskey(context.Context, *v1.AdminAuthServiceRenamePasskeyRequest) (*v1.AdminAuthServiceRenamePasskeyResponse, error)
 	// failed_precondition when it is the account's last second factor and the
@@ -363,6 +381,9 @@ type AdminAuthServiceHandler interface {
 	StartMfaEnrollment(context.Context, *v1.AdminAuthServiceStartMfaEnrollmentRequest) (*v1.AdminAuthServiceStartMfaEnrollmentResponse, error)
 	ConfirmMfaEnrollment(context.Context, *v1.AdminAuthServiceConfirmMfaEnrollmentRequest) (*v1.AdminAuthServiceConfirmMfaEnrollmentResponse, error)
 	DisableMfa(context.Context, *v1.AdminAuthServiceDisableMfaRequest) (*v1.AdminAuthServiceDisableMfaResponse, error)
+	// Replaces the recovery codes, for an account that proves its
+	// authenticator or one of its passkeys. failed_precondition when the
+	// account does not hold the factor it answers with.
 	RegenerateMfaRecoveryCodes(context.Context, *v1.AdminAuthServiceRegenerateMfaRecoveryCodesRequest) (*v1.AdminAuthServiceRegenerateMfaRecoveryCodesResponse, error)
 	// Starts registering a passkey, for a signed-in account or for one that
 	// login stopped at an enroll challenge.
@@ -375,6 +396,11 @@ type AdminAuthServiceHandler interface {
 	// Exchanges a verify challenge and an assertion for the session. A refused
 	// assertion counts toward the same lock a wrong code does.
 	FinishPasskeyVerification(context.Context, *v1.AdminAuthServiceFinishPasskeyVerificationRequest) (*v1.AdminAuthServiceFinishPasskeyVerificationResponse, error)
+	// Begins the fresh assertion a signed-in account confirms
+	// RegenerateMfaRecoveryCodes with in place of a code, allowing its own
+	// passkeys for the console's relying party ID alone. failed_precondition for
+	// an account that holds none.
+	BeginPasskeyConfirmation(context.Context, *v1.AdminAuthServiceBeginPasskeyConfirmationRequest) (*v1.AdminAuthServiceBeginPasskeyConfirmationResponse, error)
 	ListPasskeys(context.Context, *v1.AdminAuthServiceListPasskeysRequest) (*v1.AdminAuthServiceListPasskeysResponse, error)
 	RenamePasskey(context.Context, *v1.AdminAuthServiceRenamePasskeyRequest) (*v1.AdminAuthServiceRenamePasskeyResponse, error)
 	// failed_precondition when it is the account's last second factor and the
@@ -410,6 +436,7 @@ func RegisterAdminAuthServiceHandler(server *connect.Server, svc AdminAuthServic
 		connect.Method{Spec: adminAuthServiceFinishPasskeyRegistrationSpec(), Handler: adapter.finishPasskeyRegistration},
 		connect.Method{Spec: adminAuthServiceBeginPasskeyVerificationSpec(), Handler: adapter.beginPasskeyVerification},
 		connect.Method{Spec: adminAuthServiceFinishPasskeyVerificationSpec(), Handler: adapter.finishPasskeyVerification},
+		connect.Method{Spec: adminAuthServiceBeginPasskeyConfirmationSpec(), Handler: adapter.beginPasskeyConfirmation},
 		connect.Method{Spec: adminAuthServiceListPasskeysSpec(), Handler: adapter.listPasskeys},
 		connect.Method{Spec: adminAuthServiceRenamePasskeySpec(), Handler: adapter.renamePasskey},
 		connect.Method{Spec: adminAuthServiceDeletePasskeySpec(), Handler: adapter.deletePasskey},
@@ -509,6 +536,10 @@ func (UnimplementedAdminAuthServiceHandler) BeginPasskeyVerification(context.Con
 
 func (UnimplementedAdminAuthServiceHandler) FinishPasskeyVerification(context.Context, *v1.AdminAuthServiceFinishPasskeyVerificationRequest) (*v1.AdminAuthServiceFinishPasskeyVerificationResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminAuthService.FinishPasskeyVerification is not implemented")
+}
+
+func (UnimplementedAdminAuthServiceHandler) BeginPasskeyConfirmation(context.Context, *v1.AdminAuthServiceBeginPasskeyConfirmationRequest) (*v1.AdminAuthServiceBeginPasskeyConfirmationResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminAuthService.BeginPasskeyConfirmation is not implemented")
 }
 
 func (UnimplementedAdminAuthServiceHandler) ListPasskeys(context.Context, *v1.AdminAuthServiceListPasskeysRequest) (*v1.AdminAuthServiceListPasskeysResponse, error) {
@@ -706,6 +737,14 @@ func (c *adminAuthServiceClient) BeginPasskeyVerification(ctx context.Context, r
 func (c *adminAuthServiceClient) FinishPasskeyVerification(ctx context.Context, req *v1.AdminAuthServiceFinishPasskeyVerificationRequest) (*v1.AdminAuthServiceFinishPasskeyVerificationResponse, error) {
 	var res v1.AdminAuthServiceFinishPasskeyVerificationResponse
 	if err := c.client.CallUnary(ctx, adminAuthServiceFinishPasskeyVerificationSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminAuthServiceClient) BeginPasskeyConfirmation(ctx context.Context, req *v1.AdminAuthServiceBeginPasskeyConfirmationRequest) (*v1.AdminAuthServiceBeginPasskeyConfirmationResponse, error) {
+	var res v1.AdminAuthServiceBeginPasskeyConfirmationResponse
+	if err := c.client.CallUnary(ctx, adminAuthServiceBeginPasskeyConfirmationSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1007,6 +1046,18 @@ func (h adminAuthServiceHandler) finishPasskeyVerification(ctx context.Context, 
 		return err
 	}
 	res, err := h.svc.FinishPasskeyVerification(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminAuthServiceHandler) beginPasskeyConfirmation(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.AdminAuthServiceBeginPasskeyConfirmationRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.BeginPasskeyConfirmation(ctx, &req)
 	if err != nil {
 		return err
 	}

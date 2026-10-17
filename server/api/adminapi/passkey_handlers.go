@@ -50,6 +50,10 @@ func passkeyNotFoundError() error {
 	return connect.NewError(connect.CodeNotFound, "passkey not found")
 }
 
+func passkeyNotRegisteredError() error {
+	return connect.NewError(connect.CodeFailedPrecondition, "no passkey is registered")
+}
+
 func passkeyCredentialRequiredError() error {
 	return connect.NewError(connect.CodeInvalidArgument, "credential_json is required")
 }
@@ -402,7 +406,7 @@ func (s *adminServer) BeginPasskeyVerification(
 		return nil, err
 	}
 	if len(user.Credentials) == 0 {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, "no passkey is registered")
+		return nil, passkeyNotRegisteredError()
 	}
 	options, ceremony, err := rp.BeginAuthentication(user)
 	if err != nil {
@@ -412,6 +416,46 @@ func (s *adminServer) BeginPasskeyVerification(
 		return nil, err
 	}
 	return &publiraadminv1.AdminAuthServiceBeginPasskeyVerificationResponse{RequestOptionsJson: string(options)}, nil
+}
+
+// BeginPasskeyConfirmation begins the assertion a signed-in account confirms
+// RegenerateMfaRecoveryCodes with. Its ceremony is of the kind a login's is,
+// so the finish is the same check over the same rows.
+func (s *adminServer) BeginPasskeyConfirmation(
+	ctx context.Context,
+	req *publiraadminv1.AdminAuthServiceBeginPasskeyConfirmationRequest,
+) (*publiraadminv1.AdminAuthServiceBeginPasskeyConfirmationResponse, error) {
+	tenant, sessionUser, role, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
+	if err != nil {
+		return nil, err
+	}
+	actor := mfaActor{Tenant: tenant, User: sessionUser, Role: role}
+	locked, err := s.mfaLocked(ctx, actor.User.ID)
+	if err != nil {
+		return nil, err
+	}
+	if locked {
+		return nil, mfaLockedError()
+	}
+	rp, err := s.adminRelyingParty(ctx, actor.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	user, err := s.passkeyUser(ctx, rp, actor.User)
+	if err != nil {
+		return nil, err
+	}
+	if len(user.Credentials) == 0 {
+		return nil, passkeyNotRegisteredError()
+	}
+	options, ceremony, err := rp.BeginAuthentication(user)
+	if err != nil {
+		return nil, s.internalError(ctx, "failed to begin a passkey confirmation", err, "user_id", actor.User.ID.String())
+	}
+	if err := s.startCeremony(ctx, actor, tenantwebauthn.CeremonyAuthentication, ceremony); err != nil {
+		return nil, err
+	}
+	return &publiraadminv1.AdminAuthServiceBeginPasskeyConfirmationResponse{RequestOptionsJson: string(options)}, nil
 }
 
 func (s *adminServer) FinishPasskeyVerification(
@@ -429,70 +473,11 @@ func (s *adminServer) FinishPasskeyVerification(
 		return nil, err
 	}
 
-	locked, err := s.mfaLocked(ctx, actor.User.ID)
-	if err != nil {
-		return nil, err
-	}
-	if locked {
-		return refuse("locked", mfaLockedError())
-	}
-	if strings.TrimSpace(req.CredentialJson) == "" {
-		return nil, passkeyCredentialRequiredError()
-	}
-	rp, err := s.adminRelyingParty(ctx, actor.Tenant)
-	if err != nil {
-		return nil, err
-	}
-
-	parsed, challenge, err := tenantwebauthn.ParseAssertion([]byte(req.CredentialJson))
-	if err != nil {
-		return refuse("credential_malformed", passkeyRefusedError())
-	}
-	ceremony, found, err := s.spendCeremony(ctx, actor, tenantwebauthn.CeremonyAuthentication, challenge)
-	if err != nil {
-		return nil, err
-	}
-	if !found {
-		return refuse("ceremony_unknown", passkeyRefusedError())
-	}
-	user, err := s.passkeyUser(ctx, rp, actor.User)
-	if err != nil {
-		return nil, err
-	}
-	credential, err := rp.FinishAuthentication(user, ceremony, parsed)
-	if err != nil {
-		switch {
-		case errors.Is(err, tenantwebauthn.ErrSignCountRegressed):
-			return s.refusePasskeyAssertion(ctx, actor, refuse, "sign_count_regressed")
-		case errors.Is(err, tenantwebauthn.ErrCeremonyMismatch):
-			return s.refusePasskeyAssertion(ctx, actor, refuse, "ceremony_expired")
-		default:
-			return s.refusePasskeyAssertion(ctx, actor, refuse, "assertion_invalid")
+	if _, reason, err := s.checkPasskeyAssertion(ctx, actor, req.CredentialJson); err != nil {
+		if reason == "" {
+			return nil, err
 		}
-	}
-
-	var used dbmodels.UserWebauthnCredential
-	for _, row := range user.Credentials {
-		if bytes.Equal(row.CredentialID, credential.ID) {
-			used = row
-			break
-		}
-	}
-	claimed, err := s.queriesFor(ctx).MarkUserWebauthnCredentialUsed(ctx, dbmodels.MarkUserWebauthnCredentialUsedParams{
-		ID:        used.ID,
-		SignCount: int64(credential.Authenticator.SignCount),
-		BackedUp:  credential.Flags.BackupState,
-	})
-	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to mark passkey used", err, "user_id", actor.User.ID.String())
-	}
-	// The counter moved on between the read above and this write, so another
-	// assertion with the same counter was accepted first.
-	if claimed == 0 {
-		return s.refusePasskeyAssertion(ctx, actor, refuse, "sign_count_regressed")
-	}
-	if err := s.resetMfaFailures(ctx, actor.User.ID); err != nil {
-		return nil, err
+		return refuse(reason, err)
 	}
 
 	spent, err := s.spendMfaChallenge(ctx, actor)
@@ -520,29 +505,100 @@ func (s *adminServer) FinishPasskeyVerification(
 	}, nil
 }
 
+// checkPasskeyAssertion decides whether an assertion made over a ceremony the
+// account began proves one of its passkeys for the console, as checkMfaCode
+// decides for a code, and answers the passkey that made it. It spends the
+// ceremony, moves the passkey's counter on, and owns the failure counter and
+// the lock: a refusal here has already been counted, and the error it returns
+// is the one to hand the client. The reason names a refusal for the audit
+// trail, and is empty for an error that refuses nothing.
+func (s *adminServer) checkPasskeyAssertion(ctx context.Context, actor mfaActor, credentialJSON string) (dbmodels.UserWebauthnCredential, string, error) {
+	locked, err := s.mfaLocked(ctx, actor.User.ID)
+	if err != nil {
+		return dbmodels.UserWebauthnCredential{}, "", err
+	}
+	if locked {
+		return dbmodels.UserWebauthnCredential{}, "locked", mfaLockedError()
+	}
+	if strings.TrimSpace(credentialJSON) == "" {
+		return dbmodels.UserWebauthnCredential{}, "", passkeyCredentialRequiredError()
+	}
+	rp, err := s.adminRelyingParty(ctx, actor.Tenant)
+	if err != nil {
+		return dbmodels.UserWebauthnCredential{}, "", err
+	}
+
+	parsed, challenge, err := tenantwebauthn.ParseAssertion([]byte(credentialJSON))
+	if err != nil {
+		return dbmodels.UserWebauthnCredential{}, "credential_malformed", passkeyRefusedError()
+	}
+	ceremony, found, err := s.spendCeremony(ctx, actor, tenantwebauthn.CeremonyAuthentication, challenge)
+	if err != nil {
+		return dbmodels.UserWebauthnCredential{}, "", err
+	}
+	if !found {
+		return dbmodels.UserWebauthnCredential{}, "ceremony_unknown", passkeyRefusedError()
+	}
+	user, err := s.passkeyUser(ctx, rp, actor.User)
+	if err != nil {
+		return dbmodels.UserWebauthnCredential{}, "", err
+	}
+	credential, err := rp.FinishAuthentication(user, ceremony, parsed)
+	if err != nil {
+		switch {
+		case errors.Is(err, tenantwebauthn.ErrSignCountRegressed):
+			return s.refusePasskeyAssertion(ctx, actor, "sign_count_regressed")
+		case errors.Is(err, tenantwebauthn.ErrCeremonyMismatch):
+			return s.refusePasskeyAssertion(ctx, actor, "ceremony_expired")
+		default:
+			return s.refusePasskeyAssertion(ctx, actor, "assertion_invalid")
+		}
+	}
+
+	var used dbmodels.UserWebauthnCredential
+	for _, row := range user.Credentials {
+		if bytes.Equal(row.CredentialID, credential.ID) {
+			used = row
+			break
+		}
+	}
+	claimed, err := s.queriesFor(ctx).MarkUserWebauthnCredentialUsed(ctx, dbmodels.MarkUserWebauthnCredentialUsedParams{
+		ID:        used.ID,
+		SignCount: int64(credential.Authenticator.SignCount),
+		BackedUp:  credential.Flags.BackupState,
+	})
+	if err != nil {
+		return dbmodels.UserWebauthnCredential{}, "", s.internalDBError(ctx, "failed to mark passkey used", err, "user_id", actor.User.ID.String())
+	}
+	// The counter moved on between the read above and this write, so another
+	// assertion with the same counter was accepted first.
+	if claimed == 0 {
+		return s.refusePasskeyAssertion(ctx, actor, "sign_count_regressed")
+	}
+	if err := s.resetMfaFailures(ctx, actor.User.ID); err != nil {
+		return dbmodels.UserWebauthnCredential{}, "", err
+	}
+	return used, "", nil
+}
+
 // refusePasskeyAssertion counts a refused assertion toward the lock a wrong
-// code counts toward, and answers the error the client gets: the lock, when
-// this was the attempt that started it.
+// code counts toward, and answers the reason and the error the client gets:
+// the lock, when this was the attempt that started it.
 //
 // Only an assertion checked against a ceremony the account had open is
 // counted. One that does not parse, or names a challenge with no open
-// ceremony, could never have signed anyone in, so it guesses nothing; it is
+// ceremony, could never have proved anything, so it guesses nothing; it is
 // also what a ceremony spent or dropped in another tab looks like, and
 // counting it would lock out an owner whose every assertion was genuine.
-func (s *adminServer) refusePasskeyAssertion(
-	ctx context.Context,
-	actor mfaActor,
-	refuse func(string, error) (*publiraadminv1.AdminAuthServiceFinishPasskeyVerificationResponse, error),
-	reason string,
-) (*publiraadminv1.AdminAuthServiceFinishPasskeyVerificationResponse, error) {
+func (s *adminServer) refusePasskeyAssertion(ctx context.Context, actor mfaActor, reason string) (dbmodels.UserWebauthnCredential, string, error) {
 	locked, err := s.countMfaFailure(ctx, actor)
 	if err != nil {
-		return nil, err
+		return dbmodels.UserWebauthnCredential{}, "", err
 	}
 	if locked {
-		return refuse("locked", mfaLockedError())
+		return dbmodels.UserWebauthnCredential{}, "locked", mfaLockedError()
 	}
-	return refuse(reason, passkeyRefusedError())
+	return dbmodels.UserWebauthnCredential{}, reason, passkeyRefusedError()
 }
 
 func (s *adminServer) ListPasskeys(
