@@ -1420,6 +1420,7 @@ class HttpCatalogRepository implements CatalogRepository {
       seriesId: seriesId,
       seriesInternalId: series.id.trim(),
       seriesTitle: series.title.trim(),
+      seriesLocale: series.locale.trim(),
       access: EpisodeAccess.fromWire(body.access),
       images: _parseEpisodeImages(body.images, 'images'),
       previewImages: _parseEpisodeImages(body.previewImages, 'previewImages'),

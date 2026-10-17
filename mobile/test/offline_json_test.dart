@@ -264,8 +264,8 @@ void main() {
     expect(OfflineIndex.fromJson(written)!.series!.single.locale, 'ja');
   });
 
-  test('the locale a saved episode and its neighbour were served in survive '
-      'the round trip', () {
+  test('the locale a saved episode, its series, and its neighbour were served '
+      'in survive the round trip', () {
     final written = OfflineIndex(
       episodes: {
         'SeedSERSAAA1/SeedEPSDAAA1': SavedEpisode(
@@ -279,6 +279,7 @@ void main() {
             ),
             seriesId: 'SeedSERSAAA1',
             seriesTitle: 'Seed Series 001',
+            seriesLocale: 'ko',
             access: EpisodeAccess.free,
             images: [],
             nextEpisode: EpisodeNeighbor(
@@ -301,6 +302,7 @@ void main() {
     )!.episodes.values.single.detail;
 
     expect(detail.episode.locale, 'ja');
+    expect(detail.seriesLocale, 'ko');
     expect(detail.nextEpisode!.locale, 'en');
   });
 

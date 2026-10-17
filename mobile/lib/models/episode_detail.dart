@@ -160,6 +160,7 @@ class EpisodeDetail {
     required this.seriesId,
     this.seriesInternalId = '',
     required this.seriesTitle,
+    this.seriesLocale = '',
     required this.access,
     required this.images,
     this.previewImages = const [],
@@ -183,6 +184,15 @@ class EpisodeDetail {
   final String seriesInternalId;
 
   final String seriesTitle;
+
+  /// The locale [seriesTitle] was answered in, which the series falls back to
+  /// apart from the episode. Empty on a copy saved before the locale was kept.
+  final String seriesLocale;
+
+  /// [seriesLocale] as a text widget takes it, the way
+  /// [SeriesItem.textLocale] is.
+  Locale? get seriesTextLocale => supportedLocaleForCode(seriesLocale);
+
   final EpisodeAccess access;
 
   /// Body pages in `displayOrder`. Empty while access is [EpisodeAccess.locked].

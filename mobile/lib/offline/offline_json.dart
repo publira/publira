@@ -468,6 +468,7 @@ Map<String, Object?> _savedEpisodeToJson(SavedEpisode saved) {
       'expiresAt': expiresAt.toUtc().toIso8601String(),
     'seriesId': detail.seriesId,
     'seriesTitle': detail.seriesTitle,
+    'seriesLocale': detail.seriesLocale,
     'access': detail.access.name,
     if (detail.entitlementSource != EpisodeEntitlementSource.unspecified)
       'entitlementSource': detail.entitlementSource.name,
@@ -518,6 +519,7 @@ SavedEpisode? _savedEpisodeFromJson(Object? decoded) {
       episode: episode,
       seriesId: seriesId,
       seriesTitle: _string(decoded['seriesTitle']),
+      seriesLocale: _string(decoded['seriesLocale']),
       access: access,
       entitlementSource: _entitlementSourceFromName(
         _string(decoded['entitlementSource']),

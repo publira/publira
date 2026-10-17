@@ -3539,6 +3539,7 @@ void main() {
           'ja';
       server.episodes[ConnectFixtureServer.seedEpisodeId]!
         ..episode.locale = 'en'
+        ..series.locale = 'ja'
         ..nextEpisode = pb.EpisodeNeighbor(
           publicId: 'EP02',
           title: 'Second',
@@ -3567,6 +3568,7 @@ void main() {
         'ja',
       );
       expect(episode!.episode.locale, 'en');
+      expect(episode.seriesLocale, 'ja');
       expect(episode.nextEpisode!.locale, 'ko');
     });
   });

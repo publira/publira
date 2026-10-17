@@ -25,6 +25,7 @@ import 'package:publira/typography/autospaced_text.dart';
 
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
+import 'support/text_locale.dart';
 
 final _series = fixtureSeries.last;
 final _freeEpisode = fixtureDetail(_series).episodes.first;
@@ -378,6 +379,39 @@ void main() {
       expect(usage(tester), isNot(startsWith('0 B')));
     },
   );
+
+  testWidgets('a saved episode and its series are set in the language they '
+      'were served in', (tester) async {
+    final free = body(_freeEpisode.id);
+    await seed(
+      tester,
+      EpisodeDetail(
+        episode: EpisodeItem(
+          id: free.episode.id,
+          internalId: free.episode.internalId,
+          title: free.episode.title,
+          locale: 'ko',
+          orderIndex: free.episode.orderIndex,
+          price: free.episode.price,
+        ),
+        seriesId: free.seriesId,
+        seriesTitle: free.seriesTitle,
+        seriesLocale: 'ja',
+        access: free.access,
+        images: free.images,
+      ),
+    );
+
+    await pumpApp(tester, initialLocation: AppRoutes.library);
+    await openDownloads(tester);
+    await pumpUntilFound(
+      tester,
+      find.byKey(ValueKey('downloads-episode-${_freeEpisode.id}')),
+    );
+
+    expect(textLocaleOf(tester, free.episode.title), const Locale('ko'));
+    expect(textLocaleOf(tester, free.seriesTitle), const Locale('ja'));
+  });
 
   testWidgets('a paid episode past its offline window says so', (tester) async {
     await seed(

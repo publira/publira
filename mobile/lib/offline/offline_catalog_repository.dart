@@ -727,6 +727,7 @@ class OfflineCatalogRepository implements CatalogRepository {
       episode: detail.episode,
       seriesId: detail.seriesId,
       seriesTitle: detail.seriesTitle,
+      seriesLocale: detail.seriesLocale,
       access: detail.access,
       entitlementSource: detail.entitlementSource,
       previousEpisode: detail.previousEpisode,
