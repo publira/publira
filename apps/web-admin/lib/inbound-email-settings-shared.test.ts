@@ -77,6 +77,15 @@ describe("inboundEmailWebhookUrl", () => {
     ).toBe("https://inbound:<token>@comics.example/api/v1/webhook/email/mime");
   });
 
+  it("puts the token in the URL an SNS topic delivers SES notifications to as the basic auth password", () => {
+    expect(
+      inboundEmailWebhookUrl("https://comics.example", {
+        id: "ses",
+        webhookPath: "/api/v1/webhook/email/ses",
+      })
+    ).toBe("https://inbound:<token>@comics.example/api/v1/webhook/email/ses");
+  });
+
   it("keeps the port of a storefront that has one", () => {
     expect(
       inboundEmailWebhookUrl("http://comics.localhost:3080", {

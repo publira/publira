@@ -2569,7 +2569,7 @@
       },
       "inbound_email": {
         "title": "Inbound email",
-        "description": "Receive readers' replies to your answers to contact messages back in the console, through SendGrid, Resend, Mailgun, or any service that posts the whole mail to an HTTPS URL. A secret is write-only: coming back, you see its state and a mask, never the value.",
+        "description": "Receive readers' replies to your answers to contact messages back in the console, through SendGrid, Resend, Mailgun, Amazon SES, or any service that posts the whole mail to an HTTPS URL. A secret is write-only: coming back, you see its state and a mask, never the value.",
         "section_error": "Could not display the inbound email settings",
         "provider": "Inbound email provider",
         "provider_description": "Readers' replies are received through the provider chosen here, with the credentials entered below.",
@@ -2583,6 +2583,7 @@
         "domain_resend_description": "In Resend, add the domain under Domains and turn on receiving for it, then add the MX record Resend shows to your DNS.",
         "domain_mailgun_description": "In Mailgun, add the domain under Domains, then add the MX records Mailgun shows for receiving to your DNS.",
         "domain_mime_description": "In your DNS, point the domain's MX records at the mail server or service that receives its mail and posts it to the webhook URL below, such as Cloudflare Email Routing or a Postfix server of your own.",
+        "domain_ses_description": "In Amazon SES, verify the domain under Identities in a region that receives email, then point its MX record at inbound-smtp.<region>.amazonaws.com with priority 10.",
         "fields": {
           "sendgrid": {
             "webhook_token": "Webhook token"
@@ -2596,6 +2597,14 @@
           },
           "mime": {
             "webhook_token": "Webhook token"
+          },
+          "ses": {
+            "webhook_token": "Webhook token",
+            "topic_arn": "SNS topic ARN",
+            "access_key_id": "AWS access key ID",
+            "secret_access_key": "AWS secret access key",
+            "region": "S3 bucket region",
+            "bucket": "S3 bucket"
           }
         },
         "field_sources": {
@@ -2611,6 +2620,14 @@
           },
           "mime": {
             "webhook_token": "A long random string you choose yourself. Whatever posts the mail sends it back as the password in the webhook URL below, and a mail that does not carry it is refused."
+          },
+          "ses": {
+            "webhook_token": "A long random string you choose yourself. SNS sends it back with every notification as the password in the webhook URL below, and a notification that does not carry it is refused.",
+            "topic_arn": "The ARN of the SNS topic the receipt rule publishes to, such as arn:aws:sns:us-east-1:123456789012:publira-inbound. A notification from any other topic is refused.",
+            "access_key_id": "Needed only when the receipt rule writes each mail to an S3 bucket: an access key of an IAM user allowed s3:GetObject on that bucket. Replies are read from the bucket with it.",
+            "secret_access_key": "The secret access key IAM shows once when that access key is created.",
+            "region": "The region of the bucket, when it is not the topic's. Left empty, the topic's region is used.",
+            "bucket": "The bucket the receipt rule writes each mail to. Left empty, the bucket each notification names is read."
           }
         },
         "webhook_url": "Webhook URL",
@@ -2619,6 +2636,7 @@
         "webhook_url_resend_description": "In Resend, add this URL under Webhooks for the email.received event, then store the signing secret it shows above.",
         "webhook_url_mailgun_description": "In Mailgun, create a route under Receiving with the expression type Match Recipient for every address on the inbound domain, such as .*@reply.example.com, and Forward set to this URL.",
         "webhook_url_mime_description": "Have every mail on the inbound domain posted whole to this URL with the content type message/rfc822, putting the webhook token stored above in place of <token> and naming the address the mail was delivered to in an X-Envelope-To header.",
+        "webhook_url_ses_description": "In Amazon SNS, create an HTTPS subscription to the topic the receipt rule publishes to, with this URL as its endpoint and the webhook token stored above in place of <token>. Leave raw message delivery off. Save these settings first: the subscription is confirmed when SNS posts its confirmation here.",
         "reply_address": "Reply address",
         "reply_address_description": "Each answer asks the reader to reply to an address of this form, where * is the message's ID. Every address on the inbound domain has to reach the provider.",
         "copy_webhook_url": "Copy the webhook URL",

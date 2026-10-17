@@ -17,6 +17,14 @@ import { answerWebhook, parseWebhookPath } from "#lib/webhook";
  */
 export const MAX_INBOUND_EMAIL_PAYLOAD_BYTES = 32 * 1024 * 1024;
 
+/**
+ * The challenge a request the API server refuses as unauthenticated is
+ * answered with. SNS, which delivers Amazon SES's receipt notifications, sends
+ * the basic auth credentials in the webhook URL only once a response
+ * challenges it for them, and RFC 9110 has every 401 carry a challenge anyway.
+ */
+export const INBOUND_EMAIL_AUTH_CHALLENGE = 'Basic realm="inbound email"';
+
 class PayloadTooLargeError extends Error {
   constructor() {
     super("inbound email webhook body exceeds the payload limit");
@@ -63,7 +71,8 @@ const readBoundedBody = async (
  * Forward an inbound email provider's request to the API server without
  * inspecting it: the exact bytes and every header go through — the content
  * type a form post is read by, SendGrid's basic auth token in
- * `Authorization`, Resend's Svix signature headers — and the API server
+ * `Authorization`, Resend's Svix signature headers, the SNS message SES
+ * publishes — and the API server
  * verifies and reads the mail with the credentials the provider declares.
  *
  * A body past {@link MAX_INBOUND_EMAIL_PAYLOAD_BYTES} is acknowledged and
@@ -96,7 +105,7 @@ export const forwardInboundEmailWebhook = async (
     return new NextResponse(null, { status: 200 });
   }
 
-  return answerWebhook("email", () =>
+  const response = await answerWebhook("email", () =>
     apiClient.contact.processInboundEmailWebhook({
       headers: Object.fromEntries(request.headers),
       payload,
@@ -104,4 +113,8 @@ export const forwardInboundEmailWebhook = async (
       tenant: { tenantId: path.tenantId },
     })
   );
+  if (response.status === 401) {
+    response.headers.set("WWW-Authenticate", INBOUND_EMAIL_AUTH_CHALLENGE);
+  }
+  return response;
 };

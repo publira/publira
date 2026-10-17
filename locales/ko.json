@@ -2569,7 +2569,7 @@
       },
       "inbound_email": {
         "title": "수신 메일",
-        "description": "문의에 보낸 답변에 독자가 회신한 메일을 SendGrid, Resend, Mailgun 또는 메일 전체를 HTTPS URL로 보낼 수 있는 서비스를 통해 콘솔로 받습니다. 시크릿은 쓰기 전용이므로 다시 열면 상태와 마스킹만 보이고 값은 보이지 않습니다.",
+        "description": "문의에 보낸 답변에 독자가 회신한 메일을 SendGrid, Resend, Mailgun, Amazon SES 또는 메일 전체를 HTTPS URL로 보낼 수 있는 서비스를 통해 콘솔로 받습니다. 시크릿은 쓰기 전용이므로 다시 열면 상태와 마스킹만 보이고 값은 보이지 않습니다.",
         "section_error": "수신 메일 설정을 표시할 수 없습니다",
         "provider": "수신 메일 제공자",
         "provider_description": "독자의 회신은 여기에서 선택한 제공자로 받습니다. 인증 정보는 아래 항목에서 등록합니다.",
@@ -2583,6 +2583,7 @@
         "domain_resend_description": "Resend의 Domains에서 이 도메인을 추가하고 수신을 켠 다음, Resend에 표시되는 MX 레코드를 DNS에 추가해 주세요.",
         "domain_mailgun_description": "Mailgun의 Domains에서 이 도메인을 추가한 다음, Mailgun에 표시되는 수신용 MX 레코드를 DNS에 추가해 주세요.",
         "domain_mime_description": "DNS에서 이 도메인의 MX 레코드를 메일을 받아 아래 웹훅 URL로 보내는 메일 서버나 서비스(Cloudflare Email Routing, 직접 운영하는 Postfix 서버 등)에 연결해 주세요.",
+        "domain_ses_description": "Amazon SES에서 메일을 수신할 수 있는 리전의 Identities에서 이 도메인을 인증한 뒤, MX 레코드를 우선순위 10으로 inbound-smtp.<region>.amazonaws.com에 연결해 주세요.",
         "fields": {
           "sendgrid": {
             "webhook_token": "웹훅 토큰"
@@ -2596,6 +2597,14 @@
           },
           "mime": {
             "webhook_token": "웹훅 토큰"
+          },
+          "ses": {
+            "webhook_token": "웹훅 토큰",
+            "topic_arn": "SNS 토픽 ARN",
+            "access_key_id": "AWS 액세스 키 ID",
+            "secret_access_key": "AWS 시크릿 액세스 키",
+            "region": "S3 버킷 리전",
+            "bucket": "S3 버킷"
           }
         },
         "field_sources": {
@@ -2611,6 +2620,14 @@
           },
           "mime": {
             "webhook_token": "직접 정하는 충분히 긴 임의의 문자열입니다. 메일을 보내는 쪽은 아래 웹훅 URL의 비밀번호로 매번 이 값을 돌려보내며, 이 값이 없는 메일은 거부됩니다."
+          },
+          "ses": {
+            "webhook_token": "직접 정하는 충분히 긴 임의의 문자열입니다. SNS는 아래 웹훅 URL의 비밀번호로 알림마다 이 값을 돌려보내며, 이 값이 없는 알림은 거부됩니다.",
+            "topic_arn": "수신 규칙이 알림을 게시하는 SNS 토픽의 ARN입니다(예: arn:aws:sns:us-east-1:123456789012:publira-inbound). 다른 토픽에서 온 알림은 거부됩니다.",
+            "access_key_id": "수신 규칙이 메일을 S3 버킷에 저장할 때만 필요합니다. 해당 버킷에 대해 s3:GetObject가 허용된 IAM 사용자의 액세스 키이며, 회신은 이 키로 버킷에서 읽어 옵니다.",
+            "secret_access_key": "해당 액세스 키를 만들 때 IAM이 한 번만 보여 주는 시크릿 액세스 키입니다.",
+            "region": "버킷의 리전이 토픽과 다를 때 지정합니다. 비워 두면 토픽의 리전을 사용합니다.",
+            "bucket": "수신 규칙이 메일을 저장하는 버킷입니다. 비워 두면 알림마다 지정된 버킷에서 읽어 옵니다."
           }
         },
         "webhook_url": "웹훅 URL",
@@ -2619,6 +2636,7 @@
         "webhook_url_resend_description": "Resend의 Webhooks에서 이 URL을 email.received 이벤트의 전송 대상으로 추가하고, 표시되는 서명 시크릿을 위 항목에 저장해 주세요.",
         "webhook_url_mailgun_description": "Mailgun의 Receiving에서 라우트를 만들고, Expression type을 Match Recipient로 하여 수신 도메인의 모든 주소(예: .*@reply.example.com)를 지정한 다음 Forward에 이 URL을 지정해 주세요.",
         "webhook_url_mime_description": "수신 도메인에 도착한 메일을 Content-Type을 message/rfc822로 하여 전체 그대로 이 URL로 보내도록 설정해 주세요. <token> 부분은 위에 저장한 웹훅 토큰으로 바꾸고, 메일이 배달된 주소는 X-Envelope-To 헤더로 전달합니다.",
+        "webhook_url_ses_description": "Amazon SNS에서 수신 규칙이 알림을 게시하는 토픽에 HTTPS 구독을 만들고 이 URL을 엔드포인트로 지정해 주세요. <token> 부분은 위에 저장한 웹훅 토큰으로 바꿉니다. raw message delivery는 끈 상태로 둡니다. 구독은 SNS가 이곳으로 확인 요청을 보낼 때 승인되므로 이 설정을 먼저 저장해 주세요.",
         "reply_address": "회신 주소",
         "reply_address_description": "답변에서는 독자에게 이 형식의 주소로 회신하도록 요청합니다. * 부분은 문의의 ID입니다. 수신 도메인의 모든 주소가 제공자에게 도착하도록 설정해 주세요.",
         "copy_webhook_url": "웹훅 URL 복사",

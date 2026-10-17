@@ -81,6 +81,20 @@ const mime: InboundEmailProvider = {
   webhookPath: "/api/v1/webhook/email/mime",
 };
 
+const ses: InboundEmailProvider = {
+  displayName: "Amazon SES",
+  fields: [
+    { name: "webhook_token", required: true, secret: true },
+    { name: "topic_arn", required: true, secret: false },
+    { name: "access_key_id", required: false, secret: false },
+    { name: "secret_access_key", required: false, secret: true },
+    { name: "region", required: false, secret: false },
+    { name: "bucket", required: false, secret: false },
+  ],
+  id: "ses",
+  webhookPath: "/api/v1/webhook/email/ses",
+};
+
 // A provider no catalog has copy for, so its fields are named as declared.
 const exampleMail: InboundEmailProvider = {
   displayName: "Example Mail",
@@ -92,7 +106,7 @@ const exampleMail: InboundEmailProvider = {
   webhookPath: "/api/v1/webhook/email/examplemail",
 };
 
-const providers = [mailgun, mime, resend, sendgrid];
+const providers = [mailgun, mime, resend, sendgrid, ses];
 
 const resendFields = (
   apiKeyHint: string,
@@ -341,6 +355,46 @@ describe("TenantInboundEmailSettingsForm", () => {
     expect(
       screen.getByText(
         "Have every mail on the inbound domain posted whole to this URL with the content type message/rfc822, putting the webhook token stored above in place of <token> and naming the address the mail was delivered to in an X-Envelope-To header."
+      )
+    ).toBeDefined();
+  });
+
+  it("names every Amazon SES field and says how the topic is subscribed to the webhook URL", async () => {
+    render(
+      <TenantInboundEmailSettingsForm
+        canEdit
+        initialSettings={emptyTenantInboundEmailSettings}
+        providers={providers}
+        tenantId="TENANT001"
+        webhookOrigin="https://comics.example"
+      />
+    );
+
+    await chooseProvider("Amazon SES");
+
+    expect(await screen.findByLabelText("Webhook token")).toBeDefined();
+    for (const label of [
+      "SNS topic ARN",
+      "AWS access key ID",
+      "AWS secret access key",
+      "S3 bucket region",
+      "S3 bucket",
+    ]) {
+      expect(screen.getByLabelText(label)).toBeDefined();
+    }
+    expect(
+      screen.getByText(
+        "https://inbound:<token>@comics.example/api/v1/webhook/email/ses"
+      )
+    ).toBeDefined();
+    expect(
+      screen.getByText(
+        "In Amazon SES, verify the domain under Identities in a region that receives email, then point its MX record at inbound-smtp.<region>.amazonaws.com with priority 10."
+      )
+    ).toBeDefined();
+    expect(
+      screen.getByText(
+        "In Amazon SNS, create an HTTPS subscription to the topic the receipt rule publishes to, with this URL as its endpoint and the webhook token stored above in place of <token>. Leave raw message delivery off. Save these settings first: the subscription is confirmed when SNS posts its confirmation here."
       )
     ).toBeDefined();
   });

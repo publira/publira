@@ -24,6 +24,8 @@ import (
 	"github.com/publira/publira/server/internal/inboundprovider/mime/mimetest"
 	inboundproviders "github.com/publira/publira/server/internal/inboundprovider/providers"
 	"github.com/publira/publira/server/internal/inboundprovider/providers/providerstest"
+	"github.com/publira/publira/server/internal/inboundprovider/ses"
+	"github.com/publira/publira/server/internal/inboundprovider/ses/sestest"
 	"github.com/publira/publira/server/internal/outbox"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
@@ -514,4 +516,77 @@ func TestDBMIMEInboundEmailIsMatchedByItsEnvelopeRecipient(t *testing.T) {
 		}
 		harness.assertNothingStored(t, seeded)
 	})
+}
+
+// The registered SES fixture reads each mail from S3; a receipt rule whose
+// action is SNS publishes the mail in the notification instead, and the same
+// scenarios hold for it.
+func TestDBSESInboundEmailIsStoredFromTheNotification(t *testing.T) {
+	harness := newInboundHarness(t)
+	fixture := sestest.NewFixture(t, sestest.ActionSNS)
+	harness.server.inboundProviders = inboundprovider.NewRegistry(fixture.Provider())
+	runInboundScenarios(t, harness, fixture, ses.ID)
+}
+
+// Subscribing the tenant's topic to the webhook posts a confirmation, which
+// is confirmed with SNS and stores nothing; one that does not carry the
+// tenant's token, or names another topic, is neither confirmed nor accepted.
+func TestDBSESSubscriptionIsConfirmedForTheTenantsTopicOnly(t *testing.T) {
+	harness := newInboundHarness(t)
+
+	t.Run("the tenant's topic is confirmed", func(t *testing.T) {
+		fixture := sestest.NewFixture(t, sestest.ActionSNS)
+		harness.server.inboundProviders = inboundprovider.NewRegistry(fixture.Provider())
+		seeded := harness.newTenant(t, fixture, true)
+		message, token := fixture.Confirmation(t, sestest.TopicARN)
+		payload, headers := fixture.Post(t, sestest.Token, message)
+		if err := harness.deliver(t, seeded.tenant, ses.ID, payload, headers); err != nil {
+			t.Fatalf("ProcessInboundEmailWebhook: %v", err)
+		}
+		if got := fixture.Confirmed(); len(got) != 1 || got[0] != token {
+			t.Errorf("confirmed %q, want the confirmation's token", got)
+		}
+		harness.assertNothingStored(t, seeded)
+	})
+
+	refused := map[string]struct {
+		token, topic string
+	}{
+		"another token": {token: "another-token", topic: sestest.TopicARN},
+		"no token":      {topic: sestest.TopicARN},
+		"another topic": {token: sestest.Token, topic: "arn:aws:sns:us-east-1:210987654321:another-inbound"},
+	}
+	for name, tc := range refused {
+		t.Run("a confirmation with "+name+" is refused", func(t *testing.T) {
+			fixture := sestest.NewFixture(t, sestest.ActionSNS)
+			harness.server.inboundProviders = inboundprovider.NewRegistry(fixture.Provider())
+			seeded := harness.newTenant(t, fixture, true)
+			message, _ := fixture.Confirmation(t, tc.topic)
+			payload, headers := fixture.Post(t, tc.token, message)
+			err := harness.deliver(t, seeded.tenant, ses.ID, payload, headers)
+			if connect.CodeOf(err) != connect.CodeUnauthenticated {
+				t.Fatalf("ProcessInboundEmailWebhook error = %v, want unauthenticated", err)
+			}
+			if got := fixture.Confirmed(); len(got) != 0 {
+				t.Errorf("confirmed %q, want nothing", got)
+			}
+		})
+	}
+}
+
+// A mail the S3 action wrote that cannot be read is answered as unavailable,
+// which SNS delivers again, and stores nothing.
+func TestDBSESInboundEmailItCannotReadIsRetried(t *testing.T) {
+	harness := newInboundHarness(t)
+	fixture := sestest.NewFixture(t, sestest.ActionS3)
+	harness.server.inboundProviders = inboundprovider.NewRegistry(fixture.Provider())
+	seeded := harness.newTenant(t, fixture, true)
+	to := "contact+" + seeded.messagePublicID + "@" + inboundTestDomain
+	notification := sestest.S3Notification(t, sestest.TopicARN, "missing", sestest.Bucket, sestest.ObjectKeyPrefix+"missing", to)
+	payload, headers := fixture.Post(t, sestest.Token, fixture.Notification(t, sestest.TopicARN, notification))
+	err := harness.deliver(t, seeded.tenant, ses.ID, payload, headers)
+	if connect.CodeOf(err) != connect.CodeUnavailable {
+		t.Fatalf("ProcessInboundEmailWebhook error = %v, want unavailable", err)
+	}
+	harness.assertNothingStored(t, seeded)
 }

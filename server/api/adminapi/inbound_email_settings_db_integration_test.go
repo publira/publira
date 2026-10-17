@@ -2,6 +2,7 @@ package adminapi
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/publira/publira/server/internal/inboundprovider/mime"
 	"github.com/publira/publira/server/internal/inboundprovider/resend"
 	"github.com/publira/publira/server/internal/inboundprovider/sendgrid"
+	"github.com/publira/publira/server/internal/inboundprovider/ses"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	"github.com/publira/publira/server/internal/testutil"
@@ -61,8 +63,8 @@ func TestDBInboundEmailProvidersAreListedWithTheirFields(t *testing.T) {
 		t.Fatalf("ListInboundEmailProviders: %v", err)
 	}
 	providers := resp.Providers
-	if len(providers) != 4 || providers[0].Id != mailgun.ID || providers[1].Id != mime.ID || providers[2].Id != resend.ID || providers[3].Id != sendgrid.ID {
-		t.Fatalf("providers = %v, want mailgun, mime, resend, and sendgrid in id order", providers)
+	if len(providers) != 5 || providers[0].Id != mailgun.ID || providers[1].Id != mime.ID || providers[2].Id != resend.ID || providers[3].Id != sendgrid.ID || providers[4].Id != ses.ID {
+		t.Fatalf("providers = %v, want mailgun, mime, resend, sendgrid, and ses in id order", providers)
 	}
 	if providers[3].WebhookPath != "/api/v1/webhook/email/sendgrid" {
 		t.Errorf("webhook_path = %q", providers[3].WebhookPath)
@@ -81,6 +83,18 @@ func TestDBInboundEmailProvidersAreListedWithTheirFields(t *testing.T) {
 		if len(provider.Fields) != 1 || provider.Fields[0].Name != field || !provider.Fields[0].Secret || !provider.Fields[0].Required {
 			t.Errorf("%s fields = %v, want the one secret, required %s", provider.Id, provider.Fields, field)
 		}
+	}
+	if providers[4].WebhookPath != "/api/v1/webhook/email/ses" {
+		t.Errorf("ses webhook_path = %q", providers[4].WebhookPath)
+	}
+	var required []string
+	for _, field := range providers[4].Fields {
+		if field.Required {
+			required = append(required, field.Name)
+		}
+	}
+	if !slices.Equal(required, []string{ses.FieldWebhookToken, ses.FieldTopicARN}) {
+		t.Errorf("ses required fields = %q, want the webhook token and the topic ARN", required)
 	}
 }
 

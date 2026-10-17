@@ -14,6 +14,8 @@ import (
 	"github.com/publira/publira/server/internal/inboundprovider/resend/resendtest"
 	"github.com/publira/publira/server/internal/inboundprovider/sendgrid"
 	"github.com/publira/publira/server/internal/inboundprovider/sendgrid/sendgridtest"
+	"github.com/publira/publira/server/internal/inboundprovider/ses"
+	"github.com/publira/publira/server/internal/inboundprovider/ses/sestest"
 )
 
 var fixtures = map[string]func(testing.TB) inboundprovidertest.Fixture{
@@ -21,6 +23,9 @@ var fixtures = map[string]func(testing.TB) inboundprovidertest.Fixture{
 	mime.ID:     func(testing.TB) inboundprovidertest.Fixture { return mimetest.Fixture{} },
 	resend.ID:   func(t testing.TB) inboundprovidertest.Fixture { return resendtest.NewFixture(t) },
 	sendgrid.ID: func(testing.TB) inboundprovidertest.Fixture { return sendgridtest.Fixture{} },
+	// The S3 action is the one a reply with an attachment needs, and reads
+	// through both fakes; the SNS action is covered by the provider's tests.
+	ses.ID: func(t testing.TB) inboundprovidertest.Fixture { return sestest.NewFixture(t, sestest.ActionS3) },
 }
 
 // Fixture answers a new contract fixture of the provider registered as id,

@@ -86,11 +86,17 @@ export const inboundReplyAddressPattern = (domain: string): string =>
 export const WEBHOOK_TOKEN_PLACEHOLDER = "<token>";
 
 /**
- * The providers that sign nothing, whose webhook URL carries the token as the
- * password of its basic auth instead: SendGrid sends it back on every request,
- * and so does whatever posts a raw mail to `mime`.
+ * The providers whose webhook URL carries the token as the password of its
+ * basic auth: SendGrid sends it back on every request, and so does whatever
+ * posts a raw mail to `mime`. SNS signs what it delivers for `ses`, but any
+ * AWS account's topic could be subscribed to the URL, so the token is what
+ * ties a delivery to the tenant.
  */
-const BASIC_AUTH_PROVIDERS: ReadonlySet<string> = new Set(["mime", "sendgrid"]);
+const BASIC_AUTH_PROVIDERS: ReadonlySet<string> = new Set([
+  "mime",
+  "sendgrid",
+  "ses",
+]);
 
 /** The URL to register with the provider, on the storefront `origin`. */
 export const inboundEmailWebhookUrl = (

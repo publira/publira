@@ -1,0 +1,12 @@
+{
+  "Type": "Notification",
+  "MessageId": "9d2c4b6a-1e3f-5a7b-8c9d-0e1f2a3b4c5d",
+  "TopicArn": "arn:aws:sns:us-east-1:123456789012:publira-inbound",
+  "Subject": "Amazon SES Email Receipt Notification",
+  "Message": "{\"notificationType\":\"Received\",\"mail\":{\"timestamp\":\"2026-10-16T09:12:44.512Z\",\"source\":\"alex.reader@example.net\",\"messageId\":\"o3d4k5l6m7n8p9q0r1s2t3u4v5w6x7y8z9a0b1c2\",\"destination\":[\"contact+7Hn3QzW9kPfa@reply.example.com\"],\"headersTruncated\":false,\"headers\":[{\"name\":\"Return-Path\",\"value\":\"<alex.reader@example.net>\"},{\"name\":\"From\",\"value\":\"Alex Reader <alex.reader@example.net>\"},{\"name\":\"To\",\"value\":\"Example Comics <contact+7Hn3QzW9kPfa@reply.example.com>\"},{\"name\":\"Subject\",\"value\":\"Re: About my purchase\"}],\"commonHeaders\":{\"returnPath\":\"alex.reader@example.net\",\"from\":[\"Alex Reader <alex.reader@example.net>\"],\"date\":\"Fri, 16 Oct 2026 18:12:31 +0900\",\"to\":[\"Example Comics <contact+7Hn3QzW9kPfa@reply.example.com>\"],\"messageId\":\"<CAJ4k2m1+9xQ@mail.example.net>\",\"subject\":\"Re: About my purchase\"}},\"receipt\":{\"timestamp\":\"2026-10-16T09:12:44.512Z\",\"processingTimeMillis\":\"684\",\"recipients\":[\"contact+7Hn3QzW9kPfa@reply.example.com\"],\"spamVerdict\":{\"status\":\"PASS\"},\"virusVerdict\":{\"status\":\"PASS\"},\"spfVerdict\":{\"status\":\"PASS\"},\"dkimVerdict\":{\"status\":\"PASS\"},\"dmarcVerdict\":{\"status\":\"PASS\"},\"action\":{\"type\":\"S3\",\"topicArn\":\"arn:aws:sns:us-east-1:123456789012:publira-inbound\",\"bucketName\":\"publira-inbound-mail\",\"objectKeyPrefix\":\"inbound/\",\"objectKey\":\"inbound/o3d4k5l6m7n8p9q0r1s2t3u4v5w6x7y8z9a0b1c2\"}}}",
+  "Timestamp": "2026-10-16T09:12:45.203Z",
+  "SignatureVersion": "1",
+  "Signature": "",
+  "SigningCertURL": "",
+  "UnsubscribeURL": "https://sns.us-east-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:us-east-1:123456789012:publira-inbound:8c1e3b4a-5d6f-4a7b-9c8d-0e1f2a3b4c5d"
+}

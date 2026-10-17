@@ -13,8 +13,11 @@ vi.mock("#lib/api-client", () => ({
   },
 }));
 
-const { forwardInboundEmailWebhook, MAX_INBOUND_EMAIL_PAYLOAD_BYTES } =
-  await import("./inbound-email-webhook");
+const {
+  forwardInboundEmailWebhook,
+  INBOUND_EMAIL_AUTH_CHALLENGE,
+  MAX_INBOUND_EMAIL_PAYLOAD_BYTES,
+} = await import("./inbound-email-webhook");
 
 const TENANT_ID = "11111111-1111-4111-8111-111111111111";
 
@@ -84,6 +87,33 @@ const mailgunPost = () => ({
     "x-mailgun-signature":
       "0f3e8a1c5b7d9e2f4a6c8b0d1e3f5a7c9b2d4f6e8a0c1b3d5f7e9a2c4b6d8f0e",
     "x-mailgun-timestamp": "1791195151",
+  },
+});
+
+/**
+ * An SNS delivery of an SES receipt notification to a subscription with basic
+ * auth in its URL: a JSON document posted as text/plain.
+ */
+const sesPost = () => ({
+  body: JSON.stringify({
+    Message: '{"notificationType":"Received"}',
+    MessageId: "5b3e0f1a-8c2d-5e7f-9a1b-3c4d5e6f7a8b",
+    Signature:
+      "EXAMPLEpH+DcEwjAPg8O9mY8dReBSwksfg2S7WKQcikcNKWLQjwu6A4VbeS0QHVCkhRS7fUQvi2egU3N858fiTDN6bkkOxYDVrY0Ad8L10Hs3zH81mtnPk5uvvolIC1CXGu43obcgFxeL3khZl8IKvO61GWB6jI9b5+gLPoBc1Q=",
+    SignatureVersion: "1",
+    SigningCertURL:
+      "https://sns.us-east-1.amazonaws.com/SimpleNotificationService-0000000000000000000000000000000c.pem",
+    Subject: "Amazon SES Email Receipt Notification",
+    Timestamp: "2026-10-16T09:12:45.203Z",
+    TopicArn: "arn:aws:sns:us-east-1:123456789012:publira-inbound",
+    Type: "Notification",
+  }),
+  headers: {
+    authorization: "Basic aW5ib3VuZDpzZXNfdG9rZW4=",
+    "content-type": "text/plain; charset=UTF-8",
+    "x-amz-sns-message-id": "5b3e0f1a-8c2d-5e7f-9a1b-3c4d5e6f7a8b",
+    "x-amz-sns-message-type": "Notification",
+    "x-amz-sns-topic-arn": "arn:aws:sns:us-east-1:123456789012:publira-inbound",
   },
 });
 
@@ -175,6 +205,57 @@ describe("forwardInboundEmailWebhook", () => {
 
     expect(response.status).toBe(400);
     expect(mockProcessInboundEmailWebhook).not.toHaveBeenCalled();
+  });
+
+  it("forwards an SNS delivery of an SES notification with its body and headers intact", async () => {
+    const { body, headers } = sesPost();
+
+    const response = await forwardInboundEmailWebhook(
+      post("ses", { body, headers }),
+      { provider: "ses", tenantId: TENANT_ID }
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockProcessInboundEmailWebhook).toHaveBeenCalledWith({
+      headers,
+      payload: new TextEncoder().encode(body),
+      provider: "ses",
+      tenant: { tenantId: TENANT_ID },
+    });
+  });
+
+  it("challenges a request it refuses as unauthenticated for basic auth", async () => {
+    mockProcessInboundEmailWebhook.mockRejectedValue(
+      new ConnectError("", Code.Unauthenticated)
+    );
+
+    const { body, headers } = sesPost();
+    const unauthorized = new Headers(headers);
+    unauthorized.delete("authorization");
+
+    const response = await forwardInboundEmailWebhook(
+      post("ses", { body, headers: Object.fromEntries(unauthorized) }),
+      { provider: "ses", tenantId: TENANT_ID }
+    );
+
+    expect(response.status).toBe(401);
+    expect(response.headers.get("WWW-Authenticate")).toBe(
+      INBOUND_EMAIL_AUTH_CHALLENGE
+    );
+  });
+
+  it("answers anything else without a challenge", async () => {
+    mockProcessInboundEmailWebhook.mockRejectedValue(
+      new ConnectError("", Code.InvalidArgument)
+    );
+
+    const response = await forwardInboundEmailWebhook(post("ses", sesPost()), {
+      provider: "ses",
+      tenantId: TENANT_ID,
+    });
+
+    expect(response.status).toBe(400);
+    expect(response.headers.has("WWW-Authenticate")).toBe(false);
   });
 
   it.each([
