@@ -2,7 +2,7 @@
 title: Search
 description: Choose the engine the storefront search finds works, authors, and labels with, move from the database to OpenSearch or Elasticsearch, and rebuild the index.
 published: 2026-10-06
-updated: 2026-10-16
+updated: 2026-10-17
 ---
 
 The search on every tenant's site finds series, authors, and labels through one engine, shared by every tenant. An install starts on the database itself and needs nothing more; OpenSearch or Elasticsearch is an option for an install that wants results ranked by relevance. This page compares the engines, moves the search from one to another, and covers the index an engine keeps.
@@ -91,10 +91,13 @@ How the engine splits titles, names, and synopses into words is the text analysi
 
 A definition is the `settings.analysis` object of the index, as JSON of at most 64 KiB, and has to define three names the index refers to: the analyzers `written_form` and `alternate_form` and the normalizer `exact_match`. What each one is for is in the [text analysis reference](https://github.com/publira/publira/blob/main/server/README.md#text-analysis).
 
-- In the Platform Console, **Text analysis** under **Search** takes the definition in **Definition (settings.analysis, JSON)** and saves it with **Save text analysis**. **Reset to default** goes back to the default definition. On PostgreSQL there is no index, and so no text analysis to save.
+- In the Platform Console, the **Shared** tab of **Text analysis** under **Search** takes the definition in **Definition (settings.analysis, JSON)** and saves it with **Save text analysis**. **Reset to default** goes back to the default definition. On PostgreSQL there is no index, and so no text analysis to save.
 - With `publiractl`, `search set --analysis-file korean-analysis.json` saves a definition along with the engine, and `--default-analysis` goes back to the default. Without either, `search set` keeps the definition already saved.
 
-When a tenant's titles are in more than one language, give a language a definition of its own: its index is built from that definition, and every other language's from the shared one. A language's own definition is saved with `publiractl`:
+When a tenant's titles are in more than one language, give a language a definition of its own: its index is built from that definition, and every other language's from the shared one.
+
+- In the Platform Console, **Text analysis** has a tab for the shared definition, **Shared**, which says which languages use it, and a tab for each language. A language without a definition of its own shows the shared one in its tab, to start from. **Save text analysis** in that tab saves the editor as the language's own definition, and **Use the shared definition** discards it, so the language is built from the shared one again.
+- With `publiractl`, `search set` takes a language's own definition:
 
 ```bash
 publiractl search set --engine opensearch --url https://search.example.com --locale-analysis-file en=english-analysis.json
@@ -102,7 +105,7 @@ publiractl search set --engine opensearch --url https://search.example.com --loc
 
 `--locale-analysis-file` takes a language and a file as `LOCALE=FILE`, and `--shared-analysis-for en` builds that language from the shared definition again. Repeat either for each language; a language neither names keeps what it has, and so does every language when `search set` is run without them. The languages are `ja`, `en`, `ko`, `zh-Hans`, and `zh-Hant`. `publiractl search show` lists the languages that have a definition of their own under **Own analysis**.
 
-![Text analysis: which definition is saved, the three names a definition has to define, Definition (settings.analysis, JSON), and Save text analysis.](./search-text-analysis.png)
+![Text analysis: the three names a definition has to define, a tab for the shared definition and one for each language, which definition is saved and which languages use it, Definition (settings.analysis, JSON), and Save text analysis.](./search-text-analysis.png)
 
 Before a definition is saved, the engine is asked to create an empty index with it, and a definition it refuses is not saved, with the engine's reason and, for a language's own definition, the language it was given for. A saved definition is built into new indices for the languages it changes, the same way a new engine is, and the search moves onto them when the build is done; the indices of the other languages are left as they are.
 

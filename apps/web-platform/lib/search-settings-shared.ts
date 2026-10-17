@@ -1,3 +1,5 @@
+import type { Locale } from "@publira/i18n";
+
 /**
  * How the stored password is treated by a save or a test, matching
  * `publira.platform.v1.SecretUpdateMode`.
@@ -70,6 +72,12 @@ export interface PlatformSearchSettings {
   hasPassword: boolean;
   /** Empty on the SQL engine. */
   index: string;
+  /**
+   * The definitions of the languages whose index is built from one of their
+   * own, as indented JSON. Every language missing here is built from
+   * `analysis`. Empty on the SQL engine.
+   */
+  localeAnalyses: Partial<Record<Locale, string>>;
   /** Decimal int64; `"0"` means no configuration has been saved yet. */
   revision: string;
   serving: PlatformSearchServing;
