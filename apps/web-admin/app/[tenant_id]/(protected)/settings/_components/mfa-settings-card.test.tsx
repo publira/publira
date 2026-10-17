@@ -7,6 +7,7 @@ import type { SharedMessages } from "@publira/i18n/catalog";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { ToastProvider } from "@publira/ui-components/toast";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -227,6 +228,37 @@ const submitCode = async (buttonName: string, code: string) => {
   fireEvent.click(form.getByRole("button", { name: buttonName }));
 };
 
+/**
+ * Waits for the submission `buttonName` made to settle, which is when its
+ * button reads that name again instead of the wording it has while busy.
+ *
+ * The card reports what a change did from inside the submission, so the
+ * answer can be on screen while the form is still busy. The next step a case
+ * takes waits for this, as an operator's next click would come after it.
+ */
+const settled = async (buttonName: string) => {
+  await screen.findByRole("button", { name: buttonName }, onScreen);
+};
+
+/**
+ * Hands the card the status the page would render next, as it does once an
+ * Action has changed the factor.
+ *
+ * The card reports what a change did before that change's submission has
+ * finished settling, so the case can get here while the form is still busy,
+ * and the update then suspends until the submission settles. Rendered inside
+ * an `act` that is not awaited, that update never reaches the screen however
+ * long the case waits for it; an awaited `act` sees it through.
+ */
+const rerenderCard = async (
+  rerender: (ui: ReactNode) => void,
+  ui: ReactNode
+) => {
+  await act(() => {
+    rerender(ui);
+  });
+};
+
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
@@ -265,7 +297,7 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
     expect(submitted?.get("code")).toBe("123456");
     expect(submitted?.get("tenant_id")).toBe("TENANT001");
 
-    rerender(<Card status={enabled} />);
+    await rerenderCard(rerender, <Card status={enabled} />);
 
     expect(
       await screen.findByRole("button", { name: "Regenerate" }, onScreen)
@@ -317,13 +349,16 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
 
     await submitCode("Regenerate", "123456");
     expect(await screen.findByText("EEEEE-FFFFF", {}, onScreen)).toBeDefined();
+    await settled("Regenerate");
 
-    rerender(
+    await rerenderCard(
+      rerender,
       <Activity mode="hidden">
         <Card status={enabled} />
       </Activity>
     );
-    rerender(
+    await rerenderCard(
+      rerender,
       <Activity mode="visible">
         <Card status={enabled} />
       </Activity>
@@ -353,6 +388,7 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
 
     await submitCode("Regenerate", "123456");
     expect(await screen.findByText("EEEEE-FFFFF", {}, onScreen)).toBeDefined();
+    await settled("Regenerate");
 
     await submitCode("Turn off", "654321");
     expect(
@@ -363,7 +399,7 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
       )
     ).toBeDefined();
 
-    rerender(<Card status={disabled} />);
+    await rerenderCard(rerender, <Card status={disabled} />);
 
     expect(
       await screen.findByRole("button", { name: "Set up" }, onScreen)
@@ -553,7 +589,10 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
       await screen.findByRole("button", { name: "Add a passkey" }, onScreen)
     );
     expect(await screen.findByText("AAAAA-BBBBB", {}, onScreen)).toBeDefined();
-    rerender(<Card status={{ ...passkeyOnly, required: false }} />);
+    await rerenderCard(
+      rerender,
+      <Card status={{ ...passkeyOnly, required: false }} />
+    );
     fireEvent.click(await screen.findByRole("button", { name: "Skip" }));
 
     fireEvent.click(
@@ -562,7 +601,7 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
     await waitFor(() => {
       expect(finishPasskey).toHaveBeenCalledTimes(2);
     });
-    rerender(<Card status={twoPasskeys} />);
+    await rerenderCard(rerender, <Card status={twoPasskeys} />);
     expect(screen.getByText("AAAAA-BBBBB")).toBeDefined();
 
     const rows = await screen.findAllByRole("listitem", {}, onScreen);
@@ -581,10 +620,13 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
     expect(
       await screen.findByText("The passkey has been removed.", {}, onScreen)
     ).toBeDefined();
-    rerender(<Card status={{ ...passkeyOnly, required: false }} />);
+    await rerenderCard(
+      rerender,
+      <Card status={{ ...passkeyOnly, required: false }} />
+    );
     expect(screen.getByText("AAAAA-BBBBB")).toBeDefined();
 
-    rerender(<Card status={disabled} />);
+    await rerenderCard(rerender, <Card status={disabled} />);
     expect(
       await screen.findByText("The passkey has been removed.", {}, onScreen)
     ).toBeDefined();
