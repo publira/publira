@@ -297,6 +297,10 @@ void main() {
     test('reads a closed or timed-out sheet as cancelled', () async {
       expect(await refusal('cancelled'), isA<PasskeyCancelled>());
       expect(await refusal('android-timeout'), isA<PasskeyCancelled>());
+      expect(
+        await refusal('ios-security-key-timeout'),
+        isA<PasskeyCancelled>(),
+      );
     });
 
     test('reads an excluded passkey as one registered already', () async {

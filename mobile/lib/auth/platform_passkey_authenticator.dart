@@ -122,11 +122,14 @@ List<Map<String, dynamic>> _descriptors(Object? json) => [
 /// reader.
 ///
 /// Both report a closed sheet as `cancelled`. Android reports a sheet that
-/// timed out apart from it, which the reader is told about in the same words,
-/// as a browser tells the two apart no better.
+/// timed out apart from it, and iOS a security key's prompt that timed out,
+/// which the reader is told about in the same words, as a browser tells the
+/// two apart no better.
 @visibleForTesting
 Exception passkeyErrorFrom(PlatformException error) => switch (error.code) {
-  'cancelled' || 'android-timeout' => const PasskeyCancelled(),
+  'cancelled' ||
+  'android-timeout' ||
+  'ios-security-key-timeout' => const PasskeyCancelled(),
   'exclude-credentials-match' => const PasskeyAlreadyRegistered(),
   _ => PasskeyFailure('${error.code}: ${error.message}'),
 };
