@@ -3,6 +3,7 @@ package publicapi
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	"errors"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auth"
+	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
@@ -26,6 +28,15 @@ import (
 // open at once: enough for a few tabs or devices begun side by side, few
 // enough that calling a begin over and over leaves next to nothing behind.
 const passkeyOpenCeremonies = 5
+
+// siteSignInOpenCeremonies is how many storefront sign-ins one origin may have
+// open on a tenant at once. Every reader behind a shared address — a carrier's
+// NAT, an office, a school — opens the sign-in page from the same origin, and
+// each page begins one, so it is enough for a crowd of them within the few
+// minutes a ceremony lasts. Beyond it the oldest is dropped, and a passkey
+// presented to that page is refused as one presented after its ceremony
+// expired.
+const siteSignInOpenCeremonies = 100
 
 // passkeyNameMaxLength bounds what a reader may call a passkey, in characters,
 // as user_webauthn_credentials_name_check does.
@@ -183,8 +194,17 @@ func ceremonyFromRow(row dbmodels.UserWebauthnCeremony) tenantwebauthn.Ceremony 
 
 // BeginPasskeyLogin begins a sign-in that names no account. The ceremony it
 // keeps belongs to the tenant until a credential names the account, so the
-// per-account cap on open ceremonies cannot bound it; the origin's sign-in
-// allowance does, charged before anything is stored.
+// per-account cap on open ceremonies cannot bound it; a cap on the ceremonies
+// the request's origin has open on the tenant does.
+//
+// It charges none of the origin's sign-in allowance. The storefront begins one
+// whenever its sign-in page opens, to offer the reader's passkeys in the
+// browser's autofill before the reader has chosen anything, so most of them
+// are never finished: charging each would refuse the password sign-ins of
+// everyone behind a busy shared address once enough of them had looked at the
+// page, though nobody had typed a wrong password. A begin is no guess either,
+// since nothing is verified until the finish, and the finish spends the
+// ceremony whatever it answers.
 func (s *apiServer) BeginPasskeyLogin(
 	ctx context.Context,
 	req *publirav1.BeginPasskeyLoginRequest,
@@ -195,11 +215,6 @@ func (s *apiServer) BeginPasskeyLogin(
 		auth.AuditEvent(ctx, action, "failure", "", "", "tenant_not_found")
 		return nil, err
 	}
-	source, err := s.login.BeginPasskey(ctx, tenant.ID.String())
-	if err != nil {
-		auth.AuditEvent(ctx, action, "failure", tenant.PublicID, "", "rate_limited")
-		return nil, err
-	}
 	rp, err := s.siteRelyingParty(ctx, tenant)
 	if err != nil {
 		return nil, err
@@ -208,16 +223,54 @@ func (s *apiServer) BeginPasskeyLogin(
 	if err != nil {
 		return nil, s.internalError(ctx, "failed to begin a passkey sign-in", err, "tenant_id", tenant.ID.String())
 	}
-	if err := s.queriesFor(ctx).StartSiteSignInCeremony(ctx, dbmodels.StartSiteSignInCeremonyParams{
+	if err := s.startSiteSignInCeremony(ctx, tenant.ID, ceremony); err != nil {
+		return nil, err
+	}
+	return &publirav1.BeginPasskeyLoginResponse{RequestOptionsJson: string(options)}, nil
+}
+
+// startSiteSignInCeremony keeps the server's half of a storefront sign-in
+// until its finish, in a transaction of its own that holds the origin's lock
+// on the tenant's sign-in ceremonies, so begins arriving together cannot each
+// count the same open ceremonies and pass siteSignInOpenCeremonies between
+// them.
+func (s *apiServer) startSiteSignInCeremony(ctx context.Context, tenantID uuid.UUID, ceremony tenantwebauthn.Ceremony) error {
+	source := signInSourceDigest(ctx)
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return s.internalDBError(ctx, "failed to begin passkey sign-in ceremony transaction", err, "tenant_id", tenantID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	q := dbmodels.New(tx)
+	if err := q.LockSiteSignInCeremonies(ctx, dbmodels.LockSiteSignInCeremoniesParams{
+		TenantID:     tenantID,
+		SourceDigest: source,
+	}); err != nil {
+		return s.internalDBError(ctx, "failed to lock passkey sign-in ceremonies", err, "tenant_id", tenantID.String())
+	}
+	if err := q.StartSiteSignInCeremony(ctx, dbmodels.StartSiteSignInCeremonyParams{
+		MaxOpen:      siteSignInOpenCeremonies,
 		Challenge:    ceremony.Challenge,
-		TenantID:     tenant.ID,
+		TenantID:     tenantID,
 		RpID:         ceremony.RPID,
 		ExpiresAt:    ceremony.ExpiresAt,
 		SourceDigest: source,
 	}); err != nil {
-		return nil, s.internalDBError(ctx, "failed to store the passkey sign-in ceremony", err, "tenant_id", tenant.ID.String())
+		return s.internalDBError(ctx, "failed to store the passkey sign-in ceremony", err, "tenant_id", tenantID.String())
 	}
-	return &publirav1.BeginPasskeyLoginResponse{RequestOptionsJson: string(options)}, nil
+	if err := tx.Commit(); err != nil {
+		return s.internalDBError(ctx, "failed to commit the passkey sign-in ceremony", err, "tenant_id", tenantID.String())
+	}
+	return nil
+}
+
+// signInSourceDigest is what a storefront sign-in ceremony keeps of the origin
+// that began it: enough to count that origin's open ceremonies, without
+// storing its address.
+func signInSourceDigest(ctx context.Context) []byte {
+	digest := sha256.Sum256([]byte(clientip.FromContext(ctx)))
+	return digest[:]
 }
 
 // errPasskeyAccountLookup carries a failure reading the account a
@@ -335,10 +388,6 @@ func (s *apiServer) FinishPasskeyLogin(
 	if claimed == 0 {
 		return fail(account.PublicID, "sign_count_regressed", passkeyLoginRefusedError())
 	}
-	// Given back once the assertion verifies, whatever is answered after, as a
-	// password that verifies gives its attempt back.
-	s.login.PasskeyVerified(ctx, ceremony.ExpiresAt.Add(-tenantwebauthn.CeremonyTimeout), row.SourceDigest)
-
 	// Refused as Login refuses the same account once its password verifies. A
 	// passkey is registered from a session, and every session began with an
 	// address confirmed, so a holder of one has one too; but the passkey proves

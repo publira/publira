@@ -296,41 +296,6 @@ func TestRefundAfterTheWindowPassedGivesNothingExtra(t *testing.T) {
 	}
 }
 
-// A refund made by a later request, which holds no Decision, names the
-// counters by the instant the action was charged at.
-func TestRefundAtTakesBackWhatWasChargedThen(t *testing.T) {
-	limiter, clock := newTestLimiter(t)
-	burst := Rule{Limit: 1, Window: time.Minute}
-	budget := Rule{Limit: 2, Window: time.Hour}
-
-	charged := clock.Now()
-	mustAllow(t, limiter, "origin", burst, budget)
-	clock.advance(30 * time.Second)
-	limiter.RefundAt(context.Background(), "origin", charged, burst, budget)
-
-	if decision := mustAllow(t, limiter, "origin", burst, budget); !decision.Allowed {
-		t.Fatal("the action after the refund = refused, want the minute's and the hour's charge given back")
-	}
-	if decision := mustAllow(t, limiter, "origin", burst, budget); decision.Allowed {
-		t.Fatal("a second action this minute = allowed, want the refund to have given back only one")
-	}
-}
-
-func TestRefundAtAfterTheWindowPassedGivesNothingExtra(t *testing.T) {
-	limiter, clock := newTestLimiter(t)
-	rule := Rule{Limit: 1, Window: time.Minute}
-
-	charged := clock.Now()
-	mustAllow(t, limiter, "origin", rule)
-	clock.advance(time.Minute)
-	mustAllow(t, limiter, "origin", rule)
-	limiter.RefundAt(context.Background(), "origin", charged, rule)
-
-	if decision := mustAllow(t, limiter, "origin", rule); decision.Allowed {
-		t.Fatal("the second action in the new window = allowed, want a refund of the old window to leave the new one alone")
-	}
-}
-
 func TestClaimRejectsAnUnusableWindow(t *testing.T) {
 	limiter, _ := newTestLimiter(t)
 

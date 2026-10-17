@@ -70,18 +70,45 @@ WHERE challenge = sqlc.arg('challenge')
     AND ceremony = sqlc.arg('ceremony')
 RETURNING *;
 
+-- name: LockSiteSignInCeremonies :exec
+-- Serialises the begins of the storefront sign-ins one origin makes on the
+-- tenant for the rest of the transaction, as LockUserWebauthnCeremonies does
+-- an account's, so two begins arriving together cannot each count the same
+-- open ceremonies and both stay within the cap they then exceed together.
+SELECT pg_advisory_xact_lock(
+    hashtextextended(
+        'site_sign_in_ceremonies:' || sqlc.arg('tenant_id')::uuid::text || ':' || encode(sqlc.arg('source_digest')::bytea, 'hex'),
+        0
+    )
+);
+
 -- name: StartSiteSignInCeremony :exec
 -- A storefront sign-in names no account when it begins: the authenticator
 -- picks a discoverable credential, and the credential names the account. The
--- row is therefore the tenant's rather than an account's, and there is no
--- account whose open ceremonies could be capped. The begin that stores it is
--- charged against the caller's sign-in allowance instead, and drops the
--- tenant's sign-in ceremonies that expired unfinished, so what the table
--- holds of them is what was begun in the last few minutes.
-WITH expired AS (
+-- row is therefore the tenant's rather than an account's, and what bounds the
+-- rows a caller who keeps calling the begin can leave is the origin it calls
+-- from instead: beginning one drops all but the newest that, with this one,
+-- make up max_open of the ceremonies source_digest names on the tenant. It
+-- also drops the tenant's sign-in ceremonies that expired unfinished, so what
+-- the table holds of them is what was begun in the last few minutes.
+-- The caller holds LockSiteSignInCeremonies, so the open ceremonies this
+-- counts are the ones there are.
+WITH abandoned AS (
     DELETE FROM user_webauthn_ceremonies
-    WHERE user_id IS NULL
-        AND expires_at < now()
+    WHERE user_webauthn_ceremonies.user_id IS NULL
+        AND (
+            user_webauthn_ceremonies.expires_at < now()
+            OR user_webauthn_ceremonies.challenge IN (
+                SELECT c.challenge
+                FROM user_webauthn_ceremonies c
+                WHERE c.user_id IS NULL
+                    AND c.tenant_id = sqlc.arg('tenant_id')
+                    AND c.source_digest = sqlc.arg('source_digest')
+                ORDER BY c.created_at DESC,
+                    c.challenge
+                OFFSET sqlc.arg('max_open')::int - 1
+            )
+        )
 )
 INSERT INTO user_webauthn_ceremonies (
         challenge,

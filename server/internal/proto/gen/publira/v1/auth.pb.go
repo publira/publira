@@ -871,9 +871,11 @@ func (x *Passkey) GetBackedUp() bool {
 // Begins a sign-in with a passkey alone. The options name no account and
 // allow no credential in particular, so the browser offers whichever passkey
 // the reader holds for the storefront, and the credential the reader picks is
-// what names the account. Each begin spends one of the caller's sign-in
-// attempts, as a password Login does, and a sign-in that succeeds gives it
-// back; past the limit it is resource_exhausted with Retry-After.
+// what names the account. A begin spends none of the caller's sign-in
+// attempts, so a page may begin one whenever it opens, to offer the reader's
+// passkeys in the browser's autofill; only so many of the sign-ins one caller
+// begins stay open at once, and a passkey presented to one dropped for a newer
+// one is refused as one presented after it expired.
 type BeginPasskeyLoginRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`

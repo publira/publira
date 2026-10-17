@@ -2540,6 +2540,11 @@ type Querier interface {
 	// freezes its snapshot at statement start, so waiting for the lock in
 	// the same statement would still see the pre-wait rows.
 	LockSeriesByIDForTenant(ctx context.Context, arg LockSeriesByIDForTenantParams) (LockSeriesByIDForTenantRow, error)
+	// Serialises the begins of the storefront sign-ins one origin makes on the
+	// tenant for the rest of the transaction, as LockUserWebauthnCeremonies does
+	// an account's, so two begins arriving together cannot each count the same
+	// open ceremonies and both stay within the cap they then exceed together.
+	LockSiteSignInCeremonies(ctx context.Context, arg LockSiteSignInCeremoniesParams) error
 	// Takes the intent a verified transaction names, holding it until the purchase
 	// it becomes is written, so two confirmations of different transactions
 	// cannot both consume it.
@@ -3103,11 +3108,14 @@ type Querier interface {
 	SpendUserWebauthnCeremony(ctx context.Context, arg SpendUserWebauthnCeremonyParams) (UserWebauthnCeremony, error)
 	// A storefront sign-in names no account when it begins: the authenticator
 	// picks a discoverable credential, and the credential names the account. The
-	// row is therefore the tenant's rather than an account's, and there is no
-	// account whose open ceremonies could be capped. The begin that stores it is
-	// charged against the caller's sign-in allowance instead, and drops the
-	// tenant's sign-in ceremonies that expired unfinished, so what the table
-	// holds of them is what was begun in the last few minutes.
+	// row is therefore the tenant's rather than an account's, and what bounds the
+	// rows a caller who keeps calling the begin can leave is the origin it calls
+	// from instead: beginning one drops all but the newest that, with this one,
+	// make up max_open of the ceremonies source_digest names on the tenant. It
+	// also drops the tenant's sign-in ceremonies that expired unfinished, so what
+	// the table holds of them is what was begun in the last few minutes.
+	// The caller holds LockSiteSignInCeremonies, so the open ceremonies this
+	// counts are the ones there are.
 	StartSiteSignInCeremony(ctx context.Context, arg StartSiteSignInCeremonyParams) error
 	// Ceremonies of one account run side by side, so a second tab or device does
 	// not void the first. Beginning one drops the account's expired ceremonies of
