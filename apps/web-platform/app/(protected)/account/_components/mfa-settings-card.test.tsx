@@ -6,6 +6,7 @@ import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -13,6 +14,7 @@ import {
   within,
 } from "@testing-library/react";
 import { Activity } from "react";
+import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type {
@@ -143,6 +145,25 @@ const submitCode = async (buttonName: string, code: string) => {
   fireEvent.click(form.getByRole("button", { name: buttonName }));
 };
 
+/**
+ * Hands the card the status the page would render next, as it does once an
+ * Action has changed the factor.
+ *
+ * The card reports what a change did before that change's submission has
+ * finished settling, so the case can get here while the form is still busy,
+ * and the update then suspends until the submission settles. Rendered inside
+ * an `act` that is not awaited, that update never reaches the screen however
+ * long the case waits for it; an awaited `act` sees it through.
+ */
+const rerenderCard = async (
+  rerender: (ui: ReactNode) => void,
+  ui: ReactNode
+) => {
+  await act(() => {
+    rerender(ui);
+  });
+};
+
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
@@ -180,7 +201,7 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
     const submitted = confirm.mock.calls[0]?.[1];
     expect(submitted?.get("code")).toBe("123456");
 
-    rerender(<MfaSettingsCard status={enabled} />);
+    await rerenderCard(rerender, <MfaSettingsCard status={enabled} />);
 
     expect(
       await screen.findByRole("button", { name: "Regenerate" }, onScreen)
@@ -232,12 +253,14 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
     await submitCode("Regenerate", "123456");
     expect(await screen.findByText("EEEEE-FFFFF", {}, onScreen)).toBeDefined();
 
-    rerender(
+    await rerenderCard(
+      rerender,
       <Activity mode="hidden">
         <MfaSettingsCard status={enabled} />
       </Activity>
     );
-    rerender(
+    await rerenderCard(
+      rerender,
       <Activity mode="visible">
         <MfaSettingsCard status={enabled} />
       </Activity>
@@ -277,7 +300,7 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
       )
     ).toBeDefined();
 
-    rerender(<MfaSettingsCard status={disabled} />);
+    await rerenderCard(rerender, <MfaSettingsCard status={disabled} />);
 
     expect(
       await screen.findByRole("button", { name: "Set up" }, onScreen)
