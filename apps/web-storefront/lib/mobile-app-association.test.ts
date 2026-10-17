@@ -97,7 +97,7 @@ describe("getTenantMobileAppAssociation", () => {
 });
 
 describe("toAssetLinks", () => {
-  it("names the app with every signing certificate", () => {
+  it("names the app with every signing certificate, for its links and the site's passkeys", () => {
     expect(
       toAssetLinks({
         applicationId: "com.example.reader",
@@ -105,7 +105,10 @@ describe("toAssetLinks", () => {
       })
     ).toStrictEqual([
       {
-        relation: ["delegate_permission/common.handle_all_urls"],
+        relation: [
+          "delegate_permission/common.handle_all_urls",
+          "delegate_permission/common.get_login_creds",
+        ],
         target: {
           namespace: "android_app",
           package_name: "com.example.reader",
@@ -130,6 +133,12 @@ describe("toAppleAppSiteAssociation", () => {
   it("names the app as TEAM_ID.BUNDLE_IDENTIFIER", () => {
     expect(document.applinks.details).toHaveLength(1);
     expect(detail?.appIDs).toStrictEqual(["ABCDE12345.com.example.reader"]);
+  });
+
+  it("lets the same app share the site's passkeys", () => {
+    expect(document.webcredentials).toStrictEqual({
+      apps: ["ABCDE12345.com.example.reader"],
+    });
   });
 
   it("claims the paths the app opens, bare and under each offered locale's prefix", () => {
