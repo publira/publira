@@ -1,6 +1,16 @@
 {
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   extends: ["github>publira/.github//renovate.json5"],
+  packageRules: [
+    {
+      // firebase-ios-sdk 13, which these majors require, needs AppCheckCore 12,
+      // and the GoogleSignIn-iOS that google_sign_in_ios depends on caps it at
+      // 11, so the iOS build cannot resolve its Swift packages. Lifted by #4497.
+      matchPackageNames: ["firebase_core", "firebase_messaging"],
+      matchUpdateTypes: ["major"],
+      enabled: false,
+    },
+  ],
   // `customManagers` is a mergeable array, so these append to the org preset's
   // managers rather than replacing them. Each entry carries the `depName` of the
   // pin it belongs to, so everything derived from that pin lands in one Renovate
