@@ -26,17 +26,17 @@ class PlatformPasskeyAuthenticator implements PasskeyAuthenticator {
     (info) => info.packageName,
   );
 
+  /// A device that cannot say which app it is, or whether it makes passkeys,
+  /// offers none.
   @override
   Future<bool> offered(SignInProviders providers) async {
-    if (!offersPasskeys(
-      providers,
-      platform: defaultTargetPlatform,
-      bundleIdentifier: await _bundleIdentifier,
-    )) {
-      return false;
-    }
     try {
-      return (await _passkeys.getAvailability()).hasPasskeySupport;
+      return offersPasskeys(
+            providers,
+            platform: defaultTargetPlatform,
+            bundleIdentifier: await _bundleIdentifier,
+          ) &&
+          (await _passkeys.getAvailability()).hasPasskeySupport;
     } on Object {
       return false;
     }

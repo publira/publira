@@ -37,6 +37,7 @@ class _FakePasskeysPlatform extends PasskeysPlatform {
   RegisterRequestType? registered;
   AuthenticateRequestType? authenticated;
   PlatformException? failure;
+  PlatformException? availabilityFailure;
   var supported = true;
 
   @override
@@ -78,11 +79,17 @@ class _FakePasskeysPlatform extends PasskeysPlatform {
   Future<void> cancelCurrentAuthenticatorOperation() async {}
 
   @override
-  Future<AvailabilityType> getAvailability() async => AvailabilityTypeAndroid(
-    hasPasskeySupport: supported,
-    isNative: true,
-    isUserVerifyingPlatformAuthenticatorAvailable: supported,
-  );
+  Future<AvailabilityType> getAvailability() async {
+    final failure = availabilityFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return AvailabilityTypeAndroid(
+      hasPasskeySupport: supported,
+      isNative: true,
+      isUserVerifyingPlatformAuthenticatorAvailable: supported,
+    );
+  }
 }
 
 void main() {
@@ -185,6 +192,13 @@ void main() {
 
     test('offers none on a device that cannot make passkeys', () async {
       platform.supported = false;
+
+      expect(await authenticator.offered(apps), isFalse);
+    });
+
+    test('offers none, rather than failing, on a device that cannot say '
+        'whether it makes passkeys', () async {
+      platform.availabilityFailure = PlatformException(code: 'channel-error');
 
       expect(await authenticator.offered(apps), isFalse);
     });

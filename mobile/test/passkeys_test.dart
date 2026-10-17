@@ -8,6 +8,7 @@ import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/identity_provider.dart';
 import 'package:publira/auth/passkey.dart';
+import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/router.dart';
 
 import 'support/fake_auth.dart';
@@ -31,6 +32,7 @@ void main() {
     WidgetTester tester, {
     String initialLocation = AppRoutes.signIn,
     bool withPasskeys = true,
+    ProviderSignIn? providerSignIn,
   }) async {
     await tester.pumpWidget(
       PubliraApp(
@@ -42,6 +44,7 @@ void main() {
         ),
         auth: auth,
         passkeyAuthenticator: withPasskeys ? passkeys : null,
+        providerSignIn: providerSignIn,
       ),
     );
     await tester.pump();
@@ -74,6 +77,31 @@ void main() {
 
       expect(passkeyButton, findsNothing);
       expect(find.text('or'), findsNothing);
+    });
+
+    testWidgets('still offers Apple and Google where the device cannot say '
+        'whether it makes passkeys', (tester) async {
+      repository.signInProviders = const SignInProviders(
+        google: GoogleSignInClients(webClientId: 'web-client'),
+      );
+      passkeys.offeredFailure = Exception('no package info');
+      await pumpApp(tester, providerSignIn: FakeProviderSignIn());
+      final google = find.byKey(const ValueKey('sign-in-with-google'));
+      await pumpUntilFound(tester, google);
+
+      expect(passkeyButton, findsNothing);
+    });
+
+    testWidgets('still offers a passkey where the device cannot say which '
+        'providers it offers', (tester) async {
+      await pumpApp(
+        tester,
+        providerSignIn: FakeProviderSignIn()
+          ..offeredFailure = Exception('no package info'),
+      );
+      await pumpUntilFound(tester, passkeyButton);
+
+      expect(find.byKey(const ValueKey('sign-in-with-google')), findsNothing);
     });
 
     testWidgets('offers none where this run has no passkey authenticator', (

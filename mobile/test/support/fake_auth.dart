@@ -938,9 +938,18 @@ class FakeProviderSignIn implements ProviderSignIn {
   /// The providers [signIn] has been asked for, in order.
   final requested = <IdentityProvider>[];
 
+  /// Thrown by [offered] in place of [providers], standing in for a device
+  /// that cannot say which app it is.
+  Exception? offeredFailure;
+
   @override
-  Future<List<IdentityProvider>> offered(SignInProviders providers) async =>
-      this.providers;
+  Future<List<IdentityProvider>> offered(SignInProviders providers) async {
+    final failure = offeredFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return this.providers;
+  }
 
   @override
   Future<ProviderCredential> signIn(
@@ -983,12 +992,22 @@ class FakePasskeyAuthenticator implements PasskeyAuthenticator {
   final registered = <String>[];
   final authenticated = <String>[];
 
+  /// Thrown by [offered] in place of [available], standing in for a device
+  /// that cannot say whether it makes passkeys.
+  Exception? offeredFailure;
+
   /// The credential the [count]th ceremony answers with.
   static String credentialFor(String ceremony, int count) =>
       '{"id":"$ceremony-$count"}';
 
   @override
-  Future<bool> offered(SignInProviders providers) async => available;
+  Future<bool> offered(SignInProviders providers) async {
+    final failure = offeredFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return available;
+  }
 
   @override
   Future<String> register(String creationOptionsJson) async {

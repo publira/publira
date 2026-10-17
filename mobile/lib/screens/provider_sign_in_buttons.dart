@@ -62,19 +62,29 @@ class _ProviderSignInButtonsState extends State<ProviderSignInButtons> {
   }
 
   /// A tenant read that fails offers no button; the form above still works.
+  /// The providers and the passkey are asked about apart, so a device that
+  /// cannot answer for one still offers the other.
   Future<void> _load(
     ProviderSignIn? signIn,
     PasskeyAuthenticator? passkeys,
   ) async {
     final SignInProviders providers;
-    final List<IdentityProvider> offered;
-    final bool passkeyOffered;
     try {
       providers = await AuthScope.of(context).readSignInProviders();
-      offered = await signIn?.offered(providers) ?? const [];
-      passkeyOffered = await passkeys?.offered(providers) ?? false;
     } on Exception {
       return;
+    }
+    var offered = const <IdentityProvider>[];
+    var passkeyOffered = false;
+    try {
+      offered = await signIn?.offered(providers) ?? const [];
+    } on Exception {
+      // No provider button; the passkey may still be offered.
+    }
+    try {
+      passkeyOffered = await passkeys?.offered(providers) ?? false;
+    } on Exception {
+      // No passkey button; the providers may still be offered.
     }
     if (!mounted || signIn != _signIn || passkeys != _passkeys) {
       return;
