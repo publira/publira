@@ -12,8 +12,8 @@ import (
 // default analysis was built on no plugin, and the one that leaves the indices
 // built from the earlier default to be built again.
 const (
-	beforePluginFreeDefaultAnalysisVersion = 20261017013141
-	pluginFreeDefaultAnalysisVersion       = 20261017105846
+	beforePluginFreeDefaultAnalysisVersion = 20261017124715
+	pluginFreeDefaultAnalysisVersion       = 20261017135523
 )
 
 // An engine whose indices were built from the default analysis has a build
