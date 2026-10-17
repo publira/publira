@@ -105,6 +105,11 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   /// series and the episode in the title bar.
   var _locale = '';
 
+  /// The page on screen, `null` until the reader has turned one. A body read
+  /// again for a new locale opens on it, rather than on a position whose
+  /// write may not have landed yet.
+  int? _pageOnScreen;
+
   /// Episodes of this series the device could open right now, which is what
   /// marks the next one as saved. Empty on a run with no library, which is
   /// what leaves the mark off.
@@ -179,8 +184,6 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       final relocalized = locale != _locale;
       if (relocalized) {
         _locale = locale;
-        // Sent before the body is read again, so it opens on the page the
-        // reader is on rather than the one last recorded.
         _saver?.flush();
       }
       if (returned || relocalized) {
@@ -188,6 +191,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
           catalog,
           AuthScope.of(context),
           waitFree: WaitFreeScope.maybeOf(context),
+          resumeAt: relocalized ? _pageOnScreen : null,
         );
       }
       return;
@@ -195,6 +199,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     _started = true;
     _accessToken = accessToken;
     _locale = locale;
+    _pageOnScreen = null;
     _readerId = AuthScope.of(context).session?.userPublicId ?? '';
     // A saver belongs to the session it records against. The page the reader
     // before this one was on is theirs and cannot be written with this
@@ -320,11 +325,15 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   /// A body that stays locked is asked what [waitFree] offers on it, before
   /// the gate is drawn rather than after, so the gate does not change under a
   /// reader already reaching for its button.
+  ///
+  /// [resumeAt] is the page to open on in place of the one recorded, for a
+  /// body read again while the reader is in it.
   Future<_OpenEpisode?> _load(
     CatalogRepository catalog,
     AuthController auth, {
     WaitFreeRepository? waitFree,
     bool confirmPurchase = false,
+    int? resumeAt,
   }) async {
     final locale = _locale;
     var detail = await catalog.getEpisode(
@@ -352,7 +361,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       return null;
     }
     _episodeInternalId = detail.episode.internalId;
-    final saved = await _savedPageIndex(catalog);
+    final saved = resumeAt ?? await _savedPageIndex(catalog);
     // Asked only where the answer decides what is shown: a rating to gate, or
     // a body withheld over an age.
     final age =
@@ -524,7 +533,10 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         readingDirection: detail.readingDirection,
         spreadStartIndex: detail.spreadStartIndex,
         initialPageIndex: open.startPage,
-        onPageChanged: (pageIndex) => _saver?.save(pageIndex),
+        onPageChanged: (pageIndex) {
+          _pageOnScreen = pageIndex;
+          _saver?.save(pageIndex);
+        },
         onFinished: () => _recorder?.record(),
         endScreen: EpisodeEndPanel(
           detail: detail,

@@ -271,6 +271,10 @@ class FakeCatalogRepository implements CatalogRepository {
   /// Held open by a test that switches readers while a reaction is loading.
   Completer<EpisodeReaction?>? reactionGate;
 
+  /// Held open by a test that reads a position while its write has not
+  /// landed: [saveReadingPosition] records the page only once it completes.
+  Completer<void>? readingPositionSaveGate;
+
   Map<String, EpisodeReaction> reactions;
 
   /// The locale of every read that takes one, in the order they were made.
@@ -787,6 +791,7 @@ class FakeCatalogRepository implements CatalogRepository {
     if (error != null) {
       throw error;
     }
+    await readingPositionSaveGate?.future;
     readingPositions = {
       ...readingPositions,
       episodeKey(seriesPublicId, episodePublicId): pageIndex,

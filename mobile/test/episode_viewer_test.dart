@@ -866,6 +866,26 @@ void main() {
     await pumpUntilNoPendingFrameCallbacks(tester);
   });
 
+  testWidgets('a change of language reads the body again on the page on '
+      'screen, before its position has been written', (tester) async {
+    addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+    final write = Completer<void>();
+    addTearDown(write.complete);
+    catalog.readingPositionSaveGate = write;
+    await pumpApp(tester, session: fakeSession);
+    await pumpUntilFound(tester, pageView);
+    await tester.tap(find.byKey(const ValueKey('episode-next-page')));
+    await pumpUntilFound(tester, find.text('2 / 3'));
+
+    tester.platformDispatcher.localesTestValue = const [Locale('ja')];
+    await pumpUntilTrue(tester, () => catalog.readLocales.contains('ja'));
+    await pumpUntilFound(tester, pageView);
+
+    expect(find.text('2 / 3'), findsOneWidget);
+    expect(catalog.readingPositions, isEmpty);
+    await pumpUntilNoPendingFrameCallbacks(tester);
+  });
+
   testWidgets('a position past the end of the body opens on its last page', (
     tester,
   ) async {
