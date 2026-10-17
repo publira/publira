@@ -6151,6 +6151,7 @@
         "engine": "エンジン: {$product} {$version}",
         "plugins": "プラグイン: {$plugins}",
         "plugins_none": "プラグイン: なし",
+        "plugins_unlisted": "プラグイン: このユーザーにはエンジンが一覧を返しませんでした。",
         "reasons": {
           "unreachable": "接続エラー: エンジンに接続できませんでした。URLと、このサーバーから接続できるかを確認してください。",
           "unauthorized": "認証エラー: エンジンがユーザー名とパスワードを受け付けませんでした。",

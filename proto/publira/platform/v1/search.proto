@@ -228,9 +228,13 @@ message TestPlatformSearchConnectionResponse {
   reserved 5, 6;
   reserved "analysis_kuromoji_installed", "analysis_icu_installed";
   // The plugins every node has installed, in name order, which a language's
-  // own analysis may be built on. Empty when the engine did not answer, and
-  // for an engine that has none.
+  // own analysis may be built on. Empty when the engine did not answer, when
+  // it would not list them, and for an engine that has none.
   repeated string plugins = 7;
+  // Whether the engine listed its plugins. Listing them takes a cluster
+  // privilege the user Publira signs in as needs for nothing else, so an
+  // engine that refuses passes the test all the same, with this false.
+  bool plugins_listed = 8;
 }
 
 service PlatformSearchSettingsService {

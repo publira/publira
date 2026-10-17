@@ -422,6 +422,7 @@ describe("testPlatformSearchConnectionAction", () => {
       failure:
         "The engine at this URL isn't the one selected above. Choose the engine it reports, or check the URL.",
       plugins: [],
+      pluginsListed: true,
       product: "Elasticsearch",
       succeeded: false,
       version: "9.5.5",
@@ -461,6 +462,7 @@ describe("testPlatformSearchConnectionAction", () => {
         result: {
           failure: "",
           plugins,
+          pluginsListed: true,
           product: "OpenSearch",
           succeeded: true,
           version: "3.9.0",

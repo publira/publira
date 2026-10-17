@@ -6151,6 +6151,7 @@
         "engine": "엔진: {$product} {$version}",
         "plugins": "플러그인: {$plugins}",
         "plugins_none": "플러그인: 없음",
+        "plugins_unlisted": "플러그인: 엔진이 이 사용자에게 목록을 알려 주지 않았습니다.",
         "reasons": {
           "unreachable": "연결 실패: 엔진에 연결하지 못했습니다. URL과 이 서버에서 연결할 수 있는지 확인하세요.",
           "unauthorized": "인증 실패: 엔진이 사용자 이름과 비밀번호를 거부했습니다.",

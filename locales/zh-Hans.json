@@ -6151,6 +6151,7 @@
         "engine": "引擎：{$product} {$version}",
         "plugins": "插件：{$plugins}",
         "plugins_none": "插件：无",
+        "plugins_unlisted": "插件：引擎未向此用户列出插件。",
         "reasons": {
           "unreachable": "连接失败：无法连接到引擎。请检查URL，以及此服务器能否连接到该引擎。",
           "unauthorized": "身份验证失败：引擎拒绝了用户名和密码。",

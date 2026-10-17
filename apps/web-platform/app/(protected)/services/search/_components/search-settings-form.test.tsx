@@ -187,34 +187,43 @@ describe("SearchSettingsForm", () => {
   });
 
   it.each([
-    [["analysis-icu", "analysis-nori"], "Plugins: analysis-icu, analysis-nori"],
-    [[], "Plugins: none"],
-  ])("lists the plugins a tested engine has (%j)", async (plugins, line) => {
-    actions.testPlatformSearchConnectionAction.mockResolvedValue({
-      message: "The connection works.",
-      ok: true,
-      result: {
-        failure: "",
-        plugins,
-        product: "OpenSearch",
-        succeeded: true,
-        version: "3.2.0",
-      },
-    });
-    await renderForm(storedSettings);
+    [
+      ["analysis-icu", "analysis-nori"],
+      true,
+      "Plugins: analysis-icu, analysis-nori",
+    ],
+    [[], true, "Plugins: none"],
+    [[], false, "Plugins: the engine didn't list them to this user."],
+  ])(
+    "lists the plugins a tested engine has (%j, listed %s)",
+    async (plugins, pluginsListed, line) => {
+      actions.testPlatformSearchConnectionAction.mockResolvedValue({
+        message: "The connection works.",
+        ok: true,
+        result: {
+          failure: "",
+          plugins,
+          pluginsListed,
+          product: "OpenSearch",
+          succeeded: true,
+          version: "3.2.0",
+        },
+      });
+      await renderForm(storedSettings);
 
-    fireEvent.click(screen.getByRole("button", { name: "Test connection" }));
+      fireEvent.click(screen.getByRole("button", { name: "Test connection" }));
 
-    const results = await screen.findByRole("list", {
-      name: "Connection test results",
-    });
-    expect(
-      within(results)
-        .getAllByRole("listitem")
-        .map((item) => item.textContent)
-    ).toEqual(["Engine: OpenSearch 3.2.0", line]);
-    expect(screen.getByText("The connection works.")).toBeTruthy();
-  });
+      const results = await screen.findByRole("list", {
+        name: "Connection test results",
+      });
+      expect(
+        within(results)
+          .getAllByRole("listitem")
+          .map((item) => item.textContent)
+      ).toEqual(["Engine: OpenSearch 3.2.0", line]);
+      expect(screen.getByText("The connection works.")).toBeTruthy();
+    }
+  );
 
   it.each([
     [
@@ -256,6 +265,7 @@ describe("SearchSettingsForm", () => {
         result: {
           failure: "",
           plugins: [],
+          pluginsListed: true,
           product: "OpenSearch",
           succeeded: true,
           version: "3.2.0",
@@ -282,6 +292,7 @@ describe("SearchSettingsForm", () => {
       result: {
         failure: "",
         plugins: [],
+        pluginsListed: true,
         product: "OpenSearch",
         succeeded: true,
         version: "3.2.0",

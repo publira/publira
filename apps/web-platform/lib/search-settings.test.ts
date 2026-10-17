@@ -535,6 +535,7 @@ describe("testPlatformSearchConnection", () => {
   it("reports the engine, its version, and its plugins when the test passed", async () => {
     mockTestPlatformSearchConnection.mockResolvedValueOnce({
       plugins: ["analysis-icu", "analysis-nori"],
+      pluginsListed: true,
       product: "OpenSearch",
       reason: "",
       succeeded: true,
@@ -546,6 +547,7 @@ describe("testPlatformSearchConnection", () => {
       result: {
         failure: "",
         plugins: ["analysis-icu", "analysis-nori"],
+        pluginsListed: true,
         product: "OpenSearch",
         succeeded: true,
         version: "3.2.0",
@@ -566,6 +568,7 @@ describe("testPlatformSearchConnection", () => {
   it("passes an engine that has no plugins", async () => {
     mockTestPlatformSearchConnection.mockResolvedValueOnce({
       plugins: [],
+      pluginsListed: true,
       product: "Elasticsearch",
       reason: "",
       succeeded: true,
@@ -577,6 +580,7 @@ describe("testPlatformSearchConnection", () => {
       result: {
         failure: "",
         plugins: [],
+        pluginsListed: true,
         product: "Elasticsearch",
         succeeded: true,
         version: "9.5.5",
@@ -587,6 +591,7 @@ describe("testPlatformSearchConnection", () => {
   it("words an engine that did not answer by its reason", async () => {
     mockTestPlatformSearchConnection.mockResolvedValueOnce({
       plugins: [],
+      pluginsListed: false,
       product: "",
       reason: "SEARCH_TEST_UNREACHABLE",
       succeeded: false,
@@ -601,6 +606,7 @@ describe("testPlatformSearchConnection", () => {
   it("falls back to the unknown wording for a reason this console does not know", async () => {
     mockTestPlatformSearchConnection.mockResolvedValueOnce({
       plugins: [],
+      pluginsListed: false,
       product: "",
       reason: "SEARCH_TEST_SOMETHING_NEW",
       succeeded: false,

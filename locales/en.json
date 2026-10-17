@@ -6151,6 +6151,7 @@
         "engine": "Engine: {$product} {$version}",
         "plugins": "Plugins: {$plugins}",
         "plugins_none": "Plugins: none",
+        "plugins_unlisted": "Plugins: the engine didn't list them to this user.",
         "reasons": {
           "unreachable": "Connection failed: the engine couldn't be reached. Check the URL, and that this server can connect to it.",
           "unauthorized": "Authentication failed: the engine rejected the username and the password.",

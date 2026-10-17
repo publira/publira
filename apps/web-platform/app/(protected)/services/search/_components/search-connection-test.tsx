@@ -20,6 +20,27 @@ interface SearchConnectionTestProps {
   disabled: boolean;
 }
 
+const PluginsMessage = ({
+  plugins,
+  pluginsListed,
+}: {
+  plugins: string[];
+  pluginsListed: boolean;
+}) => {
+  if (!pluginsListed) {
+    return <ClientMessage message="platform.search.test.plugins_unlisted" />;
+  }
+  if (plugins.length === 0) {
+    return <ClientMessage message="platform.search.test.plugins_none" />;
+  }
+  return (
+    <ClientMessage
+      message="platform.search.test.plugins"
+      values={{ plugins: plugins.join(", ") }}
+    />
+  );
+};
+
 /**
  * Runs the connection test with whatever the surrounding settings form holds,
  * saved or not, as a second submission of that form. An engine that answered
@@ -85,14 +106,10 @@ export const SearchConnectionTest = ({
           <li className="flex items-start gap-2">
             <span className="size-4 shrink-0" />
             <span className="min-w-0 break-words text-foreground">
-              {result.plugins.length > 0 ? (
-                <ClientMessage
-                  message="platform.search.test.plugins"
-                  values={{ plugins: result.plugins.join(", ") }}
-                />
-              ) : (
-                <ClientMessage message="platform.search.test.plugins_none" />
-              )}
+              <PluginsMessage
+                plugins={result.plugins}
+                pluginsListed={result.pluginsListed}
+              />
             </span>
           </li>
         </ul>

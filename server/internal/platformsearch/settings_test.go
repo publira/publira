@@ -118,9 +118,10 @@ func TestFromConfigTellsWhereTheSavedConfigurationStands(t *testing.T) {
 
 func TestEvaluateNamesWhatTheEngineLacks(t *testing.T) {
 	complete := opensearchbackend.Probe{
-		Product: opensearchbackend.ProductOpenSearch,
-		Version: "3.9.0",
-		Plugins: []string{"analysis-icu", "analysis-kuromoji"},
+		Product:       opensearchbackend.ProductOpenSearch,
+		Version:       "3.9.0",
+		Plugins:       []string{"analysis-icu", "analysis-kuromoji"},
+		PluginsListed: true,
 	}
 	for _, test := range []struct {
 		name  string
@@ -131,7 +132,10 @@ func TestEvaluateNamesWhatTheEngineLacks(t *testing.T) {
 		{name: "plugins", probe: complete},
 		// The default analysis needs no plugin, and a saved one was checked
 		// against the engine on the save, so no plugin decides the test.
-		{name: "no plugins", probe: opensearchbackend.Probe{Product: opensearchbackend.ProductOpenSearch, Version: "3.9.0"}},
+		{name: "no plugins", probe: opensearchbackend.Probe{Product: opensearchbackend.ProductOpenSearch, Version: "3.9.0", PluginsListed: true}},
+		// Listing the plugins takes a privilege the user needs for nothing
+		// else, so an engine that will not list them passes too.
+		{name: "plugins not listed", probe: opensearchbackend.Probe{Product: opensearchbackend.ProductOpenSearch, Version: "3.9.0"}},
 		{name: "no answer", err: fmt.Errorf("%w: dial", opensearchbackend.ErrUnreachable), want: ReasonUnreachable},
 		{name: "a context deadline", err: errors.New("context deadline exceeded"), want: ReasonUnreachable},
 		{name: "credentials refused", err: fmt.Errorf("%w: 401", opensearchbackend.ErrUnauthorized), want: ReasonUnauthorized},
@@ -144,7 +148,7 @@ func TestEvaluateNamesWhatTheEngineLacks(t *testing.T) {
 			if got.Reason != test.want {
 				t.Fatalf("evaluate = %+v, want reason %q", got, test.want)
 			}
-			if test.err == nil && !slices.Equal(got.Plugins, test.probe.Plugins) {
+			if test.err == nil && (!slices.Equal(got.Plugins, test.probe.Plugins) || got.PluginsListed != test.probe.PluginsListed) {
 				t.Fatalf("evaluate = %+v, want the plugins of %+v reported", got, test.probe)
 			}
 		})

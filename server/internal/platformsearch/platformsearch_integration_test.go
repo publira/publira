@@ -505,7 +505,7 @@ func TestTheConnectionTestReportsTheEngineAndItsPlugins(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Test: %v", err)
 		}
-		if !result.Succeeded() || result.Product != products[engine.Name] || result.Version == "" {
+		if !result.Succeeded() || result.Product != products[engine.Name] || result.Version == "" || !result.PluginsListed {
 			t.Fatalf("Test = %+v, want %s", result, products[engine.Name])
 		}
 		// The Elasticsearch node has no plugin installed, and passes the

@@ -37,6 +37,9 @@ type Result struct {
 	// needs none, and a saved definition was checked against the engine when
 	// it was saved.
 	Plugins []string
+	// PluginsListed reports whether the engine listed its plugins, which a
+	// user without the cluster privilege to ask is refused.
+	PluginsListed bool
 }
 
 // Succeeded reports whether the engine answered as the one the settings name.
@@ -182,9 +185,10 @@ func evaluate(engine Engine, probe opensearchbackend.Probe, err error) Result {
 		return Result{Reason: ReasonUnreachable}
 	}
 	result := Result{
-		Product: probe.Product,
-		Version: probe.Version,
-		Plugins: probe.Plugins,
+		Product:       probe.Product,
+		Version:       probe.Version,
+		Plugins:       probe.Plugins,
+		PluginsListed: probe.PluginsListed,
 	}
 	if probe.Product != products[engine] {
 		result.Reason = ReasonWrongProduct

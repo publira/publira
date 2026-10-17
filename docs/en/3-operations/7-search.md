@@ -34,7 +34,7 @@ Publira does not run the engine for you. Use a cluster you operate or a managed 
 
 ## Testing the engine
 
-The test asks the engine what it is and which plugins every node has, and reports the product, its version, and the plugins. It fails when the engine does not answer, rejects the credentials, or turns out to be the other product than the one chosen. No plugin decides it: the default text analysis needs none, and a definition of your own is checked against the engine when you save it.
+The test asks the engine what it is and which plugins every node has, and reports the product, its version, and the plugins. It fails when the engine does not answer, rejects the credentials, or turns out to be the other product than the one chosen. No plugin decides it: the default text analysis needs none, and a definition of your own is checked against the engine when you save it. Listing the plugins takes a cluster privilege the user needs for nothing else, so a user without it passes the test with the plugins left unlisted.
 
 - In the Platform Console, **Test connection** under **Search** tests the values in the form, before they are saved. It runs from `publira server`.
 - `publiractl search test` tests the engine already saved, from wherever `publiractl` runs, and exits `1` when the test fails. On PostgreSQL there is nothing to test, and it exits `1`.

@@ -6151,6 +6151,7 @@
         "engine": "引擎：{$product} {$version}",
         "plugins": "外掛程式：{$plugins}",
         "plugins_none": "外掛程式：無",
+        "plugins_unlisted": "外掛程式：引擎未向此使用者列出外掛程式。",
         "reasons": {
           "unreachable": "連線失敗：無法連線到引擎。請檢查URL，以及此伺服器能否連線到該引擎。",
           "unauthorized": "驗證失敗：引擎拒絕了使用者名稱與密碼。",

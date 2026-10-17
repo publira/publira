@@ -89,6 +89,8 @@ export interface PlatformSearchTestResult {
   failure: string;
   /** The plugins every node has, in name order. */
   plugins: string[];
+  /** Whether the engine listed its plugins to the user the test signed in as. */
+  pluginsListed: boolean;
   /** The product the engine reported, empty when it did not answer. */
   product: string;
   succeeded: boolean;
@@ -369,12 +371,13 @@ export const searchTestFailureMessage = async (
 const toTestResult = async (
   response: Pick<
     TestPlatformSearchConnectionResponse,
-    "plugins" | "product" | "reason" | "succeeded" | "version"
+    "plugins" | "pluginsListed" | "product" | "reason" | "succeeded" | "version"
   >,
   locale: Locale
 ): Promise<PlatformSearchTestResult> => {
   const result = {
     plugins: response.plugins,
+    pluginsListed: response.pluginsListed,
     product: response.product,
     succeeded: response.succeeded,
     version: response.version,

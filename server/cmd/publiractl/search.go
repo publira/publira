@@ -289,7 +289,10 @@ func printSearchTest(w io.Writer, result platformsearch.Result) error {
 		fmt.Fprintf(&b, "Product:\t%s\n", orUnknown(result.Product))
 		fmt.Fprintf(&b, "Version:\t%s\n", result.Version)
 		plugins := "none"
-		if len(result.Plugins) > 0 {
+		switch {
+		case !result.PluginsListed:
+			plugins = "unknown: the engine would not list them to this user"
+		case len(result.Plugins) > 0:
 			plugins = strings.Join(result.Plugins, ", ")
 		}
 		fmt.Fprintf(&b, "Plugins:\t%s\n", plugins)

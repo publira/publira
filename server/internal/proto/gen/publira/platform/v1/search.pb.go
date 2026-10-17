@@ -1040,9 +1040,13 @@ type TestPlatformSearchConnectionResponse struct {
 	Product string `protobuf:"bytes,3,opt,name=product,proto3" json:"product,omitempty"`
 	Version string `protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty"`
 	// The plugins every node has installed, in name order, which a language's
-	// own analysis may be built on. Empty when the engine did not answer, and
-	// for an engine that has none.
-	Plugins       []string `protobuf:"bytes,7,rep,name=plugins,proto3" json:"plugins,omitempty"`
+	// own analysis may be built on. Empty when the engine did not answer, when
+	// it would not list them, and for an engine that has none.
+	Plugins []string `protobuf:"bytes,7,rep,name=plugins,proto3" json:"plugins,omitempty"`
+	// Whether the engine listed its plugins. Listing them takes a cluster
+	// privilege the user Publira signs in as needs for nothing else, so an
+	// engine that refuses passes the test all the same, with this false.
+	PluginsListed bool `protobuf:"varint,8,opt,name=plugins_listed,json=pluginsListed,proto3" json:"plugins_listed,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1112,6 +1116,13 @@ func (x *TestPlatformSearchConnectionResponse) GetPlugins() []string {
 	return nil
 }
 
+func (x *TestPlatformSearchConnectionResponse) GetPluginsListed() bool {
+	if x != nil {
+		return x.PluginsListed
+	}
+	return false
+}
+
 var File_publira_platform_v1_search_proto protoreflect.FileDescriptor
 
 const file_publira_platform_v1_search_proto_rawDesc = "" +
@@ -1170,13 +1181,14 @@ const file_publira_platform_v1_search_proto_rawDesc = "" +
 	"\x03url\x18\x02 \x01(\tR\x03url\x12\x1a\n" +
 	"\busername\x18\x03 \x01(\tR\busername\x12W\n" +
 	"\x14password_update_mode\x18\x04 \x01(\x0e2%.publira.platform.v1.SecretUpdateModeR\x12passwordUpdateMode\x12\x1a\n" +
-	"\bpassword\x18\x05 \x01(\tR\bpassword\"\xeb\x01\n" +
+	"\bpassword\x18\x05 \x01(\tR\bpassword\"\x92\x02\n" +
 	"$TestPlatformSearchConnectionResponse\x12\x1c\n" +
 	"\tsucceeded\x18\x01 \x01(\bR\tsucceeded\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x18\n" +
 	"\aproduct\x18\x03 \x01(\tR\aproduct\x12\x18\n" +
 	"\aversion\x18\x04 \x01(\tR\aversion\x12\x18\n" +
-	"\aplugins\x18\a \x03(\tR\apluginsJ\x04\b\x05\x10\x06J\x04\b\x06\x10\aR\x1banalysis_kuromoji_installedR\x16analysis_icu_installed*\xaf\x01\n" +
+	"\aplugins\x18\a \x03(\tR\aplugins\x12%\n" +
+	"\x0eplugins_listed\x18\b \x01(\bR\rpluginsListedJ\x04\b\x05\x10\x06J\x04\b\x06\x10\aR\x1banalysis_kuromoji_installedR\x16analysis_icu_installed*\xaf\x01\n" +
 	"\x14PlatformSearchEngine\x12&\n" +
 	"\"PLATFORM_SEARCH_ENGINE_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aPLATFORM_SEARCH_ENGINE_SQL\x10\x01\x12%\n" +
