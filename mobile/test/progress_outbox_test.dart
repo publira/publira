@@ -223,7 +223,7 @@ void main() {
       );
 
       origin.markReadError = null;
-      await catalog.listSeries();
+      await catalog.listSeries(locale: 'en');
       await pumpEventQueue();
 
       expect(origin.markedRead, [_episodeId, _episodeId]);

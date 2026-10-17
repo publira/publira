@@ -2541,6 +2541,11 @@ final class AppMessages {
     return _format('mobile.series.episodes_heading');
   }
 
+  /// `mobile.series.fallback_notice`
+  String seriesFallbackNotice({required String language}) {
+    return _format('mobile.series.fallback_notice', {'language': language});
+  }
+
   /// `mobile.series.load_failed`
   String get seriesLoadFailed {
     return _format('mobile.series.load_failed');
@@ -3673,6 +3678,8 @@ const _jaSources = <String, String>{
   'mobile.series.episode_finished': '読了',
   'mobile.series.episodes_empty': '公開中のエピソードはありません',
   'mobile.series.episodes_heading': 'エピソード一覧',
+  'mobile.series.fallback_notice':
+      'このシリーズはお使いの言語のタイトルと概要がないため、{\$language}で表示しています。',
   'mobile.series.load_failed': 'ページを表示できませんでした。もう一度お試しください。',
   'mobile.series.not_found': 'シリーズが見つかりません ({\$id})',
   'mobile.series.offline_not_saved':
@@ -4442,6 +4449,8 @@ const _enSources = <String, String>{
   'mobile.series.episode_finished': 'Finished',
   'mobile.series.episodes_empty': 'No episodes have been published yet.',
   'mobile.series.episodes_heading': 'Episodes',
+  'mobile.series.fallback_notice':
+      'This series has no title or synopsis in your language, so it is shown in {\$language}.',
   'mobile.series.load_failed': 'Could not show the series. Try again.',
   'mobile.series.not_found': 'Series not found ({\$id})',
   'mobile.series.offline_not_saved':
@@ -5128,6 +5137,8 @@ const _koSources = <String, String>{
   'mobile.series.episode_finished': '완독',
   'mobile.series.episodes_empty': '아직 공개된 에피소드가 없습니다',
   'mobile.series.episodes_heading': '에피소드',
+  'mobile.series.fallback_notice':
+      '이 시리즈는 사용 중인 언어로 된 제목과 줄거리가 없어 {\$language}로 표시합니다.',
   'mobile.series.load_failed': '시리즈를 표시할 수 없습니다',
   'mobile.series.not_found': '시리즈를 찾을 수 없습니다 ({\$id})',
   'mobile.series.offline_not_saved': '오프라인 상태이며, 이 기기에 저장된 이 시리즈의 데이터가 없습니다.',
@@ -5754,6 +5765,7 @@ const _zhHansSources = <String, String>{
   'mobile.series.episode_finished': '已读完',
   'mobile.series.episodes_empty': '还没有发布任何章节。',
   'mobile.series.episodes_heading': '章节',
+  'mobile.series.fallback_notice': '此系列没有以你所用的语言撰写的标题和简介，因此以{\$language}显示。',
   'mobile.series.load_failed': '无法显示该系列。',
   'mobile.series.not_found': '找不到系列（{\$id}）',
   'mobile.series.offline_not_saved': '您当前处于离线状态，且此设备上没有保存该系列的内容。',
@@ -6367,6 +6379,7 @@ const _zhHantSources = <String, String>{
   'mobile.series.episode_finished': '已讀完',
   'mobile.series.episodes_empty': '尚未發布任何章節。',
   'mobile.series.episodes_heading': '章節',
+  'mobile.series.fallback_notice': '此系列沒有以你所使用的語言撰寫的標題和簡介，因此以{\$language}顯示。',
   'mobile.series.load_failed': '無法顯示該系列。',
   'mobile.series.not_found': '找不到系列（{\$id}）',
   'mobile.series.offline_not_saved': '您目前處於離線狀態，且此裝置上沒有儲存該系列的內容。',

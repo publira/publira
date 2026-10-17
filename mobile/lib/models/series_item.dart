@@ -1,3 +1,7 @@
+import 'dart:ui';
+
+import 'package:publira/l10n/locale_negotiation.dart';
+
 /// One stored rendition of a series eye-catch image, as
 /// `publira.types.v1.SeriesEyeCatchVariant` describes it.
 ///
@@ -175,6 +179,7 @@ class SeriesItem {
     this.internalId = '',
     required this.title,
     required this.description,
+    this.locale = '',
     this.episodeCount = 0,
     this.labelId = '',
     this.labelName = '',
@@ -198,6 +203,12 @@ class SeriesItem {
   final String internalId;
   final String title;
   final String description;
+
+  /// The locale [title] and [description] were answered in, which differs
+  /// from the one asked for when the series has no translation in it. Empty
+  /// on a copy saved before the locale was kept.
+  final String locale;
+
   final int episodeCount;
 
   /// Public id of the series' label, which addresses the label screen. Empty
@@ -264,6 +275,7 @@ class SeriesItem {
       internalId: internalId,
       title: title,
       description: description,
+      locale: locale,
       episodeCount: episodeCount ?? this.episodeCount,
       labelId: labelId,
       labelName: labelName,
@@ -279,6 +291,11 @@ class SeriesItem {
       ratingCount: ratingCount,
     );
   }
+
+  /// The name of the language the series is shown in, when that is not
+  /// [requested], or `null` when it is in the language asked for.
+  String? fallbackLanguage(Locale requested) =>
+      fallbackLanguageLabel(locale, requested);
 }
 
 /// Which surfaces a paid episode may be bought on, as

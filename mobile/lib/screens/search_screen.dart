@@ -77,10 +77,14 @@ class _SearchScreenState extends State<SearchScreen> {
 
   CatalogRepository? _catalog;
 
-  /// Asks the keyword again whenever the repository changes, the way the
-  /// catalog list does: the rows on screen and the tokens under them were
-  /// answered by the repository that has just been replaced, so keeping them
-  /// would show one catalog's results and then page them out of another.
+  /// The app's locale the series are searched in, as a BCP 47 tag.
+  String? _locale;
+
+  /// Asks the keyword again whenever the repository or the locale changes, the
+  /// way the catalog list does: the rows on screen and the tokens under them
+  /// were answered by the repository that has just been replaced, or in the
+  /// language the app no longer shows, so keeping them would show one
+  /// catalog's results and then page them out of another.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -95,11 +99,13 @@ class _SearchScreenState extends State<SearchScreen> {
     }
     _active = active;
     final catalog = CatalogScope.of(context);
-    if (identical(catalog, _catalog)) {
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    if (identical(catalog, _catalog) && locale == _locale) {
       return;
     }
     final swapped = _catalog != null;
     _catalog = catalog;
+    _locale = locale;
     if (swapped && _query.isNotEmpty) {
       _readFirstPages(_query);
     }
@@ -158,8 +164,13 @@ class _SearchScreenState extends State<SearchScreen> {
       return;
     }
     final catalog = _catalog!;
+    final locale = _locale!;
     _series.restart((token) async {
-      final page = await catalog.searchSeries(query: query, token: token);
+      final page = await catalog.searchSeries(
+        query: query,
+        locale: locale,
+        token: token,
+      );
       return CatalogPageRead(items: page.series, nextToken: page.nextToken);
     });
     _creators.restart((token) async {

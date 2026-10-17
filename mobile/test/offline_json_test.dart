@@ -249,6 +249,29 @@ void main() {
     expect(series.labelName, 'Seed Label 01');
   });
 
+  test('the locale a saved series was served in survives the round trip', () {
+    final written = OfflineIndex(
+      series: const [
+        SeriesItem(
+          id: 'SeedSERSAAA1',
+          title: 'Seed Series 001',
+          description: 'synopsis',
+          locale: 'ja',
+        ),
+      ],
+    ).toJson();
+
+    expect(OfflineIndex.fromJson(written)!.series!.single.locale, 'ja');
+  });
+
+  test('a series saved before its locale was kept names none', () {
+    final decoded = OfflineIndex.fromJson(
+      _index(_episode(access: 'free'), series: _series()),
+    );
+
+    expect(decoded!.series!.single.locale, isEmpty);
+  });
+
   test('a label saved before its id was kept is named without one', () {
     final decoded = OfflineIndex.fromJson(
       _index(

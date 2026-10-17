@@ -43,11 +43,13 @@ class Classification {
 typedef ClassificationReader =
     Future<Classification?> Function(CatalogRepository catalog);
 
-/// Reads one page of the series carrying the classification, or `null` when
-/// the API answers that it does not exist.
+/// Reads one page of the series carrying the classification in [locale], the
+/// app's as a BCP 47 tag, or `null` when the API answers that it does not
+/// exist.
 typedef ClassifiedSeriesReader =
     Future<SeriesPage?> Function(
       CatalogRepository catalog,
+      String locale,
       SeriesListFilter filter,
       String token,
     );
@@ -101,6 +103,7 @@ class ClassifiedSeriesView extends StatefulWidget {
 
 class _ClassifiedSeriesViewState extends State<ClassifiedSeriesView> {
   CatalogRepository? _catalog;
+  String? _locale;
   CatalogPager<SeriesItem, Classification>? _pager;
   var _filter = const SeriesListFilter();
 
@@ -108,22 +111,25 @@ class _ClassifiedSeriesViewState extends State<ClassifiedSeriesView> {
   /// reading again: only the series under it change.
   Classification? _classification;
 
-  /// Reads everything again whenever the repository changes, for the reason
-  /// the author screen does.
+  /// Reads everything again whenever the repository or the locale changes,
+  /// for the reason the author screen does.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final catalog = CatalogScope.of(context);
-    if (identical(catalog, _catalog)) {
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    if (identical(catalog, _catalog) && locale == _locale) {
       return;
     }
     _catalog = catalog;
+    _locale = locale;
     _classification = null;
     _restart();
   }
 
   void _restart() {
     final catalog = _catalog!;
+    final locale = _locale!;
     final filter = _filter;
     final known = _classification;
     Future<CatalogPageRead<SeriesItem, Classification>?> read(
@@ -132,7 +138,7 @@ class _ClassifiedSeriesViewState extends State<ClassifiedSeriesView> {
       // The pager keeps the first page's header alone, so a later page reads
       // only its series.
       if (token.isNotEmpty) {
-        final series = await widget.readSeries(catalog, filter, token);
+        final series = await widget.readSeries(catalog, locale, filter, token);
         return series == null
             ? null
             : CatalogPageRead(
@@ -143,7 +149,7 @@ class _ClassifiedSeriesViewState extends State<ClassifiedSeriesView> {
       final classification = known == null
           ? widget.readClassification(catalog)
           : Future.value(known);
-      final page = widget.readSeries(catalog, filter, token);
+      final page = widget.readSeries(catalog, locale, filter, token);
       final Classification? header;
       final SeriesPage? series;
       try {

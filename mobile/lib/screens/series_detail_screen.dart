@@ -19,6 +19,7 @@ import 'package:publira/follow/follow_control.dart';
 import 'package:publira/follow/follow_repository.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/l10n/locale_negotiation.dart';
 import 'package:publira/links/link_scope.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/follow.dart';
@@ -58,17 +59,24 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
   var _started = false;
   var _accessToken = '';
 
+  /// The app's locale the series is read in, as a BCP 47 tag.
+  var _locale = '';
+
   /// Reloads whenever the reader signs in or out, because the rating a birth
-  /// date proves belongs to the reader who was signed in when it was read.
+  /// date proves belongs to the reader who was signed in when it was read,
+  /// and whenever the locale changes, which the title and synopsis are read
+  /// in.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final auth = AuthScope.of(context);
-    if (_started && auth.accessToken == _accessToken) {
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    if (_started && auth.accessToken == _accessToken && locale == _locale) {
       return;
     }
     _started = true;
     _accessToken = auth.accessToken;
+    _locale = locale;
     _future = _load(CatalogScope.of(context), auth);
   }
 
@@ -85,7 +93,7 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
     CatalogRepository catalog,
     AuthController auth,
   ) async {
-    final detail = await catalog.getSeries(widget.seriesId);
+    final detail = await catalog.getSeries(widget.seriesId, locale: _locale);
     if (detail == null) {
       return null;
     }
@@ -463,7 +471,10 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
     final read = ++_progressReads;
     final SeriesProgress progress;
     try {
-      progress = await catalog.getSeriesProgress(seriesId);
+      progress = await catalog.getSeriesProgress(
+        seriesId,
+        locale: Localizations.localeOf(context).toLanguageTag(),
+      );
     } on CatalogFailure {
       return;
     }
@@ -542,9 +553,14 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   ) async {
     final messages = AppMessages.of(context);
     final messenger = ScaffoldMessenger.of(context);
+    final locale = Localizations.localeOf(context).toLanguageTag();
     String copy;
     try {
-      await downloader.save(widget.detail.series.id, episode.id);
+      await downloader.save(
+        widget.detail.series.id,
+        episode.id,
+        locale: locale,
+      );
       copy = messages.seriesSaveOfflineSaved(title: episode.title);
     } on EpisodeDownloadFailure catch (failure) {
       copy = switch (failure.kind) {
@@ -598,6 +614,12 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
     final theme = Theme.of(context);
     final messages = AppMessages.of(context);
     final series = widget.detail.series;
+    final fallbackLanguage = series.fallbackLanguage(
+      Localizations.localeOf(context),
+    );
+    // The language the title and synopsis are written in, which picks the
+    // glyphs a Han character is drawn with and whether it is autospaced.
+    final seriesLocale = supportedLocaleForCode(series.locale);
     // A build with no follow repository offers none of this, so neither the
     // control nor the author rows it would sit in are put on the screen.
     final follows = FollowScope.maybeOf(context) != null;
@@ -614,6 +636,17 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           sliver: SliverList.list(
             children: [
+              if (fallbackLanguage != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: AutospacedText(
+                    messages.seriesFallbackNotice(language: fallbackLanguage),
+                    key: const ValueKey('series-fallback-notice'),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
               // 16:9 is the shape of the rendition, and on a phone it is what the
               // banner takes. The cap is for the wide screen a tablet or a
               // desktop window gives it, where the same ratio would push the
@@ -632,6 +665,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
               const SizedBox(height: 16),
               AutospacedText(
                 series.title,
+                locale: seriesLocale,
                 style: theme.textTheme.headlineSmall,
               ),
               const SizedBox(height: 8),
@@ -771,6 +805,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                 const SizedBox(height: 16),
                 AutospacedText(
                   series.description,
+                  locale: seriesLocale,
                   style: theme.textTheme.bodyLarge,
                 ),
               ],
@@ -943,11 +978,12 @@ class _RelatedSeriesShelf extends StatelessWidget {
       reloadToken: series.internalId,
       // A copy saved on this device before the internal id was kept names no
       // series the API can score against.
-      load: (catalog) async => series.internalId.isEmpty
+      load: (catalog, locale) async => series.internalId.isEmpty
           ? const []
           : catalog.listRelatedSeries(
               series.internalId,
               limit: _relatedSeriesLimit,
+              locale: locale,
             ),
       cardBuilder: (context, item) => SeriesShelfCard(
         key: ValueKey('series-related-${item.id}'),

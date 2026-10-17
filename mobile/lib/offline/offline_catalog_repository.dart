@@ -78,9 +78,12 @@ class OfflineCatalogRepository implements CatalogRepository {
   /// than on an empty screen. Keeping more would also mean keeping a snapshot
   /// of the whole catalog, which is not what a device without a network needs.
   @override
-  Future<SeriesPage> listSeries({String token = ''}) async {
+  Future<SeriesPage> listSeries({
+    required String locale,
+    String token = '',
+  }) async {
     try {
-      final page = await _origin.listSeries(token: token);
+      final page = await _origin.listSeries(locale: locale, token: token);
       _reached();
       if (token.isEmpty) {
         await library.writeSeriesList(page);
@@ -108,8 +111,11 @@ class OfflineCatalogRepository implements CatalogRepository {
   /// against every published title and synopsis is a read of the whole
   /// catalog, and the device holds one page of it.
   @override
-  Future<SeriesPage> searchSeries({required String query, String token = ''}) =>
-      _origin.searchSeries(query: query, token: token);
+  Future<SeriesPage> searchSeries({
+    required String query,
+    required String locale,
+    String token = '',
+  }) => _origin.searchSeries(query: query, locale: locale, token: token);
 
   /// The authors a keyword names, which only the API can answer for the reason
   /// [searchSeries] gives.
@@ -148,8 +154,10 @@ class OfflineCatalogRepository implements CatalogRepository {
   /// shelf stands above that page, so a reader without a network still has the
   /// catalog itself.
   @override
-  Future<List<SeriesItem>> listNewestSeries({required int limit}) =>
-      _origin.listNewestSeries(limit: limit);
+  Future<List<SeriesItem>> listNewestSeries({
+    required int limit,
+    required String locale,
+  }) => _origin.listNewestSeries(limit: limit, locale: locale);
 
   /// The ranking, which only the API can answer: a snapshot describes a
   /// window that has closed, and a stale one would name positions the tenant
@@ -159,12 +167,14 @@ class OfflineCatalogRepository implements CatalogRepository {
     required int limit,
     required RankingPeriod period,
     required SeriesAgeRating ageRating,
+    required String locale,
     String genreId = '',
     String token = '',
   }) => _origin.listRankedSeries(
     limit: limit,
     period: period,
     ageRating: ageRating,
+    locale: locale,
     genreId: genreId,
     token: token,
   );
@@ -176,26 +186,38 @@ class OfflineCatalogRepository implements CatalogRepository {
   Future<List<SeriesItem>> listRelatedSeries(
     String seriesInternalId, {
     required int limit,
-  }) => _origin.listRelatedSeries(seriesInternalId, limit: limit);
+    required String locale,
+  }) =>
+      _origin.listRelatedSeries(seriesInternalId, limit: limit, locale: locale);
 
   /// The recommendation orders, which only the API can answer: each is the
   /// whole catalog ranked from signals the device does not hold.
   @override
   Future<SeriesPage> listRecommendedSeries({
     required int limit,
+    required String locale,
     String token = '',
-  }) => _origin.listRecommendedSeries(limit: limit, token: token);
+  }) =>
+      _origin.listRecommendedSeries(limit: limit, locale: locale, token: token);
 
   @override
   Future<SeriesPage> listMyRecommendedSeries({
     required int limit,
+    required String locale,
     String token = '',
-  }) => _origin.listMyRecommendedSeries(limit: limit, token: token);
+  }) => _origin.listMyRecommendedSeries(
+    limit: limit,
+    locale: locale,
+    token: token,
+  );
 
   @override
-  Future<SeriesDetail?> getSeries(String publicId) async {
+  Future<SeriesDetail?> getSeries(
+    String publicId, {
+    required String locale,
+  }) async {
     try {
-      final detail = await _origin.getSeries(publicId);
+      final detail = await _origin.getSeries(publicId, locale: locale);
       _reached();
       if (detail == null) {
         await library.removeSeries(publicId);
@@ -226,8 +248,8 @@ class OfflineCatalogRepository implements CatalogRepository {
   /// they opened, so neither may save a series here nor take the episodes
   /// saved under one away.
   @override
-  Future<String?> getSeriesTitle(String publicId) =>
-      _origin.getSeriesTitle(publicId);
+  Future<String?> getSeriesTitle(String publicId, {required String locale}) =>
+      _origin.getSeriesTitle(publicId, locale: locale);
 
   @override
   Future<SeriesCreator?> getCreator(String publicId) =>
@@ -238,14 +260,18 @@ class OfflineCatalogRepository implements CatalogRepository {
   @override
   Future<CreatorDetail?> getCreatorDetail(
     String publicId, {
+    required String locale,
     String token = '',
-  }) => _origin.getCreatorDetail(publicId, token: token);
+  }) => _origin.getCreatorDetail(publicId, locale: locale, token: token);
 
   /// A label's page, which only the API can answer for the reason
   /// [getCreatorDetail] gives.
   @override
-  Future<LabelDetail?> getLabelDetail(String publicId, {String token = ''}) =>
-      _origin.getLabelDetail(publicId, token: token);
+  Future<LabelDetail?> getLabelDetail(
+    String publicId, {
+    required String locale,
+    String token = '',
+  }) => _origin.getLabelDetail(publicId, locale: locale, token: token);
 
   /// The classification is read from the API alone: the device keeps what a
   /// reader opened, not the lists they browsed through.
@@ -258,34 +284,47 @@ class OfflineCatalogRepository implements CatalogRepository {
   @override
   Future<SeriesPage?> listGenreSeries(
     String genreId, {
+    required String locale,
     SeriesListFilter filter = const SeriesListFilter(),
     String token = '',
-  }) => _origin.listGenreSeries(genreId, filter: filter, token: token);
+  }) => _origin.listGenreSeries(
+    genreId,
+    locale: locale,
+    filter: filter,
+    token: token,
+  );
 
   @override
   Future<SeriesPage?> listTagSeries(
     String slug, {
+    required String locale,
     SeriesListFilter filter = const SeriesListFilter(),
     String token = '',
-  }) => _origin.listTagSeries(slug, filter: filter, token: token);
+  }) =>
+      _origin.listTagSeries(slug, locale: locale, filter: filter, token: token);
 
   @override
   Future<EpisodeDetail?> getEpisode(
     String seriesPublicId,
-    String episodePublicId,
-  ) async {
+    String episodePublicId, {
+    required String locale,
+  }) async {
     // Read in the same turn as the origin reads its session token, so the body
     // is filed under the reader it was fetched for even when the account
     // changes before the answer arrives.
     final reader = _readerId();
     try {
-      final detail = await _origin.getEpisode(seriesPublicId, episodePublicId);
+      final detail = await _origin.getEpisode(
+        seriesPublicId,
+        episodePublicId,
+        locale: locale,
+      );
       _reached();
       if (detail == null) {
         await library.removeEpisode(seriesPublicId, episodePublicId);
         return null;
       }
-      await _remember(detail, reader);
+      await _remember(detail, reader, locale);
       return detail;
     } on CatalogFailure catch (failure) {
       if (failure.kind != CatalogFailureKind.network) {
@@ -469,8 +508,10 @@ class OfflineCatalogRepository implements CatalogRepository {
   /// API holds. A screen that cannot reach it offers the first episode, the
   /// way it does a guest.
   @override
-  Future<SeriesProgress> getSeriesProgress(String seriesInternalId) =>
-      _origin.getSeriesProgress(seriesInternalId);
+  Future<SeriesProgress> getSeriesProgress(
+    String seriesInternalId, {
+    required String locale,
+  }) => _origin.getSeriesProgress(seriesInternalId, locale: locale);
 
   /// The reader's own rating, made of reactions that are never kept on the
   /// device either, so only the API can answer it.
@@ -486,22 +527,25 @@ class OfflineCatalogRepository implements CatalogRepository {
   @override
   Future<RecentSeriesPage> listRecentSeries({
     required int limit,
+    required String locale,
     String token = '',
-  }) => _origin.listRecentSeries(limit: limit, token: token);
+  }) => _origin.listRecentSeries(limit: limit, locale: locale, token: token);
 
   /// The reader's history across every device, which only the API holds.
   @override
   Future<EpisodeReadPage> listEpisodeReads({
     required int limit,
+    required String locale,
     String token = '',
-  }) => _origin.listEpisodeReads(limit: limit, token: token);
+  }) => _origin.listEpisodeReads(limit: limit, locale: locale, token: token);
 
   /// What arrived in the reader's follows, which only the API can answer.
   @override
   Future<FollowUpdatePage> listFollowUpdates({
     required int limit,
+    required String locale,
     String token = '',
-  }) => _origin.listFollowUpdates(limit: limit, token: token);
+  }) => _origin.listFollowUpdates(limit: limit, locale: locale, token: token);
 
   /// The API just answered, so what was queued while it could not be reached
   /// goes out now.
@@ -547,8 +591,13 @@ class OfflineCatalogRepository implements CatalogRepository {
   }
 
   /// Records what the API just said about [detail] for [reader], which is as
-  /// much about taking a body away as about keeping one.
-  Future<void> _remember(EpisodeDetail detail, String reader) async {
+  /// much about taking a body away as about keeping one. [locale] is the one
+  /// [detail] was read in, which a second read of it asks in again.
+  Future<void> _remember(
+    EpisodeDetail detail,
+    String reader,
+    String locale,
+  ) async {
     // An entitled body is kept only when there is a reader to hold it against:
     // a grant the device cannot name again is a grant it could never re-check.
     final keep = switch (detail.access) {
@@ -558,7 +607,7 @@ class OfflineCatalogRepository implements CatalogRepository {
       EpisodeAccess.locked ||
       EpisodeAccess.unknown => false,
     };
-    final grant = keep ? await _grantEnd(detail) : null;
+    final grant = keep ? await _grantEnd(detail, locale) : null;
     if (!keep || grant == _GrantEnd.lapsed) {
       await library.removeEpisode(detail.seriesId, detail.episode.id);
       return;
@@ -586,7 +635,7 @@ class OfflineCatalogRepository implements CatalogRepository {
   /// opens it after the tickets were listed. A staff ticket is bounded by the
   /// grace window alone, as a purchase is, and so is a ticket whose end could
   /// not be read, since the body was just confirmed.
-  Future<_GrantEnd?> _grantEnd(EpisodeDetail detail) async {
+  Future<_GrantEnd?> _grantEnd(EpisodeDetail detail, String locale) async {
     switch (detail.access) {
       case EpisodeAccess.free:
         final freeUntil = detail.episode.freeUntil;
@@ -607,6 +656,7 @@ class OfflineCatalogRepository implements CatalogRepository {
           final again = await _origin.getEpisode(
             detail.seriesId,
             detail.episode.id,
+            locale: locale,
           );
           return switch (again?.access) {
             EpisodeAccess.free || EpisodeAccess.entitled => null,

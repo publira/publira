@@ -4852,6 +4852,7 @@
       "read_from_first": "Read from episode 1",
       "related_heading": "You may also like",
       "episodes_heading": "Episodes",
+      "fallback_notice": "This series has no title or synopsis in your language, so it is shown in {$language}.",
       "load_failed": "Could not show the series. Try again.",
       "not_found": "Series not found ({$id})",
       "offline_not_saved": "You are offline, and this device holds nothing saved for this series.",

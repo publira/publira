@@ -4852,6 +4852,7 @@
       "related_heading": "こちらもおすすめ",
       "episodes_empty": "公開中のエピソードはありません",
       "episodes_heading": "エピソード一覧",
+      "fallback_notice": "このシリーズはお使いの言語のタイトルと概要がないため、{$language}で表示しています。",
       "load_failed": "ページを表示できませんでした。もう一度お試しください。",
       "not_found": "シリーズが見つかりません ({$id})",
       "offline_not_saved": "オフラインのため、このシリーズを表示できません。端末に保存されたデータがありません。",

@@ -76,12 +76,18 @@ class FakePurchaseRepository implements PurchaseRepository {
   /// Episodes [startEpisodeCheckout] was asked for, in order.
   final List<String> checkouts = <String>[];
 
+  /// The locale each call to [startEpisodeCheckout] asked in, in order.
+  final List<String> checkoutLocales = <String>[];
+
   /// The pages [listMyPurchases] answers, in order. The token of a page is
   /// its own index written out, the way the fixture server writes a cursor.
   List<List<MyPurchase>> pages;
 
   /// The `limit` each call to [listMyPurchases] asked for, in order.
   final List<int> limits = <int>[];
+
+  /// The locale each call to [listMyPurchases] asked in, in order.
+  final List<String> listLocales = <String>[];
 
   /// Thrown by [listMyPurchases].
   PurchaseFailure? listFailure;
@@ -115,8 +121,12 @@ class FakePurchaseRepository implements PurchaseRepository {
   }
 
   @override
-  Future<Uri> startEpisodeCheckout(String episodeInternalId) async {
+  Future<Uri> startEpisodeCheckout(
+    String episodeInternalId, {
+    required String locale,
+  }) async {
     checkouts.add(episodeInternalId);
+    checkoutLocales.add(locale);
     final failure = checkoutFailure;
     if (failure != null) {
       throw failure;
@@ -160,10 +170,12 @@ class FakePurchaseRepository implements PurchaseRepository {
 
   @override
   Future<MyPurchasePage> listMyPurchases({
+    required String locale,
     String token = '',
     int limit = myPurchasePageLimit,
   }) async {
     limits.add(limit);
+    listLocales.add(locale);
     final failure = listFailure;
     if (failure != null) {
       throw failure;

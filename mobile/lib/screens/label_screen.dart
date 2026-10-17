@@ -24,22 +24,29 @@ class LabelScreen extends StatefulWidget {
 
 class _LabelScreenState extends State<LabelScreen> {
   CatalogRepository? _catalog;
+  String? _locale;
   CatalogPager<SeriesItem, PublishedLabel>? _pager;
 
-  /// Reads the label again whenever the repository changes, for the reason
-  /// the author screen does.
+  /// Reads the label again whenever the repository or the locale changes, for
+  /// the reason the author screen does.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final catalog = CatalogScope.of(context);
-    if (identical(catalog, _catalog)) {
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    if (identical(catalog, _catalog) && locale == _locale) {
       return;
     }
     _catalog = catalog;
+    _locale = locale;
     Future<CatalogPageRead<SeriesItem, PublishedLabel>?> read(
       String token,
     ) async {
-      final detail = await catalog.getLabelDetail(widget.labelId, token: token);
+      final detail = await catalog.getLabelDetail(
+        widget.labelId,
+        locale: locale,
+        token: token,
+      );
       if (detail == null) {
         return null;
       }

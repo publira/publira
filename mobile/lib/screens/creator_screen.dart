@@ -27,24 +27,29 @@ class CreatorScreen extends StatefulWidget {
 
 class _CreatorScreenState extends State<CreatorScreen> {
   CatalogRepository? _catalog;
+  String? _locale;
   CatalogPager<SeriesItem, PublishedCreator>? _pager;
 
-  /// Reads the author again whenever the repository changes, the way the
-  /// search screen does: rows and a token answered by the repository just
-  /// replaced would page out of another.
+  /// Reads the author again whenever the repository or the locale changes,
+  /// the way the search screen does: rows and a token answered by the
+  /// repository just replaced, or in another language, would page out of
+  /// another.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final catalog = CatalogScope.of(context);
-    if (identical(catalog, _catalog)) {
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    if (identical(catalog, _catalog) && locale == _locale) {
       return;
     }
     _catalog = catalog;
+    _locale = locale;
     Future<CatalogPageRead<SeriesItem, PublishedCreator>?> read(
       String token,
     ) async {
       final detail = await catalog.getCreatorDetail(
         widget.creatorId,
+        locale: locale,
         token: token,
       );
       if (detail == null) {

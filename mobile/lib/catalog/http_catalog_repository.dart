@@ -65,11 +65,13 @@ class HttpCatalogRepository implements CatalogRepository {
   static const seriesPageLimit = 20;
 
   @override
-  Future<SeriesPage> listSeries({String token = ''}) => _listPublishedSeries(
-    seriesPageLimit,
-    pb.SeriesOrder.SERIES_ORDER_TITLE_ASC,
-    token: token,
-  );
+  Future<SeriesPage> listSeries({required String locale, String token = ''}) =>
+      _listPublishedSeries(
+        seriesPageLimit,
+        pb.SeriesOrder.SERIES_ORDER_TITLE_ASC,
+        locale: locale,
+        token: token,
+      );
 
   /// How many results one page of every search holds, which is also the API's
   /// own fallback for a request naming no limit.
@@ -78,6 +80,7 @@ class HttpCatalogRepository implements CatalogRepository {
   @override
   Future<SeriesPage> searchSeries({
     required String query,
+    required String locale,
     String token = '',
   }) async {
     try {
@@ -86,6 +89,7 @@ class HttpCatalogRepository implements CatalogRepository {
         ConnectCallContext(tenantId: tenantId),
         pb.SearchPublishedSeriesRequest(
           limit: searchPageLimit,
+          locale: locale,
           query: query,
           surface: appClientSurface,
           token: _pageToken(token),
@@ -214,10 +218,14 @@ class HttpCatalogRepository implements CatalogRepository {
   }
 
   @override
-  Future<List<SeriesItem>> listNewestSeries({required int limit}) async {
+  Future<List<SeriesItem>> listNewestSeries({
+    required int limit,
+    required String locale,
+  }) async {
     final page = await _listPublishedSeries(
       limit,
       pb.SeriesOrder.SERIES_ORDER_PUBLISHED_AT_DESC,
+      locale: locale,
     );
     return page.series;
   }
@@ -230,6 +238,7 @@ class HttpCatalogRepository implements CatalogRepository {
   Future<SeriesPage> _listPublishedSeries(
     int limit,
     pb.SeriesOrder order, {
+    required String locale,
     String token = '',
   }) async {
     try {
@@ -238,6 +247,7 @@ class HttpCatalogRepository implements CatalogRepository {
         ConnectCallContext(tenantId: tenantId),
         pb.ListPublishedSeriesRequest(
           limit: limit,
+          locale: locale,
           order: order,
           surface: appClientSurface,
           token: _pageToken(token),
@@ -255,6 +265,7 @@ class HttpCatalogRepository implements CatalogRepository {
     required int limit,
     required RankingPeriod period,
     required SeriesAgeRating ageRating,
+    required String locale,
     String genreId = '',
     String token = '',
   }) async {
@@ -275,6 +286,7 @@ class HttpCatalogRepository implements CatalogRepository {
           },
           genrePublicId: genreId.isEmpty ? null : genreId,
           limit: limit,
+          locale: locale,
           period: switch (period) {
             RankingPeriod.daily => pb.RankingPeriod.RANKING_PERIOD_DAILY,
             RankingPeriod.weekly => pb.RankingPeriod.RANKING_PERIOD_WEEKLY,
@@ -296,6 +308,7 @@ class HttpCatalogRepository implements CatalogRepository {
   @override
   Future<SeriesPage> listRecommendedSeries({
     required int limit,
+    required String locale,
     String token = '',
   }) async {
     try {
@@ -304,6 +317,7 @@ class HttpCatalogRepository implements CatalogRepository {
         ConnectCallContext(tenantId: tenantId),
         pb.ListRecommendedSeriesRequest(
           limit: limit,
+          locale: locale,
           surface: appClientSurface,
           token: _pageToken(token),
           tenant: _tenant(tenantId),
@@ -318,11 +332,12 @@ class HttpCatalogRepository implements CatalogRepository {
   @override
   Future<SeriesPage> listMyRecommendedSeries({
     required int limit,
+    required String locale,
     String token = '',
   }) async {
     final accessToken = _client.accessToken;
     if (accessToken.isEmpty) {
-      return listRecommendedSeries(limit: limit, token: token);
+      return listRecommendedSeries(limit: limit, locale: locale, token: token);
     }
     try {
       final tenantId = await _tenants.resolve();
@@ -330,6 +345,7 @@ class HttpCatalogRepository implements CatalogRepository {
         ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
         pb.ListMyRecommendedSeriesRequest(
           limit: limit,
+          locale: locale,
           surface: appClientSurface,
           token: _pageToken(token),
           tenant: _tenant(tenantId),
@@ -343,7 +359,7 @@ class HttpCatalogRepository implements CatalogRepository {
     }
     // The token is handed on as it is: one the tenant's order cannot read is
     // refused there, which starts the list again from its first page.
-    return listRecommendedSeries(limit: limit, token: token);
+    return listRecommendedSeries(limit: limit, locale: locale, token: token);
   }
 
   /// The wire format omits an empty repeated field, which is how a tenant the
@@ -364,6 +380,7 @@ class HttpCatalogRepository implements CatalogRepository {
   Future<List<SeriesItem>> listRelatedSeries(
     String seriesInternalId, {
     required int limit,
+    required String locale,
   }) async {
     try {
       final tenantId = await _tenants.resolve();
@@ -371,6 +388,7 @@ class HttpCatalogRepository implements CatalogRepository {
         ConnectCallContext(tenantId: tenantId),
         pb.ListRelatedSeriesRequest(
           limit: limit,
+          locale: locale,
           seriesId: seriesInternalId,
           surface: appClientSurface,
           tenant: _tenant(tenantId),
@@ -386,12 +404,16 @@ class HttpCatalogRepository implements CatalogRepository {
   }
 
   @override
-  Future<SeriesDetail?> getSeries(String publicId) async {
+  Future<SeriesDetail?> getSeries(
+    String publicId, {
+    required String locale,
+  }) async {
     try {
       final tenantId = await _tenants.resolve();
       final body = await _catalog.getSeriesDetail(
         ConnectCallContext(tenantId: tenantId),
         pb.GetSeriesDetailRequest(
+          locale: locale,
           publicId: publicId,
           surface: appClientSurface,
           tenant: _tenant(tenantId),
@@ -407,8 +429,10 @@ class HttpCatalogRepository implements CatalogRepository {
   }
 
   @override
-  Future<String?> getSeriesTitle(String publicId) async =>
-      (await getSeries(publicId))?.series.title;
+  Future<String?> getSeriesTitle(
+    String publicId, {
+    required String locale,
+  }) async => (await getSeries(publicId, locale: locale))?.series.title;
 
   @override
   Future<SeriesCreator?> getCreator(String publicId) async {
@@ -450,6 +474,7 @@ class HttpCatalogRepository implements CatalogRepository {
   @override
   Future<CreatorDetail?> getCreatorDetail(
     String publicId, {
+    required String locale,
     String token = '',
   }) async {
     try {
@@ -458,6 +483,7 @@ class HttpCatalogRepository implements CatalogRepository {
         ConnectCallContext(tenantId: tenantId),
         pb.GetPublishedCreatorDetailRequest(
           limit: detailSeriesPageLimit,
+          locale: locale,
           publicId: publicId,
           surface: appClientSurface,
           token: _pageToken(token),
@@ -479,6 +505,7 @@ class HttpCatalogRepository implements CatalogRepository {
   @override
   Future<LabelDetail?> getLabelDetail(
     String publicId, {
+    required String locale,
     String token = '',
   }) async {
     try {
@@ -487,6 +514,7 @@ class HttpCatalogRepository implements CatalogRepository {
         ConnectCallContext(tenantId: tenantId),
         pb.GetPublishedLabelDetailRequest(
           limit: detailSeriesPageLimit,
+          locale: locale,
           publicId: publicId,
           surface: appClientSurface,
           token: _pageToken(token),
@@ -677,22 +705,30 @@ class HttpCatalogRepository implements CatalogRepository {
   @override
   Future<SeriesPage?> listGenreSeries(
     String genreId, {
+    required String locale,
     SeriesListFilter filter = const SeriesListFilter(),
     String token = '',
-  }) => _listClassifiedSeries(filter, token, genrePublicId: genreId);
+  }) => _listClassifiedSeries(
+    filter,
+    token,
+    locale: locale,
+    genrePublicId: genreId,
+  );
 
   @override
   Future<SeriesPage?> listTagSeries(
     String slug, {
+    required String locale,
     SeriesListFilter filter = const SeriesListFilter(),
     String token = '',
-  }) => _listClassifiedSeries(filter, token, tagSlug: slug);
+  }) => _listClassifiedSeries(filter, token, locale: locale, tagSlug: slug);
 
   /// One page of `ListPublishedSeries` narrowed to one genre or one tag, which
   /// the API answers `not_found` for when the tenant has no such one.
   Future<SeriesPage?> _listClassifiedSeries(
     SeriesListFilter filter,
     String token, {
+    required String locale,
     String? genrePublicId,
     String? tagSlug,
   }) async {
@@ -705,6 +741,7 @@ class HttpCatalogRepository implements CatalogRepository {
           tagSlug: tagSlug,
           hasFreeEpisodes: filter.freeOnly ? true : null,
           limit: detailSeriesPageLimit,
+          locale: locale,
           order: _seriesOrder(filter.order),
           status: switch (filter.status) {
             final status? => _wireStatus(status),
@@ -741,8 +778,9 @@ class HttpCatalogRepository implements CatalogRepository {
   @override
   Future<EpisodeDetail?> getEpisode(
     String seriesPublicId,
-    String episodePublicId,
-  ) async {
+    String episodePublicId, {
+    required String locale,
+  }) async {
     // Read before the first await, as the reads of the reader's own history
     // are: what a body grants belongs to the session that asked for it, and
     // the caller files it under the reader it read at this same instant.
@@ -752,6 +790,7 @@ class HttpCatalogRepository implements CatalogRepository {
       final body = await _catalog.getEpisodeDetail(
         ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
         pb.GetEpisodeDetailRequest(
+          locale: locale,
           publicId: episodePublicId,
           surface: appClientSurface,
           tenant: _tenant(tenantId),
@@ -922,7 +961,10 @@ class HttpCatalogRepository implements CatalogRepository {
   }
 
   @override
-  Future<SeriesProgress> getSeriesProgress(String seriesInternalId) async {
+  Future<SeriesProgress> getSeriesProgress(
+    String seriesInternalId, {
+    required String locale,
+  }) async {
     final accessToken = _client.accessToken;
     if (accessToken.isEmpty) {
       return SeriesProgress.none;
@@ -932,6 +974,7 @@ class HttpCatalogRepository implements CatalogRepository {
       final body = await _reads.getMySeriesProgress(
         ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
         pb.GetMySeriesProgressRequest(
+          locale: locale,
           seriesId: seriesInternalId,
           tenant: _tenant(tenantId),
           surface: appClientSurface,
@@ -987,6 +1030,7 @@ class HttpCatalogRepository implements CatalogRepository {
   @override
   Future<RecentSeriesPage> listRecentSeries({
     required int limit,
+    required String locale,
     String token = '',
   }) async {
     final accessToken = _client.accessToken;
@@ -999,6 +1043,7 @@ class HttpCatalogRepository implements CatalogRepository {
         ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
         pb.ListMyRecentSeriesRequest(
           limit: limit,
+          locale: locale,
           tenant: _tenant(tenantId),
           surface: appClientSurface,
           token: _pageToken(token),
@@ -1016,6 +1061,7 @@ class HttpCatalogRepository implements CatalogRepository {
   @override
   Future<EpisodeReadPage> listEpisodeReads({
     required int limit,
+    required String locale,
     String token = '',
   }) async {
     final accessToken = _client.accessToken;
@@ -1028,6 +1074,7 @@ class HttpCatalogRepository implements CatalogRepository {
         ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
         pb.ListMyEpisodeReadsRequest(
           limit: limit,
+          locale: locale,
           tenant: _tenant(tenantId),
           surface: appClientSurface,
           token: _pageToken(token),
@@ -1058,6 +1105,7 @@ class HttpCatalogRepository implements CatalogRepository {
   @override
   Future<FollowUpdatePage> listFollowUpdates({
     required int limit,
+    required String locale,
     String token = '',
   }) async {
     final accessToken = _client.accessToken;
@@ -1070,6 +1118,7 @@ class HttpCatalogRepository implements CatalogRepository {
         ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
         pb.ListMyFollowUpdatesRequest(
           limit: limit,
+          locale: locale,
           tenant: _tenant(tenantId),
           surface: appClientSurface,
           token: _pageToken(token),
@@ -1191,6 +1240,7 @@ class HttpCatalogRepository implements CatalogRepository {
       internalId: series.id.trim(),
       title: series.title.trim(),
       description: series.synopsis.trim(),
+      locale: series.locale.trim(),
       labelId: label.publicId.trim(),
       labelName: label.name.trim(),
       creators: _parseCreators(series.creators),

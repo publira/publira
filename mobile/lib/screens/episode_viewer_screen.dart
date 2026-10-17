@@ -101,6 +101,10 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   var _accessToken = '';
   var _readerId = '';
 
+  /// The app's locale the body is read in, as a BCP 47 tag, which names the
+  /// series and the episode in the title bar.
+  var _locale = '';
+
   /// Episodes of this series the device could open right now, which is what
   /// marks the next one as saved. Empty on a run with no library, which is
   /// what leaves the mark off.
@@ -154,12 +158,14 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
 
   /// Reloads whenever the reader signs in or out, because who is asking is
   /// what decides whether this body comes back at all — and where they last
-  /// stopped in it.
+  /// stopped in it — and whenever the locale changes, which the titles are
+  /// read in.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final catalog = CatalogScope.of(context);
     final accessToken = AuthScope.of(context).accessToken;
+    final locale = Localizations.localeOf(context).toLanguageTag();
     final active = AppTabScope.isActive(context);
     if (_awaitingBirthDate && !active) {
       _leftForBirthDate = true;
@@ -170,7 +176,14 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       _leftForBirthDate = false;
     }
     if (_started && accessToken == _accessToken) {
-      if (returned) {
+      final relocalized = locale != _locale;
+      if (relocalized) {
+        _locale = locale;
+        // Sent before the body is read again, so it opens on the page the
+        // reader is on rather than the one last recorded.
+        _saver?.flush();
+      }
+      if (returned || relocalized) {
         _future = _load(
           catalog,
           AuthScope.of(context),
@@ -181,6 +194,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     }
     _started = true;
     _accessToken = accessToken;
+    _locale = locale;
     _readerId = AuthScope.of(context).session?.userPublicId ?? '';
     // A saver belongs to the session it records against. The page the reader
     // before this one was on is theirs and cannot be written with this
@@ -312,7 +326,12 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     WaitFreeRepository? waitFree,
     bool confirmPurchase = false,
   }) async {
-    var detail = await catalog.getEpisode(widget.seriesId, widget.episodeId);
+    final locale = _locale;
+    var detail = await catalog.getEpisode(
+      widget.seriesId,
+      widget.episodeId,
+      locale: locale,
+    );
     if (confirmPurchase) {
       for (final delay in checkoutConfirmationDelays) {
         if (detail?.access != EpisodeAccess.locked) {
@@ -322,7 +341,11 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         if (!mounted) {
           break;
         }
-        detail = await catalog.getEpisode(widget.seriesId, widget.episodeId);
+        detail = await catalog.getEpisode(
+          widget.seriesId,
+          widget.episodeId,
+          locale: locale,
+        );
       }
     }
     if (detail == null) {
@@ -344,6 +367,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
             waitFree: waitFree,
             detail: detail,
             signedIn: auth.isSignedIn,
+            locale: locale,
           );
     return _OpenEpisode(
       detail: detail,

@@ -95,11 +95,15 @@ abstract class PurchaseRepository {
   Future<String?> seriesOfEpisode(String episodePublicId);
 
   /// The checkout page the signed-in reader pays for the episode
-  /// [episodeInternalId] names on, built to return to the app.
+  /// [episodeInternalId] names on, built to return to the app. The page names
+  /// the episode in its translation in [locale], the reader's.
   ///
   /// Throws [PurchaseFailure]; [PurchaseFailureKind.alreadyPurchased] when
   /// there is nothing to pay for.
-  Future<Uri> startEpisodeCheckout(String episodeInternalId);
+  Future<Uri> startEpisodeCheckout(
+    String episodeInternalId, {
+    required String locale,
+  });
 
   /// Opens a purchase of the episode [episodeInternalId] names through [store]
   /// for the signed-in reader.
@@ -128,10 +132,12 @@ abstract class PurchaseRepository {
   /// The page of the signed-in reader's purchases [token] names, newest
   /// first, and the first page for an empty one, holding at most [limit]
   /// rows. A guest has bought nothing, so they are answered
-  /// [MyPurchasePage.empty] without a request.
+  /// [MyPurchasePage.empty] without a request. Each title is the one written
+  /// in [locale], the reader's, as the catalog reads it.
   ///
   /// Throws [PurchaseFailure] on a transport or unexpected server error.
   Future<MyPurchasePage> listMyPurchases({
+    required String locale,
     String token = '',
     int limit = myPurchasePageLimit,
   });

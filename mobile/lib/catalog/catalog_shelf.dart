@@ -49,7 +49,8 @@ class ShelfReadFailure implements Exception {
 /// is not a tenant with an empty chart.
 ///
 /// The shelf reads its page by itself, and again whenever the repository in
-/// [CatalogScope] changes, so a screen that holds one only says what to read.
+/// [CatalogScope] or the app's locale changes, so a screen that holds one only
+/// says what to read.
 class CatalogShelf<T> extends StatefulWidget {
   const CatalogShelf({
     super.key,
@@ -80,7 +81,8 @@ class CatalogShelf<T> extends StatefulWidget {
   /// in for a row they were never told to expect.
   final String? failureMessage;
 
-  final Future<List<T>> Function(CatalogRepository catalog) load;
+  /// Reads the cards, in [locale], the app's resolved locale as a BCP 47 tag.
+  final Future<List<T>> Function(CatalogRepository catalog, String locale) load;
 
   final Widget Function(BuildContext context, T item) cardBuilder;
 
@@ -121,6 +123,7 @@ class _CatalogShelfState<T> extends State<CatalogShelf<T>> {
   Object? _failedList;
 
   CatalogRepository? _catalog;
+  String? _locale;
 
   /// Counts the reads this shelf has started, so an answer to one it has
   /// stopped waiting for — a retry, or a reader who signed out meanwhile —
@@ -131,10 +134,12 @@ class _CatalogShelfState<T> extends State<CatalogShelf<T>> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final catalog = CatalogScope.of(context);
-    if (identical(catalog, _catalog)) {
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    if (identical(catalog, _catalog) && locale == _locale) {
       return;
     }
     _catalog = catalog;
+    _locale = locale;
     _load();
   }
 
@@ -150,15 +155,15 @@ class _CatalogShelfState<T> extends State<CatalogShelf<T>> {
     _items = null;
     _failure = null;
     _failedList = null;
-    unawaited(_read(++_reads, _catalog!));
+    unawaited(_read(++_reads, _catalog!, _locale!));
   }
 
-  Future<void> _read(int read, CatalogRepository catalog) async {
+  Future<void> _read(int read, CatalogRepository catalog, String locale) async {
     List<T>? items;
     CatalogFailure? failure;
     Object? failedList;
     try {
-      items = await widget.load(catalog);
+      items = await widget.load(catalog, locale);
     } on CatalogFailure catch (error) {
       failure = error;
     } on ShelfReadFailure catch (error) {

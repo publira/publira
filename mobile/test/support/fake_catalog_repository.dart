@@ -273,6 +273,9 @@ class FakeCatalogRepository implements CatalogRepository {
 
   Map<String, EpisodeReaction> reactions;
 
+  /// The locale of every read that takes one, in the order they were made.
+  final List<String> readLocales = <String>[];
+
   /// Tokens [listSeries] was called with, in order. The first page is the
   /// empty one.
   final List<String> seriesTokens = <String>[];
@@ -356,7 +359,11 @@ class FakeCatalogRepository implements CatalogRepository {
   /// page's first row, written out. A test passes back whatever it was given,
   /// the way the screen does.
   @override
-  Future<SeriesPage> listSeries({String token = ''}) async {
+  Future<SeriesPage> listSeries({
+    required String locale,
+    String token = '',
+  }) async {
+    readLocales.add(locale);
     seriesTokens.add(token);
     final error = token.isEmpty ? listError : listMoreError ?? listError;
     if (error != null) {
@@ -374,8 +381,10 @@ class FakeCatalogRepository implements CatalogRepository {
   @override
   Future<SeriesPage> searchSeries({
     required String query,
+    required String locale,
     String token = '',
   }) async {
+    readLocales.add(locale);
     searchRequests.add((query: query, token: token));
     final error = token.isEmpty ? searchError : searchMoreError ?? searchError;
     if (error != null) {
@@ -464,8 +473,10 @@ class FakeCatalogRepository implements CatalogRepository {
   @override
   Future<CreatorDetail?> getCreatorDetail(
     String publicId, {
+    required String locale,
     String token = '',
   }) async {
+    readLocales.add(locale);
     detailRequests.add((id: publicId, token: token));
     final creator = publishedCreators[publicId];
     final series = await _detailSeries(publicId, token, creatorDetailError);
@@ -477,8 +488,10 @@ class FakeCatalogRepository implements CatalogRepository {
   @override
   Future<LabelDetail?> getLabelDetail(
     String publicId, {
+    required String locale,
     String token = '',
   }) async {
+    readLocales.add(locale);
     detailRequests.add((id: publicId, token: token));
     final label = publishedLabels[publicId];
     final series = await _detailSeries(publicId, token, labelDetailError);
@@ -505,9 +518,11 @@ class FakeCatalogRepository implements CatalogRepository {
   @override
   Future<SeriesPage?> listGenreSeries(
     String genreId, {
+    required String locale,
     SeriesListFilter filter = const SeriesListFilter(),
     String token = '',
   }) => _classifiedSeries(
+    locale,
     genreId,
     genres.any((genre) => genre.id == genreId),
     filter,
@@ -517,9 +532,11 @@ class FakeCatalogRepository implements CatalogRepository {
   @override
   Future<SeriesPage?> listTagSeries(
     String slug, {
+    required String locale,
     SeriesListFilter filter = const SeriesListFilter(),
     String token = '',
   }) => _classifiedSeries(
+    locale,
     slug,
     tags.any((tag) => tag.slug == slug),
     filter,
@@ -530,11 +547,13 @@ class FakeCatalogRepository implements CatalogRepository {
   /// the filter names. The sort and the free-to-start filter are the API's to
   /// apply, so they are only recorded.
   Future<SeriesPage?> _classifiedSeries(
+    String locale,
     String id,
     bool exists,
     SeriesListFilter filter,
     String token,
   ) async {
+    readLocales.add(locale);
     classifiedSeriesRequests.add((id: id, filter: filter, token: token));
     final failure = token.isEmpty
         ? classifiedSeriesError
@@ -582,7 +601,11 @@ class FakeCatalogRepository implements CatalogRepository {
   }
 
   @override
-  Future<List<SeriesItem>> listNewestSeries({required int limit}) async {
+  Future<List<SeriesItem>> listNewestSeries({
+    required int limit,
+    required String locale,
+  }) async {
+    readLocales.add(locale);
     newestSeriesLimits.add(limit);
     final error = newestSeriesError;
     if (error != null) {
@@ -597,7 +620,9 @@ class FakeCatalogRepository implements CatalogRepository {
   Future<List<SeriesItem>> listRelatedSeries(
     String seriesInternalId, {
     required int limit,
+    required String locale,
   }) async {
+    readLocales.add(locale);
     relatedSeriesRequests.add((seriesId: seriesInternalId, limit: limit));
     final error = relatedSeriesError;
     if (error != null) {
@@ -613,9 +638,11 @@ class FakeCatalogRepository implements CatalogRepository {
     required int limit,
     required RankingPeriod period,
     required SeriesAgeRating ageRating,
+    required String locale,
     String genreId = '',
     String token = '',
   }) async {
+    readLocales.add(locale);
     rankedSeriesPeriods.add(period);
     rankedSeriesAgeRatings.add(ageRating);
     rankedSeriesGenres.add(genreId);
@@ -641,16 +668,20 @@ class FakeCatalogRepository implements CatalogRepository {
   @override
   Future<SeriesPage> listRecommendedSeries({
     required int limit,
+    required String locale,
     String token = '',
-  }) async => _recommended(recommendedSeries, limit, token, mine: false);
+  }) async =>
+      _recommended(recommendedSeries, limit, locale, token, mine: false);
 
   @override
   Future<SeriesPage> listMyRecommendedSeries({
     required int limit,
+    required String locale,
     String token = '',
   }) async => _recommended(
     myRecommendedSeries ?? recommendedSeries,
     limit,
+    locale,
     token,
     mine: true,
   );
@@ -658,9 +689,11 @@ class FakeCatalogRepository implements CatalogRepository {
   SeriesPage _recommended(
     List<SeriesItem> order,
     int limit,
+    String locale,
     String token, {
     required bool mine,
   }) {
+    readLocales.add(locale);
     recommendedSeriesRequests.add((mine: mine, limit: limit, token: token));
     final error = token.isEmpty
         ? recommendedSeriesError
@@ -677,7 +710,11 @@ class FakeCatalogRepository implements CatalogRepository {
   }
 
   @override
-  Future<SeriesDetail?> getSeries(String publicId) async {
+  Future<SeriesDetail?> getSeries(
+    String publicId, {
+    required String locale,
+  }) async {
+    readLocales.add(locale);
     final error = detailError;
     if (error != null) {
       throw error;
@@ -686,7 +723,11 @@ class FakeCatalogRepository implements CatalogRepository {
   }
 
   @override
-  Future<String?> getSeriesTitle(String publicId) async {
+  Future<String?> getSeriesTitle(
+    String publicId, {
+    required String locale,
+  }) async {
+    readLocales.add(locale);
     final error = detailError;
     if (error != null) {
       throw error;
@@ -711,8 +752,10 @@ class FakeCatalogRepository implements CatalogRepository {
   @override
   Future<EpisodeDetail?> getEpisode(
     String seriesPublicId,
-    String episodePublicId,
-  ) async {
+    String episodePublicId, {
+    required String locale,
+  }) async {
+    readLocales.add(locale);
     final error = episodeError;
     if (error != null) {
       throw error;
@@ -814,7 +857,11 @@ class FakeCatalogRepository implements CatalogRepository {
   Stream<void> get readingProgressWrites => _readingProgressWrites.stream;
 
   @override
-  Future<SeriesProgress> getSeriesProgress(String seriesInternalId) async {
+  Future<SeriesProgress> getSeriesProgress(
+    String seriesInternalId, {
+    required String locale,
+  }) async {
+    readLocales.add(locale);
     seriesProgressRequests.add(seriesInternalId);
     final error = seriesProgressError;
     if (error != null) {
@@ -836,8 +883,10 @@ class FakeCatalogRepository implements CatalogRepository {
   @override
   Future<RecentSeriesPage> listRecentSeries({
     required int limit,
+    required String locale,
     String token = '',
   }) async {
+    readLocales.add(locale);
     recentSeriesLimits.add(limit);
     recentSeriesTokens.add(token);
     final error = recentSeriesError;
@@ -858,8 +907,10 @@ class FakeCatalogRepository implements CatalogRepository {
   @override
   Future<EpisodeReadPage> listEpisodeReads({
     required int limit,
+    required String locale,
     String token = '',
   }) async {
+    readLocales.add(locale);
     episodeReadsTokens.add(token);
     final error = token.isEmpty ? episodeReadsError : episodeReadsMoreError;
     if (error != null) {
@@ -876,8 +927,10 @@ class FakeCatalogRepository implements CatalogRepository {
   @override
   Future<FollowUpdatePage> listFollowUpdates({
     required int limit,
+    required String locale,
     String token = '',
   }) async {
+    readLocales.add(locale);
     followUpdatesTokens.add(token);
     final error = token.isEmpty ? followUpdatesError : followUpdatesMoreError;
     if (error != null) {

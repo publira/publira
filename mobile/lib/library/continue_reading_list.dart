@@ -34,20 +34,26 @@ class _ContinueReadingListState extends State<ContinueReadingList> {
 
   CatalogRepository? _catalog;
   String? _readerId;
+  String? _locale;
 
-  /// Reads the list again whenever the reader or the repository changes: the
-  /// list is one reader's own history, and the tokens under it belong to the
-  /// repository that answered them.
+  /// Reads the list again whenever the reader, the locale, or the repository
+  /// changes: the list is one reader's own history, its titles are in the
+  /// app's language, and the tokens under it belong to the repository that
+  /// answered them.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final catalog = CatalogScope.of(context);
     final readerId = AuthScope.of(context).session?.userPublicId ?? '';
-    if (identical(catalog, _catalog) && readerId == _readerId) {
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    if (identical(catalog, _catalog) &&
+        readerId == _readerId &&
+        locale == _locale) {
       return;
     }
     _catalog = catalog;
     _readerId = readerId;
+    _locale = locale;
     if (readerId.isEmpty) {
       _pager.clear();
       return;
@@ -55,6 +61,7 @@ class _ContinueReadingListState extends State<ContinueReadingList> {
     _pager.restart((token) async {
       final page = await catalog.listRecentSeries(
         limit: _pageSize,
+        locale: locale,
         token: token,
       );
       return CatalogPageRead(items: page.series, nextToken: page.nextToken);

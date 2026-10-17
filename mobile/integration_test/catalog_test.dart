@@ -4448,6 +4448,7 @@ void main() {
         );
         final detail = await catalog.getSeries(
           ConnectFixtureServer.seedSeriesId,
+          locale: 'en',
         );
         final episode = detail!.episodes.firstWhere(
           (item) => item.id == ConnectFixtureServer.seedEpisodeId,

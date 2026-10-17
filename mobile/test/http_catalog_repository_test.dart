@@ -72,7 +72,7 @@ void main() {
   });
 
   test('listSeries maps public API series onto SeriesItem', () async {
-    final items = (await catalog.listSeries()).series;
+    final items = (await catalog.listSeries(locale: 'en')).series;
     expect(items, isNotEmpty);
     expect(items.first.id, ConnectFixtureServer.seedSeriesId);
     expect(items.first.title, ConnectFixtureServer.seedSeriesTitle);
@@ -88,7 +88,7 @@ void main() {
       ];
 
       expect(
-        catalog.listSeries,
+        () => catalog.listSeries(locale: 'en'),
         throwsA(
           isA<CatalogFailure>().having(
             (error) => error.kind,
@@ -101,7 +101,7 @@ void main() {
   );
 
   test('listSeries asks for the catalog by title', () async {
-    await catalog.listSeries();
+    await catalog.listSeries(locale: 'en');
 
     final request = server.requestsOf(pb.ListPublishedSeriesRequest.new).single;
     expect(request.order, pb.SeriesOrder.SERIES_ORDER_TITLE_ASC);
@@ -113,7 +113,7 @@ void main() {
   test('listSeries carries the token of the page under the first', () async {
     server.seriesPageSize = 1;
 
-    final first = await catalog.listSeries();
+    final first = await catalog.listSeries(locale: 'en');
 
     expect(first.series.single.id, ConnectFixtureServer.seedSeriesId);
     expect(first.nextToken, isNotEmpty);
@@ -121,9 +121,12 @@ void main() {
 
   test('listSeries asks for the page its token names', () async {
     server.seriesPageSize = 1;
-    final first = await catalog.listSeries();
+    final first = await catalog.listSeries(locale: 'en');
 
-    final second = await catalog.listSeries(token: first.nextToken);
+    final second = await catalog.listSeries(
+      token: first.nextToken,
+      locale: 'en',
+    );
 
     expect(second.series.single.id, 'series-kitchen');
     final request = server.requestsOf(pb.ListPublishedSeriesRequest.new).last;
@@ -135,26 +138,26 @@ void main() {
 
   test('listSeries reads the last page as the end of the catalog', () async {
     server.seriesPageSize = 1;
-    final first = await catalog.listSeries();
+    final first = await catalog.listSeries(locale: 'en');
 
-    final last = await catalog.listSeries(token: first.nextToken);
+    final last = await catalog.listSeries(token: first.nextToken, locale: 'en');
 
     expect(last.nextToken, isEmpty);
   });
 
   test('listSeries reads a catalog of one page as ending there', () async {
-    expect((await catalog.listSeries()).nextToken, isEmpty);
+    expect((await catalog.listSeries(locale: 'en')).nextToken, isEmpty);
   });
 
   test('searchSeries maps the matching series onto SeriesItem', () async {
-    final page = await catalog.searchSeries(query: 'Kitchen');
+    final page = await catalog.searchSeries(query: 'Kitchen', locale: 'en');
 
     expect(page.series.single.id, 'series-kitchen');
     expect(page.series.single.title, 'The Little Kitchen');
   });
 
   test('searchSeries asks for the keyword the reader typed', () async {
-    await catalog.searchSeries(query: 'Kitchen');
+    await catalog.searchSeries(query: 'Kitchen', locale: 'en');
 
     final request = server
         .requestsOf(pb.SearchPublishedSeriesRequest.new)
@@ -172,7 +175,7 @@ void main() {
       pb.Series(publicId: 'series-second-kitchen', title: 'Kitchen Nights'),
     ];
 
-    final first = await catalog.searchSeries(query: 'Kitchen');
+    final first = await catalog.searchSeries(query: 'Kitchen', locale: 'en');
 
     // The results are in title order, so `Kitchen Nights` stands above
     // `The Little Kitchen` however the tenant published them.
@@ -182,6 +185,7 @@ void main() {
     final second = await catalog.searchSeries(
       query: 'Kitchen',
       token: first.nextToken,
+      locale: 'en',
     );
 
     expect(second.series.single.id, 'series-kitchen');
@@ -194,7 +198,10 @@ void main() {
   });
 
   test('searchSeries reads a keyword nothing matches as empty', () async {
-    final page = await catalog.searchSeries(query: 'nothing here');
+    final page = await catalog.searchSeries(
+      query: 'nothing here',
+      locale: 'en',
+    );
 
     expect(page.series, isEmpty);
     expect(page.nextToken, isEmpty);
@@ -204,7 +211,7 @@ void main() {
     server.searchStatus = HttpStatus.serviceUnavailable;
 
     expect(
-      () => catalog.searchSeries(query: 'Kitchen'),
+      () => catalog.searchSeries(query: 'Kitchen', locale: 'en'),
       throwsA(
         isA<CatalogFailure>().having(
           (error) => error.kind,
@@ -216,7 +223,7 @@ void main() {
   });
 
   test('listNewestSeries asks for one short page of the newest', () async {
-    final items = await catalog.listNewestSeries(limit: 10);
+    final items = await catalog.listNewestSeries(limit: 10, locale: 'en');
 
     expect(items.first.id, ConnectFixtureServer.seedSeriesId);
     final request = server.requestsOf(pb.ListPublishedSeriesRequest.new).single;
@@ -229,6 +236,7 @@ void main() {
       limit: 10,
       period: RankingPeriod.weekly,
       ageRating: SeriesAgeRating.all,
+      locale: 'en',
     );
 
     final positions = ranked.rankedSeries;
@@ -256,12 +264,14 @@ void main() {
       limit: 20,
       period: RankingPeriod.weekly,
       ageRating: SeriesAgeRating.all,
+      locale: 'en',
     );
     final second = await catalog.listRankedSeries(
       limit: 20,
       period: RankingPeriod.weekly,
       ageRating: SeriesAgeRating.all,
       token: first.nextToken,
+      locale: 'en',
     );
 
     expect([for (final item in first.rankedSeries) item.rank], [1]);
@@ -279,6 +289,7 @@ void main() {
       limit: 3,
       period: RankingPeriod.daily,
       ageRating: SeriesAgeRating.all,
+      locale: 'en',
     );
 
     expect(
@@ -299,6 +310,7 @@ void main() {
       period: RankingPeriod.weekly,
       ageRating: SeriesAgeRating.all,
       genreId: 'SeedGENRAAA1',
+      locale: 'en',
     );
 
     expect(
@@ -316,6 +328,7 @@ void main() {
       limit: 10,
       period: RankingPeriod.weekly,
       ageRating: SeriesAgeRating.all,
+      locale: 'en',
     );
 
     // The wire format omits an empty string, so the tenant-wide chart sends
@@ -337,6 +350,7 @@ void main() {
       period: RankingPeriod.weekly,
       ageRating: SeriesAgeRating.all,
       genreId: 'SeedGENRAAA2',
+      locale: 'en',
     );
 
     expect(ranked.rankedSeries, isEmpty);
@@ -351,6 +365,7 @@ void main() {
         period: RankingPeriod.weekly,
         ageRating: SeriesAgeRating.all,
         genreId: 'missing',
+        locale: 'en',
       ),
       throwsA(
         isA<CatalogFailure>().having(
@@ -370,6 +385,7 @@ void main() {
         limit: 10,
         period: RankingPeriod.weekly,
         ageRating: SeriesAgeRating.all,
+        locale: 'en',
       ),
       isA<RankedSeriesPage>()
           .having((page) => page.rankedSeries, 'rankedSeries', isEmpty)
@@ -385,6 +401,7 @@ void main() {
         limit: 10,
         period: RankingPeriod.weekly,
         ageRating: SeriesAgeRating.all,
+        locale: 'en',
       ),
       throwsA(
         isA<CatalogFailure>().having(
@@ -404,6 +421,7 @@ void main() {
     final related = await catalog.listRelatedSeries(
       ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
       limit: 10,
+      locale: 'en',
     );
 
     expect(related.map((item) => item.id), ['series-kitchen']);
@@ -421,6 +439,7 @@ void main() {
     final related = await catalog.listRelatedSeries(
       ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
       limit: 10,
+      locale: 'en',
     );
 
     expect(related, isEmpty);
@@ -430,6 +449,7 @@ void main() {
     final related = await catalog.listRelatedSeries(
       ConnectFixtureServer.internalIdOf('missing'),
       limit: 10,
+      locale: 'en',
     );
 
     expect(related, isEmpty);
@@ -442,6 +462,7 @@ void main() {
       () => catalog.listRelatedSeries(
         ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
         limit: 10,
+        locale: 'en',
       ),
       throwsA(
         isA<CatalogFailure>().having(
@@ -484,10 +505,14 @@ void main() {
     test(
       'listRecommendedSeries reads the tenant order a page at a time',
       () async {
-        final first = await catalog.listRecommendedSeries(limit: 2);
+        final first = await catalog.listRecommendedSeries(
+          limit: 2,
+          locale: 'en',
+        );
         final second = await catalog.listRecommendedSeries(
           limit: 2,
           token: first.nextToken,
+          locale: 'en',
         );
 
         expect(idsOf(first), ['tenant-1', 'tenant-2']);
@@ -502,7 +527,10 @@ void main() {
 
     test('listMyRecommendedSeries reads the order the API answers the '
         'member', () async {
-      final page = await signedIn.listMyRecommendedSeries(limit: 10);
+      final page = await signedIn.listMyRecommendedSeries(
+        limit: 10,
+        locale: 'en',
+      );
 
       expect(idsOf(page), ['reader-1', 'reader-2', 'reader-3']);
       final request = server.requestsTo('ListMyRecommendedSeries').single;
@@ -520,7 +548,10 @@ void main() {
     test(
       'listMyRecommendedSeries reads the tenant order for a guest',
       () async {
-        final page = await catalog.listMyRecommendedSeries(limit: 10);
+        final page = await catalog.listMyRecommendedSeries(
+          limit: 10,
+          locale: 'en',
+        );
 
         expect(idsOf(page), ['tenant-1', 'tenant-2', 'tenant-3']);
         expect(server.requestsTo('ListMyRecommendedSeries'), isEmpty);
@@ -531,7 +562,10 @@ void main() {
         'API refuses', () async {
       server.activeAccessToken = 'another-token';
 
-      final page = await signedIn.listMyRecommendedSeries(limit: 10);
+      final page = await signedIn.listMyRecommendedSeries(
+        limit: 10,
+        locale: 'en',
+      );
 
       expect(idsOf(page), ['tenant-1', 'tenant-2', 'tenant-3']);
       expect(server.requestsTo('ListMyRecommendedSeries'), hasLength(1));
@@ -541,7 +575,7 @@ void main() {
     test('an empty catalog reads as an empty order', () async {
       server.recommendedSeries = const [];
 
-      final page = await catalog.listRecommendedSeries(limit: 10);
+      final page = await catalog.listRecommendedSeries(limit: 10, locale: 'en');
 
       expect(page.series, isEmpty);
       expect(page.nextToken, isEmpty);
@@ -549,7 +583,7 @@ void main() {
   });
 
   test('listSeries resolves cover renditions against the image base', () async {
-    final items = (await catalog.listSeries()).series;
+    final items = (await catalog.listSeries(locale: 'en')).series;
 
     final covers = items.first.eyeCatchVariants;
     expect(covers, hasLength(5));
@@ -564,7 +598,7 @@ void main() {
   });
 
   test('a cover is requested with the tenant and no reader token', () async {
-    final items = (await catalog.listSeries()).series;
+    final items = (await catalog.listSeries(locale: 'en')).series;
 
     // An eye-catch is the same image for every reader, so the request that
     // fetches it names only the tenant.
@@ -572,7 +606,7 @@ void main() {
   });
 
   test('listSeries reads a series without a cover as carrying none', () async {
-    final items = (await catalog.listSeries()).series;
+    final items = (await catalog.listSeries(locale: 'en')).series;
 
     expect(items.last.eyeCatchVariants, isEmpty);
   });
@@ -580,7 +614,7 @@ void main() {
   test(
     'listSeries carries the credits in the order the API sent them',
     () async {
-      final items = (await catalog.listSeries()).series;
+      final items = (await catalog.listSeries(locale: 'en')).series;
 
       final creators = items.first.creators;
       expect(creators.map((creator) => creator.name), [
@@ -608,7 +642,7 @@ void main() {
       ),
     ];
 
-    final items = (await catalog.listSeries()).series;
+    final items = (await catalog.listSeries(locale: 'en')).series;
 
     expect(items.first.creators.single.roleName, isEmpty);
   });
@@ -616,7 +650,7 @@ void main() {
   test(
     'listSeries reads a series credited to nobody as carrying none',
     () async {
-      final items = (await catalog.listSeries()).series;
+      final items = (await catalog.listSeries(locale: 'en')).series;
 
       expect(items.last.creators, isEmpty);
     },
@@ -634,7 +668,7 @@ void main() {
       ),
     ];
 
-    final items = (await catalog.listSeries()).series;
+    final items = (await catalog.listSeries(locale: 'en')).series;
 
     expect(items.first.creators.map((creator) => creator.name), [
       'Seed Author 002',
@@ -642,7 +676,10 @@ void main() {
   });
 
   test('getSeries carries the credits of the series', () async {
-    final detail = await catalog.getSeries(ConnectFixtureServer.seedSeriesId);
+    final detail = await catalog.getSeries(
+      ConnectFixtureServer.seedSeriesId,
+      locale: 'en',
+    );
 
     expect(detail!.series.creators.map((creator) => creator.name), [
       'Seed Author 001',
@@ -652,7 +689,7 @@ void main() {
   });
 
   test('listSeries carries status, schedule, and genres', () async {
-    final items = (await catalog.listSeries()).series;
+    final items = (await catalog.listSeries(locale: 'en')).series;
 
     expect(items.first.status, SeriesStatus.ongoing);
     expect(items.first.scheduleWeekdays, [1, 4]);
@@ -664,7 +701,7 @@ void main() {
   });
 
   test('listSeries carries the tags of a series', () async {
-    final items = (await catalog.listSeries()).series;
+    final items = (await catalog.listSeries(locale: 'en')).series;
 
     expect(items.first.tags.single.slug, 'time-travel');
     expect(items.first.tags.single.name, 'Time travel');
@@ -682,13 +719,16 @@ void main() {
         ]),
     ];
 
-    final tags = (await catalog.listSeries()).series.single.tags;
+    final tags = (await catalog.listSeries(locale: 'en')).series.single.tags;
 
     expect(tags.single.slug, 'slow-burn');
   });
 
   test('getSeries carries the classification of the series', () async {
-    final detail = await catalog.getSeries(ConnectFixtureServer.seedSeriesId);
+    final detail = await catalog.getSeries(
+      ConnectFixtureServer.seedSeriesId,
+      locale: 'en',
+    );
 
     expect(detail!.series.status, SeriesStatus.ongoing);
     expect(detail.series.scheduleWeekdays, [1, 4]);
@@ -704,7 +744,7 @@ void main() {
       ),
     ];
 
-    final items = (await catalog.listSeries()).series;
+    final items = (await catalog.listSeries(locale: 'en')).series;
 
     expect(items.single.ageRating, SeriesAgeRating.r15);
   });
@@ -722,7 +762,7 @@ void main() {
       ],
     );
 
-    final items = (await catalog.listSeries()).series;
+    final items = (await catalog.listSeries(locale: 'en')).series;
 
     expect(items.single.ageRating, SeriesAgeRating.unknown);
   });
@@ -740,7 +780,7 @@ void main() {
       ),
     ];
 
-    final items = (await catalog.listSeries()).series;
+    final items = (await catalog.listSeries(locale: 'en')).series;
 
     expect(items.single.genres.single.name, 'Fantasy');
     expect(items.single.genres.single.id, 'SeedGENRAAA1');
@@ -757,7 +797,7 @@ void main() {
         ),
       ];
 
-      final items = (await catalog.listSeries()).series;
+      final items = (await catalog.listSeries(locale: 'en')).series;
 
       expect(items.single.scheduleWeekdays, [1, 4]);
     },
@@ -784,13 +824,17 @@ void main() {
     final detail = await catalog.getEpisode(
       ConnectFixtureServer.seedSeriesId,
       ConnectFixtureServer.seedEpisodeId,
+      locale: 'en',
     );
 
     expect(detail!.ageRating, SeriesAgeRating.r18);
   });
 
   test('getSeries carries the internal ids the API answers with', () async {
-    final detail = await catalog.getSeries(ConnectFixtureServer.seedSeriesId);
+    final detail = await catalog.getSeries(
+      ConnectFixtureServer.seedSeriesId,
+      locale: 'en',
+    );
 
     expect(
       detail!.series.internalId,
@@ -803,7 +847,10 @@ void main() {
   });
 
   test('getSeries carries the cover renditions of the series', () async {
-    final detail = await catalog.getSeries(ConnectFixtureServer.seedSeriesId);
+    final detail = await catalog.getSeries(
+      ConnectFixtureServer.seedSeriesId,
+      locale: 'en',
+    );
 
     expect(detail!.series.eyeCatchVariants, hasLength(5));
     expect(detail.series.imageRequestHeaders, {
@@ -827,7 +874,7 @@ void main() {
     ];
 
     expect(
-      () => catalog.listSeries(),
+      () => catalog.listSeries(locale: 'en'),
       throwsA(
         isA<CatalogFailure>().having(
           (error) => error.kind,
@@ -840,16 +887,19 @@ void main() {
 
   test('listSeries returns an empty list when the API has no series', () async {
     server.series = const [];
-    expect((await catalog.listSeries()).series, isEmpty);
+    expect((await catalog.listSeries(locale: 'en')).series, isEmpty);
   });
 
   test('listSeries accepts an omitted empty repeated field', () async {
     server.listResponse = pb.ListPublishedSeriesResponse();
-    expect((await catalog.listSeries()).series, isEmpty);
+    expect((await catalog.listSeries(locale: 'en')).series, isEmpty);
   });
 
   test('getSeries returns detail and episode count', () async {
-    final detail = await catalog.getSeries(ConnectFixtureServer.seedSeriesId);
+    final detail = await catalog.getSeries(
+      ConnectFixtureServer.seedSeriesId,
+      locale: 'en',
+    );
     expect(detail, isNotNull);
     expect(detail!.series.title, ConnectFixtureServer.seedSeriesTitle);
     expect(detail.series.episodeCount, 2);
@@ -863,7 +913,10 @@ void main() {
               .seedSeriesId]!
           ..episodes.last.freeUntil = '2026-10-12T14:59:00Z';
 
-    final read = await catalog.getSeries(ConnectFixtureServer.seedSeriesId);
+    final read = await catalog.getSeries(
+      ConnectFixtureServer.seedSeriesId,
+      locale: 'en',
+    );
 
     expect(read!.episodes.first.freeUntil, isNull);
     final windowed = read.episodes.last;
@@ -878,7 +931,10 @@ void main() {
 
   test('getSeries carries the wait-for-free rule of the series', () async {
     expect(
-      (await catalog.getSeries(ConnectFixtureServer.seedSeriesId))!.waitFree,
+      (await catalog.getSeries(
+        ConnectFixtureServer.seedSeriesId,
+        locale: 'en',
+      ))!.waitFree,
       isNull,
     );
 
@@ -894,6 +950,7 @@ void main() {
 
     final rule = (await catalog.getSeries(
       ConnectFixtureServer.seedSeriesId,
+      locale: 'en',
     ))!.waitFree!;
     expect(rule.rechargeHours, 23);
     expect(rule.accessHours, 72);
@@ -905,18 +962,21 @@ void main() {
   });
 
   test('getSeries returns null for a missing public id', () async {
-    expect(await catalog.getSeries('ZZZZZZZZZZZZ'), isNull);
+    expect(await catalog.getSeries('ZZZZZZZZZZZZ', locale: 'en'), isNull);
   });
 
   test('getSeriesTitle names the series a follow row stands for', () async {
     expect(
-      await catalog.getSeriesTitle(ConnectFixtureServer.seedSeriesId),
+      await catalog.getSeriesTitle(
+        ConnectFixtureServer.seedSeriesId,
+        locale: 'en',
+      ),
       ConnectFixtureServer.seedSeriesTitle,
     );
   });
 
   test('getSeriesTitle returns null for a series nothing publishes', () async {
-    expect(await catalog.getSeriesTitle('ZZZZZZZZZZZZ'), isNull);
+    expect(await catalog.getSeriesTitle('ZZZZZZZZZZZZ', locale: 'en'), isNull);
   });
 
   test('getCreator names the author a follow row stands for', () async {
@@ -1112,7 +1172,7 @@ void main() {
   });
 
   test('getCreatorDetail carries the author and their series', () async {
-    final detail = await catalog.getCreatorDetail('SeedAUTHAAA1');
+    final detail = await catalog.getCreatorDetail('SeedAUTHAAA1', locale: 'en');
 
     expect(detail, isNotNull);
     expect(detail!.creator.name, 'Seed Author 001');
@@ -1139,10 +1199,11 @@ void main() {
       ),
     ];
 
-    final first = await catalog.getCreatorDetail('SeedAUTHAAA1');
+    final first = await catalog.getCreatorDetail('SeedAUTHAAA1', locale: 'en');
     final second = await catalog.getCreatorDetail(
       'SeedAUTHAAA1',
       token: first!.series.nextToken,
+      locale: 'en',
     );
 
     expect(first.series.nextToken, isNotEmpty);
@@ -1156,12 +1217,15 @@ void main() {
   test(
     'getCreatorDetail returns null for an author the API does not know',
     () async {
-      expect(await catalog.getCreatorDetail('ZZZZZZZZZZZZ'), isNull);
+      expect(
+        await catalog.getCreatorDetail('ZZZZZZZZZZZZ', locale: 'en'),
+        isNull,
+      );
     },
   );
 
   test('getLabelDetail carries the label and its series', () async {
-    final detail = await catalog.getLabelDetail('SeedLABLAAA1');
+    final detail = await catalog.getLabelDetail('SeedLABLAAA1', locale: 'en');
 
     expect(detail, isNotNull);
     expect(detail!.label.name, 'Seed Label 01');
@@ -1176,7 +1240,10 @@ void main() {
   test(
     'getLabelDetail returns null for a label the API does not know',
     () async {
-      expect(await catalog.getLabelDetail('ZZZZZZZZZZZZ'), isNull);
+      expect(
+        await catalog.getLabelDetail('ZZZZZZZZZZZZ', locale: 'en'),
+        isNull,
+      );
     },
   );
 
@@ -1350,6 +1417,7 @@ void main() {
         status: SeriesStatus.ongoing,
         freeOnly: true,
       ),
+      locale: 'en',
     );
 
     expect(page!.series.single.id, ConnectFixtureServer.seedSeriesId);
@@ -1365,7 +1433,7 @@ void main() {
   test('listGenreSeries leaves an unnarrowed list to the newest', () async {
     server.genres = ConnectFixtureServer.populatedGenres();
 
-    await catalog.listGenreSeries('SeedGENRAAA1');
+    await catalog.listGenreSeries('SeedGENRAAA1', locale: 'en');
 
     final body = server.requestsOf(pb.ListPublishedSeriesRequest.new).single;
     expect(body.order, pb.SeriesOrder.SERIES_ORDER_PUBLISHED_AT_DESC);
@@ -1378,7 +1446,10 @@ void main() {
   test(
     'listGenreSeries returns null for a genre the API does not know',
     () async {
-      expect(await catalog.listGenreSeries('ZZZZZZZZZZZZ'), isNull);
+      expect(
+        await catalog.listGenreSeries('ZZZZZZZZZZZZ', locale: 'en'),
+        isNull,
+      );
     },
   );
 
@@ -1391,11 +1462,12 @@ void main() {
             ..tags.clear()
             ..tags.addAll(ConnectFixtureServer.seedTags()),
       ];
-    final first = await catalog.listTagSeries('time-travel');
+    final first = await catalog.listTagSeries('time-travel', locale: 'en');
 
     final second = await catalog.listTagSeries(
       'time-travel',
       token: first!.nextToken,
+      locale: 'en',
     );
 
     expect(second!.series.single.id, 'series-kitchen');
@@ -1405,11 +1477,11 @@ void main() {
   });
 
   test('listTagSeries returns null for a tag the API does not know', () async {
-    expect(await catalog.listTagSeries('missing'), isNull);
+    expect(await catalog.listTagSeries('missing', locale: 'en'), isNull);
   });
 
   test('listSeries carries the public id of the label', () async {
-    final page = await catalog.listSeries();
+    final page = await catalog.listSeries(locale: 'en');
 
     expect(page.series.first.labelId, 'SeedLABLAAA1');
     expect(page.series.first.labelName, 'Seed Label 01');
@@ -1418,7 +1490,7 @@ void main() {
   test('listSeries maps transport failure to CatalogFailure.network', () async {
     server.listStatus = HttpStatus.serviceUnavailable;
     expect(
-      () => catalog.listSeries(),
+      () => catalog.listSeries(locale: 'en'),
       throwsA(
         isA<CatalogFailure>().having(
           (error) => error.kind,
@@ -1433,7 +1505,7 @@ void main() {
     server.listResponse = undecodableBody;
 
     expect(
-      () => catalog.listSeries(),
+      () => catalog.listSeries(locale: 'en'),
       throwsA(
         isA<CatalogFailure>().having(
           (error) => error.kind,
@@ -1450,7 +1522,7 @@ void main() {
     );
 
     expect(
-      () => catalog.getSeries(ConnectFixtureServer.seedSeriesId),
+      () => catalog.getSeries(ConnectFixtureServer.seedSeriesId, locale: 'en'),
       throwsA(
         isA<CatalogFailure>().having(
           (error) => error.kind,
@@ -1465,6 +1537,7 @@ void main() {
     final detail = await catalog.getEpisode(
       ConnectFixtureServer.seedSeriesId,
       ConnectFixtureServer.seedEpisodeId,
+      locale: 'en',
     );
 
     expect(detail, isNotNull);
@@ -1480,6 +1553,7 @@ void main() {
     final detail = await catalog.getEpisode(
       ConnectFixtureServer.seedSeriesId,
       ConnectFixtureServer.seedEpisodeId,
+      locale: 'en',
     );
 
     // The free body's own media token is part of the reference, not decoration
@@ -1510,6 +1584,7 @@ void main() {
     final detail = await catalog.getEpisode(
       ConnectFixtureServer.seedSeriesId,
       ConnectFixtureServer.seedEpisodeId,
+      locale: 'en',
     );
 
     expect(detail!.access, EpisodeAccess.entitled);
@@ -1533,6 +1608,7 @@ void main() {
       return catalog.getEpisode(
         ConnectFixtureServer.seedSeriesId,
         ConnectFixtureServer.seedEpisodeId,
+        locale: 'en',
       );
     }
 
@@ -1598,6 +1674,7 @@ void main() {
     final detail = await catalog.getEpisode(
       ConnectFixtureServer.seedSeriesId,
       ConnectFixtureServer.seedEpisodeId,
+      locale: 'en',
     );
 
     expect(detail!.images.map((image) => image.id), ['a', 'b']);
@@ -1628,6 +1705,7 @@ void main() {
     final detail = await catalog.getEpisode(
       ConnectFixtureServer.seedSeriesId,
       ConnectFixtureServer.seedEpisodeId,
+      locale: 'en',
     );
 
     expect(detail!.previousEpisode!.id, 'EP01');
@@ -1673,6 +1751,7 @@ void main() {
       final detail = await catalog.getEpisode(
         ConnectFixtureServer.seedSeriesId,
         ConnectFixtureServer.seedEpisodeId,
+        locale: 'en',
       );
 
       expect(detail!.episode.purchaseSurface, EpisodePurchaseSurface.web);
@@ -1690,6 +1769,7 @@ void main() {
     final detail = await catalog.getEpisode(
       ConnectFixtureServer.seedSeriesId,
       ConnectFixtureServer.seedEpisodeId,
+      locale: 'en',
     );
 
     // The wire format omits an unset message, which is what the server sends
@@ -1744,6 +1824,7 @@ void main() {
       final detail = await authenticated.getEpisode(
         ConnectFixtureServer.seedSeriesId,
         ConnectFixtureServer.seedEpisodeId,
+        locale: 'en',
       );
 
       expect(detail!.images, isEmpty);
@@ -1788,6 +1869,7 @@ void main() {
       final detail = await catalog.getEpisode(
         ConnectFixtureServer.seedSeriesId,
         ConnectFixtureServer.seedEpisodeId,
+        locale: 'en',
       );
 
       expect(detail!.readingDirection, ReadingDirection.ltr);
@@ -1810,6 +1892,7 @@ void main() {
       final detail = await catalog.getEpisode(
         ConnectFixtureServer.seedSeriesId,
         ConnectFixtureServer.seedEpisodeId,
+        locale: 'en',
       );
 
       // The wire format omits unspecified and zero. Unspecified is the series
@@ -1839,6 +1922,7 @@ void main() {
       final detail = await catalog.getEpisode(
         ConnectFixtureServer.seedSeriesId,
         ConnectFixtureServer.seedEpisodeId,
+        locale: 'en',
       );
 
       expect(detail!.readingDirection, ReadingDirection.rtl);
@@ -1850,6 +1934,7 @@ void main() {
     final detail = await catalog.getEpisode(
       ConnectFixtureServer.seedSeriesId,
       ConnectFixtureServer.seedEpisodeId,
+      locale: 'en',
     );
 
     expect(
@@ -1868,6 +1953,7 @@ void main() {
       final detail = await catalog.getEpisode(
         ConnectFixtureServer.seedSeriesId,
         ConnectFixtureServer.paidEpisodeId,
+        locale: 'en',
       );
 
       expect(detail!.creators, isEmpty);
@@ -1878,6 +1964,7 @@ void main() {
     final detail = await catalog.getEpisode(
       ConnectFixtureServer.seedSeriesId,
       ConnectFixtureServer.paidEpisodeId,
+      locale: 'en',
     );
 
     expect(detail!.access, EpisodeAccess.locked);
@@ -1901,6 +1988,7 @@ void main() {
     final detail = await catalog.getEpisode(
       ConnectFixtureServer.seedSeriesId,
       ConnectFixtureServer.seedEpisodeId,
+      locale: 'en',
     );
 
     expect(detail!.access, EpisodeAccess.ageRestricted);
@@ -1912,6 +2000,7 @@ void main() {
       await catalog.getEpisode(
         ConnectFixtureServer.seedSeriesId,
         'ZZZZZZZZZZZZ',
+        locale: 'en',
       ),
       isNull,
     );
@@ -1924,6 +2013,7 @@ void main() {
         await catalog.getEpisode(
           'series-kitchen',
           ConnectFixtureServer.seedEpisodeId,
+          locale: 'en',
         ),
         isNull,
       );
@@ -1937,6 +2027,7 @@ void main() {
       () => catalog.getEpisode(
         ConnectFixtureServer.seedSeriesId,
         ConnectFixtureServer.seedEpisodeId,
+        locale: 'en',
       ),
       throwsA(
         isA<CatalogFailure>().having(
@@ -1954,7 +2045,7 @@ void main() {
       server.tenantResponse = undecodableBody;
 
       expect(
-        catalog.listSeries(),
+        catalog.listSeries(locale: 'en'),
         throwsA(
           isA<CatalogFailure>().having(
             (error) => error.kind,
@@ -1970,6 +2061,7 @@ void main() {
     final detail = await catalog.getEpisode(
       ConnectFixtureServer.seedSeriesId,
       ConnectFixtureServer.seedEpisodeId,
+      locale: 'en',
     );
 
     expect(detail!.imageRequestHeaders['x-forwarded-host'], 'localhost');
@@ -1990,6 +2082,7 @@ void main() {
     final anonymous = await authenticated.getEpisode(
       ConnectFixtureServer.seedSeriesId,
       ConnectFixtureServer.paidEpisodeId,
+      locale: 'en',
     );
     expect(anonymous!.access, EpisodeAccess.locked);
     expect(anonymous.imageRequestHeaders.containsKey('authorization'), isFalse);
@@ -1998,6 +2091,7 @@ void main() {
     final entitled = await authenticated.getEpisode(
       ConnectFixtureServer.seedSeriesId,
       ConnectFixtureServer.paidEpisodeId,
+      locale: 'en',
     );
 
     expect(entitled!.access, EpisodeAccess.entitled);
@@ -2022,6 +2116,7 @@ void main() {
     final read = authenticated.getEpisode(
       ConnectFixtureServer.seedSeriesId,
       ConnectFixtureServer.paidEpisodeId,
+      locale: 'en',
     );
     // The reader signs out while the tenant lookup is still in flight.
     accessToken = '';
@@ -2041,11 +2136,12 @@ void main() {
   test(
     'the tenant is resolved once and reused by the reads after it',
     () async {
-      await catalog.listSeries();
-      await catalog.getSeries(ConnectFixtureServer.seedSeriesId);
+      await catalog.listSeries(locale: 'en');
+      await catalog.getSeries(ConnectFixtureServer.seedSeriesId, locale: 'en');
       await catalog.getEpisode(
         ConnectFixtureServer.seedSeriesId,
         ConnectFixtureServer.seedEpisodeId,
+        locale: 'en',
       );
 
       expect(server.requestsTo('GetTenantByDomain'), hasLength(1));
@@ -2053,8 +2149,8 @@ void main() {
   );
 
   test('every read carries the resolved tenant in header and body', () async {
-    await catalog.listSeries();
-    await catalog.getSeries(ConnectFixtureServer.seedSeriesId);
+    await catalog.listSeries(locale: 'en');
+    await catalog.getSeries(ConnectFixtureServer.seedSeriesId, locale: 'en');
 
     final list = server.requestsTo('ListPublishedSeries').single;
     expect(
@@ -2097,24 +2193,29 @@ void main() {
     });
 
     test('every catalog read names the app', () async {
-      await catalog.listSeries();
-      await catalog.listNewestSeries(limit: 3);
+      await catalog.listSeries(locale: 'en');
+      await catalog.listNewestSeries(limit: 3, locale: 'en');
       await catalog.listRankedSeries(
         limit: 3,
         period: RankingPeriod.daily,
         ageRating: SeriesAgeRating.all,
+        locale: 'en',
       );
-      await catalog.searchSeries(query: 'Seed');
+      await catalog.searchSeries(query: 'Seed', locale: 'en');
       await catalog.searchCreators(query: 'Seed');
       await catalog.searchLabels(query: 'Seed');
       await catalog.listCreators();
       await catalog.listLabels();
-      await catalog.getSeries(webOnly);
+      await catalog.getSeries(webOnly, locale: 'en');
       await catalog.getCreator('SeedAUTHAAA1');
-      await catalog.getCreatorDetail('SeedAUTHAAA1');
-      await catalog.getLabelDetail('SeedLABLAAA1');
-      await catalog.getEpisode(webOnly, ConnectFixtureServer.seedEpisodeId);
-      await catalog.listRecommendedSeries(limit: 3);
+      await catalog.getCreatorDetail('SeedAUTHAAA1', locale: 'en');
+      await catalog.getLabelDetail('SeedLABLAAA1', locale: 'en');
+      await catalog.getEpisode(
+        webOnly,
+        ConnectFixtureServer.seedEpisodeId,
+        locale: 'en',
+      );
+      await catalog.listRecommendedSeries(limit: 3, locale: 'en');
 
       final reads = server.requests.where(
         (request) => request.path.contains('/publira.v1.CatalogService/'),
@@ -2171,14 +2272,19 @@ void main() {
       'a series the storefront alone shows is left out of every list',
       () async {
         final ids = [
-          for (final series in (await catalog.listSeries()).series) series.id,
+          for (final series in (await catalog.listSeries(locale: 'en')).series)
+            series.id,
         ];
         final ranked = await catalog.listRankedSeries(
           limit: 3,
           period: RankingPeriod.weekly,
           ageRating: SeriesAgeRating.all,
+          locale: 'en',
         );
-        final searched = await catalog.searchSeries(query: 'Seed');
+        final searched = await catalog.searchSeries(
+          query: 'Seed',
+          locale: 'en',
+        );
 
         expect(ids, [appOnly]);
         expect(
@@ -2192,9 +2298,13 @@ void main() {
     test(
       'a series the storefront alone shows reads as missing, episodes too',
       () async {
-        expect(await catalog.getSeries(webOnly), isNull);
+        expect(await catalog.getSeries(webOnly, locale: 'en'), isNull);
         expect(
-          await catalog.getEpisode(webOnly, ConnectFixtureServer.seedEpisodeId),
+          await catalog.getEpisode(
+            webOnly,
+            ConnectFixtureServer.seedEpisodeId,
+            locale: 'en',
+          ),
           isNull,
         );
       },
@@ -2203,7 +2313,10 @@ void main() {
     test(
       'a label whose series the storefront alone shows still opens, empty',
       () async {
-        final detail = await catalog.getLabelDetail('SeedLABLAAA1');
+        final detail = await catalog.getLabelDetail(
+          'SeedLABLAAA1',
+          locale: 'en',
+        );
 
         expect(detail, isNotNull);
         expect(detail!.label.seriesCount, 0);
@@ -2216,12 +2329,16 @@ void main() {
         webOnly: pb.SurfaceAvailability.SURFACE_AVAILABILITY_ALL,
       };
 
-      expect(await catalog.getSeries(webOnly), isNotNull);
+      expect(await catalog.getSeries(webOnly, locale: 'en'), isNotNull);
       expect(
-        await catalog.getEpisode(webOnly, ConnectFixtureServer.seedEpisodeId),
+        await catalog.getEpisode(
+          webOnly,
+          ConnectFixtureServer.seedEpisodeId,
+          locale: 'en',
+        ),
         isNotNull,
       );
-      expect((await catalog.listSeries()).series, hasLength(2));
+      expect((await catalog.listSeries(locale: 'en')).series, hasLength(2));
     });
   });
 
@@ -2233,7 +2350,7 @@ void main() {
     };
 
     await expectLater(
-      catalog.listSeries(),
+      catalog.listSeries(locale: 'en'),
       throwsA(
         isA<CatalogFailure>().having(
           (error) => error.kind,
@@ -2246,7 +2363,7 @@ void main() {
     server.tenantStatus = HttpStatus.ok;
     server.tenantResponse = null;
 
-    expect((await catalog.listSeries()).series, isNotEmpty);
+    expect((await catalog.listSeries(locale: 'en')).series, isNotEmpty);
     expect(server.requestsTo('GetTenantByDomain'), hasLength(2));
   });
 
@@ -2255,7 +2372,7 @@ void main() {
     server.listResponse = const {'code': 'internal', 'message': 'boom'};
 
     expect(
-      () => catalog.listSeries(),
+      () => catalog.listSeries(locale: 'en'),
       throwsA(
         isA<CatalogFailure>()
             .having(
@@ -2293,7 +2410,7 @@ void main() {
     );
 
     await expectLater(
-      unresponsive.listSeries(),
+      unresponsive.listSeries(locale: 'en'),
       throwsA(
         isA<CatalogFailure>().having(
           (error) => error.kind,
@@ -2311,7 +2428,10 @@ void main() {
       'message': 'series is not readable here',
     };
 
-    expect(await catalog.getSeries(ConnectFixtureServer.seedSeriesId), isNull);
+    expect(
+      await catalog.getSeries(ConnectFixtureServer.seedSeriesId, locale: 'en'),
+      isNull,
+    );
   });
 
   test('getEpisode returns null when the reader may not see it', () async {
@@ -2325,13 +2445,14 @@ void main() {
       await catalog.getEpisode(
         ConnectFixtureServer.seedSeriesId,
         ConnectFixtureServer.seedEpisodeId,
+        locale: 'en',
       ),
       isNull,
     );
   });
 
   test('listSeries reads a series without a label as unlabelled', () async {
-    final items = (await catalog.listSeries()).series;
+    final items = (await catalog.listSeries(locale: 'en')).series;
     expect(items.last.labelName, isEmpty);
   });
 
@@ -2339,7 +2460,7 @@ void main() {
     server.series = [pb.Series(publicId: '   ', title: 'Blank public id')];
 
     expect(
-      () => catalog.listSeries(),
+      () => catalog.listSeries(locale: 'en'),
       throwsA(
         isA<CatalogFailure>().having(
           (error) => error.kind,
@@ -2367,7 +2488,10 @@ void main() {
       ],
     );
 
-    final detail = await catalog.getSeries(ConnectFixtureServer.seedSeriesId);
+    final detail = await catalog.getSeries(
+      ConnectFixtureServer.seedSeriesId,
+      locale: 'en',
+    );
 
     expect(detail!.episodes.map((episode) => episode.id), ['EP01', 'EP10']);
     expect(detail.series.episodeCount, 2);
@@ -2384,7 +2508,10 @@ void main() {
       episodes: [pb.Episode(publicId: 'EP01', title: 'First')],
     );
 
-    final detail = await catalog.getSeries(ConnectFixtureServer.seedSeriesId);
+    final detail = await catalog.getSeries(
+      ConnectFixtureServer.seedSeriesId,
+      locale: 'en',
+    );
 
     expect(detail!.episodes.single.orderIndex, 0);
     expect(detail.episodes.single.price, 0);
@@ -2400,7 +2527,7 @@ void main() {
     );
 
     expect(
-      () => catalog.getSeries(ConnectFixtureServer.seedSeriesId),
+      () => catalog.getSeries(ConnectFixtureServer.seedSeriesId, locale: 'en'),
       throwsA(
         isA<CatalogFailure>().having(
           (error) => error.kind,
@@ -2415,7 +2542,7 @@ void main() {
     server.detailResponse = undecodableBody;
 
     expect(
-      () => catalog.getSeries(ConnectFixtureServer.seedSeriesId),
+      () => catalog.getSeries(ConnectFixtureServer.seedSeriesId, locale: 'en'),
       throwsA(
         isA<CatalogFailure>().having(
           (error) => error.kind,
@@ -2441,6 +2568,7 @@ void main() {
     final detail = await catalog.getEpisode(
       ConnectFixtureServer.seedSeriesId,
       ConnectFixtureServer.seedEpisodeId,
+      locale: 'en',
     );
 
     expect(detail!.access, EpisodeAccess.unknown);
@@ -2459,6 +2587,7 @@ void main() {
     final detail = await catalog.getEpisode(
       ConnectFixtureServer.seedSeriesId,
       ConnectFixtureServer.seedEpisodeId,
+      locale: 'en',
     );
 
     expect(detail!.access, EpisodeAccess.unknown);
@@ -2478,6 +2607,7 @@ void main() {
     final detail = await catalog.getEpisode(
       ConnectFixtureServer.seedSeriesId,
       ConnectFixtureServer.seedEpisodeId,
+      locale: 'en',
     );
 
     expect(detail!.images.single.width, 0);
@@ -2500,6 +2630,7 @@ void main() {
       () => catalog.getEpisode(
         ConnectFixtureServer.seedSeriesId,
         ConnectFixtureServer.seedEpisodeId,
+        locale: 'en',
       ),
       throwsA(
         isA<CatalogFailure>().having(
@@ -2545,11 +2676,12 @@ void main() {
         episodeId,
         episodeInternalId: ConnectFixtureServer.internalIdOf(episodeId),
       );
-      await signedIn.listRecentSeries(limit: 6);
+      await signedIn.listRecentSeries(limit: 6, locale: 'en');
       await signedIn.getSeriesProgress(
         ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
+        locale: 'en',
       );
-      await signedIn.listEpisodeReads(limit: 20);
+      await signedIn.listEpisodeReads(limit: 20, locale: 'en');
       await signedIn.getEpisodeReaction(
         ConnectFixtureServer.internalIdOf(episodeId),
       );
@@ -2748,7 +2880,10 @@ void main() {
     }
 
     test('listRecentSeries maps the series and the episode to open', () async {
-      final items = (await signedIn.listRecentSeries(limit: 6)).series;
+      final items = (await signedIn.listRecentSeries(
+        limit: 6,
+        locale: 'en',
+      )).series;
 
       expect(items, hasLength(1));
       expect(items.single.series.id, ConnectFixtureServer.seedSeriesId);
@@ -2767,10 +2902,11 @@ void main() {
           recent.deepCopy()..series.publicId = id,
       ];
 
-      final first = await signedIn.listRecentSeries(limit: 2);
+      final first = await signedIn.listRecentSeries(limit: 2, locale: 'en');
       final second = await signedIn.listRecentSeries(
         limit: 2,
         token: first.nextToken,
+        locale: 'en',
       );
 
       expect(first.series.map((item) => item.series.id), [
@@ -2875,6 +3011,7 @@ void main() {
 
         final progress = await signedIn.getSeriesProgress(
           ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
+          locale: 'en',
         );
 
         expect(progress.episode?.id, 'SeedEPSDAAA3');
@@ -2910,6 +3047,7 @@ void main() {
 
       final progress = await signedIn.getSeriesProgress(
         ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
+        locale: 'en',
       );
 
       expect(progress.episode?.id, ConnectFixtureServer.seedEpisodeId);
@@ -2921,6 +3059,7 @@ void main() {
       () async {
         final progress = await signedIn.getSeriesProgress(
           ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
+          locale: 'en',
         );
 
         expect(progress.episode, isNull);
@@ -2988,7 +3127,10 @@ void main() {
     });
 
     test('listEpisodeReads maps the episode, its series, and when', () async {
-      final reads = (await signedIn.listEpisodeReads(limit: 20)).reads;
+      final reads = (await signedIn.listEpisodeReads(
+        limit: 20,
+        locale: 'en',
+      )).reads;
 
       expect(reads, hasLength(1));
       expect(reads.single.series.id, ConnectFixtureServer.seedSeriesId);
@@ -3011,10 +3153,11 @@ void main() {
           read.deepCopy()..episode.publicId = id,
       ];
 
-      final first = await signedIn.listEpisodeReads(limit: 2);
+      final first = await signedIn.listEpisodeReads(limit: 2, locale: 'en');
       final second = await signedIn.listEpisodeReads(
         limit: 2,
         token: first.nextToken,
+        locale: 'en',
       );
 
       expect(first.reads.map((read) => read.episode.id), [
@@ -3031,7 +3174,7 @@ void main() {
     test('a member who finished nothing has an empty history', () async {
       server.episodeReadHistory = const [];
 
-      final page = await signedIn.listEpisodeReads(limit: 20);
+      final page = await signedIn.listEpisodeReads(limit: 20, locale: 'en');
 
       expect(page.reads, isEmpty);
       expect(page.nextToken, isEmpty);
@@ -3065,13 +3208,20 @@ void main() {
           ConnectFixtureServer.seedEpisodeId,
         ),
       );
-      expect((await catalog.listRecentSeries(limit: 6)).series, isEmpty);
+      expect(
+        (await catalog.listRecentSeries(limit: 6, locale: 'en')).series,
+        isEmpty,
+      );
       final progress = await catalog.getSeriesProgress(
         ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
+        locale: 'en',
       );
       expect(progress.episode, isNull);
       expect(progress.finishedEpisodeIds, isEmpty);
-      expect((await catalog.listEpisodeReads(limit: 20)).reads, isEmpty);
+      expect(
+        (await catalog.listEpisodeReads(limit: 20, locale: 'en')).reads,
+        isEmpty,
+      );
       expect(
         await catalog.getMySeriesRating(
           ConnectFixtureServer.internalIdOf(ConnectFixtureServer.seedSeriesId),
@@ -3115,7 +3265,7 @@ void main() {
         ),
       );
       expect(
-        () => signedIn.listEpisodeReads(limit: 20),
+        () => signedIn.listEpisodeReads(limit: 20, locale: 'en'),
         throwsA(
           isA<CatalogFailure>().having(
             (error) => error.kind,
@@ -3159,7 +3309,10 @@ void main() {
     });
 
     test('maps the episode, its series, and when it was published', () async {
-      final updates = (await signedIn.listFollowUpdates(limit: 20)).updates;
+      final updates = (await signedIn.listFollowUpdates(
+        limit: 20,
+        locale: 'en',
+      )).updates;
 
       expect(updates.first.series.id, 'series-a');
       expect(updates.first.series.title, 'Series series-a');
@@ -3177,10 +3330,11 @@ void main() {
     });
 
     test('asks for the page the token names', () async {
-      final first = await signedIn.listFollowUpdates(limit: 1);
+      final first = await signedIn.listFollowUpdates(limit: 1, locale: 'en');
       final second = await signedIn.listFollowUpdates(
         limit: 1,
         token: first.nextToken,
+        locale: 'en',
       );
 
       expect(first.updates.single.episode.id, 'episode-a');
@@ -3194,7 +3348,7 @@ void main() {
     test('a member with nothing new has an empty list', () async {
       server.followUpdates = const [];
 
-      final page = await signedIn.listFollowUpdates(limit: 20);
+      final page = await signedIn.listFollowUpdates(limit: 20, locale: 'en');
 
       expect(page.updates, isEmpty);
       expect(page.nextToken, isEmpty);
@@ -3206,13 +3360,19 @@ void main() {
           ..episode.publishedAt = 'not a time',
       ];
 
-      final updates = (await signedIn.listFollowUpdates(limit: 20)).updates;
+      final updates = (await signedIn.listFollowUpdates(
+        limit: 20,
+        locale: 'en',
+      )).updates;
 
       expect(updates.single.publishedAt, isNull);
     });
 
     test('a guest asks the API for none of it', () async {
-      expect((await catalog.listFollowUpdates(limit: 20)).updates, isEmpty);
+      expect(
+        (await catalog.listFollowUpdates(limit: 20, locale: 'en')).updates,
+        isEmpty,
+      );
       expect(server.requestsTo('ListMyFollowUpdates'), isEmpty);
     });
 
@@ -3220,7 +3380,7 @@ void main() {
       server.activeAccessToken = 'another-token';
 
       expect(
-        () => signedIn.listFollowUpdates(limit: 20),
+        () => signedIn.listFollowUpdates(limit: 20, locale: 'en'),
         throwsA(
           isA<CatalogFailure>().having(
             (error) => error.kind,
@@ -3242,6 +3402,7 @@ void main() {
       () => catalog.getEpisode(
         ConnectFixtureServer.seedSeriesId,
         ConnectFixtureServer.seedEpisodeId,
+        locale: 'en',
       ),
       throwsA(
         isA<CatalogFailure>().having(
@@ -3251,5 +3412,123 @@ void main() {
         ),
       ),
     );
+  });
+
+  group('the reader\'s locale', () {
+    late HttpCatalogRepository member;
+
+    setUp(() {
+      member = HttpCatalogRepository(
+        config: AppConfig(baseUrl: server.baseUrl, tenantHost: 'localhost'),
+        client: ConnectClient(
+          baseUrl: server.baseUrl,
+          accessToken: () => ConnectFixtureServer.memberAccessToken,
+        ),
+      );
+    });
+
+    test('every read that answers a title asks in the locale given', () async {
+      const locale = 'zh-Hans';
+      final seriesId = ConnectFixtureServer.internalIdOf(
+        ConnectFixtureServer.seedSeriesId,
+      );
+      await member.listSeries(locale: locale);
+      await member.listNewestSeries(limit: 3, locale: locale);
+      await member.searchSeries(query: 'Seed', locale: locale);
+      await member.listRankedSeries(
+        limit: 3,
+        period: RankingPeriod.weekly,
+        ageRating: SeriesAgeRating.all,
+        locale: locale,
+      );
+      await member.listRelatedSeries(seriesId, limit: 3, locale: locale);
+      await member.listRecommendedSeries(limit: 3, locale: locale);
+      await member.listMyRecommendedSeries(limit: 3, locale: locale);
+      await member.getSeries(ConnectFixtureServer.seedSeriesId, locale: locale);
+      await member.getCreatorDetail('SeedAUTHAAA1', locale: locale);
+      await member.getLabelDetail('SeedLABLAAA1', locale: locale);
+      await member.listGenreSeries('SeedGENRAAA1', locale: locale);
+      await member.listTagSeries('time-travel', locale: locale);
+      await member.getEpisode(
+        ConnectFixtureServer.seedSeriesId,
+        ConnectFixtureServer.seedEpisodeId,
+        locale: locale,
+      );
+      await member.getSeriesProgress(seriesId, locale: locale);
+      await member.listRecentSeries(limit: 3, locale: locale);
+      await member.listEpisodeReads(limit: 3, locale: locale);
+      await member.listFollowUpdates(limit: 3, locale: locale);
+
+      String localeOf(String procedure) {
+        final requests = server.requestsTo(procedure);
+        expect(requests, isNotEmpty, reason: procedure);
+        return switch (procedure) {
+          'SearchPublishedSeries' =>
+            requests.single.decode(pb.SearchPublishedSeriesRequest()).locale,
+          'ListRankedSeries' =>
+            requests.single.decode(pb.ListRankedSeriesRequest()).locale,
+          'ListRelatedSeries' =>
+            requests.single.decode(pb.ListRelatedSeriesRequest()).locale,
+          'ListRecommendedSeries' =>
+            requests.single.decode(pb.ListRecommendedSeriesRequest()).locale,
+          'ListMyRecommendedSeries' =>
+            requests.single.decode(pb.ListMyRecommendedSeriesRequest()).locale,
+          'GetSeriesDetail' =>
+            requests.single.decode(pb.GetSeriesDetailRequest()).locale,
+          'GetPublishedCreatorDetail' =>
+            requests.single
+                .decode(pb.GetPublishedCreatorDetailRequest())
+                .locale,
+          'GetPublishedLabelDetail' =>
+            requests.single.decode(pb.GetPublishedLabelDetailRequest()).locale,
+          'GetEpisodeDetail' =>
+            requests.single.decode(pb.GetEpisodeDetailRequest()).locale,
+          'GetMySeriesProgress' =>
+            requests.single.decode(pb.GetMySeriesProgressRequest()).locale,
+          'ListMyRecentSeries' =>
+            requests.single.decode(pb.ListMyRecentSeriesRequest()).locale,
+          'ListMyEpisodeReads' =>
+            requests.single.decode(pb.ListMyEpisodeReadsRequest()).locale,
+          'ListMyFollowUpdates' =>
+            requests.single.decode(pb.ListMyFollowUpdatesRequest()).locale,
+          _ => fail('no request message for $procedure'),
+        };
+      }
+
+      for (final read in server.requestsTo('ListPublishedSeries')) {
+        expect(read.decode(pb.ListPublishedSeriesRequest()).locale, locale);
+      }
+      for (final procedure in [
+        'SearchPublishedSeries',
+        'ListRankedSeries',
+        'ListRelatedSeries',
+        'ListRecommendedSeries',
+        'ListMyRecommendedSeries',
+        'GetSeriesDetail',
+        'GetPublishedCreatorDetail',
+        'GetPublishedLabelDetail',
+        'GetEpisodeDetail',
+        'GetMySeriesProgress',
+        'ListMyRecentSeries',
+        'ListMyEpisodeReads',
+        'ListMyFollowUpdates',
+      ]) {
+        expect(localeOf(procedure), locale, reason: procedure);
+      }
+    });
+
+    test('a series names the locale its title was served in', () async {
+      server.series.first.locale = 'ja';
+      server.details[ConnectFixtureServer.seedSeriesId]!.series.locale = 'ja';
+
+      final listed = (await catalog.listSeries(locale: 'en')).series.first;
+      final detail = await catalog.getSeries(
+        ConnectFixtureServer.seedSeriesId,
+        locale: 'en',
+      );
+
+      expect(listed.locale, 'ja');
+      expect(detail!.series.locale, 'ja');
+    });
   });
 }

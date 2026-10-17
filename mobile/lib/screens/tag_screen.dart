@@ -27,8 +27,12 @@ class TagScreen extends StatelessWidget {
                 seriesCount: tag.seriesCount,
               );
       },
-      readSeries: (catalog, filter, token) =>
-          catalog.listTagSeries(tagSlug, filter: filter, token: token),
+      readSeries: (catalog, locale, filter, token) => catalog.listTagSeries(
+        tagSlug,
+        locale: locale,
+        filter: filter,
+        token: token,
+      ),
     );
   }
 }

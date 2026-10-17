@@ -72,18 +72,29 @@ class EpisodeDownloader extends ChangeNotifier {
   /// Saves the episode with all its pages.
   ///
   /// A second call for an episode already being saved joins the first rather
-  /// than fetching every page twice.
+  /// than fetching every page twice. Its titles are kept in [locale], the
+  /// reader's, as a read of the episode would show them.
   ///
   /// Throws [EpisodeDownloadFailure].
-  Future<void> save(String seriesPublicId, String episodePublicId) {
+  Future<void> save(
+    String seriesPublicId,
+    String episodePublicId, {
+    required String locale,
+  }) {
     final key = savedEpisodeKey(seriesPublicId, episodePublicId);
-    return _running[key] ??= _save(key, seriesPublicId, episodePublicId);
+    return _running[key] ??= _save(
+      key,
+      seriesPublicId,
+      episodePublicId,
+      locale,
+    );
   }
 
   Future<void> _save(
     String key,
     String seriesPublicId,
     String episodePublicId,
+    String locale,
   ) async {
     _progress[key] = 0;
     notifyListeners();
@@ -91,7 +102,11 @@ class EpisodeDownloader extends ChangeNotifier {
     try {
       final EpisodeDetail? detail;
       try {
-        detail = await _catalog.getEpisode(seriesPublicId, episodePublicId);
+        detail = await _catalog.getEpisode(
+          seriesPublicId,
+          episodePublicId,
+          locale: locale,
+        );
       } on CatalogFailure catch (failure) {
         throw EpisodeDownloadFailure(
           EpisodeDownloadFailureKind.network,

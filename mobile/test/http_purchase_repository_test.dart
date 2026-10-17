@@ -221,6 +221,7 @@ void main() {
     expect(
       await repository().startEpisodeCheckout(
         ConnectFixtureServer.internalIdOf(paidEpisodeId),
+        locale: 'en',
       ),
       ConnectFixtureServer.checkoutUrlFor(paidEpisodeId),
     );
@@ -231,10 +232,25 @@ void main() {
     expect(call.headers['authorization'], 'Bearer $accessToken');
   });
 
+  test('a checkout names the episode in the reader\'s locale', () async {
+    accessToken = ConnectFixtureServer.memberAccessToken;
+
+    await repository().startEpisodeCheckout(
+      ConnectFixtureServer.internalIdOf(paidEpisodeId),
+      locale: 'ko',
+    );
+
+    expect(
+      server.requestsOf(pb.StartEpisodeCheckoutRequest.new).single.locale,
+      'ko',
+    );
+  });
+
   test('a guest is not sent to the API for a checkout', () async {
     await expectLater(
       repository().startEpisodeCheckout(
         ConnectFixtureServer.internalIdOf(paidEpisodeId),
+        locale: 'en',
       ),
       failsWith(PurchaseFailureKind.sessionExpired),
     );
@@ -248,6 +264,7 @@ void main() {
     await expectLater(
       repository().startEpisodeCheckout(
         ConnectFixtureServer.internalIdOf(paidEpisodeId),
+        locale: 'en',
       ),
       failsWith(PurchaseFailureKind.alreadyPurchased),
     );
@@ -259,6 +276,7 @@ void main() {
     await expectLater(
       repository().startEpisodeCheckout(
         ConnectFixtureServer.internalIdOf(paidEpisodeId),
+        locale: 'en',
       ),
       failsWith(PurchaseFailureKind.sessionExpired),
     );
@@ -271,6 +289,7 @@ void main() {
     await expectLater(
       repository().startEpisodeCheckout(
         ConnectFixtureServer.internalIdOf(paidEpisodeId),
+        locale: 'en',
       ),
       failsWith(PurchaseFailureKind.network),
     );
@@ -341,7 +360,7 @@ void main() {
         ),
       ];
 
-      final page = await repository().listMyPurchases();
+      final page = await repository().listMyPurchases(locale: 'en');
 
       expect(page.nextToken, isEmpty);
       final [active, expired] = page.purchases;
@@ -378,8 +397,9 @@ void main() {
         purchase('purchase-active', active: true),
       ];
 
-      final [refunded, canceled, active] =
-          (await repository().listMyPurchases()).purchases;
+      final [refunded, canceled, active] = (await repository().listMyPurchases(
+        locale: 'en',
+      )).purchases;
 
       expect(refunded.refundedAmount, 500);
       expect(refunded.refundedAt?.toUtc(), DateTime.utc(2026, 1, 11, 12));
@@ -395,11 +415,25 @@ void main() {
     test('asks for the page size it is given', () async {
       accessToken = ConnectFixtureServer.memberAccessToken;
 
-      await repository().listMyPurchases(limit: myPurchasePageLimitMax);
+      await repository().listMyPurchases(
+        limit: myPurchasePageLimitMax,
+        locale: 'en',
+      );
 
       expect(
         server.requestsOf(pb.ListMyPurchasesRequest.new).single.limit,
         myPurchasePageLimitMax,
+      );
+    });
+
+    test('asks in the reader\'s locale', () async {
+      accessToken = ConnectFixtureServer.memberAccessToken;
+
+      await repository().listMyPurchases(locale: 'ko');
+
+      expect(
+        server.requestsOf(pb.ListMyPurchasesRequest.new).single.locale,
+        'ko',
       );
     });
 
@@ -413,8 +447,11 @@ void main() {
         ]
         ..purchasesPageSize = 2;
 
-      final first = await repository().listMyPurchases();
-      final second = await repository().listMyPurchases(token: first.nextToken);
+      final first = await repository().listMyPurchases(locale: 'en');
+      final second = await repository().listMyPurchases(
+        token: first.nextToken,
+        locale: 'en',
+      );
 
       expect(first.purchases.map((item) => item.id), [
         'purchase-1',
@@ -427,11 +464,17 @@ void main() {
     test('a reader who bought nothing is answered an empty page', () async {
       accessToken = ConnectFixtureServer.memberAccessToken;
 
-      expect((await repository().listMyPurchases()).purchases, isEmpty);
+      expect(
+        (await repository().listMyPurchases(locale: 'en')).purchases,
+        isEmpty,
+      );
     });
 
     test('a guest is not sent to the API for it', () async {
-      expect((await repository().listMyPurchases()).purchases, isEmpty);
+      expect(
+        (await repository().listMyPurchases(locale: 'en')).purchases,
+        isEmpty,
+      );
       expect(server.requestsTo('ListMyPurchases'), isEmpty);
     });
 
@@ -439,7 +482,7 @@ void main() {
       accessToken = 'a-token-the-api-no-longer-accepts';
 
       await expectLater(
-        repository().listMyPurchases(),
+        repository().listMyPurchases(locale: 'en'),
         failsWith(PurchaseFailureKind.sessionExpired),
       );
     });

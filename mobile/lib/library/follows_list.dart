@@ -55,20 +55,24 @@ class _FollowsListState extends State<FollowsList> {
   var _reads = 0;
 
   var _accessToken = '';
+  var _locale = '';
   var _started = false;
 
-  /// Reads the list again whenever the reader changes: what is followed
-  /// belongs to whoever holds the session, and a sign-out leaves the screen
-  /// with nothing of its own to show.
+  /// Reads the list again whenever the reader or the locale changes: what is
+  /// followed belongs to whoever holds the session, a sign-out leaves the
+  /// screen with nothing of its own to show, and a series is named in the
+  /// app's language.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final accessToken = AuthScope.of(context).accessToken;
-    if (_started && accessToken == _accessToken) {
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    if (_started && accessToken == _accessToken && locale == _locale) {
       return;
     }
     _started = true;
     _accessToken = accessToken;
+    _locale = locale;
     _readFirstPage();
   }
 
@@ -112,7 +116,7 @@ class _FollowsListState extends State<FollowsList> {
     List<_FollowedTarget> targets = const [];
     try {
       page = await follows.listMyFollows(token: token);
-      targets = await _resolveNames(catalog, page.follows);
+      targets = await _resolveNames(catalog, _locale, page.follows);
     } on FollowFailure catch (error) {
       failure = error;
     }
@@ -146,23 +150,29 @@ class _FollowsListState extends State<FollowsList> {
   /// row the reader can unfollow.
   Future<List<_FollowedTarget>> _resolveNames(
     CatalogRepository catalog,
+    String locale,
     List<MyFollow> follows,
   ) {
     return Future.wait(
       follows.map((follow) async {
         return _FollowedTarget(
           follow: follow,
-          name: await _name(catalog, follow),
+          name: await _name(catalog, locale, follow),
         );
       }),
     );
   }
 
-  Future<String> _name(CatalogRepository catalog, MyFollow follow) async {
+  Future<String> _name(
+    CatalogRepository catalog,
+    String locale,
+    MyFollow follow,
+  ) async {
     try {
       final name = switch (follow.kind) {
         FollowTargetKind.series => await catalog.getSeriesTitle(
           follow.targetId,
+          locale: locale,
         ),
         FollowTargetKind.creator => (await catalog.getCreator(
           follow.targetId,
