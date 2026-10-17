@@ -972,10 +972,12 @@ type FinishPasskeyLoginRequest struct {
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	// The PublicKeyCredential the authenticator asserted with, as its toJSON()
 	// serializes it. Unauthenticated, as a wrong password is, when the
-	// assertion was not made on the storefront's origin over a challenge
-	// BeginPasskeyLogin issued and no finish has spent, when the passkey is not
-	// one this tenant's storefront registered, when the user handle it carries
-	// is not its account's, or when its signature counter did not move forward.
+	// assertion was made neither on the storefront's origin nor by the tenant's
+	// Android app under a signing certificate the tenant saved, when it was not
+	// made over a challenge BeginPasskeyLogin issued and no finish has spent,
+	// when the passkey is not one this tenant's storefront registered, when the
+	// user handle it carries is not its account's, or when its signature
+	// counter did not move forward.
 	// An account that is suspended, or whose address was never verified, is
 	// failed_precondition as Login answers it: a passkey proves the reader holds
 	// an authenticator registered from a session, not that the address is

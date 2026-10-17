@@ -266,6 +266,78 @@ func TestDBPasskeySignInRefusesAnotherOrigin(t *testing.T) {
 	assertSignInRefused(t, err, "an assertion made on the console's origin")
 }
 
+// androidAppOrigin is the origin Credential Manager reports for an app signed
+// with the certificate whose fingerprint is fingerprint.
+func androidAppOrigin(t *testing.T, fingerprint string) string {
+	t.Helper()
+	origin, err := tenantwebauthn.AndroidAppOrigin(fingerprint)
+	if err != nil {
+		t.Fatalf("AndroidAppOrigin: %v", err)
+	}
+	return origin
+}
+
+// The tenant's Android app registers a passkey, signs in with it, and confirms
+// an email change with it, from any certificate the tenant saved, and an app
+// signed with another certificate is refused on each of those as a foreign
+// site is.
+func TestDBPasskeyIsUsedFromTheTenantsAndroidApp(t *testing.T) {
+	env := newPasskeyDBEnv(t)
+	seedMobileAppAssociation(t, env.publicDBEnv, env.tenant, "com.example.comics", []string{testFingerprintA, testFingerprintB}, "", "")
+	ctx := env.session(t)
+	unsaved := androidAppOrigin(t, "00:01:02:03:04:05:06:07:08:09:0A:0B:0C:0D:0E:0F:10:11:12:13:14:15:16:17:18:19:1A:1B:1C:1D:1E:1F")
+
+	_, err := env.finishRegistration(t, ctx, webauthntest.New(t, unsaved), "")
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("a credential made by an app signed with another certificate code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+	}
+	authenticator, _ := env.register(t, ctx, androidAppOrigin(t, testFingerprintA), "Android")
+
+	authenticator.Origin = unsaved
+	_, err = env.finishSignIn(env.tenant, authenticator.Assert(t, env.beginSignIn(t, env.tenant)))
+	assertSignInRefused(t, err, "an assertion made by an app signed with another certificate")
+	authenticator.Origin = androidAppOrigin(t, testFingerprintB)
+	signedIn, err := env.finishSignIn(env.tenant, authenticator.Assert(t, env.beginSignIn(t, env.tenant)))
+	if err != nil {
+		t.Fatalf("FinishPasskeyLogin from the app: %v", err)
+	}
+	if signedIn.User.GetPublicId() != env.reader.PublicID {
+		t.Fatalf("signed in as %+v, want the reader", signedIn.User)
+	}
+
+	env.dropPassword(t)
+	request := func(newEmail string) error {
+		_, err := env.authClient().RequestEmailChange(ctx, &publirav1.RequestEmailChangeRequest{
+			Tenant:                tenantContext(env.tenant),
+			CurrentEmail:          env.reader.Email,
+			NewEmail:              newEmail,
+			PasskeyCredentialJson: authenticator.Assert(t, env.beginConfirmation(t, ctx)),
+		})
+		return err
+	}
+	authenticator.Origin = unsaved
+	err = request("elsewhere@example.com")
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("a confirmation made by an app signed with another certificate code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+	}
+	assertPublicBadRequestField(t, err, passkeyConfirmationField)
+	authenticator.Origin = androidAppOrigin(t, testFingerprintA)
+	if err := request("next@example.com"); err != nil {
+		t.Fatalf("RequestEmailChange confirmed from the app: %v", err)
+	}
+}
+
+// A tenant with no Android app accepts no app's assertion, whatever
+// certificate signed it.
+func TestDBPasskeySignInRefusesAnAppTheTenantHasNot(t *testing.T) {
+	env := newPasskeyDBEnv(t)
+	authenticator, _ := env.register(t, env.session(t), passkeySiteOrigin, "")
+
+	authenticator.Origin = androidAppOrigin(t, testFingerprintA)
+	_, err := env.finishSignIn(env.tenant, authenticator.Assert(t, env.beginSignIn(t, env.tenant)))
+	assertSignInRefused(t, err, "an assertion made by an app the tenant has not configured")
+}
+
 // A suspended account, and one whose address is not verified, is refused as a
 // password sign-in refuses it once the password verifies.
 func TestDBPasskeySignInRefusesWhatLoginRefuses(t *testing.T) {

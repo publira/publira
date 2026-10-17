@@ -57,7 +57,7 @@ func TestRelyingPartiesShareNoCredentials(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AdminConsole: %v", err)
 	}
-	site, err := Site(tenant)
+	site, err := Site(tenant, nil)
 	if err != nil {
 		t.Fatalf("Site: %v", err)
 	}
@@ -133,6 +133,107 @@ func TestRelyingPartiesAcceptTheirOwnOriginAlone(t *testing.T) {
 	}
 	if credential.Authenticator.SignCount != authenticator.SignCount {
 		t.Fatalf("sign count = %d, want %d", credential.Authenticator.SignCount, authenticator.SignCount)
+	}
+}
+
+// The Android app's origin is the certificate's SHA-256 digest itself, as
+// Credential Manager writes it into clientDataJSON.
+func TestAndroidAppOrigin(t *testing.T) {
+	got, err := AndroidAppOrigin(appCertFingerprint)
+	if err != nil {
+		t.Fatalf("AndroidAppOrigin: %v", err)
+	}
+	if got != appOrigin {
+		t.Fatalf("AndroidAppOrigin = %q, want %q", got, appOrigin)
+	}
+	for _, fingerprint := range []string{"", "14:6D:E9", appCertFingerprint + ":00", "ZZ" + appCertFingerprint[2:]} {
+		if _, err := AndroidAppOrigin(fingerprint); err == nil {
+			t.Fatalf("AndroidAppOrigin(%q) accepted a value that is no SHA-256 fingerprint", fingerprint)
+		}
+	}
+}
+
+// The storefront's passkeys are registered and asserted from the tenant's
+// Android app as well as from the storefront itself, and from an app signed
+// with any other certificate no more than from a foreign site. The console
+// accepts no app.
+func TestSiteAcceptsTheTenantsAndroidApp(t *testing.T) {
+	t.Setenv(tenantorigin.SchemeEnv, "")
+	tenant := dbmodels.Tenant{Domain: "comics.example", Name: "Comics"}
+	site, err := Site(tenant, []string{otherCertFingerprint, appCertFingerprint})
+	if err != nil {
+		t.Fatalf("Site: %v", err)
+	}
+	otherOrigin, err := AndroidAppOrigin(otherCertFingerprint)
+	if err != nil {
+		t.Fatalf("AndroidAppOrigin: %v", err)
+	}
+	user := User{Handle: UserHandle("USER00000001"), Name: "reader@comics.example", DisplayName: "Reader"}
+
+	app := webauthntest.New(t, appOrigin)
+	user.Credentials = []dbmodels.UserWebauthnCredential{register(t, site, app, user)}
+
+	assert := func(rp *RelyingParty, origin string) error {
+		t.Helper()
+		app.Origin = origin
+		options, ceremony, err := rp.BeginAuthentication(user)
+		if err != nil {
+			t.Fatalf("BeginAuthentication: %v", err)
+		}
+		parsed, _, err := ParseAssertion([]byte(app.Assert(t, string(options))))
+		if err != nil {
+			t.Fatalf("ParseAssertion: %v", err)
+		}
+		_, err = rp.FinishAuthentication(user, ceremony, parsed)
+		return err
+	}
+	for _, origin := range []string{appOrigin, otherOrigin, site.Origin} {
+		if err := assert(site, origin); err != nil {
+			t.Fatalf("the storefront refused an assertion from %s: %v", origin, err)
+		}
+	}
+	for _, origin := range []string{unsavedAppOrigin, "https://elsewhere.example"} {
+		if err := assert(site, origin); err == nil {
+			t.Fatalf("the storefront accepted an assertion from %s", origin)
+		}
+	}
+
+	stranger := webauthntest.New(t, unsavedAppOrigin)
+	options, ceremony, err := site.BeginRegistration(User{Handle: UserHandle("USER00000002"), Name: "other@comics.example", DisplayName: "Other"})
+	if err != nil {
+		t.Fatalf("BeginRegistration: %v", err)
+	}
+	parsed, _, err := ParseRegistration([]byte(stranger.Register(t, string(options))))
+	if err != nil {
+		t.Fatalf("ParseRegistration: %v", err)
+	}
+	if _, err := site.FinishRegistration(User{Handle: UserHandle("USER00000002")}, ceremony, parsed); err == nil {
+		t.Fatal("the storefront registered a passkey from an app signed with a certificate it never saved")
+	}
+
+	// A storefront without an app accepts none, and the console never does.
+	appless, err := Site(tenant, nil)
+	if err != nil {
+		t.Fatalf("Site: %v", err)
+	}
+	if err := assert(appless, appOrigin); err == nil {
+		t.Fatal("a storefront with no Android app accepted an assertion from one")
+	}
+	console, err := AdminConsole(tenant)
+	if err != nil {
+		t.Fatalf("AdminConsole: %v", err)
+	}
+	consoleApp := webauthntest.New(t, appOrigin)
+	options, ceremony, err = console.BeginRegistration(user)
+	if err != nil {
+		t.Fatalf("BeginRegistration: %v", err)
+	}
+	parsed, _, err = ParseRegistration([]byte(consoleApp.Register(t, string(options))))
+	if err != nil {
+		t.Fatalf("ParseRegistration: %v", err)
+	}
+	if _, err := console.FinishRegistration(user, ceremony, parsed); err == nil {
+		t.Fatal("the console registered a passkey from the storefront's Android app")
 	}
 }
 
@@ -229,7 +330,7 @@ func TestSiteRequiresAResidentKey(t *testing.T) {
 		residentKey string
 		require     bool
 	}{
-		{name: "storefront", rp: Site, residentKey: "required", require: true},
+		{name: "storefront", rp: func(tenant dbmodels.Tenant) (*RelyingParty, error) { return Site(tenant, nil) }, residentKey: "required", require: true},
 		{name: "console", rp: AdminConsole, residentKey: "preferred", require: false},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -264,7 +365,7 @@ func TestSiteRequiresAResidentKey(t *testing.T) {
 // long as the user handle the authenticator returns is that account's.
 func TestFinishDiscoverableAuthenticationNamesTheAccountByItsCredential(t *testing.T) {
 	t.Setenv(tenantorigin.SchemeEnv, "")
-	site, err := Site(dbmodels.Tenant{Domain: "comics.example"})
+	site, err := Site(dbmodels.Tenant{Domain: "comics.example"}, nil)
 	if err != nil {
 		t.Fatalf("Site: %v", err)
 	}
@@ -365,3 +466,12 @@ func register(t *testing.T, rp *RelyingParty, authenticator *webauthntest.Authen
 		BackedUp:       credential.Flags.BackupState,
 	}
 }
+
+// appCertFingerprint is a signing certificate of the tenant's Android app, and
+// appOrigin the origin Credential Manager reports for it.
+const (
+	appCertFingerprint   = "14:6D:E9:83:C5:73:06:50:D8:EE:B9:95:2F:34:FC:64:16:A0:83:42:E6:1D:BE:A8:8A:04:96:B2:3F:CF:44:E5"
+	appOrigin            = "android:apk-key-hash:FG3pg8VzBlDY7rmVLzT8ZBagg0LmHb6oigSWsj_PROU"
+	otherCertFingerprint = "00:01:02:03:04:05:06:07:08:09:0A:0B:0C:0D:0E:0F:10:11:12:13:14:15:16:17:18:19:1A:1B:1C:1D:1E:1F"
+	unsavedAppOrigin     = "android:apk-key-hash:__79_Pv6-fj39vX08_Lx8O_u7ezr6uno5-bl5OPi4eA"
+)

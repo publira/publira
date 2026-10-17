@@ -99,9 +99,15 @@ func passkeyProto(row dbmodels.UserWebauthnCredential) *publirav1.Passkey {
 	return passkey
 }
 
-// siteRelyingParty is the storefront's relying party for tenant.
-func (s *apiServer) siteRelyingParty(ctx context.Context, tenant dbmodels.Tenant) (*tenantwebauthn.RelyingParty, error) {
-	rp, err := tenantwebauthn.Site(tenant)
+// siteRelyingParty is the storefront's relying party for tenant, which also
+// accepts a ceremony made by the tenant's Android app.
+func (s *apiServer) siteRelyingParty(ctx context.Context, q dbmodels.Querier, tenant dbmodels.Tenant) (*tenantwebauthn.RelyingParty, error) {
+	config, err := q.GetTenantConfigByTenantID(ctx, tenant.ID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, s.internalDBError(ctx, "failed to get the tenant's Android app", err, "tenant_id", tenant.ID.String())
+	}
+	// A tenant with no config row has no Android app, and no fingerprints.
+	rp, err := tenantwebauthn.Site(tenant, config.AndroidSha256CertFingerprints)
 	if err != nil {
 		return nil, s.internalError(ctx, "failed to build the storefront's relying party", err, "tenant_id", tenant.ID.String())
 	}
@@ -215,7 +221,7 @@ func (s *apiServer) BeginPasskeyLogin(
 		auth.AuditEvent(ctx, action, "failure", "", "", "tenant_not_found")
 		return nil, err
 	}
-	rp, err := s.siteRelyingParty(ctx, tenant)
+	rp, err := s.siteRelyingParty(ctx, s.queriesFor(ctx), tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -302,7 +308,8 @@ func (s *apiServer) FinishPasskeyLogin(
 	if strings.TrimSpace(req.CredentialJson) == "" {
 		return fail("", "invalid_input", passkeyCredentialRequiredError())
 	}
-	rp, err := s.siteRelyingParty(ctx, tenant)
+	q := s.queriesFor(ctx)
+	rp, err := s.siteRelyingParty(ctx, q, tenant)
 	if err != nil {
 		return fail("", "relying_party_failed", err)
 	}
@@ -310,7 +317,6 @@ func (s *apiServer) FinishPasskeyLogin(
 	if err != nil {
 		return fail("", "credential_malformed", passkeyLoginRefusedError())
 	}
-	q := s.queriesFor(ctx)
 	row, err := q.SpendSiteSignInCeremony(ctx, challenge)
 	if errors.Is(err, sql.ErrNoRows) {
 		return fail("", "ceremony_unknown", passkeyLoginRefusedError())
@@ -423,11 +429,12 @@ func (s *apiServer) BeginPasskeyRegistration(
 	if err := s.chargeReaderAction(ctx, actionPasskey, tenant.ID, user.ID); err != nil {
 		return nil, err
 	}
-	rp, err := s.siteRelyingParty(ctx, tenant)
+	q := s.queriesFor(ctx)
+	rp, err := s.siteRelyingParty(ctx, q, tenant)
 	if err != nil {
 		return nil, err
 	}
-	holder, err := s.passkeyUser(ctx, s.queriesFor(ctx), rp, user)
+	holder, err := s.passkeyUser(ctx, q, rp, user)
 	if err != nil {
 		return nil, err
 	}
@@ -474,7 +481,8 @@ func (s *apiServer) FinishPasskeyRegistration(
 	if strings.TrimSpace(req.CredentialJson) == "" {
 		return fail("invalid_input", passkeyCredentialRequiredError())
 	}
-	rp, err := s.siteRelyingParty(ctx, tenant)
+	q := s.queriesFor(ctx)
+	rp, err := s.siteRelyingParty(ctx, q, tenant)
 	if err != nil {
 		return fail("relying_party_failed", err)
 	}
@@ -482,7 +490,6 @@ func (s *apiServer) FinishPasskeyRegistration(
 	if err != nil {
 		return fail("credential_malformed", passkeyRegistrationRefusedError())
 	}
-	q := s.queriesFor(ctx)
 	row, err := q.SpendUserWebauthnCeremony(ctx, dbmodels.SpendUserWebauthnCeremonyParams{
 		Challenge:    challenge,
 		UserID:       user.ID,
@@ -580,11 +587,12 @@ func (s *apiServer) ListMyPasskeys(
 	if err != nil {
 		return nil, err
 	}
-	rp, err := s.siteRelyingParty(ctx, tenant)
+	q := s.queriesFor(ctx)
+	rp, err := s.siteRelyingParty(ctx, q, tenant)
 	if err != nil {
 		return nil, err
 	}
-	holder, err := s.passkeyUser(ctx, s.queriesFor(ctx), rp, user)
+	holder, err := s.passkeyUser(ctx, q, rp, user)
 	if err != nil {
 		return nil, err
 	}
@@ -754,11 +762,12 @@ func (s *apiServer) BeginPasskeyConfirmation(
 	if err := s.chargeReaderAction(ctx, actionPasskey, tenant.ID, user.ID); err != nil {
 		return nil, err
 	}
-	rp, err := s.siteRelyingParty(ctx, tenant)
+	q := s.queriesFor(ctx)
+	rp, err := s.siteRelyingParty(ctx, q, tenant)
 	if err != nil {
 		return nil, err
 	}
-	holder, err := s.passkeyUser(ctx, s.queriesFor(ctx), rp, user)
+	holder, err := s.passkeyUser(ctx, q, rp, user)
 	if err != nil {
 		return nil, err
 	}
@@ -793,7 +802,7 @@ func (s *apiServer) verifyPasskeyConfirmation(
 	user dbmodels.User,
 	credentialJSON string,
 ) (passkeyConfirmation, error) {
-	rp, err := s.siteRelyingParty(ctx, tenant)
+	rp, err := s.siteRelyingParty(ctx, q, tenant)
 	if err != nil {
 		return passkeyConfirmation{}, err
 	}
