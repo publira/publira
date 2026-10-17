@@ -2,7 +2,7 @@
 title: Your account
 description: Change the email address you sign in to the console with, and protect your account with two-step verification, a passkey, and recovery codes.
 published: 2026-10-07
-updated: 2026-10-15
+updated: 2026-10-17
 ---
 
 Every member of staff, whatever their role, manages their own console account from **Account settings**, in the account menu at the top of the console. It has two cards: **Change the email address** and **Two-step verification**.
@@ -77,7 +77,7 @@ A passkey belongs to the tenant's domain when the console is served on that doma
 
 A recovery code stands in for the app or the passkey once, when you do not have your phone or the device that holds the passkey. Enter it where the console asks for the app's code, or under **Enter a recovery code instead** when you sign in with a passkey. The console then tells you how many codes you have left. The ten codes are shared by the app and every passkey on the account.
 
-**Regenerate recovery codes** issues ten new codes and makes every earlier one useless, used or not. It asks for a code from the app, not a recovery code, so it is under **Authenticator app** and appears only once the app is set up. Do it once you have your phone back after using a recovery code, or whenever you think the codes may have been seen.
+**Regenerate recovery codes** issues ten new codes and makes every earlier one useless, used or not. It never accepts a recovery code. Once the app is set up, it is under **Authenticator app** and asks for a code from the app. If passkeys are your only second factor, it is under **Passkeys** instead: choose **Regenerate with a passkey** and unlock one of your passkeys when the browser asks. A passkey the console refuses issues no codes, leaves the ones you hold as they were, and counts toward the same lock as a wrong code. Do it once you have your phone or your passkey back after using a recovery code, or whenever you think the codes may have been seen.
 
 ### Turning it off
 

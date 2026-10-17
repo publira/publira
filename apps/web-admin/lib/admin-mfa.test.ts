@@ -6,6 +6,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockBeginPasskeyConfirmation,
   mockBeginPasskeyRegistration,
   mockBeginPasskeyVerification,
   mockCacheLife,
@@ -16,8 +17,10 @@ const {
   mockGetAccessToken,
   mockGetMfaStatus,
   mockListPasskeys,
+  mockRegenerateMfaRecoveryCodes,
   mockRenamePasskey,
 } = vi.hoisted(() => ({
+  mockBeginPasskeyConfirmation: vi.fn(),
   mockBeginPasskeyRegistration: vi.fn(),
   mockBeginPasskeyVerification: vi.fn(),
   mockCacheLife: vi.fn(),
@@ -28,6 +31,7 @@ const {
   mockGetAccessToken: vi.fn(),
   mockGetMfaStatus: vi.fn(),
   mockListPasskeys: vi.fn(),
+  mockRegenerateMfaRecoveryCodes: vi.fn(),
   mockRenamePasskey: vi.fn(),
 }));
 
@@ -43,6 +47,7 @@ vi.mock("./session", () => ({
 vi.mock("./api", () => ({
   apiClient: {
     auth: {
+      beginPasskeyConfirmation: mockBeginPasskeyConfirmation,
       beginPasskeyRegistration: mockBeginPasskeyRegistration,
       beginPasskeyVerification: mockBeginPasskeyVerification,
       deletePasskey: mockDeletePasskey,
@@ -50,6 +55,7 @@ vi.mock("./api", () => ({
       finishPasskeyVerification: mockFinishPasskeyVerification,
       getMfaStatus: mockGetMfaStatus,
       listPasskeys: mockListPasskeys,
+      regenerateMfaRecoveryCodes: mockRegenerateMfaRecoveryCodes,
       renamePasskey: mockRenamePasskey,
     },
   },
@@ -553,5 +559,115 @@ describe("renaming and removing a passkey", () => {
       { id: "PASSKEY00001", tenant: { tenantId: "TENANT001" } },
       { headers: { Authorization: "Bearer session-token" } }
     );
+  });
+});
+
+describe("regenerating the recovery codes with a passkey", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("begins the confirmation for the signed-in account", async () => {
+    mockBeginPasskeyConfirmation.mockResolvedValueOnce({
+      requestOptionsJson: '{"challenge":"abc"}',
+    });
+
+    const { beginAdminPasskeyConfirmation } = await import("./admin-mfa");
+
+    await expect(
+      beginAdminPasskeyConfirmation("TENANT001", "en")
+    ).resolves.toEqual({ ok: true, optionsJson: '{"challenge":"abc"}' });
+    expect(mockBeginPasskeyConfirmation).toHaveBeenCalledWith(
+      { tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  it("answers the batch the assertion replaced the codes with", async () => {
+    mockRegenerateMfaRecoveryCodes.mockResolvedValueOnce({
+      recoveryCodes: ["AAAAA-BBBBB"],
+    });
+
+    const { regenerateAdminMfaRecoveryCodes } = await import("./admin-mfa");
+
+    await expect(
+      regenerateAdminMfaRecoveryCodes(
+        "TENANT001",
+        { passkeyCredentialJson: '{"id":"credential"}' },
+        "en"
+      )
+    ).resolves.toEqual({ ok: true, recoveryCodes: ["AAAAA-BBBBB"] });
+    expect(mockRegenerateMfaRecoveryCodes).toHaveBeenCalledWith(
+      {
+        passkeyCredentialJson: '{"id":"credential"}',
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  // A refused assertion is `unauthenticated` as a rejected session is, and
+  // must stay on the form rather than sign the operator out.
+  it.each([
+    [
+      "a refused assertion",
+      reasonError(Code.Unauthenticated, "MFA_PASSKEY_REFUSED"),
+      "That passkey was not accepted. Use a passkey registered to this account.",
+    ],
+    [
+      "the lock a run of failures set",
+      reasonError(Code.ResourceExhausted, "MFA_LOCKED"),
+      "Too many failed attempts. Wait a while before trying again.",
+    ],
+    [
+      "an account whose passkeys are gone",
+      new ConnectError("no passkey is registered", Code.FailedPrecondition),
+      "No passkey is registered to your account any more. Reload the page.",
+    ],
+  ])("words %s", async (_case, error, message) => {
+    mockRegenerateMfaRecoveryCodes.mockRejectedValueOnce(error);
+
+    const { regenerateAdminMfaRecoveryCodes } = await import("./admin-mfa");
+
+    await expect(
+      regenerateAdminMfaRecoveryCodes(
+        "TENANT001",
+        { passkeyCredentialJson: "{}" },
+        "en"
+      )
+    ).resolves.toEqual({ message, ok: false });
+  });
+
+  it("words the confirmation of an account with no passkey", async () => {
+    mockBeginPasskeyConfirmation.mockRejectedValueOnce(
+      new ConnectError("no passkey is registered", Code.FailedPrecondition)
+    );
+
+    const { beginAdminPasskeyConfirmation } = await import("./admin-mfa");
+
+    await expect(
+      beginAdminPasskeyConfirmation("TENANT001", "en")
+    ).resolves.toEqual({
+      message:
+        "No passkey is registered to your account any more. Reload the page.",
+      ok: false,
+    });
+  });
+
+  it("rethrows a rejected session for the re-authentication flow", async () => {
+    const error = new ConnectError("invalid token", Code.Unauthenticated);
+    mockRegenerateMfaRecoveryCodes.mockRejectedValueOnce(error);
+
+    const { regenerateAdminMfaRecoveryCodes } = await import("./admin-mfa");
+
+    await expect(
+      regenerateAdminMfaRecoveryCodes(
+        "TENANT001",
+        { passkeyCredentialJson: "{}" },
+        "en"
+      )
+    ).rejects.toBe(error);
   });
 });

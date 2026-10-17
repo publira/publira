@@ -57,6 +57,7 @@ import {
   PasskeyNamed,
   SkipPasskeyNaming,
 } from "./passkey-addition";
+import { PasskeyRegenerateForm } from "./passkey-regeneration";
 
 const PasskeyNameField = ({
   defaultValue,
@@ -341,17 +342,56 @@ const PasskeyNameStep = ({ tenantId }: { tenantId: string }) => (
 );
 
 /**
+ * Regenerates the recovery codes with a passkey. The card shows the batch it
+ * issues, as it does a code's regeneration's, so the answer is reported there.
+ */
+const PasskeyRegenerateStep = ({ tenantId }: { tenantId: string }) => (
+  <PasskeyRegenerateForm>
+    <input name="tenant_id" type="hidden" value={tenantId} />
+    <ReportMfaSettingsChange />
+    <div className="grid gap-1">
+      <p className="text-sm font-medium text-foreground">
+        <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+          <Message message="admin.settings.mfa.regenerate_title" />
+        </Suspense>
+      </p>
+      <p className="text-xs text-muted-foreground">
+        <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+          <Message message="admin.settings.mfa.regenerate_passkey_description" />
+        </Suspense>
+      </p>
+    </div>
+    <div className="flex justify-end">
+      <ActionFormSubmit variant="outline">
+        <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+          <ActionFormIdle>
+            <Message message="admin.settings.mfa.regenerate_passkey_submit" />
+          </ActionFormIdle>
+          <ActionFormPending>
+            <Message message="admin.auth.mfa.passkey_waiting" />
+          </ActionFormPending>
+        </Suspense>
+      </ActionFormSubmit>
+    </div>
+  </PasskeyRegenerateForm>
+);
+
+/**
  * The account's passkeys for the console, each with when it was added and
- * last used, and the form that adds another.
+ * last used, and the form that adds another. `regeneratesRecoveryCodes` adds
+ * the form that replaces the recovery codes with one of them, for an account
+ * with no authenticator app to do it with a code.
  */
 export const PasskeySettings = ({
   locale,
   passkeys,
+  regeneratesRecoveryCodes,
   tenantId,
   timeZone,
 }: {
   locale: Locale;
   passkeys: AdminPasskey[];
+  regeneratesRecoveryCodes: boolean;
   tenantId: string;
   timeZone: string;
 }) => (
@@ -390,5 +430,8 @@ export const PasskeySettings = ({
       add={<PasskeyAddStep tenantId={tenantId} />}
       name={<PasskeyNameStep tenantId={tenantId} />}
     />
+    {regeneratesRecoveryCodes && passkeys.length > 0 ? (
+      <PasskeyRegenerateStep tenantId={tenantId} />
+    ) : null}
   </div>
 );

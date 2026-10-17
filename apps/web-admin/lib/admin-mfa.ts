@@ -92,6 +92,11 @@ export type AdminPasskeyCeremonyStartResult =
     }
   | { ok: false; message: string; challengeExpired: boolean };
 
+/** A ceremony the signed-in account begins, which has no challenge to expire. */
+export type AdminPasskeyConfirmationStartResult =
+  | { ok: true; optionsJson: string }
+  | { ok: false; message: string };
+
 export type AdminPasskeyVerifyResult =
   | { ok: true; session: AdminMfaSession }
   | { ok: false; message: string; challengeExpired: boolean };
@@ -323,6 +328,38 @@ const sessionPasskeyFailureMessage = async (
   rethrowUnclassifiedRpcError(error);
 
   return rpcErrorMessage(error, fallback, { locale, overrides });
+};
+
+/**
+ * Wording for a refused passkey confirmation the *session* authorized.
+ *
+ * A refused assertion is `unauthenticated`, as a rejected session is, so its
+ * reason is read before anything rethrows the error for
+ * `withAdminSessionReauth()`: without it a passkey the console did not accept
+ * would sign the operator out. An account left with no passkey to confirm
+ * with is the failed precondition.
+ */
+const sessionPasskeyConfirmationFailureMessage = async (
+  error: unknown,
+  locale: Locale
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+  if (rpcErrorHasReason(error, RPC_ERROR_REASON.mfaLocked)) {
+    return t("admin.auth.mfa.errors.locked");
+  }
+  if (rpcErrorHasReason(error, RPC_ERROR_REASON.mfaPasskeyRefused)) {
+    return t("admin.auth.mfa.errors.passkey_refused");
+  }
+
+  rethrowUnauthenticatedRpcError(error);
+  rethrowUnclassifiedRpcError(error);
+
+  return rpcErrorMessage(error, t("admin.auth.mfa.errors.passkey_failed"), {
+    locale,
+    overrides: {
+      precondition: t("admin.settings.mfa.regenerate_passkey_missing"),
+    },
+  });
 };
 
 /**
@@ -562,22 +599,54 @@ export const disableAdminMfa = async (
   }
 };
 
+/**
+ * Replace the signed-in account's recovery codes, proved with a code from the
+ * authenticator or with an assertion one of its passkeys made over a ceremony
+ * {@link beginAdminPasskeyConfirmation} began.
+ */
 export const regenerateAdminMfaRecoveryCodes = async (
   tenantId: string,
-  code: string,
+  proof: { code: string } | { passkeyCredentialJson: string },
   locale: Locale
 ): Promise<AdminMfaRecoveryCodesResult> => {
   const sessionToken = await getAccessToken();
 
   try {
     const response = await apiClient.auth.regenerateMfaRecoveryCodes(
-      { code, tenant: { tenantId } },
+      { ...proof, tenant: { tenantId } },
       withSessionHeaders(sessionToken)
     );
     return { ok: true, recoveryCodes: response.recoveryCodes };
   } catch (error) {
     return {
-      message: await sessionMfaFailureMessage(error, locale, "enabled"),
+      message:
+        "code" in proof
+          ? await sessionMfaFailureMessage(error, locale, "enabled")
+          : await sessionPasskeyConfirmationFailureMessage(error, locale),
+      ok: false,
+    };
+  }
+};
+
+/**
+ * Start confirming a recovery-code regeneration with one of the signed-in
+ * account's passkeys.
+ */
+export const beginAdminPasskeyConfirmation = async (
+  tenantId: string,
+  locale: Locale
+): Promise<AdminPasskeyConfirmationStartResult> => {
+  const sessionToken = await getAccessToken();
+
+  try {
+    const response = await apiClient.auth.beginPasskeyConfirmation(
+      { tenant: { tenantId } },
+      withSessionHeaders(sessionToken)
+    );
+    return { ok: true, optionsJson: response.requestOptionsJson };
+  } catch (error) {
+    return {
+      message: await sessionPasskeyConfirmationFailureMessage(error, locale),
       ok: false,
     };
   }
