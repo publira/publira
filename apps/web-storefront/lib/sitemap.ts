@@ -254,15 +254,18 @@ const utf8Bytes = (value: string): number =>
  * The entries of one sitemap file, starting at `token`. The first file opens
  * with the catalogue's index pages. A file ends once another API page could
  * take it past {@link SITEMAP_URL_LIMIT} URLs or {@link SITEMAP_BYTE_LIMIT}
- * bytes, measured on the XML this address renders. A token names a position in
- * the list rather than a row, so a file keeps its place when the rows around
- * its boundary change.
+ * bytes, measured on the XML this address renders, and once the walk has read
+ * as many rows as a file could hold URLs: a row that writes none, a series
+ * translated into no offered locale, still takes its place in the list, so the
+ * file can end with fewer URLs, or none. A token names a position in the list
+ * rather than a row, so a file keeps its place when the rows around its
+ * boundary change.
  *
  * It carries the tags every write that adds, removes, or renames a listed page
  * drops, the worker's publication of a scheduled episode included, so a newly
  * published page is listed without waiting for the entry to age out.
  *
- * `ok: false` when the walk failed or stopped short of its file. A cache fill
+ * `ok: false` when the walk failed or met a token it had already read. A cache fill
  * must not throw, so an error the API answered with is reported rather than
  * rethrown, whatever its code.
  */
@@ -327,25 +330,28 @@ export const getSitemapChunk = async (
     return cachedReadFailure("The sitemap is unavailable.");
   }
 
-  // A full file stops the walk with the rest of the list behind `nextToken`,
-  // which is empty when the list happened to end with it.
-  if (stop === "completed" || stop === "stopped-by-callback") {
-    return { ok: true, value: { entries, nextToken } };
+  // A full file, or a walk that read its budget, stops with the rest of the
+  // list behind `nextToken`, which is empty when the list happened to end there.
+  if (stop === "repeated-token") {
+    return cachedReadFailure("The sitemap is unavailable.");
   }
-  return cachedReadFailure("The sitemap is unavailable.");
+  return { ok: true, value: { entries, nextToken } };
 };
 
 /**
  * The start tokens of the files after `tokens`, each file read only for the
  * token that ends it. Each file starts where the one before it ended, so they
- * are read one after another.
+ * are read one after another. A file that holds no entry is not a file: a
+ * `<urlset>` needs at least one `<url>`, so the next one takes its place.
+ * `reads` counts the files read so far, those dropped included.
  */
 const walkSitemapFileTokens = async (
   tenantId: string,
   address: SitemapAddress,
-  tokens: readonly string[]
+  tokens: readonly string[],
+  reads: number
 ): Promise<CachedReadResult<string[]>> => {
-  if (tokens.length >= MAX_SITEMAP_FILES) {
+  if (reads >= MAX_SITEMAP_FILES) {
     return { message: "The sitemap has too many files.", ok: false };
   }
   const chunk = await getSitemapChunk(tenantId, address, tokens.at(-1) ?? "");
@@ -353,10 +359,11 @@ const walkSitemapFileTokens = async (
     return chunk;
   }
 
-  const { nextToken } = chunk.value;
+  const { entries, nextToken } = chunk.value;
+  const kept = entries.length > 0 ? tokens : tokens.slice(0, -1);
   return nextToken
-    ? walkSitemapFileTokens(tenantId, address, [...tokens, nextToken])
-    : { ok: true, value: [...tokens] };
+    ? walkSitemapFileTokens(tenantId, address, [...kept, nextToken], reads + 1)
+    : { ok: true, value: [...kept] };
 };
 
 /**
@@ -379,7 +386,12 @@ export const getSitemapFileTokens = async (
   applyCacheTag(tenantCreatorsTag(normalizedTenantId));
   applyCacheTag(tenantPagesTag(normalizedTenantId));
 
-  const tokens = await walkSitemapFileTokens(normalizedTenantId, address, [""]);
+  const tokens = await walkSitemapFileTokens(
+    normalizedTenantId,
+    address,
+    [""],
+    0
+  );
   return tokens.ok ? tokens : cachedReadFailure(tokens.message);
 };
 

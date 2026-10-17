@@ -84,6 +84,10 @@ const seriesEntry = (publicId: string) =>
     publishedLocales: [...getLocales()],
   });
 
+/** A series translated into no locale the tenant offers. */
+const untranslatedSeriesEntry = (publicId: string) =>
+  entry({ kind: SitemapEntryKind.SERIES, publicId });
+
 /**
  * A catalogue of `pageCount` API pages of `limit` entries each, addressed by a
  * token naming the page it points at.
@@ -466,6 +470,19 @@ describe("getSitemapChunk", () => {
     expect(chunk.ok && chunk.value.nextToken).not.toBe("");
   });
 
+  it("ends a file where the walk read as many rows as it could hold, however few URLs they wrote", async () => {
+    answerPages(120, (page, index) =>
+      untranslatedSeriesEntry(`S${page}-${index}`)
+    );
+
+    await expect(
+      getSitemapChunk(TENANT_ID, ADDRESS, "p1")
+    ).resolves.toStrictEqual({
+      ok: true,
+      value: { entries: [], nextToken: "p101" },
+    });
+  });
+
   it("ends a file before it would pass the byte limit", async () => {
     // Pages at slugs as long as the column holds, the most bytes an entry takes.
     answerPages(40, (page, index) =>
@@ -516,6 +533,18 @@ describe("getSitemapFileTokens", () => {
     expect(mockCacheTag).toHaveBeenCalledWith(
       `tenant:${TENANT_ID}:series:detail`
     );
+  });
+
+  it("leaves out a file whose rows write no URL", async () => {
+    answerPages(201, (page, index) =>
+      page < 200
+        ? untranslatedSeriesEntry(`S${page}-${index}`)
+        : seriesEntry(`S${page}-${index}`)
+    );
+
+    await expect(
+      getSitemapFileTokens(TENANT_ID, ADDRESS)
+    ).resolves.toStrictEqual({ ok: true, value: ["", "p200"] });
   });
 
   it("reports an unavailable API as a failure and keeps it out of the cache", async () => {
