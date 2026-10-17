@@ -25,6 +25,7 @@ import { getEpisodeViewer, isPublicEpisodeBody } from "#lib/catalog";
 import { getLocale } from "#lib/locale";
 import { getMyWaitFreeTicketState } from "#lib/wait-free";
 
+import { renewEpisodePageUrlsAction } from "../_lib/renew-page-urls-action";
 import {
   toWaitFreeOffer,
   waitFreeEpisodeEligible,
@@ -179,6 +180,19 @@ export const EpisodeBody = async ({
         images={viewer.value.images}
         nextEpisode={nextEpisode}
         previousEpisode={previousEpisode}
+        renewPageUrls={
+          // Only an entitled body's media token runs out while the episode is
+          // open: a free body's lasts days.
+          viewer.value.access === "entitled"
+            ? renewEpisodePageUrlsAction.bind(
+                null,
+                tenantId,
+                locale,
+                series.publicId,
+                episode.publicId
+              )
+            : undefined
+        }
         series={series}
       />
     );

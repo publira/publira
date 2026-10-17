@@ -8,6 +8,7 @@ import type {
 } from "@publira/comic-viewer";
 import {
   describeVisiblePages,
+  renewFromPageUrls,
   useBoxHeight,
   ViewerBackwardIcon,
   ViewerForwardIcon,
@@ -35,7 +36,7 @@ import {
 } from "@publira/icons";
 import { Button, buttonVariants } from "@publira/ui-components/button";
 import { cn } from "@publira/utils";
-import { useCallback, useState, useSyncExternalStore } from "react";
+import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import type { CSSProperties, MouseEvent, ReactNode } from "react";
 
 import { ClientMessage, useClientMessages } from "#components/client-message";
@@ -315,6 +316,10 @@ const EpisodeViewerPageNavigation = ({
  *
  * `nextEpisodeHref` and `previousEpisodeHref` are the neighbouring episodes'
  * bare paths, offered by the page-turn control at the end that has run out.
+ *
+ * `renewPageUrls` reads the pages' URLs again, for a page the reader reaches
+ * after the media token in its URL has expired: an entitled body's token lasts
+ * minutes, and the viewer fetches a page only as the reader nears it.
  */
 export const EpisodeComicViewer = ({
   children,
@@ -324,6 +329,7 @@ export const EpisodeComicViewer = ({
   pages,
   previousEpisodeHref,
   readingDirection,
+  renewPageUrls,
   saveWideViewer,
   spreadStartIndex,
   wideViewerEnabled,
@@ -339,6 +345,11 @@ export const EpisodeComicViewer = ({
   /** Absent on the first one. */
   previousEpisodeHref?: string;
   readingDirection: ReadingDirection;
+  /**
+   * Fresh URLs by image id; empty when there are none to give. Absent where
+   * the pages' URLs outlast any reading, as a free body's do.
+   */
+  renewPageUrls?: () => Promise<Record<string, string>>;
   /** Absent for a reader with no session. */
   saveWideViewer?: (enabled: boolean) => Promise<void>;
   spreadStartIndex: number;
@@ -347,6 +358,13 @@ export const EpisodeComicViewer = ({
   const t = useClientMessages();
   const [shell, setShell] = useState<HTMLDivElement | null>(null);
   const boxHeight = useBoxHeight(shell);
+  const renewPageUrl = useMemo(
+    () =>
+      renewPageUrls === undefined
+        ? undefined
+        : renewFromPageUrls(renewPageUrls),
+    [renewPageUrls]
+  );
   const wideViewerChoice = useWebStorage("session", WIDE_VIEWER_STORAGE_KEY);
   const isWide =
     wideViewerChoice === null ? wideViewerEnabled : wideViewerChoice === "true";
@@ -387,6 +405,7 @@ export const EpisodeComicViewer = ({
         initialPageIndex={initialPageIndex}
         pages={pages}
         readingDirection={readingDirection}
+        renewPageUrl={renewPageUrl}
         spreadStartIndex={spreadStartIndex}
       >
         <ViewerRail boxHeight={boxHeight}>

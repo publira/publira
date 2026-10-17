@@ -117,7 +117,7 @@ Which read supplies the pages depends on the episode's access, and so does the t
 | Body | Read | `t` on its image URLs |
 | --- | --- | --- |
 | Free | `getEpisodeDetail()` in `lib/catalog.ts` — `"use cache"`, one entry shared by every reader, revalidated after 15 minutes and expiring after an hour | A media token naming no reader: the same bytes for every reader of that episode until it rotates the next day |
-| Entitled | `getEpisodeViewer()` in `lib/catalog.ts` — `"use cache: private"`, one entry per reader | A media token naming that reader |
+| Entitled | `getEpisodeViewer()` in `lib/catalog.ts` — `"use cache: private"`, one entry per reader | A media token naming that reader, which expires 15 minutes after the read. A page refused after that is fetched again at the URL `renewEpisodeImageUrls()` in `lib/catalog.ts` reads past the cache, through the episode route's `renewEpisodePageUrlsAction` |
 
 `_lib/viewer-fetch.ts` derives the decryption key from that token and its subject, the same way for both, and decrypting a free body therefore needs no session. A page whose stream cannot be reversed fails on its own and keeps the reader's reload control; the rest of the body still draws.
 

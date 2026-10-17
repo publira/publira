@@ -515,3 +515,83 @@ describe("EpisodeComicViewer neighbouring episodes", () => {
     ).toBeNull();
   });
 });
+
+/** image-server, refusing every URL whose media token has expired. */
+const stubImageServer = () => {
+  const fetchMock = vi.fn<typeof fetch>((input) =>
+    Promise.resolve(
+      new Response(null, {
+        status: String(input).includes("expired") ? 403 : 200,
+      })
+    )
+  );
+  vi.stubGlobal("fetch", fetchMock);
+
+  return fetchMock;
+};
+
+describe("EpisodeComicViewer expired page URLs", () => {
+  const expiredPages = pages.map((page) => ({
+    ...page,
+    src: `${page.src}?t=expired`,
+  }));
+  const freshUrls = Object.fromEntries(
+    pages.map((page) => [page.id, `${page.src}?t=fresh`])
+  );
+
+  it("reads the pages' URLs again, once, for pages whose own were refused", async () => {
+    const fetchMock = stubImageServer();
+    const renewPageUrls = vi.fn(() => Promise.resolve(freshUrls));
+
+    await renderWithClientMessages(
+      <EpisodeComicViewer
+        pages={expiredPages}
+        readingDirection="rtl"
+        renewPageUrls={renewPageUrls}
+        spreadStartIndex={1}
+        wideViewerEnabled={false}
+      />
+    );
+
+    await vi.waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "https://example.test/1.avif?t=fresh",
+        expect.anything()
+      );
+    });
+    expect(renewPageUrls).toHaveBeenCalledTimes(1);
+  });
+
+  it("recovers a refused page through Reload once a fresh URL can be had", async () => {
+    const fetchMock = stubImageServer();
+    const renewPageUrls = vi
+      .fn<() => Promise<Record<string, string>>>()
+      .mockResolvedValueOnce({})
+      .mockResolvedValue(freshUrls);
+
+    await renderWithClientMessages(
+      <EpisodeComicViewer
+        pages={expiredPages}
+        readingDirection="rtl"
+        renewPageUrls={renewPageUrls}
+        spreadStartIndex={1}
+        wideViewerEnabled={false}
+      />
+    );
+
+    const [reload] = await screen.findAllByRole("button", { name: "Reload" });
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      expect.stringContaining("?t=fresh"),
+      expect.anything()
+    );
+
+    fireEvent.click(reload as HTMLElement);
+
+    await vi.waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("?t=fresh"),
+        expect.anything()
+      );
+    });
+  });
+});

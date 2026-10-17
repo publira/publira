@@ -1,4 +1,5 @@
 export { describeVisiblePages } from "./page-status";
+export { renewFromPageUrls } from "./page-url-renewal";
 export type { VisiblePages } from "./page-status";
 export { ViewerEmpty } from "./viewer-empty";
 export {
