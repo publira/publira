@@ -1,6 +1,7 @@
 import type { Locale } from "@publira/i18n";
 
-import { nonNegativeIntFormSchema } from "./form-schemas";
+import { boundedIntFormSchema } from "./form-schemas";
+import { MAX_INT32 } from "./int32";
 import { getMessagesFor } from "./messages";
 import { priceFormSchema } from "./price";
 
@@ -52,10 +53,13 @@ export const parseEpisodeRental = async (
     };
   }
 
-  const rentalPeriodHours = nonNegativeIntFormSchema(
-    t("admin.series.episodes.validation.rental_period_invalid")
+  // A whole number as typed: a fraction of an hour is refused rather than
+  // rounded down to a period the operator did not set.
+  const rentalPeriodHours = boundedIntFormSchema(
+    t("admin.series.episodes.validation.rental_period_invalid"),
+    { max: MAX_INT32, min: 1 }
   ).safeParse(input.rentalPeriodHours);
-  if (!rentalPeriodHours.success || rentalPeriodHours.data <= 0) {
+  if (!rentalPeriodHours.success) {
     return {
       message: t("admin.series.episodes.validation.rental_period_invalid"),
       ok: false,

@@ -1069,6 +1069,13 @@ describe("episode actions", () => {
         "0",
         "Rental period must be a whole number of hours, 1 or more, when a rental price is set.",
       ],
+      [
+        "a rental for a fraction of an hour",
+        "120",
+        "80",
+        "1.9",
+        "Rental period must be a whole number of hours, 1 or more, when a rental price is set.",
+      ],
     ])(
       "refuses %s",
       async (_case, price, rentalPrice, rentalPeriodHours, message) => {
