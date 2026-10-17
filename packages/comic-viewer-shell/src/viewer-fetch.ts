@@ -233,38 +233,6 @@ const decryptImageResponse = async (
 export type RenewPageUrl = (page: ViewerPage) => Promise<string | undefined>;
 
 /**
- * A {@link RenewPageUrl} that answers each refused page from one read of all
- * the pages' URLs, by image id, shared by every page refused while that read
- * is in flight: the pages of a rail whose media tokens expired together ask
- * together. A read that fails, or answers no URL for a page, leaves that page
- * refused, with its reload control, and the next refusal reads again.
- */
-export const renewFromPageUrls = (
-  readPageUrls: () => Promise<Record<string, string>>
-): RenewPageUrl => {
-  let pending: Promise<Record<string, string>> | undefined;
-
-  const readOnce = async (): Promise<Record<string, string>> => {
-    try {
-      return await readPageUrls();
-    } catch {
-      return {};
-    } finally {
-      pending = undefined;
-    }
-  };
-
-  return async (page) => {
-    if (pending === undefined) {
-      pending = readOnce();
-    }
-    const urls = await pending;
-
-    return urls[page.id];
-  };
-};
-
-/**
  * The statuses image-server refuses a URL with once the media token it
  * carries has expired, or no longer admits the viewer.
  */

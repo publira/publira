@@ -1,4 +1,5 @@
 export { describeVisiblePages } from "./page-status";
+export { renewFromPageUrls } from "./page-url-renewal";
 export type { VisiblePages } from "./page-status";
 export { ViewerEmpty } from "./viewer-empty";
 export {
@@ -15,7 +16,6 @@ export {
   ViewerPageNavigation,
   ViewerPreviousPageButton,
 } from "./viewer-page-navigation";
-export { renewFromPageUrls } from "./viewer-fetch";
 export type { RenewPageUrl } from "./viewer-fetch";
 export { toViewerPages } from "./viewer-pages";
 export type { ViewerPageImage } from "./viewer-pages";
