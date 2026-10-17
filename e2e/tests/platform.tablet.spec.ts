@@ -39,6 +39,14 @@ test.describe("web-platform on a tablet", () => {
     ).toBeVisible();
     await page.keyboard.press("Escape");
 
+    // The list is newest-first and other suites on the same stack add tenants
+    // of their own, so the seeded one is only on the first page once searched.
+    await page
+      .getByRole("searchbox", { name: "Search by tenant name or ID" })
+      .fill(SEED_TENANT.name);
+    await page.getByRole("button", { name: "Filter" }).tap();
+    await expect(page).toHaveURL(/[?&]name=/u);
+
     await page
       .getByRole("row", { name: new RegExp(SEED_TENANT.name, "u") })
       .getByRole("link", { name: "Details" })
