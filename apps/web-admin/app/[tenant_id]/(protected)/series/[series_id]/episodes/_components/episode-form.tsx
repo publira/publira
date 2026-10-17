@@ -28,6 +28,7 @@ import type { SurfaceAvailabilityValue } from "#lib/surface-availability";
 import type { EpisodeActionState } from "../episode-types";
 import { EpisodeAvailabilityField } from "./episode-availability-field";
 import { EpisodePurchaseAvailabilityField } from "./episode-purchase-availability-field";
+import { EpisodeRentalFields } from "./episode-rental-fields";
 import { PublishAtInput } from "./publish-at-input";
 
 interface EpisodeFormProps {
@@ -55,6 +56,8 @@ interface EpisodeFormProps {
    * leaves it alone.
    */
   seriesReadingPeriodHours: number;
+  /** The series' rental period, which the episode's field starts at. */
+  seriesRentalPeriodHours: number;
   tenantId: string;
   timeZone: string;
 }
@@ -68,6 +71,7 @@ export const EpisodeForm = async ({
   seriesAvailability,
   seriesPurchaseAvailability,
   seriesReadingPeriodHours,
+  seriesRentalPeriodHours,
   tenantId,
   timeZone,
 }: EpisodeFormProps) => {
@@ -146,6 +150,12 @@ export const EpisodeForm = async ({
             </FieldDescription>
           </FieldContent>
         </Field>
+
+        <EpisodeRentalFields
+          currency={currency}
+          initialRentalPeriodHours={seriesRentalPeriodHours}
+          initialRentalPrice={0}
+        />
 
         <PublishAtInput timeZone={timeZone}>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>

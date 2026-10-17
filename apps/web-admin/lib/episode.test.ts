@@ -318,6 +318,8 @@ describe("getEpisode", () => {
         publicId: "EPISODE001",
         publishedAt: "",
         readingPeriodHours: 0,
+        rentalPeriodHours: 0,
+        rentalPrice: 0,
         scheduledAt: "",
         status: "draft",
         title: "EPISODE001",
@@ -632,6 +634,8 @@ describe("the surfaces an episode is shown on", () => {
         publishAt: "",
         purchaseAvailability: "",
         readingPeriodHours: 0,
+        rentalPeriodHours: 0,
+        rentalPrice: 0,
         seriesId: "SERIES001",
         tenantId: "TENANT001",
         title: "Episode title",
@@ -657,6 +661,8 @@ describe("the surfaces an episode is shown on", () => {
         publishAt: "",
         purchaseAvailability: "",
         readingPeriodHours: 0,
+        rentalPeriodHours: 0,
+        rentalPrice: 0,
         seriesId: "SERIES001",
         tenantId: "TENANT001",
         title: "Episode title",
@@ -784,6 +790,8 @@ describe("where an episode may be bought", () => {
         publishAt: "",
         purchaseAvailability: "app",
         readingPeriodHours: 0,
+        rentalPeriodHours: 0,
+        rentalPrice: 0,
         seriesId: "SERIES001",
         tenantId: "TENANT001",
         title: "Episode title",
@@ -1107,12 +1115,14 @@ describe("deleteEpisodeTranslation", () => {
 });
 
 describe("updateEpisodePricing", () => {
-  it("sends the price and reading period and reads back the episode", async () => {
+  it("sends the price, reading period, and rental and reads back the episode", async () => {
     mockUpdateEpisodePricing.mockResolvedValue({
       episode: {
         ...episode("EPISODE001", 1),
         price: 120,
         readingPeriodHours: 72,
+        rentalPeriodHours: 48,
+        rentalPrice: 80,
       },
     });
 
@@ -1123,6 +1133,8 @@ describe("updateEpisodePricing", () => {
         episodeId: "EPISODE001-ID",
         price: 120,
         readingPeriodHours: 72,
+        rentalPeriodHours: 48,
+        rentalPrice: 80,
         tenantId: "TENANT001",
       },
       "en"
@@ -1134,12 +1146,20 @@ describe("updateEpisodePricing", () => {
         episodeId: "EPISODE001-ID",
         price: 120,
         readingPeriodHours: 72,
+        rentalPeriodHours: 48,
+        rentalPrice: 80,
         tenant: { tenantId: "TENANT001" },
       },
       { headers: { Authorization: "Bearer session-token" } }
     );
     expect(result).toMatchObject({
-      episode: { price: 120, publicId: "EPISODE001", readingPeriodHours: 72 },
+      episode: {
+        price: 120,
+        publicId: "EPISODE001",
+        readingPeriodHours: 72,
+        rentalPeriodHours: 48,
+        rentalPrice: 80,
+      },
       ok: true,
     });
   });
@@ -1163,6 +1183,8 @@ describe("updateEpisodePricing", () => {
         episodeId: "EPISODE001-ID",
         price: 500,
         readingPeriodHours: 0,
+        rentalPeriodHours: 0,
+        rentalPrice: 0,
         tenantId: "TENANT001",
       },
       "en"
@@ -1185,6 +1207,8 @@ describe("updateEpisodePricing", () => {
         episodeId: "EPISODE001-ID",
         price: 0,
         readingPeriodHours: 0,
+        rentalPeriodHours: 0,
+        rentalPrice: 0,
         tenantId: "TENANT001",
       },
       "en"

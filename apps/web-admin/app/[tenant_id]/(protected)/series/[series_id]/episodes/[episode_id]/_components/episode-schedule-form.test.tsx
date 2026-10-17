@@ -125,6 +125,7 @@ describe("EpisodeScheduleForm", () => {
       seriesId: "SERIES001-ID",
       seriesPublicId: "SERIES001",
       seriesReadingPeriodHours: 0,
+      seriesRentalPeriodHours: 0,
       tenantId: "TENANT001",
       timeZone: "Asia/Seoul",
     });

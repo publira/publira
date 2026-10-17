@@ -28,6 +28,7 @@ import {
   createSeriesFreeWindows,
   episodeFreeWindowsCacheTag,
 } from "#lib/episode-free-window";
+import { parseEpisodeRental } from "#lib/episode-rental";
 import {
   boundedIntFormSchema,
   jsonRecordIdArrayFormSchema,
@@ -80,6 +81,9 @@ const createEpisodeSchema = async (locale: Locale) => {
     readingPeriodHours: nonNegativeIntFormSchema(
       t("admin.series.episodes.validation.reading_period_invalid")
     ),
+    // Read once the price is, which the rental is checked against.
+    rentalPeriodHours: optionalTrimmedString(),
+    rentalPrice: rawPriceFormSchema,
     seriesId: requiredRecordId(
       t("admin.series.episodes.validation.series_missing")
     ),
@@ -161,6 +165,8 @@ export const createEpisodeAction = async (
       publishAt: { kind: "value", name: "publish_at" },
       purchaseAvailability: { kind: "value", name: "purchase_availability" },
       readingPeriodHours: { kind: "value", name: "reading_period_hours" },
+      rentalPeriodHours: { kind: "value", name: "rental_period_hours" },
+      rentalPrice: { kind: "value", name: "rental_price" },
       seriesId: { kind: "value", name: "series_id" },
       seriesPublicId: { kind: "value", name: "series_public_id" },
       tenantId: { kind: "value", name: "tenant_id" },
@@ -179,6 +185,18 @@ export const createEpisodeAction = async (
   );
   if (!price.ok) {
     return toCreateFailure(price.message);
+  }
+  const rental = await parseEpisodeRental(
+    {
+      currency: price.currency,
+      price: price.value,
+      rentalPeriodHours: parsed.data.rentalPeriodHours,
+      rentalPrice: parsed.data.rentalPrice,
+    },
+    locale
+  );
+  if (!rental.ok) {
+    return toCreateFailure(rental.message);
   }
 
   const scheduledAt = await toScheduledAt(
@@ -202,6 +220,8 @@ export const createEpisodeAction = async (
         publishAt: scheduledAt.value,
         purchaseAvailability: parsed.data.purchaseAvailability,
         readingPeriodHours: parsed.data.readingPeriodHours,
+        rentalPeriodHours: rental.rentalPeriodHours,
+        rentalPrice: rental.rentalPrice,
         seriesId: parsed.data.seriesId,
         tenantId: parsed.data.tenantId,
         title: parsed.data.title,

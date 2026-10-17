@@ -107,6 +107,8 @@ export interface SeriesItem {
   title: string;
   synopsis: string;
   readingPeriodHours: number;
+  /** The rental period a new episode's field starts at; 0 when none is set. */
+  rentalPeriodHours: number;
   publishedAt: string;
   labelId: string;
   labelName: string;
@@ -271,6 +273,7 @@ type RawSeries = Pick<
   | "publicId"
   | "publishedAt"
   | "readingPeriodHours"
+  | "rentalPeriodHours"
   | "scheduleWeekdays"
   | "status"
   | "synopsis"
@@ -442,6 +445,7 @@ const mapSeries = (
     publicId: series.publicId,
     publishedAt: series.publishedAt ?? "",
     readingPeriodHours: series.readingPeriodHours ?? 0,
+    rentalPeriodHours: series.rentalPeriodHours ?? 0,
     scheduleWeekdays: (series.scheduleWeekdays ?? []).filter(
       (weekday) =>
         Number.isInteger(weekday) && weekday >= 0 && weekday < WEEKDAY_COUNT
@@ -703,6 +707,8 @@ export const getSeries = async (input: {
 type SeriesListingInput = {
   synopsis: string;
   readingPeriodHours: number;
+  /** 0 sets none. */
+  rentalPeriodHours: number;
   status: SeriesStatusValue;
   scheduleWeekdays: number[];
   ageRating: SeriesAgeRatingValue;
@@ -765,6 +771,7 @@ export const createSeries = async (
         ),
         readingDirection: READING_DIRECTION_ENUM[input.readingDirection],
         readingPeriodHours: input.readingPeriodHours,
+        rentalPeriodHours: input.rentalPeriodHours,
         scheduleWeekdays: input.scheduleWeekdays,
         spreadStartIndex: input.spreadStartIndex,
         status: SERIES_STATUS_ENUM[input.status],
@@ -880,6 +887,7 @@ export const updateSeries = async (
             ? undefined
             : READING_DIRECTION_ENUM[input.readingDirection],
         readingPeriodHours: input.readingPeriodHours,
+        rentalPeriodHours: input.rentalPeriodHours,
         seriesId: input.id,
         spreadStartIndex: input.spreadStartIndex,
         status:

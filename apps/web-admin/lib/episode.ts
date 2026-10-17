@@ -62,6 +62,12 @@ export interface EpisodeItem {
   orderIndex: number;
   price: number;
   readingPeriodHours: number;
+  /**
+   * What renting the episode costs and how many hours a rental opens it for,
+   * both 0 on an episode that is not rented.
+   */
+  rentalPrice: number;
+  rentalPeriodHours: number;
   status: string;
   scheduledAt: string;
   publishedAt: string;
@@ -294,6 +300,8 @@ type RawEpisode = Pick<
   | "publicId"
   | "publishedAt"
   | "readingPeriodHours"
+  | "rentalPeriodHours"
+  | "rentalPrice"
   | "scheduledAt"
   | "status"
   | "title"
@@ -336,6 +344,8 @@ const mapEpisode = (episode: RawEpisode): EpisodeItem => ({
   publicId: episode.publicId,
   publishedAt: episode.publishedAt,
   readingPeriodHours: episode.readingPeriodHours ?? 0,
+  rentalPeriodHours: episode.rentalPeriodHours ?? 0,
+  rentalPrice: episode.rentalPrice ?? 0,
   scheduledAt: episode.scheduledAt,
   status: episode.status,
   title: episode.title,
@@ -589,6 +599,9 @@ export const createEpisode = async (
     /** The currency the price was entered in, which the API checks it against. */
     currency: string;
     readingPeriodHours: number;
+    /** Both 0 create an episode that is not rented. */
+    rentalPrice: number;
+    rentalPeriodHours: number;
     publishAt: string;
     availability: EpisodeAvailabilityOverride;
     /** The empty value follows the series. */
@@ -620,6 +633,8 @@ export const createEpisode = async (
           input.purchaseAvailability
         ),
         readingPeriodHours: input.readingPeriodHours,
+        rentalPeriodHours: input.rentalPeriodHours,
+        rentalPrice: input.rentalPrice,
         scheduledAt: input.publishAt,
         seriesId: input.seriesId,
         tenant: { tenantId: input.tenantId },
@@ -1852,9 +1867,9 @@ export const deleteEpisodeTranslation = async (
 };
 
 /**
- * Sets the episode's price and reading period, both on every call. Neither
- * reaches back: a purchase already made keeps the price it was paid and the
- * expiry it was given.
+ * Sets the episode's price and reading period, and its rental, all on every
+ * call. None reaches back: a purchase already made keeps the price it was paid
+ * and the expiry it was given.
  */
 export const updateEpisodePricing = async (
   input: {
@@ -1864,6 +1879,9 @@ export const updateEpisodePricing = async (
     /** The currency the price was entered in, which the API checks it against. */
     currency: string;
     readingPeriodHours: number;
+    /** Both 0 stop renting the episode. */
+    rentalPrice: number;
+    rentalPeriodHours: number;
   },
   locale: Locale
 ): Promise<UpdateEpisodePricingResult> => {
@@ -1885,6 +1903,8 @@ export const updateEpisodePricing = async (
         episodeId: input.episodeId,
         price: input.price,
         readingPeriodHours: input.readingPeriodHours,
+        rentalPeriodHours: input.rentalPeriodHours,
+        rentalPrice: input.rentalPrice,
         tenant: { tenantId: input.tenantId },
       },
       withSessionHeaders(sessionId)

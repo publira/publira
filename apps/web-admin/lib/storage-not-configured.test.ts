@@ -116,6 +116,7 @@ const seriesInput: Parameters<typeof createSeries>[0] = {
   purchaseAvailability: "",
   readingDirection: "rtl",
   readingPeriodHours: 24,
+  rentalPeriodHours: 0,
   scheduleWeekdays: [],
   spreadStartIndex: 0,
   status: "ongoing",

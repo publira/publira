@@ -51,6 +51,8 @@ const episodes: EpisodeItem[] = [
     publicId: "EPISODE001",
     publishedAt: "2026-06-01T00:00:00Z",
     readingPeriodHours: 72,
+    rentalPeriodHours: 0,
+    rentalPrice: 0,
     scheduledAt: "",
     status: "published",
     title: "Episode 1",

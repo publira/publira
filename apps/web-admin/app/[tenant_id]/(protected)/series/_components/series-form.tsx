@@ -151,6 +151,7 @@ type SeriesFormValues = Pick<
   | "labelId"
   | "publishedAt"
   | "readingPeriodHours"
+  | "rentalPeriodHours"
   | "scheduleWeekdays"
   | "status"
   | "synopsis"
@@ -167,6 +168,7 @@ const NEW_SERIES_VALUES: SeriesFormValues = {
   labelId: "",
   publishedAt: "",
   readingPeriodHours: 0,
+  rentalPeriodHours: 0,
   scheduleWeekdays: [],
   status: DEFAULT_SERIES_STATUS,
   synopsis: "",
@@ -353,6 +355,29 @@ export const SeriesForm = ({
               <FieldDescription>
                 <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
                   <Message message="admin.series.form.reading_period_description" />
+                </Suspense>
+              </FieldDescription>
+            </FieldContent>
+          </Field>
+
+          <Field>
+            <FieldLabel required>
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.series.form.rental_period" />
+              </Suspense>
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                defaultValue={values.rentalPeriodHours}
+                max={MAX_INT32}
+                min={0}
+                name="rental_period_hours"
+                required
+                type="number"
+              />
+              <FieldDescription>
+                <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+                  <Message message="admin.series.form.rental_period_description" />
                 </Suspense>
               </FieldDescription>
             </FieldContent>

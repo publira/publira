@@ -365,6 +365,8 @@ export interface EpisodeFormFields {
   title: Locator;
   price: Locator;
   readingPeriodHours: Locator;
+  rentalPrice: Locator;
+  rentalPeriodHours: Locator;
   publishAt: Locator;
 }
 
@@ -382,6 +384,8 @@ export const episodeFormFields = (page: Page): EpisodeFormFields => ({
     .getByLabel(/Publication date and time/u)
     .filter({ visible: true }),
   readingPeriodHours: page.getByRole("spinbutton", { name: /Reading period/u }),
+  rentalPeriodHours: page.getByRole("spinbutton", { name: /Rental period/u }),
+  rentalPrice: page.getByRole("spinbutton", { name: /Rental price/u }),
   title: page.getByRole("textbox", { name: /Title/u }),
 });
 

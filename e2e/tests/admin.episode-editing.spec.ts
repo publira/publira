@@ -16,7 +16,7 @@ const showing = (path: string) => new RegExp(`^${path}\\?`, "u");
 
 /**
  * What an editor changes on an episode after it was created: its title, its
- * price and reading period, and one page at a time. The replacing image is larger than a Server Action body
+ * price, reading period, and rental, and one page at a time. The replacing image is larger than a Server Action body
  * is allowed to be, so it going through shows the page travels outside one.
  */
 test.describe("admin episode editing", () => {
@@ -132,7 +132,7 @@ test.describe("admin episode editing", () => {
     ).toBeVisible();
   });
 
-  test("changes the price and reading period the episode is sold on", async ({
+  test("changes the price, reading period, and rental the episode is sold on", async ({
     page,
   }) => {
     const suffix = uniqueSuffix();
@@ -149,14 +149,28 @@ test.describe("admin episode editing", () => {
     });
 
     const fields = episodeFormFields(page);
+    const save = page.getByRole("button", {
+      name: "Update price and reading period",
+    });
     await expect(fields.price).toHaveValue("100");
     await expect(fields.readingPeriodHours).toHaveValue("72");
+    await expect(fields.rentalPrice).toHaveValue("");
 
+    // A rental that costs as much as the permanent copy is refused on the
+    // form, and nothing is saved.
     await fields.price.fill("120");
     await fields.readingPeriodHours.fill("0");
-    await page
-      .getByRole("button", { name: "Update price and reading period" })
-      .click();
+    await fields.rentalPrice.fill("120");
+    await fields.rentalPeriodHours.fill("48");
+    await save.click();
+    await expect(
+      page.getByText(
+        "Rental price must be lower than the price. A free episode cannot be rented."
+      )
+    ).toBeVisible();
+
+    await fields.rentalPrice.fill("80");
+    await save.click();
     await expect(
       page.getByText("Price and reading period updated.")
     ).toBeVisible();
@@ -166,8 +180,13 @@ test.describe("admin episode editing", () => {
     await expect(page).toHaveURL(
       (url) => url.pathname === `/series/${seriesId}/episodes/${episodeId}`
     );
+
+    // A reload reads both prices back from the server.
+    await page.reload();
     await expect(fields.price).toHaveValue("120");
     await expect(fields.readingPeriodHours).toHaveValue("0");
+    await expect(fields.rentalPrice).toHaveValue("80");
+    await expect(fields.rentalPeriodHours).toHaveValue("48");
 
     // The episode list prices the episode at what it was changed to.
     await page.goto(`${WEB_ADMIN_BASE_URL}/series/${seriesId}/episodes`);

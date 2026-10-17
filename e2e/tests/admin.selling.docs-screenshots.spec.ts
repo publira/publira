@@ -5,6 +5,7 @@ import { selectOption, signInAsAdmin, signInAsSeedAdmin } from "../src/admin";
 import {
   DOCS_LOCALES,
   docsField,
+  docsLabelPattern,
   docsScreenHeader,
   docsSection,
   docsText,
@@ -77,7 +78,10 @@ for (const locale of DOCS_LOCALES) {
           element: [
             docsField(
               page.getByRole("spinbutton", {
-                name: t("admin.series.episodes.form.price"),
+                name: docsLabelPattern(
+                  locale,
+                  "admin.series.episodes.form.price"
+                ),
               })
             ),
             docsField(
@@ -89,6 +93,28 @@ for (const locale of DOCS_LOCALES) {
           locale,
           page: sellingPage,
           subject: "price-and-reading-period",
+        });
+      });
+
+      test("an episode's rental price and rental period", async ({ page }) => {
+        await openScreen(page, locale, `/series/${SERIES}/episodes/new`);
+
+        await expectDocsScreenshot(page, {
+          element: [
+            docsField(
+              page.getByRole("spinbutton", {
+                name: t("admin.series.episodes.form.rental_price"),
+              })
+            ),
+            docsField(
+              page.getByRole("spinbutton", {
+                name: t("admin.series.episodes.form.rental_period"),
+              })
+            ),
+          ],
+          locale,
+          page: sellingPage,
+          subject: "rental",
         });
       });
 

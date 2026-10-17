@@ -155,6 +155,69 @@ describe("episode create actions", () => {
     expect(mockCreateEpisode).not.toHaveBeenCalled();
   });
 
+  // The rental period starts at the series' on a new episode, so it is the
+  // rental price that rents it.
+  it("creates an episode that is not rented while the rental price is blank", async () => {
+    mockCreateEpisode.mockResolvedValueOnce({
+      episode: { publicId: "EP001" },
+      ok: true,
+    });
+
+    const { createEpisodeAction } = await import("./actions");
+    const formData = createEpisodeFormData();
+    formData.set("rental_price", "");
+    formData.set("rental_period_hours", "48");
+
+    await createEpisodeAction(null, formData);
+
+    expect(mockCreateEpisode).toHaveBeenCalledWith(
+      expect.objectContaining({ rentalPeriodHours: 0, rentalPrice: 0 }),
+      "en"
+    );
+  });
+
+  it("creates an episode rented below its price", async () => {
+    mockCreateEpisode.mockResolvedValueOnce({
+      episode: { publicId: "EP001" },
+      ok: true,
+    });
+
+    const { createEpisodeAction } = await import("./actions");
+    const formData = createEpisodeFormData();
+    formData.set("price", "120");
+    formData.set("rental_price", "80");
+    formData.set("rental_period_hours", "48");
+
+    await createEpisodeAction(null, formData);
+
+    expect(mockCreateEpisode).toHaveBeenCalledWith(
+      expect.objectContaining({
+        price: 120,
+        rentalPeriodHours: 48,
+        rentalPrice: 80,
+      }),
+      "en"
+    );
+  });
+
+  it("refuses a rental that does not undercut the price", async () => {
+    const { createEpisodeAction } = await import("./actions");
+    const formData = createEpisodeFormData();
+    formData.set("price", "120");
+    formData.set("rental_price", "150");
+    formData.set("rental_period_hours", "48");
+
+    const result = await createEpisodeAction(null, formData);
+
+    expect(result).toEqual({
+      message:
+        "Rental price must be lower than the price. A free episode cannot be rented.",
+      mode: "create",
+      ok: false,
+    });
+    expect(mockCreateEpisode).not.toHaveBeenCalled();
+  });
+
   it("sends the empty availability as following the series", async () => {
     mockCreateEpisode.mockResolvedValueOnce({
       episode: { publicId: "EP001" },

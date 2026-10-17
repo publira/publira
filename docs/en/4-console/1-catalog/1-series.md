@@ -17,7 +17,7 @@ Choose **Create series**. The form is the same one the series is edited with lat
 
 The title and synopsis are written in the site's default language. A title and synopsis in the site's other languages are added once the series exists, as [Titles in other languages](#titles-in-other-languages) describes.
 
-![The top of the Create series form: Title, Reading period, Synopsis, Authors with Add author, and Label.](./series-create-form.png)
+![The top of the Create series form: Title, Reading period, Rental period, Synopsis, Authors with Add author, and Label.](./series-create-form.png)
 
 ### What readers see first
 
@@ -94,6 +94,10 @@ An episode can set its own of either, as [Page layout](./2-episodes.md#page-layo
 **Reading period**, in hours, is where the **Reading period** of each new episode in the series starts. A purchase keeps an episode open for the episode's own period, not the series': an episode can be given a different one when it is created or [changed later](./2-episodes.md#changing-the-price-and-reading-period), and changing the series' period later leaves the episodes already created as they are. A new series starts at `0`, which keeps a purchase open with no end. [Selling episodes](../4-selling-episodes.md#price-and-reading-period) describes how the period is used.
 
 ![The Reading period field set to 0, with the note that new episodes start with this period.](./series-reading-period.png)
+
+### Rental period
+
+**Rental period**, in hours, is where the **Rental period** of each new episode in the series starts. It rents no episode by itself: an episode is rented only once it is given a **Rental price**, and the period is then how long a rental keeps it open. As with **Reading period**, an episode keeps the value it was created with when the series' changes. `0`, where a new series starts, sets none, and a new episode's **Rental period** then starts empty. [Selling episodes](../4-selling-episodes.md#price-and-reading-period) describes the rental.
 
 ## Titles in other languages
 

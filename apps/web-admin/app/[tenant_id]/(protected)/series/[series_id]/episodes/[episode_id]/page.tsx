@@ -288,9 +288,10 @@ const EpisodeTitleSection = async ({
 
 const EpisodePricingSection = async ({ params }: EditEpisodeSectionProps) => {
   const context = await resolveEditEpisodeContext(params);
-  const [episodeResult, currency] = await Promise.all([
+  const [episodeResult, currency, seriesResult] = await Promise.all([
     loadEpisode(context),
     getTenantCurrency(context.tenantId),
+    getSeries({ publicId: context.seriesId }),
   ]);
 
   if (!episodeResult.ok) {
@@ -313,7 +314,15 @@ const EpisodePricingSection = async ({ params }: EditEpisodeSectionProps) => {
     );
   }
 
-  const { price, readingPeriodHours } = episodeResult.episode;
+  const { price, readingPeriodHours, rentalPeriodHours, rentalPrice } =
+    episodeResult.episode;
+  // An episode that is not rented offers the series' period, so renting it
+  // takes only a price. A series that could not be read offers none.
+  const seriesRentalPeriodHours = seriesResult.ok
+    ? seriesResult.series.rentalPeriodHours
+    : 0;
+  const initialRentalPeriodHours =
+    rentalPrice > 0 ? rentalPeriodHours : seriesRentalPeriodHours;
 
   // The price input is uncontrolled, so a refresh that brings another
   // currency, from an image upload or a reorder on this screen, would keep the
@@ -327,7 +336,9 @@ const EpisodePricingSection = async ({ params }: EditEpisodeSectionProps) => {
       episodePublicId={context.episodeId}
       initialPrice={price}
       initialReadingPeriodHours={readingPeriodHours}
-      key={`${context.episodeId}:pricing:${currency}:${price}:${readingPeriodHours}`}
+      initialRentalPeriodHours={initialRentalPeriodHours}
+      initialRentalPrice={rentalPrice}
+      key={`${context.episodeId}:pricing:${currency}:${price}:${readingPeriodHours}:${rentalPrice}:${initialRentalPeriodHours}`}
       seriesPublicId={context.seriesId}
       tenantId={context.tenantId}
     />
