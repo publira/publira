@@ -960,6 +960,8 @@ describe("episode actions", () => {
           episodeId: "018f0e6a-4000-7000-8000-000000000001",
           price: 120,
           readingPeriodHours: 72,
+          rentalPeriodHours: 0,
+          rentalPrice: 0,
           tenantId: "TENANT001",
         },
         "en"
@@ -972,6 +974,120 @@ describe("episode actions", () => {
         "/series/SERIES001/episodes/EP001?pricing_updated=1"
       );
     });
+
+    it("sends the rental beside the permanent copy", async () => {
+      mockUpdateEpisodePricing.mockResolvedValueOnce({
+        episode: { price: 120, readingPeriodHours: 0 },
+        ok: true,
+      });
+
+      const { updateEpisodePricingAction } = await import("./actions");
+      await updateEpisodePricingAction(
+        null,
+        layoutFormData({
+          price: "120",
+          price_currency: "JPY",
+          reading_period_hours: "0",
+          rental_period_hours: "48",
+          rental_price: "80",
+        })
+      );
+
+      expect(mockUpdateEpisodePricing).toHaveBeenCalledWith(
+        expect.objectContaining({ rentalPeriodHours: 48, rentalPrice: 80 }),
+        "en"
+      );
+    });
+
+    // The period starts at the series' whether or not the episode is rented,
+    // so a blank rental price is what stops renting it.
+    it("stops renting the episode when the rental price is blank", async () => {
+      mockUpdateEpisodePricing.mockResolvedValueOnce({
+        episode: { price: 120, readingPeriodHours: 0 },
+        ok: true,
+      });
+
+      const { updateEpisodePricingAction } = await import("./actions");
+      await updateEpisodePricingAction(
+        null,
+        layoutFormData({
+          price: "120",
+          price_currency: "JPY",
+          reading_period_hours: "0",
+          rental_period_hours: "48",
+          rental_price: "",
+        })
+      );
+
+      expect(mockUpdateEpisodePricing).toHaveBeenCalledWith(
+        expect.objectContaining({ rentalPeriodHours: 0, rentalPrice: 0 }),
+        "en"
+      );
+    });
+
+    // The API's rules for a rental, checked before anything is sent.
+    it.each([
+      [
+        "a rental that costs as much as the permanent copy",
+        "120",
+        "120",
+        "48",
+        "Rental price must be lower than the price. A free episode cannot be rented.",
+      ],
+      [
+        "a rental of a free episode",
+        "0",
+        "80",
+        "48",
+        "Rental price must be lower than the price. A free episode cannot be rented.",
+      ],
+      [
+        "a free rental",
+        "120",
+        "0",
+        "48",
+        "Rental price must be more than 0, with no more decimal places than the currency has.",
+      ],
+      [
+        "a rental price in a fraction of a yen",
+        "120",
+        "80.5",
+        "48",
+        "Rental price must be more than 0, with no more decimal places than the currency has.",
+      ],
+      [
+        "a rental with no period",
+        "120",
+        "80",
+        "",
+        "Rental period must be a whole number of hours, 1 or more, when a rental price is set.",
+      ],
+      [
+        "a rental for no time",
+        "120",
+        "80",
+        "0",
+        "Rental period must be a whole number of hours, 1 or more, when a rental price is set.",
+      ],
+    ])(
+      "refuses %s",
+      async (_case, price, rentalPrice, rentalPeriodHours, message) => {
+        const { updateEpisodePricingAction } = await import("./actions");
+        const result = await updateEpisodePricingAction(
+          null,
+          layoutFormData({
+            price,
+            price_currency: "JPY",
+            reading_period_hours: "0",
+            rental_period_hours: rentalPeriodHours,
+            rental_price: rentalPrice,
+          })
+        );
+
+        expect(result).toEqual({ message, ok: false });
+        expect(mockUpdateEpisodePricing).not.toHaveBeenCalled();
+      }
+    );
 
     // The new-episode form's rules, which stop at what an int32 field carries
     // and at the decimal places of the tenant's currency.

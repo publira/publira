@@ -26,12 +26,18 @@ vi.mock("#components/message", () => ({
   }) => bindMessages(sharedCatalog("en"), "en")(message, values),
 }));
 
+const NOT_RENTED = { initialRentalPeriodHours: 0, initialRentalPrice: 0 };
+
 const renderForm = (
   action: (
     prevState: FormActionState,
     formData: FormData
   ) => Promise<FormActionState> = () => Promise.resolve(null),
-  currency = "JPY"
+  currency = "JPY",
+  rental: {
+    initialRentalPrice: number;
+    initialRentalPeriodHours: number;
+  } = NOT_RENTED
 ) =>
   render(
     <EpisodePricingForm
@@ -41,6 +47,8 @@ const renderForm = (
       episodePublicId="EP001"
       initialPrice={100}
       initialReadingPeriodHours={72}
+      initialRentalPeriodHours={rental.initialRentalPeriodHours}
+      initialRentalPrice={rental.initialRentalPrice}
       seriesPublicId="SERIES001"
       tenantId="TENANT001"
     />
@@ -52,6 +60,14 @@ const priceInput = () =>
 const readingPeriodInput = () =>
   screen.getByRole<HTMLInputElement>("spinbutton", {
     name: /^Reading period/u,
+  });
+
+const rentalPriceInput = () =>
+  screen.getByRole<HTMLInputElement>("spinbutton", { name: /^Rental price/u });
+
+const rentalPeriodInput = () =>
+  screen.getByRole<HTMLInputElement>("spinbutton", {
+    name: /^Rental period/u,
   });
 
 afterEach(() => {
@@ -74,6 +90,30 @@ describe("EpisodePricingForm", () => {
     expect(readingPeriodInput().value).toBe("72");
   });
 
+  it("leaves the rental price blank on an episode that is not rented", () => {
+    renderForm(undefined, "JPY", {
+      initialRentalPeriodHours: 24,
+      initialRentalPrice: 0,
+    });
+
+    expect(rentalPriceInput().value).toBe("");
+    expect(rentalPriceInput().required).toBe(false);
+    // The period the page offers, the series', is there for a price to use.
+    expect(rentalPeriodInput().value).toBe("24");
+    expect(rentalPeriodInput().required).toBe(false);
+  });
+
+  it("opens on the rental the episode is sold on, in the tenant's currency", () => {
+    renderForm(undefined, "USD", {
+      initialRentalPeriodHours: 48,
+      initialRentalPrice: 50,
+    });
+
+    expect(rentalPriceInput().value).toBe("0.50");
+    expect(rentalPriceInput().step).toBe("0.01");
+    expect(rentalPeriodInput().value).toBe("48");
+  });
+
   it("says that purchases already made keep their price and expiry", () => {
     renderForm();
 
@@ -92,6 +132,8 @@ describe("EpisodePricingForm", () => {
 
     fireEvent.change(priceInput(), { target: { value: "0" } });
     fireEvent.change(readingPeriodInput(), { target: { value: "168" } });
+    fireEvent.change(rentalPriceInput(), { target: { value: "50" } });
+    fireEvent.change(rentalPeriodInput(), { target: { value: "24" } });
     fireEvent.click(
       screen.getByRole("button", { name: "Update price and reading period" })
     );
@@ -102,6 +144,8 @@ describe("EpisodePricingForm", () => {
     const formData = action.mock.calls[0]?.[1];
     expect(formData?.get("price")).toBe("0");
     expect(formData?.get("reading_period_hours")).toBe("168");
+    expect(formData?.get("rental_price")).toBe("50");
+    expect(formData?.get("rental_period_hours")).toBe("24");
     expect(formData?.get("episode_id")).toBe("EP001-ID");
     expect(formData?.get("episode_public_id")).toBe("EP001");
     expect(formData?.get("series_public_id")).toBe("SERIES001");

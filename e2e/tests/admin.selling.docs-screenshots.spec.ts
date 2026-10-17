@@ -77,6 +77,8 @@ for (const locale of DOCS_LOCALES) {
           element: [
             docsField(
               page.getByRole("spinbutton", {
+                // Exact, since the rental price's label ends in the same word.
+                exact: true,
                 name: t("admin.series.episodes.form.price"),
               })
             ),
@@ -89,6 +91,28 @@ for (const locale of DOCS_LOCALES) {
           locale,
           page: sellingPage,
           subject: "price-and-reading-period",
+        });
+      });
+
+      test("an episode's rental price and rental period", async ({ page }) => {
+        await openScreen(page, locale, `/series/${SERIES}/episodes/new`);
+
+        await expectDocsScreenshot(page, {
+          element: [
+            docsField(
+              page.getByRole("spinbutton", {
+                name: t("admin.series.episodes.form.rental_price"),
+              })
+            ),
+            docsField(
+              page.getByRole("spinbutton", {
+                name: t("admin.series.episodes.form.rental_period"),
+              })
+            ),
+          ],
+          locale,
+          page: sellingPage,
+          subject: "rental",
         });
       });
 

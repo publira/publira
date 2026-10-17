@@ -168,6 +168,34 @@ test.describe("admin episode editing", () => {
     );
     await expect(fields.price).toHaveValue("120");
     await expect(fields.readingPeriodHours).toHaveValue("0");
+    await expect(fields.rentalPrice).toHaveValue("");
+
+    // A rental that costs as much as the permanent copy is refused on the
+    // form, and nothing is saved.
+    await fields.rentalPrice.fill("120");
+    await fields.rentalPeriodHours.fill("48");
+    await page
+      .getByRole("button", { name: "Update price and reading period" })
+      .click();
+    await expect(
+      page.getByText(
+        "Rental price must be lower than the price. A free episode cannot be rented."
+      )
+    ).toBeVisible();
+
+    await fields.rentalPrice.fill("80");
+    await page
+      .getByRole("button", { name: "Update price and reading period" })
+      .click();
+    await expect(
+      page.getByText("Price and reading period updated.")
+    ).toBeVisible();
+
+    // A reload reads both prices back from the server.
+    await page.reload();
+    await expect(fields.price).toHaveValue("120");
+    await expect(fields.rentalPrice).toHaveValue("80");
+    await expect(fields.rentalPeriodHours).toHaveValue("48");
 
     // The episode list prices the episode at what it was changed to.
     await page.goto(`${WEB_ADMIN_BASE_URL}/series/${seriesId}/episodes`);

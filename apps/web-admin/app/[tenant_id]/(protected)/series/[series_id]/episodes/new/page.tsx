@@ -168,6 +168,7 @@ const NewEpisodeFormData = async ({
       }
       seriesPublicId={seriesId}
       seriesReadingPeriodHours={seriesResult.series.readingPeriodHours}
+      seriesRentalPeriodHours={seriesResult.series.rentalPeriodHours}
       tenantId={tenantId}
       timeZone={timeZone}
     />

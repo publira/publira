@@ -94,6 +94,7 @@ const series: SeriesListItem = {
   publicId: "SERIES001",
   publishedAt: "",
   readingPeriodHours: 72,
+  rentalPeriodHours: 0,
   scheduleWeekdays: [1, 4],
   status: "hiatus",
   synopsis: "A synopsis",
@@ -182,6 +183,9 @@ it("finds each input by its role and label", () => {
   expect(screen.getAllByRole("textbox", { name: /Synopsis/u })).toHaveLength(2);
   expect(
     screen.getAllByRole("spinbutton", { name: /Reading period/u })
+  ).toHaveLength(2);
+  expect(
+    screen.getAllByRole("spinbutton", { name: /Rental period/u })
   ).toHaveLength(2);
   expect(screen.getAllByRole("combobox", { name: /Label/u })).toHaveLength(2);
   // The create form opens with no credits and the edit form with the one the
@@ -604,6 +608,7 @@ const submittedControls = async () => [
   screen.getByRole("textbox", { name: /Title/u }),
   screen.getByRole("textbox", { name: /Synopsis/u }),
   screen.getByRole("spinbutton", { name: /Reading period/u }),
+  screen.getByRole("spinbutton", { name: /Rental period/u }),
   screen.getByRole("combobox", { name: /Label/u }),
   screen.getByRole("combobox", { name: "Author 1" }),
   screen.getByRole("combobox", { name: "Role 1" }),

@@ -163,6 +163,9 @@ const seriesCommonSchema = async (locale: Locale) => {
     readingPeriodHours: nonNegativeIntFormSchema(
       t("admin.series.validation.reading_period_invalid")
     ),
+    rentalPeriodHours: nonNegativeIntFormSchema(
+      t("admin.series.validation.rental_period_invalid")
+    ),
     scheduleWeekdays: scheduleWeekdaysFormSchema,
     spreadStartIndex: spreadStartPageFormSchema(
       t("admin.series.validation.spread_start_invalid")
@@ -223,6 +226,7 @@ const seriesEyeCatchSchema = async (locale: Locale) => {
       purchaseAvailability: true,
       readingDirection: true,
       readingPeriodHours: true,
+      rentalPeriodHours: true,
       scheduleWeekdays: true,
       spreadStartIndex: true,
       status: true,
@@ -246,6 +250,7 @@ const seriesFormFields = {
   purchaseAvailability: { kind: "value", name: "purchase_availability" },
   readingDirection: { kind: "value", name: "reading_direction" },
   readingPeriodHours: { kind: "value", name: "reading_period_hours" },
+  rentalPeriodHours: { kind: "value", name: "rental_period_hours" },
   scheduleWeekdays: { kind: "values", name: "schedule_weekdays" },
   spreadStartIndex: { kind: "value", name: "spread_start_page" },
   status: { kind: "value", name: "status" },
@@ -344,6 +349,7 @@ export const createSeriesAction = async (
         purchaseAvailability: parsed.data.purchaseAvailability,
         readingDirection: parsed.data.readingDirection,
         readingPeriodHours: parsed.data.readingPeriodHours,
+        rentalPeriodHours: parsed.data.rentalPeriodHours,
         scheduleWeekdays: parsed.data.scheduleWeekdays,
         spreadStartIndex: parsed.data.spreadStartIndex,
         status: parsed.data.status,
@@ -415,6 +421,7 @@ export const updateSeriesAction = async (
         purchaseAvailability: parsed.data.purchaseAvailability,
         readingDirection: parsed.data.readingDirection,
         readingPeriodHours: parsed.data.readingPeriodHours,
+        rentalPeriodHours: parsed.data.rentalPeriodHours,
         scheduleWeekdays: parsed.data.scheduleWeekdays,
         spreadStartIndex: parsed.data.spreadStartIndex,
         status: parsed.data.status,

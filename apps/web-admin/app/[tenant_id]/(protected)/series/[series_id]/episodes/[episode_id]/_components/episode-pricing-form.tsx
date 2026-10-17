@@ -31,6 +31,8 @@ import {
   toPriceInputValue,
 } from "#lib/price";
 
+import { EpisodeRentalFields } from "../../_components/episode-rental-fields";
+
 interface EpisodePricingFormProps {
   action: (
     prevState: FormActionState,
@@ -47,6 +49,13 @@ interface EpisodePricingFormProps {
    */
   initialPrice: number;
   initialReadingPeriodHours: number;
+  /** 0 on an episode that is not rented. */
+  initialRentalPrice: number;
+  /**
+   * The episode's rental period, or the series' for an episode that is not
+   * rented.
+   */
+  initialRentalPeriodHours: number;
   seriesPublicId: string;
   tenantId: string;
 }
@@ -58,6 +67,8 @@ export const EpisodePricingForm = ({
   episodePublicId,
   initialPrice,
   initialReadingPeriodHours,
+  initialRentalPeriodHours,
+  initialRentalPrice,
   seriesPublicId,
   tenantId,
 }: EpisodePricingFormProps) => (
@@ -133,6 +144,12 @@ export const EpisodePricingForm = ({
             </FieldDescription>
           </FieldContent>
         </Field>
+
+        <EpisodeRentalFields
+          currency={currency}
+          initialRentalPeriodHours={initialRentalPeriodHours}
+          initialRentalPrice={initialRentalPrice}
+        />
       </ActionFormFieldset>
 
       <div className="mt-2 flex justify-end gap-2">
