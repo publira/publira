@@ -100,13 +100,18 @@ func ProbeEngine(ctx context.Context, cfg Config) (Probe, error) {
 	}
 
 	var nodes struct {
+		Header struct {
+			Failed int `json:"failed"`
+		} `json:"_nodes"`
 		Nodes map[string]struct {
 			Plugins []struct {
 				Name string `json:"name"`
 			} `json:"plugins"`
 		} `json:"nodes"`
 	}
-	if _, err := request("/_nodes/plugins", &nodes); err != nil {
+	// A node that did not answer is absent from the list, and may lack a
+	// plugin every node that did answer has.
+	if _, err := request("/_nodes/plugins", &nodes); err != nil || nodes.Header.Failed > 0 {
 		return probe, nil
 	}
 	// A plugin counts once every node has it: an index is created across the
