@@ -7,6 +7,7 @@ import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/auth/identity_provider.dart';
+import 'package:publira/auth/passkey.dart';
 import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/signed_out_notice.dart';
 import 'package:publira/forms/password_field.dart';
@@ -19,10 +20,10 @@ import 'package:publira/typography/autospaced_text.dart';
 ///
 /// Nothing is sent until the reader has confirmed who they are and then said
 /// yes a second time, because the deletion cannot be undone: with the
-/// account's password, or, for an account without one, with a fresh sign-in
-/// to a provider linked to it. Once it has gone through the device is signed
-/// out, which also stops its notification token, and the reader lands on the
-/// catalog.
+/// account's password, or, for an account without one, with one of its
+/// passkeys or a fresh sign-in to a provider linked to it. Once it has gone
+/// through the device is signed out, which also stops its notification token,
+/// and the reader lands on the catalog.
 class DeleteAccountScreen extends StatefulWidget {
   const DeleteAccountScreen({super.key});
 
@@ -35,7 +36,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
   final _passwordController = TextEditingController();
 
   var _submitting = false;
-  AuthFailureKind? _failure;
+  _Failure? _failure;
 
   /// How the account confirms the deletion, `null` until it has been read.
   AccountConfirmation? _confirmation;
@@ -57,11 +58,13 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
     super.dispose();
   }
 
-  /// Reads whether the account has a password and, where it has none, which
-  /// of its linked providers this device can sign in with.
+  /// Reads whether the account has a password and, where it has none,
+  /// whether this device confirms with one of its passkeys and which of its
+  /// linked providers it can sign in with.
   Future<void> _load() async {
     final auth = AuthScope.of(context);
     final signIn = ProviderSignInScope.maybeOf(context);
+    final passkeys = PasskeyAuthenticatorScope.maybeOf(context);
     if (!auth.isSignedIn) {
       return;
     }
@@ -72,7 +75,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
     }
     AccountConfirmation confirmation;
     try {
-      confirmation = await AccountConfirmation.read(auth, signIn);
+      confirmation = await AccountConfirmation.read(auth, signIn, passkeys);
     } on Exception {
       if (mounted) {
         setState(() {
@@ -115,6 +118,35 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
         throw const AuthFailure(AuthFailureKind.unexpected);
       }
       await auth.deleteAccountWithProvider(credential);
+    });
+  }
+
+  /// Confirms with whichever of the reader's passkeys they pick in the
+  /// system's sheet. A closed sheet is said so, because the system answers
+  /// one that timed out the same way and the reader may not have closed it.
+  Future<void> _submitWithPasskey() async {
+    final passkeys = PasskeyAuthenticatorScope.maybeOf(context);
+    if (_submitting || passkeys == null) {
+      return;
+    }
+    await _delete((auth) async {
+      try {
+        await auth.deleteAccountWithPasskey(passkeys);
+      } on PasskeyCancelled {
+        throw const _Refused(_Failure.passkeyCancelled);
+      } on PasskeyFailure {
+        throw const _Refused(_Failure.passkeyFailed);
+      } on AuthFailure catch (error) {
+        throw switch (error.kind) {
+          AuthFailureKind.passkeyNotFound => const _Refused(
+            _Failure.passkeyNone,
+          ),
+          AuthFailureKind.passkeyRefused => const _Refused(
+            _Failure.passkeyFailed,
+          ),
+          _ => error,
+        };
+      }
     });
   }
 
@@ -161,16 +193,23 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
       _submitting = true;
       _failure = null;
     });
-    AuthFailureKind? failure;
+    _Failure? failure;
     var cancelled = false;
     try {
       await delete(auth);
     } on _Cancelled {
       cancelled = true;
+    } on _Refused catch (refused) {
+      failure = refused.failure;
     } on AuthFailure catch (error) {
-      failure = error.kind;
+      failure = switch (error.kind) {
+        AuthFailureKind.network => _Failure.network,
+        AuthFailureKind.rateLimited => _Failure.rateLimited,
+        AuthFailureKind.lastTenantAdmin => _Failure.lastTenantAdmin,
+        _ => _Failure.failed,
+      };
     } on Exception {
-      failure = AuthFailureKind.unexpected;
+      failure = _Failure.failed;
     }
     if (failure == null && !cancelled) {
       messenger.showSnackBar(
@@ -206,8 +245,12 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                     _ when _loadFailed => _loadError(messages),
                     null => const Center(child: CircularProgressIndicator()),
                     AccountConfirmation(providers: null) => _form(messages),
-                    AccountConfirmation(:final providers?, :final linked) =>
-                      _providerForm(messages, providers, linked),
+                    AccountConfirmation(
+                      :final providers?,
+                      :final linked,
+                      :final passkey,
+                    ) =>
+                      _signInForm(messages, providers, linked, passkey),
                   },
                 ),
               ),
@@ -282,24 +325,29 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
     );
   }
 
-  Widget _providerForm(
+  Widget _signInForm(
     AppMessages messages,
     SignInProviders providers,
     List<IdentityProvider> linked,
+    bool passkey,
   ) {
     final failure = _failure;
     final colors = Theme.of(context).colorScheme;
+    final confirmStyle = FilledButton.styleFrom(
+      backgroundColor: colors.error,
+      foregroundColor: colors.onError,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AutospacedText(messages.deleteAccountDescription),
         const SizedBox(height: 16),
-        AutospacedText(
-          linked.isEmpty
-              ? messages.deleteAccountNoProvider
-              : messages.deleteAccountConfirmWithProvider,
-          key: const ValueKey('delete-account-provider-note'),
-        ),
+        AutospacedText(switch ((passkey, linked.isNotEmpty)) {
+          (true, true) => messages.deleteAccountConfirmWithPasskeyOrProvider,
+          (true, false) => messages.deleteAccountConfirmWithPasskey,
+          (false, true) => messages.deleteAccountConfirmWithProvider,
+          (false, false) => messages.deleteAccountNoProvider,
+        }, key: const ValueKey('delete-account-provider-note')),
         if (failure != null) ...[
           const SizedBox(height: 16),
           AutospacedText(
@@ -308,14 +356,22 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
             style: TextStyle(color: colors.error),
           ),
         ],
+        if (passkey) ...[
+          const SizedBox(height: 16),
+          FilledButton(
+            key: const ValueKey('delete-account-with-passkey'),
+            style: confirmStyle,
+            onPressed: _submitting
+                ? null
+                : () => unawaited(_submitWithPasskey()),
+            child: AutospacedText(messages.deleteAccountWithPasskey),
+          ),
+        ],
         for (final provider in linked) ...[
           const SizedBox(height: 16),
           FilledButton(
             key: ValueKey('delete-account-with-${provider.name}'),
-            style: FilledButton.styleFrom(
-              backgroundColor: colors.error,
-              foregroundColor: colors.onError,
-            ),
+            style: confirmStyle,
             onPressed: _submitting
                 ? null
                 : () => unawaited(_submitWithProvider(provider, providers)),
@@ -329,17 +385,46 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
     );
   }
 
-  String _failureCopy(AppMessages messages, AuthFailureKind failure) {
+  String _failureCopy(AppMessages messages, _Failure failure) {
     return switch (failure) {
-      AuthFailureKind.network => messages.errorsRpcUnavailable,
-      AuthFailureKind.rateLimited => messages.errorsRpcRateLimited,
-      AuthFailureKind.lastTenantAdmin => messages.deleteAccountLastTenantAdmin,
-      _ => messages.deleteAccountFailed,
+      _Failure.network => messages.errorsRpcUnavailable,
+      _Failure.rateLimited => messages.errorsRpcRateLimited,
+      _Failure.lastTenantAdmin => messages.deleteAccountLastTenantAdmin,
+      _Failure.passkeyCancelled => messages.passkeysConfirmCancelled,
+      _Failure.passkeyFailed => messages.passkeysConfirmFailed,
+      _Failure.passkeyNone => messages.passkeysConfirmNone,
+      _Failure.failed => messages.deleteAccountFailed,
     };
   }
+}
+
+/// Why the deletion did not go through, which the screen says above the way
+/// to confirm it.
+enum _Failure {
+  failed,
+  network,
+  rateLimited,
+  lastTenantAdmin,
+
+  /// The reader closed the passkey sheet, or let it time out.
+  passkeyCancelled,
+
+  /// The device could not use the passkey, or the API did not take it.
+  passkeyFailed,
+
+  /// The account holds no passkey any more.
+  passkeyNone,
 }
 
 /// The reader closed the provider's sheet, which leaves the screen as it was.
 class _Cancelled implements Exception {
   const _Cancelled();
+}
+
+/// A passkey confirmation that did not go through, for the reason [failure]
+/// names.
+class _Refused implements Exception {
+  const _Refused(this.failure);
+
+  final _Failure failure;
 }

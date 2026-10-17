@@ -522,6 +522,32 @@ class AuthController extends ChangeNotifier {
     );
   }
 
+  /// [requestEmailChange] for an account without a password, confirmed with
+  /// one of its passkeys, which [authenticator] asks the reader for over a
+  /// challenge the API begins.
+  ///
+  /// Throws [PasskeyCancelled] or [PasskeyFailure] from [authenticator], and
+  /// [AuthFailure] from the API, with [AuthFailureKind.sessionExpired] when
+  /// nobody is signed in.
+  Future<void> requestEmailChangeWithPasskey({
+    required String currentEmail,
+    required String newEmail,
+    required PasskeyAuthenticator authenticator,
+  }) async {
+    final session = _requireSession();
+    await _whileHeld(() async {
+      final credential = await authenticator.authenticate(
+        await _repository.beginPasskeyConfirmation(session),
+      );
+      await _repository.requestEmailChangeWithPasskey(
+        session,
+        currentEmail: currentEmail,
+        newEmail: newEmail,
+        credentialJson: credential,
+      );
+    });
+  }
+
   /// Spends one of an email change's two links. The session carries no
   /// address, so whichever one is held stays as it is.
   ///
@@ -547,6 +573,20 @@ class AuthController extends ChangeNotifier {
       _deleteAccount(
         (session) => _repository.deleteAccountWithProvider(session, credential),
       );
+
+  /// [deleteAccount] for an account without a password, confirmed with one
+  /// of its passkeys, which [authenticator] asks the reader for over a
+  /// challenge the API begins.
+  ///
+  /// Throws [PasskeyCancelled] or [PasskeyFailure] from [authenticator] as
+  /// well, and keeps the session for each.
+  Future<void> deleteAccountWithPasskey(PasskeyAuthenticator authenticator) =>
+      _deleteAccount((session) async {
+        final credential = await authenticator.authenticate(
+          await _repository.beginPasskeyConfirmation(session),
+        );
+        await _repository.deleteAccountWithPasskey(session, credential);
+      });
 
   Future<void> _deleteAccount(
     Future<void> Function(AuthSession session) delete,

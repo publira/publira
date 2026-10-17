@@ -218,6 +218,7 @@ class _SignInScreenState extends State<SignInScreen> {
       AuthFailureKind.passkeyLimit ||
       AuthFailureKind.passkeyAlreadyRegistered ||
       AuthFailureKind.passkeyNotFound ||
+      AuthFailureKind.passkeyRefused ||
       AuthFailureKind.lastTenantAdmin ||
       AuthFailureKind.invalidInput ||
       AuthFailureKind.birthDateInvalid ||

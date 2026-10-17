@@ -523,4 +523,282 @@ void main() {
       expect(repository.identities, isEmpty);
     });
   });
+
+  group('deleting an account without a password', () {
+    final passkeyConfirm = find.byKey(
+      const ValueKey('delete-account-with-passkey'),
+    );
+    final note = find.byKey(const ValueKey('delete-account-provider-note'));
+    final error = find.byKey(const ValueKey('delete-account-error'));
+
+    setUp(() {
+      auth = fakeAuthController(session: fakeSession, repository: repository);
+      repository
+        ..hasPassword = false
+        ..passkeys = [const Passkey(id: 'passkey-a', name: '')];
+    });
+
+    Future<void> confirmDeletion(WidgetTester tester) async {
+      await tester.tap(passkeyConfirm);
+      final confirm = find.byKey(
+        const ValueKey('delete-account-confirm-delete'),
+      );
+      await pumpUntilFound(tester, confirm);
+      await tester.tap(confirm);
+    }
+
+    testWidgets('confirms with a passkey the reader picks and signs out', (
+      tester,
+    ) async {
+      await pumpApp(tester, initialLocation: AppRoutes.accountDelete);
+      await pumpUntilFound(tester, passkeyConfirm);
+
+      expect(
+        find.text('Your account has no password. Confirm with a passkey.'),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('delete-account-password')),
+        findsNothing,
+      );
+
+      await confirmDeletion(tester);
+      await pumpUntilTrue(tester, () => repository.deleted);
+      await pumpUntilFound(
+        tester,
+        find.byKey(ValueKey('series-tile-${fixtureSeries.first.id}')),
+      );
+
+      expect(passkeys.authenticated, [
+        FakeAuthRepository.confirmationOptionsJson,
+      ]);
+      expect(repository.deletionPasskeyCredentials, [
+        FakePasskeyAuthenticator.credentialFor('asserted', 1),
+      ]);
+      expect(auth.isSignedIn, isFalse);
+      expect(router.state.uri.path, AppRoutes.catalog);
+    });
+
+    testWidgets('offers the passkey above the linked providers', (
+      tester,
+    ) async {
+      repository.identities = const [
+        LinkedIdentity(
+          provider: IdentityProvider.google,
+          email: 'member@gmail.example',
+        ),
+      ];
+      await pumpApp(
+        tester,
+        initialLocation: AppRoutes.accountDelete,
+        providerSignIn: FakeProviderSignIn(),
+      );
+      final google = find.byKey(const ValueKey('delete-account-with-google'));
+      await pumpUntilFound(tester, google);
+
+      expect(
+        find.text(
+          'Your account has no password. Confirm with a passkey, or sign in '
+          'again with a linked account.',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        tester.getTopLeft(passkeyConfirm).dy,
+        lessThan(tester.getTopLeft(google).dy),
+      );
+    });
+
+    testWidgets('a closed sheet says so and keeps the account', (tester) async {
+      passkeys.failure = const PasskeyCancelled();
+      await pumpApp(tester, initialLocation: AppRoutes.accountDelete);
+      await pumpUntilFound(tester, passkeyConfirm);
+
+      await confirmDeletion(tester);
+      await pumpUntilFound(tester, error);
+
+      expect(
+        find.text('The passkey request was cancelled or timed out. Try again.'),
+        findsOneWidget,
+      );
+      expect(repository.deletionPasskeyCredentials, isEmpty);
+      expect(auth.isSignedIn, isTrue);
+      expect(tester.widget<FilledButton>(passkeyConfirm).onPressed, isNotNull);
+    });
+
+    testWidgets('a passkey the API does not take says so and keeps the '
+        'account', (tester) async {
+      repository.accountFailure = const AuthFailure(
+        AuthFailureKind.passkeyRefused,
+      );
+      await pumpApp(tester, initialLocation: AppRoutes.accountDelete);
+      await pumpUntilFound(tester, passkeyConfirm);
+
+      await confirmDeletion(tester);
+      await pumpUntilFound(tester, error);
+
+      expect(
+        find.text('Could not confirm with this passkey. Try again.'),
+        findsOneWidget,
+      );
+      expect(auth.isSignedIn, isTrue);
+    });
+
+    testWidgets('a passkey removed since the screen opened says to confirm '
+        'another way', (tester) async {
+      await pumpApp(tester, initialLocation: AppRoutes.accountDelete);
+      await pumpUntilFound(tester, passkeyConfirm);
+      repository.passkeys = const [];
+
+      await confirmDeletion(tester);
+      await pumpUntilFound(tester, error);
+
+      expect(
+        find.text(
+          'No passkey is registered to your account. Confirm another way.',
+        ),
+        findsOneWidget,
+      );
+      expect(passkeys.authenticated, isEmpty);
+    });
+
+    testWidgets("offers none where the device does not use the site's", (
+      tester,
+    ) async {
+      passkeys.available = false;
+      await pumpApp(tester, initialLocation: AppRoutes.accountDelete);
+      await pumpUntilFound(tester, note);
+
+      expect(passkeyConfirm, findsNothing);
+      expect(
+        find.textContaining('None of the accounts linked to yours'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('offers none to an account that holds no passkey', (
+      tester,
+    ) async {
+      repository.passkeys = const [];
+      await pumpApp(tester, initialLocation: AppRoutes.accountDelete);
+      await pumpUntilFound(tester, note);
+
+      expect(passkeyConfirm, findsNothing);
+    });
+  });
+
+  group('changing the email address of an account without a password', () {
+    final passkeyConfirm = find.byKey(
+      const ValueKey('change-email-with-passkey'),
+    );
+    final error = find.byKey(const ValueKey('change-email-error'));
+
+    setUp(() {
+      auth = fakeAuthController(session: fakeSession, repository: repository);
+      repository
+        ..hasPassword = false
+        ..passkeys = [const Passkey(id: 'passkey-a', name: '')];
+    });
+
+    Future<void> request(WidgetTester tester, String newEmail) async {
+      await tester.enterText(
+        find.byKey(const ValueKey('change-email-new')),
+        newEmail,
+      );
+      await tester.tap(passkeyConfirm);
+    }
+
+    testWidgets('confirms with a passkey the reader picks', (tester) async {
+      await pumpApp(tester, initialLocation: AppRoutes.accountEmail);
+      await pumpUntilFound(tester, passkeyConfirm);
+
+      expect(
+        find.text(
+          'Your account has no password. Confirm with a passkey to send the '
+          'confirmation emails.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('change-email-password')), findsNothing);
+
+      await request(tester, 'moved@example.com');
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('change-email-requested')),
+      );
+
+      expect(passkeys.authenticated, [
+        FakeAuthRepository.confirmationOptionsJson,
+      ]);
+      final call = repository.emailChanges.single;
+      expect(call.currentEmail, repository.email);
+      expect(call.newEmail, 'moved@example.com');
+      expect(call.currentPassword, isEmpty);
+      expect(
+        call.passkeyCredentialJson,
+        FakePasskeyAuthenticator.credentialFor('asserted', 1),
+      );
+      expect(auth.isSignedIn, isTrue);
+    });
+
+    testWidgets('an address the form refuses never opens the sheet', (
+      tester,
+    ) async {
+      await pumpApp(tester, initialLocation: AppRoutes.accountEmail);
+      await pumpUntilFound(tester, passkeyConfirm);
+
+      await request(tester, repository.email);
+      await tester.pump();
+
+      expect(
+        find.text('Enter an address different from your current one.'),
+        findsOneWidget,
+      );
+      expect(passkeys.authenticated, isEmpty);
+    });
+
+    testWidgets('a closed sheet says so and keeps the form', (tester) async {
+      passkeys.failure = const PasskeyCancelled();
+      await pumpApp(tester, initialLocation: AppRoutes.accountEmail);
+      await pumpUntilFound(tester, passkeyConfirm);
+
+      await request(tester, 'moved@example.com');
+      await pumpUntilFound(tester, error);
+
+      expect(
+        find.text('The passkey request was cancelled or timed out. Try again.'),
+        findsOneWidget,
+      );
+      expect(repository.emailChanges, isEmpty);
+      expect(tester.widget<FilledButton>(passkeyConfirm).onPressed, isNotNull);
+    });
+
+    testWidgets('a passkey the API does not take is told apart from an '
+        'address it refuses', (tester) async {
+      repository.accountFailure = const AuthFailure(
+        AuthFailureKind.passkeyRefused,
+      );
+      await pumpApp(tester, initialLocation: AppRoutes.accountEmail);
+      await pumpUntilFound(tester, passkeyConfirm);
+
+      await request(tester, 'moved@example.com');
+      await pumpUntilFound(tester, error);
+
+      expect(
+        find.text('Could not confirm with this passkey. Try again.'),
+        findsOneWidget,
+      );
+
+      repository.accountFailure = const AuthFailure(
+        AuthFailureKind.invalidInput,
+      );
+      await tester.tap(passkeyConfirm);
+      await pumpUntilFound(
+        tester,
+        find.text(
+          'Could not request the email change. Check what you entered.',
+        ),
+      );
+    });
+  });
 }

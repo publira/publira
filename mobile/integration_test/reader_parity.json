@@ -512,7 +512,10 @@
         ],
         "rpcs": ["BeginPasskeyConfirmation"]
       },
-      "exception": "Not in the app yet: #4466."
+      "mobile": {
+        "routes": ["/account/delete", "/account/email"],
+        "rpcs": ["BeginPasskeyConfirmation"]
+      }
     },
     {
       "name": "Signing in and up with Apple or Google",

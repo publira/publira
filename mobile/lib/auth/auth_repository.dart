@@ -117,6 +117,16 @@ abstract class AuthRepository {
   /// last way an account without a password or a linked provider signs in.
   Future<void> deletePasskey(AuthSession session, String id);
 
+  /// Begins the assertion that confirms [requestEmailChangeWithPasskey] or
+  /// [deleteAccountWithPasskey] for the reader behind [session], and returns
+  /// the `PublicKeyCredentialRequestOptionsJSON` the authenticator signs,
+  /// which allows that reader's passkeys alone.
+  ///
+  /// Throws [AuthFailure]; [AuthFailureKind.passkeyNotFound] where the reader
+  /// holds no passkey any more, removed from another device or the site since
+  /// the screen read the account.
+  Future<String> beginPasskeyConfirmation(AuthSession session);
+
   /// Asks the API for an account on [email], which it answers by mailing that
   /// address a confirmation link.
   ///
@@ -331,6 +341,20 @@ abstract class AuthRepository {
     required ProviderCredential credential,
   });
 
+  /// [requestEmailChange] for an account without a password, confirmed by
+  /// [credentialJson], the assertion one of its passkeys made over the
+  /// challenge [beginPasskeyConfirmation] began.
+  ///
+  /// Throws [AuthFailure]: [AuthFailureKind.passkeyRefused] for an assertion
+  /// the API does not take, and [AuthFailureKind.invalidInput] for an address
+  /// another account holds.
+  Future<void> requestEmailChangeWithPasskey(
+    AuthSession session, {
+    required String currentEmail,
+    required String newEmail,
+    required String credentialJson,
+  });
+
   /// Spends the [token] one of an email change's two links carries, which
   /// needs no session: the link may be opened on a device that holds none.
   ///
@@ -354,6 +378,18 @@ abstract class AuthRepository {
   Future<void> deleteAccountWithProvider(
     AuthSession session,
     ProviderCredential credential,
+  );
+
+  /// Deletes the account behind [session], which has no password, once
+  /// [credentialJson], the assertion one of its passkeys made over the
+  /// challenge [beginPasskeyConfirmation] began, confirms it is the reader
+  /// asking.
+  ///
+  /// Throws [AuthFailure]; [AuthFailureKind.passkeyRefused] for an assertion
+  /// the API does not take.
+  Future<void> deleteAccountWithPasskey(
+    AuthSession session,
+    String credentialJson,
   );
 
   /// Tells the API the reader behind [session] has signed out, which it

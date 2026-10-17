@@ -74,7 +74,7 @@ Google sign-in on Android uses the **Web client ID** the site signs in with. In 
 
 ## Sign in with a passkey
 
-A passkey belongs to the tenant's host rather than to the browser or the app that made it, so a reader who added one on the site signs in to the app with it, and one added in the app signs in to the site. The app offers **Sign in with a passkey** on its sign-in screen, and **Passkeys** under **Account**, where a reader lists, adds, renames, and removes them as they do under **Settings** › **Security** on the site.
+A passkey belongs to the tenant's host rather than to the browser or the app that made it, so a reader who added one on the site signs in to the app with it, and one added in the app signs in to the site. The app offers **Sign in with a passkey** on its sign-in screen, and **Passkeys** under **Account**, where a reader lists, adds, renames, and removes them as they do under **Settings** › **Security** on the site. A reader whose account has no password confirms **Delete account** and **Change email address** with **Confirm with a passkey**, above **Confirm with Apple** and **Confirm with Google**, so an account whose only other way in is a provider the phone does not offer, or that has no provider linked at all, can still do both from the app.
 
 There is nothing to turn on: passkeys need only the apps named under [App links](./4-app-links.md), whose files the site serves vouch for the app's use of its passkeys. The app offers them only where it is the app named there for the phone it runs on, because the phone refuses any other the site's passkeys:
 

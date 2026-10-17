@@ -69,6 +69,10 @@ enum AuthFailureKind {
   /// the site since the list was read.
   passkeyNotFound,
 
+  /// The API did not take the assertion a passkey made to confirm a step,
+  /// which the reader tries again rather than taking it for a typo.
+  passkeyRefused,
+
   /// The account is the tenant's last active tenant admin, which the API keeps
   /// so someone can still sign in to the console. Another member is made a
   /// tenant admin before it is deleted.

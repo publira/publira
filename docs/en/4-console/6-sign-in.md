@@ -132,7 +132,7 @@ The same screen on the site lists the reader's **Passkeys**, each with when it w
 An account created through Apple or Google has no password. The same screen offers **Set a password**, which mails a link to set one, after which the reader can sign in with their email address as well. Until then:
 
 - The account keeps one way to sign in: its last linked account cannot be unlinked while it holds no passkey, and its last passkey cannot be removed while it has no linked account.
-- Deleting the account and changing the email address are confirmed by signing in with Apple or Google again, through **Confirm with Apple** or **Confirm with Google**, or on the site with one of the reader's passkeys, through **Confirm with a passkey**, in place of the password.
+- Deleting the account and changing the email address are confirmed by signing in with Apple or Google again, through **Confirm with Apple** or **Confirm with Google**, or with one of the reader's passkeys, through **Confirm with a passkey**, in place of the password, on the site and in the app alike.
 
 ### Mail to a Hide My Email address
 
