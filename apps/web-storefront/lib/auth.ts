@@ -178,9 +178,9 @@ const passkeyLoginRefusal = (error: unknown): PasskeyLoginRefusal => {
 
 /**
  * Begin a sign-in with a passkey alone. The options name no account, so the
- * browser offers whichever passkey the reader holds for the site. Each begin
- * spends one of the sign-in attempts of the reader's address, which a
- * sign-in that succeeds gives back.
+ * browser offers whichever passkey the reader holds for the site. A begin
+ * spends none of the sign-in attempts of the reader's address, which is what
+ * lets the sign-in page begin one whenever it opens.
  */
 export const beginPasskeyLoginPublic = async (
   tenantId: string
