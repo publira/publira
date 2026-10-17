@@ -1,5 +1,16 @@
 import type { Page } from "@playwright/test";
 
+/** The authenticator {@link addVirtualAuthenticator} gave a page. */
+export interface VirtualAuthenticator {
+  /**
+   * Put the signature counter of every passkey it holds back to zero, as a
+   * copy of the authenticator made before its last use would answer. The
+   * next assertion reports a counter no higher than the one the relying
+   * party stored, which it refuses as the work of a cloned authenticator.
+   */
+  rewindSignCounts: () => Promise<void>;
+}
+
 /**
  * Give `page` a platform authenticator that answers every WebAuthn prompt by
  * itself, as a device's screen lock does once its owner has unlocked it.
@@ -10,19 +21,44 @@ import type { Page } from "@playwright/test";
  * verifies its user and keeps discoverable credentials, which is what the
  * relying parties under test ask of a passkey.
  */
-export const addVirtualAuthenticator = async (page: Page): Promise<void> => {
+export const addVirtualAuthenticator = async (
+  page: Page
+): Promise<VirtualAuthenticator> => {
   const session = await page.context().newCDPSession(page);
   await session.send("WebAuthn.enable");
-  await session.send("WebAuthn.addVirtualAuthenticator", {
-    options: {
-      automaticPresenceSimulation: true,
-      hasResidentKey: true,
-      hasUserVerification: true,
-      isUserVerified: true,
-      protocol: "ctap2",
-      transport: "internal",
+  const { authenticatorId } = await session.send(
+    "WebAuthn.addVirtualAuthenticator",
+    {
+      options: {
+        automaticPresenceSimulation: true,
+        hasResidentKey: true,
+        hasUserVerification: true,
+        isUserVerified: true,
+        protocol: "ctap2",
+        transport: "internal",
+      },
+    }
+  );
+
+  return {
+    rewindSignCounts: async () => {
+      const { credentials } = await session.send("WebAuthn.getCredentials", {
+        authenticatorId,
+      });
+      await Promise.all(
+        credentials.map(async (credential) => {
+          await session.send("WebAuthn.removeCredential", {
+            authenticatorId,
+            credentialId: credential.credentialId,
+          });
+          await session.send("WebAuthn.addCredential", {
+            authenticatorId,
+            credential: { ...credential, signCount: 0 },
+          });
+        })
+      );
     },
-  });
+  };
 };
 
 /**

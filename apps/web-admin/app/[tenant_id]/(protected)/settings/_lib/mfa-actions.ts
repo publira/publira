@@ -8,6 +8,7 @@ import { updateTag } from "next/cache";
 import { getActionLocale } from "#lib/action-messages";
 import {
   adminMfaStatusCacheTag,
+  beginAdminPasskeyConfirmation,
   beginAdminPasskeyRegistration,
   confirmAdminMfaEnrollment,
   deleteAdminPasskey,
@@ -185,7 +186,81 @@ export const regenerateAccountMfaRecoveryCodesAction = async (
   }
 
   const result = await withAdminSessionReauth(() =>
-    regenerateAdminMfaRecoveryCodes(input.tenantId, input.code, locale)
+    regenerateAdminMfaRecoveryCodes(
+      input.tenantId,
+      { code: input.code },
+      locale
+    )
+  );
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  updateTag(adminMfaStatusCacheTag(input.tenantId));
+
+  return {
+    message: t("admin.settings.mfa.regenerate_done"),
+    ok: true,
+    recoveryCodes: result.recoveryCodes,
+  };
+};
+
+/**
+ * The first half of regenerating the recovery codes with a passkey, for an
+ * account that has no authenticator app to answer with a code. The browser
+ * makes the assertion with what this answers and hands it to
+ * {@link regenerateAccountMfaRecoveryCodesWithPasskeyAction}.
+ */
+export const beginAccountPasskeyConfirmationAction = async (
+  formData: FormData
+): Promise<PasskeyCeremonyStartState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const input = await parseTenantId(formData, locale);
+  if ("message" in input) {
+    return { message: input.message, ok: false };
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    beginAdminPasskeyConfirmation(input.tenantId, locale)
+  );
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+  return { message: "", ok: true, optionsJson: result.optionsJson };
+};
+
+/**
+ * Replace the recovery codes with the assertion the browser made, answering
+ * the new batch for the card to show once, as the code's regeneration does.
+ */
+export const regenerateAccountMfaRecoveryCodesWithPasskeyAction = async (
+  formData: FormData
+): Promise<MfaRecoveryCodesState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const [t, input] = await Promise.all([
+    getMessagesFor(locale),
+    parseTenantId(formData, locale),
+  ]);
+  if ("message" in input) {
+    return { message: input.message, ok: false };
+  }
+  // A submission without a credential did not come from the ceremony, so it
+  // is reported the way a ceremony that failed in the browser is.
+  const credential = passkeyCredentialFormSchema.safeParse(
+    formData.get("credential")
+  );
+  if (!credential.success) {
+    return { message: t("admin.auth.mfa.errors.passkey_failed"), ok: false };
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    regenerateAdminMfaRecoveryCodes(
+      input.tenantId,
+      { passkeyCredentialJson: credential.data },
+      locale
+    )
   );
   if (!result.ok) {
     return { message: result.message, ok: false };

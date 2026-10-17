@@ -32,16 +32,21 @@ import type {
 import { MfaSettingsCard } from "./mfa-settings-card";
 
 const {
+  beginConfirmation,
   beginPasskey,
   confirm,
   deletePasskey,
   disable,
   finishPasskey,
   regenerate,
+  regenerateWithPasskey,
   renamePasskey,
   start,
+  startAuthentication,
   startRegistration,
 } = vi.hoisted(() => ({
+  beginConfirmation:
+    vi.fn<(formData: FormData) => Promise<PasskeyCeremonyStartState>>(),
   beginPasskey:
     vi.fn<(formData: FormData) => Promise<PasskeyCeremonyStartState>>(),
   confirm:
@@ -74,6 +79,8 @@ const {
         formData: FormData
       ) => Promise<MfaRecoveryCodesState>
     >(),
+  regenerateWithPasskey:
+    vi.fn<(formData: FormData) => Promise<MfaRecoveryCodesState>>(),
   renamePasskey:
     vi.fn<
       (
@@ -88,18 +95,21 @@ const {
         formData: FormData
       ) => Promise<MfaEnrollmentStartState>
     >(),
+  startAuthentication: vi.fn<(options: unknown) => Promise<unknown>>(),
   startRegistration: vi.fn<(options: unknown) => Promise<unknown>>(),
 }));
 
 // The Actions are `"use server"`, so the module they live in cannot be
 // evaluated here at all.
 vi.mock("../_lib/mfa-actions", () => ({
+  beginAccountPasskeyConfirmationAction: beginConfirmation,
   beginAccountPasskeyRegistrationAction: beginPasskey,
   confirmAccountMfaEnrollmentAction: confirm,
   deleteAccountPasskeyAction: deletePasskey,
   disableAccountMfaAction: disable,
   finishAccountPasskeyRegistrationAction: finishPasskey,
   regenerateAccountMfaRecoveryCodesAction: regenerate,
+  regenerateAccountMfaRecoveryCodesWithPasskeyAction: regenerateWithPasskey,
   renameAccountPasskeyAction: renamePasskey,
   startAccountMfaEnrollmentAction: start,
 }));
@@ -108,7 +118,7 @@ vi.mock("../_lib/mfa-actions", () => ({
 // stand in for.
 vi.mock("@simplewebauthn/browser", () => ({
   browserSupportsWebAuthn: () => true,
-  startAuthentication: vi.fn(),
+  startAuthentication,
   startRegistration,
 }));
 
@@ -653,5 +663,123 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
     const removed = deletePasskey.mock.calls[0]?.[1];
     expect(removed?.get("passkey_id")).toBe("PASSKEY00001");
     expect(removed?.get("tenant_id")).toBe("TENANT001");
+  });
+  // With no authenticator app to give a code, a passkey is what replaces the
+  // recovery codes, and the batch it issues is shown once as a code's is.
+  it("regenerates the codes with a passkey when there is no authenticator app", async () => {
+    beginConfirmation.mockResolvedValue({
+      message: "",
+      ok: true,
+      optionsJson: '{"challenge":"Y2hhbGxlbmdl"}',
+    });
+    startAuthentication.mockResolvedValue({ id: "credential" });
+    regenerateWithPasskey.mockResolvedValue({
+      message: "New recovery codes have been issued.",
+      ok: true,
+      recoveryCodes: ["GGGGG-HHHHH"],
+    });
+
+    renderCard(passkeyOnly);
+
+    fireEvent.click(
+      await screen.findByRole(
+        "button",
+        { name: "Regenerate with a passkey" },
+        onScreen
+      )
+    );
+
+    expect(await screen.findByText("GGGGG-HHHHH", {}, onScreen)).toBeDefined();
+    expect(
+      screen.getByText("New recovery codes have been issued.")
+    ).toBeDefined();
+    expect(beginConfirmation.mock.calls[0]?.[0].get("tenant_id")).toBe(
+      "TENANT001"
+    );
+    expect(startAuthentication).toHaveBeenCalledWith({
+      optionsJSON: { challenge: "Y2hhbGxlbmdl" },
+    });
+    expect(regenerateWithPasskey.mock.calls[0]?.[0].get("credential")).toBe(
+      '{"id":"credential"}'
+    );
+    // The code's form is for the authenticator app, which this account lacks.
+    expect(screen.queryByRole("button", { name: "Regenerate" })).toBeNull();
+  });
+
+  it("issues no codes for an assertion the API refused", async () => {
+    beginConfirmation.mockResolvedValue({
+      message: "",
+      ok: true,
+      optionsJson: "{}",
+    });
+    startAuthentication.mockResolvedValue({ id: "credential" });
+    regenerateWithPasskey.mockResolvedValue({
+      message:
+        "That passkey was not accepted. Use a passkey registered to this account.",
+      ok: false,
+    });
+
+    renderCard(passkeyOnly);
+
+    fireEvent.click(
+      await screen.findByRole(
+        "button",
+        { name: "Regenerate with a passkey" },
+        onScreen
+      )
+    );
+
+    expect(
+      await screen.findByText(
+        "That passkey was not accepted. Use a passkey registered to this account.",
+        {},
+        onScreen
+      )
+    ).toBeDefined();
+    expect(screen.queryByText("Recovery codes")).toBeNull();
+    expect(
+      screen.queryByText("New recovery codes have been issued.")
+    ).toBeNull();
+  });
+
+  it("asks nothing of the API for a prompt the operator closed", async () => {
+    beginConfirmation.mockResolvedValue({
+      message: "",
+      ok: true,
+      optionsJson: "{}",
+    });
+    startAuthentication.mockRejectedValue(
+      Object.assign(new Error("closed"), { name: "NotAllowedError" })
+    );
+
+    renderCard(passkeyOnly);
+
+    fireEvent.click(
+      await screen.findByRole(
+        "button",
+        { name: "Regenerate with a passkey" },
+        onScreen
+      )
+    );
+
+    expect(
+      await screen.findByText(
+        "The passkey request was cancelled or timed out. Try again.",
+        {},
+        onScreen
+      )
+    ).toBeDefined();
+    expect(regenerateWithPasskey).not.toHaveBeenCalled();
+  });
+
+  it("leaves the regeneration to the code once an authenticator app is set up", async () => {
+    renderCard(both);
+
+    expect(
+      await screen.findByRole("button", { name: "Regenerate" }, onScreen)
+    ).toBeDefined();
+    expect(
+      screen.queryByRole("button", { name: "Regenerate with a passkey" })
+    ).toBeNull();
   });
 });

@@ -223,7 +223,8 @@ const MfaStatusSummary = ({ status }: { status: AdminMfaStatus }) => (
 /**
  * The operator's own second factors: the authenticator app, which is turned
  * on, has its recovery codes replaced, and is turned off, and the passkeys,
- * which are added, named, and removed one by one. The recovery codes stand in
+ * which are added, named, and removed one by one, and replace the recovery
+ * codes when there is no authenticator app to. The recovery codes stand in
  * for both, so whichever of them issues a batch shows it in the one place.
  */
 export const MfaSettingsCard = ({
@@ -277,6 +278,7 @@ export const MfaSettingsCard = ({
       <PasskeySettings
         locale={locale}
         passkeys={status.passkeys}
+        regeneratesRecoveryCodes={!status.enabled}
         tenantId={tenantId}
         timeZone={timeZone}
       />
