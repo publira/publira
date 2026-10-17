@@ -3631,6 +3631,8 @@
         "email_disposable_domain": "本站不接受拋棄式信箱服務的地址。請使用其他電子郵件地址。",
         "email_refused": "本站不接受此電子郵件地址。請使用其他電子郵件地址。",
         "login_failed": "電子郵件地址或密碼不正確。",
+        "passkey_cancelled": "通行金鑰要求已取消或逾時。請重試，或使用電子郵件地址和密碼登入。",
+        "passkey_failed": "無法使用此通行金鑰登入。請重試，或使用電子郵件地址和密碼登入。",
         "name_required": "請輸入顯示名稱。",
         "name_too_long": "顯示名稱請控制在100個字元以內。",
         "password_confirm_required": "請再次輸入密碼以確認。",
@@ -3659,6 +3661,8 @@
       "login": {
         "forgot_password": "忘記密碼？",
         "no_account": "還沒有帳戶嗎？",
+        "passkey_pending": "正在等待通行金鑰…",
+        "passkey_submit": "使用通行金鑰登入",
         "reset_done": "您的密碼已重設。請使用新密碼登入。",
         "session_revoked": "您的登入狀態已過期。請重新登入。",
         "signup": "註冊",

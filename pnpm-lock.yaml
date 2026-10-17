@@ -619,6 +619,9 @@ importers:
       '@publira/web-session':
         specifier: workspace:*
         version: link:../../packages/web-session
+      '@simplewebauthn/browser':
+        specifier: 'catalog:'
+        version: 14.0.0
       lru-cache:
         specifier: 'catalog:'
         version: 11.5.3

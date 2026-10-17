@@ -2,7 +2,7 @@
 title: Sign-in with Apple and Google
 description: Let readers sign in to the site and the app with an Apple or Google account, and create what Apple and Google need for it.
 published: 2026-10-06
-updated: 2026-10-12
+updated: 2026-10-16
 ---
 
 Readers sign in to a tenant's site with an email address and a password. **Integrations** › **Sign-in** adds two buttons beside that form, **Continue with Apple** and **Continue with Google**, so a reader can sign up and sign in with an account they already have. This page takes a Tenant admin through both providers for the site, and says what readers see once they are on. The app shares the same setup; what only the app needs is on [In-app purchase and sign-in](../5-mobile-app/5-purchases-and-sign-in.md#sign-in-with-apple-and-google).
@@ -105,7 +105,9 @@ The site picks up a change moments after it is saved. Open the site's sign-in pa
 
 The site's **Sign in** and sign-up pages show **Continue with Apple** and **Continue with Google** below the email form, separated by **or**. A reader signing up this way does not choose a password and does not confirm their email address: the provider has already confirmed it. If the site asks readers to agree to its terms of service or privacy policy, a first sign-in stops on **Finish signing up** for them to agree before the account is created.
 
-The app shows the same two buttons, on each phone where the setup covers it, as the [app's page](../5-mobile-app/5-purchases-and-sign-in.md#sign-in-with-apple-and-google) describes. An account works in both: a reader who signed up on the site with Apple signs in to the app with Apple, and the other way round.
+The site's **Sign in** page also offers **Sign in with a passkey** beside them, in every browser that can use a passkey, and needs nothing set up under **Sign-in** for it. A reader who holds a passkey for the site signs in with it alone, without typing an email address or a password: they choose the button, or pick the passkey where the browser offers it in the email field's suggestions. A passkey made for the tenant's console is a different one and does not sign in to the site. If the reader closes the prompt, or the site does not accept the passkey, the page says so and the email form stays as it was. A reader whose account is suspended, or whose email address was never confirmed, cannot sign in with a passkey either.
+
+The app shows the same Apple and Google buttons, on each phone where the setup covers it, as the [app's page](../5-mobile-app/5-purchases-and-sign-in.md#sign-in-with-apple-and-google) describes. An account works in both: a reader who signed up on the site with Apple signs in to the app with Apple, and the other way round.
 
 ### An existing account and an Apple or Google sign-in
 

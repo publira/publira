@@ -49,6 +49,27 @@ describe("SocialSignInButtons", () => {
     await expect(SocialSignInButtons({ returnTo: "/" })).resolves.toBeNull();
   });
 
+  it("keeps the divider for a way in the caller offers where the tenant offers no provider", async () => {
+    mockGetTenantSignInClients.mockResolvedValueOnce({});
+
+    render(
+      await SocialSignInButtons({
+        children: (
+          <form>
+            <button type="submit">Sign in with a passkey</button>
+          </form>
+        ),
+        returnTo: "/",
+      })
+    );
+
+    expect(screen.getByText("or")).toBeDefined();
+    expect(
+      screen.getByRole("button", { name: "Sign in with a passkey" })
+    ).toBeDefined();
+    expect(screen.queryByRole("button", { name: /^Continue/u })).toBeNull();
+  });
+
   it("offers each provider the tenant enabled, returning to where the reader was going", async () => {
     mockGetTenantSignInClients.mockResolvedValueOnce({ google: "web-client" });
 

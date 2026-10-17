@@ -1,0 +1,137 @@
+import type { Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+
+import { applyScenarioSql } from "../src/db";
+import { SEED_TENANT_ID } from "../src/scenarios/auth";
+import {
+  STOREFRONT_PASSKEY_READER,
+  STOREFRONT_PASSKEY_SCENARIO,
+} from "../src/scenarios/storefront-passkey";
+import { HOST_SESSION_COOKIE_NAME, sessionCookieValue } from "../src/session";
+import { storefrontPath, WEB_STOREFRONT_BASE_URL } from "../src/urls";
+import { addVirtualAuthenticator } from "../src/webauthn";
+
+/**
+ * A reader signing in to the site with a passkey alone, from Chromium's
+ * virtual authenticator.
+ *
+ * The site has no screen to add a passkey from yet, so the reader registers one
+ * the way an API client does: signed in with their password through the public
+ * API, from the site's own origin, which is the one the passkey is bound to.
+ * The page is left without a session cookie, so the sign-in that follows is
+ * the passkey's alone.
+ */
+
+const storefrontUrl = (pathname: string): string =>
+  `${WEB_STOREFRONT_BASE_URL}${storefrontPath(pathname)}`;
+
+const passkeyButton = (page: Page) =>
+  page.getByRole("button", { name: "Sign in with a passkey" });
+
+const registerPasskey = async (page: Page): Promise<void> => {
+  await page.goto(storefrontUrl("/login"));
+  await expect(passkeyButton(page)).toBeVisible();
+
+  const registered = await page.evaluate(
+    async ({ email, password, tenantId }) => {
+      const call = async (
+        method: string,
+        body: object,
+        token?: string
+      ): Promise<Record<string, unknown>> => {
+        const response = await fetch(`/rpc/publira.v1.AuthService/${method}`, {
+          body: JSON.stringify({ ...body, tenant: { tenantId } }),
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          method: "POST",
+        });
+        if (!response.ok) {
+          throw new Error(`${method}: ${response.status}`);
+        }
+        return response.json();
+      };
+
+      const login = await call("Login", { email, password });
+      const { token } = login.accessToken as { token: string };
+      const { creationOptionsJson } = await call(
+        "BeginPasskeyRegistration",
+        {},
+        token
+      );
+      const credential = await navigator.credentials.create({
+        publicKey: PublicKeyCredential.parseCreationOptionsFromJSON(
+          JSON.parse(creationOptionsJson as string)
+        ),
+      });
+      const finished = await call(
+        "FinishPasskeyRegistration",
+        { credentialJson: JSON.stringify(credential) },
+        token
+      );
+      return finished.passkey !== undefined;
+    },
+    {
+      email: STOREFRONT_PASSKEY_READER.email,
+      password: STOREFRONT_PASSKEY_READER.password,
+      tenantId: SEED_TENANT_ID,
+    }
+  );
+  expect(registered).toBe(true);
+};
+
+const currentSession = async (page: Page): Promise<string | undefined> =>
+  sessionCookieValue(await page.context().cookies(), HOST_SESSION_COOKIE_NAME);
+
+test.describe.configure({ mode: "serial" });
+
+test.beforeAll(() => {
+  applyScenarioSql(STOREFRONT_PASSKEY_SCENARIO);
+});
+
+test.afterAll(() => {
+  applyScenarioSql(STOREFRONT_PASSKEY_SCENARIO);
+});
+
+test.describe("web-storefront passkey sign-in", () => {
+  test("a reader without a passkey for the site goes back to the form with a message", async ({
+    page,
+  }) => {
+    await addVirtualAuthenticator(page);
+    await page.goto(storefrontUrl("/login?returnTo=%2Fmy"));
+
+    await passkeyButton(page).click();
+
+    await expect(page.getByRole("status")).toContainText(
+      "Try again, or sign in with your email address and password."
+    );
+    await expect(page).toHaveURL(/\/login\?returnTo=/u);
+    expect(await currentSession(page)).toBeUndefined();
+    await expect(
+      page.getByRole("button", { exact: true, name: "Sign in" })
+    ).toBeEnabled();
+  });
+
+  test("a reader with a passkey signs in with it alone and lands where they were going", async ({
+    page,
+  }) => {
+    await addVirtualAuthenticator(page);
+    await registerPasskey(page);
+    expect(await currentSession(page)).toBeUndefined();
+
+    await page.goto(storefrontUrl("/login?returnTo=%2Fmy"));
+    // The browser offers the passkey in the email field's suggestions too.
+    await expect(page.getByLabel(/Email address/u)).toHaveAttribute(
+      "autocomplete",
+      "username webauthn"
+    );
+    await passkeyButton(page).click();
+
+    await expect(page).toHaveURL(/\/my\/?$/u);
+    await expect(
+      page.getByRole("heading", { name: "Reading history" })
+    ).toBeVisible();
+    expect(await currentSession(page)).toBeTruthy();
+  });
+});

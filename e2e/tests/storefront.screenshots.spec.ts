@@ -321,7 +321,10 @@ test.describe("web-storefront screenshots", () => {
 
         await expect(page.getByLabel(/Email address/u)).toBeVisible();
         await expect(
-          page.getByRole("button", { name: "Sign in" })
+          page.getByRole("button", { exact: true, name: "Sign in" })
+        ).toBeVisible();
+        await expect(
+          page.getByRole("button", { name: "Sign in with a passkey" })
         ).toBeVisible();
 
         await expectScreenshot(page, viewport, "login");

@@ -1,6 +1,7 @@
 import { Button } from "@publira/ui-components/button";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
+import type { ReactNode } from "react";
 
 import { LocaleField } from "#components/locale-field";
 import { Message } from "#components/message";
@@ -25,19 +26,30 @@ const SignInFields = ({
   </>
 );
 
-/** A button per provider the tenant offers, and nothing where it offers none. */
+/**
+ * A button per provider the tenant offers, above the other ways in the caller
+ * offers as `children`, and nothing where there is neither.
+ *
+ * Every way in is a form, so the block shows only while it holds one: a
+ * passkey control the browser cannot use renders nothing, and the divider
+ * would otherwise stand above an empty space. The caller's ways in come last
+ * because such a control appears only once the page has hydrated, and below
+ * the providers it moves none of their buttons as it does.
+ */
 export const SocialSignInButtons = async ({
+  children,
   returnTo,
 }: {
+  children?: ReactNode;
   returnTo: string;
 }) => {
   const clients = await getTenantSignInClients(await getTenantId());
-  if (!clients.apple && !clients.google) {
+  if (!clients.apple && !clients.google && !children) {
     return null;
   }
 
   return (
-    <div className="grid gap-2">
+    <div className="hidden gap-2 has-[form]:grid">
       <p className="text-center text-sm text-muted-foreground">
         <Suspense fallback={<SkeletonLine className="inline-block h-4 w-8" />}>
           <Message message="storefront.auth.social.divider" />
@@ -63,6 +75,7 @@ export const SocialSignInButtons = async ({
           </Button>
         </form>
       ) : null}
+      {children}
     </div>
   );
 };
