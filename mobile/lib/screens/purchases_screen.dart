@@ -147,13 +147,16 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
       ),
     );
     final accessToken = _accessToken;
+    // Every page is read in the language the export started in, so a change
+    // of language part way through cannot mix two in one file.
+    final locale = _locale;
     setState(() => _exporting = true);
     try {
       final purchases = <MyPurchase>[];
       var token = '';
       do {
         final page = await repository.listMyPurchases(
-          locale: _locale,
+          locale: locale,
           token: token,
           limit: myPurchasePageLimitMax,
         );

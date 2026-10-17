@@ -280,6 +280,11 @@ class FakeCatalogRepository implements CatalogRepository {
   /// The locale of every read that takes one, in the order they were made.
   final List<String> readLocales = <String>[];
 
+  /// Held open by a test that makes reads in two locales answer out of order:
+  /// [listSeries], [getSeries], and [getEpisode] asked in a locale named here
+  /// answer once its completer completes, with what the fake holds by then.
+  final Map<String, Completer<void>> localeGates = {};
+
   /// Tokens [listSeries] was called with, in order. The first page is the
   /// empty one.
   final List<String> seriesTokens = <String>[];
@@ -368,6 +373,7 @@ class FakeCatalogRepository implements CatalogRepository {
     String token = '',
   }) async {
     readLocales.add(locale);
+    await localeGates[locale]?.future;
     seriesTokens.add(token);
     final error = token.isEmpty ? listError : listMoreError ?? listError;
     if (error != null) {
@@ -719,6 +725,7 @@ class FakeCatalogRepository implements CatalogRepository {
     required String locale,
   }) async {
     readLocales.add(locale);
+    await localeGates[locale]?.future;
     final error = detailError;
     if (error != null) {
       throw error;
@@ -760,6 +767,7 @@ class FakeCatalogRepository implements CatalogRepository {
     required String locale,
   }) async {
     readLocales.add(locale);
+    await localeGates[locale]?.future;
     final error = episodeError;
     if (error != null) {
       throw error;

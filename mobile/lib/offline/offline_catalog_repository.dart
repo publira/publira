@@ -70,6 +70,21 @@ class OfflineCatalogRepository implements CatalogRepository {
     readerId: _readerId,
   );
 
+  /// The latest read started of each record the device keeps, keyed by what
+  /// it reads, so only the answer to the newest one is written down.
+  ///
+  /// Two reads of one record can be in flight at once — a screen asks again
+  /// in the language the device has just switched to while the read in the
+  /// old one is still on its way — and they can answer in either order.
+  /// Writing whichever answered last would let the older one replace what the
+  /// newer one wrote.
+  final _latestReads = <String, int>{};
+  var _readsStarted = 0;
+
+  int _startRead(String key) => _latestReads[key] = ++_readsStarted;
+
+  bool _isLatest(String key, int read) => _latestReads[key] == read;
+
   /// The catalog list, of which the device keeps the first page.
   ///
   /// A page under it is the API's to answer: the reader asks for one by
@@ -82,10 +97,12 @@ class OfflineCatalogRepository implements CatalogRepository {
     required String locale,
     String token = '',
   }) async {
+    const key = 'series-list';
+    final read = token.isEmpty ? _startRead(key) : null;
     try {
       final page = await _origin.listSeries(locale: locale, token: token);
       _reached();
-      if (token.isEmpty) {
+      if (read != null && _isLatest(key, read)) {
         await library.writeSeriesList(page);
       }
       return page;
@@ -216,9 +233,14 @@ class OfflineCatalogRepository implements CatalogRepository {
     String publicId, {
     required String locale,
   }) async {
+    final key = 'series/$publicId';
+    final read = _startRead(key);
     try {
       final detail = await _origin.getSeries(publicId, locale: locale);
       _reached();
+      if (!_isLatest(key, read)) {
+        return detail;
+      }
       if (detail == null) {
         await library.removeSeries(publicId);
         return null;
@@ -313,6 +335,9 @@ class OfflineCatalogRepository implements CatalogRepository {
     // is filed under the reader it was fetched for even when the account
     // changes before the answer arrives.
     final reader = _readerId();
+    final key = 'episode/${savedEpisodeKey(seriesPublicId, episodePublicId)}';
+    final read = _startRead(key);
+    bool isLatest() => _isLatest(key, read);
     try {
       final detail = await _origin.getEpisode(
         seriesPublicId,
@@ -320,11 +345,14 @@ class OfflineCatalogRepository implements CatalogRepository {
         locale: locale,
       );
       _reached();
+      if (!isLatest()) {
+        return detail;
+      }
       if (detail == null) {
         await library.removeEpisode(seriesPublicId, episodePublicId);
         return null;
       }
-      await _remember(detail, reader, locale);
+      await _remember(detail, reader, locale, isLatest);
       return detail;
     } on CatalogFailure catch (failure) {
       if (failure.kind != CatalogFailureKind.network) {
@@ -592,11 +620,13 @@ class OfflineCatalogRepository implements CatalogRepository {
 
   /// Records what the API just said about [detail] for [reader], which is as
   /// much about taking a body away as about keeping one. [locale] is the one
-  /// [detail] was read in, which a second read of it asks in again.
+  /// [detail] was read in, which a second read of it asks in again, and
+  /// [isLatest] whether a newer read of it has started since.
   Future<void> _remember(
     EpisodeDetail detail,
     String reader,
     String locale,
+    bool Function() isLatest,
   ) async {
     // An entitled body is kept only when there is a reader to hold it against:
     // a grant the device cannot name again is a grant it could never re-check.
@@ -608,6 +638,9 @@ class OfflineCatalogRepository implements CatalogRepository {
       EpisodeAccess.unknown => false,
     };
     final grant = keep ? await _grantEnd(detail, locale) : null;
+    if (!isLatest()) {
+      return;
+    }
     if (!keep || grant == _GrantEnd.lapsed) {
       await library.removeEpisode(detail.seriesId, detail.episode.id);
       return;

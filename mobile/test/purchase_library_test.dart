@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -489,6 +491,40 @@ void main() {
       // The whole history, read in the largest pages the API answers rather
       // than the ones the list shows.
       expect(purchases.limits, [100, 100]);
+    });
+
+    testWidgets('reads every page in the language the export started in', (
+      tester,
+    ) async {
+      addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+      purchases.pages = [
+        [purchase('purchase-1')],
+        [purchase('purchase-2')],
+      ];
+      await openPurchases(tester);
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('purchase-row-purchase-1')),
+      );
+      purchases.limits.clear();
+      purchases.listLocales.clear();
+      final gate = Completer<void>();
+      purchases.listGate = gate;
+
+      await tester.tap(find.byKey(const ValueKey('purchases-export')));
+      await tester.pump();
+      tester.platformDispatcher.localesTestValue = const [Locale('ja')];
+      await tester.pump();
+      gate.complete();
+      purchases.listGate = null;
+      await pumpUntilTrue(tester, () => share.files.isNotEmpty);
+
+      final exportLocales = [
+        for (final (index, limit) in purchases.limits.indexed)
+          if (limit == 100) purchases.listLocales[index],
+      ];
+      expect(exportLocales, ['en', 'en']);
+      expect(purchases.listLocales, contains('ja'));
     });
 
     testWidgets('says so when the history could not be read', (tester) async {

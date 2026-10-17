@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/models/episode_detail.dart';
@@ -152,6 +154,85 @@ void main() {
     }
     fail('expected the read to fail');
   }
+
+  group('reads in two languages answering out of order', () {
+    SeriesDetail titled(String title, String locale) {
+      final detail = _seriesDetail();
+      return SeriesDetail(
+        series: SeriesItem(
+          id: _seriesId,
+          title: title,
+          description: detail.series.description,
+          locale: locale,
+        ),
+        episodes: detail.episodes,
+      );
+    }
+
+    test('keep the series the newer read answered', () async {
+      final catalog = build();
+      final older = Completer<void>();
+      origin.localeGates['ja'] = older;
+
+      final first = catalog.getSeries(_seriesId, locale: 'ja');
+      origin.details = {_seriesId: titled('Newer', 'en')};
+      await catalog.getSeries(_seriesId, locale: 'en');
+      origin.details = {_seriesId: titled('Older', 'ja')};
+      older.complete();
+      await first;
+
+      final saved = await library.readSeriesDetail(_seriesId);
+      expect(saved!.series.title, 'Newer');
+      expect(saved.series.locale, 'en');
+    });
+
+    test('keep the catalog the newer read answered', () async {
+      final catalog = build();
+      final older = Completer<void>();
+      origin.localeGates['ja'] = older;
+
+      final first = catalog.listSeries(locale: 'ja');
+      origin.series = [titled('Newer', 'en').series];
+      await catalog.listSeries(locale: 'en');
+      origin.series = [titled('Older', 'ja').series];
+      older.complete();
+      await first;
+
+      expect(library.series!.series.single.title, 'Newer');
+    });
+
+    test('keep the episode the newer read answered', () async {
+      final catalog = build();
+      final older = Completer<void>();
+      origin.localeGates['ja'] = older;
+      final key = episodeKey(_seriesId, _episodeId);
+      EpisodeDetail titledEpisode(String title) {
+        final detail = _detail();
+        return EpisodeDetail(
+          episode: EpisodeItem(
+            id: _episodeId,
+            title: title,
+            orderIndex: 1,
+            price: 0,
+          ),
+          seriesId: detail.seriesId,
+          seriesTitle: detail.seriesTitle,
+          access: detail.access,
+          images: detail.images,
+        );
+      }
+
+      final first = catalog.getEpisode(_seriesId, _episodeId, locale: 'ja');
+      origin.episodes[key] = titledEpisode('Newer');
+      await catalog.getEpisode(_seriesId, _episodeId, locale: 'en');
+      origin.episodes[key] = titledEpisode('Older');
+      older.complete();
+      await first;
+
+      final saved = await library.readEpisode(_seriesId, _episodeId);
+      expect(saved!.detail.episode.title, 'Newer');
+    });
+  });
 
   test('listSeries keeps the catalog the API answered', () async {
     await build().listSeries(locale: 'en');

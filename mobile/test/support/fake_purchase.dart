@@ -89,6 +89,10 @@ class FakePurchaseRepository implements PurchaseRepository {
   /// The locale each call to [listMyPurchases] asked in, in order.
   final List<String> listLocales = <String>[];
 
+  /// Held open by a test that changes something while a page is on its way:
+  /// [listMyPurchases] answers once it completes.
+  Completer<void>? listGate;
+
   /// Thrown by [listMyPurchases].
   PurchaseFailure? listFailure;
 
@@ -176,6 +180,7 @@ class FakePurchaseRepository implements PurchaseRepository {
   }) async {
     limits.add(limit);
     listLocales.add(locale);
+    await listGate?.future;
     final failure = listFailure;
     if (failure != null) {
       throw failure;
