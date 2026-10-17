@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"math/big"
 	"slices"
 	"strconv"
@@ -49,8 +50,10 @@ const searchTimeout = 10 * time.Second
 type Backend struct {
 	client *opensearchapi.Client
 	index  string
-	// analysis is what an index the backend creates is built with.
-	analysis string
+	// analysis is what an index the backend creates is built with, and
+	// localeAnalyses what one of those languages' is built with instead.
+	analysis       string
+	localeAnalyses map[string]string
 	// locales are the languages it keeps an index for, none for the one index
 	// of an install that predates per-language indices.
 	locales []string
@@ -90,7 +93,13 @@ func Open(cfg Config) (*Backend, error) {
 }
 
 func newBackend(client *opensearchapi.Client, cfg Config) *Backend {
-	return &Backend{client: client, index: cfg.Index, analysis: cfg.Analysis, locales: slices.Clone(cfg.Locales)}
+	return &Backend{
+		client:         client,
+		index:          cfg.Index,
+		analysis:       cfg.Analysis,
+		localeAnalyses: maps.Clone(cfg.LocaleAnalyses),
+		locales:        slices.Clone(cfg.Locales),
+	}
 }
 
 func newClient(cfg Config) (*opensearchapi.Client, error) {

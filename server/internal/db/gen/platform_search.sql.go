@@ -13,7 +13,7 @@ import (
 )
 
 const GetPlatformSearchConfig = `-- name: GetPlatformSearchConfig :one
-SELECT singleton, engine, url, index_alias, username, password_encrypted, revision, serving_revision, serving_engine, serving_url, serving_index_alias, serving_username, serving_password_encrypted, serving_since, build_failed_revision, build_error, build_failed_at, created_at, updated_at, analysis, serving_analysis, serving_locales
+SELECT singleton, engine, url, index_alias, username, password_encrypted, revision, serving_revision, serving_engine, serving_url, serving_index_alias, serving_username, serving_password_encrypted, serving_since, build_failed_revision, build_error, build_failed_at, created_at, updated_at, analysis, serving_analysis, serving_locales, locale_analyses, serving_locale_analyses
 FROM platform_search_config
 WHERE singleton = TRUE
 `
@@ -46,6 +46,8 @@ func (q *Queries) GetPlatformSearchConfig(ctx context.Context) (PlatformSearchCo
 		&i.Analysis,
 		&i.ServingAnalysis,
 		pq.Array(&i.ServingLocales),
+		&i.LocaleAnalyses,
+		&i.ServingLocaleAnalyses,
 	)
 	return i, err
 }
@@ -59,6 +61,7 @@ INSERT INTO platform_search_config (
         username,
         password_encrypted,
         analysis,
+        locale_analyses,
         serving_revision,
         serving_engine,
         serving_url,
@@ -66,6 +69,7 @@ INSERT INTO platform_search_config (
         serving_username,
         serving_password_encrypted,
         serving_analysis,
+        serving_locale_analyses,
         serving_since,
         updated_at
     )
@@ -77,17 +81,19 @@ VALUES (
         $4,
         $5,
         $6,
-        CASE WHEN $7::boolean THEN 1 ELSE 0 END,
-        CASE WHEN $7::boolean THEN $1 ELSE 'sql' END,
-        CASE WHEN $7::boolean THEN $2 END,
-        CASE WHEN $7::boolean THEN $3 END,
-        CASE WHEN $7::boolean THEN $4 END,
-        CASE WHEN $7::boolean THEN $5 END,
-        CASE WHEN $7::boolean THEN $6 END,
-        CASE WHEN $7::boolean THEN NOW() END,
+        $7,
+        CASE WHEN $8::boolean THEN 1 ELSE 0 END,
+        CASE WHEN $8::boolean THEN $1 ELSE 'sql' END,
+        CASE WHEN $8::boolean THEN $2 END,
+        CASE WHEN $8::boolean THEN $3 END,
+        CASE WHEN $8::boolean THEN $4 END,
+        CASE WHEN $8::boolean THEN $5 END,
+        CASE WHEN $8::boolean THEN $6 END,
+        CASE WHEN $8::boolean THEN $7 END,
+        CASE WHEN $8::boolean THEN NOW() END,
         NOW()
     )
-RETURNING singleton, engine, url, index_alias, username, password_encrypted, revision, serving_revision, serving_engine, serving_url, serving_index_alias, serving_username, serving_password_encrypted, serving_since, build_failed_revision, build_error, build_failed_at, created_at, updated_at, analysis, serving_analysis, serving_locales
+RETURNING singleton, engine, url, index_alias, username, password_encrypted, revision, serving_revision, serving_engine, serving_url, serving_index_alias, serving_username, serving_password_encrypted, serving_since, build_failed_revision, build_error, build_failed_at, created_at, updated_at, analysis, serving_analysis, serving_locales, locale_analyses, serving_locale_analyses
 `
 
 type InsertPlatformSearchConfigParams struct {
@@ -97,6 +103,7 @@ type InsertPlatformSearchConfigParams struct {
 	Username          sql.NullString `json:"username"`
 	PasswordEncrypted sql.NullString `json:"password_encrypted"`
 	Analysis          sql.NullString `json:"analysis"`
+	LocaleAnalyses    sql.NullString `json:"locale_analyses"`
 	Serve             bool           `json:"serve"`
 }
 
@@ -114,6 +121,7 @@ func (q *Queries) InsertPlatformSearchConfig(ctx context.Context, arg InsertPlat
 		arg.Username,
 		arg.PasswordEncrypted,
 		arg.Analysis,
+		arg.LocaleAnalyses,
 		arg.Serve,
 	)
 	var i PlatformSearchConfig
@@ -140,12 +148,14 @@ func (q *Queries) InsertPlatformSearchConfig(ctx context.Context, arg InsertPlat
 		&i.Analysis,
 		&i.ServingAnalysis,
 		pq.Array(&i.ServingLocales),
+		&i.LocaleAnalyses,
+		&i.ServingLocaleAnalyses,
 	)
 	return i, err
 }
 
 const LockPlatformSearchConfig = `-- name: LockPlatformSearchConfig :one
-SELECT singleton, engine, url, index_alias, username, password_encrypted, revision, serving_revision, serving_engine, serving_url, serving_index_alias, serving_username, serving_password_encrypted, serving_since, build_failed_revision, build_error, build_failed_at, created_at, updated_at, analysis, serving_analysis, serving_locales
+SELECT singleton, engine, url, index_alias, username, password_encrypted, revision, serving_revision, serving_engine, serving_url, serving_index_alias, serving_username, serving_password_encrypted, serving_since, build_failed_revision, build_error, build_failed_at, created_at, updated_at, analysis, serving_analysis, serving_locales, locale_analyses, serving_locale_analyses
 FROM platform_search_config
 WHERE singleton = TRUE
 FOR UPDATE
@@ -179,6 +189,8 @@ func (q *Queries) LockPlatformSearchConfig(ctx context.Context) (PlatformSearchC
 		&i.Analysis,
 		&i.ServingAnalysis,
 		pq.Array(&i.ServingLocales),
+		&i.LocaleAnalyses,
+		&i.ServingLocaleAnalyses,
 	)
 	return i, err
 }
@@ -216,6 +228,7 @@ SET serving_revision = revision,
     serving_username = username,
     serving_password_encrypted = password_encrypted,
     serving_analysis = analysis,
+    serving_locale_analyses = locale_analyses,
     serving_locales = $1::text [],
     serving_since = NOW(),
     build_failed_revision = NULL,
@@ -223,7 +236,7 @@ SET serving_revision = revision,
     build_failed_at = NULL
 WHERE singleton = TRUE
     AND revision = $2
-RETURNING singleton, engine, url, index_alias, username, password_encrypted, revision, serving_revision, serving_engine, serving_url, serving_index_alias, serving_username, serving_password_encrypted, serving_since, build_failed_revision, build_error, build_failed_at, created_at, updated_at, analysis, serving_analysis, serving_locales
+RETURNING singleton, engine, url, index_alias, username, password_encrypted, revision, serving_revision, serving_engine, serving_url, serving_index_alias, serving_username, serving_password_encrypted, serving_since, build_failed_revision, build_error, build_failed_at, created_at, updated_at, analysis, serving_analysis, serving_locales, locale_analyses, serving_locale_analyses
 `
 
 type ServePlatformSearchConfigParams struct {
@@ -261,6 +274,8 @@ func (q *Queries) ServePlatformSearchConfig(ctx context.Context, arg ServePlatfo
 		&i.Analysis,
 		&i.ServingAnalysis,
 		pq.Array(&i.ServingLocales),
+		&i.LocaleAnalyses,
+		&i.ServingLocaleAnalyses,
 	)
 	return i, err
 }
@@ -273,24 +288,26 @@ SET engine = $1,
     username = $4,
     password_encrypted = $5,
     analysis = $6,
+    locale_analyses = $7,
     revision = revision + 1,
-    serving_revision = CASE WHEN $7::boolean THEN revision + 1 ELSE serving_revision END,
-    serving_engine = CASE WHEN $7::boolean THEN $1 ELSE serving_engine END,
-    serving_url = CASE WHEN $7::boolean THEN $2 ELSE serving_url END,
-    serving_index_alias = CASE WHEN $7::boolean THEN $3 ELSE serving_index_alias END,
-    serving_username = CASE WHEN $7::boolean THEN $4 ELSE serving_username END,
-    serving_password_encrypted = CASE WHEN $7::boolean THEN $5 ELSE serving_password_encrypted END,
-    serving_analysis = CASE WHEN $7::boolean THEN $6 ELSE serving_analysis END,
+    serving_revision = CASE WHEN $8::boolean THEN revision + 1 ELSE serving_revision END,
+    serving_engine = CASE WHEN $8::boolean THEN $1 ELSE serving_engine END,
+    serving_url = CASE WHEN $8::boolean THEN $2 ELSE serving_url END,
+    serving_index_alias = CASE WHEN $8::boolean THEN $3 ELSE serving_index_alias END,
+    serving_username = CASE WHEN $8::boolean THEN $4 ELSE serving_username END,
+    serving_password_encrypted = CASE WHEN $8::boolean THEN $5 ELSE serving_password_encrypted END,
+    serving_analysis = CASE WHEN $8::boolean THEN $6 ELSE serving_analysis END,
+    serving_locale_analyses = CASE WHEN $8::boolean THEN $7 ELSE serving_locale_analyses END,
     -- A save served at once on an engine with an index keeps the indices it
     -- serves, so it keeps the languages they were built for as well.
-    serving_locales = CASE WHEN $7::boolean AND $1 = 'sql' THEN NULL ELSE serving_locales END,
-    serving_since = CASE WHEN $7::boolean THEN NOW() ELSE serving_since END,
+    serving_locales = CASE WHEN $8::boolean AND $1 = 'sql' THEN NULL ELSE serving_locales END,
+    serving_since = CASE WHEN $8::boolean THEN NOW() ELSE serving_since END,
     build_failed_revision = NULL,
     build_error = NULL,
     build_failed_at = NULL,
     updated_at = NOW()
 WHERE singleton = TRUE
-RETURNING singleton, engine, url, index_alias, username, password_encrypted, revision, serving_revision, serving_engine, serving_url, serving_index_alias, serving_username, serving_password_encrypted, serving_since, build_failed_revision, build_error, build_failed_at, created_at, updated_at, analysis, serving_analysis, serving_locales
+RETURNING singleton, engine, url, index_alias, username, password_encrypted, revision, serving_revision, serving_engine, serving_url, serving_index_alias, serving_username, serving_password_encrypted, serving_since, build_failed_revision, build_error, build_failed_at, created_at, updated_at, analysis, serving_analysis, serving_locales, locale_analyses, serving_locale_analyses
 `
 
 type UpdatePlatformSearchConfigParams struct {
@@ -300,6 +317,7 @@ type UpdatePlatformSearchConfigParams struct {
 	Username          sql.NullString `json:"username"`
 	PasswordEncrypted sql.NullString `json:"password_encrypted"`
 	Analysis          sql.NullString `json:"analysis"`
+	LocaleAnalyses    sql.NullString `json:"locale_analyses"`
 	Serve             bool           `json:"serve"`
 }
 
@@ -317,6 +335,7 @@ func (q *Queries) UpdatePlatformSearchConfig(ctx context.Context, arg UpdatePlat
 		arg.Username,
 		arg.PasswordEncrypted,
 		arg.Analysis,
+		arg.LocaleAnalyses,
 		arg.Serve,
 	)
 	var i PlatformSearchConfig
@@ -343,6 +362,8 @@ func (q *Queries) UpdatePlatformSearchConfig(ctx context.Context, arg UpdatePlat
 		&i.Analysis,
 		&i.ServingAnalysis,
 		pq.Array(&i.ServingLocales),
+		&i.LocaleAnalyses,
+		&i.ServingLocaleAnalyses,
 	)
 	return i, err
 }

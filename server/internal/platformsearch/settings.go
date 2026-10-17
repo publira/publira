@@ -2,6 +2,7 @@ package platformsearch
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -64,7 +65,17 @@ const (
 	FieldExpectedRevision   = "expected_revision"
 	FieldAnalysis           = "analysis"
 	FieldAnalysisUpdateMode = "analysis_update_mode"
+	// FieldLocaleAnalyses is the list of changes to single languages'
+	// analyses. A refusal of one of them names its place in the list, as
+	// [LocaleAnalysisField] spells it.
+	FieldLocaleAnalyses = "locale_analyses"
 )
+
+// LocaleAnalysisField names field of the change at index of the list
+// [FieldLocaleAnalyses] names: locale_analyses[1].analysis.
+func LocaleAnalysisField(index int, field string) string {
+	return fmt.Sprintf("%s[%d].%s", FieldLocaleAnalyses, index, field)
+}
 
 var (
 	errURLRequired       = errors.New("a URL is required for this engine")
@@ -78,6 +89,7 @@ var (
 
 	errSQLTakesNoAnalysis  = errors.New("the sql engine keeps no index to analyze")
 	errInvalidAnalysisMode = errors.New("invalid analysis update mode")
+	errLocaleNamedTwice    = errors.New("the language is given more than one analysis change")
 
 	// ErrUsernameRequired refuses a password stated without the username it
 	// belongs to.
@@ -101,6 +113,23 @@ func UnknownEngineError(name string) error {
 	}
 	return &fielderr.Invalid{Field: FieldEngine, Err: fmt.Errorf("%q names no search engine; the ones available are %s", name, strings.Join(names, ", "))}
 }
+
+// UnknownLocaleError refuses an analysis given for a language the catalog keeps
+// no index for, naming the ones it does.
+func UnknownLocaleError(name string) error {
+	return fmt.Errorf("%q names no language the catalog keeps an index for; the ones it does are %s", name, strings.Join(IndexLocales, ", "))
+}
+
+// LocaleError is a refusal of the analysis given for one language, which it
+// names.
+type LocaleError struct {
+	Locale string
+	Err    error
+}
+
+func (e *LocaleError) Error() string { return e.Locale + ": " + e.Err.Error() }
+
+func (e *LocaleError) Unwrap() error { return e.Err }
 
 // Settings is a saved configuration without its password.
 type Settings struct {
@@ -208,8 +237,11 @@ const (
 // ServingSettings is the configuration the search answers from.
 type ServingSettings struct {
 	Settings
-	// Analysis is what its index was built with, empty for the default.
-	Analysis string
+	// Analysis is what its indices were built with, empty for the default,
+	// and LocaleAnalyses what the indices of single languages were built with
+	// instead.
+	Analysis       string
+	LocaleAnalyses map[string]string
 	// Revision is the saved revision it was saved at, zero for the SQL engine
 	// of a row that has never served another.
 	Revision int64
@@ -246,11 +278,14 @@ type Stored struct {
 	// Analysis is the saved settings.analysis of the catalog index, as
 	// [opensearchbackend.ParseAnalysis] answered it, and empty for the
 	// default, which is all the SQL engine keeps.
-	Analysis    string
-	HasPassword bool
-	Revision    int64
-	Serving     ServingSettings
-	State       BuildState
+	Analysis string
+	// LocaleAnalyses are the saved definitions of single languages' indices,
+	// by locale, in place of Analysis. The SQL engine keeps none.
+	LocaleAnalyses map[string]string
+	HasPassword    bool
+	Revision       int64
+	Serving        ServingSettings
+	State          BuildState
 	// Failure is set in the BuildFailed state and only then.
 	Failure *BuildFailure
 }
@@ -264,9 +299,10 @@ func FromConfig(row dbmodels.PlatformSearchConfig) Stored {
 			Index:    row.IndexAlias.String,
 			Username: row.Username.String,
 		},
-		Analysis:    row.Analysis.String,
-		HasPassword: strings.TrimSpace(row.PasswordEncrypted.String) != "",
-		Revision:    row.Revision,
+		Analysis:       row.Analysis.String,
+		LocaleAnalyses: decodeLocaleAnalyses(row.LocaleAnalyses.String),
+		HasPassword:    strings.TrimSpace(row.PasswordEncrypted.String) != "",
+		Revision:       row.Revision,
 		Serving: ServingSettings{
 			Settings: Settings{
 				Engine:   Engine(row.ServingEngine),
@@ -274,10 +310,11 @@ func FromConfig(row dbmodels.PlatformSearchConfig) Stored {
 				Index:    row.ServingIndexAlias.String,
 				Username: row.ServingUsername.String,
 			},
-			Analysis: row.ServingAnalysis.String,
-			Revision: row.ServingRevision,
-			Since:    row.ServingSince.Time,
-			Locales:  row.ServingLocales,
+			Analysis:       row.ServingAnalysis.String,
+			LocaleAnalyses: decodeLocaleAnalyses(row.ServingLocaleAnalyses.String),
+			Revision:       row.ServingRevision,
+			Since:          row.ServingSince.Time,
+			Locales:        row.ServingLocales,
 		},
 		State: Serving,
 	}
@@ -323,6 +360,100 @@ func (s Stored) EffectiveAnalysis() string {
 	default:
 		return string(opensearchbackend.DefaultAnalysis())
 	}
+}
+
+// OwnAnalysisLocales are the languages whose index the saved configuration
+// builds from a definition of their own, in the order of IndexLocales. The SQL
+// engine builds none.
+func (s Stored) OwnAnalysisLocales() []string {
+	if !s.Engine.HasIndex() {
+		return nil
+	}
+	var locales []string
+	for _, locale := range IndexLocales {
+		if _, ok := s.LocaleAnalyses[locale]; ok {
+			locales = append(locales, locale)
+		}
+	}
+	return locales
+}
+
+// EffectiveLocaleAnalysis is the definition the saved configuration builds the
+// index of locale with, as JSON: the language's own, or
+// [Stored.EffectiveAnalysis].
+func (s Stored) EffectiveLocaleAnalysis(locale string) string {
+	if analysis, ok := s.LocaleAnalyses[locale]; ok && s.Engine.HasIndex() {
+		return analysis
+	}
+	return s.EffectiveAnalysis()
+}
+
+// usesDefaultAnalysis reports whether the saved configuration builds the index
+// of any language with the default analysis, which needs the plugins it is
+// built on.
+func (s Stored) usesDefaultAnalysis() bool {
+	return slices.ContainsFunc(IndexLocales, func(locale string) bool {
+		return analysisFor(s.Analysis, s.LocaleAnalyses, locale) == ""
+	})
+}
+
+// analysisFor is the analysis the index of locale is built with, given the
+// shared one and those of single languages: empty for the default.
+func analysisFor(shared string, own map[string]string, locale string) string {
+	if analysis, ok := own[locale]; ok {
+		return analysis
+	}
+	return shared
+}
+
+// changedLocales are the languages of IndexLocales whose index the saved
+// configuration builds with another analysis than the serving one built it
+// with.
+func (s Stored) changedLocales() []string {
+	var changed []string
+	for _, locale := range IndexLocales {
+		if analysisFor(s.Analysis, s.LocaleAnalyses, locale) != analysisFor(s.Serving.Analysis, s.Serving.LocaleAnalyses, locale) {
+			changed = append(changed, locale)
+		}
+	}
+	return changed
+}
+
+// decodeLocaleAnalyses reads a stored locale_analyses column. The column's
+// constraint keeps it a JSON object of objects, so a value that does not
+// decode is one no write made, and reads as none.
+func decodeLocaleAnalyses(stored string) map[string]string {
+	if stored == "" {
+		return nil
+	}
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(stored), &raw); err != nil || len(raw) == 0 {
+		return nil
+	}
+	analyses := make(map[string]string, len(raw))
+	for locale, analysis := range raw {
+		analyses[locale] = string(analysis)
+	}
+	return analyses
+}
+
+// encodeLocaleAnalyses is the value of the locale_analyses column holding
+// analyses, each what [opensearchbackend.ParseAnalysis] answered: one JSON
+// object with its keys sorted, so two saves of the same definitions write the
+// same text, or empty for none.
+func encodeLocaleAnalyses(analyses map[string]string) (string, error) {
+	if len(analyses) == 0 {
+		return "", nil
+	}
+	raw := make(map[string]json.RawMessage, len(analyses))
+	for locale, analysis := range analyses {
+		raw[locale] = json.RawMessage(analysis)
+	}
+	encoded, err := json.Marshal(raw)
+	if err != nil {
+		return "", fmt.Errorf("platformsearch: encode the analyses of single languages: %w", err)
+	}
+	return string(encoded), nil
 }
 
 // Unsaved is what an install that has saved nothing reads as: the SQL engine,

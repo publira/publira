@@ -35,11 +35,11 @@ type BuildParams struct {
 	DB      *sql.DB
 	Secrets Decrypter
 	Logger  *slog.Logger
-	// Force rebuilds the indices of the saved configuration even when the
-	// search already answers from them, for a mapping a new release changed or
-	// an index that was lost. Without it a build is made only while one is
-	// due, which a save of another target or another analysis leaves, and so
-	// do indices built for other languages than IndexLocales.
+	// Force rebuilds the index of every language even when the search already
+	// answers from them, for a mapping a new release changed or an index that
+	// was lost. Without it a build is made only while one is due, which a save
+	// of another target or another analysis leaves, and so do indices built
+	// for other languages than IndexLocales.
 	Force bool
 }
 
@@ -47,8 +47,8 @@ type BuildParams struct {
 type BuildResult struct {
 	// Built is false when there was nothing to build.
 	Built bool
-	// Indices are the indices the aliases of each language name once the
-	// build is done.
+	// Indices are the indices the aliases of the languages it rebuilt name
+	// once the build is done.
 	Indices []string
 	// Alias is the saved alias they were built behind, which each language's
 	// alias is named after.
@@ -58,11 +58,12 @@ type BuildResult struct {
 	Serving bool
 }
 
-// Build builds the index of each of IndexLocales the saved configuration names
-// from the database and moves the search onto them once they hold the
-// catalog. A failure is
-// recorded on the row, where the platform API reports it, and leaves the
-// search answering from where it was.
+// Build builds the indices the saved configuration names from the database
+// and moves the search onto them once they hold the catalog: the index of
+// each of IndexLocales, or on the target the search answers from, only those
+// of the languages whose analysis a save changed. A failure is recorded on the
+// row, where the platform API reports it, and leaves the search answering from
+// where it was.
 func Build(ctx context.Context, p BuildParams) (BuildResult, error) {
 	logger := p.Logger
 	if logger == nil {
@@ -143,9 +144,35 @@ func resync(ctx context.Context, db *sql.DB, backend *opensearchbackend.Backend)
 	return nil
 }
 
+// rebuildLocales are the languages a build of stored makes new indices for:
+// every one of IndexLocales when it is forced, when it moves to another
+// target, or when the serving indices were built for other languages, and
+// otherwise those whose analysis the save changed. A build due with none of
+// them changed, as a release that moves the revision on for a mapping it
+// changed leaves one, rebuilds every one too.
+func rebuildLocales(stored Stored, force bool) []string {
+	if force || stored.Target() != stored.Serving.Target() || !stored.Serving.indicesCurrent() {
+		return IndexLocales
+	}
+	if changed := stored.changedLocales(); len(changed) > 0 {
+		return changed
+	}
+	return IndexLocales
+}
+
+// build fills new indices for the languages rebuildLocales names and moves
+// their aliases onto them, and answers a backend over the index of every one
+// of IndexLocales, which the search answers from once it has moved.
 func build(ctx context.Context, p BuildParams, row dbmodels.PlatformSearchConfig, logger *slog.Logger) (*opensearchbackend.Backend, []string, error) {
 	stored := FromConfig(row)
-	cfg := opensearchbackend.Config{URL: stored.URL, Index: stored.Index, Username: stored.Username, Analysis: stored.Analysis, Locales: IndexLocales}
+	cfg := opensearchbackend.Config{
+		URL:            stored.URL,
+		Index:          stored.Index,
+		Username:       stored.Username,
+		Analysis:       stored.Analysis,
+		LocaleAnalyses: stored.LocaleAnalyses,
+		Locales:        IndexLocales,
+	}
 	if encrypted := strings.TrimSpace(row.PasswordEncrypted.String); encrypted != "" {
 		if p.Secrets == nil {
 			return nil, nil, ErrSecretManagerUnavailable
@@ -156,14 +183,20 @@ func build(ctx context.Context, p BuildParams, row dbmodels.PlatformSearchConfig
 		}
 		cfg.Password = password
 	}
+	backend, err := opensearchbackend.Open(cfg)
+	if err != nil {
+		return nil, nil, err
+	}
+	rebuilt := cfg
+	rebuilt.Locales = rebuildLocales(stored, p.Force)
 	connectCtx, cancel := context.WithTimeout(ctx, connectTimeout)
-	backend, err := opensearchbackend.New(connectCtx, cfg)
+	rebuilding, err := opensearchbackend.New(connectCtx, rebuilt)
 	cancel()
 	if err != nil {
 		return nil, nil, err
 	}
-	logger.InfoContext(ctx, "catalog index build started", "revision", row.Revision, "engine", row.Engine, "alias", cfg.Index, "locales", cfg.Locales)
-	indices, err := catalogindex.Rebuild(ctx, p.DB, backend, logger)
+	logger.InfoContext(ctx, "catalog index build started", "revision", row.Revision, "engine", row.Engine, "alias", cfg.Index, "locales", rebuilt.Locales)
+	indices, err := catalogindex.Rebuild(ctx, p.DB, rebuilding, logger)
 	return backend, indices, err
 }
 

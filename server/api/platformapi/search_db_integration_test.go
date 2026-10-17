@@ -334,3 +334,79 @@ func TestDBUpdatePlatformSearchSettingsSavesAndRefusesAnAnalysis(t *testing.T) {
 		t.Fatalf("reset = %+v, want the default analysis at the next revision", reset)
 	}
 }
+
+// A definition given for one language is answered beside the shared one, a
+// request that names no language keeps it, and one the engine refuses is
+// refused on the change that gave it, with a message naming its language.
+func TestDBUpdatePlatformSearchSettingsSavesAndRefusesALanguagesAnalysis(t *testing.T) {
+	client, _, operator := newSearchClient(t, &recordingProbe{probe: completeOpenSearch()})
+	engine := testutil.StartOpenSearch(t)
+
+	alias := "catalog-api-test-" + strings.ToLower(t.Name())
+	request := func(revision int64, updates ...*publirasplatformv1.PlatformSearchLocaleAnalysisUpdate) *publirasplatformv1.UpdatePlatformSearchSettingsRequest {
+		return &publirasplatformv1.UpdatePlatformSearchSettingsRequest{
+			Engine:           publirasplatformv1.PlatformSearchEngine_PLATFORM_SEARCH_ENGINE_OPENSEARCH,
+			Url:              engine.URL,
+			Index:            alias,
+			ExpectedRevision: revision,
+			LocaleAnalyses:   updates,
+		}
+	}
+	replace := func(locale, analysis string) *publirasplatformv1.PlatformSearchLocaleAnalysisUpdate {
+		return &publirasplatformv1.PlatformSearchLocaleAnalysisUpdate{
+			Locale:   locale,
+			Mode:     publirasplatformv1.PlatformSearchLocaleAnalysisUpdateMode_PLATFORM_SEARCH_LOCALE_ANALYSIS_UPDATE_MODE_REPLACE,
+			Analysis: analysis,
+		}
+	}
+	saved, err := updateSearchSettings(client, operator, request(0))
+	if err != nil {
+		t.Fatalf("UpdatePlatformSearchSettings: %v", err)
+	}
+	if len(saved.GetLocaleAnalyses()) != 0 {
+		t.Fatalf("saved = %+v, want no language with an analysis of its own", saved)
+	}
+
+	english := `{"analyzer":{"written_form":{"type":"standard"},"alternate_form":{"type":"standard"}},"normalizer":{"exact_match":{"type":"custom","filter":["lowercase"]}}}`
+	refused := `{"analyzer":{"written_form":{"type":"custom","tokenizer":"no_such_tokenizer"},"alternate_form":{"type":"standard"}},"normalizer":{"exact_match":{"type":"custom","filter":["lowercase"]}}}`
+	_, err = updateSearchSettings(client, operator, request(saved.GetRevision(), replace("en", english), replace("ko", refused)))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument || !strings.Contains(err.Error(), "ko: ") || !strings.Contains(err.Error(), "no_such_tokenizer") {
+		t.Fatalf("UpdatePlatformSearchSettings with a refused definition = %v, want invalid_argument naming ko and the engine's reason", err)
+	}
+	assertFieldViolation(t, err, "locale_analyses[1].analysis")
+	_, err = updateSearchSettings(client, operator, request(saved.GetRevision(), replace("fr", english)))
+	assertFieldViolation(t, err, "locale_analyses[0].locale")
+
+	replaced, err := updateSearchSettings(client, operator, request(saved.GetRevision(), replace("en", english)))
+	if err != nil {
+		t.Fatalf("UpdatePlatformSearchSettings with a language's analysis: %v", err)
+	}
+	own := replaced.GetLocaleAnalyses()
+	if len(own) != 1 || own[0].GetLocale() != "en" || !strings.Contains(own[0].GetAnalysis(), `"standard"`) {
+		t.Fatalf("locale analyses = %v, want en's own", own)
+	}
+	if !replaced.GetDefaultAnalysis() || replaced.GetBuildState() != publirasplatformv1.PlatformSearchBuildState_PLATFORM_SEARCH_BUILD_STATE_BUILDING {
+		t.Fatalf("replaced = %+v, want the default shared analysis and a build due", replaced)
+	}
+
+	// A client that knows only the shared analysis sends no language, which
+	// keeps them.
+	kept, err := updateSearchSettings(client, operator, request(replaced.GetRevision()))
+	if err != nil {
+		t.Fatalf("UpdatePlatformSearchSettings without a language: %v", err)
+	}
+	if kept.GetRevision() != replaced.GetRevision() || len(kept.GetLocaleAnalyses()) != 1 {
+		t.Fatalf("kept = %+v, want revision %d and en's analysis", kept, replaced.GetRevision())
+	}
+
+	shared, err := updateSearchSettings(client, operator, request(kept.GetRevision(), &publirasplatformv1.PlatformSearchLocaleAnalysisUpdate{
+		Locale: "en",
+		Mode:   publirasplatformv1.PlatformSearchLocaleAnalysisUpdateMode_PLATFORM_SEARCH_LOCALE_ANALYSIS_UPDATE_MODE_SHARED,
+	}))
+	if err != nil {
+		t.Fatalf("UpdatePlatformSearchSettings back to the shared analysis: %v", err)
+	}
+	if len(shared.GetLocaleAnalyses()) != 0 || shared.GetRevision() != kept.GetRevision()+1 {
+		t.Fatalf("shared = %+v, want no language's own analysis at the next revision", shared)
+	}
+}

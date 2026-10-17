@@ -140,6 +140,64 @@ func (PlatformSearchAnalysisUpdateMode) EnumDescriptor() ([]byte, []int) {
 	return file_publira_platform_v1_search_proto_rawDescGZIP(), []int{1}
 }
 
+// What a save does to the analysis of one language's catalog index.
+type PlatformSearchLocaleAnalysisUpdateMode int32
+
+const (
+	// Keeps what the language's index is built from, as a language the request
+	// does not name keeps it.
+	PlatformSearchLocaleAnalysisUpdateMode_PLATFORM_SEARCH_LOCALE_ANALYSIS_UPDATE_MODE_UNSPECIFIED PlatformSearchLocaleAnalysisUpdateMode = 0
+	PlatformSearchLocaleAnalysisUpdateMode_PLATFORM_SEARCH_LOCALE_ANALYSIS_UPDATE_MODE_UNCHANGED   PlatformSearchLocaleAnalysisUpdateMode = 1
+	// Saves the definition in analysis as the language's own.
+	PlatformSearchLocaleAnalysisUpdateMode_PLATFORM_SEARCH_LOCALE_ANALYSIS_UPDATE_MODE_REPLACE PlatformSearchLocaleAnalysisUpdateMode = 2
+	// Drops the language's own definition, so its index is built from the
+	// shared one again.
+	PlatformSearchLocaleAnalysisUpdateMode_PLATFORM_SEARCH_LOCALE_ANALYSIS_UPDATE_MODE_SHARED PlatformSearchLocaleAnalysisUpdateMode = 3
+)
+
+// Enum value maps for PlatformSearchLocaleAnalysisUpdateMode.
+var (
+	PlatformSearchLocaleAnalysisUpdateMode_name = map[int32]string{
+		0: "PLATFORM_SEARCH_LOCALE_ANALYSIS_UPDATE_MODE_UNSPECIFIED",
+		1: "PLATFORM_SEARCH_LOCALE_ANALYSIS_UPDATE_MODE_UNCHANGED",
+		2: "PLATFORM_SEARCH_LOCALE_ANALYSIS_UPDATE_MODE_REPLACE",
+		3: "PLATFORM_SEARCH_LOCALE_ANALYSIS_UPDATE_MODE_SHARED",
+	}
+	PlatformSearchLocaleAnalysisUpdateMode_value = map[string]int32{
+		"PLATFORM_SEARCH_LOCALE_ANALYSIS_UPDATE_MODE_UNSPECIFIED": 0,
+		"PLATFORM_SEARCH_LOCALE_ANALYSIS_UPDATE_MODE_UNCHANGED":   1,
+		"PLATFORM_SEARCH_LOCALE_ANALYSIS_UPDATE_MODE_REPLACE":     2,
+		"PLATFORM_SEARCH_LOCALE_ANALYSIS_UPDATE_MODE_SHARED":      3,
+	}
+)
+
+func (x PlatformSearchLocaleAnalysisUpdateMode) Enum() *PlatformSearchLocaleAnalysisUpdateMode {
+	p := new(PlatformSearchLocaleAnalysisUpdateMode)
+	*p = x
+	return p
+}
+
+func (x PlatformSearchLocaleAnalysisUpdateMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (PlatformSearchLocaleAnalysisUpdateMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_publira_platform_v1_search_proto_enumTypes[2].Descriptor()
+}
+
+func (PlatformSearchLocaleAnalysisUpdateMode) Type() protoreflect.EnumType {
+	return &file_publira_platform_v1_search_proto_enumTypes[2]
+}
+
+func (x PlatformSearchLocaleAnalysisUpdateMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use PlatformSearchLocaleAnalysisUpdateMode.Descriptor instead.
+func (PlatformSearchLocaleAnalysisUpdateMode) EnumDescriptor() ([]byte, []int) {
+	return file_publira_platform_v1_search_proto_rawDescGZIP(), []int{2}
+}
+
 // Where a saved configuration stands against the one the search answers from.
 type PlatformSearchBuildState int32
 
@@ -182,11 +240,11 @@ func (x PlatformSearchBuildState) String() string {
 }
 
 func (PlatformSearchBuildState) Descriptor() protoreflect.EnumDescriptor {
-	return file_publira_platform_v1_search_proto_enumTypes[2].Descriptor()
+	return file_publira_platform_v1_search_proto_enumTypes[3].Descriptor()
 }
 
 func (PlatformSearchBuildState) Type() protoreflect.EnumType {
-	return &file_publira_platform_v1_search_proto_enumTypes[2]
+	return &file_publira_platform_v1_search_proto_enumTypes[3]
 }
 
 func (x PlatformSearchBuildState) Number() protoreflect.EnumNumber {
@@ -195,7 +253,7 @@ func (x PlatformSearchBuildState) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use PlatformSearchBuildState.Descriptor instead.
 func (PlatformSearchBuildState) EnumDescriptor() ([]byte, []int) {
-	return file_publira_platform_v1_search_proto_rawDescGZIP(), []int{2}
+	return file_publira_platform_v1_search_proto_rawDescGZIP(), []int{3}
 }
 
 // The configuration the search answers from, which trails the saved one while
@@ -334,6 +392,128 @@ func (x *PlatformSearchBuildFailure) GetFailedAt() string {
 	return ""
 }
 
+// The settings.analysis one language's catalog index is built with in place of
+// the shared one.
+type PlatformSearchLocaleAnalysis struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// A locale the catalog keeps an index for, spelled as the server lists it:
+	// ja, en, ko, zh-Hans, zh-Hant.
+	Locale string `protobuf:"bytes,1,opt,name=locale,proto3" json:"locale,omitempty"`
+	// A JSON object, held to what PlatformSearchSettings.analysis is.
+	Analysis      string `protobuf:"bytes,2,opt,name=analysis,proto3" json:"analysis,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PlatformSearchLocaleAnalysis) Reset() {
+	*x = PlatformSearchLocaleAnalysis{}
+	mi := &file_publira_platform_v1_search_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlatformSearchLocaleAnalysis) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlatformSearchLocaleAnalysis) ProtoMessage() {}
+
+func (x *PlatformSearchLocaleAnalysis) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_search_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlatformSearchLocaleAnalysis.ProtoReflect.Descriptor instead.
+func (*PlatformSearchLocaleAnalysis) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_search_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *PlatformSearchLocaleAnalysis) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
+func (x *PlatformSearchLocaleAnalysis) GetAnalysis() string {
+	if x != nil {
+		return x.Analysis
+	}
+	return ""
+}
+
+// A change to the analysis of one language's catalog index.
+type PlatformSearchLocaleAnalysisUpdate struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// A locale the catalog keeps an index for, spelled as
+	// PlatformSearchLocaleAnalysis.locale is.
+	Locale string                                 `protobuf:"bytes,1,opt,name=locale,proto3" json:"locale,omitempty"`
+	Mode   PlatformSearchLocaleAnalysisUpdateMode `protobuf:"varint,2,opt,name=mode,proto3,enum=publira.platform.v1.PlatformSearchLocaleAnalysisUpdateMode" json:"mode,omitempty"`
+	// The definition REPLACE saves, held to what
+	// UpdatePlatformSearchSettingsRequest.analysis is.
+	Analysis      string `protobuf:"bytes,3,opt,name=analysis,proto3" json:"analysis,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PlatformSearchLocaleAnalysisUpdate) Reset() {
+	*x = PlatformSearchLocaleAnalysisUpdate{}
+	mi := &file_publira_platform_v1_search_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlatformSearchLocaleAnalysisUpdate) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlatformSearchLocaleAnalysisUpdate) ProtoMessage() {}
+
+func (x *PlatformSearchLocaleAnalysisUpdate) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_platform_v1_search_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlatformSearchLocaleAnalysisUpdate.ProtoReflect.Descriptor instead.
+func (*PlatformSearchLocaleAnalysisUpdate) Descriptor() ([]byte, []int) {
+	return file_publira_platform_v1_search_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *PlatformSearchLocaleAnalysisUpdate) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
+func (x *PlatformSearchLocaleAnalysisUpdate) GetMode() PlatformSearchLocaleAnalysisUpdateMode {
+	if x != nil {
+		return x.Mode
+	}
+	return PlatformSearchLocaleAnalysisUpdateMode_PLATFORM_SEARCH_LOCALE_ANALYSIS_UPDATE_MODE_UNSPECIFIED
+}
+
+func (x *PlatformSearchLocaleAnalysisUpdate) GetAnalysis() string {
+	if x != nil {
+		return x.Analysis
+	}
+	return ""
+}
+
 type PlatformSearchSettings struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Engine PlatformSearchEngine   `protobuf:"varint,1,opt,name=engine,proto3,enum=publira.platform.v1.PlatformSearchEngine" json:"engine,omitempty"`
@@ -364,13 +544,17 @@ type PlatformSearchSettings struct {
 	Analysis string `protobuf:"bytes,10,opt,name=analysis,proto3" json:"analysis,omitempty"`
 	// Whether analysis is the default rather than a saved definition.
 	DefaultAnalysis bool `protobuf:"varint,11,opt,name=default_analysis,json=defaultAnalysis,proto3" json:"default_analysis,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The languages whose catalog index is built from a definition of their
+	// own, in the order the server lists its locales. The index of every other
+	// language is built from analysis. Empty on the SQL engine.
+	LocaleAnalyses []*PlatformSearchLocaleAnalysis `protobuf:"bytes,12,rep,name=locale_analyses,json=localeAnalyses,proto3" json:"locale_analyses,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *PlatformSearchSettings) Reset() {
 	*x = PlatformSearchSettings{}
-	mi := &file_publira_platform_v1_search_proto_msgTypes[2]
+	mi := &file_publira_platform_v1_search_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -382,7 +566,7 @@ func (x *PlatformSearchSettings) String() string {
 func (*PlatformSearchSettings) ProtoMessage() {}
 
 func (x *PlatformSearchSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_search_proto_msgTypes[2]
+	mi := &file_publira_platform_v1_search_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -395,7 +579,7 @@ func (x *PlatformSearchSettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlatformSearchSettings.ProtoReflect.Descriptor instead.
 func (*PlatformSearchSettings) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_search_proto_rawDescGZIP(), []int{2}
+	return file_publira_platform_v1_search_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *PlatformSearchSettings) GetEngine() PlatformSearchEngine {
@@ -475,6 +659,13 @@ func (x *PlatformSearchSettings) GetDefaultAnalysis() bool {
 	return false
 }
 
+func (x *PlatformSearchSettings) GetLocaleAnalyses() []*PlatformSearchLocaleAnalysis {
+	if x != nil {
+		return x.LocaleAnalyses
+	}
+	return nil
+}
+
 type GetPlatformSearchSettingsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -483,7 +674,7 @@ type GetPlatformSearchSettingsRequest struct {
 
 func (x *GetPlatformSearchSettingsRequest) Reset() {
 	*x = GetPlatformSearchSettingsRequest{}
-	mi := &file_publira_platform_v1_search_proto_msgTypes[3]
+	mi := &file_publira_platform_v1_search_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -495,7 +686,7 @@ func (x *GetPlatformSearchSettingsRequest) String() string {
 func (*GetPlatformSearchSettingsRequest) ProtoMessage() {}
 
 func (x *GetPlatformSearchSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_search_proto_msgTypes[3]
+	mi := &file_publira_platform_v1_search_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -508,7 +699,7 @@ func (x *GetPlatformSearchSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPlatformSearchSettingsRequest.ProtoReflect.Descriptor instead.
 func (*GetPlatformSearchSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_search_proto_rawDescGZIP(), []int{3}
+	return file_publira_platform_v1_search_proto_rawDescGZIP(), []int{5}
 }
 
 type GetPlatformSearchSettingsResponse struct {
@@ -520,7 +711,7 @@ type GetPlatformSearchSettingsResponse struct {
 
 func (x *GetPlatformSearchSettingsResponse) Reset() {
 	*x = GetPlatformSearchSettingsResponse{}
-	mi := &file_publira_platform_v1_search_proto_msgTypes[4]
+	mi := &file_publira_platform_v1_search_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -532,7 +723,7 @@ func (x *GetPlatformSearchSettingsResponse) String() string {
 func (*GetPlatformSearchSettingsResponse) ProtoMessage() {}
 
 func (x *GetPlatformSearchSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_search_proto_msgTypes[4]
+	mi := &file_publira_platform_v1_search_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -545,7 +736,7 @@ func (x *GetPlatformSearchSettingsResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use GetPlatformSearchSettingsResponse.ProtoReflect.Descriptor instead.
 func (*GetPlatformSearchSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_search_proto_rawDescGZIP(), []int{4}
+	return file_publira_platform_v1_search_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetPlatformSearchSettingsResponse) GetSettings() *PlatformSearchSettings {
@@ -556,10 +747,11 @@ func (x *GetPlatformSearchSettingsResponse) GetSettings() *PlatformSearchSetting
 }
 
 // A save takes effect at once when it needs no index built: the SQL engine,
-// or the engine, URL, index, and analysis the search already answers from with
-// other credentials. Any other target, or another analysis, is built by the
-// worker from the database into a new index first, and the search moves onto
-// it once the build has completed.
+// or the engine, URL, index, and analysis of every language the search already
+// answers from with other credentials. Any other target is built by the worker
+// from the database into new indices first, and the search moves onto them
+// once the build has completed. Another analysis on the same target rebuilds
+// only the indices of the languages it changes the analysis of.
 type UpdatePlatformSearchSettingsRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Required. A value the server does not know is refused, naming the ones it
@@ -592,14 +784,24 @@ type UpdatePlatformSearchSettingsRequest struct {
 	// engine refuses to create an index with it, with the engine's reason; the
 	// check creates an empty index beside the alias and drops it again. An
 	// engine the check cannot reach is UNAVAILABLE. Either way nothing is saved.
-	Analysis      string `protobuf:"bytes,9,opt,name=analysis,proto3" json:"analysis,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Analysis string `protobuf:"bytes,9,opt,name=analysis,proto3" json:"analysis,omitempty"`
+	// Changes to the analysis of single languages' indices, at most one per
+	// locale; a language this does not name keeps what its index is built from,
+	// so a request that leaves it empty changes none. REPLACE is refused on the
+	// SQL engine, and a save to SQL keeps none. A locale the server keeps no
+	// index for, or one named twice, is refused on locale_analyses[i].locale. A
+	// definition is checked as analysis is, and refused on
+	// locale_analyses[i].analysis with a message naming its locale; one that is
+	// kept but would be built on another target, and so is checked again, is
+	// refused on locale_analyses when the request does not name its locale.
+	LocaleAnalyses []*PlatformSearchLocaleAnalysisUpdate `protobuf:"bytes,10,rep,name=locale_analyses,json=localeAnalyses,proto3" json:"locale_analyses,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *UpdatePlatformSearchSettingsRequest) Reset() {
 	*x = UpdatePlatformSearchSettingsRequest{}
-	mi := &file_publira_platform_v1_search_proto_msgTypes[5]
+	mi := &file_publira_platform_v1_search_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -611,7 +813,7 @@ func (x *UpdatePlatformSearchSettingsRequest) String() string {
 func (*UpdatePlatformSearchSettingsRequest) ProtoMessage() {}
 
 func (x *UpdatePlatformSearchSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_search_proto_msgTypes[5]
+	mi := &file_publira_platform_v1_search_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -624,7 +826,7 @@ func (x *UpdatePlatformSearchSettingsRequest) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use UpdatePlatformSearchSettingsRequest.ProtoReflect.Descriptor instead.
 func (*UpdatePlatformSearchSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_search_proto_rawDescGZIP(), []int{5}
+	return file_publira_platform_v1_search_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *UpdatePlatformSearchSettingsRequest) GetEngine() PlatformSearchEngine {
@@ -690,6 +892,13 @@ func (x *UpdatePlatformSearchSettingsRequest) GetAnalysis() string {
 	return ""
 }
 
+func (x *UpdatePlatformSearchSettingsRequest) GetLocaleAnalyses() []*PlatformSearchLocaleAnalysisUpdate {
+	if x != nil {
+		return x.LocaleAnalyses
+	}
+	return nil
+}
+
 type UpdatePlatformSearchSettingsResponse struct {
 	state         protoimpl.MessageState  `protogen:"open.v1"`
 	Settings      *PlatformSearchSettings `protobuf:"bytes,1,opt,name=settings,proto3" json:"settings,omitempty"`
@@ -699,7 +908,7 @@ type UpdatePlatformSearchSettingsResponse struct {
 
 func (x *UpdatePlatformSearchSettingsResponse) Reset() {
 	*x = UpdatePlatformSearchSettingsResponse{}
-	mi := &file_publira_platform_v1_search_proto_msgTypes[6]
+	mi := &file_publira_platform_v1_search_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -711,7 +920,7 @@ func (x *UpdatePlatformSearchSettingsResponse) String() string {
 func (*UpdatePlatformSearchSettingsResponse) ProtoMessage() {}
 
 func (x *UpdatePlatformSearchSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_search_proto_msgTypes[6]
+	mi := &file_publira_platform_v1_search_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -724,7 +933,7 @@ func (x *UpdatePlatformSearchSettingsResponse) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use UpdatePlatformSearchSettingsResponse.ProtoReflect.Descriptor instead.
 func (*UpdatePlatformSearchSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_search_proto_rawDescGZIP(), []int{6}
+	return file_publira_platform_v1_search_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *UpdatePlatformSearchSettingsResponse) GetSettings() *PlatformSearchSettings {
@@ -751,7 +960,7 @@ type TestPlatformSearchConnectionRequest struct {
 
 func (x *TestPlatformSearchConnectionRequest) Reset() {
 	*x = TestPlatformSearchConnectionRequest{}
-	mi := &file_publira_platform_v1_search_proto_msgTypes[7]
+	mi := &file_publira_platform_v1_search_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -763,7 +972,7 @@ func (x *TestPlatformSearchConnectionRequest) String() string {
 func (*TestPlatformSearchConnectionRequest) ProtoMessage() {}
 
 func (x *TestPlatformSearchConnectionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_search_proto_msgTypes[7]
+	mi := &file_publira_platform_v1_search_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -776,7 +985,7 @@ func (x *TestPlatformSearchConnectionRequest) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use TestPlatformSearchConnectionRequest.ProtoReflect.Descriptor instead.
 func (*TestPlatformSearchConnectionRequest) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_search_proto_rawDescGZIP(), []int{7}
+	return file_publira_platform_v1_search_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *TestPlatformSearchConnectionRequest) GetEngine() PlatformSearchEngine {
@@ -820,9 +1029,9 @@ func (x *TestPlatformSearchConnectionRequest) GetPassword() string {
 type TestPlatformSearchConnectionResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Whether the engine answered, is the engine the request names, and, while
-	// the saved analysis is the default, has both plugins it is built from. A
-	// saved analysis of another kind was checked against the engine when it was
-	// saved.
+	// the index of any language is built from the default analysis, has both
+	// plugins it is built from. A saved analysis of another kind was checked
+	// against the engine when it was saved.
 	Succeeded bool `protobuf:"varint,1,opt,name=succeeded,proto3" json:"succeeded,omitempty"`
 	// A stable reason code (SEARCH_TEST_*) for a failure, empty on success. It
 	// never carries the engine's own message.
@@ -842,7 +1051,7 @@ type TestPlatformSearchConnectionResponse struct {
 
 func (x *TestPlatformSearchConnectionResponse) Reset() {
 	*x = TestPlatformSearchConnectionResponse{}
-	mi := &file_publira_platform_v1_search_proto_msgTypes[8]
+	mi := &file_publira_platform_v1_search_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -854,7 +1063,7 @@ func (x *TestPlatformSearchConnectionResponse) String() string {
 func (*TestPlatformSearchConnectionResponse) ProtoMessage() {}
 
 func (x *TestPlatformSearchConnectionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_platform_v1_search_proto_msgTypes[8]
+	mi := &file_publira_platform_v1_search_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -867,7 +1076,7 @@ func (x *TestPlatformSearchConnectionResponse) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use TestPlatformSearchConnectionResponse.ProtoReflect.Descriptor instead.
 func (*TestPlatformSearchConnectionResponse) Descriptor() ([]byte, []int) {
-	return file_publira_platform_v1_search_proto_rawDescGZIP(), []int{8}
+	return file_publira_platform_v1_search_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *TestPlatformSearchConnectionResponse) GetSucceeded() bool {
@@ -925,7 +1134,14 @@ const file_publira_platform_v1_search_proto_rawDesc = "" +
 	"\x05since\x18\x05 \x01(\tR\x05since\"O\n" +
 	"\x1aPlatformSearchBuildFailure\x12\x14\n" +
 	"\x05error\x18\x01 \x01(\tR\x05error\x12\x1b\n" +
-	"\tfailed_at\x18\x02 \x01(\tR\bfailedAt\"\x91\x04\n" +
+	"\tfailed_at\x18\x02 \x01(\tR\bfailedAt\"R\n" +
+	"\x1cPlatformSearchLocaleAnalysis\x12\x16\n" +
+	"\x06locale\x18\x01 \x01(\tR\x06locale\x12\x1a\n" +
+	"\banalysis\x18\x02 \x01(\tR\banalysis\"\xa9\x01\n" +
+	"\"PlatformSearchLocaleAnalysisUpdate\x12\x16\n" +
+	"\x06locale\x18\x01 \x01(\tR\x06locale\x12O\n" +
+	"\x04mode\x18\x02 \x01(\x0e2;.publira.platform.v1.PlatformSearchLocaleAnalysisUpdateModeR\x04mode\x12\x1a\n" +
+	"\banalysis\x18\x03 \x01(\tR\banalysis\"\xed\x04\n" +
 	"\x16PlatformSearchSettings\x12A\n" +
 	"\x06engine\x18\x01 \x01(\x0e2).publira.platform.v1.PlatformSearchEngineR\x06engine\x12\x10\n" +
 	"\x03url\x18\x02 \x01(\tR\x03url\x12\x14\n" +
@@ -939,10 +1155,11 @@ const file_publira_platform_v1_search_proto_rawDesc = "" +
 	"\rbuild_failure\x18\t \x01(\v2/.publira.platform.v1.PlatformSearchBuildFailureR\fbuildFailure\x12\x1a\n" +
 	"\banalysis\x18\n" +
 	" \x01(\tR\banalysis\x12)\n" +
-	"\x10default_analysis\x18\v \x01(\bR\x0fdefaultAnalysis\"\"\n" +
+	"\x10default_analysis\x18\v \x01(\bR\x0fdefaultAnalysis\x12Z\n" +
+	"\x0flocale_analyses\x18\f \x03(\v21.publira.platform.v1.PlatformSearchLocaleAnalysisR\x0elocaleAnalyses\"\"\n" +
 	" GetPlatformSearchSettingsRequest\"l\n" +
 	"!GetPlatformSearchSettingsResponse\x12G\n" +
-	"\bsettings\x18\x01 \x01(\v2+.publira.platform.v1.PlatformSearchSettingsR\bsettings\"\xd3\x03\n" +
+	"\bsettings\x18\x01 \x01(\v2+.publira.platform.v1.PlatformSearchSettingsR\bsettings\"\xb5\x04\n" +
 	"#UpdatePlatformSearchSettingsRequest\x12A\n" +
 	"\x06engine\x18\x01 \x01(\x0e2).publira.platform.v1.PlatformSearchEngineR\x06engine\x12\x10\n" +
 	"\x03url\x18\x02 \x01(\tR\x03url\x12\x14\n" +
@@ -952,7 +1169,9 @@ const file_publira_platform_v1_search_proto_rawDesc = "" +
 	"\bpassword\x18\x06 \x01(\tR\bpassword\x12+\n" +
 	"\x11expected_revision\x18\a \x01(\x03R\x10expectedRevision\x12g\n" +
 	"\x14analysis_update_mode\x18\b \x01(\x0e25.publira.platform.v1.PlatformSearchAnalysisUpdateModeR\x12analysisUpdateMode\x12\x1a\n" +
-	"\banalysis\x18\t \x01(\tR\banalysis\"o\n" +
+	"\banalysis\x18\t \x01(\tR\banalysis\x12`\n" +
+	"\x0flocale_analyses\x18\n" +
+	" \x03(\v27.publira.platform.v1.PlatformSearchLocaleAnalysisUpdateR\x0elocaleAnalyses\"o\n" +
 	"$UpdatePlatformSearchSettingsResponse\x12G\n" +
 	"\bsettings\x18\x01 \x01(\v2+.publira.platform.v1.PlatformSearchSettingsR\bsettings\"\x8b\x02\n" +
 	"#TestPlatformSearchConnectionRequest\x12A\n" +
@@ -977,7 +1196,12 @@ const file_publira_platform_v1_search_proto_rawDesc = "" +
 	"0PLATFORM_SEARCH_ANALYSIS_UPDATE_MODE_UNSPECIFIED\x10\x00\x122\n" +
 	".PLATFORM_SEARCH_ANALYSIS_UPDATE_MODE_UNCHANGED\x10\x01\x120\n" +
 	",PLATFORM_SEARCH_ANALYSIS_UPDATE_MODE_REPLACE\x10\x02\x120\n" +
-	",PLATFORM_SEARCH_ANALYSIS_UPDATE_MODE_DEFAULT\x10\x03*\xc2\x01\n" +
+	",PLATFORM_SEARCH_ANALYSIS_UPDATE_MODE_DEFAULT\x10\x03*\x91\x02\n" +
+	"&PlatformSearchLocaleAnalysisUpdateMode\x12;\n" +
+	"7PLATFORM_SEARCH_LOCALE_ANALYSIS_UPDATE_MODE_UNSPECIFIED\x10\x00\x129\n" +
+	"5PLATFORM_SEARCH_LOCALE_ANALYSIS_UPDATE_MODE_UNCHANGED\x10\x01\x127\n" +
+	"3PLATFORM_SEARCH_LOCALE_ANALYSIS_UPDATE_MODE_REPLACE\x10\x02\x126\n" +
+	"2PLATFORM_SEARCH_LOCALE_ANALYSIS_UPDATE_MODE_SHARED\x10\x03*\xc2\x01\n" +
 	"\x18PlatformSearchBuildState\x12+\n" +
 	"'PLATFORM_SEARCH_BUILD_STATE_UNSPECIFIED\x10\x00\x12'\n" +
 	"#PLATFORM_SEARCH_BUILD_STATE_SERVING\x10\x01\x12(\n" +
@@ -1000,47 +1224,53 @@ func file_publira_platform_v1_search_proto_rawDescGZIP() []byte {
 	return file_publira_platform_v1_search_proto_rawDescData
 }
 
-var file_publira_platform_v1_search_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_publira_platform_v1_search_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_publira_platform_v1_search_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
+var file_publira_platform_v1_search_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_publira_platform_v1_search_proto_goTypes = []any{
 	(PlatformSearchEngine)(0),                    // 0: publira.platform.v1.PlatformSearchEngine
 	(PlatformSearchAnalysisUpdateMode)(0),        // 1: publira.platform.v1.PlatformSearchAnalysisUpdateMode
-	(PlatformSearchBuildState)(0),                // 2: publira.platform.v1.PlatformSearchBuildState
-	(*PlatformSearchServing)(nil),                // 3: publira.platform.v1.PlatformSearchServing
-	(*PlatformSearchBuildFailure)(nil),           // 4: publira.platform.v1.PlatformSearchBuildFailure
-	(*PlatformSearchSettings)(nil),               // 5: publira.platform.v1.PlatformSearchSettings
-	(*GetPlatformSearchSettingsRequest)(nil),     // 6: publira.platform.v1.GetPlatformSearchSettingsRequest
-	(*GetPlatformSearchSettingsResponse)(nil),    // 7: publira.platform.v1.GetPlatformSearchSettingsResponse
-	(*UpdatePlatformSearchSettingsRequest)(nil),  // 8: publira.platform.v1.UpdatePlatformSearchSettingsRequest
-	(*UpdatePlatformSearchSettingsResponse)(nil), // 9: publira.platform.v1.UpdatePlatformSearchSettingsResponse
-	(*TestPlatformSearchConnectionRequest)(nil),  // 10: publira.platform.v1.TestPlatformSearchConnectionRequest
-	(*TestPlatformSearchConnectionResponse)(nil), // 11: publira.platform.v1.TestPlatformSearchConnectionResponse
-	(SecretUpdateMode)(0),                        // 12: publira.platform.v1.SecretUpdateMode
+	(PlatformSearchLocaleAnalysisUpdateMode)(0),  // 2: publira.platform.v1.PlatformSearchLocaleAnalysisUpdateMode
+	(PlatformSearchBuildState)(0),                // 3: publira.platform.v1.PlatformSearchBuildState
+	(*PlatformSearchServing)(nil),                // 4: publira.platform.v1.PlatformSearchServing
+	(*PlatformSearchBuildFailure)(nil),           // 5: publira.platform.v1.PlatformSearchBuildFailure
+	(*PlatformSearchLocaleAnalysis)(nil),         // 6: publira.platform.v1.PlatformSearchLocaleAnalysis
+	(*PlatformSearchLocaleAnalysisUpdate)(nil),   // 7: publira.platform.v1.PlatformSearchLocaleAnalysisUpdate
+	(*PlatformSearchSettings)(nil),               // 8: publira.platform.v1.PlatformSearchSettings
+	(*GetPlatformSearchSettingsRequest)(nil),     // 9: publira.platform.v1.GetPlatformSearchSettingsRequest
+	(*GetPlatformSearchSettingsResponse)(nil),    // 10: publira.platform.v1.GetPlatformSearchSettingsResponse
+	(*UpdatePlatformSearchSettingsRequest)(nil),  // 11: publira.platform.v1.UpdatePlatformSearchSettingsRequest
+	(*UpdatePlatformSearchSettingsResponse)(nil), // 12: publira.platform.v1.UpdatePlatformSearchSettingsResponse
+	(*TestPlatformSearchConnectionRequest)(nil),  // 13: publira.platform.v1.TestPlatformSearchConnectionRequest
+	(*TestPlatformSearchConnectionResponse)(nil), // 14: publira.platform.v1.TestPlatformSearchConnectionResponse
+	(SecretUpdateMode)(0),                        // 15: publira.platform.v1.SecretUpdateMode
 }
 var file_publira_platform_v1_search_proto_depIdxs = []int32{
 	0,  // 0: publira.platform.v1.PlatformSearchServing.engine:type_name -> publira.platform.v1.PlatformSearchEngine
-	0,  // 1: publira.platform.v1.PlatformSearchSettings.engine:type_name -> publira.platform.v1.PlatformSearchEngine
-	3,  // 2: publira.platform.v1.PlatformSearchSettings.serving:type_name -> publira.platform.v1.PlatformSearchServing
-	2,  // 3: publira.platform.v1.PlatformSearchSettings.build_state:type_name -> publira.platform.v1.PlatformSearchBuildState
-	4,  // 4: publira.platform.v1.PlatformSearchSettings.build_failure:type_name -> publira.platform.v1.PlatformSearchBuildFailure
-	5,  // 5: publira.platform.v1.GetPlatformSearchSettingsResponse.settings:type_name -> publira.platform.v1.PlatformSearchSettings
-	0,  // 6: publira.platform.v1.UpdatePlatformSearchSettingsRequest.engine:type_name -> publira.platform.v1.PlatformSearchEngine
-	12, // 7: publira.platform.v1.UpdatePlatformSearchSettingsRequest.password_update_mode:type_name -> publira.platform.v1.SecretUpdateMode
-	1,  // 8: publira.platform.v1.UpdatePlatformSearchSettingsRequest.analysis_update_mode:type_name -> publira.platform.v1.PlatformSearchAnalysisUpdateMode
-	5,  // 9: publira.platform.v1.UpdatePlatformSearchSettingsResponse.settings:type_name -> publira.platform.v1.PlatformSearchSettings
-	0,  // 10: publira.platform.v1.TestPlatformSearchConnectionRequest.engine:type_name -> publira.platform.v1.PlatformSearchEngine
-	12, // 11: publira.platform.v1.TestPlatformSearchConnectionRequest.password_update_mode:type_name -> publira.platform.v1.SecretUpdateMode
-	6,  // 12: publira.platform.v1.PlatformSearchSettingsService.GetPlatformSearchSettings:input_type -> publira.platform.v1.GetPlatformSearchSettingsRequest
-	8,  // 13: publira.platform.v1.PlatformSearchSettingsService.UpdatePlatformSearchSettings:input_type -> publira.platform.v1.UpdatePlatformSearchSettingsRequest
-	10, // 14: publira.platform.v1.PlatformSearchSettingsService.TestPlatformSearchConnection:input_type -> publira.platform.v1.TestPlatformSearchConnectionRequest
-	7,  // 15: publira.platform.v1.PlatformSearchSettingsService.GetPlatformSearchSettings:output_type -> publira.platform.v1.GetPlatformSearchSettingsResponse
-	9,  // 16: publira.platform.v1.PlatformSearchSettingsService.UpdatePlatformSearchSettings:output_type -> publira.platform.v1.UpdatePlatformSearchSettingsResponse
-	11, // 17: publira.platform.v1.PlatformSearchSettingsService.TestPlatformSearchConnection:output_type -> publira.platform.v1.TestPlatformSearchConnectionResponse
-	15, // [15:18] is the sub-list for method output_type
-	12, // [12:15] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	2,  // 1: publira.platform.v1.PlatformSearchLocaleAnalysisUpdate.mode:type_name -> publira.platform.v1.PlatformSearchLocaleAnalysisUpdateMode
+	0,  // 2: publira.platform.v1.PlatformSearchSettings.engine:type_name -> publira.platform.v1.PlatformSearchEngine
+	4,  // 3: publira.platform.v1.PlatformSearchSettings.serving:type_name -> publira.platform.v1.PlatformSearchServing
+	3,  // 4: publira.platform.v1.PlatformSearchSettings.build_state:type_name -> publira.platform.v1.PlatformSearchBuildState
+	5,  // 5: publira.platform.v1.PlatformSearchSettings.build_failure:type_name -> publira.platform.v1.PlatformSearchBuildFailure
+	6,  // 6: publira.platform.v1.PlatformSearchSettings.locale_analyses:type_name -> publira.platform.v1.PlatformSearchLocaleAnalysis
+	8,  // 7: publira.platform.v1.GetPlatformSearchSettingsResponse.settings:type_name -> publira.platform.v1.PlatformSearchSettings
+	0,  // 8: publira.platform.v1.UpdatePlatformSearchSettingsRequest.engine:type_name -> publira.platform.v1.PlatformSearchEngine
+	15, // 9: publira.platform.v1.UpdatePlatformSearchSettingsRequest.password_update_mode:type_name -> publira.platform.v1.SecretUpdateMode
+	1,  // 10: publira.platform.v1.UpdatePlatformSearchSettingsRequest.analysis_update_mode:type_name -> publira.platform.v1.PlatformSearchAnalysisUpdateMode
+	7,  // 11: publira.platform.v1.UpdatePlatformSearchSettingsRequest.locale_analyses:type_name -> publira.platform.v1.PlatformSearchLocaleAnalysisUpdate
+	8,  // 12: publira.platform.v1.UpdatePlatformSearchSettingsResponse.settings:type_name -> publira.platform.v1.PlatformSearchSettings
+	0,  // 13: publira.platform.v1.TestPlatformSearchConnectionRequest.engine:type_name -> publira.platform.v1.PlatformSearchEngine
+	15, // 14: publira.platform.v1.TestPlatformSearchConnectionRequest.password_update_mode:type_name -> publira.platform.v1.SecretUpdateMode
+	9,  // 15: publira.platform.v1.PlatformSearchSettingsService.GetPlatformSearchSettings:input_type -> publira.platform.v1.GetPlatformSearchSettingsRequest
+	11, // 16: publira.platform.v1.PlatformSearchSettingsService.UpdatePlatformSearchSettings:input_type -> publira.platform.v1.UpdatePlatformSearchSettingsRequest
+	13, // 17: publira.platform.v1.PlatformSearchSettingsService.TestPlatformSearchConnection:input_type -> publira.platform.v1.TestPlatformSearchConnectionRequest
+	10, // 18: publira.platform.v1.PlatformSearchSettingsService.GetPlatformSearchSettings:output_type -> publira.platform.v1.GetPlatformSearchSettingsResponse
+	12, // 19: publira.platform.v1.PlatformSearchSettingsService.UpdatePlatformSearchSettings:output_type -> publira.platform.v1.UpdatePlatformSearchSettingsResponse
+	14, // 20: publira.platform.v1.PlatformSearchSettingsService.TestPlatformSearchConnection:output_type -> publira.platform.v1.TestPlatformSearchConnectionResponse
+	18, // [18:21] is the sub-list for method output_type
+	15, // [15:18] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_publira_platform_v1_search_proto_init() }
@@ -1054,8 +1284,8 @@ func file_publira_platform_v1_search_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_platform_v1_search_proto_rawDesc), len(file_publira_platform_v1_search_proto_rawDesc)),
-			NumEnums:      3,
-			NumMessages:   9,
+			NumEnums:      4,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

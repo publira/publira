@@ -725,6 +725,8 @@ type PlatformSearchConfig struct {
 	Analysis                 sql.NullString `json:"analysis"`
 	ServingAnalysis          sql.NullString `json:"serving_analysis"`
 	ServingLocales           []string       `json:"serving_locales"`
+	LocaleAnalyses           sql.NullString `json:"locale_analyses"`
+	ServingLocaleAnalyses    sql.NullString `json:"serving_locale_analyses"`
 }
 
 type PlatformSmtpConfig struct {

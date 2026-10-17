@@ -377,6 +377,7 @@ GRANT UPDATE (
     serving_username,
     serving_password_encrypted,
     serving_analysis,
+    serving_locale_analyses,
     serving_locales,
     serving_since,
     build_failed_revision,

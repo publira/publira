@@ -1059,3 +1059,48 @@ func TestASearchInALanguageWithNoIndexFails(t *testing.T) {
 		}
 	})
 }
+
+// A language given an analysis of its own has its index created and rebuilt
+// with it, and every other language's with the shared one. The default
+// definition keeps 「별을」 one token, so the noun alone finds the title only in
+// an index built on analysis-nori.
+func TestALanguagesOwnAnalysisBuildsItsIndexAlone(t *testing.T) {
+	t.Parallel()
+	testutil.EachSearchEngine(t, func(t *testing.T, engine testutil.SearchEngine) {
+		ctx := context.Background()
+		korean, err := ParseAnalysis([]byte(koreanAnalysis))
+		if err != nil {
+			t.Fatal(err)
+		}
+		backend, err := New(ctx, Config{URL: engine.URL, Index: "catalog-test-" + uuid.NewString(), Locales: []string{"ja", "ko"}, LocaleAnalyses: map[string]string{"ko": korean}})
+		if err != nil {
+			t.Fatalf("New: %v", err)
+		}
+		t.Cleanup(func() { deleteIndices(backend) })
+		tenantID := uuid.Must(uuid.NewV7())
+		star := publishedSeries(tenantID, "별을 쫓는 아이", "")
+		star.Translations = map[string]Translation{"ja": {Title: "별을 쫓는 아이"}, "ko": {Title: "별을 쫓는 아이"}}
+		if err := backend.PutAll(ctx, []Document{star}); err != nil {
+			t.Fatalf("PutAll: %v", err)
+		}
+		refreshAll(t, backend)
+		assertIDs(t, "별 in ko", searchIn(t, backend, searchSeriesIn, tenantID, "ko", "별"), star.ID)
+		assertIDs(t, "별 in ja", searchIn(t, backend, searchSeriesIn, tenantID, "ja", "별"))
+
+		// The rebuild of a backend that has the Korean definition for ja
+		// instead moves it there.
+		swapped := &Backend{client: backend.client, index: backend.index, localeAnalyses: map[string]string{"ja": korean}, locales: backend.locales}
+		rebuild, err := swapped.StartRebuild(ctx)
+		if err != nil {
+			t.Fatalf("StartRebuild: %v", err)
+		}
+		if err := rebuild.PutAll(ctx, []Document{star}); err != nil {
+			t.Fatalf("PutAll: %v", err)
+		}
+		if err := rebuild.Swap(ctx); err != nil {
+			t.Fatalf("Swap: %v", err)
+		}
+		assertIDs(t, "별 in ja after the rebuild", searchIn(t, backend, searchSeriesIn, tenantID, "ja", "별"), star.ID)
+		assertIDs(t, "별 in ko after the rebuild", searchIn(t, backend, searchSeriesIn, tenantID, "ko", "별"))
+	})
+}
