@@ -19,7 +19,6 @@ package loginguard
 import (
 	"context"
 	"crypto/sha256"
-	"crypto/subtle"
 	"encoding/hex"
 	"log/slog"
 	"strings"
@@ -137,65 +136,6 @@ func (g *Guard) Begin(ctx context.Context, scope, address string) (*Attempt, err
 func (a *Attempt) Verified(ctx context.Context) {
 	a.guard.limiter.Reset(ctx, a.account, a.rules...)
 	a.guard.limiter.Refund(ctx, a.source)
-}
-
-// BeginPasskey spends one of the origin's allowances for a passkey sign-in
-// about to begin, and answers a digest of the origin it charged, for the
-// ceremony to keep until the sign-in finishes.
-//
-// A passkey sign-in names no address, so there is no account allowance to
-// charge, and an assertion is nothing anyone can guess. What the origin's
-// allowance bounds here is the ceremonies a stranger can make the server begin
-// and keep, each of which is a row until it expires. The allowance is the one
-// a password sign-in spends, since both are attempts to sign in from that
-// origin, and like a password that verifies, a passkey that signs the reader
-// in gives its charge back.
-func (g *Guard) BeginPasskey(ctx context.Context, scope string) ([]byte, error) {
-	policy, err := g.policy.Policy(ctx)
-	if err != nil {
-		g.logger.ErrorContext(ctx, "failed to resolve the login rate limit", "scope", scope, "error", err)
-		return nil, connect.NewError(connect.CodeInternal, "internal server error")
-	}
-	source := sourceSubject(clientip.FromContext(ctx))
-	decision, err := g.limiter.Allow(ctx, source, hourDayRules(policy.LoginAttemptsPerSource)...)
-	if err != nil {
-		g.logger.ErrorContext(ctx, "failed to charge the login rate limit", "scope", scope, "error", err)
-		return nil, connect.NewError(connect.CodeInternal, "internal server error")
-	}
-	if !decision.Allowed {
-		return nil, rpcerrors.NewRateLimitedError(ctx, decision.RetryAfter)
-	}
-	return sourceDigest(source), nil
-}
-
-// PasskeyVerified gives back the charge BeginPasskey made at charged, for the
-// passkey sign-in that went through. It is made by the request that finishes
-// the sign-in, which holds no Decision of the one that began it, so it is
-// handed the digest BeginPasskey answered and gives the charge back only when
-// the finishing request comes from that origin too. A finish from anywhere
-// else gives nothing back: refunding the origin it comes from would clear
-// failed sign-ins that origin never paid for, and one holding a passkey could
-// then erase its own guesses by beginning its sign-ins somewhere else. A
-// reader whose network changed between the two keeps the charge, as one
-// abandoned sign-in.
-func (g *Guard) PasskeyVerified(ctx context.Context, charged time.Time, chargedSource []byte) {
-	source := sourceSubject(clientip.FromContext(ctx))
-	if subtle.ConstantTimeCompare(sourceDigest(source), chargedSource) != 1 {
-		return
-	}
-	policy, err := g.policy.Policy(ctx)
-	if err != nil {
-		g.logger.WarnContext(ctx, "failed to resolve the login rate limit to give a passkey sign-in back", "error", err)
-		return
-	}
-	g.limiter.RefundAt(ctx, source, charged, hourDayRules(policy.LoginAttemptsPerSource)...)
-}
-
-// sourceDigest is what a passkey sign-in keeps of the origin it charged: enough
-// to recognise the origin again, without storing its address.
-func sourceDigest(source string) []byte {
-	digest := sha256.Sum256([]byte(source))
-	return digest[:]
 }
 
 // accountSubject names the allowance of one address within scope.

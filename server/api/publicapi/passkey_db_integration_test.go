@@ -288,29 +288,60 @@ func TestDBPasskeySignInRefusesWhatLoginRefuses(t *testing.T) {
 	}
 }
 
-// Each begin spends one of the origin's sign-in allowance, the one a password
-// sign-in spends, and a sign-in that succeeds gives it back.
-func TestDBPasskeySignInChargesTheOriginsSignInAllowance(t *testing.T) {
+// The storefront begins a passkey sign-in whenever its sign-in page opens, to
+// offer the reader's passkeys in the browser's autofill, so most are never
+// finished. Leaving any number of them unfinished spends nothing of the
+// allowance that bounds failed passwords from the origin, and failed
+// passwords still meet it.
+func TestDBPasskeySignInsLeftUnfinishedDoNotSpendTheOriginsSignInAllowance(t *testing.T) {
 	t.Setenv(tenantorigin.SchemeEnv, "")
 	env := seedPasskeyReader(t, newPublicDBEnvWithLoginGuard(t, loginGuardWith(
 		platformpolicy.MinuteDay{PerMinute: 1000, PerDay: 1000},
 		platformpolicy.HourDay{PerHour: 2, PerDay: 2},
 	)))
-	authenticator, _ := env.register(t, env.session(t), passkeySiteOrigin, "")
 
-	for signIn := 1; signIn <= 3; signIn++ {
-		if _, err := env.finishSignIn(env.tenant, authenticator.Assert(t, env.beginSignIn(t, env.tenant))); err != nil {
-			t.Fatalf("sign-in %d: %v", signIn, err)
+	for page := 1; page <= 10; page++ {
+		env.beginSignIn(t, env.tenant)
+	}
+	if err := tryLogin(t, env.publicDBEnv, env.tenant, env.reader.Email, testutil.SeededPassword); err != nil {
+		t.Fatalf("a password sign-in after ten unfinished passkey sign-ins: %v", err)
+	}
+	for guess := 1; guess <= 2; guess++ {
+		if err := tryLogin(t, env.publicDBEnv, env.tenant, env.reader.Email, "not-the-password"); connect.CodeOf(err) != connect.CodeUnauthenticated {
+			t.Fatalf("wrong password %d code = %v, want unauthenticated (err=%v)", guess, connect.CodeOf(err), err)
 		}
 	}
-	env.beginSignIn(t, env.tenant)
-	env.beginSignIn(t, env.tenant)
-	_, err := env.authClient().BeginPasskeyLogin(context.Background(), &publirav1.BeginPasskeyLoginRequest{Tenant: tenantContext(env.tenant)})
-	if connect.CodeOf(err) != connect.CodeResourceExhausted {
-		t.Fatalf("a begin past two abandoned ones code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
+	if err := tryLogin(t, env.publicDBEnv, env.tenant, env.reader.Email, "not-the-password"); connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("a wrong password past the origin's allowance code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
 	}
-	if got := env.countRows(t, "SELECT count(*) FROM user_webauthn_ceremonies WHERE user_id IS NULL"); got != 2 {
-		t.Fatalf("open sign-in ceremonies = %d, want the two allowed and nothing for the refused one", got)
+}
+
+// What bounds the sign-in ceremonies one origin can make the server keep is
+// how many it has open on the tenant: a begin past siteSignInOpenCeremonies
+// drops the oldest, whose passkey is then refused, while the newest still
+// signs the reader in and the origin's ceremony on another tenant stays.
+func TestDBPasskeySignInKeepsOnlyTheNewestOpenCeremoniesOfAnOrigin(t *testing.T) {
+	env := newPasskeyDBEnv(t)
+	authenticator, _ := env.register(t, env.session(t), passkeySiteOrigin, "")
+	other := env.seedTenant(t, "TENANTB", "tenant-b.example.com", "Tenant B")
+	env.beginSignIn(t, other)
+
+	oldest := env.beginSignIn(t, env.tenant)
+	for range siteSignInOpenCeremonies - 1 {
+		env.beginSignIn(t, env.tenant)
+	}
+	newest := env.beginSignIn(t, env.tenant)
+
+	if got := env.countRows(t, "SELECT count(*) FROM user_webauthn_ceremonies WHERE user_id IS NULL AND tenant_id = $1", env.tenant.ID); got != siteSignInOpenCeremonies {
+		t.Fatalf("open sign-in ceremonies on the tenant = %d, want %d", got, siteSignInOpenCeremonies)
+	}
+	if got := env.countRows(t, "SELECT count(*) FROM user_webauthn_ceremonies WHERE user_id IS NULL AND tenant_id = $1", other.ID); got != 1 {
+		t.Fatalf("open sign-in ceremonies on the other tenant = %d, want 1", got)
+	}
+	_, err := env.finishSignIn(env.tenant, authenticator.Assert(t, oldest))
+	assertSignInRefused(t, err, "the passkey presented to the oldest sign-in")
+	if _, err := env.finishSignIn(env.tenant, authenticator.Assert(t, newest)); err != nil {
+		t.Fatalf("the passkey presented to the newest sign-in: %v", err)
 	}
 }
 
@@ -599,8 +630,8 @@ func TestDBPasskeyChangesChargeThePasskeyLimit(t *testing.T) {
 	}
 }
 
-// A sign-in ceremony keeps a digest of the origin its begin charged, so the
-// finish can give the charge back to that origin alone, and no address.
+// A sign-in ceremony keeps a digest of the origin that began it, which is what
+// its open ceremonies are counted by, and no address.
 func TestDBPasskeySignInCeremonyKeepsADigestOfItsOrigin(t *testing.T) {
 	env := newPasskeyDBEnv(t)
 	env.beginSignIn(t, env.tenant)

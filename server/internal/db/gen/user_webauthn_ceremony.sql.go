@@ -55,6 +55,29 @@ func (q *Queries) GetUserWebauthnCeremony(ctx context.Context, arg GetUserWebaut
 	return i, err
 }
 
+const LockSiteSignInCeremonies = `-- name: LockSiteSignInCeremonies :exec
+SELECT pg_advisory_xact_lock(
+    hashtextextended(
+        'site_sign_in_ceremonies:' || $1::uuid::text || ':' || encode($2::bytea, 'hex'),
+        0
+    )
+)
+`
+
+type LockSiteSignInCeremoniesParams struct {
+	TenantID     uuid.UUID `json:"tenant_id"`
+	SourceDigest []byte    `json:"source_digest"`
+}
+
+// Serialises the begins of the storefront sign-ins one origin makes on the
+// tenant for the rest of the transaction, as LockUserWebauthnCeremonies does
+// an account's, so two begins arriving together cannot each count the same
+// open ceremonies and both stay within the cap they then exceed together.
+func (q *Queries) LockSiteSignInCeremonies(ctx context.Context, arg LockSiteSignInCeremoniesParams) error {
+	_, err := q.db.ExecContext(ctx, LockSiteSignInCeremonies, arg.TenantID, arg.SourceDigest)
+	return err
+}
+
 const LockUserWebauthnCeremonies = `-- name: LockUserWebauthnCeremonies :exec
 
 SELECT pg_advisory_xact_lock(
@@ -152,10 +175,22 @@ func (q *Queries) SpendUserWebauthnCeremony(ctx context.Context, arg SpendUserWe
 }
 
 const StartSiteSignInCeremony = `-- name: StartSiteSignInCeremony :exec
-WITH expired AS (
+WITH abandoned AS (
     DELETE FROM user_webauthn_ceremonies
-    WHERE user_id IS NULL
-        AND expires_at < now()
+    WHERE user_webauthn_ceremonies.user_id IS NULL
+        AND (
+            user_webauthn_ceremonies.expires_at < now()
+            OR user_webauthn_ceremonies.challenge IN (
+                SELECT c.challenge
+                FROM user_webauthn_ceremonies c
+                WHERE c.user_id IS NULL
+                    AND c.tenant_id = $2
+                    AND c.source_digest = $5
+                ORDER BY c.created_at DESC,
+                    c.challenge
+                OFFSET $6::int - 1
+            )
+        )
 )
 INSERT INTO user_webauthn_ceremonies (
         challenge,
@@ -185,15 +220,19 @@ type StartSiteSignInCeremonyParams struct {
 	RpID         string    `json:"rp_id"`
 	ExpiresAt    time.Time `json:"expires_at"`
 	SourceDigest []byte    `json:"source_digest"`
+	MaxOpen      int32     `json:"max_open"`
 }
 
 // A storefront sign-in names no account when it begins: the authenticator
 // picks a discoverable credential, and the credential names the account. The
-// row is therefore the tenant's rather than an account's, and there is no
-// account whose open ceremonies could be capped. The begin that stores it is
-// charged against the caller's sign-in allowance instead, and drops the
-// tenant's sign-in ceremonies that expired unfinished, so what the table
-// holds of them is what was begun in the last few minutes.
+// row is therefore the tenant's rather than an account's, and what bounds the
+// rows a caller who keeps calling the begin can leave is the origin it calls
+// from instead: beginning one drops all but the newest that, with this one,
+// make up max_open of the ceremonies source_digest names on the tenant. It
+// also drops the tenant's sign-in ceremonies that expired unfinished, so what
+// the table holds of them is what was begun in the last few minutes.
+// The caller holds LockSiteSignInCeremonies, so the open ceremonies this
+// counts are the ones there are.
 func (q *Queries) StartSiteSignInCeremony(ctx context.Context, arg StartSiteSignInCeremonyParams) error {
 	_, err := q.db.ExecContext(ctx, StartSiteSignInCeremony,
 		arg.Challenge,
@@ -201,6 +240,7 @@ func (q *Queries) StartSiteSignInCeremony(ctx context.Context, arg StartSiteSign
 		arg.RpID,
 		arg.ExpiresAt,
 		arg.SourceDigest,
+		arg.MaxOpen,
 	)
 	return err
 }

@@ -159,24 +159,6 @@ func (l *Limiter) Refund(ctx context.Context, decision Decision) {
 	}
 }
 
-// RefundAt takes back one action subject was charged against every rule at at,
-// for an action allowed in one request and found to have gone through in a
-// later one, which holds no Decision to refund. The windows are named by the
-// clock alone, so the instant the charge was made names the counters it went
-// to, whichever instance made it.
-//
-// It is best effort, like Refund: a window that has closed since has nothing
-// left to take back from.
-func (l *Limiter) RefundAt(ctx context.Context, subject string, at time.Time, rules ...Rule) {
-	for _, rule := range rules {
-		if rule.Limit < 1 || rule.Window <= 0 {
-			continue
-		}
-		key, _ := bucket(subject, rule, at)
-		_ = l.store.Decr(ctx, key)
-	}
-}
-
 // bucket names the counter for the window rule is in at now, and reports how
 // long that window still has to run.
 //
