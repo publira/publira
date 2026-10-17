@@ -9,7 +9,10 @@ import {
 } from "../src/scenarios/storefront-passkey";
 import { HOST_SESSION_COOKIE_NAME, sessionCookieValue } from "../src/session";
 import { storefrontPath, WEB_STOREFRONT_BASE_URL } from "../src/urls";
-import { addVirtualAuthenticator } from "../src/webauthn";
+import {
+  addVirtualAuthenticator,
+  withoutPasskeyAutofill,
+} from "../src/webauthn";
 
 /**
  * A reader signing in to the site with a passkey alone, from Chromium's
@@ -21,6 +24,11 @@ import { addVirtualAuthenticator } from "../src/webauthn";
  * adding a passkey from Settings › Security left to
  * `storefront.passkey-settings.spec.ts`, and it leaves the page without a
  * session cookie, so the sign-in that follows is the passkey's alone.
+ *
+ * The sign-in page offers the passkey twice, from **Sign in with a passkey**
+ * and in the email field's autofill, and the virtual authenticator answers the
+ * autofill by itself once it holds a passkey. Each way in therefore has a
+ * scenario of its own, and the button's runs in a browser without autofill.
  */
 
 const storefrontUrl = (pathname: string): string =>
@@ -114,20 +122,41 @@ test.describe("web-storefront passkey sign-in", () => {
     ).toBeEnabled();
   });
 
-  test("a reader with a passkey signs in with it alone and lands where they were going", async ({
+  test("a reader with a passkey signs in with the button and lands where they were going", async ({
     page,
   }) => {
+    await withoutPasskeyAutofill(page);
     await addVirtualAuthenticator(page);
     await registerPasskey(page);
     expect(await currentSession(page)).toBeUndefined();
 
     await page.goto(storefrontUrl("/login?returnTo=%2Fmy"));
-    // The browser offers the passkey in the email field's suggestions too.
+    await passkeyButton(page).click();
+
+    await expect(page).toHaveURL(/\/my\/?$/u);
+    await expect(
+      page.getByRole("heading", { name: "Reading history" })
+    ).toBeVisible();
+    expect(await currentSession(page)).toBeTruthy();
+  });
+
+  test("a reader with a passkey signs in from the email field's autofill and lands where they were going", async ({
+    page,
+  }) => {
+    await addVirtualAuthenticator(page);
+    // Checked while the authenticator holds no passkey, which leaves the
+    // autofill unanswered and the page in place.
+    await page.goto(storefrontUrl("/login"));
     await expect(page.getByLabel(/Email address/u)).toHaveAttribute(
       "autocomplete",
       "username webauthn"
     );
-    await passkeyButton(page).click();
+    await registerPasskey(page);
+    expect(await currentSession(page)).toBeUndefined();
+
+    // The virtual authenticator picks the passkey from the autofill itself,
+    // standing in for the reader choosing it there.
+    await page.goto(storefrontUrl("/login?returnTo=%2Fmy"));
 
     await expect(page).toHaveURL(/\/my\/?$/u);
     await expect(

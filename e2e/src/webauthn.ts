@@ -24,3 +24,20 @@ export const addVirtualAuthenticator = async (page: Page): Promise<void> => {
     },
   });
 };
+
+/**
+ * Make `page` a browser that offers passkeys from a button alone, without
+ * listing them in the autofill of a form field.
+ *
+ * The virtual authenticator answers an autofill (conditional mediation)
+ * request by itself as soon as it holds a passkey for the site, so on a page
+ * that asks for one on load the reader is signed in before a click can reach
+ * the page's button. Reporting autofill as unsupported, as a browser without
+ * it does, leaves the button the only way in. Call it before the page loads.
+ */
+export const withoutPasskeyAutofill = async (page: Page): Promise<void> => {
+  await page.addInitScript(() => {
+    PublicKeyCredential.isConditionalMediationAvailable = () =>
+      Promise.resolve(false);
+  });
+};
