@@ -280,7 +280,7 @@ test.describe("Sign in with Apple and Google on the public site", () => {
       linked.getByRole("button", { name: "Unlink Google" })
     ).toBeDisabled();
     await expect(linked).toContainText(
-      "Your account has no password, so the last linked account stays linked."
+      "Your account has no password or passkey, so the last linked account stays linked."
     );
   });
 
