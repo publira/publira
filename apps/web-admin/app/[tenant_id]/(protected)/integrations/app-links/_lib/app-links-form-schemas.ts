@@ -7,8 +7,7 @@ import { MAX_ANDROID_CERT_FINGERPRINTS } from "#lib/tenant-mobile-app-associatio
 import type { TenantMobileAppAssociation } from "#lib/tenant-mobile-app-association";
 
 // The API's patterns, which are the app manifest's (mobile/config/app.schema.json).
-const ANDROID_APPLICATION_ID_RE =
-  /^[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+$/u;
+const ANDROID_APPLICATION_ID_RE = /^[A-Za-z]\w*(?:\.[A-Za-z]\w*)+$/u;
 const IOS_BUNDLE_IDENTIFIER_RE = /^[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/u;
 const SHA256_FINGERPRINT_RE = /^[0-9A-F]{2}(?::[0-9A-F]{2}){31}$/u;
 const APPLE_TEAM_ID_RE = /^[A-Z0-9]{10}$/u;

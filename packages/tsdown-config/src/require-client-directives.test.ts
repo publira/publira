@@ -69,6 +69,28 @@ describe("requireClientDirectives", () => {
     ).rejects.toThrow(`${commented} -> b.mjs`);
   });
 
+  it("reads the directive after line and block comments in a chunk", async () => {
+    await expect(
+      run({
+        "a.mjs": chunk(
+          "a.mjs",
+          '// a\n/* b */ /** c\n * d */\n"use client";\nexport const A = 1;\n',
+          [client]
+        ),
+      })
+    ).resolves.toBeUndefined();
+  });
+
+  it("does not take a directive inside a comment", async () => {
+    await expect(
+      run({
+        "a.mjs": chunk("a.mjs", '/* "use client" */\nexport const A = 1;\n', [
+          client,
+        ]),
+      })
+    ).rejects.toThrow(`${client} -> a.mjs`);
+  });
+
   it("passes a chunk that keeps the directive", async () => {
     await expect(
       run({

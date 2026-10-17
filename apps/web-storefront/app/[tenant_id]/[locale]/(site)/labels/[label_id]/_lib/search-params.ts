@@ -17,7 +17,7 @@ const labelDetailSearchParamsSchema = z.object({
 });
 
 interface ParseLabelDetailSearchParamsInput {
-  token?: string | string[] | undefined;
+  token?: string | string[];
 }
 
 export interface LabelDetailSearchParams {

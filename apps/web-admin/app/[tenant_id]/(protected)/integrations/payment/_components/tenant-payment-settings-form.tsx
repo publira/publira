@@ -181,20 +181,16 @@ const PaymentCredentialSource = ({
 
 /** What a provider's webhook URL block adds for that provider alone. */
 const PaymentWebhookNote = ({ provider }: { provider: string }) => {
-  switch (provider) {
-    case "payjp": {
-      return (
-        <FieldDescription>
-          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
-            <Message message="admin.settings.payment.webhook_url_payjp_description" />
-          </Suspense>
-        </FieldDescription>
-      );
-    }
-    default: {
-      return null;
-    }
+  if (provider !== "payjp") {
+    return null;
   }
+  return (
+    <FieldDescription>
+      <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+        <Message message="admin.settings.payment.webhook_url_payjp_description" />
+      </Suspense>
+    </FieldDescription>
+  );
 };
 
 const PaymentCredentialDescription = ({

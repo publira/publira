@@ -27,7 +27,7 @@ import {
 // and, for the two Apple IDs, capitalizing.
 const SERVICES_ID_RE = /^[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/u;
 const APPLE_ID_RE = /^[A-Z0-9]{10}$/u;
-const GOOGLE_CLIENT_ID_RE = /^[0-9]+-[0-9a-z]+\.apps\.googleusercontent\.com$/u;
+const GOOGLE_CLIENT_ID_RE = /^\d+-[0-9a-z]+\.apps\.googleusercontent\.com$/u;
 
 const trimmed = z.preprocess(
   (value) => (typeof value === "string" ? value.trim() : ""),

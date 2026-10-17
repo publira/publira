@@ -280,6 +280,12 @@ export default defineConfig({
     "sonarjs/no-duplicate-string": "off",
     // Flags UI copy that merely mentions a password (false positives).
     "sonarjs/no-hardcoded-passwords": "off",
+    // Without type information, which the JS plugin bridge does not give it,
+    // this cannot see that `redirect()` returns `never` or that a switch is
+    // exhaustive, and it reports an Effect that returns a cleanup on some paths
+    // only. TypeScript already rejects a reachable end in a function whose
+    // declared return type excludes undefined.
+    "sonarjs/no-inconsistent-returns": "off",
     // TypeScript optional fields and API shapes use undefined, not null.
     "sonarjs/no-undefined-assignment": "off",
     // Complexity gates are valuable but need dedicated refactors; enable later.

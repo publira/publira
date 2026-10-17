@@ -5,7 +5,7 @@ import { cursorPageHref, cursorTokenSchema } from "#lib/cursor-token";
 export const defaultReadingHistoryPageSize = 20;
 
 interface ParseMySearchParamsInput {
-  token?: string | string[] | undefined;
+  token?: string | string[];
 }
 
 export interface MySearchParams {

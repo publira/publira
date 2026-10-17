@@ -5,7 +5,7 @@ import { cursorPageHref, cursorTokenSchema } from "#lib/cursor-token";
 export const defaultNotificationsPageSize = 20;
 
 interface ParseNotificationsSearchParamsInput {
-  token?: string | string[] | undefined;
+  token?: string | string[];
 }
 
 export interface NotificationsSearchParams {

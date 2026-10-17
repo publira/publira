@@ -7,7 +7,7 @@ const announcementsListSearchParamsSchema = z.object({
 });
 
 interface ParseAnnouncementsListSearchParamsInput {
-  token?: string | string[] | undefined;
+  token?: string | string[];
 }
 
 export interface AnnouncementsListSearchParams {

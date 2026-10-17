@@ -364,7 +364,7 @@ export const rpcErrorReasonMetadataNumber = (
     if (raw === undefined) {
       return null;
     }
-    if (!/^[0-9]+$/u.test(raw)) {
+    if (!/^\d+$/u.test(raw)) {
       return null;
     }
     const value = Number(raw);
