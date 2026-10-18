@@ -126,6 +126,30 @@ const (
 	// AdminSeriesServiceDeleteEpisodeTranslationProcedure is the procedure name of the
 	// AdminSeriesService's DeleteEpisodeTranslation RPC.
 	AdminSeriesServiceDeleteEpisodeTranslationProcedure = "/publira.admin.v1.AdminSeriesService/DeleteEpisodeTranslation"
+	// AdminSeriesServiceListVolumesProcedure is the procedure name of the AdminSeriesService's
+	// ListVolumes RPC.
+	AdminSeriesServiceListVolumesProcedure = "/publira.admin.v1.AdminSeriesService/ListVolumes"
+	// AdminSeriesServiceCreateVolumeProcedure is the procedure name of the AdminSeriesService's
+	// CreateVolume RPC.
+	AdminSeriesServiceCreateVolumeProcedure = "/publira.admin.v1.AdminSeriesService/CreateVolume"
+	// AdminSeriesServiceUpdateVolumeProcedure is the procedure name of the AdminSeriesService's
+	// UpdateVolume RPC.
+	AdminSeriesServiceUpdateVolumeProcedure = "/publira.admin.v1.AdminSeriesService/UpdateVolume"
+	// AdminSeriesServicePublishVolumeProcedure is the procedure name of the AdminSeriesService's
+	// PublishVolume RPC.
+	AdminSeriesServicePublishVolumeProcedure = "/publira.admin.v1.AdminSeriesService/PublishVolume"
+	// AdminSeriesServiceSetVolumeEpisodesProcedure is the procedure name of the AdminSeriesService's
+	// SetVolumeEpisodes RPC.
+	AdminSeriesServiceSetVolumeEpisodesProcedure = "/publira.admin.v1.AdminSeriesService/SetVolumeEpisodes"
+	// AdminSeriesServiceReorderVolumesProcedure is the procedure name of the AdminSeriesService's
+	// ReorderVolumes RPC.
+	AdminSeriesServiceReorderVolumesProcedure = "/publira.admin.v1.AdminSeriesService/ReorderVolumes"
+	// AdminSeriesServiceUploadVolumeCoverImageProcedure is the procedure name of the
+	// AdminSeriesService's UploadVolumeCoverImage RPC.
+	AdminSeriesServiceUploadVolumeCoverImageProcedure = "/publira.admin.v1.AdminSeriesService/UploadVolumeCoverImage"
+	// AdminSeriesServiceDeleteVolumeCoverImageProcedure is the procedure name of the
+	// AdminSeriesService's DeleteVolumeCoverImage RPC.
+	AdminSeriesServiceDeleteVolumeCoverImageProcedure = "/publira.admin.v1.AdminSeriesService/DeleteVolumeCoverImage"
 )
 
 var (
@@ -367,6 +391,62 @@ var (
 			Procedure:  AdminSeriesServiceDeleteEpisodeTranslationProcedure,
 		}
 	})
+	adminSeriesServiceListVolumesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("ListVolumes"),
+			Procedure:  AdminSeriesServiceListVolumesProcedure,
+		}
+	})
+	adminSeriesServiceCreateVolumeSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("CreateVolume"),
+			Procedure:  AdminSeriesServiceCreateVolumeProcedure,
+		}
+	})
+	adminSeriesServiceUpdateVolumeSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("UpdateVolume"),
+			Procedure:  AdminSeriesServiceUpdateVolumeProcedure,
+		}
+	})
+	adminSeriesServicePublishVolumeSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("PublishVolume"),
+			Procedure:  AdminSeriesServicePublishVolumeProcedure,
+		}
+	})
+	adminSeriesServiceSetVolumeEpisodesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("SetVolumeEpisodes"),
+			Procedure:  AdminSeriesServiceSetVolumeEpisodesProcedure,
+		}
+	})
+	adminSeriesServiceReorderVolumesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("ReorderVolumes"),
+			Procedure:  AdminSeriesServiceReorderVolumesProcedure,
+		}
+	})
+	adminSeriesServiceUploadVolumeCoverImageSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("UploadVolumeCoverImage"),
+			Procedure:  AdminSeriesServiceUploadVolumeCoverImageProcedure,
+		}
+	})
+	adminSeriesServiceDeleteVolumeCoverImageSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("DeleteVolumeCoverImage"),
+			Procedure:  AdminSeriesServiceDeleteVolumeCoverImageProcedure,
+		}
+	})
 )
 
 // AdminSeriesServiceClient is a client for the publira.admin.v1.AdminSeriesService service.
@@ -451,6 +531,22 @@ type AdminSeriesServiceClient interface {
 	DeleteSeriesTranslation(context.Context, *v1.DeleteSeriesTranslationRequest) (*v1.DeleteSeriesTranslationResponse, error)
 	// Minimum role: tenant_editor.
 	DeleteEpisodeTranslation(context.Context, *v1.DeleteEpisodeTranslationRequest) (*v1.DeleteEpisodeTranslationResponse, error)
+	// Minimum role: tenant_auditor.
+	ListVolumes(context.Context, *v1.ListVolumesRequest) (*v1.ListVolumesResponse, error)
+	// Minimum role: tenant_editor.
+	CreateVolume(context.Context, *v1.CreateVolumeRequest) (*v1.CreateVolumeResponse, error)
+	// Minimum role: tenant_editor.
+	UpdateVolume(context.Context, *v1.UpdateVolumeRequest) (*v1.UpdateVolumeResponse, error)
+	// Minimum role: tenant_editor.
+	PublishVolume(context.Context, *v1.PublishVolumeRequest) (*v1.PublishVolumeResponse, error)
+	// Minimum role: tenant_editor.
+	SetVolumeEpisodes(context.Context, *v1.SetVolumeEpisodesRequest) (*v1.SetVolumeEpisodesResponse, error)
+	// Minimum role: tenant_editor.
+	ReorderVolumes(context.Context, *v1.ReorderVolumesRequest) (*v1.ReorderVolumesResponse, error)
+	// Minimum role: tenant_editor.
+	UploadVolumeCoverImage(context.Context, *v1.UploadVolumeCoverImageRequest) (*v1.UploadVolumeCoverImageResponse, error)
+	// Minimum role: tenant_editor.
+	DeleteVolumeCoverImage(context.Context, *v1.DeleteVolumeCoverImageRequest) (*v1.DeleteVolumeCoverImageResponse, error)
 }
 
 // NewAdminSeriesServiceClient constructs a client for the publira.admin.v1.AdminSeriesService
@@ -542,6 +638,22 @@ type AdminSeriesServiceHandler interface {
 	DeleteSeriesTranslation(context.Context, *v1.DeleteSeriesTranslationRequest) (*v1.DeleteSeriesTranslationResponse, error)
 	// Minimum role: tenant_editor.
 	DeleteEpisodeTranslation(context.Context, *v1.DeleteEpisodeTranslationRequest) (*v1.DeleteEpisodeTranslationResponse, error)
+	// Minimum role: tenant_auditor.
+	ListVolumes(context.Context, *v1.ListVolumesRequest) (*v1.ListVolumesResponse, error)
+	// Minimum role: tenant_editor.
+	CreateVolume(context.Context, *v1.CreateVolumeRequest) (*v1.CreateVolumeResponse, error)
+	// Minimum role: tenant_editor.
+	UpdateVolume(context.Context, *v1.UpdateVolumeRequest) (*v1.UpdateVolumeResponse, error)
+	// Minimum role: tenant_editor.
+	PublishVolume(context.Context, *v1.PublishVolumeRequest) (*v1.PublishVolumeResponse, error)
+	// Minimum role: tenant_editor.
+	SetVolumeEpisodes(context.Context, *v1.SetVolumeEpisodesRequest) (*v1.SetVolumeEpisodesResponse, error)
+	// Minimum role: tenant_editor.
+	ReorderVolumes(context.Context, *v1.ReorderVolumesRequest) (*v1.ReorderVolumesResponse, error)
+	// Minimum role: tenant_editor.
+	UploadVolumeCoverImage(context.Context, *v1.UploadVolumeCoverImageRequest) (*v1.UploadVolumeCoverImageResponse, error)
+	// Minimum role: tenant_editor.
+	DeleteVolumeCoverImage(context.Context, *v1.DeleteVolumeCoverImageRequest) (*v1.DeleteVolumeCoverImageResponse, error)
 }
 
 // RegisterAdminSeriesServiceHandler registers svc as the publira.admin.v1.AdminSeriesService
@@ -583,6 +695,14 @@ func RegisterAdminSeriesServiceHandler(server *connect.Server, svc AdminSeriesSe
 		connect.Method{Spec: adminSeriesServiceUpdateSeriesWaitFreeSettingsSpec(), Handler: adapter.updateSeriesWaitFreeSettings},
 		connect.Method{Spec: adminSeriesServiceDeleteSeriesTranslationSpec(), Handler: adapter.deleteSeriesTranslation},
 		connect.Method{Spec: adminSeriesServiceDeleteEpisodeTranslationSpec(), Handler: adapter.deleteEpisodeTranslation},
+		connect.Method{Spec: adminSeriesServiceListVolumesSpec(), Handler: adapter.listVolumes},
+		connect.Method{Spec: adminSeriesServiceCreateVolumeSpec(), Handler: adapter.createVolume},
+		connect.Method{Spec: adminSeriesServiceUpdateVolumeSpec(), Handler: adapter.updateVolume},
+		connect.Method{Spec: adminSeriesServicePublishVolumeSpec(), Handler: adapter.publishVolume},
+		connect.Method{Spec: adminSeriesServiceSetVolumeEpisodesSpec(), Handler: adapter.setVolumeEpisodes},
+		connect.Method{Spec: adminSeriesServiceReorderVolumesSpec(), Handler: adapter.reorderVolumes},
+		connect.Method{Spec: adminSeriesServiceUploadVolumeCoverImageSpec(), Handler: adapter.uploadVolumeCoverImage},
+		connect.Method{Spec: adminSeriesServiceDeleteVolumeCoverImageSpec(), Handler: adapter.deleteVolumeCoverImage},
 	)
 }
 
@@ -723,6 +843,38 @@ func (UnimplementedAdminSeriesServiceHandler) DeleteSeriesTranslation(context.Co
 
 func (UnimplementedAdminSeriesServiceHandler) DeleteEpisodeTranslation(context.Context, *v1.DeleteEpisodeTranslationRequest) (*v1.DeleteEpisodeTranslationResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.DeleteEpisodeTranslation is not implemented")
+}
+
+func (UnimplementedAdminSeriesServiceHandler) ListVolumes(context.Context, *v1.ListVolumesRequest) (*v1.ListVolumesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.ListVolumes is not implemented")
+}
+
+func (UnimplementedAdminSeriesServiceHandler) CreateVolume(context.Context, *v1.CreateVolumeRequest) (*v1.CreateVolumeResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.CreateVolume is not implemented")
+}
+
+func (UnimplementedAdminSeriesServiceHandler) UpdateVolume(context.Context, *v1.UpdateVolumeRequest) (*v1.UpdateVolumeResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.UpdateVolume is not implemented")
+}
+
+func (UnimplementedAdminSeriesServiceHandler) PublishVolume(context.Context, *v1.PublishVolumeRequest) (*v1.PublishVolumeResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.PublishVolume is not implemented")
+}
+
+func (UnimplementedAdminSeriesServiceHandler) SetVolumeEpisodes(context.Context, *v1.SetVolumeEpisodesRequest) (*v1.SetVolumeEpisodesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.SetVolumeEpisodes is not implemented")
+}
+
+func (UnimplementedAdminSeriesServiceHandler) ReorderVolumes(context.Context, *v1.ReorderVolumesRequest) (*v1.ReorderVolumesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.ReorderVolumes is not implemented")
+}
+
+func (UnimplementedAdminSeriesServiceHandler) UploadVolumeCoverImage(context.Context, *v1.UploadVolumeCoverImageRequest) (*v1.UploadVolumeCoverImageResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.UploadVolumeCoverImage is not implemented")
+}
+
+func (UnimplementedAdminSeriesServiceHandler) DeleteVolumeCoverImage(context.Context, *v1.DeleteVolumeCoverImageRequest) (*v1.DeleteVolumeCoverImageResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.DeleteVolumeCoverImage is not implemented")
 }
 
 type adminSeriesServiceClient struct {
@@ -996,6 +1148,70 @@ func (c *adminSeriesServiceClient) DeleteSeriesTranslation(ctx context.Context, 
 func (c *adminSeriesServiceClient) DeleteEpisodeTranslation(ctx context.Context, req *v1.DeleteEpisodeTranslationRequest) (*v1.DeleteEpisodeTranslationResponse, error) {
 	var res v1.DeleteEpisodeTranslationResponse
 	if err := c.client.CallUnary(ctx, adminSeriesServiceDeleteEpisodeTranslationSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) ListVolumes(ctx context.Context, req *v1.ListVolumesRequest) (*v1.ListVolumesResponse, error) {
+	var res v1.ListVolumesResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceListVolumesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) CreateVolume(ctx context.Context, req *v1.CreateVolumeRequest) (*v1.CreateVolumeResponse, error) {
+	var res v1.CreateVolumeResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceCreateVolumeSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) UpdateVolume(ctx context.Context, req *v1.UpdateVolumeRequest) (*v1.UpdateVolumeResponse, error) {
+	var res v1.UpdateVolumeResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceUpdateVolumeSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) PublishVolume(ctx context.Context, req *v1.PublishVolumeRequest) (*v1.PublishVolumeResponse, error) {
+	var res v1.PublishVolumeResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServicePublishVolumeSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) SetVolumeEpisodes(ctx context.Context, req *v1.SetVolumeEpisodesRequest) (*v1.SetVolumeEpisodesResponse, error) {
+	var res v1.SetVolumeEpisodesResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceSetVolumeEpisodesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) ReorderVolumes(ctx context.Context, req *v1.ReorderVolumesRequest) (*v1.ReorderVolumesResponse, error) {
+	var res v1.ReorderVolumesResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceReorderVolumesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) UploadVolumeCoverImage(ctx context.Context, req *v1.UploadVolumeCoverImageRequest) (*v1.UploadVolumeCoverImageResponse, error) {
+	var res v1.UploadVolumeCoverImageResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceUploadVolumeCoverImageSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) DeleteVolumeCoverImage(ctx context.Context, req *v1.DeleteVolumeCoverImageRequest) (*v1.DeleteVolumeCoverImageResponse, error) {
+	var res v1.DeleteVolumeCoverImageResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceDeleteVolumeCoverImageSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1405,6 +1621,102 @@ func (h adminSeriesServiceHandler) deleteEpisodeTranslation(ctx context.Context,
 		return err
 	}
 	res, err := h.svc.DeleteEpisodeTranslation(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) listVolumes(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListVolumesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListVolumes(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) createVolume(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.CreateVolumeRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.CreateVolume(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) updateVolume(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateVolumeRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateVolume(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) publishVolume(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.PublishVolumeRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.PublishVolume(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) setVolumeEpisodes(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.SetVolumeEpisodesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.SetVolumeEpisodes(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) reorderVolumes(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ReorderVolumesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ReorderVolumes(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) uploadVolumeCoverImage(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UploadVolumeCoverImageRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UploadVolumeCoverImage(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) deleteVolumeCoverImage(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.DeleteVolumeCoverImageRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DeleteVolumeCoverImage(ctx, &req)
 	if err != nil {
 		return err
 	}

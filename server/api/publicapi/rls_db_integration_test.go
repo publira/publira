@@ -129,6 +129,8 @@ var publicDataTables = []struct {
 	{name: "episode_images", count: "SELECT count(*) FROM episode_images"},
 	{name: "episode_eye_catch_images", count: "SELECT count(*) FROM episode_eye_catch_images"},
 	{name: "episode_eye_catch_image_variants", count: "SELECT count(*) FROM episode_eye_catch_image_variants"},
+	{name: "volume_cover_images", count: "SELECT count(*) FROM volume_cover_images"},
+	{name: "volume_cover_image_variants", count: "SELECT count(*) FROM volume_cover_image_variants"},
 	// The tenant's own settings, which every storefront page reads to decide
 	// how it looks and what it allows.
 	{name: "tenant_config", count: "SELECT count(*) FROM tenant_config"},
@@ -139,6 +141,13 @@ var publicDataTables = []struct {
 	{name: "episode_free_windows", count: "SELECT count(*) FROM episode_free_windows"},
 	// The banners above the top page's catalog sections.
 	{name: "campaign_banners", count: "SELECT count(*) FROM campaign_banners"},
+	// The volumes a series page sells, and the episodes each of them opens,
+	// which the content grant reads for a purchase of a volume.
+	{name: "volumes", count: "SELECT count(*) FROM volumes"},
+	{name: "volume_episodes", count: "SELECT count(*) FROM volume_episodes"},
+	// Where each volume may be bought, which the series page and the checkout
+	// read.
+	{name: "volume_purchase_surfaces", count: "SELECT count(*) FROM volume_purchase_surfaces"},
 	{name: "access_tickets", count: "SELECT count(*) FROM access_tickets"},
 	// A series' wait-for-free rule, which the series page reads, and one
 	// reader's wait for their next ticket, which spending one writes on this
@@ -208,6 +217,8 @@ var publicDataTables = []struct {
 	// Written by the same webhook for an expired checkout, and read when the
 	// reader starts the next one.
 	{name: "expired_checkouts", count: "SELECT count(*) FROM expired_checkouts"},
+	// The same for a checkout of a volume.
+	{name: "expired_volume_checkouts", count: "SELECT count(*) FROM expired_volume_checkouts"},
 	// Opened by the app before the store's payment sheet, and naming the reader
 	// and the price they agreed to.
 	{name: "store_purchase_intents", count: "SELECT count(*) FROM store_purchase_intents"},
@@ -382,6 +393,14 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	seed("held refund", "INSERT INTO unapplied_refunds (tenant_id, provider, provider_payment_id, refunded_amount, currency) VALUES ($1, 'stripe', $2, $3, 'JPY')", first.ID, "pi_rls_held", 500)
 	seed("held dispute", "INSERT INTO unapplied_disputes (tenant_id, provider, provider_payment_id) VALUES ($1, 'stripe', $2)", first.ID, "pi_rls_disputed")
 	seed("expired checkout", "INSERT INTO expired_checkouts (tenant_id, user_id, episode_id, provider, provider_checkout_id) VALUES ($1, $2, $3, 'stripe', $4)", first.ID, member.ID, episode.ID, "cs_rls_expired")
+	volume := env.PG.SeedVolume(t, first.ID, series.ID, testutil.VolumeSeed{PublicID: "VOLUMEA00001", Published: true, EpisodeIDs: []uuid.UUID{freeEpisode.ID}})
+	volumeCoverImageID := uuid.Must(uuid.NewV7())
+	seed("volume cover image", "INSERT INTO volume_cover_images (id, tenant_id, volume_id) VALUES ($1, $2, $3)", volumeCoverImageID, first.ID, volume.ID)
+	seed("volume cover image variant", `INSERT INTO volume_cover_image_variants
+		(id, tenant_id, volume_cover_image_id, label, variant_type, storage_provider, object_key, content_type, file_size_bytes, width, height)
+		VALUES ($1, $2, $3, 'portrait-320', 'portrait', 's3', 'tenants/volume-cover.webp', 'image/webp', 1, 320, 480)`,
+		uuid.Must(uuid.NewV7()), first.ID, volumeCoverImageID)
+	seed("expired volume checkout", "INSERT INTO expired_volume_checkouts (tenant_id, user_id, volume_id, provider, provider_checkout_id) VALUES ($1, $2, $3, 'stripe', $4)", first.ID, member.ID, volume.ID, "cs_rls_volume_expired")
 	seed("access ticket", "INSERT INTO access_tickets (id, tenant_id, public_id, episode_id, user_id) VALUES ($1, $2, $3, $4, $5)", uuid.Must(uuid.NewV7()), first.ID, "TICKETA00001", episode.ID, member.ID)
 	seed("wait-free rule", "INSERT INTO series_wait_free_settings (tenant_id, series_id, enabled) VALUES ($1, $2, true)", first.ID, series.ID)
 	seed("wait-free ticket state", "INSERT INTO wait_free_ticket_states (tenant_id, user_id, series_id, next_available_at) VALUES ($1, $2, $3, NOW())", first.ID, member.ID, series.ID)

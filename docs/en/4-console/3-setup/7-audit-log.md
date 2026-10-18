@@ -2,7 +2,7 @@
 title: Audit log
 description: Find out who on the staff changed what in the tenant, and when, from the record the console keeps of its staff's actions.
 published: 2026-10-07
-updated: 2026-10-16
+updated: 2026-10-18
 ---
 
 **Audit logs**, under **Administration**, is the tenant's record of what its staff did in the console: who changed what, when, and whether it worked. It answers questions such as who suspended a reader, who changed the payment settings, or when a member was given a role. Only a Tenant admin sees it.
@@ -26,7 +26,7 @@ The log cannot be exported, and its entries are never deleted. An entry keeps th
 
 | Area | Recorded |
 | --- | --- |
-| Catalog | Series, episodes, Authors, Author roles, labels, and genres created and changed, the titles of series and episodes deleted in a language, Author roles and genres deleted, their images uploaded, and free reading periods and Free if you wait changed |
+| Catalog | Series, episodes, volumes, Authors, Author roles, labels, and genres created and changed, volumes put on sale, taken off sale, and reordered, the titles of series and episodes deleted in a language, Author roles and genres deleted, their images uploaded, and free reading periods and Free if you wait changed |
 | Site | Pages created and changed, their versions created, published, and rolled back, their translations added and deleted, pages unpublished, announcements created, and banners taken down |
 | Comments | Comments approved, removed, restored, and purged, removals made automatically after reports, and reports upheld or dismissed |
 | Readers | Readers suspended, restored, and deleted, their dates of birth changed or cleared, their icons removed, access tickets issued and revoked, and refunds of their purchases requested and made. Contact messages handled, reopened, assigned, annotated, and answered |

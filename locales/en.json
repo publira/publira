@@ -102,11 +102,12 @@
       "fallback_link": "If the button does not work, paste this URL into your browser.",
       "heading": "Thank you for your purchase",
       "intro": "Here is the receipt for your purchase on {$tenant_name}.",
-      "preview": "Thank you for buying {$episode_title}.",
+      "preview": "Thank you for buying {$title}.",
       "purchased_at": "Purchased: {$purchased_at}",
       "series": "Series: {$series_title}",
       "subject": "{$tenant_name} purchase receipt",
-      "test_notice": "This was a purchase in the payment provider's test mode. No money was charged."
+      "test_notice": "This was a purchase in the payment provider's test mode. No money was charged.",
+      "volume": "Volume: {$volume_title}"
     },
     "reader_email_change_confirmation": {
       "action": "Confirm email address change",
@@ -290,7 +291,8 @@
         "tenant_sign_in_settings": "Sign-in providers",
         "tenant_site_copy": "Public site display",
         "tenant_timezone": "Time zone",
-        "user": "User"
+        "user": "User",
+        "volume": "Volume"
       },
       "list_failed": "Could not load the audit log. Please try again later.",
       "filter_invalid": "One of the filters is not valid. Check what you entered.",
@@ -341,6 +343,11 @@
         "episode_credits_bulk_edited": "Authors edited across episodes",
         "episode_free_window_created": "Free reading period added",
         "episode_free_window_deleted": "Free reading period deleted",
+        "volume_created": "Volume created",
+        "volume_updated": "Volume updated",
+        "volume_published": "Volume published",
+        "volume_unpublished": "Volume unpublished",
+        "volumes_reordered": "Volumes reordered",
         "creator_role_created": "Author role created",
         "creator_role_updated": "Author role updated",
         "creator_role_deleted": "Author role deleted",

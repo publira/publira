@@ -130,6 +130,7 @@ func purchaseReceiptEmailRequest(
 			"amount":        int64(receipt.PriceAtPurchase),
 			"currency":      receipt.Currency,
 			"episode_title": receipt.EpisodeTitle,
+			"volume_title":  receipt.VolumeTitle,
 			"expires_at":    expiresAt,
 			"is_test":       receipt.IsTest,
 			"library_url":   libraryURL,

@@ -86,7 +86,8 @@ LIMIT 1;
 
 -- name: GetActiveEpisodePurchaseKinds :one
 -- Which of the episode's two sales the reader holds an active purchase of.
--- Only a purchase counts: an access ticket does not stop the reader buying.
+-- Only a purchase counts: an access ticket does not stop the reader buying. A
+-- purchase of the volume holding the episode counts as its permanent copy.
 SELECT EXISTS (
         SELECT 1
         FROM episode_content_grants g
@@ -106,10 +107,12 @@ SELECT EXISTS (
     ) AS holds_rental;
 
 -- name: ListMyPurchasesDesc :many
--- The reader's library, newest purchase first. Publication is not re-checked,
--- so a purchase outlives the episode being taken down, but the calling surface
--- is: an episode that surface may not show is left out of the library read
--- there, as it is left out of the catalog.
+-- The reader's library, newest purchase first: each purchase of an episode,
+-- and each purchase of a volume as one row of its own. Publication is not
+-- re-checked, so a purchase outlives the episode or the volume being taken
+-- down, but the calling surface is: an episode that surface may not show, or a
+-- volume of a series it may not show, is left out of the library read there,
+-- as it is left out of the catalog.
 SELECT p.id,
     p.kind,
     p.price_at_purchase,
@@ -121,28 +124,44 @@ SELECT p.id,
     p.purchased_at,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
-    et.title AS episode_title,
-    et.locale AS episode_title_locale,
+    -- Empty on a purchase of a volume, which joins no translation: sqlc reads
+    -- the columns of a function's row as never NULL.
+    COALESCE(et.title, '')::text AS episode_title,
+    COALESCE(et.locale, '')::text AS episode_title_locale,
     e.order_index AS episode_order_index,
+    v.id AS volume_id,
+    v.public_id AS volume_public_id,
+    v.title AS volume_title,
+    v.order_index AS volume_order_index,
     s.id AS series_id,
     s.public_id AS series_public_id,
     str.title AS series_title,
     str.locale AS series_title_locale
 FROM purchases p
-    JOIN episodes e ON e.id = p.episode_id
-    CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et
-    JOIN series s ON s.id = e.series_id
+    LEFT JOIN episodes e ON e.tenant_id = p.tenant_id
+    AND e.id = p.episode_id
+    LEFT JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et ON TRUE
+    LEFT JOIN volumes v ON v.tenant_id = p.tenant_id
+    AND v.id = p.volume_id
+    JOIN series s ON s.tenant_id = p.tenant_id
+    AND s.id = COALESCE(e.series_id, v.series_id)
     CROSS JOIN LATERAL series_translation_for(s.id, sqlc.arg('locale')::text) str
 WHERE p.tenant_id = sqlc.arg('tenant_id')
     -- The cast keeps this a plain uuid: a deleted buyer's NULL is in nobody's library.
     AND p.user_id = sqlc.arg('user_id')::uuid
-    AND e.tenant_id = sqlc.arg('tenant_id')
-    AND s.tenant_id = sqlc.arg('tenant_id')
-    AND EXISTS (
-        SELECT 1
-        FROM episode_surfaces es
-        WHERE es.episode_id = e.id
-            AND es.surface = sqlc.arg('surface')::text
+    AND (
+        EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = sqlc.arg('surface')::text
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = v.series_id
+                AND ss.surface = sqlc.arg('surface')::text
+        )
     )
     AND (
         sqlc.narg('cursor_purchased_at')::timestamptz IS NULL
@@ -177,28 +196,44 @@ SELECT p.id,
     p.purchased_at,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
-    et.title AS episode_title,
-    et.locale AS episode_title_locale,
+    -- Empty on a purchase of a volume, which joins no translation: sqlc reads
+    -- the columns of a function's row as never NULL.
+    COALESCE(et.title, '')::text AS episode_title,
+    COALESCE(et.locale, '')::text AS episode_title_locale,
     e.order_index AS episode_order_index,
+    v.id AS volume_id,
+    v.public_id AS volume_public_id,
+    v.title AS volume_title,
+    v.order_index AS volume_order_index,
     s.id AS series_id,
     s.public_id AS series_public_id,
     str.title AS series_title,
     str.locale AS series_title_locale
 FROM purchases p
-    JOIN episodes e ON e.id = p.episode_id
-    CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et
-    JOIN series s ON s.id = e.series_id
+    LEFT JOIN episodes e ON e.tenant_id = p.tenant_id
+    AND e.id = p.episode_id
+    LEFT JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et ON TRUE
+    LEFT JOIN volumes v ON v.tenant_id = p.tenant_id
+    AND v.id = p.volume_id
+    JOIN series s ON s.tenant_id = p.tenant_id
+    AND s.id = COALESCE(e.series_id, v.series_id)
     CROSS JOIN LATERAL series_translation_for(s.id, sqlc.arg('locale')::text) str
 WHERE p.tenant_id = sqlc.arg('tenant_id')
     -- The cast keeps this a plain uuid: a deleted buyer's NULL is in nobody's library.
     AND p.user_id = sqlc.arg('user_id')::uuid
-    AND e.tenant_id = sqlc.arg('tenant_id')
-    AND s.tenant_id = sqlc.arg('tenant_id')
-    AND EXISTS (
-        SELECT 1
-        FROM episode_surfaces es
-        WHERE es.episode_id = e.id
-            AND es.surface = sqlc.arg('surface')::text
+    AND (
+        EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = sqlc.arg('surface')::text
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = v.series_id
+                AND ss.surface = sqlc.arg('surface')::text
+        )
     )
     AND (
         sqlc.narg('cursor_purchased_at')::timestamptz IS NULL
@@ -269,17 +304,23 @@ SELECT
     p.purchased_at,
     p.expires_at,
     p.is_test,
-    et.title AS episode_title,
+    -- What was bought: an episode, or a volume. The title of the other is
+    -- empty.
+    COALESCE(et.title, '')::text AS episode_title,
+    COALESCE(v.title, '')::text AS volume_title,
     str.title AS series_title,
     u.email AS reader_email
 FROM purchases p
-JOIN episodes e
+LEFT JOIN episodes e
     ON e.tenant_id = p.tenant_id
     AND e.id = p.episode_id
-CROSS JOIN LATERAL episode_translation_for(e.id, '') et
+LEFT JOIN LATERAL episode_translation_for(e.id, '') et ON TRUE
+LEFT JOIN volumes v
+    ON v.tenant_id = p.tenant_id
+    AND v.id = p.volume_id
 JOIN series s
-    ON s.tenant_id = e.tenant_id
-    AND s.id = e.series_id
+    ON s.tenant_id = p.tenant_id
+    AND s.id = COALESCE(e.series_id, v.series_id)
 CROSS JOIN LATERAL series_translation_for(s.id, '') str
 LEFT JOIN users u
     ON u.tenant_id = p.tenant_id
@@ -625,7 +666,7 @@ FROM purchases
 WHERE tenant_id = sqlc.arg('tenant_id')
     -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's purchase.
     AND user_id = sqlc.arg('user_id')::uuid
-    AND episode_id = sqlc.arg('episode_id')
+    AND episode_id = sqlc.arg('episode_id')::uuid
     AND provider_checkout_id IS NOT NULL
 ORDER BY purchased_at DESC,
     id DESC
@@ -660,6 +701,13 @@ WHERE p.tenant_id = sqlc.arg('tenant_id')
             WHERE e.tenant_id = p.tenant_id
                 AND e.id = p.episode_id
                 AND e.series_id = sqlc.narg('series_id')::uuid
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM volumes v
+            WHERE v.tenant_id = p.tenant_id
+                AND v.id = p.volume_id
+                AND v.series_id = sqlc.narg('series_id')::uuid
         )
     )
     AND (
@@ -713,6 +761,13 @@ WHERE p.tenant_id = sqlc.arg('tenant_id')
                 AND e.id = p.episode_id
                 AND e.series_id = sqlc.narg('series_id')::uuid
         )
+        OR EXISTS (
+            SELECT 1
+            FROM volumes v
+            WHERE v.tenant_id = p.tenant_id
+                AND v.id = p.volume_id
+                AND v.series_id = sqlc.narg('series_id')::uuid
+        )
     )
     AND (
         sqlc.narg('episode_id')::uuid IS NULL
@@ -752,14 +807,20 @@ ORDER BY p.purchased_at ASC,
 LIMIT sqlc.arg('limit');
 
 -- name: ListPurchasesForTenantByIDs :many
--- What the console shows of each purchase named, in no particular order. The
+-- What the console shows of each purchase named, in no particular order: the
+-- episode bought, or the volume, and the series of either. The
 -- buyer is joined within the tenant, so the purchase of a reader who has since
 -- deleted their account, which keeps no user, answers no buyer rather than no
 -- row.
 SELECT p.id,
     p.episode_id,
     e.public_id AS episode_public_id,
-    et.title AS episode_title,
+    -- Empty on a purchase of a volume, which joins no translation: sqlc reads
+    -- the columns of a function's row as never NULL.
+    COALESCE(et.title, '')::text AS episode_title,
+    p.volume_id,
+    v.public_id AS volume_public_id,
+    v.title AS volume_title,
     s.public_id AS series_public_id,
     str.title AS series_title,
     u.public_id AS reader_public_id,
@@ -779,11 +840,13 @@ SELECT p.id,
     p.revocation_reason,
     p.staff_refund_attempt
 FROM purchases p
-    JOIN episodes e ON e.tenant_id = p.tenant_id
+    LEFT JOIN episodes e ON e.tenant_id = p.tenant_id
     AND e.id = p.episode_id
-    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
-    JOIN series s ON s.tenant_id = e.tenant_id
-    AND s.id = e.series_id
+    LEFT JOIN LATERAL episode_translation_for(e.id, '') et ON TRUE
+    LEFT JOIN volumes v ON v.tenant_id = p.tenant_id
+    AND v.id = p.volume_id
+    JOIN series s ON s.tenant_id = p.tenant_id
+    AND s.id = COALESCE(e.series_id, v.series_id)
     CROSS JOIN LATERAL series_translation_for(s.id, '') str
     LEFT JOIN users u ON u.tenant_id = p.tenant_id
     AND u.id = p.user_id

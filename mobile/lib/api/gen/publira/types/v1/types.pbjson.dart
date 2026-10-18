@@ -1000,6 +1000,43 @@ final $typed_data.Uint8List pageVersionDescriptor = $convert.base64Decode(
     'kgASgJUgtwdWJsaXNoZWRBdBIyChVhZ3JlZW1lbnRfcmVxdWlyZWRfYXQYCiABKAlSE2FncmVl'
     'bWVudFJlcXVpcmVkQXQ=');
 
+@$core.Deprecated('Use volumeDescriptor instead')
+const Volume$json = {
+  '1': 'Volume',
+  '2': [
+    {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
+    {'1': 'public_id', '3': 2, '4': 1, '5': 9, '10': 'publicId'},
+    {'1': 'title', '3': 3, '4': 1, '5': 9, '10': 'title'},
+    {'1': 'order_index', '3': 4, '4': 1, '5': 5, '10': 'orderIndex'},
+    {'1': 'price', '3': 5, '4': 1, '5': 5, '10': 'price'},
+    {'1': 'episode_ids', '3': 6, '4': 3, '5': 9, '10': 'episodeIds'},
+    {
+      '1': 'cover_image_updated_at',
+      '3': 7,
+      '4': 1,
+      '5': 9,
+      '10': 'coverImageUpdatedAt'
+    },
+    {
+      '1': 'cover_image_variants',
+      '3': 8,
+      '4': 3,
+      '5': 11,
+      '6': '.publira.types.v1.SeriesEyeCatchVariant',
+      '10': 'coverImageVariants'
+    },
+  ],
+};
+
+/// Descriptor for `Volume`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List volumeDescriptor = $convert.base64Decode(
+    'CgZWb2x1bWUSDgoCaWQYASABKAlSAmlkEhsKCXB1YmxpY19pZBgCIAEoCVIIcHVibGljSWQSFA'
+    'oFdGl0bGUYAyABKAlSBXRpdGxlEh8KC29yZGVyX2luZGV4GAQgASgFUgpvcmRlckluZGV4EhQK'
+    'BXByaWNlGAUgASgFUgVwcmljZRIfCgtlcGlzb2RlX2lkcxgGIAMoCVIKZXBpc29kZUlkcxIzCh'
+    'Zjb3Zlcl9pbWFnZV91cGRhdGVkX2F0GAcgASgJUhNjb3ZlckltYWdlVXBkYXRlZEF0ElkKFGNv'
+    'dmVyX2ltYWdlX3ZhcmlhbnRzGAggAygLMicucHVibGlyYS50eXBlcy52MS5TZXJpZXNFeWVDYX'
+    'RjaFZhcmlhbnRSEmNvdmVySW1hZ2VWYXJpYW50cw==');
+
 @$core.Deprecated('Use readerIconPresetDescriptor instead')
 const ReaderIconPreset$json = {
   '1': 'ReaderIconPreset',

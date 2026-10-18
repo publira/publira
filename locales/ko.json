@@ -102,11 +102,12 @@
       "fallback_link": "버튼이 작동하지 않으면 다음 URL을 브라우저에 붙여 넣어 주세요.",
       "heading": "구매해 주셔서 감사합니다",
       "intro": "{$tenant_name}에서 구매하신 내역을 알려 드립니다.",
-      "preview": "{$episode_title} 구매가 완료되었습니다.",
+      "preview": "{$title} 구매가 완료되었습니다.",
       "purchased_at": "구매 일시: {$purchased_at}",
       "series": "시리즈: {$series_title}",
       "subject": "{$tenant_name} 구매 완료",
-      "test_notice": "결제 서비스의 테스트 모드에서 진행된 구매입니다. 요금은 청구되지 않았습니다."
+      "test_notice": "결제 서비스의 테스트 모드에서 진행된 구매입니다. 요금은 청구되지 않았습니다.",
+      "volume": "권: {$volume_title}"
     },
     "reader_email_change_confirmation": {
       "action": "이메일 주소 변경 확인하기",
@@ -290,7 +291,8 @@
         "tenant_sign_in_settings": "로그인 방법",
         "tenant_site_copy": "공개 사이트 표시 설정",
         "tenant_timezone": "시간대",
-        "user": "사용자"
+        "user": "사용자",
+        "volume": "권"
       },
       "list_failed": "감사 로그를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "filter_invalid": "필터 조건에 잘못된 값이 있습니다. 입력한 내용을 확인해 주세요.",
@@ -341,6 +343,11 @@
         "episode_credits_bulk_edited": "여러 에피소드 작가 일괄 편집",
         "episode_free_window_created": "무료 공개 기간 추가",
         "episode_free_window_deleted": "무료 공개 기간 삭제",
+        "volume_created": "권 생성",
+        "volume_updated": "권 변경",
+        "volume_published": "권 공개",
+        "volume_unpublished": "권 공개 내림",
+        "volumes_reordered": "권 순서 변경",
         "creator_role_created": "작가 역할 생성",
         "creator_role_updated": "작가 역할 변경",
         "creator_role_deleted": "작가 역할 삭제",

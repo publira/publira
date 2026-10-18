@@ -594,11 +594,11 @@ var Messages = map[string]map[string]string{
 		"zh-Hant": "以下是您在{$tenant_name}的購買明細。",
 	},
 	"email.purchase_receipt.preview": {
-		"ja":      "{$episode_title}をご購入いただきありがとうございます。",
-		"en":      "Thank you for buying {$episode_title}.",
-		"ko":      "{$episode_title} 구매가 완료되었습니다.",
-		"zh-Hans": "感谢您购买{$episode_title}。",
-		"zh-Hant": "感謝您購買{$episode_title}。",
+		"ja":      "{$title}をご購入いただきありがとうございます。",
+		"en":      "Thank you for buying {$title}.",
+		"ko":      "{$title} 구매가 완료되었습니다.",
+		"zh-Hans": "感谢您购买{$title}。",
+		"zh-Hant": "感謝您購買{$title}。",
 	},
 	"email.purchase_receipt.purchased_at": {
 		"ja":      "購入日時: {$purchased_at}",
@@ -627,6 +627,13 @@ var Messages = map[string]map[string]string{
 		"ko":      "결제 서비스의 테스트 모드에서 진행된 구매입니다. 요금은 청구되지 않았습니다.",
 		"zh-Hans": "这是在支付服务测试模式下的购买，未产生任何扣款。",
 		"zh-Hant": "這是在支付服務測試模式下的購買，未產生任何扣款。",
+	},
+	"email.purchase_receipt.volume": {
+		"ja":      "巻: {$volume_title}",
+		"en":      "Volume: {$volume_title}",
+		"ko":      "권: {$volume_title}",
+		"zh-Hans": "卷：{$volume_title}",
+		"zh-Hant": "卷：{$volume_title}",
 	},
 	"email.reader_email_change_confirmation.action": {
 		"ja":      "メールアドレス変更を確認する",

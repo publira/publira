@@ -167,7 +167,8 @@ var emailTemplates = map[string]func(*emailComposer){
 // as "$" stands for more than one currency. A purchase with no reading period
 // has no line saying when it ends. A purchase paid in the provider's test mode,
 // which the documented setup asks an operator to make, says it charged nothing,
-// so its "price paid" is not read as money taken.
+// so its "price paid" is not read as money taken. A purchase of a volume names
+// the volume where a purchase of an episode names the episode.
 func purchaseReceiptCopy(c *emailComposer) {
 	brand := c.value("tenant_name")
 	libraryURL := c.value("library_url")
@@ -179,7 +180,11 @@ func purchaseReceiptCopy(c *emailComposer) {
 		c.line("email.purchase_receipt.test_notice", nil)
 	}
 	c.line("email.purchase_receipt.series", map[string]any{"series_title": c.value("series_title")})
-	c.line("email.purchase_receipt.episode", map[string]any{"episode_title": c.value("episode_title")})
+	if volume := c.value("volume_title"); volume != "" {
+		c.line("email.purchase_receipt.volume", map[string]any{"volume_title": volume})
+	} else {
+		c.line("email.purchase_receipt.episode", map[string]any{"episode_title": c.value("episode_title")})
+	}
 	c.line("email.purchase_receipt.amount", map[string]any{"amount": c.price("amount", "currency"), "currency": c.value("currency")})
 	c.line("email.purchase_receipt.purchased_at", map[string]any{"purchased_at": c.instant("purchased_at")})
 	if c.value("expires_at") != "" {

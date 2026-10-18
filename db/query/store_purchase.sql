@@ -71,7 +71,8 @@ VALUES (
     sqlc.arg('id'),
     sqlc.arg('tenant_id'),
     sqlc.arg('user_id')::uuid,
-    sqlc.arg('episode_id'),
+    -- A store sells episodes alone, so the cast keeps this a plain uuid.
+    sqlc.arg('episode_id')::uuid,
     sqlc.arg('price_at_purchase'),
     sqlc.narg('expires_at'),
     sqlc.arg('store')::text,

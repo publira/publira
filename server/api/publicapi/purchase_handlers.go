@@ -218,8 +218,8 @@ func rentalLineItemName(code, episodeTitle string, rentalPeriodHours int32) (str
 	})
 }
 
-// checkoutIdempotencyKey names one reader's checkout of one episode by
-// everything the request sends, so a retried request reuses the provider's
+// checkoutIdempotencyKey names one reader's checkout of one episode, or of one
+// volume, by everything the request sends, so a retried request reuses the provider's
 // checkout. A provider refuses a key it has seen sent with other parameters, or
 // answers with the checkout it made for them, and any of those parameters can
 // change between two attempts of the same reader: an editor can change the
@@ -254,6 +254,9 @@ func checkoutIdempotencyKey(req paymentprovider.CheckoutRequest, expiredCheckout
 	}
 	sum := sha256.Sum256(encoded)
 	purchase := req.Purchase
+	if purchase.VolumeID != uuid.Nil {
+		return fmt.Sprintf("volume-checkout:%s:%s:%s:%x", purchase.TenantID, purchase.ReaderID, purchase.VolumeID, sum[:16]), nil
+	}
 	return fmt.Sprintf("episode-checkout:%s:%s:%s:%x", purchase.TenantID, purchase.ReaderID, purchase.EpisodeID, sum[:16]), nil
 }
 
@@ -298,11 +301,15 @@ type purchasePageRow struct {
 	refundedAmount    sql.NullInt32
 	refundedAt        sql.NullTime
 	purchasedAt       time.Time
-	episodeID         uuid.UUID
+	episodeID         uuid.NullUUID
 	episodePublicID   string
 	episodeTitle      string
 	episodeLocale     string
 	episodeOrderIndex int32
+	volumeID          uuid.NullUUID
+	volumePublicID    string
+	volumeTitle       string
+	volumeOrderIndex  int32
 	seriesID          uuid.UUID
 	seriesPublicID    string
 	seriesTitle       string
@@ -323,10 +330,14 @@ func mapPurchaseDescRows(rows []dbmodels.ListMyPurchasesDescRow) []purchasePageR
 			refundedAt:        row.RefundedAt,
 			purchasedAt:       row.PurchasedAt,
 			episodeID:         row.EpisodeID,
-			episodePublicID:   row.EpisodePublicID,
+			episodePublicID:   row.EpisodePublicID.String,
 			episodeTitle:      row.EpisodeTitle,
 			episodeLocale:     row.EpisodeTitleLocale,
-			episodeOrderIndex: row.EpisodeOrderIndex,
+			episodeOrderIndex: row.EpisodeOrderIndex.Int32,
+			volumeID:          row.VolumeID,
+			volumePublicID:    row.VolumePublicID.String,
+			volumeTitle:       row.VolumeTitle.String,
+			volumeOrderIndex:  row.VolumeOrderIndex.Int32,
 			seriesID:          row.SeriesID,
 			seriesPublicID:    row.SeriesPublicID,
 			seriesTitle:       row.SeriesTitle,
@@ -350,10 +361,14 @@ func mapPurchaseAscRows(rows []dbmodels.ListMyPurchasesAscRow) []purchasePageRow
 			refundedAt:        row.RefundedAt,
 			purchasedAt:       row.PurchasedAt,
 			episodeID:         row.EpisodeID,
-			episodePublicID:   row.EpisodePublicID,
+			episodePublicID:   row.EpisodePublicID.String,
 			episodeTitle:      row.EpisodeTitle,
 			episodeLocale:     row.EpisodeTitleLocale,
-			episodeOrderIndex: row.EpisodeOrderIndex,
+			episodeOrderIndex: row.EpisodeOrderIndex.Int32,
+			volumeID:          row.VolumeID,
+			volumePublicID:    row.VolumePublicID.String,
+			volumeTitle:       row.VolumeTitle.String,
+			volumeOrderIndex:  row.VolumeOrderIndex.Int32,
 			seriesID:          row.SeriesID,
 			seriesPublicID:    row.SeriesPublicID,
 			seriesTitle:       row.SeriesTitle,
@@ -420,15 +435,8 @@ func purchaseItemFromRow(row purchasePageRow, now time.Time) (*publirav1.MyPurch
 		revokedAt = row.revokedAt.Time.UTC().Format(time.RFC3339)
 	}
 
-	return &publirav1.MyPurchase{
-		Id: row.id.String(),
-		Episode: &publirattypesv1.Episode{
-			Id:         row.episodeID.String(),
-			OrderIndex: row.episodeOrderIndex,
-			PublicId:   row.episodePublicID,
-			Title:      row.episodeTitle,
-			Locale:     row.episodeLocale,
-		},
+	item := &publirav1.MyPurchase{
+		Id:              row.id.String(),
 		Currency:        row.currency,
 		ExpiresAt:       expiresAt,
 		IsActive:        isActive,
@@ -444,7 +452,26 @@ func purchaseItemFromRow(row purchasePageRow, now time.Time) (*publirav1.MyPurch
 			Title:    row.seriesTitle,
 			Locale:   row.seriesLocale,
 		},
-	}, nil
+	}
+	// A purchase is of an episode or of a volume, and the library names
+	// whichever it bought.
+	if row.volumeID.Valid {
+		item.Volume = &publirattypesv1.Volume{
+			Id:         row.volumeID.UUID.String(),
+			PublicId:   row.volumePublicID,
+			Title:      row.volumeTitle,
+			OrderIndex: row.volumeOrderIndex,
+		}
+	} else {
+		item.Episode = &publirattypesv1.Episode{
+			Id:         row.episodeID.UUID.String(),
+			OrderIndex: row.episodeOrderIndex,
+			PublicId:   row.episodePublicID,
+			Title:      row.episodeTitle,
+			Locale:     row.episodeLocale,
+		}
+	}
+	return item, nil
 }
 
 func (s *apiServer) ListMyPurchases(
@@ -597,13 +624,7 @@ func (s *apiServer) ProcessPaymentWebhook(
 		if event.Purchase.TenantID != tenant.ID {
 			return nil, connect.NewError(connect.CodeInvalidArgument, "checkout tenant does not match webhook path")
 		}
-		if err := s.queriesFor(ctx).RecordExpiredCheckout(ctx, dbmodels.RecordExpiredCheckoutParams{
-			TenantID:           tenant.ID,
-			UserID:             event.Purchase.ReaderID,
-			EpisodeID:          event.Purchase.EpisodeID,
-			Provider:           provider.Declaration().ID,
-			ProviderCheckoutID: event.CheckoutID,
-		}); err != nil {
+		if err := s.recordExpiredCheckout(ctx, tenant.ID, provider.Declaration().ID, event); err != nil {
 			return nil, s.internalDBError(ctx, "failed to record an expired checkout", err, "event_id", event.ID, "checkout_id", event.CheckoutID)
 		}
 	case paymentprovider.PurchaseCompleted:
@@ -628,6 +649,27 @@ func (s *apiServer) ProcessPaymentWebhook(
 		}
 	}
 	return &publirav1.ProcessPaymentWebhookResponse{}, nil
+}
+
+// recordExpiredCheckout records the checkout the provider reports expired as
+// the reader's latest on what it would have sold: the episode, or the volume.
+func (s *apiServer) recordExpiredCheckout(ctx context.Context, tenantID uuid.UUID, providerID string, event paymentprovider.CheckoutExpired) error {
+	if event.Purchase.VolumeID != uuid.Nil {
+		return s.queriesFor(ctx).RecordExpiredVolumeCheckout(ctx, dbmodels.RecordExpiredVolumeCheckoutParams{
+			TenantID:           tenantID,
+			UserID:             event.Purchase.ReaderID,
+			VolumeID:           event.Purchase.VolumeID,
+			Provider:           providerID,
+			ProviderCheckoutID: event.CheckoutID,
+		})
+	}
+	return s.queriesFor(ctx).RecordExpiredCheckout(ctx, dbmodels.RecordExpiredCheckoutParams{
+		TenantID:           tenantID,
+		UserID:             event.Purchase.ReaderID,
+		EpisodeID:          event.Purchase.EpisodeID,
+		Provider:           providerID,
+		ProviderCheckoutID: event.CheckoutID,
+	})
 }
 
 func (s *apiServer) recordRefund(
@@ -863,7 +905,8 @@ func (s *apiServer) recordLostDispute(
 	return nil
 }
 
-// createPurchase records the purchase a completed checkout paid for, and
+// createPurchase records the purchase a completed checkout paid for, of an
+// episode or of a volume, and
 // everything that follows from it, in one transaction: the refund or the
 // dispute that may have overtaken it, its engagement event, and the receipt the reader is owed.
 // A delivery that fails partway therefore leaves nothing behind, and the
@@ -890,25 +933,41 @@ func (s *apiServer) createPurchase(
 	// editor changed its price or reading period, and one started after. Both
 	// are recorded, because each took a payment. A redelivery of a checkout
 	// already recorded inserts nothing here and queues no second receipt.
-	var expiresAt sql.NullTime
-	if hours := purchase.ReadingPeriodHours; hours > 0 {
-		now := time.Now().UTC()
-		expiresAt = sql.NullTime{Time: now.AddDate(0, 0, int(hours/24)).Add(time.Duration(hours%24) * time.Hour), Valid: true}
+	var created dbmodels.Purchase
+	if purchase.VolumeID != uuid.Nil {
+		created, err = queries.CreatePurchaseFromProviderVolumeCheckout(ctx, dbmodels.CreatePurchaseFromProviderVolumeCheckoutParams{
+			ID:                 uuid.New(),
+			TenantID:           tenantID,
+			UserID:             purchase.ReaderID,
+			VolumeID:           purchase.VolumeID,
+			PriceAtPurchase:    purchase.Price,
+			Provider:           providerID,
+			ProviderCheckoutID: event.CheckoutID,
+			ProviderPaymentID:  paymentID,
+			IsTest:             event.Test,
+			Currency:           purchase.Currency,
+		})
+	} else {
+		var expiresAt sql.NullTime
+		if hours := purchase.ReadingPeriodHours; hours > 0 {
+			now := time.Now().UTC()
+			expiresAt = sql.NullTime{Time: now.AddDate(0, 0, int(hours/24)).Add(time.Duration(hours%24) * time.Hour), Valid: true}
+		}
+		created, err = queries.CreatePurchaseFromProviderCheckout(ctx, dbmodels.CreatePurchaseFromProviderCheckoutParams{
+			ID:                 uuid.New(),
+			TenantID:           tenantID,
+			UserID:             purchase.ReaderID,
+			EpisodeID:          purchase.EpisodeID,
+			Kind:               string(purchase.Kind),
+			PriceAtPurchase:    purchase.Price,
+			ExpiresAt:          expiresAt,
+			Provider:           providerID,
+			ProviderCheckoutID: event.CheckoutID,
+			ProviderPaymentID:  paymentID,
+			IsTest:             event.Test,
+			Currency:           purchase.Currency,
+		})
 	}
-	created, err := queries.CreatePurchaseFromProviderCheckout(ctx, dbmodels.CreatePurchaseFromProviderCheckoutParams{
-		ID:                 uuid.New(),
-		TenantID:           tenantID,
-		UserID:             purchase.ReaderID,
-		EpisodeID:          purchase.EpisodeID,
-		Kind:               string(purchase.Kind),
-		PriceAtPurchase:    purchase.Price,
-		ExpiresAt:          expiresAt,
-		Provider:           providerID,
-		ProviderCheckoutID: event.CheckoutID,
-		ProviderPaymentID:  paymentID,
-		IsTest:             event.Test,
-		Currency:           purchase.Currency,
-	})
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 	case err != nil:
@@ -928,14 +987,18 @@ func (s *apiServer) createPurchase(
 		}
 	}
 
-	_, err = queries.ProjectPurchaseContentEvent(ctx, dbmodels.ProjectPurchaseContentEventParams{
-		ID:                 uuid.Must(uuid.NewV7()),
-		TenantID:           tenantID,
-		Provider:           providerID,
-		ProviderCheckoutID: event.CheckoutID,
-	})
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return fmt.Errorf("project purchase content event: %w", err)
+	// The engagement events are an episode's, and a volume is not one, so a
+	// purchase of a volume projects none.
+	if purchase.VolumeID == uuid.Nil {
+		_, err = queries.ProjectPurchaseContentEvent(ctx, dbmodels.ProjectPurchaseContentEventParams{
+			ID:                 uuid.Must(uuid.NewV7()),
+			TenantID:           tenantID,
+			Provider:           providerID,
+			ProviderCheckoutID: event.CheckoutID,
+		})
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("project purchase content event: %w", err)
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit purchase: %w", err)

@@ -32,9 +32,12 @@ const (
 	SignatureHeader = "Stripe-Signature"
 
 	// The metadata keys a Checkout Session carries its purchase in.
-	MetadataTenantID           = "tenant_id"
-	MetadataUserID             = "user_id"
-	MetadataEpisodeID          = "episode_id"
+	MetadataTenantID  = "tenant_id"
+	MetadataUserID    = "user_id"
+	MetadataEpisodeID = "episode_id"
+	// MetadataVolumeID is present, in place of MetadataEpisodeID, on a
+	// checkout of a volume.
+	MetadataVolumeID           = "volume_id"
 	MetadataPrice              = "price"
 	MetadataReadingPeriodHours = "reading_period_hours"
 	// MetadataKind is absent on a checkout started before an episode had
@@ -159,10 +162,14 @@ func withSessionID(successURL string) (string, error) {
 
 func purchaseMetadata(purchase paymentprovider.Purchase) map[string]string {
 	metadata := map[string]string{
-		MetadataTenantID:  purchase.TenantID.String(),
-		MetadataUserID:    purchase.ReaderID.String(),
-		MetadataEpisodeID: purchase.EpisodeID.String(),
-		MetadataPrice:     strconv.FormatInt(int64(purchase.Price), 10),
+		MetadataTenantID: purchase.TenantID.String(),
+		MetadataUserID:   purchase.ReaderID.String(),
+		MetadataPrice:    strconv.FormatInt(int64(purchase.Price), 10),
+	}
+	if purchase.VolumeID != uuid.Nil {
+		metadata[MetadataVolumeID] = purchase.VolumeID.String()
+	} else {
+		metadata[MetadataEpisodeID] = purchase.EpisodeID.String()
 	}
 	if purchase.ReadingPeriodHours > 0 {
 		metadata[MetadataReadingPeriodHours] = strconv.FormatInt(int64(purchase.ReadingPeriodHours), 10)
@@ -417,7 +424,18 @@ func parsePurchaseMetadata(metadata map[string]string) (paymentprovider.Purchase
 	if err != nil {
 		return paymentprovider.Purchase{}, err
 	}
-	episodeID, err := parseID(MetadataEpisodeID)
+	// A checkout sells an episode or a volume, never both, and one started
+	// before volumes existed names an episode.
+	var episodeID, volumeID uuid.UUID
+	_, sellsVolume := metadata[MetadataVolumeID]
+	if sellsVolume {
+		if _, ok := metadata[MetadataEpisodeID]; ok {
+			return paymentprovider.Purchase{}, errors.New("metadata names both an episode and a volume")
+		}
+		volumeID, err = parseID(MetadataVolumeID)
+	} else {
+		episodeID, err = parseID(MetadataEpisodeID)
+	}
 	if err != nil {
 		return paymentprovider.Purchase{}, err
 	}
@@ -436,10 +454,16 @@ func parsePurchaseMetadata(metadata map[string]string) (paymentprovider.Purchase
 	if err != nil {
 		return paymentprovider.Purchase{}, fmt.Errorf("invalid kind metadata: %w", err)
 	}
+	if sellsVolume {
+		if err := paymentprovider.CheckVolumeSale(kind, readingPeriodHours); err != nil {
+			return paymentprovider.Purchase{}, fmt.Errorf("invalid volume metadata: %w", err)
+		}
+	}
 	return paymentprovider.Purchase{
 		TenantID:           tenantID,
 		ReaderID:           userID,
 		EpisodeID:          episodeID,
+		VolumeID:           volumeID,
 		Kind:               kind,
 		Price:              int32(price),
 		ReadingPeriodHours: int32(readingPeriodHours),

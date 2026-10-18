@@ -170,6 +170,13 @@ message GetSeriesDetailResponse {
   // code order: the language alternates of the series. It includes
   // Series.locale whenever the tenant offers that locale.
   repeated string published_locales = 6;
+  // The series' volumes on sale on the calling surface, in the tenant's
+  // order: each holds at least one of `episodes`, and every one of its
+  // episodes may be bought on the surface (Episode.purchase_availability),
+  // since buying the volume is buying each of them. Like the rest of this response it says nothing about
+  // the reader: whether the reader already owns one is told by the episodes it
+  // holds, which GetSeriesEpisodeAccess reports as entitled.
+  repeated publira.types.v1.Volume volumes = 7;
 }
 
 message GetSeriesEpisodeAccessRequest {
@@ -1634,9 +1641,40 @@ message StartEpisodeCheckoutResponse {
   string checkout_url = 1;
 }
 
+// Starts a provider checkout of a volume, as StartEpisodeCheckout does of an
+// episode, and answers the URL of the provider's checkout page, which names
+// the sale by the volume's title. The purchase
+// is created by the provider's webhook alone, and it opens every episode the
+// volume holds, for good: a volume is never rented and has no reading period.
+//
+// `client` names the surface the checkout is started from, as it does on
+// StartEpisodeCheckout. A volume GetSeriesDetail does not list for that
+// surface is not_found: one not on sale, one holding an episode not sold on
+// the surface, and one none of whose episodes the surface lists. A reader who
+// already holds a purchase of the volume that still opens it is
+// already_exists, and one whose account is linked to a creator any episode of
+// the volume credits is permission_denied with the ErrorInfo reason
+// READER_CREDITED_ON_EPISODE.
+//
+// The storefront is returned to the series page with `checkout` and `volume`
+// in the query; the app to `/{locale}/checkout/return` with `series`,
+// `volume`, and `status`.
+message StartVolumeCheckoutRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string volume_id = 2;
+  StartEpisodeCheckoutRequest.Client client = 3;
+}
+
+message StartVolumeCheckoutResponse {
+  string checkout_url = 1;
+}
+
 // One purchase belonging to the signed-in reader. `is_active` is evaluated by
 // the API at read time: a purchase is active until it is revoked or its
 // expiry passes, and one without an expiry stays active until it is revoked.
+//
+// A purchase is of one episode or of one volume: exactly one of `episode` and
+// `volume` is set, and `series` is the series of either.
 message MyPurchase {
   string id = 1;
   publira.types.v1.Episode episode = 2;
@@ -1664,8 +1702,13 @@ message MyPurchase {
   // the refund. A purchase revoked here is never active.
   string revoked_at = 11;
   // Which of the episode's sales the reader bought, never unspecified. A
-  // rental always carries expires_at.
+  // rental always carries expires_at. A purchase of a volume is always
+  // PURCHASE_KIND_PURCHASE.
   publira.types.v1.PurchaseKind kind = 12;
+  // The volume bought, set on a purchase of a volume. It carries the id, the
+  // public_id, the title, and the order_index, and none of the volume's
+  // episodes, price, or cover.
+  publira.types.v1.Volume volume = 13;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -1793,6 +1836,7 @@ message ProcessAppStoreNotificationResponse {}
 
 service PurchaseService {
   rpc StartEpisodeCheckout(StartEpisodeCheckoutRequest) returns (StartEpisodeCheckoutResponse) {}
+  rpc StartVolumeCheckout(StartVolumeCheckoutRequest) returns (StartVolumeCheckoutResponse) {}
   // Lists only the authenticated reader's purchases in the requested tenant.
   rpc ListMyPurchases(ListMyPurchasesRequest) returns (ListMyPurchasesResponse) {}
   rpc ProcessPaymentWebhook(ProcessPaymentWebhookRequest) returns (ProcessPaymentWebhookResponse) {}

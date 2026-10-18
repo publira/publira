@@ -14,6 +14,7 @@ const data = {
   purchased_at: "2030-01-15T12:00:00Z",
   series_title: "The Lighthouse Keeper",
   tenant_name: "Aoto Press",
+  volume_title: "",
 } as const;
 
 const render = async (
@@ -88,6 +89,25 @@ describe("purchaseReceiptDataSchema", () => {
     ).toBe(false);
   });
 
+  it("accepts a purchase of a volume, which names no episode", () => {
+    const volume = { ...data, episode_title: "", volume_title: "Volume One" };
+
+    expect(purchaseReceiptDataSchema.safeParse(volume).success).toBe(true);
+  });
+
+  it("rejects a purchase that names both an episode and a volume, or neither", () => {
+    expect(
+      purchaseReceiptDataSchema.safeParse({
+        ...data,
+        volume_title: "Volume One",
+      }).success
+    ).toBe(false);
+    expect(
+      purchaseReceiptDataSchema.safeParse({ ...data, episode_title: " " })
+        .success
+    ).toBe(false);
+  });
+
   // The console stores titles with no length limit, and a receipt whose data
   // the schema refuses is never sent.
   it("accepts any title the catalogue can hold", () => {
@@ -113,6 +133,18 @@ describe("PurchaseReceiptEmail", () => {
     expect(html).toContain('href="https://aoto.example.com/my/library"');
     expect(html).toContain(data.tenant_name);
     expect(html).not.toContain("Publira");
+  });
+
+  it("names the volume bought in place of an episode", async () => {
+    const html = await render("en", {
+      episode_title: "",
+      expires_at: "",
+      volume_title: "Volume One",
+    });
+
+    expect(html).toContain("Volume: Volume One");
+    expect(html).toContain("Thank you for buying Volume One.");
+    expect(html).not.toContain("Episode:");
   });
 
   it("writes a currency with a minor unit from that unit", async () => {

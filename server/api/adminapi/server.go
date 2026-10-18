@@ -429,6 +429,7 @@ var readLimits = map[string]int{
 	publiraadminv1connect.AdminSeriesServiceUploadSeriesEyeCatchAspectImageProcedure:         imageUploadReadMaxBytes,
 	publiraadminv1connect.AdminSeriesServiceUploadEpisodeEyeCatchImageProcedure:              imageUploadReadMaxBytes,
 	publiraadminv1connect.AdminSeriesServiceUploadEpisodeEyeCatchAspectImageProcedure:        imageUploadReadMaxBytes,
+	publiraadminv1connect.AdminSeriesServiceUploadVolumeCoverImageProcedure:                  imageUploadReadMaxBytes,
 	publiraadminv1connect.AdminLabelServiceCreateLabelProcedure:                              imageUploadReadMaxBytes,
 	publiraadminv1connect.AdminLabelServiceUpdateLabelProcedure:                              imageUploadReadMaxBytes,
 	publiraadminv1connect.AdminLabelServiceUploadLabelEyeCatchAspectImageProcedure:           imageUploadReadMaxBytes,

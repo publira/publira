@@ -72,9 +72,12 @@ func purchaseRefundable(row dbmodels.ListPurchasesForTenantByIDsRow, payments pa
 func mapPurchase(row dbmodels.ListPurchasesForTenantByIDsRow, payments paymentsettings.PublicConfig) *publiraadminv1.AdminPurchase {
 	return &publiraadminv1.AdminPurchase{
 		Id:               row.ID.String(),
-		EpisodeId:        row.EpisodeID.String(),
-		EpisodePublicId:  row.EpisodePublicID,
+		EpisodeId:        nullUUIDString(row.EpisodeID),
+		EpisodePublicId:  formatOptionalString(row.EpisodePublicID),
 		EpisodeTitle:     row.EpisodeTitle,
+		VolumeId:         nullUUIDString(row.VolumeID),
+		VolumePublicId:   formatOptionalString(row.VolumePublicID),
+		VolumeTitle:      formatOptionalString(row.VolumeTitle),
 		SeriesPublicId:   row.SeriesPublicID,
 		SeriesTitle:      row.SeriesTitle,
 		ReaderPublicId:   formatOptionalString(row.ReaderPublicID),

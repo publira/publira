@@ -142,6 +142,18 @@ func expectNoEpisodeEyeCatches(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
 		WillReturnRows(sqlmock.NewRows(episodeEyeCatchVariantColumns))
 }
 
+// publishedVolumeColumns are the columns of ListPublishedVolumesForSeries,
+// the read that lists a series' volumes on sale beside its episodes.
+var publishedVolumeColumns = []string{"id", "public_id", "title", "order_index", "price", "cover_image_id", "cover_image_updated_at", "published_at"}
+
+// expectNoSeriesVolumes answers that read for a series with no volume on
+// sale.
+func expectNoSeriesVolumes(mock sqlmock.Sqlmock, tenantID, seriesID uuid.UUID) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedVolumesForSeries)).
+		WithArgs(tenantID, seriesID, "web").
+		WillReturnRows(sqlmock.NewRows(publishedVolumeColumns))
+}
+
 func expectEpisodePreviewImagesLookup(mock sqlmock.Sqlmock, episodeID uuid.UUID, imageIDs ...uuid.UUID) {
 	rows := sqlmock.NewRows([]string{"id", "display_order", "width", "height"})
 	for index, imageID := range imageIDs {

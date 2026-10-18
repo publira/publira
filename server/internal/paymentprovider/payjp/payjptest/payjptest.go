@@ -8,6 +8,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"maps"
 	"net/http"
 	"net/http/httptest"
@@ -412,10 +413,17 @@ func writeError(w http.ResponseWriter, status int, detail string) {
 // carries.
 func PurchaseMetadata(purchase paymentprovider.Purchase) map[string]any {
 	metadata := map[string]any{
-		payjp.MetadataTenantID:  purchase.TenantID.String(),
-		payjp.MetadataUserID:    purchase.ReaderID.String(),
-		payjp.MetadataEpisodeID: purchase.EpisodeID.String(),
-		payjp.MetadataPrice:     strconv.FormatInt(int64(purchase.Price), 10),
+		payjp.MetadataTenantID: purchase.TenantID.String(),
+		payjp.MetadataUserID:   purchase.ReaderID.String(),
+		payjp.MetadataPrice:    strconv.FormatInt(int64(purchase.Price), 10),
+	}
+	// Each of the two is written when it is set, so a purchase naming both
+	// stands for a checkout the provider would have to refuse.
+	if purchase.EpisodeID != uuid.Nil {
+		metadata[payjp.MetadataEpisodeID] = purchase.EpisodeID.String()
+	}
+	if purchase.VolumeID != uuid.Nil {
+		metadata[payjp.MetadataVolumeID] = purchase.VolumeID.String()
 	}
 	if purchase.ReadingPeriodHours > 0 {
 		metadata[payjp.MetadataReadingPeriodHours] = strconv.FormatInt(int64(purchase.ReadingPeriodHours), 10)

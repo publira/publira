@@ -496,6 +496,7 @@ func TestGetSeriesDetailRecordsNoViewEvent(t *testing.T) {
 	expectTenantCommentMode(mock, tenantID, now, "disabled")
 	expectSeriesRating(mock, tenantID, seriesID, 0, 0)
 	expectNoSeriesWaitFreeRule(mock, tenantID, seriesID)
+	expectNoSeriesVolumes(mock, tenantID, seriesID)
 	recorded := forbidSeriesViewEventInsert(mock)
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))

@@ -959,6 +959,154 @@ message DeleteEpisodeTranslationResponse {
   repeated EpisodeTranslation translations = 1;
 }
 
+// A volume as the console manages it: a run of a series' episodes sold
+// together in one checkout, at a price of its own. Readers see the published
+// ones on GetSeriesDetail, as publira.types.v1.Volume.
+message AdminVolume {
+  // The volume's primary key, which every volume RPC addresses it by.
+  string id = 1;
+  string public_id = 2;
+  string series_id = 3;
+  string title = 4;
+  // Where the volume stands among its series' volumes, ascending, which
+  // ReorderVolumes writes.
+  int32 order_index = 5;
+  // In the minor unit of the tenant currency, as an episode's price is.
+  int32 price = 6;
+  // Every episode the volume holds, by id, in the volume's own order, which
+  // SetVolumeEpisodes writes. Drafts and scheduled episodes included.
+  repeated string episode_ids = 7;
+  // Whether the volume is on sale.
+  bool published = 8;
+  // The RFC 3339 instant the volume was first put on sale, kept when it is
+  // taken off, and empty for a volume never on sale. Once it is set, no
+  // episode can be taken out of the volume: a checkout started while it was
+  // on sale can still complete, and the purchase opens what the volume holds.
+  // More episodes can still be added.
+  string published_at = 9;
+  string cover_image_updated_at = 10;
+  repeated publira.types.v1.SeriesEyeCatchVariant cover_image_variants = 11;
+  string created_at = 12;
+  string updated_at = 13;
+}
+
+message ListVolumesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string series_id = 2;
+}
+
+// Every volume of the series, unpublished ones included, in the series'
+// order. A series holds few enough volumes that the list is never paged.
+message ListVolumesResponse {
+  repeated AdminVolume volumes = 1;
+}
+
+// Creates an unpublished volume at the end of the series' volumes, holding no
+// episodes yet. An unknown series is not_found, and a series that already
+// holds 100 volumes is failed_precondition.
+message CreateVolumeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string series_id = 2;
+  // Required, at most 255 characters.
+  string title = 3;
+  // Required and above zero: a volume is never free.
+  int32 price = 4;
+  // The ISO 4217 code price was entered in, held to what
+  // UpdateEpisodePricingRequest.currency is held to.
+  string currency = 5;
+}
+
+message CreateVolumeResponse {
+  AdminVolume volume = 1;
+}
+
+// Replaces the title and the price together. A purchase already made keeps the
+// price it was made at.
+message UpdateVolumeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string volume_id = 2;
+  // Held to what CreateVolumeRequest holds them to.
+  string title = 3;
+  int32 price = 4;
+  string currency = 5;
+}
+
+message UpdateVolumeResponse {
+  AdminVolume volume = 1;
+}
+
+// Puts the volume on sale, or takes it off. A volume holding no episodes
+// cannot be put on sale, and is failed_precondition. Taking a volume off sale
+// takes back nothing a reader already bought.
+message PublishVolumeRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string volume_id = 2;
+  bool published = 3;
+}
+
+message PublishVolumeResponse {
+  AdminVolume volume = 1;
+}
+
+// Replaces the episodes the volume holds, in the order given. Every one has to
+// be an episode of the volume's series, named once, or the call is
+// invalid_argument. An episode another volume holds is failed_precondition:
+// an episode is in at most one volume, so it is taken out of the other first.
+// Taking out an episode of a volume that has ever been on sale
+// (AdminVolume.published_at) is failed_precondition too, and so is emptying a
+// volume, which only a volume never on sale may be.
+message SetVolumeEpisodesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string volume_id = 2;
+  repeated string episode_ids = 3;
+}
+
+message SetVolumeEpisodesResponse {
+  AdminVolume volume = 1;
+}
+
+message ReorderVolumesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string series_id = 2;
+  // Desired order after the write. Must be a permutation of
+  // expected_volume_ids.
+  repeated string volume_ids = 3;
+  // The order the client read before composing volume_ids. The RPC locks the
+  // series' volumes, re-reads the current order, and rejects the write with
+  // failed_precondition when this no longer matches.
+  repeated string expected_volume_ids = 4;
+}
+
+message ReorderVolumesResponse {
+  repeated AdminVolume volumes = 1;
+}
+
+// Gives the volume a cover, replacing the one it has. All four ratios are cut
+// out of the one image, from its centre, as an episode eye-catch is.
+message UploadVolumeCoverImageRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string volume_id = 2;
+  // image/jpeg, image/png, or image/webp, at most 10 MB.
+  bytes image_data = 3;
+  // Empty is detected from image_data.
+  string image_content_type = 4;
+}
+
+message UploadVolumeCoverImageResponse {
+  AdminVolume volume = 1;
+}
+
+// Takes the volume's cover away, so a client shows the series' eye-catch in
+// its place. A volume with none is left as it is.
+message DeleteVolumeCoverImageRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string volume_id = 2;
+}
+
+message DeleteVolumeCoverImageResponse {
+  AdminVolume volume = 1;
+}
+
 service AdminSeriesService {
   // Minimum role: tenant_editor.
   rpc CreateSeries(CreateSeriesRequest) returns (CreateSeriesResponse) {}
@@ -1040,4 +1188,20 @@ service AdminSeriesService {
   rpc DeleteSeriesTranslation(DeleteSeriesTranslationRequest) returns (DeleteSeriesTranslationResponse) {}
   // Minimum role: tenant_editor.
   rpc DeleteEpisodeTranslation(DeleteEpisodeTranslationRequest) returns (DeleteEpisodeTranslationResponse) {}
+  // Minimum role: tenant_auditor.
+  rpc ListVolumes(ListVolumesRequest) returns (ListVolumesResponse) {}
+  // Minimum role: tenant_editor.
+  rpc CreateVolume(CreateVolumeRequest) returns (CreateVolumeResponse) {}
+  // Minimum role: tenant_editor.
+  rpc UpdateVolume(UpdateVolumeRequest) returns (UpdateVolumeResponse) {}
+  // Minimum role: tenant_editor.
+  rpc PublishVolume(PublishVolumeRequest) returns (PublishVolumeResponse) {}
+  // Minimum role: tenant_editor.
+  rpc SetVolumeEpisodes(SetVolumeEpisodesRequest) returns (SetVolumeEpisodesResponse) {}
+  // Minimum role: tenant_editor.
+  rpc ReorderVolumes(ReorderVolumesRequest) returns (ReorderVolumesResponse) {}
+  // Minimum role: tenant_editor.
+  rpc UploadVolumeCoverImage(UploadVolumeCoverImageRequest) returns (UploadVolumeCoverImageResponse) {}
+  // Minimum role: tenant_editor.
+  rpc DeleteVolumeCoverImage(DeleteVolumeCoverImageRequest) returns (DeleteVolumeCoverImageResponse) {}
 }

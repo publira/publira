@@ -102,11 +102,12 @@
       "fallback_link": "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。",
       "heading": "ご購入ありがとうございます",
       "intro": "{$tenant_name}でのご購入内容をお知らせします。",
-      "preview": "{$episode_title}をご購入いただきありがとうございます。",
+      "preview": "{$title}をご購入いただきありがとうございます。",
       "purchased_at": "購入日時: {$purchased_at}",
       "series": "シリーズ: {$series_title}",
       "subject": "{$tenant_name}購入完了",
-      "test_notice": "これは決済サービスのテストモードでの購入です。料金は請求されていません。"
+      "test_notice": "これは決済サービスのテストモードでの購入です。料金は請求されていません。",
+      "volume": "巻: {$volume_title}"
     },
     "reader_email_change_confirmation": {
       "action": "メールアドレス変更を確認する",
@@ -290,7 +291,8 @@
         "tenant_sign_in_settings": "ログイン方法",
         "tenant_site_copy": "公開サイト表示設定",
         "tenant_timezone": "タイムゾーン",
-        "user": "ユーザー"
+        "user": "ユーザー",
+        "volume": "巻"
       },
       "list_failed": "監査ログの取得に失敗しました。時間をおいて再試行してください。",
       "filter_invalid": "フィルタ条件に誤りがあります。入力内容を確認してください。",
@@ -341,6 +343,11 @@
         "episode_credits_bulk_edited": "複数エピソードの著者の一括編集",
         "episode_free_window_created": "無料公開期間の追加",
         "episode_free_window_deleted": "無料公開期間の削除",
+        "volume_created": "巻の作成",
+        "volume_updated": "巻の更新",
+        "volume_published": "巻の公開",
+        "volume_unpublished": "巻の公開取り下げ",
+        "volumes_reordered": "巻の並べ替え",
         "creator_role_created": "著者の役割作成",
         "creator_role_updated": "著者の役割更新",
         "creator_role_deleted": "著者の役割削除",

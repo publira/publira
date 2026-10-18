@@ -178,6 +178,49 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 		}
 	})
 
+	t.Run("a volume checkout names its volume and no episode", func(t *testing.T) {
+		volume := checkout
+		volume.CheckoutID = "checkout_contract_volume"
+		volume.Purchase.EpisodeID = uuid.Nil
+		volume.Purchase.VolumeID = uuid.New()
+		volume.Purchase.Price = 1500
+		volume.Purchase.ReadingPeriodHours = 0
+		payload, headers := fixture.CheckoutCompleted(t, credentials, volume)
+		event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
+		if err != nil {
+			t.Fatalf("ParseNotification: %v", err)
+		}
+		completed, ok := event.(paymentprovider.PurchaseCompleted)
+		if !ok {
+			t.Fatalf("event = %T, want PurchaseCompleted", event)
+		}
+		if completed.Purchase != volume.Purchase {
+			t.Fatalf("purchase = %+v, want %+v", completed.Purchase, volume.Purchase)
+		}
+	})
+
+	t.Run("a checkout that names both an episode and a volume is malformed", func(t *testing.T) {
+		both := checkout
+		both.CheckoutID = "checkout_contract_both"
+		both.Purchase.VolumeID = uuid.New()
+		both.Purchase.ReadingPeriodHours = 0
+		payload, headers := fixture.CheckoutCompleted(t, credentials, both)
+		if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
+			t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
+		}
+	})
+
+	t.Run("a volume checkout with a reading period is malformed", func(t *testing.T) {
+		bounded := checkout
+		bounded.CheckoutID = "checkout_contract_bounded_volume"
+		bounded.Purchase.EpisodeID = uuid.Nil
+		bounded.Purchase.VolumeID = uuid.New()
+		payload, headers := fixture.CheckoutCompleted(t, credentials, bounded)
+		if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
+			t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
+		}
+	})
+
 	t.Run("a checkout that names no kind sold the permanent copy", func(t *testing.T) {
 		unnamed := checkout
 		unnamed.CheckoutID = "checkout_contract_unnamed"
