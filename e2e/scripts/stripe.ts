@@ -27,9 +27,9 @@ import { once } from "node:events";
 import { createServer, request as httpRequest } from "node:http";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-const port = Number(process.env.PORT);
+const port = Number(process.env.PUBLIRA_E2E_STRIPE_PORT);
 if (!Number.isInteger(port) || port <= 0) {
-  throw new Error("PORT must name the port to listen on");
+  throw new Error("PUBLIRA_E2E_STRIPE_PORT must name the port to listen on");
 }
 const origin = `http://127.0.0.1:${port}`;
 

@@ -28,7 +28,7 @@ start_stripe() {
   e2e_log "starting stripe (:${PUBLIRA_E2E_STRIPE_PORT})"
   start_process_group "stripe" "${PUBLIRA_E2E_DIR}" "${LOG_DIR}/stripe.log" \
     env \
-    PORT="${PUBLIRA_E2E_STRIPE_PORT}" \
+    PUBLIRA_E2E_STRIPE_PORT="${PUBLIRA_E2E_STRIPE_PORT}" \
     node scripts/stripe.ts
 }
 
