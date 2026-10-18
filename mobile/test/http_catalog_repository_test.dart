@@ -1276,6 +1276,58 @@ void main() {
     },
   );
 
+  test(
+    'listCampaignBanners answers the banners showing now, in order',
+    () async {
+      server.campaignBanners = [
+        pb.CampaignBanner(
+          publicId: 'SeedBANRAAA2',
+          linkUrl: ' /labels/SeedLABLAAA1 ',
+          imageVariants: [
+            pb.SeriesEyeCatchVariant(
+              variantType: 'landscape',
+              url: '/images/campaign-banners/banner-2/landscape/800',
+              width: 800,
+              height: 450,
+            ),
+          ],
+        ),
+        pb.CampaignBanner(
+          publicId: 'SeedBANRAAA1',
+          linkUrl: 'https://example.com/campaign',
+        ),
+      ];
+
+      final banners = await catalog.listCampaignBanners();
+
+      expect(
+        [for (final banner in banners) banner.id],
+        ['SeedBANRAAA2', 'SeedBANRAAA1'],
+      );
+      expect(banners.first.linkUrl, '/labels/SeedLABLAAA1');
+      final variant = banners.first.imageVariants.single;
+      expect(variant.variantType, 'landscape');
+      expect(
+        variant.url.toString(),
+        '${server.baseUrl}/images/campaign-banners/banner-2/landscape/800',
+      );
+      expect(banners.first.imageRequestHeaders, {
+        'x-forwarded-host': 'localhost',
+      });
+      // The wire format omits an empty repeated field, which is a banner
+      // whose image has no rendition left.
+      expect(banners.last.imageVariants, isEmpty);
+      final request = server
+          .requestsOf(pb.ListCampaignBannersRequest.new)
+          .single;
+      expect(request.tenant.tenantId, ConnectFixtureServer.defaultTenantId);
+    },
+  );
+
+  test('listCampaignBanners answers nothing scheduled as empty', () async {
+    expect(await catalog.listCampaignBanners(), isEmpty);
+  });
+
   test('listGenres reads every page of genres, counted', () async {
     server
       ..genres = ConnectFixtureServer.populatedGenres()

@@ -4642,6 +4642,7 @@
     },
     "catalog": {
       "all_series_heading": "すべてのシリーズ",
+      "campaign_banner": "キャンペーンバナー",
       "continue_failed": "読みかけの作品を表示できませんでした。もう一度お試しください。",
       "continue_heading": "読みかけの作品",
       "creators_failed": "注目の著者を表示できませんでした。もう一度お試しください。",

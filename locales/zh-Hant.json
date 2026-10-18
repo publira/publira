@@ -4642,6 +4642,7 @@
     },
     "catalog": {
       "all_series_heading": "全部系列",
+      "campaign_banner": "活動橫幅",
       "continue_failed": "無法顯示您正在閱讀的作品。",
       "continue_heading": "繼續閱讀",
       "creators_failed": "無法顯示推薦作者。請重試。",

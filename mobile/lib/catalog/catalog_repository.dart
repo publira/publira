@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:publira/catalog/catalog_failure.dart';
+import 'package:publira/models/campaign_banner.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/published_creator.dart';
 import 'package:publira/models/published_label.dart';
@@ -232,6 +233,14 @@ abstract class CatalogRepository {
   /// to one keeps opening it after its last series is taken down.
   /// Throws [CatalogFailure] on a transport or unexpected server error.
   Future<List<PublishedGenre>> listGenres();
+
+  /// The campaign banners showing now, in the tenant's own order. Empty when
+  /// nothing is scheduled now.
+  ///
+  /// The read names no reader, so a visitor who never signed in is answered
+  /// the same banners.
+  /// Throws [CatalogFailure] on a transport or unexpected server error.
+  Future<List<CampaignBanner>> listCampaignBanners();
 
   /// The tag [slug] addresses, or `null` when no published series carries it.
   /// Throws [CatalogFailure] on a transport or unexpected server error.

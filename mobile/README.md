@@ -403,10 +403,11 @@ The series screen and the viewer carry a share action. It hands the platform sha
 
 ### The catalog screen
 
-The catalog is four sections, top to bottom. Each reads its own page of `CatalogRepository` and owns its loading, failure-with-retry, and empty states, so a section the API could not answer offers its retry where it stands and leaves the others alone.
+The catalog is a stack of sections, top to bottom. Each reads its own page of `CatalogRepository` and owns its loading, failure-with-retry, and empty states, so a section the API could not answer offers its retry where it stands and leaves the others alone.
 
 | Section | Read | Standing |
 | --- | --- | --- |
+| Campaign banners | `ListCampaignBanners` | A tenant with a banner scheduled now. The banners keep the operator's order, and each opens its link the way an announcement's does. Nothing is drawn while the read is in flight or when it fails, so it offers no retry |
 | Continue reading | `ListMyRecentSeries` | A signed-in reader in the middle of something. Each card opens the episode the API names for its series |
 | Top 10 this week | `ListRankedSeries`, weekly | A tenant the ranking batch has written a snapshot for. Cards carry the snapshot's own positions, so a series unpublished since leaves a gap |
 | Recommended, in place of the chart | `ListMyRecommendedSeries` for a signed-in reader, `ListRecommendedSeries` for a guest | A tenant the ranking batch has not written a snapshot for. The shelf is headed as a recommendation and its **View all** opens `/recommended` rather than the ranking, as the storefront's popularity module does |

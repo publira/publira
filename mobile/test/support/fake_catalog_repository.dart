@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
+import 'package:publira/models/campaign_banner.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/published_creator.dart';
 import 'package:publira/models/published_label.dart';
@@ -80,7 +81,16 @@ class FakeCatalogRepository implements CatalogRepository {
     this.genresError,
     this.tagError,
     this.classifiedSeriesError,
+    this.campaignBanners = const [],
+    this.campaignBannersError,
   });
+
+  /// What [listCampaignBanners] answers, in the tenant's order.
+  List<CampaignBanner> campaignBanners;
+  CatalogFailure? campaignBannersError;
+
+  /// How many times [listCampaignBanners] was called.
+  var campaignBannersReads = 0;
 
   /// What [listGenres] answers, and the genres [listGenreSeries] knows.
   List<PublishedGenre> genres;
@@ -515,6 +525,15 @@ class FakeCatalogRepository implements CatalogRepository {
       throw error;
     }
     return genres;
+  }
+
+  @override
+  Future<List<CampaignBanner>> listCampaignBanners() async {
+    campaignBannersReads++;
+    if (campaignBannersError case final error?) {
+      throw error;
+    }
+    return campaignBanners;
   }
 
   @override
