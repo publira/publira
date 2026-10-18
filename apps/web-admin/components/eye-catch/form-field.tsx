@@ -8,6 +8,11 @@ import { EyeCatchImageField } from "./image-field";
 import type { EyeCatchVariantItem } from "./types";
 
 interface EyeCatchFormFieldProps {
+  /**
+   * Whether the record may be left without an eye-catch. A campaign banner may
+   * not — its API has no way to clear the image — so its form offers no delete.
+   */
+  clearable?: boolean;
   /** When the saved eye-catch last changed, which the Action compares against. */
   eyeCatchImageUpdatedAt: string;
   variants: EyeCatchVariantItem[];
@@ -20,6 +25,7 @@ interface EyeCatchFormFieldProps {
  * while its save is in flight, since the Action carries what they held.
  */
 export const EyeCatchFormField = ({
+  clearable = true,
   eyeCatchImageUpdatedAt,
   variants,
 }: EyeCatchFormFieldProps) => {
@@ -71,6 +77,7 @@ export const EyeCatchFormField = ({
         value={eyeCatchImageUpdatedAt}
       />
       <EyeCatchImageField
+        clearable={clearable}
         clearEyeCatchImage={clearEyeCatchImage}
         disabled={pending}
         fileInputRef={fileInputRef}

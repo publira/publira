@@ -16,6 +16,8 @@ import type { EyeCatchVariantItem } from "./types";
 import { EyeCatchVariantSelector } from "./variant-selector";
 
 interface EyeCatchImageFieldProps {
+  /** Whether the field offers to delete the image (see `EyeCatchFormField`). */
+  clearable: boolean;
   clearEyeCatchImage: boolean;
   /**
    * Closes every control, each of which changes the image or the delete flag
@@ -34,6 +36,7 @@ interface EyeCatchImageFieldProps {
 }
 
 export const EyeCatchImageField = ({
+  clearable,
   clearEyeCatchImage,
   disabled = false,
   fileInputRef,
@@ -82,7 +85,7 @@ export const EyeCatchImageField = ({
             />
           )}
 
-          {hasVariants ? (
+          {clearable && hasVariants ? (
             <div className="pt-1">
               <button
                 className={cn(
@@ -112,13 +115,19 @@ export const EyeCatchImageField = ({
           style={{ display: "none" }}
           type="file"
         />
-        <input
-          name="clear_eye_catch_image"
-          type="hidden"
-          value={clearEyeCatchImage ? "1" : "0"}
-        />
+        {clearable ? (
+          <input
+            name="clear_eye_catch_image"
+            type="hidden"
+            value={clearEyeCatchImage ? "1" : "0"}
+          />
+        ) : null}
         <FieldDescription>
-          <ClientMessage message="admin.eye_catch.description" />
+          {clearable ? (
+            <ClientMessage message="admin.eye_catch.description" />
+          ) : (
+            <ClientMessage message="admin.eye_catch.description_required" />
+          )}
         </FieldDescription>
       </FieldContent>
     </Field>

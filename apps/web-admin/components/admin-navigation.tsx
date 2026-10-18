@@ -8,6 +8,7 @@ import {
   DashboardIcon,
   FileTextIcon,
   IdCardIcon,
+  ImageIcon,
   KeyRoundIcon,
   LinkIcon,
   MailIcon,
@@ -59,6 +60,7 @@ const hrefs = [
   "/genres",
   "/pages",
   "/announcements",
+  "/campaign-banners",
   "/readers",
   "/comments",
   "/contact-messages",
@@ -191,6 +193,18 @@ export const AdminNavigation = () => (
             <ConsoleSidebarNavigationItemLabel>
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                 <Message message="admin.nav.announcements_label" />
+              </Suspense>
+            </ConsoleSidebarNavigationItemLabel>
+          </ConsoleSidebarNavigationItemHeading>
+        </ConsoleSidebarNavigationItem>
+        <ConsoleSidebarNavigationItem href="/campaign-banners">
+          <ConsoleSidebarNavigationItemIcon>
+            <ImageIcon className="size-4" />
+          </ConsoleSidebarNavigationItemIcon>
+          <ConsoleSidebarNavigationItemHeading>
+            <ConsoleSidebarNavigationItemLabel>
+              <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+                <Message message="admin.nav.campaign_banners_label" />
               </Suspense>
             </ConsoleSidebarNavigationItemLabel>
           </ConsoleSidebarNavigationItemHeading>
