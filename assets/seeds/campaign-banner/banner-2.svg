@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <title>Seed campaign banner 2, rising columns</title>
+
+  <defs>
+    <linearGradient id="field" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#064e3b" />
+      <stop offset="1" stop-color="#10b981" />
+    </linearGradient>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#field)" />
+  <g fill="#ffffff" opacity="0.2">
+    <rect x="120" y="560" width="120" height="340" />
+    <rect x="300" y="420" width="120" height="480" />
+    <rect x="480" y="300" width="120" height="600" />
+    <rect x="1000" y="300" width="120" height="600" />
+    <rect x="1180" y="420" width="120" height="480" />
+    <rect x="1360" y="560" width="120" height="340" />
+  </g>
+
+  <!-- The panel a campaign's own lettering would sit on. -->
+  <circle cx="800" cy="420" r="210" fill="#ffffff" opacity="0.92" />
+  <g fill="#064e3b">
+    <rect x="660" y="380" width="280" height="48" rx="4" />
+    <rect x="700" y="456" width="200" height="28" rx="4" opacity="0.6" />
+  </g>
+
+  <!-- One dot per banner number, so the design is identifiable in greyscale. -->
+  <g fill="#ffffff" opacity="0.9">
+    <circle cx="760" cy="780" r="28" />
+    <circle cx="840" cy="780" r="28" />
+  </g>
+</svg>

@@ -14,6 +14,11 @@
       ]
     },
     {
+      "name": "Campaign banners at the top of the catalog top",
+      "web": { "routes": ["[locale]/(site)"], "rpcs": ["ListCampaignBanners"] },
+      "exception": "Not in the app yet: #2205."
+    },
+    {
       "name": "The list of every published series",
       "web": {
         "routes": ["[locale]/(site)/series"],

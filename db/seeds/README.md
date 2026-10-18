@@ -40,7 +40,8 @@ The files themselves are rendered from the vector sources under [`assets/`](../.
   - `070_follows.sql`: The member's series and author follows, which fill My Page's follow updates
   - `080_purchases.sql`: The member's purchases of the priced episode, one readable and one expired, which fill the purchase library
   - `090_reading_signals.sql`: The member's views of two series over the last fortnight, and the `user_recommend_features` row the recommendation batch builds from them, so the member's Recommended shelf — on My Page, and on the storefront of a tenant with no ranking yet — opens on `Seed Series 090` instead of the order a guest gets. The views are dated relative to the tenant's own day when the file is applied, inside the batch's 28-day window, and the shelf's first row is all-ages. Constants are in `e2e/src/scenarios/reading-signals.ts`
-- `objects/`: The image files `task storage:seed` uploads, laid out as the keys `dev/060_images.sql` names
+  - `100_campaign_banners.sql`: Three published campaign banners, opened a day before the file is applied and closed ten years after, so the top page opens on the banner strip; each is stored in the landscape ratio only, the one the site's band and the console's list draw
+- `objects/`: The image files `task storage:seed` uploads, laid out as the keys `dev/060_images.sql` and `dev/100_campaign_banners.sql` name
 - `scenarios/`: Scenario-specific data (run as needed) — [scenarios/README.md](./scenarios/README.md)
 
 ## Running seeds
@@ -113,8 +114,9 @@ A table a migration creates reaches no app role, and its rows no member of `publ
 - eye-catches: one per series and per label, in each of the four delivered aspect ratios at three widths
 - creator icons: one per creator
 - episode pages: 8 per episode
+- campaign banners: 3, each in the landscape ratio at three widths
 
-Five card designs and five icon designs are dealt round-robin over the catalogue, so a shelf tells one series from the next while the whole set stays at 73 uploaded objects.
+Five card designs and five icon designs are dealt round-robin over the catalogue, so a shelf tells one series from the next while the whole set stays at 73 uploaded objects; the three campaign banners add nine more.
 
 ## ID specification
 
@@ -133,6 +135,7 @@ Seed `public_id` values are fixed rather than derived from primary-key UUIDs. Th
 | series                 | `SeedSERSAAA1` … `SeedSERSA1AA` (100 entries)   |
 | episodes               | `SeedEPSDAAA1` … `SeedEPSD1AAA` (1,000 entries) |
 | access_tickets         | `SeedTCKTAAA1`                                  |
+| campaign_banners       | `SeedBNNRAAA1` … `SeedBNNRAAA3` (3 entries)     |
 
 `public_id` is case-sensitive. Keep values referenced from E2E tests aligned with `e2e/src/scenarios/multi-tenant.ts`.
 

@@ -4538,6 +4538,11 @@
       "series_pagination_aria": "Tag series pagination"
     },
     "top": {
+      "campaign_banner_alt": "Campaign banner",
+      "campaign_banners_aria": "Campaigns",
+      "campaign_banners_error": "Could not show the campaigns",
+      "campaign_banners_next": "Next campaign",
+      "campaign_banners_previous": "Previous campaign",
       "continue_error": "Could not show what you were reading",
       "continue_failed": "Could not load what you were reading. Please try again later.",
       "continue_heading": "Continue reading",

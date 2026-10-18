@@ -55,6 +55,7 @@ import { getTenantDisplayTimeZone, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 import { tenantLocaleAlternates } from "#lib/tenant-locale-path";
 
+import { CampaignBannersSection } from "./_components/campaign-banners";
 import {
   WeeklySchedule,
   WeeklyScheduleDay,
@@ -1124,6 +1125,19 @@ const Page = () => (
       <JsonLd build={websiteJsonLd} />
       <JsonLd build={organizationJsonLd} />
     </Suspense>
+
+    {/* No fallback: a tenant with no campaign on keeps no space for one. */}
+    <SectionErrorBoundary
+      title={
+        <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+          <Message message="storefront.top.campaign_banners_error" />
+        </Suspense>
+      }
+    >
+      <Suspense fallback={null}>
+        <CampaignBannersSection />
+      </Suspense>
+    </SectionErrorBoundary>
 
     <SectionErrorBoundary
       title={

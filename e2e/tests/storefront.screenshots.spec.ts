@@ -73,6 +73,7 @@ const SCREENSHOT_WEEKDAY = "Sun";
  * the day the shot opens it on.
  */
 const TOP_PAGE_SECTIONS = [
+  { href: "/series/", name: "Campaigns" },
   { href: "/genres/", name: "Browse by genre" },
   { href: "/series/", name: "New episodes" },
   { href: "/series/", name: "Top 10 this week" },
