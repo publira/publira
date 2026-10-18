@@ -25,6 +25,7 @@ export interface SeriesListItem {
   title: string;
   synopsis: string;
   readingPeriodHours: number;
+  rentalPeriodHours: number;
   publishedAt: string;
   labelId: string;
   labelName: string;

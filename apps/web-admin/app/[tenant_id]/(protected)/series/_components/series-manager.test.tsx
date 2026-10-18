@@ -64,6 +64,7 @@ const series: SeriesListItem = {
   publicId: "SERIES001",
   publishedAt: "",
   readingPeriodHours: 72,
+  rentalPeriodHours: 0,
   scheduleWeekdays: [],
   status: "ongoing",
   synopsis: "A synopsis",

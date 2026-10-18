@@ -36,6 +36,7 @@ import {
   deleteEpisodeFreeWindow,
   episodeFreeWindowsCacheTag,
 } from "#lib/episode-free-window";
+import { parseEpisodeRental } from "#lib/episode-rental";
 import {
   creditShareBpsSchema,
   jsonStringArrayFormSchema,
@@ -439,6 +440,9 @@ const pricingFormSchema = async (locale: Locale) => {
     readingPeriodHours: nonNegativeIntFormSchema(
       t("admin.series.episodes.validation.reading_period_invalid")
     ),
+    // Read once the price is, which the rental is checked against.
+    rentalPeriodHours: optionalTrimmedString(),
+    rentalPrice: rawPriceFormSchema,
   });
 };
 
@@ -455,6 +459,8 @@ export const updateEpisodePricingAction = async (
       price: "value",
       priceCurrency: { kind: "value", name: "price_currency" },
       readingPeriodHours: { kind: "value", name: "reading_period_hours" },
+      rentalPeriodHours: { kind: "value", name: "rental_period_hours" },
+      rentalPrice: { kind: "value", name: "rental_price" },
     })
   );
   if (!parsed.success) {
@@ -467,6 +473,8 @@ export const updateEpisodePricingAction = async (
     price,
     priceCurrency,
     readingPeriodHours,
+    rentalPeriodHours,
+    rentalPrice,
     seriesPublicId,
     tenantId,
   } = parsed.data;
@@ -483,6 +491,18 @@ export const updateEpisodePricingAction = async (
   if (!parsedPrice.ok) {
     return { message: parsedPrice.message, ok: false };
   }
+  const rental = await parseEpisodeRental(
+    {
+      currency: parsedPrice.currency,
+      price: parsedPrice.value,
+      rentalPeriodHours,
+      rentalPrice,
+    },
+    locale
+  );
+  if (!rental.ok) {
+    return { message: rental.message, ok: false };
+  }
   const result = await withAdminSessionReauth(() =>
     updateEpisodePricing(
       {
@@ -490,6 +510,8 @@ export const updateEpisodePricingAction = async (
         episodeId,
         price: parsedPrice.value,
         readingPeriodHours,
+        rentalPeriodHours: rental.rentalPeriodHours,
+        rentalPrice: rental.rentalPrice,
         tenantId,
       },
       locale

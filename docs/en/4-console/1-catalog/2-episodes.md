@@ -1,8 +1,8 @@
 ---
 title: Episodes
-description: Create an episode, add, replace, and delete its pages, change its title in each language, its price, and its reading period, set its layout and preview its pages, set its credits and where it is shown and sold, give it free reading periods, and publish it now or on time.
+description: Create an episode, add, replace, and delete its pages, change its title in each language, its price, its reading period, and its rental, set its layout and preview its pages, set its credits and where it is shown and sold, give it free reading periods, and publish it now or on time.
 published: 2026-10-07
-updated: 2026-10-16
+updated: 2026-10-17
 ---
 
 An episode is what a reader opens and pays for: a run of page images with a title, a price, and a time it is published at. Episodes live inside their series. On the **Series** list, choose **Episodes** on the series' row to open them.
@@ -28,12 +28,13 @@ Choose **Create** on the episode list and fill in:
 - **Title**: the episode's title in the site's default language, such as `Episode 1 — A beginning morning`. It can be [changed later](#changing-the-title), and given in the site's other languages there.
 - **Price**: the price in the tenant's currency, which the field names, with no more decimal places than the currency has: `500` for 500 yen, `4.99` for 4.99 US dollars. `0` makes the episode free.
 - **Reading period**: how many hours a purchase keeps the episode open. `0` keeps it open with no end. It starts at the series' [Reading period](./1-series.md#reading-period).
+- **Rental price** and **Rental period**: what renting the episode costs, lower than **Price**, and how many hours a rental keeps it open. Leave **Rental price** empty not to rent the episode. **Rental period** starts at the series' [Rental period](./1-series.md#rental-period).
 - **Publication date and time**: when the episode is published, read in the tenant's time zone. Leave it empty to create a draft. A time that has already passed publishes the episode as soon as it is created.
 - **Shown on** and **Sold on**: where the episode can be found and bought, as [Shown on and Sold on](#shown-on-and-sold-on) describes. Both start by following the series.
 
-![The Create episode form: Title, Price, Reading period, Publication date and time, Shown on, Sold on, and Create episode.](./episodes-create-form.png)
+![The Create episode form: Title, Price, Reading period, Rental price, Rental period, Publication date and time, Shown on, Sold on, and Create episode.](./episodes-create-form.png)
 
-**Price** and **Reading period** can be [changed later](#changing-the-price-and-reading-period). [Selling episodes](../4-selling-episodes.md#how-a-reader-buys-an-episode) explains both.
+**Price**, **Reading period**, and the rental can be [changed later](#changing-the-price-and-reading-period). [Selling episodes](../4-selling-episodes.md#price-and-reading-period) explains them.
 
 Choose **Create episode**. The episode is created with the Authors credited on the series, and its edit screen opens to add its pages.
 
@@ -49,11 +50,11 @@ The episode list, and the console's other screens that name an episode, show its
 
 ## Changing the price and reading period
 
-**Price and reading period**, on the episode's edit screen, holds the two values the episode is sold on, with the same rules as when it was created: **Price** is in the tenant's currency, `0` making the episode free, and **Reading period** is a number of hours, `0` keeping a purchase open with no end. Change either and choose **Update price and reading period**. The site and the app sell the episode on the new values as soon as they are saved.
+**Price and reading period**, on the episode's edit screen, holds the values the episode is sold on, with the same rules as when it was created: **Price** is in the tenant's currency, `0` making the episode free, and **Reading period** is a number of hours, `0` keeping a purchase open with no end. **Rental price** and **Rental period** hold the rental: emptying **Rental price** stops renting the episode, and on an episode that is not rented, **Rental period** offers the series' [Rental period](./1-series.md#rental-period), so renting it takes only a price. Change any of them and choose **Update price and reading period**. The site and the app sell the episode on the new values as soon as they are saved.
 
-![The Price and reading period section of an episode: the Price and Reading period fields holding the episode's values, and Update price and reading period.](./episodes-price-and-reading-period.png)
+![The Price and reading period section of an episode: the Price, Reading period, Rental price, and Rental period fields holding the episode's values, and Update price and reading period.](./episodes-price-and-reading-period.png)
 
-A change applies to purchases made after it is saved. A purchase already made keeps the price it was paid and the time it expires, and a reader who opened the payment provider's checkout page before the change pays what that page shows. Changing the series' **Reading period** does not change this one.
+A change applies to purchases made after it is saved. A purchase already made keeps the price it was paid and the time it expires, and a reader who opened the payment provider's checkout page before the change pays what that page shows. Changing the series' **Reading period** or **Rental period** does not change these.
 
 An app that sells through the stores buys an episode as the store product of its price, so a new price may need a new product: see [Store products](../4-selling-episodes.md#selling-in-the-app).
 

@@ -2,7 +2,7 @@
 title: Selling episodes
 description: Price an episode, take payment through Stripe or PAY.JP, choose where episodes are sold, and handle refunds.
 published: 2026-10-06
-updated: 2026-10-15
+updated: 2026-10-17
 ---
 
 Selling an episode on the site takes three things that have to agree: the episode's price in the tenant console, an account with a payment provider, and a webhook through which the provider tells the install that a reader has paid. The provider charges the reader, but only the webhook opens the episode, so a setup with any of the three wrong takes the reader's money and leaves the episode locked. This page walks through all three, in the order they are set up, and ends with a test purchase that proves they agree.
@@ -22,7 +22,16 @@ An episode's **Price** and **Reading period** are first entered on the form that
 
 ![The Price and Reading period fields of the Create episode form.](./selling-episodes-price-and-reading-period.png)
 
-Both can be changed later under **Price and reading period** on the episode's edit screen, as [Episodes](./1-catalog/2-episodes.md#changing-the-price-and-reading-period) describes. A change applies to purchases made after it is saved; a purchase already made keeps the price it was paid and the time it expires. A new episode's **Reading period** starts at the series' **Reading period**, so setting it on the series once gives every episode created afterwards the same period unless it is changed on the form. Changing the series' period does not reach the episodes already created.
+A paid episode can also be rented: sold for less than its **Price**, for a limited time. The two fields below **Reading period** set the rental, and an episode is rented only while **Rental price** holds an amount:
+
+- **Rental price** is entered in the tenant's currency, as **Price** is, and has to be lower than it, so a free episode cannot be rented. Leave it empty not to rent the episode.
+- **Rental period** is how many hours a rental keeps the episode open, at least `1`. It is not used while **Rental price** is empty.
+
+![The Rental price and Rental period fields of the Create episode form.](./selling-episodes-rental.png)
+
+The form refuses a rental priced at or above **Price**, and one with a **Rental price** but no **Rental period**, and says which field to correct. A rental does not take the place of the permanent copy: a reader who rented the episode can still buy it.
+
+All four can be changed later under **Price and reading period** on the episode's edit screen, as [Episodes](./1-catalog/2-episodes.md#changing-the-price-and-reading-period) describes. A change applies to purchases made after it is saved; a purchase or a rental already made keeps the price it was paid and the time it expires. A new episode's **Reading period** starts at the series' **Reading period**, and its **Rental period** at the series' **Rental period**, so setting them on the series once gives every episode created afterwards the same periods unless they are changed on the form. Changing the series' periods does not reach the episodes already created.
 
 ### Buying and reading
 

@@ -131,6 +131,7 @@ describe("series actions", () => {
     formData.set("spread_start_page", "2");
     formData.set("published_at", "2030-01-01T10:00");
     formData.set("clear_eye_catch_image", "0");
+    formData.set("rental_period_hours", "48");
 
     await updateSeriesAction(null, formData);
 
@@ -152,6 +153,7 @@ describe("series actions", () => {
         purchaseAvailability: "",
         readingDirection: "rtl",
         readingPeriodHours: 24,
+        rentalPeriodHours: 48,
         scheduleWeekdays: [],
         spreadStartIndex: 1,
         status: "ongoing",

@@ -61,6 +61,7 @@ const renderBothForms = async () => {
       seriesId: "SERIES001-ID",
       seriesPublicId: "SERIES001",
       seriesReadingPeriodHours: 0,
+      seriesRentalPeriodHours: 0,
       tenantId: "TENANT001",
       timeZone: "UTC",
     }),
@@ -70,6 +71,7 @@ const renderBothForms = async () => {
       seriesId: "SERIES002-ID",
       seriesPublicId: "SERIES002",
       seriesReadingPeriodHours: 0,
+      seriesRentalPeriodHours: 0,
       tenantId: "TENANT001",
       timeZone: "UTC",
     }),
@@ -130,6 +132,7 @@ it("creates an episode that follows its series unless told otherwise", async () 
     seriesId: "SERIES001-ID",
     seriesPublicId: "SERIES001",
     seriesReadingPeriodHours: 0,
+    seriesRentalPeriodHours: 0,
     timeZone: "UTC",
   });
 
@@ -155,6 +158,7 @@ it("creates an episode sold where its series is unless told otherwise", async ()
     seriesPublicId: "SERIES001",
     seriesPurchaseAvailability: "web",
     seriesReadingPeriodHours: 0,
+    seriesRentalPeriodHours: 0,
     timeZone: "UTC",
   });
 
@@ -179,6 +183,7 @@ it("starts the reading period at the series' period", async () => {
     seriesId: "SERIES001-ID",
     seriesPublicId: "SERIES001",
     seriesReadingPeriodHours: 72,
+    seriesRentalPeriodHours: 0,
     timeZone: "UTC",
   });
 
@@ -190,6 +195,27 @@ it("starts the reading period at the series' period", async () => {
   ).toBeTruthy();
 });
 
+// The rental price decides whether the episode is rented, so the period can
+// start at the series' without renting every new episode.
+it("starts the rental period at the series' and leaves the rental price blank", async () => {
+  await renderForm({
+    action,
+    currency: "JPY",
+    seriesId: "SERIES001-ID",
+    seriesPublicId: "SERIES001",
+    seriesReadingPeriodHours: 0,
+    seriesRentalPeriodHours: 48,
+    timeZone: "UTC",
+  });
+
+  expect(
+    screen.getByRole("spinbutton", { name: /Rental price/u })
+  ).toHaveProperty("value", "");
+  expect(
+    screen.getByRole("spinbutton", { name: /Rental period/u })
+  ).toHaveProperty("value", "48");
+});
+
 it("says that a publication time already passed publishes the episode as it is created", async () => {
   await renderForm({
     action,
@@ -197,6 +223,7 @@ it("says that a publication time already passed publishes the episode as it is c
     seriesId: "SERIES001-ID",
     seriesPublicId: "SERIES001",
     seriesReadingPeriodHours: 0,
+    seriesRentalPeriodHours: 0,
     timeZone: "Asia/Tokyo",
   });
 
@@ -230,6 +257,7 @@ it("closes every field while the save is in flight", async () => {
     seriesId: "SERIES001-ID",
     seriesPublicId: "SERIES001",
     seriesReadingPeriodHours: 0,
+    seriesRentalPeriodHours: 0,
     timeZone: "UTC",
   });
 
@@ -285,6 +313,7 @@ it("keeps what was entered when the Action refuses the submission", async () => 
     seriesId: "SERIES001-ID",
     seriesPublicId: "SERIES001",
     seriesReadingPeriodHours: 0,
+    seriesRentalPeriodHours: 0,
     timeZone: "UTC",
   });
 
