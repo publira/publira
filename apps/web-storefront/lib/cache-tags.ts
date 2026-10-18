@@ -126,6 +126,19 @@ export const tenantPinnedAnnouncementTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:announcements:pinned`;
 
 /**
+ * The band of campaign banners at the top of the top page, which is the same
+ * for every reader and is therefore cached once per tenant.
+ *
+ * It goes stale on a schedule of its own: the console drops it when an operator
+ * changes a banner a reader may see, and the `ticker.apply_campaign_banners`
+ * job drops it at both ends of a published banner's window
+ * (`server/cmd/publira/README.md`). Neither of those says anything about the
+ * catalog sections around the band, so it shares no tag with them.
+ */
+export const tenantCampaignBannersTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:campaign-banners`;
+
+/**
  * The cached public comment list of one episode. Posting and withdrawing both
  * change what it answers, so the Actions behind those controls drop it.
  *

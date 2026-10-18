@@ -4538,6 +4538,11 @@
       "series_pagination_aria": "标签系列分页"
     },
     "top": {
+      "campaign_banner_alt": "活动横幅",
+      "campaign_banners_aria": "活动",
+      "campaign_banners_error": "无法显示活动",
+      "campaign_banners_next": "下一个活动",
+      "campaign_banners_previous": "上一个活动",
       "continue_error": "无法显示您正在阅读的作品",
       "continue_failed": "无法加载您正在阅读的作品。请稍后再试。",
       "continue_heading": "继续阅读",

@@ -163,5 +163,6 @@ A signed-in reader who has not agreed to a version of the terms of service or th
 - Public pages (privacy policy, terms of service, and so on)
 - Catalog (series, episodes, creators, labels, genres, tags)
 - Announcements, including the pinned one drawn as a banner above every page
+- Campaign banners, drawn at the top of the top page while their window is open
 - Authentication (sign in, sign up, password reset)
 - Member area (my page, settings)

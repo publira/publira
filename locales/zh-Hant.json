@@ -4538,6 +4538,11 @@
       "series_pagination_aria": "標籤系列分頁"
     },
     "top": {
+      "campaign_banner_alt": "活動橫幅",
+      "campaign_banners_aria": "活動",
+      "campaign_banners_error": "無法顯示活動",
+      "campaign_banners_next": "下一個活動",
+      "campaign_banners_previous": "上一個活動",
       "continue_error": "無法顯示您正在閱讀的作品",
       "continue_failed": "無法載入您正在閱讀的作品。請稍後再試。",
       "continue_heading": "繼續閱讀",

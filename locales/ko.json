@@ -4538,6 +4538,11 @@
       "series_pagination_aria": "태그별 시리즈 페이지 이동"
     },
     "top": {
+      "campaign_banner_alt": "캠페인 배너",
+      "campaign_banners_aria": "캠페인",
+      "campaign_banners_error": "캠페인을 표시할 수 없습니다",
+      "campaign_banners_next": "다음 캠페인",
+      "campaign_banners_previous": "이전 캠페인",
       "continue_error": "읽던 작품을 표시할 수 없습니다",
       "continue_failed": "읽던 작품을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "continue_heading": "이어서 읽기",

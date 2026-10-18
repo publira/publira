@@ -4538,6 +4538,11 @@
       "series_pagination_aria": "タグ別シリーズのページング"
     },
     "top": {
+      "campaign_banner_alt": "キャンペーンバナー",
+      "campaign_banners_aria": "キャンペーン",
+      "campaign_banners_error": "キャンペーンを表示できませんでした",
+      "campaign_banners_next": "次のキャンペーン",
+      "campaign_banners_previous": "前のキャンペーン",
       "continue_error": "読みかけの作品を表示できませんでした",
       "continue_failed": "読みかけの作品を取得できませんでした。時間をおいて再試行してください。",
       "continue_heading": "読みかけの作品",
