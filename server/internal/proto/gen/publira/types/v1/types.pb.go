@@ -1868,8 +1868,9 @@ type Episode struct {
 	// The episode's own eye-catch, in the shape Series carries one. Empty when
 	// the episode has none, which is not an error to show: the series' eye-catch
 	// stands in for it. Set on GetEpisodeDetail, on the episodes GetSeriesDetail
-	// lists, and on the console's episode reads and the episode writes that
-	// answer in their shape; empty elsewhere.
+	// lists, on the member's own lists of episodes (ListMyEpisodeReads,
+	// ListMyRecentSeries and ListMyFollowUpdates), and on the console's episode
+	// reads and the episode writes that answer in their shape; empty elsewhere.
 	EyeCatchImageUpdatedAt string                   `protobuf:"bytes,17,opt,name=eye_catch_image_updated_at,json=eyeCatchImageUpdatedAt,proto3" json:"eye_catch_image_updated_at,omitempty"`
 	EyeCatchImageVariants  []*SeriesEyeCatchVariant `protobuf:"bytes,18,rep,name=eye_catch_image_variants,json=eyeCatchImageVariants,proto3" json:"eye_catch_image_variants,omitempty"`
 	// The rental: what renting the episode costs, in the minor unit `price` is

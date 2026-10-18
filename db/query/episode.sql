@@ -585,7 +585,8 @@ SELECT r.id,
     s.id AS series_id,
     s.public_id AS series_public_id,
     str.title AS series_title,
-    str.locale AS series_title_locale
+    str.locale AS series_title_locale,
+    s.eye_catch_image_id AS series_eye_catch_image_id
 FROM episode_reads r
     JOIN episodes e ON e.id = r.episode_id
     CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et
@@ -632,7 +633,8 @@ SELECT r.id,
     s.id AS series_id,
     s.public_id AS series_public_id,
     str.title AS series_title,
-    str.locale AS series_title_locale
+    str.locale AS series_title_locale,
+    s.eye_catch_image_id AS series_eye_catch_image_id
 FROM episode_reads r
     JOIN episodes e ON e.id = r.episode_id
     CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et

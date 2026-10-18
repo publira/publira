@@ -6787,7 +6787,8 @@ class ListMyRecentSeriesResponse extends $pb.GeneratedMessage {
 }
 
 /// One episode the reader has finished, with the series it belongs to, which is
-/// what a reading history entry links to and names.
+/// what a reading history entry links to, names, and draws: the episode's own
+/// eye-catch where it has one, and its series' eye-catch in its place.
 class MyEpisodeRead extends $pb.GeneratedMessage {
   factory MyEpisodeRead({
     $0.Series? series,

@@ -74,6 +74,7 @@ func (s *apiServer) ListMyFollowUpdates(
 	}
 
 	items := make([]*publirav1.FollowUpdate, 0, len(rows))
+	episodes := make([]*publirattypesv1.Episode, 0, len(rows))
 	for _, row := range rows {
 		series, ok := seriesByID[row.SeriesID]
 		// Unpublished between the two queries: drop the row rather than name an
@@ -81,17 +82,19 @@ func (s *apiServer) ListMyFollowUpdates(
 		if !ok {
 			continue
 		}
-		items = append(items, &publirav1.FollowUpdate{
-			Series: series,
-			Episode: &publirattypesv1.Episode{
-				Id:          row.EpisodeID.String(),
-				PublicId:    row.EpisodePublicID,
-				Title:       row.EpisodeTitle,
-				Locale:      row.EpisodeTitleLocale,
-				OrderIndex:  row.EpisodeOrderIndex,
-				PublishedAt: row.PublishedAt.Time.UTC().Format(time.RFC3339),
-			},
-		})
+		episode := &publirattypesv1.Episode{
+			Id:          row.EpisodeID.String(),
+			PublicId:    row.EpisodePublicID,
+			Title:       row.EpisodeTitle,
+			Locale:      row.EpisodeTitleLocale,
+			OrderIndex:  row.EpisodeOrderIndex,
+			PublishedAt: row.PublishedAt.Time.UTC().Format(time.RFC3339),
+		}
+		items = append(items, &publirav1.FollowUpdate{Series: series, Episode: episode})
+		episodes = append(episodes, episode)
+	}
+	if err := s.fillEpisodeEyeCatches(ctx, tenant.ID, episodes...); err != nil {
+		return nil, err
 	}
 
 	res := &publirav1.ListMyFollowUpdatesResponse{Updates: items}

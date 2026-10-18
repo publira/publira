@@ -23,12 +23,12 @@ import (
 
 func episodeReadRows() *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
-		"id", "read_at", "episode_id", "episode_public_id", "episode_title", "episode_title_locale", "episode_order_index", "series_id", "series_public_id", "series_title", "series_title_locale",
+		"id", "read_at", "episode_id", "episode_public_id", "episode_title", "episode_title_locale", "episode_order_index", "series_id", "series_public_id", "series_title", "series_title_locale", "series_eye_catch_image_id",
 	})
 }
 
 func addEpisodeReadRow(rows *sqlmock.Rows, id uuid.UUID, readAt time.Time) *sqlmock.Rows {
-	return rows.AddRow(id, readAt, uuid.Must(uuid.NewV7()), "EPISODE"+id.String(), "Episode title", "ja", int32(3), uuid.Must(uuid.NewV7()), "SERIES001", "Series title", "ja")
+	return rows.AddRow(id, readAt, uuid.Must(uuid.NewV7()), "EPISODE"+id.String(), "Episode title", "ja", int32(3), uuid.Must(uuid.NewV7()), "SERIES001", "Series title", "ja", uuid.NullUUID{})
 }
 
 func assertEpisodeReadEpisodeIDs(t *testing.T, reads []*publirav1.MyEpisodeRead, want []uuid.UUID) {
@@ -73,6 +73,7 @@ func TestEpisodeReadListReturnsTheReadersOwnHistory(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListMyEpisodeReadsDesc)).
 		WithArgs("ja", tenantID, userID, "web", sql.NullTime{}, false, uuid.NullUUID{}, int32(21)).
 		WillReturnRows(addEpisodeReadRow(episodeReadRows(), readID, now))
+	expectNoEpisodeEyeCatches(mock, tenantID)
 
 	client := publirav1connect.NewEpisodeReadServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	responseCtx, responseCall := testutil.NewClientContext(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())))
@@ -128,6 +129,7 @@ func TestEpisodeReadListForwardPageReturnsNeighborTokens(t *testing.T) {
 			int32(3),
 		).
 		WillReturnRows(addEpisodeReadRow(addEpisodeReadRow(addEpisodeReadRow(episodeReadRows(), firstID, firstAt), secondID, secondAt), extraID, secondAt.Add(-time.Minute)))
+	expectNoEpisodeEyeCatches(mock, tenantID)
 
 	client := publirav1connect.NewEpisodeReadServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	response, err := client.ListMyEpisodeReads(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.ListMyEpisodeReadsRequest{
@@ -171,6 +173,7 @@ func TestEpisodeReadListBackwardPageReturnsDisplayOrderAndNeighborTokens(t *test
 			int32(3),
 		).
 		WillReturnRows(addEpisodeReadRow(addEpisodeReadRow(addEpisodeReadRow(episodeReadRows(), oldestID, oldestAt), middleID, middleAt), newestID, middleAt.Add(time.Minute)))
+	expectNoEpisodeEyeCatches(mock, tenantID)
 
 	client := publirav1connect.NewEpisodeReadServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	response, err := client.ListMyEpisodeReads(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.ListMyEpisodeReadsRequest{

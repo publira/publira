@@ -987,7 +987,8 @@ SELECT r.id,
     s.id AS series_id,
     s.public_id AS series_public_id,
     str.title AS series_title,
-    str.locale AS series_title_locale
+    str.locale AS series_title_locale,
+    s.eye_catch_image_id AS series_eye_catch_image_id
 FROM episode_reads r
     JOIN episodes e ON e.id = r.episode_id
     CROSS JOIN LATERAL episode_translation_for(e.id, $1::text) et
@@ -1035,17 +1036,18 @@ type ListMyEpisodeReadsAscParams struct {
 }
 
 type ListMyEpisodeReadsAscRow struct {
-	ID                 uuid.UUID `json:"id"`
-	ReadAt             time.Time `json:"read_at"`
-	EpisodeID          uuid.UUID `json:"episode_id"`
-	EpisodePublicID    string    `json:"episode_public_id"`
-	EpisodeTitle       string    `json:"episode_title"`
-	EpisodeTitleLocale string    `json:"episode_title_locale"`
-	EpisodeOrderIndex  int32     `json:"episode_order_index"`
-	SeriesID           uuid.UUID `json:"series_id"`
-	SeriesPublicID     string    `json:"series_public_id"`
-	SeriesTitle        string    `json:"series_title"`
-	SeriesTitleLocale  string    `json:"series_title_locale"`
+	ID                    uuid.UUID     `json:"id"`
+	ReadAt                time.Time     `json:"read_at"`
+	EpisodeID             uuid.UUID     `json:"episode_id"`
+	EpisodePublicID       string        `json:"episode_public_id"`
+	EpisodeTitle          string        `json:"episode_title"`
+	EpisodeTitleLocale    string        `json:"episode_title_locale"`
+	EpisodeOrderIndex     int32         `json:"episode_order_index"`
+	SeriesID              uuid.UUID     `json:"series_id"`
+	SeriesPublicID        string        `json:"series_public_id"`
+	SeriesTitle           string        `json:"series_title"`
+	SeriesTitleLocale     string        `json:"series_title_locale"`
+	SeriesEyeCatchImageID uuid.NullUUID `json:"series_eye_catch_image_id"`
 }
 
 // The backward direction of ListMyEpisodeReadsDesc.
@@ -1079,6 +1081,7 @@ func (q *Queries) ListMyEpisodeReadsAsc(ctx context.Context, arg ListMyEpisodeRe
 			&i.SeriesPublicID,
 			&i.SeriesTitle,
 			&i.SeriesTitleLocale,
+			&i.SeriesEyeCatchImageID,
 		); err != nil {
 			return nil, err
 		}
@@ -1104,7 +1107,8 @@ SELECT r.id,
     s.id AS series_id,
     s.public_id AS series_public_id,
     str.title AS series_title,
-    str.locale AS series_title_locale
+    str.locale AS series_title_locale,
+    s.eye_catch_image_id AS series_eye_catch_image_id
 FROM episode_reads r
     JOIN episodes e ON e.id = r.episode_id
     CROSS JOIN LATERAL episode_translation_for(e.id, $1::text) et
@@ -1152,17 +1156,18 @@ type ListMyEpisodeReadsDescParams struct {
 }
 
 type ListMyEpisodeReadsDescRow struct {
-	ID                 uuid.UUID `json:"id"`
-	ReadAt             time.Time `json:"read_at"`
-	EpisodeID          uuid.UUID `json:"episode_id"`
-	EpisodePublicID    string    `json:"episode_public_id"`
-	EpisodeTitle       string    `json:"episode_title"`
-	EpisodeTitleLocale string    `json:"episode_title_locale"`
-	EpisodeOrderIndex  int32     `json:"episode_order_index"`
-	SeriesID           uuid.UUID `json:"series_id"`
-	SeriesPublicID     string    `json:"series_public_id"`
-	SeriesTitle        string    `json:"series_title"`
-	SeriesTitleLocale  string    `json:"series_title_locale"`
+	ID                    uuid.UUID     `json:"id"`
+	ReadAt                time.Time     `json:"read_at"`
+	EpisodeID             uuid.UUID     `json:"episode_id"`
+	EpisodePublicID       string        `json:"episode_public_id"`
+	EpisodeTitle          string        `json:"episode_title"`
+	EpisodeTitleLocale    string        `json:"episode_title_locale"`
+	EpisodeOrderIndex     int32         `json:"episode_order_index"`
+	SeriesID              uuid.UUID     `json:"series_id"`
+	SeriesPublicID        string        `json:"series_public_id"`
+	SeriesTitle           string        `json:"series_title"`
+	SeriesTitleLocale     string        `json:"series_title_locale"`
+	SeriesEyeCatchImageID uuid.NullUUID `json:"series_eye_catch_image_id"`
 }
 
 // The episodes this reader has finished, most recently finished first.
@@ -1211,6 +1216,7 @@ func (q *Queries) ListMyEpisodeReadsDesc(ctx context.Context, arg ListMyEpisodeR
 			&i.SeriesPublicID,
 			&i.SeriesTitle,
 			&i.SeriesTitleLocale,
+			&i.SeriesEyeCatchImageID,
 		); err != nil {
 			return nil, err
 		}

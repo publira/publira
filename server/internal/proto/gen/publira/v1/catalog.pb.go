@@ -5521,7 +5521,8 @@ func (x *ListMyRecentSeriesResponse) GetNextToken() string {
 }
 
 // One episode the reader has finished, with the series it belongs to, which is
-// what a reading history entry links to and names.
+// what a reading history entry links to, names, and draws: the episode's own
+// eye-catch where it has one, and its series' eye-catch in its place.
 type MyEpisodeRead struct {
 	state   protoimpl.MessageState `protogen:"open.v1"`
 	Series  *v1.Series             `protobuf:"bytes,1,opt,name=series,proto3" json:"series,omitempty"`
