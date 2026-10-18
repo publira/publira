@@ -31,8 +31,8 @@ import {
 /**
  * The tenant console as the overview under `docs/<locale>/4-console/` and the
  * pages under `docs/<locale>/4-console/3-setup/` show it: signing in, the
- * sidebar, the tenant's settings, branding, pages, announcements, members,
- * mail, audit log, and a member's own account.
+ * sidebar, the tenant's settings, branding, pages, announcements, campaign
+ * banners, members, mail, audit log, and a member's own account.
  *
  * Each test takes the region one passage explains and compares it with the
  * image beside that page, so a change to the console that alters a documented
@@ -40,9 +40,11 @@ import {
  * most of what these screens show; the announcement list is photographed on
  * the banner tenant, given three announcements by
  * `db/seeds/scenarios/430_docs_announcements.sql`, the invitation list is
- * given two by `440_docs_members.sql`, and two-step verification is turned on
- * for the account `370_admin_mfa_settings.sql` keeps for it. A form is filled
- * in where a passage explains what filling it in opens, and is never saved.
+ * given two by `440_docs_members.sql`, the campaign banner list a banner in
+ * each standing by `560_docs_campaign_banners.sql`, and two-step verification
+ * is turned on for the account `370_admin_mfa_settings.sql` keeps for it. A
+ * form is filled in where a passage explains what filling it in opens, and is
+ * never saved.
  */
 test.use({ baseURL: WEB_ADMIN_BASE_URL });
 
@@ -342,6 +344,38 @@ for (const locale of DOCS_LOCALES) {
           ],
           locale,
           page: "console/setup/announcements",
+          subject: "create-form",
+        });
+      });
+    });
+
+    test.describe("campaign banners", () => {
+      test("the banner list, with a row in each standing", async ({ page }) => {
+        await openScreen(page, locale, "/campaign-banners");
+
+        await expectDocsScreenshot(page, {
+          element: [
+            docsScreenHeader(page),
+            page.getByRole("main").getByRole("listitem").last(),
+          ],
+          locale,
+          page: "console/setup/campaign-banners",
+          subject: "list",
+        });
+      });
+
+      test("the form that creates a banner", async ({ page }) => {
+        await openScreen(page, locale, "/campaign-banners/new");
+
+        await expectDocsScreenshot(page, {
+          element: [
+            docsScreenHeader(page),
+            page.getByRole("button", {
+              name: t("admin.campaign_banners.form.create"),
+            }),
+          ],
+          locale,
+          page: "console/setup/campaign-banners",
           subject: "create-form",
         });
       });

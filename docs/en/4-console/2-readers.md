@@ -74,7 +74,7 @@ Whether readers may upload an icon, pick one of the tenant's own, or show none a
 
 Suspend rather than delete when you may want to undo it.
 
-You cannot suspend or delete the account you are signed in with, nor the tenant's last active Tenant admin: make someone else a Tenant admin first. Suspending, lifting a suspension, deleting, changing or clearing a date of birth, and removing an icon are recorded in the [audit log](./3-setup/7-audit-log.md) as **Reader suspended**, **Reader suspension lifted**, **Reader deleted**, **Reader birth date changed**, **Reader birth date cleared**, and **Reader icon removed**.
+You cannot suspend or delete the account you are signed in with, nor the tenant's last active Tenant admin: make someone else a Tenant admin first. Suspending, lifting a suspension, deleting, changing or clearing a date of birth, and removing an icon are recorded in the [audit log](./3-setup/8-audit-log.md) as **Reader suspended**, **Reader suspension lifted**, **Reader deleted**, **Reader birth date changed**, **Reader birth date cleared**, and **Reader icon removed**.
 
 ## Comments
 
@@ -173,7 +173,7 @@ A new message is mailed to every active Tenant admin at their account's address,
 
 The answer is saved under **Answers and replies**, the message becomes **Handled**, and `publira worker` mails the answer to the message's **Reply to** address:
 
-- through the mail server set up under [Email](./3-setup/6-email.md), from its address, or through the platform's until the tenant has one of its own;
+- through the mail server set up under [Email](./3-setup/7-email.md), from its address, or through the platform's until the tenant has one of its own;
 - with the subject "Re:" and the reader's subject, or "Re: Your message to" the site when they gave none;
 - with the reader's message quoted under the answer;
 - in the tenant's default language, whatever language the reader wrote in.
@@ -182,7 +182,7 @@ The console does not show whether the mail was delivered. If the mail settings a
 
 ### When the reader writes back
 
-Where a reader's reply goes depends on whether the **Inbound email** section of **Integrations** › **Email** is **Ready**, which [Readers' replies to contact messages](./3-setup/6-email.md#readers-replies-to-contact-messages) walks through setting up:
+Where a reader's reply goes depends on whether the **Inbound email** section of **Integrations** › **Email** is **Ready**, which [Readers' replies to contact messages](./3-setup/7-email.md#readers-replies-to-contact-messages) walks through setting up:
 
 - **Until it is Ready**, the answer's reply address is your own account's email address. The reader's reply arrives in your own mailbox. It is not recorded in the console, and the message stays **Handled**: answer from your mail, or from the console again.
 - **Once it is Ready**, the reply address is one of the site's own, made for that message. The reader's reply is recorded under **Answers and replies** as "Reply from" their address, the message is reopened, and the Tenant admins are mailed as for a new message.

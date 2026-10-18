@@ -53,7 +53,7 @@ Once the tenant's own server is on, its mail does not fall back to the platform'
 
 To go back to the platform's mail server, clear **Enable the override** and choose **Save**. The rest of the settings are kept for when you turn it on again.
 
-Every save is recorded in the [audit log](./7-audit-log.md) as **Email settings updated**, and every test, successful or not, as **SMTP connection tested**. The operator's side of the tenant's mail is described in [Email](../../3-operations/6-email.md#a-tenants-own-smtp-account).
+Every save is recorded in the [audit log](./8-audit-log.md) as **Email settings updated**, and every test, successful or not, as **SMTP connection tested**. The operator's side of the tenant's mail is described in [Email](../../3-operations/6-email.md#a-tenants-own-smtp-account).
 
 ## Readers' replies to contact messages
 
@@ -82,7 +82,7 @@ Until the section is **Ready**, answers keep the answering staff member's addres
 
 The tokens and keys are never shown again once saved: each field shows a mask, and **Change** replaces it. Saving with another provider chosen deletes the credentials stored for the previous one.
 
-To stop receiving replies, clear **Enable** and choose **Save**. The next answer names the staff member's address again, and the settings are kept for when you turn it back on. Every save is recorded in the [audit log](./7-audit-log.md) as **Inbound email settings updated**.
+To stop receiving replies, clear **Enable** and choose **Save**. The next answer names the staff member's address again, and the settings are kept for when you turn it back on. Every save is recorded in the [audit log](./8-audit-log.md) as **Inbound email settings updated**.
 
 ### Receiving through Amazon SES
 

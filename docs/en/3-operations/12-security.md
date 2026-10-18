@@ -194,9 +194,9 @@ The value has to be at least 32 bytes, and only its first 32 bytes are used, so 
 
 ### Tenant staff
 
-Every member of a tenant's staff can protect their console account with an authenticator app and ten recovery codes, from **Account settings** in the console, as [Your account](../4-console/3-setup/8-your-account.md) describes for them.
+Every member of a tenant's staff can protect their console account with an authenticator app and ten recovery codes, from **Account settings** in the console, as [Your account](../4-console/3-setup/9-your-account.md) describes for them.
 
-Staff can also answer two-step verification with a passkey or a security key, as [Signing in with a passkey](../4-console/3-setup/8-your-account.md#signing-in-with-a-passkey) describes. A passkey satisfies the requirement below just as an authenticator app does: a Tenant admin asked to set up two-step verification as they sign in can register a passkey instead. An account's passkeys and its authenticator share the same ten recovery codes, and a refused passkey counts toward the same lock as a wrong code.
+Staff can also answer two-step verification with a passkey or a security key, as [Signing in with a passkey](../4-console/3-setup/9-your-account.md#signing-in-with-a-passkey) describes. A passkey satisfies the requirement below just as an authenticator app does: a Tenant admin asked to set up two-step verification as they sign in can register a passkey instead. An account's passkeys and its authenticator share the same ten recovery codes, and a refused passkey counts toward the same lock as a wrong code.
 
 A passkey is bound to the console's host, wherever that host is served, and never to the tenant's domain, even when the console is under it as `admin.<domain>` is. [Moving the console to another host](./2-tenants.md#moving-a-tenant-to-another-host-name) — giving it a new admin domain, or changing the domain of a tenant whose console is on `admin.<domain>` — therefore leaves every passkey its staff registered unusable. Staff with an authenticator app or a recovery code sign in with that. One whose only second factor was a passkey is asked to set two-step verification up again if the requirement covers their role, and signs in on their password alone if it does not. Moving the console back makes the old passkeys usable again.
 
@@ -256,7 +256,7 @@ It records:
 
 ### A tenant's log
 
-Each tenant's **Audit logs**, under **Administration** in its console, records what its staff do there, two-step verification included, and only its Tenant admins can read it. What it records is in [Audit log](../4-console/3-setup/7-audit-log.md). It cannot be read from the Platform Console, and what you change for a tenant from the Platform Console or `publiractl` is recorded in the Platform Console's log, not the tenant's.
+Each tenant's **Audit logs**, under **Administration** in its console, records what its staff do there, two-step verification included, and only its Tenant admins can read it. What it records is in [Audit log](../4-console/3-setup/8-audit-log.md). It cannot be read from the Platform Console, and what you change for a tenant from the Platform Console or `publiractl` is recorded in the Platform Console's log, not the tenant's.
 
 ### What neither log records
 

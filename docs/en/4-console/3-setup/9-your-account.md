@@ -93,4 +93,4 @@ If you have lost a device, sign in with what you have left: another passkey, the
 
 If you have lost every second factor and every recovery code, you cannot sign in to the console any more, and neither your password nor anyone on the staff can remove two-step verification from your account. Ask the operator of the install: they can remove it, as [A tenant's staff](../../3-operations/3-tenant-staff.md#lost-two-step-verification) describes, and you then sign in with your password and set it up again.
 
-Setting it up, registering, renaming, and removing a passkey, turning it off, regenerating recovery codes, and each sign-in with a code, a passkey, or a recovery code are recorded in the tenant's [audit log](./7-audit-log.md).
+Setting it up, registering, renaming, and removing a passkey, turning it off, regenerating recovery codes, and each sign-in with a code, a passkey, or a recovery code are recorded in the tenant's [audit log](./8-audit-log.md).

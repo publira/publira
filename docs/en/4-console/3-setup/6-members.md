@@ -32,7 +32,7 @@ Under **Invite a member**, enter the address in **Email address to invite**, cho
 
 ![The Invitations list: an invitation to an Editor that expired, and one to a Tenant admin that was canceled, each with when it was sent and when it expires.](./members-invitations.png)
 
-An invitation is mailed by the platform's mail server unless the tenant sends through its own, as [Email](./6-email.md) describes. If one does not arrive, check the invitee's spam folder, then the tenant's mail settings.
+An invitation is mailed by the platform's mail server unless the tenant sends through its own, as [Email](./7-email.md) describes. If one does not arrive, check the invitee's spam folder, then the tenant's mail settings.
 
 ## Changing a role
 
@@ -54,4 +54,4 @@ If the last Tenant admin leaves the publisher or loses access to their account a
 
 ## What is recorded
 
-Every invitation, resend, cancellation, acceptance, role change, and removal is recorded in the [audit log](./7-audit-log.md), with the Tenant admin who made it. An invitation, its resend and acceptance, and a role change also record the role they grant.
+Every invitation, resend, cancellation, acceptance, role change, and removal is recorded in the [audit log](./8-audit-log.md), with the Tenant admin who made it. An invitation, its resend and acceptance, and a role change also record the role they grant.
