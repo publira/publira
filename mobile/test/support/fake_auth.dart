@@ -1141,6 +1141,7 @@ AuthController fakeAuthController({
   InMemorySessionStore? store,
   String birthDate = '',
   AuthFailure? birthDateFailure,
+  Map<String, String> imageRequestHeaders = const {},
 }) {
   return AuthController(
     repository:
@@ -1151,5 +1152,6 @@ AuthController fakeAuthController({
         ),
     store: store ?? InMemorySessionStore(session: storedSession),
     session: session,
+    imageRequestHeaders: imageRequestHeaders,
   );
 }

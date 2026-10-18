@@ -479,6 +479,10 @@ Map<String, Object?> _savedEpisodeToJson(SavedEpisode saved) {
     'seriesId': detail.seriesId,
     'seriesTitle': detail.seriesTitle,
     'seriesLocale': detail.seriesLocale,
+    'seriesEyeCatchVariants': [
+      for (final variant in detail.seriesEyeCatchVariants)
+        _variantToJson(variant),
+    ],
     'access': detail.access.name,
     if (detail.entitlementSource != EpisodeEntitlementSource.unspecified)
       'entitlementSource': detail.entitlementSource.name,
@@ -521,6 +525,7 @@ SavedEpisode? _savedEpisodeFromJson(Object? decoded) {
   }
   final rawImages = decoded['images'];
   final rawCreators = decoded['creators'];
+  final rawSeriesVariants = decoded['seriesEyeCatchVariants'];
   return SavedEpisode(
     ownerId: ownerId,
     checkedAt: checkedAt.toUtc(),
@@ -530,6 +535,13 @@ SavedEpisode? _savedEpisodeFromJson(Object? decoded) {
       seriesId: seriesId,
       seriesTitle: _string(decoded['seriesTitle']),
       seriesLocale: _string(decoded['seriesLocale']),
+      // A copy saved before the series' eye-catch was kept holds none, and an
+      // episode of it without artwork of its own draws the placeholder.
+      seriesEyeCatchVariants: [
+        for (final item
+            in rawSeriesVariants is List ? rawSeriesVariants : const [])
+          ?_variantFromJson(item),
+      ],
       access: access,
       entitlementSource: _entitlementSourceFromName(
         _string(decoded['entitlementSource']),

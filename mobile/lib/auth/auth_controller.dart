@@ -31,10 +31,11 @@ class AuthController extends ChangeNotifier {
   final AuthRepository _repository;
   final SessionStore _store;
 
-  /// Headers a request for the signed-in reader's icon carries.
+  /// Headers a request for an image served to every reader alike carries: the
+  /// signed-in reader's icon, and the covers drawn from what the device saved,
+  /// which keeps no headers of its own.
   ///
-  /// An icon is served to every reader alike, the way a series eye-catch is,
-  /// so only the tenant travels.
+  /// Only the tenant travels, as it does for a series eye-catch.
   final Map<String, String> imageRequestHeaders;
 
   AuthSession? _session;

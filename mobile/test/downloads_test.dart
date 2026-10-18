@@ -23,6 +23,7 @@ import 'package:publira/router.dart';
 import 'package:publira/tenant/tenant_brand.dart';
 import 'package:publira/typography/autospaced_text.dart';
 
+import 'support/episode_eye_catch.dart';
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
 import 'support/text_locale.dart';
@@ -296,7 +297,10 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     router = createAppRouter(initialLocation: initialLocation);
-    final AuthController auth = fakeAuthController(session: fakeSession);
+    final AuthController auth = fakeAuthController(
+      session: fakeSession,
+      imageRequestHeaders: fixtureImageHeaders,
+    );
     final catalog = OfflineCatalogRepository(
       origin: origin,
       library: library,
@@ -412,6 +416,75 @@ void main() {
     expect(textLocaleOf(tester, free.episode.title), const Locale('ko'));
     expect(textLocaleOf(tester, free.seriesTitle), const Locale('ja'));
   });
+
+  /// The free episode as the device saved it, carrying [eyeCatchVariants] of
+  /// its own and [seriesEyeCatchVariants] for its series.
+  EpisodeDetail saved({
+    List<EyeCatchVariant> eyeCatchVariants = const [],
+    List<EyeCatchVariant> seriesEyeCatchVariants = const [],
+  }) {
+    final free = body(_freeEpisode.id);
+    return EpisodeDetail(
+      episode: EpisodeItem(
+        id: free.episode.id,
+        internalId: free.episode.internalId,
+        title: free.episode.title,
+        orderIndex: free.episode.orderIndex,
+        price: free.episode.price,
+        eyeCatchVariants: eyeCatchVariants,
+      ),
+      seriesId: free.seriesId,
+      seriesTitle: free.seriesTitle,
+      seriesEyeCatchVariants: seriesEyeCatchVariants,
+      access: free.access,
+      images: free.images,
+    );
+  }
+
+  final cover = find.byKey(ValueKey('episode-cover-${_freeEpisode.id}'));
+
+  testWidgets("a saved episode draws the episode's own eye-catch", (
+    tester,
+  ) async {
+    await seed(
+      tester,
+      saved(
+        eyeCatchVariants: episodeEyeCatch(_freeEpisode.id),
+        seriesEyeCatchVariants: fixtureEyeCatchVariants,
+      ),
+    );
+
+    await pumpApp(tester, initialLocation: AppRoutes.library);
+    await openDownloads(tester);
+    await pumpUntilFound(tester, cover);
+
+    final request = requestOf(tester, cover);
+    expect(
+      request.url,
+      'http://images.test/images/episode-eye-catches/${_freeEpisode.id}/landscape',
+    );
+    // The saved copy keeps no headers, and the tenant still travels.
+    expect(request.headers, fixtureImageHeaders);
+  });
+
+  testWidgets(
+    "a saved episode without artwork of its own draws the series' cover",
+    (tester) async {
+      await seed(
+        tester,
+        saved(seriesEyeCatchVariants: fixtureEyeCatchVariants),
+      );
+
+      await pumpApp(tester, initialLocation: AppRoutes.library);
+      await openDownloads(tester);
+      await pumpUntilFound(tester, cover);
+
+      expect(
+        requestOf(tester, cover).url,
+        'http://images.test/images/series/SeedSIMGAAA1/landscape/800',
+      );
+    },
+  );
 
   testWidgets('a paid episode past its offline window says so', (tester) async {
     await seed(

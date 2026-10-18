@@ -363,6 +363,60 @@ void main() {
     );
   });
 
+  test('the eye-catches of a saved episode and its series survive the round '
+      'trip', () {
+    EyeCatchVariant variant(String path) => EyeCatchVariant(
+      variantType: 'landscape',
+      url: Uri.parse('http://images.test/images/$path/IMG/landscape/800'),
+      width: 800,
+      height: 450,
+    );
+    final written = OfflineIndex(
+      episodes: {
+        'SeedSERSAAA1/SeedEPSDAAA1': SavedEpisode(
+          ownerId: '',
+          checkedAt: DateTime.utc(2026, 9, 1),
+          detail: EpisodeDetail(
+            episode: EpisodeItem(
+              id: 'SeedEPSDAAA1',
+              title: 'Seed Episode 001-01',
+              orderIndex: 1,
+              price: 0,
+              eyeCatchVariants: [variant('episode-eye-catches')],
+            ),
+            seriesId: 'SeedSERSAAA1',
+            seriesTitle: 'Seed Series 001',
+            seriesEyeCatchVariants: [variant('series')],
+            access: EpisodeAccess.free,
+            images: const [],
+          ),
+        ),
+      },
+    ).toJson();
+
+    final detail = OfflineIndex.fromJson(
+      written,
+    )!.episodes.values.single.detail;
+
+    expect(
+      detail.episode.eyeCatchVariants.single.url,
+      variant('episode-eye-catches').url,
+    );
+    final series = detail.seriesEyeCatchVariants.single;
+    expect(series.variantType, 'landscape');
+    expect(series.url, variant('series').url);
+    expect((series.width, series.height), (800, 450));
+  });
+
+  test("a body saved before its series' eye-catch was kept carries none", () {
+    final decoded = OfflineIndex.fromJson(_index(_episode(access: 'free')));
+
+    expect(
+      decoded!.episodes.values.single.detail.seriesEyeCatchVariants,
+      isEmpty,
+    );
+  });
+
   test('a series saved before its locale was kept names none', () {
     final decoded = OfflineIndex.fromJson(
       _index(_episode(access: 'free'), series: _series()),
