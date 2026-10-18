@@ -2,7 +2,7 @@
 title: Settings
 description: Set the site's copy, time zone, languages, reader comments, age verification, legal pages, and refused email addresses, tighten the platform's limits for the tenant, and choose what readers can show as their icon.
 published: 2026-10-07
-updated: 2026-10-15
+updated: 2026-10-18
 ---
 
 **Settings**, under **Administration**, has three tabs. **General** holds what the tenant decides about its own site. **Limits and retention** holds the values the operator sets for every tenant, which a tenant may change within bounds. **Reader icons** holds what readers can show as their icon, and the icons the tenant offers them to pick from.
@@ -21,9 +21,11 @@ Three pieces of copy, each of which may be left empty:
 - **Site tagline**: a short line shown on the sign-in, sign-up, and password screens.
 - **Site description**: shown in the site's footer, and given to search engines and link previews as the site's description.
 
-**Save the settings** saves all three.
+Each language the site offers, as chosen under [Languages](#languages), has a tab under **Languages** with its own three pieces of copy. The card opens on the default language's tab, and a language with no copy of its own is marked **(not added)**. **Save the settings** saves the three fields of the open tab, and leaves the other languages' copy as it is. Save before you switch tabs: an edit that was not saved is not kept. Emptying all three fields and saving removes the language's copy.
 
-![The General tab of Settings: the Public site display card with Copyright notice, Site tagline, Site description, and Save the settings.](./settings-public-site-display.png)
+For now the site shows every reader the default language's copy, whatever language they read it in; showing each language its own copy [is still to be done](https://github.com/publira/publira/issues/4280).
+
+![The General tab of Settings: the Public site display card with a tab for each language the site offers, the English one open, Copyright notice, Site tagline, Site description, and Save the settings.](./settings-public-site-display.png)
 
 ### Time zone
 

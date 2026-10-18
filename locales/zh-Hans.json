@@ -2470,7 +2470,8 @@
         "submit": "保存设置",
         "saved": "设置已保存。",
         "load_failed": "无法加载设置。请稍后再试。",
-        "save_failed": "无法保存设置。请稍后再试。"
+        "save_failed": "无法保存设置。请稍后再试。",
+        "locale_not_offered": "此站点未提供该语言。请先在“语言”中将其加入提供的语言。"
       },
       "timezone": {
         "title": "时区",

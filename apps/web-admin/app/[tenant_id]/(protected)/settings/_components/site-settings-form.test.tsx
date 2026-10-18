@@ -14,7 +14,7 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { SiteSettingsActionState } from "../settings-types";
-import { SiteSettingsForm } from "./site-settings-form";
+import { SiteSettingsFields } from "./site-settings-form";
 
 const { save } = vi.hoisted(() => ({
   save: { current: Promise.withResolvers<SiteSettingsActionState>() },
@@ -38,7 +38,7 @@ vi.mock("#lib/get-messages", () => ({
   getMessages: () => Promise.resolve(bindMessages(sharedCatalog("en"), "en")),
 }));
 
-const initialSettings = {
+const settings = {
   copyrightText: "Copyright © 2026 Acme Inc.",
   siteDescription: "News and release announcements.",
   siteTagline: "Read quietly",
@@ -59,13 +59,14 @@ afterEach(() => {
   save.current = Promise.withResolvers<SiteSettingsActionState>();
 });
 
-describe("SiteSettingsForm", () => {
+describe("SiteSettingsFields", () => {
   it("shows the saved settings", async () => {
     render(
-      await SiteSettingsForm({
+      await SiteSettingsFields({
         canEdit: true,
-        initialSettings,
+        settings,
         tenantId: "TENANT001",
+        translationLocale: "en",
       })
     );
 
@@ -76,14 +77,49 @@ describe("SiteSettingsForm", () => {
     ]);
   });
 
+  it("sends the language of its tab with the copy", async () => {
+    const { container } = render(
+      await SiteSettingsFields({
+        canEdit: true,
+        settings,
+        tenantId: "TENANT001",
+        translationLocale: "en",
+      })
+    );
+
+    expect(
+      container.querySelector<HTMLInputElement>(
+        'input[name="translation_locale"]'
+      )?.value
+    ).toBe("en");
+  });
+
+  it("sends no language from a card without tabs", async () => {
+    const { container } = render(
+      await SiteSettingsFields({
+        canEdit: true,
+        settings,
+        tenantId: "TENANT001",
+        translationLocale: undefined,
+      })
+    );
+
+    expect(
+      container.querySelector<HTMLInputElement>(
+        'input[name="translation_locale"]'
+      )?.value
+    ).toBe("");
+  });
+
   // The Action carries what the fields held when the form was submitted, so an
   // edit made while it is in flight would sit under the success message unsaved.
   it("closes the fields while the save is in flight", async () => {
     render(
-      await SiteSettingsForm({
+      await SiteSettingsFields({
         canEdit: true,
-        initialSettings,
+        settings,
         tenantId: "TENANT001",
+        translationLocale: "en",
       })
     );
 
@@ -106,10 +142,11 @@ describe("SiteSettingsForm", () => {
 
   it("stays read-only for someone who is not a tenant admin", async () => {
     render(
-      await SiteSettingsForm({
+      await SiteSettingsFields({
         canEdit: false,
-        initialSettings,
+        settings,
         tenantId: "TENANT001",
+        translationLocale: "en",
       })
     );
 
