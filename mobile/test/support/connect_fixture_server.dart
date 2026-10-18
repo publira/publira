@@ -42,6 +42,7 @@ class ConnectFixtureServer {
     this.rankedSeriesPageSize = 0,
     this.relatedSeries = const {},
     this.genres = const [],
+    this.campaignBanners = const [],
     this.details = const {},
     this.episodes = const {},
     this.entitledEpisodes = const {},
@@ -567,6 +568,10 @@ class ConnectFixtureServer {
   /// `ListPublishedGenres` counts each over the series shown, replacing the
   /// `publishedSeriesCount` stored here.
   List<pb.PublishedGenre> genres;
+
+  /// What `ListCampaignBanners` answers with: the banners showing now, in
+  /// the tenant's order.
+  List<pb.CampaignBanner> campaignBanners;
 
   /// What `ListRankedSeries` answers with, whichever period is asked for.
   /// Empty acts out a tenant the ranking batch has not run for.
@@ -1186,6 +1191,15 @@ class ConnectFixtureServer {
           ),
         );
       }
+      return;
+    }
+
+    if (path.endsWith('/ListCampaignBanners')) {
+      recorded.decode(pb.ListCampaignBannersRequest());
+      await _writeMessage(
+        request,
+        pb.ListCampaignBannersResponse(banners: campaignBanners),
+      );
       return;
     }
 

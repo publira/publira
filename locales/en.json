@@ -4649,6 +4649,8 @@
     },
     "catalog": {
       "all_series_heading": "All series",
+      "campaign_banner": "Campaign banner",
+      "campaign_banner_position": "Campaign banner {$position} of {$count}",
       "continue_failed": "Could not show what you were reading. Try again.",
       "continue_heading": "Continue reading",
       "creators_failed": "Could not show the featured authors. Try again.",

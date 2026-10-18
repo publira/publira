@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:publira/api/episode_page_store.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
+import 'package:publira/models/campaign_banner.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/published_creator.dart';
 import 'package:publira/models/published_label.dart';
@@ -314,6 +315,12 @@ class OfflineCatalogRepository implements CatalogRepository {
   /// reader opened, not the lists they browsed through.
   @override
   Future<List<PublishedGenre>> listGenres() => _origin.listGenres();
+
+  /// The campaigns on right now, which only the API can answer: a band kept
+  /// from an earlier launch would show campaigns whose window has closed.
+  @override
+  Future<List<CampaignBanner>> listCampaignBanners() =>
+      _origin.listCampaignBanners();
 
   @override
   Future<PublishedTag?> getTag(String slug) => _origin.getTag(slug);

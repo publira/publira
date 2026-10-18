@@ -653,6 +653,22 @@ final class AppMessages {
     return _format('mobile.catalog.all_series_heading');
   }
 
+  /// `mobile.catalog.campaign_banner`
+  String get catalogCampaignBanner {
+    return _format('mobile.catalog.campaign_banner');
+  }
+
+  /// `mobile.catalog.campaign_banner_position`
+  String catalogCampaignBannerPosition({
+    required String count,
+    required String position,
+  }) {
+    return _format('mobile.catalog.campaign_banner_position', {
+      'count': count,
+      'position': position,
+    });
+  }
+
   /// `mobile.catalog.continue_failed`
   String get catalogContinueFailed {
     return _format('mobile.catalog.continue_failed');
@@ -3481,6 +3497,9 @@ const _jaSources = <String, String>{
   'mobile.auth.sent_to': '送信先: {\$email}',
   'mobile.auth.verification_sent': '確認メールを送信しました。メール内のリンクを開いて登録を完了してください。',
   'mobile.catalog.all_series_heading': 'すべてのシリーズ',
+  'mobile.catalog.campaign_banner': 'キャンペーンバナー',
+  'mobile.catalog.campaign_banner_position':
+      'キャンペーンバナー（{\$count}件中{\$position}件目）',
   'mobile.catalog.continue_failed': '読みかけの作品を表示できませんでした。もう一度お試しください。',
   'mobile.catalog.continue_heading': '読みかけの作品',
   'mobile.catalog.creators_failed': '注目の著者を表示できませんでした。もう一度お試しください。',
@@ -4227,6 +4246,9 @@ const _enSources = <String, String>{
   'mobile.auth.verification_sent':
       'We sent a confirmation email. Open the link in it to finish signing up.',
   'mobile.catalog.all_series_heading': 'All series',
+  'mobile.catalog.campaign_banner': 'Campaign banner',
+  'mobile.catalog.campaign_banner_position':
+      'Campaign banner {\$position} of {\$count}',
   'mobile.catalog.continue_failed':
       'Could not show what you were reading. Try again.',
   'mobile.catalog.continue_heading': 'Continue reading',
@@ -5044,6 +5066,9 @@ const _koSources = <String, String>{
   'mobile.auth.sent_to': '받는 사람: {\$email}',
   'mobile.auth.verification_sent': '확인 메일을 보냈습니다. 메일의 링크를 열어 가입을 완료해 주세요.',
   'mobile.catalog.all_series_heading': '전체 시리즈',
+  'mobile.catalog.campaign_banner': '캠페인 배너',
+  'mobile.catalog.campaign_banner_position':
+      '캠페인 배너 ({\$count}개 중 {\$position}번째)',
   'mobile.catalog.continue_failed': '읽던 작품을 표시할 수 없습니다',
   'mobile.catalog.continue_heading': '이어서 읽기',
   'mobile.catalog.creators_failed': '주목할 작가를 표시할 수 없습니다. 다시 시도해 주세요.',
@@ -5758,6 +5783,8 @@ const _zhHansSources = <String, String>{
   'mobile.auth.sent_to': '发送至：{\$email}',
   'mobile.auth.verification_sent': '我们已发送确认邮件。请打开邮件中的链接完成注册。',
   'mobile.catalog.all_series_heading': '全部系列',
+  'mobile.catalog.campaign_banner': '活动横幅',
+  'mobile.catalog.campaign_banner_position': '活动横幅（第{\$position}个，共{\$count}个）',
   'mobile.catalog.continue_failed': '无法显示您正在阅读的作品。',
   'mobile.catalog.continue_heading': '继续阅读',
   'mobile.catalog.creators_failed': '无法显示推荐作者。请重试。',
@@ -6414,6 +6441,8 @@ const _zhHantSources = <String, String>{
   'mobile.auth.sent_to': '寄送至：{\$email}',
   'mobile.auth.verification_sent': '我們已寄出確認郵件。請開啟郵件中的連結完成註冊。',
   'mobile.catalog.all_series_heading': '全部系列',
+  'mobile.catalog.campaign_banner': '活動橫幅',
+  'mobile.catalog.campaign_banner_position': '活動橫幅（第{\$position}個，共{\$count}個）',
   'mobile.catalog.continue_failed': '無法顯示您正在閱讀的作品。',
   'mobile.catalog.continue_heading': '繼續閱讀',
   'mobile.catalog.creators_failed': '無法顯示推薦作者。請重試。',

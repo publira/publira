@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:publira/catalog/eye_catch.dart';
 import 'package:publira/models/series_item.dart';
 
-/// The eye-catch of one series, episode, label, or genre, drawn inside a box
-/// shaped by [aspectRatio].
+/// The eye-catch of one series, episode, label, or genre, or the image of a
+/// campaign banner, drawn inside a box shaped by [aspectRatio].
 ///
 /// The rendition is picked from what [variants] carries against the box's own
 /// device-pixel width, and the image is decoded no larger than that: a stored
@@ -26,8 +26,9 @@ class EyeCatchCover extends StatelessWidget {
     this.placeholderIcon = Icons.collections_bookmark_outlined,
   });
 
-  /// What the artwork belongs to, `series`, `episode`, `label`, or `genre`,
-  /// which with [id] names the image and its placeholder on screen.
+  /// What the artwork belongs to, `series`, `episode`, `label`, `genre`, or
+  /// `campaign-banner`, which with [id] names the image and its placeholder on
+  /// screen.
   final String kind;
 
   /// Public id of what the artwork belongs to.

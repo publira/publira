@@ -10,6 +10,7 @@ import 'package:publira/api/unknown_enum.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/config.dart';
+import 'package:publira/models/campaign_banner.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/published_creator.dart';
 import 'package:publira/models/published_label.dart';
@@ -640,6 +641,33 @@ class HttpCatalogRepository implements CatalogRepository {
         .where((series) => series.id.isNotEmpty)
         .toList();
     return List<GenreFeaturedSeries>.unmodifiable(series);
+  }
+
+  @override
+  Future<List<CampaignBanner>> listCampaignBanners() async {
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await _catalog.listCampaignBanners(
+        ConnectCallContext(tenantId: tenantId),
+        pb.ListCampaignBannersRequest(tenant: _tenant(tenantId)),
+      );
+      return List<CampaignBanner>.unmodifiable(
+        body.banners.map(
+          (banner) => CampaignBanner(
+            id: _requiredId(banner.publicId, 'banners[].publicId'),
+            linkUrl: banner.linkUrl.trim(),
+            imageVariants: _parseEyeCatchVariants(
+              banner.imageVariants,
+              'banners[]',
+              field: 'imageVariants',
+            ),
+            imageRequestHeaders: config.publicImageRequestHeaders,
+          ),
+        ),
+      );
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
   }
 
   @override
@@ -1339,11 +1367,13 @@ class HttpCatalogRepository implements CatalogRepository {
     return List<SeriesCreator>.unmodifiable(parsed);
   }
 
+  /// [variants], read from the field [field] of the message at [path].
   List<EyeCatchVariant> _parseEyeCatchVariants(
     List<pb.SeriesEyeCatchVariant> variants,
-    String path,
-  ) {
-    final variantPath = '$path.eyeCatchImageVariants[]';
+    String path, {
+    String field = 'eyeCatchImageVariants',
+  }) {
+    final variantPath = '$path.$field[]';
     final parsed = variants
         .map(
           (variant) => EyeCatchVariant(

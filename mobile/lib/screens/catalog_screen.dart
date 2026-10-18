@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:publira/announcements/announcement_board.dart';
 import 'package:publira/announcements/pinned_announcement_banner.dart';
 import 'package:publira/auth/auth_scope.dart';
+import 'package:publira/catalog/campaign_banner_band.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/catalog_shelf.dart';
@@ -101,6 +102,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             const SliverToBoxAdapter(child: PinnedAnnouncementBanner()),
+            SliverToBoxAdapter(
+              child: CampaignBannerBand(refreshes: _refreshes),
+            ),
             SliverToBoxAdapter(
               child: _ContinueReadingShelf(refreshes: _refreshes),
             ),
