@@ -63,9 +63,9 @@ type Provider struct {
 // Option configures a [Provider].
 type Option func(*Provider)
 
-// WithAPIURL points the provider at another Stripe API origin, as a test's
-// fake of it. The client logs nothing, since a test that asks the fake for a
-// refund it refuses means to be refused.
+// WithAPIURL points the provider at another Stripe API origin, a fake of it in
+// a test or in the E2E stack. The client logs nothing, since a test that asks
+// the fake for a refund it refuses means to be refused.
 func WithAPIURL(apiURL string) Option {
 	return func(p *Provider) {
 		p.backends = stripego.NewBackendsWithConfig(&stripego.BackendConfig{

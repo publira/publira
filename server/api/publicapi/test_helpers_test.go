@@ -45,7 +45,7 @@ func newTestPublicServer(t *testing.T) (*httptest.Server, sqlmock.Sqlmock) {
 func mustPublicHandler(t *testing.T, db *sql.DB, queries Querier, encryptor emailsettings.SecretManager) http.Handler {
 	t.Helper()
 
-	api, err := New(db, queries, nil, encryptor, testutil.TokenManager(), nil, nil, signin.VerifierConfig{}, nil, nil)
+	api, err := New(db, queries, nil, encryptor, testutil.TokenManager(), nil, nil, signin.VerifierConfig{}, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}

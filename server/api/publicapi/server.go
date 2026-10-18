@@ -187,14 +187,15 @@ type API struct {
 // nil one turns revalidation off. search answers the catalog searches; a nil
 // one is the SQL backend over queries. idTokens says where the ID tokens a
 // reader signs in with are checked against. storageProvider stores the icons
-// readers upload.
+// readers upload. payments are the providers a tenant's payment settings may
+// name; a nil one is [providers.Registry].
 //
 // login is the sign-in limit and mail the limit on the mail a form may cause,
 // which the process hands every namespace it serves: the storefront and the
 // tenant console sign in, and mail, the same accounts, and a source reaching
 // all three holds one allowance of each, so the counts have to be one even when
 // they are kept in this process. A nil one counts on its own.
-func New(db *sql.DB, queries Querier, storageProvider storage.Provider, encryptor emailsettings.SecretManager, tokens *auth.TokenManager, reval *revalidate.Client, search catalogsearch.Backend, idTokens signin.VerifierConfig, login *loginguard.Guard, mail *mailguard.Guard) (*API, error) {
+func New(db *sql.DB, queries Querier, storageProvider storage.Provider, encryptor emailsettings.SecretManager, tokens *auth.TokenManager, reval *revalidate.Client, search catalogsearch.Backend, idTokens signin.VerifierConfig, payments *paymentprovider.Registry, login *loginguard.Guard, mail *mailguard.Guard) (*API, error) {
 	logger := slog.Default()
 	policy := platformpolicy.NewResolver(dbmodels.New(db), platformpolicy.CacheTTL, logger)
 	guards := newReaderGuards(policy, logger)
@@ -207,6 +208,9 @@ func New(db *sql.DB, queries Querier, storageProvider storage.Provider, encrypto
 	}
 	server.login = login
 	server.idTokens = signin.NewVerifier(idTokens)
+	if payments != nil {
+		server.paymentProviders = payments
+	}
 	server.storage = storageProvider
 	return &API{server: server}, nil
 }
