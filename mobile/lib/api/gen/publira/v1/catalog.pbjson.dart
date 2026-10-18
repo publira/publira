@@ -470,6 +470,14 @@ const GetSeriesDetailResponse$json = {
       '5': 9,
       '10': 'publishedLocales'
     },
+    {
+      '1': 'volumes',
+      '3': 7,
+      '4': 3,
+      '5': 11,
+      '6': '.publira.types.v1.Volume',
+      '10': 'volumes'
+    },
   ],
 };
 
@@ -481,7 +489,8 @@ final $typed_data.Uint8List getSeriesDetailResponseDescriptor = $convert.base64D
     'lyZWRNaW5pbXVtQWdlEkAKDGNvbW1lbnRfbW9kZRgEIAEoDjIdLnB1YmxpcmEudHlwZXMudjEu'
     'Q29tbWVudE1vZGVSC2NvbW1lbnRNb2RlEjUKCXdhaXRfZnJlZRgFIAEoCzIYLnB1YmxpcmEudj'
     'EuV2FpdEZyZWVSdWxlUgh3YWl0RnJlZRIrChFwdWJsaXNoZWRfbG9jYWxlcxgGIAMoCVIQcHVi'
-    'bGlzaGVkTG9jYWxlcw==');
+    'bGlzaGVkTG9jYWxlcxIyCgd2b2x1bWVzGAcgAygLMhgucHVibGlyYS50eXBlcy52MS5Wb2x1bW'
+    'VSB3ZvbHVtZXM=');
 
 @$core.Deprecated('Use getSeriesEpisodeAccessRequestDescriptor instead')
 const GetSeriesEpisodeAccessRequest$json = {
@@ -2994,6 +3003,51 @@ final $typed_data.Uint8List startEpisodeCheckoutResponseDescriptor =
         'ChxTdGFydEVwaXNvZGVDaGVja291dFJlc3BvbnNlEiEKDGNoZWNrb3V0X3VybBgBIAEoCVILY2'
         'hlY2tvdXRVcmw=');
 
+@$core.Deprecated('Use startVolumeCheckoutRequestDescriptor instead')
+const StartVolumeCheckoutRequest$json = {
+  '1': 'StartVolumeCheckoutRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+    {'1': 'volume_id', '3': 2, '4': 1, '5': 9, '10': 'volumeId'},
+    {
+      '1': 'client',
+      '3': 3,
+      '4': 1,
+      '5': 14,
+      '6': '.publira.v1.StartEpisodeCheckoutRequest.Client',
+      '10': 'client'
+    },
+  ],
+};
+
+/// Descriptor for `StartVolumeCheckoutRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List startVolumeCheckoutRequestDescriptor = $convert.base64Decode(
+    'ChpTdGFydFZvbHVtZUNoZWNrb3V0UmVxdWVzdBI3CgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLn'
+    'R5cGVzLnYxLlRlbmFudENvbnRleHRSBnRlbmFudBIbCgl2b2x1bWVfaWQYAiABKAlSCHZvbHVt'
+    'ZUlkEkYKBmNsaWVudBgDIAEoDjIuLnB1YmxpcmEudjEuU3RhcnRFcGlzb2RlQ2hlY2tvdXRSZX'
+    'F1ZXN0LkNsaWVudFIGY2xpZW50');
+
+@$core.Deprecated('Use startVolumeCheckoutResponseDescriptor instead')
+const StartVolumeCheckoutResponse$json = {
+  '1': 'StartVolumeCheckoutResponse',
+  '2': [
+    {'1': 'checkout_url', '3': 1, '4': 1, '5': 9, '10': 'checkoutUrl'},
+  ],
+};
+
+/// Descriptor for `StartVolumeCheckoutResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List startVolumeCheckoutResponseDescriptor =
+    $convert.base64Decode(
+        'ChtTdGFydFZvbHVtZUNoZWNrb3V0UmVzcG9uc2USIQoMY2hlY2tvdXRfdXJsGAEgASgJUgtjaG'
+        'Vja291dFVybA==');
+
 @$core.Deprecated('Use myPurchaseDescriptor instead')
 const MyPurchase$json = {
   '1': 'MyPurchase',
@@ -3031,6 +3085,14 @@ const MyPurchase$json = {
       '6': '.publira.types.v1.PurchaseKind',
       '10': 'kind'
     },
+    {
+      '1': 'volume',
+      '3': 13,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.Volume',
+      '10': 'volume'
+    },
   ],
 };
 
@@ -3044,7 +3106,8 @@ final $typed_data.Uint8List myPurchaseDescriptor = $convert.base64Decode(
     'JlbmN5GAggASgJUghjdXJyZW5jeRInCg9yZWZ1bmRlZF9hbW91bnQYCSABKAVSDnJlZnVuZGVk'
     'QW1vdW50Eh8KC3JlZnVuZGVkX2F0GAogASgJUgpyZWZ1bmRlZEF0Eh0KCnJldm9rZWRfYXQYCy'
     'ABKAlSCXJldm9rZWRBdBIyCgRraW5kGAwgASgOMh4ucHVibGlyYS50eXBlcy52MS5QdXJjaGFz'
-    'ZUtpbmRSBGtpbmQ=');
+    'ZUtpbmRSBGtpbmQSMAoGdm9sdW1lGA0gASgLMhgucHVibGlyYS50eXBlcy52MS5Wb2x1bWVSBn'
+    'ZvbHVtZQ==');
 
 @$core.Deprecated('Use listMyPurchasesRequestDescriptor instead')
 const ListMyPurchasesRequest$json = {
@@ -3534,6 +3597,7 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.v1.GetSeriesDetailResponse': GetSeriesDetailResponse$json,
   '.publira.types.v1.Episode': $0.Episode$json,
   '.publira.v1.WaitFreeRule': WaitFreeRule$json,
+  '.publira.types.v1.Volume': $0.Volume$json,
   '.publira.v1.GetSeriesEpisodeAccessRequest':
       GetSeriesEpisodeAccessRequest$json,
   '.publira.v1.GetSeriesEpisodeAccessResponse':
@@ -3859,6 +3923,11 @@ const $core.Map<$core.String, $core.dynamic> PurchaseServiceBase$json = {
       '3': '.publira.v1.StartEpisodeCheckoutResponse'
     },
     {
+      '1': 'StartVolumeCheckout',
+      '2': '.publira.v1.StartVolumeCheckoutRequest',
+      '3': '.publira.v1.StartVolumeCheckoutResponse'
+    },
+    {
       '1': 'ListMyPurchases',
       '2': '.publira.v1.ListMyPurchasesRequest',
       '3': '.publira.v1.ListMyPurchasesResponse'
@@ -3892,6 +3961,8 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.v1.StartEpisodeCheckoutRequest': StartEpisodeCheckoutRequest$json,
   '.publira.types.v1.TenantContext': $0.TenantContext$json,
   '.publira.v1.StartEpisodeCheckoutResponse': StartEpisodeCheckoutResponse$json,
+  '.publira.v1.StartVolumeCheckoutRequest': StartVolumeCheckoutRequest$json,
+  '.publira.v1.StartVolumeCheckoutResponse': StartVolumeCheckoutResponse$json,
   '.publira.v1.ListMyPurchasesRequest': ListMyPurchasesRequest$json,
   '.publira.v1.ListMyPurchasesResponse': ListMyPurchasesResponse$json,
   '.publira.v1.MyPurchase': MyPurchase$json,
@@ -3903,6 +3974,7 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.types.v1.Label': $0.Label$json,
   '.publira.types.v1.Genre': $0.Genre$json,
   '.publira.types.v1.Tag': $0.Tag$json,
+  '.publira.types.v1.Volume': $0.Volume$json,
   '.publira.v1.ProcessPaymentWebhookRequest': ProcessPaymentWebhookRequest$json,
   '.publira.v1.ProcessPaymentWebhookRequest.HeadersEntry':
       ProcessPaymentWebhookRequest_HeadersEntry$json,
@@ -3922,16 +3994,18 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
 final $typed_data.Uint8List purchaseServiceDescriptor = $convert.base64Decode(
     'Cg9QdXJjaGFzZVNlcnZpY2USaQoUU3RhcnRFcGlzb2RlQ2hlY2tvdXQSJy5wdWJsaXJhLnYxLl'
     'N0YXJ0RXBpc29kZUNoZWNrb3V0UmVxdWVzdBooLnB1YmxpcmEudjEuU3RhcnRFcGlzb2RlQ2hl'
-    'Y2tvdXRSZXNwb25zZRJaCg9MaXN0TXlQdXJjaGFzZXMSIi5wdWJsaXJhLnYxLkxpc3RNeVB1cm'
-    'NoYXNlc1JlcXVlc3QaIy5wdWJsaXJhLnYxLkxpc3RNeVB1cmNoYXNlc1Jlc3BvbnNlEmwKFVBy'
-    'b2Nlc3NQYXltZW50V2ViaG9vaxIoLnB1YmxpcmEudjEuUHJvY2Vzc1BheW1lbnRXZWJob29rUm'
-    'VxdWVzdBopLnB1YmxpcmEudjEuUHJvY2Vzc1BheW1lbnRXZWJob29rUmVzcG9uc2USYwoSU3Rh'
-    'cnRTdG9yZVB1cmNoYXNlEiUucHVibGlyYS52MS5TdGFydFN0b3JlUHVyY2hhc2VSZXF1ZXN0Gi'
-    'YucHVibGlyYS52MS5TdGFydFN0b3JlUHVyY2hhc2VSZXNwb25zZRJpChRDb25maXJtU3RvcmVQ'
-    'dXJjaGFzZRInLnB1YmxpcmEudjEuQ29uZmlybVN0b3JlUHVyY2hhc2VSZXF1ZXN0GigucHVibG'
-    'lyYS52MS5Db25maXJtU3RvcmVQdXJjaGFzZVJlc3BvbnNlEn4KG1Byb2Nlc3NBcHBTdG9yZU5v'
-    'dGlmaWNhdGlvbhIuLnB1YmxpcmEudjEuUHJvY2Vzc0FwcFN0b3JlTm90aWZpY2F0aW9uUmVxdW'
-    'VzdBovLnB1YmxpcmEudjEuUHJvY2Vzc0FwcFN0b3JlTm90aWZpY2F0aW9uUmVzcG9uc2U=');
+    'Y2tvdXRSZXNwb25zZRJmChNTdGFydFZvbHVtZUNoZWNrb3V0EiYucHVibGlyYS52MS5TdGFydF'
+    'ZvbHVtZUNoZWNrb3V0UmVxdWVzdBonLnB1YmxpcmEudjEuU3RhcnRWb2x1bWVDaGVja291dFJl'
+    'c3BvbnNlEloKD0xpc3RNeVB1cmNoYXNlcxIiLnB1YmxpcmEudjEuTGlzdE15UHVyY2hhc2VzUm'
+    'VxdWVzdBojLnB1YmxpcmEudjEuTGlzdE15UHVyY2hhc2VzUmVzcG9uc2USbAoVUHJvY2Vzc1Bh'
+    'eW1lbnRXZWJob29rEigucHVibGlyYS52MS5Qcm9jZXNzUGF5bWVudFdlYmhvb2tSZXF1ZXN0Gi'
+    'kucHVibGlyYS52MS5Qcm9jZXNzUGF5bWVudFdlYmhvb2tSZXNwb25zZRJjChJTdGFydFN0b3Jl'
+    'UHVyY2hhc2USJS5wdWJsaXJhLnYxLlN0YXJ0U3RvcmVQdXJjaGFzZVJlcXVlc3QaJi5wdWJsaX'
+    'JhLnYxLlN0YXJ0U3RvcmVQdXJjaGFzZVJlc3BvbnNlEmkKFENvbmZpcm1TdG9yZVB1cmNoYXNl'
+    'EicucHVibGlyYS52MS5Db25maXJtU3RvcmVQdXJjaGFzZVJlcXVlc3QaKC5wdWJsaXJhLnYxLk'
+    'NvbmZpcm1TdG9yZVB1cmNoYXNlUmVzcG9uc2USfgobUHJvY2Vzc0FwcFN0b3JlTm90aWZpY2F0'
+    'aW9uEi4ucHVibGlyYS52MS5Qcm9jZXNzQXBwU3RvcmVOb3RpZmljYXRpb25SZXF1ZXN0Gi8ucH'
+    'VibGlyYS52MS5Qcm9jZXNzQXBwU3RvcmVOb3RpZmljYXRpb25SZXNwb25zZQ==');
 
 const $core.Map<$core.String, $core.dynamic> WaitFreeServiceBase$json = {
   '1': 'WaitFreeService',

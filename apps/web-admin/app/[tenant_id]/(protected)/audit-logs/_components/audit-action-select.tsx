@@ -85,6 +85,26 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "episode_free_window_deleted",
             },
             {
+              label: t("admin.audit.actions.volume_created"),
+              value: "volume_created",
+            },
+            {
+              label: t("admin.audit.actions.volume_updated"),
+              value: "volume_updated",
+            },
+            {
+              label: t("admin.audit.actions.volume_published"),
+              value: "volume_published",
+            },
+            {
+              label: t("admin.audit.actions.volume_unpublished"),
+              value: "volume_unpublished",
+            },
+            {
+              label: t("admin.audit.actions.volumes_reordered"),
+              value: "volumes_reordered",
+            },
+            {
               label: t("admin.audit.actions.creator_created"),
               value: "creator_created",
             },

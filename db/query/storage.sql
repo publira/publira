@@ -21,7 +21,7 @@
 --     -> idx_<entity>_image_variants_object_key, once per variant table
 --   DeleteUnreferencedCampaignBannerImages / ...CreatorImages /
 --   ...EpisodeEyeCatchImages / ...GenreImages / ...LabelImages /
---   ...SeriesImages / ...TenantImages
+--   ...SeriesImages / ...TenantImages / ...VolumeCoverImages
 --     -> no index; one anti-join per run over a table that holds one row per
 --        entity image
 --   DeleteUnreferencedUserImages
@@ -47,6 +47,7 @@ WHERE EXISTS (SELECT 1 FROM tenant_image_variants v WHERE v.object_key = c.objec
     OR EXISTS (SELECT 1 FROM episode_image_variants v WHERE v.object_key = c.object_key)
     OR EXISTS (SELECT 1 FROM episode_eye_catch_image_variants v WHERE v.object_key = c.object_key)
     OR EXISTS (SELECT 1 FROM user_image_variants v WHERE v.object_key = c.object_key)
+    OR EXISTS (SELECT 1 FROM volume_cover_image_variants v WHERE v.object_key = c.object_key)
     OR EXISTS (SELECT 1 FROM reader_icon_preset_variants v WHERE v.object_key = c.object_key);
 
 -- name: DeleteUnreferencedCampaignBannerImages :execrows
@@ -105,3 +106,10 @@ WHERE ui.created_at < @created_before
         SELECT 1 FROM users u
         WHERE u.tenant_id = ui.tenant_id AND u.icon_image_id = ui.id
     );
+
+-- name: DeleteUnreferencedVolumeCoverImages :execrows
+-- A replaced or removed cover is left behind by the volume that no longer
+-- points at it.
+DELETE FROM volume_cover_images vi
+WHERE vi.created_at < @created_before
+    AND NOT EXISTS (SELECT 1 FROM volumes v WHERE v.cover_image_id = vi.id);

@@ -2943,6 +2943,150 @@ class PageVersion extends $pb.GeneratedMessage {
   void clearAgreementRequiredAt() => $_clearField(10);
 }
 
+/// Which of an episode's two sales a purchase is (purchases.kind).
+/// A volume: a run of a series' episodes sold together, at a price of its own,
+/// in one checkout. Buying it opens every episode it holds, which the episode
+/// reads then report as EPISODE_ENTITLEMENT_SOURCE_PURCHASE.
+class Volume extends $pb.GeneratedMessage {
+  factory Volume({
+    $core.String? id,
+    $core.String? publicId,
+    $core.String? title,
+    $core.int? orderIndex,
+    $core.int? price,
+    $core.Iterable<$core.String>? episodeIds,
+    $core.String? coverImageUpdatedAt,
+    $core.Iterable<SeriesEyeCatchVariant>? coverImageVariants,
+  }) {
+    final result = Volume._();
+    if (id != null) result.id = id;
+    if (publicId != null) result.publicId = publicId;
+    if (title != null) result.title = title;
+    if (orderIndex != null) result.orderIndex = orderIndex;
+    if (price != null) result.price = price;
+    if (episodeIds != null) result.episodeIds.addAll(episodeIds);
+    if (coverImageUpdatedAt != null)
+      result.coverImageUpdatedAt = coverImageUpdatedAt;
+    if (coverImageVariants != null)
+      result.coverImageVariants.addAll(coverImageVariants);
+    return result;
+  }
+
+  Volume._();
+
+  factory Volume.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      Volume()..mergeFromBuffer(data, registry);
+  factory Volume.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      Volume()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'Volume',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'publira.types.v1'),
+      createEmptyInstance: Volume.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOS(2, _omitFieldNames ? '' : 'publicId')
+    ..aOS(3, _omitFieldNames ? '' : 'title')
+    ..aI(4, _omitFieldNames ? '' : 'orderIndex')
+    ..aI(5, _omitFieldNames ? '' : 'price')
+    ..pPS(6, _omitFieldNames ? '' : 'episodeIds')
+    ..aOS(7, _omitFieldNames ? '' : 'coverImageUpdatedAt')
+    ..pPM<SeriesEyeCatchVariant>(8, _omitFieldNames ? '' : 'coverImageVariants',
+        subBuilder: SeriesEyeCatchVariant.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Volume clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Volume copyWith(void Function(Volume) updates) =>
+      super.copyWith((message) => updates(message as Volume)) as Volume;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Volume() / Volume.new instead')
+  static Volume create() => Volume._();
+  static $pb.GeneratedMessage $_createMessage() => Volume._();
+  @$core.override
+  Volume createEmptyInstance() => Volume._();
+  @$core.pragma('dart2js:noInline')
+  static Volume getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Volume>(Volume.$_createMessage);
+  static Volume? _defaultInstance;
+
+  /// The volume's primary key, which StartVolumeCheckout addresses it by.
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get publicId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set publicId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPublicId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPublicId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get title => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set title($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasTitle() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearTitle() => $_clearField(3);
+
+  /// Where the volume stands among its series' volumes, ascending.
+  @$pb.TagNumber(4)
+  $core.int get orderIndex => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set orderIndex($core.int value) => $_setSignedInt32(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasOrderIndex() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearOrderIndex() => $_clearField(4);
+
+  /// What the volume costs, in the minor unit of the tenant currency, as
+  /// Episode.price is. Never 0: a volume is never free.
+  @$pb.TagNumber(5)
+  $core.int get price => $_getIZ(4);
+  @$pb.TagNumber(5)
+  set price($core.int value) => $_setSignedInt32(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasPrice() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearPrice() => $_clearField(5);
+
+  /// The episodes the volume holds, by Episode.id, in the volume's own order.
+  /// On a public read, only the episodes that read lists for the calling
+  /// surface; a volume none of whose episodes it lists is not in the answer.
+  @$pb.TagNumber(6)
+  $pb.PbList<$core.String> get episodeIds => $_getList(5);
+
+  /// The cover, stored the way a series eye-catch is. Empty when the volume has
+  /// none, and the series' eye-catch stands in for it then.
+  @$pb.TagNumber(7)
+  $core.String get coverImageUpdatedAt => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set coverImageUpdatedAt($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasCoverImageUpdatedAt() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearCoverImageUpdatedAt() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $pb.PbList<SeriesEyeCatchVariant> get coverImageVariants => $_getList(7);
+}
+
 /// An icon the tenant provides for its readers to pick. A reader's account
 /// that shows it carries the same variants in User.icon_image_variants.
 class ReaderIconPreset extends $pb.GeneratedMessage {

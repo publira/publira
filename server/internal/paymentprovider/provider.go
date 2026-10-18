@@ -134,16 +134,33 @@ func ParseKind(value string, readingPeriodHours int64) (Kind, error) {
 	return "", fmt.Errorf("unknown purchase kind %q", value)
 }
 
-// Purchase names what a completed checkout sells. The provider carries it
-// from [CheckoutRequest] to the notification that confirms it.
+// CheckVolumeSale refuses the terms a checkout of a volume cannot carry. A
+// volume is sold once and for good, so a rental or a reading period beside one
+// would record a purchase its buyer never made.
+func CheckVolumeSale(kind Kind, readingPeriodHours int64) error {
+	if kind != KindPurchase {
+		return errors.New("a volume is never rented")
+	}
+	if readingPeriodHours != 0 {
+		return errors.New("a volume names no reading period")
+	}
+	return nil
+}
+
+// Purchase names what a completed checkout sells: one episode, or one volume,
+// so exactly one of EpisodeID and VolumeID is set and the other is
+// [uuid.Nil]. The provider carries it from [CheckoutRequest] to the
+// notification that confirms it.
 type Purchase struct {
 	TenantID  uuid.UUID
 	ReaderID  uuid.UUID
 	EpisodeID uuid.UUID
-	// Kind is which of the episode's sales the checkout is for.
+	VolumeID  uuid.UUID
+	// Kind is which of the episode's sales the checkout is for, and always
+	// [KindPurchase] for a volume.
 	Kind Kind
-	// Price is the episode's price at the time of checkout, in the minor unit
-	// of Currency.
+	// Price is the episode's or the volume's price at the time of checkout,
+	// in the minor unit of Currency.
 	Price int32
 	// Currency is the ISO 4217 code, in capitals, of the tenant currency the
 	// checkout charges in. A provider reads it back from the payment it
@@ -151,15 +168,16 @@ type Purchase struct {
 	// currency the reader actually paid in.
 	Currency string
 	// ReadingPeriodHours limits how long the purchase opens the episode; zero
-	// means it does not expire. A rental carries its rental period here.
+	// means it does not expire. A rental carries its rental period here, and
+	// a volume always zero.
 	ReadingPeriodHours int32
 }
 
-// CheckoutRequest starts one reader's checkout of one episode.
+// CheckoutRequest starts one reader's checkout of one episode or one volume.
 type CheckoutRequest struct {
 	Purchase Purchase
 	// LineItemName is what the checkout names the sale: the episode's title,
-	// and for a rental the period it is rented for besides.
+	// and for a rental the period it is rented for besides, or the volume's.
 	LineItemName string
 	// SuccessURL and CancelURL are where the reader returns to afterwards.
 	SuccessURL string

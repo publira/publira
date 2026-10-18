@@ -766,6 +766,27 @@ func TestCatalogGetSeriesDetailContract(t *testing.T) {
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	expectNoEpisodeEyeCatches(mock, tenantID)
+	// Two volumes are on sale. The first holds the listed episode and one the
+	// web does not list, and carries a cover; the second holds only episodes
+	// the web does not list, so it sells nothing here and is left out.
+	listedVolumeID := uuid.Must(uuid.NewV7())
+	unlistedVolumeID := uuid.Must(uuid.NewV7())
+	coverID := uuid.Must(uuid.NewV7())
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedVolumesForSeries)).
+		WithArgs(tenantID, seriesID).
+		WillReturnRows(sqlmock.NewRows(publishedVolumeColumns).
+			AddRow(listedVolumeID, "VOLUME000001", "Volume 1", int32(0), int32(900), coverID, now, now).
+			AddRow(unlistedVolumeID, "VOLUME000002", "Volume 2", int32(1), int32(900), nil, nil, now))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListVolumeEpisodesByVolumeIDs)).
+		WithArgs(tenantID, sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"volume_id", "episode_id"}).
+			AddRow(listedVolumeID, episodeID).
+			AddRow(listedVolumeID, uuid.Must(uuid.NewV7())).
+			AddRow(unlistedVolumeID, uuid.Must(uuid.NewV7())))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListVolumeCoverImageVariantsByImageIDs)).
+		WithArgs(tenantID, sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "volume_cover_image_id", "variant_type", "label", "content_type", "file_size_bytes", "width", "height"}).
+			AddRow(uuid.Must(uuid.NewV7()), coverID, "portrait", "portrait_600w", "image/webp", int64(2048), int32(600), int32(800)))
 	resp, err := client.GetSeriesDetail(context.Background(), &publirav1.GetSeriesDetailRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
 		PublicId: "SERIESPUB",
@@ -824,6 +845,19 @@ func TestCatalogGetSeriesDetailContract(t *testing.T) {
 	}
 	if want := []string{episodeID.String()}; !slices.Equal(waitFree.ExcludedEpisodeIds, want) {
 		t.Fatalf("wait_free excluded_episode_ids = %v, want %v", waitFree.ExcludedEpisodeIds, want)
+	}
+	if len(resp.Volumes) != 1 {
+		t.Fatalf("volumes = %+v, want the one volume holding a listed episode", resp.Volumes)
+	}
+	volume := resp.Volumes[0]
+	if volume.Id != listedVolumeID.String() || volume.Title != "Volume 1" || volume.Price != 900 {
+		t.Fatalf("volume = %+v, want Volume 1 at 900", volume)
+	}
+	if want := []string{episodeID.String()}; !slices.Equal(volume.EpisodeIds, want) {
+		t.Fatalf("volume episode_ids = %v, want only the listed %v", volume.EpisodeIds, want)
+	}
+	if len(volume.CoverImageVariants) != 1 || !strings.HasPrefix(volume.CoverImageVariants[0].Url, "/images/volume-covers/"+coverID.String()+"/portrait/600") {
+		t.Fatalf("volume cover = %+v, want the portrait variant under /images/volume-covers", volume.CoverImageVariants)
 	}
 
 	assertPublicExpectations(t, mock)

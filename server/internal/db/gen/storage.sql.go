@@ -141,6 +141,22 @@ func (q *Queries) DeleteUnreferencedUserImages(ctx context.Context, createdBefor
 	return result.RowsAffected()
 }
 
+const DeleteUnreferencedVolumeCoverImages = `-- name: DeleteUnreferencedVolumeCoverImages :execrows
+DELETE FROM volume_cover_images vi
+WHERE vi.created_at < $1
+    AND NOT EXISTS (SELECT 1 FROM volumes v WHERE v.cover_image_id = vi.id)
+`
+
+// A replaced or removed cover is left behind by the volume that no longer
+// points at it.
+func (q *Queries) DeleteUnreferencedVolumeCoverImages(ctx context.Context, createdBefore time.Time) (int64, error) {
+	result, err := q.db.ExecContext(ctx, DeleteUnreferencedVolumeCoverImages, createdBefore)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const ListReferencedObjectKeys = `-- name: ListReferencedObjectKeys :many
 
 WITH candidates AS (
@@ -157,6 +173,7 @@ WHERE EXISTS (SELECT 1 FROM tenant_image_variants v WHERE v.object_key = c.objec
     OR EXISTS (SELECT 1 FROM episode_image_variants v WHERE v.object_key = c.object_key)
     OR EXISTS (SELECT 1 FROM episode_eye_catch_image_variants v WHERE v.object_key = c.object_key)
     OR EXISTS (SELECT 1 FROM user_image_variants v WHERE v.object_key = c.object_key)
+    OR EXISTS (SELECT 1 FROM volume_cover_image_variants v WHERE v.object_key = c.object_key)
     OR EXISTS (SELECT 1 FROM reader_icon_preset_variants v WHERE v.object_key = c.object_key)
 `
 
@@ -184,7 +201,7 @@ WHERE EXISTS (SELECT 1 FROM tenant_image_variants v WHERE v.object_key = c.objec
 //	  -> idx_<entity>_image_variants_object_key, once per variant table
 //	DeleteUnreferencedCampaignBannerImages / ...CreatorImages /
 //	...EpisodeEyeCatchImages / ...GenreImages / ...LabelImages /
-//	...SeriesImages / ...TenantImages
+//	...SeriesImages / ...TenantImages / ...VolumeCoverImages
 //	  -> no index; one anti-join per run over a table that holds one row per
 //	     entity image
 //	DeleteUnreferencedUserImages

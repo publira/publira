@@ -486,7 +486,6 @@ func (SurfaceAvailability) EnumDescriptor() ([]byte, []int) {
 	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{7}
 }
 
-// Which of an episode's two sales a purchase is (purchases.kind).
 type PurchaseKind int32
 
 const (
@@ -2878,6 +2877,119 @@ func (x *PageVersion) GetAgreementRequiredAt() string {
 	return ""
 }
 
+// Which of an episode's two sales a purchase is (purchases.kind).
+// A volume: a run of a series' episodes sold together, at a price of its own,
+// in one checkout. Buying it opens every episode it holds, which the episode
+// reads then report as EPISODE_ENTITLEMENT_SOURCE_PURCHASE.
+type Volume struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The volume's primary key, which StartVolumeCheckout addresses it by.
+	Id       string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	PublicId string `protobuf:"bytes,2,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	Title    string `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
+	// Where the volume stands among its series' volumes, ascending.
+	OrderIndex int32 `protobuf:"varint,4,opt,name=order_index,json=orderIndex,proto3" json:"order_index,omitempty"`
+	// What the volume costs, in the minor unit of the tenant currency, as
+	// Episode.price is. Never 0: a volume is never free.
+	Price int32 `protobuf:"varint,5,opt,name=price,proto3" json:"price,omitempty"`
+	// The episodes the volume holds, by Episode.id, in the volume's own order.
+	// On a public read, only the episodes that read lists for the calling
+	// surface; a volume none of whose episodes it lists is not in the answer.
+	EpisodeIds []string `protobuf:"bytes,6,rep,name=episode_ids,json=episodeIds,proto3" json:"episode_ids,omitempty"`
+	// The cover, stored the way a series eye-catch is. Empty when the volume has
+	// none, and the series' eye-catch stands in for it then.
+	CoverImageUpdatedAt string                   `protobuf:"bytes,7,opt,name=cover_image_updated_at,json=coverImageUpdatedAt,proto3" json:"cover_image_updated_at,omitempty"`
+	CoverImageVariants  []*SeriesEyeCatchVariant `protobuf:"bytes,8,rep,name=cover_image_variants,json=coverImageVariants,proto3" json:"cover_image_variants,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *Volume) Reset() {
+	*x = Volume{}
+	mi := &file_publira_types_v1_types_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Volume) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Volume) ProtoMessage() {}
+
+func (x *Volume) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_types_v1_types_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Volume.ProtoReflect.Descriptor instead.
+func (*Volume) Descriptor() ([]byte, []int) {
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *Volume) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Volume) GetPublicId() string {
+	if x != nil {
+		return x.PublicId
+	}
+	return ""
+}
+
+func (x *Volume) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *Volume) GetOrderIndex() int32 {
+	if x != nil {
+		return x.OrderIndex
+	}
+	return 0
+}
+
+func (x *Volume) GetPrice() int32 {
+	if x != nil {
+		return x.Price
+	}
+	return 0
+}
+
+func (x *Volume) GetEpisodeIds() []string {
+	if x != nil {
+		return x.EpisodeIds
+	}
+	return nil
+}
+
+func (x *Volume) GetCoverImageUpdatedAt() string {
+	if x != nil {
+		return x.CoverImageUpdatedAt
+	}
+	return ""
+}
+
+func (x *Volume) GetCoverImageVariants() []*SeriesEyeCatchVariant {
+	if x != nil {
+		return x.CoverImageVariants
+	}
+	return nil
+}
+
 // An icon the tenant provides for its readers to pick. A reader's account
 // that shows it carries the same variants in User.icon_image_variants.
 type ReaderIconPreset struct {
@@ -2892,7 +3004,7 @@ type ReaderIconPreset struct {
 
 func (x *ReaderIconPreset) Reset() {
 	*x = ReaderIconPreset{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[19]
+	mi := &file_publira_types_v1_types_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2904,7 +3016,7 @@ func (x *ReaderIconPreset) String() string {
 func (*ReaderIconPreset) ProtoMessage() {}
 
 func (x *ReaderIconPreset) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[19]
+	mi := &file_publira_types_v1_types_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2917,7 +3029,7 @@ func (x *ReaderIconPreset) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReaderIconPreset.ProtoReflect.Descriptor instead.
 func (*ReaderIconPreset) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{19}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ReaderIconPreset) GetId() string {
@@ -2964,7 +3076,7 @@ type RetentionPeriods struct {
 
 func (x *RetentionPeriods) Reset() {
 	*x = RetentionPeriods{}
-	mi := &file_publira_types_v1_types_proto_msgTypes[20]
+	mi := &file_publira_types_v1_types_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2976,7 +3088,7 @@ func (x *RetentionPeriods) String() string {
 func (*RetentionPeriods) ProtoMessage() {}
 
 func (x *RetentionPeriods) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_types_v1_types_proto_msgTypes[20]
+	mi := &file_publira_types_v1_types_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2989,7 +3101,7 @@ func (x *RetentionPeriods) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RetentionPeriods.ProtoReflect.Descriptor instead.
 func (*RetentionPeriods) Descriptor() ([]byte, []int) {
-	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{20}
+	return file_publira_types_v1_types_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *RetentionPeriods) GetWithdrawnCommentDays() int32 {
@@ -3232,7 +3344,18 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"created_at\x18\b \x01(\tR\tcreatedAt\x12!\n" +
 	"\fpublished_at\x18\t \x01(\tR\vpublishedAt\x122\n" +
 	"\x15agreement_required_at\x18\n" +
-	" \x01(\tR\x13agreementRequiredAt\"\x80\x01\n" +
+	" \x01(\tR\x13agreementRequiredAt\"\xb3\x02\n" +
+	"\x06Volume\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
+	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x14\n" +
+	"\x05title\x18\x03 \x01(\tR\x05title\x12\x1f\n" +
+	"\vorder_index\x18\x04 \x01(\x05R\n" +
+	"orderIndex\x12\x14\n" +
+	"\x05price\x18\x05 \x01(\x05R\x05price\x12\x1f\n" +
+	"\vepisode_ids\x18\x06 \x03(\tR\n" +
+	"episodeIds\x123\n" +
+	"\x16cover_image_updated_at\x18\a \x01(\tR\x13coverImageUpdatedAt\x12Y\n" +
+	"\x14cover_image_variants\x18\b \x03(\v2'.publira.types.v1.SeriesEyeCatchVariantR\x12coverImageVariants\"\x80\x01\n" +
 	"\x10ReaderIconPreset\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -3307,7 +3430,7 @@ func file_publira_types_v1_types_proto_rawDescGZIP() []byte {
 }
 
 var file_publira_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 11)
-var file_publira_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_publira_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_publira_types_v1_types_proto_goTypes = []any{
 	(CreatorCreditSource)(0),      // 0: publira.types.v1.CreatorCreditSource
 	(SeriesStatus)(0),             // 1: publira.types.v1.SeriesStatus
@@ -3339,8 +3462,9 @@ var file_publira_types_v1_types_proto_goTypes = []any{
 	(*Page)(nil),                  // 27: publira.types.v1.Page
 	(*PageTranslation)(nil),       // 28: publira.types.v1.PageTranslation
 	(*PageVersion)(nil),           // 29: publira.types.v1.PageVersion
-	(*ReaderIconPreset)(nil),      // 30: publira.types.v1.ReaderIconPreset
-	(*RetentionPeriods)(nil),      // 31: publira.types.v1.RetentionPeriods
+	(*Volume)(nil),                // 30: publira.types.v1.Volume
+	(*ReaderIconPreset)(nil),      // 31: publira.types.v1.ReaderIconPreset
+	(*RetentionPeriods)(nil),      // 32: publira.types.v1.RetentionPeriods
 }
 var file_publira_types_v1_types_proto_depIdxs = []int32{
 	13, // 0: publira.types.v1.User.icon_image_variants:type_name -> publira.types.v1.UserIconVariant
@@ -3363,12 +3487,13 @@ var file_publira_types_v1_types_proto_depIdxs = []int32{
 	18, // 17: publira.types.v1.Episode.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
 	25, // 18: publira.types.v1.TenantTheme.icon_image_variants:type_name -> publira.types.v1.TenantImageVariant
 	25, // 19: publira.types.v1.TenantTheme.logo_image_variants:type_name -> publira.types.v1.TenantImageVariant
-	13, // 20: publira.types.v1.ReaderIconPreset.variants:type_name -> publira.types.v1.UserIconVariant
-	21, // [21:21] is the sub-list for method output_type
-	21, // [21:21] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	18, // 20: publira.types.v1.Volume.cover_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	13, // 21: publira.types.v1.ReaderIconPreset.variants:type_name -> publira.types.v1.UserIconVariant
+	22, // [22:22] is the sub-list for method output_type
+	22, // [22:22] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_publira_types_v1_types_proto_init() }
@@ -3382,7 +3507,7 @@ func file_publira_types_v1_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_types_v1_types_proto_rawDesc), len(file_publira_types_v1_types_proto_rawDesc)),
 			NumEnums:      11,
-			NumMessages:   21,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

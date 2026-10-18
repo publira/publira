@@ -102,11 +102,12 @@
       "fallback_link": "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。",
       "heading": "感謝您的購買",
       "intro": "以下是您在{$tenant_name}的購買明細。",
-      "preview": "感謝您購買{$episode_title}。",
+      "preview": "感謝您購買{$title}。",
       "purchased_at": "購買時間：{$purchased_at}",
       "series": "系列：{$series_title}",
       "subject": "{$tenant_name}購買成功",
-      "test_notice": "這是在支付服務測試模式下的購買，未產生任何扣款。"
+      "test_notice": "這是在支付服務測試模式下的購買，未產生任何扣款。",
+      "volume": "卷：{$volume_title}"
     },
     "reader_email_change_confirmation": {
       "action": "確認電子郵件地址變更",
@@ -290,7 +291,8 @@
         "tenant_sign_in_settings": "登入方式",
         "tenant_site_copy": "公開網站呈現",
         "tenant_timezone": "時區",
-        "user": "使用者"
+        "user": "使用者",
+        "volume": "卷"
       },
       "list_failed": "無法載入稽核記錄。請稍後再試。",
       "filter_invalid": "某個篩選條件無效。請檢查您輸入的內容。",
@@ -341,6 +343,11 @@
         "episode_credits_bulk_edited": "批次編輯了多個章節的作者",
         "episode_free_window_created": "新增了免費閱讀期間",
         "episode_free_window_deleted": "刪除了免費閱讀期間",
+        "volume_created": "建立了卷",
+        "volume_updated": "更新了卷",
+        "volume_published": "發布了卷",
+        "volume_unpublished": "取消發布了卷",
+        "volumes_reordered": "調整了卷順序",
         "creator_role_created": "建立了作者角色",
         "creator_role_updated": "更新了作者角色",
         "creator_role_deleted": "刪除了作者角色",

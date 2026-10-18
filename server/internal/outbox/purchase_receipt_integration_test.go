@@ -24,6 +24,7 @@ type purchaseReceiptEnv struct {
 	encryptor *secretcrypto.Manager
 	tenantID  uuid.UUID
 	readerID  uuid.UUID
+	seriesID  uuid.UUID
 	episodeID uuid.UUID
 }
 
@@ -65,7 +66,7 @@ func newPurchaseReceiptEnv(t *testing.T, ctx context.Context) purchaseReceiptEnv
 	}
 	return purchaseReceiptEnv{
 		pg: pg, queries: queries, encryptor: encryptor,
-		tenantID: tenant.ID, readerID: reader.ID, episodeID: episode.ID,
+		tenantID: tenant.ID, readerID: reader.ID, seriesID: series.ID, episodeID: episode.ID,
 	}
 }
 
@@ -195,6 +196,55 @@ func TestPurchaseReceiptEmailTellsTheReaderWhatTheyBought(t *testing.T) {
 	}
 	if request.Data["purchased_at"] != "2030-01-15T12:00:00Z" || request.Data["expires_at"] != "2030-01-17T12:00:00Z" {
 		t.Errorf("instants = %v and %v, want the stored ones in RFC 3339", request.Data["purchased_at"], request.Data["expires_at"])
+	}
+}
+
+// A purchase of a volume names the volume where a purchase of an episode
+// names the episode, and hands the renderer the volume's title alone.
+func TestPurchaseReceiptEmailNamesTheVolumeBought(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	env := newPurchaseReceiptEnv(t, ctx)
+	volume := env.pg.SeedVolume(t, env.tenantID, env.seriesID, testutil.VolumeSeed{
+		Title:      "Volume One",
+		Price:      900,
+		Published:  true,
+		EpisodeIDs: []uuid.UUID{env.episodeID},
+	})
+	purchase, err := env.queries.CreatePurchaseFromProviderVolumeCheckout(ctx, dbmodels.CreatePurchaseFromProviderVolumeCheckoutParams{
+		ID:                 uuid.New(),
+		TenantID:           env.tenantID,
+		UserID:             env.readerID,
+		VolumeID:           volume.ID,
+		PriceAtPurchase:    900,
+		Provider:           "stripe",
+		ProviderCheckoutID: "cs_receipt_volume",
+		Currency:           "JPY",
+	})
+	if err != nil {
+		t.Fatalf("CreatePurchaseFromProviderVolumeCheckout: %v", err)
+	}
+
+	mailer := &recordingMailer{}
+	renderer := &recordingRenderer{}
+	if err := env.handler(mailer, renderer)(ctx, env.event(t, purchase.ID)); err != nil {
+		t.Fatalf("purchase receipt handler: %v", err)
+	}
+	if len(mailer.sent) != 1 {
+		t.Fatalf("sent %d mails, want 1", len(mailer.sent))
+	}
+	text := mailer.sent[0].email.Text
+	for _, fragment := range []string{"Series: The Lighthouse Keeper", "Volume: Volume One", "Price paid: ¥900 (JPY)"} {
+		if !strings.Contains(text, fragment) {
+			t.Errorf("the mail does not carry %q:\n%s", fragment, text)
+		}
+	}
+	if strings.Contains(text, "Episode:") {
+		t.Errorf("the mail of a volume names an episode:\n%s", text)
+	}
+	if data := renderer.requests[0].Data; data["volume_title"] != "Volume One" || data["episode_title"] != "" {
+		t.Errorf("titles = episode %#v, volume %#v; want the volume's alone", data["episode_title"], data["volume_title"])
 	}
 }
 

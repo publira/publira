@@ -142,6 +142,10 @@ type Querier interface {
 	// How many pages the body has, which bounds where its spreads may start.
 	CountEpisodeImagesByEpisodeID(ctx context.Context, episodeID uuid.UUID) (int32, error)
 	CountEpisodeTranslations(ctx context.Context, arg CountEpisodeTranslationsParams) (int32, error)
+	// How many of the listed episodes another volume already holds. An episode is
+	// in at most one volume, so an assignment has to take it out of the other
+	// volume first.
+	CountEpisodesInOtherVolumes(ctx context.Context, arg CountEpisodesInOtherVolumesParams) (int32, error)
 	// CountOtherActiveTenantAdmins counts the active tenant_admin members of a
 	// tenant other than one user: who is left to sign in to the console once that
 	// user is removed or demoted.
@@ -167,6 +171,9 @@ type Querier interface {
 	// Whether a role may still be deleted. The refusal is the handler's, and this
 	// is what it is based on.
 	CountSeriesCreatorsByRoleIDForTenant(ctx context.Context, arg CountSeriesCreatorsByRoleIDForTenantParams) (int32, error)
+	// How many of the listed episodes belong to the series. An assignment naming
+	// an episode of another series, or none at all, counts short.
+	CountSeriesEpisodesByIDs(ctx context.Context, arg CountSeriesEpisodesByIDsParams) (int32, error)
 	CountSeriesTranslations(ctx context.Context, arg CountSeriesTranslationsParams) (int32, error)
 	CountSuspendedTenants(ctx context.Context) (int32, error)
 	CountUnreadNotificationsForUser(ctx context.Context, arg CountUnreadNotificationsForUserParams) (int32, error)
@@ -179,6 +186,7 @@ type Querier interface {
 	// does.
 	CountUserWebauthnCredentials(ctx context.Context, arg CountUserWebauthnCredentialsParams) (int64, error)
 	CountUserWebauthnCredentialsForRPID(ctx context.Context, arg CountUserWebauthnCredentialsForRPIDParams) (int64, error)
+	CountVolumesForSeries(ctx context.Context, arg CountVolumesForSeriesParams) (int32, error)
 	// How much of one tenant's backlog the retention purge is about to take. It
 	// answers that batch's dry run, which reports the total and deletes nothing.
 	CountWithdrawnEpisodeCommentsBefore(ctx context.Context, arg CountWithdrawnEpisodeCommentsBeforeParams) (int64, error)
@@ -319,6 +327,11 @@ type Querier interface {
 	// a sale to report and to match a refund against. A redelivery of the same
 	// checkout is no row.
 	CreatePurchaseFromProviderCheckout(ctx context.Context, arg CreatePurchaseFromProviderCheckoutParams) (Purchase, error)
+	// Records the purchase of a volume a completed checkout paid for, by the rules
+	// CreatePurchaseFromProviderCheckout records an episode's: every paid checkout
+	// is a purchase of its own, and a redelivery of the same checkout is no row. A
+	// volume is never rented and never expires.
+	CreatePurchaseFromProviderVolumeCheckout(ctx context.Context, arg CreatePurchaseFromProviderVolumeCheckoutParams) (Purchase, error)
 	// A reply the reader mailed back, as the inbound webhook stores it. A provider
 	// delivers a mail again whenever it is not sure the first delivery landed, so
 	// a Message-ID or a delivery key already stored is a redelivery: nothing is
@@ -374,6 +387,9 @@ type Querier interface {
 	// party ID it was registered for, so every statement names the relying party
 	// and every read that offers credentials to a ceremony names that RP ID too.
 	CreateUserWebauthnCredential(ctx context.Context, arg CreateUserWebauthnCredentialParams) (UserWebauthnCredential, error)
+	CreateVolume(ctx context.Context, arg CreateVolumeParams) (CreateVolumeRow, error)
+	CreateVolumeCoverImage(ctx context.Context, arg CreateVolumeCoverImageParams) (VolumeCoverImage, error)
+	CreateVolumeCoverImageVariant(ctx context.Context, arg CreateVolumeCoverImageVariantParams) (VolumeCoverImageVariant, error)
 	// The grant a spent ticket opens. It is an access_tickets row so every read
 	// that decides access sees it through episode_content_grants, and it expires
 	// by the series' access period from the same clock.
@@ -462,6 +478,9 @@ type Querier interface {
 	// by nothing. created_at guards the upload still in flight, whose row exists
 	// before the account elects it.
 	DeleteUnreferencedUserImages(ctx context.Context, createdBefore time.Time) (int64, error)
+	// A replaced or removed cover is left behind by the volume that no longer
+	// points at it.
+	DeleteUnreferencedVolumeCoverImages(ctx context.Context, createdBefore time.Time) (int64, error)
 	// Deletes the candidates that are still unused. A tag has no management screen
 	// and nothing else to say for itself, so one no series carries is not a tag the
 	// tenant kept — it is one nobody would ever see again.
@@ -486,6 +505,7 @@ type Querier interface {
 	// dormant rather than gone, and moving the console back would let it sign in
 	// again.
 	DeleteUserWebauthnCredentialsByUserID(ctx context.Context, arg DeleteUserWebauthnCredentialsByUserIDParams) (int64, error)
+	DeleteVolumeEpisodes(ctx context.Context, arg DeleteVolumeEpisodesParams) error
 	// last_verified_step is left alone: the code that confirmed the enrollment
 	// was accepted through the same path a sign-in code is, which stored it.
 	//
@@ -509,7 +529,8 @@ type Querier interface {
 	// it, and looking one up here finds nothing.
 	GetAccessTicketForTenant(ctx context.Context, arg GetAccessTicketForTenantParams) (GetAccessTicketForTenantRow, error)
 	// Which of the episode's two sales the reader holds an active purchase of.
-	// Only a purchase counts: an access ticket does not stop the reader buying.
+	// Only a purchase counts: an access ticket does not stop the reader buying. A
+	// purchase of the volume holding the episode counts as its permanent copy.
 	GetActiveEpisodePurchaseKinds(ctx context.Context, arg GetActiveEpisodePurchaseKindsParams) (GetActiveEpisodePurchaseKindsRow, error)
 	// Return the first tenant that matches admin_domain, or the admin.{domain}
 	// fallback, keeping the order of the candidate host names.
@@ -648,6 +669,7 @@ type Querier interface {
 	// The checkout the reader last let expire on the episode, which the next
 	// checkout's idempotency key names. No row is a reader who has let none expire.
 	GetExpiredCheckoutID(ctx context.Context, arg GetExpiredCheckoutIDParams) (string, error)
+	GetExpiredVolumeCheckoutID(ctx context.Context, arg GetExpiredVolumeCheckoutIDParams) (string, error)
 	GetGenreByIDForTenant(ctx context.Context, arg GetGenreByIDForTenantParams) (GetGenreByIDForTenantRow, error)
 	// Whether a public ID the series list was filtered by names a genre of this
 	// tenant. A filter naming nothing is refused rather than answered with an
@@ -663,6 +685,10 @@ type Querier interface {
 	// the next checkout's idempotency key names. No row is a reader who has paid
 	// for none.
 	GetLastPaidCheckoutID(ctx context.Context, arg GetLastPaidCheckoutIDParams) (string, error)
+	// The provider checkout of the reader's latest purchase of the volume, which
+	// the next checkout's idempotency key names, as GetLastPaidCheckoutID does
+	// for an episode.
+	GetLastPaidVolumeCheckoutID(ctx context.Context, arg GetLastPaidVolumeCheckoutIDParams) (string, error)
 	// The newest snapshot of one surface for one ranking key and entity type,
 	// ranking every age rating together, whichever period and algorithm version
 	// produced it. This is the order the recommendation list is built on, which
@@ -683,6 +709,8 @@ type Querier interface {
 	// The caller adds one to this to number the version it is about to create;
 	// COALESCE makes the first version of a translation number 1.
 	GetMaxPageVersionNumberByTranslationID(ctx context.Context, translationID uuid.UUID) (int32, error)
+	// Where a newly created volume goes: after every volume the series has.
+	GetMaxVolumeOrderIndexForSeries(ctx context.Context, arg GetMaxVolumeOrderIndexForSeriesParams) (int32, error)
 	// The score this reader has given the episode, or no row when they have not
 	// rated it.
 	GetMyEpisodeRating(ctx context.Context, arg GetMyEpisodeRatingParams) (int16, error)
@@ -809,6 +837,11 @@ type Querier interface {
 	// configured, so the key is never offered before a push could be signed.
 	GetPublishedWebPushPublicKey(ctx context.Context) (string, error)
 	GetPurchasableEpisodeForTenant(ctx context.Context, arg GetPurchasableEpisodeForTenantParams) (GetPurchasableEpisodeForTenantRow, error)
+	// A volume on sale on the calling surface: published, of a published series
+	// the surface shows, and holding at least one episode the surface lists. A
+	// surface cannot sell what it cannot show, and a volume none of whose episodes
+	// is out yet sells nothing the reader could open.
+	GetPurchasableVolumeForTenant(ctx context.Context, arg GetPurchasableVolumeForTenantParams) (GetPurchasableVolumeForTenantRow, error)
 	// What the receipt of one purchase says, read by the outbox worker, which
 	// connects past RLS and therefore names the tenant itself. The reader is
 	// joined within the tenant, so an account that was deleted after paying, whose
@@ -1049,6 +1082,8 @@ type Querier interface {
 	// The tenant's row-level security policy is what keeps another tenant's
 	// credential out of reach.
 	GetUserWebauthnCredentialForSignIn(ctx context.Context, arg GetUserWebauthnCredentialForSignInParams) (UserWebauthnCredential, error)
+	GetVolumeByIDForTenant(ctx context.Context, arg GetVolumeByIDForTenantParams) (GetVolumeByIDForTenantRow, error)
+	GetVolumeCoverImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetVolumeCoverImageVariantByTypeAndWidthForTenantParams) (GetVolumeCoverImageVariantByTypeAndWidthForTenantRow, error)
 	// A published episode of a published series, both shown on the calling
 	// surface, with what UseTicket decides from. free_to_everyone reads
 	// published_free_episodes, so an episode a free window has opened needs no
@@ -1099,6 +1134,8 @@ type Querier interface {
 	// provider reports the total refunded so far.
 	HoldUnappliedRefund(ctx context.Context, arg HoldUnappliedRefundParams) error
 	HoldUnappliedStoreRefund(ctx context.Context, arg HoldUnappliedStoreRefundParams) error
+	// Whether the reader holds a purchase of the volume that still opens it.
+	HoldsStandingVolumePurchase(ctx context.Context, arg HoldsStandingVolumePurchaseParams) (bool, error)
 	// An entry can land after its actor's account is gone: the async recorder
 	// writes it once the request has answered, and the account can be deleted in
 	// between. The trigger that keeps a deleted actor only reaches entries already
@@ -1257,6 +1294,8 @@ type Querier interface {
 	InsertTenantEmailRejectionEntries(ctx context.Context, arg InsertTenantEmailRejectionEntriesParams) error
 	// No ON CONFLICT clause, for the same reason as InsertPlatformRetentionConfig.
 	InsertTenantRetentionSettings(ctx context.Context, arg InsertTenantRetentionSettingsParams) (TenantRetentionSetting, error)
+	// Writes the volume's episodes in the order given, the first at position 0.
+	InsertVolumeEpisodes(ctx context.Context, arg InsertVolumeEpisodesParams) error
 	// Takes back the revocation RevokePurchaseForStaff made when the refund it was
 	// made for did not happen, and moves the purchase on to staff's next attempt
 	// when next_attempt is set: the provider refused or failed the refund, and
@@ -1747,10 +1786,12 @@ type Querier interface {
 	// cursor rules: proto/README.md.
 	ListMyFollowUpdatesDesc(ctx context.Context, arg ListMyFollowUpdatesDescParams) ([]ListMyFollowUpdatesDescRow, error)
 	ListMyPurchasesAsc(ctx context.Context, arg ListMyPurchasesAscParams) ([]ListMyPurchasesAscRow, error)
-	// The reader's library, newest purchase first. Publication is not re-checked,
-	// so a purchase outlives the episode being taken down, but the calling surface
-	// is: an episode that surface may not show is left out of the library read
-	// there, as it is left out of the catalog.
+	// The reader's library, newest purchase first: each purchase of an episode,
+	// and each purchase of a volume as one row of its own. Publication is not
+	// re-checked, so a purchase outlives the episode or the volume being taken
+	// down, but the calling surface is: an episode that surface may not show, or a
+	// volume of a series it may not show, is left out of the library read there,
+	// as it is left out of the catalog.
 	ListMyPurchasesDesc(ctx context.Context, arg ListMyPurchasesDescParams) ([]ListMyPurchasesDescRow, error)
 	// The backward direction of ListMyRecentSeriesDesc.
 	ListMyRecentSeriesAsc(ctx context.Context, arg ListMyRecentSeriesAscParams) ([]ListMyRecentSeriesAscRow, error)
@@ -2058,6 +2099,10 @@ type Querier interface {
 	// spelled out rather than written as a row value.
 	// cursor rules: proto/README.md.
 	ListPublishedTagsByTenantDesc(ctx context.Context, arg ListPublishedTagsByTenantDescParams) ([]ListPublishedTagsByTenantDescRow, error)
+	// The volumes of the series on sale, in the console's order. Which of their
+	// episodes a surface shows is the caller's to decide, since it holds the
+	// series' episodes as that surface lists them.
+	ListPublishedVolumesForSeries(ctx context.Context, arg ListPublishedVolumesForSeriesParams) ([]ListPublishedVolumesForSeriesRow, error)
 	ListPurchaseIDsForTenantAsc(ctx context.Context, arg ListPurchaseIDsForTenantAscParams) ([]ListPurchaseIDsForTenantAscRow, error)
 	// The console's purchase list is (purchased_at, id) DESC. A forward page reads
 	// ListPurchaseIDsForTenantDesc and a backward one ListPurchaseIDsForTenantAsc,
@@ -2067,7 +2112,8 @@ type Querier interface {
 	// ListPurchasesForTenantByIDs reads what the page shows. Cursor rules:
 	// proto/README.md.
 	ListPurchaseIDsForTenantDesc(ctx context.Context, arg ListPurchaseIDsForTenantDescParams) ([]ListPurchaseIDsForTenantDescRow, error)
-	// What the console shows of each purchase named, in no particular order. The
+	// What the console shows of each purchase named, in no particular order: the
+	// episode bought, or the volume, and the series of either. The
 	// buyer is joined within the tenant, so the purchase of a reader who has since
 	// deleted their account, which keeps no user, answers no buyer rather than no
 	// row.
@@ -2170,7 +2216,7 @@ type Querier interface {
 	//     -> idx_<entity>_image_variants_object_key, once per variant table
 	//   DeleteUnreferencedCampaignBannerImages / ...CreatorImages /
 	//   ...EpisodeEyeCatchImages / ...GenreImages / ...LabelImages /
-	//   ...SeriesImages / ...TenantImages
+	//   ...SeriesImages / ...TenantImages / ...VolumeCoverImages
 	//     -> no index; one anti-join per run over a table that holds one row per
 	//        entity image
 	//   DeleteUnreferencedUserImages
@@ -2426,6 +2472,12 @@ type Querier interface {
 	// comment is marked the same way before it is published as after.
 	ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDesc(ctx context.Context, arg ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescParams) ([]ListUserPendingOrHiddenEpisodeCommentsByCreatedAtDescRow, error)
 	ListUserWebauthnCredentialsForRPID(ctx context.Context, arg ListUserWebauthnCredentialsForRPIDParams) ([]UserWebauthnCredential, error)
+	ListVolumeCoverImageVariantsByImageIDs(ctx context.Context, arg ListVolumeCoverImageVariantsByImageIDsParams) ([]ListVolumeCoverImageVariantsByImageIDsRow, error)
+	// The episodes of each listed volume, in each volume's own order.
+	ListVolumeEpisodesByVolumeIDs(ctx context.Context, arg ListVolumeEpisodesByVolumeIDsParams) ([]ListVolumeEpisodesByVolumeIDsRow, error)
+	// Every volume of the series, published or not, in the order the console put
+	// them in.
+	ListVolumesForSeries(ctx context.Context, arg ListVolumesForSeriesParams) ([]ListVolumesForSeriesRow, error)
 	// Every tenant, whose site starts offering browser notifications once the
 	// first subject is saved. Read as publira_platform, which bypasses RLS.
 	ListWebPushTenantIDs(ctx context.Context) ([]uuid.UUID, error)
@@ -2652,6 +2704,14 @@ type Querier interface {
 	// it in one statement, and two of those running at once would each count from
 	// the same snapshot and both stay within the cap they then exceed together.
 	LockUserWebauthnCeremonies(ctx context.Context, arg LockUserWebauthnCeremoniesParams) error
+	// Serializes the writes on one volume and answers its series, whose row the
+	// writes that move episodes between volumes lock first; the caller re-reads
+	// the volume behind it.
+	LockVolumeByIDForTenant(ctx context.Context, arg LockVolumeByIDForTenantParams) (LockVolumeByIDForTenantRow, error)
+	// Locks every volume of the series and hands back the order they are in now,
+	// so a reorder can check the client's expected order against a list no
+	// concurrent write can move underneath it.
+	LockVolumesForSeries(ctx context.Context, arg LockVolumesForSeriesParams) ([]uuid.UUID, error)
 	// Inserts a read row for every announcement of the caller's tenant that lacks
 	// one.
 	MarkAllAnnouncementsAsRead(ctx context.Context, arg MarkAllAnnouncementsAsReadParams) (int64, error)
@@ -2868,6 +2928,10 @@ type Querier interface {
 	// The caller resolves the episode through the published catalog query first, so
 	// publication and body access are settled before this runs.
 	RateEpisode(ctx context.Context, arg RateEpisodeParams) (EpisodeRating, error)
+	// Whether the reader's account is linked to a creator one of the volume's
+	// episodes credits, which keeps them from buying it as it keeps them from
+	// buying the episode.
+	ReaderIsCreditedOnVolume(ctx context.Context, arg ReaderIsCreditedOnVolumeParams) (bool, error)
 	// RecordContentEventPurge records that a purge is about to delete a tenant's
 	// events before purged_before. It never moves the mark back, so a run under a
 	// period that was lengthened since cannot hide what an earlier run deleted.
@@ -2887,6 +2951,10 @@ type Querier interface {
 	// nothing the idempotency key reads. A reader or an episode deleted since the
 	// checkout started records nothing, since there is no next checkout to key.
 	RecordExpiredCheckout(ctx context.Context, arg RecordExpiredCheckoutParams) error
+	// Records the checkout the provider reports expired as the reader's latest on
+	// the volume, as RecordExpiredCheckout does for an episode. A reader or a
+	// volume deleted since the checkout started records nothing.
+	RecordExpiredVolumeCheckout(ctx context.Context, arg RecordExpiredVolumeCheckoutParams) error
 	// Records that a refund of the purchase's payment failed after the provider
 	// accepted it, taking the total that stays refunded from the provider as it
 	// now stands, which is the one place a recorded amount goes down. Once that
@@ -3104,6 +3172,12 @@ type Querier interface {
 	// updated when the link went away while the code was being exchanged, or holds
 	// a token already, and the caller revokes the one it got instead.
 	SetUserIdentityRefreshToken(ctx context.Context, arg SetUserIdentityRefreshTokenParams) (int64, error)
+	// Points the volume at an uploaded cover, or at none. The cover it pointed at
+	// before is left for the orphan image sweep.
+	SetVolumeCoverImageID(ctx context.Context, arg SetVolumeCoverImageIDParams) error
+	// Puts the volume on sale or takes it off. Publishing a volume already on sale
+	// keeps the instant it was put on sale.
+	SetVolumePublished(ctx context.Context, arg SetVolumePublishedParams) error
 	// Answers whether a nonce was spent already, without spending it, so a replay
 	// can be refused before anything is charged for the request.
 	SignInNonceIsSpent(ctx context.Context, arg SignInNonceIsSpentParams) (bool, error)
@@ -3280,6 +3354,10 @@ type Querier interface {
 	UpdateUserNameByID(ctx context.Context, arg UpdateUserNameByIDParams) (User, error)
 	UpdateUserPasswordHashByID(ctx context.Context, arg UpdateUserPasswordHashByIDParams) (User, error)
 	UpdateUserStatusByID(ctx context.Context, arg UpdateUserStatusByIDParams) (User, error)
+	// Replaces the title and the price. A purchase already made keeps the price it
+	// was made at, and a checkout already started the one it was started at.
+	UpdateVolume(ctx context.Context, arg UpdateVolumeParams) error
+	UpdateVolumeOrderIndex(ctx context.Context, arg UpdateVolumeOrderIndexParams) error
 	// Daily stats are full-day replacements. Upsert keeps a single row per
 	// (tenant, date, entity). rating_count / rating_sum are that day's flow — the
 	// rating events that occurred on stat_date — and not a stock average: a member
@@ -3395,6 +3473,10 @@ type Querier interface {
 	// Whether the body is free to everyone — price = 0, or an open free window —
 	// is evaluated by the caller; this query only covers grants.
 	UserHasEpisodeContentAccess(ctx context.Context, arg UserHasEpisodeContentAccessParams) (bool, error)
+	// Whether a purchase of the volume still opens its episodes: one neither
+	// refunded in full, disputed, nor revoked by staff. Such a buyer paid for the
+	// episodes the volume holds, so none of them may leave it.
+	VolumeHasStandingPurchase(ctx context.Context, arg VolumeHasStandingPurchaseParams) (bool, error)
 	// The author's own deletion. It applies to a comment staff had removed too,
 	// since the author still sees that comment unchanged. The removal columns
 	// are cleared because no removal is in force on a withdrawn row any more;

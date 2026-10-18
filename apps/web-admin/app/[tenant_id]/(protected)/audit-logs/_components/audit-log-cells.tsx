@@ -82,6 +82,30 @@ const catalogActionName = (action: string) => {
   }
 };
 
+/** An action on volumes. */
+const volumeActionName = (action: string) => {
+  switch (action) {
+    case "volume_created": {
+      return <Message message="admin.audit.actions.volume_created" />;
+    }
+    case "volume_updated": {
+      return <Message message="admin.audit.actions.volume_updated" />;
+    }
+    case "volume_published": {
+      return <Message message="admin.audit.actions.volume_published" />;
+    }
+    case "volume_unpublished": {
+      return <Message message="admin.audit.actions.volume_unpublished" />;
+    }
+    case "volumes_reordered": {
+      return <Message message="admin.audit.actions.volumes_reordered" />;
+    }
+    default: {
+      return null;
+    }
+  }
+};
+
 /** An action on authors, author roles, labels, or genres. */
 const taxonomyActionName = (action: string) => {
   switch (action) {
@@ -537,6 +561,7 @@ const mfaActionName = (action: string) => {
 /** The name of an action the admin API records, or `null` for any other. */
 const actionName = (action: string) =>
   catalogActionName(action) ??
+  volumeActionName(action) ??
   taxonomyActionName(action) ??
   siteActionName(action) ??
   campaignBannerActionName(action) ??
@@ -600,6 +625,9 @@ const catalogTargetName = (targetType: string) => {
     }
     case "series": {
       return <Message message="admin.audit.targets.series" />;
+    }
+    case "volume": {
+      return <Message message="admin.audit.targets.volume" />;
     }
     default: {
       return null;

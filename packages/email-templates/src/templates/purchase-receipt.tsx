@@ -31,28 +31,40 @@ const catalogTitleField = (name: string) =>
     .trim()
     .min(1, { error: `${name} is required` });
 
-export const purchaseReceiptDataSchema = z.object({
-  /** The price paid, an integer in the minor unit of `currency`. */
-  amount: z
-    .number()
-    .int({ error: "amount must be an integer in the minor unit" })
-    .min(0, { error: "amount must not be negative" }),
-  currency: z
-    .string()
-    .trim()
-    .refine((value) => listSupportedCurrencies().includes(value), {
-      error: "currency must be an ISO 4217 code",
-    }),
-  episode_title: catalogTitleField("episode_title"),
-  /** Empty for a purchase with no reading period. */
-  expires_at: z.union([z.literal(""), instantField("expires_at")]),
-  /** Whether the purchase was paid in the payment provider's test mode. */
-  is_test: z.boolean({ error: "is_test must be a boolean" }),
-  library_url: httpUrlField("library_url"),
-  purchased_at: instantField("purchased_at"),
-  series_title: catalogTitleField("series_title"),
-  tenant_name: displayNameField("tenant_name"),
-});
+export const purchaseReceiptDataSchema = z
+  .object({
+    /** The price paid, an integer in the minor unit of `currency`. */
+    amount: z
+      .number()
+      .int({ error: "amount must be an integer in the minor unit" })
+      .min(0, { error: "amount must not be negative" }),
+    currency: z
+      .string()
+      .trim()
+      .refine((value) => listSupportedCurrencies().includes(value), {
+        error: "currency must be an ISO 4217 code",
+      }),
+    /**
+     * What was bought is one episode or one volume: the title of the one
+     * bought is filled in, and the other is empty or left out.
+     */
+    episode_title: z.string().trim().default(""),
+    /** Empty for a purchase with no reading period. */
+    expires_at: z.union([z.literal(""), instantField("expires_at")]),
+    /** Whether the purchase was paid in the payment provider's test mode. */
+    is_test: z.boolean({ error: "is_test must be a boolean" }),
+    library_url: httpUrlField("library_url"),
+    purchased_at: instantField("purchased_at"),
+    series_title: catalogTitleField("series_title"),
+    tenant_name: displayNameField("tenant_name"),
+    volume_title: z.string().trim().default(""),
+  })
+  .refine(
+    (data) => (data.episode_title === "") !== (data.volume_title === ""),
+    {
+      error: "exactly one of episode_title and volume_title is required",
+    }
+  );
 
 export type PurchaseReceiptData = z.output<typeof purchaseReceiptDataSchema>;
 
@@ -68,7 +80,7 @@ export const purchaseReceiptPreview = (
   messages: Messages
 ): string =>
   emailMessage(messages, "email.purchase_receipt.preview", {
-    episode_title: data.episode_title,
+    title: data.episode_title === "" ? data.volume_title : data.episode_title,
   });
 
 /**
@@ -110,9 +122,13 @@ export const PurchaseReceiptEmail = ({
       })}
     </EmailDetail>
     <EmailDetail>
-      {emailMessage(messages, "email.purchase_receipt.episode", {
-        episode_title: data.episode_title,
-      })}
+      {data.episode_title === ""
+        ? emailMessage(messages, "email.purchase_receipt.volume", {
+            volume_title: data.volume_title,
+          })
+        : emailMessage(messages, "email.purchase_receipt.episode", {
+            episode_title: data.episode_title,
+          })}
     </EmailDetail>
     <EmailDetail>
       {emailMessage(messages, "email.purchase_receipt.amount", {

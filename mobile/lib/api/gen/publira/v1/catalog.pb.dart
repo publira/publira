@@ -746,6 +746,7 @@ class GetSeriesDetailResponse extends $pb.GeneratedMessage {
     $0.CommentMode? commentMode,
     WaitFreeRule? waitFree,
     $core.Iterable<$core.String>? publishedLocales,
+    $core.Iterable<$0.Volume>? volumes,
   }) {
     final result = GetSeriesDetailResponse._();
     if (series != null) result.series = series;
@@ -756,6 +757,7 @@ class GetSeriesDetailResponse extends $pb.GeneratedMessage {
     if (waitFree != null) result.waitFree = waitFree;
     if (publishedLocales != null)
       result.publishedLocales.addAll(publishedLocales);
+    if (volumes != null) result.volumes.addAll(volumes);
     return result;
   }
 
@@ -782,6 +784,8 @@ class GetSeriesDetailResponse extends $pb.GeneratedMessage {
     ..aOM<WaitFreeRule>(5, _omitFieldNames ? '' : 'waitFree',
         subBuilder: WaitFreeRule.$_createMessage)
     ..pPS(6, _omitFieldNames ? '' : 'publishedLocales')
+    ..pPM<$0.Volume>(7, _omitFieldNames ? '' : 'volumes',
+        subBuilder: $0.Volume.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -875,6 +879,13 @@ class GetSeriesDetailResponse extends $pb.GeneratedMessage {
   /// Series.locale whenever the tenant offers that locale.
   @$pb.TagNumber(6)
   $pb.PbList<$core.String> get publishedLocales => $_getList(5);
+
+  /// The series' volumes on sale, in the tenant's order, each holding at least
+  /// one of `episodes`. Like the rest of this response it says nothing about
+  /// the reader: whether the reader already owns one is told by the episodes it
+  /// holds, which GetSeriesEpisodeAccess reports as entitled.
+  @$pb.TagNumber(7)
+  $pb.PbList<$0.Volume> get volumes => $_getList(6);
 }
 
 class GetSeriesEpisodeAccessRequest extends $pb.GeneratedMessage {
@@ -9129,9 +9140,182 @@ class StartEpisodeCheckoutResponse extends $pb.GeneratedMessage {
   void clearCheckoutUrl() => $_clearField(1);
 }
 
+/// Starts a provider checkout of a volume, as StartEpisodeCheckout does of an
+/// episode, and answers the URL of the provider's checkout page, which names
+/// the sale by the volume's title. The purchase
+/// is created by the provider's webhook alone, and it opens every episode the
+/// volume holds, for good: a volume is never rented and has no reading period.
+///
+/// `client` names the surface the checkout is started from, as it does on
+/// StartEpisodeCheckout. A volume that surface may not show, one not on sale,
+/// and one none of whose episodes the surface lists is not_found. A reader who
+/// already holds a purchase of the volume that still opens it is
+/// already_exists, and one whose account is linked to a creator any episode of
+/// the volume credits is permission_denied with the ErrorInfo reason
+/// READER_CREDITED_ON_EPISODE.
+///
+/// The storefront is returned to the series page with `checkout` and `volume`
+/// in the query; the app to `/{locale}/checkout/return` with `series`,
+/// `volume`, and `status`.
+class StartVolumeCheckoutRequest extends $pb.GeneratedMessage {
+  factory StartVolumeCheckoutRequest({
+    $0.TenantContext? tenant,
+    $core.String? volumeId,
+    StartEpisodeCheckoutRequest_Client? client,
+  }) {
+    final result = StartVolumeCheckoutRequest._();
+    if (tenant != null) result.tenant = tenant;
+    if (volumeId != null) result.volumeId = volumeId;
+    if (client != null) result.client = client;
+    return result;
+  }
+
+  StartVolumeCheckoutRequest._();
+
+  factory StartVolumeCheckoutRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StartVolumeCheckoutRequest()..mergeFromBuffer(data, registry);
+  factory StartVolumeCheckoutRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StartVolumeCheckoutRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'StartVolumeCheckoutRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: StartVolumeCheckoutRequest.$_createMessage)
+    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $0.TenantContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'volumeId')
+    ..aE<StartEpisodeCheckoutRequest_Client>(3, _omitFieldNames ? '' : 'client',
+        enumValues: StartEpisodeCheckoutRequest_Client.values)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StartVolumeCheckoutRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StartVolumeCheckoutRequest copyWith(
+          void Function(StartVolumeCheckoutRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as StartVolumeCheckoutRequest))
+          as StartVolumeCheckoutRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use StartVolumeCheckoutRequest() / StartVolumeCheckoutRequest.new instead')
+  static StartVolumeCheckoutRequest create() => StartVolumeCheckoutRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      StartVolumeCheckoutRequest._();
+  @$core.override
+  StartVolumeCheckoutRequest createEmptyInstance() =>
+      StartVolumeCheckoutRequest._();
+  @$core.pragma('dart2js:noInline')
+  static StartVolumeCheckoutRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<StartVolumeCheckoutRequest>(
+          StartVolumeCheckoutRequest.$_createMessage);
+  static StartVolumeCheckoutRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($0.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.TenantContext ensureTenant() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get volumeId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set volumeId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasVolumeId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearVolumeId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  StartEpisodeCheckoutRequest_Client get client => $_getN(2);
+  @$pb.TagNumber(3)
+  set client(StartEpisodeCheckoutRequest_Client value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasClient() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearClient() => $_clearField(3);
+}
+
+class StartVolumeCheckoutResponse extends $pb.GeneratedMessage {
+  factory StartVolumeCheckoutResponse({
+    $core.String? checkoutUrl,
+  }) {
+    final result = StartVolumeCheckoutResponse._();
+    if (checkoutUrl != null) result.checkoutUrl = checkoutUrl;
+    return result;
+  }
+
+  StartVolumeCheckoutResponse._();
+
+  factory StartVolumeCheckoutResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StartVolumeCheckoutResponse()..mergeFromBuffer(data, registry);
+  factory StartVolumeCheckoutResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StartVolumeCheckoutResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'StartVolumeCheckoutResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: StartVolumeCheckoutResponse.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'checkoutUrl')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StartVolumeCheckoutResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StartVolumeCheckoutResponse copyWith(
+          void Function(StartVolumeCheckoutResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as StartVolumeCheckoutResponse))
+          as StartVolumeCheckoutResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use StartVolumeCheckoutResponse() / StartVolumeCheckoutResponse.new instead')
+  static StartVolumeCheckoutResponse create() =>
+      StartVolumeCheckoutResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      StartVolumeCheckoutResponse._();
+  @$core.override
+  StartVolumeCheckoutResponse createEmptyInstance() =>
+      StartVolumeCheckoutResponse._();
+  @$core.pragma('dart2js:noInline')
+  static StartVolumeCheckoutResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<StartVolumeCheckoutResponse>(
+          StartVolumeCheckoutResponse.$_createMessage);
+  static StartVolumeCheckoutResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get checkoutUrl => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set checkoutUrl($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasCheckoutUrl() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearCheckoutUrl() => $_clearField(1);
+}
+
 /// One purchase belonging to the signed-in reader. `is_active` is evaluated by
 /// the API at read time: a purchase is active until it is revoked or its
 /// expiry passes, and one without an expiry stays active until it is revoked.
+///
+/// A purchase is of one episode or of one volume: exactly one of `episode` and
+/// `volume` is set, and `series` is the series of either.
 class MyPurchase extends $pb.GeneratedMessage {
   factory MyPurchase({
     $core.String? id,
@@ -9146,6 +9330,7 @@ class MyPurchase extends $pb.GeneratedMessage {
     $core.String? refundedAt,
     $core.String? revokedAt,
     $0.PurchaseKind? kind,
+    $0.Volume? volume,
   }) {
     final result = MyPurchase._();
     if (id != null) result.id = id;
@@ -9160,6 +9345,7 @@ class MyPurchase extends $pb.GeneratedMessage {
     if (refundedAt != null) result.refundedAt = refundedAt;
     if (revokedAt != null) result.revokedAt = revokedAt;
     if (kind != null) result.kind = kind;
+    if (volume != null) result.volume = volume;
     return result;
   }
 
@@ -9191,6 +9377,8 @@ class MyPurchase extends $pb.GeneratedMessage {
     ..aOS(11, _omitFieldNames ? '' : 'revokedAt')
     ..aE<$0.PurchaseKind>(12, _omitFieldNames ? '' : 'kind',
         enumValues: $0.PurchaseKind.values)
+    ..aOM<$0.Volume>(13, _omitFieldNames ? '' : 'volume',
+        subBuilder: $0.Volume.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -9331,7 +9519,8 @@ class MyPurchase extends $pb.GeneratedMessage {
   void clearRevokedAt() => $_clearField(11);
 
   /// Which of the episode's sales the reader bought, never unspecified. A
-  /// rental always carries expires_at.
+  /// rental always carries expires_at. A purchase of a volume is always
+  /// PURCHASE_KIND_PURCHASE.
   @$pb.TagNumber(12)
   $0.PurchaseKind get kind => $_getN(11);
   @$pb.TagNumber(12)
@@ -9340,6 +9529,20 @@ class MyPurchase extends $pb.GeneratedMessage {
   $core.bool hasKind() => $_has(11);
   @$pb.TagNumber(12)
   void clearKind() => $_clearField(12);
+
+  /// The volume bought, set on a purchase of a volume. It carries the id, the
+  /// public_id, the title, and the order_index, and none of the volume's
+  /// episodes, price, or cover.
+  @$pb.TagNumber(13)
+  $0.Volume get volume => $_getN(12);
+  @$pb.TagNumber(13)
+  set volume($0.Volume value) => $_setField(13, value);
+  @$pb.TagNumber(13)
+  $core.bool hasVolume() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearVolume() => $_clearField(13);
+  @$pb.TagNumber(13)
+  $0.Volume ensureVolume() => $_ensure(12);
 }
 
 /// Cursor pagination. Field shape and token rules: proto/README.md.
@@ -11014,6 +11217,10 @@ class PurchaseServiceApi {
           $pb.ClientContext? ctx, StartEpisodeCheckoutRequest request) =>
       _client.invoke<StartEpisodeCheckoutResponse>(ctx, 'PurchaseService',
           'StartEpisodeCheckout', request, StartEpisodeCheckoutResponse());
+  $async.Future<StartVolumeCheckoutResponse> startVolumeCheckout(
+          $pb.ClientContext? ctx, StartVolumeCheckoutRequest request) =>
+      _client.invoke<StartVolumeCheckoutResponse>(ctx, 'PurchaseService',
+          'StartVolumeCheckout', request, StartVolumeCheckoutResponse());
 
   /// Lists only the authenticated reader's purchases in the requested tenant.
   $async.Future<ListMyPurchasesResponse> listMyPurchases(

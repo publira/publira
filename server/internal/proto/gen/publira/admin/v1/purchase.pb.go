@@ -79,7 +79,10 @@ func (PurchaseRevocationReason) EnumDescriptor() ([]byte, []int) {
 	return file_publira_admin_v1_purchase_proto_rawDescGZIP(), []int{0}
 }
 
-// A reader's purchase of one episode, as tenant staff see it.
+// A reader's purchase of one episode or of one volume, as tenant staff see it.
+// The episode fields are set on a purchase of an episode and the volume fields
+// on a purchase of a volume, never both; the series fields name the series of
+// either.
 type AdminPurchase struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The purchase's primary key, a UUID.
@@ -125,9 +128,12 @@ type AdminPurchase struct {
 	// paid through the tenant's current, enabled payment provider, and the
 	// purchase is neither refunded in full, revoked, nor disputed. A store
 	// purchase is refunded through the store and never here.
-	Refundable    bool `protobuf:"varint,21,opt,name=refundable,proto3" json:"refundable,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Refundable     bool   `protobuf:"varint,21,opt,name=refundable,proto3" json:"refundable,omitempty"`
+	VolumeId       string `protobuf:"bytes,22,opt,name=volume_id,json=volumeId,proto3" json:"volume_id,omitempty"`
+	VolumePublicId string `protobuf:"bytes,23,opt,name=volume_public_id,json=volumePublicId,proto3" json:"volume_public_id,omitempty"`
+	VolumeTitle    string `protobuf:"bytes,24,opt,name=volume_title,json=volumeTitle,proto3" json:"volume_title,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *AdminPurchase) Reset() {
@@ -307,6 +313,27 @@ func (x *AdminPurchase) GetRefundable() bool {
 	return false
 }
 
+func (x *AdminPurchase) GetVolumeId() string {
+	if x != nil {
+		return x.VolumeId
+	}
+	return ""
+}
+
+func (x *AdminPurchase) GetVolumePublicId() string {
+	if x != nil {
+		return x.VolumePublicId
+	}
+	return ""
+}
+
+func (x *AdminPurchase) GetVolumeTitle() string {
+	if x != nil {
+		return x.VolumeTitle
+	}
+	return ""
+}
+
 // Cursor pagination, newest purchase first. Field shape and token rules:
 // proto/README.md. Every filter left empty is no filter, and changing one
 // starts again from the first page.
@@ -317,7 +344,7 @@ type ListPurchasesRequest struct {
 	Limit int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Opaque token from a previous response. Empty for the first page.
 	Token string `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
-	// Only purchases of an episode of this series.
+	// Only purchases of an episode or a volume of this series.
 	SeriesPublicId string `protobuf:"bytes,4,opt,name=series_public_id,json=seriesPublicId,proto3" json:"series_public_id,omitempty"`
 	// Only purchases of this episode.
 	EpisodePublicId string `protobuf:"bytes,5,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
@@ -687,7 +714,7 @@ var File_publira_admin_v1_purchase_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_purchase_proto_rawDesc = "" +
 	"\n" +
-	"\x1fpublira/admin/v1/purchase.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\xe6\x05\n" +
+	"\x1fpublira/admin/v1/purchase.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\xd0\x06\n" +
 	"\rAdminPurchase\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -717,7 +744,10 @@ const file_publira_admin_v1_purchase_proto_rawDesc = "" +
 	"\x11revocation_reason\x18\x14 \x01(\x0e2*.publira.admin.v1.PurchaseRevocationReasonR\x10revocationReason\x12\x1e\n" +
 	"\n" +
 	"refundable\x18\x15 \x01(\bR\n" +
-	"refundable\"\xbe\x02\n" +
+	"refundable\x12\x1b\n" +
+	"\tvolume_id\x18\x16 \x01(\tR\bvolumeId\x12(\n" +
+	"\x10volume_public_id\x18\x17 \x01(\tR\x0evolumePublicId\x12!\n" +
+	"\fvolume_title\x18\x18 \x01(\tR\vvolumeTitle\"\xbe\x02\n" +
 	"\x14ListPurchasesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +

@@ -254,6 +254,42 @@ func TestCrossTenantParentReferencesAreRejected(t *testing.T) {
 			args:       []any{first.campaignBannerID, second.campaignBannerImageID},
 		},
 		{
+			name:       "volumes.series_id",
+			constraint: "volumes_tenant_series_id_fkey",
+			statement:  `INSERT INTO volumes (id, tenant_id, public_id, series_id, title, order_index, price) VALUES ($1, $2, 'FKXVOLUME01', $3, 'Volume', 1, 900)`,
+			args:       []any{mustUUID(t), first.tenantID, second.seriesID},
+		},
+		{
+			name:       "volume_episodes.volume_id",
+			constraint: "volume_episodes_tenant_volume_id_fkey",
+			statement:  `INSERT INTO volume_episodes (tenant_id, volume_id, episode_id, "position") VALUES ($1, $2, $3, 0)`,
+			args:       []any{first.tenantID, second.volumeID, first.episodeID},
+		},
+		{
+			name:       "volume_episodes.episode_id",
+			constraint: "volume_episodes_tenant_episode_id_fkey",
+			statement:  `INSERT INTO volume_episodes (tenant_id, volume_id, episode_id, "position") VALUES ($1, $2, $3, 0)`,
+			args:       []any{first.tenantID, first.volumeID, second.episodeID},
+		},
+		{
+			name:       "volume_cover_images.volume_id",
+			constraint: "volume_cover_images_tenant_volume_id_fkey",
+			statement:  `INSERT INTO volume_cover_images (id, tenant_id, volume_id) VALUES ($1, $2, $3)`,
+			args:       []any{mustUUID(t), first.tenantID, second.volumeID},
+		},
+		{
+			name:       "volumes.cover_image_id",
+			constraint: "volumes_tenant_cover_image_id_fkey",
+			statement:  `UPDATE volumes SET cover_image_id = $2 WHERE id = $1`,
+			args:       []any{first.volumeID, second.volumeCoverImageID},
+		},
+		{
+			name:       "purchases.volume_id",
+			constraint: "purchases_tenant_volume_id_fkey",
+			statement:  `INSERT INTO purchases (id, tenant_id, user_id, volume_id, price_at_purchase, currency) VALUES ($1, $2, $3, $4, 900, 'JPY')`,
+			args:       []any{mustUUID(t), first.tenantID, first.userID, second.volumeID},
+		},
+		{
 			name:       "series.label_id",
 			constraint: "series_tenant_label_id_fkey",
 			statement:  `UPDATE series SET label_id = $2 WHERE id = $1`,
@@ -363,6 +399,7 @@ func TestDeletingAnElectedParentNullsOnlyTheReference(t *testing.T) {
 	mustExec(t, ctx, db, `UPDATE genres SET eye_catch_image_id = $2 WHERE id = $1`, seeded.genreID, seeded.genreImageID)
 	mustExec(t, ctx, db, `UPDATE episodes SET eye_catch_image_id = $2 WHERE id = $1`, seeded.episodeID, seeded.episodeEyeCatchImageID)
 	mustExec(t, ctx, db, `UPDATE campaign_banners SET image_id = $2 WHERE id = $1`, seeded.campaignBannerID, seeded.campaignBannerImageID)
+	mustExec(t, ctx, db, `UPDATE volumes SET cover_image_id = $2 WHERE id = $1`, seeded.volumeID, seeded.volumeCoverImageID)
 	mustExec(t, ctx, db, `UPDATE creators SET icon_image_id = $2 WHERE id = $1`, seeded.creatorID, seeded.creatorImageID)
 	mustExec(t, ctx, db, `UPDATE users SET icon_image_id = $2 WHERE id = $1`, seeded.userID, seeded.userImageID)
 	// An account shows one icon, so the preset is elected by an account of its
@@ -439,6 +476,13 @@ func TestDeletingAnElectedParentNullsOnlyTheReference(t *testing.T) {
 			owner:    seeded.campaignBannerID,
 		},
 		{
+			name:     "volumes.cover_image_id",
+			delete:   `DELETE FROM volume_cover_images WHERE id = $1`,
+			deleted:  seeded.volumeCoverImageID,
+			survivor: `SELECT tenant_id, cover_image_id FROM volumes WHERE id = $1`,
+			owner:    seeded.volumeID,
+		},
+		{
 			name:     "series.eye_catch_image_id",
 			delete:   `DELETE FROM series_images WHERE id = $1`,
 			deleted:  seeded.seriesImageID,
@@ -500,6 +544,8 @@ type foreignKeyTenant struct {
 	genreImageID           uuid.UUID
 	campaignBannerID       uuid.UUID
 	campaignBannerImageID  uuid.UUID
+	volumeID               uuid.UUID
+	volumeCoverImageID     uuid.UUID
 	tenantImageID          uuid.UUID
 	pageID                 uuid.UUID
 	pageTranslationID      uuid.UUID
@@ -567,6 +613,15 @@ func seedForeignKeyTenant(t *testing.T, ctx context.Context, db *sql.DB, prefix 
 	seeded.campaignBannerImageID = mustUUID(t)
 	mustExec(t, ctx, db, `INSERT INTO campaign_banner_images (id, tenant_id, campaign_banner_id) VALUES ($1, $2, $3)`,
 		seeded.campaignBannerImageID, seeded.tenantID, seeded.campaignBannerID)
+
+	seeded.volumeID = mustUUID(t)
+	mustExec(t, ctx, db, `
+		INSERT INTO volumes (id, tenant_id, public_id, series_id, title, order_index, price)
+		VALUES ($1, $2, $3, $4, 'Volume', 0, 900)`,
+		seeded.volumeID, seeded.tenantID, prefix+"VOLUME001", seeded.seriesID)
+	seeded.volumeCoverImageID = mustUUID(t)
+	mustExec(t, ctx, db, `INSERT INTO volume_cover_images (id, tenant_id, volume_id) VALUES ($1, $2, $3)`,
+		seeded.volumeCoverImageID, seeded.tenantID, seeded.volumeID)
 
 	seeded.tenantImageID = mustUUID(t)
 	mustExec(t, ctx, db, `INSERT INTO tenant_images (id, tenant_id) VALUES ($1, $2)`,

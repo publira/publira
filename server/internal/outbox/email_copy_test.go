@@ -305,6 +305,7 @@ var emailCopyCases = []struct {
 				"purchased_at":  copyPurchasedAt,
 				"series_title":  "The Lighthouse Keeper",
 				"tenant_name":   "Aoto Press",
+				"volume_title":  "",
 			},
 		},
 	},
@@ -323,6 +324,7 @@ var emailCopyCases = []struct {
 				"purchased_at":  copyPurchasedAt,
 				"series_title":  "The Lighthouse Keeper",
 				"tenant_name":   "Aoto Press",
+				"volume_title":  "",
 			},
 		},
 	},
@@ -341,6 +343,26 @@ var emailCopyCases = []struct {
 				"purchased_at":  copyPurchasedAt,
 				"series_title":  "The Lighthouse Keeper",
 				"tenant_name":   "Aoto Press",
+				"volume_title":  "",
+			},
+		},
+	},
+	{
+		name:     "purchase_receipt for a purchase of a volume",
+		subjects: map[string]string{"en": "Aoto Press purchase receipt", "ja": "Aoto Press購入完了"},
+		request: emailrenderer.Request{
+			Template: "purchase_receipt",
+			Data: map[string]any{
+				"amount":        int64(1500),
+				"currency":      "JPY",
+				"episode_title": "",
+				"expires_at":    "",
+				"is_test":       false,
+				"library_url":   "https://reader.example.test/my/library",
+				"purchased_at":  copyPurchasedAt,
+				"series_title":  "The Lighthouse Keeper",
+				"tenant_name":   "Aoto Press",
+				"volume_title":  "Volume 1",
 			},
 		},
 	},
@@ -463,20 +485,23 @@ func TestEmailCopyQuotesTheMessageAStaffReplyAnswers(t *testing.T) {
 // taken for a purchase in the provider's test mode.
 func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
 	for _, testCase := range []struct {
-		name      string
-		locale    string
-		amount    int64
-		currency  string
-		expiresAt string
-		isTest    bool
-		wantText  string
+		name         string
+		locale       string
+		amount       int64
+		currency     string
+		expiresAt    string
+		isTest       bool
+		episodeTitle string
+		volumeTitle  string
+		wantText     string
 	}{
 		{
-			name:      "in English with a reading period",
-			locale:    "en",
-			amount:    500,
-			currency:  "JPY",
-			expiresAt: "2030-01-17T12:00:00Z",
+			name:         "in English with a reading period",
+			locale:       "en",
+			amount:       500,
+			currency:     "JPY",
+			expiresAt:    "2030-01-17T12:00:00Z",
+			episodeTitle: "Episode 1",
 			wantText: "Aoto Press\n\nThank you for your purchase\n\n" +
 				"Here is the receipt for your purchase on Aoto Press.\n\n" +
 				"Series: The Lighthouse Keeper\n\nEpisode: Episode 1\n\n" +
@@ -488,10 +513,11 @@ func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
 				"This email was sent by Aoto Press.",
 		},
 		{
-			name:     "in Japanese with no reading period",
-			locale:   "ja",
-			amount:   499,
-			currency: "USD",
+			name:         "in Japanese with no reading period",
+			locale:       "ja",
+			amount:       499,
+			currency:     "USD",
+			episodeTitle: "Episode 1",
 			wantText: "Aoto Press\n\nご購入ありがとうございます\n\n" +
 				"Aoto Pressでのご購入内容をお知らせします。\n\n" +
 				"シリーズ: The Lighthouse Keeper\n\nエピソード: Episode 1\n\n" +
@@ -502,16 +528,32 @@ func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
 				"このメールはAoto Pressから送信されています。",
 		},
 		{
-			name:     "in English for a test-mode purchase",
-			locale:   "en",
-			amount:   100,
-			currency: "JPY",
-			isTest:   true,
+			name:         "in English for a test-mode purchase",
+			locale:       "en",
+			amount:       100,
+			currency:     "JPY",
+			isTest:       true,
+			episodeTitle: "Episode 1",
 			wantText: "Aoto Press\n\nThank you for your purchase\n\n" +
 				"Here is the receipt for your purchase on Aoto Press.\n\n" +
 				"This was a purchase in the payment provider's test mode. No money was charged.\n\n" +
 				"Series: The Lighthouse Keeper\n\nEpisode: Episode 1\n\n" +
 				"Price paid: ¥100 (JPY)\n\n" +
+				"Purchased: Jan 15, 2030, 9:00\u202fPM\n\n" +
+				"Open your purchases https://reader.example.test/my/library\n\n" +
+				"If the button does not work, paste this URL into your browser. https://reader.example.test/my/library\n\n" +
+				"This email was sent by Aoto Press.",
+		},
+		{
+			name:        "in English for a volume",
+			locale:      "en",
+			amount:      1500,
+			currency:    "JPY",
+			volumeTitle: "Volume 1",
+			wantText: "Aoto Press\n\nThank you for your purchase\n\n" +
+				"Here is the receipt for your purchase on Aoto Press.\n\n" +
+				"Series: The Lighthouse Keeper\n\nVolume: Volume 1\n\n" +
+				"Price paid: ¥1,500 (JPY)\n\n" +
 				"Purchased: Jan 15, 2030, 9:00\u202fPM\n\n" +
 				"Open your purchases https://reader.example.test/my/library\n\n" +
 				"If the button does not work, paste this URL into your browser. https://reader.example.test/my/library\n\n" +
@@ -525,13 +567,14 @@ func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
 				Data: map[string]any{
 					"amount":        testCase.amount,
 					"currency":      testCase.currency,
-					"episode_title": "Episode 1",
+					"episode_title": testCase.episodeTitle,
 					"expires_at":    testCase.expiresAt,
 					"is_test":       testCase.isTest,
 					"library_url":   "https://reader.example.test/my/library",
 					"purchased_at":  copyPurchasedAt,
 					"series_title":  "The Lighthouse Keeper",
 					"tenant_name":   "Aoto Press",
+					"volume_title":  testCase.volumeTitle,
 				},
 				TimeZone: "Asia/Tokyo",
 			})

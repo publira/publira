@@ -102,11 +102,12 @@
       "fallback_link": "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。",
       "heading": "感谢您的购买",
       "intro": "以下是您在{$tenant_name}的购买明细。",
-      "preview": "感谢您购买{$episode_title}。",
+      "preview": "感谢您购买{$title}。",
       "purchased_at": "购买时间：{$purchased_at}",
       "series": "系列：{$series_title}",
       "subject": "{$tenant_name}购买成功",
-      "test_notice": "这是在支付服务测试模式下的购买，未产生任何扣款。"
+      "test_notice": "这是在支付服务测试模式下的购买，未产生任何扣款。",
+      "volume": "卷：{$volume_title}"
     },
     "reader_email_change_confirmation": {
       "action": "确认邮箱地址变更",
@@ -290,7 +291,8 @@
         "tenant_sign_in_settings": "登录方式",
         "tenant_site_copy": "公开站点展示",
         "tenant_timezone": "时区",
-        "user": "用户"
+        "user": "用户",
+        "volume": "卷"
       },
       "list_failed": "无法加载审计日志。请稍后再试。",
       "filter_invalid": "某个筛选条件无效。请检查您输入的内容。",
@@ -341,6 +343,11 @@
         "episode_credits_bulk_edited": "批量编辑了多个章节的作者",
         "episode_free_window_created": "添加了免费阅读期",
         "episode_free_window_deleted": "删除了免费阅读期",
+        "volume_created": "创建了卷",
+        "volume_updated": "更新了卷",
+        "volume_published": "发布了卷",
+        "volume_unpublished": "取消发布了卷",
+        "volumes_reordered": "调整了卷顺序",
         "creator_role_created": "创建了作者角色",
         "creator_role_updated": "更新了作者角色",
         "creator_role_deleted": "删除了作者角色",

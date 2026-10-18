@@ -8,6 +8,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"maps"
 	"net/http"
 	"net/http/httptest"
@@ -55,10 +56,17 @@ func sign(payload []byte, webhookSecret string) ([]byte, http.Header) {
 // carries.
 func PurchaseMetadata(purchase paymentprovider.Purchase) map[string]string {
 	metadata := map[string]string{
-		stripe.MetadataTenantID:  purchase.TenantID.String(),
-		stripe.MetadataUserID:    purchase.ReaderID.String(),
-		stripe.MetadataEpisodeID: purchase.EpisodeID.String(),
-		stripe.MetadataPrice:     strconv.FormatInt(int64(purchase.Price), 10),
+		stripe.MetadataTenantID: purchase.TenantID.String(),
+		stripe.MetadataUserID:   purchase.ReaderID.String(),
+		stripe.MetadataPrice:    strconv.FormatInt(int64(purchase.Price), 10),
+	}
+	// Each of the two is written when it is set, so a purchase naming both
+	// stands for a checkout the provider would have to refuse.
+	if purchase.EpisodeID != uuid.Nil {
+		metadata[stripe.MetadataEpisodeID] = purchase.EpisodeID.String()
+	}
+	if purchase.VolumeID != uuid.Nil {
+		metadata[stripe.MetadataVolumeID] = purchase.VolumeID.String()
 	}
 	if purchase.ReadingPeriodHours > 0 {
 		metadata[stripe.MetadataReadingPeriodHours] = strconv.FormatInt(int64(purchase.ReadingPeriodHours), 10)

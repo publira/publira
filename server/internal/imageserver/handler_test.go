@@ -69,6 +69,8 @@ type stubTenantQueries struct {
 	bannerKey        bannerVariantKey
 	episodeEyeCatch  dbmodels.GetEpisodeEyeCatchImageVariantByTypeAndWidthForTenantRow
 	episodeEyeKey    episodeEyeCatchVariantKey
+	volumeCover      dbmodels.GetVolumeCoverImageVariantByTypeAndWidthForTenantRow
+	volumeCoverKey   episodeEyeCatchVariantKey
 	series           dbmodels.GetSeriesImageVariantByTypeAndWidthForTenantRow
 	label            dbmodels.GetLabelImageVariantByTypeAndWidthForTenantRow
 	userRef          dbmodels.GetUserByPublicIDForTenantRow
@@ -174,8 +176,21 @@ func (s stubTenantQueries) GetEpisodeEyeCatchImageVariantByTypeAndWidthForTenant
 	return s.episodeEyeCatch, nil
 }
 
-// episodeEyeCatchVariantKey is the tuple the episode eye-catch variant query
-// filters on, matched exactly for the reason tenantVariantKey is.
+func (s stubTenantQueries) GetVolumeCoverImageVariantByTypeAndWidthForTenant(_ context.Context, arg dbmodels.GetVolumeCoverImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetVolumeCoverImageVariantByTypeAndWidthForTenantRow, error) {
+	requested := episodeEyeCatchVariantKey{
+		imageID:     arg.VolumeCoverImageID,
+		tenantID:    arg.TenantID,
+		variantType: arg.VariantType,
+		width:       arg.Width,
+	}
+	if s.volumeCover.ObjectKey == "" || requested != s.volumeCoverKey {
+		return dbmodels.GetVolumeCoverImageVariantByTypeAndWidthForTenantRow{}, sql.ErrNoRows
+	}
+	return s.volumeCover, nil
+}
+
+// episodeEyeCatchVariantKey is the tuple the episode and volume cover variant
+// queries filter on, matched exactly for the reason tenantVariantKey is.
 type episodeEyeCatchVariantKey struct {
 	imageID     uuid.UUID
 	tenantID    uuid.UUID
@@ -1415,6 +1430,55 @@ func TestEpisodeEyeCatchImageServesTheStoredVariant(t *testing.T) {
 		{path: "/images/episode-eye-catches/" + mediaID.String() + "/portrait/900", want: http.StatusNotFound},
 		{path: "/images/episode-eye-catches/" + mediaID.String() + "/square/600", want: http.StatusNotFound},
 		{path: "/images/episode-eye-catches/" + mediaID.String() + "/portrait/wide", want: http.StatusBadRequest},
+	}
+	for _, tc := range cases {
+		t.Run(tc.path, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tc.path, nil)
+			req.Host = "example.test"
+			rec := httptest.NewRecorder()
+			srv.ServeHTTP(rec, req)
+			if rec.Code != tc.want {
+				t.Fatalf("status = %d, want %d (body %q)", rec.Code, tc.want, rec.Body.String())
+			}
+		})
+	}
+}
+
+// A volume cover is addressed by image, ratio, and width, the way an episode
+// eye-catch is, and only the variant stored under all three is served.
+func TestVolumeCoverImageServesTheStoredVariant(t *testing.T) {
+	tenantID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	mediaID := uuid.MustParse("77777777-7777-7777-7777-777777777777")
+	queries := stubTenantQueries{
+		volumeCover: dbmodels.GetVolumeCoverImageVariantByTypeAndWidthForTenantRow{
+			ObjectKey:   "tenants/acme/volume-covers/VOLUME000001/portrait_600w.jpg",
+			ContentType: "image/jpeg",
+		},
+		volumeCoverKey: episodeEyeCatchVariantKey{
+			imageID:     mediaID,
+			tenantID:    tenantID,
+			variantType: "portrait",
+			width:       600,
+		},
+	}
+	store := &countingStore{objects: map[string]storedObject{
+		"tenants/acme/volume-covers/VOLUME000001/portrait_600w.jpg": {data: testJPEG(), contentType: "image/jpeg"},
+	}}
+	srv := newTestServer(t,
+		stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test"}},
+		stubFactory{q: queries},
+		store,
+	)
+
+	cases := []struct {
+		path string
+		want int
+	}{
+		{path: "/images/volume-covers/" + mediaID.String() + "/portrait/600", want: http.StatusOK},
+		{path: "/images/volume-covers/" + mediaID.String() + "/portrait/600?v=11111111-1111-4111-8111-111111111111", want: http.StatusOK},
+		{path: "/images/volume-covers/" + mediaID.String() + "/portrait/900", want: http.StatusNotFound},
+		{path: "/images/volume-covers/" + mediaID.String() + "/square/600", want: http.StatusNotFound},
+		{path: "/images/volume-covers/" + mediaID.String() + "/portrait/wide", want: http.StatusBadRequest},
 	}
 	for _, tc := range cases {
 		t.Run(tc.path, func(t *testing.T) {

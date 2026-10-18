@@ -27,7 +27,7 @@ WHERE d.tenant_id = p.tenant_id
     AND p.tenant_id = $1
     AND p.provider = $2::text
     AND p.provider_payment_id = $3::text
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind, p.volume_id
 `
 
 type ApplyUnappliedDisputeToPurchaseParams struct {
@@ -66,6 +66,7 @@ func (q *Queries) ApplyUnappliedDisputeToPurchase(ctx context.Context, arg Apply
 		&i.StaffRefundAttempt,
 		&i.DisputeLostAt,
 		&i.Kind,
+		&i.VolumeID,
 	)
 	return i, err
 }
@@ -114,7 +115,7 @@ SET refunded_amount = refund.amount,
     END
 FROM refund
 WHERE p.id = refund.id
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind, p.volume_id
 `
 
 type ApplyUnappliedRefundToPurchaseParams struct {
@@ -155,6 +156,7 @@ func (q *Queries) ApplyUnappliedRefundToPurchase(ctx context.Context, arg ApplyU
 		&i.StaffRefundAttempt,
 		&i.DisputeLostAt,
 		&i.Kind,
+		&i.VolumeID,
 	)
 	return i, err
 }
@@ -189,7 +191,7 @@ VALUES (
     $12::text
 )
 ON CONFLICT (provider, provider_checkout_id) DO NOTHING
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind, volume_id
 `
 
 type CreatePurchaseFromProviderCheckoutParams struct {
@@ -249,6 +251,7 @@ func (q *Queries) CreatePurchaseFromProviderCheckout(ctx context.Context, arg Cr
 		&i.StaffRefundAttempt,
 		&i.DisputeLostAt,
 		&i.Kind,
+		&i.VolumeID,
 	)
 	return i, err
 }
@@ -285,7 +288,8 @@ type GetActiveEpisodePurchaseKindsRow struct {
 }
 
 // Which of the episode's two sales the reader holds an active purchase of.
-// Only a purchase counts: an access ticket does not stop the reader buying.
+// Only a purchase counts: an access ticket does not stop the reader buying. A
+// purchase of the volume holding the episode counts as its permanent copy.
 func (q *Queries) GetActiveEpisodePurchaseKinds(ctx context.Context, arg GetActiveEpisodePurchaseKindsParams) (GetActiveEpisodePurchaseKindsRow, error) {
 	row := q.db.QueryRowContext(ctx, GetActiveEpisodePurchaseKinds, arg.TenantID, arg.UserID, arg.EpisodeID)
 	var i GetActiveEpisodePurchaseKindsRow
@@ -346,7 +350,7 @@ FROM purchases
 WHERE tenant_id = $1
     -- The cast keeps this a plain uuid: a deleted buyer's NULL is nobody's purchase.
     AND user_id = $2::uuid
-    AND episode_id = $3
+    AND episode_id = $3::uuid
     AND provider_checkout_id IS NOT NULL
 ORDER BY purchased_at DESC,
     id DESC
@@ -449,17 +453,23 @@ SELECT
     p.purchased_at,
     p.expires_at,
     p.is_test,
-    et.title AS episode_title,
+    -- What was bought: an episode, or a volume. The title of the other is
+    -- empty.
+    COALESCE(et.title, '')::text AS episode_title,
+    COALESCE(v.title, '')::text AS volume_title,
     str.title AS series_title,
     u.email AS reader_email
 FROM purchases p
-JOIN episodes e
+LEFT JOIN episodes e
     ON e.tenant_id = p.tenant_id
     AND e.id = p.episode_id
-CROSS JOIN LATERAL episode_translation_for(e.id, '') et
+LEFT JOIN LATERAL episode_translation_for(e.id, '') et ON TRUE
+LEFT JOIN volumes v
+    ON v.tenant_id = p.tenant_id
+    AND v.id = p.volume_id
 JOIN series s
-    ON s.tenant_id = e.tenant_id
-    AND s.id = e.series_id
+    ON s.tenant_id = p.tenant_id
+    AND s.id = COALESCE(e.series_id, v.series_id)
 CROSS JOIN LATERAL series_translation_for(s.id, '') str
 LEFT JOIN users u
     ON u.tenant_id = p.tenant_id
@@ -481,6 +491,7 @@ type GetPurchaseReceiptForTenantRow struct {
 	ExpiresAt       sql.NullTime   `json:"expires_at"`
 	IsTest          bool           `json:"is_test"`
 	EpisodeTitle    string         `json:"episode_title"`
+	VolumeTitle     string         `json:"volume_title"`
 	SeriesTitle     string         `json:"series_title"`
 	ReaderEmail     sql.NullString `json:"reader_email"`
 }
@@ -500,6 +511,7 @@ func (q *Queries) GetPurchaseReceiptForTenant(ctx context.Context, arg GetPurcha
 		&i.ExpiresAt,
 		&i.IsTest,
 		&i.EpisodeTitle,
+		&i.VolumeTitle,
 		&i.SeriesTitle,
 		&i.ReaderEmail,
 	)
@@ -673,28 +685,44 @@ SELECT p.id,
     p.purchased_at,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
-    et.title AS episode_title,
-    et.locale AS episode_title_locale,
+    -- Empty on a purchase of a volume, which joins no translation: sqlc reads
+    -- the columns of a function's row as never NULL.
+    COALESCE(et.title, '')::text AS episode_title,
+    COALESCE(et.locale, '')::text AS episode_title_locale,
     e.order_index AS episode_order_index,
+    v.id AS volume_id,
+    v.public_id AS volume_public_id,
+    v.title AS volume_title,
+    v.order_index AS volume_order_index,
     s.id AS series_id,
     s.public_id AS series_public_id,
     str.title AS series_title,
     str.locale AS series_title_locale
 FROM purchases p
-    JOIN episodes e ON e.id = p.episode_id
-    CROSS JOIN LATERAL episode_translation_for(e.id, $1::text) et
-    JOIN series s ON s.id = e.series_id
+    LEFT JOIN episodes e ON e.tenant_id = p.tenant_id
+    AND e.id = p.episode_id
+    LEFT JOIN LATERAL episode_translation_for(e.id, $1::text) et ON TRUE
+    LEFT JOIN volumes v ON v.tenant_id = p.tenant_id
+    AND v.id = p.volume_id
+    JOIN series s ON s.tenant_id = p.tenant_id
+    AND s.id = COALESCE(e.series_id, v.series_id)
     CROSS JOIN LATERAL series_translation_for(s.id, $1::text) str
 WHERE p.tenant_id = $2
     -- The cast keeps this a plain uuid: a deleted buyer's NULL is in nobody's library.
     AND p.user_id = $3::uuid
-    AND e.tenant_id = $2
-    AND s.tenant_id = $2
-    AND EXISTS (
-        SELECT 1
-        FROM episode_surfaces es
-        WHERE es.episode_id = e.id
-            AND es.surface = $4::text
+    AND (
+        EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = $4::text
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = v.series_id
+                AND ss.surface = $4::text
+        )
     )
     AND (
         $5::timestamptz IS NULL
@@ -730,24 +758,28 @@ type ListMyPurchasesAscParams struct {
 }
 
 type ListMyPurchasesAscRow struct {
-	ID                 uuid.UUID     `json:"id"`
-	Kind               string        `json:"kind"`
-	PriceAtPurchase    int32         `json:"price_at_purchase"`
-	Currency           string        `json:"currency"`
-	ExpiresAt          sql.NullTime  `json:"expires_at"`
-	RevokedAt          sql.NullTime  `json:"revoked_at"`
-	RefundedAmount     sql.NullInt32 `json:"refunded_amount"`
-	RefundedAt         sql.NullTime  `json:"refunded_at"`
-	PurchasedAt        time.Time     `json:"purchased_at"`
-	EpisodeID          uuid.UUID     `json:"episode_id"`
-	EpisodePublicID    string        `json:"episode_public_id"`
-	EpisodeTitle       string        `json:"episode_title"`
-	EpisodeTitleLocale string        `json:"episode_title_locale"`
-	EpisodeOrderIndex  int32         `json:"episode_order_index"`
-	SeriesID           uuid.UUID     `json:"series_id"`
-	SeriesPublicID     string        `json:"series_public_id"`
-	SeriesTitle        string        `json:"series_title"`
-	SeriesTitleLocale  string        `json:"series_title_locale"`
+	ID                 uuid.UUID      `json:"id"`
+	Kind               string         `json:"kind"`
+	PriceAtPurchase    int32          `json:"price_at_purchase"`
+	Currency           string         `json:"currency"`
+	ExpiresAt          sql.NullTime   `json:"expires_at"`
+	RevokedAt          sql.NullTime   `json:"revoked_at"`
+	RefundedAmount     sql.NullInt32  `json:"refunded_amount"`
+	RefundedAt         sql.NullTime   `json:"refunded_at"`
+	PurchasedAt        time.Time      `json:"purchased_at"`
+	EpisodeID          uuid.NullUUID  `json:"episode_id"`
+	EpisodePublicID    sql.NullString `json:"episode_public_id"`
+	EpisodeTitle       string         `json:"episode_title"`
+	EpisodeTitleLocale string         `json:"episode_title_locale"`
+	EpisodeOrderIndex  sql.NullInt32  `json:"episode_order_index"`
+	VolumeID           uuid.NullUUID  `json:"volume_id"`
+	VolumePublicID     sql.NullString `json:"volume_public_id"`
+	VolumeTitle        sql.NullString `json:"volume_title"`
+	VolumeOrderIndex   sql.NullInt32  `json:"volume_order_index"`
+	SeriesID           uuid.UUID      `json:"series_id"`
+	SeriesPublicID     string         `json:"series_public_id"`
+	SeriesTitle        string         `json:"series_title"`
+	SeriesTitleLocale  string         `json:"series_title_locale"`
 }
 
 func (q *Queries) ListMyPurchasesAsc(ctx context.Context, arg ListMyPurchasesAscParams) ([]ListMyPurchasesAscRow, error) {
@@ -783,6 +815,10 @@ func (q *Queries) ListMyPurchasesAsc(ctx context.Context, arg ListMyPurchasesAsc
 			&i.EpisodeTitle,
 			&i.EpisodeTitleLocale,
 			&i.EpisodeOrderIndex,
+			&i.VolumeID,
+			&i.VolumePublicID,
+			&i.VolumeTitle,
+			&i.VolumeOrderIndex,
 			&i.SeriesID,
 			&i.SeriesPublicID,
 			&i.SeriesTitle,
@@ -813,28 +849,44 @@ SELECT p.id,
     p.purchased_at,
     e.id AS episode_id,
     e.public_id AS episode_public_id,
-    et.title AS episode_title,
-    et.locale AS episode_title_locale,
+    -- Empty on a purchase of a volume, which joins no translation: sqlc reads
+    -- the columns of a function's row as never NULL.
+    COALESCE(et.title, '')::text AS episode_title,
+    COALESCE(et.locale, '')::text AS episode_title_locale,
     e.order_index AS episode_order_index,
+    v.id AS volume_id,
+    v.public_id AS volume_public_id,
+    v.title AS volume_title,
+    v.order_index AS volume_order_index,
     s.id AS series_id,
     s.public_id AS series_public_id,
     str.title AS series_title,
     str.locale AS series_title_locale
 FROM purchases p
-    JOIN episodes e ON e.id = p.episode_id
-    CROSS JOIN LATERAL episode_translation_for(e.id, $1::text) et
-    JOIN series s ON s.id = e.series_id
+    LEFT JOIN episodes e ON e.tenant_id = p.tenant_id
+    AND e.id = p.episode_id
+    LEFT JOIN LATERAL episode_translation_for(e.id, $1::text) et ON TRUE
+    LEFT JOIN volumes v ON v.tenant_id = p.tenant_id
+    AND v.id = p.volume_id
+    JOIN series s ON s.tenant_id = p.tenant_id
+    AND s.id = COALESCE(e.series_id, v.series_id)
     CROSS JOIN LATERAL series_translation_for(s.id, $1::text) str
 WHERE p.tenant_id = $2
     -- The cast keeps this a plain uuid: a deleted buyer's NULL is in nobody's library.
     AND p.user_id = $3::uuid
-    AND e.tenant_id = $2
-    AND s.tenant_id = $2
-    AND EXISTS (
-        SELECT 1
-        FROM episode_surfaces es
-        WHERE es.episode_id = e.id
-            AND es.surface = $4::text
+    AND (
+        EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = $4::text
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM series_surfaces ss
+            WHERE ss.series_id = v.series_id
+                AND ss.surface = $4::text
+        )
     )
     AND (
         $5::timestamptz IS NULL
@@ -870,30 +922,36 @@ type ListMyPurchasesDescParams struct {
 }
 
 type ListMyPurchasesDescRow struct {
-	ID                 uuid.UUID     `json:"id"`
-	Kind               string        `json:"kind"`
-	PriceAtPurchase    int32         `json:"price_at_purchase"`
-	Currency           string        `json:"currency"`
-	ExpiresAt          sql.NullTime  `json:"expires_at"`
-	RevokedAt          sql.NullTime  `json:"revoked_at"`
-	RefundedAmount     sql.NullInt32 `json:"refunded_amount"`
-	RefundedAt         sql.NullTime  `json:"refunded_at"`
-	PurchasedAt        time.Time     `json:"purchased_at"`
-	EpisodeID          uuid.UUID     `json:"episode_id"`
-	EpisodePublicID    string        `json:"episode_public_id"`
-	EpisodeTitle       string        `json:"episode_title"`
-	EpisodeTitleLocale string        `json:"episode_title_locale"`
-	EpisodeOrderIndex  int32         `json:"episode_order_index"`
-	SeriesID           uuid.UUID     `json:"series_id"`
-	SeriesPublicID     string        `json:"series_public_id"`
-	SeriesTitle        string        `json:"series_title"`
-	SeriesTitleLocale  string        `json:"series_title_locale"`
+	ID                 uuid.UUID      `json:"id"`
+	Kind               string         `json:"kind"`
+	PriceAtPurchase    int32          `json:"price_at_purchase"`
+	Currency           string         `json:"currency"`
+	ExpiresAt          sql.NullTime   `json:"expires_at"`
+	RevokedAt          sql.NullTime   `json:"revoked_at"`
+	RefundedAmount     sql.NullInt32  `json:"refunded_amount"`
+	RefundedAt         sql.NullTime   `json:"refunded_at"`
+	PurchasedAt        time.Time      `json:"purchased_at"`
+	EpisodeID          uuid.NullUUID  `json:"episode_id"`
+	EpisodePublicID    sql.NullString `json:"episode_public_id"`
+	EpisodeTitle       string         `json:"episode_title"`
+	EpisodeTitleLocale string         `json:"episode_title_locale"`
+	EpisodeOrderIndex  sql.NullInt32  `json:"episode_order_index"`
+	VolumeID           uuid.NullUUID  `json:"volume_id"`
+	VolumePublicID     sql.NullString `json:"volume_public_id"`
+	VolumeTitle        sql.NullString `json:"volume_title"`
+	VolumeOrderIndex   sql.NullInt32  `json:"volume_order_index"`
+	SeriesID           uuid.UUID      `json:"series_id"`
+	SeriesPublicID     string         `json:"series_public_id"`
+	SeriesTitle        string         `json:"series_title"`
+	SeriesTitleLocale  string         `json:"series_title_locale"`
 }
 
-// The reader's library, newest purchase first. Publication is not re-checked,
-// so a purchase outlives the episode being taken down, but the calling surface
-// is: an episode that surface may not show is left out of the library read
-// there, as it is left out of the catalog.
+// The reader's library, newest purchase first: each purchase of an episode,
+// and each purchase of a volume as one row of its own. Publication is not
+// re-checked, so a purchase outlives the episode or the volume being taken
+// down, but the calling surface is: an episode that surface may not show, or a
+// volume of a series it may not show, is left out of the library read there,
+// as it is left out of the catalog.
 func (q *Queries) ListMyPurchasesDesc(ctx context.Context, arg ListMyPurchasesDescParams) ([]ListMyPurchasesDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListMyPurchasesDesc,
 		arg.Locale,
@@ -927,6 +985,10 @@ func (q *Queries) ListMyPurchasesDesc(ctx context.Context, arg ListMyPurchasesDe
 			&i.EpisodeTitle,
 			&i.EpisodeTitleLocale,
 			&i.EpisodeOrderIndex,
+			&i.VolumeID,
+			&i.VolumePublicID,
+			&i.VolumeTitle,
+			&i.VolumeOrderIndex,
 			&i.SeriesID,
 			&i.SeriesPublicID,
 			&i.SeriesTitle,
@@ -958,6 +1020,13 @@ WHERE p.tenant_id = $1
             WHERE e.tenant_id = p.tenant_id
                 AND e.id = p.episode_id
                 AND e.series_id = $2::uuid
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM volumes v
+            WHERE v.tenant_id = p.tenant_id
+                AND v.id = p.volume_id
+                AND v.series_id = $2::uuid
         )
     )
     AND (
@@ -1064,6 +1133,13 @@ WHERE p.tenant_id = $1
                 AND e.id = p.episode_id
                 AND e.series_id = $2::uuid
         )
+        OR EXISTS (
+            SELECT 1
+            FROM volumes v
+            WHERE v.tenant_id = p.tenant_id
+                AND v.id = p.volume_id
+                AND v.series_id = $2::uuid
+        )
     )
     AND (
         $3::uuid IS NULL
@@ -1166,7 +1242,12 @@ const ListPurchasesForTenantByIDs = `-- name: ListPurchasesForTenantByIDs :many
 SELECT p.id,
     p.episode_id,
     e.public_id AS episode_public_id,
-    et.title AS episode_title,
+    -- Empty on a purchase of a volume, which joins no translation: sqlc reads
+    -- the columns of a function's row as never NULL.
+    COALESCE(et.title, '')::text AS episode_title,
+    p.volume_id,
+    v.public_id AS volume_public_id,
+    v.title AS volume_title,
     s.public_id AS series_public_id,
     str.title AS series_title,
     u.public_id AS reader_public_id,
@@ -1186,11 +1267,13 @@ SELECT p.id,
     p.revocation_reason,
     p.staff_refund_attempt
 FROM purchases p
-    JOIN episodes e ON e.tenant_id = p.tenant_id
+    LEFT JOIN episodes e ON e.tenant_id = p.tenant_id
     AND e.id = p.episode_id
-    CROSS JOIN LATERAL episode_translation_for(e.id, '') et
-    JOIN series s ON s.tenant_id = e.tenant_id
-    AND s.id = e.series_id
+    LEFT JOIN LATERAL episode_translation_for(e.id, '') et ON TRUE
+    LEFT JOIN volumes v ON v.tenant_id = p.tenant_id
+    AND v.id = p.volume_id
+    JOIN series s ON s.tenant_id = p.tenant_id
+    AND s.id = COALESCE(e.series_id, v.series_id)
     CROSS JOIN LATERAL series_translation_for(s.id, '') str
     LEFT JOIN users u ON u.tenant_id = p.tenant_id
     AND u.id = p.user_id
@@ -1205,9 +1288,12 @@ type ListPurchasesForTenantByIDsParams struct {
 
 type ListPurchasesForTenantByIDsRow struct {
 	ID                 uuid.UUID      `json:"id"`
-	EpisodeID          uuid.UUID      `json:"episode_id"`
-	EpisodePublicID    string         `json:"episode_public_id"`
+	EpisodeID          uuid.NullUUID  `json:"episode_id"`
+	EpisodePublicID    sql.NullString `json:"episode_public_id"`
 	EpisodeTitle       string         `json:"episode_title"`
+	VolumeID           uuid.NullUUID  `json:"volume_id"`
+	VolumePublicID     sql.NullString `json:"volume_public_id"`
+	VolumeTitle        sql.NullString `json:"volume_title"`
 	SeriesPublicID     string         `json:"series_public_id"`
 	SeriesTitle        string         `json:"series_title"`
 	ReaderPublicID     sql.NullString `json:"reader_public_id"`
@@ -1228,7 +1314,8 @@ type ListPurchasesForTenantByIDsRow struct {
 	StaffRefundAttempt int32          `json:"staff_refund_attempt"`
 }
 
-// What the console shows of each purchase named, in no particular order. The
+// What the console shows of each purchase named, in no particular order: the
+// episode bought, or the volume, and the series of either. The
 // buyer is joined within the tenant, so the purchase of a reader who has since
 // deleted their account, which keeps no user, answers no buyer rather than no
 // row.
@@ -1246,6 +1333,9 @@ func (q *Queries) ListPurchasesForTenantByIDs(ctx context.Context, arg ListPurch
 			&i.EpisodeID,
 			&i.EpisodePublicID,
 			&i.EpisodeTitle,
+			&i.VolumeID,
+			&i.VolumePublicID,
+			&i.VolumeTitle,
 			&i.SeriesPublicID,
 			&i.SeriesTitle,
 			&i.ReaderPublicID,
@@ -1311,7 +1401,7 @@ SET revoked_at = COALESCE(revoked_at, NOW()),
 WHERE tenant_id = $1
     AND provider = $2::text
     AND provider_payment_id = $3::text
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind, volume_id
 `
 
 type RecordDisputeOnPurchaseParams struct {
@@ -1350,6 +1440,7 @@ func (q *Queries) RecordDisputeOnPurchase(ctx context.Context, arg RecordDispute
 		&i.StaffRefundAttempt,
 		&i.DisputeLostAt,
 		&i.Kind,
+		&i.VolumeID,
 	)
 	return i, err
 }
@@ -1430,7 +1521,7 @@ WHERE p.tenant_id = $2
     AND p.provider = $3::text
     AND p.provider_payment_id = $4::text
     AND p.currency = $5::text
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind, p.volume_id
 `
 
 type RecordFailedRefundOnPurchaseParams struct {
@@ -1487,6 +1578,7 @@ func (q *Queries) RecordFailedRefundOnPurchase(ctx context.Context, arg RecordFa
 		&i.StaffRefundAttempt,
 		&i.DisputeLostAt,
 		&i.Kind,
+		&i.VolumeID,
 	)
 	return i, err
 }
@@ -1499,7 +1591,7 @@ SET dispute_lost_at = COALESCE(dispute_lost_at, NOW()),
 WHERE tenant_id = $1
     AND provider = $2::text
     AND provider_payment_id = $3::text
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind, volume_id
 `
 
 type RecordLostDisputeOnPurchaseParams struct {
@@ -1540,6 +1632,7 @@ func (q *Queries) RecordLostDisputeOnPurchase(ctx context.Context, arg RecordLos
 		&i.StaffRefundAttempt,
 		&i.DisputeLostAt,
 		&i.Kind,
+		&i.VolumeID,
 	)
 	return i, err
 }
@@ -1577,7 +1670,7 @@ SET refunded_amount = refund.amount,
     END
 FROM refund
 WHERE p.id = refund.id
-RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind
+RETURNING p.id, p.user_id, p.episode_id, p.price_at_purchase, p.expires_at, p.purchased_at, p.tenant_id, p.provider_checkout_id, p.provider_payment_id, p.refunded_amount, p.refunded_at, p.store, p.store_transaction_id, p.is_test, p.provider, p.currency, p.revoked_at, p.revocation_reason, p.staff_refund_attempt, p.dispute_lost_at, p.kind, p.volume_id
 `
 
 type RecordRefundOnPurchaseParams struct {
@@ -1633,6 +1726,7 @@ func (q *Queries) RecordRefundOnPurchase(ctx context.Context, arg RecordRefundOn
 		&i.StaffRefundAttempt,
 		&i.DisputeLostAt,
 		&i.Kind,
+		&i.VolumeID,
 	)
 	return i, err
 }

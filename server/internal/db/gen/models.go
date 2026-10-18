@@ -300,11 +300,11 @@ type EpisodeCommentReport struct {
 }
 
 type EpisodeContentGrant struct {
-	TenantID     uuid.UUID     `json:"tenant_id"`
-	UserID       uuid.NullUUID `json:"user_id"`
-	EpisodeID    uuid.UUID     `json:"episode_id"`
-	Kind         string        `json:"kind"`
-	PurchaseKind string        `json:"purchase_kind"`
+	TenantID     uuid.UUID      `json:"tenant_id"`
+	UserID       uuid.UUID      `json:"user_id"`
+	EpisodeID    uuid.UUID      `json:"episode_id"`
+	Kind         string         `json:"kind"`
+	PurchaseKind sql.NullString `json:"purchase_kind"`
 }
 
 type EpisodeCreator struct {
@@ -454,6 +454,15 @@ type ExpiredCheckout struct {
 	TenantID           uuid.UUID `json:"tenant_id"`
 	UserID             uuid.UUID `json:"user_id"`
 	EpisodeID          uuid.UUID `json:"episode_id"`
+	Provider           string    `json:"provider"`
+	ProviderCheckoutID string    `json:"provider_checkout_id"`
+	ExpiredAt          time.Time `json:"expired_at"`
+}
+
+type ExpiredVolumeCheckout struct {
+	TenantID           uuid.UUID `json:"tenant_id"`
+	UserID             uuid.UUID `json:"user_id"`
+	VolumeID           uuid.UUID `json:"volume_id"`
 	Provider           string    `json:"provider"`
 	ProviderCheckoutID string    `json:"provider_checkout_id"`
 	ExpiredAt          time.Time `json:"expired_at"`
@@ -853,7 +862,7 @@ type PublishedFreeEpisode struct {
 type Purchase struct {
 	ID                 uuid.UUID      `json:"id"`
 	UserID             uuid.NullUUID  `json:"user_id"`
-	EpisodeID          uuid.UUID      `json:"episode_id"`
+	EpisodeID          uuid.NullUUID  `json:"episode_id"`
 	PriceAtPurchase    int32          `json:"price_at_purchase"`
 	ExpiresAt          sql.NullTime   `json:"expires_at"`
 	PurchasedAt        time.Time      `json:"purchased_at"`
@@ -872,6 +881,7 @@ type Purchase struct {
 	StaffRefundAttempt int32          `json:"staff_refund_attempt"`
 	DisputeLostAt      sql.NullTime   `json:"dispute_lost_at"`
 	Kind               string         `json:"kind"`
+	VolumeID           uuid.NullUUID  `json:"volume_id"`
 }
 
 type ReaderIconPreset struct {
@@ -1592,6 +1602,51 @@ type UserWebauthnCredential struct {
 	CreatedAt      time.Time    `json:"created_at"`
 	LastUsedAt     sql.NullTime `json:"last_used_at"`
 	RelyingParty   string       `json:"relying_party"`
+}
+
+type Volume struct {
+	ID           uuid.UUID     `json:"id"`
+	TenantID     uuid.UUID     `json:"tenant_id"`
+	PublicID     string        `json:"public_id"`
+	SeriesID     uuid.UUID     `json:"series_id"`
+	Title        string        `json:"title"`
+	OrderIndex   int32         `json:"order_index"`
+	Price        int32         `json:"price"`
+	CoverImageID uuid.NullUUID `json:"cover_image_id"`
+	IsPublished  bool          `json:"is_published"`
+	PublishedAt  sql.NullTime  `json:"published_at"`
+	CreatedAt    time.Time     `json:"created_at"`
+	UpdatedAt    time.Time     `json:"updated_at"`
+}
+
+type VolumeCoverImage struct {
+	ID        uuid.UUID `json:"id"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+	VolumeID  uuid.UUID `json:"volume_id"`
+	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type VolumeCoverImageVariant struct {
+	ID                 uuid.UUID `json:"id"`
+	TenantID           uuid.UUID `json:"tenant_id"`
+	VolumeCoverImageID uuid.UUID `json:"volume_cover_image_id"`
+	Label              string    `json:"label"`
+	VariantType        string    `json:"variant_type"`
+	StorageProvider    string    `json:"storage_provider"`
+	ObjectKey          string    `json:"object_key"`
+	ContentType        string    `json:"content_type"`
+	FileSizeBytes      int64     `json:"file_size_bytes"`
+	Width              int32     `json:"width"`
+	Height             int32     `json:"height"`
+	CreatedAt          time.Time `json:"created_at"`
+}
+
+type VolumeEpisode struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	VolumeID  uuid.UUID `json:"volume_id"`
+	EpisodeID uuid.UUID `json:"episode_id"`
+	Position  int32     `json:"position"`
 }
 
 type WaitFreeTicketState struct {

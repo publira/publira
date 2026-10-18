@@ -102,6 +102,7 @@ type TenantScopedQuerier interface {
 	GetEpisodeEyeCatchImageVariantByTypeAndWidthForTenant(ctx context.Context, arg dbmodels.GetEpisodeEyeCatchImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetEpisodeEyeCatchImageVariantByTypeAndWidthForTenantRow, error)
 	GetLabelImageVariantByTypeAndWidthForTenant(ctx context.Context, arg dbmodels.GetLabelImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetLabelImageVariantByTypeAndWidthForTenantRow, error)
 	GetSeriesImageVariantByTypeAndWidthForTenant(ctx context.Context, arg dbmodels.GetSeriesImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetSeriesImageVariantByTypeAndWidthForTenantRow, error)
+	GetVolumeCoverImageVariantByTypeAndWidthForTenant(ctx context.Context, arg dbmodels.GetVolumeCoverImageVariantByTypeAndWidthForTenantParams) (dbmodels.GetVolumeCoverImageVariantByTypeAndWidthForTenantRow, error)
 	GetEpisodeImageAccessByIDForUser(ctx context.Context, arg dbmodels.GetEpisodeImageAccessByIDForUserParams) (dbmodels.GetEpisodeImageAccessByIDForUserRow, error)
 	GetEpisodeImageByIDForTenant(ctx context.Context, arg dbmodels.GetEpisodeImageByIDForTenantParams) (dbmodels.GetEpisodeImageByIDForTenantRow, error)
 	GetEpisodeImagePublicAccessByIDForTenant(ctx context.Context, arg dbmodels.GetEpisodeImagePublicAccessByIDForTenantParams) (dbmodels.GetEpisodeImagePublicAccessByIDForTenantRow, error)
@@ -207,6 +208,7 @@ func NewHandler(public, admin SiteDB, logger *slog.Logger, tokens *auth.TokenMan
 	mux.HandleFunc("GET /images/series/{media_id}/{variant_type}/{width}", h.handleGetSeriesImage)
 	mux.HandleFunc("GET /images/tenants/{media_id}/{variant_type}", h.handleGetTenantImage)
 	mux.HandleFunc("GET /images/users/{media_id}", h.handleGetUserImage)
+	mux.HandleFunc("GET /images/volume-covers/{media_id}/{variant_type}/{width}", h.handleGetVolumeCoverImage)
 	mux.HandleFunc("GET /images/reader-icon-presets/{media_id}", h.handleGetReaderIconPresetImage)
 	return &Server{mux: mux, origin: origin}, nil
 }
@@ -907,6 +909,67 @@ func (h *Handler) handleGetEpisodeEyeCatchImage(w http.ResponseWriter, r *http.R
 			return
 		}
 		h.logger.ErrorContext(ctx, "failed to load episode eye catch image metadata", "error", err, "media_id", mediaID.String())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	if strings.TrimSpace(imageRow.ObjectKey) == "" {
+		http.Error(w, "image not found", http.StatusNotFound)
+		return
+	}
+
+	// The row is read; the conversion below runs without the connection.
+	cleanup()
+	h.serveConverted(w, r, adminHost, imageRow.ObjectKey, imageRow.ContentType, "public, max-age=3600", nil)
+}
+
+// handleGetVolumeCoverImage serves a volume's cover the way a series
+// eye-catch is served. A cover is what sells the volume, so it is served to a
+// reader who has not bought it, and an unpublished volume's cover to whoever
+// holds its URL, which only the console hands out.
+func (h *Handler) handleGetVolumeCoverImage(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	tenant, adminHost, ok := h.tenantFromHost(w, r)
+	if !ok {
+		return
+	}
+
+	mediaID, err := uuid.Parse(r.PathValue("media_id"))
+	variantType := strings.TrimSpace(r.PathValue("variant_type"))
+	if variantType == "" {
+		http.Error(w, "variant_type is required", http.StatusBadRequest)
+		return
+	}
+	width, widthErr := strconv.Atoi(strings.TrimSpace(r.PathValue("width")))
+	if widthErr != nil || width <= 0 {
+		http.Error(w, "invalid width", http.StatusBadRequest)
+		return
+	}
+	if err != nil {
+		http.Error(w, "invalid media_id", http.StatusBadRequest)
+		return
+	}
+
+	tenantQueries, cleanup, err := h.tenantQueries(ctx, adminHost, tenant.ID)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer cleanup()
+
+	imageRow, err := tenantQueries.GetVolumeCoverImageVariantByTypeAndWidthForTenant(ctx, dbmodels.GetVolumeCoverImageVariantByTypeAndWidthForTenantParams{
+		VolumeCoverImageID: mediaID,
+		TenantID:           tenant.ID,
+		VariantType:        variantType,
+		Width:              int32(width),
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "image not found", http.StatusNotFound)
+			return
+		}
+		h.logger.ErrorContext(ctx, "failed to load volume cover image metadata", "error", err, "media_id", mediaID.String())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}

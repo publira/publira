@@ -547,6 +547,29 @@ enum SurfaceAvailability {
 }
 
 // Which of an episode's two sales a purchase is (purchases.kind).
+// A volume: a run of a series' episodes sold together, at a price of its own,
+// in one checkout. Buying it opens every episode it holds, which the episode
+// reads then report as EPISODE_ENTITLEMENT_SOURCE_PURCHASE.
+message Volume {
+  // The volume's primary key, which StartVolumeCheckout addresses it by.
+  string id = 1;
+  string public_id = 2;
+  string title = 3;
+  // Where the volume stands among its series' volumes, ascending.
+  int32 order_index = 4;
+  // What the volume costs, in the minor unit of the tenant currency, as
+  // Episode.price is. Never 0: a volume is never free.
+  int32 price = 5;
+  // The episodes the volume holds, by Episode.id, in the volume's own order.
+  // On a public read, only the episodes that read lists for the calling
+  // surface; a volume none of whose episodes it lists is not in the answer.
+  repeated string episode_ids = 6;
+  // The cover, stored the way a series eye-catch is. Empty when the volume has
+  // none, and the series' eye-catch stands in for it then.
+  string cover_image_updated_at = 7;
+  repeated SeriesEyeCatchVariant cover_image_variants = 8;
+}
+
 enum PurchaseKind {
   // On a request, the permanent copy, which is what every client that names no
   // kind buys.

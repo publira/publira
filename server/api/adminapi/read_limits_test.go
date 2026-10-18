@@ -92,6 +92,9 @@ func TestReadLimitsAdmitTheLargestDocumentedUpload(t *testing.T) {
 		publiraadminv1connect.AdminSeriesServiceUploadEpisodeEyeCatchAspectImageProcedure: &publiraadminv1.UploadEpisodeEyeCatchAspectImageRequest{
 			Tenant: tenant, ImageData: image(imageproc.EyeCatchMaxBytes),
 		},
+		publiraadminv1connect.AdminSeriesServiceUploadVolumeCoverImageProcedure: &publiraadminv1.UploadVolumeCoverImageRequest{
+			Tenant: tenant, ImageData: image(imageproc.EyeCatchMaxBytes),
+		},
 		publiraadminv1connect.AdminLabelServiceCreateLabelProcedure: &publiraadminv1.CreateLabelRequest{
 			Tenant: tenant, EyeCatchImageData: image(imageproc.EyeCatchMaxBytes),
 		},
