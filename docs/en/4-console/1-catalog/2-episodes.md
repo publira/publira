@@ -114,7 +114,7 @@ The **Cover image** tab of the episode's edit screen sets it. Under **Cover imag
 
 ![An episode's Cover image tab: the Basic information and Cover image tabs under the note that an episode without a cover of its own shows its series' cover image, the episode's cover cut into its portrait, square, landscape, and link preview shapes, Delete the current cover image and Update cover image under them, and Aspect ratio images, where each shape's slot gives its size, where it is used, and Replace.](./episodes-cover-image.png)
 
-Each shape is cropped from the centre of the image. To frame one differently, choose **Adjust the frame** on its slot, or upload a separate image for that shape alone with **Replace**, which leaves the other three as they are. A shape can be replaced only once the episode has a cover image, so upload one under **Cover image** first. Uploading a new cover image there replaces all four.
+Each shape is cropped from the centre of the image. To give one shape a different crop or a picture of its own, click its image under **Aspect ratio images** and select a JPEG, PNG, or WebP image at least as large as the slot asks, which may be the same image as before. **Adjust the frame** then sets which part of it the shape shows, and **Replace** saves it, leaving the other three as they are. A shape can be replaced only once the episode has a cover image, so upload one under **Cover image** first. Uploading a new cover image there replaces all four.
 
 To go back to the series' cover, choose **Delete the current cover image** and then **Update cover image**.
 
