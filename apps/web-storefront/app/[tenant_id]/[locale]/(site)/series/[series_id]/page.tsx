@@ -643,15 +643,18 @@ const SeriesDetailContent = async (
                             tenantId={tenantId}
                           />
                         </Suspense>
-                        {/* Episodes carry no artwork of their own, so the row shows
-                        the work's: the picture says which series the row is
-                        from, and the title beside it says which episode. */}
+                        {/* An episode without artwork of its own shows the work's,
+                        so no row is left with a gap where its picture would
+                        be. */}
                         <EyeCatchFrame
                           alt=""
                           className="aspect-16/9 w-24 shrink-0 rounded-control"
                           preferredType="landscape"
                           sizes="96px"
-                          variants={series.eyeCatchImageVariants}
+                          variants={
+                            episode.eyeCatchImageVariants ??
+                            series.eyeCatchImageVariants
+                          }
                         />
                         <span className="min-w-0 flex-1 sm:flex sm:items-baseline sm:gap-4">
                           <span className="flex min-w-0 flex-1 items-baseline gap-2">

@@ -212,6 +212,11 @@ export const toSeriesListItem = (s: RawSeriesListItem): SeriesListItem =>
 
 export interface EpisodeItem {
   /**
+   * The episode's own eye-catch. Absent when it has none, where a row draws
+   * the series' in its place.
+   */
+  eyeCatchImageVariants?: EyeCatchImageVariant[];
+  /**
    * When the free reading period open on this priced episode ends, as an
    * RFC3339 instant. Absent when none is open, and always absent on an
    * episode whose price is 0, which is not free until anything. `price` stays
@@ -252,6 +257,11 @@ export interface EpisodeDetail {
    * the series lists today.
    */
   credits: CreatorCredit[];
+  /**
+   * The episode's own eye-catch. Absent when it has none, where its Open
+   * Graph card uses the series'.
+   */
+  eyeCatchImageVariants?: EyeCatchImageVariant[];
   /**
    * When the free reading period open on this priced episode ends, as an
    * RFC3339 instant. Absent when none is open, and always absent on an
@@ -309,6 +319,7 @@ export interface EpisodeDetail {
 type RawEpisode = Pick<
   Episode,
   | "creators"
+  | "eyeCatchImageVariants"
   | "freeUntil"
   | "id"
   | "locale"
@@ -378,6 +389,7 @@ export const toEpisodePurchaseSurface = (
  */
 type RawEpisodeItem = Pick<
   Episode,
+  | "eyeCatchImageVariants"
   | "freeUntil"
   | "id"
   | "locale"
@@ -394,6 +406,7 @@ const toEpisodeItem = (
   episode: RawEpisodeItem,
   requestedLocale: Locale
 ): EpisodeItem => ({
+  eyeCatchImageVariants: toEyeCatchImageVariants(episode.eyeCatchImageVariants),
   freeUntil: episode.freeUntil || undefined,
   id: episode.id ?? "",
   locale: servedLocaleFrom(episode.locale, requestedLocale),
@@ -411,6 +424,7 @@ const mapEpisodeDetail = (
   requestedLocale: Locale
 ): EpisodeDetail => ({
   credits: toCreatorCredits(episode.creators),
+  eyeCatchImageVariants: toEyeCatchImageVariants(episode.eyeCatchImageVariants),
   freeUntil: episode.freeUntil || undefined,
   id: episode.id ?? "",
   locale: servedLocaleFrom(episode.locale, requestedLocale),
@@ -578,8 +592,8 @@ export interface EpisodeSeriesSummary {
    */
   ageRating?: RestrictedAgeRating;
   /**
-   * The work's artwork. Episodes carry none of their own, so it is what a link
-   * to a neighbouring episode shows at the head of its row.
+   * The work's artwork. A neighbouring episode is read without an eye-catch of
+   * its own, so this is what a link to one shows at the head of its row.
    */
   eyeCatchImageVariants?: EyeCatchImageVariant[];
   id: string;

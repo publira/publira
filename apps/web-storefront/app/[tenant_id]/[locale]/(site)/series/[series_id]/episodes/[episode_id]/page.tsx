@@ -34,7 +34,7 @@ import type { EpisodeSeriesSummary } from "#lib/catalog";
 import { breadcrumbJsonLd, episodeJsonLd, jsonLdSiteIn } from "#lib/json-ld";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
-import { resolveOpenGraphImage } from "#lib/open-graph";
+import { resolveEpisodeOpenGraphImage } from "#lib/open-graph";
 import { shareText } from "#lib/share-text";
 import {
   getTenantSiteInfo,
@@ -118,13 +118,16 @@ export const generateMetadata = async (
     episode.locale
   );
   const title = episodeDisplayTitle(t, episode);
-  // Both from the series: an episode carries neither a synopsis nor an
-  // eye-catch of its own, and `GetEpisodeDetail` answers with the work's id,
-  // title, and rating rather than its artwork.
+  // The description is the series': an episode carries no synopsis of its
+  // own. `GetEpisodeDetail` answers with the work's id, title, and rating
+  // rather than its artwork, so the card falls back on the series detail too.
   const work = seriesResult.ok ? seriesResult.value?.series : undefined;
   const description = work?.synopsis.trim() || undefined;
   const image = alternates
-    ? resolveOpenGraphImage(work?.eyeCatchImageVariants, series.title)
+    ? resolveEpisodeOpenGraphImage(
+        { alt: title, variants: episode.eyeCatchImageVariants },
+        { alt: series.title, variants: work?.eyeCatchImageVariants }
+      )
     : undefined;
 
   return {

@@ -303,6 +303,50 @@ describe("catalog.getSeriesDetail", () => {
       { freeUntil: undefined, price: 300 },
     ]);
   });
+
+  it("Carries each listed episode's own eye-catch, and none for an episode without one", async () => {
+    mockGetSeriesDetail.mockResolvedValueOnce({
+      episodes: [
+        {
+          eyeCatchImageVariants: [
+            {
+              contentType: "image/webp",
+              fileSizeBytes: 4096n,
+              height: 360,
+              label: "landscape 640",
+              url: "/images/episode-eye-catches/00000000-0000-4000-8000-000000000001/landscape/640",
+              variantType: "landscape",
+              width: 640,
+            },
+          ],
+          orderIndex: 1,
+          publicId: "EP_001",
+        },
+        { eyeCatchImageVariants: [], orderIndex: 2, publicId: "EP_002" },
+      ],
+      series: { publicId: "SERIES_001", title: "Series Title" },
+    });
+
+    const result = await getSeriesDetail("TENANT_001", "SERIES_001", "en");
+
+    expect(
+      result.ok &&
+        result.value?.episodes.map((episode) => episode.eyeCatchImageVariants)
+    ).toEqual([
+      [
+        {
+          contentType: "image/webp",
+          fileSizeBytes: 4096,
+          height: 360,
+          label: "landscape 640",
+          url: "/images/episode-eye-catches/00000000-0000-4000-8000-000000000001/landscape/640",
+          variantType: "landscape",
+          width: 640,
+        },
+      ],
+      undefined,
+    ]);
+  });
 });
 
 describe("catalog.getEpisodeDetail", () => {
@@ -399,6 +443,48 @@ describe("catalog.getEpisodeDetail", () => {
     expect(detail?.episode.locale).toBe("ja");
     expect(detail?.publishedLocales).toEqual(["ja"]);
     expect(detail?.series.locale).toBe("en");
+  });
+
+  it("Carries the episode's own eye-catch apart from its series'", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      access: EpisodeAccess.FREE,
+      episode: {
+        eyeCatchImageVariants: [
+          {
+            contentType: "image/webp",
+            fileSizeBytes: 8192n,
+            height: 630,
+            label: "og 1200",
+            url: "/images/episode-eye-catches/00000000-0000-4000-8000-000000000001/og/1200",
+            variantType: "og",
+            width: 1200,
+          },
+        ],
+        publicId: "EP_001",
+      },
+      series: { publicId: "SERIES_001", title: "Series Title" },
+    });
+
+    const result = await getEpisodeDetail(
+      "TENANT_001",
+      "SERIES_001",
+      "EP_001",
+      "en"
+    );
+
+    const detail = result.ok ? result.value : null;
+    expect(detail?.episode.eyeCatchImageVariants).toEqual([
+      {
+        contentType: "image/webp",
+        fileSizeBytes: 8192,
+        height: 630,
+        label: "og 1200",
+        url: "/images/episode-eye-catches/00000000-0000-4000-8000-000000000001/og/1200",
+        variantType: "og",
+        width: 1200,
+      },
+    ]);
+    expect(detail?.series.eyeCatchImageVariants).toBeUndefined();
   });
 
   it("Carries the end of the free reading period open on the episode", async () => {

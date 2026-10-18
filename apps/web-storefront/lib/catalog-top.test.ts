@@ -135,6 +135,18 @@ const detailSeries2 = {
   },
 };
 
+const eyeCatch = (url: string) => [
+  {
+    contentType: "image/webp",
+    fileSizeBytes: 4096,
+    height: 360,
+    label: "landscape 640",
+    url,
+    variantType: "landscape",
+    width: 640,
+  },
+];
+
 describe("catalog-top section loaders", () => {
   beforeEach(() => {
     mockGetSeriesDetail.mockReset();
@@ -642,6 +654,61 @@ describe("catalog-top section loaders", () => {
       { episodeId: "EP_2_1", freeUntil: undefined },
       { episodeId: "EP_1_2", freeUntil: "2026-10-11T14:59:00Z" },
       { episodeId: "EP_1_1", freeUntil: undefined },
+    ]);
+  });
+
+  it("getCatalogTopNewEpisodes draws each episode's own eye-catch, and the series' where it has none", async () => {
+    const seriesCover = eyeCatch("/images/series/SERIES_1/landscape/640");
+    const episodeCover = eyeCatch(
+      "/images/episode-eye-catches/EP_1_2/landscape/640"
+    );
+    mockListPublishedSeries.mockResolvedValue({
+      ok: true,
+      value: {
+        nextToken: "",
+        previousToken: "",
+        series: [
+          { ...seriesFixture[0], eyeCatchImageVariants: seriesCover },
+          seriesFixture[1],
+        ],
+      },
+    });
+    mockGetSeriesDetail.mockImplementation(
+      (_tenantId: string, seriesId: string) => {
+        if (seriesId === "SERIES_1") {
+          return Promise.resolve({
+            ok: true,
+            value: {
+              ...detailSeries1,
+              episodes: detailSeries1.episodes.map((episode) =>
+                episode.publicId === "EP_1_2"
+                  ? { ...episode, eyeCatchImageVariants: episodeCover }
+                  : episode
+              ),
+            },
+          });
+        }
+        return Promise.resolve({ ok: true, value: detailSeries2 });
+      }
+    );
+
+    const result = await getCatalogTopNewEpisodes("TENANT_001", {
+      detailFetchLimit: 4,
+      locale: "en",
+      maxNewEpisodes: 4,
+      seriesLimit: 10,
+    });
+
+    expect(
+      result.ok &&
+        result.value.map(({ episodeId, eyeCatchImageVariants }) => ({
+          episodeId,
+          eyeCatchImageVariants,
+        }))
+    ).toEqual([
+      { episodeId: "EP_2_1", eyeCatchImageVariants: undefined },
+      { episodeId: "EP_1_2", eyeCatchImageVariants: episodeCover },
+      { episodeId: "EP_1_1", eyeCatchImageVariants: seriesCover },
     ]);
   });
 
