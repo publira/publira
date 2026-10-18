@@ -362,6 +362,8 @@ func TestListMyRecentSeriesReturnsTheEpisodeToContinueFrom(t *testing.T) {
 			AddRow(started, "SERIES002", "Started", "", "ja", "ongoing", []byte("{}"), "all", fixture.now, nil, nil, int32(0), []byte("[]"), []byte("[]"), []byte("[]"), []byte("{}")).
 			AddRow(resumed, "SERIES001", "Resumed", "", "ja", "ongoing", []byte("{}"), "all", fixture.now, nil, nil, int32(0), []byte("[]"), []byte("[]"), []byte("[]"), []byte("{}")))
 
+	expectNoEpisodeEyeCatches(fixture.mock, fixture.tenantID)
+
 	response, err := fixture.recent(2, "")
 	if err != nil {
 		t.Fatalf("ListMyRecentSeries: %v", err)
@@ -423,6 +425,8 @@ func TestListMyRecentSeriesPagesForwardOnTheActivityCursor(t *testing.T) {
 		WillReturnRows(seriesDetailColumns().
 			AddRow(series, "SERIES001", "Resumed", "", "ja", "ongoing", []byte("{}"), "all", fixture.now, nil, nil, int32(0), []byte("[]"), []byte("[]"), []byte("[]"), []byte("{}")))
 
+	expectNoEpisodeEyeCatches(fixture.mock, fixture.tenantID)
+
 	response, err := fixture.recent(1, "")
 	if err != nil {
 		t.Fatalf("ListMyRecentSeries: %v", err)
@@ -453,6 +457,8 @@ func TestListMyRecentSeriesReadsTheBackwardDirectionAscending(t *testing.T) {
 		WithArgs("web", fixture.tenantID, "ja", sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
 			AddRow(series, "SERIES001", "Resumed", "", "ja", "ongoing", []byte("{}"), "all", fixture.now, nil, nil, int32(0), []byte("[]"), []byte("[]"), []byte("[]"), []byte("{}")))
+
+	expectNoEpisodeEyeCatches(fixture.mock, fixture.tenantID)
 
 	response, err := fixture.recent(0, token)
 	if err != nil {

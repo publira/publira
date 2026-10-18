@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"time"
 
 	"connectrpc.com/connect/v2"
@@ -129,7 +130,8 @@ func (s *apiServer) projectEpisodeCompleteEvent(ctx context.Context, read dbmode
 // The page is one query rather than the identifiers-then-display-data pair
 // ListMyRecentSeries uses. A history row is an episode title and its series
 // title, two joins on the reader's own rows, instead of the series card that
-// pair exists to keep out of the keyset scan.
+// pair exists to keep out of the keyset scan. The two eye-catches it draws are
+// looked up afterwards, one statement each for the whole page.
 func (s *apiServer) ListMyEpisodeReads(
 	ctx context.Context,
 	req *publirav1.ListMyEpisodeReadsRequest,
@@ -172,6 +174,9 @@ func (s *apiServer) ListMyEpisodeReads(
 	items := make([]*publirav1.MyEpisodeRead, 0, len(rows))
 	for _, row := range rows {
 		items = append(items, myEpisodeReadFromRow(row))
+	}
+	if err := s.fillEpisodeReadEyeCatches(ctx, tenant.ID, rows, items); err != nil {
+		return nil, err
 	}
 
 	res := &publirav1.ListMyEpisodeReadsResponse{Reads: items}
@@ -236,6 +241,47 @@ func (s *apiServer) episodeReadPage(
 	}
 
 	return queries.ListMyEpisodeReadsDesc(ctx, params)
+}
+
+// fillEpisodeReadEyeCatches puts both eye-catches a history row draws onto
+// it: its series', and the episode's own that stands in front of it. Several
+// rows of a page often name one series, so its variants are read once. Either
+// read failing leaves the row its titles, the way a series list keeps its
+// cards when their variants are unavailable.
+func (s *apiServer) fillEpisodeReadEyeCatches(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	rows []dbmodels.ListMyEpisodeReadsDescRow,
+	items []*publirav1.MyEpisodeRead,
+) error {
+	imageIDs := make([]uuid.UUID, 0, len(rows))
+	seen := make(map[uuid.UUID]struct{}, len(rows))
+	for _, row := range rows {
+		if !row.SeriesEyeCatchImageID.Valid {
+			continue
+		}
+		if _, ok := seen[row.SeriesEyeCatchImageID.UUID]; ok {
+			continue
+		}
+		seen[row.SeriesEyeCatchImageID.UUID] = struct{}{}
+		imageIDs = append(imageIDs, row.SeriesEyeCatchImageID.UUID)
+	}
+	variantsByImageID, err := s.seriesEyeCatchVariantsByImageIDs(ctx, imageIDs)
+	if err != nil {
+		slog.WarnContext(ctx, "eye catch variants unavailable", "error", err)
+	} else {
+		for i, row := range rows {
+			if row.SeriesEyeCatchImageID.Valid {
+				items[i].Series.EyeCatchImageVariants = variantsByImageID[row.SeriesEyeCatchImageID.UUID]
+			}
+		}
+	}
+
+	episodes := make([]*publirattypesv1.Episode, 0, len(items))
+	for _, item := range items {
+		episodes = append(episodes, item.Episode)
+	}
+	return s.fillEpisodeEyeCatches(ctx, tenantID, episodes...)
 }
 
 func myEpisodeReadFromRow(row dbmodels.ListMyEpisodeReadsDescRow) *publirav1.MyEpisodeRead {

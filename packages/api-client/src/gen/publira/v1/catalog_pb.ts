@@ -2808,7 +2808,8 @@ export const ListMyRecentSeriesResponseSchema: GenMessage<ListMyRecentSeriesResp
 
 /**
  * One episode the reader has finished, with the series it belongs to, which is
- * what a reading history entry links to and names.
+ * what a reading history entry links to, names, and draws: the episode's own
+ * eye-catch where it has one, and its series' eye-catch in its place.
  *
  * @generated from message publira.v1.MyEpisodeRead
  */

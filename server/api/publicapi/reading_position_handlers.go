@@ -261,8 +261,14 @@ func (s *apiServer) ListMyRecentSeries(
 		return nil, err
 	}
 	items := make([]*publirav1.RecentSeries, 0, len(seriesItems))
+	episodes := make([]*publirattypesv1.Episode, 0, len(seriesItems))
 	for i, seriesRow := range seriesRows {
-		items = append(items, recentSeriesFromRow(seriesItems[i], rowBySeriesID[seriesRow.ID]))
+		item := recentSeriesFromRow(seriesItems[i], rowBySeriesID[seriesRow.ID])
+		items = append(items, item)
+		episodes = append(episodes, item.Episode)
+	}
+	if err := s.fillEpisodeEyeCatches(ctx, tenant.ID, episodes...); err != nil {
+		return nil, err
 	}
 
 	res := &publirav1.ListMyRecentSeriesResponse{Series: items}

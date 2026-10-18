@@ -1858,8 +1858,9 @@ class Episode extends $pb.GeneratedMessage {
   /// The episode's own eye-catch, in the shape Series carries one. Empty when
   /// the episode has none, which is not an error to show: the series' eye-catch
   /// stands in for it. Set on GetEpisodeDetail, on the episodes GetSeriesDetail
-  /// lists, and on the console's episode reads and the episode writes that
-  /// answer in their shape; empty elsewhere.
+  /// lists, on the member's own lists of episodes (ListMyEpisodeReads,
+  /// ListMyRecentSeries and ListMyFollowUpdates), and on the console's episode
+  /// reads and the episode writes that answer in their shape; empty elsewhere.
   @$pb.TagNumber(17)
   $core.String get eyeCatchImageUpdatedAt => $_getSZ(16);
   @$pb.TagNumber(17)

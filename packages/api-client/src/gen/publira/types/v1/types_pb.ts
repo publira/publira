@@ -808,8 +808,9 @@ export type Episode = Message<"publira.types.v1.Episode"> & {
    * The episode's own eye-catch, in the shape Series carries one. Empty when
    * the episode has none, which is not an error to show: the series' eye-catch
    * stands in for it. Set on GetEpisodeDetail, on the episodes GetSeriesDetail
-   * lists, and on the console's episode reads and the episode writes that
-   * answer in their shape; empty elsewhere.
+   * lists, on the member's own lists of episodes (ListMyEpisodeReads,
+   * ListMyRecentSeries and ListMyFollowUpdates), and on the console's episode
+   * reads and the episode writes that answer in their shape; empty elsewhere.
    *
    * @generated from field: string eye_catch_image_updated_at = 17;
    */
