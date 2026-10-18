@@ -20,6 +20,11 @@ interface InstantInputProps {
  * in the `name` field the Action reads. The instant is resolved here rather
  * than by the Action, so it cannot reinterpret the same wall clock after the
  * tenant zone changes in another tab.
+ *
+ * A wall clock left as it opened posts the stored instant itself rather than
+ * the one the wall clock names: `datetime-local` holds minutes, so resolving
+ * an untouched field again would drop the seconds of an instant the API wrote
+ * and move a value the operator never edited.
  */
 export const InstantInput = ({
   initialValue = "",
@@ -28,16 +33,19 @@ export const InstantInput = ({
   step,
   timeZone,
 }: InstantInputProps) => {
-  const [localValue, setLocalValue] = useState(() =>
-    toDateTimeLocalValue(initialValue, timeZone)
-  );
+  const initialLocalValue = toDateTimeLocalValue(initialValue, timeZone);
+  const [localValue, setLocalValue] = useState(initialLocalValue);
 
   return (
     <>
       <input
         name={name}
         type="hidden"
-        value={fromDateTimeLocalValue(localValue, timeZone)}
+        value={
+          localValue === initialLocalValue
+            ? initialValue
+            : fromDateTimeLocalValue(localValue, timeZone)
+        }
       />
       <Input
         name={`${name}_local`}
