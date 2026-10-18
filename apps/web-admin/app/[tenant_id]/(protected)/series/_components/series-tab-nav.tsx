@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Message } from "#components/message";
 
 interface SeriesTabNavProps {
-  current: "basic" | "eye-catch";
+  current: "basic" | "eye-catch" | "volumes";
   seriesId: string;
 }
 
@@ -21,6 +21,12 @@ export const SeriesTabNav = ({ current, seriesId }: SeriesTabNavProps) => (
       variant={current === "eye-catch" ? "default" : "outline"}
     >
       <Message message="admin.series.eye_catch_tab" />
+    </LinkButton>
+    <LinkButton
+      render={<Link href={`/series/${seriesId}/volumes`} />}
+      variant={current === "volumes" ? "default" : "outline"}
+    >
+      <Message message="admin.series.volumes_tab" />
     </LinkButton>
   </div>
 );

@@ -1,8 +1,8 @@
 ---
 title: Series
-description: Create a series, give it a title and synopsis in each of the site's languages, decide when and where it is shown, and set its age rating, reading direction, comments, cover image, and Free if you wait.
+description: Create a series, give it a title and synopsis in each of the site's languages, decide when and where it is shown, set its age rating, reading direction, comments, cover image, and Free if you wait, and sell its episodes in volumes.
 published: 2026-10-07
-updated: 2026-10-17
+updated: 2026-10-18
 ---
 
 A series is the work a reader follows: it has a title, a synopsis, a cover, a label, and its Authors, and it holds the episodes readers open. **Series**, in the sidebar's **Catalog** group, lists the tenant's series, newest first, twenty to a page. **Serialization status** and **Age rating** above the list narrow it.
@@ -142,3 +142,42 @@ Choose **Save free-if-you-wait settings** to save. A reader holds one ticket per
 ![The Free if you wait section below the series form, with the switch that offers free tickets, the three numbers that govern them, and Save free-if-you-wait settings.](./series-free-if-you-wait.png)
 
 [Selling episodes](../4-selling-episodes.md#free-reading-periods-and-free-if-you-wait) describes how tickets sit beside prices and free reading periods.
+
+## Volumes
+
+A volume is a run of the series' episodes sold together, in one checkout, at a price of its own. Buying a volume opens every episode it holds, for good: a volume is never rented and has no reading period. An episode is in one volume at most, and stays on sale on its own beside it.
+
+The **Volumes** tab of a series lists its volumes in their order, each with its cover, its price, how many episodes it holds, and whether it is **On sale**. Drag a volume by its handle to change the order, which is saved as soon as it is dropped. An Auditor sees the list without the handles, and opens each volume with **View**.
+
+![The Volumes tab of a series: the Create volume form with Title and Price, and two volumes, one on sale holding two episodes and one not on sale holding none, each with Edit.](./series-volumes.png)
+
+### Creating a volume
+
+Under **Create volume**, enter a **Title**, up to 255 characters, and a **Price** in the tenant's currency, which has to be more than `0`. Choosing **Create volume** opens the new volume. It holds no episodes and is not on sale yet. A series holds at most 100 volumes.
+
+The volume's screen has four parts:
+
+- **Details** changes the title and the price together, with **Update volume**. A new price applies to purchases made after it is saved.
+- **Episodes** is the list of what the volume holds, as described below.
+- **Cover image** takes a JPEG, PNG, or WebP image of at most 10 MB and at least 2400 × 3200 pixels, cut into the same four shapes as [the series' cover image](#the-cover-image). A volume without one is shown with the series' cover image.
+- **Sale** puts the volume on sale, or takes it off.
+
+### Choosing the episodes
+
+Under **Episodes**, search the series' episodes in **Add an episode** and choose **Add** to put one at the end of the list. Drag an episode by its handle to change its place in the volume, and take one out with the button at the end of its row. Nothing is saved until **Save episodes**. Drafts and scheduled episodes can be added as well as published ones.
+
+An episode another volume holds is not offered: take it out of that volume first.
+
+Once a volume has been on sale, the episodes it held cannot be taken out of it any more, even after it is taken off sale. A reader who started a checkout while it was on sale can still complete it, and the purchase opens what the volume holds. Episodes can still be added and reordered.
+
+![The Episodes section of a volume that has been on sale: two episodes, each with its handle and its place in the series and no way to take it out, the Add an episode search, and Save episodes.](./series-volume-episodes.png)
+
+### Putting a volume on sale
+
+Under **Sale**, **Put on sale** offers the volume to readers, and **Take off sale** stops offering it. A volume holding no episodes cannot be put on sale. Taking a volume off sale takes back nothing a reader already bought.
+
+A volume is sold only where every one of its episodes can be bought, since buying it buys each of them: if one of its episodes is sold on the site alone under **Sold on**, so is the volume. [Selling episodes](../4-selling-episodes.md#where-episodes-are-sold) describes where episodes are sold.
+
+![The Sale section of a volume on sale, with the On sale status and Take off sale.](./series-volume-sale.png)
+
+The site and the app do not offer volumes to readers yet, and royalty statements do not yet credit the sale of a volume to the Authors of its episodes.

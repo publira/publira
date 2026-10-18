@@ -178,6 +178,12 @@ export const deleteSeriesByPublicIds = (publicIds: readonly string[]): void => {
     USING series s
     WHERE ce.series_id = s.id
       AND s.public_id IN (${list});
+    -- An episode a volume holds cannot be deleted, and a volume cannot outlive
+    -- its series; the volume's episode list and cover go with it.
+    DELETE FROM volumes v
+    USING series s
+    WHERE v.series_id = s.id
+      AND s.public_id IN (${list});
     DELETE FROM episodes e
     USING series s
     WHERE e.series_id = s.id

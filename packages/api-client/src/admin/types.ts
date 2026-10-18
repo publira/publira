@@ -44,6 +44,7 @@ export type {
 } from "../gen/publira/admin/v1/royalty_pb.js";
 export type {
   AdminEpisodeFreeWindow,
+  AdminVolume,
   SeriesWaitFreeSettings,
 } from "../gen/publira/admin/v1/series_pb.js";
 export type {

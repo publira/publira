@@ -55,6 +55,26 @@ const openScreen = async (
   await page.goto(path);
 };
 
+/**
+ * Sign in to the moderation tenant, whose series `450_docs_publishing.sql`
+ * gives a scheduled episode, a draft, and two volumes, and open `path` there
+ * in `locale`.
+ */
+const openModerationScreen = async (
+  page: Page,
+  locale: string,
+  path: string
+): Promise<void> => {
+  await signInAsAdmin(
+    page,
+    COMMENT_MODERATION_ADMIN,
+    path,
+    WEB_ADMIN_COMMENT_MODERATION_BASE_URL
+  );
+  await setDocsLocale(page, WEB_ADMIN_COMMENT_MODERATION_BASE_URL, locale);
+  await page.goto(`${WEB_ADMIN_COMMENT_MODERATION_BASE_URL}${path}`);
+};
+
 for (const locale of DOCS_LOCALES) {
   const t = (key: string): string => docsText(locale, key);
 
@@ -309,6 +329,65 @@ for (const locale of DOCS_LOCALES) {
           subject: "free-if-you-wait",
         });
       });
+
+      test.describe("volumes", () => {
+        const volumesPath = `/series/${COMMENT_MODERATION_EPISODE.seriesPublicId}/volumes`;
+
+        test("the Volumes tab, with a volume on sale and one that is not", async ({
+          page,
+        }) => {
+          await openModerationScreen(page, locale, volumesPath);
+
+          await expectDocsScreenshot(page, {
+            element: [
+              docsScreenHeader(page),
+              // The volume `450_docs_publishing.sql` leaves off sale, which
+              // the list shows last.
+              page
+                .getByRole("listitem")
+                .filter({ hasText: "Moderation Volume 2" }),
+            ],
+            locale,
+            page: "console/catalog/series",
+            subject: "volumes",
+          });
+        });
+
+        test("the episodes of a volume that has been on sale", async ({
+          page,
+        }) => {
+          await openModerationScreen(
+            page,
+            locale,
+            `${volumesPath}/DocsVOLMAAA1`
+          );
+
+          await expectDocsScreenshot(page, {
+            element: docsSection(
+              page,
+              t("admin.series.volumes.episodes.title")
+            ),
+            locale,
+            page: "console/catalog/series",
+            subject: "volume-episodes",
+          });
+        });
+
+        test("the sale of a volume", async ({ page }) => {
+          await openModerationScreen(
+            page,
+            locale,
+            `${volumesPath}/DocsVOLMAAA1`
+          );
+
+          await expectDocsScreenshot(page, {
+            element: docsSection(page, t("admin.series.volumes.sale.title")),
+            locale,
+            page: "console/catalog/series",
+            subject: "volume-sale",
+          });
+        });
+      });
     });
 
     test.describe("episodes", () => {
@@ -319,18 +398,7 @@ for (const locale of DOCS_LOCALES) {
         page,
       }) => {
         const path = `/series/${COMMENT_MODERATION_EPISODE.seriesPublicId}/episodes`;
-        await signInAsAdmin(
-          page,
-          COMMENT_MODERATION_ADMIN,
-          path,
-          WEB_ADMIN_COMMENT_MODERATION_BASE_URL
-        );
-        await setDocsLocale(
-          page,
-          WEB_ADMIN_COMMENT_MODERATION_BASE_URL,
-          locale
-        );
-        await page.goto(`${WEB_ADMIN_COMMENT_MODERATION_BASE_URL}${path}`);
+        await openModerationScreen(page, locale, path);
 
         await expectDocsScreenshot(page, {
           element: [
@@ -419,18 +487,7 @@ for (const locale of DOCS_LOCALES) {
         page,
       }) => {
         const path = `/series/${COMMENT_MODERATION_EPISODE.seriesPublicId}/episodes/${DOCS_DRAFT_EPISODE}?tab=eye-catch`;
-        await signInAsAdmin(
-          page,
-          COMMENT_MODERATION_ADMIN,
-          path,
-          WEB_ADMIN_COMMENT_MODERATION_BASE_URL
-        );
-        await setDocsLocale(
-          page,
-          WEB_ADMIN_COMMENT_MODERATION_BASE_URL,
-          locale
-        );
-        await page.goto(`${WEB_ADMIN_COMMENT_MODERATION_BASE_URL}${path}`);
+        await openModerationScreen(page, locale, path);
 
         await page
           .locator('input[name="eye_catch_image"]')

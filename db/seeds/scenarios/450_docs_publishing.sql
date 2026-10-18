@@ -15,8 +15,19 @@
 -- documentation's shot of an episode's Cover image tab uploads a cover to the
 -- draft, and deleting the episode here drops that cover with it, so every run
 -- starts from a draft without one.
+--
+-- The series' Volumes tab is photographed too, so the file gives the series
+-- two volumes: one on sale holding both episodes above, and an empty one never
+-- on sale. An episode a volume holds cannot be deleted, so the volumes go
+-- first and are written again after the episodes.
 
 BEGIN;
+
+DELETE FROM volumes
+WHERE id IN (
+    '018f1090-0005-7000-8000-000000000005'::uuid,
+    '018f1090-0005-7000-8000-000000000006'::uuid
+);
 
 DELETE FROM episodes
 WHERE id IN (
@@ -111,5 +122,66 @@ FROM (
         )
 ) AS l (episode_id, price, status, scheduled_at)
 JOIN episodes e ON e.id = l.episode_id;
+
+INSERT INTO volumes (
+    id,
+    tenant_id,
+    public_id,
+    series_id,
+    title,
+    order_index,
+    price,
+    is_published,
+    published_at,
+    created_at,
+    updated_at
+)
+SELECT
+    v.id,
+    s.tenant_id,
+    v.public_id,
+    s.id,
+    v.title,
+    v.order_index,
+    v.price,
+    v.published_at IS NOT NULL,
+    v.published_at,
+    v.created_at,
+    v.created_at
+FROM (
+    VALUES
+        (
+            '018f1090-0005-7000-8000-000000000005'::uuid,
+            'DocsVOLMAAA1',
+            'Moderation Volume 1',
+            0,
+            300,
+            '2026-02-07T09:00:00Z'::timestamptz,
+            '2026-02-07T09:00:00Z'::timestamptz
+        ),
+        (
+            '018f1090-0005-7000-8000-000000000006'::uuid,
+            'DocsVOLMAAA2',
+            'Moderation Volume 2',
+            1,
+            500,
+            NULL::timestamptz,
+            '2026-02-08T09:00:00Z'::timestamptz
+        )
+) AS v (id, public_id, title, order_index, price, published_at, created_at)
+JOIN series s ON s.id = '018f0f73-0001-7000-8000-000000000001'::uuid;
+
+INSERT INTO volume_episodes (tenant_id, volume_id, episode_id, position)
+SELECT
+    e.tenant_id,
+    '018f1090-0005-7000-8000-000000000005'::uuid,
+    e.id,
+    ve.position
+FROM (
+    VALUES
+        ('018f1090-0005-7000-8000-000000000001'::uuid, 0),
+        ('018f1090-0005-7000-8000-000000000002'::uuid, 1)
+) AS ve (episode_id, position)
+JOIN episodes e ON e.id = ve.episode_id;
 
 COMMIT;
