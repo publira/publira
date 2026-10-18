@@ -359,6 +359,60 @@ void main() {
       });
     });
 
+    testApp(
+      'each episode row draws its own eye-catch, or the cover of its series',
+      (tester) async {
+        await withFailureScreenshot(
+          tester,
+          'fixture-episode-eye-catch',
+          () async {
+            await pumpApp(
+              tester,
+              initialLocation: AppRoutes.seriesDetailPath(
+                ConnectFixtureServer.seedSeriesId,
+              ),
+            );
+            const paidRow = ValueKey(
+              'episode-tile-${ConnectFixtureServer.paidEpisodeId}',
+            );
+            await pumpUntilRouteSettled(tester, find.text('2 episodes'));
+            await scrollSeriesTo(tester, find.byKey(paidRow));
+
+            // The paid episode carries artwork of its own, and the app asks
+            // image-server for it.
+            await pumpUntilTrue(
+              tester,
+              () => server.imageRequestPaths.any(
+                (path) => path.startsWith(
+                  '/images/episode-eye-catches/'
+                  '${ConnectFixtureServer.paidEpisodeImageId}/landscape/',
+                ),
+              ),
+              description: "the paid episode's own eye-catch to be requested",
+            );
+            // The free one carries none, and its row stands on the series'
+            // cover rather than a gap.
+            final freeCover = tester.widget<Image>(
+              find.byKey(
+                const ValueKey(
+                  'episode-cover-${ConnectFixtureServer.seedEpisodeId}',
+                ),
+              ),
+            );
+            final image = freeCover.image;
+            final provider = image is ResizeImage ? image.imageProvider : image;
+            expect(
+              (provider as NetworkImage).url,
+              contains(
+                '/images/series/${ConnectFixtureServer.seedSeriesImageId}'
+                '/landscape/',
+              ),
+            );
+          },
+        );
+      },
+    );
+
     testApp('returns to the catalog with the system back gesture', (
       tester,
     ) async {

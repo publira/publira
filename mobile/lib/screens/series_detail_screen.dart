@@ -855,6 +855,29 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                     textColor: _progress.finishedEpisodeIds.contains(episode.id)
                         ? theme.colorScheme.onSurfaceVariant
                         : null,
+                    // 16:9 at this width stays inside a one-line row's height
+                    // with room above and below, so the pictures of adjacent
+                    // rows do not run together. An episode without artwork of
+                    // its own shows the series', so no row is left with a gap
+                    // where its picture would be.
+                    leading: SizedBox(
+                      width: 80,
+                      child: EyeCatchCover(
+                        kind: 'episode',
+                        id: episode.id,
+                        variants: episode.eyeCatchVariants.isEmpty
+                            ? series.eyeCatchVariants
+                            : episode.eyeCatchVariants,
+                        // An episode's eye-catch is served to every reader
+                        // alike, as its series' is.
+                        requestHeaders: series.imageRequestHeaders,
+                        preferredTypes: const [
+                          eyeCatchLandscape,
+                          eyeCatchPortrait,
+                        ],
+                        aspectRatio: 16 / 9,
+                      ),
+                    ),
                     title: AutospacedText(
                       episode.title,
                       locale: episode.textLocale,

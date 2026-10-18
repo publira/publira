@@ -157,6 +157,7 @@
       },
       "tests": [
         "opens series detail from the catalog list",
+        "each episode row draws its own eye-catch, or the cover of its series",
         "seed series detail is reachable by public id"
       ]
     },

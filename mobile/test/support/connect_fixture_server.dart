@@ -142,6 +142,10 @@ class ConnectFixtureServer {
   static const seedEpisodePageCount = 3;
   static const paidEpisodeId = 'SeedEPSDAA1A';
 
+  /// The stored eye-catch image [paidEpisodeId]'s own cover URLs address.
+  /// [seedEpisodeId] has none, so its row stands on the series' cover.
+  static const paidEpisodeImageId = '018f0e6a-2000-7000-8000-000000000002';
+
   /// The one member `AuthService/Login` accepts here, mirroring the
   /// development seed (`db/seeds/dev/001_tenant_users.sql`), which also holds
   /// an access ticket for [paidEpisodeId].
@@ -270,6 +274,24 @@ class ConnectFixtureServer {
           label: 'landscape_${width}w',
           variantType: 'landscape',
           url: '/images/series/$seedSeriesImageId/landscape/$width',
+          contentType: 'image/webp',
+          width: width,
+          height: width * 9 ~/ 16,
+        ),
+    ];
+  }
+
+  /// Cover renditions of [paidEpisodeId]'s own eye-catch, cut as wide as the
+  /// series' banner is.
+  static List<pb.SeriesEyeCatchVariant> paidEpisodeEyeCatchVariants() {
+    return [
+      for (final width in [400, 800])
+        pb.SeriesEyeCatchVariant(
+          label: 'landscape_${width}w',
+          variantType: 'landscape',
+          url:
+              '/images/episode-eye-catches/$paidEpisodeImageId'
+              '/landscape/$width',
           contentType: 'image/webp',
           width: width,
           height: width * 9 ~/ 16,
@@ -506,10 +528,11 @@ class ConnectFixtureServer {
             price: 0,
           ),
           pb.Episode(
-            publicId: 'SeedEPSDAA1A',
+            publicId: paidEpisodeId,
             title: 'Seed Episode 001-10',
             orderIndex: 10,
             price: 500,
+            eyeCatchImageVariants: paidEpisodeEyeCatchVariants(),
           ),
         ],
       ),
@@ -1042,6 +1065,10 @@ class ConnectFixtureServer {
   /// the reader sends to image-server.
   HttpHeaders? lastImageRequestHeaders;
 
+  /// The path of every `GET /images/...` request, in order, so a test can
+  /// assert which artwork the app asked image-server for.
+  final imageRequestPaths = <String>[];
+
   /// Every Connect request answered so far, in order. A test reads it to
   /// assert what the client sent, and how many times it sent it.
   final List<RecordedRequest> requests = <RecordedRequest>[];
@@ -1092,6 +1119,7 @@ class ConnectFixtureServer {
     final path = request.uri.path;
     if (request.method == 'GET' && path.startsWith('/images/')) {
       lastImageRequestHeaders = request.headers;
+      imageRequestPaths.add(path);
       await _writeImage(request);
       return;
     }

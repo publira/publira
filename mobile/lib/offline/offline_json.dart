@@ -355,6 +355,9 @@ Map<String, Object?> _episodeToJson(EpisodeItem episode) => {
   'purchaseAvailability': episode.purchaseSurface.wireName,
   if (episode.freeUntil case final freeUntil?)
     'freeUntil': freeUntil.toUtc().toIso8601String(),
+  'eyeCatchVariants': [
+    for (final variant in episode.eyeCatchVariants) _variantToJson(variant),
+  ],
 };
 
 EpisodeItem? _episodeFromJson(Object? decoded) {
@@ -365,6 +368,7 @@ EpisodeItem? _episodeFromJson(Object? decoded) {
   if (id.isEmpty) {
     return null;
   }
+  final rawVariants = decoded['eyeCatchVariants'];
   return EpisodeItem(
     id: id,
     internalId: _string(decoded['internalId']),
@@ -376,6 +380,12 @@ EpisodeItem? _episodeFromJson(Object? decoded) {
       decoded['purchaseAvailability'],
     ),
     freeUntil: DateTime.tryParse(_string(decoded['freeUntil']))?.toLocal(),
+    // A file written before the episode's eye-catch was saved holds none, and
+    // the row draws its series' cover as it did then.
+    eyeCatchVariants: [
+      for (final item in rawVariants is List ? rawVariants : const [])
+        ?_variantFromJson(item),
+    ],
   );
 }
 
