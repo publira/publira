@@ -1,5 +1,5 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
-import { ClientSurface } from "@publira/api-client/public/types";
+import { ClientSurface, PurchaseKind } from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -86,9 +86,61 @@ describe("startEpisodeCheckoutAction", () => {
     );
     expect(mockStartEpisodeCheckout.mock.calls[0]?.[0]).toEqual({
       episodeId,
+      kind: PurchaseKind.PURCHASE,
       locale: "en",
       tenant: { tenantId },
     });
+  });
+
+  it("Start the checkout for the sale the reader chose", async () => {
+    mockStartEpisodeCheckout.mockResolvedValue({
+      checkoutUrl: "https://checkout.stripe.test/session",
+    });
+    const rental = checkoutForm();
+    rental.set("kind", "rental");
+    const purchase = checkoutForm();
+    purchase.set("kind", "purchase");
+
+    const { startEpisodeCheckoutAction } = await import("./actions");
+
+    await expect(startEpisodeCheckoutAction(rental)).rejects.toThrow(
+      "NEXT_REDIRECT:https://checkout.stripe.test/session"
+    );
+    await expect(startEpisodeCheckoutAction(purchase)).rejects.toThrow(
+      "NEXT_REDIRECT:https://checkout.stripe.test/session"
+    );
+    expect(mockStartEpisodeCheckout.mock.calls[0]?.[0]).toMatchObject({
+      kind: PurchaseKind.RENTAL,
+    });
+    expect(mockStartEpisodeCheckout.mock.calls[1]?.[0]).toMatchObject({
+      kind: PurchaseKind.PURCHASE,
+    });
+  });
+
+  it("Start no checkout for a sale the episode does not have", async () => {
+    const form = checkoutForm();
+    form.set("kind", "volume");
+
+    const { startEpisodeCheckoutAction } = await import("./actions");
+
+    await expect(startEpisodeCheckoutAction(form)).rejects.toThrow(
+      "NEXT_REDIRECT:/"
+    );
+    expect(mockStartEpisodeCheckout).not.toHaveBeenCalled();
+  });
+
+  it("Return the reader to the episode when they still hold the rental", async () => {
+    mockStartEpisodeCheckout.mockRejectedValueOnce(
+      new ConnectError("rental is still active", Code.AlreadyExists)
+    );
+    const form = checkoutForm();
+    form.set("kind", "rental");
+
+    const { startEpisodeCheckoutAction } = await import("./actions");
+
+    await expect(startEpisodeCheckoutAction(form)).rejects.toThrow(
+      "NEXT_REDIRECT:/en/series/SERIES_001/episodes/EP_001"
+    );
   });
 
   it("Return the reader to the episode when the web may not sell it", async () => {

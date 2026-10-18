@@ -299,6 +299,23 @@ export const WEB_ADMIN_PURCHASES_BASE_URL = envUrl(
 );
 
 /**
+ * Admin console of the rentals tenant from
+ * `db/seeds/scenarios/550_episode_rentals.sql`. Its suite takes the tenant's
+ * payments through Stripe, which is what lets the storefront sell the
+ * episode, so it needs a console of its own.
+ */
+export const WEB_ADMIN_RENTALS_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_ADMIN_RENTALS_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.rentals.localhost")
+);
+
+/** Public site of the same rentals tenant, whose gate sells the episode two ways. */
+export const WEB_STOREFRONT_RENTALS_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_STOREFRONT_RENTALS_BASE_URL",
+  withHostname(WEB_STOREFRONT_BASE_URL, "rentals.localhost")
+);
+
+/**
  * Admin console of the app links tenant from
  * `db/seeds/scenarios/280_app_links.sql`. Its suite saves and clears the apps
  * the tenant's links open in, so it needs a console of its own.

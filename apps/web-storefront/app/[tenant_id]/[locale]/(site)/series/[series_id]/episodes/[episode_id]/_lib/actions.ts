@@ -5,7 +5,7 @@ import {
   isRpcError,
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
-import { ClientSurface } from "@publira/api-client/public/types";
+import { ClientSurface, PurchaseKind } from "@publira/api-client/public/types";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
@@ -32,6 +32,19 @@ const episodeFormSchema = z.object({
   tenantId: tenantIdSchema,
 });
 
+/**
+ * Which of the episode's sales the gate's button was for. A form that names
+ * none is the permanent copy, which is all an episode that is not rented sells.
+ */
+const checkoutFormSchema = episodeFormSchema.extend({
+  kind: z.enum(["purchase", "rental"]).default("purchase"),
+});
+
+const purchaseKinds = {
+  purchase: PurchaseKind.PURCHASE,
+  rental: PurchaseKind.RENTAL,
+} as const;
+
 const episodePath = (seriesPublicId: string, episodePublicId: string): string =>
   `/series/${seriesPublicId}/episodes/${episodePublicId}`;
 
@@ -44,10 +57,11 @@ export const startEpisodeCheckoutAction = async (
   formData: FormData
 ): Promise<void> => {
   await assertSameOrigin();
-  const parsed = episodeFormSchema.safeParse(
+  const parsed = checkoutFormSchema.safeParse(
     toFormDataInput(formData, {
       episodeId: "value",
       episodePublicId: "value",
+      kind: "value",
       locale: "value",
       seriesPublicId: "value",
       tenantId: "value",
@@ -57,7 +71,7 @@ export const startEpisodeCheckoutAction = async (
     redirect("/");
   }
 
-  const { episodeId, episodePublicId, locale, seriesPublicId, tenantId } =
+  const { episodeId, episodePublicId, kind, locale, seriesPublicId, tenantId } =
     parsed.data;
   // `returnTo` is the episode itself. Handing `episodeLoginHref()` to these
   // helpers would give them a `/login?...` URL, which `sanitizeRedirectPath`
@@ -79,6 +93,7 @@ export const startEpisodeCheckoutAction = async (
     const response = await apiClient.purchase.startEpisodeCheckout(
       {
         episodeId,
+        kind: purchaseKinds[kind],
         locale,
         tenant: { tenantId },
       },
@@ -89,8 +104,9 @@ export const startEpisodeCheckoutAction = async (
     if (isUnauthenticatedError(error)) {
       await redirectToLogin(locale, returnTo, tenantId);
     }
-    // Already bought, or refused for a reason the episode page states: free,
-    // sold in the app alone, or a tenant that cannot take payments right now.
+    // Already bought or still rented, or refused for a reason the episode page
+    // states: free, not rented, sold in the app alone, or a tenant that cannot
+    // take payments right now.
     if (
       isRpcError(error, Code.AlreadyExists) ||
       isRpcError(error, Code.FailedPrecondition)
