@@ -23,8 +23,13 @@ const (
 )
 
 type GetTenantRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// The reader's locale. GetTenantResponse.copyright_text, site_description,
+	// and site_tagline are read from the tenant's copy in this locale, else in
+	// its default locale, else its oldest. Empty means the tenant's default
+	// locale.
+	Locale        string `protobuf:"bytes,2,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -64,6 +69,13 @@ func (x *GetTenantRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
+}
+
+func (x *GetTenantRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
 }
 
 type GetTenantLegalPagesRequest struct {
@@ -255,13 +267,16 @@ func (x *GetTenantLegalPagesResponse) GetPrivacyPage() *TenantLegalPage {
 }
 
 type GetTenantResponse struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	TenantPublicId  string                 `protobuf:"bytes,1,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
-	TenantName      string                 `protobuf:"bytes,2,opt,name=tenant_name,json=tenantName,proto3" json:"tenant_name,omitempty"`
-	TenantDomain    string                 `protobuf:"bytes,3,opt,name=tenant_domain,json=tenantDomain,proto3" json:"tenant_domain,omitempty"`
-	CopyrightText   string                 `protobuf:"bytes,4,opt,name=copyright_text,json=copyrightText,proto3" json:"copyright_text,omitempty"`
-	SiteDescription string                 `protobuf:"bytes,5,opt,name=site_description,json=siteDescription,proto3" json:"site_description,omitempty"`
-	SiteTagline     string                 `protobuf:"bytes,6,opt,name=site_tagline,json=siteTagline,proto3" json:"site_tagline,omitempty"`
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	TenantPublicId string                 `protobuf:"bytes,1,opt,name=tenant_public_id,json=tenantPublicId,proto3" json:"tenant_public_id,omitempty"`
+	TenantName     string                 `protobuf:"bytes,2,opt,name=tenant_name,json=tenantName,proto3" json:"tenant_name,omitempty"`
+	TenantDomain   string                 `protobuf:"bytes,3,opt,name=tenant_domain,json=tenantDomain,proto3" json:"tenant_domain,omitempty"`
+	// The site copy of the locale GetTenantRequest.locale resolves to, taken
+	// together from one locale's copy: a field that copy leaves empty is empty
+	// here rather than filled in from another locale.
+	CopyrightText   string `protobuf:"bytes,4,opt,name=copyright_text,json=copyrightText,proto3" json:"copyright_text,omitempty"`
+	SiteDescription string `protobuf:"bytes,5,opt,name=site_description,json=siteDescription,proto3" json:"site_description,omitempty"`
+	SiteTagline     string `protobuf:"bytes,6,opt,name=site_tagline,json=siteTagline,proto3" json:"site_tagline,omitempty"`
 	// Public branding colors (defaults applied when unset).
 	Theme *v1.TenantTheme `protobuf:"bytes,7,opt,name=theme,proto3" json:"theme,omitempty"`
 	// IANA time zone name used to render tenant wall-clock date/time (e.g. Asia/Tokyo).
@@ -927,9 +942,10 @@ var File_publira_v1_tenant_proto protoreflect.FileDescriptor
 const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\n" +
 	"\x17publira/v1/tenant.proto\x12\n" +
-	"publira.v1\x1a\x1cpublira/types/v1/types.proto\"K\n" +
+	"publira.v1\x1a\x1cpublira/types/v1/types.proto\"c\n" +
 	"\x10GetTenantRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"m\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x16\n" +
+	"\x06locale\x18\x02 \x01(\tR\x06locale\"m\n" +
 	"\x1aGetTenantLegalPagesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x16\n" +
 	"\x06locale\x18\x02 \x01(\tR\x06locale\"r\n" +

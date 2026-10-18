@@ -129,13 +129,32 @@ func newUpdateTenantConfigRequest(tenantID uuid.UUID) *publiraadminv1.AdminAuthS
 	return req
 }
 
-func tenantSiteCopyRow(tenantID uuid.UUID, now time.Time) *sqlmock.Rows {
-	return sqlmock.NewRows(tenantConfigColumns()).
-		AddRow(tenantID, "© Tenant", "A tenant that exists only in a test", now, now, "Read on", "disabled", int32(3), "single", "none", "all", nil, nil, nil, nil, nil, "{}", nil, nil, "external_checkout", "upload")
+func tenantConfigTranslationColumns() []string {
+	return []string{"id", "tenant_id", "locale", "site_tagline", "site_description", "copyright_text", "created_at", "updated_at"}
+}
+
+// tenantSiteCopyRow is the copy newUpdateTenantConfigRequest writes, stored in
+// locale.
+func tenantSiteCopyRow(tenantID uuid.UUID, locale string, now time.Time) *sqlmock.Rows {
+	return sqlmock.NewRows(tenantConfigTranslationColumns()).
+		AddRow(uuid.Must(uuid.NewV7()), tenantID, locale, "Read on", "A tenant that exists only in a test", "© Tenant", now, now)
+}
+
+func expectSiteCopyLockedAs(mock sqlmock.Sqlmock, tenantID uuid.UUID, locale string, rows *sqlmock.Rows) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockTenantConfigTranslation)).
+		WithArgs(tenantID, locale).
+		WillReturnRows(rows)
+}
+
+func expectSiteCopyUpsert(mock sqlmock.Sqlmock, tenantID uuid.UUID, locale string, now time.Time) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertTenantConfigTranslation)).
+		WithArgs(sqlmock.AnyArg(), tenantID, locale, "Read on", "A tenant that exists only in a test", "© Tenant").
+		WillReturnRows(tenantSiteCopyRow(tenantID, locale, now))
 }
 
 // The public site reads the site copy through the cached tenant site entry, so
-// the save records that entry's drop in its own transaction.
+// the save records that entry's drop in its own transaction. A request naming
+// no locale writes the tenant's default locale's copy.
 func TestUpdateTenantConfigRecordsItsInvalidationBeforeCommitting(t *testing.T) {
 	revalidations := newRevalidateRecorder(t)
 	ts, mock := newTestAdminServer(t)
@@ -147,10 +166,8 @@ func TestUpdateTenantConfigRecordsItsInvalidationBeforeCommitting(t *testing.T) 
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
 	mock.ExpectBegin()
-	expectTenantConfigLock(mock, tenantID)
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantConfig)).
-		WithArgs(tenantID, "© Tenant", "A tenant that exists only in a test", "Read on").
-		WillReturnRows(tenantSiteCopyRow(tenantID, now))
+	expectSiteCopyLockedAs(mock, tenantID, "ja", sqlmock.NewRows(tenantConfigTranslationColumns()))
+	expectSiteCopyUpsert(mock, tenantID, "ja", now)
 	expectAdminAuditLogInsert(mock)
 	expectRevalidationRecord(mock, tenantID)
 	mock.ExpectCommit()
@@ -160,16 +177,16 @@ func TestUpdateTenantConfigRecordsItsInvalidationBeforeCommitting(t *testing.T) 
 	if err != nil {
 		t.Fatalf("UpdateTenantConfig: %v", err)
 	}
-	if resp.CopyrightText != "© Tenant" || resp.SiteTagline != "Read on" {
-		t.Fatalf("tenant config = %+v, want the values just written", resp)
+	if resp.CopyrightText != "© Tenant" || resp.SiteTagline != "Read on" || resp.Locale != "ja" {
+		t.Fatalf("tenant config = %+v, want the values just written in ja", resp)
 	}
 	revalidations.waitForTags(t, []string{"tenant:" + tenantID.String() + ":site"})
 	assertExpectations(t, mock)
 }
 
-// A tenant saving its site copy for the first time has no config row yet; the
-// row the save creates owes the same drop as an update would.
-func TestUpdateTenantConfigRecordsItsInvalidationWhenItCreatesTheRow(t *testing.T) {
+// Clearing every field leaves the locale with no copy, so its row goes and its
+// readers are served the copy the others fall back to.
+func TestUpdateTenantConfigDeletesTheCopyOfALocaleItClears(t *testing.T) {
 	revalidations := newRevalidateRecorder(t)
 	ts, mock := newTestAdminServer(t)
 	now := time.Now()
@@ -180,22 +197,118 @@ func TestUpdateTenantConfigRecordsItsInvalidationWhenItCreatesTheRow(t *testing.
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
 	mock.ExpectBegin()
-	expectTenantConfigLock(mock, tenantID)
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantConfig)).
-		WithArgs(tenantID, "© Tenant", "A tenant that exists only in a test", "Read on").
-		WillReturnRows(sqlmock.NewRows(tenantConfigColumns()))
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateTenantConfig)).
-		WithArgs(tenantID, "© Tenant", "A tenant that exists only in a test", "Read on").
-		WillReturnRows(tenantSiteCopyRow(tenantID, now))
+	expectSiteCopyLockedAs(mock, tenantID, "en", tenantSiteCopyRow(tenantID, "en", now))
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteTenantConfigTranslation)).
+		WithArgs(tenantID, "en").
+		WillReturnResult(sqlmock.NewResult(0, 1))
 	expectAdminAuditLogInsert(mock)
 	expectRevalidationRecord(mock, tenantID)
 	mock.ExpectCommit()
 
 	client := publiraadminv1connect.NewAdminAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
-	if _, err := client.UpdateTenantConfig(testutil.WithBearer(context.Background(), sessionToken), newUpdateTenantConfigRequest(tenantID)); err != nil {
+	resp, err := client.UpdateTenantConfig(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.AdminAuthServiceUpdateTenantConfigRequest{
+		Tenant:      &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Locale:      "en",
+		SiteTagline: "  ",
+	})
+	if err != nil {
 		t.Fatalf("UpdateTenantConfig: %v", err)
 	}
+	if resp.CopyrightText != "" || resp.SiteDescription != "" || resp.SiteTagline != "" || resp.Locale != "en" {
+		t.Fatalf("tenant config = %+v, want no copy in en", resp)
+	}
 	revalidations.waitForTags(t, []string{"tenant:" + tenantID.String() + ":site"})
+	assertExpectations(t, mock)
+}
+
+// A save of what the locale already holds writes nothing, so it records no
+// audit entry and drops no cache.
+func TestUpdateTenantConfigWritesNothingWhenTheCopyIsUnchanged(t *testing.T) {
+	newRevalidateRecorder(t)
+	ts, mock := newTestAdminServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_admin")
+	expectTenantLookup(mock, tenantID, "TENANT001", now)
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
+
+	mock.ExpectBegin()
+	expectSiteCopyLockedAs(mock, tenantID, "ja", tenantSiteCopyRow(tenantID, "ja", now))
+	mock.ExpectCommit()
+
+	client := publiraadminv1connect.NewAdminAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	resp, err := client.UpdateTenantConfig(testutil.WithBearer(context.Background(), sessionToken), newUpdateTenantConfigRequest(tenantID))
+	if err != nil {
+		t.Fatalf("UpdateTenantConfig: %v", err)
+	}
+	if resp.CopyrightText != "© Tenant" || resp.Locale != "ja" {
+		t.Fatalf("tenant config = %+v, want the copy the locale holds", resp)
+	}
+	assertExpectations(t, mock)
+}
+
+// Copy in a language the site does not serve would never be shown, so both
+// the read and the write refuse it before touching the database.
+func TestTenantConfigRefusesALocaleTheTenantDoesNotOffer(t *testing.T) {
+	ts, mock := newTestAdminServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_admin")
+	client := publiraadminv1connect.NewAdminAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	expectOnlyJapanese := func() {
+		mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByID)).
+			WithArgs(tenantID).
+			WillReturnRows(sqlmock.NewRows(tenantColumns()).
+				AddRow(tenantID, "TENANT001", "tenant.example", "Tenant", now, "active", nil, "UTC", "ja", "{ja}"))
+		expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
+	}
+
+	expectOnlyJapanese()
+	_, err := client.GetTenantConfig(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.AdminAuthServiceGetTenantConfigRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Locale: "en",
+	})
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("GetTenantConfig code = %v, want invalid_argument", connect.CodeOf(err))
+	}
+
+	expectOnlyJapanese()
+	req := newUpdateTenantConfigRequest(tenantID)
+	req.Locale = "en"
+	_, err = client.UpdateTenantConfig(testutil.WithBearer(context.Background(), sessionToken), req)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("UpdateTenantConfig code = %v, want invalid_argument", connect.CodeOf(err))
+	}
+	assertExpectations(t, mock)
+}
+
+// The console edits one locale's copy at a time, so a locale with none reads
+// as empty rather than as the copy its readers fall back to.
+func TestGetTenantConfigReadsOnlyTheLocaleAsked(t *testing.T) {
+	ts, mock := newTestAdminServer(t)
+	now := time.Now()
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "tenant_auditor")
+	expectTenantLookup(mock, tenantID, "TENANT001", now)
+	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_auditor")
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigTranslation)).
+		WithArgs(tenantID, "en").
+		WillReturnError(sql.ErrNoRows)
+
+	client := publiraadminv1connect.NewAdminAuthServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
+	resp, err := client.GetTenantConfig(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.AdminAuthServiceGetTenantConfigRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Locale: "en",
+	})
+	if err != nil {
+		t.Fatalf("GetTenantConfig: %v", err)
+	}
+	if resp.CopyrightText != "" || resp.SiteDescription != "" || resp.SiteTagline != "" || resp.Locale != "en" {
+		t.Fatalf("tenant config = %+v, want no copy in en", resp)
+	}
 	assertExpectations(t, mock)
 }
 
@@ -212,10 +325,8 @@ func TestUpdateTenantConfigRollsBackWhenItsInvalidationCannotBeRecorded(t *testi
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 
 	mock.ExpectBegin()
-	expectTenantConfigLock(mock, tenantID)
-	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateTenantConfig)).
-		WithArgs(tenantID, "© Tenant", "A tenant that exists only in a test", "Read on").
-		WillReturnRows(tenantSiteCopyRow(tenantID, now))
+	expectSiteCopyLockedAs(mock, tenantID, "ja", sqlmock.NewRows(tenantConfigTranslationColumns()))
+	expectSiteCopyUpsert(mock, tenantID, "ja", now)
 	expectAdminAuditLogInsert(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.InsertOutboxEvent)).
 		WillReturnError(sql.ErrConnDone)

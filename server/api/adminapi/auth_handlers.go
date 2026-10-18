@@ -450,26 +450,25 @@ func (s *adminServer) GetTenantConfig(
 	}
 	tenant := session.Tenant
 
-	config, err := s.queriesFor(ctx).GetTenantConfigByTenantID(ctx, tenant.ID)
+	code, err := offeredLocale(req.Locale, tenant)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return &publiraadminv1.AdminAuthServiceGetTenantConfigResponse{}, nil
-		}
-		return nil, s.internalDBError(ctx, "failed to get tenant config", err, "tenant_id", tenant.ID.String())
+		return nil, err
 	}
 
-	response := &publiraadminv1.AdminAuthServiceGetTenantConfigResponse{}
-	if config.CopyrightText.Valid {
-		response.CopyrightText = config.CopyrightText.String
-	}
-	if config.SiteDescription.Valid {
-		response.SiteDescription = config.SiteDescription.String
-	}
-	if config.SiteTagline.Valid {
-		response.SiteTagline = config.SiteTagline.String
+	siteCopy, err := s.queriesFor(ctx).GetTenantConfigTranslation(ctx, dbmodels.GetTenantConfigTranslationParams{
+		TenantID: tenant.ID,
+		Locale:   code,
+	})
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, s.internalDBError(ctx, "failed to get tenant site copy", err, "tenant_id", tenant.ID.String(), "locale", code)
 	}
 
-	return response, nil
+	return &publiraadminv1.AdminAuthServiceGetTenantConfigResponse{
+		CopyrightText:   siteCopy.CopyrightText,
+		SiteDescription: siteCopy.SiteDescription,
+		SiteTagline:     siteCopy.SiteTagline,
+		Locale:          code,
+	}, nil
 }
 
 // tenantSiteCopyRevalidateTags names the tenant read that carries the
@@ -478,10 +477,14 @@ func tenantSiteCopyRevalidateTags(tenantID string) []string {
 	return []string{fmt.Sprintf("tenant:%s:site", strings.TrimSpace(tenantID))}
 }
 
-// sameNullString reports whether two nullable strings hold the same value. The
-// String of a NULL is not part of its value, and a request can leave one there.
-func sameNullString(a, b sql.NullString) bool {
-	return a.Valid == b.Valid && (!a.Valid || a.String == b.String)
+// siteCopyField is a site copy field as it is stored: empty when it holds
+// nothing but white space, which is what the console sends for a field left
+// blank.
+func siteCopyField(raw string) string {
+	if strings.TrimSpace(raw) == "" {
+		return ""
+	}
+	return raw
 }
 
 func (s *adminServer) UpdateTenantConfig(
@@ -498,44 +501,54 @@ func (s *adminServer) UpdateTenantConfig(
 	}
 	tenant := session.Tenant
 
-	copyrightText := sql.NullString{String: req.CopyrightText, Valid: strings.TrimSpace(req.CopyrightText) != ""}
-	siteDescription := sql.NullString{String: req.SiteDescription, Valid: strings.TrimSpace(req.SiteDescription) != ""}
-	siteTagline := sql.NullString{String: req.SiteTagline, Valid: strings.TrimSpace(req.SiteTagline) != ""}
+	code, err := offeredLocale(req.Locale, tenant)
+	if err != nil {
+		return nil, err
+	}
+	copyrightText := siteCopyField(req.CopyrightText)
+	siteDescription := siteCopyField(req.SiteDescription)
+	siteTagline := siteCopyField(req.SiteTagline)
+	cleared := copyrightText == "" && siteDescription == "" && siteTagline == ""
 
-	var config dbmodels.TenantConfig
 	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
-		current, err := s.lockTenantConfig(txCtx, tenant.ID)
-		if err != nil {
-			return nil, err
+		queries := s.queriesFor(txCtx)
+		// A locale with no row reads as empty copy, which is also what clearing
+		// every field leaves.
+		current, err := queries.LockTenantConfigTranslation(txCtx, dbmodels.LockTenantConfigTranslationParams{
+			TenantID: tenant.ID,
+			Locale:   code,
+		})
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return nil, s.internalDBError(ctx, "failed to lock tenant site copy", err, "tenant_id", tenant.ID.String(), "locale", code)
 		}
-		if sameNullString(current.CopyrightText, copyrightText) &&
-			sameNullString(current.SiteDescription, siteDescription) &&
-			sameNullString(current.SiteTagline, siteTagline) {
-			config = current
+		if current.CopyrightText == copyrightText &&
+			current.SiteDescription == siteDescription &&
+			current.SiteTagline == siteTagline {
 			return nil, nil
 		}
-		row, err := s.queriesFor(txCtx).UpdateTenantConfig(txCtx, dbmodels.UpdateTenantConfigParams{
-			TenantID:        tenant.ID,
-			CopyrightText:   copyrightText,
-			SiteDescription: siteDescription,
-			SiteTagline:     siteTagline,
-		})
-		if err != nil {
-			if !errors.Is(err, sql.ErrNoRows) {
-				return nil, s.internalDBError(ctx, "failed to update tenant config", err, "tenant_id", tenant.ID.String())
+		if cleared {
+			if _, err := queries.DeleteTenantConfigTranslation(txCtx, dbmodels.DeleteTenantConfigTranslationParams{
+				TenantID: tenant.ID,
+				Locale:   code,
+			}); err != nil {
+				return nil, s.internalDBError(ctx, "failed to delete tenant site copy", err, "tenant_id", tenant.ID.String(), "locale", code)
 			}
-
-			row, err = s.queriesFor(txCtx).CreateTenantConfig(txCtx, dbmodels.CreateTenantConfigParams{
-				TenantID:        tenant.ID,
-				CopyrightText:   copyrightText,
-				SiteDescription: siteDescription,
-				SiteTagline:     siteTagline,
-			})
+		} else {
+			id, err := uuid.NewV7()
 			if err != nil {
-				return nil, s.internalDBError(ctx, "failed to create tenant config", err, "tenant_id", tenant.ID.String())
+				return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
+			}
+			if _, err := queries.UpsertTenantConfigTranslation(txCtx, dbmodels.UpsertTenantConfigTranslationParams{
+				ID:              id,
+				TenantID:        tenant.ID,
+				Locale:          code,
+				SiteTagline:     siteTagline,
+				SiteDescription: siteDescription,
+				CopyrightText:   copyrightText,
+			}); err != nil {
+				return nil, s.internalDBError(ctx, "failed to write tenant site copy", err, "tenant_id", tenant.ID.String(), "locale", code)
 			}
 		}
-		config = row
 		if err := s.writeTenantSettingAudit(txCtx, tenant, session, "tenant_site_copy_updated", "tenant_site_copy"); err != nil {
 			return nil, err
 		}
@@ -544,18 +557,12 @@ func (s *adminServer) UpdateTenantConfig(
 		return nil, err
 	}
 
-	response := &publiraadminv1.AdminAuthServiceUpdateTenantConfigResponse{}
-	if config.CopyrightText.Valid {
-		response.CopyrightText = config.CopyrightText.String
-	}
-	if config.SiteDescription.Valid {
-		response.SiteDescription = config.SiteDescription.String
-	}
-	if config.SiteTagline.Valid {
-		response.SiteTagline = config.SiteTagline.String
-	}
-
-	return response, nil
+	return &publiraadminv1.AdminAuthServiceUpdateTenantConfigResponse{
+		CopyrightText:   copyrightText,
+		SiteDescription: siteDescription,
+		SiteTagline:     siteTagline,
+		Locale:          code,
+	}, nil
 }
 
 func (s *adminServer) RequestEmailChange(

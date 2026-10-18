@@ -132,6 +132,7 @@ var publicDataTables = []struct {
 	// The tenant's own settings, which every storefront page reads to decide
 	// how it looks and what it allows.
 	{name: "tenant_config", count: "SELECT count(*) FROM tenant_config"},
+	{name: "tenant_config_translations", count: "SELECT count(*) FROM tenant_config_translations"},
 	{name: "tenant_themes", count: "SELECT count(*) FROM tenant_themes"},
 	{name: "tenant_community_limit_overrides", count: "SELECT count(*) FROM tenant_community_limit_overrides"},
 	{name: "series_listings", count: "SELECT count(*) FROM series_listings"},
@@ -342,6 +343,7 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 		VALUES ($1, $2, $3, 'logo-1x', 'logo', 's3', 'tenants/logo.webp', 'image/webp', 1, 320, 320)`,
 		uuid.Must(uuid.NewV7()), first.ID, tenantImageID)
 	seed("tenant config", "INSERT INTO tenant_config (tenant_id) VALUES ($1)", first.ID)
+	seed("tenant site copy", "INSERT INTO tenant_config_translations (id, tenant_id, locale, site_tagline) VALUES ($1, $2, 'ja', 'Read on')", uuid.Must(uuid.NewV7()), first.ID)
 	seed("tenant theme", "INSERT INTO tenant_themes (tenant_id) VALUES ($1)", first.ID)
 	seed("community limit overrides", "INSERT INTO tenant_community_limit_overrides (tenant_id) VALUES ($1)", first.ID)
 	seed("ranking snapshot", `INSERT INTO content_ranking_snapshots (id, tenant_id, ranking_key, period_start, period_end, entity_type, surface, items)

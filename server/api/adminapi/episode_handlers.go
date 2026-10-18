@@ -602,7 +602,7 @@ func (s *adminServer) CreateEpisode(
 	if strings.TrimSpace(req.Title) == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, "title is required")
 	}
-	translationLocale, err := catalogLocale(req.Locale, tenant)
+	translationLocale, err := offeredLocale(req.Locale, tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -1318,7 +1318,7 @@ func (s *adminServer) UpdateEpisodeTitle(
 	if strings.TrimSpace(req.Title) == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, "title is required")
 	}
-	translationLocale, err := catalogLocale(req.Locale, tenant)
+	translationLocale, err := offeredLocale(req.Locale, tenant)
 	if err != nil {
 		return nil, err
 	}

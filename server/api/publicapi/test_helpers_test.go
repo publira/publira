@@ -227,8 +227,7 @@ func assertPublicExpectations(t *testing.T, mock sqlmock.Sqlmock) {
 // tenantConfigColumns is the tenant_config row a `SELECT *` reads back.
 func tenantConfigColumns() []string {
 	return []string{
-		"tenant_id", "copyright_text", "site_description", "created_at", "updated_at",
-		"site_tagline", "comment_mode", "comment_auto_hide_report_threshold",
+		"tenant_id", "created_at", "updated_at", "comment_mode", "comment_auto_hide_report_threshold",
 		"episode_rating_mode", "age_verification", "purchase_availability",
 		"app_store_url", "google_play_url", "terms_page_id", "privacy_page_id",
 		"android_application_id", "android_sha256_cert_fingerprints", "ios_team_id", "ios_bundle_identifier",
@@ -243,7 +242,7 @@ func expectTenantConfigRead(mock sqlmock.Sqlmock, tenantID uuid.UUID, now time.T
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantConfigColumns()).
-			AddRow(tenantID, nil, nil, now, now, nil, commentMode, int32(3), "single", ageRule, "all", nil, nil, nil, nil, nil, "{}", nil, nil, "external_checkout", "upload"))
+			AddRow(tenantID, now, now, commentMode, int32(3), "single", ageRule, "all", nil, nil, nil, nil, nil, "{}", nil, nil, "external_checkout", "upload"))
 }
 
 // expectTenantAgeVerification stands in for the tenant config read a rated

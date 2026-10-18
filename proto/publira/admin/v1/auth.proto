@@ -326,12 +326,21 @@ message AdminAuthServiceGetTenantResponse {
 
 message AdminAuthServiceGetTenantConfigRequest {
   publira.types.v1.TenantContext tenant = 1;
+  // The locale whose site copy to read. Empty means the tenant's default
+  // locale; a locale the tenant does not offer is invalid_argument.
+  string locale = 2;
 }
 
+// The site copy written in that locale and nothing else: every field is empty
+// where the locale has no copy, although readers in it are served another
+// locale's.
 message AdminAuthServiceGetTenantConfigResponse {
   string copyright_text = 1;
   string site_description = 2;
   string site_tagline = 3;
+  // The locale read, which names the default locale when the request named
+  // none.
+  string locale = 4;
 }
 
 message AdminAuthServiceGetTenantAdminInvitationStateRequest {
@@ -361,17 +370,25 @@ message AdminAuthServiceAcceptTenantAdminInvitationResponse {
   bool account_created = 2;
 }
 
+// Writes one locale's site copy whole. A field of nothing but white space is
+// stored empty, and leaving all three empty deletes the locale's copy, so its
+// readers are served the copy GetTenant falls back to.
 message AdminAuthServiceUpdateTenantConfigRequest {
   publira.types.v1.TenantContext tenant = 1;
   string copyright_text = 2;
   string site_description = 3;
   string site_tagline = 4;
+  // The locale the copy is written in. Empty means the tenant's default
+  // locale; a locale the tenant does not offer is invalid_argument.
+  string locale = 5;
 }
 
 message AdminAuthServiceUpdateTenantConfigResponse {
   string copyright_text = 1;
   string site_description = 2;
   string site_tagline = 3;
+  // The locale written.
+  string locale = 4;
 }
 
 message AdminAuthServiceRequestEmailChangeRequest {

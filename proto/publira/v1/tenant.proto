@@ -8,6 +8,11 @@ import "publira/types/v1/types.proto";
 
 message GetTenantRequest {
   publira.types.v1.TenantContext tenant = 1;
+  // The reader's locale. GetTenantResponse.copyright_text, site_description,
+  // and site_tagline are read from the tenant's copy in this locale, else in
+  // its default locale, else its oldest. Empty means the tenant's default
+  // locale.
+  string locale = 2;
 }
 
 message GetTenantLegalPagesRequest {
@@ -47,6 +52,9 @@ message GetTenantResponse {
   string tenant_public_id = 1;
   string tenant_name = 2;
   string tenant_domain = 3;
+  // The site copy of the locale GetTenantRequest.locale resolves to, taken
+  // together from one locale's copy: a field that copy leaves empty is empty
+  // here rather than filled in from another locale.
   string copyright_text = 4;
   string site_description = 5;
   string site_tagline = 6;

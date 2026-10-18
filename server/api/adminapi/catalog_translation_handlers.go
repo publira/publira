@@ -20,11 +20,12 @@ import (
 	"github.com/publira/publira/server/internal/rpcerrors"
 )
 
-// catalogLocale is the locale a write of a series or episode title names: the
-// tenant's default for an empty value, and otherwise a locale the tenant
-// offers. A title in a language the site does not serve could be stored but
-// never shown, so it is refused rather than kept out of sight.
-func catalogLocale(raw string, tenant dbmodels.Tenant) (string, error) {
+// offeredLocale is the locale a write of a translation names, whether a series
+// or episode title or the site copy: the tenant's default for an empty value,
+// and otherwise a locale the tenant offers. Copy in a language the site does
+// not serve could be stored but never shown, so it is refused rather than kept
+// out of sight.
+func offeredLocale(raw string, tenant dbmodels.Tenant) (string, error) {
 	if strings.TrimSpace(raw) == "" {
 		return tenant.DefaultLocale, nil
 	}

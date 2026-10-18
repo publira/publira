@@ -101,33 +101,18 @@ func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Ten
 }
 
 const CreateTenantConfig = `-- name: CreateTenantConfig :one
-INSERT INTO tenant_config (tenant_id, copyright_text, site_description, site_tagline)
-VALUES ($1, $2, $3, $4)
-RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
+INSERT INTO tenant_config (tenant_id)
+VALUES ($1)
+RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
 `
 
-type CreateTenantConfigParams struct {
-	TenantID        uuid.UUID      `json:"tenant_id"`
-	CopyrightText   sql.NullString `json:"copyright_text"`
-	SiteDescription sql.NullString `json:"site_description"`
-	SiteTagline     sql.NullString `json:"site_tagline"`
-}
-
-func (q *Queries) CreateTenantConfig(ctx context.Context, arg CreateTenantConfigParams) (TenantConfig, error) {
-	row := q.db.QueryRowContext(ctx, CreateTenantConfig,
-		arg.TenantID,
-		arg.CopyrightText,
-		arg.SiteDescription,
-		arg.SiteTagline,
-	)
+func (q *Queries) CreateTenantConfig(ctx context.Context, tenantID uuid.UUID) (TenantConfig, error) {
+	row := q.db.QueryRowContext(ctx, CreateTenantConfig, tenantID)
 	var i TenantConfig
 	err := row.Scan(
 		&i.TenantID,
-		&i.CopyrightText,
-		&i.SiteDescription,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.SiteTagline,
 		&i.CommentMode,
 		&i.CommentAutoHideReportThreshold,
 		&i.EpisodeRatingMode,
@@ -305,7 +290,7 @@ func (q *Queries) GetTenantByUserID(ctx context.Context, id uuid.UUID) (GetTenan
 }
 
 const GetTenantConfigByTenantID = `-- name: GetTenantConfigByTenantID :one
-SELECT tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
+SELECT tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
 FROM tenant_config
 WHERE tenant_id = $1
 LIMIT 1
@@ -316,11 +301,8 @@ func (q *Queries) GetTenantConfigByTenantID(ctx context.Context, tenantID uuid.U
 	var i TenantConfig
 	err := row.Scan(
 		&i.TenantID,
-		&i.CopyrightText,
-		&i.SiteDescription,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.SiteTagline,
 		&i.CommentMode,
 		&i.CommentAutoHideReportThreshold,
 		&i.EpisodeRatingMode,
@@ -599,7 +581,7 @@ func (q *Queries) ListTenantsDesc(ctx context.Context, arg ListTenantsDescParams
 }
 
 const LockTenantConfigByTenantID = `-- name: LockTenantConfigByTenantID :one
-SELECT tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
+SELECT tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
 FROM tenant_config
 WHERE tenant_id = $1
 FOR UPDATE
@@ -613,11 +595,8 @@ func (q *Queries) LockTenantConfigByTenantID(ctx context.Context, tenantID uuid.
 	var i TenantConfig
 	err := row.Scan(
 		&i.TenantID,
-		&i.CopyrightText,
-		&i.SiteDescription,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.SiteTagline,
 		&i.CommentMode,
 		&i.CommentAutoHideReportThreshold,
 		&i.EpisodeRatingMode,
@@ -669,54 +648,6 @@ SELECT pg_advisory_xact_lock(hashtextextended('tenant_hosts', 0))
 func (q *Queries) LockTenantHosts(ctx context.Context) error {
 	_, err := q.db.ExecContext(ctx, LockTenantHosts)
 	return err
-}
-
-const UpdateTenantConfig = `-- name: UpdateTenantConfig :one
-UPDATE tenant_config
-SET copyright_text = $2, site_description = $3, site_tagline = $4, updated_at = NOW()
-WHERE tenant_id = $1
-RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
-`
-
-type UpdateTenantConfigParams struct {
-	TenantID        uuid.UUID      `json:"tenant_id"`
-	CopyrightText   sql.NullString `json:"copyright_text"`
-	SiteDescription sql.NullString `json:"site_description"`
-	SiteTagline     sql.NullString `json:"site_tagline"`
-}
-
-func (q *Queries) UpdateTenantConfig(ctx context.Context, arg UpdateTenantConfigParams) (TenantConfig, error) {
-	row := q.db.QueryRowContext(ctx, UpdateTenantConfig,
-		arg.TenantID,
-		arg.CopyrightText,
-		arg.SiteDescription,
-		arg.SiteTagline,
-	)
-	var i TenantConfig
-	err := row.Scan(
-		&i.TenantID,
-		&i.CopyrightText,
-		&i.SiteDescription,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.SiteTagline,
-		&i.CommentMode,
-		&i.CommentAutoHideReportThreshold,
-		&i.EpisodeRatingMode,
-		&i.AgeVerification,
-		&i.PurchaseAvailability,
-		&i.AppStoreUrl,
-		&i.GooglePlayUrl,
-		&i.TermsPageID,
-		&i.PrivacyPageID,
-		&i.AndroidApplicationID,
-		pq.Array(&i.AndroidSha256CertFingerprints),
-		&i.IosTeamID,
-		&i.IosBundleIdentifier,
-		&i.AppPurchaseRoute,
-		&i.ReaderIconPolicy,
-	)
-	return i, err
 }
 
 const UpdateTenantDefaultLocale = `-- name: UpdateTenantDefaultLocale :one
@@ -868,7 +799,7 @@ VALUES ($1, $2)
 ON CONFLICT (tenant_id) DO UPDATE
 SET age_verification = EXCLUDED.age_verification,
     updated_at = NOW()
-RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
+RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
 `
 
 type UpsertTenantAgeVerificationParams struct {
@@ -876,19 +807,14 @@ type UpsertTenantAgeVerificationParams struct {
 	AgeVerification string    `json:"age_verification"`
 }
 
-// An upsert for the reason UpsertTenantCommentSettings gives: deciding to
-// verify ages is not a decision a tenant should have to fill in its site copy
-// to reach.
+// An upsert for the reason UpsertTenantCommentSettings gives.
 func (q *Queries) UpsertTenantAgeVerification(ctx context.Context, arg UpsertTenantAgeVerificationParams) (TenantConfig, error) {
 	row := q.db.QueryRowContext(ctx, UpsertTenantAgeVerification, arg.TenantID, arg.AgeVerification)
 	var i TenantConfig
 	err := row.Scan(
 		&i.TenantID,
-		&i.CopyrightText,
-		&i.SiteDescription,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.SiteTagline,
 		&i.CommentMode,
 		&i.CommentAutoHideReportThreshold,
 		&i.EpisodeRatingMode,
@@ -937,7 +863,7 @@ ON CONFLICT (tenant_id) DO UPDATE
 SET comment_mode = EXCLUDED.comment_mode,
     comment_auto_hide_report_threshold = EXCLUDED.comment_auto_hide_report_threshold,
     updated_at = NOW()
-RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
+RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
 `
 
 type UpsertTenantCommentSettingsParams struct {
@@ -948,7 +874,7 @@ type UpsertTenantCommentSettingsParams struct {
 
 // The settings screen can save what the tenant has decided about commenting
 // for a tenant whose config row does not exist yet, so both columns are
-// written without disturbing the site copy columns UpdateTenantConfig owns.
+// written without disturbing the columns the other settings cards own.
 //
 // The mode and the automatic removal threshold are written together because
 // the console offers them as one card: saving them separately would leave a
@@ -959,11 +885,8 @@ func (q *Queries) UpsertTenantCommentSettings(ctx context.Context, arg UpsertTen
 	var i TenantConfig
 	err := row.Scan(
 		&i.TenantID,
-		&i.CopyrightText,
-		&i.SiteDescription,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.SiteTagline,
 		&i.CommentMode,
 		&i.CommentAutoHideReportThreshold,
 		&i.EpisodeRatingMode,
@@ -994,7 +917,7 @@ ON CONFLICT (tenant_id) DO UPDATE
 SET terms_page_id = EXCLUDED.terms_page_id,
     privacy_page_id = EXCLUDED.privacy_page_id,
     updated_at = NOW()
-RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
+RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
 `
 
 type UpsertTenantLegalPagesParams struct {
@@ -1010,11 +933,8 @@ func (q *Queries) UpsertTenantLegalPages(ctx context.Context, arg UpsertTenantLe
 	var i TenantConfig
 	err := row.Scan(
 		&i.TenantID,
-		&i.CopyrightText,
-		&i.SiteDescription,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.SiteTagline,
 		&i.CommentMode,
 		&i.CommentAutoHideReportThreshold,
 		&i.EpisodeRatingMode,
@@ -1055,7 +975,7 @@ SET android_application_id = EXCLUDED.android_application_id,
     ios_team_id = EXCLUDED.ios_team_id,
     ios_bundle_identifier = EXCLUDED.ios_bundle_identifier,
     updated_at = NOW()
-RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
+RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
 `
 
 type UpsertTenantMobileAppAssociationParams struct {
@@ -1080,11 +1000,8 @@ func (q *Queries) UpsertTenantMobileAppAssociation(ctx context.Context, arg Upse
 	var i TenantConfig
 	err := row.Scan(
 		&i.TenantID,
-		&i.CopyrightText,
-		&i.SiteDescription,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.SiteTagline,
 		&i.CommentMode,
 		&i.CommentAutoHideReportThreshold,
 		&i.EpisodeRatingMode,
@@ -1117,7 +1034,7 @@ SET purchase_availability = EXCLUDED.purchase_availability,
     app_store_url = EXCLUDED.app_store_url,
     google_play_url = EXCLUDED.google_play_url,
     updated_at = NOW()
-RETURNING tenant_id, copyright_text, site_description, created_at, updated_at, site_tagline, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
+RETURNING tenant_id, created_at, updated_at, comment_mode, comment_auto_hide_report_threshold, episode_rating_mode, age_verification, purchase_availability, app_store_url, google_play_url, terms_page_id, privacy_page_id, android_application_id, android_sha256_cert_fingerprints, ios_team_id, ios_bundle_identifier, app_purchase_route, reader_icon_policy
 `
 
 type UpsertTenantPurchaseSettingsParams struct {
@@ -1140,11 +1057,8 @@ func (q *Queries) UpsertTenantPurchaseSettings(ctx context.Context, arg UpsertTe
 	var i TenantConfig
 	err := row.Scan(
 		&i.TenantID,
-		&i.CopyrightText,
-		&i.SiteDescription,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.SiteTagline,
 		&i.CommentMode,
 		&i.CommentAutoHideReportThreshold,
 		&i.EpisodeRatingMode,

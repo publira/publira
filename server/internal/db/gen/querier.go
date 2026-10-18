@@ -351,7 +351,7 @@ type Querier interface {
 	// either: the platform default is applied explicitly.
 	CreateTenant(ctx context.Context, arg CreateTenantParams) (Tenant, error)
 	CreateTenantAdminInvitation(ctx context.Context, arg CreateTenantAdminInvitationParams) (TenantAdminInvitation, error)
-	CreateTenantConfig(ctx context.Context, arg CreateTenantConfigParams) (TenantConfig, error)
+	CreateTenantConfig(ctx context.Context, tenantID uuid.UUID) (TenantConfig, error)
 	CreateTenantImage(ctx context.Context, arg CreateTenantImageParams) (TenantImage, error)
 	CreateTenantImageVariant(ctx context.Context, arg CreateTenantImageVariantParams) (TenantImageVariant, error)
 	CreateTenantUserRole(ctx context.Context, arg CreateTenantUserRoleParams) (TenantUserRole, error)
@@ -433,6 +433,9 @@ type Querier interface {
 	DeleteSeriesImageVariantsByType(ctx context.Context, arg DeleteSeriesImageVariantsByTypeParams) (int64, error)
 	DeleteSeriesTagsBySeriesID(ctx context.Context, seriesID uuid.UUID) error
 	DeleteSeriesTranslation(ctx context.Context, arg DeleteSeriesTranslationParams) (int64, error)
+	// A locale whose copy is cleared has no row, so its readers are served the
+	// copy tenant_config_translation_for falls back to.
+	DeleteTenantConfigTranslation(ctx context.Context, arg DeleteTenantConfigTranslationParams) (int64, error)
 	DeleteTenantEmailRejectionEntries(ctx context.Context, tenantID uuid.UUID) error
 	DeleteTenantFcmConfig(ctx context.Context, tenantID uuid.UUID) (int64, error)
 	DeleteTenantImage(ctx context.Context, arg DeleteTenantImageParams) error
@@ -955,6 +958,12 @@ type Querier interface {
 	GetTenantByUserID(ctx context.Context, id uuid.UUID) (GetTenantByUserIDRow, error)
 	GetTenantCommunityLimitOverrides(ctx context.Context, tenantID uuid.UUID) (TenantCommunityLimitOverride, error)
 	GetTenantConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantConfig, error)
+	// The copy written in exactly locale, which is what the console edits: no
+	// other locale's stands in for it.
+	GetTenantConfigTranslation(ctx context.Context, arg GetTenantConfigTranslationParams) (TenantConfigTranslation, error)
+	// The copy a reader in locale is served, picked by
+	// tenant_config_translation_for. No row when the tenant has written none.
+	GetTenantConfigTranslationFor(ctx context.Context, arg GetTenantConfigTranslationForParams) (TenantConfigTranslation, error)
 	// Returns no rows for a tenant that has saved nothing, which reads as the
 	// disposable-domain list off.
 	GetTenantEmailRejectionSettings(ctx context.Context, tenantID uuid.UUID) (TenantEmailRejectionSetting, error)
@@ -2561,6 +2570,11 @@ type Querier interface {
 	// store that can sell: the store settings and the app association. A tenant
 	// with no row has nothing to lock and cannot be on the store route either.
 	LockTenantConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantConfig, error)
+	// Serializes a save of one locale's copy against another save of the same
+	// locale, so a save skipped as unchanged answers what the row still holds.
+	// A locale with no row has nothing to lock, and its first save inserts it
+	// through the upsert.
+	LockTenantConfigTranslation(ctx context.Context, arg LockTenantConfigTranslationParams) (TenantConfigTranslation, error)
 	// Serializes, for the rest of the caller's transaction, a change of the
 	// currency a tenant sells in against every write of a price checked against
 	// it, which takes LockTenantCurrencyShared. The check and the write then see
@@ -3247,7 +3261,6 @@ type Querier interface {
 	// address again passes the role that invitation asks for.
 	UpdateTenantAdminInvitationForResend(ctx context.Context, arg UpdateTenantAdminInvitationForResendParams) (TenantAdminInvitation, error)
 	UpdateTenantCommunityLimitOverrides(ctx context.Context, arg UpdateTenantCommunityLimitOverridesParams) (TenantCommunityLimitOverride, error)
-	UpdateTenantConfig(ctx context.Context, arg UpdateTenantConfigParams) (TenantConfig, error)
 	// The default and the set it belongs to are written in one statement, so the
 	// CHECK that the set holds the default sees them together and neither can be
 	// saved apart from the other. No row when the tenant already has both, for the
@@ -3302,9 +3315,7 @@ type Querier interface {
 	// tag saved as "Fantasy" — the slug says they are the same tag, and the name
 	// the tenant first wrote is the one every other series keeps showing.
 	UpsertTagForTenant(ctx context.Context, arg UpsertTagForTenantParams) (Tag, error)
-	// An upsert for the reason UpsertTenantCommentSettings gives: deciding to
-	// verify ages is not a decision a tenant should have to fill in its site copy
-	// to reach.
+	// An upsert for the reason UpsertTenantCommentSettings gives.
 	UpsertTenantAgeVerification(ctx context.Context, arg UpsertTenantAgeVerificationParams) (TenantConfig, error)
 	// An upsert for the reason UpsertTenantCommentSettings gives.
 	UpsertTenantAppPurchaseRoute(ctx context.Context, arg UpsertTenantAppPurchaseRouteParams) (string, error)
@@ -3312,13 +3323,14 @@ type Querier interface {
 	UpsertTenantAppleSignInConfig(ctx context.Context, arg UpsertTenantAppleSignInConfigParams) (TenantAppleSignInConfig, error)
 	// The settings screen can save what the tenant has decided about commenting
 	// for a tenant whose config row does not exist yet, so both columns are
-	// written without disturbing the site copy columns UpdateTenantConfig owns.
+	// written without disturbing the columns the other settings cards own.
 	//
 	// The mode and the automatic removal threshold are written together because
 	// the console offers them as one card: saving them separately would leave a
 	// tenant who changed both with one of the two stored when the second write
 	// failed.
 	UpsertTenantCommentSettings(ctx context.Context, arg UpsertTenantCommentSettingsParams) (TenantConfig, error)
+	UpsertTenantConfigTranslation(ctx context.Context, arg UpsertTenantConfigTranslationParams) (TenantConfigTranslation, error)
 	UpsertTenantEmailRejectionSettings(ctx context.Context, arg UpsertTenantEmailRejectionSettingsParams) (TenantEmailRejectionSetting, error)
 	UpsertTenantFcmConfig(ctx context.Context, arg UpsertTenantFcmConfigParams) (TenantFcmConfig, error)
 	UpsertTenantGooglePlayConfig(ctx context.Context, arg UpsertTenantGooglePlayConfigParams) (TenantGooglePlayConfig, error)

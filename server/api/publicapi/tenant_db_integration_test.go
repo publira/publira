@@ -28,10 +28,10 @@ func seedTenantBranding(t *testing.T, env *publicDBEnv, tenant testutil.Tenant, 
 	defer cancel()
 
 	if _, err := env.PG.DB.ExecContext(ctx, `
-		INSERT INTO tenant_config (tenant_id, copyright_text, site_description, site_tagline)
-		VALUES ($1, $2, $3, $4)
-	`, tenant.ID, copyright, description, tagline); err != nil {
-		t.Fatalf("insert tenant_config for %s: %v", tenant.PublicID, err)
+		INSERT INTO tenant_config_translations (id, tenant_id, locale, copyright_text, site_description, site_tagline)
+		VALUES (uuidv7(), $1, $2, $3, $4, $5)
+	`, tenant.ID, tenant.DefaultLocale, copyright, description, tagline); err != nil {
+		t.Fatalf("insert tenant_config_translations for %s: %v", tenant.PublicID, err)
 	}
 	if _, err := env.PG.DB.ExecContext(ctx, `
 		INSERT INTO tenant_themes (tenant_id, primary_color)
@@ -70,6 +70,49 @@ func TestDBGetTenantReturnsItsOwnBranding(t *testing.T) {
 	}
 	if resp.DefaultLocale != first.DefaultLocale {
 		t.Fatalf("default_locale = %q, want the stored value %q", resp.DefaultLocale, first.DefaultLocale)
+	}
+}
+
+// A reader in a locale the tenant wrote no copy in is served the copy of the
+// tenant's default locale, and a reader in a locale it did write is served
+// that one.
+func TestDBGetTenantReadsTheSiteCopyInTheReadersLocale(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	seedTenantBranding(t, env, tenant, "© Hoshi Shobo", "Comics from Hoshi Shobo", "Read tonight", "#111111")
+
+	read := func(locale string) *publirav1.GetTenantResponse {
+		t.Helper()
+		resp, err := env.tenantAPIClient().GetTenant(context.Background(), &publirav1.GetTenantRequest{
+			Tenant: tenantContext(tenant),
+			Locale: locale,
+		})
+		if err != nil {
+			t.Fatalf("GetTenant(%q): %v", locale, err)
+		}
+		return resp
+	}
+
+	if got := read("en"); got.CopyrightText != "© Hoshi Shobo" || got.SiteDescription != "Comics from Hoshi Shobo" || got.SiteTagline != "Read tonight" {
+		t.Fatalf("en with only %s copy = %q / %q / %q, want the %s copy", tenant.DefaultLocale, got.CopyrightText, got.SiteDescription, got.SiteTagline, tenant.DefaultLocale)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if _, err := env.PG.DB.ExecContext(ctx, `
+		INSERT INTO tenant_config_translations (id, tenant_id, locale, copyright_text)
+		VALUES (uuidv7(), $1, 'en', '© Star Books')
+	`, tenant.ID); err != nil {
+		t.Fatalf("insert the en copy: %v", err)
+	}
+
+	// The en copy is taken whole: the fields it leaves empty are not filled in
+	// from the default locale's.
+	if got := read("en"); got.CopyrightText != "© Star Books" || got.SiteDescription != "" || got.SiteTagline != "" {
+		t.Fatalf("en = %q / %q / %q, want the en copy alone", got.CopyrightText, got.SiteDescription, got.SiteTagline)
+	}
+	if got := read(""); got.CopyrightText != "© Hoshi Shobo" {
+		t.Fatalf("no locale = %q, want the %s copy", got.CopyrightText, tenant.DefaultLocale)
 	}
 }
 
