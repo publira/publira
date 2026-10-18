@@ -6,7 +6,10 @@ import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
 
-import { CampaignBannerCarousel } from "./campaign-banner-carousel";
+import {
+  CampaignBannerCarousel,
+  CampaignBannerSlide,
+} from "./campaign-banner-carousel";
 
 /**
  * One banner, drawn in the ratio the console labels as the band's: the
@@ -51,7 +54,8 @@ const CampaignBannerLink = ({
  * it, because the band keeps the ratio its image was cropped to and a banner
  * the width of the column would stand taller than the work the page opens
  * with. In a strip that leaves room for the neighbours to show at both edges,
- * which is what says there is more than one.
+ * which is what says there is more than one; the strip runs on from the last
+ * banner into the first, so a neighbour shows on both sides of every one.
  */
 export const CampaignBannersSection = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
@@ -60,8 +64,8 @@ export const CampaignBannersSection = async () => {
     getMessagesFor(locale),
   ]);
 
-  const [onlyBanner, ...rest] = banners;
-  if (!onlyBanner) {
+  const [firstBanner, ...rest] = banners;
+  if (!firstBanner) {
     return null;
   }
 
@@ -72,26 +76,29 @@ export const CampaignBannersSection = async () => {
     return (
       <section aria-label={ariaLabel}>
         <div className="mx-auto md:w-2/3">
-          <CampaignBannerLink alt={alt} banner={onlyBanner} first />
+          <CampaignBannerLink alt={alt} banner={firstBanner} first />
         </div>
       </section>
     );
   }
 
+  const lastBanner = rest.at(-1) ?? firstBanner;
+
   return (
     <CampaignBannerCarousel
       aria-label={ariaLabel}
       count={banners.length}
+      first={
+        <CampaignBannerLink alt={alt} banner={firstBanner} first={false} />
+      }
+      last={<CampaignBannerLink alt={alt} banner={lastBanner} first={false} />}
       nextLabel={t("storefront.top.campaign_banners_next")}
       previousLabel={t("storefront.top.campaign_banners_previous")}
     >
       {banners.map((banner, index) => (
-        <li
-          className="w-full shrink-0 snap-center md:w-2/3 md:first:ms-[calc(100%/6)] md:last:me-[calc(100%/6)]"
-          key={banner.publicId}
-        >
+        <CampaignBannerSlide key={banner.publicId}>
           <CampaignBannerLink alt={alt} banner={banner} first={index === 0} />
-        </li>
+        </CampaignBannerSlide>
       ))}
     </CampaignBannerCarousel>
   );

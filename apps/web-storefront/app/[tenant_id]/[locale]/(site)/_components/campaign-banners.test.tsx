@@ -2,6 +2,7 @@
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps, ReactNode } from "react";
+import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { CampaignBannerItem } from "#lib/campaign-banners";
@@ -46,8 +47,13 @@ vi.mock("next/link", () => ({
 
 afterEach(cleanup);
 
+/** jsdom implements no scrolling; the strip's own calls are what is asserted. */
+const scrollTo = vi.fn();
+
 beforeEach(() => {
   mockListCampaignBanners.mockReset();
+  scrollTo.mockReset();
+  HTMLElement.prototype.scrollTo = scrollTo;
 });
 
 const banner = (
@@ -136,7 +142,11 @@ describe("CampaignBannersSection", () => {
   });
 });
 
-/** jsdom lays nothing out, so the strip is given one slide per view. */
+/**
+ * jsdom lays nothing out, so the strip is given one slide per view: the copy
+ * of the last banner at 0, the three banners at 300, 600, and 900, and the
+ * copy of the first at 1200.
+ */
 const layOut = (track: HTMLElement, slideWidth: number) => {
   Object.defineProperty(track, "clientWidth", { value: slideWidth });
   for (const [index, slide] of [...track.children].entries()) {
@@ -147,57 +157,167 @@ const layOut = (track: HTMLElement, slideWidth: number) => {
   }
 };
 
+const threeBanners = () => [
+  banner("BANNER01"),
+  banner("BANNER02"),
+  banner("BANNER03"),
+];
+
 const renderStrip = async () => {
-  await renderSection([
-    banner("BANNER01"),
-    banner("BANNER02"),
-    banner("BANNER03"),
-  ]);
+  await renderSection(threeBanners());
   const track = screen.getByRole("list");
   layOut(track, 300);
-  const scrollTo = vi.fn();
-  track.scrollTo = scrollTo;
-  return { scrollTo, track };
+  return { track };
 };
 
 describe("CampaignBannerCarousel", () => {
-  it("opens on the first banner, with nothing before it to go back to", async () => {
-    await renderStrip();
+  // Until the page has run its script, the strip cannot carry a reader past
+  // either end, so the markup the server sends is the plain list, opened on
+  // the first banner, with no copy for the first screen to show instead.
+  it("sends the plain strip from the server, with no copy at either end", async () => {
+    mockListCampaignBanners.mockResolvedValueOnce(threeBanners());
+    const markup = renderToString(await CampaignBannersSection());
 
+    // `<li ` rather than `<li`, which a preloaded image's `<link>` matches too.
+    expect(markup.match(/<li[\s>]/gu)).toHaveLength(3);
+    expect(markup).not.toContain("inert");
+  });
+
+  it("puts a copy at each end that a screen reader and the tab order skip", async () => {
+    const { track } = await renderStrip();
+
+    const copies = track.querySelectorAll("li[inert]");
+    expect(copies).toHaveLength(2);
+    for (const copy of copies) {
+      expect(copy.getAttribute("aria-hidden")).toBe("true");
+    }
+    expect(copies[0]?.querySelector("a")?.getAttribute("href")).toBe(
+      "/en/series/BANNER03"
+    );
+    expect(copies[1]?.querySelector("a")?.getAttribute("href")).toBe(
+      "/en/series/BANNER01"
+    );
+    // The copy before the first banner pushed it along, so the strip is put
+    // back onto it at once rather than gliding there.
+    expect(scrollTo).toHaveBeenCalledWith(
+      expect.objectContaining({ behavior: "instant" })
+    );
     expect(screen.getByText("1 / 3")).toBeDefined();
-    expect(
-      screen
-        .getByRole("button", { name: "Previous campaign" })
-        .hasAttribute("disabled")
-    ).toBe(true);
   });
 
   it("scrolls the strip to the next banner rather than keeping a position of its own", async () => {
-    const { scrollTo } = await renderStrip();
+    const { track } = await renderStrip();
+    track.scrollLeft = 300;
+    scrollTo.mockClear();
 
     fireEvent.click(screen.getByRole("button", { name: "Next campaign" }));
 
-    expect(scrollTo).toHaveBeenCalledWith({ left: 300 });
+    expect(scrollTo).toHaveBeenCalledWith({ left: 600 });
     // The counter follows the scroll, not the press.
     expect(screen.getByText("1 / 3")).toBeDefined();
   });
 
-  it("reads which banner is current back off the scroll", async () => {
+  // A press lands while the glide of the one before it is still under way, so
+  // aiming from where the strip is would aim at the same banner twice.
+  it("moves on again for a second press made before the strip comes to rest", async () => {
+    const { track } = await renderStrip();
+    track.scrollLeft = 300;
+    scrollTo.mockClear();
+
+    const next = screen.getByRole("button", { name: "Next campaign" });
+    fireEvent.click(next);
+    fireEvent.click(next);
+
+    expect(scrollTo).toHaveBeenLastCalledWith({ left: 900 });
+  });
+
+  // The jump off a copy ends a scroll of its own, and that end can arrive
+  // after the next press has already aimed the strip somewhere else.
+  it("keeps aiming where a press aimed it when the strip rests short of there", async () => {
+    const { track } = await renderStrip();
+    track.scrollLeft = 300;
+    scrollTo.mockClear();
+
+    const next = screen.getByRole("button", { name: "Next campaign" });
+    fireEvent.click(next);
+    fireEvent(track, new Event("scrollend"));
+    fireEvent.click(next);
+
+    expect(scrollTo).toHaveBeenLastCalledWith({ left: 900 });
+  });
+
+  it("forgets where a press aimed it once the reader takes the strip in hand", async () => {
+    const { track } = await renderStrip();
+    track.scrollLeft = 300;
+    scrollTo.mockClear();
+
+    const next = screen.getByRole("button", { name: "Next campaign" });
+    fireEvent.click(next);
+    fireEvent.pointerDown(track);
+    fireEvent.click(next);
+
+    expect(scrollTo).toHaveBeenLastCalledWith({ left: 600 });
+  });
+
+  it("carries presses on past the last banner into the first", async () => {
+    const { track } = await renderStrip();
+    track.scrollLeft = 900;
+    scrollTo.mockClear();
+
+    const next = screen.getByRole("button", { name: "Next campaign" });
+    fireEvent.click(next);
+    fireEvent.click(next);
+
+    // Headed for the copy of the first, the strip is put onto the first
+    // itself at the same point, and the second press is aimed from there.
+    expect(scrollTo.mock.calls).toEqual([
+      [{ left: 1200 }],
+      [{ behavior: "instant", left: 0 }],
+      [{ left: 600 }],
+    ]);
+  });
+
+  it("goes back from the first banner onto the copy of the last", async () => {
+    const { track } = await renderStrip();
+    track.scrollLeft = 300;
+    scrollTo.mockClear();
+
+    fireEvent.click(screen.getByRole("button", { name: "Previous campaign" }));
+
+    expect(scrollTo).toHaveBeenCalledWith({ left: 0 });
+  });
+
+  it("reads which banner is current back off the scroll, a copy included", async () => {
     const { track } = await renderStrip();
 
+    track.scrollLeft = 900;
+    fireEvent.scroll(track);
+    expect(screen.getByText("3 / 3")).toBeDefined();
+
+    track.scrollLeft = 1200;
+    fireEvent.scroll(track);
+    expect(screen.getByText("1 / 3")).toBeDefined();
+  });
+
+  it("moves a strip that came to rest on a copy onto the banner it copies", async () => {
+    const { track } = await renderStrip();
+    track.scrollLeft = 1200;
+    fireEvent.scroll(track);
+    scrollTo.mockClear();
+
+    fireEvent(track, new Event("scrollend"));
+
+    expect(scrollTo).toHaveBeenCalledWith({ behavior: "instant", left: 300 });
+  });
+
+  it("leaves a strip that came to rest on a banner where it is", async () => {
+    const { track } = await renderStrip();
     track.scrollLeft = 600;
     fireEvent.scroll(track);
+    scrollTo.mockClear();
 
-    expect(screen.getByText("3 / 3")).toBeDefined();
-    expect(
-      screen
-        .getByRole("button", { name: "Next campaign" })
-        .hasAttribute("disabled")
-    ).toBe(true);
-    expect(
-      screen
-        .getByRole("button", { name: "Previous campaign" })
-        .hasAttribute("disabled")
-    ).toBe(false);
+    fireEvent(track, new Event("scrollend"));
+
+    expect(scrollTo).not.toHaveBeenCalled();
   });
 });
