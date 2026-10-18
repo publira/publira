@@ -1378,6 +1378,10 @@ class HttpCatalogRepository implements CatalogRepository {
       // The wire format omits an empty string, which is an episode no window
       // holds.
       freeUntil: DateTime.tryParse(episode.freeUntil.trim())?.toLocal(),
+      eyeCatchVariants: _parseEyeCatchVariants(
+        episode.eyeCatchImageVariants,
+        path,
+      ),
     );
   }
 

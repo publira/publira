@@ -344,6 +344,7 @@ class EpisodeItem {
     this.purchaseSurface = EpisodePurchaseSurface.all,
     this.ratingCount = 0,
     this.freeUntil,
+    this.eyeCatchVariants = const [],
   });
 
   /// Public id (`public_id`), used as the route parameter.
@@ -384,6 +385,11 @@ class EpisodeItem {
 
   /// Whether a free window still holds the episode open at [now].
   bool isFreeAt(DateTime now) => freeUntil?.isAfter(now) ?? false;
+
+  /// Renditions of the episode's own eye-catch, which only the episodes
+  /// `GetSeriesDetail` lists carry. Empty on an episode with none and on
+  /// every other read, where the series' cover stands in for it.
+  final List<EyeCatchVariant> eyeCatchVariants;
 }
 
 /// A series' wait-for-free rule as a reader is told it: a signed-in reader may

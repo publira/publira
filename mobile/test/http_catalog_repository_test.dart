@@ -688,6 +688,32 @@ void main() {
     ]);
   });
 
+  test("getSeries carries each episode's own eye-catch", () async {
+    final detail = await catalog.getSeries(
+      ConnectFixtureServer.seedSeriesId,
+      locale: 'en',
+    );
+
+    final episodes = {
+      for (final episode in detail!.episodes) episode.id: episode,
+    };
+    // An episode without artwork of its own is read as carrying none, and the
+    // series' cover stands in for it on screen.
+    expect(
+      episodes[ConnectFixtureServer.seedEpisodeId]!.eyeCatchVariants,
+      isEmpty,
+    );
+    final variants =
+        episodes[ConnectFixtureServer.paidEpisodeId]!.eyeCatchVariants;
+    expect(variants.map((variant) => variant.url.toString()), [
+      for (final width in [400, 800])
+        '${server.baseUrl}/images/episode-eye-catches/'
+            '${ConnectFixtureServer.paidEpisodeImageId}/landscape/$width',
+    ]);
+    expect(variants.first.variantType, 'landscape');
+    expect((variants.first.width, variants.first.height), (400, 225));
+  });
+
   test('listSeries carries status, schedule, and genres', () async {
     final items = (await catalog.listSeries(locale: 'en')).series;
 
