@@ -1215,6 +1215,7 @@ Map<String, EpisodeDetail> fixtureEpisodes({
         episode: episode,
         seriesId: item.id,
         seriesTitle: item.title,
+        seriesEyeCatchVariants: item.eyeCatchVariants,
         access: access,
         entitlementSource: entitlementSource,
         previousEpisode: index == 0

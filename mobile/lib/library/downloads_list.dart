@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:publira/auth/auth_scope.dart';
+import 'package:publira/catalog/episode_cover.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/layout/window_width.dart';
@@ -297,6 +298,15 @@ class _DownloadTile extends StatelessWidget {
     final until = offlineReadableUntil(episode);
     return ListTile(
       key: ValueKey('downloads-episode-${detail.episode.id}'),
+      leading: EpisodeCover(
+        episodeId: detail.episode.id,
+        variants: detail.episode.eyeCatchVariants,
+        seriesVariants: detail.seriesEyeCatchVariants,
+        // The saved copy keeps no headers, which name the tenant this build
+        // was pointed at rather than anything the API said; the public ones
+        // the reader's icon is fetched with are the same.
+        requestHeaders: AuthScope.of(context).imageRequestHeaders,
+      ),
       title: AutospacedText(
         detail.episode.title,
         locale: detail.episode.textLocale,

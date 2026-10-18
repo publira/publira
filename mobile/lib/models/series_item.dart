@@ -386,9 +386,10 @@ class EpisodeItem {
   /// Whether a free window still holds the episode open at [now].
   bool isFreeAt(DateTime now) => freeUntil?.isAfter(now) ?? false;
 
-  /// Renditions of the episode's own eye-catch, which only the episodes
-  /// `GetSeriesDetail` lists carry. Empty on an episode with none and on
-  /// every other read, where the series' cover stands in for it.
+  /// Renditions of the episode's own eye-catch, which the episodes
+  /// `GetSeriesDetail` lists, the episode `GetEpisodeDetail` answers, and the
+  /// reader's own lists of episodes carry. Empty on an episode with none and
+  /// on every other read, where the series' cover stands in for it.
   final List<EyeCatchVariant> eyeCatchVariants;
 }
 

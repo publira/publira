@@ -1578,6 +1578,45 @@ void main() {
     expect(detail.images.first.height, 1200);
   });
 
+  test(
+    "getEpisode carries the episode's own eye-catch and its series'",
+    () async {
+      server.episodeResponse = pb.GetEpisodeDetailResponse(
+        episode: pb.Episode(
+          publicId: ConnectFixtureServer.paidEpisodeId,
+          title: 'Seed Episode 001-10',
+          orderIndex: 10,
+          price: 500,
+          eyeCatchImageVariants:
+              ConnectFixtureServer.paidEpisodeEyeCatchVariants(),
+        ),
+        series: pb.Series(
+          publicId: ConnectFixtureServer.seedSeriesId,
+          title: ConnectFixtureServer.seedSeriesTitle,
+          eyeCatchImageVariants: ConnectFixtureServer.seedEyeCatchVariants(),
+        ),
+        access: pb.EpisodeAccess.EPISODE_ACCESS_LOCKED,
+      );
+
+      final detail = await catalog.getEpisode(
+        ConnectFixtureServer.seedSeriesId,
+        ConnectFixtureServer.paidEpisodeId,
+        locale: 'en',
+      );
+
+      expect(
+        detail!.episode.eyeCatchVariants.first.url.toString(),
+        '${server.baseUrl}/images/episode-eye-catches/'
+        '${ConnectFixtureServer.paidEpisodeImageId}/landscape/400',
+      );
+      // What a saved copy of an episode without artwork of its own draws.
+      expect(
+        detail.seriesEyeCatchVariants,
+        hasLength(ConnectFixtureServer.seedEyeCatchVariants().length),
+      );
+    },
+  );
+
   test('getEpisode resolves image paths against the image base url', () async {
     final detail = await catalog.getEpisode(
       ConnectFixtureServer.seedSeriesId,

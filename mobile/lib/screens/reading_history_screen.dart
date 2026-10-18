@@ -4,6 +4,7 @@ import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_pager.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/catalog_states.dart';
+import 'package:publira/catalog/episode_cover.dart';
 import 'package:publira/catalog/paged_series_sliver.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
@@ -209,6 +210,12 @@ class _ReadingHistoryRow extends StatelessWidget {
     return ListTile(
       key: ValueKey('reading-history-row-${episode.id}'),
       isThreeLine: true,
+      leading: EpisodeCover(
+        episodeId: episode.id,
+        variants: episode.eyeCatchVariants,
+        seriesVariants: series.eyeCatchVariants,
+        requestHeaders: series.imageRequestHeaders,
+      ),
       title: AutospacedText(title, locale: episode.textLocale),
       // Two lines rather than one joined text: the title is set in the
       // language it was served in, and the date in the app's.

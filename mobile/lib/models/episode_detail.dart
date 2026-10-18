@@ -161,6 +161,7 @@ class EpisodeDetail {
     this.seriesInternalId = '',
     required this.seriesTitle,
     this.seriesLocale = '',
+    this.seriesEyeCatchVariants = const [],
     required this.access,
     required this.images,
     this.previewImages = const [],
@@ -188,6 +189,11 @@ class EpisodeDetail {
   /// The locale [seriesTitle] was answered in, which the series falls back to
   /// apart from the episode. Empty on a copy saved before the locale was kept.
   final String seriesLocale;
+
+  /// Renditions of the series' eye-catch, which a saved episode with no
+  /// artwork of its own draws in its place. Empty on a series with none and
+  /// on a copy saved before the series' eye-catch was kept.
+  final List<EyeCatchVariant> seriesEyeCatchVariants;
 
   /// [seriesLocale] as a text widget takes it, the way
   /// [SeriesItem.textLocale] is.

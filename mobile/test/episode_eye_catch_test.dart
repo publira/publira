@@ -4,21 +4,11 @@ import 'package:publira/app.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/router.dart';
 
+import 'support/episode_eye_catch.dart';
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
 import 'support/fake_offline_library.dart';
 import 'support/pump_until.dart';
-
-/// An eye-catch the console uploaded for the episode [id], cut both ways.
-List<EyeCatchVariant> episodeEyeCatch(String id) => [
-  for (final (type, height) in [('landscape', 450), ('portrait', 1066)])
-    EyeCatchVariant(
-      variantType: type,
-      url: Uri.parse('http://images.test/images/episode-eye-catches/$id/$type'),
-      width: 800,
-      height: height,
-    ),
-];
 
 /// [series] with two free episodes, the second of them carrying artwork of
 /// its own and the first none.
@@ -40,14 +30,6 @@ SeriesDetail detailOf(SeriesItem series) => SeriesDetail(
     ),
   ],
 );
-
-/// The [NetworkImage] behind [finder], unwrapping the decode bound the cover
-/// puts around it.
-NetworkImage requestOf(WidgetTester tester, Finder finder) {
-  final image = tester.widget<Image>(finder).image;
-  final provider = image is ResizeImage ? image.imageProvider : image;
-  return provider as NetworkImage;
-}
 
 void main() {
   final covered = fixtureSeries.first;

@@ -10,6 +10,7 @@ import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/catalog_shelf.dart';
 import 'package:publira/catalog/creator_credits.dart';
+import 'package:publira/catalog/episode_cover.dart';
 import 'package:publira/catalog/eye_catch.dart';
 import 'package:publira/catalog/eye_catch_cover.dart';
 import 'package:publira/catalog/free_until_badge.dart';
@@ -855,28 +856,11 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                     textColor: _progress.finishedEpisodeIds.contains(episode.id)
                         ? theme.colorScheme.onSurfaceVariant
                         : null,
-                    // 16:9 at this width stays inside a one-line row's height
-                    // with room above and below, so the pictures of adjacent
-                    // rows do not run together. An episode without artwork of
-                    // its own shows the series', so no row is left with a gap
-                    // where its picture would be.
-                    leading: SizedBox(
-                      width: 80,
-                      child: EyeCatchCover(
-                        kind: 'episode',
-                        id: episode.id,
-                        variants: episode.eyeCatchVariants.isEmpty
-                            ? series.eyeCatchVariants
-                            : episode.eyeCatchVariants,
-                        // An episode's eye-catch is served to every reader
-                        // alike, as its series' is.
-                        requestHeaders: series.imageRequestHeaders,
-                        preferredTypes: const [
-                          eyeCatchLandscape,
-                          eyeCatchPortrait,
-                        ],
-                        aspectRatio: 16 / 9,
-                      ),
+                    leading: EpisodeCover(
+                      episodeId: episode.id,
+                      variants: episode.eyeCatchVariants,
+                      seriesVariants: series.eyeCatchVariants,
+                      requestHeaders: series.imageRequestHeaders,
                     ),
                     title: AutospacedText(
                       episode.title,

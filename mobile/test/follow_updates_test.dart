@@ -9,6 +9,7 @@ import 'package:publira/models/series_item.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/router.dart';
 
+import 'support/episode_eye_catch.dart';
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
 import 'support/pump_until.dart';
@@ -17,13 +18,17 @@ import 'support/text_locale.dart';
 void main() {
   final series = fixtureSeries.first;
 
-  FollowUpdateItem update(int orderIndex) => FollowUpdateItem(
+  FollowUpdateItem update(
+    int orderIndex, {
+    List<EyeCatchVariant> eyeCatchVariants = const [],
+  }) => FollowUpdateItem(
     series: series,
     episode: EpisodeItem(
       id: '${series.id}-ep-$orderIndex',
       title: 'Episode $orderIndex',
       orderIndex: orderIndex,
       price: 0,
+      eyeCatchVariants: eyeCatchVariants,
     ),
     publishedAt: DateTime.utc(2026, 9, 1, 12),
   );
@@ -145,6 +150,40 @@ void main() {
       );
     },
   );
+
+  Finder cover(int orderIndex) => find.descendant(
+    of: row(orderIndex),
+    matching: find.byKey(ValueKey('episode-cover-${series.id}-ep-$orderIndex')),
+  );
+
+  testWidgets("a row draws the episode's own eye-catch", (tester) async {
+    catalog.followUpdates = [
+      update(2, eyeCatchVariants: episodeEyeCatch('${series.id}-ep-2')),
+    ];
+    await pumpApp(tester);
+    await pumpUntilFound(tester, list);
+
+    final request = requestOf(tester, cover(2));
+    // The row's box is 16:9, so the landscape cut is the one it asks for.
+    expect(
+      request.url,
+      'http://images.test/images/episode-eye-catches/${series.id}-ep-2/landscape',
+    );
+    expect(request.headers, fixtureImageHeaders);
+  });
+
+  testWidgets("an episode without artwork of its own draws the series' cover", (
+    tester,
+  ) async {
+    catalog.followUpdates = [update(1)];
+    await pumpApp(tester);
+    await pumpUntilFound(tester, list);
+
+    expect(
+      requestOf(tester, cover(1)).url,
+      'http://images.test/images/series/SeedSIMGAAA1/landscape/800',
+    );
+  });
 
   testWidgets('a row opens the episode it stands for', (tester) async {
     catalog.followUpdates = [update(1)];
