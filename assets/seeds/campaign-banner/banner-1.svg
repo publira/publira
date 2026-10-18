@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <title>Seed campaign banner 1, diagonal stripes</title>
+
+  <defs>
+    <linearGradient id="field" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#b42318" />
+      <stop offset="1" stop-color="#f79009" />
+    </linearGradient>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#field)" />
+  <g fill="#ffffff" opacity="0.18">
+    <path d="M -200 900 L 400 0 L 520 0 L -80 900 Z" />
+    <path d="M 200 900 L 800 0 L 920 0 L 320 900 Z" />
+    <path d="M 600 900 L 1200 0 L 1320 0 L 720 900 Z" />
+    <path d="M 1000 900 L 1600 0 L 1720 0 L 1120 900 Z" />
+    <path d="M 1400 900 L 2000 0 L 2120 0 L 1520 900 Z" />
+  </g>
+
+  <!-- The panel a campaign's own lettering would sit on. -->
+  <rect x="400" y="300" width="800" height="300" rx="8" fill="#ffffff" opacity="0.92" />
+  <g fill="#b42318">
+    <rect x="480" y="370" width="640" height="56" rx="4" />
+    <rect x="560" y="470" width="480" height="32" rx="4" opacity="0.6" />
+  </g>
+
+  <!-- One dot per banner number, so the design is identifiable in greyscale. -->
+  <g fill="#ffffff" opacity="0.9">
+    <circle cx="800" cy="780" r="28" />
+  </g>
+</svg>

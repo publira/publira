@@ -428,5 +428,65 @@
         "width": 180
       }
     ]
+  },
+  {
+    "source": "seeds/campaign-banner/banner-1.svg",
+    "outputs": [
+      {
+        "height": 450,
+        "path": "db/seeds/objects/campaign-banner/banner-1-landscape-w800.jpg",
+        "width": 800
+      },
+      {
+        "height": 675,
+        "path": "db/seeds/objects/campaign-banner/banner-1-landscape-w1200.jpg",
+        "width": 1200
+      },
+      {
+        "height": 900,
+        "path": "db/seeds/objects/campaign-banner/banner-1-landscape-w1600.jpg",
+        "width": 1600
+      }
+    ]
+  },
+  {
+    "source": "seeds/campaign-banner/banner-2.svg",
+    "outputs": [
+      {
+        "height": 450,
+        "path": "db/seeds/objects/campaign-banner/banner-2-landscape-w800.jpg",
+        "width": 800
+      },
+      {
+        "height": 675,
+        "path": "db/seeds/objects/campaign-banner/banner-2-landscape-w1200.jpg",
+        "width": 1200
+      },
+      {
+        "height": 900,
+        "path": "db/seeds/objects/campaign-banner/banner-2-landscape-w1600.jpg",
+        "width": 1600
+      }
+    ]
+  },
+  {
+    "source": "seeds/campaign-banner/banner-3.svg",
+    "outputs": [
+      {
+        "height": 450,
+        "path": "db/seeds/objects/campaign-banner/banner-3-landscape-w800.jpg",
+        "width": 800
+      },
+      {
+        "height": 675,
+        "path": "db/seeds/objects/campaign-banner/banner-3-landscape-w1200.jpg",
+        "width": 1200
+      },
+      {
+        "height": 900,
+        "path": "db/seeds/objects/campaign-banner/banner-3-landscape-w1600.jpg",
+        "width": 1600
+      }
+    ]
   }
 ]

@@ -2,8 +2,9 @@
 # storage-seed.sh — Uploads the development seed's images into PUBLIRA_S3_BUCKET.
 #
 # Two halves that have to agree: `db/seeds/dev/060_images.sql` describes every
-# eye-catch, icon, and body page and names the object key each one is stored at,
-# and this puts the bytes at those keys. The keys are read back out of the
+# eye-catch, icon, and body page, and `db/seeds/dev/100_campaign_banners.sql`
+# every campaign banner, naming the object key each one is stored at, and this
+# puts the bytes at those keys. The keys are read back out of the
 # database rather than repeated here, so only the SQL decides them.
 #
 # A seeded key is `tenants/<tenant>/seed/<path>`, and `<path>` is where the file
@@ -55,6 +56,8 @@ object_keys_text="$(
     SELECT object_key FROM creator_image_variants WHERE object_key LIKE '%/seed/%'
     UNION
     SELECT object_key FROM episode_image_variants WHERE object_key LIKE '%/seed/%'
+    UNION
+    SELECT object_key FROM campaign_banner_image_variants WHERE object_key LIKE '%/seed/%'
     ORDER BY 1
   "
 )"

@@ -18,4 +18,5 @@ BEGIN;
 \ir dev/070_follows.sql
 \ir dev/080_purchases.sql
 \ir dev/090_reading_signals.sql
+\ir dev/100_campaign_banners.sql
 COMMIT;
