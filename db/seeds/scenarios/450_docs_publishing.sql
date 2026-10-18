@@ -11,7 +11,10 @@
 --
 -- Applied by e2e/tests/admin.docs-screenshots.setup.ts. Neither episode is
 -- shown on the tenant's site, and the moderation suite reads its first
--- episode alone, so the file deletes and writes only its own rows.
+-- episode alone, so the file deletes and writes only its own rows. The
+-- documentation's shot of an episode's Cover image tab uploads a cover to the
+-- draft, and deleting the episode here drops that cover with it, so every run
+-- starts from a draft without one.
 
 BEGIN;
 
