@@ -26,13 +26,28 @@ func (s *adminServer) writeTenantSettingAudit(
 	action string,
 	targetType string,
 ) error {
+	return s.writeTenantSettingAuditOn(txCtx, tenant, session, action, targetType, tenant.PublicID)
+}
+
+// writeTenantSettingAuditOn is writeTenantSettingAudit for a setting kept once
+// per something smaller than the tenant, such as the site copy kept per locale:
+// targetID names which one the save changed, so two saves of different ones do
+// not read the same in the log.
+func (s *adminServer) writeTenantSettingAuditOn(
+	txCtx context.Context,
+	tenant dbmodels.Tenant,
+	session rpcmiddleware.SessionContext,
+	action string,
+	targetType string,
+	targetID string,
+) error {
 	if err := auditlog.WriteTenant(txCtx, s.queriesFor(txCtx), s.logger, auditlog.TenantEntry{
 		TenantID:    tenant.ID,
 		ActorUserID: session.User.ID,
 		ActorRole:   session.Role,
 		Action:      action,
 		TargetType:  targetType,
-		TargetID:    tenant.PublicID,
+		TargetID:    targetID,
 		Outcome:     auditlog.OutcomeSuccess,
 		ClientIP:    clientip.FromContext(txCtx),
 	}); err != nil {

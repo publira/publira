@@ -1,4 +1,5 @@
 import { smtpTestFailureMessage } from "@publira/api-client/error-messages";
+import { getLocaleLabel, isLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { Badge } from "@publira/ui-components/badge";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -736,6 +737,17 @@ const targetTypeName = (targetType: string) =>
   settingTargetName(targetType) ??
   tenantTargetName(targetType);
 
+/**
+ * What the entry's target ID reads as: the language's name for the public site
+ * copy, which the server records per locale, and the ID itself for any other.
+ */
+const targetIdLabel = (targetType: string, targetId: string) =>
+  targetType === "tenant_site_copy" && isLocale(targetId) ? (
+    <span lang={targetId}>{getLocaleLabel(targetId)}</span>
+  ) : (
+    targetId
+  );
+
 const outcomeToneMap = {
   failure: "destructive",
   success: "success",
@@ -833,7 +845,14 @@ export const AuditLogActionCell = async ({
           ) : (
             targetType || t("admin.audit.target_type_none")
           )}
-          {targetId ? ` / ${targetId}` : ""}
+          {targetId ? (
+            <>
+              {" / "}
+              {targetIdLabel(targetType, targetId)}
+            </>
+          ) : (
+            ""
+          )}
           {reasonLabel ? ` / ${reasonLabel}` : ""}
         </div>
       )}
