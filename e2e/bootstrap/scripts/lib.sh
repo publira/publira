@@ -143,7 +143,7 @@ psql_value() {
 
 # Tables the dev seed must fill; compared before/after a seed re-run and
 # before/after the DB restart.
-PUBLIRA_BOOTSTRAP_SEED_TABLES=(tenants tenant_config platform_users users labels series episodes)
+PUBLIRA_BOOTSTRAP_SEED_TABLES=(tenants tenant_config_translations platform_users users labels series episodes)
 
 # `<version> <dirty>` of the single golang-migrate bookkeeping row.
 migration_state() {
