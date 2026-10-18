@@ -1,11 +1,14 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, screen } from "@testing-library/react";
 import type { ComponentProps, ReactNode } from "react";
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { StorefrontMessagesContextProvider } from "#components/storefront-messages-context";
 import type { CampaignBannerItem } from "#lib/campaign-banners";
+import { loadStorefrontClientMessages } from "#lib/messages";
+import { renderWithClientMessages } from "#lib/render-with-client-messages";
 
 import { CampaignBannersSection } from "./campaign-banners";
 
@@ -78,7 +81,7 @@ const banner = (
 const renderSection = async (banners: CampaignBannerItem[]) => {
   mockListCampaignBanners.mockResolvedValueOnce(banners);
   const element = await CampaignBannersSection();
-  return element ? render(element) : null;
+  return element ? await renderWithClientMessages(element) : null;
 };
 
 describe("CampaignBannersSection", () => {
@@ -176,7 +179,17 @@ describe("CampaignBannerCarousel", () => {
   // the first banner, with no copy for the first screen to show instead.
   it("sends the plain strip from the server, with no copy at either end", async () => {
     mockListCampaignBanners.mockResolvedValueOnce(threeBanners());
-    const markup = renderToString(await CampaignBannersSection());
+    const element = await CampaignBannersSection();
+    const loaded = await loadStorefrontClientMessages("en");
+    const messages = Object.assign(Promise.resolve(loaded), {
+      status: "fulfilled",
+      value: loaded,
+    });
+    const markup = renderToString(
+      <StorefrontMessagesContextProvider messages={messages}>
+        {element}
+      </StorefrontMessagesContextProvider>
+    );
 
     // `<li ` rather than `<li`, which a preloaded image's `<link>` matches too.
     expect(markup.match(/<li[\s>]/gu)).toHaveLength(3);

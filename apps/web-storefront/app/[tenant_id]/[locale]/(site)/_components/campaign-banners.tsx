@@ -92,8 +92,6 @@ export const CampaignBannersSection = async () => {
         <CampaignBannerLink alt={alt} banner={firstBanner} first={false} />
       }
       last={<CampaignBannerLink alt={alt} banner={lastBanner} first={false} />}
-      nextLabel={t("storefront.top.campaign_banners_next")}
-      previousLabel={t("storefront.top.campaign_banners_previous")}
     >
       {banners.map((banner, index) => (
         <CampaignBannerSlide key={banner.publicId}>

@@ -5,6 +5,8 @@ import { cn } from "@publira/utils";
 import type { ReactNode, UIEvent } from "react";
 import { useRef, useState, useSyncExternalStore } from "react";
 
+import { useClientMessages } from "#components/client-message";
+
 const CONTROL =
   "inline-flex size-8 items-center justify-center rounded-control text-foreground transition-colors duration-state ease-state hover:bg-muted";
 
@@ -74,6 +76,41 @@ const openOnFirstBanner = (copy: HTMLLIElement | null) => {
   }
 };
 
+/**
+ * The two buttons under the strip. Their names are the frame's rather than the
+ * caller's — every strip moves to the previous and the next campaign — so each
+ * reads its own from the catalog.
+ */
+const PreviousCampaignButton = ({ onClick }: { onClick: () => void }) => {
+  const t = useClientMessages();
+
+  return (
+    <button
+      aria-label={t("storefront.top.campaign_banners_previous")}
+      className={CONTROL}
+      onClick={onClick}
+      type="button"
+    >
+      <ChevronLeftIcon aria-hidden="true" className="size-4" />
+    </button>
+  );
+};
+
+const NextCampaignButton = ({ onClick }: { onClick: () => void }) => {
+  const t = useClientMessages();
+
+  return (
+    <button
+      aria-label={t("storefront.top.campaign_banners_next")}
+      className={CONTROL}
+      onClick={onClick}
+      type="button"
+    >
+      <ChevronRightIcon aria-hidden="true" className="size-4" />
+    </button>
+  );
+};
+
 /** One banner of the strip. */
 export const CampaignBannerSlide = ({ children }: { children: ReactNode }) => (
   <li className={SLIDE}>{children}</li>
@@ -130,16 +167,12 @@ export const CampaignBannerCarousel = ({
   count,
   first,
   last,
-  nextLabel,
-  previousLabel,
 }: {
   "aria-label": string;
   children: ReactNode;
   count: number;
   first: ReactNode;
   last: ReactNode;
-  nextLabel: string;
-  previousLabel: string;
 }) => {
   const trackRef = useRef<HTMLUListElement>(null);
   const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -255,14 +288,7 @@ export const CampaignBannerCarousel = ({
         {loops ? <CampaignBannerCopy>{first}</CampaignBannerCopy> : null}
       </ul>
       <div className="flex items-center justify-center gap-2">
-        <button
-          aria-label={previousLabel}
-          className={CONTROL}
-          onClick={() => step(-1)}
-          type="button"
-        >
-          <ChevronLeftIcon aria-hidden="true" className="size-4" />
-        </button>
+        <PreviousCampaignButton onClick={() => step(-1)} />
         {/* The list already tells a screen reader where it is, so the counter
             is for the eye alone. */}
         <p
@@ -271,14 +297,7 @@ export const CampaignBannerCarousel = ({
         >
           {current + 1} / {count}
         </p>
-        <button
-          aria-label={nextLabel}
-          className={CONTROL}
-          onClick={() => step(1)}
-          type="button"
-        >
-          <ChevronRightIcon aria-hidden="true" className="size-4" />
-        </button>
+        <NextCampaignButton onClick={() => step(1)} />
       </div>
     </section>
   );
