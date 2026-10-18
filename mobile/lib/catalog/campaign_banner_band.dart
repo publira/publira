@@ -6,6 +6,7 @@ import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/eye_catch.dart';
 import 'package:publira/catalog/eye_catch_cover.dart';
+import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/links/follow_tenant_link.dart';
 import 'package:publira/links/tenant_link.dart';
@@ -116,6 +117,7 @@ class _CampaignBannerBandState extends State<CampaignBannerBand> {
     if (banners.isEmpty) {
       return const SizedBox.shrink();
     }
+    final messages = AppMessages.of(context);
     return Padding(
       key: const ValueKey('campaign-banners'),
       padding: const EdgeInsets.only(top: 16),
@@ -130,6 +132,7 @@ class _CampaignBannerBandState extends State<CampaignBannerBand> {
                 child: _BannerLink(
                   banner: only.banner,
                   destination: only.destination,
+                  label: messages.catalogCampaignBanner,
                 ),
               ),
             );
@@ -147,6 +150,12 @@ class _CampaignBannerBandState extends State<CampaignBannerBand> {
                   child: _BannerLink(
                     banner: banners[index].banner,
                     destination: banners[index].destination,
+                    // The pages announce no position of their own, and every
+                    // banner would otherwise be read out as the same one.
+                    label: messages.catalogCampaignBannerPosition(
+                      position: messages.formatInteger(index + 1),
+                      count: messages.formatInteger(banners.length),
+                    ),
                   ),
                 ),
               ),
@@ -160,16 +169,24 @@ class _CampaignBannerBandState extends State<CampaignBannerBand> {
 
 /// One banner, which opens [destination] when tapped.
 class _BannerLink extends StatelessWidget {
-  const _BannerLink({required this.banner, required this.destination});
+  const _BannerLink({
+    required this.banner,
+    required this.destination,
+    required this.label,
+  });
 
   final CampaignBanner banner;
   final TenantLinkDestination destination;
+
+  /// What a screen reader announces the banner as. The API carries no text
+  /// for its image, so this is the only name it has.
+  final String label;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: AppMessages.of(context).catalogCampaignBanner,
+      label: label,
       child: InkWell(
         key: ValueKey('campaign-banner-${banner.id}'),
         onTap: () => followTenantLink(context, destination),

@@ -152,6 +152,11 @@ void main() {
       lessThan(tester.view.physicalSize.width),
     );
 
+    // Each page is announced by its place in the band, since the banners
+    // carry no text of their own to tell them apart.
+    expect(find.bySemanticsLabel('Campaign banner 1 of 3'), findsOneWidget);
+    expect(find.bySemanticsLabel('Campaign banner 2 of 3'), findsOneWidget);
+
     await tester.fling(find.byType(PageView), const Offset(-300, 0), 1000);
     await tester.pumpAndSettle();
     expect(tester.getCenter(_bannerOf('banner-1')).dx, screenCenter);

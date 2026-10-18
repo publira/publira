@@ -4643,6 +4643,7 @@
     "catalog": {
       "all_series_heading": "전체 시리즈",
       "campaign_banner": "캠페인 배너",
+      "campaign_banner_position": "캠페인 배너 ({$count}개 중 {$position}번째)",
       "continue_failed": "읽던 작품을 표시할 수 없습니다",
       "continue_heading": "이어서 읽기",
       "creators_failed": "주목할 작가를 표시할 수 없습니다. 다시 시도해 주세요.",
