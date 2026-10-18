@@ -976,18 +976,18 @@ message AdminVolume {
   // Every episode the volume holds, by id, in the volume's own order, which
   // SetVolumeEpisodes writes. Drafts and scheduled episodes included.
   repeated string episode_ids = 7;
-  // Whether the volume is on sale. published_at is the RFC 3339 instant it was
-  // last put on sale, and empty while it is not.
+  // Whether the volume is on sale.
   bool published = 8;
+  // The RFC 3339 instant the volume was first put on sale, kept when it is
+  // taken off, and empty for a volume never on sale. Once it is set, no
+  // episode can be taken out of the volume: a checkout started while it was
+  // on sale can still complete, and the purchase opens what the volume holds.
+  // More episodes can still be added.
   string published_at = 9;
-  // True while some reader holds a purchase of the volume that still opens
-  // it. Its episodes cannot be taken out of it then, since the buyer paid for
-  // them, though more can be added.
-  bool purchased = 10;
-  string cover_image_updated_at = 11;
-  repeated publira.types.v1.SeriesEyeCatchVariant cover_image_variants = 12;
-  string created_at = 13;
-  string updated_at = 14;
+  string cover_image_updated_at = 10;
+  repeated publira.types.v1.SeriesEyeCatchVariant cover_image_variants = 11;
+  string created_at = 12;
+  string updated_at = 13;
 }
 
 message ListVolumesRequest {
@@ -1052,8 +1052,9 @@ message PublishVolumeResponse {
 // be an episode of the volume's series, named once, or the call is
 // invalid_argument. An episode another volume holds is failed_precondition:
 // an episode is in at most one volume, so it is taken out of the other first.
-// Taking out an episode while the volume is purchased is failed_precondition
-// too. An empty list empties the volume, which a volume on sale may not be.
+// Taking out an episode of a volume that has ever been on sale
+// (AdminVolume.published_at) is failed_precondition too, and so is emptying a
+// volume, which only a volume never on sale may be.
 message SetVolumeEpisodesRequest {
   publira.types.v1.TenantContext tenant = 1;
   string volume_id = 2;

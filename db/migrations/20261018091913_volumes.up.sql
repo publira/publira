@@ -14,8 +14,11 @@
 -- episode's is, and a volume is never free: an episode that should cost
 -- nothing is made free itself.
 --
--- published_at is the instant the volume was last published, and is set
--- exactly while it is: unpublishing takes the volume off sale and clears it.
+-- published_at is the instant the volume was first put on sale, and stays
+-- when it is taken off: it is what tells a volume someone may have started to
+-- pay for from one nobody could have, and an episode never leaves a volume of
+-- the first kind, since a checkout started while it was on sale can still
+-- complete.
 CREATE TABLE volumes (
     id uuid NOT NULL,
     tenant_id uuid NOT NULL,
@@ -31,7 +34,7 @@ CREATE TABLE volumes (
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT volumes_title_check CHECK (((char_length(title) >= 1) AND (char_length(title) <= 255))),
     CONSTRAINT volumes_price_check CHECK ((price > 0)),
-    CONSTRAINT volumes_published_check CHECK ((is_published = (published_at IS NOT NULL)))
+    CONSTRAINT volumes_published_check CHECK (((NOT is_published) OR (published_at IS NOT NULL)))
 );
 
 -- CONSTRAINT: volumes volumes_pkey
@@ -103,8 +106,13 @@ ALTER TABLE ONLY volume_episodes
     ADD CONSTRAINT volume_episodes_tenant_volume_id_fkey FOREIGN KEY (tenant_id, volume_id) REFERENCES volumes(tenant_id, id) ON DELETE CASCADE;
 
 -- FK CONSTRAINT: volume_episodes volume_episodes_tenant_episode_id_fkey
+-- An episode in a volume is not deleted out from under it, as one somebody
+-- bought is not (purchases_tenant_episode_id_fkey): a purchase of the volume
+-- opens what the volume holds, so the cascade would take the episode from its
+-- buyers. NO ACTION rather than RESTRICT, so a tenant deleted as a whole takes
+-- both rows in the one statement.
 ALTER TABLE ONLY volume_episodes
-    ADD CONSTRAINT volume_episodes_tenant_episode_id_fkey FOREIGN KEY (tenant_id, episode_id) REFERENCES episodes(tenant_id, id) ON DELETE CASCADE;
+    ADD CONSTRAINT volume_episodes_tenant_episode_id_fkey FOREIGN KEY (tenant_id, episode_id) REFERENCES episodes(tenant_id, id);
 
 -- INDEX: idx_volume_episodes_tenant_volume_position
 -- A volume's episodes in its own order, and the composite foreign key to it.
@@ -308,3 +316,24 @@ SELECT ec.tenant_id,
 FROM episode_creators ec
     JOIN creator_accounts ca ON ca.tenant_id = ec.tenant_id
     AND ca.creator_id = ec.creator_id;
+
+-- VIEW: volume_purchase_surfaces
+-- The surfaces a volume may be bought on: those every one of its episodes may
+-- be bought on, by the purchase availability each resolves to. A purchase of
+-- the volume is the permanent copy of each episode, so selling it where one of
+-- them is not sold would sell that episode there. The series page lists and
+-- the checkout sells a volume by this one answer.
+CREATE VIEW volume_purchase_surfaces WITH (security_invoker = true) AS
+SELECT v.id AS volume_id,
+    v.tenant_id,
+    s.surface
+FROM volumes v
+    CROSS JOIN unnest(ARRAY['web'::text, 'app'::text]) AS s(surface)
+WHERE NOT EXISTS (
+        SELECT 1
+        FROM volume_episodes ve
+            JOIN episode_purchase_availability epa ON epa.episode_id = ve.episode_id
+        WHERE ve.tenant_id = v.tenant_id
+            AND ve.volume_id = v.id
+            AND epa.purchase_availability <> ALL (ARRAY['all'::text, s.surface])
+    );

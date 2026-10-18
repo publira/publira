@@ -11,20 +11,23 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 )
 
-// seriesVolumes answers the series' volumes on sale as GetSeriesDetail lists
-// them beside episodes, the series' episodes as that read lists them for the
-// calling surface. Each volume names only the episodes among those, so a
-// client never meets an id the same answer does not explain, and a volume
-// naming none of them is left out: it would sell nothing the surface shows.
+// seriesVolumes answers the series' volumes on sale on surface as
+// GetSeriesDetail lists them beside episodes, the series' episodes as that
+// read lists them for the surface. Each volume names only the episodes among
+// those, so a client never meets an id the same answer does not explain, and a
+// volume naming none of them is left out: it would sell nothing the surface
+// shows.
 func (s *apiServer) seriesVolumes(
 	ctx context.Context,
 	tenantID, seriesID uuid.UUID,
+	surface string,
 	episodes []*publirattypesv1.Episode,
 ) ([]*publirattypesv1.Volume, error) {
 	queries := s.queriesFor(ctx)
 	rows, err := queries.ListPublishedVolumesForSeries(ctx, dbmodels.ListPublishedVolumesForSeriesParams{
 		TenantID: tenantID,
 		SeriesID: seriesID,
+		Surface:  surface,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list the series' volumes", err, "tenant_id", tenantID.String(), "series_id", seriesID.String())

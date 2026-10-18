@@ -1,3 +1,18 @@
+-- A purchase of a volume names no episode, so it cannot outlive the column
+-- that names its volume, and it is a sale the tenant was paid for. Rather than
+-- deleting it, the rollback refuses to run while one exists.
+DO $$
+BEGIN
+    IF EXISTS (
+            SELECT 1
+            FROM purchases
+            WHERE volume_id IS NOT NULL
+        ) THEN RAISE EXCEPTION 'purchases of volumes exist; this migration cannot be rolled back without losing them';
+    END IF;
+END $$;
+
+DROP VIEW volume_purchase_surfaces;
+
 -- The view is put back as the rental migration left it before the tables it
 -- now reads are dropped.
 CREATE OR REPLACE VIEW episode_content_grants WITH (security_invoker = true) AS
@@ -33,11 +48,6 @@ SELECT ec.tenant_id,
 FROM episode_creators ec
     JOIN creator_accounts ca ON ca.tenant_id = ec.tenant_id
     AND ca.creator_id = ec.creator_id;
-
--- A purchase of a volume has no episode to keep once volumes are gone, and
--- episode_id cannot be required again while one is left.
-DELETE FROM purchases
-WHERE volume_id IS NOT NULL;
 
 ALTER TABLE ONLY purchases
     DROP CONSTRAINT purchases_tenant_volume_id_fkey,

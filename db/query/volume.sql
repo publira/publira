@@ -11,15 +11,6 @@ SELECT v.id,
     vi.updated_at AS cover_image_updated_at,
     v.is_published,
     v.published_at,
-    -- Whether a purchase of the volume still opens it, as
-    -- VolumeHasStandingPurchase answers for one volume.
-    EXISTS (
-        SELECT 1
-        FROM purchases p
-        WHERE p.tenant_id = v.tenant_id
-            AND p.volume_id = v.id
-            AND p.revoked_at IS NULL
-    ) AS purchased,
     v.created_at,
     v.updated_at
 FROM volumes v
@@ -40,15 +31,6 @@ SELECT v.id,
     vi.updated_at AS cover_image_updated_at,
     v.is_published,
     v.published_at,
-    -- Whether a purchase of the volume still opens it, as
-    -- VolumeHasStandingPurchase answers for one volume.
-    EXISTS (
-        SELECT 1
-        FROM purchases p
-        WHERE p.tenant_id = v.tenant_id
-            AND p.volume_id = v.id
-            AND p.revoked_at IS NULL
-    ) AS purchased,
     v.created_at,
     v.updated_at
 FROM volumes v
@@ -125,12 +107,13 @@ WHERE tenant_id = sqlc.arg('tenant_id')
     AND id = sqlc.arg('id');
 
 -- name: SetVolumePublished :exec
--- Puts the volume on sale or takes it off. Publishing a volume already on sale
--- keeps the instant it was put on sale.
+-- Puts the volume on sale or takes it off. published_at keeps the instant it
+-- was first put on sale, through every later publish and unpublish.
 UPDATE volumes
 SET is_published = sqlc.arg('is_published')::boolean,
     published_at = CASE
         WHEN sqlc.arg('is_published')::boolean THEN COALESCE(published_at, NOW())
+        ELSE published_at
     END,
     updated_at = NOW()
 WHERE tenant_id = sqlc.arg('tenant_id')
@@ -180,18 +163,6 @@ WHERE tenant_id = sqlc.arg('tenant_id')
     AND volume_id <> sqlc.arg('volume_id')
     AND episode_id = ANY(sqlc.arg('episode_ids')::uuid[]);
 
--- name: VolumeHasStandingPurchase :one
--- Whether a purchase of the volume still opens its episodes: one neither
--- refunded in full, disputed, nor revoked by staff. Such a buyer paid for the
--- episodes the volume holds, so none of them may leave it.
-SELECT EXISTS (
-        SELECT 1
-        FROM purchases
-        WHERE tenant_id = sqlc.arg('tenant_id')
-            AND volume_id = sqlc.arg('volume_id')::uuid
-            AND revoked_at IS NULL
-    );
-
 -- name: DeleteVolumeEpisodes :exec
 DELETE FROM volume_episodes
 WHERE tenant_id = sqlc.arg('tenant_id')
@@ -212,9 +183,9 @@ SELECT sqlc.arg('tenant_id'),
 FROM unnest(sqlc.arg('episode_ids')::uuid[]) WITH ORDINALITY AS e(episode_id, ordinality);
 
 -- name: ListPublishedVolumesForSeries :many
--- The volumes of the series on sale, in the console's order. Which of their
--- episodes a surface shows is the caller's to decide, since it holds the
--- series' episodes as that surface lists them.
+-- The volumes of the series on sale on the calling surface, in the console's
+-- order. Which of their episodes the surface shows is the caller's to decide,
+-- since it holds the series' episodes as that surface lists them.
 SELECT v.id,
     v.public_id,
     v.title,
@@ -228,5 +199,11 @@ FROM volumes v
 WHERE v.tenant_id = sqlc.arg('tenant_id')
     AND v.series_id = sqlc.arg('series_id')
     AND v.is_published
+    AND EXISTS (
+        SELECT 1
+        FROM volume_purchase_surfaces vps
+        WHERE vps.volume_id = v.id
+            AND vps.surface = sqlc.arg('surface')::text
+    )
 ORDER BY v.order_index ASC,
     v.id ASC;

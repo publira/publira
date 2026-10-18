@@ -1195,8 +1195,10 @@ type GetSeriesDetailResponse struct {
 	// code order: the language alternates of the series. It includes
 	// Series.locale whenever the tenant offers that locale.
 	PublishedLocales []string `protobuf:"bytes,6,rep,name=published_locales,json=publishedLocales,proto3" json:"published_locales,omitempty"`
-	// The series' volumes on sale, in the tenant's order, each holding at least
-	// one of `episodes`. Like the rest of this response it says nothing about
+	// The series' volumes on sale on the calling surface, in the tenant's
+	// order: each holds at least one of `episodes`, and every one of its
+	// episodes may be bought on the surface (Episode.purchase_availability),
+	// since buying the volume is buying each of them. Like the rest of this response it says nothing about
 	// the reader: whether the reader already owns one is told by the episodes it
 	// holds, which GetSeriesEpisodeAccess reports as entitled.
 	Volumes       []*v1.Volume `protobuf:"bytes,7,rep,name=volumes,proto3" json:"volumes,omitempty"`
@@ -7216,8 +7218,9 @@ func (x *StartEpisodeCheckoutResponse) GetCheckoutUrl() string {
 // volume holds, for good: a volume is never rented and has no reading period.
 //
 // `client` names the surface the checkout is started from, as it does on
-// StartEpisodeCheckout. A volume that surface may not show, one not on sale,
-// and one none of whose episodes the surface lists is not_found. A reader who
+// StartEpisodeCheckout. A volume GetSeriesDetail does not list for that
+// surface is not_found: one not on sale, one holding an episode not sold on
+// the surface, and one none of whose episodes the surface lists. A reader who
 // already holds a purchase of the volume that still opens it is
 // already_exists, and one whose account is linked to a creator any episode of
 // the volume credits is permission_denied with the ErrorInfo reason

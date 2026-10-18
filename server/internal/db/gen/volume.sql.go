@@ -180,15 +180,6 @@ SELECT v.id,
     vi.updated_at AS cover_image_updated_at,
     v.is_published,
     v.published_at,
-    -- Whether a purchase of the volume still opens it, as
-    -- VolumeHasStandingPurchase answers for one volume.
-    EXISTS (
-        SELECT 1
-        FROM purchases p
-        WHERE p.tenant_id = v.tenant_id
-            AND p.volume_id = v.id
-            AND p.revoked_at IS NULL
-    ) AS purchased,
     v.created_at,
     v.updated_at
 FROM volumes v
@@ -213,7 +204,6 @@ type GetVolumeByIDForTenantRow struct {
 	CoverImageUpdatedAt sql.NullTime  `json:"cover_image_updated_at"`
 	IsPublished         bool          `json:"is_published"`
 	PublishedAt         sql.NullTime  `json:"published_at"`
-	Purchased           bool          `json:"purchased"`
 	CreatedAt           time.Time     `json:"created_at"`
 	UpdatedAt           time.Time     `json:"updated_at"`
 }
@@ -232,7 +222,6 @@ func (q *Queries) GetVolumeByIDForTenant(ctx context.Context, arg GetVolumeByIDF
 		&i.CoverImageUpdatedAt,
 		&i.IsPublished,
 		&i.PublishedAt,
-		&i.Purchased,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -279,6 +268,12 @@ FROM volumes v
 WHERE v.tenant_id = $1
     AND v.series_id = $2
     AND v.is_published
+    AND EXISTS (
+        SELECT 1
+        FROM volume_purchase_surfaces vps
+        WHERE vps.volume_id = v.id
+            AND vps.surface = $3::text
+    )
 ORDER BY v.order_index ASC,
     v.id ASC
 `
@@ -286,6 +281,7 @@ ORDER BY v.order_index ASC,
 type ListPublishedVolumesForSeriesParams struct {
 	TenantID uuid.UUID `json:"tenant_id"`
 	SeriesID uuid.UUID `json:"series_id"`
+	Surface  string    `json:"surface"`
 }
 
 type ListPublishedVolumesForSeriesRow struct {
@@ -299,11 +295,11 @@ type ListPublishedVolumesForSeriesRow struct {
 	PublishedAt         sql.NullTime  `json:"published_at"`
 }
 
-// The volumes of the series on sale, in the console's order. Which of their
-// episodes a surface shows is the caller's to decide, since it holds the
-// series' episodes as that surface lists them.
+// The volumes of the series on sale on the calling surface, in the console's
+// order. Which of their episodes the surface shows is the caller's to decide,
+// since it holds the series' episodes as that surface lists them.
 func (q *Queries) ListPublishedVolumesForSeries(ctx context.Context, arg ListPublishedVolumesForSeriesParams) ([]ListPublishedVolumesForSeriesRow, error) {
-	rows, err := q.db.QueryContext(ctx, ListPublishedVolumesForSeries, arg.TenantID, arg.SeriesID)
+	rows, err := q.db.QueryContext(ctx, ListPublishedVolumesForSeries, arg.TenantID, arg.SeriesID, arg.Surface)
 	if err != nil {
 		return nil, err
 	}
@@ -389,15 +385,6 @@ SELECT v.id,
     vi.updated_at AS cover_image_updated_at,
     v.is_published,
     v.published_at,
-    -- Whether a purchase of the volume still opens it, as
-    -- VolumeHasStandingPurchase answers for one volume.
-    EXISTS (
-        SELECT 1
-        FROM purchases p
-        WHERE p.tenant_id = v.tenant_id
-            AND p.volume_id = v.id
-            AND p.revoked_at IS NULL
-    ) AS purchased,
     v.created_at,
     v.updated_at
 FROM volumes v
@@ -424,7 +411,6 @@ type ListVolumesForSeriesRow struct {
 	CoverImageUpdatedAt sql.NullTime  `json:"cover_image_updated_at"`
 	IsPublished         bool          `json:"is_published"`
 	PublishedAt         sql.NullTime  `json:"published_at"`
-	Purchased           bool          `json:"purchased"`
 	CreatedAt           time.Time     `json:"created_at"`
 	UpdatedAt           time.Time     `json:"updated_at"`
 }
@@ -451,7 +437,6 @@ func (q *Queries) ListVolumesForSeries(ctx context.Context, arg ListVolumesForSe
 			&i.CoverImageUpdatedAt,
 			&i.IsPublished,
 			&i.PublishedAt,
-			&i.Purchased,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -564,6 +549,7 @@ UPDATE volumes
 SET is_published = $1::boolean,
     published_at = CASE
         WHEN $1::boolean THEN COALESCE(published_at, NOW())
+        ELSE published_at
     END,
     updated_at = NOW()
 WHERE tenant_id = $2
@@ -576,8 +562,8 @@ type SetVolumePublishedParams struct {
 	ID          uuid.UUID `json:"id"`
 }
 
-// Puts the volume on sale or takes it off. Publishing a volume already on sale
-// keeps the instant it was put on sale.
+// Puts the volume on sale or takes it off. published_at keeps the instant it
+// was first put on sale, through every later publish and unpublish.
 func (q *Queries) SetVolumePublished(ctx context.Context, arg SetVolumePublishedParams) error {
 	_, err := q.db.ExecContext(ctx, SetVolumePublished, arg.IsPublished, arg.TenantID, arg.ID)
 	return err
@@ -627,29 +613,4 @@ type UpdateVolumeOrderIndexParams struct {
 func (q *Queries) UpdateVolumeOrderIndex(ctx context.Context, arg UpdateVolumeOrderIndexParams) error {
 	_, err := q.db.ExecContext(ctx, UpdateVolumeOrderIndex, arg.OrderIndex, arg.TenantID, arg.ID)
 	return err
-}
-
-const VolumeHasStandingPurchase = `-- name: VolumeHasStandingPurchase :one
-SELECT EXISTS (
-        SELECT 1
-        FROM purchases
-        WHERE tenant_id = $1
-            AND volume_id = $2::uuid
-            AND revoked_at IS NULL
-    )
-`
-
-type VolumeHasStandingPurchaseParams struct {
-	TenantID uuid.UUID `json:"tenant_id"`
-	VolumeID uuid.UUID `json:"volume_id"`
-}
-
-// Whether a purchase of the volume still opens its episodes: one neither
-// refunded in full, disputed, nor revoked by staff. Such a buyer paid for the
-// episodes the volume holds, so none of them may leave it.
-func (q *Queries) VolumeHasStandingPurchase(ctx context.Context, arg VolumeHasStandingPurchaseParams) (bool, error) {
-	row := q.db.QueryRowContext(ctx, VolumeHasStandingPurchase, arg.TenantID, arg.VolumeID)
-	var exists bool
-	err := row.Scan(&exists)
-	return exists, err
 }

@@ -1649,6 +1649,12 @@ type VolumeEpisode struct {
 	Position  int32     `json:"position"`
 }
 
+type VolumePurchaseSurface struct {
+	VolumeID uuid.UUID   `json:"volume_id"`
+	TenantID uuid.UUID   `json:"tenant_id"`
+	Surface  interface{} `json:"surface"`
+}
+
 type WaitFreeTicketState struct {
 	TenantID        uuid.UUID `json:"tenant_id"`
 	UserID          uuid.UUID `json:"user_id"`

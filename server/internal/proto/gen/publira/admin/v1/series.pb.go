@@ -5760,18 +5760,18 @@ type AdminVolume struct {
 	// Every episode the volume holds, by id, in the volume's own order, which
 	// SetVolumeEpisodes writes. Drafts and scheduled episodes included.
 	EpisodeIds []string `protobuf:"bytes,7,rep,name=episode_ids,json=episodeIds,proto3" json:"episode_ids,omitempty"`
-	// Whether the volume is on sale. published_at is the RFC 3339 instant it was
-	// last put on sale, and empty while it is not.
-	Published   bool   `protobuf:"varint,8,opt,name=published,proto3" json:"published,omitempty"`
-	PublishedAt string `protobuf:"bytes,9,opt,name=published_at,json=publishedAt,proto3" json:"published_at,omitempty"`
-	// True while some reader holds a purchase of the volume that still opens
-	// it. Its episodes cannot be taken out of it then, since the buyer paid for
-	// them, though more can be added.
-	Purchased           bool                        `protobuf:"varint,10,opt,name=purchased,proto3" json:"purchased,omitempty"`
-	CoverImageUpdatedAt string                      `protobuf:"bytes,11,opt,name=cover_image_updated_at,json=coverImageUpdatedAt,proto3" json:"cover_image_updated_at,omitempty"`
-	CoverImageVariants  []*v1.SeriesEyeCatchVariant `protobuf:"bytes,12,rep,name=cover_image_variants,json=coverImageVariants,proto3" json:"cover_image_variants,omitempty"`
-	CreatedAt           string                      `protobuf:"bytes,13,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt           string                      `protobuf:"bytes,14,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	// Whether the volume is on sale.
+	Published bool `protobuf:"varint,8,opt,name=published,proto3" json:"published,omitempty"`
+	// The RFC 3339 instant the volume was first put on sale, kept when it is
+	// taken off, and empty for a volume never on sale. Once it is set, no
+	// episode can be taken out of the volume: a checkout started while it was
+	// on sale can still complete, and the purchase opens what the volume holds.
+	// More episodes can still be added.
+	PublishedAt         string                      `protobuf:"bytes,9,opt,name=published_at,json=publishedAt,proto3" json:"published_at,omitempty"`
+	CoverImageUpdatedAt string                      `protobuf:"bytes,10,opt,name=cover_image_updated_at,json=coverImageUpdatedAt,proto3" json:"cover_image_updated_at,omitempty"`
+	CoverImageVariants  []*v1.SeriesEyeCatchVariant `protobuf:"bytes,11,rep,name=cover_image_variants,json=coverImageVariants,proto3" json:"cover_image_variants,omitempty"`
+	CreatedAt           string                      `protobuf:"bytes,12,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt           string                      `protobuf:"bytes,13,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -5867,13 +5867,6 @@ func (x *AdminVolume) GetPublishedAt() string {
 		return x.PublishedAt
 	}
 	return ""
-}
-
-func (x *AdminVolume) GetPurchased() bool {
-	if x != nil {
-		return x.Purchased
-	}
-	return false
 }
 
 func (x *AdminVolume) GetCoverImageUpdatedAt() string {
@@ -6363,8 +6356,9 @@ func (x *PublishVolumeResponse) GetVolume() *AdminVolume {
 // be an episode of the volume's series, named once, or the call is
 // invalid_argument. An episode another volume holds is failed_precondition:
 // an episode is in at most one volume, so it is taken out of the other first.
-// Taking out an episode while the volume is purchased is failed_precondition
-// too. An empty list empties the volume, which a volume on sale may not be.
+// Taking out an episode of a volume that has ever been on sale
+// (AdminVolume.published_at) is failed_precondition too, and so is emptying a
+// volume, which only a volume never on sale may be.
 type SetVolumeEpisodesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -7237,7 +7231,7 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"episode_id\x18\x02 \x01(\tR\tepisodeId\x12\x16\n" +
 	"\x06locale\x18\x03 \x01(\tR\x06locale\"l\n" +
 	" DeleteEpisodeTranslationResponse\x12H\n" +
-	"\ftranslations\x18\x01 \x03(\v2$.publira.admin.v1.EpisodeTranslationR\ftranslations\"\xf2\x03\n" +
+	"\ftranslations\x18\x01 \x03(\v2$.publira.admin.v1.EpisodeTranslationR\ftranslations\"\xd4\x03\n" +
 	"\vAdminVolume\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x1b\n" +
@@ -7249,15 +7243,14 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\vepisode_ids\x18\a \x03(\tR\n" +
 	"episodeIds\x12\x1c\n" +
 	"\tpublished\x18\b \x01(\bR\tpublished\x12!\n" +
-	"\fpublished_at\x18\t \x01(\tR\vpublishedAt\x12\x1c\n" +
-	"\tpurchased\x18\n" +
-	" \x01(\bR\tpurchased\x123\n" +
-	"\x16cover_image_updated_at\x18\v \x01(\tR\x13coverImageUpdatedAt\x12Y\n" +
-	"\x14cover_image_variants\x18\f \x03(\v2'.publira.types.v1.SeriesEyeCatchVariantR\x12coverImageVariants\x12\x1d\n" +
+	"\fpublished_at\x18\t \x01(\tR\vpublishedAt\x123\n" +
+	"\x16cover_image_updated_at\x18\n" +
+	" \x01(\tR\x13coverImageUpdatedAt\x12Y\n" +
+	"\x14cover_image_variants\x18\v \x03(\v2'.publira.types.v1.SeriesEyeCatchVariantR\x12coverImageVariants\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\r \x01(\tR\tcreatedAt\x12\x1d\n" +
+	"created_at\x18\f \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\x0e \x01(\tR\tupdatedAt\"j\n" +
+	"updated_at\x18\r \x01(\tR\tupdatedAt\"j\n" +
 	"\x12ListVolumesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tseries_id\x18\x02 \x01(\tR\bseriesId\"N\n" +

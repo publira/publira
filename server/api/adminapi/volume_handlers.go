@@ -81,7 +81,6 @@ type volumeRow struct {
 	coverImageUpdatedAt sql.NullTime
 	published           bool
 	publishedAt         sql.NullTime
-	purchased           bool
 	createdAt           time.Time
 	updatedAt           time.Time
 }
@@ -98,7 +97,6 @@ func volumeRowFromGet(row dbmodels.GetVolumeByIDForTenantRow) volumeRow {
 		coverImageUpdatedAt: row.CoverImageUpdatedAt,
 		published:           row.IsPublished,
 		publishedAt:         row.PublishedAt,
-		purchased:           row.Purchased,
 		createdAt:           row.CreatedAt,
 		updatedAt:           row.UpdatedAt,
 	}
@@ -116,7 +114,6 @@ func volumeRowFromList(row dbmodels.ListVolumesForSeriesRow) volumeRow {
 		coverImageUpdatedAt: row.CoverImageUpdatedAt,
 		published:           row.IsPublished,
 		publishedAt:         row.PublishedAt,
-		purchased:           row.Purchased,
 		createdAt:           row.CreatedAt,
 		updatedAt:           row.UpdatedAt,
 	}
@@ -172,7 +169,6 @@ func (s *adminServer) volumeMessages(ctx context.Context, tenantID uuid.UUID, ro
 			Price:      row.price,
 			EpisodeIds: episodeIDs,
 			Published:  row.published,
-			Purchased:  row.purchased,
 			CreatedAt:  row.createdAt.UTC().Format(time.RFC3339),
 			UpdatedAt:  row.updatedAt.UTC().Format(time.RFC3339),
 		}
@@ -595,8 +591,6 @@ func (s *adminServer) SetVolumeEpisodes(
 			if elsewhere > 0 {
 				return nil, connect.NewError(connect.CodeFailedPrecondition, "an episode is already in another volume")
 			}
-		} else if current.IsPublished {
-			return nil, connect.NewError(connect.CodeFailedPrecondition, "a volume on sale cannot be emptied")
 		}
 
 		held, err := queries.ListVolumeEpisodesByVolumeIDs(txCtx, dbmodels.ListVolumeEpisodesByVolumeIDsParams{
@@ -609,23 +603,15 @@ func (s *adminServer) SetVolumeEpisodes(
 		takesOut := slices.ContainsFunc(held, func(row dbmodels.ListVolumeEpisodesByVolumeIDsRow) bool {
 			return !slices.Contains(episodeIDs, row.EpisodeID)
 		})
-		// A buyer paid for every episode the volume held, and the purchase
-		// opens what the volume holds, so taking one out would take it from
-		// them. A purchase being recorded holds a key share lock on the volume
-		// row through its foreign key, which the volume lock waits for and
-		// then holds off, so no purchase commits between this read and the
-		// write.
-		if takesOut {
-			purchased, err := queries.VolumeHasStandingPurchase(txCtx, dbmodels.VolumeHasStandingPurchaseParams{
-				TenantID: tenant.ID,
-				VolumeID: current.ID,
-			})
-			if err != nil {
-				return nil, s.internalDBError(ctx, "failed to check the purchases of a volume", err, "tenant_id", tenant.ID.String(), "volume_id", current.ID.String())
-			}
-			if purchased {
-				return nil, connect.NewError(connect.CodeFailedPrecondition, "an episode cannot be taken out of a volume someone has bought")
-			}
+		// A purchase of the volume opens what the volume holds, so an episode
+		// taken out of it is taken from every buyer. Once the volume has been on
+		// sale, a checkout started then can still complete after it is taken
+		// off, so the episodes it held stay in it for good. A checkout reads
+		// is_published without this lock, which is why the rule is the first
+		// publication rather than the current one: published_at is set before
+		// any checkout of the volume can start, and never cleared.
+		if takesOut && current.PublishedAt.Valid {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, "an episode cannot be taken out of a volume that has been on sale")
 		}
 
 		if err := queries.DeleteVolumeEpisodes(txCtx, dbmodels.DeleteVolumeEpisodesParams{

@@ -5,7 +5,6 @@ import (
 	"slices"
 	"strings"
 	"testing"
-	"time"
 
 	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
@@ -175,16 +174,17 @@ func TestDBAVolumeIsCreatedFilledPricedAndPublished(t *testing.T) {
 	}
 
 	listed := v.list(t)
-	if len(listed) != 1 || listed[0].Id != volume.Id || listed[0].Title != "Volume 1" || !listed[0].Published || listed[0].Purchased {
-		t.Fatalf("listed volumes = %+v, want the one published volume, unpurchased", listed)
+	if len(listed) != 1 || listed[0].Id != volume.Id || listed[0].Title != "Volume 1" || !listed[0].Published {
+		t.Fatalf("listed volumes = %+v, want the one published volume", listed)
 	}
 
 	unpublished, err := v.publish(volume.Id, false)
 	if err != nil {
 		t.Fatalf("PublishVolume(false): %v", err)
 	}
-	if unpublished.Published || unpublished.PublishedAt != "" {
-		t.Fatalf("unpublished volume = %+v, want it off sale", unpublished)
+	// Taken off sale, it keeps the instant it was first put on sale.
+	if unpublished.Published || unpublished.PublishedAt != published.PublishedAt {
+		t.Fatalf("unpublished volume = %+v, want it off sale and first published at %s", unpublished, published.PublishedAt)
 	}
 
 	for action, want := range map[string]int{
@@ -200,8 +200,9 @@ func TestDBAVolumeIsCreatedFilledPricedAndPublished(t *testing.T) {
 }
 
 // An episode is in at most one volume and only in a volume of its own series,
-// and a volume someone bought keeps every episode the buyer paid for.
-func TestDBSetVolumeEpisodesKeepsEachEpisodeInOneVolumeAndWhatABuyerPaidFor(t *testing.T) {
+// and a volume that has been on sale keeps every episode it held: a checkout
+// started while it was on sale may still complete after it is taken off.
+func TestDBSetVolumeEpisodesKeepsEachEpisodeInOneVolumeAndWhatWasOnSale(t *testing.T) {
 	v := newVolumeEnv(t)
 	first := v.create(t, "Volume 1", 900)
 	second := v.create(t, "Volume 2", 900)
@@ -215,52 +216,42 @@ func TestDBSetVolumeEpisodesKeepsEachEpisodeInOneVolumeAndWhatABuyerPaidFor(t *t
 	if _, err := v.setEpisodes(first.Id, v.episodes[0], v.episodes[0]); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("an episode named twice = %v, want invalid_argument", err)
 	}
-	if _, err := v.setEpisodes(first.Id, v.episodes[0], v.episodes[1]); err != nil {
+	if _, err := v.setEpisodes(first.Id, v.episodes[0], v.episodes[1], v.episodes[2]); err != nil {
 		t.Fatalf("SetVolumeEpisodes: %v", err)
 	}
-	if _, err := v.setEpisodes(second.Id, v.episodes[1], v.episodes[2]); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+	if _, err := v.setEpisodes(second.Id, v.episodes[2]); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("an episode another volume holds = %v, want failed_precondition", err)
 	}
-
-	// A reader buys the first volume.
-	reader := v.env.PG.SeedEndUser(t, v.tenant.Tenant.ID, "VOLREADER01", "reader@volumes.example.com", "Reader")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	if _, err := v.env.PG.DB.ExecContext(ctx, `
-		INSERT INTO purchases (id, tenant_id, user_id, volume_id, price_at_purchase, currency, provider, provider_checkout_id)
-		VALUES ($1, $2, $3, $4, 900, 'JPY', 'stripe', 'cs_volume_admin')
-	`, uuid.New(), v.tenant.Tenant.ID, reader.ID, uuid.MustParse(first.Id)); err != nil {
-		t.Fatalf("record the purchase of the volume: %v", err)
+	// Before it is ever on sale, a volume is the editor's to change freely.
+	if _, err := v.setEpisodes(first.Id, v.episodes[0], v.episodes[1]); err != nil {
+		t.Fatalf("taking an episode out of a volume never on sale: %v", err)
 	}
-	if listed := v.list(t); !listed[0].Purchased || listed[1].Purchased {
-		t.Fatalf("purchased = (%t, %t), want only the first volume", listed[0].Purchased, listed[1].Purchased)
+	if _, err := v.setEpisodes(second.Id, v.episodes[2]); err != nil {
+		t.Fatalf("moving the freed episode to the second volume: %v", err)
 	}
 
+	if _, err := v.publish(first.Id, true); err != nil {
+		t.Fatalf("PublishVolume: %v", err)
+	}
 	if _, err := v.setEpisodes(first.Id, v.episodes[0]); connect.CodeOf(err) != connect.CodeFailedPrecondition {
-		t.Fatalf("taking an episode out of a bought volume = %v, want failed_precondition", err)
+		t.Fatalf("taking an episode out of a volume on sale = %v, want failed_precondition", err)
 	}
-	// Reordering what it holds, and adding to it, take nothing from the buyer.
-	reordered, err := v.setEpisodes(first.Id, v.episodes[2], v.episodes[1], v.episodes[0])
+	if _, err := v.publish(first.Id, false); err != nil {
+		t.Fatalf("PublishVolume(false): %v", err)
+	}
+	if _, err := v.setEpisodes(first.Id, v.episodes[0]); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("taking an episode out of a volume taken off sale = %v, want failed_precondition", err)
+	}
+	if _, err := v.setEpisodes(first.Id); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("emptying a volume that has been on sale = %v, want failed_precondition", err)
+	}
+	// Reordering what it holds takes nothing from a buyer.
+	reordered, err := v.setEpisodes(first.Id, v.episodes[1], v.episodes[0])
 	if err != nil {
-		t.Fatalf("adding to a bought volume: %v", err)
+		t.Fatalf("reordering a volume that has been on sale: %v", err)
 	}
-	if want := episodeIDStrings(v.episodes[2], v.episodes[1], v.episodes[0]); !slices.Equal(reordered.EpisodeIds, want) {
+	if want := episodeIDStrings(v.episodes[1], v.episodes[0]); !slices.Equal(reordered.EpisodeIds, want) {
 		t.Fatalf("episode_ids = %v, want %v", reordered.EpisodeIds, want)
-	}
-
-	// Once the purchase stops opening the volume, nobody is owed its episodes.
-	if _, err := v.env.PG.DB.ExecContext(ctx, `
-		UPDATE purchases
-		SET revoked_at = now(), revocation_reason = 'staff'
-		WHERE tenant_id = $1
-	`, v.tenant.Tenant.ID); err != nil {
-		t.Fatalf("revoke the purchase: %v", err)
-	}
-	if _, err := v.setEpisodes(first.Id, v.episodes[0]); err != nil {
-		t.Fatalf("taking an episode out of a volume whose purchase is revoked: %v", err)
-	}
-	if _, err := v.setEpisodes(second.Id, v.episodes[1], v.episodes[2]); err != nil {
-		t.Fatalf("moving the freed episodes to the second volume: %v", err)
 	}
 }
 

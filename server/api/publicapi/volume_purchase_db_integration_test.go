@@ -373,3 +373,50 @@ func TestDBAnExpiredVolumeCheckoutMovesTheNextAttemptOn(t *testing.T) {
 		t.Fatalf("the attempt after an expiry reuses the key %q", first.IdempotencyKey)
 	}
 }
+
+// Buying a volume buys each of its episodes, so a volume is sold, and listed,
+// only on a surface where every one of them may be bought.
+func TestDBAVolumeIsSoldOnlyWhereEveryEpisodeIsSold(t *testing.T) {
+	env := newVolumePurchaseEnv(t, "VOLUMESRF", "volume-surface.example.com")
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	if _, err := env.pg.DB.ExecContext(ctx, `
+		UPDATE episodes
+		SET purchase_availability = 'web'
+		WHERE id = $1
+	`, env.inVolume[1].ID); err != nil {
+		t.Fatalf("sell an episode of the volume on the web alone: %v", err)
+	}
+
+	volumesOn := func(surface publirattypesv1.ClientSurface) []*publirattypesv1.Volume {
+		t.Helper()
+		detail, err := env.catalog.GetSeriesDetail(ctx, &publirav1.GetSeriesDetailRequest{
+			Tenant:   tenantContext(env.tenant),
+			PublicId: env.series.PublicID,
+			Surface:  surface,
+		})
+		if err != nil {
+			t.Fatalf("GetSeriesDetail(%s): %v", surface, err)
+		}
+		return detail.Volumes
+	}
+	if got := volumesOn(publirattypesv1.ClientSurface_CLIENT_SURFACE_WEB); len(got) != 1 {
+		t.Fatalf("volumes on the web = %v, want the volume", got)
+	}
+	if got := volumesOn(publirattypesv1.ClientSurface_CLIENT_SURFACE_APP); len(got) != 0 {
+		t.Fatalf("volumes in the app = %v, want none: one of its episodes is not sold there", got)
+	}
+
+	_, err := env.purchases.StartVolumeCheckout(testutil.WithBearer(ctx, env.token), &publirav1.StartVolumeCheckoutRequest{
+		Tenant:   tenantContext(env.tenant),
+		VolumeId: env.volume.ID.String(),
+		Client:   publirav1.StartEpisodeCheckoutRequest_CLIENT_MOBILE,
+	})
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("buying the volume in the app = %v, want not_found", err)
+	}
+	if err := env.startVolumeCheckout(ctx, env.volume.ID); err != nil {
+		t.Fatalf("buying the volume on the web: %v", err)
+	}
+}

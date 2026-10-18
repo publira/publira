@@ -1039,7 +1039,7 @@ func (s *apiServer) GetSeriesDetail(
 	if err := s.fillEpisodeEyeCatches(ctx, tenant.ID, res.Episodes...); err != nil {
 		return nil, err
 	}
-	if res.Volumes, err = s.seriesVolumes(ctx, tenant.ID, row.ID, res.Episodes); err != nil {
+	if res.Volumes, err = s.seriesVolumes(ctx, tenant.ID, row.ID, surface, res.Episodes); err != nil {
 		return nil, err
 	}
 

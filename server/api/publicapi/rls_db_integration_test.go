@@ -145,6 +145,9 @@ var publicDataTables = []struct {
 	// which the content grant reads for a purchase of a volume.
 	{name: "volumes", count: "SELECT count(*) FROM volumes"},
 	{name: "volume_episodes", count: "SELECT count(*) FROM volume_episodes"},
+	// Where each volume may be bought, which the series page and the checkout
+	// read.
+	{name: "volume_purchase_surfaces", count: "SELECT count(*) FROM volume_purchase_surfaces"},
 	{name: "access_tickets", count: "SELECT count(*) FROM access_tickets"},
 	// A series' wait-for-free rule, which the series page reads, and one
 	// reader's wait for their next ticket, which spending one writes on this

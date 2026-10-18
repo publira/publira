@@ -166,6 +166,12 @@ WHERE v.tenant_id = $1
     AND v.is_published
     AND EXISTS (
         SELECT 1
+        FROM volume_purchase_surfaces vps
+        WHERE vps.volume_id = v.id
+            AND vps.surface = $3::text
+    )
+    AND EXISTS (
+        SELECT 1
         FROM volume_episodes ve
             JOIN published_episode_surfaces pes ON pes.tenant_id = ve.tenant_id
             AND pes.episode_id = ve.episode_id
@@ -190,8 +196,9 @@ type GetPurchasableVolumeForTenantRow struct {
 	SeriesPublicID string    `json:"series_public_id"`
 }
 
-// A volume on sale on the calling surface: published, of a published series
-// the surface shows, and holding at least one episode the surface lists. A
+// A volume on sale on the calling surface: published, every one of its
+// episodes sold there, and holding at least one episode the surface lists,
+// which also makes it a volume of a published series the surface shows. A
 // surface cannot sell what it cannot show, and a volume none of whose episodes
 // is out yet sells nothing the reader could open.
 func (q *Queries) GetPurchasableVolumeForTenant(ctx context.Context, arg GetPurchasableVolumeForTenantParams) (GetPurchasableVolumeForTenantRow, error) {

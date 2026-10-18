@@ -773,7 +773,7 @@ func TestCatalogGetSeriesDetailContract(t *testing.T) {
 	unlistedVolumeID := uuid.Must(uuid.NewV7())
 	coverID := uuid.Must(uuid.NewV7())
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedVolumesForSeries)).
-		WithArgs(tenantID, seriesID).
+		WithArgs(tenantID, seriesID, "web").
 		WillReturnRows(sqlmock.NewRows(publishedVolumeColumns).
 			AddRow(listedVolumeID, "VOLUME000001", "Volume 1", int32(0), int32(900), coverID, now, now).
 			AddRow(unlistedVolumeID, "VOLUME000002", "Volume 2", int32(1), int32(900), nil, nil, now))

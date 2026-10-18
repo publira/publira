@@ -837,8 +837,9 @@ type Querier interface {
 	// configured, so the key is never offered before a push could be signed.
 	GetPublishedWebPushPublicKey(ctx context.Context) (string, error)
 	GetPurchasableEpisodeForTenant(ctx context.Context, arg GetPurchasableEpisodeForTenantParams) (GetPurchasableEpisodeForTenantRow, error)
-	// A volume on sale on the calling surface: published, of a published series
-	// the surface shows, and holding at least one episode the surface lists. A
+	// A volume on sale on the calling surface: published, every one of its
+	// episodes sold there, and holding at least one episode the surface lists,
+	// which also makes it a volume of a published series the surface shows. A
 	// surface cannot sell what it cannot show, and a volume none of whose episodes
 	// is out yet sells nothing the reader could open.
 	GetPurchasableVolumeForTenant(ctx context.Context, arg GetPurchasableVolumeForTenantParams) (GetPurchasableVolumeForTenantRow, error)
@@ -2099,9 +2100,9 @@ type Querier interface {
 	// spelled out rather than written as a row value.
 	// cursor rules: proto/README.md.
 	ListPublishedTagsByTenantDesc(ctx context.Context, arg ListPublishedTagsByTenantDescParams) ([]ListPublishedTagsByTenantDescRow, error)
-	// The volumes of the series on sale, in the console's order. Which of their
-	// episodes a surface shows is the caller's to decide, since it holds the
-	// series' episodes as that surface lists them.
+	// The volumes of the series on sale on the calling surface, in the console's
+	// order. Which of their episodes the surface shows is the caller's to decide,
+	// since it holds the series' episodes as that surface lists them.
 	ListPublishedVolumesForSeries(ctx context.Context, arg ListPublishedVolumesForSeriesParams) ([]ListPublishedVolumesForSeriesRow, error)
 	ListPurchaseIDsForTenantAsc(ctx context.Context, arg ListPurchaseIDsForTenantAscParams) ([]ListPurchaseIDsForTenantAscRow, error)
 	// The console's purchase list is (purchased_at, id) DESC. A forward page reads
@@ -3175,8 +3176,8 @@ type Querier interface {
 	// Points the volume at an uploaded cover, or at none. The cover it pointed at
 	// before is left for the orphan image sweep.
 	SetVolumeCoverImageID(ctx context.Context, arg SetVolumeCoverImageIDParams) error
-	// Puts the volume on sale or takes it off. Publishing a volume already on sale
-	// keeps the instant it was put on sale.
+	// Puts the volume on sale or takes it off. published_at keeps the instant it
+	// was first put on sale, through every later publish and unpublish.
 	SetVolumePublished(ctx context.Context, arg SetVolumePublishedParams) error
 	// Answers whether a nonce was spent already, without spending it, so a replay
 	// can be refused before anything is charged for the request.
@@ -3473,10 +3474,6 @@ type Querier interface {
 	// Whether the body is free to everyone — price = 0, or an open free window —
 	// is evaluated by the caller; this query only covers grants.
 	UserHasEpisodeContentAccess(ctx context.Context, arg UserHasEpisodeContentAccessParams) (bool, error)
-	// Whether a purchase of the volume still opens its episodes: one neither
-	// refunded in full, disputed, nor revoked by staff. Such a buyer paid for the
-	// episodes the volume holds, so none of them may leave it.
-	VolumeHasStandingPurchase(ctx context.Context, arg VolumeHasStandingPurchaseParams) (bool, error)
 	// The author's own deletion. It applies to a comment staff had removed too,
 	// since the author still sees that comment unchanged. The removal columns
 	// are cleared because no removal is in force on a withdrawn row any more;

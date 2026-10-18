@@ -150,7 +150,7 @@ var publishedVolumeColumns = []string{"id", "public_id", "title", "order_index",
 // sale.
 func expectNoSeriesVolumes(mock sqlmock.Sqlmock, tenantID, seriesID uuid.UUID) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedVolumesForSeries)).
-		WithArgs(tenantID, seriesID).
+		WithArgs(tenantID, seriesID, "web").
 		WillReturnRows(sqlmock.NewRows(publishedVolumeColumns))
 }
 
