@@ -577,7 +577,7 @@ func TestTenantConfigCommentModeDefaultsToDisabled(t *testing.T) {
 
 	tenantID := mustInsertTenant(t, ctx, pg.DB, "CMTMODETN01", "cmt-mode.example.com", "admin-cmt-mode.example.com", "Comment Mode Tenant")
 	queries := dbmodels.New(pg.DB)
-	config, err := queries.CreateTenantConfig(ctx, dbmodels.CreateTenantConfigParams{TenantID: tenantID})
+	config, err := queries.CreateTenantConfig(ctx, tenantID)
 	if err != nil {
 		t.Fatalf("create tenant config: %v", err)
 	}

@@ -139,6 +139,25 @@ func expectSignInProvidersUnavailable(mock sqlmock.Sqlmock, tenantID uuid.UUID) 
 		WillReturnError(sql.ErrNoRows)
 }
 
+// expectNoSiteCopy answers the site copy GetTenant reads for a tenant that has
+// written none in any locale.
+func expectNoSiteCopy(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigTranslationFor)).
+		WithArgs(tenantID, sqlmock.AnyArg()).
+		WillReturnError(sql.ErrNoRows)
+}
+
+// expectSiteCopy answers the site copy GetTenant reads for locale with the
+// translation the database picked, which is in pickedLocale.
+func expectSiteCopy(mock sqlmock.Sqlmock, tenantID uuid.UUID, locale, pickedLocale, copyright, description, tagline string) {
+	now := time.Now()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigTranslationFor)).
+		WithArgs(tenantID, locale).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "tenant_id", "locale", "site_tagline", "site_description", "copyright_text", "created_at", "updated_at",
+		}).AddRow(uuid.Must(uuid.NewV7()), tenantID, pickedLocale, tagline, description, copyright, now, now))
+}
+
 // expectPaymentsUnavailable answers the payment settings of a tenant that has
 // saved none, and so sells in JPY.
 func expectPaymentsUnavailable(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
@@ -179,11 +198,8 @@ func TestGetTenantIncludesTheme(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantConfigColumns()).AddRow(
 			tenantID,
-			sql.NullString{String: "© Publira", Valid: true},
-			sql.NullString{String: "Site description", Valid: true},
 			now,
 			now,
-			sql.NullString{String: "Tagline", Valid: true},
 			"disabled",
 			int32(3),
 			"single",
@@ -200,6 +216,7 @@ func TestGetTenantIncludesTheme(t *testing.T) {
 			"external_checkout",
 			"upload",
 		))
+	expectSiteCopy(mock, tenantID, "ja", "ja", "© Publira", "Site description", "Tagline")
 	expectPaymentsUnavailable(mock, tenantID)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
@@ -246,6 +263,80 @@ func TestGetTenantIncludesTheme(t *testing.T) {
 // The theme carries the icon and the logo as variants, so a tenant with both
 // set exercises the one-statement variant read and the split by image id that a
 // tenant without either never reaches.
+// The copy is read in the reader's locale, and what the database picks for it
+// is answered as it is: a tenant that wrote its copy only in ja answers that
+// copy to a reader in en.
+func TestGetTenantReadsTheSiteCopyInTheReadersLocale(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	now := time.Now()
+	expectTenantLookup(mock, tenantID, "TENANT001", now)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
+		WithArgs(tenantID).
+		WillReturnError(sql.ErrNoRows)
+	expectSiteCopy(mock, tenantID, "en", "ja", "© Hoshi Shobo", "Comics from Hoshi Shobo", "Read tonight")
+	expectPaymentsUnavailable(mock, tenantID)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
+		WithArgs(tenantID).
+		WillReturnError(sql.ErrNoRows)
+	expectSignInProvidersUnavailable(mock, tenantID)
+
+	client := publirav1connect.NewTenantServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.GetTenant(context.Background(), &publirav1.GetTenantRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Locale: "en",
+	})
+	if err != nil {
+		t.Fatalf("GetTenant: %v", err)
+	}
+	if resp.CopyrightText != "© Hoshi Shobo" || resp.SiteDescription != "Comics from Hoshi Shobo" || resp.SiteTagline != "Read tonight" {
+		t.Fatalf("site copy = %q / %q / %q, want the copy the database picked", resp.CopyrightText, resp.SiteDescription, resp.SiteTagline)
+	}
+	assertPublicExpectations(t, mock)
+}
+
+func TestGetTenantRefusesAnUnsupportedLocale(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	expectTenantLookup(mock, tenantID, "TENANT001", time.Now())
+
+	client := publirav1connect.NewTenantServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.GetTenant(context.Background(), &publirav1.GetTenantRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Locale: "xx",
+	})
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("GetTenant code = %v, want invalid_argument", connect.CodeOf(err))
+	}
+	assertPublicExpectations(t, mock)
+}
+
+// A failed read of the copy is not answered as a tenant that wrote none, which
+// web-storefront would cache.
+func TestGetTenantFailsWhenTheSiteCopyCannotBeRead(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	expectTenantLookup(mock, tenantID, "TENANT001", time.Now())
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
+		WithArgs(tenantID).
+		WillReturnError(sql.ErrNoRows)
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigTranslationFor)).
+		WithArgs(tenantID, "ja").
+		WillReturnError(sql.ErrConnDone)
+
+	client := publirav1connect.NewTenantServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.GetTenant(context.Background(), &publirav1.GetTenantRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+	})
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("GetTenant code = %v, want internal", connect.CodeOf(err))
+	}
+	assertPublicExpectations(t, mock)
+}
+
 func TestGetTenantIncludesBrandingImageVariants(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 
@@ -258,6 +349,7 @@ func TestGetTenantIncludesBrandingImageVariants(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
+	expectNoSiteCopy(mock, tenantID)
 	expectPaymentsUnavailable(mock, tenantID)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
@@ -333,6 +425,7 @@ func TestGetTenantAnswersNoThemeWithoutAThemeRow(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
+	expectNoSiteCopy(mock, tenantID)
 	expectPaymentsUnavailable(mock, tenantID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
@@ -401,6 +494,7 @@ func TestGetTenantFailsWhenTheBrandingCannotBeRead(t *testing.T) {
 			env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 				WithArgs(tenantID).
 				WillReturnError(sql.ErrNoRows)
+			expectNoSiteCopy(env.mock, tenantID)
 			expectPaymentsUnavailable(env.mock, tenantID)
 			tt.expectTheme(env.mock, tenantID, now)
 
@@ -430,6 +524,7 @@ func TestGetTenantReturnsConfiguredTimezone(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
+	expectNoSiteCopy(mock, tenantID)
 	expectPaymentsUnavailable(mock, tenantID)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
@@ -461,6 +556,7 @@ func TestGetTenantFallsBackToDefaultTimezone(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
+	expectNoSiteCopy(mock, tenantID)
 	expectPaymentsUnavailable(mock, tenantID)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
@@ -492,6 +588,7 @@ func TestGetTenantReturnsConfiguredDefaultLocale(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
+	expectNoSiteCopy(mock, tenantID)
 	expectPaymentsUnavailable(mock, tenantID)
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
@@ -557,6 +654,7 @@ func TestGetTenantReportsWhetherPaymentsCanBeAccepted(t *testing.T) {
 	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
+	expectNoSiteCopy(env.mock, tenantID)
 	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
 	expectTenantCurrency(env.mock, tenantID, "JPY")
 	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
@@ -589,6 +687,7 @@ func TestGetTenantDoesNotAcceptPaymentsWithUndecryptableSettings(t *testing.T) {
 	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
+	expectNoSiteCopy(env.mock, tenantID)
 	env.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetEnabledTenantPaymentConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(stripePaymentConfigRow(t, tenantID, "enc:invalid", "enc:invalid", "********", "********", now))
@@ -633,6 +732,7 @@ func TestGetTenantReportsTheTenantCommentMode(t *testing.T) {
 			now := time.Now()
 			expectTenantLookup(mock, tenantID, "TENANT001", now)
 			expectTenantConfigWithCommentMode(mock, tenantID, now, tc.mode)
+			expectNoSiteCopy(mock, tenantID)
 			expectPaymentsUnavailable(mock, tenantID)
 			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 				WithArgs(tenantID).
@@ -665,6 +765,7 @@ func TestGetTenantReportsCommentingOffWithoutAConfigRow(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnError(sql.ErrNoRows)
+	expectNoSiteCopy(mock, tenantID)
 	expectPaymentsUnavailable(mock, tenantID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 		WithArgs(tenantID).
@@ -715,11 +816,8 @@ func expectTenantConfigWithCommentMode(
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantConfigColumns()).AddRow(
 			tenantID,
-			sql.NullString{},
-			sql.NullString{},
 			now,
 			now,
-			sql.NullString{},
 			mode,
 			int32(3),
 			"single",
@@ -758,6 +856,7 @@ func TestGetTenantReportsTheTenantAgeVerification(t *testing.T) {
 			now := time.Now()
 			expectTenantLookup(mock, tenantID, "TENANT001", now)
 			expectTenantAgeVerification(mock, tenantID, now, tc.stored)
+			expectNoSiteCopy(mock, tenantID)
 			expectPaymentsUnavailable(mock, tenantID)
 			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantThemeByTenantID)).
 				WithArgs(tenantID).
@@ -826,6 +925,7 @@ func TestGetTenantReportsTheAppPurchaseRoute(t *testing.T) {
 			} else {
 				expectTenantConfigWithAppPurchaseRoute(mock, tenantID, now, tc.stored)
 			}
+			expectNoSiteCopy(mock, tenantID)
 			expectPaymentsUnavailable(mock, tenantID)
 			if tc.want == publirattypesv1.AppPurchaseRoute_APP_PURCHASE_ROUTE_STORE {
 				expectStoreReadinessUnavailable(mock, tenantID, now)
@@ -888,5 +988,5 @@ func expectTenantConfigWithAppPurchaseRoute(mock sqlmock.Sqlmock, tenantID uuid.
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantConfigByTenantID)).
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantConfigColumns()).
-			AddRow(tenantID, nil, nil, now, now, nil, "disabled", int32(3), "single", ageverification.None, "all", nil, nil, nil, nil, nil, "{}", nil, nil, route, "upload"))
+			AddRow(tenantID, now, now, "disabled", int32(3), "single", ageverification.None, "all", nil, nil, nil, nil, nil, "{}", nil, nil, route, "upload"))
 }

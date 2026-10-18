@@ -252,11 +252,63 @@ func TestDBUpdateTenantConfigPersists(t *testing.T) {
 		t.Fatalf("tenant config = %+v, want the values just written", got)
 	}
 
-	// tenant_config is RLS-protected; the row must be stamped with this tenant.
+	// tenant_config_translations is RLS-protected; the row must be stamped
+	// with this tenant, in its default locale.
 	if count := env.countRows(t,
-		"SELECT count(*) FROM tenant_config WHERE tenant_id = $1 AND copyright_text = $2",
-		tenant.Tenant.ID, "© Tenant A",
+		"SELECT count(*) FROM tenant_config_translations WHERE tenant_id = $1 AND locale = $2 AND copyright_text = $3",
+		tenant.Tenant.ID, tenant.Tenant.DefaultLocale, "© Tenant A",
 	); count != 1 {
-		t.Fatalf("tenant_config rows = %d, want 1", count)
+		t.Fatalf("tenant_config_translations rows = %d, want 1", count)
+	}
+}
+
+// Each locale's copy is written and read on its own, and clearing one leaves
+// the others as they were.
+func TestDBUpdateTenantConfigWritesOneLocaleAtATime(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.authClient()
+	ctx := testutil.WithBearer(context.Background(), tenant.token())
+
+	write := func(locale, copyright string) {
+		t.Helper()
+		if _, err := client.UpdateTenantConfig(ctx, &publiraadminv1.AdminAuthServiceUpdateTenantConfigRequest{
+			Tenant:        tenant.tenantContext(),
+			Locale:        locale,
+			CopyrightText: copyright,
+		}); err != nil {
+			t.Fatalf("UpdateTenantConfig(%q): %v", locale, err)
+		}
+	}
+	read := func(locale string) string {
+		t.Helper()
+		got, err := client.GetTenantConfig(ctx, &publiraadminv1.AdminAuthServiceGetTenantConfigRequest{
+			Tenant: tenant.tenantContext(),
+			Locale: locale,
+		})
+		if err != nil {
+			t.Fatalf("GetTenantConfig(%q): %v", locale, err)
+		}
+		return got.CopyrightText
+	}
+
+	write("ja", "© Hoshi Shobo")
+	write("en", "© Star Books")
+	if got := read("ja"); got != "© Hoshi Shobo" {
+		t.Fatalf("ja = %q, want the ja copy", got)
+	}
+	if got := read("en"); got != "© Star Books" {
+		t.Fatalf("en = %q, want the en copy", got)
+	}
+	if got := read("ko"); got != "" {
+		t.Fatalf("ko = %q, want no copy, since none was written in ko", got)
+	}
+
+	write("en", "")
+	if got := read("en"); got != "" {
+		t.Fatalf("en after clearing = %q, want no copy", got)
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM tenant_config_translations WHERE tenant_id = $1", tenant.Tenant.ID); count != 1 {
+		t.Fatalf("tenant_config_translations rows = %d, want only the ja row", count)
 	}
 }

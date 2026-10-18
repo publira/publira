@@ -29,13 +29,14 @@ const GetTenantRequest$json = {
       '6': '.publira.types.v1.TenantContext',
       '10': 'tenant'
     },
+    {'1': 'locale', '3': 2, '4': 1, '5': 9, '10': 'locale'},
   ],
 };
 
 /// Descriptor for `GetTenantRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List getTenantRequestDescriptor = $convert.base64Decode(
     'ChBHZXRUZW5hbnRSZXF1ZXN0EjcKBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVG'
-    'VuYW50Q29udGV4dFIGdGVuYW50');
+    'VuYW50Q29udGV4dFIGdGVuYW50EhYKBmxvY2FsZRgCIAEoCVIGbG9jYWxl');
 
 @$core.Deprecated('Use getTenantLegalPagesRequestDescriptor instead')
 const GetTenantLegalPagesRequest$json = {

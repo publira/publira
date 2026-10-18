@@ -194,20 +194,12 @@ WHERE tenant_id = $1
 LIMIT 1;
 
 -- name: CreateTenantConfig :one
-INSERT INTO tenant_config (tenant_id, copyright_text, site_description, site_tagline)
-VALUES ($1, $2, $3, $4)
-RETURNING *;
-
--- name: UpdateTenantConfig :one
-UPDATE tenant_config
-SET copyright_text = $2, site_description = $3, site_tagline = $4, updated_at = NOW()
-WHERE tenant_id = $1
+INSERT INTO tenant_config (tenant_id)
+VALUES ($1)
 RETURNING *;
 
 -- name: UpsertTenantAgeVerification :one
--- An upsert for the reason UpsertTenantCommentSettings gives: deciding to
--- verify ages is not a decision a tenant should have to fill in its site copy
--- to reach.
+-- An upsert for the reason UpsertTenantCommentSettings gives.
 INSERT INTO tenant_config (tenant_id, age_verification)
 VALUES ($1, $2)
 ON CONFLICT (tenant_id) DO UPDATE
@@ -262,7 +254,7 @@ RETURNING app_purchase_route;
 -- name: UpsertTenantCommentSettings :one
 -- The settings screen can save what the tenant has decided about commenting
 -- for a tenant whose config row does not exist yet, so both columns are
--- written without disturbing the site copy columns UpdateTenantConfig owns.
+-- written without disturbing the columns the other settings cards own.
 --
 -- The mode and the automatic removal threshold are written together because
 -- the console offers them as one card: saving them separately would leave a

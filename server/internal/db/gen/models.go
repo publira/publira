@@ -1178,11 +1178,8 @@ type TenantCommunityLimitOverride struct {
 
 type TenantConfig struct {
 	TenantID                       uuid.UUID      `json:"tenant_id"`
-	CopyrightText                  sql.NullString `json:"copyright_text"`
-	SiteDescription                sql.NullString `json:"site_description"`
 	CreatedAt                      time.Time      `json:"created_at"`
 	UpdatedAt                      time.Time      `json:"updated_at"`
-	SiteTagline                    sql.NullString `json:"site_tagline"`
 	CommentMode                    string         `json:"comment_mode"`
 	CommentAutoHideReportThreshold int32          `json:"comment_auto_hide_report_threshold"`
 	EpisodeRatingMode              string         `json:"episode_rating_mode"`
@@ -1198,6 +1195,17 @@ type TenantConfig struct {
 	IosBundleIdentifier            sql.NullString `json:"ios_bundle_identifier"`
 	AppPurchaseRoute               string         `json:"app_purchase_route"`
 	ReaderIconPolicy               string         `json:"reader_icon_policy"`
+}
+
+type TenantConfigTranslation struct {
+	ID              uuid.UUID `json:"id"`
+	TenantID        uuid.UUID `json:"tenant_id"`
+	Locale          string    `json:"locale"`
+	SiteTagline     string    `json:"site_tagline"`
+	SiteDescription string    `json:"site_description"`
+	CopyrightText   string    `json:"copyright_text"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }
 
 type TenantEmailRejectionEntry struct {

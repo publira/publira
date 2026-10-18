@@ -22,9 +22,11 @@ export 'package:protobuf/protobuf.dart' show GeneratedMessageGenericExtensions;
 class GetTenantRequest extends $pb.GeneratedMessage {
   factory GetTenantRequest({
     $0.TenantContext? tenant,
+    $core.String? locale,
   }) {
     final result = GetTenantRequest._();
     if (tenant != null) result.tenant = tenant;
+    if (locale != null) result.locale = locale;
     return result;
   }
 
@@ -43,6 +45,7 @@ class GetTenantRequest extends $pb.GeneratedMessage {
       createEmptyInstance: GetTenantRequest.$_createMessage)
     ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
         subBuilder: $0.TenantContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'locale')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -77,6 +80,19 @@ class GetTenantRequest extends $pb.GeneratedMessage {
   void clearTenant() => $_clearField(1);
   @$pb.TagNumber(1)
   $0.TenantContext ensureTenant() => $_ensure(0);
+
+  /// The reader's locale. GetTenantResponse.copyright_text, site_description,
+  /// and site_tagline are read from the tenant's copy in this locale, else in
+  /// its default locale, else its oldest. Empty means the tenant's default
+  /// locale.
+  @$pb.TagNumber(2)
+  $core.String get locale => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set locale($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasLocale() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearLocale() => $_clearField(2);
 }
 
 class GetTenantLegalPagesRequest extends $pb.GeneratedMessage {
@@ -493,6 +509,9 @@ class GetTenantResponse extends $pb.GeneratedMessage {
   @$pb.TagNumber(3)
   void clearTenantDomain() => $_clearField(3);
 
+  /// The site copy of the locale GetTenantRequest.locale resolves to, taken
+  /// together from one locale's copy: a field that copy leaves empty is empty
+  /// here rather than filled in from another locale.
   @$pb.TagNumber(4)
   $core.String get copyrightText => $_getSZ(3);
   @$pb.TagNumber(4)

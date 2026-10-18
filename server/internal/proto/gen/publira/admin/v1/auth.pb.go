@@ -2579,8 +2579,11 @@ func (x *AdminAuthServiceGetTenantResponse) GetTenant() *AdminAuthServiceTenant 
 }
 
 type AdminAuthServiceGetTenantConfigRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// The locale whose site copy to read. Empty means the tenant's default
+	// locale; a locale the tenant does not offer is invalid_argument.
+	Locale        string `protobuf:"bytes,2,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2622,13 +2625,26 @@ func (x *AdminAuthServiceGetTenantConfigRequest) GetTenant() *v1.TenantContext {
 	return nil
 }
 
+func (x *AdminAuthServiceGetTenantConfigRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
+// The site copy written in that locale and nothing else: every field is empty
+// where the locale has no copy, although readers in it are served another
+// locale's.
 type AdminAuthServiceGetTenantConfigResponse struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	CopyrightText   string                 `protobuf:"bytes,1,opt,name=copyright_text,json=copyrightText,proto3" json:"copyright_text,omitempty"`
 	SiteDescription string                 `protobuf:"bytes,2,opt,name=site_description,json=siteDescription,proto3" json:"site_description,omitempty"`
 	SiteTagline     string                 `protobuf:"bytes,3,opt,name=site_tagline,json=siteTagline,proto3" json:"site_tagline,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The locale read, which names the default locale when the request named
+	// none.
+	Locale        string `protobuf:"bytes,4,opt,name=locale,proto3" json:"locale,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AdminAuthServiceGetTenantConfigResponse) Reset() {
@@ -2678,6 +2694,13 @@ func (x *AdminAuthServiceGetTenantConfigResponse) GetSiteDescription() string {
 func (x *AdminAuthServiceGetTenantConfigResponse) GetSiteTagline() string {
 	if x != nil {
 		return x.SiteTagline
+	}
+	return ""
+}
+
+func (x *AdminAuthServiceGetTenantConfigResponse) GetLocale() string {
+	if x != nil {
+		return x.Locale
 	}
 	return ""
 }
@@ -2932,14 +2955,20 @@ func (x *AdminAuthServiceAcceptTenantAdminInvitationResponse) GetAccountCreated(
 	return false
 }
 
+// Writes one locale's site copy whole. A field of nothing but white space is
+// stored empty, and leaving all three empty deletes the locale's copy, so its
+// readers are served the copy GetTenant falls back to.
 type AdminAuthServiceUpdateTenantConfigRequest struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	Tenant          *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	CopyrightText   string                 `protobuf:"bytes,2,opt,name=copyright_text,json=copyrightText,proto3" json:"copyright_text,omitempty"`
 	SiteDescription string                 `protobuf:"bytes,3,opt,name=site_description,json=siteDescription,proto3" json:"site_description,omitempty"`
 	SiteTagline     string                 `protobuf:"bytes,4,opt,name=site_tagline,json=siteTagline,proto3" json:"site_tagline,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The locale the copy is written in. Empty means the tenant's default
+	// locale; a locale the tenant does not offer is invalid_argument.
+	Locale        string `protobuf:"bytes,5,opt,name=locale,proto3" json:"locale,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AdminAuthServiceUpdateTenantConfigRequest) Reset() {
@@ -3000,13 +3029,22 @@ func (x *AdminAuthServiceUpdateTenantConfigRequest) GetSiteTagline() string {
 	return ""
 }
 
+func (x *AdminAuthServiceUpdateTenantConfigRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
 type AdminAuthServiceUpdateTenantConfigResponse struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	CopyrightText   string                 `protobuf:"bytes,1,opt,name=copyright_text,json=copyrightText,proto3" json:"copyright_text,omitempty"`
 	SiteDescription string                 `protobuf:"bytes,2,opt,name=site_description,json=siteDescription,proto3" json:"site_description,omitempty"`
 	SiteTagline     string                 `protobuf:"bytes,3,opt,name=site_tagline,json=siteTagline,proto3" json:"site_tagline,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The locale written.
+	Locale        string `protobuf:"bytes,4,opt,name=locale,proto3" json:"locale,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AdminAuthServiceUpdateTenantConfigResponse) Reset() {
@@ -3056,6 +3094,13 @@ func (x *AdminAuthServiceUpdateTenantConfigResponse) GetSiteDescription() string
 func (x *AdminAuthServiceUpdateTenantConfigResponse) GetSiteTagline() string {
 	if x != nil {
 		return x.SiteTagline
+	}
+	return ""
+}
+
+func (x *AdminAuthServiceUpdateTenantConfigResponse) GetLocale() string {
+	if x != nil {
+		return x.Locale
 	}
 	return ""
 }
@@ -3433,13 +3478,15 @@ const file_publira_admin_v1_auth_proto_rawDesc = "" +
 	"\fadmin_domain\x18\x04 \x01(\tR\vadminDomain\x12\x1a\n" +
 	"\bcurrency\x18\x05 \x01(\tR\bcurrency\"e\n" +
 	"!AdminAuthServiceGetTenantResponse\x12@\n" +
-	"\x06tenant\x18\x01 \x01(\v2(.publira.admin.v1.AdminAuthServiceTenantR\x06tenant\"a\n" +
+	"\x06tenant\x18\x01 \x01(\v2(.publira.admin.v1.AdminAuthServiceTenantR\x06tenant\"y\n" +
 	"&AdminAuthServiceGetTenantConfigRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"\x9e\x01\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x16\n" +
+	"\x06locale\x18\x02 \x01(\tR\x06locale\"\xb6\x01\n" +
 	"'AdminAuthServiceGetTenantConfigResponse\x12%\n" +
 	"\x0ecopyright_text\x18\x01 \x01(\tR\rcopyrightText\x12)\n" +
 	"\x10site_description\x18\x02 \x01(\tR\x0fsiteDescription\x12!\n" +
-	"\fsite_tagline\x18\x03 \x01(\tR\vsiteTagline\"\x85\x01\n" +
+	"\fsite_tagline\x18\x03 \x01(\tR\vsiteTagline\x12\x16\n" +
+	"\x06locale\x18\x04 \x01(\tR\x06locale\"\x85\x01\n" +
 	"4AdminAuthServiceGetTenantAdminInvitationStateRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05token\x18\x02 \x01(\tR\x05token\"\xbf\x01\n" +
@@ -3457,16 +3504,18 @@ const file_publira_admin_v1_auth_proto_rawDesc = "" +
 	"\bpassword\x18\x04 \x01(\tR\bpassword\"z\n" +
 	"3AdminAuthServiceAcceptTenantAdminInvitationResponse\x12\x1a\n" +
 	"\baccepted\x18\x01 \x01(\bR\baccepted\x12'\n" +
-	"\x0faccount_created\x18\x02 \x01(\bR\x0eaccountCreated\"\xd9\x01\n" +
+	"\x0faccount_created\x18\x02 \x01(\bR\x0eaccountCreated\"\xf1\x01\n" +
 	")AdminAuthServiceUpdateTenantConfigRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12%\n" +
 	"\x0ecopyright_text\x18\x02 \x01(\tR\rcopyrightText\x12)\n" +
 	"\x10site_description\x18\x03 \x01(\tR\x0fsiteDescription\x12!\n" +
-	"\fsite_tagline\x18\x04 \x01(\tR\vsiteTagline\"\xa1\x01\n" +
+	"\fsite_tagline\x18\x04 \x01(\tR\vsiteTagline\x12\x16\n" +
+	"\x06locale\x18\x05 \x01(\tR\x06locale\"\xb9\x01\n" +
 	"*AdminAuthServiceUpdateTenantConfigResponse\x12%\n" +
 	"\x0ecopyright_text\x18\x01 \x01(\tR\rcopyrightText\x12)\n" +
 	"\x10site_description\x18\x02 \x01(\tR\x0fsiteDescription\x12!\n" +
-	"\fsite_tagline\x18\x03 \x01(\tR\vsiteTagline\"\xd1\x01\n" +
+	"\fsite_tagline\x18\x03 \x01(\tR\vsiteTagline\x12\x16\n" +
+	"\x06locale\x18\x04 \x01(\tR\x06locale\"\xd1\x01\n" +
 	")AdminAuthServiceRequestEmailChangeRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12#\n" +
 	"\rcurrent_email\x18\x02 \x01(\tR\fcurrentEmail\x12\x1b\n" +

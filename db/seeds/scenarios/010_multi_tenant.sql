@@ -50,20 +50,24 @@ SET domain = EXCLUDED.domain,
     default_locale = EXCLUDED.default_locale,
     supported_locales = EXCLUDED.supported_locales;
 
-INSERT INTO tenant_config (
+INSERT INTO tenant_config_translations (
+    id,
     tenant_id,
+    locale,
     copyright_text,
     site_description,
     site_tagline
 )
 SELECT
+    uuidv7(),
     t.id,
+    t.default_locale,
     '© Publira Boundary Tenant',
     'Public description text for Boundary Tenant.',
     'Nothing crosses the boundary.'
 FROM tenants t
 WHERE t.public_id = 'BndrTNNTAAA1'
-ON CONFLICT (tenant_id) DO UPDATE
+ON CONFLICT (tenant_id, locale) DO UPDATE
 SET copyright_text = EXCLUDED.copyright_text,
     site_description = EXCLUDED.site_description,
     site_tagline = EXCLUDED.site_tagline,

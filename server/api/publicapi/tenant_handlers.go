@@ -27,6 +27,11 @@ func (s *apiServer) GetTenant(
 		return nil, err
 	}
 
+	readerLocale, err := readerLocaleOf(req.Locale, tenant)
+	if err != nil {
+		return nil, err
+	}
+
 	queries := s.queriesFor(ctx)
 
 	// Unlike the copy below, the locales are not optional: they decide which
@@ -43,9 +48,6 @@ func (s *apiServer) GetTenant(
 
 	// Fetch tenant config (optional)
 	config, err := queries.GetTenantConfigByTenantID(ctx, tenant.ID)
-	copyrightText := ""
-	siteDescription := ""
-	siteTagline := ""
 	// A tenant with no config row, and one whose config could not be read, have
 	// chosen nothing about commenting. That is the column's own default too.
 	commentMode := publirattypesv1.CommentMode_COMMENT_MODE_DISABLED
@@ -61,15 +63,6 @@ func (s *apiServer) GetTenant(
 	appPurchaseRoute := publirattypesv1.AppPurchaseRoute_APP_PURCHASE_ROUTE_EXTERNAL_CHECKOUT
 
 	if err == nil {
-		if config.CopyrightText.Valid {
-			copyrightText = config.CopyrightText.String
-		}
-		if config.SiteDescription.Valid {
-			siteDescription = config.SiteDescription.String
-		}
-		if config.SiteTagline.Valid {
-			siteTagline = config.SiteTagline.String
-		}
 		appStoreURL = config.AppStoreUrl.String
 		googlePlayURL = config.GooglePlayUrl.String
 		appPurchaseRoute, err = protomapper.AppPurchaseRouteFromStored(config.AppPurchaseRoute)
@@ -88,6 +81,17 @@ func (s *apiServer) GetTenant(
 		// Log error but don't fail the request
 		_ = err
 	}
+	// A tenant that has written no copy in any locale answers none. A failed
+	// read is not answered that way: web-storefront would cache a site without
+	// its description and copyright line.
+	siteCopy, err := queries.GetTenantConfigTranslationFor(ctx, dbmodels.GetTenantConfigTranslationForParams{
+		TenantID: tenant.ID,
+		Locale:   readerLocale,
+	})
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, s.internalDBError(ctx, "failed to read the tenant site copy", err, "tenant_id", tenant.ID.String())
+	}
+
 	acceptsPayments := s.tenantAcceptsPayments(ctx, tenant.ID)
 	currency, err := s.tenantCurrency(ctx, queries, tenant.ID)
 	if err != nil {
@@ -135,9 +139,9 @@ func (s *apiServer) GetTenant(
 		TenantPublicId:            tenant.PublicID,
 		TenantName:                tenant.Name,
 		TenantDomain:              tenant.Domain,
-		CopyrightText:             copyrightText,
-		SiteDescription:           siteDescription,
-		SiteTagline:               siteTagline,
+		CopyrightText:             siteCopy.CopyrightText,
+		SiteDescription:           siteCopy.SiteDescription,
+		SiteTagline:               siteCopy.SiteTagline,
 		Theme:                     theme,
 		Timezone:                  tenanttz.Resolve(tenant.Timezone, platformconfig.DefaultTimeZoneFunc(ctx, queries)),
 		DefaultLocale:             defaultLocale,
