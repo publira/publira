@@ -27,7 +27,7 @@ The log cannot be exported, and its entries are never deleted. An entry keeps th
 | Area | Recorded |
 | --- | --- |
 | Catalog | Series, episodes, volumes, Authors, Author roles, labels, and genres created and changed, volumes put on sale, taken off sale, and reordered, the titles of series and episodes deleted in a language, Author roles and genres deleted, their images uploaded, and free reading periods and Free if you wait changed |
-| Site | Pages created and changed, their versions created, published, and rolled back, their translations added and deleted, pages unpublished, announcements created, and banners taken down |
+| Site | Pages created and changed, their versions created, published, and rolled back, their translations added and deleted, pages unpublished, announcements created and their banners taken down, and campaign banners created, changed, reordered, and deleted, with their images uploaded |
 | Comments | Comments approved, removed, restored, and purged, removals made automatically after reports, and reports upheld or dismissed |
 | Readers | Readers suspended, restored, and deleted, their dates of birth changed or cleared, their icons removed, access tickets issued and revoked, and refunds of their purchases requested and made. Contact messages handled, reopened, assigned, annotated, and answered |
 | Royalties | Closing settings changed, months closed, and statements downloaded as CSV |

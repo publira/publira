@@ -22,15 +22,15 @@ import { SIGN_IN_PROVIDERS_SCENARIO } from "../src/scenarios/sign-in-providers";
  * does not hold, written once before any of them is taken.
  *
  * Most of it lives on the tenants other suites own, which are applied here as
- * those suites apply them, and the `4n0_docs_*` files add to them what only
+ * those suites apply them, and the `<nnn>_docs_*` files add to them what only
  * the documentation needs: comments in every state, episodes waiting to be
- * published, announcements, invitations, a closed royalty statement, and the
- * Platform Console's own tenants, operators, and records. Applying every file
- * once, rather than from the specs that read them, is what lets those specs
- * run beside one another: a spec applying a file again deletes rows another
- * spec may be photographing at that moment. Nothing is reverted afterwards,
- * since each suite that owns one of these tenants applies its file again
- * before it runs.
+ * published, announcements, invitations, a closed royalty statement, the
+ * Platform Console's own tenants, operators, and records, and campaign banners
+ * in every standing. Applying every file once, rather than from the specs
+ * that read them, is what lets those specs run beside one another: a spec
+ * applying a file again deletes rows another spec may be photographing at
+ * that moment. Nothing is reverted afterwards, since each suite that owns one
+ * of these tenants applies its file again before it runs.
  */
 const SCENARIOS = [
   COMMENT_MODERATION_SCENARIO,
@@ -45,6 +45,7 @@ const SCENARIOS = [
   ADMIN_MFA_SETTINGS_SCENARIO,
   CONTACT_WORKFLOW_SCENARIO,
   "470_docs_platform",
+  "560_docs_campaign_banners",
 ] as const;
 
 setup("the scenario tenants the documentation's screenshots show", async () => {

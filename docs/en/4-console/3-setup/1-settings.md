@@ -129,7 +129,7 @@ Each group on these forms starts with **Use the platform default** ticked, and s
 
 If someone else saved the same form after you opened it, your save is refused with "These settings were changed elsewhere while this page was open. Reload the page and enter the change again."
 
-What each limit and record is, and what each purge leaves in place, is explained from the operator's side in [Platform defaults and policies](../../3-operations/9-platform-policies.md#community). Saves on this tab are recorded in the [audit log](./7-audit-log.md) as **Community limits updated** and **Retention periods updated**.
+What each limit and record is, and what each purge leaves in place, is explained from the operator's side in [Platform defaults and policies](../../3-operations/9-platform-policies.md#community). Saves on this tab are recorded in the [audit log](./8-audit-log.md) as **Community limits updated** and **Retention periods updated**.
 
 ## Reader icons
 
@@ -162,4 +162,4 @@ To delete one, choose **Delete** under it and confirm with **Delete**. Readers w
 
 ![The Preset icons card of a tenant that has none yet: No preset icons yet, the Icon image field, and Add the icon.](./settings-reader-icon-presets.png)
 
-Saves on this tab are recorded in the [audit log](./7-audit-log.md) as **Reader icon policy updated**, **Reader icon preset added**, and **Reader icon preset deleted**.
+Saves on this tab are recorded in the [audit log](./8-audit-log.md) as **Reader icon policy updated**, **Reader icon preset added**, and **Reader icon preset deleted**.
