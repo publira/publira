@@ -113,6 +113,18 @@ export const toEyeCatchImageVariants = (
 };
 
 /**
+ * The picture a row that stands for one episode draws: the episode's own
+ * eye-catch, or its series' where it has none, so no row is left with a gap
+ * where its picture would be.
+ */
+export const toEpisodeRowEyeCatchImageVariants = (
+  episode: { eyeCatchImageVariants?: RawEyeCatchImageVariant[] } | undefined,
+  series: { eyeCatchImageVariants?: RawEyeCatchImageVariant[] } | undefined
+): EyeCatchImageVariant[] | undefined =>
+  toEyeCatchImageVariants(episode?.eyeCatchImageVariants) ??
+  toEyeCatchImageVariants(series?.eyeCatchImageVariants);
+
+/**
  * One credit on a work: who, and the role they hold on it. `roleName` is empty
  * on a credit written before the tenant curated any role — the person is still
  * credited, and such a line is the name on its own.

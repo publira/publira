@@ -123,7 +123,7 @@ export const FollowUpdatesSection = async ({
 
   return (
     <ol className="divide-y divide-border">
-      {result.updates.map(({ episode, series }) => (
+      {result.updates.map(({ episode, eyeCatchImageVariants, series }) => (
         <AgeRatedVisibility key={episode.publicId} rating={series.ageRating}>
           <li>
             <LocaleLink
@@ -132,7 +132,7 @@ export const FollowUpdatesSection = async ({
             >
               <EyeCatchThumbnail
                 alt={series.title}
-                variants={series.eyeCatchImageVariants}
+                variants={eyeCatchImageVariants}
               />
               <span className="min-w-0 flex-1 sm:flex sm:items-baseline sm:gap-4">
                 <span className="flex min-w-0 flex-1 items-baseline gap-2">

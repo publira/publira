@@ -15,7 +15,7 @@ import {
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
-import { toEyeCatchImageVariants } from "./catalog";
+import { toEpisodeRowEyeCatchImageVariants } from "./catalog";
 import type { EyeCatchImageVariant } from "./catalog";
 import { getMessagesFor } from "./messages";
 
@@ -29,9 +29,10 @@ export interface FollowUpdateItem {
     publishedAt: string;
     title: string;
   };
+  /** The picture the row draws, from {@link toEpisodeRowEyeCatchImageVariants}. */
+  eyeCatchImageVariants?: EyeCatchImageVariant[];
   series: {
     ageRating?: RestrictedAgeRating;
-    eyeCatchImageVariants?: EyeCatchImageVariant[];
     publicId: string;
     title: string;
   };
@@ -69,11 +70,12 @@ const mapFollowUpdate = (update: RawFollowUpdate): FollowUpdateItem | null => {
       publishedAt: update.episode?.publishedAt ?? "",
       title: update.episode?.title ?? "",
     },
+    eyeCatchImageVariants: toEpisodeRowEyeCatchImageVariants(
+      update.episode,
+      update.series
+    ),
     series: withRestrictedAgeRating(
       {
-        eyeCatchImageVariants: toEyeCatchImageVariants(
-          update.series?.eyeCatchImageVariants
-        ),
         publicId: seriesPublicId,
         title: update.series?.title ?? "",
       },

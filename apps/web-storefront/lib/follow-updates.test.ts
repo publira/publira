@@ -37,6 +37,18 @@ const update = {
   },
 };
 
+const eyeCatch = (url: string) => [
+  {
+    contentType: "image/webp",
+    fileSizeBytes: 4096,
+    height: 160,
+    label: "square 160",
+    url,
+    variantType: "square",
+    width: 160,
+  },
+];
+
 describe("listMyFollowUpdates", () => {
   beforeEach(() => {
     mockResolveAccessToken.mockResolvedValue(ACCESS_TOKEN);
@@ -51,8 +63,8 @@ describe("listMyFollowUpdates", () => {
       updates: [
         {
           episode: update.episode,
+          eyeCatchImageVariants: undefined,
           series: {
-            eyeCatchImageVariants: undefined,
             publicId: "SERIES_001",
             title: "A long night",
           },
@@ -69,6 +81,42 @@ describe("listMyFollowUpdates", () => {
       },
       { Authorization: "Bearer session-token" }
     );
+  });
+
+  it("draws each episode's own eye-catch, and its series' where it has none", async () => {
+    const seriesCover = eyeCatch("/images/series/SERIES_001/square/160");
+    const episodeCover = eyeCatch(
+      "/images/episode-eye-catches/EPISODE_012/square/160"
+    );
+    mockListMyFollowUpdates.mockResolvedValue({
+      updates: [
+        {
+          episode: { ...update.episode, eyeCatchImageVariants: episodeCover },
+          series: { ...update.series, eyeCatchImageVariants: seriesCover },
+        },
+        {
+          episode: {
+            ...update.episode,
+            eyeCatchImageVariants: [],
+            publicId: "EPISODE_011",
+          },
+          series: { ...update.series, eyeCatchImageVariants: seriesCover },
+        },
+      ],
+    });
+
+    const result = await listMyFollowUpdates(TENANT_ID, { locale: "en" });
+
+    expect(
+      result.ok &&
+        result.updates.map(({ episode, eyeCatchImageVariants }) => ({
+          episodeId: episode.publicId,
+          eyeCatchImageVariants,
+        }))
+    ).toEqual([
+      { episodeId: "EPISODE_012", eyeCatchImageVariants: episodeCover },
+      { episodeId: "EPISODE_011", eyeCatchImageVariants: seriesCover },
+    ]);
   });
 
   it("drops a row whose episode or series lost its public ID", async () => {

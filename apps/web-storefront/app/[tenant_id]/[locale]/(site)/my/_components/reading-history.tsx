@@ -14,6 +14,7 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
 import { Suspense } from "react";
 
+import { EyeCatchThumbnail } from "#components/eye-catch-thumbnail";
 import {
   ListPagination,
   ListPaginationStep,
@@ -110,30 +111,38 @@ export const ReadingHistorySection = async ({
           <ol className="grid gap-3">
             {result.reads.map((read) => (
               <li
-                className="rounded-xl border border-border/70 bg-background p-4"
+                className="flex items-center gap-4 rounded-xl border border-border/70 bg-background p-4"
                 key={read.episode.publicId}
               >
-                <p className="text-xs text-muted-foreground">
-                  {read.series.title}
-                </p>
-                <h3 className="mt-1 font-medium">
-                  <LocaleLink
-                    className="hover:underline"
-                    href={`/series/${read.series.publicId}/episodes/${read.episode.publicId}`}
-                  >
-                    #{read.episode.orderIndex} {read.episode.title}
-                  </LocaleLink>
-                </h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {t("storefront.my.history_finished_at")}{" "}
-                  <span className="text-foreground">
-                    {formatDateTime(read.readAt, {
-                      fallback: "-",
-                      locale,
-                      timeZone,
-                    })}
-                  </span>
-                </p>
+                <EyeCatchThumbnail
+                  // The series title is right beside it in the row, so the
+                  // artwork adds nothing a reader has not already been given.
+                  alt=""
+                  variants={read.eyeCatchImageVariants}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-muted-foreground">
+                    {read.series.title}
+                  </p>
+                  <h3 className="mt-1 font-medium">
+                    <LocaleLink
+                      className="hover:underline"
+                      href={`/series/${read.series.publicId}/episodes/${read.episode.publicId}`}
+                    >
+                      #{read.episode.orderIndex} {read.episode.title}
+                    </LocaleLink>
+                  </h3>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {t("storefront.my.history_finished_at")}{" "}
+                    <span className="text-foreground">
+                      {formatDateTime(read.readAt, {
+                        fallback: "-",
+                        locale,
+                        timeZone,
+                      })}
+                    </span>
+                  </p>
+                </div>
               </li>
             ))}
           </ol>
