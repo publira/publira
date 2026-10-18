@@ -17,6 +17,7 @@ const sidebarEntries = [
   "Genres",
   "Pages",
   "Announcements",
+  "Campaign banners",
   "Readers",
   // The pending-comment badge rides on this entry.
   /^Comments/u,

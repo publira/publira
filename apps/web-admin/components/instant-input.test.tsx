@@ -46,6 +46,29 @@ describe("InstantInput", () => {
     expect(posted(form, "publish_at")).toBe("2099-06-01T17:00:00Z");
   });
 
+  it("keeps the seconds of a stored instant while its wall clock is untouched", () => {
+    const { container } = render(
+      <form>
+        <InstantInput
+          initialValue="2099-06-01T17:00:30Z"
+          name="publish_at"
+          timeZone="UTC"
+        />
+      </form>
+    );
+    const form = container.querySelector("form") as HTMLFormElement;
+
+    expect(posted(form, "publish_at_local")).toBe("2099-06-01T17:00");
+    expect(posted(form, "publish_at")).toBe("2099-06-01T17:00:30Z");
+
+    fireEvent.change(
+      form.querySelector("input[name='publish_at_local']") as Element,
+      { target: { value: "2099-06-01T18:00" } }
+    );
+
+    expect(posted(form, "publish_at")).toBe("2099-06-01T18:00:00Z");
+  });
+
   it("posts an empty instant for an empty wall clock", () => {
     const { container } = render(
       <form>
