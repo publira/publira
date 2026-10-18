@@ -2,7 +2,7 @@
 title: A tenant's staff
 description: Give a tenant's staff access to its console, choose their roles, remove a two-step verification a member lost, and recover a tenant that lost its last administrator.
 published: 2026-10-06
-updated: 2026-10-15
+updated: 2026-10-18
 ---
 
 A tenant's staff are the people who sign in to its console. This page covers how they get there from the operator's side: inviting the first administrator, the roles staff hold, and what to do when a tenant has no administrator left. Once a tenant has an administrator, that administrator manages the rest of the staff from **Members** in the tenant console, as [Members](../4-console/3-setup/5-members.md) describes, and the operator is needed again only when something goes wrong.
@@ -23,7 +23,7 @@ Two things follow from this:
 | Role | What it may do |
 | --- | --- |
 | **Tenant admin** | Everything in the console: the staff and their invitations, every setting of the tenant, its site and branding, the mail, payment, push notification, and sign-in integrations, readers' accounts and contact messages, access tickets, purchases and their refunds, royalties, and the audit log |
-| **Editor** | Write the catalog — series, episodes, Authors, labels, genres — and the tenant's pages and announcements, and moderate comments |
+| **Editor** | Write the catalog — series, episodes, Authors, labels, genres — and the tenant's pages, announcements, and campaign banners, and moderate comments |
 | **Auditor** | See what an Editor works on, and the tenant's settings, without changing any of it |
 
 Each role includes everything the roles below it may do. The console hides what a role may not use: an Editor sees no **Members**, **Readers**, **Royalties**, or **Purchases** in its sidebar, and an Auditor sees no button that changes anything.
