@@ -11,13 +11,13 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import { toSafeAnnouncementLinkUrl } from "#lib/announcement-link";
 import { getPinnedAnnouncement } from "#lib/announcements";
 import { dismissAnnouncementBannerAction } from "#lib/dismiss-announcement-action";
 import { readDismissedAnnouncementId } from "#lib/dismissed-announcement-cookie";
 import { getMessages } from "#lib/get-messages";
 import { getLocale, tenantDefaultLocale } from "#lib/locale";
 import { withLocalePrefix } from "#lib/locale-path";
+import { toSafeOperatorLinkUrl } from "#lib/operator-link";
 import { getTenantId } from "#lib/tenant-id";
 
 /** The close button, which carries its name as an attribute. */
@@ -60,7 +60,7 @@ export const PinnedAnnouncementBanner = async () => {
   // An operator who wrote no link is pointing at the announcement itself, which
   // is the inbox the row is in.
   const destination =
-    toSafeAnnouncementLinkUrl(announcement.linkUrl) ?? "/announcements";
+    toSafeOperatorLinkUrl(announcement.linkUrl) ?? "/announcements";
 
   return (
     <SiteLayoutBanner>

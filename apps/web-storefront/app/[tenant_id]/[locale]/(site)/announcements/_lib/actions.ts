@@ -5,7 +5,6 @@ import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { toSafeAnnouncementLinkUrl } from "#lib/announcement-link";
 import {
   announcementsCacheTag,
   getMyAnnouncement,
@@ -19,6 +18,7 @@ import {
 } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema } from "#lib/locale-form";
+import { toSafeOperatorLinkUrl } from "#lib/operator-link";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
 
 const ANNOUNCEMENTS_RETURN_TO = "/announcements";
@@ -137,7 +137,7 @@ export const markAnnouncementAsReadAndNavigateAction = async (
   );
   updateTag(announcementsCacheTag(tenantId));
 
-  const linkUrl = toSafeAnnouncementLinkUrl(announcement.linkUrl);
+  const linkUrl = toSafeOperatorLinkUrl(announcement.linkUrl);
   if (!linkUrl) {
     return;
   }
