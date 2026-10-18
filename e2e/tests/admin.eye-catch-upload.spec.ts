@@ -4,6 +4,7 @@ import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import {
+  createEpisodeViaUi,
   createGenreViaUi,
   createLabelViaUi,
   createSeriesViaUi,
@@ -281,8 +282,9 @@ const replaceEachAspectInTurn = async (
  * "the other three did not move" is the pixels on screen and the URL each
  * slot names, rather than whether a slot is present.
  *
- * Each test creates the series, label, or genre it uploads to and drops it in
- * `afterEach`, so a run against a long-lived stack leaves nothing behind.
+ * Each test creates the series, episode, label, or genre it uploads to and
+ * drops it in `afterEach`, so a run against a long-lived stack leaves nothing
+ * behind.
  */
 test.describe("admin eye-catch upload", () => {
   let createdSeriesIds: string[] = [];
@@ -542,6 +544,60 @@ test.describe("admin eye-catch upload", () => {
     const after = await displayedEyeCatch(page);
     expect(after.landscape).not.toBe(before.landscape);
     expectOtherAspectsUnchanged(before, after, "landscape");
+  });
+
+  /**
+   * An episode's eye-catch is two RPCs where the other records have one: the
+   * delete toggle sends a delete of its own rather than a flag on an update,
+   * so clearing it is part of what this covers.
+   */
+  test("an episode's eye-catch is uploaded, replaced one ratio at a time, and cleared, and each survives a reload", async ({
+    page,
+  }) => {
+    const { publicId: seriesPublicId } = await openSeriesEyeCatchTab(page);
+    const episodePublicId = await createEpisodeViaUi(page, {
+      seriesPublicId,
+      title: `E2E Eye-catch Episode ${uniqueSuffix()}`,
+    });
+
+    await page.getByRole("link", { exact: true, name: "Cover image" }).click();
+    await expect(page).toHaveURL(
+      new RegExp(String.raw`/episodes/${episodePublicId}\?tab=eye-catch$`, "u")
+    );
+    await expectNoEyeCatchYet(page);
+
+    await uploadEyeCatchSource(page);
+    await page.reload();
+
+    const sources = await aspectSources(page);
+    expectAspectPaths(sources, "episode-eye-catches");
+    const before = await displayedEyeCatch(page);
+    expect(new Set(Object.values(before)).size).toBe(EYE_CATCH_ASPECTS.length);
+
+    await uploadAspectImage(
+      page,
+      "landscape",
+      EYE_CATCH_ASPECT_FIXTURES.landscape
+    );
+    await expectMessage(
+      aspectSlot(page, "landscape"),
+      "The image for this ratio was replaced."
+    );
+    await page.reload();
+
+    const afterSources = await aspectSources(page);
+    expectOnlyTheReplacedURLChanged(sources, afterSources, "landscape");
+    const after = await displayedEyeCatch(page);
+    expect(after.landscape).not.toBe(before.landscape);
+    expectOtherAspectsUnchanged(before, after, "landscape");
+
+    await page
+      .getByRole("button", { name: "Delete the current cover image" })
+      .click();
+    await page.getByRole("button", { name: "Update cover image" }).click();
+    await expectMessage(page, "Cover image updated.");
+    await page.reload();
+    await expectNoEyeCatchYet(page);
   });
 
   /**
