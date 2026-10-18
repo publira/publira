@@ -10,12 +10,16 @@ import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { eyeCatchAspectImageInvalidMessage } from "#components/eye-catch/aspects";
+import type { EyeCatchAspectActionState } from "#components/eye-catch/types";
 import { accessTicketsCacheTag } from "#lib/access-ticket";
 import { getActionLocale } from "#lib/action-messages";
 import { verifyAdminSession, withAdminSessionReauth } from "#lib/auth-session";
+import { CROP_RECT_FIELD } from "#lib/crop-rect";
 import { assertSameOrigin } from "#lib/csrf";
 import { tenantDashboardCacheTag } from "#lib/dashboard";
 import {
+  deleteEpisodeEyeCatchImage,
   deleteEpisodeImage,
   deleteEpisodeTranslation,
   episodeCacheTag,
@@ -30,6 +34,8 @@ import {
   replaceEpisodeCredits,
   updateEpisodePublishSchedule,
   updateEpisodeTitle,
+  uploadEpisodeEyeCatchAspectImage,
+  uploadEpisodeEyeCatchImage,
 } from "#lib/episode";
 import {
   createEpisodeFreeWindow,
@@ -39,8 +45,11 @@ import {
 import { parseEpisodeRental } from "#lib/episode-rental";
 import {
   creditShareBpsSchema,
+  flagOneFormSchema,
   jsonStringArrayFormSchema,
   nonNegativeIntFormSchema,
+  optionalCropRectFormSchema,
+  optionalFileFormSchema,
   optionalTrimmedString,
   requiredRecordId,
   requiredTrimmedString,
@@ -768,6 +777,184 @@ export const replaceEpisodeCreditsAction = async (
   redirect(
     `/series/${parsed.data.seriesPublicId}/episodes/${parsed.data.episodePublicId}?credits_updated=1`
   );
+};
+
+const eyeCatchTargetSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
+    episodeId: requiredRecordId(
+      t("admin.series.episodes.validation.episode_missing")
+    ),
+    tenantId: requiredTrimmedString(
+      t("admin.series.episodes.validation.tenant_missing")
+    ),
+  });
+};
+const eyeCatchTargetFormFields = {
+  episodeId: { kind: "value", name: "episode_id" },
+  tenantId: { kind: "value", name: "tenant_id" },
+} as const;
+
+/**
+ * Uploads a whole eye-catch for the episode, or takes the one it has away.
+ * The two are separate RPCs, so the delete toggle decides which one runs.
+ *
+ * It answers on the screen that submitted rather than redirecting: the save
+ * refreshes the episode, and the stored variants come back on the same tab.
+ */
+export const updateEpisodeEyeCatchAction = async (
+  _prevState: EpisodeEditActionState,
+  formData: FormData
+): Promise<EpisodeEditActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const [t, base] = await Promise.all([
+    getMessagesFor(locale),
+    eyeCatchTargetSchema(locale),
+  ]);
+  const parsed = base
+    .extend({
+      clearEyeCatchImage: flagOneFormSchema,
+      currentEyeCatchImageUpdatedAt: optionalTrimmedString(),
+      eyeCatchImage: optionalFileFormSchema,
+    })
+    .safeParse(
+      toFormDataInput(formData, {
+        ...eyeCatchTargetFormFields,
+        clearEyeCatchImage: { kind: "value", name: "clear_eye_catch_image" },
+        currentEyeCatchImageUpdatedAt: {
+          kind: "value",
+          name: "current_eye_catch_image_updated_at",
+        },
+        eyeCatchImage: { kind: "file", name: "eye_catch_image" },
+      })
+    );
+  if (!parsed.success) {
+    return toFailure(toFormErrorMessage(parsed.error, { locale }));
+  }
+
+  const {
+    clearEyeCatchImage,
+    currentEyeCatchImageUpdatedAt,
+    episodeId,
+    eyeCatchImage,
+    tenantId,
+  } = parsed.data;
+
+  if (clearEyeCatchImage) {
+    const result = await withAdminSessionReauth(() =>
+      deleteEpisodeEyeCatchImage({ episodeId, tenantId }, locale)
+    );
+    if (!result.ok) {
+      return toFailure(result.message);
+    }
+  } else {
+    if (!eyeCatchImage) {
+      return toFailure(t("admin.series.episodes.eye_catch.choice_required"));
+    }
+    const imageData = new Uint8Array(await eyeCatchImage.arrayBuffer());
+    const result = await withAdminSessionReauth(() =>
+      uploadEpisodeEyeCatchImage(
+        {
+          episodeId,
+          imageContentType: eyeCatchImage.type || undefined,
+          imageData,
+          tenantId,
+        },
+        locale
+      )
+    );
+    if (!result.ok) {
+      return toFailure(result.message);
+    }
+    if (result.episode.eyeCatchImageVariants.length === 0) {
+      return toFailure(t("admin.series.episodes.eye_catch.variants_missing"));
+    }
+    if (
+      currentEyeCatchImageUpdatedAt.length > 0 &&
+      result.episode.eyeCatchImageUpdatedAt === currentEyeCatchImageUpdatedAt
+    ) {
+      return toFailure(
+        t("admin.series.episodes.eye_catch.upload_not_reflected")
+      );
+    }
+  }
+
+  updateTag(episodesCacheTag(tenantId));
+  updateTag(episodeCacheTag(tenantId, episodeId));
+
+  return {
+    message: t("admin.series.episodes.eye_catch.updated"),
+    ok: true,
+  };
+};
+
+export const uploadEpisodeEyeCatchAspectImageAction = async (
+  _prevState: EyeCatchAspectActionState,
+  formData: FormData
+): Promise<EyeCatchAspectActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const [t, base] = await Promise.all([
+    getMessagesFor(locale),
+    eyeCatchTargetSchema(locale),
+  ]);
+  const parsed = base
+    .extend({
+      aspectImage: optionalFileFormSchema,
+      crop: optionalCropRectFormSchema(t("admin.image_crop.invalid")),
+      variantType: requiredTrimmedString(
+        t("admin.eye_catch.aspect.variant_type_missing")
+      ),
+    })
+    .safeParse(
+      toFormDataInput(formData, {
+        ...eyeCatchTargetFormFields,
+        aspectImage: { kind: "file", name: "aspect_image" },
+        crop: { kind: "value", name: CROP_RECT_FIELD },
+        variantType: { kind: "value", name: "variant_type" },
+      })
+    );
+  if (!parsed.success) {
+    return toFailure(toFormErrorMessage(parsed.error, { locale }));
+  }
+
+  const { aspectImage, crop, episodeId, tenantId, variantType } = parsed.data;
+  if (!aspectImage) {
+    return toFailure(t("admin.eye_catch.aspect.image_required"));
+  }
+
+  const imageData = new Uint8Array(await aspectImage.arrayBuffer());
+  const result = await withAdminSessionReauth(() =>
+    uploadEpisodeEyeCatchAspectImage(
+      {
+        crop,
+        episodeId,
+        imageContentType: aspectImage.type || undefined,
+        imageData,
+        tenantId,
+        variantType,
+      },
+      locale
+    )
+  );
+
+  if (!result.ok) {
+    return toFailure(
+      "imageRejected" in result
+        ? eyeCatchAspectImageInvalidMessage(t, variantType)
+        : result.message
+    );
+  }
+
+  updateTag(episodesCacheTag(tenantId));
+  updateTag(episodeCacheTag(tenantId, episodeId));
+
+  return {
+    message: t("admin.eye_catch.aspect.uploaded"),
+    ok: true,
+  };
 };
 
 export const reorderEpisodeImagesAction = async (formData: FormData) => {

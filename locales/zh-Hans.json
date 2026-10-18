@@ -1066,6 +1066,12 @@
             "square": "网站和应用中暂未使用。在本控制台的题材列表中用作缩略图。",
             "landscape": "用于网站和应用中题材页面的横幅。",
             "og": "网站和应用中暂未使用。"
+          },
+          "episode": {
+            "portrait": "网站和应用中暂未使用。",
+            "square": "网站和应用中暂未使用。",
+            "landscape": "网站和应用中暂未使用。",
+            "og": "网站和应用中暂未使用。"
           }
         },
         "eye_catch_required": "请先登记封面图。封面图存在后才能单独替换各个比例。",
@@ -1727,6 +1733,21 @@
         "new_title": "创建章节",
         "edit_title": "编辑章节",
         "edit_description": "编辑该章节的标题、价格、发布设置和页面图片。",
+        "basic_tab": "基本信息",
+        "eye_catch_tab": "封面图",
+        "eye_catch_title": "编辑章节封面图",
+        "eye_catch_description": "为该章节设置专属封面图，或将其删除。未设置封面图的章节会显示所属系列的封面图。",
+        "eye_catch": {
+          "update": "更新封面图",
+          "submitting": "正在提交…",
+          "updated": "封面图已更新。",
+          "choice_required": "请选择图片，或选择删除。",
+          "image_invalid": "请检查图片设置。请选择不超过10MB、尺寸至少为2400x3200px的JPEG、PNG或WebP图片，然后重试。",
+          "failed": "无法保存封面图。请稍后再试。",
+          "variants_missing": "上传已被接受，但无法确认生成的图片。请重试。",
+          "upload_not_reflected": "上传尚未生效。请重新选择图片后再试。",
+          "error": "无法加载该章节的封面图。"
+        },
         "new_description": "在该系列中登记一个新章节。",
         "new_action": "创建",
         "credits_action": "署名",

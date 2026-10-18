@@ -33,13 +33,17 @@ import type { CachedRead } from "./cached-read";
 import { settleCachedRead } from "./cached-read";
 import { toEpisodeTranslations } from "./catalog-translation";
 import type { EpisodeTranslationItem } from "./catalog-translation";
+import type { CropRect } from "./crop-rect";
 import type { CursorPageOptions, CursorPageTokens } from "./cursor-page";
 import {
   cursorPageRequest,
   cursorPageTokens,
   emptyCursorPageTokens,
 } from "./cursor-page";
-import { mentionsStorageNotConfigured } from "./image-rejection";
+import {
+  mentionsAspectImageRejection,
+  mentionsStorageNotConfigured,
+} from "./image-rejection";
 import { getMessagesFor } from "./messages";
 import type { PurchaseAvailabilityOverride } from "./purchase-availability";
 import {
@@ -77,6 +81,20 @@ export interface EpisodeItem {
    * the series bounds it: see `episodeShownOn`.
    */
   availability: EpisodeAvailabilityOverride;
+  /**
+   * The episode's own eye-catch, empty when it has none and its series' stands
+   * in for it.
+   */
+  eyeCatchImageVariants: {
+    variantType: string;
+    label: string;
+    url: string;
+    contentType: string;
+    width: number;
+    height: number;
+    fileSizeBytes: number;
+  }[];
+  eyeCatchImageUpdatedAt: string;
 }
 
 export interface EpisodeImageItem {
@@ -188,6 +206,20 @@ export type UpdateEpisodePricingResult =
   | { ok: true; episode: EpisodeItem }
   | { ok: false; message: string };
 
+export type EpisodeEyeCatchResult =
+  | { ok: true; episode: EpisodeItem }
+  | { ok: false; message: string };
+
+export type EpisodeEyeCatchAspectResult =
+  | { ok: true; episode: EpisodeItem }
+  /**
+   * The API refused the image itself. It carries no message: the minimum to
+   * name is the one of the ratio that was refused, and only the slot that
+   * submitted knows which ratio that is and what size it asks for.
+   */
+  | { ok: false; imageRejected: true }
+  | { ok: false; message: string };
+
 export interface EpisodeCreditPair {
   creatorId: string;
   roleId: string;
@@ -294,6 +326,8 @@ const mapReorderErrorToMessage = async (
 type RawEpisode = Pick<
   Episode,
   | "availability"
+  | "eyeCatchImageUpdatedAt"
+  | "eyeCatchImageVariants"
   | "id"
   | "orderIndex"
   | "price"
@@ -338,6 +372,23 @@ const mapEpisode = (episode: RawEpisode): EpisodeItem => ({
   // A value naming none of the three is reported by the reads that open a
   // form on it; a list only loses the mark on that row.
   availability: toSurfaceAvailabilityValue(episode.availability) ?? "",
+  eyeCatchImageUpdatedAt: episode.eyeCatchImageUpdatedAt ?? "",
+  eyeCatchImageVariants: (episode.eyeCatchImageVariants ?? []).flatMap(
+    (variant) => {
+      const mappedVariant = {
+        contentType: variant.contentType ?? "",
+        fileSizeBytes: Number(variant.fileSizeBytes ?? 0),
+        height: variant.height ?? 0,
+        label: variant.label ?? "",
+        url: variant.url ?? "",
+        variantType: variant.variantType ?? "",
+        width: variant.width ?? 0,
+      };
+      return mappedVariant.label.length > 0 && mappedVariant.url.length > 0
+        ? [mappedVariant]
+        : [];
+    }
+  ),
   id: episode.id,
   orderIndex: episode.orderIndex,
   price: episode.price,
@@ -1930,6 +1981,198 @@ export const updateEpisodePricing = async (
         t("admin.series.episodes.pricing.failed"),
         locale
       ),
+      ok: false,
+    };
+  }
+};
+
+/**
+ * The failure of a write on the episode's eye-catch. An image the API refused
+ * is named apart from the rest, since replacing the image is what clears it,
+ * and so is an upload no object store has been set up to take.
+ */
+const mapEyeCatchErrorToMessage = async (
+  error: unknown,
+  locale: Locale,
+  /** What any other failed precondition means for this write. */
+  preconditionMessage?: string
+): Promise<string> => {
+  const t = await getMessagesFor(locale);
+
+  return rpcErrorMessage(error, t("admin.series.episodes.eye_catch.failed"), {
+    locale,
+    overrides: {
+      "invalid-argument": mentionsAspectImageRejection(error)
+        ? t("admin.series.episodes.eye_catch.image_invalid")
+        : undefined,
+      "not-found": t("admin.series.episodes.validation.episode_missing"),
+      precondition: mentionsStorageNotConfigured(error)
+        ? t("admin.errors.storage_not_configured")
+        : preconditionMessage,
+    },
+  });
+};
+
+/**
+ * Gives the episode an eye-catch of its own from one image, which the API cuts
+ * into every ratio from its centre.
+ */
+export const uploadEpisodeEyeCatchImage = async (
+  input: {
+    tenantId: string;
+    episodeId: string;
+    imageContentType?: string;
+    imageData: Uint8Array;
+  },
+  locale: Locale
+): Promise<EpisodeEyeCatchResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await apiClient.series.uploadEpisodeEyeCatchImage(
+      {
+        episodeId: input.episodeId,
+        imageContentType: input.imageContentType,
+        imageData: input.imageData,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    if (!response.episode?.publicId?.trim()) {
+      return {
+        message: t("admin.series.episodes.eye_catch.failed"),
+        ok: false,
+      };
+    }
+
+    return { episode: mapEpisode(response.episode), ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: await mapEyeCatchErrorToMessage(error, locale),
+      ok: false,
+    };
+  }
+};
+
+/**
+ * Replaces the image of one aspect ratio of the episode's eye-catch. The other
+ * ratios keep the images they already hold, so the eye-catch has to exist
+ * first.
+ */
+export const uploadEpisodeEyeCatchAspectImage = async (
+  input: {
+    tenantId: string;
+    episodeId: string;
+    variantType: string;
+    imageContentType?: string;
+    imageData: Uint8Array;
+    /** Where in the upload the cut is taken; omitted, the API centres it. */
+    crop?: CropRect;
+  },
+  locale: Locale
+): Promise<EpisodeEyeCatchAspectResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await apiClient.series.uploadEpisodeEyeCatchAspectImage(
+      {
+        crop: input.crop,
+        episodeId: input.episodeId,
+        imageContentType: input.imageContentType,
+        imageData: input.imageData,
+        tenant: { tenantId: input.tenantId },
+        variantType: input.variantType,
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    if (!response.episode?.publicId?.trim()) {
+      return {
+        message: t("admin.series.episodes.eye_catch.failed"),
+        ok: false,
+      };
+    }
+
+    return { episode: mapEpisode(response.episode), ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    if (mentionsAspectImageRejection(error)) {
+      return { imageRejected: true, ok: false };
+    }
+    return {
+      // An episode with no eye-catch yet has no ratio to replace.
+      message: await mapEyeCatchErrorToMessage(
+        error,
+        locale,
+        t("admin.eye_catch.aspect.eye_catch_required")
+      ),
+      ok: false,
+    };
+  }
+};
+
+/**
+ * Takes the episode's eye-catch away, so its series' is shown in its place.
+ */
+export const deleteEpisodeEyeCatchImage = async (
+  input: { tenantId: string; episodeId: string },
+  locale: Locale
+): Promise<EpisodeEyeCatchResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return {
+      message: t("errors.rpc.unauthenticated"),
+      ok: false,
+    };
+  }
+
+  try {
+    const response = await apiClient.series.deleteEpisodeEyeCatchImage(
+      {
+        episodeId: input.episodeId,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+
+    if (!response.episode?.publicId?.trim()) {
+      return {
+        message: t("admin.series.episodes.eye_catch.failed"),
+        ok: false,
+      };
+    }
+
+    return { episode: mapEpisode(response.episode), ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: await mapEyeCatchErrorToMessage(error, locale),
       ok: false,
     };
   }

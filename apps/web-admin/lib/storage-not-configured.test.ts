@@ -17,6 +17,8 @@ const {
   mockUpdateCreator,
   mockUpdateLabel,
   mockUpdateSeries,
+  mockUploadEpisodeEyeCatchAspectImage,
+  mockUploadEpisodeEyeCatchImage,
   mockUploadEpisodeImages,
   mockUploadLabelEyeCatchAspectImage,
   mockUploadSeriesEyeCatchAspectImage,
@@ -30,6 +32,8 @@ const {
   mockUpdateCreator: vi.fn(),
   mockUpdateLabel: vi.fn(),
   mockUpdateSeries: vi.fn(),
+  mockUploadEpisodeEyeCatchAspectImage: vi.fn(),
+  mockUploadEpisodeEyeCatchImage: vi.fn(),
   mockUploadEpisodeImages: vi.fn(),
   mockUploadLabelEyeCatchAspectImage: vi.fn(),
   mockUploadSeriesEyeCatchAspectImage: vi.fn(),
@@ -65,6 +69,8 @@ vi.mock("./api", () => ({
     series: {
       createSeries: mockCreateSeries,
       updateSeries: mockUpdateSeries,
+      uploadEpisodeEyeCatchAspectImage: mockUploadEpisodeEyeCatchAspectImage,
+      uploadEpisodeEyeCatchImage: mockUploadEpisodeEyeCatchImage,
       uploadEpisodeImages: mockUploadEpisodeImages,
       uploadSeriesEyeCatchAspectImage: mockUploadSeriesEyeCatchAspectImage,
     },
@@ -165,6 +171,40 @@ const surfaces: UploadSurface[] = [
           episodeId: "EPISODE001-ID",
           seriesId: "SERIES001-ID",
           tenantId: "TENANT001",
+        },
+        locale
+      );
+    },
+  },
+  {
+    fallback: "Could not save the cover image. Please try again later.",
+    name: "episode eye-catch",
+    rpc: mockUploadEpisodeEyeCatchImage,
+    upload: async (locale) => {
+      const { uploadEpisodeEyeCatchImage } = await import("./episode");
+      return uploadEpisodeEyeCatchImage(
+        {
+          episodeId: "EPISODE001-ID",
+          imageData: image,
+          tenantId: "TENANT001",
+        },
+        locale
+      );
+    },
+  },
+  {
+    fallback:
+      "Register a cover image first. Individual ratios can be replaced once the cover image exists.",
+    name: "episode eye-catch aspect ratio",
+    rpc: mockUploadEpisodeEyeCatchAspectImage,
+    upload: async (locale) => {
+      const { uploadEpisodeEyeCatchAspectImage } = await import("./episode");
+      return uploadEpisodeEyeCatchAspectImage(
+        {
+          episodeId: "EPISODE001-ID",
+          imageData: image,
+          tenantId: "TENANT001",
+          variantType: "square",
         },
         locale
       );

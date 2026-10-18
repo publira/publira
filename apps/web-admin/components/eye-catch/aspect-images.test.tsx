@@ -194,6 +194,20 @@ it("says where each ratio of a label is used, not where a series' is", () => {
   expect(screen.queryByText(/series' page/u)).toBeNull();
 });
 
+// No screen draws an episode's own eye-catch yet: its rows show the series'.
+it("says that no ratio of an episode is shown yet", () => {
+  renderImages({
+    entity: "episode",
+    id: "episode-1",
+    variants: [variant("portrait", 1200, 1600)],
+  });
+
+  expect(
+    screen.getAllByText("Not shown on the site or in the app yet.")
+  ).toHaveLength(4);
+  expect(screen.queryByText(/series' page/u)).toBeNull();
+});
+
 // The ratio keys are what the RPCs take, and a staff member reading or
 // hearing one learns nothing about the image it stands for.
 it("neither shows nor reads out a ratio by its key", () => {
@@ -295,6 +309,18 @@ it("posts the record's ID under the field its upload action reads", () => {
 
   const formData = new FormData(slotForm(container, "landscape"));
   expect(formData.get("label_id")).toBe("label-1");
+  expect(formData.get("tenant_id")).toBe("TENANT001");
+});
+
+it("posts an episode's ID under the field the episode's upload action reads", () => {
+  const { container } = renderImages({
+    entity: "episode",
+    id: "episode-1",
+    variants: [variant("landscape", 1600, 900)],
+  });
+
+  const formData = new FormData(slotForm(container, "landscape"));
+  expect(formData.get("episode_id")).toBe("episode-1");
   expect(formData.get("tenant_id")).toBe("TENANT001");
 });
 

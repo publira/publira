@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockAssertSameOrigin,
   mockCreateEpisodeFreeWindow,
+  mockDeleteEpisodeEyeCatchImage,
   mockDeleteEpisodeFreeWindow,
   mockDeleteEpisodeImage,
   mockDeleteEpisodeTranslation,
@@ -20,10 +21,13 @@ const {
   mockUpdateEpisodePurchaseAvailability,
   mockUpdateEpisodeTitle,
   mockUpdateTag,
+  mockUploadEpisodeEyeCatchAspectImage,
+  mockUploadEpisodeEyeCatchImage,
   mockVerifyAdminSession,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
   mockCreateEpisodeFreeWindow: vi.fn(),
+  mockDeleteEpisodeEyeCatchImage: vi.fn(),
   mockDeleteEpisodeFreeWindow: vi.fn(),
   mockDeleteEpisodeImage: vi.fn(),
   mockDeleteEpisodeTranslation: vi.fn(),
@@ -41,6 +45,8 @@ const {
   mockUpdateEpisodePurchaseAvailability: vi.fn(),
   mockUpdateEpisodeTitle: vi.fn(),
   mockUpdateTag: vi.fn(),
+  mockUploadEpisodeEyeCatchAspectImage: vi.fn(),
+  mockUploadEpisodeEyeCatchImage: vi.fn(),
   mockVerifyAdminSession: vi.fn(),
 }));
 
@@ -90,6 +96,7 @@ vi.mock("#lib/purchase", () => ({
 }));
 
 vi.mock("#lib/episode", () => ({
+  deleteEpisodeEyeCatchImage: mockDeleteEpisodeEyeCatchImage,
   deleteEpisodeImage: mockDeleteEpisodeImage,
   deleteEpisodeTranslation: mockDeleteEpisodeTranslation,
   episodeCacheTag: (tenantId: string, episodeId: string) =>
@@ -105,6 +112,8 @@ vi.mock("#lib/episode", () => ({
   updateEpisodePublishSchedule: mockUpdateEpisodePublishSchedule,
   updateEpisodePurchaseAvailability: mockUpdateEpisodePurchaseAvailability,
   updateEpisodeTitle: mockUpdateEpisodeTitle,
+  uploadEpisodeEyeCatchAspectImage: mockUploadEpisodeEyeCatchAspectImage,
+  uploadEpisodeEyeCatchImage: mockUploadEpisodeEyeCatchImage,
 }));
 
 vi.mock("#lib/episode-free-window", () => ({
@@ -1322,6 +1331,271 @@ describe("episode actions", () => {
 
       expect(result).toMatchObject({ ok: false });
       expect(mockDeleteEpisodeFreeWindow).not.toHaveBeenCalled();
+    });
+  });
+});
+
+const image = (name = "cover.png") =>
+  new File([new Uint8Array([1, 2, 3])], name, { type: "image/png" });
+
+describe("episode eye-catch actions", () => {
+  const episodeId = "018f0e6a-4000-7000-8000-000000000001";
+  const storedVariant = {
+    contentType: "image/webp",
+    fileSizeBytes: 1024,
+    height: 3200,
+    label: "portrait_2400w",
+    url: "https://cdn.example.com/episodes/EP001/3x4.webp",
+    variantType: "portrait",
+    width: 2400,
+  };
+
+  const eyeCatchFormData = (fields: Record<string, string | File>) => {
+    const formData = new FormData();
+    formData.set("tenant_id", "TENANT001");
+    formData.set("episode_id", episodeId);
+    for (const [name, value] of Object.entries(fields)) {
+      formData.set(name, value);
+    }
+    return formData;
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  describe("saving the whole eye-catch", () => {
+    it("uploads the picked image and clears the episode's tags", async () => {
+      mockUploadEpisodeEyeCatchImage.mockResolvedValueOnce({
+        episode: {
+          eyeCatchImageUpdatedAt: "2026-02-01T00:00:00Z",
+          eyeCatchImageVariants: [storedVariant],
+        },
+        ok: true,
+      });
+      const { updateEpisodeEyeCatchAction } = await import("./actions");
+
+      const result = await updateEpisodeEyeCatchAction(
+        null,
+        eyeCatchFormData({
+          current_eye_catch_image_updated_at: "2026-01-01T00:00:00Z",
+          eye_catch_image: image(),
+        })
+      );
+
+      expect(result).toEqual({ message: "Cover image updated.", ok: true });
+      expect(mockUploadEpisodeEyeCatchImage).toHaveBeenCalledWith(
+        {
+          episodeId,
+          imageContentType: "image/png",
+          imageData: new Uint8Array([1, 2, 3]),
+          tenantId: "TENANT001",
+        },
+        "en"
+      );
+      expect(mockDeleteEpisodeEyeCatchImage).not.toHaveBeenCalled();
+      expect(mockUpdateTag).toHaveBeenCalledWith("episodes-TENANT001");
+      expect(mockUpdateTag).toHaveBeenCalledWith(
+        `episode-TENANT001-${episodeId}`
+      );
+    });
+
+    it("removes the eye-catch when the delete toggle is on, whatever file is picked", async () => {
+      mockDeleteEpisodeEyeCatchImage.mockResolvedValueOnce({
+        episode: { eyeCatchImageUpdatedAt: "", eyeCatchImageVariants: [] },
+        ok: true,
+      });
+      const { updateEpisodeEyeCatchAction } = await import("./actions");
+
+      const result = await updateEpisodeEyeCatchAction(
+        null,
+        eyeCatchFormData({ clear_eye_catch_image: "1" })
+      );
+
+      expect(result).toEqual({ message: "Cover image updated.", ok: true });
+      expect(mockDeleteEpisodeEyeCatchImage).toHaveBeenCalledWith(
+        { episodeId, tenantId: "TENANT001" },
+        "en"
+      );
+      expect(mockUploadEpisodeEyeCatchImage).not.toHaveBeenCalled();
+      expect(mockUpdateTag).toHaveBeenCalledWith(
+        `episode-TENANT001-${episodeId}`
+      );
+    });
+
+    it("asks for an image or the delete toggle when neither was given", async () => {
+      const { updateEpisodeEyeCatchAction } = await import("./actions");
+
+      const result = await updateEpisodeEyeCatchAction(
+        null,
+        eyeCatchFormData({})
+      );
+
+      expect(result).toEqual({
+        message: "Select an image or choose to remove it.",
+        ok: false,
+      });
+      expect(mockUploadEpisodeEyeCatchImage).not.toHaveBeenCalled();
+      expect(mockDeleteEpisodeEyeCatchImage).not.toHaveBeenCalled();
+      expect(mockUpdateTag).not.toHaveBeenCalled();
+    });
+
+    it("reports an upload whose timestamp did not move as not applied", async () => {
+      mockUploadEpisodeEyeCatchImage.mockResolvedValueOnce({
+        episode: {
+          eyeCatchImageUpdatedAt: "2026-01-01T00:00:00Z",
+          eyeCatchImageVariants: [storedVariant],
+        },
+        ok: true,
+      });
+      const { updateEpisodeEyeCatchAction } = await import("./actions");
+
+      const result = await updateEpisodeEyeCatchAction(
+        null,
+        eyeCatchFormData({
+          current_eye_catch_image_updated_at: "2026-01-01T00:00:00Z",
+          eye_catch_image: image(),
+        })
+      );
+
+      expect(result).toEqual({
+        message:
+          "The upload has not been applied. Select the image again and try again.",
+        ok: false,
+      });
+      expect(mockUpdateTag).not.toHaveBeenCalled();
+    });
+
+    it("reports an upload that came back with no variants", async () => {
+      mockUploadEpisodeEyeCatchImage.mockResolvedValueOnce({
+        episode: {
+          eyeCatchImageUpdatedAt: "2026-02-01T00:00:00Z",
+          eyeCatchImageVariants: [],
+        },
+        ok: true,
+      });
+      const { updateEpisodeEyeCatchAction } = await import("./actions");
+
+      const result = await updateEpisodeEyeCatchAction(
+        null,
+        eyeCatchFormData({ eye_catch_image: image() })
+      );
+
+      expect(result).toEqual({
+        message:
+          "The upload was accepted, but generated images could not be confirmed. Please try again.",
+        ok: false,
+      });
+    });
+
+    it("passes on the failure the upload reported", async () => {
+      mockUploadEpisodeEyeCatchImage.mockResolvedValueOnce({
+        message: "Could not save the cover image. Please try again later.",
+        ok: false,
+      });
+      const { updateEpisodeEyeCatchAction } = await import("./actions");
+
+      const result = await updateEpisodeEyeCatchAction(
+        null,
+        eyeCatchFormData({ eye_catch_image: image() })
+      );
+
+      expect(result).toEqual({
+        message: "Could not save the cover image. Please try again later.",
+        ok: false,
+      });
+      expect(mockUpdateTag).not.toHaveBeenCalled();
+    });
+
+    it("refuses an episode id that is not one", async () => {
+      const { updateEpisodeEyeCatchAction } = await import("./actions");
+      const formData = eyeCatchFormData({ eye_catch_image: image() });
+      formData.set("episode_id", "EP001");
+
+      const result = await updateEpisodeEyeCatchAction(null, formData);
+
+      expect(result).toEqual({ message: "Episode ID is missing.", ok: false });
+      expect(mockUploadEpisodeEyeCatchImage).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("replacing one ratio", () => {
+    it("uploads the image for the ratio and clears the episode's tags", async () => {
+      mockUploadEpisodeEyeCatchAspectImage.mockResolvedValueOnce({
+        episode: { eyeCatchImageVariants: [storedVariant] },
+        ok: true,
+      });
+      const { uploadEpisodeEyeCatchAspectImageAction } =
+        await import("./actions");
+
+      const result = await uploadEpisodeEyeCatchAspectImageAction(
+        null,
+        eyeCatchFormData({
+          aspect_image: image("wide.png"),
+          variant_type: "landscape",
+        })
+      );
+
+      expect(result).toEqual({
+        message: "The image for this ratio was replaced.",
+        ok: true,
+      });
+      expect(mockUploadEpisodeEyeCatchAspectImage).toHaveBeenCalledWith(
+        {
+          crop: undefined,
+          episodeId,
+          imageContentType: "image/png",
+          imageData: new Uint8Array([1, 2, 3]),
+          tenantId: "TENANT001",
+          variantType: "landscape",
+        },
+        "en"
+      );
+      expect(mockUpdateTag).toHaveBeenCalledWith(
+        `episode-TENANT001-${episodeId}`
+      );
+    });
+
+    it("names the ratio's own minimum when the API refused the image", async () => {
+      mockUploadEpisodeEyeCatchAspectImage.mockResolvedValueOnce({
+        imageRejected: true,
+        ok: false,
+      });
+      const { uploadEpisodeEyeCatchAspectImageAction } =
+        await import("./actions");
+
+      const result = await uploadEpisodeEyeCatchAspectImageAction(
+        null,
+        eyeCatchFormData({
+          aspect_image: image("wide.png"),
+          variant_type: "landscape",
+        })
+      );
+
+      expect(result).toEqual({
+        message:
+          "Check the image. For this ratio, choose a JPEG, PNG, or WebP image no larger than 10MB and at least 1600x900px, then try again.",
+        ok: false,
+      });
+      expect(mockUpdateTag).not.toHaveBeenCalled();
+    });
+
+    it("asks for an image when none was picked", async () => {
+      const { uploadEpisodeEyeCatchAspectImageAction } =
+        await import("./actions");
+
+      const result = await uploadEpisodeEyeCatchAspectImageAction(
+        null,
+        eyeCatchFormData({ variant_type: "square" })
+      );
+
+      expect(result).toEqual({
+        message: "Select an image to upload.",
+        ok: false,
+      });
+      expect(mockUploadEpisodeEyeCatchAspectImage).not.toHaveBeenCalled();
     });
   });
 });

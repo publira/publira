@@ -37,6 +37,7 @@ import {
   AdminSectionHeading,
   AdminSectionTitle,
 } from "#components/admin-page";
+import { EyeCatchAspectImages } from "#components/eye-catch/aspect-images";
 import { FlashToast } from "#components/flash-toast";
 import { Message } from "#components/message";
 import {
@@ -50,6 +51,8 @@ import {
 } from "#lib/auth-session";
 import { listAllCreators } from "#lib/creator";
 import { listCreatorRoles } from "#lib/creator-roles";
+import { parseEditTab } from "#lib/edit-tab-search-params";
+import type { EditTab } from "#lib/edit-tab-search-params";
 import {
   getEpisode,
   listEpisodeCredits,
@@ -73,6 +76,7 @@ import {
 
 import { EpisodeAvailabilityForm } from "./_components/episode-availability-form";
 import { EpisodeCreatorCreditsForm } from "./_components/episode-creator-credits-form";
+import { EpisodeEyeCatchForm } from "./_components/episode-eye-catch-form";
 import { EpisodeFreeWindowsSection } from "./_components/episode-free-windows-section";
 import { EpisodeImagesSortableGrid } from "./_components/episode-images-sortable-grid";
 import { EpisodePagesForm } from "./_components/episode-pages-form";
@@ -81,6 +85,7 @@ import { EpisodePricingForm } from "./_components/episode-pricing-form";
 import { EpisodePurchaseAvailabilityForm } from "./_components/episode-purchase-availability-form";
 import { EpisodeReadingLayoutForm } from "./_components/episode-reading-layout-form";
 import { EpisodeScheduleForm } from "./_components/episode-schedule-form";
+import { EpisodeTabNav } from "./_components/episode-tab-nav";
 import { EpisodeTitleForm } from "./_components/episode-title-form";
 import { EpisodeTranslationDeleteButton } from "./_components/episode-translation-delete-button";
 import {
@@ -91,12 +96,14 @@ import {
   renewEpisodePreviewUrlsAction,
   reorderEpisodeImagesAction,
   updateEpisodeAvailabilityAction,
+  updateEpisodeEyeCatchAction,
   updateEpisodeLayoutAction,
   updateEpisodePricingAction,
   updateEpisodePurchaseAvailabilityAction,
   replaceEpisodeCreditsAction,
   updateEpisodeScheduleAction,
   updateEpisodeTitleAction,
+  uploadEpisodeEyeCatchAspectImageAction,
 } from "./_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
@@ -114,6 +121,8 @@ type EditEpisodePageProps =
   PageProps<"/[tenant_id]/series/[series_id]/episodes/[episode_id]">;
 
 type EditEpisodeSectionProps = Pick<EditEpisodePageProps, "params">;
+
+type EditEpisodeTabProps = Pick<EditEpisodePageProps, "searchParams">;
 
 const editEpisodeParamsSchema = z.object({
   episode_id: routeParamString(),
@@ -183,6 +192,48 @@ const EpisodeSectionError = ({
     </SectionErrorHeading>
   </SectionError>
 );
+
+const resolveActiveTab = async (
+  searchParams: EditEpisodePageProps["searchParams"]
+): Promise<EditTab> => parseEditTab(await searchParams);
+
+const EditEpisodeTitle = async ({ searchParams }: EditEpisodeTabProps) => {
+  const activeTab = await resolveActiveTab(searchParams);
+  return activeTab === "eye-catch" ? (
+    <Message message="admin.series.episodes.eye_catch_title" />
+  ) : (
+    <Message message="admin.series.episodes.edit_title" />
+  );
+};
+
+const EditEpisodeDescription = async ({
+  searchParams,
+}: EditEpisodeTabProps) => {
+  const activeTab = await resolveActiveTab(searchParams);
+  return activeTab === "eye-catch" ? (
+    <Message message="admin.series.episodes.eye_catch_description" />
+  ) : (
+    <Message message="admin.series.episodes.edit_description" />
+  );
+};
+
+const EditEpisodeTabNav = async ({
+  params,
+  searchParams,
+}: Pick<EditEpisodePageProps, "params" | "searchParams">) => {
+  const [{ episodeId, seriesId }, activeTab] = await Promise.all([
+    resolveEditEpisodeContext(params),
+    resolveActiveTab(searchParams),
+  ]);
+
+  return (
+    <EpisodeTabNav
+      current={activeTab}
+      episodeId={episodeId}
+      seriesId={seriesId}
+    />
+  );
+};
 
 const EditEpisodeContextLine = async ({ params }: EditEpisodeSectionProps) => {
   const { episodeId, seriesId } = await resolveEditEpisodeContext(params);
@@ -764,7 +815,43 @@ const EpisodePreviewSection = async ({ params }: EditEpisodeSectionProps) => {
   );
 };
 
-/** The sections below, while the operator's role is read. */
+const EpisodeEyeCatchSection = async ({ params }: EditEpisodeSectionProps) => {
+  const context = await resolveEditEpisodeContext(params);
+  const episodeResult = await loadEpisode(context);
+
+  if (!episodeResult.ok) {
+    return (
+      <EpisodeSectionError
+        message={episodeResult.message}
+        title={<Message message="admin.series.episodes.eye_catch.error" />}
+      />
+    );
+  }
+
+  const { episode } = episodeResult;
+
+  return (
+    // Both cards hold the picked file and the chosen ratio in local state,
+    // so the tab is keyed by the episode it belongs to: moving to another
+    // episode remounts it rather than leaving that state behind.
+    <div className="grid gap-6" key={episode.publicId}>
+      <EpisodeEyeCatchForm
+        action={updateEpisodeEyeCatchAction}
+        episode={episode}
+        tenantId={context.tenantId}
+      />
+      <EyeCatchAspectImages
+        entity="episode"
+        id={episode.id}
+        tenantId={context.tenantId}
+        uploadAction={uploadEpisodeEyeCatchAspectImageAction}
+        variants={episode.eyeCatchImageVariants}
+      />
+    </div>
+  );
+};
+
+/** The sections below, while the tab and the operator's role are read. */
 const EditEpisodeSectionsSkeleton = () => (
   <div className="grid gap-6">
     <Skeleton className="h-40" />
@@ -772,6 +859,104 @@ const EditEpisodeSectionsSkeleton = () => (
     <Skeleton className="h-40" />
   </div>
 );
+
+/**
+ * What the tab the URL names holds. The preview belongs to the basic tab: it
+ * turns the pages, which the eye-catch tab does not show.
+ */
+const EditEpisodeTabContent = async ({
+  params,
+  searchParams,
+}: Pick<EditEpisodePageProps, "params" | "searchParams">) => {
+  const activeTab = await resolveActiveTab(searchParams);
+
+  if (activeTab === "eye-catch") {
+    return (
+      <TenantEditorFieldset>
+        <Suspense fallback={<Skeleton className="h-96" />}>
+          <EpisodeEyeCatchSection params={params} />
+        </Suspense>
+      </TenantEditorFieldset>
+    );
+  }
+
+  return (
+    <>
+      <TenantEditorFieldset>
+        <div className="grid gap-6">
+          <Suspense fallback={<Skeleton className="h-40" />}>
+            <EpisodeTitleSection params={params} searchParams={searchParams} />
+          </Suspense>
+          <Suspense fallback={<Skeleton className="h-40" />}>
+            <EpisodePricingSection params={params} />
+          </Suspense>
+          <Suspense fallback={<Skeleton className="h-40" />}>
+            <EpisodeScheduleSection params={params} />
+          </Suspense>
+          <Suspense fallback={<Skeleton className="h-40" />}>
+            <EpisodeAvailabilitySection params={params} />
+          </Suspense>
+          <Suspense fallback={<Skeleton className="h-40" />}>
+            <EpisodePurchaseAvailabilitySection params={params} />
+          </Suspense>
+          <Suspense fallback={<Skeleton className="h-40" />}>
+            <EpisodeFreeWindowsSectionData params={params} />
+          </Suspense>
+          <Suspense fallback={<Skeleton className="h-48" />}>
+            <EpisodeCreditsSection params={params} />
+          </Suspense>
+          <Suspense fallback={<Skeleton className="h-40" />}>
+            <EpisodePagesSection params={params} />
+          </Suspense>
+
+          <section className="grid gap-3 border border-border p-4">
+            <h2 className="text-sm font-medium">
+              <Suspense fallback={<SkeletonLine className="h-6 w-40" />}>
+                <Message message="admin.series.episodes.image_list_title" />
+              </Suspense>
+            </h2>
+            <TenantEditorOnly>
+              <p className="text-xs text-muted-foreground">
+                <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
+                  <Message message="admin.series.episodes.image_list_description" />
+                </Suspense>
+              </p>
+            </TenantEditorOnly>
+            <Suspense fallback={<Skeleton className="h-32" />}>
+              <EpisodeImageList params={params} />
+            </Suspense>
+          </section>
+
+          <Suspense fallback={<Skeleton className="h-40" />}>
+            <EpisodeReadingLayoutSection params={params} />
+          </Suspense>
+        </div>
+      </TenantEditorFieldset>
+
+      {/* Outside the editors' fieldset: turning the pages changes nothing, so
+          every member of staff who can open the episode can read it. */}
+      <AdminSection>
+        <AdminSectionHeader>
+          <AdminSectionHeading>
+            <AdminSectionTitle>
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.series.episodes.preview.title" />
+              </Suspense>
+            </AdminSectionTitle>
+            <AdminSectionDescription>
+              <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+                <Message message="admin.series.episodes.preview.description" />
+              </Suspense>
+            </AdminSectionDescription>
+          </AdminSectionHeading>
+        </AdminSectionHeader>
+        <Suspense fallback={<Skeleton className="h-[min(70svh,40rem)]" />}>
+          <EpisodePreviewSection params={params} />
+        </Suspense>
+      </AdminSection>
+    </>
+  );
+};
 
 const EditEpisodePage = ({ params, searchParams }: EditEpisodePageProps) => (
   <AdminPage>
@@ -784,12 +969,12 @@ const EditEpisodePage = ({ params, searchParams }: EditEpisodePageProps) => (
         </AdminPageContext>
         <AdminPageTitle>
           <Suspense fallback={<SkeletonLine className="h-7 w-48" />}>
-            <Message message="admin.series.episodes.edit_title" />
+            <EditEpisodeTitle searchParams={searchParams} />
           </Suspense>
         </AdminPageTitle>
         <AdminPageDescription>
           <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-            <Message message="admin.series.episodes.edit_description" />
+            <EditEpisodeDescription searchParams={searchParams} />
           </Suspense>
         </AdminPageDescription>
       </AdminPageHeading>
@@ -853,83 +1038,12 @@ const EditEpisodePage = ({ params, searchParams }: EditEpisodePageProps) => (
         message="admin.series.episodes.image_reorder_error"
       />
 
-      <Suspense fallback={<EditEpisodeSectionsSkeleton />}>
-        <TenantEditorFieldset>
-          <div className="grid gap-6">
-            <Suspense fallback={<Skeleton className="h-40" />}>
-              <EpisodeTitleSection
-                params={params}
-                searchParams={searchParams}
-              />
-            </Suspense>
-            <Suspense fallback={<Skeleton className="h-40" />}>
-              <EpisodePricingSection params={params} />
-            </Suspense>
-            <Suspense fallback={<Skeleton className="h-40" />}>
-              <EpisodeScheduleSection params={params} />
-            </Suspense>
-            <Suspense fallback={<Skeleton className="h-40" />}>
-              <EpisodeAvailabilitySection params={params} />
-            </Suspense>
-            <Suspense fallback={<Skeleton className="h-40" />}>
-              <EpisodePurchaseAvailabilitySection params={params} />
-            </Suspense>
-            <Suspense fallback={<Skeleton className="h-40" />}>
-              <EpisodeFreeWindowsSectionData params={params} />
-            </Suspense>
-            <Suspense fallback={<Skeleton className="h-48" />}>
-              <EpisodeCreditsSection params={params} />
-            </Suspense>
-            <Suspense fallback={<Skeleton className="h-40" />}>
-              <EpisodePagesSection params={params} />
-            </Suspense>
-
-            <section className="grid gap-3 border border-border p-4">
-              <h2 className="text-sm font-medium">
-                <Suspense fallback={<SkeletonLine className="h-6 w-40" />}>
-                  <Message message="admin.series.episodes.image_list_title" />
-                </Suspense>
-              </h2>
-              <TenantEditorOnly>
-                <p className="text-xs text-muted-foreground">
-                  <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
-                    <Message message="admin.series.episodes.image_list_description" />
-                  </Suspense>
-                </p>
-              </TenantEditorOnly>
-              <Suspense fallback={<Skeleton className="h-32" />}>
-                <EpisodeImageList params={params} />
-              </Suspense>
-            </section>
-
-            <Suspense fallback={<Skeleton className="h-40" />}>
-              <EpisodeReadingLayoutSection params={params} />
-            </Suspense>
-          </div>
-        </TenantEditorFieldset>
+      <Suspense fallback={<SkeletonLine className="h-9 w-56" />}>
+        <EditEpisodeTabNav params={params} searchParams={searchParams} />
       </Suspense>
-
-      {/* Outside the editors' fieldset: turning the pages changes nothing, so
-          every member of staff who can open the episode can read it. */}
-      <AdminSection>
-        <AdminSectionHeader>
-          <AdminSectionHeading>
-            <AdminSectionTitle>
-              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <Message message="admin.series.episodes.preview.title" />
-              </Suspense>
-            </AdminSectionTitle>
-            <AdminSectionDescription>
-              <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
-                <Message message="admin.series.episodes.preview.description" />
-              </Suspense>
-            </AdminSectionDescription>
-          </AdminSectionHeading>
-        </AdminSectionHeader>
-        <Suspense fallback={<Skeleton className="h-[min(70svh,40rem)]" />}>
-          <EpisodePreviewSection params={params} />
-        </Suspense>
-      </AdminSection>
+      <Suspense fallback={<EditEpisodeSectionsSkeleton />}>
+        <EditEpisodeTabContent params={params} searchParams={searchParams} />
+      </Suspense>
     </AdminPageContent>
   </AdminPage>
 );

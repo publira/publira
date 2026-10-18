@@ -1066,6 +1066,12 @@
             "square": "網站和應用程式中尚未使用。在本控制台的類型列表中用作縮圖。",
             "landscape": "用於網站和應用程式中類型頁面的橫幅。",
             "og": "網站和應用程式中尚未使用。"
+          },
+          "episode": {
+            "portrait": "網站和應用程式中尚未使用。",
+            "square": "網站和應用程式中尚未使用。",
+            "landscape": "網站和應用程式中尚未使用。",
+            "og": "網站和應用程式中尚未使用。"
           }
         },
         "eye_catch_required": "請先設定封面圖。封面圖存在後才能單獨取代各個比例。",
@@ -1727,6 +1733,21 @@
         "new_title": "建立章節",
         "edit_title": "編輯章節",
         "edit_description": "編輯該章節的標題、價格、發布設定與頁面圖片。",
+        "basic_tab": "基本資料",
+        "eye_catch_tab": "封面圖",
+        "eye_catch_title": "編輯章節封面圖",
+        "eye_catch_description": "為該章節設定專屬封面圖，或將其刪除。未設定封面圖的章節會顯示所屬系列的封面圖。",
+        "eye_catch": {
+          "update": "更新封面圖",
+          "submitting": "正在送出…",
+          "updated": "封面圖已更新。",
+          "choice_required": "請選擇圖片，或選擇刪除。",
+          "image_invalid": "請檢查圖片設定。請選擇不超過10MB、尺寸至少為2400x3200px的JPEG、PNG或WebP圖片，然後重試。",
+          "failed": "無法儲存封面圖。請稍後再試。",
+          "variants_missing": "上傳已被接受，但無法確認產生的圖片。請重試。",
+          "upload_not_reflected": "上傳尚未生效。請重新選擇圖片後再試。",
+          "error": "無法載入該章節的封面圖。"
+        },
         "new_description": "在該系列中新增一個章節。",
         "new_action": "建立",
         "credits_action": "署名",

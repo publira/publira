@@ -36,7 +36,7 @@ import type { EyeCatchAspectActionState, EyeCatchVariantItem } from "./types";
 interface EyeCatchAspectImagesProps {
   /** The kind of record the ratios belong to. */
   entity: EyeCatchEntity;
-  /** The ID of the series, label, or genre the ratios belong to. */
+  /** The ID of the series, episode, label, or genre the ratios belong to. */
   id: string;
   tenantId: string;
   /** The images the eye-catch currently holds, across every ratio. */
@@ -49,6 +49,7 @@ interface EyeCatchAspectImagesProps {
 
 /** The hidden field each record's upload action reads its ID from. */
 const ID_FIELDS: Record<EyeCatchEntity, string> = {
+  episode: "episode_id",
   genre: "genre_id",
   label: "label_id",
   series: "series_id",

@@ -15,9 +15,9 @@ const editTabSchema = z.object({
 });
 
 /**
- * Series / label edit screens share one pair of tabs. An unknown, missing, or
- * conflicting `tab` falls back to the basic form so the operator still sees
- * the record instead of a 404.
+ * The edit screens of the records with an eye-catch share one pair of tabs.
+ * An unknown, missing, or conflicting `tab` falls back to the basic form so
+ * the operator still sees the record instead of a 404.
  */
 export const parseEditTab = (input: ParseEditTabInput): EditTab =>
   editTabSchema.parse(input).tab;
