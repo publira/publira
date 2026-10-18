@@ -67,6 +67,25 @@ test.describe("web-storefront campaign banners", () => {
     await next.click();
     await expect(campaigns.getByText("1 / 3")).toBeVisible();
 
+    // Every slide, the copies at the two ends included, has a scroll position
+    // that puts it in the centre. Without one the browser stops a copy short
+    // of the centre, and the move onto the banner it copies shows as a jump.
+    const reach = await campaigns.getByRole("list").evaluate((strip) => {
+      const centring = [...strip.children].map(
+        (slide) =>
+          (slide as HTMLElement).offsetLeft +
+          (slide as HTMLElement).offsetWidth / 2 -
+          strip.clientWidth / 2
+      );
+      return {
+        first: centring[0] ?? 0,
+        last: centring.at(-1) ?? 0,
+        max: strip.scrollWidth - strip.clientWidth,
+      };
+    });
+    expect(reach.first).toBeGreaterThanOrEqual(-1);
+    expect(reach.last).toBeLessThanOrEqual(reach.max + 1);
+
     // Wherever the strip went to get there, the banner in the centre is the
     // first one itself rather than the copy that stands after the last, so it
     // is the one a reader can follow.

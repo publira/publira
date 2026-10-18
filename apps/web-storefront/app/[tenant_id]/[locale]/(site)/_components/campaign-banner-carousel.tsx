@@ -1,7 +1,6 @@
 "use client";
 
 import { ChevronLeftIcon, ChevronRightIcon } from "@publira/icons";
-import { cn } from "@publira/utils";
 import type { ReactNode, UIEvent } from "react";
 import { useRef, useState, useSyncExternalStore } from "react";
 
@@ -267,12 +266,11 @@ export const CampaignBannerCarousel = ({
   return (
     <section aria-label={ariaLabel} className="grid gap-2">
       <ul
-        className={cn(
-          "relative flex snap-x snap-mandatory [scrollbar-width:none] gap-4 overflow-x-auto scroll-smooth motion-reduce:scroll-auto",
-          // Until the copies stand at the ends, a margin is what lets the first
-          // and the last banner reach the centre.
-          !loops && "md:*:first:ms-[calc(100%/6)] md:*:last:me-[calc(100%/6)]"
-        )}
+        // A sixth of the strip outside each end is what lets the slide at that
+        // end reach the centre: the first and the last banner before the
+        // copies are added, and the copies after, which is what makes the move
+        // off a copy land the banner exactly where the copy stood.
+        className="relative flex snap-x snap-mandatory [scrollbar-width:none] gap-4 overflow-x-auto scroll-smooth motion-reduce:scroll-auto md:*:first:ms-[calc(100%/6)] md:*:last:me-[calc(100%/6)]"
         onPointerDown={forgetTarget}
         onScroll={handleScroll}
         onScrollEnd={settle}
