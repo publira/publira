@@ -37,9 +37,9 @@ export interface CatalogTopEpisodeItem {
   episodeOrderIndex: number;
   episodeTitle: string;
   /**
-   * The series eye-catch. An episode carries no image of its own, and the row
-   * that shows it stands next to episodes of other series, so this is what
-   * tells one row from the next.
+   * The episode's own eye-catch, or the series' where the episode has none.
+   * The row stands next to episodes of other series, so a picture is always
+   * drawn there to tell one row from the next.
    */
   eyeCatchImageVariants?: EyeCatchImageVariant[];
   /** The end of the free reading period open on it, as on `EpisodeItem`. */
@@ -143,7 +143,12 @@ interface SeriesDetailRow {
   credits: CreatorCredit[];
   episodes: Pick<
     EpisodeItem,
-    "freeUntil" | "orderIndex" | "publicId" | "publishedAt" | "title"
+    | "eyeCatchImageVariants"
+    | "freeUntil"
+    | "orderIndex"
+    | "publicId"
+    | "publishedAt"
+    | "title"
   >[];
   eyeCatchImageVariants?: EyeCatchImageVariant[];
   publicId: string;
@@ -527,7 +532,8 @@ export const getCatalogTopNewEpisodes = async (
                 episodeId: episode.publicId,
                 episodeOrderIndex: episode.orderIndex,
                 episodeTitle: episode.title,
-                eyeCatchImageVariants: row.eyeCatchImageVariants,
+                eyeCatchImageVariants:
+                  episode.eyeCatchImageVariants ?? row.eyeCatchImageVariants,
                 ...(episode.freeUntil ? { freeUntil: episode.freeUntil } : {}),
                 publishedAt: episode.publishedAt,
                 seriesId: row.publicId,

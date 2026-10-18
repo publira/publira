@@ -48,3 +48,21 @@ export const resolveOpenGraphImage = (
     width: largest.width,
   };
 };
+
+/** The artwork one card could be built from, and the text it is described by. */
+interface OpenGraphSource {
+  alt: string;
+  variants: EyeCatchImageVariant[] | undefined;
+}
+
+/**
+ * The card image for an episode: its own eye-catch where it has an `og`
+ * variant, and its series' where it does not, so an episode without artwork
+ * still unfurls with the work's picture.
+ */
+export const resolveEpisodeOpenGraphImage = (
+  episode: OpenGraphSource,
+  series: OpenGraphSource
+): OpenGraphImage | undefined =>
+  resolveOpenGraphImage(episode.variants, episode.alt) ??
+  resolveOpenGraphImage(series.variants, series.alt);
