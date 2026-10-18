@@ -1,5 +1,5 @@
 import { isExpectedNullableRpcError } from "@publira/api-client/errors";
-import type { CampaignBanner } from "@publira/api-client/public/catalog";
+import type { CampaignBanner } from "@publira/api-client/public/types";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 
 import { apiClient } from "./api-client";
