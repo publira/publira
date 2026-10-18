@@ -118,8 +118,8 @@ export const toEyeCatchImageVariants = (
  * where its picture would be.
  */
 export const toEpisodeRowEyeCatchImageVariants = (
-  episode: { eyeCatchImageVariants?: RawEyeCatchImageVariant[] } | undefined,
-  series: { eyeCatchImageVariants?: RawEyeCatchImageVariant[] } | undefined
+  episode: Pick<Episode, "eyeCatchImageVariants"> | undefined,
+  series: Pick<Series, "eyeCatchImageVariants"> | undefined
 ): EyeCatchImageVariant[] | undefined =>
   toEyeCatchImageVariants(episode?.eyeCatchImageVariants) ??
   toEyeCatchImageVariants(series?.eyeCatchImageVariants);
