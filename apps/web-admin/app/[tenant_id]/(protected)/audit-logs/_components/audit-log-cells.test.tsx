@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { bindMessages, getLocales } from "@publira/i18n";
+import { bindMessages, getLocaleLabel, getLocales } from "@publira/i18n";
 import type { Locale, MessageKey } from "@publira/i18n";
 import { sharedCatalog, sharedMessage } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
@@ -158,6 +158,50 @@ describe("AuditLogActionCell", () => {
 
     expect(cell.textContent).toBe(
       `${sharedMessage("admin.audit.actions.other", "en")}unrecorded_target / ${targetId}`
+    );
+  });
+
+  it.each(
+    getLocales().flatMap((locale) =>
+      (["en", "ja"] as const).map((copyLocale) => [locale, copyLocale] as const)
+    )
+  )(
+    "names the language of a public site display save in %s: %s",
+    async (locale, copyLocale) => {
+      const cell = await renderActionCell(
+        locale,
+        "tenant_site_copy_updated",
+        "tenant_site_copy",
+        copyLocale
+      );
+
+      const actionName = sharedMessage(
+        "admin.audit.actions.tenant_site_copy_updated",
+        locale
+      );
+      const targetName = sharedMessage(
+        "admin.audit.targets.tenant_site_copy",
+        locale
+      );
+      const language = screen.getByText(getLocaleLabel(copyLocale));
+
+      expect(cell.textContent).toBe(
+        `${actionName}${targetName} / ${getLocaleLabel(copyLocale)}`
+      );
+      expect(language.getAttribute("lang")).toBe(copyLocale);
+    }
+  );
+
+  it("keeps the tenant ID of a public site display save recorded before the language was", async () => {
+    const cell = await renderActionCell(
+      "en",
+      "tenant_site_copy_updated",
+      "tenant_site_copy",
+      "TENANT001"
+    );
+
+    expect(cell.textContent).toBe(
+      "Public site display updatedPublic site display / TENANT001"
     );
   });
 });

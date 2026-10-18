@@ -549,7 +549,7 @@ func (s *adminServer) UpdateTenantConfig(
 				return nil, s.internalDBError(ctx, "failed to write tenant site copy", err, "tenant_id", tenant.ID.String(), "locale", code)
 			}
 		}
-		if err := s.writeTenantSettingAudit(txCtx, tenant, session, "tenant_site_copy_updated", "tenant_site_copy"); err != nil {
+		if err := s.writeTenantSettingAuditOn(txCtx, tenant, session, "tenant_site_copy_updated", "tenant_site_copy", code); err != nil {
 			return nil, err
 		}
 		return tenantSiteCopyRevalidateTags(tenant.ID.String()), nil

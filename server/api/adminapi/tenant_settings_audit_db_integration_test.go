@@ -39,11 +39,18 @@ func TestDBTenantConfigColumnDefaults(t *testing.T) {
 // made by its admin and naming the setting the save changed.
 func tenantSettingAuditCount(t *testing.T, env *adminDBEnv, tenant adminDBTenant, action, targetType string) int {
 	t.Helper()
+	return tenantSettingAuditCountOn(t, env, tenant, action, targetType, tenant.Tenant.PublicID)
+}
+
+// tenantSettingAuditCountOn is tenantSettingAuditCount for a setting kept once
+// per targetID.
+func tenantSettingAuditCountOn(t *testing.T, env *adminDBEnv, tenant adminDBTenant, action, targetType, targetID string) int {
+	t.Helper()
 	return env.countRows(t,
 		`SELECT count(*) FROM audit_logs
 		WHERE tenant_id = $1 AND action = $2 AND target_type = $3 AND target_id = $4
 			AND actor_user_id = $5 AND outcome = 'success'`,
-		tenant.Tenant.ID, action, targetType, tenant.Tenant.PublicID, tenant.User.ID,
+		tenant.Tenant.ID, action, targetType, targetID, tenant.User.ID,
 	)
 }
 
@@ -91,17 +98,6 @@ func TestDBTenantSettingSavesAreAuditedOncePerChange(t *testing.T) {
 			name: "icon deleted", action: "tenant_icon_deleted", targetType: "tenant_branding",
 			save: func() error {
 				_, err := themes.DeleteTenantIcon(ctx, &publiraadminv1.DeleteTenantIconRequest{Tenant: tenant.tenantContext()})
-				return err
-			},
-		},
-		{
-			name: "public site display", action: "tenant_site_copy_updated", targetType: "tenant_site_copy",
-			save: func() error {
-				_, err := env.authClient().UpdateTenantConfig(ctx, &publiraadminv1.AdminAuthServiceUpdateTenantConfigRequest{
-					Tenant:        tenant.tenantContext(),
-					CopyrightText: "© Settings Audit",
-					SiteTagline:   "Read on",
-				})
 				return err
 			},
 		},
@@ -216,6 +212,34 @@ func TestDBTenantSettingSavesAreAuditedOncePerChange(t *testing.T) {
 		if got := tenantSettingAuditCount(t, env, tenant, step.action, step.targetType); got != 1 {
 			t.Fatalf("%s saved twice: audit entries = %d, want 1", step.name, got)
 		}
+	}
+}
+
+// The public site's copy is saved one locale at a time, so its entry names the
+// locale the save changed: a save of each locale leaves an entry of its own,
+// and saving the same copy again leaves none.
+func TestDBTenantSiteCopySavesAreAuditedUnderTheirLocale(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TSCTNNT1", "site-copy-audit.example.com", "Site Copy Audit", "TSCUSER1", "admin@site-copy-audit.example.com")
+	ctx := testutil.WithBearer(context.Background(), tenant.token())
+	client := env.authClient()
+
+	for _, code := range []string{"ja", "en"} {
+		for range 2 {
+			if _, err := client.UpdateTenantConfig(ctx, &publiraadminv1.AdminAuthServiceUpdateTenantConfigRequest{
+				Tenant:        tenant.tenantContext(),
+				Locale:        code,
+				CopyrightText: "© Site Copy Audit (" + code + ")",
+			}); err != nil {
+				t.Fatalf("UpdateTenantConfig(%q): %v", code, err)
+			}
+		}
+		if got := tenantSettingAuditCountOn(t, env, tenant, "tenant_site_copy_updated", "tenant_site_copy", code); got != 1 {
+			t.Fatalf("%s copy saved twice: audit entries = %d, want 1", code, got)
+		}
+	}
+	if got := env.countRows(t, "SELECT count(*) FROM audit_logs WHERE tenant_id = $1", tenant.Tenant.ID); got != 2 {
+		t.Fatalf("audit entries = %d, want one per locale saved", got)
 	}
 }
 
