@@ -2470,7 +2470,8 @@
         "submit": "儲存設定",
         "saved": "設定已儲存。",
         "load_failed": "無法載入設定。請稍後再試。",
-        "save_failed": "無法儲存設定。請稍後再試。"
+        "save_failed": "無法儲存設定。請稍後再試。",
+        "locale_not_offered": "此網站未提供該語言。請先在「語言」中將其加入提供的語言。"
       },
       "timezone": {
         "title": "時區",

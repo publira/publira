@@ -433,6 +433,76 @@ describe("updateSiteSettingsAction", () => {
     );
   });
 
+  it("saves the copy in the language of the tab it was sent from", async () => {
+    mockUpdateTenantSiteSettings.mockResolvedValueOnce({
+      ok: true,
+      settings: {
+        copyrightText: "",
+        siteDescription: "",
+        siteTagline: "Read in English",
+      },
+    });
+
+    const { updateSiteSettingsAction } = await import("./actions");
+
+    await updateSiteSettingsAction(
+      null,
+      textFormData({
+        copyright_text: "",
+        site_description: "",
+        site_tagline: "Read in English",
+        tenant_id: "TENANT001",
+        translation_locale: "en",
+      })
+    );
+
+    expect(mockUpdateTenantSiteSettings).toHaveBeenCalledWith(
+      {
+        copyrightText: "",
+        siteDescription: "",
+        siteTagline: "Read in English",
+        tenantId: "TENANT001",
+        translationLocale: "en",
+      },
+      "en"
+    );
+  });
+
+  it("saves the default language's copy from a card without tabs", async () => {
+    mockUpdateTenantSiteSettings.mockResolvedValueOnce({
+      ok: true,
+      settings: { copyrightText: "", siteDescription: "", siteTagline: "" },
+    });
+
+    const { updateSiteSettingsAction } = await import("./actions");
+
+    await updateSiteSettingsAction(
+      null,
+      textFormData({ tenant_id: "TENANT001", translation_locale: "" })
+    );
+
+    expect(mockUpdateTenantSiteSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ translationLocale: undefined }),
+      "en"
+    );
+  });
+
+  it("refuses a language this build does not serve without calling the API", async () => {
+    const { updateSiteSettingsAction } = await import("./actions");
+
+    const result = await updateSiteSettingsAction(
+      null,
+      textFormData({ tenant_id: "TENANT001", translation_locale: "fr" })
+    );
+
+    expect(result).toEqual({
+      message:
+        "This site does not offer that language. Switch it on under Languages first.",
+      ok: false,
+    });
+    expect(mockUpdateTenantSiteSettings).not.toHaveBeenCalled();
+  });
+
   it("leaves the cache alone when the save fails", async () => {
     mockUpdateTenantSiteSettings.mockResolvedValueOnce({
       message: "Could not save the settings. Please try again later.",

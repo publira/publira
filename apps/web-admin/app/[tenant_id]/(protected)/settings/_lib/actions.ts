@@ -203,6 +203,16 @@ const tenantEmailRejectionSchema = async (locale: Locale) => {
   });
 };
 
+/**
+ * The language whose copy the card saves. Blank, or absent, writes the default
+ * language, which is what the API takes an absent one for and what the card
+ * edits when the site's languages cannot be read.
+ */
+const siteTranslationLocaleSchema = z.preprocess(
+  (value) => (value === "" || value === null ? undefined : value),
+  z.enum(getLocales()).optional()
+);
+
 export const updateSiteSettingsAction = async (
   _prevState: SiteSettingsActionState,
   formData: FormData
@@ -214,10 +224,19 @@ export const updateSiteSettingsAction = async (
   const copyrightText = String(formData.get("copyright_text") ?? "");
   const siteDescription = String(formData.get("site_description") ?? "");
   const siteTagline = String(formData.get("site_tagline") ?? "");
+  const translationLocale = siteTranslationLocaleSchema.safeParse(
+    formData.get("translation_locale")
+  );
 
   if (!tenantId) {
     return {
       message: t("admin.settings.tenant_missing"),
+      ok: false,
+    };
+  }
+  if (!translationLocale.success) {
+    return {
+      message: t("admin.settings.site.locale_not_offered"),
       ok: false,
     };
   }
@@ -229,6 +248,7 @@ export const updateSiteSettingsAction = async (
         siteDescription,
         siteTagline,
         tenantId,
+        translationLocale: translationLocale.data,
       },
       locale
     )

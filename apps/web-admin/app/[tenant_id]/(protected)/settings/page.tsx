@@ -1,3 +1,4 @@
+import { getLocales } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import {
   SectionError,
@@ -7,8 +8,11 @@ import {
 } from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
+import { searchParamEnum } from "@publira/utils/search-params";
+import type { SearchParamValue } from "@publira/utils/search-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { z } from "zod";
 
 import {
   AdminPage,
@@ -31,7 +35,7 @@ import {
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { listPublishedPages } from "#lib/page";
-import { getTenantSiteSettings } from "#lib/site-settings";
+import { getTenantSiteSettingsTabs } from "#lib/site-settings";
 import { getTenantAgeVerification } from "#lib/tenant-age-verification";
 import { getTenantCommentSettings } from "#lib/tenant-comment-settings";
 import { getTenantEmailRejectionSettings } from "#lib/tenant-email-rejection-settings";
@@ -39,6 +43,7 @@ import type { TenantEmailRejectionSettingsResult } from "#lib/tenant-email-rejec
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantLegalPages } from "#lib/tenant-legal-pages";
 import { getTenantLocales } from "#lib/tenant-locales";
+import type { GetTenantLocalesResult } from "#lib/tenant-locales";
 import { getTenantTimezone } from "#lib/tenant-timezone";
 
 import { SettingsTabNav } from "./_components/settings-tab-nav";
@@ -60,6 +65,44 @@ export const generateMetadata = async (): Promise<Metadata> => {
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
+
+interface SettingsPageProps {
+  searchParams: Promise<{ locale?: SearchParamValue }>;
+}
+
+/**
+ * The language whose copy the **Public site display** card edits. Absent, or
+ * naming a locale this build does not serve or the site does not offer, it is
+ * the default language.
+ */
+const settingsSearchParamsSchema = z.object({
+  locale: searchParamEnum(getLocales(), { fallback: "" }),
+});
+
+/** The site copy card's tabs, which wait for the languages the site offers. */
+const readSiteSettingsTabs = async ({
+  locale,
+  localesPromise,
+  searchParams,
+  tenantId,
+}: SettingsPageProps & {
+  locale: Locale;
+  localesPromise: Promise<GetTenantLocalesResult>;
+  tenantId: string;
+}) => {
+  const [tenantLocales, rawSearchParams] = await Promise.all([
+    localesPromise,
+    searchParams,
+  ]);
+
+  return getTenantSiteSettingsTabs({
+    locale,
+    requestedLocale:
+      settingsSearchParamsSchema.parse(rawSearchParams).locale || undefined,
+    tenantId,
+    tenantLocales: tenantLocales.ok ? tenantLocales : null,
+  });
+};
 
 const SettingsFormsSkeleton = () => (
   <AdminSections>
@@ -128,10 +171,11 @@ const emailRejectionFormState = (
       }
     : { loadErrorMessage: result?.message };
 
-const SettingsForms = async () => {
+const SettingsForms = async ({ searchParams }: SettingsPageProps) => {
   const tenantId = await getTenantId();
   const locale = await getLocale(tenantId);
   const currentUserPromise = verifyAdminSession(tenantId);
+  const localesPromise = getTenantLocales(tenantId, locale);
 
   const [
     settingsResult,
@@ -144,9 +188,9 @@ const SettingsForms = async () => {
     currentUser,
     emailRejectionResult,
   ] = await Promise.all([
-    getTenantSiteSettings(tenantId, locale),
+    readSiteSettingsTabs({ locale, localesPromise, searchParams, tenantId }),
     getTenantTimezone(tenantId, locale),
-    getTenantLocales(tenantId, locale),
+    localesPromise,
     getTenantCommentSettings(tenantId, locale),
     getTenantAgeVerification(tenantId, locale),
     getTenantLegalPages(tenantId, locale),
@@ -171,7 +215,7 @@ const SettingsForms = async () => {
       {settingsResult.ok ? (
         <SiteSettingsForm
           canEdit={canEdit}
-          initialSettings={settingsResult.settings}
+          tabs={settingsResult}
           tenantId={tenantId}
         />
       ) : (
@@ -263,7 +307,7 @@ const SettingsForms = async () => {
   );
 };
 
-const SettingsPage = () => (
+const SettingsPage = ({ searchParams }: SettingsPageProps) => (
   <AdminPage>
     <AdminPageHeader>
       <AdminPageHeading>
@@ -290,7 +334,7 @@ const SettingsPage = () => (
           }
         >
           <Suspense fallback={<SettingsFormsSkeleton />}>
-            <SettingsForms />
+            <SettingsForms searchParams={searchParams} />
           </Suspense>
         </SectionErrorBoundary>
       </div>
