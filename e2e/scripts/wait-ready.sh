@@ -77,6 +77,10 @@ wait_http "sign-in-provider/readyz" \
   "http://127.0.0.1:${PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT}/readyz" \
   --expect-body-regex "${JSON_OK_REGEX}"
 
+wait_http "stripe/readyz" \
+  "http://127.0.0.1:${PUBLIRA_E2E_STRIPE_PORT}/readyz" \
+  --expect-body-regex "${JSON_OK_REGEX}"
+
 wait_http "worker/readyz" \
   "http://127.0.0.1:${PUBLIRA_E2E_WORKER_PORT}/readyz" \
   --expect-body-regex "${JSON_OK_REGEX}"

@@ -17,7 +17,7 @@ Development bootstrap, from empty database volumes through `task setup` and all 
   sudo env "PATH=$PATH" pnpm --dir e2e exec playwright install-deps chromium
   ```
 
-The default required host ports are `3000` (web-storefront), `3080` (Traefik edge), `4000` (web-admin), `4100` (web-platform), `8000` (the server: every Connect namespace under `/rpc`, and under `/api` until 0.3.0, and the images), `8003` (worker), `8300` (email-renderer), `8400` (sign-in-provider), `5433` (E2E Postgres), `6380` (E2E Redis), `9003` (E2E RustFS / S3), `1026` / `8026` (E2E Mailpit SMTP / API), and `3090` (the pinned browser the screenshot projects connect to). `task e2e:search` also needs `9201` (E2E OpenSearch).
+The default required host ports are `3000` (web-storefront), `3080` (Traefik edge), `4000` (web-admin), `4100` (web-platform), `8000` (the server: every Connect namespace under `/rpc`, and under `/api` until 0.3.0, and the images), `8003` (worker), `8300` (email-renderer), `8400` (sign-in-provider), `8500` (stripe), `5433` (E2E Postgres), `6380` (E2E Redis), `9003` (E2E RustFS / S3), `1026` / `8026` (E2E Mailpit SMTP / API), and `3090` (the pinned browser the screenshot projects connect to). `task e2e:search` also needs `9201` (E2E OpenSearch).
 
 PIDs and logs default to `e2e/.run/`. When `PUBLIRA_E2E_*_PORT` or `COMPOSE_PROJECT_NAME` changes, `lib.sh` isolates state in a directory based on ports and project name; `PUBLIRA_E2E_RUN_DIR` takes precedence. A compose-project lease prevents `down` or `start-apps` from another run directory from operating on a remaining stack. The lock holder waits as a single process, so teardown also releases the lock. `task e2e:down` recovers a stale lease by finding the holder through `/proc`, and reports the PID or `fuser` / `lsof` guidance when recovery is impossible.
 
@@ -47,6 +47,7 @@ This always tears down app processes and compose volumes, including on failure o
 | `bash e2e/scripts/server.sh <start\|start-wait\|stop>` | Operate the server for outage scenarios. One process carries all three namespaces and the images, so this takes every console down with the tenant site. |
 | `bash e2e/scripts/email-renderer.sh <start\|start-wait\|stop>` | Operate email-renderer on its own. |
 | `bash e2e/scripts/sign-in-provider.sh <start\|start-wait\|stop>` | Operate sign-in-provider on its own. |
+| `bash e2e/scripts/stripe.sh <start\|start-wait\|stop>` | Operate the Stripe stand-in on its own. |
 | `task e2e:wait-ready` | Wait for HTTP readiness with wait4x; failure is `readiness failed: …`. |
 | `task e2e:test` | Run Playwright only against a running stack. |
 | `task e2e:search` | The full lifecycle on the OpenSearch search backend, running the `search` group alone; see [Catalog search on OpenSearch](#catalog-search-on-opensearch). |
@@ -94,6 +95,8 @@ The `mailpit` service is the stack's SMTP sink: intake on `PUBLIRA_E2E_MAILPIT_S
 The `email-renderer` service turns a template into the HTML part of the mail the worker delivers; the subject and the plain-text body are the worker's own. It is a host process like the rest: `PUBLIRA_E2E_EMAIL_RENDERER_PORT` (default `8300`) is its port, and `PUBLIRA_EMAIL_RENDERER_URL` — built from that port, never inherited — is what points the worker at it. A run whose renderer is not up still delivers mail, as text alone, so a suite that asserts on the HTML part needs it running.
 
 The `sign-in-provider` process stands in for Apple's and Google's signing keys. It listens on `PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT` (default `8400`) with a key pair it keeps in the run directory, so a restart signs with the key the server already fetched: publira server reads the public half from `/keys` through `PUBLIRA_SIGN_IN_APPLE_KEYS_URL` and `PUBLIRA_SIGN_IN_GOOGLE_KEYS_URL`, which `lib.sh` builds from that port, and a spec signs the ID token a provider would have issued by posting its claims to `/id-tokens`. It also serves the disposable-domain list at `/disposable-email-domains`, since no list ships with the server: `task e2e:db` names that URL in the platform policy, so a tenant that switches the list on refuses the domains on it, and a spec reads them back with `disposableEmailDomains()` from `src/sign-in-provider.ts`.
+
+The `stripe` process stands in for Stripe. It listens on `PUBLIRA_E2E_STRIPE_PORT` (default `8500`), and publira server calls it in place of Stripe's API through `PUBLIRA_STRIPE_API_URL`, which `lib.sh` builds from that port. A spec registers the storefront's webhook URL under the secret key it stores for the tenant with `registerStripeWebhook()` from `src/stripe.ts`, and stores the signing secret it answers beside that key. A checkout the gate starts then sends the reader to the stand-in's own page, which names the line item and its price; paying there delivers a signed `checkout.session.completed` to the registered URL and, once the storefront accepts it, returns the reader to the success URL, so the episode is already open when the page loads. It serves webhook endpoints and Checkout Sessions and nothing else of Stripe's API, so a spec cannot submit a refund. It keeps everything in memory and apart by secret key, as Stripe keeps each account's, and answers a repeated idempotency key with the session it first made, so a suite that starts over on a stack it already ran on stores a secret key of its own.
 
 ### The edge
 
@@ -179,7 +182,7 @@ task e2e:down
 | Readiness | `readiness failed: <name>` in logs; Playwright does not start. |
 | Playwright | `Playwright tests failed`; inspect `test-results/`, `playwright-report/`, and `.run/logs/`. |
 
-`wait-ready` verifies RustFS on `:9003/health`, the server's readiness on `:8000` (one probe, and its body names a check per database role), email-renderer on `:8300/readyz`, sign-in-provider on `:8400/readyz`, the worker on `:8003/readyz`, `/livez` / `/readyz` for the three web apps on `:3000`, `:4000`, and `:4100`, and finally web-storefront's `/readyz` through the edge on `:3080`. `task e2e:up` owns compose health checks for Postgres, Redis, RustFS, and Mailpit.
+`wait-ready` verifies RustFS on `:9003/health`, the server's readiness on `:8000` (one probe, and its body names a check per database role), email-renderer on `:8300/readyz`, sign-in-provider on `:8400/readyz`, the Stripe stand-in on `:8500/readyz`, the worker on `:8003/readyz`, `/livez` / `/readyz` for the three web apps on `:3000`, `:4000`, and `:4100`, and finally web-storefront's `/readyz` through the edge on `:3080`. `task e2e:up` owns compose health checks for Postgres, Redis, RustFS, and Mailpit.
 
 ## Fixture images
 

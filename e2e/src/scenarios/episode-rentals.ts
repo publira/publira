@@ -1,7 +1,7 @@
 /**
  * Records created by `db/seeds/scenarios/550_episode_rentals.sql`. Re-applying
  * it deletes the tenant and writes it again, which takes the payment settings
- * the suite stores with it and gives the rental its 47 hours back.
+ * the suite stores and the sales its readers paid for with it.
  */
 
 export const EPISODE_RENTALS_SCENARIO = "550_episode_rentals";
@@ -25,19 +25,19 @@ export const EPISODE_RENTALS_EPISODE = {
   title: "Rental Episode 001-01",
 } as const;
 
-/** The readers. Password hash is `memberpass`. */
+/** The readers, who hold neither sale. Password hash is `memberpass`. */
 export const EPISODE_RENTALS_READERS = {
-  /** Holds neither sale, so the gate offers both. */
-  chooser: {
-    email: "rental-chooser@example.com",
-    password: "memberpass",
-    publicId: "RntlMMBRAAA1",
-  },
-  /** Rented the episode an hour ago, with 47 hours left. */
-  holder: {
-    email: "rental-holder@example.com",
+  /** Buys the permanent copy. */
+  buyer: {
+    email: "rental-buyer@example.com",
     password: "memberpass",
     publicId: "RntlMMBRAAA2",
+  },
+  /** Rents the episode for its 48 hours. */
+  renter: {
+    email: "rental-renter@example.com",
+    password: "memberpass",
+    publicId: "RntlMMBRAAA1",
   },
 } as const;
 

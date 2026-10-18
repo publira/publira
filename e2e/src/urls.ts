@@ -419,6 +419,15 @@ export const SIGN_IN_PROVIDER_BASE_URL = envUrl(
 );
 
 /**
+ * The stand-in for Stripe (`scripts/stripe.ts`), whose API publira server
+ * calls and on whose page a spec pays for a checkout.
+ */
+export const STRIPE_BASE_URL = envUrl(
+  "PUBLIRA_E2E_STRIPE_BASE_URL",
+  "http://127.0.0.1:8500"
+);
+
+/**
  * Admin console of the members tenant from
  * `db/seeds/scenarios/290_tenant_members.sql`. Its suite changes who
  * administers the tenant, so it needs a console of its own.

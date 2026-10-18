@@ -47,7 +47,7 @@ func startConsolesWithMailGuard(t *testing.T, env *publicDBEnv, mail *mailguard.
 	adminDB := env.PG.OpenAdminDB(t)
 	adminRecorder := auditlog.NewAsync(dbmodels.New(adminDB), adminDB, slog.Default())
 	t.Cleanup(adminRecorder.Close)
-	adminAPI, err := adminapi.NewWithAsyncRecorder(adminDB, dbmodels.New(adminDB), &testStorageProvider{}, slog.Default(), nil, nil, testutil.TokenManager(), nil, adminRecorder, nil, loginguard.NewDefault(), mail)
+	adminAPI, err := adminapi.NewWithAsyncRecorder(adminDB, dbmodels.New(adminDB), &testStorageProvider{}, slog.Default(), nil, nil, testutil.TokenManager(), nil, adminRecorder, nil, nil, loginguard.NewDefault(), mail)
 	if err != nil {
 		t.Fatalf("new admin handler: %v", err)
 	}

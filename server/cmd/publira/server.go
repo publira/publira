@@ -21,6 +21,8 @@ import (
 	"github.com/publira/publira/server/internal/imageserver"
 	"github.com/publira/publira/server/internal/loginguard"
 	"github.com/publira/publira/server/internal/mailguard"
+	"github.com/publira/publira/server/internal/paymentprovider"
+	"github.com/publira/publira/server/internal/paymentprovider/providers"
 	"github.com/publira/publira/server/internal/platformpolicy"
 	"github.com/publira/publira/server/internal/platformsearch"
 	"github.com/publira/publira/server/internal/platformstorage"
@@ -130,6 +132,7 @@ type assembledServer struct {
 // a pool, so a misconfiguration is refused without reaching the database.
 type serverConfig struct {
 	idTokens  signin.VerifierConfig
+	payments  *paymentprovider.Registry
 	clientIPs *clientip.Resolver
 	tokens    *auth.TokenManager
 }
@@ -149,6 +152,15 @@ func loadServerConfig(roles serverRoles) (serverConfig, error) {
 			return serverConfig{}, failed("failed to load config", err)
 		}
 		cfg.idTokens = idTokens
+	}
+	// Checkout is started by the public API and a refund by the tenant
+	// console, so both call the payment providers.
+	if roles.storefront || roles.admin {
+		payments, err := providers.ConfigFromEnv()
+		if err != nil {
+			return serverConfig{}, failed("failed to load config", err)
+		}
+		cfg.payments = providers.New(payments)
 	}
 	clientIPs, err := clientip.FromEnv()
 	if err != nil {
@@ -215,7 +227,7 @@ func assembleServer(deps shared, cfg serverConfig, pools serverPools) (assembled
 		}, platformstorage.NewStorage)}
 		// The revalidate client is shared by the two namespaces whose writes
 		// leave a cache entry stale.
-		publicAPI, err := publicapi.New(pools.public, dbmodels.New(pools.public), storageProvider, encryptor, tokens, deps.revalidate, searcher, cfg.idTokens, login, mail)
+		publicAPI, err := publicapi.New(pools.public, dbmodels.New(pools.public), storageProvider, encryptor, tokens, deps.revalidate, searcher, cfg.idTokens, cfg.payments, login, mail)
 		if err != nil {
 			return assembledServer{}, failed("failed to initialize public api handler", err)
 		}
@@ -241,7 +253,7 @@ func assembleServer(deps shared, cfg serverConfig, pools serverPools) (assembled
 			Logger:  logger,
 		}, platformstorage.NewStorage)}
 		adminRecorder := auditlog.NewAsync(dbmodels.New(pools.admin), pools.admin, logger)
-		adminAPI, err := adminapi.NewWithAsyncRecorder(pools.admin, dbmodels.New(pools.admin), storageProvider, logger, encryptor, smtpTester, tokens, deps.revalidate, adminRecorder, webServiceToken, login, mail)
+		adminAPI, err := adminapi.NewWithAsyncRecorder(pools.admin, dbmodels.New(pools.admin), storageProvider, logger, encryptor, smtpTester, tokens, deps.revalidate, adminRecorder, webServiceToken, cfg.payments, login, mail)
 		if err != nil {
 			return assembledServer{}, failed("failed to initialize admin api handler", err)
 		}

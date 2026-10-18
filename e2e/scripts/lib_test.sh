@@ -38,6 +38,7 @@ stack_env() {
     -u PUBLIRA_E2E_WORKER_PORT \
     -u PUBLIRA_E2E_EMAIL_RENDERER_PORT \
     -u PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT \
+    -u PUBLIRA_E2E_STRIPE_PORT \
     -u PUBLIRA_E2E_EDGE_PORT \
     -u PUBLIRA_E2E_OPENSEARCH_PORT \
     -u PUBLIRA_E2E_SEARCH_BACKEND \
@@ -117,6 +118,15 @@ elif [[ "${sign_in_provider_override_dir}" != *"-sp8410-"* ]]; then
   fail "PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT override dir ${sign_in_provider_override_dir} does not encode sp8410"
 else
   pass "PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT override isolates RUN_DIR"
+fi
+
+stripe_override_dir="$(compute_run_dir PUBLIRA_E2E_STRIPE_PORT=8510)"
+if [[ "${stripe_override_dir}" == "${default_run_dir}" ]]; then
+  fail "PUBLIRA_E2E_STRIPE_PORT override still uses ${stripe_override_dir}"
+elif [[ "${stripe_override_dir}" != *"-st8510-"* ]]; then
+  fail "PUBLIRA_E2E_STRIPE_PORT override dir ${stripe_override_dir} does not encode st8510"
+else
+  pass "PUBLIRA_E2E_STRIPE_PORT override isolates RUN_DIR"
 fi
 
 opensearch_override_dir="$(compute_run_dir PUBLIRA_E2E_OPENSEARCH_PORT=9211)"

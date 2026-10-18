@@ -1,21 +1,20 @@
 -- Scenario: an episode sold both as a rental and as a permanent copy
 --
--- `storefront.episode-rentals.spec.ts` takes the tenant's payments through
--- Stripe from the console, which is what lets the gate sell at all, then
--- reads the gate's two sales as a reader who holds neither, and opens the
--- episode and the library as a reader who holds the rental. The payment
--- settings decide whether the storefront sells the episode, so no tenant
--- another suite reads can absorb them.
+-- `storefront.checkout.spec.ts` takes the tenant's payments through the E2E
+-- stack's Stripe stand-in from the console, which is what lets the gate sell
+-- at all, then has one reader rent the episode and another buy it through
+-- Checkout. The payment settings decide whether the storefront sells the
+-- episode, so no tenant another suite reads can absorb them.
 --
 -- Applying it is also how the suite starts over: the tenant is deleted and
--- written again, which takes its payment settings with it, and the rental
--- starts again with 47 hours left. Sales, the views the holder's reading
+-- written again, which takes its payment settings and both sales with it, so
+-- the two readers hold nothing again. Sales, the views the readers' reading
 -- recorded, and the catalog restrict the deletes that would reach them from
 -- the tenant, so they go first.
 -- public_id values are hard-coded in e2e/src/scenarios/episode-rentals.ts.
 --   tenant   RntlTNNTAAA1 (rentals.localhost / admin.rentals.localhost)
 --   admin    RntlADMNAAA1 (rentals-admin@example.com)
---   readers  RntlMMBRAAA1 (Rental Chooser), RntlMMBRAAA2 (Rental Holder)
+--   readers  RntlMMBRAAA1 (Rental Renter), RntlMMBRAAA2 (Rental Buyer)
 --   series   RntlSERSAAA1, episode RntlEPSDAAA1 (300 yen, or 100 for 48 hours)
 
 DELETE FROM purchases
@@ -97,16 +96,16 @@ CROSS JOIN (
         (
             '018f1100-0002-7000-8000-000000000002'::uuid,
             'RntlMMBRAAA1',
-            'rental-chooser@example.com',
+            'rental-renter@example.com',
             '$2a$10$yVRuW12eeOkFrL7mrE3g4u1vuln1qwz9NVMWzolO13RqeMtwAb7ma',
-            'Rental Chooser'
+            'Rental Renter'
         ),
         (
             '018f1100-0002-7000-8000-000000000003'::uuid,
             'RntlMMBRAAA2',
-            'rental-holder@example.com',
+            'rental-buyer@example.com',
             '$2a$10$yVRuW12eeOkFrL7mrE3g4u1vuln1qwz9NVMWzolO13RqeMtwAb7ma',
-            'Rental Holder'
+            'Rental Buyer'
         )
 ) AS u(id, public_id, email, password_hash, name)
 WHERE t.public_id = 'RntlTNNTAAA1';
@@ -185,8 +184,8 @@ SELECT
 FROM episodes e
 WHERE e.public_id = 'RntlEPSDAAA1';
 
--- Three pages, so the viewer has something to draw for the reader who holds
--- the rental. The objects are uploaded by `e2e/scripts/upload-episode-pages.sh`,
+-- Three pages, so the viewer has something to draw for a reader the checkout
+-- opened the episode to. The objects are uploaded by `e2e/scripts/upload-episode-pages.sh`,
 -- which reads these object keys back out of the database, so the two cannot
 -- drift apart.
 INSERT INTO episode_images (id, tenant_id, episode_id, display_order)
@@ -228,36 +227,3 @@ SELECT
 FROM episodes e
 CROSS JOIN generate_series(1, 3) AS page_number
 WHERE e.public_id = 'RntlEPSDAAA1';
-
--- The holder rented the episode through Stripe an hour ago, so the rental has
--- 47 of its 48 hours left. The chooser holds nothing.
-INSERT INTO purchases (
-    id,
-    tenant_id,
-    user_id,
-    episode_id,
-    kind,
-    price_at_purchase,
-    currency,
-    purchased_at,
-    expires_at,
-    provider,
-    provider_checkout_id,
-    provider_payment_id
-)
-SELECT
-    '018f1100-000a-7000-8000-000000000001'::uuid,
-    u.tenant_id,
-    u.id,
-    e.id,
-    'rental',
-    100,
-    'JPY',
-    NOW() - INTERVAL '1 hour',
-    NOW() + INTERVAL '47 hours',
-    'stripe',
-    'cs_rentals_e2e_1',
-    'pi_rentals_e2e_1'
-FROM users u
-JOIN episodes e ON e.public_id = 'RntlEPSDAAA1'
-WHERE u.public_id = 'RntlMMBRAAA2';
