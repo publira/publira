@@ -1066,6 +1066,12 @@
             "square": "Not shown on the site or in the app yet. This console's genre list shows it as a thumbnail.",
             "landscape": "The banner on the genre's page on the site and in the app.",
             "og": "Not shown on the site or in the app yet."
+          },
+          "episode": {
+            "portrait": "Not shown on the site or in the app yet.",
+            "square": "Not shown on the site or in the app yet.",
+            "landscape": "Not shown on the site or in the app yet.",
+            "og": "Not shown on the site or in the app yet."
           }
         },
         "eye_catch_required": "Register a cover image first. Individual ratios can be replaced once the cover image exists.",
@@ -1727,6 +1733,21 @@
         "new_title": "Create episode",
         "edit_title": "Edit episode",
         "edit_description": "Edit the episode's title, price, publication settings, and page images.",
+        "basic_tab": "Basic information",
+        "eye_catch_tab": "Cover image",
+        "eye_catch_title": "Edit episode cover image",
+        "eye_catch_description": "Give the episode a cover image of its own, or remove it. An episode without one shows its series' cover image.",
+        "eye_catch": {
+          "update": "Update cover image",
+          "submitting": "Submitting...",
+          "updated": "Cover image updated.",
+          "choice_required": "Select an image or choose to remove it.",
+          "image_invalid": "Check the image settings. Choose a JPEG, PNG, or WebP image no larger than 10MB and at least 2400x3200px, then try again.",
+          "failed": "Could not save the cover image. Please try again later.",
+          "variants_missing": "The upload was accepted, but generated images could not be confirmed. Please try again.",
+          "upload_not_reflected": "The upload has not been applied. Select the image again and try again.",
+          "error": "Could not load the episode's cover image."
+        },
         "new_description": "Register a new episode in this series.",
         "new_action": "Create",
         "credits_action": "Credits",

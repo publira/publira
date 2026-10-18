@@ -5,7 +5,7 @@ import type { EyeCatchAspect } from "./aspects";
 type EyeCatchVariantType = EyeCatchAspect["variantType"];
 
 /** The kind of record an eye-catch belongs to. */
-export type EyeCatchEntity = "genre" | "label" | "series";
+export type EyeCatchEntity = "episode" | "genre" | "label" | "series";
 
 /**
  * What a ratio is called on screen, rendered as its own catalog string.
@@ -106,12 +106,37 @@ const GenreAspectUsageMessage = ({
   }
 };
 
+const EpisodeAspectUsageMessage = ({
+  variantType,
+}: {
+  variantType: EyeCatchVariantType;
+}) => {
+  switch (variantType) {
+    case "portrait": {
+      return (
+        <Message message="admin.eye_catch.aspect.usages.episode.portrait" />
+      );
+    }
+    case "square": {
+      return <Message message="admin.eye_catch.aspect.usages.episode.square" />;
+    }
+    case "landscape": {
+      return (
+        <Message message="admin.eye_catch.aspect.usages.episode.landscape" />
+      );
+    }
+    default: {
+      return <Message message="admin.eye_catch.aspect.usages.episode.og" />;
+    }
+  }
+};
+
 /**
  * Where the site and the app draw one ratio of this record's eye-catch.
  *
  * The answer differs by record: a series' portrait image is its cover, while
  * no screen draws a label's at all. Each record therefore has its own copy
- * rather than one line stretched to be true of all three.
+ * rather than one line stretched to be true of every one.
  */
 export const EyeCatchAspectUsageMessage = ({
   entity,
@@ -126,6 +151,9 @@ export const EyeCatchAspectUsageMessage = ({
     }
     case "label": {
       return <LabelAspectUsageMessage variantType={variantType} />;
+    }
+    case "episode": {
+      return <EpisodeAspectUsageMessage variantType={variantType} />;
     }
     default: {
       return <GenreAspectUsageMessage variantType={variantType} />;

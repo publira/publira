@@ -32,6 +32,7 @@ const {
   mockCacheLife,
   mockCacheTag,
   mockCreateEpisode,
+  mockDeleteEpisodeEyeCatchImage,
   mockDeleteEpisodeImage,
   mockDeleteEpisodeTranslation,
   mockGetAccessToken,
@@ -46,11 +47,14 @@ const {
   mockUpdateEpisodePricing,
   mockUpdateEpisodePurchaseAvailability,
   mockUpdateEpisodeTitle,
+  mockUploadEpisodeEyeCatchAspectImage,
+  mockUploadEpisodeEyeCatchImage,
 } = vi.hoisted(() => ({
   mockBulkEditEpisodeCredits: vi.fn(),
   mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockCreateEpisode: vi.fn(),
+  mockDeleteEpisodeEyeCatchImage: vi.fn(),
   mockDeleteEpisodeImage: vi.fn(),
   mockDeleteEpisodeTranslation: vi.fn(),
   mockGetAccessToken: vi.fn(),
@@ -65,6 +69,8 @@ const {
   mockUpdateEpisodePricing: vi.fn(),
   mockUpdateEpisodePurchaseAvailability: vi.fn(),
   mockUpdateEpisodeTitle: vi.fn(),
+  mockUploadEpisodeEyeCatchAspectImage: vi.fn(),
+  mockUploadEpisodeEyeCatchImage: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({
@@ -81,6 +87,7 @@ vi.mock("./api", () => ({
     series: {
       bulkEditEpisodeCredits: mockBulkEditEpisodeCredits,
       createEpisode: mockCreateEpisode,
+      deleteEpisodeEyeCatchImage: mockDeleteEpisodeEyeCatchImage,
       deleteEpisodeImage: mockDeleteEpisodeImage,
       deleteEpisodeTranslation: mockDeleteEpisodeTranslation,
       getEpisode: mockGetEpisode,
@@ -94,6 +101,8 @@ vi.mock("./api", () => ({
       updateEpisodePricing: mockUpdateEpisodePricing,
       updateEpisodePurchaseAvailability: mockUpdateEpisodePurchaseAvailability,
       updateEpisodeTitle: mockUpdateEpisodeTitle,
+      uploadEpisodeEyeCatchAspectImage: mockUploadEpisodeEyeCatchAspectImage,
+      uploadEpisodeEyeCatchImage: mockUploadEpisodeEyeCatchImage,
     },
   },
   withServiceHeaders: () => ({
@@ -312,6 +321,8 @@ describe("getEpisode", () => {
     expect(result).toEqual({
       episode: {
         availability: "",
+        eyeCatchImageUpdatedAt: "",
+        eyeCatchImageVariants: [],
         id: "EPISODE001-ID",
         orderIndex: 1,
         price: 0,
@@ -1344,6 +1355,200 @@ describe("replaceEpisodeImage", () => {
       message:
         "The image could not be used. Choose a JPEG, PNG, GIF, or WebP image of up to 20MB.",
       ok: false,
+    });
+  });
+});
+
+const imageRejection = (field: string) =>
+  new ConnectError("image is too small", Code.InvalidArgument, undefined, [
+    { desc: BadRequestSchema, value: { fieldViolations: [{ field }] } },
+  ]);
+
+describe("the episode's eye-catch", () => {
+  const storedVariant = {
+    contentType: "image/webp",
+    fileSizeBytes: 1024n,
+    height: 3200,
+    label: "portrait_2400w",
+    url: "https://cdn.example.com/episodes/EPISODE001/3x4.webp",
+    variantType: "portrait",
+    width: 2400,
+  };
+
+  it("reads the stored variants back on the episode, dropping one with no URL", async () => {
+    mockGetEpisode.mockResolvedValue({
+      episode: {
+        ...episode("EPISODE001", 1),
+        eyeCatchImageUpdatedAt: "2026-02-01T00:00:00Z",
+        eyeCatchImageVariants: [storedVariant, { ...storedVariant, url: "" }],
+      },
+    });
+
+    const { getEpisode } = await import("./episode");
+    const result = await getEpisode({
+      publicId: "EPISODE001",
+      seriesPublicId: "SERIES001",
+    });
+
+    expect(result.ok && result.episode).toMatchObject({
+      eyeCatchImageUpdatedAt: "2026-02-01T00:00:00Z",
+      eyeCatchImageVariants: [{ ...storedVariant, fileSizeBytes: 1024 }],
+    });
+  });
+
+  it("uploads a whole eye-catch and reads back what was stored", async () => {
+    mockUploadEpisodeEyeCatchImage.mockResolvedValue({
+      episode: {
+        ...episode("EPISODE001", 1),
+        eyeCatchImageUpdatedAt: "2026-02-01T00:00:00Z",
+        eyeCatchImageVariants: [storedVariant],
+      },
+    });
+
+    const { uploadEpisodeEyeCatchImage } = await import("./episode");
+    const result = await uploadEpisodeEyeCatchImage(
+      {
+        episodeId: "EPISODE001-ID",
+        imageContentType: "image/png",
+        imageData: new Uint8Array([1, 2, 3]),
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(mockUploadEpisodeEyeCatchImage).toHaveBeenCalledWith(
+      {
+        episodeId: "EPISODE001-ID",
+        imageContentType: "image/png",
+        imageData: new Uint8Array([1, 2, 3]),
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result.ok && result.episode.eyeCatchImageVariants).toHaveLength(1);
+  });
+
+  it("says which image a whole eye-catch needs when the API refuses one", async () => {
+    mockUploadEpisodeEyeCatchImage.mockRejectedValue(
+      imageRejection("image_data")
+    );
+
+    const { uploadEpisodeEyeCatchImage } = await import("./episode");
+    const result = await uploadEpisodeEyeCatchImage(
+      {
+        episodeId: "EPISODE001-ID",
+        imageData: new Uint8Array([1]),
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(result).toEqual({
+      message:
+        "Check the image settings. Choose a JPEG, PNG, or WebP image no larger than 10MB and at least 2400x3200px, then try again.",
+      ok: false,
+    });
+  });
+
+  it("replaces one ratio with the frame the editor chose", async () => {
+    mockUploadEpisodeEyeCatchAspectImage.mockResolvedValue({
+      episode: {
+        ...episode("EPISODE001", 1),
+        eyeCatchImageVariants: [storedVariant],
+      },
+    });
+    const crop = { height: 900, width: 1600, x: 0, y: 100 };
+
+    const { uploadEpisodeEyeCatchAspectImage } = await import("./episode");
+    const result = await uploadEpisodeEyeCatchAspectImage(
+      {
+        crop,
+        episodeId: "EPISODE001-ID",
+        imageContentType: "image/png",
+        imageData: new Uint8Array([1, 2, 3]),
+        tenantId: "TENANT001",
+        variantType: "landscape",
+      },
+      "en"
+    );
+
+    expect(mockUploadEpisodeEyeCatchAspectImage).toHaveBeenCalledWith(
+      {
+        crop,
+        episodeId: "EPISODE001-ID",
+        imageContentType: "image/png",
+        imageData: new Uint8Array([1, 2, 3]),
+        tenant: { tenantId: "TENANT001" },
+        variantType: "landscape",
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  it("leaves the wording of a refused ratio to the slot that sent it", async () => {
+    mockUploadEpisodeEyeCatchAspectImage.mockRejectedValue(
+      imageRejection("crop")
+    );
+
+    const { uploadEpisodeEyeCatchAspectImage } = await import("./episode");
+    const result = await uploadEpisodeEyeCatchAspectImage(
+      {
+        episodeId: "EPISODE001-ID",
+        imageData: new Uint8Array([1]),
+        tenantId: "TENANT001",
+        variantType: "landscape",
+      },
+      "en"
+    );
+
+    expect(result).toEqual({ imageRejected: true, ok: false });
+  });
+
+  it("asks for a whole eye-catch first when a ratio is sent for an episode with none", async () => {
+    mockUploadEpisodeEyeCatchAspectImage.mockRejectedValue(
+      new ConnectError(
+        "episode has no eye catch image yet",
+        Code.FailedPrecondition
+      )
+    );
+
+    const { uploadEpisodeEyeCatchAspectImage } = await import("./episode");
+    const result = await uploadEpisodeEyeCatchAspectImage(
+      {
+        episodeId: "EPISODE001-ID",
+        imageData: new Uint8Array([1]),
+        tenantId: "TENANT001",
+        variantType: "square",
+      },
+      "en"
+    );
+
+    expect(result).toEqual({
+      message:
+        "Register a cover image first. Individual ratios can be replaced once the cover image exists.",
+      ok: false,
+    });
+  });
+
+  it("removes the eye-catch and reads back an episode without one", async () => {
+    mockDeleteEpisodeEyeCatchImage.mockResolvedValue({
+      episode: episode("EPISODE001", 1),
+    });
+
+    const { deleteEpisodeEyeCatchImage } = await import("./episode");
+    const result = await deleteEpisodeEyeCatchImage(
+      { episodeId: "EPISODE001-ID", tenantId: "TENANT001" },
+      "en"
+    );
+
+    expect(mockDeleteEpisodeEyeCatchImage).toHaveBeenCalledWith(
+      { episodeId: "EPISODE001-ID", tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(result).toMatchObject({
+      episode: { eyeCatchImageUpdatedAt: "", eyeCatchImageVariants: [] },
+      ok: true,
     });
   });
 });

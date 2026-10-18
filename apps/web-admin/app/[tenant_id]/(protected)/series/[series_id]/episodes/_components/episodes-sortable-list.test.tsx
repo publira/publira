@@ -45,6 +45,8 @@ vi.mock("@dnd-kit/react/sortable", () => ({
 const episodes: EpisodeItem[] = [
   {
     availability: "",
+    eyeCatchImageUpdatedAt: "",
+    eyeCatchImageVariants: [],
     id: "EPISODE001-ID",
     orderIndex: 1,
     price: 0,
