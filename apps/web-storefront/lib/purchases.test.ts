@@ -1,4 +1,4 @@
-import { ClientSurface } from "@publira/api-client/public/types";
+import { ClientSurface, PurchaseKind } from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { tenantPurchasesTag } from "./cache-tags";
@@ -71,6 +71,30 @@ describe("listMyPurchases", () => {
 
     expect(result.purchases).toEqual([
       expect.objectContaining({ currency: "USD", priceAtPurchase: 499 }),
+    ]);
+  });
+
+  it("says which purchases are rentals", async () => {
+    mockListMyPurchases.mockResolvedValueOnce({
+      nextToken: "",
+      previousToken: "",
+      purchases: [
+        {
+          expiresAt: "2026-10-03T09:00:00Z",
+          id: "PURCHASE01",
+          kind: PurchaseKind.RENTAL,
+        },
+        { id: "PURCHASE02", kind: PurchaseKind.PURCHASE },
+        { id: "PURCHASE03" },
+      ],
+    });
+
+    const result = await listMyPurchases(TENANT_ID, { locale: "en" });
+
+    expect(result.purchases.map(({ id, kind }) => ({ id, kind }))).toEqual([
+      { id: "PURCHASE01", kind: "rental" },
+      { id: "PURCHASE02", kind: "purchase" },
+      { id: "PURCHASE03", kind: "purchase" },
     ]);
   });
 

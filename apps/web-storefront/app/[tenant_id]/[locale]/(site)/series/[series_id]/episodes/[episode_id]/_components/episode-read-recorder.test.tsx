@@ -37,6 +37,8 @@ const episode: EpisodeDetail = {
   ratingCount: 0,
   readingDirection: "rtl",
   readingPeriodHours: 0,
+  rentalPeriodHours: 0,
+  rentalPrice: 0,
   scheduledAt: "",
   spreadStartIndex: 1,
   status: "published",

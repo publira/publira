@@ -7,14 +7,21 @@ import { EpisodeAccessGate } from "./episode-access-gate";
 
 // `<Message>` resolves the locale through `next/root-params`, which only the
 // Next.js compiler can provide. The key it was handed is what this file is
-// about, so rendering the key itself keeps the assertions readable.
+// about, so rendering the key itself keeps the assertions readable; the values
+// ride beside it, out of the accessible name, for the tests that read them.
 vi.mock("#components/locale-context", () => ({
   useLocale: () => "ja",
   useTenantDefaultLocale: () => "ja",
 }));
 
 vi.mock("#components/message", () => ({
-  Message: ({ message }: { message: string }) => message,
+  Message: ({
+    message,
+    values,
+  }: {
+    message: string;
+    values?: Record<string, unknown>;
+  }) => <span data-values={JSON.stringify(values ?? {})}>{message}</span>,
 }));
 
 vi.mock("#components/client-message", () => ({
@@ -32,12 +39,33 @@ const ticketButton = () =>
     name: "storefront.episode.gate.wait_free_use",
   });
 
+const buyButton = () =>
+  screen.getByRole("button", { name: "storefront.episode.gate.purchase_for" });
+
+const rentButton = () =>
+  screen.getByRole("button", { name: "storefront.episode.gate.rent_for" });
+
+/** The sale a checkout button's form sends. */
+const kindOf = (button: HTMLElement) =>
+  button.closest("form")?.querySelector<HTMLInputElement>('input[name="kind"]')
+    ?.value;
+
+/** The values the mocked `<Message>` was handed inside `button`. */
+const valuesOf = (button: HTMLElement) =>
+  JSON.parse(
+    button.querySelector<HTMLElement>("[data-values]")?.dataset.values ?? "{}"
+  );
+
 const props = {
   appPayments: { appStore: false, googlePlay: false },
+  currency: "USD",
   episodeId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
   episodePublicId: "EPISODE_001",
   locale: "en" as const,
+  price: 499,
   purchaseSurface: "all" as const,
+  rentalPeriodHours: 0,
+  rentalPrice: 0,
   seriesPublicId: "SERIES_001",
   signedIn: true,
   tenantId: "TENANT_001",
@@ -308,6 +336,79 @@ describe("EpisodeAccessGate", () => {
         })
       ).toBeNull();
     });
+  });
+
+  describe("an episode that is also rented", () => {
+    const rented = {
+      ...props,
+      acceptsPayments: true,
+      rentalPeriodHours: 48,
+      rentalPrice: 199,
+    };
+
+    it("Offer the rental and the permanent copy, each sending its own kind", () => {
+      render(<EpisodeAccessGate {...rented} />);
+
+      expect(kindOf(buyButton())).toBe("purchase");
+      expect(kindOf(rentButton())).toBe("rental");
+      expect(
+        screen.queryByRole("button", {
+          name: "storefront.episode.gate.purchase",
+        })
+      ).toBeNull();
+    });
+
+    it("Name each sale's price and the rental's period", () => {
+      render(<EpisodeAccessGate {...rented} />);
+
+      expect(valuesOf(buyButton())).toEqual({ price: "$4.99" });
+      expect(valuesOf(rentButton())).toEqual({
+        period: "48 hours",
+        price: "$1.99",
+      });
+    });
+
+    it("Keep the Shu on the permanent copy, and give it to a ready ticket", () => {
+      const { rerender } = render(<EpisodeAccessGate {...rented} />);
+
+      expect(buyButton().classList.contains("bg-secondary")).toBe(true);
+      expect(rentButton().classList.contains("bg-secondary")).toBe(false);
+
+      rerender(
+        <EpisodeAccessGate
+          {...rented}
+          waitFree={{ accessHours: 72, kind: "ready" }}
+        />
+      );
+
+      expect(ticketButton()?.classList.contains("bg-secondary")).toBe(true);
+      expect(buyButton().classList.contains("bg-secondary")).toBe(false);
+      expect(rentButton().classList.contains("bg-secondary")).toBe(false);
+    });
+
+    it("Sell the permanent copy alone while no currency can quote the prices", () => {
+      render(<EpisodeAccessGate {...rented} currency={null} />);
+
+      const button = screen.getByRole("button", {
+        name: "storefront.episode.gate.purchase",
+      });
+      expect(kindOf(button)).toBe("purchase");
+      expect(
+        screen.queryByRole("button", {
+          name: "storefront.episode.gate.rent_for",
+        })
+      ).toBeNull();
+    });
+  });
+
+  it("Send the permanent copy as the one sale of an episode that is not rented", () => {
+    render(<EpisodeAccessGate {...props} acceptsPayments />);
+
+    expect(
+      kindOf(
+        screen.getByRole("button", { name: "storefront.episode.gate.purchase" })
+      )
+    ).toBe("purchase");
   });
 
   it("Offer the checkout for an episode sold on the web alone", () => {

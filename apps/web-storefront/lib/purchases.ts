@@ -4,7 +4,7 @@ import {
   isRpcError,
   rpcErrorDisposition,
 } from "@publira/api-client/errors";
-import { ClientSurface } from "@publira/api-client/public/types";
+import { ClientSurface, PurchaseKind } from "@publira/api-client/public/types";
 import type { MyPurchase } from "@publira/api-client/public/types";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
@@ -26,6 +26,11 @@ export interface PurchaseItem {
   expiresAt: string;
   id: string;
   isActive: boolean;
+  /**
+   * Which of the episode's sales the reader bought. A rental always carries
+   * `expiresAt`.
+   */
+  kind: "purchase" | "rental";
   priceAtPurchase: number;
   purchasedAt: string;
   /** What has been refunded so far, in the same unit as priceAtPurchase. */
@@ -86,6 +91,7 @@ type RawPurchase = Pick<
   | "expiresAt"
   | "id"
   | "isActive"
+  | "kind"
   | "priceAtPurchase"
   | "purchasedAt"
   | "refundedAmount"
@@ -93,6 +99,12 @@ type RawPurchase = Pick<
   | "revokedAt"
   | "series"
 >;
+
+/** Unspecified, which the server never answers, reads as the permanent copy. */
+const toPurchaseKind = (
+  kind: PurchaseKind | undefined
+): PurchaseItem["kind"] =>
+  kind === PurchaseKind.RENTAL ? "rental" : "purchase";
 
 const mapPurchase = (purchase: RawPurchase): PurchaseItem => ({
   currency: purchase.currency ?? "",
@@ -104,6 +116,7 @@ const mapPurchase = (purchase: RawPurchase): PurchaseItem => ({
   expiresAt: purchase.expiresAt ?? "",
   id: purchase.id ?? "",
   isActive: purchase.isActive ?? false,
+  kind: toPurchaseKind(purchase.kind),
   priceAtPurchase: purchase.priceAtPurchase ?? 0,
   purchasedAt: purchase.purchasedAt ?? "",
   refundedAmount: purchase.refundedAmount ?? 0,

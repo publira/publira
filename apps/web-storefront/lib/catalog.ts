@@ -282,6 +282,16 @@ export interface EpisodeDetail {
    */
   readingDirection: "ltr" | "rtl";
   readingPeriodHours: number;
+  /**
+   * How long a rental opens the episode, in hours. 0, with `rentalPrice`, on
+   * an episode that is not rented.
+   */
+  rentalPeriodHours: number;
+  /**
+   * What renting the episode costs, in the unit `price` is in, and always
+   * below it. 0 on an episode that is not rented.
+   */
+  rentalPrice: number;
   scheduledAt: string;
   /**
    * Zero-based index of the page from which two pages share a screen. Every
@@ -310,6 +320,8 @@ type RawEpisode = Pick<
   | "ratingCount"
   | "readingDirection"
   | "readingPeriodHours"
+  | "rentalPeriodHours"
+  | "rentalPrice"
   | "scheduledAt"
   | "spreadStartIndex"
   | "status"
@@ -410,6 +422,8 @@ const mapEpisodeDetail = (
   ratingCount: Number(episode.ratingCount ?? 0),
   readingDirection: toEpisodeReadingDirection(episode.readingDirection),
   readingPeriodHours: episode.readingPeriodHours ?? 0,
+  rentalPeriodHours: episode.rentalPeriodHours ?? 0,
+  rentalPrice: episode.rentalPrice ?? 0,
   scheduledAt: episode.scheduledAt ?? "",
   spreadStartIndex: episode.spreadStartIndex ?? DEFAULT_SPREAD_START_INDEX,
   status: episode.status ?? "",

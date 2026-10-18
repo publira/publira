@@ -2,7 +2,11 @@ import type { Locale } from "@publira/i18n";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import { QrCode, toQrCodePath } from "@publira/ui-components/qr-code";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { formatDateTimeWithWeekday, formatDuration } from "@publira/utils";
+import {
+  formatDateTimeWithWeekday,
+  formatDuration,
+  formatPrice,
+} from "@publira/utils";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
 
@@ -160,6 +164,113 @@ const WaitFreeTicketForm = ({
 );
 
 /**
+ * One sale the gate offers: a form that starts the checkout for `kind`.
+ * Every sale posts the same episode, so the two a rented episode offers differ
+ * in the kind they send and in what their button says.
+ */
+const CheckoutForm = ({
+  children,
+  episodeId,
+  episodePublicId,
+  kind,
+  seriesPublicId,
+  tenantId,
+  variant,
+}: {
+  children: ReactNode;
+  episodeId: string;
+  episodePublicId: string;
+  kind: "purchase" | "rental";
+  seriesPublicId: string;
+  tenantId: string;
+  variant: "outline" | "secondary";
+}) => (
+  <form action={startEpisodeCheckoutAction}>
+    <LocaleField />
+    <input name="tenantId" type="hidden" value={tenantId} />
+    <input name="seriesPublicId" type="hidden" value={seriesPublicId} />
+    <input name="episodePublicId" type="hidden" value={episodePublicId} />
+    <input name="episodeId" type="hidden" value={episodeId} />
+    <input name="kind" type="hidden" value={kind} />
+    <Button size="lg" type="submit" variant={variant}>
+      {children}
+    </Button>
+  </form>
+);
+
+/**
+ * What the episode is sold as. A rented one is offered both ways, each button
+ * naming what it costs and the rental how long it lasts, because the choice
+ * is between those two numbers. An episode that is not rented keeps the one
+ * button it always had, which needs no price beside it.
+ *
+ * The permanent copy keeps the Shu, as it does on an episode with one sale;
+ * the rental is the alternative to it, and both stay outlined behind a ready
+ * ticket. Neither is quoted without the tenant's currency, which leaves the
+ * permanent copy alone, the way an episode that is not rented is sold.
+ */
+const CheckoutActions = ({
+  currency,
+  episodeId,
+  episodePublicId,
+  locale,
+  price,
+  rentalPeriodHours,
+  rentalPrice,
+  seriesPublicId,
+  tenantId,
+  ticketReady,
+}: {
+  currency: string | null;
+  episodeId: string;
+  episodePublicId: string;
+  locale: Locale;
+  price: number;
+  rentalPeriodHours: number;
+  rentalPrice: number;
+  seriesPublicId: string;
+  tenantId: string;
+  ticketReady: boolean;
+}) => {
+  const formProps = { episodeId, episodePublicId, seriesPublicId, tenantId };
+  const purchaseVariant = ticketReady ? "outline" : "secondary";
+
+  if (!currency || rentalPrice <= 0 || rentalPeriodHours <= 0) {
+    return (
+      <CheckoutForm {...formProps} kind="purchase" variant={purchaseVariant}>
+        <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+          <Message message="storefront.episode.gate.purchase" />
+        </Suspense>
+      </CheckoutForm>
+    );
+  }
+
+  return (
+    <>
+      <CheckoutForm {...formProps} kind="purchase" variant={purchaseVariant}>
+        <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
+          <Message
+            message="storefront.episode.gate.purchase_for"
+            values={{ price: formatPrice(price, { currency, locale }) }}
+          />
+        </Suspense>
+      </CheckoutForm>
+      <CheckoutForm {...formProps} kind="rental" variant="outline">
+        <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
+          <Message
+            message="storefront.episode.gate.rent_for"
+            values={{
+              period: formatDuration({ hours: rentalPeriodHours }, { locale }),
+              price: formatPrice(rentalPrice, { currency, locale }),
+            }}
+          />
+        </Suspense>
+      </CheckoutForm>
+    </>
+  );
+};
+
+/**
  * What the gate says about wait-for-free, in the five states the offer can be
  * in, each with its own key written out for the reason the gate gives.
  *
@@ -269,12 +380,16 @@ export const EpisodeAccessGate = ({
   acceptsPayments,
   appPayments,
   appStoreUrl,
+  currency,
   episodeId,
   episodePublicId,
   googlePlayUrl,
   locale,
   nextFreeEpisode,
+  price,
   purchaseSurface,
+  rentalPeriodHours,
+  rentalPrice,
   seriesPublicId,
   signedIn,
   tenantId,
@@ -285,13 +400,20 @@ export const EpisodeAccessGate = ({
   appPayments: TenantAppPayments;
   /** Where the tenant's app is listed; absent where it is not. */
   appStoreUrl?: string;
+  /** The tenant's currency, `null` while the tenant could not be read. */
+  currency: string | null;
   episodeId: string;
   episodePublicId: string;
   googlePlayUrl?: string;
   locale: Locale;
   /** Absent when no later episode of the series is free right now. */
   nextFreeEpisode?: EpisodeNeighborItem;
+  /** What the permanent copy costs. */
+  price: number;
   purchaseSurface: EpisodePurchaseSurface;
+  /** How long a rental lasts; 0, with `rentalPrice`, when it is not rented. */
+  rentalPeriodHours: number;
+  rentalPrice: number;
   seriesPublicId: string;
   signedIn: boolean;
   tenantId: string;
@@ -320,22 +442,18 @@ export const EpisodeAccessGate = ({
   let accessAction: ReactNode = null;
   if (signedIn && payable) {
     accessAction = (
-      <form action={startEpisodeCheckoutAction}>
-        <LocaleField />
-        <input name="tenantId" type="hidden" value={tenantId} />
-        <input name="seriesPublicId" type="hidden" value={seriesPublicId} />
-        <input name="episodePublicId" type="hidden" value={episodePublicId} />
-        <input name="episodeId" type="hidden" value={episodeId} />
-        <Button
-          size="lg"
-          type="submit"
-          variant={ticketReady ? "outline" : "secondary"}
-        >
-          <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-            <Message message="storefront.episode.gate.purchase" />
-          </Suspense>
-        </Button>
-      </form>
+      <CheckoutActions
+        currency={currency}
+        episodeId={episodeId}
+        episodePublicId={episodePublicId}
+        locale={locale}
+        price={price}
+        rentalPeriodHours={rentalPeriodHours}
+        rentalPrice={rentalPrice}
+        seriesPublicId={seriesPublicId}
+        tenantId={tenantId}
+        ticketReady={ticketReady}
+      />
     );
   } else if (!signedIn) {
     accessAction = (

@@ -13,6 +13,7 @@ const purchase = (overrides: Partial<PurchaseItem> = {}): PurchaseItem => ({
   expiresAt: "",
   id: "PURCHASE01",
   isActive: true,
+  kind: "purchase",
   priceAtPurchase: 499,
   purchasedAt: "2026-10-01T09:00:00Z",
   refundedAmount: 0,

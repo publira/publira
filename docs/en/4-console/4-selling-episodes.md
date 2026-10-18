@@ -2,7 +2,7 @@
 title: Selling episodes
 description: Price an episode, take payment through Stripe or PAY.JP, choose where episodes are sold, and handle refunds.
 published: 2026-10-06
-updated: 2026-10-17
+updated: 2026-10-18
 ---
 
 Selling an episode on the site takes three things that have to agree: the episode's price in the tenant console, an account with a payment provider, and a webhook through which the provider tells the install that a reader has paid. The provider charges the reader, but only the webhook opens the episode, so a setup with any of the three wrong takes the reader's money and leaves the episode locked. This page walks through all three, in the order they are set up, and ends with a test purchase that proves they agree.
@@ -35,14 +35,14 @@ All four can be changed later under **Price and reading period** on the episode'
 
 ### Buying and reading
 
-On a paid episode the site shows the price and **Buy this episode**. A reader who is signed in and chooses it is sent to the payment provider's checkout page, pays there, and comes back to the episode, which tells them their payment is being confirmed. The episode opens when the provider's notification of the payment reaches the install, usually within seconds. Coming back from the checkout page opens nothing by itself.
+On a paid episode the site shows the price and **Buy this episode**. On a rented one it offers both sales instead, each with what it costs: **Buy for** the price, and **Rent for** the rental period at the rental price. A reader who is signed in and chooses one is sent to the payment provider's checkout page, pays there, and comes back to the episode, which tells them their payment is being confirmed. The episode opens when the provider's notification of the payment reaches the install, usually within seconds. Coming back from the checkout page opens nothing by itself.
 
 Once bought, the episode:
 
-- Stays open for its reading period, counted from the moment the purchase is recorded.
-- Is listed under **Purchases** on the reader's account, and after its reading period ends, under **Purchase history**.
+- Stays open for its reading period, or a rental for its rental period, counted from the moment the purchase is recorded.
+- Is listed under **Purchases** on the reader's account, marked as a purchase or a rental, with the time a rental has left, and after its period ends, under **Purchase history**.
 - Opens on the site and in the tenant's app alike, for the same account, wherever it was bought.
-- Cannot be bought again while it is open. Once its reading period has ended, it can.
+- Cannot be bought again while it is open. Once its reading period has ended, it can. A reader holding a rental can still buy the permanent copy, but not rent it again until the rental ends.
 
 **Download as CSV** on **Purchases** saves every purchase listed there, across all its pages and refunded ones included, as one CSV file. In the tenant's app, **Export as CSV** on **Purchases** writes the same file and hands it to the device's share sheet, from which the reader saves or sends it.
 

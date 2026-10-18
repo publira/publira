@@ -1,13 +1,13 @@
 "use client";
 
-import { formatDuration, parseInstant } from "@publira/utils";
+import { formatDuration } from "@publira/utils";
 import { useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
 
 import { ClientMessage } from "#components/client-message";
 import { useLocale } from "#components/locale-context";
+import { minutesUntil } from "#lib/minutes-until";
 
-const MINUTE_MS = 60_000;
 const MINUTES_PER_HOUR = 60;
 
 /** How often the clock is read: often enough that the last minute ends on time. */
@@ -20,23 +20,6 @@ const subscribeToClock = (onTick: () => void) => {
 
 /** The server has no clock worth reading: see {@link WaitFreeCountdown}. */
 const noMinutesOnServer = () => null;
-
-/**
- * Whole minutes left until `nextAvailableAt`, rounded up so the countdown never
- * reads zero while the ticket is still recharging; 0 once it has passed, and
- * `null` for a value that is not an instant.
- */
-export const minutesUntil = (
-  nextAvailableAt: string,
-  now: Temporal.Instant
-): number | null => {
-  const instant = parseInstant(nextAvailableAt);
-  if (!instant) {
-    return null;
-  }
-  const left = now.until(instant).total({ unit: "millisecond" });
-  return left > 0 ? Math.ceil(left / MINUTE_MS) : 0;
-};
 
 /**
  * How long until the reader's next wait-for-free ticket is ready, counted down

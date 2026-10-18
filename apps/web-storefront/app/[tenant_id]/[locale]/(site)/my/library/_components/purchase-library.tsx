@@ -24,6 +24,7 @@ import { getMessagesFor } from "#lib/messages";
 import type { PurchaseItem } from "#lib/purchases";
 
 import { purchasesListHref } from "../_lib/search-params";
+import { RentalTimeLeft } from "./rental-time-left";
 
 /**
  * The Route Handler that answers every purchase the library lists as CSV. It
@@ -135,7 +136,15 @@ const PurchaseCard = async ({
           </span>
         )}
       </div>
-      <dl className="mt-4 grid gap-2 text-sm text-muted-foreground sm:grid-cols-3">
+      <dl className="mt-4 grid gap-2 text-sm text-muted-foreground sm:grid-cols-4">
+        <div>
+          <dt>{t("storefront.library.kind")}</dt>
+          <dd className="mt-1 text-foreground">
+            {purchase.kind === "rental"
+              ? t("storefront.library.kind_rental")
+              : t("storefront.library.kind_purchase")}
+          </dd>
+        </div>
         <div>
           <dt>{t("storefront.library.purchased_at")}</dt>
           <dd className="mt-1 text-foreground">
@@ -157,7 +166,14 @@ const PurchaseCard = async ({
         </div>
         <div>
           <dt>{t("storefront.library.expires_at")}</dt>
-          <dd className="mt-1 text-foreground">{expiryLabel}</dd>
+          <dd className="mt-1 text-foreground">
+            {expiryLabel}
+            {purchase.kind === "rental" &&
+            purchase.isActive &&
+            purchase.expiresAt ? (
+              <RentalTimeLeft expiresAt={purchase.expiresAt} />
+            ) : null}
+          </dd>
         </div>
       </dl>
       <div className="mt-4">

@@ -68,8 +68,8 @@ export const EpisodeBody = async ({
   /** Cursor of the comment page the URL asks for. Empty on the newest page. */
   commentToken: string;
   /**
-   * The currency the viewer's end panel quotes a price in, `null` while the
-   * tenant could not be read.
+   * The currency the viewer's end panel and the gate quote a price in, `null`
+   * while the tenant could not be read.
    */
   currency: string | null;
   episode: EpisodeDetail;
@@ -118,12 +118,16 @@ export const EpisodeBody = async ({
           acceptsPayments={acceptsPayments}
           appPayments={appPayments}
           appStoreUrl={appStoreUrl}
+          currency={currency}
           episodeId={episode.id}
           episodePublicId={episode.publicId}
           googlePlayUrl={googlePlayUrl}
           locale={locale}
           nextFreeEpisode={nextFreeEpisode}
+          price={episode.price}
           purchaseSurface={episode.purchaseSurface}
+          rentalPeriodHours={episode.rentalPeriodHours}
+          rentalPrice={episode.rentalPrice}
           seriesPublicId={series.publicId}
           signedIn={false}
           tenantId={tenantId}
@@ -213,12 +217,16 @@ export const EpisodeBody = async ({
         acceptsPayments={acceptsPayments}
         appPayments={appPayments}
         appStoreUrl={appStoreUrl}
+        currency={currency}
         episodeId={episode.id}
         episodePublicId={episode.publicId}
         googlePlayUrl={googlePlayUrl}
         locale={locale}
         nextFreeEpisode={nextFreeEpisode}
+        price={episode.price}
         purchaseSurface={episode.purchaseSurface}
+        rentalPeriodHours={episode.rentalPeriodHours}
+        rentalPrice={episode.rentalPrice}
         seriesPublicId={series.publicId}
         signedIn
         tenantId={tenantId}
