@@ -157,7 +157,6 @@ export interface TenantSiteInfo {
   appStoreUrl?: string;
   /** Whether episode pages offer a comment section, and how a post reaches it. */
   commentMode: TenantCommentMode;
-  copyrightText?: string;
   /**
    * ISO 4217 code of the currency the tenant sells in. Every price the site
    * shows is an integer in its minor unit.
@@ -183,8 +182,6 @@ export interface TenantSiteInfo {
   logoImageVariants?: TenantImageVariant[];
   name: string;
   publicId: string;
-  siteDescription?: string;
-  siteTagline?: string;
   /**
    * UI locales the site offers its readers, in registry order and always
    * holding {@link defaultLocale}.
@@ -317,7 +314,6 @@ export const getTenantSiteInfo = async (
       appStoreUrl: nonEmpty(response.appStoreUrl),
       appleServicesId: nonEmpty(response.appleSignIn?.servicesId),
       commentMode: toTenantCommentMode(response.commentMode),
-      copyrightText: trimmed(response.copyrightText),
       currency: requireCurrency(response.currency),
       defaultLocale,
       domain: trimmed(response.tenantDomain) ?? "",
@@ -333,8 +329,6 @@ export const getTenantSiteInfo = async (
       ),
       name,
       publicId,
-      siteDescription: trimmed(response.siteDescription),
-      siteTagline: trimmed(response.siteTagline),
       supportedLocales: toSupportedLocales(
         response.supportedLocales ?? [],
         defaultLocale
@@ -352,6 +346,70 @@ export const getTenantSiteInfo = async (
       dropFailedCacheEntry();
     }
     return null;
+  }
+};
+
+/**
+ * The lines of copy the tenant writes about its site, all three from one
+ * language's copy. A line that copy leaves empty is absent, rather than read
+ * from another language.
+ */
+export interface TenantSiteCopy {
+  /** The footer's copyright line. */
+  copyrightText?: string;
+  /** The site's `<meta name="description">`, social cards, and footer note. */
+  siteDescription?: string;
+  /** The line under the site's name on the auth screens. */
+  siteTagline?: string;
+}
+
+/**
+ * The tenant's site copy for `locale`: the copy written for that language, else
+ * the tenant default's, else the oldest written — the server picks the
+ * language, the way it does for a page.
+ *
+ * It is a read of its own rather than part of {@link getTenantSiteInfo}, whose
+ * entry is shared by every language, so that only the copy pays for a cache
+ * entry per locale. It carries `tenant:<id>:site`, which the admin API
+ * revalidates when the copy is saved in any language.
+ *
+ * An unavailable read degrades to no copy, the way the site chrome it feeds
+ * degrades to its defaults.
+ */
+export const getTenantSiteCopy = async (
+  tenantId: string,
+  locale: Locale
+): Promise<TenantSiteCopy> => {
+  "use cache";
+  cacheLife({ stale: 30 });
+
+  const normalizedTenantId = tenantId.trim();
+  if (!normalizedTenantId) {
+    return {};
+  }
+
+  applyCacheTag(tenantSiteTag(normalizedTenantId));
+
+  try {
+    const response = await apiClient.tenant.getTenant({
+      locale,
+      tenant: { tenantId: normalizedTenantId },
+    });
+    if (!trimmed(response.tenantPublicId)) {
+      return {};
+    }
+
+    return {
+      copyrightText: nonEmpty(response.copyrightText),
+      siteDescription: nonEmpty(response.siteDescription),
+      siteTagline: nonEmpty(response.siteTagline),
+    };
+  } catch (error) {
+    if (!isExpectedNullableRpcError(error)) {
+      console.warn("[web-storefront] getTenantSiteCopy failed", error);
+      dropFailedCacheEntry();
+    }
+    return {};
   }
 };
 

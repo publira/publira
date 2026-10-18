@@ -7,29 +7,28 @@ import {
   LocaleProvider,
   TenantLocalesProvider,
 } from "#components/locale-provider";
-import { getTenantSiteInfo } from "#lib/tenant";
+import { getLocale } from "#lib/locale";
+import { getTenantSiteCopy } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 const AuthFooter = ({ copyrightText }: { copyrightText?: string }) => {
-  const normalizedCopyrightText = copyrightText?.trim() ?? "";
-
-  if (!normalizedCopyrightText) {
+  if (!copyrightText) {
     return null;
   }
 
   return (
     <footer className="border-t border-border bg-surface">
       <div className="mx-auto flex w-full max-w-measure-prose flex-col gap-4 px-6 py-6 text-sm text-muted-foreground">
-        <p>{normalizedCopyrightText}</p>
+        <p>{copyrightText}</p>
       </div>
     </footer>
   );
 };
 
 const AuthFooterContent = async () => {
-  const tenantId = await getTenantId();
-  const info = await getTenantSiteInfo(tenantId);
-  return <AuthFooter copyrightText={info?.copyrightText} />;
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+  const { copyrightText } = await getTenantSiteCopy(tenantId, locale);
+  return <AuthFooter copyrightText={copyrightText} />;
 };
 
 const AuthShell = ({ children }: { children: ReactNode }) => (

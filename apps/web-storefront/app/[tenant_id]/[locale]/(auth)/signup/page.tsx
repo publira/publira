@@ -13,7 +13,7 @@ import { TenantDocumentTitle } from "#components/tenant-document-title";
 import { getMessages } from "#lib/get-messages";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
-import { getTenantSiteInfo, getTenantSiteLabel } from "#lib/tenant";
+import { getTenantSiteCopy, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 import { SignupForm } from "./_components/signup-form";
@@ -26,12 +26,11 @@ export const generateMetadata = async (): Promise<Metadata> => {
 
 const SignupPageHeader = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-  const [info, siteLabel, t] = await Promise.all([
-    getTenantSiteInfo(tenantId),
+  const [{ siteTagline }, siteLabel, t] = await Promise.all([
+    getTenantSiteCopy(tenantId, locale),
     getTenantSiteLabel(tenantId, locale),
     getMessagesFor(locale),
   ]);
-  const siteTagline = info?.siteTagline?.trim();
 
   return (
     <>

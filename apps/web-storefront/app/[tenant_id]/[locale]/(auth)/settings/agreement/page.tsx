@@ -40,7 +40,7 @@ import { getOwedLegalPages } from "#lib/legal-page-agreements";
 import { getLocale } from "#lib/locale";
 import { logoutAction } from "#lib/logout-action";
 import { getMessagesFor } from "#lib/messages";
-import { getTenantSiteInfo, getTenantSiteLabel } from "#lib/tenant";
+import { getTenantSiteCopy, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
 
@@ -58,12 +58,11 @@ const agreementSearchParamsSchema = z.object({
 
 const AgreementHeader = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-  const [info, siteLabel, t] = await Promise.all([
-    getTenantSiteInfo(tenantId),
+  const [{ siteTagline }, siteLabel, t] = await Promise.all([
+    getTenantSiteCopy(tenantId, locale),
     getTenantSiteLabel(tenantId, locale),
     getMessagesFor(locale),
   ]);
-  const siteTagline = info?.siteTagline?.trim();
 
   return (
     <>
