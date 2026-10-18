@@ -17,9 +17,10 @@ import { WEB_ADMIN_PURCHASES_BASE_URL } from "../src/urls";
  * A tenant administrator finding a reader's purchase at `/purchases`, reading
  * it in the detail drawer, and being asked for a reason before refunding it.
  *
- * The refund itself is not submitted: it is a request to Stripe, which the
- * stack has no stand-in for. What the console sends with it is covered by the
- * Action's and the server's own tests.
+ * The refund itself is not submitted: it is a request to Stripe, and the
+ * stack's stand-in for Stripe answers the Checkout Session calls alone. What
+ * the console sends with it is covered by the Action's and the server's own
+ * tests.
  */
 
 const PURCHASES_PATH = "/purchases";
