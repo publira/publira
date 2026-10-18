@@ -17,6 +17,7 @@ import {
   COMMENT_MODERATION_ADMIN,
   COMMENT_MODERATION_EPISODE,
 } from "../src/scenarios/comment-moderation";
+import { EYE_CATCH_SOURCE_FIXTURE } from "../src/scenarios/eye-catch";
 import { SEED_TENANT } from "../src/scenarios/multi-tenant";
 import {
   WEB_ADMIN_BASE_URL,
@@ -28,17 +29,20 @@ import {
  * `docs/<locale>/4-console/1-catalog/` show them: the series, episodes,
  * labels, Authors, Author roles, and genres the seed tenant holds.
  *
- * Nothing here saves anything. A dialog is opened and left unsubmitted, and a
- * checkbox ticked to open one is never saved, so the catalog stays the one
- * the other screenshot projects photograph. The seed publishes every episode
- * it writes, so the episode list is photographed on the moderation tenant,
- * whose series `db/seeds/scenarios/450_docs_publishing.sql` gives a scheduled
- * episode and a draft.
+ * Nothing here saves anything on the seed tenant. A dialog is opened and left
+ * unsubmitted, and a checkbox ticked to open one is never saved, so the
+ * catalog stays the one the other screenshot projects photograph. The seed
+ * publishes every episode it writes, so the episode list is photographed on
+ * the moderation tenant, whose series `db/seeds/scenarios/450_docs_publishing.sql`
+ * gives a scheduled episode and a draft; the draft is also where an episode's
+ * cover is uploaded to be photographed.
  */
 test.use({ baseURL: WEB_ADMIN_BASE_URL });
 
 const SERIES = SEED_TENANT.series.publicId;
 const EPISODE = "SeedEPSDAAA1";
+/** The draft `450_docs_publishing.sql` adds to the moderation tenant's series. */
+const DOCS_DRAFT_EPISODE = "DocsEPSDAAA2";
 
 /** Sign in as the seed tenant's admin and open `path` in `locale`. */
 const openScreen = async (
@@ -404,6 +408,58 @@ for (const locale of DOCS_LOCALES) {
           locale,
           page: "console/catalog/episodes",
           subject: "preview",
+        });
+      });
+
+      // No seeded episode has a cover of its own, and a tab without one shows
+      // none of the four shapes, so the shot uploads one first. It does so on
+      // the moderation tenant's draft, which no other shot shows and which
+      // `450_docs_publishing.sql` writes afresh, cover gone, on the next run.
+      test("the cover image tab, with the episode's own cover", async ({
+        page,
+      }) => {
+        const path = `/series/${COMMENT_MODERATION_EPISODE.seriesPublicId}/episodes/${DOCS_DRAFT_EPISODE}?tab=eye-catch`;
+        await signInAsAdmin(
+          page,
+          COMMENT_MODERATION_ADMIN,
+          path,
+          WEB_ADMIN_COMMENT_MODERATION_BASE_URL
+        );
+        await setDocsLocale(
+          page,
+          WEB_ADMIN_COMMENT_MODERATION_BASE_URL,
+          locale
+        );
+        await page.goto(`${WEB_ADMIN_COMMENT_MODERATION_BASE_URL}${path}`);
+
+        await page
+          .locator('input[name="eye_catch_image"]')
+          .setInputFiles(EYE_CATCH_SOURCE_FIXTURE);
+        await page
+          .getByRole("button", {
+            name: t("admin.series.episodes.eye_catch.update"),
+          })
+          .click();
+        await expect(
+          page.getByRole("status").filter({
+            hasText: t("admin.series.episodes.eye_catch.updated"),
+          })
+        ).toBeVisible({
+          // Uploading a whole eye-catch crops and encodes twelve images.
+          timeout: 60_000,
+        });
+        // The reload drops the notice and the picked file's preview, so the
+        // tab shows what was stored, as it does when it is opened.
+        await page.reload();
+
+        await expectDocsScreenshot(page, {
+          element: [
+            docsScreenHeader(page),
+            docsSection(page, t("admin.eye_catch.aspect.title")),
+          ],
+          locale,
+          page: "console/catalog/episodes",
+          subject: "cover-image",
         });
       });
 

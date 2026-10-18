@@ -1,13 +1,13 @@
 ---
 title: Episodes
-description: Create an episode, add, replace, and delete its pages, change its title in each language, its price, its reading period, and its rental, set its layout and preview its pages, set its credits and where it is shown and sold, give it free reading periods, and publish it now or on time.
+description: Create an episode, add, replace, and delete its pages, change its title in each language, its price, its reading period, and its rental, set its layout and preview its pages, give it a cover image of its own, set its credits and where it is shown and sold, give it free reading periods, and publish it now or on time.
 published: 2026-10-07
-updated: 2026-10-17
+updated: 2026-10-18
 ---
 
 An episode is what a reader opens and pays for: a run of page images with a title, a price, and a time it is published at. Episodes live inside their series. On the **Series** list, choose **Episodes** on the series' row to open them.
 
-The list shows each episode as its position and title, with its status, **Draft**, **Scheduled**, or **Published**, its price, and, for a scheduled one, the time it is due. An episode not shown on both the site and the app is marked **Web only**, **App only**, or **Not shown anywhere**. **Edit** opens the episode, or **View** for an Auditor.
+The list shows each episode as its position and title, with its status, **Draft**, **Scheduled**, or **Published**, its price, and, for a scheduled one, the time it is due. An episode not shown on both the site and the app is marked **Web only**, **App only**, or **Not shown anywhere**. **Edit** opens the episode, or **View** for an Auditor. Its edit screen has two tabs: **Cover image**, which [The cover image](#the-cover-image) describes, and **Basic information**, which holds every other section of the screen.
 
 ![The episode list of a series: Create, Credits, Free reading period, and Back to series at the top, Select all on this page, and a row for each episode with a checkbox, a drag handle, its position and title, its status and price, and Edit. The first episode is published, the second scheduled, with the time it is due, and the third a draft.](./episodes-list.png)
 
@@ -105,6 +105,18 @@ Turn the pages as a reader does on the site: with the arrow keys, by clicking ne
 A change saved on the edit screen — pages added, replaced, deleted, or moved, or an update to **Page layout** — shows in the preview once it is saved, and the preview starts again from the first page. A value chosen in **Page layout** but not saved yet does not show. An episode with no pages says so in the preview.
 
 Everyone who can open the episode can turn its pages in the preview, including those who cannot change it.
+
+## The cover image
+
+An episode without a cover image of its own shows its series' [cover image](./1-series.md#the-cover-image) wherever the site and the app picture it, so a new episode needs nothing here. Give an episode one of its own where it should look different from its series.
+
+The **Cover image** tab of the episode's edit screen sets it. Under **Cover image**, select a JPEG, PNG, or WebP image of at most 10 MB and at least 2400 × 3200 pixels, and choose **Update cover image**. Saving cuts it into the same four shapes as a series' cover, at the same sizes, which **Aspect ratio images** shows: **Portrait (3:4)**, **Square (1:1)**, **Landscape (16:9)**, and **Link preview (1200:630)**. The line under each slot says where that shape of an episode's cover is used.
+
+![An episode's Cover image tab: the Basic information and Cover image tabs under the note that an episode without a cover of its own shows its series' cover image, the episode's cover cut into its portrait, square, landscape, and link preview shapes, Delete the current cover image and Update cover image under them, and Aspect ratio images, where each shape's slot gives its size, where it is used, and Replace.](./episodes-cover-image.png)
+
+Each shape is cropped from the centre of the image. To give one shape a different crop or a picture of its own, click its image under **Aspect ratio images** and select a JPEG, PNG, or WebP image at least as large as the slot asks, which may be the same image as before. **Adjust the frame** then sets which part of it the shape shows, and **Replace** saves it, leaving the other three as they are. A shape can be replaced only once the episode has a cover image, so upload one under **Cover image** first. Uploading a new cover image there replaces all four.
+
+To go back to the series' cover, choose **Delete the current cover image** and then **Update cover image**.
 
 ## Credits
 
