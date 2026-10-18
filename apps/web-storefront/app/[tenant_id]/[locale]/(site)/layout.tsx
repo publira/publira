@@ -6,7 +6,7 @@ import {
   TenantLocalesProvider,
 } from "#components/locale-provider";
 import { getLocale } from "#lib/locale";
-import { getTenantSiteInfo, getTenantSiteLabel } from "#lib/tenant";
+import { getTenantSiteCopy, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 import { SiteChrome } from "./_components/site-chrome";
@@ -14,11 +14,10 @@ import { SiteChrome } from "./_components/site-chrome";
 export const generateMetadata = async (): Promise<Metadata> => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
-  const [info, siteLabel] = await Promise.all([
-    getTenantSiteInfo(tenantId),
+  const [{ siteDescription }, siteLabel] = await Promise.all([
+    getTenantSiteCopy(tenantId, locale),
     getTenantSiteLabel(tenantId, locale),
   ]);
-  const siteDescription = info?.siteDescription?.trim() || undefined;
 
   return {
     description: siteDescription,

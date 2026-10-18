@@ -21,7 +21,7 @@ import { verifyPublicEmail } from "#lib/auth";
 import { getMessages } from "#lib/get-messages";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
-import { getTenantSiteInfo, getTenantSiteLabel } from "#lib/tenant";
+import { getTenantSiteCopy, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 import { parseVerifySearchParams } from "./_lib/search-params";
@@ -148,12 +148,11 @@ const VerificationFallback = () => (
 /** The tenant's own name and tagline, which only the site read can supply. */
 const VerifyHeader = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-  const [info, siteLabel, t] = await Promise.all([
-    getTenantSiteInfo(tenantId),
+  const [{ siteTagline }, siteLabel, t] = await Promise.all([
+    getTenantSiteCopy(tenantId, locale),
     getTenantSiteLabel(tenantId, locale),
     getMessagesFor(locale),
   ]);
-  const siteTagline = info?.siteTagline?.trim();
 
   return (
     <>

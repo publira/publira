@@ -542,3 +542,78 @@ test.describe("web-storefront series titles in the reader's language", () => {
     await expect(page.getByText("このシリーズはお使いの言語")).toHaveCount(0);
   });
 });
+
+/**
+ * The copy a tenant writes about its site — the description its metadata and
+ * footer carry, and its copyright line — is read in the language in the URL,
+ * else in the tenant's default. The bilingual tenant writes it in both of its
+ * languages; the Japanese-default tenant in Japanese alone.
+ */
+test.describe("web-storefront site copy in the reader's language", () => {
+  test.beforeAll(() => {
+    applyScenarioSql(LOCALE_SWITCHING_SCENARIO);
+  });
+
+  test("the header switcher changes the footer and the description with the language", async ({
+    page,
+  }) => {
+    const { englishCopy, japaneseCopy } = BILINGUAL_TENANT;
+    const footer = page.getByRole("contentinfo");
+    const description = page.locator('meta[name="description"]');
+
+    await page.goto(bilingualUrl(storefrontPath("/series")));
+    await expect(
+      footer.getByText(japaneseCopy.copyrightText, { exact: true })
+    ).toBeVisible();
+    await expect(
+      footer.getByText(japaneseCopy.siteDescription, { exact: true })
+    ).toBeVisible();
+    await expect(description).toHaveAttribute(
+      "content",
+      japaneseCopy.siteDescription
+    );
+
+    await switchStorefrontLocale(page, "日本語", "English");
+
+    await expect(page).toHaveURL(
+      (url) => url.pathname === localeStorefrontPath("en", "/series")
+    );
+    await expect(
+      footer.getByText(englishCopy.copyrightText, { exact: true })
+    ).toBeVisible();
+    await expect(
+      footer.getByText(englishCopy.siteDescription, { exact: true })
+    ).toBeVisible();
+    await expect(
+      footer.getByText(japaneseCopy.copyrightText, { exact: true })
+    ).toHaveCount(0);
+    await expect(description).toHaveAttribute(
+      "content",
+      englishCopy.siteDescription
+    );
+    await expect(
+      page.locator('meta[property="og:description"]')
+    ).toHaveAttribute("content", englishCopy.siteDescription);
+  });
+
+  test("a language the tenant has written no copy in reads the default's", async ({
+    page,
+  }) => {
+    const { japaneseCopy } = JAPANESE_DEFAULT_TENANT;
+
+    await page.goto(japaneseDefaultUrl(localeStorefrontPath("en", "/series")));
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Series" })
+    ).toBeVisible();
+
+    await expect(
+      page
+        .getByRole("contentinfo")
+        .getByText(japaneseCopy.copyrightText, { exact: true })
+    ).toBeVisible();
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+      "content",
+      japaneseCopy.siteDescription
+    );
+  });
+});

@@ -26,7 +26,7 @@ import { TenantIdField } from "#components/tenant-id-field";
 import { getMessages } from "#lib/get-messages";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
-import { getTenantSiteInfo, getTenantSiteLabel } from "#lib/tenant";
+import { getTenantSiteCopy, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 import { BirthDateField, ConsentField } from "../_components/sign-up-fields";
@@ -40,12 +40,11 @@ export const generateMetadata = async (): Promise<Metadata> => {
 
 const ContinueSignUpHeader = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-  const [info, siteLabel, t] = await Promise.all([
-    getTenantSiteInfo(tenantId),
+  const [{ siteTagline }, siteLabel, t] = await Promise.all([
+    getTenantSiteCopy(tenantId, locale),
     getTenantSiteLabel(tenantId, locale),
     getMessagesFor(locale),
   ]);
-  const siteTagline = info?.siteTagline?.trim();
 
   return (
     <>

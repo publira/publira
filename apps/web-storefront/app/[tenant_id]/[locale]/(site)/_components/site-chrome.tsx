@@ -92,6 +92,7 @@ import { countUnreadNotifications, listNotifications } from "#lib/notification";
 import { listPublishedPageLinks } from "#lib/pages";
 import {
   getTenantLinkDefaultLocale,
+  getTenantSiteCopy,
   getTenantSiteInfo,
   getTenantSiteLabel,
 } from "#lib/tenant";
@@ -604,19 +605,17 @@ const TenantBrand = async () => {
 };
 
 const TenantFooterNote = async () => {
-  const tenantId = await getTenantId();
-  const tenantInfo = await getTenantSiteInfo(tenantId);
-  const footerNote = tenantInfo?.siteDescription?.trim();
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+  const { siteDescription } = await getTenantSiteCopy(tenantId, locale);
 
-  return footerNote ? (
-    <SiteLayoutFooterNote>{footerNote}</SiteLayoutFooterNote>
+  return siteDescription ? (
+    <SiteLayoutFooterNote>{siteDescription}</SiteLayoutFooterNote>
   ) : null;
 };
 
 const TenantFooterCopyright = async () => {
-  const tenantId = await getTenantId();
-  const tenantInfo = await getTenantSiteInfo(tenantId);
-  const copyrightText = tenantInfo?.copyrightText?.trim();
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+  const { copyrightText } = await getTenantSiteCopy(tenantId, locale);
 
   return copyrightText ? (
     <SiteLayoutFooterCopyright>{copyrightText}</SiteLayoutFooterCopyright>

@@ -15,6 +15,7 @@ import {
   getTenantLinkSupportedLocales,
   getTenantPublicOrigin,
   getTenantSignInClients,
+  getTenantSiteCopy,
   getTenantSiteInfo,
   getTenantSupportedLocales,
   getTenantTheme,
@@ -517,5 +518,43 @@ describe("tenant", () => {
     await expect(
       getTenantLinkSupportedLocales("TENANT_001")
     ).resolves.toBeNull();
+  });
+
+  it("reads the site copy in the reader's locale", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      ...tenantResponse,
+      copyrightText: " © Example ",
+      siteDescription: "Comics from Example.",
+      siteTagline: "Read every week",
+    });
+
+    await expect(getTenantSiteCopy(" TENANT_001 ", "en")).resolves.toEqual({
+      copyrightText: "© Example",
+      siteDescription: "Comics from Example.",
+      siteTagline: "Read every week",
+    });
+    expect(mockCacheTag).toHaveBeenCalledWith("tenant:TENANT_001:site");
+    expect(mockGetTenant).toHaveBeenCalledWith({
+      locale: "en",
+      tenant: { tenantId: "TENANT_001" },
+    });
+  });
+
+  it("leaves out site copy the tenant has not written", async () => {
+    mockGetTenant.mockResolvedValueOnce(tenantResponse);
+
+    await expect(getTenantSiteCopy("TENANT_001", "ja")).resolves.toEqual({
+      copyrightText: "© Example",
+      siteDescription: undefined,
+      siteTagline: undefined,
+    });
+  });
+
+  it("reads no site copy while the tenant cannot be obtained", async () => {
+    mockGetTenant.mockRejectedValueOnce(
+      new ConnectError("upstream is down", Code.Unavailable)
+    );
+
+    await expect(getTenantSiteCopy("TENANT_001", "en")).resolves.toEqual({});
   });
 });

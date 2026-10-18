@@ -34,7 +34,7 @@ import { TenantIdField } from "#components/tenant-id-field";
 import { getMessages } from "#lib/get-messages";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
-import { getTenantSiteInfo, getTenantSiteLabel } from "#lib/tenant";
+import { getTenantSiteCopy, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 import { PasskeySignIn } from "./_components/passkey-sign-in";
@@ -234,12 +234,11 @@ const LoginFormContent = async ({
 /** The tenant's own name and tagline, which only the site read can supply. */
 const LoginHeader = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-  const [info, siteLabel, t] = await Promise.all([
-    getTenantSiteInfo(tenantId),
+  const [{ siteTagline }, siteLabel, t] = await Promise.all([
+    getTenantSiteCopy(tenantId, locale),
     getTenantSiteLabel(tenantId, locale),
     getMessagesFor(locale),
   ]);
-  const siteTagline = info?.siteTagline?.trim();
 
   return (
     <>

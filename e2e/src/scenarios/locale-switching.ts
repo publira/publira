@@ -12,9 +12,18 @@
 
 export const LOCALE_SWITCHING_SCENARIO = "080_locale_switching";
 
-/** Tenant whose saved default locale is Japanese. It owns no series and no users. */
+/**
+ * Tenant whose saved default locale is Japanese. It owns no series and no users.
+ *
+ * Its site copy is written in Japanese alone, so every other language falls
+ * back to it.
+ */
 export const JAPANESE_DEFAULT_TENANT = {
   domain: "locale.localhost",
+  japaneseCopy: {
+    copyrightText: "© Locale Tenant (Japanese edition)",
+    siteDescription: "The Japanese description of Locale Tenant.",
+  },
   name: "Locale Tenant",
   publicId: "LangTNNTAAA1",
 } as const;
@@ -25,12 +34,21 @@ export const JAPANESE_DEFAULT_TENANT = {
  * whose switcher, sitemap, and redirects show the set rather than the registry.
  * It owns no users.
  *
- * Its two series are what a title in the reader's language is read off:
- * `translated` and its episode are written in both languages, and
- * `untranslated` in Japanese alone, so its English URL falls back.
+ * Its site copy is written in both languages. Its two series are what a title
+ * in the reader's language is read off: `translated` and its episode are
+ * written in both languages, and `untranslated` in Japanese alone, so its
+ * English URL falls back.
  */
 export const BILINGUAL_TENANT = {
   domain: "bilingual.localhost",
+  englishCopy: {
+    copyrightText: "© Bilingual Tenant",
+    siteDescription: "The English description of Bilingual Tenant.",
+  },
+  japaneseCopy: {
+    copyrightText: "© Bilingual Tenant (Japanese edition)",
+    siteDescription: "The Japanese description of Bilingual Tenant.",
+  },
   name: "Bilingual Tenant",
   publicId: "BlngTNNTAAA1",
   translated: {

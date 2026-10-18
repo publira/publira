@@ -17,7 +17,8 @@
 -- title in the reader's language and one that falls back: the first is
 -- written in Japanese and English, its episode too, and the second in Japanese
 -- alone. The Japanese titles are English text marked as the Japanese edition,
--- which is all the suite needs to tell the two translations apart.
+-- which is all the suite needs to tell the two translations apart. The
+-- tenants' site copy follows the same pattern, at the end of this file.
 --
 -- The public site and the console login screen are both reached without a
 -- session, so neither tenant owns users, and the Japanese-default tenant owns
@@ -232,3 +233,54 @@ SET price = EXCLUDED.price,
     scheduled_at = EXCLUDED.scheduled_at,
     published_at = EXCLUDED.published_at,
     tenant_id = EXCLUDED.tenant_id;
+
+-- The site copy, written per locale. The bilingual tenant writes it in
+-- Japanese and English, so its footer and description change with the URL's
+-- language; the Japanese-default tenant writes it in Japanese alone, so its
+-- `/en/...` falls back to the Japanese copy.
+WITH copy_seed (tenant_public_id, locale, site_tagline, site_description, copyright_text) AS (
+    VALUES
+        (
+            'BlngTNNTAAA1',
+            'ja',
+            'Stories in two languages (Japanese edition)',
+            'The Japanese description of Bilingual Tenant.',
+            '© Bilingual Tenant (Japanese edition)'
+        ),
+        (
+            'BlngTNNTAAA1',
+            'en',
+            'Stories in two languages',
+            'The English description of Bilingual Tenant.',
+            '© Bilingual Tenant'
+        ),
+        (
+            'LangTNNTAAA1',
+            'ja',
+            'Stories in every language (Japanese edition)',
+            'The Japanese description of Locale Tenant.',
+            '© Locale Tenant (Japanese edition)'
+        )
+)
+INSERT INTO tenant_config_translations (
+    id,
+    tenant_id,
+    locale,
+    site_tagline,
+    site_description,
+    copyright_text
+)
+SELECT
+    uuidv7(),
+    t.id,
+    cs.locale,
+    cs.site_tagline,
+    cs.site_description,
+    cs.copyright_text
+FROM copy_seed cs
+JOIN tenants t ON t.public_id = cs.tenant_public_id
+ON CONFLICT (tenant_id, locale) DO UPDATE
+SET site_tagline = EXCLUDED.site_tagline,
+    site_description = EXCLUDED.site_description,
+    copyright_text = EXCLUDED.copyright_text,
+    updated_at = NOW();
