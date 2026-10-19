@@ -415,6 +415,7 @@ SET expired_provider = $1::text,
 WHERE tenant_id = $3
     AND id = $4
     AND user_id = $5::uuid
+    AND expired_provider_checkout_id IS DISTINCT FROM $2::text
 `
 
 type RecordExpiredSeriesBundleCheckoutParams struct {
@@ -427,8 +428,9 @@ type RecordExpiredSeriesBundleCheckoutParams struct {
 
 // Records the checkout the provider reports expired on the bundle it would
 // have sold, which makes it the reader's latest expired checkout of the
-// series' rest. A repeated delivery names the same checkout and changes
-// nothing the idempotency key reads.
+// series' rest. A repeated delivery names the checkout already recorded and
+// changes nothing: moving its instant would put an older bundle ahead of one
+// that expired after it, and the next checkout's key back on that later one.
 func (q *Queries) RecordExpiredSeriesBundleCheckout(ctx context.Context, arg RecordExpiredSeriesBundleCheckoutParams) error {
 	_, err := q.db.ExecContext(ctx, RecordExpiredSeriesBundleCheckout,
 		arg.Provider,

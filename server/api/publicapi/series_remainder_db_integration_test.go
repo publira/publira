@@ -431,6 +431,31 @@ func TestDBAnExpiredRemainderCheckoutMovesTheNextAttemptOn(t *testing.T) {
 	if next.IdempotencyKey == first.IdempotencyKey || next.Purchase.SeriesBundleID == first.Purchase.SeriesBundleID {
 		t.Fatalf("the attempt after an expiry reuses the key %q or the bundle %s", first.IdempotencyKey, first.Purchase.SeriesBundleID)
 	}
+
+	// The second checkout expires too, and then the provider delivers the
+	// first one's expiry again. The redelivery must not make the first the
+	// latest, which would key the next attempt as the expired second one.
+	expire := func(id string, purchase paymentprovider.Purchase) {
+		t.Helper()
+		payload, signature := stripetest.SignedEvent(t, testCheckoutWebhookSecret, "checkout.session.expired", map[string]any{
+			"id":       id,
+			"object":   "checkout.session",
+			"currency": strings.ToLower(purchase.Currency),
+			"metadata": stripetest.PurchaseMetadata(purchase),
+		})
+		if _, err := env.purchases.ProcessPaymentWebhook(ctx, stripeWebhookRequest(env.tenant.ID.String(), payload, signature)); err != nil {
+			t.Fatalf("ProcessPaymentWebhook(expired %s): %v", id, err)
+		}
+	}
+	expire("cs_remainder_expired_again", next.Purchase)
+	expire("cs_remainder_expired", first.Purchase)
+	if err := env.startRemainderCheckout(ctx, env.series.ID); err != nil {
+		t.Fatalf("StartSeriesRemainderCheckout after the redelivery: %v", err)
+	}
+	third := env.checkout.input
+	if third.IdempotencyKey == next.IdempotencyKey || third.Purchase.SeriesBundleID == next.Purchase.SeriesBundleID {
+		t.Fatalf("the attempt after a redelivered expiry reuses the expired key %q or the bundle %s", next.IdempotencyKey, next.Purchase.SeriesBundleID)
+	}
 }
 
 // A checkout started again after an editor changed what one of its episodes

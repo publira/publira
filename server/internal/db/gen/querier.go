@@ -3002,8 +3002,9 @@ type Querier interface {
 	RecordExpiredCheckout(ctx context.Context, arg RecordExpiredCheckoutParams) error
 	// Records the checkout the provider reports expired on the bundle it would
 	// have sold, which makes it the reader's latest expired checkout of the
-	// series' rest. A repeated delivery names the same checkout and changes
-	// nothing the idempotency key reads.
+	// series' rest. A repeated delivery names the checkout already recorded and
+	// changes nothing: moving its instant would put an older bundle ahead of one
+	// that expired after it, and the next checkout's key back on that later one.
 	RecordExpiredSeriesBundleCheckout(ctx context.Context, arg RecordExpiredSeriesBundleCheckoutParams) error
 	// Records the checkout the provider reports expired as the reader's latest on
 	// the volume, as RecordExpiredCheckout does for an episode. A reader or a

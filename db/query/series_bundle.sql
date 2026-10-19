@@ -124,15 +124,17 @@ WHERE tenant_id = sqlc.arg('tenant_id')
 -- name: RecordExpiredSeriesBundleCheckout :exec
 -- Records the checkout the provider reports expired on the bundle it would
 -- have sold, which makes it the reader's latest expired checkout of the
--- series' rest. A repeated delivery names the same checkout and changes
--- nothing the idempotency key reads.
+-- series' rest. A repeated delivery names the checkout already recorded and
+-- changes nothing: moving its instant would put an older bundle ahead of one
+-- that expired after it, and the next checkout's key back on that later one.
 UPDATE series_bundles
 SET expired_provider = sqlc.arg('provider')::text,
     expired_provider_checkout_id = sqlc.arg('provider_checkout_id')::text,
     expired_at = NOW()
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND id = sqlc.arg('id')
-    AND user_id = sqlc.arg('user_id')::uuid;
+    AND user_id = sqlc.arg('user_id')::uuid
+    AND expired_provider_checkout_id IS DISTINCT FROM sqlc.arg('provider_checkout_id')::text;
 
 -- name: GetExpiredSeriesBundleCheckoutID :one
 -- The checkout the reader last let expire on the rest of the series, which
