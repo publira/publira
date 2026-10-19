@@ -22,7 +22,8 @@ WHERE id IN (
 );
 
 -- Each announcement is written in the tenant's default locale, the one a
--- reader in any locale is shown where nothing else was written.
+-- reader in any locale is shown where nothing else was written. The newest is
+-- also written in ja, so the list's Languages column names more than one.
 WITH a (id, title, body, link_url, created_at, pinned, pinned_until) AS (
     VALUES
         (
@@ -80,5 +81,19 @@ SELECT uuidv7(), a.id, t.id, t.default_locale, a.title, a.body, a.created_at, a.
 FROM a
 JOIN inserted i ON i.id = a.id
 JOIN tenants t ON t.id = i.tenant_id;
+
+-- The list shows the default locale's title, so this copy is never on screen.
+INSERT INTO announcement_translations (id, announcement_id, tenant_id, locale, title, body, created_at, updated_at)
+SELECT
+    uuidv7(),
+    a.id,
+    a.tenant_id,
+    'ja',
+    'Maintenance on Sunday night, in Japanese',
+    'The site will be unavailable from 01:00 to 03:00 on Monday morning, in Japanese.',
+    a.created_at,
+    a.created_at
+FROM announcements a
+WHERE a.id = '018f1090-0003-7000-8000-000000000001'::uuid;
 
 COMMIT;
