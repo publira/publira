@@ -195,6 +195,13 @@ message SeriesEpisodeAccess {
   // Never EPISODE_ACCESS_UNSPECIFIED.
   EpisodeAccess access = 2;
   string episode_id = 3;
+  // Whether the caller holds an active permanent copy of the episode: a
+  // purchase of its permanent copy, of a volume holding it, or of the rest of
+  // the series. A rental, an access ticket, and a creator's own episode open
+  // it without owning it, so `access` may be EPISODE_ACCESS_ENTITLED while this
+  // is false. Always false for a guest. It says nothing about the age rule,
+  // which may still keep an owned episode closed.
+  bool owned = 4;
 }
 
 message GetSeriesEpisodeAccessResponse {

@@ -541,6 +541,7 @@ const SeriesEpisodeAccess$json = {
       '10': 'access'
     },
     {'1': 'episode_id', '3': 3, '4': 1, '5': 9, '10': 'episodeId'},
+    {'1': 'owned', '3': 4, '4': 1, '5': 8, '10': 'owned'},
   ],
 };
 
@@ -548,7 +549,8 @@ const SeriesEpisodeAccess$json = {
 final $typed_data.Uint8List seriesEpisodeAccessDescriptor = $convert.base64Decode(
     'ChNTZXJpZXNFcGlzb2RlQWNjZXNzEioKEWVwaXNvZGVfcHVibGljX2lkGAEgASgJUg9lcGlzb2'
     'RlUHVibGljSWQSMQoGYWNjZXNzGAIgASgOMhkucHVibGlyYS52MS5FcGlzb2RlQWNjZXNzUgZh'
-    'Y2Nlc3MSHQoKZXBpc29kZV9pZBgDIAEoCVIJZXBpc29kZUlk');
+    'Y2Nlc3MSHQoKZXBpc29kZV9pZBgDIAEoCVIJZXBpc29kZUlkEhQKBW93bmVkGAQgASgIUgVvd2'
+    '5lZA==');
 
 @$core.Deprecated('Use getSeriesEpisodeAccessResponseDescriptor instead')
 const GetSeriesEpisodeAccessResponse$json = {

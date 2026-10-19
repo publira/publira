@@ -2025,9 +2025,11 @@ type Querier interface {
 	// Every published episode of one series with the two facts its access state is
 	// decided from: whether published_free_episodes counts it free to everyone
 	// right now, and whether episode_content_grants holds a grant for the reader.
-	// A guest passes a NULL user_id, which no grant matches. The episodes are the
-	// ones published_episode_surfaces opens on the calling surface, and the order
-	// is the one GetSeriesDetail lists them in.
+	// owned is whether one of those grants is a permanent copy, which is the
+	// grant ListSeriesRemainderEpisodes counts as held. A guest passes a NULL
+	// user_id, which no grant matches. The episodes are the ones
+	// published_episode_surfaces opens on the calling surface, and the order is
+	// the one GetSeriesDetail lists them in.
 	ListPublishedEpisodeAccessInSeries(ctx context.Context, arg ListPublishedEpisodeAccessInSeriesParams) ([]ListPublishedEpisodeAccessInSeriesRow, error)
 	// The previous-page half of ListPublishedEpisodeCommentsByCreatedAtDesc. The
 	// handler reverses the returned rows to preserve the newest-first display order.

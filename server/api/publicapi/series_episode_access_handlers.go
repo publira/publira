@@ -92,6 +92,7 @@ func (s *apiServer) GetSeriesEpisodeAccess(
 			EpisodeId:       row.ID.String(),
 			EpisodePublicId: row.PublicID,
 			Access:          episodeAccessFor(clearsAgeGate, row.FreeToEveryone, row.HasGrant),
+			Owned:           row.Owned,
 		})
 	}
 	res.Remainder, err = s.seriesRemainderOffer(ctx, tenant.ID, series.ID, surface, userID)

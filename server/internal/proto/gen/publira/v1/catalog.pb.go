@@ -1351,8 +1351,15 @@ type SeriesEpisodeAccess struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	EpisodePublicId string                 `protobuf:"bytes,1,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
 	// Never EPISODE_ACCESS_UNSPECIFIED.
-	Access        EpisodeAccess `protobuf:"varint,2,opt,name=access,proto3,enum=publira.v1.EpisodeAccess" json:"access,omitempty"`
-	EpisodeId     string        `protobuf:"bytes,3,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
+	Access    EpisodeAccess `protobuf:"varint,2,opt,name=access,proto3,enum=publira.v1.EpisodeAccess" json:"access,omitempty"`
+	EpisodeId string        `protobuf:"bytes,3,opt,name=episode_id,json=episodeId,proto3" json:"episode_id,omitempty"`
+	// Whether the caller holds an active permanent copy of the episode: a
+	// purchase of its permanent copy, of a volume holding it, or of the rest of
+	// the series. A rental, an access ticket, and a creator's own episode open
+	// it without owning it, so `access` may be EPISODE_ACCESS_ENTITLED while this
+	// is false. Always false for a guest. It says nothing about the age rule,
+	// which may still keep an owned episode closed.
+	Owned         bool `protobuf:"varint,4,opt,name=owned,proto3" json:"owned,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1406,6 +1413,13 @@ func (x *SeriesEpisodeAccess) GetEpisodeId() string {
 		return x.EpisodeId
 	}
 	return ""
+}
+
+func (x *SeriesEpisodeAccess) GetOwned() bool {
+	if x != nil {
+		return x.Owned
+	}
+	return false
 }
 
 type GetSeriesEpisodeAccessResponse struct {
@@ -8726,12 +8740,13 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x1dGetSeriesEpisodeAccessRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x129\n" +
 	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x1b\n" +
-	"\tseries_id\x18\x04 \x01(\tR\bseriesIdJ\x04\b\x02\x10\x03R\x10series_public_id\"\x93\x01\n" +
+	"\tseries_id\x18\x04 \x01(\tR\bseriesIdJ\x04\b\x02\x10\x03R\x10series_public_id\"\xa9\x01\n" +
 	"\x13SeriesEpisodeAccess\x12*\n" +
 	"\x11episode_public_id\x18\x01 \x01(\tR\x0fepisodePublicId\x121\n" +
 	"\x06access\x18\x02 \x01(\x0e2\x19.publira.v1.EpisodeAccessR\x06access\x12\x1d\n" +
 	"\n" +
-	"episode_id\x18\x03 \x01(\tR\tepisodeId\"\x9d\x01\n" +
+	"episode_id\x18\x03 \x01(\tR\tepisodeId\x12\x14\n" +
+	"\x05owned\x18\x04 \x01(\bR\x05owned\"\x9d\x01\n" +
 	"\x1eGetSeriesEpisodeAccessResponse\x12;\n" +
 	"\bepisodes\x18\x01 \x03(\v2\x1f.publira.v1.SeriesEpisodeAccessR\bepisodes\x12>\n" +
 	"\tremainder\x18\x02 \x01(\v2 .publira.v1.SeriesRemainderOfferR\tremainder\"\x9b\x01\n" +

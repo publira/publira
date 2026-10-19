@@ -254,3 +254,75 @@ func TestDBGetSeriesEpisodeAccessAnswersAnUnverifiableBearerAsAGuest(t *testing.
 		t.Fatalf("episodes = %v, want one locked", resp.Episodes)
 	}
 }
+
+func TestDBGetSeriesEpisodeAccessSaysWhichEpisodesTheReaderOwns(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	series := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA00001", Title: "Series", Published: true})
+	reader := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
+
+	future := time.Now().Add(time.Hour)
+	seed := func(publicID string, orderIndex int32) testutil.Episode {
+		return env.PG.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
+			PublicID:   publicID,
+			Title:      publicID,
+			OrderIndex: orderIndex,
+			Status:     testutil.EpisodeStatusPublished,
+			Price:      500,
+		})
+	}
+
+	bought := seed("EPBOUGHT0001", 1)
+	env.PG.SeedPurchase(t, tenant.ID, reader.ID, bought.ID, 500)
+	rented := seed("EPRENTED0001", 2)
+	env.PG.SeedPurchase(t, tenant.ID, reader.ID, rented.ID, 100)
+	execSQL(t, env, `UPDATE purchases SET kind = 'rental', expires_at = $1 WHERE episode_id = $2`, future, rented.ID)
+	ticketed := seed("EPTICKET0001", 3)
+	seedAccessTicket(t, env, tenant.ID, "TICKETLIVE01", ticketed.ID, reader.ID, &future, nil)
+	inVolume := seed("EPVOLUME0001", 4)
+	volume := env.PG.SeedVolume(t, tenant.ID, series.ID, testutil.VolumeSeed{
+		Published:  true,
+		EpisodeIDs: []uuid.UUID{inVolume.ID},
+	})
+	execSQL(t, env, `
+		INSERT INTO purchases (id, tenant_id, user_id, volume_id, price_at_purchase, currency)
+		VALUES ($1, $2, $3, $4, 900, $5)
+	`, uuid.Must(uuid.NewV7()), tenant.ID, reader.ID, volume.ID, env.PG.TenantCurrency(t, tenant.ID))
+	locked := seed("EPLOCKED0001", 5)
+
+	want := map[string]map[string]bool{
+		"guest": {},
+		"reader": {
+			bought.PublicID:   true,
+			inVolume.PublicID: true,
+		},
+	}
+	order := []string{bought.PublicID, rented.PublicID, ticketed.PublicID, inVolume.PublicID, locked.PublicID}
+
+	for _, caller := range []string{"guest", "reader"} {
+		t.Run(caller, func(t *testing.T) {
+			ctx := context.Background()
+			if caller == "reader" {
+				ctx = testutil.WithBearer(ctx, tokenFor(t, tenant, reader))
+			}
+			resp, err := env.catalogClient().GetSeriesEpisodeAccess(ctx, &publirav1.GetSeriesEpisodeAccessRequest{
+				Tenant:   tenantContext(tenant),
+				SeriesId: series.ID.String(),
+			})
+			if err != nil {
+				t.Fatalf("GetSeriesEpisodeAccess: %v", err)
+			}
+			if len(resp.Episodes) != len(order) {
+				t.Fatalf("episodes = %d, want %d", len(resp.Episodes), len(order))
+			}
+			for i, entry := range resp.Episodes {
+				if entry.EpisodePublicId != order[i] {
+					t.Fatalf("episode %d = %s, want %s", i, entry.EpisodePublicId, order[i])
+				}
+				if entry.Owned != want[caller][entry.EpisodePublicId] {
+					t.Errorf("%s owned = %t, want %t", entry.EpisodePublicId, entry.Owned, want[caller][entry.EpisodePublicId])
+				}
+			}
+		})
+	}
+}
