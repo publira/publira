@@ -425,3 +425,44 @@ func TestDBAnExpiredRemainderCheckoutMovesTheNextAttemptOn(t *testing.T) {
 		t.Fatalf("the attempt after an expiry reuses the key %q or the bundle %s", first.IdempotencyKey, first.Purchase.SeriesBundleID)
 	}
 }
+
+// A checkout started again after an editor changed what one of its episodes
+// opens for is a checkout of its own, whose bundle records the new period:
+// the request alone names the lines by title and price, which the change
+// leaves as they were.
+func TestDBARemainderCheckoutStartedAfterAPeriodChangeIsANewOne(t *testing.T) {
+	env := newSeriesRemainderEnv(t, "REMAINPER", "remainder-period.example.com")
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	if err := env.startRemainderCheckout(ctx, env.series.ID); err != nil {
+		t.Fatalf("StartSeriesRemainderCheckout: %v", err)
+	}
+	first := env.checkout.input
+	if _, err := env.pg.DB.ExecContext(ctx, `
+		UPDATE episode_listings
+		SET reading_period_hours = 72
+		WHERE episode_id = $1
+	`, env.lent.ID); err != nil {
+		t.Fatalf("change the reading period: %v", err)
+	}
+	if err := env.startRemainderCheckout(ctx, env.series.ID); err != nil {
+		t.Fatalf("StartSeriesRemainderCheckout after the change: %v", err)
+	}
+	next := env.checkout.input
+	if next.IdempotencyKey == first.IdempotencyKey || next.Purchase.SeriesBundleID == first.Purchase.SeriesBundleID {
+		t.Fatalf("the checkout after the change reuses the key %q or the bundle %s", first.IdempotencyKey, first.Purchase.SeriesBundleID)
+	}
+	var hours int32
+	if err := env.pg.DB.QueryRowContext(ctx, `
+		SELECT reading_period_hours
+		FROM series_bundle_episodes
+		WHERE series_bundle_id = $1
+			AND episode_id = $2
+	`, next.Purchase.SeriesBundleID, env.lent.ID).Scan(&hours); err != nil {
+		t.Fatalf("read the new bundle's period: %v", err)
+	}
+	if hours != 72 {
+		t.Fatalf("new bundle's period = %d, want 72", hours)
+	}
+}

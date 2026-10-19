@@ -47,6 +47,7 @@ var (
 	errTooManyToSell   = fmt.Errorf("%w: more episodes are left than one checkout lists", errNoSeriesRemainderSale)
 	errReaderCredited  = fmt.Errorf("%w: the reader is credited on an episode of it", errNoSeriesRemainderSale)
 	errPriceOutOfRange = fmt.Errorf("%w: it costs more than one checkout charges", errNoSeriesRemainderSale)
+	errDiscountedAway  = fmt.Errorf("%w: the discount leaves nothing to charge", errNoSeriesRemainderSale)
 )
 
 // newSeriesRemainderSale prices the episodes the reader does not hold yet. The
@@ -78,6 +79,11 @@ func newSeriesRemainderSale(rows []dbmodels.ListSeriesRemainderEpisodesRow, disc
 		return seriesRemainderSale{}, errPriceOutOfRange
 	}
 	price := listPrice * int64(100-discountPercent) / 100
+	// A deep discount on a few cheap episodes can round the price down to
+	// nothing, which is no checkout a provider takes.
+	if price == 0 {
+		return seriesRemainderSale{}, errDiscountedAway
+	}
 	sale.listPrice = int32(listPrice)
 	sale.price = int32(price)
 	sale.discountedPrices = make([]int32, len(sale.episodes))
@@ -262,7 +268,7 @@ func (s *apiServer) StartSeriesRemainderCheckout(
 	}
 	// The key is made before the bundle is written down, so it names the
 	// sale rather than the row, and the row is found again by it.
-	checkout.IdempotencyKey, err = seriesRemainderIdempotencyKey(checkout, series.ID, expiredCheckoutID, paidCheckoutID)
+	checkout.IdempotencyKey, err = seriesRemainderIdempotencyKey(checkout, series.ID, sale, expiredCheckoutID, paidCheckoutID)
 	if err != nil {
 		return nil, s.internalError(ctx, "failed to build the checkout idempotency key", err, "tenant_id", tenant.ID.String(), "series_id", series.ID.String())
 	}
@@ -280,11 +286,21 @@ func (s *apiServer) StartSeriesRemainderCheckout(
 
 // seriesRemainderIdempotencyKey names one reader's checkout of the rest of
 // one series by everything the request sends, for the reasons
-// checkoutIdempotencyKey gives. The episodes and their prices are among them:
-// a reader who buys one on its own, or an editor who reprices one, changes
-// what the next checkout sells.
-func seriesRemainderIdempotencyKey(req paymentprovider.CheckoutRequest, seriesID uuid.UUID, expiredCheckoutID, paidCheckoutID string) (string, error) {
-	sum, err := checkoutRequestDigest(req, expiredCheckoutID, paidCheckoutID)
+// checkoutIdempotencyKey gives, and by the terms the bundle written under the
+// key records besides, which the request does not carry: which episodes the
+// lines are, and the reading period each opens for. A reader who buys one
+// episode on its own, or an editor who reprices one or changes its period,
+// changes what the next checkout sells, and so the key and the bundle it finds.
+func seriesRemainderIdempotencyKey(req paymentprovider.CheckoutRequest, seriesID uuid.UUID, sale seriesRemainderSale, expiredCheckoutID, paidCheckoutID string) (string, error) {
+	type bundledEpisode struct {
+		ID                 uuid.UUID
+		ReadingPeriodHours int32
+	}
+	terms := make([]bundledEpisode, len(sale.episodes))
+	for i, episode := range sale.episodes {
+		terms[i] = bundledEpisode{ID: episode.ID, ReadingPeriodHours: episode.ReadingPeriodHours.Int32}
+	}
+	sum, err := checkoutRequestDigest(req, expiredCheckoutID, paidCheckoutID, terms)
 	if err != nil {
 		return "", err
 	}

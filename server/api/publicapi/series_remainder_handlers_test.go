@@ -73,18 +73,20 @@ func TestNewSeriesRemainderSaleRefusesWhatItCannotSell(t *testing.T) {
 	}
 	tooDear := remainderRows(2_000_000_000, 2_000_000_000)
 	for _, testCase := range []struct {
-		name string
-		rows []dbmodels.ListSeriesRemainderEpisodesRow
-		want error
+		name            string
+		rows            []dbmodels.ListSeriesRemainderEpisodesRow
+		discountPercent int32
+		want            error
 	}{
 		{name: "nothing priced", want: errNothingToSell},
 		{name: "everything held", rows: allHeld, want: errEverythingHeld},
 		{name: "a credited reader", rows: credited, want: errReaderCredited},
 		{name: "more than one checkout lists", rows: tooMany, want: errTooManyToSell},
 		{name: "more than one checkout charges", rows: tooDear, want: errPriceOutOfRange},
+		{name: "a price discounted down to nothing", rows: remainderRows(50), discountPercent: 99, want: errDiscountedAway},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			_, err := newSeriesRemainderSale(testCase.rows, 0)
+			_, err := newSeriesRemainderSale(testCase.rows, testCase.discountPercent)
 			if !errors.Is(err, testCase.want) || !errors.Is(err, errNoSeriesRemainderSale) {
 				t.Fatalf("error = %v, want %v", err, testCase.want)
 			}

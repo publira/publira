@@ -243,7 +243,7 @@ func rentalLineItemName(code, episodeTitle string, rentalPeriodHours int32) (str
 // of the episode, so each payment moves the next attempt onto a new checkout.
 // Empty is a reader who has paid for none.
 func checkoutIdempotencyKey(req paymentprovider.CheckoutRequest, expiredCheckoutID, paidCheckoutID string) (string, error) {
-	sum, err := checkoutRequestDigest(req, expiredCheckoutID, paidCheckoutID)
+	sum, err := checkoutRequestDigest(req, expiredCheckoutID, paidCheckoutID, nil)
 	if err != nil {
 		return "", err
 	}
@@ -255,14 +255,18 @@ func checkoutIdempotencyKey(req paymentprovider.CheckoutRequest, expiredCheckout
 }
 
 // checkoutRequestDigest is the part of an idempotency key that names the
-// request, the expired checkout, and the paid one.
-func checkoutRequestDigest(req paymentprovider.CheckoutRequest, expiredCheckoutID, paidCheckoutID string) ([]byte, error) {
+// request, the expired checkout, and the paid one, and terms, which a caller
+// that writes down more about the sale than the request carries passes. A nil
+// terms leaves the encoding as it was before terms existed, so the key of an
+// episode's or a volume's checkout does not change.
+func checkoutRequestDigest(req paymentprovider.CheckoutRequest, expiredCheckoutID, paidCheckoutID string, terms any) ([]byte, error) {
 	req.IdempotencyKey = ""
 	encoded, err := json.Marshal(struct {
 		Request           paymentprovider.CheckoutRequest
 		ExpiredCheckoutID string
 		PaidCheckoutID    string
-	}{req, expiredCheckoutID, paidCheckoutID})
+		Terms             any `json:",omitempty"`
+	}{req, expiredCheckoutID, paidCheckoutID, terms})
 	if err != nil {
 		return nil, fmt.Errorf("encode checkout request: %w", err)
 	}
