@@ -305,7 +305,11 @@ type CreateSeriesRequest struct {
 	ReadingPeriodHours int32 `protobuf:"varint,6,opt,name=reading_period_hours,json=readingPeriodHours,proto3" json:"reading_period_hours,omitempty"`
 	// Where the rental period of each new episode in the series starts. Zero
 	// states none. Negative is invalid_argument.
-	RentalPeriodHours        int32  `protobuf:"varint,27,opt,name=rental_period_hours,json=rentalPeriodHours,proto3" json:"rental_period_hours,omitempty"`
+	RentalPeriodHours int32 `protobuf:"varint,27,opt,name=rental_period_hours,json=rentalPeriodHours,proto3" json:"rental_period_hours,omitempty"`
+	// What a checkout of the rest of the series takes off the sum of its
+	// episodes' prices, in whole percent. Zero takes nothing off; anything
+	// outside 0 to 99 is invalid_argument.
+	BundleDiscountPercent    int32  `protobuf:"varint,28,opt,name=bundle_discount_percent,json=bundleDiscountPercent,proto3" json:"bundle_discount_percent,omitempty"`
 	EyeCatchImageData        []byte `protobuf:"bytes,8,opt,name=eye_catch_image_data,json=eyeCatchImageData,proto3" json:"eye_catch_image_data,omitempty"`
 	EyeCatchImageContentType string `protobuf:"bytes,9,opt,name=eye_catch_image_content_type,json=eyeCatchImageContentType,proto3" json:"eye_catch_image_content_type,omitempty"`
 	PublishedAt              string `protobuf:"bytes,12,opt,name=published_at,json=publishedAt,proto3" json:"published_at,omitempty"`
@@ -423,6 +427,13 @@ func (x *CreateSeriesRequest) GetReadingPeriodHours() int32 {
 func (x *CreateSeriesRequest) GetRentalPeriodHours() int32 {
 	if x != nil {
 		return x.RentalPeriodHours
+	}
+	return 0
+}
+
+func (x *CreateSeriesRequest) GetBundleDiscountPercent() int32 {
+	if x != nil {
+		return x.BundleDiscountPercent
 	}
 	return 0
 }
@@ -709,7 +720,12 @@ type UpdateSeriesRequest struct {
 	// Where the rental period of each new episode in the series starts; an
 	// episode keeps the value it was created with. Zero, sent explicitly, clears
 	// it. Negative is invalid_argument.
-	RentalPeriodHours        *int32 `protobuf:"varint,29,opt,name=rental_period_hours,json=rentalPeriodHours,proto3,oneof" json:"rental_period_hours,omitempty"`
+	RentalPeriodHours *int32 `protobuf:"varint,29,opt,name=rental_period_hours,json=rentalPeriodHours,proto3,oneof" json:"rental_period_hours,omitempty"`
+	// What a checkout of the rest of the series takes off the sum of its
+	// episodes' prices, in whole percent, from the next checkout on. Zero, sent
+	// explicitly, takes nothing off; anything outside 0 to 99 is
+	// invalid_argument.
+	BundleDiscountPercent    *int32 `protobuf:"varint,30,opt,name=bundle_discount_percent,json=bundleDiscountPercent,proto3,oneof" json:"bundle_discount_percent,omitempty"`
 	EyeCatchImageData        []byte `protobuf:"bytes,9,opt,name=eye_catch_image_data,json=eyeCatchImageData,proto3" json:"eye_catch_image_data,omitempty"`
 	EyeCatchImageContentType string `protobuf:"bytes,10,opt,name=eye_catch_image_content_type,json=eyeCatchImageContentType,proto3" json:"eye_catch_image_content_type,omitempty"`
 	ClearEyeCatchImage       bool   `protobuf:"varint,11,opt,name=clear_eye_catch_image,json=clearEyeCatchImage,proto3" json:"clear_eye_catch_image,omitempty"`
@@ -826,6 +842,13 @@ func (x *UpdateSeriesRequest) GetReadingPeriodHours() int32 {
 func (x *UpdateSeriesRequest) GetRentalPeriodHours() int32 {
 	if x != nil && x.RentalPeriodHours != nil {
 		return *x.RentalPeriodHours
+	}
+	return 0
+}
+
+func (x *UpdateSeriesRequest) GetBundleDiscountPercent() int32 {
+	if x != nil && x.BundleDiscountPercent != nil {
+		return *x.BundleDiscountPercent
 	}
 	return 0
 }
@@ -6818,14 +6841,16 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x03 \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\x04 \x01(\tR\tupdatedAt\"\xca\t\n" +
+	"updated_at\x18\x04 \x01(\tR\tupdatedAt\"\x82\n" +
+	"\n" +
 	"\x13CreateSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1a\n" +
 	"\bsynopsis\x18\x03 \x01(\tR\bsynopsis\x12!\n" +
 	"\fis_published\x18\x05 \x01(\bR\visPublished\x120\n" +
 	"\x14reading_period_hours\x18\x06 \x01(\x05R\x12readingPeriodHours\x12.\n" +
-	"\x13rental_period_hours\x18\x1b \x01(\x05R\x11rentalPeriodHours\x12/\n" +
+	"\x13rental_period_hours\x18\x1b \x01(\x05R\x11rentalPeriodHours\x126\n" +
+	"\x17bundle_discount_percent\x18\x1c \x01(\x05R\x15bundleDiscountPercent\x12/\n" +
 	"\x14eye_catch_image_data\x18\b \x01(\fR\x11eyeCatchImageData\x12>\n" +
 	"\x1ceye_catch_image_content_type\x18\t \x01(\tR\x18eyeCatchImageContentType\x12!\n" +
 	"\fpublished_at\x18\f \x01(\tR\vpublishedAt\x126\n" +
@@ -6853,37 +6878,40 @@ const file_publira_admin_v1_series_proto_rawDesc = "" +
 	"\x15purchase_availability\x18\x06 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\x14purchaseAvailability\x12G\n" +
 	"\ftranslations\x18\a \x03(\v2#.publira.admin.v1.SeriesTranslationR\ftranslations\"4\n" +
 	"\x16SeriesScheduleWeekdays\x12\x1a\n" +
-	"\bweekdays\x18\x01 \x03(\x05R\bweekdays\"\xc1\f\n" +
+	"\bweekdays\x18\x01 \x03(\x05R\bweekdays\"\x9a\r\n" +
 	"\x13UpdateSeriesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05title\x18\x03 \x01(\tR\x05title\x12\x1f\n" +
 	"\bsynopsis\x18\x04 \x01(\tH\x00R\bsynopsis\x88\x01\x01\x12!\n" +
 	"\fis_published\x18\x05 \x01(\bR\visPublished\x125\n" +
 	"\x14reading_period_hours\x18\x06 \x01(\x05H\x01R\x12readingPeriodHours\x88\x01\x01\x123\n" +
-	"\x13rental_period_hours\x18\x1d \x01(\x05H\x02R\x11rentalPeriodHours\x88\x01\x01\x12/\n" +
+	"\x13rental_period_hours\x18\x1d \x01(\x05H\x02R\x11rentalPeriodHours\x88\x01\x01\x12;\n" +
+	"\x17bundle_discount_percent\x18\x1e \x01(\x05H\x03R\x15bundleDiscountPercent\x88\x01\x01\x12/\n" +
 	"\x14eye_catch_image_data\x18\t \x01(\fR\x11eyeCatchImageData\x12>\n" +
 	"\x1ceye_catch_image_content_type\x18\n" +
 	" \x01(\tR\x18eyeCatchImageContentType\x121\n" +
 	"\x15clear_eye_catch_image\x18\v \x01(\bR\x12clearEyeCatchImage\x12!\n" +
 	"\fpublished_at\x18\f \x01(\tR\vpublishedAt\x12;\n" +
-	"\x06status\x18\r \x01(\x0e2\x1e.publira.types.v1.SeriesStatusH\x03R\x06status\x88\x01\x01\x12Q\n" +
+	"\x06status\x18\r \x01(\x0e2\x1e.publira.types.v1.SeriesStatusH\x04R\x06status\x88\x01\x01\x12Q\n" +
 	"\x0fweekly_schedule\x18\x18 \x01(\v2(.publira.admin.v1.SeriesScheduleWeekdaysR\x0eweeklySchedule\x12E\n" +
 	"\n" +
-	"age_rating\x18\x0f \x01(\x0e2!.publira.types.v1.SeriesAgeRatingH\x04R\tageRating\x88\x01\x01\x12\x1b\n" +
+	"age_rating\x18\x0f \x01(\x0e2!.publira.types.v1.SeriesAgeRatingH\x05R\tageRating\x88\x01\x01\x12\x1b\n" +
 	"\ttag_names\x18\x11 \x03(\tR\btagNames\x12N\n" +
 	"\x0fcreator_credits\x18\x12 \x03(\v2%.publira.admin.v1.SeriesCreatorCreditR\x0ecreatorCredits\x12E\n" +
-	"\fcomment_mode\x18\x13 \x01(\x0e2\x1d.publira.types.v1.CommentModeH\x05R\vcommentMode\x88\x01\x01\x12T\n" +
-	"\x11reading_direction\x18\x14 \x01(\x0e2\".publira.types.v1.ReadingDirectionH\x06R\x10readingDirection\x88\x01\x01\x121\n" +
-	"\x12spread_start_index\x18\x15 \x01(\x05H\aR\x10spreadStartIndex\x88\x01\x01\x12N\n" +
-	"\favailability\x18\x16 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityH\bR\favailability\x88\x01\x01\x12_\n" +
-	"\x15purchase_availability\x18\x17 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityH\tR\x14purchaseAvailability\x88\x01\x01\x12\x1b\n" +
+	"\fcomment_mode\x18\x13 \x01(\x0e2\x1d.publira.types.v1.CommentModeH\x06R\vcommentMode\x88\x01\x01\x12T\n" +
+	"\x11reading_direction\x18\x14 \x01(\x0e2\".publira.types.v1.ReadingDirectionH\aR\x10readingDirection\x88\x01\x01\x121\n" +
+	"\x12spread_start_index\x18\x15 \x01(\x05H\bR\x10spreadStartIndex\x88\x01\x01\x12N\n" +
+	"\favailability\x18\x16 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityH\tR\favailability\x88\x01\x01\x12_\n" +
+	"\x15purchase_availability\x18\x17 \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityH\n" +
+	"R\x14purchaseAvailability\x88\x01\x01\x12\x1b\n" +
 	"\tseries_id\x18\x19 \x01(\tR\bseriesId\x12\x19\n" +
 	"\blabel_id\x18\x1a \x01(\tR\alabelId\x12\x1b\n" +
 	"\tgenre_ids\x18\x1b \x03(\tR\bgenreIds\x12\x16\n" +
 	"\x06locale\x18\x1c \x01(\tR\x06localeB\v\n" +
 	"\t_synopsisB\x17\n" +
 	"\x15_reading_period_hoursB\x16\n" +
-	"\x14_rental_period_hoursB\t\n" +
+	"\x14_rental_period_hoursB\x1a\n" +
+	"\x18_bundle_discount_percentB\t\n" +
 	"\a_statusB\r\n" +
 	"\v_age_ratingB\x0f\n" +
 	"\r_comment_modeB\x14\n" +

@@ -1070,9 +1070,11 @@ class SeriesEpisodeAccess extends $pb.GeneratedMessage {
 class GetSeriesEpisodeAccessResponse extends $pb.GeneratedMessage {
   factory GetSeriesEpisodeAccessResponse({
     $core.Iterable<SeriesEpisodeAccess>? episodes,
+    SeriesRemainderOffer? remainder,
   }) {
     final result = GetSeriesEpisodeAccessResponse._();
     if (episodes != null) result.episodes.addAll(episodes);
+    if (remainder != null) result.remainder = remainder;
     return result;
   }
 
@@ -1091,6 +1093,8 @@ class GetSeriesEpisodeAccessResponse extends $pb.GeneratedMessage {
       createEmptyInstance: GetSeriesEpisodeAccessResponse.$_createMessage)
     ..pPM<SeriesEpisodeAccess>(1, _omitFieldNames ? '' : 'episodes',
         subBuilder: SeriesEpisodeAccess.$_createMessage)
+    ..aOM<SeriesRemainderOffer>(2, _omitFieldNames ? '' : 'remainder',
+        subBuilder: SeriesRemainderOffer.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1125,6 +1129,124 @@ class GetSeriesEpisodeAccessResponse extends $pb.GeneratedMessage {
   /// them.
   @$pb.TagNumber(1)
   $pb.PbList<SeriesEpisodeAccess> get episodes => $_getList(0);
+
+  /// The rest of the series as StartSeriesRemainderCheckout would sell it to the
+  /// caller from this surface now, a guest as a reader who holds nothing.
+  /// Unset when that call would sell nothing: no episode is left to buy, more
+  /// are left than one checkout lists, or the caller is credited on one of
+  /// them. It does not say whether the tenant takes payments, or whether its
+  /// app may send a reader to the provider's checkout at all.
+  @$pb.TagNumber(2)
+  SeriesRemainderOffer get remainder => $_getN(1);
+  @$pb.TagNumber(2)
+  set remainder(SeriesRemainderOffer value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasRemainder() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearRemainder() => $_clearField(2);
+  @$pb.TagNumber(2)
+  SeriesRemainderOffer ensureRemainder() => $_ensure(1);
+}
+
+/// What StartSeriesRemainderCheckout would charge, in the minor unit of the
+/// tenant currency, as Episode.price is.
+class SeriesRemainderOffer extends $pb.GeneratedMessage {
+  factory SeriesRemainderOffer({
+    $core.int? episodeCount,
+    $core.int? listPrice,
+    $core.int? discountPercent,
+    $core.int? price,
+  }) {
+    final result = SeriesRemainderOffer._();
+    if (episodeCount != null) result.episodeCount = episodeCount;
+    if (listPrice != null) result.listPrice = listPrice;
+    if (discountPercent != null) result.discountPercent = discountPercent;
+    if (price != null) result.price = price;
+    return result;
+  }
+
+  SeriesRemainderOffer._();
+
+  factory SeriesRemainderOffer.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SeriesRemainderOffer()..mergeFromBuffer(data, registry);
+  factory SeriesRemainderOffer.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SeriesRemainderOffer()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SeriesRemainderOffer',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: SeriesRemainderOffer.$_createMessage)
+    ..aI(1, _omitFieldNames ? '' : 'episodeCount')
+    ..aI(2, _omitFieldNames ? '' : 'listPrice')
+    ..aI(3, _omitFieldNames ? '' : 'discountPercent')
+    ..aI(4, _omitFieldNames ? '' : 'price')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SeriesRemainderOffer clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SeriesRemainderOffer copyWith(void Function(SeriesRemainderOffer) updates) =>
+      super.copyWith((message) => updates(message as SeriesRemainderOffer))
+          as SeriesRemainderOffer;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use SeriesRemainderOffer() / SeriesRemainderOffer.new instead')
+  static SeriesRemainderOffer create() => SeriesRemainderOffer._();
+  static $pb.GeneratedMessage $_createMessage() => SeriesRemainderOffer._();
+  @$core.override
+  SeriesRemainderOffer createEmptyInstance() => SeriesRemainderOffer._();
+  @$core.pragma('dart2js:noInline')
+  static SeriesRemainderOffer getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SeriesRemainderOffer>(
+          SeriesRemainderOffer.$_createMessage);
+  static SeriesRemainderOffer? _defaultInstance;
+
+  /// How many episodes the checkout would sell, never 0.
+  @$pb.TagNumber(1)
+  $core.int get episodeCount => $_getIZ(0);
+  @$pb.TagNumber(1)
+  set episodeCount($core.int value) => $_setSignedInt32(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasEpisodeCount() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearEpisodeCount() => $_clearField(1);
+
+  /// The sum of those episodes' prices.
+  @$pb.TagNumber(2)
+  $core.int get listPrice => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set listPrice($core.int value) => $_setSignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasListPrice() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearListPrice() => $_clearField(2);
+
+  /// Series.bundle_discount_percent; 0 when the series takes none off.
+  @$pb.TagNumber(3)
+  $core.int get discountPercent => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set discountPercent($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasDiscountPercent() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearDiscountPercent() => $_clearField(3);
+
+  /// What the reader pays: list_price less the discount, rounded down to the
+  /// minor unit.
+  @$pb.TagNumber(4)
+  $core.int get price => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set price($core.int value) => $_setSignedInt32(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasPrice() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearPrice() => $_clearField(4);
 }
 
 class GetEpisodeDetailRequest extends $pb.GeneratedMessage {
@@ -9343,12 +9465,208 @@ class StartVolumeCheckoutResponse extends $pb.GeneratedMessage {
   void clearCheckoutUrl() => $_clearField(1);
 }
 
+/// Starts a provider checkout of the rest of a series: every episode of it the
+/// calling surface lists and may sell, that has a price, and that the reader
+/// holds no active permanent copy of, each as a line item at its price, with
+/// the series' bundle discount (Series.bundle_discount_percent) taken off the
+/// total. It answers the URL of the provider's checkout page. The purchase is
+/// created by the provider's webhook alone, and opens each of those episodes as
+/// buying its permanent copy would: for good, or for the reading period that
+/// copy had when the checkout started. GetSeriesEpisodeAccess quotes the same
+/// sale beforehand.
+///
+/// `client` names the surface the checkout is started from, as it does on
+/// StartEpisodeCheckout, and `locale` the language the line items name the
+/// episodes in. A series the surface may not show is not_found. A series with
+/// no priced episode the surface sells is failed_precondition, and so is one
+/// with more such episodes left than the 100 line items one checkout holds. A
+/// reader who holds every one of them is already_exists, and one whose account
+/// is linked to a creator any of them credits is permission_denied with the
+/// ErrorInfo reason READER_CREDITED_ON_EPISODE.
+///
+/// The storefront is returned to the series page with `checkout` and
+/// `remainder` in the query; the app to `/{locale}/checkout/return` with
+/// `series`, `remainder`, and `status`.
+class StartSeriesRemainderCheckoutRequest extends $pb.GeneratedMessage {
+  factory StartSeriesRemainderCheckoutRequest({
+    $0.TenantContext? tenant,
+    $core.String? seriesId,
+    StartEpisodeCheckoutRequest_Client? client,
+    $core.String? locale,
+  }) {
+    final result = StartSeriesRemainderCheckoutRequest._();
+    if (tenant != null) result.tenant = tenant;
+    if (seriesId != null) result.seriesId = seriesId;
+    if (client != null) result.client = client;
+    if (locale != null) result.locale = locale;
+    return result;
+  }
+
+  StartSeriesRemainderCheckoutRequest._();
+
+  factory StartSeriesRemainderCheckoutRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StartSeriesRemainderCheckoutRequest()..mergeFromBuffer(data, registry);
+  factory StartSeriesRemainderCheckoutRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StartSeriesRemainderCheckoutRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'StartSeriesRemainderCheckoutRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: StartSeriesRemainderCheckoutRequest.$_createMessage)
+    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $0.TenantContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'seriesId')
+    ..aE<StartEpisodeCheckoutRequest_Client>(3, _omitFieldNames ? '' : 'client',
+        enumValues: StartEpisodeCheckoutRequest_Client.values)
+    ..aOS(4, _omitFieldNames ? '' : 'locale')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StartSeriesRemainderCheckoutRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StartSeriesRemainderCheckoutRequest copyWith(
+          void Function(StartSeriesRemainderCheckoutRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as StartSeriesRemainderCheckoutRequest))
+          as StartSeriesRemainderCheckoutRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use StartSeriesRemainderCheckoutRequest() / StartSeriesRemainderCheckoutRequest.new instead')
+  static StartSeriesRemainderCheckoutRequest create() =>
+      StartSeriesRemainderCheckoutRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      StartSeriesRemainderCheckoutRequest._();
+  @$core.override
+  StartSeriesRemainderCheckoutRequest createEmptyInstance() =>
+      StartSeriesRemainderCheckoutRequest._();
+  @$core.pragma('dart2js:noInline')
+  static StartSeriesRemainderCheckoutRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              StartSeriesRemainderCheckoutRequest>(
+          StartSeriesRemainderCheckoutRequest.$_createMessage);
+  static StartSeriesRemainderCheckoutRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($0.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.TenantContext ensureTenant() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.String get seriesId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set seriesId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSeriesId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSeriesId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  StartEpisodeCheckoutRequest_Client get client => $_getN(2);
+  @$pb.TagNumber(3)
+  set client(StartEpisodeCheckoutRequest_Client value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasClient() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearClient() => $_clearField(3);
+
+  /// The reader's locale. Every episode title on the checkout page is that of
+  /// the translation in this locale, else the tenant's default locale's, else
+  /// the oldest one. Empty means the tenant's default locale.
+  @$pb.TagNumber(4)
+  $core.String get locale => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set locale($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasLocale() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearLocale() => $_clearField(4);
+}
+
+class StartSeriesRemainderCheckoutResponse extends $pb.GeneratedMessage {
+  factory StartSeriesRemainderCheckoutResponse({
+    $core.String? checkoutUrl,
+  }) {
+    final result = StartSeriesRemainderCheckoutResponse._();
+    if (checkoutUrl != null) result.checkoutUrl = checkoutUrl;
+    return result;
+  }
+
+  StartSeriesRemainderCheckoutResponse._();
+
+  factory StartSeriesRemainderCheckoutResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StartSeriesRemainderCheckoutResponse()..mergeFromBuffer(data, registry);
+  factory StartSeriesRemainderCheckoutResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StartSeriesRemainderCheckoutResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'StartSeriesRemainderCheckoutResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: StartSeriesRemainderCheckoutResponse.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'checkoutUrl')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StartSeriesRemainderCheckoutResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StartSeriesRemainderCheckoutResponse copyWith(
+          void Function(StartSeriesRemainderCheckoutResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as StartSeriesRemainderCheckoutResponse))
+          as StartSeriesRemainderCheckoutResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use StartSeriesRemainderCheckoutResponse() / StartSeriesRemainderCheckoutResponse.new instead')
+  static StartSeriesRemainderCheckoutResponse create() =>
+      StartSeriesRemainderCheckoutResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      StartSeriesRemainderCheckoutResponse._();
+  @$core.override
+  StartSeriesRemainderCheckoutResponse createEmptyInstance() =>
+      StartSeriesRemainderCheckoutResponse._();
+  @$core.pragma('dart2js:noInline')
+  static StartSeriesRemainderCheckoutResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+              StartSeriesRemainderCheckoutResponse>(
+          StartSeriesRemainderCheckoutResponse.$_createMessage);
+  static StartSeriesRemainderCheckoutResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get checkoutUrl => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set checkoutUrl($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasCheckoutUrl() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearCheckoutUrl() => $_clearField(1);
+}
+
 /// One purchase belonging to the signed-in reader. `is_active` is evaluated by
 /// the API at read time: a purchase is active until it is revoked or its
 /// expiry passes, and one without an expiry stays active until it is revoked.
 ///
-/// A purchase is of one episode or of one volume: exactly one of `episode` and
-/// `volume` is set, and `series` is the series of either.
+/// A purchase is of one episode, of one volume, or of the rest of a series:
+/// exactly one of `episode`, `volume`, and `series_bundle` is set, and `series`
+/// is the series of any of them.
 class MyPurchase extends $pb.GeneratedMessage {
   factory MyPurchase({
     $core.String? id,
@@ -9364,6 +9682,7 @@ class MyPurchase extends $pb.GeneratedMessage {
     $core.String? revokedAt,
     $0.PurchaseKind? kind,
     $0.Volume? volume,
+    $0.SeriesBundle? seriesBundle,
   }) {
     final result = MyPurchase._();
     if (id != null) result.id = id;
@@ -9379,6 +9698,7 @@ class MyPurchase extends $pb.GeneratedMessage {
     if (revokedAt != null) result.revokedAt = revokedAt;
     if (kind != null) result.kind = kind;
     if (volume != null) result.volume = volume;
+    if (seriesBundle != null) result.seriesBundle = seriesBundle;
     return result;
   }
 
@@ -9412,6 +9732,8 @@ class MyPurchase extends $pb.GeneratedMessage {
         enumValues: $0.PurchaseKind.values)
     ..aOM<$0.Volume>(13, _omitFieldNames ? '' : 'volume',
         subBuilder: $0.Volume.$_createMessage)
+    ..aOM<$0.SeriesBundle>(14, _omitFieldNames ? '' : 'seriesBundle',
+        subBuilder: $0.SeriesBundle.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -9552,8 +9874,8 @@ class MyPurchase extends $pb.GeneratedMessage {
   void clearRevokedAt() => $_clearField(11);
 
   /// Which of the episode's sales the reader bought, never unspecified. A
-  /// rental always carries expires_at. A purchase of a volume is always
-  /// PURCHASE_KIND_PURCHASE.
+  /// rental always carries expires_at. A purchase of a volume or of the rest of
+  /// a series is always PURCHASE_KIND_PURCHASE.
   @$pb.TagNumber(12)
   $0.PurchaseKind get kind => $_getN(11);
   @$pb.TagNumber(12)
@@ -9576,6 +9898,22 @@ class MyPurchase extends $pb.GeneratedMessage {
   void clearVolume() => $_clearField(13);
   @$pb.TagNumber(13)
   $0.Volume ensureVolume() => $_ensure(12);
+
+  /// The rest of the series bought, set on a purchase made by
+  /// StartSeriesRemainderCheckout. Such a purchase has no expires_at of its
+  /// own: an episode whose permanent copy had a reading period when the
+  /// checkout started stops opening when that period runs out, and the
+  /// episode reads report it.
+  @$pb.TagNumber(14)
+  $0.SeriesBundle get seriesBundle => $_getN(13);
+  @$pb.TagNumber(14)
+  set seriesBundle($0.SeriesBundle value) => $_setField(14, value);
+  @$pb.TagNumber(14)
+  $core.bool hasSeriesBundle() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearSeriesBundle() => $_clearField(14);
+  @$pb.TagNumber(14)
+  $0.SeriesBundle ensureSeriesBundle() => $_ensure(13);
 }
 
 /// Cursor pagination. Field shape and token rules: proto/README.md.
@@ -11254,6 +11592,15 @@ class PurchaseServiceApi {
           $pb.ClientContext? ctx, StartVolumeCheckoutRequest request) =>
       _client.invoke<StartVolumeCheckoutResponse>(ctx, 'PurchaseService',
           'StartVolumeCheckout', request, StartVolumeCheckoutResponse());
+  $async.Future<StartSeriesRemainderCheckoutResponse>
+      startSeriesRemainderCheckout($pb.ClientContext? ctx,
+              StartSeriesRemainderCheckoutRequest request) =>
+          _client.invoke<StartSeriesRemainderCheckoutResponse>(
+              ctx,
+              'PurchaseService',
+              'StartSeriesRemainderCheckout',
+              request,
+              StartSeriesRemainderCheckoutResponse());
 
   /// Lists only the authenticated reader's purchases in the requested tenant.
   $async.Future<ListMyPurchasesResponse> listMyPurchases(

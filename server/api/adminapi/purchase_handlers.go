@@ -18,6 +18,7 @@ import (
 	"github.com/publira/publira/server/internal/paymentprovider"
 	"github.com/publira/publira/server/internal/paymentsettings"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
@@ -70,6 +71,14 @@ func purchaseRefundable(row dbmodels.ListPurchasesForTenantByIDsRow, payments pa
 }
 
 func mapPurchase(row dbmodels.ListPurchasesForTenantByIDsRow, payments paymentsettings.PublicConfig) *publiraadminv1.AdminPurchase {
+	var seriesBundle *publirattypesv1.SeriesBundle
+	if row.SeriesBundleID.Valid {
+		seriesBundle = &publirattypesv1.SeriesBundle{
+			Id:              row.SeriesBundleID.UUID.String(),
+			EpisodeCount:    row.SeriesBundleEpisodeCount,
+			DiscountPercent: row.SeriesBundleDiscountPercent.Int32,
+		}
+	}
 	return &publiraadminv1.AdminPurchase{
 		Id:               row.ID.String(),
 		EpisodeId:        nullUUIDString(row.EpisodeID),
@@ -78,6 +87,7 @@ func mapPurchase(row dbmodels.ListPurchasesForTenantByIDsRow, payments paymentse
 		VolumeId:         nullUUIDString(row.VolumeID),
 		VolumePublicId:   formatOptionalString(row.VolumePublicID),
 		VolumeTitle:      formatOptionalString(row.VolumeTitle),
+		SeriesBundle:     seriesBundle,
 		SeriesPublicId:   row.SeriesPublicID,
 		SeriesTitle:      row.SeriesTitle,
 		ReaderPublicId:   formatOptionalString(row.ReaderPublicID),

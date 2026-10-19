@@ -18,10 +18,11 @@ enum PurchaseRevocationReason {
   PURCHASE_REVOCATION_REASON_STAFF = 3;
 }
 
-// A reader's purchase of one episode or of one volume, as tenant staff see it.
-// The episode fields are set on a purchase of an episode and the volume fields
-// on a purchase of a volume, never both; the series fields name the series of
-// either.
+// A reader's purchase of one episode, of one volume, or of the rest of a
+// series, as tenant staff see it. The episode fields are set on a purchase of
+// an episode, the volume fields on a purchase of a volume, and series_bundle
+// on a purchase of the rest of a series, never two of them; the series fields
+// name the series of any of them.
 message AdminPurchase {
   // The purchase's primary key, a UUID.
   string id = 1;
@@ -70,6 +71,7 @@ message AdminPurchase {
   string volume_id = 22;
   string volume_public_id = 23;
   string volume_title = 24;
+  publira.types.v1.SeriesBundle series_bundle = 25;
 }
 
 // Cursor pagination, newest purchase first. Field shape and token rules:
@@ -81,7 +83,7 @@ message ListPurchasesRequest {
   int32 limit = 2;
   // Opaque token from a previous response. Empty for the first page.
   string token = 3;
-  // Only purchases of an episode or a volume of this series.
+  // Only purchases of an episode, a volume, or the rest of this series.
   string series_public_id = 4;
   // Only purchases of this episode.
   string episode_public_id = 5;

@@ -648,6 +648,9 @@ func (s *adminServer) CreateSeries(
 	if req.RentalPeriodHours < 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, "rental_period_hours must be greater than or equal to 0")
 	}
+	if err := validateBundleDiscountPercent(req.BundleDiscountPercent); err != nil {
+		return nil, err
+	}
 	eyeCatchImage, err := normalizeSeriesEyeCatchImage(req.EyeCatchImageData, req.EyeCatchImageContentType)
 	if err != nil {
 		return nil, err
@@ -720,16 +723,17 @@ func (s *adminServer) CreateSeries(
 		return nil, err
 	}
 	_, err = s.queriesFor(txCtx).CreateSeriesListing(txCtx, dbmodels.CreateSeriesListingParams{
-		TenantID:           tenant.ID,
-		SeriesID:           base.ID,
-		ReadingPeriodHours: sql.NullInt32{Int32: req.ReadingPeriodHours, Valid: req.ReadingPeriodHours > 0},
-		RentalPeriodHours:  sql.NullInt32{Int32: req.RentalPeriodHours, Valid: req.RentalPeriodHours > 0},
-		Status:             listingMetadata.status,
-		ScheduleWeekdays:   listingMetadata.scheduleWeekdays,
-		AgeRating:          listingMetadata.ageRating,
-		CommentMode:        listingMetadata.commentMode,
-		ReadingDirection:   listingMetadata.readingDirection,
-		SpreadStartIndex:   listingMetadata.spreadStartIndex,
+		TenantID:              tenant.ID,
+		SeriesID:              base.ID,
+		ReadingPeriodHours:    sql.NullInt32{Int32: req.ReadingPeriodHours, Valid: req.ReadingPeriodHours > 0},
+		RentalPeriodHours:     sql.NullInt32{Int32: req.RentalPeriodHours, Valid: req.RentalPeriodHours > 0},
+		BundleDiscountPercent: sql.NullInt32{Int32: req.BundleDiscountPercent, Valid: req.BundleDiscountPercent > 0},
+		Status:                listingMetadata.status,
+		ScheduleWeekdays:      listingMetadata.scheduleWeekdays,
+		AgeRating:             listingMetadata.ageRating,
+		CommentMode:           listingMetadata.commentMode,
+		ReadingDirection:      listingMetadata.readingDirection,
+		SpreadStartIndex:      listingMetadata.spreadStartIndex,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to create series listing", err, "tenant_id", tenant.ID.String(), "series_id", base.ID.String())
@@ -864,6 +868,9 @@ func (s *adminServer) UpdateSeries(
 	if req.GetRentalPeriodHours() < 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, "rental_period_hours must be greater than or equal to 0")
 	}
+	if err := validateBundleDiscountPercent(req.GetBundleDiscountPercent()); err != nil {
+		return nil, err
+	}
 	if req.ClearEyeCatchImage && len(req.EyeCatchImageData) > 0 {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("clear_eye_catch_image and eye_catch_image_data cannot be used together"), "eye_catch_image_data")
 	}
@@ -956,24 +963,26 @@ func (s *adminServer) UpdateSeries(
 		return nil, err
 	}
 	_, err = s.queriesFor(txCtx).UpdateSeriesListing(txCtx, dbmodels.UpdateSeriesListingParams{
-		TenantID:                tenant.ID,
-		SeriesID:                current.ID,
-		ReadingPeriodHours:      sql.NullInt32{Int32: req.GetReadingPeriodHours(), Valid: req.GetReadingPeriodHours() > 0},
-		RentalPeriodHours:       sql.NullInt32{Int32: req.GetRentalPeriodHours(), Valid: req.GetRentalPeriodHours() > 0},
-		Status:                  listingMetadata.status,
-		ScheduleWeekdays:        listingMetadata.scheduleWeekdays,
-		AgeRating:               listingMetadata.ageRating,
-		CommentMode:             listingMetadata.commentMode,
-		ReadingDirection:        listingMetadata.readingDirection,
-		SpreadStartIndex:        listingMetadata.spreadStartIndex,
-		WriteReadingPeriodHours: req.ReadingPeriodHours != nil,
-		WriteRentalPeriodHours:  req.RentalPeriodHours != nil,
-		WriteStatus:             req.Status != nil,
-		WriteScheduleWeekdays:   req.WeeklySchedule != nil,
-		WriteAgeRating:          req.AgeRating != nil,
-		WriteCommentMode:        req.CommentMode != nil,
-		WriteReadingDirection:   req.ReadingDirection != nil,
-		WriteSpreadStartIndex:   req.SpreadStartIndex != nil,
+		TenantID:                   tenant.ID,
+		SeriesID:                   current.ID,
+		ReadingPeriodHours:         sql.NullInt32{Int32: req.GetReadingPeriodHours(), Valid: req.GetReadingPeriodHours() > 0},
+		RentalPeriodHours:          sql.NullInt32{Int32: req.GetRentalPeriodHours(), Valid: req.GetRentalPeriodHours() > 0},
+		BundleDiscountPercent:      sql.NullInt32{Int32: req.GetBundleDiscountPercent(), Valid: req.GetBundleDiscountPercent() > 0},
+		Status:                     listingMetadata.status,
+		ScheduleWeekdays:           listingMetadata.scheduleWeekdays,
+		AgeRating:                  listingMetadata.ageRating,
+		CommentMode:                listingMetadata.commentMode,
+		ReadingDirection:           listingMetadata.readingDirection,
+		SpreadStartIndex:           listingMetadata.spreadStartIndex,
+		WriteReadingPeriodHours:    req.ReadingPeriodHours != nil,
+		WriteRentalPeriodHours:     req.RentalPeriodHours != nil,
+		WriteBundleDiscountPercent: req.BundleDiscountPercent != nil,
+		WriteStatus:                req.Status != nil,
+		WriteScheduleWeekdays:      req.WeeklySchedule != nil,
+		WriteAgeRating:             req.AgeRating != nil,
+		WriteCommentMode:           req.CommentMode != nil,
+		WriteReadingDirection:      req.ReadingDirection != nil,
+		WriteSpreadStartIndex:      req.SpreadStartIndex != nil,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to update series listing", err, "tenant_id", tenant.ID.String(), "series_id", current.ID.String())
@@ -1114,6 +1123,7 @@ type seriesPageRow struct {
 	synopsis               string
 	readingPeriodHours     sql.NullInt32
 	rentalPeriodHours      sql.NullInt32
+	bundleDiscountPercent  sql.NullInt32
 	status                 sql.NullString
 	scheduleWeekdays       []int32
 	ageRating              sql.NullString
@@ -1137,6 +1147,7 @@ func mapSeriesDescRows(rows []dbmodels.ListSeriesByTenantDescRow) []seriesPageRo
 			synopsis:               row.Synopsis,
 			readingPeriodHours:     row.ReadingPeriodHours,
 			rentalPeriodHours:      row.RentalPeriodHours,
+			bundleDiscountPercent:  row.BundleDiscountPercent,
 			status:                 row.Status,
 			scheduleWeekdays:       row.ScheduleWeekdays,
 			ageRating:              row.AgeRating,
@@ -1163,6 +1174,7 @@ func mapSeriesAscRows(rows []dbmodels.ListSeriesByTenantAscRow) []seriesPageRow 
 			synopsis:               row.Synopsis,
 			readingPeriodHours:     row.ReadingPeriodHours,
 			rentalPeriodHours:      row.RentalPeriodHours,
+			bundleDiscountPercent:  row.BundleDiscountPercent,
 			status:                 row.Status,
 			scheduleWeekdays:       row.ScheduleWeekdays,
 			ageRating:              row.AgeRating,
@@ -1314,6 +1326,7 @@ func (s *adminServer) ListSeries(
 		if row.rentalPeriodHours.Valid {
 			item.RentalPeriodHours = row.rentalPeriodHours.Int32
 		}
+		item.BundleDiscountPercent = row.bundleDiscountPercent.Int32
 		if row.status.Valid {
 			status, statusErr := protomapper.SeriesStatusFromStored(row.status.String)
 			if statusErr != nil {
@@ -1479,4 +1492,14 @@ func (s *adminServer) GetSeries(
 		PurchaseAvailability: purchaseAvailability,
 		Translations:         translations,
 	}, nil
+}
+
+// validateBundleDiscountPercent refuses a bundle discount outside what a
+// series stores: none, or a whole percent from 1 to 99, since a bundle that
+// costs nothing would be no sale.
+func validateBundleDiscountPercent(percent int32) error {
+	if percent < 0 || percent > 99 {
+		return rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("bundle_discount_percent must be between 0 and 99"), "bundle_discount_percent")
+	}
+	return nil
 }

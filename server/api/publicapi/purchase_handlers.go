@@ -243,6 +243,20 @@ func rentalLineItemName(code, episodeTitle string, rentalPeriodHours int32) (str
 // of the episode, so each payment moves the next attempt onto a new checkout.
 // Empty is a reader who has paid for none.
 func checkoutIdempotencyKey(req paymentprovider.CheckoutRequest, expiredCheckoutID, paidCheckoutID string) (string, error) {
+	sum, err := checkoutRequestDigest(req, expiredCheckoutID, paidCheckoutID)
+	if err != nil {
+		return "", err
+	}
+	purchase := req.Purchase
+	if purchase.VolumeID != uuid.Nil {
+		return fmt.Sprintf("volume-checkout:%s:%s:%s:%x", purchase.TenantID, purchase.ReaderID, purchase.VolumeID, sum), nil
+	}
+	return fmt.Sprintf("episode-checkout:%s:%s:%s:%x", purchase.TenantID, purchase.ReaderID, purchase.EpisodeID, sum), nil
+}
+
+// checkoutRequestDigest is the part of an idempotency key that names the
+// request, the expired checkout, and the paid one.
+func checkoutRequestDigest(req paymentprovider.CheckoutRequest, expiredCheckoutID, paidCheckoutID string) ([]byte, error) {
 	req.IdempotencyKey = ""
 	encoded, err := json.Marshal(struct {
 		Request           paymentprovider.CheckoutRequest
@@ -250,14 +264,10 @@ func checkoutIdempotencyKey(req paymentprovider.CheckoutRequest, expiredCheckout
 		PaidCheckoutID    string
 	}{req, expiredCheckoutID, paidCheckoutID})
 	if err != nil {
-		return "", fmt.Errorf("encode checkout request: %w", err)
+		return nil, fmt.Errorf("encode checkout request: %w", err)
 	}
 	sum := sha256.Sum256(encoded)
-	purchase := req.Purchase
-	if purchase.VolumeID != uuid.Nil {
-		return fmt.Sprintf("volume-checkout:%s:%s:%s:%x", purchase.TenantID, purchase.ReaderID, purchase.VolumeID, sum[:16]), nil
-	}
-	return fmt.Sprintf("episode-checkout:%s:%s:%s:%x", purchase.TenantID, purchase.ReaderID, purchase.EpisodeID, sum[:16]), nil
+	return sum[:16], nil
 }
 
 // refuseCheckoutForStoreRoute answers failed_precondition for a tenant whose
@@ -310,38 +320,46 @@ type purchasePageRow struct {
 	volumePublicID    string
 	volumeTitle       string
 	volumeOrderIndex  int32
-	seriesID          uuid.UUID
-	seriesPublicID    string
-	seriesTitle       string
-	seriesLocale      string
+	seriesBundleID    uuid.NullUUID
+	// seriesBundleEpisodeCount and seriesBundleDiscountPercent describe the
+	// bundle bought, and are zero on any other purchase.
+	seriesBundleEpisodeCount    int32
+	seriesBundleDiscountPercent int32
+	seriesID                    uuid.UUID
+	seriesPublicID              string
+	seriesTitle                 string
+	seriesLocale                string
 }
 
 func mapPurchaseDescRows(rows []dbmodels.ListMyPurchasesDescRow) []purchasePageRow {
 	mapped := make([]purchasePageRow, 0, len(rows))
 	for _, row := range rows {
 		mapped = append(mapped, purchasePageRow{
-			id:                row.ID,
-			kind:              row.Kind,
-			priceAtPurchase:   row.PriceAtPurchase,
-			currency:          row.Currency,
-			expiresAt:         row.ExpiresAt,
-			revokedAt:         row.RevokedAt,
-			refundedAmount:    row.RefundedAmount,
-			refundedAt:        row.RefundedAt,
-			purchasedAt:       row.PurchasedAt,
-			episodeID:         row.EpisodeID,
-			episodePublicID:   row.EpisodePublicID.String,
-			episodeTitle:      row.EpisodeTitle,
-			episodeLocale:     row.EpisodeTitleLocale,
-			episodeOrderIndex: row.EpisodeOrderIndex.Int32,
-			volumeID:          row.VolumeID,
-			volumePublicID:    row.VolumePublicID.String,
-			volumeTitle:       row.VolumeTitle.String,
-			volumeOrderIndex:  row.VolumeOrderIndex.Int32,
-			seriesID:          row.SeriesID,
-			seriesPublicID:    row.SeriesPublicID,
-			seriesTitle:       row.SeriesTitle,
-			seriesLocale:      row.SeriesTitleLocale,
+			id:                          row.ID,
+			kind:                        row.Kind,
+			priceAtPurchase:             row.PriceAtPurchase,
+			currency:                    row.Currency,
+			expiresAt:                   row.ExpiresAt,
+			revokedAt:                   row.RevokedAt,
+			refundedAmount:              row.RefundedAmount,
+			refundedAt:                  row.RefundedAt,
+			purchasedAt:                 row.PurchasedAt,
+			episodeID:                   row.EpisodeID,
+			episodePublicID:             row.EpisodePublicID.String,
+			episodeTitle:                row.EpisodeTitle,
+			episodeLocale:               row.EpisodeTitleLocale,
+			episodeOrderIndex:           row.EpisodeOrderIndex.Int32,
+			volumeID:                    row.VolumeID,
+			volumePublicID:              row.VolumePublicID.String,
+			volumeTitle:                 row.VolumeTitle.String,
+			volumeOrderIndex:            row.VolumeOrderIndex.Int32,
+			seriesBundleID:              row.SeriesBundleID,
+			seriesBundleEpisodeCount:    row.SeriesBundleEpisodeCount,
+			seriesBundleDiscountPercent: row.SeriesBundleDiscountPercent.Int32,
+			seriesID:                    row.SeriesID,
+			seriesPublicID:              row.SeriesPublicID,
+			seriesTitle:                 row.SeriesTitle,
+			seriesLocale:                row.SeriesTitleLocale,
 		})
 	}
 	return mapped
@@ -351,28 +369,31 @@ func mapPurchaseAscRows(rows []dbmodels.ListMyPurchasesAscRow) []purchasePageRow
 	mapped := make([]purchasePageRow, 0, len(rows))
 	for _, row := range rows {
 		mapped = append(mapped, purchasePageRow{
-			id:                row.ID,
-			kind:              row.Kind,
-			priceAtPurchase:   row.PriceAtPurchase,
-			currency:          row.Currency,
-			expiresAt:         row.ExpiresAt,
-			revokedAt:         row.RevokedAt,
-			refundedAmount:    row.RefundedAmount,
-			refundedAt:        row.RefundedAt,
-			purchasedAt:       row.PurchasedAt,
-			episodeID:         row.EpisodeID,
-			episodePublicID:   row.EpisodePublicID.String,
-			episodeTitle:      row.EpisodeTitle,
-			episodeLocale:     row.EpisodeTitleLocale,
-			episodeOrderIndex: row.EpisodeOrderIndex.Int32,
-			volumeID:          row.VolumeID,
-			volumePublicID:    row.VolumePublicID.String,
-			volumeTitle:       row.VolumeTitle.String,
-			volumeOrderIndex:  row.VolumeOrderIndex.Int32,
-			seriesID:          row.SeriesID,
-			seriesPublicID:    row.SeriesPublicID,
-			seriesTitle:       row.SeriesTitle,
-			seriesLocale:      row.SeriesTitleLocale,
+			id:                          row.ID,
+			kind:                        row.Kind,
+			priceAtPurchase:             row.PriceAtPurchase,
+			currency:                    row.Currency,
+			expiresAt:                   row.ExpiresAt,
+			revokedAt:                   row.RevokedAt,
+			refundedAmount:              row.RefundedAmount,
+			refundedAt:                  row.RefundedAt,
+			purchasedAt:                 row.PurchasedAt,
+			episodeID:                   row.EpisodeID,
+			episodePublicID:             row.EpisodePublicID.String,
+			episodeTitle:                row.EpisodeTitle,
+			episodeLocale:               row.EpisodeTitleLocale,
+			episodeOrderIndex:           row.EpisodeOrderIndex.Int32,
+			volumeID:                    row.VolumeID,
+			volumePublicID:              row.VolumePublicID.String,
+			volumeTitle:                 row.VolumeTitle.String,
+			volumeOrderIndex:            row.VolumeOrderIndex.Int32,
+			seriesBundleID:              row.SeriesBundleID,
+			seriesBundleEpisodeCount:    row.SeriesBundleEpisodeCount,
+			seriesBundleDiscountPercent: row.SeriesBundleDiscountPercent.Int32,
+			seriesID:                    row.SeriesID,
+			seriesPublicID:              row.SeriesPublicID,
+			seriesTitle:                 row.SeriesTitle,
+			seriesLocale:                row.SeriesTitleLocale,
 		})
 	}
 	return mapped
@@ -453,16 +474,23 @@ func purchaseItemFromRow(row purchasePageRow, now time.Time) (*publirav1.MyPurch
 			Locale:   row.seriesLocale,
 		},
 	}
-	// A purchase is of an episode or of a volume, and the library names
-	// whichever it bought.
-	if row.volumeID.Valid {
+	// A purchase is of an episode, a volume, or the rest of a series, and the
+	// library names whichever it bought.
+	switch {
+	case row.volumeID.Valid:
 		item.Volume = &publirattypesv1.Volume{
 			Id:         row.volumeID.UUID.String(),
 			PublicId:   row.volumePublicID,
 			Title:      row.volumeTitle,
 			OrderIndex: row.volumeOrderIndex,
 		}
-	} else {
+	case row.seriesBundleID.Valid:
+		item.SeriesBundle = &publirattypesv1.SeriesBundle{
+			Id:              row.seriesBundleID.UUID.String(),
+			EpisodeCount:    row.seriesBundleEpisodeCount,
+			DiscountPercent: row.seriesBundleDiscountPercent,
+		}
+	default:
 		item.Episode = &publirattypesv1.Episode{
 			Id:         row.episodeID.UUID.String(),
 			OrderIndex: row.episodeOrderIndex,
@@ -652,8 +680,18 @@ func (s *apiServer) ProcessPaymentWebhook(
 }
 
 // recordExpiredCheckout records the checkout the provider reports expired as
-// the reader's latest on what it would have sold: the episode, or the volume.
+// the reader's latest on what it would have sold: the episode, the volume, or
+// the rest of the series.
 func (s *apiServer) recordExpiredCheckout(ctx context.Context, tenantID uuid.UUID, providerID string, event paymentprovider.CheckoutExpired) error {
+	if event.Purchase.SeriesBundleID != uuid.Nil {
+		return s.queriesFor(ctx).RecordExpiredSeriesBundleCheckout(ctx, dbmodels.RecordExpiredSeriesBundleCheckoutParams{
+			Provider:           providerID,
+			ProviderCheckoutID: event.CheckoutID,
+			TenantID:           tenantID,
+			ID:                 event.Purchase.SeriesBundleID,
+			UserID:             event.Purchase.ReaderID,
+		})
+	}
 	if event.Purchase.VolumeID != uuid.Nil {
 		return s.queriesFor(ctx).RecordExpiredVolumeCheckout(ctx, dbmodels.RecordExpiredVolumeCheckoutParams{
 			TenantID:           tenantID,
@@ -906,8 +944,8 @@ func (s *apiServer) recordLostDispute(
 }
 
 // createPurchase records the purchase a completed checkout paid for, of an
-// episode or of a volume, and
-// everything that follows from it, in one transaction: the refund or the
+// episode, a volume, or the rest of a series, and everything that follows
+// from it, in one transaction: the refund or the
 // dispute that may have overtaken it, its engagement event, and the receipt the reader is owed.
 // A delivery that fails partway therefore leaves nothing behind, and the
 // provider's retry starts again from the purchase.
@@ -934,7 +972,21 @@ func (s *apiServer) createPurchase(
 	// are recorded, because each took a payment. A redelivery of a checkout
 	// already recorded inserts nothing here and queues no second receipt.
 	var created dbmodels.Purchase
-	if purchase.VolumeID != uuid.Nil {
+	switch {
+	case purchase.SeriesBundleID != uuid.Nil:
+		created, err = queries.CreatePurchaseFromProviderSeriesBundleCheckout(ctx, dbmodels.CreatePurchaseFromProviderSeriesBundleCheckoutParams{
+			ID:                 uuid.New(),
+			TenantID:           tenantID,
+			UserID:             purchase.ReaderID,
+			SeriesBundleID:     purchase.SeriesBundleID,
+			PriceAtPurchase:    purchase.Price,
+			Provider:           providerID,
+			ProviderCheckoutID: event.CheckoutID,
+			ProviderPaymentID:  paymentID,
+			IsTest:             event.Test,
+			Currency:           purchase.Currency,
+		})
+	case purchase.VolumeID != uuid.Nil:
 		created, err = queries.CreatePurchaseFromProviderVolumeCheckout(ctx, dbmodels.CreatePurchaseFromProviderVolumeCheckoutParams{
 			ID:                 uuid.New(),
 			TenantID:           tenantID,
@@ -947,7 +999,7 @@ func (s *apiServer) createPurchase(
 			IsTest:             event.Test,
 			Currency:           purchase.Currency,
 		})
-	} else {
+	default:
 		var expiresAt sql.NullTime
 		if hours := purchase.ReadingPeriodHours; hours > 0 {
 			now := time.Now().UTC()
@@ -987,9 +1039,9 @@ func (s *apiServer) createPurchase(
 		}
 	}
 
-	// The engagement events are an episode's, and a volume is not one, so a
-	// purchase of a volume projects none.
-	if purchase.VolumeID == uuid.Nil {
+	// The engagement events are an episode's, and a volume or the rest of a
+	// series is not one, so a purchase of either projects none.
+	if purchase.EpisodeID != uuid.Nil {
 		_, err = queries.ProjectPurchaseContentEvent(ctx, dbmodels.ProjectPurchaseContentEventParams{
 			ID:                 uuid.Must(uuid.NewV7()),
 			TenantID:           tenantID,

@@ -296,16 +296,17 @@ var emailCopyCases = []struct {
 		request: emailrenderer.Request{
 			Template: "purchase_receipt",
 			Data: map[string]any{
-				"amount":        int64(500),
-				"currency":      "JPY",
-				"episode_title": "Episode 1",
-				"expires_at":    "2030-01-17T12:00:00Z",
-				"is_test":       false,
-				"library_url":   "https://reader.example.test/my/library",
-				"purchased_at":  copyPurchasedAt,
-				"series_title":  "The Lighthouse Keeper",
-				"tenant_name":   "Aoto Press",
-				"volume_title":  "",
+				"amount":                      int64(500),
+				"currency":                    "JPY",
+				"episode_title":               "Episode 1",
+				"expires_at":                  "2030-01-17T12:00:00Z",
+				"is_test":                     false,
+				"library_url":                 "https://reader.example.test/my/library",
+				"purchased_at":                copyPurchasedAt,
+				"series_title":                "The Lighthouse Keeper",
+				"tenant_name":                 "Aoto Press",
+				"volume_title":                "",
+				"series_bundle_episode_count": int64(0),
 			},
 		},
 	},
@@ -315,16 +316,17 @@ var emailCopyCases = []struct {
 		request: emailrenderer.Request{
 			Template: "purchase_receipt",
 			Data: map[string]any{
-				"amount":        int64(499),
-				"currency":      "USD",
-				"episode_title": "Episode 1",
-				"expires_at":    "",
-				"is_test":       false,
-				"library_url":   "https://reader.example.test/my/library",
-				"purchased_at":  copyPurchasedAt,
-				"series_title":  "The Lighthouse Keeper",
-				"tenant_name":   "Aoto Press",
-				"volume_title":  "",
+				"amount":                      int64(499),
+				"currency":                    "USD",
+				"episode_title":               "Episode 1",
+				"expires_at":                  "",
+				"is_test":                     false,
+				"library_url":                 "https://reader.example.test/my/library",
+				"purchased_at":                copyPurchasedAt,
+				"series_title":                "The Lighthouse Keeper",
+				"tenant_name":                 "Aoto Press",
+				"volume_title":                "",
+				"series_bundle_episode_count": int64(0),
 			},
 		},
 	},
@@ -334,16 +336,17 @@ var emailCopyCases = []struct {
 		request: emailrenderer.Request{
 			Template: "purchase_receipt",
 			Data: map[string]any{
-				"amount":        int64(100),
-				"currency":      "JPY",
-				"episode_title": "Episode 1",
-				"expires_at":    "",
-				"is_test":       true,
-				"library_url":   "https://reader.example.test/my/library",
-				"purchased_at":  copyPurchasedAt,
-				"series_title":  "The Lighthouse Keeper",
-				"tenant_name":   "Aoto Press",
-				"volume_title":  "",
+				"amount":                      int64(100),
+				"currency":                    "JPY",
+				"episode_title":               "Episode 1",
+				"expires_at":                  "",
+				"is_test":                     true,
+				"library_url":                 "https://reader.example.test/my/library",
+				"purchased_at":                copyPurchasedAt,
+				"series_title":                "The Lighthouse Keeper",
+				"tenant_name":                 "Aoto Press",
+				"volume_title":                "",
+				"series_bundle_episode_count": int64(0),
 			},
 		},
 	},
@@ -353,16 +356,37 @@ var emailCopyCases = []struct {
 		request: emailrenderer.Request{
 			Template: "purchase_receipt",
 			Data: map[string]any{
-				"amount":        int64(1500),
-				"currency":      "JPY",
-				"episode_title": "",
-				"expires_at":    "",
-				"is_test":       false,
-				"library_url":   "https://reader.example.test/my/library",
-				"purchased_at":  copyPurchasedAt,
-				"series_title":  "The Lighthouse Keeper",
-				"tenant_name":   "Aoto Press",
-				"volume_title":  "Volume 1",
+				"amount":                      int64(1500),
+				"currency":                    "JPY",
+				"episode_title":               "",
+				"expires_at":                  "",
+				"is_test":                     false,
+				"library_url":                 "https://reader.example.test/my/library",
+				"purchased_at":                copyPurchasedAt,
+				"series_title":                "The Lighthouse Keeper",
+				"tenant_name":                 "Aoto Press",
+				"volume_title":                "Volume 1",
+				"series_bundle_episode_count": int64(0),
+			},
+		},
+	},
+	{
+		name:     "purchase_receipt for a purchase of the rest of a series",
+		subjects: map[string]string{"en": "Aoto Press purchase receipt", "ja": "Aoto Press購入完了"},
+		request: emailrenderer.Request{
+			Template: "purchase_receipt",
+			Data: map[string]any{
+				"amount":                      int64(2700),
+				"currency":                    "JPY",
+				"episode_title":               "",
+				"expires_at":                  "",
+				"is_test":                     false,
+				"library_url":                 "https://reader.example.test/my/library",
+				"purchased_at":                copyPurchasedAt,
+				"series_title":                "The Lighthouse Keeper",
+				"tenant_name":                 "Aoto Press",
+				"volume_title":                "",
+				"series_bundle_episode_count": int64(12),
 			},
 		},
 	},
@@ -493,6 +517,7 @@ func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
 		isTest       bool
 		episodeTitle string
 		volumeTitle  string
+		bundleCount  int64
 		wantText     string
 	}{
 		{
@@ -559,22 +584,53 @@ func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
 				"If the button does not work, paste this URL into your browser. https://reader.example.test/my/library\n\n" +
 				"This email was sent by Aoto Press.",
 		},
+		{
+			name:        "in English for the rest of a series",
+			locale:      "en",
+			amount:      2700,
+			currency:    "JPY",
+			bundleCount: 12,
+			wantText: "Aoto Press\n\nThank you for your purchase\n\n" +
+				"Here is the receipt for your purchase on Aoto Press.\n\n" +
+				"Series: The Lighthouse Keeper\n\nRemaining episodes: 12 episodes\n\n" +
+				"Price paid: ¥2,700 (JPY)\n\n" +
+				"Purchased: Jan 15, 2030, 9:00\u202fPM\n\n" +
+				"Open your purchases https://reader.example.test/my/library\n\n" +
+				"If the button does not work, paste this URL into your browser. https://reader.example.test/my/library\n\n" +
+				"This email was sent by Aoto Press.",
+		},
+		{
+			name:        "in Japanese for the rest of a series",
+			locale:      "ja",
+			amount:      2700,
+			currency:    "JPY",
+			bundleCount: 12,
+			wantText: "Aoto Press\n\nご購入ありがとうございます\n\n" +
+				"Aoto Pressでのご購入内容をお知らせします。\n\n" +
+				"シリーズ: The Lighthouse Keeper\n\n残りのエピソード: 12話\n\n" +
+				"購入価格: ￥2,700（JPY）\n\n" +
+				"購入日時: 2030/01/15 21:00\n\n" +
+				"購入済み一覧を開く https://reader.example.test/my/library\n\n" +
+				"ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。 https://reader.example.test/my/library\n\n" +
+				"このメールはAoto Pressから送信されています。",
+		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			email, err := emailCopy(emailrenderer.Request{
 				Template: "purchase_receipt",
 				Locale:   testCase.locale,
 				Data: map[string]any{
-					"amount":        testCase.amount,
-					"currency":      testCase.currency,
-					"episode_title": testCase.episodeTitle,
-					"expires_at":    testCase.expiresAt,
-					"is_test":       testCase.isTest,
-					"library_url":   "https://reader.example.test/my/library",
-					"purchased_at":  copyPurchasedAt,
-					"series_title":  "The Lighthouse Keeper",
-					"tenant_name":   "Aoto Press",
-					"volume_title":  testCase.volumeTitle,
+					"amount":                      testCase.amount,
+					"currency":                    testCase.currency,
+					"episode_title":               testCase.episodeTitle,
+					"expires_at":                  testCase.expiresAt,
+					"is_test":                     testCase.isTest,
+					"library_url":                 "https://reader.example.test/my/library",
+					"purchased_at":                copyPurchasedAt,
+					"series_title":                "The Lighthouse Keeper",
+					"tenant_name":                 "Aoto Press",
+					"volume_title":                testCase.volumeTitle,
+					"series_bundle_episode_count": testCase.bundleCount,
 				},
 				TimeZone: "Asia/Tokyo",
 			})

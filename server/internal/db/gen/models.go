@@ -892,6 +892,7 @@ type Purchase struct {
 	DisputeLostAt      sql.NullTime   `json:"dispute_lost_at"`
 	Kind               string         `json:"kind"`
 	VolumeID           uuid.NullUUID  `json:"volume_id"`
+	SeriesBundleID     uuid.NullUUID  `json:"series_bundle_id"`
 }
 
 type ReaderIconPreset struct {
@@ -987,6 +988,30 @@ type Series struct {
 	PublicationRevalidatedAt sql.NullTime   `json:"publication_revalidated_at"`
 }
 
+type SeriesBundle struct {
+	ID                        uuid.UUID      `json:"id"`
+	TenantID                  uuid.UUID      `json:"tenant_id"`
+	SeriesID                  uuid.UUID      `json:"series_id"`
+	UserID                    uuid.NullUUID  `json:"user_id"`
+	IdempotencyKey            string         `json:"idempotency_key"`
+	DiscountPercent           sql.NullInt32  `json:"discount_percent"`
+	Price                     int32          `json:"price"`
+	ExpiredProvider           sql.NullString `json:"expired_provider"`
+	ExpiredProviderCheckoutID sql.NullString `json:"expired_provider_checkout_id"`
+	ExpiredAt                 sql.NullTime   `json:"expired_at"`
+	CreatedAt                 time.Time      `json:"created_at"`
+}
+
+type SeriesBundleEpisode struct {
+	TenantID           uuid.UUID     `json:"tenant_id"`
+	SeriesBundleID     uuid.UUID     `json:"series_bundle_id"`
+	EpisodeID          uuid.UUID     `json:"episode_id"`
+	Position           int32         `json:"position"`
+	ListPrice          int32         `json:"list_price"`
+	Price              int32         `json:"price"`
+	ReadingPeriodHours sql.NullInt32 `json:"reading_period_hours"`
+}
+
 type SeriesCreator struct {
 	SeriesID     uuid.UUID     `json:"series_id"`
 	CreatorID    uuid.UUID     `json:"creator_id"`
@@ -1034,19 +1059,20 @@ type SeriesImageVariant struct {
 }
 
 type SeriesListing struct {
-	SeriesID           uuid.UUID      `json:"series_id"`
-	ReadingPeriodHours sql.NullInt32  `json:"reading_period_hours"`
-	IsPublished        sql.NullBool   `json:"is_published"`
-	PublishedAt        sql.NullTime   `json:"published_at"`
-	TenantID           uuid.UUID      `json:"tenant_id"`
-	Status             string         `json:"status"`
-	ScheduleWeekdays   []int32        `json:"schedule_weekdays"`
-	AgeRating          string         `json:"age_rating"`
-	EpisodeRatingMode  sql.NullString `json:"episode_rating_mode"`
-	CommentMode        sql.NullString `json:"comment_mode"`
-	ReadingDirection   string         `json:"reading_direction"`
-	SpreadStartIndex   int32          `json:"spread_start_index"`
-	RentalPeriodHours  sql.NullInt32  `json:"rental_period_hours"`
+	SeriesID              uuid.UUID      `json:"series_id"`
+	ReadingPeriodHours    sql.NullInt32  `json:"reading_period_hours"`
+	IsPublished           sql.NullBool   `json:"is_published"`
+	PublishedAt           sql.NullTime   `json:"published_at"`
+	TenantID              uuid.UUID      `json:"tenant_id"`
+	Status                string         `json:"status"`
+	ScheduleWeekdays      []int32        `json:"schedule_weekdays"`
+	AgeRating             string         `json:"age_rating"`
+	EpisodeRatingMode     sql.NullString `json:"episode_rating_mode"`
+	CommentMode           sql.NullString `json:"comment_mode"`
+	ReadingDirection      string         `json:"reading_direction"`
+	SpreadStartIndex      int32          `json:"spread_start_index"`
+	RentalPeriodHours     sql.NullInt32  `json:"rental_period_hours"`
+	BundleDiscountPercent sql.NullInt32  `json:"bundle_discount_percent"`
 }
 
 type SeriesRatingCount struct {

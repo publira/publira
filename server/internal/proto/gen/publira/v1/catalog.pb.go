@@ -646,7 +646,7 @@ func (x StartEpisodeCheckoutRequest_Client) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use StartEpisodeCheckoutRequest_Client.Descriptor instead.
 func (StartEpisodeCheckoutRequest_Client) EnumDescriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{87, 0}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{88, 0}
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -1412,7 +1412,14 @@ type GetSeriesEpisodeAccessResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Every published episode of the series, in the order GetSeriesDetail lists
 	// them.
-	Episodes      []*SeriesEpisodeAccess `protobuf:"bytes,1,rep,name=episodes,proto3" json:"episodes,omitempty"`
+	Episodes []*SeriesEpisodeAccess `protobuf:"bytes,1,rep,name=episodes,proto3" json:"episodes,omitempty"`
+	// The rest of the series as StartSeriesRemainderCheckout would sell it to the
+	// caller from this surface now, a guest as a reader who holds nothing.
+	// Unset when that call would sell nothing: no episode is left to buy, more
+	// are left than one checkout lists, or the caller is credited on one of
+	// them. It does not say whether the tenant takes payments, or whether its
+	// app may send a reader to the provider's checkout at all.
+	Remainder     *SeriesRemainderOffer `protobuf:"bytes,2,opt,name=remainder,proto3" json:"remainder,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1454,6 +1461,88 @@ func (x *GetSeriesEpisodeAccessResponse) GetEpisodes() []*SeriesEpisodeAccess {
 	return nil
 }
 
+func (x *GetSeriesEpisodeAccessResponse) GetRemainder() *SeriesRemainderOffer {
+	if x != nil {
+		return x.Remainder
+	}
+	return nil
+}
+
+// What StartSeriesRemainderCheckout would charge, in the minor unit of the
+// tenant currency, as Episode.price is.
+type SeriesRemainderOffer struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// How many episodes the checkout would sell, never 0.
+	EpisodeCount int32 `protobuf:"varint,1,opt,name=episode_count,json=episodeCount,proto3" json:"episode_count,omitempty"`
+	// The sum of those episodes' prices.
+	ListPrice int32 `protobuf:"varint,2,opt,name=list_price,json=listPrice,proto3" json:"list_price,omitempty"`
+	// Series.bundle_discount_percent; 0 when the series takes none off.
+	DiscountPercent int32 `protobuf:"varint,3,opt,name=discount_percent,json=discountPercent,proto3" json:"discount_percent,omitempty"`
+	// What the reader pays: list_price less the discount, rounded down to the
+	// minor unit.
+	Price         int32 `protobuf:"varint,4,opt,name=price,proto3" json:"price,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SeriesRemainderOffer) Reset() {
+	*x = SeriesRemainderOffer{}
+	mi := &file_publira_v1_catalog_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SeriesRemainderOffer) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SeriesRemainderOffer) ProtoMessage() {}
+
+func (x *SeriesRemainderOffer) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_catalog_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SeriesRemainderOffer.ProtoReflect.Descriptor instead.
+func (*SeriesRemainderOffer) Descriptor() ([]byte, []int) {
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *SeriesRemainderOffer) GetEpisodeCount() int32 {
+	if x != nil {
+		return x.EpisodeCount
+	}
+	return 0
+}
+
+func (x *SeriesRemainderOffer) GetListPrice() int32 {
+	if x != nil {
+		return x.ListPrice
+	}
+	return 0
+}
+
+func (x *SeriesRemainderOffer) GetDiscountPercent() int32 {
+	if x != nil {
+		return x.DiscountPercent
+	}
+	return 0
+}
+
+func (x *SeriesRemainderOffer) GetPrice() int32 {
+	if x != nil {
+		return x.Price
+	}
+	return 0
+}
+
 type GetEpisodeDetailRequest struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	Tenant   *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -1470,7 +1559,7 @@ type GetEpisodeDetailRequest struct {
 
 func (x *GetEpisodeDetailRequest) Reset() {
 	*x = GetEpisodeDetailRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[10]
+	mi := &file_publira_v1_catalog_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1482,7 +1571,7 @@ func (x *GetEpisodeDetailRequest) String() string {
 func (*GetEpisodeDetailRequest) ProtoMessage() {}
 
 func (x *GetEpisodeDetailRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[10]
+	mi := &file_publira_v1_catalog_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1495,7 +1584,7 @@ func (x *GetEpisodeDetailRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetEpisodeDetailRequest.ProtoReflect.Descriptor instead.
 func (*GetEpisodeDetailRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{10}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GetEpisodeDetailRequest) GetTenant() *v1.TenantContext {
@@ -1563,7 +1652,7 @@ type EpisodeNeighbor struct {
 
 func (x *EpisodeNeighbor) Reset() {
 	*x = EpisodeNeighbor{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[11]
+	mi := &file_publira_v1_catalog_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1575,7 +1664,7 @@ func (x *EpisodeNeighbor) String() string {
 func (*EpisodeNeighbor) ProtoMessage() {}
 
 func (x *EpisodeNeighbor) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[11]
+	mi := &file_publira_v1_catalog_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1588,7 +1677,7 @@ func (x *EpisodeNeighbor) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EpisodeNeighbor.ProtoReflect.Descriptor instead.
 func (*EpisodeNeighbor) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{11}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *EpisodeNeighbor) GetPublicId() string {
@@ -1702,7 +1791,7 @@ type GetEpisodeDetailResponse struct {
 
 func (x *GetEpisodeDetailResponse) Reset() {
 	*x = GetEpisodeDetailResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[12]
+	mi := &file_publira_v1_catalog_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1714,7 +1803,7 @@ func (x *GetEpisodeDetailResponse) String() string {
 func (*GetEpisodeDetailResponse) ProtoMessage() {}
 
 func (x *GetEpisodeDetailResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[12]
+	mi := &file_publira_v1_catalog_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1727,7 +1816,7 @@ func (x *GetEpisodeDetailResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetEpisodeDetailResponse.ProtoReflect.Descriptor instead.
 func (*GetEpisodeDetailResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{12}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *GetEpisodeDetailResponse) GetEpisode() *v1.Episode {
@@ -1824,7 +1913,7 @@ type PublishedCreator struct {
 
 func (x *PublishedCreator) Reset() {
 	*x = PublishedCreator{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[13]
+	mi := &file_publira_v1_catalog_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1836,7 +1925,7 @@ func (x *PublishedCreator) String() string {
 func (*PublishedCreator) ProtoMessage() {}
 
 func (x *PublishedCreator) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[13]
+	mi := &file_publira_v1_catalog_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1849,7 +1938,7 @@ func (x *PublishedCreator) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PublishedCreator.ProtoReflect.Descriptor instead.
 func (*PublishedCreator) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{13}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *PublishedCreator) GetPublicId() string {
@@ -1927,7 +2016,7 @@ type ListPublishedCreatorsRequest struct {
 
 func (x *ListPublishedCreatorsRequest) Reset() {
 	*x = ListPublishedCreatorsRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[14]
+	mi := &file_publira_v1_catalog_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1939,7 +2028,7 @@ func (x *ListPublishedCreatorsRequest) String() string {
 func (*ListPublishedCreatorsRequest) ProtoMessage() {}
 
 func (x *ListPublishedCreatorsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[14]
+	mi := &file_publira_v1_catalog_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1952,7 +2041,7 @@ func (x *ListPublishedCreatorsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPublishedCreatorsRequest.ProtoReflect.Descriptor instead.
 func (*ListPublishedCreatorsRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{14}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ListPublishedCreatorsRequest) GetTenant() *v1.TenantContext {
@@ -1996,7 +2085,7 @@ type ListPublishedCreatorsResponse struct {
 
 func (x *ListPublishedCreatorsResponse) Reset() {
 	*x = ListPublishedCreatorsResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[15]
+	mi := &file_publira_v1_catalog_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2008,7 +2097,7 @@ func (x *ListPublishedCreatorsResponse) String() string {
 func (*ListPublishedCreatorsResponse) ProtoMessage() {}
 
 func (x *ListPublishedCreatorsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[15]
+	mi := &file_publira_v1_catalog_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2021,7 +2110,7 @@ func (x *ListPublishedCreatorsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPublishedCreatorsResponse.ProtoReflect.Descriptor instead.
 func (*ListPublishedCreatorsResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{15}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ListPublishedCreatorsResponse) GetCreators() []*PublishedCreator {
@@ -2071,7 +2160,7 @@ type GetPublishedCreatorDetailRequest struct {
 
 func (x *GetPublishedCreatorDetailRequest) Reset() {
 	*x = GetPublishedCreatorDetailRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[16]
+	mi := &file_publira_v1_catalog_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2083,7 +2172,7 @@ func (x *GetPublishedCreatorDetailRequest) String() string {
 func (*GetPublishedCreatorDetailRequest) ProtoMessage() {}
 
 func (x *GetPublishedCreatorDetailRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[16]
+	mi := &file_publira_v1_catalog_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2096,7 +2185,7 @@ func (x *GetPublishedCreatorDetailRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPublishedCreatorDetailRequest.ProtoReflect.Descriptor instead.
 func (*GetPublishedCreatorDetailRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{16}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *GetPublishedCreatorDetailRequest) GetTenant() *v1.TenantContext {
@@ -2156,7 +2245,7 @@ type GetPublishedCreatorDetailResponse struct {
 
 func (x *GetPublishedCreatorDetailResponse) Reset() {
 	*x = GetPublishedCreatorDetailResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[17]
+	mi := &file_publira_v1_catalog_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2168,7 +2257,7 @@ func (x *GetPublishedCreatorDetailResponse) String() string {
 func (*GetPublishedCreatorDetailResponse) ProtoMessage() {}
 
 func (x *GetPublishedCreatorDetailResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[17]
+	mi := &file_publira_v1_catalog_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2181,7 +2270,7 @@ func (x *GetPublishedCreatorDetailResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use GetPublishedCreatorDetailResponse.ProtoReflect.Descriptor instead.
 func (*GetPublishedCreatorDetailResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{17}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *GetPublishedCreatorDetailResponse) GetCreator() *PublishedCreator {
@@ -2232,7 +2321,7 @@ type PublishedLabel struct {
 
 func (x *PublishedLabel) Reset() {
 	*x = PublishedLabel{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[18]
+	mi := &file_publira_v1_catalog_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2244,7 +2333,7 @@ func (x *PublishedLabel) String() string {
 func (*PublishedLabel) ProtoMessage() {}
 
 func (x *PublishedLabel) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[18]
+	mi := &file_publira_v1_catalog_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2257,7 +2346,7 @@ func (x *PublishedLabel) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PublishedLabel.ProtoReflect.Descriptor instead.
 func (*PublishedLabel) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{18}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *PublishedLabel) GetPublicId() string {
@@ -2321,7 +2410,7 @@ type GetPublishedLabelDetailRequest struct {
 
 func (x *GetPublishedLabelDetailRequest) Reset() {
 	*x = GetPublishedLabelDetailRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[19]
+	mi := &file_publira_v1_catalog_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2333,7 +2422,7 @@ func (x *GetPublishedLabelDetailRequest) String() string {
 func (*GetPublishedLabelDetailRequest) ProtoMessage() {}
 
 func (x *GetPublishedLabelDetailRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[19]
+	mi := &file_publira_v1_catalog_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2346,7 +2435,7 @@ func (x *GetPublishedLabelDetailRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPublishedLabelDetailRequest.ProtoReflect.Descriptor instead.
 func (*GetPublishedLabelDetailRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{19}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *GetPublishedLabelDetailRequest) GetTenant() *v1.TenantContext {
@@ -2406,7 +2495,7 @@ type GetPublishedLabelDetailResponse struct {
 
 func (x *GetPublishedLabelDetailResponse) Reset() {
 	*x = GetPublishedLabelDetailResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[20]
+	mi := &file_publira_v1_catalog_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2418,7 +2507,7 @@ func (x *GetPublishedLabelDetailResponse) String() string {
 func (*GetPublishedLabelDetailResponse) ProtoMessage() {}
 
 func (x *GetPublishedLabelDetailResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[20]
+	mi := &file_publira_v1_catalog_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2431,7 +2520,7 @@ func (x *GetPublishedLabelDetailResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPublishedLabelDetailResponse.ProtoReflect.Descriptor instead.
 func (*GetPublishedLabelDetailResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{20}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *GetPublishedLabelDetailResponse) GetLabel() *PublishedLabel {
@@ -2488,7 +2577,7 @@ type PublishedGenre struct {
 
 func (x *PublishedGenre) Reset() {
 	*x = PublishedGenre{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[21]
+	mi := &file_publira_v1_catalog_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2500,7 +2589,7 @@ func (x *PublishedGenre) String() string {
 func (*PublishedGenre) ProtoMessage() {}
 
 func (x *PublishedGenre) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[21]
+	mi := &file_publira_v1_catalog_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2513,7 +2602,7 @@ func (x *PublishedGenre) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PublishedGenre.ProtoReflect.Descriptor instead.
 func (*PublishedGenre) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{21}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *PublishedGenre) GetPublicId() string {
@@ -2581,7 +2670,7 @@ type PublishedGenreFeaturedSeries struct {
 
 func (x *PublishedGenreFeaturedSeries) Reset() {
 	*x = PublishedGenreFeaturedSeries{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[22]
+	mi := &file_publira_v1_catalog_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2593,7 +2682,7 @@ func (x *PublishedGenreFeaturedSeries) String() string {
 func (*PublishedGenreFeaturedSeries) ProtoMessage() {}
 
 func (x *PublishedGenreFeaturedSeries) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[22]
+	mi := &file_publira_v1_catalog_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2606,7 +2695,7 @@ func (x *PublishedGenreFeaturedSeries) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PublishedGenreFeaturedSeries.ProtoReflect.Descriptor instead.
 func (*PublishedGenreFeaturedSeries) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{22}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *PublishedGenreFeaturedSeries) GetPublicId() string {
@@ -2663,7 +2752,7 @@ type ListPublishedGenresRequest struct {
 
 func (x *ListPublishedGenresRequest) Reset() {
 	*x = ListPublishedGenresRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[23]
+	mi := &file_publira_v1_catalog_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2675,7 +2764,7 @@ func (x *ListPublishedGenresRequest) String() string {
 func (*ListPublishedGenresRequest) ProtoMessage() {}
 
 func (x *ListPublishedGenresRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[23]
+	mi := &file_publira_v1_catalog_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2688,7 +2777,7 @@ func (x *ListPublishedGenresRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPublishedGenresRequest.ProtoReflect.Descriptor instead.
 func (*ListPublishedGenresRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{23}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *ListPublishedGenresRequest) GetTenant() *v1.TenantContext {
@@ -2739,7 +2828,7 @@ type ListPublishedGenresResponse struct {
 
 func (x *ListPublishedGenresResponse) Reset() {
 	*x = ListPublishedGenresResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[24]
+	mi := &file_publira_v1_catalog_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2751,7 +2840,7 @@ func (x *ListPublishedGenresResponse) String() string {
 func (*ListPublishedGenresResponse) ProtoMessage() {}
 
 func (x *ListPublishedGenresResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[24]
+	mi := &file_publira_v1_catalog_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2764,7 +2853,7 @@ func (x *ListPublishedGenresResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPublishedGenresResponse.ProtoReflect.Descriptor instead.
 func (*ListPublishedGenresResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{24}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *ListPublishedGenresResponse) GetGenres() []*PublishedGenre {
@@ -2801,7 +2890,7 @@ type PublishedTag struct {
 
 func (x *PublishedTag) Reset() {
 	*x = PublishedTag{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[25]
+	mi := &file_publira_v1_catalog_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2813,7 +2902,7 @@ func (x *PublishedTag) String() string {
 func (*PublishedTag) ProtoMessage() {}
 
 func (x *PublishedTag) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[25]
+	mi := &file_publira_v1_catalog_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2826,7 +2915,7 @@ func (x *PublishedTag) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PublishedTag.ProtoReflect.Descriptor instead.
 func (*PublishedTag) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{25}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *PublishedTag) GetName() string {
@@ -2873,7 +2962,7 @@ type ListPublishedTagsRequest struct {
 
 func (x *ListPublishedTagsRequest) Reset() {
 	*x = ListPublishedTagsRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[26]
+	mi := &file_publira_v1_catalog_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2885,7 +2974,7 @@ func (x *ListPublishedTagsRequest) String() string {
 func (*ListPublishedTagsRequest) ProtoMessage() {}
 
 func (x *ListPublishedTagsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[26]
+	mi := &file_publira_v1_catalog_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2898,7 +2987,7 @@ func (x *ListPublishedTagsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPublishedTagsRequest.ProtoReflect.Descriptor instead.
 func (*ListPublishedTagsRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{26}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *ListPublishedTagsRequest) GetTenant() *v1.TenantContext {
@@ -2942,7 +3031,7 @@ type ListPublishedTagsResponse struct {
 
 func (x *ListPublishedTagsResponse) Reset() {
 	*x = ListPublishedTagsResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[27]
+	mi := &file_publira_v1_catalog_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2954,7 +3043,7 @@ func (x *ListPublishedTagsResponse) String() string {
 func (*ListPublishedTagsResponse) ProtoMessage() {}
 
 func (x *ListPublishedTagsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[27]
+	mi := &file_publira_v1_catalog_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2967,7 +3056,7 @@ func (x *ListPublishedTagsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPublishedTagsResponse.ProtoReflect.Descriptor instead.
 func (*ListPublishedTagsResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{27}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *ListPublishedTagsResponse) GetTags() []*PublishedTag {
@@ -3051,7 +3140,7 @@ type SearchPublishedSeriesRequest struct {
 
 func (x *SearchPublishedSeriesRequest) Reset() {
 	*x = SearchPublishedSeriesRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[28]
+	mi := &file_publira_v1_catalog_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3063,7 +3152,7 @@ func (x *SearchPublishedSeriesRequest) String() string {
 func (*SearchPublishedSeriesRequest) ProtoMessage() {}
 
 func (x *SearchPublishedSeriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[28]
+	mi := &file_publira_v1_catalog_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3076,7 +3165,7 @@ func (x *SearchPublishedSeriesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchPublishedSeriesRequest.ProtoReflect.Descriptor instead.
 func (*SearchPublishedSeriesRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{28}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *SearchPublishedSeriesRequest) GetTenant() *v1.TenantContext {
@@ -3176,7 +3265,7 @@ type SearchPublishedSeriesResponse struct {
 
 func (x *SearchPublishedSeriesResponse) Reset() {
 	*x = SearchPublishedSeriesResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[29]
+	mi := &file_publira_v1_catalog_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3188,7 +3277,7 @@ func (x *SearchPublishedSeriesResponse) String() string {
 func (*SearchPublishedSeriesResponse) ProtoMessage() {}
 
 func (x *SearchPublishedSeriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[29]
+	mi := &file_publira_v1_catalog_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3201,7 +3290,7 @@ func (x *SearchPublishedSeriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchPublishedSeriesResponse.ProtoReflect.Descriptor instead.
 func (*SearchPublishedSeriesResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{29}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *SearchPublishedSeriesResponse) GetSeries() []*v1.Series {
@@ -3253,7 +3342,7 @@ type SearchPublishedCreatorsRequest struct {
 
 func (x *SearchPublishedCreatorsRequest) Reset() {
 	*x = SearchPublishedCreatorsRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[30]
+	mi := &file_publira_v1_catalog_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3265,7 +3354,7 @@ func (x *SearchPublishedCreatorsRequest) String() string {
 func (*SearchPublishedCreatorsRequest) ProtoMessage() {}
 
 func (x *SearchPublishedCreatorsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[30]
+	mi := &file_publira_v1_catalog_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3278,7 +3367,7 @@ func (x *SearchPublishedCreatorsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchPublishedCreatorsRequest.ProtoReflect.Descriptor instead.
 func (*SearchPublishedCreatorsRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{30}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *SearchPublishedCreatorsRequest) GetTenant() *v1.TenantContext {
@@ -3329,7 +3418,7 @@ type SearchPublishedCreatorsResponse struct {
 
 func (x *SearchPublishedCreatorsResponse) Reset() {
 	*x = SearchPublishedCreatorsResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[31]
+	mi := &file_publira_v1_catalog_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3341,7 +3430,7 @@ func (x *SearchPublishedCreatorsResponse) String() string {
 func (*SearchPublishedCreatorsResponse) ProtoMessage() {}
 
 func (x *SearchPublishedCreatorsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[31]
+	mi := &file_publira_v1_catalog_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3354,7 +3443,7 @@ func (x *SearchPublishedCreatorsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchPublishedCreatorsResponse.ProtoReflect.Descriptor instead.
 func (*SearchPublishedCreatorsResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{31}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *SearchPublishedCreatorsResponse) GetCreators() []*PublishedCreator {
@@ -3408,7 +3497,7 @@ type SearchPublishedLabelsRequest struct {
 
 func (x *SearchPublishedLabelsRequest) Reset() {
 	*x = SearchPublishedLabelsRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[32]
+	mi := &file_publira_v1_catalog_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3420,7 +3509,7 @@ func (x *SearchPublishedLabelsRequest) String() string {
 func (*SearchPublishedLabelsRequest) ProtoMessage() {}
 
 func (x *SearchPublishedLabelsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[32]
+	mi := &file_publira_v1_catalog_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3433,7 +3522,7 @@ func (x *SearchPublishedLabelsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchPublishedLabelsRequest.ProtoReflect.Descriptor instead.
 func (*SearchPublishedLabelsRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{32}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *SearchPublishedLabelsRequest) GetTenant() *v1.TenantContext {
@@ -3484,7 +3573,7 @@ type SearchPublishedLabelsResponse struct {
 
 func (x *SearchPublishedLabelsResponse) Reset() {
 	*x = SearchPublishedLabelsResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[33]
+	mi := &file_publira_v1_catalog_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3496,7 +3585,7 @@ func (x *SearchPublishedLabelsResponse) String() string {
 func (*SearchPublishedLabelsResponse) ProtoMessage() {}
 
 func (x *SearchPublishedLabelsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[33]
+	mi := &file_publira_v1_catalog_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3509,7 +3598,7 @@ func (x *SearchPublishedLabelsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchPublishedLabelsResponse.ProtoReflect.Descriptor instead.
 func (*SearchPublishedLabelsResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{33}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *SearchPublishedLabelsResponse) GetLabels() []*PublishedLabel {
@@ -3555,7 +3644,7 @@ type ListRecommendedSeriesRequest struct {
 
 func (x *ListRecommendedSeriesRequest) Reset() {
 	*x = ListRecommendedSeriesRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[34]
+	mi := &file_publira_v1_catalog_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3567,7 +3656,7 @@ func (x *ListRecommendedSeriesRequest) String() string {
 func (*ListRecommendedSeriesRequest) ProtoMessage() {}
 
 func (x *ListRecommendedSeriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[34]
+	mi := &file_publira_v1_catalog_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3580,7 +3669,7 @@ func (x *ListRecommendedSeriesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRecommendedSeriesRequest.ProtoReflect.Descriptor instead.
 func (*ListRecommendedSeriesRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{34}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *ListRecommendedSeriesRequest) GetTenant() *v1.TenantContext {
@@ -3634,7 +3723,7 @@ type ListRecommendedSeriesResponse struct {
 
 func (x *ListRecommendedSeriesResponse) Reset() {
 	*x = ListRecommendedSeriesResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[35]
+	mi := &file_publira_v1_catalog_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3646,7 +3735,7 @@ func (x *ListRecommendedSeriesResponse) String() string {
 func (*ListRecommendedSeriesResponse) ProtoMessage() {}
 
 func (x *ListRecommendedSeriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[35]
+	mi := &file_publira_v1_catalog_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3659,7 +3748,7 @@ func (x *ListRecommendedSeriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRecommendedSeriesResponse.ProtoReflect.Descriptor instead.
 func (*ListRecommendedSeriesResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{35}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *ListRecommendedSeriesResponse) GetSeries() []*v1.Series {
@@ -3716,7 +3805,7 @@ type ListMyRecommendedSeriesRequest struct {
 
 func (x *ListMyRecommendedSeriesRequest) Reset() {
 	*x = ListMyRecommendedSeriesRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[36]
+	mi := &file_publira_v1_catalog_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3728,7 +3817,7 @@ func (x *ListMyRecommendedSeriesRequest) String() string {
 func (*ListMyRecommendedSeriesRequest) ProtoMessage() {}
 
 func (x *ListMyRecommendedSeriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[36]
+	mi := &file_publira_v1_catalog_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3741,7 +3830,7 @@ func (x *ListMyRecommendedSeriesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMyRecommendedSeriesRequest.ProtoReflect.Descriptor instead.
 func (*ListMyRecommendedSeriesRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{36}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *ListMyRecommendedSeriesRequest) GetTenant() *v1.TenantContext {
@@ -3796,7 +3885,7 @@ type ListMyRecommendedSeriesResponse struct {
 
 func (x *ListMyRecommendedSeriesResponse) Reset() {
 	*x = ListMyRecommendedSeriesResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[37]
+	mi := &file_publira_v1_catalog_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3808,7 +3897,7 @@ func (x *ListMyRecommendedSeriesResponse) String() string {
 func (*ListMyRecommendedSeriesResponse) ProtoMessage() {}
 
 func (x *ListMyRecommendedSeriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[37]
+	mi := &file_publira_v1_catalog_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3821,7 +3910,7 @@ func (x *ListMyRecommendedSeriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMyRecommendedSeriesResponse.ProtoReflect.Descriptor instead.
 func (*ListMyRecommendedSeriesResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{37}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *ListMyRecommendedSeriesResponse) GetSeries() []*v1.Series {
@@ -3871,7 +3960,7 @@ type RankedSeries struct {
 
 func (x *RankedSeries) Reset() {
 	*x = RankedSeries{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[38]
+	mi := &file_publira_v1_catalog_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3883,7 +3972,7 @@ func (x *RankedSeries) String() string {
 func (*RankedSeries) ProtoMessage() {}
 
 func (x *RankedSeries) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[38]
+	mi := &file_publira_v1_catalog_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3896,7 +3985,7 @@ func (x *RankedSeries) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RankedSeries.ProtoReflect.Descriptor instead.
 func (*RankedSeries) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{38}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *RankedSeries) GetRank() int32 {
@@ -3974,7 +4063,7 @@ type ListRankedSeriesRequest struct {
 
 func (x *ListRankedSeriesRequest) Reset() {
 	*x = ListRankedSeriesRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[39]
+	mi := &file_publira_v1_catalog_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3986,7 +4075,7 @@ func (x *ListRankedSeriesRequest) String() string {
 func (*ListRankedSeriesRequest) ProtoMessage() {}
 
 func (x *ListRankedSeriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[39]
+	mi := &file_publira_v1_catalog_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3999,7 +4088,7 @@ func (x *ListRankedSeriesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRankedSeriesRequest.ProtoReflect.Descriptor instead.
 func (*ListRankedSeriesRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{39}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *ListRankedSeriesRequest) GetTenant() *v1.TenantContext {
@@ -4081,7 +4170,7 @@ type ListRankedSeriesResponse struct {
 
 func (x *ListRankedSeriesResponse) Reset() {
 	*x = ListRankedSeriesResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[40]
+	mi := &file_publira_v1_catalog_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4093,7 +4182,7 @@ func (x *ListRankedSeriesResponse) String() string {
 func (*ListRankedSeriesResponse) ProtoMessage() {}
 
 func (x *ListRankedSeriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[40]
+	mi := &file_publira_v1_catalog_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4106,7 +4195,7 @@ func (x *ListRankedSeriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRankedSeriesResponse.ProtoReflect.Descriptor instead.
 func (*ListRankedSeriesResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{40}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *ListRankedSeriesResponse) GetRankedSeries() []*RankedSeries {
@@ -4182,7 +4271,7 @@ type ListRelatedSeriesRequest struct {
 
 func (x *ListRelatedSeriesRequest) Reset() {
 	*x = ListRelatedSeriesRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[41]
+	mi := &file_publira_v1_catalog_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4194,7 +4283,7 @@ func (x *ListRelatedSeriesRequest) String() string {
 func (*ListRelatedSeriesRequest) ProtoMessage() {}
 
 func (x *ListRelatedSeriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[41]
+	mi := &file_publira_v1_catalog_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4207,7 +4296,7 @@ func (x *ListRelatedSeriesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRelatedSeriesRequest.ProtoReflect.Descriptor instead.
 func (*ListRelatedSeriesRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{41}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *ListRelatedSeriesRequest) GetTenant() *v1.TenantContext {
@@ -4266,7 +4355,7 @@ type ListRelatedSeriesResponse struct {
 
 func (x *ListRelatedSeriesResponse) Reset() {
 	*x = ListRelatedSeriesResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[42]
+	mi := &file_publira_v1_catalog_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4278,7 +4367,7 @@ func (x *ListRelatedSeriesResponse) String() string {
 func (*ListRelatedSeriesResponse) ProtoMessage() {}
 
 func (x *ListRelatedSeriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[42]
+	mi := &file_publira_v1_catalog_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4291,7 +4380,7 @@ func (x *ListRelatedSeriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRelatedSeriesResponse.ProtoReflect.Descriptor instead.
 func (*ListRelatedSeriesResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{42}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *ListRelatedSeriesResponse) GetSeries() []*v1.Series {
@@ -4345,7 +4434,7 @@ type SitemapEntry struct {
 
 func (x *SitemapEntry) Reset() {
 	*x = SitemapEntry{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[43]
+	mi := &file_publira_v1_catalog_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4357,7 +4446,7 @@ func (x *SitemapEntry) String() string {
 func (*SitemapEntry) ProtoMessage() {}
 
 func (x *SitemapEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[43]
+	mi := &file_publira_v1_catalog_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4370,7 +4459,7 @@ func (x *SitemapEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SitemapEntry.ProtoReflect.Descriptor instead.
 func (*SitemapEntry) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{43}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *SitemapEntry) GetKind() SitemapEntryKind {
@@ -4437,7 +4526,7 @@ type ListSitemapEntriesRequest struct {
 
 func (x *ListSitemapEntriesRequest) Reset() {
 	*x = ListSitemapEntriesRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[44]
+	mi := &file_publira_v1_catalog_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4449,7 +4538,7 @@ func (x *ListSitemapEntriesRequest) String() string {
 func (*ListSitemapEntriesRequest) ProtoMessage() {}
 
 func (x *ListSitemapEntriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[44]
+	mi := &file_publira_v1_catalog_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4462,7 +4551,7 @@ func (x *ListSitemapEntriesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSitemapEntriesRequest.ProtoReflect.Descriptor instead.
 func (*ListSitemapEntriesRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{44}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *ListSitemapEntriesRequest) GetTenant() *v1.TenantContext {
@@ -4499,7 +4588,7 @@ type ListSitemapEntriesResponse struct {
 
 func (x *ListSitemapEntriesResponse) Reset() {
 	*x = ListSitemapEntriesResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[45]
+	mi := &file_publira_v1_catalog_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4511,7 +4600,7 @@ func (x *ListSitemapEntriesResponse) String() string {
 func (*ListSitemapEntriesResponse) ProtoMessage() {}
 
 func (x *ListSitemapEntriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[45]
+	mi := &file_publira_v1_catalog_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4524,7 +4613,7 @@ func (x *ListSitemapEntriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSitemapEntriesResponse.ProtoReflect.Descriptor instead.
 func (*ListSitemapEntriesResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{45}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *ListSitemapEntriesResponse) GetEntries() []*SitemapEntry {
@@ -4570,7 +4659,7 @@ type CampaignBanner struct {
 
 func (x *CampaignBanner) Reset() {
 	*x = CampaignBanner{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[46]
+	mi := &file_publira_v1_catalog_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4582,7 +4671,7 @@ func (x *CampaignBanner) String() string {
 func (*CampaignBanner) ProtoMessage() {}
 
 func (x *CampaignBanner) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[46]
+	mi := &file_publira_v1_catalog_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4595,7 +4684,7 @@ func (x *CampaignBanner) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CampaignBanner.ProtoReflect.Descriptor instead.
 func (*CampaignBanner) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{46}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *CampaignBanner) GetPublicId() string {
@@ -4642,7 +4731,7 @@ type ListCampaignBannersRequest struct {
 
 func (x *ListCampaignBannersRequest) Reset() {
 	*x = ListCampaignBannersRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[47]
+	mi := &file_publira_v1_catalog_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4654,7 +4743,7 @@ func (x *ListCampaignBannersRequest) String() string {
 func (*ListCampaignBannersRequest) ProtoMessage() {}
 
 func (x *ListCampaignBannersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[47]
+	mi := &file_publira_v1_catalog_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4667,7 +4756,7 @@ func (x *ListCampaignBannersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCampaignBannersRequest.ProtoReflect.Descriptor instead.
 func (*ListCampaignBannersRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{47}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *ListCampaignBannersRequest) GetTenant() *v1.TenantContext {
@@ -4689,7 +4778,7 @@ type ListCampaignBannersResponse struct {
 
 func (x *ListCampaignBannersResponse) Reset() {
 	*x = ListCampaignBannersResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[48]
+	mi := &file_publira_v1_catalog_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4701,7 +4790,7 @@ func (x *ListCampaignBannersResponse) String() string {
 func (*ListCampaignBannersResponse) ProtoMessage() {}
 
 func (x *ListCampaignBannersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[48]
+	mi := &file_publira_v1_catalog_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4714,7 +4803,7 @@ func (x *ListCampaignBannersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCampaignBannersResponse.ProtoReflect.Descriptor instead.
 func (*ListCampaignBannersResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{48}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *ListCampaignBannersResponse) GetBanners() []*CampaignBanner {
@@ -4737,7 +4826,7 @@ type MarkEpisodeAsReadRequest struct {
 
 func (x *MarkEpisodeAsReadRequest) Reset() {
 	*x = MarkEpisodeAsReadRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[49]
+	mi := &file_publira_v1_catalog_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4749,7 +4838,7 @@ func (x *MarkEpisodeAsReadRequest) String() string {
 func (*MarkEpisodeAsReadRequest) ProtoMessage() {}
 
 func (x *MarkEpisodeAsReadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[49]
+	mi := &file_publira_v1_catalog_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4762,7 +4851,7 @@ func (x *MarkEpisodeAsReadRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MarkEpisodeAsReadRequest.ProtoReflect.Descriptor instead.
 func (*MarkEpisodeAsReadRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{49}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *MarkEpisodeAsReadRequest) GetTenant() *v1.TenantContext {
@@ -4797,7 +4886,7 @@ type MarkEpisodeAsReadResponse struct {
 
 func (x *MarkEpisodeAsReadResponse) Reset() {
 	*x = MarkEpisodeAsReadResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[50]
+	mi := &file_publira_v1_catalog_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4809,7 +4898,7 @@ func (x *MarkEpisodeAsReadResponse) String() string {
 func (*MarkEpisodeAsReadResponse) ProtoMessage() {}
 
 func (x *MarkEpisodeAsReadResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[50]
+	mi := &file_publira_v1_catalog_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4822,7 +4911,7 @@ func (x *MarkEpisodeAsReadResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MarkEpisodeAsReadResponse.ProtoReflect.Descriptor instead.
 func (*MarkEpisodeAsReadResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{50}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *MarkEpisodeAsReadResponse) GetReadAt() string {
@@ -4848,7 +4937,7 @@ type ReadingPosition struct {
 
 func (x *ReadingPosition) Reset() {
 	*x = ReadingPosition{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[51]
+	mi := &file_publira_v1_catalog_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4860,7 +4949,7 @@ func (x *ReadingPosition) String() string {
 func (*ReadingPosition) ProtoMessage() {}
 
 func (x *ReadingPosition) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[51]
+	mi := &file_publira_v1_catalog_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4873,7 +4962,7 @@ func (x *ReadingPosition) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadingPosition.ProtoReflect.Descriptor instead.
 func (*ReadingPosition) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{51}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *ReadingPosition) GetEpisodePublicId() string {
@@ -4920,7 +5009,7 @@ type SaveReadingPositionRequest struct {
 
 func (x *SaveReadingPositionRequest) Reset() {
 	*x = SaveReadingPositionRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[52]
+	mi := &file_publira_v1_catalog_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4932,7 +5021,7 @@ func (x *SaveReadingPositionRequest) String() string {
 func (*SaveReadingPositionRequest) ProtoMessage() {}
 
 func (x *SaveReadingPositionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[52]
+	mi := &file_publira_v1_catalog_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4945,7 +5034,7 @@ func (x *SaveReadingPositionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SaveReadingPositionRequest.ProtoReflect.Descriptor instead.
 func (*SaveReadingPositionRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{52}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *SaveReadingPositionRequest) GetTenant() *v1.TenantContext {
@@ -4985,7 +5074,7 @@ type SaveReadingPositionResponse struct {
 
 func (x *SaveReadingPositionResponse) Reset() {
 	*x = SaveReadingPositionResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[53]
+	mi := &file_publira_v1_catalog_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4997,7 +5086,7 @@ func (x *SaveReadingPositionResponse) String() string {
 func (*SaveReadingPositionResponse) ProtoMessage() {}
 
 func (x *SaveReadingPositionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[53]
+	mi := &file_publira_v1_catalog_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5010,7 +5099,7 @@ func (x *SaveReadingPositionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SaveReadingPositionResponse.ProtoReflect.Descriptor instead.
 func (*SaveReadingPositionResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{53}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *SaveReadingPositionResponse) GetPosition() *ReadingPosition {
@@ -5032,7 +5121,7 @@ type GetMyReadingPositionRequest struct {
 
 func (x *GetMyReadingPositionRequest) Reset() {
 	*x = GetMyReadingPositionRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[54]
+	mi := &file_publira_v1_catalog_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5044,7 +5133,7 @@ func (x *GetMyReadingPositionRequest) String() string {
 func (*GetMyReadingPositionRequest) ProtoMessage() {}
 
 func (x *GetMyReadingPositionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[54]
+	mi := &file_publira_v1_catalog_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5057,7 +5146,7 @@ func (x *GetMyReadingPositionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMyReadingPositionRequest.ProtoReflect.Descriptor instead.
 func (*GetMyReadingPositionRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{54}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *GetMyReadingPositionRequest) GetTenant() *v1.TenantContext {
@@ -5092,7 +5181,7 @@ type GetMyReadingPositionResponse struct {
 
 func (x *GetMyReadingPositionResponse) Reset() {
 	*x = GetMyReadingPositionResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[55]
+	mi := &file_publira_v1_catalog_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5104,7 +5193,7 @@ func (x *GetMyReadingPositionResponse) String() string {
 func (*GetMyReadingPositionResponse) ProtoMessage() {}
 
 func (x *GetMyReadingPositionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[55]
+	mi := &file_publira_v1_catalog_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5117,7 +5206,7 @@ func (x *GetMyReadingPositionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMyReadingPositionResponse.ProtoReflect.Descriptor instead.
 func (*GetMyReadingPositionResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{55}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *GetMyReadingPositionResponse) GetPosition() *ReadingPosition {
@@ -5143,7 +5232,7 @@ type GetMySeriesProgressRequest struct {
 
 func (x *GetMySeriesProgressRequest) Reset() {
 	*x = GetMySeriesProgressRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[56]
+	mi := &file_publira_v1_catalog_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5155,7 +5244,7 @@ func (x *GetMySeriesProgressRequest) String() string {
 func (*GetMySeriesProgressRequest) ProtoMessage() {}
 
 func (x *GetMySeriesProgressRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[56]
+	mi := &file_publira_v1_catalog_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5168,7 +5257,7 @@ func (x *GetMySeriesProgressRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMySeriesProgressRequest.ProtoReflect.Descriptor instead.
 func (*GetMySeriesProgressRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{56}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *GetMySeriesProgressRequest) GetTenant() *v1.TenantContext {
@@ -5213,7 +5302,7 @@ type SeriesProgress struct {
 
 func (x *SeriesProgress) Reset() {
 	*x = SeriesProgress{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[57]
+	mi := &file_publira_v1_catalog_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5225,7 +5314,7 @@ func (x *SeriesProgress) String() string {
 func (*SeriesProgress) ProtoMessage() {}
 
 func (x *SeriesProgress) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[57]
+	mi := &file_publira_v1_catalog_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5238,7 +5327,7 @@ func (x *SeriesProgress) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SeriesProgress.ProtoReflect.Descriptor instead.
 func (*SeriesProgress) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{57}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *SeriesProgress) GetEpisode() *v1.Episode {
@@ -5284,7 +5373,7 @@ type GetMySeriesProgressResponse struct {
 
 func (x *GetMySeriesProgressResponse) Reset() {
 	*x = GetMySeriesProgressResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[58]
+	mi := &file_publira_v1_catalog_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5296,7 +5385,7 @@ func (x *GetMySeriesProgressResponse) String() string {
 func (*GetMySeriesProgressResponse) ProtoMessage() {}
 
 func (x *GetMySeriesProgressResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[58]
+	mi := &file_publira_v1_catalog_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5309,7 +5398,7 @@ func (x *GetMySeriesProgressResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMySeriesProgressResponse.ProtoReflect.Descriptor instead.
 func (*GetMySeriesProgressResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{58}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *GetMySeriesProgressResponse) GetProgress() *SeriesProgress {
@@ -5351,7 +5440,7 @@ type RecentSeries struct {
 
 func (x *RecentSeries) Reset() {
 	*x = RecentSeries{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[59]
+	mi := &file_publira_v1_catalog_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5363,7 +5452,7 @@ func (x *RecentSeries) String() string {
 func (*RecentSeries) ProtoMessage() {}
 
 func (x *RecentSeries) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[59]
+	mi := &file_publira_v1_catalog_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5376,7 +5465,7 @@ func (x *RecentSeries) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RecentSeries.ProtoReflect.Descriptor instead.
 func (*RecentSeries) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{59}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *RecentSeries) GetSeries() *v1.Series {
@@ -5429,7 +5518,7 @@ type ListMyRecentSeriesRequest struct {
 
 func (x *ListMyRecentSeriesRequest) Reset() {
 	*x = ListMyRecentSeriesRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[60]
+	mi := &file_publira_v1_catalog_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5441,7 +5530,7 @@ func (x *ListMyRecentSeriesRequest) String() string {
 func (*ListMyRecentSeriesRequest) ProtoMessage() {}
 
 func (x *ListMyRecentSeriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[60]
+	mi := &file_publira_v1_catalog_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5454,7 +5543,7 @@ func (x *ListMyRecentSeriesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMyRecentSeriesRequest.ProtoReflect.Descriptor instead.
 func (*ListMyRecentSeriesRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{60}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *ListMyRecentSeriesRequest) GetTenant() *v1.TenantContext {
@@ -5506,7 +5595,7 @@ type ListMyRecentSeriesResponse struct {
 
 func (x *ListMyRecentSeriesResponse) Reset() {
 	*x = ListMyRecentSeriesResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[61]
+	mi := &file_publira_v1_catalog_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5518,7 +5607,7 @@ func (x *ListMyRecentSeriesResponse) String() string {
 func (*ListMyRecentSeriesResponse) ProtoMessage() {}
 
 func (x *ListMyRecentSeriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[61]
+	mi := &file_publira_v1_catalog_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5531,7 +5620,7 @@ func (x *ListMyRecentSeriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMyRecentSeriesResponse.ProtoReflect.Descriptor instead.
 func (*ListMyRecentSeriesResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{61}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *ListMyRecentSeriesResponse) GetSeries() []*RecentSeries {
@@ -5572,7 +5661,7 @@ type MyEpisodeRead struct {
 
 func (x *MyEpisodeRead) Reset() {
 	*x = MyEpisodeRead{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[62]
+	mi := &file_publira_v1_catalog_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5584,7 +5673,7 @@ func (x *MyEpisodeRead) String() string {
 func (*MyEpisodeRead) ProtoMessage() {}
 
 func (x *MyEpisodeRead) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[62]
+	mi := &file_publira_v1_catalog_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5597,7 +5686,7 @@ func (x *MyEpisodeRead) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MyEpisodeRead.ProtoReflect.Descriptor instead.
 func (*MyEpisodeRead) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{62}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *MyEpisodeRead) GetSeries() *v1.Series {
@@ -5643,7 +5732,7 @@ type ListMyEpisodeReadsRequest struct {
 
 func (x *ListMyEpisodeReadsRequest) Reset() {
 	*x = ListMyEpisodeReadsRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[63]
+	mi := &file_publira_v1_catalog_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5655,7 +5744,7 @@ func (x *ListMyEpisodeReadsRequest) String() string {
 func (*ListMyEpisodeReadsRequest) ProtoMessage() {}
 
 func (x *ListMyEpisodeReadsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[63]
+	mi := &file_publira_v1_catalog_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5668,7 +5757,7 @@ func (x *ListMyEpisodeReadsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMyEpisodeReadsRequest.ProtoReflect.Descriptor instead.
 func (*ListMyEpisodeReadsRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{63}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *ListMyEpisodeReadsRequest) GetTenant() *v1.TenantContext {
@@ -5720,7 +5809,7 @@ type ListMyEpisodeReadsResponse struct {
 
 func (x *ListMyEpisodeReadsResponse) Reset() {
 	*x = ListMyEpisodeReadsResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[64]
+	mi := &file_publira_v1_catalog_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5732,7 +5821,7 @@ func (x *ListMyEpisodeReadsResponse) String() string {
 func (*ListMyEpisodeReadsResponse) ProtoMessage() {}
 
 func (x *ListMyEpisodeReadsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[64]
+	mi := &file_publira_v1_catalog_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5745,7 +5834,7 @@ func (x *ListMyEpisodeReadsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMyEpisodeReadsResponse.ProtoReflect.Descriptor instead.
 func (*ListMyEpisodeReadsResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{64}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *ListMyEpisodeReadsResponse) GetReads() []*MyEpisodeRead {
@@ -5780,7 +5869,7 @@ type FollowTarget struct {
 
 func (x *FollowTarget) Reset() {
 	*x = FollowTarget{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[65]
+	mi := &file_publira_v1_catalog_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5792,7 +5881,7 @@ func (x *FollowTarget) String() string {
 func (*FollowTarget) ProtoMessage() {}
 
 func (x *FollowTarget) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[65]
+	mi := &file_publira_v1_catalog_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5805,7 +5894,7 @@ func (x *FollowTarget) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FollowTarget.ProtoReflect.Descriptor instead.
 func (*FollowTarget) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{65}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *FollowTarget) GetType() FollowTargetType {
@@ -5836,7 +5925,7 @@ type GetMyFollowStatusRequest struct {
 
 func (x *GetMyFollowStatusRequest) Reset() {
 	*x = GetMyFollowStatusRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[66]
+	mi := &file_publira_v1_catalog_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5848,7 +5937,7 @@ func (x *GetMyFollowStatusRequest) String() string {
 func (*GetMyFollowStatusRequest) ProtoMessage() {}
 
 func (x *GetMyFollowStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[66]
+	mi := &file_publira_v1_catalog_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5861,7 +5950,7 @@ func (x *GetMyFollowStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMyFollowStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetMyFollowStatusRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{66}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *GetMyFollowStatusRequest) GetTenant() *v1.TenantContext {
@@ -5894,7 +5983,7 @@ type GetMyFollowStatusResponse struct {
 
 func (x *GetMyFollowStatusResponse) Reset() {
 	*x = GetMyFollowStatusResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[67]
+	mi := &file_publira_v1_catalog_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5906,7 +5995,7 @@ func (x *GetMyFollowStatusResponse) String() string {
 func (*GetMyFollowStatusResponse) ProtoMessage() {}
 
 func (x *GetMyFollowStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[67]
+	mi := &file_publira_v1_catalog_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5919,7 +6008,7 @@ func (x *GetMyFollowStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMyFollowStatusResponse.ProtoReflect.Descriptor instead.
 func (*GetMyFollowStatusResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{67}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *GetMyFollowStatusResponse) GetIsFollowing() bool {
@@ -5941,7 +6030,7 @@ type FollowRequest struct {
 
 func (x *FollowRequest) Reset() {
 	*x = FollowRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[68]
+	mi := &file_publira_v1_catalog_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5953,7 +6042,7 @@ func (x *FollowRequest) String() string {
 func (*FollowRequest) ProtoMessage() {}
 
 func (x *FollowRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[68]
+	mi := &file_publira_v1_catalog_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5966,7 +6055,7 @@ func (x *FollowRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FollowRequest.ProtoReflect.Descriptor instead.
 func (*FollowRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{68}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *FollowRequest) GetTenant() *v1.TenantContext {
@@ -5999,7 +6088,7 @@ type FollowResponse struct {
 
 func (x *FollowResponse) Reset() {
 	*x = FollowResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[69]
+	mi := &file_publira_v1_catalog_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6011,7 +6100,7 @@ func (x *FollowResponse) String() string {
 func (*FollowResponse) ProtoMessage() {}
 
 func (x *FollowResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[69]
+	mi := &file_publira_v1_catalog_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6024,7 +6113,7 @@ func (x *FollowResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FollowResponse.ProtoReflect.Descriptor instead.
 func (*FollowResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{69}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{70}
 }
 
 func (x *FollowResponse) GetIsFollowing() bool {
@@ -6046,7 +6135,7 @@ type UnfollowRequest struct {
 
 func (x *UnfollowRequest) Reset() {
 	*x = UnfollowRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[70]
+	mi := &file_publira_v1_catalog_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6058,7 +6147,7 @@ func (x *UnfollowRequest) String() string {
 func (*UnfollowRequest) ProtoMessage() {}
 
 func (x *UnfollowRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[70]
+	mi := &file_publira_v1_catalog_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6071,7 +6160,7 @@ func (x *UnfollowRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnfollowRequest.ProtoReflect.Descriptor instead.
 func (*UnfollowRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{70}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *UnfollowRequest) GetTenant() *v1.TenantContext {
@@ -6104,7 +6193,7 @@ type UnfollowResponse struct {
 
 func (x *UnfollowResponse) Reset() {
 	*x = UnfollowResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[71]
+	mi := &file_publira_v1_catalog_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6116,7 +6205,7 @@ func (x *UnfollowResponse) String() string {
 func (*UnfollowResponse) ProtoMessage() {}
 
 func (x *UnfollowResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[71]
+	mi := &file_publira_v1_catalog_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6129,7 +6218,7 @@ func (x *UnfollowResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnfollowResponse.ProtoReflect.Descriptor instead.
 func (*UnfollowResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{71}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *UnfollowResponse) GetIsFollowing() bool {
@@ -6153,7 +6242,7 @@ type MyFollow struct {
 
 func (x *MyFollow) Reset() {
 	*x = MyFollow{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[72]
+	mi := &file_publira_v1_catalog_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6165,7 +6254,7 @@ func (x *MyFollow) String() string {
 func (*MyFollow) ProtoMessage() {}
 
 func (x *MyFollow) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[72]
+	mi := &file_publira_v1_catalog_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6178,7 +6267,7 @@ func (x *MyFollow) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MyFollow.ProtoReflect.Descriptor instead.
 func (*MyFollow) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{72}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *MyFollow) GetTargetType() FollowTargetType {
@@ -6225,7 +6314,7 @@ type ListMyFollowsRequest struct {
 
 func (x *ListMyFollowsRequest) Reset() {
 	*x = ListMyFollowsRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[73]
+	mi := &file_publira_v1_catalog_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6237,7 +6326,7 @@ func (x *ListMyFollowsRequest) String() string {
 func (*ListMyFollowsRequest) ProtoMessage() {}
 
 func (x *ListMyFollowsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[73]
+	mi := &file_publira_v1_catalog_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6250,7 +6339,7 @@ func (x *ListMyFollowsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMyFollowsRequest.ProtoReflect.Descriptor instead.
 func (*ListMyFollowsRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{73}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *ListMyFollowsRequest) GetTenant() *v1.TenantContext {
@@ -6294,7 +6383,7 @@ type ListMyFollowsResponse struct {
 
 func (x *ListMyFollowsResponse) Reset() {
 	*x = ListMyFollowsResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[74]
+	mi := &file_publira_v1_catalog_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6306,7 +6395,7 @@ func (x *ListMyFollowsResponse) String() string {
 func (*ListMyFollowsResponse) ProtoMessage() {}
 
 func (x *ListMyFollowsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[74]
+	mi := &file_publira_v1_catalog_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6319,7 +6408,7 @@ func (x *ListMyFollowsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMyFollowsResponse.ProtoReflect.Descriptor instead.
 func (*ListMyFollowsResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{74}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *ListMyFollowsResponse) GetFollows() []*MyFollow {
@@ -6355,7 +6444,7 @@ type FollowUpdate struct {
 
 func (x *FollowUpdate) Reset() {
 	*x = FollowUpdate{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[75]
+	mi := &file_publira_v1_catalog_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6367,7 +6456,7 @@ func (x *FollowUpdate) String() string {
 func (*FollowUpdate) ProtoMessage() {}
 
 func (x *FollowUpdate) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[75]
+	mi := &file_publira_v1_catalog_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6380,7 +6469,7 @@ func (x *FollowUpdate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FollowUpdate.ProtoReflect.Descriptor instead.
 func (*FollowUpdate) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{75}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{76}
 }
 
 func (x *FollowUpdate) GetSeries() *v1.Series {
@@ -6419,7 +6508,7 @@ type ListMyFollowUpdatesRequest struct {
 
 func (x *ListMyFollowUpdatesRequest) Reset() {
 	*x = ListMyFollowUpdatesRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[76]
+	mi := &file_publira_v1_catalog_proto_msgTypes[77]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6431,7 +6520,7 @@ func (x *ListMyFollowUpdatesRequest) String() string {
 func (*ListMyFollowUpdatesRequest) ProtoMessage() {}
 
 func (x *ListMyFollowUpdatesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[76]
+	mi := &file_publira_v1_catalog_proto_msgTypes[77]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6444,7 +6533,7 @@ func (x *ListMyFollowUpdatesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMyFollowUpdatesRequest.ProtoReflect.Descriptor instead.
 func (*ListMyFollowUpdatesRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{76}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{77}
 }
 
 func (x *ListMyFollowUpdatesRequest) GetTenant() *v1.TenantContext {
@@ -6496,7 +6585,7 @@ type ListMyFollowUpdatesResponse struct {
 
 func (x *ListMyFollowUpdatesResponse) Reset() {
 	*x = ListMyFollowUpdatesResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[77]
+	mi := &file_publira_v1_catalog_proto_msgTypes[78]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6508,7 +6597,7 @@ func (x *ListMyFollowUpdatesResponse) String() string {
 func (*ListMyFollowUpdatesResponse) ProtoMessage() {}
 
 func (x *ListMyFollowUpdatesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[77]
+	mi := &file_publira_v1_catalog_proto_msgTypes[78]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6521,7 +6610,7 @@ func (x *ListMyFollowUpdatesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMyFollowUpdatesResponse.ProtoReflect.Descriptor instead.
 func (*ListMyFollowUpdatesResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{77}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{78}
 }
 
 func (x *ListMyFollowUpdatesResponse) GetUpdates() []*FollowUpdate {
@@ -6565,7 +6654,7 @@ type RateEpisodeRequest struct {
 
 func (x *RateEpisodeRequest) Reset() {
 	*x = RateEpisodeRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[78]
+	mi := &file_publira_v1_catalog_proto_msgTypes[79]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6577,7 +6666,7 @@ func (x *RateEpisodeRequest) String() string {
 func (*RateEpisodeRequest) ProtoMessage() {}
 
 func (x *RateEpisodeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[78]
+	mi := &file_publira_v1_catalog_proto_msgTypes[79]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6590,7 +6679,7 @@ func (x *RateEpisodeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RateEpisodeRequest.ProtoReflect.Descriptor instead.
 func (*RateEpisodeRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{78}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{79}
 }
 
 func (x *RateEpisodeRequest) GetTenant() *v1.TenantContext {
@@ -6636,7 +6725,7 @@ type RateEpisodeResponse struct {
 
 func (x *RateEpisodeResponse) Reset() {
 	*x = RateEpisodeResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[79]
+	mi := &file_publira_v1_catalog_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6648,7 +6737,7 @@ func (x *RateEpisodeResponse) String() string {
 func (*RateEpisodeResponse) ProtoMessage() {}
 
 func (x *RateEpisodeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[79]
+	mi := &file_publira_v1_catalog_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6661,7 +6750,7 @@ func (x *RateEpisodeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RateEpisodeResponse.ProtoReflect.Descriptor instead.
 func (*RateEpisodeResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{79}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{80}
 }
 
 func (x *RateEpisodeResponse) GetScore() int32 {
@@ -6697,7 +6786,7 @@ type GetMyEpisodeRatingRequest struct {
 
 func (x *GetMyEpisodeRatingRequest) Reset() {
 	*x = GetMyEpisodeRatingRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[80]
+	mi := &file_publira_v1_catalog_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6709,7 +6798,7 @@ func (x *GetMyEpisodeRatingRequest) String() string {
 func (*GetMyEpisodeRatingRequest) ProtoMessage() {}
 
 func (x *GetMyEpisodeRatingRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[80]
+	mi := &file_publira_v1_catalog_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6722,7 +6811,7 @@ func (x *GetMyEpisodeRatingRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMyEpisodeRatingRequest.ProtoReflect.Descriptor instead.
 func (*GetMyEpisodeRatingRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{80}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{81}
 }
 
 func (x *GetMyEpisodeRatingRequest) GetTenant() *v1.TenantContext {
@@ -6762,7 +6851,7 @@ type GetMyEpisodeRatingResponse struct {
 
 func (x *GetMyEpisodeRatingResponse) Reset() {
 	*x = GetMyEpisodeRatingResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[81]
+	mi := &file_publira_v1_catalog_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6774,7 +6863,7 @@ func (x *GetMyEpisodeRatingResponse) String() string {
 func (*GetMyEpisodeRatingResponse) ProtoMessage() {}
 
 func (x *GetMyEpisodeRatingResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[81]
+	mi := &file_publira_v1_catalog_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6787,7 +6876,7 @@ func (x *GetMyEpisodeRatingResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMyEpisodeRatingResponse.ProtoReflect.Descriptor instead.
 func (*GetMyEpisodeRatingResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{81}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{82}
 }
 
 func (x *GetMyEpisodeRatingResponse) GetScore() int32 {
@@ -6830,7 +6919,7 @@ type GetMySeriesRatingRequest struct {
 
 func (x *GetMySeriesRatingRequest) Reset() {
 	*x = GetMySeriesRatingRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[82]
+	mi := &file_publira_v1_catalog_proto_msgTypes[83]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6842,7 +6931,7 @@ func (x *GetMySeriesRatingRequest) String() string {
 func (*GetMySeriesRatingRequest) ProtoMessage() {}
 
 func (x *GetMySeriesRatingRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[82]
+	mi := &file_publira_v1_catalog_proto_msgTypes[83]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6855,7 +6944,7 @@ func (x *GetMySeriesRatingRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMySeriesRatingRequest.ProtoReflect.Descriptor instead.
 func (*GetMySeriesRatingRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{82}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{83}
 }
 
 func (x *GetMySeriesRatingRequest) GetTenant() *v1.TenantContext {
@@ -6896,7 +6985,7 @@ type GetMySeriesRatingResponse struct {
 
 func (x *GetMySeriesRatingResponse) Reset() {
 	*x = GetMySeriesRatingResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[83]
+	mi := &file_publira_v1_catalog_proto_msgTypes[84]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6908,7 +6997,7 @@ func (x *GetMySeriesRatingResponse) String() string {
 func (*GetMySeriesRatingResponse) ProtoMessage() {}
 
 func (x *GetMySeriesRatingResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[83]
+	mi := &file_publira_v1_catalog_proto_msgTypes[84]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6921,7 +7010,7 @@ func (x *GetMySeriesRatingResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMySeriesRatingResponse.ProtoReflect.Descriptor instead.
 func (*GetMySeriesRatingResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{83}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{84}
 }
 
 func (x *GetMySeriesRatingResponse) GetRatingAverage() float64 {
@@ -6949,7 +7038,7 @@ type ContentViewTarget struct {
 
 func (x *ContentViewTarget) Reset() {
 	*x = ContentViewTarget{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[84]
+	mi := &file_publira_v1_catalog_proto_msgTypes[85]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6961,7 +7050,7 @@ func (x *ContentViewTarget) String() string {
 func (*ContentViewTarget) ProtoMessage() {}
 
 func (x *ContentViewTarget) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[84]
+	mi := &file_publira_v1_catalog_proto_msgTypes[85]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6974,7 +7063,7 @@ func (x *ContentViewTarget) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ContentViewTarget.ProtoReflect.Descriptor instead.
 func (*ContentViewTarget) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{84}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{85}
 }
 
 func (x *ContentViewTarget) GetType() ContentViewTargetType {
@@ -7004,7 +7093,7 @@ type RecordContentViewRequest struct {
 
 func (x *RecordContentViewRequest) Reset() {
 	*x = RecordContentViewRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[85]
+	mi := &file_publira_v1_catalog_proto_msgTypes[86]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7016,7 +7105,7 @@ func (x *RecordContentViewRequest) String() string {
 func (*RecordContentViewRequest) ProtoMessage() {}
 
 func (x *RecordContentViewRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[85]
+	mi := &file_publira_v1_catalog_proto_msgTypes[86]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7029,7 +7118,7 @@ func (x *RecordContentViewRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RecordContentViewRequest.ProtoReflect.Descriptor instead.
 func (*RecordContentViewRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{85}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{86}
 }
 
 func (x *RecordContentViewRequest) GetTenant() *v1.TenantContext {
@@ -7064,7 +7153,7 @@ type RecordContentViewResponse struct {
 
 func (x *RecordContentViewResponse) Reset() {
 	*x = RecordContentViewResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[86]
+	mi := &file_publira_v1_catalog_proto_msgTypes[87]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7076,7 +7165,7 @@ func (x *RecordContentViewResponse) String() string {
 func (*RecordContentViewResponse) ProtoMessage() {}
 
 func (x *RecordContentViewResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[86]
+	mi := &file_publira_v1_catalog_proto_msgTypes[87]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7089,7 +7178,7 @@ func (x *RecordContentViewResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RecordContentViewResponse.ProtoReflect.Descriptor instead.
 func (*RecordContentViewResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{86}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{87}
 }
 
 // A one-time paid-episode checkout on the tenant's payment provider, answered
@@ -7126,7 +7215,7 @@ type StartEpisodeCheckoutRequest struct {
 
 func (x *StartEpisodeCheckoutRequest) Reset() {
 	*x = StartEpisodeCheckoutRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[87]
+	mi := &file_publira_v1_catalog_proto_msgTypes[88]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7138,7 +7227,7 @@ func (x *StartEpisodeCheckoutRequest) String() string {
 func (*StartEpisodeCheckoutRequest) ProtoMessage() {}
 
 func (x *StartEpisodeCheckoutRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[87]
+	mi := &file_publira_v1_catalog_proto_msgTypes[88]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7151,7 +7240,7 @@ func (x *StartEpisodeCheckoutRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartEpisodeCheckoutRequest.ProtoReflect.Descriptor instead.
 func (*StartEpisodeCheckoutRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{87}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{88}
 }
 
 func (x *StartEpisodeCheckoutRequest) GetTenant() *v1.TenantContext {
@@ -7198,7 +7287,7 @@ type StartEpisodeCheckoutResponse struct {
 
 func (x *StartEpisodeCheckoutResponse) Reset() {
 	*x = StartEpisodeCheckoutResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[88]
+	mi := &file_publira_v1_catalog_proto_msgTypes[89]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7210,7 +7299,7 @@ func (x *StartEpisodeCheckoutResponse) String() string {
 func (*StartEpisodeCheckoutResponse) ProtoMessage() {}
 
 func (x *StartEpisodeCheckoutResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[88]
+	mi := &file_publira_v1_catalog_proto_msgTypes[89]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7223,7 +7312,7 @@ func (x *StartEpisodeCheckoutResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartEpisodeCheckoutResponse.ProtoReflect.Descriptor instead.
 func (*StartEpisodeCheckoutResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{88}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{89}
 }
 
 func (x *StartEpisodeCheckoutResponse) GetCheckoutUrl() string {
@@ -7262,7 +7351,7 @@ type StartVolumeCheckoutRequest struct {
 
 func (x *StartVolumeCheckoutRequest) Reset() {
 	*x = StartVolumeCheckoutRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[89]
+	mi := &file_publira_v1_catalog_proto_msgTypes[90]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7274,7 +7363,7 @@ func (x *StartVolumeCheckoutRequest) String() string {
 func (*StartVolumeCheckoutRequest) ProtoMessage() {}
 
 func (x *StartVolumeCheckoutRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[89]
+	mi := &file_publira_v1_catalog_proto_msgTypes[90]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7287,7 +7376,7 @@ func (x *StartVolumeCheckoutRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartVolumeCheckoutRequest.ProtoReflect.Descriptor instead.
 func (*StartVolumeCheckoutRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{89}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{90}
 }
 
 func (x *StartVolumeCheckoutRequest) GetTenant() *v1.TenantContext {
@@ -7320,7 +7409,7 @@ type StartVolumeCheckoutResponse struct {
 
 func (x *StartVolumeCheckoutResponse) Reset() {
 	*x = StartVolumeCheckoutResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[90]
+	mi := &file_publira_v1_catalog_proto_msgTypes[91]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7332,7 +7421,7 @@ func (x *StartVolumeCheckoutResponse) String() string {
 func (*StartVolumeCheckoutResponse) ProtoMessage() {}
 
 func (x *StartVolumeCheckoutResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[90]
+	mi := &file_publira_v1_catalog_proto_msgTypes[91]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7345,10 +7434,147 @@ func (x *StartVolumeCheckoutResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartVolumeCheckoutResponse.ProtoReflect.Descriptor instead.
 func (*StartVolumeCheckoutResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{90}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{91}
 }
 
 func (x *StartVolumeCheckoutResponse) GetCheckoutUrl() string {
+	if x != nil {
+		return x.CheckoutUrl
+	}
+	return ""
+}
+
+// Starts a provider checkout of the rest of a series: every episode of it the
+// calling surface lists and may sell, that has a price, and that the reader
+// holds no active permanent copy of, each as a line item at its price, with
+// the series' bundle discount (Series.bundle_discount_percent) taken off the
+// total. It answers the URL of the provider's checkout page. The purchase is
+// created by the provider's webhook alone, and opens each of those episodes as
+// buying its permanent copy would: for good, or for the reading period that
+// copy had when the checkout started. GetSeriesEpisodeAccess quotes the same
+// sale beforehand.
+//
+// `client` names the surface the checkout is started from, as it does on
+// StartEpisodeCheckout, and `locale` the language the line items name the
+// episodes in. A series the surface may not show is not_found. A series with
+// no priced episode the surface sells is failed_precondition, and so is one
+// with more such episodes left than the 100 line items one checkout holds. A
+// reader who holds every one of them is already_exists, and one whose account
+// is linked to a creator any of them credits is permission_denied with the
+// ErrorInfo reason READER_CREDITED_ON_EPISODE.
+//
+// The storefront is returned to the series page with `checkout` and
+// `remainder` in the query; the app to `/{locale}/checkout/return` with
+// `series`, `remainder`, and `status`.
+type StartSeriesRemainderCheckoutRequest struct {
+	state    protoimpl.MessageState             `protogen:"open.v1"`
+	Tenant   *v1.TenantContext                  `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	SeriesId string                             `protobuf:"bytes,2,opt,name=series_id,json=seriesId,proto3" json:"series_id,omitempty"`
+	Client   StartEpisodeCheckoutRequest_Client `protobuf:"varint,3,opt,name=client,proto3,enum=publira.v1.StartEpisodeCheckoutRequest_Client" json:"client,omitempty"`
+	// The reader's locale. Every episode title on the checkout page is that of
+	// the translation in this locale, else the tenant's default locale's, else
+	// the oldest one. Empty means the tenant's default locale.
+	Locale        string `protobuf:"bytes,4,opt,name=locale,proto3" json:"locale,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StartSeriesRemainderCheckoutRequest) Reset() {
+	*x = StartSeriesRemainderCheckoutRequest{}
+	mi := &file_publira_v1_catalog_proto_msgTypes[92]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StartSeriesRemainderCheckoutRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StartSeriesRemainderCheckoutRequest) ProtoMessage() {}
+
+func (x *StartSeriesRemainderCheckoutRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_catalog_proto_msgTypes[92]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StartSeriesRemainderCheckoutRequest.ProtoReflect.Descriptor instead.
+func (*StartSeriesRemainderCheckoutRequest) Descriptor() ([]byte, []int) {
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{92}
+}
+
+func (x *StartSeriesRemainderCheckoutRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *StartSeriesRemainderCheckoutRequest) GetSeriesId() string {
+	if x != nil {
+		return x.SeriesId
+	}
+	return ""
+}
+
+func (x *StartSeriesRemainderCheckoutRequest) GetClient() StartEpisodeCheckoutRequest_Client {
+	if x != nil {
+		return x.Client
+	}
+	return StartEpisodeCheckoutRequest_CLIENT_UNSPECIFIED
+}
+
+func (x *StartSeriesRemainderCheckoutRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
+type StartSeriesRemainderCheckoutResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CheckoutUrl   string                 `protobuf:"bytes,1,opt,name=checkout_url,json=checkoutUrl,proto3" json:"checkout_url,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StartSeriesRemainderCheckoutResponse) Reset() {
+	*x = StartSeriesRemainderCheckoutResponse{}
+	mi := &file_publira_v1_catalog_proto_msgTypes[93]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StartSeriesRemainderCheckoutResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StartSeriesRemainderCheckoutResponse) ProtoMessage() {}
+
+func (x *StartSeriesRemainderCheckoutResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_catalog_proto_msgTypes[93]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StartSeriesRemainderCheckoutResponse.ProtoReflect.Descriptor instead.
+func (*StartSeriesRemainderCheckoutResponse) Descriptor() ([]byte, []int) {
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{93}
+}
+
+func (x *StartSeriesRemainderCheckoutResponse) GetCheckoutUrl() string {
 	if x != nil {
 		return x.CheckoutUrl
 	}
@@ -7359,8 +7585,9 @@ func (x *StartVolumeCheckoutResponse) GetCheckoutUrl() string {
 // the API at read time: a purchase is active until it is revoked or its
 // expiry passes, and one without an expiry stays active until it is revoked.
 //
-// A purchase is of one episode or of one volume: exactly one of `episode` and
-// `volume` is set, and `series` is the series of either.
+// A purchase is of one episode, of one volume, or of the rest of a series:
+// exactly one of `episode`, `volume`, and `series_bundle` is set, and `series`
+// is the series of any of them.
 type MyPurchase struct {
 	state   protoimpl.MessageState `protogen:"open.v1"`
 	Id      string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -7389,20 +7616,26 @@ type MyPurchase struct {
 	// the refund. A purchase revoked here is never active.
 	RevokedAt string `protobuf:"bytes,11,opt,name=revoked_at,json=revokedAt,proto3" json:"revoked_at,omitempty"`
 	// Which of the episode's sales the reader bought, never unspecified. A
-	// rental always carries expires_at. A purchase of a volume is always
-	// PURCHASE_KIND_PURCHASE.
+	// rental always carries expires_at. A purchase of a volume or of the rest of
+	// a series is always PURCHASE_KIND_PURCHASE.
 	Kind v1.PurchaseKind `protobuf:"varint,12,opt,name=kind,proto3,enum=publira.types.v1.PurchaseKind" json:"kind,omitempty"`
 	// The volume bought, set on a purchase of a volume. It carries the id, the
 	// public_id, the title, and the order_index, and none of the volume's
 	// episodes, price, or cover.
-	Volume        *v1.Volume `protobuf:"bytes,13,opt,name=volume,proto3" json:"volume,omitempty"`
+	Volume *v1.Volume `protobuf:"bytes,13,opt,name=volume,proto3" json:"volume,omitempty"`
+	// The rest of the series bought, set on a purchase made by
+	// StartSeriesRemainderCheckout. Such a purchase has no expires_at of its
+	// own: an episode whose permanent copy had a reading period when the
+	// checkout started stops opening when that period runs out, and the
+	// episode reads report it.
+	SeriesBundle  *v1.SeriesBundle `protobuf:"bytes,14,opt,name=series_bundle,json=seriesBundle,proto3" json:"series_bundle,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *MyPurchase) Reset() {
 	*x = MyPurchase{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[91]
+	mi := &file_publira_v1_catalog_proto_msgTypes[94]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7414,7 +7647,7 @@ func (x *MyPurchase) String() string {
 func (*MyPurchase) ProtoMessage() {}
 
 func (x *MyPurchase) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[91]
+	mi := &file_publira_v1_catalog_proto_msgTypes[94]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7427,7 +7660,7 @@ func (x *MyPurchase) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MyPurchase.ProtoReflect.Descriptor instead.
 func (*MyPurchase) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{91}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{94}
 }
 
 func (x *MyPurchase) GetId() string {
@@ -7521,6 +7754,13 @@ func (x *MyPurchase) GetVolume() *v1.Volume {
 	return nil
 }
 
+func (x *MyPurchase) GetSeriesBundle() *v1.SeriesBundle {
+	if x != nil {
+		return x.SeriesBundle
+	}
+	return nil
+}
+
 // Cursor pagination. Field shape and token rules: proto/README.md.
 type ListMyPurchasesRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
@@ -7541,7 +7781,7 @@ type ListMyPurchasesRequest struct {
 
 func (x *ListMyPurchasesRequest) Reset() {
 	*x = ListMyPurchasesRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[92]
+	mi := &file_publira_v1_catalog_proto_msgTypes[95]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7553,7 +7793,7 @@ func (x *ListMyPurchasesRequest) String() string {
 func (*ListMyPurchasesRequest) ProtoMessage() {}
 
 func (x *ListMyPurchasesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[92]
+	mi := &file_publira_v1_catalog_proto_msgTypes[95]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7566,7 +7806,7 @@ func (x *ListMyPurchasesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMyPurchasesRequest.ProtoReflect.Descriptor instead.
 func (*ListMyPurchasesRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{92}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{95}
 }
 
 func (x *ListMyPurchasesRequest) GetTenant() *v1.TenantContext {
@@ -7617,7 +7857,7 @@ type ListMyPurchasesResponse struct {
 
 func (x *ListMyPurchasesResponse) Reset() {
 	*x = ListMyPurchasesResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[93]
+	mi := &file_publira_v1_catalog_proto_msgTypes[96]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7629,7 +7869,7 @@ func (x *ListMyPurchasesResponse) String() string {
 func (*ListMyPurchasesResponse) ProtoMessage() {}
 
 func (x *ListMyPurchasesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[93]
+	mi := &file_publira_v1_catalog_proto_msgTypes[96]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7642,7 +7882,7 @@ func (x *ListMyPurchasesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMyPurchasesResponse.ProtoReflect.Descriptor instead.
 func (*ListMyPurchasesResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{93}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{96}
 }
 
 func (x *ListMyPurchasesResponse) GetPurchases() []*MyPurchase {
@@ -7683,7 +7923,7 @@ type ProcessPaymentWebhookRequest struct {
 
 func (x *ProcessPaymentWebhookRequest) Reset() {
 	*x = ProcessPaymentWebhookRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[94]
+	mi := &file_publira_v1_catalog_proto_msgTypes[97]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7695,7 +7935,7 @@ func (x *ProcessPaymentWebhookRequest) String() string {
 func (*ProcessPaymentWebhookRequest) ProtoMessage() {}
 
 func (x *ProcessPaymentWebhookRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[94]
+	mi := &file_publira_v1_catalog_proto_msgTypes[97]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7708,7 +7948,7 @@ func (x *ProcessPaymentWebhookRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessPaymentWebhookRequest.ProtoReflect.Descriptor instead.
 func (*ProcessPaymentWebhookRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{94}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{97}
 }
 
 func (x *ProcessPaymentWebhookRequest) GetTenant() *v1.TenantContext {
@@ -7747,7 +7987,7 @@ type ProcessPaymentWebhookResponse struct {
 
 func (x *ProcessPaymentWebhookResponse) Reset() {
 	*x = ProcessPaymentWebhookResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[95]
+	mi := &file_publira_v1_catalog_proto_msgTypes[98]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7759,7 +7999,7 @@ func (x *ProcessPaymentWebhookResponse) String() string {
 func (*ProcessPaymentWebhookResponse) ProtoMessage() {}
 
 func (x *ProcessPaymentWebhookResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[95]
+	mi := &file_publira_v1_catalog_proto_msgTypes[98]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7772,7 +8012,7 @@ func (x *ProcessPaymentWebhookResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessPaymentWebhookResponse.ProtoReflect.Descriptor instead.
 func (*ProcessPaymentWebhookResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{95}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{98}
 }
 
 // Opens a purchase through the App Store's or Google Play's in-app purchase,
@@ -7802,7 +8042,7 @@ type StartStorePurchaseRequest struct {
 
 func (x *StartStorePurchaseRequest) Reset() {
 	*x = StartStorePurchaseRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[96]
+	mi := &file_publira_v1_catalog_proto_msgTypes[99]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7814,7 +8054,7 @@ func (x *StartStorePurchaseRequest) String() string {
 func (*StartStorePurchaseRequest) ProtoMessage() {}
 
 func (x *StartStorePurchaseRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[96]
+	mi := &file_publira_v1_catalog_proto_msgTypes[99]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7827,7 +8067,7 @@ func (x *StartStorePurchaseRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartStorePurchaseRequest.ProtoReflect.Descriptor instead.
 func (*StartStorePurchaseRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{96}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{99}
 }
 
 func (x *StartStorePurchaseRequest) GetTenant() *v1.TenantContext {
@@ -7862,7 +8102,7 @@ type StartStorePurchaseResponse struct {
 
 func (x *StartStorePurchaseResponse) Reset() {
 	*x = StartStorePurchaseResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[97]
+	mi := &file_publira_v1_catalog_proto_msgTypes[100]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7874,7 +8114,7 @@ func (x *StartStorePurchaseResponse) String() string {
 func (*StartStorePurchaseResponse) ProtoMessage() {}
 
 func (x *StartStorePurchaseResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[97]
+	mi := &file_publira_v1_catalog_proto_msgTypes[100]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7887,7 +8127,7 @@ func (x *StartStorePurchaseResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartStorePurchaseResponse.ProtoReflect.Descriptor instead.
 func (*StartStorePurchaseResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{97}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{100}
 }
 
 func (x *StartStorePurchaseResponse) GetIntentId() string {
@@ -7937,7 +8177,7 @@ type ConfirmStorePurchaseRequest struct {
 
 func (x *ConfirmStorePurchaseRequest) Reset() {
 	*x = ConfirmStorePurchaseRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[98]
+	mi := &file_publira_v1_catalog_proto_msgTypes[101]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7949,7 +8189,7 @@ func (x *ConfirmStorePurchaseRequest) String() string {
 func (*ConfirmStorePurchaseRequest) ProtoMessage() {}
 
 func (x *ConfirmStorePurchaseRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[98]
+	mi := &file_publira_v1_catalog_proto_msgTypes[101]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7962,7 +8202,7 @@ func (x *ConfirmStorePurchaseRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConfirmStorePurchaseRequest.ProtoReflect.Descriptor instead.
 func (*ConfirmStorePurchaseRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{98}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{101}
 }
 
 func (x *ConfirmStorePurchaseRequest) GetTenant() *v1.TenantContext {
@@ -8009,7 +8249,7 @@ type ConfirmStorePurchaseResponse struct {
 
 func (x *ConfirmStorePurchaseResponse) Reset() {
 	*x = ConfirmStorePurchaseResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[99]
+	mi := &file_publira_v1_catalog_proto_msgTypes[102]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8021,7 +8261,7 @@ func (x *ConfirmStorePurchaseResponse) String() string {
 func (*ConfirmStorePurchaseResponse) ProtoMessage() {}
 
 func (x *ConfirmStorePurchaseResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[99]
+	mi := &file_publira_v1_catalog_proto_msgTypes[102]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8034,7 +8274,7 @@ func (x *ConfirmStorePurchaseResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConfirmStorePurchaseResponse.ProtoReflect.Descriptor instead.
 func (*ConfirmStorePurchaseResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{99}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{102}
 }
 
 func (x *ConfirmStorePurchaseResponse) GetPurchase() *MyPurchase {
@@ -8063,7 +8303,7 @@ type ProcessAppStoreNotificationRequest struct {
 
 func (x *ProcessAppStoreNotificationRequest) Reset() {
 	*x = ProcessAppStoreNotificationRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[100]
+	mi := &file_publira_v1_catalog_proto_msgTypes[103]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8075,7 +8315,7 @@ func (x *ProcessAppStoreNotificationRequest) String() string {
 func (*ProcessAppStoreNotificationRequest) ProtoMessage() {}
 
 func (x *ProcessAppStoreNotificationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[100]
+	mi := &file_publira_v1_catalog_proto_msgTypes[103]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8088,7 +8328,7 @@ func (x *ProcessAppStoreNotificationRequest) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use ProcessAppStoreNotificationRequest.ProtoReflect.Descriptor instead.
 func (*ProcessAppStoreNotificationRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{100}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{103}
 }
 
 func (x *ProcessAppStoreNotificationRequest) GetTenant() *v1.TenantContext {
@@ -8113,7 +8353,7 @@ type ProcessAppStoreNotificationResponse struct {
 
 func (x *ProcessAppStoreNotificationResponse) Reset() {
 	*x = ProcessAppStoreNotificationResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[101]
+	mi := &file_publira_v1_catalog_proto_msgTypes[104]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8125,7 +8365,7 @@ func (x *ProcessAppStoreNotificationResponse) String() string {
 func (*ProcessAppStoreNotificationResponse) ProtoMessage() {}
 
 func (x *ProcessAppStoreNotificationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[101]
+	mi := &file_publira_v1_catalog_proto_msgTypes[104]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8138,7 +8378,7 @@ func (x *ProcessAppStoreNotificationResponse) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use ProcessAppStoreNotificationResponse.ProtoReflect.Descriptor instead.
 func (*ProcessAppStoreNotificationResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{101}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{104}
 }
 
 type GetMyTicketStateRequest struct {
@@ -8153,7 +8393,7 @@ type GetMyTicketStateRequest struct {
 
 func (x *GetMyTicketStateRequest) Reset() {
 	*x = GetMyTicketStateRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[102]
+	mi := &file_publira_v1_catalog_proto_msgTypes[105]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8165,7 +8405,7 @@ func (x *GetMyTicketStateRequest) String() string {
 func (*GetMyTicketStateRequest) ProtoMessage() {}
 
 func (x *GetMyTicketStateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[102]
+	mi := &file_publira_v1_catalog_proto_msgTypes[105]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8178,7 +8418,7 @@ func (x *GetMyTicketStateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMyTicketStateRequest.ProtoReflect.Descriptor instead.
 func (*GetMyTicketStateRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{102}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{105}
 }
 
 func (x *GetMyTicketStateRequest) GetTenant() *v1.TenantContext {
@@ -8214,7 +8454,7 @@ type WaitFreeTicket struct {
 
 func (x *WaitFreeTicket) Reset() {
 	*x = WaitFreeTicket{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[103]
+	mi := &file_publira_v1_catalog_proto_msgTypes[106]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8226,7 +8466,7 @@ func (x *WaitFreeTicket) String() string {
 func (*WaitFreeTicket) ProtoMessage() {}
 
 func (x *WaitFreeTicket) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[103]
+	mi := &file_publira_v1_catalog_proto_msgTypes[106]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8239,7 +8479,7 @@ func (x *WaitFreeTicket) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WaitFreeTicket.ProtoReflect.Descriptor instead.
 func (*WaitFreeTicket) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{103}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{106}
 }
 
 func (x *WaitFreeTicket) GetEpisodeId() string {
@@ -8270,7 +8510,7 @@ type GetMyTicketStateResponse struct {
 
 func (x *GetMyTicketStateResponse) Reset() {
 	*x = GetMyTicketStateResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[104]
+	mi := &file_publira_v1_catalog_proto_msgTypes[107]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8282,7 +8522,7 @@ func (x *GetMyTicketStateResponse) String() string {
 func (*GetMyTicketStateResponse) ProtoMessage() {}
 
 func (x *GetMyTicketStateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[104]
+	mi := &file_publira_v1_catalog_proto_msgTypes[107]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8295,7 +8535,7 @@ func (x *GetMyTicketStateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMyTicketStateResponse.ProtoReflect.Descriptor instead.
 func (*GetMyTicketStateResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{104}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{107}
 }
 
 func (x *GetMyTicketStateResponse) GetNextAvailableAt() string {
@@ -8326,7 +8566,7 @@ type UseTicketRequest struct {
 
 func (x *UseTicketRequest) Reset() {
 	*x = UseTicketRequest{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[105]
+	mi := &file_publira_v1_catalog_proto_msgTypes[108]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8338,7 +8578,7 @@ func (x *UseTicketRequest) String() string {
 func (*UseTicketRequest) ProtoMessage() {}
 
 func (x *UseTicketRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[105]
+	mi := &file_publira_v1_catalog_proto_msgTypes[108]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8351,7 +8591,7 @@ func (x *UseTicketRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UseTicketRequest.ProtoReflect.Descriptor instead.
 func (*UseTicketRequest) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{105}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{108}
 }
 
 func (x *UseTicketRequest) GetTenant() *v1.TenantContext {
@@ -8386,7 +8626,7 @@ type UseTicketResponse struct {
 
 func (x *UseTicketResponse) Reset() {
 	*x = UseTicketResponse{}
-	mi := &file_publira_v1_catalog_proto_msgTypes[106]
+	mi := &file_publira_v1_catalog_proto_msgTypes[109]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8398,7 +8638,7 @@ func (x *UseTicketResponse) String() string {
 func (*UseTicketResponse) ProtoMessage() {}
 
 func (x *UseTicketResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_v1_catalog_proto_msgTypes[106]
+	mi := &file_publira_v1_catalog_proto_msgTypes[109]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8411,7 +8651,7 @@ func (x *UseTicketResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UseTicketResponse.ProtoReflect.Descriptor instead.
 func (*UseTicketResponse) Descriptor() ([]byte, []int) {
-	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{106}
+	return file_publira_v1_catalog_proto_rawDescGZIP(), []int{109}
 }
 
 func (x *UseTicketResponse) GetTicket() *WaitFreeTicket {
@@ -8491,9 +8731,16 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x11episode_public_id\x18\x01 \x01(\tR\x0fepisodePublicId\x121\n" +
 	"\x06access\x18\x02 \x01(\x0e2\x19.publira.v1.EpisodeAccessR\x06access\x12\x1d\n" +
 	"\n" +
-	"episode_id\x18\x03 \x01(\tR\tepisodeId\"]\n" +
+	"episode_id\x18\x03 \x01(\tR\tepisodeId\"\x9d\x01\n" +
 	"\x1eGetSeriesEpisodeAccessResponse\x12;\n" +
-	"\bepisodes\x18\x01 \x03(\v2\x1f.publira.v1.SeriesEpisodeAccessR\bepisodes\"\xc2\x01\n" +
+	"\bepisodes\x18\x01 \x03(\v2\x1f.publira.v1.SeriesEpisodeAccessR\bepisodes\x12>\n" +
+	"\tremainder\x18\x02 \x01(\v2 .publira.v1.SeriesRemainderOfferR\tremainder\"\x9b\x01\n" +
+	"\x14SeriesRemainderOffer\x12#\n" +
+	"\repisode_count\x18\x01 \x01(\x05R\fepisodeCount\x12\x1d\n" +
+	"\n" +
+	"list_price\x18\x02 \x01(\x05R\tlistPrice\x12)\n" +
+	"\x10discount_percent\x18\x03 \x01(\x05R\x0fdiscountPercent\x12\x14\n" +
+	"\x05price\x18\x04 \x01(\x05R\x05price\"\xc2\x01\n" +
 	"\x17GetEpisodeDetailRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x129\n" +
@@ -8923,7 +9170,14 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\tvolume_id\x18\x02 \x01(\tR\bvolumeId\x12F\n" +
 	"\x06client\x18\x03 \x01(\x0e2..publira.v1.StartEpisodeCheckoutRequest.ClientR\x06client\"@\n" +
 	"\x1bStartVolumeCheckoutResponse\x12!\n" +
-	"\fcheckout_url\x18\x01 \x01(\tR\vcheckoutUrl\"\xf9\x03\n" +
+	"\fcheckout_url\x18\x01 \x01(\tR\vcheckoutUrl\"\xdb\x01\n" +
+	"#StartSeriesRemainderCheckoutRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
+	"\tseries_id\x18\x02 \x01(\tR\bseriesId\x12F\n" +
+	"\x06client\x18\x03 \x01(\x0e2..publira.v1.StartEpisodeCheckoutRequest.ClientR\x06client\x12\x16\n" +
+	"\x06locale\x18\x04 \x01(\tR\x06locale\"I\n" +
+	"$StartSeriesRemainderCheckoutResponse\x12!\n" +
+	"\fcheckout_url\x18\x01 \x01(\tR\vcheckoutUrl\"\xbe\x04\n" +
 	"\n" +
 	"MyPurchase\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x123\n" +
@@ -8942,7 +9196,8 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\n" +
 	"revoked_at\x18\v \x01(\tR\trevokedAt\x122\n" +
 	"\x04kind\x18\f \x01(\x0e2\x1e.publira.types.v1.PurchaseKindR\x04kind\x120\n" +
-	"\x06volume\x18\r \x01(\v2\x18.publira.types.v1.VolumeR\x06volume\"\xd0\x01\n" +
+	"\x06volume\x18\r \x01(\v2\x18.publira.types.v1.VolumeR\x06volume\x12C\n" +
+	"\rseries_bundle\x18\x0e \x01(\v2\x1e.publira.types.v1.SeriesBundleR\fseriesBundle\"\xd0\x01\n" +
 	"\x16ListMyPurchasesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
@@ -9095,10 +9350,11 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x12GetMyEpisodeRating\x12%.publira.v1.GetMyEpisodeRatingRequest\x1a&.publira.v1.GetMyEpisodeRatingResponse\"\x00\x12b\n" +
 	"\x11GetMySeriesRating\x12$.publira.v1.GetMySeriesRatingRequest\x1a%.publira.v1.GetMySeriesRatingResponse\"\x002x\n" +
 	"\x12ContentViewService\x12b\n" +
-	"\x11RecordContentView\x12$.publira.v1.RecordContentViewRequest\x1a%.publira.v1.RecordContentViewResponse\"\x002\x8d\x06\n" +
+	"\x11RecordContentView\x12$.publira.v1.RecordContentViewRequest\x1a%.publira.v1.RecordContentViewResponse\"\x002\x93\a\n" +
 	"\x0fPurchaseService\x12k\n" +
 	"\x14StartEpisodeCheckout\x12'.publira.v1.StartEpisodeCheckoutRequest\x1a(.publira.v1.StartEpisodeCheckoutResponse\"\x00\x12h\n" +
-	"\x13StartVolumeCheckout\x12&.publira.v1.StartVolumeCheckoutRequest\x1a'.publira.v1.StartVolumeCheckoutResponse\"\x00\x12\\\n" +
+	"\x13StartVolumeCheckout\x12&.publira.v1.StartVolumeCheckoutRequest\x1a'.publira.v1.StartVolumeCheckoutResponse\"\x00\x12\x83\x01\n" +
+	"\x1cStartSeriesRemainderCheckout\x12/.publira.v1.StartSeriesRemainderCheckoutRequest\x1a0.publira.v1.StartSeriesRemainderCheckoutResponse\"\x00\x12\\\n" +
 	"\x0fListMyPurchases\x12\".publira.v1.ListMyPurchasesRequest\x1a#.publira.v1.ListMyPurchasesResponse\"\x00\x12n\n" +
 	"\x15ProcessPaymentWebhook\x12(.publira.v1.ProcessPaymentWebhookRequest\x1a).publira.v1.ProcessPaymentWebhookResponse\"\x00\x12e\n" +
 	"\x12StartStorePurchase\x12%.publira.v1.StartStorePurchaseRequest\x1a&.publira.v1.StartStorePurchaseResponse\"\x00\x12k\n" +
@@ -9121,401 +9377,411 @@ func file_publira_v1_catalog_proto_rawDescGZIP() []byte {
 }
 
 var file_publira_v1_catalog_proto_enumTypes = make([]protoimpl.EnumInfo, 11)
-var file_publira_v1_catalog_proto_msgTypes = make([]protoimpl.MessageInfo, 108)
+var file_publira_v1_catalog_proto_msgTypes = make([]protoimpl.MessageInfo, 111)
 var file_publira_v1_catalog_proto_goTypes = []any{
-	(SeriesOrder)(0),                            // 0: publira.v1.SeriesOrder
-	(EpisodeAccess)(0),                          // 1: publira.v1.EpisodeAccess
-	(EpisodeEntitlementSource)(0),               // 2: publira.v1.EpisodeEntitlementSource
-	(RecommendationSource)(0),                   // 3: publira.v1.RecommendationSource
-	(RankingPeriod)(0),                          // 4: publira.v1.RankingPeriod
-	(SitemapEntryKind)(0),                       // 5: publira.v1.SitemapEntryKind
-	(FollowTargetType)(0),                       // 6: publira.v1.FollowTargetType
-	(EpisodeRatingMode)(0),                      // 7: publira.v1.EpisodeRatingMode
-	(ContentViewTargetType)(0),                  // 8: publira.v1.ContentViewTargetType
-	(InAppPurchaseStore)(0),                     // 9: publira.v1.InAppPurchaseStore
-	(StartEpisodeCheckoutRequest_Client)(0),     // 10: publira.v1.StartEpisodeCheckoutRequest.Client
-	(*ListPublishedLabelsRequest)(nil),          // 11: publira.v1.ListPublishedLabelsRequest
-	(*ListPublishedLabelsResponse)(nil),         // 12: publira.v1.ListPublishedLabelsResponse
-	(*ListPublishedSeriesRequest)(nil),          // 13: publira.v1.ListPublishedSeriesRequest
-	(*ListPublishedSeriesResponse)(nil),         // 14: publira.v1.ListPublishedSeriesResponse
-	(*GetSeriesDetailRequest)(nil),              // 15: publira.v1.GetSeriesDetailRequest
-	(*WaitFreeRule)(nil),                        // 16: publira.v1.WaitFreeRule
-	(*GetSeriesDetailResponse)(nil),             // 17: publira.v1.GetSeriesDetailResponse
-	(*GetSeriesEpisodeAccessRequest)(nil),       // 18: publira.v1.GetSeriesEpisodeAccessRequest
-	(*SeriesEpisodeAccess)(nil),                 // 19: publira.v1.SeriesEpisodeAccess
-	(*GetSeriesEpisodeAccessResponse)(nil),      // 20: publira.v1.GetSeriesEpisodeAccessResponse
-	(*GetEpisodeDetailRequest)(nil),             // 21: publira.v1.GetEpisodeDetailRequest
-	(*EpisodeNeighbor)(nil),                     // 22: publira.v1.EpisodeNeighbor
-	(*GetEpisodeDetailResponse)(nil),            // 23: publira.v1.GetEpisodeDetailResponse
-	(*PublishedCreator)(nil),                    // 24: publira.v1.PublishedCreator
-	(*ListPublishedCreatorsRequest)(nil),        // 25: publira.v1.ListPublishedCreatorsRequest
-	(*ListPublishedCreatorsResponse)(nil),       // 26: publira.v1.ListPublishedCreatorsResponse
-	(*GetPublishedCreatorDetailRequest)(nil),    // 27: publira.v1.GetPublishedCreatorDetailRequest
-	(*GetPublishedCreatorDetailResponse)(nil),   // 28: publira.v1.GetPublishedCreatorDetailResponse
-	(*PublishedLabel)(nil),                      // 29: publira.v1.PublishedLabel
-	(*GetPublishedLabelDetailRequest)(nil),      // 30: publira.v1.GetPublishedLabelDetailRequest
-	(*GetPublishedLabelDetailResponse)(nil),     // 31: publira.v1.GetPublishedLabelDetailResponse
-	(*PublishedGenre)(nil),                      // 32: publira.v1.PublishedGenre
-	(*PublishedGenreFeaturedSeries)(nil),        // 33: publira.v1.PublishedGenreFeaturedSeries
-	(*ListPublishedGenresRequest)(nil),          // 34: publira.v1.ListPublishedGenresRequest
-	(*ListPublishedGenresResponse)(nil),         // 35: publira.v1.ListPublishedGenresResponse
-	(*PublishedTag)(nil),                        // 36: publira.v1.PublishedTag
-	(*ListPublishedTagsRequest)(nil),            // 37: publira.v1.ListPublishedTagsRequest
-	(*ListPublishedTagsResponse)(nil),           // 38: publira.v1.ListPublishedTagsResponse
-	(*SearchPublishedSeriesRequest)(nil),        // 39: publira.v1.SearchPublishedSeriesRequest
-	(*SearchPublishedSeriesResponse)(nil),       // 40: publira.v1.SearchPublishedSeriesResponse
-	(*SearchPublishedCreatorsRequest)(nil),      // 41: publira.v1.SearchPublishedCreatorsRequest
-	(*SearchPublishedCreatorsResponse)(nil),     // 42: publira.v1.SearchPublishedCreatorsResponse
-	(*SearchPublishedLabelsRequest)(nil),        // 43: publira.v1.SearchPublishedLabelsRequest
-	(*SearchPublishedLabelsResponse)(nil),       // 44: publira.v1.SearchPublishedLabelsResponse
-	(*ListRecommendedSeriesRequest)(nil),        // 45: publira.v1.ListRecommendedSeriesRequest
-	(*ListRecommendedSeriesResponse)(nil),       // 46: publira.v1.ListRecommendedSeriesResponse
-	(*ListMyRecommendedSeriesRequest)(nil),      // 47: publira.v1.ListMyRecommendedSeriesRequest
-	(*ListMyRecommendedSeriesResponse)(nil),     // 48: publira.v1.ListMyRecommendedSeriesResponse
-	(*RankedSeries)(nil),                        // 49: publira.v1.RankedSeries
-	(*ListRankedSeriesRequest)(nil),             // 50: publira.v1.ListRankedSeriesRequest
-	(*ListRankedSeriesResponse)(nil),            // 51: publira.v1.ListRankedSeriesResponse
-	(*ListRelatedSeriesRequest)(nil),            // 52: publira.v1.ListRelatedSeriesRequest
-	(*ListRelatedSeriesResponse)(nil),           // 53: publira.v1.ListRelatedSeriesResponse
-	(*SitemapEntry)(nil),                        // 54: publira.v1.SitemapEntry
-	(*ListSitemapEntriesRequest)(nil),           // 55: publira.v1.ListSitemapEntriesRequest
-	(*ListSitemapEntriesResponse)(nil),          // 56: publira.v1.ListSitemapEntriesResponse
-	(*CampaignBanner)(nil),                      // 57: publira.v1.CampaignBanner
-	(*ListCampaignBannersRequest)(nil),          // 58: publira.v1.ListCampaignBannersRequest
-	(*ListCampaignBannersResponse)(nil),         // 59: publira.v1.ListCampaignBannersResponse
-	(*MarkEpisodeAsReadRequest)(nil),            // 60: publira.v1.MarkEpisodeAsReadRequest
-	(*MarkEpisodeAsReadResponse)(nil),           // 61: publira.v1.MarkEpisodeAsReadResponse
-	(*ReadingPosition)(nil),                     // 62: publira.v1.ReadingPosition
-	(*SaveReadingPositionRequest)(nil),          // 63: publira.v1.SaveReadingPositionRequest
-	(*SaveReadingPositionResponse)(nil),         // 64: publira.v1.SaveReadingPositionResponse
-	(*GetMyReadingPositionRequest)(nil),         // 65: publira.v1.GetMyReadingPositionRequest
-	(*GetMyReadingPositionResponse)(nil),        // 66: publira.v1.GetMyReadingPositionResponse
-	(*GetMySeriesProgressRequest)(nil),          // 67: publira.v1.GetMySeriesProgressRequest
-	(*SeriesProgress)(nil),                      // 68: publira.v1.SeriesProgress
-	(*GetMySeriesProgressResponse)(nil),         // 69: publira.v1.GetMySeriesProgressResponse
-	(*RecentSeries)(nil),                        // 70: publira.v1.RecentSeries
-	(*ListMyRecentSeriesRequest)(nil),           // 71: publira.v1.ListMyRecentSeriesRequest
-	(*ListMyRecentSeriesResponse)(nil),          // 72: publira.v1.ListMyRecentSeriesResponse
-	(*MyEpisodeRead)(nil),                       // 73: publira.v1.MyEpisodeRead
-	(*ListMyEpisodeReadsRequest)(nil),           // 74: publira.v1.ListMyEpisodeReadsRequest
-	(*ListMyEpisodeReadsResponse)(nil),          // 75: publira.v1.ListMyEpisodeReadsResponse
-	(*FollowTarget)(nil),                        // 76: publira.v1.FollowTarget
-	(*GetMyFollowStatusRequest)(nil),            // 77: publira.v1.GetMyFollowStatusRequest
-	(*GetMyFollowStatusResponse)(nil),           // 78: publira.v1.GetMyFollowStatusResponse
-	(*FollowRequest)(nil),                       // 79: publira.v1.FollowRequest
-	(*FollowResponse)(nil),                      // 80: publira.v1.FollowResponse
-	(*UnfollowRequest)(nil),                     // 81: publira.v1.UnfollowRequest
-	(*UnfollowResponse)(nil),                    // 82: publira.v1.UnfollowResponse
-	(*MyFollow)(nil),                            // 83: publira.v1.MyFollow
-	(*ListMyFollowsRequest)(nil),                // 84: publira.v1.ListMyFollowsRequest
-	(*ListMyFollowsResponse)(nil),               // 85: publira.v1.ListMyFollowsResponse
-	(*FollowUpdate)(nil),                        // 86: publira.v1.FollowUpdate
-	(*ListMyFollowUpdatesRequest)(nil),          // 87: publira.v1.ListMyFollowUpdatesRequest
-	(*ListMyFollowUpdatesResponse)(nil),         // 88: publira.v1.ListMyFollowUpdatesResponse
-	(*RateEpisodeRequest)(nil),                  // 89: publira.v1.RateEpisodeRequest
-	(*RateEpisodeResponse)(nil),                 // 90: publira.v1.RateEpisodeResponse
-	(*GetMyEpisodeRatingRequest)(nil),           // 91: publira.v1.GetMyEpisodeRatingRequest
-	(*GetMyEpisodeRatingResponse)(nil),          // 92: publira.v1.GetMyEpisodeRatingResponse
-	(*GetMySeriesRatingRequest)(nil),            // 93: publira.v1.GetMySeriesRatingRequest
-	(*GetMySeriesRatingResponse)(nil),           // 94: publira.v1.GetMySeriesRatingResponse
-	(*ContentViewTarget)(nil),                   // 95: publira.v1.ContentViewTarget
-	(*RecordContentViewRequest)(nil),            // 96: publira.v1.RecordContentViewRequest
-	(*RecordContentViewResponse)(nil),           // 97: publira.v1.RecordContentViewResponse
-	(*StartEpisodeCheckoutRequest)(nil),         // 98: publira.v1.StartEpisodeCheckoutRequest
-	(*StartEpisodeCheckoutResponse)(nil),        // 99: publira.v1.StartEpisodeCheckoutResponse
-	(*StartVolumeCheckoutRequest)(nil),          // 100: publira.v1.StartVolumeCheckoutRequest
-	(*StartVolumeCheckoutResponse)(nil),         // 101: publira.v1.StartVolumeCheckoutResponse
-	(*MyPurchase)(nil),                          // 102: publira.v1.MyPurchase
-	(*ListMyPurchasesRequest)(nil),              // 103: publira.v1.ListMyPurchasesRequest
-	(*ListMyPurchasesResponse)(nil),             // 104: publira.v1.ListMyPurchasesResponse
-	(*ProcessPaymentWebhookRequest)(nil),        // 105: publira.v1.ProcessPaymentWebhookRequest
-	(*ProcessPaymentWebhookResponse)(nil),       // 106: publira.v1.ProcessPaymentWebhookResponse
-	(*StartStorePurchaseRequest)(nil),           // 107: publira.v1.StartStorePurchaseRequest
-	(*StartStorePurchaseResponse)(nil),          // 108: publira.v1.StartStorePurchaseResponse
-	(*ConfirmStorePurchaseRequest)(nil),         // 109: publira.v1.ConfirmStorePurchaseRequest
-	(*ConfirmStorePurchaseResponse)(nil),        // 110: publira.v1.ConfirmStorePurchaseResponse
-	(*ProcessAppStoreNotificationRequest)(nil),  // 111: publira.v1.ProcessAppStoreNotificationRequest
-	(*ProcessAppStoreNotificationResponse)(nil), // 112: publira.v1.ProcessAppStoreNotificationResponse
-	(*GetMyTicketStateRequest)(nil),             // 113: publira.v1.GetMyTicketStateRequest
-	(*WaitFreeTicket)(nil),                      // 114: publira.v1.WaitFreeTicket
-	(*GetMyTicketStateResponse)(nil),            // 115: publira.v1.GetMyTicketStateResponse
-	(*UseTicketRequest)(nil),                    // 116: publira.v1.UseTicketRequest
-	(*UseTicketResponse)(nil),                   // 117: publira.v1.UseTicketResponse
-	nil,                                         // 118: publira.v1.ProcessPaymentWebhookRequest.HeadersEntry
-	(*v1.TenantContext)(nil),                    // 119: publira.types.v1.TenantContext
-	(v1.ClientSurface)(0),                       // 120: publira.types.v1.ClientSurface
-	(v1.SeriesStatus)(0),                        // 121: publira.types.v1.SeriesStatus
-	(*v1.Series)(nil),                           // 122: publira.types.v1.Series
-	(*v1.Episode)(nil),                          // 123: publira.types.v1.Episode
-	(v1.CommentMode)(0),                         // 124: publira.types.v1.CommentMode
-	(*v1.Volume)(nil),                           // 125: publira.types.v1.Volume
-	(*v1.Creator)(nil),                          // 126: publira.types.v1.Creator
-	(v1.SurfaceAvailability)(0),                 // 127: publira.types.v1.SurfaceAvailability
-	(*v1.EpisodeImage)(nil),                     // 128: publira.types.v1.EpisodeImage
-	(*v1.SeriesEyeCatchVariant)(nil),            // 129: publira.types.v1.SeriesEyeCatchVariant
-	(v1.SeriesAgeRating)(0),                     // 130: publira.types.v1.SeriesAgeRating
-	(v1.PurchaseKind)(0),                        // 131: publira.types.v1.PurchaseKind
+	(SeriesOrder)(0),                             // 0: publira.v1.SeriesOrder
+	(EpisodeAccess)(0),                           // 1: publira.v1.EpisodeAccess
+	(EpisodeEntitlementSource)(0),                // 2: publira.v1.EpisodeEntitlementSource
+	(RecommendationSource)(0),                    // 3: publira.v1.RecommendationSource
+	(RankingPeriod)(0),                           // 4: publira.v1.RankingPeriod
+	(SitemapEntryKind)(0),                        // 5: publira.v1.SitemapEntryKind
+	(FollowTargetType)(0),                        // 6: publira.v1.FollowTargetType
+	(EpisodeRatingMode)(0),                       // 7: publira.v1.EpisodeRatingMode
+	(ContentViewTargetType)(0),                   // 8: publira.v1.ContentViewTargetType
+	(InAppPurchaseStore)(0),                      // 9: publira.v1.InAppPurchaseStore
+	(StartEpisodeCheckoutRequest_Client)(0),      // 10: publira.v1.StartEpisodeCheckoutRequest.Client
+	(*ListPublishedLabelsRequest)(nil),           // 11: publira.v1.ListPublishedLabelsRequest
+	(*ListPublishedLabelsResponse)(nil),          // 12: publira.v1.ListPublishedLabelsResponse
+	(*ListPublishedSeriesRequest)(nil),           // 13: publira.v1.ListPublishedSeriesRequest
+	(*ListPublishedSeriesResponse)(nil),          // 14: publira.v1.ListPublishedSeriesResponse
+	(*GetSeriesDetailRequest)(nil),               // 15: publira.v1.GetSeriesDetailRequest
+	(*WaitFreeRule)(nil),                         // 16: publira.v1.WaitFreeRule
+	(*GetSeriesDetailResponse)(nil),              // 17: publira.v1.GetSeriesDetailResponse
+	(*GetSeriesEpisodeAccessRequest)(nil),        // 18: publira.v1.GetSeriesEpisodeAccessRequest
+	(*SeriesEpisodeAccess)(nil),                  // 19: publira.v1.SeriesEpisodeAccess
+	(*GetSeriesEpisodeAccessResponse)(nil),       // 20: publira.v1.GetSeriesEpisodeAccessResponse
+	(*SeriesRemainderOffer)(nil),                 // 21: publira.v1.SeriesRemainderOffer
+	(*GetEpisodeDetailRequest)(nil),              // 22: publira.v1.GetEpisodeDetailRequest
+	(*EpisodeNeighbor)(nil),                      // 23: publira.v1.EpisodeNeighbor
+	(*GetEpisodeDetailResponse)(nil),             // 24: publira.v1.GetEpisodeDetailResponse
+	(*PublishedCreator)(nil),                     // 25: publira.v1.PublishedCreator
+	(*ListPublishedCreatorsRequest)(nil),         // 26: publira.v1.ListPublishedCreatorsRequest
+	(*ListPublishedCreatorsResponse)(nil),        // 27: publira.v1.ListPublishedCreatorsResponse
+	(*GetPublishedCreatorDetailRequest)(nil),     // 28: publira.v1.GetPublishedCreatorDetailRequest
+	(*GetPublishedCreatorDetailResponse)(nil),    // 29: publira.v1.GetPublishedCreatorDetailResponse
+	(*PublishedLabel)(nil),                       // 30: publira.v1.PublishedLabel
+	(*GetPublishedLabelDetailRequest)(nil),       // 31: publira.v1.GetPublishedLabelDetailRequest
+	(*GetPublishedLabelDetailResponse)(nil),      // 32: publira.v1.GetPublishedLabelDetailResponse
+	(*PublishedGenre)(nil),                       // 33: publira.v1.PublishedGenre
+	(*PublishedGenreFeaturedSeries)(nil),         // 34: publira.v1.PublishedGenreFeaturedSeries
+	(*ListPublishedGenresRequest)(nil),           // 35: publira.v1.ListPublishedGenresRequest
+	(*ListPublishedGenresResponse)(nil),          // 36: publira.v1.ListPublishedGenresResponse
+	(*PublishedTag)(nil),                         // 37: publira.v1.PublishedTag
+	(*ListPublishedTagsRequest)(nil),             // 38: publira.v1.ListPublishedTagsRequest
+	(*ListPublishedTagsResponse)(nil),            // 39: publira.v1.ListPublishedTagsResponse
+	(*SearchPublishedSeriesRequest)(nil),         // 40: publira.v1.SearchPublishedSeriesRequest
+	(*SearchPublishedSeriesResponse)(nil),        // 41: publira.v1.SearchPublishedSeriesResponse
+	(*SearchPublishedCreatorsRequest)(nil),       // 42: publira.v1.SearchPublishedCreatorsRequest
+	(*SearchPublishedCreatorsResponse)(nil),      // 43: publira.v1.SearchPublishedCreatorsResponse
+	(*SearchPublishedLabelsRequest)(nil),         // 44: publira.v1.SearchPublishedLabelsRequest
+	(*SearchPublishedLabelsResponse)(nil),        // 45: publira.v1.SearchPublishedLabelsResponse
+	(*ListRecommendedSeriesRequest)(nil),         // 46: publira.v1.ListRecommendedSeriesRequest
+	(*ListRecommendedSeriesResponse)(nil),        // 47: publira.v1.ListRecommendedSeriesResponse
+	(*ListMyRecommendedSeriesRequest)(nil),       // 48: publira.v1.ListMyRecommendedSeriesRequest
+	(*ListMyRecommendedSeriesResponse)(nil),      // 49: publira.v1.ListMyRecommendedSeriesResponse
+	(*RankedSeries)(nil),                         // 50: publira.v1.RankedSeries
+	(*ListRankedSeriesRequest)(nil),              // 51: publira.v1.ListRankedSeriesRequest
+	(*ListRankedSeriesResponse)(nil),             // 52: publira.v1.ListRankedSeriesResponse
+	(*ListRelatedSeriesRequest)(nil),             // 53: publira.v1.ListRelatedSeriesRequest
+	(*ListRelatedSeriesResponse)(nil),            // 54: publira.v1.ListRelatedSeriesResponse
+	(*SitemapEntry)(nil),                         // 55: publira.v1.SitemapEntry
+	(*ListSitemapEntriesRequest)(nil),            // 56: publira.v1.ListSitemapEntriesRequest
+	(*ListSitemapEntriesResponse)(nil),           // 57: publira.v1.ListSitemapEntriesResponse
+	(*CampaignBanner)(nil),                       // 58: publira.v1.CampaignBanner
+	(*ListCampaignBannersRequest)(nil),           // 59: publira.v1.ListCampaignBannersRequest
+	(*ListCampaignBannersResponse)(nil),          // 60: publira.v1.ListCampaignBannersResponse
+	(*MarkEpisodeAsReadRequest)(nil),             // 61: publira.v1.MarkEpisodeAsReadRequest
+	(*MarkEpisodeAsReadResponse)(nil),            // 62: publira.v1.MarkEpisodeAsReadResponse
+	(*ReadingPosition)(nil),                      // 63: publira.v1.ReadingPosition
+	(*SaveReadingPositionRequest)(nil),           // 64: publira.v1.SaveReadingPositionRequest
+	(*SaveReadingPositionResponse)(nil),          // 65: publira.v1.SaveReadingPositionResponse
+	(*GetMyReadingPositionRequest)(nil),          // 66: publira.v1.GetMyReadingPositionRequest
+	(*GetMyReadingPositionResponse)(nil),         // 67: publira.v1.GetMyReadingPositionResponse
+	(*GetMySeriesProgressRequest)(nil),           // 68: publira.v1.GetMySeriesProgressRequest
+	(*SeriesProgress)(nil),                       // 69: publira.v1.SeriesProgress
+	(*GetMySeriesProgressResponse)(nil),          // 70: publira.v1.GetMySeriesProgressResponse
+	(*RecentSeries)(nil),                         // 71: publira.v1.RecentSeries
+	(*ListMyRecentSeriesRequest)(nil),            // 72: publira.v1.ListMyRecentSeriesRequest
+	(*ListMyRecentSeriesResponse)(nil),           // 73: publira.v1.ListMyRecentSeriesResponse
+	(*MyEpisodeRead)(nil),                        // 74: publira.v1.MyEpisodeRead
+	(*ListMyEpisodeReadsRequest)(nil),            // 75: publira.v1.ListMyEpisodeReadsRequest
+	(*ListMyEpisodeReadsResponse)(nil),           // 76: publira.v1.ListMyEpisodeReadsResponse
+	(*FollowTarget)(nil),                         // 77: publira.v1.FollowTarget
+	(*GetMyFollowStatusRequest)(nil),             // 78: publira.v1.GetMyFollowStatusRequest
+	(*GetMyFollowStatusResponse)(nil),            // 79: publira.v1.GetMyFollowStatusResponse
+	(*FollowRequest)(nil),                        // 80: publira.v1.FollowRequest
+	(*FollowResponse)(nil),                       // 81: publira.v1.FollowResponse
+	(*UnfollowRequest)(nil),                      // 82: publira.v1.UnfollowRequest
+	(*UnfollowResponse)(nil),                     // 83: publira.v1.UnfollowResponse
+	(*MyFollow)(nil),                             // 84: publira.v1.MyFollow
+	(*ListMyFollowsRequest)(nil),                 // 85: publira.v1.ListMyFollowsRequest
+	(*ListMyFollowsResponse)(nil),                // 86: publira.v1.ListMyFollowsResponse
+	(*FollowUpdate)(nil),                         // 87: publira.v1.FollowUpdate
+	(*ListMyFollowUpdatesRequest)(nil),           // 88: publira.v1.ListMyFollowUpdatesRequest
+	(*ListMyFollowUpdatesResponse)(nil),          // 89: publira.v1.ListMyFollowUpdatesResponse
+	(*RateEpisodeRequest)(nil),                   // 90: publira.v1.RateEpisodeRequest
+	(*RateEpisodeResponse)(nil),                  // 91: publira.v1.RateEpisodeResponse
+	(*GetMyEpisodeRatingRequest)(nil),            // 92: publira.v1.GetMyEpisodeRatingRequest
+	(*GetMyEpisodeRatingResponse)(nil),           // 93: publira.v1.GetMyEpisodeRatingResponse
+	(*GetMySeriesRatingRequest)(nil),             // 94: publira.v1.GetMySeriesRatingRequest
+	(*GetMySeriesRatingResponse)(nil),            // 95: publira.v1.GetMySeriesRatingResponse
+	(*ContentViewTarget)(nil),                    // 96: publira.v1.ContentViewTarget
+	(*RecordContentViewRequest)(nil),             // 97: publira.v1.RecordContentViewRequest
+	(*RecordContentViewResponse)(nil),            // 98: publira.v1.RecordContentViewResponse
+	(*StartEpisodeCheckoutRequest)(nil),          // 99: publira.v1.StartEpisodeCheckoutRequest
+	(*StartEpisodeCheckoutResponse)(nil),         // 100: publira.v1.StartEpisodeCheckoutResponse
+	(*StartVolumeCheckoutRequest)(nil),           // 101: publira.v1.StartVolumeCheckoutRequest
+	(*StartVolumeCheckoutResponse)(nil),          // 102: publira.v1.StartVolumeCheckoutResponse
+	(*StartSeriesRemainderCheckoutRequest)(nil),  // 103: publira.v1.StartSeriesRemainderCheckoutRequest
+	(*StartSeriesRemainderCheckoutResponse)(nil), // 104: publira.v1.StartSeriesRemainderCheckoutResponse
+	(*MyPurchase)(nil),                           // 105: publira.v1.MyPurchase
+	(*ListMyPurchasesRequest)(nil),               // 106: publira.v1.ListMyPurchasesRequest
+	(*ListMyPurchasesResponse)(nil),              // 107: publira.v1.ListMyPurchasesResponse
+	(*ProcessPaymentWebhookRequest)(nil),         // 108: publira.v1.ProcessPaymentWebhookRequest
+	(*ProcessPaymentWebhookResponse)(nil),        // 109: publira.v1.ProcessPaymentWebhookResponse
+	(*StartStorePurchaseRequest)(nil),            // 110: publira.v1.StartStorePurchaseRequest
+	(*StartStorePurchaseResponse)(nil),           // 111: publira.v1.StartStorePurchaseResponse
+	(*ConfirmStorePurchaseRequest)(nil),          // 112: publira.v1.ConfirmStorePurchaseRequest
+	(*ConfirmStorePurchaseResponse)(nil),         // 113: publira.v1.ConfirmStorePurchaseResponse
+	(*ProcessAppStoreNotificationRequest)(nil),   // 114: publira.v1.ProcessAppStoreNotificationRequest
+	(*ProcessAppStoreNotificationResponse)(nil),  // 115: publira.v1.ProcessAppStoreNotificationResponse
+	(*GetMyTicketStateRequest)(nil),              // 116: publira.v1.GetMyTicketStateRequest
+	(*WaitFreeTicket)(nil),                       // 117: publira.v1.WaitFreeTicket
+	(*GetMyTicketStateResponse)(nil),             // 118: publira.v1.GetMyTicketStateResponse
+	(*UseTicketRequest)(nil),                     // 119: publira.v1.UseTicketRequest
+	(*UseTicketResponse)(nil),                    // 120: publira.v1.UseTicketResponse
+	nil,                                          // 121: publira.v1.ProcessPaymentWebhookRequest.HeadersEntry
+	(*v1.TenantContext)(nil),                     // 122: publira.types.v1.TenantContext
+	(v1.ClientSurface)(0),                        // 123: publira.types.v1.ClientSurface
+	(v1.SeriesStatus)(0),                         // 124: publira.types.v1.SeriesStatus
+	(*v1.Series)(nil),                            // 125: publira.types.v1.Series
+	(*v1.Episode)(nil),                           // 126: publira.types.v1.Episode
+	(v1.CommentMode)(0),                          // 127: publira.types.v1.CommentMode
+	(*v1.Volume)(nil),                            // 128: publira.types.v1.Volume
+	(*v1.Creator)(nil),                           // 129: publira.types.v1.Creator
+	(v1.SurfaceAvailability)(0),                  // 130: publira.types.v1.SurfaceAvailability
+	(*v1.EpisodeImage)(nil),                      // 131: publira.types.v1.EpisodeImage
+	(*v1.SeriesEyeCatchVariant)(nil),             // 132: publira.types.v1.SeriesEyeCatchVariant
+	(v1.SeriesAgeRating)(0),                      // 133: publira.types.v1.SeriesAgeRating
+	(v1.PurchaseKind)(0),                         // 134: publira.types.v1.PurchaseKind
+	(*v1.SeriesBundle)(nil),                      // 135: publira.types.v1.SeriesBundle
 }
 var file_publira_v1_catalog_proto_depIdxs = []int32{
-	119, // 0: publira.v1.ListPublishedLabelsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	120, // 1: publira.v1.ListPublishedLabelsRequest.surface:type_name -> publira.types.v1.ClientSurface
-	29,  // 2: publira.v1.ListPublishedLabelsResponse.labels:type_name -> publira.v1.PublishedLabel
-	119, // 3: publira.v1.ListPublishedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	122, // 0: publira.v1.ListPublishedLabelsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	123, // 1: publira.v1.ListPublishedLabelsRequest.surface:type_name -> publira.types.v1.ClientSurface
+	30,  // 2: publira.v1.ListPublishedLabelsResponse.labels:type_name -> publira.v1.PublishedLabel
+	122, // 3: publira.v1.ListPublishedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
 	0,   // 4: publira.v1.ListPublishedSeriesRequest.order:type_name -> publira.v1.SeriesOrder
-	121, // 5: publira.v1.ListPublishedSeriesRequest.status:type_name -> publira.types.v1.SeriesStatus
-	120, // 6: publira.v1.ListPublishedSeriesRequest.surface:type_name -> publira.types.v1.ClientSurface
-	122, // 7: publira.v1.ListPublishedSeriesResponse.series:type_name -> publira.types.v1.Series
-	119, // 8: publira.v1.GetSeriesDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
-	120, // 9: publira.v1.GetSeriesDetailRequest.surface:type_name -> publira.types.v1.ClientSurface
-	122, // 10: publira.v1.GetSeriesDetailResponse.series:type_name -> publira.types.v1.Series
-	123, // 11: publira.v1.GetSeriesDetailResponse.episodes:type_name -> publira.types.v1.Episode
-	124, // 12: publira.v1.GetSeriesDetailResponse.comment_mode:type_name -> publira.types.v1.CommentMode
+	124, // 5: publira.v1.ListPublishedSeriesRequest.status:type_name -> publira.types.v1.SeriesStatus
+	123, // 6: publira.v1.ListPublishedSeriesRequest.surface:type_name -> publira.types.v1.ClientSurface
+	125, // 7: publira.v1.ListPublishedSeriesResponse.series:type_name -> publira.types.v1.Series
+	122, // 8: publira.v1.GetSeriesDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
+	123, // 9: publira.v1.GetSeriesDetailRequest.surface:type_name -> publira.types.v1.ClientSurface
+	125, // 10: publira.v1.GetSeriesDetailResponse.series:type_name -> publira.types.v1.Series
+	126, // 11: publira.v1.GetSeriesDetailResponse.episodes:type_name -> publira.types.v1.Episode
+	127, // 12: publira.v1.GetSeriesDetailResponse.comment_mode:type_name -> publira.types.v1.CommentMode
 	16,  // 13: publira.v1.GetSeriesDetailResponse.wait_free:type_name -> publira.v1.WaitFreeRule
-	125, // 14: publira.v1.GetSeriesDetailResponse.volumes:type_name -> publira.types.v1.Volume
-	119, // 15: publira.v1.GetSeriesEpisodeAccessRequest.tenant:type_name -> publira.types.v1.TenantContext
-	120, // 16: publira.v1.GetSeriesEpisodeAccessRequest.surface:type_name -> publira.types.v1.ClientSurface
+	128, // 14: publira.v1.GetSeriesDetailResponse.volumes:type_name -> publira.types.v1.Volume
+	122, // 15: publira.v1.GetSeriesEpisodeAccessRequest.tenant:type_name -> publira.types.v1.TenantContext
+	123, // 16: publira.v1.GetSeriesEpisodeAccessRequest.surface:type_name -> publira.types.v1.ClientSurface
 	1,   // 17: publira.v1.SeriesEpisodeAccess.access:type_name -> publira.v1.EpisodeAccess
 	19,  // 18: publira.v1.GetSeriesEpisodeAccessResponse.episodes:type_name -> publira.v1.SeriesEpisodeAccess
-	119, // 19: publira.v1.GetEpisodeDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
-	120, // 20: publira.v1.GetEpisodeDetailRequest.surface:type_name -> publira.types.v1.ClientSurface
-	126, // 21: publira.v1.EpisodeNeighbor.creators:type_name -> publira.types.v1.Creator
-	127, // 22: publira.v1.EpisodeNeighbor.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
-	123, // 23: publira.v1.GetEpisodeDetailResponse.episode:type_name -> publira.types.v1.Episode
-	122, // 24: publira.v1.GetEpisodeDetailResponse.series:type_name -> publira.types.v1.Series
-	128, // 25: publira.v1.GetEpisodeDetailResponse.images:type_name -> publira.types.v1.EpisodeImage
-	1,   // 26: publira.v1.GetEpisodeDetailResponse.access:type_name -> publira.v1.EpisodeAccess
-	22,  // 27: publira.v1.GetEpisodeDetailResponse.previous_episode:type_name -> publira.v1.EpisodeNeighbor
-	22,  // 28: publira.v1.GetEpisodeDetailResponse.next_episode:type_name -> publira.v1.EpisodeNeighbor
-	2,   // 29: publira.v1.GetEpisodeDetailResponse.entitlement_source:type_name -> publira.v1.EpisodeEntitlementSource
-	128, // 30: publira.v1.GetEpisodeDetailResponse.preview_images:type_name -> publira.types.v1.EpisodeImage
-	22,  // 31: publira.v1.GetEpisodeDetailResponse.next_free_episode:type_name -> publira.v1.EpisodeNeighbor
-	119, // 32: publira.v1.ListPublishedCreatorsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	120, // 33: publira.v1.ListPublishedCreatorsRequest.surface:type_name -> publira.types.v1.ClientSurface
-	24,  // 34: publira.v1.ListPublishedCreatorsResponse.creators:type_name -> publira.v1.PublishedCreator
-	119, // 35: publira.v1.GetPublishedCreatorDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
-	120, // 36: publira.v1.GetPublishedCreatorDetailRequest.surface:type_name -> publira.types.v1.ClientSurface
-	24,  // 37: publira.v1.GetPublishedCreatorDetailResponse.creator:type_name -> publira.v1.PublishedCreator
-	122, // 38: publira.v1.GetPublishedCreatorDetailResponse.series:type_name -> publira.types.v1.Series
-	129, // 39: publira.v1.PublishedLabel.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	119, // 40: publira.v1.GetPublishedLabelDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
-	120, // 41: publira.v1.GetPublishedLabelDetailRequest.surface:type_name -> publira.types.v1.ClientSurface
-	29,  // 42: publira.v1.GetPublishedLabelDetailResponse.label:type_name -> publira.v1.PublishedLabel
-	122, // 43: publira.v1.GetPublishedLabelDetailResponse.series:type_name -> publira.types.v1.Series
-	33,  // 44: publira.v1.PublishedGenre.featured_series:type_name -> publira.v1.PublishedGenreFeaturedSeries
-	129, // 45: publira.v1.PublishedGenre.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	129, // 46: publira.v1.PublishedGenreFeaturedSeries.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	119, // 47: publira.v1.ListPublishedGenresRequest.tenant:type_name -> publira.types.v1.TenantContext
-	120, // 48: publira.v1.ListPublishedGenresRequest.surface:type_name -> publira.types.v1.ClientSurface
-	32,  // 49: publira.v1.ListPublishedGenresResponse.genres:type_name -> publira.v1.PublishedGenre
-	119, // 50: publira.v1.ListPublishedTagsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	120, // 51: publira.v1.ListPublishedTagsRequest.surface:type_name -> publira.types.v1.ClientSurface
-	36,  // 52: publira.v1.ListPublishedTagsResponse.tags:type_name -> publira.v1.PublishedTag
-	119, // 53: publira.v1.SearchPublishedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	120, // 54: publira.v1.SearchPublishedSeriesRequest.surface:type_name -> publira.types.v1.ClientSurface
-	0,   // 55: publira.v1.SearchPublishedSeriesRequest.order:type_name -> publira.v1.SeriesOrder
-	121, // 56: publira.v1.SearchPublishedSeriesRequest.status:type_name -> publira.types.v1.SeriesStatus
-	122, // 57: publira.v1.SearchPublishedSeriesResponse.series:type_name -> publira.types.v1.Series
-	119, // 58: publira.v1.SearchPublishedCreatorsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	120, // 59: publira.v1.SearchPublishedCreatorsRequest.surface:type_name -> publira.types.v1.ClientSurface
-	24,  // 60: publira.v1.SearchPublishedCreatorsResponse.creators:type_name -> publira.v1.PublishedCreator
-	119, // 61: publira.v1.SearchPublishedLabelsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	120, // 62: publira.v1.SearchPublishedLabelsRequest.surface:type_name -> publira.types.v1.ClientSurface
-	29,  // 63: publira.v1.SearchPublishedLabelsResponse.labels:type_name -> publira.v1.PublishedLabel
-	119, // 64: publira.v1.ListRecommendedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	120, // 65: publira.v1.ListRecommendedSeriesRequest.surface:type_name -> publira.types.v1.ClientSurface
-	122, // 66: publira.v1.ListRecommendedSeriesResponse.series:type_name -> publira.types.v1.Series
-	3,   // 67: publira.v1.ListRecommendedSeriesResponse.source:type_name -> publira.v1.RecommendationSource
-	119, // 68: publira.v1.ListMyRecommendedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	120, // 69: publira.v1.ListMyRecommendedSeriesRequest.surface:type_name -> publira.types.v1.ClientSurface
-	122, // 70: publira.v1.ListMyRecommendedSeriesResponse.series:type_name -> publira.types.v1.Series
-	3,   // 71: publira.v1.ListMyRecommendedSeriesResponse.source:type_name -> publira.v1.RecommendationSource
-	122, // 72: publira.v1.RankedSeries.series:type_name -> publira.types.v1.Series
-	119, // 73: publira.v1.ListRankedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	4,   // 74: publira.v1.ListRankedSeriesRequest.period:type_name -> publira.v1.RankingPeriod
-	120, // 75: publira.v1.ListRankedSeriesRequest.surface:type_name -> publira.types.v1.ClientSurface
-	130, // 76: publira.v1.ListRankedSeriesRequest.age_rating:type_name -> publira.types.v1.SeriesAgeRating
-	49,  // 77: publira.v1.ListRankedSeriesResponse.ranked_series:type_name -> publira.v1.RankedSeries
-	119, // 78: publira.v1.ListRelatedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	120, // 79: publira.v1.ListRelatedSeriesRequest.surface:type_name -> publira.types.v1.ClientSurface
-	122, // 80: publira.v1.ListRelatedSeriesResponse.series:type_name -> publira.types.v1.Series
-	5,   // 81: publira.v1.SitemapEntry.kind:type_name -> publira.v1.SitemapEntryKind
-	119, // 82: publira.v1.ListSitemapEntriesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	54,  // 83: publira.v1.ListSitemapEntriesResponse.entries:type_name -> publira.v1.SitemapEntry
-	129, // 84: publira.v1.CampaignBanner.image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
-	119, // 85: publira.v1.ListCampaignBannersRequest.tenant:type_name -> publira.types.v1.TenantContext
-	57,  // 86: publira.v1.ListCampaignBannersResponse.banners:type_name -> publira.v1.CampaignBanner
-	119, // 87: publira.v1.MarkEpisodeAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
-	120, // 88: publira.v1.MarkEpisodeAsReadRequest.surface:type_name -> publira.types.v1.ClientSurface
-	119, // 89: publira.v1.SaveReadingPositionRequest.tenant:type_name -> publira.types.v1.TenantContext
-	120, // 90: publira.v1.SaveReadingPositionRequest.surface:type_name -> publira.types.v1.ClientSurface
-	62,  // 91: publira.v1.SaveReadingPositionResponse.position:type_name -> publira.v1.ReadingPosition
-	119, // 92: publira.v1.GetMyReadingPositionRequest.tenant:type_name -> publira.types.v1.TenantContext
-	120, // 93: publira.v1.GetMyReadingPositionRequest.surface:type_name -> publira.types.v1.ClientSurface
-	62,  // 94: publira.v1.GetMyReadingPositionResponse.position:type_name -> publira.v1.ReadingPosition
-	119, // 95: publira.v1.GetMySeriesProgressRequest.tenant:type_name -> publira.types.v1.TenantContext
-	120, // 96: publira.v1.GetMySeriesProgressRequest.surface:type_name -> publira.types.v1.ClientSurface
-	123, // 97: publira.v1.SeriesProgress.episode:type_name -> publira.types.v1.Episode
-	62,  // 98: publira.v1.SeriesProgress.position:type_name -> publira.v1.ReadingPosition
-	68,  // 99: publira.v1.GetMySeriesProgressResponse.progress:type_name -> publira.v1.SeriesProgress
-	122, // 100: publira.v1.RecentSeries.series:type_name -> publira.types.v1.Series
-	123, // 101: publira.v1.RecentSeries.episode:type_name -> publira.types.v1.Episode
-	62,  // 102: publira.v1.RecentSeries.position:type_name -> publira.v1.ReadingPosition
-	119, // 103: publira.v1.ListMyRecentSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	120, // 104: publira.v1.ListMyRecentSeriesRequest.surface:type_name -> publira.types.v1.ClientSurface
-	70,  // 105: publira.v1.ListMyRecentSeriesResponse.series:type_name -> publira.v1.RecentSeries
-	122, // 106: publira.v1.MyEpisodeRead.series:type_name -> publira.types.v1.Series
-	123, // 107: publira.v1.MyEpisodeRead.episode:type_name -> publira.types.v1.Episode
-	119, // 108: publira.v1.ListMyEpisodeReadsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	120, // 109: publira.v1.ListMyEpisodeReadsRequest.surface:type_name -> publira.types.v1.ClientSurface
-	73,  // 110: publira.v1.ListMyEpisodeReadsResponse.reads:type_name -> publira.v1.MyEpisodeRead
-	6,   // 111: publira.v1.FollowTarget.type:type_name -> publira.v1.FollowTargetType
-	119, // 112: publira.v1.GetMyFollowStatusRequest.tenant:type_name -> publira.types.v1.TenantContext
-	76,  // 113: publira.v1.GetMyFollowStatusRequest.target:type_name -> publira.v1.FollowTarget
-	120, // 114: publira.v1.GetMyFollowStatusRequest.surface:type_name -> publira.types.v1.ClientSurface
-	119, // 115: publira.v1.FollowRequest.tenant:type_name -> publira.types.v1.TenantContext
-	76,  // 116: publira.v1.FollowRequest.target:type_name -> publira.v1.FollowTarget
-	120, // 117: publira.v1.FollowRequest.surface:type_name -> publira.types.v1.ClientSurface
-	119, // 118: publira.v1.UnfollowRequest.tenant:type_name -> publira.types.v1.TenantContext
-	76,  // 119: publira.v1.UnfollowRequest.target:type_name -> publira.v1.FollowTarget
-	120, // 120: publira.v1.UnfollowRequest.surface:type_name -> publira.types.v1.ClientSurface
-	6,   // 121: publira.v1.MyFollow.target_type:type_name -> publira.v1.FollowTargetType
-	119, // 122: publira.v1.ListMyFollowsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	120, // 123: publira.v1.ListMyFollowsRequest.surface:type_name -> publira.types.v1.ClientSurface
-	83,  // 124: publira.v1.ListMyFollowsResponse.follows:type_name -> publira.v1.MyFollow
-	122, // 125: publira.v1.FollowUpdate.series:type_name -> publira.types.v1.Series
-	123, // 126: publira.v1.FollowUpdate.episode:type_name -> publira.types.v1.Episode
-	119, // 127: publira.v1.ListMyFollowUpdatesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	120, // 128: publira.v1.ListMyFollowUpdatesRequest.surface:type_name -> publira.types.v1.ClientSurface
-	86,  // 129: publira.v1.ListMyFollowUpdatesResponse.updates:type_name -> publira.v1.FollowUpdate
-	119, // 130: publira.v1.RateEpisodeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	120, // 131: publira.v1.RateEpisodeRequest.surface:type_name -> publira.types.v1.ClientSurface
-	7,   // 132: publira.v1.RateEpisodeResponse.mode:type_name -> publira.v1.EpisodeRatingMode
-	119, // 133: publira.v1.GetMyEpisodeRatingRequest.tenant:type_name -> publira.types.v1.TenantContext
-	120, // 134: publira.v1.GetMyEpisodeRatingRequest.surface:type_name -> publira.types.v1.ClientSurface
-	7,   // 135: publira.v1.GetMyEpisodeRatingResponse.mode:type_name -> publira.v1.EpisodeRatingMode
-	119, // 136: publira.v1.GetMySeriesRatingRequest.tenant:type_name -> publira.types.v1.TenantContext
-	120, // 137: publira.v1.GetMySeriesRatingRequest.surface:type_name -> publira.types.v1.ClientSurface
-	8,   // 138: publira.v1.ContentViewTarget.type:type_name -> publira.v1.ContentViewTargetType
-	119, // 139: publira.v1.RecordContentViewRequest.tenant:type_name -> publira.types.v1.TenantContext
-	95,  // 140: publira.v1.RecordContentViewRequest.target:type_name -> publira.v1.ContentViewTarget
-	120, // 141: publira.v1.RecordContentViewRequest.surface:type_name -> publira.types.v1.ClientSurface
-	119, // 142: publira.v1.StartEpisodeCheckoutRequest.tenant:type_name -> publira.types.v1.TenantContext
-	10,  // 143: publira.v1.StartEpisodeCheckoutRequest.client:type_name -> publira.v1.StartEpisodeCheckoutRequest.Client
-	131, // 144: publira.v1.StartEpisodeCheckoutRequest.kind:type_name -> publira.types.v1.PurchaseKind
-	119, // 145: publira.v1.StartVolumeCheckoutRequest.tenant:type_name -> publira.types.v1.TenantContext
-	10,  // 146: publira.v1.StartVolumeCheckoutRequest.client:type_name -> publira.v1.StartEpisodeCheckoutRequest.Client
-	123, // 147: publira.v1.MyPurchase.episode:type_name -> publira.types.v1.Episode
-	122, // 148: publira.v1.MyPurchase.series:type_name -> publira.types.v1.Series
-	131, // 149: publira.v1.MyPurchase.kind:type_name -> publira.types.v1.PurchaseKind
-	125, // 150: publira.v1.MyPurchase.volume:type_name -> publira.types.v1.Volume
-	119, // 151: publira.v1.ListMyPurchasesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	120, // 152: publira.v1.ListMyPurchasesRequest.surface:type_name -> publira.types.v1.ClientSurface
-	102, // 153: publira.v1.ListMyPurchasesResponse.purchases:type_name -> publira.v1.MyPurchase
-	119, // 154: publira.v1.ProcessPaymentWebhookRequest.tenant:type_name -> publira.types.v1.TenantContext
-	118, // 155: publira.v1.ProcessPaymentWebhookRequest.headers:type_name -> publira.v1.ProcessPaymentWebhookRequest.HeadersEntry
-	119, // 156: publira.v1.StartStorePurchaseRequest.tenant:type_name -> publira.types.v1.TenantContext
-	9,   // 157: publira.v1.StartStorePurchaseRequest.store:type_name -> publira.v1.InAppPurchaseStore
-	119, // 158: publira.v1.ConfirmStorePurchaseRequest.tenant:type_name -> publira.types.v1.TenantContext
-	9,   // 159: publira.v1.ConfirmStorePurchaseRequest.store:type_name -> publira.v1.InAppPurchaseStore
-	102, // 160: publira.v1.ConfirmStorePurchaseResponse.purchase:type_name -> publira.v1.MyPurchase
-	119, // 161: publira.v1.ProcessAppStoreNotificationRequest.tenant:type_name -> publira.types.v1.TenantContext
-	119, // 162: publira.v1.GetMyTicketStateRequest.tenant:type_name -> publira.types.v1.TenantContext
-	120, // 163: publira.v1.GetMyTicketStateRequest.surface:type_name -> publira.types.v1.ClientSurface
-	114, // 164: publira.v1.GetMyTicketStateResponse.open_tickets:type_name -> publira.v1.WaitFreeTicket
-	119, // 165: publira.v1.UseTicketRequest.tenant:type_name -> publira.types.v1.TenantContext
-	120, // 166: publira.v1.UseTicketRequest.surface:type_name -> publira.types.v1.ClientSurface
-	114, // 167: publira.v1.UseTicketResponse.ticket:type_name -> publira.v1.WaitFreeTicket
-	11,  // 168: publira.v1.CatalogService.ListPublishedLabels:input_type -> publira.v1.ListPublishedLabelsRequest
-	13,  // 169: publira.v1.CatalogService.ListPublishedSeries:input_type -> publira.v1.ListPublishedSeriesRequest
-	15,  // 170: publira.v1.CatalogService.GetSeriesDetail:input_type -> publira.v1.GetSeriesDetailRequest
-	18,  // 171: publira.v1.CatalogService.GetSeriesEpisodeAccess:input_type -> publira.v1.GetSeriesEpisodeAccessRequest
-	21,  // 172: publira.v1.CatalogService.GetEpisodeDetail:input_type -> publira.v1.GetEpisodeDetailRequest
-	25,  // 173: publira.v1.CatalogService.ListPublishedCreators:input_type -> publira.v1.ListPublishedCreatorsRequest
-	27,  // 174: publira.v1.CatalogService.GetPublishedCreatorDetail:input_type -> publira.v1.GetPublishedCreatorDetailRequest
-	30,  // 175: publira.v1.CatalogService.GetPublishedLabelDetail:input_type -> publira.v1.GetPublishedLabelDetailRequest
-	34,  // 176: publira.v1.CatalogService.ListPublishedGenres:input_type -> publira.v1.ListPublishedGenresRequest
-	37,  // 177: publira.v1.CatalogService.ListPublishedTags:input_type -> publira.v1.ListPublishedTagsRequest
-	39,  // 178: publira.v1.CatalogService.SearchPublishedSeries:input_type -> publira.v1.SearchPublishedSeriesRequest
-	41,  // 179: publira.v1.CatalogService.SearchPublishedCreators:input_type -> publira.v1.SearchPublishedCreatorsRequest
-	43,  // 180: publira.v1.CatalogService.SearchPublishedLabels:input_type -> publira.v1.SearchPublishedLabelsRequest
-	45,  // 181: publira.v1.CatalogService.ListRecommendedSeries:input_type -> publira.v1.ListRecommendedSeriesRequest
-	47,  // 182: publira.v1.CatalogService.ListMyRecommendedSeries:input_type -> publira.v1.ListMyRecommendedSeriesRequest
-	50,  // 183: publira.v1.CatalogService.ListRankedSeries:input_type -> publira.v1.ListRankedSeriesRequest
-	52,  // 184: publira.v1.CatalogService.ListRelatedSeries:input_type -> publira.v1.ListRelatedSeriesRequest
-	55,  // 185: publira.v1.CatalogService.ListSitemapEntries:input_type -> publira.v1.ListSitemapEntriesRequest
-	58,  // 186: publira.v1.CatalogService.ListCampaignBanners:input_type -> publira.v1.ListCampaignBannersRequest
-	60,  // 187: publira.v1.EpisodeReadService.MarkEpisodeAsRead:input_type -> publira.v1.MarkEpisodeAsReadRequest
-	63,  // 188: publira.v1.EpisodeReadService.SaveReadingPosition:input_type -> publira.v1.SaveReadingPositionRequest
-	65,  // 189: publira.v1.EpisodeReadService.GetMyReadingPosition:input_type -> publira.v1.GetMyReadingPositionRequest
-	67,  // 190: publira.v1.EpisodeReadService.GetMySeriesProgress:input_type -> publira.v1.GetMySeriesProgressRequest
-	71,  // 191: publira.v1.EpisodeReadService.ListMyRecentSeries:input_type -> publira.v1.ListMyRecentSeriesRequest
-	74,  // 192: publira.v1.EpisodeReadService.ListMyEpisodeReads:input_type -> publira.v1.ListMyEpisodeReadsRequest
-	77,  // 193: publira.v1.FollowService.GetMyFollowStatus:input_type -> publira.v1.GetMyFollowStatusRequest
-	79,  // 194: publira.v1.FollowService.Follow:input_type -> publira.v1.FollowRequest
-	81,  // 195: publira.v1.FollowService.Unfollow:input_type -> publira.v1.UnfollowRequest
-	84,  // 196: publira.v1.FollowService.ListMyFollows:input_type -> publira.v1.ListMyFollowsRequest
-	87,  // 197: publira.v1.FollowService.ListMyFollowUpdates:input_type -> publira.v1.ListMyFollowUpdatesRequest
-	89,  // 198: publira.v1.RatingService.RateEpisode:input_type -> publira.v1.RateEpisodeRequest
-	91,  // 199: publira.v1.RatingService.GetMyEpisodeRating:input_type -> publira.v1.GetMyEpisodeRatingRequest
-	93,  // 200: publira.v1.RatingService.GetMySeriesRating:input_type -> publira.v1.GetMySeriesRatingRequest
-	96,  // 201: publira.v1.ContentViewService.RecordContentView:input_type -> publira.v1.RecordContentViewRequest
-	98,  // 202: publira.v1.PurchaseService.StartEpisodeCheckout:input_type -> publira.v1.StartEpisodeCheckoutRequest
-	100, // 203: publira.v1.PurchaseService.StartVolumeCheckout:input_type -> publira.v1.StartVolumeCheckoutRequest
-	103, // 204: publira.v1.PurchaseService.ListMyPurchases:input_type -> publira.v1.ListMyPurchasesRequest
-	105, // 205: publira.v1.PurchaseService.ProcessPaymentWebhook:input_type -> publira.v1.ProcessPaymentWebhookRequest
-	107, // 206: publira.v1.PurchaseService.StartStorePurchase:input_type -> publira.v1.StartStorePurchaseRequest
-	109, // 207: publira.v1.PurchaseService.ConfirmStorePurchase:input_type -> publira.v1.ConfirmStorePurchaseRequest
-	111, // 208: publira.v1.PurchaseService.ProcessAppStoreNotification:input_type -> publira.v1.ProcessAppStoreNotificationRequest
-	113, // 209: publira.v1.WaitFreeService.GetMyTicketState:input_type -> publira.v1.GetMyTicketStateRequest
-	116, // 210: publira.v1.WaitFreeService.UseTicket:input_type -> publira.v1.UseTicketRequest
-	12,  // 211: publira.v1.CatalogService.ListPublishedLabels:output_type -> publira.v1.ListPublishedLabelsResponse
-	14,  // 212: publira.v1.CatalogService.ListPublishedSeries:output_type -> publira.v1.ListPublishedSeriesResponse
-	17,  // 213: publira.v1.CatalogService.GetSeriesDetail:output_type -> publira.v1.GetSeriesDetailResponse
-	20,  // 214: publira.v1.CatalogService.GetSeriesEpisodeAccess:output_type -> publira.v1.GetSeriesEpisodeAccessResponse
-	23,  // 215: publira.v1.CatalogService.GetEpisodeDetail:output_type -> publira.v1.GetEpisodeDetailResponse
-	26,  // 216: publira.v1.CatalogService.ListPublishedCreators:output_type -> publira.v1.ListPublishedCreatorsResponse
-	28,  // 217: publira.v1.CatalogService.GetPublishedCreatorDetail:output_type -> publira.v1.GetPublishedCreatorDetailResponse
-	31,  // 218: publira.v1.CatalogService.GetPublishedLabelDetail:output_type -> publira.v1.GetPublishedLabelDetailResponse
-	35,  // 219: publira.v1.CatalogService.ListPublishedGenres:output_type -> publira.v1.ListPublishedGenresResponse
-	38,  // 220: publira.v1.CatalogService.ListPublishedTags:output_type -> publira.v1.ListPublishedTagsResponse
-	40,  // 221: publira.v1.CatalogService.SearchPublishedSeries:output_type -> publira.v1.SearchPublishedSeriesResponse
-	42,  // 222: publira.v1.CatalogService.SearchPublishedCreators:output_type -> publira.v1.SearchPublishedCreatorsResponse
-	44,  // 223: publira.v1.CatalogService.SearchPublishedLabels:output_type -> publira.v1.SearchPublishedLabelsResponse
-	46,  // 224: publira.v1.CatalogService.ListRecommendedSeries:output_type -> publira.v1.ListRecommendedSeriesResponse
-	48,  // 225: publira.v1.CatalogService.ListMyRecommendedSeries:output_type -> publira.v1.ListMyRecommendedSeriesResponse
-	51,  // 226: publira.v1.CatalogService.ListRankedSeries:output_type -> publira.v1.ListRankedSeriesResponse
-	53,  // 227: publira.v1.CatalogService.ListRelatedSeries:output_type -> publira.v1.ListRelatedSeriesResponse
-	56,  // 228: publira.v1.CatalogService.ListSitemapEntries:output_type -> publira.v1.ListSitemapEntriesResponse
-	59,  // 229: publira.v1.CatalogService.ListCampaignBanners:output_type -> publira.v1.ListCampaignBannersResponse
-	61,  // 230: publira.v1.EpisodeReadService.MarkEpisodeAsRead:output_type -> publira.v1.MarkEpisodeAsReadResponse
-	64,  // 231: publira.v1.EpisodeReadService.SaveReadingPosition:output_type -> publira.v1.SaveReadingPositionResponse
-	66,  // 232: publira.v1.EpisodeReadService.GetMyReadingPosition:output_type -> publira.v1.GetMyReadingPositionResponse
-	69,  // 233: publira.v1.EpisodeReadService.GetMySeriesProgress:output_type -> publira.v1.GetMySeriesProgressResponse
-	72,  // 234: publira.v1.EpisodeReadService.ListMyRecentSeries:output_type -> publira.v1.ListMyRecentSeriesResponse
-	75,  // 235: publira.v1.EpisodeReadService.ListMyEpisodeReads:output_type -> publira.v1.ListMyEpisodeReadsResponse
-	78,  // 236: publira.v1.FollowService.GetMyFollowStatus:output_type -> publira.v1.GetMyFollowStatusResponse
-	80,  // 237: publira.v1.FollowService.Follow:output_type -> publira.v1.FollowResponse
-	82,  // 238: publira.v1.FollowService.Unfollow:output_type -> publira.v1.UnfollowResponse
-	85,  // 239: publira.v1.FollowService.ListMyFollows:output_type -> publira.v1.ListMyFollowsResponse
-	88,  // 240: publira.v1.FollowService.ListMyFollowUpdates:output_type -> publira.v1.ListMyFollowUpdatesResponse
-	90,  // 241: publira.v1.RatingService.RateEpisode:output_type -> publira.v1.RateEpisodeResponse
-	92,  // 242: publira.v1.RatingService.GetMyEpisodeRating:output_type -> publira.v1.GetMyEpisodeRatingResponse
-	94,  // 243: publira.v1.RatingService.GetMySeriesRating:output_type -> publira.v1.GetMySeriesRatingResponse
-	97,  // 244: publira.v1.ContentViewService.RecordContentView:output_type -> publira.v1.RecordContentViewResponse
-	99,  // 245: publira.v1.PurchaseService.StartEpisodeCheckout:output_type -> publira.v1.StartEpisodeCheckoutResponse
-	101, // 246: publira.v1.PurchaseService.StartVolumeCheckout:output_type -> publira.v1.StartVolumeCheckoutResponse
-	104, // 247: publira.v1.PurchaseService.ListMyPurchases:output_type -> publira.v1.ListMyPurchasesResponse
-	106, // 248: publira.v1.PurchaseService.ProcessPaymentWebhook:output_type -> publira.v1.ProcessPaymentWebhookResponse
-	108, // 249: publira.v1.PurchaseService.StartStorePurchase:output_type -> publira.v1.StartStorePurchaseResponse
-	110, // 250: publira.v1.PurchaseService.ConfirmStorePurchase:output_type -> publira.v1.ConfirmStorePurchaseResponse
-	112, // 251: publira.v1.PurchaseService.ProcessAppStoreNotification:output_type -> publira.v1.ProcessAppStoreNotificationResponse
-	115, // 252: publira.v1.WaitFreeService.GetMyTicketState:output_type -> publira.v1.GetMyTicketStateResponse
-	117, // 253: publira.v1.WaitFreeService.UseTicket:output_type -> publira.v1.UseTicketResponse
-	211, // [211:254] is the sub-list for method output_type
-	168, // [168:211] is the sub-list for method input_type
-	168, // [168:168] is the sub-list for extension type_name
-	168, // [168:168] is the sub-list for extension extendee
-	0,   // [0:168] is the sub-list for field type_name
+	21,  // 19: publira.v1.GetSeriesEpisodeAccessResponse.remainder:type_name -> publira.v1.SeriesRemainderOffer
+	122, // 20: publira.v1.GetEpisodeDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
+	123, // 21: publira.v1.GetEpisodeDetailRequest.surface:type_name -> publira.types.v1.ClientSurface
+	129, // 22: publira.v1.EpisodeNeighbor.creators:type_name -> publira.types.v1.Creator
+	130, // 23: publira.v1.EpisodeNeighbor.purchase_availability:type_name -> publira.types.v1.SurfaceAvailability
+	126, // 24: publira.v1.GetEpisodeDetailResponse.episode:type_name -> publira.types.v1.Episode
+	125, // 25: publira.v1.GetEpisodeDetailResponse.series:type_name -> publira.types.v1.Series
+	131, // 26: publira.v1.GetEpisodeDetailResponse.images:type_name -> publira.types.v1.EpisodeImage
+	1,   // 27: publira.v1.GetEpisodeDetailResponse.access:type_name -> publira.v1.EpisodeAccess
+	23,  // 28: publira.v1.GetEpisodeDetailResponse.previous_episode:type_name -> publira.v1.EpisodeNeighbor
+	23,  // 29: publira.v1.GetEpisodeDetailResponse.next_episode:type_name -> publira.v1.EpisodeNeighbor
+	2,   // 30: publira.v1.GetEpisodeDetailResponse.entitlement_source:type_name -> publira.v1.EpisodeEntitlementSource
+	131, // 31: publira.v1.GetEpisodeDetailResponse.preview_images:type_name -> publira.types.v1.EpisodeImage
+	23,  // 32: publira.v1.GetEpisodeDetailResponse.next_free_episode:type_name -> publira.v1.EpisodeNeighbor
+	122, // 33: publira.v1.ListPublishedCreatorsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	123, // 34: publira.v1.ListPublishedCreatorsRequest.surface:type_name -> publira.types.v1.ClientSurface
+	25,  // 35: publira.v1.ListPublishedCreatorsResponse.creators:type_name -> publira.v1.PublishedCreator
+	122, // 36: publira.v1.GetPublishedCreatorDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
+	123, // 37: publira.v1.GetPublishedCreatorDetailRequest.surface:type_name -> publira.types.v1.ClientSurface
+	25,  // 38: publira.v1.GetPublishedCreatorDetailResponse.creator:type_name -> publira.v1.PublishedCreator
+	125, // 39: publira.v1.GetPublishedCreatorDetailResponse.series:type_name -> publira.types.v1.Series
+	132, // 40: publira.v1.PublishedLabel.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	122, // 41: publira.v1.GetPublishedLabelDetailRequest.tenant:type_name -> publira.types.v1.TenantContext
+	123, // 42: publira.v1.GetPublishedLabelDetailRequest.surface:type_name -> publira.types.v1.ClientSurface
+	30,  // 43: publira.v1.GetPublishedLabelDetailResponse.label:type_name -> publira.v1.PublishedLabel
+	125, // 44: publira.v1.GetPublishedLabelDetailResponse.series:type_name -> publira.types.v1.Series
+	34,  // 45: publira.v1.PublishedGenre.featured_series:type_name -> publira.v1.PublishedGenreFeaturedSeries
+	132, // 46: publira.v1.PublishedGenre.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	132, // 47: publira.v1.PublishedGenreFeaturedSeries.eye_catch_image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	122, // 48: publira.v1.ListPublishedGenresRequest.tenant:type_name -> publira.types.v1.TenantContext
+	123, // 49: publira.v1.ListPublishedGenresRequest.surface:type_name -> publira.types.v1.ClientSurface
+	33,  // 50: publira.v1.ListPublishedGenresResponse.genres:type_name -> publira.v1.PublishedGenre
+	122, // 51: publira.v1.ListPublishedTagsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	123, // 52: publira.v1.ListPublishedTagsRequest.surface:type_name -> publira.types.v1.ClientSurface
+	37,  // 53: publira.v1.ListPublishedTagsResponse.tags:type_name -> publira.v1.PublishedTag
+	122, // 54: publira.v1.SearchPublishedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	123, // 55: publira.v1.SearchPublishedSeriesRequest.surface:type_name -> publira.types.v1.ClientSurface
+	0,   // 56: publira.v1.SearchPublishedSeriesRequest.order:type_name -> publira.v1.SeriesOrder
+	124, // 57: publira.v1.SearchPublishedSeriesRequest.status:type_name -> publira.types.v1.SeriesStatus
+	125, // 58: publira.v1.SearchPublishedSeriesResponse.series:type_name -> publira.types.v1.Series
+	122, // 59: publira.v1.SearchPublishedCreatorsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	123, // 60: publira.v1.SearchPublishedCreatorsRequest.surface:type_name -> publira.types.v1.ClientSurface
+	25,  // 61: publira.v1.SearchPublishedCreatorsResponse.creators:type_name -> publira.v1.PublishedCreator
+	122, // 62: publira.v1.SearchPublishedLabelsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	123, // 63: publira.v1.SearchPublishedLabelsRequest.surface:type_name -> publira.types.v1.ClientSurface
+	30,  // 64: publira.v1.SearchPublishedLabelsResponse.labels:type_name -> publira.v1.PublishedLabel
+	122, // 65: publira.v1.ListRecommendedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	123, // 66: publira.v1.ListRecommendedSeriesRequest.surface:type_name -> publira.types.v1.ClientSurface
+	125, // 67: publira.v1.ListRecommendedSeriesResponse.series:type_name -> publira.types.v1.Series
+	3,   // 68: publira.v1.ListRecommendedSeriesResponse.source:type_name -> publira.v1.RecommendationSource
+	122, // 69: publira.v1.ListMyRecommendedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	123, // 70: publira.v1.ListMyRecommendedSeriesRequest.surface:type_name -> publira.types.v1.ClientSurface
+	125, // 71: publira.v1.ListMyRecommendedSeriesResponse.series:type_name -> publira.types.v1.Series
+	3,   // 72: publira.v1.ListMyRecommendedSeriesResponse.source:type_name -> publira.v1.RecommendationSource
+	125, // 73: publira.v1.RankedSeries.series:type_name -> publira.types.v1.Series
+	122, // 74: publira.v1.ListRankedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	4,   // 75: publira.v1.ListRankedSeriesRequest.period:type_name -> publira.v1.RankingPeriod
+	123, // 76: publira.v1.ListRankedSeriesRequest.surface:type_name -> publira.types.v1.ClientSurface
+	133, // 77: publira.v1.ListRankedSeriesRequest.age_rating:type_name -> publira.types.v1.SeriesAgeRating
+	50,  // 78: publira.v1.ListRankedSeriesResponse.ranked_series:type_name -> publira.v1.RankedSeries
+	122, // 79: publira.v1.ListRelatedSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	123, // 80: publira.v1.ListRelatedSeriesRequest.surface:type_name -> publira.types.v1.ClientSurface
+	125, // 81: publira.v1.ListRelatedSeriesResponse.series:type_name -> publira.types.v1.Series
+	5,   // 82: publira.v1.SitemapEntry.kind:type_name -> publira.v1.SitemapEntryKind
+	122, // 83: publira.v1.ListSitemapEntriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	55,  // 84: publira.v1.ListSitemapEntriesResponse.entries:type_name -> publira.v1.SitemapEntry
+	132, // 85: publira.v1.CampaignBanner.image_variants:type_name -> publira.types.v1.SeriesEyeCatchVariant
+	122, // 86: publira.v1.ListCampaignBannersRequest.tenant:type_name -> publira.types.v1.TenantContext
+	58,  // 87: publira.v1.ListCampaignBannersResponse.banners:type_name -> publira.v1.CampaignBanner
+	122, // 88: publira.v1.MarkEpisodeAsReadRequest.tenant:type_name -> publira.types.v1.TenantContext
+	123, // 89: publira.v1.MarkEpisodeAsReadRequest.surface:type_name -> publira.types.v1.ClientSurface
+	122, // 90: publira.v1.SaveReadingPositionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	123, // 91: publira.v1.SaveReadingPositionRequest.surface:type_name -> publira.types.v1.ClientSurface
+	63,  // 92: publira.v1.SaveReadingPositionResponse.position:type_name -> publira.v1.ReadingPosition
+	122, // 93: publira.v1.GetMyReadingPositionRequest.tenant:type_name -> publira.types.v1.TenantContext
+	123, // 94: publira.v1.GetMyReadingPositionRequest.surface:type_name -> publira.types.v1.ClientSurface
+	63,  // 95: publira.v1.GetMyReadingPositionResponse.position:type_name -> publira.v1.ReadingPosition
+	122, // 96: publira.v1.GetMySeriesProgressRequest.tenant:type_name -> publira.types.v1.TenantContext
+	123, // 97: publira.v1.GetMySeriesProgressRequest.surface:type_name -> publira.types.v1.ClientSurface
+	126, // 98: publira.v1.SeriesProgress.episode:type_name -> publira.types.v1.Episode
+	63,  // 99: publira.v1.SeriesProgress.position:type_name -> publira.v1.ReadingPosition
+	69,  // 100: publira.v1.GetMySeriesProgressResponse.progress:type_name -> publira.v1.SeriesProgress
+	125, // 101: publira.v1.RecentSeries.series:type_name -> publira.types.v1.Series
+	126, // 102: publira.v1.RecentSeries.episode:type_name -> publira.types.v1.Episode
+	63,  // 103: publira.v1.RecentSeries.position:type_name -> publira.v1.ReadingPosition
+	122, // 104: publira.v1.ListMyRecentSeriesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	123, // 105: publira.v1.ListMyRecentSeriesRequest.surface:type_name -> publira.types.v1.ClientSurface
+	71,  // 106: publira.v1.ListMyRecentSeriesResponse.series:type_name -> publira.v1.RecentSeries
+	125, // 107: publira.v1.MyEpisodeRead.series:type_name -> publira.types.v1.Series
+	126, // 108: publira.v1.MyEpisodeRead.episode:type_name -> publira.types.v1.Episode
+	122, // 109: publira.v1.ListMyEpisodeReadsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	123, // 110: publira.v1.ListMyEpisodeReadsRequest.surface:type_name -> publira.types.v1.ClientSurface
+	74,  // 111: publira.v1.ListMyEpisodeReadsResponse.reads:type_name -> publira.v1.MyEpisodeRead
+	6,   // 112: publira.v1.FollowTarget.type:type_name -> publira.v1.FollowTargetType
+	122, // 113: publira.v1.GetMyFollowStatusRequest.tenant:type_name -> publira.types.v1.TenantContext
+	77,  // 114: publira.v1.GetMyFollowStatusRequest.target:type_name -> publira.v1.FollowTarget
+	123, // 115: publira.v1.GetMyFollowStatusRequest.surface:type_name -> publira.types.v1.ClientSurface
+	122, // 116: publira.v1.FollowRequest.tenant:type_name -> publira.types.v1.TenantContext
+	77,  // 117: publira.v1.FollowRequest.target:type_name -> publira.v1.FollowTarget
+	123, // 118: publira.v1.FollowRequest.surface:type_name -> publira.types.v1.ClientSurface
+	122, // 119: publira.v1.UnfollowRequest.tenant:type_name -> publira.types.v1.TenantContext
+	77,  // 120: publira.v1.UnfollowRequest.target:type_name -> publira.v1.FollowTarget
+	123, // 121: publira.v1.UnfollowRequest.surface:type_name -> publira.types.v1.ClientSurface
+	6,   // 122: publira.v1.MyFollow.target_type:type_name -> publira.v1.FollowTargetType
+	122, // 123: publira.v1.ListMyFollowsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	123, // 124: publira.v1.ListMyFollowsRequest.surface:type_name -> publira.types.v1.ClientSurface
+	84,  // 125: publira.v1.ListMyFollowsResponse.follows:type_name -> publira.v1.MyFollow
+	125, // 126: publira.v1.FollowUpdate.series:type_name -> publira.types.v1.Series
+	126, // 127: publira.v1.FollowUpdate.episode:type_name -> publira.types.v1.Episode
+	122, // 128: publira.v1.ListMyFollowUpdatesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	123, // 129: publira.v1.ListMyFollowUpdatesRequest.surface:type_name -> publira.types.v1.ClientSurface
+	87,  // 130: publira.v1.ListMyFollowUpdatesResponse.updates:type_name -> publira.v1.FollowUpdate
+	122, // 131: publira.v1.RateEpisodeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	123, // 132: publira.v1.RateEpisodeRequest.surface:type_name -> publira.types.v1.ClientSurface
+	7,   // 133: publira.v1.RateEpisodeResponse.mode:type_name -> publira.v1.EpisodeRatingMode
+	122, // 134: publira.v1.GetMyEpisodeRatingRequest.tenant:type_name -> publira.types.v1.TenantContext
+	123, // 135: publira.v1.GetMyEpisodeRatingRequest.surface:type_name -> publira.types.v1.ClientSurface
+	7,   // 136: publira.v1.GetMyEpisodeRatingResponse.mode:type_name -> publira.v1.EpisodeRatingMode
+	122, // 137: publira.v1.GetMySeriesRatingRequest.tenant:type_name -> publira.types.v1.TenantContext
+	123, // 138: publira.v1.GetMySeriesRatingRequest.surface:type_name -> publira.types.v1.ClientSurface
+	8,   // 139: publira.v1.ContentViewTarget.type:type_name -> publira.v1.ContentViewTargetType
+	122, // 140: publira.v1.RecordContentViewRequest.tenant:type_name -> publira.types.v1.TenantContext
+	96,  // 141: publira.v1.RecordContentViewRequest.target:type_name -> publira.v1.ContentViewTarget
+	123, // 142: publira.v1.RecordContentViewRequest.surface:type_name -> publira.types.v1.ClientSurface
+	122, // 143: publira.v1.StartEpisodeCheckoutRequest.tenant:type_name -> publira.types.v1.TenantContext
+	10,  // 144: publira.v1.StartEpisodeCheckoutRequest.client:type_name -> publira.v1.StartEpisodeCheckoutRequest.Client
+	134, // 145: publira.v1.StartEpisodeCheckoutRequest.kind:type_name -> publira.types.v1.PurchaseKind
+	122, // 146: publira.v1.StartVolumeCheckoutRequest.tenant:type_name -> publira.types.v1.TenantContext
+	10,  // 147: publira.v1.StartVolumeCheckoutRequest.client:type_name -> publira.v1.StartEpisodeCheckoutRequest.Client
+	122, // 148: publira.v1.StartSeriesRemainderCheckoutRequest.tenant:type_name -> publira.types.v1.TenantContext
+	10,  // 149: publira.v1.StartSeriesRemainderCheckoutRequest.client:type_name -> publira.v1.StartEpisodeCheckoutRequest.Client
+	126, // 150: publira.v1.MyPurchase.episode:type_name -> publira.types.v1.Episode
+	125, // 151: publira.v1.MyPurchase.series:type_name -> publira.types.v1.Series
+	134, // 152: publira.v1.MyPurchase.kind:type_name -> publira.types.v1.PurchaseKind
+	128, // 153: publira.v1.MyPurchase.volume:type_name -> publira.types.v1.Volume
+	135, // 154: publira.v1.MyPurchase.series_bundle:type_name -> publira.types.v1.SeriesBundle
+	122, // 155: publira.v1.ListMyPurchasesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	123, // 156: publira.v1.ListMyPurchasesRequest.surface:type_name -> publira.types.v1.ClientSurface
+	105, // 157: publira.v1.ListMyPurchasesResponse.purchases:type_name -> publira.v1.MyPurchase
+	122, // 158: publira.v1.ProcessPaymentWebhookRequest.tenant:type_name -> publira.types.v1.TenantContext
+	121, // 159: publira.v1.ProcessPaymentWebhookRequest.headers:type_name -> publira.v1.ProcessPaymentWebhookRequest.HeadersEntry
+	122, // 160: publira.v1.StartStorePurchaseRequest.tenant:type_name -> publira.types.v1.TenantContext
+	9,   // 161: publira.v1.StartStorePurchaseRequest.store:type_name -> publira.v1.InAppPurchaseStore
+	122, // 162: publira.v1.ConfirmStorePurchaseRequest.tenant:type_name -> publira.types.v1.TenantContext
+	9,   // 163: publira.v1.ConfirmStorePurchaseRequest.store:type_name -> publira.v1.InAppPurchaseStore
+	105, // 164: publira.v1.ConfirmStorePurchaseResponse.purchase:type_name -> publira.v1.MyPurchase
+	122, // 165: publira.v1.ProcessAppStoreNotificationRequest.tenant:type_name -> publira.types.v1.TenantContext
+	122, // 166: publira.v1.GetMyTicketStateRequest.tenant:type_name -> publira.types.v1.TenantContext
+	123, // 167: publira.v1.GetMyTicketStateRequest.surface:type_name -> publira.types.v1.ClientSurface
+	117, // 168: publira.v1.GetMyTicketStateResponse.open_tickets:type_name -> publira.v1.WaitFreeTicket
+	122, // 169: publira.v1.UseTicketRequest.tenant:type_name -> publira.types.v1.TenantContext
+	123, // 170: publira.v1.UseTicketRequest.surface:type_name -> publira.types.v1.ClientSurface
+	117, // 171: publira.v1.UseTicketResponse.ticket:type_name -> publira.v1.WaitFreeTicket
+	11,  // 172: publira.v1.CatalogService.ListPublishedLabels:input_type -> publira.v1.ListPublishedLabelsRequest
+	13,  // 173: publira.v1.CatalogService.ListPublishedSeries:input_type -> publira.v1.ListPublishedSeriesRequest
+	15,  // 174: publira.v1.CatalogService.GetSeriesDetail:input_type -> publira.v1.GetSeriesDetailRequest
+	18,  // 175: publira.v1.CatalogService.GetSeriesEpisodeAccess:input_type -> publira.v1.GetSeriesEpisodeAccessRequest
+	22,  // 176: publira.v1.CatalogService.GetEpisodeDetail:input_type -> publira.v1.GetEpisodeDetailRequest
+	26,  // 177: publira.v1.CatalogService.ListPublishedCreators:input_type -> publira.v1.ListPublishedCreatorsRequest
+	28,  // 178: publira.v1.CatalogService.GetPublishedCreatorDetail:input_type -> publira.v1.GetPublishedCreatorDetailRequest
+	31,  // 179: publira.v1.CatalogService.GetPublishedLabelDetail:input_type -> publira.v1.GetPublishedLabelDetailRequest
+	35,  // 180: publira.v1.CatalogService.ListPublishedGenres:input_type -> publira.v1.ListPublishedGenresRequest
+	38,  // 181: publira.v1.CatalogService.ListPublishedTags:input_type -> publira.v1.ListPublishedTagsRequest
+	40,  // 182: publira.v1.CatalogService.SearchPublishedSeries:input_type -> publira.v1.SearchPublishedSeriesRequest
+	42,  // 183: publira.v1.CatalogService.SearchPublishedCreators:input_type -> publira.v1.SearchPublishedCreatorsRequest
+	44,  // 184: publira.v1.CatalogService.SearchPublishedLabels:input_type -> publira.v1.SearchPublishedLabelsRequest
+	46,  // 185: publira.v1.CatalogService.ListRecommendedSeries:input_type -> publira.v1.ListRecommendedSeriesRequest
+	48,  // 186: publira.v1.CatalogService.ListMyRecommendedSeries:input_type -> publira.v1.ListMyRecommendedSeriesRequest
+	51,  // 187: publira.v1.CatalogService.ListRankedSeries:input_type -> publira.v1.ListRankedSeriesRequest
+	53,  // 188: publira.v1.CatalogService.ListRelatedSeries:input_type -> publira.v1.ListRelatedSeriesRequest
+	56,  // 189: publira.v1.CatalogService.ListSitemapEntries:input_type -> publira.v1.ListSitemapEntriesRequest
+	59,  // 190: publira.v1.CatalogService.ListCampaignBanners:input_type -> publira.v1.ListCampaignBannersRequest
+	61,  // 191: publira.v1.EpisodeReadService.MarkEpisodeAsRead:input_type -> publira.v1.MarkEpisodeAsReadRequest
+	64,  // 192: publira.v1.EpisodeReadService.SaveReadingPosition:input_type -> publira.v1.SaveReadingPositionRequest
+	66,  // 193: publira.v1.EpisodeReadService.GetMyReadingPosition:input_type -> publira.v1.GetMyReadingPositionRequest
+	68,  // 194: publira.v1.EpisodeReadService.GetMySeriesProgress:input_type -> publira.v1.GetMySeriesProgressRequest
+	72,  // 195: publira.v1.EpisodeReadService.ListMyRecentSeries:input_type -> publira.v1.ListMyRecentSeriesRequest
+	75,  // 196: publira.v1.EpisodeReadService.ListMyEpisodeReads:input_type -> publira.v1.ListMyEpisodeReadsRequest
+	78,  // 197: publira.v1.FollowService.GetMyFollowStatus:input_type -> publira.v1.GetMyFollowStatusRequest
+	80,  // 198: publira.v1.FollowService.Follow:input_type -> publira.v1.FollowRequest
+	82,  // 199: publira.v1.FollowService.Unfollow:input_type -> publira.v1.UnfollowRequest
+	85,  // 200: publira.v1.FollowService.ListMyFollows:input_type -> publira.v1.ListMyFollowsRequest
+	88,  // 201: publira.v1.FollowService.ListMyFollowUpdates:input_type -> publira.v1.ListMyFollowUpdatesRequest
+	90,  // 202: publira.v1.RatingService.RateEpisode:input_type -> publira.v1.RateEpisodeRequest
+	92,  // 203: publira.v1.RatingService.GetMyEpisodeRating:input_type -> publira.v1.GetMyEpisodeRatingRequest
+	94,  // 204: publira.v1.RatingService.GetMySeriesRating:input_type -> publira.v1.GetMySeriesRatingRequest
+	97,  // 205: publira.v1.ContentViewService.RecordContentView:input_type -> publira.v1.RecordContentViewRequest
+	99,  // 206: publira.v1.PurchaseService.StartEpisodeCheckout:input_type -> publira.v1.StartEpisodeCheckoutRequest
+	101, // 207: publira.v1.PurchaseService.StartVolumeCheckout:input_type -> publira.v1.StartVolumeCheckoutRequest
+	103, // 208: publira.v1.PurchaseService.StartSeriesRemainderCheckout:input_type -> publira.v1.StartSeriesRemainderCheckoutRequest
+	106, // 209: publira.v1.PurchaseService.ListMyPurchases:input_type -> publira.v1.ListMyPurchasesRequest
+	108, // 210: publira.v1.PurchaseService.ProcessPaymentWebhook:input_type -> publira.v1.ProcessPaymentWebhookRequest
+	110, // 211: publira.v1.PurchaseService.StartStorePurchase:input_type -> publira.v1.StartStorePurchaseRequest
+	112, // 212: publira.v1.PurchaseService.ConfirmStorePurchase:input_type -> publira.v1.ConfirmStorePurchaseRequest
+	114, // 213: publira.v1.PurchaseService.ProcessAppStoreNotification:input_type -> publira.v1.ProcessAppStoreNotificationRequest
+	116, // 214: publira.v1.WaitFreeService.GetMyTicketState:input_type -> publira.v1.GetMyTicketStateRequest
+	119, // 215: publira.v1.WaitFreeService.UseTicket:input_type -> publira.v1.UseTicketRequest
+	12,  // 216: publira.v1.CatalogService.ListPublishedLabels:output_type -> publira.v1.ListPublishedLabelsResponse
+	14,  // 217: publira.v1.CatalogService.ListPublishedSeries:output_type -> publira.v1.ListPublishedSeriesResponse
+	17,  // 218: publira.v1.CatalogService.GetSeriesDetail:output_type -> publira.v1.GetSeriesDetailResponse
+	20,  // 219: publira.v1.CatalogService.GetSeriesEpisodeAccess:output_type -> publira.v1.GetSeriesEpisodeAccessResponse
+	24,  // 220: publira.v1.CatalogService.GetEpisodeDetail:output_type -> publira.v1.GetEpisodeDetailResponse
+	27,  // 221: publira.v1.CatalogService.ListPublishedCreators:output_type -> publira.v1.ListPublishedCreatorsResponse
+	29,  // 222: publira.v1.CatalogService.GetPublishedCreatorDetail:output_type -> publira.v1.GetPublishedCreatorDetailResponse
+	32,  // 223: publira.v1.CatalogService.GetPublishedLabelDetail:output_type -> publira.v1.GetPublishedLabelDetailResponse
+	36,  // 224: publira.v1.CatalogService.ListPublishedGenres:output_type -> publira.v1.ListPublishedGenresResponse
+	39,  // 225: publira.v1.CatalogService.ListPublishedTags:output_type -> publira.v1.ListPublishedTagsResponse
+	41,  // 226: publira.v1.CatalogService.SearchPublishedSeries:output_type -> publira.v1.SearchPublishedSeriesResponse
+	43,  // 227: publira.v1.CatalogService.SearchPublishedCreators:output_type -> publira.v1.SearchPublishedCreatorsResponse
+	45,  // 228: publira.v1.CatalogService.SearchPublishedLabels:output_type -> publira.v1.SearchPublishedLabelsResponse
+	47,  // 229: publira.v1.CatalogService.ListRecommendedSeries:output_type -> publira.v1.ListRecommendedSeriesResponse
+	49,  // 230: publira.v1.CatalogService.ListMyRecommendedSeries:output_type -> publira.v1.ListMyRecommendedSeriesResponse
+	52,  // 231: publira.v1.CatalogService.ListRankedSeries:output_type -> publira.v1.ListRankedSeriesResponse
+	54,  // 232: publira.v1.CatalogService.ListRelatedSeries:output_type -> publira.v1.ListRelatedSeriesResponse
+	57,  // 233: publira.v1.CatalogService.ListSitemapEntries:output_type -> publira.v1.ListSitemapEntriesResponse
+	60,  // 234: publira.v1.CatalogService.ListCampaignBanners:output_type -> publira.v1.ListCampaignBannersResponse
+	62,  // 235: publira.v1.EpisodeReadService.MarkEpisodeAsRead:output_type -> publira.v1.MarkEpisodeAsReadResponse
+	65,  // 236: publira.v1.EpisodeReadService.SaveReadingPosition:output_type -> publira.v1.SaveReadingPositionResponse
+	67,  // 237: publira.v1.EpisodeReadService.GetMyReadingPosition:output_type -> publira.v1.GetMyReadingPositionResponse
+	70,  // 238: publira.v1.EpisodeReadService.GetMySeriesProgress:output_type -> publira.v1.GetMySeriesProgressResponse
+	73,  // 239: publira.v1.EpisodeReadService.ListMyRecentSeries:output_type -> publira.v1.ListMyRecentSeriesResponse
+	76,  // 240: publira.v1.EpisodeReadService.ListMyEpisodeReads:output_type -> publira.v1.ListMyEpisodeReadsResponse
+	79,  // 241: publira.v1.FollowService.GetMyFollowStatus:output_type -> publira.v1.GetMyFollowStatusResponse
+	81,  // 242: publira.v1.FollowService.Follow:output_type -> publira.v1.FollowResponse
+	83,  // 243: publira.v1.FollowService.Unfollow:output_type -> publira.v1.UnfollowResponse
+	86,  // 244: publira.v1.FollowService.ListMyFollows:output_type -> publira.v1.ListMyFollowsResponse
+	89,  // 245: publira.v1.FollowService.ListMyFollowUpdates:output_type -> publira.v1.ListMyFollowUpdatesResponse
+	91,  // 246: publira.v1.RatingService.RateEpisode:output_type -> publira.v1.RateEpisodeResponse
+	93,  // 247: publira.v1.RatingService.GetMyEpisodeRating:output_type -> publira.v1.GetMyEpisodeRatingResponse
+	95,  // 248: publira.v1.RatingService.GetMySeriesRating:output_type -> publira.v1.GetMySeriesRatingResponse
+	98,  // 249: publira.v1.ContentViewService.RecordContentView:output_type -> publira.v1.RecordContentViewResponse
+	100, // 250: publira.v1.PurchaseService.StartEpisodeCheckout:output_type -> publira.v1.StartEpisodeCheckoutResponse
+	102, // 251: publira.v1.PurchaseService.StartVolumeCheckout:output_type -> publira.v1.StartVolumeCheckoutResponse
+	104, // 252: publira.v1.PurchaseService.StartSeriesRemainderCheckout:output_type -> publira.v1.StartSeriesRemainderCheckoutResponse
+	107, // 253: publira.v1.PurchaseService.ListMyPurchases:output_type -> publira.v1.ListMyPurchasesResponse
+	109, // 254: publira.v1.PurchaseService.ProcessPaymentWebhook:output_type -> publira.v1.ProcessPaymentWebhookResponse
+	111, // 255: publira.v1.PurchaseService.StartStorePurchase:output_type -> publira.v1.StartStorePurchaseResponse
+	113, // 256: publira.v1.PurchaseService.ConfirmStorePurchase:output_type -> publira.v1.ConfirmStorePurchaseResponse
+	115, // 257: publira.v1.PurchaseService.ProcessAppStoreNotification:output_type -> publira.v1.ProcessAppStoreNotificationResponse
+	118, // 258: publira.v1.WaitFreeService.GetMyTicketState:output_type -> publira.v1.GetMyTicketStateResponse
+	120, // 259: publira.v1.WaitFreeService.UseTicket:output_type -> publira.v1.UseTicketResponse
+	216, // [216:260] is the sub-list for method output_type
+	172, // [172:216] is the sub-list for method input_type
+	172, // [172:172] is the sub-list for extension type_name
+	172, // [172:172] is the sub-list for extension extendee
+	0,   // [0:172] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_catalog_proto_init() }
@@ -9524,15 +9790,15 @@ func file_publira_v1_catalog_proto_init() {
 		return
 	}
 	file_publira_v1_catalog_proto_msgTypes[2].OneofWrappers = []any{}
-	file_publira_v1_catalog_proto_msgTypes[28].OneofWrappers = []any{}
-	file_publira_v1_catalog_proto_msgTypes[38].OneofWrappers = []any{}
+	file_publira_v1_catalog_proto_msgTypes[29].OneofWrappers = []any{}
+	file_publira_v1_catalog_proto_msgTypes[39].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_v1_catalog_proto_rawDesc), len(file_publira_v1_catalog_proto_rawDesc)),
 			NumEnums:      11,
-			NumMessages:   108,
+			NumMessages:   111,
 			NumExtensions: 0,
 			NumServices:   7,
 		},

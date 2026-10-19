@@ -328,6 +328,13 @@ type Querier interface {
 	// a sale to report and to match a refund against. A redelivery of the same
 	// checkout is no row.
 	CreatePurchaseFromProviderCheckout(ctx context.Context, arg CreatePurchaseFromProviderCheckoutParams) (Purchase, error)
+	// Records the purchase of a bundle a completed checkout paid for, by the rules
+	// CreatePurchaseFromProviderCheckout records an episode's: every paid checkout
+	// is a purchase of its own, and a redelivery of the same checkout is no row.
+	// The bundle is the permanent copy of each of its episodes. An episode whose
+	// copy had a reading period closes when series_bundle_episodes says it does,
+	// so the purchase has no expiry of its own.
+	CreatePurchaseFromProviderSeriesBundleCheckout(ctx context.Context, arg CreatePurchaseFromProviderSeriesBundleCheckoutParams) (Purchase, error)
 	// Records the purchase of a volume a completed checkout paid for, by the rules
 	// CreatePurchaseFromProviderCheckout records an episode's: every paid checkout
 	// is a purchase of its own, and a redelivery of the same checkout is no row. A
@@ -346,6 +353,14 @@ type Querier interface {
 	CreateReaderIconPreset(ctx context.Context, arg CreateReaderIconPresetParams) (ReaderIconPreset, error)
 	CreateReaderIconPresetVariant(ctx context.Context, arg CreateReaderIconPresetVariantParams) (ReaderIconPresetVariant, error)
 	CreateSeriesBase(ctx context.Context, arg CreateSeriesBaseParams) (Series, error)
+	// Writes down the bundle a checkout of the rest of a series is about to sell,
+	// with its episodes, under the idempotency key the checkout is started with.
+	// The key names everything the checkout sends, so a bundle already written
+	// under it holds the same episodes at the same terms: that is no row here, and
+	// the caller reads the bundle's id by the key instead. The arrays are the
+	// episodes in the bundle's order, one element each; a reading period of 0 is
+	// none.
+	CreateSeriesBundle(ctx context.Context, arg CreateSeriesBundleParams) (uuid.UUID, error)
 	// role_id is cast to a plain uuid rather than left nullable like the column:
 	// the column admits NULL for the credits that predate roles, and a credit
 	// written through here always names one.
@@ -532,7 +547,8 @@ type Querier interface {
 	GetAccessTicketForTenant(ctx context.Context, arg GetAccessTicketForTenantParams) (GetAccessTicketForTenantRow, error)
 	// Which of the episode's two sales the reader holds an active purchase of.
 	// Only a purchase counts: an access ticket does not stop the reader buying. A
-	// purchase of the volume holding the episode counts as its permanent copy.
+	// purchase of the volume holding the episode, or of a bundle holding it,
+	// counts as its permanent copy.
 	GetActiveEpisodePurchaseKinds(ctx context.Context, arg GetActiveEpisodePurchaseKindsParams) (GetActiveEpisodePurchaseKindsRow, error)
 	// Return the first tenant that matches admin_domain, or the admin.{domain}
 	// fallback, keeping the order of the candidate host names.
@@ -671,6 +687,10 @@ type Querier interface {
 	// The checkout the reader last let expire on the episode, which the next
 	// checkout's idempotency key names. No row is a reader who has let none expire.
 	GetExpiredCheckoutID(ctx context.Context, arg GetExpiredCheckoutIDParams) (string, error)
+	// The checkout the reader last let expire on the rest of the series, which
+	// the next checkout's idempotency key names, as GetExpiredCheckoutID does for
+	// an episode.
+	GetExpiredSeriesBundleCheckoutID(ctx context.Context, arg GetExpiredSeriesBundleCheckoutIDParams) (string, error)
 	GetExpiredVolumeCheckoutID(ctx context.Context, arg GetExpiredVolumeCheckoutIDParams) (string, error)
 	GetGenreByIDForTenant(ctx context.Context, arg GetGenreByIDForTenantParams) (GetGenreByIDForTenantRow, error)
 	// The name the slug is derived from: the one a reader in the tenant default
@@ -690,6 +710,10 @@ type Querier interface {
 	// the next checkout's idempotency key names. No row is a reader who has paid
 	// for none.
 	GetLastPaidCheckoutID(ctx context.Context, arg GetLastPaidCheckoutIDParams) (string, error)
+	// The provider checkout of the reader's latest purchase of the rest of the
+	// series, which the next checkout's idempotency key names, as
+	// GetLastPaidCheckoutID does for an episode.
+	GetLastPaidSeriesBundleCheckoutID(ctx context.Context, arg GetLastPaidSeriesBundleCheckoutIDParams) (string, error)
 	// The provider checkout of the reader's latest purchase of the volume, which
 	// the next checkout's idempotency key names, as GetLastPaidCheckoutID does
 	// for an episode.
@@ -922,6 +946,7 @@ type Querier interface {
 	// ListRoyaltyLinesForPeriod.
 	GetRoyaltySalesTotalsForPeriod(ctx context.Context, arg GetRoyaltySalesTotalsForPeriodParams) (GetRoyaltySalesTotalsForPeriodRow, error)
 	GetRoyaltyStatementByPeriod(ctx context.Context, arg GetRoyaltyStatementByPeriodParams) (GetRoyaltyStatementByPeriodRow, error)
+	GetSeriesBundleIDByIdempotencyKey(ctx context.Context, arg GetSeriesBundleIDByIdempotencyKeyParams) (uuid.UUID, error)
 	GetSeriesByIDForTenant(ctx context.Context, arg GetSeriesByIDForTenantParams) (GetSeriesByIDForTenantRow, error)
 	GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSeriesByPublicIDForTenantParams) (GetSeriesByPublicIDForTenantRow, error)
 	// The title and the synopsis are those of the translation
@@ -929,6 +954,9 @@ type Querier interface {
 	// title and each genre's name are picked the same way. Each names the locale
 	// of the translation it came from.
 	GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams) (GetSeriesDetailRow, error)
+	// A currently public series the calling surface shows, with the bundle
+	// discount a checkout of its rest takes off.
+	GetSeriesForRemainderSale(ctx context.Context, arg GetSeriesForRemainderSaleParams) (GetSeriesForRemainderSaleRow, error)
 	GetSeriesImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetSeriesImageVariantByTypeAndWidthForTenantParams) (GetSeriesImageVariantByTypeAndWidthForTenantRow, error)
 	// What a series is rated, and what one reader's own reactions say about it.
 	//
@@ -1796,11 +1824,11 @@ type Querier interface {
 	ListMyFollowUpdatesDesc(ctx context.Context, arg ListMyFollowUpdatesDescParams) ([]ListMyFollowUpdatesDescRow, error)
 	ListMyPurchasesAsc(ctx context.Context, arg ListMyPurchasesAscParams) ([]ListMyPurchasesAscRow, error)
 	// The reader's library, newest purchase first: each purchase of an episode,
-	// and each purchase of a volume as one row of its own. Publication is not
-	// re-checked, so a purchase outlives the episode or the volume being taken
-	// down, but the calling surface is: an episode that surface may not show, or a
-	// volume of a series it may not show, is left out of the library read there,
-	// as it is left out of the catalog.
+	// and each purchase of a volume or of a series bundle as one row of its own.
+	// Publication is not re-checked, so a purchase outlives the episode or the
+	// volume being taken down, but the calling surface is: an episode that surface
+	// may not show, or a volume or a bundle of a series it may not show, is left
+	// out of the library read there, as it is left out of the catalog.
 	ListMyPurchasesDesc(ctx context.Context, arg ListMyPurchasesDescParams) ([]ListMyPurchasesDescRow, error)
 	// The backward direction of ListMyRecentSeriesDesc.
 	ListMyRecentSeriesAsc(ctx context.Context, arg ListMyRecentSeriesAscParams) ([]ListMyRecentSeriesAscRow, error)
@@ -2123,7 +2151,8 @@ type Querier interface {
 	// proto/README.md.
 	ListPurchaseIDsForTenantDesc(ctx context.Context, arg ListPurchaseIDsForTenantDescParams) ([]ListPurchaseIDsForTenantDescRow, error)
 	// What the console shows of each purchase named, in no particular order: the
-	// episode bought, or the volume, and the series of either. The
+	// episode bought, the volume, or the series bundle, and the series of any of
+	// them. The
 	// buyer is joined within the tenant, so the purchase of a reader who has since
 	// deleted their account, which keeps no user, answers no buyer rather than no
 	// row.
@@ -2338,6 +2367,15 @@ type Querier interface {
 	//
 	// This spans every tenant, so the connection must bypass RLS.
 	ListSeriesPublicationsDue(ctx context.Context) ([]ListSeriesPublicationsDueRow, error)
+	// Every episode of the series a checkout of its rest could sell from the
+	// calling surface: one the surface lists, with a price, whose permanent copy
+	// the surface may sell, in the order GetSeriesDetail lists them. held is
+	// whether the reader holds an active permanent copy of it already, which
+	// leaves it out of the sale, and credited whether the reader's account is
+	// linked to a creator it credits, which refuses the sale, as each does for the
+	// episode's own checkout. A guest passes a NULL user_id, which holds nothing
+	// and is credited on nothing.
+	ListSeriesRemainderEpisodes(ctx context.Context, arg ListSeriesRemainderEpisodesParams) ([]ListSeriesRemainderEpisodesRow, error)
 	// Tags have no order of their own, so they read back by name: the same series
 	// shows the same list every time, and two series sharing tags show them in the
 	// same places.
@@ -2962,6 +3000,11 @@ type Querier interface {
 	// nothing the idempotency key reads. A reader or an episode deleted since the
 	// checkout started records nothing, since there is no next checkout to key.
 	RecordExpiredCheckout(ctx context.Context, arg RecordExpiredCheckoutParams) error
+	// Records the checkout the provider reports expired on the bundle it would
+	// have sold, which makes it the reader's latest expired checkout of the
+	// series' rest. A repeated delivery names the same checkout and changes
+	// nothing the idempotency key reads.
+	RecordExpiredSeriesBundleCheckout(ctx context.Context, arg RecordExpiredSeriesBundleCheckoutParams) error
 	// Records the checkout the provider reports expired as the reader's latest on
 	// the volume, as RecordExpiredCheckout does for an episode. A reader or a
 	// volume deleted since the checkout started records nothing.

@@ -605,6 +605,13 @@ const Series$json = {
       '10': 'rentalPeriodHours'
     },
     {'1': 'locale', '3': 24, '4': 1, '5': 9, '10': 'locale'},
+    {
+      '1': 'bundle_discount_percent',
+      '3': 25,
+      '4': 1,
+      '5': 5,
+      '10': 'bundleDiscountPercent'
+    },
   ],
   '9': [
     {'1': 7, '2': 8},
@@ -632,7 +639,8 @@ final $typed_data.Uint8List seriesDescriptor = $convert.base64Decode(
     'NSC3JhdGluZ0NvdW50EkkKDGF2YWlsYWJpbGl0eRgVIAEoDjIlLnB1YmxpcmEudHlwZXMudjEu'
     'U3VyZmFjZUF2YWlsYWJpbGl0eVIMYXZhaWxhYmlsaXR5Eg4KAmlkGBYgASgJUgJpZBIuChNyZW'
     '50YWxfcGVyaW9kX2hvdXJzGBcgASgFUhFyZW50YWxQZXJpb2RIb3VycxIWCgZsb2NhbGUYGCAB'
-    'KAlSBmxvY2FsZUoECAcQCEoECAgQCQ==');
+    'KAlSBmxvY2FsZRI2ChdidW5kbGVfZGlzY291bnRfcGVyY2VudBgZIAEoBVIVYnVuZGxlRGlzY2'
+    '91bnRQZXJjZW50SgQIBxAISgQICBAJ');
 
 @$core.Deprecated('Use episodeDescriptor instead')
 const Episode$json = {
@@ -1064,6 +1072,21 @@ final $typed_data.Uint8List volumeDescriptor = $convert.base64Decode(
     'Zjb3Zlcl9pbWFnZV91cGRhdGVkX2F0GAcgASgJUhNjb3ZlckltYWdlVXBkYXRlZEF0ElkKFGNv'
     'dmVyX2ltYWdlX3ZhcmlhbnRzGAggAygLMicucHVibGlyYS50eXBlcy52MS5TZXJpZXNFeWVDYX'
     'RjaFZhcmlhbnRSEmNvdmVySW1hZ2VWYXJpYW50cw==');
+
+@$core.Deprecated('Use seriesBundleDescriptor instead')
+const SeriesBundle$json = {
+  '1': 'SeriesBundle',
+  '2': [
+    {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
+    {'1': 'episode_count', '3': 2, '4': 1, '5': 5, '10': 'episodeCount'},
+    {'1': 'discount_percent', '3': 3, '4': 1, '5': 5, '10': 'discountPercent'},
+  ],
+};
+
+/// Descriptor for `SeriesBundle`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List seriesBundleDescriptor = $convert.base64Decode(
+    'CgxTZXJpZXNCdW5kbGUSDgoCaWQYASABKAlSAmlkEiMKDWVwaXNvZGVfY291bnQYAiABKAVSDG'
+    'VwaXNvZGVDb3VudBIpChBkaXNjb3VudF9wZXJjZW50GAMgASgFUg9kaXNjb3VudFBlcmNlbnQ=');
 
 @$core.Deprecated('Use readerIconPresetDescriptor instead')
 const ReaderIconPreset$json = {

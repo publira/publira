@@ -201,6 +201,27 @@ message GetSeriesEpisodeAccessResponse {
   // Every published episode of the series, in the order GetSeriesDetail lists
   // them.
   repeated SeriesEpisodeAccess episodes = 1;
+  // The rest of the series as StartSeriesRemainderCheckout would sell it to the
+  // caller from this surface now, a guest as a reader who holds nothing.
+  // Unset when that call would sell nothing: no episode is left to buy, more
+  // are left than one checkout lists, or the caller is credited on one of
+  // them. It does not say whether the tenant takes payments, or whether its
+  // app may send a reader to the provider's checkout at all.
+  SeriesRemainderOffer remainder = 2;
+}
+
+// What StartSeriesRemainderCheckout would charge, in the minor unit of the
+// tenant currency, as Episode.price is.
+message SeriesRemainderOffer {
+  // How many episodes the checkout would sell, never 0.
+  int32 episode_count = 1;
+  // The sum of those episodes' prices.
+  int32 list_price = 2;
+  // Series.bundle_discount_percent; 0 when the series takes none off.
+  int32 discount_percent = 3;
+  // What the reader pays: list_price less the discount, rounded down to the
+  // minor unit.
+  int32 price = 4;
 }
 
 message GetEpisodeDetailRequest {
@@ -1676,12 +1697,49 @@ message StartVolumeCheckoutResponse {
   string checkout_url = 1;
 }
 
+// Starts a provider checkout of the rest of a series: every episode of it the
+// calling surface lists and may sell, that has a price, and that the reader
+// holds no active permanent copy of, each as a line item at its price, with
+// the series' bundle discount (Series.bundle_discount_percent) taken off the
+// total. It answers the URL of the provider's checkout page. The purchase is
+// created by the provider's webhook alone, and opens each of those episodes as
+// buying its permanent copy would: for good, or for the reading period that
+// copy had when the checkout started. GetSeriesEpisodeAccess quotes the same
+// sale beforehand.
+//
+// `client` names the surface the checkout is started from, as it does on
+// StartEpisodeCheckout, and `locale` the language the line items name the
+// episodes in. A series the surface may not show is not_found. A series with
+// no priced episode the surface sells is failed_precondition, and so is one
+// with more such episodes left than the 100 line items one checkout holds. A
+// reader who holds every one of them is already_exists, and one whose account
+// is linked to a creator any of them credits is permission_denied with the
+// ErrorInfo reason READER_CREDITED_ON_EPISODE.
+//
+// The storefront is returned to the series page with `checkout` and
+// `remainder` in the query; the app to `/{locale}/checkout/return` with
+// `series`, `remainder`, and `status`.
+message StartSeriesRemainderCheckoutRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string series_id = 2;
+  StartEpisodeCheckoutRequest.Client client = 3;
+  // The reader's locale. Every episode title on the checkout page is that of
+  // the translation in this locale, else the tenant's default locale's, else
+  // the oldest one. Empty means the tenant's default locale.
+  string locale = 4;
+}
+
+message StartSeriesRemainderCheckoutResponse {
+  string checkout_url = 1;
+}
+
 // One purchase belonging to the signed-in reader. `is_active` is evaluated by
 // the API at read time: a purchase is active until it is revoked or its
 // expiry passes, and one without an expiry stays active until it is revoked.
 //
-// A purchase is of one episode or of one volume: exactly one of `episode` and
-// `volume` is set, and `series` is the series of either.
+// A purchase is of one episode, of one volume, or of the rest of a series:
+// exactly one of `episode`, `volume`, and `series_bundle` is set, and `series`
+// is the series of any of them.
 message MyPurchase {
   string id = 1;
   publira.types.v1.Episode episode = 2;
@@ -1709,13 +1767,19 @@ message MyPurchase {
   // the refund. A purchase revoked here is never active.
   string revoked_at = 11;
   // Which of the episode's sales the reader bought, never unspecified. A
-  // rental always carries expires_at. A purchase of a volume is always
-  // PURCHASE_KIND_PURCHASE.
+  // rental always carries expires_at. A purchase of a volume or of the rest of
+  // a series is always PURCHASE_KIND_PURCHASE.
   publira.types.v1.PurchaseKind kind = 12;
   // The volume bought, set on a purchase of a volume. It carries the id, the
   // public_id, the title, and the order_index, and none of the volume's
   // episodes, price, or cover.
   publira.types.v1.Volume volume = 13;
+  // The rest of the series bought, set on a purchase made by
+  // StartSeriesRemainderCheckout. Such a purchase has no expires_at of its
+  // own: an episode whose permanent copy had a reading period when the
+  // checkout started stops opening when that period runs out, and the
+  // episode reads report it.
+  publira.types.v1.SeriesBundle series_bundle = 14;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -1844,6 +1908,7 @@ message ProcessAppStoreNotificationResponse {}
 service PurchaseService {
   rpc StartEpisodeCheckout(StartEpisodeCheckoutRequest) returns (StartEpisodeCheckoutResponse) {}
   rpc StartVolumeCheckout(StartVolumeCheckoutRequest) returns (StartVolumeCheckoutResponse) {}
+  rpc StartSeriesRemainderCheckout(StartSeriesRemainderCheckoutRequest) returns (StartSeriesRemainderCheckoutResponse) {}
   // Lists only the authenticated reader's purchases in the requested tenant.
   rpc ListMyPurchases(ListMyPurchasesRequest) returns (ListMyPurchasesResponse) {}
   rpc ProcessPaymentWebhook(ProcessPaymentWebhookRequest) returns (ProcessPaymentWebhookResponse) {}

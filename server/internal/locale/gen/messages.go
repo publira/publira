@@ -5,6 +5,13 @@ package gen
 // Messages is the MessageFormat 2 source of every message in the `email` and `checkout`
 // namespaces, keyed by the message key and then by locale code.
 var Messages = map[string]map[string]string{
+	"checkout.bundle_discount": {
+		"ja":      "まとめ買い割引（{$percent :integer}%）",
+		"en":      "Bundle discount ({$percent :integer}%)",
+		"ko":      "묶음 할인 ({$percent :integer}%)",
+		"zh-Hans": "打包优惠（{$percent :integer}%）",
+		"zh-Hant": "打包優惠（{$percent :integer}%）",
+	},
 	"checkout.rental_line_item": {
 		"ja":      "{$episode_title}（レンタル・{$hours :integer}時間）",
 		"en":      ".input {$hours :integer}\n.match $hours\none {{{$episode_title} (rental, {$hours} hour)}}\n* {{{$episode_title} (rental, {$hours} hours)}}",
@@ -613,6 +620,13 @@ var Messages = map[string]map[string]string{
 		"ko":      "시리즈: {$series_title}",
 		"zh-Hans": "系列：{$series_title}",
 		"zh-Hant": "系列：{$series_title}",
+	},
+	"email.purchase_receipt.series_bundle": {
+		"ja":      "残りのエピソード: {$count :integer}話",
+		"en":      ".input {$count :integer}\n.match $count\none {{Remaining episodes: {$count} episode}}\n* {{Remaining episodes: {$count} episodes}}",
+		"ko":      "남은 에피소드: {$count :integer}화",
+		"zh-Hans": "剩余章节：{$count :integer}话",
+		"zh-Hant": "剩餘章節：{$count :integer}話",
 	},
 	"email.purchase_receipt.subject": {
 		"ja":      "{$tenant_name}購入完了",

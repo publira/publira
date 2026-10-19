@@ -358,6 +358,9 @@ abstract class PurchaseServiceBase extends $pb.GeneratedService {
       $pb.ServerContext ctx, $1.StartEpisodeCheckoutRequest request);
   $async.Future<$1.StartVolumeCheckoutResponse> startVolumeCheckout(
       $pb.ServerContext ctx, $1.StartVolumeCheckoutRequest request);
+  $async.Future<$1.StartSeriesRemainderCheckoutResponse>
+      startSeriesRemainderCheckout($pb.ServerContext ctx,
+          $1.StartSeriesRemainderCheckoutRequest request);
   $async.Future<$1.ListMyPurchasesResponse> listMyPurchases(
       $pb.ServerContext ctx, $1.ListMyPurchasesRequest request);
   $async.Future<$1.ProcessPaymentWebhookResponse> processPaymentWebhook(
@@ -376,6 +379,8 @@ abstract class PurchaseServiceBase extends $pb.GeneratedService {
         return $1.StartEpisodeCheckoutRequest();
       case 'StartVolumeCheckout':
         return $1.StartVolumeCheckoutRequest();
+      case 'StartSeriesRemainderCheckout':
+        return $1.StartSeriesRemainderCheckoutRequest();
       case 'ListMyPurchases':
         return $1.ListMyPurchasesRequest();
       case 'ProcessPaymentWebhook':
@@ -400,6 +405,9 @@ abstract class PurchaseServiceBase extends $pb.GeneratedService {
       case 'StartVolumeCheckout':
         return startVolumeCheckout(
             ctx, request as $1.StartVolumeCheckoutRequest);
+      case 'StartSeriesRemainderCheckout':
+        return startSeriesRemainderCheckout(
+            ctx, request as $1.StartSeriesRemainderCheckoutRequest);
       case 'ListMyPurchases':
         return listMyPurchases(ctx, request as $1.ListMyPurchasesRequest);
       case 'ProcessPaymentWebhook':

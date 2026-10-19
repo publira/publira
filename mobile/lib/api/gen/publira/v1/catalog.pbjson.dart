@@ -562,6 +562,14 @@ const GetSeriesEpisodeAccessResponse$json = {
       '6': '.publira.v1.SeriesEpisodeAccess',
       '10': 'episodes'
     },
+    {
+      '1': 'remainder',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.v1.SeriesRemainderOffer',
+      '10': 'remainder'
+    },
   ],
 };
 
@@ -569,7 +577,25 @@ const GetSeriesEpisodeAccessResponse$json = {
 final $typed_data.Uint8List getSeriesEpisodeAccessResponseDescriptor =
     $convert.base64Decode(
         'Ch5HZXRTZXJpZXNFcGlzb2RlQWNjZXNzUmVzcG9uc2USOwoIZXBpc29kZXMYASADKAsyHy5wdW'
-        'JsaXJhLnYxLlNlcmllc0VwaXNvZGVBY2Nlc3NSCGVwaXNvZGVz');
+        'JsaXJhLnYxLlNlcmllc0VwaXNvZGVBY2Nlc3NSCGVwaXNvZGVzEj4KCXJlbWFpbmRlchgCIAEo'
+        'CzIgLnB1YmxpcmEudjEuU2VyaWVzUmVtYWluZGVyT2ZmZXJSCXJlbWFpbmRlcg==');
+
+@$core.Deprecated('Use seriesRemainderOfferDescriptor instead')
+const SeriesRemainderOffer$json = {
+  '1': 'SeriesRemainderOffer',
+  '2': [
+    {'1': 'episode_count', '3': 1, '4': 1, '5': 5, '10': 'episodeCount'},
+    {'1': 'list_price', '3': 2, '4': 1, '5': 5, '10': 'listPrice'},
+    {'1': 'discount_percent', '3': 3, '4': 1, '5': 5, '10': 'discountPercent'},
+    {'1': 'price', '3': 4, '4': 1, '5': 5, '10': 'price'},
+  ],
+};
+
+/// Descriptor for `SeriesRemainderOffer`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List seriesRemainderOfferDescriptor = $convert.base64Decode(
+    'ChRTZXJpZXNSZW1haW5kZXJPZmZlchIjCg1lcGlzb2RlX2NvdW50GAEgASgFUgxlcGlzb2RlQ2'
+    '91bnQSHQoKbGlzdF9wcmljZRgCIAEoBVIJbGlzdFByaWNlEikKEGRpc2NvdW50X3BlcmNlbnQY'
+    'AyABKAVSD2Rpc2NvdW50UGVyY2VudBIUCgVwcmljZRgEIAEoBVIFcHJpY2U=');
 
 @$core.Deprecated('Use getEpisodeDetailRequestDescriptor instead')
 const GetEpisodeDetailRequest$json = {
@@ -3051,6 +3077,53 @@ final $typed_data.Uint8List startVolumeCheckoutResponseDescriptor =
         'ChtTdGFydFZvbHVtZUNoZWNrb3V0UmVzcG9uc2USIQoMY2hlY2tvdXRfdXJsGAEgASgJUgtjaG'
         'Vja291dFVybA==');
 
+@$core.Deprecated('Use startSeriesRemainderCheckoutRequestDescriptor instead')
+const StartSeriesRemainderCheckoutRequest$json = {
+  '1': 'StartSeriesRemainderCheckoutRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+    {'1': 'series_id', '3': 2, '4': 1, '5': 9, '10': 'seriesId'},
+    {
+      '1': 'client',
+      '3': 3,
+      '4': 1,
+      '5': 14,
+      '6': '.publira.v1.StartEpisodeCheckoutRequest.Client',
+      '10': 'client'
+    },
+    {'1': 'locale', '3': 4, '4': 1, '5': 9, '10': 'locale'},
+  ],
+};
+
+/// Descriptor for `StartSeriesRemainderCheckoutRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List startSeriesRemainderCheckoutRequestDescriptor =
+    $convert.base64Decode(
+        'CiNTdGFydFNlcmllc1JlbWFpbmRlckNoZWNrb3V0UmVxdWVzdBI3CgZ0ZW5hbnQYASABKAsyHy'
+        '5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHRSBnRlbmFudBIbCglzZXJpZXNfaWQYAiAB'
+        'KAlSCHNlcmllc0lkEkYKBmNsaWVudBgDIAEoDjIuLnB1YmxpcmEudjEuU3RhcnRFcGlzb2RlQ2'
+        'hlY2tvdXRSZXF1ZXN0LkNsaWVudFIGY2xpZW50EhYKBmxvY2FsZRgEIAEoCVIGbG9jYWxl');
+
+@$core.Deprecated('Use startSeriesRemainderCheckoutResponseDescriptor instead')
+const StartSeriesRemainderCheckoutResponse$json = {
+  '1': 'StartSeriesRemainderCheckoutResponse',
+  '2': [
+    {'1': 'checkout_url', '3': 1, '4': 1, '5': 9, '10': 'checkoutUrl'},
+  ],
+};
+
+/// Descriptor for `StartSeriesRemainderCheckoutResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List startSeriesRemainderCheckoutResponseDescriptor =
+    $convert.base64Decode(
+        'CiRTdGFydFNlcmllc1JlbWFpbmRlckNoZWNrb3V0UmVzcG9uc2USIQoMY2hlY2tvdXRfdXJsGA'
+        'EgASgJUgtjaGVja291dFVybA==');
+
 @$core.Deprecated('Use myPurchaseDescriptor instead')
 const MyPurchase$json = {
   '1': 'MyPurchase',
@@ -3096,6 +3169,14 @@ const MyPurchase$json = {
       '6': '.publira.types.v1.Volume',
       '10': 'volume'
     },
+    {
+      '1': 'series_bundle',
+      '3': 14,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.SeriesBundle',
+      '10': 'seriesBundle'
+    },
   ],
 };
 
@@ -3110,7 +3191,8 @@ final $typed_data.Uint8List myPurchaseDescriptor = $convert.base64Decode(
     'QW1vdW50Eh8KC3JlZnVuZGVkX2F0GAogASgJUgpyZWZ1bmRlZEF0Eh0KCnJldm9rZWRfYXQYCy'
     'ABKAlSCXJldm9rZWRBdBIyCgRraW5kGAwgASgOMh4ucHVibGlyYS50eXBlcy52MS5QdXJjaGFz'
     'ZUtpbmRSBGtpbmQSMAoGdm9sdW1lGA0gASgLMhgucHVibGlyYS50eXBlcy52MS5Wb2x1bWVSBn'
-    'ZvbHVtZQ==');
+    'ZvbHVtZRJDCg1zZXJpZXNfYnVuZGxlGA4gASgLMh4ucHVibGlyYS50eXBlcy52MS5TZXJpZXNC'
+    'dW5kbGVSDHNlcmllc0J1bmRsZQ==');
 
 @$core.Deprecated('Use listMyPurchasesRequestDescriptor instead')
 const ListMyPurchasesRequest$json = {
@@ -3607,6 +3689,7 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.v1.GetSeriesEpisodeAccessResponse':
       GetSeriesEpisodeAccessResponse$json,
   '.publira.v1.SeriesEpisodeAccess': SeriesEpisodeAccess$json,
+  '.publira.v1.SeriesRemainderOffer': SeriesRemainderOffer$json,
   '.publira.v1.GetEpisodeDetailRequest': GetEpisodeDetailRequest$json,
   '.publira.v1.GetEpisodeDetailResponse': GetEpisodeDetailResponse$json,
   '.publira.types.v1.EpisodeImage': $0.EpisodeImage$json,
@@ -3934,6 +4017,11 @@ const $core.Map<$core.String, $core.dynamic> PurchaseServiceBase$json = {
       '3': '.publira.v1.StartVolumeCheckoutResponse'
     },
     {
+      '1': 'StartSeriesRemainderCheckout',
+      '2': '.publira.v1.StartSeriesRemainderCheckoutRequest',
+      '3': '.publira.v1.StartSeriesRemainderCheckoutResponse'
+    },
+    {
       '1': 'ListMyPurchases',
       '2': '.publira.v1.ListMyPurchasesRequest',
       '3': '.publira.v1.ListMyPurchasesResponse'
@@ -3969,6 +4057,10 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.v1.StartEpisodeCheckoutResponse': StartEpisodeCheckoutResponse$json,
   '.publira.v1.StartVolumeCheckoutRequest': StartVolumeCheckoutRequest$json,
   '.publira.v1.StartVolumeCheckoutResponse': StartVolumeCheckoutResponse$json,
+  '.publira.v1.StartSeriesRemainderCheckoutRequest':
+      StartSeriesRemainderCheckoutRequest$json,
+  '.publira.v1.StartSeriesRemainderCheckoutResponse':
+      StartSeriesRemainderCheckoutResponse$json,
   '.publira.v1.ListMyPurchasesRequest': ListMyPurchasesRequest$json,
   '.publira.v1.ListMyPurchasesResponse': ListMyPurchasesResponse$json,
   '.publira.v1.MyPurchase': MyPurchase$json,
@@ -3982,6 +4074,7 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.types.v1.GenreTranslation': $0.GenreTranslation$json,
   '.publira.types.v1.Tag': $0.Tag$json,
   '.publira.types.v1.Volume': $0.Volume$json,
+  '.publira.types.v1.SeriesBundle': $0.SeriesBundle$json,
   '.publira.v1.ProcessPaymentWebhookRequest': ProcessPaymentWebhookRequest$json,
   '.publira.v1.ProcessPaymentWebhookRequest.HeadersEntry':
       ProcessPaymentWebhookRequest_HeadersEntry$json,
@@ -4003,16 +4096,19 @@ final $typed_data.Uint8List purchaseServiceDescriptor = $convert.base64Decode(
     'N0YXJ0RXBpc29kZUNoZWNrb3V0UmVxdWVzdBooLnB1YmxpcmEudjEuU3RhcnRFcGlzb2RlQ2hl'
     'Y2tvdXRSZXNwb25zZRJmChNTdGFydFZvbHVtZUNoZWNrb3V0EiYucHVibGlyYS52MS5TdGFydF'
     'ZvbHVtZUNoZWNrb3V0UmVxdWVzdBonLnB1YmxpcmEudjEuU3RhcnRWb2x1bWVDaGVja291dFJl'
-    'c3BvbnNlEloKD0xpc3RNeVB1cmNoYXNlcxIiLnB1YmxpcmEudjEuTGlzdE15UHVyY2hhc2VzUm'
-    'VxdWVzdBojLnB1YmxpcmEudjEuTGlzdE15UHVyY2hhc2VzUmVzcG9uc2USbAoVUHJvY2Vzc1Bh'
-    'eW1lbnRXZWJob29rEigucHVibGlyYS52MS5Qcm9jZXNzUGF5bWVudFdlYmhvb2tSZXF1ZXN0Gi'
-    'kucHVibGlyYS52MS5Qcm9jZXNzUGF5bWVudFdlYmhvb2tSZXNwb25zZRJjChJTdGFydFN0b3Jl'
-    'UHVyY2hhc2USJS5wdWJsaXJhLnYxLlN0YXJ0U3RvcmVQdXJjaGFzZVJlcXVlc3QaJi5wdWJsaX'
-    'JhLnYxLlN0YXJ0U3RvcmVQdXJjaGFzZVJlc3BvbnNlEmkKFENvbmZpcm1TdG9yZVB1cmNoYXNl'
-    'EicucHVibGlyYS52MS5Db25maXJtU3RvcmVQdXJjaGFzZVJlcXVlc3QaKC5wdWJsaXJhLnYxLk'
-    'NvbmZpcm1TdG9yZVB1cmNoYXNlUmVzcG9uc2USfgobUHJvY2Vzc0FwcFN0b3JlTm90aWZpY2F0'
-    'aW9uEi4ucHVibGlyYS52MS5Qcm9jZXNzQXBwU3RvcmVOb3RpZmljYXRpb25SZXF1ZXN0Gi8ucH'
-    'VibGlyYS52MS5Qcm9jZXNzQXBwU3RvcmVOb3RpZmljYXRpb25SZXNwb25zZQ==');
+    'c3BvbnNlEoEBChxTdGFydFNlcmllc1JlbWFpbmRlckNoZWNrb3V0Ei8ucHVibGlyYS52MS5TdG'
+    'FydFNlcmllc1JlbWFpbmRlckNoZWNrb3V0UmVxdWVzdBowLnB1YmxpcmEudjEuU3RhcnRTZXJp'
+    'ZXNSZW1haW5kZXJDaGVja291dFJlc3BvbnNlEloKD0xpc3RNeVB1cmNoYXNlcxIiLnB1Ymxpcm'
+    'EudjEuTGlzdE15UHVyY2hhc2VzUmVxdWVzdBojLnB1YmxpcmEudjEuTGlzdE15UHVyY2hhc2Vz'
+    'UmVzcG9uc2USbAoVUHJvY2Vzc1BheW1lbnRXZWJob29rEigucHVibGlyYS52MS5Qcm9jZXNzUG'
+    'F5bWVudFdlYmhvb2tSZXF1ZXN0GikucHVibGlyYS52MS5Qcm9jZXNzUGF5bWVudFdlYmhvb2tS'
+    'ZXNwb25zZRJjChJTdGFydFN0b3JlUHVyY2hhc2USJS5wdWJsaXJhLnYxLlN0YXJ0U3RvcmVQdX'
+    'JjaGFzZVJlcXVlc3QaJi5wdWJsaXJhLnYxLlN0YXJ0U3RvcmVQdXJjaGFzZVJlc3BvbnNlEmkK'
+    'FENvbmZpcm1TdG9yZVB1cmNoYXNlEicucHVibGlyYS52MS5Db25maXJtU3RvcmVQdXJjaGFzZV'
+    'JlcXVlc3QaKC5wdWJsaXJhLnYxLkNvbmZpcm1TdG9yZVB1cmNoYXNlUmVzcG9uc2USfgobUHJv'
+    'Y2Vzc0FwcFN0b3JlTm90aWZpY2F0aW9uEi4ucHVibGlyYS52MS5Qcm9jZXNzQXBwU3RvcmVOb3'
+    'RpZmljYXRpb25SZXF1ZXN0Gi8ucHVibGlyYS52MS5Qcm9jZXNzQXBwU3RvcmVOb3RpZmljYXRp'
+    'b25SZXNwb25zZQ==');
 
 const $core.Map<$core.String, $core.dynamic> WaitFreeServiceBase$json = {
   '1': 'WaitFreeService',

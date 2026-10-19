@@ -12,6 +12,7 @@ const data = {
   is_test: false,
   library_url: "https://aoto.example.com/my/library",
   purchased_at: "2030-01-15T12:00:00Z",
+  series_bundle_episode_count: 0,
   series_title: "The Lighthouse Keeper",
   tenant_name: "Aoto Press",
   volume_title: "",
@@ -108,6 +109,25 @@ describe("purchaseReceiptDataSchema", () => {
     ).toBe(false);
   });
 
+  it("accepts a purchase of the rest of a series, which names no episode or volume", () => {
+    expect(
+      purchaseReceiptDataSchema.safeParse({
+        ...data,
+        episode_title: "",
+        series_bundle_episode_count: 12,
+      }).success
+    ).toBe(true);
+  });
+
+  it("rejects a purchase that names an episode beside the rest of a series", () => {
+    expect(
+      purchaseReceiptDataSchema.safeParse({
+        ...data,
+        series_bundle_episode_count: 12,
+      }).success
+    ).toBe(false);
+  });
+
   // The console stores titles with no length limit, and a receipt whose data
   // the schema refuses is never sent.
   it("accepts any title the catalogue can hold", () => {
@@ -144,6 +164,18 @@ describe("PurchaseReceiptEmail", () => {
 
     expect(html).toContain("Volume: Volume One");
     expect(html).toContain("Thank you for buying Volume One.");
+    expect(html).not.toContain("Episode:");
+  });
+
+  it("counts the episodes of the rest of a series bought", async () => {
+    const html = await render("en", {
+      episode_title: "",
+      expires_at: "",
+      series_bundle_episode_count: 12,
+    });
+
+    expect(html).toContain("Remaining episodes: 12 episodes");
+    expect(html).toContain("Thank you for buying The Lighthouse Keeper.");
     expect(html).not.toContain("Episode:");
   });
 

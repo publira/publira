@@ -1377,6 +1377,7 @@ class Series extends $pb.GeneratedMessage {
     $core.String? id,
     $core.int? rentalPeriodHours,
     $core.String? locale,
+    $core.int? bundleDiscountPercent,
   }) {
     final result = Series._();
     if (publicId != null) result.publicId = publicId;
@@ -1405,6 +1406,8 @@ class Series extends $pb.GeneratedMessage {
     if (id != null) result.id = id;
     if (rentalPeriodHours != null) result.rentalPeriodHours = rentalPeriodHours;
     if (locale != null) result.locale = locale;
+    if (bundleDiscountPercent != null)
+      result.bundleDiscountPercent = bundleDiscountPercent;
     return result;
   }
 
@@ -1454,6 +1457,7 @@ class Series extends $pb.GeneratedMessage {
     ..aOS(22, _omitFieldNames ? '' : 'id')
     ..aI(23, _omitFieldNames ? '' : 'rentalPeriodHours')
     ..aOS(24, _omitFieldNames ? '' : 'locale')
+    ..aI(25, _omitFieldNames ? '' : 'bundleDiscountPercent')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1681,6 +1685,19 @@ class Series extends $pb.GeneratedMessage {
   $core.bool hasLocale() => $_has(21);
   @$pb.TagNumber(24)
   void clearLocale() => $_clearField(24);
+
+  /// What StartSeriesRemainderCheckout takes off the sum of the prices it
+  /// sells, in whole percent from 1 to 99. Zero sells the rest of the series at
+  /// that sum. Set on the console's reads and 0 on the public ones, where
+  /// GetSeriesEpisodeAccess quotes the rest of the series to the reader.
+  @$pb.TagNumber(25)
+  $core.int get bundleDiscountPercent => $_getIZ(22);
+  @$pb.TagNumber(25)
+  set bundleDiscountPercent($core.int value) => $_setSignedInt32(22, value);
+  @$pb.TagNumber(25)
+  $core.bool hasBundleDiscountPercent() => $_has(22);
+  @$pb.TagNumber(25)
+  void clearBundleDiscountPercent() => $_clearField(25);
 }
 
 class Episode extends $pb.GeneratedMessage {
@@ -3070,7 +3087,6 @@ class PageVersion extends $pb.GeneratedMessage {
   void clearAgreementRequiredAt() => $_clearField(10);
 }
 
-/// Which of an episode's two sales a purchase is (purchases.kind).
 /// A volume: a run of a series' episodes sold together, at a price of its own,
 /// in one checkout. Buying it opens every episode it holds, which the episode
 /// reads then report as EPISODE_ENTITLEMENT_SOURCE_PURCHASE.
@@ -3212,6 +3228,96 @@ class Volume extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(8)
   $pb.PbList<SeriesEyeCatchVariant> get coverImageVariants => $_getList(7);
+}
+
+/// The rest of a series, bought in one StartSeriesRemainderCheckout: every
+/// episode the reader could buy and did not hold when the checkout started.
+/// Buying it opens each of them, which the episode reads then report as
+/// EPISODE_ENTITLEMENT_SOURCE_PURCHASE.
+class SeriesBundle extends $pb.GeneratedMessage {
+  factory SeriesBundle({
+    $core.String? id,
+    $core.int? episodeCount,
+    $core.int? discountPercent,
+  }) {
+    final result = SeriesBundle._();
+    if (id != null) result.id = id;
+    if (episodeCount != null) result.episodeCount = episodeCount;
+    if (discountPercent != null) result.discountPercent = discountPercent;
+    return result;
+  }
+
+  SeriesBundle._();
+
+  factory SeriesBundle.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SeriesBundle()..mergeFromBuffer(data, registry);
+  factory SeriesBundle.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SeriesBundle()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SeriesBundle',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'publira.types.v1'),
+      createEmptyInstance: SeriesBundle.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aI(2, _omitFieldNames ? '' : 'episodeCount')
+    ..aI(3, _omitFieldNames ? '' : 'discountPercent')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SeriesBundle clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SeriesBundle copyWith(void Function(SeriesBundle) updates) =>
+      super.copyWith((message) => updates(message as SeriesBundle))
+          as SeriesBundle;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use SeriesBundle() / SeriesBundle.new instead')
+  static SeriesBundle create() => SeriesBundle._();
+  static $pb.GeneratedMessage $_createMessage() => SeriesBundle._();
+  @$core.override
+  SeriesBundle createEmptyInstance() => SeriesBundle._();
+  @$core.pragma('dart2js:noInline')
+  static SeriesBundle getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<SeriesBundle>(
+          SeriesBundle.$_createMessage);
+  static SeriesBundle? _defaultInstance;
+
+  /// The bundle's primary key, a UUID.
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  /// How many episodes the checkout sold.
+  @$pb.TagNumber(2)
+  $core.int get episodeCount => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set episodeCount($core.int value) => $_setSignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasEpisodeCount() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearEpisodeCount() => $_clearField(2);
+
+  /// The series' bundle discount the checkout took off, in whole percent; 0
+  /// when it took none.
+  @$pb.TagNumber(3)
+  $core.int get discountPercent => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set discountPercent($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasDiscountPercent() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearDiscountPercent() => $_clearField(3);
 }
 
 /// An icon the tenant provides for its readers to pick. A reader's account

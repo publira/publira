@@ -57,6 +57,10 @@ message CreateSeriesRequest {
   // Where the rental period of each new episode in the series starts. Zero
   // states none. Negative is invalid_argument.
   int32 rental_period_hours = 27;
+  // What a checkout of the rest of the series takes off the sum of its
+  // episodes' prices, in whole percent. Zero takes nothing off; anything
+  // outside 0 to 99 is invalid_argument.
+  int32 bundle_discount_percent = 28;
   bytes eye_catch_image_data = 8;
   string eye_catch_image_content_type = 9;
   string published_at = 12;
@@ -164,6 +168,11 @@ message UpdateSeriesRequest {
   // episode keeps the value it was created with. Zero, sent explicitly, clears
   // it. Negative is invalid_argument.
   optional int32 rental_period_hours = 29;
+  // What a checkout of the rest of the series takes off the sum of its
+  // episodes' prices, in whole percent, from the next checkout on. Zero, sent
+  // explicitly, takes nothing off; anything outside 0 to 99 is
+  // invalid_argument.
+  optional int32 bundle_discount_percent = 30;
   bytes eye_catch_image_data = 9;
   string eye_catch_image_content_type = 10;
   bool clear_eye_catch_image = 11;

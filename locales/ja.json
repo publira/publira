@@ -105,6 +105,7 @@
       "preview": "{$title}をご購入いただきありがとうございます。",
       "purchased_at": "購入日時: {$purchased_at}",
       "series": "シリーズ: {$series_title}",
+      "series_bundle": "残りのエピソード: {$count :integer}話",
       "subject": "{$tenant_name}購入完了",
       "test_notice": "これは決済サービスのテストモードでの購入です。料金は請求されていません。",
       "volume": "巻: {$volume_title}"
@@ -212,6 +213,7 @@
     }
   },
   "checkout": {
+    "bundle_discount": "まとめ買い割引（{$percent :integer}%）",
     "rental_line_item": "{$episode_title}（レンタル・{$hours :integer}時間）"
   },
   "errors": {

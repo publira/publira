@@ -37,7 +37,10 @@ const (
 	MetadataEpisodeID = "episode_id"
 	// MetadataVolumeID is present, in place of MetadataEpisodeID, on a
 	// checkout of a volume.
-	MetadataVolumeID           = "volume_id"
+	MetadataVolumeID = "volume_id"
+	// MetadataSeriesBundleID is present, in place of MetadataEpisodeID, on a
+	// checkout of the rest of a series.
+	MetadataSeriesBundleID     = "series_bundle_id"
 	MetadataPrice              = "price"
 	MetadataReadingPeriodHours = "reading_period_hours"
 	// MetadataKind is absent on a checkout started before an episode had
@@ -120,21 +123,37 @@ func (p *Provider) StartCheckout(ctx context.Context, credentials paymentprovide
 	if err != nil {
 		return "", err
 	}
-	params := &stripego.CheckoutSessionCreateParams{
-		CancelURL: stripego.String(req.CancelURL),
-		LineItems: []*stripego.CheckoutSessionCreateLineItemParams{{
+	currency := strings.ToLower(req.Purchase.Currency)
+	lines := req.LineItems
+	if len(lines) == 0 {
+		lines = []paymentprovider.LineItem{{Name: req.LineItemName, Price: req.Purchase.Price}}
+	}
+	lineItems := make([]*stripego.CheckoutSessionCreateLineItemParams, 0, len(lines))
+	for _, line := range lines {
+		lineItems = append(lineItems, &stripego.CheckoutSessionCreateLineItemParams{
 			PriceData: &stripego.CheckoutSessionCreateLineItemPriceDataParams{
-				Currency: stripego.String(strings.ToLower(req.Purchase.Currency)),
+				Currency: stripego.String(currency),
 				ProductData: &stripego.CheckoutSessionCreateLineItemPriceDataProductDataParams{
-					Name: stripego.String(req.LineItemName),
+					Name: stripego.String(line.Name),
 				},
-				UnitAmount: stripego.Int64(int64(req.Purchase.Price)),
+				UnitAmount: stripego.Int64(int64(line.Price)),
 			},
 			Quantity: stripego.Int64(1),
-		}},
+		})
+	}
+	params := &stripego.CheckoutSessionCreateParams{
+		CancelURL:  stripego.String(req.CancelURL),
+		LineItems:  lineItems,
 		Metadata:   purchaseMetadata(req.Purchase),
 		Mode:       stripego.String(string(stripego.CheckoutSessionModePayment)),
 		SuccessURL: stripego.String(successURL),
+	}
+	if req.Discount != nil {
+		couponID, err := createDiscountCoupon(ctx, client, currency, *req.Discount, req.IdempotencyKey)
+		if err != nil {
+			return "", err
+		}
+		params.Discounts = []*stripego.CheckoutSessionCreateDiscountParams{{Coupon: stripego.String(couponID)}}
 	}
 	params.SetIdempotencyKey(req.IdempotencyKey)
 	session, err := client.V1CheckoutSessions.Create(ctx, params)
@@ -145,6 +164,34 @@ func (p *Provider) StartCheckout(ctx context.Context, credentials paymentprovide
 		return "", errors.New("stripe returned an empty Checkout URL")
 	}
 	return session.URL, nil
+}
+
+// couponNameLimit is the longest name Stripe takes for a coupon, in
+// characters.
+const couponNameLimit = 40
+
+// createDiscountCoupon makes the coupon one checkout applies its discount
+// with: a fixed amount, so the session's total is exactly the price the
+// purchase records, redeemable once, on the one checkout it is made for. A
+// retried request reuses it under the checkout's own idempotency key.
+func createDiscountCoupon(ctx context.Context, client *stripego.Client, currency string, discount paymentprovider.Discount, idempotencyKey string) (string, error) {
+	name := []rune(discount.Name)
+	if len(name) > couponNameLimit {
+		name = name[:couponNameLimit]
+	}
+	params := &stripego.CouponCreateParams{
+		AmountOff:      stripego.Int64(int64(discount.Amount)),
+		Currency:       stripego.String(currency),
+		Duration:       stripego.String(string(stripego.CouponDurationOnce)),
+		MaxRedemptions: stripego.Int64(1),
+		Name:           stripego.String(string(name)),
+	}
+	params.SetIdempotencyKey(idempotencyKey + ":discount")
+	coupon, err := client.V1Coupons.Create(ctx, params)
+	if err != nil {
+		return "", fmt.Errorf("create discount coupon: %w", err)
+	}
+	return coupon.ID, nil
 }
 
 // withSessionID has Stripe name the Checkout Session in the URL the reader
@@ -166,9 +213,12 @@ func purchaseMetadata(purchase paymentprovider.Purchase) map[string]string {
 		MetadataUserID:   purchase.ReaderID.String(),
 		MetadataPrice:    strconv.FormatInt(int64(purchase.Price), 10),
 	}
-	if purchase.VolumeID != uuid.Nil {
+	switch {
+	case purchase.VolumeID != uuid.Nil:
 		metadata[MetadataVolumeID] = purchase.VolumeID.String()
-	} else {
+	case purchase.SeriesBundleID != uuid.Nil:
+		metadata[MetadataSeriesBundleID] = purchase.SeriesBundleID.String()
+	default:
 		metadata[MetadataEpisodeID] = purchase.EpisodeID.String()
 	}
 	if purchase.ReadingPeriodHours > 0 {
@@ -424,16 +474,20 @@ func parsePurchaseMetadata(metadata map[string]string) (paymentprovider.Purchase
 	if err != nil {
 		return paymentprovider.Purchase{}, err
 	}
-	// A checkout sells an episode or a volume, never both, and one started
-	// before volumes existed names an episode.
-	var episodeID, volumeID uuid.UUID
+	// A checkout sells one of an episode, a volume, and a series bundle, and
+	// one started before volumes existed names an episode.
+	var episodeID, volumeID, seriesBundleID uuid.UUID
 	_, sellsVolume := metadata[MetadataVolumeID]
-	if sellsVolume {
-		if _, ok := metadata[MetadataEpisodeID]; ok {
-			return paymentprovider.Purchase{}, errors.New("metadata names both an episode and a volume")
-		}
+	_, sellsSeriesBundle := metadata[MetadataSeriesBundleID]
+	_, sellsEpisode := metadata[MetadataEpisodeID]
+	switch {
+	case sellsVolume && (sellsEpisode || sellsSeriesBundle), sellsSeriesBundle && sellsEpisode:
+		return paymentprovider.Purchase{}, errors.New("metadata names more than one of an episode, a volume, and a series bundle")
+	case sellsVolume:
 		volumeID, err = parseID(MetadataVolumeID)
-	} else {
+	case sellsSeriesBundle:
+		seriesBundleID, err = parseID(MetadataSeriesBundleID)
+	default:
 		episodeID, err = parseID(MetadataEpisodeID)
 	}
 	if err != nil {
@@ -459,11 +513,17 @@ func parsePurchaseMetadata(metadata map[string]string) (paymentprovider.Purchase
 			return paymentprovider.Purchase{}, fmt.Errorf("invalid volume metadata: %w", err)
 		}
 	}
+	if sellsSeriesBundle {
+		if err := paymentprovider.CheckSeriesBundleSale(kind, readingPeriodHours); err != nil {
+			return paymentprovider.Purchase{}, fmt.Errorf("invalid series bundle metadata: %w", err)
+		}
+	}
 	return paymentprovider.Purchase{
 		TenantID:           tenantID,
 		ReaderID:           userID,
 		EpisodeID:          episodeID,
 		VolumeID:           volumeID,
+		SeriesBundleID:     seriesBundleID,
 		Kind:               kind,
 		Price:              int32(price),
 		ReadingPeriodHours: int32(readingPeriodHours),

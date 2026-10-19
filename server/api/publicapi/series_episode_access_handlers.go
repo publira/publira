@@ -94,6 +94,10 @@ func (s *apiServer) GetSeriesEpisodeAccess(
 			Access:          episodeAccessFor(clearsAgeGate, row.FreeToEveryone, row.HasGrant),
 		})
 	}
+	res.Remainder, err = s.seriesRemainderOffer(ctx, tenant.ID, series.ID, surface, userID)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to quote the rest of a series", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
+	}
 	return noStorePrivateResponse(ctx, res), nil
 }
 
