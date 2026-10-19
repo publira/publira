@@ -52,21 +52,12 @@ func migrationSetup(run func(logger *slog.Logger, stdout io.Writer, m *migrate.M
 				logger.Error("PUBLIRA_DB_URL is not set; set it to the connection that owns the schema")
 				return errLogged
 			}
-			dir, err := resolveMigrationsDir()
-			if err != nil {
-				logger.Error("failed to find the migrations", "error", err)
-				return errLogged
-			}
-			m, err := dbmigrate.New(dir, dbURL)
+			m, err := openMigrations(dbURL)
 			if err != nil {
 				logger.Error("failed to open the migrations", "error", err)
 				return errLogged
 			}
-			defer func() {
-				if srcErr, dbErr := m.Close(); srcErr != nil || dbErr != nil {
-					logger.Error("failed to close the migrations", "source_error", srcErr, "database_error", dbErr)
-				}
-			}()
+			defer closeMigrations(logger, m)
 
 			if err := run(logger, env.stdout, m); err != nil {
 				return errLogged
@@ -76,30 +67,50 @@ func migrationSetup(run func(logger *slog.Logger, stdout io.Writer, m *migrate.M
 	}
 }
 
-func runDBMigrate(logger *slog.Logger, _ io.Writer, m *migrate.Migrate) error {
-	from, err := schemaVersion(m)
+// openMigrations opens the migrations resolveMigrationsDir finds against the
+// database dbURL names.
+func openMigrations(dbURL string) (*migrate.Migrate, error) {
+	dir, err := resolveMigrationsDir()
 	if err != nil {
-		logger.Error("failed to read the schema version", "error", err)
-		return err
+		return nil, fmt.Errorf("find the migrations: %w", err)
 	}
-	if from.dirty {
-		err := fmt.Errorf("the database is dirty at version %d", from.version)
-		logger.Error("refusing to migrate", "error", err)
-		return err
-	}
-	logger.Info("migrating", "from_version", from.version)
+	return dbmigrate.New(dir, dbURL)
+}
 
-	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		logger.Error("failed to migrate", "from_version", from.version, "error", err)
-		return err
+func closeMigrations(logger *slog.Logger, m *migrate.Migrate) {
+	if srcErr, dbErr := m.Close(); srcErr != nil || dbErr != nil {
+		logger.Error("failed to close the migrations", "source_error", srcErr, "database_error", dbErr)
 	}
-	to, err := schemaVersion(m)
+}
+
+func runDBMigrate(logger *slog.Logger, _ io.Writer, m *migrate.Migrate) error {
+	from, to, err := migrateUp(m, func(from version) { logger.Info("migrating", "from_version", from.version) })
 	if err != nil {
-		logger.Error("failed to read the schema version", "error", err)
+		logger.Error("failed to migrate", "from_version", from.version, "error", err)
 		return err
 	}
 	logger.Info("migrated", "from_version", from.version, "to_version", to.version)
 	return nil
+}
+
+// migrateUp applies every pending migration, calling started once it has read
+// the version it starts from, and reports that version and the one it ended
+// at. A dirty database is refused before anything runs.
+func migrateUp(m *migrate.Migrate, started func(from version)) (from, to version, err error) {
+	if from, err = schemaVersion(m); err != nil {
+		return from, from, fmt.Errorf("read the schema version: %w", err)
+	}
+	if from.dirty {
+		return from, from, fmt.Errorf("refusing to migrate: the database is dirty at version %d", from.version)
+	}
+	started(from)
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		return from, from, err
+	}
+	if to, err = schemaVersion(m); err != nil {
+		return from, to, fmt.Errorf("read the schema version: %w", err)
+	}
+	return from, to, nil
 }
 
 func runDBVersion(logger *slog.Logger, stdout io.Writer, m *migrate.Migrate) error {

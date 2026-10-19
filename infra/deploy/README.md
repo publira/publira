@@ -41,12 +41,12 @@ Together they replace the one `publira server` above, and each reads the `publir
 | The edge: a load balancer, a reverse proxy, or a CDN in front of one | Browsers and the mobile app | The routing, TLS, and request headers [Edge](../../docs/en/2-deployments/4-edge.md#what-the-edge-has-to-do) states. The sample configurations in [`infra/proxy/`](../proxy/README.md) take the install's hosts in `PUBLIRA_EDGE_SITE_HOSTS`, `PUBLIRA_EDGE_ADMIN_HOSTS`, and `PUBLIRA_EDGE_PLATFORM_HOSTS` |
 | PostgreSQL | Every process | Everything the install stores |
 | Valkey, or any Redis-protocol server | `publira server`, `web-storefront`, `web-admin` | The image conversion cache, the rate limit counters, and the Next.js cache |
-| An S3-compatible object store | `publira server`, `publira worker` | Every uploaded image. The bucket is created by the operator; `publiractl` saves where it is |
+| An S3-compatible object store | `publira server`, `publira worker` | Every uploaded image. The bucket is created by the operator, or by `publiractl setup --create-bucket`; `publiractl` saves where it is |
 | An SMTP server | `publira worker` | The mail the install sends: reader sign-up, password reset, administrator invitations |
 
 ### Commands run by hand
 
-The [`infra/docker/publiractl`](../docker/publiractl/Dockerfile) image carries `publiractl` and the migrations. An install runs it once per release to apply the migrations and the database roles (`db migrate`, `db roles`), once to set the install up (`setup`), and whenever an operator changes a platform setting or runs a maintenance job by hand. Nothing has to run it on a timer: the worker schedules every recurring job.
+The [`infra/docker/publiractl`](../docker/publiractl/Dockerfile) image carries `publiractl` and the migrations. An install runs it once per release to apply the migrations and the database roles (`db migrate`, `db roles`), once to set the install up (`setup`, which runs the two before its own steps when it is given `PUBLIRA_DB_URL`), and whenever an operator changes a platform setting or runs a maintenance job by hand. Nothing has to run it on a timer: the worker schedules every recurring job.
 
 ### Optional processes
 
@@ -142,7 +142,7 @@ The services share two networks. `edge` holds the proxy and what it forwards to:
 | File | What it holds |
 | --- | --- |
 | [`compose.yaml`](compose.yaml) | The services, and the values each process is given |
-| [`.env.example`](.env.example) | Every variable `compose.yaml` reads. Copy it to `.env` beside it and fill in every empty value; a required one left empty stops `docker compose` before anything starts |
+| [`.env.example`](.env.example) | Every variable `compose.yaml` reads. [`publiractl env generate`](../../server/cmd/publiractl/README.md#env) copies it to `.env` beside it with every secret generated; a required value left empty stops `docker compose` before anything starts |
 | [`services.yaml`](services.yaml) | Traefik's backend addresses, naming the Compose services. The routing is [`routes.yaml`](../proxy/traefik/dynamic/routes.yaml), mounted as it stands |
 
 The images are `${PUBLIRA_IMAGE_REGISTRY}/<name>:${PUBLIRA_IMAGE_TAG}`, where `<name>` is `publira`, `publiractl`, `web-storefront`, `web-admin`, `web-platform`, or `email-renderer`. `.env.example` sets the registry to `ghcr.io/publira`, where every release publishes them, and leaves the tag to be set to the release the checkout is at; images built from changed code take their own registry and tag, and `task docker:verify:full` builds them all as `publira/<name>:local`. The edge publishes plain HTTP on `127.0.0.1:${PUBLIRA_EDGE_PORT}`, which whatever terminates TLS on the host forwards to, and routes the hosts in `PUBLIRA_EDGE_SITE_HOSTS`, `PUBLIRA_EDGE_ADMIN_HOSTS`, and `PUBLIRA_EDGE_PLATFORM_HOSTS` and no others. `PUBLIRA_EDGE_TRUSTED_PROXIES` lists, separated by commas, the addresses the edge trusts to name the client address in `X-Forwarded-For`: the gateway of the `edge` network, which a terminator on the host reaches it from. Empty, it trusts none, and records every request with the terminator's address. `PUBLIRA_TENANT_URL_SCHEME` is the scheme of tenant links. Empty means https.
@@ -154,29 +154,21 @@ OpenTelemetry export is off unless `.env` turns it on: `PUBLIRA_TRACING_ENABLED`
 From `infra/deploy/`, an empty install is brought into service with:
 
 ```bash
-docker compose run --rm publiractl db migrate
-docker compose run --rm publiractl db roles \
-  --public-password-file /run/secrets/public-db-password \
-  --admin-password-file /run/secrets/admin-db-password \
-  --platform-password-file /run/secrets/platform-db-password \
-  --outbox-password-file /run/secrets/outbox-db-password \
-  --ticker-password-file /run/secrets/ticker-db-password \
-  --content-stats-password-file /run/secrets/content-stats-db-password
+# .env, with every secret generated, written by the publiractl image as the
+# host user. docker compose cannot run it, since it refuses to start without
+# the .env it is about to write.
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/work -w /work \
+  ghcr.io/publira/publiractl:<version> env generate
+# Then set PUBLIRA_IMAGE_TAG, PUBLIRA_EDGE_SITE_HOSTS, and PUBLIRA_EDGE_ADMIN_HOSTS in .env.
+
+docker compose run --rm setup
 docker compose up -d
-
-# The bucket, created in RustFS with its own credential.
-docker compose exec rustfs sh -c \
-  'curl -fsS -X PUT --aws-sigv4 aws:amz:us-east-1:s3 --user "$RUSTFS_ACCESS_KEY:$RUSTFS_SECRET_KEY" http://localhost:9000/publira'
-
-docker compose run --rm publiractl setup \
-  --bucket publira --region us-east-1 --endpoint http://rustfs:9000 --force-path-style \
-  --access-key-id <PUBLIRA_RUSTFS_ACCESS_KEY> --secret-access-key-file /run/secrets/rustfs-secret-key
 ```
 
-The `publiractl` service carries each role's password from `.env` in `/run/secrets/`, and the RustFS secret key as `rustfs-secret-key`. `setup` asks for the rest on the terminal.
+The `setup` service is `publiractl setup` with what the Compose file already holds given as flags: each role's password from `.env`, mounted in `/run/secrets/`, and the RustFS bucket `publira`, its endpoint, and the RustFS credential, with `--create-bucket`. With `PUBLIRA_DB_URL` set to the superuser's connection it applies the migrations and creates the roles first, then creates the bucket, and asks for the rest on the terminal. A flag given after `setup` is added to them, such as `--non-interactive` and the values it would ask for. Run again, it changes nothing that is set up already. The `publiractl` service carries the same values for every other command.
 
 On every later release, check out its tag, set `PUBLIRA_IMAGE_TAG` to its version, the tag without the `v`, then run `docker compose pull` followed by `docker compose pull publiractl`, which the first leaves out since it sits in a profile of its own, then `db migrate`, `db roles` with no flags, `docker compose up -d --remove-orphans`, which also removes the container of a service the release dropped, and `docker compose restart proxy`, which mounts the routing as single files that a checkout replaces. [Upgrading](../../docs/en/2-deployments/7-upgrading.md#on-the-docker-compose-install) is the full procedure.
 
 The install's state is the two volumes, `postgres-data` and `rustfs-data`, and the encryption keys in `.env`; Valkey keeps nothing. [Backup and restore](../../docs/en/2-deployments/8-backup-and-restore.md#on-the-docker-compose-install) backs them up and brings them back on an empty host.
 
-`task deploy:check` renders the file with every profile and checks that `.env.example` lists exactly what it reads. `task deploy:smoke` takes the images `task docker:verify:full` built through the steps above, under a project name of its own, and checks that the tenant site, the tenant console, and the Platform Console answer through the edge, that `server` is the one container of the publira image and answers the readiness of both processes and drains the Outbox, that the proxy reaches `server` and the web apps and not the database or Valkey, and that image delivery resizes and converts an image through libvips.
+`task deploy:check` renders the file with every profile and checks that `.env.example` lists exactly what it reads, and that the `.env` `publiractl env generate` writes from it renders once the image tag and the hosts are filled in, with no secret left empty. `task deploy:smoke` takes the images `task docker:verify:full` built through the steps above, under a project name of its own, runs `setup` a second time to check that it changes nothing, and checks that the tenant site, the tenant console, and the Platform Console answer through the edge, that `server` is the one container of the publira image and answers the readiness of both processes and drains the Outbox, that the proxy reaches `server` and the web apps and not the database or Valkey, and that image delivery resizes and converts an image through libvips.

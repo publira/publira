@@ -218,7 +218,7 @@ To record the reader's own address:
   - Traefik: `forwardedHeaders.trustedIPs` on the `web` entry point in `traefik.yaml`, or on the entry point the hop connects to.
   - nginx: `set_real_ip_from`, with `real_ip_header` and `real_ip_recursive` below it, near the top of `default.conf.template`, one `set_real_ip_from` line per address or range, and the same addresses in the `geo` block under them, one line each ending in ` 1;`.
   - Caddy: the `servers` block in the Caddyfile's global options, with `trusted_proxies static` followed by the addresses, separated by spaces.
-  - The Docker Compose install: `PUBLIRA_EDGE_TRUSTED_PROXIES` in `.env`, as [Put TLS in front](./3-docker-compose.md#5-put-tls-in-front) describes.
+  - The Docker Compose install: `PUBLIRA_EDGE_TRUSTED_PROXIES` in `.env`, as [Put TLS in front](./3-docker-compose.md#3-put-tls-in-front) describes.
 
 Every sample then passes on the `X-Forwarded-Proto` the hop names, since the hop reaches the proxy over plain HTTP while the reader used HTTPS. nginx and Caddy take the rightmost address in the hop's `X-Forwarded-For` that is not one of the trusted ones, pass that address on alone in `Forwarded`, and keep setting `X-Forwarded-Host` themselves, so a hop in front of them needs no entry in `PUBLIRA_TRUSTED_PROXIES`. Traefik passes the hop's `X-Forwarded-For` on with the hop's own address appended, so `publira server` steps over that address to the one the hop named only when it trusts the hop as well: by default for a hop on a private network, and for a hop with a public address, such as a CDN, once `PUBLIRA_TRUSTED_PROXIES` lists its ranges. A request from any other address is treated as it is without the setting.
 

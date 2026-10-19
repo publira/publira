@@ -1,6 +1,6 @@
 # publiractl
 
-The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a group of commands, or a command of its own: `db` applies the database migrations, creates the login roles every process connects as, reports the schema version, and seals every stored secret again with the primary encryption key, `job` is the manual interface to the maintenance jobs, whose second argument names the job, `setup` brings an install from an empty database to a tenant an administrator signs in to, `operator` lets a Platform Console operator who lost their two-step verification sign in again, `platform` saves the platform's default locale, the time zone new tenants start on, and the currency a tenant with no payment settings sells in, `policy` changes the platform's security policy and the community limit defaults, `retention` changes how long expiring records are kept where a tenant has set nothing, `search` rebuilds the OpenSearch catalog index from the database, `smtp` saves and tests the SMTP settings the platform's mail is sent with, `storage` saves and tests the object store every process keeps images in, `tenant` creates and manages a tenant, its members, and its administrators in place of the Platform Console, and `webpush` turns on the browser notifications the platform signs with its VAPID key pair.
+The command that operates a Publira install. It connects to PostgreSQL directly rather than through ConnectRPC, so it works on a deployment that serves no platform API. The first argument names a group of commands, or a command of its own: `db` applies the database migrations, creates the login roles every process connects as, reports the schema version, and seals every stored secret again with the primary encryption key, `env` writes the `.env` of a deployment with every secret generated, `job` is the manual interface to the maintenance jobs, whose second argument names the job, `setup` brings an install from an empty database to a tenant an administrator signs in to, `operator` lets a Platform Console operator who lost their two-step verification sign in again, `platform` saves the platform's default locale, the time zone new tenants start on, and the currency a tenant with no payment settings sells in, `policy` changes the platform's security policy and the community limit defaults, `retention` changes how long expiring records are kept where a tenant has set nothing, `search` rebuilds the OpenSearch catalog index from the database, `smtp` saves and tests the SMTP settings the platform's mail is sent with, `storage` saves and tests the object store every process keeps images in, `tenant` creates and manages a tenant, its members, and its administrators in place of the Platform Console, and `webpush` turns on the browser notifications the platform signs with its VAPID key pair.
 
 ```bash
 task server:build
@@ -56,6 +56,8 @@ An install goes from an empty database to serving in this order, every step from
 3. Every process starts with its `PUBLIRA_*_DB_URL` set to its role and the password given above: the Database users table in [`server/README.md`](../../README.md#database-users) names which.
 4. [`setup`](#setup) saves what the install needs to serve its first tenant, on the `publira_platform` connection.
 
+Given `PUBLIRA_DB_URL` as well, `setup` runs steps 1 and 2 itself before its own, so an install that brings its processes up after `setup` has run, as the Compose file does, needs no other command.
+
 ```bash
 eval "$(task --silent dev-env:env)"
 go -C server run ./cmd/publiractl db version
@@ -71,9 +73,32 @@ Environment variables:
 
 River's own tables (`river_job`, `river_leader`, `river_migration`) are not in `db/migrations/`: the [worker](../publira/README.md#publira-worker) applies them with `rivermigrate` when it starts, and `db migrate` leaves them alone.
 
+## env
+
+Writes the `.env` a deployment reads its secrets from, such as the one [`infra/deploy/compose.yaml`](../../../infra/deploy/compose.yaml) reads, so an install starts from values no other install shares rather than from ones typed by hand. It connects to nothing and reads no variable, so it runs on a host that has nothing else yet.
+
+| Command | What it does |
+| --- | --- |
+| `env generate` | Copies `--template` (`.env.example` unless given) to `--output` (`.env` unless given), with every secret it lists set to a generated value and every other line as the template has it, and prints how many secrets it generated, never their values. The file is created readable by its owner alone (`0600`), and a file already at `--output` is refused rather than written over, since it may hold the keys an install's data is sealed with. A template that sets none of the secrets is refused |
+
+The secrets are the ones `deployenv.Secrets` (`internal/deployenv`) lists, each in the shape the processes read it in:
+
+| Shape | Variables |
+| --- | --- |
+| 32 random bytes as hex, which a connection URL carries unescaped | `PUBLIRA_POSTGRES_PASSWORD`, the six `PUBLIRA_*_DB_PASSWORD`s, `PUBLIRA_REVALIDATE_TOKEN`, `PUBLIRA_RUSTFS_ACCESS_KEY`, `PUBLIRA_RUSTFS_SECRET_KEY` |
+| 32 random bytes as base64 | `PUBLIRA_AUTH_JWT_SECRET`, `PUBLIRA_WEB_STOREFRONT_AUTH_SECRET`, `PUBLIRA_WEB_ADMIN_AUTH_SECRET`, `PUBLIRA_WEB_PLATFORM_AUTH_SECRET`, `PUBLIRA_WEB_SERVICE_TOKEN` |
+| One encryption key, `k1:` and 32 random bytes as base64, and `k1` as the primary | `PUBLIRA_SECRET_ENCRYPTION_KEYS`, `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` |
+
+`task deploy:check` fails when `infra/deploy/.env.example` gains a secret the list does not hold. The image runs it as well, with the working directory mounted and the host user's IDs, so the file it writes is the operator's:
+
+```bash
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/work -w /work ghcr.io/publira/publiractl:<version> env generate
+go -C server run ./cmd/publiractl env generate --template "$PWD/infra/deploy/.env.example" --output "$PWD/infra/deploy/.env"
+```
+
 ## setup
 
-Brings an install from a migrated, empty database to a tenant site and a tenant console an administrator can sign in to, in one run. It holds no logic of its own: each step saves through the package the step's own command uses, and files the same audit entries under the `system` actor.
+Brings an install from an empty database to a tenant site and a tenant console an administrator can sign in to, in one run. It holds no logic of its own: each step saves through the package the step's own command uses, and files the same audit entries under the `system` actor.
 
 ```bash
 eval "$(task --silent dev-env:env)"
@@ -82,8 +107,10 @@ go -C server run ./cmd/publiractl setup
 
 | Step | Required | What it saves | The command that saves it alone |
 | --- | --- | --- | --- |
+| Database schema | with `PUBLIRA_DB_URL` | Every pending migration | `db migrate` |
+| Database roles | with `PUBLIRA_DB_URL` | The login roles and their grants, with the passwords the `--db-*-password-*` flags give | `db roles` |
 | Platform defaults | yes | The default locale, the time zone new tenants start on (`UTC` unless given), and the currency a tenant with no payment settings sells in (`USD` unless given) | `platform set` |
-| Object store | yes | The bucket and how to reach it, after a connection test it has to pass; a store that fails the test is not saved | `storage set`, `storage test` |
+| Object store | yes | The bucket and how to reach it, after a connection test it has to pass; a store that fails the test is not saved. With `--create-bucket`, the bucket is [created](#creating-the-bucket) first when it does not exist | `storage set`, `storage test` |
 | Search | no | The catalog search engine, `sql` unless one is given, after a connection test an engine with an index has to pass; the worker builds that index once it is saved | `search set`, `search test` |
 | SMTP | yes | The SMTP settings, then a test message when an address is given for one; without a username no password is read, and the worker sends without authenticating | `smtp set`, `smtp test` |
 | Web Push | no | The subject, generating the VAPID key pair | `webpush init` |
@@ -103,7 +130,7 @@ publiractl setup --non-interactive \
   --admin-email owner@comics.example.com --admin-name Owner --generate-admin-password
 ```
 
-Every flag is spelled as the command that saves the value spells it, except where two steps' commands spell one alike: `--tenant-name`, `--tenant-default-locale`, `--tenant-timezone`, `--search-username`, `--search-password-file`, `--search-password-stdin`, and `--search-password-env`, `--smtp-password-file`, `--smtp-password-stdin`, and `--smtp-password-env`, `--smtp-test-to`, and every flag of the first administrator (`--admin-email`, `--admin-name`, `--admin-password-file`, `--admin-password-stdin`, `--admin-password-env`, `--generate-admin-password`). `publiractl setup -h` lists them all.
+Every flag is spelled as the command that saves the value spells it, except where two steps' commands spell one alike: every role password, as `--db-public-password-file` for the `--public-password-file` of `db roles`, `--tenant-name`, `--tenant-default-locale`, `--tenant-timezone`, `--search-username`, `--search-password-file`, `--search-password-stdin`, and `--search-password-env`, `--smtp-password-file`, `--smtp-password-stdin`, and `--smtp-password-env`, `--smtp-test-to`, and every flag of the first administrator (`--admin-email`, `--admin-name`, `--admin-password-file`, `--admin-password-stdin`, `--admin-password-env`, `--generate-admin-password`). `publiractl setup -h` lists them all.
 
 Each step whose row is already saved, and whose flags are not given, is kept without a question: a tenant whose domain exists, and an administrator whose email exists or a tenant that already has one, are reported and not created again. An `--admin-email` that belongs to a user of the tenant without the `tenant_admin` role is refused rather than kept. A run that stopped halfway is therefore finished by running it again, which asks only for the steps still missing, and a run on a finished install changes no row, sends no test message, and runs no connection test.
 
@@ -111,9 +138,20 @@ What each step did goes to stderr as it happens, and the summary to stdout: ever
 
 Environment variables:
 
+- `PUBLIRA_DB_URL`: the connection that owns the database, which [The database steps](#the-database-steps) run on. Optional: unset, `setup` starts on a database something else migrated.
 - `PUBLIRA_PLATFORM_DB_URL`: the `publira_platform` connection the Platform Console's API writes with. Falls back to that role's development URL, never to `PUBLIRA_DB_URL`.
 - `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`: encrypt the SMTP password, the secret access key, and the search engine's password. Required: set the values the servers run with.
 - `PUBLIRA_TENANT_URL_SCHEME`: the scheme of the tenant site and console URLs the summary prints. A value no URL can be built on stops the run before anything is saved. Set the value the servers run with.
+
+### The database steps
+
+With `PUBLIRA_DB_URL` set, `setup` runs `db migrate` and then `db roles` on that connection before anything connects as `publira_platform`, which `db roles` creates. Each role's password comes from its `--db-<role>-password-file`, `--db-<role>-password-stdin`, or `--db-<role>-password-env`, named after the role as `db roles` names it, with `db-` in front: `--db-public-password-file`, `--db-admin-password-file`, `--db-platform-password-file`, `--db-outbox-password-file`, `--db-ticker-password-file`, and `--db-content-stats-password-file`. A role that does not exist yet and has no flag is asked for at a masked prompt, or, with no terminal to ask on, stops the run with exit `2` before any migration is applied. A role that exists keeps its password unless its flag is given, and one that is given is set again, so a run on a finished install migrates nothing, creates nothing, and sets only the passwords it is handed.
+
+Without `PUBLIRA_DB_URL` both steps are left to the install, which runs `db migrate` and `db roles` as jobs of their own, and a `--db-*-password-*` flag is refused.
+
+### Creating the bucket
+
+`--create-bucket` creates the bucket the Object store step names when the store answers that it does not exist, with the same credential the connection test signs with and in the `--region` given, and only then runs the test. A bucket that exists, or one the store will not say exists, is left to the test to judge, so a run on a finished install creates nothing. A store that refuses to create it stops the run with the store's error code, such as `BucketAlreadyExists` for a name another account holds, and nothing saved. Without the flag a missing bucket fails the test, as `storage test` does.
 
 ## operator
 
@@ -320,7 +358,7 @@ Environment variables:
 
 ## storage
 
-Saves and tests the S3-compatible object store `publira server` uploads to and reads images from, and the orphan sweep lists and deletes in. It does what `PlatformStorageSettingsService` does from the Platform Console, through the same implementation, `internal/platformstorage`. Creating the bucket stays with whoever provisions it.
+Saves and tests the S3-compatible object store `publira server` uploads to and reads images from, and the orphan sweep lists and deletes in. It does what `PlatformStorageSettingsService` does from the Platform Console, through the same implementation, `internal/platformstorage`. Creating the bucket stays with whoever provisions it, or with [`setup --create-bucket`](#setup).
 
 ```bash
 eval "$(task --silent dev-env:env)"

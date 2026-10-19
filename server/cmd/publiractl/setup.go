@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -16,6 +18,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	"github.com/publira/publira/server/internal/catalogsearch/opensearchbackend"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/dbroles"
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/fielderr"
 	"github.com/publira/publira/server/internal/locale"
@@ -26,9 +29,11 @@ import (
 	"github.com/publira/publira/server/internal/platformstorage"
 	"github.com/publira/publira/server/internal/platformtenants"
 	"github.com/publira/publira/server/internal/revalidate"
+	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/secretcrypto"
 	"github.com/publira/publira/server/internal/secretupdate"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
+	"github.com/publira/publira/server/internal/sqldb"
 	s3storage "github.com/publira/publira/server/internal/storage/s3"
 	"github.com/publira/publira/server/internal/storagesettings"
 	"github.com/publira/publira/server/internal/tenantmembers"
@@ -52,11 +57,14 @@ var setupCommand = command{
 type setupFlags struct {
 	nonInteractive bool
 
+	dbPasswords map[string]*secret
+
 	defaultLocale, defaultTimezone, defaultCurrency string
 
 	storage         storagesettings.Settings
 	accessKeyID     string
 	secretAccessKey *secret
+	createBucket    bool
 
 	search         platformsearch.Settings
 	searchEngine   string
@@ -80,6 +88,10 @@ func setupSetup(f *commandFlags) func(context.Context, *commandEnv) error {
 	fl := &setupFlags{}
 	f.BoolVar(&fl.nonInteractive, "non-interactive", false, "ask for nothing, and exit 2 naming the first required value no flag gives and nothing saved holds")
 
+	// Read only where PUBLIRA_DB_URL is set, which is what runs db migrate and
+	// db roles first.
+	fl.dbPasswords = roleSecrets(f, "db-")
+
 	f.StringVar(&fl.defaultLocale, "default-locale", "", "the platform's language, one of "+strings.Join(locale.Supported, ", "))
 	f.StringVar(&fl.defaultTimezone, "default-timezone", "", "the IANA time zone new tenants start on (default \""+tenanttz.Default+"\")")
 	f.StringVar(&fl.defaultCurrency, "default-currency", "", "the ISO 4217 code of the currency a tenant with no payment settings sells in (default \""+platformconfig.DefaultCurrency+"\")")
@@ -91,6 +103,7 @@ func setupSetup(f *commandFlags) func(context.Context, *commandEnv) error {
 	f.StringVar(&fl.storage.PublicBaseURL, "public-base-url", "", "the URL stored objects are readable from, when something serves them directly")
 	f.StringVar(&fl.accessKeyID, "access-key-id", "", "the access key requests are signed with; left out, every process signs with its own AWS credential")
 	fl.secretAccessKey = f.Secret("secret-access-key", "secret access key")
+	f.BoolVar(&fl.createBucket, "create-bucket", false, "create the bucket when the object store answers that it does not exist")
 
 	f.StringVar(&fl.searchEngine, "engine", "", "the engine the catalog search runs on, one of "+engineNames()+" (default \""+string(platformsearch.EngineSQL)+"\")")
 	f.StringVar(&fl.search.URL, "url", "", "the search engine's http:// or https:// URL, on every engine but sql")
@@ -191,6 +204,11 @@ func (r *setupRun) run(ctx context.Context) error {
 		return err
 	}
 	r.secrets = secrets
+	// publira_platform is one of the roles db roles creates, so the database
+	// steps come before anything connects as it.
+	if err := r.databaseSteps(ctx); err != nil {
+		return err
+	}
 	db, err := r.env.openPlatformDB()
 	if err != nil {
 		return err
@@ -204,6 +222,87 @@ func (r *setupRun) run(ctx context.Context) error {
 		}
 	}
 	return r.adminStep(ctx)
+}
+
+// databaseSteps runs db migrate and then db roles on PUBLIRA_DB_URL. Without
+// the variable an install runs both as jobs of its own, and setup starts on the
+// migrated database it always has.
+func (r *setupRun) databaseSteps(ctx context.Context) error {
+	dbURL := strings.TrimSpace(os.Getenv("PUBLIRA_DB_URL"))
+	if dbURL == "" {
+		for _, role := range dbroles.LoginRoles {
+			if s := r.flags.dbPasswords[role]; s.given() {
+				return fmt.Errorf("%s is read by db roles, which setup runs only with PUBLIRA_DB_URL set to the connection that owns the schema", s.source())
+			}
+		}
+		return nil
+	}
+	db, err := sqldb.Open(dbURL)
+	if err != nil {
+		return err
+	}
+	defer db.Close() //nolint:errcheck
+	// The passwords are read first, so a run that has none for a role it would
+	// create stops before the migrations change anything.
+	passwords, err := rolePasswords(ctx, db, r.env.console, r.interactive, r.flags.dbPasswords)
+	if err != nil {
+		return err
+	}
+
+	m, err := openMigrations(dbURL)
+	if err != nil {
+		return err
+	}
+	defer closeMigrations(r.env.logger, m)
+	from, to, err := migrateUp(m, func(version) {})
+	if err != nil {
+		return fmt.Errorf("db migrate: %w", err)
+	}
+	switch from.version {
+	case to.version:
+		r.done("Database schema", outcomeKept, fmt.Sprintf("version %d", to.version))
+	case 0:
+		r.done("Database schema", outcomeCreated, fmt.Sprintf("version %d", to.version))
+	default:
+		r.done("Database schema", outcomeUpdated, fmt.Sprintf("version %d, from %d", to.version, from.version))
+	}
+
+	result, err := applyRoles(ctx, db, passwords)
+	if err != nil {
+		return fmt.Errorf("db roles: %w", err)
+	}
+	r.done("Database roles", rolesOutcome(result), rolesDetail(result))
+	return nil
+}
+
+// rolesOutcome names what db roles did: created when it created a role, updated
+// when it only set passwords, and kept when it set none. The grants it applies
+// again every time are not a change.
+func rolesOutcome(result dbroles.Result) string {
+	switch {
+	case len(result.Created) > 0:
+		return outcomeCreated
+	case len(result.PasswordSet) > 0:
+		return outcomeUpdated
+	default:
+		return outcomeKept
+	}
+}
+
+// rolesDetail counts the login roles, and names those whose password was set
+// again rather than at creation.
+func rolesDetail(result dbroles.Result) string {
+	detail := fmt.Sprintf("%d login roles", len(dbroles.LoginRoles))
+	var reset []string
+	for _, role := range result.PasswordSet {
+		if !slices.Contains(result.Created, role) {
+			reset = append(reset, role)
+		}
+	}
+	if len(reset) > 0 {
+		detail += ", password set again for " + strings.Join(reset, ", ")
+	}
+	return detail
 }
 
 // done records what a step did, and reports it on stderr as it happens so an
@@ -415,24 +514,39 @@ func (r *setupRun) storageStep(ctx context.Context) error {
 		r.done("Object store", outcomeKept, stored.Bucket)
 		return nil
 	}
-	tester := platformstorage.Tester{Encryptor: r.secrets, Store: s3storage.NewConnectionTester(), Recorder: auditlog.New(q, r.env.logger)}
-	checks, err := tester.Test(ctx, q, auditlog.SystemPlatformActor, platformstorage.TestParams{
+	store := s3storage.NewConnectionTester()
+	tester := platformstorage.Tester{Encryptor: r.secrets, Store: store, Recorder: auditlog.New(q, r.env.logger)}
+	testParams := platformstorage.TestParams{
 		Settings:        params.Settings,
 		AccessKeyID:     params.AccessKeyID,
 		SecretMode:      params.SecretMode,
 		SecretAccessKey: params.SecretAccessKey,
-	})
+	}
+	created := false
+	if r.flags.createBucket {
+		if created, err = tester.CreateBucket(ctx, q, store, testParams); err != nil {
+			return nameStorage(err)
+		}
+	}
+	checks, err := tester.Test(ctx, q, auditlog.SystemPlatformActor, testParams)
 	if err != nil {
 		return nameStorage(err)
 	}
 	if err := printStorageChecks(r.env.console.stderr, checks); err != nil {
+		if failed, _ := storagesettings.Failed(checks); failed.Reason == rpcerrors.ReasonStorageTestBucketNotFound && !r.flags.createBucket {
+			return fmt.Errorf("%w; nothing was saved. Create the bucket, or run setup again with --create-bucket", err)
+		}
 		return fmt.Errorf("%w; nothing was saved", err)
 	}
 	saved, err := platformstorage.Save(ctx, r.db, r.env.logger, r.secrets, auditlog.SystemPlatformActor, params)
 	if err != nil {
 		return nameStorage(err)
 	}
-	r.done("Object store", outcome(found, stored.Revision, saved.Revision), saved.Bucket)
+	detail := saved.Bucket
+	if created {
+		detail += ", bucket created"
+	}
+	r.done("Object store", outcome(found, stored.Revision, saved.Revision), detail)
 	return nil
 }
 
