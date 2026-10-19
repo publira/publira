@@ -5146,6 +5146,7 @@ class AnnouncementItem extends $pb.GeneratedMessage {
     $core.String? createdAt,
     $core.bool? pinned,
     $core.String? pinnedUntil,
+    $core.String? locale,
   }) {
     final result = AnnouncementItem._();
     if (id != null) result.id = id;
@@ -5158,6 +5159,7 @@ class AnnouncementItem extends $pb.GeneratedMessage {
     if (createdAt != null) result.createdAt = createdAt;
     if (pinned != null) result.pinned = pinned;
     if (pinnedUntil != null) result.pinnedUntil = pinnedUntil;
+    if (locale != null) result.locale = locale;
     return result;
   }
 
@@ -5184,6 +5186,7 @@ class AnnouncementItem extends $pb.GeneratedMessage {
     ..aOS(8, _omitFieldNames ? '' : 'createdAt')
     ..aOB(9, _omitFieldNames ? '' : 'pinned')
     ..aOS(10, _omitFieldNames ? '' : 'pinnedUntil')
+    ..aOS(11, _omitFieldNames ? '' : 'locale')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -5226,6 +5229,8 @@ class AnnouncementItem extends $pb.GeneratedMessage {
   @$pb.TagNumber(2)
   void clearAnnouncementType() => $_clearField(2);
 
+  /// The title and body of the translation in the locale the request asked for,
+  /// else the tenant's default locale, else the oldest. locale names which.
   @$pb.TagNumber(3)
   $core.String get title => $_getSZ(2);
   @$pb.TagNumber(3)
@@ -5300,6 +5305,17 @@ class AnnouncementItem extends $pb.GeneratedMessage {
   $core.bool hasPinnedUntil() => $_has(9);
   @$pb.TagNumber(10)
   void clearPinnedUntil() => $_clearField(10);
+
+  /// The locale of the translation title and body come from. It differs from
+  /// the one asked for where the announcement has no translation in it.
+  @$pb.TagNumber(11)
+  $core.String get locale => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set locale($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasLocale() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearLocale() => $_clearField(11);
 }
 
 /// What the site shows as a banner above every page: the newest tenant-wide
@@ -5308,9 +5324,11 @@ class AnnouncementItem extends $pb.GeneratedMessage {
 class GetPinnedAnnouncementRequest extends $pb.GeneratedMessage {
   factory GetPinnedAnnouncementRequest({
     $0.TenantContext? tenant,
+    $core.String? locale,
   }) {
     final result = GetPinnedAnnouncementRequest._();
     if (tenant != null) result.tenant = tenant;
+    if (locale != null) result.locale = locale;
     return result;
   }
 
@@ -5329,6 +5347,7 @@ class GetPinnedAnnouncementRequest extends $pb.GeneratedMessage {
       createEmptyInstance: GetPinnedAnnouncementRequest.$_createMessage)
     ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
         subBuilder: $0.TenantContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'locale')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -5369,6 +5388,16 @@ class GetPinnedAnnouncementRequest extends $pb.GeneratedMessage {
   void clearTenant() => $_clearField(1);
   @$pb.TagNumber(1)
   $0.TenantContext ensureTenant() => $_ensure(0);
+
+  /// The reader's locale, resolved as ListAnnouncementsRequest.locale is.
+  @$pb.TagNumber(2)
+  $core.String get locale => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set locale($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasLocale() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearLocale() => $_clearField(2);
 }
 
 class GetPinnedAnnouncementResponse extends $pb.GeneratedMessage {
@@ -5445,10 +5474,12 @@ class GetAnnouncementRequest extends $pb.GeneratedMessage {
   factory GetAnnouncementRequest({
     $0.TenantContext? tenant,
     $core.String? announcementId,
+    $core.String? locale,
   }) {
     final result = GetAnnouncementRequest._();
     if (tenant != null) result.tenant = tenant;
     if (announcementId != null) result.announcementId = announcementId;
+    if (locale != null) result.locale = locale;
     return result;
   }
 
@@ -5468,6 +5499,7 @@ class GetAnnouncementRequest extends $pb.GeneratedMessage {
     ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
         subBuilder: $0.TenantContext.$_createMessage)
     ..aOS(2, _omitFieldNames ? '' : 'announcementId')
+    ..aOS(3, _omitFieldNames ? '' : 'locale')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -5513,14 +5545,26 @@ class GetAnnouncementRequest extends $pb.GeneratedMessage {
   $core.bool hasAnnouncementId() => $_has(1);
   @$pb.TagNumber(2)
   void clearAnnouncementId() => $_clearField(2);
+
+  /// The reader's locale, resolved as ListAnnouncementsRequest.locale is.
+  @$pb.TagNumber(3)
+  $core.String get locale => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set locale($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasLocale() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearLocale() => $_clearField(3);
 }
 
 class GetAnnouncementResponse extends $pb.GeneratedMessage {
   factory GetAnnouncementResponse({
     AnnouncementItem? announcement,
+    $core.Iterable<$core.String>? locales,
   }) {
     final result = GetAnnouncementResponse._();
     if (announcement != null) result.announcement = announcement;
+    if (locales != null) result.locales.addAll(locales);
     return result;
   }
 
@@ -5539,6 +5583,7 @@ class GetAnnouncementResponse extends $pb.GeneratedMessage {
       createEmptyInstance: GetAnnouncementResponse.$_createMessage)
     ..aOM<AnnouncementItem>(1, _omitFieldNames ? '' : 'announcement',
         subBuilder: AnnouncementItem.$_createMessage)
+    ..pPS(2, _omitFieldNames ? '' : 'locales')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -5575,6 +5620,11 @@ class GetAnnouncementResponse extends $pb.GeneratedMessage {
   void clearAnnouncement() => $_clearField(1);
   @$pb.TagNumber(1)
   AnnouncementItem ensureAnnouncement() => $_ensure(0);
+
+  /// Every locale the announcement has a translation in, the served one
+  /// included, in code order: the language alternates of the announcement.
+  @$pb.TagNumber(2)
+  $pb.PbList<$core.String> get locales => $_getList(1);
 }
 
 /// Cursor pagination. Field shape and token rules: proto/README.md.
@@ -5583,11 +5633,13 @@ class ListAnnouncementsRequest extends $pb.GeneratedMessage {
     $0.TenantContext? tenant,
     $core.int? limit,
     $core.String? token,
+    $core.String? locale,
   }) {
     final result = ListAnnouncementsRequest._();
     if (tenant != null) result.tenant = tenant;
     if (limit != null) result.limit = limit;
     if (token != null) result.token = token;
+    if (locale != null) result.locale = locale;
     return result;
   }
 
@@ -5608,6 +5660,7 @@ class ListAnnouncementsRequest extends $pb.GeneratedMessage {
         subBuilder: $0.TenantContext.$_createMessage)
     ..aI(2, _omitFieldNames ? '' : 'limit')
     ..aOS(4, _omitFieldNames ? '' : 'token')
+    ..aOS(5, _omitFieldNames ? '' : 'locale')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -5665,6 +5718,19 @@ class ListAnnouncementsRequest extends $pb.GeneratedMessage {
   $core.bool hasToken() => $_has(2);
   @$pb.TagNumber(4)
   void clearToken() => $_clearField(4);
+
+  /// The reader's locale. Each announcement is listed in its translation in
+  /// this locale, else the tenant's default locale, else its oldest, and
+  /// AnnouncementItem.locale names the one listed. Empty means the tenant's
+  /// default locale.
+  @$pb.TagNumber(5)
+  $core.String get locale => $_getSZ(3);
+  @$pb.TagNumber(5)
+  set locale($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(5)
+  $core.bool hasLocale() => $_has(3);
+  @$pb.TagNumber(5)
+  void clearLocale() => $_clearField(5);
 }
 
 class ListAnnouncementsResponse extends $pb.GeneratedMessage {

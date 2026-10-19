@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 const ClearAnnouncementPin = `-- name: ClearAnnouncementPin :exec
@@ -32,23 +33,19 @@ INSERT INTO announcements (
     id,
     tenant_id,
     announcement_type,
-    title,
-    body,
     link_url,
     metadata,
     pinned,
     pinned_until
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, tenant_id, announcement_type, title, body, link_url, metadata, created_at, pinned, pinned_until
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, tenant_id, announcement_type, link_url, metadata, created_at, pinned, pinned_until
 `
 
 type CreateAnnouncementParams struct {
 	ID               uuid.UUID       `json:"id"`
 	TenantID         uuid.UUID       `json:"tenant_id"`
 	AnnouncementType string          `json:"announcement_type"`
-	Title            string          `json:"title"`
-	Body             string          `json:"body"`
 	LinkUrl          sql.NullString  `json:"link_url"`
 	Metadata         json.RawMessage `json:"metadata"`
 	Pinned           bool            `json:"pinned"`
@@ -60,8 +57,6 @@ func (q *Queries) CreateAnnouncement(ctx context.Context, arg CreateAnnouncement
 		arg.ID,
 		arg.TenantID,
 		arg.AnnouncementType,
-		arg.Title,
-		arg.Body,
 		arg.LinkUrl,
 		arg.Metadata,
 		arg.Pinned,
@@ -72,8 +67,6 @@ func (q *Queries) CreateAnnouncement(ctx context.Context, arg CreateAnnouncement
 		&i.ID,
 		&i.TenantID,
 		&i.AnnouncementType,
-		&i.Title,
-		&i.Body,
 		&i.LinkUrl,
 		&i.Metadata,
 		&i.CreatedAt,
@@ -83,19 +76,69 @@ func (q *Queries) CreateAnnouncement(ctx context.Context, arg CreateAnnouncement
 	return i, err
 }
 
+const CreateAnnouncementTranslation = `-- name: CreateAnnouncementTranslation :one
+INSERT INTO announcement_translations (
+    id,
+    announcement_id,
+    tenant_id,
+    locale,
+    title,
+    body
+)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, announcement_id, tenant_id, locale, title, body, created_at, updated_at
+`
+
+type CreateAnnouncementTranslationParams struct {
+	ID             uuid.UUID `json:"id"`
+	AnnouncementID uuid.UUID `json:"announcement_id"`
+	TenantID       uuid.UUID `json:"tenant_id"`
+	Locale         string    `json:"locale"`
+	Title          string    `json:"title"`
+	Body           string    `json:"body"`
+}
+
+func (q *Queries) CreateAnnouncementTranslation(ctx context.Context, arg CreateAnnouncementTranslationParams) (AnnouncementTranslation, error) {
+	row := q.db.QueryRowContext(ctx, CreateAnnouncementTranslation,
+		arg.ID,
+		arg.AnnouncementID,
+		arg.TenantID,
+		arg.Locale,
+		arg.Title,
+		arg.Body,
+	)
+	var i AnnouncementTranslation
+	err := row.Scan(
+		&i.ID,
+		&i.AnnouncementID,
+		&i.TenantID,
+		&i.Locale,
+		&i.Title,
+		&i.Body,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const GetAnnouncementForUser = `-- name: GetAnnouncementForUser :one
 SELECT
-    n.id, n.tenant_id, n.announcement_type, n.title, n.body, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until,
+    n.id, n.tenant_id, n.announcement_type, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until,
+    tr.locale,
+    tr.title,
+    tr.body,
     (nr.announcement_id IS NOT NULL) AS is_read,
     nr.read_at
 FROM announcements n
+    CROSS JOIN LATERAL announcement_translation_for(n.id, $1::text) tr
     LEFT JOIN announcement_reads nr ON nr.announcement_id = n.id
-    AND nr.user_id = $1
-WHERE n.id = $2
-    AND n.tenant_id = $3
+    AND nr.user_id = $2
+WHERE n.id = $3
+    AND n.tenant_id = $4
 `
 
 type GetAnnouncementForUserParams struct {
+	Locale   string        `json:"locale"`
 	UserID   uuid.NullUUID `json:"user_id"`
 	ID       uuid.UUID     `json:"id"`
 	TenantID uuid.UUID     `json:"tenant_id"`
@@ -105,33 +148,41 @@ type GetAnnouncementForUserRow struct {
 	ID               uuid.UUID       `json:"id"`
 	TenantID         uuid.UUID       `json:"tenant_id"`
 	AnnouncementType string          `json:"announcement_type"`
-	Title            string          `json:"title"`
-	Body             string          `json:"body"`
 	LinkUrl          sql.NullString  `json:"link_url"`
 	Metadata         json.RawMessage `json:"metadata"`
 	CreatedAt        time.Time       `json:"created_at"`
 	Pinned           bool            `json:"pinned"`
 	PinnedUntil      sql.NullTime    `json:"pinned_until"`
+	Locale           string          `json:"locale"`
+	Title            string          `json:"title"`
+	Body             string          `json:"body"`
 	IsRead           interface{}     `json:"is_read"`
 	ReadAt           sql.NullTime    `json:"read_at"`
 }
 
-// Returns the announcement with the caller's read state. A row owned by another
-// tenant comes back as no rows, so its existence is not disclosed.
+// Returns the announcement with the caller's read state, in its translation
+// for the locale asked for. A row owned by another tenant comes back as no
+// rows, so its existence is not disclosed.
 func (q *Queries) GetAnnouncementForUser(ctx context.Context, arg GetAnnouncementForUserParams) (GetAnnouncementForUserRow, error) {
-	row := q.db.QueryRowContext(ctx, GetAnnouncementForUser, arg.UserID, arg.ID, arg.TenantID)
+	row := q.db.QueryRowContext(ctx, GetAnnouncementForUser,
+		arg.Locale,
+		arg.UserID,
+		arg.ID,
+		arg.TenantID,
+	)
 	var i GetAnnouncementForUserRow
 	err := row.Scan(
 		&i.ID,
 		&i.TenantID,
 		&i.AnnouncementType,
-		&i.Title,
-		&i.Body,
 		&i.LinkUrl,
 		&i.Metadata,
 		&i.CreatedAt,
 		&i.Pinned,
 		&i.PinnedUntil,
+		&i.Locale,
+		&i.Title,
+		&i.Body,
 		&i.IsRead,
 		&i.ReadAt,
 	)
@@ -139,34 +190,206 @@ func (q *Queries) GetAnnouncementForUser(ctx context.Context, arg GetAnnouncemen
 }
 
 const GetPinnedAnnouncementForTenant = `-- name: GetPinnedAnnouncementForTenant :one
-SELECT id, tenant_id, announcement_type, title, body, link_url, metadata, created_at, pinned, pinned_until
-FROM announcements
-WHERE tenant_id = $1
-    AND pinned
-    AND (pinned_until IS NULL OR pinned_until > NOW())
-ORDER BY created_at DESC, id DESC
+SELECT n.id, n.tenant_id, n.announcement_type, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until,
+    tr.locale,
+    tr.title,
+    tr.body
+FROM announcements n
+    CROSS JOIN LATERAL announcement_translation_for(n.id, $1::text) tr
+WHERE n.tenant_id = $2
+    AND n.pinned
+    AND (n.pinned_until IS NULL OR n.pinned_until > NOW())
+ORDER BY n.created_at DESC, n.id DESC
 LIMIT 1
 `
 
+type GetPinnedAnnouncementForTenantParams struct {
+	Locale   string    `json:"locale"`
+	TenantID uuid.UUID `json:"tenant_id"`
+}
+
+type GetPinnedAnnouncementForTenantRow struct {
+	ID               uuid.UUID       `json:"id"`
+	TenantID         uuid.UUID       `json:"tenant_id"`
+	AnnouncementType string          `json:"announcement_type"`
+	LinkUrl          sql.NullString  `json:"link_url"`
+	Metadata         json.RawMessage `json:"metadata"`
+	CreatedAt        time.Time       `json:"created_at"`
+	Pinned           bool            `json:"pinned"`
+	PinnedUntil      sql.NullTime    `json:"pinned_until"`
+	Locale           string          `json:"locale"`
+	Title            string          `json:"title"`
+	Body             string          `json:"body"`
+}
+
 // What the site shows as a banner: the newest announcement still inside its
-// pinned window. It names no user, so a visitor with no session gets
-// the same answer as a signed-in reader and the site caches it once per tenant.
-func (q *Queries) GetPinnedAnnouncementForTenant(ctx context.Context, tenantID uuid.UUID) (Announcement, error) {
-	row := q.db.QueryRowContext(ctx, GetPinnedAnnouncementForTenant, tenantID)
-	var i Announcement
+// pinned window, in its translation for the locale asked for. It names no
+// user, so a visitor with no session gets the same answer as a signed-in
+// reader and the site caches it once per tenant and locale.
+func (q *Queries) GetPinnedAnnouncementForTenant(ctx context.Context, arg GetPinnedAnnouncementForTenantParams) (GetPinnedAnnouncementForTenantRow, error) {
+	row := q.db.QueryRowContext(ctx, GetPinnedAnnouncementForTenant, arg.Locale, arg.TenantID)
+	var i GetPinnedAnnouncementForTenantRow
 	err := row.Scan(
 		&i.ID,
 		&i.TenantID,
 		&i.AnnouncementType,
-		&i.Title,
-		&i.Body,
 		&i.LinkUrl,
 		&i.Metadata,
 		&i.CreatedAt,
 		&i.Pinned,
 		&i.PinnedUntil,
+		&i.Locale,
+		&i.Title,
+		&i.Body,
 	)
 	return i, err
+}
+
+const ListAnnouncementRecipients = `-- name: ListAnnouncementRecipients :many
+SELECT u.id AS user_id,
+    tr.title
+FROM users u
+    CROSS JOIN LATERAL announcement_translation_for($1::uuid, COALESCE(u.last_locale, '')) tr
+WHERE u.tenant_id = $2
+    AND u.id > $3
+ORDER BY u.id
+LIMIT $4
+`
+
+type ListAnnouncementRecipientsParams struct {
+	AnnouncementID uuid.UUID     `json:"announcement_id"`
+	TenantID       uuid.NullUUID `json:"tenant_id"`
+	AfterUserID    uuid.UUID     `json:"after_user_id"`
+	Limit          int32         `json:"limit"`
+}
+
+type ListAnnouncementRecipientsRow struct {
+	UserID uuid.UUID `json:"user_id"`
+	Title  string    `json:"title"`
+}
+
+// Worker fan-out: everyone an announcement addressed to the whole tenant
+// reaches, each with the title of the translation they are told about. It is
+// the audience `ListAnnouncementsForUser*` already serves such a row to —
+// every user the tenant owns — so the bell counts what the announcements inbox
+// lists rather than a subset of it. The translation is the one the reader's
+// last locale picks, and the tenant default locale's for a reader who has none.
+//
+// Keyset paging on user_id, because the result grows with the tenant's
+// readership and the caller writes one row per recipient. The pair is
+// `users_tenant_id_id_key`, so the page is one index scan. The nil UUID sorts
+// below every UUID, so it is what the first page asks for.
+func (q *Queries) ListAnnouncementRecipients(ctx context.Context, arg ListAnnouncementRecipientsParams) ([]ListAnnouncementRecipientsRow, error) {
+	rows, err := q.db.QueryContext(ctx, ListAnnouncementRecipients,
+		arg.AnnouncementID,
+		arg.TenantID,
+		arg.AfterUserID,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAnnouncementRecipientsRow
+	for rows.Next() {
+		var i ListAnnouncementRecipientsRow
+		if err := rows.Scan(&i.UserID, &i.Title); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListAnnouncementTranslationLocales = `-- name: ListAnnouncementTranslationLocales :many
+SELECT locale
+FROM announcement_translations
+WHERE tenant_id = $1
+    AND announcement_id = $2
+ORDER BY locale
+`
+
+type ListAnnouncementTranslationLocalesParams struct {
+	TenantID       uuid.UUID `json:"tenant_id"`
+	AnnouncementID uuid.UUID `json:"announcement_id"`
+}
+
+// Every locale an announcement has a translation in, in code order: the
+// language alternates of the announcement.
+func (q *Queries) ListAnnouncementTranslationLocales(ctx context.Context, arg ListAnnouncementTranslationLocalesParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, ListAnnouncementTranslationLocales, arg.TenantID, arg.AnnouncementID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var locale string
+		if err := rows.Scan(&locale); err != nil {
+			return nil, err
+		}
+		items = append(items, locale)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListAnnouncementTranslations = `-- name: ListAnnouncementTranslations :many
+SELECT id, announcement_id, tenant_id, locale, title, body, created_at, updated_at
+FROM announcement_translations
+WHERE tenant_id = $1
+    AND announcement_id = ANY($2::uuid [])
+ORDER BY announcement_id, created_at, id
+`
+
+type ListAnnouncementTranslationsParams struct {
+	TenantID        uuid.UUID   `json:"tenant_id"`
+	AnnouncementIds []uuid.UUID `json:"announcement_ids"`
+}
+
+// Every translation of the announcements named, oldest first within each, for
+// the console to read back what it wrote.
+func (q *Queries) ListAnnouncementTranslations(ctx context.Context, arg ListAnnouncementTranslationsParams) ([]AnnouncementTranslation, error) {
+	rows, err := q.db.QueryContext(ctx, ListAnnouncementTranslations, arg.TenantID, pq.Array(arg.AnnouncementIds))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AnnouncementTranslation
+	for rows.Next() {
+		var i AnnouncementTranslation
+		if err := rows.Scan(
+			&i.ID,
+			&i.AnnouncementID,
+			&i.TenantID,
+			&i.Locale,
+			&i.Title,
+			&i.Body,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const ListAnnouncementsForTenantAsc = `-- name: ListAnnouncementsForTenantAsc :many
@@ -174,14 +397,15 @@ SELECT
     n.id,
     n.tenant_id,
     n.announcement_type,
-    n.title,
-    n.body,
+    tr.title,
+    tr.body,
     n.link_url,
     n.metadata,
     n.created_at,
     n.pinned,
     n.pinned_until
 FROM announcements n
+    CROSS JOIN LATERAL announcement_translation_for(n.id, '') tr
 WHERE n.tenant_id = $1
     AND (
         $2::uuid IS NULL
@@ -206,7 +430,20 @@ type ListAnnouncementsForTenantAscParams struct {
 	Limit           int32         `json:"limit"`
 }
 
-func (q *Queries) ListAnnouncementsForTenantAsc(ctx context.Context, arg ListAnnouncementsForTenantAscParams) ([]Announcement, error) {
+type ListAnnouncementsForTenantAscRow struct {
+	ID               uuid.UUID       `json:"id"`
+	TenantID         uuid.UUID       `json:"tenant_id"`
+	AnnouncementType string          `json:"announcement_type"`
+	Title            string          `json:"title"`
+	Body             string          `json:"body"`
+	LinkUrl          sql.NullString  `json:"link_url"`
+	Metadata         json.RawMessage `json:"metadata"`
+	CreatedAt        time.Time       `json:"created_at"`
+	Pinned           bool            `json:"pinned"`
+	PinnedUntil      sql.NullTime    `json:"pinned_until"`
+}
+
+func (q *Queries) ListAnnouncementsForTenantAsc(ctx context.Context, arg ListAnnouncementsForTenantAscParams) ([]ListAnnouncementsForTenantAscRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListAnnouncementsForTenantAsc,
 		arg.TenantID,
 		arg.CursorID,
@@ -218,9 +455,9 @@ func (q *Queries) ListAnnouncementsForTenantAsc(ctx context.Context, arg ListAnn
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Announcement
+	var items []ListAnnouncementsForTenantAscRow
 	for rows.Next() {
-		var i Announcement
+		var i ListAnnouncementsForTenantAscRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.TenantID,
@@ -251,14 +488,15 @@ SELECT
     n.id,
     n.tenant_id,
     n.announcement_type,
-    n.title,
-    n.body,
+    tr.title,
+    tr.body,
     n.link_url,
     n.metadata,
     n.created_at,
     n.pinned,
     n.pinned_until
 FROM announcements n
+    CROSS JOIN LATERAL announcement_translation_for(n.id, '') tr
 WHERE n.tenant_id = $1
     AND (
         $2::uuid IS NULL
@@ -283,13 +521,27 @@ type ListAnnouncementsForTenantDescParams struct {
 	Limit           int32         `json:"limit"`
 }
 
+type ListAnnouncementsForTenantDescRow struct {
+	ID               uuid.UUID       `json:"id"`
+	TenantID         uuid.UUID       `json:"tenant_id"`
+	AnnouncementType string          `json:"announcement_type"`
+	Title            string          `json:"title"`
+	Body             string          `json:"body"`
+	LinkUrl          sql.NullString  `json:"link_url"`
+	Metadata         json.RawMessage `json:"metadata"`
+	CreatedAt        time.Time       `json:"created_at"`
+	Pinned           bool            `json:"pinned"`
+	PinnedUntil      sql.NullTime    `json:"pinned_until"`
+}
+
 // Admin ListAnnouncements is (created_at, id) DESC. Forward uses the DESC
 // query; backward uses ASC so idx_announcements_tenant_created_at can be
 // scanned in reverse. The handler flips ASC rows back into display order.
 // A parameterized ORDER BY cannot be read in index order, so each scan
-// direction gets its own query.
+// direction gets its own query. Each row carries the title and body of its
+// translation in the tenant default locale, else its oldest.
 // cursor rules: proto/README.md.
-func (q *Queries) ListAnnouncementsForTenantDesc(ctx context.Context, arg ListAnnouncementsForTenantDescParams) ([]Announcement, error) {
+func (q *Queries) ListAnnouncementsForTenantDesc(ctx context.Context, arg ListAnnouncementsForTenantDescParams) ([]ListAnnouncementsForTenantDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListAnnouncementsForTenantDesc,
 		arg.TenantID,
 		arg.CursorID,
@@ -301,9 +553,9 @@ func (q *Queries) ListAnnouncementsForTenantDesc(ctx context.Context, arg ListAn
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Announcement
+	var items []ListAnnouncementsForTenantDescRow
 	for rows.Next() {
-		var i Announcement
+		var i ListAnnouncementsForTenantDescRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.TenantID,
@@ -331,29 +583,34 @@ func (q *Queries) ListAnnouncementsForTenantDesc(ctx context.Context, arg ListAn
 
 const ListAnnouncementsForUserAsc = `-- name: ListAnnouncementsForUserAsc :many
 SELECT
-    n.id, n.tenant_id, n.announcement_type, n.title, n.body, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until,
+    n.id, n.tenant_id, n.announcement_type, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until,
+    tr.locale,
+    tr.title,
+    tr.body,
     (nr.announcement_id IS NOT NULL) AS is_read,
     nr.read_at
 FROM announcements n
+    CROSS JOIN LATERAL announcement_translation_for(n.id, $1::text) tr
     LEFT JOIN announcement_reads nr ON nr.announcement_id = n.id
-    AND nr.user_id = $1
-WHERE n.tenant_id = $2
+    AND nr.user_id = $2
+WHERE n.tenant_id = $3
     AND (
-        $3::uuid IS NULL
+        $4::uuid IS NULL
         OR (
-            $4::boolean
-            AND (n.created_at, n.id) >= ($5::timestamptz, $3::uuid)
+            $5::boolean
+            AND (n.created_at, n.id) >= ($6::timestamptz, $4::uuid)
         )
         OR (
-            NOT $4::boolean
-            AND (n.created_at, n.id) > ($5::timestamptz, $3::uuid)
+            NOT $5::boolean
+            AND (n.created_at, n.id) > ($6::timestamptz, $4::uuid)
         )
     )
 ORDER BY n.created_at ASC, n.id ASC
-LIMIT $6
+LIMIT $7
 `
 
 type ListAnnouncementsForUserAscParams struct {
+	Locale          string        `json:"locale"`
 	UserID          uuid.NullUUID `json:"user_id"`
 	TenantID        uuid.UUID     `json:"tenant_id"`
 	CursorID        uuid.NullUUID `json:"cursor_id"`
@@ -366,19 +623,21 @@ type ListAnnouncementsForUserAscRow struct {
 	ID               uuid.UUID       `json:"id"`
 	TenantID         uuid.UUID       `json:"tenant_id"`
 	AnnouncementType string          `json:"announcement_type"`
-	Title            string          `json:"title"`
-	Body             string          `json:"body"`
 	LinkUrl          sql.NullString  `json:"link_url"`
 	Metadata         json.RawMessage `json:"metadata"`
 	CreatedAt        time.Time       `json:"created_at"`
 	Pinned           bool            `json:"pinned"`
 	PinnedUntil      sql.NullTime    `json:"pinned_until"`
+	Locale           string          `json:"locale"`
+	Title            string          `json:"title"`
+	Body             string          `json:"body"`
 	IsRead           interface{}     `json:"is_read"`
 	ReadAt           sql.NullTime    `json:"read_at"`
 }
 
 func (q *Queries) ListAnnouncementsForUserAsc(ctx context.Context, arg ListAnnouncementsForUserAscParams) ([]ListAnnouncementsForUserAscRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListAnnouncementsForUserAsc,
+		arg.Locale,
 		arg.UserID,
 		arg.TenantID,
 		arg.CursorID,
@@ -397,13 +656,14 @@ func (q *Queries) ListAnnouncementsForUserAsc(ctx context.Context, arg ListAnnou
 			&i.ID,
 			&i.TenantID,
 			&i.AnnouncementType,
-			&i.Title,
-			&i.Body,
 			&i.LinkUrl,
 			&i.Metadata,
 			&i.CreatedAt,
 			&i.Pinned,
 			&i.PinnedUntil,
+			&i.Locale,
+			&i.Title,
+			&i.Body,
 			&i.IsRead,
 			&i.ReadAt,
 		); err != nil {
@@ -422,29 +682,34 @@ func (q *Queries) ListAnnouncementsForUserAsc(ctx context.Context, arg ListAnnou
 
 const ListAnnouncementsForUserDesc = `-- name: ListAnnouncementsForUserDesc :many
 SELECT
-    n.id, n.tenant_id, n.announcement_type, n.title, n.body, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until,
+    n.id, n.tenant_id, n.announcement_type, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until,
+    tr.locale,
+    tr.title,
+    tr.body,
     (nr.announcement_id IS NOT NULL) AS is_read,
     nr.read_at
 FROM announcements n
+    CROSS JOIN LATERAL announcement_translation_for(n.id, $1::text) tr
     LEFT JOIN announcement_reads nr ON nr.announcement_id = n.id
-    AND nr.user_id = $1
-WHERE n.tenant_id = $2
+    AND nr.user_id = $2
+WHERE n.tenant_id = $3
     AND (
-        $3::uuid IS NULL
+        $4::uuid IS NULL
         OR (
-            $4::boolean
-            AND (n.created_at, n.id) <= ($5::timestamptz, $3::uuid)
+            $5::boolean
+            AND (n.created_at, n.id) <= ($6::timestamptz, $4::uuid)
         )
         OR (
-            NOT $4::boolean
-            AND (n.created_at, n.id) < ($5::timestamptz, $3::uuid)
+            NOT $5::boolean
+            AND (n.created_at, n.id) < ($6::timestamptz, $4::uuid)
         )
     )
 ORDER BY n.created_at DESC, n.id DESC
-LIMIT $6
+LIMIT $7
 `
 
 type ListAnnouncementsForUserDescParams struct {
+	Locale          string        `json:"locale"`
 	UserID          uuid.NullUUID `json:"user_id"`
 	TenantID        uuid.UUID     `json:"tenant_id"`
 	CursorID        uuid.NullUUID `json:"cursor_id"`
@@ -457,13 +722,14 @@ type ListAnnouncementsForUserDescRow struct {
 	ID               uuid.UUID       `json:"id"`
 	TenantID         uuid.UUID       `json:"tenant_id"`
 	AnnouncementType string          `json:"announcement_type"`
-	Title            string          `json:"title"`
-	Body             string          `json:"body"`
 	LinkUrl          sql.NullString  `json:"link_url"`
 	Metadata         json.RawMessage `json:"metadata"`
 	CreatedAt        time.Time       `json:"created_at"`
 	Pinned           bool            `json:"pinned"`
 	PinnedUntil      sql.NullTime    `json:"pinned_until"`
+	Locale           string          `json:"locale"`
+	Title            string          `json:"title"`
+	Body             string          `json:"body"`
 	IsRead           interface{}     `json:"is_read"`
 	ReadAt           sql.NullTime    `json:"read_at"`
 }
@@ -472,10 +738,13 @@ type ListAnnouncementsForUserDescRow struct {
 // the DESC query; backward uses ASC so the index can be scanned in reverse.
 // The handler flips ASC rows back into display order. A parameterized
 // ORDER BY cannot be read in index order, so each scan direction gets its own
-// query. Every row carries the calling user's read state.
+// query. Every row carries the calling user's read state, and the title and
+// body of its translation in the locale asked for, under
+// announcement_translation_for's fallback.
 // cursor rules: proto/README.md.
 func (q *Queries) ListAnnouncementsForUserDesc(ctx context.Context, arg ListAnnouncementsForUserDescParams) ([]ListAnnouncementsForUserDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListAnnouncementsForUserDesc,
+		arg.Locale,
 		arg.UserID,
 		arg.TenantID,
 		arg.CursorID,
@@ -494,13 +763,14 @@ func (q *Queries) ListAnnouncementsForUserDesc(ctx context.Context, arg ListAnno
 			&i.ID,
 			&i.TenantID,
 			&i.AnnouncementType,
-			&i.Title,
-			&i.Body,
 			&i.LinkUrl,
 			&i.Metadata,
 			&i.CreatedAt,
 			&i.Pinned,
 			&i.PinnedUntil,
+			&i.Locale,
+			&i.Title,
+			&i.Body,
 			&i.IsRead,
 			&i.ReadAt,
 		); err != nil {

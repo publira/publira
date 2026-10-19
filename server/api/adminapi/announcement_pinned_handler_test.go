@@ -36,16 +36,17 @@ func TestCreateAnnouncementPinnedStoresTheWindow(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateAnnouncement)).
 		WithArgs(
-			sqlmock.AnyArg(), tenantID, "announcement", "Maintenance", "Body",
+			sqlmock.AnyArg(), tenantID, "announcement",
 			sqlmock.AnyArg(), json.RawMessage("{}"), true, sql.NullTime{Time: until, Valid: true},
 		).
 		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "tenant_id", "announcement_type", "title", "body",
+			"id", "tenant_id", "announcement_type",
 			"link_url", "metadata", "created_at", "pinned", "pinned_until",
 		}).AddRow(
-			announcementID, tenantID, "announcement", "Maintenance", "Body",
+			announcementID, tenantID, "announcement",
 			nil, json.RawMessage("{}"), now, true, sql.NullTime{Time: until, Valid: true},
 		))
+	expectAnnouncementTranslationInsert(mock, tenantID, announcementID, "ja", "Maintenance", "Body", now)
 	expectAnnouncementNotificationEvent(mock, tenantID, announcementID)
 	mock.ExpectCommit()
 
@@ -53,11 +54,10 @@ func TestCreateAnnouncementPinnedStoresTheWindow(t *testing.T) {
 
 	client := publiraadminv1connect.NewAdminAnnouncementServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	req := &publiraadminv1.CreateAnnouncementRequest{
-		Tenant:      &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		Title:       "Maintenance",
-		Body:        "Body",
-		Pinned:      true,
-		PinnedUntil: until.Format(time.RFC3339),
+		Tenant:       &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Translations: []*publiraadminv1.AnnouncementTranslation{{Title: "Maintenance", Body: "Body"}},
+		Pinned:       true,
+		PinnedUntil:  until.Format(time.RFC3339),
 	}
 
 	resp, err := client.CreateAnnouncement(testutil.WithBearer(context.Background(), sessionToken), req)
@@ -97,11 +97,10 @@ func TestCreateAnnouncementRefusesAPinItCannotShow(t *testing.T) {
 			client, mock, sessionToken := newAnnouncementClient(t, tenantID, actorID, now)
 
 			req := &publiraadminv1.CreateAnnouncementRequest{
-				Tenant:      &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-				Title:       "Maintenance",
-				Body:        "Body",
-				Pinned:      true,
-				PinnedUntil: test.pinnedUntil,
+				Tenant:       &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+				Translations: []*publiraadminv1.AnnouncementTranslation{{Title: "Maintenance", Body: "Body"}},
+				Pinned:       true,
+				PinnedUntil:  test.pinnedUntil,
 			}
 
 			_, err := client.CreateAnnouncement(testutil.WithBearer(context.Background(), sessionToken), req)

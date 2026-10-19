@@ -94,8 +94,9 @@ func TestCreateAnnouncementRefusesATenantAuditor(t *testing.T) {
 	client := publiraadminv1connect.NewAdminAnnouncementServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	req := &publiraadminv1.CreateAnnouncementRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		Title:  "Maintenance Notice",
-		Body:   "Maintenance starts today at 25:00.",
+		Translations: []*publiraadminv1.AnnouncementTranslation{
+			{Title: "Maintenance Notice", Body: "Maintenance starts today at 25:00."},
+		},
 	}
 
 	_, err := client.CreateAnnouncement(testutil.WithBearer(context.Background(), sessionToken), req)
@@ -106,7 +107,7 @@ func TestCreateAnnouncementRefusesATenantAuditor(t *testing.T) {
 	assertExpectations(t, mock)
 }
 
-func TestCreateAnnouncementForEveryoneQueuesOneNotificationEvent(t *testing.T) {
+func TestCreateAnnouncementWritesEveryTranslationAndQueuesOneNotificationEvent(t *testing.T) {
 	testServer, mock := newTestAdminServer(t)
 
 	tenantID := uuid.Must(uuid.NewV7())
@@ -120,9 +121,15 @@ func TestCreateAnnouncementForEveryoneQueuesOneNotificationEvent(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateAnnouncement)).
-		WithArgs(sqlmock.AnyArg(), tenantID, "announcement", "Update", "Body", sqlmock.AnyArg(), json.RawMessage("{}"), false, sql.NullTime{}).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "announcement_type", "title", "body", "link_url", "metadata", "created_at", "pinned", "pinned_until"}).
-			AddRow(announcementID, tenantID, "announcement", "Update", "Body", nil, json.RawMessage("{}"), now, false, sql.NullTime{}))
+		WithArgs(sqlmock.AnyArg(), tenantID, "announcement", sqlmock.AnyArg(), json.RawMessage("{}"), false, sql.NullTime{}).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "announcement_type", "link_url", "metadata", "created_at", "pinned", "pinned_until"}).
+			AddRow(announcementID, tenantID, "announcement", nil, json.RawMessage("{}"), now, false, sql.NullTime{}))
+	// The English copy is sent first, and the default locale's still answers
+	// the announcement's own title and body.
+	expectAnnouncementTranslationInsert(mock, tenantID, announcementID, "en", "Update", "Body", now)
+	expectAnnouncementTranslationInsert(mock, tenantID, announcementID, "ja", "Update (ja)", "Body (ja)", now)
+	// One event for the announcement, however many languages it is written in:
+	// each reader is told once, in their own.
 	expectAnnouncementNotificationEvent(mock, tenantID, announcementID)
 	mock.ExpectCommit()
 
@@ -131,15 +138,130 @@ func TestCreateAnnouncementForEveryoneQueuesOneNotificationEvent(t *testing.T) {
 	client := publiraadminv1connect.NewAdminAnnouncementServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
 	req := &publiraadminv1.CreateAnnouncementRequest{
 		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
-		Title:  "Update",
-		Body:   "Body",
+		Translations: []*publiraadminv1.AnnouncementTranslation{
+			{Locale: "en", Title: " Update ", Body: "Body"},
+			{Locale: "ja", Title: "Update (ja)", Body: "Body (ja)"},
+		},
 	}
 
-	if _, err := client.CreateAnnouncement(testutil.WithBearer(context.Background(), sessionToken), req); err != nil {
+	resp, err := client.CreateAnnouncement(testutil.WithBearer(context.Background(), sessionToken), req)
+	if err != nil {
 		t.Fatalf("CreateAnnouncement: %v", err)
+	}
+	if got := resp.Announcement.GetTitle(); got != "Update (ja)" {
+		t.Fatalf("title = %q, want the default locale's", got)
+	}
+	var written []string
+	for _, translation := range resp.Announcement.GetTranslations() {
+		written = append(written, translation.Locale+":"+translation.Title)
+	}
+	if !slices.Equal(written, []string{"en:Update", "ja:Update (ja)"}) {
+		t.Fatalf("translations = %v, want both in the order sent", written)
 	}
 
 	assertExpectations(t, mock)
+}
+
+// What CreateAnnouncement refuses before it writes anything: a locale the
+// tenant does not offer, a locale named twice, a translation missing its title
+// or body, and copy with nothing in the default locale, which is what a reader
+// in any locale nothing was written in is shown.
+func TestCreateAnnouncementRefusesTranslationsItCannotServe(t *testing.T) {
+	tests := []struct {
+		name         string
+		translations []*publiraadminv1.AnnouncementTranslation
+	}{
+		{
+			name:         "no translation",
+			translations: nil,
+		},
+		{
+			name: "locale the tenant does not offer",
+			translations: []*publiraadminv1.AnnouncementTranslation{
+				{Locale: "ja", Title: "Update", Body: "Body"},
+				{Locale: "fr", Title: "Update (fr)", Body: "Body (fr)"},
+			},
+		},
+		{
+			name: "locale named twice",
+			translations: []*publiraadminv1.AnnouncementTranslation{
+				{Locale: "ja", Title: "Update", Body: "Body"},
+				{Locale: "", Title: "Update again", Body: "Body"},
+			},
+		},
+		{
+			name: "no default locale",
+			translations: []*publiraadminv1.AnnouncementTranslation{
+				{Locale: "en", Title: "Update", Body: "Body"},
+			},
+		},
+		{
+			name: "blank title",
+			translations: []*publiraadminv1.AnnouncementTranslation{
+				{Locale: "ja", Title: "Update", Body: "Body"},
+				{Locale: "en", Title: "  ", Body: "Body"},
+			},
+		},
+		{
+			name: "blank body",
+			translations: []*publiraadminv1.AnnouncementTranslation{
+				{Locale: "ja", Title: "Update", Body: ""},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tenantID := uuid.Must(uuid.NewV7())
+			actorID := uuid.Must(uuid.NewV7())
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			client, mock, sessionToken := newAnnouncementClient(t, tenantID, actorID, now)
+
+			_, err := client.CreateAnnouncement(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.CreateAnnouncementRequest{
+				Tenant:       &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+				Translations: test.translations,
+			})
+			if connect.CodeOf(err) != connect.CodeInvalidArgument {
+				t.Fatalf("CreateAnnouncement error = %v, want invalid_argument", err)
+			}
+
+			assertExpectations(t, mock)
+		})
+	}
+}
+
+// expectAnnouncementTranslationInsert is one locale's copy CreateAnnouncement
+// writes beside the announcement, in the same transaction.
+func expectAnnouncementTranslationInsert(
+	mock sqlmock.Sqlmock,
+	tenantID, announcementID uuid.UUID,
+	locale, title, body string,
+	now time.Time,
+) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateAnnouncementTranslation)).
+		WithArgs(sqlmock.AnyArg(), announcementID, tenantID, locale, title, body).
+		WillReturnRows(announcementTranslationColumns().
+			AddRow(uuid.Must(uuid.NewV7()), announcementID, tenantID, locale, title, body, now, now))
+}
+
+// expectAnnouncementTranslationsRead is the read of every translation of the
+// announcements one console page lists.
+func expectAnnouncementTranslationsRead(
+	mock sqlmock.Sqlmock,
+	tenantID uuid.UUID,
+	translations ...dbmodels.AnnouncementTranslation,
+) {
+	rows := announcementTranslationColumns()
+	for _, translation := range translations {
+		rows.AddRow(uuid.Must(uuid.NewV7()), translation.AnnouncementID, translation.TenantID, translation.Locale, translation.Title, translation.Body, time.Now(), time.Now())
+	}
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListAnnouncementTranslations)).
+		WithArgs(tenantID, sqlmock.AnyArg()).
+		WillReturnRows(rows)
+}
+
+func announcementTranslationColumns() *sqlmock.Rows {
+	return sqlmock.NewRows([]string{"id", "announcement_id", "tenant_id", "locale", "title", "body", "created_at", "updated_at"})
 }
 
 // expectAnnouncementNotificationEvent is the outbox row CreateAnnouncement
@@ -181,6 +303,10 @@ func TestListAnnouncementsSuccess(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListAnnouncementsForTenantDesc)).
 		WithArgs(tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(addAnnouncementRow(announcementColumns(), announcementID, tenantID, "Notice", "Body", "/announcements", now))
+	expectAnnouncementTranslationsRead(mock, tenantID,
+		dbmodels.AnnouncementTranslation{AnnouncementID: announcementID, TenantID: tenantID, Locale: "ja", Title: "Notice", Body: "Body"},
+		dbmodels.AnnouncementTranslation{AnnouncementID: announcementID, TenantID: tenantID, Locale: "en", Title: "Notice (en)", Body: "Body (en)"},
+	)
 
 	resp, err := client.ListAnnouncements(testutil.WithBearer(context.Background(), sessionToken), newAnnouncementRequest(tenantID))
 	if err != nil {
@@ -188,6 +314,13 @@ func TestListAnnouncementsSuccess(t *testing.T) {
 	}
 	if len(resp.Announcements) != 1 {
 		t.Fatalf("announcements count = %d, want 1", len(resp.Announcements))
+	}
+	var locales []string
+	for _, translation := range resp.Announcements[0].Translations {
+		locales = append(locales, translation.Locale+":"+translation.Title)
+	}
+	if !slices.Equal(locales, []string{"ja:Notice", "en:Notice (en)"}) {
+		t.Fatalf("translations = %v, want both, oldest first", locales)
 	}
 	if resp.PreviousToken != "" || resp.NextToken != "" {
 		t.Fatalf("tokens = (%q, %q), want both empty", resp.PreviousToken, resp.NextToken)
@@ -212,6 +345,7 @@ func TestListAnnouncementsFirstPageReportsNextToken(t *testing.T) {
 			),
 			ids[2], tenantID, "Third", "body", "", now.Add(-2*time.Minute),
 		))
+	expectAnnouncementTranslationsRead(mock, tenantID)
 
 	req := newAnnouncementRequest(tenantID)
 	req.Limit = 2
@@ -255,6 +389,7 @@ func TestListAnnouncementsFollowsNextToken(t *testing.T) {
 			int32(3),
 		).
 		WillReturnRows(addAnnouncementRow(announcementColumns(), lastID, tenantID, "Last", "body", "", lastAt))
+	expectAnnouncementTranslationsRead(mock, tenantID)
 
 	req := newAnnouncementRequest(tenantID)
 	req.Limit = 2
@@ -301,6 +436,7 @@ func TestListAnnouncementsFollowsPreviousTokenBackwards(t *testing.T) {
 			addAnnouncementRow(announcementColumns(), olderID, tenantID, "Older", "body", "", olderAt),
 			newerID, tenantID, "Newer", "body", "", newerAt,
 		))
+	expectAnnouncementTranslationsRead(mock, tenantID)
 
 	req := newAnnouncementRequest(tenantID)
 	req.Limit = 2
@@ -415,6 +551,7 @@ func TestListAnnouncementsEmptyPageKeepsAWayBack(t *testing.T) {
 					int32(21),
 				).
 				WillReturnRows(recoveryRows)
+			expectAnnouncementTranslationsRead(mock, tenantID)
 
 			recoveryReq := newAnnouncementRequest(tenantID)
 			recoveryReq.Token = recoveryToken

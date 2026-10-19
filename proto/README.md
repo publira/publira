@@ -8,6 +8,10 @@ A procedure reads at most 1 MiB of one request message. A request past its proce
 
 The bounds live in `server/api/*/server.go`, in the `readLimits` table beside each namespace's handler registrations; a new procedure that takes more than 1 MiB is added there.
 
+## The reader's locale
+
+A `locale` field on a public request is the language the reader reads in. When a request that carries one is made with a reader's session, the server records it as that reader's last locale, whichever RPC it is, and the notifications written for the reader afterwards are in that language; the tenant's default locale stands in until one is recorded. An empty `locale` names no language and records nothing, so a client sends the locale it renders in, the tenant's default included, on its signed-in requests.
+
 ## Cursor pagination for list RPCs
 
 Use cursor pagination consistently for list RPCs. `offset` skips the requested number of rows, so later pages become slower. Inserts and deletes while paginating can also duplicate or omit records at the page boundary.

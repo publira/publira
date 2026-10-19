@@ -531,6 +531,8 @@ message UpdateViewerPreferencesResponse {
 message AnnouncementItem {
   string id = 1;
   string announcement_type = 2;
+  // The title and body of the translation in the locale the request asked for,
+  // else the tenant's default locale, else the oldest. locale names which.
   string title = 3;
   string body = 4;
   string link_url = 5;
@@ -542,6 +544,9 @@ message AnnouncementItem {
   // RFC 3339 instant the banner stops at. Empty leaves it up until the console
   // takes it down.
   string pinned_until = 10;
+  // The locale of the translation title and body come from. It differs from
+  // the one asked for where the announcement has no translation in it.
+  string locale = 11;
 }
 
 // What the site shows as a banner above every page: the newest tenant-wide
@@ -549,6 +554,8 @@ message AnnouncementItem {
 // an announcement is the tenant's word to everyone who opens the site.
 message GetPinnedAnnouncementRequest {
   publira.types.v1.TenantContext tenant = 1;
+  // The reader's locale, resolved as ListAnnouncementsRequest.locale is.
+  string locale = 2;
 }
 
 message GetPinnedAnnouncementResponse {
@@ -562,10 +569,15 @@ message GetPinnedAnnouncementResponse {
 message GetAnnouncementRequest {
   publira.types.v1.TenantContext tenant = 1;
   string announcement_id = 2;
+  // The reader's locale, resolved as ListAnnouncementsRequest.locale is.
+  string locale = 3;
 }
 
 message GetAnnouncementResponse {
   AnnouncementItem announcement = 1;
+  // Every locale the announcement has a translation in, the served one
+  // included, in code order: the language alternates of the announcement.
+  repeated string locales = 2;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -579,6 +591,11 @@ message ListAnnouncementsRequest {
   int32 limit = 2;
   // Opaque token from a previous response. Empty for the first page.
   string token = 4;
+  // The reader's locale. Each announcement is listed in its translation in
+  // this locale, else the tenant's default locale, else its oldest, and
+  // AnnouncementItem.locale names the one listed. Empty means the tenant's
+  // default locale.
+  string locale = 5;
 }
 
 message ListAnnouncementsResponse {

@@ -27,24 +27,32 @@ INSERT INTO announcements (
     id,
     tenant_id,
     announcement_type,
-    title,
-    body,
     created_at
 )
 SELECT
     '018f1010-0001-7000-8000-000000000001'::uuid,
     target.tenant_id,
     'system',
-    'Mobile Reader Notice',
-    'An announcement every reader of the seed tenant can open.',
     NOW()
 FROM target
 ON CONFLICT (id) DO UPDATE
 SET tenant_id = EXCLUDED.tenant_id,
     announcement_type = EXCLUDED.announcement_type,
-    title = EXCLUDED.title,
-    body = EXCLUDED.body,
     created_at = EXCLUDED.created_at;
+
+INSERT INTO announcement_translations (id, announcement_id, tenant_id, locale, title, body)
+SELECT
+    uuidv7(),
+    '018f1010-0001-7000-8000-000000000001'::uuid,
+    t.id,
+    t.default_locale,
+    'Mobile Reader Notice',
+    'An announcement every reader of the seed tenant can open.'
+FROM tenants t
+WHERE t.public_id = 'SeedTNNTAAA1'
+ON CONFLICT (announcement_id, locale) DO UPDATE
+SET title = EXCLUDED.title,
+    body = EXCLUDED.body;
 
 DELETE FROM announcement_reads
 WHERE announcement_id = '018f1010-0001-7000-8000-000000000001'::uuid;

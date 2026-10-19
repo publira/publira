@@ -37,7 +37,7 @@ func getTenantByUserIDColumns() []string {
 // The users columns GetUserByID, UpdateUserStatusByID and UnsuspendUserByID
 // return.
 func updateUserStatusResultColumns() []string {
-	return []string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version", "birth_date", "icon_image_id", "icon_preset_id"}
+	return []string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version", "birth_date", "icon_image_id", "icon_preset_id", "last_locale"}
 }
 
 // TestListEndUsers asserts the success path of listing end users.
@@ -163,7 +163,7 @@ func TestSuspendEndUser(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByID)).
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows(updateUserStatusResultColumns()).
-			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "active", nil, nil, int32(1), nil, nil, nil))
+			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "active", nil, nil, int32(1), nil, nil, nil, nil))
 
 	// ensureManageableEndUser: check tenant membership, of which there is none.
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantUserRoles)).
@@ -174,13 +174,13 @@ func TestSuspendEndUser(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdateUserStatusByID)).
 		WithArgs(endUserID, "suspended").
 		WillReturnRows(sqlmock.NewRows(updateUserStatusResultColumns()).
-			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "suspended", nil, nil, int32(1), nil, nil, nil))
+			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "suspended", nil, nil, int32(1), nil, nil, nil, nil))
 
 	// Invalidate the sessions.
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.BumpUserCredentialsVersion)).
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows(updateUserStatusResultColumns()).
-			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "suspended", nil, nil, int32(2), nil, nil, nil))
+			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "suspended", nil, nil, int32(2), nil, nil, nil, nil))
 
 	// Read the tenant, of which there is none.
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByUserID)).
@@ -212,7 +212,7 @@ func TestSuspendEndUserWithPlatformRole(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByID)).
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows(updateUserStatusResultColumns()).
-			AddRow(endUserID, "PLATUSER002", "enduser@example.com", "hash", "End User", now, "active", nil, nil, int32(1), nil, nil, nil))
+			AddRow(endUserID, "PLATUSER002", "enduser@example.com", "hash", "End User", now, "active", nil, nil, int32(1), nil, nil, nil, nil))
 
 	// Refused because the user holds a tenant role.
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantUserRoles)).
@@ -238,7 +238,7 @@ func TestUnsuspendEndUser(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByID)).
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows(updateUserStatusResultColumns()).
-			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "suspended", nil, nil, int32(1), nil, nil, nil))
+			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "suspended", nil, nil, int32(1), nil, nil, nil, nil))
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantUserRoles)).
 		WithArgs(endUserID).
@@ -247,7 +247,7 @@ func TestUnsuspendEndUser(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UnsuspendUserByID)).
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows(updateUserStatusResultColumns()).
-			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "active", nil, nil, int32(1), nil, nil, nil))
+			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "active", nil, nil, int32(1), nil, nil, nil, nil))
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantByUserID)).
 		WithArgs(endUserID).
@@ -278,7 +278,7 @@ func TestUnsuspendEndUserWithTenantMembership(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByID)).
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows(updateUserStatusResultColumns()).
-			AddRow(endUserID, "TENANTUSER01", "tenantuser@example.com", "hash", "Tenant User", now, "suspended", nil, nil, int32(1), nil, nil, nil))
+			AddRow(endUserID, "TENANTUSER01", "tenantuser@example.com", "hash", "Tenant User", now, "suspended", nil, nil, int32(1), nil, nil, nil, nil))
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantUserRoles)).
 		WithArgs(endUserID).
@@ -303,7 +303,7 @@ func TestDeleteEndUser(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByID)).
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows(updateUserStatusResultColumns()).
-			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "active", nil, nil, int32(1), nil, nil, nil))
+			AddRow(endUserID, "EUSER00001", "enduser@example.com", "hash", "End User", now, "active", nil, nil, int32(1), nil, nil, nil, nil))
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantUserRoles)).
 		WithArgs(endUserID).
@@ -340,7 +340,7 @@ func TestDeleteEndUserWithPlatformRole(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByID)).
 		WithArgs(endUserID).
 		WillReturnRows(sqlmock.NewRows(updateUserStatusResultColumns()).
-			AddRow(endUserID, "PLATUSER002", "platform2@example.com", "hash", "Platform User 2", now, "active", nil, nil, int32(1), nil, nil, nil))
+			AddRow(endUserID, "PLATUSER002", "platform2@example.com", "hash", "Platform User 2", now, "active", nil, nil, int32(1), nil, nil, nil, nil))
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantUserRoles)).
 		WithArgs(endUserID).

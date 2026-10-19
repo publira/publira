@@ -52,17 +52,20 @@ func AnnouncementIdempotencyKey(announcementID uuid.UUID) string {
 }
 
 // AnnouncementNotificationPayload is the JSON body of the event. Every user of
-// the tenant is addressed by it.
+// the tenant is addressed by it. It carries no copy: the title each reader is
+// told is the one their own locale picks, so it is read per reader when the
+// event is handled.
 type AnnouncementNotificationPayload struct {
 	TenantID       string `json:"tenant_id"`
 	AnnouncementID string `json:"announcement_id"`
-	Title          string `json:"title"`
 }
 
 // announcementNotificationBody is what the inbox reads back. The tenant and the
 // announcement id are how the row found its recipients and neither says
 // anything to the person reading it, so the title is all that is carried; the
-// row links at the announcements inbox, where the body is.
+// row links at the announcements inbox, where the body is. The title is that of
+// the translation the reader's last locale picks, so each reader's row is
+// written in their own language.
 type announcementNotificationBody struct {
 	AnnouncementTitle string `json:"announcement_title,omitempty"`
 }
@@ -77,7 +80,7 @@ type AnnouncementNotificationHandlerConfig struct {
 // announcementNotificationQuerier is the statement pair the handler runs, named
 // so a test can drive the fan-out without a database behind it.
 type announcementNotificationQuerier interface {
-	ListTenantUserIDs(ctx context.Context, arg dbmodels.ListTenantUserIDsParams) ([]uuid.UUID, error)
+	ListAnnouncementRecipients(ctx context.Context, arg dbmodels.ListAnnouncementRecipientsParams) ([]dbmodels.ListAnnouncementRecipientsRow, error)
 	CreateNotification(ctx context.Context, arg dbmodels.CreateNotificationParams) error
 }
 
@@ -112,14 +115,13 @@ func announcementNotificationHandler(
 		if err != nil {
 			return Permanent(fmt.Errorf("announcement notification payload announcement_id is invalid: %w", err))
 		}
-		body, err := json.Marshal(announcementNotificationBody{
-			AnnouncementTitle: strings.TrimSpace(payload.Title),
-		})
-		if err != nil {
-			return Permanent(fmt.Errorf("encode announcement notification body: %w", err))
-		}
-
-		insert := func(userID uuid.UUID) error {
+		insert := func(recipient dbmodels.ListAnnouncementRecipientsRow) error {
+			body, encodeErr := json.Marshal(announcementNotificationBody{
+				AnnouncementTitle: strings.TrimSpace(recipient.Title),
+			})
+			if encodeErr != nil {
+				return Permanent(fmt.Errorf("encode announcement notification body: %w", encodeErr))
+			}
 			notificationID, idErr := uuid.NewV7()
 			if idErr != nil {
 				return fmt.Errorf("allocate notification id: %w", idErr)
@@ -127,7 +129,7 @@ func announcementNotificationHandler(
 			insertErr := queries.CreateNotification(ctx, dbmodels.CreateNotificationParams{
 				ID:               notificationID,
 				TenantID:         tenantID,
-				UserID:           userID,
+				UserID:           recipient.UserID,
 				NotificationType: NotificationTypeAnnouncementPosted,
 				SubjectKey:       AnnouncementSubjectKey(announcementID),
 				Payload:          body,
@@ -135,7 +137,7 @@ func announcementNotificationHandler(
 			// A recipient who already has this announcement's row, which is what
 			// a redelivered event looks like, is a no-op rather than an error.
 			if insertErr != nil {
-				return fmt.Errorf("insert notification for %s: %w", userID, insertErr)
+				return fmt.Errorf("insert notification for %s: %w", recipient.UserID, insertErr)
 			}
 			return nil
 		}
@@ -144,10 +146,11 @@ func announcementNotificationHandler(
 		// The nil UUID sorts below every UUID, so the first page starts there.
 		after := uuid.Nil
 		for {
-			recipients, listErr := queries.ListTenantUserIDs(ctx, dbmodels.ListTenantUserIDsParams{
-				TenantID:    uuid.NullUUID{UUID: tenantID, Valid: true},
-				AfterUserID: after,
-				Limit:       announcementRecipientPageSize,
+			recipients, listErr := queries.ListAnnouncementRecipients(ctx, dbmodels.ListAnnouncementRecipientsParams{
+				AnnouncementID: announcementID,
+				TenantID:       uuid.NullUUID{UUID: tenantID, Valid: true},
+				AfterUserID:    after,
+				Limit:          announcementRecipientPageSize,
 			})
 			if listErr != nil {
 				return fmt.Errorf("list announcement recipients: %w", listErr)
@@ -155,13 +158,13 @@ func announcementNotificationHandler(
 			if len(recipients) == 0 {
 				break
 			}
-			for _, userID := range recipients {
-				if err := insert(userID); err != nil {
+			for _, recipient := range recipients {
+				if err := insert(recipient); err != nil {
 					return err
 				}
 			}
 			notified += len(recipients)
-			after = recipients[len(recipients)-1]
+			after = recipients[len(recipients)-1].UserID
 			if int32(len(recipients)) < announcementRecipientPageSize {
 				break
 			}

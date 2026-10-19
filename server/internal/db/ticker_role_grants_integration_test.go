@@ -340,14 +340,18 @@ func TestTickerRoleCannotRewriteAnAnnouncement(t *testing.T) {
 		time.Now().UTC(), sql.NullTime{})
 
 	ticker := pg.OpenTickerDB(t)
-	_, err := ticker.ExecContext(ctx,
-		"UPDATE announcements SET title = 'rewritten' WHERE id = $1", announcementID)
-	if err == nil {
-		t.Fatal("rewriting an announcement's title as the ticker role succeeded, want a permission denied error")
-	}
-	var pgErr *pgconn.PgError
-	if !errors.As(err, &pgErr) || pgErr.Code != insufficientPrivilegeCode {
-		t.Fatalf("update announcements title error = %v, want SQLSTATE %s", err, insufficientPrivilegeCode)
+	for name, statement := range map[string]string{
+		"link":  "UPDATE announcements SET link_url = '/rewritten' WHERE id = $1",
+		"title": "UPDATE announcement_translations SET title = 'rewritten' WHERE announcement_id = $1",
+	} {
+		_, err := ticker.ExecContext(ctx, statement, announcementID)
+		if err == nil {
+			t.Fatalf("rewriting an announcement's %s as the ticker role succeeded, want a permission denied error", name)
+		}
+		var pgErr *pgconn.PgError
+		if !errors.As(err, &pgErr) || pgErr.Code != insufficientPrivilegeCode {
+			t.Fatalf("rewrite announcement %s error = %v, want SQLSTATE %s", name, err, insufficientPrivilegeCode)
+		}
 	}
 }
 

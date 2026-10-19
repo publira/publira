@@ -20,6 +20,7 @@ import (
 	"github.com/publira/publira/server/internal/pinnedannouncements"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/revalidate"
+	"github.com/publira/publira/server/internal/rpcerrors"
 )
 
 const (
@@ -56,15 +57,27 @@ func parsePinnedUntil(raw string, now time.Time) (sql.NullTime, error) {
 	return sql.NullTime{Time: parsed, Valid: true}, nil
 }
 
-func mapAdminAnnouncementFromRow(row dbmodels.Announcement) *publiraadminv1.AdminAnnouncement {
+// mapAdminAnnouncement answers one announcement as the console lists it: the
+// title and body of its translation in the tenant default locale, beside every
+// translation it has.
+func mapAdminAnnouncement(row dbmodels.ListAnnouncementsForTenantDescRow, translations []dbmodels.AnnouncementTranslation) *publiraadminv1.AdminAnnouncement {
+	items := make([]*publiraadminv1.AnnouncementTranslation, 0, len(translations))
+	for _, translation := range translations {
+		items = append(items, &publiraadminv1.AnnouncementTranslation{
+			Locale: translation.Locale,
+			Title:  translation.Title,
+			Body:   translation.Body,
+		})
+	}
 	return &publiraadminv1.AdminAnnouncement{
-		Id:          row.ID.String(),
-		Title:       row.Title,
-		Body:        row.Body,
-		LinkUrl:     row.LinkUrl.String,
-		CreatedAt:   row.CreatedAt.UTC().Format(time.RFC3339),
-		Pinned:      row.Pinned,
-		PinnedUntil: formatPinnedUntil(row.PinnedUntil),
+		Id:           row.ID.String(),
+		Title:        row.Title,
+		Body:         row.Body,
+		LinkUrl:      row.LinkUrl.String,
+		CreatedAt:    row.CreatedAt.UTC().Format(time.RFC3339),
+		Pinned:       row.Pinned,
+		PinnedUntil:  formatPinnedUntil(row.PinnedUntil),
+		Translations: items,
 	}
 }
 
@@ -87,7 +100,7 @@ func (s *adminServer) announcementPage(
 	keys pagination.TimeUUIDKeys,
 	direction pagination.Direction,
 	limit int32,
-) ([]dbmodels.Announcement, error) {
+) ([]dbmodels.ListAnnouncementsForTenantDescRow, error) {
 	queries := s.queriesFor(ctx)
 	if direction == pagination.Backward {
 		rows, err := queries.ListAnnouncementsForTenantAsc(ctx, dbmodels.ListAnnouncementsForTenantAscParams{
@@ -100,7 +113,11 @@ func (s *adminServer) announcementPage(
 		if err != nil {
 			return nil, err
 		}
-		return rows, nil
+		mapped := make([]dbmodels.ListAnnouncementsForTenantDescRow, 0, len(rows))
+		for _, row := range rows {
+			mapped = append(mapped, dbmodels.ListAnnouncementsForTenantDescRow(row))
+		}
+		return mapped, nil
 	}
 
 	rows, err := queries.ListAnnouncementsForTenantDesc(ctx, dbmodels.ListAnnouncementsForTenantDescParams{
@@ -114,6 +131,34 @@ func (s *adminServer) announcementPage(
 		return nil, err
 	}
 	return rows, nil
+}
+
+// announcementTranslationsOf reads every translation of the announcements
+// rows names in one query, keyed by announcement.
+func (s *adminServer) announcementTranslationsOf(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	rows []dbmodels.ListAnnouncementsForTenantDescRow,
+) (map[uuid.UUID][]dbmodels.AnnouncementTranslation, error) {
+	if len(rows) == 0 {
+		return nil, nil
+	}
+	ids := make([]uuid.UUID, 0, len(rows))
+	for _, row := range rows {
+		ids = append(ids, row.ID)
+	}
+	translations, err := s.queriesFor(ctx).ListAnnouncementTranslations(ctx, dbmodels.ListAnnouncementTranslationsParams{
+		TenantID:        tenantID,
+		AnnouncementIds: ids,
+	})
+	if err != nil {
+		return nil, err
+	}
+	byAnnouncement := make(map[uuid.UUID][]dbmodels.AnnouncementTranslation, len(rows))
+	for _, translation := range translations {
+		byAnnouncement[translation.AnnouncementID] = append(byAnnouncement[translation.AnnouncementID], translation)
+	}
+	return byAnnouncement, nil
 }
 
 func (s *adminServer) ListAnnouncements(
@@ -146,10 +191,14 @@ func (s *adminServer) ListAnnouncements(
 		return nil, s.internalDBError(ctx, "failed to list announcements", err, "tenant_id", tenant.ID.String())
 	}
 	rows, hasMore := pagination.Page(rows, limit, cursor.Direction)
+	translations, err := s.announcementTranslationsOf(ctx, tenant.ID, rows)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to list announcement translations", err, "tenant_id", tenant.ID.String())
+	}
 
 	items := make([]*publiraadminv1.AdminAnnouncement, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, mapAdminAnnouncementFromRow(row))
+		items = append(items, mapAdminAnnouncement(row, translations[row.ID]))
 	}
 
 	res := &publiraadminv1.ListAnnouncementsResponse{Announcements: items}
@@ -190,13 +239,9 @@ func (s *adminServer) CreateAnnouncement(
 		return nil, err
 	}
 
-	title := strings.TrimSpace(req.Title)
-	if title == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, "title is required")
-	}
-	body := strings.TrimSpace(req.Body)
-	if body == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, "body is required")
+	translations, err := announcementTranslationsFrom(req.Translations, tenant)
+	if err != nil {
+		return nil, err
 	}
 	linkURL := strings.TrimSpace(req.LinkUrl)
 	if !isValidAnnouncementLinkURL(linkURL) {
@@ -212,12 +257,11 @@ func (s *adminServer) CreateAnnouncement(
 		}
 	}
 
-	created, owed, err := s.storeAnnouncement(ctx, tenant.ID, announcementContent{
-		title:       title,
-		body:        body,
-		linkURL:     linkURL,
-		pinned:      pinned,
-		pinnedUntil: pinnedUntil,
+	created, owed, err := s.storeAnnouncement(ctx, tenant, announcementContent{
+		translations: translations,
+		linkURL:      linkURL,
+		pinned:       pinned,
+		pinnedUntil:  pinnedUntil,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to create announcement", err, "tenant_id", tenant.ID.String())
@@ -240,22 +284,65 @@ func (s *adminServer) CreateAnnouncement(
 	}, nil
 }
 
-// announcementContent is what one CreateAnnouncement call writes.
-type announcementContent struct {
-	title       string
-	body        string
-	linkURL     string
-	pinned      bool
-	pinnedUntil sql.NullTime
+// announcementTranslationInput is one locale's copy CreateAnnouncement was
+// asked to write, with its locale resolved.
+type announcementTranslationInput struct {
+	locale string
+	title  string
+	body   string
 }
 
-// storeAnnouncement writes the announcement row and, in the same transaction,
-// the event that puts it in its readers' notification inboxes, so a delivery
-// nobody is ever told about cannot outlive the request that made it. A pinned
-// one also owes the banner's cache drop, which the caller sends.
+// announcementTranslationsFrom checks the copy CreateAnnouncement was sent: a
+// title and a body in each locale, each locale once and offered by the tenant,
+// and the tenant default locale among them, since that is the copy a reader in
+// any other locale is shown.
+func announcementTranslationsFrom(
+	raw []*publiraadminv1.AnnouncementTranslation,
+	tenant dbmodels.Tenant,
+) ([]announcementTranslationInput, error) {
+	translations := make([]announcementTranslationInput, 0, len(raw))
+	seen := make(map[string]bool, len(raw))
+	for _, translation := range raw {
+		code, err := offeredLocale(translation.GetLocale(), tenant)
+		if err != nil {
+			return nil, err
+		}
+		if seen[code] {
+			return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("translations must name each locale once"), "translations")
+		}
+		seen[code] = true
+		title := strings.TrimSpace(translation.GetTitle())
+		if title == "" {
+			return nil, connect.NewError(connect.CodeInvalidArgument, "title is required")
+		}
+		body := strings.TrimSpace(translation.GetBody())
+		if body == "" {
+			return nil, connect.NewError(connect.CodeInvalidArgument, "body is required")
+		}
+		translations = append(translations, announcementTranslationInput{locale: code, title: title, body: body})
+	}
+	if !seen[tenant.DefaultLocale] {
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("translations must include the tenant's default locale"), "translations")
+	}
+	return translations, nil
+}
+
+// announcementContent is what one CreateAnnouncement call writes.
+type announcementContent struct {
+	translations []announcementTranslationInput
+	linkURL      string
+	pinned       bool
+	pinnedUntil  sql.NullTime
+}
+
+// storeAnnouncement writes the announcement row and its translations and, in
+// the same transaction, the event that puts it in its readers' notification
+// inboxes, so a delivery nobody is ever told about cannot outlive the request
+// that made it. A pinned one also owes the banner's cache drop, which the
+// caller sends.
 func (s *adminServer) storeAnnouncement(
 	ctx context.Context,
-	tenantID uuid.UUID,
+	tenant dbmodels.Tenant,
 	content announcementContent,
 ) (*publiraadminv1.AdminAnnouncement, revalidate.Owed, error) {
 	tx, err := s.beginTenantTx(ctx)
@@ -265,52 +352,86 @@ func (s *adminServer) storeAnnouncement(
 	defer tx.Rollback() //nolint:errcheck
 	txq := dbmodels.New(tx)
 
-	row, err := createAnnouncementRow(ctx, txq, tenantID, content)
+	row, translations, err := createAnnouncementRow(ctx, txq, tenant.ID, content)
 	if err != nil {
 		return nil, revalidate.Owed{}, err
 	}
 	var owed revalidate.Owed
 	if content.pinned {
-		if owed, err = s.reval.Record(ctx, txq, tenantID, pinnedannouncements.RevalidateTags(tenantID)); err != nil {
+		if owed, err = s.reval.Record(ctx, txq, tenant.ID, pinnedannouncements.RevalidateTags(tenant.ID)); err != nil {
 			return nil, revalidate.Owed{}, err
 		}
 	}
 	if err := tx.Commit(); err != nil {
 		return nil, revalidate.Owed{}, err
 	}
-	return mapAdminAnnouncementFromRow(row), owed, nil
+
+	listed := dbmodels.ListAnnouncementsForTenantDescRow{
+		ID:               row.ID,
+		TenantID:         row.TenantID,
+		AnnouncementType: row.AnnouncementType,
+		LinkUrl:          row.LinkUrl,
+		Metadata:         row.Metadata,
+		CreatedAt:        row.CreatedAt,
+		Pinned:           row.Pinned,
+		PinnedUntil:      row.PinnedUntil,
+	}
+	for _, translation := range translations {
+		if translation.Locale == tenant.DefaultLocale {
+			listed.Title = translation.Title
+			listed.Body = translation.Body
+		}
+	}
+	return mapAdminAnnouncement(listed, translations), owed, nil
 }
 
-// createAnnouncementRow writes one announcement and queues the notification
-// event for the readers it addresses.
+// createAnnouncementRow writes one announcement with its translations and
+// queues the notification event for the readers it addresses.
 func createAnnouncementRow(
 	ctx context.Context,
 	queries *dbmodels.Queries,
 	tenantID uuid.UUID,
 	content announcementContent,
-) (dbmodels.Announcement, error) {
+) (dbmodels.Announcement, []dbmodels.AnnouncementTranslation, error) {
 	announcementID, err := uuid.NewV7()
 	if err != nil {
-		return dbmodels.Announcement{}, fmt.Errorf("allocate announcement id: %w", err)
+		return dbmodels.Announcement{}, nil, fmt.Errorf("allocate announcement id: %w", err)
 	}
 	row, err := queries.CreateAnnouncement(ctx, dbmodels.CreateAnnouncementParams{
 		ID:               announcementID,
 		TenantID:         tenantID,
 		AnnouncementType: announcementTypeAdmin,
-		Title:            content.title,
-		Body:             content.body,
 		LinkUrl:          sql.NullString{String: content.linkURL, Valid: content.linkURL != ""},
 		Metadata:         json.RawMessage("{}"),
 		Pinned:           content.pinned,
 		PinnedUntil:      content.pinnedUntil,
 	})
 	if err != nil {
-		return dbmodels.Announcement{}, err
+		return dbmodels.Announcement{}, nil, err
+	}
+	translations := make([]dbmodels.AnnouncementTranslation, 0, len(content.translations))
+	for _, input := range content.translations {
+		translationID, err := uuid.NewV7()
+		if err != nil {
+			return dbmodels.Announcement{}, nil, fmt.Errorf("allocate announcement translation id: %w", err)
+		}
+		translation, err := queries.CreateAnnouncementTranslation(ctx, dbmodels.CreateAnnouncementTranslationParams{
+			ID:             translationID,
+			AnnouncementID: row.ID,
+			TenantID:       tenantID,
+			Locale:         input.locale,
+			Title:          input.title,
+			Body:           input.body,
+		})
+		if err != nil {
+			return dbmodels.Announcement{}, nil, err
+		}
+		translations = append(translations, translation)
 	}
 	if err := enqueueAnnouncementNotification(ctx, queries, tenantID, row); err != nil {
-		return dbmodels.Announcement{}, err
+		return dbmodels.Announcement{}, nil, err
 	}
-	return row, nil
+	return row, translations, nil
 }
 
 // enqueueAnnouncementNotification queues the bell delivery of one announcement.
@@ -328,7 +449,6 @@ func enqueueAnnouncementNotification(
 	payload, err := json.Marshal(outbox.AnnouncementNotificationPayload{
 		TenantID:       tenantID.String(),
 		AnnouncementID: row.ID.String(),
-		Title:          row.Title,
 	})
 	if err != nil {
 		return fmt.Errorf("marshal announcement notification event: %w", err)

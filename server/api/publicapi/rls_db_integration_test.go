@@ -247,6 +247,7 @@ var publicDataTables = []struct {
 	// answered on the storefront's connection, so a missing policy here would
 	// put one tenant's notices — and one reader's read state — in another's.
 	{name: "announcements", count: "SELECT count(*) FROM announcements"},
+	{name: "announcement_translations", count: "SELECT count(*) FROM announcement_translations"},
 	{name: "announcement_reads", count: "SELECT count(*) FROM announcement_reads"},
 	// Whether one reader takes mail. Nobody but that reader may read it, and
 	// the settings screen writes it on this connection.

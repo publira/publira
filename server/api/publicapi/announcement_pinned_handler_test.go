@@ -25,11 +25,13 @@ func pinnedAnnouncementRow(
 	pinnedUntil sql.NullTime,
 ) *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
-		"id", "tenant_id", "announcement_type", "title", "body",
+		"id", "tenant_id", "announcement_type",
 		"link_url", "metadata", "created_at", "pinned", "pinned_until",
+		"locale", "title", "body",
 	}).AddRow(
-		id, tenantID, "announcement", "Maintenance tonight", "We will be down for an hour",
+		id, tenantID, "announcement",
 		"/pages/maintenance", json.RawMessage("{}"), createdAt, true, pinnedUntil,
+		"ja", "Maintenance tonight", "We will be down for an hour",
 	)
 }
 
@@ -42,7 +44,7 @@ func TestAuthGetPinnedAnnouncementAnswersWithoutASession(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPinnedAnnouncementForTenant)).
-		WithArgs(tenantID).
+		WithArgs("ja", tenantID).
 		WillReturnRows(pinnedAnnouncementRow(announcementID, tenantID, now, sql.NullTime{Time: until, Valid: true}))
 
 	client := publirav1connect.NewAuthServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
@@ -82,7 +84,7 @@ func TestAuthGetPinnedAnnouncementIsEmptyWhenNothingIsPinned(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPinnedAnnouncementForTenant)).
-		WithArgs(tenantID).
+		WithArgs("ja", tenantID).
 		WillReturnError(sql.ErrNoRows)
 
 	client := publirav1connect.NewAuthServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
@@ -108,11 +110,13 @@ func guestAnnouncementRow(
 	createdAt time.Time,
 ) *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
-		"id", "tenant_id", "announcement_type", "title", "body",
-		"link_url", "metadata", "created_at", "pinned", "pinned_until", "is_read", "read_at",
+		"id", "tenant_id", "announcement_type",
+		"link_url", "metadata", "created_at", "pinned", "pinned_until",
+		"locale", "title", "body", "is_read", "read_at",
 	}).AddRow(
-		id, tenantID, "announcement", title, "The latest episode is out",
+		id, tenantID, "announcement",
 		"/series/S001", json.RawMessage("{}"), createdAt, false, sql.NullTime{},
+		"ja", title, "The latest episode is out",
 		false, sql.NullTime{},
 	)
 }
@@ -127,7 +131,7 @@ func TestAuthListAnnouncementsAnswersAVisitorWithNoSession(t *testing.T) {
 	testServer, mock := newTestPublicServer(t)
 	expectTenantLookup(mock, tenantID, "TENANT", now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListAnnouncementsForUserDesc)).
-		WithArgs(uuid.NullUUID{}, tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
+		WithArgs("ja", uuid.NullUUID{}, tenantID, uuid.NullUUID{}, false, sql.NullTime{}, int32(21)).
 		WillReturnRows(guestAnnouncementRow(announcementID, tenantID, "New Episode", now))
 
 	client := publirav1connect.NewAuthServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))

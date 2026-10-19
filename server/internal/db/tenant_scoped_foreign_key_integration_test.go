@@ -646,9 +646,9 @@ func seedForeignKeyTenant(t *testing.T, ctx context.Context, db *sql.DB, prefix 
 
 	seeded.announcementID = mustUUID(t)
 	mustExec(t, ctx, db, `
-		INSERT INTO announcements (id, tenant_id, announcement_type, title, body)
-		VALUES ($1, $2, 'maintenance', $3, 'Body')`,
-		seeded.announcementID, seeded.tenantID, prefix+" Announcement")
+		INSERT INTO announcements (id, tenant_id, announcement_type)
+		VALUES ($1, $2, 'maintenance')`,
+		seeded.announcementID, seeded.tenantID)
 
 	seeded.accessTicketID = mustUUID(t)
 	mustExec(t, ctx, db, `
