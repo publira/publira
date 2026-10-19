@@ -1211,6 +1211,7 @@
       "create_description": "新建的類型會加到列表末尾。",
       "create_action": "建立類型",
       "created": "類型已建立。",
+      "created_names_failed": "類型已建立，但部分語言的名稱未能儲存。{$reason}請透過「編輯」補上其餘名稱。",
       "list_title": "類型",
       "list_description": "重新命名類型、調整它在列表中的位置，或刪除沒有系列使用的類型。",
       "list_error": "無法顯示類型",
@@ -1236,6 +1237,7 @@
       "form": {
         "name": "類型名稱",
         "name_placeholder": "範例：奇幻",
+        "names_description": "{$language}名稱為必填。讀者的語言沒有名稱時會顯示此名稱，Slug也由此名稱產生。",
         "eye_catch_update": "更新封面圖",
         "submitting": "正在送出…"
       },
@@ -1247,6 +1249,7 @@
       },
       "name_taken": "同名的類型已存在。",
       "name_invalid": "請輸入至多{$count}個字元、且至少包含一個字母或數字的類型名稱。",
+      "locale_not_offered": "此網站未提供該語言。請先在「語言」中將其加入提供的語言。",
       "image_invalid": "請檢查圖片設定。請選擇不超過10MB、尺寸至少為2400x3200px的JPEG、PNG或WebP圖片，然後重試。",
       "list_failed": "無法載入類型。請稍後再試。",
       "save_failed": "無法儲存該類型。請稍後再試。",

@@ -27,6 +27,7 @@ const {
   mockCacheTag,
   mockCreateGenre,
   mockDeleteGenre,
+  mockDeleteGenreTranslation,
   mockGetAccessToken,
   mockListGenres,
   mockReorderGenres,
@@ -37,6 +38,7 @@ const {
   mockCacheTag: vi.fn(),
   mockCreateGenre: vi.fn(),
   mockDeleteGenre: vi.fn(),
+  mockDeleteGenreTranslation: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockListGenres: vi.fn(),
   mockReorderGenres: vi.fn(),
@@ -58,6 +60,7 @@ vi.mock("./api", () => ({
     genre: {
       createGenre: mockCreateGenre,
       deleteGenre: mockDeleteGenre,
+      deleteGenreTranslation: mockDeleteGenreTranslation,
       listGenres: mockListGenres,
       reorderGenres: mockReorderGenres,
       updateGenre: mockUpdateGenre,
@@ -84,7 +87,12 @@ const withoutEyeCatch = (genre: {
   name: string;
   publicId: string;
   slug: string;
-}) => ({ ...genre, eyeCatchImageUpdatedAt: "", eyeCatchImageVariants: [] });
+}) => ({
+  ...genre,
+  eyeCatchImageUpdatedAt: "",
+  eyeCatchImageVariants: [],
+  translations: [],
+});
 
 const squareVariant = {
   contentType: "image/webp",
@@ -250,10 +258,38 @@ describe("listGenres", () => {
           name: "Fantasy",
           publicId: "GENRE001",
           slug: "fantasy",
+          translations: [],
         },
       ],
       ok: true,
     });
+  });
+
+  it("carries every name the genre has and drops one in a language this build does not serve", async () => {
+    mockListGenres.mockResolvedValueOnce({
+      genres: [
+        {
+          id: "genre-1",
+          name: "Fantasy",
+          publicId: "GENRE001",
+          slug: "fantasy",
+          translations: [
+            { locale: "en", name: "Fantasy" },
+            { locale: "ja", name: "Fantaji" },
+            { locale: "xx", name: "Unknown" },
+          ],
+        },
+      ],
+      nextToken: "",
+    });
+
+    const { listGenres } = await import("./genre");
+    const result = await listGenres();
+
+    expect(result.genres[0]?.translations).toEqual([
+      { locale: "en", name: "Fantasy" },
+      { locale: "ja", name: "Fantaji" },
+    ]);
   });
 
   it("reports an unclassifiable failure as a message rather than throwing from the cache scope", async () => {
@@ -318,7 +354,7 @@ describe("createGenre", () => {
       ok: true,
     });
     expect(mockCreateGenre).toHaveBeenCalledWith(
-      { name: "Fantasy", tenant: { tenantId: "TENANT001" } },
+      { locale: "", name: "Fantasy", tenant: { tenantId: "TENANT001" } },
       { headers: { Authorization: "Bearer session-token" } }
     );
   });
@@ -344,6 +380,105 @@ describe("updateGenre", () => {
         "Enter a genre name of at most 50 characters that holds at least one letter or number.",
       ok: false,
     });
+  });
+});
+
+describe("saveGenreNames", () => {
+  const savedGenre = {
+    id: "genre-1",
+    name: "Fantasy",
+    publicId: "GENRE001",
+    slug: "fantasy",
+  };
+
+  it("writes each name in its language, one after another, before removing any", async () => {
+    mockUpdateGenre.mockResolvedValue({ genre: savedGenre });
+    mockDeleteGenreTranslation.mockResolvedValue({ genre: savedGenre });
+
+    const { saveGenreNames } = await import("./genre");
+    const result = await saveGenreNames(
+      {
+        id: "genre-1",
+        names: [
+          { name: "Fantasy", translationLocale: "en" },
+          { name: "Fantaji", translationLocale: "ja" },
+        ],
+        removedLocales: ["ko"],
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(result).toEqual({ ok: true });
+    expect(
+      mockUpdateGenre.mock.calls.map(([request]) => [
+        request.locale,
+        request.name,
+      ])
+    ).toEqual([
+      ["en", "Fantasy"],
+      ["ja", "Fantaji"],
+    ]);
+    expect(mockDeleteGenreTranslation).toHaveBeenCalledWith(
+      { genreId: "genre-1", locale: "ko", tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+    expect(
+      mockDeleteGenreTranslation.mock.invocationCallOrder[0]
+    ).toBeGreaterThan(
+      mockUpdateGenre.mock.invocationCallOrder[1] ?? Number.POSITIVE_INFINITY
+    );
+  });
+
+  it("stops at the first refused name and says whether an earlier one was written", async () => {
+    mockUpdateGenre
+      .mockResolvedValueOnce({ genre: savedGenre })
+      .mockRejectedValueOnce(
+        invalidField("locale must be a locale the tenant offers", "locale")
+      );
+
+    const { saveGenreNames } = await import("./genre");
+    const result = await saveGenreNames(
+      {
+        id: "genre-1",
+        names: [
+          { name: "Fantasy", translationLocale: "en" },
+          { name: "Fantaji", translationLocale: "ja" },
+          { name: "Fantasia", translationLocale: "ko" },
+        ],
+        removedLocales: ["zh-Hans"],
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(result).toEqual({
+      message:
+        "This site does not offer that language. Switch it on under Languages first.",
+      ok: false,
+      saved: true,
+    });
+    expect(mockUpdateGenre).toHaveBeenCalledTimes(2);
+    expect(mockDeleteGenreTranslation).not.toHaveBeenCalled();
+  });
+
+  it("counts a name that is already gone as removed", async () => {
+    mockDeleteGenreTranslation.mockRejectedValue(
+      new ConnectError("genre translation not found", Code.NotFound)
+    );
+
+    const { saveGenreNames } = await import("./genre");
+    const result = await saveGenreNames(
+      {
+        id: "genre-1",
+        names: [],
+        removedLocales: ["ja"],
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+
+    expect(result).toEqual({ ok: true });
   });
 });
 
@@ -448,6 +583,7 @@ describe("updateGenre with an eye-catch", () => {
         eyeCatchImageContentType: "image/png",
         eyeCatchImageData: new Uint8Array([1, 2, 3]),
         genreId: "GENRE001",
+        locale: "",
         name: "Fantasy",
         tenant: { tenantId: "TENANT001" },
       },

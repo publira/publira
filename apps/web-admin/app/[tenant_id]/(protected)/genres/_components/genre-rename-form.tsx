@@ -14,6 +14,7 @@ import { Message } from "#components/message";
 import { CATALOG_NAME_MAX_LENGTH } from "#lib/catalog-name";
 
 import { renameGenreAction } from "../_lib/actions";
+import { nameField, savedNameField } from "../_lib/genre-name-fields";
 import type { GenreListItem } from "../genre-types";
 
 interface GenreRenameFormProps {
@@ -22,7 +23,8 @@ interface GenreRenameFormProps {
 }
 
 /**
- * The name of one genre, edited in place.
+ * The name of one genre in the default language, edited in place. The genre's
+ * own screen names it in the other languages the site offers.
  *
  * The field is named by a `<FieldLabel>` the sighted reader does not need —
  * the value in the box is the name. The `key` puts the name that came back
@@ -34,6 +36,7 @@ export const GenreRenameForm = ({ genre, tenantId }: GenreRenameFormProps) => (
   <ActionForm action={renameGenreAction} className="grid flex-1 gap-2">
     <input name="tenant_id" type="hidden" value={tenantId} />
     <input name="genre_id" type="hidden" value={genre.id} />
+    <input name={savedNameField()} type="hidden" value={genre.name} />
     <div className="flex flex-wrap items-center gap-2">
       <ActionFormFieldset className="w-full sm:max-w-xs">
         <Field>
@@ -50,7 +53,7 @@ export const GenreRenameForm = ({ genre, tenantId }: GenreRenameFormProps) => (
               defaultValue={genre.name}
               key={genre.name}
               maxLength={CATALOG_NAME_MAX_LENGTH}
-              name="name"
+              name={nameField()}
               required
               type="text"
             />

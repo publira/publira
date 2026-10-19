@@ -70,6 +70,7 @@ const genres: GenreListItem[] = [
     name: "Romance",
     publicId: "GENRE001",
     slug: "romance",
+    translations: [],
   },
 ];
 

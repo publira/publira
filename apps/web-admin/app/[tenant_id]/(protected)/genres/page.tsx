@@ -20,6 +20,7 @@ import { listGenres } from "#lib/genre";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
+import { findTenantLocales } from "#lib/tenant-locales";
 
 import { GenreManager } from "./_components/genre-manager";
 
@@ -49,10 +50,11 @@ const GenreManagerSkeleton = () => (
 
 const GenreManagerData = async () => {
   const tenantId = await getTenantId();
-  const [locale, listResult, canEdit] = await Promise.all([
+  const [locale, listResult, canEdit, tenantLocales] = await Promise.all([
     getLocale(tenantId),
     listGenres(),
     isSignedInTenantEditor(tenantId),
+    findTenantLocales(tenantId),
   ]);
 
   return (
@@ -62,6 +64,7 @@ const GenreManagerData = async () => {
       listErrorMessage={listResult.ok ? undefined : listResult.message}
       locale={locale}
       tenantId={tenantId}
+      tenantLocales={tenantLocales}
     />
   );
 };

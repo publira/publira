@@ -41,6 +41,8 @@ test.use({ baseURL: WEB_ADMIN_BASE_URL });
 
 const SERIES = SEED_TENANT.series.publicId;
 const EPISODE = "SeedEPSDAAA1";
+/** The seed's first genre, named in the default language alone. */
+const GENRE = "SeedGENRAAA1";
 /** The draft `450_docs_publishing.sql` adds to the moderation tenant's series. */
 const DOCS_DRAFT_EPISODE = "DocsEPSDAAA2";
 
@@ -705,6 +707,20 @@ for (const locale of DOCS_LOCALES) {
         locale,
         page: "console/catalog/genres",
         subject: "list",
+      });
+    });
+
+    test("a genre's name in each language", async ({ page }) => {
+      await openScreen(page, locale, `/genres/${GENRE}`);
+      await expect(
+        page.getByRole("group", { name: t("admin.genres.form.name") })
+      ).toBeVisible();
+
+      await expectDocsScreenshot(page, {
+        element: docsScreen(page),
+        locale,
+        page: "console/catalog/genres",
+        subject: "names",
       });
     });
   });

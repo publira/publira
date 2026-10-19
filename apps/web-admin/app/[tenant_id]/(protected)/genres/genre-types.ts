@@ -1,4 +1,5 @@
 import type { EyeCatchVariantItem } from "#components/eye-catch/types";
+import type { GenreTranslationItem } from "#lib/genre";
 
 /** One row of the genre list, in the order the tenant put its genres in. */
 export interface GenreListItem {
@@ -6,7 +7,10 @@ export interface GenreListItem {
   id: string;
   /** What the genre's page is addressed by in the URL. */
   publicId: string;
+  /** The name in the tenant's default language, which the list shows. */
   name: string;
+  /** Every name the genre has, oldest first. */
+  translations: GenreTranslationItem[];
   slug: string;
   eyeCatchImageUpdatedAt: string;
   eyeCatchImageVariants: EyeCatchVariantItem[];

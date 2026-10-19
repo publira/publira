@@ -36,9 +36,10 @@ import { getGenre } from "#lib/genre";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
+import { findTenantLocales } from "#lib/tenant-locales";
 
 import { GenreEyeCatchForm } from "../_components/genre-eye-catch-form";
-import { GenreRenameForm } from "../_components/genre-rename-form";
+import { GenreNamesForm } from "../_components/genre-names-form";
 import { GenreTabNav } from "../_components/genre-tab-nav";
 import { uploadGenreEyeCatchAspectImageAction } from "../_lib/actions";
 
@@ -174,11 +175,19 @@ const EditGenreFormData = async ({
     );
   }
 
+  const [locale, tenantLocales] = await Promise.all([
+    getLocale(tenantId),
+    findTenantLocales(tenantId),
+  ]);
+  const t = await getMessagesFor(locale);
+
   return (
-    <GenreRenameForm
+    <GenreNamesForm
       genre={result.genre}
       key={result.genre.publicId}
+      namePlaceholder={t("admin.genres.form.name_placeholder")}
       tenantId={tenantId}
+      tenantLocales={tenantLocales}
     />
   );
 };

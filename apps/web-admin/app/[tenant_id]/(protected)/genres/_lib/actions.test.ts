@@ -2,13 +2,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockAssertSameOrigin,
+  mockCreateGenre,
   mockGetAccessToken,
+  mockSaveGenreNames,
   mockUpdateGenre,
   mockUpdateTag,
   mockUploadGenreEyeCatchAspectImage,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
+  mockCreateGenre: vi.fn(),
   mockGetAccessToken: vi.fn(),
+  mockSaveGenreNames: vi.fn(),
   mockUpdateGenre: vi.fn(),
   mockUpdateTag: vi.fn(),
   mockUploadGenreEyeCatchAspectImage: vi.fn(),
@@ -29,10 +33,11 @@ vi.mock("#lib/session", () => ({
 }));
 
 vi.mock("#lib/genre", () => ({
-  createGenre: vi.fn(),
+  createGenre: mockCreateGenre,
   deleteGenre: vi.fn(),
   genresCacheTag: (tenantId: string) => `genres-${tenantId}`,
   reorderGenres: vi.fn(),
+  saveGenreNames: mockSaveGenreNames,
   updateGenre: mockUpdateGenre,
   uploadGenreEyeCatchAspectImage: mockUploadGenreEyeCatchAspectImage,
 }));
@@ -89,6 +94,167 @@ beforeEach(() => {
   // `withAdminSessionReauth` resolves the session before the mutation runs;
   // without a token every Action under test would redirect to /login.
   mockGetAccessToken.mockResolvedValue("session-token");
+});
+
+/** A genre form with a field per language, the default one first. */
+const namesFormData = (
+  names: Record<string, string>,
+  savedNames: Record<string, string> = {}
+) => {
+  const formData = new FormData();
+  formData.set("tenant_id", "TENANT001");
+  formData.set("genre_id", "018f0e6a-6000-7000-8000-000000000001");
+  formData.set("default_locale", "en");
+  for (const [code, name] of Object.entries(names)) {
+    formData.set(`name.${code}`, name);
+  }
+  for (const [code, name] of Object.entries(savedNames)) {
+    formData.set(`saved_name.${code}`, name);
+  }
+  return formData;
+};
+
+describe("createGenreAction", () => {
+  it("refuses a genre without a name in the default language", async () => {
+    const { createGenreAction } = await import("./actions");
+    const result = await createGenreAction(
+      null,
+      namesFormData({ en: "  ", ja: "Fantaji" })
+    );
+
+    expect(result).toEqual({ message: "Genre name is required.", ok: false });
+    expect(mockCreateGenre).not.toHaveBeenCalled();
+    expect(mockSaveGenreNames).not.toHaveBeenCalled();
+  });
+
+  it("creates the genre in the default language and adds the other names it was given", async () => {
+    mockCreateGenre.mockResolvedValueOnce({ genre: savedGenre(), ok: true });
+    mockSaveGenreNames.mockResolvedValueOnce({ ok: true });
+
+    const { createGenreAction } = await import("./actions");
+    const result = await createGenreAction(
+      null,
+      namesFormData({ en: " Fantasy ", ja: "Fantaji", ko: "" })
+    );
+
+    expect(mockCreateGenre).toHaveBeenCalledWith(
+      { name: "Fantasy", tenantId: "TENANT001", translationLocale: "en" },
+      "en"
+    );
+    expect(mockSaveGenreNames).toHaveBeenCalledWith(
+      {
+        id: "018f0e6a-6000-7000-8000-000000000001",
+        names: [{ name: "Fantaji", translationLocale: "ja" }],
+        removedLocales: [],
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+    expect(result).toEqual({ message: "Genre created.", ok: true });
+    expect(mockUpdateTag).toHaveBeenCalledWith("genres-TENANT001");
+  });
+
+  it("says the genre exists when one of its other names was refused", async () => {
+    mockCreateGenre.mockResolvedValueOnce({ genre: savedGenre(), ok: true });
+    mockSaveGenreNames.mockResolvedValueOnce({
+      message: "Could not save the genre. Please try again later.",
+      ok: false,
+      saved: false,
+    });
+
+    const { createGenreAction } = await import("./actions");
+    const result = await createGenreAction(
+      null,
+      namesFormData({ en: "Fantasy", ja: "Fantaji" })
+    );
+
+    expect(result).toEqual({
+      message:
+        "The genre was created, but not every name was saved. Could not save the genre. Please try again later. Open it with Edit to add the rest.",
+      ok: false,
+    });
+    expect(mockUpdateTag).toHaveBeenCalledWith("genres-TENANT001");
+  });
+});
+
+describe("renameGenreAction", () => {
+  it("refuses to empty the default language's name", async () => {
+    const { renameGenreAction } = await import("./actions");
+    const result = await renameGenreAction(
+      null,
+      namesFormData({ en: "", ja: "Fantaji" }, { en: "Fantasy", ja: "Fantaji" })
+    );
+
+    expect(result).toEqual({ message: "Genre name is required.", ok: false });
+    expect(mockSaveGenreNames).not.toHaveBeenCalled();
+  });
+
+  it("writes the names that changed and removes the ones emptied", async () => {
+    mockSaveGenreNames.mockResolvedValueOnce({ ok: true });
+
+    const { renameGenreAction } = await import("./actions");
+    const result = await renameGenreAction(
+      null,
+      namesFormData(
+        { en: "Fantasy", ja: "Fantaji", ko: "" },
+        { en: "Fantasy", ko: "Fantasia" }
+      )
+    );
+
+    expect(mockSaveGenreNames).toHaveBeenCalledWith(
+      {
+        id: "018f0e6a-6000-7000-8000-000000000001",
+        names: [{ name: "Fantaji", translationLocale: "ja" }],
+        removedLocales: ["ko"],
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+    expect(result).toEqual({ message: "Genre updated.", ok: true });
+    expect(mockUpdateTag).toHaveBeenCalledWith("genres-TENANT001");
+  });
+
+  it("writes the one name a form without languages posts in the default language", async () => {
+    mockSaveGenreNames.mockResolvedValueOnce({ ok: true });
+    const formData = new FormData();
+    formData.set("tenant_id", "TENANT001");
+    formData.set("genre_id", "018f0e6a-6000-7000-8000-000000000001");
+    formData.set("name", "Mystery");
+    formData.set("saved_name", "Fantasy");
+
+    const { renameGenreAction } = await import("./actions");
+    await renameGenreAction(null, formData);
+
+    expect(mockSaveGenreNames).toHaveBeenCalledWith(
+      {
+        id: "018f0e6a-6000-7000-8000-000000000001",
+        names: [{ name: "Mystery", translationLocale: undefined }],
+        removedLocales: [],
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+  });
+
+  it("clears the list when a name was written before another was refused", async () => {
+    mockSaveGenreNames.mockResolvedValueOnce({
+      message: "A genre with this name already exists.",
+      ok: false,
+      saved: true,
+    });
+
+    const { renameGenreAction } = await import("./actions");
+    const result = await renameGenreAction(
+      null,
+      namesFormData({ en: "Mystery", ja: "Fantaji" })
+    );
+
+    expect(result).toEqual({
+      message: "A genre with this name already exists.",
+      ok: false,
+    });
+    expect(mockUpdateTag).toHaveBeenCalledWith("genres-TENANT001");
+  });
 });
 
 describe("updateGenreEyeCatchAction", () => {

@@ -1211,6 +1211,7 @@
       "create_description": "新建的题材会添加到列表末尾。",
       "create_action": "创建题材",
       "created": "题材已创建。",
+      "created_names_failed": "题材已创建，但部分语言的名称未能保存。{$reason}请通过“编辑”补充其余名称。",
       "list_title": "题材",
       "list_description": "重命名题材、调整它在列表中的位置，或删除没有系列使用的题材。",
       "list_error": "无法显示题材",
@@ -1236,6 +1237,7 @@
       "form": {
         "name": "题材名称",
         "name_placeholder": "示例：奇幻",
+        "names_description": "{$language}名称为必填项。读者的语言没有名称时显示此名称，Slug也由此名称生成。",
         "eye_catch_update": "更新封面图",
         "submitting": "正在提交…"
       },
@@ -1247,6 +1249,7 @@
       },
       "name_taken": "同名的题材已存在。",
       "name_invalid": "请输入至多{$count}个字符、且至少包含一个字母或数字的题材名称。",
+      "locale_not_offered": "此站点未提供该语言。请先在“语言”中将其加入提供的语言。",
       "image_invalid": "请检查图片设置。请选择不超过10MB、尺寸至少为2400x3200px的JPEG、PNG或WebP图片，然后重试。",
       "list_failed": "无法加载题材。请稍后再试。",
       "save_failed": "无法保存该题材。请稍后再试。",
