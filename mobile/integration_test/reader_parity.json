@@ -443,6 +443,18 @@
       ]
     },
     {
+      "name": "Buying a volume or the rest of a series from the series page",
+      "web": {
+        "routes": ["[locale]/(site)/series/[series_id]"],
+        "rpcs": [
+          "GetSeriesEpisodeAccess",
+          "StartVolumeCheckout",
+          "StartSeriesRemainderCheckout"
+        ]
+      },
+      "exception": "Not in the app yet: #4464."
+    },
+    {
       "name": "Saving the purchase history as a CSV file",
       "web": {
         "routes": ["api/v1/my/purchases/csv"],

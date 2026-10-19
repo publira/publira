@@ -76,10 +76,13 @@ import {
   EpisodeReadMarkPlaceholder,
   EpisodeReadMarker,
 } from "./_components/episode-read-state";
+import { SeriesCheckoutNotice } from "./_components/series-checkout-notice";
 import {
   ReadingActionLink,
   SeriesReadingAction,
 } from "./_components/series-reading-action";
+import { SeriesRemainderOffer } from "./_components/series-remainder-offer";
+import { SeriesVolumes } from "./_components/series-volumes";
 
 export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id", "series_id");
@@ -340,7 +343,7 @@ const SeriesDetailContent = async (
     notFound();
   }
 
-  const { episodes, series } = result.value;
+  const { episodes, series, volumes } = result.value;
   const [firstEpisode] = episodes;
   const waitFreeExcludedIds = new Set(series.waitFree?.excludedEpisodeIds);
   // Read only for a series that carries a rating: an unrated page has nothing
@@ -378,6 +381,9 @@ const SeriesDetailContent = async (
             <SeriesFallbackNotice
               language={fallbackLanguage(locale, series.locale)}
             />
+            <Suspense fallback={null}>
+              <SeriesCheckoutNotice searchParams={props.searchParams} />
+            </Suspense>
 
             <div className="grid gap-6 sm:grid-cols-[15rem_minmax(0,1fr)] sm:items-start sm:gap-8">
               {/* The one image a series page is about, so it keeps its title as its
@@ -584,12 +590,50 @@ const SeriesDetailContent = async (
               </div>
             </div>
 
+            {/* Around the whole section rather than each card: every card asks
+            the one read of what the reader holds, so a throw there reaches all
+            of them at once. */}
+            <SectionErrorBoundary
+              title={
+                <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                  <Message message="storefront.series.volumes_error" />
+                </Suspense>
+              }
+            >
+              <SeriesVolumes
+                locale={locale}
+                sales={sales}
+                seriesEyeCatchImageVariants={series.eyeCatchImageVariants}
+                seriesId={series.id}
+                seriesPublicId={series.publicId}
+                tenantId={tenantId}
+                volumes={volumes}
+              />
+            </SectionErrorBoundary>
+
             <section className="grid gap-4">
               <h2 className="border-b border-border pb-2 font-serif text-xl leading-tight">
                 <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
                   <Message message="storefront.series.episodes_heading" />
                 </Suspense>
               </h2>
+              <SectionErrorBoundary
+                title={
+                  <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+                    <Message message="storefront.series.remainder_error" />
+                  </Suspense>
+                }
+              >
+                <Suspense fallback={null}>
+                  <SeriesRemainderOffer
+                    locale={locale}
+                    sales={sales}
+                    seriesId={series.id}
+                    seriesPublicId={series.publicId}
+                    tenantId={tenantId}
+                  />
+                </Suspense>
+              </SectionErrorBoundary>
               {/* The rule in the reader's terms, above the list it applies to,
               and which of the episodes below it does not reach. It is the
               same for every reader, so it is part of the shared page; whether

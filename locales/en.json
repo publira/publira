@@ -4263,7 +4263,9 @@
       "rental_time_left": "{$duration} left",
       "shelf_description": "Purchased episodes you can read right now.",
       "shelf_heading": "Bookshelf",
-      "title": "Purchases"
+      "title": "Purchases",
+      "open_series": "Open series",
+      "series_bundle_title": "Remaining episodes ({$count :integer})"
     },
     "my": {
       "creators_empty": "No authors are credited on a published series yet.",
@@ -4482,7 +4484,18 @@
       },
       "wait_free_rule": "Free if you wait: a free ticket opens one paid episode for {$access}, and your next ticket is ready {$recharge} after you use one.",
       "wait_free_excluded_note": "A free ticket cannot open the newest episodes marked below.",
-      "wait_free_excluded": "No free ticket"
+      "wait_free_excluded": "No free ticket",
+      "checkout_cancelled": "The purchase was cancelled. You have not been charged.",
+      "checkout_error": "Could not start the purchase. Please try again later.",
+      "checkout_success": "We are confirming your payment. The episodes open once the purchase is applied.",
+      "purchase_state_failed": "Could not check which episodes you already own. Please try again later.",
+      "remainder_buy": "Buy remaining episodes ({$count :integer}) for {$price}",
+      "remainder_discount": "{$percent} off the {$list_price} they cost one by one",
+      "remainder_error": "Could not show the price of the remaining episodes",
+      "volume_buy": "Buy volume",
+      "volume_owned": "You can read every episode in this volume",
+      "volumes_error": "Could not show the volumes",
+      "volumes_heading": "Volumes"
     },
     "share": {
       "action": "Share",

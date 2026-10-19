@@ -9,7 +9,9 @@
  * `POST /v1/webhook_endpoints` as on Stripe, and stores the signing secret the
  * answer carries beside it. `POST /v1/checkout/sessions` then answers a session
  * whose `url` is `GET /checkout/:id` here, which names what is sold and at what
- * price, and paying there signs `checkout.session.completed`, delivers it to
+ * price — every line item, less the fixed-amount coupon `POST /v1/coupons`
+ * made for a discounted sale — and paying there signs
+ * `checkout.session.completed`, delivers it to
  * every endpoint the secret key registered, and sends the reader on to the
  * session's success URL once the storefront has accepted it: an event carries
  * the `Stripe-Version` the session was created with, which is the version the
@@ -40,15 +42,23 @@ interface WebhookEndpoint {
   url: string;
 }
 
+interface LineItem {
+  amount: number;
+  name: string;
+}
+
 interface CheckoutSession {
+  /** What the reader pays: the line items, less the coupon's amount. */
   amount: number;
   /** The `Stripe-Version` the session was created with, which its events carry. */
   apiVersion: string;
   cancelURL: string;
   currency: string;
+  /** What the coupon applied to the session takes off; 0 without one. */
+  discount: number;
   id: string;
+  lineItems: LineItem[];
   metadata: Record<string, string>;
-  name: string;
   paymentIntent: string;
   secretKey: string;
   status: "complete" | "open";
@@ -58,6 +68,8 @@ interface CheckoutSession {
 /** The endpoints each secret key registered, one per URL. */
 const endpoints = new Map<string, WebhookEndpoint[]>();
 const sessions = new Map<string, CheckoutSession>();
+/** The fixed amount each coupon takes off, by secret key and coupon id. */
+const coupons = new Map<string, number>();
 /**
  * What each secret key's idempotency key was first answered, which Stripe
  * answers again however the session has moved on since.
@@ -127,7 +139,7 @@ const hashOf = (
 };
 
 const sessionObject = (session: CheckoutSession) => ({
-  amount_subtotal: session.amount,
+  amount_subtotal: session.amount + session.discount,
   amount_total: session.amount,
   cancel_url: session.cancelURL,
   currency: session.currency,
@@ -178,36 +190,115 @@ const createWebhookEndpoint = async (
   });
 };
 
+/**
+ * The key a request's `Idempotency-Key` is answered under, which is the secret
+ * key's own: empty when the request carries none.
+ */
+const replayKeyOf = (request: IncomingMessage, secretKey: string): string => {
+  const idempotencyKey = request.headers["idempotency-key"];
+  return typeof idempotencyKey === "string"
+    ? `${secretKey}\n${idempotencyKey}`
+    : "";
+};
+
+/**
+ * A fixed-amount coupon, which is the only kind publira server makes: one for
+ * each discounted checkout, applied to the session it is made for.
+ */
+const createCoupon = async (
+  request: IncomingMessage,
+  response: ServerResponse
+): Promise<void> => {
+  const form = new URLSearchParams(await readBody(request));
+  const secretKey = secretKeyOf(request);
+  const replayKey = replayKeyOf(request, secretKey);
+  if (idempotent.has(replayKey)) {
+    answerJSON(response, 200, idempotent.get(replayKey));
+    return;
+  }
+
+  const amountOff = Number(form.get("amount_off"));
+  const currency = form.get("currency") ?? "";
+  if (!Number.isInteger(amountOff) || amountOff <= 0 || !currency) {
+    answerError(response, 400, "A coupon needs an amount_off and a currency.");
+    return;
+  }
+  const id = randomId("coupon_test_");
+  coupons.set(`${secretKey}\n${id}`, amountOff);
+  const created = {
+    amount_off: amountOff,
+    currency,
+    duration: form.get("duration") ?? "once",
+    id,
+    livemode: false,
+    max_redemptions: Number(form.get("max_redemptions")) || null,
+    name: form.get("name"),
+    object: "coupon",
+    percent_off: null,
+    valid: true,
+  };
+  if (replayKey) {
+    idempotent.set(replayKey, created);
+  }
+  answerJSON(response, 200, created);
+};
+
+/** Every `line_items[n]` of the request, in order, as one currency's prices. */
+const lineItemsOf = (
+  form: URLSearchParams
+): { currency: string; items: LineItem[] } => {
+  const items: LineItem[] = [];
+  let currency = "";
+  for (let index = 0; ; index += 1) {
+    const item = `line_items[${index}][price_data]`;
+    if (!form.has(`${item}[unit_amount]`)) {
+      return { currency, items };
+    }
+    currency ||= form.get(`${item}[currency]`) ?? "";
+    items.push({
+      amount: Number(form.get(`${item}[unit_amount]`)),
+      name: form.get(`${item}[product_data][name]`) ?? "",
+    });
+  }
+};
+
 const createCheckoutSession = async (
   request: IncomingMessage,
   response: ServerResponse
 ): Promise<void> => {
   const form = new URLSearchParams(await readBody(request));
   const secretKey = secretKeyOf(request);
-  const idempotencyKey = request.headers["idempotency-key"];
-  const replayKey =
-    typeof idempotencyKey === "string" ? `${secretKey}\n${idempotencyKey}` : "";
+  const replayKey = replayKeyOf(request, secretKey);
   if (idempotent.has(replayKey)) {
     answerJSON(response, 200, idempotent.get(replayKey));
     return;
   }
 
-  const item = "line_items[0][price_data]";
+  const { currency, items } = lineItemsOf(form);
+  const couponId = form.get("discounts[0][coupon]");
+  const discount = couponId ? coupons.get(`${secretKey}\n${couponId}`) : 0;
+  if (discount === undefined) {
+    answerError(response, 400, `No such coupon: '${couponId}'`);
+    return;
+  }
+  const subtotal = items.reduce((sum, { amount }) => sum + amount, 0);
   const session: CheckoutSession = {
-    amount: Number(form.get(`${item}[unit_amount]`)),
+    amount: subtotal - discount,
     apiVersion: String(request.headers["stripe-version"] ?? ""),
     cancelURL: form.get("cancel_url") ?? "",
-    currency: form.get(`${item}[currency]`) ?? "",
+    currency,
+    discount,
     id: randomId("cs_test_"),
+    lineItems: items,
     metadata: hashOf(form, "metadata"),
-    name: form.get(`${item}[product_data][name]`) ?? "",
     paymentIntent: randomId("pi_test_"),
     secretKey,
     status: "open",
     successURL: form.get("success_url") ?? "",
   };
   if (
-    !Number.isInteger(session.amount) ||
+    items.length === 0 ||
+    items.some(({ amount }) => !Number.isInteger(amount) || amount <= 0) ||
     session.amount <= 0 ||
     !session.currency ||
     !URL.canParse(session.successURL)
@@ -215,7 +306,7 @@ const createCheckoutSession = async (
     answerError(
       response,
       400,
-      "A line item with a price and a success URL is required."
+      "Line items with a price and a success URL are required."
     );
     return;
   }
@@ -296,10 +387,36 @@ ${body}
 </html>
 `;
 
+/**
+ * What the session sells: the one item by its name, as Stripe heads its page
+ * with it, or several under a count, each with its own price, and the coupon's
+ * amount below them.
+ */
+const itemsHTML = (session: CheckoutSession): string => {
+  const [first] = session.lineItems;
+  if (session.lineItems.length === 1 && first) {
+    return `<h1>${escapeHTML(first.name)}</h1>`;
+  }
+  const items = session.lineItems
+    .map(
+      ({ amount, name }) =>
+        `<li>${escapeHTML(name)} ${escapeHTML(formatAmount(amount, session.currency))}</li>`
+    )
+    .join("\n");
+  const discount =
+    session.discount > 0
+      ? `\n<p>Discount ${escapeHTML(formatAmount(-session.discount, session.currency))}</p>`
+      : "";
+  return `<h1>${session.lineItems.length} items</h1>
+<ul>
+${items}
+</ul>${discount}`;
+};
+
 const checkoutPage = (session: CheckoutSession): string =>
   page(
     "Checkout",
-    `<h1>${escapeHTML(session.name)}</h1>
+    `${itemsHTML(session)}
 <p>${escapeHTML(formatAmount(session.amount, session.currency))}</p>
 <form method="post" action="/checkout/${escapeHTML(session.id)}">
   <button type="submit">Pay</button>
@@ -410,6 +527,10 @@ const handle = async (
   }
   if (request.method === "POST" && pathname === "/v1/checkout/sessions") {
     await createCheckoutSession(request, response);
+    return;
+  }
+  if (request.method === "POST" && pathname === "/v1/coupons") {
+    await createCoupon(request, response);
     return;
   }
   const checkout = /^\/checkout\/(?<id>[^/]+)$/u.exec(pathname)?.groups?.id;

@@ -9,10 +9,13 @@ import { uploadEpisodePages } from "../src/episode-pages";
 import {
   EPISODE_RENTALS_ADMIN,
   EPISODE_RENTALS_EPISODE,
+  EPISODE_RENTALS_LATER_EPISODES,
   EPISODE_RENTALS_READERS,
   EPISODE_RENTALS_SCENARIO,
   EPISODE_RENTALS_SERIES,
+  EPISODE_RENTALS_VOLUME,
   episodeRentalPath,
+  episodeRentalsSeriesPath,
 } from "../src/scenarios/episode-rentals";
 import { episodePageLabel } from "../src/scenarios/viewer-pages";
 import { signInAsMember } from "../src/storefront";
@@ -24,10 +27,12 @@ import {
 } from "../src/urls";
 
 /**
- * A reader buying an episode at the gate through Stripe Checkout, against the
- * stack's stand-in for Stripe: one rents it and another buys the permanent
- * copy, each pays on the checkout page, returns to the episode the webhook
- * has opened, and finds the sale in the library.
+ * Readers buying through Stripe Checkout, against the stack's stand-in for
+ * Stripe: one rents an episode at its gate and another buys its permanent
+ * copy, a third buys a volume from the series page and a fourth every episode
+ * of the series at its discount. Each pays on the checkout page, returns to
+ * the page the sale was started from with what the webhook opened, and finds
+ * the sale in the library.
  */
 
 /**
@@ -68,28 +73,65 @@ const takePaymentsThroughStripe = async (page: Page) => {
 };
 
 /**
- * Pay on the stand-in's checkout page, which names what the gate sold, and
- * come back to the episode with its body drawn.
+ * Pay on the stand-in's checkout page, which is headed by what was sold and
+ * shows the total, and come back to the storefront page `path` names.
  */
-const payAndReturn = async (page: Page, lineItem: string, amount: string) => {
+const pay = async (
+  page: Page,
+  heading: string,
+  amount: string,
+  path: string
+) => {
   await page.waitForURL(`${STRIPE_BASE_URL}/checkout/**`);
-  await expect(page.getByRole("heading", { name: lineItem })).toBeVisible();
+  await expect(page.getByRole("heading", { name: heading })).toBeVisible();
   await expect(page.getByText(amount, { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Pay" }).click();
 
   await page.waitForURL(
     (url) =>
       url.origin === new URL(WEB_STOREFRONT_RENTALS_BASE_URL).origin &&
-      url.pathname.endsWith(episodeRentalPath) &&
+      url.pathname.endsWith(path) &&
       url.searchParams.get("checkout") === "success"
   );
+};
+
+/** The episode's first page drawn, which only a reader it is open to sees. */
+const expectEpisodeOpen = async (page: Page, title: string) => {
   await expect(
-    page.locator(
-      `canvas[aria-label="${episodePageLabel(EPISODE_RENTALS_EPISODE.title, 1)}"]`
-    )
+    page.locator(`canvas[aria-label="${episodePageLabel(title, 1)}"]`)
   ).toBeVisible();
   await expect(page.getByText("You cannot read this episode")).toHaveCount(0);
 };
+
+/** Open one of the series' episodes and find it readable. */
+const openEpisode = async (
+  page: Page,
+  episode: { publicId: string; title: string }
+) => {
+  await page.goto(
+    `${WEB_STOREFRONT_RENTALS_BASE_URL}${episodeRentalsSeriesPath}/episodes/${episode.publicId}`
+  );
+  await expectEpisodeOpen(page, episode.title);
+};
+
+/**
+ * Pay on the stand-in's checkout page, which names what the gate sold, and
+ * come back to the episode with its body drawn.
+ */
+const payAndReturn = async (page: Page, lineItem: string, amount: string) => {
+  await pay(page, lineItem, amount, episodeRentalPath);
+  await expectEpisodeOpen(page, EPISODE_RENTALS_EPISODE.title);
+};
+
+/** The volume's card on the series page. */
+const volumeCard = (page: Page) =>
+  page.getByRole("article").filter({
+    has: page.getByRole("heading", { name: EPISODE_RENTALS_VOLUME.title }),
+  });
+
+/** What the series page says to a reader the provider has just sent back. */
+const PAYMENT_CONFIRMING =
+  "We are confirming your payment. The episodes open once the purchase is applied.";
 
 /** The reader's library card for the episode, which the sale made readable. */
 const libraryCard = async (page: Page) => {
@@ -109,8 +151,13 @@ test.describe.configure({ mode: "serial" });
 test.describe("web-storefront checkout", () => {
   test.beforeAll(async ({ browser }) => {
     applyScenarioSql(EPISODE_RENTALS_SCENARIO);
-    // The pages are what proves the checkout opened the episode.
-    uploadEpisodePages(EPISODE_RENTALS_EPISODE.publicId);
+    // The pages are what proves the checkout opened an episode.
+    for (const { publicId } of [
+      EPISODE_RENTALS_EPISODE,
+      ...EPISODE_RENTALS_LATER_EPISODES,
+    ]) {
+      uploadEpisodePages(publicId);
+    }
 
     const page = await browser.newPage();
     try {
@@ -179,5 +226,94 @@ test.describe("web-storefront checkout", () => {
       card.getByRole("definition").filter({ hasText: "Purchase" })
     ).toBeVisible();
     await expect(card.getByText("No expiry")).toBeVisible();
+  });
+
+  test("a reader buys a volume from the series page, and every episode in it opens", async ({
+    page,
+  }) => {
+    const [second, third, fourth] = EPISODE_RENTALS_LATER_EPISODES;
+    await signInAsMember(
+      page,
+      EPISODE_RENTALS_READERS.volumeBuyer,
+      episodeRentalsSeriesPath,
+      WEB_STOREFRONT_RENTALS_BASE_URL
+    );
+
+    const volume = volumeCard(page);
+    await expect(volume.getByText("2 episodes")).toBeVisible();
+    await expect(volume.getByText("¥350")).toBeVisible();
+    await volume.getByRole("button", { name: "Buy volume" }).click();
+
+    await pay(
+      page,
+      EPISODE_RENTALS_VOLUME.title,
+      "¥350",
+      episodeRentalsSeriesPath
+    );
+    await expect(page.getByText(PAYMENT_CONFIRMING)).toBeVisible();
+    await expect(
+      volume.getByText("You can read every episode in this volume")
+    ).toBeVisible();
+    await expect(
+      volume.getByRole("button", { name: "Buy volume" })
+    ).toHaveCount(0);
+    // The rest of the series no longer counts the two episodes the volume
+    // holds: 300 and 200 yen, less 10%.
+    await expect(
+      page.getByRole("button", { name: "Buy remaining episodes (2) for ¥450" })
+    ).toBeVisible();
+
+    await openEpisode(page, second);
+    await openEpisode(page, third);
+    await page.goto(
+      `${WEB_STOREFRONT_RENTALS_BASE_URL}${episodeRentalsSeriesPath}/episodes/${fourth.publicId}`
+    );
+    await expect(page.getByText("You cannot read this episode")).toBeVisible();
+
+    const card = await libraryCard(page);
+    await expect(
+      card.getByRole("link", { name: EPISODE_RENTALS_VOLUME.title })
+    ).toBeVisible();
+    await expect(card.getByRole("link", { name: "Open series" })).toBeVisible();
+  });
+
+  test("a reader buys every remaining episode at the series' discount, and each one opens", async ({
+    page,
+  }) => {
+    await signInAsMember(
+      page,
+      EPISODE_RENTALS_READERS.remainderBuyer,
+      episodeRentalsSeriesPath,
+      WEB_STOREFRONT_RENTALS_BASE_URL
+    );
+
+    // 300 yen for the first episode and 200 for each of the other three,
+    // less 10%.
+    await expect(
+      page.getByText("10% off the ¥900 they cost one by one")
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "Buy remaining episodes (4) for ¥810" })
+      .click();
+
+    await pay(page, "4 items", "¥810", episodeRentalsSeriesPath);
+    await expect(page.getByText(PAYMENT_CONFIRMING)).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /^Buy remaining episodes/u })
+    ).toHaveCount(0);
+    await expect(
+      volumeCard(page).getByText("You can read every episode in this volume")
+    ).toBeVisible();
+
+    const [second, third, fourth] = EPISODE_RENTALS_LATER_EPISODES;
+    await openEpisode(page, EPISODE_RENTALS_EPISODE);
+    await openEpisode(page, second);
+    await openEpisode(page, third);
+    await openEpisode(page, fourth);
+
+    const card = await libraryCard(page);
+    await expect(
+      card.getByRole("link", { name: "Remaining episodes (4)" })
+    ).toBeVisible();
   });
 });

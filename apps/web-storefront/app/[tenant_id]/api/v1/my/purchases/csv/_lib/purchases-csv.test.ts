@@ -5,14 +5,19 @@ import type { PurchaseItem } from "#lib/purchases";
 import { renderPurchasesCsv } from "./purchases-csv";
 
 const HEADER =
-  "purchase_id,purchased_at,series_title,episode_number,episode_title,price,refunded_amount,currency,expires_at,refunded_at,status\r\n";
+  "purchase_id,purchased_at,series_title,episode_number,episode_title,price,refunded_amount,currency,expires_at,refunded_at,status,item,volume_title\r\n";
 
 const purchase = (overrides: Partial<PurchaseItem> = {}): PurchaseItem => ({
   currency: "USD",
-  episode: { orderIndex: 3, publicId: "EPISODE001", title: "The Harbor" },
   expiresAt: "",
   id: "PURCHASE01",
   isActive: true,
+  item: {
+    kind: "episode",
+    orderIndex: 3,
+    publicId: "EPISODE001",
+    title: "The Harbor",
+  },
   kind: "purchase",
   priceAtPurchase: 499,
   purchasedAt: "2026-10-01T09:00:00Z",
@@ -36,8 +41,8 @@ describe("renderPurchasesCsv", () => {
 
     expect(csv).toBe(
       `\uFEFF${HEADER}` +
-        "PURCHASE01,2026-10-01T09:00:00Z,Night Ferry,3,The Harbor,4.99,0.00,USD,,,active\r\n" +
-        "PURCHASE02,2026-10-01T09:00:00Z,Night Ferry,3,The Harbor,500,0,JPY,,,active\r\n"
+        "PURCHASE01,2026-10-01T09:00:00Z,Night Ferry,3,The Harbor,4.99,0.00,USD,,,active,episode,\r\n" +
+        "PURCHASE02,2026-10-01T09:00:00Z,Night Ferry,3,The Harbor,500,0,JPY,,,active,episode,\r\n"
     );
   });
 
@@ -58,9 +63,9 @@ describe("renderPurchasesCsv", () => {
     ]);
 
     expect(csv.split("\r\n").slice(1, 4)).toEqual([
-      "PURCHASE01,2026-10-01T09:00:00Z,Night Ferry,3,The Harbor,4.99,4.99,USD,,2026-10-02T09:00:00Z,refunded",
-      "PURCHASE02,2026-10-01T09:00:00Z,Night Ferry,3,The Harbor,4.99,2.00,USD,,,active",
-      "PURCHASE03,2026-10-01T09:00:00Z,Night Ferry,3,The Harbor,4.99,0.00,USD,2026-10-01T10:00:00Z,,expired",
+      "PURCHASE01,2026-10-01T09:00:00Z,Night Ferry,3,The Harbor,4.99,4.99,USD,,2026-10-02T09:00:00Z,refunded,episode,",
+      "PURCHASE02,2026-10-01T09:00:00Z,Night Ferry,3,The Harbor,4.99,2.00,USD,,,active,episode,",
+      "PURCHASE03,2026-10-01T09:00:00Z,Night Ferry,3,The Harbor,4.99,0.00,USD,2026-10-01T10:00:00Z,,expired,episode,",
     ]);
   });
 
@@ -74,14 +79,19 @@ describe("renderPurchasesCsv", () => {
     ]);
 
     expect(csv.split("\r\n")[1]).toBe(
-      "PURCHASE01,2026-10-01T09:00:00Z,Night Ferry,3,The Harbor,4.99,0.00,USD,2099-01-01T00:00:00Z,,canceled"
+      "PURCHASE01,2026-10-01T09:00:00Z,Night Ferry,3,The Harbor,4.99,0.00,USD,2099-01-01T00:00:00Z,,canceled,episode,"
     );
   });
 
   it("quotes a title with a comma, a quote, or a line break", () => {
     const csv = renderPurchasesCsv([
       purchase({
-        episode: { orderIndex: 1, publicId: "EP1", title: 'Say "hello"' },
+        item: {
+          kind: "episode",
+          orderIndex: 1,
+          publicId: "EP1",
+          title: 'Say "hello"',
+        },
         series: { publicId: "S1", title: "Cats, Dogs\nand more" },
       }),
     ]);
@@ -92,11 +102,35 @@ describe("renderPurchasesCsv", () => {
   it("writes a title a spreadsheet would run as a formula with a leading apostrophe", () => {
     const csv = renderPurchasesCsv([
       purchase({
-        episode: { orderIndex: 1, publicId: "EP1", title: "=HYPERLINK(1)" },
+        item: {
+          kind: "episode",
+          orderIndex: 1,
+          publicId: "EP1",
+          title: "=HYPERLINK(1)",
+        },
         series: { publicId: "S1", title: "-5" },
       }),
     ]);
 
     expect(csv).toContain(",-5,1,'=HYPERLINK(1),");
+  });
+
+  it("names a volume in its own column, and leaves the episode columns of a volume and of the rest of a series empty", () => {
+    const csv = renderPurchasesCsv([
+      purchase({
+        item: { kind: "volume", publicId: "VOLUME001", title: "Volume 1" },
+        priceAtPurchase: 1200,
+      }),
+      purchase({
+        id: "PURCHASE02",
+        item: { episodeCount: 4, kind: "series_bundle" },
+        priceAtPurchase: 1800,
+      }),
+    ]);
+
+    expect(csv.split("\r\n").slice(1, 3)).toEqual([
+      "PURCHASE01,2026-10-01T09:00:00Z,Night Ferry,,,12.00,0.00,USD,,,active,volume,Volume 1",
+      "PURCHASE02,2026-10-01T09:00:00Z,Night Ferry,,,18.00,0.00,USD,,,active,remaining_episodes,",
+    ]);
   });
 });

@@ -18,6 +18,7 @@ export type {
   PublishedLabel,
   RecentSeries,
   SeriesProgress,
+  SeriesRemainderOffer,
   WaitFreeRule,
   WaitFreeTicket,
 } from "../gen/publira/v1/catalog_pb.js";

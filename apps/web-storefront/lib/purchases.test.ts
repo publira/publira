@@ -98,6 +98,37 @@ describe("listMyPurchases", () => {
     ]);
   });
 
+  it("says what each purchase bought: an episode, a volume, or the rest of a series", async () => {
+    mockListMyPurchases.mockResolvedValueOnce({
+      nextToken: "",
+      previousToken: "",
+      purchases: [
+        {
+          episode: { orderIndex: 3, publicId: "EPISODE03", title: "Harbor" },
+          id: "PURCHASE01",
+        },
+        {
+          id: "PURCHASE02",
+          volume: { orderIndex: 1, publicId: "VOLUME01", title: "Volume 1" },
+        },
+        { id: "PURCHASE03", seriesBundle: { episodeCount: 4 } },
+      ],
+    });
+
+    const result = await listMyPurchases(TENANT_ID, { locale: "en" });
+
+    expect(result.purchases.map(({ item }) => item)).toEqual([
+      {
+        kind: "episode",
+        orderIndex: 3,
+        publicId: "EPISODE03",
+        title: "Harbor",
+      },
+      { kind: "volume", publicId: "VOLUME01", title: "Volume 1" },
+      { episodeCount: 4, kind: "series_bundle" },
+    ]);
+  });
+
   it("keeps what was refunded on each purchase, and when it was refunded and revoked", async () => {
     mockListMyPurchases.mockResolvedValueOnce({
       nextToken: "",

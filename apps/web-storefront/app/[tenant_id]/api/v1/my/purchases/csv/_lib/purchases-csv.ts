@@ -53,6 +53,20 @@ const purchaseStatus = (purchase: PurchaseItem): string => {
   return purchase.isActive ? "active" : "expired";
 };
 
+/**
+ * The episode columns of a row: filled for a purchase of an episode, and empty
+ * for a volume and the rest of a series, which name no one episode.
+ */
+const episodeFields = ({ item }: PurchaseItem): [string, string] =>
+  item.kind === "episode" ? [String(item.orderIndex), item.title] : ["", ""];
+
+/**
+ * What the purchase bought, as the `item` column names it. The rest of a
+ * series is `remaining_episodes`, which is what the reader bought it as.
+ */
+const itemType = ({ item }: PurchaseItem): string =>
+  item.kind === "series_bundle" ? "remaining_episodes" : item.kind;
+
 const HEADER = [
   "purchase_id",
   "purchased_at",
@@ -65,6 +79,8 @@ const HEADER = [
   "expires_at",
   "refunded_at",
   "status",
+  "item",
+  "volume_title",
 ] as const;
 
 /**
@@ -73,7 +89,9 @@ const HEADER = [
  * CRLF line endings, and RFC 4180 quoting. A header row, then one row per
  * purchase in the order given. The times are RFC 3339 in UTC as the API
  * answers them, and empty where the purchase has none; `status` is `active`,
- * `expired`, `refunded`, or `canceled`.
+ * `expired`, `refunded`, or `canceled`, and `item` is `episode`, `volume`, or
+ * `remaining_episodes`. The columns that came later are appended, so a sheet
+ * that reads the earlier ones by position keeps reading them.
  */
 export const renderPurchasesCsv = (
   purchases: readonly PurchaseItem[]
@@ -86,14 +104,15 @@ export const renderPurchasesCsv = (
         purchase.id,
         purchase.purchasedAt,
         purchase.series.title,
-        String(purchase.episode.orderIndex),
-        purchase.episode.title,
+        ...episodeFields(purchase),
         formatAmount(purchase.priceAtPurchase, purchase.currency),
         formatAmount(purchase.refundedAmount, purchase.currency),
         purchase.currency,
         purchase.expiresAt,
         purchase.refundedAt,
         purchaseStatus(purchase),
+        itemType(purchase),
+        purchase.item.kind === "volume" ? purchase.item.title : "",
       ])
     )
     .join("");

@@ -41,6 +41,7 @@ import type {
   Series,
   SeriesEyeCatchVariant,
   Tag,
+  Volume,
   WaitFreeRule,
 } from "@publira/api-client/public/types";
 import type { Locale } from "@publira/i18n";
@@ -733,6 +734,51 @@ export interface SeriesDetail {
   /** The series' wait-for-free rule; absent when the series offers none. */
   waitFree?: SeriesWaitFreeRule;
 }
+
+/**
+ * A volume of the series on sale on the site: a run of its episodes sold
+ * together at a price of its own. Like the rest of the series read it says
+ * nothing about the reader; which of its episodes they hold is
+ * `getMySeriesPurchaseState`'s to say.
+ */
+export interface VolumeItem {
+  /** The volume's primary key, which the checkout addresses it by. */
+  id: string;
+  publicId: string;
+  title: string;
+  orderIndex: number;
+  /** In the minor unit of the tenant currency, as an episode's price is. */
+  price: number;
+  /**
+   * The episodes the volume holds, by `EpisodeItem.id`, in the volume's own
+   * order: only those the site lists.
+   */
+  episodeIds: string[];
+  /** Absent when the volume has no cover, and the series' stands in for it. */
+  coverImageVariants?: EyeCatchImageVariant[];
+}
+
+/** The generated `Volume` fields {@link toVolumeItem} reads. */
+type RawVolume = Pick<
+  Volume,
+  | "coverImageVariants"
+  | "episodeIds"
+  | "id"
+  | "orderIndex"
+  | "price"
+  | "publicId"
+  | "title"
+>;
+
+const toVolumeItem = (volume: RawVolume): VolumeItem => ({
+  coverImageVariants: toEyeCatchImageVariants(volume.coverImageVariants),
+  episodeIds: volume.episodeIds ?? [],
+  id: volume.id ?? "",
+  orderIndex: volume.orderIndex ?? 0,
+  price: volume.price ?? 0,
+  publicId: volume.publicId ?? "",
+  title: volume.title ?? "",
+});
 
 /**
  * A series' wait-for-free rule: a signed-in reader may open one priced episode
@@ -1861,7 +1907,11 @@ export const getSeriesDetail = async (
   seriesPublicId: string,
   locale: Locale
 ): Promise<
-  CachedReadResult<{ series: SeriesDetail; episodes: EpisodeItem[] } | null>
+  CachedReadResult<{
+    episodes: EpisodeItem[];
+    series: SeriesDetail;
+    volumes: VolumeItem[];
+  } | null>
 > => {
   "use cache";
 
@@ -1901,6 +1951,9 @@ export const getSeriesDetail = async (
         .map((episode) => toEpisodeItem(episode, locale))
         .toSorted((a, b) => a.orderIndex - b.orderIndex),
       series,
+      volumes: (response.volumes ?? [])
+        .map(toVolumeItem)
+        .toSorted((a, b) => a.orderIndex - b.orderIndex),
     },
   };
 };

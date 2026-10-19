@@ -19,16 +19,26 @@ import { getMessagesFor } from "./messages";
 
 const defaultPurchasePageSize = 20;
 
+/**
+ * What one purchase bought: an episode, a volume of the series, or the
+ * episodes of the series the reader did not hold yet when they bought the
+ * rest of it.
+ */
+export type PurchasedItem =
+  | { kind: "episode"; orderIndex: number; publicId: string; title: string }
+  | { kind: "series_bundle"; episodeCount: number }
+  | { kind: "volume"; publicId: string; title: string };
+
 export interface PurchaseItem {
   /** ISO 4217 code of the currency the reader paid priceAtPurchase in. */
   currency: string;
-  episode: { orderIndex: number; publicId: string; title: string };
   expiresAt: string;
   id: string;
   isActive: boolean;
+  item: PurchasedItem;
   /**
    * Which of the episode's sales the reader bought. A rental always carries
-   * `expiresAt`.
+   * `expiresAt`, and a volume or the rest of a series is always a purchase.
    */
   kind: "purchase" | "rental";
   priceAtPurchase: number;
@@ -98,6 +108,8 @@ type RawPurchase = Pick<
   | "refundedAt"
   | "revokedAt"
   | "series"
+  | "seriesBundle"
+  | "volume"
 >;
 
 /** Unspecified, which the server never answers, reads as the permanent copy. */
@@ -106,16 +118,42 @@ const toPurchaseKind = (
 ): PurchaseItem["kind"] =>
   kind === PurchaseKind.RENTAL ? "rental" : "purchase";
 
+/**
+ * The API sets exactly one of the three. A purchase that names none reads as
+ * an episode, which is what every purchase was before the other two existed.
+ */
+const toPurchasedItem = ({
+  episode,
+  seriesBundle,
+  volume,
+}: Pick<RawPurchase, "episode" | "seriesBundle" | "volume">): PurchasedItem => {
+  if (volume) {
+    return {
+      kind: "volume",
+      publicId: volume.publicId ?? "",
+      title: volume.title ?? "",
+    };
+  }
+  if (seriesBundle) {
+    return {
+      episodeCount: seriesBundle.episodeCount ?? 0,
+      kind: "series_bundle",
+    };
+  }
+  return {
+    kind: "episode",
+    orderIndex: episode?.orderIndex ?? 0,
+    publicId: episode?.publicId ?? "",
+    title: episode?.title ?? "",
+  };
+};
+
 const mapPurchase = (purchase: RawPurchase): PurchaseItem => ({
   currency: purchase.currency ?? "",
-  episode: {
-    orderIndex: purchase.episode?.orderIndex ?? 0,
-    publicId: purchase.episode?.publicId ?? "",
-    title: purchase.episode?.title ?? "",
-  },
   expiresAt: purchase.expiresAt ?? "",
   id: purchase.id ?? "",
   isActive: purchase.isActive ?? false,
+  item: toPurchasedItem(purchase),
   kind: toPurchaseKind(purchase.kind),
   priceAtPurchase: purchase.priceAtPurchase ?? 0,
   purchasedAt: purchase.purchasedAt ?? "",
