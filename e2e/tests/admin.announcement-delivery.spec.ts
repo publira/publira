@@ -53,9 +53,9 @@ const notifiedUserPublicIds = (title: string): string[] => {
     SELECT u.public_id
     FROM notifications n
     JOIN users u ON u.id = n.user_id
-    JOIN announcements a ON a.tenant_id = n.tenant_id
-      AND n.subject_key = 'announcement:' || a.id::text
-    WHERE a.title = ${quoteSqlLiteral(title)}
+    JOIN announcement_translations at ON at.tenant_id = n.tenant_id
+      AND n.subject_key = 'announcement:' || at.announcement_id::text
+    WHERE at.title = ${quoteSqlLiteral(title)}
     ORDER BY u.public_id;
   `);
   return rows === "" ? [] : rows.split("\n");
