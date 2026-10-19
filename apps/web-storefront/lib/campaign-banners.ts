@@ -14,12 +14,14 @@ export interface CampaignBannerItem {
   /** A path on this site without a locale prefix, or an absolute http(s) URL. */
   linkUrl: string;
   imageVariants: EyeCatchImageVariant[];
+  /** The words drawn into the image; empty when the operator wrote none. */
+  altText: string;
 }
 
 /** The generated `CampaignBanner` fields {@link toCampaignBannerItem} reads. */
 type RawCampaignBanner = Pick<
   CampaignBanner,
-  "imageVariants" | "linkUrl" | "publicId"
+  "altText" | "imageVariants" | "linkUrl" | "publicId"
 >;
 
 /**
@@ -36,7 +38,12 @@ const toCampaignBannerItem = (
     return null;
   }
 
-  return { imageVariants, linkUrl, publicId: banner.publicId ?? "" };
+  return {
+    altText: banner.altText ?? "",
+    imageVariants,
+    linkUrl,
+    publicId: banner.publicId ?? "",
+  };
 };
 
 /**

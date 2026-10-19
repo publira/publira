@@ -16,21 +16,25 @@ import {
  * operator cropped it for this shape, so it is shown whole rather than cut to
  * fit a band of some other height.
  *
+ * The image is the link's only content, so its alternative text is the link's
+ * name: the words drawn into it as the operator wrote them, or `fallbackAlt`
+ * when they wrote none.
+ *
  * The first one is what a reader sees before anything else on the page, so it
  * is fetched first; the rest wait until the strip brings them near.
  */
 const CampaignBannerLink = ({
-  alt,
   banner,
+  fallbackAlt,
   first,
 }: {
-  alt: string;
   banner: CampaignBannerItem;
+  fallbackAlt: string;
   first: boolean;
 }) => (
   <LocaleLink className="block" href={banner.linkUrl}>
     <EyeCatchFrame
-      alt={alt}
+      alt={banner.altText || fallbackAlt}
       className="aspect-video w-full rounded-surface"
       fetchPriority={first ? "high" : undefined}
       loading={first ? "eager" : "lazy"}
@@ -70,13 +74,17 @@ export const CampaignBannersSection = async () => {
   }
 
   const ariaLabel = t("storefront.top.campaign_banners_aria");
-  const alt = t("storefront.top.campaign_banner_alt");
+  const fallbackAlt = t("storefront.top.campaign_banner_alt");
 
   if (rest.length === 0) {
     return (
       <section aria-label={ariaLabel}>
         <div className="mx-auto md:w-2/3">
-          <CampaignBannerLink alt={alt} banner={firstBanner} first />
+          <CampaignBannerLink
+            banner={firstBanner}
+            fallbackAlt={fallbackAlt}
+            first
+          />
         </div>
       </section>
     );
@@ -89,13 +97,27 @@ export const CampaignBannersSection = async () => {
       aria-label={ariaLabel}
       count={banners.length}
       first={
-        <CampaignBannerLink alt={alt} banner={firstBanner} first={false} />
+        <CampaignBannerLink
+          banner={firstBanner}
+          fallbackAlt={fallbackAlt}
+          first={false}
+        />
       }
-      last={<CampaignBannerLink alt={alt} banner={lastBanner} first={false} />}
+      last={
+        <CampaignBannerLink
+          banner={lastBanner}
+          fallbackAlt={fallbackAlt}
+          first={false}
+        />
+      }
     >
       {banners.map((banner, index) => (
         <CampaignBannerSlide key={banner.publicId}>
-          <CampaignBannerLink alt={alt} banner={banner} first={index === 0} />
+          <CampaignBannerLink
+            banner={banner}
+            fallbackAlt={fallbackAlt}
+            first={index === 0}
+          />
         </CampaignBannerSlide>
       ))}
     </CampaignBannerCarousel>
