@@ -544,6 +544,124 @@ test.describe("web-storefront series titles in the reader's language", () => {
 });
 
 /**
+ * An announcement is read in the language in the URL where it was written in
+ * it, and in the tenant's default otherwise, with a note saying so. The
+ * bilingual tenant's two announcements are read without a session, as any
+ * visitor reads them.
+ */
+test.describe("web-storefront announcements in the reader's language", () => {
+  const { translated, untranslated } = BILINGUAL_TENANT.announcements;
+
+  test.beforeAll(() => {
+    applyScenarioSql(LOCALE_SWITCHING_SCENARIO);
+  });
+
+  test("the header switcher changes an announcement's title with the language", async ({
+    page,
+  }) => {
+    await page.goto(
+      bilingualUrl(storefrontPath(`/announcements/${translated.id}`))
+    );
+
+    await expect(
+      page.getByRole("heading", { level: 1, name: translated.japaneseTitle })
+    ).toBeVisible();
+    await expect(page.getByText(translated.japaneseBody)).toBeVisible();
+
+    await switchStorefrontLocale(page, "日本語", "English");
+
+    await expect(page).toHaveURL(
+      (url) =>
+        url.pathname ===
+        localeStorefrontPath("en", `/announcements/${translated.id}`)
+    );
+    const heading = page.getByRole("heading", {
+      exact: true,
+      level: 1,
+      name: translated.englishTitle,
+    });
+    await expect(heading).toBeVisible();
+    await expect(heading).toHaveAttribute("lang", "en");
+    await expect(page.getByText(translated.englishBody)).toBeVisible();
+    await expect(
+      page.getByRole("main").getByText(translated.japaneseTitle)
+    ).toHaveCount(0);
+    await expect(
+      page.getByText("This announcement is not written in your language")
+    ).toHaveCount(0);
+    await expect.poll(() => page.title()).toContain(translated.englishTitle);
+  });
+
+  test("an announcement with no translation in the reader's language shows the default's and says so", async ({
+    page,
+  }) => {
+    await page.goto(
+      bilingualUrl(
+        localeStorefrontPath("en", `/announcements/${untranslated.id}`)
+      )
+    );
+    await expectDocumentLocale(page, "English");
+
+    const heading = page.getByRole("heading", {
+      level: 1,
+      name: untranslated.japaneseTitle,
+    });
+    await expect(heading).toBeVisible();
+    await expect(heading).toHaveAttribute("lang", "ja");
+    await expect(page.getByText(untranslated.japaneseBody)).toBeVisible();
+    await expect(
+      page.getByText(
+        "This announcement is not written in your language, so it is shown in 日本語."
+      )
+    ).toBeVisible();
+
+    // In its own language the announcement needs no note.
+    await page.goto(
+      bilingualUrl(storefrontPath(`/announcements/${untranslated.id}`))
+    );
+    await expect(
+      page.getByRole("heading", { level: 1, name: untranslated.japaneseTitle })
+    ).toBeVisible();
+    await expect(page.getByText("このお知らせはお使いの言語")).toHaveCount(0);
+  });
+
+  test("the list shows each announcement in the reader's language and opens it", async ({
+    page,
+  }) => {
+    await page.goto(bilingualUrl(localeStorefrontPath("en", "/announcements")));
+
+    const englishTitle = page.getByRole("heading", {
+      exact: true,
+      level: 3,
+      name: translated.englishTitle,
+    });
+    await expect(englishTitle).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 3, name: untranslated.japaneseTitle })
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        "This announcement is not written in your language, so it is shown in 日本語."
+      )
+    ).toHaveCount(1);
+    await expect(
+      page.getByRole("main").getByText(translated.japaneseTitle)
+    ).toHaveCount(0);
+
+    await englishTitle.getByRole("link").click();
+
+    await expect(page).toHaveURL(
+      (url) =>
+        url.pathname ===
+        localeStorefrontPath("en", `/announcements/${translated.id}`)
+    );
+    await expect(
+      page.getByRole("heading", { level: 1, name: translated.englishTitle })
+    ).toBeVisible();
+  });
+});
+
+/**
  * The copy a tenant writes about its site — the description its metadata and
  * footer carry, and its copyright line — is read in the language in the URL,
  * else in the tenant's default. The bilingual tenant writes it in both of its

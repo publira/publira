@@ -3824,9 +3824,11 @@
   },
   "storefront": {
     "announcements": {
+      "back_to_list": "お知らせ一覧へ戻る",
       "banner_dismiss": "このお知らせを閉じる",
       "banner_link": "お知らせを読む",
       "description": "運営から配信されたお知らせを確認できます。",
+      "fallback_notice": "このお知らせはお使いの言語で書かれていないため、{$language}で表示しています。",
       "first_page": "お知らせ一覧の先頭を表示",
       "list_empty": "現在表示できるお知らせはありません。",
       "list_error": "お知らせ一覧を表示できませんでした",
@@ -3836,6 +3838,7 @@
       "open_link": "遷移先を開く",
       "page_empty": "このページに表示できるお知らせがありません。",
       "pagination_aria": "お知らせ一覧ページング",
+      "read_failed": "お知らせの取得に失敗しました。時間をおいて再試行してください。",
       "title": "お知らせ",
       "unread_on_page": "このページの未読{$count}件"
     },

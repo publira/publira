@@ -47,6 +47,16 @@ const importAnnouncements = () => import("./announcements");
 const tenantId = "11111111-1111-4111-8111-111111111111";
 const announcementId = "22222222-2222-4222-8222-222222222222";
 
+const rawItem = {
+  body: "Body",
+  createdAt: "2026-04-05T10:00:00Z",
+  id: announcementId,
+  isRead: false,
+  linkUrl: "/series/S001",
+  locale: "en",
+  title: "Announcement",
+};
+
 describe("web-storefront announcements", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -64,6 +74,7 @@ describe("web-storefront announcements", () => {
           id: "N001",
           isRead: false,
           linkUrl: "/series/S001",
+          locale: "en",
           title: "Announcement",
         },
       ],
@@ -81,6 +92,7 @@ describe("web-storefront announcements", () => {
           id: "N001",
           isRead: false,
           linkUrl: "/series/S001",
+          locale: "en",
           title: "Announcement",
         },
       ],
@@ -97,7 +109,7 @@ describe("web-storefront announcements", () => {
     await listMyAnnouncements("TENANT001", undefined, { locale: "en" });
 
     expect(mockListAnnouncements).toHaveBeenCalledWith(
-      { limit: 20, tenant: { tenantId: "TENANT001" }, token: "" },
+      { limit: 20, locale: "en", tenant: { tenantId: "TENANT001" }, token: "" },
       expect.anything()
     );
   });
@@ -113,9 +125,42 @@ describe("web-storefront announcements", () => {
     });
 
     expect(mockListAnnouncements).toHaveBeenCalledWith(
-      { limit: 5, tenant: { tenantId: "TENANT001" }, token: "djF8Zg" },
+      {
+        limit: 5,
+        locale: "en",
+        tenant: { tenantId: "TENANT001" },
+        token: "djF8Zg",
+      },
       expect.anything()
     );
+  });
+
+  it("listMyAnnouncements: asks in the reader's locale and keeps the one each row was served in", async () => {
+    const { listMyAnnouncements } = await importAnnouncements();
+    mockListAnnouncements.mockResolvedValueOnce({
+      announcements: [
+        { ...rawItem, id: "N001", locale: "en" },
+        { ...rawItem, id: "N002", locale: "ja" },
+        { ...rawItem, id: "N003", locale: "" },
+      ],
+    });
+
+    const result = await listMyAnnouncements("TENANT001", undefined, {
+      locale: "en",
+    });
+
+    expect(mockListAnnouncements).toHaveBeenCalledWith(
+      expect.objectContaining({ locale: "en" }),
+      expect.anything()
+    );
+    // An unreadable served locale claims no fallback it cannot name.
+    expect(
+      result.announcements.map(({ id, locale }) => ({ id, locale }))
+    ).toEqual([
+      { id: "N001", locale: "en" },
+      { id: "N002", locale: "ja" },
+      { id: "N003", locale: "en" },
+    ]);
   });
 
   it("listMyAnnouncements: reports an unreachable API as the section's message", async () => {
@@ -178,20 +223,24 @@ describe("web-storefront announcements", () => {
         id: announcementId,
         isRead: false,
         linkUrl: "/series/S001",
+        locale: "ja",
         title: "Announcement",
       },
     });
 
-    await expect(getMyAnnouncement(tenantId, announcementId)).resolves.toEqual({
+    await expect(
+      getMyAnnouncement(tenantId, announcementId, "en")
+    ).resolves.toEqual({
       body: "Body",
       createdAt: "2026-04-05T10:00:00Z",
       id: announcementId,
       isRead: false,
       linkUrl: "/series/S001",
+      locale: "ja",
       title: "Announcement",
     });
     expect(mockGetAnnouncement).toHaveBeenCalledWith(
-      { announcementId, tenant: { tenantId } },
+      { announcementId, locale: "en", tenant: { tenantId } },
       expect.anything()
     );
     expect(mockListAnnouncements).not.toHaveBeenCalled();
@@ -211,10 +260,10 @@ describe("web-storefront announcements", () => {
     });
 
     await expect(
-      getMyAnnouncement(`  ${tenantId}  `, `  ${announcementId}  `)
+      getMyAnnouncement(`  ${tenantId}  `, `  ${announcementId}  `, "en")
     ).resolves.toMatchObject({ id: announcementId });
     expect(mockGetAnnouncement).toHaveBeenCalledWith(
-      { announcementId, tenant: { tenantId } },
+      { announcementId, locale: "en", tenant: { tenantId } },
       expect.anything()
     );
   });
@@ -223,10 +272,10 @@ describe("web-storefront announcements", () => {
     const { getMyAnnouncement } = await importAnnouncements();
 
     await expect(
-      getMyAnnouncement("TENANT001", announcementId)
+      getMyAnnouncement("TENANT001", announcementId, "en")
     ).resolves.toBeNull();
-    await expect(getMyAnnouncement(tenantId, "N001")).resolves.toBeNull();
-    await expect(getMyAnnouncement(tenantId, "   ")).resolves.toBeNull();
+    await expect(getMyAnnouncement(tenantId, "N001", "en")).resolves.toBeNull();
+    await expect(getMyAnnouncement(tenantId, "   ", "en")).resolves.toBeNull();
     expect(mockGetAnnouncement).not.toHaveBeenCalled();
     expect(mockResolveAccessToken).not.toHaveBeenCalled();
   });
@@ -236,7 +285,7 @@ describe("web-storefront announcements", () => {
     mockResolveAccessToken.mockResolvedValueOnce("");
 
     await expect(
-      getMyAnnouncement(tenantId, announcementId)
+      getMyAnnouncement(tenantId, announcementId, "en")
     ).resolves.toBeNull();
     expect(mockGetAnnouncement).not.toHaveBeenCalled();
   });
@@ -248,7 +297,7 @@ describe("web-storefront announcements", () => {
     );
 
     await expect(
-      getMyAnnouncement(tenantId, "33333333-3333-4333-8333-333333333333")
+      getMyAnnouncement(tenantId, "33333333-3333-4333-8333-333333333333", "en")
     ).resolves.toBeNull();
     expect(mockListAnnouncements).not.toHaveBeenCalled();
   });
@@ -258,7 +307,7 @@ describe("web-storefront announcements", () => {
     mockGetAnnouncement.mockResolvedValueOnce({});
 
     await expect(
-      getMyAnnouncement(tenantId, announcementId)
+      getMyAnnouncement(tenantId, announcementId, "en")
     ).resolves.toBeNull();
   });
 
@@ -269,7 +318,7 @@ describe("web-storefront announcements", () => {
     );
 
     await expect(
-      getMyAnnouncement(tenantId, announcementId)
+      getMyAnnouncement(tenantId, announcementId, "en")
     ).resolves.toBeNull();
   });
 
@@ -280,7 +329,9 @@ describe("web-storefront announcements", () => {
 
     // Rebuilt outside the cache scope from its verdict, so the `Code` that
     // sends the reader back through sign-in survives a production build.
-    await expect(getMyAnnouncement(tenantId, announcementId)).rejects.toSatisfy(
+    await expect(
+      getMyAnnouncement(tenantId, announcementId, "en")
+    ).rejects.toSatisfy(
       (thrown: unknown) => thrown !== error && isUnauthenticatedRpcError(thrown)
     );
   });
@@ -290,7 +341,9 @@ describe("web-storefront announcements", () => {
     const error = new ConnectError("boom", Code.Internal);
     mockGetAnnouncement.mockRejectedValueOnce(error);
 
-    await expect(getMyAnnouncement(tenantId, announcementId)).rejects.toSatisfy(
+    await expect(
+      getMyAnnouncement(tenantId, announcementId, "en")
+    ).rejects.toSatisfy(
       (thrown: unknown) =>
         thrown instanceof Error && !(thrown instanceof ConnectError)
     );
@@ -322,6 +375,88 @@ describe("web-storefront announcements", () => {
   });
 });
 
+describe("web-storefront announcement page", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("reads one announcement without a session, in the reader's locale", async () => {
+    const { getAnnouncement } = await importAnnouncements();
+    mockGetAnnouncement.mockResolvedValueOnce({
+      announcement: rawItem,
+      locales: ["en", "ja"],
+    });
+
+    await expect(
+      getAnnouncement(tenantId, announcementId, "en")
+    ).resolves.toEqual({
+      ok: true,
+      value: {
+        body: "Body",
+        createdAt: "2026-04-05T10:00:00Z",
+        id: announcementId,
+        linkUrl: "/series/S001",
+        locale: "en",
+        publishedLocales: ["en", "ja"],
+        title: "Announcement",
+      },
+    });
+    expect(mockGetAnnouncement).toHaveBeenCalledWith({
+      announcementId,
+      locale: "en",
+      tenant: { tenantId },
+    });
+    expect(mockResolveAccessToken).not.toHaveBeenCalled();
+  });
+
+  it("names the translation it fell back to among the languages of the page", async () => {
+    const { getAnnouncement } = await importAnnouncements();
+    mockGetAnnouncement.mockResolvedValueOnce({
+      announcement: { ...rawItem, locale: "ja" },
+      locales: ["fr", "zh-Hans"],
+    });
+
+    // `fr` is no locale this build knows, and the served translation exists
+    // even when the list left it out.
+    await expect(
+      getAnnouncement(tenantId, announcementId, "en")
+    ).resolves.toMatchObject({
+      ok: true,
+      value: { locale: "ja", publishedLocales: ["zh-Hans", "ja"] },
+    });
+  });
+
+  it("answers null for a missing announcement and for an id that cannot be one", async () => {
+    const { getAnnouncement } = await importAnnouncements();
+    mockGetAnnouncement.mockRejectedValueOnce(
+      new ConnectError("announcement not found", Code.NotFound)
+    );
+
+    await expect(
+      getAnnouncement(tenantId, announcementId, "en")
+    ).resolves.toEqual({ ok: true, value: null });
+    await expect(getAnnouncement(tenantId, "N001", "en")).resolves.toEqual({
+      ok: true,
+      value: null,
+    });
+    expect(mockGetAnnouncement).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports a failed read as a value in the reader's language", async () => {
+    const { getAnnouncement } = await importAnnouncements();
+    mockGetAnnouncement.mockRejectedValueOnce(
+      new ConnectError("handler panicked", Code.Internal)
+    );
+
+    await expect(
+      getAnnouncement(tenantId, announcementId, "en")
+    ).resolves.toEqual({
+      message: "Could not load the announcement. Please try again later.",
+      ok: false,
+    });
+  });
+});
+
 describe("web-storefront pinned announcement", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -336,19 +471,22 @@ describe("web-storefront pinned announcement", () => {
         id: announcementId,
         isRead: false,
         linkUrl: "/pages/maintenance",
+        locale: "ja",
         pinned: true,
         pinnedUntil: "2026-04-06T10:00:00Z",
         title: "Maintenance tonight",
       },
     });
 
-    await expect(getPinnedAnnouncement(tenantId)).resolves.toEqual({
+    await expect(getPinnedAnnouncement(tenantId, "en")).resolves.toEqual({
       body: "We will be down for an hour",
       id: announcementId,
       linkUrl: "/pages/maintenance",
+      locale: "ja",
       title: "Maintenance tonight",
     });
     expect(mockGetPinnedAnnouncement).toHaveBeenCalledWith({
+      locale: "en",
       tenant: { tenantId },
     });
     expect(mockResolveAccessToken).not.toHaveBeenCalled();
@@ -358,7 +496,7 @@ describe("web-storefront pinned announcement", () => {
     const { getPinnedAnnouncement } = await importAnnouncements();
     mockGetPinnedAnnouncement.mockResolvedValueOnce({});
 
-    await expect(getPinnedAnnouncement(tenantId)).resolves.toBeNull();
+    await expect(getPinnedAnnouncement(tenantId, "en")).resolves.toBeNull();
   });
 
   it("answers nothing when the read fails, so the band is simply not drawn", async () => {
@@ -367,7 +505,7 @@ describe("web-storefront pinned announcement", () => {
       new ConnectError("upstream is down", Code.Unavailable)
     );
 
-    await expect(getPinnedAnnouncement(tenantId)).resolves.toBeNull();
+    await expect(getPinnedAnnouncement(tenantId, "en")).resolves.toBeNull();
   });
 
   it("reports an unexpected failure in the log rather than throwing", async () => {
@@ -378,7 +516,7 @@ describe("web-storefront pinned announcement", () => {
 
     // The banner renders on every page, so a throw would take the site down;
     // and past the cache boundary the failure could no longer be classified.
-    await expect(getPinnedAnnouncement(tenantId)).resolves.toBeNull();
+    await expect(getPinnedAnnouncement(tenantId, "en")).resolves.toBeNull();
     expect(warn).toHaveBeenCalledWith(
       "[web-storefront] getPinnedAnnouncement failed",
       failure
@@ -389,7 +527,7 @@ describe("web-storefront pinned announcement", () => {
   it("asks for nothing when there is no tenant to ask about", async () => {
     const { getPinnedAnnouncement } = await importAnnouncements();
 
-    await expect(getPinnedAnnouncement("  ")).resolves.toBeNull();
+    await expect(getPinnedAnnouncement("  ", "en")).resolves.toBeNull();
     expect(mockGetPinnedAnnouncement).not.toHaveBeenCalled();
   });
 });

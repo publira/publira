@@ -51,23 +51,25 @@ export const PinnedAnnouncementBanner = async () => {
     tenantDefaultLocale(),
     readDismissedAnnouncementId(),
   ]);
-  const announcement = await getPinnedAnnouncement(tenantId);
+  const announcement = await getPinnedAnnouncement(tenantId, locale);
 
   if (!announcement || announcement.id === dismissedId) {
     return null;
   }
 
-  // An operator who wrote no link is pointing at the announcement itself, which
-  // is the inbox the row is in.
+  // An operator who wrote no link is pointing at the announcement itself.
   const destination =
-    toSafeOperatorLinkUrl(announcement.linkUrl) ?? "/announcements";
+    toSafeOperatorLinkUrl(announcement.linkUrl) ??
+    `/announcements/${announcement.id}`;
 
   return (
     <SiteLayoutBanner>
       <SiteLayoutBannerContent>
-        <SiteLayoutBannerTitle>{announcement.title}</SiteLayoutBannerTitle>
+        <SiteLayoutBannerTitle>
+          <span lang={announcement.locale}>{announcement.title}</span>
+        </SiteLayoutBannerTitle>
         <SiteLayoutBannerDescription>
-          {announcement.body}
+          <span lang={announcement.locale}>{announcement.body}</span>
         </SiteLayoutBannerDescription>
         <SiteLayoutBannerLink
           href={withLocalePrefix(locale, defaultLocale, destination)}
