@@ -23,12 +23,12 @@ import (
 
 func episodeReadRows() *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
-		"id", "read_at", "episode_id", "episode_public_id", "episode_title", "episode_title_locale", "episode_order_index", "series_id", "series_public_id", "series_title", "series_title_locale", "series_eye_catch_image_id",
+		"id", "read_at", "episode_id", "episode_public_id", "episode_title", "episode_title_locale", "episode_order_index", "series_id", "series_public_id", "series_title", "series_title_locale", "series_eye_catch_image_id", "series_age_rating",
 	})
 }
 
 func addEpisodeReadRow(rows *sqlmock.Rows, id uuid.UUID, readAt time.Time) *sqlmock.Rows {
-	return rows.AddRow(id, readAt, uuid.Must(uuid.NewV7()), "EPISODE"+id.String(), "Episode title", "ja", int32(3), uuid.Must(uuid.NewV7()), "SERIES001", "Series title", "ja", uuid.NullUUID{})
+	return rows.AddRow(id, readAt, uuid.Must(uuid.NewV7()), "EPISODE"+id.String(), "Episode title", "ja", int32(3), uuid.Must(uuid.NewV7()), "SERIES001", "Series title", "ja", uuid.NullUUID{}, sql.NullString{String: "all", Valid: true})
 }
 
 func assertEpisodeReadEpisodeIDs(t *testing.T, reads []*publirav1.MyEpisodeRead, want []uuid.UUID) {

@@ -586,12 +586,14 @@ SELECT r.id,
     s.public_id AS series_public_id,
     str.title AS series_title,
     str.locale AS series_title_locale,
-    s.eye_catch_image_id AS series_eye_catch_image_id
+    s.eye_catch_image_id AS series_eye_catch_image_id,
+    sl.age_rating AS series_age_rating
 FROM episode_reads r
     JOIN episodes e ON e.id = r.episode_id
     CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et
     JOIN series s ON s.id = e.series_id
     CROSS JOIN LATERAL series_translation_for(s.id, sqlc.arg('locale')::text) str
+    LEFT JOIN series_listings sl ON sl.series_id = s.id
 WHERE r.tenant_id = sqlc.arg('tenant_id')
     AND r.user_id = sqlc.arg('user_id')
     AND EXISTS (
@@ -634,12 +636,14 @@ SELECT r.id,
     s.public_id AS series_public_id,
     str.title AS series_title,
     str.locale AS series_title_locale,
-    s.eye_catch_image_id AS series_eye_catch_image_id
+    s.eye_catch_image_id AS series_eye_catch_image_id,
+    sl.age_rating AS series_age_rating
 FROM episode_reads r
     JOIN episodes e ON e.id = r.episode_id
     CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et
     JOIN series s ON s.id = e.series_id
     CROSS JOIN LATERAL series_translation_for(s.id, sqlc.arg('locale')::text) str
+    LEFT JOIN series_listings sl ON sl.series_id = s.id
 WHERE r.tenant_id = sqlc.arg('tenant_id')
     AND r.user_id = sqlc.arg('user_id')
     AND EXISTS (

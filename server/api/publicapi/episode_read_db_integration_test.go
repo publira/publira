@@ -11,6 +11,7 @@ import (
 	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -347,6 +348,43 @@ func TestDBListMyEpisodeReadsDropsWithdrawnSeriesAndKeepsExpiredRentals(t *testi
 	}
 	if got, want := historyEpisodePublicIDs(response.Reads), []string{rented.PublicID}; !slices.Equal(got, want) {
 		t.Fatalf("history = %v, want only the still published episode %v", got, want)
+	}
+}
+
+// A history row draws its series' artwork, so it carries the rating a client
+// holds that artwork back behind until the reader has confirmed it.
+func TestDBListMyEpisodeReadsCarriesTheSeriesAgeRating(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	reader := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERRATE1", "member-rate@example.com", "Member", "tenant_member")
+	rated := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESRATE18", Title: "Rated", Published: true, AgeRating: "r18"})
+	ratedEpisode := env.PG.SeedEpisode(t, tenant.ID, rated.ID, testutil.EpisodeSeed{PublicID: "EPISODERATE1", Title: "Rated chapter", Status: testutil.EpisodeStatusPublished})
+	allAges := env.PG.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "SERIESRATEAL", Title: "All ages", Published: true})
+	allAgesEpisode := env.PG.SeedEpisode(t, tenant.ID, allAges.ID, testutil.EpisodeSeed{PublicID: "EPISODERATE2", Title: "All ages chapter", Status: testutil.EpisodeStatusPublished})
+	// Seeded directly: opening an R18 episode is the age gate's concern, not
+	// this list's, and the history is what is under test.
+	for _, episode := range []testutil.Episode{ratedEpisode, allAgesEpisode} {
+		if _, err := env.PG.DB.ExecContext(context.Background(), "INSERT INTO episode_reads (id, tenant_id, user_id, episode_id) VALUES ($1, $2, $3, $4)", uuid.Must(uuid.NewV7()), tenant.ID, reader.ID, episode.ID); err != nil {
+			t.Fatalf("insert episode read %s: %v", episode.PublicID, err)
+		}
+	}
+
+	response, err := env.episodeReadClient().ListMyEpisodeReads(testutil.WithBearer(context.Background(), tokenFor(t, tenant, reader)), episodeReadListRequest(tenant, 0, ""))
+	if err != nil {
+		t.Fatalf("ListMyEpisodeReads: %v", err)
+	}
+	if len(response.Reads) != 2 {
+		t.Fatalf("reads = %v, want both", historyEpisodePublicIDs(response.Reads))
+	}
+	want := map[string]publirattypesv1.SeriesAgeRating{
+		rated.PublicID:   publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_R18,
+		allAges.PublicID: publirattypesv1.SeriesAgeRating_SERIES_AGE_RATING_ALL,
+	}
+	for _, read := range response.Reads {
+		series := read.GetSeries()
+		if got := series.GetAgeRating(); got != want[series.GetPublicId()] {
+			t.Fatalf("series %s age rating = %v, want %v", series.GetPublicId(), got, want[series.GetPublicId()])
+		}
 	}
 }
 

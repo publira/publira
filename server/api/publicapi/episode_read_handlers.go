@@ -10,6 +10,7 @@ import (
 	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/api/protomapper"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -173,7 +174,11 @@ func (s *apiServer) ListMyEpisodeReads(
 
 	items := make([]*publirav1.MyEpisodeRead, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, myEpisodeReadFromRow(row))
+		item, err := myEpisodeReadFromRow(row)
+		if err != nil {
+			return nil, s.internalError(ctx, "series listing holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "series_id", row.SeriesID.String())
+		}
+		items = append(items, item)
 	}
 	if err := s.fillEpisodeReadEyeCatches(ctx, tenant.ID, rows, items); err != nil {
 		return nil, err
@@ -284,8 +289,11 @@ func (s *apiServer) fillEpisodeReadEyeCatches(
 	return s.fillEpisodeEyeCatches(ctx, tenantID, episodes...)
 }
 
-func myEpisodeReadFromRow(row dbmodels.ListMyEpisodeReadsDescRow) *publirav1.MyEpisodeRead {
-	return &publirav1.MyEpisodeRead{
+// myEpisodeReadFromRow carries the series' age rating so that a client can
+// hold the row's artwork back until the reader has confirmed that rating, as it
+// does on every other list that draws a series' picture.
+func myEpisodeReadFromRow(row dbmodels.ListMyEpisodeReadsDescRow) (*publirav1.MyEpisodeRead, error) {
+	item := &publirav1.MyEpisodeRead{
 		Series: &publirattypesv1.Series{
 			Id:       row.SeriesID.String(),
 			PublicId: row.SeriesPublicID,
@@ -301,4 +309,12 @@ func myEpisodeReadFromRow(row dbmodels.ListMyEpisodeReadsDescRow) *publirav1.MyE
 		},
 		ReadAt: row.ReadAt.UTC().Format(time.RFC3339Nano),
 	}
+	if row.SeriesAgeRating.Valid {
+		ageRating, err := protomapper.SeriesAgeRatingFromStored(row.SeriesAgeRating.String)
+		if err != nil {
+			return nil, err
+		}
+		item.Series.AgeRating = ageRating
+	}
+	return item, nil
 }
