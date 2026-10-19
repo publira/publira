@@ -1151,9 +1151,9 @@
           },
           "episode": {
             "portrait": "Not shown on the site or in the app yet.",
-            "square": "Not shown on the site or in the app yet.",
-            "landscape": "Not shown on the site or in the app yet.",
-            "og": "Not shown on the site or in the app yet."
+            "square": "The small picture beside the episode in New episodes on the site's top page, and in Reading history and New from your follows on the site's My Page.",
+            "landscape": "The small picture beside the episode on the series' page on the site, and on the series screen, Reading history, New from your follows, and Downloads in the app.",
+            "og": "The preview shown when a link to the episode is shared."
           },
           "campaign_banner": {
             "band": "The band at the top of the site's top page and of the app's catalog, which uses the ratio that fits its shape.",
