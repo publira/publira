@@ -142,6 +142,11 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 		if completed.Purchase != checkout.Purchase {
 			t.Fatalf("purchase = %+v, want %+v", completed.Purchase, checkout.Purchase)
 		}
+		// A checkout the reader entered no promotion code at was paid its
+		// price, which is what the purchase records.
+		if completed.AmountPaid != checkout.Purchase.Price || completed.PromotionCodeID != "" {
+			t.Fatalf("paid %d with promotion code %q, want %d with none", completed.AmountPaid, completed.PromotionCodeID, checkout.Purchase.Price)
+		}
 		if completed.Test {
 			t.Fatal("a live-mode checkout is reported as a test")
 		}

@@ -39,6 +39,10 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "series_free_windows_created",
             },
             {
+              label: t("admin.audit.actions.series_campaign_prices_created"),
+              value: "series_campaign_prices_created",
+            },
+            {
               label: t("admin.audit.actions.series_wait_free_settings_updated"),
               value: "series_wait_free_settings_updated",
             },
@@ -83,6 +87,14 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
             {
               label: t("admin.audit.actions.episode_free_window_deleted"),
               value: "episode_free_window_deleted",
+            },
+            {
+              label: t("admin.audit.actions.episode_campaign_price_created"),
+              value: "episode_campaign_price_created",
+            },
+            {
+              label: t("admin.audit.actions.episode_campaign_price_deleted"),
+              value: "episode_campaign_price_deleted",
             },
             {
               label: t("admin.audit.actions.volume_created"),

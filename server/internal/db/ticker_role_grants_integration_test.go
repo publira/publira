@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/publira/publira/server/internal/campaignbanners"
+	"github.com/publira/publira/server/internal/campaignprices"
 	"github.com/publira/publira/server/internal/dayroll"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/freewindows"
@@ -230,6 +231,67 @@ func TestTickerRoleCannotRewriteACampaignBanner(t *testing.T) {
 	var pgErr *pgconn.PgError
 	if !errors.As(err, &pgErr) || pgErr.Code != insufficientPrivilegeCode {
 		t.Fatalf("update campaign banner link error = %v, want SQLSTATE %s", err, insufficientPrivilegeCode)
+	}
+}
+
+func TestTickerRoleRunsApplyCampaignPrices(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenant := pg.SeedTenant(t, "TICKTENANT10", "campaign-prices.example.com", "Campaign Price Tenant")
+	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "TICKSERIES10", Title: "Campaign Series", Published: true})
+	episode := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
+		PublicID: "TICKEPISOD10",
+		Title:    "Campaign Episode",
+		Status:   testutil.EpisodeStatusPublished,
+		Price:    500,
+	})
+	campaignID := pg.SeedEpisodeCampaignPrice(t, tenant.ID, episode.ID, 300, time.Now().Add(-2*time.Hour), time.Now().Add(-time.Hour))
+
+	ticker := pg.OpenTickerDB(t)
+	campaignprices.New(dbmodels.New(ticker), nil, discardLogger()).RunOnce(ctx)
+
+	var startApplied, endApplied sql.NullTime
+	if err := pg.DB.QueryRowContext(ctx,
+		"SELECT start_revalidated_at, end_revalidated_at FROM episode_campaign_prices WHERE id = $1", campaignID,
+	).Scan(&startApplied, &endApplied); err != nil {
+		t.Fatalf("read campaign price: %v", err)
+	}
+	if !startApplied.Valid || !endApplied.Valid {
+		t.Fatalf("start_revalidated_at = %v, end_revalidated_at = %v, want both passed boundaries recorded", startApplied, endApplied)
+	}
+}
+
+// A campaign carries the price a tenant sells at, and this role bypasses RLS,
+// so the grant names the two columns the job writes rather than the table.
+func TestTickerRoleCannotRepriceACampaign(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenant := pg.SeedTenant(t, "TICKTENANT11", "campaign-reprice.example.com", "Campaign Reprice Tenant")
+	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "TICKSERIES11", Title: "Reprice Series", Published: true})
+	episode := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
+		PublicID: "TICKEPISOD11",
+		Title:    "Reprice Episode",
+		Status:   testutil.EpisodeStatusPublished,
+		Price:    500,
+	})
+	campaignID := pg.SeedEpisodeCampaignPrice(t, tenant.ID, episode.ID, 300, time.Now().Add(-time.Hour), time.Now().Add(time.Hour))
+
+	ticker := pg.OpenTickerDB(t)
+	_, err := ticker.ExecContext(ctx, "UPDATE episode_campaign_prices SET price = 1 WHERE id = $1", campaignID)
+	if err == nil {
+		t.Fatal("repricing a campaign as the ticker role succeeded, want a permission denied error")
+	}
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) || pgErr.Code != insufficientPrivilegeCode {
+		t.Fatalf("update campaign price error = %v, want SQLSTATE %s", err, insufficientPrivilegeCode)
 	}
 }
 

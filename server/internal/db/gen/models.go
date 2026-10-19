@@ -277,6 +277,20 @@ type Episode struct {
 	TranslationDeletedAt sql.NullTime   `json:"translation_deleted_at"`
 }
 
+type EpisodeCampaignPrice struct {
+	ID                 uuid.UUID     `json:"id"`
+	TenantID           uuid.UUID     `json:"tenant_id"`
+	PublicID           string        `json:"public_id"`
+	EpisodeID          uuid.UUID     `json:"episode_id"`
+	Price              int32         `json:"price"`
+	StartsAt           time.Time     `json:"starts_at"`
+	EndsAt             time.Time     `json:"ends_at"`
+	StartRevalidatedAt sql.NullTime  `json:"start_revalidated_at"`
+	EndRevalidatedAt   sql.NullTime  `json:"end_revalidated_at"`
+	CreatedByUserID    uuid.NullUUID `json:"created_by_user_id"`
+	CreatedAt          time.Time     `json:"created_at"`
+}
+
 type EpisodeComment struct {
 	ID              uuid.UUID      `json:"id"`
 	TenantID        uuid.UUID      `json:"tenant_id"`
@@ -586,6 +600,13 @@ type NotificationRead struct {
 	ReadAt         time.Time `json:"read_at"`
 }
 
+type OpenEpisodeCampaignPrice struct {
+	EpisodeID      uuid.UUID `json:"episode_id"`
+	TenantID       uuid.UUID `json:"tenant_id"`
+	CampaignPrice  int32     `json:"campaign_price"`
+	CampaignEndsAt time.Time `json:"campaign_ends_at"`
+}
+
 type OutboxEvent struct {
 	ID             uuid.UUID       `json:"id"`
 	TenantID       uuid.NullUUID   `json:"tenant_id"`
@@ -881,29 +902,30 @@ type PublishedFreeEpisode struct {
 }
 
 type Purchase struct {
-	ID                 uuid.UUID      `json:"id"`
-	UserID             uuid.NullUUID  `json:"user_id"`
-	EpisodeID          uuid.NullUUID  `json:"episode_id"`
-	PriceAtPurchase    int32          `json:"price_at_purchase"`
-	ExpiresAt          sql.NullTime   `json:"expires_at"`
-	PurchasedAt        time.Time      `json:"purchased_at"`
-	TenantID           uuid.UUID      `json:"tenant_id"`
-	ProviderCheckoutID sql.NullString `json:"provider_checkout_id"`
-	ProviderPaymentID  sql.NullString `json:"provider_payment_id"`
-	RefundedAmount     sql.NullInt32  `json:"refunded_amount"`
-	RefundedAt         sql.NullTime   `json:"refunded_at"`
-	Store              sql.NullString `json:"store"`
-	StoreTransactionID sql.NullString `json:"store_transaction_id"`
-	IsTest             bool           `json:"is_test"`
-	Provider           sql.NullString `json:"provider"`
-	Currency           string         `json:"currency"`
-	RevokedAt          sql.NullTime   `json:"revoked_at"`
-	RevocationReason   sql.NullString `json:"revocation_reason"`
-	StaffRefundAttempt int32          `json:"staff_refund_attempt"`
-	DisputeLostAt      sql.NullTime   `json:"dispute_lost_at"`
-	Kind               string         `json:"kind"`
-	VolumeID           uuid.NullUUID  `json:"volume_id"`
-	SeriesBundleID     uuid.NullUUID  `json:"series_bundle_id"`
+	ID                      uuid.UUID      `json:"id"`
+	UserID                  uuid.NullUUID  `json:"user_id"`
+	EpisodeID               uuid.NullUUID  `json:"episode_id"`
+	PriceAtPurchase         int32          `json:"price_at_purchase"`
+	ExpiresAt               sql.NullTime   `json:"expires_at"`
+	PurchasedAt             time.Time      `json:"purchased_at"`
+	TenantID                uuid.UUID      `json:"tenant_id"`
+	ProviderCheckoutID      sql.NullString `json:"provider_checkout_id"`
+	ProviderPaymentID       sql.NullString `json:"provider_payment_id"`
+	RefundedAmount          sql.NullInt32  `json:"refunded_amount"`
+	RefundedAt              sql.NullTime   `json:"refunded_at"`
+	Store                   sql.NullString `json:"store"`
+	StoreTransactionID      sql.NullString `json:"store_transaction_id"`
+	IsTest                  bool           `json:"is_test"`
+	Provider                sql.NullString `json:"provider"`
+	Currency                string         `json:"currency"`
+	RevokedAt               sql.NullTime   `json:"revoked_at"`
+	RevocationReason        sql.NullString `json:"revocation_reason"`
+	StaffRefundAttempt      int32          `json:"staff_refund_attempt"`
+	DisputeLostAt           sql.NullTime   `json:"dispute_lost_at"`
+	Kind                    string         `json:"kind"`
+	VolumeID                uuid.NullUUID  `json:"volume_id"`
+	SeriesBundleID          uuid.NullUUID  `json:"series_bundle_id"`
+	ProviderPromotionCodeID sql.NullString `json:"provider_promotion_code_id"`
 }
 
 type ReaderIconPreset struct {

@@ -95,6 +95,7 @@ func buildWorker(deps shared) (_ half, err error) {
 		PinnedAnnouncementInterval: envSeconds("PUBLIRA_PINNED_ANNOUNCEMENT_INTERVAL_SECONDS", 0),
 		SeriesPublicationInterval:  envSeconds("PUBLIRA_SERIES_PUBLICATION_INTERVAL_SECONDS", 0),
 		CampaignBannerInterval:     envSeconds("PUBLIRA_CAMPAIGN_BANNER_INTERVAL_SECONDS", 0),
+		CampaignPriceInterval:      envSeconds("PUBLIRA_CAMPAIGN_PRICE_INTERVAL_SECONDS", 0),
 	})
 	if err != nil {
 		return half{}, failed("failed to initialize the ticker jobs", err)

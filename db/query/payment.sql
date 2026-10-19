@@ -65,12 +65,19 @@ SELECT e.id,
     el.rental_period_hours,
     -- Where the episode may be bought, which the caller holds against the
     -- surface the checkout is started from.
-    epa.purchase_availability
+    epa.purchase_availability,
+    -- The campaign price the permanent copy sells for at this moment, NULL
+    -- when no campaign is open on the episode. It is read in the statement
+    -- that reads the listing, so the price charged is the one in force when
+    -- the checkout starts.
+    ocp.campaign_price,
+    ocp.campaign_ends_at
 FROM episodes e
     CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et
     JOIN series s ON s.id = e.series_id
     JOIN episode_listings el ON el.episode_id = e.id
     JOIN episode_purchase_availability epa ON epa.episode_id = e.id
+    LEFT JOIN open_episode_campaign_prices ocp ON ocp.episode_id = e.id
 WHERE e.id = sqlc.arg('id')
     AND e.tenant_id = sqlc.arg('tenant_id')
     AND s.tenant_id = sqlc.arg('tenant_id')
@@ -294,7 +301,8 @@ INSERT INTO purchases (
     provider_payment_id,
     is_test,
     currency,
-    kind
+    kind,
+    provider_promotion_code_id
 )
 VALUES (
     sqlc.arg('id')::uuid,
@@ -308,7 +316,8 @@ VALUES (
     sqlc.narg('provider_payment_id')::text,
     sqlc.arg('is_test')::boolean,
     sqlc.arg('currency')::text,
-    sqlc.arg('kind')::text
+    sqlc.arg('kind')::text,
+    sqlc.narg('provider_promotion_code_id')::text
 )
 ON CONFLICT (provider, provider_checkout_id) DO NOTHING
 RETURNING *;

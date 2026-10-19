@@ -376,6 +376,18 @@ message Episode {
   // Series.locale is: a public read names the one it served, and the
   // console's reads leave it empty.
   string locale = 21;
+  // The campaign price open on the episode: what its permanent copy sells for
+  // until `campaign_ends_at` (RFC3339), in the minor unit `price` is in, and
+  // what StartEpisodeCheckout charges for it meanwhile. `price` stays the
+  // stored price, because that is what the permanent copy costs again once the
+  // campaign ends, and the rental keeps `rental_price`. A campaign price is
+  // always below `price`. Both are 0 and empty when no campaign is open, and a
+  // free window open over a campaign still opens the episode to everyone.
+  //
+  // Set on GetEpisodeDetail and on the episodes GetSeriesDetail lists; 0 and
+  // empty elsewhere, the console's reads included.
+  int32 campaign_price = 22;
+  string campaign_ends_at = 23;
 }
 
 // Which way the pages of a work are turned. A series states it for every one

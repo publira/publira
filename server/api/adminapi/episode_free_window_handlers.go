@@ -29,11 +29,11 @@ const (
 	maxFreeWindowListLimit     int32 = 100
 )
 
-// maxSeriesFreeWindowEpisodes bounds the episodes one CreateSeriesFreeWindows
-// call may name, the same bound BulkEditEpisodeCredits puts on its range and
-// for the same series: one that runs to roughly 800 episodes still fits in a
-// single campaign.
-const maxSeriesFreeWindowEpisodes = 1000
+// maxSeriesScheduleEpisodes bounds the episodes one CreateSeriesFreeWindows or
+// CreateSeriesCampaignPrices call may name, the same bound
+// BulkEditEpisodeCredits puts on its range and for the same series: one that
+// runs to roughly 800 episodes still fits in a single campaign.
+const maxSeriesScheduleEpisodes = 1000
 
 // seriesFreeWindowEpisodes reads the episodes a CreateSeriesFreeWindows call
 // names. Nil means every episode of the series.
@@ -45,22 +45,22 @@ func seriesFreeWindowEpisodes(raw []string) ([]uuid.UUID, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(ids) > maxSeriesFreeWindowEpisodes {
+	if len(ids) > maxSeriesScheduleEpisodes {
 		return nil, rpcerrors.NewFieldViolationError(
 			connect.CodeInvalidArgument,
-			fmt.Errorf("episode_ids must name at most %d episodes", maxSeriesFreeWindowEpisodes),
+			fmt.Errorf("episode_ids must name at most %d episodes", maxSeriesScheduleEpisodes),
 			"episode_ids",
 		)
 	}
 	return ids, nil
 }
 
-// selectSeriesFreeWindowEpisodes narrows the series' episodes to the ones the
-// call named, keeping the series' own order. An id the series does not have —
+// selectSeriesEpisodes narrows the series' episodes to the ones a call that
+// schedules several of them named, keeping the series' own order. An id the series does not have —
 // another series' episode, another tenant's, or none at all — fails the whole
 // call rather than being skipped, since the campaign the caller composed would
 // otherwise be smaller than the one it asked for.
-func selectSeriesFreeWindowEpisodes(
+func selectSeriesEpisodes(
 	episodes []dbmodels.ListEpisodesBySeriesForTenantRow,
 	named []uuid.UUID,
 ) ([]dbmodels.ListEpisodesBySeriesForTenantRow, error) {
@@ -83,47 +83,48 @@ func selectSeriesFreeWindowEpisodes(
 	return selected, nil
 }
 
-// freeWindowPeriod is a validated request period, in UTC.
-type freeWindowPeriod struct {
+// scheduledPeriod is a validated request period, in UTC.
+type scheduledPeriod struct {
 	startsAt time.Time
 	endsAt   time.Time
 }
 
-// openAt reports whether the period covers now. The window is half-open, so the
-// end instant is already outside it.
-func (p freeWindowPeriod) openAt(now time.Time) bool {
+// openAt reports whether the period covers now. The period is half-open, so
+// the end instant is already outside it.
+func (p scheduledPeriod) openAt(now time.Time) bool {
 	return !p.startsAt.After(now) && p.endsAt.After(now)
 }
 
-// parseFreeWindowPeriod reads the two instants a window is scheduled between.
+// parseScheduledPeriod reads the two instants a free window or a campaign
+// price is scheduled between.
 //
-// A window may start in the past — that is how an editor makes an episode free
-// right now — but one that has already ended is rejected: it would change
-// nothing, and the value an editor meant to type is more likely a mistake than
-// a campaign nobody can read.
-func parseFreeWindowPeriod(startsAt, endsAt string, now time.Time) (freeWindowPeriod, error) {
+// A period may start in the past — that is how an editor makes an episode free,
+// or cheaper, right now — but one that has already ended is rejected: it would
+// change nothing, and the value an editor meant to type is more likely a
+// mistake than a campaign nobody can read.
+func parseScheduledPeriod(startsAt, endsAt string, now time.Time) (scheduledPeriod, error) {
 	start, err := time.Parse(time.RFC3339, startsAt)
 	if err != nil {
-		return freeWindowPeriod{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("starts_at must be RFC3339"), "starts_at")
+		return scheduledPeriod{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("starts_at must be RFC3339"), "starts_at")
 	}
 	end, err := time.Parse(time.RFC3339, endsAt)
 	if err != nil {
-		return freeWindowPeriod{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("ends_at must be RFC3339"), "ends_at")
+		return scheduledPeriod{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("ends_at must be RFC3339"), "ends_at")
 	}
 	// Both instants are reported back with time.RFC3339, which carries no
 	// fractional second. Storing what is reported is what lets a client use one
 	// window's ends_at as the next one's starts_at, as the RPC documents:
 	// a stored microsecond the response cannot show would make that follow-up
 	// overlap by less than a second and be refused.
-	period := freeWindowPeriod{
+	period := scheduledPeriod{
 		startsAt: start.UTC().Truncate(time.Second),
 		endsAt:   end.UTC().Truncate(time.Second),
 	}
 	if !period.endsAt.After(period.startsAt) {
-		return freeWindowPeriod{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("ends_at must be after starts_at"), "ends_at")
+		return scheduledPeriod{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("ends_at must be after starts_at"), "ends_at")
 	}
 	if !period.endsAt.After(now) {
-		return freeWindowPeriod{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("ends_at must be in the future"), "ends_at")
+		return scheduledPeriod{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, errors.New("ends_at must be in the future"), "ends_at")
 	}
 	return period, nil
 }
@@ -148,7 +149,7 @@ func createdByUserID(ctx context.Context) uuid.NullUUID {
 	return uuid.NullUUID{UUID: sessionCtx.User.ID, Valid: true}
 }
 
-func (s *adminServer) recordFreeWindowAudit(
+func (s *adminServer) recordScheduleAudit(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	action, targetType, targetID, clientIP string,
@@ -204,7 +205,7 @@ func (s *adminServer) CreateEpisodeFreeWindow(
 	if err != nil {
 		return nil, err
 	}
-	period, err := parseFreeWindowPeriod(req.StartsAt, req.EndsAt, time.Now())
+	period, err := parseScheduledPeriod(req.StartsAt, req.EndsAt, time.Now())
 	if err != nil {
 		return nil, err
 	}
@@ -271,7 +272,7 @@ func (s *adminServer) CreateEpisodeFreeWindow(
 		return nil, s.internalDBError(ctx, "failed to load created episode free window", err, "tenant_id", tenant.ID.String(), "free_window_id", created.ID.String())
 	}
 
-	s.recordFreeWindowAudit(
+	s.recordScheduleAudit(
 		ctx,
 		tenant.ID,
 		"episode_free_window_created",
@@ -296,7 +297,7 @@ func (s *adminServer) CreateSeriesFreeWindows(
 	if err != nil {
 		return nil, err
 	}
-	period, err := parseFreeWindowPeriod(req.StartsAt, req.EndsAt, time.Now())
+	period, err := parseScheduledPeriod(req.StartsAt, req.EndsAt, time.Now())
 	if err != nil {
 		return nil, err
 	}
@@ -340,7 +341,7 @@ func (s *adminServer) CreateSeriesFreeWindows(
 	if len(episodes) == 0 {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, "series has no episodes")
 	}
-	episodes, err = selectSeriesFreeWindowEpisodes(episodes, namedEpisodeIDs)
+	episodes, err = selectSeriesEpisodes(episodes, namedEpisodeIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -396,7 +397,7 @@ func (s *adminServer) CreateSeriesFreeWindows(
 	}
 	s.reval.Send(ctx, owed)
 
-	s.recordFreeWindowAudit(
+	s.recordScheduleAudit(
 		ctx,
 		tenant.ID,
 		"series_free_windows_created",
@@ -639,7 +640,7 @@ func (s *adminServer) DeleteEpisodeFreeWindow(
 		return nil, err
 	}
 
-	s.recordFreeWindowAudit(
+	s.recordScheduleAudit(
 		ctx,
 		tenant.ID,
 		"episode_free_window_deleted",

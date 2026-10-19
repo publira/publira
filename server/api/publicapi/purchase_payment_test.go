@@ -261,23 +261,34 @@ func expectPurchasableEpisode(mock sqlmock.Sqlmock, tenantID, episodeID uuid.UUI
 // expectPurchasableEpisodeTitled is [expectPurchasableEpisode] for an episode
 // of the given title.
 func expectPurchasableEpisodeTitled(mock sqlmock.Sqlmock, tenantID, episodeID uuid.UUID, surface, purchaseAvailability, title string) {
-	expectPurchasableEpisodeRow(mock, tenantID, episodeID, surface, purchaseAvailability, title, sql.NullInt32{}, sql.NullInt32{})
+	expectPurchasableEpisodeRow(mock, tenantID, episodeID, surface, purchaseAvailability, title, sql.NullInt32{}, sql.NullInt32{}, sql.NullInt32{})
 }
 
 // expectRentedEpisode is [expectPurchasableEpisode] for an episode also rented
 // at 200 for 48 hours.
 func expectRentedEpisode(mock sqlmock.Sqlmock, tenantID, episodeID uuid.UUID, surface string) {
 	expectPurchasableEpisodeRow(mock, tenantID, episodeID, surface, "all", "Paid episode",
-		sql.NullInt32{Int32: 200, Valid: true}, sql.NullInt32{Int32: 48, Valid: true})
+		sql.NullInt32{Int32: 200, Valid: true}, sql.NullInt32{Int32: 48, Valid: true}, sql.NullInt32{})
 }
 
-func expectPurchasableEpisodeRow(mock sqlmock.Sqlmock, tenantID, episodeID uuid.UUID, surface, purchaseAvailability, title string, rentalPrice, rentalPeriodHours sql.NullInt32) {
+// expectCampaignEpisode is [expectRentedEpisode] for an episode whose
+// permanent copy sells for 300 under a campaign open on it.
+func expectCampaignEpisode(mock sqlmock.Sqlmock, tenantID, episodeID uuid.UUID, surface string) {
+	expectPurchasableEpisodeRow(mock, tenantID, episodeID, surface, "all", "Paid episode",
+		sql.NullInt32{Int32: 200, Valid: true}, sql.NullInt32{Int32: 48, Valid: true}, sql.NullInt32{Int32: 300, Valid: true})
+}
+
+func expectPurchasableEpisodeRow(mock sqlmock.Sqlmock, tenantID, episodeID uuid.UUID, surface, purchaseAvailability, title string, rentalPrice, rentalPeriodHours, campaignPrice sql.NullInt32) {
+	campaignEndsAt := sql.NullTime{}
+	if campaignPrice.Valid {
+		campaignEndsAt = sql.NullTime{Time: time.Now().Add(time.Hour), Valid: true}
+	}
 	// The locale is the reader's for a checkout and empty for a store purchase,
 	// whose answer names no title; what these tests assert does not turn on it.
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPurchasableEpisodeForTenant)).
 		WithArgs(sqlmock.AnyArg(), episodeID, tenantID, surface).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "series_public_id", "price", "reading_period_hours", "rental_price", "rental_period_hours", "purchase_availability"}).
-			AddRow(episodeID, "EPISODE001", title, "SERIES001", int32(500), sql.NullInt32{}, rentalPrice, rentalPeriodHours, purchaseAvailability))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "title", "series_public_id", "price", "reading_period_hours", "rental_price", "rental_period_hours", "purchase_availability", "campaign_price", "campaign_ends_at"}).
+			AddRow(episodeID, "EPISODE001", title, "SERIES001", int32(500), sql.NullInt32{}, rentalPrice, rentalPeriodHours, purchaseAvailability, campaignPrice, campaignEndsAt))
 }
 
 // expectNoActivePurchase answers that the reader holds neither of the
@@ -536,6 +547,13 @@ func TestStartEpisodeCheckoutReturnsMobileCheckoutToApp(t *testing.T) {
 // the RPC's error.
 func startRentalCheckout(t *testing.T, env publicPaymentServer, encryptor *secretcrypto.Manager, kind publirattypesv1.PurchaseKind, holdsPurchase, holdsRental bool) error {
 	t.Helper()
+	return startCheckoutOf(t, env, encryptor, kind, holdsPurchase, holdsRental, expectRentedEpisode)
+}
+
+// startCheckoutOf is [startRentalCheckout] of the episode expectEpisode
+// answers.
+func startCheckoutOf(t *testing.T, env publicPaymentServer, encryptor *secretcrypto.Manager, kind publirattypesv1.PurchaseKind, holdsPurchase, holdsRental bool, expectEpisode func(sqlmock.Sqlmock, uuid.UUID, uuid.UUID, string)) error {
+	t.Helper()
 	now := time.Now()
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
@@ -544,7 +562,7 @@ func startRentalCheckout(t *testing.T, env publicPaymentServer, encryptor *secre
 	expectAuthSession(env.mock, tenantID, userID, now)
 	expectLegalPagesAgreed(env.mock, tenantID, userID)
 	expectEnabledPaymentConfig(t, env.mock, tenantID, encryptor, testCheckoutSecretKey, testCheckoutWebhookSecret, now)
-	expectRentedEpisode(env.mock, tenantID, episodeID, "web")
+	expectEpisode(env.mock, tenantID, episodeID, "web")
 	expectNoEpisodeGrant(env.mock, tenantID, userID, episodeID)
 	expectActivePurchases(env.mock, tenantID, userID, episodeID, holdsPurchase, holdsRental)
 	refused := holdsPurchase || (holdsRental && kind == publirattypesv1.PurchaseKind_PURCHASE_KIND_RENTAL)
@@ -578,6 +596,33 @@ func TestStartEpisodeCheckoutSellsTheRental(t *testing.T) {
 	}
 	if got, want := env.checkout.input.LineItemName, "Paid episode (rental, 48 hours)"; got != want {
 		t.Fatalf("line item = %q, want %q", got, want)
+	}
+}
+
+// A campaign cuts what the permanent copy is charged while it is open, and the
+// rental keeps its own price beside it.
+func TestStartEpisodeCheckoutChargesTheCampaignPriceForThePermanentCopy(t *testing.T) {
+	cases := []struct {
+		kind      publirattypesv1.PurchaseKind
+		wantKind  paymentprovider.Kind
+		wantPrice int32
+	}{
+		{kind: publirattypesv1.PurchaseKind_PURCHASE_KIND_PURCHASE, wantKind: paymentprovider.KindPurchase, wantPrice: 300},
+		{kind: publirattypesv1.PurchaseKind_PURCHASE_KIND_RENTAL, wantKind: paymentprovider.KindRental, wantPrice: 200},
+	}
+	for _, tc := range cases {
+		t.Run(tc.kind.String(), func(t *testing.T) {
+			encryptor := newPublicTestEncryptor(t)
+			env := newPublicPaymentServer(t, encryptor)
+
+			if err := startCheckoutOf(t, env, encryptor, tc.kind, false, false, expectCampaignEpisode); err != nil {
+				t.Fatalf("StartEpisodeCheckout: %v", err)
+			}
+			purchase := env.checkout.input.Purchase
+			if purchase.Kind != tc.wantKind || purchase.Price != tc.wantPrice {
+				t.Fatalf("checkout purchase = %+v, want %s at %d", purchase, tc.wantKind, tc.wantPrice)
+			}
+		})
 	}
 }
 

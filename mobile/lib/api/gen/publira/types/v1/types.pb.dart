@@ -1723,6 +1723,8 @@ class Episode extends $pb.GeneratedMessage {
     $core.int? rentalPrice,
     $core.int? rentalPeriodHours,
     $core.String? locale,
+    $core.int? campaignPrice,
+    $core.String? campaignEndsAt,
   }) {
     final result = Episode._();
     if (publicId != null) result.publicId = publicId;
@@ -1750,6 +1752,8 @@ class Episode extends $pb.GeneratedMessage {
     if (rentalPrice != null) result.rentalPrice = rentalPrice;
     if (rentalPeriodHours != null) result.rentalPeriodHours = rentalPeriodHours;
     if (locale != null) result.locale = locale;
+    if (campaignPrice != null) result.campaignPrice = campaignPrice;
+    if (campaignEndsAt != null) result.campaignEndsAt = campaignEndsAt;
     return result;
   }
 
@@ -1794,6 +1798,8 @@ class Episode extends $pb.GeneratedMessage {
     ..aI(19, _omitFieldNames ? '' : 'rentalPrice')
     ..aI(20, _omitFieldNames ? '' : 'rentalPeriodHours')
     ..aOS(21, _omitFieldNames ? '' : 'locale')
+    ..aI(22, _omitFieldNames ? '' : 'campaignPrice')
+    ..aOS(23, _omitFieldNames ? '' : 'campaignEndsAt')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2053,6 +2059,34 @@ class Episode extends $pb.GeneratedMessage {
   $core.bool hasLocale() => $_has(20);
   @$pb.TagNumber(21)
   void clearLocale() => $_clearField(21);
+
+  /// The campaign price open on the episode: what its permanent copy sells for
+  /// until `campaign_ends_at` (RFC3339), in the minor unit `price` is in, and
+  /// what StartEpisodeCheckout charges for it meanwhile. `price` stays the
+  /// stored price, because that is what the permanent copy costs again once the
+  /// campaign ends, and the rental keeps `rental_price`. A campaign price is
+  /// always below `price`. Both are 0 and empty when no campaign is open, and a
+  /// free window open over a campaign still opens the episode to everyone.
+  ///
+  /// Set on GetEpisodeDetail and on the episodes GetSeriesDetail lists; 0 and
+  /// empty elsewhere, the console's reads included.
+  @$pb.TagNumber(22)
+  $core.int get campaignPrice => $_getIZ(21);
+  @$pb.TagNumber(22)
+  set campaignPrice($core.int value) => $_setSignedInt32(21, value);
+  @$pb.TagNumber(22)
+  $core.bool hasCampaignPrice() => $_has(21);
+  @$pb.TagNumber(22)
+  void clearCampaignPrice() => $_clearField(22);
+
+  @$pb.TagNumber(23)
+  $core.String get campaignEndsAt => $_getSZ(22);
+  @$pb.TagNumber(23)
+  set campaignEndsAt($core.String value) => $_setString(22, value);
+  @$pb.TagNumber(23)
+  $core.bool hasCampaignEndsAt() => $_has(22);
+  @$pb.TagNumber(23)
+  void clearCampaignEndsAt() => $_clearField(23);
 }
 
 class EpisodeImage extends $pb.GeneratedMessage {

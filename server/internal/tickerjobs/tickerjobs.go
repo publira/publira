@@ -2,7 +2,8 @@
 // passes — promoting due episodes, applying free window boundaries and the
 // publication of scheduled series, turning over each tenant's calendar day,
 // taking down a banner whose pinned window has closed, and applying the
-// boundaries of scheduled campaign banners — as River periodic jobs.
+// boundaries of scheduled campaign banners and campaign prices — as River
+// periodic jobs.
 //
 // Each of them used to be a process of its own on a ticker, which meant a
 // deployment each to schedule, supervise, and keep from overlapping. River is
@@ -29,6 +30,7 @@ import (
 	"github.com/riverqueue/river/rivertype"
 
 	"github.com/publira/publira/server/internal/campaignbanners"
+	"github.com/publira/publira/server/internal/campaignprices"
 	"github.com/publira/publira/server/internal/dayroll"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/freewindows"
@@ -51,6 +53,7 @@ const (
 	ServiceNameExpirePinnedAnnouncements = "publira-expire-pinned-announcements"
 	ServiceNameApplySeriesPublications   = "publira-apply-series-publications"
 	ServiceNameApplyCampaignBanners      = "publira-apply-campaign-banners"
+	ServiceNameApplyCampaignPrices       = "publira-apply-campaign-prices"
 )
 
 // QueueName is the River queue they run on. They are kept off the default queue
@@ -62,7 +65,7 @@ const QueueName = "ticker"
 // queueMaxWorkers is one slot per job. Two runs of the same job are already
 // refused by the unique constraint below, and the jobs are independent of each
 // other, so nothing is gained by a wider queue.
-const queueMaxWorkers = 6
+const queueMaxWorkers = 7
 
 const (
 	kindPublishEpisodes  = "ticker.publish_episodes"
@@ -72,6 +75,7 @@ const (
 	kindExpirePinnedAnnouncements = "ticker.expire_pinned_announcements"
 	kindApplySeriesPublications   = "ticker.apply_series_publications"
 	kindApplyCampaignBanners      = "ticker.apply_campaign_banners"
+	kindApplyCampaignPrices       = "ticker.apply_campaign_prices"
 
 	DefaultPublishInterval            = time.Minute
 	DefaultPublishMaxRetries          = 3
@@ -80,6 +84,7 @@ const (
 	DefaultPinnedAnnouncementInterval = time.Minute
 	DefaultSeriesPublicationInterval  = time.Minute
 	DefaultCampaignBannerInterval     = time.Minute
+	DefaultCampaignPriceInterval      = time.Minute
 
 	// jobTimeout bounds one pass. It is well above any interval because a pass
 	// that has fallen behind is the one that must not be cut off half way: it
@@ -98,6 +103,7 @@ func ServiceNames() []string {
 		ServiceNameExpirePinnedAnnouncements,
 		ServiceNameApplySeriesPublications,
 		ServiceNameApplyCampaignBanners,
+		ServiceNameApplyCampaignPrices,
 	}
 }
 
@@ -125,6 +131,7 @@ type Config struct {
 	PinnedAnnouncementInterval time.Duration
 	SeriesPublicationInterval  time.Duration
 	CampaignBannerInterval     time.Duration
+	CampaignPriceInterval      time.Duration
 }
 
 func (c Config) withDefaults() Config {
@@ -149,6 +156,9 @@ func (c Config) withDefaults() Config {
 	if c.CampaignBannerInterval <= 0 {
 		c.CampaignBannerInterval = DefaultCampaignBannerInterval
 	}
+	if c.CampaignPriceInterval <= 0 {
+		c.CampaignPriceInterval = DefaultCampaignPriceInterval
+	}
 	return c
 }
 
@@ -164,6 +174,7 @@ type Jobs struct {
 	pinned     *pinnedannouncements.Runner
 	series     *seriespublications.Runner
 	banners    *campaignbanners.Runner
+	prices     *campaignprices.Runner
 }
 
 // New constructs the runners over cfg.DB.
@@ -183,6 +194,7 @@ func New(cfg Config) (*Jobs, error) {
 		pinned:  pinnedannouncements.New(queries, cfg.Revalidate, cfg.Logger),
 		series:  seriespublications.New(queries, cfg.Revalidate, cfg.Logger),
 		banners: campaignbanners.New(queries, cfg.Revalidate, cfg.Logger),
+		prices:  campaignprices.New(queries, cfg.Revalidate, cfg.Logger),
 	}, nil
 }
 
@@ -205,6 +217,9 @@ func (j *Jobs) Register(workers *river.Workers) error {
 	}
 	if err := river.AddWorkerSafely(workers, &applyCampaignBannersWorker{jobs: j}); err != nil {
 		return fmt.Errorf("tickerjobs: register apply-campaign-banners worker: %w", err)
+	}
+	if err := river.AddWorkerSafely(workers, &applyCampaignPricesWorker{jobs: j}); err != nil {
+		return fmt.Errorf("tickerjobs: register apply-campaign-prices worker: %w", err)
 	}
 	return nil
 }
@@ -229,6 +244,7 @@ func (j *Jobs) schedule() []scheduled {
 		{schedule: river.PeriodicInterval(j.cfg.PinnedAnnouncementInterval), args: ExpirePinnedAnnouncementsArgs{}},
 		{schedule: river.PeriodicInterval(j.cfg.SeriesPublicationInterval), args: ApplySeriesPublicationsArgs{}},
 		{schedule: river.PeriodicInterval(j.cfg.CampaignBannerInterval), args: ApplyCampaignBannersArgs{}},
+		{schedule: river.PeriodicInterval(j.cfg.CampaignPriceInterval), args: ApplyCampaignPricesArgs{}},
 	}
 }
 
@@ -267,6 +283,7 @@ func (j *Jobs) Settings() []any {
 		"pinned_announcement_interval", j.cfg.PinnedAnnouncementInterval,
 		"series_publication_interval", j.cfg.SeriesPublicationInterval,
 		"campaign_banner_interval", j.cfg.CampaignBannerInterval,
+		"campaign_price_interval", j.cfg.CampaignPriceInterval,
 	}
 }
 
@@ -316,6 +333,14 @@ type ApplyCampaignBannersArgs struct{}
 func (ApplyCampaignBannersArgs) Kind() string { return kindApplyCampaignBanners }
 
 func (ApplyCampaignBannersArgs) InsertOpts() river.InsertOpts { return tickerInsertOpts() }
+
+// ApplyCampaignPricesArgs drops the public site caches at every campaign price
+// boundary that has passed.
+type ApplyCampaignPricesArgs struct{}
+
+func (ApplyCampaignPricesArgs) Kind() string { return kindApplyCampaignPrices }
+
+func (ApplyCampaignPricesArgs) InsertOpts() river.InsertOpts { return tickerInsertOpts() }
 
 // tickerInsertOpts is what keeps one tenant from being written twice.
 //
@@ -439,6 +464,22 @@ func (w *applyCampaignBannersWorker) Work(ctx context.Context, _ *river.Job[Appl
 	ctx, end := startRun(ctx, ServiceNameApplyCampaignBanners, kindApplyCampaignBanners)
 	defer end()
 	w.jobs.banners.RunOnce(ctx)
+	return nil
+}
+
+type applyCampaignPricesWorker struct {
+	river.WorkerDefaults[ApplyCampaignPricesArgs]
+	jobs *Jobs
+}
+
+func (w *applyCampaignPricesWorker) Timeout(*river.Job[ApplyCampaignPricesArgs]) time.Duration {
+	return jobTimeout
+}
+
+func (w *applyCampaignPricesWorker) Work(ctx context.Context, _ *river.Job[ApplyCampaignPricesArgs]) error {
+	ctx, end := startRun(ctx, ServiceNameApplyCampaignPrices, kindApplyCampaignPrices)
+	defer end()
+	w.jobs.prices.RunOnce(ctx)
 	return nil
 }
 

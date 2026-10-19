@@ -9099,6 +9099,13 @@ class RecordContentViewResponse extends $pb.GeneratedMessage {
 /// provider's webhook after a successful payment, never by the browser's return
 /// URL.
 ///
+/// The permanent copy is charged Episode.campaign_price while a campaign is
+/// open on the episode, and Episode.price otherwise, resolved when the checkout
+/// starts; the rental is always charged Episode.rental_price. A provider that
+/// takes promotion codes lets the reader enter one on its checkout page, and
+/// the purchase records what the reader paid once the code's discount is
+/// taken off (MyPurchase.price_at_purchase).
+///
 /// `client` also names the surface the checkout is started from: CLIENT_MOBILE
 /// is the app, and every other value the storefront. An episode that surface
 /// may not show is not_found, as it is in the catalog, and one it shows but may
