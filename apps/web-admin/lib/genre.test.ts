@@ -430,7 +430,7 @@ describe("saveGenreNames", () => {
     );
   });
 
-  it("stops at the first refused name and says whether an earlier one was written", async () => {
+  it("stops at the first refused name", async () => {
     mockUpdateGenre
       .mockResolvedValueOnce({ genre: savedGenre })
       .mockRejectedValueOnce(
@@ -456,7 +456,6 @@ describe("saveGenreNames", () => {
       message:
         "This site does not offer that language. Switch it on under Languages first.",
       ok: false,
-      saved: true,
     });
     expect(mockUpdateGenre).toHaveBeenCalledTimes(2);
     expect(mockDeleteGenreTranslation).not.toHaveBeenCalled();

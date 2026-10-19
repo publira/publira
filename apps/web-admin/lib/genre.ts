@@ -77,8 +77,8 @@ export interface GenreNameWrite {
 
 export type SaveGenreNamesResult =
   | { ok: true }
-  /** `saved` says an earlier name was written before the one that failed. */
-  | { ok: false; message: string; saved: boolean };
+  /** The names before the one that failed are written. */
+  | { ok: false; message: string };
 
 /**
  * `notFound: true` is the "there is nothing to show here" failure the genre
@@ -440,18 +440,14 @@ const deleteGenreTranslation = async (
 const writeInTurn = async (
   writes: readonly (() => Promise<
     { ok: true } | { ok: false; message: string }
-  >)[],
-  saved = false
+  >)[]
 ): Promise<SaveGenreNamesResult> => {
   const [write, ...rest] = writes;
   if (!write) {
     return { ok: true };
   }
   const result = await write();
-  if (!result.ok) {
-    return { message: result.message, ok: false, saved };
-  }
-  return writeInTurn(rest, true);
+  return result.ok ? writeInTurn(rest) : result;
 };
 
 /**

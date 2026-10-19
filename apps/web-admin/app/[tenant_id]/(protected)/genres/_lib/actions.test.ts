@@ -159,7 +159,6 @@ describe("createGenreAction", () => {
     mockSaveGenreNames.mockResolvedValueOnce({
       message: "Could not save the genre. Please try again later.",
       ok: false,
-      saved: false,
     });
 
     const { createGenreAction } = await import("./actions");
@@ -240,7 +239,6 @@ describe("renameGenreAction", () => {
     mockSaveGenreNames.mockResolvedValueOnce({
       message: "A genre with this name already exists.",
       ok: false,
-      saved: true,
     });
 
     const { renameGenreAction } = await import("./actions");
@@ -253,6 +251,17 @@ describe("renameGenreAction", () => {
       message: "A genre with this name already exists.",
       ok: false,
     });
+    expect(mockUpdateTag).toHaveBeenCalledWith("genres-TENANT001");
+  });
+
+  it("clears the list when a later write throws, and passes the error on", async () => {
+    const error = new Error("unclassified");
+    mockSaveGenreNames.mockRejectedValueOnce(error);
+
+    const { renameGenreAction } = await import("./actions");
+    await expect(
+      renameGenreAction(null, namesFormData({ en: "Mystery", ja: "Fantaji" }))
+    ).rejects.toBe(error);
     expect(mockUpdateTag).toHaveBeenCalledWith("genres-TENANT001");
   });
 });

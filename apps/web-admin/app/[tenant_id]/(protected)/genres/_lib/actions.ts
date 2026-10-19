@@ -285,17 +285,20 @@ export const renameGenreAction = async (
         ? [translationLocale]
         : []
   );
-  const result = await withAdminSessionReauth(() =>
-    saveGenreNames({ id, names, removedLocales, tenantId }, locale)
-  );
+  // The names are written one request at a time, so a save that stops part
+  // way — refused, or thrown by an error the Action passes on — may already
+  // have written the ones before it. The list is cleared however it ends.
+  let result: Awaited<ReturnType<typeof saveGenreNames>>;
+  try {
+    result = await withAdminSessionReauth(() =>
+      saveGenreNames({ id, names, removedLocales, tenantId }, locale)
+    );
+  } finally {
+    updateTag(genresCacheTag(tenantId));
+  }
   if (!result.ok) {
-    if (result.saved) {
-      updateTag(genresCacheTag(tenantId));
-    }
     return { message: result.message, ok: false };
   }
-
-  updateTag(genresCacheTag(tenantId));
 
   return {
     message: t("admin.genres.updated"),
