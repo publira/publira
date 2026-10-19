@@ -26,6 +26,7 @@ void main() {
   MyPurchase purchase(
     String id, {
     bool isActive = true,
+    PurchaseKind kind = PurchaseKind.purchase,
     DateTime? expiresAt,
     String? episodeTitle,
     int refundedAmount = 0,
@@ -41,6 +42,7 @@ void main() {
     price: 500,
     currency: 'JPY',
     isActive: isActive,
+    kind: kind,
     refundedAmount: refundedAmount,
     purchasedAt: DateTime.utc(2026, 1, 10, 12),
     expiresAt: expiresAt,
@@ -237,6 +239,61 @@ void main() {
       ];
       await openPurchases(tester);
       await pumpUntilFound(tester, find.textContaining('Readable until '));
+    });
+
+    testWidgets('names a rental and the time it has left', (tester) async {
+      purchases.pages = [
+        [
+          purchase(
+            'purchase-rental',
+            kind: PurchaseKind.rental,
+            expiresAt: DateTime.now().add(
+              const Duration(hours: 47, minutes: 29, seconds: 30),
+            ),
+          ),
+          purchase('purchase-copy'),
+        ],
+      ];
+      await openPurchases(tester);
+      final rental = find.byKey(const ValueKey('purchase-row-purchase-rental'));
+      await pumpUntilFound(tester, rental);
+
+      expect(
+        find.descendant(of: rental, matching: find.textContaining('Rental · ')),
+        findsOne,
+      );
+      expect(
+        find.descendant(of: rental, matching: find.text('47 hr 30 min left')),
+        findsOne,
+      );
+      final copy = find.byKey(const ValueKey('purchase-row-purchase-copy'));
+      expect(
+        find.descendant(of: copy, matching: find.textContaining('Rental')),
+        findsNothing,
+      );
+      expect(find.textContaining(' left'), findsOne);
+    });
+
+    testWidgets('counts no time left on a rental that ended', (tester) async {
+      purchases.pages = [
+        [
+          purchase(
+            'purchase-rental',
+            kind: PurchaseKind.rental,
+            isActive: false,
+            expiresAt: DateTime.utc(2026, 1, 12, 12),
+          ),
+        ],
+      ];
+      await openPurchases(tester);
+      final rental = find.byKey(const ValueKey('purchase-row-purchase-rental'));
+      await pumpUntilFound(tester, rental);
+
+      expect(
+        find.descendant(of: rental, matching: find.text('Expired')),
+        findsOne,
+      );
+      expect(find.textContaining(' left'), findsNothing);
     });
 
     testWidgets('opens the episode a row stands for', (tester) async {

@@ -7,8 +7,10 @@ import 'package:publira/app.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/links/app_link.dart';
 import 'package:publira/models/episode_detail.dart';
+import 'package:publira/models/my_purchase.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/purchase/purchase_failure.dart';
+import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/router.dart';
 import 'package:publira/screens/episode_viewer_screen.dart';
 
@@ -434,6 +436,112 @@ void main() {
         findsNothing,
       );
       await pumpUntilNoPendingFrameCallbacks(tester);
+    });
+  });
+
+  group('a rented episode', () {
+    final rent = find.byKey(ValueKey('episode-rent-$paidEpisodeId'));
+    final row = find.byKey(ValueKey('episode-tile-$paidEpisodeId'));
+
+    setUp(() {
+      catalog
+        ..details = fixtureDetails(rented: true)
+        ..episodes = fixtureEpisodes(
+          access: EpisodeAccess.locked,
+          rented: true,
+        );
+    });
+
+    testWidgets('offers the permanent copy and the rental at their prices', (
+      tester,
+    ) async {
+      await pumpApp(tester, session: fakeSession);
+      await pumpUntilFound(tester, rent);
+
+      expect(
+        find.descendant(of: buy, matching: find.text('Buy for ¥500')),
+        findsOne,
+      );
+      expect(
+        find.descendant(
+          of: rent,
+          matching: find.text('Rent for 48 hours (¥200)'),
+        ),
+        findsOne,
+      );
+    });
+
+    testWidgets('hands the rental to the browser as a rental', (tester) async {
+      await pumpApp(tester, session: fakeSession);
+      await pumpUntilFound(tester, rent);
+
+      await tester.tap(rent);
+      await pumpUntilTrue(tester, () => launcher.opened.isNotEmpty);
+
+      expect(purchases.checkouts, [fixtureInternalId(paidEpisodeId)]);
+      expect(purchases.checkoutKinds, [PurchaseKind.rental]);
+    });
+
+    testWidgets('hands the permanent copy to the browser as a purchase', (
+      tester,
+    ) async {
+      await pumpApp(tester, session: fakeSession);
+      await pumpUntilFound(tester, rent);
+
+      await tester.tap(buy);
+      await pumpUntilTrue(tester, () => launcher.opened.isNotEmpty);
+
+      expect(purchases.checkoutKinds, [PurchaseKind.purchase]);
+    });
+
+    testWidgets('is sold as the permanent copy alone through the store', (
+      tester,
+    ) async {
+      purchases.route = AppPurchaseRoute.store;
+      await pumpApp(tester, session: fakeSession);
+      await pumpUntilFound(tester, buy);
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(rent, findsNothing);
+    });
+
+    testWidgets('names both prices on the episode list', (tester) async {
+      purchases.access = {paidEpisodeId: EpisodeAccess.locked};
+      await pumpApp(
+        tester,
+        initialLocation: AppRoutes.seriesDetailPath(seriesId),
+        session: fakeSession,
+      );
+      await pumpUntilFound(
+        tester,
+        find.descendant(
+          of: row,
+          matching: find.text('Rent for 48 hours (¥200)'),
+        ),
+      );
+
+      expect(find.descendant(of: row, matching: find.text('¥500')), findsOne);
+      // The two are chosen between on the episode, where both are offered.
+      expect(buy, findsNothing);
+      await tester.tap(row);
+      await pumpUntilRouteSettled(tester, rent);
+      expect(buy, findsOne);
+    });
+
+    testWidgets('names no rental on the list where the store sells it', (
+      tester,
+    ) async {
+      purchases
+        ..route = AppPurchaseRoute.store
+        ..access = {paidEpisodeId: EpisodeAccess.locked};
+      await pumpApp(
+        tester,
+        initialLocation: AppRoutes.seriesDetailPath(seriesId),
+        session: fakeSession,
+      );
+      await pumpUntilFound(tester, buy);
+
+      expect(find.textContaining('Rent for'), findsNothing);
     });
   });
 

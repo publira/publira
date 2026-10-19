@@ -1403,6 +1403,8 @@ class HttpCatalogRepository implements CatalogRepository {
       locale: episode.locale.trim(),
       orderIndex: episode.orderIndex,
       price: episode.price,
+      rentalPrice: episode.rentalPrice,
+      rentalPeriodHours: episode.rentalPeriodHours,
       purchaseSurface: _purchaseSurface(episode.purchaseAvailability),
       ratingCount: _count(episode.ratingCount.toInt(), '$path.ratingCount'),
       // The wire format omits an empty string, which is an episode no window

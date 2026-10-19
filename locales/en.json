@@ -5039,6 +5039,8 @@
       "check_again": "Check again",
       "confirming": "We are confirming your payment. The episode opens once the purchase is applied.",
       "not_sold_in_app": "This episode cannot be bought in the app right now. Try again later.",
+      "rent_for": "Rent for {$period} ({$price})",
+      "rental_period": ".input {$hours :integer}\n.match $hours\none {{{$hours} hour}}\n* {{{$hours} hours}}",
       "sold_on_web": "Sold on the website",
       "start_failed": "Could not start the purchase. Try again later.",
       "store_unavailable": "Purchases are not available on this device. Check that you are signed in to the store and that purchases are allowed."
@@ -5058,7 +5060,11 @@
       "readable": "Readable",
       "readable_until": "Readable until {$date}",
       "refunded": "Refunded",
+      "rental": "Rental",
       "sign_in_prompt": "Sign in to see the episodes you bought.",
+      "time_left_hours": "{$hours :integer} hr left",
+      "time_left_hours_minutes": "{$hours :integer} hr {$minutes :integer} min left",
+      "time_left_minutes": "{$minutes :integer} min left",
       "title": "Purchases"
     },
     "ranking": {

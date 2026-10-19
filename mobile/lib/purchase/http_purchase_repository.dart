@@ -133,6 +133,7 @@ class HttpPurchaseRepository implements PurchaseRepository {
   Future<Uri> startEpisodeCheckout(
     String episodeInternalId, {
     required String locale,
+    PurchaseKind kind = PurchaseKind.purchase,
   }) async {
     // The token is read here and sent explicitly, so a checkout is never
     // started for a reader other than the one who tapped.
@@ -150,6 +151,10 @@ class HttpPurchaseRepository implements PurchaseRepository {
         pb.StartEpisodeCheckoutRequest(
           client: pb.StartEpisodeCheckoutRequest_Client.CLIENT_MOBILE,
           episodeId: episodeInternalId,
+          kind: switch (kind) {
+            PurchaseKind.purchase => pb.PurchaseKind.PURCHASE_KIND_PURCHASE,
+            PurchaseKind.rental => pb.PurchaseKind.PURCHASE_KIND_RENTAL,
+          },
           locale: locale,
           tenant: pb.TenantContext(tenantId: tenantId),
         ),
@@ -308,6 +313,11 @@ class HttpPurchaseRepository implements PurchaseRepository {
       price: purchase.priceAtPurchase,
       currency: purchase.currency.trim(),
       isActive: purchase.isActive,
+      // Unspecified, which the server never answers, reads as the permanent
+      // copy.
+      kind: purchase.kind == pb.PurchaseKind.PURCHASE_KIND_RENTAL
+          ? PurchaseKind.rental
+          : PurchaseKind.purchase,
       refundedAmount: purchase.refundedAmount,
       purchasedAt: _readInstant(purchase.purchasedAt),
       expiresAt: _readInstant(purchase.expiresAt),

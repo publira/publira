@@ -256,6 +256,10 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   /// The tenant's currency, `null` until it is read or when it cannot be.
   String? _currency;
 
+  /// Whether the tenant sells through its web checkout, which is the only way
+  /// a rental is sold: the store sells the permanent copy alone.
+  var _rentsOnWeb = false;
+
   /// How many reads of [_access] this screen has started, so that only the
   /// latest one's answer is shown: the read the screen opened with can answer
   /// after the one the return from the viewer made, with an episode locked
@@ -443,7 +447,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   ) async {
     final read = ++_purchaseReads;
     // Either read failing offers no purchase, not a failed screen.
-    final (access, acceptsPayments, currency) = await (
+    final (access, acceptsPayments, currency, route) = await (
       purchase
           .seriesEpisodeAccess(widget.detail.series.internalId)
           .onError<PurchaseFailure>((_, _) => const {}),
@@ -451,6 +455,10 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
       purchase
           .currency()
           .then<String?>((currency) => currency)
+          .onError<PurchaseFailure>((_, _) => null),
+      purchase
+          .appPurchaseRoute()
+          .then<AppPurchaseRoute?>((route) => route)
           .onError<PurchaseFailure>((_, _) => null),
     ).wait;
     if (!mounted || read != _purchaseReads || readerId != _readerId) {
@@ -461,7 +469,37 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
       // A price nobody can read is no purchase to offer.
       _acceptsPayments = acceptsPayments && currency != null;
       _currency = currency;
+      _rentsOnWeb = route == AppPurchaseRoute.externalCheckout;
     });
+  }
+
+  /// Whether this reader would buy [episode], since the API has answered that
+  /// they cannot open it and the tenant sells it in the app.
+  bool _buyable(EpisodeItem episode) =>
+      _acceptsPayments &&
+      episode.price > 0 &&
+      episode.purchaseSurface != EpisodePurchaseSurface.web &&
+      _access[episode.id] == EpisodeAccess.locked;
+
+  /// What renting [episode] costs and for how long, for a row the reader
+  /// could rent it from at [now], and `null` for any other row. Such a row
+  /// offers no purchase of its own: the reader picks one of the two at the
+  /// episode, where both are offered side by side.
+  String? _rentalOffer(
+    AppMessages messages,
+    EpisodeItem episode,
+    DateTime now,
+  ) {
+    if (episode.isFreeAt(now) ||
+        !_rentsOnWeb ||
+        !episode.isRented ||
+        !_buyable(episode)) {
+      return null;
+    }
+    return messages.purchaseRentFor(
+      period: messages.purchaseRentalPeriod(hours: episode.rentalPeriodHours),
+      price: messages.formatPrice(episode.rentalPrice, _currency!),
+    );
   }
 
   /// Where [readerId] stands in the series. A guest has no place to keep, so
@@ -844,9 +882,13 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
               if (widget.detail.episodes.isEmpty)
                 AutospacedText(messages.seriesEpisodesEmpty)
               else
-                for (final (episode, freeUntil) in [
+                for (final (episode, freeUntil, rental) in [
                   for (final episode in widget.detail.episodes)
-                    (episode, episode.isFreeAt(now) ? episode.freeUntil : null),
+                    (
+                      episode,
+                      episode.isFreeAt(now) ? episode.freeUntil : null,
+                      _rentalOffer(messages, episode, now),
+                    ),
                 ])
                   ListTile(
                     key: ValueKey('episode-tile-${episode.id}'),
@@ -870,6 +912,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                     // nothing to say under its title is given none.
                     subtitle:
                         freeUntil == null &&
+                            rental == null &&
                             !_progress.finishedEpisodeIds.contains(episode.id)
                         ? null
                         : _EpisodeSubtitle(
@@ -878,6 +921,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                               episode.id,
                             ),
                             freeUntil: freeUntil,
+                            rental: rental,
                           ),
                     trailing: _EpisodeTrailing(
                       // An open window makes the episode free to read, so the
@@ -899,12 +943,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                               onSave: () =>
                                   unawaited(_saveOffline(downloader, episode)),
                             ),
-                      buy:
-                          _acceptsPayments &&
-                              episode.price > 0 &&
-                              episode.purchaseSurface !=
-                                  EpisodePurchaseSurface.web &&
-                              _access[episode.id] == EpisodeAccess.locked
+                      buy: rental == null && _buyable(episode)
                           ? BuyEpisodeButton(
                               episodeId: episode.id,
                               episodeInternalId: episode.internalId,
@@ -1121,12 +1160,13 @@ class _FinishedMark extends StatelessWidget {
 }
 
 /// What stands under an episode's title: until when a free window keeps it
-/// free, and whether the reader has finished it.
+/// free, what renting it costs, and whether the reader has finished it.
 class _EpisodeSubtitle extends StatelessWidget {
   const _EpisodeSubtitle({
     required this.episodeId,
     required this.finished,
     required this.freeUntil,
+    required this.rental,
   });
 
   final String episodeId;
@@ -1134,6 +1174,9 @@ class _EpisodeSubtitle extends StatelessWidget {
 
   /// The end of the window open on the episode, or `null` when none is.
   final DateTime? freeUntil;
+
+  /// The rental the reader could take, worded, or `null` when there is none.
+  final String? rental;
 
   @override
   Widget build(BuildContext context) {
@@ -1150,6 +1193,8 @@ class _EpisodeSubtitle extends StatelessWidget {
               key: ValueKey('episode-free-until-$episodeId'),
               freeUntil: freeUntil,
             ),
+          if (rental case final rental?)
+            AutospacedText(key: ValueKey('episode-rental-$episodeId'), rental),
           if (finished) _FinishedMark(episodeId: episodeId),
         ],
       ),

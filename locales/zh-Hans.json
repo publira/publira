@@ -5039,6 +5039,8 @@
       "check_again": "再次确认",
       "confirming": "我们正在确认您的付款。购买生效后即可打开该章节。",
       "not_sold_in_app": "目前无法在应用中购买该章节。请稍后再试。",
+      "rent_for": "租阅{$period}（{$price}）",
+      "rental_period": "{$hours :integer}小时",
       "sold_on_web": "在网站上销售",
       "start_failed": "无法开始购买。请稍后再试。",
       "store_unavailable": "此设备无法进行购买。请确认已登录商店且未限制购买。"
@@ -5058,7 +5060,11 @@
       "readable": "可阅读",
       "readable_until": "可阅读至{$date}",
       "refunded": "已退款",
+      "rental": "租阅",
       "sign_in_prompt": "登录后即可查看您购买的章节。",
+      "time_left_hours": "剩余{$hours :integer}小时",
+      "time_left_hours_minutes": "剩余{$hours :integer}小时{$minutes :integer}分钟",
+      "time_left_minutes": "剩余{$minutes :integer}分钟",
       "title": "已购买"
     },
     "ranking": {
