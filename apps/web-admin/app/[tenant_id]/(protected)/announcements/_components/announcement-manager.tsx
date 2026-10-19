@@ -1,3 +1,4 @@
+import { getLocaleLabel } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import {
   ActionForm,
@@ -149,6 +150,23 @@ const BannerCell = ({
   );
 };
 
+/** The languages one announcement was written in, each named in itself. */
+const TranslatedLocales = ({ locales }: { locales: readonly Locale[] }) => {
+  if (locales.length === 0) {
+    return "—";
+  }
+
+  return (
+    <ul className="flex flex-wrap gap-x-2 gap-y-1">
+      {locales.map((code) => (
+        <li key={code} lang={code}>
+          {getLocaleLabel(code)}
+        </li>
+      ))}
+    </ul>
+  );
+};
+
 const AnnouncementListBody = ({
   announcements,
   canEdit,
@@ -215,6 +233,11 @@ const AnnouncementListBody = ({
               <Message message="admin.announcements.columns.title" />
             </Suspense>
           </TableHead>
+          <TableHead className="w-32">
+            <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+              <Message message="admin.announcements.columns.languages" />
+            </Suspense>
+          </TableHead>
           <TableHead>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.announcements.columns.body" />
@@ -243,6 +266,9 @@ const AnnouncementListBody = ({
               )}
             </TableCell>
             <TableCell className="font-medium">{announcement.title}</TableCell>
+            <TableCell>
+              <TranslatedLocales locales={announcement.translatedLocales} />
+            </TableCell>
             <TableCell>{excerpt(announcement.body, 72)}</TableCell>
             <TableCell>
               <BannerCell

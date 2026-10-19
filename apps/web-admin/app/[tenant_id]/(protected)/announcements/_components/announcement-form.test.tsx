@@ -10,6 +10,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -71,6 +72,7 @@ describe("AnnouncementForm", () => {
       await AnnouncementForm({
         action: pendingAction,
         tenantId: "TENANT001",
+        tenantLocales: null,
         timeZone: "UTC",
       })
     );
@@ -100,6 +102,7 @@ describe("AnnouncementForm", () => {
       await AnnouncementForm({
         action,
         tenantId: "TENANT001",
+        tenantLocales: null,
         timeZone: "Asia/Tokyo",
       })
     );
@@ -128,5 +131,113 @@ describe("AnnouncementForm", () => {
     expect(formData.get("tenant_id")).toBe("TENANT001");
     expect(formData.get("pinned")).toBe("on");
     expect(formData.get("pinned_until")).toBe("2099-06-01T00:00:00Z");
+  });
+
+  it("shows a tab for each language the site offers and none for another", async () => {
+    render(
+      await AnnouncementForm({
+        action: vi.fn(),
+        tenantId: "TENANT001",
+        tenantLocales: { defaultLocale: "en", supportedLocales: ["en", "ja"] },
+        timeZone: "UTC",
+      })
+    );
+
+    const tabs = within(screen.getByRole("tablist", { name: "Languages" }));
+    expect(tabs.getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
+      "English",
+      "日本語",
+    ]);
+    expect(tabs.queryByRole("tab", { name: "한국어" })).toBeNull();
+    // The default language's tab is open, and only its fields are required.
+    expect(
+      tabs.getByRole("tab", { name: "English" }).getAttribute("aria-selected")
+    ).toBe("true");
+    expect(
+      screen.getByRole("textbox", { name: /Title/u }).hasAttribute("required")
+    ).toBe(true);
+
+    fireEvent.click(tabs.getByRole("tab", { name: "日本語" }));
+
+    expect(
+      screen.getByRole("textbox", { name: /Title/u }).hasAttribute("required")
+    ).toBe(false);
+  });
+
+  it("posts every language's title and body in one submission", async () => {
+    const action = vi.fn(() =>
+      Promise.resolve<CreateAnnouncementActionState>(null)
+    );
+
+    render(
+      await AnnouncementForm({
+        action,
+        tenantId: "TENANT001",
+        tenantLocales: { defaultLocale: "ja", supportedLocales: ["en", "ja"] },
+        timeZone: "UTC",
+      })
+    );
+    // The default language's tab opens first, wherever it sits in the row.
+    fillIn();
+    fireEvent.click(screen.getByRole("tab", { name: "English" }));
+    fireEvent.change(screen.getByRole("textbox", { name: /Title/u }), {
+      target: { value: "Maintenance tonight (English)" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: /Body/u }), {
+      target: { value: "Down from 22:00 to 23:00 UTC (English)." },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Deliver the announcement" })
+    );
+
+    await waitFor(() => {
+      expect(action).toHaveBeenCalledOnce();
+    });
+    const [, formData] = action.mock.calls[0] as unknown as [
+      CreateAnnouncementActionState,
+      FormData,
+    ];
+    // The tabs post in the row's order, the default language's with an empty
+    // locale.
+    expect(formData.getAll("translation_locale")).toEqual(["en", ""]);
+    expect(formData.getAll("title")).toEqual([
+      "Maintenance tonight (English)",
+      "Maintenance tonight",
+    ]);
+    expect(formData.getAll("body")).toEqual([
+      "Down from 22:00 to 23:00 UTC (English).",
+      "The site is down from 22:00 to 23:00 UTC.",
+    ]);
+  });
+
+  it("opens the default language's tab when its title is missing", async () => {
+    const action = vi.fn(() =>
+      Promise.resolve<CreateAnnouncementActionState>(null)
+    );
+
+    render(
+      await AnnouncementForm({
+        action,
+        tenantId: "TENANT001",
+        tenantLocales: { defaultLocale: "en", supportedLocales: ["en", "ja"] },
+        timeZone: "UTC",
+      })
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "日本語" }));
+    fireEvent.change(screen.getByRole("textbox", { name: /Title/u }), {
+      target: { value: "Japanese title" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Deliver the announcement" })
+    );
+
+    await waitFor(() => {
+      expect(
+        screen
+          .getByRole("tab", { name: "English" })
+          .getAttribute("aria-selected")
+      ).toBe("true");
+    });
+    expect(action).not.toHaveBeenCalled();
   });
 });

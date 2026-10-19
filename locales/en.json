@@ -460,6 +460,7 @@
       "columns": {
         "created_at": "Created",
         "title": "Title",
+        "languages": "Languages",
         "body": "Body",
         "banner": "Banner",
         "link": "Link"
@@ -469,6 +470,7 @@
         "title_placeholder": "e.g. Important notice",
         "body": "Body",
         "body_placeholder": "Write the announcement",
+        "translations_description": "The title and body in {$language}, the site's default language, are required. The other languages are optional: a reader browsing in one you leave empty is shown the {$language} announcement.",
         "link": "Link",
         "link_placeholder": "e.g. /series/SERIES001",
         "link_description": "Where the announcement takes the reader. Use /… for a page on this site and https:// for an external one.",
@@ -483,6 +485,8 @@
         "body_required": "The body is required.",
         "tenant_missing": "The tenant ID is missing.",
         "title_required": "The title is required.",
+        "translation_incomplete": "Enter both a title and a body in {$language}, or leave both empty.",
+        "locale_invalid": "Choose a supported language.",
         "link_invalid": "The link must start with / or http(s)://.",
         "pinned_until_invalid": "Enter a valid date and time for when the banner stops.",
         "pinned_until_future": "The banner has to stop at a time in the future."

@@ -4,13 +4,15 @@ import {
   rethrowUnclassifiedRpcError,
   rpcErrorDisposition,
 } from "@publira/api-client/errors";
+import { getLocales, parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
 
 import type {
-  ListAnnouncementsResult,
   AnnouncementItem,
+  AnnouncementTranslationInput,
+  ListAnnouncementsResult,
 } from "../app/[tenant_id]/(protected)/announcements/announcement-types";
 import {
   isUnauthenticatedError,
@@ -37,7 +39,14 @@ const mapErrorMessage = (
 /** The generated `AdminAnnouncement` fields {@link mapAnnouncement} reads (see `series.ts`). */
 type RawAnnouncement = Pick<
   AdminAnnouncement,
-  "body" | "createdAt" | "id" | "linkUrl" | "pinned" | "pinnedUntil" | "title"
+  | "body"
+  | "createdAt"
+  | "id"
+  | "linkUrl"
+  | "pinned"
+  | "pinnedUntil"
+  | "title"
+  | "translations"
 >;
 
 const mapAnnouncement = (item: RawAnnouncement): AnnouncementItem => ({
@@ -48,6 +57,13 @@ const mapAnnouncement = (item: RawAnnouncement): AnnouncementItem => ({
   pinned: item.pinned,
   pinnedUntil: item.pinnedUntil,
   title: item.title,
+  // The registry's order, the one the form's tabs are in: the translations of
+  // one announcement are written together, so the order they were stored in
+  // says nothing. A code this build has no catalog for cannot be named on
+  // screen, so it is left out rather than shown raw.
+  translatedLocales: getLocales().filter((code) =>
+    (item.translations ?? []).some(({ locale }) => parseLocale(locale) === code)
+  ),
 });
 
 const listAnnouncementsForSession = async (
@@ -128,8 +144,8 @@ export const listAnnouncements = async (
 export const createAnnouncement = async (
   input: {
     tenantId: string;
-    title: string;
-    body: string;
+    /** Every language the announcement is written in, the default one included. */
+    translations: readonly AnnouncementTranslationInput[];
     linkUrl: string;
     pinned: boolean;
     /** RFC 3339 instant, or empty for a banner with no end. */
@@ -155,7 +171,7 @@ export const createAnnouncement = async (
         pinned: input.pinned,
         pinnedUntil: input.pinnedUntil,
         tenant: { tenantId: input.tenantId },
-        translations: [{ body: input.body, locale: "", title: input.title }],
+        translations: [...input.translations],
       },
       withSessionHeaders(sessionId)
     );

@@ -460,6 +460,7 @@
       "columns": {
         "created_at": "创建时间",
         "title": "标题",
+        "languages": "语言",
         "body": "正文",
         "banner": "横幅",
         "link": "链接"
@@ -469,6 +470,7 @@
         "title_placeholder": "例如：重要通知",
         "body": "正文",
         "body_placeholder": "请填写公告内容",
+        "translations_description": "站点默认语言{$language}的标题和正文为必填项。其他语言为选填，以留空的语言浏览的读者将看到{$language}的公告。",
         "link": "链接",
         "link_placeholder": "例如：/series/SERIES001",
         "link_description": "公告将把读者带往的位置。本站点页面请以 /… 开头，外部页面请以https:// 开头。",
@@ -483,6 +485,8 @@
         "body_required": "正文为必填项。",
         "tenant_missing": "缺少租户ID。",
         "title_required": "标题为必填项。",
+        "translation_incomplete": "请同时填写{$language}的标题和正文，或将两者都留空。",
+        "locale_invalid": "请选择支持的语言。",
         "link_invalid": "链接必须以 / 或http(s):// 开头。",
         "pinned_until_invalid": "请正确填写停止展示的时间。",
         "pinned_until_future": "停止展示的时间需要晚于当前时间。"

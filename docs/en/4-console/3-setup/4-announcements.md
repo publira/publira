@@ -2,7 +2,7 @@
 title: Announcements
 description: Tell every reader of the site something at once, and keep the most important announcement in a banner above every page.
 published: 2026-10-07
-updated: 2026-10-09
+updated: 2026-10-19
 ---
 
 **Announcements**, under **Site**, is how the publisher tells every reader something at once: a new series, a change to the terms, a maintenance window. Each announcement is listed on the site's **Announcements** page and delivered to every reader's notifications. One of them at a time can also be shown as a banner above every page of the site and the app.
@@ -13,14 +13,24 @@ A Tenant admin and an Editor can create announcements and take banners down. An 
 
 Choose **Create an announcement** and fill in:
 
-- **Title**: up to 120 characters.
-- **Body**: up to 2000 characters of plain text.
+- **Title** and **Body**, on a tab for each language the site offers: up to 120 characters of title and 2000 characters of plain text. See [Writing in several languages](#writing-in-several-languages).
 - **Link** (optional): where the announcement takes a reader who opens it. Start it with `/` for a page of this site, such as `/series/SERIES001` or `/legal/terms`, or with `https://` or `http://` for another site.
 - **Show as a site banner**: also shows the announcement above every page. See [The site banner](#the-site-banner).
 
 **Deliver the announcement** delivers it at once. An announcement has no draft and cannot be scheduled, edited, or deleted afterwards, so read it over before you deliver it.
 
-![The Create an announcement form: Title, Body, Link, Show as a site banner, and Deliver the announcement.](./announcements-create-form.png)
+![The Create an announcement form: a tab for each language the site offers with English open, Title, Body, Link, Show as a site banner, and Deliver the announcement.](./announcements-create-form.png)
+
+## Writing in several languages
+
+The form has a tab for each language the site offers, named in that language, and opens on the site's default language. The languages are the ones chosen under [Languages](./1-settings.md#languages) in **Settings**: a language the site does not offer has no tab.
+
+- The default language's **Title** and **Body** are required. A reader browsing in a language you leave empty is shown the default language's announcement.
+- Every other tab is optional. Fill in both its **Title** and its **Body**, or leave both empty.
+
+**Deliver the announcement** sends the announcement once, with every language you wrote it in. A language cannot be added to an announcement after it is delivered, so write every translation before you deliver it.
+
+The list shows each announcement's title in the default language, and the **Languages** column names every language it was written in.
 
 ## What readers see
 
@@ -39,6 +49,6 @@ A banner stays up until you take it down, unless you give it an end:
 - **Stop showing at**, under the banner checkbox, takes it down at that time, in the tenant's time zone. It must be in the future.
 - **Stop showing**, in the **Banner** column of the list, takes it down at once.
 
-![The Announcements list: Create an announcement at the top, and three announcements, the newest of them still shown as the site banner with Stop showing in its Banner column.](./announcements-list.png)
+![The Announcements list: Create an announcement at the top, and three announcements, the newest of them written in 日本語 and English and still shown as the site banner with Stop showing in its Banner column.](./announcements-list.png)
 
 Either way the announcement stays on the **Announcements** page and in readers' notifications. Only the banner goes.

@@ -66,6 +66,19 @@ const announcementFormFields = (page: Page) => ({
   title: page.getByRole("textbox", { name: /Title/u }),
 });
 
+/**
+ * The title and body on one language's tab. Scoped to the tab's panel, since
+ * every language's fields stay in the form and two panels are on screen for
+ * the moment one replaces the other.
+ */
+const translationFields = (page: Page, language: string) => {
+  const panel = page.getByRole("tabpanel", { name: language });
+  return {
+    body: panel.getByRole("textbox", { name: /Body/u }),
+    title: panel.getByRole("textbox", { name: /Title/u }),
+  };
+};
+
 const announcementArticle = (page: Page, title: string): Locator =>
   page.locator("article").filter({
     has: page.getByRole("heading", { exact: true, level: 3, name: title }),
@@ -312,6 +325,78 @@ test.describe("admin announcement delivery", () => {
       .getByRole("button", { name: "Deliver the announcement" })
       .click();
     await expect(formMessage(page)).toContainText(/The title is required/u);
+    await expect(page).toHaveURL(/\/announcements\/new/u);
+  });
+
+  test("an announcement written in two languages is delivered once and lists both", async ({
+    page,
+  }) => {
+    const title = `E2E languages ${uniqueSuffix()}`;
+    const japaneseTitle = `E2E languages, ja ${uniqueSuffix()}`;
+
+    await signInAsAnnouncementDeliveryAdmin(page, "/announcements/new");
+    const english = translationFields(page, "English");
+    await fillField(english.title, title);
+    await fillField(english.body, `English body ${uniqueSuffix()}`);
+    await page.getByRole("tab", { name: "日本語" }).click();
+    const japanese = translationFields(page, "日本語");
+    await fillField(japanese.title, japaneseTitle);
+    await fillField(japanese.body, `Japanese body ${uniqueSuffix()}`);
+    await page
+      .getByRole("button", { name: "Deliver the announcement" })
+      .click();
+    await expect(page).toHaveURL(/\/announcements\/?$/u);
+
+    // The list names the announcement by its default language's title, and
+    // names every language it was written in, in the tabs' order.
+    const row = page.getByRole("row").filter({
+      has: page.getByRole("cell", { exact: true, name: title }),
+    });
+    await expect(row.getByRole("listitem")).toHaveText(["日本語", "English"]);
+
+    expect(
+      querySql(`
+        SELECT COUNT(*)
+        FROM announcements a
+        JOIN tenants t ON t.id = a.tenant_id
+        WHERE t.public_id = '${ANNOUNCEMENT_DELIVERY_TENANT.publicId}';
+      `)
+    ).toBe("1");
+    // One notification per reader, whichever translation each is told.
+    await expect
+      .poll(
+        () =>
+          querySql(`
+            SELECT COUNT(*)
+            FROM notifications n
+            JOIN tenants t ON t.id = n.tenant_id
+            WHERE t.public_id = '${ANNOUNCEMENT_DELIVERY_TENANT.publicId}';
+          `),
+        { timeout: 30_000 }
+      )
+      .toBe("3");
+  });
+
+  test("a missing default-language title opens that language's tab", async ({
+    page,
+  }) => {
+    await signInAsAnnouncementDeliveryAdmin(page, "/announcements/new");
+    await page.getByRole("tab", { name: "日本語" }).click();
+    await fillField(
+      translationFields(page, "日本語").title,
+      `Japanese title ${uniqueSuffix()}`
+    );
+    await page
+      .getByRole("button", { name: "Deliver the announcement" })
+      .click();
+
+    // The browser refuses the empty required field, which sits on the hidden
+    // English tab; the tab is opened so the refusal can point at it.
+    await expect(page.getByRole("tab", { name: "English" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    await expect(translationFields(page, "English").title).toBeFocused();
     await expect(page).toHaveURL(/\/announcements\/new/u);
   });
 });

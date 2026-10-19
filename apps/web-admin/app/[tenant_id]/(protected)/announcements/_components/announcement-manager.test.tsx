@@ -4,7 +4,7 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -52,6 +52,7 @@ const announcement = (id: string): AnnouncementItem => ({
   pinned: false,
   pinnedUntil: "",
   title: "Scheduled maintenance",
+  translatedLocales: ["en"],
 });
 
 afterEach(() => {
@@ -120,6 +121,33 @@ describe("AnnouncementManager", () => {
     expect(
       screen.getByRole("link", { name: "Next" }).getAttribute("href")
     ).toBe("?token=next");
+  });
+
+  it("shows the default language's title and every language the announcement is written in", async () => {
+    render(
+      await AnnouncementManager({
+        announcements: [
+          { ...announcement("n1"), translatedLocales: ["en", "ja"] },
+        ],
+        canEdit: true,
+        locale: "en",
+        pageSize: 20,
+        tenantId: "TENANT001",
+        timeZone: "UTC",
+      })
+    );
+
+    const row = screen.getAllByRole("row")[1] as HTMLElement;
+    const cells = within(row).getAllByRole("cell");
+    expect(cells[1]?.textContent).toBe("Scheduled maintenance");
+    expect(
+      within(cells[2] as HTMLElement)
+        .getAllByRole("listitem")
+        .map((item) => [item.getAttribute("lang"), item.textContent])
+    ).toEqual([
+      ["en", "English"],
+      ["ja", "日本語"],
+    ]);
   });
 
   it("shows only the error and does not call the list empty when the fetch fails", async () => {

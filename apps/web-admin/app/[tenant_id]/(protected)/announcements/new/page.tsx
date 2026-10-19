@@ -23,6 +23,7 @@ import { isSignedInTenantEditor } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 import { getTenantId } from "#lib/tenant-id";
+import { findTenantLocales } from "#lib/tenant-locales";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
 import { AnnouncementForm } from "../_components/announcement-form";
@@ -57,12 +58,16 @@ const AnnouncementFormSkeleton = () => (
 
 const AnnouncementFormData = async () => {
   const tenantId = await getTenantId();
-  const timeZone = await getTenantDisplayTimeZone(tenantId);
+  const [tenantLocales, timeZone] = await Promise.all([
+    findTenantLocales(tenantId),
+    getTenantDisplayTimeZone(tenantId),
+  ]);
 
   return (
     <AnnouncementForm
       action={createAnnouncementAction}
       tenantId={tenantId}
+      tenantLocales={tenantLocales}
       timeZone={timeZone}
     />
   );
