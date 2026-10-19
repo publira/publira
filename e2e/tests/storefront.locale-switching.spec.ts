@@ -544,6 +544,111 @@ test.describe("web-storefront series titles in the reader's language", () => {
 });
 
 /**
+ * A genre carries a name per language, and every place the site names it reads
+ * the one written for the language in the URL, else the tenant default's. Its
+ * URL is the same in every language: only the prefix changes.
+ */
+test.describe("web-storefront genre names in the reader's language", () => {
+  const { translated, untranslated } = BILINGUAL_TENANT.genres;
+
+  test.beforeAll(() => {
+    applyScenarioSql(LOCALE_SWITCHING_SCENARIO);
+  });
+
+  test("the header switcher changes a genre's name with the language", async ({
+    page,
+  }) => {
+    const genrePath = `/genres/${translated.publicId}`;
+
+    await page.goto(bilingualUrl(storefrontPath(genrePath)));
+    await expect(
+      page.getByRole("heading", { level: 1, name: translated.japaneseName })
+    ).toBeVisible();
+
+    await switchStorefrontLocale(page, "日本語", "English");
+
+    await expect(page).toHaveURL(
+      (url) => url.pathname === localeStorefrontPath("en", genrePath)
+    );
+    const heading = page.getByRole("heading", {
+      exact: true,
+      level: 1,
+      name: translated.englishName,
+    });
+    await expect(heading).toBeVisible();
+    await expect(heading).toHaveAttribute("lang", "en");
+    await expect(
+      page.getByRole("main").getByText(translated.japaneseName)
+    ).toHaveCount(0);
+    await expect.poll(() => page.title()).toContain(translated.englishName);
+    expect(await page.title()).not.toContain(translated.japaneseName);
+  });
+
+  test("a genre with no name in the reader's language shows the default's", async ({
+    page,
+  }) => {
+    await page.goto(
+      bilingualUrl(
+        localeStorefrontPath("en", `/genres/${untranslated.publicId}`)
+      )
+    );
+    await expectDocumentLocale(page, "English");
+
+    const heading = page.getByRole("heading", {
+      level: 1,
+      name: untranslated.japaneseName,
+    });
+    await expect(heading).toBeVisible();
+    await expect(heading).toHaveAttribute("lang", "ja");
+    await expect.poll(() => page.title()).toContain(untranslated.japaneseName);
+  });
+
+  test("the genre list names each genre in the reader's language", async ({
+    page,
+  }) => {
+    await page.goto(bilingualUrl(localeStorefrontPath("en", "/genres")));
+
+    const main = page.getByRole("main");
+    await expect(
+      main.getByRole("link", { name: translated.englishName })
+    ).toHaveAttribute(
+      "href",
+      localeStorefrontPath("en", `/genres/${translated.publicId}`)
+    );
+    await expect(
+      main.getByRole("link", { name: untranslated.japaneseName })
+    ).toHaveAttribute(
+      "href",
+      localeStorefrontPath("en", `/genres/${untranslated.publicId}`)
+    );
+    await expect(main.getByText(translated.japaneseName)).toHaveCount(0);
+  });
+
+  test("a series names its genres in the reader's language", async ({
+    page,
+  }) => {
+    const seriesPath = `/series/${BILINGUAL_TENANT.translated.publicId}`;
+    const badge = (name: string) =>
+      page.getByRole("main").getByRole("link", { exact: true, name });
+
+    await page.goto(bilingualUrl(storefrontPath(seriesPath)));
+    await expect(badge(translated.japaneseName)).toHaveAttribute(
+      "href",
+      storefrontPath(`/genres/${translated.publicId}`)
+    );
+
+    await page.goto(bilingualUrl(localeStorefrontPath("en", seriesPath)));
+    const english = badge(translated.englishName);
+    await expect(english).toHaveAttribute(
+      "href",
+      localeStorefrontPath("en", `/genres/${translated.publicId}`)
+    );
+    await expect(english).toHaveAttribute("lang", "en");
+    await expect(badge(translated.japaneseName)).toHaveCount(0);
+  });
+});
+
+/**
  * An announcement is read in the language in the URL where it was written in
  * it, and in the tenant's default otherwise, with a note saying so. The
  * bilingual tenant's two announcements are read without a session, as any

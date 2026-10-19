@@ -61,7 +61,7 @@ const SERIES = {
     { name: "John Roe", publicId: "CREATOR02", roleName: "Art" },
   ],
   eyeCatchImageVariants: undefined,
-  genres: [{ name: "Fantasy", publicId: "GENRE01" }],
+  genres: [{ locale: "en", name: "Fantasy", publicId: "GENRE01" }],
   labelName: "",
   labelPublicId: "",
   locale: "en",

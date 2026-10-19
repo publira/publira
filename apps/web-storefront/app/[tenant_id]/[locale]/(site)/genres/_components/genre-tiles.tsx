@@ -44,7 +44,10 @@ const GenreCovers = ({ genre }: { genre: PublishedGenreItem }) => {
         className="aspect-3/4 w-full rounded-surface"
         variants={undefined}
       >
-        <span className="line-clamp-3 font-serif text-lg leading-tight text-muted-foreground">
+        <span
+          className="line-clamp-3 font-serif text-lg leading-tight text-muted-foreground"
+          lang={genre.locale}
+        >
           {genre.name}
         </span>
       </EyeCatchFrame>
@@ -84,7 +87,10 @@ export const GenreTiles = ({
       <li key={genre.publicId}>
         <LocaleLink className="group block" href={`/genres/${genre.publicId}`}>
           <GenreCovers genre={genre} />
-          <span className="mt-2 block font-serif text-base leading-tight underline-offset-4 group-hover:underline">
+          <span
+            className="mt-2 block font-serif text-base leading-tight underline-offset-4 group-hover:underline"
+            lang={genre.locale}
+          >
             {genre.name}
           </span>
           <span className="mt-1 block text-xs text-muted-foreground tabular-nums">

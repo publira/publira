@@ -388,7 +388,9 @@ const GenreDetailContent = async ({
           </span>
         )}
         <div className="grid gap-2">
-          <h1 className="font-serif text-3xl leading-tight">{genre.name}</h1>
+          <h1 className="font-serif text-3xl leading-tight" lang={genre.locale}>
+            {genre.name}
+          </h1>
           <p className="text-sm text-muted-foreground tabular-nums">
             <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
               <Message

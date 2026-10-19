@@ -22,7 +22,7 @@ export const GenreChips = ({
     {genres.map((genre) => (
       <li key={genre.publicId}>
         <LocaleLink className={CHIP} href={`/genres/${genre.publicId}`}>
-          {genre.name}
+          <span lang={genre.locale}>{genre.name}</span>
           <span className="text-xs text-muted-foreground tabular-nums">
             {genre.publishedSeriesCount}
           </span>

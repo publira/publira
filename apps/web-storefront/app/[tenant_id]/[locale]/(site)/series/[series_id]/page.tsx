@@ -507,6 +507,7 @@ const SeriesDetailContent = async (
                         <LocaleLink
                           className={CHIP}
                           href={`/genres/${genre.publicId}`}
+                          lang={genre.locale}
                         >
                           {genre.name}
                         </LocaleLink>

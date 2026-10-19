@@ -371,6 +371,7 @@ const RankingTabs = async ({
                   aria-current={genre === item.publicId ? "page" : undefined}
                   className={rankingGenreChipClassName(genre === item.publicId)}
                   href={rankingHref({ genre: item.publicId, period, rating })}
+                  lang={item.locale}
                 >
                   {item.name}
                 </LocaleLink>
