@@ -79,10 +79,11 @@ func (PurchaseRevocationReason) EnumDescriptor() ([]byte, []int) {
 	return file_publira_admin_v1_purchase_proto_rawDescGZIP(), []int{0}
 }
 
-// A reader's purchase of one episode or of one volume, as tenant staff see it.
-// The episode fields are set on a purchase of an episode and the volume fields
-// on a purchase of a volume, never both; the series fields name the series of
-// either.
+// A reader's purchase of one episode, of one volume, or of the rest of a
+// series, as tenant staff see it. The episode fields are set on a purchase of
+// an episode, the volume fields on a purchase of a volume, and series_bundle
+// on a purchase of the rest of a series, never two of them; the series fields
+// name the series of any of them.
 type AdminPurchase struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The purchase's primary key, a UUID.
@@ -128,10 +129,11 @@ type AdminPurchase struct {
 	// paid through the tenant's current, enabled payment provider, and the
 	// purchase is neither refunded in full, revoked, nor disputed. A store
 	// purchase is refunded through the store and never here.
-	Refundable     bool   `protobuf:"varint,21,opt,name=refundable,proto3" json:"refundable,omitempty"`
-	VolumeId       string `protobuf:"bytes,22,opt,name=volume_id,json=volumeId,proto3" json:"volume_id,omitempty"`
-	VolumePublicId string `protobuf:"bytes,23,opt,name=volume_public_id,json=volumePublicId,proto3" json:"volume_public_id,omitempty"`
-	VolumeTitle    string `protobuf:"bytes,24,opt,name=volume_title,json=volumeTitle,proto3" json:"volume_title,omitempty"`
+	Refundable     bool             `protobuf:"varint,21,opt,name=refundable,proto3" json:"refundable,omitempty"`
+	VolumeId       string           `protobuf:"bytes,22,opt,name=volume_id,json=volumeId,proto3" json:"volume_id,omitempty"`
+	VolumePublicId string           `protobuf:"bytes,23,opt,name=volume_public_id,json=volumePublicId,proto3" json:"volume_public_id,omitempty"`
+	VolumeTitle    string           `protobuf:"bytes,24,opt,name=volume_title,json=volumeTitle,proto3" json:"volume_title,omitempty"`
+	SeriesBundle   *v1.SeriesBundle `protobuf:"bytes,25,opt,name=series_bundle,json=seriesBundle,proto3" json:"series_bundle,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -334,6 +336,13 @@ func (x *AdminPurchase) GetVolumeTitle() string {
 	return ""
 }
 
+func (x *AdminPurchase) GetSeriesBundle() *v1.SeriesBundle {
+	if x != nil {
+		return x.SeriesBundle
+	}
+	return nil
+}
+
 // Cursor pagination, newest purchase first. Field shape and token rules:
 // proto/README.md. Every filter left empty is no filter, and changing one
 // starts again from the first page.
@@ -344,7 +353,7 @@ type ListPurchasesRequest struct {
 	Limit int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Opaque token from a previous response. Empty for the first page.
 	Token string `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
-	// Only purchases of an episode or a volume of this series.
+	// Only purchases of an episode, a volume, or the rest of this series.
 	SeriesPublicId string `protobuf:"bytes,4,opt,name=series_public_id,json=seriesPublicId,proto3" json:"series_public_id,omitempty"`
 	// Only purchases of this episode.
 	EpisodePublicId string `protobuf:"bytes,5,opt,name=episode_public_id,json=episodePublicId,proto3" json:"episode_public_id,omitempty"`
@@ -714,7 +723,7 @@ var File_publira_admin_v1_purchase_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_purchase_proto_rawDesc = "" +
 	"\n" +
-	"\x1fpublira/admin/v1/purchase.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\xd0\x06\n" +
+	"\x1fpublira/admin/v1/purchase.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\x95\a\n" +
 	"\rAdminPurchase\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -747,7 +756,8 @@ const file_publira_admin_v1_purchase_proto_rawDesc = "" +
 	"refundable\x12\x1b\n" +
 	"\tvolume_id\x18\x16 \x01(\tR\bvolumeId\x12(\n" +
 	"\x10volume_public_id\x18\x17 \x01(\tR\x0evolumePublicId\x12!\n" +
-	"\fvolume_title\x18\x18 \x01(\tR\vvolumeTitle\"\xbe\x02\n" +
+	"\fvolume_title\x18\x18 \x01(\tR\vvolumeTitle\x12C\n" +
+	"\rseries_bundle\x18\x19 \x01(\v2\x1e.publira.types.v1.SeriesBundleR\fseriesBundle\"\xbe\x02\n" +
 	"\x14ListPurchasesRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
@@ -808,27 +818,29 @@ var file_publira_admin_v1_purchase_proto_goTypes = []any{
 	(*GetPurchaseResponse)(nil),    // 5: publira.admin.v1.GetPurchaseResponse
 	(*RefundPurchaseRequest)(nil),  // 6: publira.admin.v1.RefundPurchaseRequest
 	(*RefundPurchaseResponse)(nil), // 7: publira.admin.v1.RefundPurchaseResponse
-	(*v1.TenantContext)(nil),       // 8: publira.types.v1.TenantContext
+	(*v1.SeriesBundle)(nil),        // 8: publira.types.v1.SeriesBundle
+	(*v1.TenantContext)(nil),       // 9: publira.types.v1.TenantContext
 }
 var file_publira_admin_v1_purchase_proto_depIdxs = []int32{
 	0,  // 0: publira.admin.v1.AdminPurchase.revocation_reason:type_name -> publira.admin.v1.PurchaseRevocationReason
-	8,  // 1: publira.admin.v1.ListPurchasesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	1,  // 2: publira.admin.v1.ListPurchasesResponse.purchases:type_name -> publira.admin.v1.AdminPurchase
-	8,  // 3: publira.admin.v1.GetPurchaseRequest.tenant:type_name -> publira.types.v1.TenantContext
-	1,  // 4: publira.admin.v1.GetPurchaseResponse.purchase:type_name -> publira.admin.v1.AdminPurchase
-	8,  // 5: publira.admin.v1.RefundPurchaseRequest.tenant:type_name -> publira.types.v1.TenantContext
-	1,  // 6: publira.admin.v1.RefundPurchaseResponse.purchase:type_name -> publira.admin.v1.AdminPurchase
-	2,  // 7: publira.admin.v1.AdminPurchaseService.ListPurchases:input_type -> publira.admin.v1.ListPurchasesRequest
-	4,  // 8: publira.admin.v1.AdminPurchaseService.GetPurchase:input_type -> publira.admin.v1.GetPurchaseRequest
-	6,  // 9: publira.admin.v1.AdminPurchaseService.RefundPurchase:input_type -> publira.admin.v1.RefundPurchaseRequest
-	3,  // 10: publira.admin.v1.AdminPurchaseService.ListPurchases:output_type -> publira.admin.v1.ListPurchasesResponse
-	5,  // 11: publira.admin.v1.AdminPurchaseService.GetPurchase:output_type -> publira.admin.v1.GetPurchaseResponse
-	7,  // 12: publira.admin.v1.AdminPurchaseService.RefundPurchase:output_type -> publira.admin.v1.RefundPurchaseResponse
-	10, // [10:13] is the sub-list for method output_type
-	7,  // [7:10] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	8,  // 1: publira.admin.v1.AdminPurchase.series_bundle:type_name -> publira.types.v1.SeriesBundle
+	9,  // 2: publira.admin.v1.ListPurchasesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	1,  // 3: publira.admin.v1.ListPurchasesResponse.purchases:type_name -> publira.admin.v1.AdminPurchase
+	9,  // 4: publira.admin.v1.GetPurchaseRequest.tenant:type_name -> publira.types.v1.TenantContext
+	1,  // 5: publira.admin.v1.GetPurchaseResponse.purchase:type_name -> publira.admin.v1.AdminPurchase
+	9,  // 6: publira.admin.v1.RefundPurchaseRequest.tenant:type_name -> publira.types.v1.TenantContext
+	1,  // 7: publira.admin.v1.RefundPurchaseResponse.purchase:type_name -> publira.admin.v1.AdminPurchase
+	2,  // 8: publira.admin.v1.AdminPurchaseService.ListPurchases:input_type -> publira.admin.v1.ListPurchasesRequest
+	4,  // 9: publira.admin.v1.AdminPurchaseService.GetPurchase:input_type -> publira.admin.v1.GetPurchaseRequest
+	6,  // 10: publira.admin.v1.AdminPurchaseService.RefundPurchase:input_type -> publira.admin.v1.RefundPurchaseRequest
+	3,  // 11: publira.admin.v1.AdminPurchaseService.ListPurchases:output_type -> publira.admin.v1.ListPurchasesResponse
+	5,  // 12: publira.admin.v1.AdminPurchaseService.GetPurchase:output_type -> publira.admin.v1.GetPurchaseResponse
+	7,  // 13: publira.admin.v1.AdminPurchaseService.RefundPurchase:output_type -> publira.admin.v1.RefundPurchaseResponse
+	11, // [11:14] is the sub-list for method output_type
+	8,  // [8:11] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_purchase_proto_init() }

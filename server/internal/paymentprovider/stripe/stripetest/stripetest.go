@@ -12,6 +12,7 @@ import (
 	"maps"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -60,13 +61,16 @@ func PurchaseMetadata(purchase paymentprovider.Purchase) map[string]string {
 		stripe.MetadataUserID:   purchase.ReaderID.String(),
 		stripe.MetadataPrice:    strconv.FormatInt(int64(purchase.Price), 10),
 	}
-	// Each of the two is written when it is set, so a purchase naming both
+	// Each of the three is written when it is set, so a purchase naming two
 	// stands for a checkout the provider would have to refuse.
 	if purchase.EpisodeID != uuid.Nil {
 		metadata[stripe.MetadataEpisodeID] = purchase.EpisodeID.String()
 	}
 	if purchase.VolumeID != uuid.Nil {
 		metadata[stripe.MetadataVolumeID] = purchase.VolumeID.String()
+	}
+	if purchase.SeriesBundleID != uuid.Nil {
+		metadata[stripe.MetadataSeriesBundleID] = purchase.SeriesBundleID.String()
 	}
 	if purchase.ReadingPeriodHours > 0 {
 		metadata[stripe.MetadataReadingPeriodHours] = strconv.FormatInt(int64(purchase.ReadingPeriodHours), 10)
@@ -87,6 +91,24 @@ type API struct {
 	refunds []Refund
 	// idempotent holds the refund each idempotency key created, by secret key.
 	idempotent map[string]map[string]Refund
+	sessions   []CheckoutSession
+	coupons    []Coupon
+}
+
+// CheckoutSession is one request the fake received to create a Checkout
+// Session, with the form it was sent.
+type CheckoutSession struct {
+	SecretKey      string
+	IdempotencyKey string
+	Form           url.Values
+}
+
+// Coupon is one coupon the fake made, with the form it was made from.
+type Coupon struct {
+	ID             string
+	SecretKey      string
+	IdempotencyKey string
+	Form           url.Values
 }
 
 type paymentIntent struct {
@@ -114,6 +136,8 @@ func NewAPI(t testing.TB) *API {
 	api := &API{intents: map[string]map[string]*paymentIntent{}, idempotent: map[string]map[string]Refund{}}
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /v1/refunds", api.createRefund)
+	mux.HandleFunc("POST /v1/coupons", api.createCoupon)
+	mux.HandleFunc("POST /v1/checkout/sessions", api.createCheckoutSession)
 	mux.HandleFunc("GET /v1/payment_intents/{id}", api.getPaymentIntent)
 	api.server = httptest.NewServer(mux)
 	t.Cleanup(api.server.Close)
@@ -179,6 +203,77 @@ func (a *API) Refunds() []Refund {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	return append([]Refund(nil), a.refunds...)
+}
+
+// CheckoutSessions answers every Checkout Session creation the fake received.
+func (a *API) CheckoutSessions() []CheckoutSession {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return append([]CheckoutSession(nil), a.sessions...)
+}
+
+// Coupons answers every coupon the fake made, once each however often a
+// request asked for it again.
+func (a *API) Coupons() []Coupon {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return append([]Coupon(nil), a.coupons...)
+}
+
+// createCoupon makes a coupon, and answers a request repeating an idempotency
+// key with the coupon the key first made.
+func (a *API) createCoupon(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		writeError(w, http.StatusBadRequest, "", err.Error())
+		return
+	}
+	secretKey := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	idempotencyKey := r.Header.Get("Idempotency-Key")
+
+	a.mu.Lock()
+	var coupon Coupon
+	found := false
+	for _, made := range a.coupons {
+		if idempotencyKey != "" && made.SecretKey == secretKey && made.IdempotencyKey == idempotencyKey {
+			coupon, found = made, true
+		}
+	}
+	if !found {
+		coupon = Coupon{
+			ID:             fmt.Sprintf("coupon_fake%04d", len(a.coupons)+1),
+			SecretKey:      secretKey,
+			IdempotencyKey: idempotencyKey,
+			Form:           r.PostForm,
+		}
+		a.coupons = append(a.coupons, coupon)
+	}
+	a.mu.Unlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"id": coupon.ID, "object": "coupon"})
+}
+
+// createCheckoutSession records the request and answers a session with a URL.
+func (a *API) createCheckoutSession(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		writeError(w, http.StatusBadRequest, "", err.Error())
+		return
+	}
+	a.mu.Lock()
+	a.sessions = append(a.sessions, CheckoutSession{
+		SecretKey:      strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "),
+		IdempotencyKey: r.Header.Get("Idempotency-Key"),
+		Form:           r.PostForm,
+	})
+	id := fmt.Sprintf("cs_fake%04d", len(a.sessions))
+	a.mu.Unlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"id":     id,
+		"object": "checkout.session",
+		"url":    "https://checkout.stripe.com/c/pay/" + id,
+	})
 }
 
 // intent answers the payment intent id under secretKey, making one that has

@@ -105,6 +105,7 @@
       "preview": "感謝您購買{$title}。",
       "purchased_at": "購買時間：{$purchased_at}",
       "series": "系列：{$series_title}",
+      "series_bundle": "剩餘章節：{$count :integer}話",
       "subject": "{$tenant_name}購買成功",
       "test_notice": "這是在支付服務測試模式下的購買，未產生任何扣款。",
       "volume": "卷：{$volume_title}"
@@ -212,6 +213,7 @@
     }
   },
   "checkout": {
+    "bundle_discount": "打包優惠（{$percent :integer}%）",
     "rental_line_item": "{$episode_title}（租借，{$hours :integer}小時）"
   },
   "errors": {

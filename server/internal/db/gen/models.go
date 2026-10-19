@@ -676,48 +676,50 @@ type PlatformNotificationRead struct {
 }
 
 type PlatformPolicyConfig struct {
-	Singleton                            bool      `json:"singleton"`
-	MfaRequiredForTenantAdmin            bool      `json:"mfa_required_for_tenant_admin"`
-	PasswordVerifyLimitPerMinute         int32     `json:"password_verify_limit_per_minute"`
-	PasswordVerifyLimitPerDay            int32     `json:"password_verify_limit_per_day"`
-	MailRequestLimitPerAddressPerHour    int32     `json:"mail_request_limit_per_address_per_hour"`
-	MailRequestLimitPerAddressPerDay     int32     `json:"mail_request_limit_per_address_per_day"`
-	MailRequestLimitPerSourcePerHour     int32     `json:"mail_request_limit_per_source_per_hour"`
-	MailRequestLimitPerSourcePerDay      int32     `json:"mail_request_limit_per_source_per_day"`
-	CommentPostLimitPerMinute            int32     `json:"comment_post_limit_per_minute"`
-	CommentPostLimitPerDay               int32     `json:"comment_post_limit_per_day"`
-	CommentReportLimitPerMinute          int32     `json:"comment_report_limit_per_minute"`
-	CommentReportLimitPerDay             int32     `json:"comment_report_limit_per_day"`
-	CommentDuplicateWindowMinutes        int32     `json:"comment_duplicate_window_minutes"`
-	EpisodeRatingLimitPerMinute          int32     `json:"episode_rating_limit_per_minute"`
-	EpisodeRatingLimitPerDay             int32     `json:"episode_rating_limit_per_day"`
-	ContactMessageLimitPerAccountPerHour int32     `json:"contact_message_limit_per_account_per_hour"`
-	ContactMessageLimitPerAccountPerDay  int32     `json:"contact_message_limit_per_account_per_day"`
-	ContactMessageLimitPerClientPerHour  int32     `json:"contact_message_limit_per_client_per_hour"`
-	ContactMessageLimitPerClientPerDay   int32     `json:"contact_message_limit_per_client_per_day"`
-	ViewerPreferencesLimitPerMinute      int32     `json:"viewer_preferences_limit_per_minute"`
-	ViewerPreferencesLimitPerDay         int32     `json:"viewer_preferences_limit_per_day"`
-	Revision                             int64     `json:"revision"`
-	CreatedAt                            time.Time `json:"created_at"`
-	UpdatedAt                            time.Time `json:"updated_at"`
-	StorePurchaseConfirmLimitPerMinute   int32     `json:"store_purchase_confirm_limit_per_minute"`
-	StorePurchaseConfirmLimitPerDay      int32     `json:"store_purchase_confirm_limit_per_day"`
-	DisposableEmailDomainsUrl            string    `json:"disposable_email_domains_url"`
-	WaitFreeTicketUseLimitPerMinute      int32     `json:"wait_free_ticket_use_limit_per_minute"`
-	WaitFreeTicketUseLimitPerDay         int32     `json:"wait_free_ticket_use_limit_per_day"`
-	LoginAccountLimitPerMinute           int32     `json:"login_account_limit_per_minute"`
-	LoginAccountLimitPerDay              int32     `json:"login_account_limit_per_day"`
-	LoginSourceLimitPerHour              int32     `json:"login_source_limit_per_hour"`
-	LoginSourceLimitPerDay               int32     `json:"login_source_limit_per_day"`
-	MfaRequiredForPlatformOperator       bool      `json:"mfa_required_for_platform_operator"`
-	LegalPageAgreementLimitPerMinute     int32     `json:"legal_page_agreement_limit_per_minute"`
-	LegalPageAgreementLimitPerDay        int32     `json:"legal_page_agreement_limit_per_day"`
-	IdentityLinkLimitPerMinute           int32     `json:"identity_link_limit_per_minute"`
-	IdentityLinkLimitPerDay              int32     `json:"identity_link_limit_per_day"`
-	IconChangeLimitPerMinute             int32     `json:"icon_change_limit_per_minute"`
-	IconChangeLimitPerDay                int32     `json:"icon_change_limit_per_day"`
-	PasskeyLimitPerMinute                int32     `json:"passkey_limit_per_minute"`
-	PasskeyLimitPerDay                   int32     `json:"passkey_limit_per_day"`
+	Singleton                             bool      `json:"singleton"`
+	MfaRequiredForTenantAdmin             bool      `json:"mfa_required_for_tenant_admin"`
+	PasswordVerifyLimitPerMinute          int32     `json:"password_verify_limit_per_minute"`
+	PasswordVerifyLimitPerDay             int32     `json:"password_verify_limit_per_day"`
+	MailRequestLimitPerAddressPerHour     int32     `json:"mail_request_limit_per_address_per_hour"`
+	MailRequestLimitPerAddressPerDay      int32     `json:"mail_request_limit_per_address_per_day"`
+	MailRequestLimitPerSourcePerHour      int32     `json:"mail_request_limit_per_source_per_hour"`
+	MailRequestLimitPerSourcePerDay       int32     `json:"mail_request_limit_per_source_per_day"`
+	CommentPostLimitPerMinute             int32     `json:"comment_post_limit_per_minute"`
+	CommentPostLimitPerDay                int32     `json:"comment_post_limit_per_day"`
+	CommentReportLimitPerMinute           int32     `json:"comment_report_limit_per_minute"`
+	CommentReportLimitPerDay              int32     `json:"comment_report_limit_per_day"`
+	CommentDuplicateWindowMinutes         int32     `json:"comment_duplicate_window_minutes"`
+	EpisodeRatingLimitPerMinute           int32     `json:"episode_rating_limit_per_minute"`
+	EpisodeRatingLimitPerDay              int32     `json:"episode_rating_limit_per_day"`
+	ContactMessageLimitPerAccountPerHour  int32     `json:"contact_message_limit_per_account_per_hour"`
+	ContactMessageLimitPerAccountPerDay   int32     `json:"contact_message_limit_per_account_per_day"`
+	ContactMessageLimitPerClientPerHour   int32     `json:"contact_message_limit_per_client_per_hour"`
+	ContactMessageLimitPerClientPerDay    int32     `json:"contact_message_limit_per_client_per_day"`
+	ViewerPreferencesLimitPerMinute       int32     `json:"viewer_preferences_limit_per_minute"`
+	ViewerPreferencesLimitPerDay          int32     `json:"viewer_preferences_limit_per_day"`
+	Revision                              int64     `json:"revision"`
+	CreatedAt                             time.Time `json:"created_at"`
+	UpdatedAt                             time.Time `json:"updated_at"`
+	StorePurchaseConfirmLimitPerMinute    int32     `json:"store_purchase_confirm_limit_per_minute"`
+	StorePurchaseConfirmLimitPerDay       int32     `json:"store_purchase_confirm_limit_per_day"`
+	DisposableEmailDomainsUrl             string    `json:"disposable_email_domains_url"`
+	WaitFreeTicketUseLimitPerMinute       int32     `json:"wait_free_ticket_use_limit_per_minute"`
+	WaitFreeTicketUseLimitPerDay          int32     `json:"wait_free_ticket_use_limit_per_day"`
+	LoginAccountLimitPerMinute            int32     `json:"login_account_limit_per_minute"`
+	LoginAccountLimitPerDay               int32     `json:"login_account_limit_per_day"`
+	LoginSourceLimitPerHour               int32     `json:"login_source_limit_per_hour"`
+	LoginSourceLimitPerDay                int32     `json:"login_source_limit_per_day"`
+	MfaRequiredForPlatformOperator        bool      `json:"mfa_required_for_platform_operator"`
+	LegalPageAgreementLimitPerMinute      int32     `json:"legal_page_agreement_limit_per_minute"`
+	LegalPageAgreementLimitPerDay         int32     `json:"legal_page_agreement_limit_per_day"`
+	IdentityLinkLimitPerMinute            int32     `json:"identity_link_limit_per_minute"`
+	IdentityLinkLimitPerDay               int32     `json:"identity_link_limit_per_day"`
+	IconChangeLimitPerMinute              int32     `json:"icon_change_limit_per_minute"`
+	IconChangeLimitPerDay                 int32     `json:"icon_change_limit_per_day"`
+	PasskeyLimitPerMinute                 int32     `json:"passkey_limit_per_minute"`
+	PasskeyLimitPerDay                    int32     `json:"passkey_limit_per_day"`
+	SeriesRemainderCheckoutLimitPerMinute int32     `json:"series_remainder_checkout_limit_per_minute"`
+	SeriesRemainderCheckoutLimitPerDay    int32     `json:"series_remainder_checkout_limit_per_day"`
 }
 
 type PlatformRetentionConfig struct {
@@ -901,6 +903,7 @@ type Purchase struct {
 	DisputeLostAt      sql.NullTime   `json:"dispute_lost_at"`
 	Kind               string         `json:"kind"`
 	VolumeID           uuid.NullUUID  `json:"volume_id"`
+	SeriesBundleID     uuid.NullUUID  `json:"series_bundle_id"`
 }
 
 type ReaderIconPreset struct {
@@ -996,6 +999,30 @@ type Series struct {
 	PublicationRevalidatedAt sql.NullTime   `json:"publication_revalidated_at"`
 }
 
+type SeriesBundle struct {
+	ID                        uuid.UUID      `json:"id"`
+	TenantID                  uuid.UUID      `json:"tenant_id"`
+	SeriesID                  uuid.UUID      `json:"series_id"`
+	UserID                    uuid.NullUUID  `json:"user_id"`
+	IdempotencyKey            string         `json:"idempotency_key"`
+	DiscountPercent           sql.NullInt32  `json:"discount_percent"`
+	Price                     int32          `json:"price"`
+	ExpiredProvider           sql.NullString `json:"expired_provider"`
+	ExpiredProviderCheckoutID sql.NullString `json:"expired_provider_checkout_id"`
+	ExpiredAt                 sql.NullTime   `json:"expired_at"`
+	CreatedAt                 time.Time      `json:"created_at"`
+}
+
+type SeriesBundleEpisode struct {
+	TenantID           uuid.UUID     `json:"tenant_id"`
+	SeriesBundleID     uuid.UUID     `json:"series_bundle_id"`
+	EpisodeID          uuid.UUID     `json:"episode_id"`
+	Position           int32         `json:"position"`
+	ListPrice          int32         `json:"list_price"`
+	Price              int32         `json:"price"`
+	ReadingPeriodHours sql.NullInt32 `json:"reading_period_hours"`
+}
+
 type SeriesCreator struct {
 	SeriesID     uuid.UUID     `json:"series_id"`
 	CreatorID    uuid.UUID     `json:"creator_id"`
@@ -1043,19 +1070,20 @@ type SeriesImageVariant struct {
 }
 
 type SeriesListing struct {
-	SeriesID           uuid.UUID      `json:"series_id"`
-	ReadingPeriodHours sql.NullInt32  `json:"reading_period_hours"`
-	IsPublished        sql.NullBool   `json:"is_published"`
-	PublishedAt        sql.NullTime   `json:"published_at"`
-	TenantID           uuid.UUID      `json:"tenant_id"`
-	Status             string         `json:"status"`
-	ScheduleWeekdays   []int32        `json:"schedule_weekdays"`
-	AgeRating          string         `json:"age_rating"`
-	EpisodeRatingMode  sql.NullString `json:"episode_rating_mode"`
-	CommentMode        sql.NullString `json:"comment_mode"`
-	ReadingDirection   string         `json:"reading_direction"`
-	SpreadStartIndex   int32          `json:"spread_start_index"`
-	RentalPeriodHours  sql.NullInt32  `json:"rental_period_hours"`
+	SeriesID              uuid.UUID      `json:"series_id"`
+	ReadingPeriodHours    sql.NullInt32  `json:"reading_period_hours"`
+	IsPublished           sql.NullBool   `json:"is_published"`
+	PublishedAt           sql.NullTime   `json:"published_at"`
+	TenantID              uuid.UUID      `json:"tenant_id"`
+	Status                string         `json:"status"`
+	ScheduleWeekdays      []int32        `json:"schedule_weekdays"`
+	AgeRating             string         `json:"age_rating"`
+	EpisodeRatingMode     sql.NullString `json:"episode_rating_mode"`
+	CommentMode           sql.NullString `json:"comment_mode"`
+	ReadingDirection      string         `json:"reading_direction"`
+	SpreadStartIndex      int32          `json:"spread_start_index"`
+	RentalPeriodHours     sql.NullInt32  `json:"rental_period_hours"`
+	BundleDiscountPercent sql.NullInt32  `json:"bundle_discount_percent"`
 }
 
 type SeriesRatingCount struct {

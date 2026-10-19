@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"regexp"
 	"strings"
 	"testing"
@@ -52,7 +53,7 @@ type capturingCheckoutProvider struct {
 }
 
 func (p *capturingCheckoutProvider) StartCheckout(_ context.Context, credentials paymentprovider.Credentials, input paymentprovider.CheckoutRequest) (string, error) {
-	if earlier, ok := p.sent[input.IdempotencyKey]; ok && earlier != input {
+	if earlier, ok := p.sent[input.IdempotencyKey]; ok && !reflect.DeepEqual(earlier, input) {
 		return "", errors.New("keys for idempotent requests can only be used with the same parameters they were first used with")
 	}
 	if p.sent == nil {

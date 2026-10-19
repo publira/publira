@@ -286,6 +286,11 @@ message Series {
   // tenant no longer offers when the series has none in its default locale
   // either. Empty on the console's reads.
   string locale = 24;
+  // What StartSeriesRemainderCheckout takes off the sum of the prices it
+  // sells, in whole percent from 1 to 99. Zero sells the rest of the series at
+  // that sum. Set on the console's reads and 0 on the public ones, where
+  // GetSeriesEpisodeAccess quotes the rest of the series to the reader.
+  int32 bundle_discount_percent = 25;
 }
 
 message Episode {
@@ -569,7 +574,6 @@ enum SurfaceAvailability {
   SURFACE_AVAILABILITY_APP = 3;
 }
 
-// Which of an episode's two sales a purchase is (purchases.kind).
 // A volume: a run of a series' episodes sold together, at a price of its own,
 // in one checkout. Buying it opens every episode it holds, which the episode
 // reads then report as EPISODE_ENTITLEMENT_SOURCE_PURCHASE.
@@ -593,6 +597,21 @@ message Volume {
   repeated SeriesEyeCatchVariant cover_image_variants = 8;
 }
 
+// The rest of a series, bought in one StartSeriesRemainderCheckout: every
+// episode the reader could buy and did not hold when the checkout started.
+// Buying it opens each of them, which the episode reads then report as
+// EPISODE_ENTITLEMENT_SOURCE_PURCHASE.
+message SeriesBundle {
+  // The bundle's primary key, a UUID.
+  string id = 1;
+  // How many episodes the checkout sold.
+  int32 episode_count = 2;
+  // The series' bundle discount the checkout took off, in whole percent; 0
+  // when it took none.
+  int32 discount_percent = 3;
+}
+
+// Which of an episode's two sales a purchase is (purchases.kind).
 enum PurchaseKind {
   // On a request, the permanent copy, which is what every client that names no
   // kind buys.

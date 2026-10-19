@@ -221,6 +221,62 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 		}
 	})
 
+	t.Run("a series bundle checkout names its bundle and no episode", func(t *testing.T) {
+		bundle := checkout
+		bundle.CheckoutID = "checkout_contract_series_bundle"
+		bundle.Purchase.EpisodeID = uuid.Nil
+		bundle.Purchase.SeriesBundleID = uuid.New()
+		bundle.Purchase.Price = 2700
+		bundle.Purchase.ReadingPeriodHours = 0
+		payload, headers := fixture.CheckoutCompleted(t, credentials, bundle)
+		event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
+		if err != nil {
+			t.Fatalf("ParseNotification: %v", err)
+		}
+		completed, ok := event.(paymentprovider.PurchaseCompleted)
+		if !ok {
+			t.Fatalf("event = %T, want PurchaseCompleted", event)
+		}
+		if completed.Purchase != bundle.Purchase {
+			t.Fatalf("purchase = %+v, want %+v", completed.Purchase, bundle.Purchase)
+		}
+	})
+
+	t.Run("a checkout that names both an episode and a series bundle is malformed", func(t *testing.T) {
+		both := checkout
+		both.CheckoutID = "checkout_contract_episode_and_bundle"
+		both.Purchase.SeriesBundleID = uuid.New()
+		both.Purchase.ReadingPeriodHours = 0
+		payload, headers := fixture.CheckoutCompleted(t, credentials, both)
+		if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
+			t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
+		}
+	})
+
+	t.Run("a checkout that names both a volume and a series bundle is malformed", func(t *testing.T) {
+		both := checkout
+		both.CheckoutID = "checkout_contract_volume_and_bundle"
+		both.Purchase.EpisodeID = uuid.Nil
+		both.Purchase.VolumeID = uuid.New()
+		both.Purchase.SeriesBundleID = uuid.New()
+		both.Purchase.ReadingPeriodHours = 0
+		payload, headers := fixture.CheckoutCompleted(t, credentials, both)
+		if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
+			t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
+		}
+	})
+
+	t.Run("a series bundle checkout with a reading period is malformed", func(t *testing.T) {
+		bounded := checkout
+		bounded.CheckoutID = "checkout_contract_bounded_series_bundle"
+		bounded.Purchase.EpisodeID = uuid.Nil
+		bounded.Purchase.SeriesBundleID = uuid.New()
+		payload, headers := fixture.CheckoutCompleted(t, credentials, bounded)
+		if _, err := provider.ParseNotification(t.Context(), payload, headers, credentials); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
+			t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
+		}
+	})
+
 	t.Run("a checkout that names no kind sold the permanent copy", func(t *testing.T) {
 		unnamed := checkout
 		unnamed.CheckoutID = "checkout_contract_unnamed"

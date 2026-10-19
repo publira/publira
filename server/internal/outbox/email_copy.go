@@ -78,6 +78,15 @@ func (c *emailComposer) flag(name string) bool {
 	return value
 }
 
+// integer is the int64 the handler put under name.
+func (c *emailComposer) integer(name string) int64 {
+	value, ok := c.data[name].(int64)
+	if !ok {
+		c.fail(fmt.Errorf("%s is missing or is not an int64", name))
+	}
+	return value
+}
+
 // instant is the RFC3339 value under name, written as the wall clock of the
 // display time zone.
 func (c *emailComposer) instant(name string) string {
@@ -168,7 +177,8 @@ var emailTemplates = map[string]func(*emailComposer){
 // has no line saying when it ends. A purchase paid in the provider's test mode,
 // which the documented setup asks an operator to make, says it charged nothing,
 // so its "price paid" is not read as money taken. A purchase of a volume names
-// the volume where a purchase of an episode names the episode.
+// the volume where a purchase of an episode names the episode, and a purchase
+// of the rest of a series how many episodes it bought.
 func purchaseReceiptCopy(c *emailComposer) {
 	brand := c.value("tenant_name")
 	libraryURL := c.value("library_url")
@@ -180,9 +190,12 @@ func purchaseReceiptCopy(c *emailComposer) {
 		c.line("email.purchase_receipt.test_notice", nil)
 	}
 	c.line("email.purchase_receipt.series", map[string]any{"series_title": c.value("series_title")})
-	if volume := c.value("volume_title"); volume != "" {
-		c.line("email.purchase_receipt.volume", map[string]any{"volume_title": volume})
-	} else {
+	switch count := c.integer("series_bundle_episode_count"); {
+	case c.value("volume_title") != "":
+		c.line("email.purchase_receipt.volume", map[string]any{"volume_title": c.value("volume_title")})
+	case count > 0:
+		c.line("email.purchase_receipt.series_bundle", map[string]any{"count": int(count)})
+	default:
 		c.line("email.purchase_receipt.episode", map[string]any{"episode_title": c.value("episode_title")})
 	}
 	c.line("email.purchase_receipt.amount", map[string]any{"amount": c.price("amount", "currency"), "currency": c.value("currency")})

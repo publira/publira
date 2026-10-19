@@ -62,6 +62,7 @@ func tightenedPolicy() platformpolicy.Policy {
 	policy.IdentityLink = platformpolicy.MinuteDay{PerMinute: 2, PerDay: 12}
 	policy.IconChange = platformpolicy.MinuteDay{PerMinute: 3, PerDay: 9}
 	policy.Passkey = platformpolicy.MinuteDay{PerMinute: 4, PerDay: 16}
+	policy.SeriesRemainderCheckout = platformpolicy.MinuteDay{PerMinute: 3, PerDay: 12}
 	policy.LoginAttemptsPerAccount = platformpolicy.MinuteDay{PerMinute: 4, PerDay: 20}
 	policy.LoginAttemptsPerSource = platformpolicy.HourDay{PerHour: 30, PerDay: 120}
 	policy.DisposableEmailDomainsURL = "https://lists.example.com/disposable.conf"
@@ -336,6 +337,45 @@ func TestDBUpdatePlatformPolicyKeepsAnOmittedPasskeyLimit(t *testing.T) {
 	third := saveWithout(t, want, second.Revision)
 	if got := platformPolicyFromProto(third.Policy); got != want {
 		t.Fatalf("save without the limit = %+v, want %+v keeping the stored passkey limit", got, want)
+	}
+}
+
+// series_remainder_checkout reached the policy after the console screens that
+// save it, in the same way wait_free_ticket_use did, so an omitted one keeps
+// what is stored too.
+func TestDBUpdatePlatformPolicyKeepsAnOmittedSeriesRemainderCheckoutLimit(t *testing.T) {
+	client, _, operator := newPolicyClient(t)
+	saveWithout := func(t *testing.T, policy platformpolicy.Policy, revision int64) *publirasplatformv1.UpdatePlatformPolicyResponse {
+		t.Helper()
+		message := platformPolicyToProto(policy)
+		message.SeriesRemainderCheckout = nil
+		resp, err := client.UpdatePlatformPolicy(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.UpdatePlatformPolicyRequest{
+			Policy:           message,
+			ExpectedRevision: revision,
+		})
+		if err != nil {
+			t.Fatalf("UpdatePlatformPolicy without series_remainder_checkout: %v", err)
+		}
+		return resp
+	}
+
+	want := tightenedPolicy()
+	first := saveWithout(t, want, 0)
+	want.SeriesRemainderCheckout = platformpolicy.Defaults().SeriesRemainderCheckout
+	if got := platformPolicyFromProto(first.Policy); got != want {
+		t.Fatalf("first save = %+v, want %+v with the default remainder checkout limit", got, want)
+	}
+
+	want.SeriesRemainderCheckout = platformpolicy.MinuteDay{PerMinute: 6, PerDay: 60}
+	second, err := updatePolicy(t, client, operator, want, first.Revision)
+	if err != nil {
+		t.Fatalf("UpdatePlatformPolicy with series_remainder_checkout: %v", err)
+	}
+
+	want.MFARequiredForTenantAdmin = false
+	third := saveWithout(t, want, second.Revision)
+	if got := platformPolicyFromProto(third.Policy); got != want {
+		t.Fatalf("save without the limit = %+v, want %+v keeping the stored remainder checkout limit", got, want)
 	}
 }
 

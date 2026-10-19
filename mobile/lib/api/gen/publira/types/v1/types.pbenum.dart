@@ -291,6 +291,7 @@ class SurfaceAvailability extends $pb.ProtobufEnum {
   const SurfaceAvailability._(super.value, super.name);
 }
 
+/// Which of an episode's two sales a purchase is (purchases.kind).
 class PurchaseKind extends $pb.ProtobufEnum {
   /// On a request, the permanent copy, which is what every client that names no
   /// kind buys.

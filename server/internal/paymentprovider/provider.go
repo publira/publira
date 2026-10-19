@@ -147,20 +147,40 @@ func CheckVolumeSale(kind Kind, readingPeriodHours int64) error {
 	return nil
 }
 
-// Purchase names what a completed checkout sells: one episode, or one volume,
-// so exactly one of EpisodeID and VolumeID is set and the other is
-// [uuid.Nil]. The provider carries it from [CheckoutRequest] to the
-// notification that confirms it.
+// CheckSeriesBundleSale refuses the terms a checkout of a series bundle cannot
+// carry, as [CheckVolumeSale] does for a volume. A bundle is the permanent copy
+// of each of its episodes, and the reading period of each is written down
+// with the bundle rather than carried by the checkout.
+func CheckSeriesBundleSale(kind Kind, readingPeriodHours int64) error {
+	if kind != KindPurchase {
+		return errors.New("a series bundle is never rented")
+	}
+	if readingPeriodHours != 0 {
+		return errors.New("a series bundle names no reading period")
+	}
+	return nil
+}
+
+// Purchase names what a completed checkout sells: one episode, one volume, or
+// one series bundle, so exactly one of EpisodeID, VolumeID, and
+// SeriesBundleID is set and the others are [uuid.Nil]. The provider carries it
+// from [CheckoutRequest] to the notification that confirms it.
 type Purchase struct {
 	TenantID  uuid.UUID
 	ReaderID  uuid.UUID
 	EpisodeID uuid.UUID
 	VolumeID  uuid.UUID
+	// SeriesBundleID names the series_bundles row a checkout of the rest of a
+	// series wrote down before it started. It is left out of the encoding an
+	// idempotency key is made from while it is zero, so a checkout of an
+	// episode or a volume keeps the key it had before bundles existed.
+	SeriesBundleID uuid.UUID `json:",omitzero"`
 	// Kind is which of the episode's sales the checkout is for, and always
-	// [KindPurchase] for a volume.
+	// [KindPurchase] for a volume and a series bundle.
 	Kind Kind
 	// Price is the episode's or the volume's price at the time of checkout,
-	// in the minor unit of Currency.
+	// or what a series bundle charges once its discount is taken off, in the
+	// minor unit of Currency.
 	Price int32
 	// Currency is the ISO 4217 code, in capitals, of the tenant currency the
 	// checkout charges in. A provider reads it back from the payment it
@@ -169,16 +189,47 @@ type Purchase struct {
 	Currency string
 	// ReadingPeriodHours limits how long the purchase opens the episode; zero
 	// means it does not expire. A rental carries its rental period here, and
-	// a volume always zero.
+	// a volume and a series bundle always zero.
 	ReadingPeriodHours int32
 }
 
-// CheckoutRequest starts one reader's checkout of one episode or one volume.
+// LineItem is one of the lines a checkout of a series bundle lists, one per
+// episode.
+type LineItem struct {
+	// Name is the episode's title.
+	Name string
+	// Price is what the line costs before the checkout's discount, in the
+	// minor unit of [Purchase.Currency].
+	Price int32
+	// DiscountedPrice is the part of [Purchase.Price] the line accounts for
+	// once the discount is spread over every line, which a provider that takes
+	// no discount of its own charges for the line instead of Price.
+	DiscountedPrice int32
+}
+
+// Discount is an amount a checkout takes off the sum of its lines.
+type Discount struct {
+	// Name is what the checkout page calls the discount.
+	Name string
+	// Amount is in the minor unit of [Purchase.Currency].
+	Amount int32
+}
+
+// CheckoutRequest starts one reader's checkout of one episode, one volume, or
+// one series bundle.
 type CheckoutRequest struct {
 	Purchase Purchase
 	// LineItemName is what the checkout names the sale: the episode's title,
 	// and for a rental the period it is rented for besides, or the volume's.
+	// A checkout of a series bundle names its sale by LineItems instead.
 	LineItemName string
+	// LineItems are the lines of a checkout of a series bundle, in its order.
+	// Their prices sum to Purchase.Price once Discount is taken off. Empty on
+	// every other checkout, which sells one line at Purchase.Price.
+	LineItems []LineItem `json:",omitempty"`
+	// Discount is what a checkout of a series bundle takes off its lines, and
+	// nil when it takes nothing off.
+	Discount *Discount `json:",omitempty"`
 	// SuccessURL and CancelURL are where the reader returns to afterwards.
 	SuccessURL string
 	CancelURL  string

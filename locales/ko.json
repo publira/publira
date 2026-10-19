@@ -105,6 +105,7 @@
       "preview": "{$title} 구매가 완료되었습니다.",
       "purchased_at": "구매 일시: {$purchased_at}",
       "series": "시리즈: {$series_title}",
+      "series_bundle": "남은 에피소드: {$count :integer}화",
       "subject": "{$tenant_name} 구매 완료",
       "test_notice": "결제 서비스의 테스트 모드에서 진행된 구매입니다. 요금은 청구되지 않았습니다.",
       "volume": "권: {$volume_title}"
@@ -212,6 +213,7 @@
     }
   },
   "checkout": {
+    "bundle_discount": "묶음 할인 ({$percent :integer}%)",
     "rental_line_item": "{$episode_title} (대여, {$hours :integer}시간)"
   },
   "errors": {

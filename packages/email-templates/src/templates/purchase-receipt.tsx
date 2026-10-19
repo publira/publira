@@ -45,8 +45,10 @@ export const purchaseReceiptDataSchema = z
         error: "currency must be an ISO 4217 code",
       }),
     /**
-     * What was bought is one episode or one volume: the title of the one
-     * bought is filled in, and the other is empty or left out.
+     * What was bought is one episode, one volume, or the rest of a series: the
+     * title of the episode or the volume bought is filled in, or the number of
+     * episodes the rest of the series held, and the others are empty, 0, or
+     * left out.
      */
     episode_title: z.string().trim().default(""),
     /** Empty for a purchase with no reading period. */
@@ -55,14 +57,25 @@ export const purchaseReceiptDataSchema = z
     is_test: z.boolean({ error: "is_test must be a boolean" }),
     library_url: httpUrlField("library_url"),
     purchased_at: instantField("purchased_at"),
+    series_bundle_episode_count: z
+      .number()
+      .int({ error: "series_bundle_episode_count must be an integer" })
+      .min(0, { error: "series_bundle_episode_count must not be negative" })
+      .default(0),
     series_title: catalogTitleField("series_title"),
     tenant_name: displayNameField("tenant_name"),
     volume_title: z.string().trim().default(""),
   })
   .refine(
-    (data) => (data.episode_title === "") !== (data.volume_title === ""),
+    (data) =>
+      [
+        data.episode_title !== "",
+        data.volume_title !== "",
+        data.series_bundle_episode_count > 0,
+      ].filter(Boolean).length === 1,
     {
-      error: "exactly one of episode_title and volume_title is required",
+      error:
+        "exactly one of episode_title, volume_title, and series_bundle_episode_count is required",
     }
   );
 
@@ -75,13 +88,43 @@ export interface PurchaseReceiptEmailProps {
   timeZone: string;
 }
 
+/** What the receipt names as bought: the episode, the volume, or the series. */
+const purchasedTitle = (data: PurchaseReceiptData): string => {
+  if (data.episode_title !== "") {
+    return data.episode_title;
+  }
+  return data.volume_title === "" ? data.series_title : data.volume_title;
+};
+
 export const purchaseReceiptPreview = (
   data: PurchaseReceiptData,
   messages: Messages
 ): string =>
   emailMessage(messages, "email.purchase_receipt.preview", {
-    title: data.episode_title === "" ? data.volume_title : data.episode_title,
+    title: purchasedTitle(data),
   });
+
+const PurchasedItem = ({
+  data,
+  messages,
+}: {
+  data: PurchaseReceiptData;
+  messages: Messages;
+}) => {
+  if (data.episode_title !== "") {
+    return emailMessage(messages, "email.purchase_receipt.episode", {
+      episode_title: data.episode_title,
+    });
+  }
+  if (data.volume_title !== "") {
+    return emailMessage(messages, "email.purchase_receipt.volume", {
+      volume_title: data.volume_title,
+    });
+  }
+  return emailMessage(messages, "email.purchase_receipt.series_bundle", {
+    count: data.series_bundle_episode_count,
+  });
+};
 
 /**
  * The receipt a reader is sent for a purchase. The price names its currency by
@@ -122,13 +165,7 @@ export const PurchaseReceiptEmail = ({
       })}
     </EmailDetail>
     <EmailDetail>
-      {data.episode_title === ""
-        ? emailMessage(messages, "email.purchase_receipt.volume", {
-            volume_title: data.volume_title,
-          })
-        : emailMessage(messages, "email.purchase_receipt.episode", {
-            episode_title: data.episode_title,
-          })}
+      <PurchasedItem data={data} messages={messages} />
     </EmailDetail>
     <EmailDetail>
       {emailMessage(messages, "email.purchase_receipt.amount", {

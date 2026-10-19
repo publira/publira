@@ -42,7 +42,10 @@ const (
 	MetadataEpisodeID = "episode_id"
 	// MetadataVolumeID is present, in place of MetadataEpisodeID, on a
 	// checkout of a volume.
-	MetadataVolumeID           = "volume_id"
+	MetadataVolumeID = "volume_id"
+	// MetadataSeriesBundleID is present, in place of MetadataEpisodeID, on a
+	// checkout of the rest of a series.
+	MetadataSeriesBundleID     = "series_bundle_id"
 	MetadataPrice              = "price"
 	MetadataReadingPeriodHours = "reading_period_hours"
 	// MetadataKind is absent on a checkout started before an episode had
@@ -126,20 +129,31 @@ func (p *Provider) StartCheckout(ctx context.Context, credentials paymentprovide
 	if err != nil {
 		return "", err
 	}
+	// PAY.JP Checkout takes no discount, so a checkout that has one charges
+	// each line the part of the price it accounts for once the discount is
+	// spread over them.
+	lines := req.LineItems
+	if len(lines) == 0 {
+		lines = []paymentprovider.LineItem{{Name: req.LineItemName, DiscountedPrice: req.Purchase.Price}}
+	}
+	lineItems := make([]payjpv2.LineItemRequest, 0, len(lines))
+	for _, line := range lines {
+		lineItems = append(lineItems, payjpv2.LineItemRequest{
+			PriceData: &payjpv2.PriceDataRequest{
+				Currency:    payjpv2.Currency(strings.ToLower(req.Purchase.Currency)),
+				ProductData: &payjpv2.ProductDataRequest{Name: line.Name},
+				UnitAmount:  int(line.DiscountedPrice),
+			},
+			Quantity: 1,
+		})
+	}
 	threeDSecure := payjpv2.CheckoutSessionPaymentMethodOptionsCardRequestRequestThreeDSecureAny
 	body := payjpv2.CheckoutSessionCreateRequest{
 		Mode:       payjpv2.CheckoutSessionModePayment,
 		SuccessUrl: &successURL,
 		CancelUrl:  &req.CancelURL,
-		LineItems: &[]payjpv2.LineItemRequest{{
-			PriceData: &payjpv2.PriceDataRequest{
-				Currency:    payjpv2.Currency(strings.ToLower(req.Purchase.Currency)),
-				ProductData: &payjpv2.ProductDataRequest{Name: req.LineItemName},
-				UnitAmount:  int(req.Purchase.Price),
-			},
-			Quantity: 1,
-		}},
-		Metadata: &metadata,
+		LineItems:  &lineItems,
+		Metadata:   &metadata,
 		// Cards are the method the Japanese card industry's guideline
 		// requires 3-D Secure on, and the only one this checkout offers.
 		PaymentMethodTypes: &[]payjpv2.PaymentMethodTypes{payjpv2.PaymentMethodTypesCard},
@@ -180,9 +194,12 @@ func sessionMetadata(purchase paymentprovider.Purchase) (map[string]payjpv2.Chec
 		MetadataUserID:   purchase.ReaderID.String(),
 		MetadataPrice:    strconv.FormatInt(int64(purchase.Price), 10),
 	}
-	if purchase.VolumeID != uuid.Nil {
+	switch {
+	case purchase.VolumeID != uuid.Nil:
 		values[MetadataVolumeID] = purchase.VolumeID.String()
-	} else {
+	case purchase.SeriesBundleID != uuid.Nil:
+		values[MetadataSeriesBundleID] = purchase.SeriesBundleID.String()
+	default:
 		values[MetadataEpisodeID] = purchase.EpisodeID.String()
 	}
 	if purchase.ReadingPeriodHours > 0 {
@@ -462,16 +479,20 @@ func parsePurchaseMetadata(metadata map[string]json.RawMessage) (paymentprovider
 	if err != nil {
 		return paymentprovider.Purchase{}, err
 	}
-	// A checkout sells an episode or a volume, never both, and one started
-	// before volumes existed names an episode.
-	var episodeID, volumeID uuid.UUID
+	// A checkout sells one of an episode, a volume, and a series bundle, and
+	// one started before volumes existed names an episode.
+	var episodeID, volumeID, seriesBundleID uuid.UUID
 	_, sellsVolume := metadata[MetadataVolumeID]
-	if sellsVolume {
-		if _, ok := metadata[MetadataEpisodeID]; ok {
-			return paymentprovider.Purchase{}, errors.New("metadata names both an episode and a volume")
-		}
+	_, sellsSeriesBundle := metadata[MetadataSeriesBundleID]
+	_, sellsEpisode := metadata[MetadataEpisodeID]
+	switch {
+	case sellsVolume && (sellsEpisode || sellsSeriesBundle), sellsSeriesBundle && sellsEpisode:
+		return paymentprovider.Purchase{}, errors.New("metadata names more than one of an episode, a volume, and a series bundle")
+	case sellsVolume:
 		volumeID, err = parseID(MetadataVolumeID)
-	} else {
+	case sellsSeriesBundle:
+		seriesBundleID, err = parseID(MetadataSeriesBundleID)
+	default:
 		episodeID, err = parseID(MetadataEpisodeID)
 	}
 	if err != nil {
@@ -504,11 +525,17 @@ func parsePurchaseMetadata(metadata map[string]json.RawMessage) (paymentprovider
 			return paymentprovider.Purchase{}, fmt.Errorf("invalid volume metadata: %w", err)
 		}
 	}
+	if sellsSeriesBundle {
+		if err := paymentprovider.CheckSeriesBundleSale(kind, readingPeriodHours); err != nil {
+			return paymentprovider.Purchase{}, fmt.Errorf("invalid series bundle metadata: %w", err)
+		}
+	}
 	return paymentprovider.Purchase{
 		TenantID:           tenantID,
 		ReaderID:           userID,
 		EpisodeID:          episodeID,
 		VolumeID:           volumeID,
+		SeriesBundleID:     seriesBundleID,
 		Kind:               kind,
 		Price:              int32(price),
 		ReadingPeriodHours: int32(readingPeriodHours),

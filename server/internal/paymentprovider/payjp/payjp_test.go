@@ -96,6 +96,54 @@ func TestStartCheckoutAsksForACardPaymentWithThreeDSecure(t *testing.T) {
 	}
 }
 
+// PAY.JP Checkout takes no discount, so a checkout of the rest of a series
+// charges each line the part of the discounted price it accounts for.
+func TestStartCheckoutChargesEachLineItsPartOfTheDiscountedPrice(t *testing.T) {
+	api := payjptest.NewAPI(t)
+	purchase := testPurchase()
+	purchase.EpisodeID = uuid.Nil
+	purchase.SeriesBundleID = uuid.New()
+	purchase.Price = 450
+	purchase.ReadingPeriodHours = 0
+	if _, err := payjp.New(payjp.WithBaseURL(api.URL())).StartCheckout(t.Context(), testCredentials, paymentprovider.CheckoutRequest{
+		Purchase: purchase,
+		LineItems: []paymentprovider.LineItem{
+			{Name: "Second", Price: 300, DiscountedPrice: 270},
+			{Name: "Third", Price: 200, DiscountedPrice: 180},
+		},
+		Discount:       &paymentprovider.Discount{Name: "Bundle discount (10%)", Amount: 50},
+		SuccessURL:     "https://store.example/series/SR01?checkout=success&remainder=1",
+		CancelURL:      "https://store.example/series/SR01?checkout=cancelled&remainder=1",
+		IdempotencyKey: "series-remainder-checkout:key",
+	}); err != nil {
+		t.Fatalf("StartCheckout: %v", err)
+	}
+
+	body := api.CheckoutSessions()[0].Body
+	items, _ := body["line_items"].([]any)
+	if len(items) != 2 {
+		t.Fatalf("line_items = %v, want two", body["line_items"])
+	}
+	for i, want := range []struct {
+		name   string
+		amount float64
+	}{{"Second", 270}, {"Third", 180}} {
+		item, _ := items[i].(map[string]any)
+		price, _ := item["price_data"].(map[string]any)
+		product, _ := price["product_data"].(map[string]any)
+		if product["name"] != want.name || price["unit_amount"] != want.amount || item["quantity"] != float64(1) {
+			t.Fatalf("line %d = %v, want one %s at %v", i, item, want.name, want.amount)
+		}
+	}
+	metadata, _ := body["metadata"].(map[string]any)
+	if metadata["series_bundle_id"] != purchase.SeriesBundleID.String() || metadata["price"] != "450" {
+		t.Fatalf("metadata = %v, want the bundle at 450", metadata)
+	}
+	if _, ok := metadata["episode_id"]; ok {
+		t.Fatalf("metadata = %v, want no episode", metadata)
+	}
+}
+
 func TestStartCheckoutReturnsTheSameURLForARetry(t *testing.T) {
 	api := payjptest.NewAPI(t)
 	provider := payjp.New(payjp.WithBaseURL(api.URL()))

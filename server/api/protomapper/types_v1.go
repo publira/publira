@@ -38,6 +38,7 @@ func SeriesFromGetSeriesByPublicIDForTenantRow(row dbmodels.GetSeriesByPublicIDF
 	if row.RentalPeriodHours.Valid {
 		series.RentalPeriodHours = row.RentalPeriodHours.Int32
 	}
+	series.BundleDiscountPercent = row.BundleDiscountPercent.Int32
 	if row.Status.Valid {
 		status, err := SeriesStatusFromStored(row.Status.String)
 		if err != nil {

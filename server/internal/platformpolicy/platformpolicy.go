@@ -83,6 +83,11 @@ type Policy struct {
 	// a ceremony until it expires, so what this bounds is the rows one account
 	// can make the storefront keep and the writes it can make it repeat.
 	Passkey MinuteDay
+	// SeriesRemainderCheckout bounds the checkouts of the rest of a series one
+	// reader may start. Each start may write a series bundle and asks the
+	// payment provider for a checkout, so what this bounds is the writes and
+	// the provider requests one account can make the storefront repeat.
+	SeriesRemainderCheckout MinuteDay
 	// LoginAttemptsPerAccount bounds the passwords tried at sign-in for one
 	// address within its tenant, or within the platform console. A sign-in
 	// whose password is right clears it.
@@ -139,6 +144,7 @@ func Defaults() Policy {
 		IdentityLink:              MinuteDay{PerMinute: 5, PerDay: 20},
 		IconChange:                MinuteDay{PerMinute: 5, PerDay: 20},
 		Passkey:                   MinuteDay{PerMinute: 10, PerDay: 50},
+		SeriesRemainderCheckout:   MinuteDay{PerMinute: 10, PerDay: 50},
 		LoginAttemptsPerAccount:   MinuteDay{PerMinute: 5, PerDay: 50},
 		LoginAttemptsPerSource:    HourDay{PerHour: 60, PerDay: 300},
 	}
@@ -170,6 +176,7 @@ func (p Policy) Validate() error {
 		{"identity_link", "per_minute", p.IdentityLink.PerMinute, p.IdentityLink.PerDay},
 		{"icon_change", "per_minute", p.IconChange.PerMinute, p.IconChange.PerDay},
 		{"passkey", "per_minute", p.Passkey.PerMinute, p.Passkey.PerDay},
+		{"series_remainder_checkout", "per_minute", p.SeriesRemainderCheckout.PerMinute, p.SeriesRemainderCheckout.PerDay},
 		{"login_attempts_per_account", "per_minute", p.LoginAttemptsPerAccount.PerMinute, p.LoginAttemptsPerAccount.PerDay},
 		{"login_attempts_per_source", "per_hour", p.LoginAttemptsPerSource.PerHour, p.LoginAttemptsPerSource.PerDay},
 	} {
@@ -233,6 +240,7 @@ func FromConfig(config dbmodels.PlatformPolicyConfig) Policy {
 		IdentityLink:              MinuteDay{PerMinute: int(config.IdentityLinkLimitPerMinute), PerDay: int(config.IdentityLinkLimitPerDay)},
 		IconChange:                MinuteDay{PerMinute: int(config.IconChangeLimitPerMinute), PerDay: int(config.IconChangeLimitPerDay)},
 		Passkey:                   MinuteDay{PerMinute: int(config.PasskeyLimitPerMinute), PerDay: int(config.PasskeyLimitPerDay)},
+		SeriesRemainderCheckout:   MinuteDay{PerMinute: int(config.SeriesRemainderCheckoutLimitPerMinute), PerDay: int(config.SeriesRemainderCheckoutLimitPerDay)},
 		LoginAttemptsPerAccount:   MinuteDay{PerMinute: int(config.LoginAccountLimitPerMinute), PerDay: int(config.LoginAccountLimitPerDay)},
 		LoginAttemptsPerSource:    HourDay{PerHour: int(config.LoginSourceLimitPerHour), PerDay: int(config.LoginSourceLimitPerDay)},
 		DisposableEmailDomainsURL: config.DisposableEmailDomainsUrl,
@@ -245,44 +253,46 @@ func (p Policy) ConfigParams() dbmodels.UpdatePlatformPolicyConfigParams {
 	policy := p
 	community := policy.Community
 	return dbmodels.UpdatePlatformPolicyConfigParams{
-		MfaRequiredForTenantAdmin:            policy.MFARequiredForTenantAdmin,
-		MfaRequiredForPlatformOperator:       policy.MFARequiredForPlatformOperator,
-		PasswordVerifyLimitPerMinute:         int32(policy.PasswordVerification.PerMinute),
-		PasswordVerifyLimitPerDay:            int32(policy.PasswordVerification.PerDay),
-		MailRequestLimitPerAddressPerHour:    int32(policy.MailRequestsPerAddress.PerHour),
-		MailRequestLimitPerAddressPerDay:     int32(policy.MailRequestsPerAddress.PerDay),
-		MailRequestLimitPerSourcePerHour:     int32(policy.MailRequestsPerSource.PerHour),
-		MailRequestLimitPerSourcePerDay:      int32(policy.MailRequestsPerSource.PerDay),
-		CommentPostLimitPerMinute:            int32(community.CommentPost.PerMinute),
-		CommentPostLimitPerDay:               int32(community.CommentPost.PerDay),
-		CommentReportLimitPerMinute:          int32(community.CommentReport.PerMinute),
-		CommentReportLimitPerDay:             int32(community.CommentReport.PerDay),
-		CommentDuplicateWindowMinutes:        int32(community.DuplicateCommentWindow / time.Minute),
-		EpisodeRatingLimitPerMinute:          int32(community.EpisodeRating.PerMinute),
-		EpisodeRatingLimitPerDay:             int32(community.EpisodeRating.PerDay),
-		ContactMessageLimitPerAccountPerHour: int32(community.ContactMessagePerAccount.PerHour),
-		ContactMessageLimitPerAccountPerDay:  int32(community.ContactMessagePerAccount.PerDay),
-		ContactMessageLimitPerClientPerHour:  int32(community.ContactMessagePerClient.PerHour),
-		ContactMessageLimitPerClientPerDay:   int32(community.ContactMessagePerClient.PerDay),
-		ViewerPreferencesLimitPerMinute:      int32(community.ViewerPreferencesUpdate.PerMinute),
-		ViewerPreferencesLimitPerDay:         int32(community.ViewerPreferencesUpdate.PerDay),
-		StorePurchaseConfirmLimitPerMinute:   int32(policy.StorePurchaseConfirmation.PerMinute),
-		StorePurchaseConfirmLimitPerDay:      int32(policy.StorePurchaseConfirmation.PerDay),
-		WaitFreeTicketUseLimitPerMinute:      int32(policy.WaitFreeTicketUse.PerMinute),
-		WaitFreeTicketUseLimitPerDay:         int32(policy.WaitFreeTicketUse.PerDay),
-		LegalPageAgreementLimitPerMinute:     int32(policy.LegalPageAgreement.PerMinute),
-		LegalPageAgreementLimitPerDay:        int32(policy.LegalPageAgreement.PerDay),
-		IdentityLinkLimitPerMinute:           int32(policy.IdentityLink.PerMinute),
-		IdentityLinkLimitPerDay:              int32(policy.IdentityLink.PerDay),
-		IconChangeLimitPerMinute:             int32(policy.IconChange.PerMinute),
-		IconChangeLimitPerDay:                int32(policy.IconChange.PerDay),
-		PasskeyLimitPerMinute:                int32(policy.Passkey.PerMinute),
-		PasskeyLimitPerDay:                   int32(policy.Passkey.PerDay),
-		LoginAccountLimitPerMinute:           int32(policy.LoginAttemptsPerAccount.PerMinute),
-		LoginAccountLimitPerDay:              int32(policy.LoginAttemptsPerAccount.PerDay),
-		LoginSourceLimitPerHour:              int32(policy.LoginAttemptsPerSource.PerHour),
-		LoginSourceLimitPerDay:               int32(policy.LoginAttemptsPerSource.PerDay),
-		DisposableEmailDomainsUrl:            policy.DisposableEmailDomainsURL,
+		MfaRequiredForTenantAdmin:             policy.MFARequiredForTenantAdmin,
+		MfaRequiredForPlatformOperator:        policy.MFARequiredForPlatformOperator,
+		PasswordVerifyLimitPerMinute:          int32(policy.PasswordVerification.PerMinute),
+		PasswordVerifyLimitPerDay:             int32(policy.PasswordVerification.PerDay),
+		MailRequestLimitPerAddressPerHour:     int32(policy.MailRequestsPerAddress.PerHour),
+		MailRequestLimitPerAddressPerDay:      int32(policy.MailRequestsPerAddress.PerDay),
+		MailRequestLimitPerSourcePerHour:      int32(policy.MailRequestsPerSource.PerHour),
+		MailRequestLimitPerSourcePerDay:       int32(policy.MailRequestsPerSource.PerDay),
+		CommentPostLimitPerMinute:             int32(community.CommentPost.PerMinute),
+		CommentPostLimitPerDay:                int32(community.CommentPost.PerDay),
+		CommentReportLimitPerMinute:           int32(community.CommentReport.PerMinute),
+		CommentReportLimitPerDay:              int32(community.CommentReport.PerDay),
+		CommentDuplicateWindowMinutes:         int32(community.DuplicateCommentWindow / time.Minute),
+		EpisodeRatingLimitPerMinute:           int32(community.EpisodeRating.PerMinute),
+		EpisodeRatingLimitPerDay:              int32(community.EpisodeRating.PerDay),
+		ContactMessageLimitPerAccountPerHour:  int32(community.ContactMessagePerAccount.PerHour),
+		ContactMessageLimitPerAccountPerDay:   int32(community.ContactMessagePerAccount.PerDay),
+		ContactMessageLimitPerClientPerHour:   int32(community.ContactMessagePerClient.PerHour),
+		ContactMessageLimitPerClientPerDay:    int32(community.ContactMessagePerClient.PerDay),
+		ViewerPreferencesLimitPerMinute:       int32(community.ViewerPreferencesUpdate.PerMinute),
+		ViewerPreferencesLimitPerDay:          int32(community.ViewerPreferencesUpdate.PerDay),
+		StorePurchaseConfirmLimitPerMinute:    int32(policy.StorePurchaseConfirmation.PerMinute),
+		StorePurchaseConfirmLimitPerDay:       int32(policy.StorePurchaseConfirmation.PerDay),
+		WaitFreeTicketUseLimitPerMinute:       int32(policy.WaitFreeTicketUse.PerMinute),
+		WaitFreeTicketUseLimitPerDay:          int32(policy.WaitFreeTicketUse.PerDay),
+		LegalPageAgreementLimitPerMinute:      int32(policy.LegalPageAgreement.PerMinute),
+		LegalPageAgreementLimitPerDay:         int32(policy.LegalPageAgreement.PerDay),
+		IdentityLinkLimitPerMinute:            int32(policy.IdentityLink.PerMinute),
+		IdentityLinkLimitPerDay:               int32(policy.IdentityLink.PerDay),
+		IconChangeLimitPerMinute:              int32(policy.IconChange.PerMinute),
+		IconChangeLimitPerDay:                 int32(policy.IconChange.PerDay),
+		PasskeyLimitPerMinute:                 int32(policy.Passkey.PerMinute),
+		PasskeyLimitPerDay:                    int32(policy.Passkey.PerDay),
+		SeriesRemainderCheckoutLimitPerMinute: int32(policy.SeriesRemainderCheckout.PerMinute),
+		SeriesRemainderCheckoutLimitPerDay:    int32(policy.SeriesRemainderCheckout.PerDay),
+		LoginAccountLimitPerMinute:            int32(policy.LoginAttemptsPerAccount.PerMinute),
+		LoginAccountLimitPerDay:               int32(policy.LoginAttemptsPerAccount.PerDay),
+		LoginSourceLimitPerHour:               int32(policy.LoginAttemptsPerSource.PerHour),
+		LoginSourceLimitPerDay:                int32(policy.LoginAttemptsPerSource.PerDay),
+		DisposableEmailDomainsUrl:             policy.DisposableEmailDomainsURL,
 	}
 }
 

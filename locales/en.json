@@ -105,6 +105,7 @@
       "preview": "Thank you for buying {$title}.",
       "purchased_at": "Purchased: {$purchased_at}",
       "series": "Series: {$series_title}",
+      "series_bundle": ".input {$count :integer}\n.match $count\none {{Remaining episodes: {$count} episode}}\n* {{Remaining episodes: {$count} episodes}}",
       "subject": "{$tenant_name} purchase receipt",
       "test_notice": "This was a purchase in the payment provider's test mode. No money was charged.",
       "volume": "Volume: {$volume_title}"
@@ -212,6 +213,7 @@
     }
   },
   "checkout": {
+    "bundle_discount": "Bundle discount ({$percent :integer}%)",
     "rental_line_item": ".input {$hours :integer}\n.match $hours\none {{{$episode_title} (rental, {$hours} hour)}}\n* {{{$episode_title} (rental, {$hours} hours)}}"
   },
   "errors": {

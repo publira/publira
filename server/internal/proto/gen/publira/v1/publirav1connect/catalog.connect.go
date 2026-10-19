@@ -141,6 +141,9 @@ const (
 	// PurchaseServiceStartVolumeCheckoutProcedure is the procedure name of the PurchaseService's
 	// StartVolumeCheckout RPC.
 	PurchaseServiceStartVolumeCheckoutProcedure = "/publira.v1.PurchaseService/StartVolumeCheckout"
+	// PurchaseServiceStartSeriesRemainderCheckoutProcedure is the procedure name of the
+	// PurchaseService's StartSeriesRemainderCheckout RPC.
+	PurchaseServiceStartSeriesRemainderCheckoutProcedure = "/publira.v1.PurchaseService/StartSeriesRemainderCheckout"
 	// PurchaseServiceListMyPurchasesProcedure is the procedure name of the PurchaseService's
 	// ListMyPurchases RPC.
 	PurchaseServiceListMyPurchasesProcedure = "/publira.v1.PurchaseService/ListMyPurchases"
@@ -1880,6 +1883,13 @@ var (
 			Procedure:  PurchaseServiceStartVolumeCheckoutProcedure,
 		}
 	})
+	purchaseServiceStartSeriesRemainderCheckoutSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_catalog_proto.Services().ByName("PurchaseService").Methods().ByName("StartSeriesRemainderCheckout"),
+			Procedure:  PurchaseServiceStartSeriesRemainderCheckoutProcedure,
+		}
+	})
 	purchaseServiceListMyPurchasesSpec = sync.OnceValue(func() connect.Spec {
 		return connect.Spec{
 			StreamType: connect.StreamTypeUnary,
@@ -1921,6 +1931,7 @@ var (
 type PurchaseServiceClient interface {
 	StartEpisodeCheckout(context.Context, *v1.StartEpisodeCheckoutRequest) (*v1.StartEpisodeCheckoutResponse, error)
 	StartVolumeCheckout(context.Context, *v1.StartVolumeCheckoutRequest) (*v1.StartVolumeCheckoutResponse, error)
+	StartSeriesRemainderCheckout(context.Context, *v1.StartSeriesRemainderCheckoutRequest) (*v1.StartSeriesRemainderCheckoutResponse, error)
 	// Lists only the authenticated reader's purchases in the requested tenant.
 	ListMyPurchases(context.Context, *v1.ListMyPurchasesRequest) (*v1.ListMyPurchasesResponse, error)
 	ProcessPaymentWebhook(context.Context, *v1.ProcessPaymentWebhookRequest) (*v1.ProcessPaymentWebhookResponse, error)
@@ -1939,6 +1950,7 @@ func NewPurchaseServiceClient(client *connect.Client) PurchaseServiceClient {
 type PurchaseServiceHandler interface {
 	StartEpisodeCheckout(context.Context, *v1.StartEpisodeCheckoutRequest) (*v1.StartEpisodeCheckoutResponse, error)
 	StartVolumeCheckout(context.Context, *v1.StartVolumeCheckoutRequest) (*v1.StartVolumeCheckoutResponse, error)
+	StartSeriesRemainderCheckout(context.Context, *v1.StartSeriesRemainderCheckoutRequest) (*v1.StartSeriesRemainderCheckoutResponse, error)
 	// Lists only the authenticated reader's purchases in the requested tenant.
 	ListMyPurchases(context.Context, *v1.ListMyPurchasesRequest) (*v1.ListMyPurchasesResponse, error)
 	ProcessPaymentWebhook(context.Context, *v1.ProcessPaymentWebhookRequest) (*v1.ProcessPaymentWebhookResponse, error)
@@ -1954,6 +1966,7 @@ func RegisterPurchaseServiceHandler(server *connect.Server, svc PurchaseServiceH
 	server.Register(
 		connect.Method{Spec: purchaseServiceStartEpisodeCheckoutSpec(), Handler: adapter.startEpisodeCheckout},
 		connect.Method{Spec: purchaseServiceStartVolumeCheckoutSpec(), Handler: adapter.startVolumeCheckout},
+		connect.Method{Spec: purchaseServiceStartSeriesRemainderCheckoutSpec(), Handler: adapter.startSeriesRemainderCheckout},
 		connect.Method{Spec: purchaseServiceListMyPurchasesSpec(), Handler: adapter.listMyPurchases},
 		connect.Method{Spec: purchaseServiceProcessPaymentWebhookSpec(), Handler: adapter.processPaymentWebhook},
 		connect.Method{Spec: purchaseServiceStartStorePurchaseSpec(), Handler: adapter.startStorePurchase},
@@ -1971,6 +1984,10 @@ func (UnimplementedPurchaseServiceHandler) StartEpisodeCheckout(context.Context,
 
 func (UnimplementedPurchaseServiceHandler) StartVolumeCheckout(context.Context, *v1.StartVolumeCheckoutRequest) (*v1.StartVolumeCheckoutResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.PurchaseService.StartVolumeCheckout is not implemented")
+}
+
+func (UnimplementedPurchaseServiceHandler) StartSeriesRemainderCheckout(context.Context, *v1.StartSeriesRemainderCheckoutRequest) (*v1.StartSeriesRemainderCheckoutResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.PurchaseService.StartSeriesRemainderCheckout is not implemented")
 }
 
 func (UnimplementedPurchaseServiceHandler) ListMyPurchases(context.Context, *v1.ListMyPurchasesRequest) (*v1.ListMyPurchasesResponse, error) {
@@ -2008,6 +2025,14 @@ func (c *purchaseServiceClient) StartEpisodeCheckout(ctx context.Context, req *v
 func (c *purchaseServiceClient) StartVolumeCheckout(ctx context.Context, req *v1.StartVolumeCheckoutRequest) (*v1.StartVolumeCheckoutResponse, error) {
 	var res v1.StartVolumeCheckoutResponse
 	if err := c.client.CallUnary(ctx, purchaseServiceStartVolumeCheckoutSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *purchaseServiceClient) StartSeriesRemainderCheckout(ctx context.Context, req *v1.StartSeriesRemainderCheckoutRequest) (*v1.StartSeriesRemainderCheckoutResponse, error) {
+	var res v1.StartSeriesRemainderCheckoutResponse
+	if err := c.client.CallUnary(ctx, purchaseServiceStartSeriesRemainderCheckoutSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -2073,6 +2098,18 @@ func (h purchaseServiceHandler) startVolumeCheckout(ctx context.Context, _ conne
 		return err
 	}
 	res, err := h.svc.StartVolumeCheckout(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h purchaseServiceHandler) startSeriesRemainderCheckout(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.StartSeriesRemainderCheckoutRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.StartSeriesRemainderCheckout(ctx, &req)
 	if err != nil {
 		return err
 	}

@@ -148,6 +148,11 @@ var publicDataTables = []struct {
 	// Where each volume may be bought, which the series page and the checkout
 	// read.
 	{name: "volume_purchase_surfaces", count: "SELECT count(*) FROM volume_purchase_surfaces"},
+	// The rest of a series a checkout sells, written when it starts, and the
+	// episodes each one opens, which the content grant reads for a purchase of
+	// one.
+	{name: "series_bundles", count: "SELECT count(*) FROM series_bundles"},
+	{name: "series_bundle_episodes", count: "SELECT count(*) FROM series_bundle_episodes"},
 	{name: "access_tickets", count: "SELECT count(*) FROM access_tickets"},
 	// A series' wait-for-free rule, which the series page reads, and one
 	// reader's wait for their next ticket, which spending one writes on this
@@ -403,6 +408,9 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 		VALUES ($1, $2, $3, 'portrait-320', 'portrait', 's3', 'tenants/volume-cover.webp', 'image/webp', 1, 320, 480)`,
 		uuid.Must(uuid.NewV7()), first.ID, volumeCoverImageID)
 	seed("expired volume checkout", "INSERT INTO expired_volume_checkouts (tenant_id, user_id, volume_id, provider, provider_checkout_id) VALUES ($1, $2, $3, 'stripe', $4)", first.ID, member.ID, volume.ID, "cs_rls_volume_expired")
+	seriesBundleID := uuid.Must(uuid.NewV7())
+	seed("series bundle", "INSERT INTO series_bundles (id, tenant_id, series_id, user_id, idempotency_key, price) VALUES ($1, $2, $3, $4, 'series-remainder-checkout:rls', 500)", seriesBundleID, first.ID, series.ID, member.ID)
+	seed("series bundle episode", `INSERT INTO series_bundle_episodes (tenant_id, series_bundle_id, episode_id, "position", list_price, price) VALUES ($1, $2, $3, 0, 500, 500)`, first.ID, seriesBundleID, episode.ID)
 	seed("access ticket", "INSERT INTO access_tickets (id, tenant_id, public_id, episode_id, user_id) VALUES ($1, $2, $3, $4, $5)", uuid.Must(uuid.NewV7()), first.ID, "TICKETA00001", episode.ID, member.ID)
 	seed("wait-free rule", "INSERT INTO series_wait_free_settings (tenant_id, series_id, enabled) VALUES ($1, $2, true)", first.ID, series.ID)
 	seed("wait-free ticket state", "INSERT INTO wait_free_ticket_states (tenant_id, user_id, series_id, next_available_at) VALUES ($1, $2, $3, NOW())", first.ID, member.ID, series.ID)
