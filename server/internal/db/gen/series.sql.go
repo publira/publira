@@ -581,7 +581,13 @@ SELECT s.id,
                         -- where GetPublishedEpisodeForTenant reads it, so a row
                         -- here and the episode it links to agree on it.
                         'free_until',
-                        fe.free_until
+                        fe.free_until,
+                        -- The campaign open on the episode, read where
+                        -- GetPublishedEpisodeForTenant reads it.
+                        'campaign_price',
+                        ocp.campaign_price,
+                        'campaign_ends_at',
+                        ocp.campaign_ends_at
                     )
                     -- order_index can tie, so the UUIDv7 id is the
                     -- tiebreaker that keeps the order unique. It is the order
@@ -597,6 +603,7 @@ SELECT s.id,
                 JOIN published_episode_surfaces pes ON pes.episode_id = e.id
                 JOIN episode_purchase_availability epa ON epa.episode_id = e.id
                 LEFT JOIN published_free_episodes fe ON fe.episode_id = e.id
+                LEFT JOIN open_episode_campaign_prices ocp ON ocp.episode_id = e.id
             WHERE e.series_id = s.id
                 AND pes.surface = $1::text
         ),

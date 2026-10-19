@@ -24,7 +24,8 @@ INSERT INTO purchases (
     provider_payment_id,
     is_test,
     currency,
-    kind
+    kind,
+    provider_promotion_code_id
 )
 VALUES (
     $1::uuid,
@@ -37,23 +38,25 @@ VALUES (
     $8::text,
     $9::boolean,
     $10::text,
-    'purchase'
+    'purchase',
+    $11::text
 )
 ON CONFLICT (provider, provider_checkout_id) DO NOTHING
-RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind, volume_id, series_bundle_id
+RETURNING id, user_id, episode_id, price_at_purchase, expires_at, purchased_at, tenant_id, provider_checkout_id, provider_payment_id, refunded_amount, refunded_at, store, store_transaction_id, is_test, provider, currency, revoked_at, revocation_reason, staff_refund_attempt, dispute_lost_at, kind, volume_id, series_bundle_id, provider_promotion_code_id
 `
 
 type CreatePurchaseFromProviderVolumeCheckoutParams struct {
-	ID                 uuid.UUID      `json:"id"`
-	TenantID           uuid.UUID      `json:"tenant_id"`
-	UserID             uuid.UUID      `json:"user_id"`
-	VolumeID           uuid.UUID      `json:"volume_id"`
-	PriceAtPurchase    int32          `json:"price_at_purchase"`
-	Provider           string         `json:"provider"`
-	ProviderCheckoutID string         `json:"provider_checkout_id"`
-	ProviderPaymentID  sql.NullString `json:"provider_payment_id"`
-	IsTest             bool           `json:"is_test"`
-	Currency           string         `json:"currency"`
+	ID                      uuid.UUID      `json:"id"`
+	TenantID                uuid.UUID      `json:"tenant_id"`
+	UserID                  uuid.UUID      `json:"user_id"`
+	VolumeID                uuid.UUID      `json:"volume_id"`
+	PriceAtPurchase         int32          `json:"price_at_purchase"`
+	Provider                string         `json:"provider"`
+	ProviderCheckoutID      string         `json:"provider_checkout_id"`
+	ProviderPaymentID       sql.NullString `json:"provider_payment_id"`
+	IsTest                  bool           `json:"is_test"`
+	Currency                string         `json:"currency"`
+	ProviderPromotionCodeID sql.NullString `json:"provider_promotion_code_id"`
 }
 
 // Records the purchase of a volume a completed checkout paid for, by the rules
@@ -72,6 +75,7 @@ func (q *Queries) CreatePurchaseFromProviderVolumeCheckout(ctx context.Context, 
 		arg.ProviderPaymentID,
 		arg.IsTest,
 		arg.Currency,
+		arg.ProviderPromotionCodeID,
 	)
 	var i Purchase
 	err := row.Scan(
@@ -98,6 +102,7 @@ func (q *Queries) CreatePurchaseFromProviderVolumeCheckout(ctx context.Context, 
 		&i.Kind,
 		&i.VolumeID,
 		&i.SeriesBundleID,
+		&i.ProviderPromotionCodeID,
 	)
 	return i, err
 }

@@ -139,6 +139,9 @@ var publicDataTables = []struct {
 	{name: "tenant_community_limit_overrides", count: "SELECT count(*) FROM tenant_community_limit_overrides"},
 	{name: "series_listings", count: "SELECT count(*) FROM series_listings"},
 	{name: "episode_free_windows", count: "SELECT count(*) FROM episode_free_windows"},
+	{name: "episode_campaign_prices", count: "SELECT count(*) FROM episode_campaign_prices"},
+	// The checkout and the catalog read a campaign's price through this view.
+	{name: "open_episode_campaign_prices", count: "SELECT count(*) FROM open_episode_campaign_prices"},
 	// The banners above the top page's catalog sections.
 	{name: "campaign_banners", count: "SELECT count(*) FROM campaign_banners"},
 	// The volumes a series page sells, and the episodes each of them opens,
@@ -322,6 +325,7 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	tag := env.PG.SeedTag(t, first.ID, testutil.TagSeed{Name: "Swordplay"})
 	env.PG.SeedSeriesTag(t, first.ID, series.ID, tag.ID)
 	env.PG.SeedEpisodeFreeWindow(t, first.ID, episode.ID, time.Now().Add(-time.Hour), time.Now().Add(time.Hour))
+	env.PG.SeedEpisodeCampaignPrice(t, first.ID, episode.ID, 300, time.Now().Add(-time.Hour), time.Now().Add(time.Hour))
 
 	seriesImageID := uuid.Must(uuid.NewV7())
 	seed("series image", "INSERT INTO series_images (id, tenant_id, series_id) VALUES ($1, $2, $3)", seriesImageID, first.ID, series.ID)

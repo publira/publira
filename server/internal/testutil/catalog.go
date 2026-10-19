@@ -789,6 +789,31 @@ func (e *PostgresEnv) SeedEpisodeFreeWindow(t *testing.T, tenantID, episodeID uu
 	return windowID
 }
 
+// SeedEpisodeCampaignPrice schedules a campaign price on one episode, the way
+// the console's CreateEpisodeCampaignPrice does, and answers its id.
+func (e *PostgresEnv) SeedEpisodeCampaignPrice(t *testing.T, tenantID, episodeID uuid.UUID, price int32, startsAt, endsAt time.Time) uuid.UUID {
+	t.Helper()
+	e.requireDB(t)
+
+	campaignID := uuid.Must(uuid.NewV7())
+	publicID, err := publicid.New()
+	if err != nil {
+		t.Fatalf("generate campaign price public id: %v", err)
+	}
+
+	ctx, cancel := seedContext()
+	defer cancel()
+
+	if _, err := e.DB.ExecContext(ctx, `
+		INSERT INTO episode_campaign_prices (id, tenant_id, public_id, episode_id, price, starts_at, ends_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+	`, campaignID, tenantID, publicID, episodeID, price, startsAt, endsAt); err != nil {
+		t.Fatalf("insert episode_campaign_prices for episode %s: %v", episodeID, err)
+	}
+
+	return campaignID
+}
+
 // SeedPurchase grants the user permanent access to the episode, the entitlement
 // the public API checks before it hands out episode images. The purchase is in
 // the tenant's currency.

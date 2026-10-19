@@ -125,7 +125,8 @@ INSERT INTO purchases (
     provider_payment_id,
     is_test,
     currency,
-    kind
+    kind,
+    provider_promotion_code_id
 )
 VALUES (
     sqlc.arg('id')::uuid,
@@ -138,7 +139,8 @@ VALUES (
     sqlc.narg('provider_payment_id')::text,
     sqlc.arg('is_test')::boolean,
     sqlc.arg('currency')::text,
-    'purchase'
+    'purchase',
+    sqlc.narg('provider_promotion_code_id')::text
 )
 ON CONFLICT (provider, provider_checkout_id) DO NOTHING
 RETURNING *;

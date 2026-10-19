@@ -901,6 +901,107 @@ message DeleteEpisodeFreeWindowRequest {
 
 message DeleteEpisodeFreeWindowResponse {}
 
+// A scheduled period during which an episode's permanent copy sells for
+// `price` instead of the episode's own. The episode keeps its price, which is
+// what it costs again once the campaign ends.
+message AdminEpisodeCampaignPrice {
+  string id = 1;
+  string public_id = 2;
+  string episode_id = 3;
+  string episode_public_id = 4;
+  string episode_title = 5;
+  string series_id = 6;
+  string series_public_id = 7;
+  // In the minor unit of the tenant currency, as Episode.price is.
+  int32 price = 8;
+  // RFC3339 both. The campaign covers starts_at up to but not including
+  // ends_at, so one campaign may begin at the instant another ends.
+  string starts_at = 9;
+  string ends_at = 10;
+  string created_at = 11;
+}
+
+message CreateEpisodeCampaignPriceRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string episode_id = 2;
+  // Above zero and below the episode's price, or the call is
+  // invalid_argument with a field violation on price: a campaign cuts the
+  // price of an episode that has one. An editor who later lowers the episode's
+  // price to or under it ends the campaign's effect, since the episode then
+  // sells for its own price.
+  int32 price = 3;
+  // The ISO 4217 code price was entered in, checked as
+  // UpdateEpisodePricingRequest.currency is. Empty states none.
+  string currency = 4;
+  // RFC3339 both, as CreateEpisodeFreeWindowRequest takes them: ends_at must
+  // be after starts_at and in the future, and the period must not overlap a
+  // campaign the episode already has, which is failed_precondition.
+  string starts_at = 5;
+  string ends_at = 6;
+}
+
+message CreateEpisodeCampaignPriceResponse {
+  AdminEpisodeCampaignPrice campaign_price = 1;
+}
+
+// Schedules the same price and period on several episodes of one series. It
+// is all or nothing: when the price is not below every one of those episodes'
+// own, or the period overlaps a campaign any one of them already has, no
+// campaign is created.
+message CreateSeriesCampaignPricesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string series_id = 2;
+  // The episodes to schedule, each of them an episode of this series, named
+  // for the reason CreateSeriesFreeWindowsRequest.episode_ids names them. At
+  // least one and at most 1000, with no episode named twice.
+  repeated string episode_ids = 3;
+  // As CreateEpisodeCampaignPriceRequest takes them.
+  int32 price = 4;
+  string currency = 5;
+  string starts_at = 6;
+  string ends_at = 7;
+}
+
+message CreateSeriesCampaignPricesResponse {
+  // One per episode scheduled, in the series' own episode order.
+  repeated AdminEpisodeCampaignPrice campaign_prices = 1;
+}
+
+// Lists the campaigns scheduled on one episode, or on every episode of one
+// series. A campaign that is already over is listed too, until it is deleted.
+message ListEpisodeCampaignPricesRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Exactly one is required. An id naming nothing of this tenant lists nothing.
+  oneof scope {
+    string episode_id = 2;
+    string series_id = 3;
+  }
+  // Max items in one page. <= 0 or > 100 falls back to 20.
+  int32 limit = 4;
+  // Opaque token from a previous response. Empty for the first page. A token
+  // is bound to the scope it was issued for.
+  string token = 5;
+}
+
+message ListEpisodeCampaignPricesResponse {
+  // Latest starts_at first.
+  repeated AdminEpisodeCampaignPrice campaign_prices = 1;
+  // Token for the previous page. Empty on the first page.
+  string previous_token = 2;
+  // Token for the next page. Empty on the last page.
+  string next_token = 3;
+}
+
+// Removes a scheduled campaign. Removing one that is open ends it immediately:
+// the episode sells for its own price again as soon as the caches drop. A
+// purchase already made at the campaign price keeps it.
+message DeleteEpisodeCampaignPriceRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  string campaign_price_id = 2;
+}
+
+message DeleteEpisodeCampaignPriceResponse {}
+
 // One series' wait-for-free rule: a signed-in reader may open one priced
 // episode of the series for access_hours, once every recharge_hours.
 message SeriesWaitFreeSettings {
@@ -1189,6 +1290,14 @@ service AdminSeriesService {
   rpc ListEpisodeFreeWindows(ListEpisodeFreeWindowsRequest) returns (ListEpisodeFreeWindowsResponse) {}
   // Minimum role: tenant_editor.
   rpc DeleteEpisodeFreeWindow(DeleteEpisodeFreeWindowRequest) returns (DeleteEpisodeFreeWindowResponse) {}
+  // Minimum role: tenant_editor.
+  rpc CreateEpisodeCampaignPrice(CreateEpisodeCampaignPriceRequest) returns (CreateEpisodeCampaignPriceResponse) {}
+  // Minimum role: tenant_editor.
+  rpc CreateSeriesCampaignPrices(CreateSeriesCampaignPricesRequest) returns (CreateSeriesCampaignPricesResponse) {}
+  // Minimum role: tenant_auditor.
+  rpc ListEpisodeCampaignPrices(ListEpisodeCampaignPricesRequest) returns (ListEpisodeCampaignPricesResponse) {}
+  // Minimum role: tenant_editor.
+  rpc DeleteEpisodeCampaignPrice(DeleteEpisodeCampaignPriceRequest) returns (DeleteEpisodeCampaignPriceResponse) {}
   // Minimum role: tenant_auditor.
   rpc GetSeriesWaitFreeSettings(GetSeriesWaitFreeSettingsRequest) returns (GetSeriesWaitFreeSettingsResponse) {}
   // Minimum role: tenant_editor.

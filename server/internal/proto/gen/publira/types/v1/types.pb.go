@@ -1995,9 +1995,21 @@ type Episode struct {
 	// The locale of the translation `title` comes from, named the way
 	// Series.locale is: a public read names the one it served, and the
 	// console's reads leave it empty.
-	Locale        string `protobuf:"bytes,21,opt,name=locale,proto3" json:"locale,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Locale string `protobuf:"bytes,21,opt,name=locale,proto3" json:"locale,omitempty"`
+	// The campaign price open on the episode: what its permanent copy sells for
+	// until `campaign_ends_at` (RFC3339), in the minor unit `price` is in, and
+	// what StartEpisodeCheckout charges for it meanwhile. `price` stays the
+	// stored price, because that is what the permanent copy costs again once the
+	// campaign ends, and the rental keeps `rental_price`. A campaign price is
+	// always below `price`. Both are 0 and empty when no campaign is open, and a
+	// free window open over a campaign still opens the episode to everyone.
+	//
+	// Set on GetEpisodeDetail and on the episodes GetSeriesDetail lists; 0 and
+	// empty elsewhere, the console's reads included.
+	CampaignPrice  int32  `protobuf:"varint,22,opt,name=campaign_price,json=campaignPrice,proto3" json:"campaign_price,omitempty"`
+	CampaignEndsAt string `protobuf:"bytes,23,opt,name=campaign_ends_at,json=campaignEndsAt,proto3" json:"campaign_ends_at,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *Episode) Reset() {
@@ -2173,6 +2185,20 @@ func (x *Episode) GetRentalPeriodHours() int32 {
 func (x *Episode) GetLocale() string {
 	if x != nil {
 		return x.Locale
+	}
+	return ""
+}
+
+func (x *Episode) GetCampaignPrice() int32 {
+	if x != nil {
+		return x.CampaignPrice
+	}
+	return 0
+}
+
+func (x *Episode) GetCampaignEndsAt() string {
+	if x != nil {
+		return x.CampaignEndsAt
 	}
 	return ""
 }
@@ -3416,7 +3442,7 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x02id\x18\x16 \x01(\tR\x02id\x12.\n" +
 	"\x13rental_period_hours\x18\x17 \x01(\x05R\x11rentalPeriodHours\x12\x16\n" +
 	"\x06locale\x18\x18 \x01(\tR\x06locale\x126\n" +
-	"\x17bundle_discount_percent\x18\x19 \x01(\x05R\x15bundleDiscountPercentJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\xbb\a\n" +
+	"\x17bundle_discount_percent\x18\x19 \x01(\x05R\x15bundleDiscountPercentJ\x04\b\a\x10\bJ\x04\b\b\x10\t\"\x8c\b\n" +
 	"\aEpisode\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1f\n" +
@@ -3441,7 +3467,9 @@ const file_publira_types_v1_types_proto_rawDesc = "" +
 	"\x18eye_catch_image_variants\x18\x12 \x03(\v2'.publira.types.v1.SeriesEyeCatchVariantR\x15eyeCatchImageVariants\x12!\n" +
 	"\frental_price\x18\x13 \x01(\x05R\vrentalPrice\x12.\n" +
 	"\x13rental_period_hours\x18\x14 \x01(\x05R\x11rentalPeriodHours\x12\x16\n" +
-	"\x06locale\x18\x15 \x01(\tR\x06locale\"\xd9\x01\n" +
+	"\x06locale\x18\x15 \x01(\tR\x06locale\x12%\n" +
+	"\x0ecampaign_price\x18\x16 \x01(\x05R\rcampaignPrice\x12(\n" +
+	"\x10campaign_ends_at\x18\x17 \x01(\tR\x0ecampaignEndsAt\"\xd9\x01\n" +
 	"\fEpisodeImage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\timage_url\x18\x02 \x01(\tR\bimageUrl\x12!\n" +

@@ -148,12 +148,17 @@ func (p *Provider) StartCheckout(ctx context.Context, credentials paymentprovide
 		Mode:       stripego.String(string(stripego.CheckoutSessionModePayment)),
 		SuccessURL: stripego.String(successURL),
 	}
+	// The reader may enter one of the tenant's promotion codes on the checkout
+	// page, except on a checkout that takes a discount of its own: Stripe
+	// takes one or the other on a session, never both.
 	if req.Discount != nil {
 		couponID, err := createDiscountCoupon(ctx, client, currency, *req.Discount, req.IdempotencyKey)
 		if err != nil {
 			return "", err
 		}
 		params.Discounts = []*stripego.CheckoutSessionCreateDiscountParams{{Coupon: stripego.String(couponID)}}
+	} else {
+		params.AllowPromotionCodes = stripego.Bool(true)
 	}
 	params.SetIdempotencyKey(req.IdempotencyKey)
 	session, err := client.V1CheckoutSessions.Create(ctx, params)
@@ -436,11 +441,13 @@ func purchaseCompletedEvent(event *stripego.Event) (paymentprovider.Event, error
 	if event.Type == stripego.EventTypeCheckoutSessionCompleted && session.PaymentStatus == stripego.CheckoutSessionPaymentStatusUnpaid {
 		return paymentprovider.Ignored{ID: event.ID, Type: string(event.Type)}, nil
 	}
-	if session.PaymentStatus != stripego.CheckoutSessionPaymentStatusPaid {
-		return nil, errors.New("checkout session was not paid")
+	if strings.TrimSpace(session.ID) == "" {
+		return nil, errors.New("checkout session has no ID")
 	}
-	if session.AmountTotal != int64(purchase.Price) || strings.TrimSpace(session.ID) == "" {
-		return nil, errors.New("checkout session amount or ID is invalid")
+	promotionCodeID := sessionPromotionCode(&session)
+	amountPaid, err := paidAmount(&session, purchase.Price, promotionCodeID)
+	if err != nil {
+		return nil, err
 	}
 	purchase.Currency = strings.ToUpper(string(session.Currency))
 	// The refund events this purchase may later receive name the payment
@@ -450,12 +457,64 @@ func purchaseCompletedEvent(event *stripego.Event) (paymentprovider.Event, error
 		paymentIntentID = strings.TrimSpace(session.PaymentIntent.ID)
 	}
 	return paymentprovider.PurchaseCompleted{
-		ID:         event.ID,
-		CheckoutID: session.ID,
-		PaymentID:  paymentIntentID,
-		Purchase:   purchase,
-		Test:       !session.Livemode,
+		ID:              event.ID,
+		CheckoutID:      session.ID,
+		PaymentID:       paymentIntentID,
+		Purchase:        purchase,
+		AmountPaid:      amountPaid,
+		PromotionCodeID: promotionCodeID,
+		Test:            !session.Livemode,
 	}, nil
+}
+
+// sessionPromotionCode answers the id of the promotion code the reader entered
+// on the session, and empty when they entered none. The coupon a checkout of a
+// series bundle takes its discount with is a discount of the session too, but
+// one with no promotion code.
+func sessionPromotionCode(session *stripego.CheckoutSession) string {
+	for _, discount := range session.Discounts {
+		if discount != nil && discount.PromotionCode != nil {
+			if id := strings.TrimSpace(discount.PromotionCode.ID); id != "" {
+				return id
+			}
+		}
+	}
+	return ""
+}
+
+// paidAmount cross-checks what the session charged against the price the
+// checkout was started at, and answers what the reader paid.
+//
+// Without a promotion code the session's total is that price. With one, the
+// price is the session's subtotal and the total is what is left of it once
+// the code's discount is taken off, which may be nothing at all: a code that
+// takes off the whole price completes the session with no payment to make.
+// Anything else is a session this checkout did not start, or one whose
+// amounts changed after it did, and is refused rather than recorded at a
+// price nobody set.
+func paidAmount(session *stripego.CheckoutSession, price int32, promotionCodeID string) (int32, error) {
+	if promotionCodeID == "" {
+		if session.PaymentStatus != stripego.CheckoutSessionPaymentStatusPaid {
+			return 0, errors.New("checkout session was not paid")
+		}
+		if session.AmountTotal != int64(price) {
+			return 0, errors.New("checkout session amount does not match the price")
+		}
+		return price, nil
+	}
+	if session.AmountSubtotal != int64(price) || session.AmountTotal < 0 || session.AmountTotal > session.AmountSubtotal {
+		return 0, errors.New("checkout session amount does not match the price and its promotion code")
+	}
+	switch session.PaymentStatus {
+	case stripego.CheckoutSessionPaymentStatusPaid:
+	case stripego.CheckoutSessionPaymentStatusNoPaymentRequired:
+		if session.AmountTotal != 0 {
+			return 0, errors.New("checkout session required no payment of a total above zero")
+		}
+	default:
+		return 0, errors.New("checkout session was not paid")
+	}
+	return int32(session.AmountTotal), nil
 }
 
 func parsePurchaseMetadata(metadata map[string]string) (paymentprovider.Purchase, error) {

@@ -109,6 +109,13 @@ func (s *apiServer) StartEpisodeCheckout(
 		return nil, connect.NewError(connect.CodeFailedPrecondition, "free episodes do not require checkout")
 	}
 	price, readingPeriodHours := episode.Price, episode.ReadingPeriodHours.Int32
+	// A campaign cuts the price of the permanent copy alone; the rental keeps
+	// its own. The price charged is the one in force now, which the checkout
+	// carries to the notification that confirms it, so a campaign ending
+	// before the reader pays does not change what they are charged.
+	if kind == paymentprovider.KindPurchase && episode.CampaignPrice.Valid {
+		price = episode.CampaignPrice.Int32
+	}
 	if kind == paymentprovider.KindRental {
 		if !episode.RentalPrice.Valid || !episode.RentalPeriodHours.Valid {
 			return nil, connect.NewError(connect.CodeFailedPrecondition, "episode is not rented")
@@ -971,6 +978,13 @@ func (s *apiServer) createPurchase(
 	if event.PaymentID != "" {
 		paymentID = sql.NullString{String: event.PaymentID, Valid: true}
 	}
+	// The purchase records what the reader paid rather than the price the
+	// checkout was started at, so that a promotion code's discount is what a
+	// refund of the whole payment is measured against.
+	var promotionCodeID sql.NullString
+	if event.PromotionCodeID != "" {
+		promotionCodeID = sql.NullString{String: event.PromotionCodeID, Valid: true}
+	}
 	// A reader can pay two checkouts of the same episode: one started before an
 	// editor changed its price or reading period, and one started after. Both
 	// are recorded, because each took a payment. A redelivery of a checkout
@@ -979,29 +993,31 @@ func (s *apiServer) createPurchase(
 	switch {
 	case purchase.SeriesBundleID != uuid.Nil:
 		created, err = queries.CreatePurchaseFromProviderSeriesBundleCheckout(ctx, dbmodels.CreatePurchaseFromProviderSeriesBundleCheckoutParams{
-			ID:                 uuid.New(),
-			TenantID:           tenantID,
-			UserID:             purchase.ReaderID,
-			SeriesBundleID:     purchase.SeriesBundleID,
-			PriceAtPurchase:    purchase.Price,
-			Provider:           providerID,
-			ProviderCheckoutID: event.CheckoutID,
-			ProviderPaymentID:  paymentID,
-			IsTest:             event.Test,
-			Currency:           purchase.Currency,
+			ID:                      uuid.New(),
+			TenantID:                tenantID,
+			UserID:                  purchase.ReaderID,
+			SeriesBundleID:          purchase.SeriesBundleID,
+			PriceAtPurchase:         event.AmountPaid,
+			Provider:                providerID,
+			ProviderCheckoutID:      event.CheckoutID,
+			ProviderPaymentID:       paymentID,
+			IsTest:                  event.Test,
+			Currency:                purchase.Currency,
+			ProviderPromotionCodeID: promotionCodeID,
 		})
 	case purchase.VolumeID != uuid.Nil:
 		created, err = queries.CreatePurchaseFromProviderVolumeCheckout(ctx, dbmodels.CreatePurchaseFromProviderVolumeCheckoutParams{
-			ID:                 uuid.New(),
-			TenantID:           tenantID,
-			UserID:             purchase.ReaderID,
-			VolumeID:           purchase.VolumeID,
-			PriceAtPurchase:    purchase.Price,
-			Provider:           providerID,
-			ProviderCheckoutID: event.CheckoutID,
-			ProviderPaymentID:  paymentID,
-			IsTest:             event.Test,
-			Currency:           purchase.Currency,
+			ID:                      uuid.New(),
+			TenantID:                tenantID,
+			UserID:                  purchase.ReaderID,
+			VolumeID:                purchase.VolumeID,
+			PriceAtPurchase:         event.AmountPaid,
+			Provider:                providerID,
+			ProviderCheckoutID:      event.CheckoutID,
+			ProviderPaymentID:       paymentID,
+			IsTest:                  event.Test,
+			Currency:                purchase.Currency,
+			ProviderPromotionCodeID: promotionCodeID,
 		})
 	default:
 		var expiresAt sql.NullTime
@@ -1010,18 +1026,19 @@ func (s *apiServer) createPurchase(
 			expiresAt = sql.NullTime{Time: now.AddDate(0, 0, int(hours/24)).Add(time.Duration(hours%24) * time.Hour), Valid: true}
 		}
 		created, err = queries.CreatePurchaseFromProviderCheckout(ctx, dbmodels.CreatePurchaseFromProviderCheckoutParams{
-			ID:                 uuid.New(),
-			TenantID:           tenantID,
-			UserID:             purchase.ReaderID,
-			EpisodeID:          purchase.EpisodeID,
-			Kind:               string(purchase.Kind),
-			PriceAtPurchase:    purchase.Price,
-			ExpiresAt:          expiresAt,
-			Provider:           providerID,
-			ProviderCheckoutID: event.CheckoutID,
-			ProviderPaymentID:  paymentID,
-			IsTest:             event.Test,
-			Currency:           purchase.Currency,
+			ID:                      uuid.New(),
+			TenantID:                tenantID,
+			UserID:                  purchase.ReaderID,
+			EpisodeID:               purchase.EpisodeID,
+			Kind:                    string(purchase.Kind),
+			PriceAtPurchase:         event.AmountPaid,
+			ExpiresAt:               expiresAt,
+			Provider:                providerID,
+			ProviderCheckoutID:      event.CheckoutID,
+			ProviderPaymentID:       paymentID,
+			IsTest:                  event.Test,
+			Currency:                purchase.Currency,
+			ProviderPromotionCodeID: promotionCodeID,
 		})
 	}
 	switch {

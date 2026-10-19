@@ -71,6 +71,9 @@ func TestParseNotification(t *testing.T) {
 		if completed.CheckoutID != "cs_notification" || completed.PaymentID != "pi_notification" || completed.Purchase != purchase {
 			t.Fatalf("event = %+v", completed)
 		}
+		if completed.AmountPaid != 500 || completed.PromotionCodeID != "" {
+			t.Fatalf("paid %d with promotion code %q, want the price with none", completed.AmountPaid, completed.PromotionCodeID)
+		}
 	})
 
 	t.Run("a failed delayed payment is ignored", func(t *testing.T) {
@@ -100,6 +103,92 @@ func TestParseNotification(t *testing.T) {
 	t.Run("a session whose amount disagrees with its price fails", func(t *testing.T) {
 		if _, err := parse(t, "checkout.session.completed", checkoutSession(purchase, map[string]any{"amount_total": 400})); err == nil {
 			t.Fatal("ParseNotification error = nil, want an error")
+		}
+	})
+
+	promoted := func(subtotal, total int, fields map[string]any) map[string]any {
+		session := checkoutSession(purchase, map[string]any{
+			"amount_subtotal": subtotal,
+			"amount_total":    total,
+			"discounts":       []map[string]any{{"coupon": "co_promotion", "promotion_code": "promo_spring"}},
+			"total_details":   map[string]any{"amount_discount": subtotal - total},
+		})
+		maps.Copy(session, fields)
+		return session
+	}
+
+	t.Run("a promotion code's discount is taken off what the reader paid", func(t *testing.T) {
+		event, err := parse(t, "checkout.session.completed", promoted(500, 350, nil))
+		if err != nil {
+			t.Fatalf("ParseNotification: %v", err)
+		}
+		completed, ok := event.(paymentprovider.PurchaseCompleted)
+		if !ok {
+			t.Fatalf("event = %T, want PurchaseCompleted", event)
+		}
+		if completed.AmountPaid != 350 || completed.PromotionCodeID != "promo_spring" || completed.Purchase != purchase || completed.PaymentID != "pi_notification" {
+			t.Fatalf("event = %+v, want 350 paid of the 500 checkout under promo_spring", completed)
+		}
+	})
+
+	t.Run("a promotion code that takes off the whole price completes with no payment", func(t *testing.T) {
+		event, err := parse(t, "checkout.session.completed", promoted(500, 0, map[string]any{
+			"payment_status": "no_payment_required",
+			"payment_intent": nil,
+		}))
+		if err != nil {
+			t.Fatalf("ParseNotification: %v", err)
+		}
+		completed, ok := event.(paymentprovider.PurchaseCompleted)
+		if !ok {
+			t.Fatalf("event = %T, want PurchaseCompleted", event)
+		}
+		if completed.AmountPaid != 0 || completed.PaymentID != "" || completed.PromotionCodeID != "promo_spring" {
+			t.Fatalf("event = %+v, want nothing paid, no payment, and promo_spring", completed)
+		}
+	})
+
+	t.Run("a promotion code session whose subtotal disagrees with its price fails", func(t *testing.T) {
+		if _, err := parse(t, "checkout.session.completed", promoted(400, 300, nil)); err == nil {
+			t.Fatal("ParseNotification error = nil, want an error")
+		}
+	})
+
+	t.Run("a promotion code session that charges more than its subtotal fails", func(t *testing.T) {
+		if _, err := parse(t, "checkout.session.completed", promoted(500, 600, nil)); err == nil {
+			t.Fatal("ParseNotification error = nil, want an error")
+		}
+	})
+
+	t.Run("a session requiring no payment of a total above zero fails", func(t *testing.T) {
+		if _, err := parse(t, "checkout.session.completed", promoted(500, 100, map[string]any{"payment_status": "no_payment_required"})); err == nil {
+			t.Fatal("ParseNotification error = nil, want an error")
+		}
+	})
+
+	t.Run("a session requiring no payment without a promotion code fails", func(t *testing.T) {
+		if _, err := parse(t, "checkout.session.completed", checkoutSession(purchase, map[string]any{"amount_total": 0, "payment_status": "no_payment_required"})); err == nil {
+			t.Fatal("ParseNotification error = nil, want an error")
+		}
+	})
+
+	// The coupon a checkout of a series bundle takes its own discount with is a
+	// discount of the session, but no promotion code the reader entered, and
+	// the session's total is then the price the checkout was started at.
+	t.Run("a coupon without a promotion code is not one", func(t *testing.T) {
+		event, err := parse(t, "checkout.session.completed", checkoutSession(purchase, map[string]any{
+			"amount_subtotal": 600,
+			"discounts":       []map[string]any{{"coupon": "co_bundle", "promotion_code": nil}},
+		}))
+		if err != nil {
+			t.Fatalf("ParseNotification: %v", err)
+		}
+		completed, ok := event.(paymentprovider.PurchaseCompleted)
+		if !ok {
+			t.Fatalf("event = %T, want PurchaseCompleted", event)
+		}
+		if completed.AmountPaid != 500 || completed.PromotionCodeID != "" {
+			t.Fatalf("paid %d with promotion code %q, want the price with none", completed.AmountPaid, completed.PromotionCodeID)
 		}
 	})
 }

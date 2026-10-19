@@ -290,11 +290,14 @@ func (p *Provider) purchaseCompletedEvent(ctx context.Context, credentials payme
 		return nil, errors.New("payment flow was not paid the purchase's price")
 	}
 	purchase.Currency = strings.ToUpper(string(flow.Currency))
+	// A PAY.JP checkout takes no promotion code, so the reader paid the price
+	// the flow was just checked against.
 	return paymentprovider.PurchaseCompleted{
 		ID:         event.ID,
 		CheckoutID: session.ID,
 		PaymentID:  flow.Id,
 		Purchase:   purchase,
+		AmountPaid: purchase.Price,
 		Test:       !flow.Livemode,
 	}, nil
 }

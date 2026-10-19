@@ -2,7 +2,7 @@
 title: Scheduled and maintenance jobs
 description: What publira worker does on its own schedule, how it catches up after downtime, how it retries outgoing mail, push, and cache revalidation, and when to run a job by hand with publiractl job.
 published: 2026-10-07
-updated: 2026-10-16
+updated: 2026-10-19
 ---
 
 Everything an install does without a request is done by `publira worker`: it publishes the episodes scheduled for now, tells the web apps which cached pages a change made stale, sends mail and push notifications, rebuilds the statistics and rankings, and deletes what has passed its retention period. Nothing else has to run on a timer, and no host cron or Kubernetes CronJob is needed. This page says what runs when, how to tell which job is behind a symptom, and how to run one by hand with `publiractl job`.
@@ -21,6 +21,7 @@ Start from what you see, and look at the job that owns it:
 | A site banner is still up after its **Stop showing at** time | Pinned announcements | [Free reading periods](#free-reading-periods-and-other-cached-pages) |
 | A series is still missing from the site's lists after its **Publication date and time** | Scheduled series | [Free reading periods](#free-reading-periods-and-other-cached-pages) |
 | A campaign banner is still missing from the site after its window opened, or still up after it closed | Campaign banners | [Free reading periods](#free-reading-periods-and-other-cached-pages) |
+| An episode's site page still quotes its regular price after a campaign price started, or the campaign price after it ended | Campaign prices | [Free reading periods](#free-reading-periods-and-other-cached-pages) |
 | A page keeps showing what it showed before a change | Cache revalidation, in the outbox | [The outbox](#the-outbox-mail-push-and-cache-revalidation) |
 | A mail or a push notification never arrives | The outbox | [The outbox](#the-outbox-mail-push-and-cache-revalidation) |
 | The rankings, series ratings, or recommendations stop moving | The statistics and ranking chain | [Statistics and rankings](#statistics-and-rankings) |
@@ -35,7 +36,7 @@ Every one of them first needs `publira worker` to be running and ready: an insta
 
 The worker logs every failure, and the log line names the job. Every run of a scheduled job also leaves a row in the `river_job` table of the database, where the worker queues its own work, so that table shows whether a job ran at all, and when.
 
-What the row says about a failure depends on the job. The publication, free reading period, day rollover, pinned announcement, scheduled series, and campaign banner jobs finish their run even when something in it failed: each logs what it could not finish and leaves it for its next run, a minute later, so their rows read as completed and the failure is in the log alone. Every other job records a failed run in its row, keeping every attempt's error in the `errors` column, naming the tenant and the day it stopped on. Query it with `psql`, connected as the database's [administrative login](../2-deployments/2-installing.md#provision-the-services):
+What the row says about a failure depends on the job. The publication, free reading period, day rollover, pinned announcement, scheduled series, campaign banner, and campaign price jobs finish their run even when something in it failed: each logs what it could not finish and leaves it for its next run, a minute later, so their rows read as completed and the failure is in the log alone. Every other job records a failed run in its row, keeping every attempt's error in the `errors` column, naming the tenant and the day it stopped on. Query it with `psql`, connected as the database's [administrative login](../2-deployments/2-installing.md#provision-the-services):
 
 ```sql
 SELECT kind, state, attempt, finalized_at, errors
@@ -57,13 +58,14 @@ A publication that fails is tried again a few times within the same pass. When e
 
 ## Free reading periods and other cached pages
 
-Five jobs keep the web apps' cached pages on the right side of a time that passed:
+Six jobs keep the web apps' cached pages on the right side of a time that passed:
 
 - **Free reading periods.** An episode inside a **Free reading periods** entry reads as free from the moment the period starts and is priced again once it ends, with no job involved: every read compares the period against the current time. What the job fixes is the pages a site cached before the boundary, which it marks stale at both ends of every period.
 - **The tenant day rollover.** At each tenant's own midnight, in the tenant's time zone, it marks stale the storefront's weekly schedule, the one page whose answer is the tenant's calendar day.
 - **Pinned announcements.** Once an announcement's **Stop showing at** time passes, it takes the announcement off the banner and marks the banner stale.
 - **Scheduled series.** A series saved with a **Publication date and time** in the future is public from that time, with no job involved: every read compares the time against the current one. What the job fixes is the series lists, the Author pages, and the series' own page that a site cached while the series was still hidden, which it marks stale once the time has passed. At the same pass it dates the episodes published while the series was hidden from that time, and hands their announcements to [the outbox](#the-outbox-mail-push-and-cache-revalidation).
 - **Campaign banners.** A published campaign banner shows from the start of its window until its end, with no job involved: every read compares the window against the current time. What the job fixes is the banners a site cached before a boundary, which it marks stale at both ends of every published banner's window.
+- **Campaign prices.** An episode under a campaign price is quoted and charged that price from the start of the campaign until its end, with no job involved: every read and every checkout compares the campaign against the current time. What the job fixes is the episode pages and series pages a site cached before a boundary, which it marks stale at both ends of every campaign.
 
 Each runs every minute. None of them drops a cache itself: each records the drop as an entry in the outbox, which the worker then sends to the web apps, so a page that stays stale while the worker has `PUBLIRA_REVALIDATE_TOKEN` is an outbox problem, described [below](#the-outbox-mail-push-and-cache-revalidation).
 

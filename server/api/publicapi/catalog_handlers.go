@@ -388,6 +388,9 @@ type episodeJSON struct {
 	PurchaseAvailability string `json:"purchase_availability"`
 	// The end of the free window open on the episode, and nil when none is.
 	FreeUntil *time.Time `json:"free_until"`
+	// The campaign open on the episode, and nil both when none is.
+	CampaignPrice  *int32     `json:"campaign_price"`
+	CampaignEndsAt *time.Time `json:"campaign_ends_at"`
 }
 
 func publishedSeriesFromRow(row dbmodels.ListActiveSeriesByIDsRow) (*publirattypesv1.Series, error) {
@@ -1022,6 +1025,10 @@ func (s *apiServer) GetSeriesDetail(
 		item.PurchaseAvailability = purchaseAvailability
 		if episode.FreeUntil != nil {
 			item.FreeUntil = episode.FreeUntil.UTC().Format(time.RFC3339)
+		}
+		if episode.CampaignPrice != nil && episode.CampaignEndsAt != nil {
+			item.CampaignPrice = *episode.CampaignPrice
+			item.CampaignEndsAt = episode.CampaignEndsAt.UTC().Format(time.RFC3339)
 		}
 		res.Episodes = append(res.Episodes, item)
 	}

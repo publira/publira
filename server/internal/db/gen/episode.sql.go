@@ -531,6 +531,10 @@ SELECT e.id,
     -- window that makes it so, which the response shows as a countdown.
     (fe.episode_id IS NOT NULL)::boolean AS is_free,
     fe.free_until,
+    -- What the permanent copy sells for while a campaign is open on it, and
+    -- when that ends: the price StartEpisodeCheckout would charge for it now.
+    ocp.campaign_price,
+    ocp.campaign_ends_at,
     -- How many readers have rated this episode. The stored tally, so the join
     -- is one row rather than a scan of the ratings, and an episode nobody has
     -- rated has no row at all and reads as 0.
@@ -558,6 +562,7 @@ FROM episodes e
     LEFT JOIN series_listings sl ON sl.series_id = s.id
     LEFT JOIN series_images si ON si.id = s.eye_catch_image_id
     LEFT JOIN published_free_episodes fe ON fe.episode_id = e.id
+    LEFT JOIN open_episode_campaign_prices ocp ON ocp.episode_id = e.id
     LEFT JOIN episode_rating_counts erc ON erc.tenant_id = s.tenant_id
     AND erc.episode_id = e.id
 WHERE s.tenant_id = $2
@@ -609,6 +614,8 @@ type GetPublishedEpisodeForTenantRow struct {
 	SeriesSpreadStartIndex       sql.NullInt32  `json:"series_spread_start_index"`
 	IsFree                       bool           `json:"is_free"`
 	FreeUntil                    sql.NullTime   `json:"free_until"`
+	CampaignPrice                sql.NullInt32  `json:"campaign_price"`
+	CampaignEndsAt               sql.NullTime   `json:"campaign_ends_at"`
 	RatingCount                  int64          `json:"rating_count"`
 	PurchaseAvailability         string         `json:"purchase_availability"`
 	PublishedLocales             []string       `json:"published_locales"`
@@ -654,6 +661,8 @@ func (q *Queries) GetPublishedEpisodeForTenant(ctx context.Context, arg GetPubli
 		&i.SeriesSpreadStartIndex,
 		&i.IsFree,
 		&i.FreeUntil,
+		&i.CampaignPrice,
+		&i.CampaignEndsAt,
 		&i.RatingCount,
 		&i.PurchaseAvailability,
 		pq.Array(&i.PublishedLocales),

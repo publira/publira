@@ -254,9 +254,15 @@ func (a *API) createCoupon(w http.ResponseWriter, r *http.Request) {
 }
 
 // createCheckoutSession records the request and answers a session with a URL.
+// A session that both takes a discount and allows promotion codes is refused,
+// as Stripe refuses it.
 func (a *API) createCheckoutSession(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
 		writeError(w, http.StatusBadRequest, "", err.Error())
+		return
+	}
+	if r.PostForm.Get("allow_promotion_codes") == "true" && r.PostForm.Has("discounts[0][coupon]") {
+		writeError(w, http.StatusBadRequest, "", "You may only specify one of these parameters: allow_promotion_codes, discounts.")
 		return
 	}
 	a.mu.Lock()

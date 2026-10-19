@@ -30,6 +30,11 @@ const catalogActionName = (action: string) => {
         <Message message="admin.audit.actions.series_free_windows_created" />
       );
     }
+    case "series_campaign_prices_created": {
+      return (
+        <Message message="admin.audit.actions.series_campaign_prices_created" />
+      );
+    }
     case "series_wait_free_settings_updated": {
       return (
         <Message message="admin.audit.actions.series_wait_free_settings_updated" />
@@ -75,6 +80,16 @@ const catalogActionName = (action: string) => {
     case "episode_free_window_deleted": {
       return (
         <Message message="admin.audit.actions.episode_free_window_deleted" />
+      );
+    }
+    case "episode_campaign_price_created": {
+      return (
+        <Message message="admin.audit.actions.episode_campaign_price_created" />
+      );
+    }
+    case "episode_campaign_price_deleted": {
+      return (
+        <Message message="admin.audit.actions.episode_campaign_price_deleted" />
       );
     }
     default: {
@@ -607,6 +622,9 @@ const catalogTargetName = (targetType: string) => {
     }
     case "episode": {
       return <Message message="admin.audit.targets.episode" />;
+    }
+    case "episode_campaign_price": {
+      return <Message message="admin.audit.targets.episode_campaign_price" />;
     }
     case "episode_free_window": {
       return <Message message="admin.audit.targets.episode_free_window" />;

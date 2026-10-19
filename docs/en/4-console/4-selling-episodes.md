@@ -2,7 +2,7 @@
 title: Selling episodes
 description: Price an episode, take payment through Stripe or PAY.JP, choose where episodes are sold, and handle refunds.
 published: 2026-10-06
-updated: 2026-10-18
+updated: 2026-10-19
 ---
 
 Selling an episode on the site takes three things that have to agree: the episode's price in the tenant console, an account with a payment provider, and a webhook through which the provider tells the install that a reader has paid. The provider charges the reader, but only the webhook opens the episode, so a setup with any of the three wrong takes the reader's money and leaves the episode locked. This page walks through all three, in the order they are set up, and ends with a test purchase that proves they agree.
@@ -102,6 +102,12 @@ Then in the console, under **Payment settings**:
 
 Stripe keeps test-mode and live-mode webhook endpoints apart, each with its own signing secret. When you move to live keys, add the endpoint again in live mode, and enter its signing secret together with the live secret key.
 
+#### Promotion codes
+
+A reader can enter a promotion code on Stripe's checkout page. The codes are created in the Stripe Dashboard, under the coupons of the same account and mode as the secret key, and nothing is set in the console: every checkout of an episode or a volume takes them. A checkout of the rest of a series sold at a discount does not, since Stripe applies one discount or the other to a checkout, never both.
+
+The purchase records what the reader paid once the code's discount is taken off, which is the amount shown in their **Purchase history**, the amount a full refund returns, and the sale the episode's Authors are paid royalties on. A code that takes off the whole price opens the episode with no payment, so there is nothing of it to refund. PAY.JP checkouts take no promotion code.
+
 ### PAY.JP
 
 In the PAY.JP dashboard:
@@ -174,11 +180,11 @@ What each store needs, from the key the install verifies purchases with to testi
 A purchase on the site is refunded from the console, as [Refunding from the console](#refunding-from-the-console) describes, or in the Stripe or PAY.JP dashboard. A purchase in the app is refunded by Apple or Google. Publira does not tell the reader either way.
 
 - **A full refund** closes the episode to the reader. The purchase stays in their **Purchase history**, marked **Refunded**, and they can buy the episode again.
-- **A partial refund** leaves the episode open until the refunds on the payment add up to its price. It still lowers the sales the episode's Authors are paid royalties on.
+- **A partial refund** leaves the episode open until the refunds on the payment add up to what the reader paid. It still lowers the sales the episode's Authors are paid royalties on.
 
 Each refund reaches the install the way its purchase did:
 
-- **Stripe and PAY.JP** report it through the webhook above, which is why Stripe's endpoint needs `charge.refunded`. A refund the provider accepted can still fail later, for example when the reader's card has been closed; the provider reports that too, through `refund.updated` on Stripe, and the episode opens to the reader again unless what stays refunded still adds up to its price.
+- **Stripe and PAY.JP** report it through the webhook above, which is why Stripe's endpoint needs `charge.refunded`. A refund the provider accepted can still fail later, for example when the reader's card has been closed; the provider reports that too, through `refund.updated` on Stripe, and the episode opens to the reader again unless what stays refunded still adds up to what the reader paid.
 - **The App Store** reports it to the **App Store Server Notifications URL** the console shows in the **App Store** section, which is registered in App Store Connect as both the Production and the Sandbox Server URL.
 - **Google Play** does not send refunds. The install reads Google Play's voided purchases once an hour, for the last 30 days, so a refunded purchase can keep its episode open for up to an hour. This runs in `publira worker`, which the operator keeps running, as [Overview](../2-deployments/1-overview.md) describes; without it, Google Play refunds are not applied.
 

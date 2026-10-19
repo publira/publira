@@ -269,6 +269,16 @@ type PurchaseCompleted struct {
 	// be empty when the provider reports none.
 	PaymentID string
 	Purchase  Purchase
+	// AmountPaid is what the reader paid, in the minor unit of
+	// Purchase.Currency: Purchase.Price, less the discount of the promotion
+	// code PromotionCodeID names when the reader entered one. It is what the
+	// purchase records, since a refund of the payment returns this much and no
+	// more. A code may take off the whole price, which leaves it zero and the
+	// checkout with no payment, and so no PaymentID.
+	AmountPaid int32
+	// PromotionCodeID is the provider's id of the promotion code the reader
+	// entered at the checkout, and empty when they entered none.
+	PromotionCodeID string
 	// Test reports a payment made in the provider's test mode. Such a
 	// purchase opens the episode, but no money reached the tenant, so royalty
 	// statements and the daily stats leave it out.

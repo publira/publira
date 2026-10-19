@@ -253,6 +253,7 @@ type Querier interface {
 	CreateCreatorImageVariant(ctx context.Context, arg CreateCreatorImageVariantParams) (CreatorImageVariant, error)
 	CreateCreatorRole(ctx context.Context, arg CreateCreatorRoleParams) (CreatorRole, error)
 	CreateEpisodeBase(ctx context.Context, arg CreateEpisodeBaseParams) (Episode, error)
+	CreateEpisodeCampaignPrice(ctx context.Context, arg CreateEpisodeCampaignPriceParams) (CreateEpisodeCampaignPriceRow, error)
 	// Reader comments on published episodes.
 	//
 	// Every state transition is an UPDATE on the single episode_comments row, so
@@ -419,6 +420,10 @@ type Querier interface {
 	DeleteCreatorAccount(ctx context.Context, arg DeleteCreatorAccountParams) (string, error)
 	DeleteCreatorFollow(ctx context.Context, arg DeleteCreatorFollowParams) (int64, error)
 	DeleteCreatorRole(ctx context.Context, id uuid.UUID) error
+	// Returns the deleted row so a concurrent second delete is told apart from a
+	// campaign that never existed. end_revalidated_at says whether
+	// apply-campaign-prices has already ended the campaign on the public site.
+	DeleteEpisodeCampaignPriceByIDForTenant(ctx context.Context, arg DeleteEpisodeCampaignPriceByIDForTenantParams) (DeleteEpisodeCampaignPriceByIDForTenantRow, error)
 	// The irreversible removal staff reach for when the text must not be retained
 	// at all. It names no status: content under a legal takedown has to go whatever
 	// state it is in, and the reversible removal is a different query.
@@ -625,6 +630,7 @@ type Querier interface {
 	GetEpisodeByIDForTenant(ctx context.Context, arg GetEpisodeByIDForTenantParams) (GetEpisodeByIDForTenantRow, error)
 	GetEpisodeByPublicIDForTenant(ctx context.Context, arg GetEpisodeByPublicIDForTenantParams) (GetEpisodeByPublicIDForTenantRow, error)
 	GetEpisodeByPublicIDForTenantAndSeries(ctx context.Context, arg GetEpisodeByPublicIDForTenantAndSeriesParams) (GetEpisodeByPublicIDForTenantAndSeriesRow, error)
+	GetEpisodeCampaignPriceByIDForTenant(ctx context.Context, arg GetEpisodeCampaignPriceByIDForTenantParams) (GetEpisodeCampaignPriceByIDForTenantRow, error)
 	// The credit a comment the reader posts now is shown under: the one the
 	// comment lists read through the same function. The post response carries it,
 	// so the author's new comment is marked before either list has re-read it. No
@@ -1570,6 +1576,23 @@ type Querier interface {
 	// in reverse. The handler flips ASC rows back into display order.
 	// cursor rules: proto/README.md.
 	ListEndUsersDesc(ctx context.Context, arg ListEndUsersDescParams) ([]ListEndUsersDescRow, error)
+	// Every campaign with a boundary the apply-campaign-prices batch has not
+	// dropped the site caches for yet. A campaign whose start and end both passed
+	// while the batch was down comes back with both flags set, and one
+	// revalidation answers for both.
+	//
+	// This spans every tenant, so the connection must bypass RLS.
+	ListEpisodeCampaignPriceBoundariesDue(ctx context.Context) ([]ListEpisodeCampaignPriceBoundariesDueRow, error)
+	ListEpisodeCampaignPricesByEpisodeForTenantAsc(ctx context.Context, arg ListEpisodeCampaignPricesByEpisodeForTenantAscParams) ([]ListEpisodeCampaignPricesByEpisodeForTenantAscRow, error)
+	// Admin ListEpisodeCampaignPrices is (starts_at, id) DESC, and each scope has
+	// queries of its own, for the reasons the ListEpisodeFreeWindows* queries
+	// give: one page of one episode is a scan of
+	// idx_episode_campaign_prices_episode_period, and a series takes at most one
+	// page from each of its episodes before sorting.
+	// cursor rules: proto/README.md.
+	ListEpisodeCampaignPricesByEpisodeForTenantDesc(ctx context.Context, arg ListEpisodeCampaignPricesByEpisodeForTenantDescParams) ([]ListEpisodeCampaignPricesByEpisodeForTenantDescRow, error)
+	ListEpisodeCampaignPricesBySeriesForTenantAsc(ctx context.Context, arg ListEpisodeCampaignPricesBySeriesForTenantAscParams) ([]ListEpisodeCampaignPricesBySeriesForTenantAscRow, error)
+	ListEpisodeCampaignPricesBySeriesForTenantDesc(ctx context.Context, arg ListEpisodeCampaignPricesBySeriesForTenantDescParams) ([]ListEpisodeCampaignPricesBySeriesForTenantDescRow, error)
 	// The previous-page half of ListEpisodeCommentReportsForModerationByCreatedAtDesc.
 	// The handler reverses the returned rows to preserve the newest-first order.
 	ListEpisodeCommentReportsForModerationByCreatedAtAsc(ctx context.Context, arg ListEpisodeCommentReportsForModerationByCreatedAtAscParams) ([]ListEpisodeCommentReportsForModerationByCreatedAtAscRow, error)
@@ -2789,6 +2812,8 @@ type Querier interface {
 	// The marks re-check the instant, so a banner rescheduled ahead between the
 	// listing and the mark keeps its drop owed.
 	MarkCampaignBannerStartRevalidated(ctx context.Context, id uuid.UUID) error
+	MarkEpisodeCampaignPriceEndRevalidated(ctx context.Context, id uuid.UUID) error
+	MarkEpisodeCampaignPriceStartRevalidated(ctx context.Context, id uuid.UUID) error
 	MarkEpisodeFreeWindowEndRevalidated(ctx context.Context, id uuid.UUID) error
 	MarkEpisodeFreeWindowStartRevalidated(ctx context.Context, id uuid.UUID) error
 	// The scheduled publication job's promotion of an episode it listed as due.

@@ -82,11 +82,11 @@ func newContentViewFixture(t *testing.T) *contentViewFixture {
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "public_id", "title", "title_locale", "order_index", "series_id", "price",
 			"reading_period_hours", "rental_price", "rental_period_hours", "status", "scheduled_at", "published_at",
-			"series_public_id", "series_title", "series_title_locale", "series_eye_catch_image_id", "series_eye_catch_image_updated_at", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "is_free", "free_until", "rating_count",
+			"series_public_id", "series_title", "series_title_locale", "series_eye_catch_image_id", "series_eye_catch_image_updated_at", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "is_free", "free_until", "campaign_price", "campaign_ends_at", "rating_count",
 			"purchase_availability", "published_locales",
 		}).AddRow(
 			fixture.episodeID, "EPISODE001", "Episode Title", "ja", int32(1), fixture.seriesID,
-			int32(0), int32(24), nil, nil, "published", nil, now.UTC(), "SERIES001", "Series Title", "ja", nil, nil, "all", nil, nil, nil, nil, nil, true, nil, int64(0), "all", []byte("{ja}")))
+			int32(0), int32(24), nil, nil, "published", nil, now.UTC(), "SERIES001", "Series Title", "ja", nil, nil, "all", nil, nil, nil, nil, nil, true, nil, nil, nil, int64(0), "all", []byte("{ja}")))
 	return fixture
 }
 
@@ -426,11 +426,11 @@ func TestGetEpisodeDetailRecordsNoViewEvent(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "public_id", "title", "title_locale", "order_index", "series_id", "price",
 			"reading_period_hours", "rental_price", "rental_period_hours", "status", "scheduled_at", "published_at",
-			"series_public_id", "series_title", "series_title_locale", "series_eye_catch_image_id", "series_eye_catch_image_updated_at", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "is_free", "free_until", "rating_count",
+			"series_public_id", "series_title", "series_title_locale", "series_eye_catch_image_id", "series_eye_catch_image_updated_at", "series_age_rating", "series_comment_mode", "reading_direction", "spread_start_index", "series_reading_direction", "series_spread_start_index", "is_free", "free_until", "campaign_price", "campaign_ends_at", "rating_count",
 			"purchase_availability", "published_locales",
 		}).AddRow(
 			episodeID, "EPISODE001", "Episode Title", "ja", int32(1), seriesID,
-			int32(0), int32(24), nil, nil, "published", nil, now.UTC(), "SERIES001", "Series Title", "ja", nil, nil, "all", nil, nil, nil, nil, nil, true, nil, int64(0), "all", []byte("{ja}")))
+			int32(0), int32(24), nil, nil, "published", nil, now.UTC(), "SERIES001", "Series Title", "ja", nil, nil, "all", nil, nil, nil, nil, nil, true, nil, nil, nil, int64(0), "all", []byte("{ja}")))
 	expectEpisodeNeighborsLookup(mock, tenantID, seriesID, int32(1), episodeID)
 	expectNextFreeEpisodeLookup(mock, tenantID, seriesID, int32(1), episodeID)
 	expectEpisodeCreditsLookup(mock)

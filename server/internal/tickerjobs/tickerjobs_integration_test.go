@@ -136,6 +136,38 @@ func TestWorkerAppliesAPassedCampaignBannerBoundaryAsAPeriodicJob(t *testing.T) 
 	assertJobRan(t, ctx, pg, "ticker.apply_campaign_banners")
 }
 
+func TestWorkerAppliesAPassedCampaignPriceBoundaryAsAPeriodicJob(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenant := pg.SeedTenant(t, "TICKJOBS0005", "prices.tickerjobs.example.com", "Ticker Prices Tenant")
+	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "TICKJOBSSER5", Title: "Ticker Campaign Series", Published: true})
+	episode := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
+		PublicID: "TICKJOBSEP05",
+		Title:    "Ticker Campaign Episode",
+		Status:   testutil.EpisodeStatusPublished,
+		Price:    500,
+	})
+	campaignID := pg.SeedEpisodeCampaignPrice(t, tenant.ID, episode.ID, 300, time.Now().Add(-time.Minute), time.Now().Add(time.Hour))
+
+	startWorkerWithTickerJobs(t, pg)
+
+	waitFor(t, ctx, "the passed campaign price start to be recorded", func() bool {
+		var applied sql.NullTime
+		if err := pg.DB.QueryRowContext(ctx,
+			"SELECT start_revalidated_at FROM episode_campaign_prices WHERE id = $1", campaignID,
+		).Scan(&applied); err != nil {
+			t.Fatalf("read campaign price: %v", err)
+		}
+		return applied.Valid
+	})
+
+	assertJobRan(t, ctx, pg, "ticker.apply_campaign_prices")
+}
+
 func TestWorkerEnqueuesEveryTickerJob(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
@@ -145,7 +177,7 @@ func TestWorkerEnqueuesEveryTickerJob(t *testing.T) {
 
 	startWorkerWithTickerJobs(t, pg)
 
-	for _, kind := range []string{"ticker.publish_episodes", "ticker.apply_free_windows", "ticker.roll_tenant_day", "ticker.apply_series_publications", "ticker.apply_campaign_banners"} {
+	for _, kind := range []string{"ticker.publish_episodes", "ticker.apply_free_windows", "ticker.roll_tenant_day", "ticker.apply_series_publications", "ticker.apply_campaign_banners", "ticker.apply_campaign_prices"} {
 		assertJobRan(t, ctx, pg, kind)
 	}
 }

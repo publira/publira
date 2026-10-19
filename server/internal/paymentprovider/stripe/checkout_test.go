@@ -69,13 +69,17 @@ func TestStartCheckoutListsEveryLineAndTakesTheDiscountOffWithACoupon(t *testing
 	if session.Get("discounts[0][coupon]") != coupons[0].ID {
 		t.Fatalf("discounts = %v, want the coupon %s", session, coupons[0].ID)
 	}
+	// Stripe takes a session's own discount or a promotion code, never both.
+	if session.Has("allow_promotion_codes") {
+		t.Fatalf("session = %v, want no promotion codes beside the bundle's coupon", session)
+	}
 	if session.Get("metadata[series_bundle_id]") != request.Purchase.SeriesBundleID.String() || session.Get("metadata[price]") != "450" || session.Has("metadata[episode_id]") {
 		t.Fatalf("metadata = %v, want the bundle at 450 and no episode", session)
 	}
 }
 
-// A checkout of one episode sells one line at the purchase's price and makes
-// no coupon.
+// A checkout of one episode sells one line at the purchase's price, makes no
+// coupon, and lets the reader enter a promotion code.
 func TestStartCheckoutSellsOneLineWithoutADiscount(t *testing.T) {
 	api := stripetest.NewAPI(t)
 	if _, err := stripe.New(stripe.WithAPIURL(api.URL())).StartCheckout(t.Context(), checkoutCredentials, paymentprovider.CheckoutRequest{
@@ -100,5 +104,8 @@ func TestStartCheckoutSellsOneLineWithoutADiscount(t *testing.T) {
 	session := api.CheckoutSessions()[0].Form
 	if session.Get("line_items[0][price_data][product_data][name]") != "Episode 1" || session.Get("line_items[0][price_data][unit_amount]") != "500" || session.Has("line_items[1][quantity]") || session.Has("discounts[0][coupon]") {
 		t.Fatalf("session = %v, want one Episode 1 at 500 and no discount", session)
+	}
+	if session.Get("allow_promotion_codes") != "true" {
+		t.Fatalf("session = %v, want promotion codes allowed", session)
 	}
 }

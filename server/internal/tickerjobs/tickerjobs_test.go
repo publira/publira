@@ -26,6 +26,7 @@ func TestPeriodicJobsTakeTheConfiguredIntervals(t *testing.T) {
 		PinnedAnnouncementInterval: 13 * time.Second,
 		SeriesPublicationInterval:  17 * time.Second,
 		CampaignBannerInterval:     19 * time.Second,
+		CampaignPriceInterval:      23 * time.Second,
 	})
 	if err != nil {
 		t.Fatalf("New: %v", err)
@@ -38,6 +39,7 @@ func TestPeriodicJobsTakeTheConfiguredIntervals(t *testing.T) {
 		kindExpirePinnedAnnouncements: 13 * time.Second,
 		kindApplySeriesPublications:   17 * time.Second,
 		kindApplyCampaignBanners:      19 * time.Second,
+		kindApplyCampaignPrices:       23 * time.Second,
 	})
 }
 
@@ -54,6 +56,7 @@ func TestPeriodicJobsFallBackToTheDefaultIntervals(t *testing.T) {
 		kindExpirePinnedAnnouncements: DefaultPinnedAnnouncementInterval,
 		kindApplySeriesPublications:   DefaultSeriesPublicationInterval,
 		kindApplyCampaignBanners:      DefaultCampaignBannerInterval,
+		kindApplyCampaignPrices:       DefaultCampaignPriceInterval,
 	})
 }
 
@@ -107,6 +110,7 @@ func TestEveryJobIsUniqueWhileOneIsInFlight(t *testing.T) {
 		ExpirePinnedAnnouncementsArgs{},
 		ApplySeriesPublicationsArgs{},
 		ApplyCampaignBannersArgs{},
+		ApplyCampaignPricesArgs{},
 	} {
 		withOpts, ok := args.(river.JobArgsWithInsertOpts)
 		if !ok {
@@ -141,8 +145,8 @@ func TestJobsRunOnTheirOwnQueue(t *testing.T) {
 	if !ok {
 		t.Fatalf("queues = %v, want one named %q", queues, QueueName)
 	}
-	if queue.MaxWorkers != 6 {
-		t.Fatalf("%s max workers = %d, want 6", QueueName, queue.MaxWorkers)
+	if queue.MaxWorkers != 7 {
+		t.Fatalf("%s max workers = %d, want 7", QueueName, queue.MaxWorkers)
 	}
 	if _, ok := queues[river.QueueDefault]; ok {
 		t.Fatalf("queues = %v, want the default queue left to the outbox drain", queues)
@@ -157,6 +161,7 @@ func TestServiceNamesCoverEveryJob(t *testing.T) {
 		"publira-expire-pinned-announcements",
 		"publira-apply-series-publications",
 		"publira-apply-campaign-banners",
+		"publira-apply-campaign-prices",
 	}
 	if got := ServiceNames(); !slices.Equal(got, want) {
 		t.Fatalf("ServiceNames() = %v, want %v", got, want)

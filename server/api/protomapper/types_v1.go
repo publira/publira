@@ -151,6 +151,7 @@ func EpisodeFromGetPublishedEpisodeForTenantRow(row dbmodels.GetPublishedEpisode
 	if row.FreeUntil.Valid {
 		episode.FreeUntil = row.FreeUntil.Time.UTC().Format(time.RFC3339)
 	}
+	SetEpisodeCampaign(episode, row.CampaignPrice, row.CampaignEndsAt)
 	return episode
 }
 
@@ -227,6 +228,16 @@ func EpisodeFromListMyRecentSeriesRow(row dbmodels.ListMyRecentSeriesDescRow) *p
 		episode.FreeUntil = row.FreeUntil.Time.UTC().Format(time.RFC3339)
 	}
 	return episode
+}
+
+// SetEpisodeCampaign puts the campaign open on the episode onto it. The view
+// that answers it has a row with both columns or none.
+func SetEpisodeCampaign(episode *publirattypesv1.Episode, price sql.NullInt32, endsAt sql.NullTime) {
+	if !price.Valid || !endsAt.Valid {
+		return
+	}
+	episode.CampaignPrice = price.Int32
+	episode.CampaignEndsAt = endsAt.Time.UTC().Format(time.RFC3339)
 }
 
 // SetEpisodeRental puts the episode's rental onto it. The listing holds both

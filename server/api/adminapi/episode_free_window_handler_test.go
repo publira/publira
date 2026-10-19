@@ -11,7 +11,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 )
 
-func TestParseFreeWindowPeriod(t *testing.T) {
+func TestParseScheduledPeriod(t *testing.T) {
 	now := time.Date(2026, 9, 8, 12, 0, 0, 0, time.UTC)
 
 	cases := []struct {
@@ -83,7 +83,7 @@ func TestParseFreeWindowPeriod(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			period, err := parseFreeWindowPeriod(tc.startsAt, tc.endsAt, now)
+			period, err := parseScheduledPeriod(tc.startsAt, tc.endsAt, now)
 			if tc.wantCode != 0 {
 				if connect.CodeOf(err) != tc.wantCode {
 					t.Fatalf("code = %v, want %v (err=%v)", connect.CodeOf(err), tc.wantCode, err)
@@ -91,7 +91,7 @@ func TestParseFreeWindowPeriod(t *testing.T) {
 				return
 			}
 			if err != nil {
-				t.Fatalf("parseFreeWindowPeriod: %v", err)
+				t.Fatalf("parseScheduledPeriod: %v", err)
 			}
 			if !period.startsAt.Equal(tc.wantStart) || !period.endsAt.Equal(tc.wantEnd) {
 				t.Fatalf("period = %s..%s, want %s..%s", period.startsAt, period.endsAt, tc.wantStart, tc.wantEnd)
@@ -102,7 +102,7 @@ func TestParseFreeWindowPeriod(t *testing.T) {
 
 func TestFreeWindowPeriodOpenAt(t *testing.T) {
 	now := time.Date(2026, 9, 8, 12, 0, 0, 0, time.UTC)
-	period := freeWindowPeriod{
+	period := scheduledPeriod{
 		startsAt: time.Date(2026, 9, 8, 11, 0, 0, 0, time.UTC),
 		endsAt:   time.Date(2026, 9, 8, 13, 0, 0, 0, time.UTC),
 	}
@@ -155,8 +155,8 @@ func TestSeriesFreeWindowEpisodes(t *testing.T) {
 	})
 
 	t.Run("more episodes than one call may name is refused", func(t *testing.T) {
-		raw := make([]string, 0, maxSeriesFreeWindowEpisodes+1)
-		for range maxSeriesFreeWindowEpisodes + 1 {
+		raw := make([]string, 0, maxSeriesScheduleEpisodes+1)
+		for range maxSeriesScheduleEpisodes + 1 {
 			raw = append(raw, uuid.Must(uuid.NewV7()).String())
 		}
 		_, err := seriesFreeWindowEpisodes(raw)
@@ -166,7 +166,7 @@ func TestSeriesFreeWindowEpisodes(t *testing.T) {
 	})
 }
 
-func TestSelectSeriesFreeWindowEpisodes(t *testing.T) {
+func TestSelectSeriesEpisodes(t *testing.T) {
 	episodes := []dbmodels.ListEpisodesBySeriesForTenantRow{
 		{ID: uuid.MustParse("01900000-0000-7000-8000-000000000001"), Title: "Chapter One"},
 		{ID: uuid.MustParse("01900000-0000-7000-8000-000000000002"), Title: "Chapter Two"},
@@ -181,7 +181,7 @@ func TestSelectSeriesFreeWindowEpisodes(t *testing.T) {
 	}
 
 	t.Run("nothing named keeps every episode", func(t *testing.T) {
-		selected, err := selectSeriesFreeWindowEpisodes(episodes, nil)
+		selected, err := selectSeriesEpisodes(episodes, nil)
 		if err != nil {
 			t.Fatalf("err = %v", err)
 		}
@@ -191,7 +191,7 @@ func TestSelectSeriesFreeWindowEpisodes(t *testing.T) {
 	})
 
 	t.Run("the named episodes come back in the series' order", func(t *testing.T) {
-		selected, err := selectSeriesFreeWindowEpisodes(episodes, []uuid.UUID{episodes[2].ID, episodes[0].ID})
+		selected, err := selectSeriesEpisodes(episodes, []uuid.UUID{episodes[2].ID, episodes[0].ID})
 		if err != nil {
 			t.Fatalf("err = %v", err)
 		}
@@ -201,7 +201,7 @@ func TestSelectSeriesFreeWindowEpisodes(t *testing.T) {
 	})
 
 	t.Run("an episode the series does not have fails the call", func(t *testing.T) {
-		_, err := selectSeriesFreeWindowEpisodes(episodes, []uuid.UUID{episodes[0].ID, uuid.Must(uuid.NewV7())})
+		_, err := selectSeriesEpisodes(episodes, []uuid.UUID{episodes[0].ID, uuid.Must(uuid.NewV7())})
 		if connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Fatalf("code = %v, want invalid_argument", connect.CodeOf(err))
 		}

@@ -114,6 +114,18 @@ const (
 	// AdminSeriesServiceDeleteEpisodeFreeWindowProcedure is the procedure name of the
 	// AdminSeriesService's DeleteEpisodeFreeWindow RPC.
 	AdminSeriesServiceDeleteEpisodeFreeWindowProcedure = "/publira.admin.v1.AdminSeriesService/DeleteEpisodeFreeWindow"
+	// AdminSeriesServiceCreateEpisodeCampaignPriceProcedure is the procedure name of the
+	// AdminSeriesService's CreateEpisodeCampaignPrice RPC.
+	AdminSeriesServiceCreateEpisodeCampaignPriceProcedure = "/publira.admin.v1.AdminSeriesService/CreateEpisodeCampaignPrice"
+	// AdminSeriesServiceCreateSeriesCampaignPricesProcedure is the procedure name of the
+	// AdminSeriesService's CreateSeriesCampaignPrices RPC.
+	AdminSeriesServiceCreateSeriesCampaignPricesProcedure = "/publira.admin.v1.AdminSeriesService/CreateSeriesCampaignPrices"
+	// AdminSeriesServiceListEpisodeCampaignPricesProcedure is the procedure name of the
+	// AdminSeriesService's ListEpisodeCampaignPrices RPC.
+	AdminSeriesServiceListEpisodeCampaignPricesProcedure = "/publira.admin.v1.AdminSeriesService/ListEpisodeCampaignPrices"
+	// AdminSeriesServiceDeleteEpisodeCampaignPriceProcedure is the procedure name of the
+	// AdminSeriesService's DeleteEpisodeCampaignPrice RPC.
+	AdminSeriesServiceDeleteEpisodeCampaignPriceProcedure = "/publira.admin.v1.AdminSeriesService/DeleteEpisodeCampaignPrice"
 	// AdminSeriesServiceGetSeriesWaitFreeSettingsProcedure is the procedure name of the
 	// AdminSeriesService's GetSeriesWaitFreeSettings RPC.
 	AdminSeriesServiceGetSeriesWaitFreeSettingsProcedure = "/publira.admin.v1.AdminSeriesService/GetSeriesWaitFreeSettings"
@@ -363,6 +375,34 @@ var (
 			Procedure:  AdminSeriesServiceDeleteEpisodeFreeWindowProcedure,
 		}
 	})
+	adminSeriesServiceCreateEpisodeCampaignPriceSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("CreateEpisodeCampaignPrice"),
+			Procedure:  AdminSeriesServiceCreateEpisodeCampaignPriceProcedure,
+		}
+	})
+	adminSeriesServiceCreateSeriesCampaignPricesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("CreateSeriesCampaignPrices"),
+			Procedure:  AdminSeriesServiceCreateSeriesCampaignPricesProcedure,
+		}
+	})
+	adminSeriesServiceListEpisodeCampaignPricesSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("ListEpisodeCampaignPrices"),
+			Procedure:  AdminSeriesServiceListEpisodeCampaignPricesProcedure,
+		}
+	})
+	adminSeriesServiceDeleteEpisodeCampaignPriceSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_series_proto.Services().ByName("AdminSeriesService").Methods().ByName("DeleteEpisodeCampaignPrice"),
+			Procedure:  AdminSeriesServiceDeleteEpisodeCampaignPriceProcedure,
+		}
+	})
 	adminSeriesServiceGetSeriesWaitFreeSettingsSpec = sync.OnceValue(func() connect.Spec {
 		return connect.Spec{
 			StreamType: connect.StreamTypeUnary,
@@ -523,6 +563,14 @@ type AdminSeriesServiceClient interface {
 	ListEpisodeFreeWindows(context.Context, *v1.ListEpisodeFreeWindowsRequest) (*v1.ListEpisodeFreeWindowsResponse, error)
 	// Minimum role: tenant_editor.
 	DeleteEpisodeFreeWindow(context.Context, *v1.DeleteEpisodeFreeWindowRequest) (*v1.DeleteEpisodeFreeWindowResponse, error)
+	// Minimum role: tenant_editor.
+	CreateEpisodeCampaignPrice(context.Context, *v1.CreateEpisodeCampaignPriceRequest) (*v1.CreateEpisodeCampaignPriceResponse, error)
+	// Minimum role: tenant_editor.
+	CreateSeriesCampaignPrices(context.Context, *v1.CreateSeriesCampaignPricesRequest) (*v1.CreateSeriesCampaignPricesResponse, error)
+	// Minimum role: tenant_auditor.
+	ListEpisodeCampaignPrices(context.Context, *v1.ListEpisodeCampaignPricesRequest) (*v1.ListEpisodeCampaignPricesResponse, error)
+	// Minimum role: tenant_editor.
+	DeleteEpisodeCampaignPrice(context.Context, *v1.DeleteEpisodeCampaignPriceRequest) (*v1.DeleteEpisodeCampaignPriceResponse, error)
 	// Minimum role: tenant_auditor.
 	GetSeriesWaitFreeSettings(context.Context, *v1.GetSeriesWaitFreeSettingsRequest) (*v1.GetSeriesWaitFreeSettingsResponse, error)
 	// Minimum role: tenant_editor.
@@ -630,6 +678,14 @@ type AdminSeriesServiceHandler interface {
 	ListEpisodeFreeWindows(context.Context, *v1.ListEpisodeFreeWindowsRequest) (*v1.ListEpisodeFreeWindowsResponse, error)
 	// Minimum role: tenant_editor.
 	DeleteEpisodeFreeWindow(context.Context, *v1.DeleteEpisodeFreeWindowRequest) (*v1.DeleteEpisodeFreeWindowResponse, error)
+	// Minimum role: tenant_editor.
+	CreateEpisodeCampaignPrice(context.Context, *v1.CreateEpisodeCampaignPriceRequest) (*v1.CreateEpisodeCampaignPriceResponse, error)
+	// Minimum role: tenant_editor.
+	CreateSeriesCampaignPrices(context.Context, *v1.CreateSeriesCampaignPricesRequest) (*v1.CreateSeriesCampaignPricesResponse, error)
+	// Minimum role: tenant_auditor.
+	ListEpisodeCampaignPrices(context.Context, *v1.ListEpisodeCampaignPricesRequest) (*v1.ListEpisodeCampaignPricesResponse, error)
+	// Minimum role: tenant_editor.
+	DeleteEpisodeCampaignPrice(context.Context, *v1.DeleteEpisodeCampaignPriceRequest) (*v1.DeleteEpisodeCampaignPriceResponse, error)
 	// Minimum role: tenant_auditor.
 	GetSeriesWaitFreeSettings(context.Context, *v1.GetSeriesWaitFreeSettingsRequest) (*v1.GetSeriesWaitFreeSettingsResponse, error)
 	// Minimum role: tenant_editor.
@@ -691,6 +747,10 @@ func RegisterAdminSeriesServiceHandler(server *connect.Server, svc AdminSeriesSe
 		connect.Method{Spec: adminSeriesServiceCreateSeriesFreeWindowsSpec(), Handler: adapter.createSeriesFreeWindows},
 		connect.Method{Spec: adminSeriesServiceListEpisodeFreeWindowsSpec(), Handler: adapter.listEpisodeFreeWindows},
 		connect.Method{Spec: adminSeriesServiceDeleteEpisodeFreeWindowSpec(), Handler: adapter.deleteEpisodeFreeWindow},
+		connect.Method{Spec: adminSeriesServiceCreateEpisodeCampaignPriceSpec(), Handler: adapter.createEpisodeCampaignPrice},
+		connect.Method{Spec: adminSeriesServiceCreateSeriesCampaignPricesSpec(), Handler: adapter.createSeriesCampaignPrices},
+		connect.Method{Spec: adminSeriesServiceListEpisodeCampaignPricesSpec(), Handler: adapter.listEpisodeCampaignPrices},
+		connect.Method{Spec: adminSeriesServiceDeleteEpisodeCampaignPriceSpec(), Handler: adapter.deleteEpisodeCampaignPrice},
 		connect.Method{Spec: adminSeriesServiceGetSeriesWaitFreeSettingsSpec(), Handler: adapter.getSeriesWaitFreeSettings},
 		connect.Method{Spec: adminSeriesServiceUpdateSeriesWaitFreeSettingsSpec(), Handler: adapter.updateSeriesWaitFreeSettings},
 		connect.Method{Spec: adminSeriesServiceDeleteSeriesTranslationSpec(), Handler: adapter.deleteSeriesTranslation},
@@ -827,6 +887,22 @@ func (UnimplementedAdminSeriesServiceHandler) ListEpisodeFreeWindows(context.Con
 
 func (UnimplementedAdminSeriesServiceHandler) DeleteEpisodeFreeWindow(context.Context, *v1.DeleteEpisodeFreeWindowRequest) (*v1.DeleteEpisodeFreeWindowResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.DeleteEpisodeFreeWindow is not implemented")
+}
+
+func (UnimplementedAdminSeriesServiceHandler) CreateEpisodeCampaignPrice(context.Context, *v1.CreateEpisodeCampaignPriceRequest) (*v1.CreateEpisodeCampaignPriceResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.CreateEpisodeCampaignPrice is not implemented")
+}
+
+func (UnimplementedAdminSeriesServiceHandler) CreateSeriesCampaignPrices(context.Context, *v1.CreateSeriesCampaignPricesRequest) (*v1.CreateSeriesCampaignPricesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.CreateSeriesCampaignPrices is not implemented")
+}
+
+func (UnimplementedAdminSeriesServiceHandler) ListEpisodeCampaignPrices(context.Context, *v1.ListEpisodeCampaignPricesRequest) (*v1.ListEpisodeCampaignPricesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.ListEpisodeCampaignPrices is not implemented")
+}
+
+func (UnimplementedAdminSeriesServiceHandler) DeleteEpisodeCampaignPrice(context.Context, *v1.DeleteEpisodeCampaignPriceRequest) (*v1.DeleteEpisodeCampaignPriceResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminSeriesService.DeleteEpisodeCampaignPrice is not implemented")
 }
 
 func (UnimplementedAdminSeriesServiceHandler) GetSeriesWaitFreeSettings(context.Context, *v1.GetSeriesWaitFreeSettingsRequest) (*v1.GetSeriesWaitFreeSettingsResponse, error) {
@@ -1116,6 +1192,38 @@ func (c *adminSeriesServiceClient) ListEpisodeFreeWindows(ctx context.Context, r
 func (c *adminSeriesServiceClient) DeleteEpisodeFreeWindow(ctx context.Context, req *v1.DeleteEpisodeFreeWindowRequest) (*v1.DeleteEpisodeFreeWindowResponse, error) {
 	var res v1.DeleteEpisodeFreeWindowResponse
 	if err := c.client.CallUnary(ctx, adminSeriesServiceDeleteEpisodeFreeWindowSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) CreateEpisodeCampaignPrice(ctx context.Context, req *v1.CreateEpisodeCampaignPriceRequest) (*v1.CreateEpisodeCampaignPriceResponse, error) {
+	var res v1.CreateEpisodeCampaignPriceResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceCreateEpisodeCampaignPriceSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) CreateSeriesCampaignPrices(ctx context.Context, req *v1.CreateSeriesCampaignPricesRequest) (*v1.CreateSeriesCampaignPricesResponse, error) {
+	var res v1.CreateSeriesCampaignPricesResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceCreateSeriesCampaignPricesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) ListEpisodeCampaignPrices(ctx context.Context, req *v1.ListEpisodeCampaignPricesRequest) (*v1.ListEpisodeCampaignPricesResponse, error) {
+	var res v1.ListEpisodeCampaignPricesResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceListEpisodeCampaignPricesSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminSeriesServiceClient) DeleteEpisodeCampaignPrice(ctx context.Context, req *v1.DeleteEpisodeCampaignPriceRequest) (*v1.DeleteEpisodeCampaignPriceResponse, error) {
+	var res v1.DeleteEpisodeCampaignPriceResponse
+	if err := c.client.CallUnary(ctx, adminSeriesServiceDeleteEpisodeCampaignPriceSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1573,6 +1681,54 @@ func (h adminSeriesServiceHandler) deleteEpisodeFreeWindow(ctx context.Context, 
 		return err
 	}
 	res, err := h.svc.DeleteEpisodeFreeWindow(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) createEpisodeCampaignPrice(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.CreateEpisodeCampaignPriceRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.CreateEpisodeCampaignPrice(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) createSeriesCampaignPrices(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.CreateSeriesCampaignPricesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.CreateSeriesCampaignPrices(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) listEpisodeCampaignPrices(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.ListEpisodeCampaignPricesRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.ListEpisodeCampaignPrices(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminSeriesServiceHandler) deleteEpisodeCampaignPrice(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.DeleteEpisodeCampaignPriceRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DeleteEpisodeCampaignPrice(ctx, &req)
 	if err != nil {
 		return err
 	}
