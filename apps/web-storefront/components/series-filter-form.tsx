@@ -88,7 +88,11 @@ export const SeriesFilterForm = async ({
           >
             <option value="">{t("storefront.series.filter_genre_all")}</option>
             {genres.map((genre) => (
-              <option key={genre.publicId} value={genre.publicId}>
+              <option
+                key={genre.publicId}
+                lang={genre.locale}
+                value={genre.publicId}
+              >
                 {genre.name}
               </option>
             ))}

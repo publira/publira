@@ -37,7 +37,8 @@ export const JAPANESE_DEFAULT_TENANT = {
  * Its site copy is written in both languages. Its two series are what a title
  * in the reader's language is read off: `translated` and its episode are
  * written in both languages, and `untranslated` in Japanese alone, so its
- * English URL falls back. Its two announcements follow the same pattern.
+ * English URL falls back. Its two genres and its two announcements follow the
+ * same pattern, and `translated` carries the translated genre.
  */
 export const BILINGUAL_TENANT = {
   announcements: {
@@ -58,6 +59,17 @@ export const BILINGUAL_TENANT = {
   englishCopy: {
     copyrightText: "© Bilingual Tenant",
     siteDescription: "The English description of Bilingual Tenant.",
+  },
+  genres: {
+    translated: {
+      englishName: "Journeys",
+      japaneseName: "Journeys (Japanese edition)",
+      publicId: "BLNGGENRAAA1",
+    },
+    untranslated: {
+      japaneseName: "Harbors (Japanese edition)",
+      publicId: "BLNGGENRAAA2",
+    },
   },
   japaneseCopy: {
     copyrightText: "© Bilingual Tenant (Japanese edition)",

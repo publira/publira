@@ -86,6 +86,7 @@ const genre = (
   overrides: Partial<PublishedGenreItem> = {}
 ): PublishedGenreItem => ({
   featuredSeries: [],
+  locale: "en",
   name: "Fantasy",
   publicId: "GENRE01",
   publishedSeriesCount: 12,
@@ -102,6 +103,31 @@ describe("GenreTiles", () => {
     expect(
       tileLink(/Fantasy\s*12 published series/u).getAttribute("href")
     ).toBe("/genres/GENRE01");
+  });
+
+  it("Marks a name served in another language with that language", () => {
+    render(
+      <GenreTiles
+        genres={[
+          genre({
+            locale: "ja",
+            name: "Fantasy (Japanese edition)",
+            publishedSeriesCount: 0,
+          }),
+        ]}
+      />
+    );
+
+    const names = [
+      ...tileLink(/Fantasy \(Japanese edition\)/u).querySelectorAll("[lang]"),
+    ];
+    expect(names.map((name) => name.textContent)).toStrictEqual([
+      "Fantasy (Japanese edition)",
+      "Fantasy (Japanese edition)",
+    ]);
+    expect(names.every((name) => name.getAttribute("lang") === "ja")).toBe(
+      true
+    );
   });
 
   it("Keeps the tenant's own order", () => {

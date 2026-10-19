@@ -203,6 +203,53 @@ test.describe("web-storefront language alternates of a series", () => {
 });
 
 /**
+ * A genre's page lists the tenant's series under it, in whichever language the
+ * reader reads, so it is published in every language the tenant offers at the
+ * same path, even where the genre's own name falls back.
+ */
+test.describe("web-storefront language alternates of a genre", () => {
+  const { translated, untranslated } = BILINGUAL_TENANT.genres;
+
+  test.beforeAll(() => {
+    applyScenarioSql(LOCALE_SWITCHING_SCENARIO);
+  });
+
+  test("a genre named in both languages alternates the same path in both", async ({
+    page,
+  }) => {
+    const genrePath = `/genres/${translated.publicId}`;
+
+    await page.goto(
+      `${WEB_STOREFRONT_BILINGUAL_BASE_URL}${localeStorefrontPath("en", genrePath)}`
+    );
+
+    await expectCanonical(page, `${BILINGUAL_ORIGIN}/en${genrePath}`);
+    await expectLanguageAlternates(page, {
+      en: `${BILINGUAL_ORIGIN}/en${genrePath}`,
+      ja: `${BILINGUAL_ORIGIN}${genrePath}`,
+      "x-default": `${BILINGUAL_ORIGIN}${genrePath}`,
+    });
+  });
+
+  test("a genre named in the default language alone still alternates both", async ({
+    page,
+  }) => {
+    const genrePath = `/genres/${untranslated.publicId}`;
+
+    await page.goto(
+      `${WEB_STOREFRONT_BILINGUAL_BASE_URL}${localeStorefrontPath("en", genrePath)}`
+    );
+
+    await expectCanonical(page, `${BILINGUAL_ORIGIN}/en${genrePath}`);
+    await expectLanguageAlternates(page, {
+      en: `${BILINGUAL_ORIGIN}/en${genrePath}`,
+      ja: `${BILINGUAL_ORIGIN}${genrePath}`,
+      "x-default": `${BILINGUAL_ORIGIN}${genrePath}`,
+    });
+  });
+});
+
+/**
  * An announcement names as its languages the ones it was written in, among the
  * ones the tenant offers, as a series does.
  */

@@ -19,7 +19,8 @@
 -- alone. The Japanese titles are English text marked as the Japanese edition,
 -- which is all the suite needs to tell the two translations apart. The
 -- tenants' site copy follows the same pattern, and so do the bilingual
--- tenant's two announcements, at the end of this file.
+-- tenant's two genres, the first of which the first series carries, and its
+-- two announcements, at the end of this file.
 --
 -- The public site and the console login screen are both reached without a
 -- session, so neither tenant owns users, and the Japanese-default tenant owns
@@ -30,6 +31,7 @@
 --   label    BlngLABLAAA1
 --   series   BlngSERSAAA1 (Japanese and English) / BlngSERSAAA2 (Japanese)
 --   episode  BlngEPSDAAA1 (of BlngSERSAAA1, Japanese and English)
+--   genre    BLNGGENRAAA1 (Japanese and English, on BlngSERSAAA1) / BLNGGENRAAA2 (Japanese)
 --   announcement 018f0f46-0001-… (Japanese and English) / 018f0f46-0002-… (Japanese)
 
 WITH tenant_seed AS (
@@ -235,6 +237,78 @@ SET price = EXCLUDED.price,
     scheduled_at = EXCLUDED.scheduled_at,
     published_at = EXCLUDED.published_at,
     tenant_id = EXCLUDED.tenant_id;
+
+-- Two genres of the bilingual tenant: the first named in Japanese and English
+-- and carried by the first series, so its badge changes language with the
+-- series page, and the second named in Japanese alone, so its English URL
+-- falls back. A slug is derived from the default locale's name. Their public
+-- IDs are spelled in capitals because a genre page refuses an ID outside
+-- Base58, which has no lowercase L.
+WITH tenant_scope AS (
+    SELECT t.id
+    FROM tenants t
+    WHERE t.public_id = 'BlngTNNTAAA1'
+),
+genre_seed (id, public_id, slug, display_order) AS (
+    VALUES
+        ('018f0f47-0001-7000-8000-000000000001'::uuid, 'BLNGGENRAAA1', 'journeys-japanese-edition', 1),
+        ('018f0f47-0002-7000-8000-000000000002'::uuid, 'BLNGGENRAAA2', 'harbors-japanese-edition', 2)
+)
+INSERT INTO genres (id, tenant_id, public_id, slug, display_order)
+SELECT
+    gs.id,
+    ts.id,
+    gs.public_id,
+    gs.slug,
+    gs.display_order
+FROM genre_seed gs
+CROSS JOIN tenant_scope ts
+ON CONFLICT (public_id) DO UPDATE
+SET tenant_id = EXCLUDED.tenant_id,
+    slug = EXCLUDED.slug,
+    display_order = EXCLUDED.display_order;
+
+WITH translation_seed (id, genre_id, locale, name) AS (
+    VALUES
+        (
+            '018f0f48-0001-7000-8000-000000000001'::uuid,
+            '018f0f47-0001-7000-8000-000000000001'::uuid,
+            'ja',
+            'Journeys (Japanese edition)'
+        ),
+        (
+            '018f0f48-0002-7000-8000-000000000002'::uuid,
+            '018f0f47-0001-7000-8000-000000000001'::uuid,
+            'en',
+            'Journeys'
+        ),
+        (
+            '018f0f48-0003-7000-8000-000000000003'::uuid,
+            '018f0f47-0002-7000-8000-000000000002'::uuid,
+            'ja',
+            'Harbors (Japanese edition)'
+        )
+)
+INSERT INTO genre_translations (id, genre_id, tenant_id, locale, name)
+SELECT
+    tr.id,
+    g.id,
+    g.tenant_id,
+    tr.locale,
+    tr.name
+FROM translation_seed tr
+JOIN genres g ON g.id = tr.genre_id
+ON CONFLICT (genre_id, locale) DO UPDATE
+SET name = EXCLUDED.name;
+
+INSERT INTO series_genres (tenant_id, series_id, genre_id)
+SELECT
+    s.tenant_id,
+    s.id,
+    '018f0f47-0001-7000-8000-000000000001'::uuid
+FROM series s
+WHERE s.id = '018f0f42-0001-7000-8000-000000000001'::uuid
+ON CONFLICT (series_id, genre_id) DO NOTHING;
 
 -- The site copy, written per locale. The bilingual tenant writes it in
 -- Japanese and English, so its footer and description change with the URL's

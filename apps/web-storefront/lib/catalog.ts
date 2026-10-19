@@ -657,21 +657,37 @@ const toScheduleWeekdays = (weekdays: number[] | undefined): number[] =>
 
 /** One genre a series carries, as the tenant ordered its genres. */
 export interface SeriesGenreItem {
+  /**
+   * The locale `name` is written in: the reader's, else the tenant's default,
+   * else the genre's oldest name.
+   */
+  locale: Locale;
   name: string;
   publicId: string;
 }
 
 /** The generated `Genre` fields {@link toSeriesGenreItem} reads. */
-type RawSeriesGenre = Pick<Genre, "name" | "publicId">;
+type RawSeriesGenre = Pick<Genre, "locale" | "name" | "publicId">;
 
 /**
  * A genre with no `public_id` is dropped: the id is what a genre page is
  * addressed by, so a chip built without one would link to the genre list.
  */
-const toSeriesGenreItem = (genre: RawSeriesGenre): SeriesGenreItem[] => {
+const toSeriesGenreItem = (
+  genre: RawSeriesGenre,
+  requestedLocale: Locale
+): SeriesGenreItem[] => {
   const name = genre.name?.trim() ?? "";
   const publicId = genre.publicId?.trim() ?? "";
-  return name.length > 0 && publicId.length > 0 ? [{ name, publicId }] : [];
+  return name.length > 0 && publicId.length > 0
+    ? [
+        {
+          locale: servedLocaleFrom(genre.locale, requestedLocale),
+          name,
+          publicId,
+        },
+      ]
+    : [];
 };
 
 /** One tag a series carries, by name, which is the order the server sends. */
@@ -963,6 +979,11 @@ export interface PublishedGenreItem {
    */
   eyeCatchImageVariants?: EyeCatchImageVariant[];
   featuredSeries: GenreFeaturedSeriesItem[];
+  /**
+   * The locale `name` is written in: the reader's, else the tenant's default,
+   * else the genre's oldest name.
+   */
+  locale: Locale;
   publicId: string;
   name: string;
   slug: string;
@@ -1003,6 +1024,7 @@ type RawPublishedGenre = Pick<
   PublishedGenre,
   | "eyeCatchImageVariants"
   | "featuredSeries"
+  | "locale"
   | "name"
   | "publicId"
   | "publishedSeriesCount"
@@ -1010,12 +1032,14 @@ type RawPublishedGenre = Pick<
 >;
 
 const toPublishedGenreItem = (
-  genre: RawPublishedGenre
+  genre: RawPublishedGenre,
+  requestedLocale: Locale
 ): PublishedGenreItem => ({
   eyeCatchImageVariants: toEyeCatchImageVariants(genre.eyeCatchImageVariants),
   featuredSeries: (genre.featuredSeries ?? []).flatMap(
     toGenreFeaturedSeriesItem
   ),
+  locale: servedLocaleFrom(genre.locale, requestedLocale),
   name: genre.name?.trim() ?? "",
   publicId: genre.publicId ?? "",
   publishedSeriesCount: genre.publishedSeriesCount ?? 0,
@@ -1076,7 +1100,7 @@ export const listPublishedGenres = async (
       },
       (items) => {
         for (const item of items) {
-          genres.push(toPublishedGenreItem(item));
+          genres.push(toPublishedGenreItem(item, locale));
         }
       }
     );
@@ -1826,7 +1850,9 @@ const toSeriesDetail = (
       eyeCatchImageVariants: toEyeCatchImageVariants(
         series.eyeCatchImageVariants
       ),
-      genres: (series.genres ?? []).flatMap(toSeriesGenreItem),
+      genres: (series.genres ?? []).flatMap((genre) =>
+        toSeriesGenreItem(genre, requestedLocale)
+      ),
       id: series.id ?? "",
       labelName: series.label?.name?.trim() ?? "",
       labelPublicId: series.label?.publicId?.trim() ?? "",

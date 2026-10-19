@@ -1439,8 +1439,18 @@ describe("catalog.getSeriesDetail", () => {
       series: {
         creators: [],
         genres: [
-          { name: "Fantasy", publicId: "SeedGENRAAA1", slug: "fantasy" },
-          { name: "Mystery", publicId: "SeedGENRAAA2", slug: "mystery" },
+          {
+            locale: "en",
+            name: "Fantasy",
+            publicId: "SeedGENRAAA1",
+            slug: "fantasy",
+          },
+          {
+            locale: "ja",
+            name: "Mystery (Japanese edition)",
+            publicId: "SeedGENRAAA2",
+            slug: "mystery",
+          },
         ],
         publicId: "SERIES_1",
         scheduleWeekdays: [1, 4],
@@ -1455,8 +1465,12 @@ describe("catalog.getSeriesDetail", () => {
 
     expect(result.ok && result.value?.series).toMatchObject({
       genres: [
-        { name: "Fantasy", publicId: "SeedGENRAAA1" },
-        { name: "Mystery", publicId: "SeedGENRAAA2" },
+        { locale: "en", name: "Fantasy", publicId: "SeedGENRAAA1" },
+        {
+          locale: "ja",
+          name: "Mystery (Japanese edition)",
+          publicId: "SeedGENRAAA2",
+        },
       ],
       scheduleWeekdays: [1, 4],
       status: "hiatus",
@@ -1663,6 +1677,7 @@ describe("catalog.listPublishedGenres", () => {
       .mockResolvedValueOnce({
         genres: [
           {
+            locale: "en",
             name: " Fantasy ",
             publicId: "SeedGENRAAA1",
             publishedSeriesCount: 4,
@@ -1674,6 +1689,7 @@ describe("catalog.listPublishedGenres", () => {
       .mockResolvedValueOnce({
         genres: [
           {
+            locale: "en",
             name: "Romance",
             publicId: "SeedGENRAAA2",
             publishedSeriesCount: 0,
@@ -1689,6 +1705,7 @@ describe("catalog.listPublishedGenres", () => {
     expect(result.ok && result.value).toEqual([
       {
         featuredSeries: [],
+        locale: "en",
         name: "Fantasy",
         publicId: "SeedGENRAAA1",
         publishedSeriesCount: 4,
@@ -1696,11 +1713,54 @@ describe("catalog.listPublishedGenres", () => {
       },
       {
         featuredSeries: [],
+        locale: "en",
         name: "Romance",
         publicId: "SeedGENRAAA2",
         publishedSeriesCount: 0,
         slug: "romance",
       },
+    ]);
+  });
+
+  it("Names each genre in the reader's locale, and says which locale a fallback came from", async () => {
+    mockListPublishedGenres.mockResolvedValueOnce({
+      genres: [
+        {
+          locale: "en",
+          name: "Fantasy",
+          publicId: "SeedGENRAAA1",
+          publishedSeriesCount: 4,
+          slug: "fantasy",
+        },
+        {
+          locale: "ja",
+          name: "Romance (Japanese edition)",
+          publicId: "SeedGENRAAA2",
+          publishedSeriesCount: 0,
+          slug: "romance",
+        },
+        {
+          name: "Mystery",
+          publicId: "SeedGENRAAA3",
+          publishedSeriesCount: 1,
+          slug: "mystery",
+        },
+      ],
+      nextToken: "",
+    });
+
+    const result = await listPublishedGenres("TENANT_001", "en");
+
+    expect(mockListPublishedGenres).toHaveBeenCalledWith(
+      expect.objectContaining({ locale: "en" })
+    );
+    // A genre whose served locale is missing is read as the requested one.
+    expect(
+      result.ok && result.value.map(({ locale, name }) => ({ locale, name }))
+    ).toStrictEqual([
+      { locale: "en", name: "Fantasy" },
+      { locale: "ja", name: "Romance (Japanese edition)" },
+      { locale: "en", name: "Mystery" },
     ]);
   });
 
