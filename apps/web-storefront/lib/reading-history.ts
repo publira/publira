@@ -8,6 +8,8 @@ import { ClientSurface } from "@publira/api-client/public/types";
 import type { MyEpisodeRead } from "@publira/api-client/public/types";
 import type { Locale } from "@publira/i18n";
 
+import type { RestrictedAgeRating } from "./age-rating";
+import { withRestrictedAgeRating } from "./age-rating";
 import {
   apiClient,
   buildSessionHeaders,
@@ -25,7 +27,7 @@ export interface EpisodeReadItem {
   eyeCatchImageVariants?: EyeCatchImageVariant[];
   /** When the reader first finished the episode, as RFC 3339. */
   readAt: string;
-  series: { publicId: string; title: string };
+  series: { ageRating?: RestrictedAgeRating; publicId: string; title: string };
 }
 
 export type ListEpisodeReadsResult =
@@ -77,10 +79,13 @@ const mapEpisodeRead = (read: RawEpisodeRead): EpisodeReadItem => ({
     read.series
   ),
   readAt: read.readAt ?? "",
-  series: {
-    publicId: read.series?.publicId ?? "",
-    title: read.series?.title ?? "",
-  },
+  series: withRestrictedAgeRating(
+    {
+      publicId: read.series?.publicId ?? "",
+      title: read.series?.title ?? "",
+    },
+    read.series?.ageRating
+  ),
 });
 
 /**

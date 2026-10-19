@@ -1,5 +1,8 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
-import { ClientSurface } from "@publira/api-client/public/types";
+import {
+  ClientSurface,
+  SeriesAgeRating,
+} from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { listMyEpisodeReads } from "./reading-history";
@@ -111,6 +114,31 @@ describe("listMyEpisodeReads", () => {
     ).toEqual([
       { episodeId: "EPISODE_002", eyeCatchImageVariants: episodeCover },
       { episodeId: "EPISODE_001", eyeCatchImageVariants: seriesCover },
+    ]);
+  });
+
+  it("carries a rated series' age rating, and none for an all-ages one", async () => {
+    mockListMyEpisodeReads.mockResolvedValue({
+      nextToken: "",
+      previousToken: "",
+      reads: [
+        {
+          ...read,
+          series: { ...read.series, ageRating: SeriesAgeRating.R18 },
+        },
+        {
+          ...read,
+          episode: { ...read.episode, publicId: "EPISODE_001" },
+          series: { ...read.series, ageRating: SeriesAgeRating.ALL },
+        },
+      ],
+    });
+
+    const result = await listMyEpisodeReads(TENANT_ID, { locale: "en" });
+
+    expect(result.reads.map(({ series }) => series)).toEqual([
+      { ageRating: "r18", publicId: "SERIES_001", title: "A long night" },
+      { publicId: "SERIES_001", title: "A long night" },
     ]);
   });
 
