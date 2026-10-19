@@ -52,6 +52,7 @@ class PinnedAnnouncementBanner extends StatelessWidget {
                     children: [
                       AutospacedText(
                         announcement.title,
+                        locale: announcement.textLocale,
                         style: theme.textTheme.titleSmall?.copyWith(
                           color: colors.onSecondaryContainer,
                         ),
@@ -59,6 +60,7 @@ class PinnedAnnouncementBanner extends StatelessWidget {
                       if (announcement.body.isNotEmpty)
                         AutospacedText(
                           announcement.body,
+                          locale: announcement.textLocale,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.bodyMedium?.copyWith(

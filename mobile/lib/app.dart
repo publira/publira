@@ -540,6 +540,10 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
   /// has asked.
   Locale? _legalPageAgreementsLocale;
 
+  /// The locale [_refreshPinnedAnnouncement] last read the banner in, `null`
+  /// before it has read it.
+  Locale? _pinnedAnnouncementLocale;
+
   /// The confirmation this run owns when the widget did not pass one, so a
   /// widget test that does not care about ratings still has a store.
   AgeRatingConfirmationController? _ownedAgeRating;
@@ -600,7 +604,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
       return;
     }
     await board.restore();
-    await board.refreshPinned();
+    await _refreshPinnedAnnouncement();
   }
 
   /// Opens the tenant URL that launched the app, then listens for ones that
@@ -683,10 +687,12 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
   }
 
   /// The reader changed the device's language while the app was running, so
-  /// the next frame renders in whatever it now asks for.
+  /// the next frame renders in whatever it now asks for, and the banner is
+  /// read again in it.
   @override
   void didChangeLocales(List<Locale>? locales) {
     setState(() {});
+    _readPinnedAnnouncementAgain();
   }
 
   /// Reads the unread count and the pinned announcement again when the reader
@@ -706,7 +712,7 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
       unawaited(availability.recheck());
       return;
     }
-    unawaited(widget.announcements?.refreshPinned());
+    unawaited(_refreshPinnedAnnouncement());
     if (widget.auth.isSignedIn) {
       // A Tenant admin may have published a version asking every reader while
       // the app was in the background, or the reader agreed on the site.
@@ -721,12 +727,14 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
   /// is its default, so the next frame renders in one of them. A reader
   /// signed in from the device's session was asked about the legal pages
   /// before that answer, in a language the tenant may not offer, and is asked
-  /// again in the one the app now renders in.
+  /// again in the one the app now renders in. The banner read before it is
+  /// read again in that one too.
   void _onTenantLocalesChanged() {
     setState(() {});
     if (widget.auth.isSignedIn && _locale != _legalPageAgreementsLocale) {
       unawaited(_checkLegalPageAgreements());
     }
+    _readPinnedAnnouncementAgain();
   }
 
   /// The tenant's colours and name arrived, off the device or from the API.
@@ -751,6 +759,24 @@ class _PubliraAppState extends State<PubliraApp> with WidgetsBindingObserver {
     final locale = _locale;
     _legalPageAgreementsLocale = locale;
     await widget.legalPageAgreements?.check(locale: locale.toLanguageTag());
+  }
+
+  /// Reads the pinned announcement in the translation the screens render in.
+  Future<void> _refreshPinnedAnnouncement() async {
+    final locale = _locale;
+    _pinnedAnnouncementLocale = locale;
+    await widget.announcements?.refreshPinned(locale: locale.toLanguageTag());
+  }
+
+  /// Reads the banner again when the app has come to render in a language
+  /// other than the one it was read in. Before the launch's first read there
+  /// is nothing to read again: that read waits for the banner the reader
+  /// closed, and is made in whatever language the app renders in by then.
+  void _readPinnedAnnouncementAgain() {
+    final read = _pinnedAnnouncementLocale;
+    if (read != null && read != _locale) {
+      unawaited(_refreshPinnedAnnouncement());
+    }
   }
 
   /// The locale every screen renders in, decided from the device's languages

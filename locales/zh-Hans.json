@@ -5030,7 +5030,8 @@
       "mark_all_read_failed": "无法将全部标记为已读。请稍后再试。",
       "open_link": "打开链接",
       "banner_link": "阅读公告",
-      "banner_dismiss": "关闭该公告"
+      "banner_dismiss": "关闭该公告",
+      "fallback_notice": "此公告没有以你所用的语言撰写的版本，因此以{$language}显示。"
     },
     "purchase": {
       "buy": "以{$price}购买",

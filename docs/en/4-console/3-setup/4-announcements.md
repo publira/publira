@@ -38,7 +38,7 @@ The list shows each announcement's title in the default language, and the **Lang
 - **In their notifications**, every reader with an account gets "A new announcement", which leads to it. Announcements are not sent by email or as push notifications.
 - **In the app**, the **Announcements** screen lists the same announcements, with the same read marks.
 
-On the site, a reader sees each announcement in the language they browse in. Where you did not write it in that language, they see the default language's, with a note naming the language it is shown in.
+A reader sees each announcement in their language: on the site, the one they browse in, and in the app, the one the app is shown in. Where you did not write it in that language, they see the default language's, with a note naming the language it is shown in.
 
 ## The site banner
 

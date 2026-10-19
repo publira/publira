@@ -5030,7 +5030,8 @@
       "mark_all_read_failed": "모두 읽음으로 표시하지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "open_link": "링크 열기",
       "banner_link": "공지사항 읽기",
-      "banner_dismiss": "이 공지사항 닫기"
+      "banner_dismiss": "이 공지사항 닫기",
+      "fallback_notice": "이 공지사항은 사용 중인 언어로 작성되지 않아 {$language}로 표시합니다."
     },
     "purchase": {
       "buy": "{$price}에 구매",

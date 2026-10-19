@@ -16,7 +16,8 @@ import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
 
 /// One announcement: its title, when it was posted, its body, and the link
-/// the operator gave it.
+/// the operator gave it, in the app's language where the announcement was
+/// written in it.
 ///
 /// A visitor reads it as a signed-in reader does. Opening it is what reading
 /// it means, so a signed-in reader's unread announcement is marked read here.
@@ -37,19 +38,23 @@ class _AnnouncementScreenState extends State<AnnouncementScreen> {
   /// reader before this one cannot land on the screen.
   var _reads = 0;
   var _accessToken = '';
+  var _locale = '';
   var _started = false;
 
-  /// Reads the announcement again whenever the reader changes: read state
-  /// belongs to whoever holds the session.
+  /// Reads the announcement again whenever the reader or the locale changes:
+  /// read state belongs to whoever holds the session, and the text to the
+  /// language it is asked for in.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final accessToken = AuthScope.of(context).accessToken;
-    if (_started && accessToken == _accessToken) {
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    if (_started && accessToken == _accessToken && locale == _locale) {
       return;
     }
     _started = true;
     _accessToken = accessToken;
+    _locale = locale;
     _read();
   }
 
@@ -69,7 +74,7 @@ class _AnnouncementScreenState extends State<AnnouncementScreen> {
     Announcement? announcement;
     AnnouncementFailure? failure;
     try {
-      announcement = await board.get(widget.announcementId);
+      announcement = await board.get(widget.announcementId, locale: _locale);
     } on AnnouncementFailure catch (error) {
       failure = error;
     }
@@ -155,13 +160,34 @@ class _AnnouncementScreenState extends State<AnnouncementScreen> {
       context,
       announcement.linkUrl,
     );
+    final textLocale = announcement.textLocale;
+    final fallbackLanguage = announcement.fallbackLanguage(
+      Localizations.localeOf(context),
+    );
     return ReadableScrollPadding(
       padding: const EdgeInsets.all(16),
       builder: (context, padding) => ListView(
         key: ValueKey('announcement-${announcement.id}'),
         padding: padding,
         children: [
-          AutospacedText(announcement.title, style: theme.textTheme.titleLarge),
+          if (fallbackLanguage != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: AutospacedText(
+                messages.announcementsFallbackNotice(
+                  language: fallbackLanguage,
+                ),
+                key: const ValueKey('announcement-fallback-notice'),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          AutospacedText(
+            announcement.title,
+            locale: textLocale,
+            style: theme.textTheme.titleLarge,
+          ),
           if (createdAt != null) ...[
             const SizedBox(height: 4),
             AutospacedText(
@@ -175,8 +201,9 @@ class _AnnouncementScreenState extends State<AnnouncementScreen> {
           SelectableText.rich(
             autospaceIn(
               context,
-              TextSpan(text: announcement.body),
+              TextSpan(text: announcement.body, locale: textLocale),
               style: theme.textTheme.bodyLarge,
+              locale: textLocale,
             ),
             style: theme.textTheme.bodyLarge,
           ),
