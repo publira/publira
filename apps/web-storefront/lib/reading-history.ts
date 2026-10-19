@@ -8,20 +8,26 @@ import { ClientSurface } from "@publira/api-client/public/types";
 import type { MyEpisodeRead } from "@publira/api-client/public/types";
 import type { Locale } from "@publira/i18n";
 
+import type { RestrictedAgeRating } from "./age-rating";
+import { withRestrictedAgeRating } from "./age-rating";
 import {
   apiClient,
   buildSessionHeaders,
   resolveAccessToken,
 } from "./api-client";
+import { toEpisodeRowEyeCatchImageVariants } from "./catalog";
+import type { EyeCatchImageVariant } from "./catalog";
 import { getMessagesFor } from "./messages";
 
 const defaultEpisodeReadsPageSize = 20;
 
 export interface EpisodeReadItem {
   episode: { orderIndex: number; publicId: string; title: string };
+  /** The picture the row draws, from {@link toEpisodeRowEyeCatchImageVariants}. */
+  eyeCatchImageVariants?: EyeCatchImageVariant[];
   /** When the reader first finished the episode, as RFC 3339. */
   readAt: string;
-  series: { publicId: string; title: string };
+  series: { ageRating?: RestrictedAgeRating; publicId: string; title: string };
 }
 
 export type ListEpisodeReadsResult =
@@ -68,11 +74,18 @@ const mapEpisodeRead = (read: RawEpisodeRead): EpisodeReadItem => ({
     publicId: read.episode?.publicId ?? "",
     title: read.episode?.title ?? "",
   },
+  eyeCatchImageVariants: toEpisodeRowEyeCatchImageVariants(
+    read.episode,
+    read.series
+  ),
   readAt: read.readAt ?? "",
-  series: {
-    publicId: read.series?.publicId ?? "",
-    title: read.series?.title ?? "",
-  },
+  series: withRestrictedAgeRating(
+    {
+      publicId: read.series?.publicId ?? "",
+      title: read.series?.title ?? "",
+    },
+    read.series?.ageRating
+  ),
 });
 
 /**

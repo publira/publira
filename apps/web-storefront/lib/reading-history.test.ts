@@ -1,5 +1,8 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
-import { ClientSurface } from "@publira/api-client/public/types";
+import {
+  ClientSurface,
+  SeriesAgeRating,
+} from "@publira/api-client/public/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { listMyEpisodeReads } from "./reading-history";
@@ -32,6 +35,18 @@ const read = {
   series: { publicId: "SERIES_001", title: "A long night" },
 };
 
+const eyeCatch = (url: string) => [
+  {
+    contentType: "image/webp",
+    fileSizeBytes: 4096,
+    height: 160,
+    label: "square 160",
+    url,
+    variantType: "square",
+    width: 160,
+  },
+];
+
 describe("listMyEpisodeReads", () => {
   beforeEach(() => {
     mockResolveAccessToken.mockResolvedValue(ACCESS_TOKEN);
@@ -49,7 +64,7 @@ describe("listMyEpisodeReads", () => {
       nextToken: "next",
       ok: true,
       previousToken: "",
-      reads: [read],
+      reads: [{ ...read, eyeCatchImageVariants: undefined }],
     });
     expect(mockListMyEpisodeReads).toHaveBeenCalledWith(
       {
@@ -61,6 +76,70 @@ describe("listMyEpisodeReads", () => {
       },
       { Authorization: "Bearer session-token" }
     );
+  });
+
+  it("draws each episode's own eye-catch, and its series' where it has none", async () => {
+    const seriesCover = eyeCatch("/images/series/SERIES_001/square/160");
+    const episodeCover = eyeCatch(
+      "/images/episode-eye-catches/EPISODE_002/square/160"
+    );
+    mockListMyEpisodeReads.mockResolvedValue({
+      nextToken: "",
+      previousToken: "",
+      reads: [
+        {
+          ...read,
+          episode: { ...read.episode, eyeCatchImageVariants: episodeCover },
+          series: { ...read.series, eyeCatchImageVariants: seriesCover },
+        },
+        {
+          ...read,
+          episode: {
+            ...read.episode,
+            eyeCatchImageVariants: [],
+            publicId: "EPISODE_001",
+          },
+          series: { ...read.series, eyeCatchImageVariants: seriesCover },
+        },
+      ],
+    });
+
+    const result = await listMyEpisodeReads(TENANT_ID, { locale: "en" });
+
+    expect(
+      result.reads.map(({ episode, eyeCatchImageVariants }) => ({
+        episodeId: episode.publicId,
+        eyeCatchImageVariants,
+      }))
+    ).toEqual([
+      { episodeId: "EPISODE_002", eyeCatchImageVariants: episodeCover },
+      { episodeId: "EPISODE_001", eyeCatchImageVariants: seriesCover },
+    ]);
+  });
+
+  it("carries a rated series' age rating, and none for an all-ages one", async () => {
+    mockListMyEpisodeReads.mockResolvedValue({
+      nextToken: "",
+      previousToken: "",
+      reads: [
+        {
+          ...read,
+          series: { ...read.series, ageRating: SeriesAgeRating.R18 },
+        },
+        {
+          ...read,
+          episode: { ...read.episode, publicId: "EPISODE_001" },
+          series: { ...read.series, ageRating: SeriesAgeRating.ALL },
+        },
+      ],
+    });
+
+    const result = await listMyEpisodeReads(TENANT_ID, { locale: "en" });
+
+    expect(result.reads.map(({ series }) => series)).toEqual([
+      { ageRating: "r18", publicId: "SERIES_001", title: "A long night" },
+      { publicId: "SERIES_001", title: "A long night" },
+    ]);
   });
 
   it("passes the page token on", async () => {
