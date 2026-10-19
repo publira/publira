@@ -15,7 +15,8 @@ const auditedClientAddress = (genreName: string): string =>
     SELECT COALESCE(a.client_ip, '')
     FROM audit_logs a
     JOIN genres g ON g.public_id = a.target_id
-    WHERE a.action = 'genre_created' AND g.name = ${quoteSqlLiteral(genreName)};
+    JOIN genre_translations gt ON gt.genre_id = g.id
+    WHERE a.action = 'genre_created' AND gt.name = ${quoteSqlLiteral(genreName)};
   `);
 
 test.describe("console audit log client address", () => {

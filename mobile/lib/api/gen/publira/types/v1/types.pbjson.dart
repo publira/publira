@@ -441,6 +441,15 @@ const Genre$json = {
       '10': 'eyeCatchImageVariants'
     },
     {'1': 'id', '3': 6, '4': 1, '5': 9, '10': 'id'},
+    {'1': 'locale', '3': 7, '4': 1, '5': 9, '10': 'locale'},
+    {
+      '1': 'translations',
+      '3': 8,
+      '4': 3,
+      '5': 11,
+      '6': '.publira.types.v1.GenreTranslation',
+      '10': 'translations'
+    },
   ],
 };
 
@@ -450,7 +459,26 @@ final $typed_data.Uint8List genreDescriptor = $convert.base64Decode(
     'USEgoEc2x1ZxgDIAEoCVIEc2x1ZxI6ChpleWVfY2F0Y2hfaW1hZ2VfdXBkYXRlZF9hdBgEIAEo'
     'CVIWZXllQ2F0Y2hJbWFnZVVwZGF0ZWRBdBJgChhleWVfY2F0Y2hfaW1hZ2VfdmFyaWFudHMYBS'
     'ADKAsyJy5wdWJsaXJhLnR5cGVzLnYxLlNlcmllc0V5ZUNhdGNoVmFyaWFudFIVZXllQ2F0Y2hJ'
-    'bWFnZVZhcmlhbnRzEg4KAmlkGAYgASgJUgJpZA==');
+    'bWFnZVZhcmlhbnRzEg4KAmlkGAYgASgJUgJpZBIWCgZsb2NhbGUYByABKAlSBmxvY2FsZRJGCg'
+    'x0cmFuc2xhdGlvbnMYCCADKAsyIi5wdWJsaXJhLnR5cGVzLnYxLkdlbnJlVHJhbnNsYXRpb25S'
+    'DHRyYW5zbGF0aW9ucw==');
+
+@$core.Deprecated('Use genreTranslationDescriptor instead')
+const GenreTranslation$json = {
+  '1': 'GenreTranslation',
+  '2': [
+    {'1': 'locale', '3': 1, '4': 1, '5': 9, '10': 'locale'},
+    {'1': 'name', '3': 2, '4': 1, '5': 9, '10': 'name'},
+    {'1': 'created_at', '3': 3, '4': 1, '5': 9, '10': 'createdAt'},
+    {'1': 'updated_at', '3': 4, '4': 1, '5': 9, '10': 'updatedAt'},
+  ],
+};
+
+/// Descriptor for `GenreTranslation`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List genreTranslationDescriptor = $convert.base64Decode(
+    'ChBHZW5yZVRyYW5zbGF0aW9uEhYKBmxvY2FsZRgBIAEoCVIGbG9jYWxlEhIKBG5hbWUYAiABKA'
+    'lSBG5hbWUSHQoKY3JlYXRlZF9hdBgDIAEoCVIJY3JlYXRlZEF0Eh0KCnVwZGF0ZWRfYXQYBCAB'
+    'KAlSCXVwZGF0ZWRBdA==');
 
 @$core.Deprecated('Use tagDescriptor instead')
 const Tag$json = {

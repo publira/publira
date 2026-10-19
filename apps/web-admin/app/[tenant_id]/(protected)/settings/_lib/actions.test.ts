@@ -44,6 +44,10 @@ vi.mock("#lib/admin-auth", () => ({
   requestAdminEmailChange: vi.fn(),
 }));
 
+vi.mock("#lib/genre", () => ({
+  genresCacheTag: (tenantId: string) => `genres-${tenantId}`,
+}));
+
 vi.mock("#lib/public-api", () => ({
   tenantSiteCacheTag: (tenantId: string) => `tenant:${tenantId}:site`,
 }));
@@ -250,7 +254,7 @@ describe("updateTenantLocalesAction", () => {
     mockGetAccessToken.mockResolvedValue("session-token");
   });
 
-  it("saves the default with the languages offered and revalidates the cache tag", async () => {
+  it("saves the default with the languages offered and revalidates the cache tags", async () => {
     mockUpdateTenantLocales.mockResolvedValueOnce({
       defaultLocale: "en",
       ok: true,
@@ -281,6 +285,7 @@ describe("updateTenantLocalesAction", () => {
       "en"
     );
     expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:site");
+    expect(mockUpdateTag).toHaveBeenCalledWith("genres-TENANT001");
   });
 
   it.each([

@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/genre.proto.
  */
 export const file_publira_admin_v1_genre: GenFile = /*@__PURE__*/
-  fileDesc("ChxwdWJsaXJhL2FkbWluL3YxL2dlbnJlLnByb3RvEhBwdWJsaXJhLmFkbWluLnYxImIKEUxpc3RHZW5yZXNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgCIAEoBRINCgV0b2tlbhgDIAEoCSJpChJMaXN0R2VucmVzUmVzcG9uc2USJwoGZ2VucmVzGAEgAygLMhcucHVibGlyYS50eXBlcy52MS5HZW5yZRIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIpcBChJDcmVhdGVHZW5yZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EgwKBG5hbWUYAiABKAkSHAoUZXllX2NhdGNoX2ltYWdlX2RhdGEYAyABKAwSJAocZXllX2NhdGNoX2ltYWdlX2NvbnRlbnRfdHlwZRgEIAEoCSI9ChNDcmVhdGVHZW5yZVJlc3BvbnNlEiYKBWdlbnJlGAEgASgLMhcucHVibGlyYS50eXBlcy52MS5HZW5yZSLZAQoSVXBkYXRlR2VucmVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIMCgRuYW1lGAMgASgJEhwKFGV5ZV9jYXRjaF9pbWFnZV9kYXRhGAQgASgMEiQKHGV5ZV9jYXRjaF9pbWFnZV9jb250ZW50X3R5cGUYBSABKAkSHQoVY2xlYXJfZXllX2NhdGNoX2ltYWdlGAYgASgIEhAKCGdlbnJlX2lkGAcgASgJSgQIAhADUglwdWJsaWNfaWQiPQoTVXBkYXRlR2VucmVSZXNwb25zZRImCgVnZW5yZRgBIAEoCzIXLnB1YmxpcmEudHlwZXMudjEuR2VucmUirwEKFFJlb3JkZXJHZW5yZXNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIRCglnZW5yZV9pZHMYBCADKAkSGgoSZXhwZWN0ZWRfZ2VucmVfaWRzGAUgAygJSgQIAhADSgQIAxAEUhBnZW5yZV9wdWJsaWNfaWRzUhlleHBlY3RlZF9nZW5yZV9wdWJsaWNfaWRzIkAKFVJlb3JkZXJHZW5yZXNSZXNwb25zZRInCgZnZW5yZXMYASADKAsyFy5wdWJsaXJhLnR5cGVzLnYxLkdlbnJlImgKEkRlbGV0ZUdlbnJlUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSEAoIZ2VucmVfaWQYAyABKAlKBAgCEANSCXB1YmxpY19pZCIVChNEZWxldGVHZW5yZVJlc3BvbnNlIvABCiVVcGxvYWRHZW5yZUV5ZUNhdGNoQXNwZWN0SW1hZ2VSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIUCgx2YXJpYW50X3R5cGUYAyABKAkSEgoKaW1hZ2VfZGF0YRgEIAEoDBIaChJpbWFnZV9jb250ZW50X3R5cGUYBSABKAkSLQoEY3JvcBgGIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuSW1hZ2VDcm9wUmVjdBIQCghnZW5yZV9pZBgHIAEoCUoECAIQA1IJcHVibGljX2lkIlAKJlVwbG9hZEdlbnJlRXllQ2F0Y2hBc3BlY3RJbWFnZVJlc3BvbnNlEiYKBWdlbnJlGAEgASgLMhcucHVibGlyYS50eXBlcy52MS5HZW5yZTKEBQoRQWRtaW5HZW5yZVNlcnZpY2USWQoKTGlzdEdlbnJlcxIjLnB1YmxpcmEuYWRtaW4udjEuTGlzdEdlbnJlc1JlcXVlc3QaJC5wdWJsaXJhLmFkbWluLnYxLkxpc3RHZW5yZXNSZXNwb25zZSIAElwKC0NyZWF0ZUdlbnJlEiQucHVibGlyYS5hZG1pbi52MS5DcmVhdGVHZW5yZVJlcXVlc3QaJS5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZUdlbnJlUmVzcG9uc2UiABJcCgtVcGRhdGVHZW5yZRIkLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlR2VucmVSZXF1ZXN0GiUucHVibGlyYS5hZG1pbi52MS5VcGRhdGVHZW5yZVJlc3BvbnNlIgASYgoNUmVvcmRlckdlbnJlcxImLnB1YmxpcmEuYWRtaW4udjEuUmVvcmRlckdlbnJlc1JlcXVlc3QaJy5wdWJsaXJhLmFkbWluLnYxLlJlb3JkZXJHZW5yZXNSZXNwb25zZSIAElwKC0RlbGV0ZUdlbnJlEiQucHVibGlyYS5hZG1pbi52MS5EZWxldGVHZW5yZVJlcXVlc3QaJS5wdWJsaXJhLmFkbWluLnYxLkRlbGV0ZUdlbnJlUmVzcG9uc2UiABKVAQoeVXBsb2FkR2VucmVFeWVDYXRjaEFzcGVjdEltYWdlEjcucHVibGlyYS5hZG1pbi52MS5VcGxvYWRHZW5yZUV5ZUNhdGNoQXNwZWN0SW1hZ2VSZXF1ZXN0GjgucHVibGlyYS5hZG1pbi52MS5VcGxvYWRHZW5yZUV5ZUNhdGNoQXNwZWN0SW1hZ2VSZXNwb25zZSIAQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
+  fileDesc("ChxwdWJsaXJhL2FkbWluL3YxL2dlbnJlLnByb3RvEhBwdWJsaXJhLmFkbWluLnYxImIKEUxpc3RHZW5yZXNSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBINCgVsaW1pdBgCIAEoBRINCgV0b2tlbhgDIAEoCSJpChJMaXN0R2VucmVzUmVzcG9uc2USJwoGZ2VucmVzGAEgAygLMhcucHVibGlyYS50eXBlcy52MS5HZW5yZRIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIqcBChJDcmVhdGVHZW5yZVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EgwKBG5hbWUYAiABKAkSHAoUZXllX2NhdGNoX2ltYWdlX2RhdGEYAyABKAwSJAocZXllX2NhdGNoX2ltYWdlX2NvbnRlbnRfdHlwZRgEIAEoCRIOCgZsb2NhbGUYBSABKAkiPQoTQ3JlYXRlR2VucmVSZXNwb25zZRImCgVnZW5yZRgBIAEoCzIXLnB1YmxpcmEudHlwZXMudjEuR2VucmUi6QEKElVwZGF0ZUdlbnJlUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDAoEbmFtZRgDIAEoCRIcChRleWVfY2F0Y2hfaW1hZ2VfZGF0YRgEIAEoDBIkChxleWVfY2F0Y2hfaW1hZ2VfY29udGVudF90eXBlGAUgASgJEh0KFWNsZWFyX2V5ZV9jYXRjaF9pbWFnZRgGIAEoCBIQCghnZW5yZV9pZBgHIAEoCRIOCgZsb2NhbGUYCCABKAlKBAgCEANSCXB1YmxpY19pZCI9ChNVcGRhdGVHZW5yZVJlc3BvbnNlEiYKBWdlbnJlGAEgASgLMhcucHVibGlyYS50eXBlcy52MS5HZW5yZSKvAQoUUmVvcmRlckdlbnJlc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhEKCWdlbnJlX2lkcxgEIAMoCRIaChJleHBlY3RlZF9nZW5yZV9pZHMYBSADKAlKBAgCEANKBAgDEARSEGdlbnJlX3B1YmxpY19pZHNSGWV4cGVjdGVkX2dlbnJlX3B1YmxpY19pZHMiQAoVUmVvcmRlckdlbnJlc1Jlc3BvbnNlEicKBmdlbnJlcxgBIAMoCzIXLnB1YmxpcmEudHlwZXMudjEuR2VucmUiaAoSRGVsZXRlR2VucmVSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIQCghnZW5yZV9pZBgDIAEoCUoECAIQA1IJcHVibGljX2lkIhUKE0RlbGV0ZUdlbnJlUmVzcG9uc2UicgodRGVsZXRlR2VucmVUcmFuc2xhdGlvblJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0EhAKCGdlbnJlX2lkGAIgASgJEg4KBmxvY2FsZRgDIAEoCSJICh5EZWxldGVHZW5yZVRyYW5zbGF0aW9uUmVzcG9uc2USJgoFZ2VucmUYASABKAsyFy5wdWJsaXJhLnR5cGVzLnYxLkdlbnJlIvABCiVVcGxvYWRHZW5yZUV5ZUNhdGNoQXNwZWN0SW1hZ2VSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIUCgx2YXJpYW50X3R5cGUYAyABKAkSEgoKaW1hZ2VfZGF0YRgEIAEoDBIaChJpbWFnZV9jb250ZW50X3R5cGUYBSABKAkSLQoEY3JvcBgGIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuSW1hZ2VDcm9wUmVjdBIQCghnZW5yZV9pZBgHIAEoCUoECAIQA1IJcHVibGljX2lkIlAKJlVwbG9hZEdlbnJlRXllQ2F0Y2hBc3BlY3RJbWFnZVJlc3BvbnNlEiYKBWdlbnJlGAEgASgLMhcucHVibGlyYS50eXBlcy52MS5HZW5yZTKDBgoRQWRtaW5HZW5yZVNlcnZpY2USWQoKTGlzdEdlbnJlcxIjLnB1YmxpcmEuYWRtaW4udjEuTGlzdEdlbnJlc1JlcXVlc3QaJC5wdWJsaXJhLmFkbWluLnYxLkxpc3RHZW5yZXNSZXNwb25zZSIAElwKC0NyZWF0ZUdlbnJlEiQucHVibGlyYS5hZG1pbi52MS5DcmVhdGVHZW5yZVJlcXVlc3QaJS5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZUdlbnJlUmVzcG9uc2UiABJcCgtVcGRhdGVHZW5yZRIkLnB1YmxpcmEuYWRtaW4udjEuVXBkYXRlR2VucmVSZXF1ZXN0GiUucHVibGlyYS5hZG1pbi52MS5VcGRhdGVHZW5yZVJlc3BvbnNlIgASYgoNUmVvcmRlckdlbnJlcxImLnB1YmxpcmEuYWRtaW4udjEuUmVvcmRlckdlbnJlc1JlcXVlc3QaJy5wdWJsaXJhLmFkbWluLnYxLlJlb3JkZXJHZW5yZXNSZXNwb25zZSIAElwKC0RlbGV0ZUdlbnJlEiQucHVibGlyYS5hZG1pbi52MS5EZWxldGVHZW5yZVJlcXVlc3QaJS5wdWJsaXJhLmFkbWluLnYxLkRlbGV0ZUdlbnJlUmVzcG9uc2UiABJ9ChZEZWxldGVHZW5yZVRyYW5zbGF0aW9uEi8ucHVibGlyYS5hZG1pbi52MS5EZWxldGVHZW5yZVRyYW5zbGF0aW9uUmVxdWVzdBowLnB1YmxpcmEuYWRtaW4udjEuRGVsZXRlR2VucmVUcmFuc2xhdGlvblJlc3BvbnNlIgASlQEKHlVwbG9hZEdlbnJlRXllQ2F0Y2hBc3BlY3RJbWFnZRI3LnB1YmxpcmEuYWRtaW4udjEuVXBsb2FkR2VucmVFeWVDYXRjaEFzcGVjdEltYWdlUmVxdWVzdBo4LnB1YmxpcmEuYWRtaW4udjEuVXBsb2FkR2VucmVFeWVDYXRjaEFzcGVjdEltYWdlUmVzcG9uc2UiAEJWWlRnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvYWRtaW4vdjE7cHVibGlyYWFkbWludjFiBnByb3RvMw", [file_publira_types_v1_types]);
 
 /**
  * Cursor pagination. Field shape and token rules: proto/README.md.
@@ -90,8 +90,9 @@ export type CreateGenreRequest = Message<"publira.admin.v1.CreateGenreRequest"> 
   tenant?: TenantContext | undefined;
 
   /**
-   * The slug is derived from this, so a name that collides with an existing
-   * genre on nothing but case or spacing is refused with already_exists.
+   * The genre's first name, in `locale`. The slug is derived from it, so a
+   * name that collides with an existing genre's slug on nothing but case or
+   * spacing is refused with already_exists.
    *
    * @generated from field: string name = 2;
    */
@@ -109,6 +110,14 @@ export type CreateGenreRequest = Message<"publira.admin.v1.CreateGenreRequest"> 
    * @generated from field: string eye_catch_image_content_type = 4;
    */
   eyeCatchImageContentType: string;
+
+  /**
+   * The locale name is written in. Empty means the tenant's default locale; a
+   * locale the tenant does not offer is invalid_argument.
+   *
+   * @generated from field: string locale = 5;
+   */
+  locale: string;
 };
 
 /**
@@ -147,8 +156,12 @@ export type UpdateGenreRequest = Message<"publira.admin.v1.UpdateGenreRequest"> 
   tenant?: TenantContext | undefined;
 
   /**
-   * Renaming re-derives the slug. The public_id does not move, so whatever
-   * addresses this genre keeps addressing it.
+   * The name in `locale`. A locale the genre has no name in yet gets one.
+   * A save that changes the name a reader in the tenant's default locale is
+   * shown re-derives the slug from it, and is refused with already_exists
+   * when another genre holds that slug; any other save keeps the slug. The
+   * public_id does not move, so whatever addresses this genre keeps
+   * addressing it.
    *
    * @generated from field: string name = 3;
    */
@@ -179,6 +192,14 @@ export type UpdateGenreRequest = Message<"publira.admin.v1.UpdateGenreRequest"> 
    * @generated from field: string genre_id = 7;
    */
   genreId: string;
+
+  /**
+   * The locale name is written in. Empty means the tenant's default locale; a
+   * locale the tenant does not offer is invalid_argument.
+   *
+   * @generated from field: string locale = 8;
+   */
+  locale: string;
 };
 
 /**
@@ -298,6 +319,58 @@ export const DeleteGenreResponseSchema: GenMessage<DeleteGenreResponse> = /*@__P
   messageDesc(file_publira_admin_v1_genre, 9);
 
 /**
+ * Deletes one locale's name of a genre. The last name of a genre cannot be
+ * deleted (failed_precondition), and a locale the genre has no name in is
+ * not_found. The locale need not be one the tenant still offers, so a name
+ * left in a language the site has stopped offering can still be deleted. The
+ * slug stays as it is.
+ *
+ * @generated from message publira.admin.v1.DeleteGenreTranslationRequest
+ */
+export type DeleteGenreTranslationRequest = Message<"publira.admin.v1.DeleteGenreTranslationRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+
+  /**
+   * The genre's primary key (Genre.id).
+   *
+   * @generated from field: string genre_id = 2;
+   */
+  genreId: string;
+
+  /**
+   * @generated from field: string locale = 3;
+   */
+  locale: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.DeleteGenreTranslationRequest.
+ * Use `create(DeleteGenreTranslationRequestSchema)` to create a new message.
+ */
+export const DeleteGenreTranslationRequestSchema: GenMessage<DeleteGenreTranslationRequest> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_genre, 10);
+
+/**
+ * @generated from message publira.admin.v1.DeleteGenreTranslationResponse
+ */
+export type DeleteGenreTranslationResponse = Message<"publira.admin.v1.DeleteGenreTranslationResponse"> & {
+  /**
+   * @generated from field: publira.types.v1.Genre genre = 1;
+   */
+  genre?: Genre | undefined;
+};
+
+/**
+ * Describes the message publira.admin.v1.DeleteGenreTranslationResponse.
+ * Use `create(DeleteGenreTranslationResponseSchema)` to create a new message.
+ */
+export const DeleteGenreTranslationResponseSchema: GenMessage<DeleteGenreTranslationResponse> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_genre, 11);
+
+/**
  * Replaces the image of one aspect ratio of a genre eye-catch. The other
  * ratios keep the images they already hold.
  *
@@ -347,7 +420,7 @@ export type UploadGenreEyeCatchAspectImageRequest = Message<"publira.admin.v1.Up
  * Use `create(UploadGenreEyeCatchAspectImageRequestSchema)` to create a new message.
  */
 export const UploadGenreEyeCatchAspectImageRequestSchema: GenMessage<UploadGenreEyeCatchAspectImageRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_genre, 10);
+  messageDesc(file_publira_admin_v1_genre, 12);
 
 /**
  * @generated from message publira.admin.v1.UploadGenreEyeCatchAspectImageResponse
@@ -364,7 +437,7 @@ export type UploadGenreEyeCatchAspectImageResponse = Message<"publira.admin.v1.U
  * Use `create(UploadGenreEyeCatchAspectImageResponseSchema)` to create a new message.
  */
 export const UploadGenreEyeCatchAspectImageResponseSchema: GenMessage<UploadGenreEyeCatchAspectImageResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_genre, 11);
+  messageDesc(file_publira_admin_v1_genre, 13);
 
 /**
  * @generated from service publira.admin.v1.AdminGenreService
@@ -419,6 +492,16 @@ export const AdminGenreService: GenService<{
     methodKind: "unary";
     input: typeof DeleteGenreRequestSchema;
     output: typeof DeleteGenreResponseSchema;
+  },
+  /**
+   * Minimum role: tenant_editor.
+   *
+   * @generated from rpc publira.admin.v1.AdminGenreService.DeleteGenreTranslation
+   */
+  deleteGenreTranslation: {
+    methodKind: "unary";
+    input: typeof DeleteGenreTranslationRequestSchema;
+    output: typeof DeleteGenreTranslationResponseSchema;
   },
   /**
    * Minimum role: tenant_editor.

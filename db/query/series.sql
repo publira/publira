@@ -17,8 +17,8 @@ FOR UPDATE;
 -- name: GetSeriesDetail :one
 -- The title and the synopsis are those of the translation
 -- series_translation_for picks for the reader's locale, and each episode's
--- title is picked the same way. Each names the locale of the translation it
--- came from.
+-- title and each genre's name are picked the same way. Each names the locale
+-- of the translation it came from.
 SELECT s.id,
     s.public_id,
     tr.title,
@@ -94,7 +94,9 @@ SELECT s.id,
                         'public_id',
                         g.public_id,
                         'name',
-                        g.name,
+                        gt.name,
+                        'locale',
+                        gt.locale,
                         'slug',
                         g.slug
                     )
@@ -103,6 +105,7 @@ SELECT s.id,
                 )
             FROM series_genres sg
                 JOIN genres g ON g.id = sg.genre_id
+                CROSS JOIN LATERAL genre_translation_for(g.id, sqlc.arg('locale')::text) gt
             WHERE sg.series_id = s.id
         ),
         '[]'

@@ -356,6 +356,7 @@
         "genre_created": "建立了類型",
         "genre_updated": "更新了類型",
         "genre_deleted": "刪除了類型",
+        "genre_translation_deleted": "刪除了類型翻譯",
         "genres_reordered": "調整了類型順序",
         "genre_eye_catch_aspect_image_uploaded": "上傳了類型封面圖",
         "page_created": "建立了頁面",

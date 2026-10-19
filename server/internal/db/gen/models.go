@@ -473,7 +473,6 @@ type Genre struct {
 	ID              uuid.UUID     `json:"id"`
 	TenantID        uuid.UUID     `json:"tenant_id"`
 	PublicID        string        `json:"public_id"`
-	Name            string        `json:"name"`
 	Slug            string        `json:"slug"`
 	DisplayOrder    int32         `json:"display_order"`
 	CreatedAt       time.Time     `json:"created_at"`
@@ -501,6 +500,16 @@ type GenreImageVariant struct {
 	Width           int32     `json:"width"`
 	Height          int32     `json:"height"`
 	CreatedAt       time.Time `json:"created_at"`
+}
+
+type GenreTranslation struct {
+	ID        uuid.UUID `json:"id"`
+	GenreID   uuid.UUID `json:"genre_id"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+	Locale    string    `json:"locale"`
+	Name      string    `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type ItemRecommendFeature struct {

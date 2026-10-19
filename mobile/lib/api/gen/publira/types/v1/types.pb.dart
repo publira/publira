@@ -1043,6 +1043,8 @@ class Genre extends $pb.GeneratedMessage {
     $core.String? eyeCatchImageUpdatedAt,
     $core.Iterable<SeriesEyeCatchVariant>? eyeCatchImageVariants,
     $core.String? id,
+    $core.String? locale,
+    $core.Iterable<GenreTranslation>? translations,
   }) {
     final result = Genre._();
     if (publicId != null) result.publicId = publicId;
@@ -1053,6 +1055,8 @@ class Genre extends $pb.GeneratedMessage {
     if (eyeCatchImageVariants != null)
       result.eyeCatchImageVariants.addAll(eyeCatchImageVariants);
     if (id != null) result.id = id;
+    if (locale != null) result.locale = locale;
+    if (translations != null) result.translations.addAll(translations);
     return result;
   }
 
@@ -1078,6 +1082,9 @@ class Genre extends $pb.GeneratedMessage {
         5, _omitFieldNames ? '' : 'eyeCatchImageVariants',
         subBuilder: SeriesEyeCatchVariant.$_createMessage)
     ..aOS(6, _omitFieldNames ? '' : 'id')
+    ..aOS(7, _omitFieldNames ? '' : 'locale')
+    ..pPM<GenreTranslation>(8, _omitFieldNames ? '' : 'translations',
+        subBuilder: GenreTranslation.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1109,6 +1116,9 @@ class Genre extends $pb.GeneratedMessage {
   @$pb.TagNumber(1)
   void clearPublicId() => $_clearField(1);
 
+  /// The name of the translation in the locale the read asked for, else the
+  /// tenant's default locale's, else the oldest one. The console's reads ask
+  /// for the default locale.
   @$pb.TagNumber(2)
   $core.String get name => $_getSZ(1);
   @$pb.TagNumber(2)
@@ -1118,9 +1128,12 @@ class Genre extends $pb.GeneratedMessage {
   @$pb.TagNumber(2)
   void clearName() => $_clearField(2);
 
-  /// Unique within the tenant, derived from the name. It identifies the name
-  /// rather than standing in for it: two genres cannot differ by case or
-  /// spacing alone.
+  /// Unique within the tenant, derived from the name a reader in the tenant's
+  /// default locale is shown, by every save that changes that name. It
+  /// identifies the name rather than standing in for it: no save can give two
+  /// genres names that differ there by case or spacing alone. It does not
+  /// change with the locale a read asks for, nor when the tenant changes its
+  /// default locale.
   @$pb.TagNumber(3)
   $core.String get slug => $_getSZ(2);
   @$pb.TagNumber(3)
@@ -1153,6 +1166,119 @@ class Genre extends $pb.GeneratedMessage {
   $core.bool hasId() => $_has(5);
   @$pb.TagNumber(6)
   void clearId() => $_clearField(6);
+
+  /// The locale of the translation `name` comes from, named the way
+  /// Series.locale is: a public read names the one it served, and the
+  /// console's reads leave it empty.
+  @$pb.TagNumber(7)
+  $core.String get locale => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set locale($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasLocale() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearLocale() => $_clearField(7);
+
+  /// Every name the genre has, oldest first. Filled by the console's genre RPCs
+  /// alone.
+  @$pb.TagNumber(8)
+  $pb.PbList<GenreTranslation> get translations => $_getList(7);
+}
+
+/// One locale's name of a genre.
+class GenreTranslation extends $pb.GeneratedMessage {
+  factory GenreTranslation({
+    $core.String? locale,
+    $core.String? name,
+    $core.String? createdAt,
+    $core.String? updatedAt,
+  }) {
+    final result = GenreTranslation._();
+    if (locale != null) result.locale = locale;
+    if (name != null) result.name = name;
+    if (createdAt != null) result.createdAt = createdAt;
+    if (updatedAt != null) result.updatedAt = updatedAt;
+    return result;
+  }
+
+  GenreTranslation._();
+
+  factory GenreTranslation.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GenreTranslation()..mergeFromBuffer(data, registry);
+  factory GenreTranslation.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GenreTranslation()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GenreTranslation',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'publira.types.v1'),
+      createEmptyInstance: GenreTranslation.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'locale')
+    ..aOS(2, _omitFieldNames ? '' : 'name')
+    ..aOS(3, _omitFieldNames ? '' : 'createdAt')
+    ..aOS(4, _omitFieldNames ? '' : 'updatedAt')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GenreTranslation clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GenreTranslation copyWith(void Function(GenreTranslation) updates) =>
+      super.copyWith((message) => updates(message as GenreTranslation))
+          as GenreTranslation;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use GenreTranslation() / GenreTranslation.new instead')
+  static GenreTranslation create() => GenreTranslation._();
+  static $pb.GeneratedMessage $_createMessage() => GenreTranslation._();
+  @$core.override
+  GenreTranslation createEmptyInstance() => GenreTranslation._();
+  @$core.pragma('dart2js:noInline')
+  static GenreTranslation getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<GenreTranslation>(
+          GenreTranslation.$_createMessage);
+  static GenreTranslation? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get locale => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set locale($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasLocale() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearLocale() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get name => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set name($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearName() => $_clearField(2);
+
+  /// RFC 3339.
+  @$pb.TagNumber(3)
+  $core.String get createdAt => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set createdAt($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasCreatedAt() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCreatedAt() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get updatedAt => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set updatedAt($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasUpdatedAt() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearUpdatedAt() => $_clearField(4);
 }
 
 /// A free-form label written on the series form. Tags have no console of their

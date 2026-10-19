@@ -330,6 +330,7 @@ func creatorFromJSON(creator creatorJSON) *publirattypesv1.Creator {
 type genreJSON struct {
 	PublicID string `json:"public_id"`
 	Name     string `json:"name"`
+	Locale   string `json:"locale"`
 	Slug     string `json:"slug"`
 }
 
@@ -351,7 +352,7 @@ func seriesGenresFromJSON(raw []byte) ([]*publirattypesv1.Genre, error) {
 	}
 	genres := make([]*publirattypesv1.Genre, 0, len(rows))
 	for _, row := range rows {
-		genres = append(genres, &publirattypesv1.Genre{PublicId: row.PublicID, Name: row.Name, Slug: row.Slug})
+		genres = append(genres, &publirattypesv1.Genre{PublicId: row.PublicID, Name: row.Name, Locale: row.Locale, Slug: row.Slug})
 	}
 	return genres, nil
 }

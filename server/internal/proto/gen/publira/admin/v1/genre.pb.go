@@ -151,15 +151,19 @@ func (x *ListGenresResponse) GetNextToken() string {
 type CreateGenreRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	// The slug is derived from this, so a name that collides with an existing
-	// genre on nothing but case or spacing is refused with already_exists.
+	// The genre's first name, in `locale`. The slug is derived from it, so a
+	// name that collides with an existing genre's slug on nothing but case or
+	// spacing is refused with already_exists.
 	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	// Cropped into every ratio of the eye-catch. Empty leaves the genre without
 	// one.
 	EyeCatchImageData        []byte `protobuf:"bytes,3,opt,name=eye_catch_image_data,json=eyeCatchImageData,proto3" json:"eye_catch_image_data,omitempty"`
 	EyeCatchImageContentType string `protobuf:"bytes,4,opt,name=eye_catch_image_content_type,json=eyeCatchImageContentType,proto3" json:"eye_catch_image_content_type,omitempty"`
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	// The locale name is written in. Empty means the tenant's default locale; a
+	// locale the tenant does not offer is invalid_argument.
+	Locale        string `protobuf:"bytes,5,opt,name=locale,proto3" json:"locale,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreateGenreRequest) Reset() {
@@ -220,6 +224,13 @@ func (x *CreateGenreRequest) GetEyeCatchImageContentType() string {
 	return ""
 }
 
+func (x *CreateGenreRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
 type CreateGenreResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Created at the end of the list. ReorderGenres is how it moves.
@@ -268,8 +279,12 @@ func (x *CreateGenreResponse) GetGenre() *v1.Genre {
 type UpdateGenreRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	// Renaming re-derives the slug. The public_id does not move, so whatever
-	// addresses this genre keeps addressing it.
+	// The name in `locale`. A locale the genre has no name in yet gets one.
+	// A save that changes the name a reader in the tenant's default locale is
+	// shown re-derives the slug from it, and is refused with already_exists
+	// when another genre holds that slug; any other save keeps the slug. The
+	// public_id does not move, so whatever addresses this genre keeps
+	// addressing it.
 	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	// Replaces the whole eye-catch. Empty keeps the one the genre has.
 	EyeCatchImageData        []byte `protobuf:"bytes,4,opt,name=eye_catch_image_data,json=eyeCatchImageData,proto3" json:"eye_catch_image_data,omitempty"`
@@ -277,7 +292,10 @@ type UpdateGenreRequest struct {
 	// Removes the eye-catch. Refused alongside eye_catch_image_data.
 	ClearEyeCatchImage bool `protobuf:"varint,6,opt,name=clear_eye_catch_image,json=clearEyeCatchImage,proto3" json:"clear_eye_catch_image,omitempty"`
 	// The genre's primary key (Genre.id).
-	GenreId       string `protobuf:"bytes,7,opt,name=genre_id,json=genreId,proto3" json:"genre_id,omitempty"`
+	GenreId string `protobuf:"bytes,7,opt,name=genre_id,json=genreId,proto3" json:"genre_id,omitempty"`
+	// The locale name is written in. Empty means the tenant's default locale; a
+	// locale the tenant does not offer is invalid_argument.
+	Locale        string `protobuf:"bytes,8,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -350,6 +368,13 @@ func (x *UpdateGenreRequest) GetClearEyeCatchImage() bool {
 func (x *UpdateGenreRequest) GetGenreId() string {
 	if x != nil {
 		return x.GenreId
+	}
+	return ""
+}
+
+func (x *UpdateGenreRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
 	}
 	return ""
 }
@@ -599,6 +624,116 @@ func (*DeleteGenreResponse) Descriptor() ([]byte, []int) {
 	return file_publira_admin_v1_genre_proto_rawDescGZIP(), []int{9}
 }
 
+// Deletes one locale's name of a genre. The last name of a genre cannot be
+// deleted (failed_precondition), and a locale the genre has no name in is
+// not_found. The locale need not be one the tenant still offers, so a name
+// left in a language the site has stopped offering can still be deleted. The
+// slug stays as it is.
+type DeleteGenreTranslationRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// The genre's primary key (Genre.id).
+	GenreId       string `protobuf:"bytes,2,opt,name=genre_id,json=genreId,proto3" json:"genre_id,omitempty"`
+	Locale        string `protobuf:"bytes,3,opt,name=locale,proto3" json:"locale,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteGenreTranslationRequest) Reset() {
+	*x = DeleteGenreTranslationRequest{}
+	mi := &file_publira_admin_v1_genre_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteGenreTranslationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteGenreTranslationRequest) ProtoMessage() {}
+
+func (x *DeleteGenreTranslationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_genre_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteGenreTranslationRequest.ProtoReflect.Descriptor instead.
+func (*DeleteGenreTranslationRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_genre_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *DeleteGenreTranslationRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *DeleteGenreTranslationRequest) GetGenreId() string {
+	if x != nil {
+		return x.GenreId
+	}
+	return ""
+}
+
+func (x *DeleteGenreTranslationRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
+type DeleteGenreTranslationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Genre         *v1.Genre              `protobuf:"bytes,1,opt,name=genre,proto3" json:"genre,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteGenreTranslationResponse) Reset() {
+	*x = DeleteGenreTranslationResponse{}
+	mi := &file_publira_admin_v1_genre_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteGenreTranslationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteGenreTranslationResponse) ProtoMessage() {}
+
+func (x *DeleteGenreTranslationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_genre_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteGenreTranslationResponse.ProtoReflect.Descriptor instead.
+func (*DeleteGenreTranslationResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_genre_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *DeleteGenreTranslationResponse) GetGenre() *v1.Genre {
+	if x != nil {
+		return x.Genre
+	}
+	return nil
+}
+
 // Replaces the image of one aspect ratio of a genre eye-catch. The other
 // ratios keep the images they already hold.
 type UploadGenreEyeCatchAspectImageRequest struct {
@@ -619,7 +754,7 @@ type UploadGenreEyeCatchAspectImageRequest struct {
 
 func (x *UploadGenreEyeCatchAspectImageRequest) Reset() {
 	*x = UploadGenreEyeCatchAspectImageRequest{}
-	mi := &file_publira_admin_v1_genre_proto_msgTypes[10]
+	mi := &file_publira_admin_v1_genre_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -631,7 +766,7 @@ func (x *UploadGenreEyeCatchAspectImageRequest) String() string {
 func (*UploadGenreEyeCatchAspectImageRequest) ProtoMessage() {}
 
 func (x *UploadGenreEyeCatchAspectImageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_genre_proto_msgTypes[10]
+	mi := &file_publira_admin_v1_genre_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -644,7 +779,7 @@ func (x *UploadGenreEyeCatchAspectImageRequest) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use UploadGenreEyeCatchAspectImageRequest.ProtoReflect.Descriptor instead.
 func (*UploadGenreEyeCatchAspectImageRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_genre_proto_rawDescGZIP(), []int{10}
+	return file_publira_admin_v1_genre_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *UploadGenreEyeCatchAspectImageRequest) GetTenant() *v1.TenantContext {
@@ -698,7 +833,7 @@ type UploadGenreEyeCatchAspectImageResponse struct {
 
 func (x *UploadGenreEyeCatchAspectImageResponse) Reset() {
 	*x = UploadGenreEyeCatchAspectImageResponse{}
-	mi := &file_publira_admin_v1_genre_proto_msgTypes[11]
+	mi := &file_publira_admin_v1_genre_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -710,7 +845,7 @@ func (x *UploadGenreEyeCatchAspectImageResponse) String() string {
 func (*UploadGenreEyeCatchAspectImageResponse) ProtoMessage() {}
 
 func (x *UploadGenreEyeCatchAspectImageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_genre_proto_msgTypes[11]
+	mi := &file_publira_admin_v1_genre_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -723,7 +858,7 @@ func (x *UploadGenreEyeCatchAspectImageResponse) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use UploadGenreEyeCatchAspectImageResponse.ProtoReflect.Descriptor instead.
 func (*UploadGenreEyeCatchAspectImageResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_genre_proto_rawDescGZIP(), []int{11}
+	return file_publira_admin_v1_genre_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *UploadGenreEyeCatchAspectImageResponse) GetGenre() *v1.Genre {
@@ -746,21 +881,23 @@ const file_publira_admin_v1_genre_proto_rawDesc = "" +
 	"\x06genres\x18\x01 \x03(\v2\x17.publira.types.v1.GenreR\x06genres\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\xd2\x01\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\xea\x01\n" +
 	"\x12CreateGenreRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12/\n" +
 	"\x14eye_catch_image_data\x18\x03 \x01(\fR\x11eyeCatchImageData\x12>\n" +
-	"\x1ceye_catch_image_content_type\x18\x04 \x01(\tR\x18eyeCatchImageContentType\"D\n" +
+	"\x1ceye_catch_image_content_type\x18\x04 \x01(\tR\x18eyeCatchImageContentType\x12\x16\n" +
+	"\x06locale\x18\x05 \x01(\tR\x06locale\"D\n" +
 	"\x13CreateGenreResponse\x12-\n" +
-	"\x05genre\x18\x01 \x01(\v2\x17.publira.types.v1.GenreR\x05genre\"\xb1\x02\n" +
+	"\x05genre\x18\x01 \x01(\v2\x17.publira.types.v1.GenreR\x05genre\"\xc9\x02\n" +
 	"\x12UpdateGenreRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12/\n" +
 	"\x14eye_catch_image_data\x18\x04 \x01(\fR\x11eyeCatchImageData\x12>\n" +
 	"\x1ceye_catch_image_content_type\x18\x05 \x01(\tR\x18eyeCatchImageContentType\x121\n" +
 	"\x15clear_eye_catch_image\x18\x06 \x01(\bR\x12clearEyeCatchImage\x12\x19\n" +
-	"\bgenre_id\x18\a \x01(\tR\agenreIdJ\x04\b\x02\x10\x03R\tpublic_id\"D\n" +
+	"\bgenre_id\x18\a \x01(\tR\agenreId\x12\x16\n" +
+	"\x06locale\x18\b \x01(\tR\x06localeJ\x04\b\x02\x10\x03R\tpublic_id\"D\n" +
 	"\x13UpdateGenreResponse\x12-\n" +
 	"\x05genre\x18\x01 \x01(\v2\x17.publira.types.v1.GenreR\x05genre\"\xd3\x01\n" +
 	"\x14ReorderGenresRequest\x127\n" +
@@ -772,7 +909,13 @@ const file_publira_admin_v1_genre_proto_rawDesc = "" +
 	"\x12DeleteGenreRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x19\n" +
 	"\bgenre_id\x18\x03 \x01(\tR\agenreIdJ\x04\b\x02\x10\x03R\tpublic_id\"\x15\n" +
-	"\x13DeleteGenreResponse\"\xb1\x02\n" +
+	"\x13DeleteGenreResponse\"\x8b\x01\n" +
+	"\x1dDeleteGenreTranslationRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x19\n" +
+	"\bgenre_id\x18\x02 \x01(\tR\agenreId\x12\x16\n" +
+	"\x06locale\x18\x03 \x01(\tR\x06locale\"O\n" +
+	"\x1eDeleteGenreTranslationResponse\x12-\n" +
+	"\x05genre\x18\x01 \x01(\v2\x17.publira.types.v1.GenreR\x05genre\"\xb1\x02\n" +
 	"%UploadGenreEyeCatchAspectImageRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12!\n" +
 	"\fvariant_type\x18\x03 \x01(\tR\vvariantType\x12\x1d\n" +
@@ -782,14 +925,15 @@ const file_publira_admin_v1_genre_proto_rawDesc = "" +
 	"\x04crop\x18\x06 \x01(\v2\x1f.publira.types.v1.ImageCropRectR\x04crop\x12\x19\n" +
 	"\bgenre_id\x18\a \x01(\tR\agenreIdJ\x04\b\x02\x10\x03R\tpublic_id\"W\n" +
 	"&UploadGenreEyeCatchAspectImageResponse\x12-\n" +
-	"\x05genre\x18\x01 \x01(\v2\x17.publira.types.v1.GenreR\x05genre2\x84\x05\n" +
+	"\x05genre\x18\x01 \x01(\v2\x17.publira.types.v1.GenreR\x05genre2\x83\x06\n" +
 	"\x11AdminGenreService\x12Y\n" +
 	"\n" +
 	"ListGenres\x12#.publira.admin.v1.ListGenresRequest\x1a$.publira.admin.v1.ListGenresResponse\"\x00\x12\\\n" +
 	"\vCreateGenre\x12$.publira.admin.v1.CreateGenreRequest\x1a%.publira.admin.v1.CreateGenreResponse\"\x00\x12\\\n" +
 	"\vUpdateGenre\x12$.publira.admin.v1.UpdateGenreRequest\x1a%.publira.admin.v1.UpdateGenreResponse\"\x00\x12b\n" +
 	"\rReorderGenres\x12&.publira.admin.v1.ReorderGenresRequest\x1a'.publira.admin.v1.ReorderGenresResponse\"\x00\x12\\\n" +
-	"\vDeleteGenre\x12$.publira.admin.v1.DeleteGenreRequest\x1a%.publira.admin.v1.DeleteGenreResponse\"\x00\x12\x95\x01\n" +
+	"\vDeleteGenre\x12$.publira.admin.v1.DeleteGenreRequest\x1a%.publira.admin.v1.DeleteGenreResponse\"\x00\x12}\n" +
+	"\x16DeleteGenreTranslation\x12/.publira.admin.v1.DeleteGenreTranslationRequest\x1a0.publira.admin.v1.DeleteGenreTranslationResponse\"\x00\x12\x95\x01\n" +
 	"\x1eUploadGenreEyeCatchAspectImage\x127.publira.admin.v1.UploadGenreEyeCatchAspectImageRequest\x1a8.publira.admin.v1.UploadGenreEyeCatchAspectImageResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
 
 var (
@@ -804,7 +948,7 @@ func file_publira_admin_v1_genre_proto_rawDescGZIP() []byte {
 	return file_publira_admin_v1_genre_proto_rawDescData
 }
 
-var file_publira_admin_v1_genre_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_publira_admin_v1_genre_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_publira_admin_v1_genre_proto_goTypes = []any{
 	(*ListGenresRequest)(nil),                      // 0: publira.admin.v1.ListGenresRequest
 	(*ListGenresResponse)(nil),                     // 1: publira.admin.v1.ListGenresResponse
@@ -816,42 +960,48 @@ var file_publira_admin_v1_genre_proto_goTypes = []any{
 	(*ReorderGenresResponse)(nil),                  // 7: publira.admin.v1.ReorderGenresResponse
 	(*DeleteGenreRequest)(nil),                     // 8: publira.admin.v1.DeleteGenreRequest
 	(*DeleteGenreResponse)(nil),                    // 9: publira.admin.v1.DeleteGenreResponse
-	(*UploadGenreEyeCatchAspectImageRequest)(nil),  // 10: publira.admin.v1.UploadGenreEyeCatchAspectImageRequest
-	(*UploadGenreEyeCatchAspectImageResponse)(nil), // 11: publira.admin.v1.UploadGenreEyeCatchAspectImageResponse
-	(*v1.TenantContext)(nil),                       // 12: publira.types.v1.TenantContext
-	(*v1.Genre)(nil),                               // 13: publira.types.v1.Genre
-	(*v1.ImageCropRect)(nil),                       // 14: publira.types.v1.ImageCropRect
+	(*DeleteGenreTranslationRequest)(nil),          // 10: publira.admin.v1.DeleteGenreTranslationRequest
+	(*DeleteGenreTranslationResponse)(nil),         // 11: publira.admin.v1.DeleteGenreTranslationResponse
+	(*UploadGenreEyeCatchAspectImageRequest)(nil),  // 12: publira.admin.v1.UploadGenreEyeCatchAspectImageRequest
+	(*UploadGenreEyeCatchAspectImageResponse)(nil), // 13: publira.admin.v1.UploadGenreEyeCatchAspectImageResponse
+	(*v1.TenantContext)(nil),                       // 14: publira.types.v1.TenantContext
+	(*v1.Genre)(nil),                               // 15: publira.types.v1.Genre
+	(*v1.ImageCropRect)(nil),                       // 16: publira.types.v1.ImageCropRect
 }
 var file_publira_admin_v1_genre_proto_depIdxs = []int32{
-	12, // 0: publira.admin.v1.ListGenresRequest.tenant:type_name -> publira.types.v1.TenantContext
-	13, // 1: publira.admin.v1.ListGenresResponse.genres:type_name -> publira.types.v1.Genre
-	12, // 2: publira.admin.v1.CreateGenreRequest.tenant:type_name -> publira.types.v1.TenantContext
-	13, // 3: publira.admin.v1.CreateGenreResponse.genre:type_name -> publira.types.v1.Genre
-	12, // 4: publira.admin.v1.UpdateGenreRequest.tenant:type_name -> publira.types.v1.TenantContext
-	13, // 5: publira.admin.v1.UpdateGenreResponse.genre:type_name -> publira.types.v1.Genre
-	12, // 6: publira.admin.v1.ReorderGenresRequest.tenant:type_name -> publira.types.v1.TenantContext
-	13, // 7: publira.admin.v1.ReorderGenresResponse.genres:type_name -> publira.types.v1.Genre
-	12, // 8: publira.admin.v1.DeleteGenreRequest.tenant:type_name -> publira.types.v1.TenantContext
-	12, // 9: publira.admin.v1.UploadGenreEyeCatchAspectImageRequest.tenant:type_name -> publira.types.v1.TenantContext
-	14, // 10: publira.admin.v1.UploadGenreEyeCatchAspectImageRequest.crop:type_name -> publira.types.v1.ImageCropRect
-	13, // 11: publira.admin.v1.UploadGenreEyeCatchAspectImageResponse.genre:type_name -> publira.types.v1.Genre
-	0,  // 12: publira.admin.v1.AdminGenreService.ListGenres:input_type -> publira.admin.v1.ListGenresRequest
-	2,  // 13: publira.admin.v1.AdminGenreService.CreateGenre:input_type -> publira.admin.v1.CreateGenreRequest
-	4,  // 14: publira.admin.v1.AdminGenreService.UpdateGenre:input_type -> publira.admin.v1.UpdateGenreRequest
-	6,  // 15: publira.admin.v1.AdminGenreService.ReorderGenres:input_type -> publira.admin.v1.ReorderGenresRequest
-	8,  // 16: publira.admin.v1.AdminGenreService.DeleteGenre:input_type -> publira.admin.v1.DeleteGenreRequest
-	10, // 17: publira.admin.v1.AdminGenreService.UploadGenreEyeCatchAspectImage:input_type -> publira.admin.v1.UploadGenreEyeCatchAspectImageRequest
-	1,  // 18: publira.admin.v1.AdminGenreService.ListGenres:output_type -> publira.admin.v1.ListGenresResponse
-	3,  // 19: publira.admin.v1.AdminGenreService.CreateGenre:output_type -> publira.admin.v1.CreateGenreResponse
-	5,  // 20: publira.admin.v1.AdminGenreService.UpdateGenre:output_type -> publira.admin.v1.UpdateGenreResponse
-	7,  // 21: publira.admin.v1.AdminGenreService.ReorderGenres:output_type -> publira.admin.v1.ReorderGenresResponse
-	9,  // 22: publira.admin.v1.AdminGenreService.DeleteGenre:output_type -> publira.admin.v1.DeleteGenreResponse
-	11, // 23: publira.admin.v1.AdminGenreService.UploadGenreEyeCatchAspectImage:output_type -> publira.admin.v1.UploadGenreEyeCatchAspectImageResponse
-	18, // [18:24] is the sub-list for method output_type
-	12, // [12:18] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	14, // 0: publira.admin.v1.ListGenresRequest.tenant:type_name -> publira.types.v1.TenantContext
+	15, // 1: publira.admin.v1.ListGenresResponse.genres:type_name -> publira.types.v1.Genre
+	14, // 2: publira.admin.v1.CreateGenreRequest.tenant:type_name -> publira.types.v1.TenantContext
+	15, // 3: publira.admin.v1.CreateGenreResponse.genre:type_name -> publira.types.v1.Genre
+	14, // 4: publira.admin.v1.UpdateGenreRequest.tenant:type_name -> publira.types.v1.TenantContext
+	15, // 5: publira.admin.v1.UpdateGenreResponse.genre:type_name -> publira.types.v1.Genre
+	14, // 6: publira.admin.v1.ReorderGenresRequest.tenant:type_name -> publira.types.v1.TenantContext
+	15, // 7: publira.admin.v1.ReorderGenresResponse.genres:type_name -> publira.types.v1.Genre
+	14, // 8: publira.admin.v1.DeleteGenreRequest.tenant:type_name -> publira.types.v1.TenantContext
+	14, // 9: publira.admin.v1.DeleteGenreTranslationRequest.tenant:type_name -> publira.types.v1.TenantContext
+	15, // 10: publira.admin.v1.DeleteGenreTranslationResponse.genre:type_name -> publira.types.v1.Genre
+	14, // 11: publira.admin.v1.UploadGenreEyeCatchAspectImageRequest.tenant:type_name -> publira.types.v1.TenantContext
+	16, // 12: publira.admin.v1.UploadGenreEyeCatchAspectImageRequest.crop:type_name -> publira.types.v1.ImageCropRect
+	15, // 13: publira.admin.v1.UploadGenreEyeCatchAspectImageResponse.genre:type_name -> publira.types.v1.Genre
+	0,  // 14: publira.admin.v1.AdminGenreService.ListGenres:input_type -> publira.admin.v1.ListGenresRequest
+	2,  // 15: publira.admin.v1.AdminGenreService.CreateGenre:input_type -> publira.admin.v1.CreateGenreRequest
+	4,  // 16: publira.admin.v1.AdminGenreService.UpdateGenre:input_type -> publira.admin.v1.UpdateGenreRequest
+	6,  // 17: publira.admin.v1.AdminGenreService.ReorderGenres:input_type -> publira.admin.v1.ReorderGenresRequest
+	8,  // 18: publira.admin.v1.AdminGenreService.DeleteGenre:input_type -> publira.admin.v1.DeleteGenreRequest
+	10, // 19: publira.admin.v1.AdminGenreService.DeleteGenreTranslation:input_type -> publira.admin.v1.DeleteGenreTranslationRequest
+	12, // 20: publira.admin.v1.AdminGenreService.UploadGenreEyeCatchAspectImage:input_type -> publira.admin.v1.UploadGenreEyeCatchAspectImageRequest
+	1,  // 21: publira.admin.v1.AdminGenreService.ListGenres:output_type -> publira.admin.v1.ListGenresResponse
+	3,  // 22: publira.admin.v1.AdminGenreService.CreateGenre:output_type -> publira.admin.v1.CreateGenreResponse
+	5,  // 23: publira.admin.v1.AdminGenreService.UpdateGenre:output_type -> publira.admin.v1.UpdateGenreResponse
+	7,  // 24: publira.admin.v1.AdminGenreService.ReorderGenres:output_type -> publira.admin.v1.ReorderGenresResponse
+	9,  // 25: publira.admin.v1.AdminGenreService.DeleteGenre:output_type -> publira.admin.v1.DeleteGenreResponse
+	11, // 26: publira.admin.v1.AdminGenreService.DeleteGenreTranslation:output_type -> publira.admin.v1.DeleteGenreTranslationResponse
+	13, // 27: publira.admin.v1.AdminGenreService.UploadGenreEyeCatchAspectImage:output_type -> publira.admin.v1.UploadGenreEyeCatchAspectImageResponse
+	21, // [21:28] is the sub-list for method output_type
+	14, // [14:21] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_genre_proto_init() }
@@ -865,7 +1015,7 @@ func file_publira_admin_v1_genre_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_genre_proto_rawDesc), len(file_publira_admin_v1_genre_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

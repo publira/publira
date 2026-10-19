@@ -356,6 +356,7 @@
         "genre_created": "ジャンル作成",
         "genre_updated": "ジャンル更新",
         "genre_deleted": "ジャンル削除",
+        "genre_translation_deleted": "ジャンルの翻訳の削除",
         "genres_reordered": "ジャンルの並べ替え",
         "genre_eye_catch_aspect_image_uploaded": "ジャンルのアイキャッチ画像アップロード",
         "page_created": "ページ作成",

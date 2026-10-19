@@ -68,7 +68,7 @@ func TestCatalogSearchPublishedSeriesSuccess(t *testing.T) {
 		WithArgs("ja", tenantID, "web", false, nil, nil, nil, nil, "%seed%", nil, false, nil, int32(21)).
 		WillReturnRows(searchHitRows(searchHit{seriesID, "Seed Series"}))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
+		WithArgs("web", "ja", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
 			AddRow(seriesID, "SERIESPUB", "Seed Series", "A seed synopsis", "ja", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 
@@ -140,7 +140,7 @@ func TestCatalogSearchPublishedSeriesFirstPageReportsNextToken(t *testing.T) {
 		WithArgs("ja", tenantID, "web", false, nil, nil, nil, nil, "%seed%", nil, false, nil, int32(3)).
 		WillReturnRows(searchHitRows(searchHit{ids[0], "Alpha Seed"}, searchHit{ids[1], "Beta Seed"}, searchHit{ids[2], "Zeta Seed"}))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
+		WithArgs("web", "ja", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
 			AddRow(ids[0], "SERIESALPHA", "Alpha Seed", "", "ja", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)).
 			AddRow(ids[1], "SERIESBETA0", "Beta Seed", "", "ja", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
@@ -181,7 +181,7 @@ func TestCatalogSearchPublishedSeriesFollowsNextToken(t *testing.T) {
 		WithArgs("ja", tenantID, "web", false, nil, nil, nil, nil, "%seed%", boundaryID, false, "Beta Seed", int32(3)).
 		WillReturnRows(searchHitRows(searchHit{ids[0], "Zeta Seed"}))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
+		WithArgs("web", "ja", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
 			AddRow(ids[0], "SERIESZETA0", "Zeta Seed", "", "ja", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 
@@ -242,7 +242,7 @@ func TestCatalogSearchPublishedSeriesAcceptsRecasedQueryOnToken(t *testing.T) {
 		WithArgs("ja", tenantID, "web", false, nil, nil, nil, nil, "%seed%", boundaryID, false, "Beta Seed", int32(21)).
 		WillReturnRows(searchHitRows(searchHit{ids[0], "Zeta Seed"}))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
+		WithArgs("web", "ja", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
 			AddRow(ids[0], "SERIESZETA0", "Zeta Seed", "", "ja", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 
@@ -278,7 +278,7 @@ func TestCatalogSearchPublishedSeriesFollowsPreviousTokenBackwards(t *testing.T)
 		WithArgs("ja", tenantID, "web", false, nil, nil, nil, nil, "%seed%", boundaryID, false, "Zeta Seed", int32(3)).
 		WillReturnRows(searchHitRows(searchHit{betaID, "Beta Seed"}, searchHit{alphaID, "Alpha Seed"}))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
+		WithArgs("web", "ja", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
 			AddRow(alphaID, "SERIESALPHA", "Alpha Seed", "", "ja", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)).
 			AddRow(betaID, "SERIESBETA0", "Beta Seed", "", "ja", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
@@ -1007,7 +1007,7 @@ func TestCatalogSearchPublishedSeriesNarrowsTheListScan(t *testing.T) {
 			AddRow(ids[0], now).
 			AddRow(ids[1], now.Add(-time.Hour)))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
+		WithArgs("web", "ja", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
 			AddRow(ids[0], "SERIESNEW01", "Newer Seed", "", "ja", "ongoing", []byte("{}"), "all", now, nil, nil, int32(1), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 

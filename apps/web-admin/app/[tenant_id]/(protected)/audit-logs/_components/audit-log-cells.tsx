@@ -154,6 +154,11 @@ const taxonomyActionName = (action: string) => {
     case "genre_deleted": {
       return <Message message="admin.audit.actions.genre_deleted" />;
     }
+    case "genre_translation_deleted": {
+      return (
+        <Message message="admin.audit.actions.genre_translation_deleted" />
+      );
+    }
     case "genres_reordered": {
       return <Message message="admin.audit.actions.genres_reordered" />;
     }

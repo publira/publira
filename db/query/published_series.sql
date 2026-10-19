@@ -775,7 +775,9 @@ SELECT s.id,
                         'public_id',
                         g.public_id,
                         'name',
-                        g.name,
+                        gt.name,
+                        'locale',
+                        gt.locale,
                         'slug',
                         g.slug
                     )
@@ -787,6 +789,7 @@ SELECT s.id,
                 )
             FROM series_genres sg
                 JOIN genres g ON g.id = sg.genre_id
+                CROSS JOIN LATERAL genre_translation_for(g.id, sqlc.arg('locale')::text) gt
             WHERE sg.tenant_id = sqlc.arg('tenant_id')
                 AND sg.series_id = s.id
         ),

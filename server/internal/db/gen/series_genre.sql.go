@@ -46,10 +46,11 @@ const ListSeriesGenresBySeriesIDs = `-- name: ListSeriesGenresBySeriesIDs :many
 SELECT sg.series_id,
     g.id AS genre_id,
     g.public_id,
-    g.name,
+    gt.name,
     g.slug
 FROM series_genres sg
     JOIN genres g ON g.id = sg.genre_id
+    CROSS JOIN LATERAL genre_translation_for(g.id, '') gt
 WHERE sg.series_id = ANY($1::uuid[])
 ORDER BY sg.series_id ASC,
     g.display_order ASC,
@@ -66,7 +67,8 @@ type ListSeriesGenresBySeriesIDsRow struct {
 
 // Genres read back in the tenant's own genre order rather than the order they
 // were assigned in, so every series presents them the same way the genre list
-// does.
+// does, each named in the tenant default locale as the console's genre list
+// names it.
 func (q *Queries) ListSeriesGenresBySeriesIDs(ctx context.Context, seriesIds []uuid.UUID) ([]ListSeriesGenresBySeriesIDsRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListSeriesGenresBySeriesIDs, pq.Array(seriesIds))
 	if err != nil {

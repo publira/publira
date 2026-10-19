@@ -146,6 +146,7 @@ type Querier interface {
 	// in at most one volume, so an assignment has to take it out of the other
 	// volume first.
 	CountEpisodesInOtherVolumes(ctx context.Context, arg CountEpisodesInOtherVolumesParams) (int32, error)
+	CountGenreTranslations(ctx context.Context, arg CountGenreTranslationsParams) (int32, error)
 	// CountOtherActiveTenantAdmins counts the active tenant_admin members of a
 	// tenant other than one user: who is left to sign in to the console once that
 	// user is removed or demoted.
@@ -426,6 +427,7 @@ type Querier interface {
 	DeleteGenre(ctx context.Context, id uuid.UUID) error
 	// Clears one aspect ratio of an eye-catch.
 	DeleteGenreImageVariantsByType(ctx context.Context, arg DeleteGenreImageVariantsByTypeParams) (int64, error)
+	DeleteGenreTranslation(ctx context.Context, arg DeleteGenreTranslationParams) (int64, error)
 	// Clears one aspect ratio of an eye-catch, like the series query above.
 	DeleteLabelImageVariantsByType(ctx context.Context, arg DeleteLabelImageVariantsByTypeParams) (int64, error)
 	// The translation's versions go with it (page_versions_tenant_page_translation_id_fkey).
@@ -671,6 +673,9 @@ type Querier interface {
 	GetExpiredCheckoutID(ctx context.Context, arg GetExpiredCheckoutIDParams) (string, error)
 	GetExpiredVolumeCheckoutID(ctx context.Context, arg GetExpiredVolumeCheckoutIDParams) (string, error)
 	GetGenreByIDForTenant(ctx context.Context, arg GetGenreByIDForTenantParams) (GetGenreByIDForTenantRow, error)
+	// The name the slug is derived from: the one a reader in the tenant default
+	// locale is shown.
+	GetGenreDefaultLocaleName(ctx context.Context, genreID uuid.UUID) (string, error)
 	// Whether a public ID the series list was filtered by names a genre of this
 	// tenant. A filter naming nothing is refused rather than answered with an
 	// empty list, so a storefront cannot show an empty page for a genre that was
@@ -921,8 +926,8 @@ type Querier interface {
 	GetSeriesByPublicIDForTenant(ctx context.Context, arg GetSeriesByPublicIDForTenantParams) (GetSeriesByPublicIDForTenantRow, error)
 	// The title and the synopsis are those of the translation
 	// series_translation_for picks for the reader's locale, and each episode's
-	// title is picked the same way. Each names the locale of the translation it
-	// came from.
+	// title and each genre's name are picked the same way. Each names the locale
+	// of the translation it came from.
 	GetSeriesDetail(ctx context.Context, arg GetSeriesDetailParams) (GetSeriesDetailRow, error)
 	GetSeriesImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetSeriesImageVariantByTypeAndWidthForTenantParams) (GetSeriesImageVariantByTypeAndWidthForTenantRow, error)
 	// What a series is rated, and what one reader's own reactions say about it.
@@ -1681,6 +1686,9 @@ type Querier interface {
 	// removed from the genre since the batch ran drops out here.
 	ListGenreFeaturedSeries(ctx context.Context, arg ListGenreFeaturedSeriesParams) ([]ListGenreFeaturedSeriesRow, error)
 	ListGenreImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListGenreImageVariantsByImageIDsRow, error)
+	// Oldest first within a genre, the order genre_translation_for falls back
+	// through.
+	ListGenreTranslationsByGenreIDs(ctx context.Context, arg ListGenreTranslationsByGenreIDsParams) ([]GenreTranslation, error)
 	// Resolves the genres a series form assigned. The caller compares the row
 	// count against what it asked for, so an id of another tenant reads as a
 	// genre that does not exist.
@@ -2008,8 +2016,9 @@ type Querier interface {
 	ListPublishedEpisodeSurfaces(ctx context.Context, arg ListPublishedEpisodeSurfacesParams) ([]string, error)
 	ListPublishedEpisodesBySeries(ctx context.Context, arg ListPublishedEpisodesBySeriesParams) ([]ListPublishedEpisodesBySeriesRow, error)
 	// The public genre list: the tenant's whole genre list, in the order the
-	// console put it in, each genre carrying how many of its series are published
-	// right now. A genre no published series carries stays in the list, for the
+	// console put it in, each genre named in the translation genre_translation_for
+	// picks for the reader's locale and carrying how many of its series are
+	// published right now. A genre no published series carries stays in the list, for the
 	// reason a label with no published series does — the URL of its page has to
 	// keep working after its last series is taken down.
 	//
@@ -2320,7 +2329,8 @@ type Querier interface {
 	ListSeriesCreatorsBySeriesIDs(ctx context.Context, seriesIds []uuid.UUID) ([]ListSeriesCreatorsBySeriesIDsRow, error)
 	// Genres read back in the tenant's own genre order rather than the order they
 	// were assigned in, so every series presents them the same way the genre list
-	// does.
+	// does, each named in the tenant default locale as the console's genre list
+	// names it.
 	ListSeriesGenresBySeriesIDs(ctx context.Context, seriesIds []uuid.UUID) ([]ListSeriesGenresBySeriesIDsRow, error)
 	ListSeriesImageVariantsByImageIDs(ctx context.Context, imageIds []uuid.UUID) ([]ListSeriesImageVariantsByImageIDsRow, error)
 	// Every published series whose publication instant has passed and whose drop
@@ -3282,6 +3292,8 @@ type Querier interface {
 	UpdateEpisodePublishScheduleByIDForTenant(ctx context.Context, arg UpdateEpisodePublishScheduleByIDForTenantParams) error
 	// NULL returns the episode to following its series.
 	UpdateEpisodePurchaseAvailabilityByIDForTenant(ctx context.Context, arg UpdateEpisodePurchaseAvailabilityByIDForTenantParams) error
+	// The slug is the caller's to derive, from the name genre_translation_for
+	// picks for the tenant default locale, when the save changed that name.
 	UpdateGenre(ctx context.Context, arg UpdateGenreParams) error
 	UpdateGenreDisplayOrder(ctx context.Context, arg UpdateGenreDisplayOrderParams) error
 	UpdateLabel(ctx context.Context, arg UpdateLabelParams) error
@@ -3373,6 +3385,12 @@ type Querier interface {
 	// What a reader is shown is picked by episode_translation_for in the reads
 	// themselves.
 	UpsertEpisodeTranslation(ctx context.Context, arg UpsertEpisodeTranslationParams) (EpisodeTranslation, error)
+	// The names of a genre, one per locale, as the console writes them. What a
+	// reader is shown is picked by genre_translation_for in the reads themselves,
+	// and the console's own reads name a genre in the tenant default locale the
+	// same way.
+	// Writes one locale's name. A locale the genre has no name in yet gets one.
+	UpsertGenreTranslation(ctx context.Context, arg UpsertGenreTranslationParams) error
 	UpsertItemRecommendFeatures(ctx context.Context, arg UpsertItemRecommendFeaturesParams) (ItemRecommendFeature, error)
 	// Starting enrollment replaces whatever unconfirmed secret was there and
 	// clears the lock, so a stalled attempt never blocks the next one.

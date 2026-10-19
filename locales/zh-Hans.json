@@ -356,6 +356,7 @@
         "genre_created": "创建了题材",
         "genre_updated": "更新了题材",
         "genre_deleted": "删除了题材",
+        "genre_translation_deleted": "删除了题材翻译",
         "genres_reordered": "调整了题材顺序",
         "genre_eye_catch_aspect_image_uploaded": "上传了题材封面图",
         "page_created": "创建了页面",

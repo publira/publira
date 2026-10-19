@@ -599,8 +599,8 @@ func seedForeignKeyTenant(t *testing.T, ctx context.Context, db *sql.DB, prefix 
 		seeded.labelImageID, seeded.tenantID, seeded.labelID)
 
 	seeded.genreID = mustUUID(t)
-	mustExec(t, ctx, db, `INSERT INTO genres (id, tenant_id, public_id, name, slug) VALUES ($1, $2, $3, $4, $5)`,
-		seeded.genreID, seeded.tenantID, prefix+"GENRE0001", prefix+" Genre", strings.ToLower(prefix)+"-genre")
+	mustExec(t, ctx, db, `INSERT INTO genres (id, tenant_id, public_id, slug) VALUES ($1, $2, $3, $4)`,
+		seeded.genreID, seeded.tenantID, prefix+"GENRE0001", strings.ToLower(prefix)+"-genre")
 	seeded.genreImageID = mustUUID(t)
 	mustExec(t, ctx, db, `INSERT INTO genre_images (id, tenant_id, genre_id) VALUES ($1, $2, $3)`,
 		seeded.genreImageID, seeded.tenantID, seeded.genreID)

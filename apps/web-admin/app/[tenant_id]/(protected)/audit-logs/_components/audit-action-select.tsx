@@ -163,6 +163,10 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "genre_deleted",
             },
             {
+              label: t("admin.audit.actions.genre_translation_deleted"),
+              value: "genre_translation_deleted",
+            },
+            {
               label: t("admin.audit.actions.genres_reordered"),
               value: "genres_reordered",
             },

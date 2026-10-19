@@ -13,6 +13,7 @@ import { requestAdminEmailChange } from "#lib/admin-auth";
 import { tenantIdFormSchema } from "#lib/auth-input";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
+import { genresCacheTag } from "#lib/genre";
 import { getMessagesFor } from "#lib/messages";
 import { tenantSiteCacheTag } from "#lib/public-api";
 import {
@@ -375,6 +376,9 @@ export const updateTenantLocalesAction = async (
   // `getLocale()` read the languages through a private cache, so without this
   // the operator would keep seeing the previous values in the same session.
   updateTag(tenantSiteCacheTag(tenantId));
+  // The genre list names each genre in the default locale, so a new default
+  // renames it.
+  updateTag(genresCacheTag(tenantId));
 
   return {
     message: t("admin.settings.locales.saved"),

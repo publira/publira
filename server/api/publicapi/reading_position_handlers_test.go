@@ -357,7 +357,7 @@ func TestListMyRecentSeriesReturnsTheEpisodeToContinueFrom(t *testing.T) {
 			AddRow(resumed, uuid.Must(uuid.NewV7()), fixture.now, "EPISODE003", "Episode 3", "ja", int32(3), int32(0), nil, "published", nil, fixture.now, nil, int32(11), int32(40), fixture.now).
 			AddRow(started, uuid.Must(uuid.NewV7()), activity, "EPISODE004", "Episode 4", "ja", int32(4), int32(500), nil, "published", nil, activity, nil, nil, nil, nil))
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", fixture.tenantID, "ja", sqlmock.AnyArg()).
+		WithArgs("web", "ja", fixture.tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
 			AddRow(started, "SERIES002", "Started", "", "ja", "ongoing", []byte("{}"), "all", fixture.now, nil, nil, int32(0), []byte("[]"), []byte("[]"), []byte("[]"), []byte("{}")).
 			AddRow(resumed, "SERIES001", "Resumed", "", "ja", "ongoing", []byte("{}"), "all", fixture.now, nil, nil, int32(0), []byte("[]"), []byte("[]"), []byte("[]"), []byte("{}")))
@@ -421,7 +421,7 @@ func TestListMyRecentSeriesPagesForwardOnTheActivityCursor(t *testing.T) {
 			AddRow(series, uuid.Must(uuid.NewV7()), fixture.now, "EPISODE001", "Episode 1", "ja", int32(1), int32(0), nil, "published", nil, fixture.now, nil, int32(2), int32(20), fixture.now).
 			AddRow(boundary, uuid.Must(uuid.NewV7()), activity, "EPISODE009", "Episode 9", "ja", int32(9), int32(0), nil, "published", nil, activity, nil, nil, nil, nil))
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", fixture.tenantID, "ja", sqlmock.AnyArg()).
+		WithArgs("web", "ja", fixture.tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
 			AddRow(series, "SERIES001", "Resumed", "", "ja", "ongoing", []byte("{}"), "all", fixture.now, nil, nil, int32(0), []byte("[]"), []byte("[]"), []byte("[]"), []byte("{}")))
 
@@ -454,7 +454,7 @@ func TestListMyRecentSeriesReadsTheBackwardDirectionAscending(t *testing.T) {
 		WillReturnRows(recentSeriesColumns().
 			AddRow(series, uuid.Must(uuid.NewV7()), fixture.now, "EPISODE001", "Episode 1", "ja", int32(1), int32(0), nil, "published", nil, fixture.now, nil, int32(2), int32(20), fixture.now))
 	fixture.mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", fixture.tenantID, "ja", sqlmock.AnyArg()).
+		WithArgs("web", "ja", fixture.tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
 			AddRow(series, "SERIES001", "Resumed", "", "ja", "ongoing", []byte("{}"), "all", fixture.now, nil, nil, int32(0), []byte("[]"), []byte("[]"), []byte("[]"), []byte("{}")))
 

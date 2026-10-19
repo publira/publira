@@ -34,6 +34,7 @@ type publishedGenreRow struct {
 	id                   uuid.UUID
 	publicID             string
 	name                 string
+	nameLocale           string
 	slug                 string
 	displayOrder         int32
 	eyeCatchImageID      uuid.NullUUID
@@ -47,6 +48,7 @@ func mapPublishedGenreAscRows(rows []dbmodels.ListPublishedGenresByTenantAscRow)
 			id:                   row.ID,
 			publicID:             row.PublicID,
 			name:                 row.Name,
+			nameLocale:           row.NameLocale,
 			slug:                 row.Slug,
 			displayOrder:         row.DisplayOrder,
 			eyeCatchImageID:      row.EyeCatchImageID,
@@ -63,6 +65,7 @@ func mapPublishedGenreDescRows(rows []dbmodels.ListPublishedGenresByTenantDescRo
 			id:                   row.ID,
 			publicID:             row.PublicID,
 			name:                 row.Name,
+			nameLocale:           row.NameLocale,
 			slug:                 row.Slug,
 			displayOrder:         row.DisplayOrder,
 			eyeCatchImageID:      row.EyeCatchImageID,
@@ -72,13 +75,15 @@ func mapPublishedGenreDescRows(rows []dbmodels.ListPublishedGenresByTenantDescRo
 	return mapped
 }
 
-// publishedGenrePage runs the keyset query for one page. The list reads in the
-// tenant's own order, so a backward page is scanned by the descending query and
-// put back into display order by pagination.Page.
+// publishedGenrePage runs the keyset query for one page, naming each genre in
+// readerLocale. The list reads in the tenant's own order, so a backward page is
+// scanned by the descending query and put back into display order by
+// pagination.Page.
 func (s *apiServer) publishedGenrePage(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	surface string,
+	readerLocale string,
 	keys pagination.CountUUIDKeys,
 	direction pagination.Direction,
 	limit int32,
@@ -88,6 +93,7 @@ func (s *apiServer) publishedGenrePage(
 		rows, err := queries.ListPublishedGenresByTenantDesc(ctx, dbmodels.ListPublishedGenresByTenantDescParams{
 			TenantID:           tenantID,
 			Surface:            surface,
+			Locale:             readerLocale,
 			CursorID:           uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
 			CursorInclusive:    keys.Inclusive,
 			CursorDisplayOrder: sql.NullInt32{Int32: int32(keys.Count), Valid: keys.Valid},
@@ -102,6 +108,7 @@ func (s *apiServer) publishedGenrePage(
 	rows, err := queries.ListPublishedGenresByTenantAsc(ctx, dbmodels.ListPublishedGenresByTenantAscParams{
 		TenantID:           tenantID,
 		Surface:            surface,
+		Locale:             readerLocale,
 		CursorID:           uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
 		CursorInclusive:    keys.Inclusive,
 		CursorDisplayOrder: sql.NullInt32{Int32: int32(keys.Count), Valid: keys.Valid},
@@ -207,7 +214,7 @@ func (s *apiServer) ListPublishedGenres(
 	}
 
 	// One row past the page: its presence is what says another page exists.
-	rows, err := s.publishedGenrePage(ctx, tenant.ID, surface, keys, cursor.Direction, limit+1)
+	rows, err := s.publishedGenrePage(ctx, tenant.ID, surface, readerLocale, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list published genres", err, "tenant_id", tenant.ID.String())
 	}
@@ -236,6 +243,7 @@ func (s *apiServer) ListPublishedGenres(
 			Slug:                 row.slug,
 			PublishedSeriesCount: row.publishedSeriesCount,
 			FeaturedSeries:       featured[row.id],
+			Locale:               row.nameLocale,
 		}
 		if row.eyeCatchImageID.Valid {
 			genre.EyeCatchImageVariants = eyeCatches[row.eyeCatchImageID.UUID]

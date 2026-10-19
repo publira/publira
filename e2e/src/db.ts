@@ -239,7 +239,7 @@ export const deleteCreatorsByPublicIds = (
 };
 
 /**
- * Remove genres created by admin tests, by name.
+ * Remove genres created by admin tests, by a name they hold in any locale.
  *
  * By name rather than by public id, because a genre is made and read entirely
  * through the console list, which never puts its public id on screen. The
@@ -263,8 +263,8 @@ export const deleteGenresByNames = (names: readonly string[]): void => {
   }
   const list = quoted.join(", ");
   runSql(
-    `DELETE FROM series_genres WHERE genre_id IN (SELECT id FROM genres WHERE name IN (${list}));
-     DELETE FROM genres WHERE name IN (${list});`
+    `DELETE FROM series_genres WHERE genre_id IN (SELECT genre_id FROM genre_translations WHERE name IN (${list}));
+     DELETE FROM genres WHERE id IN (SELECT genre_id FROM genre_translations WHERE name IN (${list}));`
   );
 };
 

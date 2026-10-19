@@ -87,7 +87,7 @@ func TestCatalogListPublishedSeriesTokenNamesTheFilteredList(t *testing.T) {
 		WithArgs(tenantID, "web", false, "GENRE0000001", nil, nil, int16(1), nil, "ja", nil, false, nil, int32(2)).
 		WillReturnRows(seriesScanRows(seriesID, uuid.Must(uuid.NewV7())))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
+		WithArgs("web", "ja", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailRows(now, []uuid.UUID{seriesID}))
 
 	weekday := int32(1)
@@ -232,7 +232,7 @@ func TestCatalogListPublishedSeriesLatestUpdateOrderCarriesTheEpisodeInstant(t *
 			AddRow(seriesID, latestEpisodeAt).
 			AddRow(uuid.Must(uuid.NewV7()), latestEpisodeAt.Add(-time.Hour)))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
+		WithArgs("web", "ja", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailRows(now, []uuid.UUID{seriesID}))
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
@@ -293,7 +293,7 @@ func TestCatalogListPublishedSeriesLatestUpdateOrderReadsBackwardsAscending(t *t
 }
 
 func publishedGenreRows(rows ...[]driver.Value) *sqlmock.Rows {
-	built := sqlmock.NewRows([]string{"id", "public_id", "name", "slug", "display_order", "eye_catch_image_id", "published_series_count"})
+	built := sqlmock.NewRows([]string{"id", "public_id", "name", "name_locale", "slug", "display_order", "eye_catch_image_id", "published_series_count"})
 	for _, row := range rows {
 		built.AddRow(row...)
 	}
@@ -321,8 +321,8 @@ func TestCatalogListPublishedGenresSuccess(t *testing.T) {
 	genreID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedGenresByTenantAsc)).
-		WithArgs(tenantID, "web", nil, false, nil, int32(21)).
-		WillReturnRows(publishedGenreRows([]driver.Value{genreID, "GENRE0000001", "Fantasy", "fantasy", int32(1), nil, int32(3)}))
+		WithArgs(tenantID, "web", "ja", nil, false, nil, int32(21)).
+		WillReturnRows(publishedGenreRows([]driver.Value{genreID, "GENRE0000001", "Fantasy", "ja", "fantasy", int32(1), nil, int32(3)}))
 	expectGenreFeaturedSeries(mock, tenantID, "web", genreFeaturedSeriesRows())
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
@@ -349,6 +349,47 @@ func TestCatalogListPublishedGenresSuccess(t *testing.T) {
 	assertPublicExpectations(t, mock)
 }
 
+// The reader's locale reaches the query that picks each genre's name, and the
+// answer names the locale of the name it was given: a genre with no name in en
+// falls back to its ja one, and says so.
+func TestCatalogListPublishedGenresNamesEachGenreInTheReadersLocale(t *testing.T) {
+	testServer, mock := newTestPublicServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	named := uuid.Must(uuid.NewV7())
+	unnamed := uuid.Must(uuid.NewV7())
+	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedGenresByTenantAsc)).
+		WithArgs(tenantID, "web", "en", nil, false, nil, int32(21)).
+		WillReturnRows(publishedGenreRows(
+			[]driver.Value{named, "GENRE0000001", "Horror", "en", "kaiki", int32(1), nil, int32(1)},
+			[]driver.Value{unnamed, "GENRE0000002", "Suiri", "ja", "suiri", int32(2), nil, int32(1)},
+		))
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListGenreFeaturedSeries)).
+		WithArgs(sqlmock.AnyArg(), "en", tenantID, "web", int32(4), "weekly").
+		WillReturnRows(genreFeaturedSeriesRows())
+
+	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	resp, err := client.ListPublishedGenres(context.Background(), &publirav1.ListPublishedGenresRequest{
+		Tenant: &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Locale: "en",
+	})
+	if err != nil {
+		t.Fatalf("ListPublishedGenres: %v", err)
+	}
+	if len(resp.Genres) != 2 {
+		t.Fatalf("genres = %v, want two", resp.Genres)
+	}
+	if got := resp.Genres[0]; got.Name != "Horror" || got.Locale != "en" || got.Slug != "kaiki" {
+		t.Fatalf("named genre = (%q, %q, %q), want its en name beside its slug", got.Name, got.Locale, got.Slug)
+	}
+	if got := resp.Genres[1]; got.Name != "Suiri" || got.Locale != "ja" {
+		t.Fatalf("unnamed genre = (%q, %q), want the ja name it falls back to", got.Name, got.Locale)
+	}
+
+	assertPublicExpectations(t, mock)
+}
+
 // A backward page is scanned by the descending query and flipped back into the
 // tenant's own order before it is returned.
 func TestCatalogListPublishedGenresReadsBackwardsDescending(t *testing.T) {
@@ -362,10 +403,10 @@ func TestCatalogListPublishedGenresReadsBackwardsDescending(t *testing.T) {
 
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedGenresByTenantDesc)).
-		WithArgs(tenantID, "web", boundaryID, false, int32(5), int32(21)).
+		WithArgs(tenantID, "web", "ja", boundaryID, false, int32(5), int32(21)).
 		WillReturnRows(publishedGenreRows(
-			[]driver.Value{second, "GENRE0000002", "Mystery", "mystery", int32(4), nil, int32(1)},
-			[]driver.Value{first, "GENRE0000001", "Fantasy", "fantasy", int32(3), nil, int32(2)},
+			[]driver.Value{second, "GENRE0000002", "Mystery", "ja", "mystery", int32(4), nil, int32(1)},
+			[]driver.Value{first, "GENRE0000001", "Fantasy", "ja", "fantasy", int32(3), nil, int32(2)},
 		))
 	expectGenreFeaturedSeries(mock, tenantID, "web", genreFeaturedSeriesRows())
 
@@ -395,10 +436,10 @@ func TestCatalogListPublishedGenresCarriesEachGenresFeaturedSeries(t *testing.T)
 	imageID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedGenresByTenantAsc)).
-		WithArgs(tenantID, "app", nil, false, nil, int32(21)).
+		WithArgs(tenantID, "app", "ja", nil, false, nil, int32(21)).
 		WillReturnRows(publishedGenreRows(
-			[]driver.Value{fantasyID, "GENRE0000001", "Fantasy", "fantasy", int32(1), nil, int32(2)},
-			[]driver.Value{mysteryID, "GENRE0000002", "Mystery", "mystery", int32(2), nil, int32(0)},
+			[]driver.Value{fantasyID, "GENRE0000001", "Fantasy", "ja", "fantasy", int32(1), nil, int32(2)},
+			[]driver.Value{mysteryID, "GENRE0000002", "Mystery", "ja", "mystery", int32(2), nil, int32(0)},
 		))
 	expectGenreFeaturedSeries(mock, tenantID, "app", genreFeaturedSeriesRows(
 		[]driver.Value{fantasyID, uuid.Must(uuid.NewV7()), "SERIES000001", "Dragon Road", "ja", imageID},
@@ -449,10 +490,10 @@ func TestCatalogListPublishedGenresCarriesTheGenresOwnEyeCatch(t *testing.T) {
 	imageID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedGenresByTenantAsc)).
-		WithArgs(tenantID, "web", nil, false, nil, int32(21)).
+		WithArgs(tenantID, "web", "ja", nil, false, nil, int32(21)).
 		WillReturnRows(publishedGenreRows(
-			[]driver.Value{fantasyID, "GENRE0000001", "Fantasy", "fantasy", int32(1), imageID, int32(2)},
-			[]driver.Value{mysteryID, "GENRE0000002", "Mystery", "mystery", int32(2), nil, int32(0)},
+			[]driver.Value{fantasyID, "GENRE0000001", "Fantasy", "ja", "fantasy", int32(1), imageID, int32(2)},
+			[]driver.Value{mysteryID, "GENRE0000002", "Mystery", "ja", "mystery", int32(2), nil, int32(0)},
 		))
 	expectGenreFeaturedSeries(mock, tenantID, "web", genreFeaturedSeriesRows())
 	variantID := uuid.Must(uuid.NewV7())

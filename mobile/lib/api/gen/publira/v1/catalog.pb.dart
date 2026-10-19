@@ -2553,6 +2553,7 @@ class PublishedGenre extends $pb.GeneratedMessage {
     $core.int? publishedSeriesCount,
     $core.Iterable<PublishedGenreFeaturedSeries>? featuredSeries,
     $core.Iterable<$0.SeriesEyeCatchVariant>? eyeCatchImageVariants,
+    $core.String? locale,
   }) {
     final result = PublishedGenre._();
     if (publicId != null) result.publicId = publicId;
@@ -2563,6 +2564,7 @@ class PublishedGenre extends $pb.GeneratedMessage {
     if (featuredSeries != null) result.featuredSeries.addAll(featuredSeries);
     if (eyeCatchImageVariants != null)
       result.eyeCatchImageVariants.addAll(eyeCatchImageVariants);
+    if (locale != null) result.locale = locale;
     return result;
   }
 
@@ -2589,6 +2591,7 @@ class PublishedGenre extends $pb.GeneratedMessage {
     ..pPM<$0.SeriesEyeCatchVariant>(
         6, _omitFieldNames ? '' : 'eyeCatchImageVariants',
         subBuilder: $0.SeriesEyeCatchVariant.$_createMessage)
+    ..aOS(7, _omitFieldNames ? '' : 'locale')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2660,6 +2663,17 @@ class PublishedGenre extends $pb.GeneratedMessage {
   @$pb.TagNumber(6)
   $pb.PbList<$0.SeriesEyeCatchVariant> get eyeCatchImageVariants =>
       $_getList(5);
+
+  /// The locale of the translation `name` comes from, named the way
+  /// Series.locale is.
+  @$pb.TagNumber(7)
+  $core.String get locale => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set locale($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasLocale() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearLocale() => $_clearField(7);
 }
 
 /// A series on a genre's tile. The title is what a frame shows for a work with
@@ -2877,7 +2891,7 @@ class ListPublishedGenresRequest extends $pb.GeneratedMessage {
   @$pb.TagNumber(4)
   void clearSurface() => $_clearField(4);
 
-  /// The reader's locale. Every series and episode title and synopsis in the
+  /// The reader's locale. Every genre name and every series title in the
   /// answer is that of the translation in this locale, else the tenant's default
   /// locale's, else the oldest one. Empty means the tenant's default locale.
   @$pb.TagNumber(5)

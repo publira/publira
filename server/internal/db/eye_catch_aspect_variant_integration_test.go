@@ -247,8 +247,8 @@ func mustInsertGenre(t *testing.T, ctx context.Context, db *sql.DB, tenantID uui
 		t.Fatalf("uuid: %v", err)
 	}
 	_, err = db.ExecContext(ctx, `
-		INSERT INTO genres (id, tenant_id, public_id, name, slug) VALUES ($1, $2, $3, $4, $5)
-	`, genreID, tenantID, publicID, publicID, strings.ToLower(publicID))
+		INSERT INTO genres (id, tenant_id, public_id, slug) VALUES ($1, $2, $3, $4)
+	`, genreID, tenantID, publicID, strings.ToLower(publicID))
 	if err != nil {
 		t.Fatalf("insert genre: %v", err)
 	}

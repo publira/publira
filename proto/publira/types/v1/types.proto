@@ -180,10 +180,16 @@ enum SeriesAgeRating {
 // filter names, so a rename does not move it.
 message Genre {
   string public_id = 1;
+  // The name of the translation in the locale the read asked for, else the
+  // tenant's default locale's, else the oldest one. The console's reads ask
+  // for the default locale.
   string name = 2;
-  // Unique within the tenant, derived from the name. It identifies the name
-  // rather than standing in for it: two genres cannot differ by case or
-  // spacing alone.
+  // Unique within the tenant, derived from the name a reader in the tenant's
+  // default locale is shown, by every save that changes that name. It
+  // identifies the name rather than standing in for it: no save can give two
+  // genres names that differ there by case or spacing alone. It does not
+  // change with the locale a read asks for, nor when the tenant changes its
+  // default locale.
   string slug = 3;
   // The eye-catch the console uploaded, as a label carries one. Filled by the
   // genre RPCs themselves; a genre listed on a series carries names only.
@@ -191,6 +197,22 @@ message Genre {
   repeated SeriesEyeCatchVariant eye_catch_image_variants = 5;
   // The genre's primary key, which the admin API addresses it by.
   string id = 6;
+  // The locale of the translation `name` comes from, named the way
+  // Series.locale is: a public read names the one it served, and the
+  // console's reads leave it empty.
+  string locale = 7;
+  // Every name the genre has, oldest first. Filled by the console's genre RPCs
+  // alone.
+  repeated GenreTranslation translations = 8;
+}
+
+// One locale's name of a genre.
+message GenreTranslation {
+  string locale = 1;
+  string name = 2;
+  // RFC 3339.
+  string created_at = 3;
+  string updated_at = 4;
 }
 
 // A free-form label written on the series form. Tags have no console of their

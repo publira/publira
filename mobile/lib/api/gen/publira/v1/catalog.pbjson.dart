@@ -1048,6 +1048,7 @@ const PublishedGenre$json = {
       '6': '.publira.types.v1.SeriesEyeCatchVariant',
       '10': 'eyeCatchImageVariants'
     },
+    {'1': 'locale', '3': 7, '4': 1, '5': 9, '10': 'locale'},
   ],
 };
 
@@ -1058,7 +1059,8 @@ final $typed_data.Uint8List publishedGenreDescriptor = $convert.base64Decode(
     'GAQgASgFUhRwdWJsaXNoZWRTZXJpZXNDb3VudBJRCg9mZWF0dXJlZF9zZXJpZXMYBSADKAsyKC'
     '5wdWJsaXJhLnYxLlB1Ymxpc2hlZEdlbnJlRmVhdHVyZWRTZXJpZXNSDmZlYXR1cmVkU2VyaWVz'
     'EmAKGGV5ZV9jYXRjaF9pbWFnZV92YXJpYW50cxgGIAMoCzInLnB1YmxpcmEudHlwZXMudjEuU2'
-    'VyaWVzRXllQ2F0Y2hWYXJpYW50UhVleWVDYXRjaEltYWdlVmFyaWFudHM=');
+    'VyaWVzRXllQ2F0Y2hWYXJpYW50UhVleWVDYXRjaEltYWdlVmFyaWFudHMSFgoGbG9jYWxlGAcg'
+    'ASgJUgZsb2NhbGU=');
 
 @$core.Deprecated('Use publishedGenreFeaturedSeriesDescriptor instead')
 const PublishedGenreFeaturedSeries$json = {
@@ -3593,6 +3595,7 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.types.v1.Creator': $0.Creator$json,
   '.publira.types.v1.CreatorRole': $0.CreatorRole$json,
   '.publira.types.v1.Genre': $0.Genre$json,
+  '.publira.types.v1.GenreTranslation': $0.GenreTranslation$json,
   '.publira.types.v1.Tag': $0.Tag$json,
   '.publira.v1.GetSeriesDetailRequest': GetSeriesDetailRequest$json,
   '.publira.v1.GetSeriesDetailResponse': GetSeriesDetailResponse$json,
@@ -3757,6 +3760,7 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.types.v1.Series': $0.Series$json,
   '.publira.types.v1.Label': $0.Label$json,
   '.publira.types.v1.Genre': $0.Genre$json,
+  '.publira.types.v1.GenreTranslation': $0.GenreTranslation$json,
   '.publira.types.v1.Tag': $0.Tag$json,
   '.publira.v1.ListMyEpisodeReadsRequest': ListMyEpisodeReadsRequest$json,
   '.publira.v1.ListMyEpisodeReadsResponse': ListMyEpisodeReadsResponse$json,
@@ -3832,6 +3836,7 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.types.v1.Creator': $0.Creator$json,
   '.publira.types.v1.CreatorRole': $0.CreatorRole$json,
   '.publira.types.v1.Genre': $0.Genre$json,
+  '.publira.types.v1.GenreTranslation': $0.GenreTranslation$json,
   '.publira.types.v1.Tag': $0.Tag$json,
   '.publira.types.v1.Episode': $0.Episode$json,
 };
@@ -3974,6 +3979,7 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.types.v1.Series': $0.Series$json,
   '.publira.types.v1.Label': $0.Label$json,
   '.publira.types.v1.Genre': $0.Genre$json,
+  '.publira.types.v1.GenreTranslation': $0.GenreTranslation$json,
   '.publira.types.v1.Tag': $0.Tag$json,
   '.publira.types.v1.Volume': $0.Volume$json,
   '.publira.v1.ProcessPaymentWebhookRequest': ProcessPaymentWebhookRequest$json,

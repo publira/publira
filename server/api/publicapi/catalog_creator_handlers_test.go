@@ -420,7 +420,7 @@ func TestCatalogGetPublishedCreatorDetailSuccess(t *testing.T) {
 		WithArgs("ja", creatorID, tenantID, "web", nil, false, nil, int32(21)).
 		WillReturnRows(seriesIDRows(seriesID))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
+		WithArgs("web", "ja", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
 			AddRow(seriesID, "SERIESPUB", "Public Series", "Public Synopsis", "ja", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 
@@ -466,7 +466,7 @@ func TestCatalogGetPublishedCreatorDetailFirstPageReportsNextToken(t *testing.T)
 		WithArgs("ja", creatorID, tenantID, "web", nil, false, nil, int32(3)).
 		WillReturnRows(seriesIDRows(ids...))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
+		WithArgs("web", "ja", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
 			AddRow(ids[0], "SERIESALPHA", "Alpha", "", "ja", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)).
 			AddRow(ids[1], "SERIESBETA0", "Beta", "", "ja", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
@@ -515,7 +515,7 @@ func TestCatalogGetPublishedCreatorDetailFollowsNextToken(t *testing.T) {
 		WithArgs("ja", creatorID, tenantID, "web", boundaryID, false, "Beta", int32(3)).
 		WillReturnRows(seriesIDRows(ids...))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
+		WithArgs("web", "ja", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
 			AddRow(ids[0], "SERIESZETA0", "Zeta", "", "ja", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 
@@ -563,7 +563,7 @@ func TestCatalogGetPublishedCreatorDetailFollowsPreviousTokenBackwards(t *testin
 		WithArgs("ja", creatorID, tenantID, "web", boundaryID, false, "Zeta", int32(3)).
 		WillReturnRows(seriesIDRows(betaID, alphaID))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
+		WithArgs("web", "ja", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
 			AddRow(alphaID, "SERIESALPHA", "Alpha", "", "ja", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)).
 			AddRow(betaID, "SERIESBETA0", "Beta", "", "ja", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))

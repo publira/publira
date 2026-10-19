@@ -451,8 +451,8 @@ type Genre struct {
 	Slug     string
 }
 
-// GenreSeed describes one genre to insert. Slug defaults to what the console
-// derives from the name.
+// GenreSeed describes one genre to insert, named in the tenant's default
+// locale. Slug defaults to what the console derives from the name.
 type GenreSeed struct {
 	PublicID     string
 	Name         string
@@ -481,14 +481,42 @@ func (e *PostgresEnv) SeedGenre(t *testing.T, tenantID uuid.UUID, seed GenreSeed
 	ctx, cancel := seedContext()
 	defer cancel()
 
-	if _, err := e.DB.ExecContext(ctx, `
-		INSERT INTO genres (id, tenant_id, public_id, name, slug, display_order)
-		VALUES ($1, $2, $3, $4, $5, $6)
-	`, genreID, tenantID, publicID, name, slug, seed.DisplayOrder); err != nil {
-		t.Fatalf("insert genre %s: %v", publicID, err)
+	// A schema rolled back to before the translations keeps the name on the
+	// genre.
+	if e.hasColumn(t, "genres", "name") {
+		if _, err := e.DB.ExecContext(ctx, `
+			INSERT INTO genres (id, tenant_id, public_id, name, slug, display_order)
+			VALUES ($1, $2, $3, $4, $5, $6)
+		`, genreID, tenantID, publicID, name, slug, seed.DisplayOrder); err != nil {
+			t.Fatalf("insert genre %s: %v", publicID, err)
+		}
+	} else {
+		if _, err := e.DB.ExecContext(ctx, `
+			INSERT INTO genres (id, tenant_id, public_id, slug, display_order)
+			VALUES ($1, $2, $3, $4, $5)
+		`, genreID, tenantID, publicID, slug, seed.DisplayOrder); err != nil {
+			t.Fatalf("insert genre %s: %v", publicID, err)
+		}
+		e.SeedGenreTranslation(t, tenantID, genreID, e.tenantDefaultLocale(t, tenantID), name)
 	}
 
 	return Genre{ID: genreID, PublicID: publicID, Name: name, Slug: slug}
+}
+
+// SeedGenreTranslation adds a genre's name in one more locale.
+func (e *PostgresEnv) SeedGenreTranslation(t *testing.T, tenantID, genreID uuid.UUID, locale, name string) {
+	t.Helper()
+	e.requireDB(t)
+
+	ctx, cancel := seedContext()
+	defer cancel()
+
+	if _, err := e.DB.ExecContext(ctx, `
+		INSERT INTO genre_translations (id, genre_id, tenant_id, locale, name)
+		VALUES ($1, $2, $3, $4, $5)
+	`, uuid.Must(uuid.NewV7()), genreID, tenantID, locale, name); err != nil {
+		t.Fatalf("insert genre translation %s %s: %v", genreID, locale, err)
+	}
 }
 
 // Tag is a seeded tags row. A tag has no public ID: the catalog addresses it by
