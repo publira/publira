@@ -3,6 +3,7 @@
 #
 #   up → wait for the edge to serve → probe hosts / /api / /images
 #   → up again with no platform hosts → wait → probe what that leaves
+#   → for Caddy, up again terminating TLS → wait → probe over HTTPS
 #   → up again behind a trusted hop → wait → probe the client address → down
 #
 # Always tears down (success, failure, or interrupt) and collects Compose
@@ -63,6 +64,20 @@ export PUBLIRA_ROUTING_PLATFORM_HOSTS=""
 bash "${PUBLIRA_ROUTING_SCRIPTS_DIR}/up.sh"
 bash "${PUBLIRA_ROUTING_SCRIPTS_DIR}/wait-ready.sh"
 bash "${PUBLIRA_ROUTING_SCRIPTS_DIR}/test-without-platform.sh"
+
+# The Caddyfile terminates TLS itself once it is given the host lists as its
+# site addresses, which the Compose install does, so Caddy runs a third time
+# that way. The same compose files start it, with its own host lists.
+if [[ "${PUBLIRA_ROUTING_PROXY}" == "caddy" ]]; then
+  export PUBLIRA_ROUTING_TLS=1
+  # shellcheck source=lib.sh
+  source "${PUBLIRA_ROUTING_SCRIPTS_DIR}/lib.sh"
+  bash "${PUBLIRA_ROUTING_SCRIPTS_DIR}/up.sh"
+  bash "${PUBLIRA_ROUTING_SCRIPTS_DIR}/wait-ready.sh"
+  bash "${PUBLIRA_ROUTING_SCRIPTS_DIR}/test-tls.sh"
+  export PUBLIRA_ROUTING_TLS=0
+  export PUBLIRA_ROUTING_PLATFORM_HOSTS=""
+fi
 
 # Each sample carries a trusted-proxy setting, commented out, for an install
 # with a load balancer or a TLS terminator in front of the edge. Enabled as it

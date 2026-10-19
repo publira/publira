@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # check-deploy-compose.sh — Fail when infra/deploy/compose.yaml does not render,
-# when its .env.example does not list exactly the variables it reads, or when
-# the .env `publiractl env generate` writes from it leaves a secret empty.
+# when its .env.example does not list exactly the variables it reads, when the
+# ACME contact no longer turns the proxy's TLS on and off, or when the .env
+# `publiractl env generate` writes from it leaves a secret empty.
 #
 # Rendering runs with every profile active and every empty value in
 # .env.example filled in, so a required variable the example leaves out fails
@@ -53,6 +54,30 @@ if ! COMPOSE_PROFILES=web-platform,email-renderer,publiractl \
   failed=1
 fi
 
+# The ACME contact is what turns TLS on: with it, the Caddyfile is given every
+# listed host to serve over HTTPS, and without it none, so the site stays on
+# plain HTTP. Compose computes that value, so a typo in it renders as well as
+# the right one does.
+edge_tls_hosts() {
+  docker compose -f "${compose_file}" --env-file "${work}/.env" config --format json proxy |
+    jq -r '.services.proxy.environment.PUBLIRA_EDGE_TLS_HOSTS'
+}
+sed -i -E \
+  -e 's/^PUBLIRA_EDGE_SITE_HOSTS=.*/PUBLIRA_EDGE_SITE_HOSTS=comics.example.com manga.example.org/' \
+  -e 's/^PUBLIRA_EDGE_ADMIN_HOSTS=.*/PUBLIRA_EDGE_ADMIN_HOSTS=admin.comics.example.com/' \
+  -e 's/^PUBLIRA_EDGE_PLATFORM_HOSTS=.*/PUBLIRA_EDGE_PLATFORM_HOSTS=platform.example.com/' \
+  "${work}/.env"
+want="comics.example.com manga.example.org admin.comics.example.com platform.example.com"
+if [ "$(edge_tls_hosts)" != "${want}" ]; then
+  echo "${compose_file} gives the proxy PUBLIRA_EDGE_TLS_HOSTS='$(edge_tls_hosts)' with an ACME contact, want '${want}'." >&2
+  failed=1
+fi
+sed -i -E 's/^PUBLIRA_EDGE_ACME_EMAIL=.*/PUBLIRA_EDGE_ACME_EMAIL=/' "${work}/.env"
+if [ -n "$(edge_tls_hosts)" ]; then
+  echo "${compose_file} gives the proxy PUBLIRA_EDGE_TLS_HOSTS='$(edge_tls_hosts)' without an ACME contact, want it empty." >&2
+  failed=1
+fi
+
 # The generator writes every secret the example lists, and the operator fills
 # in the image tag and the hosts and nothing else that `docker compose`
 # requires. A secret is named for what it is, which is how one that only an
@@ -76,4 +101,4 @@ fi
 if [ "${failed}" -ne 0 ]; then
   exit 1
 fi
-echo "${compose_file} renders, ${env_example} lists every variable it reads, and publiractl env generate fills in every secret."
+echo "${compose_file} renders, ${env_example} lists every variable it reads, the ACME contact turns TLS on, and publiractl env generate fills in every secret."

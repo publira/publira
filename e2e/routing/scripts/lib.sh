@@ -42,6 +42,18 @@ export PUBLIRA_ROUTING_ECHO="${PUBLIRA_ROUTING_DIR}/echo.ts"
 export PUBLIRA_ROUTING_EDGE_PORT="${PUBLIRA_ROUTING_EDGE_PORT:-13080}"
 # Traefik alone: the insecure API readiness reads routers and middlewares from.
 export PUBLIRA_ROUTING_TRAEFIK_API_PORT="${PUBLIRA_ROUTING_TRAEFIK_API_PORT:-18080}"
+# Caddy alone: the HTTPS listener of the pass that terminates TLS.
+export PUBLIRA_ROUTING_EDGE_TLS_PORT="${PUBLIRA_ROUTING_EDGE_TLS_PORT:-13443}"
+
+# The pass that terminates TLS, which run-one.sh runs for Caddy alone by
+# exporting PUBLIRA_ROUTING_TLS=1: the Caddyfile is given every listed host in
+# PUBLIRA_EDGE_TLS_HOSTS, the way an install that terminates TLS in it is, and
+# every probe goes over HTTPS. No certificate
+# authority on the internet reaches the hosts of a test, so this pass lists
+# names Caddy issues from its own local CA rather than over ACME: localhost,
+# its subdomains, and names under .internal. The probes trust that CA's root,
+# which wait-ready.sh copies out of the container.
+export PUBLIRA_ROUTING_TLS="${PUBLIRA_ROUTING_TLS:-0}"
 
 # The hosts the proxy under test is given, one list per app, as the
 # PUBLIRA_EDGE_*_HOSTS variables every sample reads. Most of the names follow no
@@ -51,9 +63,17 @@ export PUBLIRA_ROUTING_TRAEFIK_API_PORT="${PUBLIRA_ROUTING_TRAEFIK_API_PORT:-180
 # `localhost` names are the ones the Dev Container lists, which the rest of the
 # probes use. run-one.sh empties the platform list for its second pass, the
 # install that runs no web-platform, so an empty value is kept as it is.
-export PUBLIRA_ROUTING_SITE_HOSTS="localhost  reader.example.org admin.reader.example.org"
-export PUBLIRA_ROUTING_ADMIN_HOSTS="admin.localhost studio.example.com"
-export PUBLIRA_ROUTING_PLATFORM_HOSTS="${PUBLIRA_ROUTING_PLATFORM_HOSTS-platform.localhost operators.example.net}"
+if [[ "${PUBLIRA_ROUTING_TLS}" == "1" ]]; then
+  export PUBLIRA_ROUTING_SITE_HOSTS="localhost reader.internal"
+  export PUBLIRA_ROUTING_ADMIN_HOSTS="admin.localhost studio.internal"
+  export PUBLIRA_ROUTING_PLATFORM_HOSTS="platform.localhost operators.internal"
+  export PUBLIRA_ROUTING_TLS_HOSTS="${PUBLIRA_ROUTING_SITE_HOSTS} ${PUBLIRA_ROUTING_ADMIN_HOSTS} ${PUBLIRA_ROUTING_PLATFORM_HOSTS}"
+else
+  export PUBLIRA_ROUTING_SITE_HOSTS="localhost  reader.example.org admin.reader.example.org"
+  export PUBLIRA_ROUTING_ADMIN_HOSTS="admin.localhost studio.example.com"
+  export PUBLIRA_ROUTING_PLATFORM_HOSTS="${PUBLIRA_ROUTING_PLATFORM_HOSTS-platform.localhost operators.example.net}"
+  export PUBLIRA_ROUTING_TLS_HOSTS=""
+fi
 
 # A procedure of the public API, the one namespace the edge forwards under /rpc
 # and /api, for the probes that need a request to reach the server.
@@ -99,7 +119,13 @@ PUBLIRA_ROUTING_READY_INTERVAL_SEC="${PUBLIRA_ROUTING_READY_INTERVAL_SEC:-1}"
 export PUBLIRA_ROUTING_TRUSTED_HOP="${PUBLIRA_ROUTING_TRUSTED_HOP:-0}"
 export PUBLIRA_ROUTING_HOP_SUBNET="${PUBLIRA_ROUTING_HOP_SUBNET:-198.18.0.0/24}"
 export PUBLIRA_ROUTING_HOP_ADDRESS="${PUBLIRA_ROUTING_HOP_ADDRESS:-198.18.0.10}"
-if [[ "${PUBLIRA_ROUTING_TRUSTED_HOP}" == "1" ]]; then
+# Caddy is given the hop's address in its environment, as enable_trusted_hop
+# says, and every other proxy a copy of its sample.
+export PUBLIRA_ROUTING_TRUSTED_PROXIES=""
+if [[ "${PUBLIRA_ROUTING_TRUSTED_HOP}" == "1" && "${PUBLIRA_ROUTING_PROXY}" == "caddy" ]]; then
+  PUBLIRA_ROUTING_TRUSTED_PROXIES="${PUBLIRA_ROUTING_HOP_ADDRESS}/32"
+fi
+if [[ "${PUBLIRA_ROUTING_TRUSTED_HOP}" == "1" && "${PUBLIRA_ROUTING_PROXY}" != "caddy" ]]; then
   export PUBLIRA_ROUTING_PROXY_DIR="${RUN_DIR}/trusted-hop/${PUBLIRA_ROUTING_PROXY}"
 else
   # Every other pass mounts the sample from infra/proxy as it stands.
@@ -149,12 +175,25 @@ case "${PUBLIRA_ROUTING_TRUSTED_HOP}:${PUBLIRA_ROUTING_PROXY}" in
     ;;
 esac
 
-# Ports one run publishes. Only the Dev Container's Traefik answers an API.
+# Ports one run publishes. Only the Dev Container's Traefik answers an API,
+# and only Caddy is run with an HTTPS listener.
 if [[ "${PUBLIRA_ROUTING_PROXY}" == "traefik" && "${PUBLIRA_ROUTING_TRUSTED_HOP}" != "1" ]]; then
   PUBLIRA_ROUTING_PUBLISHED_PORTS=("${PUBLIRA_ROUTING_EDGE_PORT}" "${PUBLIRA_ROUTING_TRAEFIK_API_PORT}")
+elif [[ "${PUBLIRA_ROUTING_PROXY}" == "caddy" ]]; then
+  PUBLIRA_ROUTING_PUBLISHED_PORTS=("${PUBLIRA_ROUTING_EDGE_PORT}" "${PUBLIRA_ROUTING_EDGE_TLS_PORT}")
 else
   PUBLIRA_ROUTING_PUBLISHED_PORTS=("${PUBLIRA_ROUTING_EDGE_PORT}")
 fi
+
+# The scheme the probes reach the edge over, which the edge then hands the
+# backends in X-Forwarded-Proto, and the root of Caddy's local CA, which the
+# probes of the TLS pass trust.
+if [[ "${PUBLIRA_ROUTING_TLS}" == "1" ]]; then
+  PUBLIRA_ROUTING_EDGE_SCHEME=https
+else
+  PUBLIRA_ROUTING_EDGE_SCHEME=http
+fi
+PUBLIRA_ROUTING_CADDY_ROOT="${RUN_DIR}/caddy-root.crt"
 
 # Router names Traefik loads from infra/proxy/traefik/dynamic/routes.yaml. A
 # list with no hosts leaves its router out.
@@ -295,14 +334,30 @@ traefik_middleware_names() {
     tr ',' '\n' | sed -n 's/.*"name":"\([^"]*\)".*/\1/p'
 }
 
+# The curl arguments that address `path` on the edge for `host`: the
+# published port on loopback over plain HTTP, and over HTTPS in the TLS pass
+# the host's own name, resolved to loopback, so the TLS handshake names the
+# host and the certificate is checked against it.
+edge_url_args() {
+  local host="$1" path="$2"
+  if [[ "${PUBLIRA_ROUTING_TLS}" == "1" ]]; then
+    printf '%s\n' --cacert "${PUBLIRA_ROUTING_CADDY_ROOT}" \
+      --resolve "${host}:${PUBLIRA_ROUTING_EDGE_TLS_PORT}:127.0.0.1" \
+      "https://${host}:${PUBLIRA_ROUTING_EDGE_TLS_PORT}${path}"
+  else
+    printf '%s\n' "http://127.0.0.1:${PUBLIRA_ROUTING_EDGE_PORT}${path}"
+  fi
+}
+
 # Arguments after the path are extra `Header: value` lines sent as-is.
 http_probe() {
   local method="$1" host="$2" path="$3"
   shift 3
-  local header_args=() header
+  local header_args=() header url_args=()
   for header in "$@"; do
     header_args+=(-H "${header}")
   done
+  mapfile -t url_args < <(edge_url_args "${host}" "${path}")
   local tmpfile code
   tmpfile="$(mktemp)"
   code="$(
@@ -310,7 +365,7 @@ http_probe() {
       -X "${method}" \
       -H "Host: ${host}" \
       ${header_args[@]+"${header_args[@]}"} \
-      "http://127.0.0.1:${PUBLIRA_ROUTING_EDGE_PORT}${path}" 2> /dev/null || true
+      "${url_args[@]}" 2> /dev/null || true
   )"
   printf '%s\n' "${code}"
   cat "${tmpfile}" 2> /dev/null || true
@@ -486,8 +541,8 @@ assert_forwarded_headers() {
   fi
 
   value="$(json_string_field "${body}" x-forwarded-proto)"
-  if [[ "${value}" != "http" ]]; then
-    routing_fail "${name}: X-Forwarded-Proto '${value}' (want 'http') ${method} ${path} body=${body}"
+  if [[ "${value}" != "${PUBLIRA_ROUTING_EDGE_SCHEME}" ]]; then
+    routing_fail "${name}: X-Forwarded-Proto '${value}' (want '${PUBLIRA_ROUTING_EDGE_SCHEME}') ${method} ${path} body=${body}"
   fi
 
   read_handed_client_addresses "${name}" "${body}" "${method} ${path}"
@@ -579,8 +634,15 @@ assert_hop_client_address() {
 # trusted-proxy setting uncommented as it is written, and the hop's address in
 # place of the documentation range. Fails when the sample no longer carries
 # the setting in that shape, rather than starting a proxy that trusts nothing
-# and blaming the proxy for it.
+# and blaming the proxy for it. The Caddyfile takes the setting from its
+# environment instead, so Caddy keeps the sample as it stands and is given the
+# hop's address in PUBLIRA_EDGE_TRUSTED_PROXIES.
 enable_trusted_hop() {
+  if [[ "${PUBLIRA_ROUTING_PROXY}" == "caddy" ]]; then
+    routing_log "trusting ${PUBLIRA_ROUTING_TRUSTED_PROXIES} through PUBLIRA_EDGE_TRUSTED_PROXIES"
+    return
+  fi
+
   local sample="${REPO_ROOT}/infra/proxy/${PUBLIRA_ROUTING_PROXY}"
   local dir="${PUBLIRA_ROUTING_PROXY_DIR}" file uncomment
 
@@ -592,10 +654,6 @@ enable_trusted_hop() {
     nginx)
       file=default.conf.template
       uncomment='s/^# \(set_real_ip_from\|real_ip_header\|real_ip_recursive\) /\1 /; s/^    # \(192\.0\.2\.0\/24 1;\)$/    \1/'
-      ;;
-    caddy)
-      file=Caddyfile
-      uncomment='/^\t# servers {$/,/^\t# }$/ s/^\t# /\t/'
       ;;
   esac
 
@@ -685,10 +743,22 @@ assert_upload_delivered() {
   routing_log "ok: ${name} → ${want_backend}${path} with ${bytes} bytes and its headers intact"
 }
 
+# Copies the root of Caddy's local CA out of the proxy container, once Caddy
+# has created it to issue the first certificate the TLS pass lists.
+fetch_caddy_root() {
+  [[ -s "${PUBLIRA_ROUTING_CADDY_ROOT}" ]] && return 0
+  compose exec -T proxy cat /data/caddy/pki/authorities/local/root.crt \
+    > "${PUBLIRA_ROUTING_CADDY_ROOT}.tmp" 2> /dev/null &&
+    mv "${PUBLIRA_ROUTING_CADDY_ROOT}.tmp" "${PUBLIRA_ROUTING_CADDY_ROOT}"
+}
+
 # The edge answers and a listed site host reaches web-storefront. Readiness for
 # the proxies that publish no API of their own.
 edge_serves_web_storefront() {
   local out code body
+  if [[ "${PUBLIRA_ROUTING_TLS}" == "1" ]]; then
+    fetch_caddy_root || return 1
+  fi
   out="$(http_probe GET localhost /)"
   code="$(printf '%s' "${out}" | sed -n '1p')"
   body="$(printf '%s' "${out}" | tail -n +2)"

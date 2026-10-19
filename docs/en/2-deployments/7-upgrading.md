@@ -2,7 +2,7 @@
 title: Upgrading
 description: Bring a running install to a new release, from the backup before it to the processes of the new release serving.
 published: 2026-10-06
-updated: 2026-10-13
+updated: 2026-10-19
 ---
 
 A release can change the database schema its processes expect, so upgrading an install is more than restarting it on new images. The database goes first: the `publiractl` image of the new release brings the schema and the database roles forward, and only then do the processes of the new release start on it. This page goes through that order, how to check each step, and what to do when a migration fails.
@@ -243,7 +243,7 @@ docker compose restart proxy
 docker compose ps
 ```
 
-`up -d` recreates every container whose image or settings changed, and `--remove-orphans` removes the container of any service the new release's Compose file no longer has. The proxy needs the restart besides: it mounts the routing files of the checkout one by one, and `git checkout` replaces those files with new ones, so a proxy left running keeps reading the routing of the release you ran.
+`up -d` recreates every container whose image or settings changed, and `--remove-orphans` removes the container of any service the new release's Compose file no longer has. The proxy needs the restart besides: it mounts the checkout's `Caddyfile` as a single file, and `git checkout` replaces that file with a new one, so a proxy left running keeps reading the routing of the release you ran. The certificates it obtained stay in the `caddy-data` volume across the restart.
 
 Then check the install as in [step 5](#5-check-the-install), running `db version` as `docker compose run --rm publiractl db version`.
 

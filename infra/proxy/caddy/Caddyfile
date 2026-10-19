@@ -1,5 +1,6 @@
 # A sample of the routing in infra/proxy/README.md for Caddy, which a
-# deployment adapts.
+# deployment adapts, and the edge of the Compose install in infra/deploy/,
+# which runs it as it stands.
 #
 # Backend addresses come from the environment rather than from a second file:
 # a Caddyfile substitutes {$VAR}, and the value after the first colon is the
@@ -23,28 +24,41 @@
 # Caddy has no equivalent of Traefik's numeric router priorities. `route`
 # evaluates the handle blocks inside it in the order they are written, and
 # they are mutually exclusive, so that order is the precedence.
+#
+# Caddy substitutes a default only for a variable that is unset, not for one
+# set to an empty value, so every variable below without a default keeps the
+# file valid when it is empty: a Compose file passes a variable `.env` leaves
+# empty as set.
+#
+# TLS is chosen by PUBLIRA_EDGE_TLS_HOSTS. Empty, the site answers plain HTTP
+# on :80 alone, which is what an edge behind a hop that terminates TLS serves.
+# Set to every host name the three lists hold, separated by spaces, it adds
+# them to the site's addresses, so Caddy obtains a certificate for each of
+# them, renews it, and serves them on :443. Caddy also puts a redirect to
+# HTTPS for each of them ahead of the routes on :80, which keeps answering
+# every other host as before. The certificates are kept under /data, which a
+# deployment keeps on a volume.
 
 {
-	# The site below listens on plain HTTP. A deployment terminates TLS by
-	# giving the site block its host names instead of `:80`, at which point
-	# Caddy obtains certificates on its own; `tls <email>` or `tls <cert>
-	# <key>` chooses another source.
-	auto_https off
+	# The contact address of the account Caddy registers with the certificate
+	# authority. The quotes keep an empty value one argument, which registers
+	# the account without one, since `email` takes exactly one.
+	email "{$PUBLIRA_EDGE_ACME_EMAIL}"
 
 	# A load balancer, a CDN, or a TLS terminator in front of this edge is the
 	# peer of every request, so without this every request is recorded with
-	# that hop's address. Listing the hop's own addresses, and no others, makes
-	# Caddy take the client address from the X-Forwarded-For a request from
-	# them carries: with `trusted_proxies_strict`, the rightmost address in it
-	# that is not one of them. {client_ip} below becomes that address, and is
-	# the peer address for requests from anywhere else, as it is without this.
-	# X-Forwarded-Proto from them is passed on as well, since a TLS terminator
-	# reaches this edge over plain HTTP.
-	#
-	# servers {
-	# 	trusted_proxies static 192.0.2.0/24
-	# 	trusted_proxies_strict
-	# }
+	# that hop's address. PUBLIRA_EDGE_TRUSTED_PROXIES lists the hop's own
+	# addresses or CIDR ranges, separated by spaces, and no others; Caddy then
+	# takes the client address from the X-Forwarded-For a request from them
+	# carries: with `trusted_proxies_strict`, the rightmost address in it that
+	# is not one of them. {client_ip} below becomes that address, and is the
+	# peer address for requests from anywhere else, as it is for every request
+	# while the list is empty. X-Forwarded-Proto from them is passed on as well,
+	# since a TLS terminator reaches this edge over plain HTTP.
+	servers {
+		trusted_proxies static {$PUBLIRA_EDGE_TRUSTED_PROXIES}
+		trusted_proxies_strict
+	}
 }
 
 # Applied to every proxied request. Caddy forwards the original Host header
@@ -70,7 +84,7 @@
 	header_up -baggage
 }
 
-:80 {
+:80 {$PUBLIRA_EDGE_TLS_HOSTS} {
 	# The host matcher ignores the port the Host header carries, so
 	# admin.localhost:3080 is a console host when admin.localhost is listed.
 	@site host no/host {$PUBLIRA_EDGE_SITE_HOSTS}
@@ -108,7 +122,9 @@
 
 	route {
 		# A host in no list: the edge answers it itself, and no backend sees
-		# the request, /rpc, /api, and /images included.
+		# the request, /rpc, /api, and /images included. Over HTTPS no request
+		# for such a host gets this far: Caddy has no certificate for it, so the
+		# TLS handshake fails.
 		handle @unlisted {
 			respond 404
 		}
