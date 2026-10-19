@@ -110,6 +110,13 @@ describe("announcement lib", () => {
           id: "n1",
           linkUrl: "/series/S001",
           title: "Announcement title",
+          translations: [
+            { body: "", locale: "en", title: "" },
+            // Stored after English, listed before it in the registry's order.
+            { body: "", locale: "ja", title: "" },
+            // A code this build serves no catalog for.
+            { body: "", locale: "xx", title: "" },
+          ],
         },
       ],
     });
@@ -125,6 +132,7 @@ describe("announcement lib", () => {
         id: "n1",
         linkUrl: "/series/S001",
         title: "Announcement title",
+        translatedLocales: ["ja", "en"],
       },
     ]);
   });
@@ -224,7 +232,7 @@ describe("announcement lib", () => {
     });
   });
 
-  it("reports success once the announcement is created", async () => {
+  it("sends every translation in the one request that creates the announcement", async () => {
     mockCreateAnnouncementsApi.mockResolvedValue({
       announcement: { id: "n1" },
     });
@@ -232,16 +240,40 @@ describe("announcement lib", () => {
     const { createAnnouncement } = await import("./announcement");
     const result = await createAnnouncement(
       {
-        body: "Announcement body",
         linkUrl: "",
         pinned: false,
         pinnedUntil: "",
         tenantId: "TENANT001",
-        title: "Announcement title",
+        translations: [
+          {
+            body: "Announcement body",
+            locale: "",
+            title: "Announcement title",
+          },
+          { body: "Japanese body", locale: "ja", title: "Japanese title" },
+        ],
       },
       "en"
     );
 
     expect(result).toEqual({ ok: true });
+    expect(mockCreateAnnouncementsApi).toHaveBeenCalledOnce();
+    expect(mockCreateAnnouncementsApi).toHaveBeenCalledWith(
+      {
+        linkUrl: "",
+        pinned: false,
+        pinnedUntil: "",
+        tenant: { tenantId: "TENANT001" },
+        translations: [
+          {
+            body: "Announcement body",
+            locale: "",
+            title: "Announcement title",
+          },
+          { body: "Japanese body", locale: "ja", title: "Japanese title" },
+        ],
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
   });
 });

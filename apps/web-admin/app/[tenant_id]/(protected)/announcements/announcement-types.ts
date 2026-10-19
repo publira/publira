@@ -1,9 +1,15 @@
+import type { Locale } from "@publira/i18n";
+
 import type { CursorPageTokens } from "#lib/cursor-page";
 
 export interface AnnouncementItem {
   id: string;
+  /** The title in the tenant's default language, else the oldest. */
   title: string;
+  /** The body in the same language as {@link title}. */
   body: string;
+  /** Every language the announcement was written in, in the registry's order. */
+  translatedLocales: readonly Locale[];
   linkUrl: string;
   createdAt: string;
   /** Whether the site is showing this announcement as a banner right now. */
@@ -37,3 +43,11 @@ export type CreateAnnouncementActionState =
       message: string;
     }
   | null;
+
+/** One language's title and body of an announcement being written. */
+export interface AnnouncementTranslationInput {
+  /** Empty names the tenant's default language. */
+  locale: Locale | "";
+  title: string;
+  body: string;
+}

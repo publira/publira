@@ -1,5 +1,6 @@
 "use server";
 
+import { getLocaleLabel, parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { parseInstant, toInstantIsoString } from "@publira/utils";
@@ -18,19 +19,108 @@ import {
   requiredTrimmedString,
 } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
+import type { AdminMessageAccessor } from "#lib/messages";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
-import type { CreateAnnouncementActionState } from "../announcement-types";
+import type {
+  AnnouncementTranslationInput,
+  CreateAnnouncementActionState,
+} from "../announcement-types";
+
+/**
+ * One language's fields as the form posts them: every tab posts a
+ * `translation_locale`, a `title`, and a `body`, in the same order, the default
+ * language's with an empty locale.
+ */
+const zipTranslations = ({
+  bodies,
+  titles,
+  translationLocales,
+}: {
+  bodies: string[];
+  titles: string[];
+  translationLocales: string[];
+}) =>
+  translationLocales.map((translationLocale, index) => ({
+    body: bodies[index],
+    locale: translationLocale,
+    title: titles[index],
+  }));
+
+const translationsSchema = (t: AdminMessageAccessor) =>
+  z
+    .array(
+      z.object({
+        body: optionalTrimmedString(
+          2000,
+          t("admin.announcements.validation.body_required")
+        ),
+        locale: z
+          .string()
+          .trim()
+          .refine(
+            (value) => value === "" || parseLocale(value) !== undefined,
+            t("admin.announcements.validation.locale_invalid")
+          )
+          .transform((value) => parseLocale(value) ?? ""),
+        title: optionalTrimmedString(
+          120,
+          t("admin.announcements.validation.title_required")
+        ),
+      })
+    )
+    .superRefine((translations, ctx) => {
+      if (!translations.some(({ locale }) => locale === "")) {
+        ctx.addIssue({
+          code: "custom",
+          message: t("admin.announcements.validation.title_required"),
+        });
+      }
+      for (const [index, { body, locale, title }] of translations.entries()) {
+        // The default language's translation is what a reader browsing in a
+        // language left empty is shown, so it is the one that is required.
+        if (locale === "") {
+          if (title === "") {
+            ctx.addIssue({
+              code: "custom",
+              message: t("admin.announcements.validation.title_required"),
+              path: [index, "title"],
+            });
+          }
+          if (body === "") {
+            ctx.addIssue({
+              code: "custom",
+              message: t("admin.announcements.validation.body_required"),
+              path: [index, "body"],
+            });
+          }
+        } else if ((title === "") !== (body === "")) {
+          ctx.addIssue({
+            code: "custom",
+            message: t(
+              "admin.announcements.validation.translation_incomplete",
+              {
+                language: getLocaleLabel(locale),
+              }
+            ),
+            path: [index],
+          });
+        }
+      }
+    })
+    .transform((translations): AnnouncementTranslationInput[] =>
+      // A language whose tab was left empty is not written in.
+      translations.filter(
+        ({ body, locale, title }) =>
+          locale === "" || title !== "" || body !== ""
+      )
+    );
 
 const announcementFormSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
   return z
     .object({
-      body: requiredTrimmedString(
-        t("admin.announcements.validation.body_required"),
-        2000
-      ),
       linkUrl: optionalTrimmedString(2048),
       // An unchecked checkbox posts nothing at all, which is the "no banner"
       // answer rather than a missing field.
@@ -42,10 +132,7 @@ const announcementFormSchema = async (locale: Locale) => {
       tenantId: requiredTrimmedString(
         t("admin.announcements.validation.tenant_missing")
       ),
-      title: requiredTrimmedString(
-        t("admin.announcements.validation.title_required"),
-        120
-      ),
+      translations: translationsSchema(t),
     })
     .superRefine((value, ctx) => {
       const isInternalPath =
@@ -111,16 +198,22 @@ export const createAnnouncementAction = async (
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await announcementFormSchema(locale);
-  const parsed = schema.safeParse(
-    toFormDataInput(formData, {
-      body: "value",
+  const { bodies, titles, translationLocales, ...fields } = toFormDataInput(
+    formData,
+    {
+      bodies: { kind: "values", name: "body" },
       linkUrl: { kind: "value", name: "link_url" },
       pinned: "value",
       pinnedUntil: { kind: "value", name: "pinned_until" },
       tenantId: { kind: "value", name: "tenant_id" },
-      title: "value",
-    })
+      titles: { kind: "values", name: "title" },
+      translationLocales: { kind: "values", name: "translation_locale" },
+    }
   );
+  const parsed = schema.safeParse({
+    ...fields,
+    translations: zipTranslations({ bodies, titles, translationLocales }),
+  });
   if (!parsed.success) {
     return {
       message: toFormErrorMessage(parsed.error, { locale }),
@@ -141,12 +234,11 @@ export const createAnnouncementAction = async (
   const result = await withAdminSessionReauth(() =>
     createAnnouncement(
       {
-        body: parsed.data.body,
         linkUrl: parsed.data.linkUrl,
         pinned: parsed.data.pinned,
         pinnedUntil: pinnedUntil.value,
         tenantId: parsed.data.tenantId,
-        title: parsed.data.title,
+        translations: parsed.data.translations,
       },
       locale
     )
