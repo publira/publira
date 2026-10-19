@@ -5403,12 +5403,14 @@ class CampaignBanner extends $pb.GeneratedMessage {
     $core.String? linkUrl,
     $core.String? imageUpdatedAt,
     $core.Iterable<$0.SeriesEyeCatchVariant>? imageVariants,
+    $core.String? altText,
   }) {
     final result = CampaignBanner._();
     if (publicId != null) result.publicId = publicId;
     if (linkUrl != null) result.linkUrl = linkUrl;
     if (imageUpdatedAt != null) result.imageUpdatedAt = imageUpdatedAt;
     if (imageVariants != null) result.imageVariants.addAll(imageVariants);
+    if (altText != null) result.altText = altText;
     return result;
   }
 
@@ -5430,6 +5432,7 @@ class CampaignBanner extends $pb.GeneratedMessage {
     ..aOS(3, _omitFieldNames ? '' : 'imageUpdatedAt')
     ..pPM<$0.SeriesEyeCatchVariant>(4, _omitFieldNames ? '' : 'imageVariants',
         subBuilder: $0.SeriesEyeCatchVariant.$_createMessage)
+    ..aOS(5, _omitFieldNames ? '' : 'altText')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -5487,6 +5490,18 @@ class CampaignBanner extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(4)
   $pb.PbList<$0.SeriesEyeCatchVariant> get imageVariants => $_getList(3);
+
+  /// The words drawn into the image, for the name of the banner's link. Empty
+  /// when the operator has not written them, in which case the client names
+  /// the link with a generic text of its own.
+  @$pb.TagNumber(5)
+  $core.String get altText => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set altText($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasAltText() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearAltText() => $_clearField(5);
 }
 
 class ListCampaignBannersRequest extends $pb.GeneratedMessage {

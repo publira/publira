@@ -30,6 +30,10 @@ message AdminCampaignBanner {
   repeated publira.types.v1.SeriesEyeCatchVariant image_variants = 8;
   string created_at = 9;
   string updated_at = 10;
+  // The words drawn into the image, which a client names the banner's link
+  // with. Empty when nobody has written them, and a client then falls back to
+  // a generic name of its own.
+  string alt_text = 11;
 }
 
 message ListCampaignBannersRequest {
@@ -70,13 +74,18 @@ message CreateCampaignBannerRequest {
   // one of them afterwards.
   bytes image_data = 6;
   string image_content_type = 7;
+  // The words drawn into the image, so a screen reader can tell this banner's
+  // link from the others. Optional, at most 255 characters after surrounding
+  // whitespace is trimmed.
+  string alt_text = 8;
 }
 
 message CreateCampaignBannerResponse {
   AdminCampaignBanner banner = 1;
 }
 
-// Replaces the link, the window, and the published flag together.
+// Replaces the link, the alternative text, the window, and the published flag
+// together.
 message UpdateCampaignBannerRequest {
   publira.types.v1.TenantContext tenant = 1;
   string campaign_banner_id = 2;
@@ -92,6 +101,9 @@ message UpdateCampaignBannerRequest {
   // clearing it.
   bytes image_data = 7;
   string image_content_type = 8;
+  // Held to what CreateCampaignBannerRequest holds it to. Empty clears it, as
+  // every other field here is replaced rather than kept.
+  string alt_text = 9;
 }
 
 message UpdateCampaignBannerResponse {

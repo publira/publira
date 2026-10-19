@@ -1832,6 +1832,7 @@ const CampaignBanner$json = {
       '6': '.publira.types.v1.SeriesEyeCatchVariant',
       '10': 'imageVariants'
     },
+    {'1': 'alt_text', '3': 5, '4': 1, '5': 9, '10': 'altText'},
   ],
 };
 
@@ -1840,7 +1841,7 @@ final $typed_data.Uint8List campaignBannerDescriptor = $convert.base64Decode(
     'Cg5DYW1wYWlnbkJhbm5lchIbCglwdWJsaWNfaWQYASABKAlSCHB1YmxpY0lkEhkKCGxpbmtfdX'
     'JsGAIgASgJUgdsaW5rVXJsEigKEGltYWdlX3VwZGF0ZWRfYXQYAyABKAlSDmltYWdlVXBkYXRl'
     'ZEF0Ek4KDmltYWdlX3ZhcmlhbnRzGAQgAygLMicucHVibGlyYS50eXBlcy52MS5TZXJpZXNFeW'
-    'VDYXRjaFZhcmlhbnRSDWltYWdlVmFyaWFudHM=');
+    'VDYXRjaFZhcmlhbnRSDWltYWdlVmFyaWFudHMSGQoIYWx0X3RleHQYBSABKAlSB2FsdFRleHQ=');
 
 @$core.Deprecated('Use listCampaignBannersRequestDescriptor instead')
 const ListCampaignBannersRequest$json = {

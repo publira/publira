@@ -939,6 +939,10 @@ message CampaignBanner {
   // so a client picks the ratio its band is drawn in.
   string image_updated_at = 3;
   repeated publira.types.v1.SeriesEyeCatchVariant image_variants = 4;
+  // The words drawn into the image, for the name of the banner's link. Empty
+  // when the operator has not written them, in which case the client names
+  // the link with a generic text of its own.
+  string alt_text = 5;
 }
 
 message ListCampaignBannersRequest {

@@ -39,6 +39,12 @@ const (
 	// and what campaign_banners_link_url_check holds the column to.
 	maxCampaignBannerLinkRunes = 2048
 
+	// maxCampaignBannerAltTextRunes is what campaign_banners_alt_text_check
+	// holds the column to. A screen reader reads the whole of it every time
+	// the link is reached, so it is the banner's copy, not a description of
+	// the picture.
+	maxCampaignBannerAltTextRunes = 255
+
 	// campaignBannerImagePath is where a banner's objects are filed and the
 	// image route it is served from.
 	campaignBannerImagePath = "campaign-banners"
@@ -74,6 +80,17 @@ func normalizeCampaignBannerLink(raw string) (string, error) {
 		return "", invalid
 	}
 	return link, nil
+}
+
+// normalizeCampaignBannerAltText reads the words drawn into a banner's image.
+// They are optional: a banner nobody has described is named by each client's
+// generic text, which is what every banner stored before the field was.
+func normalizeCampaignBannerAltText(raw string) (string, error) {
+	altText := strings.TrimSpace(raw)
+	if utf8.RuneCountInString(altText) > maxCampaignBannerAltTextRunes {
+		return "", rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, fmt.Errorf("alt_text must be at most %d characters", maxCampaignBannerAltTextRunes), "alt_text")
+	}
+	return altText, nil
 }
 
 // campaignBannerWindow is a validated display window, in UTC.
@@ -214,6 +231,7 @@ type campaignBannerRow struct {
 	id             uuid.UUID
 	publicID       string
 	linkURL        string
+	altText        string
 	startsAt       time.Time
 	endsAt         time.Time
 	published      bool
@@ -228,6 +246,7 @@ func campaignBannerRowFromGet(row dbmodels.GetCampaignBannerByIDForTenantRow) ca
 		id:             row.ID,
 		publicID:       row.PublicID,
 		linkURL:        row.LinkUrl,
+		altText:        row.AltText,
 		startsAt:       row.StartsAt,
 		endsAt:         row.EndsAt,
 		published:      row.IsPublished,
@@ -243,6 +262,7 @@ func campaignBannerRowFromList(row dbmodels.ListCampaignBannersForTenantRow) cam
 		id:             row.ID,
 		publicID:       row.PublicID,
 		linkURL:        row.LinkUrl,
+		altText:        row.AltText,
 		startsAt:       row.StartsAt,
 		endsAt:         row.EndsAt,
 		published:      row.IsPublished,
@@ -264,6 +284,7 @@ func (s *adminServer) campaignBannerMessages(ctx context.Context, rows []campaig
 			Id:        row.id.String(),
 			PublicId:  row.publicID,
 			LinkUrl:   row.linkURL,
+			AltText:   row.altText,
 			StartsAt:  row.startsAt.UTC().Format(time.RFC3339),
 			EndsAt:    row.endsAt.UTC().Format(time.RFC3339),
 			Published: row.published,
@@ -455,6 +476,10 @@ func (s *adminServer) CreateCampaignBanner(
 	if err != nil {
 		return nil, err
 	}
+	altText, err := normalizeCampaignBannerAltText(req.AltText)
+	if err != nil {
+		return nil, err
+	}
 	window, err := parseCampaignBannerWindow(req.StartsAt, req.EndsAt)
 	if err != nil {
 		return nil, err
@@ -504,6 +529,7 @@ func (s *adminServer) CreateCampaignBanner(
 			TenantID:     tenant.ID,
 			PublicID:     publicID,
 			LinkUrl:      link,
+			AltText:      altText,
 			StartsAt:     window.startsAt,
 			EndsAt:       window.endsAt,
 			DisplayOrder: maxDisplayOrder + 1,
@@ -560,6 +586,10 @@ func (s *adminServer) UpdateCampaignBanner(
 	if err != nil {
 		return nil, err
 	}
+	altText, err := normalizeCampaignBannerAltText(req.AltText)
+	if err != nil {
+		return nil, err
+	}
 	window, err := parseCampaignBannerWindow(req.StartsAt, req.EndsAt)
 	if err != nil {
 		return nil, err
@@ -605,6 +635,7 @@ func (s *adminServer) UpdateCampaignBanner(
 	if err := s.queriesFor(txCtx).UpdateCampaignBanner(txCtx, dbmodels.UpdateCampaignBannerParams{
 		ID:          current.ID,
 		LinkUrl:     link,
+		AltText:     altText,
 		StartsAt:    window.startsAt,
 		EndsAt:      window.endsAt,
 		IsPublished: req.Published,
