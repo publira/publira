@@ -56,7 +56,15 @@ SELECT e.id,
         WHERE g.tenant_id = e.tenant_id
             AND g.user_id = $1::uuid
             AND g.episode_id = e.id
-    ) AS has_grant
+    ) AS has_grant,
+    EXISTS (
+        SELECT 1
+        FROM episode_content_grants g
+        WHERE g.tenant_id = e.tenant_id
+            AND g.user_id = $1::uuid
+            AND g.episode_id = e.id
+            AND g.purchase_kind = 'purchase'
+    ) AS owned
 FROM episodes e
     JOIN published_episode_surfaces pes ON pes.episode_id = e.id
 WHERE e.tenant_id = $2
@@ -78,14 +86,17 @@ type ListPublishedEpisodeAccessInSeriesRow struct {
 	PublicID       string    `json:"public_id"`
 	FreeToEveryone bool      `json:"free_to_everyone"`
 	HasGrant       bool      `json:"has_grant"`
+	Owned          bool      `json:"owned"`
 }
 
 // Every published episode of one series with the two facts its access state is
 // decided from: whether published_free_episodes counts it free to everyone
 // right now, and whether episode_content_grants holds a grant for the reader.
-// A guest passes a NULL user_id, which no grant matches. The episodes are the
-// ones published_episode_surfaces opens on the calling surface, and the order
-// is the one GetSeriesDetail lists them in.
+// owned is whether one of those grants is a permanent copy, which is the
+// grant ListSeriesRemainderEpisodes counts as held. A guest passes a NULL
+// user_id, which no grant matches. The episodes are the ones
+// published_episode_surfaces opens on the calling surface, and the order is
+// the one GetSeriesDetail lists them in.
 func (q *Queries) ListPublishedEpisodeAccessInSeries(ctx context.Context, arg ListPublishedEpisodeAccessInSeriesParams) ([]ListPublishedEpisodeAccessInSeriesRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListPublishedEpisodeAccessInSeries,
 		arg.UserID,
@@ -105,6 +116,7 @@ func (q *Queries) ListPublishedEpisodeAccessInSeries(ctx context.Context, arg Li
 			&i.PublicID,
 			&i.FreeToEveryone,
 			&i.HasGrant,
+			&i.Owned,
 		); err != nil {
 			return nil, err
 		}

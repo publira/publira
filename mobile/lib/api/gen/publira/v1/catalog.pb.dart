@@ -988,11 +988,13 @@ class SeriesEpisodeAccess extends $pb.GeneratedMessage {
     $core.String? episodePublicId,
     EpisodeAccess? access,
     $core.String? episodeId,
+    $core.bool? owned,
   }) {
     final result = SeriesEpisodeAccess._();
     if (episodePublicId != null) result.episodePublicId = episodePublicId;
     if (access != null) result.access = access;
     if (episodeId != null) result.episodeId = episodeId;
+    if (owned != null) result.owned = owned;
     return result;
   }
 
@@ -1013,6 +1015,7 @@ class SeriesEpisodeAccess extends $pb.GeneratedMessage {
     ..aE<EpisodeAccess>(2, _omitFieldNames ? '' : 'access',
         enumValues: EpisodeAccess.values)
     ..aOS(3, _omitFieldNames ? '' : 'episodeId')
+    ..aOB(4, _omitFieldNames ? '' : 'owned')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1065,6 +1068,21 @@ class SeriesEpisodeAccess extends $pb.GeneratedMessage {
   $core.bool hasEpisodeId() => $_has(2);
   @$pb.TagNumber(3)
   void clearEpisodeId() => $_clearField(3);
+
+  /// Whether the caller holds an active permanent copy of the episode: a
+  /// purchase of its permanent copy, of a volume holding it, or of the rest of
+  /// the series. A rental, an access ticket, and a creator's own episode open
+  /// it without owning it, so `access` may be EPISODE_ACCESS_ENTITLED while this
+  /// is false. Always false for a guest. It says nothing about the age rule,
+  /// which may still keep an owned episode closed.
+  @$pb.TagNumber(4)
+  $core.bool get owned => $_getBF(3);
+  @$pb.TagNumber(4)
+  set owned($core.bool value) => $_setBool(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasOwned() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearOwned() => $_clearField(4);
 }
 
 class GetSeriesEpisodeAccessResponse extends $pb.GeneratedMessage {
