@@ -46,6 +46,7 @@ const EnglishConsole = ({ children }: { children: ReactNode }) => (
 );
 
 const banner: CampaignBannerListItem = {
+  altText: "Summer sale, up to 50% off",
   endsAt: "2000-01-02T00:00:00Z",
   id: "018f0e6a-6000-7000-8000-000000000001",
   imageUpdatedAt: "2099-05-01T00:00:00Z",
@@ -86,7 +87,7 @@ describe("CampaignBannerImageForm", () => {
     ).toBeNull();
   });
 
-  it("posts back the link, the window, and the flag the banner holds", async () => {
+  it("posts back the link, the alternative text, the window, and the flag the banner holds", async () => {
     // Never resolved: the assertions are about what the save was sent with.
     const save = Promise.withResolvers<FormActionState>();
     mockUpdateCampaignBannerImageAction.mockReturnValue(save.promise);
@@ -105,6 +106,8 @@ describe("CampaignBannerImageForm", () => {
       .calls[0] as unknown as [FormActionState, FormData];
     expect(formData.get("campaign_banner_id")).toBe(banner.id);
     expect(formData.get("link_url")).toBe("/series/SERIES001");
+    // The API replaces it with the image, so leaving it out would clear it.
+    expect(formData.get("alt_text")).toBe("Summer sale, up to 50% off");
     // A window already over goes back unchanged, which the API accepts.
     expect(formData.get("starts_at")).toBe("2000-01-01T00:00:00Z");
     expect(formData.get("ends_at")).toBe("2000-01-02T00:00:00Z");

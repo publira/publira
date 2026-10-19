@@ -75,6 +75,7 @@ const landscapeVariant = {
 };
 
 const rawBanner = {
+  altText: "Summer sale, up to 50% off",
   endsAt: "2099-07-01T00:00:00Z",
   id: "018f0e6a-6000-7000-8000-000000000001",
   imageUpdatedAt: "2099-05-01T00:00:00Z",
@@ -91,6 +92,7 @@ const mappedBanner = {
 };
 
 const saveInput = {
+  altText: "Summer sale, up to 50% off",
   endsAt: "2099-07-01T00:00:00Z",
   linkUrl: "/series/SERIES001",
   published: true,
@@ -195,7 +197,7 @@ describe("getCampaignBanner", () => {
 });
 
 describe("createCampaignBanner", () => {
-  it("sends the image, the link, and the window with the operator's session", async () => {
+  it("sends the image, the link, the alternative text, and the window with the operator's session", async () => {
     mockCreateCampaignBanner.mockResolvedValueOnce({ banner: rawBanner });
 
     const { createCampaignBanner } = await import("./campaign-banner");
@@ -211,6 +213,7 @@ describe("createCampaignBanner", () => {
     expect(result).toEqual({ banner: mappedBanner, ok: true });
     expect(mockCreateCampaignBanner).toHaveBeenCalledWith(
       {
+        altText: "Summer sale, up to 50% off",
         endsAt: "2099-07-01T00:00:00Z",
         imageContentType: "image/png",
         imageData: new Uint8Array([1, 2, 3]),
@@ -250,6 +253,7 @@ describe("createCampaignBanner", () => {
       "link_url",
       "Enter a path on this site starting with / or a full http(s) URL, of at most 2048 characters.",
     ],
+    ["alt_text", "Keep the alternative text to 255 characters or fewer."],
     ["ends_at", "The end has to come after the start and still be ahead."],
   ])(
     "words a refused %s by what the operator has to change",
@@ -276,6 +280,7 @@ describe("updateCampaignBanner", () => {
 
     expect(mockUpdateCampaignBanner).toHaveBeenCalledWith(
       {
+        altText: "Summer sale, up to 50% off",
         campaignBannerId: rawBanner.id,
         endsAt: "2099-07-01T00:00:00Z",
         imageContentType: undefined,

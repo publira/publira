@@ -28,6 +28,7 @@ vi.mock("#lib/get-messages", () => ({
 const action = (): Promise<FormActionState> => Promise.resolve(null);
 
 const banner: CampaignBannerListItem = {
+  altText: "Summer sale, up to 50% off",
   endsAt: "2099-07-01T00:00:00Z",
   id: "018f0e6a-6000-7000-8000-000000000001",
   imageUpdatedAt: "2099-05-01T00:00:00Z",
@@ -60,6 +61,10 @@ describe("CampaignBannerForm", () => {
     expect(screen.getByLabelText<HTMLInputElement>(/Link/u).required).toBe(
       true
     );
+    // A banner nobody has described still saves; the site names it itself.
+    expect(
+      screen.getByLabelText<HTMLInputElement>("Alternative text").required
+    ).toBe(false);
   });
 
   it("enters the window in the tenant's time zone", async () => {
@@ -94,6 +99,9 @@ describe("CampaignBannerForm", () => {
     );
 
     expect(screen.queryByLabelText(/Banner image/u)).toBeNull();
+    expect(
+      screen.getByLabelText<HTMLInputElement>("Alternative text").value
+    ).toBe("Summer sale, up to 50% off");
     expect(screen.getByLabelText<HTMLInputElement>(/Link/u).value).toBe(
       "/series/SERIES001"
     );

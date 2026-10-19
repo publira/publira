@@ -7,6 +7,8 @@ export interface CampaignBannerListItem {
   /** What the banner's edit screen is addressed by in the URL. */
   publicId: string;
   linkUrl: string;
+  /** The words drawn into the image; empty when nobody has written them. */
+  altText: string;
   startsAt: string;
   endsAt: string;
   published: boolean;

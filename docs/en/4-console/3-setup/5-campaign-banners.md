@@ -2,6 +2,7 @@
 title: Campaign banners
 description: Schedule the image banners at the top of the site's top page and the app's catalog, and put them in the order readers see them.
 published: 2026-10-18
+updated: 2026-10-19
 ---
 
 **Campaign banners**, under **Site**, puts a campaign in front of readers who have not gone looking for it: a discount on a series, a new serialization, a fair on another site. A banner is an image that links somewhere, shown for a window you set. The site shows the banners on air at the top of its top page, and the app at the top of its catalog screen.
@@ -15,13 +16,14 @@ A Tenant admin and an Editor can create, change, reorder, and delete banners. An
 Choose **New banner** and fill in:
 
 - **Banner image**: a JPEG, PNG, or WebP image of at most 10 MB and at least 2400 × 3200 pixels. See [The image](#the-image).
+- **Alternative text**: the words drawn into the image, up to 255 characters, such as `Summer sale, up to 50% off through August 31`. A screen reader cannot read lettering in a picture, so it names the banner's link with these words instead. The field is optional, but a banner left without it can only be told apart from the others by where it links.
 - **Link**: where the banner takes a reader who opens it, up to 2048 characters. Start it with `/` for a page of this site, such as `/series/SERIES001` or `/labels/LABEL001`, or with `https://` or `http://` for another site.
 - **Shows from** and **Shows until**: the window the banner is on air, entered in the tenant's time zone, which the note under the two fields names. See [The window](#the-window).
 - **Published**: whether the banner shows at all. A new banner starts unpublished. See [Publishing](#publishing).
 
-Choose **Create banner**. The banner opens on its own screen, with a **Details** tab that changes the link, the window, and **Published**, and an **Image** tab that changes the image.
+Choose **Create banner**. The banner opens on its own screen, with a **Details** tab that changes the alternative text, the link, the window, and **Published**, and an **Image** tab that changes the image.
 
-![The New campaign banner form: Banner image, Link, Shows from and Shows until with the note that times are entered in the site's time zone, Published, and Create banner.](./campaign-banners-create-form.png)
+![The New campaign banner form: Banner image, Alternative text, Link, Shows from and Shows until with the note that times are entered in the site's time zone, Published, and Create banner.](./campaign-banners-create-form.png)
 
 ## The image
 
@@ -29,7 +31,7 @@ The site and the app do not show the image as uploaded. Saving it cuts four imag
 
 Each shape is cropped from the centre of the image. To frame the band differently, choose **Adjust the frame** on the **Landscape (16:9)** slot, or upload artwork made for the band with **Replace**, which takes an image of at least 1600 × 900 pixels for that shape alone. Uploading a new image under **Cover image** and choosing **Update image** replaces all four shapes. A banner always keeps an image, so there is no removing it. [The cover image](../1-catalog/1-series.md#the-cover-image) of a series describes the slots in full.
 
-On a phone the band is as wide as the screen, so lettering in the image has to be readable at that size.
+On a phone the band is as wide as the screen, so lettering in the image has to be readable at that size. A new image with different lettering needs its **Alternative text** rewritten on the **Details** tab to match.
 
 ## The window
 
@@ -53,6 +55,8 @@ The list shows where each banner stands now:
 | **Scheduled**   | Published, and its window has not opened yet       |
 | **Ended**       | Published, and its window has closed               |
 | **Unpublished** | Not published, whatever its window                 |
+
+Each row is headed by the banner's alternative text, with its link under it, or by its link alone when it has none.
 
 ![The Campaign banners list: New banner at the top, and six banners, each with a drag handle, a thumbnail, its link, its window in the tenant's time zone, its status, and Edit and Delete. The first three read Showing, then one Scheduled, one Ended, and one Unpublished.](./campaign-banners-list.png)
 

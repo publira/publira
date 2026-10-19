@@ -9,6 +9,7 @@ import type { ComponentProps, ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
+import { renderServerComponent } from "#lib/render-server-component";
 
 import type { CampaignBannerListItem } from "../campaign-banner-types";
 import { CampaignBannerList } from "./campaign-banner-list";
@@ -55,6 +56,7 @@ vi.mock("@dnd-kit/react/sortable", () => ({
 
 const banners: CampaignBannerListItem[] = [
   {
+    altText: "",
     endsAt: "2099-07-01T00:00:00Z",
     id: "018f0e6a-6000-7000-8000-000000000001",
     imageUpdatedAt: "",
@@ -65,10 +67,21 @@ const banners: CampaignBannerListItem[] = [
     startsAt: "2099-06-01T00:00:00Z",
   },
   {
+    altText: "Summer sale, up to 50% off",
     endsAt: "2099-07-01T00:00:00Z",
     id: "018f0e6a-6000-7000-8000-000000000002",
-    imageUpdatedAt: "",
-    imageVariants: [],
+    imageUpdatedAt: "2099-05-01T00:00:00Z",
+    imageVariants: [
+      {
+        contentType: "image/webp",
+        fileSizeBytes: 2048,
+        height: 900,
+        label: "landscape_1600w",
+        url: "https://cdn.example.com/campaign-banners/BANNER002/landscape.webp",
+        variantType: "landscape",
+        width: 1600,
+      },
+    ],
     linkUrl: "https://example.com/sale",
     publicId: "BANNER002",
     published: false,
@@ -109,6 +122,41 @@ describe("CampaignBannerList", () => {
         .map((link) => link.getAttribute("href"))
     ).toEqual(["/campaign-banners/BANNER001", "/campaign-banners/BANNER002"]);
     expect(screen.getAllByRole("button", { name: "Delete" })).toHaveLength(2);
+  });
+
+  // A banner the operator described is named by the words in its image, and
+  // one nobody has described by where it links.
+  it("names each banner by its alternative text, or by its link without one", () => {
+    renderList(true);
+
+    expect(
+      screen.getByRole("button", {
+        name: "Reorder the banner “Summer sale, up to 50% off”",
+      })
+    ).toBeTruthy();
+    expect(screen.getByText("Summer sale, up to 50% off")).toBeTruthy();
+    // The link stays on the row under the name.
+    expect(screen.getByText("https://example.com/sale")).toBeTruthy();
+  });
+
+  // The thumbnail resolves its `alt` from the catalog on the server.
+  it("gives a described banner's thumbnail the words in its image", async () => {
+    await renderServerComponent(
+      <AdminLocaleTestProvider locale="en">
+        <CampaignBannerList
+          banners={banners}
+          canEdit={false}
+          locale="en"
+          now={Temporal.Instant.from("2099-06-15T00:00:00Z")}
+          tenantId="TENANT001"
+          timeZone="Asia/Tokyo"
+        />
+      </AdminLocaleTestProvider>
+    );
+
+    expect(screen.getByRole("img").getAttribute("alt")).toBe(
+      "Summer sale, up to 50% off"
+    );
   });
 
   it("shows each window in the tenant's time zone, and whether it is on air", () => {

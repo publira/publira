@@ -22,6 +22,7 @@ import {
 } from "#lib/campaign-banner";
 import type { CampaignBannerItem } from "#lib/campaign-banner";
 import {
+  CAMPAIGN_BANNER_ALT_TEXT_MAX_LENGTH,
   CAMPAIGN_BANNER_LINK_MAX_LENGTH,
   isCampaignBannerLink,
   toCampaignBannerWindow,
@@ -60,6 +61,10 @@ const bannerFieldsSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
 
   return z.object({
+    altText: optionalTrimmedString(
+      CAMPAIGN_BANNER_ALT_TEXT_MAX_LENGTH,
+      t("admin.campaign_banners.validation.alt_text_too_long")
+    ),
     endsAt: optionalTrimmedString(),
     image: optionalFileFormSchema,
     linkUrl: requiredTrimmedString(
@@ -76,6 +81,7 @@ const bannerFieldsSchema = async (locale: Locale) => {
   });
 };
 const bannerFormFields = {
+  altText: { kind: "value", name: "alt_text" },
   endsAt: { kind: "value", name: "ends_at" },
   image: { kind: "file", name: "eye_catch_image" },
   linkUrl: { kind: "value", name: "link_url" },
@@ -140,7 +146,7 @@ export const createCampaignBannerAction = async (
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
-  const { image, linkUrl, published, tenantId } = parsed.data;
+  const { altText, image, linkUrl, published, tenantId } = parsed.data;
   if (!image) {
     return {
       message: t("admin.campaign_banners.validation.image_required"),
@@ -163,6 +169,7 @@ export const createCampaignBannerAction = async (
   const result = await withAdminSessionReauth(() =>
     createCampaignBanner(
       {
+        altText,
         endsAt: window.endsAt,
         imageContentType: image.type || undefined,
         imageData,
@@ -192,9 +199,10 @@ export const createCampaignBannerAction = async (
 
 /**
  * Saves the banner the edit screen submitted. The details form and the cover
- * image form both post the link, the window, and the published flag, because
- * `UpdateCampaignBanner` replaces them together; only the image form posts a
- * file, which replaces the whole image and which that form cannot go without.
+ * image form both post the link, the alternative text, the window, and the
+ * published flag, because `UpdateCampaignBanner` replaces them together; only
+ * the image form posts a file, which replaces the whole image and which that
+ * form cannot go without.
  */
 const saveCampaignBanner = async (
   formData: FormData,
@@ -226,8 +234,14 @@ const saveCampaignBanner = async (
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
-  const { currentImageUpdatedAt, image, linkUrl, published, tenantId } =
-    parsed.data;
+  const {
+    altText,
+    currentImageUpdatedAt,
+    image,
+    linkUrl,
+    published,
+    tenantId,
+  } = parsed.data;
   if (options.requireImage && !image) {
     return {
       message: t("admin.campaign_banners.validation.image_required"),
@@ -250,6 +264,7 @@ const saveCampaignBanner = async (
   const result = await withAdminSessionReauth(() =>
     updateCampaignBanner(
       {
+        altText,
         endsAt: window.endsAt,
         id: parsed.data.id,
         imageContentType,

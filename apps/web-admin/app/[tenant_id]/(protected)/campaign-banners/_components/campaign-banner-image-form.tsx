@@ -22,8 +22,8 @@ interface CampaignBannerImageFormProps {
  * Replaces the banner's whole image through the shared cover image field.
  * There is no removing it: the API keeps a banner's image until another
  * replaces it, so the field offers no delete. `UpdateCampaignBanner` takes the
- * link, the window, and the published flag alongside, so the form posts back
- * the ones it read.
+ * link, the alternative text, the window, and the published flag alongside,
+ * so the form posts back the ones it read.
  */
 export const CampaignBannerImageForm = ({
   banner,
@@ -33,6 +33,7 @@ export const CampaignBannerImageForm = ({
     <input name="tenant_id" type="hidden" value={tenantId} />
     <input name="campaign_banner_id" type="hidden" value={banner.id} />
     <input name="link_url" type="hidden" value={banner.linkUrl} />
+    <input name="alt_text" type="hidden" value={banner.altText} />
     <input name="starts_at" type="hidden" value={banner.startsAt} />
     <input name="ends_at" type="hidden" value={banner.endsAt} />
     {banner.published ? (
