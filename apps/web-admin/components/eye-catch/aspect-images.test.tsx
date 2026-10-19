@@ -194,8 +194,10 @@ it("says where each ratio of a label is used, not where a series' is", () => {
   expect(screen.queryByText(/series' page/u)).toBeNull();
 });
 
-// No screen draws an episode's own eye-catch yet: its rows show the series'.
-it("says that no ratio of an episode is shown yet", () => {
+// An episode's rows and link preview draw its own cover, but nothing reads its
+// portrait image: the app falls back on it only for a cover without a
+// landscape image, which an uploaded one always has.
+it("says where each ratio of an episode is used, not where a series' is", () => {
   renderImages({
     entity: "episode",
     id: "episode-1",
@@ -203,9 +205,12 @@ it("says that no ratio of an episode is shown yet", () => {
   });
 
   expect(
+    screen.getByText("The preview shown when a link to the episode is shared.")
+  ).toBeTruthy();
+  expect(
     screen.getAllByText("Not shown on the site or in the app yet.")
-  ).toHaveLength(4);
-  expect(screen.queryByText(/series' page/u)).toBeNull();
+  ).toHaveLength(1);
+  expect(screen.queryByText(/its episodes/u)).toBeNull();
 });
 
 // The ratio keys are what the RPCs take, and a staff member reading or
