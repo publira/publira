@@ -34,6 +34,8 @@ export interface CampaignBannerItem {
   publicId: string;
   /** A path on the tenant's own site or an absolute http(s) URL. */
   linkUrl: string;
+  /** The words drawn into the image; empty when nobody has written them. */
+  altText: string;
   /** The half-open display window, as the instants the API answers. */
   startsAt: string;
   endsAt: string;
@@ -119,6 +121,9 @@ const saveOverrides = async (
     if (rpcErrorHasFieldViolation(error, "link_url")) {
       return t("admin.campaign_banners.validation.link_invalid");
     }
+    if (rpcErrorHasFieldViolation(error, "alt_text")) {
+      return t("admin.campaign_banners.validation.alt_text_too_long");
+    }
     if (
       rpcErrorHasFieldViolation(error, "starts_at") ||
       rpcErrorHasFieldViolation(error, "ends_at")
@@ -146,6 +151,7 @@ const saveOverrides = async (
 /** The generated `AdminCampaignBanner` fields {@link mapCampaignBanner} reads. */
 type RawCampaignBanner = Pick<
   AdminCampaignBanner,
+  | "altText"
   | "endsAt"
   | "id"
   | "imageUpdatedAt"
@@ -157,6 +163,7 @@ type RawCampaignBanner = Pick<
 >;
 
 const mapCampaignBanner = (banner: RawCampaignBanner): CampaignBannerItem => ({
+  altText: banner.altText ?? "",
   endsAt: banner.endsAt ?? "",
   id: banner.id ?? "",
   imageUpdatedAt: banner.imageUpdatedAt ?? "",
@@ -279,6 +286,8 @@ export const getCampaignBanner = async (
 interface CampaignBannerFields {
   tenantId: string;
   linkUrl: string;
+  /** Empty clears it on an update: the API replaces it with the rest. */
+  altText: string;
   startsAt: string;
   endsAt: string;
   published: boolean;
@@ -306,6 +315,7 @@ export const createCampaignBanner = async (
   try {
     const response = await apiClient.campaignBanners.createCampaignBanner(
       {
+        altText: input.altText,
         endsAt: input.endsAt,
         imageContentType: input.imageContentType,
         imageData: input.imageData,
@@ -336,9 +346,9 @@ export const createCampaignBanner = async (
 };
 
 /**
- * Replaces the link, the window, and the published flag together, and the
- * whole image when one is sent. The API keeps the image the banner has when
- * none is, and has no way to clear it.
+ * Replaces the link, the alternative text, the window, and the published flag
+ * together, and the whole image when one is sent. The API keeps the image the
+ * banner has when none is, and has no way to clear it.
  */
 export const updateCampaignBanner = async (
   input: CampaignBannerFields & { id: string },
@@ -355,6 +365,7 @@ export const updateCampaignBanner = async (
   try {
     const response = await apiClient.campaignBanners.updateCampaignBanner(
       {
+        altText: input.altText,
         campaignBannerId: input.id,
         endsAt: input.endsAt,
         imageContentType: input.imageContentType,

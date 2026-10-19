@@ -19,7 +19,10 @@ import { Suspense } from "react";
 
 import { InstantInput } from "#components/instant-input";
 import { Message } from "#components/message";
-import { CAMPAIGN_BANNER_LINK_MAX_LENGTH } from "#lib/campaign-banner-schedule";
+import {
+  CAMPAIGN_BANNER_ALT_TEXT_MAX_LENGTH,
+  CAMPAIGN_BANNER_LINK_MAX_LENGTH,
+} from "#lib/campaign-banner-schedule";
 import { getMessages } from "#lib/get-messages";
 
 import type { CampaignBannerListItem } from "../campaign-banner-types";
@@ -37,13 +40,13 @@ interface CampaignBannerFormProps {
 }
 
 /**
- * The link, the window, and the published flag, and — when it creates a
- * banner — the image. A new banner needs both an image and a link, so the
- * form asks for each before it submits; an existing one keeps its image, which
- * the cover image tab replaces.
+ * The alternative text, the link, the window, and the published flag, and —
+ * when it creates a banner — the image. A new banner needs both an image and a
+ * link, so the form asks for each before it submits; an existing one keeps its
+ * image, which the cover image tab replaces.
  *
- * Awaits the catalog for the link's placeholder, which is an attribute rather
- * than a node. A create redirects from the Action to the new banner.
+ * Awaits the catalog for the placeholders, which are attributes rather than
+ * nodes. A create redirects from the Action to the new banner.
  */
 export const CampaignBannerForm = async ({
   action,
@@ -87,6 +90,30 @@ export const CampaignBannerForm = async ({
             </FieldContent>
           </Field>
         )}
+
+        <Field>
+          <FieldLabel>
+            <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+              <Message message="admin.campaign_banners.form.alt_text" />
+            </Suspense>
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              defaultValue={initialBanner?.altText}
+              maxLength={CAMPAIGN_BANNER_ALT_TEXT_MAX_LENGTH}
+              name="alt_text"
+              placeholder={t(
+                "admin.campaign_banners.form.alt_text_placeholder"
+              )}
+              type="text"
+            />
+            <FieldDescription>
+              <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                <Message message="admin.campaign_banners.form.alt_text_description" />
+              </Suspense>
+            </FieldDescription>
+          </FieldContent>
+        </Field>
 
         <Field>
           <FieldLabel required>

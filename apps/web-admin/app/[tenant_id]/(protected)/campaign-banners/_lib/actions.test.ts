@@ -69,6 +69,7 @@ const variant = {
 };
 
 const savedBanner = (overrides: Record<string, unknown> = {}) => ({
+  altText: "Summer sale, up to 50% off",
   endsAt: "2099-07-01T00:00:00Z",
   id: BANNER_ID,
   imageUpdatedAt: "2099-05-02T00:00:00Z",
@@ -88,6 +89,7 @@ const createFormData = (fields: Record<string, string | File | null> = {}) => {
   const formData = new FormData();
   formData.set("tenant_id", "TENANT001");
   formData.set("link_url", "/series/SERIES001");
+  formData.set("alt_text", "  Summer sale, up to 50% off  ");
   formData.set("starts_at", "2099-06-01T00:00:00Z");
   formData.set("ends_at", "2099-07-01T00:00:00Z");
   formData.set("published", "on");
@@ -133,6 +135,8 @@ describe("createCampaignBannerAction", () => {
     ).rejects.toThrow("redirect:/campaign-banners/BANNER001?created=1");
     expect(mockCreateCampaignBanner).toHaveBeenCalledWith(
       {
+        // Trimmed, as the API stores it.
+        altText: "Summer sale, up to 50% off",
         endsAt: "2099-07-01T00:00:00Z",
         imageContentType: "image/png",
         imageData: new Uint8Array([1, 2, 3]),
@@ -169,6 +173,20 @@ describe("createCampaignBannerAction", () => {
 
     expect(result).toEqual({
       message: "Enter where the banner links.",
+      ok: false,
+    });
+    expect(mockCreateCampaignBanner).not.toHaveBeenCalled();
+  });
+
+  it("refuses an alternative text longer than the API stores", async () => {
+    const { createCampaignBannerAction } = await import("./actions");
+    const result = await createCampaignBannerAction(
+      null,
+      createFormData({ alt_text: "a".repeat(256) })
+    );
+
+    expect(result).toEqual({
+      message: "Keep the alternative text to 255 characters or fewer.",
       ok: false,
     });
     expect(mockCreateCampaignBanner).not.toHaveBeenCalled();
@@ -233,7 +251,7 @@ describe("createCampaignBannerAction", () => {
 });
 
 describe("updateCampaignBannerAction", () => {
-  it("replaces the link, the window, and the published flag, keeping the image", async () => {
+  it("replaces the link, the alternative text, the window, and the published flag, keeping the image", async () => {
     mockUpdateCampaignBanner.mockResolvedValueOnce({
       banner: savedBanner({ published: false }),
       ok: true,
@@ -242,7 +260,11 @@ describe("updateCampaignBannerAction", () => {
     const { updateCampaignBannerAction } = await import("./actions");
     const result = await updateCampaignBannerAction(
       null,
-      updateFormData({ link_url: "https://example.com/sale", published: null })
+      updateFormData({
+        alt_text: "Autumn sale",
+        link_url: "https://example.com/sale",
+        published: null,
+      })
     );
 
     expect(result).toEqual({
@@ -251,6 +273,7 @@ describe("updateCampaignBannerAction", () => {
     });
     expect(mockUpdateCampaignBanner).toHaveBeenCalledWith(
       {
+        altText: "Autumn sale",
         endsAt: "2099-07-01T00:00:00Z",
         id: BANNER_ID,
         imageContentType: undefined,

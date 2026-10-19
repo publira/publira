@@ -10,6 +10,13 @@ import { getMessagesFor } from "./messages";
 export const CAMPAIGN_BANNER_LINK_MAX_LENGTH = 2048;
 
 /**
+ * The longest alternative text the API stores. The API counts code points and
+ * this bound counts UTF-16 units, as `maxLength` does, so a text the form lets
+ * through is never one the API refuses.
+ */
+export const CAMPAIGN_BANNER_ALT_TEXT_MAX_LENGTH = 255;
+
+/**
  * Whether a link is one the API stores: a path on the tenant's own site, or an
  * absolute http(s) URL. A path that starts with `//` or `/\` is neither,
  * because a browser reads either as another site.

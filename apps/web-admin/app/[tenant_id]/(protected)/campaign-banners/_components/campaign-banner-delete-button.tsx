@@ -24,8 +24,10 @@ import { Message } from "#components/message";
 import { deleteCampaignBannerAction } from "../_lib/actions";
 
 interface CampaignBannerDeleteButtonProps {
+  /** The words drawn into the image, which the dialog names the banner by. */
+  altText: string;
   id: string;
-  /** Where the banner links, which is what the dialog names it by. */
+  /** Where the banner links, which names a banner nobody has described. */
   linkUrl: string;
   tenantId: string;
 }
@@ -35,6 +37,7 @@ interface CampaignBannerDeleteButtonProps {
  * message — the row it was attached to is gone.
  */
 export const CampaignBannerDeleteButton = ({
+  altText,
   id,
   linkUrl,
   tenantId,
@@ -73,10 +76,17 @@ export const CampaignBannerDeleteButton = ({
               </ConfirmDialogTitle>
               <ConfirmDialogDescription>
                 <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-                  <Message
-                    message="admin.campaign_banners.delete_confirm_description"
-                    values={{ link: linkUrl }}
-                  />
+                  {altText ? (
+                    <Message
+                      message="admin.campaign_banners.delete_confirm_description_named"
+                      values={{ name: altText }}
+                    />
+                  ) : (
+                    <Message
+                      message="admin.campaign_banners.delete_confirm_description"
+                      values={{ link: linkUrl }}
+                    />
+                  )}
                 </Suspense>
               </ConfirmDialogDescription>
             </ConfirmDialogHeader>

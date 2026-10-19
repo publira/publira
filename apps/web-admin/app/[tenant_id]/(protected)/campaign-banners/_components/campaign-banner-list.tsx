@@ -43,11 +43,17 @@ const EmptyThumbnail = () => (
   />
 );
 
-/** An `alt` cannot be a node, so the thumbnail resolves the catalog itself. */
+/**
+ * An `alt` cannot be a node, so the thumbnail resolves the catalog itself. The
+ * words the operator wrote for the image are its `alt` as they are; a banner
+ * nobody has described is named by where it links.
+ */
 const CampaignBannerThumbnailImage = async ({
+  altText,
   linkUrl,
   url,
 }: {
+  altText: string;
   linkUrl: string;
   url: string;
 }) => {
@@ -55,7 +61,7 @@ const CampaignBannerThumbnailImage = async ({
 
   return (
     <Image
-      alt={t("admin.campaign_banners.image_alt", { link: linkUrl })}
+      alt={altText || t("admin.campaign_banners.image_alt", { link: linkUrl })}
       className="aspect-video w-24 shrink-0 rounded-control border object-cover"
       height={54}
       src={url}
@@ -78,6 +84,7 @@ const CampaignBannerThumbnail = ({
       }
     >
       <CampaignBannerThumbnailImage
+        altText={banner.altText}
         linkUrl={banner.linkUrl}
         url={thumbnail.url}
       />
@@ -88,8 +95,9 @@ const CampaignBannerThumbnail = ({
 };
 
 /**
- * What a reader sees of the banner, read off the row: the image, where it
- * links, when it shows in the tenant's zone, and whether it is showing now.
+ * What a reader sees of the banner, read off the row: the image, what it says
+ * and where it links, when it shows in the tenant's zone, and whether it is
+ * showing now. A banner nobody has described is headed by its link instead.
  */
 const CampaignBannerSummary = ({
   banner,
@@ -105,7 +113,14 @@ const CampaignBannerSummary = ({
   <div className="flex min-w-0 flex-1 items-start gap-3">
     <CampaignBannerThumbnail banner={banner} />
     <div className="grid min-w-0 gap-1">
-      <p className="truncate text-sm font-medium">{banner.linkUrl}</p>
+      <p className="truncate text-sm font-medium">
+        {banner.altText || banner.linkUrl}
+      </p>
+      {banner.altText ? (
+        <p className="truncate text-sm text-muted-foreground">
+          {banner.linkUrl}
+        </p>
+      ) : null}
       <p className="text-sm text-muted-foreground tabular-nums">
         <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
           <Message
@@ -141,14 +156,21 @@ const CampaignBannerRow = ({
   <SortableItem
     className="grid gap-3 border border-border bg-background px-4 py-3 sm:flex sm:items-start sm:justify-between sm:gap-4"
     id={banner.id}
-    label={banner.linkUrl}
+    label={banner.altText || banner.linkUrl}
   >
     <SortableItemHandle>
       <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-        <Message
-          message="admin.campaign_banners.reorder_action"
-          values={{ link: banner.linkUrl }}
-        />
+        {banner.altText ? (
+          <Message
+            message="admin.campaign_banners.reorder_action_named"
+            values={{ name: banner.altText }}
+          />
+        ) : (
+          <Message
+            message="admin.campaign_banners.reorder_action"
+            values={{ link: banner.linkUrl }}
+          />
+        )}
       </Suspense>
     </SortableItemHandle>
     <CampaignBannerSummary
@@ -168,6 +190,7 @@ const CampaignBannerRow = ({
         </Suspense>
       </LinkButton>
       <CampaignBannerDeleteButton
+        altText={banner.altText}
         id={banner.id}
         linkUrl={banner.linkUrl}
         tenantId={tenantId}
