@@ -139,8 +139,7 @@ RETURNING *;
 
 -- name: UpdateGenre :exec
 -- The slug is the caller's to derive, from the name genre_translation_for
--- picks for the tenant default locale once the save's own translation is
--- written.
+-- picks for the tenant default locale, when the save changed that name.
 UPDATE genres
 SET slug = $2,
     eye_catch_image_id = $3

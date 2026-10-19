@@ -128,9 +128,8 @@ func TestDBGenreNameIsRefusedInALocaleTheTenantDoesNotOffer(t *testing.T) {
 	}
 }
 
-// A genre keeps at least one name. Deleting the default locale's hands the
-// slug to the name a default-locale reader is shown next, and a deletion that
-// would hand it a slug another genre holds is refused.
+// A genre keeps at least one name, and deleting one leaves the slug where it
+// is, even when the deleted name is the one it was derived from.
 func TestDBDeleteGenreTranslation(t *testing.T) {
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
@@ -146,15 +145,6 @@ func TestDBDeleteGenreTranslation(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("UpdateGenre en: %v", err)
 	}
-	other := createGenre(t, client, tenant, "Suiri")
-	if _, err := client.UpdateGenre(ctx, &publiraadminv1.UpdateGenreRequest{
-		Tenant:  tenant.tenantContext(),
-		GenreId: other.Id,
-		Locale:  "en",
-		Name:    "Horror",
-	}); err != nil {
-		t.Fatalf("UpdateGenre en of the other genre: %v", err)
-	}
 
 	left, err := client.DeleteGenreTranslation(ctx, &publiraadminv1.DeleteGenreTranslationRequest{
 		Tenant:  tenant.tenantContext(),
@@ -164,25 +154,11 @@ func TestDBDeleteGenreTranslation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DeleteGenreTranslation ja: %v", err)
 	}
-	if left.Genre.Name != "Horror" || left.Genre.Slug != "horror" {
-		t.Fatalf("genre after deleting its ja name = (%q, %q), want (Horror, horror)", left.Genre.Name, left.Genre.Slug)
+	if left.Genre.Name != "Horror" || left.Genre.Slug != "kaiki" {
+		t.Fatalf("genre after deleting its ja name = (%q, %q), want the en name and the slug it had", left.Genre.Name, left.Genre.Slug)
 	}
 	if got := genreTranslationNames(left.Genre.Translations); !slices.Equal(got, []string{"en:Horror"}) {
 		t.Fatalf("translations = %v, want the en one left", got)
-	}
-
-	// The other genre's en name is Horror too, so losing its ja name would
-	// give it the slug the first genre now holds.
-	_, err = client.DeleteGenreTranslation(ctx, &publiraadminv1.DeleteGenreTranslationRequest{
-		Tenant:  tenant.tenantContext(),
-		GenreId: other.Id,
-		Locale:  "ja",
-	})
-	if connect.CodeOf(err) != connect.CodeAlreadyExists {
-		t.Fatalf("DeleteGenreTranslation onto a held slug: code = %v, want already_exists (err=%v)", connect.CodeOf(err), err)
-	}
-	if count := env.countRows(t, "SELECT count(*) FROM genre_translations WHERE genre_id = $1", other.Id); count != 2 {
-		t.Fatalf("names of the refused genre = %d, want both kept", count)
 	}
 
 	_, err = client.DeleteGenreTranslation(ctx, &publiraadminv1.DeleteGenreTranslationRequest{
@@ -207,6 +183,62 @@ func TestDBDeleteGenreTranslation(t *testing.T) {
 		tenant.Tenant.ID, genre.PublicId,
 	); count != 1 {
 		t.Fatalf("audit entries for genre_translation_deleted = %d, want 1", count)
+	}
+}
+
+// A change of default locale moves no slug, so a genre whose name in the new
+// default derives a slug another genre still holds saves as long as the save
+// leaves that name alone. Renaming it in the new default re-derives the slug
+// as any rename does.
+func TestDBGenreSavesAfterTheDefaultLocaleChanges(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.genreClient()
+	ctx := testutil.WithBearer(context.Background(), tenant.token())
+
+	write := func(genreID, locale, name string) (*publirattypesv1.Genre, error) {
+		t.Helper()
+		updated, err := client.UpdateGenre(ctx, &publiraadminv1.UpdateGenreRequest{
+			Tenant:  tenant.tenantContext(),
+			GenreId: genreID,
+			Locale:  locale,
+			Name:    name,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return updated.Genre, nil
+	}
+	fantasy := createGenre(t, client, tenant, "Fantasy")
+	if _, err := write(fantasy.Id, "en", "Horror"); err != nil {
+		t.Fatalf("UpdateGenre en: %v", err)
+	}
+	horror := createGenre(t, client, tenant, "Horror")
+	if _, err := write(horror.Id, "en", "Mystery"); err != nil {
+		t.Fatalf("UpdateGenre en of the second genre: %v", err)
+	}
+
+	if _, err := env.PG.DB.ExecContext(context.Background(), `UPDATE tenants SET default_locale = 'en' WHERE id = $1`, tenant.Tenant.ID); err != nil {
+		t.Fatalf("switch the default locale: %v", err)
+	}
+
+	saved, err := write(fantasy.Id, "en", "Horror")
+	if err != nil {
+		t.Fatalf("an unchanged save after the default locale changed: %v", err)
+	}
+	if saved.Name != "Horror" || saved.Slug != "fantasy" {
+		t.Fatalf("genre after an unchanged save = (%q, %q), want (Horror, fantasy)", saved.Name, saved.Slug)
+	}
+	if _, err := write(fantasy.Id, "ja", "Gensou"); err != nil {
+		t.Fatalf("a save in a locale other than the default: %v", err)
+	}
+
+	renamed, err := write(horror.Id, "en", "Suspense")
+	if err != nil {
+		t.Fatalf("a rename in the new default locale: %v", err)
+	}
+	if renamed.Slug != "suspense" {
+		t.Fatalf("slug after a rename in the new default locale = %q, want suspense", renamed.Slug)
 	}
 }
 

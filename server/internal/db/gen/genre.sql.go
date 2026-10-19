@@ -837,8 +837,7 @@ type UpdateGenreParams struct {
 }
 
 // The slug is the caller's to derive, from the name genre_translation_for
-// picks for the tenant default locale once the save's own translation is
-// written.
+// picks for the tenant default locale, when the save changed that name.
 func (q *Queries) UpdateGenre(ctx context.Context, arg UpdateGenreParams) error {
 	_, err := q.db.ExecContext(ctx, UpdateGenre, arg.ID, arg.Slug, arg.EyeCatchImageID)
 	return err

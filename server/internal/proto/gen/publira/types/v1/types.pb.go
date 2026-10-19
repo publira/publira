@@ -1416,9 +1416,11 @@ type Genre struct {
 	// for the default locale.
 	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	// Unique within the tenant, derived from the name a reader in the tenant's
-	// default locale is shown. It identifies that name rather than standing in
-	// for it: two genres cannot differ there by case or spacing alone. It does
-	// not change with the locale a read asks for.
+	// default locale is shown, by every save that changes that name. It
+	// identifies the name rather than standing in for it: no save can give two
+	// genres names that differ there by case or spacing alone. It does not
+	// change with the locale a read asks for, nor when the tenant changes its
+	// default locale.
 	Slug string `protobuf:"bytes,3,opt,name=slug,proto3" json:"slug,omitempty"`
 	// The eye-catch the console uploaded, as a label carries one. Filled by the
 	// genre RPCs themselves; a genre listed on a series carries names only.

@@ -280,10 +280,11 @@ type UpdateGenreRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	// The name in `locale`. A locale the genre has no name in yet gets one.
-	// The slug is re-derived from the name a reader in the tenant's default
-	// locale is shown, so a save that changes that name can be refused with
-	// already_exists. The public_id does not move, so whatever addresses this
-	// genre keeps addressing it.
+	// A save that changes the name a reader in the tenant's default locale is
+	// shown re-derives the slug from it, and is refused with already_exists
+	// when another genre holds that slug; any other save keeps the slug. The
+	// public_id does not move, so whatever addresses this genre keeps
+	// addressing it.
 	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	// Replaces the whole eye-catch. Empty keeps the one the genre has.
 	EyeCatchImageData        []byte `protobuf:"bytes,4,opt,name=eye_catch_image_data,json=eyeCatchImageData,proto3" json:"eye_catch_image_data,omitempty"`
@@ -627,9 +628,7 @@ func (*DeleteGenreResponse) Descriptor() ([]byte, []int) {
 // deleted (failed_precondition), and a locale the genre has no name in is
 // not_found. The locale need not be one the tenant still offers, so a name
 // left in a language the site has stopped offering can still be deleted. The
-// slug is re-derived as UpdateGenre re-derives it, so a deletion that leaves
-// the default locale's reader a name another genre's slug holds is refused
-// with already_exists.
+// slug stays as it is.
 type DeleteGenreTranslationRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`

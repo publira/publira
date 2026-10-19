@@ -3293,8 +3293,7 @@ type Querier interface {
 	// NULL returns the episode to following its series.
 	UpdateEpisodePurchaseAvailabilityByIDForTenant(ctx context.Context, arg UpdateEpisodePurchaseAvailabilityByIDForTenantParams) error
 	// The slug is the caller's to derive, from the name genre_translation_for
-	// picks for the tenant default locale once the save's own translation is
-	// written.
+	// picks for the tenant default locale, when the save changed that name.
 	UpdateGenre(ctx context.Context, arg UpdateGenreParams) error
 	UpdateGenreDisplayOrder(ctx context.Context, arg UpdateGenreDisplayOrderParams) error
 	UpdateLabel(ctx context.Context, arg UpdateLabelParams) error

@@ -157,10 +157,11 @@ export type UpdateGenreRequest = Message<"publira.admin.v1.UpdateGenreRequest"> 
 
   /**
    * The name in `locale`. A locale the genre has no name in yet gets one.
-   * The slug is re-derived from the name a reader in the tenant's default
-   * locale is shown, so a save that changes that name can be refused with
-   * already_exists. The public_id does not move, so whatever addresses this
-   * genre keeps addressing it.
+   * A save that changes the name a reader in the tenant's default locale is
+   * shown re-derives the slug from it, and is refused with already_exists
+   * when another genre holds that slug; any other save keeps the slug. The
+   * public_id does not move, so whatever addresses this genre keeps
+   * addressing it.
    *
    * @generated from field: string name = 3;
    */
@@ -322,9 +323,7 @@ export const DeleteGenreResponseSchema: GenMessage<DeleteGenreResponse> = /*@__P
  * deleted (failed_precondition), and a locale the genre has no name in is
  * not_found. The locale need not be one the tenant still offers, so a name
  * left in a language the site has stopped offering can still be deleted. The
- * slug is re-derived as UpdateGenre re-derives it, so a deletion that leaves
- * the default locale's reader a name another genre's slug holds is refused
- * with already_exists.
+ * slug stays as it is.
  *
  * @generated from message publira.admin.v1.DeleteGenreTranslationRequest
  */

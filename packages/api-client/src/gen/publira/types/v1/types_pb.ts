@@ -445,9 +445,11 @@ export type Genre = Message<"publira.types.v1.Genre"> & {
 
   /**
    * Unique within the tenant, derived from the name a reader in the tenant's
-   * default locale is shown. It identifies that name rather than standing in
-   * for it: two genres cannot differ there by case or spacing alone. It does
-   * not change with the locale a read asks for.
+   * default locale is shown, by every save that changes that name. It
+   * identifies the name rather than standing in for it: no save can give two
+   * genres names that differ there by case or spacing alone. It does not
+   * change with the locale a read asks for, nor when the tenant changes its
+   * default locale.
    *
    * @generated from field: string slug = 3;
    */

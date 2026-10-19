@@ -1129,9 +1129,11 @@ class Genre extends $pb.GeneratedMessage {
   void clearName() => $_clearField(2);
 
   /// Unique within the tenant, derived from the name a reader in the tenant's
-  /// default locale is shown. It identifies that name rather than standing in
-  /// for it: two genres cannot differ there by case or spacing alone. It does
-  /// not change with the locale a read asks for.
+  /// default locale is shown, by every save that changes that name. It
+  /// identifies the name rather than standing in for it: no save can give two
+  /// genres names that differ there by case or spacing alone. It does not
+  /// change with the locale a read asks for, nor when the tenant changes its
+  /// default locale.
   @$pb.TagNumber(3)
   $core.String get slug => $_getSZ(2);
   @$pb.TagNumber(3)

@@ -613,12 +613,26 @@ func (s *adminServer) UpdateGenre(
 			return nil, err
 		}
 	}
+	shownBefore, err := s.genreDefaultLocaleName(txCtx, tenant.ID, current.ID)
+	if err != nil {
+		return nil, err
+	}
 	if err := s.upsertGenreTranslation(txCtx, tenant.ID, current.ID, code, normalized.name); err != nil {
 		return nil, err
 	}
-	slug, err := s.genreSlug(txCtx, tenant.ID, current.ID, current.Slug)
+	shownAfter, err := s.genreDefaultLocaleName(txCtx, tenant.ID, current.ID)
 	if err != nil {
 		return nil, err
+	}
+	// Only a save that renames the genre for a default-locale reader moves the
+	// slug. Re-deriving it on every save would refuse an unchanged one whenever
+	// a change of default locale has left another genre holding the slug its
+	// name now derives.
+	slug := current.Slug
+	if shownAfter != shownBefore {
+		if derived, err := catalogslug.FromName(shownAfter); err == nil {
+			slug = derived
+		}
 	}
 	if err := s.queriesFor(txCtx).UpdateGenre(txCtx, dbmodels.UpdateGenreParams{
 		ID:              current.ID,
@@ -830,20 +844,14 @@ func (s *adminServer) upsertGenreTranslation(txCtx context.Context, tenantID, ge
 	return nil
 }
 
-// genreSlug derives the slug a genre holds once its names are written: that of
-// the name a reader in the tenant default locale is shown. A name that holds
-// no letter or digit was written before names were checked for one, and keeps
-// the slug the genre has.
-func (s *adminServer) genreSlug(txCtx context.Context, tenantID, genreID uuid.UUID, current string) (string, error) {
+// genreDefaultLocaleName reads the name a reader in the tenant default locale
+// is shown, which is the one the slug is derived from.
+func (s *adminServer) genreDefaultLocaleName(txCtx context.Context, tenantID, genreID uuid.UUID) (string, error) {
 	name, err := s.queriesFor(txCtx).GetGenreDefaultLocaleName(txCtx, genreID)
 	if err != nil {
 		return "", s.internalDBError(txCtx, "failed to read the default locale name of a genre", err, "tenant_id", tenantID.String(), "genre_id", genreID.String())
 	}
-	slug, err := catalogslug.FromName(name)
-	if err != nil {
-		return current, nil
-	}
-	return slug, nil
+	return name, nil
 }
 
 func (s *adminServer) DeleteGenreTranslation(
@@ -892,21 +900,6 @@ func (s *adminServer) DeleteGenreTranslation(
 		}
 		if count <= 1 {
 			return nil, connect.NewError(connect.CodeFailedPrecondition, "a genre must keep at least one name")
-		}
-		// The deleted name may have been the one the slug was derived from.
-		slug, err := s.genreSlug(txCtx, tenant.ID, id, current.Slug)
-		if err != nil {
-			return nil, err
-		}
-		if err := queries.UpdateGenre(txCtx, dbmodels.UpdateGenreParams{
-			ID:              id,
-			Slug:            slug,
-			EyeCatchImageID: current.EyeCatchImageID,
-		}); err != nil {
-			if dberr.IsUniqueViolation(err) {
-				return nil, existingGenreNameError()
-			}
-			return nil, s.internalDBError(ctx, "failed to update genre slug after translation deletion", err, "tenant_id", tenant.ID.String(), "genre_id", id.String())
 		}
 		return genreRevalidateTags(tenant.ID.String()), nil
 	}); err != nil {

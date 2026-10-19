@@ -49,10 +49,11 @@ message UpdateGenreRequest {
   reserved 2;
   reserved "public_id";
   // The name in `locale`. A locale the genre has no name in yet gets one.
-  // The slug is re-derived from the name a reader in the tenant's default
-  // locale is shown, so a save that changes that name can be refused with
-  // already_exists. The public_id does not move, so whatever addresses this
-  // genre keeps addressing it.
+  // A save that changes the name a reader in the tenant's default locale is
+  // shown re-derives the slug from it, and is refused with already_exists
+  // when another genre holds that slug; any other save keeps the slug. The
+  // public_id does not move, so whatever addresses this genre keeps
+  // addressing it.
   string name = 3;
   // Replaces the whole eye-catch. Empty keeps the one the genre has.
   bytes eye_catch_image_data = 4;
@@ -104,9 +105,7 @@ message DeleteGenreResponse {}
 // deleted (failed_precondition), and a locale the genre has no name in is
 // not_found. The locale need not be one the tenant still offers, so a name
 // left in a language the site has stopped offering can still be deleted. The
-// slug is re-derived as UpdateGenre re-derives it, so a deletion that leaves
-// the default locale's reader a name another genre's slug holds is refused
-// with already_exists.
+// slug stays as it is.
 message DeleteGenreTranslationRequest {
   publira.types.v1.TenantContext tenant = 1;
   // The genre's primary key (Genre.id).
