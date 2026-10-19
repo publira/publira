@@ -7,6 +7,7 @@ import 'package:publira/models/series_classification.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/router.dart';
 import 'package:publira/screens/ranking_screen.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
@@ -389,6 +390,46 @@ void main() {
         find.byKey(const ValueKey('series-detail-body')),
       );
       expect(router.state.uri.path, AppRoutes.seriesDetailPath('fantasy-30'));
+    });
+
+    testWidgets('sets the genre in the language its name came in, and the '
+        'rest of the title in the app\'s', (tester) async {
+      // The genre has no English name, so the tenant's default one is served.
+      catalog.genresByLocale['en'] = const [
+        PublishedGenre(
+          id: 'SeedGENRAAA1',
+          name: 'ファンタジー',
+          locale: 'ja',
+          seriesCount: 30,
+        ),
+      ];
+      await pumpApp(
+        tester,
+        location: AppRoutes.rankingPath(genreId: fantasy.id),
+        size: phoneSize,
+      );
+      await pumpUntilFound(tester, find.text('ファンタジー ranking'));
+
+      final title = tester
+          .widget<AutospacedText>(
+            find.ancestor(
+              of: find.text('ファンタジー ranking'),
+              matching: find.byType(AutospacedText),
+            ),
+          )
+          .textSpan!;
+      final spans = <(String?, Locale?)>[];
+      title.visitChildren((span) {
+        if (span is TextSpan && span.text != null) {
+          spans.add((span.text, span.locale));
+        }
+        return true;
+      });
+      expect(spans, [
+        ('', null),
+        ('ファンタジー', const Locale('ja')),
+        (' ranking', null),
+      ]);
     });
 
     testWidgets('keeps the genre across a switch of period', (tester) async {
