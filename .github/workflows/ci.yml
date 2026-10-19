@@ -364,6 +364,10 @@ jobs:
               - '.dockerignore'
               - 'scripts/check-deploy-compose.sh'
               - 'scripts/smoke-deploy-compose.sh'
+              # The check runs the .env generator against .env.example.
+              - 'server/cmd/publiractl/**'
+              - 'server/internal/deployenv/**'
+              - '.github/actions/go-setup/**'
               - 'Taskfile.yaml'
               - '.github/workflows/ci.yml'
               - 'scripts/ci-plan-jobs.sh'
@@ -1549,6 +1553,12 @@ jobs:
         uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
         with:
           version: ${{ env.TASK_VERSION }}
+
+      # The check runs `publiractl env generate` from the checkout.
+      - name: Setup / Go
+        uses: ./.github/actions/go-setup
+        with:
+          build-cache: build
 
       - name: Validate / Compose config
         run: task deploy:check

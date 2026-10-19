@@ -239,26 +239,46 @@ type Tester struct {
 
 // Test runs the connection test against p's settings.
 func (t Tester) Test(ctx context.Context, q Querier, actor auditlog.PlatformActor, p TestParams) ([]storagesettings.Check, error) {
-	if err := storagesettings.Validate(p.Settings); err != nil {
+	settings, credentials, err := t.resolve(ctx, q, p)
+	if err != nil {
 		return nil, err
+	}
+	return t.run(ctx, actor, settings, credentials)
+}
+
+// CreateBucket has creator create p's bucket when the store answers that it
+// does not exist, signing as [Tester.Test] would, and reports whether it did.
+func (t Tester) CreateBucket(ctx context.Context, q Querier, creator storagesettings.BucketCreator, p TestParams) (bool, error) {
+	settings, credentials, err := t.resolve(ctx, q, p)
+	if err != nil {
+		return false, err
+	}
+	return creator.CreateBucket(ctx, settings, credentials)
+}
+
+// resolve is p's settings and the credential they are signed with, which is
+// p's secret applied over the saved one.
+func (t Tester) resolve(ctx context.Context, q Querier, p TestParams) (storagesettings.Settings, storagesettings.Credentials, error) {
+	if err := storagesettings.Validate(p.Settings); err != nil {
+		return storagesettings.Settings{}, storagesettings.Credentials{}, err
 	}
 	saved, _, err := Get(ctx, q)
 	if err != nil {
-		return nil, err
+		return storagesettings.Settings{}, storagesettings.Credentials{}, err
 	}
 	existingEncrypted := saved.SecretAccessKeyEncrypted.String
 	if err := storagesettings.ValidateKeptSecret(saved.AccessKeyID.String, p.AccessKeyID, p.SecretMode, existingEncrypted != ""); err != nil {
-		return nil, err
+		return storagesettings.Settings{}, storagesettings.Credentials{}, err
 	}
 	secret, err := storagesettings.ResolveSecretForTest(existingEncrypted, p.SecretMode, p.SecretAccessKey, t.Encryptor)
 	if err != nil {
-		return nil, secretError(err)
+		return storagesettings.Settings{}, storagesettings.Credentials{}, secretError(err)
 	}
 	credentials := storagesettings.NormalizeCredentials(storagesettings.Credentials{AccessKeyID: p.AccessKeyID, SecretAccessKey: secret})
 	if err := storagesettings.ValidateCredentialPair(credentials.AccessKeyID, credentials.SecretAccessKey != ""); err != nil {
-		return nil, err
+		return storagesettings.Settings{}, storagesettings.Credentials{}, err
 	}
-	return t.run(ctx, actor, storagesettings.Normalize(p.Settings), credentials)
+	return storagesettings.Normalize(p.Settings), credentials, nil
 }
 
 // TestSaved runs the connection test against the saved settings, signing as

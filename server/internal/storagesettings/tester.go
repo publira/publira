@@ -41,6 +41,14 @@ type Tester interface {
 	TestConnection(ctx context.Context, settings Settings, credentials Credentials) ([]Check, error)
 }
 
+// BucketCreator creates the bucket a configuration addresses when the store
+// answers that it does not exist, reporting whether it did. A bucket that
+// exists, or that the store will not say exists, is left to the connection
+// test to judge, so only a refused creation is an error.
+type BucketCreator interface {
+	CreateBucket(ctx context.Context, settings Settings, credentials Credentials) (bool, error)
+}
+
 // Failed answers the first check that did not succeed, which is the one a
 // failure is recorded and reported as.
 func Failed(checks []Check) (Check, bool) {

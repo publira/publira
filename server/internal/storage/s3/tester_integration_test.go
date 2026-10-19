@@ -2,7 +2,9 @@ package s3_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/storage"
@@ -104,5 +106,55 @@ func TestConnectionTesterReportsACredentialTheStoreRefused_Integration(t *testin
 	}
 	if got := reasons(checks)[storagesettings.OperationPutObject]; got != rpcerrors.ReasonStorageTestCredentials {
 		t.Fatalf("the write was refused with %q, want %q", got, rpcerrors.ReasonStorageTestCredentials)
+	}
+}
+
+func TestConnectionTesterCreatesABucketThatIsNotThere_Integration(t *testing.T) {
+	env := testutil.StartRustFS(t)
+	env.CreateBucket(t)
+	tester := s3.NewConnectionTester()
+
+	created, err := tester.CreateBucket(context.Background(), rustFSSettings(env), rustFSCredentials(env))
+	if err != nil || created {
+		t.Fatalf("CreateBucket(existing) = %t, %v, want false and no error", created, err)
+	}
+
+	settings := rustFSSettings(env)
+	// The store is shared by every test of the package, so the name is the
+	// run's own.
+	settings.Bucket = fmt.Sprintf("publira-created-%d", time.Now().UnixNano())
+	created, err = tester.CreateBucket(context.Background(), settings, rustFSCredentials(env))
+	if err != nil || !created {
+		t.Fatalf("CreateBucket(missing) = %t, %v, want true and no error", created, err)
+	}
+	checks, err := tester.TestConnection(context.Background(), settings, rustFSCredentials(env))
+	if err != nil {
+		t.Fatalf("TestConnection: %v", err)
+	}
+	if failed, ok := storagesettings.Failed(checks); ok {
+		t.Fatalf("the created bucket refused %v with %q", failed.Operation, failed.Reason)
+	}
+}
+
+// A credential the store refuses is the connection test's to report, which
+// names it, so CreateBucket neither creates anything nor fails over it.
+func TestConnectionTesterLeavesARefusedCredentialToTheTest_Integration(t *testing.T) {
+	env := testutil.StartRustFS(t)
+	settings := rustFSSettings(env)
+	settings.Bucket = "publira-not-created"
+
+	created, err := s3.NewConnectionTester().CreateBucket(context.Background(), settings, storagesettings.Credentials{
+		AccessKeyID:     env.AccessKey,
+		SecretAccessKey: "not-the-secret-this-store-signs-with",
+	})
+	if err != nil || created {
+		t.Fatalf("CreateBucket = %t, %v, want false and no error", created, err)
+	}
+	checks, err := s3.NewConnectionTester().TestConnection(context.Background(), settings, rustFSCredentials(env))
+	if err != nil {
+		t.Fatalf("TestConnection: %v", err)
+	}
+	if got := reasons(checks)[storagesettings.OperationPutObject]; got != rpcerrors.ReasonStorageTestBucketNotFound {
+		t.Fatalf("the write was refused with %q, want %q", got, rpcerrors.ReasonStorageTestBucketNotFound)
 	}
 }

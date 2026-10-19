@@ -29,6 +29,9 @@ func startSetupEnv(t *testing.T) *setupEnv {
 	// The links asserted below are on the default origin, whatever the shell
 	// running the tests exports.
 	t.Setenv(tenantorigin.SchemeEnv, "")
+	// The shared database is migrated already, and the database steps would
+	// run against whatever the shell running the tests exports.
+	t.Setenv("PUBLIRA_DB_URL", "")
 	pg := startPlatformDB(t)
 	setEncryptionKeys(t)
 	s3 := testutil.StartRustFS(t)

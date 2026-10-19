@@ -167,7 +167,7 @@ Implementation:
 | `Test / E2E Search` | `task e2e:search`: the same lifecycle with OpenSearch in the stack and the server on it, running the catalog search and search settings specs alone. On `main`, saves the same Playwright browser cache when it missed. | [`e2e/README.md`](../../e2e/README.md#catalog-search-on-opensearch) |
 | `Test / Bootstrap` | `task e2e:bootstrap`: empty volume, `task setup`, DB restart, `task dev`. | [`e2e/bootstrap/README.md`](../../e2e/bootstrap/README.md) |
 | `Test / Routing` | `task e2e:routing`: host, `/api`, and `/images` connectivity on Traefik, nginx, and Caddy. | [`e2e/routing/README.md`](../../e2e/routing/README.md) |
-| `Test / Deploy` | `task deploy:check`, then `task docker:verify:full` and `task deploy:smoke`: the deployment Compose file brought up from every image, set up, and reached through its edge, including an image resized through libvips. | [`infra/deploy/README.md`](../../infra/deploy/README.md) |
+| `Test / Deploy` | `task deploy:check`, which also runs the checkout's `publiractl env generate` against `.env.example`, then `task docker:verify:full` and `task deploy:smoke`: the deployment Compose file brought up from every image, set up, and reached through its edge, including an image resized through libvips. | [`infra/deploy/README.md`](../../infra/deploy/README.md) |
 | `Build` | `pnpm build` for Web and `task server:build` for Go; on `main`, saves the `build` Go build cache every job that builds the server restores. | This file |
 | `Cache / Prune Go build` | On `main` only: deletes every Go build cache entry on `main` but the newest of each kind. | This file |
 | `Cache / Prune Playwright browsers` | On `main` only: deletes every Playwright browser cache entry on `main` but the newest. | This file |
@@ -216,7 +216,7 @@ For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jo
 | `Test / E2E Search` | The OpenSearch backend alone: `server/internal/catalogsearch/**`, `server/internal/catalogindex/**`, `server/internal/platformsearch/**`, the outbox handler, the search handlers and the `publiractl search` command, `db/query/catalog_index.sql`, `db/query/platform_search.sql`, `infra/docker/opensearch/**`, the E2E compose file, lifecycle scripts, Taskfile, Playwright configuration, the catalog search and search settings specs with `e2e/src/**` and the Platform Console's search screen, and `db/seeds/**` |
 | `Test / Bootstrap` | `compose.yaml`, db, bootstrap, apps, packages, server, Taskfile, build inputs, storage init and seed |
 | `Test / Routing` | `compose.yaml`, `.devcontainer/**`, `infra/proxy/**`, `e2e/routing/**` |
-| `Test / Deploy` | `infra/deploy/**`, `infra/proxy/traefik/**`, `infra/docker/**`, `.dockerignore`, its two scripts, `Taskfile.yaml` |
+| `Test / Deploy` | `infra/deploy/**`, `infra/proxy/traefik/**`, `infra/docker/**`, `.dockerignore`, its two scripts, `Taskfile.yaml`, and `server/cmd/publiractl/**` and `server/internal/deployenv/**`, whose `.env` generator the check runs |
 | `Build` | apps, packages, server, and build inputs |
 | `Docker` | The role mapping in [Docker CI execution strategy](../../infra/docker/README.md#docker-ci-execution-strategy) |
 

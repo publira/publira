@@ -90,6 +90,60 @@ func (t *ConnectionTester) TestConnection(
 	return checks, nil
 }
 
+// CreateBucket creates the bucket settings address when the store answers a
+// HEAD of it with not found, in the region settings name, as
+// [storagesettings.BucketCreator].
+func (t *ConnectionTester) CreateBucket(
+	ctx context.Context,
+	settings storagesettings.Settings,
+	credentials storagesettings.Credentials,
+) (bool, error) {
+	client, err := NewClient(ctx, Config{
+		Bucket:          settings.Bucket,
+		Region:          settings.Region,
+		Endpoint:        settings.Endpoint,
+		AccessKeyID:     credentials.AccessKeyID,
+		SecretAccessKey: credentials.SecretAccessKey,
+		ForcePathStyle:  settings.ForcePathStyle,
+	})
+	if err != nil {
+		return false, err
+	}
+	opCtx, cancel := context.WithTimeout(ctx, t.timeout)
+	defer cancel()
+
+	_, err = client.HeadBucket(opCtx, &s3.HeadBucketInput{Bucket: aws.String(settings.Bucket)})
+	if err == nil || TestFailureReason(err) != rpcerrors.ReasonStorageTestBucketNotFound {
+		return false, nil
+	}
+	input := &s3.CreateBucketInput{Bucket: aws.String(settings.Bucket)}
+	// us-east-1 is the one region S3 refuses as a location constraint, since
+	// it is where a bucket created without one already is.
+	if region := strings.TrimSpace(settings.Region); region != "" && region != "us-east-1" {
+		input.CreateBucketConfiguration = &s3types.CreateBucketConfiguration{LocationConstraint: s3types.BucketLocationConstraint(region)}
+	}
+	if _, err := client.CreateBucket(opCtx, input); err != nil {
+		var owned *s3types.BucketAlreadyOwnedByYou
+		if errors.As(err, &owned) {
+			return false, nil
+		}
+		return false, fmt.Errorf("the object store refused to create bucket %s (%s)", settings.Bucket, createFailure(err))
+	}
+	return true, nil
+}
+
+// createFailure names why a bucket was not created by the store's error code,
+// such as BucketAlreadyExists for a name another account holds, and otherwise
+// as [TestFailureReason] classifies it. The provider's message is left out for
+// the reason TestFailureReason leaves it out.
+func createFailure(err error) string {
+	var apiErr smithy.APIError
+	if errors.As(err, &apiErr) && apiErr.ErrorCode() != "" {
+		return apiErr.ErrorCode()
+	}
+	return TestFailureReason(err)
+}
+
 func (t *ConnectionTester) putProbe(ctx context.Context, client *s3.Client, bucket, key string) error {
 	opCtx, cancel := context.WithTimeout(ctx, t.timeout)
 	defer cancel()

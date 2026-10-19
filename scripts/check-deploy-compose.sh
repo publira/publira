@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # check-deploy-compose.sh — Fail when infra/deploy/compose.yaml does not render,
-# or when its .env.example does not list exactly the variables it reads.
+# when its .env.example does not list exactly the variables it reads, or when
+# the .env `publiractl env generate` writes from it leaves a secret empty.
 #
 # Rendering runs with every profile active and every empty value in
 # .env.example filled in, so a required variable the example leaves out fails
-# here instead of on an operator's host. CI runs the same script in
-# `Test / Deploy`.
+# here instead of on an operator's host. The generated .env is rendered again
+# with only the values an operator chooses filled in, so a secret the example
+# gains without an entry in the generator fails here too. CI runs the same
+# script in `Test / Deploy`.
 set -euo pipefail
 
 repo_root="$(git rev-parse --show-toplevel)"
@@ -50,7 +53,27 @@ if ! COMPOSE_PROFILES=web-platform,email-renderer,publiractl \
   failed=1
 fi
 
+# The generator writes every secret the example lists, and the operator fills
+# in the image tag and the hosts and nothing else that `docker compose`
+# requires. A secret is named for what it is, which is how one that only an
+# optional process reads, and that rendering cannot require, is found.
+go -C server run ./cmd/publiractl env generate \
+  --template "${repo_root}/${env_example}" --output "${work}/generated.env" > /dev/null
+secret_names="$(grep -E '_(PASSWORD|SECRET|TOKEN|KEY|KEYS)$' "${work}/listed" || true)"
+for name in ${secret_names}; do
+  if ! grep -qE "^${name}=.+" "${work}/generated.env"; then
+    echo "publiractl env generate leaves ${name} empty; add it to deployenv.Secrets." >&2
+    failed=1
+  fi
+done
+sed -i -E 's/^(PUBLIRA_IMAGE_TAG|PUBLIRA_EDGE_SITE_HOSTS|PUBLIRA_EDGE_ADMIN_HOSTS)=$/\1=placeholder/' "${work}/generated.env"
+if ! COMPOSE_PROFILES=web-platform,email-renderer,publiractl \
+  docker compose -f "${compose_file}" --env-file "${work}/generated.env" config --quiet; then
+  echo "${compose_file} does not render with the .env publiractl env generate writes and the image tag and hosts filled in." >&2
+  failed=1
+fi
+
 if [ "${failed}" -ne 0 ]; then
   exit 1
 fi
-echo "${compose_file} renders, and ${env_example} lists every variable it reads."
+echo "${compose_file} renders, ${env_example} lists every variable it reads, and publiractl env generate fills in every secret."

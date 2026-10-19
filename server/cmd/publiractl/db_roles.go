@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"os"
@@ -19,59 +20,35 @@ var dbRolesCommand = command{
 	setup:   setupDBRoles,
 }
 
-// roleSecret is the password flag pair of one login role, spelled after the
-// role without its publira_ prefix: publira_content_stats is
-// --content-stats-password-file.
-func roleSecret(f *commandFlags, role string) *secret {
-	name := strings.ReplaceAll(strings.TrimPrefix(role, "publira_"), "_", "-") + "-password"
-	return f.Secret(name, role+" password")
+// roleSecrets declares the password flags of every login role, spelled after
+// the role without its publira_ prefix and after prefix: publira_content_stats
+// is --content-stats-password-file in db roles, which gives no prefix.
+func roleSecrets(f *commandFlags, prefix string) map[string]*secret {
+	secrets := make(map[string]*secret, len(dbroles.LoginRoles))
+	for _, role := range dbroles.LoginRoles {
+		name := prefix + strings.ReplaceAll(strings.TrimPrefix(role, "publira_"), "_", "-") + "-password"
+		secrets[role] = f.Secret(name, role+" password")
+	}
+	return secrets
 }
 
 func setupDBRoles(f *commandFlags) func(context.Context, *commandEnv) error {
-	secrets := make(map[string]*secret, len(dbroles.LoginRoles))
-	for _, role := range dbroles.LoginRoles {
-		secrets[role] = roleSecret(f, role)
-	}
+	secrets := roleSecrets(f, "")
 	return func(ctx context.Context, env *commandEnv) error {
 		dbURL := strings.TrimSpace(os.Getenv("PUBLIRA_DB_URL"))
 		if dbURL == "" {
 			return errors.New("PUBLIRA_DB_URL is not set; set it to the superuser connection that owns the schema")
-		}
-		dir, err := resolveRolesDir()
-		if err != nil {
-			return fmt.Errorf("find the role definitions: %w", err)
 		}
 		db, err := sqldb.Open(dbURL)
 		if err != nil {
 			return err
 		}
 		defer db.Close() //nolint:errcheck
-
-		missing, err := dbroles.Missing(ctx, db)
+		passwords, err := rolePasswords(ctx, db, env.console, env.console.isTerminal(), secrets)
 		if err != nil {
 			return err
 		}
-		// A role that does not exist yet is asked for; one that does keeps its
-		// password unless a flag gives it a new one.
-		passwords := map[string]string{}
-		for _, role := range dbroles.LoginRoles {
-			s := secrets[role]
-			if !s.given() {
-				if !slices.Contains(missing, role) {
-					continue
-				}
-				if !env.console.isTerminal() {
-					return &missingValueError{flags: s.flags()}
-				}
-			}
-			password, err := s.read(env.console)
-			if err != nil {
-				return err
-			}
-			passwords[role] = password
-		}
-
-		result, err := dbroles.Apply(ctx, db, dir, passwords)
+		result, err := applyRoles(ctx, db, passwords)
 		if err != nil {
 			return err
 		}
@@ -89,6 +66,44 @@ func setupDBRoles(f *commandFlags) func(context.Context, *commandEnv) error {
 		}
 		return nil
 	}
+}
+
+// rolePasswords reads the passwords secrets give. A role that does not exist
+// yet needs one, and is asked for where interactive allows it; one that does
+// keeps its password unless its flag gives it a new one.
+func rolePasswords(ctx context.Context, db *sql.DB, con console, interactive bool, secrets map[string]*secret) (map[string]string, error) {
+	missing, err := dbroles.Missing(ctx, db)
+	if err != nil {
+		return nil, err
+	}
+	passwords := map[string]string{}
+	for _, role := range dbroles.LoginRoles {
+		s := secrets[role]
+		if !s.given() {
+			if !slices.Contains(missing, role) {
+				continue
+			}
+			if !interactive {
+				return nil, &missingValueError{flags: s.flags()}
+			}
+		}
+		password, err := s.read(con)
+		if err != nil {
+			return nil, err
+		}
+		passwords[role] = password
+	}
+	return passwords, nil
+}
+
+// applyRoles applies the role definitions resolveRolesDir finds on db, the
+// connection that owns the schema, and sets passwords.
+func applyRoles(ctx context.Context, db *sql.DB, passwords map[string]string) (dbroles.Result, error) {
+	dir, err := resolveRolesDir()
+	if err != nil {
+		return dbroles.Result{}, fmt.Errorf("find the role definitions: %w", err)
+	}
+	return dbroles.Apply(ctx, db, dir, passwords)
 }
 
 // resolveRolesDir returns the roles directory beside the binary, which is where

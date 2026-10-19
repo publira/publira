@@ -232,6 +232,36 @@ services:
       postgres:
         condition: service_healthy
 
+  # `publiractl setup` with what this file already knows given as flags, run
+  # by hand: `docker compose run --rm setup`, followed by any other flag of
+  # `setup`. It applies the migrations and the roles with the passwords above,
+  # creates the bucket in RustFS, and asks on the terminal for the rest. Run
+  # again, it changes nothing that is already set up.
+  setup:
+    extends: publiractl
+    entrypoint:
+      - /app/publiractl
+      - setup
+      - --db-public-password-file=/run/secrets/public-db-password
+      - --db-admin-password-file=/run/secrets/admin-db-password
+      - --db-platform-password-file=/run/secrets/platform-db-password
+      - --db-outbox-password-file=/run/secrets/outbox-db-password
+      - --db-ticker-password-file=/run/secrets/ticker-db-password
+      - --db-content-stats-password-file=/run/secrets/content-stats-db-password
+      - --bucket=publira
+      - --region=us-east-1
+      - --endpoint=http://rustfs:9000
+      - --force-path-style
+      - --public-base-url=
+      - --access-key-id=${PUBLIRA_RUSTFS_ACCESS_KEY:?}
+      - --secret-access-key-file=/run/secrets/rustfs-secret-key
+      - --create-bucket
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rustfs:
+        condition: service_healthy
+
 secrets:
   public-db-password:
     environment: PUBLIRA_PUBLIC_DB_PASSWORD
