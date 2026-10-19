@@ -1,23 +1,35 @@
--- Scenario: an episode sold both as a rental and as a permanent copy
+-- Scenario: a series sold by the episode, by the volume, and as a whole
 --
 -- `storefront.checkout.spec.ts` takes the tenant's payments through the E2E
--- stack's Stripe stand-in from the console, which is what lets the gate sell
--- at all, then has one reader rent the episode and another buy it through
--- Checkout. The payment settings decide whether the storefront sells the
--- episode, so no tenant another suite reads can absorb them.
+-- stack's Stripe stand-in from the console, which is what lets the site sell
+-- at all, then has its readers buy through Checkout: one rents the first
+-- episode and another buys it at the gate, a third buys the volume holding
+-- episodes 2 and 3 from the series page, and a fourth buys every episode at
+-- the series' bundle discount. The payment settings decide whether the
+-- storefront sells anything, so no tenant another suite reads can absorb them.
 --
 -- Applying it is also how the suite starts over: the tenant is deleted and
--- written again, which takes its payment settings and both sales with it, so
--- the two readers hold nothing again. Sales, the views the readers' reading
--- recorded, and the catalog restrict the deletes that would reach them from
--- the tenant, so they go first.
+-- written again, which takes its payment settings and every sale with it, so
+-- the readers hold nothing again. Sales, the bundles they paid for, the views
+-- the readers' reading recorded, the volumes, and the catalog restrict the
+-- deletes that would reach them from the tenant, so they go first.
 -- public_id values are hard-coded in e2e/src/scenarios/episode-rentals.ts.
 --   tenant   RntlTNNTAAA1 (rentals.localhost / admin.rentals.localhost)
 --   admin    RntlADMNAAA1 (rentals-admin@example.com)
---   readers  RntlMMBRAAA1 (Rental Renter), RntlMMBRAAA2 (Rental Buyer)
---   series   RntlSERSAAA1, episode RntlEPSDAAA1 (300 yen, or 100 for 48 hours)
+--   readers  RntlMMBRAAA1 (Rental Renter), RntlMMBRAAA2 (Rental Buyer),
+--            RntlMMBRAAA3 (Volume Buyer), RntlMMBRAAA4 (Remainder Buyer)
+--   series   RntlSERSAAA1, 10% off the rest of it in one checkout
+--   episodes RntlEPSDAAA1 (300 yen, or 100 for 48 hours),
+--            RntlEPSDAAA2 to RntlEPSDAAA4 (200 yen each)
+--   volume   RntlVOLMAAA1, episodes 2 and 3 for 350 yen
 
 DELETE FROM purchases
+WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'RntlTNNTAAA1');
+
+DELETE FROM series_bundles
+WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'RntlTNNTAAA1');
+
+DELETE FROM volumes
 WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'RntlTNNTAAA1');
 
 DELETE FROM content_events
@@ -62,8 +74,8 @@ VALUES (
 \set seed_tenant RntlTNNTAAA1
 \ir ../creator_roles.sql
 
--- The admin and the two readers. The password hash is the same as `adminpass`
--- for the admin and `memberpass` for the readers.
+-- The admin and the four readers. The password hash is the same as
+-- `adminpass` for the admin and `memberpass` for the readers.
 INSERT INTO users (
     id,
     tenant_id,
@@ -106,6 +118,20 @@ CROSS JOIN (
             'rental-buyer@example.com',
             '$2a$10$yVRuW12eeOkFrL7mrE3g4u1vuln1qwz9NVMWzolO13RqeMtwAb7ma',
             'Rental Buyer'
+        ),
+        (
+            '018f1100-0002-7000-8000-000000000004'::uuid,
+            'RntlMMBRAAA3',
+            'volume-buyer@example.com',
+            '$2a$10$yVRuW12eeOkFrL7mrE3g4u1vuln1qwz9NVMWzolO13RqeMtwAb7ma',
+            'Volume Buyer'
+        ),
+        (
+            '018f1100-0002-7000-8000-000000000005'::uuid,
+            'RntlMMBRAAA4',
+            'remainder-buyer@example.com',
+            '$2a$10$yVRuW12eeOkFrL7mrE3g4u1vuln1qwz9NVMWzolO13RqeMtwAb7ma',
+            'Remainder Buyer'
         )
 ) AS u(id, public_id, email, password_hash, name)
 WHERE t.public_id = 'RntlTNNTAAA1';
@@ -141,26 +167,34 @@ FROM series s
 JOIN tenants t ON t.id = s.tenant_id
 WHERE s.public_id = 'RntlSERSAAA1';
 
+-- What a checkout of the rest of the series takes off the sum of its
+-- episodes' prices.
+INSERT INTO series_listings (series_id, bundle_discount_percent, tenant_id)
+SELECT s.id, 10, s.tenant_id
+FROM series s
+WHERE s.public_id = 'RntlSERSAAA1';
+
 INSERT INTO episodes (id, series_id, public_id, order_index, tenant_id)
 SELECT
-    '018f1100-0006-7000-8000-000000000001'::uuid,
+    ('018f1100-0006-7000-8000-' || lpad(episode_number::text, 12, '0'))::uuid,
     s.id,
-    'RntlEPSDAAA1',
-    1,
+    'RntlEPSDAAA' || episode_number,
+    episode_number,
     s.tenant_id
 FROM series s
+CROSS JOIN generate_series(1, 4) AS episode_number
 WHERE s.public_id = 'RntlSERSAAA1';
 
 INSERT INTO episode_translations (id, episode_id, tenant_id, locale, title)
 SELECT
-    '018f1100-0007-7000-8000-000000000001'::uuid,
+    ('018f1100-0007-7000-8000-' || lpad(e.order_index::text, 12, '0'))::uuid,
     e.id,
     e.tenant_id,
     t.default_locale,
-    'Rental Episode 001-01'
+    'Rental Episode 001-' || lpad(e.order_index::text, 2, '0')
 FROM episodes e
 JOIN tenants t ON t.id = e.tenant_id
-WHERE e.public_id = 'RntlEPSDAAA1';
+WHERE t.public_id = 'RntlTNNTAAA1';
 
 -- The permanent copy for 300 yen, which opens the episode for good, and the
 -- rental for 100, which opens it for 48 hours.
@@ -184,19 +218,71 @@ SELECT
 FROM episodes e
 WHERE e.public_id = 'RntlEPSDAAA1';
 
--- Three pages, so the viewer has something to draw for a reader the checkout
--- opened the episode to. The objects are uploaded by `e2e/scripts/upload-episode-pages.sh`,
--- which reads these object keys back out of the database, so the two cannot
--- drift apart.
+-- The later episodes are sold only to keep, for 200 yen each.
+INSERT INTO episode_listings (
+    episode_id,
+    price,
+    status,
+    published_at,
+    tenant_id
+)
+SELECT
+    e.id,
+    200,
+    'published',
+    '2026-01-01T00:00:00Z'::timestamptz,
+    e.tenant_id
+FROM episodes e
+WHERE e.public_id IN ('RntlEPSDAAA2', 'RntlEPSDAAA3', 'RntlEPSDAAA4');
+
+-- Episodes 2 and 3 together for 350 yen, 50 less than buying them one by one.
+INSERT INTO volumes (
+    id,
+    tenant_id,
+    public_id,
+    series_id,
+    title,
+    order_index,
+    price,
+    is_published,
+    published_at
+)
+SELECT
+    '018f1100-000a-7000-8000-000000000001'::uuid,
+    s.tenant_id,
+    'RntlVOLMAAA1',
+    s.id,
+    'Rental Volume 1',
+    1,
+    350,
+    true,
+    '2026-01-01T00:00:00Z'::timestamptz
+FROM series s
+WHERE s.public_id = 'RntlSERSAAA1';
+
+INSERT INTO volume_episodes (tenant_id, volume_id, episode_id, "position")
+SELECT
+    e.tenant_id,
+    '018f1100-000a-7000-8000-000000000001'::uuid,
+    e.id,
+    e.order_index - 2
+FROM episodes e
+WHERE e.public_id IN ('RntlEPSDAAA2', 'RntlEPSDAAA3');
+
+-- Three pages of each episode, so the viewer has something to draw for a
+-- reader the checkout opened it to. The objects are uploaded by
+-- `e2e/scripts/upload-episode-pages.sh`, which reads these object keys back
+-- out of the database, so the two cannot drift apart.
 INSERT INTO episode_images (id, tenant_id, episode_id, display_order)
 SELECT
-    ('018f1100-0008-7000-8000-' || lpad(page_number::text, 12, '0'))::uuid,
+    ('018f1100-0008-7000-8000-' || lpad((e.order_index * 100 + page_number)::text, 12, '0'))::uuid,
     e.tenant_id,
     e.id,
     page_number
 FROM episodes e
+JOIN tenants t ON t.id = e.tenant_id
 CROSS JOIN generate_series(1, 3) AS page_number
-WHERE e.public_id = 'RntlEPSDAAA1';
+WHERE t.public_id = 'RntlTNNTAAA1';
 
 INSERT INTO episode_image_variants (
     id,
@@ -211,12 +297,14 @@ INSERT INTO episode_image_variants (
     height
 )
 SELECT
-    ('018f1100-0009-7000-8000-' || lpad(page_number::text, 12, '0'))::uuid,
+    ('018f1100-0009-7000-8000-' || lpad((e.order_index * 100 + page_number)::text, 12, '0'))::uuid,
     e.tenant_id,
-    ('018f1100-0008-7000-8000-' || lpad(page_number::text, 12, '0'))::uuid,
+    ('018f1100-0008-7000-8000-' || lpad((e.order_index * 100 + page_number)::text, 12, '0'))::uuid,
     'original',
     's3',
-    'tenants/RntlTNNTAAA1/episodes/RntlEPSDAAA1/page-'
+    'tenants/RntlTNNTAAA1/episodes/'
+        || e.public_id
+        || '/page-'
         || lpad(page_number::text, 2, '0')
         || '-original.jpg',
     'image/jpeg',
@@ -225,5 +313,6 @@ SELECT
     1050,
     1500
 FROM episodes e
+JOIN tenants t ON t.id = e.tenant_id
 CROSS JOIN generate_series(1, 3) AS page_number
-WHERE e.public_id = 'RntlEPSDAAA1';
+WHERE t.public_id = 'RntlTNNTAAA1';

@@ -4263,7 +4263,9 @@
       "rental_time_left": "残り{$duration}",
       "shelf_description": "現在閲覧できる購入済みエピソードです。",
       "shelf_heading": "本棚",
-      "title": "購入済み一覧"
+      "title": "購入済み一覧",
+      "open_series": "シリーズを開く",
+      "series_bundle_title": "残りの{$count :integer}話"
     },
     "my": {
       "creators_empty": "公開中シリーズに紐づく著者はまだいません。",
@@ -4482,7 +4484,19 @@
       },
       "wait_free_rule": "待てば無料：無料チケット1枚で有料のエピソードを1話、{$access}読めます。次のチケットは使ってから{$recharge}後に使えるようになります。",
       "wait_free_excluded_note": "下の一覧で印の付いた最新のエピソードは、無料チケットでは読めません。",
-      "wait_free_excluded": "無料チケット対象外"
+      "wait_free_excluded": "無料チケット対象外",
+      "checkout_cancelled": "購入手続きをキャンセルしました。料金は発生していません。",
+      "checkout_error": "購入手続きを開始できませんでした。時間をおいて再試行してください。",
+      "checkout_success": "決済を確認しています。購入が反映されるとエピソードを読めるようになります。",
+      "purchase_state_failed": "購入済みのエピソードを確認できませんでした。時間をおいて再試行してください。",
+      "remainder_buy": "残りの{$count :integer}話を{$price}で購入",
+      "remainder_discount": "1話ずつ買うと{$list_price}のところ{$percent}オフ",
+      "remainder_error": "残りのエピソードの価格を表示できませんでした",
+      "volume_buy": "この巻を購入",
+      "volume_owned": "この巻のエピソードはすべて購入済みです",
+      "volumes_error": "巻を表示できませんでした",
+      "volumes_heading": "巻",
+      "volume_ownership_error": "所持している巻を確認できませんでした"
     },
     "share": {
       "action": "共有",

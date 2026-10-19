@@ -153,6 +153,75 @@ describe("catalog.getSeriesDetail", () => {
     });
   });
 
+  it("lists the volumes on sale in the tenant's order, each with the episodes it holds and its cover", async () => {
+    mockGetSeriesDetail.mockResolvedValueOnce({
+      episodes: [],
+      series: { publicId: "SERIES_001", title: "Night Train" },
+      volumes: [
+        {
+          episodeIds: ["EPISODE_ID_3"],
+          id: "VOLUME_ID_2",
+          orderIndex: 2,
+          price: 400,
+          publicId: "VOLUME_002",
+          title: "Volume 2",
+        },
+        {
+          coverImageVariants: [
+            {
+              contentType: "image/webp",
+              fileSizeBytes: 1200n,
+              height: 400,
+              label: "portrait-300",
+              url: "/images/volume.webp",
+              variantType: "portrait",
+              width: 300,
+            },
+          ],
+          episodeIds: ["EPISODE_ID_1", "EPISODE_ID_2"],
+          id: "VOLUME_ID_1",
+          orderIndex: 1,
+          price: 500,
+          publicId: "VOLUME_001",
+          title: "Volume 1",
+        },
+      ],
+    });
+
+    const result = await getSeriesDetail("TENANT_001", "SERIES_001", "en");
+
+    expect(result.ok && result.value?.volumes).toEqual([
+      {
+        coverImageVariants: [
+          {
+            contentType: "image/webp",
+            fileSizeBytes: 1200,
+            height: 400,
+            label: "portrait-300",
+            url: "/images/volume.webp",
+            variantType: "portrait",
+            width: 300,
+          },
+        ],
+        episodeIds: ["EPISODE_ID_1", "EPISODE_ID_2"],
+        id: "VOLUME_ID_1",
+        orderIndex: 1,
+        price: 500,
+        publicId: "VOLUME_001",
+        title: "Volume 1",
+      },
+      {
+        coverImageVariants: undefined,
+        episodeIds: ["EPISODE_ID_3"],
+        id: "VOLUME_ID_2",
+        orderIndex: 2,
+        price: 400,
+        publicId: "VOLUME_002",
+        title: "Volume 2",
+      },
+    ]);
+  });
+
   it("asks for the reader's locale and names the one each title was served in", async () => {
     mockGetSeriesDetail.mockResolvedValueOnce({
       episodes: [

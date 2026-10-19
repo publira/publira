@@ -4263,7 +4263,9 @@
       "rental_time_left": "{$duration} 남음",
       "shelf_description": "지금 읽을 수 있는 구매한 에피소드입니다.",
       "shelf_heading": "내 책장",
-      "title": "구매 목록"
+      "title": "구매 목록",
+      "open_series": "시리즈 열기",
+      "series_bundle_title": "남은 {$count :integer}화"
     },
     "my": {
       "creators_empty": "공개 중인 시리즈에 연결된 작가가 아직 없습니다.",
@@ -4482,7 +4484,19 @@
       },
       "wait_free_rule": "기다리면 무료: 무료 이용권 1장으로 유료 에피소드 1화를 {$access} 동안 읽을 수 있으며, 다음 이용권은 사용 후 {$recharge} 뒤에 사용할 수 있습니다.",
       "wait_free_excluded_note": "아래 목록에 표시된 최신 에피소드는 무료 이용권으로 읽을 수 없습니다.",
-      "wait_free_excluded": "무료 이용권 제외"
+      "wait_free_excluded": "무료 이용권 제외",
+      "checkout_cancelled": "구매를 취소했습니다. 요금은 청구되지 않았습니다.",
+      "checkout_error": "구매를 시작할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+      "checkout_success": "결제를 확인하고 있습니다. 구매가 반영되면 에피소드가 열립니다.",
+      "purchase_state_failed": "구매한 에피소드를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "remainder_buy": "남은 {$count :integer}화를 {$price}에 구매",
+      "remainder_discount": "한 화씩 사면 {$list_price}인 것을 {$percent} 할인",
+      "remainder_error": "남은 에피소드의 가격을 표시할 수 없습니다",
+      "volume_buy": "이 권 구매",
+      "volume_owned": "이 권의 에피소드를 모두 구매했습니다",
+      "volumes_error": "권을 표시할 수 없습니다",
+      "volumes_heading": "권",
+      "volume_ownership_error": "보유한 권을 확인할 수 없습니다"
     },
     "share": {
       "action": "공유",

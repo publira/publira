@@ -21,6 +21,7 @@ import { Message } from "#components/message";
 import { getMessages } from "#lib/get-messages";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import type { StorefrontMessageAccessor } from "#lib/messages";
 import type { PurchaseItem } from "#lib/purchases";
 
 import { purchasesListHref } from "../_lib/search-params";
@@ -85,6 +86,43 @@ const PurchasePagination = ({
   </Suspense>
 );
 
+/**
+ * Where a card leads, and what it calls the purchase: an episode opens
+ * itself, while a volume and the rest of a series open the series page, which
+ * lists every episode the purchase holds.
+ */
+const purchasedItemLink = (
+  { item, series }: PurchaseItem,
+  t: StorefrontMessageAccessor
+): { href: string; open: string; title: string } => {
+  const seriesHref = `/series/${series.publicId}`;
+  switch (item.kind) {
+    case "volume": {
+      return {
+        href: seriesHref,
+        open: t("storefront.library.open_series"),
+        title: item.title,
+      };
+    }
+    case "series_bundle": {
+      return {
+        href: seriesHref,
+        open: t("storefront.library.open_series"),
+        title: t("storefront.library.series_bundle_title", {
+          count: item.episodeCount,
+        }),
+      };
+    }
+    default: {
+      return {
+        href: `${seriesHref}/episodes/${item.publicId}`,
+        open: t("storefront.library.open_episode"),
+        title: `#${item.orderIndex} ${item.title}`,
+      };
+    }
+  }
+};
+
 const PurchaseCard = async ({
   purchase,
   timeZone,
@@ -94,7 +132,7 @@ const PurchaseCard = async ({
 }) => {
   const locale = await getLocale();
   const t = await getMessagesFor(locale);
-  const href = `/series/${purchase.series.publicId}/episodes/${purchase.episode.publicId}`;
+  const { href, open, title } = purchasedItemLink(purchase, t);
   const expiryLabel = purchase.expiresAt
     ? formatDateTime(purchase.expiresAt, { fallback: "-", locale, timeZone })
     : t("storefront.library.no_expiry");
@@ -108,7 +146,7 @@ const PurchaseCard = async ({
           </p>
           <h3 className="mt-1 font-medium">
             <LocaleLink className="hover:underline" href={href}>
-              #{purchase.episode.orderIndex} {purchase.episode.title}
+              {title}
             </LocaleLink>
           </h3>
         </div>
@@ -181,7 +219,7 @@ const PurchaseCard = async ({
           className="text-sm text-primary underline-offset-4 hover:underline"
           href={href}
         >
-          {t("storefront.library.open_episode")}
+          {open}
         </LocaleLink>
       </div>
     </article>

@@ -4263,7 +4263,9 @@
       "rental_time_left": "剩余{$duration}",
       "shelf_description": "当前可以阅读的已购买章节。",
       "shelf_heading": "书架",
-      "title": "已购买"
+      "title": "已购买",
+      "open_series": "打开系列",
+      "series_bundle_title": "剩余的{$count :integer}章"
     },
     "my": {
       "creators_empty": "还没有作者署名于已发布的系列。",
@@ -4482,7 +4484,19 @@
       },
       "wait_free_rule": "等待即可免费：一张免费券可在{$access}内阅读一集付费剧集，使用后{$recharge}即可获得下一张。",
       "wait_free_excluded_note": "下方标记的最新剧集无法使用免费券阅读。",
-      "wait_free_excluded": "不可用免费券"
+      "wait_free_excluded": "不可用免费券",
+      "checkout_cancelled": "购买已取消，未产生任何扣款。",
+      "checkout_error": "无法开始购买。请稍后再试。",
+      "checkout_success": "我们正在确认您的付款。购买生效后即可打开这些章节。",
+      "purchase_state_failed": "无法确认您已购买的章节。请稍后再试。",
+      "remainder_buy": "以{$price}购买剩余的{$count :integer}章",
+      "remainder_discount": "逐章购买需{$list_price}，现优惠{$percent}",
+      "remainder_error": "无法显示剩余章节的价格",
+      "volume_buy": "购买本卷",
+      "volume_owned": "本卷的所有章节均已购买",
+      "volumes_error": "无法显示各卷",
+      "volumes_heading": "卷",
+      "volume_ownership_error": "无法确认您已拥有的卷"
     },
     "share": {
       "action": "分享",

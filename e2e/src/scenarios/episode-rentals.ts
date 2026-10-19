@@ -2,6 +2,8 @@
  * Records created by `db/seeds/scenarios/550_episode_rentals.sql`. Re-applying
  * it deletes the tenant and writes it again, which takes the payment settings
  * the suite stores and the sales its readers paid for with it.
+ *
+ * The series takes 10% off the rest of it bought in one checkout.
  */
 
 export const EPISODE_RENTALS_SCENARIO = "550_episode_rentals";
@@ -25,7 +27,20 @@ export const EPISODE_RENTALS_EPISODE = {
   title: "Rental Episode 001-01",
 } as const;
 
-/** The readers, who hold neither sale. Password hash is `memberpass`. */
+/** The later episodes, 200 yen each to keep and never rented. */
+export const EPISODE_RENTALS_LATER_EPISODES = [
+  { publicId: "RntlEPSDAAA2", title: "Rental Episode 001-02" },
+  { publicId: "RntlEPSDAAA3", title: "Rental Episode 001-03" },
+  { publicId: "RntlEPSDAAA4", title: "Rental Episode 001-04" },
+] as const;
+
+/** Episodes 2 and 3 together for 350 yen. */
+export const EPISODE_RENTALS_VOLUME = {
+  publicId: "RntlVOLMAAA1",
+  title: "Rental Volume 1",
+} as const;
+
+/** The readers, who hold nothing yet. Password hash is `memberpass`. */
 export const EPISODE_RENTALS_READERS = {
   /** Buys the permanent copy. */
   buyer: {
@@ -33,12 +48,26 @@ export const EPISODE_RENTALS_READERS = {
     password: "memberpass",
     publicId: "RntlMMBRAAA2",
   },
+  /** Buys every episode in one checkout, at the series' discount. */
+  remainderBuyer: {
+    email: "remainder-buyer@example.com",
+    password: "memberpass",
+    publicId: "RntlMMBRAAA4",
+  },
   /** Rents the episode for its 48 hours. */
   renter: {
     email: "rental-renter@example.com",
     password: "memberpass",
     publicId: "RntlMMBRAAA1",
   },
+  /** Buys the volume from the series page. */
+  volumeBuyer: {
+    email: "volume-buyer@example.com",
+    password: "memberpass",
+    publicId: "RntlMMBRAAA3",
+  },
 } as const;
 
-export const episodeRentalPath = `/series/${EPISODE_RENTALS_SERIES.publicId}/episodes/${EPISODE_RENTALS_EPISODE.publicId}`;
+export const episodeRentalsSeriesPath = `/series/${EPISODE_RENTALS_SERIES.publicId}`;
+
+export const episodeRentalPath = `${episodeRentalsSeriesPath}/episodes/${EPISODE_RENTALS_EPISODE.publicId}`;
