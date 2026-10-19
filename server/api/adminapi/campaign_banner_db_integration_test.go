@@ -85,6 +85,7 @@ func TestDBCreateCampaignBannerStoresTheBannerAndEveryRatioOfItsImage(t *testing
 	created, err := client.CreateCampaignBanner(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateCampaignBannerRequest{
 		Tenant:           tenant.tenantContext(),
 		LinkUrl:          "  /series/SERIES000001  ",
+		AltText:          "  Autumn sale: the first volume of every series is free  ",
 		StartsAt:         startsAt,
 		EndsAt:           endsAt,
 		Published:        true,
@@ -97,6 +98,9 @@ func TestDBCreateCampaignBannerStoresTheBannerAndEveryRatioOfItsImage(t *testing
 	banner := created.Banner
 	if banner.LinkUrl != "/series/SERIES000001" {
 		t.Fatalf("link_url = %q, want the trimmed path", banner.LinkUrl)
+	}
+	if banner.AltText != "Autumn sale: the first volume of every series is free" {
+		t.Fatalf("alt_text = %q, want the trimmed text", banner.AltText)
 	}
 	if banner.StartsAt != startsAt || banner.EndsAt != endsAt {
 		t.Fatalf("window = [%s, %s), want [%s, %s)", banner.StartsAt, banner.EndsAt, startsAt, endsAt)
@@ -128,10 +132,10 @@ func TestDBCreateCampaignBannerStoresTheBannerAndEveryRatioOfItsImage(t *testing
 	if err != nil {
 		t.Fatalf("GetCampaignBanner: %v", err)
 	}
-	if got.Banner.LinkUrl != banner.LinkUrl || len(got.Banner.ImageVariants) != eyeCatchVariantCount {
+	if got.Banner.LinkUrl != banner.LinkUrl || got.Banner.AltText != banner.AltText || len(got.Banner.ImageVariants) != eyeCatchVariantCount {
 		t.Fatalf("got banner = %v, want the created one", got.Banner)
 	}
-	if listed := listCampaignBanners(t, client, tenant); len(listed) != 1 || listed[0].Id != banner.Id {
+	if listed := listCampaignBanners(t, client, tenant); len(listed) != 1 || listed[0].Id != banner.Id || listed[0].AltText != banner.AltText {
 		t.Fatalf("listed banners = %v, want the created one", listed)
 	}
 	if count := env.countRows(t,
@@ -174,6 +178,7 @@ func TestDBCreateCampaignBannerRefusesWhatWouldShowNothingOrLeadNowhere(t *testi
 		{name: "a relative link", change: func(r *publiraadminv1.CreateCampaignBannerRequest) { r.LinkUrl = "series/SERIES000001" }, field: "link_url"},
 		{name: "a link with no host", change: func(r *publiraadminv1.CreateCampaignBannerRequest) { r.LinkUrl = "https:///path" }, field: "link_url"},
 		{name: "a link past the bound", change: func(r *publiraadminv1.CreateCampaignBannerRequest) { r.LinkUrl = "/" + strings.Repeat("a", 2048) }, field: "link_url"},
+		{name: "an alternative text past the bound", change: func(r *publiraadminv1.CreateCampaignBannerRequest) { r.AltText = strings.Repeat("a", 256) }, field: "alt_text"},
 		{name: "a start that is not RFC 3339", change: func(r *publiraadminv1.CreateCampaignBannerRequest) { r.StartsAt = "2026-10-16 09:00" }, field: "starts_at"},
 		{name: "an end before the start", change: func(r *publiraadminv1.CreateCampaignBannerRequest) { r.StartsAt, r.EndsAt = r.EndsAt, r.StartsAt }, field: "ends_at"},
 		{name: "a window already over", change: func(r *publiraadminv1.CreateCampaignBannerRequest) {
@@ -306,6 +311,58 @@ func TestDBUpdateCampaignBannerKeepsTheImageAndReplacesItWhenGivenOne(t *testing
 	// The image the banner let go of is left for the orphan sweep.
 	if count := env.countRows(t, "SELECT count(*) FROM campaign_banner_images WHERE tenant_id = $1", tenant.Tenant.ID); count != 2 {
 		t.Fatalf("campaign_banner_images rows = %d, want the replaced one and the new one", count)
+	}
+}
+
+// The alternative text is replaced with the rest of the banner, so an update
+// that leaves it out clears it, and its bound counts characters, as the
+// column's check does, rather than the bytes a non-ASCII text takes.
+func TestDBUpdateCampaignBannerReplacesTheAlternativeText(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.campaignBannerClient()
+
+	created := createCampaignBanner(t, client, tenant, "/series", true)
+	update := func(altText string) (*publiraadminv1.AdminCampaignBanner, error) {
+		updated, err := client.UpdateCampaignBanner(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UpdateCampaignBannerRequest{
+			Tenant:           tenant.tenantContext(),
+			CampaignBannerId: created.Id,
+			LinkUrl:          created.LinkUrl,
+			AltText:          altText,
+			StartsAt:         created.StartsAt,
+			EndsAt:           created.EndsAt,
+			Published:        created.Published,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return updated.Banner, nil
+	}
+
+	full := strings.Repeat("秋", 255)
+	banner, err := update(full)
+	if err != nil {
+		t.Fatalf("UpdateCampaignBanner with 255 characters: %v", err)
+	}
+	if banner.AltText != full {
+		t.Fatalf("alt_text = %q, want the 255 characters written", banner.AltText)
+	}
+	if listed := listCampaignBanners(t, client, tenant); len(listed) != 1 || listed[0].AltText != full {
+		t.Fatalf("listed banners = %v, want the stored alternative text", listed)
+	}
+
+	_, err = update(full + "秋")
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("UpdateCampaignBanner with 256 characters error = %v, want invalid_argument", err)
+	}
+	assertBadRequestField(t, err, "alt_text")
+
+	banner, err = update("   ")
+	if err != nil {
+		t.Fatalf("UpdateCampaignBanner with a blank alternative text: %v", err)
+	}
+	if banner.AltText != "" {
+		t.Fatalf("alt_text = %q, want it cleared", banner.AltText)
 	}
 }
 

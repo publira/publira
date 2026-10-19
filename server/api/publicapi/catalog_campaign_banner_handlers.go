@@ -43,6 +43,7 @@ func (s *apiServer) ListCampaignBanners(
 		banners = append(banners, &publirav1.CampaignBanner{
 			PublicId:       row.PublicID,
 			LinkUrl:        row.LinkUrl,
+			AltText:        row.AltText,
 			ImageUpdatedAt: row.ImageUpdatedAt.UTC().Format(time.RFC3339),
 			ImageVariants:  variants[row.ImageID.UUID],
 		})

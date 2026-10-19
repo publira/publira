@@ -32,6 +32,7 @@ INSERT INTO campaign_banners (
         tenant_id,
         public_id,
         link_url,
+        alt_text,
         starts_at,
         ends_at,
         display_order,
@@ -48,11 +49,12 @@ VALUES (
         $6,
         $7,
         $8,
-        CASE
-            WHEN $5::timestamptz <= NOW() THEN NOW()
-        END,
+        $9,
         CASE
             WHEN $6::timestamptz <= NOW() THEN NOW()
+        END,
+        CASE
+            WHEN $7::timestamptz <= NOW() THEN NOW()
         END
     )
 RETURNING id,
@@ -64,6 +66,7 @@ type CreateCampaignBannerParams struct {
 	TenantID     uuid.UUID `json:"tenant_id"`
 	PublicID     string    `json:"public_id"`
 	LinkUrl      string    `json:"link_url"`
+	AltText      string    `json:"alt_text"`
 	StartsAt     time.Time `json:"starts_at"`
 	EndsAt       time.Time `json:"ends_at"`
 	DisplayOrder int32     `json:"display_order"`
@@ -85,6 +88,7 @@ func (q *Queries) CreateCampaignBanner(ctx context.Context, arg CreateCampaignBa
 		arg.TenantID,
 		arg.PublicID,
 		arg.LinkUrl,
+		arg.AltText,
 		arg.StartsAt,
 		arg.EndsAt,
 		arg.DisplayOrder,
@@ -118,6 +122,7 @@ const GetCampaignBannerByIDForTenant = `-- name: GetCampaignBannerByIDForTenant 
 SELECT b.id,
     b.public_id,
     b.link_url,
+    b.alt_text,
     b.starts_at,
     b.ends_at,
     b.display_order,
@@ -142,6 +147,7 @@ type GetCampaignBannerByIDForTenantRow struct {
 	ID             uuid.UUID     `json:"id"`
 	PublicID       string        `json:"public_id"`
 	LinkUrl        string        `json:"link_url"`
+	AltText        string        `json:"alt_text"`
 	StartsAt       time.Time     `json:"starts_at"`
 	EndsAt         time.Time     `json:"ends_at"`
 	DisplayOrder   int32         `json:"display_order"`
@@ -159,6 +165,7 @@ func (q *Queries) GetCampaignBannerByIDForTenant(ctx context.Context, arg GetCam
 		&i.ID,
 		&i.PublicID,
 		&i.LinkUrl,
+		&i.AltText,
 		&i.StartsAt,
 		&i.EndsAt,
 		&i.DisplayOrder,
@@ -262,6 +269,7 @@ const ListCampaignBannersForTenant = `-- name: ListCampaignBannersForTenant :man
 SELECT b.id,
     b.public_id,
     b.link_url,
+    b.alt_text,
     b.starts_at,
     b.ends_at,
     b.display_order,
@@ -281,6 +289,7 @@ type ListCampaignBannersForTenantRow struct {
 	ID             uuid.UUID     `json:"id"`
 	PublicID       string        `json:"public_id"`
 	LinkUrl        string        `json:"link_url"`
+	AltText        string        `json:"alt_text"`
 	StartsAt       time.Time     `json:"starts_at"`
 	EndsAt         time.Time     `json:"ends_at"`
 	DisplayOrder   int32         `json:"display_order"`
@@ -306,6 +315,7 @@ func (q *Queries) ListCampaignBannersForTenant(ctx context.Context, tenantID uui
 			&i.ID,
 			&i.PublicID,
 			&i.LinkUrl,
+			&i.AltText,
 			&i.StartsAt,
 			&i.EndsAt,
 			&i.DisplayOrder,
@@ -332,6 +342,7 @@ const ListShowingCampaignBannersForTenant = `-- name: ListShowingCampaignBanners
 SELECT b.id,
     b.public_id,
     b.link_url,
+    b.alt_text,
     b.image_id,
     bi.updated_at AS image_updated_at
 FROM campaign_banners b
@@ -348,6 +359,7 @@ type ListShowingCampaignBannersForTenantRow struct {
 	ID             uuid.UUID     `json:"id"`
 	PublicID       string        `json:"public_id"`
 	LinkUrl        string        `json:"link_url"`
+	AltText        string        `json:"alt_text"`
 	ImageID        uuid.NullUUID `json:"image_id"`
 	ImageUpdatedAt time.Time     `json:"image_updated_at"`
 }
@@ -369,6 +381,7 @@ func (q *Queries) ListShowingCampaignBannersForTenant(ctx context.Context, tenan
 			&i.ID,
 			&i.PublicID,
 			&i.LinkUrl,
+			&i.AltText,
 			&i.ImageID,
 			&i.ImageUpdatedAt,
 		); err != nil {
@@ -509,22 +522,24 @@ func (q *Queries) SetCampaignBannerImage(ctx context.Context, arg SetCampaignBan
 const UpdateCampaignBanner = `-- name: UpdateCampaignBanner :exec
 UPDATE campaign_banners
 SET link_url = $1,
-    starts_at = $2,
-    ends_at = $3,
-    is_published = $4,
-    image_id = $5,
+    alt_text = $2,
+    starts_at = $3,
+    ends_at = $4,
+    is_published = $5,
+    image_id = $6,
     start_revalidated_at = CASE
-        WHEN $2::timestamptz <= NOW() THEN NOW()
-    END,
-    end_revalidated_at = CASE
         WHEN $3::timestamptz <= NOW() THEN NOW()
     END,
+    end_revalidated_at = CASE
+        WHEN $4::timestamptz <= NOW() THEN NOW()
+    END,
     updated_at = NOW()
-WHERE id = $6
+WHERE id = $7
 `
 
 type UpdateCampaignBannerParams struct {
 	LinkUrl     string        `json:"link_url"`
+	AltText     string        `json:"alt_text"`
 	StartsAt    time.Time     `json:"starts_at"`
 	EndsAt      time.Time     `json:"ends_at"`
 	IsPublished bool          `json:"is_published"`
@@ -535,6 +550,7 @@ type UpdateCampaignBannerParams struct {
 func (q *Queries) UpdateCampaignBanner(ctx context.Context, arg UpdateCampaignBannerParams) error {
 	_, err := q.db.ExecContext(ctx, UpdateCampaignBanner,
 		arg.LinkUrl,
+		arg.AltText,
 		arg.StartsAt,
 		arg.EndsAt,
 		arg.IsPublished,

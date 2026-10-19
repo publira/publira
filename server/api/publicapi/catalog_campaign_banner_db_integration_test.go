@@ -39,7 +39,7 @@ func TestDBListCampaignBannersAnswersOnlyThePublishedBannersShowingNow(t *testin
 	now := time.Now()
 
 	second := env.PG.SeedCampaignBanner(t, tenant.ID, testutil.CampaignBannerSeed{
-		PublicID: "BANNERSECOND", LinkURL: "https://campaign.example.com/autumn", DisplayOrder: 2, Published: true,
+		PublicID: "BANNERSECOND", LinkURL: "https://campaign.example.com/autumn", AltText: "Autumn sale", DisplayOrder: 2, Published: true,
 	})
 	first := env.PG.SeedCampaignBanner(t, tenant.ID, testutil.CampaignBannerSeed{
 		PublicID: "BANNERFIRST1", LinkURL: "/series/SERIES000001", DisplayOrder: 1, Published: true,
@@ -70,6 +70,11 @@ func TestDBListCampaignBannersAnswersOnlyThePublishedBannersShowingNow(t *testin
 	}
 	if banners[0].LinkUrl != "/series/SERIES000001" || banners[1].LinkUrl != "https://campaign.example.com/autumn" {
 		t.Fatalf("links = %q, %q, want each banner's own", banners[0].LinkUrl, banners[1].LinkUrl)
+	}
+	// A banner nobody has described answers no text, which the client replaces
+	// with its own generic name.
+	if banners[0].AltText != "" || banners[1].AltText != "Autumn sale" {
+		t.Fatalf("alternative texts = %q, %q, want each banner's own", banners[0].AltText, banners[1].AltText)
 	}
 	for _, banner := range banners {
 		if banner.ImageUpdatedAt == "" || len(banner.ImageVariants) != 1 {

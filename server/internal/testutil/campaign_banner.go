@@ -14,6 +14,7 @@ import (
 type CampaignBannerSeed struct {
 	PublicID     string
 	LinkURL      string
+	AltText      string
 	StartsAt     time.Time
 	EndsAt       time.Time
 	DisplayOrder int32
@@ -60,9 +61,9 @@ func (e *PostgresEnv) SeedCampaignBanner(t *testing.T, tenantID uuid.UUID, seed 
 	defer cancel()
 
 	if _, err := e.DB.ExecContext(ctx, `
-		INSERT INTO campaign_banners (id, tenant_id, public_id, link_url, starts_at, ends_at, display_order, is_published)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-	`, banner.ID, tenantID, publicID, defaultIfEmpty(seed.LinkURL, "/series"), startsAt, endsAt, seed.DisplayOrder, seed.Published); err != nil {
+		INSERT INTO campaign_banners (id, tenant_id, public_id, link_url, alt_text, starts_at, ends_at, display_order, is_published)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+	`, banner.ID, tenantID, publicID, defaultIfEmpty(seed.LinkURL, "/series"), seed.AltText, startsAt, endsAt, seed.DisplayOrder, seed.Published); err != nil {
 		t.Fatalf("insert campaign banner %s: %v", publicID, err)
 	}
 	if seed.WithoutImage {

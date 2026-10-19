@@ -47,8 +47,12 @@ type AdminCampaignBanner struct {
 	ImageVariants  []*v1.SeriesEyeCatchVariant `protobuf:"bytes,8,rep,name=image_variants,json=imageVariants,proto3" json:"image_variants,omitempty"`
 	CreatedAt      string                      `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt      string                      `protobuf:"bytes,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The words drawn into the image, which a client names the banner's link
+	// with. Empty when nobody has written them, and a client then falls back to
+	// a generic name of its own.
+	AltText       string `protobuf:"bytes,11,opt,name=alt_text,json=altText,proto3" json:"alt_text,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AdminCampaignBanner) Reset() {
@@ -147,6 +151,13 @@ func (x *AdminCampaignBanner) GetCreatedAt() string {
 func (x *AdminCampaignBanner) GetUpdatedAt() string {
 	if x != nil {
 		return x.UpdatedAt
+	}
+	return ""
+}
+
+func (x *AdminCampaignBanner) GetAltText() string {
+	if x != nil {
+		return x.AltText
 	}
 	return ""
 }
@@ -357,8 +368,12 @@ type CreateCampaignBannerRequest struct {
 	// one of them afterwards.
 	ImageData        []byte `protobuf:"bytes,6,opt,name=image_data,json=imageData,proto3" json:"image_data,omitempty"`
 	ImageContentType string `protobuf:"bytes,7,opt,name=image_content_type,json=imageContentType,proto3" json:"image_content_type,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// The words drawn into the image, so a screen reader can tell this banner's
+	// link from the others. Optional, at most 255 characters after surrounding
+	// whitespace is trimmed.
+	AltText       string `protobuf:"bytes,8,opt,name=alt_text,json=altText,proto3" json:"alt_text,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreateCampaignBannerRequest) Reset() {
@@ -440,6 +455,13 @@ func (x *CreateCampaignBannerRequest) GetImageContentType() string {
 	return ""
 }
 
+func (x *CreateCampaignBannerRequest) GetAltText() string {
+	if x != nil {
+		return x.AltText
+	}
+	return ""
+}
+
 type CreateCampaignBannerResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Banner        *AdminCampaignBanner   `protobuf:"bytes,1,opt,name=banner,proto3" json:"banner,omitempty"`
@@ -484,7 +506,8 @@ func (x *CreateCampaignBannerResponse) GetBanner() *AdminCampaignBanner {
 	return nil
 }
 
-// Replaces the link, the window, and the published flag together.
+// Replaces the link, the alternative text, the window, and the published flag
+// together.
 type UpdateCampaignBannerRequest struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	Tenant           *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -501,8 +524,11 @@ type UpdateCampaignBannerRequest struct {
 	// clearing it.
 	ImageData        []byte `protobuf:"bytes,7,opt,name=image_data,json=imageData,proto3" json:"image_data,omitempty"`
 	ImageContentType string `protobuf:"bytes,8,opt,name=image_content_type,json=imageContentType,proto3" json:"image_content_type,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Held to what CreateCampaignBannerRequest holds it to. Empty clears it, as
+	// every other field here is replaced rather than kept.
+	AltText       string `protobuf:"bytes,9,opt,name=alt_text,json=altText,proto3" json:"alt_text,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UpdateCampaignBannerRequest) Reset() {
@@ -587,6 +613,13 @@ func (x *UpdateCampaignBannerRequest) GetImageData() []byte {
 func (x *UpdateCampaignBannerRequest) GetImageContentType() string {
 	if x != nil {
 		return x.ImageContentType
+	}
+	return ""
+}
+
+func (x *UpdateCampaignBannerRequest) GetAltText() string {
+	if x != nil {
+		return x.AltText
 	}
 	return ""
 }
@@ -971,7 +1004,7 @@ var File_publira_admin_v1_campaign_banner_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_campaign_banner_proto_rawDesc = "" +
 	"\n" +
-	"&publira/admin/v1/campaign_banner.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\xe9\x02\n" +
+	"&publira/admin/v1/campaign_banner.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\x84\x03\n" +
 	"\x13AdminCampaignBanner\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x19\n" +
@@ -985,7 +1018,8 @@ const file_publira_admin_v1_campaign_banner_proto_rawDesc = "" +
 	"created_at\x18\t \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
 	"updated_at\x18\n" +
-	" \x01(\tR\tupdatedAt\"U\n" +
+	" \x01(\tR\tupdatedAt\x12\x19\n" +
+	"\balt_text\x18\v \x01(\tR\aaltText\"U\n" +
 	"\x1aListCampaignBannersRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"^\n" +
 	"\x1bListCampaignBannersResponse\x12?\n" +
@@ -994,7 +1028,7 @@ const file_publira_admin_v1_campaign_banner_proto_rawDesc = "" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12,\n" +
 	"\x12campaign_banner_id\x18\x02 \x01(\tR\x10campaignBannerId\"Z\n" +
 	"\x19GetCampaignBannerResponse\x12=\n" +
-	"\x06banner\x18\x01 \x01(\v2%.publira.admin.v1.AdminCampaignBannerR\x06banner\"\x92\x02\n" +
+	"\x06banner\x18\x01 \x01(\v2%.publira.admin.v1.AdminCampaignBannerR\x06banner\"\xad\x02\n" +
 	"\x1bCreateCampaignBannerRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x19\n" +
 	"\blink_url\x18\x02 \x01(\tR\alinkUrl\x12\x1b\n" +
@@ -1003,9 +1037,10 @@ const file_publira_admin_v1_campaign_banner_proto_rawDesc = "" +
 	"\tpublished\x18\x05 \x01(\bR\tpublished\x12\x1d\n" +
 	"\n" +
 	"image_data\x18\x06 \x01(\fR\timageData\x12,\n" +
-	"\x12image_content_type\x18\a \x01(\tR\x10imageContentType\"]\n" +
+	"\x12image_content_type\x18\a \x01(\tR\x10imageContentType\x12\x19\n" +
+	"\balt_text\x18\b \x01(\tR\aaltText\"]\n" +
 	"\x1cCreateCampaignBannerResponse\x12=\n" +
-	"\x06banner\x18\x01 \x01(\v2%.publira.admin.v1.AdminCampaignBannerR\x06banner\"\xc0\x02\n" +
+	"\x06banner\x18\x01 \x01(\v2%.publira.admin.v1.AdminCampaignBannerR\x06banner\"\xdb\x02\n" +
 	"\x1bUpdateCampaignBannerRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12,\n" +
 	"\x12campaign_banner_id\x18\x02 \x01(\tR\x10campaignBannerId\x12\x19\n" +
@@ -1015,7 +1050,8 @@ const file_publira_admin_v1_campaign_banner_proto_rawDesc = "" +
 	"\tpublished\x18\x06 \x01(\bR\tpublished\x12\x1d\n" +
 	"\n" +
 	"image_data\x18\a \x01(\fR\timageData\x12,\n" +
-	"\x12image_content_type\x18\b \x01(\tR\x10imageContentType\"]\n" +
+	"\x12image_content_type\x18\b \x01(\tR\x10imageContentType\x12\x19\n" +
+	"\balt_text\x18\t \x01(\tR\aaltText\"]\n" +
 	"\x1cUpdateCampaignBannerResponse\x12=\n" +
 	"\x06banner\x18\x01 \x01(\v2%.publira.admin.v1.AdminCampaignBannerR\x06banner\"\xc9\x01\n" +
 	"\x1dReorderCampaignBannersRequest\x127\n" +

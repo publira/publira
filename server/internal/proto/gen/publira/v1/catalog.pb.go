@@ -4550,8 +4550,12 @@ type CampaignBanner struct {
 	// so a client picks the ratio its band is drawn in.
 	ImageUpdatedAt string                      `protobuf:"bytes,3,opt,name=image_updated_at,json=imageUpdatedAt,proto3" json:"image_updated_at,omitempty"`
 	ImageVariants  []*v1.SeriesEyeCatchVariant `protobuf:"bytes,4,rep,name=image_variants,json=imageVariants,proto3" json:"image_variants,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The words drawn into the image, for the name of the banner's link. Empty
+	// when the operator has not written them, in which case the client names
+	// the link with a generic text of its own.
+	AltText       string `protobuf:"bytes,5,opt,name=alt_text,json=altText,proto3" json:"alt_text,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CampaignBanner) Reset() {
@@ -4610,6 +4614,13 @@ func (x *CampaignBanner) GetImageVariants() []*v1.SeriesEyeCatchVariant {
 		return x.ImageVariants
 	}
 	return nil
+}
+
+func (x *CampaignBanner) GetAltText() string {
+	if x != nil {
+		return x.AltText
+	}
+	return ""
 }
 
 type ListCampaignBannersRequest struct {
@@ -8709,12 +8720,13 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\aentries\x18\x01 \x03(\v2\x18.publira.v1.SitemapEntryR\aentries\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\xc2\x01\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\xdd\x01\n" +
 	"\x0eCampaignBanner\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x19\n" +
 	"\blink_url\x18\x02 \x01(\tR\alinkUrl\x12(\n" +
 	"\x10image_updated_at\x18\x03 \x01(\tR\x0eimageUpdatedAt\x12N\n" +
-	"\x0eimage_variants\x18\x04 \x03(\v2'.publira.types.v1.SeriesEyeCatchVariantR\rimageVariants\"U\n" +
+	"\x0eimage_variants\x18\x04 \x03(\v2'.publira.types.v1.SeriesEyeCatchVariantR\rimageVariants\x12\x19\n" +
+	"\balt_text\x18\x05 \x01(\tR\aaltText\"U\n" +
 	"\x1aListCampaignBannersRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"S\n" +
 	"\x1bListCampaignBannersResponse\x124\n" +
