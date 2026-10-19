@@ -1,5 +1,11 @@
 import type { Locale } from "@publira/i18n";
 import { Button } from "@publira/ui-components/button";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatPercent, formatPrice } from "@publira/utils";
 import { Suspense } from "react";
@@ -46,7 +52,18 @@ export const SeriesRemainderOffer = async ({
   const state = await getMySeriesPurchaseState(tenantId, seriesId, locale);
 
   if (!state.ok) {
-    return <p className="text-sm text-muted-foreground">{state.message}</p>;
+    return (
+      <SectionError>
+        <SectionErrorHeading>
+          <SectionErrorTitle>
+            <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+              <Message message="storefront.series.remainder_error" />
+            </Suspense>
+          </SectionErrorTitle>
+          <SectionErrorDescription>{state.message}</SectionErrorDescription>
+        </SectionErrorHeading>
+      </SectionError>
+    );
   }
 
   const { remainder } = state;

@@ -148,6 +148,9 @@ describe("SeriesRemainderOffer", () => {
     await renderOffer();
 
     expect(
+      screen.getByText("Could not show the price of the remaining episodes")
+    ).toBeTruthy();
+    expect(
       screen.getByText("Could not check which episodes you already own.")
     ).toBeTruthy();
     expect(screen.queryByRole("button")).toBeNull();
