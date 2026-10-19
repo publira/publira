@@ -3819,9 +3819,11 @@
   },
   "storefront": {
     "announcements": {
+      "back_to_list": "공지사항 목록으로",
       "banner_dismiss": "이 공지사항 닫기",
       "banner_link": "공지사항 읽기",
       "description": "사이트 운영자가 게시한 공지사항입니다.",
+      "fallback_notice": "이 공지사항은 사용 중인 언어로 작성되지 않아 {$language}로 표시합니다.",
       "first_page": "첫 페이지로 이동",
       "list_empty": "표시할 공지사항이 없습니다.",
       "list_error": "공지사항 목록을 표시할 수 없습니다",
@@ -3831,6 +3833,7 @@
       "open_link": "링크 열기",
       "page_empty": "이 페이지에는 표시할 공지사항이 없습니다.",
       "pagination_aria": "공지사항 목록 페이지 이동",
+      "read_failed": "공지사항을 불러오지 못했습니다.",
       "title": "공지사항",
       "unread_on_page": "이 페이지의 읽지 않음 {$count}건"
     },

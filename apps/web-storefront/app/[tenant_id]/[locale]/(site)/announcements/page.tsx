@@ -25,9 +25,11 @@ import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
 import { getMessages } from "#lib/get-messages";
 import { getLocale } from "#lib/locale";
 import { getPageAlternates } from "#lib/page-alternates";
+import { fallbackLanguage } from "#lib/served-locale";
 import { getTenantDisplayTimeZone } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
+import { AnnouncementFallbackNotice } from "./_components/announcement-fallback-notice";
 import {
   markAllAnnouncementsAsReadAction,
   markAnnouncementAsReadAction,
@@ -312,7 +314,14 @@ const AnnouncementsSection = async ({
                   key={announcement.id}
                 >
                   <div className="mb-2 flex items-center justify-between gap-3">
-                    <h3 className="font-medium">{announcement.title}</h3>
+                    <h3 className="font-medium" lang={announcement.locale}>
+                      <LocaleLink
+                        className="underline-offset-4 hover:underline"
+                        href={`/announcements/${announcement.id}`}
+                      >
+                        {announcement.title}
+                      </LocaleLink>
+                    </h3>
                     <div className="flex items-center gap-2">
                       {hasSession ? (
                         <span
@@ -342,9 +351,17 @@ const AnnouncementsSection = async ({
                       </span>
                     </div>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    {announcement.body}
-                  </p>
+                  <div className="grid gap-2">
+                    <AnnouncementFallbackNotice
+                      language={fallbackLanguage(locale, announcement.locale)}
+                    />
+                    <p
+                      className="text-sm text-muted-foreground"
+                      lang={announcement.locale}
+                    >
+                      {announcement.body}
+                    </p>
+                  </div>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     {hasSession && !announcement.isRead ? (
                       <form action={markAnnouncementAsReadAction}>

@@ -373,7 +373,10 @@
     {
       "name": "Announcements and the pinned banner",
       "web": {
-        "routes": ["[locale]/(site)/announcements"],
+        "routes": [
+          "[locale]/(site)/announcements",
+          "[locale]/(site)/announcements/[announcement_id]"
+        ],
         "rpcs": [
           "ListAnnouncements",
           "GetAnnouncement",

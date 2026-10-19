@@ -34,13 +34,15 @@ The list shows each announcement's title in the default language, and the **Lang
 
 ## What readers see
 
-- **On the site**, the **Announcements** page in the header lists every announcement, newest first, and anyone can read it. A signed-in reader sees which ones they have not read yet.
+- **On the site**, the **Announcements** page in the header lists every announcement, newest first, and anyone can read it. Each title opens the announcement on a page of its own. A signed-in reader sees which ones they have not read yet.
 - **In their notifications**, every reader with an account gets "A new announcement", which leads to it. Announcements are not sent by email or as push notifications.
 - **In the app**, the **Announcements** screen lists the same announcements, with the same read marks.
 
+On the site, a reader sees each announcement in the language they browse in. Where you did not write it in that language, they see the default language's, with a note naming the language it is shown in.
+
 ## The site banner
 
-An announcement created with **Show as a site banner** is shown above the header of every page of the site, to every visitor, signed in or not, and at the top of the app's catalog screen. A visitor can close it, and it then stays closed in that browser.
+An announcement created with **Show as a site banner** is shown above the header of every page of the site, to every visitor, signed in or not, and at the top of the app's catalog screen. On the site its link leads to the announcement's **Link**, or to the announcement's own page when it has none. A visitor can close it, and it then stays closed in that browser.
 
 Only one banner is shown at a time: the newest announcement whose banner is still up. Creating a new banner therefore hides the previous one until the new one comes down.
 

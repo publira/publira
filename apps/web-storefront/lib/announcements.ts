@@ -3,6 +3,7 @@ import {
   Code,
   ConnectError,
   isExpectedNullableRpcError,
+  isMissingResourceRpcError,
   isUnauthenticatedRpcError,
   rethrowUnclassifiedRpcError,
   rpcErrorDisposition,
@@ -10,6 +11,7 @@ import {
 import type { AnnouncementItem } from "@publira/api-client/public/types";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
+import type { CachedReadResult } from "@publira/utils/cached-read";
 import { z } from "zod";
 
 import {
@@ -24,6 +26,8 @@ import {
   tenantPinnedAnnouncementTag,
 } from "./cache-tags";
 import { getMessagesFor } from "./messages";
+import { localizedReadFailure } from "./read-failure";
+import { publishedLocalesFrom, servedLocaleFrom } from "./served-locale";
 
 export interface MemberAnnouncementItem {
   id: string;
@@ -32,6 +36,12 @@ export interface MemberAnnouncementItem {
   linkUrl: string;
   isRead: boolean;
   createdAt: string;
+  /**
+   * The locale of the translation the title and body were taken from. It
+   * differs from the locale the reader asked for when the announcement was not
+   * written in that one.
+   */
+  locale: Locale;
 }
 
 /**
@@ -64,24 +74,29 @@ const mapErrorToMessage = async (
  */
 type RawAnnouncementItem = Pick<
   AnnouncementItem,
-  "body" | "createdAt" | "id" | "isRead" | "linkUrl" | "title"
+  "body" | "createdAt" | "id" | "isRead" | "linkUrl" | "locale" | "title"
 >;
 
 const mapAnnouncementItem = (
-  item: RawAnnouncementItem
+  item: RawAnnouncementItem,
+  requestedLocale: Locale
 ): MemberAnnouncementItem => ({
   body: item.body,
   createdAt: item.createdAt,
   id: item.id,
   isRead: item.isRead,
   linkUrl: item.linkUrl,
+  locale: servedLocaleFrom(item.locale, requestedLocale),
   title: item.title,
 });
 
 const mapAnnouncementItems = (
-  response: Awaited<ReturnType<typeof apiClient.auth.listAnnouncements>>
+  response: Awaited<ReturnType<typeof apiClient.auth.listAnnouncements>>,
+  requestedLocale: Locale
 ): MemberAnnouncementItem[] =>
-  (response.announcements ?? []).map((item) => mapAnnouncementItem(item));
+  (response.announcements ?? []).map((item) =>
+    mapAnnouncementItem(item, requestedLocale)
+  );
 
 /**
  * Cursor pagination: `token` is whatever the previous response returned as
@@ -90,7 +105,11 @@ const mapAnnouncementItems = (
  */
 export interface ListMyAnnouncementsOptions {
   limit?: number;
-  /** UI locale the failure wording belongs to; part of the cache key. */
+  /**
+   * The reader's locale: the language each announcement is listed in, where it
+   * has a translation in it, and the one the failure wording belongs to. Part
+   * of the cache key.
+   */
   locale: Locale;
   token?: string;
 }
@@ -98,11 +117,12 @@ export interface ListMyAnnouncementsOptions {
 const listAnnouncementsRpc = (
   tenantId: string,
   sessionId: string,
-  { limit = 20, token = "" }: ListMyAnnouncementsOptions
+  { limit = 20, locale, token = "" }: ListMyAnnouncementsOptions
 ): Promise<Awaited<ReturnType<typeof apiClient.auth.listAnnouncements>>> =>
   apiClient.auth.listAnnouncements(
     {
       limit,
+      locale,
       tenant: { tenantId },
       token,
     },
@@ -150,7 +170,7 @@ const readAnnouncementList = async (
     const response = await listAnnouncementsRpc(tenantId, sid, options);
 
     return {
-      announcements: mapAnnouncementItems(response),
+      announcements: mapAnnouncementItems(response, options.locale),
       nextToken: response.nextToken ?? "",
       ok: true,
       previousToken: response.previousToken ?? "",
@@ -183,7 +203,7 @@ export const listMyAnnouncements = async (
   return result;
 };
 
-const getMyAnnouncementInputSchema = z.object({
+const announcementInputSchema = z.object({
   announcementId: z.string().trim().pipe(z.uuid()),
   tenantId: tenantIdSchema,
 });
@@ -201,6 +221,7 @@ type CachedGetMyAnnouncementResult =
 const readMyAnnouncement = async (
   tenantId: string,
   announcementId: string,
+  locale: Locale,
   sid: string
 ): Promise<CachedGetMyAnnouncementResult> => {
   "use cache: private";
@@ -214,6 +235,7 @@ const readMyAnnouncement = async (
     const response = await apiClient.auth.getAnnouncement(
       {
         announcementId,
+        locale,
         tenant: { tenantId },
       },
       buildSessionHeaders(sid)
@@ -222,7 +244,7 @@ const readMyAnnouncement = async (
       return { value: null };
     }
 
-    return { value: mapAnnouncementItem(response.announcement) };
+    return { value: mapAnnouncementItem(response.announcement, locale) };
   } catch (error) {
     dropFailedCacheEntry();
     if (isUnauthenticatedRpcError(error)) {
@@ -247,9 +269,10 @@ const readMyAnnouncement = async (
 export const getMyAnnouncement = async (
   tenantId: string,
   announcementId: string,
+  locale: Locale,
   sessionId?: string
 ): Promise<MemberAnnouncementItem | null> => {
-  const parsed = getMyAnnouncementInputSchema.safeParse({
+  const parsed = announcementInputSchema.safeParse({
     announcementId,
     tenantId,
   });
@@ -261,6 +284,7 @@ export const getMyAnnouncement = async (
   const result = await readMyAnnouncement(
     parsed.data.tenantId,
     parsed.data.announcementId,
+    locale,
     await resolveAccessToken(sessionId)
   );
   if ("value" in result) {
@@ -273,6 +297,102 @@ export const getMyAnnouncement = async (
     );
   }
   throw new Error("Could not read the announcement.");
+};
+
+/** One announcement as its own page shows it. */
+export interface AnnouncementDetail {
+  id: string;
+  title: string;
+  body: string;
+  linkUrl: string;
+  createdAt: string;
+  /** The locale of the translation that was served. */
+  locale: Locale;
+  /** Every locale the announcement has a translation in, the served one included. */
+  publishedLocales: readonly Locale[];
+}
+
+/**
+ * The generated `AnnouncementItem` fields {@link getAnnouncement} keeps. The
+ * read state is left out: the page is read without a session.
+ */
+type AnnouncementDetailFields = Pick<
+  AnnouncementItem,
+  "body" | "createdAt" | "id" | "linkUrl" | "locale" | "title"
+>;
+
+const toAnnouncementDetail = (
+  item: AnnouncementDetailFields,
+  locales: readonly string[] | undefined,
+  requestedLocale: Locale
+): AnnouncementDetail => {
+  const servedLocale = servedLocaleFrom(item.locale, requestedLocale);
+
+  return {
+    body: item.body,
+    createdAt: item.createdAt,
+    id: item.id,
+    linkUrl: item.linkUrl,
+    locale: servedLocale,
+    publishedLocales: publishedLocalesFrom(locales, servedLocale),
+    title: item.title,
+  };
+};
+
+/**
+ * One announcement in `locale`, else the tenant default's translation, else
+ * its oldest — the page `/announcements/<id>` shows.
+ *
+ * It names no reader, so one entry serves every visitor: an announcement is the
+ * tenant's word to everyone who opens the site, and read state belongs to the
+ * list. A missing, malformed, or other-tenant id is `ok: true` with `null`; a
+ * failed read is `ok: false`, a value rather than a throw because a `"use
+ * cache"` fill that throws fails the whole request.
+ */
+export const getAnnouncement = async (
+  tenantId: string,
+  announcementId: string,
+  locale: Locale
+): Promise<CachedReadResult<AnnouncementDetail | null>> => {
+  "use cache: remote";
+
+  const parsed = announcementInputSchema.safeParse({
+    announcementId,
+    tenantId,
+  });
+  if (!parsed.success) {
+    return { ok: true, value: null };
+  }
+  applyCacheTag(announcementsCacheTag(parsed.data.tenantId));
+
+  try {
+    const response = await apiClient.auth.getAnnouncement({
+      announcementId: parsed.data.announcementId,
+      locale,
+      tenant: { tenantId: parsed.data.tenantId },
+    });
+    if (!response.announcement) {
+      return { ok: true, value: null };
+    }
+
+    return {
+      ok: true,
+      value: toAnnouncementDetail(
+        response.announcement,
+        response.locales,
+        locale
+      ),
+    };
+  } catch (error) {
+    if (isMissingResourceRpcError(error)) {
+      return { ok: true, value: null };
+    }
+    return localizedReadFailure(
+      error,
+      locale,
+      "storefront.announcements.read_failed"
+    );
+  }
 };
 
 export const markAnnouncementAsRead = async (
@@ -337,15 +457,18 @@ export interface PinnedAnnouncement {
   title: string;
   body: string;
   linkUrl: string;
+  /** The locale of the translation the title and body were taken from. */
+  locale: Locale;
 }
 
 /**
- * The announcement the tenant has pinned right now, or null when it has none.
+ * The announcement the tenant has pinned right now, in `locale` or the
+ * translation it falls back to, or null when it has none.
  *
  * Unlike the inbox reads this one names no reader — the API answers it without
- * a session — so one entry serves every visitor of a tenant and the band above
- * the page costs no round trip per request. What makes the entry stale is a pin,
- * an unpin, or the window closing, and each of those drops
+ * a session — so one entry per language serves every visitor of a tenant and
+ * the band above the page costs no round trip per request. What makes the
+ * entry stale is a pin, an unpin, or the window closing, and each of those drops
  * {@link tenantPinnedAnnouncementTag} from the side that knows it happened.
  *
  * A read that fails answers null: the banner is an addition to the page rather
@@ -360,7 +483,8 @@ export interface PinnedAnnouncement {
  * where a throw replaces the whole site with the locale segment's error screen.
  */
 export const getPinnedAnnouncement = async (
-  tenantId: string
+  tenantId: string,
+  locale: Locale
 ): Promise<PinnedAnnouncement | null> => {
   "use cache: remote";
 
@@ -372,6 +496,7 @@ export const getPinnedAnnouncement = async (
 
   try {
     const response = await apiClient.auth.getPinnedAnnouncement({
+      locale,
       tenant: { tenantId: normalizedTenantId },
     });
     if (!response.announcement) {
@@ -379,7 +504,13 @@ export const getPinnedAnnouncement = async (
     }
 
     const { body, id, linkUrl, title } = response.announcement;
-    return { body, id, linkUrl, title };
+    return {
+      body,
+      id,
+      linkUrl,
+      locale: servedLocaleFrom(response.announcement.locale, locale),
+      title,
+    };
   } catch (error) {
     if (!isExpectedNullableRpcError(error)) {
       console.warn("[web-storefront] getPinnedAnnouncement failed", error);

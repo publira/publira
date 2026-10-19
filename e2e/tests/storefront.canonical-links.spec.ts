@@ -201,3 +201,48 @@ test.describe("web-storefront language alternates of a series", () => {
     });
   });
 });
+
+/**
+ * An announcement names as its languages the ones it was written in, among the
+ * ones the tenant offers, as a series does.
+ */
+test.describe("web-storefront language alternates of an announcement", () => {
+  const { translated, untranslated } = BILINGUAL_TENANT.announcements;
+
+  test.beforeAll(() => {
+    applyScenarioSql(LOCALE_SWITCHING_SCENARIO);
+  });
+
+  test("an announcement written in both languages alternates both", async ({
+    page,
+  }) => {
+    const announcementPath = `/announcements/${translated.id}`;
+
+    await page.goto(
+      `${WEB_STOREFRONT_BILINGUAL_BASE_URL}${localeStorefrontPath("en", announcementPath)}`
+    );
+
+    await expectCanonical(page, `${BILINGUAL_ORIGIN}/en${announcementPath}`);
+    await expectLanguageAlternates(page, {
+      en: `${BILINGUAL_ORIGIN}/en${announcementPath}`,
+      ja: `${BILINGUAL_ORIGIN}${announcementPath}`,
+      "x-default": `${BILINGUAL_ORIGIN}${announcementPath}`,
+    });
+  });
+
+  test("an announcement shown in a fallback language is canonical in that language", async ({
+    page,
+  }) => {
+    const announcementPath = `/announcements/${untranslated.id}`;
+
+    await page.goto(
+      `${WEB_STOREFRONT_BILINGUAL_BASE_URL}${localeStorefrontPath("en", announcementPath)}`
+    );
+
+    await expectCanonical(page, `${BILINGUAL_ORIGIN}${announcementPath}`);
+    await expectLanguageAlternates(page, {
+      ja: `${BILINGUAL_ORIGIN}${announcementPath}`,
+      "x-default": `${BILINGUAL_ORIGIN}${announcementPath}`,
+    });
+  });
+});

@@ -18,7 +18,8 @@
 -- written in Japanese and English, its episode too, and the second in Japanese
 -- alone. The Japanese titles are English text marked as the Japanese edition,
 -- which is all the suite needs to tell the two translations apart. The
--- tenants' site copy follows the same pattern, at the end of this file.
+-- tenants' site copy follows the same pattern, and so do the bilingual
+-- tenant's two announcements, at the end of this file.
 --
 -- The public site and the console login screen are both reached without a
 -- session, so neither tenant owns users, and the Japanese-default tenant owns
@@ -29,6 +30,7 @@
 --   label    BlngLABLAAA1
 --   series   BlngSERSAAA1 (Japanese and English) / BlngSERSAAA2 (Japanese)
 --   episode  BlngEPSDAAA1 (of BlngSERSAAA1, Japanese and English)
+--   announcement 018f0f46-0001-… (Japanese and English) / 018f0f46-0002-… (Japanese)
 
 WITH tenant_seed AS (
     SELECT '018f0f40-0001-7000-8000-000000000001'::uuid AS id
@@ -284,3 +286,65 @@ SET site_tagline = EXCLUDED.site_tagline,
     site_description = EXCLUDED.site_description,
     copyright_text = EXCLUDED.copyright_text,
     updated_at = NOW();
+
+-- Two announcements of the bilingual tenant, read on the public site without a
+-- session: the first written in Japanese and English, the second in Japanese
+-- alone, so its English URL falls back. The second is the older, so the list
+-- shows the first above it.
+WITH tenant_scope AS (
+    SELECT t.id
+    FROM tenants t
+    WHERE t.public_id = 'BlngTNNTAAA1'
+),
+announcement_seed (id, created_at) AS (
+    VALUES
+        ('018f0f46-0001-7000-8000-000000000001'::uuid, NOW() - INTERVAL '1 day'),
+        ('018f0f46-0002-7000-8000-000000000002'::uuid, NOW() - INTERVAL '2 days')
+)
+INSERT INTO announcements (id, tenant_id, announcement_type, created_at)
+SELECT
+    a.id,
+    ts.id,
+    'announcement',
+    a.created_at
+FROM announcement_seed a
+CROSS JOIN tenant_scope ts
+ON CONFLICT (id) DO UPDATE
+SET tenant_id = EXCLUDED.tenant_id,
+    announcement_type = EXCLUDED.announcement_type,
+    created_at = EXCLUDED.created_at;
+
+WITH translation_seed (announcement_id, locale, title, body) AS (
+    VALUES
+        (
+            '018f0f46-0001-7000-8000-000000000001'::uuid,
+            'ja',
+            'Spring schedule (Japanese edition)',
+            'The Japanese body of the spring schedule.'
+        ),
+        (
+            '018f0f46-0001-7000-8000-000000000001'::uuid,
+            'en',
+            'Spring schedule',
+            'The English body of the spring schedule.'
+        ),
+        (
+            '018f0f46-0002-7000-8000-000000000002'::uuid,
+            'ja',
+            'Maintenance window (Japanese edition)',
+            'The Japanese body of the maintenance window.'
+        )
+)
+INSERT INTO announcement_translations (id, announcement_id, tenant_id, locale, title, body)
+SELECT
+    uuidv7(),
+    a.id,
+    a.tenant_id,
+    tr.locale,
+    tr.title,
+    tr.body
+FROM translation_seed tr
+JOIN announcements a ON a.id = tr.announcement_id
+ON CONFLICT (announcement_id, locale) DO UPDATE
+SET title = EXCLUDED.title,
+    body = EXCLUDED.body;

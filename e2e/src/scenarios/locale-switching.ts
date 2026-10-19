@@ -37,9 +37,23 @@ export const JAPANESE_DEFAULT_TENANT = {
  * Its site copy is written in both languages. Its two series are what a title
  * in the reader's language is read off: `translated` and its episode are
  * written in both languages, and `untranslated` in Japanese alone, so its
- * English URL falls back.
+ * English URL falls back. Its two announcements follow the same pattern.
  */
 export const BILINGUAL_TENANT = {
+  announcements: {
+    translated: {
+      englishBody: "The English body of the spring schedule.",
+      englishTitle: "Spring schedule",
+      id: "018f0f46-0001-7000-8000-000000000001",
+      japaneseBody: "The Japanese body of the spring schedule.",
+      japaneseTitle: "Spring schedule (Japanese edition)",
+    },
+    untranslated: {
+      id: "018f0f46-0002-7000-8000-000000000002",
+      japaneseBody: "The Japanese body of the maintenance window.",
+      japaneseTitle: "Maintenance window (Japanese edition)",
+    },
+  },
   domain: "bilingual.localhost",
   englishCopy: {
     copyrightText: "© Bilingual Tenant",

@@ -3819,9 +3819,11 @@
   },
   "storefront": {
     "announcements": {
+      "back_to_list": "返回公告列表",
       "banner_dismiss": "关闭该公告",
       "banner_link": "阅读公告",
       "description": "站点运营方发布的公告。",
+      "fallback_notice": "此公告没有以你所用的语言撰写的版本，因此以{$language}显示。",
       "first_page": "前往第一页",
       "list_empty": "暂无可显示的公告。",
       "list_error": "无法显示公告",
@@ -3831,6 +3833,7 @@
       "open_link": "打开链接",
       "page_empty": "本页没有公告。",
       "pagination_aria": "公告分页",
+      "read_failed": "无法加载公告。",
       "title": "公告",
       "unread_on_page": "本页有{$count}条未读"
     },

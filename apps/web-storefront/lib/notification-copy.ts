@@ -178,9 +178,9 @@ export const notificationDisplay = async (
   const type = notificationType.trim();
 
   if (type === NOTIFICATION_TYPE_ANNOUNCEMENT_POSTED) {
-    // The row links at the inbox rather than at one announcement: there is no
-    // per-announcement screen, and the list is where the body and the
-    // mark-as-read control are.
+    // The row links at the inbox rather than at one announcement: its payload
+    // names no announcement, and the list is where the mark-as-read control
+    // is.
     return {
       description: payload.announcement_title
         ? t("storefront.notifications.announcement_posted_description", {

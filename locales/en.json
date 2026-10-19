@@ -3819,9 +3819,11 @@
   },
   "storefront": {
     "announcements": {
+      "back_to_list": "All announcements",
       "banner_dismiss": "Close this announcement",
       "banner_link": "Read the announcement",
       "description": "Announcements published by the site operator.",
+      "fallback_notice": "This announcement is not written in your language, so it is shown in {$language}.",
       "first_page": "Show the first page",
       "list_empty": "There are no announcements to show.",
       "list_error": "Could not display the announcements",
@@ -3831,6 +3833,7 @@
       "open_link": "Open link",
       "page_empty": "There are no announcements on this page.",
       "pagination_aria": "Announcements pagination",
+      "read_failed": "Could not load the announcement. Please try again later.",
       "title": "Announcements",
       "unread_on_page": "{$count} unread on this page"
     },

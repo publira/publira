@@ -3819,9 +3819,11 @@
   },
   "storefront": {
     "announcements": {
+      "back_to_list": "返回公告列表",
       "banner_dismiss": "關閉該公告",
       "banner_link": "閱讀公告",
       "description": "網站營運方發布的公告。",
+      "fallback_notice": "此公告沒有以你所使用的語言撰寫的版本，因此以{$language}顯示。",
       "first_page": "前往第一頁",
       "list_empty": "目前沒有可顯示的公告。",
       "list_error": "無法顯示公告",
@@ -3831,6 +3833,7 @@
       "open_link": "開啟連結",
       "page_empty": "本頁沒有公告。",
       "pagination_aria": "公告分頁",
+      "read_failed": "無法載入公告。",
       "title": "公告",
       "unread_on_page": "本頁有{$count}則未讀"
     },

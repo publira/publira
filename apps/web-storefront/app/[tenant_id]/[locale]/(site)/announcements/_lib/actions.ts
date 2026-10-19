@@ -122,7 +122,7 @@ export const markAnnouncementAsReadAndNavigateAction = async (
   const announcement = await withPublicSessionReauth(
     locale,
     ANNOUNCEMENTS_RETURN_TO,
-    () => getMyAnnouncement(tenantId, announcementId, accessToken),
+    () => getMyAnnouncement(tenantId, announcementId, locale, accessToken),
     tenantId
   );
   if (!announcement) {
