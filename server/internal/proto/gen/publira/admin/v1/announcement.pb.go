@@ -22,27 +22,92 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// One locale's title and body of an announcement.
+type AnnouncementTranslation struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Locale        string                 `protobuf:"bytes,1,opt,name=locale,proto3" json:"locale,omitempty"`
+	Title         string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	Body          string                 `protobuf:"bytes,3,opt,name=body,proto3" json:"body,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AnnouncementTranslation) Reset() {
+	*x = AnnouncementTranslation{}
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AnnouncementTranslation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AnnouncementTranslation) ProtoMessage() {}
+
+func (x *AnnouncementTranslation) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AnnouncementTranslation.ProtoReflect.Descriptor instead.
+func (*AnnouncementTranslation) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_announcement_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *AnnouncementTranslation) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
+func (x *AnnouncementTranslation) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *AnnouncementTranslation) GetBody() string {
+	if x != nil {
+		return x.Body
+	}
+	return ""
+}
+
 // An announcement is addressed to everyone who opens the tenant's site; a
 // message to one person is a notification.
 type AdminAnnouncement struct {
-	state     protoimpl.MessageState `protogen:"open.v1"`
-	Id        string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Title     string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
-	Body      string                 `protobuf:"bytes,3,opt,name=body,proto3" json:"body,omitempty"`
-	LinkUrl   string                 `protobuf:"bytes,4,opt,name=link_url,json=linkUrl,proto3" json:"link_url,omitempty"`
-	CreatedAt string                 `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// The title and body of the translation in the tenant's default locale, else
+	// the oldest.
+	Title     string `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	Body      string `protobuf:"bytes,3,opt,name=body,proto3" json:"body,omitempty"`
+	LinkUrl   string `protobuf:"bytes,4,opt,name=link_url,json=linkUrl,proto3" json:"link_url,omitempty"`
+	CreatedAt string `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	// Whether the site shows this announcement as a banner above every page.
 	Pinned bool `protobuf:"varint,9,opt,name=pinned,proto3" json:"pinned,omitempty"`
 	// RFC 3339 instant the banner stops at. Empty leaves it up until the console
 	// takes it down.
-	PinnedUntil   string `protobuf:"bytes,10,opt,name=pinned_until,json=pinnedUntil,proto3" json:"pinned_until,omitempty"`
+	PinnedUntil string `protobuf:"bytes,10,opt,name=pinned_until,json=pinnedUntil,proto3" json:"pinned_until,omitempty"`
+	// Every translation of the announcement, oldest first.
+	Translations  []*AnnouncementTranslation `protobuf:"bytes,11,rep,name=translations,proto3" json:"translations,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AdminAnnouncement) Reset() {
 	*x = AdminAnnouncement{}
-	mi := &file_publira_admin_v1_announcement_proto_msgTypes[0]
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -54,7 +119,7 @@ func (x *AdminAnnouncement) String() string {
 func (*AdminAnnouncement) ProtoMessage() {}
 
 func (x *AdminAnnouncement) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_announcement_proto_msgTypes[0]
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -67,7 +132,7 @@ func (x *AdminAnnouncement) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminAnnouncement.ProtoReflect.Descriptor instead.
 func (*AdminAnnouncement) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_announcement_proto_rawDescGZIP(), []int{0}
+	return file_publira_admin_v1_announcement_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *AdminAnnouncement) GetId() string {
@@ -119,6 +184,13 @@ func (x *AdminAnnouncement) GetPinnedUntil() string {
 	return ""
 }
 
+func (x *AdminAnnouncement) GetTranslations() []*AnnouncementTranslation {
+	if x != nil {
+		return x.Translations
+	}
+	return nil
+}
+
 // Cursor pagination. Field shape and token rules: proto/README.md.
 type ListAnnouncementsRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
@@ -133,7 +205,7 @@ type ListAnnouncementsRequest struct {
 
 func (x *ListAnnouncementsRequest) Reset() {
 	*x = ListAnnouncementsRequest{}
-	mi := &file_publira_admin_v1_announcement_proto_msgTypes[1]
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -145,7 +217,7 @@ func (x *ListAnnouncementsRequest) String() string {
 func (*ListAnnouncementsRequest) ProtoMessage() {}
 
 func (x *ListAnnouncementsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_announcement_proto_msgTypes[1]
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -158,7 +230,7 @@ func (x *ListAnnouncementsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAnnouncementsRequest.ProtoReflect.Descriptor instead.
 func (*ListAnnouncementsRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_announcement_proto_rawDescGZIP(), []int{1}
+	return file_publira_admin_v1_announcement_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ListAnnouncementsRequest) GetTenant() *v1.TenantContext {
@@ -195,7 +267,7 @@ type ListAnnouncementsResponse struct {
 
 func (x *ListAnnouncementsResponse) Reset() {
 	*x = ListAnnouncementsResponse{}
-	mi := &file_publira_admin_v1_announcement_proto_msgTypes[2]
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -207,7 +279,7 @@ func (x *ListAnnouncementsResponse) String() string {
 func (*ListAnnouncementsResponse) ProtoMessage() {}
 
 func (x *ListAnnouncementsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_announcement_proto_msgTypes[2]
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -220,7 +292,7 @@ func (x *ListAnnouncementsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAnnouncementsResponse.ProtoReflect.Descriptor instead.
 func (*ListAnnouncementsResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_announcement_proto_rawDescGZIP(), []int{2}
+	return file_publira_admin_v1_announcement_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ListAnnouncementsResponse) GetAnnouncements() []*AdminAnnouncement {
@@ -245,12 +317,18 @@ func (x *ListAnnouncementsResponse) GetNextToken() string {
 }
 
 type CreateAnnouncementRequest struct {
-	state   protoimpl.MessageState `protogen:"open.v1"`
-	Tenant  *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	Title   string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
-	Body    string                 `protobuf:"bytes,3,opt,name=body,proto3" json:"body,omitempty"`
-	LinkUrl string                 `protobuf:"bytes,4,opt,name=link_url,json=linkUrl,proto3" json:"link_url,omitempty"`
-	Pinned  bool                   `protobuf:"varint,7,opt,name=pinned,proto3" json:"pinned,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// The announcement in every locale it is written in, at most one per locale,
+	// each with a title and a body. The tenant's default locale is required, since
+	// it is what a reader is shown in a locale nothing was written in. An empty
+	// locale means the tenant's default locale; a locale the tenant does not
+	// offer is invalid_argument. Each reader's notification is rendered once, in
+	// the translation their last locale picks, so translations are sent together
+	// here rather than added afterwards.
+	Translations []*AnnouncementTranslation `protobuf:"bytes,9,rep,name=translations,proto3" json:"translations,omitempty"`
+	LinkUrl      string                     `protobuf:"bytes,4,opt,name=link_url,json=linkUrl,proto3" json:"link_url,omitempty"`
+	Pinned       bool                       `protobuf:"varint,7,opt,name=pinned,proto3" json:"pinned,omitempty"`
 	// RFC 3339 instant the banner stops at. Empty pins it until the console takes
 	// it down, and it is ignored when pinned is false.
 	PinnedUntil   string `protobuf:"bytes,8,opt,name=pinned_until,json=pinnedUntil,proto3" json:"pinned_until,omitempty"`
@@ -260,7 +338,7 @@ type CreateAnnouncementRequest struct {
 
 func (x *CreateAnnouncementRequest) Reset() {
 	*x = CreateAnnouncementRequest{}
-	mi := &file_publira_admin_v1_announcement_proto_msgTypes[3]
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -272,7 +350,7 @@ func (x *CreateAnnouncementRequest) String() string {
 func (*CreateAnnouncementRequest) ProtoMessage() {}
 
 func (x *CreateAnnouncementRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_announcement_proto_msgTypes[3]
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -285,7 +363,7 @@ func (x *CreateAnnouncementRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateAnnouncementRequest.ProtoReflect.Descriptor instead.
 func (*CreateAnnouncementRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_announcement_proto_rawDescGZIP(), []int{3}
+	return file_publira_admin_v1_announcement_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *CreateAnnouncementRequest) GetTenant() *v1.TenantContext {
@@ -295,18 +373,11 @@ func (x *CreateAnnouncementRequest) GetTenant() *v1.TenantContext {
 	return nil
 }
 
-func (x *CreateAnnouncementRequest) GetTitle() string {
+func (x *CreateAnnouncementRequest) GetTranslations() []*AnnouncementTranslation {
 	if x != nil {
-		return x.Title
+		return x.Translations
 	}
-	return ""
-}
-
-func (x *CreateAnnouncementRequest) GetBody() string {
-	if x != nil {
-		return x.Body
-	}
-	return ""
+	return nil
 }
 
 func (x *CreateAnnouncementRequest) GetLinkUrl() string {
@@ -339,7 +410,7 @@ type CreateAnnouncementResponse struct {
 
 func (x *CreateAnnouncementResponse) Reset() {
 	*x = CreateAnnouncementResponse{}
-	mi := &file_publira_admin_v1_announcement_proto_msgTypes[4]
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -351,7 +422,7 @@ func (x *CreateAnnouncementResponse) String() string {
 func (*CreateAnnouncementResponse) ProtoMessage() {}
 
 func (x *CreateAnnouncementResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_announcement_proto_msgTypes[4]
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -364,7 +435,7 @@ func (x *CreateAnnouncementResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateAnnouncementResponse.ProtoReflect.Descriptor instead.
 func (*CreateAnnouncementResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_announcement_proto_rawDescGZIP(), []int{4}
+	return file_publira_admin_v1_announcement_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *CreateAnnouncementResponse) GetAnnouncement() *AdminAnnouncement {
@@ -386,7 +457,7 @@ type UnpinAnnouncementRequest struct {
 
 func (x *UnpinAnnouncementRequest) Reset() {
 	*x = UnpinAnnouncementRequest{}
-	mi := &file_publira_admin_v1_announcement_proto_msgTypes[5]
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -398,7 +469,7 @@ func (x *UnpinAnnouncementRequest) String() string {
 func (*UnpinAnnouncementRequest) ProtoMessage() {}
 
 func (x *UnpinAnnouncementRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_announcement_proto_msgTypes[5]
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -411,7 +482,7 @@ func (x *UnpinAnnouncementRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnpinAnnouncementRequest.ProtoReflect.Descriptor instead.
 func (*UnpinAnnouncementRequest) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_announcement_proto_rawDescGZIP(), []int{5}
+	return file_publira_admin_v1_announcement_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *UnpinAnnouncementRequest) GetTenant() *v1.TenantContext {
@@ -436,7 +507,7 @@ type UnpinAnnouncementResponse struct {
 
 func (x *UnpinAnnouncementResponse) Reset() {
 	*x = UnpinAnnouncementResponse{}
-	mi := &file_publira_admin_v1_announcement_proto_msgTypes[6]
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -448,7 +519,7 @@ func (x *UnpinAnnouncementResponse) String() string {
 func (*UnpinAnnouncementResponse) ProtoMessage() {}
 
 func (x *UnpinAnnouncementResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_publira_admin_v1_announcement_proto_msgTypes[6]
+	mi := &file_publira_admin_v1_announcement_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -461,14 +532,18 @@ func (x *UnpinAnnouncementResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnpinAnnouncementResponse.ProtoReflect.Descriptor instead.
 func (*UnpinAnnouncementResponse) Descriptor() ([]byte, []int) {
-	return file_publira_admin_v1_announcement_proto_rawDescGZIP(), []int{6}
+	return file_publira_admin_v1_announcement_proto_rawDescGZIP(), []int{7}
 }
 
 var File_publira_admin_v1_announcement_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_announcement_proto_rawDesc = "" +
 	"\n" +
-	"#publira/admin/v1/announcement.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"\x8c\x02\n" +
+	"#publira/admin/v1/announcement.proto\x12\x10publira.admin.v1\x1a\x1cpublira/types/v1/types.proto\"[\n" +
+	"\x17AnnouncementTranslation\x12\x16\n" +
+	"\x06locale\x18\x01 \x01(\tR\x06locale\x12\x14\n" +
+	"\x05title\x18\x02 \x01(\tR\x05title\x12\x12\n" +
+	"\x04body\x18\x03 \x01(\tR\x04body\"\xdb\x02\n" +
 	"\x11AdminAnnouncement\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x12\n" +
@@ -478,7 +553,8 @@ const file_publira_admin_v1_announcement_proto_rawDesc = "" +
 	"created_at\x18\b \x01(\tR\tcreatedAt\x12\x16\n" +
 	"\x06pinned\x18\t \x01(\bR\x06pinned\x12!\n" +
 	"\fpinned_until\x18\n" +
-	" \x01(\tR\vpinnedUntilJ\x04\b\x05\x10\x06J\x04\b\x06\x10\aJ\x04\b\a\x10\bR\raudience_typeR\x15target_user_public_idR\x10target_user_name\"\x8d\x01\n" +
+	" \x01(\tR\vpinnedUntil\x12M\n" +
+	"\ftranslations\x18\v \x03(\v2).publira.admin.v1.AnnouncementTranslationR\ftranslationsJ\x04\b\x05\x10\x06J\x04\b\x06\x10\aJ\x04\b\a\x10\bR\raudience_typeR\x15target_user_public_idR\x10target_user_name\"\x8d\x01\n" +
 	"\x18ListAnnouncementsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
@@ -487,14 +563,13 @@ const file_publira_admin_v1_announcement_proto_rawDesc = "" +
 	"\rannouncements\x18\x01 \x03(\v2#.publira.admin.v1.AdminAnnouncementR\rannouncements\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\x87\x02\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\xc5\x02\n" +
 	"\x19CreateAnnouncementRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
-	"\x05title\x18\x02 \x01(\tR\x05title\x12\x12\n" +
-	"\x04body\x18\x03 \x01(\tR\x04body\x12\x19\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12M\n" +
+	"\ftranslations\x18\t \x03(\v2).publira.admin.v1.AnnouncementTranslationR\ftranslations\x12\x19\n" +
 	"\blink_url\x18\x04 \x01(\tR\alinkUrl\x12\x16\n" +
 	"\x06pinned\x18\a \x01(\bR\x06pinned\x12!\n" +
-	"\fpinned_until\x18\b \x01(\tR\vpinnedUntilJ\x04\b\x05\x10\x06J\x04\b\x06\x10\aR\raudience_typeR\x16target_user_public_ids\"z\n" +
+	"\fpinned_until\x18\b \x01(\tR\vpinnedUntilJ\x04\b\x02\x10\x03J\x04\b\x03\x10\x04J\x04\b\x05\x10\x06J\x04\b\x06\x10\aR\x05titleR\x04bodyR\raudience_typeR\x16target_user_public_ids\"z\n" +
 	"\x1aCreateAnnouncementResponse\x12G\n" +
 	"\fannouncement\x18\x02 \x01(\v2#.publira.admin.v1.AdminAnnouncementR\fannouncementJ\x04\b\x01\x10\x02R\rannouncements\"|\n" +
 	"\x18UnpinAnnouncementRequest\x127\n" +
@@ -518,34 +593,37 @@ func file_publira_admin_v1_announcement_proto_rawDescGZIP() []byte {
 	return file_publira_admin_v1_announcement_proto_rawDescData
 }
 
-var file_publira_admin_v1_announcement_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_publira_admin_v1_announcement_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_publira_admin_v1_announcement_proto_goTypes = []any{
-	(*AdminAnnouncement)(nil),          // 0: publira.admin.v1.AdminAnnouncement
-	(*ListAnnouncementsRequest)(nil),   // 1: publira.admin.v1.ListAnnouncementsRequest
-	(*ListAnnouncementsResponse)(nil),  // 2: publira.admin.v1.ListAnnouncementsResponse
-	(*CreateAnnouncementRequest)(nil),  // 3: publira.admin.v1.CreateAnnouncementRequest
-	(*CreateAnnouncementResponse)(nil), // 4: publira.admin.v1.CreateAnnouncementResponse
-	(*UnpinAnnouncementRequest)(nil),   // 5: publira.admin.v1.UnpinAnnouncementRequest
-	(*UnpinAnnouncementResponse)(nil),  // 6: publira.admin.v1.UnpinAnnouncementResponse
-	(*v1.TenantContext)(nil),           // 7: publira.types.v1.TenantContext
+	(*AnnouncementTranslation)(nil),    // 0: publira.admin.v1.AnnouncementTranslation
+	(*AdminAnnouncement)(nil),          // 1: publira.admin.v1.AdminAnnouncement
+	(*ListAnnouncementsRequest)(nil),   // 2: publira.admin.v1.ListAnnouncementsRequest
+	(*ListAnnouncementsResponse)(nil),  // 3: publira.admin.v1.ListAnnouncementsResponse
+	(*CreateAnnouncementRequest)(nil),  // 4: publira.admin.v1.CreateAnnouncementRequest
+	(*CreateAnnouncementResponse)(nil), // 5: publira.admin.v1.CreateAnnouncementResponse
+	(*UnpinAnnouncementRequest)(nil),   // 6: publira.admin.v1.UnpinAnnouncementRequest
+	(*UnpinAnnouncementResponse)(nil),  // 7: publira.admin.v1.UnpinAnnouncementResponse
+	(*v1.TenantContext)(nil),           // 8: publira.types.v1.TenantContext
 }
 var file_publira_admin_v1_announcement_proto_depIdxs = []int32{
-	7, // 0: publira.admin.v1.ListAnnouncementsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	0, // 1: publira.admin.v1.ListAnnouncementsResponse.announcements:type_name -> publira.admin.v1.AdminAnnouncement
-	7, // 2: publira.admin.v1.CreateAnnouncementRequest.tenant:type_name -> publira.types.v1.TenantContext
-	0, // 3: publira.admin.v1.CreateAnnouncementResponse.announcement:type_name -> publira.admin.v1.AdminAnnouncement
-	7, // 4: publira.admin.v1.UnpinAnnouncementRequest.tenant:type_name -> publira.types.v1.TenantContext
-	1, // 5: publira.admin.v1.AdminAnnouncementService.ListAnnouncements:input_type -> publira.admin.v1.ListAnnouncementsRequest
-	3, // 6: publira.admin.v1.AdminAnnouncementService.CreateAnnouncement:input_type -> publira.admin.v1.CreateAnnouncementRequest
-	5, // 7: publira.admin.v1.AdminAnnouncementService.UnpinAnnouncement:input_type -> publira.admin.v1.UnpinAnnouncementRequest
-	2, // 8: publira.admin.v1.AdminAnnouncementService.ListAnnouncements:output_type -> publira.admin.v1.ListAnnouncementsResponse
-	4, // 9: publira.admin.v1.AdminAnnouncementService.CreateAnnouncement:output_type -> publira.admin.v1.CreateAnnouncementResponse
-	6, // 10: publira.admin.v1.AdminAnnouncementService.UnpinAnnouncement:output_type -> publira.admin.v1.UnpinAnnouncementResponse
-	8, // [8:11] is the sub-list for method output_type
-	5, // [5:8] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	0,  // 0: publira.admin.v1.AdminAnnouncement.translations:type_name -> publira.admin.v1.AnnouncementTranslation
+	8,  // 1: publira.admin.v1.ListAnnouncementsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	1,  // 2: publira.admin.v1.ListAnnouncementsResponse.announcements:type_name -> publira.admin.v1.AdminAnnouncement
+	8,  // 3: publira.admin.v1.CreateAnnouncementRequest.tenant:type_name -> publira.types.v1.TenantContext
+	0,  // 4: publira.admin.v1.CreateAnnouncementRequest.translations:type_name -> publira.admin.v1.AnnouncementTranslation
+	1,  // 5: publira.admin.v1.CreateAnnouncementResponse.announcement:type_name -> publira.admin.v1.AdminAnnouncement
+	8,  // 6: publira.admin.v1.UnpinAnnouncementRequest.tenant:type_name -> publira.types.v1.TenantContext
+	2,  // 7: publira.admin.v1.AdminAnnouncementService.ListAnnouncements:input_type -> publira.admin.v1.ListAnnouncementsRequest
+	4,  // 8: publira.admin.v1.AdminAnnouncementService.CreateAnnouncement:input_type -> publira.admin.v1.CreateAnnouncementRequest
+	6,  // 9: publira.admin.v1.AdminAnnouncementService.UnpinAnnouncement:input_type -> publira.admin.v1.UnpinAnnouncementRequest
+	3,  // 10: publira.admin.v1.AdminAnnouncementService.ListAnnouncements:output_type -> publira.admin.v1.ListAnnouncementsResponse
+	5,  // 11: publira.admin.v1.AdminAnnouncementService.CreateAnnouncement:output_type -> publira.admin.v1.CreateAnnouncementResponse
+	7,  // 12: publira.admin.v1.AdminAnnouncementService.UnpinAnnouncement:output_type -> publira.admin.v1.UnpinAnnouncementResponse
+	10, // [10:13] is the sub-list for method output_type
+	7,  // [7:10] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_announcement_proto_init() }
@@ -559,7 +637,7 @@ func file_publira_admin_v1_announcement_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_announcement_proto_rawDesc), len(file_publira_admin_v1_announcement_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

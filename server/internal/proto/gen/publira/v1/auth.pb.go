@@ -3727,17 +3727,22 @@ type AnnouncementItem struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	Id               string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	AnnouncementType string                 `protobuf:"bytes,2,opt,name=announcement_type,json=announcementType,proto3" json:"announcement_type,omitempty"`
-	Title            string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
-	Body             string                 `protobuf:"bytes,4,opt,name=body,proto3" json:"body,omitempty"`
-	LinkUrl          string                 `protobuf:"bytes,5,opt,name=link_url,json=linkUrl,proto3" json:"link_url,omitempty"`
-	IsRead           bool                   `protobuf:"varint,6,opt,name=is_read,json=isRead,proto3" json:"is_read,omitempty"`
-	ReadAt           string                 `protobuf:"bytes,7,opt,name=read_at,json=readAt,proto3" json:"read_at,omitempty"`
-	CreatedAt        string                 `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	// The title and body of the translation in the locale the request asked for,
+	// else the tenant's default locale, else the oldest. locale names which.
+	Title     string `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
+	Body      string `protobuf:"bytes,4,opt,name=body,proto3" json:"body,omitempty"`
+	LinkUrl   string `protobuf:"bytes,5,opt,name=link_url,json=linkUrl,proto3" json:"link_url,omitempty"`
+	IsRead    bool   `protobuf:"varint,6,opt,name=is_read,json=isRead,proto3" json:"is_read,omitempty"`
+	ReadAt    string `protobuf:"bytes,7,opt,name=read_at,json=readAt,proto3" json:"read_at,omitempty"`
+	CreatedAt string `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	// Whether the site shows this announcement as a banner above every page.
 	Pinned bool `protobuf:"varint,9,opt,name=pinned,proto3" json:"pinned,omitempty"`
 	// RFC 3339 instant the banner stops at. Empty leaves it up until the console
 	// takes it down.
-	PinnedUntil   string `protobuf:"bytes,10,opt,name=pinned_until,json=pinnedUntil,proto3" json:"pinned_until,omitempty"`
+	PinnedUntil string `protobuf:"bytes,10,opt,name=pinned_until,json=pinnedUntil,proto3" json:"pinned_until,omitempty"`
+	// The locale of the translation title and body come from. It differs from
+	// the one asked for where the announcement has no translation in it.
+	Locale        string `protobuf:"bytes,11,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3842,12 +3847,21 @@ func (x *AnnouncementItem) GetPinnedUntil() string {
 	return ""
 }
 
+func (x *AnnouncementItem) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
 // What the site shows as a banner above every page: the newest tenant-wide
 // announcement still inside its pinned window. It carries no session, because
 // an announcement is the tenant's word to everyone who opens the site.
 type GetPinnedAnnouncementRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// The reader's locale, resolved as ListAnnouncementsRequest.locale is.
+	Locale        string `protobuf:"bytes,2,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3887,6 +3901,13 @@ func (x *GetPinnedAnnouncementRequest) GetTenant() *v1.TenantContext {
 		return x.Tenant
 	}
 	return nil
+}
+
+func (x *GetPinnedAnnouncementRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
 }
 
 type GetPinnedAnnouncementResponse struct {
@@ -3941,8 +3962,10 @@ type GetAnnouncementRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	Tenant         *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
 	AnnouncementId string                 `protobuf:"bytes,2,opt,name=announcement_id,json=announcementId,proto3" json:"announcement_id,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The reader's locale, resolved as ListAnnouncementsRequest.locale is.
+	Locale        string `protobuf:"bytes,3,opt,name=locale,proto3" json:"locale,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetAnnouncementRequest) Reset() {
@@ -3989,9 +4012,19 @@ func (x *GetAnnouncementRequest) GetAnnouncementId() string {
 	return ""
 }
 
+func (x *GetAnnouncementRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
 type GetAnnouncementResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Announcement  *AnnouncementItem      `protobuf:"bytes,1,opt,name=announcement,proto3" json:"announcement,omitempty"`
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	Announcement *AnnouncementItem      `protobuf:"bytes,1,opt,name=announcement,proto3" json:"announcement,omitempty"`
+	// Every locale the announcement has a translation in, the served one
+	// included, in code order: the language alternates of the announcement.
+	Locales       []string `protobuf:"bytes,2,rep,name=locales,proto3" json:"locales,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4033,6 +4066,13 @@ func (x *GetAnnouncementResponse) GetAnnouncement() *AnnouncementItem {
 	return nil
 }
 
+func (x *GetAnnouncementResponse) GetLocales() []string {
+	if x != nil {
+		return x.Locales
+	}
+	return nil
+}
+
 // Cursor pagination. Field shape and token rules: proto/README.md.
 type ListAnnouncementsRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
@@ -4040,7 +4080,12 @@ type ListAnnouncementsRequest struct {
 	// Max items in one page. <= 0 or > 100 falls back to 20.
 	Limit int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Opaque token from a previous response. Empty for the first page.
-	Token         string `protobuf:"bytes,4,opt,name=token,proto3" json:"token,omitempty"`
+	Token string `protobuf:"bytes,4,opt,name=token,proto3" json:"token,omitempty"`
+	// The reader's locale. Each announcement is listed in its translation in
+	// this locale, else the tenant's default locale, else its oldest, and
+	// AnnouncementItem.locale names the one listed. Empty means the tenant's
+	// default locale.
+	Locale        string `protobuf:"bytes,5,opt,name=locale,proto3" json:"locale,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4092,6 +4137,13 @@ func (x *ListAnnouncementsRequest) GetLimit() int32 {
 func (x *ListAnnouncementsRequest) GetToken() string {
 	if x != nil {
 		return x.Token
+	}
+	return ""
+}
+
+func (x *ListAnnouncementsRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
 	}
 	return ""
 }
@@ -4789,7 +4841,7 @@ const file_publira_v1_auth_proto_rawDesc = "" +
 	"\x13wide_viewer_enabled\x18\x02 \x01(\bH\x00R\x11wideViewerEnabled\x88\x01\x01B\x16\n" +
 	"\x14_wide_viewer_enabled\"b\n" +
 	"\x1fUpdateViewerPreferencesResponse\x12?\n" +
-	"\vpreferences\x18\x01 \x01(\v2\x1d.publira.v1.ViewerPreferencesR\vpreferences\"\xa0\x02\n" +
+	"\vpreferences\x18\x01 \x01(\v2\x1d.publira.v1.ViewerPreferencesR\vpreferences\"\xb8\x02\n" +
 	"\x10AnnouncementItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12+\n" +
 	"\x11announcement_type\x18\x02 \x01(\tR\x10announcementType\x12\x14\n" +
@@ -4802,20 +4854,25 @@ const file_publira_v1_auth_proto_rawDesc = "" +
 	"created_at\x18\b \x01(\tR\tcreatedAt\x12\x16\n" +
 	"\x06pinned\x18\t \x01(\bR\x06pinned\x12!\n" +
 	"\fpinned_until\x18\n" +
-	" \x01(\tR\vpinnedUntil\"W\n" +
+	" \x01(\tR\vpinnedUntil\x12\x16\n" +
+	"\x06locale\x18\v \x01(\tR\x06locale\"o\n" +
 	"\x1cGetPinnedAnnouncementRequest\x127\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"a\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x16\n" +
+	"\x06locale\x18\x02 \x01(\tR\x06locale\"a\n" +
 	"\x1dGetPinnedAnnouncementResponse\x12@\n" +
-	"\fannouncement\x18\x01 \x01(\v2\x1c.publira.v1.AnnouncementItemR\fannouncement\"z\n" +
+	"\fannouncement\x18\x01 \x01(\v2\x1c.publira.v1.AnnouncementItemR\fannouncement\"\x92\x01\n" +
 	"\x16GetAnnouncementRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12'\n" +
-	"\x0fannouncement_id\x18\x02 \x01(\tR\x0eannouncementId\"[\n" +
+	"\x0fannouncement_id\x18\x02 \x01(\tR\x0eannouncementId\x12\x16\n" +
+	"\x06locale\x18\x03 \x01(\tR\x06locale\"u\n" +
 	"\x17GetAnnouncementResponse\x12@\n" +
-	"\fannouncement\x18\x01 \x01(\v2\x1c.publira.v1.AnnouncementItemR\fannouncement\"\x8d\x01\n" +
+	"\fannouncement\x18\x01 \x01(\v2\x1c.publira.v1.AnnouncementItemR\fannouncement\x12\x18\n" +
+	"\alocales\x18\x02 \x03(\tR\alocales\"\xa5\x01\n" +
 	"\x18ListAnnouncementsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
-	"\x05token\x18\x04 \x01(\tR\x05tokenJ\x04\b\x03\x10\x04R\x06offset\"\xa5\x01\n" +
+	"\x05token\x18\x04 \x01(\tR\x05token\x12\x16\n" +
+	"\x06locale\x18\x05 \x01(\tR\x06localeJ\x04\b\x03\x10\x04R\x06offset\"\xa5\x01\n" +
 	"\x19ListAnnouncementsResponse\x12B\n" +
 	"\rannouncements\x18\x01 \x03(\v2\x1c.publira.v1.AnnouncementItemR\rannouncements\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +

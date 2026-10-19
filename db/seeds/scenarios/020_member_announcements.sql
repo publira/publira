@@ -23,8 +23,6 @@ INSERT INTO announcements (
     id,
     tenant_id,
     announcement_type,
-    title,
-    body,
     link_url,
     created_at
 )
@@ -32,8 +30,6 @@ SELECT
     ('018f0f10-0001-7000-8000-' || lpad(g::text, 12, '0'))::uuid,
     tenant_seed.tenant_id,
     'system',
-    'Notice ' || lpad(g::text, 3, '0'),
-    'Body of Notice ' || lpad(g::text, 3, '0') || '.',
     '/series',
     TIMESTAMPTZ '2026-01-01 00:00:00+00' + (g || ' minutes')::interval
 FROM generate_series(1, 45) AS g
@@ -41,10 +37,24 @@ CROSS JOIN tenant_seed
 ON CONFLICT (id) DO UPDATE
 SET tenant_id = EXCLUDED.tenant_id,
     announcement_type = EXCLUDED.announcement_type,
-    title = EXCLUDED.title,
-    body = EXCLUDED.body,
     link_url = EXCLUDED.link_url,
     created_at = EXCLUDED.created_at;
+
+-- Each notice is written in the tenant's default locale only.
+INSERT INTO announcement_translations (id, announcement_id, tenant_id, locale, title, body)
+SELECT
+    uuidv7(),
+    ('018f0f10-0001-7000-8000-' || lpad(g::text, 12, '0'))::uuid,
+    t.id,
+    t.default_locale,
+    'Notice ' || lpad(g::text, 3, '0'),
+    'Body of Notice ' || lpad(g::text, 3, '0') || '.'
+FROM generate_series(1, 45) AS g
+CROSS JOIN tenants t
+WHERE t.public_id = 'SeedTNNTAAA1'
+ON CONFLICT (announcement_id, locale) DO UPDATE
+SET title = EXCLUDED.title,
+    body = EXCLUDED.body;
 
 -- Re-applying the scenario has to restore the unread state too: the list marks
 -- rows read as the reader walks it, and a second run would otherwise start from

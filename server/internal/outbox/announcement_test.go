@@ -19,12 +19,17 @@ func TestAnnouncementIdempotencyKeySeparatesAnnouncements(t *testing.T) {
 	}
 }
 
-func TestAnnouncementNotificationWritesOneRowPerTenantUser(t *testing.T) {
+func TestAnnouncementNotificationWritesOneRowPerTenantUserInTheirLocale(t *testing.T) {
 	tenantID := uuid.New()
 	announcementID := uuid.New()
-	first := uuid.New()
-	second := uuid.New()
-	queries := &stubAnnouncementQuerier{users: []uuid.UUID{first, second}}
+	// The query answers each reader with the title of the translation their
+	// last locale picks, so two readers of one announcement can be told it in
+	// two languages.
+	recipients := []dbmodels.ListAnnouncementRecipientsRow{
+		{UserID: uuid.New(), Title: "Scheduled maintenance"},
+		{UserID: uuid.New(), Title: "  Scheduled maintenance (ja)  "},
+	}
+	queries := &stubAnnouncementQuerier{users: recipients}
 
 	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
 	if err := handler(context.Background(), announcementEvent(t, tenantID, announcementID)); err != nil {
@@ -37,10 +42,13 @@ func TestAnnouncementNotificationWritesOneRowPerTenantUser(t *testing.T) {
 	if queries.listedTenant.UUID != tenantID || !queries.listedTenant.Valid {
 		t.Fatalf("recipients looked up for %v, want %s", queries.listedTenant, tenantID)
 	}
-	for i, recipient := range []uuid.UUID{first, second} {
+	if queries.listedAnnouncement != announcementID {
+		t.Fatalf("recipients looked up for announcement %s, want %s", queries.listedAnnouncement, announcementID)
+	}
+	for i, want := range []string{"Scheduled maintenance", "Scheduled maintenance (ja)"} {
 		row := queries.created[i]
-		if row.UserID != recipient {
-			t.Fatalf("notification %d addressed %s, want %s", i, row.UserID, recipient)
+		if row.UserID != recipients[i].UserID {
+			t.Fatalf("notification %d addressed %s, want %s", i, row.UserID, recipients[i].UserID)
 		}
 		if row.TenantID != tenantID {
 			t.Fatalf("notification %d carries tenant %s, want %s", i, row.TenantID, tenantID)
@@ -51,26 +59,26 @@ func TestAnnouncementNotificationWritesOneRowPerTenantUser(t *testing.T) {
 		if row.SubjectKey != AnnouncementSubjectKey(announcementID) {
 			t.Fatalf("notification %d subject_key = %q", i, row.SubjectKey)
 		}
-	}
 
-	// The inbox assembles its copy from the type plus this field, so the row
-	// carries the title and nothing the event used to route itself.
-	var body map[string]string
-	if err := json.Unmarshal(queries.created[0].Payload, &body); err != nil {
-		t.Fatalf("decode notification payload: %v", err)
-	}
-	want := map[string]string{"announcement_title": "Scheduled maintenance"}
-	if len(body) != len(want) || body["announcement_title"] != want["announcement_title"] {
-		t.Fatalf("payload = %v, want exactly %v", body, want)
+		// The inbox assembles its copy from the type plus this field, so the
+		// row carries the reader's title and nothing the event used to route
+		// itself.
+		var body map[string]string
+		if err := json.Unmarshal(row.Payload, &body); err != nil {
+			t.Fatalf("decode notification %d payload: %v", i, err)
+		}
+		if len(body) != 1 || body["announcement_title"] != want {
+			t.Fatalf("notification %d payload = %v, want exactly announcement_title %q", i, body, want)
+		}
 	}
 }
 
 func TestAnnouncementNotificationWalksEveryRecipientPage(t *testing.T) {
 	// A full page means there may be another behind it, so the handler asks
 	// again from the last user it saw rather than stopping at the first page.
-	users := make([]uuid.UUID, announcementRecipientPageSize+1)
+	users := make([]dbmodels.ListAnnouncementRecipientsRow, announcementRecipientPageSize+1)
 	for i := range users {
-		users[i] = uuid.New()
+		users[i] = dbmodels.ListAnnouncementRecipientsRow{UserID: uuid.New(), Title: "Scheduled maintenance"}
 	}
 	queries := &stubAnnouncementQuerier{users: users}
 
@@ -113,7 +121,7 @@ func TestAnnouncementNotificationRetriesAFailedLookup(t *testing.T) {
 }
 
 func TestAnnouncementNotificationRejectsAPayloadNamingAnotherTenant(t *testing.T) {
-	queries := &stubAnnouncementQuerier{users: []uuid.UUID{uuid.New()}}
+	queries := &stubAnnouncementQuerier{users: []dbmodels.ListAnnouncementRecipientsRow{{UserID: uuid.New(), Title: "Scheduled maintenance"}}}
 
 	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
 	event := announcementEvent(t, uuid.New(), uuid.New())
@@ -128,7 +136,7 @@ func TestAnnouncementNotificationRejectsAPayloadNamingAnotherTenant(t *testing.T
 }
 
 func TestAnnouncementNotificationRejectsAPayloadWithoutAnAnnouncement(t *testing.T) {
-	queries := &stubAnnouncementQuerier{users: []uuid.UUID{uuid.New()}}
+	queries := &stubAnnouncementQuerier{users: []dbmodels.ListAnnouncementRecipientsRow{{UserID: uuid.New(), Title: "Scheduled maintenance"}}}
 	tenantID := uuid.New()
 	payload, err := json.Marshal(AnnouncementNotificationPayload{TenantID: tenantID.String()})
 	if err != nil {
@@ -153,7 +161,6 @@ func announcementEvent(
 	payload, err := json.Marshal(AnnouncementNotificationPayload{
 		TenantID:       tenantID.String(),
 		AnnouncementID: announcementID.String(),
-		Title:          "Scheduled maintenance",
 	})
 	if err != nil {
 		t.Fatalf("encode payload: %v", err)
@@ -169,30 +176,33 @@ func announcementEvent(
 }
 
 type stubAnnouncementQuerier struct {
-	users        []uuid.UUID
-	listedTenant uuid.NullUUID
-	listCalls    int
-	listErr      error
-	created      []dbmodels.CreateNotificationParams
-	createErr    error
+	users              []dbmodels.ListAnnouncementRecipientsRow
+	listedTenant       uuid.NullUUID
+	listedAnnouncement uuid.UUID
+	listCalls          int
+	listErr            error
+	created            []dbmodels.CreateNotificationParams
+	createErr          error
 }
 
-// ListTenantUserIDs answers the keyset the handler pages with, so a stub
-// holding more than one page's worth is walked the way the database would be.
-func (s *stubAnnouncementQuerier) ListTenantUserIDs(
+// ListAnnouncementRecipients answers the keyset the handler pages with, so a
+// stub holding more than one page's worth is walked the way the database would
+// be.
+func (s *stubAnnouncementQuerier) ListAnnouncementRecipients(
 	_ context.Context,
-	arg dbmodels.ListTenantUserIDsParams,
-) ([]uuid.UUID, error) {
+	arg dbmodels.ListAnnouncementRecipientsParams,
+) ([]dbmodels.ListAnnouncementRecipientsRow, error) {
 	if s.listErr != nil {
 		return nil, s.listErr
 	}
 	s.listCalls++
 	s.listedTenant = arg.TenantID
+	s.listedAnnouncement = arg.AnnouncementID
 
 	start := 0
 	if arg.AfterUserID != uuid.Nil {
-		for i, id := range s.users {
-			if id == arg.AfterUserID {
+		for i, recipient := range s.users {
+			if recipient.UserID == arg.AfterUserID {
 				start = i + 1
 				break
 			}

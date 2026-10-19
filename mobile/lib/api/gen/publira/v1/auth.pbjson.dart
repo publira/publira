@@ -1555,6 +1555,7 @@ const AnnouncementItem$json = {
     {'1': 'created_at', '3': 8, '4': 1, '5': 9, '10': 'createdAt'},
     {'1': 'pinned', '3': 9, '4': 1, '5': 8, '10': 'pinned'},
     {'1': 'pinned_until', '3': 10, '4': 1, '5': 9, '10': 'pinnedUntil'},
+    {'1': 'locale', '3': 11, '4': 1, '5': 9, '10': 'locale'},
   ],
 };
 
@@ -1565,7 +1566,7 @@ final $typed_data.Uint8List announcementItemDescriptor = $convert.base64Decode(
     'IAEoCVIEYm9keRIZCghsaW5rX3VybBgFIAEoCVIHbGlua1VybBIXCgdpc19yZWFkGAYgASgIUg'
     'Zpc1JlYWQSFwoHcmVhZF9hdBgHIAEoCVIGcmVhZEF0Eh0KCmNyZWF0ZWRfYXQYCCABKAlSCWNy'
     'ZWF0ZWRBdBIWCgZwaW5uZWQYCSABKAhSBnBpbm5lZBIhCgxwaW5uZWRfdW50aWwYCiABKAlSC3'
-    'Bpbm5lZFVudGls');
+    'Bpbm5lZFVudGlsEhYKBmxvY2FsZRgLIAEoCVIGbG9jYWxl');
 
 @$core.Deprecated('Use getPinnedAnnouncementRequestDescriptor instead')
 const GetPinnedAnnouncementRequest$json = {
@@ -1579,6 +1580,7 @@ const GetPinnedAnnouncementRequest$json = {
       '6': '.publira.types.v1.TenantContext',
       '10': 'tenant'
     },
+    {'1': 'locale', '3': 2, '4': 1, '5': 9, '10': 'locale'},
   ],
 };
 
@@ -1586,7 +1588,7 @@ const GetPinnedAnnouncementRequest$json = {
 final $typed_data.Uint8List getPinnedAnnouncementRequestDescriptor =
     $convert.base64Decode(
         'ChxHZXRQaW5uZWRBbm5vdW5jZW1lbnRSZXF1ZXN0EjcKBnRlbmFudBgBIAEoCzIfLnB1Ymxpcm'
-        'EudHlwZXMudjEuVGVuYW50Q29udGV4dFIGdGVuYW50');
+        'EudHlwZXMudjEuVGVuYW50Q29udGV4dFIGdGVuYW50EhYKBmxvY2FsZRgCIAEoCVIGbG9jYWxl');
 
 @$core.Deprecated('Use getPinnedAnnouncementResponseDescriptor instead')
 const GetPinnedAnnouncementResponse$json = {
@@ -1622,6 +1624,7 @@ const GetAnnouncementRequest$json = {
       '10': 'tenant'
     },
     {'1': 'announcement_id', '3': 2, '4': 1, '5': 9, '10': 'announcementId'},
+    {'1': 'locale', '3': 3, '4': 1, '5': 9, '10': 'locale'},
   ],
 };
 
@@ -1629,7 +1632,7 @@ const GetAnnouncementRequest$json = {
 final $typed_data.Uint8List getAnnouncementRequestDescriptor = $convert.base64Decode(
     'ChZHZXRBbm5vdW5jZW1lbnRSZXF1ZXN0EjcKBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZX'
     'MudjEuVGVuYW50Q29udGV4dFIGdGVuYW50EicKD2Fubm91bmNlbWVudF9pZBgCIAEoCVIOYW5u'
-    'b3VuY2VtZW50SWQ=');
+    'b3VuY2VtZW50SWQSFgoGbG9jYWxlGAMgASgJUgZsb2NhbGU=');
 
 @$core.Deprecated('Use getAnnouncementResponseDescriptor instead')
 const GetAnnouncementResponse$json = {
@@ -1643,14 +1646,15 @@ const GetAnnouncementResponse$json = {
       '6': '.publira.v1.AnnouncementItem',
       '10': 'announcement'
     },
+    {'1': 'locales', '3': 2, '4': 3, '5': 9, '10': 'locales'},
   ],
 };
 
 /// Descriptor for `GetAnnouncementResponse`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List getAnnouncementResponseDescriptor =
-    $convert.base64Decode(
-        'ChdHZXRBbm5vdW5jZW1lbnRSZXNwb25zZRJACgxhbm5vdW5jZW1lbnQYASABKAsyHC5wdWJsaX'
-        'JhLnYxLkFubm91bmNlbWVudEl0ZW1SDGFubm91bmNlbWVudA==');
+final $typed_data.Uint8List getAnnouncementResponseDescriptor = $convert.base64Decode(
+    'ChdHZXRBbm5vdW5jZW1lbnRSZXNwb25zZRJACgxhbm5vdW5jZW1lbnQYASABKAsyHC5wdWJsaX'
+    'JhLnYxLkFubm91bmNlbWVudEl0ZW1SDGFubm91bmNlbWVudBIYCgdsb2NhbGVzGAIgAygJUgds'
+    'b2NhbGVz');
 
 @$core.Deprecated('Use listAnnouncementsRequestDescriptor instead')
 const ListAnnouncementsRequest$json = {
@@ -1666,6 +1670,7 @@ const ListAnnouncementsRequest$json = {
     },
     {'1': 'limit', '3': 2, '4': 1, '5': 5, '10': 'limit'},
     {'1': 'token', '3': 4, '4': 1, '5': 9, '10': 'token'},
+    {'1': 'locale', '3': 5, '4': 1, '5': 9, '10': 'locale'},
   ],
   '9': [
     {'1': 3, '2': 4},
@@ -1677,7 +1682,7 @@ const ListAnnouncementsRequest$json = {
 final $typed_data.Uint8List listAnnouncementsRequestDescriptor = $convert.base64Decode(
     'ChhMaXN0QW5ub3VuY2VtZW50c1JlcXVlc3QSNwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eX'
     'Blcy52MS5UZW5hbnRDb250ZXh0UgZ0ZW5hbnQSFAoFbGltaXQYAiABKAVSBWxpbWl0EhQKBXRv'
-    'a2VuGAQgASgJUgV0b2tlbkoECAMQBFIGb2Zmc2V0');
+    'a2VuGAQgASgJUgV0b2tlbhIWCgZsb2NhbGUYBSABKAlSBmxvY2FsZUoECAMQBFIGb2Zmc2V0');
 
 @$core.Deprecated('Use listAnnouncementsResponseDescriptor instead')
 const ListAnnouncementsResponse$json = {

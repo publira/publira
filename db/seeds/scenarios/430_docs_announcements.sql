@@ -21,28 +21,9 @@ WHERE id IN (
     '018f1090-0003-7000-8000-000000000003'::uuid
 );
 
-INSERT INTO announcements (
-    id,
-    tenant_id,
-    announcement_type,
-    title,
-    body,
-    link_url,
-    created_at,
-    pinned,
-    pinned_until
-)
-SELECT
-    a.id,
-    t.id,
-    'announcement',
-    a.title,
-    a.body,
-    a.link_url,
-    a.created_at,
-    a.pinned,
-    a.pinned_until
-FROM (
+-- Each announcement is written in the tenant's default locale, the one a
+-- reader in any locale is shown where nothing else was written.
+WITH a (id, title, body, link_url, created_at, pinned, pinned_until) AS (
     VALUES
         (
             '018f1090-0003-7000-8000-000000000001'::uuid,
@@ -71,7 +52,33 @@ FROM (
             false,
             NULL::timestamptz
         )
-) AS a (id, title, body, link_url, created_at, pinned, pinned_until)
-JOIN tenants t ON t.public_id = 'BnnrTNNTAAA1';
+),
+inserted AS (
+    INSERT INTO announcements (
+        id,
+        tenant_id,
+        announcement_type,
+        link_url,
+        created_at,
+        pinned,
+        pinned_until
+    )
+    SELECT
+        a.id,
+        t.id,
+        'announcement',
+        a.link_url,
+        a.created_at,
+        a.pinned,
+        a.pinned_until
+    FROM a
+    JOIN tenants t ON t.public_id = 'BnnrTNNTAAA1'
+    RETURNING id, tenant_id
+)
+INSERT INTO announcement_translations (id, announcement_id, tenant_id, locale, title, body, created_at, updated_at)
+SELECT uuidv7(), a.id, t.id, t.default_locale, a.title, a.body, a.created_at, a.created_at
+FROM a
+JOIN inserted i ON i.id = a.id
+JOIN tenants t ON t.id = i.tenant_id;
 
 COMMIT;

@@ -193,6 +193,7 @@ type Querier interface {
 	CountWithdrawnEpisodeCommentsBefore(ctx context.Context, arg CountWithdrawnEpisodeCommentsBeforeParams) (int64, error)
 	CreateAccessTicket(ctx context.Context, arg CreateAccessTicketParams) (AccessTicket, error)
 	CreateAnnouncement(ctx context.Context, arg CreateAnnouncementParams) (Announcement, error)
+	CreateAnnouncementTranslation(ctx context.Context, arg CreateAnnouncementTranslationParams) (AnnouncementTranslation, error)
 	// A save writes both boundary marks along with the window. The save itself
 	// drops the caches the banner is held under, so a boundary it stores in the
 	// past is already applied, and one it stores in the future is owed again —
@@ -537,8 +538,9 @@ type Querier interface {
 	// Return the first tenant that matches admin_domain, or the admin.{domain}
 	// fallback, keeping the order of the candidate host names.
 	GetAdminTenantByDomains(ctx context.Context, domains []string) (Tenant, error)
-	// Returns the announcement with the caller's read state. A row owned by another
-	// tenant comes back as no rows, so its existence is not disclosed.
+	// Returns the announcement with the caller's read state, in its translation
+	// for the locale asked for. A row owned by another tenant comes back as no
+	// rows, so its existence is not disclosed.
 	GetAnnouncementForUser(ctx context.Context, arg GetAnnouncementForUserParams) (GetAnnouncementForUserRow, error)
 	GetCampaignBannerByIDForTenant(ctx context.Context, arg GetCampaignBannerByIDForTenantParams) (GetCampaignBannerByIDForTenantRow, error)
 	GetCampaignBannerImageVariantByTypeAndWidthForTenant(ctx context.Context, arg GetCampaignBannerImageVariantByTypeAndWidthForTenantParams) (GetCampaignBannerImageVariantByTypeAndWidthForTenantRow, error)
@@ -768,9 +770,10 @@ type Querier interface {
 	// page has none: an edit aimed at one language must not land on another.
 	GetPageWithTranslationForTenant(ctx context.Context, arg GetPageWithTranslationForTenantParams) (GetPageWithTranslationForTenantRow, error)
 	// What the site shows as a banner: the newest announcement still inside its
-	// pinned window. It names no user, so a visitor with no session gets
-	// the same answer as a signed-in reader and the site caches it once per tenant.
-	GetPinnedAnnouncementForTenant(ctx context.Context, tenantID uuid.UUID) (Announcement, error)
+	// pinned window, in its translation for the locale asked for. It names no
+	// user, so a visitor with no session gets the same answer as a signed-in
+	// reader and the site caches it once per tenant and locale.
+	GetPinnedAnnouncementForTenant(ctx context.Context, arg GetPinnedAnnouncementForTenantParams) (GetPinnedAnnouncementForTenantRow, error)
 	GetPlatformConfig(ctx context.Context) (PlatformConfig, error)
 	// The currency of every tenant that has not saved payment settings. The one
 	// column the tenant-facing roles may read of this row, so it has a query of
@@ -1398,20 +1401,41 @@ type Querier interface {
 	ListActiveSeriesIDsByPublishedAtDesc(ctx context.Context, arg ListActiveSeriesIDsByPublishedAtDescParams) ([]ListActiveSeriesIDsByPublishedAtDescRow, error)
 	ListActiveSeriesIDsByTitleAsc(ctx context.Context, arg ListActiveSeriesIDsByTitleAscParams) ([]ListActiveSeriesIDsByTitleAscRow, error)
 	ListActiveSeriesIDsByTitleDesc(ctx context.Context, arg ListActiveSeriesIDsByTitleDescParams) ([]ListActiveSeriesIDsByTitleDescRow, error)
-	ListAnnouncementsForTenantAsc(ctx context.Context, arg ListAnnouncementsForTenantAscParams) ([]Announcement, error)
+	// Worker fan-out: everyone an announcement addressed to the whole tenant
+	// reaches, each with the title of the translation they are told about. It is
+	// the audience `ListAnnouncementsForUser*` already serves such a row to —
+	// every user the tenant owns — so the bell counts what the announcements inbox
+	// lists rather than a subset of it. The translation is the one the reader's
+	// last locale picks, and the tenant default locale's for a reader who has none.
+	//
+	// Keyset paging on user_id, because the result grows with the tenant's
+	// readership and the caller writes one row per recipient. The pair is
+	// `users_tenant_id_id_key`, so the page is one index scan. The nil UUID sorts
+	// below every UUID, so it is what the first page asks for.
+	ListAnnouncementRecipients(ctx context.Context, arg ListAnnouncementRecipientsParams) ([]ListAnnouncementRecipientsRow, error)
+	// Every locale an announcement has a translation in, in code order: the
+	// language alternates of the announcement.
+	ListAnnouncementTranslationLocales(ctx context.Context, arg ListAnnouncementTranslationLocalesParams) ([]string, error)
+	// Every translation of the announcements named, oldest first within each, for
+	// the console to read back what it wrote.
+	ListAnnouncementTranslations(ctx context.Context, arg ListAnnouncementTranslationsParams) ([]AnnouncementTranslation, error)
+	ListAnnouncementsForTenantAsc(ctx context.Context, arg ListAnnouncementsForTenantAscParams) ([]ListAnnouncementsForTenantAscRow, error)
 	// Admin ListAnnouncements is (created_at, id) DESC. Forward uses the DESC
 	// query; backward uses ASC so idx_announcements_tenant_created_at can be
 	// scanned in reverse. The handler flips ASC rows back into display order.
 	// A parameterized ORDER BY cannot be read in index order, so each scan
-	// direction gets its own query.
+	// direction gets its own query. Each row carries the title and body of its
+	// translation in the tenant default locale, else its oldest.
 	// cursor rules: proto/README.md.
-	ListAnnouncementsForTenantDesc(ctx context.Context, arg ListAnnouncementsForTenantDescParams) ([]Announcement, error)
+	ListAnnouncementsForTenantDesc(ctx context.Context, arg ListAnnouncementsForTenantDescParams) ([]ListAnnouncementsForTenantDescRow, error)
 	ListAnnouncementsForUserAsc(ctx context.Context, arg ListAnnouncementsForUserAscParams) ([]ListAnnouncementsForUserAscRow, error)
 	// The public site's ListAnnouncements is (created_at, id) DESC. Forward uses
 	// the DESC query; backward uses ASC so the index can be scanned in reverse.
 	// The handler flips ASC rows back into display order. A parameterized
 	// ORDER BY cannot be read in index order, so each scan direction gets its own
-	// query. Every row carries the calling user's read state.
+	// query. Every row carries the calling user's read state, and the title and
+	// body of its translation in the locale asked for, under
+	// announcement_translation_for's fallback.
 	// cursor rules: proto/README.md.
 	ListAnnouncementsForUserDesc(ctx context.Context, arg ListAnnouncementsForUserDescParams) ([]ListAnnouncementsForUserDescRow, error)
 	ListAuditLogsByTenantAsc(ctx context.Context, arg ListAuditLogsByTenantAscParams) ([]ListAuditLogsByTenantAscRow, error)
@@ -2413,16 +2437,6 @@ type Querier interface {
 	// Drafts and scheduled episodes count: their product has to exist before they
 	// go on sale.
 	ListTenantStoreProductPrices(ctx context.Context, tenantID uuid.UUID) ([]ListTenantStoreProductPricesRow, error)
-	// Worker fan-out: everyone an announcement addressed to the whole tenant
-	// reaches. It is the audience `ListAnnouncementsForUser*` already serves such a
-	// row to — every user the tenant owns — so the bell counts what the
-	// announcements inbox lists rather than a subset of it.
-	//
-	// Keyset paging on user_id, because the result grows with the tenant's
-	// readership and the caller writes one row per recipient. The pair is
-	// `users_tenant_id_id_key`, so the page is one index scan. The nil UUID sorts
-	// below every UUID, so it is what the first page asks for.
-	ListTenantUserIDs(ctx context.Context, arg ListTenantUserIDsParams) ([]uuid.UUID, error)
 	ListTenantUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error)
 	ListTenantUsersAsc(ctx context.Context, arg ListTenantUsersAscParams) ([]ListTenantUsersAscRow, error)
 	// Admin ListTenantUsers is (created_at, id) DESC. Forward uses the DESC
@@ -3183,6 +3197,12 @@ type Querier interface {
 	// updated when the link went away while the code was being exchanged, or holds
 	// a token already, and the caller revokes the one it got instead.
 	SetUserIdentityRefreshToken(ctx context.Context, arg SetUserIdentityRefreshTokenParams) (int64, error)
+	// Records the locale a signed-in reader's request named, on the reader its
+	// access token names while that token still signs them in: the account is
+	// active and its credentials have not moved since the token was issued. A
+	// request in the locale already recorded writes nothing, so a reader browsing
+	// in one language costs no write per request.
+	SetUserLastLocale(ctx context.Context, arg SetUserLastLocaleParams) error
 	// Points the volume at an uploaded cover, or at none. The cover it pointed at
 	// before is left for the orphan image sweep.
 	SetVolumeCoverImageID(ctx context.Context, arg SetVolumeCoverImageIDParams) error

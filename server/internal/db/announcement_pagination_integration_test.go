@@ -210,11 +210,20 @@ func mustInsertAnnouncement(
 	id := uuid.Must(uuid.NewV7())
 	_, err := db.ExecContext(ctx, `
 		INSERT INTO announcements (
-			id, tenant_id, announcement_type, title, body, created_at
-		) VALUES ($1, $2, 'member_episode_published', 'title', 'body', $3)
+			id, tenant_id, announcement_type, created_at
+		) VALUES ($1, $2, 'member_episode_published', $3)
 	`, id, tenantID, createdAt)
 	if err != nil {
 		t.Fatalf("insert announcement: %v", err)
+	}
+	_, err = db.ExecContext(ctx, `
+		INSERT INTO announcement_translations (id, announcement_id, tenant_id, locale, title, body)
+		SELECT uuidv7(), $1, t.id, t.default_locale, 'title', 'body'
+		FROM tenants t
+		WHERE t.id = $2
+	`, id, tenantID)
+	if err != nil {
+		t.Fatalf("insert announcement translation: %v", err)
 	}
 	return id
 }

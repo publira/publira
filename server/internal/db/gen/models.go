@@ -30,8 +30,6 @@ type Announcement struct {
 	ID               uuid.UUID       `json:"id"`
 	TenantID         uuid.UUID       `json:"tenant_id"`
 	AnnouncementType string          `json:"announcement_type"`
-	Title            string          `json:"title"`
-	Body             string          `json:"body"`
 	LinkUrl          sql.NullString  `json:"link_url"`
 	Metadata         json.RawMessage `json:"metadata"`
 	CreatedAt        time.Time       `json:"created_at"`
@@ -44,6 +42,17 @@ type AnnouncementRead struct {
 	UserID         uuid.UUID `json:"user_id"`
 	ReadAt         time.Time `json:"read_at"`
 	TenantID       uuid.UUID `json:"tenant_id"`
+}
+
+type AnnouncementTranslation struct {
+	ID             uuid.UUID `json:"id"`
+	AnnouncementID uuid.UUID `json:"announcement_id"`
+	TenantID       uuid.UUID `json:"tenant_id"`
+	Locale         string    `json:"locale"`
+	Title          string    `json:"title"`
+	Body           string    `json:"body"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }
 
 type AuditLog struct {
@@ -1436,6 +1445,7 @@ type User struct {
 	BirthDate          sql.NullTime   `json:"birth_date"`
 	IconImageID        uuid.NullUUID  `json:"icon_image_id"`
 	IconPresetID       uuid.NullUUID  `json:"icon_preset_id"`
+	LastLocale         sql.NullString `json:"last_locale"`
 }
 
 type UserEmailChangeToken struct {

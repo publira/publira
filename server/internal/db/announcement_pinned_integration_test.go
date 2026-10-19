@@ -28,11 +28,20 @@ func mustInsertPinnedAnnouncement(
 	id := uuid.Must(uuid.NewV7())
 	_, err := db.ExecContext(ctx, `
 		INSERT INTO announcements (
-			id, tenant_id, announcement_type, title, body, created_at, pinned, pinned_until
-		) VALUES ($1, $2, 'announcement', 'title', 'body', $3, true, $4)
+			id, tenant_id, announcement_type, created_at, pinned, pinned_until
+		) VALUES ($1, $2, 'announcement', $3, true, $4)
 	`, id, tenantID, createdAt, pinnedUntil)
 	if err != nil {
 		t.Fatalf("insert pinned announcement: %v", err)
+	}
+	_, err = db.ExecContext(ctx, `
+		INSERT INTO announcement_translations (id, announcement_id, tenant_id, locale, title, body)
+		SELECT uuidv7(), $1, t.id, t.default_locale, 'title', 'body'
+		FROM tenants t
+		WHERE t.id = $2
+	`, id, tenantID)
+	if err != nil {
+		t.Fatalf("insert pinned announcement translation: %v", err)
 	}
 	return id
 }
@@ -56,7 +65,7 @@ func TestGetPinnedAnnouncementForTenantAnswersTheNewestOpenWindow(t *testing.T) 
 	mustInsertAnnouncement(t, ctx, pg.DB, tenantID, now)
 
 	queries := dbmodels.New(pg.DB)
-	row, err := queries.GetPinnedAnnouncementForTenant(ctx, tenantID)
+	row, err := queries.GetPinnedAnnouncementForTenant(ctx, dbmodels.GetPinnedAnnouncementForTenantParams{TenantID: tenantID, Locale: "ja"})
 	if err != nil {
 		t.Fatalf("GetPinnedAnnouncementForTenant: %v", err)
 	}
@@ -77,7 +86,7 @@ func TestGetPinnedAnnouncementForTenantAnswersNothingWhenEveryWindowHasClosed(t 
 	mustInsertPinnedAnnouncement(t, ctx, pg.DB, tenantID, now, sql.NullTime{Time: now.Add(-time.Second), Valid: true})
 
 	queries := dbmodels.New(pg.DB)
-	if _, err := queries.GetPinnedAnnouncementForTenant(ctx, tenantID); !errors.Is(err, sql.ErrNoRows) {
+	if _, err := queries.GetPinnedAnnouncementForTenant(ctx, dbmodels.GetPinnedAnnouncementForTenantParams{TenantID: tenantID, Locale: "ja"}); !errors.Is(err, sql.ErrNoRows) {
 		t.Fatalf("GetPinnedAnnouncementForTenant error = %v, want sql.ErrNoRows", err)
 	}
 }
@@ -99,7 +108,7 @@ func TestUnpinAnnouncementStopsTheBannerAndKeepsTheRow(t *testing.T) {
 		t.Fatalf("UnpinAnnouncement: %v", err)
 	}
 
-	if _, err := queries.GetPinnedAnnouncementForTenant(ctx, tenantID); !errors.Is(err, sql.ErrNoRows) {
+	if _, err := queries.GetPinnedAnnouncementForTenant(ctx, dbmodels.GetPinnedAnnouncementForTenantParams{TenantID: tenantID, Locale: "ja"}); !errors.Is(err, sql.ErrNoRows) {
 		t.Fatalf("GetPinnedAnnouncementForTenant error = %v, want sql.ErrNoRows", err)
 	}
 

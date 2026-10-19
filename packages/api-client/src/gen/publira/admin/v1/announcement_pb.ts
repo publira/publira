@@ -12,7 +12,36 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/admin/v1/announcement.proto.
  */
 export const file_publira_admin_v1_announcement: GenFile = /*@__PURE__*/
-  fileDesc("CiNwdWJsaXJhL2FkbWluL3YxL2Fubm91bmNlbWVudC5wcm90bxIQcHVibGlyYS5hZG1pbi52MSLSAQoRQWRtaW5Bbm5vdW5jZW1lbnQSCgoCaWQYASABKAkSDQoFdGl0bGUYAiABKAkSDAoEYm9keRgDIAEoCRIQCghsaW5rX3VybBgEIAEoCRISCgpjcmVhdGVkX2F0GAggASgJEg4KBnBpbm5lZBgJIAEoCBIUCgxwaW5uZWRfdW50aWwYCiABKAlKBAgFEAZKBAgGEAdKBAgHEAhSDWF1ZGllbmNlX3R5cGVSFXRhcmdldF91c2VyX3B1YmxpY19pZFIQdGFyZ2V0X3VzZXJfbmFtZSJ3ChhMaXN0QW5ub3VuY2VtZW50c1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg0KBWxpbWl0GAIgASgFEg0KBXRva2VuGAQgASgJSgQIAxAEUgZvZmZzZXQigwEKGUxpc3RBbm5vdW5jZW1lbnRzUmVzcG9uc2USOgoNYW5ub3VuY2VtZW50cxgBIAMoCzIjLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5Bbm5vdW5jZW1lbnQSFgoOcHJldmlvdXNfdG9rZW4YAiABKAkSEgoKbmV4dF90b2tlbhgDIAEoCSLUAQoZQ3JlYXRlQW5ub3VuY2VtZW50UmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFdGl0bGUYAiABKAkSDAoEYm9keRgDIAEoCRIQCghsaW5rX3VybBgEIAEoCRIOCgZwaW5uZWQYByABKAgSFAoMcGlubmVkX3VudGlsGAggASgJSgQIBRAGSgQIBhAHUg1hdWRpZW5jZV90eXBlUhZ0YXJnZXRfdXNlcl9wdWJsaWNfaWRzImwKGkNyZWF0ZUFubm91bmNlbWVudFJlc3BvbnNlEjkKDGFubm91bmNlbWVudBgCIAEoCzIjLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5Bbm5vdW5jZW1lbnRKBAgBEAJSDWFubm91bmNlbWVudHMiZAoYVW5waW5Bbm5vdW5jZW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIXCg9hbm5vdW5jZW1lbnRfaWQYAiABKAkiGwoZVW5waW5Bbm5vdW5jZW1lbnRSZXNwb25zZTLtAgoYQWRtaW5Bbm5vdW5jZW1lbnRTZXJ2aWNlEm4KEUxpc3RBbm5vdW5jZW1lbnRzEioucHVibGlyYS5hZG1pbi52MS5MaXN0QW5ub3VuY2VtZW50c1JlcXVlc3QaKy5wdWJsaXJhLmFkbWluLnYxLkxpc3RBbm5vdW5jZW1lbnRzUmVzcG9uc2UiABJxChJDcmVhdGVBbm5vdW5jZW1lbnQSKy5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZUFubm91bmNlbWVudFJlcXVlc3QaLC5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZUFubm91bmNlbWVudFJlc3BvbnNlIgASbgoRVW5waW5Bbm5vdW5jZW1lbnQSKi5wdWJsaXJhLmFkbWluLnYxLlVucGluQW5ub3VuY2VtZW50UmVxdWVzdBorLnB1YmxpcmEuYWRtaW4udjEuVW5waW5Bbm5vdW5jZW1lbnRSZXNwb25zZSIAQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
+  fileDesc("CiNwdWJsaXJhL2FkbWluL3YxL2Fubm91bmNlbWVudC5wcm90bxIQcHVibGlyYS5hZG1pbi52MSJGChdBbm5vdW5jZW1lbnRUcmFuc2xhdGlvbhIOCgZsb2NhbGUYASABKAkSDQoFdGl0bGUYAiABKAkSDAoEYm9keRgDIAEoCSKTAgoRQWRtaW5Bbm5vdW5jZW1lbnQSCgoCaWQYASABKAkSDQoFdGl0bGUYAiABKAkSDAoEYm9keRgDIAEoCRIQCghsaW5rX3VybBgEIAEoCRISCgpjcmVhdGVkX2F0GAggASgJEg4KBnBpbm5lZBgJIAEoCBIUCgxwaW5uZWRfdW50aWwYCiABKAkSPwoMdHJhbnNsYXRpb25zGAsgAygLMikucHVibGlyYS5hZG1pbi52MS5Bbm5vdW5jZW1lbnRUcmFuc2xhdGlvbkoECAUQBkoECAYQB0oECAcQCFINYXVkaWVuY2VfdHlwZVIVdGFyZ2V0X3VzZXJfcHVibGljX2lkUhB0YXJnZXRfdXNlcl9uYW1lIncKGExpc3RBbm5vdW5jZW1lbnRzUmVxdWVzdBIvCgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLnYxLlRlbmFudENvbnRleHQSDQoFbGltaXQYAiABKAUSDQoFdG9rZW4YBCABKAlKBAgDEARSBm9mZnNldCKDAQoZTGlzdEFubm91bmNlbWVudHNSZXNwb25zZRI6Cg1hbm5vdW5jZW1lbnRzGAEgAygLMiMucHVibGlyYS5hZG1pbi52MS5BZG1pbkFubm91bmNlbWVudBIWCg5wcmV2aW91c190b2tlbhgCIAEoCRISCgpuZXh0X3Rva2VuGAMgASgJIpECChlDcmVhdGVBbm5vdW5jZW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBI/Cgx0cmFuc2xhdGlvbnMYCSADKAsyKS5wdWJsaXJhLmFkbWluLnYxLkFubm91bmNlbWVudFRyYW5zbGF0aW9uEhAKCGxpbmtfdXJsGAQgASgJEg4KBnBpbm5lZBgHIAEoCBIUCgxwaW5uZWRfdW50aWwYCCABKAlKBAgCEANKBAgDEARKBAgFEAZKBAgGEAdSBXRpdGxlUgRib2R5Ug1hdWRpZW5jZV90eXBlUhZ0YXJnZXRfdXNlcl9wdWJsaWNfaWRzImwKGkNyZWF0ZUFubm91bmNlbWVudFJlc3BvbnNlEjkKDGFubm91bmNlbWVudBgCIAEoCzIjLnB1YmxpcmEuYWRtaW4udjEuQWRtaW5Bbm5vdW5jZW1lbnRKBAgBEAJSDWFubm91bmNlbWVudHMiZAoYVW5waW5Bbm5vdW5jZW1lbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIXCg9hbm5vdW5jZW1lbnRfaWQYAiABKAkiGwoZVW5waW5Bbm5vdW5jZW1lbnRSZXNwb25zZTLtAgoYQWRtaW5Bbm5vdW5jZW1lbnRTZXJ2aWNlEm4KEUxpc3RBbm5vdW5jZW1lbnRzEioucHVibGlyYS5hZG1pbi52MS5MaXN0QW5ub3VuY2VtZW50c1JlcXVlc3QaKy5wdWJsaXJhLmFkbWluLnYxLkxpc3RBbm5vdW5jZW1lbnRzUmVzcG9uc2UiABJxChJDcmVhdGVBbm5vdW5jZW1lbnQSKy5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZUFubm91bmNlbWVudFJlcXVlc3QaLC5wdWJsaXJhLmFkbWluLnYxLkNyZWF0ZUFubm91bmNlbWVudFJlc3BvbnNlIgASbgoRVW5waW5Bbm5vdW5jZW1lbnQSKi5wdWJsaXJhLmFkbWluLnYxLlVucGluQW5ub3VuY2VtZW50UmVxdWVzdBorLnB1YmxpcmEuYWRtaW4udjEuVW5waW5Bbm5vdW5jZW1lbnRSZXNwb25zZSIAQlZaVGdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS9hZG1pbi92MTtwdWJsaXJhYWRtaW52MWIGcHJvdG8z", [file_publira_types_v1_types]);
+
+/**
+ * One locale's title and body of an announcement.
+ *
+ * @generated from message publira.admin.v1.AnnouncementTranslation
+ */
+export type AnnouncementTranslation = Message<"publira.admin.v1.AnnouncementTranslation"> & {
+  /**
+   * @generated from field: string locale = 1;
+   */
+  locale: string;
+
+  /**
+   * @generated from field: string title = 2;
+   */
+  title: string;
+
+  /**
+   * @generated from field: string body = 3;
+   */
+  body: string;
+};
+
+/**
+ * Describes the message publira.admin.v1.AnnouncementTranslation.
+ * Use `create(AnnouncementTranslationSchema)` to create a new message.
+ */
+export const AnnouncementTranslationSchema: GenMessage<AnnouncementTranslation> = /*@__PURE__*/
+  messageDesc(file_publira_admin_v1_announcement, 0);
 
 /**
  * An announcement is addressed to everyone who opens the tenant's site; a
@@ -27,6 +56,9 @@ export type AdminAnnouncement = Message<"publira.admin.v1.AdminAnnouncement"> & 
   id: string;
 
   /**
+   * The title and body of the translation in the tenant's default locale, else
+   * the oldest.
+   *
    * @generated from field: string title = 2;
    */
   title: string;
@@ -60,6 +92,13 @@ export type AdminAnnouncement = Message<"publira.admin.v1.AdminAnnouncement"> & 
    * @generated from field: string pinned_until = 10;
    */
   pinnedUntil: string;
+
+  /**
+   * Every translation of the announcement, oldest first.
+   *
+   * @generated from field: repeated publira.admin.v1.AnnouncementTranslation translations = 11;
+   */
+  translations: AnnouncementTranslation[];
 };
 
 /**
@@ -67,7 +106,7 @@ export type AdminAnnouncement = Message<"publira.admin.v1.AdminAnnouncement"> & 
  * Use `create(AdminAnnouncementSchema)` to create a new message.
  */
 export const AdminAnnouncementSchema: GenMessage<AdminAnnouncement> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_announcement, 0);
+  messageDesc(file_publira_admin_v1_announcement, 1);
 
 /**
  * Cursor pagination. Field shape and token rules: proto/README.md.
@@ -100,7 +139,7 @@ export type ListAnnouncementsRequest = Message<"publira.admin.v1.ListAnnouncemen
  * Use `create(ListAnnouncementsRequestSchema)` to create a new message.
  */
 export const ListAnnouncementsRequestSchema: GenMessage<ListAnnouncementsRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_announcement, 1);
+  messageDesc(file_publira_admin_v1_announcement, 2);
 
 /**
  * @generated from message publira.admin.v1.ListAnnouncementsResponse
@@ -131,7 +170,7 @@ export type ListAnnouncementsResponse = Message<"publira.admin.v1.ListAnnounceme
  * Use `create(ListAnnouncementsResponseSchema)` to create a new message.
  */
 export const ListAnnouncementsResponseSchema: GenMessage<ListAnnouncementsResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_announcement, 2);
+  messageDesc(file_publira_admin_v1_announcement, 3);
 
 /**
  * @generated from message publira.admin.v1.CreateAnnouncementRequest
@@ -143,14 +182,17 @@ export type CreateAnnouncementRequest = Message<"publira.admin.v1.CreateAnnounce
   tenant?: TenantContext | undefined;
 
   /**
-   * @generated from field: string title = 2;
+   * The announcement in every locale it is written in, at most one per locale,
+   * each with a title and a body. The tenant's default locale is required, since
+   * it is what a reader is shown in a locale nothing was written in. An empty
+   * locale means the tenant's default locale; a locale the tenant does not
+   * offer is invalid_argument. Each reader's notification is rendered once, in
+   * the translation their last locale picks, so translations are sent together
+   * here rather than added afterwards.
+   *
+   * @generated from field: repeated publira.admin.v1.AnnouncementTranslation translations = 9;
    */
-  title: string;
-
-  /**
-   * @generated from field: string body = 3;
-   */
-  body: string;
+  translations: AnnouncementTranslation[];
 
   /**
    * @generated from field: string link_url = 4;
@@ -176,7 +218,7 @@ export type CreateAnnouncementRequest = Message<"publira.admin.v1.CreateAnnounce
  * Use `create(CreateAnnouncementRequestSchema)` to create a new message.
  */
 export const CreateAnnouncementRequestSchema: GenMessage<CreateAnnouncementRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_announcement, 3);
+  messageDesc(file_publira_admin_v1_announcement, 4);
 
 /**
  * @generated from message publira.admin.v1.CreateAnnouncementResponse
@@ -193,7 +235,7 @@ export type CreateAnnouncementResponse = Message<"publira.admin.v1.CreateAnnounc
  * Use `create(CreateAnnouncementResponseSchema)` to create a new message.
  */
 export const CreateAnnouncementResponseSchema: GenMessage<CreateAnnouncementResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_announcement, 4);
+  messageDesc(file_publira_admin_v1_announcement, 5);
 
 /**
  * Takes the banner down without deleting the announcement, which stays in the
@@ -218,7 +260,7 @@ export type UnpinAnnouncementRequest = Message<"publira.admin.v1.UnpinAnnounceme
  * Use `create(UnpinAnnouncementRequestSchema)` to create a new message.
  */
 export const UnpinAnnouncementRequestSchema: GenMessage<UnpinAnnouncementRequest> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_announcement, 5);
+  messageDesc(file_publira_admin_v1_announcement, 6);
 
 /**
  * @generated from message publira.admin.v1.UnpinAnnouncementResponse
@@ -231,7 +273,7 @@ export type UnpinAnnouncementResponse = Message<"publira.admin.v1.UnpinAnnouncem
  * Use `create(UnpinAnnouncementResponseSchema)` to create a new message.
  */
 export const UnpinAnnouncementResponseSchema: GenMessage<UnpinAnnouncementResponse> = /*@__PURE__*/
-  messageDesc(file_publira_admin_v1_announcement, 6);
+  messageDesc(file_publira_admin_v1_announcement, 7);
 
 /**
  * @generated from service publira.admin.v1.AdminAnnouncementService

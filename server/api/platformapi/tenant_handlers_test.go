@@ -489,8 +489,8 @@ func TestAddTenantMemberByEmailSuccess(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByEmailForTenant)).
 		WithArgs(sql.NullString{String: tenantID.String(), Valid: true}, "alice@example.com").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version", "birth_date", "icon_image_id", "icon_preset_id"}).
-			AddRow(targetUserID, "USER000001", "alice@example.com", "hashed", "Alice", now, "active", tenantID, nil, int32(1), nil, nil, nil))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version", "birth_date", "icon_image_id", "icon_preset_id", "last_locale"}).
+			AddRow(targetUserID, "USER000001", "alice@example.com", "hashed", "Alice", now, "active", tenantID, nil, int32(1), nil, nil, nil, nil))
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantUserRoles)).
 		WithArgs(targetUserID).
@@ -819,8 +819,8 @@ const (
 
 // tenantUserRows is the users row GetUserByID answers for a user of tenantID.
 func tenantUserRows(id uuid.UUID, publicID, name, email, status string, tenantID uuid.UUID, createdAt time.Time) *sqlmock.Rows {
-	return sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version", "birth_date", "icon_image_id", "icon_preset_id"}).
-		AddRow(id, publicID, email, "", name, createdAt, status, tenantID, nil, int32(0), nil, nil, nil)
+	return sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version", "birth_date", "icon_image_id", "icon_preset_id", "last_locale"}).
+		AddRow(id, publicID, email, "", name, createdAt, status, tenantID, nil, int32(0), nil, nil, nil, nil)
 }
 
 // Each refusal names the request field publiractl names as a flag, and reads

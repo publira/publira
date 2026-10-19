@@ -6,6 +6,13 @@ option go_package = "github.com/publira/publira/server/internal/proto/gen/publir
 
 import "publira/types/v1/types.proto";
 
+// One locale's title and body of an announcement.
+message AnnouncementTranslation {
+  string locale = 1;
+  string title = 2;
+  string body = 3;
+}
+
 // An announcement is addressed to everyone who opens the tenant's site; a
 // message to one person is a notification.
 message AdminAnnouncement {
@@ -13,6 +20,8 @@ message AdminAnnouncement {
   reserved "audience_type", "target_user_public_id", "target_user_name";
 
   string id = 1;
+  // The title and body of the translation in the tenant's default locale, else
+  // the oldest.
   string title = 2;
   string body = 3;
   string link_url = 4;
@@ -22,6 +31,8 @@ message AdminAnnouncement {
   // RFC 3339 instant the banner stops at. Empty leaves it up until the console
   // takes it down.
   string pinned_until = 10;
+  // Every translation of the announcement, oldest first.
+  repeated AnnouncementTranslation translations = 11;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -46,12 +57,20 @@ message ListAnnouncementsResponse {
 }
 
 message CreateAnnouncementRequest {
-  reserved 5, 6;
-  reserved "audience_type", "target_user_public_ids";
+  // 2 and 3 held the one title and body, before an announcement carried one per
+  // locale in translations.
+  reserved 2, 3, 5, 6;
+  reserved "title", "body", "audience_type", "target_user_public_ids";
 
   publira.types.v1.TenantContext tenant = 1;
-  string title = 2;
-  string body = 3;
+  // The announcement in every locale it is written in, at most one per locale,
+  // each with a title and a body. The tenant's default locale is required, since
+  // it is what a reader is shown in a locale nothing was written in. An empty
+  // locale means the tenant's default locale; a locale the tenant does not
+  // offer is invalid_argument. Each reader's notification is rendered once, in
+  // the translation their last locale picks, so translations are sent together
+  // here rather than added afterwards.
+  repeated AnnouncementTranslation translations = 9;
   string link_url = 4;
   bool pinned = 7;
   // RFC 3339 instant the banner stops at. Empty pins it until the console takes

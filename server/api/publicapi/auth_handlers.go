@@ -1552,6 +1552,7 @@ func (s *apiServer) UpdateNotificationSettings(
 type announcementPageRow struct {
 	id               uuid.UUID
 	announcementType string
+	locale           string
 	title            string
 	body             string
 	linkURL          sql.NullString
@@ -1575,6 +1576,7 @@ func mapAnnouncementDescRows(rows []dbmodels.ListAnnouncementsForUserDescRow) []
 		mapped = append(mapped, announcementPageRow{
 			id:               row.ID,
 			announcementType: row.AnnouncementType,
+			locale:           row.Locale,
 			title:            row.Title,
 			body:             row.Body,
 			linkURL:          row.LinkUrl,
@@ -1594,6 +1596,7 @@ func mapAnnouncementAscRows(rows []dbmodels.ListAnnouncementsForUserAscRow) []an
 		mapped = append(mapped, announcementPageRow{
 			id:               row.ID,
 			announcementType: row.AnnouncementType,
+			locale:           row.Locale,
 			title:            row.Title,
 			body:             row.Body,
 			linkURL:          row.LinkUrl,
@@ -1627,6 +1630,7 @@ func toAnnouncementItem(row announcementPageRow) *publirav1.AnnouncementItem {
 		CreatedAt:        row.createdAt.UTC().Format(time.RFC3339),
 		Pinned:           row.pinned,
 		PinnedUntil:      pinnedUntil,
+		Locale:           row.locale,
 	}
 }
 
@@ -1634,6 +1638,7 @@ func (s *apiServer) announcementPage(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	userID uuid.NullUUID,
+	locale string,
 	keys pagination.TimeUUIDKeys,
 	direction pagination.Direction,
 	limit int32,
@@ -1643,6 +1648,7 @@ func (s *apiServer) announcementPage(
 		rows, err := queries.ListAnnouncementsForUserAsc(ctx, dbmodels.ListAnnouncementsForUserAscParams{
 			TenantID:        tenantID,
 			UserID:          userID,
+			Locale:          locale,
 			CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
 			CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
 			CursorInclusive: keys.Inclusive,
@@ -1657,6 +1663,7 @@ func (s *apiServer) announcementPage(
 	rows, err := queries.ListAnnouncementsForUserDesc(ctx, dbmodels.ListAnnouncementsForUserDescParams{
 		TenantID:        tenantID,
 		UserID:          userID,
+		Locale:          locale,
 		CursorID:        uuid.NullUUID{UUID: keys.ID, Valid: keys.Valid},
 		CursorCreatedAt: sql.NullTime{Time: keys.Time, Valid: keys.Valid},
 		CursorInclusive: keys.Inclusive,
@@ -1673,6 +1680,10 @@ func (s *apiServer) ListAnnouncements(
 	req *publirav1.ListAnnouncementsRequest,
 ) (*publirav1.ListAnnouncementsResponse, error) {
 	tenant, reader, err := s.optionalReaderFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
+	if err != nil {
+		return nil, err
+	}
+	locale, err := readerLocaleOf(req.Locale, tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -1696,7 +1707,7 @@ func (s *apiServer) ListAnnouncements(
 		}
 	}
 
-	rows, err := s.announcementPage(ctx, tenant.ID, reader, keys, cursor.Direction, limit+1)
+	rows, err := s.announcementPage(ctx, tenant.ID, reader, locale, keys, cursor.Direction, limit+1)
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list announcements", err, "tenant_id", tenant.ID.String())
 	}
@@ -1745,6 +1756,10 @@ func (s *apiServer) GetAnnouncement(
 	if parseErr != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, "announcement_id is invalid")
 	}
+	locale, err := readerLocaleOf(req.Locale, tenant)
+	if err != nil {
+		return nil, err
+	}
 
 	if reader.Valid {
 		if err := s.scopeReaderStateUser(ctx, reader.UUID); err != nil {
@@ -1756,6 +1771,7 @@ func (s *apiServer) GetAnnouncement(
 		ID:       announcementID,
 		TenantID: tenant.ID,
 		UserID:   reader,
+		Locale:   locale,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -1768,11 +1784,25 @@ func (s *apiServer) GetAnnouncement(
 			"announcement_id", announcementID.String(),
 		)
 	}
+	locales, err := s.queriesFor(ctx).ListAnnouncementTranslationLocales(ctx, dbmodels.ListAnnouncementTranslationLocalesParams{
+		TenantID:       tenant.ID,
+		AnnouncementID: announcementID,
+	})
+	if err != nil {
+		return nil, s.internalDBError(ctx,
+			"failed to list announcement locales",
+			err,
+			"tenant_id", tenant.ID.String(),
+			"announcement_id", announcementID.String(),
+		)
+	}
 
 	return &publirav1.GetAnnouncementResponse{
+		Locales: locales,
 		Announcement: toAnnouncementItem(announcementPageRow{
 			id:               row.ID,
 			announcementType: row.AnnouncementType,
+			locale:           row.Locale,
 			title:            row.Title,
 			body:             row.Body,
 			linkURL:          row.LinkUrl,
@@ -1798,7 +1828,15 @@ func (s *apiServer) GetPinnedAnnouncement(
 		return nil, err
 	}
 
-	row, err := s.queriesFor(ctx).GetPinnedAnnouncementForTenant(ctx, tenant.ID)
+	locale, err := readerLocaleOf(req.Locale, tenant)
+	if err != nil {
+		return nil, err
+	}
+
+	row, err := s.queriesFor(ctx).GetPinnedAnnouncementForTenant(ctx, dbmodels.GetPinnedAnnouncementForTenantParams{
+		TenantID: tenant.ID,
+		Locale:   locale,
+	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return &publirav1.GetPinnedAnnouncementResponse{}, nil
@@ -1810,6 +1848,7 @@ func (s *apiServer) GetPinnedAnnouncement(
 		Announcement: toAnnouncementItem(announcementPageRow{
 			id:               row.ID,
 			announcementType: row.AnnouncementType,
+			locale:           row.Locale,
 			title:            row.Title,
 			body:             row.Body,
 			linkURL:          row.LinkUrl,

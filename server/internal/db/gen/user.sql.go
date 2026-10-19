@@ -32,7 +32,7 @@ const BumpUserCredentialsVersion = `-- name: BumpUserCredentialsVersion :one
 UPDATE users
 SET credentials_version = credentials_version + 1
 WHERE id = $1
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale
 `
 
 func (q *Queries) BumpUserCredentialsVersion(ctx context.Context, id uuid.UUID) (User, error) {
@@ -52,6 +52,7 @@ func (q *Queries) BumpUserCredentialsVersion(ctx context.Context, id uuid.UUID) 
 		&i.BirthDate,
 		&i.IconImageID,
 		&i.IconPresetID,
+		&i.LastLocale,
 	)
 	return i, err
 }
@@ -162,7 +163,7 @@ func (q *Queries) CreateTenantUserRole(ctx context.Context, arg CreateTenantUser
 const CreateUser = `-- name: CreateUser :one
 INSERT INTO users (id, tenant_id, public_id, email, password_hash, name, birth_date)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale
 `
 
 type CreateUserParams struct {
@@ -200,6 +201,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.BirthDate,
 		&i.IconImageID,
 		&i.IconPresetID,
+		&i.LastLocale,
 	)
 	return i, err
 }
@@ -397,7 +399,7 @@ func (q *Queries) GetTenantReaderByPublicID(ctx context.Context, arg GetTenantRe
 }
 
 const GetUserByCanonicalEmailForTenant = `-- name: GetUserByCanonicalEmailForTenant :one
-SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id
+SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale
 FROM users
 WHERE tenant_id = $1
     AND canonical_email(email) = canonical_email($2::text)
@@ -431,12 +433,13 @@ func (q *Queries) GetUserByCanonicalEmailForTenant(ctx context.Context, arg GetU
 		&i.BirthDate,
 		&i.IconImageID,
 		&i.IconPresetID,
+		&i.LastLocale,
 	)
 	return i, err
 }
 
 const GetUserByEmailForTenant = `-- name: GetUserByEmailForTenant :one
-SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id
+SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale
 FROM users
 WHERE tenant_id = $1
     AND email = $2
@@ -465,12 +468,13 @@ func (q *Queries) GetUserByEmailForTenant(ctx context.Context, arg GetUserByEmai
 		&i.BirthDate,
 		&i.IconImageID,
 		&i.IconPresetID,
+		&i.LastLocale,
 	)
 	return i, err
 }
 
 const GetUserByID = `-- name: GetUserByID :one
-SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id
+SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale
 FROM users
 WHERE id = $1
 `
@@ -492,6 +496,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.BirthDate,
 		&i.IconImageID,
 		&i.IconPresetID,
+		&i.LastLocale,
 	)
 	return i, err
 }
@@ -541,7 +546,7 @@ func (q *Queries) GetUserByIDForTenant(ctx context.Context, arg GetUserByIDForTe
 }
 
 const GetUserByIDForUpdate = `-- name: GetUserByIDForUpdate :one
-SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id
+SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale
 FROM users
 WHERE id = $1
 FOR UPDATE
@@ -564,6 +569,7 @@ func (q *Queries) GetUserByIDForUpdate(ctx context.Context, id uuid.UUID) (User,
 		&i.BirthDate,
 		&i.IconImageID,
 		&i.IconPresetID,
+		&i.LastLocale,
 	)
 	return i, err
 }
@@ -1383,53 +1389,6 @@ func (q *Queries) ListTenantReadersDesc(ctx context.Context, arg ListTenantReade
 	return items, nil
 }
 
-const ListTenantUserIDs = `-- name: ListTenantUserIDs :many
-SELECT u.id
-FROM users u
-WHERE u.tenant_id = $1
-    AND u.id > $2
-ORDER BY u.id
-LIMIT $3
-`
-
-type ListTenantUserIDsParams struct {
-	TenantID    uuid.NullUUID `json:"tenant_id"`
-	AfterUserID uuid.UUID     `json:"after_user_id"`
-	Limit       int32         `json:"limit"`
-}
-
-// Worker fan-out: everyone an announcement addressed to the whole tenant
-// reaches. It is the audience `ListAnnouncementsForUser*` already serves such a
-// row to — every user the tenant owns — so the bell counts what the
-// announcements inbox lists rather than a subset of it.
-//
-// Keyset paging on user_id, because the result grows with the tenant's
-// readership and the caller writes one row per recipient. The pair is
-// `users_tenant_id_id_key`, so the page is one index scan. The nil UUID sorts
-// below every UUID, so it is what the first page asks for.
-func (q *Queries) ListTenantUserIDs(ctx context.Context, arg ListTenantUserIDsParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, ListTenantUserIDs, arg.TenantID, arg.AfterUserID, arg.Limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []uuid.UUID
-	for rows.Next() {
-		var id uuid.UUID
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		items = append(items, id)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const ListTenantUserRoles = `-- name: ListTenantUserRoles :many
 SELECT role
 FROM tenant_user_roles
@@ -1780,7 +1739,7 @@ UPDATE users
 SET birth_date = $2
 WHERE id = $1
     AND birth_date IS NULL
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale
 `
 
 type SetUserBirthDateByIDParams struct {
@@ -1809,8 +1768,41 @@ func (q *Queries) SetUserBirthDateByID(ctx context.Context, arg SetUserBirthDate
 		&i.BirthDate,
 		&i.IconImageID,
 		&i.IconPresetID,
+		&i.LastLocale,
 	)
 	return i, err
+}
+
+const SetUserLastLocale = `-- name: SetUserLastLocale :exec
+UPDATE users
+SET last_locale = $1::text
+WHERE tenant_id = $2
+    AND public_id = $3
+    AND status = 'active'
+    AND credentials_version = $4
+    AND last_locale IS DISTINCT FROM $1::text
+`
+
+type SetUserLastLocaleParams struct {
+	LastLocale         string        `json:"last_locale"`
+	TenantID           uuid.NullUUID `json:"tenant_id"`
+	PublicID           string        `json:"public_id"`
+	CredentialsVersion int32         `json:"credentials_version"`
+}
+
+// Records the locale a signed-in reader's request named, on the reader its
+// access token names while that token still signs them in: the account is
+// active and its credentials have not moved since the token was issued. A
+// request in the locale already recorded writes nothing, so a reader browsing
+// in one language costs no write per request.
+func (q *Queries) SetUserLastLocale(ctx context.Context, arg SetUserLastLocaleParams) error {
+	_, err := q.db.ExecContext(ctx, SetUserLastLocale,
+		arg.LastLocale,
+		arg.TenantID,
+		arg.PublicID,
+		arg.CredentialsVersion,
+	)
+	return err
 }
 
 const SuspendTenantReader = `-- name: SuspendTenantReader :one
@@ -1900,7 +1892,7 @@ SET password_hash = NULL,
     credentials_version = credentials_version + 1
 WHERE id = $1
     AND email_verified_at IS NULL
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale
 `
 
 // Confirms an address nobody had confirmed on the strength of a provider's
@@ -1923,6 +1915,7 @@ func (q *Queries) TakeOverUnverifiedUserByID(ctx context.Context, id uuid.UUID) 
 		&i.BirthDate,
 		&i.IconImageID,
 		&i.IconPresetID,
+		&i.LastLocale,
 	)
 	return i, err
 }
@@ -2005,7 +1998,7 @@ const UnsuspendUserByID = `-- name: UnsuspendUserByID :one
 UPDATE users
 SET status = CASE WHEN email_verified_at IS NULL THEN 'inactive' ELSE 'active' END
 WHERE id = $1
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale
 `
 
 // A user who never confirmed their address goes back to inactive, the state
@@ -2027,6 +2020,7 @@ func (q *Queries) UnsuspendUserByID(ctx context.Context, id uuid.UUID) (User, er
 		&i.BirthDate,
 		&i.IconImageID,
 		&i.IconPresetID,
+		&i.LastLocale,
 	)
 	return i, err
 }
@@ -2035,7 +2029,7 @@ const UpdateUserEmailByID = `-- name: UpdateUserEmailByID :one
 UPDATE users
 SET email = $2
 WHERE id = $1
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale
 `
 
 type UpdateUserEmailByIDParams struct {
@@ -2060,6 +2054,7 @@ func (q *Queries) UpdateUserEmailByID(ctx context.Context, arg UpdateUserEmailBy
 		&i.BirthDate,
 		&i.IconImageID,
 		&i.IconPresetID,
+		&i.LastLocale,
 	)
 	return i, err
 }
@@ -2068,7 +2063,7 @@ const UpdateUserEmailVerifiedAtByID = `-- name: UpdateUserEmailVerifiedAtByID :o
 UPDATE users
 SET email_verified_at = $2
 WHERE id = $1
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale
 `
 
 type UpdateUserEmailVerifiedAtByIDParams struct {
@@ -2093,6 +2088,7 @@ func (q *Queries) UpdateUserEmailVerifiedAtByID(ctx context.Context, arg UpdateU
 		&i.BirthDate,
 		&i.IconImageID,
 		&i.IconPresetID,
+		&i.LastLocale,
 	)
 	return i, err
 }
@@ -2101,7 +2097,7 @@ const UpdateUserNameByID = `-- name: UpdateUserNameByID :one
 UPDATE users
 SET name = $2
 WHERE id = $1
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale
 `
 
 type UpdateUserNameByIDParams struct {
@@ -2126,6 +2122,7 @@ func (q *Queries) UpdateUserNameByID(ctx context.Context, arg UpdateUserNameByID
 		&i.BirthDate,
 		&i.IconImageID,
 		&i.IconPresetID,
+		&i.LastLocale,
 	)
 	return i, err
 }
@@ -2134,7 +2131,7 @@ const UpdateUserPasswordHashByID = `-- name: UpdateUserPasswordHashByID :one
 UPDATE users
 SET password_hash = $2
 WHERE id = $1
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale
 `
 
 type UpdateUserPasswordHashByIDParams struct {
@@ -2159,6 +2156,7 @@ func (q *Queries) UpdateUserPasswordHashByID(ctx context.Context, arg UpdateUser
 		&i.BirthDate,
 		&i.IconImageID,
 		&i.IconPresetID,
+		&i.LastLocale,
 	)
 	return i, err
 }
@@ -2167,7 +2165,7 @@ const UpdateUserStatusByID = `-- name: UpdateUserStatusByID :one
 UPDATE users
 SET status = $2
 WHERE id = $1
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale
 `
 
 type UpdateUserStatusByIDParams struct {
@@ -2192,6 +2190,7 @@ func (q *Queries) UpdateUserStatusByID(ctx context.Context, arg UpdateUserStatus
 		&i.BirthDate,
 		&i.IconImageID,
 		&i.IconPresetID,
+		&i.LastLocale,
 	)
 	return i, err
 }

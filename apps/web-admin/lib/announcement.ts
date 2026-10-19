@@ -151,12 +151,11 @@ export const createAnnouncement = async (
   try {
     await apiClient.announcement.createAnnouncement(
       {
-        body: input.body,
         linkUrl: input.linkUrl,
         pinned: input.pinned,
         pinnedUntil: input.pinnedUntil,
         tenant: { tenantId: input.tenantId },
-        title: input.title,
+        translations: [{ body: input.body, locale: "", title: input.title }],
       },
       withSessionHeaders(sessionId)
     );
