@@ -40,19 +40,17 @@ INSERT INTO genres (
         id,
         tenant_id,
         public_id,
-        name,
         slug,
         display_order
     )
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, tenant_id, public_id, name, slug, display_order, created_at, eye_catch_image_id
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, tenant_id, public_id, slug, display_order, created_at, eye_catch_image_id
 `
 
 type CreateGenreParams struct {
 	ID           uuid.UUID `json:"id"`
 	TenantID     uuid.UUID `json:"tenant_id"`
 	PublicID     string    `json:"public_id"`
-	Name         string    `json:"name"`
 	Slug         string    `json:"slug"`
 	DisplayOrder int32     `json:"display_order"`
 }
@@ -62,7 +60,6 @@ func (q *Queries) CreateGenre(ctx context.Context, arg CreateGenreParams) (Genre
 		arg.ID,
 		arg.TenantID,
 		arg.PublicID,
-		arg.Name,
 		arg.Slug,
 		arg.DisplayOrder,
 	)
@@ -71,7 +68,6 @@ func (q *Queries) CreateGenre(ctx context.Context, arg CreateGenreParams) (Genre
 		&i.ID,
 		&i.TenantID,
 		&i.PublicID,
-		&i.Name,
 		&i.Slug,
 		&i.DisplayOrder,
 		&i.CreatedAt,
@@ -93,13 +89,14 @@ func (q *Queries) DeleteGenre(ctx context.Context, id uuid.UUID) error {
 const GetGenreByIDForTenant = `-- name: GetGenreByIDForTenant :one
 SELECT g.id,
     g.public_id,
-    g.name,
+    gt.name,
     g.slug,
     g.display_order,
     g.created_at,
     g.eye_catch_image_id,
     gi.updated_at AS eye_catch_image_updated_at
 FROM genres g
+    CROSS JOIN LATERAL genre_translation_for(g.id, '') gt
     LEFT JOIN genre_images gi ON gi.id = g.eye_catch_image_id
 WHERE g.tenant_id = $1
     AND g.id = $2
@@ -309,10 +306,11 @@ func (q *Queries) ListGenreFeaturedSeries(ctx context.Context, arg ListGenreFeat
 const ListGenresByIDsForTenant = `-- name: ListGenresByIDsForTenant :many
 SELECT g.id,
     g.public_id,
-    g.name,
+    gt.name,
     g.slug,
     g.display_order
 FROM genres g
+    CROSS JOIN LATERAL genre_translation_for(g.id, '') gt
 WHERE g.tenant_id = $1
     AND g.id = ANY($2::uuid[])
 ORDER BY g.display_order ASC,
@@ -367,13 +365,14 @@ func (q *Queries) ListGenresByIDsForTenant(ctx context.Context, arg ListGenresBy
 const ListGenresByTenantAsc = `-- name: ListGenresByTenantAsc :many
 SELECT g.id,
     g.public_id,
-    g.name,
+    gt.name,
     g.slug,
     g.display_order,
     g.created_at,
     g.eye_catch_image_id,
     gi.updated_at AS eye_catch_image_updated_at
 FROM genres g
+    CROSS JOIN LATERAL genre_translation_for(g.id, '') gt
     LEFT JOIN genre_images gi ON gi.id = g.eye_catch_image_id
 WHERE g.tenant_id = $1
     AND (
@@ -458,13 +457,14 @@ func (q *Queries) ListGenresByTenantAsc(ctx context.Context, arg ListGenresByTen
 const ListGenresByTenantDesc = `-- name: ListGenresByTenantDesc :many
 SELECT g.id,
     g.public_id,
-    g.name,
+    gt.name,
     g.slug,
     g.display_order,
     g.created_at,
     g.eye_catch_image_id,
     gi.updated_at AS eye_catch_image_updated_at
 FROM genres g
+    CROSS JOIN LATERAL genre_translation_for(g.id, '') gt
     LEFT JOIN genre_images gi ON gi.id = g.eye_catch_image_id
 WHERE g.tenant_id = $1
     AND (
@@ -543,7 +543,8 @@ func (q *Queries) ListGenresByTenantDesc(ctx context.Context, arg ListGenresByTe
 const ListPublishedGenresByTenantAsc = `-- name: ListPublishedGenresByTenantAsc :many
 SELECT g.id,
     g.public_id,
-    g.name,
+    gt.name,
+    gt.locale AS name_locale,
     g.slug,
     g.display_order,
     g.eye_catch_image_id,
@@ -564,26 +565,28 @@ SELECT g.id,
             )
     )::int4 AS published_series_count
 FROM genres g
+    CROSS JOIN LATERAL genre_translation_for(g.id, $3::text) gt
 WHERE g.tenant_id = $1
     AND (
-        $3::uuid IS NULL
+        $4::uuid IS NULL
         OR (
-            $4::boolean
-            AND (g.display_order, g.id) >= ($5::int4, $3::uuid)
+            $5::boolean
+            AND (g.display_order, g.id) >= ($6::int4, $4::uuid)
         )
         OR (
-            NOT $4::boolean
-            AND (g.display_order, g.id) > ($5::int4, $3::uuid)
+            NOT $5::boolean
+            AND (g.display_order, g.id) > ($6::int4, $4::uuid)
         )
     )
 ORDER BY g.display_order ASC,
     g.id ASC
-LIMIT $6
+LIMIT $7
 `
 
 type ListPublishedGenresByTenantAscParams struct {
 	TenantID           uuid.UUID     `json:"tenant_id"`
 	Surface            string        `json:"surface"`
+	Locale             string        `json:"locale"`
 	CursorID           uuid.NullUUID `json:"cursor_id"`
 	CursorInclusive    bool          `json:"cursor_inclusive"`
 	CursorDisplayOrder sql.NullInt32 `json:"cursor_display_order"`
@@ -594,6 +597,7 @@ type ListPublishedGenresByTenantAscRow struct {
 	ID                   uuid.UUID     `json:"id"`
 	PublicID             string        `json:"public_id"`
 	Name                 string        `json:"name"`
+	NameLocale           string        `json:"name_locale"`
 	Slug                 string        `json:"slug"`
 	DisplayOrder         int32         `json:"display_order"`
 	EyeCatchImageID      uuid.NullUUID `json:"eye_catch_image_id"`
@@ -601,8 +605,9 @@ type ListPublishedGenresByTenantAscRow struct {
 }
 
 // The public genre list: the tenant's whole genre list, in the order the
-// console put it in, each genre carrying how many of its series are published
-// right now. A genre no published series carries stays in the list, for the
+// console put it in, each genre named in the translation genre_translation_for
+// picks for the reader's locale and carrying how many of its series are
+// published right now. A genre no published series carries stays in the list, for the
 // reason a label with no published series does — the URL of its page has to
 // keep working after its last series is taken down.
 //
@@ -618,6 +623,7 @@ func (q *Queries) ListPublishedGenresByTenantAsc(ctx context.Context, arg ListPu
 	rows, err := q.db.QueryContext(ctx, ListPublishedGenresByTenantAsc,
 		arg.TenantID,
 		arg.Surface,
+		arg.Locale,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorDisplayOrder,
@@ -634,6 +640,7 @@ func (q *Queries) ListPublishedGenresByTenantAsc(ctx context.Context, arg ListPu
 			&i.ID,
 			&i.PublicID,
 			&i.Name,
+			&i.NameLocale,
 			&i.Slug,
 			&i.DisplayOrder,
 			&i.EyeCatchImageID,
@@ -655,7 +662,8 @@ func (q *Queries) ListPublishedGenresByTenantAsc(ctx context.Context, arg ListPu
 const ListPublishedGenresByTenantDesc = `-- name: ListPublishedGenresByTenantDesc :many
 SELECT g.id,
     g.public_id,
-    g.name,
+    gt.name,
+    gt.locale AS name_locale,
     g.slug,
     g.display_order,
     g.eye_catch_image_id,
@@ -676,26 +684,28 @@ SELECT g.id,
             )
     )::int4 AS published_series_count
 FROM genres g
+    CROSS JOIN LATERAL genre_translation_for(g.id, $3::text) gt
 WHERE g.tenant_id = $1
     AND (
-        $3::uuid IS NULL
+        $4::uuid IS NULL
         OR (
-            $4::boolean
-            AND (g.display_order, g.id) <= ($5::int4, $3::uuid)
+            $5::boolean
+            AND (g.display_order, g.id) <= ($6::int4, $4::uuid)
         )
         OR (
-            NOT $4::boolean
-            AND (g.display_order, g.id) < ($5::int4, $3::uuid)
+            NOT $5::boolean
+            AND (g.display_order, g.id) < ($6::int4, $4::uuid)
         )
     )
 ORDER BY g.display_order DESC,
     g.id DESC
-LIMIT $6
+LIMIT $7
 `
 
 type ListPublishedGenresByTenantDescParams struct {
 	TenantID           uuid.UUID     `json:"tenant_id"`
 	Surface            string        `json:"surface"`
+	Locale             string        `json:"locale"`
 	CursorID           uuid.NullUUID `json:"cursor_id"`
 	CursorInclusive    bool          `json:"cursor_inclusive"`
 	CursorDisplayOrder sql.NullInt32 `json:"cursor_display_order"`
@@ -706,6 +716,7 @@ type ListPublishedGenresByTenantDescRow struct {
 	ID                   uuid.UUID     `json:"id"`
 	PublicID             string        `json:"public_id"`
 	Name                 string        `json:"name"`
+	NameLocale           string        `json:"name_locale"`
 	Slug                 string        `json:"slug"`
 	DisplayOrder         int32         `json:"display_order"`
 	EyeCatchImageID      uuid.NullUUID `json:"eye_catch_image_id"`
@@ -716,6 +727,7 @@ func (q *Queries) ListPublishedGenresByTenantDesc(ctx context.Context, arg ListP
 	rows, err := q.db.QueryContext(ctx, ListPublishedGenresByTenantDesc,
 		arg.TenantID,
 		arg.Surface,
+		arg.Locale,
 		arg.CursorID,
 		arg.CursorInclusive,
 		arg.CursorDisplayOrder,
@@ -732,6 +744,7 @@ func (q *Queries) ListPublishedGenresByTenantDesc(ctx context.Context, arg ListP
 			&i.ID,
 			&i.PublicID,
 			&i.Name,
+			&i.NameLocale,
 			&i.Slug,
 			&i.DisplayOrder,
 			&i.EyeCatchImageID,
@@ -753,11 +766,12 @@ func (q *Queries) ListPublishedGenresByTenantDesc(ctx context.Context, arg ListP
 const LockGenresForTenant = `-- name: LockGenresForTenant :many
 SELECT g.id,
     g.public_id,
-    g.name,
+    gt.name,
     g.slug,
     g.eye_catch_image_id,
     gi.updated_at AS eye_catch_image_updated_at
 FROM genres g
+    CROSS JOIN LATERAL genre_translation_for(g.id, '') gt
     LEFT JOIN genre_images gi ON gi.id = g.eye_catch_image_id
 WHERE g.tenant_id = $1
 ORDER BY g.display_order ASC,
@@ -811,26 +825,22 @@ func (q *Queries) LockGenresForTenant(ctx context.Context, tenantID uuid.UUID) (
 
 const UpdateGenre = `-- name: UpdateGenre :exec
 UPDATE genres
-SET name = $2,
-    slug = $3,
-    eye_catch_image_id = $4
+SET slug = $2,
+    eye_catch_image_id = $3
 WHERE id = $1
 `
 
 type UpdateGenreParams struct {
 	ID              uuid.UUID     `json:"id"`
-	Name            string        `json:"name"`
 	Slug            string        `json:"slug"`
 	EyeCatchImageID uuid.NullUUID `json:"eye_catch_image_id"`
 }
 
+// The slug is the caller's to derive, from the name genre_translation_for
+// picks for the tenant default locale once the save's own translation is
+// written.
 func (q *Queries) UpdateGenre(ctx context.Context, arg UpdateGenreParams) error {
-	_, err := q.db.ExecContext(ctx, UpdateGenre,
-		arg.ID,
-		arg.Name,
-		arg.Slug,
-		arg.EyeCatchImageID,
-	)
+	_, err := q.db.ExecContext(ctx, UpdateGenre, arg.ID, arg.Slug, arg.EyeCatchImageID)
 	return err
 }
 

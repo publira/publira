@@ -2479,8 +2479,11 @@ type PublishedGenre struct {
 	FeaturedSeries []*PublishedGenreFeaturedSeries `protobuf:"bytes,5,rep,name=featured_series,json=featuredSeries,proto3" json:"featured_series,omitempty"`
 	// The eye-catch the console uploaded for the genre. Empty when it has none.
 	EyeCatchImageVariants []*v1.SeriesEyeCatchVariant `protobuf:"bytes,6,rep,name=eye_catch_image_variants,json=eyeCatchImageVariants,proto3" json:"eye_catch_image_variants,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// The locale of the translation `name` comes from, named the way
+	// Series.locale is.
+	Locale        string `protobuf:"bytes,7,opt,name=locale,proto3" json:"locale,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PublishedGenre) Reset() {
@@ -2553,6 +2556,13 @@ func (x *PublishedGenre) GetEyeCatchImageVariants() []*v1.SeriesEyeCatchVariant 
 		return x.EyeCatchImageVariants
 	}
 	return nil
+}
+
+func (x *PublishedGenre) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
 }
 
 // A series on a genre's tile. The title is what a frame shows for a work with
@@ -2643,7 +2653,7 @@ type ListPublishedGenresRequest struct {
 	Token string `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
 	// The client making the read. Unspecified is answered as the web storefront.
 	Surface v1.ClientSurface `protobuf:"varint,4,opt,name=surface,proto3,enum=publira.types.v1.ClientSurface" json:"surface,omitempty"`
-	// The reader's locale. Every series and episode title and synopsis in the
+	// The reader's locale. Every genre name and every series title in the
 	// answer is that of the translation in this locale, else the tenant's default
 	// locale's, else the oldest one. Empty means the tenant's default locale.
 	Locale        string `protobuf:"bytes,5,opt,name=locale,proto3" json:"locale,omitempty"`
@@ -8563,14 +8573,15 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x06series\x18\x02 \x03(\v2\x18.publira.types.v1.SeriesR\x06series\x12%\n" +
 	"\x0eprevious_token\x18\x03 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x04 \x01(\tR\tnextToken\"\xc0\x02\n" +
+	"next_token\x18\x04 \x01(\tR\tnextToken\"\xd8\x02\n" +
 	"\x0ePublishedGenre\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
 	"\x04slug\x18\x03 \x01(\tR\x04slug\x124\n" +
 	"\x16published_series_count\x18\x04 \x01(\x05R\x14publishedSeriesCount\x12Q\n" +
 	"\x0ffeatured_series\x18\x05 \x03(\v2(.publira.v1.PublishedGenreFeaturedSeriesR\x0efeaturedSeries\x12`\n" +
-	"\x18eye_catch_image_variants\x18\x06 \x03(\v2'.publira.types.v1.SeriesEyeCatchVariantR\x15eyeCatchImageVariants\"\xcb\x01\n" +
+	"\x18eye_catch_image_variants\x18\x06 \x03(\v2'.publira.types.v1.SeriesEyeCatchVariantR\x15eyeCatchImageVariants\x12\x16\n" +
+	"\x06locale\x18\a \x01(\tR\x06locale\"\xcb\x01\n" +
 	"\x1cPublishedGenreFeaturedSeries\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12`\n" +

@@ -160,10 +160,13 @@ func mapGenreDescRows(rows []dbmodels.ListGenresByTenantDescRow) []genrePageRow 
 	return mapped
 }
 
-// genreMessages builds the answer for a list of genres, reading the variants
-// of every eye-catch among them in one query.
-func (s *adminServer) genreMessages(ctx context.Context, rows []genreRow) ([]*publirattypesv1.Genre, error) {
+// genreMessages builds the answer for a list of genres, reading the names of
+// all of them in one query and the variants of every eye-catch among them in
+// another.
+func (s *adminServer) genreMessages(ctx context.Context, tenantID uuid.UUID, rows []genreRow) ([]*publirattypesv1.Genre, error) {
 	genres := make([]*publirattypesv1.Genre, 0, len(rows))
+	genreIDs := make([]uuid.UUID, 0, len(rows))
+	genreByID := make(map[uuid.UUID]*publirattypesv1.Genre, len(rows))
 	imageIDs := make([]uuid.UUID, 0, len(rows))
 	genreByImageID := make(map[uuid.UUID]*publirattypesv1.Genre, len(rows))
 	for _, row := range rows {
@@ -172,9 +175,30 @@ func (s *adminServer) genreMessages(ctx context.Context, rows []genreRow) ([]*pu
 			genre.EyeCatchImageUpdatedAt = row.eyeCatchImageUpdatedAt.Time.UTC().Format(time.RFC3339)
 		}
 		genres = append(genres, genre)
+		genreIDs = append(genreIDs, row.id)
+		genreByID[row.id] = genre
 		if row.eyeCatchImageID.Valid {
 			imageIDs = append(imageIDs, row.eyeCatchImageID.UUID)
 			genreByImageID[row.eyeCatchImageID.UUID] = genre
+		}
+	}
+	if len(genreIDs) > 0 {
+		translations, err := s.queriesFor(ctx).ListGenreTranslationsByGenreIDs(ctx, dbmodels.ListGenreTranslationsByGenreIDsParams{
+			TenantID: tenantID,
+			GenreIds: genreIDs,
+		})
+		if err != nil {
+			return nil, s.internalDBError(ctx, "failed to list genre translations", err, "tenant_id", tenantID.String())
+		}
+		for _, translation := range translations {
+			if genre, ok := genreByID[translation.GenreID]; ok {
+				genre.Translations = append(genre.Translations, &publirattypesv1.GenreTranslation{
+					Locale:    translation.Locale,
+					Name:      translation.Name,
+					CreatedAt: translation.CreatedAt.UTC().Format(time.RFC3339),
+					UpdatedAt: translation.UpdatedAt.UTC().Format(time.RFC3339),
+				})
+			}
 		}
 	}
 	variantsByImageID, err := s.genreEyeCatchVariantsByImageIDs(ctx, imageIDs)
@@ -189,8 +213,8 @@ func (s *adminServer) genreMessages(ctx context.Context, rows []genreRow) ([]*pu
 	return genres, nil
 }
 
-func (s *adminServer) genreMessage(ctx context.Context, row genreRow) (*publirattypesv1.Genre, error) {
-	genres, err := s.genreMessages(ctx, []genreRow{row})
+func (s *adminServer) genreMessage(ctx context.Context, tenantID uuid.UUID, row genreRow) (*publirattypesv1.Genre, error) {
+	genres, err := s.genreMessages(ctx, tenantID, []genreRow{row})
 	if err != nil {
 		return nil, err
 	}
@@ -386,7 +410,7 @@ func (s *adminServer) ListGenres(
 	for _, row := range rows {
 		genreRows = append(genreRows, row.genreRow)
 	}
-	genres, err := s.genreMessages(ctx, genreRows)
+	genres, err := s.genreMessages(ctx, tenant.ID, genreRows)
 	if err != nil {
 		return nil, err
 	}
@@ -431,6 +455,10 @@ func (s *adminServer) CreateGenre(
 	if err != nil {
 		return nil, err
 	}
+	code, err := offeredLocale(req.Locale, tenant)
+	if err != nil {
+		return nil, err
+	}
 	eyeCatchVariants, err := s.eyeCatchVariants(req.EyeCatchImageData, req.EyeCatchImageContentType)
 	if err != nil {
 		return nil, err
@@ -459,7 +487,6 @@ func (s *adminServer) CreateGenre(
 			ID:           genreID,
 			TenantID:     tenant.ID,
 			PublicID:     publicID,
-			Name:         normalized.name,
 			Slug:         normalized.slug,
 			DisplayOrder: maxDisplayOrder + 1,
 		})
@@ -470,6 +497,9 @@ func (s *adminServer) CreateGenre(
 		}
 		return nil, s.internalDBError(ctx, "failed to create genre", err, "tenant_id", tenant.ID.String())
 	}
+	if err := s.upsertGenreTranslation(txCtx, tenant.ID, created.ID, code, normalized.name); err != nil {
+		return nil, err
+	}
 	eyeCatchImageID, err := s.createGenreEyeCatchImage(txCtx, tenant, created.ID, created.PublicID, eyeCatchVariants)
 	if err != nil {
 		return nil, err
@@ -477,7 +507,6 @@ func (s *adminServer) CreateGenre(
 	if eyeCatchImageID.Valid {
 		if err := s.queriesFor(txCtx).UpdateGenre(txCtx, dbmodels.UpdateGenreParams{
 			ID:              created.ID,
-			Name:            created.Name,
 			Slug:            created.Slug,
 			EyeCatchImageID: eyeCatchImageID,
 		}); err != nil {
@@ -509,7 +538,7 @@ func (s *adminServer) genreWithEyeCatch(ctx context.Context, tenantID, id uuid.U
 	if err != nil {
 		return nil, err
 	}
-	return s.genreMessage(ctx, genreRowFromGet(row))
+	return s.genreMessage(ctx, tenantID, genreRowFromGet(row))
 }
 
 // existingGenreNameError reports a name whose slug another genre of the tenant
@@ -536,6 +565,10 @@ func (s *adminServer) UpdateGenre(
 		return nil, err
 	}
 	normalized, err := normalizeCatalogName(req.Name, "name")
+	if err != nil {
+		return nil, err
+	}
+	code, err := offeredLocale(req.Locale, tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -580,10 +613,16 @@ func (s *adminServer) UpdateGenre(
 			return nil, err
 		}
 	}
+	if err := s.upsertGenreTranslation(txCtx, tenant.ID, current.ID, code, normalized.name); err != nil {
+		return nil, err
+	}
+	slug, err := s.genreSlug(txCtx, tenant.ID, current.ID, current.Slug)
+	if err != nil {
+		return nil, err
+	}
 	if err := s.queriesFor(txCtx).UpdateGenre(txCtx, dbmodels.UpdateGenreParams{
 		ID:              current.ID,
-		Name:            normalized.name,
-		Slug:            normalized.slug,
+		Slug:            slug,
 		EyeCatchImageID: eyeCatchImageID,
 	}); err != nil {
 		if dberr.IsUniqueViolation(err) {
@@ -683,7 +722,7 @@ func (s *adminServer) ReorderGenres(
 
 	s.recordGenreChange(ctx, tenant.ID, "genres_reordered", tenant.PublicID)
 
-	genres, err := s.genreMessages(ctx, reordered)
+	genres, err := s.genreMessages(ctx, tenant.ID, reordered)
 	if err != nil {
 		return nil, err
 	}
@@ -771,4 +810,114 @@ func (s *adminServer) lockGenreByID(ctx context.Context, tenantID, id uuid.UUID)
 		return s.internalDBError(ctx, "failed to lock genre", err, "tenant_id", tenantID.String(), "genre_id", id.String())
 	}
 	return nil
+}
+
+// upsertGenreTranslation writes one locale's name on the querier txCtx carries.
+func (s *adminServer) upsertGenreTranslation(txCtx context.Context, tenantID, genreID uuid.UUID, code, name string) error {
+	id, err := uuid.NewV7()
+	if err != nil {
+		return connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
+	}
+	if err := s.queriesFor(txCtx).UpsertGenreTranslation(txCtx, dbmodels.UpsertGenreTranslationParams{
+		ID:       id,
+		GenreID:  genreID,
+		TenantID: tenantID,
+		Locale:   code,
+		Name:     name,
+	}); err != nil {
+		return s.internalDBError(txCtx, "failed to write genre translation", err, "tenant_id", tenantID.String(), "genre_id", genreID.String(), "locale", code)
+	}
+	return nil
+}
+
+// genreSlug derives the slug a genre holds once its names are written: that of
+// the name a reader in the tenant default locale is shown. A name that holds
+// no letter or digit was written before names were checked for one, and keeps
+// the slug the genre has.
+func (s *adminServer) genreSlug(txCtx context.Context, tenantID, genreID uuid.UUID, current string) (string, error) {
+	name, err := s.queriesFor(txCtx).GetGenreDefaultLocaleName(txCtx, genreID)
+	if err != nil {
+		return "", s.internalDBError(txCtx, "failed to read the default locale name of a genre", err, "tenant_id", tenantID.String(), "genre_id", genreID.String())
+	}
+	slug, err := catalogslug.FromName(name)
+	if err != nil {
+		return current, nil
+	}
+	return slug, nil
+}
+
+func (s *adminServer) DeleteGenreTranslation(
+	ctx context.Context,
+	req *publiraadminv1.DeleteGenreTranslationRequest,
+) (*publiraadminv1.DeleteGenreTranslationResponse, error) {
+	if _, err := s.requireTenantEditor(ctx); err != nil {
+		return nil, err
+	}
+	tenant, err := s.tenantByContext(ctx, req.Tenant)
+	if err != nil {
+		return nil, err
+	}
+	id, err := parseRecordID(req.GenreId, "genre_id")
+	if err != nil {
+		return nil, err
+	}
+	code, err := parseTranslationLocale(req.Locale)
+	if err != nil {
+		return nil, err
+	}
+
+	var publicID string
+	if err := s.writeAndRevalidate(ctx, tenant.ID, func(txCtx context.Context) ([]string, error) {
+		queries := s.queriesFor(txCtx)
+		// The lock keeps two deletions from each seeing the other's name still
+		// there and together leaving the genre with none.
+		if err := s.lockGenreByID(txCtx, tenant.ID, id); err != nil {
+			return nil, err
+		}
+		current, err := s.genreByID(txCtx, tenant.ID, id)
+		if err != nil {
+			return nil, err
+		}
+		publicID = current.PublicID
+		count, err := queries.CountGenreTranslations(txCtx, dbmodels.CountGenreTranslationsParams{TenantID: tenant.ID, GenreID: id})
+		if err != nil {
+			return nil, s.internalDBError(ctx, "failed to count genre translations", err, "tenant_id", tenant.ID.String(), "genre_id", id.String())
+		}
+		deleted, err := queries.DeleteGenreTranslation(txCtx, dbmodels.DeleteGenreTranslationParams{TenantID: tenant.ID, GenreID: id, Locale: code})
+		if err != nil {
+			return nil, s.internalDBError(ctx, "failed to delete genre translation", err, "tenant_id", tenant.ID.String(), "genre_id", id.String(), "locale", code)
+		}
+		if deleted == 0 {
+			return nil, connect.NewError(connect.CodeNotFound, "genre translation not found")
+		}
+		if count <= 1 {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, "a genre must keep at least one name")
+		}
+		// The deleted name may have been the one the slug was derived from.
+		slug, err := s.genreSlug(txCtx, tenant.ID, id, current.Slug)
+		if err != nil {
+			return nil, err
+		}
+		if err := queries.UpdateGenre(txCtx, dbmodels.UpdateGenreParams{
+			ID:              id,
+			Slug:            slug,
+			EyeCatchImageID: current.EyeCatchImageID,
+		}); err != nil {
+			if dberr.IsUniqueViolation(err) {
+				return nil, existingGenreNameError()
+			}
+			return nil, s.internalDBError(ctx, "failed to update genre slug after translation deletion", err, "tenant_id", tenant.ID.String(), "genre_id", id.String())
+		}
+		return genreRevalidateTags(tenant.ID.String()), nil
+	}); err != nil {
+		return nil, err
+	}
+
+	s.recordGenreChange(ctx, tenant.ID, "genre_translation_deleted", publicID)
+
+	genre, err := s.genreWithEyeCatch(ctx, tenant.ID, id)
+	if err != nil {
+		return nil, err
+	}
+	return &publiraadminv1.DeleteGenreTranslationResponse{Genre: genre}, nil
 }

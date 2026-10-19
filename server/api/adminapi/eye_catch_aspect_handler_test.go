@@ -592,6 +592,10 @@ func TestUploadGenreEyeCatchAspectImageReplacesOnlyThatRatio(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetGenreByIDForTenant)).
 		WithArgs(tenantID, genreID).
 		WillReturnRows(genreRow())
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListGenreTranslationsByGenreIDs)).
+		WithArgs(tenantID, sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "genre_id", "tenant_id", "locale", "name", "created_at", "updated_at"}).
+			AddRow(uuid.Must(uuid.NewV7()), genreID, tenantID, "ja", "Fantasy", now, now))
 	squareID := uuid.Must(uuid.NewV7())
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListGenreImageVariantsByImageIDs)).
 		WithArgs(sqlmock.AnyArg()).

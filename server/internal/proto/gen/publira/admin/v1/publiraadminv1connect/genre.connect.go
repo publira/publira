@@ -39,6 +39,9 @@ const (
 	// AdminGenreServiceDeleteGenreProcedure is the procedure name of the AdminGenreService's
 	// DeleteGenre RPC.
 	AdminGenreServiceDeleteGenreProcedure = "/publira.admin.v1.AdminGenreService/DeleteGenre"
+	// AdminGenreServiceDeleteGenreTranslationProcedure is the procedure name of the AdminGenreService's
+	// DeleteGenreTranslation RPC.
+	AdminGenreServiceDeleteGenreTranslationProcedure = "/publira.admin.v1.AdminGenreService/DeleteGenreTranslation"
 	// AdminGenreServiceUploadGenreEyeCatchAspectImageProcedure is the procedure name of the
 	// AdminGenreService's UploadGenreEyeCatchAspectImage RPC.
 	AdminGenreServiceUploadGenreEyeCatchAspectImageProcedure = "/publira.admin.v1.AdminGenreService/UploadGenreEyeCatchAspectImage"
@@ -80,6 +83,13 @@ var (
 			Procedure:  AdminGenreServiceDeleteGenreProcedure,
 		}
 	})
+	adminGenreServiceDeleteGenreTranslationSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_genre_proto.Services().ByName("AdminGenreService").Methods().ByName("DeleteGenreTranslation"),
+			Procedure:  AdminGenreServiceDeleteGenreTranslationProcedure,
+		}
+	})
 	adminGenreServiceUploadGenreEyeCatchAspectImageSpec = sync.OnceValue(func() connect.Spec {
 		return connect.Spec{
 			StreamType: connect.StreamTypeUnary,
@@ -101,6 +111,8 @@ type AdminGenreServiceClient interface {
 	ReorderGenres(context.Context, *v1.ReorderGenresRequest) (*v1.ReorderGenresResponse, error)
 	// Minimum role: tenant_editor.
 	DeleteGenre(context.Context, *v1.DeleteGenreRequest) (*v1.DeleteGenreResponse, error)
+	// Minimum role: tenant_editor.
+	DeleteGenreTranslation(context.Context, *v1.DeleteGenreTranslationRequest) (*v1.DeleteGenreTranslationResponse, error)
 	// Minimum role: tenant_editor.
 	UploadGenreEyeCatchAspectImage(context.Context, *v1.UploadGenreEyeCatchAspectImageRequest) (*v1.UploadGenreEyeCatchAspectImageResponse, error)
 }
@@ -124,6 +136,8 @@ type AdminGenreServiceHandler interface {
 	// Minimum role: tenant_editor.
 	DeleteGenre(context.Context, *v1.DeleteGenreRequest) (*v1.DeleteGenreResponse, error)
 	// Minimum role: tenant_editor.
+	DeleteGenreTranslation(context.Context, *v1.DeleteGenreTranslationRequest) (*v1.DeleteGenreTranslationResponse, error)
+	// Minimum role: tenant_editor.
 	UploadGenreEyeCatchAspectImage(context.Context, *v1.UploadGenreEyeCatchAspectImageRequest) (*v1.UploadGenreEyeCatchAspectImageResponse, error)
 }
 
@@ -137,6 +151,7 @@ func RegisterAdminGenreServiceHandler(server *connect.Server, svc AdminGenreServ
 		connect.Method{Spec: adminGenreServiceUpdateGenreSpec(), Handler: adapter.updateGenre},
 		connect.Method{Spec: adminGenreServiceReorderGenresSpec(), Handler: adapter.reorderGenres},
 		connect.Method{Spec: adminGenreServiceDeleteGenreSpec(), Handler: adapter.deleteGenre},
+		connect.Method{Spec: adminGenreServiceDeleteGenreTranslationSpec(), Handler: adapter.deleteGenreTranslation},
 		connect.Method{Spec: adminGenreServiceUploadGenreEyeCatchAspectImageSpec(), Handler: adapter.uploadGenreEyeCatchAspectImage},
 	)
 }
@@ -162,6 +177,10 @@ func (UnimplementedAdminGenreServiceHandler) ReorderGenres(context.Context, *v1.
 
 func (UnimplementedAdminGenreServiceHandler) DeleteGenre(context.Context, *v1.DeleteGenreRequest) (*v1.DeleteGenreResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminGenreService.DeleteGenre is not implemented")
+}
+
+func (UnimplementedAdminGenreServiceHandler) DeleteGenreTranslation(context.Context, *v1.DeleteGenreTranslationRequest) (*v1.DeleteGenreTranslationResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminGenreService.DeleteGenreTranslation is not implemented")
 }
 
 func (UnimplementedAdminGenreServiceHandler) UploadGenreEyeCatchAspectImage(context.Context, *v1.UploadGenreEyeCatchAspectImageRequest) (*v1.UploadGenreEyeCatchAspectImageResponse, error) {
@@ -207,6 +226,14 @@ func (c *adminGenreServiceClient) ReorderGenres(ctx context.Context, req *v1.Reo
 func (c *adminGenreServiceClient) DeleteGenre(ctx context.Context, req *v1.DeleteGenreRequest) (*v1.DeleteGenreResponse, error) {
 	var res v1.DeleteGenreResponse
 	if err := c.client.CallUnary(ctx, adminGenreServiceDeleteGenreSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminGenreServiceClient) DeleteGenreTranslation(ctx context.Context, req *v1.DeleteGenreTranslationRequest) (*v1.DeleteGenreTranslationResponse, error) {
+	var res v1.DeleteGenreTranslationResponse
+	if err := c.client.CallUnary(ctx, adminGenreServiceDeleteGenreTranslationSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -276,6 +303,18 @@ func (h adminGenreServiceHandler) deleteGenre(ctx context.Context, _ connect.Spe
 		return err
 	}
 	res, err := h.svc.DeleteGenre(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminGenreServiceHandler) deleteGenreTranslation(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.DeleteGenreTranslationRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DeleteGenreTranslation(ctx, &req)
 	if err != nil {
 		return err
 	}

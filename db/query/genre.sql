@@ -7,13 +7,14 @@
 -- name: ListGenresByTenantAsc :many
 SELECT g.id,
     g.public_id,
-    g.name,
+    gt.name,
     g.slug,
     g.display_order,
     g.created_at,
     g.eye_catch_image_id,
     gi.updated_at AS eye_catch_image_updated_at
 FROM genres g
+    CROSS JOIN LATERAL genre_translation_for(g.id, '') gt
     LEFT JOIN genre_images gi ON gi.id = g.eye_catch_image_id
 WHERE g.tenant_id = sqlc.arg('tenant_id')
     AND (
@@ -34,13 +35,14 @@ LIMIT sqlc.arg('limit');
 -- name: ListGenresByTenantDesc :many
 SELECT g.id,
     g.public_id,
-    g.name,
+    gt.name,
     g.slug,
     g.display_order,
     g.created_at,
     g.eye_catch_image_id,
     gi.updated_at AS eye_catch_image_updated_at
 FROM genres g
+    CROSS JOIN LATERAL genre_translation_for(g.id, '') gt
     LEFT JOIN genre_images gi ON gi.id = g.eye_catch_image_id
 WHERE g.tenant_id = sqlc.arg('tenant_id')
     AND (
@@ -61,13 +63,14 @@ LIMIT sqlc.arg('limit');
 -- name: GetGenreByIDForTenant :one
 SELECT g.id,
     g.public_id,
-    g.name,
+    gt.name,
     g.slug,
     g.display_order,
     g.created_at,
     g.eye_catch_image_id,
     gi.updated_at AS eye_catch_image_updated_at
 FROM genres g
+    CROSS JOIN LATERAL genre_translation_for(g.id, '') gt
     LEFT JOIN genre_images gi ON gi.id = g.eye_catch_image_id
 WHERE g.tenant_id = $1
     AND g.id = $2
@@ -79,10 +82,11 @@ LIMIT 1;
 -- genre that does not exist.
 SELECT g.id,
     g.public_id,
-    g.name,
+    gt.name,
     g.slug,
     g.display_order
 FROM genres g
+    CROSS JOIN LATERAL genre_translation_for(g.id, '') gt
 WHERE g.tenant_id = sqlc.arg('tenant_id')
     AND g.id = ANY(sqlc.arg('ids')::uuid[])
 ORDER BY g.display_order ASC,
@@ -96,11 +100,12 @@ ORDER BY g.display_order ASC,
 -- them.
 SELECT g.id,
     g.public_id,
-    g.name,
+    gt.name,
     g.slug,
     g.eye_catch_image_id,
     gi.updated_at AS eye_catch_image_updated_at
 FROM genres g
+    CROSS JOIN LATERAL genre_translation_for(g.id, '') gt
     LEFT JOIN genre_images gi ON gi.id = g.eye_catch_image_id
 WHERE g.tenant_id = $1
 ORDER BY g.display_order ASC,
@@ -126,18 +131,19 @@ INSERT INTO genres (
         id,
         tenant_id,
         public_id,
-        name,
         slug,
         display_order
     )
-VALUES ($1, $2, $3, $4, $5, $6)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
 -- name: UpdateGenre :exec
+-- The slug is the caller's to derive, from the name genre_translation_for
+-- picks for the tenant default locale once the save's own translation is
+-- written.
 UPDATE genres
-SET name = $2,
-    slug = $3,
-    eye_catch_image_id = $4
+SET slug = $2,
+    eye_catch_image_id = $3
 WHERE id = $1;
 
 -- name: UpdateGenreDisplayOrder :exec
@@ -150,8 +156,9 @@ DELETE FROM genres
 WHERE id = $1;
 
 -- The public genre list: the tenant's whole genre list, in the order the
--- console put it in, each genre carrying how many of its series are published
--- right now. A genre no published series carries stays in the list, for the
+-- console put it in, each genre named in the translation genre_translation_for
+-- picks for the reader's locale and carrying how many of its series are
+-- published right now. A genre no published series carries stays in the list, for the
 -- reason a label with no published series does — the URL of its page has to
 -- keep working after its last series is taken down.
 --
@@ -166,7 +173,8 @@ WHERE id = $1;
 -- name: ListPublishedGenresByTenantAsc :many
 SELECT g.id,
     g.public_id,
-    g.name,
+    gt.name,
+    gt.locale AS name_locale,
     g.slug,
     g.display_order,
     g.eye_catch_image_id,
@@ -187,6 +195,7 @@ SELECT g.id,
             )
     )::int4 AS published_series_count
 FROM genres g
+    CROSS JOIN LATERAL genre_translation_for(g.id, sqlc.arg('locale')::text) gt
 WHERE g.tenant_id = sqlc.arg('tenant_id')
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL
@@ -206,7 +215,8 @@ LIMIT sqlc.arg('limit');
 -- name: ListPublishedGenresByTenantDesc :many
 SELECT g.id,
     g.public_id,
-    g.name,
+    gt.name,
+    gt.locale AS name_locale,
     g.slug,
     g.display_order,
     g.eye_catch_image_id,
@@ -227,6 +237,7 @@ SELECT g.id,
             )
     )::int4 AS published_series_count
 FROM genres g
+    CROSS JOIN LATERAL genre_translation_for(g.id, sqlc.arg('locale')::text) gt
 WHERE g.tenant_id = sqlc.arg('tenant_id')
     AND (
         sqlc.narg('cursor_id')::uuid IS NULL

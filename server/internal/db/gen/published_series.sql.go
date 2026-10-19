@@ -85,7 +85,9 @@ SELECT s.id,
                         'public_id',
                         g.public_id,
                         'name',
-                        g.name,
+                        gt.name,
+                        'locale',
+                        gt.locale,
                         'slug',
                         g.slug
                     )
@@ -97,7 +99,8 @@ SELECT s.id,
                 )
             FROM series_genres sg
                 JOIN genres g ON g.id = sg.genre_id
-            WHERE sg.tenant_id = $2
+                CROSS JOIN LATERAL genre_translation_for(g.id, $2::text) gt
+            WHERE sg.tenant_id = $3
                 AND sg.series_id = s.id
         ),
         '[]'
@@ -118,7 +121,7 @@ SELECT s.id,
                 )
             FROM series_tags st
                 JOIN tags t ON t.id = st.tag_id
-            WHERE st.tenant_id = $2
+            WHERE st.tenant_id = $3
                 AND st.series_id = s.id
         ),
         '[]'
@@ -133,14 +136,14 @@ SELECT s.id,
         ELSE '{}'::json
     END::jsonb AS label_info
 FROM series s
-    CROSS JOIN LATERAL series_translation_for(s.id, $3::text) tr
+    CROSS JOIN LATERAL series_translation_for(s.id, $2::text) tr
     LEFT JOIN series_listings sl ON sl.series_id = s.id
     LEFT JOIN labels l ON s.label_id = l.id
     LEFT JOIN series_creators sc ON s.id = sc.series_id
     LEFT JOIN creators c ON sc.creator_id = c.id
     LEFT JOIN creator_roles cr ON cr.id = sc.role_id
     LEFT JOIN creator_images ci ON ci.id = c.icon_image_id
-WHERE s.tenant_id = $2
+WHERE s.tenant_id = $3
     AND s.id = ANY($4::uuid [])
     AND s.is_published = true
     AND s.published_at IS NOT NULL
@@ -165,8 +168,8 @@ GROUP BY s.id,
 
 type ListActiveSeriesByIDsParams struct {
 	Surface  string      `json:"surface"`
-	TenantID uuid.UUID   `json:"tenant_id"`
 	Locale   string      `json:"locale"`
+	TenantID uuid.UUID   `json:"tenant_id"`
 	Ids      []uuid.UUID `json:"ids"`
 }
 
@@ -196,8 +199,8 @@ type ListActiveSeriesByIDsRow struct {
 func (q *Queries) ListActiveSeriesByIDs(ctx context.Context, arg ListActiveSeriesByIDsParams) ([]ListActiveSeriesByIDsRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListActiveSeriesByIDs,
 		arg.Surface,
-		arg.TenantID,
 		arg.Locale,
+		arg.TenantID,
 		pq.Array(arg.Ids),
 	)
 	if err != nil {

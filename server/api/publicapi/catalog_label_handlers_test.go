@@ -387,7 +387,7 @@ func TestCatalogGetPublishedLabelDetailSuccess(t *testing.T) {
 		WithArgs("ja", labelID, tenantID, "web", nil, false, nil, int32(21)).
 		WillReturnRows(seriesIDRows(seriesID))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
+		WithArgs("web", "ja", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
 			AddRow(seriesID, "SERIESPUB", "Public Series", "Public Synopsis", "ja", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 
@@ -489,7 +489,7 @@ func TestCatalogGetPublishedLabelDetailFirstPageReportsNextToken(t *testing.T) {
 		WithArgs("ja", labelID, tenantID, "web", nil, false, nil, int32(3)).
 		WillReturnRows(seriesIDRows(ids...))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
+		WithArgs("web", "ja", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
 			AddRow(ids[0], "SERIESALPHA", "Alpha", "", "ja", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)).
 			AddRow(ids[1], "SERIESBETA0", "Beta", "", "ja", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))

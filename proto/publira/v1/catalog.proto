@@ -456,6 +456,9 @@ message PublishedGenre {
   repeated PublishedGenreFeaturedSeries featured_series = 5;
   // The eye-catch the console uploaded for the genre. Empty when it has none.
   repeated publira.types.v1.SeriesEyeCatchVariant eye_catch_image_variants = 6;
+  // The locale of the translation `name` comes from, named the way
+  // Series.locale is.
+  string locale = 7;
 }
 
 // A series on a genre's tile. The title is what a frame shows for a work with
@@ -484,7 +487,7 @@ message ListPublishedGenresRequest {
   string token = 3;
   // The client making the read. Unspecified is answered as the web storefront.
   publira.types.v1.ClientSurface surface = 4;
-  // The reader's locale. Every series and episode title and synopsis in the
+  // The reader's locale. Every genre name and every series title in the
   // answer is that of the translation in this locale, else the tenant's default
   // locale's, else the oldest one. Empty means the tenant's default locale.
   string locale = 5;

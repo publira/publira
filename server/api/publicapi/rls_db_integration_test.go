@@ -161,6 +161,7 @@ var publicDataTables = []struct {
 	{name: "user_recommend_features", count: "SELECT count(*) FROM user_recommend_features"},
 	{name: "item_recommend_features", count: "SELECT count(*) FROM item_recommend_features"},
 	{name: "genres", count: "SELECT count(*) FROM genres"},
+	{name: "genre_translations", count: "SELECT count(*) FROM genre_translations"},
 	{name: "tags", count: "SELECT count(*) FROM tags"},
 	{name: "series_genres", count: "SELECT count(*) FROM series_genres"},
 	{name: "series_tags", count: "SELECT count(*) FROM series_tags"},

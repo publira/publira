@@ -356,6 +356,7 @@
         "genre_created": "장르 생성",
         "genre_updated": "장르 변경",
         "genre_deleted": "장르 삭제",
+        "genre_translation_deleted": "장르 번역 삭제",
         "genres_reordered": "장르 순서 변경",
         "genre_eye_catch_aspect_image_uploaded": "장르 커버 이미지 업로드",
         "page_created": "페이지 생성",

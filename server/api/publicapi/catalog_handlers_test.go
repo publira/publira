@@ -56,7 +56,7 @@ func TestCatalogListPublishedSeriesSuccess(t *testing.T) {
 		WithArgs(tenantID, "web", false, nil, nil, nil, nil, nil, "ja", nil, false, nil, int32(21)).
 		WillReturnRows(seriesScanRows(seriesID))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
+		WithArgs("web", "ja", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
 			AddRow(seriesID, "SERIESPUB", "Public Series", "Public Synopsis", "ja", "completed", []byte("{2,6}"), "r15", now, seriesImageID, now, int32(2), []byte(`[{"public_id":"CREATOR001","name":"Creator A","role_public_id":"ROLEAUTHOR01","role_name":"Original Author","profile_text":"","icon_image_url":"/images/creators/6f4bba7c-5d8a-4bb3-8e0f-3e94985f14e8","icon_image_file_size_bytes":0,"icon_image_updated_at":""}]`), []byte(`[]`), []byte(`[]`), []byte(`{"public_id":"LABEL001","name":"Weekly Jump"}`)))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListSeriesImageVariantsByImageIDs)).
@@ -170,7 +170,7 @@ func TestCatalogListPublishedSeriesFirstPageReportsNextToken(t *testing.T) {
 		WithArgs(tenantID, "web", false, nil, nil, nil, nil, nil, "ja", nil, false, nil, int32(3)).
 		WillReturnRows(seriesScanRows(ids...))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
+		WithArgs("web", "ja", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailRows(now, ids[:2]))
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
@@ -210,7 +210,7 @@ func TestCatalogListPublishedSeriesFollowsNextToken(t *testing.T) {
 		WithArgs(tenantID, "web", false, nil, nil, nil, nil, nil, "ja", boundaryID, false, boundaryPublishedAt, int32(3)).
 		WillReturnRows(seriesScanRows(ids...))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
+		WithArgs("web", "ja", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailRows(now.Add(-2*time.Second), ids))
 
 	client := publirav1connect.NewCatalogServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
@@ -253,7 +253,7 @@ func TestCatalogListPublishedSeriesFollowsPreviousTokenBackwards(t *testing.T) {
 		WithArgs(tenantID, "web", false, nil, nil, nil, nil, nil, "ja", boundaryID, false, boundaryPublishedAt, int32(3)).
 		WillReturnRows(seriesScanRows(olderID, newerID))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantID, "ja", sqlmock.AnyArg()).
+		WithArgs("web", "ja", tenantID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
 			AddRow(olderID, "SERIES_OLD", "Older", "", "ja", "ongoing", []byte("{}"), "all", now.Add(-2*time.Second), nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)).
 			AddRow(newerID, "SERIES_NEW", "Newer", "", "ja", "ongoing", []byte("{}"), "all", now.Add(-time.Second), nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
@@ -653,7 +653,7 @@ func TestCatalogListPublishedSeriesTenantIsolation(t *testing.T) {
 		WithArgs(tenantAID, "web", false, nil, nil, nil, nil, nil, "ja", nil, false, nil, int32(21)).
 		WillReturnRows(seriesScanRows(seriesAID))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantAID, "ja", sqlmock.AnyArg()).
+		WithArgs("web", "ja", tenantAID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
 			AddRow(seriesAID, "SERIES_A", "Series A", "Synopsis A", "ja", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 	expectTenantLookup(mock, tenantBID, "TENANT_B", now)
@@ -661,7 +661,7 @@ func TestCatalogListPublishedSeriesTenantIsolation(t *testing.T) {
 		WithArgs(tenantBID, "web", false, nil, nil, nil, nil, nil, "ja", nil, false, nil, int32(21)).
 		WillReturnRows(seriesScanRows(seriesBID))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListActiveSeriesByIDs)).
-		WithArgs("web", tenantBID, "ja", sqlmock.AnyArg()).
+		WithArgs("web", "ja", tenantBID, sqlmock.AnyArg()).
 		WillReturnRows(seriesDetailColumns().
 			AddRow(seriesBID, "SERIES_B", "Series B", "Synopsis B", "ja", "ongoing", []byte("{}"), "all", now, nil, nil, int32(0), []byte(`[]`), []byte(`[]`), []byte(`[]`), []byte(`{}`)))
 

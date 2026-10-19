@@ -408,16 +408,16 @@ WITH tenant_scope AS (
     FROM tenants t
     WHERE t.public_id = 'SeedTNNTAAA1'
 ),
-genre_seed (n, name, slug) AS (
+genre_seed (n, slug) AS (
     VALUES
-        (1, 'Fantasy', 'fantasy'),
-        (2, 'Romance', 'romance'),
-        (3, 'Mystery', 'mystery'),
-        (4, 'Science fiction', 'science-fiction'),
-        (5, 'Slice of life', 'slice-of-life'),
-        (6, 'Action', 'action')
+        (1, 'fantasy'),
+        (2, 'romance'),
+        (3, 'mystery'),
+        (4, 'science-fiction'),
+        (5, 'slice-of-life'),
+        (6, 'action')
 )
-INSERT INTO genres (id, tenant_id, public_id, name, slug, display_order)
+INSERT INTO genres (id, tenant_id, public_id, slug, display_order)
 SELECT
     (
         '018f0e74-'
@@ -427,16 +427,49 @@ SELECT
     )::uuid,
     ts.id,
     'SeedGENR' || TRANSLATE(LPAD(gs.n::text, 4, '0'), '0', 'A'),
-    gs.name,
     gs.slug,
     gs.n
 FROM genre_seed gs
 CROSS JOIN tenant_scope ts
 ON CONFLICT (public_id) DO UPDATE
 SET tenant_id = EXCLUDED.tenant_id,
-    name = EXCLUDED.name,
     slug = EXCLUDED.slug,
     display_order = EXCLUDED.display_order;
+
+-- Each genre's name, in the tenant's default locale.
+WITH tenant_scope AS (
+    SELECT t.id, t.default_locale
+    FROM tenants t
+    WHERE t.public_id = 'SeedTNNTAAA1'
+),
+genre_seed (n, name) AS (
+    VALUES
+        (1, 'Fantasy'),
+        (2, 'Romance'),
+        (3, 'Mystery'),
+        (4, 'Science fiction'),
+        (5, 'Slice of life'),
+        (6, 'Action')
+)
+INSERT INTO genre_translations (id, genre_id, tenant_id, locale, name)
+SELECT
+    (
+        '018f0e74-'
+        || LPAD(TO_HEX(gs.n), 4, '0')
+        || '-7000-8001-'
+        || LPAD(TO_HEX(gs.n), 12, '0')
+    )::uuid,
+    g.id,
+    ts.id,
+    ts.default_locale,
+    gs.name
+FROM genre_seed gs
+CROSS JOIN tenant_scope ts
+JOIN genres g
+    ON g.tenant_id = ts.id
+    AND g.public_id = 'SeedGENR' || TRANSLATE(LPAD(gs.n::text, 4, '0'), '0', 'A')
+ON CONFLICT (genre_id, locale) DO UPDATE
+SET name = EXCLUDED.name;
 
 WITH tenant_scope AS (
     SELECT t.id

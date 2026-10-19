@@ -34,6 +34,7 @@ export const auditActions = [
   "genre_created",
   "genre_updated",
   "genre_deleted",
+  "genre_translation_deleted",
   "genres_reordered",
   "genre_eye_catch_aspect_image_uploaded",
   "page_created",

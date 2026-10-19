@@ -356,6 +356,7 @@
         "genre_created": "Genre created",
         "genre_updated": "Genre updated",
         "genre_deleted": "Genre deleted",
+        "genre_translation_deleted": "Genre translation deleted",
         "genres_reordered": "Genres reordered",
         "genre_eye_catch_aspect_image_uploaded": "Genre cover image uploaded",
         "page_created": "Page created",
