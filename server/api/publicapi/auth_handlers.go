@@ -122,7 +122,6 @@ func (s *apiServer) authenticateAccessToken(
 		return rpcmiddleware.SessionContext{}, err
 	}
 	tracing.SetEndUser(ctx, user.PublicID)
-	s.recordLastLocale(ctx, user)
 	return rpcmiddleware.SessionContext{Tenant: tenant, User: user, Role: role}, nil
 }
 

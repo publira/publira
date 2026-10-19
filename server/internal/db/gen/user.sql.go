@@ -1776,20 +1776,32 @@ func (q *Queries) SetUserBirthDateByID(ctx context.Context, arg SetUserBirthDate
 const SetUserLastLocale = `-- name: SetUserLastLocale :exec
 UPDATE users
 SET last_locale = $1::text
-WHERE id = $2
+WHERE tenant_id = $2
+    AND public_id = $3
+    AND status = 'active'
+    AND credentials_version = $4
     AND last_locale IS DISTINCT FROM $1::text
 `
 
 type SetUserLastLocaleParams struct {
-	LastLocale string    `json:"last_locale"`
-	ID         uuid.UUID `json:"id"`
+	LastLocale         string        `json:"last_locale"`
+	TenantID           uuid.NullUUID `json:"tenant_id"`
+	PublicID           string        `json:"public_id"`
+	CredentialsVersion int32         `json:"credentials_version"`
 }
 
-// Records the locale a reader's request named. A request in the locale already
-// recorded writes nothing, so a reader browsing in one language costs no
-// write per request.
+// Records the locale a signed-in reader's request named, on the reader its
+// access token names while that token still signs them in: the account is
+// active and its credentials have not moved since the token was issued. A
+// request in the locale already recorded writes nothing, so a reader browsing
+// in one language costs no write per request.
 func (q *Queries) SetUserLastLocale(ctx context.Context, arg SetUserLastLocaleParams) error {
-	_, err := q.db.ExecContext(ctx, SetUserLastLocale, arg.LastLocale, arg.ID)
+	_, err := q.db.ExecContext(ctx, SetUserLastLocale,
+		arg.LastLocale,
+		arg.TenantID,
+		arg.PublicID,
+		arg.CredentialsVersion,
+	)
 	return err
 }
 

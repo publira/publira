@@ -293,7 +293,7 @@ var readLimits = map[string]int{
 func registerPublicRoutes(mux *http.ServeMux, server *apiServer) {
 	traced := tracing.ConnectServerInterceptors(ServiceName)
 	limits := rpcmiddleware.ReadLimits(readLimits)
-	tenantScoped := slices.Concat(traced, []connect.ServerInterceptor{server.tenantScopedQuerierInterceptor(), requestedLocaleInterceptor()})
+	tenantScoped := slices.Concat(traced, []connect.ServerInterceptor{server.tenantScopedQuerierInterceptor(), server.readerLocaleInterceptor()})
 
 	services := connect.NewServer(tenantScoped...)
 	publirav1connect.RegisterCatalogServiceHandler(services, server)

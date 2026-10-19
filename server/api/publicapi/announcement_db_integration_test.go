@@ -169,8 +169,9 @@ func TestDBAnnouncementsAreReadInTheRequestedLocale(t *testing.T) {
 }
 
 // A signed-in reader's request that names a locale records it as their last
-// locale, whichever RPC it is, and a request that names none leaves it as it
-// was. A visitor with no session records nothing.
+// locale, whichever RPC it is — a read that never authenticates the token it
+// is sent included — and a request that names none leaves it as it was. A
+// visitor with no session, and a token that does not verify, record nothing.
 func TestDBSignedInRequestsRecordTheReadersLastLocale(t *testing.T) {
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
@@ -226,6 +227,29 @@ func TestDBSignedInRequestsRecordTheReadersLastLocale(t *testing.T) {
 	}
 	if got := lastLocale(); got.String != "ko" {
 		t.Fatalf("last_locale after another RPC in ko = %v, want ko", got)
+	}
+
+	// ListPublishedPages answers every caller alike and never looks at the
+	// token, which is the case a handler-side record would miss.
+	pages := env.pagesClient()
+	if _, err := pages.ListPublishedPages(testutil.WithBearer(context.Background(), token), &publirav1.ListPublishedPagesRequest{
+		Tenant: tenantContext(tenant),
+		Locale: "zh-Hans",
+	}); err != nil {
+		t.Fatalf("ListPublishedPages in zh-Hans: %v", err)
+	}
+	if got := lastLocale(); got.String != "zh-Hans" {
+		t.Fatalf("last_locale after a read that ignores the token = %v, want zh-Hans", got)
+	}
+
+	if _, err := pages.ListPublishedPages(testutil.WithBearer(context.Background(), "not-a-token"), &publirav1.ListPublishedPagesRequest{
+		Tenant: tenantContext(tenant),
+		Locale: "en",
+	}); err != nil {
+		t.Fatalf("ListPublishedPages with a bad token: %v", err)
+	}
+	if got := lastLocale(); got.String != "zh-Hans" {
+		t.Fatalf("last_locale after a token that does not verify = %v, want zh-Hans kept", got)
 	}
 }
 

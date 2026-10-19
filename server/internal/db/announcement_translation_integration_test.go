@@ -155,8 +155,9 @@ func TestUsersRefuseABlankLastLocale(t *testing.T) {
 	}
 }
 
-// SetUserLastLocale records the locale, and a request in the locale already
-// recorded leaves the row as it was.
+// SetUserLastLocale records the locale on the reader a still-good token names,
+// and a request in the locale already recorded leaves the row as it was. A
+// token issued before the reader's credentials moved names nobody any more.
 func TestSetUserLastLocaleWritesOnlyAChange(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
@@ -166,12 +167,19 @@ func TestSetUserLastLocaleWritesOnlyAChange(t *testing.T) {
 
 	tenantID := mustInsertTenant(t, ctx, pg.DB, "LOCALETNT002", "locale-2.example.com", "admin-locale-2.example.com", "Locale Tenant")
 	userID := mustInsertUser(t, ctx, pg.DB, tenantID, "LOCALEUSR002", "locale-2@example.com", "Reader")
+	var credentialsVersion int32
+	mustQueryRow(t, ctx, pg.DB, `SELECT credentials_version FROM users WHERE id = $1`, &credentialsVersion, userID)
 	queries := dbmodels.New(pg.DB)
 
 	var xmin string
-	set := func(locale string) string {
+	set := func(locale string, version int32) string {
 		t.Helper()
-		if err := queries.SetUserLastLocale(ctx, dbmodels.SetUserLastLocaleParams{ID: userID, LastLocale: locale}); err != nil {
+		if err := queries.SetUserLastLocale(ctx, dbmodels.SetUserLastLocaleParams{
+			LastLocale:         locale,
+			TenantID:           uuid.NullUUID{UUID: tenantID, Valid: true},
+			PublicID:           "LOCALEUSR002",
+			CredentialsVersion: version,
+		}); err != nil {
 			t.Fatalf("SetUserLastLocale(%q): %v", locale, err)
 		}
 		var stored sql.NullString
@@ -181,14 +189,17 @@ func TestSetUserLastLocaleWritesOnlyAChange(t *testing.T) {
 		return stored.String
 	}
 
-	if got := set("en"); got != "en" {
+	if got := set("en", credentialsVersion); got != "en" {
 		t.Fatalf("last_locale = %q, want en", got)
 	}
 	written := xmin
-	if got := set("en"); got != "en" || xmin != written {
+	if got := set("en", credentialsVersion); got != "en" || xmin != written {
 		t.Fatalf("same locale again: last_locale = %q, row version %s -> %s, want en and no write", got, written, xmin)
 	}
-	if got := set("ja"); got != "ja" || xmin == written {
+	if got := set("ko", credentialsVersion+1); got != "en" || xmin != written {
+		t.Fatalf("stale token: last_locale = %q, row version %s -> %s, want en and no write", got, written, xmin)
+	}
+	if got := set("ja", credentialsVersion); got != "ja" || xmin == written {
 		t.Fatalf("new locale: last_locale = %q, row version %s -> %s, want ja and a write", got, written, xmin)
 	}
 }

@@ -830,10 +830,15 @@ SET email_notifications_enabled = EXCLUDED.email_notifications_enabled,
 RETURNING *;
 
 -- name: SetUserLastLocale :exec
--- Records the locale a reader's request named. A request in the locale already
--- recorded writes nothing, so a reader browsing in one language costs no
--- write per request.
+-- Records the locale a signed-in reader's request named, on the reader its
+-- access token names while that token still signs them in: the account is
+-- active and its credentials have not moved since the token was issued. A
+-- request in the locale already recorded writes nothing, so a reader browsing
+-- in one language costs no write per request.
 UPDATE users
 SET last_locale = sqlc.arg('last_locale')::text
-WHERE id = sqlc.arg('id')
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND public_id = sqlc.arg('public_id')
+    AND status = 'active'
+    AND credentials_version = sqlc.arg('credentials_version')
     AND last_locale IS DISTINCT FROM sqlc.arg('last_locale')::text;

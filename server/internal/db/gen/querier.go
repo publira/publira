@@ -3187,9 +3187,11 @@ type Querier interface {
 	// updated when the link went away while the code was being exchanged, or holds
 	// a token already, and the caller revokes the one it got instead.
 	SetUserIdentityRefreshToken(ctx context.Context, arg SetUserIdentityRefreshTokenParams) (int64, error)
-	// Records the locale a reader's request named. A request in the locale already
-	// recorded writes nothing, so a reader browsing in one language costs no
-	// write per request.
+	// Records the locale a signed-in reader's request named, on the reader its
+	// access token names while that token still signs them in: the account is
+	// active and its credentials have not moved since the token was issued. A
+	// request in the locale already recorded writes nothing, so a reader browsing
+	// in one language costs no write per request.
 	SetUserLastLocale(ctx context.Context, arg SetUserLastLocaleParams) error
 	// Points the volume at an uploaded cover, or at none. The cover it pointed at
 	// before is left for the orphan image sweep.
