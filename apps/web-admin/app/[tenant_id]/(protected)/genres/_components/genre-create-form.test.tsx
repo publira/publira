@@ -43,7 +43,13 @@ describe("GenreCreateForm", () => {
   // The Action carries what the form held when it was submitted, so a change
   // made while it is in flight would sit under the success message unsaved.
   it("closes the new genre's name while its creation is in flight", async () => {
-    render(<GenreCreateForm namePlaceholder="Romance" tenantId="TENANT001" />);
+    render(
+      <GenreCreateForm
+        namePlaceholder="Romance"
+        tenantId="TENANT001"
+        tenantLocales={null}
+      />
+    );
     const field = screen.getByRole("textbox", { name: /Genre name/u });
 
     fireEvent.change(field, { target: { value: "Mystery" } });

@@ -1,5 +1,6 @@
 "use server";
 
+import { getLocales, parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import type { FormActionState } from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
@@ -28,12 +29,18 @@ import {
   deleteGenre,
   genresCacheTag,
   reorderGenres,
+  saveGenreNames,
   updateGenre,
   uploadGenreEyeCatchAspectImage,
 } from "#lib/genre";
 import { getMessagesFor } from "#lib/messages";
 
 import type { GenreReorderResult } from "../genre-types";
+import {
+  DEFAULT_LOCALE_FIELD,
+  nameField,
+  savedNameField,
+} from "./genre-name-fields";
 
 const nameSchema = async (locale: Locale) => {
   const t = await getMessagesFor(locale);
@@ -56,18 +63,90 @@ const idSchema = async (locale: Locale) => {
 
   return requiredRecordId(t("admin.genres.validation.id_missing"));
 };
+const optionalNameSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return optionalTrimmedString(
+    CATALOG_NAME_MAX_LENGTH,
+    t("admin.genres.validation.name_too_long", {
+      count: String(CATALOG_NAME_MAX_LENGTH),
+    })
+  );
+};
 const createGenreSchema = async (locale: Locale) =>
   z.object({
-    name: await nameSchema(locale),
     tenantId: await tenantIdSchema(locale),
   });
-const renameGenreSchema = async (locale: Locale) =>
-  z.object({
-    id: await idSchema(locale),
-    name: await nameSchema(locale),
-    tenantId: await tenantIdSchema(locale),
-  });
-const deleteGenreSchema = async (locale: Locale) =>
+
+/** One language's field of a genre form, as the form posted it. */
+interface PostedGenreName {
+  /** Absent for the one field a form without languages posts. */
+  translationLocale: Locale | undefined;
+  name: string;
+  /** What the field held when the form was drawn; empty for a new name. */
+  savedName: string;
+}
+
+/**
+ * The names a genre form posted. A form that knows the site's languages posts
+ * a field per language and names the default one, whose name is required and
+ * comes first; the others may be left empty. A form that does not posts one
+ * field in the default language, as the list's rows do.
+ */
+const parseGenreNames = async (
+  formData: FormData,
+  locale: Locale
+): Promise<
+  { ok: true; names: PostedGenreName[] } | { ok: false; message: string }
+> => {
+  const read = (name: string): string => {
+    const value = formData.get(name);
+    return typeof value === "string" ? value : "";
+  };
+  const defaultLocale = parseLocale(read(DEFAULT_LOCALE_FIELD));
+  const fields: { translationLocale: Locale | undefined; required: boolean }[] =
+    defaultLocale
+      ? [
+          { required: true, translationLocale: defaultLocale },
+          ...getLocales().flatMap((code) =>
+            code !== defaultLocale && formData.has(nameField(code))
+              ? [{ required: false, translationLocale: code }]
+              : []
+          ),
+        ]
+      : [{ required: true, translationLocale: undefined }];
+  const [requiredName, optionalName] = await Promise.all([
+    nameSchema(locale),
+    optionalNameSchema(locale),
+  ]);
+  const savedNameSchema = optionalTrimmedString();
+
+  const names: PostedGenreName[] = [];
+  for (const { required, translationLocale } of fields) {
+    const parsed = (required ? requiredName : optionalName).safeParse(
+      read(nameField(translationLocale))
+    );
+    if (!parsed.success) {
+      return {
+        message: toFormErrorMessage(parsed.error, { locale }),
+        ok: false,
+      };
+    }
+    names.push({
+      name: parsed.data,
+      // Only compared with what was typed, so one that does not parse is
+      // treated as no saved name, which writes the name again.
+      savedName:
+        savedNameSchema.safeParse(read(savedNameField(translationLocale)))
+          .data ?? "",
+      translationLocale,
+    });
+  }
+
+  return { names, ok: true };
+};
+/** The genre a rename or a delete addresses. */
+const genreRowSchema = async (locale: Locale) =>
   z.object({
     id: await idSchema(locale),
     tenantId: await tenantIdSchema(locale),
@@ -117,23 +196,59 @@ export const createGenreAction = async (
   ]);
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
-      name: "value",
       tenantId: { kind: "value", name: "tenant_id" },
     })
   );
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
+  const posted = await parseGenreNames(formData, locale);
+  if (!posted.ok) {
+    return posted;
+  }
 
-  const { name, tenantId } = parsed.data;
-  const result = await withAdminSessionReauth(() =>
-    createGenre({ name, tenantId }, locale)
+  const { tenantId } = parsed.data;
+  // The first name is the default language's, which creates the genre; the
+  // others are added to it.
+  const [first, ...others] = posted.names;
+  const created = await withAdminSessionReauth(() =>
+    createGenre(
+      {
+        name: first.name,
+        tenantId,
+        translationLocale: first.translationLocale,
+      },
+      locale
+    )
   );
-  if (!result.ok) {
-    return { message: result.message, ok: false };
+  if (!created.ok) {
+    return { message: created.message, ok: false };
   }
 
   updateTag(genresCacheTag(tenantId));
+
+  const result = await withAdminSessionReauth(() =>
+    saveGenreNames(
+      {
+        id: created.genre.id,
+        names: others.flatMap(({ name, translationLocale }) =>
+          name === "" ? [] : [{ name, translationLocale }]
+        ),
+        removedLocales: [],
+        tenantId,
+      },
+      locale
+    )
+  );
+  if (!result.ok) {
+    // The genre exists, so creating it again would only be refused as taken.
+    return {
+      message: t("admin.genres.created_names_failed", {
+        reason: result.message,
+      }),
+      ok: false,
+    };
+  }
 
   return { message: t("admin.genres.created"), ok: true };
 };
@@ -146,24 +261,44 @@ export const renameGenreAction = async (
   const locale = await getActionLocale(formData);
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
-    renameGenreSchema(locale),
+    genreRowSchema(locale),
   ]);
-  const parsed = schema.safeParse(
-    toFormDataInput(formData, { ...rowFormFields, name: "value" })
-  );
+  const parsed = schema.safeParse(toFormDataInput(formData, rowFormFields));
   if (!parsed.success) {
     return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
+  const posted = await parseGenreNames(formData, locale);
+  if (!posted.ok) {
+    return posted;
+  }
 
-  const { name, id, tenantId } = parsed.data;
-  const result = await withAdminSessionReauth(() =>
-    updateGenre({ id, name, tenantId }, locale)
+  const { id, tenantId } = parsed.data;
+  // A name left as it was is not written again, so a save records only the
+  // languages it changed.
+  const names = posted.names.flatMap(
+    ({ name, savedName, translationLocale }) =>
+      name === "" || name === savedName ? [] : [{ name, translationLocale }]
   );
+  const removedLocales = posted.names.flatMap(
+    ({ name, savedName, translationLocale }) =>
+      name === "" && savedName !== "" && translationLocale
+        ? [translationLocale]
+        : []
+  );
+  // The names are written one request at a time, so a save that stops part
+  // way — refused, or thrown by an error the Action passes on — may already
+  // have written the ones before it. The list is cleared however it ends.
+  let result: Awaited<ReturnType<typeof saveGenreNames>>;
+  try {
+    result = await withAdminSessionReauth(() =>
+      saveGenreNames({ id, names, removedLocales, tenantId }, locale)
+    );
+  } finally {
+    updateTag(genresCacheTag(tenantId));
+  }
   if (!result.ok) {
     return { message: result.message, ok: false };
   }
-
-  updateTag(genresCacheTag(tenantId));
 
   return {
     message: t("admin.genres.updated"),
@@ -179,7 +314,7 @@ export const deleteGenreAction = async (
   const locale = await getActionLocale(formData);
   const [t, schema] = await Promise.all([
     getMessagesFor(locale),
-    deleteGenreSchema(locale),
+    genreRowSchema(locale),
   ]);
   const parsed = schema.safeParse(toFormDataInput(formData, rowFormFields));
   if (!parsed.success) {

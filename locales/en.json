@@ -1213,6 +1213,7 @@
       "create_description": "A new genre goes to the end of the list.",
       "create_action": "Create genre",
       "created": "Genre created.",
+      "created_names_failed": "The genre was created, but not every name was saved. {$reason} Open it with Edit to add the rest.",
       "list_title": "Genres",
       "list_description": "Rename a genre, move it in the list, or remove one no series carries.",
       "list_error": "Could not display genres",
@@ -1238,6 +1239,7 @@
       "form": {
         "name": "Genre name",
         "name_placeholder": "Example: Fantasy",
+        "names_description": "The name in {$language} is required. Readers whose language the genre has no name in see this one, and the slug is made from it.",
         "eye_catch_update": "Update cover image",
         "submitting": "Submitting..."
       },
@@ -1249,6 +1251,7 @@
       },
       "name_taken": "A genre with this name already exists.",
       "name_invalid": "Enter a genre name of at most {$count} characters that holds at least one letter or number.",
+      "locale_not_offered": "This site does not offer that language. Switch it on under Languages first.",
       "image_invalid": "Check the image settings. Choose a JPEG, PNG, or WebP image no larger than 10MB and at least 2400x3200px, then try again.",
       "list_failed": "Could not load the genres. Please try again later.",
       "save_failed": "Could not save the genre. Please try again later.",

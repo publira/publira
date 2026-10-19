@@ -65,6 +65,7 @@ const genre: GenreListItem = {
   name: "Fantasy",
   publicId: "GENRE001",
   slug: "fantasy",
+  translations: [],
 };
 
 afterEach(() => {

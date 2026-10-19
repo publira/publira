@@ -574,6 +574,41 @@ test.describe("admin catalog masters", () => {
     );
   });
 
+  test("names a genre in a second language, reads both names back, and removes one", async ({
+    page,
+  }) => {
+    const suffix = uniqueSuffix();
+    const english = `E2E Genre English ${suffix}`;
+    const japanese = `E2E Genre Japanese ${suffix}`;
+    createdGenreNames.push(english);
+    // The fields are labelled by each language's own name; the seed tenant
+    // offers all five and starts in English.
+    const nameIn = (language: RegExp | string) =>
+      page
+        .getByRole("group", { exact: true, name: "Genre name" })
+        .getByRole("textbox", { name: language });
+
+    await page.goto(adminUrl("/genres"));
+    await fillField(genreCreateField(page), english);
+    await fillField(nameIn("日本語"), japanese);
+    await page.getByRole("button", { name: "Create genre" }).click();
+    await expect(genreNameField(page, english)).toBeVisible({
+      timeout: 15_000,
+    });
+
+    await genreRow(page, english).getByRole("link", { name: "Edit" }).click();
+    await expect(nameIn(/^English/u)).toHaveValue(english);
+    await expect(nameIn("日本語")).toHaveValue(japanese);
+    await expect(nameIn(/./u)).toHaveCount(5);
+
+    await fillField(nameIn("日本語"), "");
+    await page.getByRole("button", { exact: true, name: "Save" }).click();
+    await expect(formMessage(page)).toContainText("Genre updated.");
+    await page.reload();
+    await expect(nameIn(/^English/u)).toHaveValue(english);
+    await expect(nameIn("日本語")).toHaveValue("");
+  });
+
   test("deletes an unused genre and refuses one a series still carries", async ({
     page,
   }) => {

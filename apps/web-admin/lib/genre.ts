@@ -1,8 +1,14 @@
 import type { Genre } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import type { RpcErrorMessageOverrides } from "@publira/api-client/error-messages";
-import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
+import {
+  Code,
+  rethrowUnclassifiedRpcError,
+  rpcErrorCode,
+  rpcErrorHasFieldViolation,
+} from "@publira/api-client/errors";
 import { forEachPageWithToken } from "@publira/api-client/pagination";
+import { parseLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
@@ -20,11 +26,23 @@ import {
 import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
+/** One language's name of a genre. */
+export interface GenreTranslationItem {
+  locale: Locale;
+  name: string;
+}
+
 export interface GenreItem {
   /** The primary key every genre write addresses the genre by. */
   id: string;
   publicId: string;
+  /**
+   * The name in the tenant's default language, else the one the API falls back
+   * to: the console's reads ask for the default language.
+   */
   name: string;
+  /** Every name the genre has, oldest first. */
+  translations: GenreTranslationItem[];
   slug: string;
   eyeCatchImageUpdatedAt: string;
   eyeCatchImageVariants: {
@@ -48,6 +66,18 @@ export type CreateGenreResult =
 
 export type UpdateGenreResult =
   | { ok: true; genre: GenreItem }
+  | { ok: false; message: string };
+
+/** One name {@link saveGenreNames} writes. */
+export interface GenreNameWrite {
+  /** The language the name is in; absent, the tenant's default language. */
+  translationLocale?: Locale;
+  name: string;
+}
+
+export type SaveGenreNamesResult =
+  | { ok: true }
+  /** The names before the one that failed are written. */
   | { ok: false; message: string };
 
 /**
@@ -78,24 +108,34 @@ export const genresCacheTag = (tenantId: string): string =>
 
 /**
  * The rules the API enforces on the writes that carry a name and an eye-catch.
- * `invalid-argument` is the image when a field violation names it, and
- * otherwise one of the three name rules — empty, too long, and no letter or
- * digit to derive a slug from. `conflict` is another genre whose slug this name
- * would collide with, which the two names need not look alike to do.
+ * `invalid-argument` is the image or the language when a field violation names
+ * one of them, and otherwise one of the three name rules — empty, too long,
+ * and no letter or digit to derive a slug from. `conflict` is another genre
+ * whose slug this name would collide with, which the two names need not look
+ * alike to do.
  */
 const saveOverrides = async (
   error: unknown,
   locale: Locale
 ): Promise<RpcErrorMessageOverrides> => {
   const t = await getMessagesFor(locale);
+  const invalidArgument = (): string => {
+    if (mentionsImageRejection(error)) {
+      return t("admin.genres.image_invalid");
+    }
+    // A form opened before a language was switched off saves into a language
+    // the site no longer offers.
+    if (rpcErrorHasFieldViolation(error, "locale")) {
+      return t("admin.genres.locale_not_offered");
+    }
+    return t("admin.genres.name_invalid", {
+      count: String(CATALOG_NAME_MAX_LENGTH),
+    });
+  };
 
   return {
     conflict: t("admin.genres.name_taken"),
-    "invalid-argument": mentionsImageRejection(error)
-      ? t("admin.genres.image_invalid")
-      : t("admin.genres.name_invalid", {
-          count: String(CATALOG_NAME_MAX_LENGTH),
-        }),
+    "invalid-argument": invalidArgument(),
     precondition: mentionsStorageNotConfigured(error)
       ? t("admin.errors.storage_not_configured")
       : undefined,
@@ -118,6 +158,7 @@ type RawGenre = Pick<
   | "name"
   | "publicId"
   | "slug"
+  | "translations"
 >;
 
 const mapGenre = (genre: RawGenre): GenreItem => ({
@@ -142,6 +183,10 @@ const mapGenre = (genre: RawGenre): GenreItem => ({
   name: genre.name ?? "",
   publicId: genre.publicId ?? "",
   slug: genre.slug ?? "",
+  translations: (genre.translations ?? []).flatMap((translation) => {
+    const code = parseLocale(translation.locale ?? "");
+    return code ? [{ locale: code, name: translation.name ?? "" }] : [];
+  }),
 });
 
 const listGenresForTenant = async (
@@ -244,7 +289,12 @@ export const getGenre = async (input: {
 };
 
 export const createGenre = async (
-  input: { tenantId: string; name: string },
+  input: {
+    tenantId: string;
+    name: string;
+    /** The language the name is in; absent, the tenant's default language. */
+    translationLocale?: Locale;
+  },
   locale: Locale
 ): Promise<CreateGenreResult> => {
   const [t, sessionId] = await Promise.all([
@@ -258,6 +308,7 @@ export const createGenre = async (
   try {
     const response = await apiClient.genre.createGenre(
       {
+        locale: input.translationLocale ?? "",
         name: input.name,
         tenant: { tenantId: input.tenantId },
       },
@@ -289,6 +340,8 @@ export const updateGenre = async (
     tenantId: string;
     id: string;
     name: string;
+    /** The language the name is in; absent, the tenant's default language. */
+    translationLocale?: Locale;
     clearEyeCatchImage?: boolean;
     eyeCatchImageContentType?: string;
     eyeCatchImageData?: Uint8Array;
@@ -310,6 +363,7 @@ export const updateGenre = async (
         eyeCatchImageContentType: input.eyeCatchImageContentType,
         eyeCatchImageData: input.eyeCatchImageData,
         genreId: input.id,
+        locale: input.translationLocale ?? "",
         name: input.name,
         tenant: { tenantId: input.tenantId },
       },
@@ -335,6 +389,103 @@ export const updateGenre = async (
     };
   }
 };
+
+/**
+ * Removes a genre's name in one language. A name that is already gone counts
+ * as removed, since that is what the form asked for.
+ */
+const deleteGenreTranslation = async (
+  input: { tenantId: string; id: string; translationLocale: Locale },
+  locale: Locale
+): Promise<{ ok: true } | { ok: false; message: string }> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    getAccessToken(),
+  ]);
+  if (!sessionId) {
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
+  }
+
+  try {
+    await apiClient.genre.deleteGenreTranslation(
+      {
+        genreId: input.id,
+        locale: input.translationLocale,
+        tenant: { tenantId: input.tenantId },
+      },
+      withSessionHeaders(sessionId)
+    );
+    return { ok: true };
+  } catch (error) {
+    rethrowUnauthenticatedRpcError(error);
+    if (rpcErrorCode(error) === Code.NotFound) {
+      return { ok: true };
+    }
+    rethrowUnclassifiedRpcError(error);
+    return {
+      message: await mapErrorToMessage(
+        error,
+        t("admin.genres.save_failed"),
+        locale,
+        {
+          precondition: t("admin.genres.validation.name_required"),
+        }
+      ),
+      ok: false,
+    };
+  }
+};
+
+/** Runs `writes` one after another, stopping at the first that fails. */
+const writeInTurn = async (
+  writes: readonly (() => Promise<
+    { ok: true } | { ok: false; message: string }
+  >)[]
+): Promise<SaveGenreNamesResult> => {
+  const [write, ...rest] = writes;
+  if (!write) {
+    return { ok: true };
+  }
+  const result = await write();
+  return result.ok ? writeInTurn(rest) : result;
+};
+
+/**
+ * Writes a genre's names, one request per language since the API takes one
+ * name at a time, and then removes the ones `removedLocales` names.
+ *
+ * The writes go one after another in the order given, so the default
+ * language's name — the one the slug is derived from and the one a taken slug
+ * refuses — is written first and fails before anything else is. The removals
+ * come last: the API refuses to remove a genre's last name, and a name written
+ * first can only keep that from happening.
+ */
+export const saveGenreNames = (
+  input: {
+    tenantId: string;
+    id: string;
+    names: readonly GenreNameWrite[];
+    removedLocales: readonly Locale[];
+  },
+  locale: Locale
+): Promise<SaveGenreNamesResult> =>
+  writeInTurn([
+    ...input.names.map(
+      ({ name, translationLocale }) =>
+        () =>
+          updateGenre(
+            { id: input.id, name, tenantId: input.tenantId, translationLocale },
+            locale
+          )
+    ),
+    ...input.removedLocales.map(
+      (translationLocale) => () =>
+        deleteGenreTranslation(
+          { id: input.id, tenantId: input.tenantId, translationLocale },
+          locale
+        )
+    ),
+  ]);
 
 /**
  * Writes the tenant's genre order.

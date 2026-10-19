@@ -50,6 +50,7 @@ const genre = (id: string, name: string) => ({
   name,
   publicId: `${id}-public`,
   slug: name.toLowerCase(),
+  translations: [],
 });
 
 const renderRows = () =>

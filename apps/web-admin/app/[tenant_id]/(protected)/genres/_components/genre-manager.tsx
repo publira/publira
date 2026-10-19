@@ -24,6 +24,7 @@ import {
 } from "#components/admin-page";
 import { Message } from "#components/message";
 import { getMessagesFor } from "#lib/messages";
+import type { TenantLocales } from "#lib/tenant-locales";
 
 import type { GenreListItem } from "../genre-types";
 import { GenreCreateForm } from "./genre-create-form";
@@ -36,6 +37,8 @@ interface GenreManagerProps {
   listErrorMessage?: string;
   locale: Locale;
   tenantId: string;
+  /** The languages the create form takes a name in; `null` when unread. */
+  tenantLocales: TenantLocales | null;
 }
 
 const GenreListBody = async ({
@@ -87,6 +90,7 @@ export const GenreManager = async ({
   listErrorMessage,
   locale,
   tenantId,
+  tenantLocales,
 }: GenreManagerProps) => {
   const t = await getMessagesFor(locale);
 
@@ -111,6 +115,7 @@ export const GenreManager = async ({
           <GenreCreateForm
             namePlaceholder={t("admin.genres.form.name_placeholder")}
             tenantId={tenantId}
+            tenantLocales={tenantLocales}
           />
         </AdminSection>
       ) : null}

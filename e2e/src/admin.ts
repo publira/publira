@@ -637,17 +637,21 @@ export const formMessage = (page: Page): Locator =>
 /**
  * The genre list on `/genres`, which is one `<ul>` named after the card it
  * sits in. Scoping to it keeps the row fields apart from the create form's own
- * "Genre name" field.
+ * "Genre name" fields.
  */
 export const genreList = (page: Page): Locator =>
   page.getByRole("list", { name: "Genres" });
 
 /**
- * The name field of the create card, which carries the required marker in its
- * accessible name the way every other console form's label does.
+ * The create card's name in the tenant's default language: the card's
+ * "Genre name" group has a field per language the site offers, and puts the
+ * default one, the only one it requires, first.
  */
 export const genreCreateField = (page: Page): Locator =>
-  page.getByRole("textbox", { name: /Genre name/u });
+  page
+    .getByRole("group", { exact: true, name: "Genre name" })
+    .getByRole("textbox")
+    .first();
 
 /** The in-place name field of one genre row, addressed by its saved name. */
 export const genreNameField = (page: Page, name: string): Locator =>

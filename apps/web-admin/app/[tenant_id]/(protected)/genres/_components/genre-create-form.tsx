@@ -3,43 +3,31 @@ import {
   ActionFormFieldset,
   ActionFormSubmit,
 } from "@publira/ui-components/action-form";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
-import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
-import { CATALOG_NAME_MAX_LENGTH } from "#lib/catalog-name";
+import type { TenantLocales } from "#lib/tenant-locales";
 
 import { createGenreAction } from "../_lib/actions";
+import { GenreNameFields } from "./genre-name-fields";
 
 export const GenreCreateForm = ({
   namePlaceholder,
   tenantId,
+  tenantLocales,
 }: {
   namePlaceholder: string;
   tenantId: string;
+  tenantLocales: TenantLocales | null;
 }) => (
   <ActionForm action={createGenreAction} className="grid gap-4">
     <input name="tenant_id" type="hidden" value={tenantId} />
     <ActionFormFieldset>
-      <Field>
-        <FieldLabel required>
-          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <Message message="admin.genres.form.name" />
-          </Suspense>
-        </FieldLabel>
-        <FieldContent>
-          <Input
-            className="sm:max-w-sm"
-            maxLength={CATALOG_NAME_MAX_LENGTH}
-            name="name"
-            placeholder={namePlaceholder}
-            required
-            type="text"
-          />
-        </FieldContent>
-      </Field>
+      <GenreNameFields
+        namePlaceholder={namePlaceholder}
+        tenantLocales={tenantLocales}
+      />
     </ActionFormFieldset>
     <div className="flex justify-end">
       <ActionFormSubmit>
