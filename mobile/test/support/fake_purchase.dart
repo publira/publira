@@ -79,6 +79,9 @@ class FakePurchaseRepository implements PurchaseRepository {
   /// The locale each call to [startEpisodeCheckout] asked in, in order.
   final List<String> checkoutLocales = <String>[];
 
+  /// The sale each call to [startEpisodeCheckout] asked for, in order.
+  final List<PurchaseKind> checkoutKinds = <PurchaseKind>[];
+
   /// The pages [listMyPurchases] answers, in order. The token of a page is
   /// its own index written out, the way the fixture server writes a cursor.
   List<List<MyPurchase>> pages;
@@ -128,9 +131,11 @@ class FakePurchaseRepository implements PurchaseRepository {
   Future<Uri> startEpisodeCheckout(
     String episodeInternalId, {
     required String locale,
+    PurchaseKind kind = PurchaseKind.purchase,
   }) async {
     checkouts.add(episodeInternalId);
     checkoutLocales.add(locale);
+    checkoutKinds.add(kind);
     final failure = checkoutFailure;
     if (failure != null) {
       throw failure;

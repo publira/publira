@@ -246,6 +246,28 @@ void main() {
     );
   });
 
+  test('a checkout names the sale it is for', () async {
+    accessToken = ConnectFixtureServer.memberAccessToken;
+    final episodeId = ConnectFixtureServer.internalIdOf(paidEpisodeId);
+
+    await repository().startEpisodeCheckout(episodeId, locale: 'en');
+    await repository().startEpisodeCheckout(
+      episodeId,
+      locale: 'en',
+      kind: PurchaseKind.rental,
+    );
+
+    expect(
+      server
+          .requestsOf(pb.StartEpisodeCheckoutRequest.new)
+          .map((request) => request.kind),
+      [
+        pb.PurchaseKind.PURCHASE_KIND_PURCHASE,
+        pb.PurchaseKind.PURCHASE_KIND_RENTAL,
+      ],
+    );
+  });
+
   test('a guest is not sent to the API for a checkout', () async {
     await expectLater(
       repository().startEpisodeCheckout(
@@ -410,6 +432,26 @@ void main() {
       expect(canceled.status, MyPurchaseStatus.canceled);
       expect(active.revokedAt, isNull);
       expect(active.status, MyPurchaseStatus.active);
+    });
+
+    test('tells a rental from the permanent copy', () async {
+      accessToken = ConnectFixtureServer.memberAccessToken;
+      server.myPurchases = [
+        purchase(
+          'purchase-rental',
+          active: true,
+          expiresAt: '2099-01-01T00:00:00Z',
+        )..kind = pb.PurchaseKind.PURCHASE_KIND_RENTAL,
+        purchase('purchase-copy', active: true)
+          ..kind = pb.PurchaseKind.PURCHASE_KIND_PURCHASE,
+      ];
+
+      final [rental, copy] = (await repository().listMyPurchases(
+        locale: 'en',
+      )).purchases;
+
+      expect(rental.kind, PurchaseKind.rental);
+      expect(copy.kind, PurchaseKind.purchase);
     });
 
     test('asks for the page size it is given', () async {

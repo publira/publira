@@ -2357,6 +2357,19 @@ final class AppMessages {
     return _format('mobile.purchase.not_sold_in_app');
   }
 
+  /// `mobile.purchase.rent_for`
+  String purchaseRentFor({required String period, required String price}) {
+    return _format('mobile.purchase.rent_for', {
+      'period': period,
+      'price': price,
+    });
+  }
+
+  /// `mobile.purchase.rental_period`
+  String purchaseRentalPeriod({required num hours}) {
+    return _format('mobile.purchase.rental_period', {'hours': hours});
+  }
+
   /// `mobile.purchase.sold_on_web`
   String get purchaseSoldOnWeb {
     return _format('mobile.purchase.sold_on_web');
@@ -2442,9 +2455,35 @@ final class AppMessages {
     return _format('mobile.purchases.refunded');
   }
 
+  /// `mobile.purchases.rental`
+  String get purchasesRental {
+    return _format('mobile.purchases.rental');
+  }
+
   /// `mobile.purchases.sign_in_prompt`
   String get purchasesSignInPrompt {
     return _format('mobile.purchases.sign_in_prompt');
+  }
+
+  /// `mobile.purchases.time_left_hours`
+  String purchasesTimeLeftHours({required num hours}) {
+    return _format('mobile.purchases.time_left_hours', {'hours': hours});
+  }
+
+  /// `mobile.purchases.time_left_hours_minutes`
+  String purchasesTimeLeftHoursMinutes({
+    required num hours,
+    required num minutes,
+  }) {
+    return _format('mobile.purchases.time_left_hours_minutes', {
+      'hours': hours,
+      'minutes': minutes,
+    });
+  }
+
+  /// `mobile.purchases.time_left_minutes`
+  String purchasesTimeLeftMinutes({required num minutes}) {
+    return _format('mobile.purchases.time_left_minutes', {'minutes': minutes});
   }
 
   /// `mobile.purchases.title`
@@ -3868,6 +3907,8 @@ const _jaSources = <String, String>{
   'mobile.purchase.check_again': 'もう一度確認',
   'mobile.purchase.confirming': '決済を確認しています。購入が反映されると本文を表示します。',
   'mobile.purchase.not_sold_in_app': '現在、このエピソードはアプリで購入できません。時間をおいて再試行してください。',
+  'mobile.purchase.rent_for': '{\$period}レンタル（{\$price}）',
+  'mobile.purchase.rental_period': '{\$hours :integer}時間',
   'mobile.purchase.sold_on_web': 'ウェブサイトで販売',
   'mobile.purchase.start_failed': '購入手続きを開始できませんでした。時間をおいて再試行してください。',
   'mobile.purchase.store_unavailable':
@@ -3887,7 +3928,12 @@ const _jaSources = <String, String>{
   'mobile.purchases.readable': '閲覧可能',
   'mobile.purchases.readable_until': '{\$date}まで閲覧可能',
   'mobile.purchases.refunded': '返金済み',
+  'mobile.purchases.rental': 'レンタル',
   'mobile.purchases.sign_in_prompt': 'サインインすると、購入したエピソードを確認できます。',
+  'mobile.purchases.time_left_hours': '残り{\$hours :integer}時間',
+  'mobile.purchases.time_left_hours_minutes':
+      '残り{\$hours :integer}時間{\$minutes :integer}分',
+  'mobile.purchases.time_left_minutes': '残り{\$minutes :integer}分',
   'mobile.purchases.title': '購入済み一覧',
   'mobile.push.open': '開く',
   'mobile.ranking.empty': 'ランキングはまだ集計されていません。',
@@ -4689,6 +4735,9 @@ const _enSources = <String, String>{
       'We are confirming your payment. The episode opens once the purchase is applied.',
   'mobile.purchase.not_sold_in_app':
       'This episode cannot be bought in the app right now. Try again later.',
+  'mobile.purchase.rent_for': 'Rent for {\$period} ({\$price})',
+  'mobile.purchase.rental_period':
+      '.input {\$hours :integer}\n.match \$hours\none {{{\$hours} hour}}\n* {{{\$hours} hours}}',
   'mobile.purchase.sold_on_web': 'Sold on the website',
   'mobile.purchase.start_failed':
       'Could not start the purchase. Try again later.',
@@ -4711,7 +4760,12 @@ const _enSources = <String, String>{
   'mobile.purchases.readable': 'Readable',
   'mobile.purchases.readable_until': 'Readable until {\$date}',
   'mobile.purchases.refunded': 'Refunded',
+  'mobile.purchases.rental': 'Rental',
   'mobile.purchases.sign_in_prompt': 'Sign in to see the episodes you bought.',
+  'mobile.purchases.time_left_hours': '{\$hours :integer} hr left',
+  'mobile.purchases.time_left_hours_minutes':
+      '{\$hours :integer} hr {\$minutes :integer} min left',
+  'mobile.purchases.time_left_minutes': '{\$minutes :integer} min left',
   'mobile.purchases.title': 'Purchases',
   'mobile.push.open': 'Open',
   'mobile.ranking.empty': 'No ranking has been computed yet.',
@@ -5445,6 +5499,8 @@ const _koSources = <String, String>{
   'mobile.purchase.confirming': '결제를 확인하고 있습니다. 구매가 반영되면 에피소드가 열립니다.',
   'mobile.purchase.not_sold_in_app':
       '지금은 앱에서 이 에피소드를 구매할 수 없습니다. 잠시 후 다시 시도해 주세요.',
+  'mobile.purchase.rent_for': '{\$period} 대여 ({\$price})',
+  'mobile.purchase.rental_period': '{\$hours :integer}시간',
   'mobile.purchase.sold_on_web': '웹사이트에서 판매',
   'mobile.purchase.start_failed': '구매를 시작할 수 없습니다. 잠시 후 다시 시도해 주세요.',
   'mobile.purchase.store_unavailable':
@@ -5465,7 +5521,12 @@ const _koSources = <String, String>{
   'mobile.purchases.readable': '열람 가능',
   'mobile.purchases.readable_until': '{\$date}까지 열람 가능',
   'mobile.purchases.refunded': '환불됨',
+  'mobile.purchases.rental': '대여',
   'mobile.purchases.sign_in_prompt': '로그인하면 구매한 에피소드를 볼 수 있습니다.',
+  'mobile.purchases.time_left_hours': '{\$hours :integer}시간 남음',
+  'mobile.purchases.time_left_hours_minutes':
+      '{\$hours :integer}시간 {\$minutes :integer}분 남음',
+  'mobile.purchases.time_left_minutes': '{\$minutes :integer}분 남음',
   'mobile.purchases.title': '구매 목록',
   'mobile.push.open': '열기',
   'mobile.ranking.empty': '아직 집계된 랭킹이 없습니다.',
@@ -6127,6 +6188,8 @@ const _zhHansSources = <String, String>{
   'mobile.purchase.check_again': '再次确认',
   'mobile.purchase.confirming': '我们正在确认您的付款。购买生效后即可打开该章节。',
   'mobile.purchase.not_sold_in_app': '目前无法在应用中购买该章节。请稍后再试。',
+  'mobile.purchase.rent_for': '租阅{\$period}（{\$price}）',
+  'mobile.purchase.rental_period': '{\$hours :integer}小时',
   'mobile.purchase.sold_on_web': '在网站上销售',
   'mobile.purchase.start_failed': '无法开始购买。请稍后再试。',
   'mobile.purchase.store_unavailable': '此设备无法进行购买。请确认已登录商店且未限制购买。',
@@ -6144,7 +6207,12 @@ const _zhHansSources = <String, String>{
   'mobile.purchases.readable': '可阅读',
   'mobile.purchases.readable_until': '可阅读至{\$date}',
   'mobile.purchases.refunded': '已退款',
+  'mobile.purchases.rental': '租阅',
   'mobile.purchases.sign_in_prompt': '登录后即可查看您购买的章节。',
+  'mobile.purchases.time_left_hours': '剩余{\$hours :integer}小时',
+  'mobile.purchases.time_left_hours_minutes':
+      '剩余{\$hours :integer}小时{\$minutes :integer}分钟',
+  'mobile.purchases.time_left_minutes': '剩余{\$minutes :integer}分钟',
   'mobile.purchases.title': '已购买',
   'mobile.push.open': '打开',
   'mobile.ranking.empty': '尚未生成排行榜。',
@@ -6787,6 +6855,8 @@ const _zhHantSources = <String, String>{
   'mobile.purchase.check_again': '再次確認',
   'mobile.purchase.confirming': '我們正在確認您的付款。購買生效後即可開啟該章節。',
   'mobile.purchase.not_sold_in_app': '目前無法在應用程式中購買該章節。請稍後再試。',
+  'mobile.purchase.rent_for': '租閱{\$period}（{\$price}）',
+  'mobile.purchase.rental_period': '{\$hours :integer}小時',
   'mobile.purchase.sold_on_web': '在網站上販售',
   'mobile.purchase.start_failed': '無法開始購買。請稍後再試。',
   'mobile.purchase.store_unavailable': '此裝置無法進行購買。請確認已登入商店且未限制購買。',
@@ -6804,7 +6874,12 @@ const _zhHantSources = <String, String>{
   'mobile.purchases.readable': '可閱讀',
   'mobile.purchases.readable_until': '可閱讀至{\$date}',
   'mobile.purchases.refunded': '已退款',
+  'mobile.purchases.rental': '租閱',
   'mobile.purchases.sign_in_prompt': '登入後即可查看您購買的章節。',
+  'mobile.purchases.time_left_hours': '剩餘{\$hours :integer}小時',
+  'mobile.purchases.time_left_hours_minutes':
+      '剩餘{\$hours :integer}小時{\$minutes :integer}分鐘',
+  'mobile.purchases.time_left_minutes': '剩餘{\$minutes :integer}分鐘',
   'mobile.purchases.title': '已購買',
   'mobile.push.open': '開啟',
   'mobile.ranking.empty': '尚未產生排行榜。',

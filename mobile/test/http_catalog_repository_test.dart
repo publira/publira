@@ -955,6 +955,26 @@ void main() {
     expect(windowed.isFreeAt(DateTime.utc(2026, 10, 12, 14, 59)), isFalse);
   });
 
+  test('getSeries carries what renting an episode costs', () async {
+    server.detailResponse =
+        ConnectFixtureServer.populatedDetails()[ConnectFixtureServer
+              .seedSeriesId]!
+          ..episodes.last.rentalPrice = 200
+          ..episodes.last.rentalPeriodHours = 48;
+
+    final read = await catalog.getSeries(
+      ConnectFixtureServer.seedSeriesId,
+      locale: 'en',
+    );
+
+    expect(read!.episodes.first.isRented, isFalse);
+    final rented = read.episodes.last;
+    expect(rented.price, 500);
+    expect(rented.rentalPrice, 200);
+    expect(rented.rentalPeriodHours, 48);
+    expect(rented.isRented, isTrue);
+  });
+
   test('getSeries carries the wait-for-free rule of the series', () async {
     expect(
       (await catalog.getSeries(

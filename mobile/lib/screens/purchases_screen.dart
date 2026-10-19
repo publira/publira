@@ -373,7 +373,9 @@ class _PurchaseRow extends StatelessWidget {
     final muted = theme.colorScheme.onSurfaceVariant;
     final expiresAt = purchase.expiresAt;
     final status = purchase.status;
+    final rental = purchase.kind == PurchaseKind.rental;
     final details = <String>[
+      if (rental) messages.purchasesRental,
       if (purchase.purchasedAt case final purchasedAt?)
         messages.purchasesPurchasedAt(
           date: messages.formatDateTime(purchasedAt),
@@ -421,12 +423,76 @@ class _PurchaseRow extends StatelessWidget {
               locale: purchase.seriesTextLocale,
             ),
           AutospacedText(details.join(' · ')),
+          if (rental && status == MyPurchaseStatus.active && expiresAt != null)
+            _RentalTimeLeft(purchaseId: purchase.id, expiresAt: expiresAt),
         ],
       ),
       trailing: _PurchaseState(status: status),
       onTap: () => context.pushInTab(
         AppRoutes.episodeViewerPath(purchase.seriesId, purchase.episodeId),
       ),
+    );
+  }
+}
+
+/// How long a rental the reader holds still opens its episode, counted down
+/// against the device's clock.
+///
+/// The row states when the rental ends beside it; this says how far off that
+/// is, and nothing once it has passed, when the end beside it says the rest
+/// until the list is read again.
+class _RentalTimeLeft extends StatefulWidget {
+  const _RentalTimeLeft({required this.purchaseId, required this.expiresAt});
+
+  final String purchaseId;
+  final DateTime expiresAt;
+
+  @override
+  State<_RentalTimeLeft> createState() => _RentalTimeLeftState();
+}
+
+class _RentalTimeLeftState extends State<_RentalTimeLeft> {
+  Timer? _ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    // The count is in whole minutes, so a reading every few seconds keeps it
+    // within a minute of the truth.
+    _ticker = Timer.periodic(const Duration(seconds: 5), (_) {
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final left = widget.expiresAt.difference(DateTime.now());
+    if (left <= Duration.zero) {
+      return const SizedBox.shrink();
+    }
+    // Rounded up, so the count never reads zero while there is time left.
+    final minutes = (left.inMilliseconds / Duration.millisecondsPerMinute)
+        .ceil();
+    final hours = minutes ~/ 60;
+    final messages = AppMessages.of(context);
+    return AutospacedText(
+      key: ValueKey('purchase-time-left-${widget.purchaseId}'),
+      switch ((hours, minutes % 60)) {
+        (0, final minutes) => messages.purchasesTimeLeftMinutes(
+          minutes: minutes,
+        ),
+        (final hours, 0) => messages.purchasesTimeLeftHours(hours: hours),
+        (final hours, final minutes) => messages.purchasesTimeLeftHoursMinutes(
+          hours: hours,
+          minutes: minutes,
+        ),
+      },
     );
   }
 }

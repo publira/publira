@@ -2,6 +2,19 @@ import 'dart:ui';
 
 import 'package:publira/l10n/locale_negotiation.dart';
 
+/// Which of an episode's sales a reader buys or bought, as
+/// `publira.types.v1.PurchaseKind` names them.
+enum PurchaseKind {
+  /// The permanent copy, at the episode's price, which opens it for its
+  /// reading period if it has one and for good if it does not. A store
+  /// purchase is always this.
+  purchase,
+
+  /// The rental, at the episode's rental price, which opens it for the rental
+  /// period.
+  rental,
+}
+
 /// One purchase belonging to the signed-in reader, as `publira.v1.MyPurchase`
 /// describes it.
 class MyPurchase {
@@ -17,6 +30,7 @@ class MyPurchase {
     required this.price,
     required this.currency,
     required this.isActive,
+    this.kind = PurchaseKind.purchase,
     this.refundedAmount = 0,
     this.purchasedAt,
     this.expiresAt,
@@ -56,6 +70,9 @@ class MyPurchase {
   /// Whether the purchase still opens the episode, as the API judged it when
   /// the page was read.
   final bool isActive;
+
+  /// Which sale the reader bought. A rental always carries [expiresAt].
+  final PurchaseKind kind;
 
   /// `null` when the API sent a timestamp this build could not read.
   final DateTime? purchasedAt;

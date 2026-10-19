@@ -341,6 +341,8 @@ class EpisodeItem {
     this.locale = '',
     required this.orderIndex,
     required this.price,
+    this.rentalPrice = 0,
+    this.rentalPeriodHours = 0,
     this.purchaseSurface = EpisodePurchaseSurface.all,
     this.ratingCount = 0,
     this.freeUntil,
@@ -364,7 +366,18 @@ class EpisodeItem {
   Locale? get textLocale => supportedLocaleForCode(locale);
 
   final int orderIndex;
+
+  /// What the permanent copy costs.
   final int price;
+
+  /// What renting the episode costs, in the unit [price] is in, and how long
+  /// the rental opens it. Both are 0 on an episode that is not rented, and on
+  /// a copy saved on the device, which offers nothing to buy.
+  final int rentalPrice;
+  final int rentalPeriodHours;
+
+  /// Whether the episode is sold as a rental beside its permanent copy.
+  bool get isRented => rentalPrice > 0 && rentalPeriodHours > 0;
 
   /// Where the episode may be bought. The app offers no purchase of one sold
   /// on the storefront alone and says it is sold there instead.

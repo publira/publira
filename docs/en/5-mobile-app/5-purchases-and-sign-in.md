@@ -2,7 +2,7 @@
 title: In-app purchase and sign-in
 description: What a tenant's app needs to sell episodes through the App Store and Google Play, and to sign readers in with Apple, Google, and passkeys.
 published: 2026-10-06
-updated: 2026-10-17
+updated: 2026-10-19
 ---
 
 Selling episodes and signing in with Apple or Google are set up once for the whole tenant, in the tenant console, and the site and the app share that setup. This page covers what is particular to the app: the parts of each store's and each provider's console that only the app needs, and how the app decides what to offer. The app's build needs nothing for either beyond the [manifest](./1-app-manifest.md) and [App links](./4-app-links.md), except the Google client named in the manifest for Google sign-in on iOS.
@@ -15,6 +15,8 @@ Under **Payments** › **Payment methods**, two settings decide what the app off
 
 - **Where episodes are sold** decides whether an episode can be bought in the app at all: **Web and app**, **Web only**, or **App only**. A series or an episode can override it.
 - **How the app sells episodes**, in the **In-app purchase** section, decides how the app sells an episode it may sell. **Web checkout** opens the site's checkout in the phone's browser and brings the reader back to the episode once paid. **In-app purchase** sells with the store's own payment sheet, and the store charges the reader and keeps its commission.
+
+A rented episode is offered both ways on **Web checkout**, as on the site: **Buy for** the price and **Rent for** the rental period at the rental price, and the episode list names both prices. **In-app purchase** sells the permanent copy alone, so the app offers no rental there. Either way, **Purchases** in the app marks a rental as one and shows the time it has left.
 
 The App Store and Google Play each have rules on how an app may sell digital content, and they decide in review whether an app follows them. Read their current guidelines before choosing **Web checkout** for an app you submit.
 

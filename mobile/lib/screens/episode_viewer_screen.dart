@@ -133,6 +133,10 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   /// The tenant's currency, `null` until it is read or when it cannot be.
   String? _currency;
 
+  /// Whether the tenant sells through its web checkout, which is the only way
+  /// a rental is sold: the store sells the permanent copy alone.
+  var _rentsOnWeb = false;
+
   /// Records the page the reader rests on, for the session that is signed in
   /// now. It holds the repository rather than the context, because the last
   /// page is recorded as the screen goes away, when an inherited widget can no
@@ -281,11 +285,15 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   Future<void> _loadAcceptsPayments(PurchaseRepository purchase) async {
     // Either read failing offers no purchase, and a currency that cannot be
     // read shows no price.
-    final (accepts, currency) = await (
+    final (accepts, currency, route) = await (
       purchase.acceptsPayments().onError<PurchaseFailure>((_, _) => false),
       purchase
           .currency()
           .then<String?>((currency) => currency)
+          .onError<PurchaseFailure>((_, _) => null),
+      purchase
+          .appPurchaseRoute()
+          .then<AppPurchaseRoute?>((route) => route)
           .onError<PurchaseFailure>((_, _) => null),
     ).wait;
     if (!mounted) {
@@ -294,6 +302,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     setState(() {
       _acceptsPayments = accepts && currency != null;
       _currency = currency;
+      _rentsOnWeb = route == AppPurchaseRoute.externalCheckout;
     });
   }
 
@@ -590,6 +599,13 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     // the website without linking to it.
     final soldOnWeb =
         sold && detail.episode.purchaseSurface == EpisodePurchaseSurface.web;
+    void onStorePurchase() => context.pushReplacementInTab(
+      AppRoutes.episodeViewerPath(
+        widget.seriesId,
+        widget.episodeId,
+        checkout: CheckoutOutcome.success,
+      ),
+    );
     final buy = sold && !soldOnWeb
         ? BuyEpisodeButton(
             episodeId: widget.episodeId,
@@ -598,13 +614,20 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
             // A purchase is offered only once the currency is known.
             currency: _currency!,
             onAlreadyPurchased: _reload,
-            onStorePurchase: () => context.pushReplacementInTab(
-              AppRoutes.episodeViewerPath(
-                widget.seriesId,
-                widget.episodeId,
-                checkout: CheckoutOutcome.success,
-              ),
-            ),
+            onStorePurchase: onStorePurchase,
+          )
+        : null;
+    // A rented episode is offered both ways, each naming what it costs, since
+    // the choice is between those two prices.
+    final rent = buy != null && _rentsOnWeb && detail.episode.isRented
+        ? BuyEpisodeButton(
+            episodeId: widget.episodeId,
+            episodeInternalId: detail.episode.internalId,
+            price: detail.episode.rentalPrice,
+            rentalPeriodHours: detail.episode.rentalPeriodHours,
+            currency: _currency!,
+            onAlreadyPurchased: _reload,
+            onStorePurchase: onStorePurchase,
           )
         : null;
     final String message;
@@ -650,7 +673,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       notice: waitFree == null
           ? null
           : WaitFreeNotice(offer: waitFree, onRecharged: _reload),
-      actions: [?ticket, ?accessAction, _backToSeries(messages)],
+      actions: [?ticket, ?accessAction, ?rent, _backToSeries(messages)],
       footer: nextFree == null
           ? null
           : TextButton(

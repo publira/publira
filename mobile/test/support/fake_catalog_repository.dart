@@ -1132,10 +1132,12 @@ const fixtureUnknownRatedSeries = SeriesItem(
 /// [publicId], kept apart from it so a request sent with the wrong one fails.
 String fixtureInternalId(String publicId) => 'internal-$publicId';
 
-/// [paidSurface] is where the paid episode, the last one, may be bought.
+/// [paidSurface] is where the paid episode, the last one, may be bought, and
+/// [rented] rents it for 48 hours at ¥200 beside its ¥500 permanent copy.
 SeriesDetail fixtureDetail(
   SeriesItem item, {
   EpisodePurchaseSurface paidSurface = EpisodePurchaseSurface.all,
+  bool rented = false,
 }) {
   return SeriesDetail(
     series: item.internalId.isEmpty
@@ -1167,6 +1169,8 @@ SeriesDetail fixtureDetail(
           title: '${item.title} #$i',
           orderIndex: i,
           price: i == item.episodeCount ? 500 : 0,
+          rentalPrice: rented && i == item.episodeCount ? 200 : 0,
+          rentalPeriodHours: rented && i == item.episodeCount ? 48 : 0,
           purchaseSurface: i == item.episodeCount
               ? paidSurface
               : EpisodePurchaseSurface.all,
@@ -1177,10 +1181,11 @@ SeriesDetail fixtureDetail(
 
 Map<String, SeriesDetail> fixtureDetails({
   EpisodePurchaseSurface paidSurface = EpisodePurchaseSurface.all,
+  bool rented = false,
 }) {
   return {
     for (final item in fixtureSeries)
-      item.id: fixtureDetail(item, paidSurface: paidSurface),
+      item.id: fixtureDetail(item, paidSurface: paidSurface, rented: rented),
   };
 }
 
@@ -1218,12 +1223,17 @@ Map<String, EpisodeDetail> fixtureEpisodes({
   EpisodePurchaseSurface paidSurface = EpisodePurchaseSurface.all,
   EpisodeEntitlementSource entitlementSource =
       EpisodeEntitlementSource.unspecified,
+  bool rented = false,
 }) {
   final withheld =
       access == EpisodeAccess.locked || access == EpisodeAccess.ageRestricted;
   final bodies = <String, EpisodeDetail>{};
   for (final item in fixtureSeries) {
-    final episodes = fixtureDetail(item, paidSurface: paidSurface).episodes;
+    final episodes = fixtureDetail(
+      item,
+      paidSurface: paidSurface,
+      rented: rented,
+    ).episodes;
     for (var index = 0; index < episodes.length; index++) {
       final episode = episodes[index];
       final nextFree = episodes

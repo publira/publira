@@ -94,15 +94,17 @@ abstract class PurchaseRepository {
   /// Throws [PurchaseFailure] on a transport or unexpected server error.
   Future<String?> seriesOfEpisode(String episodePublicId);
 
-  /// The checkout page the signed-in reader pays for the episode
-  /// [episodeInternalId] names on, built to return to the app. The page names
-  /// the episode in its translation in [locale], the reader's.
+  /// The checkout page the signed-in reader pays for the [kind] of the
+  /// episode [episodeInternalId] names on, built to return to the app. The
+  /// page names the episode in its translation in [locale], the reader's.
   ///
   /// Throws [PurchaseFailure]; [PurchaseFailureKind.alreadyPurchased] when
-  /// there is nothing to pay for.
+  /// there is nothing to pay for, and [PurchaseFailureKind.notSold] for a
+  /// rental of an episode that is not rented.
   Future<Uri> startEpisodeCheckout(
     String episodeInternalId, {
     required String locale,
+    PurchaseKind kind = PurchaseKind.purchase,
   });
 
   /// Opens a purchase of the episode [episodeInternalId] names through [store]

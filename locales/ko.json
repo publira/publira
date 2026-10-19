@@ -5038,6 +5038,8 @@
       "check_again": "다시 확인",
       "confirming": "결제를 확인하고 있습니다. 구매가 반영되면 에피소드가 열립니다.",
       "not_sold_in_app": "지금은 앱에서 이 에피소드를 구매할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+      "rent_for": "{$period} 대여 ({$price})",
+      "rental_period": "{$hours :integer}시간",
       "sold_on_web": "웹사이트에서 판매",
       "start_failed": "구매를 시작할 수 없습니다. 잠시 후 다시 시도해 주세요.",
       "store_unavailable": "이 기기에서는 구매할 수 없습니다. 스토어에 로그인되어 있는지, 구매가 제한되어 있지 않은지 확인해 주세요."
@@ -5057,7 +5059,11 @@
       "readable": "열람 가능",
       "readable_until": "{$date}까지 열람 가능",
       "refunded": "환불됨",
+      "rental": "대여",
       "sign_in_prompt": "로그인하면 구매한 에피소드를 볼 수 있습니다.",
+      "time_left_hours": "{$hours :integer}시간 남음",
+      "time_left_hours_minutes": "{$hours :integer}시간 {$minutes :integer}분 남음",
+      "time_left_minutes": "{$minutes :integer}분 남음",
       "title": "구매 목록"
     },
     "ranking": {

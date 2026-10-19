@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
+import 'package:publira/models/my_purchase.dart';
 import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
@@ -13,6 +14,11 @@ import 'package:publira/typography/autospaced_text.dart';
 
 /// "Buy for [price]": buys one episode the way the tenant's app sells it — the web
 /// checkout handed to the system browser, or the store's payment sheet.
+///
+/// Given [rentalPeriodHours], it is "Rent for [rentalPeriodHours] ([price])"
+/// instead, and rents the episode through the web checkout. The store sells
+/// the permanent copy alone, so a rental is offered on the external-checkout
+/// route only.
 ///
 /// A guest is sent to sign in first, because a purchase is bought by an
 /// account. The return from the browser is a link the app routes, not
@@ -26,6 +32,7 @@ class BuyEpisodeButton extends StatefulWidget {
     required this.currency,
     required this.onAlreadyPurchased,
     required this.onStorePurchase,
+    this.rentalPeriodHours,
     this.signInReturnTo,
     this.compact = false,
   });
@@ -34,6 +41,8 @@ class BuyEpisodeButton extends StatefulWidget {
 
   /// Internal id of [episodeId], which the purchase requests take.
   final String episodeInternalId;
+
+  /// What the sale costs: the permanent copy's price, or the rental's.
   final int price;
 
   /// The ISO 4217 code of the currency [price] is in, the tenant's.
@@ -46,11 +55,16 @@ class BuyEpisodeButton extends StatefulWidget {
   /// opened the way a checkout the browser hands back opens it.
   final VoidCallback onStorePurchase;
 
+  /// How long the rental opens the episode, set on a button that rents it
+  /// rather than buys it.
+  final int? rentalPeriodHours;
+
   /// Where a guest lands once signed in. `null` goes back to the screen that
   /// sent them, which is right when that screen is the episode itself.
   final String? signInReturnTo;
 
-  /// A row's size rather than a screen's.
+  /// A row's size rather than a screen's. A row offers no rental, so a button
+  /// that rents is always a screen's.
   final bool compact;
 
   @override
@@ -77,7 +91,14 @@ class _BuyEpisodeButtonState extends State<BuyEpisodeButton> {
     });
     try {
       final repository = purchase.repository!;
+      final kind = widget.rentalPeriodHours == null
+          ? PurchaseKind.purchase
+          : PurchaseKind.rental;
       if (await repository.appPurchaseRoute() == AppPurchaseRoute.store) {
+        // The tenant moved to the store route after the rental was offered.
+        if (kind == PurchaseKind.rental) {
+          throw const PurchaseFailure(PurchaseFailureKind.notSold);
+        }
         final purchaser = purchase.storePurchaser;
         if (purchaser == null) {
           throw const PurchaseFailure(PurchaseFailureKind.storeUnavailable);
@@ -91,6 +112,7 @@ class _BuyEpisodeButtonState extends State<BuyEpisodeButton> {
       final url = await repository.startEpisodeCheckout(
         widget.episodeInternalId,
         locale: locale,
+        kind: kind,
       );
       final opened = await purchase.launcher!.open(url);
       if (!opened) {
@@ -146,24 +168,35 @@ class _BuyEpisodeButtonState extends State<BuyEpisodeButton> {
   @override
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
+    final price = messages.formatPrice(widget.price, widget.currency);
+    final rentalPeriodHours = widget.rentalPeriodHours;
     final label = AutospacedText(
-      messages.purchaseBuy(
-        price: messages.formatPrice(widget.price, widget.currency),
-      ),
+      rentalPeriodHours == null
+          ? messages.purchaseBuy(price: price)
+          : messages.purchaseRentFor(
+              period: messages.purchaseRentalPeriod(hours: rentalPeriodHours),
+              price: price,
+            ),
+    );
+    final key = ValueKey(
+      rentalPeriodHours == null
+          ? 'episode-buy-${widget.episodeId}'
+          : 'episode-rent-${widget.episodeId}',
     );
     final onPressed = _starting ? null : () => unawaited(_buy());
+    // The rental is the alternative to the permanent copy, so it stands
+    // beside it in outline.
+    if (rentalPeriodHours != null) {
+      return OutlinedButton(key: key, onPressed: onPressed, child: label);
+    }
     if (widget.compact) {
       return FilledButton.tonal(
-        key: ValueKey('episode-buy-${widget.episodeId}'),
+        key: key,
         style: FilledButton.styleFrom(visualDensity: VisualDensity.compact),
         onPressed: onPressed,
         child: label,
       );
     }
-    return FilledButton(
-      key: ValueKey('episode-buy-${widget.episodeId}'),
-      onPressed: onPressed,
-      child: label,
-    );
+    return FilledButton(key: key, onPressed: onPressed, child: label);
   }
 }
