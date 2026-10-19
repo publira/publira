@@ -95,6 +95,10 @@ class FakeCatalogRepository implements CatalogRepository {
   /// What [listGenres] answers, and the genres [listGenreSeries] knows.
   List<PublishedGenre> genres;
 
+  /// What [listGenres] answers instead of [genres] when asked in a locale
+  /// named here, as the API names each genre in the locale it is asked for.
+  final Map<String, List<PublishedGenre>> genresByLocale = {};
+
   /// The tags [getTag] and [listTagSeries] know.
   List<PublishedTag> tags;
 
@@ -341,6 +345,9 @@ class FakeCatalogRepository implements CatalogRepository {
   /// How many times [listGenres] was called.
   var genresReads = 0;
 
+  /// The locale of every [listGenres] read, in the order they were made.
+  final List<String> genresLocales = <String>[];
+
   /// Genres [listRankedSeries] was called with, in order, empty for the
   /// tenant-wide chart.
   final List<String> rankedSeriesGenres = <String>[];
@@ -519,12 +526,13 @@ class FakeCatalogRepository implements CatalogRepository {
   }
 
   @override
-  Future<List<PublishedGenre>> listGenres() async {
+  Future<List<PublishedGenre>> listGenres({required String locale}) async {
     genresReads++;
+    genresLocales.add(locale);
     if (genresError case final error?) {
       throw error;
     }
-    return genres;
+    return genresByLocale[locale] ?? genres;
   }
 
   @override

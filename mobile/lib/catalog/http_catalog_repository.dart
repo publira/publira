@@ -581,7 +581,7 @@ class HttpCatalogRepository implements CatalogRepository {
   static const classificationPageLimit = 100;
 
   @override
-  Future<List<PublishedGenre>> listGenres() async {
+  Future<List<PublishedGenre>> listGenres({required String locale}) async {
     try {
       final genres = <PublishedGenre>[];
       await _walkClassification<pb.PublishedGenre>(
@@ -593,6 +593,7 @@ class HttpCatalogRepository implements CatalogRepository {
               surface: appClientSurface,
               token: _pageToken(token),
               tenant: _tenant(tenantId),
+              locale: locale,
             ),
           );
           return (body.genres, body.nextToken);
@@ -602,6 +603,7 @@ class HttpCatalogRepository implements CatalogRepository {
             PublishedGenre(
               id: _requiredId(genre.publicId, 'genres[].publicId'),
               name: genre.name.trim(),
+              locale: genre.locale.trim(),
               seriesCount: _count(
                 genre.publishedSeriesCount,
                 'genres[].publishedSeriesCount',
@@ -1327,8 +1329,11 @@ class HttpCatalogRepository implements CatalogRepository {
   List<SeriesGenre> _parseGenres(List<pb.Genre> genres) {
     final parsed = genres
         .map(
-          (genre) =>
-              SeriesGenre(id: genre.publicId.trim(), name: genre.name.trim()),
+          (genre) => SeriesGenre(
+            id: genre.publicId.trim(),
+            name: genre.name.trim(),
+            locale: genre.locale.trim(),
+          ),
         )
         // A genre with no name or no public id is nothing a reader can be
         // shown, and the site drops it from the same field for the same

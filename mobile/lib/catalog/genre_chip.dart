@@ -22,7 +22,7 @@ class GenreChip extends StatelessWidget {
       label: AutospacedText.rich(
         TextSpan(
           children: [
-            TextSpan(text: genre.name),
+            TextSpan(text: genre.name, locale: genre.textLocale),
             const TextSpan(text: '  '),
             TextSpan(
               text: messages.formatInteger(genre.seriesCount),

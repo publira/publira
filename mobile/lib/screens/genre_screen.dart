@@ -26,14 +26,15 @@ class GenreScreen extends StatelessWidget {
       seriesEmptyMessage: messages.genreSeriesEmpty,
       // The genre list is the only read that names a genre, and it is short:
       // the tenant curates it by hand.
-      readClassification: (catalog) async {
-        final genres = await catalog.listGenres();
+      readClassification: (catalog, locale) async {
+        final genres = await catalog.listGenres(locale: locale);
         final genre = genres.where((genre) => genre.id == genreId).firstOrNull;
         return genre == null
             ? null
             : Classification(
                 id: genre.id,
                 name: genre.name,
+                nameLocale: genre.textLocale,
                 seriesCount: genre.seriesCount,
                 eyeCatchVariants: genre.eyeCatchVariants,
                 imageRequestHeaders: genre.imageRequestHeaders,

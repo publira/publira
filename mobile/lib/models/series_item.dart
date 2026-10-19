@@ -156,11 +156,19 @@ SeriesAgeRating? maxRestrictedAgeRating(
 /// One genre a series carries, as `publira.types.v1.Genre` describes it, in
 /// the tenant's genre order.
 class SeriesGenre {
-  const SeriesGenre({required this.id, required this.name});
+  const SeriesGenre({required this.id, required this.name, this.locale = ''});
 
   /// Public id (`public_id`), which addresses the genre.
   final String id;
   final String name;
+
+  /// The locale [name] was written in, which the API answers apart from the
+  /// one it was asked for when the genre has no name in that one. Empty on a
+  /// copy saved before the locale was kept.
+  final String locale;
+
+  /// [locale] as a text widget takes it, the way [SeriesItem.textLocale] is.
+  Locale? get textLocale => supportedLocaleForCode(locale);
 }
 
 /// One tag a series carries, as `publira.types.v1.Tag` describes it.

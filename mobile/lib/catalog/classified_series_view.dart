@@ -21,6 +21,7 @@ class Classification {
   const Classification({
     required this.id,
     required this.name,
+    this.nameLocale,
     required this.seriesCount,
     this.eyeCatchVariants = const [],
     this.imageRequestHeaders = const {},
@@ -29,6 +30,13 @@ class Classification {
   /// What addresses it: a genre's public id, or a tag's slug.
   final String id;
   final String name;
+
+  /// The locale [name] is written in, as a text widget takes it. `null` for a
+  /// tag, which is named in whatever language its editor typed, and for a
+  /// genre named in a locale no catalog carries, either of which leaves the
+  /// app's own.
+  final Locale? nameLocale;
+
   final int seriesCount;
 
   /// Empty for a tag, which has no artwork, and for a genre with none.
@@ -38,10 +46,10 @@ class Classification {
   final Map<String, String> imageRequestHeaders;
 }
 
-/// Reads the classification a screen is about, or `null` when the tenant has
-/// no such one.
+/// Reads the classification a screen is about, named in [locale], the app's
+/// as a BCP 47 tag, or `null` when the tenant has no such one.
 typedef ClassificationReader =
-    Future<Classification?> Function(CatalogRepository catalog);
+    Future<Classification?> Function(CatalogRepository catalog, String locale);
 
 /// Reads one page of the series carrying the classification in [locale], the
 /// app's as a BCP 47 tag, or `null` when the API answers that it does not
@@ -147,7 +155,7 @@ class _ClassifiedSeriesViewState extends State<ClassifiedSeriesView> {
               );
       }
       final classification = known == null
-          ? widget.readClassification(catalog)
+          ? widget.readClassification(catalog, locale)
           : Future.value(known);
       final page = widget.readSeries(catalog, locale, filter, token);
       final Classification? header;
@@ -199,7 +207,12 @@ class _ClassifiedSeriesViewState extends State<ClassifiedSeriesView> {
         final classification = _classification ??= pager.header;
         return Scaffold(
           appBar: AppBar(
-            title: AutospacedText(classification?.name ?? widget.title),
+            title: classification == null
+                ? AutospacedText(widget.title)
+                : AutospacedText(
+                    classification.name,
+                    locale: classification.nameLocale,
+                  ),
           ),
           body: _body(pager, classification),
         );
@@ -364,6 +377,7 @@ class _ClassificationHeader extends StatelessWidget {
           ],
           AutospacedText(
             classification.name,
+            locale: classification.nameLocale,
             style: theme.textTheme.headlineSmall,
           ),
           const SizedBox(height: 4),

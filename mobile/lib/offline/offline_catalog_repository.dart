@@ -314,7 +314,8 @@ class OfflineCatalogRepository implements CatalogRepository {
   /// The classification is read from the API alone: the device keeps what a
   /// reader opened, not the lists they browsed through.
   @override
-  Future<List<PublishedGenre>> listGenres() => _origin.listGenres();
+  Future<List<PublishedGenre>> listGenres({required String locale}) =>
+      _origin.listGenres(locale: locale);
 
   /// The campaigns on right now, which only the API can answer: a band kept
   /// from an earlier launch would show campaigns whose window has closed.

@@ -1353,7 +1353,7 @@ void main() {
       ..genres = ConnectFixtureServer.populatedGenres()
       ..seriesPageSize = 1;
 
-    final genres = await catalog.listGenres();
+    final genres = await catalog.listGenres(locale: 'en');
 
     expect(
       [for (final genre in genres) genre.id],
@@ -1396,7 +1396,7 @@ void main() {
         ),
       ];
 
-      final genres = await catalog.listGenres();
+      final genres = await catalog.listGenres(locale: 'en');
 
       final featured = genres.first.featuredSeries;
       expect(
@@ -1444,7 +1444,7 @@ void main() {
         ),
       ];
 
-      final genres = await catalog.listGenres();
+      final genres = await catalog.listGenres(locale: 'en');
 
       final eyeCatch = genres.first.eyeCatchVariants.single;
       expect(eyeCatch.variantType, 'portrait');
@@ -1473,7 +1473,7 @@ void main() {
       ),
     ];
 
-    final genres = await catalog.listGenres();
+    final genres = await catalog.listGenres(locale: 'en');
 
     expect(
       [for (final series in genres.single.featuredSeries) series.id],
@@ -1482,7 +1482,7 @@ void main() {
   });
 
   test('listGenres reads a tenant with no genre as empty', () async {
-    expect(await catalog.listGenres(), isEmpty);
+    expect(await catalog.listGenres(locale: 'en'), isEmpty);
   });
 
   test('getTag walks the tags until the slug turns up', () async {
@@ -3598,6 +3598,7 @@ void main() {
       await member.listRecentSeries(limit: 3, locale: locale);
       await member.listEpisodeReads(limit: 3, locale: locale);
       await member.listFollowUpdates(limit: 3, locale: locale);
+      await member.listGenres(locale: locale);
 
       String localeOf(String procedure) {
         final requests = server.requestsTo(procedure);
@@ -3631,6 +3632,8 @@ void main() {
             requests.single.decode(pb.ListMyEpisodeReadsRequest()).locale,
           'ListMyFollowUpdates' =>
             requests.single.decode(pb.ListMyFollowUpdatesRequest()).locale,
+          'ListPublishedGenres' =>
+            requests.single.decode(pb.ListPublishedGenresRequest()).locale,
           _ => fail('no request message for $procedure'),
         };
       }
@@ -3652,6 +3655,7 @@ void main() {
         'ListMyRecentSeries',
         'ListMyEpisodeReads',
         'ListMyFollowUpdates',
+        'ListPublishedGenres',
       ]) {
         expect(localeOf(procedure), locale, reason: procedure);
       }
@@ -3669,6 +3673,26 @@ void main() {
 
       expect(listed.locale, 'ja');
       expect(detail!.series.locale, 'ja');
+    });
+
+    test('each genre names the locale its own name was served in', () async {
+      server.genres = ConnectFixtureServer.populatedGenres();
+      server.genres.first.locale = 'en';
+      server.genres.last.locale = 'ja';
+      server.series.first.genres.single.locale = 'ja';
+      final seed = server.details[ConnectFixtureServer.seedSeriesId]!;
+      seed.series.genres.single.locale = 'ja';
+
+      final genres = await catalog.listGenres(locale: 'en');
+      final listed = (await catalog.listSeries(locale: 'en')).series.first;
+      final detail = await catalog.getSeries(
+        ConnectFixtureServer.seedSeriesId,
+        locale: 'en',
+      );
+
+      expect([for (final genre in genres) genre.locale], ['en', 'ja']);
+      expect(listed.genres.single.locale, 'ja');
+      expect(detail!.series.genres.single.locale, 'ja');
     });
 
     test('each episode names the locale its own title was served in', () async {

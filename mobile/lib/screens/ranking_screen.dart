@@ -112,9 +112,9 @@ class _RankingScreenState extends State<RankingScreen> {
       if (genreId.isNotEmpty && token.isEmpty) {
         genre =
             known ??
-            (await catalog.listGenres())
-                .where((genre) => genre.id == genreId)
-                .firstOrNull;
+            (await catalog.listGenres(
+              locale: locale,
+            )).where((genre) => genre.id == genreId).firstOrNull;
         if (genre == null) {
           return null;
         }
@@ -170,11 +170,9 @@ class _RankingScreenState extends State<RankingScreen> {
         final genre = _genre ??= pager.header;
         return Scaffold(
           appBar: AppBar(
-            title: AutospacedText(
-              genre == null
-                  ? messages.rankingTitle
-                  : messages.rankingTitleGenre(genre: genre.name),
-            ),
+            title: genre == null
+                ? AutospacedText(messages.rankingTitle)
+                : AutospacedText.rich(_genreTitle(messages, genre)),
           ),
           body: pager.notFound
               ? CatalogMessage(
@@ -230,4 +228,24 @@ class _RankingScreenState extends State<RankingScreen> {
       ),
     );
   }
+}
+
+/// The title of [genre]'s chart, with the genre's name set in the locale it
+/// was served in and the rest of the title in the app's.
+///
+/// The catalog formats the title as one string, so it is formatted around
+/// U+FFFC, the character that stands in for an embedded object, and the name
+/// takes its place.
+TextSpan _genreTitle(AppMessages messages, PublishedGenre genre) {
+  const slot = '\u{FFFC}';
+  return switch (messages.rankingTitleGenre(genre: slot).split(slot)) {
+    [final before, final after] => TextSpan(
+      children: [
+        TextSpan(text: before),
+        TextSpan(text: genre.name, locale: genre.textLocale),
+        TextSpan(text: after),
+      ],
+    ),
+    _ => TextSpan(text: messages.rankingTitleGenre(genre: genre.name)),
+  };
 }

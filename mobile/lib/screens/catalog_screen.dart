@@ -606,7 +606,7 @@ class _GenresShelf extends StatelessWidget {
         onPressed: () => context.pushInTab(AppRoutes.genresPath),
         child: AutospacedText(messages.catalogViewAll),
       ),
-      load: (catalog, _) => catalog.listGenres(),
+      load: (catalog, locale) => catalog.listGenres(locale: locale),
       cardBuilder: (context, genre) => Center(child: GenreChip(genre: genre)),
     );
   }
