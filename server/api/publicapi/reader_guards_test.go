@@ -30,6 +30,7 @@ func TestReaderRulesFollowThePlatformPolicy(t *testing.T) {
 	policy.IdentityLink = platformpolicy.MinuteDay{PerMinute: 21, PerDay: 22}
 	policy.IconChange = platformpolicy.MinuteDay{PerMinute: 23, PerDay: 24}
 	policy.Passkey = platformpolicy.MinuteDay{PerMinute: 25, PerDay: 26}
+	policy.SeriesRemainderCheckout = platformpolicy.MinuteDay{PerMinute: 27, PerDay: 28}
 
 	want := map[readerAction][]ratelimit.Rule{
 		actionPostComment:                    {{Limit: 3, Window: time.Minute}, {Limit: 7, Window: 24 * time.Hour}},
@@ -45,6 +46,7 @@ func TestReaderRulesFollowThePlatformPolicy(t *testing.T) {
 		actionLinkIdentity:                   {{Limit: 21, Window: time.Minute}, {Limit: 22, Window: 24 * time.Hour}},
 		actionChangeIcon:                     {{Limit: 23, Window: time.Minute}, {Limit: 24, Window: 24 * time.Hour}},
 		actionPasskey:                        {{Limit: 25, Window: time.Minute}, {Limit: 26, Window: 24 * time.Hour}},
+		actionStartSeriesRemainderCheckout:   {{Limit: 27, Window: time.Minute}, {Limit: 28, Window: 24 * time.Hour}},
 	}
 	got := readerRules(policy)
 	if len(got) != len(want) {

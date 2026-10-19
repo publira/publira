@@ -20,6 +20,7 @@ import (
 	"github.com/publira/publira/server/internal/paymentprovider/providers"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe/stripetest"
 	"github.com/publira/publira/server/internal/paymentsettings"
+	"github.com/publira/publira/server/internal/platformpolicy"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
@@ -45,8 +46,14 @@ type seriesRemainderEnv struct {
 	token     string
 }
 
-func newSeriesRemainderEnv(t *testing.T, slug, domain string) seriesRemainderEnv {
+// newSeriesRemainderEnv answers the tenant under openReaderGuards, or under
+// the guards a case about a limit passes.
+func newSeriesRemainderEnv(t *testing.T, slug, domain string, guards ...readerGuards) seriesRemainderEnv {
 	t.Helper()
+	readers := openReaderGuards()
+	if len(guards) > 0 {
+		readers = guards[0]
+	}
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 
@@ -91,7 +98,7 @@ func newSeriesRemainderEnv(t *testing.T, slug, domain string) seriesRemainderEnv
 
 	db := pg.OpenPublicDB(t)
 	checkout := newCapturingCheckoutProvider()
-	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.Default(), openReaderGuards(), openMailGuard(), nil)
+	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.Default(), readers, openMailGuard(), nil)
 	server.paymentProviders = paymentprovider.NewRegistry(checkout)
 	ts := httptest.NewServer(handlerFromServer(server))
 	t.Cleanup(ts.Close)
@@ -464,5 +471,30 @@ func TestDBARemainderCheckoutStartedAfterAPeriodChangeIsANewOne(t *testing.T) {
 	}
 	if hours != 72 {
 		t.Fatalf("new bundle's period = %d, want 72", hours)
+	}
+}
+
+// Starting a checkout of the rest of a series spends the reader's allowance
+// before anything is written or asked of the provider.
+func TestDBStartSeriesRemainderCheckoutSpendsTheReadersAllowance(t *testing.T) {
+	env := newSeriesRemainderEnv(t, "REMAINLIM", "remainder-limit.example.com", guardsWith(func(policy *platformpolicy.Policy) {
+		policy.SeriesRemainderCheckout = platformpolicy.MinuteDay{PerMinute: 1, PerDay: 1}
+	}))
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	if err := env.startRemainderCheckout(ctx, env.series.ID); err != nil {
+		t.Fatalf("StartSeriesRemainderCheckout: %v", err)
+	}
+	started := env.checkout.input
+	env.checkout.input = paymentprovider.CheckoutRequest{}
+	if err := env.startRemainderCheckout(ctx, env.series.ID); connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("a second start over the limit = %v, want resource_exhausted", err)
+	}
+	if env.checkout.input.IdempotencyKey != "" {
+		t.Fatalf("the refused start asked the provider for %q", env.checkout.input.IdempotencyKey)
+	}
+	if started.IdempotencyKey == "" {
+		t.Fatal("the first start asked the provider for nothing")
 	}
 }

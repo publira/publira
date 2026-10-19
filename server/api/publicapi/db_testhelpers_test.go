@@ -141,6 +141,7 @@ func openPolicy() platformpolicy.Policy {
 	policy.IdentityLink = open
 	policy.IconChange = open
 	policy.Passkey = open
+	policy.SeriesRemainderCheckout = open
 	return policy
 }
 

@@ -89,6 +89,10 @@ const (
 	// A registration is charged as it begins and not again as it finishes,
 	// since its finish needs a ceremony that a begin stored.
 	actionPasskey readerAction = "passkey"
+	// A checkout of the rest of a series started. Each start may write a
+	// series bundle and asks the payment provider for a checkout, which a
+	// reader could otherwise make the storefront repeat as fast as they ask.
+	actionStartSeriesRemainderCheckout readerAction = "series_remainder_checkout.start"
 )
 
 // readerGuards is the flood control the reader-writable RPCs charge against.
@@ -127,6 +131,7 @@ func readerRules(policy platformpolicy.Policy) map[readerAction][]ratelimit.Rule
 		actionLinkIdentity:                   minuteDayRules(policy.IdentityLink),
 		actionChangeIcon:                     minuteDayRules(policy.IconChange),
 		actionPasskey:                        minuteDayRules(policy.Passkey),
+		actionStartSeriesRemainderCheckout:   minuteDayRules(policy.SeriesRemainderCheckout),
 	}
 }
 

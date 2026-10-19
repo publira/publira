@@ -126,6 +126,12 @@ message PlatformPolicy {
   // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
   // when a request leaves it unset.
   MinuteDayLimit passkey = 15;
+  // How often one reader may ask PurchaseService.StartSeriesRemainderCheckout
+  // to start a checkout of the rest of a series.
+  //
+  // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
+  // when a request leaves it unset.
+  MinuteDayLimit series_remainder_checkout = 16;
 }
 
 message GetPlatformPolicyRequest {}
