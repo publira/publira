@@ -1,3 +1,6 @@
+import 'dart:ui';
+
+import 'package:publira/l10n/locale_negotiation.dart';
 import 'package:publira/models/series_item.dart';
 
 /// A genre the tenant curates, as `publira.v1.PublishedGenre` describes it.
@@ -5,6 +8,7 @@ class PublishedGenre {
   const PublishedGenre({
     required this.id,
     required this.name,
+    this.locale = '',
     required this.seriesCount,
     this.featuredSeries = const [],
     this.eyeCatchVariants = const [],
@@ -14,6 +18,13 @@ class PublishedGenre {
   /// Public id (`public_id`), used as the route parameter.
   final String id;
   final String name;
+
+  /// The locale [name] was written in, which the API answers apart from the
+  /// one it was asked for when the genre has no name in that one.
+  final String locale;
+
+  /// [locale] as a text widget takes it, the way [SeriesItem.textLocale] is.
+  Locale? get textLocale => supportedLocaleForCode(locale);
 
   /// How many of its series are published right now. A genre whose last
   /// series was taken down stays listed, at zero.

@@ -35,6 +35,7 @@ class GenreTile extends StatelessWidget {
               const SizedBox(height: 8),
               AutospacedText(
                 genre.name,
+                locale: genre.textLocale,
                 style: theme.textTheme.titleSmall,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -170,6 +171,7 @@ class _NameFrame extends StatelessWidget {
               child: ExcludeSemantics(
                 child: AutospacedText(
                   genre.name,
+                  locale: genre.textLocale,
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),

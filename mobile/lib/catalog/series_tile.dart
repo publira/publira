@@ -73,9 +73,9 @@ class SeriesTile extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 if (classification.isNotEmpty)
-                  AutospacedText(
+                  AutospacedText.rich(
                     key: ValueKey('series-tile-classification-${series.id}'),
-                    classification,
+                    TextSpan(children: classification),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -122,12 +122,23 @@ class SeriesTile extends StatelessWidget {
   }
 }
 
-/// Status and the first genre, which is what a tile has room for. Empty when
-/// the series carries neither, which leaves the line off.
-String _classification(AppMessages messages, SeriesItem series) {
-  final parts = <String>[
-    if (series.status != null) messages.seriesStatusLabel(series.status!),
-    if (series.genres.isNotEmpty) series.genres.first.name,
+/// Status and the first genre, which is what a tile has room for, the genre
+/// in the locale it is named in. Empty when the series carries neither, which
+/// leaves the line off.
+List<TextSpan> _classification(AppMessages messages, SeriesItem series) {
+  final parts = <TextSpan>[
+    if (series.status != null)
+      TextSpan(text: messages.seriesStatusLabel(series.status!)),
+    if (series.genres.isNotEmpty)
+      TextSpan(
+        text: series.genres.first.name,
+        locale: series.genres.first.textLocale,
+      ),
   ];
-  return parts.join(' · ');
+  return [
+    for (final (index, part) in parts.indexed) ...[
+      if (index > 0) const TextSpan(text: ' · '),
+      part,
+    ],
+  ];
 }

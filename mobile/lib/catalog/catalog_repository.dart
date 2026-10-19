@@ -227,12 +227,14 @@ abstract class CatalogRepository {
     String token,
   });
 
-  /// Every genre the tenant curates, in the tenant's genre order.
+  /// Every genre the tenant curates, in the tenant's genre order, each named
+  /// in [locale], the app's as a BCP 47 tag, else in the tenant's default
+  /// language.
   ///
   /// A genre no published series carries is still listed, at zero, so a link
   /// to one keeps opening it after its last series is taken down.
   /// Throws [CatalogFailure] on a transport or unexpected server error.
-  Future<List<PublishedGenre>> listGenres();
+  Future<List<PublishedGenre>> listGenres({required String locale});
 
   /// The campaign banners showing now, in the tenant's own order. Empty when
   /// nothing is scheduled now.

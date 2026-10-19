@@ -6,6 +6,7 @@ import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/models/series_classification.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/router.dart';
+import 'package:publira/typography/autospaced_text.dart';
 
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
@@ -862,6 +863,105 @@ void main() {
         router.state.uri.path,
         AppRoutes.seriesDetailPath(taggedSeries.id),
       );
+    });
+  });
+
+  // The tenant names its genres in Japanese by default, and only the first
+  // has a name in English and in Korean; the app renders in English unless a
+  // test moves it.
+  group("in the app's language", () {
+    const romanceInJapanese = PublishedGenre(
+      id: 'SeedGENRAAA2',
+      name: 'ロマンス',
+      locale: 'ja',
+      seriesCount: 0,
+    );
+
+    setUp(() {
+      catalog.genresByLocale
+        ..['en'] = const [
+          PublishedGenre(
+            id: 'SeedGENRAAA1',
+            name: 'Fantasy',
+            locale: 'en',
+            seriesCount: 2,
+          ),
+          romanceInJapanese,
+        ]
+        ..['ko'] = const [
+          PublishedGenre(
+            id: 'SeedGENRAAA1',
+            name: '판타지',
+            locale: 'ko',
+            seriesCount: 2,
+          ),
+          romanceInJapanese,
+        ];
+    });
+
+    /// The locales the name [text] is set in, wherever the screen shows it.
+    Set<Locale?> localesOf(WidgetTester tester, String text) => {
+      for (final widget in tester.widgetList<AutospacedText>(
+        find.byWidgetPredicate(
+          (widget) => widget is AutospacedText && widget.data == text,
+        ),
+      ))
+        widget.locale,
+    };
+
+    testWidgets('lists each genre by its English name where it has one, and '
+        'by the default language\'s where it has none', (tester) async {
+      await pumpApp(tester, location: AppRoutes.genresPath);
+      await pumpUntilFound(tester, find.byKey(const ValueKey('genres-body')));
+
+      expect(catalog.genresLocales, everyElement('en'));
+      expect(localesOf(tester, 'Fantasy'), {const Locale('en')});
+      expect(localesOf(tester, 'ロマンス'), {const Locale('ja')});
+    });
+
+    testWidgets('reads the genres again when the device changes language', (
+      tester,
+    ) async {
+      addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+      await pumpApp(tester, location: AppRoutes.genresPath);
+      await pumpUntilFound(tester, find.byKey(const ValueKey('genres-body')));
+
+      tester.platformDispatcher.localesTestValue = const [Locale('ko')];
+      await tester.pump();
+      await pumpUntilFound(tester, inGenreTile(fantasy.id, find.text('판타지')));
+
+      expect(catalog.genresLocales.last, 'ko');
+      expect(localesOf(tester, 'ロマンス'), {const Locale('ja')});
+    });
+
+    testWidgets('heads a genre with its name in the language it came in', (
+      tester,
+    ) async {
+      await pumpApp(tester, location: AppRoutes.genreDetailPath(romance.id));
+      await pumpUntilFound(tester, find.text('ロマンス'));
+
+      expect(catalog.genresLocales, everyElement('en'));
+      expect(localesOf(tester, 'ロマンス'), {const Locale('ja')});
+    });
+
+    testWidgets('sets a series\' genre in the language it came in', (
+      tester,
+    ) async {
+      const series = SeriesItem(
+        id: 'series-romance',
+        title: 'Letters by the Sea',
+        description: 'Two strangers write to each other.',
+        locale: 'en',
+        genres: [SeriesGenre(id: 'SeedGENRAAA2', name: 'ロマンス', locale: 'ja')],
+      );
+      catalog.details = {...catalog.details, series.id: fixtureDetail(series)};
+      await pumpApp(tester, location: AppRoutes.seriesDetailPath(series.id));
+      await pumpUntilRouteSettled(
+        tester,
+        find.byKey(const ValueKey('series-genre-SeedGENRAAA2')),
+      );
+
+      expect(localesOf(tester, 'ロマンス'), {const Locale('ja')});
     });
   });
 }

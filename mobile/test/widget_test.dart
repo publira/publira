@@ -93,7 +93,8 @@ void main() {
               ValueKey('series-tile-classification-${fixtureSeries.first.id}'),
             ),
           )
-          .data,
+          .textSpan!
+          .toPlainText(),
       'Ongoing · Fantasy',
     );
   });

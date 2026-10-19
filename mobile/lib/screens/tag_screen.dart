@@ -17,7 +17,7 @@ class TagScreen extends StatelessWidget {
       notFoundMessage: messages.tagNotFound(slug: tagSlug),
       loadFailedMessage: messages.tagLoadFailed,
       seriesEmptyMessage: messages.tagSeriesEmpty,
-      readClassification: (catalog) async {
+      readClassification: (catalog, _) async {
         final tag = await catalog.getTag(tagSlug);
         return tag == null
             ? null

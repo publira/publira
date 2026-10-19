@@ -564,7 +564,9 @@ void main() {
           status: SeriesStatus.ongoing,
           scheduleWeekdays: [1, 4],
           ageRating: SeriesAgeRating.r15,
-          genres: [SeriesGenre(id: 'SeedGENRAAA1', name: 'Fantasy')],
+          genres: [
+            SeriesGenre(id: 'SeedGENRAAA1', name: 'Fantasy', locale: 'en'),
+          ],
           tags: [SeriesTag(slug: 'time-travel', name: 'Time travel')],
         ),
       ],
@@ -578,8 +580,30 @@ void main() {
     expect(series.ageRating, SeriesAgeRating.r15);
     expect(series.genres.single.name, 'Fantasy');
     expect(series.genres.single.id, 'SeedGENRAAA1');
+    expect(series.genres.single.locale, 'en');
     expect(series.tags.single.slug, 'time-travel');
     expect(series.tags.single.name, 'Time travel');
+  });
+
+  test('a genre saved before its locale was kept is read with none', () {
+    final decoded = OfflineIndex.fromJson(
+      _index(
+        _episode(access: 'free', ownerId: ''),
+        series: [
+          {
+            ..._series().single,
+            'genres': [
+              {'id': 'SeedGENRAAA1', 'name': 'Fantasy'},
+            ],
+          },
+        ],
+      ),
+    );
+
+    final genre = decoded!.series!.single.genres.single;
+    expect(genre.name, 'Fantasy');
+    expect(genre.locale, isEmpty);
+    expect(genre.textLocale, isNull);
   });
 
   test('an unrecognized stored age rating is read as unknown', () {

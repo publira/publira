@@ -787,7 +787,10 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                     for (final genre in series.genres)
                       ActionChip(
                         key: ValueKey('series-genre-${genre.id}'),
-                        label: AutospacedText(genre.name),
+                        label: AutospacedText(
+                          genre.name,
+                          locale: genre.textLocale,
+                        ),
                         visualDensity: VisualDensity.compact,
                         onPressed: () => context.pushInTab(
                           AppRoutes.genreDetailPath(genre.id),

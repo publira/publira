@@ -112,9 +112,9 @@ class _RankingScreenState extends State<RankingScreen> {
       if (genreId.isNotEmpty && token.isEmpty) {
         genre =
             known ??
-            (await catalog.listGenres())
-                .where((genre) => genre.id == genreId)
-                .firstOrNull;
+            (await catalog.listGenres(
+              locale: locale,
+            )).where((genre) => genre.id == genreId).firstOrNull;
         if (genre == null) {
           return null;
         }

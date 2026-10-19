@@ -21,6 +21,7 @@ class GenresScreen extends StatefulWidget {
 
 class _GenresScreenState extends State<GenresScreen> {
   CatalogRepository? _catalog;
+  String? _locale;
   List<PublishedGenre>? _genres;
   CatalogFailure? _failure;
 
@@ -28,28 +29,32 @@ class _GenresScreenState extends State<GenresScreen> {
   /// waiting for cannot land.
   var _reads = 0;
 
+  /// Reads the genres again whenever the repository or the locale changes,
+  /// since each is named in the app's language.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final catalog = CatalogScope.of(context);
-    if (identical(catalog, _catalog)) {
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    if (identical(catalog, _catalog) && locale == _locale) {
       return;
     }
     _catalog = catalog;
+    _locale = locale;
     _load();
   }
 
   void _load() {
     _genres = null;
     _failure = null;
-    unawaited(_read(++_reads, _catalog!));
+    unawaited(_read(++_reads, _catalog!, _locale!));
   }
 
-  Future<void> _read(int read, CatalogRepository catalog) async {
+  Future<void> _read(int read, CatalogRepository catalog, String locale) async {
     List<PublishedGenre>? genres;
     CatalogFailure? failure;
     try {
-      genres = await catalog.listGenres();
+      genres = await catalog.listGenres(locale: locale);
     } on CatalogFailure catch (error) {
       failure = error;
     }

@@ -241,6 +241,7 @@ SeriesItem? _seriesFromJson(Object? decoded) {
 Map<String, Object?> _genreToJson(SeriesGenre genre) => {
   'id': genre.id,
   'name': genre.name,
+  'locale': genre.locale,
 };
 
 SeriesGenre? _genreFromJson(Object? decoded) {
@@ -252,7 +253,8 @@ SeriesGenre? _genreFromJson(Object? decoded) {
   if (id.isEmpty || name.isEmpty) {
     return null;
   }
-  return SeriesGenre(id: id, name: name);
+  // A file written before a genre's locale was saved holds none.
+  return SeriesGenre(id: id, name: name, locale: _string(decoded['locale']));
 }
 
 Map<String, Object?> _tagToJson(SeriesTag tag) => {
