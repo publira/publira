@@ -38,7 +38,7 @@ const VolumeBuyForm = ({
 
 /**
  * What the reader can do about one volume: nothing, because every episode in
- * it is already theirs to read, or buy it where the site takes payments.
+ * it is already theirs for good, or buy it where the site takes payments.
  *
  * Member-specific, so it sits in a `<Suspense>` of its own and the card around
  * it stays on the shared series read. A read that failed offers the volume as
@@ -62,10 +62,12 @@ const VolumePurchaseControl = async ({
   volume: VolumeItem;
 }) => {
   const state = await getMySeriesPurchaseState(tenantId, seriesId, locale);
+  // Owned rather than readable: a reader renting every episode, or holding a
+  // ticket for each, is still offered the volume that keeps them for good.
   const owned =
     state.ok &&
     volume.episodeIds.length > 0 &&
-    volume.episodeIds.every((id) => state.entitledEpisodeIds.has(id));
+    volume.episodeIds.every((id) => state.ownedEpisodeIds.has(id));
 
   if (owned) {
     return (

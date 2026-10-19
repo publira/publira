@@ -31,13 +31,25 @@ describe("getMySeriesPurchaseState", () => {
     mockResolveAccessToken.mockResolvedValue("session-token");
   });
 
-  it("names the episodes the reader holds and quotes the rest of the series", async () => {
+  it("names the episodes the reader owns, and not the ones they only rent, and quotes the rest of the series", async () => {
     mockGetSeriesEpisodeAccess.mockResolvedValueOnce({
       episodes: [
-        { access: EpisodeAccess.ENTITLED, episodeId: "EPISODE_ID_1" },
-        { access: EpisodeAccess.FREE, episodeId: "EPISODE_ID_2" },
-        { access: EpisodeAccess.LOCKED, episodeId: "EPISODE_ID_3" },
-        { access: EpisodeAccess.ENTITLED, episodeId: "EPISODE_ID_4" },
+        {
+          access: EpisodeAccess.ENTITLED,
+          episodeId: "EPISODE_ID_1",
+          owned: true,
+        },
+        { access: EpisodeAccess.FREE, episodeId: "EPISODE_ID_2", owned: false },
+        {
+          access: EpisodeAccess.ENTITLED,
+          episodeId: "EPISODE_ID_3",
+          owned: false,
+        },
+        {
+          access: EpisodeAccess.ENTITLED,
+          episodeId: "EPISODE_ID_4",
+          owned: true,
+        },
       ],
       remainder: {
         discountPercent: 10,
@@ -58,8 +70,8 @@ describe("getMySeriesPurchaseState", () => {
       { headers: { Authorization: "Bearer session-token" } }
     );
     expect(result).toEqual({
-      entitledEpisodeIds: new Set(["EPISODE_ID_1", "EPISODE_ID_4"]),
       ok: true,
+      ownedEpisodeIds: new Set(["EPISODE_ID_1", "EPISODE_ID_4"]),
       remainder: {
         discountPercent: 10,
         episodeCount: 1,
@@ -72,7 +84,13 @@ describe("getMySeriesPurchaseState", () => {
   it("asks about a guest without a session, who is quoted the whole series", async () => {
     mockResolveAccessToken.mockResolvedValueOnce("");
     mockGetSeriesEpisodeAccess.mockResolvedValueOnce({
-      episodes: [{ access: EpisodeAccess.LOCKED, episodeId: "EPISODE_ID_1" }],
+      episodes: [
+        {
+          access: EpisodeAccess.LOCKED,
+          episodeId: "EPISODE_ID_1",
+          owned: false,
+        },
+      ],
       remainder: { episodeCount: 1, listPrice: 300, price: 300 },
     });
 
@@ -101,8 +119,8 @@ describe("getMySeriesPurchaseState", () => {
     await expect(
       getMySeriesPurchaseState(TENANT_ID, SERIES_ID, "en")
     ).resolves.toEqual({
-      entitledEpisodeIds: new Set(),
       ok: true,
+      ownedEpisodeIds: new Set(),
       remainder: null,
     });
   });

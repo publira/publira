@@ -4493,7 +4493,7 @@
       "remainder_discount": "{$percent} off the {$list_price} they cost one by one",
       "remainder_error": "Could not show the price of the remaining episodes",
       "volume_buy": "Buy volume",
-      "volume_owned": "You can read every episode in this volume",
+      "volume_owned": "You own every episode in this volume",
       "volumes_error": "Could not show the volumes",
       "volumes_heading": "Volumes"
     },

@@ -65,8 +65,8 @@ describe("SeriesRemainderOffer", () => {
 
   it("offers the remaining episodes at the discounted price, and says what the discount takes off", async () => {
     mockGetMySeriesPurchaseState.mockResolvedValueOnce({
-      entitledEpisodeIds: new Set(),
       ok: true,
+      ownedEpisodeIds: new Set(),
       remainder: {
         discountPercent: 10,
         episodeCount: 4,
@@ -94,8 +94,8 @@ describe("SeriesRemainderOffer", () => {
 
   it("says nothing about a discount the series does not take", async () => {
     mockGetMySeriesPurchaseState.mockResolvedValueOnce({
-      entitledEpisodeIds: new Set(),
       ok: true,
+      ownedEpisodeIds: new Set(),
       remainder: {
         discountPercent: 0,
         episodeCount: 2,
@@ -116,8 +116,8 @@ describe("SeriesRemainderOffer", () => {
 
   it("offers nothing when there is nothing left to sell", async () => {
     mockGetMySeriesPurchaseState.mockResolvedValueOnce({
-      entitledEpisodeIds: new Set(["EPISODE_ID_1"]),
       ok: true,
+      ownedEpisodeIds: new Set(["EPISODE_ID_1"]),
       remainder: null,
     });
 

@@ -252,7 +252,7 @@ test.describe("web-storefront checkout", () => {
     );
     await expect(page.getByText(PAYMENT_CONFIRMING)).toBeVisible();
     await expect(
-      volume.getByText("You can read every episode in this volume")
+      volume.getByText("You own every episode in this volume")
     ).toBeVisible();
     await expect(
       volume.getByRole("button", { name: "Buy volume" })
@@ -302,7 +302,7 @@ test.describe("web-storefront checkout", () => {
       page.getByRole("button", { name: /^Buy remaining episodes/u })
     ).toHaveCount(0);
     await expect(
-      volumeCard(page).getByText("You can read every episode in this volume")
+      volumeCard(page).getByText("You own every episode in this volume")
     ).toBeVisible();
 
     const [second, third, fourth] = EPISODE_RENTALS_LATER_EPISODES;

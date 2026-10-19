@@ -4493,7 +4493,7 @@
       "remainder_discount": "1話ずつ買うと{$list_price}のところ{$percent}オフ",
       "remainder_error": "残りのエピソードの価格を表示できませんでした",
       "volume_buy": "この巻を購入",
-      "volume_owned": "この巻のエピソードはすべて読めます",
+      "volume_owned": "この巻のエピソードはすべて購入済みです",
       "volumes_error": "巻を表示できませんでした",
       "volumes_heading": "巻"
     },

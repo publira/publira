@@ -4493,7 +4493,7 @@
       "remainder_discount": "한 화씩 사면 {$list_price}인 것을 {$percent} 할인",
       "remainder_error": "남은 에피소드의 가격을 표시할 수 없습니다",
       "volume_buy": "이 권 구매",
-      "volume_owned": "이 권의 에피소드를 모두 읽을 수 있습니다",
+      "volume_owned": "이 권의 에피소드를 모두 구매했습니다",
       "volumes_error": "권을 표시할 수 없습니다",
       "volumes_heading": "권"
     },

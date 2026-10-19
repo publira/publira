@@ -3,7 +3,6 @@ import {
   isMissingResourceRpcError,
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
-import { EpisodeAccess } from "@publira/api-client/public/catalog";
 import { ClientSurface } from "@publira/api-client/public/types";
 import type { SeriesRemainderOffer } from "@publira/api-client/public/types";
 import type { Locale } from "@publira/i18n";
@@ -34,8 +33,12 @@ export interface SeriesRemainderQuote {
 
 export type SeriesPurchaseStateResult =
   | {
-      /** The ids of the episodes of the series the reader may open as bought. */
-      entitledEpisodeIds: ReadonlySet<string>;
+      /**
+       * The ids of the episodes of the series the reader owns for good: bought
+       * on their own, in a volume, or with the rest of the series. A rental or
+       * an access ticket opens an episode without owning it.
+       */
+      ownedEpisodeIds: ReadonlySet<string>;
       ok: true;
       /** `null` when the rest of the series is no sale to this reader. */
       remainder: SeriesRemainderQuote | null;
@@ -69,14 +72,14 @@ const toRemainderQuote = (
 };
 
 const nothingToSell: SeriesPurchaseStateResult = {
-  entitledEpisodeIds: new Set(),
   ok: true,
+  ownedEpisodeIds: new Set(),
   remainder: null,
 };
 
 /**
- * What the reader holds of one series and what the rest of it would cost them:
- * the episodes they may open as bought, which says whether a volume is already
+ * What the reader owns of one series and what the rest of it would cost them:
+ * the episodes they hold for good, which says whether a volume is already
  * theirs, and the quote for every episode left.
  *
  * A guest is asked about as well, without a session, and is quoted the whole
@@ -105,14 +108,12 @@ export const getMySeriesPurchaseState = cache(
         sessionId ? buildSessionHeaders(sessionId) : undefined
       );
       return {
-        entitledEpisodeIds: new Set(
+        ok: true,
+        ownedEpisodeIds: new Set(
           (response.episodes ?? []).flatMap((episode) =>
-            episode.access === EpisodeAccess.ENTITLED && episode.episodeId
-              ? [episode.episodeId]
-              : []
+            episode.owned && episode.episodeId ? [episode.episodeId] : []
           )
         ),
-        ok: true,
         remainder: toRemainderQuote(response.remainder),
       };
     } catch (error) {

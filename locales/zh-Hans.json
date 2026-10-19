@@ -4493,7 +4493,7 @@
       "remainder_discount": "逐章购买需{$list_price}，现优惠{$percent}",
       "remainder_error": "无法显示剩余章节的价格",
       "volume_buy": "购买本卷",
-      "volume_owned": "本卷的所有章节均可阅读",
+      "volume_owned": "本卷的所有章节均已购买",
       "volumes_error": "无法显示各卷",
       "volumes_heading": "卷"
     },
