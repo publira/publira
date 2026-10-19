@@ -1,5 +1,11 @@
 import type { Locale } from "@publira/i18n";
 import { Button } from "@publira/ui-components/button";
+import {
+  SectionError,
+  SectionErrorDescription,
+  SectionErrorHeading,
+  SectionErrorTitle,
+} from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatPrice } from "@publira/utils";
 import { Suspense } from "react";
@@ -37,15 +43,48 @@ const VolumeBuyForm = ({
 );
 
 /**
+ * Why the cards offer nothing to press: what the reader owns could not be
+ * read, so no card can tell a volume already theirs from one to buy. One
+ * notice above the cards rather than one in each, since every card asks the
+ * same read.
+ */
+export const VolumeOwnershipFailure = async ({
+  locale,
+  seriesId,
+  tenantId,
+}: {
+  locale: Locale;
+  seriesId: string;
+  tenantId: string;
+}) => {
+  const state = await getMySeriesPurchaseState(tenantId, seriesId, locale);
+  if (state.ok) {
+    return null;
+  }
+
+  return (
+    <SectionError>
+      <SectionErrorHeading>
+        <SectionErrorTitle>
+          <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
+            <Message message="storefront.series.volume_ownership_error" />
+          </Suspense>
+        </SectionErrorTitle>
+        <SectionErrorDescription>{state.message}</SectionErrorDescription>
+      </SectionErrorHeading>
+    </SectionError>
+  );
+};
+
+/**
  * What the reader can do about one volume: nothing, because every episode in
  * it is already theirs for good, or buy it where the site takes payments.
  *
  * Member-specific, so it sits in a `<Suspense>` of its own and the card around
- * it stays on the shared series read. A read that failed offers the volume as
- * it would to a reader who holds none of it: the API refuses a volume already
- * bought, and the page then reads the reader's episodes again.
+ * it stays on the shared series read. A read that failed offers nothing:
+ * {@link VolumeOwnershipFailure} says why above the cards.
  */
-const VolumePurchaseControl = async ({
+export const VolumePurchaseControl = async ({
   canSell,
   locale,
   seriesId,
@@ -62,10 +101,13 @@ const VolumePurchaseControl = async ({
   volume: VolumeItem;
 }) => {
   const state = await getMySeriesPurchaseState(tenantId, seriesId, locale);
+  if (!state.ok) {
+    return null;
+  }
+
   // Owned rather than readable: a reader renting every episode, or holding a
   // ticket for each, is still offered the volume that keeps them for good.
   const owned =
-    state.ok &&
     volume.episodeIds.length > 0 &&
     volume.episodeIds.every((id) => state.ownedEpisodeIds.has(id));
 
@@ -127,6 +169,13 @@ export const SeriesVolumes = ({
           <Message message="storefront.series.volumes_heading" />
         </Suspense>
       </h2>
+      <Suspense fallback={null}>
+        <VolumeOwnershipFailure
+          locale={locale}
+          seriesId={seriesId}
+          tenantId={tenantId}
+        />
+      </Suspense>
       <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {volumes.map((volume) => (
           <li key={volume.publicId}>

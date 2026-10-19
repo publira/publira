@@ -4495,7 +4495,8 @@
       "volume_buy": "Buy volume",
       "volume_owned": "You own every episode in this volume",
       "volumes_error": "Could not show the volumes",
-      "volumes_heading": "Volumes"
+      "volumes_heading": "Volumes",
+      "volume_ownership_error": "Could not check which volumes you own"
     },
     "share": {
       "action": "Share",

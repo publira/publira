@@ -4495,7 +4495,8 @@
       "volume_buy": "이 권 구매",
       "volume_owned": "이 권의 에피소드를 모두 구매했습니다",
       "volumes_error": "권을 표시할 수 없습니다",
-      "volumes_heading": "권"
+      "volumes_heading": "권",
+      "volume_ownership_error": "보유한 권을 확인할 수 없습니다"
     },
     "share": {
       "action": "공유",
