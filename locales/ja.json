@@ -5030,7 +5030,8 @@
       "mark_all_read_failed": "一括既読に失敗しました。時間をおいて再試行してください。",
       "open_link": "遷移先を開く",
       "banner_link": "お知らせを読む",
-      "banner_dismiss": "このお知らせを閉じる"
+      "banner_dismiss": "このお知らせを閉じる",
+      "fallback_notice": "このお知らせはお使いの言語で書かれていないため、{$language}で表示しています。"
     },
     "purchase": {
       "buy": "{$price}で購入",

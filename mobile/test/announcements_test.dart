@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -79,6 +80,8 @@ void main() {
     WidgetTester tester, {
     String initialLocation = AppRoutes.catalog,
     AuthSession? session = fakeSession,
+    ValueListenable<String?>? tenantDefaultLocale,
+    ValueListenable<List<String>?>? tenantSupportedLocales,
   }) async {
     router = createAppRouter(initialLocation: initialLocation);
     await tester.pumpWidget(
@@ -98,6 +101,8 @@ void main() {
         pages: pages,
         site: const PublicSite(host: 'shop.example'),
         browser: browser,
+        tenantDefaultLocale: tenantDefaultLocale,
+        tenantSupportedLocales: tenantSupportedLocales,
       ),
     );
     await tester.pump();
@@ -116,6 +121,22 @@ void main() {
     await pumpUntilRouteSettled(
       tester,
       find.byKey(const ValueKey('announcements-list')),
+    );
+  }
+
+  Future<void> openDetail(
+    WidgetTester tester,
+    String id, {
+    AuthSession? session = fakeSession,
+  }) async {
+    await pumpApp(
+      tester,
+      initialLocation: AppRoutes.announcementPath(id),
+      session: session,
+    );
+    await pumpUntilRouteSettled(
+      tester,
+      find.byKey(ValueKey('announcement-$id')),
     );
   }
 
@@ -509,22 +530,6 @@ void main() {
   });
 
   group('an announcement', () {
-    Future<void> openDetail(
-      WidgetTester tester,
-      String id, {
-      AuthSession? session = fakeSession,
-    }) async {
-      await pumpApp(
-        tester,
-        initialLocation: AppRoutes.announcementPath(id),
-        session: session,
-      );
-      await pumpUntilRouteSettled(
-        tester,
-        find.byKey(ValueKey('announcement-$id')),
-      );
-    }
-
     testWidgets('is marked read when a signed-in reader opens it', (
       tester,
     ) async {
@@ -651,5 +656,123 @@ void main() {
     );
 
     expect(router.state.uri.path, AppRoutes.announcements);
+  });
+
+  // The tenant writes in Japanese by default, and only a-1 has an English
+  // copy; the app renders in English unless a test moves it.
+  group("in the app's language", () {
+    setUp(() {
+      repository = FakeAnnouncementRepository(
+        announcements: [
+          for (final id in ['a-1', 'a-2'])
+            Announcement(
+              id: id,
+              title: 'お知らせ $id',
+              body: '$id の本文',
+              createdAt: DateTime.utc(2026, 9, 20, 9),
+              locale: 'ja',
+            ),
+        ],
+        pinnedId: 'a-1',
+        translations: {
+          'a-1': {'en': (title: 'Notice a-1', body: 'Body of a-1')},
+        },
+      );
+    });
+
+    const notice =
+        'This announcement is not written in your language, so it is shown '
+        'in 日本語.';
+
+    testWidgets('lists each in English where it was written in it, and says '
+        'which language the rest are in', (tester) async {
+      await openList(tester);
+
+      expect(repository.listLocales, ['en']);
+      expect(find.text('Notice a-1'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('announcement-fallback-notice-a-1')),
+        findsNothing,
+      );
+      expect(find.text('お知らせ a-2'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('announcement-fallback-notice-a-2')),
+        findsOneWidget,
+      );
+      expect(find.text(notice), findsOneWidget);
+    });
+
+    testWidgets('opens one in English where it was written in it', (
+      tester,
+    ) async {
+      await openDetail(tester, 'a-1');
+
+      expect(repository.getLocales, ['en']);
+      expect(find.text('Notice a-1'), findsOneWidget);
+      expect(find.text('Body of a-1'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('announcement-fallback-notice')),
+        findsNothing,
+      );
+    });
+
+    testWidgets('opens one in the default language with a note where it was '
+        'not', (tester) async {
+      await openDetail(tester, 'a-2');
+
+      expect(find.text('お知らせ a-2'), findsOneWidget);
+      expect(find.text(notice), findsOneWidget);
+    });
+
+    testWidgets('reads the list again when the device changes language', (
+      tester,
+    ) async {
+      addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+      await openList(tester);
+
+      tester.platformDispatcher.localesTestValue = const [Locale('ko')];
+      await tester.pump();
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('announcement-fallback-notice-a-1')),
+      );
+
+      expect(repository.listLocales, ['en', 'ko']);
+    });
+
+    testWidgets('shows the banner in English where it was written in it', (
+      tester,
+    ) async {
+      await pumpApp(tester, session: null);
+      await pumpUntilRouteSettled(tester, banner('a-1'));
+
+      expect(repository.pinnedLocales, everyElement('en'));
+      expect(find.text('Notice a-1'), findsOneWidget);
+    });
+
+    testWidgets('reads the banner again once the tenant lookup moves the '
+        'language', (tester) async {
+      tester.platformDispatcher.localesTestValue = const [Locale('ko', 'KR')];
+      addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+      final tenantDefaultLocale = ValueNotifier<String?>(null);
+      addTearDown(tenantDefaultLocale.dispose);
+      final tenantSupportedLocales = ValueNotifier<List<String>?>(null);
+      addTearDown(tenantSupportedLocales.dispose);
+      await pumpApp(
+        tester,
+        session: null,
+        tenantDefaultLocale: tenantDefaultLocale,
+        tenantSupportedLocales: tenantSupportedLocales,
+      );
+      await pumpUntilRouteSettled(tester, banner('a-1'));
+      expect(repository.pinnedLocales, everyElement('ko'));
+
+      tenantDefaultLocale.value = 'ja';
+      tenantSupportedLocales.value = const ['ja', 'en'];
+      await tester.pump();
+      await pumpUntilTrue(tester, () => repository.pinnedLocales.last == 'ja');
+
+      expect(find.text('お知らせ a-1'), findsOneWidget);
+    });
   });
 }

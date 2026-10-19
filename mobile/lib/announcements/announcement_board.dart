@@ -53,15 +53,15 @@ class AnnouncementBoard extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Reads the pinned announcement again.
+  /// Reads the pinned announcement again, in its translation in [locale].
   ///
   /// The banner is an addition to the screen rather than part of it, so a
   /// read that fails shows none rather than an apology.
-  Future<void> refreshPinned() async {
+  Future<void> refreshPinned({required String locale}) async {
     final read = ++_pinnedReads;
     Announcement? pinned;
     try {
-      pinned = await _repository.pinned();
+      pinned = await _repository.pinned(locale: locale);
     } on AnnouncementFailure {
       pinned = null;
     }
@@ -87,12 +87,12 @@ class AnnouncementBoard extends ChangeNotifier {
   }
 
   /// One page of the announcements. Throws [AnnouncementFailure].
-  Future<AnnouncementPage> list({String token = ''}) =>
-      _repository.list(token: token);
+  Future<AnnouncementPage> list({String token = '', required String locale}) =>
+      _repository.list(token: token, locale: locale);
 
   /// The announcement [announcementId]. Throws [AnnouncementFailure].
-  Future<Announcement> get(String announcementId) =>
-      _repository.get(announcementId);
+  Future<Announcement> get(String announcementId, {required String locale}) =>
+      _repository.get(announcementId, locale: locale);
 
   /// Throws [AnnouncementFailure].
   Future<void> markRead(String announcementId) =>

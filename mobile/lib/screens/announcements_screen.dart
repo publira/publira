@@ -19,7 +19,8 @@ import 'package:publira/typography/autospaced_tooltip.dart';
 /// the same read-ahead the other paged lists use.
 const _readAheadRows = 5;
 
-/// The tenant's announcements, newest first.
+/// The tenant's announcements, newest first, each in the app's language
+/// where it was written in it.
 ///
 /// A visitor reads the same list as a signed-in reader. What a session adds
 /// is read state: the unread marks, and the controls that set them.
@@ -67,19 +68,23 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
 
   var _markingAll = false;
   var _accessToken = '';
+  var _locale = '';
   var _started = false;
 
-  /// Reads the list again whenever the reader changes: read state belongs to
-  /// whoever holds the session.
+  /// Reads the list again whenever the reader or the locale changes: read
+  /// state belongs to whoever holds the session, and the text to the language
+  /// it is asked for in.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final accessToken = AuthScope.of(context).accessToken;
-    if (_started && accessToken == _accessToken) {
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    if (_started && accessToken == _accessToken && locale == _locale) {
       return;
     }
     _started = true;
     _accessToken = accessToken;
+    _locale = locale;
     _markedIds.clear();
     _readFirstPage();
   }
@@ -132,7 +137,7 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
     AnnouncementPage? page;
     AnnouncementFailure? failure;
     try {
-      page = await board.list(token: token);
+      page = await board.list(token: token, locale: _locale);
     } on AnnouncementFailure catch (error) {
       failure = error;
     }
@@ -438,6 +443,10 @@ class _AnnouncementRow extends StatelessWidget {
     final theme = Theme.of(context);
     final unread = showReadState && !announcement.isRead;
     final createdAt = announcement.createdAt;
+    final textLocale = announcement.textLocale;
+    final fallbackLanguage = announcement.fallbackLanguage(
+      Localizations.localeOf(context),
+    );
     return ListTile(
       key: ValueKey('announcement-row-${announcement.id}'),
       // A visitor has no read state, so their rows carry no gutter for one.
@@ -463,13 +472,20 @@ class _AnnouncementRow extends StatelessWidget {
       minLeadingWidth: 12,
       title: AutospacedText(
         announcement.title,
+        locale: textLocale,
         style: unread ? const TextStyle(fontWeight: FontWeight.bold) : null,
       ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (fallbackLanguage != null)
+            AutospacedText(
+              messages.announcementsFallbackNotice(language: fallbackLanguage),
+              key: ValueKey('announcement-fallback-notice-${announcement.id}'),
+            ),
           AutospacedText(
             announcement.body,
+            locale: textLocale,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -477,7 +493,7 @@ class _AnnouncementRow extends StatelessWidget {
             AutospacedText(messages.formatDateTime(createdAt)),
         ],
       ),
-      isThreeLine: createdAt != null,
+      isThreeLine: createdAt != null || fallbackLanguage != null,
       trailing: unread
           ? AutospacedTooltip(
               message: messages.announcementsMarkRead,

@@ -1,3 +1,7 @@
+import 'dart:ui';
+
+import 'package:publira/l10n/locale_negotiation.dart';
+
 /// One tenant announcement, as `publira.v1.AnnouncementItem` describes it.
 ///
 /// A reader with no session is answered the tenant-wide rows with no read
@@ -11,6 +15,7 @@ class Announcement {
     this.isRead = false,
     this.createdAt,
     this.pinnedUntil,
+    this.locale = '',
   });
 
   final String id;
@@ -30,6 +35,20 @@ class Announcement {
   /// until the console takes it down.
   final DateTime? pinnedUntil;
 
+  /// The locale [title] and [body] were answered in, which differs from the
+  /// one asked for when the announcement was not written in it. Empty when
+  /// the API named none.
+  final String locale;
+
+  /// [locale] as a text widget takes it, or `null` for one no catalog
+  /// carries, which leaves the app's own.
+  Locale? get textLocale => supportedLocaleForCode(locale);
+
+  /// The name of the language the announcement is shown in, when that is not
+  /// [requested], or `null` when it is in the language asked for.
+  String? fallbackLanguage(Locale requested) =>
+      fallbackLanguageLabel(locale, requested);
+
   /// Whether the banner of this pinned announcement is still up at [now].
   bool isPinnedAt(DateTime now) {
     final until = pinnedUntil;
@@ -44,6 +63,7 @@ class Announcement {
     isRead: true,
     createdAt: createdAt,
     pinnedUntil: pinnedUntil,
+    locale: locale,
   );
 }
 

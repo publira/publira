@@ -26,7 +26,10 @@ class HttpAnnouncementRepository implements AnnouncementRepository {
   final TenantResolver _tenants;
 
   @override
-  Future<AnnouncementPage> list({String token = ''}) async {
+  Future<AnnouncementPage> list({
+    String token = '',
+    required String locale,
+  }) async {
     final body = await _call(
       _client.accessToken,
       (api, call, tenant) => api.listAnnouncements(
@@ -34,6 +37,7 @@ class HttpAnnouncementRepository implements AnnouncementRepository {
         pb.ListAnnouncementsRequest(
           limit: pageSize,
           token: token.isEmpty ? null : token,
+          locale: locale,
           tenant: tenant,
         ),
       ),
@@ -47,13 +51,17 @@ class HttpAnnouncementRepository implements AnnouncementRepository {
   }
 
   @override
-  Future<Announcement> get(String announcementId) async {
+  Future<Announcement> get(
+    String announcementId, {
+    required String locale,
+  }) async {
     final body = await _call(
       _client.accessToken,
       (api, call, tenant) => api.getAnnouncement(
         call,
         pb.GetAnnouncementRequest(
           announcementId: announcementId,
+          locale: locale,
           tenant: tenant,
         ),
       ),
@@ -72,12 +80,12 @@ class HttpAnnouncementRepository implements AnnouncementRepository {
   /// the tenant, and a token the API has stopped taking would otherwise fail
   /// a banner that needs none.
   @override
-  Future<Announcement?> pinned() async {
+  Future<Announcement?> pinned({required String locale}) async {
     final body = await _call(
       '',
       (api, call, tenant) => api.getPinnedAnnouncement(
         call,
-        pb.GetPinnedAnnouncementRequest(tenant: tenant),
+        pb.GetPinnedAnnouncementRequest(locale: locale, tenant: tenant),
       ),
     );
     return _announcementOf(body.announcement);
@@ -160,6 +168,7 @@ class HttpAnnouncementRepository implements AnnouncementRepository {
       isRead: item.isRead,
       createdAt: _readInstant(item.createdAt),
       pinnedUntil: _readInstant(item.pinnedUntil),
+      locale: item.locale.trim(),
     );
   }
 

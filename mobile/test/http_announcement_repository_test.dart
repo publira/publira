@@ -16,6 +16,7 @@ void main() {
     bool isRead = false,
     String linkUrl = '/series/SeedSERSAAA1',
     String pinnedUntil = '',
+    String locale = 'en',
   }) {
     return pb.AnnouncementItem(
       id: id,
@@ -28,6 +29,7 @@ void main() {
       createdAt: '2026-09-20T09:00:00Z',
       pinned: pinnedUntil.isNotEmpty ? true : null,
       pinnedUntil: pinnedUntil.isNotEmpty ? pinnedUntil : null,
+      locale: locale,
     );
   }
 
@@ -60,12 +62,14 @@ void main() {
   });
 
   test('the rows map onto what the list renders', () async {
-    server.announcements = [row('a-1'), row('a-2', isRead: true)];
+    server.announcements = [row('a-1'), row('a-2', isRead: true, locale: 'ja')];
 
-    final page = await repository().list();
+    final page = await repository().list(locale: 'en');
 
     final first = page.announcements.first;
     expect(first.id, 'a-1');
+    expect(first.locale, 'en');
+    expect(page.announcements.last.locale, 'ja');
     expect(first.title, 'Notice a-1');
     expect(first.body, 'Body of a-1');
     expect(first.linkUrl, '/series/SeedSERSAAA1');
@@ -75,10 +79,9 @@ void main() {
     expect(page.nextToken, isEmpty);
 
     final call = server.requestsTo('ListAnnouncements').single;
-    expect(
-      call.decode(pb.ListAnnouncementsRequest()).limit,
-      HttpAnnouncementRepository.pageSize,
-    );
+    final request = call.decode(pb.ListAnnouncementsRequest());
+    expect(request.limit, HttpAnnouncementRepository.pageSize);
+    expect(request.locale, 'en');
     expect(call.headers['authorization'], 'Bearer $accessToken');
   });
 
@@ -87,10 +90,13 @@ void main() {
       ..announcements = [row('a-1'), row('a-2')]
       ..announcementsPageSize = 1;
 
-    final first = await repository().list();
+    final first = await repository().list(locale: 'en');
     expect(first.announcements.single.id, 'a-1');
 
-    final second = await repository().list(token: first.nextToken);
+    final second = await repository().list(
+      token: first.nextToken,
+      locale: 'en',
+    );
     expect(second.announcements.single.id, 'a-2');
     expect(second.nextToken, isEmpty);
     expect(server.requestsOf(pb.ListAnnouncementsRequest.new).last.token, '1');
@@ -99,14 +105,17 @@ void main() {
   test('a row naming no id is left out of the list', () async {
     server.announcements = [row(''), row('a-2')];
 
-    expect((await repository().list()).announcements.single.id, 'a-2');
+    expect(
+      (await repository().list(locale: 'en')).announcements.single.id,
+      'a-2',
+    );
   });
 
   test('a visitor reads the list without a session', () async {
     accessToken = '';
     server.announcements = [row('a-1', isRead: true)];
 
-    final page = await repository().list();
+    final page = await repository().list(locale: 'en');
 
     expect(page.announcements.single.isRead, isFalse);
     expect(
@@ -118,18 +127,17 @@ void main() {
   test('one announcement is read by its id', () async {
     server.announcements = [row('a-1'), row('a-2')];
 
-    final announcement = await repository().get('a-2');
+    final announcement = await repository().get('a-2', locale: 'zh-Hant');
 
     expect(announcement.title, 'Notice a-2');
-    expect(
-      server.requestsOf(pb.GetAnnouncementRequest.new).single.announcementId,
-      'a-2',
-    );
+    final request = server.requestsOf(pb.GetAnnouncementRequest.new).single;
+    expect(request.announcementId, 'a-2');
+    expect(request.locale, 'zh-Hant');
   });
 
   test('a missing announcement is not found', () async {
     await expectLater(
-      repository().get('gone'),
+      repository().get('gone', locale: 'en'),
       failsWith(AnnouncementFailureKind.notFound),
     );
   });
@@ -139,9 +147,13 @@ void main() {
       ..announcements = [row('a-1', pinnedUntil: '2026-10-01T00:00:00Z')]
       ..pinnedAnnouncementId = 'a-1';
 
-    final pinned = await repository().pinned();
+    final pinned = await repository().pinned(locale: 'ko');
 
     expect(pinned?.id, 'a-1');
+    expect(
+      server.requestsOf(pb.GetPinnedAnnouncementRequest.new).single.locale,
+      'ko',
+    );
     expect(pinned?.pinnedUntil, DateTime.utc(2026, 10).toLocal());
     expect(
       server
@@ -155,7 +167,7 @@ void main() {
   test('a tenant with nothing pinned answers none', () async {
     server.announcements = [row('a-1')];
 
-    expect(await repository().pinned(), isNull);
+    expect(await repository().pinned(locale: 'en'), isNull);
   });
 
   test('a read mark names the announcement', () async {
@@ -170,7 +182,7 @@ void main() {
           .announcementId,
       'a-1',
     );
-    final page = await repository().list();
+    final page = await repository().list(locale: 'en');
     expect(page.announcements.first.isRead, isTrue);
     expect(page.announcements.last.isRead, isFalse);
   });
@@ -181,7 +193,7 @@ void main() {
     await repository().markAllRead();
 
     expect(server.requestsTo('MarkAllAnnouncementsAsRead'), hasLength(1));
-    final page = await repository().list();
+    final page = await repository().list(locale: 'en');
     expect(page.announcements.every((item) => item.isRead), isTrue);
   });
 
@@ -209,7 +221,7 @@ void main() {
     server.announcementStatus = HttpStatus.serviceUnavailable;
 
     await expectLater(
-      repository().list(),
+      repository().list(locale: 'en'),
       failsWith(AnnouncementFailureKind.network),
     );
   });

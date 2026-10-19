@@ -5030,7 +5030,8 @@
       "mark_all_read_failed": "Could not mark everything as read. Please try again later.",
       "open_link": "Open link",
       "banner_link": "Read the announcement",
-      "banner_dismiss": "Close this announcement"
+      "banner_dismiss": "Close this announcement",
+      "fallback_notice": "This announcement is not written in your language, so it is shown in {$language}."
     },
     "purchase": {
       "buy": "Buy for {$price}",

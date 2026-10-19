@@ -518,6 +518,13 @@ final class AppMessages {
     return _format('mobile.announcements.failed');
   }
 
+  /// `mobile.announcements.fallback_notice`
+  String announcementsFallbackNotice({required String language}) {
+    return _format('mobile.announcements.fallback_notice', {
+      'language': language,
+    });
+  }
+
   /// `mobile.announcements.mark_all_read`
   String get announcementsMarkAllRead {
     return _format('mobile.announcements.mark_all_read');
@@ -3470,6 +3477,8 @@ const _jaSources = <String, String>{
   'mobile.announcements.detail_failed': 'このお知らせを表示できませんでした。もう一度お試しください。',
   'mobile.announcements.empty': '現在表示できるお知らせはありません。',
   'mobile.announcements.failed': 'お知らせを表示できませんでした。もう一度お試しください。',
+  'mobile.announcements.fallback_notice':
+      'このお知らせはお使いの言語で書かれていないため、{\$language}で表示しています。',
   'mobile.announcements.mark_all_read': 'すべて既読にする',
   'mobile.announcements.mark_all_read_failed': '一括既読に失敗しました。時間をおいて再試行してください。',
   'mobile.announcements.mark_read': '既読にする',
@@ -4211,6 +4220,8 @@ const _enSources = <String, String>{
       'Could not show this announcement. Try again.',
   'mobile.announcements.empty': 'There are no announcements to show.',
   'mobile.announcements.failed': 'Could not show the announcements. Try again.',
+  'mobile.announcements.fallback_notice':
+      'This announcement is not written in your language, so it is shown in {\$language}.',
   'mobile.announcements.mark_all_read': 'Mark all as read',
   'mobile.announcements.mark_all_read_failed':
       'Could not mark everything as read. Please try again later.',
@@ -5038,6 +5049,8 @@ const _koSources = <String, String>{
   'mobile.announcements.detail_failed': '이 공지사항을 표시할 수 없습니다. 다시 시도해 주세요.',
   'mobile.announcements.empty': '표시할 공지사항이 없습니다.',
   'mobile.announcements.failed': '공지사항을 표시할 수 없습니다. 다시 시도해 주세요.',
+  'mobile.announcements.fallback_notice':
+      '이 공지사항은 사용 중인 언어로 작성되지 않아 {\$language}로 표시합니다.',
   'mobile.announcements.mark_all_read': '모두 읽음으로 표시',
   'mobile.announcements.mark_all_read_failed':
       '모두 읽음으로 표시하지 못했습니다. 잠시 후 다시 시도해 주세요.',
@@ -5756,6 +5769,8 @@ const _zhHansSources = <String, String>{
   'mobile.announcements.detail_failed': '无法显示该公告。请重试。',
   'mobile.announcements.empty': '暂无可显示的公告。',
   'mobile.announcements.failed': '无法显示公告。请重试。',
+  'mobile.announcements.fallback_notice':
+      '此公告没有以你所用的语言撰写的版本，因此以{\$language}显示。',
   'mobile.announcements.mark_all_read': '全部标记为已读',
   'mobile.announcements.mark_all_read_failed': '无法将全部标记为已读。请稍后再试。',
   'mobile.announcements.mark_read': '标记为已读',
@@ -6414,6 +6429,8 @@ const _zhHantSources = <String, String>{
   'mobile.announcements.detail_failed': '無法顯示該公告。請重試。',
   'mobile.announcements.empty': '目前沒有可顯示的公告。',
   'mobile.announcements.failed': '無法顯示公告。請重試。',
+  'mobile.announcements.fallback_notice':
+      '此公告沒有以你所使用的語言撰寫的版本，因此以{\$language}顯示。',
   'mobile.announcements.mark_all_read': '全部標示為已讀',
   'mobile.announcements.mark_all_read_failed': '無法將全部標示為已讀。請稍後再試。',
   'mobile.announcements.mark_read': '標示為已讀',

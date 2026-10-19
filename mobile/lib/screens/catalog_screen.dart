@@ -60,7 +60,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
   }
 
   Future<void> _refresh() {
-    unawaited(AnnouncementScope.maybeOf(context)?.refreshPinned());
+    unawaited(
+      AnnouncementScope.maybeOf(
+        context,
+      )?.refreshPinned(locale: Localizations.localeOf(context).toLanguageTag()),
+    );
     final pending = Completer<void>();
     setState(() {
       _refreshes++;
