@@ -241,7 +241,7 @@ PUBLIRA_EDGE_ACME_EMAIL=ops@example.com
 
 Caddy keeps the certificates under `/data`, so give that directory a volume that outlives the container; one that starts empty makes Caddy request every certificate again. A host in no list gets no certificate, so its TLS handshake fails, and over plain HTTP the sample still answers it with its own 404.
 
-For a certificate issued elsewhere, replace `:80 {$PUBLIRA_EDGE_TLS_HOSTS}`, the site block's addresses, with the host names, and add `tls /etc/caddy/tls/fullchain.pem /etc/caddy/tls/privkey.pem` inside the block: Caddy uses those files instead of obtaining its own, and refuses them in a block that also listens on plain HTTP. With no site left on port 80, Caddy redirects plain HTTP for every host, listed or not, to HTTPS, so a host in no list gets that redirect in place of the sample's 404, and then fails the TLS handshake.
+For a certificate issued elsewhere, replace `:80 {$PUBLIRA_EDGE_TLS_HOSTS}`, the site block's addresses, with the host names, and add `tls /etc/caddy/tls/fullchain.pem /etc/caddy/tls/privkey.pem` inside the block: Caddy uses those files instead of obtaining its own, and refuses them in a block that also listens on plain HTTP. Caddy reads them inside its container, so mount the directory that holds them at `/etc/caddy/tls`, read-only: on the Docker Compose install, add `- <directory>:/etc/caddy/tls:ro` to the `volumes` of the `proxy` service, and run `docker compose up -d proxy` to recreate it with the mount. With no site left on port 80, Caddy redirects plain HTTP for every host, listed or not, to HTTPS, so a host in no list gets that redirect in place of the sample's 404, and then fails the TLS handshake.
 
 #### nginx
 
