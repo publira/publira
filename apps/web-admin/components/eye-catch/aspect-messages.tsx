@@ -137,20 +137,39 @@ const EpisodeAspectUsageMessage = ({
 };
 
 /**
- * A banner has no page of its own, so nothing shares a link to it and its
- * link preview ratio is never drawn. The other three are there for the band
- * the site and the app draw, whichever shape that band takes.
+ * The band the site and the app draw asks for the landscape cut alone, so the
+ * portrait and square cuts are stored without a screen that shows them. A
+ * banner has no page of its own either, so nothing shares a link to it and its
+ * link preview ratio is never drawn.
  */
 const CampaignBannerAspectUsageMessage = ({
   variantType,
 }: {
   variantType: EyeCatchVariantType;
-}) =>
-  variantType === "og" ? (
-    <Message message="admin.eye_catch.aspect.usages.campaign_banner.og" />
-  ) : (
-    <Message message="admin.eye_catch.aspect.usages.campaign_banner.band" />
-  );
+}) => {
+  switch (variantType) {
+    case "portrait": {
+      return (
+        <Message message="admin.eye_catch.aspect.usages.campaign_banner.portrait" />
+      );
+    }
+    case "square": {
+      return (
+        <Message message="admin.eye_catch.aspect.usages.campaign_banner.square" />
+      );
+    }
+    case "landscape": {
+      return (
+        <Message message="admin.eye_catch.aspect.usages.campaign_banner.landscape" />
+      );
+    }
+    default: {
+      return (
+        <Message message="admin.eye_catch.aspect.usages.campaign_banner.og" />
+      );
+    }
+  }
+};
 
 /**
  * Where the site and the app draw one ratio of this record's eye-catch.

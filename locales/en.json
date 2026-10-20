@@ -1173,7 +1173,9 @@
             "og": "The preview shown when a link to the episode is shared."
           },
           "campaign_banner": {
-            "band": "The band at the top of the site's top page and of the app's catalog, which uses the ratio that fits its shape.",
+            "portrait": "Not shown on the site or in the app yet.",
+            "square": "Not shown on the site or in the app yet.",
+            "landscape": "The band at the top of the site's top page and of the app's catalog.",
             "og": "Not used: a banner has no page of its own to share."
           }
         },
