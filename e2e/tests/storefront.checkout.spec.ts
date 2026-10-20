@@ -317,9 +317,10 @@ test.describe("web-storefront checkout", () => {
       volume.getByRole("button", { name: "Buy volume" })
     ).toHaveCount(0);
     // The rest of the series no longer counts the two episodes the volume
-    // holds: 300 and 200 yen, less 10%.
+    // holds: 300 yen for the first and the 150 episode 4 sells for under its
+    // campaign, less 10%.
     await expect(
-      page.getByRole("button", { name: "Buy remaining episodes (2) for ¥450" })
+      page.getByRole("button", { name: "Buy remaining episodes (2) for ¥405" })
     ).toBeVisible();
 
     await openEpisode(page, second);
@@ -367,16 +368,16 @@ test.describe("web-storefront checkout", () => {
       WEB_STOREFRONT_RENTALS_BASE_URL
     );
 
-    // 300 yen for the first episode and 200 for each of the other three,
-    // less 25%.
+    // 300 yen for the first episode, 200 for the next two, and 150 for the
+    // fourth under its campaign, less 25% and rounded down.
     await expect(
-      page.getByText("25% off the ¥900 they cost one by one")
+      page.getByText("25% off the ¥850 they cost one by one")
     ).toBeVisible();
     await page
-      .getByRole("button", { name: "Buy remaining episodes (4) for ¥675" })
+      .getByRole("button", { name: "Buy remaining episodes (4) for ¥637" })
       .click();
 
-    await pay(page, "4 items", "¥675", episodeRentalsSeriesPath);
+    await pay(page, "4 items", "¥637", episodeRentalsSeriesPath);
     await expect(page.getByText(PAYMENT_CONFIRMING)).toBeVisible();
     await expect(
       page.getByRole("button", { name: /^Buy remaining episodes/u })
