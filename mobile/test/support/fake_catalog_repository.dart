@@ -1142,10 +1142,12 @@ String fixtureInternalId(String publicId) => 'internal-$publicId';
 
 /// [paidSurface] is where the paid episode, the last one, may be bought, and
 /// [rented] rents it for 48 hours at ¥200 beside its ¥500 permanent copy.
+/// [campaign], when given, is open on the paid episode.
 SeriesDetail fixtureDetail(
   SeriesItem item, {
   EpisodePurchaseSurface paidSurface = EpisodePurchaseSurface.all,
   bool rented = false,
+  EpisodeCampaign? campaign,
 }) {
   return SeriesDetail(
     series: item.internalId.isEmpty
@@ -1182,6 +1184,7 @@ SeriesDetail fixtureDetail(
           purchaseSurface: i == item.episodeCount
               ? paidSurface
               : EpisodePurchaseSurface.all,
+          campaign: i == item.episodeCount ? campaign : null,
         ),
     ],
   );
@@ -1190,10 +1193,16 @@ SeriesDetail fixtureDetail(
 Map<String, SeriesDetail> fixtureDetails({
   EpisodePurchaseSurface paidSurface = EpisodePurchaseSurface.all,
   bool rented = false,
+  EpisodeCampaign? campaign,
 }) {
   return {
     for (final item in fixtureSeries)
-      item.id: fixtureDetail(item, paidSurface: paidSurface, rented: rented),
+      item.id: fixtureDetail(
+        item,
+        paidSurface: paidSurface,
+        rented: rented,
+        campaign: campaign,
+      ),
   };
 }
 
@@ -1232,6 +1241,7 @@ Map<String, EpisodeDetail> fixtureEpisodes({
   EpisodeEntitlementSource entitlementSource =
       EpisodeEntitlementSource.unspecified,
   bool rented = false,
+  EpisodeCampaign? campaign,
 }) {
   final withheld =
       access == EpisodeAccess.locked || access == EpisodeAccess.ageRestricted;
@@ -1241,6 +1251,7 @@ Map<String, EpisodeDetail> fixtureEpisodes({
       item,
       paidSurface: paidSurface,
       rented: rented,
+      campaign: campaign,
     ).episodes;
     for (var index = 0; index < episodes.length; index++) {
       final episode = episodes[index];
@@ -1304,4 +1315,5 @@ EpisodeNeighbor fixtureNeighbor(EpisodeItem episode) => EpisodeNeighbor(
   price: episode.price,
   isFree: episode.price == 0,
   purchaseSurface: episode.purchaseSurface,
+  campaign: episode.campaign,
 );

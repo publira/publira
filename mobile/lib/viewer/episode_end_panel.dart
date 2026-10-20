@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:publira/catalog/campaign_price_note.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/models/episode_detail.dart';
@@ -141,13 +142,26 @@ class _UpNext extends StatelessWidget {
     // price is shown by whether the body is public right now rather than by
     // the number.
     final String? price;
+    CampaignPriceNote? campaign;
     if (episode.isFree) {
       price = messages.commonFree;
     } else if (acceptsPayments &&
         episode.purchaseSurface == EpisodePurchaseSurface.web) {
       price = messages.purchaseSoldOnWeb;
     } else if (currency case final currency?) {
-      price = messages.formatPrice(episode.price, currency);
+      final open = episode.campaign;
+      if (open != null && open.isOpenAt(DateTime.now())) {
+        price = messages.formatPrice(open.price, currency);
+        campaign = CampaignPriceNote(
+          key: const ValueKey('episode-end-next-campaign'),
+          price: episode.price,
+          currency: currency,
+          endsAt: open.endsAt,
+          color: Colors.white70,
+        );
+      } else {
+        price = messages.formatPrice(episode.price, currency);
+      }
     } else {
       // A number in no currency is no price.
       price = null;
@@ -206,6 +220,10 @@ class _UpNext extends StatelessWidget {
                       ],
                     ],
                   ),
+                  if (campaign != null) ...[
+                    const SizedBox(height: 8),
+                    campaign,
+                  ],
                   const SizedBox(height: 8),
                   AutospacedText(
                     episode.title,

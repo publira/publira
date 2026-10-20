@@ -7,6 +7,7 @@ import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/auth/reader_age.dart';
 import 'package:publira/catalog/age_rating_gate.dart';
+import 'package:publira/catalog/campaign_price_note.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/creator_credits.dart';
@@ -600,11 +601,14 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         checkout: CheckoutOutcome.success,
       ),
     );
+    // The button that buys the permanent copy names the campaign price
+    // whether or not the episode is rented too, and the rental keeps its own.
+    final campaign = detail.episode.campaignAt(DateTime.now());
     final buy = sold && !soldOnWeb
         ? BuyEpisodeButton(
             episodeId: widget.episodeId,
             episodeInternalId: detail.episode.internalId,
-            price: detail.episode.price,
+            price: campaign?.price ?? detail.episode.price,
             // A purchase is offered only once the currency is known.
             currency: _currency!,
             onAlreadyPurchased: _reload,
@@ -662,6 +666,15 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     return _gate(
       detail,
       key: const ValueKey('episode-locked'),
+      badge: buy == null || campaign == null
+          ? null
+          : CampaignPriceNote(
+              key: const ValueKey('episode-campaign'),
+              price: detail.episode.price,
+              currency: _currency!,
+              endsAt: campaign.endsAt,
+              alignment: WrapAlignment.center,
+            ),
       title: messages.viewerLockedTitle,
       message: message,
       notice: waitFree == null

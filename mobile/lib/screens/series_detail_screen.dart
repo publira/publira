@@ -6,6 +6,7 @@ import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/catalog/age_rating_gate.dart';
+import 'package:publira/catalog/campaign_price_note.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/catalog_shelf.dart';
@@ -286,9 +287,9 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   /// that a ticket has since opened.
   var _purchaseReads = 0;
 
-  /// Fires when the soonest free window open on an episode of this series
-  /// closes, which is when its row is priced again and what the reader may do
-  /// with it has to be asked again.
+  /// Fires when the soonest free window or campaign open on an episode of this
+  /// series closes, which is when its row is priced again and what the reader
+  /// may do with it has to be asked again.
   Timer? _windowClose;
 
   /// Where this reader stands in the series. Nothing for a guest, until the
@@ -393,20 +394,21 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
     }
   }
 
-  /// Sets [_windowClose] for the soonest window still open, or for none when
-  /// no episode has one. A row is drawn free or priced at build time, so
-  /// without it a screen left open past the close would keep saying the
-  /// episode is free.
+  /// Sets [_windowClose] for the soonest free window or campaign still open,
+  /// or for none when no episode has one. A row is drawn free, discounted, or
+  /// priced at build time, so without it a screen left open past the close
+  /// would keep saying the episode is free or cheaper than it is.
   void _scheduleWindowClose() {
     _windowClose?.cancel();
     final now = DateTime.now();
     DateTime? soonest;
     for (final episode in widget.detail.episodes) {
-      final freeUntil = episode.freeUntil;
-      if (freeUntil != null &&
-          freeUntil.isAfter(now) &&
-          (soonest == null || freeUntil.isBefore(soonest))) {
-        soonest = freeUntil;
+      for (final end in [episode.freeUntil, episode.campaign?.endsAt]) {
+        if (end != null &&
+            end.isAfter(now) &&
+            (soonest == null || end.isBefore(soonest))) {
+          soonest = end;
+        }
       }
     }
     if (soonest == null) {
@@ -562,6 +564,21 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
       episode.price > 0 &&
       episode.purchaseSurface != EpisodePurchaseSurface.web &&
       _access[episode.id] == EpisodeAccess.locked;
+
+  /// The campaign open on [episode] at [now], for a row that quotes its price,
+  /// and `null` for any other row. A free window open over a campaign still
+  /// opens the episode to everyone, so it wins; a row of an episode sold on
+  /// the website alone names that instead of a price, and a row with no
+  /// currency shows none.
+  EpisodeCampaign? _quotedCampaign(EpisodeItem episode, DateTime now) {
+    if (episode.isFreeAt(now) ||
+        _currency == null ||
+        _acceptsPayments &&
+            episode.purchaseSurface == EpisodePurchaseSurface.web) {
+      return null;
+    }
+    return episode.campaignAt(now);
+  }
 
   /// What renting [episode] costs and for how long, for a row the reader
   /// could rent it from at [now], and `null` for any other row. Such a row
@@ -1120,11 +1137,12 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
               if (widget.detail.episodes.isEmpty)
                 AutospacedText(messages.seriesEpisodesEmpty)
               else
-                for (final (episode, freeUntil, rental) in [
+                for (final (episode, freeUntil, campaign, rental) in [
                   for (final episode in widget.detail.episodes)
                     (
                       episode,
                       episode.isFreeAt(now) ? episode.freeUntil : null,
+                      _quotedCampaign(episode, now),
                       _rentalOffer(messages, episode, now),
                     ),
                 ])
@@ -1150,6 +1168,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                     // nothing to say under its title is given none.
                     subtitle:
                         freeUntil == null &&
+                            campaign == null &&
                             rental == null &&
                             !_progress.finishedEpisodeIds.contains(episode.id)
                         ? null
@@ -1159,13 +1178,23 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                               episode.id,
                             ),
                             freeUntil: freeUntil,
+                            campaign: campaign == null
+                                ? null
+                                : CampaignPriceNote(
+                                    key: ValueKey(
+                                      'episode-campaign-${episode.id}',
+                                    ),
+                                    price: episode.price,
+                                    currency: _currency!,
+                                    endsAt: campaign.endsAt,
+                                  ),
                             rental: rental,
                           ),
                     trailing: _EpisodeTrailing(
                       // An open window makes the episode free to read, so the
                       // row shows until when in its subtitle rather than a
                       // price nobody is charged.
-                      price: freeUntil == null ? episode.price : 0,
+                      price: freeUntil == null ? episode.priceAt(now) : 0,
                       currency: _currency,
                       soldOnWeb:
                           _acceptsPayments &&
@@ -1185,7 +1214,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                           ? BuyEpisodeButton(
                               episodeId: episode.id,
                               episodeInternalId: episode.internalId,
-                              price: episode.price,
+                              price: episode.priceAt(now),
                               currency: _currency!,
                               compact: true,
                               signInReturnTo: AppRoutes.episodeViewerPath(
@@ -1496,12 +1525,14 @@ class _FinishedMark extends StatelessWidget {
 }
 
 /// What stands under an episode's title: until when a free window keeps it
-/// free, what renting it costs, and whether the reader has finished it.
+/// free, or a campaign undercuts its price, what renting it costs, and whether
+/// the reader has finished it.
 class _EpisodeSubtitle extends StatelessWidget {
   const _EpisodeSubtitle({
     required this.episodeId,
     required this.finished,
     required this.freeUntil,
+    required this.campaign,
     required this.rental,
   });
 
@@ -1510,6 +1541,10 @@ class _EpisodeSubtitle extends StatelessWidget {
 
   /// The end of the window open on the episode, or `null` when none is.
   final DateTime? freeUntil;
+
+  /// The regular price and the end of the campaign the row quotes, or `null`
+  /// when it quotes none.
+  final Widget? campaign;
 
   /// The rental the reader could take, worded, or `null` when there is none.
   final String? rental;
@@ -1529,6 +1564,7 @@ class _EpisodeSubtitle extends StatelessWidget {
               key: ValueKey('episode-free-until-$episodeId'),
               freeUntil: freeUntil,
             ),
+          ?campaign,
           if (rental case final rental?)
             AutospacedText(key: ValueKey('episode-rental-$episodeId'), rental),
           if (finished) _FinishedMark(episodeId: episodeId),

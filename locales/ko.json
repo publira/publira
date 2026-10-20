@@ -4857,6 +4857,7 @@
     },
     "common": {
       "back_to_catalog": "카탈로그로 돌아가기",
+      "campaign_until": "{$date}까지 할인가",
       "cancel": "취소",
       "free": "무료",
       "list_end": "{$first} 및 {$rest}",
@@ -4865,6 +4866,7 @@
       "list_two": "{$first} 및 {$rest}",
       "more_series_failed": "시리즈를 더 표시할 수 없습니다. 다시 시도해 주세요.",
       "open_link_failed": "링크를 열 수 없습니다.",
+      "regular_price": "정가 {$price}",
       "retry": "다시 시도",
       "series_count": "공개 중인 시리즈 {$count}건",
       "sign_in": "로그인",

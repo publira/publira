@@ -180,6 +180,8 @@ To put many episodes on sale for the same price and period, check them on the ep
 
 The site quotes a campaign from the moment it starts, and drops it the moment it ends: `publira worker` refreshes the cached pages at both ends, as [Scheduled and maintenance jobs](../../3-operations/10-scheduled-jobs.md#free-reading-periods-and-other-cached-pages) describes.
 
+The app quotes a campaign on the series' episode list, on a locked episode, and in the offer of the next episode at the end of the one before: the campaign price, the episode's own **Price** struck through beside it, and when the campaign ends, written in the time zone of the reader's device as every time in the app is.
+
 ## Publishing an episode
 
 An episode is in one of three states:

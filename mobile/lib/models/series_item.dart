@@ -340,6 +340,21 @@ enum EpisodePurchaseSurface {
   };
 }
 
+/// A campaign price open on an episode, as `Episode.campaign_price` and
+/// `Episode.campaign_ends_at` carry one: what its permanent copy sells for
+/// until [endsAt], always below the episode's own price.
+class EpisodeCampaign {
+  const EpisodeCampaign({required this.price, required this.endsAt});
+
+  /// In the unit the episode's price is in.
+  final int price;
+  final DateTime endsAt;
+
+  /// Whether the campaign still prices the episode at [now]. The answer that
+  /// carried it may be older than the campaign, as with a free window.
+  bool isOpenAt(DateTime now) => endsAt.isAfter(now);
+}
+
 /// One published episode on a series detail page.
 class EpisodeItem {
   const EpisodeItem({
@@ -354,6 +369,7 @@ class EpisodeItem {
     this.purchaseSurface = EpisodePurchaseSurface.all,
     this.ratingCount = 0,
     this.freeUntil,
+    this.campaign,
     this.eyeCatchVariants = const [],
   });
 
@@ -375,7 +391,8 @@ class EpisodeItem {
 
   final int orderIndex;
 
-  /// What the permanent copy costs.
+  /// What the permanent copy costs. It stays the stored price while a
+  /// [campaign] undercuts it, because that is what it costs again afterwards.
   final int price;
 
   /// What renting the episode costs, in the unit [price] is in, and how long
@@ -406,6 +423,21 @@ class EpisodeItem {
 
   /// Whether a free window still holds the episode open at [now].
   bool isFreeAt(DateTime now) => freeUntil?.isAfter(now) ?? false;
+
+  /// The campaign price open on the episode when the API answered, or `null`
+  /// when none was. It is `null` on a copy saved on the device, which offers
+  /// nothing to buy.
+  final EpisodeCampaign? campaign;
+
+  /// [campaign] while it still prices the episode at [now].
+  EpisodeCampaign? campaignAt(DateTime now) {
+    final campaign = this.campaign;
+    return campaign != null && campaign.isOpenAt(now) ? campaign : null;
+  }
+
+  /// What buying the permanent copy costs at [now]: the campaign price while
+  /// one is open, and [price] otherwise.
+  int priceAt(DateTime now) => campaignAt(now)?.price ?? price;
 
   /// Renditions of the episode's own eye-catch, which the episodes
   /// `GetSeriesDetail` lists, the episode `GetEpisodeDetail` answers, and the

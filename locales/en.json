@@ -4857,6 +4857,7 @@
     },
     "common": {
       "back_to_catalog": "Back to the catalog",
+      "campaign_until": "Sale until {$date}",
       "cancel": "Cancel",
       "free": "Free",
       "list_end": "{$first}, and {$rest}",
@@ -4865,6 +4866,7 @@
       "list_two": "{$first} and {$rest}",
       "more_series_failed": "Could not show more series. Try again.",
       "open_link_failed": "Could not open the link.",
+      "regular_price": "Regular price {$price}",
       "retry": "Retry",
       "series_count": "{$count} published series",
       "sign_in": "Sign in",

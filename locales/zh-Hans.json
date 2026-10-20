@@ -4857,6 +4857,7 @@
     },
     "common": {
       "back_to_catalog": "返回作品目录",
+      "campaign_until": "优惠价至{$date}",
       "cancel": "取消",
       "free": "免费",
       "list_end": "{$first}和{$rest}",
@@ -4865,6 +4866,7 @@
       "list_two": "{$first}和{$rest}",
       "more_series_failed": "无法显示更多系列。请重试。",
       "open_link_failed": "无法打开链接。",
+      "regular_price": "原价{$price}",
       "retry": "重试",
       "series_count": "已发布{$count}部系列",
       "sign_in": "登录",
