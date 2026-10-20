@@ -1303,6 +1303,7 @@ void main() {
         pb.CampaignBanner(
           publicId: 'SeedBANRAAA2',
           linkUrl: ' /labels/SeedLABLAAA1 ',
+          altText: ' Summer sale, up to 50% off through August 31 ',
           imageVariants: [
             pb.SeriesEyeCatchVariant(
               variantType: 'landscape',
@@ -1325,6 +1326,12 @@ void main() {
         ['SeedBANRAAA2', 'SeedBANRAAA1'],
       );
       expect(banners.first.linkUrl, '/labels/SeedLABLAAA1');
+      expect(
+        banners.first.altText,
+        'Summer sale, up to 50% off through August 31',
+      );
+      // A banner the operator wrote no words for carries none.
+      expect(banners.last.altText, isEmpty);
       final variant = banners.first.imageVariants.single;
       expect(variant.variantType, 'landscape');
       expect(

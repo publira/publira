@@ -6,6 +6,7 @@ class CampaignBanner {
   const CampaignBanner({
     required this.id,
     required this.linkUrl,
+    this.altText = '',
     this.imageVariants = const [],
     this.imageRequestHeaders = const {},
   });
@@ -17,6 +18,10 @@ class CampaignBanner {
   /// operator wrote it. Whether the app may follow it is decided where the
   /// banner is drawn, against the site the app is showing.
   final String linkUrl;
+
+  /// The words drawn into the image, as the operator wrote them (`alt_text`).
+  /// Empty when they wrote none.
+  final String altText;
 
   /// The image's renditions, in the order the API returned them.
   final List<EyeCatchVariant> imageVariants;
