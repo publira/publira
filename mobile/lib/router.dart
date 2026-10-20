@@ -177,7 +177,17 @@ abstract final class AppRoutes {
           queryParameters: {'return_to': returnTo},
         ).toString();
 
-  static String seriesDetailPath(String seriesId) => '/series/$seriesId';
+  /// The series, told how a checkout of one of its volumes or of the rest of
+  /// it ended when the browser has just handed one back.
+  static String seriesDetailPath(String seriesId, {CheckoutOutcome? checkout}) {
+    final path = '/series/$seriesId';
+    return checkout == null
+        ? path
+        : Uri(
+            path: path,
+            queryParameters: {'checkout': checkout.wireName},
+          ).toString();
+  }
 
   static const creatorsPath = '/$creators';
 
@@ -348,7 +358,14 @@ List<RouteBase> _tabRoutes() => [
     path: AppRoutes.seriesDetail,
     builder: (context, state) {
       final seriesId = state.pathParameters['seriesId']!;
-      return SeriesDetailScreen(seriesId: seriesId);
+      return SeriesDetailScreen(
+        seriesId: seriesId,
+        // The query is the whole location's, so an episode's checkout opened
+        // over the series is the viewer's to tell, not this screen's.
+        checkout: state.uri.path == state.matchedLocation
+            ? CheckoutOutcome.fromWire(state.uri.queryParameters['checkout'])
+            : null,
+      );
     },
     // Nested so a deep link to a page opens on top of its series and the
     // back gesture lands there rather than leaving the app.
@@ -470,12 +487,26 @@ GoRouter createAppRouter({String? initialLocation}) {
                   ..._tabRoutes(),
                   GoRoute(
                     path: _child(AppRoutes.checkoutReturn),
-                    // The return URL names the episode alone, so a link
-                    // without one has nothing to open.
-                    redirect: (_, state) =>
-                        (state.uri.queryParameters['episode'] ?? '').isEmpty
-                        ? AppRoutes.catalog
-                        : null,
+                    // An episode's return names the episode, which this
+                    // screen finds the series of. A volume's and the rest of
+                    // a series' name the series, which is where either was
+                    // bought, so they land there. A link naming neither has
+                    // nothing to open.
+                    redirect: (_, state) {
+                      final query = state.uri.queryParameters;
+                      if ((query['episode'] ?? '').isNotEmpty) {
+                        return null;
+                      }
+                      final seriesId = query['series'] ?? '';
+                      return seriesId.isEmpty
+                          ? AppRoutes.catalog
+                          : AppRoutes.seriesDetailPath(
+                              seriesId,
+                              checkout: CheckoutOutcome.fromWire(
+                                query['status'],
+                              ),
+                            );
+                    },
                     builder: (context, state) => CheckoutReturnScreen(
                       episodeId: state.uri.queryParameters['episode']!,
                       outcome: CheckoutOutcome.fromWire(

@@ -15,6 +15,24 @@ enum PurchaseKind {
   rental,
 }
 
+/// What one purchase bought, under the names the purchase history CSV writes
+/// in its `item` column.
+enum PurchasedItem {
+  /// One episode.
+  episode('episode'),
+
+  /// A volume of the series, which opens every episode it holds.
+  volume('volume'),
+
+  /// Every episode of the series the reader did not own yet when they bought
+  /// the rest of it.
+  remainingEpisodes('remaining_episodes');
+
+  const PurchasedItem(this.wireName);
+
+  final String wireName;
+}
+
 /// One purchase belonging to the signed-in reader, as `publira.v1.MyPurchase`
 /// describes it.
 class MyPurchase {
@@ -23,10 +41,13 @@ class MyPurchase {
     required this.seriesId,
     required this.seriesTitle,
     this.seriesLocale = '',
-    required this.episodeId,
-    required this.episodeTitle,
+    this.item = PurchasedItem.episode,
+    this.episodeId = '',
+    this.episodeTitle = '',
     this.episodeLocale = '',
-    required this.orderIndex,
+    this.orderIndex = 0,
+    this.volumeTitle = '',
+    this.remainingEpisodeCount = 0,
     required this.price,
     required this.currency,
     required this.isActive,
@@ -46,6 +67,11 @@ class MyPurchase {
   /// `SeriesItem.locale` is.
   final String seriesLocale;
 
+  /// What the purchase bought. The episode fields are set on a purchase of an
+  /// episode alone, [volumeTitle] on one of a volume, and
+  /// [remainingEpisodeCount] on one of the rest of the series.
+  final PurchasedItem item;
+
   final String episodeId;
   final String episodeTitle;
 
@@ -60,6 +86,12 @@ class MyPurchase {
 
   final int orderIndex;
 
+  /// The title of the volume bought, written in the tenant's own words.
+  final String volumeTitle;
+
+  /// How many episodes buying the rest of the series opened.
+  final int remainingEpisodeCount;
+
   /// What the reader paid, in the minor unit of [currency].
   final int price;
 
@@ -67,8 +99,8 @@ class MyPurchase {
   /// that names none, whose price is not shown.
   final String currency;
 
-  /// Whether the purchase still opens the episode, as the API judged it when
-  /// the page was read.
+  /// Whether the purchase still opens what it bought, as the API judged it
+  /// when the page was read.
   final bool isActive;
 
   /// Which sale the reader bought. A rental always carries [expiresAt].

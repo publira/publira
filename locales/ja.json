@@ -5083,7 +5083,8 @@
       "time_left_hours": "残り{$hours :integer}時間",
       "time_left_hours_minutes": "残り{$hours :integer}時間{$minutes :integer}分",
       "time_left_minutes": "残り{$minutes :integer}分",
-      "title": "購入済み一覧"
+      "title": "購入済み一覧",
+      "series_bundle_title": "残りの{$count :integer}話"
     },
     "ranking": {
       "empty": "ランキングはまだ集計されていません。",
@@ -5175,7 +5176,15 @@
       "status_completed": "完結",
       "status_hiatus": "休載中",
       "status_ongoing": "連載中",
-      "title": "シリーズ"
+      "title": "シリーズ",
+      "checkout_success": "決済を確認しています。購入が反映されるとエピソードを読めるようになります。",
+      "remainder_buy": "残りの{$count :integer}話を{$price}で購入",
+      "remainder_discount": "1話ずつ買うと{$list_price}のところ{$percent}オフ",
+      "remainder_failed": "残りのエピソードの価格を表示できませんでした",
+      "volume_buy": "この巻を購入",
+      "volume_owned": "この巻のエピソードはすべて購入済みです",
+      "volume_ownership_failed": "所持している巻を確認できませんでした",
+      "volumes_heading": "巻"
     },
     "sign_in": {
       "continue_with_apple": "Appleで続ける",

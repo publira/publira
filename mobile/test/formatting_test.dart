@@ -38,6 +38,11 @@ void main() {
     expect(ja.formatPrice(500, 'CAD'), r'CA$5.00');
   });
 
+  test('a whole percentage is written the way the locale writes one', () {
+    expect(AppMessages.forLocale(const Locale('en'))!.formatPercent(10), '10%');
+    expect(AppMessages.forLocale(const Locale('ja'))!.formatPercent(25), '25%');
+  });
+
   test('a byte count takes the largest unit that keeps it whole', () {
     final en = AppMessages.forLocale(const Locale('en'))!;
     expect(en.formatByteSize(0), '0 B');

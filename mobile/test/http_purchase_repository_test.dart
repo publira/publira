@@ -199,9 +199,9 @@ void main() {
     server.entitledEpisodes = ConnectFixtureServer.populatedEntitledEpisodes();
 
     expect(
-      await repository().seriesEpisodeAccess(
+      (await repository().seriesEpisodeAccess(
         ConnectFixtureServer.internalIdOf(seriesId),
-      ),
+      )).access,
       {
         freeEpisodeId: EpisodeAccess.free,
         paidEpisodeId: EpisodeAccess.entitled,
@@ -213,6 +213,117 @@ void main() {
       ConnectFixtureServer.internalIdOf(seriesId),
     );
     expect(call.headers['authorization'], 'Bearer $accessToken');
+  });
+
+  test('says which episodes the reader owns and what the rest costs', () async {
+    accessToken = ConnectFixtureServer.memberAccessToken;
+    server.ownedEpisodes = {paidEpisodeId};
+    server.seriesRemainders = {
+      seriesId: pb.SeriesRemainderOffer(
+        episodeCount: 3,
+        listPrice: 900,
+        discountPercent: 10,
+        price: 810,
+      ),
+    };
+
+    final holdings = await repository().seriesEpisodeAccess(
+      ConnectFixtureServer.internalIdOf(seriesId),
+    );
+
+    expect(holdings.ownedEpisodeIds, {
+      ConnectFixtureServer.internalIdOf(paidEpisodeId),
+    });
+    final remainder = holdings.remainder!;
+    expect(remainder.episodeCount, 3);
+    expect(remainder.listPrice, 900);
+    expect(remainder.discountPercent, 10);
+    expect(remainder.price, 810);
+  });
+
+  test('a series with nothing left to sell quotes nothing', () async {
+    final holdings = await repository().seriesEpisodeAccess(
+      ConnectFixtureServer.internalIdOf(seriesId),
+    );
+
+    expect(holdings.ownedEpisodeIds, isEmpty);
+    expect(holdings.remainder, isNull);
+  });
+
+  test('a volume checkout asks to come back to the app', () async {
+    accessToken = ConnectFixtureServer.memberAccessToken;
+
+    expect(
+      await repository().startVolumeCheckout('volume-1'),
+      ConnectFixtureServer.checkoutUrlFor('volume-1'),
+    );
+    final call = server.requestsTo('StartVolumeCheckout').single;
+    final request = call.decode(pb.StartVolumeCheckoutRequest());
+    expect(request.client, pb.StartEpisodeCheckoutRequest_Client.CLIENT_MOBILE);
+    expect(request.volumeId, 'volume-1');
+    expect(call.headers['authorization'], 'Bearer $accessToken');
+  });
+
+  test(
+    'a checkout of the rest of a series names it in the reader\'s locale',
+    () async {
+      accessToken = ConnectFixtureServer.memberAccessToken;
+      final internalId = ConnectFixtureServer.internalIdOf(seriesId);
+
+      expect(
+        await repository().startSeriesRemainderCheckout(
+          internalId,
+          locale: 'ko',
+        ),
+        ConnectFixtureServer.checkoutUrlFor(internalId),
+      );
+      final call = server.requestsTo('StartSeriesRemainderCheckout').single;
+      final request = call.decode(pb.StartSeriesRemainderCheckoutRequest());
+      expect(
+        request.client,
+        pb.StartEpisodeCheckoutRequest_Client.CLIENT_MOBILE,
+      );
+      expect(request.seriesId, internalId);
+      expect(request.locale, 'ko');
+      expect(call.headers['authorization'], 'Bearer $accessToken');
+    },
+  );
+
+  test('a guest is not sent to the API for a volume or the rest', () async {
+    await expectLater(
+      repository().startVolumeCheckout('volume-1'),
+      failsWith(PurchaseFailureKind.sessionExpired),
+    );
+    await expectLater(
+      repository().startSeriesRemainderCheckout(
+        ConnectFixtureServer.internalIdOf(seriesId),
+        locale: 'en',
+      ),
+      failsWith(PurchaseFailureKind.sessionExpired),
+    );
+    expect(server.requestsTo('StartVolumeCheckout'), isEmpty);
+    expect(server.requestsTo('StartSeriesRemainderCheckout'), isEmpty);
+  });
+
+  test('a refused volume or rest says why', () async {
+    accessToken = ConnectFixtureServer.memberAccessToken;
+    final internalId = ConnectFixtureServer.internalIdOf(seriesId);
+
+    for (final (code, kind) in [
+      ('already_exists', PurchaseFailureKind.alreadyPurchased),
+      ('not_found', PurchaseFailureKind.gone),
+      ('failed_precondition', PurchaseFailureKind.notSold),
+    ]) {
+      server.bundleCheckoutRefusal = code;
+      await expectLater(
+        repository().startVolumeCheckout('volume-1'),
+        failsWith(kind),
+      );
+      await expectLater(
+        repository().startSeriesRemainderCheckout(internalId, locale: 'en'),
+        failsWith(kind),
+      );
+    }
   });
 
   test('a checkout asks to come back to the app', () async {
@@ -432,6 +543,44 @@ void main() {
       expect(canceled.status, MyPurchaseStatus.canceled);
       expect(active.revokedAt, isNull);
       expect(active.status, MyPurchaseStatus.active);
+    });
+
+    test('names a volume and the rest of a series as such', () async {
+      accessToken = ConnectFixtureServer.memberAccessToken;
+      server.myPurchases = [
+        pb.MyPurchase(
+          id: 'purchase-volume',
+          series: pb.Series(publicId: seriesId, title: 'Seed Series 001'),
+          volume: pb.Volume(
+            id: 'volume-1',
+            publicId: 'VOLUME000001',
+            title: 'Volume 1',
+          ),
+          priceAtPurchase: 350,
+          currency: 'JPY',
+          isActive: true,
+        ),
+        pb.MyPurchase(
+          id: 'purchase-rest',
+          series: pb.Series(publicId: seriesId, title: 'Seed Series 001'),
+          seriesBundle: pb.SeriesBundle(id: 'bundle-1', episodeCount: 4),
+          priceAtPurchase: 810,
+          currency: 'JPY',
+          isActive: true,
+        ),
+      ];
+
+      final [volume, rest] = (await repository().listMyPurchases(
+        locale: 'en',
+      )).purchases;
+
+      expect(volume.item, PurchasedItem.volume);
+      expect(volume.volumeTitle, 'Volume 1');
+      expect(volume.seriesId, seriesId);
+      expect(volume.episodeId, isEmpty);
+      expect(rest.item, PurchasedItem.remainingEpisodes);
+      expect(rest.remainingEpisodeCount, 4);
+      expect(rest.seriesId, seriesId);
     });
 
     test('tells a rental from the permanent copy', () async {

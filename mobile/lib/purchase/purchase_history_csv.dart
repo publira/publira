@@ -66,29 +66,37 @@ const _header = [
   'expires_at',
   'refunded_at',
   'status',
+  'item',
+  'volume_title',
 ];
 
 /// The reader's purchase history as CSV, in the columns and the encoding of
 /// the site's download, so the two files open the same way in a spreadsheet:
 /// UTF-8 with a byte order mark, CRLF line endings, and RFC 4180 quoting. A
 /// header row, then one row per purchase in the order given; `status` is the
-/// [MyPurchaseStatus.wireName] the library marks the purchase with.
+/// [MyPurchaseStatus.wireName] the library marks the purchase with, and `item`
+/// the [PurchasedItem.wireName] of what it bought. The episode columns are
+/// empty for a volume and for the rest of a series, which name no one
+/// episode.
 String renderPurchaseHistoryCsv(List<MyPurchase> purchases) {
   final rows = StringBuffer(_bom)..write(_encodeRow(_header));
   for (final purchase in purchases) {
+    final episode = purchase.item == PurchasedItem.episode;
     rows.write(
       _encodeRow([
         purchase.id,
         _formatInstant(purchase.purchasedAt),
         purchase.seriesTitle,
-        '${purchase.orderIndex}',
-        purchase.episodeTitle,
+        if (episode) '${purchase.orderIndex}' else '',
+        if (episode) purchase.episodeTitle else '',
         _formatAmount(purchase.price, purchase.currency),
         _formatAmount(purchase.refundedAmount, purchase.currency),
         purchase.currency,
         _formatInstant(purchase.expiresAt),
         _formatInstant(purchase.refundedAt),
         purchase.status.wireName,
+        purchase.item.wireName,
+        if (purchase.item == PurchasedItem.volume) purchase.volumeTitle else '',
       ]),
     );
   }

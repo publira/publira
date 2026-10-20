@@ -5083,7 +5083,8 @@
       "time_left_hours": "剩余{$hours :integer}小时",
       "time_left_hours_minutes": "剩余{$hours :integer}小时{$minutes :integer}分钟",
       "time_left_minutes": "剩余{$minutes :integer}分钟",
-      "title": "已购买"
+      "title": "已购买",
+      "series_bundle_title": "剩余的{$count :integer}章"
     },
     "ranking": {
       "empty": "尚未生成排行榜。",
@@ -5175,7 +5176,15 @@
       "status_completed": "已完结",
       "status_hiatus": "休载中",
       "status_ongoing": "连载中",
-      "title": "系列"
+      "title": "系列",
+      "checkout_success": "我们正在确认您的付款。购买生效后即可打开这些章节。",
+      "remainder_buy": "以{$price}购买剩余的{$count :integer}章",
+      "remainder_discount": "逐章购买需{$list_price}，现优惠{$percent}",
+      "remainder_failed": "无法显示剩余章节的价格",
+      "volume_buy": "购买本卷",
+      "volume_owned": "本卷的所有章节均已购买",
+      "volume_ownership_failed": "无法确认您已拥有的卷",
+      "volumes_heading": "卷"
     },
     "sign_in": {
       "continue_with_apple": "通过Apple继续",

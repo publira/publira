@@ -320,6 +320,64 @@ void main() {
       );
     });
 
+    testWidgets(
+      'names a volume and the rest of a series, and opens the series',
+      (tester) async {
+        purchases.pages = [
+          [
+            MyPurchase(
+              id: 'purchase-volume',
+              seriesId: series.id,
+              seriesTitle: series.title,
+              item: PurchasedItem.volume,
+              volumeTitle: 'Volume 1',
+              price: 350,
+              currency: 'JPY',
+              isActive: true,
+            ),
+            MyPurchase(
+              id: 'purchase-rest',
+              seriesId: series.id,
+              seriesTitle: series.title,
+              item: PurchasedItem.remainingEpisodes,
+              remainingEpisodeCount: 4,
+              price: 810,
+              currency: 'JPY',
+              isActive: true,
+            ),
+          ],
+        ];
+        await openPurchases(tester);
+        final volume = find.byKey(
+          const ValueKey('purchase-row-purchase-volume'),
+        );
+        await pumpUntilFound(tester, volume);
+
+        expect(
+          find.descendant(of: volume, matching: find.text('Volume 1')),
+          findsOne,
+        );
+        expect(
+          find.descendant(
+            of: find.byKey(const ValueKey('purchase-row-purchase-rest')),
+            matching: find.text('Remaining episodes (4)'),
+          ),
+          findsOne,
+        );
+
+        await tester.tap(volume);
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('series-detail-body')),
+        );
+
+        expect(
+          router.state.uri.path,
+          AppTab.account.locate(AppRoutes.seriesDetailPath(series.id)),
+        );
+      },
+    );
+
     testWidgets('reads the page under it as the reader nears the end', (
       tester,
     ) async {
@@ -539,11 +597,11 @@ void main() {
       final episode = '${series.title},${series.episodeCount}';
       expect(lines.sublist(1), [
         'purchase-active,2026-01-10T12:00:00Z,$episode,Still open,'
-            '500,0,JPY,,,active',
+            '500,0,JPY,,,active,episode,',
         'purchase-refunded,2026-01-10T12:00:00Z,$episode,Paid back,'
-            '500,500,JPY,,2026-01-11T12:00:00Z,refunded',
+            '500,500,JPY,,2026-01-11T12:00:00Z,refunded,episode,',
         'purchase-canceled,2026-01-10T12:00:00Z,$episode,Disputed,'
-            '500,0,JPY,,,canceled',
+            '500,0,JPY,,,canceled,episode,',
         '',
       ]);
       // The whole history, read in the largest pages the API answers rather

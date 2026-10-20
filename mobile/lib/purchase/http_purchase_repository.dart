@@ -76,11 +76,13 @@ class HttpPurchaseRepository implements PurchaseRepository {
       : AppPurchaseRoute.externalCheckout;
 
   @override
-  Future<Map<String, EpisodeAccess>> seriesEpisodeAccess(
+  Future<SeriesPurchaseState> seriesEpisodeAccess(
     String seriesInternalId,
   ) async {
     try {
       final tenantId = await _tenants.resolve();
+      // A signed-in reader is answered for what they hold, and a guest for
+      // what a reader holding nothing would be offered.
       final body = await pb.CatalogServiceApi(_client).getSeriesEpisodeAccess(
         ConnectCallContext(tenantId: tenantId),
         pb.GetSeriesEpisodeAccessRequest(
@@ -89,13 +91,30 @@ class HttpPurchaseRepository implements PurchaseRepository {
           tenant: pb.TenantContext(tenantId: tenantId),
         ),
       );
-      return Map.unmodifiable({
-        for (final item in body.episodes)
-          // The wire format omits an empty string, so a row that names no
-          // episode is one without the key.
-          if (item.episodePublicId.isNotEmpty)
-            item.episodePublicId: EpisodeAccess.fromWire(item.access),
-      });
+      final remainder = body.remainder;
+      return SeriesPurchaseState(
+        access: Map.unmodifiable({
+          for (final item in body.episodes)
+            // The wire format omits an empty string, so a row that names no
+            // episode is one without the key.
+            if (item.episodePublicId.isNotEmpty)
+              item.episodePublicId: EpisodeAccess.fromWire(item.access),
+        }),
+        ownedEpisodeIds: Set.unmodifiable({
+          for (final item in body.episodes)
+            if (item.owned && item.episodeId.isNotEmpty) item.episodeId,
+        }),
+        // The wire format omits the unset message, which is how a series with
+        // nothing left to sell arrives.
+        remainder: body.hasRemainder() && remainder.episodeCount > 0
+            ? SeriesRemainderOffer(
+                episodeCount: remainder.episodeCount,
+                listPrice: remainder.listPrice,
+                discountPercent: remainder.discountPercent,
+                price: remainder.price,
+              )
+            : null,
+      );
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
@@ -159,17 +178,68 @@ class HttpPurchaseRepository implements PurchaseRepository {
           tenant: pb.TenantContext(tenantId: tenantId),
         ),
       );
-      final url = Uri.tryParse(body.checkoutUrl.trim());
-      if (url == null || url.scheme != 'https') {
-        throw const PurchaseFailure(
-          PurchaseFailureKind.unexpected,
-          message: 'checkoutUrl is not an https URL',
-        );
-      }
-      return url;
+      return _checkoutUrl(body.checkoutUrl);
     } on ConnectException catch (error) {
       throw _toFailure(error);
     }
+  }
+
+  @override
+  Future<Uri> startVolumeCheckout(String volumeInternalId) async {
+    // Read once and sent explicitly, so the checkout is started for the reader
+    // who tapped and no one else.
+    final accessToken = _requireAccessToken();
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await pb.PurchaseServiceApi(_client).startVolumeCheckout(
+        ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+        pb.StartVolumeCheckoutRequest(
+          client: pb.StartEpisodeCheckoutRequest_Client.CLIENT_MOBILE,
+          tenant: pb.TenantContext(tenantId: tenantId),
+          volumeId: volumeInternalId,
+        ),
+      );
+      return _checkoutUrl(body.checkoutUrl);
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
+  @override
+  Future<Uri> startSeriesRemainderCheckout(
+    String seriesInternalId, {
+    required String locale,
+  }) async {
+    final accessToken = _requireAccessToken();
+    try {
+      final tenantId = await _tenants.resolve();
+      final body = await pb.PurchaseServiceApi(_client)
+          .startSeriesRemainderCheckout(
+            ConnectCallContext(tenantId: tenantId, accessToken: accessToken),
+            pb.StartSeriesRemainderCheckoutRequest(
+              client: pb.StartEpisodeCheckoutRequest_Client.CLIENT_MOBILE,
+              locale: locale,
+              seriesId: seriesInternalId,
+              tenant: pb.TenantContext(tenantId: tenantId),
+            ),
+          );
+      return _checkoutUrl(body.checkoutUrl);
+    } on ConnectException catch (error) {
+      throw _toFailure(error);
+    }
+  }
+
+  /// The page a checkout answered, which the system browser is handed, so
+  /// nothing but an https URL is.
+  static Uri _checkoutUrl(String raw) {
+    final url = Uri.tryParse(raw.trim());
+    if (url == null || url.scheme != 'https') {
+      throw const PurchaseFailure(
+        PurchaseFailureKind.unexpected,
+        message: 'checkoutUrl is not an https URL',
+      );
+    }
+    return url;
   }
 
   @override
@@ -282,7 +352,7 @@ class HttpPurchaseRepository implements PurchaseRepository {
         purchases: List.unmodifiable(
           body.purchases
               .map(_purchase)
-              // A row naming no episode to open is a row no screen could
+              // A row naming nothing to open is a row no screen could
               // render.
               .nonNulls,
         ),
@@ -293,12 +363,21 @@ class HttpPurchaseRepository implements PurchaseRepository {
     }
   }
 
+  /// A purchase names exactly one of an episode, a volume, and the rest of a
+  /// series. One naming none reads as an episode, which is what every
+  /// purchase was before the other two existed.
   MyPurchase? _purchase(pb.MyPurchase purchase) {
     final episode = purchase.episode;
     final series = purchase.series;
     final episodeId = episode.publicId.trim();
     final seriesId = series.publicId.trim();
-    if (episodeId.isEmpty || seriesId.isEmpty) {
+    final item = purchase.hasVolume()
+        ? PurchasedItem.volume
+        : purchase.hasSeriesBundle()
+        ? PurchasedItem.remainingEpisodes
+        : PurchasedItem.episode;
+    if (seriesId.isEmpty ||
+        (item == PurchasedItem.episode && episodeId.isEmpty)) {
       return null;
     }
     return MyPurchase(
@@ -306,10 +385,13 @@ class HttpPurchaseRepository implements PurchaseRepository {
       seriesId: seriesId,
       seriesTitle: series.title.trim(),
       seriesLocale: series.locale.trim(),
-      episodeId: episodeId,
-      episodeTitle: episode.title.trim(),
-      episodeLocale: episode.locale.trim(),
-      orderIndex: episode.orderIndex,
+      item: item,
+      episodeId: item == PurchasedItem.episode ? episodeId : '',
+      episodeTitle: item == PurchasedItem.episode ? episode.title.trim() : '',
+      episodeLocale: item == PurchasedItem.episode ? episode.locale.trim() : '',
+      orderIndex: item == PurchasedItem.episode ? episode.orderIndex : 0,
+      volumeTitle: purchase.volume.title.trim(),
+      remainingEpisodeCount: purchase.seriesBundle.episodeCount,
       price: purchase.priceAtPurchase,
       currency: purchase.currency.trim(),
       isActive: purchase.isActive,

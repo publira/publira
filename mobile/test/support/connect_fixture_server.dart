@@ -604,6 +604,19 @@ class ConnectFixtureServer {
   /// the same way. An episode missing here answers from [episodes].
   Map<String, pb.GetEpisodeDetailResponse> entitledEpisodes;
 
+  /// Public ids of the episodes `GetSeriesEpisodeAccess` answers the
+  /// signed-in member as owning.
+  Set<String> ownedEpisodes = const {};
+
+  /// What `GetSeriesEpisodeAccess` quotes the rest of a series at, keyed by
+  /// series public id. A series missing here quotes nothing.
+  Map<String, pb.SeriesRemainderOffer> seriesRemainders = const {};
+
+  /// The Connect code `StartVolumeCheckout` and
+  /// `StartSeriesRemainderCheckout` refuse a signed-in member with, or `null`
+  /// to answer them.
+  String? bundleCheckoutRefusal;
+
   /// What `GetMyTicketState` answers the signed-in member on whichever series
   /// is asked about. Empty is a ticket ready now and none open.
   pb.GetMyTicketStateResponse ticketState = pb.GetMyTicketStateResponse();
@@ -2133,6 +2146,28 @@ class ConnectFixtureServer {
       return;
     }
 
+    if (path.endsWith('/StartVolumeCheckout')) {
+      final body = recorded.decode(pb.StartVolumeCheckoutRequest());
+      await _writeBundleCheckout(
+        request,
+        () => pb.StartVolumeCheckoutResponse(
+          checkoutUrl: checkoutUrlFor(body.volumeId).toString(),
+        ),
+      );
+      return;
+    }
+
+    if (path.endsWith('/StartSeriesRemainderCheckout')) {
+      final body = recorded.decode(pb.StartSeriesRemainderCheckoutRequest());
+      await _writeBundleCheckout(
+        request,
+        () => pb.StartSeriesRemainderCheckoutResponse(
+          checkoutUrl: checkoutUrlFor(body.seriesId).toString(),
+        ),
+      );
+      return;
+    }
+
     if (path.endsWith('/StartStorePurchase')) {
       recorded.decode(pb.StartStorePurchaseRequest());
       await _writeStorePurchase(request, start: true);
@@ -2480,10 +2515,34 @@ class ConnectFixtureServer {
                     ) ??
                     accessOf(episodes[episode.publicId]) ??
                     pb.EpisodeAccess.EPISODE_ACCESS_FREE,
+                owned: authorized && ownedEpisodes.contains(episode.publicId),
               ),
         ],
+        remainder: seriesRemainders[seriesPublicId],
       ),
     );
+  }
+
+  /// A checkout of a volume or of the rest of a series for the signed-in
+  /// member, refused with [bundleCheckoutRefusal] when a test sets one.
+  Future<void> _writeBundleCheckout(
+    HttpRequest request,
+    GeneratedMessage Function() answer,
+  ) async {
+    if (!await _writeUnlessAuthorized(request)) {
+      return;
+    }
+    final refusal = bundleCheckoutRefusal;
+    if (refusal != null) {
+      await _writeError(
+        request,
+        HttpStatus.badRequest,
+        refusal,
+        'checkout refused',
+      );
+      return;
+    }
+    await _writeMessage(request, answer());
   }
 
   /// A checkout for the signed-in member, refused the way the API refuses
