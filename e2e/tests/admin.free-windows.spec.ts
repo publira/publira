@@ -4,6 +4,7 @@ import type { Locator, Page } from "@playwright/test";
 import {
   createEpisodeViaUi,
   createSeriesViaUi,
+  expectPeriodInputsAligned,
   signInAsSeedAdmin,
 } from "../src/admin";
 import { deleteSeriesByPublicIds } from "../src/db";
@@ -49,6 +50,7 @@ const fillPeriod = async (
     period.startsAt
   );
   await fillDateTime(scope.getByLabel("Ends", { exact: true }), period.endsAt);
+  await expectPeriodInputsAligned(scope);
 };
 
 /**
