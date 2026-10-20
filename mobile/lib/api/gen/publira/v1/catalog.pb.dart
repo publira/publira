@@ -5631,8 +5631,10 @@ class CampaignBanner extends $pb.GeneratedMessage {
   @$pb.TagNumber(2)
   void clearLinkUrl() => $_clearField(2);
 
-  /// The image, stored the way an eye-catch is: every ratio at several widths,
-  /// so a client picks the ratio its band is drawn in.
+  /// The image, stored the way an eye-catch is: each ratio at several widths.
+  /// The landscape ratio, the one the band is drawn in, is always among them;
+  /// another ratio is among them only once the console has uploaded an image
+  /// for it.
   @$pb.TagNumber(3)
   $core.String get imageUpdatedAt => $_getSZ(2);
   @$pb.TagNumber(3)

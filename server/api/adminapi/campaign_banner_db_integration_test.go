@@ -14,6 +14,7 @@ import (
 	"github.com/publira/publira/server/internal/campaignbanners"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
+	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -30,7 +31,7 @@ func openWindow() (string, string) {
 }
 
 // createCampaignBanner creates a banner over a window open now, with the
-// smallest image every ratio accepts.
+// smallest image a banner accepts: artwork made for the band.
 func createCampaignBanner(
 	t *testing.T,
 	client publiraadminv1connect.AdminCampaignBannerServiceClient,
@@ -47,7 +48,7 @@ func createCampaignBanner(
 		StartsAt:         startsAt,
 		EndsAt:           endsAt,
 		Published:        published,
-		ImageData:        aspectJPEG(t, 2400, 3200),
+		ImageData:        aspectJPEG(t, 1600, 900),
 		ImageContentType: "image/jpeg",
 	})
 	if err != nil {
@@ -68,6 +69,42 @@ func listCampaignBanners(t *testing.T, client publiraadminv1connect.AdminCampaig
 	return listed.Banners
 }
 
+// campaignBannerVariantCount is how many variants a banner's own image is
+// stored as: the landscape cut at each of the widths it is delivered at.
+const campaignBannerVariantCount = 3
+
+// requireLandscapeCut fails unless variants are a banner image's landscape
+// cut at every width it is delivered at, each in that ratio.
+func requireLandscapeCut(t *testing.T, variants []*publirattypesv1.SeriesEyeCatchVariant) {
+	t.Helper()
+
+	widths := make([]int32, 0, len(variants))
+	for _, variant := range variants {
+		if variant.VariantType != "landscape" || variant.Width*9 != variant.Height*16 {
+			t.Fatalf("variant = %v, want a 16:9 landscape cut", variant)
+		}
+		if !strings.HasPrefix(variant.Url, "/images/campaign-banners/") {
+			t.Fatalf("variant url = %q, want it under /images/campaign-banners/", variant.Url)
+		}
+		widths = append(widths, variant.Width)
+	}
+	slices.Sort(widths)
+	if want := []int32{800, 1200, 1600}; !slices.Equal(widths, want) {
+		t.Fatalf("landscape widths = %v, want %v", widths, want)
+	}
+}
+
+// campaignBannerRatioURLs lists the routes a banner serves one ratio at.
+func campaignBannerRatioURLs(banner *publiraadminv1.AdminCampaignBanner, ratio string) []string {
+	urls := make([]string, 0)
+	for _, variant := range banner.ImageVariants {
+		if variant.VariantType == ratio {
+			urls = append(urls, variant.Url)
+		}
+	}
+	return urls
+}
+
 func campaignBannerLinks(banners []*publiraadminv1.AdminCampaignBanner) []string {
 	links := make([]string, 0, len(banners))
 	for _, banner := range banners {
@@ -76,7 +113,7 @@ func campaignBannerLinks(banners []*publiraadminv1.AdminCampaignBanner) []string
 	return links
 }
 
-func TestDBCreateCampaignBannerStoresTheBannerAndEveryRatioOfItsImage(t *testing.T) {
+func TestDBCreateCampaignBannerStoresTheBannerAndTheLandscapeCutOfItsImage(t *testing.T) {
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.campaignBannerClient()
@@ -89,7 +126,7 @@ func TestDBCreateCampaignBannerStoresTheBannerAndEveryRatioOfItsImage(t *testing
 		StartsAt:         startsAt,
 		EndsAt:           endsAt,
 		Published:        true,
-		ImageData:        aspectJPEG(t, 2400, 3200),
+		ImageData:        aspectJPEG(t, 1600, 900),
 		ImageContentType: "image/jpeg",
 	})
 	if err != nil {
@@ -111,18 +148,11 @@ func TestDBCreateCampaignBannerStoresTheBannerAndEveryRatioOfItsImage(t *testing
 	if banner.PublicId == "" || banner.ImageUpdatedAt == "" {
 		t.Fatalf("banner = %v, want a public id and an image", banner)
 	}
-	if got := len(banner.ImageVariants); got != eyeCatchVariantCount {
-		t.Fatalf("image variants = %d, want %d", got, eyeCatchVariantCount)
-	}
-	for _, variant := range banner.ImageVariants {
-		if !strings.HasPrefix(variant.Url, "/images/campaign-banners/") {
-			t.Fatalf("variant url = %q, want it under /images/campaign-banners/", variant.Url)
-		}
-	}
+	requireLandscapeCut(t, banner.ImageVariants)
 	if count := env.countRows(t,
 		"SELECT count(*) FROM campaign_banner_image_variants WHERE tenant_id = $1", tenant.Tenant.ID,
-	); count != eyeCatchVariantCount {
-		t.Fatalf("campaign_banner_image_variants rows = %d, want %d", count, eyeCatchVariantCount)
+	); count != campaignBannerVariantCount {
+		t.Fatalf("campaign_banner_image_variants rows = %d, want %d", count, campaignBannerVariantCount)
 	}
 
 	got, err := client.GetCampaignBanner(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.GetCampaignBannerRequest{
@@ -132,7 +162,7 @@ func TestDBCreateCampaignBannerStoresTheBannerAndEveryRatioOfItsImage(t *testing
 	if err != nil {
 		t.Fatalf("GetCampaignBanner: %v", err)
 	}
-	if got.Banner.LinkUrl != banner.LinkUrl || got.Banner.AltText != banner.AltText || len(got.Banner.ImageVariants) != eyeCatchVariantCount {
+	if got.Banner.LinkUrl != banner.LinkUrl || got.Banner.AltText != banner.AltText || len(got.Banner.ImageVariants) != campaignBannerVariantCount {
 		t.Fatalf("got banner = %v, want the created one", got.Banner)
 	}
 	if listed := listCampaignBanners(t, client, tenant); len(listed) != 1 || listed[0].Id != banner.Id || listed[0].AltText != banner.AltText {
@@ -143,6 +173,42 @@ func TestDBCreateCampaignBannerStoresTheBannerAndEveryRatioOfItsImage(t *testing
 		tenant.Tenant.ID, banner.PublicId,
 	); count != 1 {
 		t.Fatalf("audit entries for the create = %d, want 1", count)
+	}
+}
+
+// The band is drawn from the landscape cut alone, so an image is held to that
+// cut's minimum whatever its shape: artwork made for the band is taken as it
+// is, and anything larger is cut from its centre.
+func TestDBCreateCampaignBannerTakesAnyImageItsLandscapeCutFits(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.campaignBannerClient()
+
+	for _, tc := range []struct {
+		name        string
+		data        []byte
+		contentType string
+	}{
+		{name: "a 1600x900 JPEG", data: aspectJPEG(t, 1600, 900), contentType: "image/jpeg"},
+		{name: "a 1600x900 PNG", data: halvedAspectPNG(t, 1600, 900), contentType: "image/png"},
+		{name: "a 1920x1080 JPEG", data: aspectJPEG(t, 1920, 1080), contentType: "image/jpeg"},
+		{name: "a portrait JPEG whose centre is wide enough", data: aspectJPEG(t, 2400, 3200), contentType: "image/jpeg"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			startsAt, endsAt := openWindow()
+			created, err := client.CreateCampaignBanner(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateCampaignBannerRequest{
+				Tenant:           tenant.tenantContext(),
+				LinkUrl:          "/series",
+				StartsAt:         startsAt,
+				EndsAt:           endsAt,
+				ImageData:        tc.data,
+				ImageContentType: tc.contentType,
+			})
+			if err != nil {
+				t.Fatalf("CreateCampaignBanner: %v", err)
+			}
+			requireLandscapeCut(t, created.Banner.ImageVariants)
+		})
 	}
 }
 
@@ -160,7 +226,7 @@ func TestDBCreateCampaignBannerRefusesWhatWouldShowNothingOrLeadNowhere(t *testi
 			StartsAt:         startsAt,
 			EndsAt:           endsAt,
 			Published:        true,
-			ImageData:        aspectJPEG(t, 2400, 3200),
+			ImageData:        aspectJPEG(t, 1600, 900),
 			ImageContentType: "image/jpeg",
 		}
 	}
@@ -170,7 +236,8 @@ func TestDBCreateCampaignBannerRefusesWhatWouldShowNothingOrLeadNowhere(t *testi
 		field  string
 	}{
 		{name: "no image", change: func(r *publiraadminv1.CreateCampaignBannerRequest) { r.ImageData = nil }, field: "image_data"},
-		{name: "an image too small to cut", change: func(r *publiraadminv1.CreateCampaignBannerRequest) { r.ImageData = aspectJPEG(t, 600, 800) }, field: "image_data"},
+		{name: "an image below the landscape minimum", change: func(r *publiraadminv1.CreateCampaignBannerRequest) { r.ImageData = aspectJPEG(t, 1599, 900) }, field: "image_data"},
+		{name: "a portrait image whose landscape cut is too small", change: func(r *publiraadminv1.CreateCampaignBannerRequest) { r.ImageData = aspectJPEG(t, 1200, 1600) }, field: "image_data"},
 		{name: "no link", change: func(r *publiraadminv1.CreateCampaignBannerRequest) { r.LinkUrl = "  " }, field: "link_url"},
 		{name: "a protocol-relative link", change: func(r *publiraadminv1.CreateCampaignBannerRequest) { r.LinkUrl = "//attacker.example/" }, field: "link_url"},
 		{name: "a backslash link", change: func(r *publiraadminv1.CreateCampaignBannerRequest) { r.LinkUrl = `/\attacker.example/` }, field: "link_url"},
@@ -217,7 +284,7 @@ func TestDBCreateCampaignBannerWhoseImageTheStoreRefusesLeavesNoBanner(t *testin
 		LinkUrl:          "/series",
 		StartsAt:         startsAt,
 		EndsAt:           endsAt,
-		ImageData:        aspectJPEG(t, 2400, 3200),
+		ImageData:        aspectJPEG(t, 1600, 900),
 		ImageContentType: "image/jpeg",
 	})
 	if connect.CodeOf(err) != connect.CodeInternal {
@@ -247,7 +314,7 @@ func TestDBCreateCampaignBannerRefusesATenantAtTheCap(t *testing.T) {
 		LinkUrl:          "/series",
 		StartsAt:         startsAt,
 		EndsAt:           endsAt,
-		ImageData:        aspectJPEG(t, 2400, 3200),
+		ImageData:        aspectJPEG(t, 1600, 900),
 		ImageContentType: "image/jpeg",
 	})
 	if reason := errorInfoReason(t, err); connect.CodeOf(err) != connect.CodeFailedPrecondition || reason != rpcerrors.ReasonCampaignBannerLimit {
@@ -289,6 +356,17 @@ func TestDBUpdateCampaignBannerKeepsTheImageAndReplacesItWhenGivenOne(t *testing
 		t.Fatal("image variants changed on an update that carried no image")
 	}
 
+	// A ratio filled on its own belongs to the image it was filled on, so it
+	// goes when the whole image is replaced.
+	if _, err := client.UploadCampaignBannerAspectImage(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UploadCampaignBannerAspectImageRequest{
+		Tenant:           tenant.tenantContext(),
+		CampaignBannerId: created.Id,
+		VariantType:      "portrait",
+		ImageData:        aspectJPEG(t, 1200, 1600),
+		ImageContentType: "image/jpeg",
+	}); err != nil {
+		t.Fatalf("UploadCampaignBannerAspectImage(portrait): %v", err)
+	}
 	replaced, err := client.UpdateCampaignBanner(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UpdateCampaignBannerRequest{
 		Tenant:           tenant.tenantContext(),
 		CampaignBannerId: created.Id,
@@ -296,15 +374,13 @@ func TestDBUpdateCampaignBannerKeepsTheImageAndReplacesItWhenGivenOne(t *testing
 		StartsAt:         banner.StartsAt,
 		EndsAt:           banner.EndsAt,
 		Published:        true,
-		ImageData:        aspectJPEG(t, 2400, 3200),
+		ImageData:        aspectJPEG(t, 1920, 1080),
 		ImageContentType: "image/jpeg",
 	})
 	if err != nil {
 		t.Fatalf("UpdateCampaignBanner with an image: %v", err)
 	}
-	if got := len(replaced.Banner.ImageVariants); got != eyeCatchVariantCount {
-		t.Fatalf("variants after the replacement = %d, want %d", got, eyeCatchVariantCount)
-	}
+	requireLandscapeCut(t, replaced.Banner.ImageVariants)
 	if slices.Equal(eyeCatchPaths(t, variantURLs(replaced.Banner.ImageVariants)), eyeCatchPaths(t, variantURLs(created.ImageVariants))) {
 		t.Fatal("image routes unchanged after the replacement, want the new image's")
 	}
@@ -467,7 +543,7 @@ func TestDBReorderCampaignBannersWritesTheOrderAndRefusesAStaleOne(t *testing.T)
 		t.Fatalf("listed after the reorder = %v, want %v", got, want)
 	}
 	for _, banner := range reordered.Banners {
-		if len(banner.ImageVariants) != eyeCatchVariantCount {
+		if len(banner.ImageVariants) != campaignBannerVariantCount {
 			t.Fatalf("reordered banner %s carries %d variants, want its image", banner.LinkUrl, len(banner.ImageVariants))
 		}
 	}
@@ -546,41 +622,47 @@ func TestDBCampaignBannerOfAnotherTenantIsNotFound(t *testing.T) {
 	}
 }
 
+// A banner starts with its landscape cut alone, so an upload for another
+// ratio fills that ratio, and one for a ratio the banner holds replaces it;
+// either way the other ratios keep what they had.
 func TestDBUploadCampaignBannerAspectImageReplacesOnlyThatRatio(t *testing.T) {
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
 	client := env.campaignBannerClient()
 
 	created := createCampaignBanner(t, client, tenant, "/series", true)
-	uploaded, err := client.UploadCampaignBannerAspectImage(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UploadCampaignBannerAspectImageRequest{
-		Tenant:           tenant.tenantContext(),
-		CampaignBannerId: created.Id,
-		VariantType:      "landscape",
-		ImageData:        aspectJPEG(t, 1600, 900),
-		ImageContentType: "image/jpeg",
-	})
-	if err != nil {
-		t.Fatalf("UploadCampaignBannerAspectImage: %v", err)
-	}
-	if got := len(uploaded.Banner.ImageVariants); got != eyeCatchVariantCount {
-		t.Fatalf("variants after replacing landscape = %d, want %d", got, eyeCatchVariantCount)
-	}
-	ratioURLs := func(banner *publiraadminv1.AdminCampaignBanner, ratio string) []string {
-		urls := make([]string, 0)
-		for _, variant := range banner.ImageVariants {
-			if variant.VariantType == ratio {
-				urls = append(urls, variant.Url)
-			}
+	upload := func(ratio string, data []byte) *publiraadminv1.AdminCampaignBanner {
+		t.Helper()
+		uploaded, err := client.UploadCampaignBannerAspectImage(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.UploadCampaignBannerAspectImageRequest{
+			Tenant:           tenant.tenantContext(),
+			CampaignBannerId: created.Id,
+			VariantType:      ratio,
+			ImageData:        data,
+			ImageContentType: "image/jpeg",
+		})
+		if err != nil {
+			t.Fatalf("UploadCampaignBannerAspectImage(%s): %v", ratio, err)
 		}
-		return urls
+		return uploaded.Banner
 	}
-	if slices.Equal(ratioURLs(uploaded.Banner, "landscape"), ratioURLs(created, "landscape")) {
+
+	filled := upload("portrait", aspectJPEG(t, 1200, 1600))
+	if got := len(campaignBannerRatioURLs(filled, "portrait")); got != 3 {
+		t.Fatalf("portrait variants after filling it = %d, want 3", got)
+	}
+	if got, want := campaignBannerRatioURLs(filled, "landscape"), campaignBannerRatioURLs(created, "landscape"); !slices.Equal(got, want) {
+		t.Fatalf("landscape urls = %v, want the urls from before the portrait upload %v", got, want)
+	}
+
+	replaced := upload("landscape", aspectJPEG(t, 1600, 900))
+	if got := len(replaced.ImageVariants); got != 2*campaignBannerVariantCount {
+		t.Fatalf("variants after replacing landscape = %d, want %d", got, 2*campaignBannerVariantCount)
+	}
+	if slices.Equal(campaignBannerRatioURLs(replaced, "landscape"), campaignBannerRatioURLs(created, "landscape")) {
 		t.Fatal("landscape urls unchanged, want the replaced ratio's new versions")
 	}
-	for _, ratio := range []string{"portrait", "square", "og"} {
-		if got, want := ratioURLs(uploaded.Banner, ratio), ratioURLs(created, ratio); !slices.Equal(got, want) {
-			t.Fatalf("%s urls = %v, want the urls from before the replacement %v", ratio, got, want)
-		}
+	if got, want := campaignBannerRatioURLs(replaced, "portrait"), campaignBannerRatioURLs(filled, "portrait"); !slices.Equal(got, want) {
+		t.Fatalf("portrait urls = %v, want the urls from before the landscape upload %v", got, want)
 	}
 	if count := env.countRows(t,
 		"SELECT count(*) FROM audit_logs WHERE tenant_id = $1 AND action = 'campaign_banner_aspect_image_uploaded' AND target_id = $2",

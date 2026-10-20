@@ -42,7 +42,10 @@ type AdminCampaignBanner struct {
 	// Whether the banner may show at all. An unpublished banner is never in the
 	// public answer, whatever its window.
 	Published bool `protobuf:"varint,6,opt,name=published,proto3" json:"published,omitempty"`
-	// The image, stored the way an eye-catch is: every ratio at several widths.
+	// The image, stored the way an eye-catch is: each ratio at several widths.
+	// The banner's own image fills the landscape ratio, the one the band is
+	// drawn in; another ratio holds an image only once
+	// UploadCampaignBannerAspectImage has given it one.
 	ImageUpdatedAt string                      `protobuf:"bytes,7,opt,name=image_updated_at,json=imageUpdatedAt,proto3" json:"image_updated_at,omitempty"`
 	ImageVariants  []*v1.SeriesEyeCatchVariant `protobuf:"bytes,8,rep,name=image_variants,json=imageVariants,proto3" json:"image_variants,omitempty"`
 	CreatedAt      string                      `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
@@ -364,8 +367,10 @@ type CreateCampaignBannerRequest struct {
 	EndsAt    string `protobuf:"bytes,4,opt,name=ends_at,json=endsAt,proto3" json:"ends_at,omitempty"`
 	Published bool   `protobuf:"varint,5,opt,name=published,proto3" json:"published,omitempty"`
 	// Required: a banner with no image would be a band that shows nothing. It
-	// is cropped into every ratio, and UploadCampaignBannerAspectImage replaces
-	// one of them afterwards.
+	// is cut from its centre to the landscape ratio, the one the band is drawn
+	// in, and has to be at least 1600x900 once cut, the largest width that
+	// ratio is delivered at. UploadCampaignBannerAspectImage reframes that cut
+	// or fills another ratio afterwards.
 	ImageData        []byte `protobuf:"bytes,6,opt,name=image_data,json=imageData,proto3" json:"image_data,omitempty"`
 	ImageContentType string `protobuf:"bytes,7,opt,name=image_content_type,json=imageContentType,proto3" json:"image_content_type,omitempty"`
 	// The words drawn into the image, so a screen reader can tell this banner's
@@ -520,7 +525,9 @@ type UpdateCampaignBannerRequest struct {
 	StartsAt  string `protobuf:"bytes,4,opt,name=starts_at,json=startsAt,proto3" json:"starts_at,omitempty"`
 	EndsAt    string `protobuf:"bytes,5,opt,name=ends_at,json=endsAt,proto3" json:"ends_at,omitempty"`
 	Published bool   `protobuf:"varint,6,opt,name=published,proto3" json:"published,omitempty"`
-	// Replaces the whole image. Empty keeps the one the banner has; there is no
+	// Replaces the whole image, held to what CreateCampaignBannerRequest holds
+	// it to. Every ratio UploadCampaignBannerAspectImage filled goes with the
+	// image it replaces. Empty keeps the one the banner has; there is no
 	// clearing it.
 	ImageData        []byte `protobuf:"bytes,7,opt,name=image_data,json=imageData,proto3" json:"image_data,omitempty"`
 	ImageContentType string `protobuf:"bytes,8,opt,name=image_content_type,json=imageContentType,proto3" json:"image_content_type,omitempty"`

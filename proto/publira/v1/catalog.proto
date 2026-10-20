@@ -966,8 +966,10 @@ message CampaignBanner {
   // A path on the tenant's own site ("/series/…"), which the client resolves
   // against the storefront it is showing, or an absolute http(s) URL.
   string link_url = 2;
-  // The image, stored the way an eye-catch is: every ratio at several widths,
-  // so a client picks the ratio its band is drawn in.
+  // The image, stored the way an eye-catch is: each ratio at several widths.
+  // The landscape ratio, the one the band is drawn in, is always among them;
+  // another ratio is among them only once the console has uploaded an image
+  // for it.
   string image_updated_at = 3;
   repeated publira.types.v1.SeriesEyeCatchVariant image_variants = 4;
   // The words drawn into the image, for the name of the banner's link. Empty

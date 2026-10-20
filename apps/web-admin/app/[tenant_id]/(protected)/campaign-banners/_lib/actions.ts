@@ -104,10 +104,10 @@ const toImage = async (file: File | undefined) =>
 
 /**
  * Whether a save that carried a new image came back holding it. The API cuts
- * the upload into every ratio, so an answer without variants, or with the
- * timestamp the form was rendered with, stored something other than what the
- * operator picked — the same check the series, label, and genre cover image
- * forms make before they say the image was saved.
+ * the upload into the landscape ratio, so an answer without variants, or with
+ * the timestamp the form was rendered with, stored something other than what
+ * the operator picked — the same check the series, label, and genre cover
+ * image forms make before they say the image was saved.
  */
 const unconfirmedImageMessage = (
   t: AdminMessageAccessor,

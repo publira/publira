@@ -2,7 +2,7 @@
 title: Campaign banners
 description: Schedule the image banners at the top of the site's top page and the app's catalog, and put them in the order readers see them.
 published: 2026-10-18
-updated: 2026-10-19
+updated: 2026-10-20
 ---
 
 **Campaign banners**, under **Site**, puts a campaign in front of readers who have not gone looking for it: a discount on a series, a new serialization, a fair on another site. A banner is an image that links somewhere, shown for a window you set. The site shows the banners on air at the top of its top page, and the app at the top of its catalog screen.
@@ -15,7 +15,7 @@ A Tenant admin and an Editor can create, change, reorder, and delete banners. An
 
 Choose **New banner** and fill in:
 
-- **Banner image**: a JPEG, PNG, or WebP image of at most 10 MB and at least 2400 × 3200 pixels. See [The image](#the-image).
+- **Banner image**: a JPEG, PNG, or WebP image of at most 10 MB and at least 1600 × 900 pixels. See [The image](#the-image).
 - **Alternative text**: the words drawn into the image, up to 255 characters, such as `Summer sale, up to 50% off through August 31`. A screen reader cannot read lettering in a picture, so it names the banner's link with these words instead. The field is optional, but a banner left without it can only be told apart from the others by where it links.
 - **Link**: where the banner takes a reader who opens it, up to 2048 characters. Start it with `/` for a page of this site, such as `/series/SERIES001` or `/labels/LABEL001`, or with `https://` or `http://` for another site.
 - **Shows from** and **Shows until**: the window the banner is on air, entered in the tenant's time zone, which the note under the two fields names. See [The window](#the-window).
@@ -27,9 +27,9 @@ Choose **Create banner**. The banner opens on its own screen, with a **Details**
 
 ## The image
 
-The site and the app do not show the image as uploaded. Saving it cuts four images of fixed shapes out of it, as a series' cover image is cut, and the **Image** tab shows them under **Aspect ratio images**. The band on the site and in the app is drawn from **Landscape (16:9)** alone, uncropped, so that is the shape to check. The other three are kept with the banner and not shown anywhere.
+The band on the site and in the app is drawn from one shape, **Landscape (16:9)**, uncropped, and the image you upload becomes that shape. Artwork made for the band, such as a 1920 × 1080 image, is kept whole; an image of any other shape is cropped from its centre. The **Image** tab shows the result under **Aspect ratio images**, in the **Landscape (16:9)** slot. The **Portrait (3:4)**, **Square (1:1)**, and **Link preview (1200:630)** slots beside it start empty and are not shown anywhere.
 
-Each shape is cropped from the centre of the image. To frame the band differently, choose **Adjust the frame** on the **Landscape (16:9)** slot, or upload artwork made for the band with **Replace**, which takes an image of at least 1600 × 900 pixels for that shape alone. Uploading a new image under **Cover image** and choosing **Update image** replaces all four shapes. A banner always keeps an image, so there is no removing it. [The cover image](../1-catalog/1-series.md#the-cover-image) of a series describes the slots in full.
+To frame the band differently, choose **Adjust the frame** on the **Landscape (16:9)** slot, or upload other artwork for it with **Replace**, which takes an image of at least 1600 × 900 pixels. Uploading a new image under **Cover image** and choosing **Update image** replaces it too, and empties any other slot that was filled. A banner always keeps an image, so there is no removing it. [The cover image](../1-catalog/1-series.md#the-cover-image) of a series describes the slots in full.
 
 On a phone the band is as wide as the screen, so lettering in the image has to be readable at that size. A new image with different lettering needs its **Alternative text** rewritten on the **Details** tab to match.
 

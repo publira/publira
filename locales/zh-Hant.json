@@ -544,7 +544,7 @@
       "image_updated": "已更新橫幅圖片。",
       "image_variants_missing": "上傳已被接受，但無法確認產生的圖片。請重試。",
       "image_upload_not_reflected": "上傳尚未生效。請重新選擇圖片後重試。",
-      "image_invalid": "請檢查圖片。請選擇不超過10MB、至少2400x3200px的JPEG、PNG或WebP圖片後重試。",
+      "image_invalid": "請檢查圖片。請選擇不超過10MB、至少1600x900px的JPEG、PNG或WebP圖片後重試。",
       "limit_reached": "活動橫幅數量已達上限。請刪除已結束的橫幅後重試。",
       "list_failed": "無法載入活動橫幅。請稍後重試。",
       "save_failed": "無法儲存活動橫幅。請稍後重試。",
@@ -553,7 +553,7 @@
       "reorder_conflict": "橫幅順序已在其他地方被變更。請重新載入頁面後重試。",
       "form": {
         "image": "橫幅圖片",
-        "image_description": "請選擇不超過10MB、至少2400x3200px的JPEG、PNG或WebP圖片。圖片會被裁切為所有比例，之後可以個別替換各比例的圖片。",
+        "image_description": "請選擇不超過10MB、至少1600x900px的JPEG、PNG或WebP圖片。它將成為網站和應用程式顯示的橫式 (16:9) 圖片，比例不同時從中央裁切。",
         "alt_text": "替代文字",
         "alt_text_placeholder": "範例：夏季特賣，8月31日前最高五折",
         "alt_text_description": "請照實輸入圖片中的文字。螢幕閱讀器會用這段文字朗讀橫幅的連結。",
@@ -1134,7 +1134,7 @@
       "delete_current": "刪除目前的封面圖",
       "undo_delete": "復原刪除",
       "description": "點擊某個比例的圖片即可取代它。選擇刪除後，圖片將變為未設定。請選擇不超過10MB、尺寸至少為2400x3200px的JPEG、PNG或WebP圖片。",
-      "description_required": "點選變體圖片即可替換。橫幅必須一直有圖片，因此無法刪除。請選擇不超過10MB、至少2400x3200px的JPEG、PNG或WebP圖片。",
+      "description_required": "點選變體圖片即可替換。橫幅必須一直有圖片，因此無法刪除。請選擇不超過10MB、至少1600x900px的JPEG、PNG或WebP圖片。",
       "variants_empty": "尚未新增任何圖片。",
       "variant_alt": "{$aspect}圖片",
       "aspect": {

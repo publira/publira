@@ -66,7 +66,10 @@ export type AdminCampaignBanner = Message<"publira.admin.v1.AdminCampaignBanner"
   published: boolean;
 
   /**
-   * The image, stored the way an eye-catch is: every ratio at several widths.
+   * The image, stored the way an eye-catch is: each ratio at several widths.
+   * The banner's own image fills the landscape ratio, the one the band is
+   * drawn in; another ratio holds an image only once
+   * UploadCampaignBannerAspectImage has given it one.
    *
    * @generated from field: string image_updated_at = 7;
    */
@@ -222,8 +225,10 @@ export type CreateCampaignBannerRequest = Message<"publira.admin.v1.CreateCampai
 
   /**
    * Required: a banner with no image would be a band that shows nothing. It
-   * is cropped into every ratio, and UploadCampaignBannerAspectImage replaces
-   * one of them afterwards.
+   * is cut from its centre to the landscape ratio, the one the band is drawn
+   * in, and has to be at least 1600x900 once cut, the largest width that
+   * ratio is delivered at. UploadCampaignBannerAspectImage reframes that cut
+   * or fills another ratio afterwards.
    *
    * @generated from field: bytes image_data = 6;
    */
@@ -312,7 +317,9 @@ export type UpdateCampaignBannerRequest = Message<"publira.admin.v1.UpdateCampai
   published: boolean;
 
   /**
-   * Replaces the whole image. Empty keeps the one the banner has; there is no
+   * Replaces the whole image, held to what CreateCampaignBannerRequest holds
+   * it to. Every ratio UploadCampaignBannerAspectImage filled goes with the
+   * image it replaces. Empty keeps the one the banner has; there is no
    * clearing it.
    *
    * @generated from field: bytes image_data = 7;
