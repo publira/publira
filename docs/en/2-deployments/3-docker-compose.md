@@ -194,7 +194,7 @@ To try the install on your own computer, without DNS or certificates, use host n
 
 The tenant site answers at `http://comics.localhost`, and the Platform Console, if you turned it on with `PUBLIRA_PLATFORM_APP_URL=http://platform.localhost`, at that address.
 
-If something on your computer already listens on port 80, set `PUBLIRA_EDGE_HTTP_PORT` to another port, such as `8080`, and add it to every address above: the tenant domain you give `setup` is then `comics.localhost:8080`, and the console opens at `http://admin.comics.localhost:8080`. The port is part of the domain whenever browsers reach the install on a port other than 80 or 443, though not of the names the proxy lists.
+The proxy publishes port 443 as well, even while it serves plain HTTP, so `docker compose up` fails to start it when something on your computer already listens on either port. For port 443, set `PUBLIRA_EDGE_HTTPS_PORT` to another free port, such as `8443`; nothing else changes, since the trial never uses it. For port 80, set `PUBLIRA_EDGE_HTTP_PORT` to another port, such as `8080`, and add it to every address above: the tenant domain you give `setup` is then `comics.localhost:8080`, and the console opens at `http://admin.comics.localhost:8080`. The port is part of the domain whenever browsers reach the install on a port other than 80 or 443, though not of the names the proxy lists.
 
 Use this only for trying the install: nothing it sends between your browser and the host is encrypted, and the proxy answers on every interface of your computer, not only to the computer itself.
 
