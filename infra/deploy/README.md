@@ -96,7 +96,7 @@ Each of those connections is a pool of at most `PUBLIRA_DB_MAX_OPEN_CONNS` conne
 
 ## Bringing an install into service
 
-Before the first step, provision the dependency services: a PostgreSQL database with a login that owns it and has `CREATEROLE` — its superuser, or a managed PostgreSQL's administrative login such as Cloud SQL's `postgres` user — which the first two steps connect as through `PUBLIRA_DB_URL`, a Valkey instance, an empty bucket, and an SMTP account. Point the tenant's domain and `admin.<domain>` at the edge.
+Before the first step, provision the dependency services: a PostgreSQL database with a login that owns it and has `CREATEROLE` — its superuser, or a managed PostgreSQL's administrative login such as Cloud SQL's `postgres` user — which the first two steps connect as through `PUBLIRA_DB_URL`, a Valkey instance, an empty bucket, and an SMTP account. Point the tenant's domain and its console host, `admin.<domain>` or the one `setup` is given with `--admin-domain`, at the edge.
 
 1. **Apply the migrations** with the publiractl image of the release being installed:
 
@@ -129,7 +129,7 @@ Before the first step, provision the dependency services: a PostgreSQL database 
 
    Its summary names the tenant site and the tenant console, and prints the administrator's password when it generated one.
 
-5. **Put the edge in front** of `web-storefront`, `web-admin`, and `publira server`, routing the tenant's domain and its console host and terminating TLS for both, as [Edge](../../docs/en/2-deployments/4-edge.md#what-the-edge-has-to-do) states; the sample configurations take the two names in `PUBLIRA_EDGE_SITE_HOSTS` and `PUBLIRA_EDGE_ADMIN_HOSTS`. The administrator signs in to the tenant console at `https://admin.<domain>`.
+5. **Put the edge in front** of `web-storefront`, `web-admin`, and `publira server`, routing the tenant's domain and its console host and terminating TLS for both, as [Edge](../../docs/en/2-deployments/4-edge.md#what-the-edge-has-to-do) states; the sample configurations take the two names in `PUBLIRA_EDGE_SITE_HOSTS` and `PUBLIRA_EDGE_ADMIN_HOSTS`. The administrator signs in to the tenant console at the URL the summary names.
 
 On every later release, run `db migrate` and then `db roles` with that release's publiractl image before its processes start. [Upgrading](../../docs/en/2-deployments/7-upgrading.md) is the full procedure, with the backup before it and what to do when a migration fails.
 

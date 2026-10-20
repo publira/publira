@@ -2,7 +2,7 @@
 title: Upgrading
 description: Bring a running install to a new release, from the backup before it to the processes of the new release serving.
 published: 2026-10-06
-updated: 2026-10-19
+updated: 2026-10-20
 ---
 
 A release can change the database schema its processes expect, so upgrading an install is more than restarting it on new images. The database goes first: the `publiractl` image of the new release brings the schema and the database roles forward, and only then do the processes of the new release start on it. This page goes through that order, how to check each step, and what to do when a migration fails.

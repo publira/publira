@@ -41,7 +41,7 @@ You need:
 - **A checkout of the repository at the release you install**, such as a clone checked out at that release's tag, such as `v0.1.0`. The Compose file is not self-contained: the proxy's `Caddyfile` beside it is a link into `infra/proxy/`, so keep the whole checkout rather than copying `infra/deploy/` out of it. Every command on this page runs from `infra/deploy/`.
 - **Access from the host to `ghcr.io`**, where every release publishes its images. `docker compose` pulls them the first time a command needs them, without signing in, so nothing is built on the host.
 - **An SMTP server**, which `publiractl setup` asks for: its host, port, encryption, and the address mail is sent from, and the user name and password to sign in with, unless it relays without credentials.
-- **DNS** for the tenant's domain and for `admin.<domain>`, both pointing at the host.
+- **DNS** for the tenant's domain and for its console host, `admin.<domain>` or the one you will give it with `--admin-domain`, both pointing at the host.
 - **Ports 80 and 443 open to the internet**, and nothing else on the host listening on either. The proxy answers on both, and the certificate authority checks each host name on one of them before it issues a certificate for it.
 
 ## Write `.env`
@@ -141,7 +141,7 @@ For example, to run both:
 COMPOSE_PROFILES=web-platform,email-renderer
 ```
 
-`docker compose` does not stop on an empty `PUBLIRA_WEB_PLATFORM_AUTH_SECRET`, since it only matters when the profile runs, but no operator can sign in to the Platform Console without it, so keep the value `env generate` wrote. Its host name also needs DNS pointing at the host, and the proxy obtains its certificate with the others.
+`docker compose` does not stop on an empty `PUBLIRA_WEB_PLATFORM_AUTH_SECRET`, since it only matters when the profile runs, but no operator can sign in to the Platform Console without it, so keep the value `env generate` wrote. Its host name also needs DNS pointing at the host, and with `PUBLIRA_EDGE_ACME_EMAIL` set the proxy obtains its certificate with the others.
 
 You can choose these now or later. To turn one on in an install that is already running, add it to `COMPOSE_PROFILES`, set its variables, and run `docker compose up -d` again: it starts the new process and restarts the ones whose variables changed. What each process does once it runs is in [Turning on the optional processes](./2-installing.md#turning-on-the-optional-processes).
 
@@ -161,7 +161,7 @@ The first command pulls the images it needs, starts PostgreSQL and RustFS, and w
 2. It creates the bucket, named `publira`, in RustFS, and saves it with the RustFS credential from `.env` once a test of it has passed.
 3. It asks on the terminal for everything else: the platform's default locale, time zone, and currency, the SMTP settings, whether to set up Web Push, the tenant's name and domain, and its first administrator. [Set the install up](./2-installing.md#4-set-the-install-up) describes each step.
 
-When it asks for the tenant site domain, give the domain you listed in `PUBLIRA_EDGE_SITE_HOSTS`, such as `comics.example.com`. The console host defaults to `admin.<domain>`, the name you listed in `PUBLIRA_EDGE_ADMIN_HOSTS`.
+When it asks for the tenant site domain, give the domain you listed in `PUBLIRA_EDGE_SITE_HOSTS`, such as `comics.example.com`. When it asks for the tenant console domain, leave it blank if you listed `admin.<domain>` in `PUBLIRA_EDGE_ADMIN_HOSTS`, and give the name you listed otherwise.
 
 The summary at the end names the tenant site and the tenant console, and prints the administrator's password when `setup` generated one. That is the only place it appears, so keep it before you close the terminal.
 
@@ -176,11 +176,11 @@ docker compose ps
 
 `docker compose ps` lists every service of the install as running; `publiractl` and `setup` are not among them, since they only ever run for one command. A process that keeps restarting says why in `docker compose logs <service>`.
 
-The proxy requests the certificates as it starts, and `docker compose logs proxy` prints `certificate obtained successfully` once for each host name. A name it could not get one for is logged as `could not get certificate from issuer`, with the certificate authority's reason, most often DNS that does not point at the host yet or a port closed to the internet. The proxy keeps retrying on its own, so fixing the cause is enough.
+With `PUBLIRA_EDGE_ACME_EMAIL` set, the proxy requests the certificates as it starts, and `docker compose logs proxy` prints `certificate obtained successfully` once for each host name. A name it could not get one for is logged as `could not get certificate from issuer`, with the certificate authority's reason, most often DNS that does not point at the host yet or a port closed to the internet. The proxy keeps retrying on its own, so fixing the cause is enough.
 
 ### 3. Sign in
 
-Open the tenant console URL the `setup` summary printed, `https://admin.<domain>`, and sign in with the administrator's email address and password. The tenant console opens on the tenant `setup` created, and the tenant's public site answers at `https://<domain>`.
+Open the tenant console URL the `setup` summary printed, `https://admin.<domain>` or the console host you gave it, and sign in with the administrator's email address and password. The tenant console opens on the tenant `setup` created, and the tenant's public site answers at `https://<domain>`.
 
 If you turned on the Platform Console, open `PUBLIRA_PLATFORM_APP_URL` and create its first operator on the setup screen. Its accounts are separate from the tenant administrator's.
 
@@ -216,7 +216,7 @@ When the install outgrows one host, the same processes run against a managed Pos
 
 ## Next steps
 
-When you add a tenant, add its domain and its console host to the host lists in `.env`, and run `docker compose up -d proxy`: the proxy routes the two names and obtains their certificates. [Adding a tenant](./4-edge.md#adding-a-tenant) lists the order, DNS first.
+When you add a tenant, add its domain and its console host to the host lists in `.env`, and run `docker compose up -d proxy`: the proxy routes the two names and, with `PUBLIRA_EDGE_ACME_EMAIL` set, obtains their certificates. [Adding a tenant](./4-edge.md#adding-a-tenant) lists the order, DNS first.
 
 On every later release, [Upgrading](./7-upgrading.md#on-the-docker-compose-install) takes the install to it: checking out the release, the backup, the migrations, and restarting on the new images.
 
