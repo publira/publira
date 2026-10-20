@@ -45,6 +45,10 @@ const buyButton = () =>
 const rentButton = () =>
   screen.getByRole("button", { name: "storefront.episode.gate.rent_for" });
 
+/** The badge that says until when a campaign runs. */
+const campaignEnd = () =>
+  screen.queryByText("storefront.common.campaign_until");
+
 /** The sale a checkout button's form sends. */
 const kindOf = (button: HTMLElement) =>
   button.closest("form")?.querySelector<HTMLInputElement>('input[name="kind"]')
@@ -398,6 +402,86 @@ describe("EpisodeAccessGate", () => {
           name: "storefront.episode.gate.rent_for",
         })
       ).toBeNull();
+    });
+  });
+
+  describe("an episode under a campaign", () => {
+    /** 23:59 on Sunday 11 October in UTC. */
+    const campaign = { endsAt: "2026-10-11T23:59:00Z", price: 299 };
+    const onCampaign = { ...props, acceptsPayments: true, campaign };
+
+    it("Quote the campaign price over the actions, the regular one struck through, and until when", () => {
+      const { container } = render(<EpisodeAccessGate {...onCampaign} />);
+
+      expect(screen.getByText("$2.99")).toBeDefined();
+      expect(container.querySelector("s")?.textContent).toContain("$4.99");
+      const end = campaignEnd();
+      expect(end?.closest("time")?.getAttribute("datetime")).toBe(
+        campaign.endsAt
+      );
+      expect(JSON.parse(end?.dataset.values ?? "{}")).toEqual({
+        date: "Sun, Oct 11, 11:59 PM",
+      });
+    });
+
+    it("Name the campaign price on the button that buys the permanent copy", () => {
+      render(<EpisodeAccessGate {...onCampaign} />);
+
+      expect(kindOf(buyButton())).toBe("purchase");
+      expect(valuesOf(buyButton())).toEqual({ price: "$2.99" });
+      expect(
+        screen.queryByRole("button", {
+          name: "storefront.episode.gate.purchase",
+        })
+      ).toBeNull();
+    });
+
+    it("Leave the rental at its own price", () => {
+      render(
+        <EpisodeAccessGate
+          {...onCampaign}
+          rentalPeriodHours={48}
+          rentalPrice={199}
+        />
+      );
+
+      expect(valuesOf(buyButton())).toEqual({ price: "$2.99" });
+      expect(valuesOf(rentButton())).toEqual({
+        period: "48 hours",
+        price: "$1.99",
+      });
+    });
+
+    it("Quote it to a guest as well", () => {
+      render(<EpisodeAccessGate {...onCampaign} signedIn={false} />);
+
+      expect(campaignEnd()).not.toBeNull();
+      expect(
+        screen.getByRole("link", { name: "storefront.episode.gate.login" })
+      ).toBeDefined();
+    });
+
+    it("Quote no price for an episode sold in the app, where the store sets it", () => {
+      render(
+        <EpisodeAccessGate
+          {...onCampaign}
+          appPayments={{ appStore: true, googlePlay: true }}
+          appStoreUrl="https://apps.apple.com/app/id123"
+          purchaseSurface="app"
+        />
+      );
+
+      expect(campaignEnd()).toBeNull();
+      expect(screen.queryByText("$2.99")).toBeNull();
+    });
+
+    it("Quote nothing and sell the permanent copy plainly while no currency can quote it", () => {
+      render(<EpisodeAccessGate {...onCampaign} currency={null} />);
+
+      expect(campaignEnd()).toBeNull();
+      expect(
+        screen.getByRole("button", { name: "storefront.episode.gate.purchase" })
+      ).toBeDefined();
     });
   });
 

@@ -78,6 +78,7 @@ const renderOffer = async (neighbor?: EpisodeNeighborItem) =>
       sales: { app: true, currency: "JPY", web: true },
       series,
       tenantId: "TENANT_001",
+      timeZone: "Asia/Tokyo",
     })
   );
 
@@ -104,6 +105,20 @@ describe("EpisodeNextEpisodeOffer", () => {
     const link = screen.getByRole("link", { name: /Next episode/u });
     expect(link.textContent).toContain("¥500");
     expect(link.textContent).not.toContain("Free");
+  });
+
+  it("quotes the campaign price open on the next episode beside its own, and until when", async () => {
+    await renderOffer({
+      ...nextEpisode,
+      campaign: { endsAt: "2026-10-11T14:59:00Z", price: 300 },
+      isFree: false,
+      price: 500,
+    });
+
+    const link = screen.getByRole("link", { name: /Next episode/u });
+    expect(link.textContent).toContain("¥300");
+    expect(link.querySelector("s")?.textContent).toContain("¥500");
+    expect(link.textContent).toContain("Sale until Sun, Oct 11, 11:59 PM");
   });
 
   it("says a paid next episode sold in the app alone is sold there, not its price", async () => {

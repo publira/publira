@@ -100,6 +100,7 @@ export const EpisodeBody = async ({
         nextEpisode={nextEpisode}
         previousEpisode={previousEpisode}
         series={series}
+        timeZone={timeZone}
       />
     );
   }
@@ -118,6 +119,7 @@ export const EpisodeBody = async ({
           acceptsPayments={acceptsPayments}
           appPayments={appPayments}
           appStoreUrl={appStoreUrl}
+          campaign={episode.campaign}
           currency={currency}
           episodeId={episode.id}
           episodePublicId={episode.publicId}
@@ -198,6 +200,7 @@ export const EpisodeBody = async ({
             : undefined
         }
         series={series}
+        timeZone={timeZone}
       />
     );
   }
@@ -217,6 +220,7 @@ export const EpisodeBody = async ({
         acceptsPayments={acceptsPayments}
         appPayments={appPayments}
         appStoreUrl={appStoreUrl}
+        campaign={episode.campaign}
         currency={currency}
         episodeId={episode.id}
         episodePublicId={episode.publicId}

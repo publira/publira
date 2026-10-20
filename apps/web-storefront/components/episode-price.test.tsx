@@ -121,6 +121,79 @@ describe("EpisodePrice", () => {
     expect(screen.getByText("¥1,200")).toBeDefined();
   });
 
+  describe("an episode under a campaign", () => {
+    const campaign = { endsAt: "2026-10-11T14:59:00Z", price: 800 };
+
+    it("Quote the campaign price beside the regular one, and until when", () => {
+      const { container } = render(
+        <EpisodePrice
+          campaign={campaign}
+          locale="ja"
+          price={1200}
+          purchaseSurface="all"
+          sales={sellsEverywhere}
+          timeZone="Asia/Tokyo"
+        />
+      );
+
+      expect(screen.getByText("￥800")).toBeDefined();
+      expect(container.querySelector("s")?.textContent).toContain("￥1,200");
+      expect(
+        screen.getByText("storefront.common.campaign_until 10月11日(日) 23:59")
+      ).toBeDefined();
+    });
+
+    it("Say until when it is free instead, while a free period is open over the campaign", () => {
+      render(
+        <EpisodePrice
+          campaign={campaign}
+          freeUntil="2026-10-11T14:59:00Z"
+          locale="ja"
+          price={1200}
+          purchaseSurface="all"
+          sales={sellsEverywhere}
+          timeZone="Asia/Tokyo"
+        />
+      );
+
+      expect(
+        screen.getByText("storefront.common.free_until 10月11日(日) 23:59")
+      ).toBeDefined();
+      expect(screen.queryByText("￥800")).toBeNull();
+    });
+
+    it("Say that it is sold in the app rather than quote a price the web cannot take", () => {
+      render(
+        <EpisodePrice
+          campaign={campaign}
+          locale="ja"
+          price={1200}
+          purchaseSurface="app"
+          sales={sellsEverywhere}
+          timeZone="Asia/Tokyo"
+        />
+      );
+
+      expect(screen.getByText("storefront.common.sold_in_app")).toBeDefined();
+      expect(screen.queryByText("￥800")).toBeNull();
+    });
+
+    it("Call a neighbouring episode free when it is, whatever campaign it has", () => {
+      render(
+        <EpisodePrice
+          campaign={campaign}
+          locale="ja"
+          price={0}
+          purchaseSurface="all"
+          sales={sellsEverywhere}
+          timeZone="Asia/Tokyo"
+        />
+      );
+
+      expect(screen.getByText("storefront.common.free")).toBeDefined();
+    });
+  });
+
   it("Quote the price in the tenant's currency, from its minor unit", () => {
     render(
       <EpisodePrice

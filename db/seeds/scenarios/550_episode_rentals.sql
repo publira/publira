@@ -4,10 +4,11 @@
 -- stack's Stripe stand-in from the console, which is what lets the site sell
 -- at all, then has its readers buy through Checkout: one rents the first
 -- episode and another buys it at the gate, a third buys the volume holding
--- episodes 2 and 3 from the series page, and a fourth buys every episode at
--- the series' bundle discount, after the admin changes that discount on the
--- series form. The payment settings decide whether the storefront sells
--- anything, so no tenant another suite reads can absorb them.
+-- episodes 2 and 3 from the series page, a fourth buys every episode at the
+-- series' bundle discount, after the admin changes that discount on the
+-- series form, and a fifth buys episode 4 at the campaign price open on it.
+-- The payment settings decide whether the storefront sells anything, so no
+-- tenant another suite reads can absorb them.
 --
 -- Applying it is also how the suite starts over: the tenant is deleted and
 -- written again, which takes its payment settings and every sale with it, so
@@ -18,11 +19,13 @@
 --   tenant   RntlTNNTAAA1 (rentals.localhost / admin.rentals.localhost)
 --   admin    RntlADMNAAA1 (rentals-admin@example.com)
 --   readers  RntlMMBRAAA1 (Rental Renter), RntlMMBRAAA2 (Rental Buyer),
---            RntlMMBRAAA3 (Volume Buyer), RntlMMBRAAA4 (Remainder Buyer)
+--            RntlMMBRAAA3 (Volume Buyer), RntlMMBRAAA4 (Remainder Buyer),
+--            RntlMMBRAAA5 (Campaign Buyer)
 --   label    RntlLABLAAA1, which the series form needs to save the series
 --   series   RntlSERSAAA1, 10% off the rest of it in one checkout
 --   episodes RntlEPSDAAA1 (300 yen, or 100 for 48 hours),
---            RntlEPSDAAA2 to RntlEPSDAAA4 (200 yen each)
+--            RntlEPSDAAA2 to RntlEPSDAAA4 (200 yen each), RntlEPSDAAA4 at
+--            150 until 2036-03-30T15:00:00Z (campaign RntlCMPNAAA1)
 --   volume   RntlVOLMAAA1, episodes 2 and 3 for 350 yen
 
 DELETE FROM purchases
@@ -76,7 +79,7 @@ VALUES (
 \set seed_tenant RntlTNNTAAA1
 \ir ../creator_roles.sql
 
--- The admin and the four readers. The password hash is the same as
+-- The admin and the five readers. The password hash is the same as
 -- `adminpass` for the admin and `memberpass` for the readers.
 INSERT INTO users (
     id,
@@ -134,6 +137,13 @@ CROSS JOIN (
             'remainder-buyer@example.com',
             '$2a$10$yVRuW12eeOkFrL7mrE3g4u1vuln1qwz9NVMWzolO13RqeMtwAb7ma',
             'Remainder Buyer'
+        ),
+        (
+            '018f1100-0002-7000-8000-000000000006'::uuid,
+            'RntlMMBRAAA5',
+            'campaign-buyer@example.com',
+            '$2a$10$yVRuW12eeOkFrL7mrE3g4u1vuln1qwz9NVMWzolO13RqeMtwAb7ma',
+            'Campaign Buyer'
         )
 ) AS u(id, public_id, email, password_hash, name)
 WHERE t.public_id = 'RntlTNNTAAA1';
@@ -246,6 +256,29 @@ SELECT
     e.tenant_id
 FROM episodes e
 WHERE e.public_id IN ('RntlEPSDAAA2', 'RntlEPSDAAA3', 'RntlEPSDAAA4');
+
+-- Episode 4 sells for 150 yen instead of its 200 under a campaign that began
+-- with the series and ends at a fixed instant, so the end the storefront
+-- writes is the same on every run.
+INSERT INTO episode_campaign_prices (
+    id,
+    tenant_id,
+    public_id,
+    episode_id,
+    price,
+    starts_at,
+    ends_at
+)
+SELECT
+    '018f1100-000b-7000-8000-000000000001'::uuid,
+    e.tenant_id,
+    'RntlCMPNAAA1',
+    e.id,
+    150,
+    '2026-01-01T00:00:00Z'::timestamptz,
+    '2036-03-30T15:00:00Z'::timestamptz
+FROM episodes e
+WHERE e.public_id = 'RntlEPSDAAA4';
 
 -- Episodes 2 and 3 together for 350 yen, 50 less than buying them one by one.
 INSERT INTO volumes (

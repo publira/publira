@@ -30,6 +30,7 @@ export const EpisodeNextEpisodeOffer = async ({
   sales,
   series,
   tenantId,
+  timeZone,
 }: {
   episodePublicId: string;
   /** Absent on the last published episode of the series. */
@@ -38,6 +39,8 @@ export const EpisodeNextEpisodeOffer = async ({
   sales: TenantSales;
   series: EpisodeSeriesSummary;
   tenantId: string;
+  /** The tenant's time zone, which the end of a campaign is written in. */
+  timeZone: string;
 }) => {
   if (nextEpisode === undefined) {
     return (
@@ -107,10 +110,12 @@ export const EpisodeNextEpisodeOffer = async ({
           </span>
           <span>
             <EpisodePrice
+              campaign={nextEpisode.campaign}
               sales={sales}
               locale={locale}
               price={nextEpisode.isFree ? 0 : nextEpisode.price}
               purchaseSurface={nextEpisode.purchaseSurface}
+              timeZone={timeZone}
             />
           </span>
         </span>

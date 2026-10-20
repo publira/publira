@@ -64,6 +64,7 @@ export const EpisodeViewer = async ({
   renewPageUrls,
   sales,
   series,
+  timeZone,
 }: {
   /** The series' resolved comment mode from GetSeriesDetail. */
   commentMode: SeriesCommentMode;
@@ -80,6 +81,8 @@ export const EpisodeViewer = async ({
   /** Where the tenant can sell an episode, for what the next one costs. */
   sales: TenantSales;
   series: EpisodeSeriesSummary;
+  /** The tenant's time zone, for the end of a campaign on the next episode. */
+  timeZone: string;
 }) => {
   // An episode whose pages are not published yet says so and nothing else,
   // so the catalog the reader's own chrome needs is read past the guard.
@@ -149,6 +152,7 @@ export const EpisodeViewer = async ({
               nextEpisode={nextEpisode}
               series={series}
               tenantId={tenantId}
+              timeZone={timeZone}
             />
             {commentMode === "disabled" ? null : (
               <SectionErrorBoundary

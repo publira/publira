@@ -444,6 +444,7 @@ const EpisodeContent = async (
                 <p className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm text-muted-foreground">
                   <span className="tabular-nums">
                     <EpisodePrice
+                      campaign={episode.campaign}
                       sales={sales}
                       freeUntil={episode.freeUntil}
                       locale={locale}
@@ -522,6 +523,7 @@ const EpisodeContent = async (
                 shareText={shareText(t, locale, series.title, workCredits)}
                 shareTitle={episodeDisplayTitle(t, episode)}
                 tenantId={tenantId}
+                timeZone={timeZone}
               />
             </EpisodeColumn>
           </div>

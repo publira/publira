@@ -373,6 +373,44 @@ describe("catalog.getSeriesDetail", () => {
     ]);
   });
 
+  it("Carries the campaign price open on a listed episode, and none where no campaign is open", async () => {
+    mockGetSeriesDetail.mockResolvedValueOnce({
+      episodes: [
+        {
+          campaignEndsAt: "2026-10-11T14:59:00Z",
+          campaignPrice: 200,
+          orderIndex: 1,
+          price: 300,
+          publicId: "EP_001",
+        },
+        {
+          campaignEndsAt: "",
+          campaignPrice: 0,
+          orderIndex: 2,
+          price: 300,
+          publicId: "EP_002",
+        },
+      ],
+      series: {
+        publicId: "SERIES_001",
+        title: "Series Title",
+      },
+    });
+
+    const result = await getSeriesDetail("TENANT_001", "SERIES_001", "en");
+
+    expect(
+      result.ok &&
+        result.value?.episodes.map(({ campaign, price }) => ({
+          campaign,
+          price,
+        }))
+    ).toEqual([
+      { campaign: { endsAt: "2026-10-11T14:59:00Z", price: 200 }, price: 300 },
+      { campaign: undefined, price: 300 },
+    ]);
+  });
+
   it("Carries each listed episode's own eye-catch, and none for an episode without one", async () => {
     mockGetSeriesDetail.mockResolvedValueOnce({
       episodes: [
@@ -578,6 +616,44 @@ describe("catalog.getEpisodeDetail", () => {
     expect(detail?.access).toBe("free");
     expect(detail?.episode.price).toBe(300);
     expect(detail?.episode.freeUntil).toBe("2026-10-11T14:59:00Z");
+  });
+
+  it("Carries the campaign price open on the episode and on the episodes it links to", async () => {
+    mockGetEpisodeDetail.mockResolvedValueOnce({
+      access: EpisodeAccess.LOCKED,
+      episode: {
+        campaignEndsAt: "2026-10-11T14:59:00Z",
+        campaignPrice: 200,
+        price: 300,
+        publicId: "EP_002",
+      },
+      nextEpisode: { campaignEndsAt: "", campaignPrice: 0, publicId: "EP_003" },
+      previousEpisode: {
+        campaignEndsAt: "2026-10-12T14:59:00Z",
+        campaignPrice: 100,
+        publicId: "EP_001",
+      },
+      series: { publicId: "SERIES_001", title: "Series Title" },
+    });
+
+    const result = await getEpisodeDetail(
+      "TENANT_001",
+      "SERIES_001",
+      "EP_002",
+      "en"
+    );
+
+    const detail = result.ok ? result.value : null;
+    expect(detail?.episode.price).toBe(300);
+    expect(detail?.episode.campaign).toEqual({
+      endsAt: "2026-10-11T14:59:00Z",
+      price: 200,
+    });
+    expect(detail?.previousEpisode?.campaign).toEqual({
+      endsAt: "2026-10-12T14:59:00Z",
+      price: 100,
+    });
+    expect(detail?.nextEpisode?.campaign).toBeUndefined();
   });
 
   it("Carries an episode sold in the app alone", async () => {

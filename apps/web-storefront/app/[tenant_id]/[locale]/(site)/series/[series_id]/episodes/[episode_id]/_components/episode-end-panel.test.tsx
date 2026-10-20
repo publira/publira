@@ -150,6 +150,7 @@ const renderPanel = async ({
       shareText: "Long nights by Nightly Author",
       shareTitle: "Episode 2 Second light",
       tenantId: "TENANT_001",
+      timeZone: "Asia/Tokyo",
     })
   );
 
@@ -200,6 +201,22 @@ describe("EpisodeEndPanel", () => {
 
     expect(screen.getByText("¥500")).toBeDefined();
     expect(screen.queryByText("Free")).toBeNull();
+  });
+
+  it("quotes the campaign price open on a neighbour beside its own, and until when", async () => {
+    await renderPanel({
+      neighbor: {
+        ...nextEpisode,
+        campaign: { endsAt: "2026-10-11T14:59:00Z", price: 300 },
+        isFree: false,
+        price: 500,
+      },
+    });
+
+    const row = screen.getByRole("link", { name: /Third light/u });
+    expect(row.textContent).toContain("¥300");
+    expect(row.querySelector("s")?.textContent).toContain("¥500");
+    expect(row.textContent).toContain("Sale until Sun, Oct 11, 11:59 PM");
   });
 
   it("keeps a free window free even where the episode carries a price", async () => {

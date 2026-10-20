@@ -10,6 +10,7 @@ import {
 import { Suspense } from "react";
 import type { ReactNode } from "react";
 
+import { CampaignPrice } from "#components/campaign-price";
 import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
@@ -18,7 +19,11 @@ import {
   toTenantSaleChannels,
 } from "#lib/app-payments";
 import type { TenantAppPayments } from "#lib/app-payments";
-import type { EpisodeNeighborItem, EpisodePurchaseSurface } from "#lib/catalog";
+import type {
+  EpisodeCampaign,
+  EpisodeNeighborItem,
+  EpisodePurchaseSurface,
+} from "#lib/catalog";
 
 import { episodeLoginHref } from "../_lib/access-gate";
 import {
@@ -208,8 +213,14 @@ const CheckoutForm = ({
  * the rental is the alternative to it, and both stay outlined behind a ready
  * ticket. Neither is quoted without the tenant's currency, which leaves the
  * permanent copy alone, the way an episode that is not rented is sold.
+ *
+ * Under a campaign the permanent copy's button names the campaign price
+ * whether or not the episode is rented: the gate quotes it above the buttons,
+ * and a button that said only "Buy" would leave the reader to guess which of
+ * the two prices it charges.
  */
 const CheckoutActions = ({
+  campaign,
   currency,
   episodeId,
   episodePublicId,
@@ -221,6 +232,7 @@ const CheckoutActions = ({
   tenantId,
   ticketReady,
 }: {
+  campaign?: EpisodeCampaign;
   currency: string | null;
   episodeId: string;
   episodePublicId: string;
@@ -234,8 +246,9 @@ const CheckoutActions = ({
 }) => {
   const formProps = { episodeId, episodePublicId, seriesPublicId, tenantId };
   const purchaseVariant = ticketReady ? "outline" : "secondary";
+  const rented = rentalPrice > 0 && rentalPeriodHours > 0;
 
-  if (!currency || rentalPrice <= 0 || rentalPeriodHours <= 0) {
+  if (!currency || !(rented || campaign)) {
     return (
       <CheckoutForm {...formProps} kind="purchase" variant={purchaseVariant}>
         <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
@@ -251,21 +264,31 @@ const CheckoutActions = ({
         <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
           <Message
             message="storefront.episode.gate.purchase_for"
-            values={{ price: formatPrice(price, { currency, locale }) }}
-          />
-        </Suspense>
-      </CheckoutForm>
-      <CheckoutForm {...formProps} kind="rental" variant="outline">
-        <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
-          <Message
-            message="storefront.episode.gate.rent_for"
             values={{
-              period: formatDuration({ hours: rentalPeriodHours }, { locale }),
-              price: formatPrice(rentalPrice, { currency, locale }),
+              price: formatPrice(campaign?.price ?? price, {
+                currency,
+                locale,
+              }),
             }}
           />
         </Suspense>
       </CheckoutForm>
+      {rented ? (
+        <CheckoutForm {...formProps} kind="rental" variant="outline">
+          <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
+            <Message
+              message="storefront.episode.gate.rent_for"
+              values={{
+                period: formatDuration(
+                  { hours: rentalPeriodHours },
+                  { locale }
+                ),
+                price: formatPrice(rentalPrice, { currency, locale }),
+              }}
+            />
+          </Suspense>
+        </CheckoutForm>
+      ) : null}
     </>
   );
 };
@@ -375,11 +398,17 @@ const WaitFreeSection = ({
  * costs the reader nothing, so it takes the Shu from the purchase. A ticket
  * still recharging counts down to the moment it is ready and then offers
  * itself, without taking the Shu from an action already on screen.
+ *
+ * An episode under a campaign that the site sells says so over the actions,
+ * to a guest as to a reader signed in: the campaign is a reason to sign in and
+ * buy now, and its end is when that reason runs out. One sold in the app is
+ * not quoted, because the store sets the price there.
  */
 export const EpisodeAccessGate = ({
   acceptsPayments,
   appPayments,
   appStoreUrl,
+  campaign,
   currency,
   episodeId,
   episodePublicId,
@@ -400,6 +429,8 @@ export const EpisodeAccessGate = ({
   appPayments: TenantAppPayments;
   /** Where the tenant's app is listed; absent where it is not. */
   appStoreUrl?: string;
+  /** The campaign price open on the episode; absent when none is. */
+  campaign?: EpisodeCampaign;
   /** The tenant's currency, `null` while the tenant could not be read. */
   currency: string | null;
   episodeId: string;
@@ -417,7 +448,10 @@ export const EpisodeAccessGate = ({
   seriesPublicId: string;
   signedIn: boolean;
   tenantId: string;
-  /** The tenant's time zone, which a recharging ticket's instant is written in. */
+  /**
+   * The tenant's time zone, which a recharging ticket's instant and the end of
+   * a campaign are written in.
+   */
   timeZone: string;
   /** Absent on a series that does not offer wait-for-free. */
   waitFree?: WaitFreeOffer;
@@ -443,6 +477,7 @@ export const EpisodeAccessGate = ({
   if (signedIn && payable) {
     accessAction = (
       <CheckoutActions
+        campaign={campaign}
         currency={currency}
         episodeId={episodeId}
         episodePublicId={episodePublicId}
@@ -506,6 +541,17 @@ export const EpisodeAccessGate = ({
             tenantId={tenantId}
             timeZone={timeZone}
           />
+        ) : null}
+        {payable && currency && campaign ? (
+          <p className="text-sm tabular-nums">
+            <CampaignPrice
+              campaign={campaign}
+              currency={currency}
+              locale={locale}
+              price={price}
+              timeZone={timeZone}
+            />
+          </p>
         ) : null}
         {/* Signed in, the store is the one way into this episode and carries
           the Shu, unless a ready ticket opens it for nothing. A guest who
