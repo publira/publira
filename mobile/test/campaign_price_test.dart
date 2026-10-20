@@ -135,20 +135,20 @@ void main() {
       expectNote(rowCampaign);
     });
 
-    testWidgets('quotes the regular price where the store sells it', (
+    testWidgets('quotes the campaign price where the store sells it', (
       tester,
     ) async {
-      // The store sells an episode as the product of its own price.
+      // The store sells an episode as the product of its campaign price.
       purchases.route = AppPurchaseRoute.store;
       discount(campaignFor(const Duration(days: 3)));
       await pumpApp(tester, seriesPath, session: fakeSession);
       await pumpUntilFound(tester, buy);
 
       expect(
-        find.descendant(of: buy, matching: find.text('Buy for ¥500')),
+        find.descendant(of: buy, matching: find.text('Buy for ¥300')),
         findsOne,
       );
-      expect(rowCampaign, findsNothing);
+      expectNote(rowCampaign);
     });
 
     testWidgets('names the campaign price beside a rental', (tester) async {
@@ -269,7 +269,7 @@ void main() {
       expectNote(gateCampaign);
     });
 
-    testWidgets('quotes the regular price where the store sells it', (
+    testWidgets('quotes the campaign price where the store sells it', (
       tester,
     ) async {
       purchases.route = AppPurchaseRoute.store;
@@ -278,10 +278,10 @@ void main() {
       await pumpUntilFound(tester, buy);
 
       expect(
-        find.descendant(of: buy, matching: find.text('Buy for ¥500')),
+        find.descendant(of: buy, matching: find.text('Buy for ¥300')),
         findsOne,
       );
-      expect(gateCampaign, findsNothing);
+      expectNote(gateCampaign);
     });
 
     testWidgets('keeps the rental at its own price', (tester) async {
@@ -342,37 +342,39 @@ void main() {
     });
   });
 
-  testWidgets('the end of the episode before quotes the campaign price', (
-    tester,
-  ) async {
-    final previousEpisodeId = '${series.id}-ep-${series.episodeCount - 1}';
-    final campaign = campaignFor(const Duration(days: 3));
-    catalog.episodes = fixtureEpisodes(campaign: campaign);
-    await pumpApp(
-      tester,
-      AppRoutes.episodeViewerPath(series.id, previousEpisodeId),
-      session: fakeSession,
-    );
-    await pumpUntilFound(
-      tester,
-      find.byKey(const ValueKey('episode-page-view')),
-    );
-    for (var turn = 0; turn < 3; turn++) {
-      await tester.tap(find.byKey(const ValueKey('episode-next-page')));
-      await pumpUntilNoPendingFrameCallbacks(tester);
-    }
-    final next = find.byKey(const ValueKey('episode-end-next'));
-    await pumpUntilFound(
-      tester,
-      find.descendant(of: next, matching: find.text('¥300')),
-    );
+  for (final route in AppPurchaseRoute.values) {
+    testWidgets('the end of the episode before quotes the campaign price '
+        'on the ${route.name} route', (tester) async {
+      purchases.route = route;
+      final previousEpisodeId = '${series.id}-ep-${series.episodeCount - 1}';
+      final campaign = campaignFor(const Duration(days: 3));
+      catalog.episodes = fixtureEpisodes(campaign: campaign);
+      await pumpApp(
+        tester,
+        AppRoutes.episodeViewerPath(series.id, previousEpisodeId),
+        session: fakeSession,
+      );
+      await pumpUntilFound(
+        tester,
+        find.byKey(const ValueKey('episode-page-view')),
+      );
+      for (var turn = 0; turn < 3; turn++) {
+        await tester.tap(find.byKey(const ValueKey('episode-next-page')));
+        await pumpUntilNoPendingFrameCallbacks(tester);
+      }
+      final next = find.byKey(const ValueKey('episode-end-next'));
+      await pumpUntilFound(
+        tester,
+        find.descendant(of: next, matching: find.text('¥300')),
+      );
 
-    expectNote(
-      find.descendant(
-        of: next,
-        matching: find.byKey(const ValueKey('episode-end-next-campaign')),
-      ),
-    );
-    await pumpUntilNoPendingFrameCallbacks(tester);
-  });
+      expectNote(
+        find.descendant(
+          of: next,
+          matching: find.byKey(const ValueKey('episode-end-next-campaign')),
+        ),
+      );
+      await pumpUntilNoPendingFrameCallbacks(tester);
+    });
+  }
 }

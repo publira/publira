@@ -182,7 +182,7 @@ Wherever the site quotes an episode's price, an episode under a campaign shows t
 
 The site quotes a campaign from the moment it starts, and drops it the moment it ends: `publira worker` refreshes the cached pages at both ends, as [Scheduled and maintenance jobs](../../3-operations/10-scheduled-jobs.md#free-reading-periods-and-other-cached-pages) describes.
 
-The app quotes a campaign on the series' episode list, on a locked episode, and in the offer of the next episode at the end of the one before: the campaign price, the episode's own **Price** struck through beside it, and when the campaign ends, written in the time zone of the reader's device as every time in the app is. An app that sells through [**In-app purchase**](../4-selling-episodes.md#selling-in-the-app) charges the campaign price too, buying the episode as the store product of that price, but does not quote the campaign yet: its screens show the episode's own **Price**, and the store's payment sheet shows the campaign price the reader is charged.
+The app quotes a campaign on the series' episode list, on a locked episode, and in the offer of the next episode at the end of the one before: the campaign price, the episode's own **Price** struck through beside it, and when the campaign ends, written in the time zone of the reader's device as every time in the app is. It does so whether it sells through the web checkout or through [**In-app purchase**](../4-selling-episodes.md#selling-in-the-app), which buys the episode as the store product of the campaign price, so the store's payment sheet charges the price the app quotes.
 
 ## Publishing an episode
 
