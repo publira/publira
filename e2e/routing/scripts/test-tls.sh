@@ -26,11 +26,11 @@ assert_route "web-platform listed host" GET platform.localhost / web-platform /
 assert_route "web-platform listed host of no convention" GET operators.internal /tenants web-platform /tenants
 
 assert_route "rpc on a listed host" GET localhost "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
-assert_route "api on a listed host" GET studio.internal "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
+assert_route "api procedure on a listed host" GET studio.internal "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" web-admin "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
 assert_route "images on a listed host" GET admin.localhost /images/cover api /images/cover
 assert_route "api/v1 on a listed host" POST reader.internal /api/v1/revalidate web-storefront /api/v1/revalidate
 assert_unrouted "console API on a listed host" POST admin.localhost /rpc/publira.admin.v1.AdminSeriesService/ListSeries
-assert_unrouted "platform API on a listed host" POST operators.internal /api/publira.platform.v1.PlatformTenantService/ListTenants
+assert_unrouted "platform API on a listed host" POST operators.internal /rpc/publira.platform.v1.PlatformTenantService/ListTenants
 
 assert_trace_context_stripped "trace context on web-storefront" GET localhost / web-storefront /
 assert_forwarded_headers "forwarded headers on web-storefront" GET reader.internal / web-storefront

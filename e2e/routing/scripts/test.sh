@@ -33,7 +33,6 @@ assert_unrouted "unlisted site host" GET unknown-tenant.localhost /
 assert_unrouted "unlisted host with port" GET unknown-tenant.localhost:3080 /
 assert_unrouted "unlisted host on /rpc" GET unknown-tenant.localhost "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
 assert_unrouted "unlisted host on bare /rpc" GET unknown-tenant.localhost /rpc
-assert_unrouted "unlisted host on /api" GET unknown-tenant.localhost "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
 assert_unrouted "unlisted host on /api/v1" POST unknown-tenant.localhost /api/v1/revalidate
 assert_unrouted "unlisted host on /images" GET admin.example.com /images/cover
 
@@ -46,40 +45,38 @@ assert_route "rpc on a site host of no convention" GET reader.example.org "/rpc/
 assert_route "rpc on a console host of no convention" GET studio.example.com "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
 assert_route "rpc on a platform host of no convention" GET operators.example.net "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
 
-# The public API under /api, the prefix the server had before /rpc, is routed
-# the same way until 0.3.0, for the clients not yet on /rpc.
-assert_route "api keeps a procedure path" GET localhost "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
-assert_route "api on admin host" GET admin.localhost "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
-assert_route "api on platform host" GET platform.localhost "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
-assert_route "api on a console host of no convention" GET studio.example.com "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
-
-# Nothing else under /rpc and /api reaches a backend, on any listed host: the
-# consoles' namespaces are called over the private network, so the edge answers
-# them itself, and every other path there with them. The public API's prefix
-# ends at the dot after v1, so a namespace that only starts like it is answered
-# by the edge too.
+# Nothing else under /rpc reaches a backend, on any listed host: the consoles'
+# namespaces are called over the private network, so the edge answers them
+# itself, and every other path there with them. The public API's prefix ends at
+# the dot after v1, so a namespace that only starts like it is answered by the
+# edge too.
 for host in localhost reader.example.org admin.localhost studio.example.com platform.localhost operators.example.net; do
-  for prefix in /rpc /api; do
-    assert_unrouted "${prefix} admin namespace on ${host}" POST "${host}" "${prefix}/publira.admin.v1.AdminSeriesService/ListSeries"
-    assert_unrouted "${prefix} platform namespace on ${host}" POST "${host}" "${prefix}/publira.platform.v1.PlatformTenantService/ListTenants"
-  done
+  assert_unrouted "admin namespace on ${host}" POST "${host}" /rpc/publira.admin.v1.AdminSeriesService/ListSeries
+  assert_unrouted "platform namespace on ${host}" POST "${host}" /rpc/publira.platform.v1.PlatformTenantService/ListTenants
 done
-for prefix in /rpc /api; do
-  assert_unrouted "bare ${prefix}" GET localhost "${prefix}"
-  assert_unrouted "${prefix}/" GET localhost "${prefix}/"
-  assert_unrouted "${prefix} deeper path" GET localhost "${prefix}/foo/bar"
-  assert_unrouted "${prefix} namespace without the dot" GET localhost "${prefix}/publira.v1"
-  assert_unrouted "${prefix} namespace sharing the prefix" POST localhost "${prefix}/publira.v1beta.CatalogService/ListPublishedSeries"
-  assert_unrouted "${prefix} types namespace" POST localhost "${prefix}/publira.types.v1.Foo/Bar"
-done
+assert_unrouted "bare /rpc" GET localhost /rpc
+assert_unrouted "/rpc/" GET localhost /rpc/
+assert_unrouted "rpc deeper path" GET localhost /rpc/foo/bar
+assert_unrouted "rpc namespace without the dot" GET localhost /rpc/publira.v1
+assert_unrouted "rpc namespace sharing the prefix" POST localhost /rpc/publira.v1beta.CatalogService/ListPublishedSeries
+assert_unrouted "rpc types namespace" POST localhost /rpc/publira.types.v1.Foo/Bar
 
-# The prefixes end at the path segment: /rpcabc and /apiabc are paths of the
-# app the host rules picked.
+# The prefix ends at the path segment: /rpcabc is a path of the app the host
+# rules picked.
 assert_route "rpcabc stays on web-storefront" GET localhost /rpcabc web-storefront /rpcabc
-assert_route "apiabc stays on web-storefront" GET localhost /apiabc web-storefront /apiabc
 
-# /api/v1 is the exception: it is where the Next.js apps mount their Route
-# Handlers, so it stays on the app the host rules picked, prefix intact.
+# /api is no prefix of the server's, so a procedure path under it, in any
+# namespace, is a path of the app the host rules picked like any other.
+assert_route "api procedure stays on web-storefront" GET localhost "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" web-storefront "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
+assert_route "api procedure on admin host stays on web-admin" GET admin.localhost "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" web-admin "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
+assert_route "api procedure on platform host stays on web-platform" GET platform.localhost "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" web-platform "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
+assert_route "api procedure on a console host of no convention stays on web-admin" GET studio.example.com "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" web-admin "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
+assert_route "api admin namespace on admin host stays on web-admin" POST admin.localhost /api/publira.admin.v1.AdminSeriesService/ListSeries web-admin /api/publira.admin.v1.AdminSeriesService/ListSeries
+assert_route "api platform namespace on platform host stays on web-platform" POST platform.localhost /api/publira.platform.v1.PlatformTenantService/ListTenants web-platform /api/publira.platform.v1.PlatformTenantService/ListTenants
+assert_route "bare /api stays on web-storefront" GET localhost /api web-storefront /api
+
+# The Next.js apps mount their Route Handlers under /api/v1, which reaches the
+# app the host rules picked, prefix intact.
 assert_route "revalidate stays on web-storefront" GET localhost /api/v1/revalidate web-storefront /api/v1/revalidate
 assert_route "revalidate trailing slash stays on web-storefront" GET localhost /api/v1/revalidate/ web-storefront /api/v1/revalidate/
 assert_route "revalidate POST stays on web-storefront" POST localhost /api/v1/revalidate web-storefront /api/v1/revalidate
@@ -90,11 +87,6 @@ assert_route "read beacon stays on web-storefront" POST localhost /api/v1/series
 assert_route "payment webhook stays on web-storefront" POST localhost /api/v1/webhook/payment/stripe web-storefront /api/v1/webhook/payment/stripe
 assert_route "inbound email webhook stays on web-storefront" POST localhost /api/v1/webhook/email/sendgrid web-storefront /api/v1/webhook/email/sendgrid
 assert_route "bare /api/v1 stays on web-storefront" GET localhost /api/v1 web-storefront /api/v1
-
-# The exception ends at the path segment: /api/v1abc is not one of the Route
-# Handlers, so the edge answers it like any other /api path outside the public
-# API.
-assert_unrouted "api/v1abc is answered by the edge" GET localhost /api/v1abc
 
 # /images outranks the host routers: the api backend answers it for every
 # listed host with the path intact, and picks the rules it applies from the
@@ -114,9 +106,8 @@ assert_webhook_delivered "SendGrid post of 32 MiB reaches web-storefront whole" 
 
 # A reader's icon upload is the largest request the public API reads: an image
 # of up to 10 MiB in the base64 of the JSON encoding, and the fields beside it.
-# It has to reach the api backend whole on the tenant site, under either prefix.
+# It has to reach the api backend whole on the tenant site.
 assert_upload_delivered "icon upload of 15029592 bytes reaches api whole" localhost /rpc/publira.v1.AuthService/UploadMyIcon api 15029592 0
-assert_upload_delivered "icon upload of 15029592 bytes under /api reaches api whole" localhost /api/publira.v1.AuthService/UploadMyIcon api 15029592 0
 
 # A Server Action posts to the path of its page, and an image travels in it
 # with the multipart framing and the fields beside it: a reader's icon of up to
@@ -141,8 +132,7 @@ assert_trace_context_stripped "web-storefront drops trace context" GET localhost
 assert_trace_context_stripped "web-admin drops trace context" GET admin.localhost / web-admin /
 assert_trace_context_stripped "web-platform drops trace context" GET platform.localhost / web-platform /
 assert_trace_context_stripped "rpc drops trace context" GET localhost "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
-assert_trace_context_stripped "api drops trace context" GET localhost "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
-assert_trace_context_stripped "api on admin host drops trace context" GET admin.localhost "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
+assert_trace_context_stripped "rpc on admin host drops trace context" GET admin.localhost "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
 assert_trace_context_stripped "revalidate drops trace context" POST localhost /api/v1/revalidate web-storefront /api/v1/revalidate
 assert_trace_context_stripped "images drop trace context" GET localhost /images/cover api /images/cover
 assert_trace_context_stripped "images on admin host drop trace context" GET admin.localhost /images/cover api /images/cover
@@ -157,7 +147,6 @@ assert_forwarded_headers "web-storefront is given the edge's forwarded headers" 
 assert_forwarded_headers "web-admin is given the edge's forwarded headers" GET admin.localhost / web-admin
 assert_forwarded_headers "web-platform is given the edge's forwarded headers" GET platform.localhost / web-platform
 assert_forwarded_headers "rpc is given the edge's forwarded headers" GET localhost "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api
-assert_forwarded_headers "api is given the edge's forwarded headers" GET localhost "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api
 assert_forwarded_headers "images are given the edge's forwarded headers" GET localhost /images/cover api
 assert_forwarded_headers "images on admin host are given the edge's forwarded headers" GET admin.localhost /images/cover api
 

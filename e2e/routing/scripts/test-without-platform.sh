@@ -16,7 +16,6 @@ routing_log "=== route probes with no platform hosts ==="
 assert_route "web-storefront listed host" GET localhost / web-storefront /
 assert_route "web-admin listed host" GET admin.localhost / web-admin /
 assert_route "rpc on a listed host" GET localhost "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api "/rpc/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
-assert_route "api on a listed host" GET localhost "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}" api "/api/${PUBLIRA_ROUTING_PUBLIC_PROCEDURE}"
 assert_route "images on a listed host" GET admin.localhost /images/cover api /images/cover
 
 assert_unrouted "platform host once no list names it" GET platform.localhost /

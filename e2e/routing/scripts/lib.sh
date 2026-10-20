@@ -75,8 +75,8 @@ else
   export PUBLIRA_ROUTING_TLS_HOSTS=""
 fi
 
-# A procedure of the public API, the one namespace the edge forwards under /rpc
-# and /api, for the probes that need a request to reach the server.
+# A procedure of the public API, the one namespace the edge forwards under /rpc,
+# for the probes that need a request to reach the server.
 PUBLIRA_ROUTING_PUBLIC_PROCEDURE="publira.v1.CatalogService/ListPublishedSeries"
 
 # Logs for one stack run. Concurrent stacks that override ports or
@@ -201,7 +201,6 @@ PUBLIRA_ROUTING_ROUTERS=(
   web-storefront
   web-admin
   rpc
-  api
   images
 )
 if [[ -n "${PUBLIRA_ROUTING_PLATFORM_HOSTS// /}" ]]; then
@@ -398,8 +397,8 @@ assert_route() {
 }
 
 # A request the edge has to answer with its own 404 rather than hand to any
-# backend: a host in no list, whatever the path, and a path under /rpc or /api
-# outside the public API, whatever the host.
+# backend: a host in no list, whatever the path, and a path under /rpc outside
+# the public API, whatever the host.
 assert_unrouted() {
   local name="$1" method="$2" host="$3" path="$4"
   local out code body actual_backend

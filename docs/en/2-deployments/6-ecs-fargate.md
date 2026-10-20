@@ -411,13 +411,10 @@ The listener's rules follow [Routing](./4-edge.md#routing). A rule takes up to t
 
 | Priority | Host | Path | Forwards to |
 | --- | --- | --- | --- |
-| `1000` | Any | `/images*`, `/rpc/publira.v1.*`, `/api/publira.v1.*` | `publira-server` |
+| `1000` | Any | `/images*`, `/rpc/publira.v1.*` | `publira-server` |
 | `1100` | Any | `/rpc`, `/rpc/*` | None: a fixed `404` |
-| `2000` to `2999` | A tenant's domain | `/api/v1`, `/api/v1/*` | `web-storefront` |
-| `2000` to `2999` | A tenant's console host | `/api/v1`, `/api/v1/*` | `web-admin` |
-| `3000` | Any | `/api`, `/api/*` | None: a fixed `404` |
-| `4000` to `4999` | A tenant's domain | Any | `web-storefront` |
-| `4000` to `4999` | A tenant's console host | Any | `web-admin` |
+| `2000` to `2999` | A tenant's domain | Any | `web-storefront` |
+| `2000` to `2999` | A tenant's console host | Any | `web-admin` |
 
 ```bash
 rule() { aws elbv2 create-rule --listener-arn "$LISTENER" --priority "$1" \
@@ -428,16 +425,13 @@ not_found() { aws elbv2 create-rule --listener-arn "$LISTENER" --priority "$1" \
 host_is() { printf '{"Field":"host-header","HostHeaderConfig":{"Values":["%s"]}}' "$1"; }
 path_is() { printf '{"Field":"path-pattern","PathPatternConfig":{"Values":%s}}' "$1"; }
 
-rule 1000 "[$(path_is '["/images*","/rpc/publira.v1.*","/api/publira.v1.*"]')]" "$SERVER_TG"
+rule 1000 "[$(path_is '["/images*","/rpc/publira.v1.*"]')]" "$SERVER_TG"
 not_found 1100 "[$(path_is '["/rpc","/rpc/*"]')]"
-rule 2001 "[$(host_is comics.example.com),$(path_is '["/api/v1","/api/v1/*"]')]" "$STOREFRONT_TG"
-rule 2002 "[$(host_is admin.comics.example.com),$(path_is '["/api/v1","/api/v1/*"]')]" "$ADMIN_TG"
-not_found 3000 "[$(path_is '["/api","/api/*"]')]"
-rule 4001 "[$(host_is comics.example.com)]" "$STOREFRONT_TG"
-rule 4002 "[$(host_is admin.comics.example.com)]" "$ADMIN_TG"
+rule 2001 "[$(host_is comics.example.com)]" "$STOREFRONT_TG"
+rule 2002 "[$(host_is admin.comics.example.com)]" "$ADMIN_TG"
 ```
 
-`/rpc` is the API's prefix, and `/api` the one it had before, which `publira server` answers until 0.3.0 for the clients not yet on `/rpc`; route both until then. Under either, only the public API, `publira.v1`, is forwarded: the consoles call their own APIs over the VPC, so the load balancer answers the rest with a `404` of its own, as [Only the public API goes through the edge](./4-edge.md#only-the-public-api-goes-through-the-edge) explains. A path pattern is matched as a string, with `*` standing for any characters, so `/rpc/publira.v1.*` names the public API's prefix up to the dot after `v1`, which keeps a namespace such as `publira.v1beta` out, and `/api/v1` and `/api/v1/*` are two values: `/api/v1*` would send `/api/v10` to a web app, where Routing has the edge answer it. The rules at `1000`, `1100`, and `3000` name no host, so they apply on every host the load balancer receives, which is what Routing asks of every tenant's hosts; a host in none of the other rules gets the `404` on every other path. The load balancer passes the path and the `Host` header on as the browser sent them; add no rewrite of either.
+Under `/rpc`, only the public API, `publira.v1`, is forwarded: the consoles call their own APIs over the VPC, so the load balancer answers the rest with a `404` of its own, as [Only the public API goes through the edge](./4-edge.md#only-the-public-api-goes-through-the-edge) explains. A path pattern is matched as a string, with `*` standing for any characters, so `/rpc/publira.v1.*` names the public API's prefix up to the dot after `v1`, which keeps a namespace such as `publira.v1beta` out, and `/rpc` and `/rpc/*` are two values, so that `/rpcabc` stays with a web app. The rules at `1000` and `1100` name no host, so they apply on every host the load balancer receives, which is what Routing asks of every tenant's hosts; a host in none of the other rules gets the `404` on every other path. The load balancer passes the path and the `Host` header on as the browser sent them; add no rewrite of either.
 
 The load balancer sets no limit on the size of a body, and lets a request take as long as it keeps sending, so the uploads and webhooks [Edge](./4-edge.md#image-uploads-from-a-page) describes pass it as they are. Its idle timeout is how long it waits for the next byte either way, including for a web app's answer once a request has arrived: 60 seconds unless changed, which the command above raises to the 120 seconds CloudFront waits, as [The distribution](#the-distribution) sets.
 
@@ -1037,7 +1031,7 @@ Open the tenant console at `https://admin.comics.example.com`, or the console ho
 A tenant created with `publiractl tenant create` or in the Platform Console needs its two host names on the edge, as [Adding a tenant](./4-edge.md#adding-a-tenant) describes. On ECS that is, before its staff open the console:
 
 1. **Certificates.** Request a certificate naming its domain and its console host in the load balancer's Region and in `us-east-1`, as in [Create the load balancer](#5-create-the-load-balancer), and validate both.
-2. **The load balancer.** Add the first certificate to the listener with `aws elbv2 add-listener-certificates --listener-arn "$LISTENER" --certificates CertificateArn=<its ARN>`, and four rules: its domain and its console host each in the `2000` band with the `/api/v1` paths, and each in the `4000` band alone, as in the table there. A load balancer takes 25 certificates besides its listener's default one, and 100 rules, unless you raise those quotas; a rule's host condition takes up to three names, so up to three tenants can share each rule.
+2. **The load balancer.** Add the first certificate to the listener with `aws elbv2 add-listener-certificates --listener-arn "$LISTENER" --certificates CertificateArn=<its ARN>`, and two rules: its domain and its console host each in the `2000` band, as in the table there. A load balancer takes 25 certificates besides its listener's default one, and 100 rules, unless you raise those quotas; a rule's host condition takes up to three names, so up to three tenants can share each rule.
 3. **CloudFront.** Create a distribution of its own from `distribution.json`, with its two names in `Aliases`, its `us-east-1` certificate in `ViewerCertificate`, and a `CallerReference` of its own. The VPC origin, the function, and the cache policy are the ones the first distribution uses.
 4. **DNS.** Point both names at the new distribution's domain name.
 
@@ -1053,9 +1047,9 @@ Then add rules ahead of the server's, which send the tenants' domains to it:
 
 | Priority | Host | Path | Forwards to |
 | --- | --- | --- | --- |
-| `900` to `999` | A tenant's domain | `/images*`, `/rpc/publira.v1.*`, `/api/publira.v1.*` | `publira-storefront` |
+| `900` to `999` | A tenant's domain | `/images*`, `/rpc/publira.v1.*` | `publira-storefront` |
 
-The console hosts and the web apps keep reaching `publira-server`, which serves every role: `web-admin` calls the public API as well as the console's, through its one `PUBLIRA_GRPC_URL`. The three paths leave room for two host names among the five values a rule takes, so a rule in this band serves the domains of two tenants at most: add a new tenant's domain to a rule that names one, or give it a rule of its own at the next free priority in the band.
+The console hosts and the web apps keep reaching `publira-server`, which serves every role: `web-admin` calls the public API as well as the console's, through its one `PUBLIRA_GRPC_URL`. The two paths leave room for three host names among the five values a rule takes, so a rule in this band serves the domains of three tenants at most: add a new tenant's domain to a rule that names one, or give it a rule of its own at the next free priority in the band.
 
 The load balancer answers a console API with `404` on every host either way, so check that the tenants' domains reach the new service instead: `aws elbv2 describe-target-health --target-group-arn <the publira-storefront target group ARN>` lists its tasks as `healthy`, and the public API call in [Check the edge](#check-the-edge) still answers `invalid_argument` on the tenant's domain, now from `publira-storefront`.
 

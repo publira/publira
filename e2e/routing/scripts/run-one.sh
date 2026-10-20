@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Edge routing check for one proxy.
 #
-#   up → wait for the edge to serve → probe hosts / /api / /images
+#   up → wait for the edge to serve → probe hosts / /rpc / /images
 #   → up again with no platform hosts → wait → probe what that leaves
 #   → for Caddy, up again terminating TLS → wait → probe over HTTPS
 #   → up again behind a trusted hop → wait → probe the client address → down

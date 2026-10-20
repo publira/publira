@@ -499,14 +499,14 @@ The edge routes each host and path to the right Service, terminates TLS, and rem
 
 | Host | Path | Service |
 | --- | --- | --- |
-| The tenant's domain | `/images`, `/rpc/publira.v1.…`, `/api/publira.v1.…` | `publira-server`, port `8000` |
-| The tenant's domain | The rest of `/rpc` and `/api` | None: the edge answers `404` |
-| The tenant's domain | `/api/v1`, and everything else | `web-storefront`, port `3000` |
-| The tenant's console host | `/images`, `/rpc/publira.v1.…`, `/api/publira.v1.…` | `publira-server`, port `8000` |
-| The tenant's console host | The rest of `/rpc` and `/api` | None: the edge answers `404` |
-| The tenant's console host | `/api/v1`, and everything else | `web-admin`, port `4000` |
+| The tenant's domain | `/images`, `/rpc/publira.v1.…` | `publira-server`, port `8000` |
+| The tenant's domain | The rest of `/rpc` | None: the edge answers `404` |
+| The tenant's domain | Everything else | `web-storefront`, port `3000` |
+| The tenant's console host | `/images`, `/rpc/publira.v1.…` | `publira-server`, port `8000` |
+| The tenant's console host | The rest of `/rpc` | None: the edge answers `404` |
+| The tenant's console host | Everything else | `web-admin`, port `4000` |
 
-`/rpc` is the API's prefix, and `/api` the one it had before, which `publira server` answers until 0.3.0 for the clients not yet on `/rpc`; route both until then. Under either, only the public API, `publira.v1`, is forwarded: the consoles call their own APIs over the cluster's network, so the edge answers the rest with a `404` of its own, as [Only the public API goes through the edge](./4-edge.md#only-the-public-api-goes-through-the-edge) explains. `/api/v1` is longer than `/api`, so it wins on a path both match. The path and the `Host` header reach the Service as the browser sent them; add no rewrite of either.
+Under `/rpc`, only the public API, `publira.v1`, is forwarded: the consoles call their own APIs over the cluster's network, so the edge answers the rest with a `404` of its own, as [Only the public API goes through the edge](./4-edge.md#only-the-public-api-goes-through-the-edge) explains. The path and the `Host` header reach the Service as the browser sent them; add no rewrite of either.
 
 The public API's prefix ends inside a path segment, at the dot after `v1`, and a Gateway's `PathPrefix` and an Ingress's `Prefix` both match whole segments, so neither can name it by itself. Neither API has a way to answer a request itself, either. Both are left to the implementation, and each section below says how the one it uses does them.
 
@@ -541,7 +541,7 @@ For an Ingress, the solver is `http01: {ingress: {ingressClassName: <your class>
 
 The routes use two features the Gateway API marks Extended, which an implementation can conform to the API without supporting: `HTTPRouteSchemeRedirect`, for the redirect to HTTPS, and `HTTPRouteRequestTimeout`, for lifting the implementation's limit on how long a request to a web app may take. The Gateway API's [Implementations](https://gateway-api.sigs.k8s.io/docs/implementations/) page compares the features each implementation supports and links its conformance report. Envoy Gateway supports both. On an implementation that lacks one, do that part with what it offers in its own resources, or use [an Ingress](#with-an-ingress) instead.
 
-They also take two things from Envoy Gateway itself. The public API's prefix is a `RegularExpression` path match, whose dialect and precedence the Gateway API leaves to each implementation: Envoy Gateway matches an RE2 expression against the whole path, and tries regular expressions before prefixes. The `404` for the rest of `/rpc` and `/api` is an `HTTPRouteFilter` of its own, which answers the request itself:
+They also take two things from Envoy Gateway itself. The public API's prefix is a `RegularExpression` path match, whose dialect and precedence the Gateway API leaves to each implementation: Envoy Gateway matches an RE2 expression against the whole path, and tries regular expressions before prefixes. The `404` for the rest of `/rpc` is an `HTTPRouteFilter` of its own, which answers the request itself:
 
 ```yaml
 apiVersion: gateway.envoyproxy.io/v1alpha1
@@ -601,7 +601,6 @@ spec:
     - matches:
         - path: { type: PathPrefix, value: /images }
         - path: { type: RegularExpression, value: '/rpc/publira\.v1\..*' }
-        - path: { type: RegularExpression, value: '/api/publira\.v1\..*' }
       filters: &strip-request-headers
         - type: RequestHeaderModifier
           requestHeaderModifier:
@@ -612,7 +611,6 @@ spec:
           port: 8000
     - matches:
         - path: { type: PathPrefix, value: /rpc }
-        - path: { type: PathPrefix, value: /api }
       filters:
         - type: ExtensionRef
           extensionRef:
@@ -620,7 +618,6 @@ spec:
             kind: HTTPRouteFilter
             name: not-found
     - matches:
-        - path: { type: PathPrefix, value: /api/v1 }
         - path: { type: PathPrefix, value: / }
       filters: *strip-request-headers
       timeouts:
@@ -641,7 +638,6 @@ spec:
     - matches:
         - path: { type: PathPrefix, value: /images }
         - path: { type: RegularExpression, value: '/rpc/publira\.v1\..*' }
-        - path: { type: RegularExpression, value: '/api/publira\.v1\..*' }
       filters: &strip-request-headers
         - type: RequestHeaderModifier
           requestHeaderModifier:
@@ -652,7 +648,6 @@ spec:
           port: 8000
     - matches:
         - path: { type: PathPrefix, value: /rpc }
-        - path: { type: PathPrefix, value: /api }
       filters:
         - type: ExtensionRef
           extensionRef:
@@ -660,7 +655,6 @@ spec:
             kind: HTTPRouteFilter
             name: not-found
     - matches:
-        - path: { type: PathPrefix, value: /api/v1 }
         - path: { type: PathPrefix, value: / }
       filters: *strip-request-headers
       timeouts:
@@ -717,7 +711,7 @@ service:
     externalTrafficPolicy: Local
 ```
 
-and two Middlewares: one that removes the headers, which the `websecure` entry point above applies to every request it receives, and one that answers a request with a `404` before it is forwarded, which the Ingress for the rest of `/rpc` and `/api` below applies to its paths:
+and two Middlewares: one that removes the headers, which the `websecure` entry point above applies to every request it receives, and one that answers a request with a `404` before it is forwarded, which the Ingress for the rest of `/rpc` below applies to its paths:
 
 ```yaml
 apiVersion: traefik.io/v1alpha1
@@ -746,7 +740,7 @@ Traefik has no Middleware that only answers a request, so `not-found` is an allo
 
 Traefik replaces the caller's `X-Forwarded-For` and `X-Forwarded-Host` with its own unless it is told to trust a hop in front of it, as [The client address](#the-client-address) describes, so neither needs removing. `readTimeout` gives a request 300 seconds to arrive, which the episode upload needs; Traefik sets no limit on the size of a body. The redirect on `web` sends the ACME challenge to HTTPS as well, and the certificate authority follows it there, where the challenge is answered before the certificate exists. On another controller, do each of these with what it offers, by its own annotation or resource.
 
-One Ingress per web app then routes its hosts. Traefik matches a `Prefix` or an `ImplementationSpecific` path as a prefix of the path as a string rather than by whole segments, unless its `strictPrefixMatching` option is on, so leave that option off. That is how `/rpc/publira.v1.` names the public API's prefix inside a path segment, given as `ImplementationSpecific` because the Ingress API leaves that meaning to the controller; a controller that matches whole segments needs an annotation or a resource of its own for it. It is also why `/api/v1` is given as `/api/v1/`, ending in a slash: `/api/v1` alone would send `/api/v10` to the web app. A controller that matches whole segments still sends the bare `/api/v1` to the web app with the slash; Traefik answers it with the `404` below, which is harmless, since no web app answers anything there.
+One Ingress per web app then routes its hosts. Traefik matches a `Prefix` or an `ImplementationSpecific` path as a prefix of the path as a string rather than by whole segments, unless its `strictPrefixMatching` option is on, so leave that option off. That is how `/rpc/publira.v1.` names the public API's prefix inside a path segment, given as `ImplementationSpecific` because the Ingress API leaves that meaning to the controller; a controller that matches whole segments needs an annotation or a resource of its own for it.
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -769,14 +763,6 @@ spec:
             backend:
               { service: { name: publira-server, port: { number: 8000 } } }
           - path: /rpc/publira.v1.
-            pathType: ImplementationSpecific
-            backend:
-              { service: { name: publira-server, port: { number: 8000 } } }
-          - path: /api/v1/
-            pathType: Prefix
-            backend:
-              { service: { name: web-storefront, port: { number: 3000 } } }
-          - path: /api/publira.v1.
             pathType: ImplementationSpecific
             backend:
               { service: { name: publira-server, port: { number: 8000 } } }
@@ -808,13 +794,6 @@ spec:
             pathType: ImplementationSpecific
             backend:
               { service: { name: publira-server, port: { number: 8000 } } }
-          - path: /api/v1/
-            pathType: Prefix
-            backend: { service: { name: web-admin, port: { number: 4000 } } }
-          - path: /api/publira.v1.
-            pathType: ImplementationSpecific
-            backend:
-              { service: { name: publira-server, port: { number: 8000 } } }
           - path: /
             pathType: Prefix
             backend: { service: { name: web-admin, port: { number: 4000 } } }
@@ -840,10 +819,6 @@ spec:
             pathType: Prefix
             backend:
               { service: { name: web-storefront, port: { number: 3000 } } }
-          - path: /api
-            pathType: Prefix
-            backend:
-              { service: { name: web-storefront, port: { number: 3000 } } }
     - host: admin.comics.example.com
       http:
         paths: *not-found-paths
@@ -851,7 +826,7 @@ spec:
 
 The `cert-manager.io/cluster-issuer` annotation has cert-manager issue a certificate for the hosts of every `tls` entry into the Secret it names. `api-not-found` carries no such annotation, and reads the certificates the other two Ingresses had issued.
 
-`api-not-found` takes the rest of `/rpc` and `/api` on both hosts and answers it with the `not-found` Middleware. Traefik tries the longest rule first, so `/rpc/publira.v1.`, `/api/publira.v1.`, and `/api/v1/` keep their paths, and the web apps keep `/`. The backend is never reached, and is there because an Ingress path needs one: it names a web app rather than `publira-server`, so that if the Middleware were ever missing, the paths would reach a web app that has no page there rather than the console APIs. Traefik matches `/rpc` as a string, so a path such as `/rpcabc` is answered with the `404` too; no web app has a page there either.
+`api-not-found` takes the rest of `/rpc` on both hosts and answers it with the `not-found` Middleware. Traefik tries the longest rule first, so `/rpc/publira.v1.` keeps its paths, and the web apps keep `/`. The backend is never reached, and is there because an Ingress path needs one: it names a web app rather than `publira-server`, so that if the Middleware were ever missing, the paths would reach a web app that has no page there rather than the console APIs. Traefik matches `/rpc` as a string, so a path such as `/rpcabc` is answered with the `404` too; no web app has a page there either.
 
 ### The client address
 
@@ -968,7 +943,7 @@ kubectl create secret generic publira-storefront \
   --from-literal=PUBLIRA_PUBLIC_DB_URL="postgres://publira_public:$PUBLIC_DB_PASSWORD@$DB"
 ```
 
-Then change the backend of `/images` and the public API under `/rpc` and `/api` on the tenants' domains alone, in the `web-storefront` HTTPRoute or Ingress, from `publira-server` to `publira-storefront`. The console hosts' routes and the web apps keep calling `publira-server`, which serves every role: `web-admin` calls the public API as well as the console's, through its one `PUBLIRA_GRPC_URL`.
+Then change the backend of `/images` and the public API under `/rpc` on the tenants' domains alone, in the `web-storefront` HTTPRoute or Ingress, from `publira-server` to `publira-storefront`. The console hosts' routes and the web apps keep calling `publira-server`, which serves every role: `web-admin` calls the public API as well as the console's, through its one `PUBLIRA_GRPC_URL`.
 
 The edge answers a console API with `404` on every host either way, so the check calls the two Services from inside the cluster instead:
 

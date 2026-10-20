@@ -102,29 +102,20 @@
 		default "for={client_ip}"
 	}
 
-	# The public API, under /rpc and under /api, the prefix it had before /rpc,
-	# kept for the clients not yet on /rpc and removed in 0.3.0. The prefix ends
-	# at the dot after v1, so that publira.v1.<Service>/<Method> is all it
-	# matches.
+	# The public API. The prefix ends at the dot after v1, so that
+	# publira.v1.<Service>/<Method> is all it matches.
 	@rpc path /rpc/publira.v1.*
-	@api path /api/publira.v1.*
 
-	# The rest of /rpc and /api is forwarded nowhere: what the server answers
-	# there is the consoles' APIs, which web-admin and web-platform call over
-	# the private network, so no host needs them. /api/v1 is left out, since it
-	# holds the Next.js Route Handlers: /api/v1/revalidate on every app, plus
-	# the view beacon, the read beacon, and the payment and inbound email
-	# webhooks on the public site.
-	@console_api {
-		path /rpc /rpc/* /api /api/*
-		not path /api/v1 /api/v1/*
-	}
+	# The rest of /rpc is forwarded nowhere: what the server answers there is
+	# the consoles' APIs, which web-admin and web-platform call over the
+	# private network, so no host needs them.
+	@console_api path /rpc /rpc/*
 
 	route {
 		# A host in no list: the edge answers it itself, and no backend sees
-		# the request, /rpc, /api, and /images included. Over HTTPS no request
-		# for such a host gets this far: Caddy has no certificate for it, so the
-		# TLS handshake fails.
+		# the request, /rpc and /images included. Over HTTPS no request for
+		# such a host gets this far: Caddy has no certificate for it, so the TLS
+		# handshake fails.
 		handle @unlisted {
 			respond 404
 		}
@@ -141,12 +132,6 @@
 		# The public API, reached with the path as it is: the server's own
 		# routes carry /rpc.
 		handle @rpc {
-			reverse_proxy {$PUBLIRA_UPSTREAM_API:app:8000} {
-				import publira_forwarded
-			}
-		}
-
-		handle @api {
 			reverse_proxy {$PUBLIRA_UPSTREAM_API:app:8000} {
 				import publira_forwarded
 			}

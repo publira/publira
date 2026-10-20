@@ -34,28 +34,23 @@ On every one of those hosts, the path then decides whether the web app answers, 
 | Starting with `/images`                    | `publira server`             |
 | Starting with `/rpc/publira.v1.`           | `publira server`             |
 | `/rpc`, or starting with `/rpc/` otherwise | None: the edge answers `404` |
-| `/api/v1`, or starting with `/api/v1/`     | The web app the host picked  |
-| Starting with `/api/publira.v1.`           | `publira server`             |
-| `/api`, or starting with `/api/` otherwise | None: the edge answers `404` |
 | Anything else                              | The web app the host picked  |
 
-`/images` is every image a page shows, and `/rpc/publira.v1.` the public API the browser and the mobile app call. Nothing else under `/rpc` is forwarded, as [Only the public API goes through the edge](#only-the-public-api-goes-through-the-edge) explains. `/api` is the prefix the API had before `/rpc`, and `publira server` still answers on it so that a client not yet on `/rpc`, an installed build of the mobile app among them, keeps working; 0.3.0 stops serving it, and the `/api` rows go then. Until that release, route `/api/publira.v1.` as well, and answer the rest of `/api` as the rest of `/rpc`. `/api/v1` is the exception: it belongs to the web apps, which answer their own endpoints there, the payment and inbound email webhooks among them. The exception ends at a `/`, so a path such as `/api/v10` or `/api/v1beta` is not part of it, and the edge answers it with the rest of `/api`.
+`/images` is every image a page shows, and `/rpc/publira.v1.` the public API the browser and the mobile app call. Nothing else under `/rpc` is forwarded, as [Only the public API goes through the edge](#only-the-public-api-goes-through-the-edge) explains. Everything else belongs to the web apps, `/api` included: they answer their own endpoints under `/api/v1`, the payment and inbound email webhooks among them.
 
 The public API's prefix ends at the dot after `v1`, so that a procedure, `/rpc/publira.v1.<Service>/<Method>`, is all it matches. A match on `/rpc/publira.v1` without the dot would also take a namespace that only starts the same way, such as `publira.v1beta`. An edge that matches the longest prefix first gets the order of the table right without being told it.
 
 `publira server` is on port `8000`, unless `PUBLIRA_PUBLIC_API_ADDR` gives it another address, as the [`publira server` reference](https://github.com/publira/publira/blob/main/server/cmd/publira/README.md) lists. The web apps listen on port `3000` (`web-storefront`), `4000` (`web-admin`), and `4100` (`web-platform`) in the images as the repository builds them, unless you set their `PORT`.
 
-The edge forwards the path as it arrived, and the `Host` header as the browser sent it. Publira's routes carry the `/rpc`, `/api`, and `/images` prefixes, and Publira finds the tenant from the host name, so an edge that strips a prefix or rewrites `Host` reaches no tenant at all.
+The edge forwards the path as it arrived, and the `Host` header as the browser sent it. Publira's routes carry the `/rpc` and `/images` prefixes, and Publira finds the tenant from the host name, so an edge that strips a prefix or rewrites `Host` reaches no tenant at all.
 
 An edge that checks the health of what it forwards to, as a load balancer does, can probe `GET /readyz` on each process. [Health checks](../3-operations/11-monitoring.md#health-checks) says what each one checks, and what pointing a load balancer at it means when the database stops answering.
 
 ### Only the public API goes through the edge
 
-`publira server` serves the tenant console's and the Platform Console's APIs, `publira.admin.v1` and `publira.platform.v1`, under `/rpc` beside the public API, and under `/api` until 0.3.0, on the one port the edge forwards to. Nothing reaches them through the edge: `web-admin` and `web-platform` call them from their own servers, over the private network on `PUBLIRA_GRPC_URL`, and the mobile app calls the public API alone. No host needs them forwarded, so the edge answers them with a `404` of its own, on the console hosts as on the tenants' domains. An edge that forwards them anyway exposes two APIs to the internet for nothing, along with every call of theirs that runs before there is a session: signing in, resetting a password, confirming an email address, and creating the Platform Console's first operator. Their own authentication, which [The console APIs](../3-operations/12-security.md#the-console-apis) describes, stays in place behind the edge rule.
+`publira server` serves the tenant console's and the Platform Console's APIs, `publira.admin.v1` and `publira.platform.v1`, under `/rpc` beside the public API, on the one port the edge forwards to. Nothing reaches them through the edge: `web-admin` and `web-platform` call them from their own servers, over the private network on `PUBLIRA_GRPC_URL`, and the mobile app calls the public API alone. No host needs them forwarded, so the edge answers them with a `404` of its own, on the console hosts as on the tenants' domains. An edge that forwards them anyway exposes two APIs to the internet for nothing, along with every call of theirs that runs before there is a session: signing in, resetting a password, confirming an email address, and creating the Platform Console's first operator. Their own authentication, which [The console APIs](../3-operations/12-security.md#the-console-apis) describes, stays in place behind the edge rule.
 
-`/api` follows the same rule as `/rpc`, because `/api/publira.admin.v1.…` reaches the same handlers until 0.3.0: an edge that holds back the rest of `/rpc` but forwards all of `/api` leaves the console APIs on the internet.
-
-Running the process the tenants' domains reach with `publira server --role storefront` is a second, separate layer. The edge rule keeps the console APIs' paths off the internet; `--role storefront` keeps the consoles' database logins and the web service token out of the process readers reach at all. Keep sending the console hosts' `/rpc/publira.v1.`, `/api/publira.v1.`, and `/images` to the `publira server` the web apps call, which serves every role.
+Running the process the tenants' domains reach with `publira server --role storefront` is a second, separate layer. The edge rule keeps the console APIs' paths off the internet; `--role storefront` keeps the consoles' database logins and the web service token out of the process readers reach at all. Keep sending the console hosts' `/rpc/publira.v1.` and `/images` to the `publira server` the web apps call, which serves every role.
 
 ### TLS
 
@@ -159,7 +154,7 @@ Take the files of the one you run from the release you install. The [routing con
 
 ### What each sample does
 
-- **Routing.** Each sample routes the host names in three lists, given as [The host lists](#the-host-lists) describes, and applies the path rules of [Routing](#routing) on every one of them, answering the rest of `/rpc` and `/api` with a 404 of its own. A host in none of the lists reaches nothing: the sample answers it with a 404 of its own, on every path. That is the samples' choice, not something Publira requires.
+- **Routing.** Each sample routes the host names in three lists, given as [The host lists](#the-host-lists) describes, and applies the path rules of [Routing](#routing) on every one of them, answering the rest of `/rpc` with a 404 of its own. A host in none of the lists reaches nothing: the sample answers it with a 404 of its own, on every path. That is the samples' choice, not something Publira requires.
 - **The client address.** Traefik sets `X-Forwarded-For` and removes `Forwarded` with the `strip-forwarded` middleware. nginx and Caddy set `Forwarded` to the client address alone and remove `X-Forwarded-For`. Leave `PUBLIRA_FORWARDED_HEADER_ENABLED` enabled behind any of them.
 - **The host.** Every sample passes `Host` on unchanged, and sets `X-Forwarded-Host` and `X-Forwarded-Proto` itself rather than passing on the caller's, except where it trusts a [hop in front of it](#a-hop-in-front-of-the-proxy).
 - **Trace context.** Every sample removes the three headers. Traefik does it with the `strip-trace-context` middleware, which every entry point needs beside `strip-forwarded`.
