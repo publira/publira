@@ -361,7 +361,7 @@ func TestAdminMfaVerifyRefusesAReusedChallenge(t *testing.T) {
 	// only here.
 	if got := env.countRows(t,
 		"SELECT count(*) FROM audit_logs WHERE tenant_id = $1 AND actor_user_id = $2 AND action = $3 AND outcome = $4 AND reason = $5",
-		tenant.Tenant.ID, tenant.User.ID, auditActionMfaVerified, auditlog.OutcomeFailure, "challenge_spent"); got != 1 {
+		tenant.Tenant.ID, tenant.User.ID, mfaAuditActions.Verified, auditlog.OutcomeFailure, "challenge_spent"); got != 1 {
 		t.Fatalf("audit rows for a spent challenge = %d, want 1", got)
 	}
 

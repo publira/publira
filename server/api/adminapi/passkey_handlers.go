@@ -17,6 +17,7 @@ import (
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
+	"github.com/publira/publira/server/internal/mfaflow"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/rpcerrors"
@@ -243,10 +244,10 @@ func (s *adminServer) FinishPasskeyRegistration(
 
 	row, codes, err := s.storePasskey(ctx, actor, rp, credential, name)
 	switch {
-	case errors.Is(err, errMfaChallengeSpent):
+	case errors.Is(err, mfaflow.ErrChallengeSpent):
 		s.recordMfaAudit(ctx, actor, auditActionMfaPasskeyRegistered, auditlog.OutcomeFailure, "challenge_spent")
 		return nil, invalidSessionError()
-	case errors.Is(err, errMfaEnrollChallengeStale):
+	case errors.Is(err, mfaflow.ErrEnrollChallengeStale):
 		s.recordMfaAudit(ctx, actor, auditActionMfaPasskeyRegistered, auditlog.OutcomeFailure, "challenge_stale")
 		return nil, invalidSessionError()
 	case errors.Is(err, errPasskeyAlreadyRegistered):
@@ -263,7 +264,7 @@ func (s *adminServer) FinishPasskeyRegistration(
 	}
 	reason := ""
 	if actor.FromChallenge {
-		user, accessToken, sessionErr := s.issueAdminSession(ctx, actor)
+		user, accessToken, sessionErr := s.mfaAccount(actor).IssueSession(ctx)
 		if sessionErr == nil {
 			resp.User = user
 			resp.AccessToken = accessToken
@@ -310,31 +311,23 @@ func (s *adminServer) storePasskey(
 	if err := s.lockMfaFactors(ctx, q, actor.User.ID); err != nil {
 		return dbmodels.UserWebauthnCredential{}, nil, err
 	}
+	acct := s.mfaAccount(actor)
 	if actor.FromChallenge {
-		claimed, err := q.MarkUserMfaChallengeUsed(ctx, dbmodels.MarkUserMfaChallengeUsedParams{
-			Jti:       actor.ChallengeID,
-			TenantID:  actor.Tenant.ID,
-			UserID:    actor.User.ID,
-			ExpiresAt: actor.ChallengeExpiresAt,
-		})
-		if err != nil {
-			return dbmodels.UserWebauthnCredential{}, nil, s.internalDBError(ctx, "failed to mark mfa challenge used", err, "user_id", userID)
-		}
-		if claimed == 0 {
-			return dbmodels.UserWebauthnCredential{}, nil, errMfaChallengeSpent
-		}
-		// mfaActorFor checked this before the lock; a factor enrolled since,
-		// under another login's enroll challenge, is seen here.
-		totp, err := q.GetUserMfaTotpByUserID(ctx, actor.User.ID)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return dbmodels.UserWebauthnCredential{}, nil, s.internalDBError(ctx, "failed to get user mfa totp", err, "user_id", userID)
-		}
-		passkeys, err := s.currentPasskeys(ctx, q, actor)
+		claimed, err := mfaflow.SpendChallenge(ctx, acct, q)
 		if err != nil {
 			return dbmodels.UserWebauthnCredential{}, nil, err
 		}
-		if totp.EnabledAt.Valid || passkeys > 0 {
-			return dbmodels.UserWebauthnCredential{}, nil, errMfaEnrollChallengeStale
+		if !claimed {
+			return dbmodels.UserWebauthnCredential{}, nil, mfaflow.ErrChallengeSpent
+		}
+		// mfaActorFor checked this before the lock; a factor enrolled since,
+		// under another login's enroll challenge, is seen here.
+		factors, err := mfaflow.FactorsOf(ctx, acct, q)
+		if err != nil {
+			return dbmodels.UserWebauthnCredential{}, nil, err
+		}
+		if factors.Any() {
+			return dbmodels.UserWebauthnCredential{}, nil, mfaflow.ErrEnrollChallengeStale
 		}
 	}
 	id, err := uuid.NewV7()
@@ -371,9 +364,9 @@ func (s *adminServer) storePasskey(
 	}
 	var codes []string
 	if unused == 0 {
-		codes, err = replaceRecoveryCodes(ctx, q, actor.Tenant.ID, actor.User.ID)
+		codes, err = mfaflow.ReplaceRecoveryCodes(ctx, acct, q)
 		if err != nil {
-			return dbmodels.UserWebauthnCredential{}, nil, s.internalDBError(ctx, "failed to create mfa recovery codes", err, "user_id", userID)
+			return dbmodels.UserWebauthnCredential{}, nil, err
 		}
 	}
 	if err := tx.Commit(); err != nil {
@@ -390,12 +383,12 @@ func (s *adminServer) BeginPasskeyVerification(
 	if err != nil {
 		return nil, err
 	}
-	locked, err := s.mfaLocked(ctx, actor.User.ID)
+	locked, err := mfaflow.Locked(ctx, s.mfaAccount(actor))
 	if err != nil {
 		return nil, err
 	}
 	if locked {
-		return nil, mfaLockedError()
+		return nil, mfaflow.LockedError()
 	}
 	rp, err := s.adminRelyingParty(ctx, actor.Tenant)
 	if err != nil {
@@ -430,12 +423,12 @@ func (s *adminServer) BeginPasskeyConfirmation(
 		return nil, err
 	}
 	actor := mfaActor{Tenant: tenant, User: sessionUser, Role: role}
-	locked, err := s.mfaLocked(ctx, actor.User.ID)
+	locked, err := mfaflow.Locked(ctx, s.mfaAccount(actor))
 	if err != nil {
 		return nil, err
 	}
 	if locked {
-		return nil, mfaLockedError()
+		return nil, mfaflow.LockedError()
 	}
 	rp, err := s.adminRelyingParty(ctx, actor.Tenant)
 	if err != nil {
@@ -467,58 +460,42 @@ func (s *adminServer) FinishPasskeyVerification(
 		auth.AuditEvent(ctx, "admin_mfa_verify", "failure", "", "", "invalid_challenge")
 		return nil, err
 	}
-	refuse := func(reason string, err error) (*publiraadminv1.AdminAuthServiceFinishPasskeyVerificationResponse, error) {
-		s.recordMfaAudit(ctx, actor, auditActionMfaVerified, auditlog.OutcomeFailure, reason)
-		auth.AuditEvent(ctx, "admin_mfa_verify", "failure", actor.Tenant.PublicID, actor.User.PublicID, reason)
-		return nil, err
-	}
-
+	acct := s.mfaAccount(actor)
 	if _, reason, err := s.checkPasskeyAssertion(ctx, actor, req.CredentialJson); err != nil {
 		if reason == "" {
 			return nil, err
 		}
-		return refuse(reason, err)
+		acct.Audit(ctx, mfaAuditActions.Verified, auditlog.OutcomeFailure, reason)
+		acct.LogVerification(ctx, auditlog.OutcomeFailure, reason)
+		return nil, err
 	}
 
-	spent, err := s.spendMfaChallenge(ctx, actor)
-	if err != nil {
-		return refuse("challenge_claim_failed", err)
-	}
-	if !spent {
-		return refuse("challenge_spent", invalidSessionError())
-	}
-
-	sessionUser, accessToken, err := s.issueAdminSession(ctx, actor)
+	verification, err := mfaflow.CompleteVerification(ctx, acct, mfaflow.FactorPasskey)
 	if err != nil {
 		return nil, err
 	}
-	remaining, err := s.remainingRecoveryCodes(ctx, actor.User.ID)
-	if err != nil {
-		return nil, err
-	}
-	s.recordMfaAudit(ctx, actor, auditActionMfaVerified, auditlog.OutcomeSuccess, "passkey")
-	auth.AuditEvent(ctx, "admin_mfa_verify", "success", actor.Tenant.PublicID, actor.User.PublicID, "passkey")
 	return &publiraadminv1.AdminAuthServiceFinishPasskeyVerificationResponse{
-		User:                   sessionUser,
-		AccessToken:            accessToken,
-		RemainingRecoveryCodes: remaining,
+		User:                   verification.User,
+		AccessToken:            verification.AccessToken,
+		RemainingRecoveryCodes: verification.RemainingRecoveryCodes,
 	}, nil
 }
 
 // checkPasskeyAssertion decides whether an assertion made over a ceremony the
-// account began proves one of its passkeys for the console, as checkMfaCode
-// decides for a code, and answers the passkey that made it. It spends the
+// account began proves one of its passkeys for the console, as
+// mfaflow.CheckCode decides for a code, and answers the passkey that made it. It spends the
 // ceremony, moves the passkey's counter on, and owns the failure counter and
 // the lock: a refusal here has already been counted, and the error it returns
 // is the one to hand the client. The reason names a refusal for the audit
 // trail, and is empty for an error that refuses nothing.
 func (s *adminServer) checkPasskeyAssertion(ctx context.Context, actor mfaActor, credentialJSON string) (dbmodels.UserWebauthnCredential, string, error) {
-	locked, err := s.mfaLocked(ctx, actor.User.ID)
+	acct := s.mfaAccount(actor)
+	locked, err := mfaflow.Locked(ctx, acct)
 	if err != nil {
 		return dbmodels.UserWebauthnCredential{}, "", err
 	}
 	if locked {
-		return dbmodels.UserWebauthnCredential{}, "locked", mfaLockedError()
+		return dbmodels.UserWebauthnCredential{}, "locked", mfaflow.LockedError()
 	}
 	if strings.TrimSpace(credentialJSON) == "" {
 		return dbmodels.UserWebauthnCredential{}, "", passkeyCredentialRequiredError()
@@ -575,7 +552,7 @@ func (s *adminServer) checkPasskeyAssertion(ctx context.Context, actor mfaActor,
 	if claimed == 0 {
 		return s.refusePasskeyAssertion(ctx, actor, "sign_count_regressed")
 	}
-	if err := s.resetMfaFailures(ctx, actor.User.ID); err != nil {
+	if err := mfaflow.ResetFailures(ctx, acct); err != nil {
 		return dbmodels.UserWebauthnCredential{}, "", err
 	}
 	return used, "", nil
@@ -591,14 +568,8 @@ func (s *adminServer) checkPasskeyAssertion(ctx context.Context, actor mfaActor,
 // also what a ceremony spent or dropped in another tab looks like, and
 // counting it would lock out an owner whose every assertion was genuine.
 func (s *adminServer) refusePasskeyAssertion(ctx context.Context, actor mfaActor, reason string) (dbmodels.UserWebauthnCredential, string, error) {
-	locked, err := s.countMfaFailure(ctx, actor)
-	if err != nil {
-		return dbmodels.UserWebauthnCredential{}, "", err
-	}
-	if locked {
-		return dbmodels.UserWebauthnCredential{}, "locked", mfaLockedError()
-	}
-	return dbmodels.UserWebauthnCredential{}, reason, passkeyRefusedError()
+	reason, err := mfaflow.Refuse(ctx, s.mfaAccount(actor), reason, passkeyRefusedError())
+	return dbmodels.UserWebauthnCredential{}, reason, err
 }
 
 func (s *adminServer) ListPasskeys(
@@ -760,8 +731,8 @@ func (s *adminServer) deletePasskey(ctx context.Context, userID uuid.UUID, rpID 
 			if required {
 				return errLastRequiredFactor
 			}
-			if err := s.deleteRecoveryCodesWithTheLastFactor(ctx, q, userID); err != nil {
-				return err
+			if err := deleteRecoveryCodesWithTheLastFactor(ctx, q, userID); err != nil {
+				return s.internalDBError(ctx, "failed to delete mfa recovery codes", err, "user_id", userID.String())
 			}
 		}
 	}
@@ -776,16 +747,13 @@ func (s *adminServer) deletePasskey(ctx context.Context, userID uuid.UUID, rpID 
 // any RP ID. A passkey the account signs in to the storefront with is no
 // second factor and keeps no code. The caller holds lockMfaFactors and has already removed what it is
 // removing.
-func (s *adminServer) deleteRecoveryCodesWithTheLastFactor(ctx context.Context, q Querier, userID uuid.UUID) error {
+func deleteRecoveryCodesWithTheLastFactor(ctx context.Context, q dbmodels.Querier, userID uuid.UUID) error {
 	passkeys, err := q.CountUserWebauthnCredentials(ctx, dbmodels.CountUserWebauthnCredentialsParams{UserID: userID, RelyingParty: tenantwebauthn.KindAdminConsole})
 	if err != nil {
-		return s.internalDBError(ctx, "failed to count passkeys", err, "user_id", userID.String())
+		return err
 	}
 	if passkeys > 0 {
 		return nil
 	}
-	if err := q.DeleteUserMfaRecoveryCodesByUserID(ctx, userID); err != nil {
-		return s.internalDBError(ctx, "failed to delete mfa recovery codes", err, "user_id", userID.String())
-	}
-	return nil
+	return q.DeleteUserMfaRecoveryCodesByUserID(ctx, userID)
 }

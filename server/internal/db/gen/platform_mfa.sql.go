@@ -150,6 +150,24 @@ func (q *Queries) ListUnusedPlatformUserMfaRecoveryCodes(ctx context.Context, pl
 	return items, nil
 }
 
+const LockPlatformUserMfaFactors = `-- name: LockPlatformUserMfaFactors :exec
+SELECT pg_advisory_xact_lock(
+    hashtextextended('platform_user_mfa_factors:' || $1::uuid::text, 0)
+)
+`
+
+// Serialises, for the rest of the transaction, every change to an operator's
+// authenticator and to the recovery codes that stand in for it, as
+// LockUserMfaFactors does for tenant staff: a regeneration that checked the
+// authenticator is still there would otherwise hand out codes a concurrent
+// removal has just left with nothing to stand in for. The authenticator has no
+// row to lock before it is enrolled, so the lock is taken on the operator's
+// identity instead.
+func (q *Queries) LockPlatformUserMfaFactors(ctx context.Context, platformUserID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, LockPlatformUserMfaFactors, platformUserID)
+	return err
+}
+
 const MarkPlatformUserMfaChallengeUsed = `-- name: MarkPlatformUserMfaChallengeUsed :execrows
 INSERT INTO platform_user_mfa_used_challenges (jti, platform_user_id, expires_at)
 VALUES ($1, $2, $3)

@@ -115,3 +115,15 @@ WHERE platform_user_id = $1;
 INSERT INTO platform_user_mfa_used_challenges (jti, platform_user_id, expires_at)
 VALUES ($1, $2, $3)
 ON CONFLICT (jti) DO NOTHING;
+
+-- name: LockPlatformUserMfaFactors :exec
+-- Serialises, for the rest of the transaction, every change to an operator's
+-- authenticator and to the recovery codes that stand in for it, as
+-- LockUserMfaFactors does for tenant staff: a regeneration that checked the
+-- authenticator is still there would otherwise hand out codes a concurrent
+-- removal has just left with nothing to stand in for. The authenticator has no
+-- row to lock before it is enrolled, so the lock is taken on the operator's
+-- identity instead.
+SELECT pg_advisory_xact_lock(
+    hashtextextended('platform_user_mfa_factors:' || sqlc.arg('platform_user_id')::uuid::text, 0)
+);

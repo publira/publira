@@ -15,9 +15,9 @@ import (
 	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/mfa"
+	"github.com/publira/publira/server/internal/mfaflow"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
-	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/tenantwebauthn"
 )
@@ -26,38 +26,22 @@ import (
 // code is the same action as a right one with outcome failure, which is how
 // the rest of audit_logs distinguishes the two.
 const (
-	auditActionMfaEnrolled                 = "admin_mfa_enrolled"
-	auditActionMfaVerified                 = "admin_mfa_verified"
-	auditActionMfaRecoveryCodeUsed         = "admin_mfa_recovery_code_used"
-	auditActionMfaDisabled                 = "admin_mfa_disabled"
-	auditActionMfaRecoveryCodesRegenerated = "admin_mfa_recovery_codes_regenerated"
-	auditActionMfaPasskeyRegistered        = "admin_mfa_passkey_registered"
-	auditActionMfaPasskeyRenamed           = "admin_mfa_passkey_renamed"
-	auditActionMfaPasskeyRemoved           = "admin_mfa_passkey_removed"
+	auditActionMfaPasskeyRegistered = "admin_mfa_passkey_registered"
+	auditActionMfaPasskeyRenamed    = "admin_mfa_passkey_renamed"
+	auditActionMfaPasskeyRemoved    = "admin_mfa_passkey_removed"
 )
+
+var mfaAuditActions = mfaflow.Actions{
+	Enrolled:                 "admin_mfa_enrolled",
+	Verified:                 "admin_mfa_verified",
+	RecoveryCodeUsed:         "admin_mfa_recovery_code_used",
+	Disabled:                 "admin_mfa_disabled",
+	RecoveryCodesRegenerated: "admin_mfa_recovery_codes_regenerated",
+}
 
 // mfaOTPAuthIssuer is what an authenticator app lists the entry under when
 // the tenant has no name of its own to show.
 const mfaOTPAuthIssuer = "Publira"
-
-func mfaCodeRequiredError() error {
-	return connect.NewError(connect.CodeInvalidArgument, "code is required")
-}
-
-// A refused code and a rejected session both answer `unauthenticated`, and a
-// console that cannot tell them apart would sign an operator out over a typo.
-// The reason is what separates the two.
-func mfaInvalidCodeError() error {
-	return rpcerrors.NewErrorInfoError(connect.CodeUnauthenticated, errors.New("invalid code"), rpcerrors.ReasonMfaInvalidCode)
-}
-
-func mfaLockedError() error {
-	return rpcerrors.NewErrorInfoError(connect.CodeResourceExhausted, errors.New("too many failed attempts"), rpcerrors.ReasonMfaLocked)
-}
-
-func mfaNotEnabledError() error {
-	return connect.NewError(connect.CodeFailedPrecondition, "mfa is not enabled")
-}
 
 // mfaActor is the account an MFA RPC acts for, together with how it proved
 // who it is. FromChallenge marks the token a password alone earned, which is
@@ -71,6 +55,228 @@ type mfaActor struct {
 	FromChallenge      bool
 	ChallengeID        uuid.UUID
 	ChallengeExpiresAt time.Time
+}
+
+// mfaAccount is a tenant member's second factor, as mfaflow reaches it: over
+// users and their user_mfa_* rows on the request's tenant-scoped connection,
+// with failures counted in user_mfa_lockouts, where a refused passkey counts
+// toward the same lock as a refused code, and audit entries in the tenant's
+// audit_logs.
+type mfaAccount struct {
+	s     *adminServer
+	actor mfaActor
+}
+
+func (s *adminServer) mfaAccount(actor mfaActor) mfaAccount {
+	return mfaAccount{s: s, actor: actor}
+}
+
+var _ mfaflow.Account = mfaAccount{}
+
+func (a mfaAccount) Queries(ctx context.Context) dbmodels.Querier {
+	return a.s.queriesFor(ctx)
+}
+
+func (a mfaAccount) InTx(ctx context.Context, fn func(q dbmodels.Querier) error) error {
+	userID := a.actor.User.ID
+	tx, err := a.s.beginTenantTx(ctx)
+	if err != nil {
+		return a.s.internalDBError(ctx, "failed to begin mfa transaction", err, "user_id", userID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	q := dbmodels.New(tx)
+	if err := a.s.lockMfaFactors(ctx, q, userID); err != nil {
+		return err
+	}
+	if err := fn(q); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return a.s.internalDBError(ctx, "failed to commit mfa transaction", err, "user_id", userID.String())
+	}
+	return nil
+}
+
+func (a mfaAccount) Totp(ctx context.Context, q dbmodels.Querier) (mfaflow.Totp, bool, error) {
+	row, err := q.GetUserMfaTotpByUserID(ctx, a.actor.User.ID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return mfaflow.Totp{}, false, nil
+	}
+	if err != nil {
+		return mfaflow.Totp{}, false, err
+	}
+	return mfaflow.Totp{SecretEncrypted: row.SecretEncrypted, EnabledAt: row.EnabledAt}, true, nil
+}
+
+// Passkeys counts only the passkeys registered for the relying party ID the
+// console answers to now: one registered for another can settle no
+// challenge.
+func (a mfaAccount) Passkeys(ctx context.Context, q dbmodels.Querier) (int64, error) {
+	rpID, err := tenantwebauthn.AdminConsoleRPID(a.actor.Tenant)
+	if err != nil {
+		return 0, err
+	}
+	return q.CountUserWebauthnCredentialsForRPID(ctx, dbmodels.CountUserWebauthnCredentialsForRPIDParams{
+		UserID:       a.actor.User.ID,
+		RelyingParty: tenantwebauthn.KindAdminConsole,
+		RpID:         rpID,
+	})
+}
+
+func (a mfaAccount) StoreTotpSecret(ctx context.Context, q dbmodels.Querier, encrypted string) error {
+	_, err := q.UpsertUserMfaTotpSecret(ctx, dbmodels.UpsertUserMfaTotpSecretParams{
+		UserID:          a.actor.User.ID,
+		TenantID:        a.actor.Tenant.ID,
+		SecretEncrypted: encrypted,
+	})
+	return err
+}
+
+func (a mfaAccount) ClaimTotpStep(ctx context.Context, q dbmodels.Querier, step int64) (bool, error) {
+	claimed, err := q.MarkUserMfaTotpVerified(ctx, dbmodels.MarkUserMfaTotpVerifiedParams{
+		UserID:           a.actor.User.ID,
+		LastVerifiedStep: sql.NullInt64{Int64: step, Valid: true},
+	})
+	return claimed > 0, err
+}
+
+func (a mfaAccount) EnableTotp(ctx context.Context, q dbmodels.Querier) (bool, error) {
+	enabled, err := q.EnableUserMfaTotp(ctx, a.actor.User.ID)
+	return enabled > 0, err
+}
+
+func (a mfaAccount) DeleteTotp(ctx context.Context, q dbmodels.Querier) error {
+	return q.DeleteUserMfaTotpByUserID(ctx, a.actor.User.ID)
+}
+
+func (a mfaAccount) Locked(ctx context.Context, q dbmodels.Querier) (bool, error) {
+	row, err := q.GetUserMfaLockout(ctx, a.actor.User.ID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return row.LockedUntil.Valid && row.LockedUntil.Time.After(time.Now()), nil
+}
+
+func (a mfaAccount) CountFailure(ctx context.Context, q dbmodels.Querier) (bool, error) {
+	updated, err := q.RecordUserMfaFailure(ctx, dbmodels.RecordUserMfaFailureParams{
+		UserID:            a.actor.User.ID,
+		TenantID:          a.actor.Tenant.ID,
+		MaxFailedAttempts: mfa.MaxFailedAttempts,
+		LockedUntil:       time.Now().Add(mfa.LockDuration),
+	})
+	if err != nil {
+		return false, err
+	}
+	return updated.LockedUntil.Valid && updated.LockedUntil.Time.After(time.Now()), nil
+}
+
+func (a mfaAccount) ResetFailures(ctx context.Context, q dbmodels.Querier) error {
+	return q.ResetUserMfaFailures(ctx, a.actor.User.ID)
+}
+
+func (a mfaAccount) UnusedRecoveryCodes(ctx context.Context, q dbmodels.Querier) ([]mfaflow.RecoveryCode, error) {
+	rows, err := q.ListUnusedUserMfaRecoveryCodes(ctx, a.actor.User.ID)
+	if err != nil {
+		return nil, err
+	}
+	codes := make([]mfaflow.RecoveryCode, 0, len(rows))
+	for _, row := range rows {
+		codes = append(codes, mfaflow.RecoveryCode{ID: row.ID, CodeHash: row.CodeHash})
+	}
+	return codes, nil
+}
+
+func (a mfaAccount) MarkRecoveryCodeUsed(ctx context.Context, q dbmodels.Querier, id uuid.UUID) (bool, error) {
+	spent, err := q.MarkUserMfaRecoveryCodeUsed(ctx, id)
+	return spent == 1, err
+}
+
+func (a mfaAccount) CountUnusedRecoveryCodes(ctx context.Context, q dbmodels.Querier) (int64, error) {
+	return q.CountUnusedUserMfaRecoveryCodes(ctx, a.actor.User.ID)
+}
+
+func (a mfaAccount) DeleteRecoveryCodes(ctx context.Context, q dbmodels.Querier) error {
+	return q.DeleteUserMfaRecoveryCodesByUserID(ctx, a.actor.User.ID)
+}
+
+func (a mfaAccount) CreateRecoveryCode(ctx context.Context, q dbmodels.Querier, id uuid.UUID, hash string) error {
+	return q.CreateUserMfaRecoveryCode(ctx, dbmodels.CreateUserMfaRecoveryCodeParams{
+		ID:       id,
+		TenantID: a.actor.Tenant.ID,
+		UserID:   a.actor.User.ID,
+		CodeHash: hash,
+	})
+}
+
+func (a mfaAccount) ReleaseRecoveryCodes(ctx context.Context, q dbmodels.Querier) error {
+	return deleteRecoveryCodesWithTheLastFactor(ctx, q, a.actor.User.ID)
+}
+
+func (a mfaAccount) FromChallenge() bool {
+	return a.actor.FromChallenge
+}
+
+func (a mfaAccount) ClaimChallenge(ctx context.Context, q dbmodels.Querier) (bool, error) {
+	claimed, err := q.MarkUserMfaChallengeUsed(ctx, dbmodels.MarkUserMfaChallengeUsedParams{
+		Jti:       a.actor.ChallengeID,
+		TenantID:  a.actor.Tenant.ID,
+		UserID:    a.actor.User.ID,
+		ExpiresAt: a.actor.ChallengeExpiresAt,
+	})
+	return claimed == 1, err
+}
+
+func (a mfaAccount) CanIssueSession() bool {
+	return a.s.tokens != nil
+}
+
+func (a mfaAccount) IssueSession(ctx context.Context) (*publirattypesv1.User, *publirattypesv1.AccessToken, error) {
+	if a.s.tokens == nil {
+		return nil, nil, connect.NewError(connect.CodeInternal, "token manager is not configured")
+	}
+	actor := a.actor
+	token, expiresAt, err := a.s.tokens.Issue(actor.User.PublicID, auth.AudienceAdmin, actor.Tenant.ID.String(), actor.Role, actor.User.CredentialsVersion, time.Now())
+	if err != nil {
+		return nil, nil, a.s.internalError(ctx, "failed to issue admin access token", err, "user_id", actor.User.ID.String())
+	}
+	return &publirattypesv1.User{PublicId: actor.User.PublicID, Name: actor.User.Name, Role: actor.Role},
+		&publirattypesv1.AccessToken{Token: token, ExpiresAt: auth.FormatExpiresAt(expiresAt)},
+		nil
+}
+
+func (a mfaAccount) Encryptor() mfaflow.Encryptor {
+	if a.s.encryptor == nil {
+		return nil
+	}
+	return a.s.encryptor
+}
+
+func (a mfaAccount) OTPAuthLabel() (string, string) {
+	issuer := strings.TrimSpace(a.actor.Tenant.Name)
+	if issuer == "" {
+		issuer = mfaOTPAuthIssuer
+	}
+	return issuer, a.actor.User.Email
+}
+
+func (a mfaAccount) Actions() mfaflow.Actions {
+	return mfaAuditActions
+}
+
+func (a mfaAccount) Audit(ctx context.Context, action, outcome, reason string) {
+	a.s.recordMfaAudit(ctx, a.actor, action, outcome, reason)
+}
+
+func (a mfaAccount) LogVerification(ctx context.Context, outcome, reason string) {
+	auth.AuditEvent(ctx, "admin_mfa_verify", outcome, a.actor.Tenant.PublicID, a.actor.User.PublicID, reason)
+}
+
+func (a mfaAccount) InternalError(ctx context.Context, msg string, err error) error {
+	return a.s.internalError(ctx, msg, err, "user_id", a.actor.User.ID.String())
 }
 
 // mfaRequiredForRole reports whether the platform policy makes the second
@@ -88,24 +294,11 @@ func (s *adminServer) mfaRequiredForRole(ctx context.Context, role string) (bool
 	return policy.MFARequiredForTenantAdmin, nil
 }
 
-// mfaFactors is what an account holds of the two second factors. A TOTP row
-// that was started and never confirmed is not a factor, and neither is a
-// passkey registered for a relying party ID the console no longer answers to:
-// neither can settle a challenge.
-type mfaFactors struct {
-	Totp        dbmodels.UserMfaTotp
-	TotpFound   bool
-	TotpEnabled bool
-	Passkeys    int64
-}
-
-func (f mfaFactors) any() bool {
-	return f.TotpEnabled || f.Passkeys > 0
-}
-
-func (f mfaFactors) methods() []publiraadminv1.MfaMethod {
+// mfaMethods lists the factors an account holds in the order the console
+// offers them.
+func mfaMethods(f mfaflow.Factors) []publiraadminv1.MfaMethod {
 	var methods []publiraadminv1.MfaMethod
-	if f.TotpEnabled {
+	if f.TotpEnabled() {
 		methods = append(methods, publiraadminv1.MfaMethod_MFA_METHOD_TOTP)
 	}
 	if f.Passkeys > 0 {
@@ -124,56 +317,30 @@ func (s *adminServer) adminRPID(ctx context.Context, tenant dbmodels.Tenant) (st
 	return rpID, nil
 }
 
-func (s *adminServer) mfaFactorsFor(ctx context.Context, tenant dbmodels.Tenant, userID uuid.UUID) (mfaFactors, error) {
-	row, found, err := s.mfaTotpRow(ctx, userID)
-	if err != nil {
-		return mfaFactors{}, err
-	}
-	rpID, err := s.adminRPID(ctx, tenant)
-	if err != nil {
-		return mfaFactors{}, err
-	}
-	passkeys, err := s.queriesFor(ctx).CountUserWebauthnCredentialsForRPID(ctx, dbmodels.CountUserWebauthnCredentialsForRPIDParams{
-		UserID:       userID,
-		RelyingParty: tenantwebauthn.KindAdminConsole,
-		RpID:         rpID,
-	})
-	if err != nil {
-		return mfaFactors{}, s.internalDBError(ctx, "failed to count passkeys", err, "user_id", userID.String())
-	}
-	return mfaFactors{
-		Totp:        row,
-		TotpFound:   found,
-		TotpEnabled: found && row.EnabledAt.Valid,
-		Passkeys:    passkeys,
-	}, nil
-}
-
 // mfaChallengeKindFor decides what a correct password still leaves owed. An
-// account holding a second factor owes an answer from one of them; one
-// without owes an enrollment only where the deployment requires the factor of
-// its role. Anything else is a login that finishes on the password alone.
+// enrollment is owed only where the deployment requires the factor of the
+// account's role.
 func (s *adminServer) mfaChallengeKindFor(
 	ctx context.Context,
 	tenant dbmodels.Tenant,
 	user dbmodels.User,
 	role string,
 ) (publiraadminv1.MfaChallengeKind, []publiraadminv1.MfaMethod, error) {
-	factors, err := s.mfaFactorsFor(ctx, tenant, user.ID)
+	acct := s.mfaAccount(mfaActor{Tenant: tenant, User: user, Role: role})
+	owed, factors, err := mfaflow.OwedAfterPassword(ctx, acct, func(ctx context.Context) (bool, error) {
+		return s.mfaRequiredForRole(ctx, role)
+	})
 	if err != nil {
 		return publiraadminv1.MfaChallengeKind_MFA_CHALLENGE_KIND_UNSPECIFIED, nil, err
 	}
-	if factors.any() {
-		return publiraadminv1.MfaChallengeKind_MFA_CHALLENGE_KIND_VERIFY, factors.methods(), nil
-	}
-	required, err := s.mfaRequiredForRole(ctx, role)
-	if err != nil {
-		return publiraadminv1.MfaChallengeKind_MFA_CHALLENGE_KIND_UNSPECIFIED, nil, err
-	}
-	if required {
+	switch owed {
+	case mfaflow.OwedVerification:
+		return publiraadminv1.MfaChallengeKind_MFA_CHALLENGE_KIND_VERIFY, mfaMethods(factors), nil
+	case mfaflow.OwedEnrollment:
 		return publiraadminv1.MfaChallengeKind_MFA_CHALLENGE_KIND_ENROLL, nil, nil
+	default:
+		return publiraadminv1.MfaChallengeKind_MFA_CHALLENGE_KIND_UNSPECIFIED, nil, nil
 	}
-	return publiraadminv1.MfaChallengeKind_MFA_CHALLENGE_KIND_UNSPECIFIED, nil, nil
 }
 
 // mfaChallengeFor mints the half-finished session a correct password earns.
@@ -203,13 +370,9 @@ func (s *adminServer) mfaChallengeFor(
 }
 
 // actorFromChallenge resolves the account a challenge token names. It repeats
-// every check a session does apart from the audience: the account still has
-// to be active and still hold the credentials version the token was signed
-// with, so a suspension or a password change ends a pending challenge.
-//
-// A challenge without a usable `jti` or expiry is refused outright: those are
-// what a single exchange is recorded under, and a token that cannot be
-// recorded cannot be limited to one.
+// every check a session does apart from the audience: the token has to name
+// this tenant, and the account still has to be active, hold a tenant role,
+// and hold the credentials version the token was signed with.
 func (s *adminServer) actorFromChallenge(
 	ctx context.Context,
 	tenantCtx *publirattypesv1.TenantContext,
@@ -220,25 +383,12 @@ func (s *adminServer) actorFromChallenge(
 	if err != nil {
 		return mfaActor{}, err
 	}
-	if s.tokens == nil {
-		return mfaActor{}, invalidSessionError()
-	}
-	claims, err := s.tokens.Verify(strings.TrimSpace(challengeToken), audience)
-	if err != nil {
-		return mfaActor{}, invalidSessionError()
-	}
-	if claims.TenantID != tenant.ID.String() {
-		return mfaActor{}, invalidSessionError()
-	}
-	challengeID, err := uuid.Parse(strings.TrimSpace(claims.ID))
-	if err != nil {
-		return mfaActor{}, invalidSessionError()
-	}
-	if claims.ExpiresAt == nil {
+	challenge, ok := mfaflow.ParseChallenge(s.tokens, challengeToken, audience)
+	if !ok || challenge.TenantID != tenant.ID.String() {
 		return mfaActor{}, invalidSessionError()
 	}
 	userRef, err := s.queriesFor(ctx).GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
-		PublicID: claims.Subject,
+		PublicID: challenge.Subject,
 		TenantID: uuid.NullUUID{UUID: tenant.ID, Valid: true},
 	})
 	if err != nil {
@@ -254,7 +404,7 @@ func (s *adminServer) actorFromChallenge(
 		}
 		return mfaActor{}, s.internalDBError(ctx, "failed to get mfa challenge user", err, "tenant_id", tenant.ID.String(), "user_id", userRef.ID.String())
 	}
-	if user.Status != "active" || user.CredentialsVersion != claims.CredentialsVersion {
+	if user.Status != "active" || user.CredentialsVersion != challenge.CredentialsVersion {
 		return mfaActor{}, invalidSessionError()
 	}
 	role, err := s.tenantRole(ctx, user.ID)
@@ -269,8 +419,8 @@ func (s *adminServer) actorFromChallenge(
 		User:               user,
 		Role:               role,
 		FromChallenge:      true,
-		ChallengeID:        challengeID,
-		ChallengeExpiresAt: claims.ExpiresAt.Time,
+		ChallengeID:        challenge.ID,
+		ChallengeExpiresAt: challenge.ExpiresAt,
 	}, nil
 }
 
@@ -294,16 +444,23 @@ func (s *adminServer) mfaActorFor(
 		// login's, the challenge no longer stands for what it was issued for:
 		// honouring it would let whoever holds it enroll a factor of their own
 		// and sign in past the one the owner set up.
-		factors, err := s.mfaFactorsFor(ctx, actor.Tenant, actor.User.ID)
+		acct := s.mfaAccount(actor)
+		factors, err := mfaflow.FactorsOf(ctx, acct, acct.Queries(ctx))
 		if err != nil {
 			return mfaActor{}, err
 		}
-		if factors.any() {
+		if factors.Any() {
 			return mfaActor{}, invalidSessionError()
 		}
 		return actor, nil
 	}
-	tenant, user, role, err := s.currentUserFromSession(ctx, tenantCtx, headers)
+	return s.mfaActorFromSession(ctx, tenantCtx)
+}
+
+// mfaActorFromSession identifies a signed-in account acting on its own
+// second factor.
+func (s *adminServer) mfaActorFromSession(ctx context.Context, tenantCtx *publirattypesv1.TenantContext) (mfaActor, error) {
+	tenant, user, role, err := s.currentUserFromSession(ctx, tenantCtx, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
 		return mfaActor{}, err
 	}
@@ -324,218 +481,6 @@ func (s *adminServer) recordMfaAudit(ctx context.Context, actor mfaActor, action
 	})
 }
 
-// mfaTotpRow reads the account's TOTP state. A missing row and an unconfirmed
-// one are the same answer to "does this account have a second factor".
-func (s *adminServer) mfaTotpRow(ctx context.Context, userID uuid.UUID) (dbmodels.UserMfaTotp, bool, error) {
-	row, err := s.queriesFor(ctx).GetUserMfaTotpByUserID(ctx, userID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return dbmodels.UserMfaTotp{}, false, nil
-		}
-		return dbmodels.UserMfaTotp{}, false, s.internalDBError(ctx, "failed to get user mfa totp", err, "user_id", userID.String())
-	}
-	return row, true, nil
-}
-
-// mfaCodeOutcome says what a presented code turned out to be, so the caller
-// can write the right audit entry without repeating the checks.
-type mfaCodeOutcome struct {
-	RecoveryUsed bool
-	// Reason names why a code was refused, for the audit trail. It is empty
-	// when the code was accepted.
-	Reason string
-}
-
-// checkMfaCode decides whether code unlocks the account actor names: a code
-// from totp, when the account holds an authenticator, or a recovery code if
-// allowRecovery and the code is one. It owns the failure counter and the
-// lock: a refusal here has already been recorded, and the error it returns is
-// the one to hand the client.
-func (s *adminServer) checkMfaCode(
-	ctx context.Context,
-	actor mfaActor,
-	totp *dbmodels.UserMfaTotp,
-	code string,
-	allowRecovery bool,
-) (mfaCodeOutcome, error) {
-	locked, err := s.mfaLocked(ctx, actor.User.ID)
-	if err != nil {
-		return mfaCodeOutcome{}, err
-	}
-	if locked {
-		return mfaCodeOutcome{Reason: "locked"}, mfaLockedError()
-	}
-	if strings.TrimSpace(code) == "" {
-		return mfaCodeOutcome{Reason: "code_missing"}, mfaCodeRequiredError()
-	}
-
-	if totp != nil {
-		if s.encryptor == nil {
-			return mfaCodeOutcome{Reason: "secret_manager_unavailable"}, connect.NewError(connect.CodeFailedPrecondition, "secret manager is not configured")
-		}
-		secret, err := s.encryptor.DecryptString(totp.SecretEncrypted)
-		if err != nil {
-			return mfaCodeOutcome{Reason: "secret_undecryptable"}, s.internalError(ctx, "failed to decrypt mfa totp secret", err, "user_id", totp.UserID.String())
-		}
-		if step, ok := mfa.ValidateCode(secret, code, time.Now()); ok {
-			// The window spans more than one period, so a code observed over
-			// a shoulder is still current for a while after it was spent.
-			// Refusing a step already accepted is what RFC 6238 section 5.2
-			// asks for. The claim on the step is the UPDATE itself rather
-			// than a comparison against the row read above: two requests
-			// carrying the same code both read the old step, and only the one
-			// whose write lands first may have it.
-			claimed, err := s.queriesFor(ctx).MarkUserMfaTotpVerified(ctx, dbmodels.MarkUserMfaTotpVerifiedParams{
-				UserID:           totp.UserID,
-				LastVerifiedStep: sql.NullInt64{Int64: step, Valid: true},
-			})
-			if err != nil {
-				return mfaCodeOutcome{}, s.internalDBError(ctx, "failed to mark mfa totp verified", err, "user_id", totp.UserID.String())
-			}
-			if claimed == 0 {
-				return s.recordMfaFailure(ctx, actor, "code_reused")
-			}
-			if err := s.resetMfaFailures(ctx, actor.User.ID); err != nil {
-				return mfaCodeOutcome{}, err
-			}
-			return mfaCodeOutcome{}, nil
-		}
-	}
-
-	if allowRecovery {
-		used, err := s.spendRecoveryCode(ctx, actor.User.ID, code)
-		if err != nil {
-			return mfaCodeOutcome{}, err
-		}
-		if used {
-			if err := s.resetMfaFailures(ctx, actor.User.ID); err != nil {
-				return mfaCodeOutcome{}, err
-			}
-			return mfaCodeOutcome{RecoveryUsed: true}, nil
-		}
-	}
-
-	return s.recordMfaFailure(ctx, actor, "invalid_code")
-}
-
-// mfaLocked reports whether refused second-factor attempts, codes and
-// assertions alike, have locked the account for now.
-func (s *adminServer) mfaLocked(ctx context.Context, userID uuid.UUID) (bool, error) {
-	row, err := s.queriesFor(ctx).GetUserMfaLockout(ctx, userID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return false, nil
-		}
-		return false, s.internalDBError(ctx, "failed to get mfa lockout", err, "user_id", userID.String())
-	}
-	return row.LockedUntil.Valid && row.LockedUntil.Time.After(time.Now()), nil
-}
-
-// recordMfaFailure counts one refused code and reports whether that was the
-// one that started the lock, so the client learns it is locked out now rather
-// than on its next attempt.
-func (s *adminServer) recordMfaFailure(ctx context.Context, actor mfaActor, reason string) (mfaCodeOutcome, error) {
-	locked, err := s.countMfaFailure(ctx, actor)
-	if err != nil {
-		return mfaCodeOutcome{}, err
-	}
-	if locked {
-		return mfaCodeOutcome{Reason: "locked"}, mfaLockedError()
-	}
-	return mfaCodeOutcome{Reason: reason}, mfaInvalidCodeError()
-}
-
-// countMfaFailure counts one refused code or assertion and reports whether it
-// started the lock. Both second factors count toward the one limit, so
-// alternating between them buys a guesser nothing.
-func (s *adminServer) countMfaFailure(ctx context.Context, actor mfaActor) (bool, error) {
-	updated, err := s.queriesFor(ctx).RecordUserMfaFailure(ctx, dbmodels.RecordUserMfaFailureParams{
-		UserID:            actor.User.ID,
-		TenantID:          actor.Tenant.ID,
-		MaxFailedAttempts: mfa.MaxFailedAttempts,
-		LockedUntil:       time.Now().Add(mfa.LockDuration),
-	})
-	if err != nil {
-		return false, s.internalDBError(ctx, "failed to record mfa failure", err, "user_id", actor.User.ID.String())
-	}
-	return updated.LockedUntil.Valid && updated.LockedUntil.Time.After(time.Now()), nil
-}
-
-func (s *adminServer) resetMfaFailures(ctx context.Context, userID uuid.UUID) error {
-	if err := s.queriesFor(ctx).ResetUserMfaFailures(ctx, userID); err != nil {
-		return s.internalDBError(ctx, "failed to reset mfa failures", err, "user_id", userID.String())
-	}
-	return nil
-}
-
-// spendRecoveryCode marks the one unused code that matches, if any. Codes are
-// stored as bcrypt hashes, so the only way to find the match is to try each.
-func (s *adminServer) spendRecoveryCode(ctx context.Context, userID uuid.UUID, code string) (bool, error) {
-	rows, err := s.queriesFor(ctx).ListUnusedUserMfaRecoveryCodes(ctx, userID)
-	if err != nil {
-		return false, s.internalDBError(ctx, "failed to list mfa recovery codes", err, "user_id", userID.String())
-	}
-	for _, row := range rows {
-		if !mfa.VerifyRecoveryCode(code, row.CodeHash) {
-			continue
-		}
-		affected, err := s.queriesFor(ctx).MarkUserMfaRecoveryCodeUsed(ctx, row.ID)
-		if err != nil {
-			return false, s.internalDBError(ctx, "failed to mark mfa recovery code used", err, "user_id", userID.String())
-		}
-		// Zero rows means a concurrent request spent the same code first, so
-		// this one is no longer redeemable.
-		return affected == 1, nil
-	}
-	return false, nil
-}
-
-// replaceRecoveryCodes draws a fresh batch and puts it in place of whatever
-// the account held, used or not. The plaintext it returns is the only copy
-// that will exist.
-func replaceRecoveryCodes(ctx context.Context, queries Querier, tenantID, userID uuid.UUID) ([]string, error) {
-	codes, err := mfa.GenerateRecoveryCodes()
-	if err != nil {
-		return nil, err
-	}
-	if err := queries.DeleteUserMfaRecoveryCodesByUserID(ctx, userID); err != nil {
-		return nil, err
-	}
-	for _, code := range codes {
-		hash, err := mfa.HashRecoveryCode(code)
-		if err != nil {
-			return nil, err
-		}
-		id, err := uuid.NewV7()
-		if err != nil {
-			return nil, err
-		}
-		if err := queries.CreateUserMfaRecoveryCode(ctx, dbmodels.CreateUserMfaRecoveryCodeParams{
-			ID:       id,
-			TenantID: tenantID,
-			UserID:   userID,
-			CodeHash: hash,
-		}); err != nil {
-			return nil, err
-		}
-	}
-	return codes, nil
-}
-
-// currentPasskeys counts the passkeys the account holds for the console's
-// relying party ID now, on q.
-func (s *adminServer) currentPasskeys(ctx context.Context, q Querier, actor mfaActor) (int64, error) {
-	rpID, err := s.adminRPID(ctx, actor.Tenant)
-	if err != nil {
-		return 0, err
-	}
-	passkeys, err := q.CountUserWebauthnCredentialsForRPID(ctx, dbmodels.CountUserWebauthnCredentialsForRPIDParams{UserID: actor.User.ID, RelyingParty: tenantwebauthn.KindAdminConsole, RpID: rpID})
-	if err != nil {
-		return 0, s.internalDBError(ctx, "failed to count passkeys", err, "user_id", actor.User.ID.String())
-	}
-	return passkeys, nil
-}
-
 // lockMfaFactors serialises the transaction behind q with every other change
 // to the account's second factors and recovery codes. Anything the
 // transaction decides from what else the account holds has to be read after
@@ -547,41 +492,30 @@ func (s *adminServer) lockMfaFactors(ctx context.Context, q Querier, userID uuid
 	return nil
 }
 
-func (s *adminServer) remainingRecoveryCodes(ctx context.Context, userID uuid.UUID) (int32, error) {
-	count, err := s.queriesFor(ctx).CountUnusedUserMfaRecoveryCodes(ctx, userID)
-	if err != nil {
-		return 0, s.internalDBError(ctx, "failed to count mfa recovery codes", err, "user_id", userID.String())
-	}
-	return int32(count), nil
-}
-
 func (s *adminServer) GetMfaStatus(
 	ctx context.Context,
 	req *publiraadminv1.AdminAuthServiceGetMfaStatusRequest,
 ) (*publiraadminv1.AdminAuthServiceGetMfaStatusResponse, error) {
-	tenant, user, role, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
+	actor, err := s.mfaActorFromSession(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	factors, err := s.mfaFactorsFor(ctx, tenant, user.ID)
+	status, err := mfaflow.GetStatus(ctx, s.mfaAccount(actor))
 	if err != nil {
 		return nil, err
 	}
-	required, err := s.mfaRequiredForRole(ctx, role)
+	required, err := s.mfaRequiredForRole(ctx, actor.Role)
 	if err != nil {
 		return nil, err
 	}
-	resp := &publiraadminv1.AdminAuthServiceGetMfaStatusResponse{Required: required, Methods: factors.methods()}
-	if factors.TotpEnabled {
+	resp := &publiraadminv1.AdminAuthServiceGetMfaStatusResponse{
+		Required:               required,
+		Methods:                mfaMethods(status.Factors),
+		RemainingRecoveryCodes: status.RemainingRecoveryCodes,
+	}
+	if status.Factors.TotpEnabled() {
 		resp.Enabled = true
-		resp.EnabledAt = auth.FormatExpiresAt(factors.Totp.EnabledAt.Time)
-	}
-	if factors.any() {
-		remaining, err := s.remainingRecoveryCodes(ctx, user.ID)
-		if err != nil {
-			return nil, err
-		}
-		resp.RemainingRecoveryCodes = remaining
+		resp.EnabledAt = auth.FormatExpiresAt(status.Factors.Totp.EnabledAt.Time)
 	}
 	return resp, nil
 }
@@ -594,44 +528,10 @@ func (s *adminServer) StartMfaEnrollment(
 	if err != nil {
 		return nil, err
 	}
-	if s.encryptor == nil {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, "secret manager is not configured")
-	}
-	row, found, err := s.mfaTotpRow(ctx, actor.User.ID)
+	enrollment, err := mfaflow.StartEnrollment(ctx, s.mfaAccount(actor))
 	if err != nil {
 		return nil, err
 	}
-	// Replacing a confirmed authenticator has to go through disabling it, so
-	// a stolen session cannot quietly swap the factor for one of its own.
-	if found && row.EnabledAt.Valid {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, "mfa is already enabled")
-	}
-
-	issuer := strings.TrimSpace(actor.Tenant.Name)
-	if issuer == "" {
-		issuer = mfaOTPAuthIssuer
-	}
-	enrollment, err := mfa.GenerateEnrollment(issuer, actor.User.Email)
-	if err != nil {
-		return nil, s.internalError(ctx, "failed to generate mfa enrollment", err, "user_id", actor.User.ID.String())
-	}
-	encrypted, err := s.encryptor.EncryptString(enrollment.Secret)
-	if err != nil {
-		return nil, s.internalError(ctx, "failed to encrypt mfa totp secret", err, "user_id", actor.User.ID.String())
-	}
-	if _, err := s.queriesFor(ctx).UpsertUserMfaTotpSecret(ctx, dbmodels.UpsertUserMfaTotpSecretParams{
-		UserID:          actor.User.ID,
-		TenantID:        actor.Tenant.ID,
-		SecretEncrypted: encrypted,
-	}); err != nil {
-		return nil, s.internalDBError(ctx, "failed to store mfa totp secret", err, "user_id", actor.User.ID.String())
-	}
-	// A stalled confirmation that ran into the lock is not held against the
-	// next enrollment.
-	if err := s.resetMfaFailures(ctx, actor.User.ID); err != nil {
-		return nil, err
-	}
-
 	return &publiraadminv1.AdminAuthServiceStartMfaEnrollmentResponse{
 		Secret:     enrollment.Secret,
 		OtpauthUri: enrollment.OTPAuthURI,
@@ -646,175 +546,15 @@ func (s *adminServer) ConfirmMfaEnrollment(
 	if err != nil {
 		return nil, err
 	}
-	row, found, err := s.mfaTotpRow(ctx, actor.User.ID)
+	confirmation, err := mfaflow.ConfirmEnrollment(ctx, s.mfaAccount(actor), req.Code)
 	if err != nil {
 		return nil, err
 	}
-	if !found {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, "mfa enrollment has not been started")
-	}
-	if row.EnabledAt.Valid {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, "mfa is already enabled")
-	}
-
-	// A recovery code cannot confirm an enrollment: there are none yet, and
-	// the point of the step is proving the authenticator was set up.
-	outcome, err := s.checkMfaCode(ctx, actor, &row, req.Code, false)
-	if err != nil {
-		s.recordMfaAudit(ctx, actor, auditActionMfaEnrolled, auditlog.OutcomeFailure, outcome.Reason)
-		return nil, err
-	}
-
-	// Everything that can fail for a reason of its own is settled before the
-	// enable commits, because the recovery codes exist only in the response
-	// this call is about to build.
-	if actor.FromChallenge && s.tokens == nil {
-		s.recordMfaAudit(ctx, actor, auditActionMfaEnrolled, auditlog.OutcomeFailure, "token_manager_unavailable")
-		return nil, connect.NewError(connect.CodeInternal, "token manager is not configured")
-	}
-
-	codes, err := s.enableMfa(ctx, actor)
-	switch {
-	case errors.Is(err, errMfaChallengeSpent):
-		s.recordMfaAudit(ctx, actor, auditActionMfaEnrolled, auditlog.OutcomeFailure, "challenge_spent")
-		return nil, invalidSessionError()
-	case errors.Is(err, errMfaEnrollChallengeStale):
-		s.recordMfaAudit(ctx, actor, auditActionMfaEnrolled, auditlog.OutcomeFailure, "challenge_stale")
-		return nil, invalidSessionError()
-	case errors.Is(err, errMfaAlreadyEnabled):
-		s.recordMfaAudit(ctx, actor, auditActionMfaEnrolled, auditlog.OutcomeFailure, "already_enabled")
-		return nil, connect.NewError(connect.CodeFailedPrecondition, "mfa is already enabled")
-	case err != nil:
-		s.recordMfaAudit(ctx, actor, auditActionMfaEnrolled, auditlog.OutcomeFailure, "enable_failed")
-		return nil, err
-	}
-
-	resp := &publiraadminv1.AdminAuthServiceConfirmMfaEnrollmentResponse{RecoveryCodes: codes}
-	reason := "totp"
-	if actor.FromChallenge {
-		user, accessToken, sessionErr := s.issueAdminSession(ctx, actor)
-		if sessionErr == nil {
-			resp.User = user
-			resp.AccessToken = accessToken
-		} else {
-			// The factor is enabled and these codes are the only copy there
-			// will ever be, so answering with them and no session is better
-			// than an error that throws them away. The client sees an empty
-			// access token and sends the account back through login.
-			reason = "session_issue_failed"
-		}
-	}
-	s.recordMfaAudit(ctx, actor, auditActionMfaEnrolled, auditlog.OutcomeSuccess, reason)
-	return resp, nil
-}
-
-// The refusals enableMfa and storePasskey reach only by losing a race with a
-// concurrent enrollment, which their RPCs answer apart from a database
-// failure. errMfaEnrollChallengeStale is an enroll challenge presented after
-// the account gained a factor through another one.
-var (
-	errMfaChallengeSpent       = errors.New("mfa challenge already spent")
-	errMfaAlreadyEnabled       = errors.New("mfa already enabled")
-	errMfaEnrollChallengeStale = errors.New("mfa enroll challenge stale")
-)
-
-// enableMfa marks the authenticator confirmed and issues the recovery codes
-// that go with it, in one transaction: an account left enabled without codes
-// would have no way back in if it lost the authenticator.
-//
-// An enrollment that finishes a login claims its challenge in the same
-// transaction, so the token buys one session however many codes of the window
-// are confirmed with it at once, and is left unspent if the enable rolls back.
-// The enable itself is claimed too: two confirmations that both read the row
-// unconfirmed would otherwise each replace the other's recovery codes, and
-// only the last to commit would hand out codes that still work.
-func (s *adminServer) enableMfa(ctx context.Context, actor mfaActor) ([]string, error) {
-	tx, err := s.beginTenantTx(ctx)
-	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to begin mfa enrollment transaction", err, "user_id", actor.User.ID.String())
-	}
-	defer tx.Rollback() //nolint:errcheck
-
-	q := dbmodels.New(tx)
-	if err := s.lockMfaFactors(ctx, q, actor.User.ID); err != nil {
-		return nil, err
-	}
-	if actor.FromChallenge {
-		claimed, err := q.MarkUserMfaChallengeUsed(ctx, dbmodels.MarkUserMfaChallengeUsedParams{
-			Jti:       actor.ChallengeID,
-			TenantID:  actor.Tenant.ID,
-			UserID:    actor.User.ID,
-			ExpiresAt: actor.ChallengeExpiresAt,
-		})
-		if err != nil {
-			return nil, s.internalDBError(ctx, "failed to mark mfa challenge used", err, "user_id", actor.User.ID.String())
-		}
-		if claimed == 0 {
-			return nil, errMfaChallengeSpent
-		}
-		// mfaActorFor checked this before the lock; a passkey registered
-		// since, under another login's enroll challenge, is seen here.
-		if passkeys, err := s.currentPasskeys(ctx, q, actor); err != nil {
-			return nil, err
-		} else if passkeys > 0 {
-			return nil, errMfaEnrollChallengeStale
-		}
-	}
-	enabled, err := q.EnableUserMfaTotp(ctx, actor.User.ID)
-	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to enable mfa totp", err, "user_id", actor.User.ID.String())
-	}
-	if enabled == 0 {
-		return nil, errMfaAlreadyEnabled
-	}
-	codes, err := replaceRecoveryCodes(ctx, q, actor.Tenant.ID, actor.User.ID)
-	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to create mfa recovery codes", err, "user_id", actor.User.ID.String())
-	}
-	if err := tx.Commit(); err != nil {
-		return nil, s.internalDBError(ctx, "failed to commit mfa enrollment", err, "user_id", actor.User.ID.String())
-	}
-	return codes, nil
-}
-
-// spendMfaChallenge claims the challenge this exchange is about, so the token
-// buys one session and not one per attempt inside its five minutes. The
-// INSERT is the claim rather than a read followed by one: two requests
-// presenting the same token both find it unspent, and only the one whose row
-// lands may go on.
-//
-// It runs after the code is accepted, not before: burning the challenge on a
-// mistyped code would send an operator back through the password for a typo,
-// and it is the failure counter, not the challenge, that bounds guessing.
-//
-// A false claimed and an error are different answers: the first is a token
-// that already bought a session, the second is a database that could not say.
-// Only the first is a replay, and the audit trail has to tell them apart.
-func (s *adminServer) spendMfaChallenge(ctx context.Context, actor mfaActor) (claimed bool, err error) {
-	rows, err := s.queriesFor(ctx).MarkUserMfaChallengeUsed(ctx, dbmodels.MarkUserMfaChallengeUsedParams{
-		Jti:       actor.ChallengeID,
-		TenantID:  actor.Tenant.ID,
-		UserID:    actor.User.ID,
-		ExpiresAt: actor.ChallengeExpiresAt,
-	})
-	if err != nil {
-		return false, s.internalDBError(ctx, "failed to mark mfa challenge used", err, "user_id", actor.User.ID.String())
-	}
-	return rows == 1, nil
-}
-
-// issueAdminSession finishes a login the second factor has now settled.
-func (s *adminServer) issueAdminSession(ctx context.Context, actor mfaActor) (*publirattypesv1.User, *publirattypesv1.AccessToken, error) {
-	if s.tokens == nil {
-		return nil, nil, connect.NewError(connect.CodeInternal, "token manager is not configured")
-	}
-	token, expiresAt, err := s.tokens.Issue(actor.User.PublicID, auth.AudienceAdmin, actor.Tenant.ID.String(), actor.Role, actor.User.CredentialsVersion, time.Now())
-	if err != nil {
-		return nil, nil, s.internalError(ctx, "failed to issue admin access token", err, "user_id", actor.User.ID.String())
-	}
-	return &publirattypesv1.User{PublicId: actor.User.PublicID, Name: actor.User.Name, Role: actor.Role},
-		&publirattypesv1.AccessToken{Token: token, ExpiresAt: auth.FormatExpiresAt(expiresAt)},
-		nil
+	return &publiraadminv1.AdminAuthServiceConfirmMfaEnrollmentResponse{
+		RecoveryCodes: confirmation.RecoveryCodes,
+		User:          confirmation.User,
+		AccessToken:   confirmation.AccessToken,
+	}, nil
 }
 
 func (s *adminServer) VerifyMfa(
@@ -826,61 +566,17 @@ func (s *adminServer) VerifyMfa(
 		auth.AuditEvent(ctx, "admin_mfa_verify", "failure", "", "", "invalid_challenge")
 		return nil, err
 	}
-	factors, err := s.mfaFactorsFor(ctx, actor.Tenant, actor.User.ID)
-	if err != nil {
-		return nil, err
-	}
-	if !factors.any() {
-		return nil, mfaNotEnabledError()
-	}
 	// An account that holds passkeys and no authenticator answers here with a
 	// recovery code alone; its passkeys answer FinishPasskeyVerification.
-	var totp *dbmodels.UserMfaTotp
-	if factors.TotpEnabled {
-		totp = &factors.Totp
-	}
-
-	outcome, err := s.checkMfaCode(ctx, actor, totp, req.Code, true)
-	if err != nil {
-		s.recordMfaAudit(ctx, actor, auditActionMfaVerified, auditlog.OutcomeFailure, outcome.Reason)
-		auth.AuditEvent(ctx, "admin_mfa_verify", "failure", actor.Tenant.PublicID, actor.User.PublicID, outcome.Reason)
-		return nil, err
-	}
-
-	claimed, err := s.spendMfaChallenge(ctx, actor)
-	if err != nil {
-		s.recordMfaAudit(ctx, actor, auditActionMfaVerified, auditlog.OutcomeFailure, "challenge_claim_failed")
-		auth.AuditEvent(ctx, "admin_mfa_verify", "failure", actor.Tenant.PublicID, actor.User.PublicID, "challenge_claim_failed")
-		return nil, err
-	}
-	if !claimed {
-		s.recordMfaAudit(ctx, actor, auditActionMfaVerified, auditlog.OutcomeFailure, "challenge_spent")
-		auth.AuditEvent(ctx, "admin_mfa_verify", "failure", actor.Tenant.PublicID, actor.User.PublicID, "challenge_spent")
-		return nil, invalidSessionError()
-	}
-
-	user, accessToken, err := s.issueAdminSession(ctx, actor)
+	verification, err := mfaflow.Verify(ctx, s.mfaAccount(actor), req.Code)
 	if err != nil {
 		return nil, err
 	}
-	remaining, err := s.remainingRecoveryCodes(ctx, actor.User.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	factor := "totp"
-	if outcome.RecoveryUsed {
-		factor = "recovery_code"
-		s.recordMfaAudit(ctx, actor, auditActionMfaRecoveryCodeUsed, auditlog.OutcomeSuccess, "")
-	}
-	s.recordMfaAudit(ctx, actor, auditActionMfaVerified, auditlog.OutcomeSuccess, factor)
-	auth.AuditEvent(ctx, "admin_mfa_verify", "success", actor.Tenant.PublicID, actor.User.PublicID, factor)
-
 	return &publiraadminv1.AdminAuthServiceVerifyMfaResponse{
-		User:                   user,
-		AccessToken:            accessToken,
-		RecoveryCodeUsed:       outcome.RecoveryUsed,
-		RemainingRecoveryCodes: remaining,
+		User:                   verification.User,
+		AccessToken:            verification.AccessToken,
+		RecoveryCodeUsed:       verification.RecoveryCodeUsed,
+		RemainingRecoveryCodes: verification.RemainingRecoveryCodes,
 	}, nil
 }
 
@@ -888,55 +584,13 @@ func (s *adminServer) DisableMfa(
 	ctx context.Context,
 	req *publiraadminv1.AdminAuthServiceDisableMfaRequest,
 ) (*publiraadminv1.AdminAuthServiceDisableMfaResponse, error) {
-	tenant, user, role, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
+	actor, err := s.mfaActorFromSession(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	actor := mfaActor{Tenant: tenant, User: user, Role: role}
-	factors, err := s.mfaFactorsFor(ctx, tenant, user.ID)
-	if err != nil {
+	if err := mfaflow.Disable(ctx, s.mfaAccount(actor), req.Code); err != nil {
 		return nil, err
 	}
-	if !factors.TotpEnabled {
-		return nil, mfaNotEnabledError()
-	}
-	row := factors.Totp
-
-	// A recovery code counts here: an account whose authenticator is gone has
-	// to be able to take the factor off without waiting for an operator.
-	outcome, err := s.checkMfaCode(ctx, actor, &row, req.Code, true)
-	if err != nil {
-		s.recordMfaAudit(ctx, actor, auditActionMfaDisabled, auditlog.OutcomeFailure, outcome.Reason)
-		return nil, err
-	}
-
-	tx, err := s.beginTenantTx(ctx)
-	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to begin mfa disable transaction", err, "user_id", user.ID.String())
-	}
-	defer tx.Rollback() //nolint:errcheck
-
-	q := dbmodels.New(tx)
-	if err := s.lockMfaFactors(ctx, q, user.ID); err != nil {
-		return nil, err
-	}
-	if err := q.DeleteUserMfaTotpByUserID(ctx, user.ID); err != nil {
-		return nil, s.internalDBError(ctx, "failed to delete mfa totp", err, "user_id", user.ID.String())
-	}
-	// The recovery codes stand in for every factor the account holds, so they
-	// go only with the last of them.
-	if err := s.deleteRecoveryCodesWithTheLastFactor(ctx, q, user.ID); err != nil {
-		return nil, err
-	}
-	if err := tx.Commit(); err != nil {
-		return nil, s.internalDBError(ctx, "failed to commit mfa disable", err, "user_id", user.ID.String())
-	}
-
-	factor := "totp"
-	if outcome.RecoveryUsed {
-		factor = "recovery_code"
-	}
-	s.recordMfaAudit(ctx, actor, auditActionMfaDisabled, auditlog.OutcomeSuccess, factor)
 	return &publiraadminv1.AdminAuthServiceDisableMfaResponse{Disabled: true}, nil
 }
 
@@ -944,99 +598,51 @@ func (s *adminServer) RegenerateMfaRecoveryCodes(
 	ctx context.Context,
 	req *publiraadminv1.AdminAuthServiceRegenerateMfaRecoveryCodesRequest,
 ) (*publiraadminv1.AdminAuthServiceRegenerateMfaRecoveryCodesResponse, error) {
-	tenant, user, role, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
+	actor, err := s.mfaActorFromSession(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
 	}
-	actor := mfaActor{Tenant: tenant, User: user, Role: role}
-	factor := "totp"
-	if strings.TrimSpace(req.PasskeyCredentialJson) != "" {
-		if strings.TrimSpace(req.Code) != "" {
-			return nil, connect.NewError(connect.CodeInvalidArgument, "send either code or passkey_credential_json, not both")
+	acct := s.mfaAccount(actor)
+	if strings.TrimSpace(req.PasskeyCredentialJson) == "" {
+		codes, err := mfaflow.RegenerateRecoveryCodes(ctx, acct, req.Code)
+		if err != nil {
+			return nil, err
 		}
-		factor = "passkey"
+		return &publiraadminv1.AdminAuthServiceRegenerateMfaRecoveryCodesResponse{RecoveryCodes: codes}, nil
+	}
+	if strings.TrimSpace(req.Code) != "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "send either code or passkey_credential_json, not both")
 	}
 
-	// Only a factor can ask for a new batch, never a recovery code: letting
-	// one code mint ten more would make a single leaked code permanent. The
-	// batch outlives the factor that minted it only if that factor is still
-	// there once nothing else can take it off, which stillHeld checks under
-	// the lock.
-	var stillHeld func(Querier) error
-	if factor == "passkey" {
-		passkeys, err := s.currentPasskeys(ctx, s.queriesFor(ctx), actor)
-		if err != nil {
-			return nil, err
-		}
-		if passkeys == 0 {
-			return nil, passkeyNotRegisteredError()
-		}
-		used, reason, err := s.checkPasskeyAssertion(ctx, actor, req.PasskeyCredentialJson)
-		if err != nil {
-			s.recordMfaAudit(ctx, actor, auditActionMfaRecoveryCodesRegenerated, auditlog.OutcomeFailure, reason)
-			return nil, err
-		}
-		stillHeld = func(q Querier) error {
-			_, err := q.GetUserWebauthnCredentialByPublicID(ctx, dbmodels.GetUserWebauthnCredentialByPublicIDParams{
-				UserID:       user.ID,
-				RelyingParty: used.RelyingParty,
-				RpID:         used.RpID,
-				PublicID:     used.PublicID,
-			})
-			if errors.Is(err, sql.ErrNoRows) {
-				return passkeyNotRegisteredError()
-			}
-			if err != nil {
-				return s.internalDBError(ctx, "failed to get passkey", err, "user_id", user.ID.String())
-			}
-			return nil
-		}
-	} else {
-		row, found, err := s.mfaTotpRow(ctx, user.ID)
-		if err != nil {
-			return nil, err
-		}
-		if !found || !row.EnabledAt.Valid {
-			return nil, mfaNotEnabledError()
-		}
-		outcome, err := s.checkMfaCode(ctx, actor, &row, req.Code, false)
-		if err != nil {
-			s.recordMfaAudit(ctx, actor, auditActionMfaRecoveryCodesRegenerated, auditlog.OutcomeFailure, outcome.Reason)
-			return nil, err
-		}
-		stillHeld = func(q Querier) error {
-			current, err := q.GetUserMfaTotpByUserID(ctx, user.ID)
-			if errors.Is(err, sql.ErrNoRows) || (err == nil && !current.EnabledAt.Valid) {
-				return mfaNotEnabledError()
-			}
-			if err != nil {
-				return s.internalDBError(ctx, "failed to get user mfa totp", err, "user_id", user.ID.String())
-			}
-			return nil
-		}
-	}
-
-	tx, err := s.beginTenantTx(ctx)
+	factors, err := mfaflow.FactorsOf(ctx, acct, acct.Queries(ctx))
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to begin mfa recovery code transaction", err, "user_id", user.ID.String())
-	}
-	defer tx.Rollback() //nolint:errcheck
-
-	q := dbmodels.New(tx)
-	if err := s.lockMfaFactors(ctx, q, user.ID); err != nil {
 		return nil, err
 	}
-	if err := stillHeld(q); err != nil {
+	if factors.Passkeys == 0 {
+		return nil, passkeyNotRegisteredError()
+	}
+	used, reason, err := s.checkPasskeyAssertion(ctx, actor, req.PasskeyCredentialJson)
+	if err != nil {
+		s.recordMfaAudit(ctx, actor, mfaAuditActions.RecoveryCodesRegenerated, auditlog.OutcomeFailure, reason)
 		return nil, err
 	}
-	codes, err := replaceRecoveryCodes(ctx, q, tenant.ID, user.ID)
+	codes, err := mfaflow.RegenerateRecoveryCodesFor(ctx, acct, mfaflow.FactorPasskey, func(q dbmodels.Querier) error {
+		_, err := q.GetUserWebauthnCredentialByPublicID(ctx, dbmodels.GetUserWebauthnCredentialByPublicIDParams{
+			UserID:       actor.User.ID,
+			RelyingParty: used.RelyingParty,
+			RpID:         used.RpID,
+			PublicID:     used.PublicID,
+		})
+		if errors.Is(err, sql.ErrNoRows) {
+			return passkeyNotRegisteredError()
+		}
+		if err != nil {
+			return s.internalDBError(ctx, "failed to get passkey", err, "user_id", actor.User.ID.String())
+		}
+		return nil
+	})
 	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to regenerate mfa recovery codes", err, "user_id", user.ID.String())
+		return nil, err
 	}
-	if err := tx.Commit(); err != nil {
-		return nil, s.internalDBError(ctx, "failed to commit mfa recovery codes", err, "user_id", user.ID.String())
-	}
-
-	s.recordMfaAudit(ctx, actor, auditActionMfaRecoveryCodesRegenerated, auditlog.OutcomeSuccess, factor)
 	return &publiraadminv1.AdminAuthServiceRegenerateMfaRecoveryCodesResponse{RecoveryCodes: codes}, nil
 }
