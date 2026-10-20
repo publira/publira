@@ -44,9 +44,20 @@ const PURCHASE_ID = "018f0e6a-5000-7000-8000-000000000001";
 
 const purchase = (
   overrides: Partial<{
+    episodeId: string;
+    episodePublicId: string;
+    episodeTitle: string;
     refundable: boolean;
     revocationReason: PurchaseRevocationReason;
     revokedAt: string;
+    seriesBundle: {
+      discountPercent: number;
+      episodeCount: number;
+      id: string;
+    };
+    volumeId: string;
+    volumePublicId: string;
+    volumeTitle: string;
   }> = {}
 ) => ({
   currency: "JPY",
@@ -70,6 +81,9 @@ const purchase = (
   seriesTitle: "Series 1",
   store: "",
   test: false,
+  volumeId: "",
+  volumePublicId: "",
+  volumeTitle: "",
   ...overrides,
 });
 
@@ -126,6 +140,43 @@ describe("listPurchases", () => {
         },
       ],
     });
+  });
+
+  it("tells an episode, a volume, and the rest of a series apart", async () => {
+    mockListPurchases.mockResolvedValue({
+      nextToken: "",
+      previousToken: "",
+      purchases: [
+        purchase(),
+        purchase({
+          episodeId: "",
+          episodePublicId: "",
+          episodeTitle: "",
+          volumeId: "018f0e6a-5000-7000-8000-000000000003",
+          volumePublicId: "VOLUME001",
+          volumeTitle: "Volume 1",
+        }),
+        purchase({
+          episodeId: "",
+          episodePublicId: "",
+          episodeTitle: "",
+          seriesBundle: {
+            discountPercent: 10,
+            episodeCount: 12,
+            id: "018f0e6a-5000-7000-8000-000000000004",
+          },
+        }),
+      ],
+    });
+
+    const { listPurchases } = await import("./purchase");
+    const result = await listPurchases("TENANT001", "en");
+
+    expect(result.purchases.map(({ item }) => item)).toEqual([
+      { kind: "episode", publicId: "EPISODE001", title: "Episode 1" },
+      { kind: "volume", publicId: "VOLUME001", title: "Volume 1" },
+      { episodeCount: 12, kind: "series_bundle" },
+    ]);
   });
 
   it("reports a failure the API classifies as a message instead of throwing", async () => {

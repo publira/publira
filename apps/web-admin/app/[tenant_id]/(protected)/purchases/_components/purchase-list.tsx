@@ -37,6 +37,7 @@ import { getMessagesFor } from "#lib/messages";
 import { formatTenantAmount, readCurrency } from "#lib/price";
 import type { PurchaseItem } from "#lib/purchase";
 
+import { purchasedItemLabel } from "../_lib/purchased-item";
 import { PurchasePaidThrough, PurchaseStatusChip } from "./purchase-status";
 
 type PurchaseListProps = CursorPageHrefs & {
@@ -156,7 +157,7 @@ export const PurchaseList = async ({
             </TableHead>
             <TableHead>
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
-                <Message message="admin.purchases.columns.episode" />
+                <Message message="admin.purchases.columns.item" />
               </Suspense>
             </TableHead>
             <TableHead className="w-28 text-right">
@@ -195,7 +196,7 @@ export const PurchaseList = async ({
               <TableCell>
                 <div className="grid gap-0.5">
                   <span className="font-medium">
-                    {purchase.episodeTitle || purchase.episodePublicId}
+                    {purchasedItemLabel(purchase, t)}
                   </span>
                   <span className="text-xs text-muted-foreground">
                     {purchase.seriesTitle || purchase.seriesPublicId}
@@ -220,7 +221,7 @@ export const PurchaseList = async ({
               <TableCell>
                 <LinkButton
                   aria-label={t("admin.purchases.view_aria", {
-                    episode: purchase.episodeTitle || purchase.episodePublicId,
+                    item: purchasedItemLabel(purchase, t),
                     reader:
                       purchase.readerName ||
                       purchase.readerEmail ||
