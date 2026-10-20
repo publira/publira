@@ -29,8 +29,8 @@ start_sign_in_provider() {
   e2e_log "starting sign-in-provider (:${PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT})"
   start_process_group "sign-in-provider" "${PUBLIRA_E2E_DIR}" "${LOG_DIR}/sign-in-provider.log" \
     env \
-    PORT="${PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT}" \
-    KEY_FILE="${PUBLIRA_E2E_RUN_DIR}/sign-in-provider-key.pem" \
+    PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT="${PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT}" \
+    PUBLIRA_E2E_SIGN_IN_PROVIDER_KEY_FILE="${PUBLIRA_E2E_RUN_DIR}/sign-in-provider-key.pem" \
     node scripts/sign-in-provider.ts
 }
 
