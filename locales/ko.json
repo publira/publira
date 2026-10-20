@@ -5085,7 +5085,8 @@
       "time_left_hours": "{$hours :integer}시간 남음",
       "time_left_hours_minutes": "{$hours :integer}시간 {$minutes :integer}분 남음",
       "time_left_minutes": "{$minutes :integer}분 남음",
-      "title": "구매 목록"
+      "title": "구매 목록",
+      "series_bundle_title": "남은 {$count :integer}화"
     },
     "ranking": {
       "empty": "아직 집계된 랭킹이 없습니다.",
@@ -5177,7 +5178,15 @@
       "status_completed": "완결",
       "status_hiatus": "휴재 중",
       "status_ongoing": "연재 중",
-      "title": "시리즈"
+      "title": "시리즈",
+      "checkout_success": "결제를 확인하고 있습니다. 구매가 반영되면 에피소드가 열립니다.",
+      "remainder_buy": "남은 {$count :integer}화를 {$price}에 구매",
+      "remainder_discount": "한 화씩 사면 {$list_price}인 것을 {$percent} 할인",
+      "remainder_failed": "남은 에피소드의 가격을 표시할 수 없습니다",
+      "volume_buy": "이 권 구매",
+      "volume_owned": "이 권의 에피소드를 모두 구매했습니다",
+      "volume_ownership_failed": "보유한 권을 확인할 수 없습니다",
+      "volumes_heading": "권"
     },
     "sign_in": {
       "continue_with_apple": "Apple로 계속하기",

@@ -31,6 +31,7 @@ import 'package:publira/content_views/content_view_repository.dart';
 import 'package:publira/content_views/http_content_view_repository.dart';
 import 'package:publira/models/series_item.dart';
 import 'package:publira/offline/file_offline_library.dart';
+import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/router.dart';
 import 'package:publira/screens/ranking_screen.dart';
 
@@ -1145,6 +1146,114 @@ void main() {
           server.requestsOf(pb.StartEpisodeCheckoutRequest.new).single.client,
           pb.StartEpisodeCheckoutRequest_Client.CLIENT_MOBILE,
         );
+        await pumpUntilNoPendingFrameCallbacks(tester);
+      });
+    });
+
+    testApp('a volume bought in the browser opens every episode in it', (
+      tester,
+    ) async {
+      const volumeId = 'VOLUME000001';
+      final volumeInternalId = ConnectFixtureServer.internalIdOf(volumeId);
+      server
+        ..acceptsPayments = true
+        ..entitledEpisodes = const {}
+        ..details = {
+          ConnectFixtureServer.seedSeriesId:
+              ConnectFixtureServer.populatedDetails()[ConnectFixtureServer
+                    .seedSeriesId]!
+                ..volumes.add(
+                  pb.Volume(
+                    id: volumeInternalId,
+                    publicId: volumeId,
+                    title: 'Seed Volume 1',
+                    orderIndex: 1,
+                    price: 400,
+                    episodeIds: [
+                      ConnectFixtureServer.internalIdOf(
+                        ConnectFixtureServer.paidEpisodeId,
+                      ),
+                    ],
+                  ),
+                ),
+        };
+      final links = FakeIncomingLinks();
+      addTearDown(links.close);
+      // The browser: the payment goes through, the webhook records the volume,
+      // which opens the episode it holds, and the success page hands the
+      // reader back to the series through the app link.
+      final launcher = _BrowserThatPays(() {
+        server
+          ..entitledEpisodes = ConnectFixtureServer.populatedEntitledEpisodes()
+          ..ownedEpisodes = {ConnectFixtureServer.paidEpisodeId};
+        links.deliver(
+          Uri.parse(
+            'https://localhost/en/checkout/return'
+            '?series=${ConnectFixtureServer.seedSeriesId}'
+            '&volume=$volumeId&status=success',
+          ),
+        );
+      });
+      await withFailureScreenshot(tester, 'fixture-volume-purchase', () async {
+        await pumpApp(
+          tester,
+          initialLocation: AppRoutes.seriesDetailPath(
+            ConnectFixtureServer.seedSeriesId,
+          ),
+          session: memberSession(),
+          checkoutLauncher: launcher,
+          incomingLinks: links,
+        );
+        await pumpUntilRouteSettled(
+          tester,
+          find.byKey(const ValueKey('series-detail-body')),
+        );
+        // The card is drawn from the series; its purchase waits on what the
+        // reader holds.
+        await scrollSeriesTo(
+          tester,
+          find.byKey(const ValueKey('series-volume-$volumeId')),
+        );
+        final buy = find.byKey(const ValueKey('volume-buy-$volumeId'));
+        await pumpUntilFound(tester, buy);
+
+        await tapVisible(tester, buy);
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('series-checkout-confirming')),
+        );
+        // The return takes the list back up to the notice.
+        await scrollSeriesTo(
+          tester,
+          find.byKey(const ValueKey('series-volume-$volumeId')),
+        );
+        await pumpUntilFound(
+          tester,
+          find.byKey(const ValueKey('volume-owned-$volumeId')),
+        );
+
+        expect(launcher.opened, [
+          ConnectFixtureServer.checkoutUrlFor(volumeInternalId),
+        ]);
+        final request = server
+            .requestsOf(pb.StartVolumeCheckoutRequest.new)
+            .single;
+        expect(
+          request.client,
+          pb.StartEpisodeCheckoutRequest_Client.CLIENT_MOBILE,
+        );
+        expect(request.volumeId, volumeInternalId);
+
+        final paidEpisode = find.byKey(
+          const ValueKey('episode-tile-${ConnectFixtureServer.paidEpisodeId}'),
+        );
+        await scrollSeriesTo(tester, paidEpisode);
+        await tapVisible(tester, paidEpisode);
+        await pumpUntilPagesDrawn(tester);
+        // The re-reads the return started end while the episode is open.
+        for (final delay in checkoutConfirmationDelays) {
+          await tester.pump(delay);
+        }
         await pumpUntilNoPendingFrameCallbacks(tester);
       });
     });

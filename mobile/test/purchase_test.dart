@@ -12,7 +12,6 @@ import 'package:publira/models/series_item.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/router.dart';
-import 'package:publira/screens/episode_viewer_screen.dart';
 
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';

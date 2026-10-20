@@ -57,6 +57,19 @@ class FakePurchaseRepository implements PurchaseRepository {
   /// What [seriesEpisodeAccess] answers, whichever series is asked about.
   Map<String, EpisodeAccess> access;
 
+  /// Internal ids of the episodes [seriesEpisodeAccess] answers as owned.
+  Set<String> owned = const {};
+
+  /// The quote of the rest of the series [seriesEpisodeAccess] answers.
+  SeriesRemainderOffer? remainder;
+
+  /// Thrown by [seriesEpisodeAccess], standing in for an API that cannot
+  /// answer.
+  PurchaseFailure? accessFailure;
+
+  /// How many times [seriesEpisodeAccess] was asked.
+  var accessReads = 0;
+
   /// Held open by a test that needs a read of [seriesEpisodeAccess] in
   /// flight. The read answers [access] as it was when the read was asked.
   Completer<void>? accessGate;
@@ -109,11 +122,20 @@ class FakePurchaseRepository implements PurchaseRepository {
   Future<String> currency() async => tenantCurrency;
 
   @override
-  Future<Map<String, EpisodeAccess>> seriesEpisodeAccess(
+  Future<SeriesPurchaseState> seriesEpisodeAccess(
     String seriesInternalId,
   ) async {
-    final answer = access;
+    accessReads++;
+    final answer = SeriesPurchaseState(
+      access: access,
+      ownedEpisodeIds: owned,
+      remainder: remainder,
+    );
+    final failure = accessFailure;
     await accessGate?.future;
+    if (failure != null) {
+      throw failure;
+    }
     return answer;
   }
 
@@ -141,6 +163,43 @@ class FakePurchaseRepository implements PurchaseRepository {
       throw failure;
     }
     return checkoutUrlFor(episodeInternalId);
+  }
+
+  /// Thrown by [startVolumeCheckout] and [startSeriesRemainderCheckout].
+  PurchaseFailure? bundleCheckoutFailure;
+
+  /// Volumes [startVolumeCheckout] was asked for, in order.
+  final List<String> volumeCheckouts = <String>[];
+
+  /// Series [startSeriesRemainderCheckout] was asked for, in order.
+  final List<String> remainderCheckouts = <String>[];
+
+  /// The locale each call to [startSeriesRemainderCheckout] asked in, in
+  /// order.
+  final List<String> remainderCheckoutLocales = <String>[];
+
+  @override
+  Future<Uri> startVolumeCheckout(String volumeInternalId) async {
+    volumeCheckouts.add(volumeInternalId);
+    final failure = bundleCheckoutFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return checkoutUrlFor(volumeInternalId);
+  }
+
+  @override
+  Future<Uri> startSeriesRemainderCheckout(
+    String seriesInternalId, {
+    required String locale,
+  }) async {
+    remainderCheckouts.add(seriesInternalId);
+    remainderCheckoutLocales.add(locale);
+    final failure = bundleCheckoutFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return checkoutUrlFor(seriesInternalId);
   }
 
   @override

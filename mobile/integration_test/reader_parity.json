@@ -452,7 +452,15 @@
           "StartSeriesRemainderCheckout"
         ]
       },
-      "exception": "Not in the app yet: #4464."
+      "mobile": {
+        "routes": ["/series/:seriesId", "/checkout/return"],
+        "rpcs": [
+          "GetSeriesEpisodeAccess",
+          "StartVolumeCheckout",
+          "StartSeriesRemainderCheckout"
+        ]
+      },
+      "tests": ["a volume bought in the browser opens every episode in it"]
     },
     {
       "name": "Saving the purchase history as a CSV file",

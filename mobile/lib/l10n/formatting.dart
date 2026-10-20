@@ -52,6 +52,11 @@ extension AppMessagesFormatting on AppMessages {
     return format.format(amount / pow(10, format.decimalDigits ?? 0));
   }
 
+  /// [percent], a whole percentage the way the API sends a discount, written
+  /// the way this locale writes a percentage — `10%` under `en-US`.
+  String formatPercent(int percent) =>
+      NumberFormat.percentPattern(intlLocale).format(percent / 100);
+
   /// [bytes] in the largest binary unit that keeps the number at one or more,
   /// with one decimal place from a megabyte up — `12.3 MB` under `en-US`.
   ///

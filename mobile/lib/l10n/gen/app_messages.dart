@@ -2467,6 +2467,11 @@ final class AppMessages {
     return _format('mobile.purchases.rental');
   }
 
+  /// `mobile.purchases.series_bundle_title`
+  String purchasesSeriesBundleTitle({required num count}) {
+    return _format('mobile.purchases.series_bundle_title', {'count': count});
+  }
+
   /// `mobile.purchases.sign_in_prompt`
   String get purchasesSignInPrompt {
     return _format('mobile.purchases.sign_in_prompt');
@@ -2768,6 +2773,11 @@ final class AppMessages {
     return _format('mobile.series.age_rating_r18');
   }
 
+  /// `mobile.series.checkout_success`
+  String get seriesCheckoutSuccess {
+    return _format('mobile.series.checkout_success');
+  }
+
   /// `mobile.series.continue_reading`
   String get seriesContinueReading {
     return _format('mobile.series.continue_reading');
@@ -2851,6 +2861,30 @@ final class AppMessages {
     return _format('mobile.series.related_heading');
   }
 
+  /// `mobile.series.remainder_buy`
+  String seriesRemainderBuy({required num count, required String price}) {
+    return _format('mobile.series.remainder_buy', {
+      'count': count,
+      'price': price,
+    });
+  }
+
+  /// `mobile.series.remainder_discount`
+  String seriesRemainderDiscount({
+    required String listPrice,
+    required String percent,
+  }) {
+    return _format('mobile.series.remainder_discount', {
+      'list_price': listPrice,
+      'percent': percent,
+    });
+  }
+
+  /// `mobile.series.remainder_failed`
+  String get seriesRemainderFailed {
+    return _format('mobile.series.remainder_failed');
+  }
+
   /// `mobile.series.save_offline`
   String get seriesSaveOffline {
     return _format('mobile.series.save_offline');
@@ -2914,6 +2948,26 @@ final class AppMessages {
   /// `mobile.series.title`
   String get seriesTitle {
     return _format('mobile.series.title');
+  }
+
+  /// `mobile.series.volume_buy`
+  String get seriesVolumeBuy {
+    return _format('mobile.series.volume_buy');
+  }
+
+  /// `mobile.series.volume_owned`
+  String get seriesVolumeOwned {
+    return _format('mobile.series.volume_owned');
+  }
+
+  /// `mobile.series.volume_ownership_failed`
+  String get seriesVolumeOwnershipFailed {
+    return _format('mobile.series.volume_ownership_failed');
+  }
+
+  /// `mobile.series.volumes_heading`
+  String get seriesVolumesHeading {
+    return _format('mobile.series.volumes_heading');
   }
 
   /// `mobile.series_filter.clear`
@@ -3938,6 +3992,7 @@ const _jaSources = <String, String>{
   'mobile.purchases.readable_until': '{\$date}まで閲覧可能',
   'mobile.purchases.refunded': '返金済み',
   'mobile.purchases.rental': 'レンタル',
+  'mobile.purchases.series_bundle_title': '残りの{\$count :integer}話',
   'mobile.purchases.sign_in_prompt': 'サインインすると、購入したエピソードを確認できます。',
   'mobile.purchases.time_left_hours': '残り{\$hours :integer}時間',
   'mobile.purchases.time_left_hours_minutes':
@@ -4003,6 +4058,7 @@ const _jaSources = <String, String>{
   'mobile.series.age_gate.unknown_title': '「{\$title}」には年齢制限があります',
   'mobile.series.age_rating_r15': 'R15',
   'mobile.series.age_rating_r18': 'R18',
+  'mobile.series.checkout_success': '決済を確認しています。購入が反映されるとエピソードを読めるようになります。',
   'mobile.series.continue_reading': '続きを読む',
   'mobile.series.creators_heading': '著者',
   'mobile.series.episode_count': '{\$count :integer}話',
@@ -4021,6 +4077,9 @@ const _jaSources = <String, String>{
   'mobile.series.rating_own_failed': 'あなたの評価を表示できませんでした',
   'mobile.series.read_from_first': '第1話から読む',
   'mobile.series.related_heading': 'こちらもおすすめ',
+  'mobile.series.remainder_buy': '残りの{\$count :integer}話を{\$price}で購入',
+  'mobile.series.remainder_discount': '1話ずつ買うと{\$list_price}のところ{\$percent}オフ',
+  'mobile.series.remainder_failed': '残りのエピソードの価格を表示できませんでした',
   'mobile.series.save_offline': 'オフライン用に保存',
   'mobile.series.save_offline_aria': '「{\$title}」をオフラインで読めるように保存',
   'mobile.series.save_offline_failed': '「{\$title}」を保存できませんでした。もう一度お試しください。',
@@ -4035,6 +4094,10 @@ const _jaSources = <String, String>{
   'mobile.series.status_hiatus': '休載中',
   'mobile.series.status_ongoing': '連載中',
   'mobile.series.title': 'シリーズ',
+  'mobile.series.volume_buy': 'この巻を購入',
+  'mobile.series.volume_owned': 'この巻のエピソードはすべて購入済みです',
+  'mobile.series.volume_ownership_failed': '所持している巻を確認できませんでした',
+  'mobile.series.volumes_heading': '巻',
   'mobile.series_filter.clear': '条件をクリア',
   'mobile.series_filter.empty': '条件に一致するシリーズはありません。',
   'mobile.series_filter.free': '無料で読める',
@@ -4772,6 +4835,8 @@ const _enSources = <String, String>{
   'mobile.purchases.readable_until': 'Readable until {\$date}',
   'mobile.purchases.refunded': 'Refunded',
   'mobile.purchases.rental': 'Rental',
+  'mobile.purchases.series_bundle_title':
+      'Remaining episodes ({\$count :integer})',
   'mobile.purchases.sign_in_prompt': 'Sign in to see the episodes you bought.',
   'mobile.purchases.time_left_hours': '{\$hours :integer} hr left',
   'mobile.purchases.time_left_hours_minutes':
@@ -4846,6 +4911,8 @@ const _enSources = <String, String>{
   'mobile.series.age_gate.unknown_title': '“{\$title}” has an age rating',
   'mobile.series.age_rating_r15': 'R15',
   'mobile.series.age_rating_r18': 'R18',
+  'mobile.series.checkout_success':
+      'We are confirming your payment. The episodes open once the purchase is applied.',
   'mobile.series.continue_reading': 'Continue reading',
   'mobile.series.creators_heading': 'Authors',
   'mobile.series.episode_count':
@@ -4866,6 +4933,12 @@ const _enSources = <String, String>{
   'mobile.series.rating_own_failed': 'Could not show your rating',
   'mobile.series.read_from_first': 'Read from episode 1',
   'mobile.series.related_heading': 'You may also like',
+  'mobile.series.remainder_buy':
+      'Buy remaining episodes ({\$count :integer}) for {\$price}',
+  'mobile.series.remainder_discount':
+      '{\$percent} off the {\$list_price} they cost one by one',
+  'mobile.series.remainder_failed':
+      'Could not show the price of the remaining episodes',
   'mobile.series.save_offline': 'Save for offline',
   'mobile.series.save_offline_aria': 'Save “{\$title}” for offline reading',
   'mobile.series.save_offline_failed': 'Could not save “{\$title}”. Try again.',
@@ -4881,6 +4954,11 @@ const _enSources = <String, String>{
   'mobile.series.status_hiatus': 'On hiatus',
   'mobile.series.status_ongoing': 'Ongoing',
   'mobile.series.title': 'Series',
+  'mobile.series.volume_buy': 'Buy volume',
+  'mobile.series.volume_owned': 'You own every episode in this volume',
+  'mobile.series.volume_ownership_failed':
+      'Could not check which volumes you own',
+  'mobile.series.volumes_heading': 'Volumes',
   'mobile.series_filter.clear': 'Clear filters',
   'mobile.series_filter.empty': 'No series match these filters.',
   'mobile.series_filter.free': 'Free to start',
@@ -5535,6 +5613,7 @@ const _koSources = <String, String>{
   'mobile.purchases.readable_until': '{\$date}까지 열람 가능',
   'mobile.purchases.refunded': '환불됨',
   'mobile.purchases.rental': '대여',
+  'mobile.purchases.series_bundle_title': '남은 {\$count :integer}화',
   'mobile.purchases.sign_in_prompt': '로그인하면 구매한 에피소드를 볼 수 있습니다.',
   'mobile.purchases.time_left_hours': '{\$hours :integer}시간 남음',
   'mobile.purchases.time_left_hours_minutes':
@@ -5600,6 +5679,7 @@ const _koSources = <String, String>{
   'mobile.series.age_gate.unknown_title': '“{\$title}”에는 연령 등급이 있습니다',
   'mobile.series.age_rating_r15': 'R15',
   'mobile.series.age_rating_r18': 'R18',
+  'mobile.series.checkout_success': '결제를 확인하고 있습니다. 구매가 반영되면 에피소드가 열립니다.',
   'mobile.series.continue_reading': '이어 읽기',
   'mobile.series.creators_heading': '작가',
   'mobile.series.episode_count': '{\$count :integer}화',
@@ -5617,6 +5697,10 @@ const _koSources = <String, String>{
   'mobile.series.rating_own_failed': '내 평점을 표시하지 못했습니다',
   'mobile.series.read_from_first': '1화부터 읽기',
   'mobile.series.related_heading': '이런 작품은 어떠세요',
+  'mobile.series.remainder_buy': '남은 {\$count :integer}화를 {\$price}에 구매',
+  'mobile.series.remainder_discount':
+      '한 화씩 사면 {\$list_price}인 것을 {\$percent} 할인',
+  'mobile.series.remainder_failed': '남은 에피소드의 가격을 표시할 수 없습니다',
   'mobile.series.save_offline': '오프라인용으로 저장',
   'mobile.series.save_offline_aria': '“{\$title}”을(를) 오프라인으로 읽을 수 있도록 저장',
   'mobile.series.save_offline_failed':
@@ -5633,6 +5717,10 @@ const _koSources = <String, String>{
   'mobile.series.status_hiatus': '휴재 중',
   'mobile.series.status_ongoing': '연재 중',
   'mobile.series.title': '시리즈',
+  'mobile.series.volume_buy': '이 권 구매',
+  'mobile.series.volume_owned': '이 권의 에피소드를 모두 구매했습니다',
+  'mobile.series.volume_ownership_failed': '보유한 권을 확인할 수 없습니다',
+  'mobile.series.volumes_heading': '권',
   'mobile.series_filter.clear': '조건 지우기',
   'mobile.series_filter.empty': '조건에 맞는 시리즈가 없습니다.',
   'mobile.series_filter.free': '무료로 읽기',
@@ -6223,6 +6311,7 @@ const _zhHansSources = <String, String>{
   'mobile.purchases.readable_until': '可阅读至{\$date}',
   'mobile.purchases.refunded': '已退款',
   'mobile.purchases.rental': '租阅',
+  'mobile.purchases.series_bundle_title': '剩余的{\$count :integer}章',
   'mobile.purchases.sign_in_prompt': '登录后即可查看您购买的章节。',
   'mobile.purchases.time_left_hours': '剩余{\$hours :integer}小时',
   'mobile.purchases.time_left_hours_minutes':
@@ -6285,6 +6374,7 @@ const _zhHansSources = <String, String>{
   'mobile.series.age_gate.unknown_title': '“{\$title}”有年龄分级',
   'mobile.series.age_rating_r15': 'R15',
   'mobile.series.age_rating_r18': 'R18',
+  'mobile.series.checkout_success': '我们正在确认您的付款。购买生效后即可打开这些章节。',
   'mobile.series.continue_reading': '继续阅读',
   'mobile.series.creators_heading': '作者',
   'mobile.series.episode_count': '{\$count :integer}章',
@@ -6301,6 +6391,9 @@ const _zhHansSources = <String, String>{
   'mobile.series.rating_own_failed': '无法显示你的评分',
   'mobile.series.read_from_first': '从第1章开始阅读',
   'mobile.series.related_heading': '你可能也喜欢',
+  'mobile.series.remainder_buy': '以{\$price}购买剩余的{\$count :integer}章',
+  'mobile.series.remainder_discount': '逐章购买需{\$list_price}，现优惠{\$percent}',
+  'mobile.series.remainder_failed': '无法显示剩余章节的价格',
   'mobile.series.save_offline': '保存以供离线阅读',
   'mobile.series.save_offline_aria': '保存“{\$title}”以供离线阅读',
   'mobile.series.save_offline_failed': '无法保存“{\$title}”。请重试。',
@@ -6314,6 +6407,10 @@ const _zhHansSources = <String, String>{
   'mobile.series.status_hiatus': '休载中',
   'mobile.series.status_ongoing': '连载中',
   'mobile.series.title': '系列',
+  'mobile.series.volume_buy': '购买本卷',
+  'mobile.series.volume_owned': '本卷的所有章节均已购买',
+  'mobile.series.volume_ownership_failed': '无法确认您已拥有的卷',
+  'mobile.series.volumes_heading': '卷',
   'mobile.series_filter.clear': '清除条件',
   'mobile.series_filter.empty': '没有符合这些条件的系列。',
   'mobile.series_filter.free': '可免费阅读',
@@ -6892,6 +6989,7 @@ const _zhHantSources = <String, String>{
   'mobile.purchases.readable_until': '可閱讀至{\$date}',
   'mobile.purchases.refunded': '已退款',
   'mobile.purchases.rental': '租閱',
+  'mobile.purchases.series_bundle_title': '剩餘的{\$count :integer}章',
   'mobile.purchases.sign_in_prompt': '登入後即可查看您購買的章節。',
   'mobile.purchases.time_left_hours': '剩餘{\$hours :integer}小時',
   'mobile.purchases.time_left_hours_minutes':
@@ -6954,6 +7052,7 @@ const _zhHantSources = <String, String>{
   'mobile.series.age_gate.unknown_title': '「{\$title}」有年齡分級',
   'mobile.series.age_rating_r15': 'R15',
   'mobile.series.age_rating_r18': 'R18',
+  'mobile.series.checkout_success': '我們正在確認您的付款。購買生效後即可開啟這些章節。',
   'mobile.series.continue_reading': '繼續閱讀',
   'mobile.series.creators_heading': '作者',
   'mobile.series.episode_count': '{\$count :integer}章',
@@ -6970,6 +7069,9 @@ const _zhHantSources = <String, String>{
   'mobile.series.rating_own_failed': '無法顯示你的評分',
   'mobile.series.read_from_first': '從第1章開始閱讀',
   'mobile.series.related_heading': '你可能也喜歡',
+  'mobile.series.remainder_buy': '以{\$price}購買剩餘的{\$count :integer}章',
+  'mobile.series.remainder_discount': '逐章購買需{\$list_price}，現優惠{\$percent}',
+  'mobile.series.remainder_failed': '無法顯示剩餘章節的價格',
   'mobile.series.save_offline': '儲存以供離線閱讀',
   'mobile.series.save_offline_aria': '儲存「{\$title}」以供離線閱讀',
   'mobile.series.save_offline_failed': '無法儲存「{\$title}」。請重試。',
@@ -6983,6 +7085,10 @@ const _zhHantSources = <String, String>{
   'mobile.series.status_hiatus': '休載中',
   'mobile.series.status_ongoing': '連載中',
   'mobile.series.title': '系列',
+  'mobile.series.volume_buy': '購買本卷',
+  'mobile.series.volume_owned': '本卷的所有章節皆已購買',
+  'mobile.series.volume_ownership_failed': '無法確認您已擁有的卷',
+  'mobile.series.volumes_heading': '卷',
   'mobile.series_filter.clear': '清除條件',
   'mobile.series_filter.empty': '沒有符合這些條件的系列。',
   'mobile.series_filter.free': '可免費閱讀',

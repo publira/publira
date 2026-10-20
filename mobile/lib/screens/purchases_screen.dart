@@ -22,12 +22,14 @@ import 'package:publira/typography/autospaced_tooltip.dart';
 /// the same read-ahead the library's lists use.
 const _readAheadRows = 5;
 
-/// Every episode the reader has bought, newest purchase first, read from the
-/// API rather than from what this device keeps, so a purchase made on the
-/// site or on another device is here too.
+/// Everything the reader has bought — an episode, a volume, or the rest of a
+/// series — newest purchase first, read from the API rather than from what
+/// this device keeps, so a purchase made on the site or on another device is
+/// here too.
 ///
-/// A row opens its episode, whether or not the purchase still does. The app
-/// bar exports the whole list as the CSV file the site downloads.
+/// A row opens its episode, or the series of a volume or of the rest of a
+/// series, whether or not the purchase still opens it. The app bar exports
+/// the whole list as the CSV file the site downloads.
 class PurchasesScreen extends StatefulWidget {
   const PurchasesScreen({super.key});
 
@@ -399,16 +401,30 @@ class _PurchaseRow extends StatelessWidget {
         ],
       },
     ];
-    final title = [
-      '#${messages.formatInteger(purchase.orderIndex)}',
-      if (purchase.episodeTitle.isNotEmpty) purchase.episodeTitle,
-    ].join(' ');
+    // A volume's title is the tenant's own and carries no locale of its own,
+    // and the rest of a series is named in the app's language.
+    final (title, titleLocale) = switch (purchase.item) {
+      PurchasedItem.episode => (
+        [
+          '#${messages.formatInteger(purchase.orderIndex)}',
+          if (purchase.episodeTitle.isNotEmpty) purchase.episodeTitle,
+        ].join(' '),
+        purchase.episodeTextLocale,
+      ),
+      PurchasedItem.volume => (purchase.volumeTitle, null),
+      PurchasedItem.remainingEpisodes => (
+        messages.purchasesSeriesBundleTitle(
+          count: purchase.remainingEpisodeCount,
+        ),
+        null,
+      ),
+    };
     return ListTile(
       key: ValueKey('purchase-row-${purchase.id}'),
       isThreeLine: true,
       title: AutospacedText(
         title,
-        locale: purchase.episodeTextLocale,
+        locale: titleLocale,
         style: purchase.isActive ? null : TextStyle(color: muted),
       ),
       // Two lines rather than one joined text: the title is set in the
@@ -428,8 +444,12 @@ class _PurchaseRow extends StatelessWidget {
         ],
       ),
       trailing: _PurchaseState(status: status),
+      // A volume and the rest of a series open several episodes, which the
+      // series lists.
       onTap: () => context.pushInTab(
-        AppRoutes.episodeViewerPath(purchase.seriesId, purchase.episodeId),
+        purchase.item == PurchasedItem.episode
+            ? AppRoutes.episodeViewerPath(purchase.seriesId, purchase.episodeId)
+            : AppRoutes.seriesDetailPath(purchase.seriesId),
       ),
     );
   }

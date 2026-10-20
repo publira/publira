@@ -28,6 +28,7 @@ import 'package:publira/navigation/app_tabs.dart';
 import 'package:publira/offline/episode_downloader.dart';
 import 'package:publira/offline/offline_library.dart';
 import 'package:publira/offline/offline_scope.dart';
+import 'package:publira/purchase/buy_bundle_button.dart';
 import 'package:publira/purchase/buy_episode_button.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
@@ -37,9 +38,13 @@ import 'package:publira/typography/autospaced_tooltip.dart';
 
 /// Series detail. Loads the published series and its episodes from the API.
 class SeriesDetailScreen extends StatefulWidget {
-  const SeriesDetailScreen({super.key, required this.seriesId});
+  const SeriesDetailScreen({super.key, required this.seriesId, this.checkout});
 
   final String seriesId;
+
+  /// How a checkout of one of the series' volumes or of the rest of it ended,
+  /// when the browser has just handed one back.
+  final CheckoutOutcome? checkout;
 
   @override
   State<SeriesDetailScreen> createState() => _SeriesDetailScreenState();
@@ -173,7 +178,10 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
             child: ContentViewRecorder(
               kind: ContentViewKind.series,
               targetId: detail.series.internalId,
-              child: _SeriesDetailBody(detail: detail),
+              child: _SeriesDetailBody(
+                detail: detail,
+                checkout: widget.checkout,
+              ),
             ),
           ),
         );
@@ -229,9 +237,10 @@ class _DetailMessage extends StatelessWidget {
 }
 
 class _SeriesDetailBody extends StatefulWidget {
-  const _SeriesDetailBody({required this.detail});
+  const _SeriesDetailBody({required this.detail, this.checkout});
 
   final SeriesDetail detail;
+  final CheckoutOutcome? checkout;
 
   @override
   State<_SeriesDetailBody> createState() => _SeriesDetailBodyState();
@@ -244,10 +253,20 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   var _readerId = '';
   var _started = false;
 
-  /// What this reader may do with each episode, keyed by public id. Empty
-  /// until the API has answered, and for good when it cannot, which leaves
-  /// every row offering no purchase rather than one the reader may not need.
-  var _access = const <String, EpisodeAccess>{};
+  /// What this reader holds of the series and what the rest of it would cost
+  /// them. `null` until the API has answered, and for good when it cannot,
+  /// which leaves every row, volume, and the rest of the series offering no
+  /// purchase rather than one the reader may not need.
+  SeriesPurchaseState? _holdings;
+
+  /// Whether the latest read of [_holdings] failed, which the volumes and the
+  /// offer of the rest of the series say where their purchase would be, as
+  /// the storefront does: without it no volume can tell one already the
+  /// reader's from one to buy.
+  var _holdingsFailed = false;
+
+  /// What this reader may do with each episode, keyed by public id.
+  Map<String, EpisodeAccess> get _access => _holdings?.access ?? const {};
 
   /// Whether the tenant takes payments, which it has to before any row offers
   /// one.
@@ -257,8 +276,9 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   String? _currency;
 
   /// Whether the tenant sells through its web checkout, which is the only way
-  /// a rental is sold: the store sells the permanent copy alone.
-  var _rentsOnWeb = false;
+  /// a rental, a volume, or the rest of a series is sold: the store sells the
+  /// permanent copy of one episode alone.
+  var _sellsOnWeb = false;
 
   /// How many reads of [_access] this screen has started, so that only the
   /// latest one's answer is shown: the read the screen opened with can answer
@@ -331,6 +351,45 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
     super.didUpdateWidget(oldWidget);
     if (!identical(oldWidget.detail, widget.detail)) {
       _scheduleWindowClose();
+    }
+    // A return link to the series the reader bought from differs only in its
+    // query, which go_router answers with this same state, still scrolled to
+    // the purchase the reader tapped. The notice of how it ended stands at the
+    // top, so the list is taken back there.
+    if (widget.checkout != oldWidget.checkout) {
+      if (widget.checkout != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final top = _topKey.currentContext;
+          if (top != null) {
+            Scrollable.maybeOf(top)?.position.jumpTo(0);
+          }
+        });
+      }
+      final purchase = PurchaseScope.maybeOf(context)?.repository;
+      if (purchase != null) {
+        unawaited(_loadPurchase(purchase, _readerId));
+        unawaited(_confirmCheckout(purchase));
+      }
+    }
+  }
+
+  /// The list's first sliver, whose context reaches the scroll position. It is
+  /// laid out at any offset, unlike the rows inside it.
+  final _topKey = GlobalKey();
+
+  /// Reads what the reader holds again after each of
+  /// [checkoutConfirmationDelays], for a reader the browser has just sent back
+  /// from paying: the webhook that records the purchase races the return.
+  Future<void> _confirmCheckout(PurchaseRepository purchase) async {
+    if (widget.checkout != CheckoutOutcome.success || _readerId.isEmpty) {
+      return;
+    }
+    for (final delay in checkoutConfirmationDelays) {
+      await Future<void>.delayed(delay);
+      if (!mounted || widget.checkout != CheckoutOutcome.success) {
+        return;
+      }
+      await _loadPurchase(purchase, _readerId);
     }
   }
 
@@ -431,6 +490,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
     final purchase = PurchaseScope.maybeOf(context)?.repository;
     if (purchase != null) {
       unawaited(_loadPurchase(purchase, readerId));
+      unawaited(_confirmCheckout(purchase));
     }
     if (library == null) {
       return;
@@ -447,10 +507,11 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
   ) async {
     final read = ++_purchaseReads;
     // Either read failing offers no purchase, not a failed screen.
-    final (access, acceptsPayments, currency, route) = await (
+    final (holdings, acceptsPayments, currency, route) = await (
       purchase
           .seriesEpisodeAccess(widget.detail.series.internalId)
-          .onError<PurchaseFailure>((_, _) => const {}),
+          .then<SeriesPurchaseState?>((holdings) => holdings)
+          .onError<PurchaseFailure>((_, _) => null),
       purchase.acceptsPayments().onError<PurchaseFailure>((_, _) => false),
       purchase
           .currency()
@@ -465,12 +526,33 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
       return;
     }
     setState(() {
-      _access = access;
+      _holdings = holdings;
+      _holdingsFailed = holdings == null;
       // A price nobody can read is no purchase to offer.
       _acceptsPayments = acceptsPayments && currency != null;
       _currency = currency;
-      _rentsOnWeb = route == AppPurchaseRoute.externalCheckout;
+      _sellsOnWeb = route == AppPurchaseRoute.externalCheckout;
     });
+  }
+
+  /// Takes the outcome of the last checkout out of the screen's location as
+  /// the reader starts another. Every successful return lands on the same
+  /// location, which a screen still showing the last one would not see as a
+  /// change, and so would neither read what the reader holds again nor say
+  /// the new payment is being confirmed.
+  void _checkoutOpened() {
+    if (widget.checkout != null) {
+      context.go(AppRoutes.seriesDetailPath(widget.detail.series.id));
+    }
+  }
+
+  /// Reads what the reader holds again, for an offer the API turned down
+  /// because it was out of date.
+  void _reloadPurchase() {
+    final purchase = PurchaseScope.maybeOf(context)?.repository;
+    if (purchase != null) {
+      unawaited(_loadPurchase(purchase, _readerId));
+    }
   }
 
   /// Whether this reader would buy [episode], since the API has answered that
@@ -491,7 +573,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
     DateTime now,
   ) {
     if (episode.isFreeAt(now) ||
-        !_rentsOnWeb ||
+        !_sellsOnWeb ||
         !episode.isRented ||
         !_buyable(episode)) {
       return null;
@@ -650,6 +732,132 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
     });
   }
 
+  /// What the screen says to a reader the browser has just sent back from a
+  /// checkout of a volume or of the rest of the series, and `null` for any
+  /// other reader.
+  ///
+  /// A success is worded as a payment still being applied, and stays up: the
+  /// purchase is recorded by the payment provider's notification, which the
+  /// screen reads again for without knowing what was bought.
+  Widget? _checkoutNotice(AppMessages messages) {
+    final theme = Theme.of(context);
+    return switch (widget.checkout) {
+      CheckoutOutcome.success when AuthScope.of(context).isSignedIn => Column(
+        key: const ValueKey('series-checkout-confirming'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AutospacedText(
+            messages.seriesCheckoutSuccess,
+            style: theme.textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton(
+            key: const ValueKey('series-checkout-check-again'),
+            onPressed: _reloadPurchase,
+            child: AutospacedText(messages.purchaseCheckAgain),
+          ),
+        ],
+      ),
+      CheckoutOutcome.cancelled => AutospacedText(
+        key: const ValueKey('series-checkout-cancelled'),
+        messages.purchaseCancelled,
+        style: theme.textTheme.bodyMedium,
+      ),
+      _ => null,
+    };
+  }
+
+  /// What a volume's card offers this reader: that they already own every
+  /// episode in it, which is said whether or not the tenant sells it; the
+  /// purchase where the app sells through the web checkout; and the website
+  /// named without a link where it sells through the store, which has no
+  /// product for a volume. `null` while what the reader owns is unknown.
+  Widget? _volumeControl(AppMessages messages, VolumeItem volume) {
+    final holdings = _holdings;
+    if (holdings == null) {
+      return null;
+    }
+    if (holdings.owns(volume)) {
+      return AutospacedText(
+        key: ValueKey('volume-owned-${volume.publicId}'),
+        messages.seriesVolumeOwned,
+      );
+    }
+    if (!_acceptsPayments) {
+      return null;
+    }
+    if (!_sellsOnWeb) {
+      return AutospacedText(
+        key: ValueKey('volume-sold-on-web-${volume.publicId}'),
+        messages.purchaseSoldOnWeb,
+      );
+    }
+    return BuyBundleButton(
+      key: ValueKey('volume-buy-${volume.publicId}'),
+      label: messages.seriesVolumeBuy,
+      start: (repository, _) => repository.startVolumeCheckout(volume.id),
+      onRefused: _reloadPurchase,
+      onOpened: _checkoutOpened,
+    );
+  }
+
+  /// Every episode of the series the reader does not own yet, in one checkout,
+  /// where the app sells through the web checkout and the API quotes a sale:
+  /// how many, at what price, and what the series takes off buying them one
+  /// by one. A quote that could not be read says so in its place.
+  Widget? _remainderOffer(AppMessages messages) {
+    final currency = _currency;
+    if (!_acceptsPayments || !_sellsOnWeb || currency == null) {
+      return null;
+    }
+    if (_holdingsFailed) {
+      return _PurchaseStateFailure(
+        key: const ValueKey('series-remainder-failed'),
+        message: messages.seriesRemainderFailed,
+      );
+    }
+    final remainder = _holdings?.remainder;
+    if (remainder == null) {
+      return null;
+    }
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          BuyBundleButton(
+            key: const ValueKey('series-remainder-buy'),
+            label: messages.seriesRemainderBuy(
+              count: remainder.episodeCount,
+              price: messages.formatPrice(remainder.price, currency),
+            ),
+            start: (repository, locale) =>
+                repository.startSeriesRemainderCheckout(
+                  widget.detail.series.internalId,
+                  locale: locale,
+                ),
+            onRefused: _reloadPurchase,
+            onOpened: _checkoutOpened,
+          ),
+          if (remainder.discountPercent > 0) ...[
+            const SizedBox(height: 4),
+            AutospacedText(
+              key: const ValueKey('series-remainder-discount'),
+              messages.seriesRemainderDiscount(
+                listPrice: messages.formatPrice(remainder.listPrice, currency),
+                percent: messages.formatPercent(remainder.discountPercent),
+              ),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -671,9 +879,15 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
       key: const ValueKey('series-detail-body'),
       slivers: [
         SliverPadding(
+          key: _topKey,
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           sliver: SliverList.list(
             children: [
+              if (_checkoutNotice(messages) case final notice?)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: notice,
+                ),
               if (fallbackLanguage != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16),
@@ -876,12 +1090,33 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                     ),
                   ),
               ],
+              if (widget.detail.volumes.isNotEmpty) ...[
+                const SizedBox(height: 24),
+                AutospacedText(
+                  messages.seriesVolumesHeading,
+                  style: theme.textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                if (_holdingsFailed)
+                  _PurchaseStateFailure(
+                    key: const ValueKey('series-volumes-ownership-failed'),
+                    message: messages.seriesVolumeOwnershipFailed,
+                  ),
+                for (final volume in widget.detail.volumes)
+                  _VolumeTile(
+                    volume: volume,
+                    series: series,
+                    currency: _currency,
+                    control: _volumeControl(messages, volume),
+                  ),
+              ],
               const SizedBox(height: 24),
               AutospacedText(
                 messages.seriesEpisodesHeading,
                 style: theme.textTheme.titleMedium,
               ),
               const SizedBox(height: 8),
+              ?_remainderOffer(messages),
               if (widget.detail.episodes.isEmpty)
                 AutospacedText(messages.seriesEpisodesEmpty)
               else
@@ -1137,6 +1372,104 @@ class _SeriesRating extends StatelessWidget {
           style: style,
         ),
       ],
+    );
+  }
+}
+
+/// Why a purchase that depends on what the reader holds is not offered: the
+/// read of it failed.
+class _PurchaseStateFailure extends StatelessWidget {
+  const _PurchaseStateFailure({super.key, required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: AutospacedText(
+        message,
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: theme.colorScheme.error,
+        ),
+      ),
+    );
+  }
+}
+
+/// One volume of the series: its cover, its title, how many episodes it holds
+/// and what it costs, and [control] under them.
+class _VolumeTile extends StatelessWidget {
+  const _VolumeTile({
+    required this.volume,
+    required this.series,
+    required this.currency,
+    required this.control,
+  });
+
+  final VolumeItem volume;
+  final SeriesItem series;
+
+  /// The currency the price is shown in, or `null` while the tenant's could
+  /// not be read, when the card shows no price.
+  final String? currency;
+
+  /// What the reader can do about the volume, or `null` for nothing.
+  final Widget? control;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final messages = AppMessages.of(context);
+    final currency = this.currency;
+    final control = this.control;
+    return Padding(
+      key: ValueKey('series-volume-${volume.publicId}'),
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // A volume is a book, so its cover stands upright, and the series'
+          // eye-catch stands in where it has none.
+          SizedBox(
+            width: 64,
+            child: EyeCatchCover(
+              kind: 'volume',
+              id: volume.publicId,
+              variants: volume.coverVariants.isEmpty
+                  ? series.eyeCatchVariants
+                  : volume.coverVariants,
+              requestHeaders: series.imageRequestHeaders,
+              preferredTypes: const [eyeCatchPortrait, eyeCatchSquare],
+              aspectRatio: 3 / 4,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AutospacedText(volume.title, style: theme.textTheme.titleSmall),
+                const SizedBox(height: 4),
+                AutospacedText(
+                  [
+                    messages.seriesEpisodeCount(
+                      count: volume.episodeIds.length,
+                    ),
+                    if (currency != null)
+                      messages.formatPrice(volume.price, currency),
+                  ].join(' · '),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                if (control != null) ...[const SizedBox(height: 8), control],
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

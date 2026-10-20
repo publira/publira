@@ -63,12 +63,6 @@ class _OpenEpisode {
   final WaitFreeOffer? waitFree;
 }
 
-/// How long the viewer waits before each re-read of an episode the browser
-/// reported paid for and the API still reports locked. The webhook that
-/// records the purchase races the browser's return, so the first read after it
-/// can be too early.
-const checkoutConfirmationDelays = [Duration(seconds: 2), Duration(seconds: 4)];
-
 /// Episode reader. Loads the body of one published episode and hands its pages
 /// to [EpisodeReader].
 ///

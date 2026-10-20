@@ -439,12 +439,47 @@ class WaitFreeRule {
       !excludedEpisodeIds.contains(episodeInternalId);
 }
 
+/// A run of a series' episodes sold together at a price of its own, as
+/// `publira.types.v1.Volume` describes it. Buying it opens every episode it
+/// holds, for good.
+class VolumeItem {
+  const VolumeItem({
+    required this.id,
+    required this.publicId,
+    required this.title,
+    required this.orderIndex,
+    required this.price,
+    required this.episodeIds,
+    this.coverVariants = const [],
+  });
+
+  /// Internal id (`id`), which `StartVolumeCheckout` takes.
+  final String id;
+
+  /// Public id (`public_id`), which a checkout return names the volume by.
+  final String publicId;
+  final String title;
+  final int orderIndex;
+
+  /// What the volume costs, in the minor unit of the tenant currency. Never 0.
+  final int price;
+
+  /// Internal ids of the episodes the volume holds, in the volume's own order:
+  /// only those the app lists, since the API leaves out the rest.
+  final List<String> episodeIds;
+
+  /// Renditions of the volume's cover. Empty on a volume with none, where the
+  /// series' eye-catch stands in for it.
+  final List<EyeCatchVariant> coverVariants;
+}
+
 /// Series plus its published episodes.
 class SeriesDetail {
   const SeriesDetail({
     required this.series,
     required this.episodes,
     this.waitFree,
+    this.volumes = const [],
   });
 
   final SeriesItem series;
@@ -452,6 +487,10 @@ class SeriesDetail {
 
   /// The series' wait-for-free rule, or `null` when it offers none.
   final WaitFreeRule? waitFree;
+
+  /// The volumes on sale in the app, in the tenant's order. Empty on a copy
+  /// saved on the device, which offers nothing to buy.
+  final List<VolumeItem> volumes;
 }
 
 /// Where the reader stands in one series, as `GetMySeriesProgressResponse`

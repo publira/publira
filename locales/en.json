@@ -5085,7 +5085,8 @@
       "time_left_hours": "{$hours :integer} hr left",
       "time_left_hours_minutes": "{$hours :integer} hr {$minutes :integer} min left",
       "time_left_minutes": "{$minutes :integer} min left",
-      "title": "Purchases"
+      "title": "Purchases",
+      "series_bundle_title": "Remaining episodes ({$count :integer})"
     },
     "ranking": {
       "empty": "No ranking has been computed yet.",
@@ -5177,7 +5178,15 @@
       "status_completed": "Completed",
       "status_hiatus": "On hiatus",
       "status_ongoing": "Ongoing",
-      "title": "Series"
+      "title": "Series",
+      "checkout_success": "We are confirming your payment. The episodes open once the purchase is applied.",
+      "remainder_buy": "Buy remaining episodes ({$count :integer}) for {$price}",
+      "remainder_discount": "{$percent} off the {$list_price} they cost one by one",
+      "remainder_failed": "Could not show the price of the remaining episodes",
+      "volume_buy": "Buy volume",
+      "volume_owned": "You own every episode in this volume",
+      "volume_ownership_failed": "Could not check which volumes you own",
+      "volumes_heading": "Volumes"
     },
     "sign_in": {
       "continue_with_apple": "Continue with Apple",

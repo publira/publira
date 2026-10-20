@@ -1007,6 +1007,59 @@ void main() {
     );
   });
 
+  test('getSeries carries the volumes on sale in their order', () async {
+    expect(
+      (await catalog.getSeries(
+        ConnectFixtureServer.seedSeriesId,
+        locale: 'en',
+      ))!.volumes,
+      isEmpty,
+    );
+
+    server.detailResponse =
+        ConnectFixtureServer.populatedDetails()[ConnectFixtureServer
+              .seedSeriesId]!
+          ..volumes.addAll([
+            pb.Volume(
+              id: 'volume-2',
+              publicId: 'VOLUME000002',
+              title: 'Volume 2',
+              orderIndex: 2,
+              price: 700,
+              episodeIds: ['internal-EP03'],
+            ),
+            pb.Volume(
+              id: 'volume-1',
+              publicId: 'VOLUME000001',
+              title: 'Volume 1',
+              orderIndex: 1,
+              price: 350,
+              episodeIds: ['internal-EP01', 'internal-EP02'],
+              coverImageVariants: [
+                pb.SeriesEyeCatchVariant(
+                  variantType: 'portrait',
+                  url: '/volumes/VOLUME000001/portrait.webp',
+                  width: 600,
+                  height: 800,
+                ),
+              ],
+            ),
+          ]);
+
+    final [first, second] = (await catalog.getSeries(
+      ConnectFixtureServer.seedSeriesId,
+      locale: 'en',
+    ))!.volumes;
+    expect(first.id, 'volume-1');
+    expect(first.publicId, 'VOLUME000001');
+    expect(first.title, 'Volume 1');
+    expect(first.price, 350);
+    expect(first.episodeIds, ['internal-EP01', 'internal-EP02']);
+    expect(first.coverVariants.single.variantType, 'portrait');
+    expect(second.publicId, 'VOLUME000002');
+    expect(second.coverVariants, isEmpty);
+  });
+
   test('getSeries returns null for a missing public id', () async {
     expect(await catalog.getSeries('ZZZZZZZZZZZZ', locale: 'en'), isNull);
   });

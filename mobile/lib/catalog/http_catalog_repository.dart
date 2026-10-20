@@ -1251,7 +1251,35 @@ class HttpCatalogRepository implements CatalogRepository {
       // The wire format omits the unset message, which is how a series without
       // the rule arrives.
       waitFree: body.hasWaitFree() ? _parseWaitFreeRule(body.waitFree) : null,
+      volumes: _parseVolumes(body.volumes),
     );
+  }
+
+  /// A volume naming no episode the app lists has nothing to sell, and the API
+  /// leaves such a volume out; one that slips through is left out here too.
+  List<VolumeItem> _parseVolumes(List<pb.Volume> volumes) {
+    final parsed = [
+      for (final volume in volumes)
+        if (volume.episodeIds.any((id) => id.trim().isNotEmpty))
+          VolumeItem(
+            id: _requiredId(volume.id, 'volumes[].id'),
+            publicId: _requiredId(volume.publicId, 'volumes[].publicId'),
+            title: volume.title.trim(),
+            orderIndex: volume.orderIndex,
+            price: volume.price,
+            episodeIds: List<String>.unmodifiable([
+              for (final id in volume.episodeIds)
+                if (id.trim().isNotEmpty) id.trim(),
+            ]),
+            coverVariants: _parseEyeCatchVariants(
+              volume.coverImageVariants,
+              'volumes[]',
+              field: 'coverImageVariants',
+            ),
+          ),
+    ];
+    parsed.sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
+    return List<VolumeItem>.unmodifiable(parsed);
   }
 
   WaitFreeRule _parseWaitFreeRule(pb.WaitFreeRule rule) {

@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/my_purchase.dart';
+import 'package:publira/models/series_item.dart';
 import 'package:publira/purchase/checkout_launcher.dart';
 import 'package:publira/purchase/store_purchaser.dart';
 
@@ -33,6 +34,12 @@ enum CheckoutOutcome {
   }
 }
 
+/// How long a screen waits before each re-read of what the browser reported
+/// paid for and the API does not report bought yet. The webhook that records
+/// the purchase races the browser's return, so the first read after it can be
+/// too early.
+const checkoutConfirmationDelays = [Duration(seconds: 2), Duration(seconds: 4)];
+
 /// Which purchase the tenant's app offers for an episode it may sell.
 enum AppPurchaseRoute {
   /// The public site's checkout, opened in the system browser.
@@ -54,6 +61,63 @@ class StorePurchaseIntent {
 
   final String intentId;
   final String productId;
+}
+
+/// What the rest of a series would cost the reader in one checkout, as
+/// `publira.v1.SeriesRemainderOffer` quotes it. Every amount is in the minor
+/// unit of the tenant currency.
+class SeriesRemainderOffer {
+  const SeriesRemainderOffer({
+    required this.episodeCount,
+    required this.listPrice,
+    required this.discountPercent,
+    required this.price,
+  });
+
+  /// How many episodes the checkout would sell, never 0.
+  final int episodeCount;
+
+  /// What those episodes cost bought one by one.
+  final int listPrice;
+
+  /// What the series takes off [listPrice], in whole percent; 0 for nothing.
+  final int discountPercent;
+
+  /// What the reader pays.
+  final int price;
+}
+
+/// What the reader in front of the app holds of one series, as
+/// `GetSeriesEpisodeAccess` answers it.
+class SeriesPurchaseState {
+  const SeriesPurchaseState({
+    this.access = const {},
+    this.ownedEpisodeIds = const {},
+    this.remainder,
+  });
+
+  /// A series the reader holds nothing of and is offered nothing in, which is
+  /// what a screen shows until the API has answered.
+  static const none = SeriesPurchaseState();
+
+  /// What the reader may do with each published episode, keyed by episode
+  /// public id.
+  final Map<String, EpisodeAccess> access;
+
+  /// Internal ids of the episodes the reader owns for good: bought one by one,
+  /// in a volume, or with the rest of the series. A rental or a ticket opens
+  /// an episode without owning it.
+  final Set<String> ownedEpisodeIds;
+
+  /// The rest of the series as one checkout would sell it to the reader now,
+  /// or `null` when it would sell nothing.
+  final SeriesRemainderOffer? remainder;
+
+  /// Whether every episode of [volume] is already the reader's for good, so
+  /// buying it would add nothing.
+  bool owns(VolumeItem volume) =>
+      volume.episodeIds.isNotEmpty &&
+      volume.episodeIds.every(ownedEpisodeIds.contains);
 }
 
 /// Paid-episode purchase, through the public site's checkout or the store's
@@ -80,12 +144,12 @@ abstract class PurchaseRepository {
   Future<String> currency();
 
   /// What the reader in front of the app may do with each published episode
-  /// of the series [seriesInternalId] names, keyed by episode public id.
+  /// of the series [seriesInternalId] names, which of them they own, and what
+  /// the rest of it would cost them. A guest is answered as a reader who
+  /// holds nothing.
   ///
   /// Throws [PurchaseFailure] on a transport or unexpected server error.
-  Future<Map<String, EpisodeAccess>> seriesEpisodeAccess(
-    String seriesInternalId,
-  );
+  Future<SeriesPurchaseState> seriesEpisodeAccess(String seriesInternalId);
 
   /// The series public id [episodePublicId] belongs to, or `null` when the
   /// episode is not public. A checkout return names the episode alone, and
@@ -105,6 +169,29 @@ abstract class PurchaseRepository {
     String episodeInternalId, {
     required String locale,
     PurchaseKind kind = PurchaseKind.purchase,
+  });
+
+  /// The checkout page the signed-in reader pays for the volume
+  /// [volumeInternalId] names on, built to return to the app on its series.
+  ///
+  /// Throws [PurchaseFailure]; [PurchaseFailureKind.alreadyPurchased] when the
+  /// reader already holds the volume, [PurchaseFailureKind.gone] when it is no
+  /// longer sold in the app, and [PurchaseFailureKind.notSold] when the app
+  /// sells through the store, which has no product for a volume.
+  Future<Uri> startVolumeCheckout(String volumeInternalId);
+
+  /// The checkout page the signed-in reader pays for every episode of the
+  /// series [seriesInternalId] they do not own yet on, built to return to the
+  /// app on the series. The page names the episodes in their translation in
+  /// [locale], the reader's.
+  ///
+  /// Throws [PurchaseFailure]; [PurchaseFailureKind.alreadyPurchased] when the
+  /// reader already owns every one of them, and [PurchaseFailureKind.notSold]
+  /// when there is nothing one checkout could sell, or the app sells through
+  /// the store.
+  Future<Uri> startSeriesRemainderCheckout(
+    String seriesInternalId, {
+    required String locale,
   });
 
   /// Opens a purchase of the episode [episodeInternalId] names through [store]
