@@ -14,18 +14,16 @@
 # PUBLIRA_EDGE_PLATFORM_HOSTS, each a list of host names separated by spaces.
 # A Host matcher names one host, so each list is split below and joined back
 # into one rule per app. An empty list leaves its router out, since Traefik
-# refuses an empty rule; with every list empty, so are /rpc, /api, and /images.
+# refuses an empty rule; with every list empty, so are /rpc and /images.
 #
 # A host in no list matches no router, so Traefik answers it with its own 404
-# and no backend sees the request. /rpc, /api, and /images are routed on the
-# listed hosts alone for the same reason.
+# and no backend sees the request. /rpc and /images are routed on the listed
+# hosts alone for the same reason.
 #
-# The rest of /rpc and /api, past the public API's publira.v1 prefix, is
-# answered the same way: the host routers leave it out, and no other router
-# takes it. What the server answers there is the consoles' APIs, which
-# web-admin and web-platform call over the private network, so no host needs
-# them. /api/v1 stays with the host routers, since it holds the Next.js Route
-# Handlers.
+# The rest of /rpc, past the public API's publira.v1 prefix, is answered the
+# same way: the host routers leave it out, and no other router takes it. What
+# the server answers there is the consoles' APIs, which web-admin and
+# web-platform call over the private network, so no host needs them.
 {{- define "hosts" -}}
   {{- range $i, $host := . }}{{ if $i }} || {{ end }}Host(`{{ $host }}`){{ end -}}
 {{- end -}}
@@ -33,7 +31,7 @@
 {{- $admin := regexSplit "\\s+" (env "PUBLIRA_EDGE_ADMIN_HOSTS") -1 | compact -}}
 {{- $platform := regexSplit "\\s+" (env "PUBLIRA_EDGE_PLATFORM_HOSTS") -1 | compact -}}
 {{- $listed := concat $site $admin $platform }}
-{{- $appPaths := "!PathRegexp(`^/rpc(/.*)?$`) && (!PathRegexp(`^/api(/.*)?$`) || PathRegexp(`^/api/v1(/.*)?$`))" }}
+{{- $appPaths := "!PathRegexp(`^/rpc(/.*)?$`)" }}
 http:
   middlewares:
     # The trust boundary for W3C Trace Context. Traefik drops a request header
@@ -88,14 +86,6 @@ http:
     # because the server's own routes carry /rpc.
     rpc:
       rule: '({{ template "hosts" $listed }}) && PathPrefix(`/rpc/publira.v1.`)'
-      priority: 105
-      entryPoints: [web]
-      service: api
-
-    # The public API under the prefix it had before /rpc, kept for the clients
-    # not yet on /rpc and removed in 0.3.0.
-    api:
-      rule: '({{ template "hosts" $listed }}) && PathPrefix(`/api/publira.v1.`)'
       priority: 105
       entryPoints: [web]
       service: api

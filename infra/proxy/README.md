@@ -21,7 +21,7 @@ Image builds are a separate concern and live under [`infra/docker/`](../docker/R
 | `web-storefront` | The public tenant site | `3000` |
 | `web-admin` | The tenant console | `4000` |
 | `web-platform` | The platform console | `4100` |
-| `api` | `publira server`: the public API under `/rpc`, and under `/api` until 0.3.0, and image delivery for the tenant site and the tenant console alike | `8000` |
+| `api` | `publira server`: the public API under `/rpc`, and image delivery for the tenant site and the tenant console alike | `8000` |
 
 ### Host rules
 
@@ -37,7 +37,7 @@ Each is a list of host names separated by spaces, without a port: the form a Cad
 
 A listed host reaches its app whatever its name: nothing about `admin.` or `platform.` means anything to the edge. A tenant's console host is the one it was given (`admin_domain`), or `admin.<domain>` without one, and the application answers on whichever it is, so adding a tenant means adding its domain to the first list and its console host to the second.
 
-A host in no list reaches no backend: the edge answers it with a 404 of its own, on every path, `/rpc`, `/api`, and `/images` included.
+A host in no list reaches no backend: the edge answers it with a 404 of its own, on every path, `/rpc` and `/images` included.
 
 An install that runs no `web-platform` leaves `PUBLIRA_EDGE_PLATFORM_HOSTS` empty. Every sample stays valid with an empty list, so no block is removed for it; the `web-platform` upstream may be left out of the backend addresses as well.
 
@@ -48,26 +48,19 @@ An install that runs no `web-platform` leaves `PUBLIRA_EDGE_PLATFORM_HOSTS` empt
 | `/images…`                 | `api`                         |
 | `/rpc/publira.v1.…`        | `api`                         |
 | `/rpc`, `/rpc/…` otherwise | none: the edge answers 404    |
-| `/api/v1`, `/api/v1/…`     | the app the host rules picked |
-| `/api/publira.v1.…`        | `api`                         |
-| `/api`, `/api/…` otherwise | none: the edge answers 404    |
 | Everything else            | the app the host rules picked |
 
 No rule rewrites the path.
 
-`/rpc` is the public API's prefix. `/api` is the prefix it had before, still forwarded so that a client not yet on `/rpc`, a mobile build among them, keeps reaching the server; 0.3.0 stops serving it, and the `/api` rows above, `/api/v1…` included, go with it.
+Only the public API is forwarded under `/rpc`. `publira server` answers the tenant console's and the Platform Console's namespaces, `publira.admin.v1` and `publira.platform.v1`, on the same paths, but `web-admin` and `web-platform` call them over the private network, and the mobile app calls `publira.v1` alone, so no host needs them, and the edge answers them itself rather than expose two authenticated APIs to the internet for nothing. The prefix ends at the dot after `v1`, so that `publira.v1.<Service>/<Method>` is all it matches: `publira.v1beta.…` and a bare `/rpc/publira.v1` are answered by the edge as well.
 
-Only the public API is forwarded under either prefix. `publira server` answers the tenant console's and the Platform Console's namespaces, `publira.admin.v1` and `publira.platform.v1`, on the same paths, but `web-admin` and `web-platform` call them over the private network, and the mobile app calls `publira.v1` alone, so no host needs them, and the edge answers them itself rather than expose two authenticated APIs to the internet for nothing. The prefix ends at the dot after `v1`, so that `publira.v1.<Service>/<Method>` is all it matches: `publira.v1beta.…` and a bare `/rpc/publira.v1` are answered by the edge as well. `/api` follows the same rule as `/rpc`, since it reaches the same handlers.
+The path rules apply on every listed host: the public API and image delivery answer on the tenant site, the tenant console, and the platform console alike, from the same backend, and the rest of `/rpc` answers 404 on all of them. Both reach it as they are, because the server's own routes carry the prefixes: the Connect endpoints are `/rpc/publira.v1.<Service>/<Method>`, so a client addresses the same paths whether it comes through the edge or dials the server directly. The host name the edge forwards unrewritten is what picks the rules an image is served under.
 
-The path rules apply on every listed host: the public API and image delivery answer on the tenant site, the tenant console, and the platform console alike, from the same backend, and the rest of `/rpc` and `/api` answers 404 on all of them. Both reach it as they are, because the server's own routes carry the prefixes: the Connect endpoints are `/rpc/publira.v1.<Service>/<Method>`, so a client addresses the same paths whether it comes through the edge or dials the server directly. The host name the edge forwards unrewritten is what picks the rules an image is served under.
-
-`/api/v1…` is the exception because it belongs to the Next.js apps rather than to the server. Each app mounts its Route Handlers there — `/api/v1/revalidate` on all three, on the public site the view beacon, the read beacon, the reader's purchase history CSV, and the payment and inbound email webhooks, and on the tenant console the royalty statement CSV — and a browser reaches them on the origin it is already on. Nothing under `/api/v1` collides with the public API, whose Connect endpoints under `/api` are `/api/publira.v1.<Service>/<Method>`. The exception ends at the path segment, so `/api/v1abc` is answered by the edge like the rest of `/api`.
-
-A webhook an outside service calls on the public site lives at `/api/v1/webhook/<kind>/<provider>`, such as `/api/v1/webhook/payment/stripe` or `/api/v1/webhook/email/sendgrid`; a new kind of webhook is added under that layout rather than beside it. The prefix rule above already routes every one of them, so no proxy names a webhook path.
+A webhook an outside service calls on the public site lives at `/api/v1/webhook/<kind>/<provider>`, such as `/api/v1/webhook/payment/stripe` or `/api/v1/webhook/email/sendgrid`; a new kind of webhook is added under that layout rather than beside it. It is one of the Route Handlers each app mounts under `/api/v1`, which the last row above routes to the app with every other path, so no proxy names a webhook path.
 
 ### Request bodies
 
-A request under `/api/v1` is admitted with a body of up to 33 MiB: an inbound email webhook carries a whole mail with its attachments, which SendGrid accepts up to 30 MB, and `web-storefront` reads up to 32 MiB of it. On a console host, `/api/v1/episode-pages` is admitted with a body of up to 256 MiB: the episode edit screen posts a whole episode's pages there in one upload, and `web-admin` reads up to 256 MiB of it. Every request to the public API, under `/rpc` and under `/api`, is admitted with a body of up to 15 MiB: a reader's icon upload carries an image of up to 10 MiB, which `publira server` reads in the base64 of the JSON encoding along with the fields beside it. Every other path, on the site host and on a console host alike, is admitted with a body of up to 11 MiB: a Server Action posts to the path of its page, and a reader's icon sent to `web-storefront` and an image uploaded from the tenant console to `web-admin` each reach theirs as an image of up to 10 MiB, which the app reads up to 11 MiB of with the multipart framing and the fields beside it. Traefik and Caddy set no limit unless one is configured; nginx's default is 1 MB, so its sample raises it on those locations.
+A request under `/api/v1` is admitted with a body of up to 33 MiB: an inbound email webhook carries a whole mail with its attachments, which SendGrid accepts up to 30 MB, and `web-storefront` reads up to 32 MiB of it. On a console host, `/api/v1/episode-pages` is admitted with a body of up to 256 MiB: the episode edit screen posts a whole episode's pages there in one upload, and `web-admin` reads up to 256 MiB of it. Every request to the public API is admitted with a body of up to 15 MiB: a reader's icon upload carries an image of up to 10 MiB, which `publira server` reads in the base64 of the JSON encoding along with the fields beside it. Every other path, on the site host and on a console host alike, is admitted with a body of up to 11 MiB: a Server Action posts to the path of its page, and a reader's icon sent to `web-storefront` and an image uploaded from the tenant console to `web-admin` each reach theirs as an image of up to 10 MiB, which the app reads up to 11 MiB of with the multipart framing and the fields beside it. Traefik and Caddy set no limit unless one is configured; nginx's default is 1 MB, so its sample raises it on those locations.
 
 That upload is given 300 seconds to arrive, which takes 256 MiB over an uplink of about 7.2 Mbit/s. It is as long as `web-admin`'s Node.js server gives a request to arrive whole, so an edge that streams the body on gains nothing by waiting longer. Traefik gives a request 60 seconds, body included, unless configured otherwise, and it sets that per entry point rather than per router, so every Traefik edge here gives every request on the `web` entry point 300 seconds. nginx limits only the wait between two reads of a body, 60 seconds by default, and passes the body on once all of it has arrived; Caddy sets no limit on reading a body. Neither sample changes its default.
 
@@ -77,8 +70,8 @@ Highest first. A proxy with no numeric priorities reaches the same result by ord
 
 1. A host in no list, answered by the edge itself
 2. `/images…`
-3. `/rpc/publira.v1.…` and `/api/publira.v1.…`
-4. The rest of `/rpc`, and of `/api` minus the `/api/v1…` exception, answered by the edge itself
+3. `/rpc/publira.v1.…`
+4. The rest of `/rpc`, answered by the edge itself
 5. The app whose list names the host
 
 ### Request headers

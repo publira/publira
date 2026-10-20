@@ -837,13 +837,13 @@ The rate is `complete_count / member_view_count` over a range of days. A period 
 
 ## API namespace separation
 
-`publira server` (`server/cmd/publira`) serves all three Connect namespaces under `/rpc` on one listener, and under `/api` as well until 0.3.0 removes it, `:8000` (changeable with `PUBLIRA_PUBLIC_API_ADDR`), beside `GET /images/…`, `/livez`, and `/readyz`:
+`publira server` (`server/cmd/publira`) serves all three Connect namespaces under `/rpc` on one listener, `:8000` (changeable with `PUBLIRA_PUBLIC_API_ADDR`), beside `GET /images/…`, `/livez`, and `/readyz`:
 
 - `publira.v1` — `CatalogService`, `AuthService`, and the rest of the public API
 - `publira.admin.v1` — `AdminSeriesService`, `AdminAuthService`, `AdminEngagementService`, and the rest of the tenant console's API
 - `publira.platform.v1` — the Platform Console's API
 
-The reverse proxy forwards `/images` and the public API's `/rpc/publira.v1.…` and `/api/publira.v1.…` to it, prefixes kept, on every host, and answers the rest of `/rpc` and `/api` itself, and web-storefront, web-admin, and web-platform dial the same listener directly over the private network. The proto packages produce non-colliding procedure paths, so one mux carries all three. The process answers every namespace on every path that reaches it: what keeps the consoles' RPCs off the internet is the edge, and behind it each refuses a caller without an operator session or the [web service credential](#web-service-credential) before any handler runs, and is answered on its own login. Next.js revalidation on a publication state change needs `PUBLIRA_REVALIDATE_TOKEN`, and its destinations are the `web-*` apps whose internal URL (`PUBLIRA_WEB_*_INTERNAL_URL`) is set.
+The reverse proxy forwards `/images` and the public API's `/rpc/publira.v1.…` to it, prefixes kept, on every host, and answers the rest of `/rpc` itself, and web-storefront, web-admin, and web-platform dial the same listener directly over the private network. The proto packages produce non-colliding procedure paths, so one mux carries all three. The process answers every namespace on every path that reaches it: what keeps the consoles' RPCs off the internet is the edge, and behind it each refuses a caller without an operator session or the [web service credential](#web-service-credential) before any handler runs, and is answered on its own login. Next.js revalidation on a publication state change needs `PUBLIRA_REVALIDATE_TOKEN`, and its destinations are the `web-*` apps whose internal URL (`PUBLIRA_WEB_*_INTERNAL_URL`) is set.
 
 ## Database users
 
@@ -919,7 +919,7 @@ Then set each variable (`PUBLIRA_PLATFORM_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL
   - `GET /livez` — process liveness. Always `200` with a plain `ok`. Intended for a K8s livenessProbe.
   - `GET /readyz` — readiness of the dependencies. `200` when healthy, `503` when not. Intended for a K8s readinessProbe or a load balancer.
   - Server / worker: at minimum a DB `Ping`
-  - `publira server` holds a pool per namespace and names one check per pool — `db.public`, `db.admin`, `db.platform` — so a failure says which login stopped answering. The edge forwards the public API under `/rpc` and `/api`, and `/images`, alone, so its `/readyz` is not an outsider's to read.
+  - `publira server` holds a pool per namespace and names one check per pool — `db.public`, `db.admin`, `db.platform` — so a failure says which login stopped answering. The edge forwards the public API under `/rpc`, and `/images`, alone, so its `/readyz` is not an outsider's to read.
   - Web (`web-admin` / `web-storefront` / `web-platform`): the upstream API's `/readyz` plus Redis (the Redis check is skipped when `PNCH_REDIS_URL` is disabled)
   - Example `/readyz` responses (JSON):
     - Healthy: `{"status":"ok","checks":{"db":{"status":"ok"}}}`

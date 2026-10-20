@@ -51,12 +51,12 @@ func TestServerStartsWithOnlySecretsAndInfrastructure(t *testing.T) {
 	assertReadyChecks(t, base+"/readyz", "db.public", "db.admin", "db.platform")
 }
 
-// Every namespace is answered under /rpc on the one listener, and under /api
-// alike for the clients not yet on /rpc, the console ones to whoever reaches
-// it: an anonymous caller is refused by the procedure's own authentication
-// with a Connect error, not by a missing route. The same procedures at the
-// root are not a further path to them.
-func TestServerAnswersEveryNamespaceUnderItsPrefixesAlone(t *testing.T) {
+// Every namespace is answered under /rpc on the one listener, the console ones
+// to whoever reaches it: an anonymous caller is refused by the procedure's own
+// authentication with a Connect error, not by a missing route. The same
+// procedures at the root, or under /api, the prefix before /rpc, are not a
+// further path to them.
+func TestServerAnswersEveryNamespaceUnderItsPrefixAlone(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 	tenant := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
@@ -77,12 +77,11 @@ func TestServerAnswersEveryNamespaceUnderItsPrefixesAlone(t *testing.T) {
 		// token, which the Platform Console's setup screen sends.
 		{"/publira.platform.v1.PlatformSetupService/CreateInitialUser", `{}`, "unauthenticated"},
 	} {
-		for _, prefix := range []string{"/rpc", "/api"} {
-			if got := connectErrorCode(t, base+prefix+tc.procedure, tc.body); got != tc.want {
-				t.Fatalf("POST %s%s code = %q, want %q", prefix, tc.procedure, got, tc.want)
-			}
+		if got := connectErrorCode(t, base+"/rpc"+tc.procedure, tc.body); got != tc.want {
+			t.Fatalf("POST /rpc%s code = %q, want %q", tc.procedure, got, tc.want)
 		}
 		assertRouteRegistered(t, base, tc.procedure, false)
+		assertRouteRegistered(t, base, "/api"+tc.procedure, false)
 	}
 	assertRouteRegistered(t, base, "/images/creators/media", true)
 }

@@ -29,7 +29,7 @@ tasks:
       - bash "{{.PUBLIRA_ROUTING_DIR}}/scripts/wait-ready.sh"
 
   test:
-    desc: Probe hosts / /api / /images (stack must already be up)
+    desc: Probe hosts / /rpc / /images (stack must already be up)
     cmds:
       - bash "{{.PUBLIRA_ROUTING_DIR}}/scripts/test.sh"
 

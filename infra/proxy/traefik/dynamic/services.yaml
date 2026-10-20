@@ -25,7 +25,7 @@ http:
         servers:
           - url: 'http://{{ env "PUBLIRA_EDGE_BACKEND_HOST" | default "app" }}:4100'
 
-    # publira server, which /api and /images reach as they are.
+    # publira server, which /rpc and /images reach as they are.
     api:
       loadBalancer:
         servers:

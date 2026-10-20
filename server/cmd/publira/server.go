@@ -83,8 +83,8 @@ func serverServiceNames(r serverRoles) []string {
 }
 
 // buildServer builds the Connect namespaces and image delivery of roles on one
-// listener: the reverse proxy forwards /api and /images to it as they are, and
-// the Next.js apps dial the same /api directly. A role the process does not
+// listener: the reverse proxy forwards /rpc and /images to it as they are, and
+// the Next.js apps dial the same /rpc directly. A role the process does not
 // serve opens no pool and reads no variable of its own.
 func buildServer(deps shared, roles serverRoles) (half, error) {
 	cfg, err := loadServerConfig(roles)
@@ -334,11 +334,7 @@ func serverHandler(clientIPs *clientip.Resolver, served servedAPIs, pools server
 	if served.platform != nil {
 		served.platform.Register(api)
 	}
-	// /api serves the same namespaces for the clients not yet on /rpc, and is
-	// removed in 0.3.0.
-	for _, prefix := range []string{"/rpc", "/api"} {
-		mux.Handle(prefix+"/", http.StripPrefix(prefix, api))
-	}
+	mux.Handle("/rpc/", http.StripPrefix("/rpc", api))
 	if served.images != nil {
 		served.images.Register(mux)
 	}

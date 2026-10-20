@@ -166,7 +166,7 @@ Implementation:
 | `Test / E2E Report` | Only when a `Test / E2E` entry failed: every entry's blob report merged into one HTML report. | [`e2e/README.md`](../../e2e/README.md#ci) |
 | `Test / E2E Search` | `task e2e:search`: the same lifecycle with OpenSearch in the stack and the server on it, running the catalog search and search settings specs alone. On `main`, saves the same Playwright browser cache when it missed. | [`e2e/README.md`](../../e2e/README.md#catalog-search-on-opensearch) |
 | `Test / Bootstrap` | `task e2e:bootstrap`: empty volume, `task setup`, DB restart, `task dev`. | [`e2e/bootstrap/README.md`](../../e2e/bootstrap/README.md) |
-| `Test / Routing` | `task e2e:routing`: host, `/api`, and `/images` connectivity on Traefik, nginx, and Caddy. | [`e2e/routing/README.md`](../../e2e/routing/README.md) |
+| `Test / Routing` | `task e2e:routing`: host, `/rpc`, and `/images` connectivity on Traefik, nginx, and Caddy. | [`e2e/routing/README.md`](../../e2e/routing/README.md) |
 | `Test / Deploy` | `task deploy:check`, which also runs the checkout's `publiractl env generate` against `.env.example`, then `task docker:verify:full` and `task deploy:smoke`: the deployment Compose file brought up from every image, set up, and reached through its edge, including an image resized through libvips. | [`infra/deploy/README.md`](../../infra/deploy/README.md) |
 | `Build` | `pnpm build` for Web and `task server:build` for Go; on `main`, saves the `build` Go build cache every job that builds the server restores. | This file |
 | `Cache / Prune Go build` | On `main` only: deletes every Go build cache entry on `main` but the newest of each kind. | This file |
