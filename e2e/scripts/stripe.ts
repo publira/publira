@@ -18,6 +18,13 @@
  * server's client verifies it against. The reader
  * therefore returns to an episode the purchase already opens.
  *
+ * The console's refund reaches `POST /v1/refunds`, which refunds whatever is
+ * left of a payment intent the secret key paid, and
+ * `GET /v1/payment_intents/:id` answers one with its latest charge expanded.
+ * The payment intents are those the checkout page paid, and those a spec
+ * registered with `POST /payment-intents` for the payment ID a scenario seeds,
+ * which Stripe's own API has no call for. No refund event is delivered.
+ *
  * Everything is kept in memory and by secret key, as each Stripe account keeps
  * its own, so a suite that starts over on a stack that already ran it uses a
  * secret key of its own: the old one still answers its idempotency keys with
@@ -65,9 +72,19 @@ interface CheckoutSession {
   successURL: string;
 }
 
+/** A payment intent paid in full, and what has been refunded of it since. */
+interface PaymentIntent {
+  amount: number;
+  currency: string;
+  id: string;
+  refunded: number;
+}
+
 /** The endpoints each secret key registered, one per URL. */
 const endpoints = new Map<string, WebhookEndpoint[]>();
 const sessions = new Map<string, CheckoutSession>();
+/** The payment intents each secret key paid, by secret key and id. */
+const paymentIntents = new Map<string, PaymentIntent>();
 /** The fixed amount each coupon takes off, by secret key and coupon id. */
 const coupons = new Map<string, number>();
 /**
@@ -103,14 +120,19 @@ const answerJSON = (
   body: unknown
 ): void => answer(response, status, "application/json", JSON.stringify(body));
 
-/** Stripe's error shape, which the client in publira server decodes. */
+/**
+ * Stripe's error shape, which the client in publira server decodes. The code
+ * is what the provider tells a refund already made from a refused one by.
+ */
 const answerError = (
   response: ServerResponse,
   status: number,
-  message: string
+  message: string,
+  code = "",
+  type = "invalid_request_error"
 ): void =>
   answerJSON(response, status, {
-    error: { message, type: "invalid_request_error" },
+    error: { ...(code ? { code } : {}), message, type },
   });
 
 const secretKeyOf = (request: IncomingMessage): string =>
@@ -318,6 +340,159 @@ const createCheckoutSession = async (
   answerJSON(response, 200, created);
 };
 
+/** A payment intent with its latest charge expanded, as the provider asks. */
+const paymentIntentObject = (intent: PaymentIntent) => ({
+  amount: intent.amount,
+  currency: intent.currency,
+  id: intent.id,
+  latest_charge: {
+    amount: intent.amount,
+    amount_refunded: intent.refunded,
+    currency: intent.currency,
+    id: `ch_${intent.id}`,
+    object: "charge",
+    payment_intent: intent.id,
+    refunded: intent.refunded >= intent.amount,
+  },
+  livemode: false,
+  object: "payment_intent",
+  status: "succeeded",
+});
+
+/**
+ * Make `id` a payment intent the secret key was paid `amount` on, with nothing
+ * refunded of it, as the payment a scenario seeds for a purchase stands for.
+ * It replaces whatever the secret key held under the id.
+ */
+const registerPaymentIntent = async (
+  request: IncomingMessage,
+  response: ServerResponse
+): Promise<void> => {
+  const { amount, currency, id } = JSON.parse(await readBody(request)) as {
+    amount?: unknown;
+    currency?: unknown;
+    id?: unknown;
+  };
+  if (
+    typeof id !== "string" ||
+    !id ||
+    typeof amount !== "number" ||
+    !Number.isInteger(amount) ||
+    amount <= 0 ||
+    typeof currency !== "string" ||
+    !currency
+  ) {
+    answerError(
+      response,
+      400,
+      "A payment intent needs an id, an amount, and a currency."
+    );
+    return;
+  }
+  const intent: PaymentIntent = {
+    amount,
+    currency: currency.toLowerCase(),
+    id,
+    refunded: 0,
+  };
+  paymentIntents.set(`${secretKeyOf(request)}\n${id}`, intent);
+  answerJSON(response, 200, paymentIntentObject(intent));
+};
+
+const getPaymentIntent = (
+  id: string,
+  request: IncomingMessage,
+  response: ServerResponse
+): void => {
+  const intent = paymentIntents.get(`${secretKeyOf(request)}\n${id}`);
+  if (!intent) {
+    answerError(
+      response,
+      404,
+      `No such payment_intent: '${id}'`,
+      "resource_missing"
+    );
+    return;
+  }
+  answerJSON(response, 200, paymentIntentObject(intent));
+};
+
+/**
+ * Refund what is left of a payment intent, or the `amount` asked for. A
+ * request repeating an idempotency key is answered with the refund the key
+ * first made and refunds nothing more, and one on a payment intent refunded
+ * in full is refused with the code the provider reads as "nothing left".
+ */
+const createRefund = async (
+  request: IncomingMessage,
+  response: ServerResponse
+): Promise<void> => {
+  const form = new URLSearchParams(await readBody(request));
+  const secretKey = secretKeyOf(request);
+  const id = form.get("payment_intent") ?? "";
+  const replayKey = replayKeyOf(request, secretKey);
+  if (idempotent.has(replayKey)) {
+    const replayed = idempotent.get(replayKey) as { payment_intent?: string };
+    if (replayed.payment_intent !== id) {
+      answerError(
+        response,
+        400,
+        "Keys for idempotent requests can only be used with the same parameters they were first used with.",
+        "",
+        "idempotency_error"
+      );
+      return;
+    }
+    answerJSON(response, 200, replayed);
+    return;
+  }
+
+  const intent = paymentIntents.get(`${secretKey}\n${id}`);
+  if (!intent) {
+    answerError(
+      response,
+      404,
+      `No such payment_intent: '${id}'`,
+      "resource_missing"
+    );
+    return;
+  }
+  const left = intent.amount - intent.refunded;
+  if (left <= 0) {
+    answerError(
+      response,
+      400,
+      "Charge has already been refunded.",
+      "charge_already_refunded"
+    );
+    return;
+  }
+  const amount = form.has("amount") ? Number(form.get("amount")) : left;
+  if (!Number.isInteger(amount) || amount <= 0 || amount > left) {
+    answerError(
+      response,
+      400,
+      "Refund amount is greater than unrefunded amount on charge.",
+      "amount_too_large"
+    );
+    return;
+  }
+  intent.refunded += amount;
+  const created = {
+    amount,
+    charge: `ch_${intent.id}`,
+    currency: intent.currency,
+    id: randomId("re_test_"),
+    object: "refund",
+    payment_intent: intent.id,
+    status: "succeeded",
+  };
+  if (replayKey) {
+    idempotent.set(replayKey, created);
+  }
+  answerJSON(response, 200, created);
+};
+
 /** What Stripe puts in `Stripe-Signature`: a timestamp and its HMAC. */
 const signature = (payload: string, secret: string): string => {
   const timestamp = Math.floor(Temporal.Now.instant().epochMilliseconds / 1000);
@@ -473,6 +648,12 @@ const pay = async (
     }
   }
   session.status = "complete";
+  paymentIntents.set(`${session.secretKey}\n${session.paymentIntent}`, {
+    amount: session.amount,
+    currency: session.currency,
+    id: session.paymentIntent,
+    refunded: 0,
+  });
   response.writeHead(303, {
     location: session.successURL.replaceAll(
       "{CHECKOUT_SESSION_ID}",
@@ -508,6 +689,25 @@ const handleCheckout = async (
   answer(response, 405, "text/plain", "method not allowed");
 };
 
+type Handler = (
+  request: IncomingMessage,
+  response: ServerResponse
+) => Promise<void>;
+
+/**
+ * The calls that answer one path, by method and path. Each is made under a
+ * secret key: Stripe's own under `/v1/`, and the registration of a payment
+ * intent, which a spec makes on behalf of an account as Stripe's dashboard
+ * would.
+ */
+const apiRoutes = new Map<string, Handler>([
+  ["POST /payment-intents", registerPaymentIntent],
+  ["POST /v1/checkout/sessions", createCheckoutSession],
+  ["POST /v1/coupons", createCoupon],
+  ["POST /v1/refunds", createRefund],
+  ["POST /v1/webhook_endpoints", createWebhookEndpoint],
+]);
+
 const handle = async (
   request: IncomingMessage,
   response: ServerResponse
@@ -517,20 +717,19 @@ const handle = async (
     answerJSON(response, 200, { status: "ok" });
     return;
   }
-  if (pathname.startsWith("/v1/") && !secretKeyOf(request)) {
+  const route = apiRoutes.get(`${request.method} ${pathname}`);
+  const intent = /^\/v1\/payment_intents\/(?<id>[^/]+)$/u.exec(pathname)?.groups
+    ?.id;
+  if ((route || pathname.startsWith("/v1/")) && !secretKeyOf(request)) {
     answerError(response, 401, "You did not provide an API key.");
     return;
   }
-  if (request.method === "POST" && pathname === "/v1/webhook_endpoints") {
-    await createWebhookEndpoint(request, response);
+  if (route) {
+    await route(request, response);
     return;
   }
-  if (request.method === "POST" && pathname === "/v1/checkout/sessions") {
-    await createCheckoutSession(request, response);
-    return;
-  }
-  if (request.method === "POST" && pathname === "/v1/coupons") {
-    await createCoupon(request, response);
+  if (request.method === "GET" && intent) {
+    getPaymentIntent(intent, request, response);
     return;
   }
   const checkout = /^\/checkout\/(?<id>[^/]+)$/u.exec(pathname)?.groups?.id;

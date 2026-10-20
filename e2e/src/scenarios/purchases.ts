@@ -53,6 +53,8 @@ export const PURCHASES = {
   },
   stripe: {
     id: "018f10d0-0006-7000-8000-000000000001",
+    /** The payment intent Stripe reported for it, and what was paid on it. */
+    payment: { amount: 500, currency: "jpy", id: "pi_purchases_e2e_1" },
     purchasedOn: "2026-03-01",
   },
 } as const;

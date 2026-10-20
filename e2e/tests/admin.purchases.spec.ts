@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
@@ -11,16 +13,13 @@ import {
   PURCHASES_SCENARIO,
   PURCHASES_SERIES,
 } from "../src/scenarios/purchases";
+import { registerStripePaymentIntent } from "../src/stripe";
 import { WEB_ADMIN_PURCHASES_BASE_URL } from "../src/urls";
 
 /**
  * A tenant administrator finding a reader's purchase at `/purchases`, reading
- * it in the detail drawer, and being asked for a reason before refunding it.
- *
- * The refund itself is not submitted: it is a request to Stripe, and the
- * stack's stand-in for Stripe answers the Checkout Session calls alone. What
- * the console sends with it is covered by the Action's and the server's own
- * tests.
+ * it in the detail drawer, and refunding it through the stack's stand-in for
+ * Stripe once they have given a reason.
  */
 
 const PURCHASES_PATH = "/purchases";
@@ -32,8 +31,19 @@ const rows = (page: Page) => page.getByRole("table").getByRole("row");
 
 const drawer = (page: Page) => page.getByRole("dialog", { name: "Purchase" });
 
-/** Takes the tenant's payments through Stripe, which makes a Stripe purchase refundable. */
+/**
+ * Takes the tenant's payments through Stripe, which makes a Stripe purchase
+ * refundable, and has the stand-in hold the payment the Stripe purchase was
+ * seeded with.
+ *
+ * The key is a new one each run, a test account of its own: the stand-in
+ * keeps what it refunded, and a run that starts over has seeded the purchase
+ * again unrefunded under the same refund idempotency key.
+ */
 const takePaymentsThroughStripe = async (page: Page) => {
+  const secretKey = `sk_test_${randomUUID().replaceAll("-", "")}`;
+  await registerStripePaymentIntent(secretKey, PURCHASES.stripe.payment);
+
   await page.goto(
     new URL("/integrations/payment", WEB_ADMIN_PURCHASES_BASE_URL).toString()
   );
@@ -43,7 +53,7 @@ const takePaymentsThroughStripe = async (page: Page) => {
   await expect(provider).toContainText("Stripe");
 
   await page.getByRole("checkbox", { name: "Enable payments" }).click();
-  await page.getByLabel(/^Secret key/u).fill("sk_test_placeholder");
+  await page.getByLabel(/^Secret key/u).fill(secretKey);
   await page.getByLabel(/^Webhook signing secret/u).fill("whsec_placeholder");
   await page.getByRole("button", { exact: true, name: "Save" }).click();
   await expect(
@@ -162,7 +172,9 @@ test.describe("Purchases", () => {
     );
   });
 
-  test("asks for a reason before it refunds a purchase", async ({ page }) => {
+  test("refunds a purchase through Stripe once given a reason", async ({
+    page,
+  }) => {
     await signIn(page, "/integrations/payment");
 
     // While the tenant takes no payments through Stripe, a Stripe purchase
@@ -203,8 +215,31 @@ test.describe("Purchases", () => {
     await reason.fill("The reader bought the episode twice by mistake.");
     await expect(confirm).toBeEnabled();
 
+    // Cancelling leaves the purchase as it was.
     await confirmation.getByRole("button", { name: "Cancel" }).click();
     await expect(confirmation).toBeHidden();
     await expect(drawer(page)).toContainText("Active");
+
+    await drawer(page)
+      .getByRole("button", { exact: true, name: "Refund" })
+      .click();
+    await reason.fill("The reader bought the episode twice by mistake.");
+    await confirm.click();
+
+    // Stripe accepted the refund, so the episode closes to the reader at once;
+    // the refunded amount waits for Stripe's notification of it.
+    await expect(page.getByText("The refund was requested.")).toBeVisible();
+    await expect(drawer(page)).toContainText("Refund requested");
+    await expect(drawer(page)).toContainText("Refunded by staff");
+    await expect(drawer(page)).toContainText(
+      "The refund was requested, and the episode is closed to the reader."
+    );
+    await expect(
+      drawer(page).getByRole("button", { exact: true, name: "Refund" })
+    ).toHaveCount(0);
+
+    await drawer(page).getByRole("button", { name: "Close" }).click();
+    await expect(rows(page).nth(1)).toContainText(PURCHASES_READERS.one.name);
+    await expect(rows(page).nth(1)).toContainText("Refund requested");
   });
 });
