@@ -2,7 +2,7 @@
 title: Selling episodes
 description: Price an episode, take payment through Stripe or PAY.JP, choose where episodes are sold, and handle refunds.
 published: 2026-10-06
-updated: 2026-10-19
+updated: 2026-10-20
 ---
 
 Selling an episode on the site takes three things that have to agree: the episode's price in the tenant console, an account with a payment provider, and a webhook through which the provider tells the install that a reader has paid. The provider charges the reader, but only the webhook opens the episode, so a setup with any of the three wrong takes the reader's money and leaves the episode locked. This page walks through all three, in the order they are set up, and ends with a test purchase that proves they agree.
@@ -31,7 +31,7 @@ A paid episode can also be rented: sold for less than its **Price**, for a limit
 
 The form refuses a rental priced at or above **Price**, and one with a **Rental price** but no **Rental period**, and says which field to correct. A rental does not take the place of the permanent copy: a reader who rented the episode can still buy it.
 
-All four can be changed later under **Price and reading period** on the episode's edit screen, as [Episodes](./1-catalog/2-episodes.md#changing-the-price-and-reading-period) describes. A change applies to purchases made after it is saved; a purchase or a rental already made keeps the price it was paid and the time it expires. A new episode's **Reading period** starts at the series' **Reading period**, and its **Rental period** at the series' **Rental period**, so setting them on the series once gives every episode created afterwards the same periods unless they are changed on the form. Changing the series' periods does not reach the episodes already created.
+All four can be changed later under **Price and reading period** on the episode's edit screen, as [Episodes](./1-catalog/2-episodes.md#changing-the-price-and-reading-period) describes. To sell an episode for less for a limited time without changing its price, schedule a [campaign price](./1-catalog/2-episodes.md#campaign-prices) on it. A change applies to purchases made after it is saved; a purchase or a rental already made keeps the price it was paid and the time it expires. A new episode's **Reading period** starts at the series' **Reading period**, and its **Rental period** at the series' **Rental period**, so setting them on the series once gives every episode created afterwards the same periods unless they are changed on the form. Changing the series' periods does not reach the episodes already created.
 
 ### Buying and reading
 

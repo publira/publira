@@ -93,7 +93,7 @@ const mapCreateErrorToMessage = async (
     rpcErrorHasFieldViolation(error, "starts_at") ||
     rpcErrorHasFieldViolation(error, "ends_at")
   ) {
-    return t("admin.series.episodes.free_windows.validation.period_invalid");
+    return t("admin.series.episodes.period.invalid");
   }
   if (rpcErrorHasFieldViolation(error, "episode_ids")) {
     return t("admin.series.episodes.free_windows.episodes_changed");

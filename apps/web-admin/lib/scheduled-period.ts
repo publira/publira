@@ -3,7 +3,7 @@ import { parseInstant, toInstantIsoString } from "@publira/utils";
 
 import { getMessagesFor } from "./messages";
 
-export type FreeWindowPeriodResult =
+export type ScheduledPeriodResult =
   | { ok: true; startsAt: string; endsAt: string }
   | { ok: false; message: string };
 
@@ -14,22 +14,20 @@ export type FreeWindowPeriodResult =
  * in; a leftover wall clock (no JS) is read in `timeZone`. The checks are the
  * server's own — an end after the start and still ahead — made here as well
  * so the editor is answered next to the form rather than by a refused RPC. A
- * start already passed is allowed: that is how an episode is made free now.
+ * start already passed is allowed: that is how a period is made to start now.
  */
-export const toFreeWindowPeriod = async (
+export const toScheduledPeriod = async (
   input: { startsAt: string; endsAt: string },
   timeZone: string,
   locale: Locale,
   now: Temporal.Instant = Temporal.Now.instant()
-): Promise<FreeWindowPeriodResult> => {
+): Promise<ScheduledPeriodResult> => {
   const t = await getMessagesFor(locale);
   const startsAt = toInstantIsoString(input.startsAt, timeZone);
   const start = parseInstant(startsAt);
   if (!start) {
     return {
-      message: t(
-        "admin.series.episodes.free_windows.validation.starts_at_invalid"
-      ),
+      message: t("admin.series.episodes.period.starts_at_invalid"),
       ok: false,
     };
   }
@@ -37,9 +35,7 @@ export const toFreeWindowPeriod = async (
   const end = parseInstant(endsAt);
   if (!end) {
     return {
-      message: t(
-        "admin.series.episodes.free_windows.validation.ends_at_invalid"
-      ),
+      message: t("admin.series.episodes.period.ends_at_invalid"),
       ok: false,
     };
   }
@@ -48,9 +44,7 @@ export const toFreeWindowPeriod = async (
     Temporal.Instant.compare(end, now) <= 0
   ) {
     return {
-      message: t(
-        "admin.series.episodes.free_windows.validation.period_invalid"
-      ),
+      message: t("admin.series.episodes.period.invalid"),
       ok: false,
     };
   }
@@ -58,19 +52,20 @@ export const toFreeWindowPeriod = async (
   return { endsAt, ok: true, startsAt };
 };
 
-/** Where a window stands against the present moment. */
-export type EpisodeFreeWindowStatus = "ended" | "open" | "scheduled";
+/** Where a scheduled period stands against the present moment. */
+export type ScheduledPeriodStatus = "ended" | "open" | "scheduled";
 
 /**
- * The window's standing at `now`. The window is half-open, so it has ended at
- * the very instant it ends, which is when the next one may begin.
+ * The period's standing at `now`: a free reading period's, or a campaign
+ * price's. The period is half-open, so it has ended at the very instant it
+ * ends, which is when the next one may begin.
  */
-export const episodeFreeWindowStatus = (
-  window: { startsAt: string; endsAt: string },
+export const scheduledPeriodStatus = (
+  period: { startsAt: string; endsAt: string },
   now: Temporal.Instant
-): EpisodeFreeWindowStatus => {
-  const start = parseInstant(window.startsAt);
-  const end = parseInstant(window.endsAt);
+): ScheduledPeriodStatus => {
+  const start = parseInstant(period.startsAt);
+  const end = parseInstant(period.endsAt);
   if (end && Temporal.Instant.compare(end, now) <= 0) {
     return "ended";
   }

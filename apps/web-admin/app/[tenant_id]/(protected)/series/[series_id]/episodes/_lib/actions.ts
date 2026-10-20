@@ -25,6 +25,10 @@ import {
 } from "#lib/episode";
 import type { BulkEpisodeCreditOperation } from "#lib/episode";
 import {
+  createSeriesCampaignPrices,
+  episodeCampaignPricesCacheTag,
+} from "#lib/episode-campaign-price";
+import {
   createSeriesFreeWindows,
   episodeFreeWindowsCacheTag,
 } from "#lib/episode-free-window";
@@ -38,10 +42,14 @@ import {
   requiredRecordId,
   requiredTrimmedString,
 } from "#lib/form-schemas";
-import { toFreeWindowPeriod } from "#lib/free-window-period";
 import { getMessagesFor } from "#lib/messages";
-import { parseTenantPrice, rawPriceFormSchema } from "#lib/price-action";
+import {
+  parseCampaignPrice,
+  parseTenantPrice,
+  rawPriceFormSchema,
+} from "#lib/price-action";
 import { PURCHASE_AVAILABILITY_OVERRIDES } from "#lib/purchase-availability";
+import { toScheduledPeriod } from "#lib/scheduled-period";
 import { EPISODE_AVAILABILITY_OVERRIDES } from "#lib/surface-availability";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
@@ -678,7 +686,7 @@ export const createSeriesFreeWindowsAction = async (
   }
 
   const { seriesId, tenantId } = parsed.data;
-  const period = await toFreeWindowPeriod(
+  const period = await toScheduledPeriod(
     parsed.data,
     await getTenantDisplayTimeZone(tenantId),
     locale
@@ -733,6 +741,135 @@ export const createSeriesFreeWindowsAction = async (
   return {
     message: t("admin.series.episodes.free_windows.bulk_created", {
       count: result.freeWindows.length,
+    }),
+    ok: true,
+  };
+};
+
+/**
+ * The most episodes `CreateSeriesCampaignPrices` takes in one call. A campaign
+ * names every episode it covers, since its price has to undercut each one's.
+ */
+const MAX_SERIES_CAMPAIGN_PRICE_EPISODES = 1000;
+
+const createSeriesCampaignPricesSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
+    endsAt: optionalTrimmedString(),
+    episodeIds: jsonRecordIdArrayFormSchema,
+    // Read once the tenant's currency is known.
+    price: rawPriceFormSchema,
+    // The currency the form showed the price in.
+    priceCurrency: rawPriceFormSchema,
+    seriesId: requiredRecordId(
+      t("admin.series.episodes.validation.series_missing")
+    ),
+    startsAt: optionalTrimmedString(),
+    tenantId: requiredTrimmedString(
+      t("admin.series.episodes.validation.tenant_missing")
+    ),
+  });
+};
+
+/**
+ * The campaign price action on the series episode list: one price and period
+ * on the checked episodes, in one all-or-nothing call. The campaigns show on
+ * each episode's screen rather than on the list, so success is a message
+ * rather than a refresh.
+ */
+export const createSeriesCampaignPricesAction = async (
+  _prevState: FormActionState,
+  formData: FormData
+): Promise<FormActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    createSeriesCampaignPricesSchema(locale),
+  ]);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      endsAt: { kind: "value", name: "ends_at" },
+      episodeIds: { kind: "value", name: "episode_ids" },
+      price: "value",
+      priceCurrency: { kind: "value", name: "price_currency" },
+      seriesId: { kind: "value", name: "series_id" },
+      startsAt: { kind: "value", name: "starts_at" },
+      tenantId: { kind: "value", name: "tenant_id" },
+    })
+  );
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
+  }
+
+  const { seriesId, tenantId } = parsed.data;
+  const period = await toScheduledPeriod(
+    parsed.data,
+    await getTenantDisplayTimeZone(tenantId),
+    locale
+  );
+  if (!period.ok) {
+    return period;
+  }
+
+  await verifyAdminSession(tenantId);
+  const price = await parseCampaignPrice(parsed.data, tenantId, locale);
+  if (!price.ok) {
+    return price;
+  }
+
+  const listed = await listAllEpisodesForTenant({ seriesId, tenantId }, locale);
+  if (!listed.ok) {
+    return { message: listed.message, ok: false };
+  }
+
+  // Named in reading order, as the free reading period action names them, so
+  // a reorder between checking and saving cannot change which ones are meant.
+  const selected = episodesSelectedInReadingOrder(
+    listed.episodes,
+    parsed.data.episodeIds
+  );
+  if (selected.length === 0) {
+    return {
+      message: t(
+        "admin.series.episodes.campaign_prices.validation.selection_empty"
+      ),
+      ok: false,
+    };
+  }
+  if (selected.length > MAX_SERIES_CAMPAIGN_PRICE_EPISODES) {
+    return {
+      message: t(
+        "admin.series.episodes.campaign_prices.validation.selection_too_many",
+        { count: String(MAX_SERIES_CAMPAIGN_PRICE_EPISODES) }
+      ),
+      ok: false,
+    };
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    createSeriesCampaignPrices(
+      {
+        currency: price.currency,
+        endsAt: period.endsAt,
+        episodeIds: selected.map((episode) => episode.id),
+        price: price.value,
+        seriesId,
+        startsAt: period.startsAt,
+        tenantId,
+      },
+      locale
+    )
+  );
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  updateTag(episodeCampaignPricesCacheTag(tenantId));
+  return {
+    message: t("admin.series.episodes.campaign_prices.bulk_created", {
+      count: result.campaignPrices.length,
     }),
     ok: true,
   };

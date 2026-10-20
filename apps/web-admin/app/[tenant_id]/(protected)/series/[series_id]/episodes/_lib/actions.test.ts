@@ -4,6 +4,7 @@ const {
   mockAssertSameOrigin,
   mockBulkEditEpisodeCredits,
   mockCreateEpisode,
+  mockCreateSeriesCampaignPrices,
   mockCreateSeriesFreeWindows,
   mockGetAccessToken,
   mockGetTenantDisplayTimeZone,
@@ -18,6 +19,7 @@ const {
   mockAssertSameOrigin: vi.fn(),
   mockBulkEditEpisodeCredits: vi.fn(),
   mockCreateEpisode: vi.fn(),
+  mockCreateSeriesCampaignPrices: vi.fn(),
   mockCreateSeriesFreeWindows: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockGetTenantDisplayTimeZone: vi.fn(),
@@ -81,6 +83,12 @@ vi.mock("#lib/episode", () => ({
   episodesCacheTag: (tenantId: string) => `episodes-${tenantId}`,
   listAllEpisodesForTenant: mockListAllEpisodes,
   reorderEpisodePage: mockReorderEpisodePage,
+}));
+
+vi.mock("#lib/episode-campaign-price", () => ({
+  createSeriesCampaignPrices: mockCreateSeriesCampaignPrices,
+  episodeCampaignPricesCacheTag: (tenantId: string) =>
+    `episode-campaign-prices-${tenantId}`,
 }));
 
 vi.mock("#lib/episode-free-window", () => ({
@@ -796,6 +804,141 @@ describe("createSeriesFreeWindowsAction", () => {
     );
 
     expect(result).toEqual({ message: "overlaps", ok: false });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+});
+
+describe("createSeriesCampaignPricesAction", () => {
+  const SERIES_ID = "018f0e6a-2000-7000-8000-000000000001";
+  const startsAt = Temporal.Now.instant().add({ hours: 1 }).toString();
+  const endsAt = Temporal.Now.instant().add({ hours: 25 }).toString();
+
+  const bulkFormData = (fields: Record<string, string>): FormData => {
+    const formData = new FormData();
+    formData.set("tenant_id", "TENANT001");
+    formData.set("series_id", SERIES_ID);
+    formData.set("starts_at", startsAt);
+    formData.set("ends_at", endsAt);
+    formData.set("price", "300");
+    formData.set("price_currency", "JPY");
+    formData.set(
+      "episode_ids",
+      JSON.stringify([campaignEpisodeId(3), campaignEpisodeId(1)])
+    );
+    for (const [name, value] of Object.entries(fields)) {
+      formData.set(name, value);
+    }
+    return formData;
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetTenantDisplayTimeZone.mockResolvedValue("UTC");
+    mockGetAccessToken.mockResolvedValue("session-token");
+    mockListAllEpisodes.mockResolvedValue({
+      episodes: [1, 2, 3].map((n) => ({ id: campaignEpisodeId(n) })),
+      ok: true,
+    });
+    mockCreateSeriesCampaignPrices.mockImplementation(
+      (input: { episodeIds: string[] }) =>
+        Promise.resolve({
+          campaignPrices: input.episodeIds.map(() => ({})),
+          ok: true,
+        })
+    );
+  });
+
+  it("schedules the checked episodes in reading order and clears the campaigns' tag", async () => {
+    const { createSeriesCampaignPricesAction } = await import("./actions");
+    const result = await createSeriesCampaignPricesAction(
+      null,
+      bulkFormData({})
+    );
+
+    expect(mockVerifyAdminSession).toHaveBeenCalledWith("TENANT001");
+    expect(mockCreateSeriesCampaignPrices).toHaveBeenCalledWith(
+      {
+        currency: "JPY",
+        endsAt,
+        episodeIds: [campaignEpisodeId(1), campaignEpisodeId(3)],
+        price: 300,
+        seriesId: SERIES_ID,
+        startsAt,
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      "episode-campaign-prices-TENANT001"
+    );
+    expect(result).toEqual({
+      message: "Added a campaign price to 2 episodes.",
+      ok: true,
+    });
+  });
+
+  it("asks for a check when none of the checked episodes is in the series", async () => {
+    const { createSeriesCampaignPricesAction } = await import("./actions");
+    const result = await createSeriesCampaignPricesAction(
+      null,
+      bulkFormData({
+        episode_ids: JSON.stringify(["018f0e6a-3000-7000-8000-0000000000ff"]),
+      })
+    );
+
+    expect(result).toEqual({
+      message: "Select at least one episode on the list.",
+      ok: false,
+    });
+    expect(mockCreateSeriesCampaignPrices).not.toHaveBeenCalled();
+  });
+
+  it("refuses a price of zero, which would make the episodes free", async () => {
+    const { createSeriesCampaignPricesAction } = await import("./actions");
+    const result = await createSeriesCampaignPricesAction(
+      null,
+      bulkFormData({ price: "0" })
+    );
+
+    expect(result).toEqual({
+      message:
+        "Campaign price must be more than 0, with no more decimal places than the currency has.",
+      ok: false,
+    });
+    expect(mockCreateSeriesCampaignPrices).not.toHaveBeenCalled();
+  });
+
+  it("refuses a period that has already ended without calling the API", async () => {
+    const { createSeriesCampaignPricesAction } = await import("./actions");
+    const result = await createSeriesCampaignPricesAction(
+      null,
+      bulkFormData({
+        ends_at: Temporal.Now.instant().subtract({ hours: 1 }).toString(),
+        starts_at: Temporal.Now.instant().subtract({ hours: 2 }).toString(),
+      })
+    );
+
+    expect(result).toEqual({
+      message: "Enter an end that is after the start and still in the future.",
+      ok: false,
+    });
+    expect(mockCreateSeriesCampaignPrices).not.toHaveBeenCalled();
+  });
+
+  it("leaves the tag alone when the API refuses the campaign", async () => {
+    mockCreateSeriesCampaignPrices.mockResolvedValueOnce({
+      message: "not cheaper",
+      ok: false,
+    });
+
+    const { createSeriesCampaignPricesAction } = await import("./actions");
+    const result = await createSeriesCampaignPricesAction(
+      null,
+      bulkFormData({})
+    );
+
+    expect(result).toEqual({ message: "not cheaper", ok: false });
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
 });

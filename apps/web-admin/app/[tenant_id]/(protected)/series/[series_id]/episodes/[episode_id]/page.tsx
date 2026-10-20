@@ -58,6 +58,7 @@ import {
   listEpisodeCredits,
   listEpisodeImages,
 } from "#lib/episode";
+import { listEpisodeCampaignPrices } from "#lib/episode-campaign-price";
 import { listEpisodeFreeWindows } from "#lib/episode-free-window";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
@@ -75,6 +76,7 @@ import {
 } from "#lib/translation-locales";
 
 import { EpisodeAvailabilityForm } from "./_components/episode-availability-form";
+import { EpisodeCampaignPricesSection } from "./_components/episode-campaign-prices-section";
 import { EpisodeCreatorCreditsForm } from "./_components/episode-creator-credits-form";
 import { EpisodeEyeCatchForm } from "./_components/episode-eye-catch-form";
 import { EpisodeFreeWindowsSection } from "./_components/episode-free-windows-section";
@@ -89,7 +91,9 @@ import { EpisodeTabNav } from "./_components/episode-tab-nav";
 import { EpisodeTitleForm } from "./_components/episode-title-form";
 import { EpisodeTranslationDeleteButton } from "./_components/episode-translation-delete-button";
 import {
+  createEpisodeCampaignPriceAction,
   createEpisodeFreeWindowAction,
+  deleteEpisodeCampaignPriceAction,
   deleteEpisodeFreeWindowAction,
   deleteEpisodeTranslationAction,
   deleteEpisodeImageAction,
@@ -559,6 +563,79 @@ const EpisodeFreeWindowsSectionData = async ({
   );
 };
 
+const EpisodeCampaignPricesSectionData = async ({
+  params,
+}: EditEpisodeSectionProps) => {
+  const context = await resolveEditEpisodeContext(params);
+  const [episodeResult, currency, timeZone] = await Promise.all([
+    loadEpisode(context),
+    getTenantCurrency(context.tenantId),
+    getTenantDisplayTimeZone(context.tenantId),
+  ]);
+
+  if (!episodeResult.ok) {
+    return (
+      <EpisodeSectionError
+        message={episodeResult.message}
+        title={
+          <Message message="admin.series.episodes.campaign_prices.list_error" />
+        }
+      />
+    );
+  }
+
+  // A campaign price shown or entered in no currency is a number nobody can
+  // read, as the episode's own price is.
+  if (!currency) {
+    const t = await getMessagesFor(context.locale);
+    return (
+      <EpisodeSectionError
+        message={t("admin.series.episodes.currency_unavailable")}
+        title={
+          <Message message="admin.series.episodes.campaign_prices.list_error" />
+        }
+      />
+    );
+  }
+
+  const campaignPricesResult = await listEpisodeCampaignPrices({
+    episodeId: episodeResult.episode.id,
+  });
+  // A failed read hands back no campaigns, and "nothing scheduled" next to a
+  // form would invite scheduling over a campaign nobody could see.
+  if (!campaignPricesResult.ok) {
+    return (
+      <EpisodeSectionError
+        message={campaignPricesResult.message}
+        title={
+          <Message message="admin.series.episodes.campaign_prices.list_error" />
+        }
+      />
+    );
+  }
+
+  // The price input is uncontrolled, so the currency is in the key for the
+  // reason the pricing form's is: a refresh that brings another currency
+  // starts the form over in it.
+  return (
+    <EpisodeCampaignPricesSection
+      campaignPrices={campaignPricesResult.campaignPrices}
+      createAction={createEpisodeCampaignPriceAction}
+      currency={currency}
+      deleteAction={deleteEpisodeCampaignPriceAction}
+      episodeId={episodeResult.episode.id}
+      episodePrice={episodeResult.episode.price}
+      episodePublicId={context.episodeId}
+      key={`${context.episodeId}:campaign:${currency}`}
+      locale={context.locale}
+      now={Temporal.Now.instant()}
+      seriesPublicId={context.seriesId}
+      tenantId={context.tenantId}
+      timeZone={timeZone}
+    />
+  );
+};
+
 const EpisodeCreditsSection = async ({ params }: EditEpisodeSectionProps) => {
   const context = await resolveEditEpisodeContext(params);
   const { tenantId } = context;
@@ -902,6 +979,9 @@ const EditEpisodeTabContent = async ({
           <Suspense fallback={<Skeleton className="h-40" />}>
             <EpisodeFreeWindowsSectionData params={params} />
           </Suspense>
+          <Suspense fallback={<Skeleton className="h-40" />}>
+            <EpisodeCampaignPricesSectionData params={params} />
+          </Suspense>
           <Suspense fallback={<Skeleton className="h-48" />}>
             <EpisodeCreditsSection params={params} />
           </Suspense>
@@ -1020,6 +1100,10 @@ const EditEpisodePage = ({ params, searchParams }: EditEpisodePageProps) => (
       <FlashToast
         keyName="free_window_created"
         message="admin.series.episodes.free_windows.created"
+      />
+      <FlashToast
+        keyName="campaign_price_created"
+        message="admin.series.episodes.campaign_prices.created"
       />
       <FlashToast
         keyName="layout_updated"
