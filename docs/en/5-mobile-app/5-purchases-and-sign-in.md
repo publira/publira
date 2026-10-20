@@ -24,7 +24,7 @@ The App Store and Google Play each have rules on how an app may sell digital con
 
 ### What each store needs for in-app purchase
 
-The app sells each episode as a store product named after its price. **Store products**, on the same console page, lists the product ID each price your paid episodes sell at needs, such as `episode_300`. Create every listed product in both stores, as a consumable product at that price, and add one whenever a new price appears in the list.
+The app sells each episode as a store product named after its price, which during a campaign is the campaign's price. **Store products**, on the same console page, lists the product ID each price your paid episodes sell at needs, such as `episode_300`, the prices of campaigns scheduled or on sale included. Create every listed product in both stores, as a consumable product at that price, and add one whenever a new price appears in the list.
 
 In **App Store Connect**:
 

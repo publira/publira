@@ -224,6 +224,39 @@ func TestDBStartStorePurchaseAnswersTheTierProductAndReusesTheOpenIntent(t *test
 	}
 }
 
+// A campaign open when the purchase starts sells the episode as the product of
+// its price, as the web checkout charges it, and the purchase keeps that price
+// although the campaign ends before the store confirms it. One scheduled to
+// start later changes nothing yet.
+func TestDBStartStorePurchaseSellsAtTheCampaignPriceOpenNow(t *testing.T) {
+	env := newStorePurchaseEnv(t)
+	now := time.Now()
+	env.pg.SeedEpisodeCampaignPrice(t, env.tenant.ID, env.episode.ID, 150, now.Add(24*time.Hour), now.Add(48*time.Hour))
+	if scheduled := env.start(t, env.token); scheduled.ProductId != "episode_300" {
+		t.Fatalf("product_id under a scheduled campaign = %q, want episode_300", scheduled.ProductId)
+	}
+
+	campaignID := env.pg.SeedEpisodeCampaignPrice(t, env.tenant.ID, env.episode.ID, 200, now.Add(-time.Hour), now.Add(time.Hour))
+	intent := env.start(t, env.token)
+	if intent.ProductId != "episode_200" {
+		t.Fatalf("product_id under an open campaign = %q, want episode_200", intent.ProductId)
+	}
+	// Ended while the payment sheet was open.
+	if _, err := env.pg.DB.ExecContext(context.Background(), "DELETE FROM episode_campaign_prices WHERE id = $1", campaignID); err != nil {
+		t.Fatalf("end campaign: %v", err)
+	}
+	transaction := env.appStoreTransaction("2000000000000060", intent)
+	env.appStore.transactions[transaction.TransactionID] = transaction
+
+	purchase, err := env.confirmAppStore(t, env.token, transaction)
+	if err != nil {
+		t.Fatalf("ConfirmStorePurchase: %v", err)
+	}
+	if purchase.PriceAtPurchase != 200 {
+		t.Fatalf("price_at_purchase = %d, want the campaign price 200", purchase.PriceAtPurchase)
+	}
+}
+
 func TestDBStartStorePurchaseRefusesATenantThatSellsThroughTheCheckout(t *testing.T) {
 	env := newStorePurchaseEnv(t)
 	if _, err := env.pg.DB.ExecContext(context.Background(),

@@ -175,7 +175,7 @@ On an episode sold **App only**, the site shows the episode as sold in the app a
 
 **In-app purchase** can be chosen once at least one store is **Ready**: turned on with **Use the App Store** or **Use Google Play**, with its key entered, and with its app named under **Integrations** › **App links**.
 
-The app buys each episode as the store product named after its price, such as `episode_300` for a ¥300 episode, so a store sells only the prices it has a product for. **Store products**, at the bottom of the screen, lists the product ID every price your app sells at needs. Create each one in App Store Connect and in Play Console as a consumable product at that price, and add one whenever a new price appears in the list.
+The app buys each episode as the store product named after its price, such as `episode_300` for a ¥300 episode, so a store sells only the prices it has a product for. While a [campaign price](./1-catalog/2-episodes.md#campaign-prices) is on sale, the price is the campaign's: an episode on sale from ¥500 to ¥300 is bought as `episode_300` and recorded at ¥300. **Store products**, at the bottom of the screen, lists the product ID every price your app sells at needs, the price of every campaign that is scheduled or on sale included, and counts an episode under each of its prices. Create each one in App Store Connect and in Play Console as a consumable product at that price, and add one whenever a new price appears in the list, which for a campaign is as soon as it is scheduled, so its product is ready before it starts.
 
 ![Store products: the product ID each price needs, such as episode_500 at ¥500, with a button to copy it and the number of episodes at that price.](./selling-episodes-store-products.png)
 

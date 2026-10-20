@@ -3178,7 +3178,7 @@
       },
       "store_products": {
         "title": "商店商品",
-        "description": "請在App Store Connect與Play Console中依各自的價格建立這些ID的消耗性商品。章節會以其價格對應的商品購買，因此應用程式中販售的付費章節的每個價格都需要一個商品。",
+        "description": "請在App Store Connect與Play Console中依各自的價格建立這些ID的消耗性商品。章節會以其價格對應的商品購買，活動期間則以活動價格對應的商品購買，因此應用程式中販售的付費章節的每個價格都需要一個商品，包括尚未開始的活動價格。",
         "section_error": "無法顯示商店商品",
         "load_failed": "無法載入商店商品。請稍後再試。",
         "product_id": "商品ID",

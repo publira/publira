@@ -209,7 +209,9 @@ message TenantStoreProduct {
   string product_id = 1;
   // The price in the minor unit of currency.
   int32 price = 2;
-  // How many episodes sell at this price, drafts and scheduled ones included.
+  // How many episodes sell at this price, as their own price or as the price
+  // of a campaign on them that has not ended, drafts and scheduled ones
+  // included.
   int32 episode_count = 3;
   // The ISO 4217 code, in capitals, of the tenant currency price is in.
   string currency = 4;

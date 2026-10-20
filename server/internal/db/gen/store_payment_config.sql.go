@@ -58,23 +58,42 @@ func (q *Queries) GetTenantGooglePlayConfigByTenantID(ctx context.Context, tenan
 }
 
 const ListTenantStoreProductPrices = `-- name: ListTenantStoreProductPrices :many
-SELECT el.price,
+WITH app_episodes AS (
+    SELECT e.id,
+        el.price
+    FROM episodes e
+        JOIN episode_listings el ON el.episode_id = e.id
+        JOIN episode_purchase_availability epa ON epa.episode_id = e.id
+    WHERE e.tenant_id = $1
+        AND el.price > 0
+        AND epa.purchase_availability IN ('all', 'app')
+        -- The app cannot sell an episode it does not show.
+        AND EXISTS (
+            SELECT 1
+            FROM episode_surfaces es
+            WHERE es.episode_id = e.id
+                AND es.surface = 'app'
+        )
+),
+app_prices AS (
+    SELECT ae.id AS episode_id,
+        ae.price
+    FROM app_episodes ae
+    UNION
+    SELECT cp.episode_id,
+        cp.price
+    FROM episode_campaign_prices cp
+        JOIN app_episodes ae ON ae.id = cp.episode_id
+    WHERE cp.ends_at > NOW()
+        -- A campaign that no longer undercuts the listing never opens, as
+        -- open_episode_campaign_prices reads it, so it sells nothing.
+        AND cp.price < ae.price
+)
+SELECT price,
     COUNT(*)::integer AS episode_count
-FROM episodes e
-    JOIN episode_listings el ON el.episode_id = e.id
-    JOIN episode_purchase_availability epa ON epa.episode_id = e.id
-WHERE e.tenant_id = $1
-    AND el.price > 0
-    AND epa.purchase_availability IN ('all', 'app')
-    -- The app cannot sell an episode it does not show.
-    AND EXISTS (
-        SELECT 1
-        FROM episode_surfaces es
-        WHERE es.episode_id = e.id
-            AND es.surface = 'app'
-    )
-GROUP BY el.price
-ORDER BY el.price
+FROM app_prices
+GROUP BY price
+ORDER BY price
 `
 
 type ListTenantStoreProductPricesRow struct {
@@ -82,9 +101,11 @@ type ListTenantStoreProductPricesRow struct {
 	EpisodeCount int32 `json:"episode_count"`
 }
 
-// The prices a tenant's app sells episodes at, so each one has a store product.
-// Drafts and scheduled episodes count: their product has to exist before they
-// go on sale.
+// The prices a tenant's app sells episodes at, so each one has a store product:
+// each episode's own price, and the price of every campaign on it that has not
+// ended. Drafts, scheduled episodes, and scheduled campaigns count: their
+// product has to exist before they go on sale. An episode counts once at a
+// price, however many of its campaigns share it.
 func (q *Queries) ListTenantStoreProductPrices(ctx context.Context, tenantID uuid.UUID) ([]ListTenantStoreProductPricesRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListTenantStoreProductPrices, tenantID)
 	if err != nil {
