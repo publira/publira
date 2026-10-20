@@ -1488,7 +1488,9 @@ type SeriesRemainderOffer struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// How many episodes the checkout would sell, never 0.
 	EpisodeCount int32 `protobuf:"varint,1,opt,name=episode_count,json=episodeCount,proto3" json:"episode_count,omitempty"`
-	// The sum of those episodes' prices.
+	// The sum of what those episodes cost bought one by one now: each one's
+	// Episode.campaign_price while a campaign is open on it, its Episode.price
+	// otherwise.
 	ListPrice int32 `protobuf:"varint,2,opt,name=list_price,json=listPrice,proto3" json:"list_price,omitempty"`
 	// Series.bundle_discount_percent; 0 when the series takes none off.
 	DiscountPercent int32 `protobuf:"varint,3,opt,name=discount_percent,json=discountPercent,proto3" json:"discount_percent,omitempty"`
@@ -7489,9 +7491,11 @@ func (x *StartVolumeCheckoutResponse) GetCheckoutUrl() string {
 
 // Starts a provider checkout of the rest of a series: every episode of it the
 // calling surface lists and may sell, that has a price, and that the reader
-// holds no active permanent copy of, each as a line item at its price, with
-// the series' bundle discount (Series.bundle_discount_percent) taken off the
-// total. It answers the URL of the provider's checkout page. The purchase is
+// holds no active permanent copy of, each as a line item at the price its
+// permanent copy sells for on its own when the checkout starts
+// (Episode.campaign_price while a campaign is open on it, Episode.price
+// otherwise), with the series' bundle discount
+// (Series.bundle_discount_percent) taken off the total. It answers the URL of the provider's checkout page. The purchase is
 // created by the provider's webhook alone, and opens each of those episodes as
 // buying its permanent copy would: for good, or for the reading period that
 // copy had when the checkout started. GetSeriesEpisodeAccess quotes the same

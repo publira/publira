@@ -166,7 +166,7 @@ The site shows a period from the moment it starts, and drops it the moment it en
 
 ## Campaign prices
 
-A campaign price sells a paid episode for less between two times. Buying the episode during the campaign charges the campaign price, and the episode keeps its own **Price**, which applies again when the campaign ends. A rental keeps its **Rental price**, and a purchase made at the campaign price keeps the price it was paid.
+A campaign price sells a paid episode for less between two times. Buying the episode during the campaign charges the campaign price, and so does buying it with [the rest of its series](../4-selling-episodes.md#the-rest-of-a-series), before the series' **Bundle discount** is taken off, and the episode keeps its own **Price**, which applies again when the campaign ends. A rental keeps its **Rental price**, and a purchase made at the campaign price keeps the price it was paid.
 
 **Campaign prices**, on the episode's edit screen, lists its campaigns with their price, as **On sale now**, **Scheduled**, or **Ended**. To add one, enter **Campaign price** in the tenant's currency, lower than the episode's **Price**, then **Starts** and **Ends**, both in the tenant's time zone, and choose **Add campaign price**. **Ends** must be after **Starts** and still in the future; **Starts** may be in the past, which puts the episode on sale from now. Two campaigns of one episode cannot overlap, though one may start exactly when another ends. A free episode has no price to cut, so the section offers no form on one.
 

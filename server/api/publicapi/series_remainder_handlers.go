@@ -25,7 +25,8 @@ import (
 const maxSeriesRemainderEpisodes = 100
 
 // seriesRemainderSale is the rest of a series as one checkout sells it to one
-// reader: the episodes in the series' order, what each costs on its own, the
+// reader: the episodes in the series' order, what each costs on its own now
+// (its campaign price while a campaign is open on it), the
 // part of the price each accounts for once the discount is spread over them,
 // and the total.
 type seriesRemainderSale struct {
@@ -292,8 +293,9 @@ func (s *apiServer) StartSeriesRemainderCheckout(
 // checkoutIdempotencyKey gives, and by the terms the bundle written under the
 // key records besides, which the request does not carry: which episodes the
 // lines are, and the reading period each opens for. A reader who buys one
-// episode on its own, or an editor who reprices one or changes its period,
-// changes what the next checkout sells, and so the key and the bundle it finds.
+// episode on its own, an editor who reprices one or changes its period, or a
+// campaign opening or ending on one changes what the next checkout sells, and
+// so the key and the bundle it finds.
 func seriesRemainderIdempotencyKey(req paymentprovider.CheckoutRequest, seriesID uuid.UUID, sale seriesRemainderSale, expiredCheckoutID, paidCheckoutID string) (string, error) {
 	type bundledEpisode struct {
 		ID                 uuid.UUID
