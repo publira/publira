@@ -319,7 +319,7 @@ SET tenant_id = EXCLUDED.tenant_id,
     width = EXCLUDED.width,
     height = EXCLUDED.height;
 
--- One square, the way `createCreatorIconImage` stores an icon: a single
+-- One square, the way the console stores a creator icon: a single
 -- `original` variant at the size the console cropped it to.
 WITH tenant_scope AS (
     SELECT t.id

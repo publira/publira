@@ -20,7 +20,6 @@ import (
 	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
-	"github.com/publira/publira/server/internal/storage"
 )
 
 // An eye-catch holds one image per aspect ratio, and the ratios are
@@ -75,23 +74,6 @@ func eyeCatchAspectBuildError(err error) error {
 		field = "crop"
 	}
 	return rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, field)
-}
-
-// aspectImageObjectKey names the object of one delivered size of a ratio.
-// `uploadID` is new on every upload, so replacing a ratio writes new objects
-// instead of overwriting the ones the previous rows still name — those rows
-// are what `publiractl job purge-orphan-images` reads to decide an object is garbage.
-func aspectImageObjectKey(tenantPublicID, entityPath, entityPublicID string, imageID, uploadID uuid.UUID, variant imageproc.Variant) string {
-	return fmt.Sprintf(
-		"tenants/%s/%s/%s/%s-%s-%s%s",
-		tenantPublicID,
-		entityPath,
-		entityPublicID,
-		imageID.String(),
-		uploadID.String(),
-		variant.Label,
-		variant.Extension,
-	)
 }
 
 func (s *adminServer) UploadSeriesEyeCatchAspectImage(
@@ -170,53 +152,8 @@ func (s *adminServer) UploadSeriesEyeCatchAspectImage(
 		return nil, connect.NewError(connect.CodeFailedPrecondition, "series has no eye catch image yet")
 	}
 
-	imageID := locked.EyeCatchImageID.UUID
-	if _, err := s.queriesFor(txCtx).DeleteSeriesImageVariantsByType(txCtx, dbmodels.DeleteSeriesImageVariantsByTypeParams{
-		SeriesImageID: imageID,
-		VariantType:   aspect.VariantType,
-	}); err != nil {
-		return nil, s.internalDBError(ctx, "failed to clear series image variants for aspect", err, "tenant_id", tenant.ID.String(), "series_image_id", imageID.String())
-	}
-
-	uploadID, err := uuid.NewV7()
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
-	}
-	store, err := storage.Pin(txCtx, s.storage)
-	if err != nil {
-		return nil, storageUploadError(err)
-	}
-	for _, variant := range variants {
-		uploaded, uploadErr := store.Upload(txCtx, storage.UploadRequest{
-			ObjectKey:   aspectImageObjectKey(tenant.PublicID, "series", current.PublicID, imageID, uploadID, variant),
-			ContentType: variant.ContentType,
-			Data:        variant.Data,
-		})
-		if uploadErr != nil {
-			return nil, storageUploadError(uploadErr)
-		}
-		variantID, variantIDErr := uuid.NewV7()
-		if variantIDErr != nil {
-			return nil, connect.NewError(connect.CodeInternal, variantIDErr.Error()).WithCause(variantIDErr)
-		}
-		if _, createErr := s.queriesFor(txCtx).CreateSeriesImageVariant(txCtx, dbmodels.CreateSeriesImageVariantParams{
-			ID:              variantID,
-			TenantID:        tenant.ID,
-			SeriesImageID:   imageID,
-			VariantType:     variant.VariantType,
-			Label:           variant.Label,
-			StorageProvider: uploaded.Provider,
-			ObjectKey:       uploaded.ObjectKey,
-			ContentType:     variant.ContentType,
-			FileSizeBytes:   uploaded.SizeBytes,
-			Width:           int32(variant.Width),
-			Height:          int32(variant.Height),
-		}); createErr != nil {
-			return nil, s.internalDBError(ctx, "failed to create series image variant for aspect", createErr, "tenant_id", tenant.ID.String(), "series_image_id", imageID.String())
-		}
-	}
-	if err := s.queriesFor(txCtx).TouchSeriesImage(txCtx, imageID); err != nil {
-		return nil, s.internalDBError(ctx, "failed to touch series image", err, "tenant_id", tenant.ID.String(), "series_image_id", imageID.String())
+	if err := s.replaceOwnerImageType(txCtx, seriesImages, ownerImageRef(tenant, current.ID, current.PublicID), locked.EyeCatchImageID.UUID, aspect.VariantType, variants); err != nil {
+		return nil, err
 	}
 	var owed revalidate.Owed
 	if current.IsPublished {
@@ -256,7 +193,7 @@ func (s *adminServer) seriesWithEyeCatchVariants(ctx context.Context, tenantID, 
 	}
 	series.Creators = creatorsBySeriesID[row.ID]
 	if row.EyeCatchImageID.Valid {
-		variantsByImageID, variantErr := s.seriesEyeCatchVariantsByImageIDs(ctx, []uuid.UUID{row.EyeCatchImageID.UUID})
+		variantsByImageID, variantErr := s.ownerImageVariants(ctx, seriesImages, tenantID, []uuid.UUID{row.EyeCatchImageID.UUID})
 		if variantErr != nil {
 			return nil, variantErr
 		}
@@ -327,53 +264,8 @@ func (s *adminServer) UploadLabelEyeCatchAspectImage(
 		return nil, connect.NewError(connect.CodeFailedPrecondition, "label has no eye catch image yet")
 	}
 
-	imageID := locked.EyeCatchImageID.UUID
-	if _, err := s.queriesFor(txCtx).DeleteLabelImageVariantsByType(txCtx, dbmodels.DeleteLabelImageVariantsByTypeParams{
-		LabelImageID: imageID,
-		VariantType:  aspect.VariantType,
-	}); err != nil {
-		return nil, s.internalDBError(ctx, "failed to clear label image variants for aspect", err, "tenant_id", tenant.ID.String(), "label_image_id", imageID.String())
-	}
-
-	uploadID, err := uuid.NewV7()
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
-	}
-	store, err := storage.Pin(txCtx, s.storage)
-	if err != nil {
-		return nil, storageUploadError(err)
-	}
-	for _, variant := range variants {
-		uploaded, uploadErr := store.Upload(txCtx, storage.UploadRequest{
-			ObjectKey:   aspectImageObjectKey(tenant.PublicID, "labels", current.PublicID, imageID, uploadID, variant),
-			ContentType: variant.ContentType,
-			Data:        variant.Data,
-		})
-		if uploadErr != nil {
-			return nil, storageUploadError(uploadErr)
-		}
-		variantID, variantIDErr := uuid.NewV7()
-		if variantIDErr != nil {
-			return nil, connect.NewError(connect.CodeInternal, variantIDErr.Error()).WithCause(variantIDErr)
-		}
-		if _, createErr := s.queriesFor(txCtx).CreateLabelImageVariant(txCtx, dbmodels.CreateLabelImageVariantParams{
-			ID:              variantID,
-			TenantID:        tenant.ID,
-			LabelImageID:    imageID,
-			VariantType:     variant.VariantType,
-			Label:           variant.Label,
-			StorageProvider: uploaded.Provider,
-			ObjectKey:       uploaded.ObjectKey,
-			ContentType:     variant.ContentType,
-			FileSizeBytes:   uploaded.SizeBytes,
-			Width:           int32(variant.Width),
-			Height:          int32(variant.Height),
-		}); createErr != nil {
-			return nil, s.internalDBError(ctx, "failed to create label image variant for aspect", createErr, "tenant_id", tenant.ID.String(), "label_image_id", imageID.String())
-		}
-	}
-	if err := s.queriesFor(txCtx).TouchLabelImage(txCtx, imageID); err != nil {
-		return nil, s.internalDBError(ctx, "failed to touch label image", err, "tenant_id", tenant.ID.String(), "label_image_id", imageID.String())
+	if err := s.replaceOwnerImageType(txCtx, labelImages, ownerImageRef(tenant, current.ID, current.PublicID), locked.EyeCatchImageID.UUID, aspect.VariantType, variants); err != nil {
+		return nil, err
 	}
 	owed, err := s.recordRevalidation(txCtx, tenant.ID, labelRevalidateTags(tenant.ID.String()))
 	if err != nil {
@@ -400,7 +292,7 @@ func (s *adminServer) labelWithEyeCatchVariants(ctx context.Context, tenantID, i
 	}
 	var variants []*publirattypesv1.SeriesEyeCatchVariant
 	if row.EyeCatchImageID.Valid {
-		variantsByImageID, variantErr := s.labelEyeCatchVariantsByImageIDs(ctx, []uuid.UUID{row.EyeCatchImageID.UUID})
+		variantsByImageID, variantErr := s.ownerImageVariants(ctx, labelImages, tenantID, []uuid.UUID{row.EyeCatchImageID.UUID})
 		if variantErr != nil {
 			return nil, variantErr
 		}
@@ -490,53 +382,8 @@ func (s *adminServer) UploadGenreEyeCatchAspectImage(
 		return nil, connect.NewError(connect.CodeFailedPrecondition, "genre has no eye catch image yet")
 	}
 
-	imageID := locked.EyeCatchImageID.UUID
-	if _, err := s.queriesFor(txCtx).DeleteGenreImageVariantsByType(txCtx, dbmodels.DeleteGenreImageVariantsByTypeParams{
-		GenreImageID: imageID,
-		VariantType:  aspect.VariantType,
-	}); err != nil {
-		return nil, s.internalDBError(ctx, "failed to clear genre image variants for aspect", err, "tenant_id", tenant.ID.String(), "genre_image_id", imageID.String())
-	}
-
-	uploadID, err := uuid.NewV7()
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
-	}
-	store, err := storage.Pin(txCtx, s.storage)
-	if err != nil {
-		return nil, storageUploadError(err)
-	}
-	for _, variant := range variants {
-		uploaded, uploadErr := store.Upload(txCtx, storage.UploadRequest{
-			ObjectKey:   aspectImageObjectKey(tenant.PublicID, "genres", current.PublicID, imageID, uploadID, variant),
-			ContentType: variant.ContentType,
-			Data:        variant.Data,
-		})
-		if uploadErr != nil {
-			return nil, storageUploadError(uploadErr)
-		}
-		variantID, variantIDErr := uuid.NewV7()
-		if variantIDErr != nil {
-			return nil, connect.NewError(connect.CodeInternal, variantIDErr.Error()).WithCause(variantIDErr)
-		}
-		if _, createErr := s.queriesFor(txCtx).CreateGenreImageVariant(txCtx, dbmodels.CreateGenreImageVariantParams{
-			ID:              variantID,
-			TenantID:        tenant.ID,
-			GenreImageID:    imageID,
-			VariantType:     variant.VariantType,
-			Label:           variant.Label,
-			StorageProvider: uploaded.Provider,
-			ObjectKey:       uploaded.ObjectKey,
-			ContentType:     variant.ContentType,
-			FileSizeBytes:   uploaded.SizeBytes,
-			Width:           int32(variant.Width),
-			Height:          int32(variant.Height),
-		}); createErr != nil {
-			return nil, s.internalDBError(ctx, "failed to create genre image variant for aspect", createErr, "tenant_id", tenant.ID.String(), "genre_image_id", imageID.String())
-		}
-	}
-	if err := s.queriesFor(txCtx).TouchGenreImage(txCtx, imageID); err != nil {
-		return nil, s.internalDBError(ctx, "failed to touch genre image", err, "tenant_id", tenant.ID.String(), "genre_image_id", imageID.String())
+	if err := s.replaceOwnerImageType(txCtx, genreImages, ownerImageRef(tenant, current.ID, current.PublicID), locked.EyeCatchImageID.UUID, aspect.VariantType, variants); err != nil {
+		return nil, err
 	}
 	owed, err := s.recordRevalidation(txCtx, tenant.ID, genreRevalidateTags(tenant.ID.String()))
 	if err != nil {

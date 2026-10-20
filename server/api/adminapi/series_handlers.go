@@ -29,7 +29,6 @@ import (
 	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
-	"github.com/publira/publira/server/internal/storage"
 )
 
 func parsePublishedAtOrZero(value string) (sql.NullTime, error) {
@@ -73,127 +72,6 @@ func normalizeEyeCatchImage(data []byte, contentType, dataField, contentTypeFiel
 		ContentType: normalizedContentType,
 		Data:        data,
 	}, nil
-}
-
-func normalizeSeriesEyeCatchImage(data []byte, contentType string) (*normalizedEyeCatchImage, error) {
-	return normalizeEyeCatchImage(data, contentType, "eye_catch_image_data", "eye_catch_image_content_type")
-}
-
-func (s *adminServer) createSeriesEyeCatchImage(ctx context.Context, tenant dbmodels.Tenant, seriesID uuid.UUID, seriesPublicID string, img *normalizedEyeCatchImage) (uuid.NullUUID, error) {
-	if img == nil {
-		return uuid.NullUUID{}, nil
-	}
-	if s.storage == nil {
-		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, "storage provider is not configured")
-	}
-
-	seriesImageID, err := uuid.NewV7()
-	if err != nil {
-		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
-	}
-
-	createdImage, err := s.queriesFor(ctx).CreateSeriesImage(ctx, dbmodels.CreateSeriesImageParams{
-		ID:       seriesImageID,
-		TenantID: tenant.ID,
-		SeriesID: seriesID,
-	})
-	if err != nil {
-		return uuid.NullUUID{}, s.internalDBError(ctx, "failed to create series image", err, "tenant_id", tenant.ID.String(), "series_id", seriesID.String())
-	}
-
-	variants, err := imageproc.BuildEyeCatchVariants(img.Data, img.ContentType)
-	if err != nil {
-		return uuid.NullUUID{}, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "eye_catch_image_data")
-	}
-
-	store, err := storage.Pin(ctx, s.storage)
-	if err != nil {
-		return uuid.NullUUID{}, storageUploadError(err)
-	}
-	for _, variant := range variants {
-		objectKey := fmt.Sprintf(
-			"tenants/%s/series/%s/%s-%s%s",
-			tenant.PublicID,
-			seriesPublicID,
-			createdImage.ID.String(),
-			variant.Label,
-			variant.Extension,
-		)
-		uploaded, uploadErr := store.Upload(ctx, storage.UploadRequest{
-			ObjectKey:   objectKey,
-			ContentType: variant.ContentType,
-			Data:        variant.Data,
-		})
-		if uploadErr != nil {
-			return uuid.NullUUID{}, storageUploadError(uploadErr)
-		}
-
-		seriesImageVariantID, variantIDErr := uuid.NewV7()
-		if variantIDErr != nil {
-			return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, variantIDErr.Error()).WithCause(variantIDErr)
-		}
-
-		_, createVariantErr := s.queriesFor(ctx).CreateSeriesImageVariant(ctx, dbmodels.CreateSeriesImageVariantParams{
-			ID:              seriesImageVariantID,
-			TenantID:        tenant.ID,
-			SeriesImageID:   createdImage.ID,
-			VariantType:     variant.VariantType,
-			Label:           variant.Label,
-			StorageProvider: uploaded.Provider,
-			ObjectKey:       uploaded.ObjectKey,
-			ContentType:     variant.ContentType,
-			FileSizeBytes:   uploaded.SizeBytes,
-			Width:           int32(variant.Width),
-			Height:          int32(variant.Height),
-		})
-		if createVariantErr != nil {
-			return uuid.NullUUID{}, s.internalDBError(ctx, "failed to create series image variant", createVariantErr, "tenant_id", tenant.ID.String(), "series_image_id", createdImage.ID.String())
-		}
-	}
-
-	return uuid.NullUUID{UUID: createdImage.ID, Valid: true}, nil
-}
-
-func mapSeriesEyeCatchVariants(seriesImageID uuid.UUID, rows []dbmodels.ListSeriesImageVariantsByImageIDsRow) []*publirattypesv1.SeriesEyeCatchVariant {
-	items := make([]*publirattypesv1.SeriesEyeCatchVariant, 0, len(rows))
-	for _, row := range rows {
-		items = append(items, &publirattypesv1.SeriesEyeCatchVariant{
-			Label:         row.Label,
-			VariantType:   row.VariantType,
-			Url:           protomapper.EyeCatchVariantURL("series", seriesImageID, row.VariantType, row.Width, row.ID),
-			ContentType:   row.ContentType,
-			Width:         row.Width,
-			Height:        row.Height,
-			FileSizeBytes: row.FileSizeBytes,
-		})
-	}
-	return items
-}
-
-func (s *adminServer) seriesEyeCatchVariantsByImageIDs(
-	ctx context.Context,
-	imageIDs []uuid.UUID,
-) (map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant, error) {
-	if len(imageIDs) == 0 {
-		return map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant{}, nil
-	}
-
-	rows, err := s.queriesFor(ctx).ListSeriesImageVariantsByImageIDs(ctx, imageIDs)
-	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to list series image variants", err)
-	}
-
-	byImageID := make(map[uuid.UUID][]dbmodels.ListSeriesImageVariantsByImageIDsRow, len(imageIDs))
-	for _, row := range rows {
-		byImageID[row.SeriesImageID] = append(byImageID[row.SeriesImageID], row)
-	}
-
-	mapped := make(map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant, len(byImageID))
-	for imageID, variants := range byImageID {
-		mapped[imageID] = mapSeriesEyeCatchVariants(imageID, variants)
-	}
-
-	return mapped, nil
 }
 
 // syncSeriesCredits writes the whole credit list of a series. replace is false
@@ -651,7 +529,7 @@ func (s *adminServer) CreateSeries(
 	if err := validateBundleDiscountPercent(req.BundleDiscountPercent); err != nil {
 		return nil, err
 	}
-	eyeCatchImage, err := normalizeSeriesEyeCatchImage(req.EyeCatchImageData, req.EyeCatchImageContentType)
+	eyeCatchVariants, err := s.eyeCatchVariants(req.EyeCatchImageData, req.EyeCatchImageContentType)
 	if err != nil {
 		return nil, err
 	}
@@ -747,7 +625,7 @@ func (s *adminServer) CreateSeries(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to update series publication", err, "tenant_id", tenant.ID.String(), "series_id", base.ID.String())
 	}
-	eyeCatchImageID, err := s.createSeriesEyeCatchImage(txCtx, tenant, base.ID, base.PublicID, eyeCatchImage)
+	eyeCatchImageID, err := s.storeOptionalOwnerImage(txCtx, seriesImages, ownerImageRef(tenant, base.ID, base.PublicID), eyeCatchVariants)
 	if err != nil {
 		return nil, err
 	}
@@ -808,7 +686,7 @@ func (s *adminServer) CreateSeries(
 		return nil, s.internalError(ctx, "series listing holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "series_public_id", created.PublicID)
 	}
 	if created.EyeCatchImageID.Valid {
-		variantsByImageID, variantErr := s.seriesEyeCatchVariantsByImageIDs(ctx, []uuid.UUID{created.EyeCatchImageID.UUID})
+		variantsByImageID, variantErr := s.ownerImageVariants(ctx, seriesImages, tenant.ID, []uuid.UUID{created.EyeCatchImageID.UUID})
 		if variantErr != nil {
 			return nil, variantErr
 		}
@@ -880,7 +758,7 @@ func (s *adminServer) UpdateSeries(
 	if err != nil {
 		return nil, err
 	}
-	eyeCatchImage, err := normalizeSeriesEyeCatchImage(req.EyeCatchImageData, req.EyeCatchImageContentType)
+	eyeCatchVariants, err := s.eyeCatchVariants(req.EyeCatchImageData, req.EyeCatchImageContentType)
 	if err != nil {
 		return nil, err
 	}
@@ -1007,8 +885,8 @@ func (s *adminServer) UpdateSeries(
 	eyeCatchImageID := current.EyeCatchImageID
 	if req.ClearEyeCatchImage {
 		eyeCatchImageID = uuid.NullUUID{}
-	} else if eyeCatchImage != nil {
-		newEyeCatchImageID, uploadErr := s.createSeriesEyeCatchImage(txCtx, tenant, current.ID, current.PublicID, eyeCatchImage)
+	} else if len(eyeCatchVariants) > 0 {
+		newEyeCatchImageID, uploadErr := s.storeOptionalOwnerImage(txCtx, seriesImages, ownerImageRef(tenant, current.ID, current.PublicID), eyeCatchVariants)
 		if uploadErr != nil {
 			return nil, uploadErr
 		}
@@ -1071,7 +949,7 @@ func (s *adminServer) UpdateSeries(
 		return nil, s.internalError(ctx, "series listing holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "series_public_id", updated.PublicID)
 	}
 	if updated.EyeCatchImageID.Valid {
-		variantsByImageID, variantErr := s.seriesEyeCatchVariantsByImageIDs(ctx, []uuid.UUID{updated.EyeCatchImageID.UUID})
+		variantsByImageID, variantErr := s.ownerImageVariants(ctx, seriesImages, tenant.ID, []uuid.UUID{updated.EyeCatchImageID.UUID})
 		if variantErr != nil {
 			return nil, variantErr
 		}
@@ -1387,7 +1265,7 @@ func (s *adminServer) ListSeries(
 			item.Tags = tags
 		}
 	}
-	eyeCatchVariantsByImageID, err := s.seriesEyeCatchVariantsByImageIDs(ctx, seriesImageIDs)
+	eyeCatchVariantsByImageID, err := s.ownerImageVariants(ctx, seriesImages, tenant.ID, seriesImageIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -1458,7 +1336,7 @@ func (s *adminServer) GetSeries(
 		return nil, s.internalError(ctx, "series listing holds a value this build does not know", err, "tenant_id", tenant.ID.String(), "series_public_id", row.PublicID)
 	}
 	if row.EyeCatchImageID.Valid {
-		variantsByImageID, variantErr := s.seriesEyeCatchVariantsByImageIDs(ctx, []uuid.UUID{row.EyeCatchImageID.UUID})
+		variantsByImageID, variantErr := s.ownerImageVariants(ctx, seriesImages, tenant.ID, []uuid.UUID{row.EyeCatchImageID.UUID})
 		if variantErr != nil {
 			return nil, variantErr
 		}

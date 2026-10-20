@@ -587,8 +587,9 @@ func TestUploadTenantIconStoresImageAndPointsThemeAtIt(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRow(tenantID, "#2b4c8c", "#c63d17", "#e3e9f5", uuid.NullUUID{UUID: previousImageID, Valid: true}, uuid.NullUUID{}, now)...))
+	createdImageID := &imageIDArgument{}
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateTenantImage)).
-		WithArgs(sqlmock.AnyArg(), tenantID).
+		WithArgs(createdImageID, tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "updated_at", "created_at"}).
 			AddRow(storedImageID, tenantID, now, now))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateTenantImageVariant)).
@@ -601,7 +602,7 @@ func TestUploadTenantIconStoresImageAndPointsThemeAtIt(t *testing.T) {
 			int64(1024), int32(64), int32(64), now,
 		))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.SetTenantThemeIconImage)).
-		WithArgs(tenantID, uuid.NullUUID{UUID: storedImageID, Valid: true}).
+		WithArgs(tenantID, createdImageID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeColumns()).
 			AddRow(tenantThemeUpsertRow(tenantID, "#2b4c8c", "#c63d17", "#e3e9f5", uuid.NullUUID{UUID: storedImageID, Valid: true}, uuid.NullUUID{}, now)...))
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteTenantImage)).
@@ -730,8 +731,9 @@ func TestUploadTenantLogoStoresImageAndPointsThemeAtIt(t *testing.T) {
 		WithArgs(tenantID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeSelectColumns()).
 			AddRow(tenantThemeSelectRow(tenantID, "#2b4c8c", "#c63d17", "#e3e9f5", uuid.NullUUID{}, uuid.NullUUID{UUID: previousImageID, Valid: true}, now)...))
+	createdImageID := &imageIDArgument{}
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateTenantImage)).
-		WithArgs(sqlmock.AnyArg(), tenantID).
+		WithArgs(createdImageID, tenantID).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "updated_at", "created_at"}).
 			AddRow(storedImageID, tenantID, now, now))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateTenantImageVariant)).
@@ -744,7 +746,7 @@ func TestUploadTenantLogoStoresImageAndPointsThemeAtIt(t *testing.T) {
 			int64(2048), int32(320), int32(80), now,
 		))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.SetTenantThemeLogoImage)).
-		WithArgs(tenantID, uuid.NullUUID{UUID: storedImageID, Valid: true}).
+		WithArgs(tenantID, createdImageID).
 		WillReturnRows(sqlmock.NewRows(tenantThemeColumns()).
 			AddRow(tenantThemeUpsertRow(tenantID, "#2b4c8c", "#c63d17", "#e3e9f5", uuid.NullUUID{}, uuid.NullUUID{UUID: storedImageID, Valid: true}, now)...))
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteTenantImage)).
@@ -834,4 +836,22 @@ func TestDeleteTenantLogoClearsReferenceAndDropsImage(t *testing.T) {
 		t.Fatalf("logo variants = %d, want none", len(resp.Theme.LogoImageVariants))
 	}
 	assertExpectations(t, mock)
+}
+
+// imageIDArgument records the id the handler generated for an image the first
+// time it is matched, and matches only that id afterwards, so a test can hold
+// the handler to pointing at the image it just stored.
+type imageIDArgument struct {
+	value string
+}
+
+func (a *imageIDArgument) Match(v driver.Value) bool {
+	value, ok := v.(string)
+	if !ok {
+		return false
+	}
+	if a.value == "" {
+		a.value = value
+	}
+	return value == a.value
 }

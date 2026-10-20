@@ -19,12 +19,10 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/imageproc"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
-	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/publishepisodes"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
-	"github.com/publira/publira/server/internal/storage"
 )
 
 // A volume's writes that also touch the series lock the series row first and
@@ -40,10 +38,6 @@ const (
 
 	// maxVolumeTitleRunes is what volumes_title_check holds the column to.
 	maxVolumeTitleRunes = 255
-
-	// volumeCoverObjectPath is the directory under the tenant that a volume's
-	// cover objects are stored in, named like the route that delivers them.
-	volumeCoverObjectPath = protomapper.VolumeCoverCollection
 )
 
 // normalizeVolumeTitle reads a volume's title, which is required and bounded
@@ -143,16 +137,9 @@ func (s *adminServer) volumeMessages(ctx context.Context, tenantID uuid.UUID, ro
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to list volume episodes", err, "tenant_id", tenantID.String())
 	}
-	covers := map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant{}
-	if len(coverIDs) > 0 {
-		coverRows, err := queries.ListVolumeCoverImageVariantsByImageIDs(ctx, dbmodels.ListVolumeCoverImageVariantsByImageIDsParams{
-			TenantID: tenantID,
-			ImageIds: coverIDs,
-		})
-		if err != nil {
-			return nil, s.internalDBError(ctx, "failed to list volume cover variants", err, "tenant_id", tenantID.String())
-		}
-		covers = protomapper.VolumeCoverVariants(coverRows)
+	covers, err := s.ownerImageVariants(ctx, volumeCoverImages, tenantID, coverIDs)
+	if err != nil {
+		return nil, err
 	}
 	episodesByVolume := protomapper.VolumeEpisodeIDs(episodeRows)
 	for _, row := range rows {
@@ -753,7 +740,7 @@ func (s *adminServer) UploadVolumeCoverImage(
 			return nil, err
 		}
 		publicID = current.PublicID
-		imageID, err := s.createVolumeCoverImage(txCtx, tenant, current.ID, current.PublicID, variants)
+		imageID, err := s.storeOwnerImage(txCtx, volumeCoverImages, ownerImageRef(tenant, current.ID, current.PublicID), variants)
 		if err != nil {
 			return nil, err
 		}
@@ -829,64 +816,4 @@ func (s *adminServer) DeleteVolumeCoverImage(
 		return nil, err
 	}
 	return &publiraadminv1.DeleteVolumeCoverImageResponse{Volume: volume}, nil
-}
-
-// createVolumeCoverImage stores a whole cover, every ratio and width of it, as
-// a new image the caller then points the volume at.
-func (s *adminServer) createVolumeCoverImage(ctx context.Context, tenant dbmodels.Tenant, volumeID uuid.UUID, volumePublicID string, variants []imageproc.Variant) (uuid.UUID, error) {
-	imageID, err := uuid.NewV7()
-	if err != nil {
-		return uuid.Nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
-	}
-	queries := s.queriesFor(ctx)
-	if _, err := queries.CreateVolumeCoverImage(ctx, dbmodels.CreateVolumeCoverImageParams{
-		ID:       imageID,
-		TenantID: tenant.ID,
-		VolumeID: volumeID,
-	}); err != nil {
-		return uuid.Nil, s.internalDBError(ctx, "failed to create volume cover image", err, "tenant_id", tenant.ID.String(), "volume_id", volumeID.String())
-	}
-
-	store, err := storage.Pin(ctx, s.storage)
-	if err != nil {
-		return uuid.Nil, storageUploadError(err)
-	}
-	for _, variant := range variants {
-		uploaded, uploadErr := store.Upload(ctx, storage.UploadRequest{
-			ObjectKey: fmt.Sprintf(
-				"tenants/%s/%s/%s/%s-%s%s",
-				tenant.PublicID,
-				volumeCoverObjectPath,
-				volumePublicID,
-				imageID.String(),
-				variant.Label,
-				variant.Extension,
-			),
-			ContentType: variant.ContentType,
-			Data:        variant.Data,
-		})
-		if uploadErr != nil {
-			return uuid.Nil, storageUploadError(uploadErr)
-		}
-		variantID, err := uuid.NewV7()
-		if err != nil {
-			return uuid.Nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
-		}
-		if _, err := queries.CreateVolumeCoverImageVariant(ctx, dbmodels.CreateVolumeCoverImageVariantParams{
-			ID:                 variantID,
-			TenantID:           tenant.ID,
-			VolumeCoverImageID: imageID,
-			VariantType:        variant.VariantType,
-			Label:              variant.Label,
-			StorageProvider:    uploaded.Provider,
-			ObjectKey:          uploaded.ObjectKey,
-			ContentType:        variant.ContentType,
-			FileSizeBytes:      uploaded.SizeBytes,
-			Width:              int32(variant.Width),
-			Height:             int32(variant.Height),
-		}); err != nil {
-			return uuid.Nil, s.internalDBError(ctx, "failed to create volume cover variant", err, "tenant_id", tenant.ID.String(), "volume_cover_image_id", imageID.String())
-		}
-	}
-	return imageID, nil
 }

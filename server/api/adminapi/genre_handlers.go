@@ -14,7 +14,6 @@ import (
 	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
-	"github.com/publira/publira/server/api/protomapper"
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/catalogslug"
 	"github.com/publira/publira/server/internal/clientip"
@@ -27,7 +26,6 @@ import (
 	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
-	"github.com/publira/publira/server/internal/storage"
 )
 
 const (
@@ -201,7 +199,7 @@ func (s *adminServer) genreMessages(ctx context.Context, tenantID uuid.UUID, row
 			}
 		}
 	}
-	variantsByImageID, err := s.genreEyeCatchVariantsByImageIDs(ctx, imageIDs)
+	variantsByImageID, err := s.ownerImageVariants(ctx, genreImages, tenantID, imageIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -221,34 +219,6 @@ func (s *adminServer) genreMessage(ctx context.Context, tenantID uuid.UUID, row 
 	return genres[0], nil
 }
 
-func (s *adminServer) genreEyeCatchVariantsByImageIDs(
-	ctx context.Context,
-	imageIDs []uuid.UUID,
-) (map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant, error) {
-	if len(imageIDs) == 0 {
-		return map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant{}, nil
-	}
-
-	rows, err := s.queriesFor(ctx).ListGenreImageVariantsByImageIDs(ctx, imageIDs)
-	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to list genre image variants", err)
-	}
-
-	mapped := make(map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant, len(imageIDs))
-	for _, row := range rows {
-		mapped[row.GenreImageID] = append(mapped[row.GenreImageID], &publirattypesv1.SeriesEyeCatchVariant{
-			Label:         row.Label,
-			VariantType:   row.VariantType,
-			Url:           protomapper.EyeCatchVariantURL("genres", row.GenreImageID, row.VariantType, row.Width, row.ID),
-			ContentType:   row.ContentType,
-			Width:         row.Width,
-			Height:        row.Height,
-			FileSizeBytes: row.FileSizeBytes,
-		})
-	}
-	return mapped, nil
-}
-
 // eyeCatchVariants cuts an uploaded eye-catch into every ratio before the
 // caller opens its transaction, so a refused image costs no database work and
 // the cut does not run while the row is held. Nil means no upload.
@@ -265,69 +235,6 @@ func (s *adminServer) eyeCatchVariants(data []byte, contentType string) ([]image
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "eye_catch_image_data")
 	}
 	return variants, nil
-}
-
-func (s *adminServer) createGenreEyeCatchImage(ctx context.Context, tenant dbmodels.Tenant, genreID uuid.UUID, genrePublicID string, variants []imageproc.Variant) (uuid.NullUUID, error) {
-	if len(variants) == 0 {
-		return uuid.NullUUID{}, nil
-	}
-
-	genreImageID, err := uuid.NewV7()
-	if err != nil {
-		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
-	}
-	createdImage, err := s.queriesFor(ctx).CreateGenreImage(ctx, dbmodels.CreateGenreImageParams{
-		ID:       genreImageID,
-		TenantID: tenant.ID,
-		GenreID:  genreID,
-	})
-	if err != nil {
-		return uuid.NullUUID{}, s.internalDBError(ctx, "failed to create genre image", err, "tenant_id", tenant.ID.String(), "genre_id", genreID.String())
-	}
-
-	store, err := storage.Pin(ctx, s.storage)
-	if err != nil {
-		return uuid.NullUUID{}, storageUploadError(err)
-	}
-	for _, variant := range variants {
-		uploaded, uploadErr := store.Upload(ctx, storage.UploadRequest{
-			ObjectKey: fmt.Sprintf(
-				"tenants/%s/genres/%s/%s-%s%s",
-				tenant.PublicID,
-				genrePublicID,
-				createdImage.ID.String(),
-				variant.Label,
-				variant.Extension,
-			),
-			ContentType: variant.ContentType,
-			Data:        variant.Data,
-		})
-		if uploadErr != nil {
-			return uuid.NullUUID{}, storageUploadError(uploadErr)
-		}
-
-		variantID, variantIDErr := uuid.NewV7()
-		if variantIDErr != nil {
-			return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, variantIDErr.Error()).WithCause(variantIDErr)
-		}
-		if _, createErr := s.queriesFor(ctx).CreateGenreImageVariant(ctx, dbmodels.CreateGenreImageVariantParams{
-			ID:              variantID,
-			TenantID:        tenant.ID,
-			GenreImageID:    createdImage.ID,
-			VariantType:     variant.VariantType,
-			Label:           variant.Label,
-			StorageProvider: uploaded.Provider,
-			ObjectKey:       uploaded.ObjectKey,
-			ContentType:     variant.ContentType,
-			FileSizeBytes:   uploaded.SizeBytes,
-			Width:           int32(variant.Width),
-			Height:          int32(variant.Height),
-		}); createErr != nil {
-			return uuid.NullUUID{}, s.internalDBError(ctx, "failed to create genre image variant", createErr, "tenant_id", tenant.ID.String(), "genre_image_id", createdImage.ID.String())
-		}
-	}
-
-	return uuid.NullUUID{UUID: createdImage.ID, Valid: true}, nil
 }
 
 // genrePage runs the keyset query for one page. The list reads in the tenant's
@@ -500,7 +407,7 @@ func (s *adminServer) CreateGenre(
 	if err := s.upsertGenreTranslation(txCtx, tenant.ID, created.ID, code, normalized.name); err != nil {
 		return nil, err
 	}
-	eyeCatchImageID, err := s.createGenreEyeCatchImage(txCtx, tenant, created.ID, created.PublicID, eyeCatchVariants)
+	eyeCatchImageID, err := s.storeOptionalOwnerImage(txCtx, genreImages, ownerImageRef(tenant, created.ID, created.PublicID), eyeCatchVariants)
 	if err != nil {
 		return nil, err
 	}
@@ -614,7 +521,7 @@ func (s *adminServer) UpdateGenre(
 	if req.ClearEyeCatchImage {
 		eyeCatchImageID = uuid.NullUUID{}
 	} else if len(eyeCatchVariants) > 0 {
-		eyeCatchImageID, err = s.createGenreEyeCatchImage(txCtx, tenant, current.ID, current.PublicID, eyeCatchVariants)
+		eyeCatchImageID, err = s.storeOptionalOwnerImage(txCtx, genreImages, ownerImageRef(tenant, current.ID, current.PublicID), eyeCatchVariants)
 		if err != nil {
 			return nil, err
 		}
