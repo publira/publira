@@ -78,9 +78,12 @@ export const seriesCacheTag = (tenantId: string, publicId: string): string =>
   `series-${tenantId}-${publicId}`;
 
 /**
- * The tag the tenant's series lists are filed under. The tag above reaches one
- * series, so on its own it carries a save back to the form that submitted it
- * and leaves `/series` showing the row as it stood until the entry expired.
+ * The tag every series read is filed under — the lists and one series. The tag
+ * above reaches one series, so on its own it carries a save back to the form
+ * that submitted it and leaves `/series` showing the row as it stood until the
+ * entry expired. One series carries this one too because its title is the one
+ * in the tenant's default language, which a single save of the languages
+ * changes for every series at once.
  */
 export const seriesListCacheTag = (tenantId: string): string =>
   `series-list-${tenantId}`;
@@ -629,6 +632,7 @@ export const getSeriesForTenant = async (
 ): Promise<GetSeriesResult> => {
   "use cache";
   cacheTag(seriesCacheTag(input.tenantId, input.publicId));
+  cacheTag(seriesListCacheTag(input.tenantId));
 
   const t = await getMessagesFor(locale);
 

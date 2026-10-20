@@ -36,6 +36,22 @@ vi.mock("next/cache", () => ({
 
 vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
+vi.mock("#lib/access-ticket", () => ({
+  accessTicketsCacheTag: (tenantId: string) => `access-tickets-${tenantId}`,
+}));
+
+vi.mock("#lib/episode", () => ({
+  episodesCacheTag: (tenantId: string) => `episodes-${tenantId}`,
+}));
+
+vi.mock("#lib/purchase", () => ({
+  purchasesCacheTag: (tenantId: string) => `purchases-${tenantId}`,
+}));
+
+vi.mock("#lib/series", () => ({
+  seriesListCacheTag: (tenantId: string) => `series-list-${tenantId}`,
+}));
+
 vi.mock("#lib/session", () => ({
   getAccessToken: mockGetAccessToken,
 }));
@@ -284,8 +300,14 @@ describe("updateTenantLocalesAction", () => {
       },
       "en"
     );
-    expect(mockUpdateTag).toHaveBeenCalledWith("tenant:TENANT001:site");
-    expect(mockUpdateTag).toHaveBeenCalledWith("genres-TENANT001");
+    expect(mockUpdateTag.mock.calls.map(([tag]) => tag).toSorted()).toEqual([
+      "access-tickets-TENANT001",
+      "episodes-TENANT001",
+      "genres-TENANT001",
+      "purchases-TENANT001",
+      "series-list-TENANT001",
+      "tenant:TENANT001:site",
+    ]);
   });
 
   it.each([

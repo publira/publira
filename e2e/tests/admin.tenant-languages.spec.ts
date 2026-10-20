@@ -7,14 +7,16 @@ import {
   TENANT_LANGUAGES_ADMIN,
   TENANT_LANGUAGES_PAGE,
   TENANT_LANGUAGES_SCENARIO,
+  TENANT_LANGUAGES_SERIES,
 } from "../src/scenarios/tenant-languages";
 import { WEB_ADMIN_TENANT_LANGUAGES_BASE_URL } from "../src/urls";
 
 /**
  * A Tenant admin chooses the languages the site offers under Settings, and the
- * page editor follows: a translation in a language switched off loses its tab
+ * console follows: a page translation in a language switched off loses its tab
  * without being deleted, and has it back, as it was, once the language is
- * switched on again.
+ * switched on again; and a series is listed under its title in whichever
+ * language is the default.
  */
 
 const adminUrl = (pathname: string): string =>
@@ -31,6 +33,14 @@ const saveLanguages = async (page: Page): Promise<void> => {
   await expect(page.getByText("The languages were saved.")).toBeVisible({
     timeout: 30_000,
   });
+};
+
+const chooseDefaultLanguage = async (
+  page: Page,
+  autonym: string
+): Promise<void> => {
+  await page.getByRole("combobox", { name: /^Default language/u }).click();
+  await page.getByRole("option", { exact: true, name: autonym }).click();
 };
 
 const languageTabs = (page: Page) =>
@@ -50,6 +60,16 @@ test.describe("admin tenant languages", () => {
   });
 
   test.beforeEach(async ({ page }) => {
+    // A console without a stored choice renders in the default language, so
+    // the choice is stored to keep the screens in English while the default
+    // moves.
+    await page.context().addCookies([
+      {
+        name: "publira_locale",
+        url: WEB_ADMIN_TENANT_LANGUAGES_BASE_URL,
+        value: "en",
+      },
+    ]);
     await signInAsAdmin(
       page,
       TENANT_LANGUAGES_ADMIN,
@@ -98,5 +118,40 @@ test.describe("admin tenant languages", () => {
     await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue(
       TENANT_LANGUAGES_PAGE.japaneseTitle
     );
+  });
+
+  test("the series list names a series in the new default language as soon as it is saved", async ({
+    page,
+  }) => {
+    const seriesTitle = (title: string) =>
+      page.getByText(title, { exact: true });
+
+    // Each list is read once before the default moves, so a list kept from
+    // the previous default would be what the next visit shows.
+    await page.goto(adminUrl("/series"));
+    await expect(
+      seriesTitle(TENANT_LANGUAGES_SERIES.englishTitle)
+    ).toBeVisible();
+
+    await page.goto(adminUrl("/settings"));
+    await chooseDefaultLanguage(page, "日本語");
+    await saveLanguages(page);
+
+    await page.goto(adminUrl("/series"));
+    await expect(
+      seriesTitle(TENANT_LANGUAGES_SERIES.japaneseTitle)
+    ).toBeVisible();
+
+    await page.goto(adminUrl("/settings"));
+    await chooseDefaultLanguage(page, "English");
+    await saveLanguages(page);
+
+    await page.goto(adminUrl("/series"));
+    await expect(
+      seriesTitle(TENANT_LANGUAGES_SERIES.englishTitle)
+    ).toBeVisible();
+    await expect(
+      seriesTitle(TENANT_LANGUAGES_SERIES.japaneseTitle)
+    ).toHaveCount(0);
   });
 });

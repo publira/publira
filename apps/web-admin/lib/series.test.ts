@@ -1096,12 +1096,13 @@ describe("getSeries", () => {
     expect(mockCacheLife).not.toHaveBeenCalled();
   });
 
-  it("reads the series with the service credential under its tag", async () => {
+  it("reads the series with the service credential under its tag and the list's", async () => {
     mockGetSeries.mockRejectedValue(
       new ConnectError("series not found", Code.NotFound)
     );
 
-    const { getSeries, seriesCacheTag } = await import("./series");
+    const { getSeries, seriesCacheTag, seriesListCacheTag } =
+      await import("./series");
     await getSeries({ publicId: "SERIES001" });
 
     expect(mockGetSeries).toHaveBeenCalledWith(
@@ -1111,6 +1112,7 @@ describe("getSeries", () => {
     expect(mockCacheTag).toHaveBeenCalledWith(
       seriesCacheTag("TENANT001", "SERIES001")
     );
+    expect(mockCacheTag).toHaveBeenCalledWith(seriesListCacheTag("TENANT001"));
   });
 
   it("reports a failure other than a missing series as a message", async () => {
