@@ -23,3 +23,24 @@ export const registerStripeWebhook = async (
   const { secret } = (await response.json()) as { secret: string };
   return secret;
 };
+
+/**
+ * Make `id` a payment intent the account `secretKey` names was paid `amount`
+ * on in `currency`, with nothing refunded of it, so that a refund the console
+ * asks for the purchase a scenario seeded with that payment ID is made.
+ */
+export const registerStripePaymentIntent = async (
+  secretKey: string,
+  payment: { amount: number; currency: string; id: string }
+): Promise<void> => {
+  const response = await fetch(`${STRIPE_BASE_URL}/payment-intents`, {
+    body: JSON.stringify(payment),
+    headers: { authorization: `Bearer ${secretKey}` },
+    method: "POST",
+  });
+  if (!response.ok) {
+    throw new Error(
+      `the Stripe stand-in refused the payment intent: ${response.status}`
+    );
+  }
+};
