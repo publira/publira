@@ -241,7 +241,7 @@ PUBLIRA_EDGE_ACME_EMAIL=ops@example.com
 
 Caddy keeps the certificates under `/data`, so give that directory a volume that outlives the container; one that starts empty makes Caddy request every certificate again. A host in no list gets no certificate, so its TLS handshake fails, and over plain HTTP the sample still answers it with its own 404.
 
-For a certificate issued elsewhere, replace `:80 {$PUBLIRA_EDGE_TLS_HOSTS}`, the site block's addresses, with the host names, and add `tls /etc/caddy/tls/fullchain.pem /etc/caddy/tls/privkey.pem` inside the block: Caddy uses those files instead of obtaining its own, and refuses them in a block that also listens on plain HTTP. Plain HTTP for every host, listed or not, is then redirected to HTTPS.
+For a certificate issued elsewhere, replace `:80 {$PUBLIRA_EDGE_TLS_HOSTS}`, the site block's addresses, with the host names, and add `tls /etc/caddy/tls/fullchain.pem /etc/caddy/tls/privkey.pem` inside the block: Caddy uses those files instead of obtaining its own, and refuses them in a block that also listens on plain HTTP. With no site left on port 80, Caddy redirects plain HTTP for every host, listed or not, to HTTPS, so a host in no list gets that redirect in place of the sample's 404, and then fails the TLS handshake.
 
 #### nginx
 
