@@ -15,14 +15,16 @@ import 'support/fake_offline_library.dart';
 import 'support/pump_until.dart';
 
 /// A banner linking to [linkUrl], with a landscape image unless [variants]
-/// says otherwise.
+/// says otherwise, and no alternative text unless [altText] gives one.
 CampaignBanner _banner(
   String id, {
   required String linkUrl,
+  String altText = '',
   List<EyeCatchVariant>? variants,
 }) => CampaignBanner(
   id: id,
   linkUrl: linkUrl,
+  altText: altText,
   imageVariants:
       variants ??
       [
@@ -152,7 +154,7 @@ void main() {
       lessThan(tester.view.physicalSize.width),
     );
 
-    // Each page is announced by its place in the band, since the banners
+    // Each page is announced by its place in the band, since these banners
     // carry no text of their own to tell them apart.
     expect(find.bySemanticsLabel('Campaign banner 1 of 3'), findsOneWidget);
     expect(find.bySemanticsLabel('Campaign banner 2 of 3'), findsOneWidget);
@@ -165,6 +167,45 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.getCenter(_bannerOf('banner-3')).dx, screenCenter);
   });
+
+  testWidgets('a banner is announced by the words drawn into its image', (
+    tester,
+  ) async {
+    catalog.campaignBanners = [
+      _banner(
+        'banner-1',
+        linkUrl: '/series',
+        altText: 'Summer sale, up to 50% off through August 31',
+      ),
+    ];
+    await pumpLoadedApp(tester);
+
+    expect(
+      find.bySemanticsLabel('Summer sale, up to 50% off through August 31'),
+      findsOneWidget,
+    );
+    expect(find.bySemanticsLabel('Campaign banner'), findsNothing);
+  });
+
+  testWidgets(
+    'a strip names each banner by its own words, and the rest by place',
+    (tester) async {
+      catalog.campaignBanners = [
+        _banner('banner-1', linkUrl: '/series', altText: 'Summer sale'),
+        _banner('banner-2', linkUrl: '/labels'),
+        _banner('banner-3', linkUrl: '/genres', altText: 'New serialization'),
+      ];
+      await pumpLoadedApp(tester, size: const Size(400, 900));
+
+      expect(find.bySemanticsLabel('Summer sale'), findsOneWidget);
+      expect(find.bySemanticsLabel('Campaign banner 2 of 3'), findsOneWidget);
+      expect(find.bySemanticsLabel('Campaign banner 1 of 3'), findsNothing);
+
+      await tester.fling(find.byType(PageView), const Offset(-300, 0), 1000);
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel('New serialization'), findsOneWidget);
+    },
+  );
 
   testWidgets('a banner the app cannot follow or draw is left out', (
     tester,

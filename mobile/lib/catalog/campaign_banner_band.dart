@@ -132,7 +132,7 @@ class _CampaignBannerBandState extends State<CampaignBannerBand> {
                 child: _BannerLink(
                   banner: only.banner,
                   destination: only.destination,
-                  label: messages.catalogCampaignBanner,
+                  fallbackLabel: messages.catalogCampaignBanner,
                 ),
               ),
             );
@@ -151,8 +151,9 @@ class _CampaignBannerBandState extends State<CampaignBannerBand> {
                     banner: banners[index].banner,
                     destination: banners[index].destination,
                     // The pages announce no position of their own, and every
-                    // banner would otherwise be read out as the same one.
-                    label: messages.catalogCampaignBannerPosition(
+                    // banner without words of its own would otherwise be read
+                    // out as the same one.
+                    fallbackLabel: messages.catalogCampaignBannerPosition(
                       position: messages.formatInteger(index + 1),
                       count: messages.formatInteger(banners.length),
                     ),
@@ -172,21 +173,22 @@ class _BannerLink extends StatelessWidget {
   const _BannerLink({
     required this.banner,
     required this.destination,
-    required this.label,
+    required this.fallbackLabel,
   });
 
   final CampaignBanner banner;
   final TenantLinkDestination destination;
 
-  /// What a screen reader announces the banner as. The API carries no text
-  /// for its image, so this is the only name it has.
-  final String label;
+  /// What a screen reader announces the banner as when the operator wrote no
+  /// words for its image. The image is the link's only content, so those
+  /// words, when there are some, are its name, as they are on the storefront.
+  final String fallbackLabel;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: label,
+      label: banner.altText.isEmpty ? fallbackLabel : banner.altText,
       child: InkWell(
         key: ValueKey('campaign-banner-${banner.id}'),
         onTap: () => followTenantLink(context, destination),

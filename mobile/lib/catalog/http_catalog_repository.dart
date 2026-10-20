@@ -658,6 +658,7 @@ class HttpCatalogRepository implements CatalogRepository {
           (banner) => CampaignBanner(
             id: _requiredId(banner.publicId, 'banners[].publicId'),
             linkUrl: banner.linkUrl.trim(),
+            altText: banner.altText.trim(),
             imageVariants: _parseEyeCatchVariants(
               banner.imageVariants,
               'banners[]',
