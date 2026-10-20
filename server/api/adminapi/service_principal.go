@@ -29,6 +29,7 @@ var serviceProcedures = map[string]struct{}{
 	publiraadminv1connect.AdminSeriesServiceGetEpisodeProcedure:                {},
 	publiraadminv1connect.AdminSeriesServiceListEpisodeCreditsProcedure:        {},
 	publiraadminv1connect.AdminSeriesServiceListEpisodeFreeWindowsProcedure:    {},
+	publiraadminv1connect.AdminSeriesServiceListEpisodeCampaignPricesProcedure: {},
 	publiraadminv1connect.AdminSeriesServiceGetSeriesWaitFreeSettingsProcedure: {},
 	publiraadminv1connect.AdminDashboardServiceGetDashboardProcedure:           {},
 }
