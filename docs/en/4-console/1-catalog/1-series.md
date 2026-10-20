@@ -17,7 +17,7 @@ Choose **Create series**. The form is the same one the series is edited with lat
 
 The title and synopsis are written in the site's default language. A title and synopsis in the site's other languages are added once the series exists, as [Titles in other languages](#titles-in-other-languages) describes.
 
-![The top of the Create series form: Title, Reading period, Rental period, Synopsis, Authors with Add author, and Label.](./series-create-form.png)
+![The top of the Create series form: Title, Reading period, Rental period, Bundle discount, Synopsis, Authors with Add author, and Label.](./series-create-form.png)
 
 ### What readers see first
 
@@ -98,6 +98,10 @@ An episode can set its own of either, as [Page layout](./2-episodes.md#page-layo
 ### Rental period
 
 **Rental period**, in hours, is where the **Rental period** of each new episode in the series starts. It rents no episode by itself: an episode is rented only once it is given a **Rental price**, and the period is then how long a rental keeps it open. As with **Reading period**, an episode keeps the value it was created with when the series' changes. `0`, where a new series starts, sets none, and a new episode's **Rental period** then starts empty. [Selling episodes](../4-selling-episodes.md#price-and-reading-period) describes the rental.
+
+### Bundle discount
+
+**Bundle discount**, in whole percent, is what a reader saves by buying the rest of the series in one checkout: every paid episode of it they do not own yet, for the sum of their prices less this percentage. `0`, where a new series starts, takes nothing off, and `99` is the most. A change applies from the next checkout, and reaches nothing a reader already bought. [Selling episodes](../4-selling-episodes.md#the-rest-of-a-series) describes the sale.
 
 ## Titles in other languages
 

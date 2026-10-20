@@ -235,6 +235,7 @@ export const weekdayCheckbox = (page: Page, weekdayLabel: string): Locator =>
 
 export interface SeriesFormFields {
   title: Locator;
+  bundleDiscountPercent: Locator;
   commentModeSelect: Locator;
   readingPeriodHours: Locator;
   synopsis: Locator;
@@ -256,6 +257,9 @@ export interface SeriesFormFields {
  */
 export const seriesFormFields = (page: Page): SeriesFormFields => ({
   ageRatingSelect: page.getByRole("combobox", { name: /Age rating/u }),
+  bundleDiscountPercent: page.getByRole("spinbutton", {
+    name: /Bundle discount/u,
+  }),
   commentModeSelect: page.getByRole("combobox", { name: /Comments/u }),
   genreCombobox: page.getByRole("combobox", { name: /Genres/u }),
   labelCombobox: page.getByRole("combobox", { name: /Label/u }),

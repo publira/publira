@@ -83,6 +83,7 @@ const tagSuggestions = ["seaside", "letterpress"];
 const series: SeriesListItem = {
   ageRating: "r15",
   availability: "app",
+  bundleDiscountPercent: 15,
   creatorCredits: [{ creatorId: "CREATOR001", roleId: "ROLE002", shareBps: 0 }],
   eyeCatchImageUpdatedAt: "",
   eyeCatchImageVariants: [],
@@ -187,6 +188,9 @@ it("finds each input by its role and label", () => {
   expect(
     screen.getAllByRole("spinbutton", { name: /Rental period/u })
   ).toHaveLength(2);
+  expect(
+    screen.getAllByRole("spinbutton", { name: /Bundle discount/u })
+  ).toHaveLength(2);
   expect(screen.getAllByRole("combobox", { name: /Label/u })).toHaveLength(2);
   // The create form opens with no credits and the edit form with the one the
   // series carries, so this pair is the edit form's only row.
@@ -246,6 +250,27 @@ it("opens on the classification the series carries", () => {
   expect(
     screen.getByRole("checkbox", { name: "Tue" }).dataset.checked
   ).toBeUndefined();
+});
+
+// The form states the discount on every save, so opening on anything but the
+// stored one would change what the rest of the series sells for.
+it("opens on the bundle discount the series takes, and a new series on none", () => {
+  renderBothForms();
+
+  const fields = screen.getAllByRole<HTMLInputElement>("spinbutton", {
+    name: /Bundle discount/u,
+  });
+
+  expect(fields.map((field) => field.value)).toEqual(["0", "15"]);
+  expect(fields.map((field) => field.name)).toEqual([
+    "bundle_discount_percent",
+    "bundle_discount_percent",
+  ]);
+  // 100 would sell the rest of the series for nothing, which the API refuses.
+  expect(fields.map((field) => [field.min, field.max])).toEqual([
+    ["0", "99"],
+    ["0", "99"],
+  ]);
 });
 
 // The mode the series states is what the form opens on, for the reason the

@@ -132,6 +132,7 @@ describe("series actions", () => {
     formData.set("published_at", "2030-01-01T10:00");
     formData.set("clear_eye_catch_image", "0");
     formData.set("rental_period_hours", "48");
+    formData.set("bundle_discount_percent", "15");
 
     await updateSeriesAction(null, formData);
 
@@ -139,6 +140,7 @@ describe("series actions", () => {
       {
         ageRating: "all",
         availability: "all",
+        bundleDiscountPercent: 15,
         commentMode: "",
         creatorCredits: [],
         eyeCatchImageContentType: undefined,
@@ -637,6 +639,7 @@ describe("series actions", () => {
     for (const field of [
       "ageRating",
       "availability",
+      "bundleDiscountPercent",
       "commentMode",
       "purchaseAvailability",
       "readingDirection",
@@ -959,6 +962,65 @@ describe("series actions", () => {
 
     expect(result).toEqual({
       message: "Select a serialization status.",
+      mode: "create",
+      ok: false,
+    });
+    expect(mockCreateSeries).not.toHaveBeenCalled();
+  });
+
+  it("sends the bundle discount a new series takes off the rest of it", async () => {
+    mockCreateSeries.mockResolvedValueOnce({
+      ok: true,
+      series: { publicId: "SERIES001" },
+    });
+
+    const { createSeriesAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("tenant_id", "TENANT001");
+    formData.set("title", "Series title");
+    formData.set("synopsis", "A synopsis");
+    formData.set("reading_period_hours", "24");
+    formData.set("bundle_discount_percent", "99");
+    formData.set("label_id", "018f0e6a-5000-7000-8000-000000000001");
+    formData.set("status", "ongoing");
+    formData.set("age_rating", "all");
+    formData.set("availability", "all");
+    formData.set("comment_mode", "");
+    formData.set("purchase_availability", "");
+    formData.set("reading_direction", "rtl");
+    formData.set("spread_start_page", "2");
+
+    await createSeriesAction(null, formData);
+
+    expect(mockCreateSeries).toHaveBeenCalledWith(
+      expect.objectContaining({ bundleDiscountPercent: 99 }),
+      "en"
+    );
+  });
+
+  // 100 would sell the rest of the series for nothing, which the API refuses
+  // with a message that names no field of the form.
+  it.each(["100", "-1"])("refuses a bundle discount of %s", async (percent) => {
+    const { createSeriesAction } = await import("./actions");
+    const formData = new FormData();
+    formData.set("tenant_id", "TENANT001");
+    formData.set("title", "Series title");
+    formData.set("synopsis", "A synopsis");
+    formData.set("reading_period_hours", "24");
+    formData.set("bundle_discount_percent", percent);
+    formData.set("label_id", "018f0e6a-5000-7000-8000-000000000001");
+    formData.set("status", "ongoing");
+    formData.set("age_rating", "all");
+    formData.set("availability", "all");
+    formData.set("comment_mode", "");
+    formData.set("purchase_availability", "");
+    formData.set("reading_direction", "rtl");
+    formData.set("spread_start_page", "2");
+
+    const result = await createSeriesAction(null, formData);
+
+    expect(result).toEqual({
+      message: "Bundle discount must be a whole number from 0 to 99.",
       mode: "create",
       ok: false,
     });

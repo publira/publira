@@ -112,6 +112,7 @@ const image = new Uint8Array([1, 2, 3]);
 const seriesInput: Parameters<typeof createSeries>[0] = {
   ageRating: "r15",
   availability: "all",
+  bundleDiscountPercent: 0,
   commentMode: "",
   creatorCredits: [],
   eyeCatchImageContentType: "image/png",

@@ -53,6 +53,7 @@ afterEach(() => {
 const series: SeriesListItem = {
   ageRating: "all",
   availability: "all",
+  bundleDiscountPercent: 0,
   creatorCredits: [],
   eyeCatchImageUpdatedAt: "",
   eyeCatchImageVariants: [],

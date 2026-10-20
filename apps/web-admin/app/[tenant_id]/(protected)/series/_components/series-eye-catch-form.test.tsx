@@ -39,6 +39,7 @@ const EnglishConsole = ({ children }: { children: ReactNode }) => (
 const series: SeriesListItem = {
   ageRating: "all",
   availability: "all",
+  bundleDiscountPercent: 0,
   creatorCredits: [],
   eyeCatchImageUpdatedAt: "2026-01-01T00:00:00Z",
   eyeCatchImageVariants: [

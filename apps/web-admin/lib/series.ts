@@ -109,6 +109,8 @@ export interface SeriesItem {
   readingPeriodHours: number;
   /** The rental period a new episode's field starts at; 0 when none is set. */
   rentalPeriodHours: number;
+  /** Whole percent off a checkout of the rest of the series; 0 takes nothing off. */
+  bundleDiscountPercent: number;
   publishedAt: string;
   labelId: string;
   labelName: string;
@@ -263,6 +265,7 @@ type RawSeries = Pick<
   Series,
   | "ageRating"
   | "availability"
+  | "bundleDiscountPercent"
   | "creators"
   | "eyeCatchImageUpdatedAt"
   | "eyeCatchImageVariants"
@@ -402,6 +405,7 @@ const mapSeries = (
     availability:
       toSurfaceAvailabilityValue(series.availability) ||
       DEFAULT_SURFACE_AVAILABILITY,
+    bundleDiscountPercent: series.bundleDiscountPercent ?? 0,
     creatorCredits: (series.creators ?? []).flatMap((creator) => {
       const creatorId = creator.id.trim();
       // A credit written before roles existed states none. It is kept, so the
@@ -709,6 +713,8 @@ type SeriesListingInput = {
   readingPeriodHours: number;
   /** 0 sets none. */
   rentalPeriodHours: number;
+  /** Whole percent from 0 to 99; 0 takes nothing off. */
+  bundleDiscountPercent: number;
   status: SeriesStatusValue;
   scheduleWeekdays: number[];
   ageRating: SeriesAgeRatingValue;
@@ -758,6 +764,7 @@ export const createSeries = async (
       {
         ageRating: SERIES_AGE_RATING_ENUM[input.ageRating],
         availability: SURFACE_AVAILABILITY_ENUM[input.availability],
+        bundleDiscountPercent: input.bundleDiscountPercent,
         commentMode: SERIES_COMMENT_MODE_ENUM[input.commentMode],
         creatorCredits: input.creatorCredits,
         eyeCatchImageContentType: input.eyeCatchImageContentType,
@@ -865,6 +872,7 @@ export const updateSeries = async (
           input.availability === undefined
             ? undefined
             : SURFACE_AVAILABILITY_ENUM[input.availability],
+        bundleDiscountPercent: input.bundleDiscountPercent,
         clearEyeCatchImage: input.clearEyeCatchImage,
         commentMode:
           input.commentMode === undefined
