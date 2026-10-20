@@ -2,18 +2,25 @@
 --
 -- `admin.tenant-languages.spec.ts` switches a language off under Settings,
 -- checks that the page editor hides the translation written in it, and
--- switches the language back on. Every page of the tenant follows that
--- setting, so the tenant cannot be one another suite signs in to.
+-- switches the language back on. It also moves the default language and checks
+-- that the series list names the series in the new one. Every page of the
+-- tenant follows that setting, so the tenant cannot be one another suite signs
+-- in to.
 --
 -- The tenant offers Japanese and English, English being the default, and has
--- one page translated into both.
+-- one page and one series, each translated into both.
 --
 -- Applying it is also how the suite starts over: the tenant is deleted and
--- written again with the languages it started with.
+-- written again with the languages it started with. The catalog restricts the
+-- delete that would reach it from the tenant, so it goes first.
 -- Password hash matches the dev seed (`adminpass`). public_id values and ids
 -- are hard-coded in e2e/src/scenarios/tenant-languages.ts.
 --   tenant LngsTNNTAAA1 (langs.localhost / admin.langs.localhost)
 --   admin  LangADMNAAA1 (langs-admin@example.com)
+--   series LngsSERSAAA1
+
+DELETE FROM series
+WHERE tenant_id IN (SELECT id FROM tenants WHERE public_id = 'LngsTNNTAAA1');
 
 DELETE FROM tenants
 WHERE public_id = 'LngsTNNTAAA1';
@@ -61,6 +68,32 @@ VALUES
         '018f10c0-0001-7000-8000-000000000001'::uuid,
         'ja',
         'About us, in Japanese'
+    );
+
+INSERT INTO series (id, tenant_id, public_id)
+VALUES (
+    '018f10c0-0007-7000-8000-000000000001'::uuid,
+    '018f10c0-0001-7000-8000-000000000001'::uuid,
+    'LngsSERSAAA1'
+);
+
+INSERT INTO series_translations (id, series_id, tenant_id, locale, title, synopsis)
+VALUES
+    (
+        '018f10c0-0008-7000-8000-000000000001'::uuid,
+        '018f10c0-0007-7000-8000-000000000001'::uuid,
+        '018f10c0-0001-7000-8000-000000000001'::uuid,
+        'en',
+        'Harbor Lights',
+        ''
+    ),
+    (
+        '018f10c0-0008-7000-8000-000000000002'::uuid,
+        '018f10c0-0007-7000-8000-000000000001'::uuid,
+        '018f10c0-0001-7000-8000-000000000001'::uuid,
+        'ja',
+        'Harbor Lights, in Japanese',
+        ''
     );
 
 INSERT INTO users (

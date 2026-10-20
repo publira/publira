@@ -26,3 +26,13 @@ export const TENANT_LANGUAGES_PAGE = {
   id: "018f10c0-0002-7000-8000-000000000001",
   japaneseTitle: "About us, in Japanese",
 } as const;
+
+/**
+ * The tenant's one series, titled in both of the languages it offers. The
+ * console names it by the title in the default language.
+ */
+export const TENANT_LANGUAGES_SERIES = {
+  englishTitle: "Harbor Lights",
+  japaneseTitle: "Harbor Lights, in Japanese",
+  publicId: "LngsSERSAAA1",
+} as const;

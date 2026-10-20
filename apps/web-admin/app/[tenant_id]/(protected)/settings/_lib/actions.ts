@@ -8,14 +8,18 @@ import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
 import { z } from "zod";
 
+import { accessTicketsCacheTag } from "#lib/access-ticket";
 import { getActionLocale } from "#lib/action-messages";
 import { requestAdminEmailChange } from "#lib/admin-auth";
 import { tenantIdFormSchema } from "#lib/auth-input";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
+import { episodesCacheTag } from "#lib/episode";
 import { genresCacheTag } from "#lib/genre";
 import { getMessagesFor } from "#lib/messages";
 import { tenantSiteCacheTag } from "#lib/public-api";
+import { purchasesCacheTag } from "#lib/purchase";
+import { seriesListCacheTag } from "#lib/series";
 import {
   tenantSiteSettingsCacheTag,
   updateTenantSiteSettings,
@@ -376,9 +380,15 @@ export const updateTenantLocalesAction = async (
   // `getLocale()` read the languages through a private cache, so without this
   // the operator would keep seeing the previous values in the same session.
   updateTag(tenantSiteCacheTag(tenantId));
-  // The genre list names each genre in the default locale, so a new default
-  // renames it.
+  // The genre list names each genre in the default locale, and the catalog
+  // reads name each series and episode the same way, so a new default renames
+  // them. The dashboard, the campaign prices, and the free windows are filed
+  // under the episodes' tag.
   updateTag(genresCacheTag(tenantId));
+  updateTag(seriesListCacheTag(tenantId));
+  updateTag(episodesCacheTag(tenantId));
+  updateTag(accessTicketsCacheTag(tenantId));
+  updateTag(purchasesCacheTag(tenantId));
 
   return {
     message: t("admin.settings.locales.saved"),
