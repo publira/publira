@@ -2,7 +2,7 @@
 title: Genres
 description: The categories readers browse a tenant's catalog by, their order, and their images.
 published: 2026-10-07
-updated: 2026-10-19
+updated: 2026-10-20
 ---
 
 A genre is a category the tenant files its series under, such as fantasy or romance. A series can be in any number of genres, chosen on its form, and readers browse the catalog by them. The genres are the tenant's own: nothing is predefined, and there is one flat list of them.
@@ -23,7 +23,9 @@ A genre is a category the tenant files its series under, such as fantasy or roma
 
 A genre can have a name in each language the site offers, which a Tenant admin chooses under [**Settings**](../3-setup/1-settings.md#languages). **Genre name**, on **New genre** and on a genre's **Basic information** tab, has a field for each of those languages, labelled with the language's name in that language, the site's default language first.
 
-- The name in the default language is required. Readers in a language the genre has no name in see that one, and the genre's slug, the part of its address on the site, is made from it, so the address is the same in every language.
+- The name in the default language is required. Readers in a language the genre has no name in see that one.
+- The genre's slug, shown with its name, is made from the name in the default language. It is what keeps two genres from being named alike: names that differ only in case or spacing make the same slug, so the second of them is refused.
+- The genre's address on the site is its public ID, not its slug, so renaming the genre does not move it, and it is the same in every language.
 - The other names are optional. A field filled in adds the name in that language. On a genre's **Basic information** tab, emptying a field and choosing **Save** removes that name.
 - A language the site does not offer has no field. A name already saved in it is kept, and its field comes back when the language is offered again.
 
