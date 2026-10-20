@@ -183,21 +183,25 @@ A snapshot from a managed PostgreSQL is restored the way its provider describes,
 
 ## On the Docker Compose install
 
-The [Docker Compose](./3-docker-compose.md) install runs every step above with `docker compose`. Run each command from `infra/deploy/` in your checkout.
+The [Docker Compose](./3-docker-compose.md) install runs every step above with `docker compose`. The new release's Compose file goes in a directory of its own, beside the one you run the install from now; once step 1 has made it, run each command from there. The project name is fixed, so `docker compose` reaches the same containers and volumes from either directory.
 
-### 1. Check out the new release
+### 1. Download the new release
+
+From the directory that holds the one you run the install from, with `<current version>` and `<new version>` the two releases' versions, their tags without the `v`:
 
 ```bash
-git fetch --tags
-git diff <current tag> <new tag> -- .env.example
-git checkout <new tag>
+curl -fsSLO https://github.com/publira/publira/releases/download/v<new version>/publira-deploy-<new version>.tar.gz
+tar -xzf publira-deploy-<new version>.tar.gz
+diff publira-deploy-<current version>/.env.example publira-deploy-<new version>/.env.example
+cp -p publira-deploy-<current version>/.env publira-deploy-<new version>/.env
+cd publira-deploy-<new version>
 ```
 
-When the release notes say the release removes a service from the Compose file, stop that service with `docker compose stop <service>` before the checkout, while the file still names it. After the checkout no `docker compose` command reaches it, so it would keep running the release you ran, against the schema of the new one, until [step 5](#5-start-the-new-release) removes it.
+The diff shows every variable the new release added to the Compose file or stopped reading: add the new ones to `.env`. A required one left empty stops every `docker compose` command and names the variable. Then set `PUBLIRA_IMAGE_TAG` in `.env` to the new version, which the diff shows as well. `cp -p` keeps `.env` readable by you alone, and the copy left in the old directory still names the release you run, which is the way back if a migration fails.
 
-`.env` is not tracked, so the checkout leaves it as it is. The diff shows every variable the new release added to the Compose file or stopped reading: add the new ones to `.env`. A required one left empty stops every `docker compose` command and names the variable.
+When the release notes say the release removes a service from the Compose file, stop that service with `docker compose stop <service>` from the old directory, which still names it. The new Compose file does not, so it would keep running the release you ran, against the schema of the new one, until [step 5](#5-start-the-new-release) removes it.
 
-Then set `PUBLIRA_IMAGE_TAG` in `.env` to the new release's version, the tag without its `v`.
+An install run from a checkout fetches the new tag and checks it out in `infra/deploy/` instead, with `git diff <current tag> <new tag> -- .env.example` before the checkout in place of the `diff`. Its `.env` is not tracked, so it stays where it is, and the service a release removes is stopped before the checkout. To move such an install to the archive instead, take the steps above with its `infra/deploy/` in place of `publira-deploy-<current version>`.
 
 ### 2. Get the images
 
@@ -208,7 +212,7 @@ docker compose pull publiractl
 
 The first command pulls the images of every process the install runs, at the version you just set; the second pulls `publiractl`, which the first leaves out because it is never kept running. Nothing is built.
 
-If your install runs images you build yourself, build the new release's from the new checkout instead, with your changes carried onto it, and push them where `PUBLIRA_IMAGE_REGISTRY` points; images built on the host itself with `task docker:verify:full` need no push.
+If your install runs images you build yourself, build the new release's from a checkout of its tag instead, with your changes carried onto it, and push them where `PUBLIRA_IMAGE_REGISTRY` points; images built on the host itself with `task docker:verify:full` need no push.
 
 ### 3. Back up the database
 
@@ -239,13 +243,14 @@ If the release adds a role, pass its password the way you did at install, as `--
 
 ```bash
 docker compose up -d --remove-orphans
-docker compose restart proxy
 docker compose ps
 ```
 
-`up -d` recreates every container whose image or settings changed, and `--remove-orphans` removes the container of any service the new release's Compose file no longer has. The proxy needs the restart besides: it mounts the checkout's `Caddyfile` as a single file, and `git checkout` replaces that file with a new one, so a proxy left running keeps reading the routing of the release you ran. The certificates it obtained stay in the `caddy-data` volume across the restart.
+`up -d` recreates every container whose image or settings changed, the proxy among them, since it now mounts the `Caddyfile` of the new directory, and `--remove-orphans` removes the container of any service the new release's Compose file no longer has. The certificates the proxy obtained stay in the `caddy-data` volume.
 
-Then check the install as in [step 5](#5-check-the-install), running `db version` as `docker compose run --rm publiractl db version`.
+An install run from a checkout also runs `docker compose restart proxy` after `up -d`: the proxy mounts the `Caddyfile` as a single file, and `git checkout` replaces that file with a new one at the same path, so a proxy left running keeps reading the routing of the release you ran.
+
+Then check the install as in [step 5](#5-check-the-install), running `db version` as `docker compose run --rm publiractl db version`. Once it passes, the old directory is no longer needed. Its `.env` holds every secret of the install, so delete the directory, or the `.env` in it, rather than leave a second copy on the host.
 
 ### When a migration fails on Compose
 
@@ -261,10 +266,11 @@ To go back to the release you ran instead:
 docker compose stop server web-storefront web-admin
 docker compose exec postgres psql -U postgres -d postgres -c 'DROP DATABASE publira' -c 'CREATE DATABASE publira'
 docker compose exec -T postgres pg_restore -U postgres -d publira < publira-before-upgrade.dump
-git checkout <current tag>
+cd ../publira-deploy-<current version>
+docker compose up -d --remove-orphans
 ```
 
-Set `PUBLIRA_IMAGE_TAG` back to the release you ran, and start it with `docker compose up -d --remove-orphans` and `docker compose restart proxy`.
+The old directory's `.env` still names the release you ran, so `up -d` starts it again, the proxy on the old `Caddyfile`. An install run from a checkout runs `git checkout <current tag>` in place of the `cd`, sets `PUBLIRA_IMAGE_TAG` back to the release it ran, and runs `docker compose restart proxy` after `up -d`.
 
 ## Next steps
 

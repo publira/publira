@@ -363,6 +363,7 @@ jobs:
               - 'infra/docker/**'
               - '.dockerignore'
               - 'scripts/check-deploy-compose.sh'
+              - 'scripts/package-deploy.sh'
               - 'scripts/smoke-deploy-compose.sh'
               # The check runs the .env generator against .env.example.
               - 'server/cmd/publiractl/**'

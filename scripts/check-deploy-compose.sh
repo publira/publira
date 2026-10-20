@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # check-deploy-compose.sh — Fail when infra/deploy/compose.yaml does not render,
 # when its .env.example does not list exactly the variables it reads, when the
-# ACME contact no longer turns the proxy's TLS on and off, or when the .env
-# `publiractl env generate` writes from it leaves a secret empty.
+# ACME contact no longer turns the proxy's TLS on and off, when the .env
+# `publiractl env generate` writes from it leaves a secret empty, or when the
+# archive a release publishes it in lacks a file it names on the host.
 #
 # Rendering runs with every profile active and every empty value in
 # .env.example filled in, so a required variable the example leaves out fails
@@ -98,7 +99,47 @@ if ! COMPOSE_PROFILES=web-platform,email-renderer,publiractl \
   failed=1
 fi
 
+# The install as a release publishes it, extracted where no checkout is beside
+# it, and rendered from its own directory the way an operator runs it. Compose
+# renders a bind mount whose source is missing as readily as one that exists,
+# so every path the rendered file names on the host is looked for in that
+# directory.
+version="$(jq -r .version package.json)"
+mkdir "${work}/archive"
+archive="$(bash scripts/package-deploy.sh "${version}" "${work}/archive")"
+tar -C "${work}/archive" -xzf "${archive}"
+install_dir="${work}/archive/publira-deploy-${version}"
+if links="$(find "${work}/archive" -mindepth 1 ! -type f ! -type d)" && [ -n "${links}" ]; then
+  echo "$(basename "${archive}") holds entries that are not regular files:" >&2
+  echo "${links}" | sed "s|^${work}/archive/|  |" >&2
+  failed=1
+fi
+sed -E '/^COMPOSE_PROFILES=/! s/^([A-Z_][A-Z0-9_]*)=$/\1=placeholder/' "${install_dir}/.env.example" > "${install_dir}/.env"
+if ! host_paths="$(cd "${install_dir}" && docker compose --profile '*' config --format json | jq -r '
+  [.services[] | (.volumes // [])[] | select(.type == "bind") | .source],
+  [.services[] | (.env_file // [])[] | .path],
+  [.services[] | .build.context // empty],
+  [(.secrets // {}), (.configs // {}) | .[] | .file // empty]
+  | .[]')"; then
+  echo "${compose_file} does not render from the directory $(basename "${archive}") extracts to." >&2
+  failed=1
+fi
+while IFS= read -r host_path; do
+  [ -n "${host_path}" ] || continue
+  relative="$(realpath -m --relative-to="${install_dir}" "${host_path}")"
+  case "${host_path}" in
+    "${install_dir}"/*)
+      [ -e "${host_path}" ] && continue
+      echo "${compose_file} names ${relative} on the host, which $(basename "${archive}") does not hold; add it to scripts/package-deploy.sh." >&2
+      ;;
+    *)
+      echo "${compose_file} names ${relative} on the host, outside the directory $(basename "${archive}") extracts to; keep the file in infra/deploy/." >&2
+      ;;
+  esac
+  failed=1
+done <<< "${host_paths}"
+
 if [ "${failed}" -ne 0 ]; then
   exit 1
 fi
-echo "${compose_file} renders, ${env_example} lists every variable it reads, the ACME contact turns TLS on, and publiractl env generate fills in every secret."
+echo "${compose_file} renders, ${env_example} lists every variable it reads, the ACME contact turns TLS on, publiractl env generate fills in every secret, and $(basename "${archive}") holds every file it names."

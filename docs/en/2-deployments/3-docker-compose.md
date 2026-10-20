@@ -1,11 +1,11 @@
 ---
 title: Docker Compose
-description: Run a whole install on one host with the Compose file in the repository, from generating its .env to the first sign-in to the tenant console.
+description: Run a whole install on one host with the Compose file every release publishes, from downloading it to the first sign-in to the tenant console.
 published: 2026-10-06
 updated: 2026-10-20
 ---
 
-The repository ships a Compose file that runs a whole install on one host: the services Publira depends on, the processes of an install, and a reverse proxy in front of them, already wired together. It is the shortest way to a working install, and this page takes you from an empty host to the first sign-in to the tenant console.
+Every release publishes a Compose file that runs a whole install on one host: the services Publira depends on, the processes of an install, and a reverse proxy in front of them, already wired together. It is the shortest way to a working install, and this page takes you from an empty host to the first sign-in to the tenant console.
 
 The Compose file runs the same steps as [Installing](./2-installing.md), which explains why each step exists, what every secret protects, and what each database role can reach. This page covers what is particular to the Compose file: what it runs, what you set in it, and the commands that bring it up. The full list of variables it reads is in the [deployment reference](https://github.com/publira/publira/blob/main/infra/deploy/README.md#running-it-with-docker-compose).
 
@@ -31,25 +31,38 @@ The proxy publishes ports 80 and 443 on every interface of the host, and is the 
 
 The services are on two Docker networks. `edge` holds the proxy and what it forwards to: `server` and the web apps. `default` holds every service but the proxy. The proxy therefore reaches neither the database nor Valkey, and a flaw in it is not a way into either.
 
-The project name is fixed as `publira-deploy`, so the volumes keep their names across every command you run, and one host runs one install.
+The project name is fixed as `publira-deploy`, so the volumes keep their names across every command you run, from whichever directory you run it, and one host runs one install.
 
 ## Before you start
 
 You need:
 
 - **A host with Docker Engine and the Compose plugin**, `docker compose`, on `linux/amd64` or `linux/arm64`, the two platforms the images are published for. On any other, the first pull fails with `no matching manifest`, and the host runs images built for it instead, as [The images](#the-images) describes.
-- **A checkout of the repository at the release you install**, such as a clone checked out at that release's tag, such as `v0.1.0`. The Compose file is not self-contained: the proxy's `Caddyfile` beside it is a link into `infra/proxy/`, so keep the whole checkout rather than copying `infra/deploy/` out of it. Every command on this page runs from `infra/deploy/`.
+- **The release you install**, attached to its release on the [Releases](https://github.com/publira/publira/releases) page as `publira-deploy-<version>.tar.gz`, which [Download the Compose file](#download-the-compose-file) fetches. Nothing else from the repository is needed on the host.
 - **Access from the host to `ghcr.io`**, where every release publishes its images. `docker compose` pulls them the first time a command needs them, without signing in, so nothing is built on the host.
 - **An SMTP server**, which `publiractl setup` asks for: its host, port, encryption, and the address mail is sent from, and the user name and password to sign in with, unless it relays without credentials.
 - **DNS** for the tenant's domain and for its console host, `admin.<domain>` or the one you will give it with `--admin-domain`, both pointing at the host.
 - **Ports 80 and 443 open to the internet**, and nothing else on the host listening on either. The proxy answers on both, and the certificate authority checks each host name on one of them before it issues a certificate for it.
 
-## Write `.env`
+## Download the Compose file
 
-Every value the file needs comes from a `.env` file beside it. `publiractl env generate` writes it from `.env.example`, which lists every variable the file reads with a comment on each, and fills in every secret with a value of its own. Run it with the `publiractl` image of the release you install, with `<version>` the release's version as [The images](#the-images) describes:
+Download the archive of the release you install, with `<version>` its version: its tag without the `v`, such as `0.1.0` for `v0.1.0`. Then extract it and go into the directory it extracts to:
 
 ```bash
-cd infra/deploy
+curl -fsSLO https://github.com/publira/publira/releases/download/v<version>/publira-deploy-<version>.tar.gz
+tar -xzf publira-deploy-<version>.tar.gz
+cd publira-deploy-<version>
+```
+
+It holds `compose.yaml`, `.env.example`, the proxy's `Caddyfile`, and a `README.md` with the full list of variables. Every command on this page runs from this directory.
+
+If you change the code, run the install from a checkout of the repository instead, at the release's tag, from `infra/deploy/`. It holds the same files, except that the `Caddyfile` there is a link into `infra/proxy/`, so keep the whole checkout rather than copying `infra/deploy/` out of it.
+
+## Write `.env`
+
+Every value the file needs comes from a `.env` file beside it. `publiractl env generate` writes it from `.env.example`, which lists every variable the file reads with a comment on each, and fills in every secret with a value of its own. Run it with the `publiractl` image of the release you install, with `<version>` the release's version as in [Download the Compose file](#download-the-compose-file):
+
+```bash
 docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/work -w /work \
   ghcr.io/publira/publiractl:<version> env generate
 ```
@@ -58,17 +71,17 @@ It prints `Wrote .env with 17 secrets generated.` and nothing else. The image ru
 
 `.env` holds every secret of the install, the encryption keys among them, so keep a copy of it somewhere other than the host.
 
-Four values are left for you to set in it: `PUBLIRA_IMAGE_TAG`, the two host lists, `PUBLIRA_EDGE_SITE_HOSTS` and `PUBLIRA_EDGE_ADMIN_HOSTS`, and `PUBLIRA_EDGE_ACME_EMAIL`, which turns HTTPS on.
+Three values are left for you to set in it: the two host lists, `PUBLIRA_EDGE_SITE_HOSTS` and `PUBLIRA_EDGE_ADMIN_HOSTS`, and `PUBLIRA_EDGE_ACME_EMAIL`, which turns HTTPS on. In a checkout, `PUBLIRA_IMAGE_TAG` is a fourth.
 
 ### The images
 
-`PUBLIRA_IMAGE_REGISTRY` and `PUBLIRA_IMAGE_TAG` name the images, as `<registry>/<name>:<tag>`. The example's registry, `ghcr.io/publira`, is where every release publishes them; keep it. Set the tag to the version of the release your checkout is at, which is its Git tag without the `v`, such as `0.1.0` for a checkout at `v0.1.0`:
+`PUBLIRA_IMAGE_REGISTRY` and `PUBLIRA_IMAGE_TAG` name the images, as `<registry>/<name>:<tag>`. The example's registry, `ghcr.io/publira`, is where every release publishes them; keep it. The tag is already the version of the release you downloaded, such as `0.1.0` in the archive of `v0.1.0`:
 
 ```text
 PUBLIRA_IMAGE_TAG=0.1.0
 ```
 
-Every image runs that one tag, and it has to match the checkout: `publiractl` carries the migrations of its release, the processes expect the schema of theirs, and the proxy runs the routing of the checkout.
+Keep it too. Every image runs that one tag, and it has to match the files beside `.env`: `publiractl` carries the migrations of its release, the processes expect the schema of theirs, and the proxy runs the routing of the `Caddyfile` beside it. In a checkout, `.env.example` leaves the tag empty: set it to the version of the release the checkout is at.
 
 If you change the code, or the host is on neither `linux/amd64` nor `linux/arm64`, build the images yourself from the [image build instructions](https://github.com/publira/publira/blob/main/infra/docker/README.md) instead, and set both variables to where they are: the address of the registry you push them to, such as `registry.example.com/publira`, and your own tag, or `publira` and `local` for the images `task docker:verify:full` builds on the host itself.
 
@@ -115,7 +128,7 @@ Leave them as they are. The database passwords go into connection URLs unescaped
 
 ### What stops `docker compose`
 
-The three values you set are required, and so is every secret but `PUBLIRA_WEB_PLATFORM_AUTH_SECRET`. While one of them is empty, every `docker compose` command, `run` included, stops before it starts anything and names each variable missing, once for every service that reads it:
+`PUBLIRA_IMAGE_TAG` and the two host lists are required, and so is every secret but `PUBLIRA_WEB_PLATFORM_AUTH_SECRET`. While one of them is empty, every `docker compose` command, `run` included, stops before it starts anything and names each variable missing, once for every service that reads it:
 
 ```text
 error while interpolating services.email-renderer.image: required variable PUBLIRA_IMAGE_TAG is missing a value
@@ -147,7 +160,7 @@ You can choose these now or later. To turn one on in an install that is already 
 
 ## Bring the install up
 
-Run each step from `infra/deploy/`, in this order.
+Run each step from the directory you extracted, in this order.
 
 ### 1. Set the install up
 
@@ -218,6 +231,6 @@ When the install outgrows one host, the same processes run against a managed Pos
 
 When you add a tenant, add its domain and its console host to the host lists in `.env`, and run `docker compose up -d proxy`: the proxy routes the two names and, with `PUBLIRA_EDGE_ACME_EMAIL` set, obtains their certificates. [Adding a tenant](./4-edge.md#adding-a-tenant) lists the order, DNS first.
 
-On every later release, [Upgrading](./7-upgrading.md#on-the-docker-compose-install) takes the install to it: checking out the release, the backup, the migrations, and restarting on the new images.
+On every later release, [Upgrading](./7-upgrading.md#on-the-docker-compose-install) takes the install to it: downloading the release, the backup, the migrations, and restarting on the new images.
 
 The full list of variables the Compose file reads, and the checks the repository runs against it, are in the [deployment reference](https://github.com/publira/publira/blob/main/infra/deploy/README.md#running-it-with-docker-compose).
