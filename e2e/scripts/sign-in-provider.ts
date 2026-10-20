@@ -5,8 +5,9 @@
  * publira server reads its key set from `GET /keys` through
  * `PUBLIRA_SIGN_IN_APPLE_KEYS_URL` and `PUBLIRA_SIGN_IN_GOOGLE_KEYS_URL`, and a
  * spec signs the ID token a provider would have issued with `POST /id-tokens`.
- * The key pair is written to `KEY_FILE` in the run directory and read back on
- * a restart, since the server keeps the key set it fetched.
+ * The key pair is written to the file
+ * `PUBLIRA_E2E_SIGN_IN_PROVIDER_KEY_FILE` names in the run directory and read
+ * back on a restart, since the server keeps the key set it fetched.
  *
  * `GET /disposable-email-domains` answers {@link DISPOSABLE_EMAIL_DOMAINS} one
  * per line, the format of the list the platform policy names, and
@@ -37,14 +38,18 @@ const DISPOSABLE_EMAIL_DOMAINS = ["throwaway.example"];
 /** How long a token signed without an `exp` of its own stays valid. */
 const TOKEN_LIFETIME_SECONDS = 600;
 
-const port = Number(process.env.PORT);
+const port = Number(process.env.PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT);
 if (!Number.isInteger(port) || port <= 0) {
-  throw new Error("PORT must name the port to listen on");
+  throw new Error(
+    "PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT must name the port to listen on"
+  );
 }
 
-const keyFile = process.env.KEY_FILE;
+const keyFile = process.env.PUBLIRA_E2E_SIGN_IN_PROVIDER_KEY_FILE;
 if (!keyFile) {
-  throw new Error("KEY_FILE must name where the key pair is kept");
+  throw new Error(
+    "PUBLIRA_E2E_SIGN_IN_PROVIDER_KEY_FILE must name where the key pair is kept"
+  );
 }
 
 if (!existsSync(keyFile)) {
