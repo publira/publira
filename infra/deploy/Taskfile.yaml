@@ -5,11 +5,11 @@ version: "3"
 
 tasks:
   check:
-    desc: Render compose.yaml with every profile and check that .env.example lists exactly the variables it reads
+    desc: Render compose.yaml with every profile, check that .env.example lists exactly the variables it reads, and check that the release archive holds every file it names
     cmds:
       - bash scripts/check-deploy-compose.sh
 
   smoke:
-    desc: Bring compose.yaml up from the images task docker:verify:full built, set it up, and probe the edge; always tears down
+    desc: Bring compose.yaml up from the release archive and the images task docker:verify:full built, set it up, and probe the edge; always tears down
     cmds:
       - bash scripts/smoke-deploy-compose.sh

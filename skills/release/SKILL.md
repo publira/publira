@@ -1,6 +1,6 @@
 ---
 name: release
-description: Cut a Publira release, from choosing its version to checking the published Release. Use when asked to cut, tag, ship, or publish a release, to choose or bump the next version, to open the `chore(release): vX.Y.Z` pull request, to push a `v` tag, or to recover a release whose `Release notes` run was refused or failed. Decides between a minor and a patch release from the pull requests merged since the previous release tag and the rules in docs/en/2-deployments/9-releases.md, checks the preconditions, makes the release commit with scripts/release-version.ts, tags the commit that merges it, watches Check version, Images, and Publish release, and verifies the tag, the prerelease flag, the Upgrade notes, and every image pulled signed out.
+description: Cut a Publira release, from choosing its version to checking the published Release. Use when asked to cut, tag, ship, or publish a release, to choose or bump the next version, to open the `chore(release): vX.Y.Z` pull request, to push a `v` tag, or to recover a release whose `Release notes` run was refused or failed. Decides between a minor and a patch release from the pull requests merged since the previous release tag and the rules in docs/en/2-deployments/9-releases.md, checks the preconditions, makes the release commit with scripts/release-version.ts, tags the commit that merges it, watches Check version, Images, and Publish release, and verifies the tag, the prerelease flag, the Upgrade notes, every image pulled signed out, and the Compose install archive attached to the Release.
 ---
 
 # Cut a Release
@@ -161,5 +161,16 @@ gh release view vX.Y.Z --json tagName,isPrerelease,isDraft,url,body
   ```
 
   Each line lists `linux/amd64, linux/arm64`; a failed request is an image an operator cannot pull.
+
+- The Compose install is attached and downloads signed out, the way [Docker Compose](../../docs/en/2-deployments/3-docker-compose.md#download-the-compose-file) has an operator fetch it:
+
+  ```bash
+  version=X.Y.Z
+  curl -fsSL "https://github.com/publira/publira/releases/download/v$version/publira-deploy-$version.tar.gz" -o "/tmp/publira-deploy-$version.tar.gz"
+  tar -tvzf "/tmp/publira-deploy-$version.tar.gz"
+  tar -xzOf "/tmp/publira-deploy-$version.tar.gz" "publira-deploy-$version/.env.example" | grep '^PUBLIRA_IMAGE_TAG='
+  ```
+
+  The listing is one directory, `publira-deploy-X.Y.Z/`, holding `compose.yaml`, `.env.example`, `Caddyfile` as a regular file (`-rw`, not `lrwx`), and `README.md`, and the last line is `PUBLIRA_IMAGE_TAG=X.Y.Z`. A failed download is an archive missing from the Release: re-run `Publish release`, which attaches it.
 
 Report the Release URL, the version and why it was chosen, the release pull request, and any job that had to be re-run and why.

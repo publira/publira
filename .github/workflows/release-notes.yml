@@ -277,8 +277,20 @@ jobs:
           fi
           cat "${NOTES_PATH}"
 
+      # The Compose install, attached to the Release so an operator runs it
+      # without a checkout.
+      - name: Package the Compose install
+        id: archive
+        env:
+          ASSETS_PATH: ${{ runner.temp }}/assets
+          TAG: ${{ github.ref_name }}
+        run: |
+          mkdir -p "${ASSETS_PATH}"
+          echo "path=$(bash scripts/package-deploy.sh "${TAG#v}" "${ASSETS_PATH}")" >> "${GITHUB_OUTPUT}"
+
       - name: Publish the release
         env:
+          ARCHIVE_PATH: ${{ steps.archive.outputs.path }}
           GH_REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
           NOTES_PATH: ${{ runner.temp }}/notes.md
@@ -288,9 +300,12 @@ jobs:
           if [[ "${TAG}" == *-* ]]; then
             flags+=(--prerelease)
           fi
-          # A re-run replaces the notes of the release the first run published.
+          # A re-run replaces the notes and the archive of the release the
+          # first run published. `gh release edit` takes no asset, so the
+          # archive goes up on its own.
           if gh release view "${TAG}" > /dev/null 2>&1; then
             gh release edit "${TAG}" "${flags[@]}"
+            gh release upload "${TAG}" "${ARCHIVE_PATH}" --clobber
           else
-            gh release create "${TAG}" --verify-tag "${flags[@]}"
+            gh release create "${TAG}" --verify-tag "${flags[@]}" "${ARCHIVE_PATH}"
           fi
