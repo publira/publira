@@ -36,7 +36,10 @@ export const Field = ({ className, ...props }: FieldProps) => {
 
   return (
     <FieldPopupTriggerContext value={popupTrigger}>
-      <BaseField.Root {...props} className={cn("grid gap-2", className)} />
+      <BaseField.Root
+        {...props}
+        className={cn("grid content-start gap-2", className)}
+      />
     </FieldPopupTriggerContext>
   );
 };

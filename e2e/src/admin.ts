@@ -686,3 +686,18 @@ export const createGenreViaUi = async (
   await page.getByRole("button", { name: "Create genre" }).click();
   await expect(genreNameField(page, name)).toBeVisible({ timeout: 15_000 });
 };
+
+/**
+ * Asserts that the Starts and Ends inputs of the period form or dialog `scope`
+ * holds sit on one line. Only Ends carries the time zone hint, so a field that
+ * spread its row's height over its own rows would push Starts below it.
+ */
+export const expectPeriodInputsAligned = async (
+  scope: Locator | Page
+): Promise<void> => {
+  const [startsBox, endsBox] = await Promise.all([
+    scope.getByLabel("Starts", { exact: true }).boundingBox(),
+    scope.getByLabel("Ends", { exact: true }).boundingBox(),
+  ]);
+  expect(startsBox?.y).toBe(endsBox?.y);
+};
