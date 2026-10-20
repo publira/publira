@@ -238,16 +238,16 @@ export interface EpisodeCampaign {
 
 /**
  * The server sends a campaign as two fields, both 0 and empty when none is
- * open; either one missing is no campaign the page could quote.
+ * open; either one missing is no campaign the page could quote. An
+ * `EpisodeNeighbor` carries the same two fields, so it is read here as well.
  */
 const toEpisodeCampaign = ({
   campaignEndsAt,
   campaignPrice,
-}: {
-  campaignEndsAt?: string;
-  campaignPrice?: number;
-}): EpisodeCampaign | undefined =>
-  campaignPrice && campaignPrice > 0 && campaignEndsAt
+}: Pick<Episode, "campaignEndsAt" | "campaignPrice">):
+  | EpisodeCampaign
+  | undefined =>
+  campaignPrice > 0 && campaignEndsAt
     ? { endsAt: campaignEndsAt, price: campaignPrice }
     : undefined;
 
