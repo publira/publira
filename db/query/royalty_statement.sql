@@ -30,9 +30,10 @@ SELECT
 -- the month, with the month's sales of that episode. It is what a close
 -- writes and what a preview shows, so the two cannot disagree.
 --
--- A sale of a volume is a sale of each episode in it, at the part of its
--- price purchase_episode_parts says that episode accounts for, and with the
--- part of its refund episode_part_of_purchase_amount gives that episode.
+-- A sale of a volume or of the rest of a series is a sale of each episode in
+-- it, at the part of its price purchase_episode_parts says that episode
+-- accounts for, and with the part of its refund
+-- episode_part_of_purchase_amount gives that episode.
 --
 -- The month runs between the bounds GetRoyaltyMonthBounds answers for it. A
 -- fully refunded sale is not a sale, and neither is one whose dispute was
@@ -116,9 +117,9 @@ WHERE p.tenant_id = sqlc.arg('tenant_id')
 -- line's net after them times its share, floored as the line was, less the
 -- same over its net before them, which is the line's own net and every
 -- adjustment it has had since. A statement lists these after the month's own
--- lines, oldest adjusted month first. A refund of a volume is carried to the
--- line of each episode in it, by the part royalty_uncarried_episode_refunds
--- gives that episode.
+-- lines, oldest adjusted month first. A refund of a volume or of the rest of
+-- a series is carried to the line of each episode in it, by the part
+-- royalty_uncarried_episode_refunds gives that episode.
 WITH carried AS (
     SELECT
         u.tenant_id,
