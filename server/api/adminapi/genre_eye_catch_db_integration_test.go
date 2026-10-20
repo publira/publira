@@ -269,6 +269,85 @@ func TestDBUpdateGenreClearsTheEyeCatchAndKeepsItOtherwise(t *testing.T) {
 	}
 }
 
+// A save of the eye-catch alone sends no name, and leaves every name the genre
+// has untouched: one named only in a locale other than the default gains no
+// default-locale name, and one that has a default-locale name keeps it as it
+// was written.
+func TestDBUpdateGenreEyeCatchLeavesTheNamesAsTheyAre(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := env.genreClient()
+	ctx := testutil.WithBearer(context.Background(), tenant.token())
+
+	jaOnly := createGenreWithEyeCatch(t, client, tenant, "Kaiki")
+	named := createGenreWithEyeCatch(t, client, tenant, "Gensou")
+	if _, err := client.UpdateGenre(ctx, &publiraadminv1.UpdateGenreRequest{
+		Tenant:  tenant.tenantContext(),
+		GenreId: named.Id,
+		Locale:  "en",
+		Name:    "Fantasy",
+	}); err != nil {
+		t.Fatalf("UpdateGenre en: %v", err)
+	}
+	if _, err := env.PG.DB.ExecContext(context.Background(), `UPDATE tenants SET default_locale = 'en' WHERE id = $1`, tenant.Tenant.ID); err != nil {
+		t.Fatalf("switch the default locale: %v", err)
+	}
+
+	// Locale, name, and when it was last written, so a write of the same name
+	// counts as a change too.
+	names := func(genre *publirattypesv1.Genre) []string {
+		written := make([]string, 0, len(genre.GetTranslations()))
+		for _, translation := range genre.GetTranslations() {
+			written = append(written, translation.GetLocale()+":"+translation.GetName()+"@"+translation.GetUpdatedAt())
+		}
+		return written
+	}
+	before := make(map[string][]string)
+	slugs := make(map[string]string)
+	for _, genre := range listGenres(t, client, tenant) {
+		before[genre.GetId()] = names(genre)
+		slugs[genre.GetId()] = genre.GetSlug()
+	}
+
+	saves := []struct {
+		label string
+		req   func(genreID string) *publiraadminv1.UpdateGenreRequest
+	}{
+		{"replace", func(genreID string) *publiraadminv1.UpdateGenreRequest {
+			return &publiraadminv1.UpdateGenreRequest{
+				Tenant:                   tenant.tenantContext(),
+				GenreId:                  genreID,
+				EyeCatchImageData:        aspectJPEG(t, 2400, 3200),
+				EyeCatchImageContentType: "image/jpeg",
+			}
+		}},
+		{"clear", func(genreID string) *publiraadminv1.UpdateGenreRequest {
+			return &publiraadminv1.UpdateGenreRequest{
+				Tenant:             tenant.tenantContext(),
+				GenreId:            genreID,
+				ClearEyeCatchImage: true,
+			}
+		}},
+	}
+	for _, genre := range []*publirattypesv1.Genre{jaOnly, named} {
+		for _, save := range saves {
+			saved, err := client.UpdateGenre(ctx, save.req(genre.GetId()))
+			if err != nil {
+				t.Fatalf("UpdateGenre %s of %s: %v", save.label, genre.GetName(), err)
+			}
+			if got := names(saved.Genre); !slices.Equal(got, before[genre.GetId()]) {
+				t.Fatalf("names after the %s of %s = %v, want %v", save.label, genre.GetName(), got, before[genre.GetId()])
+			}
+			if saved.Genre.GetSlug() != slugs[genre.GetId()] {
+				t.Fatalf("slug after the %s of %s = %q, want %q", save.label, genre.GetName(), saved.Genre.GetSlug(), slugs[genre.GetId()])
+			}
+		}
+	}
+	if count := env.countRows(t, "SELECT count(*) FROM genre_translations WHERE tenant_id = $1", tenant.Tenant.ID); count != 3 {
+		t.Fatalf("genre names stored = %d, want the three written before the saves", count)
+	}
+}
+
 func TestDBReorderGenresKeepsTheEyeCatchInTheAnswer(t *testing.T) {
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")

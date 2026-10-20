@@ -161,7 +161,9 @@ export type UpdateGenreRequest = Message<"publira.admin.v1.UpdateGenreRequest"> 
    * shown re-derives the slug from it, and is refused with already_exists
    * when another genre holds that slug; any other save keeps the slug. The
    * public_id does not move, so whatever addresses this genre keeps
-   * addressing it.
+   * addressing it. Empty, alongside eye_catch_image_data or
+   * clear_eye_catch_image, leaves every name the genre has as it is; empty
+   * otherwise is invalid_argument.
    *
    * @generated from field: string name = 3;
    */

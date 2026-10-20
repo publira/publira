@@ -110,9 +110,9 @@ describe("GenreEyeCatchForm", () => {
     });
   });
 
-  // `UpdateGenre` takes the name beside the image, so the form sends back the
-  // one it read rather than leaving the Action to guess it.
-  it("posts the genre it edits, its name, and the delete flag", async () => {
+  // No name goes with the image: one posted back would be written into the
+  // default language whichever language it was read in.
+  it("posts the genre it edits and the delete flag, without a name", async () => {
     render(<GenreEyeCatchForm genre={genre} tenantId="TENANT001" />, {
       wrapper: EnglishConsole,
     });
@@ -125,7 +125,7 @@ describe("GenreEyeCatchForm", () => {
     const formData = await submitted.current.promise;
     expect(formData.get("tenant_id")).toBe("TENANT001");
     expect(formData.get("genre_id")).toBe("genre-1");
-    expect(formData.get("name")).toBe("Fantasy");
+    expect(formData.has("name")).toBe(false);
     expect(formData.get("clear_eye_catch_image")).toBe("1");
     expect(formData.get("current_eye_catch_image_updated_at")).toBe(
       "2026-09-26T00:00:00Z"

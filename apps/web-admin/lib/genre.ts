@@ -339,7 +339,11 @@ export const updateGenre = async (
   input: {
     tenantId: string;
     id: string;
-    name: string;
+    /**
+     * Absent, every name the genre has stays as it is, which only a save that
+     * changes the eye-catch may ask for.
+     */
+    name?: string;
     /** The language the name is in; absent, the tenant's default language. */
     translationLocale?: Locale;
     clearEyeCatchImage?: boolean;
@@ -364,7 +368,7 @@ export const updateGenre = async (
         eyeCatchImageData: input.eyeCatchImageData,
         genreId: input.id,
         locale: input.translationLocale ?? "",
-        name: input.name,
+        name: input.name ?? "",
         tenant: { tenantId: input.tenantId },
       },
       withSessionHeaders(sessionId)

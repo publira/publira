@@ -564,9 +564,15 @@ func (s *adminServer) UpdateGenre(
 	if err != nil {
 		return nil, err
 	}
-	normalized, err := normalizeCatalogName(req.Name, "name")
-	if err != nil {
-		return nil, err
+	// A save of the eye-catch alone sends no name and leaves every name the
+	// genre has as it is, whichever locales they are in.
+	keepNames := (req.ClearEyeCatchImage || len(req.EyeCatchImageData) > 0) && strings.TrimSpace(req.Name) == ""
+	var normalized normalizedCatalogName
+	if !keepNames {
+		normalized, err = normalizeCatalogName(req.Name, "name")
+		if err != nil {
+			return nil, err
+		}
 	}
 	code, err := offeredLocale(req.Locale, tenant)
 	if err != nil {
@@ -613,25 +619,27 @@ func (s *adminServer) UpdateGenre(
 			return nil, err
 		}
 	}
-	shownBefore, err := s.genreDefaultLocaleName(txCtx, tenant.ID, current.ID)
-	if err != nil {
-		return nil, err
-	}
-	if err := s.upsertGenreTranslation(txCtx, tenant.ID, current.ID, code, normalized.name); err != nil {
-		return nil, err
-	}
-	shownAfter, err := s.genreDefaultLocaleName(txCtx, tenant.ID, current.ID)
-	if err != nil {
-		return nil, err
-	}
-	// Only a save that renames the genre for a default-locale reader moves the
-	// slug. Re-deriving it on every save would refuse an unchanged one whenever
-	// a change of default locale has left another genre holding the slug its
-	// name now derives.
 	slug := current.Slug
-	if shownAfter != shownBefore {
-		if derived, err := catalogslug.FromName(shownAfter); err == nil {
-			slug = derived
+	if !keepNames {
+		shownBefore, err := s.genreDefaultLocaleName(txCtx, tenant.ID, current.ID)
+		if err != nil {
+			return nil, err
+		}
+		if err := s.upsertGenreTranslation(txCtx, tenant.ID, current.ID, code, normalized.name); err != nil {
+			return nil, err
+		}
+		shownAfter, err := s.genreDefaultLocaleName(txCtx, tenant.ID, current.ID)
+		if err != nil {
+			return nil, err
+		}
+		// Only a save that renames the genre for a default-locale reader moves
+		// the slug. Re-deriving it on every save would refuse an unchanged one
+		// whenever a change of default locale has left another genre holding
+		// the slug its name now derives.
+		if shownAfter != shownBefore {
+			if derived, err := catalogslug.FromName(shownAfter); err == nil {
+				slug = derived
+			}
 		}
 	}
 	if err := s.queriesFor(txCtx).UpdateGenre(txCtx, dbmodels.UpdateGenreParams{

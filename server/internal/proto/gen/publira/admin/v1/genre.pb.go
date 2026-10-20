@@ -284,7 +284,9 @@ type UpdateGenreRequest struct {
 	// shown re-derives the slug from it, and is refused with already_exists
 	// when another genre holds that slug; any other save keeps the slug. The
 	// public_id does not move, so whatever addresses this genre keeps
-	// addressing it.
+	// addressing it. Empty, alongside eye_catch_image_data or
+	// clear_eye_catch_image, leaves every name the genre has as it is; empty
+	// otherwise is invalid_argument.
 	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	// Replaces the whole eye-catch. Empty keeps the one the genre has.
 	EyeCatchImageData        []byte `protobuf:"bytes,4,opt,name=eye_catch_image_data,json=eyeCatchImageData,proto3" json:"eye_catch_image_data,omitempty"`

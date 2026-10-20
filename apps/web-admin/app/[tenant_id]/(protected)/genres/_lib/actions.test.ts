@@ -65,7 +65,6 @@ const eyeCatchFormData = (fields: Record<string, string | File> = {}) => {
   const formData = new FormData();
   formData.set("tenant_id", "TENANT001");
   formData.set("genre_id", "018f0e6a-6000-7000-8000-000000000001");
-  formData.set("name", "Fantasy");
   formData.set("clear_eye_catch_image", "0");
   formData.set("current_eye_catch_image_updated_at", "");
   for (const [name, value] of Object.entries(fields)) {
@@ -267,7 +266,7 @@ describe("renameGenreAction", () => {
 });
 
 describe("updateGenreEyeCatchAction", () => {
-  it("sends the picked image with the name the genre keeps", async () => {
+  it("sends the picked image without a name, so every name stays as it is", async () => {
     mockUpdateGenre.mockResolvedValueOnce({ genre: savedGenre(), ok: true });
 
     const { updateGenreEyeCatchAction } = await import("./actions");
@@ -282,11 +281,19 @@ describe("updateGenreEyeCatchAction", () => {
         eyeCatchImageContentType: "image/png",
         eyeCatchImageData: new Uint8Array([1, 2, 3]),
         id: "018f0e6a-6000-7000-8000-000000000001",
-        name: "Fantasy",
         tenantId: "TENANT001",
       },
       "en"
     );
+    expect(result).toEqual({ message: "Cover image updated.", ok: true });
+  });
+
+  it("calls no API when neither an image nor the removal was sent", async () => {
+    const { updateGenreEyeCatchAction } = await import("./actions");
+    const result = await updateGenreEyeCatchAction(null, eyeCatchFormData());
+
+    expect(mockUpdateGenre).not.toHaveBeenCalled();
+    expect(mockUpdateTag).not.toHaveBeenCalled();
     expect(result).toEqual({ message: "Cover image updated.", ok: true });
   });
 
