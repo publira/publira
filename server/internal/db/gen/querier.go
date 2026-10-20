@@ -2684,6 +2684,14 @@ type Querier interface {
 	// Reads the row for update, so the revision a save compares against cannot
 	// change between the comparison and the write.
 	LockPlatformStorageConfig(ctx context.Context) (PlatformStorageConfig, error)
+	// Serialises, for the rest of the transaction, every change to an operator's
+	// authenticator and to the recovery codes that stand in for it, as
+	// LockUserMfaFactors does for tenant staff: a regeneration that checked the
+	// authenticator is still there would otherwise hand out codes a concurrent
+	// removal has just left with nothing to stand in for. The authenticator has no
+	// row to lock before it is enrolled, so the lock is taken on the operator's
+	// identity instead.
+	LockPlatformUserMfaFactors(ctx context.Context, platformUserID uuid.UUID) error
 	// Serializes the password reset requests for one operator for the rest of the
 	// transaction, so two of them cannot each leave a live link behind.
 	LockPlatformUserPasswordReset(ctx context.Context, platformUserID uuid.UUID) error
