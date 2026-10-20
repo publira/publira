@@ -4659,8 +4659,10 @@ type CampaignBanner struct {
 	// A path on the tenant's own site ("/series/…"), which the client resolves
 	// against the storefront it is showing, or an absolute http(s) URL.
 	LinkUrl string `protobuf:"bytes,2,opt,name=link_url,json=linkUrl,proto3" json:"link_url,omitempty"`
-	// The image, stored the way an eye-catch is: every ratio at several widths,
-	// so a client picks the ratio its band is drawn in.
+	// The image, stored the way an eye-catch is: each ratio at several widths.
+	// The landscape ratio, the one the band is drawn in, is always among them;
+	// another ratio is among them only once the console has uploaded an image
+	// for it.
 	ImageUpdatedAt string                      `protobuf:"bytes,3,opt,name=image_updated_at,json=imageUpdatedAt,proto3" json:"image_updated_at,omitempty"`
 	ImageVariants  []*v1.SeriesEyeCatchVariant `protobuf:"bytes,4,rep,name=image_variants,json=imageVariants,proto3" json:"image_variants,omitempty"`
 	// The words drawn into the image, for the name of the banner's link. Empty

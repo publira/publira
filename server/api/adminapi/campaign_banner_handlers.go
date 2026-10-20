@@ -48,6 +48,11 @@ const (
 	// campaignBannerImagePath is where a banner's objects are filed and the
 	// image route it is served from.
 	campaignBannerImagePath = "campaign-banners"
+
+	// campaignBannerVariantType is the one ratio the site and the app draw a
+	// banner in, so a banner's whole image is stored as that cut alone and
+	// held to its minimum rather than to the larger one of every other ratio.
+	campaignBannerVariantType = "landscape"
 )
 
 var errCampaignBannerLimit = errors.New("the tenant holds as many campaign banners as it may")
@@ -138,8 +143,8 @@ func requireFutureCampaignBannerEnd(window campaignBannerWindow, now time.Time) 
 	return nil
 }
 
-// campaignBannerImageVariants cuts an uploaded banner image into every ratio
-// before the caller opens its transaction, so a refused image costs no
+// campaignBannerImageVariants cuts an uploaded banner image into its landscape
+// cut before the caller opens its transaction, so a refused image costs no
 // database work and the cut does not run while the row is held. Nil means no
 // upload.
 func (s *adminServer) campaignBannerImageVariants(data []byte, contentType string) ([]imageproc.Variant, error) {
@@ -150,7 +155,7 @@ func (s *adminServer) campaignBannerImageVariants(data []byte, contentType strin
 	if s.storage == nil {
 		return nil, connect.NewError(connect.CodeInternal, "storage provider is not configured")
 	}
-	variants, err := imageproc.BuildEyeCatchVariants(image.Data, image.ContentType)
+	variants, err := imageproc.BuildEyeCatchAspectVariants(image.Data, image.ContentType, campaignBannerVariantType, nil)
 	if err != nil {
 		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "image_data")
 	}
@@ -158,7 +163,7 @@ func (s *adminServer) campaignBannerImageVariants(data []byte, contentType strin
 }
 
 // createCampaignBannerImage stores a whole banner image, one object and one
-// row per ratio and width, and answers the image row the banner is then
+// row per width of its cut, and answers the image row the banner is then
 // pointed at.
 func (s *adminServer) createCampaignBannerImage(ctx context.Context, tenant dbmodels.Tenant, bannerID uuid.UUID, bannerPublicID string, variants []imageproc.Variant) (uuid.UUID, error) {
 	imageID, err := uuid.NewV7()

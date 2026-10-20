@@ -544,7 +544,7 @@
       "image_updated": "Banner image updated.",
       "image_variants_missing": "The upload was accepted, but generated images could not be confirmed. Please try again.",
       "image_upload_not_reflected": "The upload has not been applied. Select the image again and try again.",
-      "image_invalid": "Check the image. Choose a JPEG, PNG, or WebP image no larger than 10MB and at least 2400x3200px, then try again.",
+      "image_invalid": "Check the image. Choose a JPEG, PNG, or WebP image no larger than 10MB and at least 1600x900px, then try again.",
       "limit_reached": "This site already holds as many campaign banners as it may. Delete one that has ended, then try again.",
       "list_failed": "Could not load the campaign banners. Please try again later.",
       "save_failed": "Could not save the campaign banner. Please try again later.",
@@ -553,7 +553,7 @@
       "reorder_conflict": "The banner order changed somewhere else. Reload the page and try again.",
       "form": {
         "image": "Banner image",
-        "image_description": "Select a JPEG, PNG, or WebP image no larger than 10MB and at least 2400x3200px. It is cut into every ratio, and each ratio can be replaced afterwards.",
+        "image_description": "Select a JPEG, PNG, or WebP image no larger than 10MB and at least 1600x900px. It becomes the Landscape (16:9) image the site and the app show, cropped from the center when it is another shape.",
         "alt_text": "Alternative text",
         "alt_text_placeholder": "Example: Summer sale, up to 50% off through August 31",
         "alt_text_description": "Repeat the words drawn into the image. Screen readers name the banner's link with them.",
@@ -1134,7 +1134,7 @@
       "delete_current": "Delete the current cover image",
       "undo_delete": "Undo the deletion",
       "description": "Click a variant image to replace it. Choosing delete leaves the image unset. Select a JPEG, PNG, or WebP image no larger than 10MB and at least 2400x3200px.",
-      "description_required": "Click a variant image to replace it. A banner always keeps an image, so there is no removing it. Select a JPEG, PNG, or WebP image no larger than 10MB and at least 2400x3200px.",
+      "description_required": "Click a variant image to replace it. A banner always keeps an image, so there is no removing it. Select a JPEG, PNG, or WebP image no larger than 10MB and at least 1600x900px.",
       "variants_empty": "No image has been registered yet.",
       "variant_alt": "{$aspect} image",
       "aspect": {

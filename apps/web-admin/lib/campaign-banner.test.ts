@@ -247,7 +247,7 @@ describe("createCampaignBanner", () => {
   it.each([
     [
       "image_data",
-      "Check the image. Choose a JPEG, PNG, or WebP image no larger than 10MB and at least 2400x3200px, then try again.",
+      "Check the image. Choose a JPEG, PNG, or WebP image no larger than 10MB and at least 1600x900px, then try again.",
     ],
     [
       "link_url",
