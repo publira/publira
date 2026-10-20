@@ -318,7 +318,12 @@ func (q *Queries) GetSeriesForRemainderSale(ctx context.Context, arg GetSeriesFo
 const ListSeriesRemainderEpisodes = `-- name: ListSeriesRemainderEpisodes :many
 SELECT e.id,
     et.title,
-    el.price,
+    -- What the permanent copy sells for on its own at this moment: the
+    -- campaign price while a campaign is open on the episode, as
+    -- GetPurchasableEpisodeForTenant answers it for the episode's own
+    -- checkout, so the rest of a series never costs more than its episodes
+    -- bought one by one.
+    COALESCE(ocp.campaign_price, el.price)::integer AS price,
     el.reading_period_hours,
     EXISTS (
         SELECT 1
@@ -342,6 +347,7 @@ FROM episodes e
     JOIN published_episode_surfaces pes ON pes.episode_id = e.id
     JOIN episode_listings el ON el.episode_id = e.id
     JOIN episode_purchase_availability epa ON epa.episode_id = e.id
+    LEFT JOIN open_episode_campaign_prices ocp ON ocp.episode_id = e.id
 WHERE e.tenant_id = $3
     AND e.series_id = $4
     AND pes.surface = $5::text

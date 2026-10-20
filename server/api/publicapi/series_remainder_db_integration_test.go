@@ -347,6 +347,75 @@ func TestDBBuyingTheRestOfASeriesOpensEveryEpisodeTheReaderDidNotHold(t *testing
 	}
 }
 
+// An episode under an open campaign counts at its campaign price, in the quote
+// and the checkout alike, before the bundle discount is taken off, so the rest
+// of a series never costs more than its episodes bought one by one. A
+// campaign not open yet counts for nothing, and one that ends moves the next
+// checkout onto a bundle of its own at the regular price.
+func TestDBTheRestOfASeriesSellsAnEpisodeAtItsOpenCampaignPrice(t *testing.T) {
+	env := newSeriesRemainderEnv(t, "REMAINCMP", "remainder-campaign.example.com")
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	now := time.Now()
+	campaignID := env.pg.SeedEpisodeCampaignPrice(t, env.tenant.ID, env.second.ID, 100, now.Add(-time.Hour), now.Add(time.Hour))
+	env.pg.SeedEpisodeCampaignPrice(t, env.tenant.ID, env.lent.ID, 50, now.Add(time.Hour), now.Add(2*time.Hour))
+
+	_, offer := env.access(t, ctx)
+	if offer.GetEpisodeCount() != 2 || offer.GetListPrice() != 300 || offer.GetDiscountPercent() != 10 || offer.GetPrice() != 270 {
+		t.Fatalf("offer = %+v, want 2 episodes at 100 and 200 less 10%%, 270", offer)
+	}
+
+	if err := env.startRemainderCheckout(ctx, env.series.ID); err != nil {
+		t.Fatalf("StartSeriesRemainderCheckout: %v", err)
+	}
+	started := env.checkout.input
+	if started.Purchase.Price != offer.GetPrice() {
+		t.Fatalf("checkout price = %d, want the %d quoted", started.Purchase.Price, offer.GetPrice())
+	}
+	wantLines := []paymentprovider.LineItem{
+		{Name: "Second", Price: 100, DiscountedPrice: 90},
+		{Name: "Lent", Price: 200, DiscountedPrice: 180},
+	}
+	if fmt.Sprint(started.LineItems) != fmt.Sprint(wantLines) {
+		t.Fatalf("line items = %+v, want %+v", started.LineItems, wantLines)
+	}
+	if started.Discount == nil || started.Discount.Amount != 30 {
+		t.Fatalf("discount = %+v, want 30 off", started.Discount)
+	}
+	var listPrice, price int32
+	if err := env.pg.DB.QueryRowContext(ctx, `
+		SELECT list_price, price
+		FROM series_bundle_episodes
+		WHERE series_bundle_id = $1
+			AND episode_id = $2
+	`, started.Purchase.SeriesBundleID, env.second.ID).Scan(&listPrice, &price); err != nil {
+		t.Fatalf("read the bundled campaign episode: %v", err)
+	}
+	if listPrice != 100 || price != 90 {
+		t.Fatalf("bundled campaign episode = list %d, price %d; want list 100, price 90", listPrice, price)
+	}
+
+	if _, err := env.pg.DB.ExecContext(ctx, `
+		UPDATE episode_campaign_prices
+		SET starts_at = $2,
+			ends_at = $3
+		WHERE id = $1
+	`, campaignID, now.Add(-2*time.Hour), now.Add(-time.Minute)); err != nil {
+		t.Fatalf("end the campaign: %v", err)
+	}
+	if _, offer := env.access(t, ctx); offer.GetListPrice() != 500 || offer.GetPrice() != 450 {
+		t.Fatalf("offer after the campaign = %+v, want 500 less 10%%, 450", offer)
+	}
+	if err := env.startRemainderCheckout(ctx, env.series.ID); err != nil {
+		t.Fatalf("StartSeriesRemainderCheckout after the campaign: %v", err)
+	}
+	next := env.checkout.input
+	if next.Purchase.Price != 450 || next.IdempotencyKey == started.IdempotencyKey || next.Purchase.SeriesBundleID == started.Purchase.SeriesBundleID {
+		t.Fatalf("checkout after the campaign = %d under %q for bundle %s, want a bundle of its own at 450", next.Purchase.Price, next.IdempotencyKey, next.Purchase.SeriesBundleID)
+	}
+}
+
 // The rest of a series is no sale when nothing is left to sell, when more is
 // left than one checkout lists, or when the reader is credited on part of it.
 func TestDBStartSeriesRemainderCheckoutRefusesWhatItCannotSell(t *testing.T) {

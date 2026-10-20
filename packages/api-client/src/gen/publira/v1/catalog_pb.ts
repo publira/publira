@@ -520,7 +520,9 @@ export type SeriesRemainderOffer = Message<"publira.v1.SeriesRemainderOffer"> & 
   episodeCount: number;
 
   /**
-   * The sum of those episodes' prices.
+   * The sum of what those episodes cost bought one by one now: each one's
+   * Episode.campaign_price while a campaign is open on it, its Episode.price
+   * otherwise.
    *
    * @generated from field: int32 list_price = 2;
    */
@@ -3873,9 +3875,11 @@ export const StartVolumeCheckoutResponseSchema: GenMessage<StartVolumeCheckoutRe
 /**
  * Starts a provider checkout of the rest of a series: every episode of it the
  * calling surface lists and may sell, that has a price, and that the reader
- * holds no active permanent copy of, each as a line item at its price, with
- * the series' bundle discount (Series.bundle_discount_percent) taken off the
- * total. It answers the URL of the provider's checkout page. The purchase is
+ * holds no active permanent copy of, each as a line item at the price its
+ * permanent copy sells for on its own when the checkout starts
+ * (Episode.campaign_price while a campaign is open on it, Episode.price
+ * otherwise), with the series' bundle discount
+ * (Series.bundle_discount_percent) taken off the total. It answers the URL of the provider's checkout page. The purchase is
  * created by the provider's webhook alone, and opens each of those episodes as
  * buying its permanent copy would: for good, or for the reading period that
  * copy had when the checkout started. GetSeriesEpisodeAccess quotes the same
