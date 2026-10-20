@@ -451,6 +451,7 @@ describe("the classification a series carries", () => {
     expect(mockUpdateSeries).toHaveBeenCalledWith(
       expect.objectContaining({
         ageRating: undefined,
+        bundleDiscountPercent: undefined,
         commentMode: undefined,
         readingDirection: undefined,
         readingPeriodHours: undefined,
@@ -462,6 +463,66 @@ describe("the classification a series carries", () => {
       { headers: { Authorization: "Bearer session-token" } }
     );
   });
+});
+
+describe("the bundle discount a series takes off the rest of it", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("reads the discount back beside the series, and none when it states none", async () => {
+    mockListSeries.mockResolvedValue({
+      series: [
+        {
+          bundleDiscountPercent: 20,
+          publicId: "SERIES001",
+          synopsis: "A synopsis",
+          title: "Series title",
+        },
+        { publicId: "SERIES002", synopsis: "A synopsis", title: "Series two" },
+      ],
+    });
+
+    const { listSeries } = await import("./series");
+    const result = await listSeries({});
+
+    expect(result.series.map((series) => series.bundleDiscountPercent)).toEqual(
+      [20, 0]
+    );
+  });
+
+  // Zero is sent rather than left out: it is what takes a discount off again.
+  it.each([15, 0])(
+    "sends a discount of %i the save states",
+    async (percent) => {
+      mockUpdateSeries.mockResolvedValue({
+        series: { publicId: "SERIES001", synopsis: "", title: "" },
+      });
+
+      const { updateSeries } = await import("./series");
+      await updateSeries(
+        {
+          bundleDiscountPercent: percent,
+          creatorCredits: [],
+          genreIds: [],
+          id: "SERIES001-ID",
+          isPublished: true,
+          labelId: "LABEL001",
+          tagNames: [],
+          tenantId: "TENANT001",
+          title: "Series title",
+        },
+        "en"
+      );
+
+      expect(mockUpdateSeries).toHaveBeenCalledWith(
+        expect.objectContaining({ bundleDiscountPercent: percent }),
+        { headers: { Authorization: "Bearer session-token" } }
+      );
+    }
+  );
 });
 
 /**

@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-import { signInAsAdmin } from "../src/admin";
+import { seriesFormFields, signInAsAdmin } from "../src/admin";
 import { applyScenarioSql } from "../src/db";
 import { uploadEpisodePages } from "../src/episode-pages";
 import {
@@ -30,9 +30,9 @@ import {
  * Readers buying through Stripe Checkout, against the stack's stand-in for
  * Stripe: one rents an episode at its gate and another buys its permanent
  * copy, a third buys a volume from the series page and a fourth every episode
- * of the series at its discount. Each pays on the checkout page, returns to
- * the page the sale was started from with what the webhook opened, and finds
- * the sale in the library.
+ * of the series at the discount the admin sets on the series form. Each pays
+ * on the checkout page, returns to the page the sale was started from with
+ * what the webhook opened, and finds the sale in the library.
  */
 
 /**
@@ -277,9 +277,30 @@ test.describe("web-storefront checkout", () => {
     await expect(card.getByRole("link", { name: "Open series" })).toBeVisible();
   });
 
-  test("a reader buys every remaining episode at the series' discount, and each one opens", async ({
+  test("a reader buys every remaining episode at the discount the admin set, and each one opens", async ({
+    browser,
     page,
   }) => {
+    const admin = await browser.newPage();
+    try {
+      await signInAsAdmin(
+        admin,
+        EPISODE_RENTALS_ADMIN,
+        episodeRentalsSeriesPath,
+        WEB_ADMIN_RENTALS_BASE_URL
+      );
+      const { bundleDiscountPercent } = seriesFormFields(admin);
+      await expect(bundleDiscountPercent).toHaveValue("10");
+      await bundleDiscountPercent.fill("25");
+      await admin.getByRole("button", { name: "Update series" }).click();
+      await expect(admin.getByText("Series updated.")).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(bundleDiscountPercent).toHaveValue("25");
+    } finally {
+      await admin.close();
+    }
+
     await signInAsMember(
       page,
       EPISODE_RENTALS_READERS.remainderBuyer,
@@ -288,15 +309,15 @@ test.describe("web-storefront checkout", () => {
     );
 
     // 300 yen for the first episode and 200 for each of the other three,
-    // less 10%.
+    // less 25%.
     await expect(
-      page.getByText("10% off the ¥900 they cost one by one")
+      page.getByText("25% off the ¥900 they cost one by one")
     ).toBeVisible();
     await page
-      .getByRole("button", { name: "Buy remaining episodes (4) for ¥810" })
+      .getByRole("button", { name: "Buy remaining episodes (4) for ¥675" })
       .click();
 
-    await pay(page, "4 items", "¥810", episodeRentalsSeriesPath);
+    await pay(page, "4 items", "¥675", episodeRentalsSeriesPath);
     await expect(page.getByText(PAYMENT_CONFIRMING)).toBeVisible();
     await expect(
       page.getByRole("button", { name: /^Buy remaining episodes/u })

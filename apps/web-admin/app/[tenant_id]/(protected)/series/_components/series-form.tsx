@@ -30,6 +30,7 @@ import {
   spreadStartPageOf,
 } from "#lib/reading-layout";
 import type { ReadingLayout } from "#lib/reading-layout";
+import { MAX_SERIES_BUNDLE_DISCOUNT_PERCENT } from "#lib/series-bundle-discount";
 import {
   DEFAULT_SERIES_AGE_RATING,
   DEFAULT_SERIES_STATUS,
@@ -146,6 +147,7 @@ type SeriesFormValues = Pick<
   SeriesListItem,
   | "ageRating"
   | "availability"
+  | "bundleDiscountPercent"
   | "creatorCredits"
   | "genreIds"
   | "labelId"
@@ -163,6 +165,7 @@ type SeriesFormValues = Pick<
 const NEW_SERIES_VALUES: SeriesFormValues = {
   ageRating: DEFAULT_SERIES_AGE_RATING,
   availability: DEFAULT_SURFACE_AVAILABILITY,
+  bundleDiscountPercent: 0,
   creatorCredits: [],
   genreIds: [],
   labelId: "",
@@ -378,6 +381,29 @@ export const SeriesForm = ({
               <FieldDescription>
                 <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
                   <Message message="admin.series.form.rental_period_description" />
+                </Suspense>
+              </FieldDescription>
+            </FieldContent>
+          </Field>
+
+          <Field>
+            <FieldLabel required>
+              <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                <Message message="admin.series.form.bundle_discount" />
+              </Suspense>
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                defaultValue={values.bundleDiscountPercent}
+                max={MAX_SERIES_BUNDLE_DISCOUNT_PERCENT}
+                min={0}
+                name="bundle_discount_percent"
+                required
+                type="number"
+              />
+              <FieldDescription>
+                <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+                  <Message message="admin.series.form.bundle_discount_description" />
                 </Suspense>
               </FieldDescription>
             </FieldContent>

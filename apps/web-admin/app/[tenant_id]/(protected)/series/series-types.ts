@@ -26,6 +26,8 @@ export interface SeriesListItem {
   synopsis: string;
   readingPeriodHours: number;
   rentalPeriodHours: number;
+  /** Whole percent off the rest of the series; 0 takes nothing off. */
+  bundleDiscountPercent: number;
   publishedAt: string;
   labelId: string;
   labelName: string;

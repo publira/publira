@@ -5,8 +5,9 @@
 -- at all, then has its readers buy through Checkout: one rents the first
 -- episode and another buys it at the gate, a third buys the volume holding
 -- episodes 2 and 3 from the series page, and a fourth buys every episode at
--- the series' bundle discount. The payment settings decide whether the
--- storefront sells anything, so no tenant another suite reads can absorb them.
+-- the series' bundle discount, after the admin changes that discount on the
+-- series form. The payment settings decide whether the storefront sells
+-- anything, so no tenant another suite reads can absorb them.
 --
 -- Applying it is also how the suite starts over: the tenant is deleted and
 -- written again, which takes its payment settings and every sale with it, so
@@ -18,6 +19,7 @@
 --   admin    RntlADMNAAA1 (rentals-admin@example.com)
 --   readers  RntlMMBRAAA1 (Rental Renter), RntlMMBRAAA2 (Rental Buyer),
 --            RntlMMBRAAA3 (Volume Buyer), RntlMMBRAAA4 (Remainder Buyer)
+--   label    RntlLABLAAA1, which the series form needs to save the series
 --   series   RntlSERSAAA1, 10% off the rest of it in one checkout
 --   episodes RntlEPSDAAA1 (300 yen, or 100 for 48 hours),
 --            RntlEPSDAAA2 to RntlEPSDAAA4 (200 yen each)
@@ -145,10 +147,20 @@ SELECT
 FROM users u
 WHERE u.public_id = 'RntlADMNAAA1';
 
-INSERT INTO series (id, tenant_id, public_id, is_published, published_at)
+INSERT INTO labels (id, tenant_id, public_id, name)
+SELECT
+    '018f1100-000b-7000-8000-000000000001'::uuid,
+    t.id,
+    'RntlLABLAAA1',
+    'Rental Label'
+FROM tenants t
+WHERE t.public_id = 'RntlTNNTAAA1';
+
+INSERT INTO series (id, tenant_id, label_id, public_id, is_published, published_at)
 SELECT
     '018f1100-0004-7000-8000-000000000001'::uuid,
     t.id,
+    '018f1100-000b-7000-8000-000000000001'::uuid,
     'RntlSERSAAA1',
     true,
     '2026-01-01T00:00:00Z'::timestamptz
@@ -162,7 +174,7 @@ SELECT
     s.tenant_id,
     t.default_locale,
     'Rental Series 001',
-    ''
+    'A series sold by the episode, by the volume, and as a whole.'
 FROM series s
 JOIN tenants t ON t.id = s.tenant_id
 WHERE s.public_id = 'RntlSERSAAA1';

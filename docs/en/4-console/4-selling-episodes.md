@@ -46,6 +46,12 @@ Once bought, the episode:
 
 **Download as CSV** on **Purchases** saves every purchase listed there, across all its pages and refunded ones included, as one CSV file. In the tenant's app, **Export as CSV** on **Purchases** writes the same file and hands it to the device's share sheet, from which the reader saves or sends it.
 
+### The rest of a series
+
+A reader can also buy, in one checkout, every paid episode of a series they do not own yet. Above the episode list, the series page offers **Buy remaining episodes** with how many episodes that is and what they cost together, and the series screen of the tenant's app does the same. The purchase opens each of those episodes as buying it alone would, for its own reading period.
+
+What they cost together is the sum of their prices less the series' **Bundle discount**, set on the series' form as [Series](./1-catalog/1-series.md#bundle-discount) describes: a whole percent up to `99`, or `0`, where a new series starts, to sell them at that sum. With a discount, the offer says how much it takes off what the episodes cost one by one, and the checkout page lists the discount beside the episodes. The discounted price is rounded down to the currency's smallest unit, and a discount that would leave nothing to pay offers no checkout. A change to the discount applies from the next checkout: a reader who opened the payment provider's checkout page before it pays what that page shows.
+
 ### Free reading periods and Free if you wait
 
 A price is what a reader pays when nothing else opens the episode. Two other things can, and while either has the episode open to a reader, the site offers that reader no purchase:

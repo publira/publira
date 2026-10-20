@@ -46,6 +46,7 @@ import {
   updateSeries,
   uploadSeriesEyeCatchAspectImage,
 } from "#lib/series";
+import { MAX_SERIES_BUNDLE_DISCOUNT_PERCENT } from "#lib/series-bundle-discount";
 import {
   MAX_SERIES_TAGS,
   SERIES_AGE_RATING_VALUES,
@@ -140,6 +141,12 @@ const seriesCommonSchema = async (locale: Locale) => {
     availability: z.enum(SURFACE_AVAILABILITIES, {
       error: t("admin.series.validation.availability_invalid"),
     }),
+    bundleDiscountPercent: nonNegativeIntFormSchema(
+      t("admin.series.validation.bundle_discount_invalid")
+    ).refine(
+      (percent) => percent <= MAX_SERIES_BUNDLE_DISCOUNT_PERCENT,
+      t("admin.series.validation.bundle_discount_invalid")
+    ),
     // The empty value is one of the four: it is the series stating no mode of
     // its own and so following the tenant's.
     commentMode: z.enum(SERIES_COMMENT_MODES, {
@@ -222,6 +229,7 @@ const seriesEyeCatchSchema = async (locale: Locale) => {
     .omit({
       ageRating: true,
       availability: true,
+      bundleDiscountPercent: true,
       commentMode: true,
       purchaseAvailability: true,
       readingDirection: true,
@@ -240,6 +248,7 @@ const seriesEyeCatchSchema = async (locale: Locale) => {
 const seriesFormFields = {
   ageRating: { kind: "value", name: "age_rating" },
   availability: "value",
+  bundleDiscountPercent: { kind: "value", name: "bundle_discount_percent" },
   commentMode: { kind: "value", name: "comment_mode" },
   creatorCredits: { kind: "value", name: "creator_credits" },
   eyeCatchImage: { kind: "file", name: "eye_catch_image" },
@@ -338,6 +347,7 @@ export const createSeriesAction = async (
       {
         ageRating: parsed.data.ageRating,
         availability: parsed.data.availability,
+        bundleDiscountPercent: parsed.data.bundleDiscountPercent,
         commentMode: parsed.data.commentMode,
         creatorCredits: parsed.data.creatorCredits,
         eyeCatchImageContentType,
@@ -409,6 +419,7 @@ export const updateSeriesAction = async (
       {
         ageRating: parsed.data.ageRating,
         availability: parsed.data.availability,
+        bundleDiscountPercent: parsed.data.bundleDiscountPercent,
         commentMode: parsed.data.commentMode,
         creatorCredits: parsed.data.creatorCredits,
         eyeCatchImageContentType,
