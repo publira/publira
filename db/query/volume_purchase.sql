@@ -144,3 +144,58 @@ VALUES (
 )
 ON CONFLICT (provider, provider_checkout_id) DO NOTHING
 RETURNING *;
+
+-- name: CreateVolumePurchaseEpisodes :exec
+-- Writes down the episodes a purchase of a volume paid for, as the volume
+-- holds them now, and the part of what the reader paid each accounts for,
+-- which is what a royalty statement credits each episode's creators with. The
+-- amount is spread in proportion to the episodes' own prices, or evenly when
+-- none of them has one, and each part is what the running total up to and
+-- including it comes to less what the total before it came to, each rounded
+-- down, so the parts add up to the amount exactly.
+WITH items AS (
+    SELECT p.tenant_id,
+        p.id AS purchase_id,
+        p.price_at_purchase::bigint AS paid,
+        ve.episode_id,
+        ve."position",
+        COALESCE(el.price, 0) AS list_price
+    FROM purchases p
+        JOIN volume_episodes ve ON ve.tenant_id = p.tenant_id
+        AND ve.volume_id = p.volume_id
+        LEFT JOIN episode_listings el ON el.episode_id = ve.episode_id
+    WHERE p.tenant_id = sqlc.arg('tenant_id')
+        AND p.id = sqlc.arg('purchase_id')
+),
+weighted AS (
+    SELECT items.*,
+        CASE
+            WHEN sum(items.list_price) OVER () > 0 THEN items.list_price
+            ELSE 1
+        END::bigint AS weight
+    FROM items
+),
+running AS (
+    SELECT weighted.*,
+        (sum(weighted.weight) OVER (
+            ORDER BY weighted."position", weighted.episode_id
+            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        ))::bigint AS up_to,
+        (sum(weighted.weight) OVER ())::bigint AS total
+    FROM weighted
+)
+INSERT INTO volume_purchase_episodes (
+    tenant_id,
+    purchase_id,
+    episode_id,
+    "position",
+    list_price,
+    price
+)
+SELECT running.tenant_id,
+    running.purchase_id,
+    running.episode_id,
+    running."position",
+    running.list_price,
+    (running.paid * running.up_to / running.total - running.paid * (running.up_to - running.weight) / running.total)::integer
+FROM running;

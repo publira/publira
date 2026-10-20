@@ -228,6 +228,9 @@ var publicDataTables = []struct {
 	{name: "expired_checkouts", count: "SELECT count(*) FROM expired_checkouts"},
 	// The same for a checkout of a volume.
 	{name: "expired_volume_checkouts", count: "SELECT count(*) FROM expired_volume_checkouts"},
+	// Written by the same webhook with the purchase of a volume: what each of
+	// its episodes accounts for of the money paid.
+	{name: "volume_purchase_episodes", count: "SELECT count(*) FROM volume_purchase_episodes"},
 	// Opened by the app before the store's payment sheet, and naming the reader
 	// and the price they agreed to.
 	{name: "store_purchase_intents", count: "SELECT count(*) FROM store_purchase_intents"},
@@ -412,6 +415,9 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 		VALUES ($1, $2, $3, 'portrait-320', 'portrait', 's3', 'tenants/volume-cover.webp', 'image/webp', 1, 320, 480)`,
 		uuid.Must(uuid.NewV7()), first.ID, volumeCoverImageID)
 	seed("expired volume checkout", "INSERT INTO expired_volume_checkouts (tenant_id, user_id, volume_id, provider, provider_checkout_id) VALUES ($1, $2, $3, 'stripe', $4)", first.ID, member.ID, volume.ID, "cs_rls_volume_expired")
+	volumePurchaseID := uuid.Must(uuid.NewV7())
+	seed("volume purchase", "INSERT INTO purchases (id, tenant_id, user_id, volume_id, price_at_purchase, currency) VALUES ($1, $2, $3, $4, 900, 'JPY')", volumePurchaseID, first.ID, member.ID, volume.ID)
+	seed("volume purchase episode", `INSERT INTO volume_purchase_episodes (tenant_id, purchase_id, episode_id, "position", list_price, price) VALUES ($1, $2, $3, 0, 0, 900)`, first.ID, volumePurchaseID, freeEpisode.ID)
 	seriesBundleID := uuid.Must(uuid.NewV7())
 	seed("series bundle", "INSERT INTO series_bundles (id, tenant_id, series_id, user_id, idempotency_key, price) VALUES ($1, $2, $3, $4, 'series-remainder-checkout:rls', 500)", seriesBundleID, first.ID, series.ID, member.ID)
 	seed("series bundle episode", `INSERT INTO series_bundle_episodes (tenant_id, series_bundle_id, episode_id, "position", list_price, price) VALUES ($1, $2, $3, 0, 500, 500)`, first.ID, seriesBundleID, episode.ID)

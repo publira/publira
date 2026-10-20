@@ -1046,6 +1046,17 @@ func (s *apiServer) createPurchase(
 	case err != nil:
 		return fmt.Errorf("create purchase: %w", err)
 	default:
+		// What each episode of a volume accounts for is written down as the
+		// purchase is, so that what a statement credits for the sale stays put
+		// however the volume and its episodes' prices change afterwards.
+		if created.VolumeID.Valid {
+			if err := queries.CreateVolumePurchaseEpisodes(ctx, dbmodels.CreateVolumePurchaseEpisodesParams{
+				TenantID:   tenantID,
+				PurchaseID: created.ID,
+			}); err != nil {
+				return fmt.Errorf("record the episodes of the volume purchase: %w", err)
+			}
+		}
 		if err := enqueuePurchaseReceipt(ctx, queries, tenantID, created.ID); err != nil {
 			return err
 		}

@@ -290,6 +290,18 @@ func TestCrossTenantParentReferencesAreRejected(t *testing.T) {
 			args:       []any{mustUUID(t), first.tenantID, first.userID, second.volumeID},
 		},
 		{
+			name:       "volume_purchase_episodes.purchase_id",
+			constraint: "volume_purchase_episodes_tenant_purchase_id_fkey",
+			statement:  `INSERT INTO volume_purchase_episodes (tenant_id, purchase_id, episode_id, "position", list_price, price) VALUES ($1, $2, $3, 0, 500, 900)`,
+			args:       []any{first.tenantID, second.volumePurchaseID, first.episodeID},
+		},
+		{
+			name:       "volume_purchase_episodes.episode_id",
+			constraint: "volume_purchase_episodes_tenant_episode_id_fkey",
+			statement:  `INSERT INTO volume_purchase_episodes (tenant_id, purchase_id, episode_id, "position", list_price, price) VALUES ($1, $2, $3, 0, 500, 900)`,
+			args:       []any{first.tenantID, first.volumePurchaseID, second.episodeID},
+		},
+		{
 			name:       "series.label_id",
 			constraint: "series_tenant_label_id_fkey",
 			statement:  `UPDATE series SET label_id = $2 WHERE id = $1`,
@@ -546,6 +558,7 @@ type foreignKeyTenant struct {
 	campaignBannerImageID  uuid.UUID
 	volumeID               uuid.UUID
 	volumeCoverImageID     uuid.UUID
+	volumePurchaseID       uuid.UUID
 	tenantImageID          uuid.UUID
 	pageID                 uuid.UUID
 	pageTranslationID      uuid.UUID
@@ -622,6 +635,9 @@ func seedForeignKeyTenant(t *testing.T, ctx context.Context, db *sql.DB, prefix 
 	seeded.volumeCoverImageID = mustUUID(t)
 	mustExec(t, ctx, db, `INSERT INTO volume_cover_images (id, tenant_id, volume_id) VALUES ($1, $2, $3)`,
 		seeded.volumeCoverImageID, seeded.tenantID, seeded.volumeID)
+	seeded.volumePurchaseID = mustUUID(t)
+	mustExec(t, ctx, db, `INSERT INTO purchases (id, tenant_id, user_id, volume_id, price_at_purchase, currency) VALUES ($1, $2, $3, $4, 900, 'JPY')`,
+		seeded.volumePurchaseID, seeded.tenantID, seeded.userID, seeded.volumeID)
 
 	seeded.tenantImageID = mustUUID(t)
 	mustExec(t, ctx, db, `INSERT INTO tenant_images (id, tenant_id) VALUES ($1, $2)`,

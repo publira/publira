@@ -408,6 +408,14 @@ type Querier interface {
 	CreateVolume(ctx context.Context, arg CreateVolumeParams) (CreateVolumeRow, error)
 	CreateVolumeCoverImage(ctx context.Context, arg CreateVolumeCoverImageParams) (VolumeCoverImage, error)
 	CreateVolumeCoverImageVariant(ctx context.Context, arg CreateVolumeCoverImageVariantParams) (VolumeCoverImageVariant, error)
+	// Writes down the episodes a purchase of a volume paid for, as the volume
+	// holds them now, and the part of what the reader paid each accounts for,
+	// which is what a royalty statement credits each episode's creators with. The
+	// amount is spread in proportion to the episodes' own prices, or evenly when
+	// none of them has one, and each part is what the running total up to and
+	// including it comes to less what the total before it came to, each rounded
+	// down, so the parts add up to the amount exactly.
+	CreateVolumePurchaseEpisodes(ctx context.Context, arg CreateVolumePurchaseEpisodesParams) error
 	// The grant a spent ticket opens. It is an access_tickets row so every read
 	// that decides access sees it through episode_content_grants, and it expires
 	// by the series' access period from the same clock.
@@ -941,7 +949,7 @@ type Querier interface {
 	// Where one episode may be bought, resolved through its series and the tenant.
 	GetResolvedEpisodePurchaseAvailability(ctx context.Context, arg GetResolvedEpisodePurchaseAvailabilityParams) (string, error)
 	// Totals what ListRoyaltyAdjustmentLinesForPeriod takes back, each refunded
-	// sale counted once however many creators it is credited to.
+	// sale counted once however many episodes and creators it is credited to.
 	GetRoyaltyAdjustmentTotalForPeriod(ctx context.Context, arg GetRoyaltyAdjustmentTotalForPeriodParams) (int64, error)
 	// The instants a tenant month runs between. A month starts where the statement
 	// of the month before it ended, and ends where the statement of the month
@@ -950,9 +958,9 @@ type Querier interface {
 	// month's bounds never move, so a tenant that changes its zone between two
 	// closes leaves no hour in neither month and none in both.
 	GetRoyaltyMonthBounds(ctx context.Context, arg GetRoyaltyMonthBoundsParams) (GetRoyaltyMonthBoundsRow, error)
-	// Totals the month's sales once each, however many creators a sale is
-	// credited to. The month, the refund rule, and the currency are those of
-	// ListRoyaltyLinesForPeriod.
+	// Totals the month's sales once each, however many episodes and creators a
+	// sale is credited to. The month, the refund rule, and the currency are
+	// those of ListRoyaltyLinesForPeriod.
 	GetRoyaltySalesTotalsForPeriod(ctx context.Context, arg GetRoyaltySalesTotalsForPeriodParams) (GetRoyaltySalesTotalsForPeriodRow, error)
 	GetRoyaltyStatementByPeriod(ctx context.Context, arg GetRoyaltyStatementByPeriodParams) (GetRoyaltyStatementByPeriodRow, error)
 	GetSeriesBundleIDByIdempotencyKey(ctx context.Context, arg GetSeriesBundleIDByIdempotencyKeyParams) (uuid.UUID, error)
@@ -2352,11 +2360,17 @@ type Querier interface {
 	// line's net after them times its share, floored as the line was, less the
 	// same over its net before them, which is the line's own net and every
 	// adjustment it has had since. A statement lists these after the month's own
-	// lines, oldest adjusted month first.
+	// lines, oldest adjusted month first. A refund of a volume is carried to the
+	// line of each episode in it, by the part royalty_uncarried_episode_refunds
+	// gives that episode.
 	ListRoyaltyAdjustmentLinesForPeriod(ctx context.Context, arg ListRoyaltyAdjustmentLinesForPeriodParams) ([]ListRoyaltyAdjustmentLinesForPeriodRow, error)
 	// Computes the lines of one tenant month: every credit on an episode sold in
 	// the month, with the month's sales of that episode. It is what a close
 	// writes and what a preview shows, so the two cannot disagree.
+	//
+	// A sale of a volume is a sale of each episode in it, at the part of its
+	// price purchase_episode_parts says that episode accounts for, and with the
+	// part of its refund episode_part_of_purchase_amount gives that episode.
 	//
 	// The month runs between the bounds GetRoyaltyMonthBounds answers for it. A
 	// fully refunded sale is not a sale, and neither is one whose dispute was

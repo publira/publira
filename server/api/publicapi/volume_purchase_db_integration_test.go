@@ -293,6 +293,69 @@ func TestDBBuyingAVolumeOpensEveryEpisodeInItAndNoneOutside(t *testing.T) {
 	}
 }
 
+// The purchase of a volume writes down what each of its episodes accounts for
+// of the amount paid, in proportion to their prices when the payment arrives,
+// with the parts adding up to the amount. A redelivery writes nothing more,
+// and a price changed afterwards moves nothing.
+func TestDBAVolumePurchaseRecordsTheEpisodesItPaidFor(t *testing.T) {
+	env := newVolumePurchaseEnv(t, "VOLPART", "volume-part.example.com")
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	if err := env.startVolumeCheckout(ctx, env.volume.ID); err != nil {
+		t.Fatalf("StartVolumeCheckout: %v", err)
+	}
+	if _, err := env.pg.DB.ExecContext(ctx, "UPDATE episode_listings SET price = 300 WHERE episode_id = $1", env.inVolume[1].ID); err != nil {
+		t.Fatalf("reprice the second episode: %v", err)
+	}
+	env.pay(t, ctx, "cs_volume_parts")
+	env.pay(t, ctx, "cs_volume_parts")
+	if _, err := env.pg.DB.ExecContext(ctx, "UPDATE episode_listings SET price = 100 WHERE episode_id = $1", env.inVolume[0].ID); err != nil {
+		t.Fatalf("reprice the first episode: %v", err)
+	}
+
+	rows, err := env.pg.DB.QueryContext(ctx, `
+		SELECT vpe.episode_id, vpe."position", vpe.list_price, vpe.price
+		FROM volume_purchase_episodes vpe
+			JOIN purchases p ON p.tenant_id = vpe.tenant_id
+			AND p.id = vpe.purchase_id
+		WHERE p.tenant_id = $1
+			AND p.volume_id = $2
+		ORDER BY vpe."position"
+	`, env.tenant.ID, env.volume.ID)
+	if err != nil {
+		t.Fatalf("read the episodes of the purchase: %v", err)
+	}
+	defer rows.Close() //nolint:errcheck
+	type part struct {
+		episodeID           uuid.UUID
+		position, list, got int32
+	}
+	var parts []part
+	for rows.Next() {
+		var p part
+		if err := rows.Scan(&p.episodeID, &p.position, &p.list, &p.got); err != nil {
+			t.Fatalf("scan a part: %v", err)
+		}
+		parts = append(parts, p)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("read the parts: %v", err)
+	}
+	want := []part{
+		{env.inVolume[0].ID, 0, 500, 562},
+		{env.inVolume[1].ID, 1, 300, 338},
+	}
+	if len(parts) != len(want) {
+		t.Fatalf("parts = %+v, want %+v", parts, want)
+	}
+	for i := range want {
+		if parts[i] != want[i] {
+			t.Fatalf("part %d = %+v, want %+v", i, parts[i], want[i])
+		}
+	}
+}
+
 // A volume is sold only where it can be shown and only while it sells
 // something the reader could open.
 func TestDBStartVolumeCheckoutRefusesAVolumeNotOnSale(t *testing.T) {
