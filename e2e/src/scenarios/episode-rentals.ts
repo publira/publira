@@ -27,12 +27,24 @@ export const EPISODE_RENTALS_EPISODE = {
   title: "Rental Episode 001-01",
 } as const;
 
-/** The later episodes, 200 yen each to keep and never rented. */
+/**
+ * The later episodes, 200 yen each to keep and never rented. The last one
+ * sells for 150 under {@link EPISODE_RENTALS_CAMPAIGN}.
+ */
 export const EPISODE_RENTALS_LATER_EPISODES = [
   { publicId: "RntlEPSDAAA2", title: "Rental Episode 001-02" },
   { publicId: "RntlEPSDAAA3", title: "Rental Episode 001-03" },
   { publicId: "RntlEPSDAAA4", title: "Rental Episode 001-04" },
 ] as const;
+
+/**
+ * The campaign open on episode 4, which ends at a fixed instant: 3:00 PM on
+ * Sunday 30 March 2036 in the tenant's UTC.
+ */
+export const EPISODE_RENTALS_CAMPAIGN = {
+  endsAt: "2036-03-30T15:00:00Z",
+  episode: EPISODE_RENTALS_LATER_EPISODES[2],
+} as const;
 
 /** Episodes 2 and 3 together for 350 yen. */
 export const EPISODE_RENTALS_VOLUME = {
@@ -47,6 +59,12 @@ export const EPISODE_RENTALS_READERS = {
     email: "rental-buyer@example.com",
     password: "memberpass",
     publicId: "RntlMMBRAAA2",
+  },
+  /** Buys episode 4 at its campaign price. */
+  campaignBuyer: {
+    email: "campaign-buyer@example.com",
+    password: "memberpass",
+    publicId: "RntlMMBRAAA5",
   },
   /** Buys every episode in one checkout, at the series' discount. */
   remainderBuyer: {

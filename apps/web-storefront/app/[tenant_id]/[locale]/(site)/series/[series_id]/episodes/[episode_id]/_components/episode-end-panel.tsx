@@ -47,6 +47,7 @@ const EpisodeNeighborRow = ({
   locale,
   sales,
   series,
+  timeZone,
 }: {
   /** `EpisodeNeighborDirection`. */
   children: ReactNode;
@@ -54,6 +55,8 @@ const EpisodeNeighborRow = ({
   locale: Locale;
   sales: TenantSales;
   series: EpisodeSeriesSummary;
+  /** The tenant's time zone, which the end of a campaign is written in. */
+  timeZone: string;
 }) => (
   <li>
     <LocaleLink
@@ -88,10 +91,12 @@ const EpisodeNeighborRow = ({
         </span>
         <span className="mt-1 block text-sm text-muted-foreground tabular-nums sm:mt-0 sm:w-56 sm:shrink-0">
           <EpisodePrice
+            campaign={episode.campaign}
             sales={sales}
             locale={locale}
             price={episode.isFree ? 0 : episode.price}
             purchaseSurface={episode.purchaseSurface}
+            timeZone={timeZone}
           />
         </span>
       </span>
@@ -124,6 +129,7 @@ export const EpisodeEndPanel = async ({
   shareText,
   shareTitle,
   tenantId,
+  timeZone,
 }: {
   episode: EpisodeDetail;
   /** Absent on the last published episode of the series. */
@@ -143,6 +149,8 @@ export const EpisodeEndPanel = async ({
   /** How the episode names itself — the same string its `<title>` holds. */
   shareTitle: string;
   tenantId: string;
+  /** The tenant's time zone, which the end of a campaign is written in. */
+  timeZone: string;
 }) => {
   const locale = await getLocale();
 
@@ -177,6 +185,7 @@ export const EpisodeEndPanel = async ({
                 episode={previousEpisode}
                 locale={locale}
                 series={series}
+                timeZone={timeZone}
               >
                 <EpisodeNeighborDirection>
                   <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
@@ -191,6 +200,7 @@ export const EpisodeEndPanel = async ({
                 episode={nextEpisode}
                 locale={locale}
                 series={series}
+                timeZone={timeZone}
               >
                 <EpisodeNeighborDirection>
                   <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>

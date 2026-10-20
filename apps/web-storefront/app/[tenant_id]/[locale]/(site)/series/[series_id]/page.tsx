@@ -742,6 +742,7 @@ const SeriesDetailContent = async (
                             <span className="flex items-baseline gap-3">
                               <span className="tabular-nums">
                                 <EpisodePrice
+                                  campaign={episode.campaign}
                                   sales={sales}
                                   freeUntil={episode.freeUntil}
                                   locale={locale}

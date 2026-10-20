@@ -3,22 +3,26 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatPrice } from "@publira/utils";
 import { Suspense } from "react";
 
+import { CampaignPrice } from "#components/campaign-price";
 import { FreeUntilBadge } from "#components/free-until-badge";
 import { Message } from "#components/message";
 import { episodeSaleDestination } from "#lib/app-payments";
 import type { TenantSales } from "#lib/app-payments";
-import type { EpisodePurchaseSurface } from "#lib/catalog";
+import type { EpisodeCampaign, EpisodePurchaseSurface } from "#lib/catalog";
 
 /**
- * The end of a free reading period open on the episode, and the zone it is
- * written in. Passed together or not at all, so a caller that has the end
- * cannot leave it to be written in a zone nobody chose.
+ * What is open on the episode until a moment — a free reading period, a
+ * campaign price — and the zone that moment is written in. Neither is passed
+ * without the zone, so a caller that has an end cannot leave it to be written
+ * in a zone nobody chose.
  */
-type FreeUntilProps =
-  | { freeUntil?: undefined; timeZone?: undefined }
+type DatedPriceProps =
+  | { campaign?: undefined; freeUntil?: undefined; timeZone?: undefined }
   | {
-      /** RFC3339 end of the open period; absent when none is open. */
-      freeUntil: string | undefined;
+      /** The campaign price open on the episode; absent when none is. */
+      campaign?: EpisodeCampaign;
+      /** RFC3339 end of the open free period; absent when none is open. */
+      freeUntil?: string;
       /** The tenant's time zone. */
       timeZone: string;
     };
@@ -31,17 +35,21 @@ type FreeUntilProps =
  *
  * A priced episode inside an open free reading period says until when it is
  * free instead of quoting the price, because the price is what it costs only
- * after that. A price is quoted in the tenant's currency, and not at all while
- * the tenant could not be read: a number with no currency is no price.
+ * after that. One under a campaign quotes the campaign price beside the
+ * regular one and says until when, for the same reason; a free period open
+ * over a campaign still opens the episode to everyone, so it wins. A price is
+ * quoted in the tenant's currency, and not at all while the tenant could not
+ * be read: a number with no currency is no price.
  */
 export const EpisodePrice = ({
+  campaign,
   freeUntil,
   locale,
   price,
   purchaseSurface,
   sales,
   timeZone,
-}: FreeUntilProps & {
+}: DatedPriceProps & {
   locale: Locale;
   price: number;
   purchaseSurface: EpisodePurchaseSurface;
@@ -73,6 +81,17 @@ export const EpisodePrice = ({
   }
   if (!sales.currency) {
     return null;
+  }
+  if (campaign && timeZone) {
+    return (
+      <CampaignPrice
+        campaign={campaign}
+        currency={sales.currency}
+        locale={locale}
+        price={price}
+        timeZone={timeZone}
+      />
+    );
   }
   return formatPrice(price, { currency: sales.currency, locale });
 };

@@ -178,6 +178,8 @@ To put many episodes on sale for the same price and period, check them on the ep
 
 ![The Add a campaign price dialog: the number of episodes checked on the list, the Campaign price field, the Starts and Ends fields, and Add.](./episodes-bulk-campaign-price.png)
 
+Wherever the site quotes an episode's price, an episode under a campaign shows the campaign price, its own **Price** struck through beside it, and when the campaign ends in the tenant's time zone. The price is fixed when the reader starts buying, so a reader who starts after the campaign has ended pays the episode's own **Price**, which the payment page shows, even if the page they started from still quoted the campaign.
+
 The site quotes a campaign from the moment it starts, and drops it the moment it ends: `publira worker` refreshes the cached pages at both ends, as [Scheduled and maintenance jobs](../../3-operations/10-scheduled-jobs.md#free-reading-periods-and-other-cached-pages) describes.
 
 ## Publishing an episode

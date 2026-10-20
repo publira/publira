@@ -223,7 +223,37 @@ export const toSeriesListItem = (s: RawSeriesListItem): SeriesListItem =>
     s.ageRating
   );
 
+/**
+ * A campaign price open on a priced episode: what its permanent copy sells for
+ * until `endsAt`, and what the checkout charges for it meanwhile. The
+ * episode's `price` stays the stored one, which is what it costs again once
+ * the campaign ends.
+ */
+export interface EpisodeCampaign {
+  /** RFC3339 instant the campaign ends. */
+  endsAt: string;
+  /** In the unit the episode's `price` is in, and always below it. */
+  price: number;
+}
+
+/**
+ * The server sends a campaign as two fields, both 0 and empty when none is
+ * open; either one missing is no campaign the page could quote. An
+ * `EpisodeNeighbor` carries the same two fields, so it is read here as well.
+ */
+const toEpisodeCampaign = ({
+  campaignEndsAt,
+  campaignPrice,
+}: Pick<Episode, "campaignEndsAt" | "campaignPrice">):
+  | EpisodeCampaign
+  | undefined =>
+  campaignPrice > 0 && campaignEndsAt
+    ? { endsAt: campaignEndsAt, price: campaignPrice }
+    : undefined;
+
 export interface EpisodeItem {
+  /** The campaign price open on the episode; absent when none is. */
+  campaign?: EpisodeCampaign;
   /**
    * The episode's own eye-catch. Absent when it has none, where a row draws
    * the series' in its place.
@@ -263,6 +293,8 @@ export interface EpisodeImageItem {
 }
 
 export interface EpisodeDetail {
+  /** The campaign price open on the episode; absent when none is. */
+  campaign?: EpisodeCampaign;
   /**
    * Who this episode is credited to, in role priority order. Every episode
    * carries its own credits, so a series whose artist changed part way through
@@ -331,6 +363,8 @@ export interface EpisodeDetail {
  */
 type RawEpisode = Pick<
   Episode,
+  | "campaignEndsAt"
+  | "campaignPrice"
   | "creators"
   | "eyeCatchImageVariants"
   | "freeUntil"
@@ -402,6 +436,8 @@ export const toEpisodePurchaseSurface = (
  */
 type RawEpisodeItem = Pick<
   Episode,
+  | "campaignEndsAt"
+  | "campaignPrice"
   | "eyeCatchImageVariants"
   | "freeUntil"
   | "id"
@@ -419,6 +455,7 @@ const toEpisodeItem = (
   episode: RawEpisodeItem,
   requestedLocale: Locale
 ): EpisodeItem => ({
+  campaign: toEpisodeCampaign(episode),
   eyeCatchImageVariants: toEyeCatchImageVariants(episode.eyeCatchImageVariants),
   freeUntil: episode.freeUntil || undefined,
   id: episode.id ?? "",
@@ -436,6 +473,7 @@ const mapEpisodeDetail = (
   episode: RawEpisode,
   requestedLocale: Locale
 ): EpisodeDetail => ({
+  campaign: toEpisodeCampaign(episode),
   credits: toCreatorCredits(episode.creators),
   eyeCatchImageVariants: toEyeCatchImageVariants(episode.eyeCatchImageVariants),
   freeUntil: episode.freeUntil || undefined,
@@ -556,6 +594,8 @@ const mapEpisodeImages = (
  * paid on the way in and then open it for nothing.
  */
 export interface EpisodeNeighborItem {
+  /** The campaign price open on the episode; absent when none is. */
+  campaign?: EpisodeCampaign;
   isFree: boolean;
   orderIndex: number;
   price: number;
@@ -567,6 +607,8 @@ export interface EpisodeNeighborItem {
 /** The generated `EpisodeNeighbor` fields {@link mapEpisodeNeighbor} reads. */
 type RawEpisodeNeighbor = Pick<
   EpisodeNeighbor,
+  | "campaignEndsAt"
+  | "campaignPrice"
   | "isFree"
   | "orderIndex"
   | "price"
@@ -589,6 +631,7 @@ const mapEpisodeNeighbor = (
   }
 
   return {
+    campaign: toEpisodeCampaign(neighbor),
     isFree: neighbor.isFree ?? false,
     orderIndex: neighbor.orderIndex ?? 0,
     price: neighbor.price ?? 0,
