@@ -22,6 +22,7 @@ class BuyBundleButton extends StatefulWidget {
     required this.label,
     required this.start,
     required this.onRefused,
+    this.onOpened,
   });
 
   /// What the button says, naming the price where the screen does not say it
@@ -36,6 +37,10 @@ class BuyBundleButton extends StatefulWidget {
   /// already holds it, or it is no longer sold. What the screen offers was
   /// read before that, so it reads it again.
   final VoidCallback onRefused;
+
+  /// The browser took the checkout page, which is the reader starting a new
+  /// purchase.
+  final VoidCallback? onOpened;
 
   @override
   State<BuyBundleButton> createState() => _BuyBundleButtonState();
@@ -65,6 +70,8 @@ class _BuyBundleButtonState extends State<BuyBundleButton> {
       final url = await widget.start(purchase.repository!, locale);
       if (!await purchase.launcher!.open(url)) {
         report(messages.purchaseStartFailed);
+      } else if (mounted) {
+        widget.onOpened?.call();
       }
     } on PurchaseFailure catch (failure) {
       if (!mounted) {

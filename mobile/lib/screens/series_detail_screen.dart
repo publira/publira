@@ -535,6 +535,17 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
     });
   }
 
+  /// Takes the outcome of the last checkout out of the screen's location as
+  /// the reader starts another. Every successful return lands on the same
+  /// location, which a screen still showing the last one would not see as a
+  /// change, and so would neither read what the reader holds again nor say
+  /// the new payment is being confirmed.
+  void _checkoutOpened() {
+    if (widget.checkout != null) {
+      context.go(AppRoutes.seriesDetailPath(widget.detail.series.id));
+    }
+  }
+
   /// Reads what the reader holds again, for an offer the API turned down
   /// because it was out of date.
   void _reloadPurchase() {
@@ -786,6 +797,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
       label: messages.seriesVolumeBuy,
       start: (repository, _) => repository.startVolumeCheckout(volume.id),
       onRefused: _reloadPurchase,
+      onOpened: _checkoutOpened,
     );
   }
 
@@ -826,6 +838,7 @@ class _SeriesDetailBodyState extends State<_SeriesDetailBody> {
                   locale: locale,
                 ),
             onRefused: _reloadPurchase,
+            onOpened: _checkoutOpened,
           ),
           if (remainder.discountPercent > 0) ...[
             const SizedBox(height: 4),

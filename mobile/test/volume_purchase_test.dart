@@ -402,6 +402,34 @@ void main() {
       }
     });
 
+    testWidgets('a second purchase from the screen is confirmed too', (
+      tester,
+    ) async {
+      incoming.initialUri = returnLink('success');
+      await pumpApp(tester);
+      await pumpUntilFound(tester, confirming);
+      for (final delay in checkoutConfirmationDelays) {
+        await tester.pump(delay);
+      }
+      await pumpUntilFound(tester, buyRemainder);
+
+      await tester.tap(buyRemainder);
+      await pumpUntilTrue(tester, () => launcher.opened.isNotEmpty);
+      await pumpUntilTrue(tester, () => confirming.evaluate().isEmpty);
+      expect(router.state.uri.toString(), seriesPath);
+
+      // Recorded while the reader was in the browser.
+      purchases.remainder = null;
+      final reads = purchases.accessReads;
+      incoming.deliver(returnLink('success', item: 'remainder=1'));
+      await pumpUntilFound(tester, confirming);
+      await pumpUntilTrue(tester, () => buyRemainder.evaluate().isEmpty);
+      expect(purchases.accessReads, greaterThan(reads));
+      for (final delay in checkoutConfirmationDelays) {
+        await tester.pump(delay);
+      }
+    });
+
     testWidgets('a cancelled checkout offers the purchase again', (
       tester,
     ) async {
