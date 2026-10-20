@@ -61,8 +61,10 @@ beforeEach(() => {
 
 const banner = (
   publicId: string,
-  linkUrl = `/series/${publicId}`
+  linkUrl = `/series/${publicId}`,
+  altText = ""
 ): CampaignBannerItem => ({
+  altText,
   imageVariants: [
     {
       contentType: "image/webp",
@@ -108,6 +110,33 @@ describe("CampaignBannersSection", () => {
     expect(
       screen.getByRole("link", { name: "Campaign banner" }).getAttribute("href")
     ).toBe("https://example.com/campaign");
+  });
+
+  // The image is all the link holds, so the words drawn into it are what a
+  // screen reader announces the banner by.
+  it("names a banner's link by the alternative text the operator wrote", async () => {
+    await renderSection([
+      banner("BANNER01", undefined, "Autumn sale: the first volume is free"),
+    ]);
+
+    expect(
+      screen
+        .getByRole("link", { name: "Autumn sale: the first volume is free" })
+        .getAttribute("href")
+    ).toBe("/en/series/BANNER01");
+  });
+
+  it("names each banner of a strip by its own text, and one without by the generic name", async () => {
+    await renderSection([
+      banner("BANNER01", undefined, "Autumn sale"),
+      banner("BANNER02"),
+    ]);
+
+    expect(
+      screen
+        .getAllByRole("listitem")
+        .map((item) => item.querySelector("img")?.getAttribute("alt"))
+    ).toEqual(["Autumn sale", "Campaign banner"]);
   });
 
   it("draws two or more as a list in the operator's order, with controls", async () => {

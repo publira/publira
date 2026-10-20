@@ -32,6 +32,7 @@ const variant = {
 };
 
 const banner = (overrides: Record<string, unknown> = {}) => ({
+  altText: "Autumn sale",
   imageUpdatedAt: "2026-10-01T00:00:00Z",
   imageVariants: [variant],
   linkUrl: "/series/SERIES01",
@@ -50,6 +51,7 @@ describe("listCampaignBanners", () => {
       banners: [
         banner(),
         banner({
+          altText: undefined,
           linkUrl: "https://example.com/campaign",
           publicId: "BANNER02",
         }),
@@ -58,11 +60,13 @@ describe("listCampaignBanners", () => {
 
     await expect(listCampaignBanners(tenantId)).resolves.toEqual([
       {
+        altText: "Autumn sale",
         imageVariants: [{ ...variant, fileSizeBytes: 1024 }],
         linkUrl: "/series/SERIES01",
         publicId: "BANNER01",
       },
       {
+        altText: "",
         imageVariants: [{ ...variant, fileSizeBytes: 1024 }],
         linkUrl: "https://example.com/campaign",
         publicId: "BANNER02",
