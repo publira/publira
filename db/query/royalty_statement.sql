@@ -30,6 +30,10 @@ SELECT
 -- the month, with the month's sales of that episode. It is what a close
 -- writes and what a preview shows, so the two cannot disagree.
 --
+-- A sale of a volume is a sale of each episode in it, at the part of its
+-- price purchase_episode_parts says that episode accounts for, and with the
+-- part of its refund episode_part_of_purchase_amount gives that episode.
+--
 -- The month runs between the bounds GetRoyaltyMonthBounds answers for it. A
 -- fully refunded sale is not a sale, and neither is one whose dispute was
 -- lost, whose money the reader's bank returned; a partial refund stays a sale
@@ -53,16 +57,20 @@ SELECT
     r.public_id AS role_public_id,
     r.name AS role_name,
     count(*)::integer AS sale_count,
-    sum(p.price_at_purchase)::bigint AS gross_amount,
-    sum(COALESCE(p.refunded_amount, 0))::bigint AS refunded_amount,
+    sum(pp.price)::bigint AS gross_amount,
+    sum(part.refunded_amount)::bigint AS refunded_amount,
     ec.share_bps,
-    ((sum(p.price_at_purchase) - sum(COALESCE(p.refunded_amount, 0))) * ec.share_bps / 10000)::bigint AS payout_amount
+    ((sum(pp.price) - sum(part.refunded_amount)) * ec.share_bps / 10000)::bigint AS payout_amount
 FROM purchases p
-JOIN episodes e ON e.tenant_id = p.tenant_id AND e.id = p.episode_id
+JOIN purchase_episode_parts pp ON pp.tenant_id = p.tenant_id AND pp.purchase_id = p.id
+CROSS JOIN LATERAL (
+    SELECT episode_part_of_purchase_amount(COALESCE(p.refunded_amount, 0), pp.price, p.price_at_purchase) AS refunded_amount
+) part
+JOIN episodes e ON e.tenant_id = pp.tenant_id AND e.id = pp.episode_id
 CROSS JOIN LATERAL episode_translation_for(e.id, '') et
 JOIN series s ON s.tenant_id = e.tenant_id AND s.id = e.series_id
 CROSS JOIN LATERAL series_translation_for(s.id, '') str
-JOIN episode_creators ec ON ec.tenant_id = p.tenant_id AND ec.episode_id = p.episode_id
+JOIN episode_creators ec ON ec.tenant_id = pp.tenant_id AND ec.episode_id = pp.episode_id
 JOIN creators c ON c.tenant_id = ec.tenant_id AND c.id = ec.creator_id
 LEFT JOIN creator_roles r ON r.tenant_id = ec.tenant_id AND r.id = ec.role_id
 WHERE p.tenant_id = sqlc.arg('tenant_id')
@@ -81,9 +89,9 @@ GROUP BY
 ORDER BY str.title, s.id, e.order_index, e.id, ec.display_order, ec.creator_id, ec.role_id NULLS FIRST;
 
 -- name: GetRoyaltySalesTotalsForPeriod :one
--- Totals the month's sales once each, however many creators a sale is
--- credited to. The month, the refund rule, and the currency are those of
--- ListRoyaltyLinesForPeriod.
+-- Totals the month's sales once each, however many episodes and creators a
+-- sale is credited to. The month, the refund rule, and the currency are
+-- those of ListRoyaltyLinesForPeriod.
 SELECT
     COALESCE(sum(p.price_at_purchase), 0)::bigint AS total_gross,
     COALESCE(sum(COALESCE(p.refunded_amount, 0)), 0)::bigint AS total_refunded
@@ -108,7 +116,9 @@ WHERE p.tenant_id = sqlc.arg('tenant_id')
 -- line's net after them times its share, floored as the line was, less the
 -- same over its net before them, which is the line's own net and every
 -- adjustment it has had since. A statement lists these after the month's own
--- lines, oldest adjusted month first.
+-- lines, oldest adjusted month first. A refund of a volume is carried to the
+-- line of each episode in it, by the part royalty_uncarried_episode_refunds
+-- gives that episode.
 WITH carried AS (
     SELECT
         u.tenant_id,
@@ -118,7 +128,7 @@ WITH carried AS (
         sum(u.sale_count)::integer AS sale_count,
         sum(u.gross_amount)::bigint AS gross_amount,
         sum(u.refunded_amount)::bigint AS refunded_amount
-    FROM royalty_uncarried_refunds u
+    FROM royalty_uncarried_episode_refunds u
     WHERE u.tenant_id = sqlc.arg('tenant_id')
         AND u.currency = sqlc.arg('currency')::text
         AND u.period < sqlc.arg('period')::date
@@ -171,7 +181,7 @@ ORDER BY carried.period, l.line_number;
 
 -- name: GetRoyaltyAdjustmentTotalForPeriod :one
 -- Totals what ListRoyaltyAdjustmentLinesForPeriod takes back, each refunded
--- sale counted once however many creators it is credited to.
+-- sale counted once however many episodes and creators it is credited to.
 SELECT
     COALESCE(sum(u.gross_amount - u.refunded_amount), 0)::bigint AS total_adjustment
 FROM royalty_uncarried_refunds u

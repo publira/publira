@@ -2,7 +2,7 @@
 title: Reports and royalties
 description: Read the Dashboard and Read-through, close a month of royalties into a statement for each Author, and export it as CSV.
 published: 2026-10-07
-updated: 2026-10-15
+updated: 2026-10-20
 ---
 
 Three screens in the console turn what happens on the site into numbers. **Dashboard** shows where the catalog's publishing stands, **Read-through** under **Reports** shows how far members read, and **Royalties** under **Reports** works out what the tenant owes each Author for a month of sales, then closes that month into a statement that never changes.
@@ -74,6 +74,7 @@ For each credit, a month's payout is:
 The sales of a month are:
 
 - Purchases of the episode on the site, through Stripe or PAY.JP, at the price the reader paid.
+- Purchases on the site of a volume holding the episode, each a sale of the episode at its part of the price the reader paid. That price is divided among the volume's episodes in proportion to their own prices when the purchase was recorded, or evenly when none of them has a price, so a free episode in a volume with priced ones takes no part and has no sale. The parts are fixed with the purchase: repricing an episode or changing what the volume holds afterwards does not move them. A partial refund of the volume is divided in the same proportion, each episode's part rounded down.
 - Purchases in the tenant's app through the App Store or Google Play, at the episode's price. The store's commission is not taken off.
 
 Every amount is in the tenant's currency, and a closed statement keeps the currency it was closed in. A purchase paid in another currency, which happens only when a reader completes a payment started before the tenant changed its currency, opens the episode but is not a sale on the statement.

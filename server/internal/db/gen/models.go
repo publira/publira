@@ -928,6 +928,13 @@ type Purchase struct {
 	ProviderPromotionCodeID sql.NullString `json:"provider_promotion_code_id"`
 }
 
+type PurchaseEpisodePart struct {
+	TenantID   uuid.UUID `json:"tenant_id"`
+	PurchaseID uuid.UUID `json:"purchase_id"`
+	EpisodeID  uuid.UUID `json:"episode_id"`
+	Price      int32     `json:"price"`
+}
+
 type ReaderIconPreset struct {
 	ID        uuid.UUID `json:"id"`
 	TenantID  uuid.UUID `json:"tenant_id"`
@@ -994,7 +1001,7 @@ type RoyaltyStatementPurchase struct {
 	RefundedAmount int32     `json:"refunded_amount"`
 }
 
-type RoyaltyUncarriedRefund struct {
+type RoyaltyUncarriedEpisodeRefund struct {
 	TenantID       uuid.UUID `json:"tenant_id"`
 	PurchaseID     uuid.UUID `json:"purchase_id"`
 	EpisodeID      uuid.UUID `json:"episode_id"`
@@ -1004,6 +1011,18 @@ type RoyaltyUncarriedRefund struct {
 	SaleCount      int32     `json:"sale_count"`
 	GrossAmount    int64     `json:"gross_amount"`
 	RefundedAmount int64     `json:"refunded_amount"`
+}
+
+type RoyaltyUncarriedRefund struct {
+	TenantID              uuid.UUID `json:"tenant_id"`
+	PurchaseID            uuid.UUID `json:"purchase_id"`
+	Currency              string    `json:"currency"`
+	StatementID           uuid.UUID `json:"statement_id"`
+	Period                time.Time `json:"period"`
+	SaleCount             int32     `json:"sale_count"`
+	GrossAmount           int64     `json:"gross_amount"`
+	RefundedAmount        int64     `json:"refunded_amount"`
+	CountedRefundedAmount int64     `json:"counted_refunded_amount"`
 }
 
 type Series struct {
@@ -1717,6 +1736,15 @@ type VolumeEpisode struct {
 	VolumeID  uuid.UUID `json:"volume_id"`
 	EpisodeID uuid.UUID `json:"episode_id"`
 	Position  int32     `json:"position"`
+}
+
+type VolumePurchaseEpisode struct {
+	TenantID   uuid.UUID `json:"tenant_id"`
+	PurchaseID uuid.UUID `json:"purchase_id"`
+	EpisodeID  uuid.UUID `json:"episode_id"`
+	Position   int32     `json:"position"`
+	ListPrice  int32     `json:"list_price"`
+	Price      int32     `json:"price"`
 }
 
 type VolumePurchaseSurface struct {
