@@ -157,7 +157,6 @@ const genreEyeCatchSchema = async (locale: Locale) =>
     currentEyeCatchImageUpdatedAt: optionalTrimmedString(),
     eyeCatchImage: optionalFileFormSchema,
     id: await idSchema(locale),
-    name: await nameSchema(locale),
     tenantId: await tenantIdSchema(locale),
   });
 const genreEyeCatchAspectSchema = async (locale: Locale) => {
@@ -388,8 +387,8 @@ export const reorderGenresAction = async (
 
 /**
  * Saves the eye-catch the genre screen submitted: a new image for every ratio,
- * or the removal of the one the genre has. `UpdateGenre` takes the name
- * alongside, so the form posts back the name it read.
+ * or the removal of the one the genre has. It sends no name, which leaves
+ * every name the genre has as it is.
  */
 export const updateGenreEyeCatchAction = async (
   _prevState: FormActionState,
@@ -410,7 +409,6 @@ export const updateGenreEyeCatchAction = async (
         name: "current_eye_catch_image_updated_at",
       },
       eyeCatchImage: { kind: "file", name: "eye_catch_image" },
-      name: "value",
     })
   );
   if (!parsed.success) {
@@ -421,13 +419,17 @@ export const updateGenreEyeCatchAction = async (
     clearEyeCatchImage,
     currentEyeCatchImageUpdatedAt,
     eyeCatchImage,
-    name,
     id,
     tenantId,
   } = parsed.data;
   const eyeCatchImageData = eyeCatchImage
     ? new Uint8Array(await eyeCatchImage.arrayBuffer())
     : undefined;
+  // `UpdateGenre` without a name needs an eye-catch change to save, and a
+  // form submitted with neither has nothing to save.
+  if (!(eyeCatchImageData || clearEyeCatchImage)) {
+    return { message: t("admin.genres.eye_catch_updated"), ok: true };
+  }
 
   const result = await withAdminSessionReauth(() =>
     updateGenre(
@@ -436,7 +438,6 @@ export const updateGenreEyeCatchAction = async (
         eyeCatchImageContentType: eyeCatchImage?.type || undefined,
         eyeCatchImageData,
         id,
-        name,
         tenantId,
       },
       locale

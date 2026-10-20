@@ -152,3 +152,29 @@ func TestUpdateGenreRejectsClearAndImageTogether(t *testing.T) {
 	assertBadRequestField(t, err, "eye_catch_image_data")
 	assertExpectations(t, mock)
 }
+
+// An empty name leaves the names alone only on a save that changes the
+// eye-catch; with nothing else to save it is still a missing name.
+func TestUpdateGenreRequiresANameWhenTheEyeCatchStays(t *testing.T) {
+	testServer, mock := newTestAdminServer(t)
+
+	tenantID := uuid.Must(uuid.NewV7())
+	userID := uuid.Must(uuid.NewV7())
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+	expectTenantLookup(mock, tenantID, "TENANT", now)
+	expectActiveSessionLookup(mock, tenantID, userID, sessionToken, now)
+
+	client := publiraadminv1connect.NewAdminGenreServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+	_, err := client.UpdateGenre(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.UpdateGenreRequest{
+		Tenant:  &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		GenreId: "0190f0b5-7c1a-7000-8000-000000000001",
+		Name:    "  ",
+	})
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("UpdateGenre code = %v, want %v", connect.CodeOf(err), connect.CodeInvalidArgument)
+	}
+	assertBadRequestField(t, err, "name")
+	assertExpectations(t, mock)
+}
