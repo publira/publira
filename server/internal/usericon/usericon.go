@@ -15,6 +15,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
 	"github.com/publira/publira/server/internal/imageproc"
+	"github.com/publira/publira/server/internal/ownerimages"
 	"github.com/publira/publira/server/internal/storage"
 )
 
@@ -84,44 +85,14 @@ func Set(ctx context.Context, q Querier, store storage.Provider, account Account
 		return uuid.Nil, storage.ErrNotConfigured
 	}
 
-	imageID, err := uuid.NewV7()
+	imageID, err := ownerimages.Store(ctx, q, store, userImages, ownerimages.Ref{
+		TenantID:       account.TenantID,
+		TenantPublicID: account.TenantPublicID,
+		OwnerID:        account.UserID,
+		OwnerPublicID:  account.UserPublicID,
+	}, []imageproc.Variant{variant})
 	if err != nil {
 		return uuid.Nil, err
-	}
-	if _, err := q.CreateUserImage(ctx, dbmodels.CreateUserImageParams{
-		ID:       imageID,
-		TenantID: account.TenantID,
-		UserID:   account.UserID,
-	}); err != nil {
-		return uuid.Nil, fmt.Errorf("create user image: %w", err)
-	}
-
-	uploaded, err := store.Upload(ctx, storage.UploadRequest{
-		ObjectKey:   objectKey(account, imageID, variant),
-		ContentType: variant.ContentType,
-		Data:        variant.Data,
-	})
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("upload user icon: %w", err)
-	}
-
-	variantID, err := uuid.NewV7()
-	if err != nil {
-		return uuid.Nil, err
-	}
-	if _, err := q.CreateUserImageVariant(ctx, dbmodels.CreateUserImageVariantParams{
-		ID:              variantID,
-		TenantID:        account.TenantID,
-		UserImageID:     imageID,
-		Label:           variant.Label,
-		StorageProvider: uploaded.Provider,
-		ObjectKey:       uploaded.ObjectKey,
-		ContentType:     variant.ContentType,
-		FileSizeBytes:   uploaded.SizeBytes,
-		Width:           int32(variant.Width),
-		Height:          int32(variant.Height),
-	}); err != nil {
-		return uuid.Nil, fmt.Errorf("create user image variant: %w", err)
 	}
 
 	if err := elect(ctx, q, account.TenantID, account.UserID, uuid.NullUUID{UUID: imageID, Valid: true}); err != nil {
@@ -148,43 +119,9 @@ func StorePreset(ctx context.Context, q PresetQuerier, store storage.Provider, t
 		return uuid.Nil, storage.ErrNotConfigured
 	}
 
-	presetID, err := uuid.NewV7()
+	presetID, err := ownerimages.Store(ctx, q, store, presetImages, ownerimages.Ref{TenantID: tenantID, TenantPublicID: tenantPublicID}, []imageproc.Variant{variant})
 	if err != nil {
 		return uuid.Nil, err
-	}
-	if _, err := q.CreateReaderIconPreset(ctx, dbmodels.CreateReaderIconPresetParams{
-		ID:       presetID,
-		TenantID: tenantID,
-	}); err != nil {
-		return uuid.Nil, fmt.Errorf("create reader icon preset: %w", err)
-	}
-
-	uploaded, err := store.Upload(ctx, storage.UploadRequest{
-		ObjectKey:   presetObjectKey(tenantPublicID, presetID, variant),
-		ContentType: variant.ContentType,
-		Data:        variant.Data,
-	})
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("upload reader icon preset: %w", err)
-	}
-
-	variantID, err := uuid.NewV7()
-	if err != nil {
-		return uuid.Nil, err
-	}
-	if _, err := q.CreateReaderIconPresetVariant(ctx, dbmodels.CreateReaderIconPresetVariantParams{
-		ID:                 variantID,
-		TenantID:           tenantID,
-		ReaderIconPresetID: presetID,
-		Label:              variant.Label,
-		StorageProvider:    uploaded.Provider,
-		ObjectKey:          uploaded.ObjectKey,
-		ContentType:        variant.ContentType,
-		FileSizeBytes:      uploaded.SizeBytes,
-		Width:              int32(variant.Width),
-		Height:             int32(variant.Height),
-	}); err != nil {
-		return uuid.Nil, fmt.Errorf("create reader icon preset variant: %w", err)
 	}
 	return presetID, nil
 }
@@ -233,15 +170,38 @@ func elect(ctx context.Context, q Querier, tenantID, userID uuid.UUID, imageID u
 	return nil
 }
 
-// objectKey is where the variant of an account's icon image is stored. It
-// sits under the tenant prefix the orphan sweep walks, which is what lets the
-// sweep reclaim it once no row names it.
-func objectKey(account Account, imageID uuid.UUID, variant imageproc.Variant) string {
-	return fmt.Sprintf("tenants/%s/users/%s/%s-%s%s", account.TenantPublicID, account.UserPublicID, imageID, variant.Label, variant.Extension)
+// userImages files an account's icons under the account, which is where the
+// orphan sweep finds them once no account elects them.
+var userImages = ownerimages.Owner[Querier]{
+	Collection: "users",
+	CreateImage: func(ctx context.Context, q Querier, image ownerimages.Image) error {
+		_, err := q.CreateUserImage(ctx, dbmodels.CreateUserImageParams{ID: image.ID, TenantID: image.TenantID, UserID: image.OwnerID})
+		return err
+	},
+	CreateVariant: func(ctx context.Context, q Querier, v ownerimages.Variant) error {
+		_, err := q.CreateUserImageVariant(ctx, dbmodels.CreateUserImageVariantParams{
+			ID: v.ID, TenantID: v.TenantID, UserImageID: v.ImageID, Label: v.Label,
+			StorageProvider: v.StorageProvider, ObjectKey: v.ObjectKey, ContentType: v.ContentType,
+			FileSizeBytes: v.FileSizeBytes, Width: v.Width, Height: v.Height,
+		})
+		return err
+	},
 }
 
-// presetObjectKey is where the variant of a preset is stored, under the tenant
-// prefix the orphan sweep walks, which reclaims it once the preset is deleted.
-func presetObjectKey(tenantPublicID string, presetID uuid.UUID, variant imageproc.Variant) string {
-	return fmt.Sprintf("tenants/%s/reader-icon-presets/%s-%s%s", tenantPublicID, presetID, variant.Label, variant.Extension)
+// presetImages stores a preset as its own image row: a preset is an image the
+// tenant holds, so the preset row is the image and has no owner above it.
+var presetImages = ownerimages.Owner[PresetQuerier]{
+	Collection: "reader-icon-presets",
+	CreateImage: func(ctx context.Context, q PresetQuerier, image ownerimages.Image) error {
+		_, err := q.CreateReaderIconPreset(ctx, dbmodels.CreateReaderIconPresetParams{ID: image.ID, TenantID: image.TenantID})
+		return err
+	},
+	CreateVariant: func(ctx context.Context, q PresetQuerier, v ownerimages.Variant) error {
+		_, err := q.CreateReaderIconPresetVariant(ctx, dbmodels.CreateReaderIconPresetVariantParams{
+			ID: v.ID, TenantID: v.TenantID, ReaderIconPresetID: v.ImageID, Label: v.Label,
+			StorageProvider: v.StorageProvider, ObjectKey: v.ObjectKey, ContentType: v.ContentType,
+			FileSizeBytes: v.FileSizeBytes, Width: v.Width, Height: v.Height,
+		})
+		return err
+	},
 }

@@ -93,6 +93,8 @@ The orphan image sweep — `maintenance.purge_orphan_images` on the worker, and 
 
 So a new kind of stored object either records its key in one of the existing `*_image_variants` tables, or brings its own table and a clause in `ListReferencedObjectKeys` (`db/query/storage.sql`) — never a bare `Upload` with the key kept somewhere else. Where the row points at an image an entity elects (an icon, an eye catch), add the matching `DeleteUnreferenced*Images` query too, so a replaced image's row stops protecting its objects.
 
+An aggregate that carries an image in that shape — the owner, `<owner>_images`, `<owner>_image_variants` — stores, replaces, and reads it through `internal/ownerimages`, contributing an `ownerimages.Owner` over its own generated queries rather than another copy of the upload sequence. The package keeps the object key layout the sweep and the image routes rely on, so a new owner gets it without spelling it out.
+
 No lint covers this. The reclamation logic is `internal/orphanimages`, documented in [`cmd/publiractl/README.md`](cmd/publiractl/README.md).
 
 ## A reader-writable RPC charges the shared flood control

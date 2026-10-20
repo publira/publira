@@ -16,11 +16,11 @@ import (
 	"github.com/publira/publira/server/api/protomapper"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/imageproc"
+	"github.com/publira/publira/server/internal/ownerimages"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
-	"github.com/publira/publira/server/internal/storage"
 )
 
 var hexColorCodePattern = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
@@ -409,9 +409,8 @@ func tenantThemeParamsFromRow(row dbmodels.GetTenantThemeByTenantIDRow) dbmodels
 type tenantBrandingImage struct {
 	// name goes into the log messages, so a failed write says which of the two
 	// images it was.
-	name         string
-	variantType  string
-	objectPrefix string
+	name   string
+	images ownerimages.Owner[Querier]
 	// uploadedAction and deletedAction are what the audit log records the
 	// change as.
 	uploadedAction string
@@ -422,8 +421,7 @@ type tenantBrandingImage struct {
 
 var tenantIconImage = tenantBrandingImage{
 	name:           "icon",
-	variantType:    imageproc.TenantVariantTypeIcon,
-	objectPrefix:   "icons",
+	images:         tenantBrandingImagesIn("icons"),
 	uploadedAction: "tenant_icon_uploaded",
 	deletedAction:  "tenant_icon_deleted",
 	currentImageID: func(row dbmodels.GetTenantThemeByTenantIDRow) uuid.NullUUID {
@@ -439,8 +437,7 @@ var tenantIconImage = tenantBrandingImage{
 
 var tenantLogoImage = tenantBrandingImage{
 	name:           "logo",
-	variantType:    imageproc.TenantVariantTypeLogo,
-	objectPrefix:   "logos",
+	images:         tenantBrandingImagesIn("logos"),
 	uploadedAction: "tenant_logo_uploaded",
 	deletedAction:  "tenant_logo_deleted",
 	currentImageID: func(row dbmodels.GetTenantThemeByTenantIDRow) uuid.NullUUID {
@@ -452,60 +449,6 @@ var tenantLogoImage = tenantBrandingImage{
 			LogoImageID: imageID,
 		})
 	},
-}
-
-// storeTenantBrandingImage uploads the normalized image and returns the tenant
-// image it was stored as. A replace stores a new image rather than overwriting
-// the old object, so the served URL changes and no client keeps serving the
-// previous one from its cache.
-func (s *adminServer) storeTenantBrandingImage(ctx context.Context, tenant dbmodels.Tenant, image tenantBrandingImage, variant imageproc.Variant) (uuid.UUID, error) {
-	if s.storage == nil {
-		return uuid.Nil, connect.NewError(connect.CodeInternal, "storage provider is not configured")
-	}
-
-	tenantImageID, err := uuid.NewV7()
-	if err != nil {
-		return uuid.Nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
-	}
-	createdImage, err := s.queriesFor(ctx).CreateTenantImage(ctx, dbmodels.CreateTenantImageParams{
-		ID:       tenantImageID,
-		TenantID: tenant.ID,
-	})
-	if err != nil {
-		return uuid.Nil, s.internalDBError(ctx, "failed to create tenant image", err, "tenant_id", tenant.ID.String())
-	}
-
-	objectKey := fmt.Sprintf("tenants/%s/%s/%s-%s%s", tenant.PublicID, image.objectPrefix, createdImage.ID.String(), variant.Label, variant.Extension)
-	uploaded, err := s.storage.Upload(ctx, storage.UploadRequest{
-		ObjectKey:   objectKey,
-		ContentType: variant.ContentType,
-		Data:        variant.Data,
-	})
-	if err != nil {
-		return uuid.Nil, storageUploadError(err)
-	}
-
-	variantID, err := uuid.NewV7()
-	if err != nil {
-		return uuid.Nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
-	}
-	if _, err := s.queriesFor(ctx).CreateTenantImageVariant(ctx, dbmodels.CreateTenantImageVariantParams{
-		ID:              variantID,
-		TenantID:        tenant.ID,
-		TenantImageID:   createdImage.ID,
-		Label:           variant.Label,
-		VariantType:     image.variantType,
-		StorageProvider: uploaded.Provider,
-		ObjectKey:       uploaded.ObjectKey,
-		ContentType:     variant.ContentType,
-		FileSizeBytes:   uploaded.SizeBytes,
-		Width:           int32(variant.Width),
-		Height:          int32(variant.Height),
-	}); err != nil {
-		return uuid.Nil, s.internalDBError(ctx, "failed to create tenant image variant", err, "tenant_id", tenant.ID.String(), "tenant_image_id", createdImage.ID.String())
-	}
-
-	return createdImage.ID, nil
 }
 
 // applyTenantBrandingImage points the tenant theme at variant, or clears the
@@ -542,7 +485,10 @@ func (s *adminServer) applyTenantBrandingImage(ctx context.Context, tenant dbmod
 
 	imageID := uuid.NullUUID{}
 	if variant != nil {
-		storedImageID, storeErr := s.storeTenantBrandingImage(txCtx, tenant, image, *variant)
+		// A replace stores a new image rather than overwriting the old object,
+		// so the served URL changes and no client keeps serving the previous
+		// one from its cache.
+		storedImageID, storeErr := s.storeOwnerImage(txCtx, image.images, ownerImageRef(tenant, uuid.Nil, ""), []imageproc.Variant{*variant})
 		if storeErr != nil {
 			return nil, storeErr
 		}

@@ -59,13 +59,14 @@ func TestNormalizeCreatorIconImageCenterCropSquare(t *testing.T) {
 		t.Fatalf("png.Encode: %v", err)
 	}
 
-	normalized, err := normalizeCreatorIconImage(raw.Bytes(), "image/png", nil)
+	variants, err := normalizeCreatorIconImage(raw.Bytes(), "image/png", nil)
 	if err != nil {
 		t.Fatalf("normalizeCreatorIconImage: %v", err)
 	}
-	if normalized == nil {
-		t.Fatalf("normalized image is nil")
+	if len(variants) != 1 {
+		t.Fatalf("variants = %d, want 1", len(variants))
 	}
+	normalized := variants[0]
 	if normalized.Width != 300 || normalized.Height != 300 {
 		t.Fatalf("size = %dx%d, want 300x300", normalized.Width, normalized.Height)
 	}
@@ -104,10 +105,14 @@ func TestNormalizeCreatorIconImageCutsAtTheCropRectangle(t *testing.T) {
 	// was taken where it was asked for rather than in the centre.
 	raw := halvedImage(t, 600, 400, left, right)
 
-	normalized, err := normalizeCreatorIconImage(raw, "image/png", &imageproc.CropRect{X: 300, Y: 50, Width: 300, Height: 300})
+	variants, err := normalizeCreatorIconImage(raw, "image/png", &imageproc.CropRect{X: 300, Y: 50, Width: 300, Height: 300})
 	if err != nil {
 		t.Fatalf("normalizeCreatorIconImage: %v", err)
 	}
+	if len(variants) != 1 {
+		t.Fatalf("variants = %d, want 1", len(variants))
+	}
+	normalized := variants[0]
 	if normalized.Width != 300 || normalized.Height != 300 {
 		t.Fatalf("size = %dx%d, want 300x300", normalized.Width, normalized.Height)
 	}
@@ -129,10 +134,14 @@ func TestNormalizeCreatorIconImageFitsASquareInsideTheCropRectangle(t *testing.T
 	right := color.RGBA{B: 255, A: 255}
 	raw := halvedImage(t, 600, 400, left, right)
 
-	normalized, err := normalizeCreatorIconImage(raw, "image/png", &imageproc.CropRect{X: 100, Y: 0, Width: 400, Height: 300})
+	variants, err := normalizeCreatorIconImage(raw, "image/png", &imageproc.CropRect{X: 100, Y: 0, Width: 400, Height: 300})
 	if err != nil {
 		t.Fatalf("normalizeCreatorIconImage: %v", err)
 	}
+	if len(variants) != 1 {
+		t.Fatalf("variants = %d, want 1", len(variants))
+	}
+	normalized := variants[0]
 	if normalized.Width != 300 || normalized.Height != 300 {
 		t.Fatalf("size = %dx%d, want 300x300", normalized.Width, normalized.Height)
 	}

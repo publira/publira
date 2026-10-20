@@ -14,19 +14,16 @@ import (
 	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
-	"github.com/publira/publira/server/api/protomapper"
 	"github.com/publira/publira/server/internal/auditlog"
 	"github.com/publira/publira/server/internal/campaignbanners"
 	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/imageproc"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
-	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
-	"github.com/publira/publira/server/internal/storage"
 )
 
 const (
@@ -162,74 +159,6 @@ func (s *adminServer) campaignBannerImageVariants(data []byte, contentType strin
 	return variants, nil
 }
 
-// createCampaignBannerImage stores a whole banner image, one object and one
-// row per width of its cut, and answers the image row the banner is then
-// pointed at.
-func (s *adminServer) createCampaignBannerImage(ctx context.Context, tenant dbmodels.Tenant, bannerID uuid.UUID, bannerPublicID string, variants []imageproc.Variant) (uuid.UUID, error) {
-	imageID, err := uuid.NewV7()
-	if err != nil {
-		return uuid.Nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
-	}
-	created, err := s.queriesFor(ctx).CreateCampaignBannerImage(ctx, dbmodels.CreateCampaignBannerImageParams{
-		ID:               imageID,
-		TenantID:         tenant.ID,
-		CampaignBannerID: bannerID,
-	})
-	if err != nil {
-		return uuid.Nil, s.internalDBError(ctx, "failed to create campaign banner image", err, "tenant_id", tenant.ID.String(), "campaign_banner_id", bannerID.String())
-	}
-
-	store, err := storage.Pin(ctx, s.storage)
-	if err != nil {
-		return uuid.Nil, storageUploadError(err)
-	}
-	for _, variant := range variants {
-		uploaded, uploadErr := store.Upload(ctx, storage.UploadRequest{
-			ObjectKey: fmt.Sprintf(
-				"tenants/%s/%s/%s/%s-%s%s",
-				tenant.PublicID,
-				campaignBannerImagePath,
-				bannerPublicID,
-				created.ID.String(),
-				variant.Label,
-				variant.Extension,
-			),
-			ContentType: variant.ContentType,
-			Data:        variant.Data,
-		})
-		if uploadErr != nil {
-			return uuid.Nil, storageUploadError(uploadErr)
-		}
-		if err := s.createCampaignBannerImageVariant(ctx, tenant.ID, created.ID, variant, uploaded); err != nil {
-			return uuid.Nil, err
-		}
-	}
-	return created.ID, nil
-}
-
-func (s *adminServer) createCampaignBannerImageVariant(ctx context.Context, tenantID, imageID uuid.UUID, variant imageproc.Variant, uploaded storage.UploadResult) error {
-	variantID, err := uuid.NewV7()
-	if err != nil {
-		return connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
-	}
-	if _, err := s.queriesFor(ctx).CreateCampaignBannerImageVariant(ctx, dbmodels.CreateCampaignBannerImageVariantParams{
-		ID:                    variantID,
-		TenantID:              tenantID,
-		CampaignBannerImageID: imageID,
-		VariantType:           variant.VariantType,
-		Label:                 variant.Label,
-		StorageProvider:       uploaded.Provider,
-		ObjectKey:             uploaded.ObjectKey,
-		ContentType:           variant.ContentType,
-		FileSizeBytes:         uploaded.SizeBytes,
-		Width:                 int32(variant.Width),
-		Height:                int32(variant.Height),
-	}); err != nil {
-		return s.internalDBError(ctx, "failed to create campaign banner image variant", err, "tenant_id", tenantID.String(), "campaign_banner_image_id", imageID.String())
-	}
-	return nil
-}
-
 // campaignBannerRow is a banner as every admin banner RPC answers with it,
 // whichever query read it.
 type campaignBannerRow struct {
@@ -280,7 +209,7 @@ func campaignBannerRowFromList(row dbmodels.ListCampaignBannersForTenantRow) cam
 
 // campaignBannerMessages builds the answer for a list of banners, reading the
 // variants of every image among them in one query.
-func (s *adminServer) campaignBannerMessages(ctx context.Context, rows []campaignBannerRow) ([]*publiraadminv1.AdminCampaignBanner, error) {
+func (s *adminServer) campaignBannerMessages(ctx context.Context, tenantID uuid.UUID, rows []campaignBannerRow) ([]*publiraadminv1.AdminCampaignBanner, error) {
 	banners := make([]*publiraadminv1.AdminCampaignBanner, 0, len(rows))
 	imageIDs := make([]uuid.UUID, 0, len(rows))
 	bannerByImageID := make(map[uuid.UUID]*publiraadminv1.AdminCampaignBanner, len(rows))
@@ -305,7 +234,7 @@ func (s *adminServer) campaignBannerMessages(ctx context.Context, rows []campaig
 			bannerByImageID[row.imageID.UUID] = banner
 		}
 	}
-	variantsByImageID, err := s.campaignBannerImageVariantsByImageIDs(ctx, imageIDs)
+	variantsByImageID, err := s.ownerImageVariants(ctx, campaignBannerImages, tenantID, imageIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -315,34 +244,6 @@ func (s *adminServer) campaignBannerMessages(ctx context.Context, rows []campaig
 		}
 	}
 	return banners, nil
-}
-
-func (s *adminServer) campaignBannerImageVariantsByImageIDs(
-	ctx context.Context,
-	imageIDs []uuid.UUID,
-) (map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant, error) {
-	if len(imageIDs) == 0 {
-		return map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant{}, nil
-	}
-
-	rows, err := s.queriesFor(ctx).ListCampaignBannerImageVariantsByImageIDs(ctx, imageIDs)
-	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to list campaign banner image variants", err)
-	}
-
-	mapped := make(map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant, len(imageIDs))
-	for _, row := range rows {
-		mapped[row.CampaignBannerImageID] = append(mapped[row.CampaignBannerImageID], &publirattypesv1.SeriesEyeCatchVariant{
-			Label:         row.Label,
-			VariantType:   row.VariantType,
-			Url:           protomapper.EyeCatchVariantURL(campaignBannerImagePath, row.CampaignBannerImageID, row.VariantType, row.Width, row.ID),
-			ContentType:   row.ContentType,
-			Width:         row.Width,
-			Height:        row.Height,
-			FileSizeBytes: row.FileSizeBytes,
-		})
-	}
-	return mapped, nil
 }
 
 // campaignBannerByID reads the banner a request names.
@@ -376,7 +277,7 @@ func (s *adminServer) campaignBannerMessageByID(ctx context.Context, tenantID, i
 	if err != nil {
 		return nil, err
 	}
-	banners, err := s.campaignBannerMessages(ctx, []campaignBannerRow{campaignBannerRowFromGet(row)})
+	banners, err := s.campaignBannerMessages(ctx, tenantID, []campaignBannerRow{campaignBannerRowFromGet(row)})
 	if err != nil {
 		return nil, err
 	}
@@ -441,7 +342,7 @@ func (s *adminServer) campaignBannersOfTenant(ctx context.Context, tenantID uuid
 	for _, row := range rows {
 		mapped = append(mapped, campaignBannerRowFromList(row))
 	}
-	return s.campaignBannerMessages(ctx, mapped)
+	return s.campaignBannerMessages(ctx, tenantID, mapped)
 }
 
 func (s *adminServer) GetCampaignBanner(
@@ -544,7 +445,7 @@ func (s *adminServer) CreateCampaignBanner(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to create campaign banner", err, "tenant_id", tenant.ID.String())
 	}
-	imageID, err := s.createCampaignBannerImage(txCtx, tenant, created.ID, created.PublicID, variants)
+	imageID, err := s.storeOwnerImage(txCtx, campaignBannerImages, ownerImageRef(tenant, created.ID, created.PublicID), variants)
 	if err != nil {
 		return nil, err
 	}
@@ -631,7 +532,7 @@ func (s *adminServer) UpdateCampaignBanner(
 
 	imageID := current.ImageID
 	if len(variants) > 0 {
-		created, err := s.createCampaignBannerImage(txCtx, tenant, current.ID, current.PublicID, variants)
+		created, err := s.storeOwnerImage(txCtx, campaignBannerImages, ownerImageRef(tenant, current.ID, current.PublicID), variants)
 		if err != nil {
 			return nil, err
 		}
@@ -831,37 +732,8 @@ func (s *adminServer) UploadCampaignBannerAspectImage(
 		return nil, connect.NewError(connect.CodeFailedPrecondition, "campaign banner has no image yet")
 	}
 
-	imageID := locked.ImageID.UUID
-	if _, err := s.queriesFor(txCtx).DeleteCampaignBannerImageVariantsByType(txCtx, dbmodels.DeleteCampaignBannerImageVariantsByTypeParams{
-		CampaignBannerImageID: imageID,
-		VariantType:           aspect.VariantType,
-	}); err != nil {
-		return nil, s.internalDBError(ctx, "failed to clear campaign banner image variants for aspect", err, "tenant_id", tenant.ID.String(), "campaign_banner_image_id", imageID.String())
-	}
-
-	uploadID, err := uuid.NewV7()
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
-	}
-	store, err := storage.Pin(txCtx, s.storage)
-	if err != nil {
-		return nil, storageUploadError(err)
-	}
-	for _, variant := range variants {
-		uploaded, uploadErr := store.Upload(txCtx, storage.UploadRequest{
-			ObjectKey:   aspectImageObjectKey(tenant.PublicID, campaignBannerImagePath, locked.PublicID, imageID, uploadID, variant),
-			ContentType: variant.ContentType,
-			Data:        variant.Data,
-		})
-		if uploadErr != nil {
-			return nil, storageUploadError(uploadErr)
-		}
-		if err := s.createCampaignBannerImageVariant(txCtx, tenant.ID, imageID, variant, uploaded); err != nil {
-			return nil, err
-		}
-	}
-	if err := s.queriesFor(txCtx).TouchCampaignBannerImage(txCtx, imageID); err != nil {
-		return nil, s.internalDBError(ctx, "failed to touch campaign banner image", err, "tenant_id", tenant.ID.String(), "campaign_banner_image_id", imageID.String())
+	if err := s.replaceOwnerImageType(txCtx, campaignBannerImages, ownerImageRef(tenant, locked.ID, locked.PublicID), locked.ImageID.UUID, aspect.VariantType, variants); err != nil {
+		return nil, err
 	}
 	owed, err := s.recordCampaignBannerRevalidation(txCtx, tenant.ID, locked.IsPublished, locked.IsPublished)
 	if err != nil {

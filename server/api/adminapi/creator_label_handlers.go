@@ -30,7 +30,6 @@ import (
 	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
-	"github.com/publira/publira/server/internal/storage"
 )
 
 const (
@@ -126,18 +125,12 @@ func mapLabelAscRows(rows []dbmodels.ListLabelsByTenantAscRow) []labelPageRow {
 	return mapped
 }
 
-type normalizedCreatorIconImage struct {
-	ContentType string
-	Data        []byte
-	Height      int32
-	Width       int32
-}
-
 // normalizeCreatorIconImage cuts the square an icon is delivered as out of an
-// upload. A nil crop takes it from the centre of the upload; a crop takes it
+// upload, as the one variant it is stored as, or nil when the request carried
+// no image. A nil crop takes it from the centre of the upload; a crop takes it
 // from the named rectangle instead, and the square is then fitted inside that
 // rectangle so a selection a few pixels off square still delivers a square.
-func normalizeCreatorIconImage(data []byte, contentType string, crop *imageproc.CropRect) (*normalizedCreatorIconImage, error) {
+func normalizeCreatorIconImage(data []byte, contentType string, crop *imageproc.CropRect) ([]imageproc.Variant, error) {
 	if len(data) == 0 {
 		return nil, nil
 	}
@@ -202,12 +195,14 @@ func normalizeCreatorIconImage(data []byte, contentType string, crop *imageproc.
 		}
 	}
 
-	return &normalizedCreatorIconImage{
+	return []imageproc.Variant{{
+		Label:       "original",
 		ContentType: encodedContentType,
+		Extension:   extensionFromContentType(encodedContentType),
+		Width:       cropSize,
+		Height:      cropSize,
 		Data:        encoded.Bytes(),
-		Height:      int32(cropSize),
-		Width:       int32(cropSize),
-	}, nil
+	}}, nil
 }
 
 func extensionFromContentType(contentType string) string {
@@ -219,171 +214,6 @@ func extensionFromContentType(contentType string) string {
 	default:
 		return ".jpg"
 	}
-}
-
-func (s *adminServer) createCreatorIconImage(ctx context.Context, tenant dbmodels.Tenant, creatorID uuid.UUID, creatorPublicID string, image *normalizedCreatorIconImage) (uuid.NullUUID, error) {
-	if image == nil {
-		return uuid.NullUUID{}, nil
-	}
-	if s.storage == nil {
-		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, "storage provider is not configured")
-	}
-
-	creatorImageID, err := uuid.NewV7()
-	if err != nil {
-		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
-	}
-
-	createdImage, err := s.queriesFor(ctx).CreateCreatorImage(ctx, dbmodels.CreateCreatorImageParams{
-		ID:        creatorImageID,
-		TenantID:  tenant.ID,
-		CreatorID: creatorID,
-	})
-	if err != nil {
-		return uuid.NullUUID{}, s.internalDBError(ctx, "failed to create creator image", err, "tenant_id", tenant.ID.String(), "creator_id", creatorID.String())
-	}
-
-	objectKey := fmt.Sprintf("tenants/%s/creators/%s/%s-original%s", tenant.PublicID, creatorPublicID, createdImage.ID.String(), extensionFromContentType(image.ContentType))
-	uploaded, err := s.storage.Upload(ctx, storage.UploadRequest{
-		ObjectKey:   objectKey,
-		ContentType: image.ContentType,
-		Data:        image.Data,
-	})
-	if err != nil {
-		return uuid.NullUUID{}, storageUploadError(err)
-	}
-
-	creatorImageVariantID, err := uuid.NewV7()
-	if err != nil {
-		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
-	}
-
-	_, err = s.queriesFor(ctx).CreateCreatorImageVariant(ctx, dbmodels.CreateCreatorImageVariantParams{
-		ID:              creatorImageVariantID,
-		TenantID:        tenant.ID,
-		CreatorImageID:  createdImage.ID,
-		Label:           "original",
-		StorageProvider: uploaded.Provider,
-		ObjectKey:       uploaded.ObjectKey,
-		ContentType:     image.ContentType,
-		FileSizeBytes:   uploaded.SizeBytes,
-		Width:           image.Width,
-		Height:          image.Height,
-	})
-	if err != nil {
-		return uuid.NullUUID{}, s.internalDBError(ctx, "failed to create creator image variant", err, "tenant_id", tenant.ID.String(), "creator_image_id", createdImage.ID.String())
-	}
-
-	return uuid.NullUUID{UUID: createdImage.ID, Valid: true}, nil
-}
-
-func (s *adminServer) createLabelEyeCatchImage(ctx context.Context, tenant dbmodels.Tenant, labelID uuid.UUID, labelPublicID string, variants []imageproc.Variant) (uuid.NullUUID, error) {
-	if len(variants) == 0 {
-		return uuid.NullUUID{}, nil
-	}
-
-	labelImageID, err := uuid.NewV7()
-	if err != nil {
-		return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
-	}
-
-	createdImage, err := s.queriesFor(ctx).CreateLabelImage(ctx, dbmodels.CreateLabelImageParams{
-		ID:       labelImageID,
-		TenantID: tenant.ID,
-		LabelID:  labelID,
-	})
-	if err != nil {
-		return uuid.NullUUID{}, s.internalDBError(ctx, "failed to create label image", err, "tenant_id", tenant.ID.String(), "label_id", labelID.String())
-	}
-
-	store, err := storage.Pin(ctx, s.storage)
-	if err != nil {
-		return uuid.NullUUID{}, storageUploadError(err)
-	}
-	for _, variant := range variants {
-		objectKey := fmt.Sprintf(
-			"tenants/%s/labels/%s/%s-%s%s",
-			tenant.PublicID,
-			labelPublicID,
-			createdImage.ID.String(),
-			variant.Label,
-			variant.Extension,
-		)
-		uploaded, uploadErr := store.Upload(ctx, storage.UploadRequest{
-			ObjectKey:   objectKey,
-			ContentType: variant.ContentType,
-			Data:        variant.Data,
-		})
-		if uploadErr != nil {
-			return uuid.NullUUID{}, storageUploadError(uploadErr)
-		}
-
-		labelImageVariantID, variantIDErr := uuid.NewV7()
-		if variantIDErr != nil {
-			return uuid.NullUUID{}, connect.NewError(connect.CodeInternal, variantIDErr.Error()).WithCause(variantIDErr)
-		}
-
-		_, createVariantErr := s.queriesFor(ctx).CreateLabelImageVariant(ctx, dbmodels.CreateLabelImageVariantParams{
-			ID:              labelImageVariantID,
-			TenantID:        tenant.ID,
-			LabelImageID:    createdImage.ID,
-			VariantType:     variant.VariantType,
-			Label:           variant.Label,
-			StorageProvider: uploaded.Provider,
-			ObjectKey:       uploaded.ObjectKey,
-			ContentType:     variant.ContentType,
-			FileSizeBytes:   uploaded.SizeBytes,
-			Width:           int32(variant.Width),
-			Height:          int32(variant.Height),
-		})
-		if createVariantErr != nil {
-			return uuid.NullUUID{}, s.internalDBError(ctx, "failed to create label image variant", createVariantErr, "tenant_id", tenant.ID.String(), "label_image_id", createdImage.ID.String())
-		}
-	}
-
-	return uuid.NullUUID{UUID: createdImage.ID, Valid: true}, nil
-}
-
-func mapLabelEyeCatchVariants(labelImageID uuid.UUID, rows []dbmodels.ListLabelImageVariantsByImageIDsRow) []*publirattypesv1.SeriesEyeCatchVariant {
-	items := make([]*publirattypesv1.SeriesEyeCatchVariant, 0, len(rows))
-	for _, row := range rows {
-		items = append(items, &publirattypesv1.SeriesEyeCatchVariant{
-			Label:         row.Label,
-			VariantType:   row.VariantType,
-			Url:           protomapper.EyeCatchVariantURL("labels", labelImageID, row.VariantType, row.Width, row.ID),
-			ContentType:   row.ContentType,
-			Width:         row.Width,
-			Height:        row.Height,
-			FileSizeBytes: row.FileSizeBytes,
-		})
-	}
-	return items
-}
-
-func (s *adminServer) labelEyeCatchVariantsByImageIDs(
-	ctx context.Context,
-	imageIDs []uuid.UUID,
-) (map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant, error) {
-	if len(imageIDs) == 0 {
-		return map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant{}, nil
-	}
-
-	rows, err := s.queriesFor(ctx).ListLabelImageVariantsByImageIDs(ctx, imageIDs)
-	if err != nil {
-		return nil, s.internalDBError(ctx, "failed to list label image variants", err)
-	}
-
-	byImageID := make(map[uuid.UUID][]dbmodels.ListLabelImageVariantsByImageIDsRow, len(imageIDs))
-	for _, row := range rows {
-		byImageID[row.LabelImageID] = append(byImageID[row.LabelImageID], row)
-	}
-
-	mapped := make(map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant, len(byImageID))
-	for imageID, variants := range byImageID {
-		mapped[imageID] = mapLabelEyeCatchVariants(imageID, variants)
-	}
-
-	return mapped, nil
 }
 
 func (s *adminServer) labelPage(
@@ -600,7 +430,7 @@ func (s *adminServer) ListLabels(
 			itemByImageID[row.eyeCatchImageID.UUID] = item
 		}
 	}
-	variantsByImageID, err := s.labelEyeCatchVariantsByImageIDs(ctx, imageIDs)
+	variantsByImageID, err := s.ownerImageVariants(ctx, labelImages, tenant.ID, imageIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -658,7 +488,7 @@ func (s *adminServer) GetLabel(
 	}
 	var variants []*publirattypesv1.SeriesEyeCatchVariant
 	if row.EyeCatchImageID.Valid {
-		variantsByImageID, variantErr := s.labelEyeCatchVariantsByImageIDs(ctx, []uuid.UUID{row.EyeCatchImageID.UUID})
+		variantsByImageID, variantErr := s.ownerImageVariants(ctx, labelImages, tenant.ID, []uuid.UUID{row.EyeCatchImageID.UUID})
 		if variantErr != nil {
 			return nil, variantErr
 		}
@@ -696,7 +526,7 @@ func (s *adminServer) CreateCreator(
 		return nil, connect.NewError(connect.CodeInvalidArgument, "name is required")
 	}
 
-	iconImage, err := normalizeCreatorIconImage(req.IconImageData, req.IconImageContentType, imageCropRect(req.IconImageCrop))
+	iconVariants, err := normalizeCreatorIconImage(req.IconImageData, req.IconImageContentType, imageCropRect(req.IconImageCrop))
 	if err != nil {
 		return nil, err
 	}
@@ -728,7 +558,7 @@ func (s *adminServer) CreateCreator(
 		return nil, s.internalDBError(ctx, "failed to create creator", err, "tenant_id", tenant.ID.String())
 	}
 
-	iconImageID, err := s.createCreatorIconImage(txCtx, tenant, createdBase.ID, createdBase.PublicID, iconImage)
+	iconImageID, err := s.storeOptionalOwnerImage(txCtx, creatorImages, ownerImageRef(tenant, createdBase.ID, createdBase.PublicID), iconVariants)
 	if err != nil {
 		return nil, err
 	}
@@ -794,7 +624,7 @@ func (s *adminServer) UpdateCreator(
 	if req.ClearIconImage && len(req.IconImageData) > 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, "clear_icon_image and icon_image_data cannot be used together")
 	}
-	iconImage, err := normalizeCreatorIconImage(req.IconImageData, req.IconImageContentType, imageCropRect(req.IconImageCrop))
+	iconVariants, err := normalizeCreatorIconImage(req.IconImageData, req.IconImageContentType, imageCropRect(req.IconImageCrop))
 	if err != nil {
 		return nil, err
 	}
@@ -819,8 +649,8 @@ func (s *adminServer) UpdateCreator(
 	iconImageID := current.IconImageID
 	if req.ClearIconImage {
 		iconImageID = uuid.NullUUID{}
-	} else if iconImage != nil {
-		newIconImageID, uploadErr := s.createCreatorIconImage(txCtx, tenant, current.ID, current.PublicID, iconImage)
+	} else if len(iconVariants) > 0 {
+		newIconImageID, uploadErr := s.storeOptionalOwnerImage(txCtx, creatorImages, ownerImageRef(tenant, current.ID, current.PublicID), iconVariants)
 		if uploadErr != nil {
 			return nil, uploadErr
 		}
@@ -931,7 +761,7 @@ func (s *adminServer) CreateLabel(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to create label", err, "tenant_id", tenant.ID.String())
 	}
-	eyeCatchImageID, err := s.createLabelEyeCatchImage(txCtx, tenant, createdBase.ID, createdBase.PublicID, eyeCatchVariants)
+	eyeCatchImageID, err := s.storeOptionalOwnerImage(txCtx, labelImages, ownerImageRef(tenant, createdBase.ID, createdBase.PublicID), eyeCatchVariants)
 	if err != nil {
 		return nil, err
 	}
@@ -958,7 +788,7 @@ func (s *adminServer) CreateLabel(
 	}
 	var variants []*publirattypesv1.SeriesEyeCatchVariant
 	if created.EyeCatchImageID.Valid {
-		variantsByImageID, variantErr := s.labelEyeCatchVariantsByImageIDs(ctx, []uuid.UUID{created.EyeCatchImageID.UUID})
+		variantsByImageID, variantErr := s.ownerImageVariants(ctx, labelImages, tenant.ID, []uuid.UUID{created.EyeCatchImageID.UUID})
 		if variantErr != nil {
 			return nil, variantErr
 		}
@@ -1022,7 +852,7 @@ func (s *adminServer) UpdateLabel(
 	if req.ClearEyeCatchImage {
 		eyeCatchImageID = uuid.NullUUID{}
 	} else if len(eyeCatchVariants) > 0 {
-		newEyeCatchImageID, uploadErr := s.createLabelEyeCatchImage(txCtx, tenant, current.ID, current.PublicID, eyeCatchVariants)
+		newEyeCatchImageID, uploadErr := s.storeOptionalOwnerImage(txCtx, labelImages, ownerImageRef(tenant, current.ID, current.PublicID), eyeCatchVariants)
 		if uploadErr != nil {
 			return nil, uploadErr
 		}
@@ -1049,7 +879,7 @@ func (s *adminServer) UpdateLabel(
 	}
 	var variants []*publirattypesv1.SeriesEyeCatchVariant
 	if updated.EyeCatchImageID.Valid {
-		variantsByImageID, variantErr := s.labelEyeCatchVariantsByImageIDs(ctx, []uuid.UUID{updated.EyeCatchImageID.UUID})
+		variantsByImageID, variantErr := s.ownerImageVariants(ctx, labelImages, tenant.ID, []uuid.UUID{updated.EyeCatchImageID.UUID})
 		if variantErr != nil {
 			return nil, variantErr
 		}

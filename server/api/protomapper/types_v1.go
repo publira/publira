@@ -9,6 +9,7 @@ import (
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/imageproc"
+	"github.com/publira/publira/server/internal/ownerimages"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 )
 
@@ -479,6 +480,29 @@ func TenantImageVariantsByImageID(
 // URL still resolves to whatever that ratio holds now.
 func EyeCatchVariantURL(collection string, imageID uuid.UUID, variantType string, width int32, version uuid.UUID) string {
 	return fmt.Sprintf("/images/%s/%s/%s/%d?v=%s", collection, imageID.String(), variantType, width, version.String())
+}
+
+// EyeCatchVariants answers the stored variants of an owner's images, grouped
+// by image as ownerimages.Load reads them, as the messages a response
+// carries, each with the URL its collection delivers it at.
+func EyeCatchVariants(collection string, byImageID map[uuid.UUID][]ownerimages.Variant) map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant {
+	mapped := make(map[uuid.UUID][]*publirattypesv1.SeriesEyeCatchVariant, len(byImageID))
+	for imageID, variants := range byImageID {
+		items := make([]*publirattypesv1.SeriesEyeCatchVariant, 0, len(variants))
+		for _, variant := range variants {
+			items = append(items, &publirattypesv1.SeriesEyeCatchVariant{
+				Label:         variant.Label,
+				VariantType:   variant.VariantType,
+				Url:           EyeCatchVariantURL(collection, imageID, variant.VariantType, variant.Width, variant.ID),
+				ContentType:   variant.ContentType,
+				Width:         variant.Width,
+				Height:        variant.Height,
+				FileSizeBytes: variant.FileSizeBytes,
+			})
+		}
+		mapped[imageID] = items
+	}
+	return mapped
 }
 
 // TenantImageURL is the image server route a stored tenant image is served
