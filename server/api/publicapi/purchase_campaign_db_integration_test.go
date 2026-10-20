@@ -25,8 +25,8 @@ import (
 	"github.com/publira/publira/server/internal/testutil"
 )
 
-// A campaign open on an episode is quoted beside its price on the episode and
-// in its series, and charged for the permanent copy, while the rental keeps
+// A campaign open on an episode is quoted beside its price on the episode, on
+// the link to it from the episode before it, and in its series, and charged for the permanent copy, while the rental keeps
 // its own price. A campaign that no longer undercuts the listing, and one not
 // started yet, are neither quoted nor charged.
 func TestDBACampaignPriceIsQuotedAndCharged(t *testing.T) {
@@ -84,13 +84,17 @@ func TestDBACampaignPriceIsQuotedAndCharged(t *testing.T) {
 		t.Fatalf("issue token: %v", err)
 	}
 
-	quoted := func(publicID string) *publirattypesv1.Episode {
+	read := func(publicID string) *publirav1.GetEpisodeDetailResponse {
 		t.Helper()
 		detail, err := catalog.GetEpisodeDetail(ctx, &publirav1.GetEpisodeDetailRequest{Tenant: tenantContext(tenant), PublicId: publicID})
 		if err != nil {
 			t.Fatalf("GetEpisodeDetail(%s): %v", publicID, err)
 		}
-		return detail.Episode
+		return detail
+	}
+	quoted := func(publicID string) *publirattypesv1.Episode {
+		t.Helper()
+		return read(publicID).Episode
 	}
 	listed := func() map[string]*publirattypesv1.Episode {
 		t.Helper()
@@ -130,6 +134,12 @@ func TestDBACampaignPriceIsQuotedAndCharged(t *testing.T) {
 	if got := rows[ahead.PublicID]; got == nil || got.CampaignPrice != 0 || got.CampaignEndsAt != "" {
 		t.Fatalf("listed episode whose campaign has not started = %v, want none", got)
 	}
+	if got := read(ahead.PublicID).PreviousEpisode; got == nil || got.PublicId != episode.PublicID || got.Price != 500 || got.CampaignPrice != 300 || got.CampaignEndsAt != wantEndsAt {
+		t.Fatalf("link to the episode on campaign = %v, want price 500 and the campaign at 300 until %q", got, wantEndsAt)
+	}
+	if got := read(episode.PublicID).NextEpisode; got == nil || got.PublicId != ahead.PublicID || got.CampaignPrice != 0 || got.CampaignEndsAt != "" {
+		t.Fatalf("link to the episode whose campaign has not started = %v, want no campaign", got)
+	}
 
 	if got := start(publirattypesv1.PurchaseKind_PURCHASE_KIND_PURCHASE); got.Kind != paymentprovider.KindPurchase || got.Price != 300 {
 		t.Fatalf("permanent copy checkout = %+v, want the permanent copy at the campaign's 300", got)
@@ -150,6 +160,9 @@ func TestDBACampaignPriceIsQuotedAndCharged(t *testing.T) {
 	}
 	if got := quoted(episode.PublicID); got.Price != 300 || got.CampaignPrice != 0 || got.CampaignEndsAt != "" {
 		t.Fatalf("episode priced at its campaign = (price %d, campaign %d until %q), want 300 and no campaign", got.Price, got.CampaignPrice, got.CampaignEndsAt)
+	}
+	if got := read(ahead.PublicID).PreviousEpisode; got == nil || got.CampaignPrice != 0 || got.CampaignEndsAt != "" {
+		t.Fatalf("link to the episode priced at its campaign = %v, want no campaign", got)
 	}
 	if got := start(publirattypesv1.PurchaseKind_PURCHASE_KIND_PURCHASE); got.Price != 300 {
 		t.Fatalf("permanent copy checkout = %+v, want the episode's own 300", got)

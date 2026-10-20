@@ -1385,6 +1385,8 @@ class EpisodeNeighbor extends $pb.GeneratedMessage {
     $core.Iterable<$0.Creator>? creators,
     $0.SurfaceAvailability? purchaseAvailability,
     $core.String? locale,
+    $core.int? campaignPrice,
+    $core.String? campaignEndsAt,
   }) {
     final result = EpisodeNeighbor._();
     if (publicId != null) result.publicId = publicId;
@@ -1396,6 +1398,8 @@ class EpisodeNeighbor extends $pb.GeneratedMessage {
     if (purchaseAvailability != null)
       result.purchaseAvailability = purchaseAvailability;
     if (locale != null) result.locale = locale;
+    if (campaignPrice != null) result.campaignPrice = campaignPrice;
+    if (campaignEndsAt != null) result.campaignEndsAt = campaignEndsAt;
     return result;
   }
 
@@ -1423,6 +1427,8 @@ class EpisodeNeighbor extends $pb.GeneratedMessage {
         7, _omitFieldNames ? '' : 'purchaseAvailability',
         enumValues: $0.SurfaceAvailability.values)
     ..aOS(8, _omitFieldNames ? '' : 'locale')
+    ..aI(9, _omitFieldNames ? '' : 'campaignPrice')
+    ..aOS(10, _omitFieldNames ? '' : 'campaignEndsAt')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1529,6 +1535,28 @@ class EpisodeNeighbor extends $pb.GeneratedMessage {
   $core.bool hasLocale() => $_has(7);
   @$pb.TagNumber(8)
   void clearLocale() => $_clearField(8);
+
+  /// The campaign price open on the episode and when it ends, as
+  /// Episode.campaign_price and Episode.campaign_ends_at, so a link quotes what
+  /// the reader would pay on following it. Set on previous_episode and
+  /// next_episode; next_free_episode is free and carries neither.
+  @$pb.TagNumber(9)
+  $core.int get campaignPrice => $_getIZ(8);
+  @$pb.TagNumber(9)
+  set campaignPrice($core.int value) => $_setSignedInt32(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasCampaignPrice() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearCampaignPrice() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.String get campaignEndsAt => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set campaignEndsAt($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasCampaignEndsAt() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearCampaignEndsAt() => $_clearField(10);
 }
 
 /// Episode detail for public viewing.

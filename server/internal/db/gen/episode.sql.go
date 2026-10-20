@@ -1310,12 +1310,15 @@ const ListPublishedEpisodeNeighborsForTenant = `-- name: ListPublishedEpisodeNei
             FROM published_free_episodes fe
             WHERE fe.episode_id = e.id
         ) AS is_free,
-        epa.purchase_availability
+        epa.purchase_availability,
+        ocp.campaign_price,
+        ocp.campaign_ends_at
     FROM episodes e
         CROSS JOIN LATERAL episode_translation_for(e.id, $1::text) et
         JOIN series s ON s.id = e.series_id
         JOIN episode_listings el ON el.episode_id = e.id
         JOIN episode_purchase_availability epa ON epa.episode_id = e.id
+        LEFT JOIN open_episode_campaign_prices ocp ON ocp.episode_id = e.id
     WHERE s.tenant_id = $2
         AND e.series_id = $3
         AND (e.order_index, e.id) < ($4::int4, $5::uuid)
@@ -1343,12 +1346,15 @@ UNION ALL
             FROM published_free_episodes fe
             WHERE fe.episode_id = e.id
         ) AS is_free,
-        epa.purchase_availability
+        epa.purchase_availability,
+        ocp.campaign_price,
+        ocp.campaign_ends_at
     FROM episodes e
         CROSS JOIN LATERAL episode_translation_for(e.id, $1::text) et
         JOIN series s ON s.id = e.series_id
         JOIN episode_listings el ON el.episode_id = e.id
         JOIN episode_purchase_availability epa ON epa.episode_id = e.id
+        LEFT JOIN open_episode_campaign_prices ocp ON ocp.episode_id = e.id
     WHERE s.tenant_id = $2
         AND e.series_id = $3
         AND (e.order_index, e.id) > ($4::int4, $5::uuid)
@@ -1374,15 +1380,17 @@ type ListPublishedEpisodeNeighborsForTenantParams struct {
 }
 
 type ListPublishedEpisodeNeighborsForTenantRow struct {
-	Direction            int32     `json:"direction"`
-	ID                   uuid.UUID `json:"id"`
-	PublicID             string    `json:"public_id"`
-	Title                string    `json:"title"`
-	TitleLocale          string    `json:"title_locale"`
-	OrderIndex           int32     `json:"order_index"`
-	Price                int32     `json:"price"`
-	IsFree               bool      `json:"is_free"`
-	PurchaseAvailability string    `json:"purchase_availability"`
+	Direction            int32         `json:"direction"`
+	ID                   uuid.UUID     `json:"id"`
+	PublicID             string        `json:"public_id"`
+	Title                string        `json:"title"`
+	TitleLocale          string        `json:"title_locale"`
+	OrderIndex           int32         `json:"order_index"`
+	Price                int32         `json:"price"`
+	IsFree               bool          `json:"is_free"`
+	PurchaseAvailability string        `json:"purchase_availability"`
+	CampaignPrice        sql.NullInt32 `json:"campaign_price"`
+	CampaignEndsAt       sql.NullTime  `json:"campaign_ends_at"`
 }
 
 // The published episodes on either side of one episode within its own series,
@@ -1399,7 +1407,9 @@ type ListPublishedEpisodeNeighborsForTenantRow struct {
 // `is_free` reads published_free_episodes, the free half of the body access
 // rule, so a link cannot say "paid" about an episode that is free at the
 // moment the reader would follow it. `purchase_availability` is resolved
-// through the series and the tenant as the episode read resolves it.
+// through the series and the tenant as the episode read resolves it, and the
+// campaign price is read from open_episode_campaign_prices as the episode read
+// reads it, so a link quotes what the checkout would charge.
 func (q *Queries) ListPublishedEpisodeNeighborsForTenant(ctx context.Context, arg ListPublishedEpisodeNeighborsForTenantParams) ([]ListPublishedEpisodeNeighborsForTenantRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListPublishedEpisodeNeighborsForTenant,
 		arg.Locale,
@@ -1426,6 +1436,8 @@ func (q *Queries) ListPublishedEpisodeNeighborsForTenant(ctx context.Context, ar
 			&i.Price,
 			&i.IsFree,
 			&i.PurchaseAvailability,
+			&i.CampaignPrice,
+			&i.CampaignEndsAt,
 		); err != nil {
 			return nil, err
 		}
