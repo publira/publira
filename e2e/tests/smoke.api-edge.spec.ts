@@ -13,9 +13,6 @@ const ADMIN_PROCEDURE = "/publira.admin.v1.AdminSeriesService/ListSeries";
 const PLATFORM_PROCEDURE =
   "/publira.platform.v1.PlatformTenantService/ListTenants";
 
-/** `/api` is the prefix before `/rpc`, served beside it until 0.3.0. */
-const prefixes = ["/rpc", "/api"] as const;
-
 const edgeHosts = [
   ["the tenant site", WEB_STOREFRONT_BASE_URL],
   ["the tenant console", WEB_ADMIN_BASE_URL],
@@ -65,7 +62,7 @@ const postThroughEdge = (
   );
 
 /**
- * One process serves all three Connect namespaces under `/rpc` and `/api`, but
+ * One process serves all three Connect namespaces under `/rpc`, but
  * the edge forwards only the public one: the consoles call theirs over the
  * private network, so no host needs them, and the edge answers them itself on
  * every host. The tenant console's procedure names a tenant that exists, so a
@@ -74,25 +71,23 @@ const postThroughEdge = (
  */
 test.describe("the edge forwards only the public API namespace", () => {
   for (const [label, baseUrl] of edgeHosts) {
-    for (const prefix of prefixes) {
-      test(`answers the console namespaces under ${prefix} with 404 on ${label}`, async ({
-        page,
-      }) => {
-        await page.goto(baseUrl);
+    test(`answers the console namespaces with 404 on ${label}`, async ({
+      page,
+    }) => {
+      await page.goto(baseUrl);
 
-        const answeredByTheEdge = { code: undefined, status: 404 };
-        expect(
-          await postThroughEdge(page, prefix + ADMIN_PROCEDURE, {
-            tenant: { tenantId: SEED_TENANT_ID },
-          })
-        ).toEqual(answeredByTheEdge);
-        expect(
-          await postThroughEdge(page, prefix + PLATFORM_PROCEDURE)
-        ).toEqual(answeredByTheEdge);
-        // The public namespace is answered on the same host and path prefix.
-        const catalog = await postThroughEdge(page, prefix + CATALOG_PROCEDURE);
-        expect(catalog.status).not.toBe(404);
-      });
-    }
+      const answeredByTheEdge = { code: undefined, status: 404 };
+      expect(
+        await postThroughEdge(page, `/rpc${ADMIN_PROCEDURE}`, {
+          tenant: { tenantId: SEED_TENANT_ID },
+        })
+      ).toEqual(answeredByTheEdge);
+      expect(await postThroughEdge(page, `/rpc${PLATFORM_PROCEDURE}`)).toEqual(
+        answeredByTheEdge
+      );
+      // The public namespace is answered on the same host and path prefix.
+      const catalog = await postThroughEdge(page, `/rpc${CATALOG_PROCEDURE}`);
+      expect(catalog.status).not.toBe(404);
+    });
   }
 });

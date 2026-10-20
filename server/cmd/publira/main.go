@@ -2,7 +2,7 @@
 // first argument names which one:
 //
 //   - server answers the edge and the Next.js apps: all three Connect
-//     namespaces under /api and image delivery under /images, on the one
+//     namespaces under /rpc and image delivery under /images, on the one
 //     listener the reverse proxy forwards to and the apps dial.
 //   - worker drains the Outbox and hosts every River-backed job.
 //

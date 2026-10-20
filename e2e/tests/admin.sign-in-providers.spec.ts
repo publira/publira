@@ -85,7 +85,7 @@ interface OfferedProviders {
 const offeredProviders = async (page: Page): Promise<OfferedProviders> => {
   const tenantId = querySql(`SELECT ${tenantRow};`);
   const body = await page.evaluate(async (id) => {
-    const response = await fetch("/api/publira.v1.TenantService/GetTenant", {
+    const response = await fetch("/rpc/publira.v1.TenantService/GetTenant", {
       body: JSON.stringify({ tenant: { tenantId: id } }),
       headers: { "Content-Type": "application/json" },
       method: "POST",

@@ -144,7 +144,7 @@ func TestServerServiceNamesFollowTheRoles(t *testing.T) {
 }
 
 // One listener serves the namespaces of the roles a process was given under
-// /rpc and /api alike, and the images when a role with a site is among them.
+// /rpc, and the images when a role with a site is among them.
 // The edge forwards only publira.v1 and the images to it, so a console
 // procedure a process serves is kept off the internet by the edge and from
 // whoever reaches the server anyway by its own authentication, while one it
@@ -201,12 +201,12 @@ func TestServerHandlerServesWhatItsRolesServe(t *testing.T) {
 					assertRouteRegistered(t, ts.URL, route, served)
 					continue
 				}
-				for _, prefix := range []string{"/rpc", "/api"} {
-					assertRouteRegistered(t, ts.URL, prefix+route, served)
-				}
-				// A procedure is reached through a prefix alone, so the same
-				// procedure at the root is not a further way in.
+				assertRouteRegistered(t, ts.URL, "/rpc"+route, served)
+				// A procedure is reached through /rpc alone: the same
+				// procedure at the root, or under /api, the prefix before /rpc,
+				// is not a further way in.
 				assertRouteRegistered(t, ts.URL, route, false)
+				assertRouteRegistered(t, ts.URL, "/api"+route, false)
 			}
 			assertReadyChecks(t, ts.URL+"/readyz", tc.checks...)
 		})

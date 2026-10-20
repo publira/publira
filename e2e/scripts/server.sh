@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Start/stop only the server process, the one that answers the API and the
-# images on one port: `/rpc`, `/api`, and `/images` reach it as they are, and
+# images on one port: `/rpc` and `/images` reach it as they are, and
 # the Next.js apps dial its `/rpc` directly.
 #
 # start-apps.sh uses it for the normal lifecycle; the outage scenarios

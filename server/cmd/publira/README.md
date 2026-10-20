@@ -11,14 +11,14 @@ The binary behind both of a deployment's long-lived Go processes. The first argu
 
 ## publira server
 
-One process serves all three Connect namespaces — `publira.v1`, `publira.admin.v1`, and `publira.platform.v1` — under `/rpc`, and image delivery under `/images`, on one listener, `PUBLIRA_PUBLIC_API_ADDR` (`:8000` when unset). It also answers `/livez` and `/readyz`, and registers nothing else at the root. The same namespaces are answered under `/api`, the prefix they had before `/rpc`, for the clients not yet on `/rpc`; 0.3.0 removes it.
+One process serves all three Connect namespaces — `publira.v1`, `publira.admin.v1`, and `publira.platform.v1` — under `/rpc`, and image delivery under `/images`, on one listener, `PUBLIRA_PUBLIC_API_ADDR` (`:8000` when unset). It also answers `/livez` and `/readyz`, and registers nothing else at the root.
 
 | Reached by | Through |
 | --- | --- |
-| The browser and the mobile app | The reverse proxy, which forwards `/images` and `publira.v1` under `/rpc` and `/api`, with their prefixes kept, on every host |
+| The browser and the mobile app | The reverse proxy, which forwards `/images` and `publira.v1` under `/rpc`, with their prefixes kept, on every host |
 | web-storefront, web-admin, and web-platform | The private network, each through its own `PUBLIRA_GRPC_URL`, which names `/rpc` on this listener |
 
-This process answers both consoles' namespaces, at `/rpc/publira.admin.v1.…` and `/rpc/publira.platform.v1.…` and under `/api` alike, on whatever host a request names, and a Connect handler answers gRPC, gRPC-Web, and the Connect protocol on one route. The edge is what keeps them off the internet: it forwards `/rpc/publira.v1.…` and `/api/publira.v1.…` alone, since the consoles call their namespaces over the private network. Behind it, every console RPC refuses a caller without an operator session or the [web service credential](../../README.md#web-service-credential) before any handler runs, the ones that run before a session exists — signing in, password reset, and email verification — are rate-limited or guarded in the handler itself, and creating the Platform Console's first operator is refused without the web service credential, which only the Platform Console's server sends.
+This process answers both consoles' namespaces, at `/rpc/publira.admin.v1.…` and `/rpc/publira.platform.v1.…`, on whatever host a request names, and a Connect handler answers gRPC, gRPC-Web, and the Connect protocol on one route. The edge is what keeps them off the internet: it forwards `/rpc/publira.v1.…` alone, since the consoles call their namespaces over the private network. Behind it, every console RPC refuses a caller without an operator session or the [web service credential](../../README.md#web-service-credential) before any handler runs, the ones that run before a session exists — signing in, password reset, and email verification — are rate-limited or guarded in the handler itself, and creating the Platform Console's first operator is refused without the web service credential, which only the Platform Console's server sends.
 
 The process holds one pool per PostgreSQL login — `publira_public` and `publira_admin` under row-level security, `publira_platform` across every tenant — and picks the pool by the namespace a procedure path names. An image is answered on the pool of the login the host name selects: a `domain` match is the storefront, answered as `publira_public`, and an `admin_domain` match is the console, answered as `publira_admin`. The host also decides whether an `admin-media` token is evaluated as a staff preview and whether an episode body leaves encrypted. Each namespace reports its spans under its own `service.name`, and the image routes under `publira-image-server`, so the four stay apart in a trace UI.
 
@@ -118,7 +118,7 @@ publira server --role admin,platform
 
 serves the named API surfaces alone. A role is named the way the web app that consumes it is, and a process serves exactly the namespaces, the image delivery, and the database login of the roles it was given; without the flag it serves all three. The flag decides what a process serves and nothing about ports or networks: every process listens on `PUBLIRA_PUBLIC_API_ADDR` alone.
 
-| `--role` | Registers under `/rpc` and `/api` | Image delivery on `/images` | Opens | Reads |
+| `--role` | Registers under `/rpc` | Image delivery on `/images` | Opens | Reads |
 | --- | --- | --- | --- | --- |
 | `storefront` | `publira.v1` | Storefront hosts, as `publira_public` | `PUBLIRA_PUBLIC_DB_URL` | `PUBLIRA_IMAGE_CACHE_TTL` |
 | `admin` | `publira.admin.v1` | Console hosts, as `publira_admin`, staff preview included | `PUBLIRA_ADMIN_DB_URL` | `PUBLIRA_WEB_SERVICE_TOKEN`, `PUBLIRA_IMAGE_CACHE_TTL` |
