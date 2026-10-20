@@ -3,6 +3,7 @@ package mfaflow
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"testing"
 	"time"
 
@@ -25,6 +26,7 @@ type fakeAccount struct {
 	recoveryCodes map[uuid.UUID]string
 	usedCodes     map[uuid.UUID]bool
 	challengeUsed bool
+	passkeysErr   error
 	audits        []string
 }
 
@@ -49,7 +51,9 @@ func (a *fakeAccount) InTx(_ context.Context, fn func(dbmodels.Querier) error) e
 func (a *fakeAccount) Totp(context.Context, dbmodels.Querier) (Totp, bool, error) {
 	return a.totp, a.totpFound, nil
 }
-func (a *fakeAccount) Passkeys(context.Context, dbmodels.Querier) (int64, error) { return 0, nil }
+func (a *fakeAccount) Passkeys(context.Context, dbmodels.Querier) (int64, error) {
+	return 0, a.passkeysErr
+}
 func (a *fakeAccount) StoreTotpSecret(_ context.Context, _ dbmodels.Querier, encrypted string) error {
 	a.totp, a.totpFound = Totp{SecretEncrypted: encrypted}, true
 	return nil
@@ -241,5 +245,17 @@ func TestDisableReleasesTheRecoveryCodes(t *testing.T) {
 	}
 	if err := Disable(context.Background(), acct, codes[1]); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("Disable without an authenticator = %v, want failed_precondition", err)
+	}
+}
+
+// A failure to read the factors reaches the client as the generic internal
+// error, never as the database's own.
+func TestFactorsOfAnswersAFailedPasskeyCountAsInternal(t *testing.T) {
+	acct, _ := newFakeAccount(t)
+	acct.passkeysErr = errors.New("driver: connection reset")
+
+	_, err := FactorsOf(context.Background(), acct, nil)
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("FactorsOf with a failed passkey count = %v, want internal", err)
 	}
 }

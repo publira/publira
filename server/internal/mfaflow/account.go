@@ -186,7 +186,7 @@ func FactorsOf(ctx context.Context, acct Account, q dbmodels.Querier) (Factors, 
 	}
 	passkeys, err := acct.Passkeys(ctx, q)
 	if err != nil {
-		return Factors{}, err
+		return Factors{}, acct.InternalError(ctx, "failed to count passkeys", err)
 	}
 	return Factors{Totp: totp, TotpFound: found, Passkeys: passkeys}, nil
 }
