@@ -2,7 +2,7 @@
 title: Edge
 description: What the load balancer, proxy, or CDN in front of an install has to do, and the sample proxy configurations that do it.
 published: 2026-10-06
-updated: 2026-10-16
+updated: 2026-10-20
 redirect_from:
   - /deployments/reverse-proxy
 ---
@@ -147,13 +147,13 @@ Outside services post to a URL on the tenant's site, under `/api/v1/webhook/`:
 
 ## The sample configurations
 
-The repository ships three sample configurations of a reverse proxy that route requests and handle their headers, bodies, and timeouts as above: one each for Traefik, nginx, and Caddy. One requirement stays with the install that runs one: a TLS listener, which each sample leaves for you to add. They are examples, not the definition of the edge. The [Docker Compose](./3-docker-compose.md) install runs the Traefik one, and an install that runs a proxy of its own can start from any of them. An edge built from a managed load balancer, an Ingress, or a Gateway follows the requirements above, and needs none of them; [Kubernetes](./5-kubernetes.md#6-put-the-edge-in-front) shows a Gateway and an Ingress that do, and [Amazon ECS on Fargate](./6-ecs-fargate.md#8-put-cloudfront-in-front) CloudFront in front of an Application Load Balancer.
+The repository ships three sample configurations of a reverse proxy that route requests and handle their headers, bodies, and timeouts as above: one each for Traefik, nginx, and Caddy. One requirement stays with the install that runs one: a TLS listener, which the Traefik and nginx samples leave for you to add, and the Caddy one adds once it is given the host names to serve over HTTPS. They are examples, not the definition of the edge. The [Docker Compose](./3-docker-compose.md) install runs the Caddy one, and an install that runs a proxy of its own can start from any of them. An edge built from a managed load balancer, an Ingress, or a Gateway follows the requirements above, and needs none of them; [Kubernetes](./5-kubernetes.md#6-put-the-edge-in-front) shows a Gateway and an Ingress that do, and [Amazon ECS on Fargate](./6-ecs-fargate.md#8-put-cloudfront-in-front) CloudFront in front of an Application Load Balancer.
 
 | Proxy | Files | Where the backend addresses go | Obtains certificates itself |
 | --- | --- | --- | --- |
 | Traefik | [`infra/proxy/traefik/`](https://github.com/publira/publira/tree/main/infra/proxy/traefik) | `dynamic/services.yaml` | Yes, with an ACME resolver you add |
 | nginx | [`infra/proxy/nginx/`](https://github.com/publira/publira/tree/main/infra/proxy/nginx) | `upstreams.conf` | No |
-| Caddy | [`infra/proxy/caddy/Caddyfile`](https://github.com/publira/publira/blob/main/infra/proxy/caddy/Caddyfile) | The `PUBLIRA_UPSTREAM_*` environment variables | Yes, once the site is given host names |
+| Caddy | [`infra/proxy/caddy/Caddyfile`](https://github.com/publira/publira/blob/main/infra/proxy/caddy/Caddyfile) | The `PUBLIRA_UPSTREAM_*` environment variables | Yes, for the host names in `PUBLIRA_EDGE_TLS_HOSTS` |
 
 Take the files of the one you run from the release you install. The [routing contract](https://github.com/publira/publira/blob/main/infra/proxy/README.md) states what the three share, rule by rule.
 
@@ -164,7 +164,7 @@ Take the files of the one you run from the release you install. The [routing con
 - **The host.** Every sample passes `Host` on unchanged, and sets `X-Forwarded-Host` and `X-Forwarded-Proto` itself rather than passing on the caller's, except where it trusts a [hop in front of it](#a-hop-in-front-of-the-proxy).
 - **Trace context.** Every sample removes the three headers. Traefik does it with the `strip-trace-context` middleware, which every entry point needs beside `strip-forwarded`.
 - **Uploads and webhooks.** Traefik and Caddy set no limit on a body unless you add one. nginx refuses anything over 1 MB by default, and its sample raises that to `256m` on `/api/v1/episode-pages` on a console host, to `33m` under the rest of `/api/v1/`, and to `11m` on the paths of the pages. Traefik cuts off any request that has not arrived whole within 60 seconds unless told otherwise, and sets that per entry point rather than per path, so the sample gives every request on its `web` entry point 300 seconds with `transport.respondingTimeouts.readTimeout`. nginx waits up to 60 seconds between two reads of a body rather than for the whole of it, and Caddy does not limit the time at all, so neither sample changes it.
-- **TLS.** Every sample listens on plain HTTP until you give it a TLS listener, as [Terminate TLS in a sample](#terminate-tls-in-a-sample) describes.
+- **TLS.** Every sample listens on plain HTTP until you give it a TLS listener, or Caddy the host names to serve over HTTPS, as [Terminate TLS in a sample](#terminate-tls-in-a-sample) describes.
 
 When you adapt one, keep each of these, and give an entry point or a `server` block you add the same headers, limits, and timeouts.
 
@@ -203,22 +203,22 @@ Each sample reads them in its own way:
 
 An install that does not run the Platform Console leaves `PUBLIRA_EDGE_PLATFORM_HOSTS` empty, and can leave the `web-platform` address out of its backend addresses. No routing block is removed for it: every sample is valid with an empty list.
 
-Each sample reads the lists once, when the proxy starts. When you [add a tenant](#adding-a-tenant), add its domain to `PUBLIRA_EDGE_SITE_HOSTS` and its console host to `PUBLIRA_EDGE_ADMIN_HOSTS`, and restart the proxy with the new environment; a reload keeps the old lists. A certificate added to nginx or Caddy alone still takes a reload: `nginx -s reload`, or `caddy reload --config /etc/caddy/Caddyfile`, neither of which drops a connection in progress. Traefik with an ACME resolver requests the certificates of the new names once the routing names them.
+Each sample reads the lists once, when the proxy starts. When you [add a tenant](#adding-a-tenant), add its domain to `PUBLIRA_EDGE_SITE_HOSTS` and its console host to `PUBLIRA_EDGE_ADMIN_HOSTS`, and restart the proxy with the new environment; a reload keeps the old lists. A certificate added to nginx or Caddy as files alone still takes a reload: `nginx -s reload`, or `caddy reload --config /etc/caddy/Caddyfile`, neither of which drops a connection in progress. Caddy obtaining its own requests the certificates of the names added to `PUBLIRA_EDGE_TLS_HOSTS` when it restarts with them, and Traefik with an ACME resolver once the routing names them.
 
-On the [Docker Compose](./3-docker-compose.md) install, the lists are in `.env`, and `docker compose up -d proxy` recreates the proxy with them.
+On the [Docker Compose](./3-docker-compose.md) install, the lists are in `.env`, and `docker compose up -d proxy` recreates the proxy with them, which then obtains the certificates of the new names.
 
 ### A hop in front of the proxy
 
-When a load balancer, a CDN, or a TLS terminator connects to a sample, as the one in front of the [Docker Compose](./3-docker-compose.md) install does, the proxy's peer is that hop. With the samples as they ship, every request is then recorded with the hop's address: the audit log shows one address for everyone, and the limits Publira keeps per client address are shared by every reader.
+When a load balancer, a CDN, or a TLS terminator connects to a sample, the proxy's peer is that hop. With the samples as they ship, every request is then recorded with the hop's address: the audit log shows one address for everyone, and the limits Publira keeps per client address are shared by every reader.
 
 To record the reader's own address:
 
 - **The hop sets `X-Forwarded-For`, `X-Forwarded-Host`, and `X-Forwarded-Proto` itself**, to the address that connected to it, the host the browser asked for, and the scheme it used, rather than passing on or appending to the caller's. Traefik trusts all three from the hop, and the web apps find the tenant from `X-Forwarded-Host`, so behind Traefik a hop that set only `X-Forwarded-For` would let a caller pick the tenant. Caddy sets all three by default when it trusts no proxy in front of itself.
-- **The proxy trusts that hop's addresses, and no others**, and takes the client address from the hop's header. Each sample carries the setting commented out, naming the documentation range `192.0.2.0/24`: uncomment it, and replace the range with the hop's addresses.
+- **The proxy trusts that hop's addresses, and no others**, and takes the client address from the hop's header. The Traefik and nginx samples carry the setting commented out, naming the documentation range `192.0.2.0/24`: uncomment it, and replace the range with the hop's addresses. The Caddy sample reads them from its environment.
   - Traefik: `forwardedHeaders.trustedIPs` on the `web` entry point in `traefik.yaml`, or on the entry point the hop connects to.
   - nginx: `set_real_ip_from`, with `real_ip_header` and `real_ip_recursive` below it, near the top of `default.conf.template`, one `set_real_ip_from` line per address or range, and the same addresses in the `geo` block under them, one line each ending in ` 1;`.
-  - Caddy: the `servers` block in the Caddyfile's global options, with `trusted_proxies static` followed by the addresses, separated by spaces.
-  - The Docker Compose install: `PUBLIRA_EDGE_TRUSTED_PROXIES` in `.env`, as [Put TLS in front](./3-docker-compose.md#3-put-tls-in-front) describes.
+  - Caddy: `PUBLIRA_EDGE_TRUSTED_PROXIES` in the environment of the Caddy process, the addresses separated by spaces, which `trusted_proxies static` in the Caddyfile's global options reads.
+  - The Docker Compose install: `PUBLIRA_EDGE_TRUSTED_PROXIES` in `.env`, as [A CDN or a load balancer in front](./3-docker-compose.md#a-cdn-or-a-load-balancer-in-front) describes.
 
 Every sample then passes on the `X-Forwarded-Proto` the hop names, since the hop reaches the proxy over plain HTTP while the reader used HTTPS. nginx and Caddy take the rightmost address in the hop's `X-Forwarded-For` that is not one of the trusted ones, pass that address on alone in `Forwarded`, and keep setting `X-Forwarded-Host` themselves, so a hop in front of them needs no entry in `PUBLIRA_TRUSTED_PROXIES`. Traefik passes the hop's `X-Forwarded-For` on with the hop's own address appended, so `publira server` steps over that address to the one the hop named only when it trusts the hop as well: by default for a hop on a private network, and for a hop with a public address, such as a CDN, once `PUBLIRA_TRUSTED_PROXIES` lists its ranges. A request from any other address is treated as it is without the setting.
 
@@ -228,23 +228,20 @@ Trust the hop's own addresses only. A trusted range that also reaches readers le
 
 The changes below add a TLS listener to each sample, and send plain HTTP to HTTPS with a redirect. Caddy and Traefik can obtain a certificate from Let's Encrypt, or another ACME certificate authority, for every name they are given, and renew it before it expires. The authority has to reach the proxy on port 80 or 443 at that name, so the DNS record comes first and both ports are open to the internet. A certificate issued elsewhere, by a separate ACME client such as certbot, your own certificate authority, or a certificate service, is written to files the proxy reads: renewal is then that tool's job, and the proxy has to load the renewed files.
 
-On the [Docker Compose](./3-docker-compose.md) install, the Traefik sample runs on plain HTTP behind a TLS terminator on the host, and the certificates belong to that terminator instead.
+The [Docker Compose](./3-docker-compose.md) install runs the Caddy sample terminating TLS for every listed host once its ACME contact is set, as below.
 
 #### Caddy
 
-Give the site block the host names in place of `:80`, and remove `auto_https off` from the global options. Caddy then obtains a certificate for each name, renews it, and redirects plain HTTP to HTTPS on its own:
+Set `PUBLIRA_EDGE_TLS_HOSTS` in the environment of the Caddy process to every host name the three lists hold, separated by spaces, and `PUBLIRA_EDGE_ACME_EMAIL` to the contact address its account at the certificate authority is registered with. Caddy then obtains a certificate for each name, renews it, serves it on port 443, and redirects plain HTTP for those names to HTTPS:
 
 ```text
-{
-	email ops@example.com
-}
-
-comics.example.com, admin.comics.example.com {
-	# The matchers and the route block, as in the sample
-}
+PUBLIRA_EDGE_TLS_HOSTS=comics.example.com admin.comics.example.com platform.example.com
+PUBLIRA_EDGE_ACME_EMAIL=ops@example.com
 ```
 
-The matchers and the `route` block stay as they are. For a certificate issued elsewhere, add `tls /etc/caddy/tls/fullchain.pem /etc/caddy/tls/privkey.pem` inside the site block, and Caddy uses those files instead of obtaining its own.
+Caddy keeps the certificates under `/data`, so give that directory a volume that outlives the container; one that starts empty makes Caddy request every certificate again. A host in no list gets no certificate, so its TLS handshake fails, and over plain HTTP the sample still answers it with its own 404.
+
+For a certificate issued elsewhere, replace `:80 {$PUBLIRA_EDGE_TLS_HOSTS}`, the site block's addresses, with the host names, and add `tls /etc/caddy/tls/fullchain.pem /etc/caddy/tls/privkey.pem` inside the block: Caddy uses those files instead of obtaining its own, and refuses them in a block that also listens on plain HTTP. Caddy reads them inside its container, so mount the directory that holds them at `/etc/caddy/tls`, read-only: on the Docker Compose install, add `- <directory>:/etc/caddy/tls:ro` to the `volumes` of the `proxy` service, and run `docker compose up -d proxy` to recreate it with the mount. With no site left on port 80, Caddy redirects plain HTTP for every host, listed or not, to HTTPS, so a host in no list gets that redirect in place of the sample's 404, and then fails the TLS handshake.
 
 #### nginx
 

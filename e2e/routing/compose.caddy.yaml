@@ -4,8 +4,11 @@
 # `app`, so this run exercises the committed file as it stands. The hosts have
 # no default, and are the ones scripts/lib.sh lists for every proxy.
 #
-# PUBLIRA_ROUTING_PROXY_DIR replaces the directory in the trusted-hop pass, with a
-# copy whose trusted-proxy setting scripts/lib.sh has enabled.
+# The Caddyfile is mounted as it stands in every pass. The trusted-hop pass
+# gives it the hop's address in PUBLIRA_EDGE_TRUSTED_PROXIES, and the TLS pass
+# every listed host in PUBLIRA_EDGE_TLS_HOSTS, so that it serves them over
+# HTTPS on the second port; every other pass leaves both empty, and nothing
+# listens behind that port.
 #
 # Relative paths resolve against this directory, which is the project
 # directory: compose.echo.yaml is passed first and lives here too.
@@ -20,7 +23,10 @@ services:
       PUBLIRA_EDGE_SITE_HOSTS: ${PUBLIRA_ROUTING_SITE_HOSTS:?}
       PUBLIRA_EDGE_ADMIN_HOSTS: ${PUBLIRA_ROUTING_ADMIN_HOSTS:?}
       PUBLIRA_EDGE_PLATFORM_HOSTS: ${PUBLIRA_ROUTING_PLATFORM_HOSTS?}
+      PUBLIRA_EDGE_TLS_HOSTS: ${PUBLIRA_ROUTING_TLS_HOSTS:-}
+      PUBLIRA_EDGE_TRUSTED_PROXIES: ${PUBLIRA_ROUTING_TRUSTED_PROXIES:-}
     ports:
       - "127.0.0.1:${PUBLIRA_ROUTING_EDGE_PORT:-13080}:80"
+      - "127.0.0.1:${PUBLIRA_ROUTING_EDGE_TLS_PORT:-13443}:443"
     volumes:
-      - ${PUBLIRA_ROUTING_PROXY_DIR:-../../infra/proxy/caddy}/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../../infra/proxy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro

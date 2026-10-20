@@ -357,8 +357,8 @@ jobs:
             test_deploy:
               - *docs_excluded
               - 'infra/deploy/**'
-              # The deployment's edge mounts these routers unchanged.
-              - 'infra/proxy/traefik/**'
+              # The deployment's edge runs this Caddyfile unchanged.
+              - 'infra/proxy/caddy/**'
               # The smoke runs the images these build.
               - 'infra/docker/**'
               - '.dockerignore'

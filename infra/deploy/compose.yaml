@@ -84,36 +84,44 @@ services:
       timeout: 3s
       retries: 5
 
-  # The edge. The routing is the repository's own routes.yaml, mounted as it
-  # stands; only the backend addresses in services.yaml are this file's, and
-  # the hosts each app answers come from .env. A host in no list reaches
+  # The edge: Caddy, running the repository's own Caddyfile, which the
+  # Caddyfile beside this file links to. The backend addresses are this file's,
+  # and the hosts each app answers come from .env. A host in no list reaches
   # nothing.
   #
-  # The static configuration is ../proxy/traefik/traefik.yaml's, given as
-  # flags instead of the file: Traefik reads either a file or flags, never
-  # both, and the addresses of the TLS terminator in front, which the edge
-  # trusts to name the client address, come from .env. Empty, it trusts no one.
+  # With an ACME contact in .env, Caddy is given the host lists as the hosts
+  # it serves over HTTPS, with certificates it obtains and renews and keeps in
+  # `caddy-data`, and plain HTTP to them is redirected there. Without one, it
+  # serves plain HTTP alone, for a hop in front that terminates TLS or for
+  # trying the install on one machine. The addresses of such a hop,
+  # which the edge trusts to name the client address, come from .env too.
+  # Empty, it trusts no one.
   proxy:
-    image: traefik:v3.7.15@sha256:0f6150202bc1fed72a7bd2107460eaa510e5b8a905f3fdb5b84f2c8619c33368
+    image: caddy:2.11.7-alpine@sha256:d8542f48d34a9cf4e4c11a478865229840e87e4c96ea3f439101f31a5d35f75f
     restart: unless-stopped
-    command:
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.web.http.middlewares=strip-trace-context@file,strip-forwarded@file"
-      - "--entrypoints.web.transport.respondingTimeouts.readTimeout=300s"
-      - "--entrypoints.web.forwardedHeaders.trustedIPs=${PUBLIRA_EDGE_TRUSTED_PROXIES:-}"
-      - "--providers.file.directory=/etc/traefik/dynamic"
-      - "--providers.file.watch=true"
     environment:
       PUBLIRA_EDGE_SITE_HOSTS: ${PUBLIRA_EDGE_SITE_HOSTS:?}
       PUBLIRA_EDGE_ADMIN_HOSTS: ${PUBLIRA_EDGE_ADMIN_HOSTS:?}
       PUBLIRA_EDGE_PLATFORM_HOSTS: ${PUBLIRA_EDGE_PLATFORM_HOSTS:-}
+      PUBLIRA_EDGE_TLS_HOSTS: ${PUBLIRA_EDGE_ACME_EMAIL:+${PUBLIRA_EDGE_SITE_HOSTS} ${PUBLIRA_EDGE_ADMIN_HOSTS} ${PUBLIRA_EDGE_PLATFORM_HOSTS}}
+      PUBLIRA_EDGE_ACME_EMAIL: ${PUBLIRA_EDGE_ACME_EMAIL:-}
+      PUBLIRA_EDGE_TRUSTED_PROXIES: ${PUBLIRA_EDGE_TRUSTED_PROXIES:-}
+      PUBLIRA_UPSTREAM_API: server:8000
+      PUBLIRA_UPSTREAM_WEB_STOREFRONT: web-storefront:3000
+      PUBLIRA_UPSTREAM_WEB_ADMIN: web-admin:4000
+      # Answers only when its profile runs; without it the platform host is a
+      # 502 and every other route is unaffected.
+      PUBLIRA_UPSTREAM_WEB_PLATFORM: web-platform:4100
     ports:
-      # Loopback, like every port the root compose.yaml publishes: whatever
-      # terminates TLS on this host forwards here.
-      - "127.0.0.1:${PUBLIRA_EDGE_PORT:?}:80"
+      # Every interface: the proxy is what the internet reaches. The
+      # certificate authority checks a name on port 80 or 443, so an install
+      # that terminates TLS here keeps both; UDP carries HTTP/3.
+      - "${PUBLIRA_EDGE_HTTP_PORT:?}:80"
+      - "${PUBLIRA_EDGE_HTTPS_PORT:?}:443"
+      - "${PUBLIRA_EDGE_HTTPS_PORT:?}:443/udp"
     volumes:
-      - ../proxy/traefik/dynamic/routes.yaml:/etc/traefik/dynamic/routes.yaml:ro
-      - ./services.yaml:/etc/traefik/dynamic/services.yaml:ro
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
     networks: [edge]
     depends_on:
       - server
@@ -284,3 +292,4 @@ networks:
 volumes:
   postgres-data:
   rustfs-data:
+  caddy-data:

@@ -2,7 +2,7 @@
 title: Docker Compose
 description: Run a whole install on one host with the Compose file in the repository, from generating its .env to the first sign-in to the tenant console.
 published: 2026-10-06
-updated: 2026-10-19
+updated: 2026-10-20
 ---
 
 The repository ships a Compose file that runs a whole install on one host: the services Publira depends on, the processes of an install, and a reverse proxy in front of them, already wired together. It is the shortest way to a working install, and this page takes you from an empty host to the first sign-in to the tenant console.
@@ -18,7 +18,7 @@ The Compose file runs the same steps as [Installing](./2-installing.md), which e
 | `postgres` | PostgreSQL, holding everything the install stores | The `postgres-data` volume |
 | `valkey` | Valkey, holding the image conversion cache, the rate limit counters, and the web apps' cache | Nothing; it starts empty after every restart |
 | `rustfs` | [RustFS](https://github.com/rustfs/rustfs), an S3-compatible object store, holding every uploaded image | The `rustfs-data` volume |
-| `proxy` | Traefik, the reverse proxy, with the repository's own routing | Nothing |
+| `proxy` | Caddy, the reverse proxy, with the repository's own routing, which obtains and renews the certificates of your host names | The `caddy-data` volume, holding the certificates |
 | `server` | `publira server` and `publira worker` as one process, `publira server --with-worker`, which the [Overview](./1-overview.md#what-an-install-runs) describes | Nothing |
 | `web-storefront`, `web-admin` | The public site and the tenant console | Nothing |
 | `web-platform`, `email-renderer` | The optional processes, which run only when you turn them on | Nothing |
@@ -27,7 +27,7 @@ The Compose file runs the same steps as [Installing](./2-installing.md), which e
 
 The server and the worker run as one process, so the host runs one container fewer. Run them as two instead when either matters to your install: to scale them separately, or to keep the worker's database logins out of the process the proxy forwards to. The [deployment reference](https://github.com/publira/publira/blob/main/infra/deploy/README.md#environment-variables) lists the variables each of the two reads.
 
-The proxy publishes plain HTTP on a port of the host's loopback interface and nothing else, so nothing reaches the install until you put a TLS terminator on the host in front of it. Every other service is reachable only from the others.
+The proxy publishes ports 80 and 443 on every interface of the host, and is the one service the internet reaches: it serves HTTPS for the host names you list, and redirects plain HTTP there. Every other service is reachable only from the others.
 
 The services are on two Docker networks. `edge` holds the proxy and what it forwards to: `server` and the web apps. `default` holds every service but the proxy. The proxy therefore reaches neither the database nor Valkey, and a flaw in it is not a way into either.
 
@@ -38,10 +38,11 @@ The project name is fixed as `publira-deploy`, so the volumes keep their names a
 You need:
 
 - **A host with Docker Engine and the Compose plugin**, `docker compose`, on `linux/amd64` or `linux/arm64`, the two platforms the images are published for. On any other, the first pull fails with `no matching manifest`, and the host runs images built for it instead, as [The images](#the-images) describes.
-- **A checkout of the repository at the release you install**, such as a clone checked out at that release's tag, such as `v0.1.0`. The Compose file is not self-contained: it mounts the proxy's routing from `infra/proxy/`, so keep the whole checkout rather than copying `infra/deploy/` out of it. Every command on this page runs from `infra/deploy/`.
+- **A checkout of the repository at the release you install**, such as a clone checked out at that release's tag, such as `v0.1.0`. The Compose file is not self-contained: the proxy's `Caddyfile` beside it is a link into `infra/proxy/`, so keep the whole checkout rather than copying `infra/deploy/` out of it. Every command on this page runs from `infra/deploy/`.
 - **Access from the host to `ghcr.io`**, where every release publishes its images. `docker compose` pulls them the first time a command needs them, without signing in, so nothing is built on the host.
 - **An SMTP server**, which `publiractl setup` asks for: its host, port, encryption, and the address mail is sent from, and the user name and password to sign in with, unless it relays without credentials.
-- **DNS** for the tenant's domain and for `admin.<domain>`, both pointing at the host.
+- **DNS** for the tenant's domain and for its console host, `admin.<domain>` or the one you will give it with `--admin-domain`, both pointing at the host.
+- **Ports 80 and 443 open to the internet**, and nothing else on the host listening on either. The proxy answers on both, and the certificate authority checks each host name on one of them before it issues a certificate for it.
 
 ## Write `.env`
 
@@ -57,7 +58,7 @@ It prints `Wrote .env with 17 secrets generated.` and nothing else. The image ru
 
 `.env` holds every secret of the install, the encryption keys among them, so keep a copy of it somewhere other than the host.
 
-Three values are left for you to set in it: `PUBLIRA_IMAGE_TAG` and the two host lists, `PUBLIRA_EDGE_SITE_HOSTS` and `PUBLIRA_EDGE_ADMIN_HOSTS`.
+Four values are left for you to set in it: `PUBLIRA_IMAGE_TAG`, the two host lists, `PUBLIRA_EDGE_SITE_HOSTS` and `PUBLIRA_EDGE_ADMIN_HOSTS`, and `PUBLIRA_EDGE_ACME_EMAIL`, which turns HTTPS on.
 
 ### The images
 
@@ -71,11 +72,19 @@ Every image runs that one tag, and it has to match the checkout: `publiractl` ca
 
 If you change the code, or the host is on neither `linux/amd64` nor `linux/arm64`, build the images yourself from the [image build instructions](https://github.com/publira/publira/blob/main/infra/docker/README.md) instead, and set both variables to where they are: the address of the registry you push them to, such as `registry.example.com/publira`, and your own tag, or `publira` and `local` for the images `task docker:verify:full` builds on the host itself.
 
-### The edge port and the tenant URL scheme
+### HTTPS and the tenant URL scheme
 
-`PUBLIRA_EDGE_PORT` is the loopback port the proxy publishes. The example's `8080` is fine unless something else on the host already listens there; whichever you choose, the TLS terminator forwards to it.
+`PUBLIRA_EDGE_ACME_EMAIL` turns HTTPS on. Set it to an address of yours, which the proxy registers its account at the certificate authority with:
 
-Leave `PUBLIRA_TENANT_URL_SCHEME` empty when browsers reach the install over HTTPS, which they do through a TLS terminator. It is the scheme of the links Publira builds, in mail and in the `setup` summary, not of the plain HTTP hop between the terminator and the proxy. Set it to `http` only when browsers really open the install over HTTP, as in [Trying it on one machine](#trying-it-on-one-machine).
+```text
+PUBLIRA_EDGE_ACME_EMAIL=ops@example.com
+```
+
+The proxy then obtains a certificate for every host name in the host lists from [Let's Encrypt](https://letsencrypt.org/), or from ZeroSSL when Let's Encrypt fails, renews each one before it expires, serves HTTPS on port 443, and redirects plain HTTP on port 80 there. Left empty, the proxy serves plain HTTP alone, which only [Trying it on one machine](#trying-it-on-one-machine) and [A CDN or a load balancer in front](#a-cdn-or-a-load-balancer-in-front) call for.
+
+`PUBLIRA_EDGE_HTTP_PORT` and `PUBLIRA_EDGE_HTTPS_PORT` are the ports the proxy publishes, `80` and `443`. Keep them while it obtains the certificates: the certificate authority reaches it on those ports and no others.
+
+Leave `PUBLIRA_TENANT_URL_SCHEME` empty when browsers reach the install over HTTPS. It is the scheme of the links Publira builds, in mail and in the `setup` summary. Set it to `http` only when browsers really open the install over HTTP, as in [Trying it on one machine](#trying-it-on-one-machine).
 
 ### The host names
 
@@ -113,7 +122,7 @@ error while interpolating services.email-renderer.image: required variable PUBLI
 error while interpolating services.proxy.environment.PUBLIRA_EDGE_ADMIN_HOSTS: required variable PUBLIRA_EDGE_ADMIN_HOSTS is missing a value
 ```
 
-The rest of the file may stay empty: `PUBLIRA_TENANT_URL_SCHEME`, `COMPOSE_PROFILES`, `PUBLIRA_EDGE_PLATFORM_HOSTS`, `PUBLIRA_EDGE_TRUSTED_PROXIES`, which [Put TLS in front](#3-put-tls-in-front) fills in, and the variables of the optional processes, which the next section fills in when you turn one on.
+`PUBLIRA_EDGE_ACME_EMAIL` does not stop `docker compose` while it is empty: the proxy serves plain HTTP instead. The rest of the file may stay empty too: `PUBLIRA_TENANT_URL_SCHEME`, `COMPOSE_PROFILES`, `PUBLIRA_EDGE_PLATFORM_HOSTS`, `PUBLIRA_EDGE_TRUSTED_PROXIES`, which only [A CDN or a load balancer in front](#a-cdn-or-a-load-balancer-in-front) fills in, and the variables of the optional processes, which the next section fills in when you turn one on.
 
 A variable exported in the shell you run `docker compose` from takes precedence over the same variable in `.env`. If a value you wrote in `.env` seems to be ignored, look for a `PUBLIRA_*` variable in your shell's environment.
 
@@ -132,7 +141,7 @@ For example, to run both:
 COMPOSE_PROFILES=web-platform,email-renderer
 ```
 
-`docker compose` does not stop on an empty `PUBLIRA_WEB_PLATFORM_AUTH_SECRET`, since it only matters when the profile runs, but no operator can sign in to the Platform Console without it, so keep the value `env generate` wrote. Its host name also needs DNS pointing at the host, and a certificate on the TLS terminator like the other host names.
+`docker compose` does not stop on an empty `PUBLIRA_WEB_PLATFORM_AUTH_SECRET`, since it only matters when the profile runs, but no operator can sign in to the Platform Console without it, so keep the value `env generate` wrote. Its host name also needs DNS pointing at the host, and with `PUBLIRA_EDGE_ACME_EMAIL` set the proxy obtains its certificate with the others.
 
 You can choose these now or later. To turn one on in an install that is already running, add it to `COMPOSE_PROFILES`, set its variables, and run `docker compose up -d` again: it starts the new process and restarts the ones whose variables changed. What each process does once it runs is in [Turning on the optional processes](./2-installing.md#turning-on-the-optional-processes).
 
@@ -152,7 +161,7 @@ The first command pulls the images it needs, starts PostgreSQL and RustFS, and w
 2. It creates the bucket, named `publira`, in RustFS, and saves it with the RustFS credential from `.env` once a test of it has passed.
 3. It asks on the terminal for everything else: the platform's default locale, time zone, and currency, the SMTP settings, whether to set up Web Push, the tenant's name and domain, and its first administrator. [Set the install up](./2-installing.md#4-set-the-install-up) describes each step.
 
-When it asks for the tenant site domain, give the domain you listed in `PUBLIRA_EDGE_SITE_HOSTS`, such as `comics.example.com`. The console host defaults to `admin.<domain>`, the name you listed in `PUBLIRA_EDGE_ADMIN_HOSTS`.
+When it asks for the tenant site domain, give the domain you listed in `PUBLIRA_EDGE_SITE_HOSTS`, such as `comics.example.com`. When it asks for the tenant console domain, leave it blank if you listed `admin.<domain>` in `PUBLIRA_EDGE_ADMIN_HOSTS`, and give the name you listed otherwise.
 
 The summary at the end names the tenant site and the tenant console, and prints the administrator's password when `setup` generated one. That is the only place it appears, so keep it before you close the terminal.
 
@@ -167,35 +176,11 @@ docker compose ps
 
 `docker compose ps` lists every service of the install as running; `publiractl` and `setup` are not among them, since they only ever run for one command. A process that keeps restarting says why in `docker compose logs <service>`.
 
-### 3. Put TLS in front
+With `PUBLIRA_EDGE_ACME_EMAIL` set, the proxy requests the certificates as it starts, and `docker compose logs proxy` prints `certificate obtained successfully` once for each host name. A name it could not get one for is logged as `could not get certificate from issuer`, with the certificate authority's reason, most often DNS that does not point at the host yet or a port closed to the internet. The proxy keeps retrying on its own, so fixing the cause is enough.
 
-The proxy speaks plain HTTP on `127.0.0.1:${PUBLIRA_EDGE_PORT}`, and browsers need HTTPS. Run a TLS terminator on the host that:
+### 3. Sign in
 
-- Accepts HTTPS for the tenant's domain and `admin.<domain>`, plus the Platform Console's host name if you run it, with a certificate for each.
-- Forwards every request to `http://127.0.0.1:<PUBLIRA_EDGE_PORT>`.
-- Keeps the `Host` header the browser sent. The proxy picks the tenant site, the tenant console, or the Platform Console from it, and Publira picks the tenant from it, so a terminator that replaces it with `127.0.0.1` reaches no tenant at all.
-
-[Caddy](https://caddyserver.com/) does all three with a few lines, and obtains and renews the certificates itself once DNS points at the host and ports 80 and 443 are open to the internet:
-
-```text
-comics.example.com, admin.comics.example.com {
-	reverse_proxy 127.0.0.1:8080
-}
-```
-
-Unless you tell it otherwise, the proxy records every request with the address the terminator connects from, so the audit log shows one address for everyone, and the limits Publira keeps per client address are shared by every reader. To record the reader's address instead, have the terminator set `X-Forwarded-For`, `X-Forwarded-Host`, and `X-Forwarded-Proto` itself, which Caddy does by default, and set `PUBLIRA_EDGE_TRUSTED_PROXIES` in `.env` to the address it reaches the proxy from. A terminator on the host forwarding to `127.0.0.1` reaches it from the gateway of the install's `edge` network, which this prints once the install is running:
-
-```bash
-docker network inspect publira-deploy_edge --format '{{range .IPAM.Config}}{{.Gateway}}{{end}}'
-```
-
-Then run `docker compose up -d proxy` to recreate the proxy with it. Several addresses are separated by commas. The network keeps its gateway until it is removed, which `docker compose down` does, so check the value again after one. [A hop in front of the proxy](./4-edge.md#a-hop-in-front-of-the-proxy) explains what trusting the terminator means.
-
-Any other terminator that does the same works too. When you add a tenant later, [Adding a tenant](./4-edge.md#adding-a-tenant) lists what the terminator and the proxy need for its host names.
-
-### 4. Sign in
-
-Open the tenant console URL the `setup` summary printed, `https://admin.<domain>`, and sign in with the administrator's email address and password. The tenant console opens on the tenant `setup` created, and the tenant's public site answers at `https://<domain>`.
+Open the tenant console URL the `setup` summary printed, `https://admin.<domain>` or the console host you gave it, and sign in with the administrator's email address and password. The tenant console opens on the tenant `setup` created, and the tenant's public site answers at `https://<domain>`.
 
 If you turned on the Platform Console, open `PUBLIRA_PLATFORM_APP_URL` and create its first operator on the setup screen. Its accounts are separate from the tenant administrator's.
 
@@ -203,23 +188,35 @@ If you turned on the Platform Console, open `PUBLIRA_PLATFORM_APP_URL` and creat
 
 To try the install on your own computer, without DNS or certificates, use host names under `.localhost`. Chromium-based browsers and Firefox send every `.localhost` name to the machine itself, and treat it as secure even over plain HTTP, so they keep the session cookie that signing in sets. Over plain HTTP on any other host name, the sign-in seems to succeed, but the next page you open returns you to the sign-in screen.
 
-1. Set `PUBLIRA_TENANT_URL_SCHEME=http` in `.env`, and list the `.localhost` names: `PUBLIRA_EDGE_SITE_HOSTS=comics.localhost` and `PUBLIRA_EDGE_ADMIN_HOSTS=admin.comics.localhost`, plus `PUBLIRA_EDGE_PLATFORM_HOSTS=platform.localhost` if you run the Platform Console.
-2. Follow steps 1 and 2 above, and give `setup` the tenant domain with the edge port, such as `comics.localhost:8080`. The port is part of the domain whenever browsers reach the install on a port other than 80 or 443, though not of the names the proxy lists.
-3. Skip step 3, and open `http://admin.comics.localhost:8080` to sign in.
+1. Set `PUBLIRA_TENANT_URL_SCHEME=http` in `.env`, and list the `.localhost` names: `PUBLIRA_EDGE_SITE_HOSTS=comics.localhost` and `PUBLIRA_EDGE_ADMIN_HOSTS=admin.comics.localhost`, plus `PUBLIRA_EDGE_PLATFORM_HOSTS=platform.localhost` if you run the Platform Console. Leave `PUBLIRA_EDGE_ACME_EMAIL` empty: no certificate authority reaches a `.localhost` name, so the proxy serves plain HTTP.
+2. Follow steps 1 and 2 above, and give `setup` the tenant domain, `comics.localhost`.
+3. Open `http://admin.comics.localhost` to sign in.
 
-The tenant site answers at `http://comics.localhost:8080`, and the Platform Console, if you turned it on with `PUBLIRA_PLATFORM_APP_URL=http://platform.localhost:8080`, at that address. Use this only for trying the install: nothing it sends between your browser and the host is encrypted.
+The tenant site answers at `http://comics.localhost`, and the Platform Console, if you turned it on with `PUBLIRA_PLATFORM_APP_URL=http://platform.localhost`, at that address.
+
+The proxy publishes port 443 as well, even while it serves plain HTTP, so `docker compose up` fails to start it when something on your computer already listens on either port. For port 443, set `PUBLIRA_EDGE_HTTPS_PORT` to another free port, such as `8443`; nothing else changes, since the trial never uses it. For port 80, set `PUBLIRA_EDGE_HTTP_PORT` to another port, such as `8080`, and add it to every address above: the tenant domain you give `setup` is then `comics.localhost:8080`, and the console opens at `http://admin.comics.localhost:8080`. The port is part of the domain whenever browsers reach the install on a port other than 80 or 443, though not of the names the proxy lists.
+
+Use this only for trying the install: nothing it sends between your browser and the host is encrypted, and the proxy answers on every interface of your computer, not only to the computer itself.
+
+## A CDN or a load balancer in front
+
+If a CDN or a load balancer of your platform terminates TLS for the install instead, leave `PUBLIRA_EDGE_ACME_EMAIL` empty and have it forward to the proxy's port 80, keeping the `Host` header the browser sent: the proxy picks the tenant site, the tenant console, or the Platform Console from it, and Publira picks the tenant from it. A hop that reaches the proxy over HTTPS instead can leave it set, as long as the certificate authority still reaches the proxy on port 80 or 443 at each host name.
+
+The proxy then records every request with the hop's address, so the audit log shows one address for everyone, and the limits Publira keeps per client address are shared by every reader. To record the reader's address instead, have the hop set `X-Forwarded-For`, `X-Forwarded-Host`, and `X-Forwarded-Proto` itself, and set `PUBLIRA_EDGE_TRUSTED_PROXIES` in `.env` to the addresses or CIDR ranges it connects from, which its provider publishes, separated by spaces. Then run `docker compose up -d proxy` to recreate the proxy with them. [A hop in front of the proxy](./4-edge.md#a-hop-in-front-of-the-proxy) explains what trusting the hop means.
 
 ## What one host does not give you
 
 The Compose file is a complete install, but every part of it is on one machine:
 
 - **There is no redundancy.** Each process runs once. Docker restarts a process that exits, and restarts the whole install when the host reboots, but while the host is down, so is every tenant's site.
-- **The database and the images share one disk.** PostgreSQL and RustFS keep their data in the `publira-deploy_postgres-data` and `publira-deploy_rustfs-data` volumes, on the host's own disk. A disk that fails takes both with it, so back up both, and `.env` with them: without the encryption keys in it, the SMTP password and every other credential the install stores cannot be read. Valkey keeps nothing that needs a backup. [Backup and restore](./8-backup-and-restore.md#on-the-docker-compose-install) has the commands.
+- **The database and the images share one disk.** PostgreSQL and RustFS keep their data in the `publira-deploy_postgres-data` and `publira-deploy_rustfs-data` volumes, on the host's own disk. A disk that fails takes both with it, so back up both, and `.env` with them: without the encryption keys in it, the SMTP password and every other credential the install stores cannot be read. Valkey keeps nothing that needs a backup, and neither does the `publira-deploy_caddy-data` volume: the proxy obtains the certificates again when it finds it empty. [Backup and restore](./8-backup-and-restore.md#on-the-docker-compose-install) has the commands.
 - **`docker compose down -v` deletes the data.** `-v` removes the volumes, and with them every row and every image. Leave it out to stop the install and keep them.
 
 When the install outgrows one host, the same processes run against a managed PostgreSQL and an S3-compatible object store elsewhere; [Installing](./2-installing.md) brings up such an install step by step.
 
 ## Next steps
+
+When you add a tenant, add its domain and its console host to the host lists in `.env`, and run `docker compose up -d proxy`: the proxy routes the two names and, with `PUBLIRA_EDGE_ACME_EMAIL` set, obtains their certificates. [Adding a tenant](./4-edge.md#adding-a-tenant) lists the order, DNS first.
 
 On every later release, [Upgrading](./7-upgrading.md#on-the-docker-compose-install) takes the install to it: checking out the release, the backup, the migrations, and restarting on the new images.
 

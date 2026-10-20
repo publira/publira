@@ -6,7 +6,7 @@ Every Publira deployment puts one reverse proxy in front of four backends. This 
 | --- | --- | --- |
 | Traefik | [`traefik/`](./traefik/) | The Dev Container edge on `localhost:3080`, the same edge in front of a host-side `task dev` (`PUBLIRA_EDGE_BACKEND_HOST` pointing `services.yaml` at the host), the E2E edge, and the edge of each `dev-env` profile, all through the file provider; a sample for a deployment as well |
 | nginx | [`nginx/`](./nginx/) | Sample for a deployment |
-| Caddy | [`caddy/`](./caddy/) | Sample for a deployment |
+| Caddy | [`caddy/`](./caddy/) | The edge of the Compose install in [`infra/deploy/`](../deploy/README.md), which runs the Caddyfile as it stands; a sample for a deployment as well |
 
 The Dev Container mounts `traefik/dynamic` into its `traefik` container and runs the file provider with `watch=true`, so an edit to `routes.yaml` or `services.yaml` takes effect without restarting the stack. Where the bind mount delivers no file events, `docker compose restart traefik` picks the edit up. A change to the hosts is a change to the container's environment, which `docker compose up -d traefik` applies by recreating it.
 
@@ -102,7 +102,7 @@ Each of them is **set**, never appended to. The client is outside the trust boun
 
 ### A trusted hop in front
 
-When a load balancer, a CDN, or a TLS terminator connects to the edge, that hop is the peer of every request, and every request reaches the backends with its address. Each sample carries a setting, commented out, that trusts the hop's own addresses and no others:
+When a load balancer, a CDN, or a TLS terminator connects to the edge, that hop is the peer of every request, and every request reaches the backends with its address. Each sample carries a setting that trusts the hop's own addresses and no others: Traefik and nginx commented out, and Caddy reading the addresses from `PUBLIRA_EDGE_TRUSTED_PROXIES`, separated by spaces, which trusts no one while it is empty.
 
 | Proxy | Setting | Where |
 | --- | --- | --- |
@@ -118,9 +118,9 @@ Four things are deployment decisions, and each proxy's files mark them.
 
 - **Hosts.** The three `PUBLIRA_EDGE_*_HOSTS` variables above, read from the proxy's environment: by the Traefik file provider when it renders `routes.yaml`, by the official nginx image when it renders `default.conf.template` at startup, and by Caddy when it parses the Caddyfile. Each proxy reads them once, so a changed list takes effect when the proxy restarts. None of them has a default: the Dev Container, the edge in front of a host-side `task dev`, and each `dev-env` profile list the development seed's tenant and the Platform Console, and the E2E stack every tenant its seeds and scenarios create.
 - **Backend addresses.** They are the half of the configuration that changes per environment, so every proxy here keeps them apart from the routing: Traefik in `traefik/dynamic/services.yaml`, nginx in `nginx/upstreams.conf`, Caddy in the `PUBLIRA_UPSTREAM_*` environment variables. The addresses committed here name the Dev Container's `app` container.
-- **TLS.** Which certificate source and which listen addresses apply depend on where the edge runs. Each configuration listens on plain HTTP and carries a commented placeholder where the TLS listener goes.
-- **Trusted hops.** The addresses of a load balancer, a CDN, or a TLS terminator in front of the edge, in the setting [above](#a-trusted-hop-in-front). Each sample carries it commented out, naming the documentation range `192.0.2.0/24` in place of the hop's addresses. The Compose install in [`infra/deploy/`](../deploy/README.md) passes Traefik's from `PUBLIRA_EDGE_TRUSTED_PROXIES`.
+- **TLS.** Which certificate source and which listen addresses apply depend on where the edge runs. Traefik and nginx listen on plain HTTP and carry a commented placeholder where the TLS listener goes. Caddy listens on plain HTTP until `PUBLIRA_EDGE_TLS_HOSTS` names hosts, separated by spaces: it then obtains a certificate for each over ACME, registering the account with `PUBLIRA_EDGE_ACME_EMAIL`, serves them on `:443`, and redirects plain HTTP for them to HTTPS. A host in no list gets no certificate, so its TLS handshake fails. The Compose install in [`infra/deploy/`](../deploy/README.md) gives it every listed host once its ACME contact is set.
+- **Trusted hops.** The addresses of a load balancer, a CDN, or a TLS terminator in front of the edge, in the setting [above](#a-trusted-hop-in-front). Traefik and nginx carry it commented out, naming the documentation range `192.0.2.0/24` in place of the hop's addresses; Caddy reads it from `PUBLIRA_EDGE_TRUSTED_PROXIES`, which the Compose install passes on from its `.env`.
 
 ## Verification
 
-`task e2e:routing` runs this routing against all three samples. It starts each one in front of an echo server that answers on the four backend ports and reports which backend and which path a request reached, gives it hosts whose names follow no convention, and probes every row above, along with unlisted hosts that look like a console or the Platform Console. It then enables each sample's trusted-hop setting as it is written and probes it through a hop and from outside its range. See [`e2e/routing/README.md`](../../e2e/routing/README.md).
+`task e2e:routing` runs this routing against all three samples. It starts each one in front of an echo server that answers on the four backend ports and reports which backend and which path a request reached, gives it hosts whose names follow no convention, and probes every row above, along with unlisted hosts that look like a console or the Platform Console. It then starts Caddy with every listed host in `PUBLIRA_EDGE_TLS_HOSTS` and probes it over HTTPS, and enables each sample's trusted-hop setting as it is written and probes it through a hop and from outside its range. See [`e2e/routing/README.md`](../../e2e/routing/README.md).

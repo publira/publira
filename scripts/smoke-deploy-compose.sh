@@ -11,14 +11,16 @@
 # left alone, and is always removed with its volumes.
 #
 # Inputs (env):
-#   PUBLIRA_DEPLOY_SMOKE_EDGE_PORT  Loopback port the edge publishes (default: 18090)
-#   PUBLIRA_DEPLOY_SMOKE_TIMEOUT    Seconds to wait for each page (default: 120)
+#   PUBLIRA_DEPLOY_SMOKE_EDGE_PORT        Port the edge publishes plain HTTP on (default: 18090)
+#   PUBLIRA_DEPLOY_SMOKE_EDGE_HTTPS_PORT  Port the edge publishes HTTPS on (default: 18443)
+#   PUBLIRA_DEPLOY_SMOKE_TIMEOUT          Seconds to wait for each page (default: 120)
 set -euo pipefail
 
 repo_root="$(git rev-parse --show-toplevel)"
 cd "${repo_root}"
 
 edge_port="${PUBLIRA_DEPLOY_SMOKE_EDGE_PORT:-18090}"
+edge_https_port="${PUBLIRA_DEPLOY_SMOKE_EDGE_HTTPS_PORT:-18443}"
 timeout="${PUBLIRA_DEPLOY_SMOKE_TIMEOUT:-120}"
 # The tenant is stored with the edge port it is reached on; the mail addresses
 # take the host name alone.
@@ -64,7 +66,11 @@ set_env() {
 }
 set_env PUBLIRA_IMAGE_REGISTRY publira
 set_env PUBLIRA_IMAGE_TAG local
-set_env PUBLIRA_EDGE_PORT "${edge_port}"
+# PUBLIRA_EDGE_ACME_EMAIL stays empty, as the trial on one machine leaves it:
+# no certificate authority reaches a .localhost name, so the edge serves plain
+# HTTP and nothing listens behind the HTTPS port.
+set_env PUBLIRA_EDGE_HTTP_PORT "${edge_port}"
+set_env PUBLIRA_EDGE_HTTPS_PORT "${edge_https_port}"
 set_env PUBLIRA_EDGE_SITE_HOSTS "${domain}"
 set_env PUBLIRA_EDGE_ADMIN_HOSTS "admin.${domain}"
 set_env PUBLIRA_EDGE_PLATFORM_HOSTS platform.localhost

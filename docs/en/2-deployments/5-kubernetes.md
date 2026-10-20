@@ -2,7 +2,7 @@
 title: Kubernetes
 description: Run an install on a Kubernetes cluster, from its Secrets and Deployments and a Gateway or an Ingress in front of them to the first sign-in to the tenant console.
 published: 2026-10-13
-updated: 2026-10-16
+updated: 2026-10-20
 ---
 
 This page takes an install from an empty namespace on a Kubernetes cluster to the first sign-in to the tenant console. It runs the same steps as [Installing](./2-installing.md), which explains why each step exists, what every secret protects, and what each database role can reach, and it puts the edge in front the way [Edge](./4-edge.md#what-the-edge-has-to-do) requires. This page covers what is particular to a cluster: which resources each part becomes, and how each requirement of those two pages is met with them.
@@ -35,7 +35,7 @@ You need:
 - **A cluster** whose nodes are `linux/amd64` or `linux/arm64`, the two platforms the images are published for, and `kubectl` signed in to it. In the `publira` namespace, the steps create, change, and delete Secrets, Deployments, Services, Jobs, and Pods, read Pod logs, attach to a Pod, and manage the edge's resources: a Gateway, HTTPRoutes, and an Envoy Gateway HTTPRouteFilter, or Ingresses and two Traefik Middlewares. Creating the namespace and the `ClusterIssuer`, which belongs to no namespace, and installing cert-manager and the edge's controller, take a cluster administrator. The built-in `admin` role, bound in the namespace, covers the rest except the custom resources: one of those is covered only when its install adds it to that role, which Envoy Gateway's does not for Gateways, HTTPRoutes, and its own HTTPRouteFilters.
 - **A Gateway API implementation or an Ingress controller** to be the edge, and **cert-manager** to issue the certificates, as [Put the edge in front](#6-put-the-edge-in-front) describes. The edge's Service has to be reachable from the internet, usually as a Service of type `LoadBalancer`.
 - **The services the install depends on**, provisioned as [Provision the services](./2-installing.md#provision-the-services) lists, whether they are managed services outside the cluster or run in it: a PostgreSQL database with an administrative login that owns it and may create roles, a Valkey instance, an empty bucket and a credential for it, and an SMTP server. Every Pod of the install has to reach them.
-- **DNS** for the tenant's domain and for `admin.<domain>`, both pointing at the address of the edge's Service once it has one.
+- **DNS** for the tenant's domain and for its console host, `admin.<domain>` or the one you will give it with `--admin-domain`, both pointing at the address of the edge's Service once it has one.
 
 Every command below runs in the `publira` namespace:
 

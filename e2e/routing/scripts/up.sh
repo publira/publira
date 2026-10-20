@@ -12,6 +12,8 @@ routing_log "=== up (project=${COMPOSE_PROJECT_NAME}) ==="
 
 # Safe: this process (or its parent run-one.sh) holds the project lock.
 compose down -v --remove-orphans
+# The local CA a TLS pass trusted went with the proxy's volume.
+rm -f "${PUBLIRA_ROUTING_CADDY_ROOT}"
 
 for port in "${PUBLIRA_ROUTING_PUBLISHED_PORTS[@]}"; do
   if port_in_use "${port}"; then
