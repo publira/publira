@@ -435,10 +435,6 @@ class EpisodeItem {
     return campaign != null && campaign.isOpenAt(now) ? campaign : null;
   }
 
-  /// What buying the permanent copy costs at [now]: the campaign price while
-  /// one is open, and [price] otherwise.
-  int priceAt(DateTime now) => campaignAt(now)?.price ?? price;
-
   /// Renditions of the episode's own eye-catch, which the episodes
   /// `GetSeriesDetail` lists, the episode `GetEpisodeDetail` answers, and the
   /// reader's own lists of episodes carry. Empty on an episode with none and

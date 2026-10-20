@@ -129,8 +129,9 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   String? _currency;
 
   /// Whether the tenant sells through its web checkout, which is the only way
-  /// a rental is sold: the store sells the permanent copy alone.
-  var _rentsOnWeb = false;
+  /// a rental is sold and the only one that charges a campaign price: the
+  /// store sells the permanent copy alone, as the product of its own price.
+  var _sellsOnWeb = false;
 
   /// Records the page the reader rests on, for the session that is signed in
   /// now. It holds the repository rather than the context, because the last
@@ -303,7 +304,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     setState(() {
       _acceptsPayments = accepts && currency != null;
       _currency = currency;
-      _rentsOnWeb = route == AppPurchaseRoute.externalCheckout;
+      _sellsOnWeb = route == AppPurchaseRoute.externalCheckout;
     });
   }
 
@@ -585,6 +586,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
           detail: detail,
           nextSavedOffline: next != null && _saved.contains(next.id),
           acceptsPayments: _acceptsPayments,
+          sellsOnWeb: _sellsOnWeb,
           currency: _currency,
           onOpenNext: _open,
           onOpenComments: _commentsOffered ? _openComments : null,
@@ -641,7 +643,9 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     );
     // The button that buys the permanent copy names the campaign price
     // whether or not the episode is rented too, and the rental keeps its own.
-    final campaign = detail.episode.campaignAt(DateTime.now());
+    final campaign = _sellsOnWeb
+        ? detail.episode.campaignAt(DateTime.now())
+        : null;
     final buy = sold && !soldOnWeb
         ? BuyEpisodeButton(
             episodeId: widget.episodeId,
@@ -655,7 +659,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         : null;
     // A rented episode is offered both ways, each naming what it costs, since
     // the choice is between those two prices.
-    final rent = buy != null && _rentsOnWeb && detail.episode.isRented
+    final rent = buy != null && _sellsOnWeb && detail.episode.isRented
         ? BuyEpisodeButton(
             episodeId: widget.episodeId,
             episodeInternalId: detail.episode.internalId,

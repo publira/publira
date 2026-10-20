@@ -19,6 +19,7 @@ class EpisodeEndPanel extends StatelessWidget {
     required this.detail,
     required this.nextSavedOffline,
     required this.acceptsPayments,
+    required this.sellsOnWeb,
     required this.currency,
     required this.onOpenNext,
     required this.onOpenComments,
@@ -35,6 +36,11 @@ class EpisodeEndPanel extends StatelessWidget {
   /// Whether the tenant takes payments. Only then is a next episode sold on
   /// the website alone worded as sold there rather than by its price.
   final bool acceptsPayments;
+
+  /// Whether the tenant sells through its web checkout, the only way that
+  /// charges a campaign price. The store sells an episode as the product of
+  /// its own price, so the next episode is quoted at that one there.
+  final bool sellsOnWeb;
 
   /// The ISO 4217 code of the currency a next episode's price is shown in, the
   /// tenant's, or `null` while it could not be read, when no price is shown.
@@ -75,6 +81,7 @@ class EpisodeEndPanel extends StatelessWidget {
                 episode: next,
                 savedOffline: nextSavedOffline,
                 acceptsPayments: acceptsPayments,
+                sellsOnWeb: sellsOnWeb,
                 currency: currency,
                 onOpen: () => onOpenNext(next),
               ),
@@ -124,6 +131,7 @@ class _UpNext extends StatelessWidget {
     required this.episode,
     required this.savedOffline,
     required this.acceptsPayments,
+    required this.sellsOnWeb,
     required this.currency,
     required this.onOpen,
   });
@@ -131,6 +139,7 @@ class _UpNext extends StatelessWidget {
   final EpisodeNeighbor episode;
   final bool savedOffline;
   final bool acceptsPayments;
+  final bool sellsOnWeb;
   final String? currency;
   final VoidCallback onOpen;
 
@@ -149,7 +158,7 @@ class _UpNext extends StatelessWidget {
         episode.purchaseSurface == EpisodePurchaseSurface.web) {
       price = messages.purchaseSoldOnWeb;
     } else if (currency case final currency?) {
-      final open = episode.campaign;
+      final open = sellsOnWeb ? episode.campaign : null;
       if (open != null && open.isOpenAt(DateTime.now())) {
         price = messages.formatPrice(open.price, currency);
         campaign = CampaignPriceNote(

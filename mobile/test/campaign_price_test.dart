@@ -5,6 +5,7 @@ import 'package:publira/auth/auth_session.dart';
 import 'package:publira/links/app_link.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/series_item.dart';
+import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/router.dart';
 
 import 'support/fake_auth.dart';
@@ -134,6 +135,22 @@ void main() {
       expectNote(rowCampaign);
     });
 
+    testWidgets('quotes the regular price where the store sells it', (
+      tester,
+    ) async {
+      // The store sells an episode as the product of its own price.
+      purchases.route = AppPurchaseRoute.store;
+      discount(campaignFor(const Duration(days: 3)));
+      await pumpApp(tester, seriesPath, session: fakeSession);
+      await pumpUntilFound(tester, buy);
+
+      expect(
+        find.descendant(of: buy, matching: find.text('Buy for ¥500')),
+        findsOne,
+      );
+      expect(rowCampaign, findsNothing);
+    });
+
     testWidgets('names the campaign price beside a rental', (tester) async {
       discount(campaignFor(const Duration(days: 3)), rented: true);
       await pumpApp(tester, seriesPath, session: fakeSession);
@@ -250,6 +267,21 @@ void main() {
 
       expect(find.text('Buy for ¥300'), findsOne);
       expectNote(gateCampaign);
+    });
+
+    testWidgets('quotes the regular price where the store sells it', (
+      tester,
+    ) async {
+      purchases.route = AppPurchaseRoute.store;
+      discount(campaignFor(const Duration(days: 3)));
+      await pumpApp(tester, viewerPath, session: fakeSession);
+      await pumpUntilFound(tester, buy);
+
+      expect(
+        find.descendant(of: buy, matching: find.text('Buy for ¥500')),
+        findsOne,
+      );
+      expect(gateCampaign, findsNothing);
     });
 
     testWidgets('keeps the rental at its own price', (tester) async {

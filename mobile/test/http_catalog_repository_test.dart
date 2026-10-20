@@ -998,8 +998,11 @@ void main() {
       ),
       isTrue,
     );
-    expect(discounted.priceAt(DateTime.utc(2026, 10, 12, 14, 58)), 300);
-    expect(discounted.priceAt(DateTime.utc(2026, 10, 12, 14, 59)), 500);
+    expect(
+      discounted.campaignAt(DateTime.utc(2026, 10, 12, 14, 58)),
+      isNotNull,
+    );
+    expect(discounted.campaignAt(DateTime.utc(2026, 10, 12, 14, 59)), isNull);
   });
 
   test('getSeries reads a campaign with no end as none', () async {
