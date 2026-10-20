@@ -2,7 +2,7 @@
 title: Amazon ECS on Fargate
 description: Run an install as Amazon ECS services on AWS Fargate behind CloudFront and an Application Load Balancer, from its parameters and task definitions to the first sign-in to the tenant console.
 published: 2026-10-15
-updated: 2026-10-16
+updated: 2026-10-20
 ---
 
 This page takes an install from a VPC with the managed services provisioned to the first sign-in to the tenant console, with every process an Amazon ECS service on AWS Fargate and CloudFront in front of an Application Load Balancer as the edge. It runs the same steps as [Installing](./2-installing.md), which explains why each step exists, what every secret protects, and what each database role can reach, and it puts the edge in front the way [Edge](./4-edge.md#what-the-edge-has-to-do) requires. This page covers what is particular to ECS and Fargate: which resources each part becomes, and how each requirement of those two pages is met with them.
@@ -41,7 +41,7 @@ You need:
   - **Amazon ElastiCache for Valkey or Redis OSS**, as a node-based cluster with cluster mode disabled, encryption in transit turned on, and an AUTH token. Publira connects to its primary endpoint as to a single server, so ElastiCache Serverless, which accepts only clients that speak cluster mode, does not work.
   - **An Amazon S3 bucket**, empty. The processes reach it with the task role below, so no access key is created or stored.
   - **Amazon SES**, or another SMTP server, with SMTP credentials and a verified address to send from.
-- **DNS** for the tenant's domain and for `admin.<domain>`, which you point at CloudFront once its distribution exists, and the ability to add the CNAME records ACM asks for to validate a certificate.
+- **DNS** for the tenant's domain and for its console host, `admin.<domain>` or the one you will give it with `--admin-domain`, which you point at CloudFront once its distribution exists, and the ability to add the CNAME records ACM asks for to validate a certificate.
 
 The commands below use these shell variables; set them to your own:
 
