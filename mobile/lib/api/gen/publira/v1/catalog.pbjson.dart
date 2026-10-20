@@ -657,6 +657,8 @@ const EpisodeNeighbor$json = {
       '10': 'purchaseAvailability'
     },
     {'1': 'locale', '3': 8, '4': 1, '5': 9, '10': 'locale'},
+    {'1': 'campaign_price', '3': 9, '4': 1, '5': 5, '10': 'campaignPrice'},
+    {'1': 'campaign_ends_at', '3': 10, '4': 1, '5': 9, '10': 'campaignEndsAt'},
   ],
 };
 
@@ -667,7 +669,9 @@ final $typed_data.Uint8List episodeNeighborDescriptor = $convert.base64Decode(
     'BCABKAVSBXByaWNlEhcKB2lzX2ZyZWUYBSABKAhSBmlzRnJlZRI1CghjcmVhdG9ycxgGIAMoCz'
     'IZLnB1YmxpcmEudHlwZXMudjEuQ3JlYXRvclIIY3JlYXRvcnMSWgoVcHVyY2hhc2VfYXZhaWxh'
     'YmlsaXR5GAcgASgOMiUucHVibGlyYS50eXBlcy52MS5TdXJmYWNlQXZhaWxhYmlsaXR5UhRwdX'
-    'JjaGFzZUF2YWlsYWJpbGl0eRIWCgZsb2NhbGUYCCABKAlSBmxvY2FsZQ==');
+    'JjaGFzZUF2YWlsYWJpbGl0eRIWCgZsb2NhbGUYCCABKAlSBmxvY2FsZRIlCg5jYW1wYWlnbl9w'
+    'cmljZRgJIAEoBVINY2FtcGFpZ25QcmljZRIoChBjYW1wYWlnbl9lbmRzX2F0GAogASgJUg5jYW'
+    '1wYWlnbkVuZHNBdA==');
 
 @$core.Deprecated('Use getEpisodeDetailResponseDescriptor instead')
 const GetEpisodeDetailResponse$json = {

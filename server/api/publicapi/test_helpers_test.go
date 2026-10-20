@@ -98,9 +98,9 @@ func expectEpisodeNeighborsLookup(
 	episodeID uuid.UUID,
 	neighbors ...episodeNeighbor,
 ) {
-	rows := sqlmock.NewRows([]string{"direction", "id", "public_id", "title", "title_locale", "order_index", "price", "is_free", "purchase_availability"})
+	rows := sqlmock.NewRows([]string{"direction", "id", "public_id", "title", "title_locale", "order_index", "price", "is_free", "purchase_availability", "campaign_price", "campaign_ends_at"})
 	for _, neighbor := range neighbors {
-		rows.AddRow(neighbor.direction, neighbor.id, neighbor.publicID, neighbor.title, "ja", neighbor.orderIndex, neighbor.price, neighbor.isFree, "all")
+		rows.AddRow(neighbor.direction, neighbor.id, neighbor.publicID, neighbor.title, "ja", neighbor.orderIndex, neighbor.price, neighbor.isFree, "all", nil, nil)
 	}
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListPublishedEpisodeNeighborsForTenant)).
 		WithArgs("ja", tenantID, seriesID, orderIndex, episodeID, "web").

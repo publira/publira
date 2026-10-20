@@ -1659,9 +1659,15 @@ type EpisodeNeighbor struct {
 	// The locale of the translation `title` comes from, named the way
 	// Episode.locale is. Each episode falls back on its own, so it may differ
 	// from the locale of the episode it is a neighbour of.
-	Locale        string `protobuf:"bytes,8,opt,name=locale,proto3" json:"locale,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Locale string `protobuf:"bytes,8,opt,name=locale,proto3" json:"locale,omitempty"`
+	// The campaign price open on the episode and when it ends, as
+	// Episode.campaign_price and Episode.campaign_ends_at, so a link quotes what
+	// the reader would pay on following it. Set on previous_episode and
+	// next_episode; next_free_episode is free and carries neither.
+	CampaignPrice  int32  `protobuf:"varint,9,opt,name=campaign_price,json=campaignPrice,proto3" json:"campaign_price,omitempty"`
+	CampaignEndsAt string `protobuf:"bytes,10,opt,name=campaign_ends_at,json=campaignEndsAt,proto3" json:"campaign_ends_at,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *EpisodeNeighbor) Reset() {
@@ -1746,6 +1752,20 @@ func (x *EpisodeNeighbor) GetPurchaseAvailability() v1.SurfaceAvailability {
 func (x *EpisodeNeighbor) GetLocale() string {
 	if x != nil {
 		return x.Locale
+	}
+	return ""
+}
+
+func (x *EpisodeNeighbor) GetCampaignPrice() int32 {
+	if x != nil {
+		return x.CampaignPrice
+	}
+	return 0
+}
+
+func (x *EpisodeNeighbor) GetCampaignEndsAt() string {
+	if x != nil {
+		return x.CampaignEndsAt
 	}
 	return ""
 }
@@ -8769,7 +8789,7 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x129\n" +
 	"\asurface\x18\x03 \x01(\x0e2\x1f.publira.types.v1.ClientSurfaceR\asurface\x12\x16\n" +
-	"\x06locale\x18\x04 \x01(\tR\x06locale\"\xbf\x02\n" +
+	"\x06locale\x18\x04 \x01(\tR\x06locale\"\x90\x03\n" +
 	"\x0fEpisodeNeighbor\x12\x1b\n" +
 	"\tpublic_id\x18\x01 \x01(\tR\bpublicId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1f\n" +
@@ -8779,7 +8799,10 @@ const file_publira_v1_catalog_proto_rawDesc = "" +
 	"\ais_free\x18\x05 \x01(\bR\x06isFree\x125\n" +
 	"\bcreators\x18\x06 \x03(\v2\x19.publira.types.v1.CreatorR\bcreators\x12Z\n" +
 	"\x15purchase_availability\x18\a \x01(\x0e2%.publira.types.v1.SurfaceAvailabilityR\x14purchaseAvailability\x12\x16\n" +
-	"\x06locale\x18\b \x01(\tR\x06locale\"\xa5\x05\n" +
+	"\x06locale\x18\b \x01(\tR\x06locale\x12%\n" +
+	"\x0ecampaign_price\x18\t \x01(\x05R\rcampaignPrice\x12(\n" +
+	"\x10campaign_ends_at\x18\n" +
+	" \x01(\tR\x0ecampaignEndsAt\"\xa5\x05\n" +
 	"\x18GetEpisodeDetailResponse\x123\n" +
 	"\aepisode\x18\x01 \x01(\v2\x19.publira.types.v1.EpisodeR\aepisode\x120\n" +
 	"\x06series\x18\x02 \x01(\v2\x18.publira.types.v1.SeriesR\x06series\x126\n" +

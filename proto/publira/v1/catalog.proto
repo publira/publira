@@ -305,6 +305,12 @@ message EpisodeNeighbor {
   // Episode.locale is. Each episode falls back on its own, so it may differ
   // from the locale of the episode it is a neighbour of.
   string locale = 8;
+  // The campaign price open on the episode and when it ends, as
+  // Episode.campaign_price and Episode.campaign_ends_at, so a link quotes what
+  // the reader would pay on following it. Set on previous_episode and
+  // next_episode; next_free_episode is free and carries neither.
+  int32 campaign_price = 9;
+  string campaign_ends_at = 10;
 }
 
 // Episode detail for public viewing.

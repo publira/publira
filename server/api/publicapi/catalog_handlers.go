@@ -1392,7 +1392,8 @@ func episodeNeighborFromNextFreeRow(
 }
 
 // episodeNeighborsFromRows puts the neighbour rows into the shape the response
-// carries them in: nil where the series ends.
+// carries them in: nil where the series ends. The view behind the campaign
+// columns has a row with both or none, as SetEpisodeCampaign reads it.
 func episodeNeighborsFromRows(
 	rows []dbmodels.ListPublishedEpisodeNeighborsForTenantRow,
 	creditsByEpisodeID map[uuid.UUID][]*publirattypesv1.Creator,
@@ -1411,6 +1412,10 @@ func episodeNeighborsFromRows(
 			IsFree:               neighbor.IsFree,
 			Creators:             creditsByEpisodeID[neighbor.ID],
 			PurchaseAvailability: purchaseAvailability,
+		}
+		if neighbor.CampaignPrice.Valid && neighbor.CampaignEndsAt.Valid {
+			mapped.CampaignPrice = neighbor.CampaignPrice.Int32
+			mapped.CampaignEndsAt = neighbor.CampaignEndsAt.Time.UTC().Format(time.RFC3339)
 		}
 		if neighbor.Direction < 0 {
 			previous = mapped

@@ -2091,7 +2091,9 @@ type Querier interface {
 	// `is_free` reads published_free_episodes, the free half of the body access
 	// rule, so a link cannot say "paid" about an episode that is free at the
 	// moment the reader would follow it. `purchase_availability` is resolved
-	// through the series and the tenant as the episode read resolves it.
+	// through the series and the tenant as the episode read resolves it, and the
+	// campaign price is read from open_episode_campaign_prices as the episode read
+	// reads it, so a link quotes what the checkout would charge.
 	ListPublishedEpisodeNeighborsForTenant(ctx context.Context, arg ListPublishedEpisodeNeighborsForTenantParams) ([]ListPublishedEpisodeNeighborsForTenantRow, error)
 	// The surfaces a reader can open an episode on at this moment, which are the
 	// surfaces the fan-out lets its notification be shown on. The notification

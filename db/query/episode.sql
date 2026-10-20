@@ -439,7 +439,9 @@ LIMIT 1;
 -- `is_free` reads published_free_episodes, the free half of the body access
 -- rule, so a link cannot say "paid" about an episode that is free at the
 -- moment the reader would follow it. `purchase_availability` is resolved
--- through the series and the tenant as the episode read resolves it.
+-- through the series and the tenant as the episode read resolves it, and the
+-- campaign price is read from open_episode_campaign_prices as the episode read
+-- reads it, so a link quotes what the checkout would charge.
 (
     SELECT -1::int4 AS direction,
         e.id,
@@ -453,12 +455,15 @@ LIMIT 1;
             FROM published_free_episodes fe
             WHERE fe.episode_id = e.id
         ) AS is_free,
-        epa.purchase_availability
+        epa.purchase_availability,
+        ocp.campaign_price,
+        ocp.campaign_ends_at
     FROM episodes e
         CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et
         JOIN series s ON s.id = e.series_id
         JOIN episode_listings el ON el.episode_id = e.id
         JOIN episode_purchase_availability epa ON epa.episode_id = e.id
+        LEFT JOIN open_episode_campaign_prices ocp ON ocp.episode_id = e.id
     WHERE s.tenant_id = sqlc.arg('tenant_id')
         AND e.series_id = sqlc.arg('series_id')
         AND (e.order_index, e.id) < (sqlc.arg('order_index')::int4, sqlc.arg('episode_id')::uuid)
@@ -486,12 +491,15 @@ UNION ALL
             FROM published_free_episodes fe
             WHERE fe.episode_id = e.id
         ) AS is_free,
-        epa.purchase_availability
+        epa.purchase_availability,
+        ocp.campaign_price,
+        ocp.campaign_ends_at
     FROM episodes e
         CROSS JOIN LATERAL episode_translation_for(e.id, sqlc.arg('locale')::text) et
         JOIN series s ON s.id = e.series_id
         JOIN episode_listings el ON el.episode_id = e.id
         JOIN episode_purchase_availability epa ON epa.episode_id = e.id
+        LEFT JOIN open_episode_campaign_prices ocp ON ocp.episode_id = e.id
     WHERE s.tenant_id = sqlc.arg('tenant_id')
         AND e.series_id = sqlc.arg('series_id')
         AND (e.order_index, e.id) > (sqlc.arg('order_index')::int4, sqlc.arg('episode_id')::uuid)
