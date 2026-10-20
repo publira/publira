@@ -213,6 +213,28 @@ it("says where each ratio of an episode is used, not where a series' is", () => 
   expect(screen.queryByText(/its episodes/u)).toBeNull();
 });
 
+// The band on the site and in the app asks for the landscape cut alone, so a
+// portrait or square cut framed for it would never be seen.
+it("names the band only under a campaign banner's landscape slot", () => {
+  const { container } = renderImages({
+    entity: "campaign_banner",
+    id: "banner-1",
+    variants: [variant("portrait", 1200, 1600)],
+  });
+
+  const band =
+    "The band at the top of the site's top page and of the app's catalog.";
+  const notShown = "Not shown on the site or in the app yet.";
+
+  expect(within(slotForm(container, "landscape")).getByText(band)).toBeTruthy();
+  expect(screen.getAllByText(band)).toHaveLength(1);
+  for (const variantType of ["portrait", "square"]) {
+    expect(
+      within(slotForm(container, variantType)).getByText(notShown)
+    ).toBeTruthy();
+  }
+});
+
 // The ratio keys are what the RPCs take, and a staff member reading or
 // hearing one learns nothing about the image it stands for.
 it("neither shows nor reads out a ratio by its key", () => {
