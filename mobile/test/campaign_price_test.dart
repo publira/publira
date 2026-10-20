@@ -271,6 +271,31 @@ void main() {
       );
     });
 
+    testWidgets('names the regular price once the campaign ends', (
+      tester,
+    ) async {
+      final campaign = campaignFor(const Duration(seconds: 2));
+      discount(campaign);
+      await pumpApp(tester, viewerPath, session: fakeSession);
+      await pumpUntilFound(tester, gateCampaign);
+
+      // The gate is drawn against the wall clock, so it has to pass the end
+      // too, not only the test's timers.
+      await tester.runAsync(
+        () => Future<void>.delayed(
+          campaign.endsAt.difference(DateTime.now()) +
+              const Duration(milliseconds: 50),
+        ),
+      );
+      await tester.pump(const Duration(seconds: 3));
+
+      expect(gateCampaign, findsNothing);
+      expect(
+        find.descendant(of: buy, matching: find.text('Buy for ¥500')),
+        findsOne,
+      );
+    });
+
     testWidgets('quotes no campaign where nothing is sold', (tester) async {
       purchases.payments = false;
       discount(campaignFor(const Duration(days: 3)));

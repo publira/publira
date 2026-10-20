@@ -152,6 +152,12 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   var _awaitingBirthDate = false;
   var _leftForBirthDate = false;
 
+  /// Fires when the soonest campaign open on this episode or the next one
+  /// ends. The gate and the offer at the end are priced at build time, so
+  /// without it a screen left open past the end would keep quoting a campaign
+  /// price the checkout no longer charges.
+  Timer? _campaignEnd;
+
   @override
   void initState() {
     super.initState();
@@ -303,6 +309,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
 
   @override
   void dispose() {
+    _campaignEnd?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _saver?.flush();
     _saver?.dispose();
@@ -365,6 +372,9 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       return null;
     }
     _episodeInternalId = detail.episode.internalId;
+    if (mounted) {
+      _scheduleCampaignEnd(detail);
+    }
     final saved = resumeAt ?? await _savedPageIndex(catalog);
     // Asked only where the answer decides what is shown: a rating to gate, or
     // a body withheld over an age.
@@ -389,6 +399,34 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       provenRating: age?.provenAgeRating(DateTime.now()),
       waitFree: offer,
     );
+  }
+
+  /// Sets [_campaignEnd] for the soonest campaign still open on [detail] or
+  /// on the episode after it, or for none when neither has one.
+  void _scheduleCampaignEnd(EpisodeDetail detail) {
+    _campaignEnd?.cancel();
+    final now = DateTime.now();
+    DateTime? soonest;
+    for (final campaign in [
+      detail.episode.campaign,
+      detail.nextEpisode?.campaign,
+    ]) {
+      final end = campaign?.endsAt;
+      if (end != null &&
+          end.isAfter(now) &&
+          (soonest == null || end.isBefore(soonest))) {
+        soonest = end;
+      }
+    }
+    if (soonest == null) {
+      _campaignEnd = null;
+      return;
+    }
+    _campaignEnd = Timer(soonest.difference(now), () {
+      if (mounted) {
+        setState(() => _scheduleCampaignEnd(detail));
+      }
+    });
   }
 
   /// A read that fails answers as an account holding no date. The gate then
