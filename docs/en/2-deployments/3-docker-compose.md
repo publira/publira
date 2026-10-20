@@ -2,7 +2,7 @@
 title: Docker Compose
 description: Run a whole install on one host with the Compose file in the repository, from generating its .env to the first sign-in to the tenant console.
 published: 2026-10-06
-updated: 2026-10-19
+updated: 2026-10-20
 ---
 
 The repository ships a Compose file that runs a whole install on one host: the services Publira depends on, the processes of an install, and a reverse proxy in front of them, already wired together. It is the shortest way to a working install, and this page takes you from an empty host to the first sign-in to the tenant console.
