@@ -41,6 +41,11 @@ test.use({ baseURL: WEB_ADMIN_BASE_URL });
 
 const SERIES = SEED_TENANT.series.publicId;
 const EPISODE = "SeedEPSDAAA1";
+/**
+ * The one seeded episode with a price, `Seed Episode 001-10`, which a campaign
+ * price needs to be offered at all.
+ */
+const PAID_EPISODE = "SeedEPSDAA1A";
 /** The seed's first genre, named in the default language alone. */
 const GENRE = "SeedGENRAAA1";
 /** The draft `450_docs_publishing.sql` adds to the moderation tenant's series. */
@@ -458,6 +463,22 @@ for (const locale of DOCS_LOCALES) {
         });
       }
 
+      test("the campaign prices section of a paid episode's edit screen", async ({
+        page,
+      }) => {
+        await openScreen(page, locale, `${episodesPath}/${PAID_EPISODE}`);
+
+        await expectDocsScreenshot(page, {
+          element: docsSection(
+            page,
+            t("admin.series.episodes.campaign_prices.title")
+          ),
+          locale,
+          page: "console/catalog/episodes",
+          subject: "campaign-prices",
+        });
+      });
+
       test("the preview on the episode's edit screen", async ({ page }) => {
         await openScreen(page, locale, editPath);
 
@@ -544,8 +565,8 @@ for (const locale of DOCS_LOCALES) {
       test.describe("the episode list's dialogs", () => {
         test.beforeEach(async ({ page }) => {
           await openScreen(page, locale, episodesPath);
-          // Three episodes, as an editor about to change their credits
-          // together would pick them. Nothing is saved.
+          // Three episodes, as an editor about to change their credits, or
+          // put them on sale, together would pick them. Nothing is saved.
           // The first is Select all on this page.
           const boxes = page.getByRole("main").getByRole("checkbox");
           await boxes.nth(1).check();
@@ -587,6 +608,22 @@ for (const locale of DOCS_LOCALES) {
             locale,
             page: "console/catalog/episodes",
             subject: "bulk-free-reading-period",
+          });
+        });
+
+        test("a campaign price on many episodes at once", async ({ page }) => {
+          await page
+            .getByRole("button", {
+              exact: true,
+              name: t("admin.series.episodes.campaign_prices.bulk_action"),
+            })
+            .click();
+
+          await expectDocsScreenshot(page, {
+            element: page.getByRole("dialog"),
+            locale,
+            page: "console/catalog/episodes",
+            subject: "bulk-campaign-price",
           });
         });
       });

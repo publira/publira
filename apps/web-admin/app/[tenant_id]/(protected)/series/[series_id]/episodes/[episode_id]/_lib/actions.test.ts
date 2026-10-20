@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockAssertSameOrigin,
+  mockCreateEpisodeCampaignPrice,
   mockCreateEpisodeFreeWindow,
+  mockDeleteEpisodeCampaignPrice,
   mockDeleteEpisodeEyeCatchImage,
   mockDeleteEpisodeFreeWindow,
   mockDeleteEpisodeImage,
@@ -26,7 +28,9 @@ const {
   mockVerifyAdminSession,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
+  mockCreateEpisodeCampaignPrice: vi.fn(),
   mockCreateEpisodeFreeWindow: vi.fn(),
+  mockDeleteEpisodeCampaignPrice: vi.fn(),
   mockDeleteEpisodeEyeCatchImage: vi.fn(),
   mockDeleteEpisodeFreeWindow: vi.fn(),
   mockDeleteEpisodeImage: vi.fn(),
@@ -116,6 +120,13 @@ vi.mock("#lib/episode", () => ({
   uploadEpisodeEyeCatchImage: mockUploadEpisodeEyeCatchImage,
 }));
 
+vi.mock("#lib/episode-campaign-price", () => ({
+  createEpisodeCampaignPrice: mockCreateEpisodeCampaignPrice,
+  deleteEpisodeCampaignPrice: mockDeleteEpisodeCampaignPrice,
+  episodeCampaignPricesCacheTag: (tenantId: string) =>
+    `episode-campaign-prices-${tenantId}`,
+}));
+
 vi.mock("#lib/episode-free-window", () => ({
   createEpisodeFreeWindow: mockCreateEpisodeFreeWindow,
   deleteEpisodeFreeWindow: mockDeleteEpisodeFreeWindow,
@@ -146,6 +157,22 @@ const deleteFormData = (freeWindowId: string) => {
   const formData = new FormData();
   formData.set("tenant_id", "TENANT001");
   formData.set("free_window_id", freeWindowId);
+  return formData;
+};
+
+const campaignFormData = (fields: Record<string, string>) =>
+  layoutFormData({
+    ends_at: endsAt(),
+    price: "300",
+    price_currency: "JPY",
+    starts_at: startsAt(),
+    ...fields,
+  });
+
+const deleteCampaignPriceFormData = (campaignPriceId: string) => {
+  const formData = new FormData();
+  formData.set("tenant_id", "TENANT001");
+  formData.set("campaign_price_id", campaignPriceId);
   return formData;
 };
 
@@ -772,6 +799,103 @@ describe("episode actions", () => {
     });
   });
 
+  describe("adding a campaign price", () => {
+    it("schedules the price and period on the episode and clears the campaigns' tag before it redirects", async () => {
+      mockCreateEpisodeCampaignPrice.mockResolvedValueOnce({
+        campaignPrice: { id: "CAMPAIGN1" },
+        ok: true,
+      });
+      const start = startsAt();
+      const end = endsAt();
+
+      const { createEpisodeCampaignPriceAction } = await import("./actions");
+      await createEpisodeCampaignPriceAction(
+        null,
+        campaignFormData({ ends_at: end, starts_at: start })
+      );
+
+      expect(mockCreateEpisodeCampaignPrice).toHaveBeenCalledWith(
+        {
+          currency: "JPY",
+          endsAt: end,
+          episodeId: "018f0e6a-4000-7000-8000-000000000001",
+          price: 300,
+          startsAt: start,
+          tenantId: "TENANT001",
+        },
+        "en"
+      );
+      expect(mockUpdateTag).toHaveBeenCalledWith(
+        "episode-campaign-prices-TENANT001"
+      );
+      expect(mockRedirect).toHaveBeenCalledWith(
+        "/series/SERIES001/episodes/EP001?campaign_price_created=1"
+      );
+    });
+
+    it.each([
+      ["a blank price", ""],
+      ["a price of zero", "0"],
+      ["a price with more decimal places than the currency has", "300.5"],
+    ])("refuses %s without calling the API", async (_name, price) => {
+      const { createEpisodeCampaignPriceAction } = await import("./actions");
+      const result = await createEpisodeCampaignPriceAction(
+        null,
+        campaignFormData({ price })
+      );
+
+      expect(result).toEqual({
+        message:
+          "Campaign price must be more than 0, with no more decimal places than the currency has.",
+        ok: false,
+      });
+      expect(mockCreateEpisodeCampaignPrice).not.toHaveBeenCalled();
+    });
+
+    it("refuses a price typed in a currency the tenant no longer sells in", async () => {
+      const { createEpisodeCampaignPriceAction } = await import("./actions");
+      const result = await createEpisodeCampaignPriceAction(
+        null,
+        campaignFormData({ price_currency: "USD" })
+      );
+
+      expect(result).toMatchObject({ ok: false });
+      expect(mockCreateEpisodeCampaignPrice).not.toHaveBeenCalled();
+    });
+
+    it("refuses a period that ends before it starts without calling the API", async () => {
+      const { createEpisodeCampaignPriceAction } = await import("./actions");
+      const result = await createEpisodeCampaignPriceAction(
+        null,
+        campaignFormData({ ends_at: startsAt(), starts_at: endsAt() })
+      );
+
+      expect(result).toEqual({
+        message:
+          "Enter an end that is after the start and still in the future.",
+        ok: false,
+      });
+      expect(mockCreateEpisodeCampaignPrice).not.toHaveBeenCalled();
+    });
+
+    it("shows the failure the API reported and stays on the form", async () => {
+      mockCreateEpisodeCampaignPrice.mockResolvedValueOnce({
+        message: "not cheaper",
+        ok: false,
+      });
+
+      const { createEpisodeCampaignPriceAction } = await import("./actions");
+      const result = await createEpisodeCampaignPriceAction(
+        null,
+        campaignFormData({})
+      );
+
+      expect(result).toEqual({ message: "not cheaper", ok: false });
+      expect(mockUpdateTag).not.toHaveBeenCalled();
+      expect(mockRedirect).not.toHaveBeenCalled();
+    });
+  });
+
   describe("renaming the episode", () => {
     it("sends the trimmed title and clears every read that shows it", async () => {
       mockUpdateEpisodeTitle.mockResolvedValueOnce({
@@ -1331,6 +1455,84 @@ describe("episode actions", () => {
 
       expect(result).toMatchObject({ ok: false });
       expect(mockDeleteEpisodeFreeWindow).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("deleting a campaign price", () => {
+    it("deletes the campaign and clears the campaigns' tag", async () => {
+      mockDeleteEpisodeCampaignPrice.mockResolvedValueOnce({
+        alreadyDeleted: false,
+        ok: true,
+      });
+
+      const { deleteEpisodeCampaignPriceAction } = await import("./actions");
+      const result = await deleteEpisodeCampaignPriceAction(
+        null,
+        deleteCampaignPriceFormData("018f0e6a-4000-7000-8000-0000000000c1")
+      );
+
+      expect(mockDeleteEpisodeCampaignPrice).toHaveBeenCalledWith(
+        {
+          campaignPriceId: "018f0e6a-4000-7000-8000-0000000000c1",
+          tenantId: "TENANT001",
+        },
+        "en"
+      );
+      expect(mockUpdateTag).toHaveBeenCalledWith(
+        "episode-campaign-prices-TENANT001"
+      );
+      expect(result).toEqual({ message: "Campaign price deleted.", ok: true });
+    });
+
+    it("still clears the campaigns' tag when the campaign was already gone", async () => {
+      mockDeleteEpisodeCampaignPrice.mockResolvedValueOnce({
+        alreadyDeleted: true,
+        ok: true,
+      });
+
+      const { deleteEpisodeCampaignPriceAction } = await import("./actions");
+      const result = await deleteEpisodeCampaignPriceAction(
+        null,
+        deleteCampaignPriceFormData("018f0e6a-4000-7000-8000-0000000000c1")
+      );
+
+      expect(mockUpdateTag).toHaveBeenCalledWith(
+        "episode-campaign-prices-TENANT001"
+      );
+      expect(result).toEqual({
+        message: "This campaign price has already been deleted.",
+        ok: true,
+      });
+    });
+
+    it("leaves the tag alone when the delete failed", async () => {
+      mockDeleteEpisodeCampaignPrice.mockResolvedValueOnce({
+        message: "Could not delete the campaign price.",
+        ok: false,
+      });
+
+      const { deleteEpisodeCampaignPriceAction } = await import("./actions");
+      const result = await deleteEpisodeCampaignPriceAction(
+        null,
+        deleteCampaignPriceFormData("018f0e6a-4000-7000-8000-0000000000c1")
+      );
+
+      expect(mockUpdateTag).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        message: "Could not delete the campaign price.",
+        ok: false,
+      });
+    });
+
+    it("refuses a campaign id that is not one", async () => {
+      const { deleteEpisodeCampaignPriceAction } = await import("./actions");
+      const result = await deleteEpisodeCampaignPriceAction(
+        null,
+        deleteCampaignPriceFormData("not-an-id")
+      );
+
+      expect(result).toMatchObject({ ok: false });
+      expect(mockDeleteEpisodeCampaignPrice).not.toHaveBeenCalled();
     });
   });
 });

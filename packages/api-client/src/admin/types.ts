@@ -43,6 +43,7 @@ export type {
   RoyaltyStatementTotals,
 } from "../gen/publira/admin/v1/royalty_pb.js";
 export type {
+  AdminEpisodeCampaignPrice,
   AdminEpisodeFreeWindow,
   AdminVolume,
   SeriesWaitFreeSettings,

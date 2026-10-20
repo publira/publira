@@ -21,27 +21,40 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
+import type { AdminMessageKey } from "#components/message";
 import { SettledToast } from "#components/settled-toast";
 
-interface FreeWindowDeleteButtonProps {
+interface ScheduledPeriodDeleteButtonProps {
   action: (
     prevState: FormActionState,
     formData: FormData
   ) => Promise<FormActionState>;
-  freeWindowId: string;
+  /** The form field the Action reads the period's ID from. */
+  fieldName: string;
+  /** The wording of one kind of period: a free reading period's, or a campaign's. */
+  messages: {
+    confirmAction: AdminMessageKey;
+    confirmDescription: AdminMessageKey;
+    confirmTitle: AdminMessageKey;
+    delete: AdminMessageKey;
+    deleting: AdminMessageKey;
+  };
+  periodId: string;
   tenantId: string;
 }
 
 /**
- * Deletes one free window once staff confirm it. The row leaves the list with
- * the button in it, so success is a toast.
+ * Deletes one scheduled period of an episode once staff confirm it. The row
+ * leaves the list with the button in it, so success is a toast.
  */
-export const FreeWindowDeleteButton = ({
+export const ScheduledPeriodDeleteButton = ({
   action,
-  freeWindowId,
+  fieldName,
+  messages,
+  periodId,
   tenantId,
-}: FreeWindowDeleteButtonProps) => {
-  const formId = `delete-free-window-${freeWindowId}`;
+}: ScheduledPeriodDeleteButtonProps) => {
+  const formId = `delete-period-${periodId}`;
 
   return (
     <ActionForm
@@ -51,7 +64,7 @@ export const FreeWindowDeleteButton = ({
       showSuccess={false}
     >
       <input name="tenant_id" type="hidden" value={tenantId} />
-      <input name="free_window_id" type="hidden" value={freeWindowId} />
+      <input name={fieldName} type="hidden" value={periodId} />
       <SettledToast />
       <ActionFormFieldset className="grid">
         <ConfirmDialog>
@@ -60,10 +73,10 @@ export const FreeWindowDeleteButton = ({
           >
             <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
               <ActionFormIdle>
-                <Message message="admin.series.episodes.free_windows.delete" />
+                <Message message={messages.delete} />
               </ActionFormIdle>
               <ActionFormPending>
-                <Message message="admin.series.episodes.free_windows.deleting" />
+                <Message message={messages.deleting} />
               </ActionFormPending>
             </Suspense>
           </ConfirmDialogTrigger>
@@ -71,12 +84,12 @@ export const FreeWindowDeleteButton = ({
             <ConfirmDialogHeader>
               <ConfirmDialogTitle>
                 <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
-                  <Message message="admin.series.episodes.free_windows.delete_confirm_title" />
+                  <Message message={messages.confirmTitle} />
                 </Suspense>
               </ConfirmDialogTitle>
               <ConfirmDialogDescription>
                 <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
-                  <Message message="admin.series.episodes.free_windows.delete_confirm_description" />
+                  <Message message={messages.confirmDescription} />
                 </Suspense>
               </ConfirmDialogDescription>
             </ConfirmDialogHeader>
@@ -88,7 +101,7 @@ export const FreeWindowDeleteButton = ({
               </ConfirmDialogCancel>
               <ConfirmDialogAction form={formId}>
                 <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-                  <Message message="admin.series.episodes.free_windows.delete_confirm_action" />
+                  <Message message={messages.confirmAction} />
                 </Suspense>
               </ConfirmDialogAction>
             </ConfirmDialogFooter>

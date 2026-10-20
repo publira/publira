@@ -28,11 +28,11 @@ import {
 import { InstantInput } from "#components/instant-input";
 import { Message } from "#components/message";
 import type { EpisodeFreeWindowItem } from "#lib/episode-free-window";
-import { episodeFreeWindowStatus } from "#lib/free-window-period";
-import type { EpisodeFreeWindowStatus } from "#lib/free-window-period";
+import { scheduledPeriodStatus } from "#lib/scheduled-period";
+import type { ScheduledPeriodStatus } from "#lib/scheduled-period";
 
 import type { EpisodeEditActionState } from "../episode-edit-types";
-import { FreeWindowDeleteButton } from "./free-window-delete-button";
+import { ScheduledPeriodDeleteButton } from "./scheduled-period-delete-button";
 
 interface EpisodeFreeWindowsSectionProps {
   createAction: (
@@ -54,7 +54,7 @@ interface EpisodeFreeWindowsSectionProps {
   timeZone: string;
 }
 
-const FreeWindowStatus = ({ status }: { status: EpisodeFreeWindowStatus }) => {
+const FreeWindowStatus = ({ status }: { status: ScheduledPeriodStatus }) => {
   switch (status) {
     case "open": {
       return (
@@ -150,11 +150,22 @@ export const EpisodeFreeWindowsSection = ({
                   />
                 </Suspense>
               </span>
-              <FreeWindowStatus status={episodeFreeWindowStatus(window, now)} />
+              <FreeWindowStatus status={scheduledPeriodStatus(window, now)} />
             </div>
-            <FreeWindowDeleteButton
+            <ScheduledPeriodDeleteButton
               action={deleteAction}
-              freeWindowId={window.id}
+              fieldName="free_window_id"
+              messages={{
+                confirmAction:
+                  "admin.series.episodes.free_windows.delete_confirm_action",
+                confirmDescription:
+                  "admin.series.episodes.free_windows.delete_confirm_description",
+                confirmTitle:
+                  "admin.series.episodes.free_windows.delete_confirm_title",
+                delete: "admin.series.episodes.free_windows.delete",
+                deleting: "admin.series.episodes.free_windows.deleting",
+              }}
+              periodId={window.id}
               tenantId={tenantId}
             />
           </li>

@@ -1,15 +1,15 @@
 ---
 title: Episodes
-description: Create an episode, add, replace, and delete its pages, change its title in each language, its price, its reading period, and its rental, set its layout and preview its pages, give it a cover image of its own, set its credits and where it is shown and sold, give it free reading periods, and publish it now or on time.
+description: Create an episode, add, replace, and delete its pages, change its title in each language, its price, its reading period, and its rental, set its layout and preview its pages, give it a cover image of its own, set its credits and where it is shown and sold, give it free reading periods and campaign prices, and publish it now or on time.
 published: 2026-10-07
-updated: 2026-10-18
+updated: 2026-10-20
 ---
 
 An episode is what a reader opens and pays for: a run of page images with a title, a price, and a time it is published at. Episodes live inside their series. On the **Series** list, choose **Episodes** on the series' row to open them.
 
 The list shows each episode as its position and title, with its status, **Draft**, **Scheduled**, or **Published**, its price, and, for a scheduled one, the time it is due. An episode not shown on both the site and the app is marked **Web only**, **App only**, or **Not shown anywhere**. **Edit** opens the episode, or **View** for an Auditor. Its edit screen has two tabs: **Cover image**, which [The cover image](#the-cover-image) describes, and **Basic information**, which holds every other section of the screen.
 
-![The episode list of a series: Create, Credits, Free reading period, and Back to series at the top, Select all on this page, and a row for each episode with a checkbox, a drag handle, its position and title, its status and price, and Edit. The first episode is published, the second scheduled, with the time it is due, and the third a draft.](./episodes-list.png)
+![The episode list of a series: Create, Credits, Free reading period, Campaign price, and Back to series at the top, Select all on this page, and a row for each episode with a checkbox, a drag handle, its position and title, its status and price, and Edit. The first episode is published, the second scheduled, with the time it is due, and the third a draft.](./episodes-list.png)
 
 An episode is made of page images, whether the work is a comic or not. Novels written as text are not supported yet ([#505](https://github.com/publira/publira/issues/505)).
 
@@ -163,6 +163,22 @@ To give many episodes the same period, choose **Free reading period** on the epi
 ![The Add a free reading period dialog: Selected episodes, First episodes, and All episodes under Episodes, the Starts and Ends fields, and Add.](./episodes-bulk-free-reading-period.png)
 
 The site shows a period from the moment it starts, and drops it the moment it ends: `publira worker` refreshes the cached pages at both ends, as [Scheduled and maintenance jobs](../../3-operations/10-scheduled-jobs.md#free-reading-periods-and-other-cached-pages) describes.
+
+## Campaign prices
+
+A campaign price sells a paid episode for less between two times. Buying the episode during the campaign charges the campaign price, and the episode keeps its own **Price**, which applies again when the campaign ends. A rental keeps its **Rental price**, and a purchase made at the campaign price keeps the price it was paid.
+
+**Campaign prices**, on the episode's edit screen, lists its campaigns with their price, as **On sale now**, **Scheduled**, or **Ended**. To add one, enter **Campaign price** in the tenant's currency, lower than the episode's **Price**, then **Starts** and **Ends**, both in the tenant's time zone, and choose **Add campaign price**. **Ends** must be after **Starts** and still in the future; **Starts** may be in the past, which puts the episode on sale from now. Two campaigns of one episode cannot overlap, though one may start exactly when another ends. A free episode has no price to cut, so the section offers no form on one.
+
+![The Campaign prices section of a paid episode with none scheduled: the Campaign price field, the Starts and Ends fields, the time zone they are read in, and Add campaign price.](./episodes-campaign-prices.png)
+
+A campaign cannot be edited. **Delete** it and add another; deleting a campaign that has started sells the episode for its own price again at once. Lowering the episode's **Price** to or below a campaign's price ends that campaign's effect, since the episode then sells for its own price.
+
+To put many episodes on sale for the same price and period, check them on the episode list and choose **Campaign price**. Enter **Campaign price**, **Starts**, and **Ends**, and choose **Add**. Nothing is added if the price is not lower than every checked episode's **Price**, or if the period overlaps a campaign already on any of them.
+
+![The Add a campaign price dialog: the number of episodes checked on the list, the Campaign price field, the Starts and Ends fields, and Add.](./episodes-bulk-campaign-price.png)
+
+The site quotes a campaign from the moment it starts, and drops it the moment it ends: `publira worker` refreshes the cached pages at both ends, as [Scheduled and maintenance jobs](../../3-operations/10-scheduled-jobs.md#free-reading-periods-and-other-cached-pages) describes.
 
 ## Publishing an episode
 

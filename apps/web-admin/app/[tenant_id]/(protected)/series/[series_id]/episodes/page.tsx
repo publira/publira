@@ -55,11 +55,13 @@ import { getSeries } from "#lib/series";
 import { getTenantId } from "#lib/tenant-id";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 
+import { EpisodeCampaignPricesDialog } from "./_components/episode-campaign-prices-dialog";
 import { EpisodeCreditsRangeDialog } from "./_components/episode-credits-range-dialog";
 import { EpisodeFreeWindowsDialog } from "./_components/episode-free-windows-dialog";
 import { EpisodeSelectionProvider } from "./_components/episode-selection";
 import { EpisodesSortableList } from "./_components/episodes-sortable-list";
 import {
+  createSeriesCampaignPricesAction,
   createSeriesFreeWindowsAction,
   reorderEpisodesAction,
 } from "./_lib/actions";
@@ -97,6 +99,7 @@ const SeriesEpisodesHeaderSkeleton = () => (
         <SkeletonLine className="h-10 w-28" />
         <SkeletonLine className="h-10 w-28" />
         <SkeletonLine className="h-10 w-28" />
+        <SkeletonLine className="h-10 w-28" />
       </div>
     </AdminPageActions>
   </>
@@ -120,14 +123,17 @@ const SeriesEpisodeBulkActions = async ({
 }: Pick<SeriesEpisodesPageProps, "params">) => {
   const [{ series_id }, tenantId] = await Promise.all([params, getTenantId()]);
   guardPlaceholder(series_id);
-  const [seriesResult, timeZone] = await Promise.all([
+  const [seriesResult, timeZone, currency] = await Promise.all([
     getSeries({ publicId: series_id }),
     getTenantDisplayTimeZone(tenantId),
+    getTenantCurrency(tenantId),
   ]);
   if (!seriesResult.ok) {
     return null;
   }
 
+  // A campaign price entered in no currency is a number nobody can read, so
+  // the action stays out while the currency cannot be read.
   return (
     <>
       <EpisodeCreditsRangeDialog seriesId={seriesResult.series.id} />
@@ -136,6 +142,15 @@ const SeriesEpisodeBulkActions = async ({
         seriesId={seriesResult.series.id}
         timeZone={timeZone}
       />
+      {currency ? (
+        <EpisodeCampaignPricesDialog
+          action={createSeriesCampaignPricesAction}
+          currency={currency}
+          key={currency}
+          seriesId={seriesResult.series.id}
+          timeZone={timeZone}
+        />
+      ) : null}
     </>
   );
 };

@@ -38,6 +38,11 @@ import {
   uploadEpisodeEyeCatchImage,
 } from "#lib/episode";
 import {
+  createEpisodeCampaignPrice,
+  deleteEpisodeCampaignPrice,
+  episodeCampaignPricesCacheTag,
+} from "#lib/episode-campaign-price";
+import {
   createEpisodeFreeWindow,
   deleteEpisodeFreeWindow,
   episodeFreeWindowsCacheTag,
@@ -55,12 +60,16 @@ import {
   requiredTrimmedString,
   spreadStartPageFormSchema,
 } from "#lib/form-schemas";
-import { toFreeWindowPeriod } from "#lib/free-window-period";
 import { getMessagesFor } from "#lib/messages";
-import { parseTenantPrice, rawPriceFormSchema } from "#lib/price-action";
+import {
+  parseCampaignPrice,
+  parseTenantPrice,
+  rawPriceFormSchema,
+} from "#lib/price-action";
 import { purchasesCacheTag } from "#lib/purchase";
 import { PURCHASE_AVAILABILITY_OVERRIDES } from "#lib/purchase-availability";
 import { READING_DIRECTIONS } from "#lib/reading-layout";
+import { toScheduledPeriod } from "#lib/scheduled-period";
 import { EPISODE_AVAILABILITY_OVERRIDES } from "#lib/surface-availability";
 import { getTenantDisplayTimeZone } from "#lib/tenant-timezone";
 import { translationEditPath } from "#lib/translation-locales";
@@ -108,6 +117,31 @@ const deleteFreeWindowSchema = async (locale: Locale) => {
 
   return z.object({
     freeWindowId: requiredRecordId(missing),
+    tenantId: requiredTrimmedString(
+      t("admin.series.episodes.validation.tenant_missing")
+    ),
+  });
+};
+const campaignPriceFormSchema = async (locale: Locale) => {
+  const base = await hiddenParamsSchema(locale);
+
+  return base.extend({
+    endsAt: optionalTrimmedString(),
+    // Read once the tenant's currency is known.
+    price: rawPriceFormSchema,
+    // The currency the form showed the price in.
+    priceCurrency: rawPriceFormSchema,
+    startsAt: optionalTrimmedString(),
+  });
+};
+const deleteCampaignPriceSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+  const missing = t(
+    "admin.series.episodes.campaign_prices.validation.campaign_price_missing"
+  );
+
+  return z.object({
+    campaignPriceId: requiredRecordId(missing),
     tenantId: requiredTrimmedString(
       t("admin.series.episodes.validation.tenant_missing")
     ),
@@ -1080,7 +1114,7 @@ export const createEpisodeFreeWindowAction = async (
   }
 
   const { episodeId, episodePublicId, seriesPublicId, tenantId } = parsed.data;
-  const period = await toFreeWindowPeriod(
+  const period = await toScheduledPeriod(
     parsed.data,
     await getTenantDisplayTimeZone(tenantId),
     locale
@@ -1149,6 +1183,111 @@ export const deleteEpisodeFreeWindowAction = async (
     message: result.alreadyDeleted
       ? t("admin.series.episodes.free_windows.already_deleted")
       : t("admin.series.episodes.free_windows.deleted"),
+    ok: true,
+  };
+};
+
+export const createEpisodeCampaignPriceAction = async (
+  _prevState: EpisodeEditActionState,
+  formData: FormData
+): Promise<EpisodeEditActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const schema = await campaignPriceFormSchema(locale);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      ...hiddenFormFields,
+      endsAt: { kind: "value", name: "ends_at" },
+      price: "value",
+      priceCurrency: { kind: "value", name: "price_currency" },
+      startsAt: { kind: "value", name: "starts_at" },
+    })
+  );
+  if (!parsed.success) {
+    return toFailure(toFormErrorMessage(parsed.error, { locale }));
+  }
+
+  const { episodeId, episodePublicId, seriesPublicId, tenantId } = parsed.data;
+  const period = await toScheduledPeriod(
+    parsed.data,
+    await getTenantDisplayTimeZone(tenantId),
+    locale
+  );
+  if (!period.ok) {
+    return toFailure(period.message);
+  }
+
+  const mismatch = await confirmEpisodeTarget(parsed.data, locale);
+  if (mismatch) {
+    return toFailure(mismatch);
+  }
+
+  const price = await parseCampaignPrice(parsed.data, tenantId, locale);
+  if (!price.ok) {
+    return toFailure(price.message);
+  }
+
+  // Whether the price undercuts the episode's own is left to the API, which
+  // compares it with the price stored now rather than the one this form was
+  // rendered beside.
+  const result = await withAdminSessionReauth(() =>
+    createEpisodeCampaignPrice(
+      {
+        currency: price.currency,
+        endsAt: period.endsAt,
+        episodeId,
+        price: price.value,
+        startsAt: period.startsAt,
+        tenantId,
+      },
+      locale
+    )
+  );
+  if (!result.ok) {
+    return toFailure(result.message);
+  }
+
+  updateTag(episodeCampaignPricesCacheTag(tenantId));
+
+  redirect(
+    `/series/${seriesPublicId}/episodes/${episodePublicId}?campaign_price_created=1`
+  );
+};
+
+export const deleteEpisodeCampaignPriceAction = async (
+  _prevState: FormActionState,
+  formData: FormData
+): Promise<FormActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const schema = await deleteCampaignPriceSchema(locale);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      campaignPriceId: { kind: "value", name: "campaign_price_id" },
+      tenantId: { kind: "value", name: "tenant_id" },
+    })
+  );
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
+  }
+
+  const result = await withAdminSessionReauth(() =>
+    deleteEpisodeCampaignPrice(parsed.data, locale)
+  );
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  // The row goes from the list, so success is a toast rather than a message
+  // left under a form that is gone. A campaign someone else deleted first
+  // leaves the list too, which is why the tag is cleared on that outcome as
+  // well.
+  updateTag(episodeCampaignPricesCacheTag(parsed.data.tenantId));
+  const t = await getMessagesFor(locale);
+  return {
+    message: result.alreadyDeleted
+      ? t("admin.series.episodes.campaign_prices.already_deleted")
+      : t("admin.series.episodes.campaign_prices.deleted"),
     ok: true,
   };
 };
