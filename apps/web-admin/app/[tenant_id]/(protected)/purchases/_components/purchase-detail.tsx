@@ -22,6 +22,7 @@ import { formatTenantAmount, readCurrency } from "#lib/price";
 import type { PurchaseItem } from "#lib/purchase";
 import { getPurchase } from "#lib/purchase";
 
+import { purchasedItemHref, purchasedItemLabel } from "../_lib/purchased-item";
 import { PurchasePaidThrough, PurchaseStatusChip } from "./purchase-status";
 import { RefundPurchaseButton } from "./refund-purchase-button";
 
@@ -166,16 +167,16 @@ export const PurchaseDetail = async ({
 
         <dt className={labelClassName}>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-            <Message message="admin.purchases.columns.episode" />
+            <Message message="admin.purchases.columns.item" />
           </Suspense>
         </dt>
         <dd className={valueClassName}>
           <div className="grid gap-0.5">
             <Link
               className="font-medium underline-offset-4 hover:underline"
-              href={`/series/${purchase.seriesPublicId}/episodes/${purchase.episodePublicId}`}
+              href={purchasedItemHref(purchase)}
             >
-              {purchase.episodeTitle || purchase.episodePublicId}
+              {purchasedItemLabel(purchase, t)}
             </Link>
             <span className="text-muted-foreground">
               {purchase.seriesTitle || purchase.seriesPublicId}

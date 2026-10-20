@@ -26,16 +26,25 @@ import {
 import { getMessagesFor } from "./messages";
 import { getAccessToken } from "./session";
 
-/** Why a purchase stopped opening its episode, or `""` while it still does. */
+/** Why a purchase stopped opening what it bought, or `""` while it still does. */
 export type PurchaseRevocationReasonValue = "" | "dispute" | "refund" | "staff";
+
+/**
+ * What a purchase bought. The API leaves the fields of the other kinds empty,
+ * so each kind carries only its own.
+ */
+export type PurchasedItem =
+  | { kind: "episode"; publicId: string; title: string }
+  | { kind: "volume"; publicId: string; title: string }
+  /** The rest of the series, bought in one checkout. */
+  | { episodeCount: number; kind: "series_bundle" };
 
 export interface PurchaseItem {
   currency: string;
-  episodePublicId: string;
-  episodeTitle: string;
   expiresAt: string;
   /** The UUID GetPurchase and RefundPurchase address the purchase by. */
   id: string;
+  item: PurchasedItem;
   price: number;
   /** The payment provider the reader paid through, or `""`. */
   provider: string;
@@ -115,18 +124,41 @@ type RawPurchase = Pick<
   | "refundedAt"
   | "revocationReason"
   | "revokedAt"
+  | "seriesBundle"
   | "seriesPublicId"
   | "seriesTitle"
   | "store"
   | "test"
+  | "volumePublicId"
+  | "volumeTitle"
 >;
+
+const mapPurchasedItem = (item: RawPurchase): PurchasedItem => {
+  if (item.seriesBundle) {
+    return {
+      episodeCount: item.seriesBundle.episodeCount,
+      kind: "series_bundle",
+    };
+  }
+  if (item.volumePublicId) {
+    return {
+      kind: "volume",
+      publicId: item.volumePublicId,
+      title: item.volumeTitle,
+    };
+  }
+  return {
+    kind: "episode",
+    publicId: item.episodePublicId,
+    title: item.episodeTitle,
+  };
+};
 
 export const mapPurchase = (item: RawPurchase): PurchaseItem => ({
   currency: item.currency,
-  episodePublicId: item.episodePublicId,
-  episodeTitle: item.episodeTitle,
   expiresAt: item.expiresAt,
   id: item.id,
+  item: mapPurchasedItem(item),
   price: Number(item.price),
   provider: item.provider,
   purchasedAt: item.purchasedAt,
@@ -295,7 +327,7 @@ export const getPurchase = async (
 
 /**
  * Asks the provider the reader paid through for their money back, and closes
- * the episode to them at once. `reason` is recorded on the audit log entry.
+ * what they bought to them at once. `reason` is recorded on the audit log entry.
  */
 export const refundPurchase = async (
   input: { purchaseId: string; reason: string; tenantId: string },

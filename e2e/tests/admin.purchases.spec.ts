@@ -232,7 +232,7 @@ test.describe("Purchases", () => {
     await expect(drawer(page)).toContainText("Refund requested");
     await expect(drawer(page)).toContainText("Refunded by staff");
     await expect(drawer(page)).toContainText(
-      "The refund was requested, and the episode is closed to the reader."
+      "The refund was requested, and what the reader bought is closed to them."
     );
     await expect(
       drawer(page).getByRole("button", { exact: true, name: "Refund" })
