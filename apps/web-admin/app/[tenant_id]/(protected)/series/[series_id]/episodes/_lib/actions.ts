@@ -824,17 +824,27 @@ export const createSeriesCampaignPricesAction = async (
     return { message: listed.message, ok: false };
   }
 
+  const checkedIds = new Set(parsed.data.episodeIds);
+  if (checkedIds.size === 0) {
+    return {
+      message: t(
+        "admin.series.episodes.campaign_prices.validation.selection_empty"
+      ),
+      ok: false,
+    };
+  }
   // Named in reading order, as the free reading period action names them, so
   // a reorder between checking and saving cannot change which ones are meant.
   const selected = episodesSelectedInReadingOrder(
     listed.episodes,
     parsed.data.episodeIds
   );
-  if (selected.length === 0) {
+  // A checked episode that has left the series since the list was rendered is
+  // refused rather than dropped, as the API refuses one: the editor confirmed
+  // a sale on the episodes they checked, not on whichever of them remain.
+  if (selected.length < checkedIds.size) {
     return {
-      message: t(
-        "admin.series.episodes.campaign_prices.validation.selection_empty"
-      ),
+      message: t("admin.series.episodes.campaign_prices.episodes_changed"),
       ok: false,
     };
   }

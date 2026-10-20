@@ -878,17 +878,35 @@ describe("createSeriesCampaignPricesAction", () => {
     });
   });
 
-  it("asks for a check when none of the checked episodes is in the series", async () => {
+  it("asks for a check when no episode is checked", async () => {
     const { createSeriesCampaignPricesAction } = await import("./actions");
     const result = await createSeriesCampaignPricesAction(
       null,
-      bulkFormData({
-        episode_ids: JSON.stringify(["018f0e6a-3000-7000-8000-0000000000ff"]),
-      })
+      bulkFormData({ episode_ids: "[]" })
     );
 
     expect(result).toEqual({
       message: "Select at least one episode on the list.",
+      ok: false,
+    });
+    expect(mockCreateSeriesCampaignPrices).not.toHaveBeenCalled();
+  });
+
+  it("refuses the selection when a checked episode has left the series", async () => {
+    const { createSeriesCampaignPricesAction } = await import("./actions");
+    const result = await createSeriesCampaignPricesAction(
+      null,
+      bulkFormData({
+        episode_ids: JSON.stringify([
+          campaignEpisodeId(1),
+          "018f0e6a-3000-7000-8000-0000000000ff",
+        ]),
+      })
+    );
+
+    expect(result).toEqual({
+      message:
+        "One of the chosen episodes is no longer in this series. Reload the page and try again.",
       ok: false,
     });
     expect(mockCreateSeriesCampaignPrices).not.toHaveBeenCalled();
