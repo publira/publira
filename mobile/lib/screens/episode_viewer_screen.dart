@@ -129,8 +129,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   String? _currency;
 
   /// Whether the tenant sells through its web checkout, which is the only way
-  /// a rental is sold and the only one that charges a campaign price: the
-  /// store sells the permanent copy alone, as the product of its own price.
+  /// a rental is sold: the store sells the permanent copy alone.
   var _sellsOnWeb = false;
 
   /// Records the page the reader rests on, for the session that is signed in
@@ -586,7 +585,6 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
           detail: detail,
           nextSavedOffline: next != null && _saved.contains(next.id),
           acceptsPayments: _acceptsPayments,
-          sellsOnWeb: _sellsOnWeb,
           currency: _currency,
           onOpenNext: _open,
           onOpenComments: _commentsOffered ? _openComments : null,
@@ -643,9 +641,8 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     );
     // The button that buys the permanent copy names the campaign price
     // whether or not the episode is rented too, and the rental keeps its own.
-    final campaign = _sellsOnWeb
-        ? detail.episode.campaignAt(DateTime.now())
-        : null;
+    // The store charges it as well, as the product of that price.
+    final campaign = detail.episode.campaignAt(DateTime.now());
     final buy = sold && !soldOnWeb
         ? BuyEpisodeButton(
             episodeId: widget.episodeId,

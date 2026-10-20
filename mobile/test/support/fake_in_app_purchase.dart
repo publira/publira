@@ -96,12 +96,13 @@ class FakeInAppPurchasePlatform extends InAppPurchasePlatform {
   ) async => ProductDetailsResponse(
     productDetails: [
       for (final id in identifiers.where(products.contains))
+        // A product is named after its price, as `episode_500` is ¥500.
         ProductDetails(
           id: id,
           title: id,
           description: '',
-          price: '¥500',
-          rawPrice: 500,
+          price: '¥${id.split('_').last}',
+          rawPrice: double.parse(id.split('_').last),
           currencyCode: 'JPY',
         ),
     ],

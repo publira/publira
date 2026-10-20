@@ -8,6 +8,7 @@ import 'package:publira/app.dart';
 import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/models/episode_detail.dart';
+import 'package:publira/models/series_item.dart';
 import 'package:publira/purchase/purchase_failure.dart';
 import 'package:publira/purchase/purchase_repository.dart';
 import 'package:publira/purchase/store_purchaser.dart';
@@ -110,6 +111,35 @@ void main() {
       // Nothing is sent to the web checkout.
       expect(purchases.checkouts, isEmpty);
       expect(launcher.opened, isEmpty);
+    });
+
+    testWidgets('opens the product of the campaign price open now', (
+      tester,
+    ) async {
+      final campaign = EpisodeCampaign(
+        price: 300,
+        endsAt: DateTime.now().add(const Duration(days: 3)),
+      );
+      catalog.episodes = fixtureEpisodes(
+        access: EpisodeAccess.locked,
+        campaign: campaign,
+      );
+      // The server answers the product of the price it charges now.
+      purchases.storeProductId = 'episode_300';
+      platform.products = {'episode_500', 'episode_300'};
+      await pumpApp(tester, session: fakeSession);
+      await pumpUntilFound(tester, buy);
+
+      expect(
+        find.descendant(of: buy, matching: find.text('Buy for ¥300')),
+        findsOne,
+      );
+      await tester.tap(buy);
+      await pumpUntilFound(tester, pages);
+
+      final product = platform.bought.single.productDetails;
+      expect(product.id, 'episode_300');
+      expect(product.price, '¥300');
     });
 
     testWidgets('leaves a transaction the server could not take unfinished', (
