@@ -95,7 +95,7 @@ RUN if [ "${APP_NAME}" != "web" ]; then mv "apps/${APP_NAME}" apps/web; fi
 # major and the Debian release, and the digest is the only further identifier.
 # The Debian release matches the base stage: node_modules built there, native
 # addons such as sharp included, run against this image's glibc.
-FROM gcr.io/distroless/nodejs24-debian13:nonroot@sha256:59c479c9b8c123e66047315c968aa2d35e31ae5149c856e4110a79c8b3563f0b AS runner
+FROM gcr.io/distroless/nodejs24-debian13:nonroot@sha256:c1326ce1aad4b976dce3a3da8b7eb5c8328e635e312309a7a0e5319d1470be0d AS runner
 
 ARG PORT=3000
 # Re-declare for ENV (APP_NAME is only needed as cache namespace, not path)
