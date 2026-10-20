@@ -975,6 +975,50 @@ void main() {
     expect(rented.isRented, isTrue);
   });
 
+  test('getSeries carries the campaign price open on an episode', () async {
+    server.detailResponse =
+        ConnectFixtureServer.populatedDetails()[ConnectFixtureServer
+              .seedSeriesId]!
+          ..episodes.last.campaignPrice = 300
+          ..episodes.last.campaignEndsAt = '2026-10-12T14:59:00Z';
+
+    final read = await catalog.getSeries(
+      ConnectFixtureServer.seedSeriesId,
+      locale: 'en',
+    );
+
+    // The wire format omits both where no campaign is open.
+    expect(read!.episodes.first.campaign, isNull);
+    final discounted = read.episodes.last;
+    expect(discounted.price, 500);
+    expect(discounted.campaign!.price, 300);
+    expect(
+      discounted.campaign!.endsAt.isAtSameMomentAs(
+        DateTime.utc(2026, 10, 12, 14, 59),
+      ),
+      isTrue,
+    );
+    expect(
+      discounted.campaignAt(DateTime.utc(2026, 10, 12, 14, 58)),
+      isNotNull,
+    );
+    expect(discounted.campaignAt(DateTime.utc(2026, 10, 12, 14, 59)), isNull);
+  });
+
+  test('getSeries reads a campaign with no end as none', () async {
+    server.detailResponse =
+        ConnectFixtureServer.populatedDetails()[ConnectFixtureServer
+              .seedSeriesId]!
+          ..episodes.last.campaignPrice = 300;
+
+    final read = await catalog.getSeries(
+      ConnectFixtureServer.seedSeriesId,
+      locale: 'en',
+    );
+
+    expect(read!.episodes.last.campaign, isNull);
+  });
+
   test('getSeries carries the wait-for-free rule of the series', () async {
     expect(
       (await catalog.getSeries(
@@ -1915,6 +1959,47 @@ void main() {
     // The wire format omits a false, so a paid neighbour arrives without the
     // field.
     expect(detail.nextEpisode!.isFree, isFalse);
+    expect(detail.nextEpisode!.campaign, isNull);
+  });
+
+  test('getEpisode carries the campaign open on a neighbour', () async {
+    server.episodeResponse = pb.GetEpisodeDetailResponse(
+      episode: pb.Episode(
+        publicId: 'EP',
+        title: 'Middle',
+        orderIndex: 2,
+        price: 500,
+        campaignPrice: 300,
+        campaignEndsAt: '2026-10-12T14:59:00Z',
+      ),
+      series: pb.Series(
+        publicId: ConnectFixtureServer.seedSeriesId,
+        title: ConnectFixtureServer.seedSeriesTitle,
+      ),
+      access: pb.EpisodeAccess.EPISODE_ACCESS_LOCKED,
+      nextEpisode: pb.EpisodeNeighbor(
+        publicId: 'EP03',
+        title: 'Third',
+        orderIndex: 3,
+        price: 500,
+        campaignPrice: 250,
+        campaignEndsAt: '2026-10-13T14:59:00Z',
+      ),
+    );
+
+    final detail = await catalog.getEpisode(
+      ConnectFixtureServer.seedSeriesId,
+      ConnectFixtureServer.seedEpisodeId,
+      locale: 'en',
+    );
+
+    expect(detail!.episode.campaign!.price, 300);
+    final next = detail.nextEpisode!.campaign!;
+    expect(next.price, 250);
+    expect(
+      next.endsAt.isAtSameMomentAs(DateTime.utc(2026, 10, 13, 14, 59)),
+      isTrue,
+    );
   });
 
   test(

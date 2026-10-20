@@ -1119,6 +1119,11 @@ final class AppMessages {
     return _format('mobile.common.back_to_catalog');
   }
 
+  /// `mobile.common.campaign_until`
+  String commonCampaignUntil({required String date}) {
+    return _format('mobile.common.campaign_until', {'date': date});
+  }
+
   /// `mobile.common.cancel`
   String get commonCancel {
     return _format('mobile.common.cancel');
@@ -1162,6 +1167,11 @@ final class AppMessages {
   /// `mobile.common.open_link_failed`
   String get commonOpenLinkFailed {
     return _format('mobile.common.open_link_failed');
+  }
+
+  /// `mobile.common.regular_price`
+  String commonRegularPrice({required String price}) {
+    return _format('mobile.common.regular_price', {'price': price});
   }
 
   /// `mobile.common.retry`
@@ -3699,6 +3709,7 @@ const _jaSources = <String, String>{
   'mobile.comments.submit': 'コメントを投稿',
   'mobile.comments.title': 'コメント',
   'mobile.common.back_to_catalog': 'カタログへ戻る',
+  'mobile.common.campaign_until': '{\$date}までキャンペーン価格',
   'mobile.common.cancel': 'キャンセル',
   'mobile.common.free': '無料',
   'mobile.common.free_until': '{\$date}まで無料',
@@ -3708,6 +3719,7 @@ const _jaSources = <String, String>{
   'mobile.common.list_two': '{\$first}、{\$rest}',
   'mobile.common.more_series_failed': 'シリーズの続きを表示できませんでした。もう一度お試しください。',
   'mobile.common.open_link_failed': '遷移先を開けませんでした。',
+  'mobile.common.regular_price': '通常価格{\$price}',
   'mobile.common.retry': '再試行',
   'mobile.common.series_count': '公開中シリーズ{\$count}件',
   'mobile.common.sign_in': 'サインイン',
@@ -4489,6 +4501,7 @@ const _enSources = <String, String>{
   'mobile.comments.submit': 'Post comment',
   'mobile.comments.title': 'Comments',
   'mobile.common.back_to_catalog': 'Back to the catalog',
+  'mobile.common.campaign_until': 'Sale until {\$date}',
   'mobile.common.cancel': 'Cancel',
   'mobile.common.free': 'Free',
   'mobile.common.free_until': 'Free until {\$date}',
@@ -4498,6 +4511,7 @@ const _enSources = <String, String>{
   'mobile.common.list_two': '{\$first} and {\$rest}',
   'mobile.common.more_series_failed': 'Could not show more series. Try again.',
   'mobile.common.open_link_failed': 'Could not open the link.',
+  'mobile.common.regular_price': 'Regular price {\$price}',
   'mobile.common.retry': 'Retry',
   'mobile.common.series_count': '{\$count} published series',
   'mobile.common.sign_in': 'Sign in',
@@ -5310,6 +5324,7 @@ const _koSources = <String, String>{
   'mobile.comments.submit': '댓글 등록',
   'mobile.comments.title': '댓글',
   'mobile.common.back_to_catalog': '카탈로그로 돌아가기',
+  'mobile.common.campaign_until': '{\$date}까지 할인가',
   'mobile.common.cancel': '취소',
   'mobile.common.free': '무료',
   'mobile.common.free_until': '{\$date}까지 무료',
@@ -5319,6 +5334,7 @@ const _koSources = <String, String>{
   'mobile.common.list_two': '{\$first} 및 {\$rest}',
   'mobile.common.more_series_failed': '시리즈를 더 표시할 수 없습니다. 다시 시도해 주세요.',
   'mobile.common.open_link_failed': '링크를 열 수 없습니다.',
+  'mobile.common.regular_price': '정가 {\$price}',
   'mobile.common.retry': '다시 시도',
   'mobile.common.series_count': '공개 중인 시리즈 {\$count}건',
   'mobile.common.sign_in': '로그인',
@@ -6040,6 +6056,7 @@ const _zhHansSources = <String, String>{
   'mobile.comments.submit': '发表评论',
   'mobile.comments.title': '评论',
   'mobile.common.back_to_catalog': '返回作品目录',
+  'mobile.common.campaign_until': '优惠价至{\$date}',
   'mobile.common.cancel': '取消',
   'mobile.common.free': '免费',
   'mobile.common.free_until': '免费至{\$date}',
@@ -6049,6 +6066,7 @@ const _zhHansSources = <String, String>{
   'mobile.common.list_two': '{\$first}和{\$rest}',
   'mobile.common.more_series_failed': '无法显示更多系列。请重试。',
   'mobile.common.open_link_failed': '无法打开链接。',
+  'mobile.common.regular_price': '原价{\$price}',
   'mobile.common.retry': '重试',
   'mobile.common.series_count': '已发布{\$count}部系列',
   'mobile.common.sign_in': '登录',
@@ -6717,6 +6735,7 @@ const _zhHantSources = <String, String>{
   'mobile.comments.submit': '發表留言',
   'mobile.comments.title': '留言',
   'mobile.common.back_to_catalog': '返回作品目錄',
+  'mobile.common.campaign_until': '優惠價至{\$date}',
   'mobile.common.cancel': '取消',
   'mobile.common.free': '免費',
   'mobile.common.free_until': '免費至{\$date}',
@@ -6726,6 +6745,7 @@ const _zhHantSources = <String, String>{
   'mobile.common.list_two': '{\$first}和{\$rest}',
   'mobile.common.more_series_failed': '無法顯示更多系列。請重試。',
   'mobile.common.open_link_failed': '無法開啟連結。',
+  'mobile.common.regular_price': '原價{\$price}',
   'mobile.common.retry': '重試',
   'mobile.common.series_count': '已發布{\$count}部系列',
   'mobile.common.sign_in': '登入',

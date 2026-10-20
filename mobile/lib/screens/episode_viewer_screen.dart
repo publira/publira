@@ -7,6 +7,7 @@ import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/auth/reader_age.dart';
 import 'package:publira/catalog/age_rating_gate.dart';
+import 'package:publira/catalog/campaign_price_note.dart';
 import 'package:publira/catalog/catalog_failure.dart';
 import 'package:publira/catalog/catalog_repository.dart';
 import 'package:publira/catalog/creator_credits.dart';
@@ -128,8 +129,9 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   String? _currency;
 
   /// Whether the tenant sells through its web checkout, which is the only way
-  /// a rental is sold: the store sells the permanent copy alone.
-  var _rentsOnWeb = false;
+  /// a rental is sold and the only one that charges a campaign price: the
+  /// store sells the permanent copy alone, as the product of its own price.
+  var _sellsOnWeb = false;
 
   /// Records the page the reader rests on, for the session that is signed in
   /// now. It holds the repository rather than the context, because the last
@@ -150,6 +152,12 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   /// read back once the tab is on screen again.
   var _awaitingBirthDate = false;
   var _leftForBirthDate = false;
+
+  /// Fires when the soonest campaign open on this episode or the next one
+  /// ends. The gate and the offer at the end are priced at build time, so
+  /// without it a screen left open past the end would keep quoting a campaign
+  /// price the checkout no longer charges.
+  Timer? _campaignEnd;
 
   @override
   void initState() {
@@ -296,12 +304,13 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     setState(() {
       _acceptsPayments = accepts && currency != null;
       _currency = currency;
-      _rentsOnWeb = route == AppPurchaseRoute.externalCheckout;
+      _sellsOnWeb = route == AppPurchaseRoute.externalCheckout;
     });
   }
 
   @override
   void dispose() {
+    _campaignEnd?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _saver?.flush();
     _saver?.dispose();
@@ -364,6 +373,9 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       return null;
     }
     _episodeInternalId = detail.episode.internalId;
+    if (mounted) {
+      _scheduleCampaignEnd(detail);
+    }
     final saved = resumeAt ?? await _savedPageIndex(catalog);
     // Asked only where the answer decides what is shown: a rating to gate, or
     // a body withheld over an age.
@@ -388,6 +400,34 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
       provenRating: age?.provenAgeRating(DateTime.now()),
       waitFree: offer,
     );
+  }
+
+  /// Sets [_campaignEnd] for the soonest campaign still open on [detail] or
+  /// on the episode after it, or for none when neither has one.
+  void _scheduleCampaignEnd(EpisodeDetail detail) {
+    _campaignEnd?.cancel();
+    final now = DateTime.now();
+    DateTime? soonest;
+    for (final campaign in [
+      detail.episode.campaign,
+      detail.nextEpisode?.campaign,
+    ]) {
+      final end = campaign?.endsAt;
+      if (end != null &&
+          end.isAfter(now) &&
+          (soonest == null || end.isBefore(soonest))) {
+        soonest = end;
+      }
+    }
+    if (soonest == null) {
+      _campaignEnd = null;
+      return;
+    }
+    _campaignEnd = Timer(soonest.difference(now), () {
+      if (mounted) {
+        setState(() => _scheduleCampaignEnd(detail));
+      }
+    });
   }
 
   /// A read that fails answers as an account holding no date. The gate then
@@ -546,6 +586,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
           detail: detail,
           nextSavedOffline: next != null && _saved.contains(next.id),
           acceptsPayments: _acceptsPayments,
+          sellsOnWeb: _sellsOnWeb,
           currency: _currency,
           onOpenNext: _open,
           onOpenComments: _commentsOffered ? _openComments : null,
@@ -600,11 +641,16 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         checkout: CheckoutOutcome.success,
       ),
     );
+    // The button that buys the permanent copy names the campaign price
+    // whether or not the episode is rented too, and the rental keeps its own.
+    final campaign = _sellsOnWeb
+        ? detail.episode.campaignAt(DateTime.now())
+        : null;
     final buy = sold && !soldOnWeb
         ? BuyEpisodeButton(
             episodeId: widget.episodeId,
             episodeInternalId: detail.episode.internalId,
-            price: detail.episode.price,
+            price: campaign?.price ?? detail.episode.price,
             // A purchase is offered only once the currency is known.
             currency: _currency!,
             onAlreadyPurchased: _reload,
@@ -613,7 +659,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
         : null;
     // A rented episode is offered both ways, each naming what it costs, since
     // the choice is between those two prices.
-    final rent = buy != null && _rentsOnWeb && detail.episode.isRented
+    final rent = buy != null && _sellsOnWeb && detail.episode.isRented
         ? BuyEpisodeButton(
             episodeId: widget.episodeId,
             episodeInternalId: detail.episode.internalId,
@@ -662,6 +708,15 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
     return _gate(
       detail,
       key: const ValueKey('episode-locked'),
+      badge: buy == null || campaign == null
+          ? null
+          : CampaignPriceNote(
+              key: const ValueKey('episode-campaign'),
+              price: detail.episode.price,
+              currency: _currency!,
+              endsAt: campaign.endsAt,
+              alignment: WrapAlignment.center,
+            ),
       title: messages.viewerLockedTitle,
       message: message,
       notice: waitFree == null

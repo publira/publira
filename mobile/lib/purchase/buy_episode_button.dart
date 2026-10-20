@@ -42,7 +42,9 @@ class BuyEpisodeButton extends StatefulWidget {
   /// Internal id of [episodeId], which the purchase requests take.
   final String episodeInternalId;
 
-  /// What the sale costs: the permanent copy's price, or the rental's.
+  /// What the sale costs: the permanent copy's price, its campaign price while
+  /// one is open, or the rental's. It is only what the button says; the
+  /// checkout and the store charge whatever price they resolve themselves.
   final int price;
 
   /// The ISO 4217 code of the currency [price] is in, the tenant's.

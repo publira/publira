@@ -123,6 +123,7 @@ class EpisodeNeighbor {
     required this.price,
     required this.isFree,
     this.purchaseSurface = EpisodePurchaseSurface.all,
+    this.campaign,
   });
 
   /// Public id (`public_id`), which addresses the episode.
@@ -151,6 +152,10 @@ class EpisodeNeighbor {
   /// Where the episode may be bought, so an offer of one sold on the
   /// storefront alone names that rather than a price the app cannot take.
   final EpisodePurchaseSurface purchaseSurface;
+
+  /// The campaign price open on the episode, as [EpisodeItem.campaign], so an
+  /// offer quotes what the reader would pay on taking it.
+  final EpisodeCampaign? campaign;
 }
 
 /// An episode body plus the series it was read under.

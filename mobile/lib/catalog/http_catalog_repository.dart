@@ -1444,6 +1444,7 @@ class HttpCatalogRepository implements CatalogRepository {
       // The wire format omits an empty string, which is an episode no window
       // holds.
       freeUntil: DateTime.tryParse(episode.freeUntil.trim())?.toLocal(),
+      campaign: _campaign(episode.campaignPrice, episode.campaignEndsAt),
       eyeCatchVariants: _parseEyeCatchVariants(
         episode.eyeCatchImageVariants,
         path,
@@ -1546,7 +1547,19 @@ class HttpCatalogRepository implements CatalogRepository {
       price: neighbor.price,
       isFree: neighbor.isFree,
       purchaseSurface: _purchaseSurface(neighbor.purchaseAvailability),
+      campaign: _campaign(neighbor.campaignPrice, neighbor.campaignEndsAt),
     );
+  }
+
+  /// The campaign [price] and [endsAt] describe, or `null` for the zero values
+  /// the API sends where no campaign is open. The wire format omits both
+  /// then, and a read that carries no campaign leaves them unset too.
+  static EpisodeCampaign? _campaign(int price, String endsAt) {
+    final end = DateTime.tryParse(endsAt.trim());
+    if (price <= 0 || end == null) {
+      return null;
+    }
+    return EpisodeCampaign(price: price, endsAt: end.toLocal());
   }
 
   EpisodeReaction _reaction({

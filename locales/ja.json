@@ -4861,6 +4861,7 @@
     },
     "common": {
       "back_to_catalog": "カタログへ戻る",
+      "campaign_until": "{$date}までキャンペーン価格",
       "cancel": "キャンセル",
       "free": "無料",
       "list_end": "{$first}、{$rest}",
@@ -4869,6 +4870,7 @@
       "list_two": "{$first}、{$rest}",
       "more_series_failed": "シリーズの続きを表示できませんでした。もう一度お試しください。",
       "open_link_failed": "遷移先を開けませんでした。",
+      "regular_price": "通常価格{$price}",
       "retry": "再試行",
       "series_count": "公開中シリーズ{$count}件",
       "sign_in": "サインイン",
