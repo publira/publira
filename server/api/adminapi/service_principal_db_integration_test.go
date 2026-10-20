@@ -106,6 +106,13 @@ func TestDBServiceTokenAnswersEveryAllowlistedRead(t *testing.T) {
 			})
 			return err
 		},
+		publiraadminv1connect.AdminSeriesServiceListEpisodeCampaignPricesProcedure: func(ctx context.Context) error {
+			_, err := seriesClient.ListEpisodeCampaignPrices(testutil.WithBearer(ctx, testWebServiceToken), &publiraadminv1.ListEpisodeCampaignPricesRequest{
+				Tenant: tenantCtx,
+				Scope:  &publiraadminv1.ListEpisodeCampaignPricesRequest_EpisodeId{EpisodeId: episode.ID.String()},
+			})
+			return err
+		},
 		publiraadminv1connect.AdminSeriesServiceGetSeriesWaitFreeSettingsProcedure: func(ctx context.Context) error {
 			_, err := seriesClient.GetSeriesWaitFreeSettings(testutil.WithBearer(ctx, testWebServiceToken), &publiraadminv1.GetSeriesWaitFreeSettingsRequest{Tenant: tenantCtx, SeriesId: series.ID.String()})
 			return err
