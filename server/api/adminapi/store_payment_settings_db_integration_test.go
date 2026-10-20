@@ -229,6 +229,52 @@ func TestDBListTenantStoreProductsNamesOneProductPerAppPrice(t *testing.T) {
 	}
 }
 
+// A campaign price that has not ended needs a product of its own beside the
+// episode's price, counted once per episode however many of its campaigns
+// share it. An ended campaign, and one that no longer undercuts the episode's
+// price, sell nothing, nor does a campaign on an episode the app does not sell.
+func TestDBListTenantStoreProductsNamesTheProductOfEveryCampaignNotEnded(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	series := env.PG.SeedSeries(t, tenant.Tenant.ID, testutil.SeriesSeed{PublicID: "SERIESA1", Title: "Series A"})
+	onSale := env.PG.SeedEpisode(t, tenant.Tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EP500A01", Title: "On sale", Price: 500, Status: testutil.EpisodeStatusPublished})
+	scheduled := env.PG.SeedEpisode(t, tenant.Tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EP500B01", Title: "Sale ahead", Price: 500, Status: testutil.EpisodeStatusPublished})
+	ended := env.PG.SeedEpisode(t, tenant.Tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EP500C01", Title: "Sale over", Price: 500, Status: testutil.EpisodeStatusPublished})
+	undercut := env.PG.SeedEpisode(t, tenant.Tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EP100A01", Title: "Repriced", Price: 100, Status: testutil.EpisodeStatusPublished})
+	webOnly := env.PG.SeedEpisode(t, tenant.Tenant.ID, series.ID, testutil.EpisodeSeed{PublicID: "EP700A01", Title: "Web sale only", Price: 700, Status: testutil.EpisodeStatusPublished, PurchaseAvailability: "web"})
+
+	now := time.Now()
+	env.PG.SeedEpisodeCampaignPrice(t, tenant.Tenant.ID, onSale.ID, 300, now.Add(-time.Hour), now.Add(time.Hour))
+	env.PG.SeedEpisodeCampaignPrice(t, tenant.Tenant.ID, onSale.ID, 300, now.Add(24*time.Hour), now.Add(48*time.Hour))
+	env.PG.SeedEpisodeCampaignPrice(t, tenant.Tenant.ID, scheduled.ID, 300, now.Add(24*time.Hour), now.Add(48*time.Hour))
+	env.PG.SeedEpisodeCampaignPrice(t, tenant.Tenant.ID, scheduled.ID, 250, now.Add(72*time.Hour), now.Add(96*time.Hour))
+	env.PG.SeedEpisodeCampaignPrice(t, tenant.Tenant.ID, ended.ID, 400, now.Add(-48*time.Hour), now.Add(-24*time.Hour))
+	env.PG.SeedEpisodeCampaignPrice(t, tenant.Tenant.ID, webOnly.ID, 600, now.Add(-time.Hour), now.Add(time.Hour))
+	// Scheduled under the episode's earlier price, which an editor has since
+	// lowered to 100.
+	env.PG.SeedEpisodeCampaignPrice(t, tenant.Tenant.ID, undercut.ID, 200, now.Add(24*time.Hour), now.Add(48*time.Hour))
+
+	got := listDBStoreProducts(t, env, tenant)
+	want := []struct {
+		productID string
+		price     int32
+		count     int32
+	}{
+		{productID: "episode_100", price: 100, count: 1},
+		{productID: "episode_250", price: 250, count: 1},
+		{productID: "episode_300", price: 300, count: 2},
+		{productID: "episode_500", price: 500, count: 3},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("products = %v, want %v", got, want)
+	}
+	for i, w := range want {
+		if got[i].ProductId != w.productID || got[i].Price != w.price || got[i].EpisodeCount != w.count {
+			t.Fatalf("products[%d] = %v, want %+v", i, got[i], w)
+		}
+	}
+}
+
 func assertNoKeyMaterial(t *testing.T, label, response string, keys ...string) {
 	t.Helper()
 	for _, key := range keys {

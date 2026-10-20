@@ -3178,7 +3178,7 @@
       },
       "store_products": {
         "title": "Store products",
-        "description": "Create a consumable product with each of these IDs in App Store Connect and the Play Console, at its price. An episode is bought as the product of its price, so each price your paid episodes sell at in the app needs one.",
+        "description": "Create a consumable product with each of these IDs in App Store Connect and the Play Console, at its price. An episode is bought as the product of its price, or of its campaign price while a campaign is on sale, so each price your paid episodes sell at in the app needs one, the prices of campaigns not yet started included.",
         "section_error": "Could not display the store products",
         "load_failed": "Could not load the store products. Please try again later.",
         "product_id": "Product ID",

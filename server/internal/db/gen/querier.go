@@ -2513,9 +2513,11 @@ type Querier interface {
 	// Every tenant's overrides, for a batch that spans all tenants. A tenant with
 	// no row follows the platform defaults.
 	ListTenantRetentionSettings(ctx context.Context) ([]TenantRetentionSetting, error)
-	// The prices a tenant's app sells episodes at, so each one has a store product.
-	// Drafts and scheduled episodes count: their product has to exist before they
-	// go on sale.
+	// The prices a tenant's app sells episodes at, so each one has a store product:
+	// each episode's own price, and the price of every campaign on it that has not
+	// ended. Drafts, scheduled episodes, and scheduled campaigns count: their
+	// product has to exist before they go on sale. An episode counts once at a
+	// price, however many of its campaigns share it.
 	ListTenantStoreProductPrices(ctx context.Context, tenantID uuid.UUID) ([]ListTenantStoreProductPricesRow, error)
 	ListTenantUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error)
 	ListTenantUsersAsc(ctx context.Context, arg ListTenantUsersAscParams) ([]ListTenantUsersAscRow, error)

@@ -1320,7 +1320,9 @@ type TenantStoreProduct struct {
 	ProductId string `protobuf:"bytes,1,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
 	// The price in the minor unit of currency.
 	Price int32 `protobuf:"varint,2,opt,name=price,proto3" json:"price,omitempty"`
-	// How many episodes sell at this price, drafts and scheduled ones included.
+	// How many episodes sell at this price, as their own price or as the price
+	// of a campaign on them that has not ended, drafts and scheduled ones
+	// included.
 	EpisodeCount int32 `protobuf:"varint,3,opt,name=episode_count,json=episodeCount,proto3" json:"episode_count,omitempty"`
 	// The ISO 4217 code, in capitals, of the tenant currency price is in.
 	Currency      string `protobuf:"bytes,4,opt,name=currency,proto3" json:"currency,omitempty"`

@@ -697,7 +697,9 @@ export type TenantStoreProduct = Message<"publira.admin.v1.TenantStoreProduct"> 
   price: number;
 
   /**
-   * How many episodes sell at this price, drafts and scheduled ones included.
+   * How many episodes sell at this price, as their own price or as the price
+   * of a campaign on them that has not ended, drafts and scheduled ones
+   * included.
    *
    * @generated from field: int32 episode_count = 3;
    */

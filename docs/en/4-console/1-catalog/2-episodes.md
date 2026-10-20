@@ -56,7 +56,7 @@ The episode list, and the console's other screens that name an episode, show its
 
 A change applies to purchases made after it is saved. A purchase already made keeps the price it was paid and the time it expires, and a reader who opened the payment provider's checkout page before the change pays what that page shows. Changing the series' **Reading period** or **Rental period** does not change these.
 
-An app that sells through the stores buys an episode as the store product of its price, so a new price may need a new product: see [Store products](../4-selling-episodes.md#selling-in-the-app).
+An app that sells through the stores buys an episode as the store product of its price, so a new price, or a new [campaign price](#campaign-prices), may need a new product: see [Store products](../4-selling-episodes.md#selling-in-the-app).
 
 ## Adding the pages
 
@@ -166,7 +166,7 @@ The site shows a period from the moment it starts, and drops it the moment it en
 
 ## Campaign prices
 
-A campaign price sells a paid episode for less between two times. Buying the episode during the campaign charges the campaign price, and so does buying it with [the rest of its series](../4-selling-episodes.md#the-rest-of-a-series), before the series' **Bundle discount** is taken off, and the episode keeps its own **Price**, which applies again when the campaign ends. A rental keeps its **Rental price**, and a purchase made at the campaign price keeps the price it was paid.
+A campaign price sells a paid episode for less between two times. Buying the episode during the campaign charges the campaign price, on the site and in an app that sells through **In-app purchase** alike, and so does buying it with [the rest of its series](../4-selling-episodes.md#the-rest-of-a-series), before the series' **Bundle discount** is taken off, and the episode keeps its own **Price**, which applies again when the campaign ends. A rental keeps its **Rental price**, and a purchase made at the campaign price keeps the price it was paid.
 
 **Campaign prices**, on the episode's edit screen, lists its campaigns with their price, as **On sale now**, **Scheduled**, or **Ended**. To add one, enter **Campaign price** in the tenant's currency, lower than the episode's **Price**, then **Starts** and **Ends**, both in the tenant's time zone, and choose **Add campaign price**. **Ends** must be after **Starts** and still in the future; **Starts** may be in the past, which puts the episode on sale from now. Two campaigns of one episode cannot overlap, though one may start exactly when another ends. A free episode has no price to cut, so the section offers no form on one.
 
@@ -182,7 +182,7 @@ Wherever the site quotes an episode's price, an episode under a campaign shows t
 
 The site quotes a campaign from the moment it starts, and drops it the moment it ends: `publira worker` refreshes the cached pages at both ends, as [Scheduled and maintenance jobs](../../3-operations/10-scheduled-jobs.md#free-reading-periods-and-other-cached-pages) describes.
 
-The app quotes a campaign on the series' episode list, on a locked episode, and in the offer of the next episode at the end of the one before: the campaign price, the episode's own **Price** struck through beside it, and when the campaign ends, written in the time zone of the reader's device as every time in the app is. An app that sells through [**In-app purchase**](../4-selling-episodes.md#selling-in-the-app) buys the episode as the store product of its own **Price**, so it charges and quotes that price, and no campaign.
+The app quotes a campaign on the series' episode list, on a locked episode, and in the offer of the next episode at the end of the one before: the campaign price, the episode's own **Price** struck through beside it, and when the campaign ends, written in the time zone of the reader's device as every time in the app is. An app that sells through [**In-app purchase**](../4-selling-episodes.md#selling-in-the-app) charges the campaign price too, buying the episode as the store product of that price, but does not quote the campaign yet: its screens show the episode's own **Price**, and the store's payment sheet shows the campaign price the reader is charged.
 
 ## Publishing an episode
 

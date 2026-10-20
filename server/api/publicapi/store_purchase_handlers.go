@@ -120,6 +120,13 @@ func (s *apiServer) StartStorePurchase(
 		return nil, connect.NewError(connect.CodeAlreadyExists, "episode is already purchased")
 	}
 
+	// The campaign open now sets the price, as it does at the web checkout. The
+	// intent keeps it, so a campaign ending before the store confirms the
+	// purchase does not change what it is recorded at.
+	price := episode.Price
+	if episode.CampaignPrice.Valid {
+		price = episode.CampaignPrice.Int32
+	}
 	currency, err := s.tenantCurrency(ctx, queries, tenant.ID)
 	if err != nil {
 		return nil, err
@@ -129,9 +136,9 @@ func (s *apiServer) StartStorePurchase(
 		TenantID:  tenant.ID,
 		UserID:    user.ID,
 		EpisodeID: episode.ID,
-		Price:     episode.Price,
+		Price:     price,
 		Currency:  currency,
-		ProductID: storeproduct.ProductID(episode.Price),
+		ProductID: storeproduct.ProductID(price),
 		// The terms the payment sheet opens on, which the purchase keeps however
 		// long the confirmation takes to arrive.
 		ReadingPeriodHours: episode.ReadingPeriodHours,
