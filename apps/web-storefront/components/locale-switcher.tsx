@@ -1,6 +1,6 @@
 "use client";
 
-import { getLocaleLabel, getLocales } from "@publira/i18n";
+import { getLocaleLabel } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { LanguageIcon } from "@publira/icons/language-icon";
 import {
@@ -15,7 +15,7 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from "@publira/ui-components/popover";
-import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -133,20 +133,6 @@ export const LocaleSwitcher = () => {
   );
 };
 
-/**
- * Stands in for the rendered list while the copy arrives. The shell is shared
- * by every tenant, so it cannot know how many locales a tenant offers; it draws
- * one row per registry entry, the most the list can draw, so a locale added to
- * the registry cannot leave the panel too short for it.
- */
-export const LocaleSwitcherLinksSkeleton = () => (
-  <div aria-hidden="true" className="grid gap-1">
-    {getLocales().map((locale) => (
-      <Skeleton className="h-9 rounded-control" key={locale} />
-    ))}
-  </div>
-);
-
 const LocaleSwitcherLinks = ({
   currentLocale,
   locales,
@@ -172,20 +158,15 @@ const LocaleSwitcherLinks = ({
 };
 
 /**
- * The disclosure {@link LocaleSwitcherDisclosure} draws, its panel holding
- * {@link LocaleSwitcherLinksSkeleton}: the drawer keeps the row while the
- * tenant read is pending, since the shell cannot know whether the tenant offers
- * more than one locale.
+ * Stands in for the row {@link LocaleSwitcherDisclosure} draws, at the height
+ * of its trigger, while the tenant read is pending: the shell cannot know
+ * whether the tenant offers more than one locale. It is not a button, so
+ * nothing reaches a control that has no name yet and may never appear.
  */
 export const LocaleSwitcherDisclosureSkeleton = () => (
-  <SiteLayoutMobileNavigationDisclosure>
-    <SiteLayoutMobileNavigationDisclosureTrigger>
-      <SkeletonLine className="h-4 w-16" />
-    </SiteLayoutMobileNavigationDisclosureTrigger>
-    <SiteLayoutMobileNavigationDisclosurePanel>
-      <LocaleSwitcherLinksSkeleton />
-    </SiteLayoutMobileNavigationDisclosurePanel>
-  </SiteLayoutMobileNavigationDisclosure>
+  <div aria-hidden="true" className="px-3 py-2 text-sm pointer-coarse:py-3">
+    <SkeletonLine className="h-4 w-16" />
+  </div>
 );
 
 /**

@@ -10,7 +10,7 @@ import type { StorefrontClientMessageKey } from "#lib/messages";
 import {
   LocaleSwitcher,
   LocaleSwitcherDisclosure,
-  LocaleSwitcherLinksSkeleton,
+  LocaleSwitcherDisclosureSkeleton,
 } from "./locale-switcher";
 
 vi.mock("next/link", () => ({
@@ -168,12 +168,13 @@ describe("LocaleSwitcherDisclosure", () => {
   });
 });
 
-describe("LocaleSwitcherLinksSkeleton", () => {
-  it("stands in with one row per locale the list can draw", () => {
-    const { container } = render(<LocaleSwitcherLinksSkeleton />);
+describe("LocaleSwitcherDisclosureSkeleton", () => {
+  it("stands in for the row without a control a keyboard can reach", () => {
+    const { container } = render(<LocaleSwitcherDisclosureSkeleton />);
 
-    expect(
-      container.querySelectorAll('[aria-hidden="true"] > div')
-    ).toHaveLength(getLocales().length);
+    expect(container.querySelector("button")).toBeNull();
+    expect(container.firstElementChild?.getAttribute("aria-hidden")).toBe(
+      "true"
+    );
   });
 });
