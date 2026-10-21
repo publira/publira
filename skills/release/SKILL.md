@@ -37,24 +37,34 @@ git log --format=%s "$previous"..origin/main | sed -nE 's/.*\(#([0-9]+)\)$/\1/p'
 
 `main` is squash-merged through its queue, so every commit subject ends in `(#N)`; a commit without one reached `main` some other way, and its change has to be judged from its diff.
 
-Then look at the diff for the changes a patch release must not carry:
+Then look at the diff for the changes that break an install:
 
 ```bash
-git diff --name-status "$previous"..origin/main -- db/migrations infra/proxy server/internal/dbroles/dbroles.go infra/deploy/compose.yaml
+git diff --name-status "$previous"..origin/main -- infra/proxy server/internal/dbroles/dbroles.go infra/deploy/compose.yaml
+git diff "$previous"..origin/main -- 'db/migrations/*.up.sql' | grep -inE '^\+.*\b(drop|rename)\b'
 ```
 
-**A patch release** (`X.Y.Z+1`) is possible only when every one of these holds:
+The first command lists the proxy configuration, the roles, and the Compose services, any change to which asks something of an operator. The second lists every line an up migration adds that drops or renames something. A migration that only adds a table, a column, or an index prints nothing there and breaks nothing; each line it does print is judged on whether the release before reads what it removes. A dropped or renamed table, column, type, or function that the previous release's queries name breaks an install, while a `DROP DEFAULT` on a column the same migration adds, or a constraint dropped to be recreated, does not.
 
-- every pull request since `$previous` is a fix, a dependency update, or a change no install sees (documentation, CI, tests, tooling) — a `feat` carries a capability, and a patch release only fixes the minor release it belongs to;
-- the diff above lists nothing under `db/migrations/`, no change to the proxy configuration, `dbroles.go`, or the services, secrets, and volumes of `compose.yaml`;
-- the previewed Upgrade notes ask nothing — no environment variable added, renamed, or no longer read, no role, no routing change, no new process, no search index to rebuild;
-- `$previous` is the newest minor release, since only that one receives fixes.
+Something since `$previous` breaks an install, judged on the list under **Changes that break an install** in [`9-releases.md`](../../docs/en/2-deployments/9-releases.md#changes-that-break-an-install), unless every one of these holds:
 
-**A minor release** (`X.Y+1.0`) is everything else. Anything on `main` that a patch release must not carry makes the next release a minor one; the repository has no maintenance branches, so do not invent one to ship a patch around it. When a fix is urgent and `main` already carries a minor-only change, say so to the user and let them decide.
+- the second diff command shows no up migration dropping or renaming a table, a column, or anything else the previous release reads, and no pull request drops or renames an RPC, a message field, or an endpoint the previous release's web apps call;
+- the first diff command shows no change to the proxy configuration, `dbroles.go`, or the services, secrets, and volumes of `compose.yaml`;
+- the previewed Upgrade notes ask nothing — no environment variable added as required, renamed, or no longer read, no role, no routing change, no new process, no migration that runs long or locks a busy table, no search index to rebuild.
+
+Then choose the version:
+
+- **A major release** (`X+1.0.0`) when something breaks an install.
+- **A minor release** (`X.Y+1.0`) when nothing does, but a pull request adds a capability (a `feat`) or `git diff --name-status "$previous"..origin/main -- db/migrations` lists anything.
+- **A patch release** (`X.Y.Z+1`) otherwise: fixes, dependency updates, and changes no install sees.
+
+Before `1.0.0`, the minor number takes the place of the major one: a minor release when something breaks an install, and a patch release otherwise, a `feat` and a migration that only adds included.
+
+A patch release also needs `$previous` to be the newest minor release, since only that one receives fixes. The repository has no maintenance branches, so do not invent one to ship a patch around a change that makes the release a larger one. When a fix is urgent and `main` already carries such a change, say so to the user and let them decide.
 
 **A prerelease** (`X.Y.Z-rc.N`) is cut only when the user asks for one, to try a release before it is out. It gets a release commit and a pull request of its own, exactly like a release, and the release it previews gets another one later. The workflow marks it as a prerelease from the hyphen in the tag.
 
-A major release is outside this skill until `1.0.0` is due, and that one is the user's call.
+`1.0.0` itself is cut only when the user asks for it.
 
 ## 3. Check the preconditions
 
