@@ -17,7 +17,7 @@ Each group can be set from the Platform Console or from `publiractl`, run the wa
 | --- | --- | --- |
 | The default language, time zone, and currency | **General**, under **Platform** | `platform set`, `platform show` |
 | Two-step verification, the sign-in, password, purchase, ticket, and mail limits, and the disposable email domain list | **Security**, under **Policies** | `policy set`, `policy show` |
-| The comment, report, rating, contact, and viewer limits | **Community**, under **Policies** | `policy set`, `policy show` |
+| The comment, report, rating, contact, viewer, and notification settings limits | **Community**, under **Policies** | `policy set`, `policy show` |
 | How long expiring records are kept | **Retention**, under **Policies** | `retention set`, `retention show` |
 
 ![The Platform Console's sidebar: General under Platform, Email, Storage, Search, and Web Push under Services, and Security, Community, and Retention under Policies.](./platform-policies-sidebar.png)
@@ -125,7 +125,7 @@ Saving a list refuses nothing on its own. A tenant that wants disposable address
 
 **Community limits** are the limits on what readers do in a tenant's community. Each value here is the starting point for every tenant and also the loosest value a tenant may choose: a tenant can make a limit stricter for itself, never looser.
 
-![Community limits: comment posts, comment reports, contact messages per account and per client, episode ratings, and viewer preference updates, each per minute or per hour and per day, Duplicate comment window (minutes), and Save community limits.](./platform-policies-community.png)
+![Community limits: comment posts, comment reports, contact messages per account and per client, episode ratings, viewer preference updates, and notification settings updates, each per minute or per hour and per day, Duplicate comment window (minutes), and Save community limits.](./platform-policies-community.png)
 
 | On the Community page | What it limits |
 | --- | --- |
@@ -135,9 +135,8 @@ Saving a list refuses nothing on its own. A tenant that wants disposable address
 | **Contact messages per client per hour** and **per day** | Messages sent through the contact form from one client address, signed in or not, counted across every tenant |
 | **Episode ratings per minute** and **per day** | Presses of the episode rating one reader makes |
 | **Viewer preference updates per minute** and **per day** | Times one reader saves the viewer's layout |
+| **Notification settings updates per minute** and **per day** | Times one reader saves their notification settings |
 | **Duplicate comment window (minutes)** | How long a reader is refused when posting the same comment on the same episode again, from 1 minute to one week. The comparison is exact after trimming surrounding spaces |
-
-One more community limit has no field on the Community page yet: the times one reader saves their notification settings, 30 per minute and 300 per day unless set with `publiractl policy set --notification-settings-per-minute` and `--notification-settings-per-day`. Saving the Community page keeps whatever it is set to.
 
 These are counted in the same place as the security limits, so [Where the counts are kept](#where-the-counts-are-kept) applies to them too.
 

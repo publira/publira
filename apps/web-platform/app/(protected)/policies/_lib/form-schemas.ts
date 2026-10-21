@@ -281,6 +281,14 @@ export const communityLimitsFormFields = {
   },
   episodeRatingPerDay: { kind: "value", name: "episode_rating_per_day" },
   episodeRatingPerMinute: { kind: "value", name: "episode_rating_per_minute" },
+  notificationSettingsPerDay: {
+    kind: "value",
+    name: "notification_settings_per_day",
+  },
+  notificationSettingsPerMinute: {
+    kind: "value",
+    name: "notification_settings_per_minute",
+  },
   revision: "value",
   viewerPreferencesPerDay: {
     kind: "value",
@@ -302,6 +310,9 @@ export const communityLimitsFormSchema = async (locale: Locale) => {
   const viewerPreferences = t(
     "platform.policy.community.viewer_preferences_legend"
   );
+  const notificationSettings = t(
+    "platform.policy.community.notification_settings_legend"
+  );
 
   return z
     .object({
@@ -319,6 +330,8 @@ export const communityLimitsFormSchema = async (locale: Locale) => {
       ),
       episodeRatingPerDay: limitSchema(t, episodeRating),
       episodeRatingPerMinute: limitSchema(t, episodeRating),
+      notificationSettingsPerDay: limitSchema(t, notificationSettings),
+      notificationSettingsPerMinute: limitSchema(t, notificationSettings),
       revision: revisionFormSchema(t("platform.policy.revision_invalid")),
       viewerPreferencesPerDay: limitSchema(t, viewerPreferences),
       viewerPreferencesPerMinute: limitSchema(t, viewerPreferences),
@@ -362,6 +375,13 @@ export const communityLimitsFormSchema = async (locale: Locale) => {
             setting: viewerPreferences,
           }),
           short: "viewerPreferencesPerMinute",
+        },
+        {
+          day: "notificationSettingsPerDay",
+          message: t("platform.policy.day_below_minute", {
+            setting: notificationSettings,
+          }),
+          short: "notificationSettingsPerMinute",
         },
       ])
     );

@@ -187,6 +187,7 @@ const community: PlatformCommunityLimits = {
   contactMessagePerClient: { perDay: 30, perHour: 10 },
   duplicateCommentWindowMinutes: 10,
   episodeRating: { perDay: 300, perMinute: 30 },
+  notificationSettings: { perDay: 300, perMinute: 30 },
   viewerPreferences: { perDay: 300, perMinute: 30 },
 };
 

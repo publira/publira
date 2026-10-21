@@ -127,6 +127,14 @@ export const communityLimitsFormFields = {
   },
   episodeRatingPerDay: { kind: "value", name: "episode_rating_per_day" },
   episodeRatingPerMinute: { kind: "value", name: "episode_rating_per_minute" },
+  notificationSettingsPerDay: {
+    kind: "value",
+    name: "notification_settings_per_day",
+  },
+  notificationSettingsPerMinute: {
+    kind: "value",
+    name: "notification_settings_per_minute",
+  },
   revision: "value",
   viewerPreferencesPerDay: {
     kind: "value",
@@ -163,6 +171,9 @@ export const communityLimitsFormSchema = async (
   const viewerPreferences = t(
     "admin.settings.policy.community.viewer_preferences_legend"
   );
+  const notificationSettings = t(
+    "admin.settings.policy.community.notification_settings_legend"
+  );
   const dayBelowMinute = (setting: string) =>
     t("admin.settings.policy.community.validation.day_below_minute", {
       setting,
@@ -191,6 +202,8 @@ export const communityLimitsFormSchema = async (
       ),
       episodeRatingPerDay: limitSchema(t, episodeRating),
       episodeRatingPerMinute: limitSchema(t, episodeRating),
+      notificationSettingsPerDay: limitSchema(t, notificationSettings),
+      notificationSettingsPerMinute: limitSchema(t, notificationSettings),
       revision: revisionSchema(t),
       viewerPreferencesPerDay: limitSchema(t, viewerPreferences),
       viewerPreferencesPerMinute: limitSchema(t, viewerPreferences),
@@ -233,6 +246,12 @@ export const communityLimitsFormSchema = async (
           incompleteMessage: incomplete(viewerPreferences),
           short: "viewerPreferencesPerMinute",
         },
+        {
+          day: "notificationSettingsPerDay",
+          dayBelowShortMessage: dayBelowMinute(notificationSettings),
+          incompleteMessage: incomplete(notificationSettings),
+          short: "notificationSettingsPerMinute",
+        },
       ])
     )
     .transform((data) => ({
@@ -258,6 +277,10 @@ export const communityLimitsFormSchema = async (
         episodeRating: minuteDayLimit(
           data.episodeRatingPerMinute,
           data.episodeRatingPerDay
+        ),
+        notificationSettings: minuteDayLimit(
+          data.notificationSettingsPerMinute,
+          data.notificationSettingsPerDay
         ),
         viewerPreferences: minuteDayLimit(
           data.viewerPreferencesPerMinute,

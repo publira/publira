@@ -33,6 +33,7 @@ export interface TenantCommunityLimits {
   contactMessagePerClient: HourDayLimit;
   duplicateCommentWindowMinutes: number;
   episodeRating: MinuteDayLimit;
+  notificationSettings: MinuteDayLimit;
   viewerPreferences: MinuteDayLimit;
 }
 
@@ -83,6 +84,7 @@ type RawCommunityLimits = Pick<
   | "contactMessagePerClient"
   | "duplicateCommentWindowMinutes"
   | "episodeRating"
+  | "notificationSettings"
   | "viewerPreferences"
 >;
 
@@ -94,6 +96,7 @@ type RawTenantCommunityLimitOverrides = Pick<
   | "contactMessagePerClient"
   | "duplicateCommentWindowMinutes"
   | "episodeRating"
+  | "notificationSettings"
   | "viewerPreferences"
 >;
 
@@ -129,6 +132,7 @@ const toCommunityLimits = (
   contactMessagePerClient: toHourDayLimit(limits?.contactMessagePerClient),
   duplicateCommentWindowMinutes: limits?.duplicateCommentWindowMinutes ?? 0,
   episodeRating: toMinuteDayLimit(limits?.episodeRating),
+  notificationSettings: toMinuteDayLimit(limits?.notificationSettings),
   viewerPreferences: toMinuteDayLimit(limits?.viewerPreferences),
 });
 
@@ -145,6 +149,9 @@ const toCommunityLimitOverrides = (
   ),
   duplicateCommentWindowMinutes: overrides?.duplicateCommentWindowMinutes,
   episodeRating: toOptionalMinuteDayLimit(overrides?.episodeRating),
+  notificationSettings: toOptionalMinuteDayLimit(
+    overrides?.notificationSettings
+  ),
   viewerPreferences: toOptionalMinuteDayLimit(overrides?.viewerPreferences),
 });
 
@@ -215,6 +222,14 @@ export const findLooserCommunityLimit = (
   ) {
     return "viewerPreferences";
   }
+  if (
+    minuteDayIsLooser(
+      overrides.notificationSettings,
+      platformDefaults.notificationSettings
+    )
+  ) {
+    return "notificationSettings";
+  }
 
   return undefined;
 };
@@ -245,6 +260,9 @@ const communityLimitName = (
     }
     case "episodeRating": {
       return t("admin.settings.policy.community.episode_rating_legend");
+    }
+    case "notificationSettings": {
+      return t("admin.settings.policy.community.notification_settings_legend");
     }
     default: {
       return t("admin.settings.policy.community.viewer_preferences_legend");
@@ -364,6 +382,7 @@ export const updateTenantCommunityLimitSettings = async (
           duplicateCommentWindowMinutes:
             input.overrides.duplicateCommentWindowMinutes,
           episodeRating: input.overrides.episodeRating,
+          notificationSettings: input.overrides.notificationSettings,
           viewerPreferences: input.overrides.viewerPreferences,
         },
         tenant: { tenantId: normalizedTenantId },

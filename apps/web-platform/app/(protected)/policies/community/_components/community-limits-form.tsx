@@ -165,6 +165,24 @@ export const CommunityLimitsForm = ({
           </Suspense>
         </PolicyLimitField>
         <PolicyLimitField
+          defaultValue={values.notificationSettings.perMinute}
+          disabled={Boolean(loadErrorMessage)}
+          name="notification_settings_per_minute"
+        >
+          <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+            <Message message="platform.policy.community.notification_settings_per_minute" />
+          </Suspense>
+        </PolicyLimitField>
+        <PolicyLimitField
+          defaultValue={values.notificationSettings.perDay}
+          disabled={Boolean(loadErrorMessage)}
+          name="notification_settings_per_day"
+        >
+          <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+            <Message message="platform.policy.community.notification_settings_per_day" />
+          </Suspense>
+        </PolicyLimitField>
+        <PolicyLimitField
           defaultValue={values.duplicateCommentWindowMinutes}
           disabled={Boolean(loadErrorMessage)}
           name="duplicate_comment_window_minutes"

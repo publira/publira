@@ -582,6 +582,82 @@ export const TenantCommunityLimitsForm = ({
               </Field>
             </PolicyOverrideValues>
           </PolicyOverrideGroup>
+
+          <PolicyOverrideGroup
+            initialUseDefault={overrides.notificationSettings === undefined}
+          >
+            <PolicyOverrideLegend>
+              <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+                <Message message="admin.settings.policy.community.notification_settings_legend" />
+              </Suspense>
+            </PolicyOverrideLegend>
+            <PolicyOverrideUseDefault>
+              <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+                <Message message="admin.settings.policy.use_platform_default" />
+              </Suspense>
+            </PolicyOverrideUseDefault>
+            <PolicyOverridePlatformValue>
+              <Suspense fallback={<SkeletonLine className="h-3 w-48" />}>
+                <Message
+                  message="admin.settings.policy.community.platform_minute_day"
+                  values={{
+                    per_day: String(
+                      platformDefaults.notificationSettings.perDay
+                    ),
+                    per_minute: String(
+                      platformDefaults.notificationSettings.perMinute
+                    ),
+                  }}
+                />
+              </Suspense>
+            </PolicyOverridePlatformValue>
+            <PolicyOverrideValues>
+              <Field>
+                <FieldLabel>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <Message message="admin.settings.policy.community.notification_settings_per_minute" />
+                  </Suspense>
+                </FieldLabel>
+                <FieldContent>
+                  <Input
+                    defaultValue={
+                      (
+                        overrides.notificationSettings ??
+                        platformDefaults.notificationSettings
+                      ).perMinute
+                    }
+                    inputMode="numeric"
+                    min={MIN_POLICY_VALUE}
+                    name="notification_settings_per_minute"
+                    step={1}
+                    type="number"
+                  />
+                </FieldContent>
+              </Field>
+              <Field>
+                <FieldLabel>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                    <Message message="admin.settings.policy.community.notification_settings_per_day" />
+                  </Suspense>
+                </FieldLabel>
+                <FieldContent>
+                  <Input
+                    defaultValue={
+                      (
+                        overrides.notificationSettings ??
+                        platformDefaults.notificationSettings
+                      ).perDay
+                    }
+                    inputMode="numeric"
+                    min={MIN_POLICY_VALUE}
+                    name="notification_settings_per_day"
+                    step={1}
+                    type="number"
+                  />
+                </FieldContent>
+              </Field>
+            </PolicyOverrideValues>
+          </PolicyOverrideGroup>
         </ActionFormFieldset>
 
         {canEdit ? null : (
