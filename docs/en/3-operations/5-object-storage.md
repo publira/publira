@@ -100,7 +100,7 @@ Issue a new key with your provider, save it with `storage set` or **Replace acce
 
 ## How images reach readers
 
-Readers' browsers and the app fetch images from `/images` on the tenant's own host names, which the edge sends to `publira server`, as [Routing](../2-deployments/4-edge.md#routing) requires. For each request the server:
+Readers' browsers and the app fetch images from `/images` on the tenant's own host names, which the edge sends to `publira server`, as [Routing](../2-deployments/4-edge/index.md#routing) requires. For each request the server:
 
 1. Checks that the reader may see the image. An episode page is shown only to a reader the episode is free for or who has unlocked it, and a page of an unpublished episode only to the tenant's staff in its console.
 2. Reads the original from the bucket, converts it to WebP or AVIF, whichever the browser accepts, and resizes it to the size the page asked for.

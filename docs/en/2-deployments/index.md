@@ -12,7 +12,8 @@ These pages are for the operator who deploys Publira. They describe what an inst
 - [Overview](./1-overview.md): the processes an install runs, the services they depend on, and the processes you can add.
 - [Installing](./2-installing.md): bringing an empty install into service, from the services it depends on to the first sign-in to the tenant console.
 - [Docker Compose](./3-docker-compose.md): running a whole install on one host with the Compose file in the repository.
-- [Edge](./4-edge.md): what the load balancer, proxy, or CDN in front of an install has to do, what to change on it when a tenant is added, and the sample proxy configurations that do it.
+- [Edge](./4-edge/index.md): what the load balancer, proxy, or CDN in front of an install has to do, and what to change on it when a tenant is added.
+  - [Sample configurations](./4-edge/1-sample-configurations.md): the sample Traefik, nginx, and Caddy configurations in the repository that do it, and how to adapt one to an install.
 - [Kubernetes](./5-kubernetes/index.md): running an install on a Kubernetes cluster, from its Secrets, Jobs, and Deployments to the first sign-in.
   - [The edge on Kubernetes](./5-kubernetes/1-edge.md): a Gateway or an Ingress in front of the Services, with cert-manager issuing the certificates.
   - [Operating on Kubernetes](./5-kubernetes/2-operating.md): adding a tenant, keeping the consoles' credentials off the tenants' domains, metrics, and upgrading.

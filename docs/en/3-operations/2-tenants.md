@@ -21,7 +21,7 @@ Decide these first, since the tenant is served on its host names from the moment
 
 Write each host name alone and in lowercase: no `https://`, no path, and no trailing `/`. Each host name belongs to one tenant, as its domain or as its console host, never both: the proxy sends a host name to one app, so a name used twice would leave one of the two unreachable. Publira refuses a domain or console host that another tenant already uses as either, the `admin.<domain>` a console is given by default included, and a console host equal to the tenant's own domain. When the `admin.<domain>` a tenant would be given is already taken, give it an admin domain of its own.
 
-Then make both host names reach the install, in the order [Adding a tenant](../2-deployments/4-edge.md#adding-a-tenant) gives: DNS, certificates, and the edge's routing. You can do this before or after creating the tenant, but its staff cannot open the console until it is done.
+Then make both host names reach the install, in the order [Adding a tenant](../2-deployments/4-edge/index.md#adding-a-tenant) gives: DNS, certificates, and the edge's routing. You can do this before or after creating the tenant, but its staff cannot open the console until it is done.
 
 ### A console host on a domain of its own
 
@@ -29,7 +29,7 @@ The console host does not have to be under the tenant's domain: a site on `examp
 
 Choose it before staff register passkeys: a passkey is bound to the console's host, so moving the console to another host later leaves the passkeys already registered unusable, as [Two-step verification](./12-security.md#tenant-staff) describes.
 
-The edge can go further and accept the console host only from your staff's IP addresses; the [sample configurations](../2-deployments/4-edge.md#the-sample-configurations) do not do this for you. That covers the console's pages. Its APIs need no such rule: the console calls them over the private network, and an edge configured as [Only the public API goes through the edge](../2-deployments/4-edge.md#only-the-public-api-goes-through-the-edge) describes forwards them on no host.
+The edge can go further and accept the console host only from your staff's IP addresses; the [sample configurations](../2-deployments/4-edge/1-sample-configurations.md) do not do this for you. That covers the console's pages. Its APIs need no such rule: the console calls them over the private network, and an edge configured as [Only the public API goes through the edge](../2-deployments/4-edge/index.md#only-the-public-api-goes-through-the-edge) describes forwards them on no host.
 
 ## Creating a tenant
 
@@ -88,7 +88,7 @@ publiractl tenant update --tenant comics.example.com --name "Example Comics Ltd.
 
 ### Moving a tenant to another host name
 
-Each web app keeps the host names it has looked up for up to five minutes, so a new domain or console host takes that long to answer everywhere, and the old one keeps answering until then. Follow the order in [Adding a tenant](../2-deployments/4-edge.md#adding-a-tenant): put the new name in DNS, the certificates, and the routing before the change, and take the old one out once the change has taken effect. A tenant with no admin domain of its own has its console on `admin.<domain>`, so moving its domain moves its console too, and both new names have to be ready.
+Each web app keeps the host names it has looked up for up to five minutes, so a new domain or console host takes that long to answer everywhere, and the old one keeps answering until then. Follow the order in [Adding a tenant](../2-deployments/4-edge/index.md#adding-a-tenant): put the new name in DNS, the certificates, and the routing before the change, and take the old one out once the change has taken effect. A tenant with no admin domain of its own has its console on `admin.<domain>`, so moving its domain moves its console too, and both new names have to be ready.
 
 Moving the domain also moves everything built on it:
 

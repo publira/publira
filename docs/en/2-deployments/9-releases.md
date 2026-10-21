@@ -21,7 +21,7 @@ A minor release may change anything an install depends on:
 - the API between the web apps and `publira server`;
 - the environment variables: one added that a process requires, one renamed, or one no longer read;
 - the database roles: a role added, or what a role may reach;
-- [what the edge has to do](./4-edge.md#what-the-edge-has-to-do), and the sample proxy configurations that do it;
+- [what the edge has to do](./4-edge/index.md#what-the-edge-has-to-do), and the sample proxy configurations that do it;
 - the processes and the services an install runs;
 - the search index, which then has to be rebuilt.
 

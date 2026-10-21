@@ -8,7 +8,7 @@ These are the changes made to an install once [Kubernetes](./index.md) has broug
 
 ## Adding a tenant
 
-A tenant created with `publiractl tenant create` or in the Platform Console needs its two host names on the edge, as [Adding a tenant](../4-edge.md#adding-a-tenant) describes. On a cluster that is:
+A tenant created with `publiractl tenant create` or in the Platform Console needs its two host names on the edge, as [Adding a tenant](../4-edge/index.md#adding-a-tenant) describes. On a cluster that is:
 
 - **With a Gateway**: two HTTPS listeners on the Gateway, one for the tenant's domain and one for its console host, each with a Secret name of its own, and each listener's name in the `parentRefs` of the HTTPRoute of its web app. cert-manager issues both certificates from the Gateway's annotation. A Gateway holds at most 64 listeners, so one Gateway serves up to 31 tenants beside its `http` listener; put the next tenants on a Gateway of their own, with HTTPRoutes of their own.
 - **With an Ingress**: the domain added to the `tls` entry and the rules of the `web-storefront` Ingress, the console host to those of `web-admin`, and both to those of `api-not-found`. The YAML anchors of [With an Ingress](./1-edge.md#with-an-ingress) (`&storefront-paths`, `&admin-paths`, `&not-found-paths`) let a new rule reuse the paths with `paths: *storefront-paths`. cert-manager issues the certificates for the new names when the `tls` entries change.
@@ -17,7 +17,7 @@ Point both names at the edge's address before you apply the change, so cert-mana
 
 ## Keeping the consoles' credentials off the tenants' domains
 
-The edge already keeps the consoles' APIs off the internet, but the `publira-server` it forwards the tenants' domains to still serves them, and holds their database logins and the web service token to do so. To take all three out of the process readers reach, a layer apart from the edge rule as [Only the public API goes through the edge](../4-edge.md#only-the-public-api-goes-through-the-edge) describes, run a second Deployment with `--role storefront`, and route the tenants' domains to it:
+The edge already keeps the consoles' APIs off the internet, but the `publira-server` it forwards the tenants' domains to still serves them, and holds their database logins and the web service token to do so. To take all three out of the process readers reach, a layer apart from the edge rule as [Only the public API goes through the edge](../4-edge/index.md#only-the-public-api-goes-through-the-edge) describes, run a second Deployment with `--role storefront`, and route the tenants' domains to it:
 
 ```yaml
 apiVersion: apps/v1

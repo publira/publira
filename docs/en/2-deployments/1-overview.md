@@ -32,7 +32,7 @@ An install on one host that will never run more than one copy of the server or t
 | An S3-compatible object store | `publira server`, `publira worker` | Every uploaded image |
 | An SMTP server | `publira worker` | Nothing; it delivers the mail the install sends, such as reader sign-up and password reset |
 
-You create the database and the bucket; Publira creates everything inside them. The edge is whatever your platform offers in front of the processes, such as a managed load balancer or a proxy you run yourself, and [Edge](./4-edge.md#what-the-edge-has-to-do) states what it has to do whichever it is. The repository's sample configurations for Traefik, nginx, and Caddy are one way of doing it.
+You create the database and the bucket; Publira creates everything inside them. The edge is whatever your platform offers in front of the processes, such as a managed load balancer or a proxy you run yourself, and [Edge](./4-edge/index.md#what-the-edge-has-to-do) states what it has to do whichever it is. The repository's sample configurations for Traefik, nginx, and Caddy are one way of doing it.
 
 ## The command you run by hand
 

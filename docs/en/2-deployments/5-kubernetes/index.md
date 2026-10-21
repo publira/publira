@@ -5,7 +5,7 @@ published: 2026-10-13
 updated: 2026-10-21
 ---
 
-This page takes an install from an empty namespace on a Kubernetes cluster to the first sign-in to the tenant console. It runs the same steps as [Installing](../2-installing.md), which explains why each step exists, what every secret protects, and what each database role can reach, and it puts the edge in front the way [Edge](../4-edge.md#what-the-edge-has-to-do) requires. This page covers what is particular to a cluster: which resources each part becomes, and how each requirement of those two pages is met with them.
+This page takes an install from an empty namespace on a Kubernetes cluster to the first sign-in to the tenant console. It runs the same steps as [Installing](../2-installing.md), which explains why each step exists, what every secret protects, and what each database role can reach, and it puts the edge in front the way [Edge](../4-edge/index.md#what-the-edge-has-to-do) requires. This page covers what is particular to a cluster: which resources each part becomes, and how each requirement of those two pages is met with them.
 
 The manifests below are illustrations to adapt, not a maintained set: the repository ships no Helm chart, Kustomize base, or Operator. They name the published images, `ghcr.io/publira/<name>:<tag>`; write the version of the release you install in place of `<tag>`, as [Before you start](../2-installing.md#before-you-start) describes.
 
@@ -508,4 +508,4 @@ Open the tenant console at `https://admin.comics.example.com`, or the console ho
 
 ## Next steps
 
-[Edge](../4-edge.md) is the full statement of what the Gateway or the Ingress has to do, and [Monitoring](../../3-operations/11-monitoring.md) of what to watch once the install is serving. The variables each process reads are in the [deployment reference](https://github.com/publira/publira/blob/main/infra/deploy/README.md), and the optional processes are turned on as [Turning on the optional processes](../2-installing.md#turning-on-the-optional-processes) describes, each as a Deployment and a Service like the ones above.
+[Edge](../4-edge/index.md) is the full statement of what the Gateway or the Ingress has to do, and [Monitoring](../../3-operations/11-monitoring.md) of what to watch once the install is serving. The variables each process reads are in the [deployment reference](https://github.com/publira/publira/blob/main/infra/deploy/README.md), and the optional processes are turned on as [Turning on the optional processes](../2-installing.md#turning-on-the-optional-processes) describes, each as a Deployment and a Service like the ones above.

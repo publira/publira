@@ -215,7 +215,7 @@ Use this only for trying the install: nothing it sends between your browser and 
 
 If a CDN or a load balancer of your platform terminates TLS for the install instead, leave `PUBLIRA_EDGE_ACME_EMAIL` empty and have it forward to the proxy's port 80, keeping the `Host` header the browser sent: the proxy picks the tenant site, the tenant console, or the Platform Console from it, and Publira picks the tenant from it. A hop that reaches the proxy over HTTPS instead can leave it set, as long as the certificate authority still reaches the proxy on port 80 or 443 at each host name.
 
-The proxy then records every request with the hop's address, so the audit log shows one address for everyone, and the limits Publira keeps per client address are shared by every reader. To record the reader's address instead, have the hop set `X-Forwarded-For`, `X-Forwarded-Host`, and `X-Forwarded-Proto` itself, and set `PUBLIRA_EDGE_TRUSTED_PROXIES` in `.env` to the addresses or CIDR ranges it connects from, which its provider publishes, separated by spaces. Then run `docker compose up -d proxy` to recreate the proxy with them. [A hop in front of the proxy](./4-edge.md#a-hop-in-front-of-the-proxy) explains what trusting the hop means.
+The proxy then records every request with the hop's address, so the audit log shows one address for everyone, and the limits Publira keeps per client address are shared by every reader. To record the reader's address instead, have the hop set `X-Forwarded-For`, `X-Forwarded-Host`, and `X-Forwarded-Proto` itself, and set `PUBLIRA_EDGE_TRUSTED_PROXIES` in `.env` to the addresses or CIDR ranges it connects from, which its provider publishes, separated by spaces. Then run `docker compose up -d proxy` to recreate the proxy with them. [A hop in front of the proxy](./4-edge/1-sample-configurations.md#a-hop-in-front-of-the-proxy) explains what trusting the hop means.
 
 ## What one host does not give you
 
@@ -229,7 +229,7 @@ When the install outgrows one host, the same processes run against a managed Pos
 
 ## Next steps
 
-When you add a tenant, add its domain and its console host to the host lists in `.env`, and run `docker compose up -d proxy`: the proxy routes the two names and, with `PUBLIRA_EDGE_ACME_EMAIL` set, obtains their certificates. [Adding a tenant](./4-edge.md#adding-a-tenant) lists the order, DNS first.
+When you add a tenant, add its domain and its console host to the host lists in `.env`, and run `docker compose up -d proxy`: the proxy routes the two names and, with `PUBLIRA_EDGE_ACME_EMAIL` set, obtains their certificates. [Adding a tenant](./4-edge/index.md#adding-a-tenant) lists the order, DNS first.
 
 On every later release, [Upgrading](./7-upgrading.md#on-the-docker-compose-install) takes the install to it: downloading the release, the backup, the migrations, and restarting on the new images.
 
