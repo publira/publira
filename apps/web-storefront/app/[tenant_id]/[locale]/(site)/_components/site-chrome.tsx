@@ -19,9 +19,6 @@ import {
   SiteLayoutMobileNavigation,
   SiteLayoutMobileNavigationActions,
   SiteLayoutMobileNavigationCloseButton,
-  SiteLayoutMobileNavigationDisclosure,
-  SiteLayoutMobileNavigationDisclosurePanel,
-  SiteLayoutMobileNavigationDisclosureTrigger,
   SiteLayoutMobileNavigationHeader,
   SiteLayoutMobileNavigationLink,
   SiteLayoutMobileNavigationLinks,
@@ -56,8 +53,8 @@ import {
 } from "#components/catalog-search-form";
 import {
   LocaleSwitcher,
-  LocaleSwitcherLinks,
-  LocaleSwitcherLinksSkeleton,
+  LocaleSwitcherDisclosure,
+  LocaleSwitcherDisclosureSkeleton,
   LocaleSwitcherSkeleton,
 } from "#components/locale-switcher";
 import { Message } from "#components/message";
@@ -531,8 +528,9 @@ const MobileNavigationLinks = async () => {
  *
  * The drawer itself is structure and resolves nothing: its rows, its field, and
  * its buttons are drawn from the start, and only the strings inside them, the
- * hrefs that need the tenant's stored default, and the one answer that needs a
- * cookie arrive behind boundaries of their own.
+ * hrefs that need the tenant's stored default, the language row a tenant that
+ * offers one locale does without, and the one answer that needs a cookie arrive
+ * behind boundaries of their own.
  */
 const SiteMobileNavigation = () => (
   <>
@@ -559,18 +557,9 @@ const SiteMobileNavigation = () => (
       <Suspense fallback={<MobileNavigationLinksSkeleton />}>
         <MobileNavigationLinks />
       </Suspense>
-      <SiteLayoutMobileNavigationDisclosure>
-        <SiteLayoutMobileNavigationDisclosureTrigger>
-          <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-            <Message message="storefront.nav.locale_switcher" />
-          </Suspense>
-        </SiteLayoutMobileNavigationDisclosureTrigger>
-        <SiteLayoutMobileNavigationDisclosurePanel>
-          <Suspense fallback={<LocaleSwitcherLinksSkeleton />}>
-            <LocaleSwitcherLinks />
-          </Suspense>
-        </SiteLayoutMobileNavigationDisclosurePanel>
-      </SiteLayoutMobileNavigationDisclosure>
+      <Suspense fallback={<LocaleSwitcherDisclosureSkeleton />}>
+        <LocaleSwitcherDisclosure />
+      </Suspense>
       <Suspense fallback={<MobileNavigationAccountActionsSkeleton />}>
         <MobileNavigationAccountActions />
       </Suspense>

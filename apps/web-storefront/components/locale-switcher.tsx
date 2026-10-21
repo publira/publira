@@ -1,22 +1,27 @@
 "use client";
 
-import { getLocaleLabel, getLocales } from "@publira/i18n";
+import { getLocaleLabel } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { LanguageIcon } from "@publira/icons/language-icon";
-import { SiteLayoutMobileNavigationLink } from "@publira/layouts";
+import {
+  SiteLayoutMobileNavigationDisclosure,
+  SiteLayoutMobileNavigationDisclosurePanel,
+  SiteLayoutMobileNavigationDisclosureTrigger,
+  SiteLayoutMobileNavigationLink,
+} from "@publira/layouts";
 import {
   Popover,
   PopoverContent,
   PopoverTitle,
   PopoverTrigger,
 } from "@publira/ui-components/popover";
-import { Skeleton } from "@publira/ui-components/skeleton";
+import { SkeletonLine } from "@publira/ui-components/skeleton";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { toBarePathname, withLocalePrefix } from "#lib/locale-path";
 
-import { useClientMessages } from "./client-message";
+import { ClientMessage, useClientMessages } from "./client-message";
 import {
   useLocale,
   useTenantDefaultLocale,
@@ -42,12 +47,19 @@ import {
  * shell stays static.
  *
  * It lists the locales the tenant offers, the ones `proxy.ts` serves under a
- * prefix. The language names come from `getLocaleLabel`, the same registry the
- * cookie consoles read. They are autonyms — a language is offered in its own
- * language — so they are identical in both directions and belong to the
- * registry rather than to a per-locale catalog.
+ * prefix, and renders nothing for a tenant that offers one: a list holding only
+ * the page being read switches to nothing, and the button alone would promise
+ * languages the site does not have. The language names come from
+ * `getLocaleLabel`, the same registry the cookie consoles read. They are
+ * autonyms — a language is offered in its own language — so they are identical
+ * in both directions and belong to the registry rather than to a per-locale
+ * catalog.
  */
-/** Same footprint as the rendered control, so the header does not shift. */
+/**
+ * Same footprint as the rendered control, so the header does not shift. The
+ * shell is shared by every tenant, so a tenant that offers one locale sees this
+ * give way to nothing.
+ */
 export const LocaleSwitcherSkeleton = () => (
   <div
     aria-hidden="true"
@@ -58,10 +70,15 @@ export const LocaleSwitcherSkeleton = () => (
 /**
  * The locales the switcher lists. While the tenant read is unavailable it is
  * the one being read: `proxy.ts` served it, so the tenant offers it, and no
- * other locale is known to be one the tenant has not switched off.
+ * other locale is known to be one the tenant has not switched off. That one
+ * entry hides the switcher too, and the proxy keeps serving whichever locale
+ * the URL names.
  */
 const useSwitchableLocales = (currentLocale: Locale): readonly Locale[] =>
   useTenantSupportedLocales() ?? [currentLocale];
+
+/** Whether the locales leave a reader anything to switch to. */
+const offersChoice = (locales: readonly Locale[]) => locales.length > 1;
 
 export const LocaleSwitcher = () => {
   const currentLocale = useLocale();
@@ -72,6 +89,10 @@ export const LocaleSwitcher = () => {
   const barePathname = toBarePathname(pathname);
 
   const label = t("storefront.nav.locale_switcher");
+
+  if (!offersChoice(locales)) {
+    return null;
+  }
 
   return (
     <Popover>
@@ -112,33 +133,14 @@ export const LocaleSwitcher = () => {
   );
 };
 
-/**
- * Stands in for the rendered list while the copy arrives. The shell is shared
- * by every tenant, so it cannot know how many locales a tenant offers; it draws
- * one row per registry entry, the most the list can draw, so a locale added to
- * the registry cannot leave the panel too short for it.
- */
-export const LocaleSwitcherLinksSkeleton = () => (
-  <div aria-hidden="true" className="grid gap-1">
-    {getLocales().map((locale) => (
-      <Skeleton className="h-9 rounded-control" key={locale} />
-    ))}
-  </div>
-);
-
-/**
- * The same choice {@link LocaleSwitcher} offers, laid out as rows.
- *
- * The drawer the phone header opens is already a panel, so the popover the
- * band uses would be a second one inside it. The options collapse into the
- * drawer instead, behind the one row
- * `SiteLayoutMobileNavigationDisclosureTrigger` draws, and each closes the
- * drawer on the way to the other language.
- */
-export const LocaleSwitcherLinks = () => {
-  const currentLocale = useLocale();
+const LocaleSwitcherLinks = ({
+  currentLocale,
+  locales,
+}: {
+  currentLocale: Locale;
+  locales: readonly Locale[];
+}) => {
   const defaultLocale = useTenantDefaultLocale();
-  const locales = useSwitchableLocales(currentLocale);
   const pathname = usePathname();
   const barePathname = toBarePathname(pathname);
 
@@ -153,4 +155,46 @@ export const LocaleSwitcherLinks = () => {
       {getLocaleLabel(locale)}
     </SiteLayoutMobileNavigationLink>
   ));
+};
+
+/**
+ * Stands in for the row {@link LocaleSwitcherDisclosure} draws, at the height
+ * of its trigger, while the tenant read is pending: the shell cannot know
+ * whether the tenant offers more than one locale. It is not a button, so
+ * nothing reaches a control that has no name yet and may never appear.
+ */
+export const LocaleSwitcherDisclosureSkeleton = () => (
+  <div aria-hidden="true" className="px-3 py-2 text-sm pointer-coarse:py-3">
+    <SkeletonLine className="h-4 w-16" />
+  </div>
+);
+
+/**
+ * The same choice {@link LocaleSwitcher} offers, laid out as rows.
+ *
+ * The drawer the phone header opens is already a panel, so the popover the
+ * band uses would be a second one inside it. The options collapse into the
+ * drawer instead, behind the one row
+ * `SiteLayoutMobileNavigationDisclosureTrigger` draws, and each closes the
+ * drawer on the way to the other language. The row goes with the options: a
+ * tenant that offers one locale gets neither, as the band gets no button.
+ */
+export const LocaleSwitcherDisclosure = () => {
+  const currentLocale = useLocale();
+  const locales = useSwitchableLocales(currentLocale);
+
+  if (!offersChoice(locales)) {
+    return null;
+  }
+
+  return (
+    <SiteLayoutMobileNavigationDisclosure>
+      <SiteLayoutMobileNavigationDisclosureTrigger>
+        <ClientMessage message="storefront.nav.locale_switcher" />
+      </SiteLayoutMobileNavigationDisclosureTrigger>
+      <SiteLayoutMobileNavigationDisclosurePanel>
+        <LocaleSwitcherLinks currentLocale={currentLocale} locales={locales} />
+      </SiteLayoutMobileNavigationDisclosurePanel>
+    </SiteLayoutMobileNavigationDisclosure>
+  );
 };
