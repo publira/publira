@@ -43,7 +43,7 @@ The web apps may share one session key, but give each its own, as the Compose fi
 
 `publiractl` never takes a secret as an argument. Give it one as a file, with the secret's `--<name>-file` flag, wherever the platform can mount secrets as files, as Kubernetes and Docker do under `/run/secrets/`. A file can be made readable by the one user `publiractl` runs as, and kept on a tmpfs. A value in an environment variable is inherited by every process started from the one that holds it, and can be read from `/proc/<pid>/environ`, from `docker inspect` or the orchestrator's description of the task, and from a crash report or debug dump that records the environment.
 
-Use the secret's `--<name>-env` flag only on a platform that sets secrets as environment variables alone, such as [Amazon ECS](../2-deployments/6-ecs-fargate.md).
+Use the secret's `--<name>-env` flag only on a platform that sets secrets as environment variables alone, such as [Amazon ECS](../2-deployments/6-ecs-fargate/index.md).
 
 ### One set of secrets per install
 
