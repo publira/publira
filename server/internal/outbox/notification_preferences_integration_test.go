@@ -306,23 +306,7 @@ func TestNotificationPreferencesKeepCommentsAndAnnouncementsOutOfTheInbox(t *tes
 		AnnouncementsInboxEnabled: sql.NullBool{Bool: false, Valid: true},
 	})
 
-	announcementID := uuid.Must(uuid.NewV7())
-	if _, err := f.pg.DB.ExecContext(ctx, `
-		INSERT INTO announcements (id, tenant_id, announcement_type) VALUES ($1, $2, 'announcement')
-	`, announcementID, f.tenant.ID); err != nil {
-		t.Fatalf("insert announcement: %v", err)
-	}
-	if _, err := f.pg.DB.ExecContext(ctx, `
-		INSERT INTO announcement_translations (id, announcement_id, tenant_id, locale, title, body)
-		SELECT uuidv7(), $1, $2, default_locale, 'Maintenance tonight', 'The site closes at 2:00.'
-		FROM tenants WHERE id = $2
-	`, announcementID, f.tenant.ID); err != nil {
-		t.Fatalf("insert announcement translation: %v", err)
-	}
-	announce := NewAnnouncementNotificationHandler(AnnouncementNotificationHandlerConfig{DB: outboxDB})
-	if err := announce(ctx, announcementEvent(t, f.tenant.ID, announcementID)); err != nil {
-		t.Fatalf("announcement handler: %v", err)
-	}
+	f.announce(t, ctx, outboxDB, AnnouncementDeliveryPreferred)
 
 	approve := NewCommentApprovedNotificationHandler(CommentApprovedNotificationHandlerConfig{DB: outboxDB})
 	for _, reader := range []testutil.TenantUser{muted, listening} {
@@ -363,4 +347,65 @@ func TestNotificationPreferencesKeepCommentsAndAnnouncementsOutOfTheInbox(t *tes
 			t.Fatalf("inbox of %s = %v (unread %d), want %d", tc.reader.PublicID, listed, unread, tc.want)
 		}
 	}
+}
+
+// An announcement posted for everyone is listed in the inbox of a reader whose
+// announcements cell is off, beside one whose cell is on, while a preferred one
+// posted to the same readers reaches only the second.
+func TestNotificationPreferencesListAnAnnouncementForEveryoneWhateverTheCell(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	f := newNotificationPreferencesFixture(t, "NPEV")
+	outboxDB := f.pg.OpenOutboxDB(t)
+
+	muted := f.pg.SeedEndUser(t, f.tenant.ID, "NPEVERYONE01", "muted@npeveryone.example.com", "Muted")
+	listening := f.pg.SeedEndUser(t, f.tenant.ID, "NPEVERYONE02", "listening@npeveryone.example.com", "Listening")
+	f.savePreferences(t, ctx, muted.ID, dbmodels.UpsertUserNotificationSettingsParams{
+		AnnouncementsInboxEnabled: sql.NullBool{Bool: false, Valid: true},
+	})
+
+	everyone := f.announce(t, ctx, outboxDB, AnnouncementDeliveryEveryone)
+	preferred := f.announce(t, ctx, outboxDB, AnnouncementDeliveryPreferred)
+
+	for _, tc := range []struct {
+		reader testutil.TenantUser
+		want   []uuid.UUID
+	}{
+		{reader: muted, want: []uuid.UUID{everyone}},
+		{reader: listening, want: []uuid.UUID{everyone, preferred}},
+	} {
+		listed, unread := f.inbox(t, ctx, tc.reader.ID)
+		if len(listed) != len(tc.want) || unread != int32(len(tc.want)) {
+			t.Fatalf("inbox of %s = %v (unread %d), want %d", tc.reader.PublicID, listed, unread, len(tc.want))
+		}
+		for _, announcementID := range tc.want {
+			if !listed[AnnouncementSubjectKey(announcementID)] {
+				t.Fatalf("inbox of %s = %v, want %s among them", tc.reader.PublicID, listed, AnnouncementSubjectKey(announcementID))
+			}
+		}
+	}
+}
+
+// announce posts an announcement with the given delivery and runs its fan-out.
+func (f notificationPreferencesFixture) announce(t *testing.T, ctx context.Context, outboxDB *sql.DB, delivery string) uuid.UUID {
+	t.Helper()
+
+	announcementID := uuid.Must(uuid.NewV7())
+	if _, err := f.pg.DB.ExecContext(ctx, `
+		INSERT INTO announcements (id, tenant_id, announcement_type, delivery) VALUES ($1, $2, 'announcement', $3)
+	`, announcementID, f.tenant.ID, delivery); err != nil {
+		t.Fatalf("insert announcement: %v", err)
+	}
+	if _, err := f.pg.DB.ExecContext(ctx, `
+		INSERT INTO announcement_translations (id, announcement_id, tenant_id, locale, title, body)
+		SELECT uuidv7(), $1, $2, default_locale, 'Maintenance tonight', 'The site closes at 2:00.'
+		FROM tenants WHERE id = $2
+	`, announcementID, f.tenant.ID); err != nil {
+		t.Fatalf("insert announcement translation: %v", err)
+	}
+	handler := NewAnnouncementNotificationHandler(AnnouncementNotificationHandlerConfig{DB: outboxDB})
+	if err := handler(ctx, announcementEvent(t, f.tenant.ID, announcementID)); err != nil {
+		t.Fatalf("announcement handler: %v", err)
+	}
+	return announcementID
 }

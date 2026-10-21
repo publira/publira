@@ -447,6 +447,12 @@
         "failure": "Failure",
         "success": "Success",
         "unknown": "Unknown"
+      },
+      "reasons": {
+        "announcement_delivery": {
+          "preferred": "Notified as each reader's settings allow",
+          "everyone": "Notified to every reader"
+        }
       }
     },
     "announcements": {

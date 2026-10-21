@@ -9,6 +9,7 @@ import { Suspense } from "react";
 
 import { Message } from "#components/message";
 import { getMessagesFor } from "#lib/messages";
+import type { AdminMessageAccessor } from "#lib/messages";
 import { getTenantRoleLabel } from "#lib/role-labels";
 
 /** An action on series or episodes. */
@@ -805,6 +806,44 @@ interface AuditLogOutcomeCellProps {
   outcome: AuditOutcome;
 }
 
+// Who the posted announcement's notification was for.
+const announcementDeliveryLabel = (reason: string, t: AdminMessageAccessor) => {
+  switch (reason) {
+    case "delivery=preferred": {
+      return t("admin.audit.reasons.announcement_delivery.preferred");
+    }
+    case "delivery=everyone": {
+      return t("admin.audit.reasons.announcement_delivery.everyone");
+    }
+    default: {
+      return reason;
+    }
+  }
+};
+
+/**
+ * The reason of an entry as the console shows it: the words for a value the
+ * server records in a fixed form, and the reason as written otherwise.
+ */
+const auditReasonLabel = (
+  action: string,
+  reason: string,
+  locale: Locale,
+  t: AdminMessageAccessor
+) => {
+  switch (action) {
+    case "tenant_smtp_test_email_sent": {
+      return smtpTestFailureMessage(reason, locale) ?? reason;
+    }
+    case "announcement_created": {
+      return announcementDeliveryLabel(reason, t);
+    }
+    default: {
+      return reason;
+    }
+  }
+};
+
 export const AuditLogDateCell = ({
   createdAt,
   locale,
@@ -845,10 +884,7 @@ export const AuditLogActionCell = async ({
 }: AuditLogActionCellProps) => {
   const t = await getMessagesFor(locale);
   const targetName = targetTypeName(targetType);
-  const reasonLabel =
-    action === "tenant_smtp_test_email_sent"
-      ? (smtpTestFailureMessage(reason, locale) ?? reason)
-      : reason;
+  const reasonLabel = auditReasonLabel(action, reason, locale, t);
 
   return (
     <TableCell>

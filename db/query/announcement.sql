@@ -6,9 +6,10 @@ INSERT INTO announcements (
     link_url,
     metadata,
     pinned,
-    pinned_until
+    pinned_until,
+    delivery
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
 -- name: CreateAnnouncementTranslation :one
@@ -40,6 +41,14 @@ FROM announcement_translations
 WHERE tenant_id = sqlc.arg('tenant_id')
     AND announcement_id = sqlc.arg('announcement_id')
 ORDER BY locale;
+
+-- name: GetAnnouncementDelivery :one
+-- Worker fan-out: whether the announcement answers to its readers'
+-- announcements cell ('preferred') or reaches every one of them ('everyone').
+SELECT delivery
+FROM announcements
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND id = sqlc.arg('announcement_id');
 
 -- name: ListAnnouncementRecipients :many
 -- Worker fan-out: everyone an announcement addressed to the whole tenant
@@ -80,7 +89,8 @@ SELECT
     n.metadata,
     n.created_at,
     n.pinned,
-    n.pinned_until
+    n.pinned_until,
+    n.delivery
 FROM announcements n
     CROSS JOIN LATERAL announcement_translation_for(n.id, '') tr
 WHERE n.tenant_id = sqlc.arg('tenant_id')
@@ -109,7 +119,8 @@ SELECT
     n.metadata,
     n.created_at,
     n.pinned,
-    n.pinned_until
+    n.pinned_until,
+    n.delivery
 FROM announcements n
     CROSS JOIN LATERAL announcement_translation_for(n.id, '') tr
 WHERE n.tenant_id = sqlc.arg('tenant_id')

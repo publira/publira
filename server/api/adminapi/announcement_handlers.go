@@ -57,6 +57,34 @@ func parsePinnedUntil(raw string, now time.Time) (sql.NullTime, error) {
 	return sql.NullTime{Time: parsed, Valid: true}, nil
 }
 
+// announcementDeliveryFromProto reads the delivery CreateAnnouncement was asked
+// for. Unspecified is the preferred delivery, so a console that predates the
+// field posts what it always posted.
+func announcementDeliveryFromProto(delivery publiraadminv1.AnnouncementDelivery) (string, error) {
+	switch delivery {
+	case publiraadminv1.AnnouncementDelivery_ANNOUNCEMENT_DELIVERY_UNSPECIFIED,
+		publiraadminv1.AnnouncementDelivery_ANNOUNCEMENT_DELIVERY_PREFERRED:
+		return outbox.AnnouncementDeliveryPreferred, nil
+	case publiraadminv1.AnnouncementDelivery_ANNOUNCEMENT_DELIVERY_EVERYONE:
+		return outbox.AnnouncementDeliveryEveryone, nil
+	default:
+		return "", errors.New("delivery is not a known announcement delivery")
+	}
+}
+
+func announcementDeliveryToProto(delivery string) publiraadminv1.AnnouncementDelivery {
+	if delivery == outbox.AnnouncementDeliveryEveryone {
+		return publiraadminv1.AnnouncementDelivery_ANNOUNCEMENT_DELIVERY_EVERYONE
+	}
+	return publiraadminv1.AnnouncementDelivery_ANNOUNCEMENT_DELIVERY_PREFERRED
+}
+
+// announcementCreatedReason is the audit reason of a post, which says who its
+// notification was for.
+func announcementCreatedReason(delivery string) string {
+	return "delivery=" + delivery
+}
+
 // mapAdminAnnouncement answers one announcement as the console lists it: the
 // title and body of its translation in the tenant default locale, beside every
 // translation it has.
@@ -78,6 +106,7 @@ func mapAdminAnnouncement(row dbmodels.ListAnnouncementsForTenantDescRow, transl
 		Pinned:       row.Pinned,
 		PinnedUntil:  formatPinnedUntil(row.PinnedUntil),
 		Translations: items,
+		Delivery:     announcementDeliveryToProto(row.Delivery),
 	}
 }
 
@@ -248,6 +277,11 @@ func (s *adminServer) CreateAnnouncement(
 		return nil, connect.NewError(connect.CodeInvalidArgument, "link_url must start with / or http(s)://")
 	}
 
+	delivery, err := announcementDeliveryFromProto(req.Delivery)
+	if err != nil {
+		return nil, rpcerrors.NewFieldViolationError(connect.CodeInvalidArgument, err, "delivery")
+	}
+
 	pinned := req.Pinned
 	pinnedUntil := sql.NullTime{}
 	if pinned {
@@ -262,6 +296,7 @@ func (s *adminServer) CreateAnnouncement(
 		linkURL:      linkURL,
 		pinned:       pinned,
 		pinnedUntil:  pinnedUntil,
+		delivery:     delivery,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to create announcement", err, "tenant_id", tenant.ID.String())
@@ -276,6 +311,7 @@ func (s *adminServer) CreateAnnouncement(
 		TargetType:  "announcement",
 		TargetID:    created.Id,
 		Outcome:     auditlog.OutcomeSuccess,
+		Reason:      announcementCreatedReason(delivery),
 		ClientIP:    clientip.FromContext(ctx),
 	})
 
@@ -333,6 +369,7 @@ type announcementContent struct {
 	linkURL      string
 	pinned       bool
 	pinnedUntil  sql.NullTime
+	delivery     string
 }
 
 // storeAnnouncement writes the announcement row and its translations and, in
@@ -375,6 +412,7 @@ func (s *adminServer) storeAnnouncement(
 		CreatedAt:        row.CreatedAt,
 		Pinned:           row.Pinned,
 		PinnedUntil:      row.PinnedUntil,
+		Delivery:         row.Delivery,
 	}
 	for _, translation := range translations {
 		if translation.Locale == tenant.DefaultLocale {
@@ -405,6 +443,7 @@ func createAnnouncementRow(
 		Metadata:         json.RawMessage("{}"),
 		Pinned:           content.pinned,
 		PinnedUntil:      content.pinnedUntil,
+		Delivery:         content.delivery,
 	})
 	if err != nil {
 		return dbmodels.Announcement{}, nil, err

@@ -18,6 +18,9 @@ const (
 	NotificationCategoryComments NotificationCategory = "comments"
 	// NotificationCategoryAnnouncements is an announcement the tenant posted.
 	NotificationCategoryAnnouncements NotificationCategory = "announcements"
+	// NotificationCategoryEveryone is an announcement the tenant addressed to
+	// every reader. No preference governs it.
+	NotificationCategoryEveryone NotificationCategory = "everyone"
 	// NotificationCategoryStaff is a row addressed to the tenant's staff for
 	// being staff. No preference governs it.
 	NotificationCategoryStaff NotificationCategory = "staff"
@@ -27,7 +30,9 @@ const (
 // under, the categories it may take, the first being the one it takes unless
 // its writer knows better. An episode_published row has three: the follow
 // that earned it decides between the first two, the more direct one first,
-// and the copy the tenant's staff get for every publication is theirs.
+// and the copy the tenant's staff get for every publication is theirs. An
+// announcement_posted row is the reader's preference unless the announcement
+// was posted for everyone.
 //
 // TestEveryNotificationTypeHasACategory fails on a NotificationType constant
 // this table does not name.
@@ -37,9 +42,12 @@ var notificationCategories = map[string][]NotificationCategory{
 		NotificationCategoryFollowedCreators,
 		NotificationCategoryStaff,
 	},
-	NotificationTypeEpisodePublishFailed:    {NotificationCategoryStaff},
-	NotificationTypeCommentApproved:         {NotificationCategoryComments},
-	NotificationTypeAnnouncementPosted:      {NotificationCategoryAnnouncements},
+	NotificationTypeEpisodePublishFailed: {NotificationCategoryStaff},
+	NotificationTypeCommentApproved:      {NotificationCategoryComments},
+	NotificationTypeAnnouncementPosted: {
+		NotificationCategoryAnnouncements,
+		NotificationCategoryEveryone,
+	},
 	NotificationTypeCommentAwaitingApproval: {NotificationCategoryStaff},
 	NotificationTypeCommentReported:         {NotificationCategoryStaff},
 }

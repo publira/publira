@@ -15,7 +15,9 @@ import (
 )
 
 // EventTypeAnnouncementNotification puts an announcement the console posted in
-// front of every user of the tenant, as a row in their notification inbox.
+// front of every user of the tenant, as a row in their notification inbox:
+// listed for those whose announcements cell is on, or for all of them when the
+// announcement was posted for everyone.
 //
 // It is drained here rather than written by CreateAnnouncement itself. The
 // fan-out is a query and an insert per person while an operator waits for the
@@ -31,6 +33,16 @@ const EventTypeAnnouncementNotification = "announcement_notification"
 // the tenant talking to its whole readership at a time of the operator's
 // choosing, which is not what a lock screen is for.
 const NotificationTypeAnnouncementPosted = "announcement_posted"
+
+// AnnouncementDeliveryPreferred and AnnouncementDeliveryEveryone are the
+// announcements.delivery values. A preferred announcement answers to each
+// reader's announcements cell; one for everyone reaches every reader whatever
+// that cell says, for the notice a reader must not miss on a channel that
+// otherwise carries campaign news.
+const (
+	AnnouncementDeliveryPreferred = "preferred"
+	AnnouncementDeliveryEveryone  = "everyone"
+)
 
 // announcementRecipientPageSize bounds one recipient query, for the reason
 // DefaultEpisodeFollowerPageSize does: the handler walks the tenant's users a
@@ -77,9 +89,10 @@ type AnnouncementNotificationHandlerConfig struct {
 	Logger *slog.Logger
 }
 
-// announcementNotificationQuerier is the statement pair the handler runs, named
-// so a test can drive the fan-out without a database behind it.
+// announcementNotificationQuerier is the statements the handler runs, named so
+// a test can drive the fan-out without a database behind it.
 type announcementNotificationQuerier interface {
+	GetAnnouncementDelivery(ctx context.Context, arg dbmodels.GetAnnouncementDeliveryParams) (string, error)
 	ListAnnouncementRecipients(ctx context.Context, arg dbmodels.ListAnnouncementRecipientsParams) ([]dbmodels.ListAnnouncementRecipientsRow, error)
 	CreateNotification(ctx context.Context, arg dbmodels.CreateNotificationParams) error
 }
@@ -115,7 +128,21 @@ func announcementNotificationHandler(
 		if err != nil {
 			return Permanent(fmt.Errorf("announcement notification payload announcement_id is invalid: %w", err))
 		}
-		category, err := NotificationCategoryFor(NotificationTypeAnnouncementPosted)
+		delivery, err := queries.GetAnnouncementDelivery(ctx, dbmodels.GetAnnouncementDeliveryParams{
+			TenantID:       tenantID,
+			AnnouncementID: announcementID,
+		})
+		if errors.Is(err, sql.ErrNoRows) {
+			// An announcement that is not there has nobody to be told about
+			// it, and a retry would find the same nothing.
+			logAnnouncement(ctx, cfg.Logger, "announcement to notify about is gone", event,
+				"announcement_id", announcementID.String())
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("get announcement delivery: %w", err)
+		}
+		category, err := announcementCategory(delivery)
 		if err != nil {
 			return Permanent(err)
 		}
@@ -182,6 +209,21 @@ func announcementNotificationHandler(
 				"announcement_id", announcementID.String())
 		}
 		return nil
+	}
+}
+
+// announcementCategory files an announcement's rows by its delivery. One for
+// everyone is filed under a category no preference governs, so its row is
+// listed in every inbox, and a channel the type is later admitted to lets it
+// through the same way without a rule of its own.
+func announcementCategory(delivery string) (string, error) {
+	switch delivery {
+	case AnnouncementDeliveryPreferred:
+		return NotificationCategoryFor(NotificationTypeAnnouncementPosted)
+	case AnnouncementDeliveryEveryone:
+		return NotificationCategoryFor(NotificationTypeAnnouncementPosted, NotificationCategoryEveryone)
+	default:
+		return "", fmt.Errorf("announcement delivery %q is not one the fan-out knows", delivery)
 	}
 }
 

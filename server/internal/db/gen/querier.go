@@ -317,12 +317,12 @@ type Querier interface {
 	// category is which of the recipient's notification preferences the row
 	// answers to, and the row is listed in their inbox unless that preference's
 	// inbox cell is off; a recipient who saved nothing holds every cell on, and
-	// the staff category has no cell. The cell is read here rather than passed in,
-	// so no writer can file a row past it. Reading it needs a connection that sees
-	// the recipient's settings, which the worker's do: the settings are isolated
-	// to the reader they belong to, so a tenant-scoped API connection reads no row
-	// and would list every notification it filed, which is why the
-	// reader-facing types are filed by the worker.
+	// the staff and everyone categories have no cell. The cell is read here
+	// rather than passed in, so no writer can file a row past it. Reading it needs
+	// a connection that sees the recipient's settings, which the worker's do: the
+	// settings are isolated to the reader they belong to, so a tenant-scoped API
+	// connection reads no row and would list every notification it filed, which
+	// is why the reader-facing types are filed by the worker.
 	CreateNotification(ctx context.Context, arg CreateNotificationParams) error
 	// The caller creates the page's default-locale translation in the same
 	// transaction, so no page is ever stored without one.
@@ -586,6 +586,9 @@ type Querier interface {
 	// Return the first tenant that matches admin_domain, or the admin.{domain}
 	// fallback, keeping the order of the candidate host names.
 	GetAdminTenantByDomains(ctx context.Context, domains []string) (Tenant, error)
+	// Worker fan-out: whether the announcement answers to its readers'
+	// announcements cell ('preferred') or reaches every one of them ('everyone').
+	GetAnnouncementDelivery(ctx context.Context, arg GetAnnouncementDeliveryParams) (string, error)
 	// Returns the announcement with the caller's read state, in its translation
 	// for the locale asked for. A row owned by another tenant comes back as no
 	// rows, so its existence is not disclosed.

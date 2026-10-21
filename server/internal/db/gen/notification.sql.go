@@ -123,12 +123,12 @@ type CreateNotificationParams struct {
 // category is which of the recipient's notification preferences the row
 // answers to, and the row is listed in their inbox unless that preference's
 // inbox cell is off; a recipient who saved nothing holds every cell on, and
-// the staff category has no cell. The cell is read here rather than passed in,
-// so no writer can file a row past it. Reading it needs a connection that sees
-// the recipient's settings, which the worker's do: the settings are isolated
-// to the reader they belong to, so a tenant-scoped API connection reads no row
-// and would list every notification it filed, which is why the
-// reader-facing types are filed by the worker.
+// the staff and everyone categories have no cell. The cell is read here
+// rather than passed in, so no writer can file a row past it. Reading it needs
+// a connection that sees the recipient's settings, which the worker's do: the
+// settings are isolated to the reader they belong to, so a tenant-scoped API
+// connection reads no row and would list every notification it filed, which
+// is why the reader-facing types are filed by the worker.
 func (q *Queries) CreateNotification(ctx context.Context, arg CreateNotificationParams) error {
 	_, err := q.db.ExecContext(ctx, CreateNotification,
 		arg.ID,

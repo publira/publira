@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/outbox"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -37,14 +38,14 @@ func TestCreateAnnouncementPinnedStoresTheWindow(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateAnnouncement)).
 		WithArgs(
 			sqlmock.AnyArg(), tenantID, "announcement",
-			sqlmock.AnyArg(), json.RawMessage("{}"), true, sql.NullTime{Time: until, Valid: true},
+			sqlmock.AnyArg(), json.RawMessage("{}"), true, sql.NullTime{Time: until, Valid: true}, outbox.AnnouncementDeliveryPreferred,
 		).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "tenant_id", "announcement_type",
-			"link_url", "metadata", "created_at", "pinned", "pinned_until",
+			"link_url", "metadata", "created_at", "pinned", "pinned_until", "delivery",
 		}).AddRow(
 			announcementID, tenantID, "announcement",
-			nil, json.RawMessage("{}"), now, true, sql.NullTime{Time: until, Valid: true},
+			nil, json.RawMessage("{}"), now, true, sql.NullTime{Time: until, Valid: true}, outbox.AnnouncementDeliveryPreferred,
 		))
 	expectAnnouncementTranslationInsert(mock, tenantID, announcementID, "ja", "Maintenance", "Body", now)
 	expectAnnouncementNotificationEvent(mock, tenantID, announcementID)
