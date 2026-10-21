@@ -1,5 +1,5 @@
 ---
-title: Readers
+title: Reader accounts
 description: Find a reader's account, correct their date of birth, remove their icon, and suspend or delete the account.
 published: 2026-10-21
 ---
@@ -16,13 +16,13 @@ To find someone, type part of their name or email address into **Name or email**
 
 Each row starts with the icon the reader chose for their account, or a plain outline for one who has not chosen any; **Comments** shows the commenter's the same way. A reader's name in the list opens their page. So does the commenter's name on **Comments**, for a Tenant admin, and the sender of a contact message who was signed in when they wrote.
 
-![The Readers list: the Name or email and Status filters with Apply and Reset, and a row for each account with its icon, name, email address, role, status, and when it signed up.](./readers-list.png)
+![The Readers list: the Name or email and Status filters with Apply and Reset, and a row for each account with its icon, name, email address, role, status, and when it signed up.](./accounts-list.png)
 
 ## The reader page
 
 **Account** shows the reader's **Icon**, their name, their **Public ID** with a button to copy it, their email address, their status, when they signed up, whether and when they confirmed their email address, and their **Birth date**. **Comments** lists everything they have written, newest first, including the comments they deleted themselves until those are purged, with the same actions as on [Comments](./2-comments.md).
 
-![A reader's page: the Account section with Suspend and Delete, the reader's icon, their name, Public ID with a copy button, email address, status, when they signed up and confirmed their address, and Birth date with Change.](./readers-reader.png)
+![A reader's page: the Account section with Suspend and Delete, the reader's icon, their name, Public ID with a copy button, email address, status, when they signed up and confirmed their address, and Birth date with Change.](./accounts-reader.png)
 
 The public ID is what **Access tickets** filters by, so copy it from here when you look for a reader's tickets.
 

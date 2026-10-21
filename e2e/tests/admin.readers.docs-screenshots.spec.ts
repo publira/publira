@@ -81,7 +81,7 @@ for (const locale of DOCS_LOCALES) {
       await expectDocsScreenshot(page, {
         element: [docsScreenHeader(page), page.getByRole("row").last()],
         locale,
-        page: "console/readers/readers",
+        page: "console/readers/accounts",
         subject: "list",
       });
     });
@@ -95,7 +95,7 @@ for (const locale of DOCS_LOCALES) {
           docsSection(page, t("admin.readers.account_title")),
         ],
         locale,
-        page: "console/readers/readers",
+        page: "console/readers/accounts",
         subject: "reader",
       });
     });

@@ -20,7 +20,7 @@ A screen that is not shown is missing from the menu, and its address answers as 
 
 ## In this section
 
-- [Readers](./1-readers.md): finding a reader's account, correcting their date of birth, removing their icon, and suspending or deleting the account.
+- [Reader accounts](./1-accounts.md): finding a reader's account, correcting their date of birth, removing their icon, and suspending or deleting the account.
 - [Comments](./2-comments.md): what each state of a comment means, approving, removing, restoring, and purging comments, and working the approval and report queues.
 - [Contact messages](./3-contact-messages.md): assigning and answering the messages readers send, where their replies go, and keeping track of what is handled.
 - [Access tickets](./4-access-tickets.md): opening a paid episode to one reader without payment, and revoking the ticket.
@@ -39,4 +39,4 @@ A screen that is not shown is missing from the menu, and its address answers as 
 
 A reader over a limit is told "Too many requests in a short time. Please wait a moment and try again." and can act again once the period has passed. A reader repeating a comment inside the **Duplicate comment window** is told, on the site and in the app, "You have just posted this comment. The same text can be posted again after a while."
 
-Tighten a limit when a reader or a script is flooding the comments or the contact form; suspend the account under [Readers](./1-readers.md#suspending-a-reader) when it is one reader. The limits count what readers do on the site and in the app, staff included when they comment there; what a moderator does in the console is not counted. What each limit counts is explained from the operator's side in [Platform defaults and policies](../../3-operations/9-platform-policies.md#community).
+Tighten a limit when a reader or a script is flooding the comments or the contact form; suspend the account under [Readers](./1-accounts.md#suspending-a-reader) when it is one reader. The limits count what readers do on the site and in the app, staff included when they comment there; what a moderator does in the console is not counted. What each limit counts is explained from the operator's side in [Platform defaults and policies](../../3-operations/9-platform-policies.md#community).

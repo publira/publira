@@ -44,7 +44,7 @@ In **Members**, choose the new role in the member's **Role** column and choose *
 
 **Remove** on a member's row, confirmed with **Remove**, takes every role from them. They are shut out of the console from their next action. Their account stays on the site as a reader's, with their purchases and history.
 
-To take away their reading too, suspend or delete the account from their page under **Readers**, which the member's name in the list links to. [Readers](../2-readers/1-readers.md) describes what each of the two leaves in place.
+To take away their reading too, suspend or delete the account from their page under **Readers**, which the member's name in the list links to. [Reader accounts](../2-readers/1-accounts.md) describes what each of the two leaves in place.
 
 ## The last Tenant admin
 
