@@ -127,7 +127,6 @@ export const communityLimitsFormFields = {
   },
   episodeRatingPerDay: { kind: "value", name: "episode_rating_per_day" },
   episodeRatingPerMinute: { kind: "value", name: "episode_rating_per_minute" },
-  revision: "value",
   notificationSettingsPerDay: {
     kind: "value",
     name: "notification_settings_per_day",
@@ -136,6 +135,7 @@ export const communityLimitsFormFields = {
     kind: "value",
     name: "notification_settings_per_minute",
   },
+  revision: "value",
   viewerPreferencesPerDay: {
     kind: "value",
     name: "viewer_preferences_per_day",
