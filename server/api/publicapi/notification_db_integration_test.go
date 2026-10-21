@@ -184,6 +184,7 @@ func insertTenantNotification(
 		TenantID:         tenantID,
 		UserID:           userID,
 		NotificationType: notificationType,
+		Category:         "followed_episodes",
 		SubjectKey:       subjectKey,
 		Payload:          json.RawMessage(payload),
 	})

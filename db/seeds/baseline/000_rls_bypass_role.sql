@@ -438,7 +438,8 @@ GRANT CREATE ON SCHEMA public TO publira_outbox;
 --
 -- Reads: the due listings, series, windows, pinned and campaign banners,
 -- campaign prices, the catalog rows the log lines name, the recipients each
--- notification fans out to, and the views that decide whether a published
+-- notification fans out to and the preferences that decide whether it is
+-- listed in their inbox, and the views that decide whether a published
 -- episode is announced at all. A security_invoker view reads its tables with this role's own rights,
 -- so the views it is built on are granted alongside it.
 GRANT SELECT ON
@@ -460,6 +461,7 @@ GRANT SELECT ON
     series_follows,
     creator_follows,
     episode_creators,
+    user_notification_settings,
     tenant_user_roles,
     platform_users,
     platform_user_roles

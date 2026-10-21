@@ -29,6 +29,11 @@ const EventTypeEpisodePublishedNotification = "episode_published_notification"
 // published episode writes, to its followers and to the tenant's admins alike.
 const NotificationTypeEpisodePublished = "episode_published"
 
+// NotificationTypeEpisodePublishFailed is the notification the scheduled
+// publication job writes, to the tenant's admins and to the platform's
+// operators, for an episode it gave up publishing.
+const NotificationTypeEpisodePublishFailed = "episode_publish_failed"
+
 // DefaultEpisodeFollowerPageSize bounds one recipient query. The fan-out grows
 // with the tenant's readership, so it walks the followers a page at a time
 // instead of materializing every one of them before the first insert.
@@ -84,6 +89,7 @@ type EpisodePublication struct {
 type EpisodeFollowerQuerier interface {
 	ListPublishedEpisodeSurfaces(ctx context.Context, arg dbmodels.ListPublishedEpisodeSurfacesParams) ([]string, error)
 	ListEpisodeFollowerIDs(ctx context.Context, arg dbmodels.ListEpisodeFollowerIDsParams) ([]uuid.UUID, error)
+	ListEpisodeCreatorFollowerIDs(ctx context.Context, arg dbmodels.ListEpisodeCreatorFollowerIDsParams) ([]uuid.UUID, error)
 	CreateNotification(ctx context.Context, arg dbmodels.CreateNotificationParams) error
 	InsertOutboxEvent(ctx context.Context, arg dbmodels.InsertOutboxEventParams) (dbmodels.OutboxEvent, error)
 }
@@ -93,8 +99,16 @@ type EpisodeFollowerQuerier interface {
 // creator credited on it — and queues the push that mirrors them. A tenant
 // whose readers follow nothing publishes silently, which is the point: a
 // follow is the request to be told. So does an episode no reader can open yet,
-// because its series is not public or it is shown on no surface:
-// ListEpisodeFollowerIDs answers nobody for it.
+// because its series is not public or it is shown on no surface: neither
+// recipient query answers anybody for it.
+//
+// The recipients are resolved per category, because the follow that earned a
+// row is what its reader's preferences are asked about and a union of the
+// follows would no longer say which one it was. A reader who follows the
+// episode or its series is filed under followed_episodes, and one who follows
+// only a credited creator under followed_creators. Every recipient gets a row,
+// whatever their inbox cell says, because the push resolves its devices from
+// the rows; the cell decides whether the row is listed.
 //
 // Each notification is filed for the surfaces the episode is shown on, so one
 // shown on the app alone is listed in the app's inbox and pushed to the app,
@@ -129,57 +143,96 @@ func NotifyEpisodeFollowers(ctx context.Context, q EpisodeFollowerQuerier, publi
 		return fmt.Errorf("list episode surfaces: %w", err)
 	}
 	if len(surfaces) == 0 {
-		// No reader can open it, so ListEpisodeFollowerIDs would answer nobody.
+		// No reader can open it, so neither recipient query would answer anybody.
 		return nil
 	}
 	availability := sql.NullString{String: notificationAvailability(surfaces), Valid: true}
 
 	subjectKey := "episode:" + publication.EpisodePublicID
-	notified := 0
-	// The nil UUID sorts below every UUID, so the first page starts there.
-	after := uuid.Nil
-	for {
-		followers, err := q.ListEpisodeFollowerIDs(ctx, dbmodels.ListEpisodeFollowerIDsParams{
+	file := func(category NotificationCategory, followerID uuid.UUID) error {
+		filedUnder, err := NotificationCategoryFor(NotificationTypeEpisodePublished, category)
+		if err != nil {
+			return err
+		}
+		notificationID, err := uuid.NewV7()
+		if err != nil {
+			return fmt.Errorf("allocate notification id: %w", err)
+		}
+		err = q.CreateNotification(ctx, dbmodels.CreateNotificationParams{
+			ID:               notificationID,
+			TenantID:         publication.TenantID,
+			UserID:           followerID,
+			NotificationType: NotificationTypeEpisodePublished,
+			SubjectKey:       subjectKey,
+			Payload:          payload,
+			Availability:     availability,
+			Category:         filedUnder,
+		})
+		if err != nil {
+			return fmt.Errorf("insert notification for %s: %w", followerID, err)
+		}
+		return nil
+	}
+
+	episodeFollowers, err := forEachEpisodeFollower(pageSize, func(after uuid.UUID) ([]uuid.UUID, error) {
+		return q.ListEpisodeFollowerIDs(ctx, dbmodels.ListEpisodeFollowerIDsParams{
 			TenantID:    publication.TenantID,
 			EpisodeID:   publication.EpisodeID,
 			AfterUserID: after,
 			Limit:       pageSize,
 		})
-		if err != nil {
-			return fmt.Errorf("list followers: %w", err)
-		}
-		if len(followers) == 0 {
-			break
-		}
-
-		for _, followerID := range followers {
-			notificationID, err := uuid.NewV7()
-			if err != nil {
-				return fmt.Errorf("allocate notification id: %w", err)
-			}
-			err = q.CreateNotification(ctx, dbmodels.CreateNotificationParams{
-				ID:               notificationID,
-				TenantID:         publication.TenantID,
-				UserID:           followerID,
-				NotificationType: NotificationTypeEpisodePublished,
-				SubjectKey:       subjectKey,
-				Payload:          payload,
-				Availability:     availability,
-			})
-			if err != nil {
-				return fmt.Errorf("insert notification for %s: %w", followerID, err)
-			}
-		}
-		notified += len(followers)
-		after = followers[len(followers)-1]
-		if int32(len(followers)) < pageSize {
-			break
-		}
+	}, func(followerID uuid.UUID) error {
+		return file(NotificationCategoryFollowedEpisodes, followerID)
+	})
+	if err != nil {
+		return fmt.Errorf("notify the followers of the episode and its series: %w", err)
 	}
+	creatorFollowers, err := forEachEpisodeFollower(pageSize, func(after uuid.UUID) ([]uuid.UUID, error) {
+		return q.ListEpisodeCreatorFollowerIDs(ctx, dbmodels.ListEpisodeCreatorFollowerIDsParams{
+			TenantID:    publication.TenantID,
+			EpisodeID:   publication.EpisodeID,
+			AfterUserID: after,
+			Limit:       pageSize,
+		})
+	}, func(followerID uuid.UUID) error {
+		return file(NotificationCategoryFollowedCreators, followerID)
+	})
+	if err != nil {
+		return fmt.Errorf("notify the followers of its creators: %w", err)
+	}
+	notified := episodeFollowers + creatorFollowers
 	if notified == 0 {
 		return nil
 	}
 	return enqueueEpisodePublishedPush(ctx, q, publication, subjectKey)
+}
+
+// forEachEpisodeFollower walks one recipient query a page at a time, the
+// nil UUID first because it sorts below every UUID, and hands each recipient
+// to notify as its page lands. It answers how many it handed over.
+func forEachEpisodeFollower(
+	pageSize int32,
+	list func(after uuid.UUID) ([]uuid.UUID, error),
+	notify func(followerID uuid.UUID) error,
+) (int, error) {
+	notified := 0
+	after := uuid.Nil
+	for {
+		followers, err := list(after)
+		if err != nil {
+			return notified, fmt.Errorf("list followers: %w", err)
+		}
+		for _, followerID := range followers {
+			if err := notify(followerID); err != nil {
+				return notified, err
+			}
+		}
+		notified += len(followers)
+		if int32(len(followers)) < pageSize {
+			return notified, nil
+		}
+		after = followers[len(followers)-1]
+	}
 }
 
 // SeriesPublicationQuerier is the statements

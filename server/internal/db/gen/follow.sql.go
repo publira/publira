@@ -167,6 +167,89 @@ func (q *Queries) DeleteSeriesFollow(ctx context.Context, arg DeleteSeriesFollow
 	return result.RowsAffected()
 }
 
+const ListEpisodeCreatorFollowerIDs = `-- name: ListEpisodeCreatorFollowerIDs :many
+SELECT DISTINCT cf.user_id
+FROM creator_follows cf
+    JOIN episode_creators ec ON ec.tenant_id = cf.tenant_id
+        AND ec.creator_id = cf.creator_id
+WHERE cf.tenant_id = $1
+    AND ec.episode_id = $2
+    AND cf.user_id > $3
+    AND NOT EXISTS (
+        SELECT 1
+        FROM episode_follows ef
+        WHERE ef.tenant_id = cf.tenant_id
+            AND ef.episode_id = ec.episode_id
+            AND ef.user_id = cf.user_id
+    )
+    AND NOT EXISTS (
+        SELECT 1
+        FROM series_follows sf
+            JOIN episodes e ON e.tenant_id = sf.tenant_id
+                AND e.series_id = sf.series_id
+        WHERE sf.tenant_id = cf.tenant_id
+            AND e.id = ec.episode_id
+            AND sf.user_id = cf.user_id
+    )
+    AND EXISTS (
+        SELECT 1
+        FROM published_episode_surfaces pes
+        WHERE pes.tenant_id = $1
+            AND pes.episode_id = $2
+    )
+ORDER BY cf.user_id
+LIMIT $4
+`
+
+type ListEpisodeCreatorFollowerIDsParams struct {
+	TenantID    uuid.UUID `json:"tenant_id"`
+	EpisodeID   uuid.UUID `json:"episode_id"`
+	AfterUserID uuid.UUID `json:"after_user_id"`
+	Limit       int32     `json:"limit"`
+}
+
+// Worker fan-out: the readers told about a new episode because they follow a
+// creator credited on it, which files their notification under
+// followed_creators. A reader who also follows the episode or its series is
+// left out: ListEpisodeFollowerIDs already names them, and the more direct
+// follow is the one their preferences are asked about.
+//
+// The credits come from episode_creators rather than series_creators because
+// the episode is the unit that is credited: a guest who appears on this
+// episode alone reaches their followers, and someone who has since left the
+// series team is not announced with an episode they were not on.
+//
+// The publication gate and the paging are ListEpisodeFollowerIDs's. DISTINCT,
+// because a reader who follows two creators credited on the episode is one
+// recipient.
+func (q *Queries) ListEpisodeCreatorFollowerIDs(ctx context.Context, arg ListEpisodeCreatorFollowerIDsParams) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, ListEpisodeCreatorFollowerIDs,
+		arg.TenantID,
+		arg.EpisodeID,
+		arg.AfterUserID,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var user_id uuid.UUID
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const ListEpisodeFollowerIDs = `-- name: ListEpisodeFollowerIDs :many
 SELECT user_id
 FROM (
@@ -177,14 +260,6 @@ FROM (
     WHERE sf.tenant_id = $1
         AND e.id = $2
         AND sf.user_id > $3
-    UNION
-    SELECT cf.user_id
-    FROM creator_follows cf
-        JOIN episode_creators ec ON ec.tenant_id = cf.tenant_id
-            AND ec.creator_id = cf.creator_id
-    WHERE cf.tenant_id = $1
-        AND ec.episode_id = $2
-        AND cf.user_id > $3
     UNION
     SELECT ef.user_id
     FROM episode_follows ef
@@ -209,26 +284,21 @@ type ListEpisodeFollowerIDsParams struct {
 	Limit       int32     `json:"limit"`
 }
 
-// Worker fan-out: who is told about a new episode. The union of the follows
-// that point at the episode, at the series it belongs to, and at a creator
-// credited on it. UNION rather than UNION ALL, so a reader who follows both
-// the series and its creator is one recipient and gets one notification.
-//
-// The credits come from episode_creators rather than series_creators because
-// the episode is the unit that is credited: a guest who appears on this
-// episode alone reaches their followers, and someone who has since left the
-// series team is not announced with an episode they were not on.
+// Worker fan-out: the readers told about a new episode because they follow the
+// episode itself or the series it belongs to, which files their notification
+// under followed_episodes. UNION rather than UNION ALL, so a reader who follows
+// both is one recipient and gets one notification.
 //
 // Nobody is told about an episode a reader cannot open at this moment, which
 // is what published_episode_surfaces answers: one in a series without a
 // publication date or with one still ahead, or one shown on no surface
 // because its own Shown on and its series' do not overlap. The
-// notification links to the episode, and a follower of a credited creator
-// would otherwise be sent to a page that answers 404. The gate names no
-// follower, so the planner checks it once rather than per row. An episode
-// held back because its series was not public is announced once the series
-// is, through RedateEpisodesForSeriesPublication. The surfaces it is
-// announced on are ListPublishedEpisodeSurfaces's to say.
+// notification links to the episode, and a follower would otherwise be sent
+// to a page that answers 404. The gate names no follower, so the planner
+// checks it once rather than per row. An episode held back because its series
+// was not public is announced once the series is, through
+// RedateEpisodesForSeriesPublication. The surfaces it is announced on are
+// ListPublishedEpisodeSurfaces's to say.
 //
 // Keyset paging on user_id, because the result grows with the tenant's
 // readership and the caller writes one row per recipient. The cursor is
@@ -501,10 +571,11 @@ type ListMyFollowUpdatesDescRow struct {
 //
 // The two branches are the two follows an episode can arrive through: the
 // series it belongs to, and a creator credited on the episode itself. The
-// credits come from episode_creators for the reason ListEpisodeFollowerIDs
-// takes them from there — a guest who appears on one episode reaches the
-// people who follow them, and someone who has since left the series team is
-// not announced with an episode they were not on. UNION rather than UNION ALL,
+// credits come from episode_creators for the reason
+// ListEpisodeCreatorFollowerIDs takes them from there — a guest who appears
+// on one episode reaches the people who follow them, and someone who has
+// since left the series team is not announced with an episode they were not
+// on. UNION rather than UNION ALL,
 // so a member who follows both a series and one of its creators sees the
 // episode once.
 //

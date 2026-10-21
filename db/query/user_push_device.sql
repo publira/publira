@@ -65,6 +65,12 @@ WHERE token = sqlc.arg('token');
 -- A device is left out where the notification may not be shown on its
 -- surface: a Web Push subscription is the site, and an FCM token on Android
 -- or iOS is the app.
+--
+-- It is also left out where its recipient turned the push off for the row's
+-- category: the Web Push cell decides for a browser, and the mobile push cell
+-- for a phone. A recipient who saved nothing holds every cell on, and a
+-- category with no push cell — one the push allowlist does not admit, or the
+-- staff one no preference governs — keeps the device.
 -- name: ListPushDevicesForNotification :many
 SELECT
     n.id AS notification_id,
@@ -78,6 +84,9 @@ FROM notifications n
     JOIN user_push_devices d
         ON d.tenant_id = n.tenant_id
         AND d.user_id = n.user_id
+    LEFT JOIN user_notification_settings s
+        ON s.tenant_id = n.tenant_id
+        AND s.user_id = n.user_id
 WHERE n.tenant_id = sqlc.arg('tenant_id')
     AND n.notification_type = sqlc.arg('notification_type')
     AND n.subject_key = sqlc.arg('subject_key')
@@ -87,5 +96,20 @@ WHERE n.tenant_id = sqlc.arg('tenant_id')
         'all'::text,
         CASE WHEN d.platform = 'web' THEN 'web'::text ELSE 'app'::text END
     ])
+    AND COALESCE(
+        CASE
+            WHEN d.platform = 'web' THEN
+                CASE n.category
+                    WHEN 'followed_episodes' THEN s.followed_episodes_web_push_enabled
+                    WHEN 'followed_creators' THEN s.followed_creators_web_push_enabled
+                END
+            ELSE
+                CASE n.category
+                    WHEN 'followed_episodes' THEN s.followed_episodes_mobile_push_enabled
+                    WHEN 'followed_creators' THEN s.followed_creators_mobile_push_enabled
+                END
+        END,
+        true
+    )
 ORDER BY n.user_id, d.token
 LIMIT sqlc.arg('page_size');

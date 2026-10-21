@@ -485,15 +485,61 @@ message GetNotificationSettingsRequest {
 
 message GetNotificationSettingsResponse {
   bool email_notifications_enabled = 1;
+  NotificationPreferences preferences = 2;
 }
 
 message UpdateNotificationSettingsRequest {
   publira.types.v1.TenantContext tenant = 1;
   bool email_notifications_enabled = 2;
+  // Omitted cells keep the stored value, so a client that shows only some of
+  // the cells — one released before a cell existed among them — does not
+  // reset the ones it knows nothing about (proto3 non-optional bool maps an
+  // omitted field to false). The names are those of NotificationPreferences.
+  optional bool followed_episodes_inbox_enabled = 3;
+  optional bool followed_episodes_web_push_enabled = 4;
+  optional bool followed_episodes_mobile_push_enabled = 5;
+  optional bool followed_creators_inbox_enabled = 6;
+  optional bool followed_creators_web_push_enabled = 7;
+  optional bool followed_creators_mobile_push_enabled = 8;
+  optional bool comments_inbox_enabled = 9;
+  optional bool announcements_inbox_enabled = 10;
 }
 
 message UpdateNotificationSettingsResponse {
   bool email_notifications_enabled = 1;
+  NotificationPreferences preferences = 2;
+}
+
+// Which notifications reach a reader on each channel, one cell per category
+// and channel the server delivers, named <category>_<channel>_enabled. Every
+// field carries a value: a reader who has saved nothing reads every cell on
+// rather than an absent message, so a client never has to tell "unset" from
+// "off".
+//
+// A category is why a notification reached the reader. An episode the reader
+// is told about takes the most direct follow that earned it: the episode or
+// its series before a creator credited on it, so turning the creators off
+// still lets an episode of a followed series through. A combination the server
+// does not deliver — a push of a comment or an announcement — has no cell
+// until it does, and the next cell is a field here and a column behind it,
+// not a second pair of RPCs.
+//
+// An inbox cell that is off keeps the notification out of the inbox and its
+// unread count without stopping its push, and a push cell that is off stops
+// the push to that kind of device alone.
+message NotificationPreferences {
+  // An episode the reader follows, or one of a series they follow.
+  bool followed_episodes_inbox_enabled = 1;
+  bool followed_episodes_web_push_enabled = 2;
+  bool followed_episodes_mobile_push_enabled = 3;
+  // An episode credited to an author the reader follows.
+  bool followed_creators_inbox_enabled = 4;
+  bool followed_creators_web_push_enabled = 5;
+  bool followed_creators_mobile_push_enabled = 6;
+  // The reader's own comment approved.
+  bool comments_inbox_enabled = 7;
+  // An announcement the tenant posted.
+  bool announcements_inbox_enabled = 8;
 }
 
 // A reader's own choices about how the viewer is laid out, stored against the

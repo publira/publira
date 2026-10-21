@@ -43,6 +43,7 @@ func TestListPushDevicesForNotificationPagesInRecipientOrder(t *testing.T) {
 			TenantID:         user.TenantID,
 			UserID:           user.ID,
 			NotificationType: "episode_published",
+			Category:         "followed_episodes",
 			SubjectKey:       subjectKey,
 			Payload:          json.RawMessage(`{"episode_id":"EPISODE0001"}`),
 		}); err != nil {
@@ -204,6 +205,7 @@ func TestListPushDevicesForNotificationReachesTheSurfacesItIsShownOn(t *testing.
 			TenantID:         tenant.ID,
 			UserID:           reader.ID,
 			NotificationType: "episode_published",
+			Category:         "followed_episodes",
 			SubjectKey:       subjectKey,
 			Payload:          json.RawMessage(`{}`),
 			Availability:     tc.availability,

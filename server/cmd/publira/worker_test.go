@@ -16,6 +16,7 @@ func TestWorkerDropsOnlyMessagesForASuspendedTenant(t *testing.T) {
 	cfg := workerConfig(slog.Default(), nil,
 		outbox.EmailHandlerConfig{}, outbox.PushHandlerConfig{}, outbox.StaffNotificationHandlerConfig{},
 		outbox.AnnouncementNotificationHandlerConfig{}, outbox.EpisodePublishedNotificationHandlerConfig{},
+		outbox.CommentApprovedNotificationHandlerConfig{},
 		outbox.GooglePlayHandlerConfig{}, outbox.AppleSignInHandlerConfig{},
 		nil, nil, nil)
 
@@ -36,6 +37,7 @@ func TestWorkerDropsOnlyMessagesForASuspendedTenant(t *testing.T) {
 		outbox.EventTypeCommentReportedNotification,
 		outbox.EventTypeAnnouncementNotification,
 		outbox.EventTypeEpisodePublishedNotification,
+		outbox.EventTypeCommentApprovedNotification,
 		outbox.EventTypeMemberPushNotification,
 	}
 	others := []string{

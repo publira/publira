@@ -71,6 +71,7 @@ INSERT INTO notifications (
     notification_type,
     subject_key,
     payload,
+    category,
     created_at
 )
 SELECT
@@ -85,6 +86,7 @@ SELECT
         'episode_id', 'SeedEPSDAAA1',
         'episode_title', 'Seed Episode 001-01'
     ),
+    'followed_episodes',
     NOW()
 FROM tenants t
 JOIN users u ON u.tenant_id = t.id AND u.email = 'member@example.com'

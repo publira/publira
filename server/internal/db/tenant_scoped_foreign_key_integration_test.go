@@ -656,8 +656,8 @@ func seedForeignKeyTenant(t *testing.T, ctx context.Context, db *sql.DB, prefix 
 
 	seeded.notificationID = mustUUID(t)
 	mustExec(t, ctx, db, `
-		INSERT INTO notifications (id, tenant_id, user_id, notification_type, subject_key)
-		VALUES ($1, $2, $3, 'episode_published', $4)`,
+		INSERT INTO notifications (id, tenant_id, user_id, notification_type, subject_key, category)
+		VALUES ($1, $2, $3, 'episode_published', $4, 'followed_episodes')`,
 		seeded.notificationID, seeded.tenantID, seeded.userID, prefix+"-subject")
 
 	seeded.announcementID = mustUUID(t)

@@ -591,6 +591,8 @@ type Notification struct {
 	Payload          json.RawMessage `json:"payload"`
 	CreatedAt        time.Time       `json:"created_at"`
 	Availability     string          `json:"availability"`
+	Category         string          `json:"category"`
+	InInbox          bool            `json:"in_inbox"`
 }
 
 type NotificationRead struct {
@@ -1616,10 +1618,18 @@ type UserMfaUsedChallenge struct {
 }
 
 type UserNotificationSetting struct {
-	UserID                    uuid.UUID `json:"user_id"`
-	EmailNotificationsEnabled bool      `json:"email_notifications_enabled"`
-	UpdatedAt                 time.Time `json:"updated_at"`
-	TenantID                  uuid.UUID `json:"tenant_id"`
+	UserID                            uuid.UUID `json:"user_id"`
+	EmailNotificationsEnabled         bool      `json:"email_notifications_enabled"`
+	UpdatedAt                         time.Time `json:"updated_at"`
+	TenantID                          uuid.UUID `json:"tenant_id"`
+	FollowedEpisodesInboxEnabled      bool      `json:"followed_episodes_inbox_enabled"`
+	FollowedEpisodesWebPushEnabled    bool      `json:"followed_episodes_web_push_enabled"`
+	FollowedEpisodesMobilePushEnabled bool      `json:"followed_episodes_mobile_push_enabled"`
+	FollowedCreatorsInboxEnabled      bool      `json:"followed_creators_inbox_enabled"`
+	FollowedCreatorsWebPushEnabled    bool      `json:"followed_creators_web_push_enabled"`
+	FollowedCreatorsMobilePushEnabled bool      `json:"followed_creators_mobile_push_enabled"`
+	CommentsInboxEnabled              bool      `json:"comments_inbox_enabled"`
+	AnnouncementsInboxEnabled         bool      `json:"announcements_inbox_enabled"`
 }
 
 type UserPageConsent struct {

@@ -1360,6 +1360,14 @@ const GetNotificationSettingsResponse$json = {
       '5': 8,
       '10': 'emailNotificationsEnabled'
     },
+    {
+      '1': 'preferences',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.v1.NotificationPreferences',
+      '10': 'preferences'
+    },
   ],
 };
 
@@ -1367,7 +1375,9 @@ const GetNotificationSettingsResponse$json = {
 final $typed_data.Uint8List getNotificationSettingsResponseDescriptor =
     $convert.base64Decode(
         'Ch9HZXROb3RpZmljYXRpb25TZXR0aW5nc1Jlc3BvbnNlEj4KG2VtYWlsX25vdGlmaWNhdGlvbn'
-        'NfZW5hYmxlZBgBIAEoCFIZZW1haWxOb3RpZmljYXRpb25zRW5hYmxlZA==');
+        'NfZW5hYmxlZBgBIAEoCFIZZW1haWxOb3RpZmljYXRpb25zRW5hYmxlZBJFCgtwcmVmZXJlbmNl'
+        'cxgCIAEoCzIjLnB1YmxpcmEudjEuTm90aWZpY2F0aW9uUHJlZmVyZW5jZXNSC3ByZWZlcmVuY2'
+        'Vz');
 
 @$core.Deprecated('Use updateNotificationSettingsRequestDescriptor instead')
 const UpdateNotificationSettingsRequest$json = {
@@ -1388,15 +1398,113 @@ const UpdateNotificationSettingsRequest$json = {
       '5': 8,
       '10': 'emailNotificationsEnabled'
     },
+    {
+      '1': 'followed_episodes_inbox_enabled',
+      '3': 3,
+      '4': 1,
+      '5': 8,
+      '9': 0,
+      '10': 'followedEpisodesInboxEnabled',
+      '17': true
+    },
+    {
+      '1': 'followed_episodes_web_push_enabled',
+      '3': 4,
+      '4': 1,
+      '5': 8,
+      '9': 1,
+      '10': 'followedEpisodesWebPushEnabled',
+      '17': true
+    },
+    {
+      '1': 'followed_episodes_mobile_push_enabled',
+      '3': 5,
+      '4': 1,
+      '5': 8,
+      '9': 2,
+      '10': 'followedEpisodesMobilePushEnabled',
+      '17': true
+    },
+    {
+      '1': 'followed_creators_inbox_enabled',
+      '3': 6,
+      '4': 1,
+      '5': 8,
+      '9': 3,
+      '10': 'followedCreatorsInboxEnabled',
+      '17': true
+    },
+    {
+      '1': 'followed_creators_web_push_enabled',
+      '3': 7,
+      '4': 1,
+      '5': 8,
+      '9': 4,
+      '10': 'followedCreatorsWebPushEnabled',
+      '17': true
+    },
+    {
+      '1': 'followed_creators_mobile_push_enabled',
+      '3': 8,
+      '4': 1,
+      '5': 8,
+      '9': 5,
+      '10': 'followedCreatorsMobilePushEnabled',
+      '17': true
+    },
+    {
+      '1': 'comments_inbox_enabled',
+      '3': 9,
+      '4': 1,
+      '5': 8,
+      '9': 6,
+      '10': 'commentsInboxEnabled',
+      '17': true
+    },
+    {
+      '1': 'announcements_inbox_enabled',
+      '3': 10,
+      '4': 1,
+      '5': 8,
+      '9': 7,
+      '10': 'announcementsInboxEnabled',
+      '17': true
+    },
+  ],
+  '8': [
+    {'1': '_followed_episodes_inbox_enabled'},
+    {'1': '_followed_episodes_web_push_enabled'},
+    {'1': '_followed_episodes_mobile_push_enabled'},
+    {'1': '_followed_creators_inbox_enabled'},
+    {'1': '_followed_creators_web_push_enabled'},
+    {'1': '_followed_creators_mobile_push_enabled'},
+    {'1': '_comments_inbox_enabled'},
+    {'1': '_announcements_inbox_enabled'},
   ],
 };
 
 /// Descriptor for `UpdateNotificationSettingsRequest`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List updateNotificationSettingsRequestDescriptor =
-    $convert.base64Decode(
-        'CiFVcGRhdGVOb3RpZmljYXRpb25TZXR0aW5nc1JlcXVlc3QSNwoGdGVuYW50GAEgASgLMh8ucH'
-        'VibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0UgZ0ZW5hbnQSPgobZW1haWxfbm90aWZpY2F0'
-        'aW9uc19lbmFibGVkGAIgASgIUhllbWFpbE5vdGlmaWNhdGlvbnNFbmFibGVk');
+final $typed_data.Uint8List updateNotificationSettingsRequestDescriptor = $convert.base64Decode(
+    'CiFVcGRhdGVOb3RpZmljYXRpb25TZXR0aW5nc1JlcXVlc3QSNwoGdGVuYW50GAEgASgLMh8ucH'
+    'VibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0UgZ0ZW5hbnQSPgobZW1haWxfbm90aWZpY2F0'
+    'aW9uc19lbmFibGVkGAIgASgIUhllbWFpbE5vdGlmaWNhdGlvbnNFbmFibGVkEkoKH2ZvbGxvd2'
+    'VkX2VwaXNvZGVzX2luYm94X2VuYWJsZWQYAyABKAhIAFIcZm9sbG93ZWRFcGlzb2Rlc0luYm94'
+    'RW5hYmxlZIgBARJPCiJmb2xsb3dlZF9lcGlzb2Rlc193ZWJfcHVzaF9lbmFibGVkGAQgASgISA'
+    'FSHmZvbGxvd2VkRXBpc29kZXNXZWJQdXNoRW5hYmxlZIgBARJVCiVmb2xsb3dlZF9lcGlzb2Rl'
+    'c19tb2JpbGVfcHVzaF9lbmFibGVkGAUgASgISAJSIWZvbGxvd2VkRXBpc29kZXNNb2JpbGVQdX'
+    'NoRW5hYmxlZIgBARJKCh9mb2xsb3dlZF9jcmVhdG9yc19pbmJveF9lbmFibGVkGAYgASgISANS'
+    'HGZvbGxvd2VkQ3JlYXRvcnNJbmJveEVuYWJsZWSIAQESTwoiZm9sbG93ZWRfY3JlYXRvcnNfd2'
+    'ViX3B1c2hfZW5hYmxlZBgHIAEoCEgEUh5mb2xsb3dlZENyZWF0b3JzV2ViUHVzaEVuYWJsZWSI'
+    'AQESVQolZm9sbG93ZWRfY3JlYXRvcnNfbW9iaWxlX3B1c2hfZW5hYmxlZBgIIAEoCEgFUiFmb2'
+    'xsb3dlZENyZWF0b3JzTW9iaWxlUHVzaEVuYWJsZWSIAQESOQoWY29tbWVudHNfaW5ib3hfZW5h'
+    'YmxlZBgJIAEoCEgGUhRjb21tZW50c0luYm94RW5hYmxlZIgBARJDChthbm5vdW5jZW1lbnRzX2'
+    'luYm94X2VuYWJsZWQYCiABKAhIB1IZYW5ub3VuY2VtZW50c0luYm94RW5hYmxlZIgBAUIiCiBf'
+    'Zm9sbG93ZWRfZXBpc29kZXNfaW5ib3hfZW5hYmxlZEIlCiNfZm9sbG93ZWRfZXBpc29kZXNfd2'
+    'ViX3B1c2hfZW5hYmxlZEIoCiZfZm9sbG93ZWRfZXBpc29kZXNfbW9iaWxlX3B1c2hfZW5hYmxl'
+    'ZEIiCiBfZm9sbG93ZWRfY3JlYXRvcnNfaW5ib3hfZW5hYmxlZEIlCiNfZm9sbG93ZWRfY3JlYX'
+    'RvcnNfd2ViX3B1c2hfZW5hYmxlZEIoCiZfZm9sbG93ZWRfY3JlYXRvcnNfbW9iaWxlX3B1c2hf'
+    'ZW5hYmxlZEIZChdfY29tbWVudHNfaW5ib3hfZW5hYmxlZEIeChxfYW5ub3VuY2VtZW50c19pbm'
+    'JveF9lbmFibGVk');
 
 @$core.Deprecated('Use updateNotificationSettingsResponseDescriptor instead')
 const UpdateNotificationSettingsResponse$json = {
@@ -1409,6 +1517,14 @@ const UpdateNotificationSettingsResponse$json = {
       '5': 8,
       '10': 'emailNotificationsEnabled'
     },
+    {
+      '1': 'preferences',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.v1.NotificationPreferences',
+      '10': 'preferences'
+    },
   ],
 };
 
@@ -1416,7 +1532,86 @@ const UpdateNotificationSettingsResponse$json = {
 final $typed_data.Uint8List updateNotificationSettingsResponseDescriptor =
     $convert.base64Decode(
         'CiJVcGRhdGVOb3RpZmljYXRpb25TZXR0aW5nc1Jlc3BvbnNlEj4KG2VtYWlsX25vdGlmaWNhdG'
-        'lvbnNfZW5hYmxlZBgBIAEoCFIZZW1haWxOb3RpZmljYXRpb25zRW5hYmxlZA==');
+        'lvbnNfZW5hYmxlZBgBIAEoCFIZZW1haWxOb3RpZmljYXRpb25zRW5hYmxlZBJFCgtwcmVmZXJl'
+        'bmNlcxgCIAEoCzIjLnB1YmxpcmEudjEuTm90aWZpY2F0aW9uUHJlZmVyZW5jZXNSC3ByZWZlcm'
+        'VuY2Vz');
+
+@$core.Deprecated('Use notificationPreferencesDescriptor instead')
+const NotificationPreferences$json = {
+  '1': 'NotificationPreferences',
+  '2': [
+    {
+      '1': 'followed_episodes_inbox_enabled',
+      '3': 1,
+      '4': 1,
+      '5': 8,
+      '10': 'followedEpisodesInboxEnabled'
+    },
+    {
+      '1': 'followed_episodes_web_push_enabled',
+      '3': 2,
+      '4': 1,
+      '5': 8,
+      '10': 'followedEpisodesWebPushEnabled'
+    },
+    {
+      '1': 'followed_episodes_mobile_push_enabled',
+      '3': 3,
+      '4': 1,
+      '5': 8,
+      '10': 'followedEpisodesMobilePushEnabled'
+    },
+    {
+      '1': 'followed_creators_inbox_enabled',
+      '3': 4,
+      '4': 1,
+      '5': 8,
+      '10': 'followedCreatorsInboxEnabled'
+    },
+    {
+      '1': 'followed_creators_web_push_enabled',
+      '3': 5,
+      '4': 1,
+      '5': 8,
+      '10': 'followedCreatorsWebPushEnabled'
+    },
+    {
+      '1': 'followed_creators_mobile_push_enabled',
+      '3': 6,
+      '4': 1,
+      '5': 8,
+      '10': 'followedCreatorsMobilePushEnabled'
+    },
+    {
+      '1': 'comments_inbox_enabled',
+      '3': 7,
+      '4': 1,
+      '5': 8,
+      '10': 'commentsInboxEnabled'
+    },
+    {
+      '1': 'announcements_inbox_enabled',
+      '3': 8,
+      '4': 1,
+      '5': 8,
+      '10': 'announcementsInboxEnabled'
+    },
+  ],
+};
+
+/// Descriptor for `NotificationPreferences`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List notificationPreferencesDescriptor = $convert.base64Decode(
+    'ChdOb3RpZmljYXRpb25QcmVmZXJlbmNlcxJFCh9mb2xsb3dlZF9lcGlzb2Rlc19pbmJveF9lbm'
+    'FibGVkGAEgASgIUhxmb2xsb3dlZEVwaXNvZGVzSW5ib3hFbmFibGVkEkoKImZvbGxvd2VkX2Vw'
+    'aXNvZGVzX3dlYl9wdXNoX2VuYWJsZWQYAiABKAhSHmZvbGxvd2VkRXBpc29kZXNXZWJQdXNoRW'
+    '5hYmxlZBJQCiVmb2xsb3dlZF9lcGlzb2Rlc19tb2JpbGVfcHVzaF9lbmFibGVkGAMgASgIUiFm'
+    'b2xsb3dlZEVwaXNvZGVzTW9iaWxlUHVzaEVuYWJsZWQSRQofZm9sbG93ZWRfY3JlYXRvcnNfaW'
+    '5ib3hfZW5hYmxlZBgEIAEoCFIcZm9sbG93ZWRDcmVhdG9yc0luYm94RW5hYmxlZBJKCiJmb2xs'
+    'b3dlZF9jcmVhdG9yc193ZWJfcHVzaF9lbmFibGVkGAUgASgIUh5mb2xsb3dlZENyZWF0b3JzV2'
+    'ViUHVzaEVuYWJsZWQSUAolZm9sbG93ZWRfY3JlYXRvcnNfbW9iaWxlX3B1c2hfZW5hYmxlZBgG'
+    'IAEoCFIhZm9sbG93ZWRDcmVhdG9yc01vYmlsZVB1c2hFbmFibGVkEjQKFmNvbW1lbnRzX2luYm'
+    '94X2VuYWJsZWQYByABKAhSFGNvbW1lbnRzSW5ib3hFbmFibGVkEj4KG2Fubm91bmNlbWVudHNf'
+    'aW5ib3hfZW5hYmxlZBgIIAEoCFIZYW5ub3VuY2VtZW50c0luYm94RW5hYmxlZA==');
 
 @$core.Deprecated('Use viewerPreferencesDescriptor instead')
 const ViewerPreferences$json = {
@@ -2169,6 +2364,7 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
       GetNotificationSettingsRequest$json,
   '.publira.v1.GetNotificationSettingsResponse':
       GetNotificationSettingsResponse$json,
+  '.publira.v1.NotificationPreferences': NotificationPreferences$json,
   '.publira.v1.UpdateNotificationSettingsRequest':
       UpdateNotificationSettingsRequest$json,
   '.publira.v1.UpdateNotificationSettingsResponse':

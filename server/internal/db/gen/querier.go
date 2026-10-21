@@ -313,6 +313,16 @@ type Querier interface {
 	//
 	// availability is the surface the notification may be shown on, and a writer
 	// that names none files it for every surface, the column's default.
+	//
+	// category is which of the recipient's notification preferences the row
+	// answers to, and the row is listed in their inbox unless that preference's
+	// inbox cell is off; a recipient who saved nothing holds every cell on, and
+	// the staff category has no cell. The cell is read here rather than passed in,
+	// so no writer can file a row past it. Reading it needs a connection that sees
+	// the recipient's settings, which the worker's do: the settings are isolated
+	// to the reader they belong to, so a tenant-scoped API connection reads no row
+	// and would list every notification it filed, which is why the
+	// reader-facing types are filed by the worker.
 	CreateNotification(ctx context.Context, arg CreateNotificationParams) error
 	// The caller creates the page's default-locale translation in the same
 	// transaction, so no page is ever stored without one.
@@ -1630,6 +1640,21 @@ type Querier interface {
 	// public list reads, so a moderator is told the comment is the author's in the
 	// same page query rather than a lookup per row.
 	ListEpisodeCommentsForModerationByCreatedAtDesc(ctx context.Context, arg ListEpisodeCommentsForModerationByCreatedAtDescParams) ([]ListEpisodeCommentsForModerationByCreatedAtDescRow, error)
+	// Worker fan-out: the readers told about a new episode because they follow a
+	// creator credited on it, which files their notification under
+	// followed_creators. A reader who also follows the episode or its series is
+	// left out: ListEpisodeFollowerIDs already names them, and the more direct
+	// follow is the one their preferences are asked about.
+	//
+	// The credits come from episode_creators rather than series_creators because
+	// the episode is the unit that is credited: a guest who appears on this
+	// episode alone reaches their followers, and someone who has since left the
+	// series team is not announced with an episode they were not on.
+	//
+	// The publication gate and the paging are ListEpisodeFollowerIDs's. DISTINCT,
+	// because a reader who follows two creators credited on the episode is one
+	// recipient.
+	ListEpisodeCreatorFollowerIDs(ctx context.Context, arg ListEpisodeCreatorFollowerIDsParams) ([]uuid.UUID, error)
 	// Credits are presented in role priority first, so the leading role opens the
 	// list on every episode without anyone ordering it by hand. display_order
 	// sorts the creators who share a role, and the name settles a tie between two
@@ -1643,26 +1668,21 @@ type Querier interface {
 	// keyed by episode rather than by image so that every read holding episodes
 	// can fill them with one more statement, whatever query read the episodes.
 	ListEpisodeEyeCatchVariantsByEpisodeIDs(ctx context.Context, arg ListEpisodeEyeCatchVariantsByEpisodeIDsParams) ([]ListEpisodeEyeCatchVariantsByEpisodeIDsRow, error)
-	// Worker fan-out: who is told about a new episode. The union of the follows
-	// that point at the episode, at the series it belongs to, and at a creator
-	// credited on it. UNION rather than UNION ALL, so a reader who follows both
-	// the series and its creator is one recipient and gets one notification.
-	//
-	// The credits come from episode_creators rather than series_creators because
-	// the episode is the unit that is credited: a guest who appears on this
-	// episode alone reaches their followers, and someone who has since left the
-	// series team is not announced with an episode they were not on.
+	// Worker fan-out: the readers told about a new episode because they follow the
+	// episode itself or the series it belongs to, which files their notification
+	// under followed_episodes. UNION rather than UNION ALL, so a reader who follows
+	// both is one recipient and gets one notification.
 	//
 	// Nobody is told about an episode a reader cannot open at this moment, which
 	// is what published_episode_surfaces answers: one in a series without a
 	// publication date or with one still ahead, or one shown on no surface
 	// because its own Shown on and its series' do not overlap. The
-	// notification links to the episode, and a follower of a credited creator
-	// would otherwise be sent to a page that answers 404. The gate names no
-	// follower, so the planner checks it once rather than per row. An episode
-	// held back because its series was not public is announced once the series
-	// is, through RedateEpisodesForSeriesPublication. The surfaces it is
-	// announced on are ListPublishedEpisodeSurfaces's to say.
+	// notification links to the episode, and a follower would otherwise be sent
+	// to a page that answers 404. The gate names no follower, so the planner
+	// checks it once rather than per row. An episode held back because its series
+	// was not public is announced once the series is, through
+	// RedateEpisodesForSeriesPublication. The surfaces it is announced on are
+	// ListPublishedEpisodeSurfaces's to say.
 	//
 	// Keyset paging on user_id, because the result grows with the tenant's
 	// readership and the caller writes one row per recipient. The cursor is
@@ -1857,10 +1877,11 @@ type Querier interface {
 	//
 	// The two branches are the two follows an episode can arrive through: the
 	// series it belongs to, and a creator credited on the episode itself. The
-	// credits come from episode_creators for the reason ListEpisodeFollowerIDs
-	// takes them from there — a guest who appears on one episode reaches the
-	// people who follow them, and someone who has since left the series team is
-	// not announced with an episode they were not on. UNION rather than UNION ALL,
+	// credits come from episode_creators for the reason
+	// ListEpisodeCreatorFollowerIDs takes them from there — a guest who appears
+	// on one episode reaches the people who follow them, and someone who has
+	// since left the series team is not announced with an episode they were not
+	// on. UNION rather than UNION ALL,
 	// so a member who follows both a series and one of its creators sees the
 	// episode once.
 	//
@@ -1968,7 +1989,10 @@ type Querier interface {
 	// may be shown on it; the unread count and "mark all as read" take the same
 	// one, so a surface counts and marks only what it lists. The tenant console,
 	// which is neither surface and lists what is addressed to an admin, passes
-	// NULL and reads every row.
+	// NULL and reads every row of either surface.
+	//
+	// A row filed with its inbox cell off (in_inbox) is in no inbox, so all four
+	// leave it out: it exists only for the push that mirrors it.
 	ListNotificationsForUserDesc(ctx context.Context, arg ListNotificationsForUserDescParams) ([]ListNotificationsForUserDescRow, error)
 	// The reader's wait-for-free tickets on the series that still open their
 	// episode, soonest to close first. A ticket on an episode that has since been
@@ -2226,6 +2250,12 @@ type Querier interface {
 	// A device is left out where the notification may not be shown on its
 	// surface: a Web Push subscription is the site, and an FCM token on Android
 	// or iOS is the app.
+	//
+	// It is also left out where its recipient turned the push off for the row's
+	// category: the Web Push cell decides for a browser, and the mobile push cell
+	// for a phone. A recipient who saved nothing holds every cell on, and a
+	// category with no push cell — one the push allowlist does not admit, or the
+	// staff one no preference governs — keeps the device.
 	ListPushDevicesForNotification(ctx context.Context, arg ListPushDevicesForNotificationParams) ([]ListPushDevicesForNotificationRow, error)
 	// The keyset scan behind the ranking screen: one snapshot's items, in the
 	// positions it recorded, restricted to the series that are still published on
@@ -3570,6 +3600,14 @@ type Querier interface {
 	UpsertTenantTheme(ctx context.Context, arg UpsertTenantThemeParams) (TenantTheme, error)
 	// Starting enrollment replaces whatever unconfirmed secret was there.
 	UpsertUserMfaTotpSecret(ctx context.Context, arg UpsertUserMfaTotpSecretParams) (UserMfaTotp, error)
+	// An omitted (NULL) preference cell keeps the value the row holds, so a client
+	// that knows only some of the cells cannot reset the ones it does not show.
+	//
+	// On the insert branch there is no value to keep, and an omitted cell takes
+	// the same default GetNotificationSettings answers for a reader with no row.
+	// The literal repeats the column default because a VALUES list has no way to
+	// ask for it conditionally; TestDBNotificationPreferenceDefaultsAgreeAcrossPaths
+	// is what fails when the two drift apart.
 	UpsertUserNotificationSettings(ctx context.Context, arg UpsertUserNotificationSettingsParams) (UserNotificationSetting, error)
 	// Records the FCM registration token the reader app holds. The token is the
 	// primary key, so a device that changes hands moves to the new reader instead
