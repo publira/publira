@@ -40,10 +40,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup / Node.js
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 24.22.1
+      # scripts/upgrade-notes.ts reads the section with a Markdown parser
+      # from the root package's dependencies.
+      - name: Setup / pnpm
+        uses: ./.github/actions/pnpm-setup
 
       - name: Collect the description and the diff
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
@@ -138,10 +138,10 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Setup / Node.js
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 24.22.1
+      # scripts/upgrade-notes.ts reads the section with a Markdown parser
+      # from the root package's dependencies.
+      - name: Setup / pnpm
+        uses: ./.github/actions/pnpm-setup
 
       - name: Find the previous release
         id: previous

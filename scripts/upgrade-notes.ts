@@ -20,6 +20,10 @@
 import { execFileSync } from "node:child_process";
 import { text } from "node:stream/consumers";
 
+import { fromMarkdown } from "mdast-util-from-markdown";
+import { gfmFromMarkdown } from "mdast-util-gfm";
+import { gfm } from "micromark-extension-gfm";
+
 /** One entry of `GET /repos/{owner}/{repo}/pulls/{number}/files`. */
 export interface ChangedFile {
   filename: string;
@@ -36,9 +40,6 @@ export interface MergedPullRequest {
 
 const HEADING = /^##\s+upgrade notes\s*$/iu;
 
-/** The heading that ends the section: the next one of the same level or above. */
-const NEXT_HEADING = /^#{1,2}\s/u;
-
 const COMMENT = /<!--[\s\S]*?-->/gu;
 
 /**
@@ -46,22 +47,38 @@ const COMMENT = /<!--[\s\S]*?-->/gu;
  * comments: an empty string when the section is left blank, and `undefined`
  * when the body has no such section, as a pull request opened without the
  * template does.
+ *
+ * The section ends at the next `#` or `##` heading. Only a heading of the
+ * body's own is one, which takes parsing the Markdown: a line starting with
+ * `#` in a fenced code block is code, and whether a fence sits in a list item
+ * or is merely indented decides where it ends.
  */
 export const readUpgradeNotes = (
   body: string | null | undefined
 ): string | undefined => {
-  const lines = (body ?? "")
-    .replaceAll("\r\n", "\n")
-    .replaceAll(COMMENT, "")
-    .split("\n");
-  const start = lines.findIndex((line) => HEADING.test(line));
-  if (start === -1) {
+  const source = (body ?? "").replaceAll("\r\n", "\n").replaceAll(COMMENT, "");
+  const tree = fromMarkdown(source, {
+    extensions: [gfm()],
+    mdastExtensions: [gfmFromMarkdown()],
+  });
+  const headings = tree.children.flatMap((node) =>
+    node.type === "heading" && node.depth <= 2 && node.position !== undefined
+      ? [
+          {
+            end: node.position.end.offset ?? 0,
+            start: node.position.start.offset ?? 0,
+          },
+        ]
+      : []
+  );
+  const at = headings.findIndex(({ end, start }) =>
+    HEADING.test(source.slice(start, end).trimStart())
+  );
+  if (at === -1) {
     return undefined;
   }
-  const rest = lines.slice(start + 1);
-  const end = rest.findIndex((line) => NEXT_HEADING.test(line));
 
-  return (end === -1 ? rest : rest.slice(0, end)).join("\n").trim();
+  return source.slice(headings[at].end, headings.at(at + 1)?.start).trim();
 };
 
 /** Whether the section declares that the pull request asks nothing. */

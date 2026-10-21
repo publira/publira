@@ -62,6 +62,117 @@ describe("readUpgradeNotes", () => {
     );
   });
 
+  it("keeps a fenced code block whose lines start with # whole", () => {
+    const notes = [
+      "Replace the line with:",
+      "",
+      "```yaml",
+      "# yaml-language-server: $schema=https://www.publira.dev/schemas/app-manifest/v1.json",
+      "```",
+      "",
+      "Nothing changes for the build itself.",
+    ].join("\n");
+    const body = [
+      "## Upgrade notes",
+      "",
+      notes,
+      "",
+      "## How to Test",
+      "",
+      "- Run it.",
+    ].join("\n");
+
+    assert.equal(readUpgradeNotes(body), notes);
+  });
+
+  it("closes a fence only on a run of the same character at least as long", () => {
+    const notes = [
+      "~~~~markdown",
+      "## Checklist",
+      "```",
+      "~~~",
+      "# Title",
+      "~~~~",
+      "",
+      "Done.",
+    ].join("\n");
+    const body = ["## Upgrade notes", "", notes, "", "## Checklist"].join("\n");
+
+    assert.equal(readUpgradeNotes(body), notes);
+  });
+
+  it("does not take a heading inside a fenced code block for the section", () => {
+    const body = [
+      "## Summary",
+      "",
+      "```markdown",
+      "## Upgrade notes",
+      "",
+      "Not this one.",
+      "```",
+      "",
+      "## Upgrade notes",
+      "",
+      "None.",
+    ].join("\n");
+
+    assert.equal(readUpgradeNotes(body), "None.");
+  });
+
+  it("reads a fenced code block in a list item as code", () => {
+    const body = [
+      "## Summary",
+      "",
+      "- ```sh",
+      "  echo ready",
+      "  ```",
+      "> ~~~",
+      "> # quoted",
+      "> ~~~",
+      "",
+      "## Upgrade notes",
+      "",
+      "Restart the proxy.",
+      "",
+      "## How to Test",
+    ].join("\n");
+
+    assert.equal(readUpgradeNotes(body), "Restart the proxy.");
+  });
+
+  it("closes an indented fence on a fence at column 0", () => {
+    const body = [
+      "## Summary",
+      "",
+      " ```sh",
+      " echo ready",
+      "```",
+      "",
+      "## Upgrade notes",
+      "",
+      "Restart the proxy.",
+    ].join("\n");
+
+    assert.equal(readUpgradeNotes(body), "Restart the proxy.");
+  });
+
+  it("ends a fence in a list item at the next line at column 0", () => {
+    const body = [
+      "## Summary",
+      "",
+      "1. Run:",
+      "",
+      "   ```sh",
+      "   echo ready",
+      "",
+      "## Upgrade notes",
+      "",
+      "Restart the proxy.",
+    ].join("\n");
+
+    assert.equal(readUpgradeNotes(body), "Restart the proxy.");
+  });
+
   it("matches the heading whatever its case", () => {
     assert.equal(readUpgradeNotes("## upgrade Notes\n\nNone."), "None.");
   });
