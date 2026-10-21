@@ -42,6 +42,56 @@ const NEXT_HEADING = /^#{1,2}\s/u;
 const COMMENT = /<!--[\s\S]*?-->/gu;
 
 /**
+ * The start of a line that opens or closes a fenced code block: up to three
+ * spaces, then a run of at least three backticks or tildes.
+ */
+const FENCE = /^ {0,3}(?:`{3,}|~{3,})/u;
+
+/**
+ * The run of a fence on `line` and the text after it, or `undefined` when the
+ * line is no fence. The info string of a backtick fence holds no backtick, so
+ * a run followed by one is inline code instead.
+ */
+const fenceOn = (line: string): { rest: string; run: string } | undefined => {
+  const [start] = FENCE.exec(line) ?? [];
+  if (start === undefined) {
+    return undefined;
+  }
+  const run = start.trimStart();
+  const rest = line.slice(start.length);
+
+  return run.startsWith("`") && rest.includes("`") ? undefined : { rest, run };
+};
+
+/**
+ * Whether each of `lines` lies in a fenced code block, fence lines included.
+ * A fence closes on a run of the same character at least as long as the one
+ * that opened it, with nothing after it, and one left open runs to the end.
+ */
+const inFencedCode = (lines: readonly string[]): boolean[] => {
+  let open: string | undefined;
+
+  return lines.map((line) => {
+    const fence = fenceOn(line);
+    if (open === undefined) {
+      open = fence?.run;
+
+      return open !== undefined;
+    }
+    if (
+      fence !== undefined &&
+      fence.run[0] === open[0] &&
+      fence.run.length >= open.length &&
+      fence.rest.trim() === ""
+    ) {
+      open = undefined;
+    }
+
+    return true;
+  });
+};
+
+/**
  * The text of the Upgrade notes section in `body`, without the template's
  * comments: an empty string when the section is left blank, and `undefined`
  * when the body has no such section, as a pull request opened without the
@@ -54,14 +104,21 @@ export const readUpgradeNotes = (
     .replaceAll("\r\n", "\n")
     .replaceAll(COMMENT, "")
     .split("\n");
-  const start = lines.findIndex((line) => HEADING.test(line));
+  const code = inFencedCode(lines);
+  const start = lines.findIndex(
+    (line, index) => !code[index] && HEADING.test(line)
+  );
   if (start === -1) {
     return undefined;
   }
-  const rest = lines.slice(start + 1);
-  const end = rest.findIndex((line) => NEXT_HEADING.test(line));
+  const end = lines.findIndex(
+    (line, index) => index > start && !code[index] && NEXT_HEADING.test(line)
+  );
 
-  return (end === -1 ? rest : rest.slice(0, end)).join("\n").trim();
+  return lines
+    .slice(start + 1, end === -1 ? undefined : end)
+    .join("\n")
+    .trim();
 };
 
 /** Whether the section declares that the pull request asks nothing. */
