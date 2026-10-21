@@ -39,4 +39,19 @@ func TestValidateCommunityOverridesRejectsLooserValues(t *testing.T) {
 	}, defaults); err == nil {
 		t.Fatal("validateCommunityOverrides accepted a shorter duplicate-comment window")
 	}
+	if err := validateCommunityOverrides(&publiraadminv1.TenantCommunityLimitOverrides{
+		NotificationSettings: &publiraplatformv1.MinuteDayLimit{PerMinute: defaults.NotificationSettings.PerMinute, PerDay: defaults.NotificationSettings.PerDay + 1},
+	}, defaults); err == nil {
+		t.Fatal("validateCommunityOverrides accepted a looser per-day notification settings limit")
+	}
+}
+
+func TestEffectiveCommunityLimitsTightensTheNotificationSettingsLimit(t *testing.T) {
+	defaults := communityDefaults(platformpolicy.Defaults().Community)
+	overrides := &publiraadminv1.TenantCommunityLimitOverrides{
+		NotificationSettings: &publiraplatformv1.MinuteDayLimit{PerMinute: 3, PerDay: 30},
+	}
+	if got := effectiveCommunityLimits(defaults, overrides).NotificationSettings; got.PerMinute != 3 || got.PerDay != 30 {
+		t.Fatalf("effective notification settings limit = %+v, want 3/minute and 30/day", got)
+	}
 }

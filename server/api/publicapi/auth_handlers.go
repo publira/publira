@@ -1535,6 +1535,9 @@ func (s *apiServer) UpdateNotificationSettings(
 	if err != nil {
 		return nil, err
 	}
+	if err := s.chargeReaderAction(ctx, actionUpdateNotificationSettings, tenant.ID, user.ID); err != nil {
+		return nil, err
+	}
 	if err := s.scopeReaderStateUser(ctx, user.ID); err != nil {
 		return nil, err
 	}

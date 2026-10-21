@@ -2,7 +2,7 @@
 title: Platform defaults and policies
 description: Choose the defaults, security limits, community limits, and retention periods every tenant inherits, and what a tenant can change for itself.
 published: 2026-10-06
-updated: 2026-10-19
+updated: 2026-10-21
 ---
 
 An install runs on a handful of settings that no tenant owns: the language, time zone, and currency new tenants start from, the limits that keep one reader or one address from overwhelming the platform, and how long expiring records are kept. This page says what each group protects against, how to change it, and which parts a tenant's administrators can change for their own tenant.
@@ -136,6 +136,8 @@ Saving a list refuses nothing on its own. A tenant that wants disposable address
 | **Episode ratings per minute** and **per day** | Presses of the episode rating one reader makes |
 | **Viewer preference updates per minute** and **per day** | Times one reader saves the viewer's layout |
 | **Duplicate comment window (minutes)** | How long a reader is refused when posting the same comment on the same episode again, from 1 minute to one week. The comparison is exact after trimming surrounding spaces |
+
+One more community limit has no field on the Community page yet: the times one reader saves their notification settings, 30 per minute and 300 per day unless set with `publiractl policy set --notification-settings-per-minute` and `--notification-settings-per-day`. Saving the Community page keeps whatever it is set to.
 
 These are counted in the same place as the security limits, so [Where the counts are kept](#where-the-counts-are-kept) applies to them too.
 

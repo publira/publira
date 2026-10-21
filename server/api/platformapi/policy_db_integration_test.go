@@ -56,6 +56,7 @@ func tightenedPolicy() platformpolicy.Policy {
 	policy.Community.ContactMessagePerAccount = platformpolicy.HourDay{PerHour: 1, PerDay: 5}
 	policy.Community.ContactMessagePerClient = platformpolicy.HourDay{PerHour: 4, PerDay: 12}
 	policy.Community.ViewerPreferencesUpdate = platformpolicy.MinuteDay{PerMinute: 7, PerDay: 70}
+	policy.Community.NotificationSettingsUpdate = platformpolicy.MinuteDay{PerMinute: 5, PerDay: 50}
 	policy.StorePurchaseConfirmation = platformpolicy.MinuteDay{PerMinute: 8, PerDay: 80}
 	policy.WaitFreeTicketUse = platformpolicy.MinuteDay{PerMinute: 9, PerDay: 90}
 	policy.LegalPageAgreement = platformpolicy.MinuteDay{PerMinute: 3, PerDay: 15}
@@ -376,6 +377,44 @@ func TestDBUpdatePlatformPolicyKeepsAnOmittedSeriesRemainderCheckoutLimit(t *tes
 	third := saveWithout(t, want, second.Revision)
 	if got := platformPolicyFromProto(third.Policy); got != want {
 		t.Fatalf("save without the limit = %+v, want %+v keeping the stored remainder checkout limit", got, want)
+	}
+}
+
+// community_limit_defaults.notification_settings reached the policy after the
+// Community page that saves it, so an omitted one keeps what is stored too.
+func TestDBUpdatePlatformPolicyKeepsAnOmittedNotificationSettingsLimit(t *testing.T) {
+	client, _, operator := newPolicyClient(t)
+	saveWithout := func(t *testing.T, policy platformpolicy.Policy, revision int64) *publirasplatformv1.UpdatePlatformPolicyResponse {
+		t.Helper()
+		message := platformPolicyToProto(policy)
+		message.CommunityLimitDefaults.NotificationSettings = nil
+		resp, err := client.UpdatePlatformPolicy(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.UpdatePlatformPolicyRequest{
+			Policy:           message,
+			ExpectedRevision: revision,
+		})
+		if err != nil {
+			t.Fatalf("UpdatePlatformPolicy without notification_settings: %v", err)
+		}
+		return resp
+	}
+
+	want := tightenedPolicy()
+	first := saveWithout(t, want, 0)
+	want.Community.NotificationSettingsUpdate = platformpolicy.Defaults().Community.NotificationSettingsUpdate
+	if got := platformPolicyFromProto(first.Policy); got != want {
+		t.Fatalf("first save = %+v, want %+v with the default notification settings limit", got, want)
+	}
+
+	want.Community.NotificationSettingsUpdate = platformpolicy.MinuteDay{PerMinute: 6, PerDay: 60}
+	second, err := updatePolicy(t, client, operator, want, first.Revision)
+	if err != nil {
+		t.Fatalf("UpdatePlatformPolicy with notification_settings: %v", err)
+	}
+
+	want.MFARequiredForTenantAdmin = false
+	third := saveWithout(t, want, second.Revision)
+	if got := platformPolicyFromProto(third.Policy); got != want {
+		t.Fatalf("save without the limit = %+v, want %+v keeping the stored notification settings limit", got, want)
 	}
 }
 

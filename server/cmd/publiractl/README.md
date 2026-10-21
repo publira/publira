@@ -234,6 +234,7 @@ go -C server run ./cmd/publiractl policy show
 | `--contact-message-per-account-per-hour`, `--contact-message-per-account-per-day` | Contact messages one signed-in reader may send | 3, 10 |
 | `--contact-message-per-client-per-hour`, `--contact-message-per-client-per-day` | Contact messages one client may send across every account and tenant | 10, 30 |
 | `--viewer-preferences-per-minute`, `--viewer-preferences-per-day` | Times one reader may save the viewer layout | 30, 300 |
+| `--notification-settings-per-minute`, `--notification-settings-per-day` | Times one reader may save their notification settings | 30, 300 |
 | `--duplicate-comment-window-minutes` | How long the same comment by one reader on one episode is refused, from 1 to 10080 minutes | 10 |
 | `--disposable-email-domains-url` | The absolute http or https URL the list of disposable email domains is read from. An empty value leaves no list | Empty |
 

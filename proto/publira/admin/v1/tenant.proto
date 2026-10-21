@@ -427,6 +427,7 @@ message TenantCommunityLimitOverrides {
   publira.platform.v1.HourDayLimit contact_message_per_account = 5;
   publira.platform.v1.HourDayLimit contact_message_per_client = 6;
   publira.platform.v1.MinuteDayLimit viewer_preferences = 7;
+  publira.platform.v1.MinuteDayLimit notification_settings = 8;
 }
 message GetTenantCommunityLimitSettingsRequest { publira.types.v1.TenantContext tenant = 1; }
 message GetTenantCommunityLimitSettingsResponse {

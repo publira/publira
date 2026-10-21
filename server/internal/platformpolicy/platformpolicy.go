@@ -46,6 +46,10 @@ type CommunityLimits struct {
 	ContactMessagePerAccount HourDay
 	ContactMessagePerClient  HourDay
 	ViewerPreferencesUpdate  MinuteDay
+	// NotificationSettingsUpdate bounds the times one reader may store their
+	// notification settings. The app saves on every press of a switch, so a
+	// press is as cheap as one of the viewer's.
+	NotificationSettingsUpdate MinuteDay
 }
 
 // Policy is the platform's security and abuse-control policy.
@@ -130,13 +134,14 @@ func Defaults() Policy {
 		MailRequestsPerAddress:         HourDay{PerHour: 5, PerDay: 20},
 		MailRequestsPerSource:          HourDay{PerHour: 30, PerDay: 150},
 		Community: CommunityLimits{
-			CommentPost:              MinuteDay{PerMinute: 10, PerDay: 100},
-			CommentReport:            MinuteDay{PerMinute: 10, PerDay: 50},
-			DuplicateCommentWindow:   10 * time.Minute,
-			EpisodeRating:            MinuteDay{PerMinute: 30, PerDay: 300},
-			ContactMessagePerAccount: HourDay{PerHour: 3, PerDay: 10},
-			ContactMessagePerClient:  HourDay{PerHour: 10, PerDay: 30},
-			ViewerPreferencesUpdate:  MinuteDay{PerMinute: 30, PerDay: 300},
+			CommentPost:                MinuteDay{PerMinute: 10, PerDay: 100},
+			CommentReport:              MinuteDay{PerMinute: 10, PerDay: 50},
+			DuplicateCommentWindow:     10 * time.Minute,
+			EpisodeRating:              MinuteDay{PerMinute: 30, PerDay: 300},
+			ContactMessagePerAccount:   HourDay{PerHour: 3, PerDay: 10},
+			ContactMessagePerClient:    HourDay{PerHour: 10, PerDay: 30},
+			ViewerPreferencesUpdate:    MinuteDay{PerMinute: 30, PerDay: 300},
+			NotificationSettingsUpdate: MinuteDay{PerMinute: 30, PerDay: 300},
 		},
 		StorePurchaseConfirmation: MinuteDay{PerMinute: 10, PerDay: 100},
 		WaitFreeTicketUse:         MinuteDay{PerMinute: 10, PerDay: 100},
@@ -170,6 +175,7 @@ func (p Policy) Validate() error {
 		{"community_limit_defaults.contact_message_per_account", "per_hour", p.Community.ContactMessagePerAccount.PerHour, p.Community.ContactMessagePerAccount.PerDay},
 		{"community_limit_defaults.contact_message_per_client", "per_hour", p.Community.ContactMessagePerClient.PerHour, p.Community.ContactMessagePerClient.PerDay},
 		{"community_limit_defaults.viewer_preferences", "per_minute", p.Community.ViewerPreferencesUpdate.PerMinute, p.Community.ViewerPreferencesUpdate.PerDay},
+		{"community_limit_defaults.notification_settings", "per_minute", p.Community.NotificationSettingsUpdate.PerMinute, p.Community.NotificationSettingsUpdate.PerDay},
 		{"store_purchase_confirmation", "per_minute", p.StorePurchaseConfirmation.PerMinute, p.StorePurchaseConfirmation.PerDay},
 		{"wait_free_ticket_use", "per_minute", p.WaitFreeTicketUse.PerMinute, p.WaitFreeTicketUse.PerDay},
 		{"legal_page_agreement", "per_minute", p.LegalPageAgreement.PerMinute, p.LegalPageAgreement.PerDay},
@@ -226,13 +232,14 @@ func FromConfig(config dbmodels.PlatformPolicyConfig) Policy {
 		MailRequestsPerAddress:         HourDay{PerHour: int(config.MailRequestLimitPerAddressPerHour), PerDay: int(config.MailRequestLimitPerAddressPerDay)},
 		MailRequestsPerSource:          HourDay{PerHour: int(config.MailRequestLimitPerSourcePerHour), PerDay: int(config.MailRequestLimitPerSourcePerDay)},
 		Community: CommunityLimits{
-			CommentPost:              MinuteDay{PerMinute: int(config.CommentPostLimitPerMinute), PerDay: int(config.CommentPostLimitPerDay)},
-			CommentReport:            MinuteDay{PerMinute: int(config.CommentReportLimitPerMinute), PerDay: int(config.CommentReportLimitPerDay)},
-			DuplicateCommentWindow:   time.Duration(config.CommentDuplicateWindowMinutes) * time.Minute,
-			EpisodeRating:            MinuteDay{PerMinute: int(config.EpisodeRatingLimitPerMinute), PerDay: int(config.EpisodeRatingLimitPerDay)},
-			ContactMessagePerAccount: HourDay{PerHour: int(config.ContactMessageLimitPerAccountPerHour), PerDay: int(config.ContactMessageLimitPerAccountPerDay)},
-			ContactMessagePerClient:  HourDay{PerHour: int(config.ContactMessageLimitPerClientPerHour), PerDay: int(config.ContactMessageLimitPerClientPerDay)},
-			ViewerPreferencesUpdate:  MinuteDay{PerMinute: int(config.ViewerPreferencesLimitPerMinute), PerDay: int(config.ViewerPreferencesLimitPerDay)},
+			CommentPost:                MinuteDay{PerMinute: int(config.CommentPostLimitPerMinute), PerDay: int(config.CommentPostLimitPerDay)},
+			CommentReport:              MinuteDay{PerMinute: int(config.CommentReportLimitPerMinute), PerDay: int(config.CommentReportLimitPerDay)},
+			DuplicateCommentWindow:     time.Duration(config.CommentDuplicateWindowMinutes) * time.Minute,
+			EpisodeRating:              MinuteDay{PerMinute: int(config.EpisodeRatingLimitPerMinute), PerDay: int(config.EpisodeRatingLimitPerDay)},
+			ContactMessagePerAccount:   HourDay{PerHour: int(config.ContactMessageLimitPerAccountPerHour), PerDay: int(config.ContactMessageLimitPerAccountPerDay)},
+			ContactMessagePerClient:    HourDay{PerHour: int(config.ContactMessageLimitPerClientPerHour), PerDay: int(config.ContactMessageLimitPerClientPerDay)},
+			ViewerPreferencesUpdate:    MinuteDay{PerMinute: int(config.ViewerPreferencesLimitPerMinute), PerDay: int(config.ViewerPreferencesLimitPerDay)},
+			NotificationSettingsUpdate: MinuteDay{PerMinute: int(config.NotificationSettingsLimitPerMinute), PerDay: int(config.NotificationSettingsLimitPerDay)},
 		},
 		StorePurchaseConfirmation: MinuteDay{PerMinute: int(config.StorePurchaseConfirmLimitPerMinute), PerDay: int(config.StorePurchaseConfirmLimitPerDay)},
 		WaitFreeTicketUse:         MinuteDay{PerMinute: int(config.WaitFreeTicketUseLimitPerMinute), PerDay: int(config.WaitFreeTicketUseLimitPerDay)},
@@ -274,6 +281,8 @@ func (p Policy) ConfigParams() dbmodels.UpdatePlatformPolicyConfigParams {
 		ContactMessageLimitPerClientPerDay:    int32(community.ContactMessagePerClient.PerDay),
 		ViewerPreferencesLimitPerMinute:       int32(community.ViewerPreferencesUpdate.PerMinute),
 		ViewerPreferencesLimitPerDay:          int32(community.ViewerPreferencesUpdate.PerDay),
+		NotificationSettingsLimitPerMinute:    int32(community.NotificationSettingsUpdate.PerMinute),
+		NotificationSettingsLimitPerDay:       int32(community.NotificationSettingsUpdate.PerDay),
 		StorePurchaseConfirmLimitPerMinute:    int32(policy.StorePurchaseConfirmation.PerMinute),
 		StorePurchaseConfirmLimitPerDay:       int32(policy.StorePurchaseConfirmation.PerDay),
 		WaitFreeTicketUseLimitPerMinute:       int32(policy.WaitFreeTicketUse.PerMinute),

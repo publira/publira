@@ -13,7 +13,7 @@ import (
 )
 
 const GetTenantCommunityLimitOverrides = `-- name: GetTenantCommunityLimitOverrides :one
-SELECT tenant_id, comment_post_limit_per_minute, comment_post_limit_per_day, comment_report_limit_per_minute, comment_report_limit_per_day, comment_duplicate_window_minutes, episode_rating_limit_per_minute, episode_rating_limit_per_day, contact_message_limit_per_account_per_hour, contact_message_limit_per_account_per_day, contact_message_limit_per_client_per_hour, contact_message_limit_per_client_per_day, viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day, revision, created_at, updated_at FROM tenant_community_limit_overrides WHERE tenant_id = $1
+SELECT tenant_id, comment_post_limit_per_minute, comment_post_limit_per_day, comment_report_limit_per_minute, comment_report_limit_per_day, comment_duplicate_window_minutes, episode_rating_limit_per_minute, episode_rating_limit_per_day, contact_message_limit_per_account_per_hour, contact_message_limit_per_account_per_day, contact_message_limit_per_client_per_hour, contact_message_limit_per_client_per_day, viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day, revision, created_at, updated_at, notification_settings_limit_per_minute, notification_settings_limit_per_day FROM tenant_community_limit_overrides WHERE tenant_id = $1
 `
 
 func (q *Queries) GetTenantCommunityLimitOverrides(ctx context.Context, tenantID uuid.UUID) (TenantCommunityLimitOverride, error) {
@@ -37,6 +37,8 @@ func (q *Queries) GetTenantCommunityLimitOverrides(ctx context.Context, tenantID
 		&i.Revision,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.NotificationSettingsLimitPerMinute,
+		&i.NotificationSettingsLimitPerDay,
 	)
 	return i, err
 }
@@ -48,15 +50,17 @@ INSERT INTO tenant_community_limit_overrides (
  episode_rating_limit_per_minute, episode_rating_limit_per_day,
  contact_message_limit_per_account_per_hour, contact_message_limit_per_account_per_day,
  contact_message_limit_per_client_per_hour, contact_message_limit_per_client_per_day,
- viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day, updated_at
+ viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day,
+ notification_settings_limit_per_minute, notification_settings_limit_per_day, updated_at
 ) VALUES (
  $1, $2, $3,
  $4, $5, $6,
  $7, $8,
  $9, $10,
  $11, $12,
- $13, $14, NOW()
-) RETURNING tenant_id, comment_post_limit_per_minute, comment_post_limit_per_day, comment_report_limit_per_minute, comment_report_limit_per_day, comment_duplicate_window_minutes, episode_rating_limit_per_minute, episode_rating_limit_per_day, contact_message_limit_per_account_per_hour, contact_message_limit_per_account_per_day, contact_message_limit_per_client_per_hour, contact_message_limit_per_client_per_day, viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day, revision, created_at, updated_at
+ $13, $14,
+ $15, $16, NOW()
+) RETURNING tenant_id, comment_post_limit_per_minute, comment_post_limit_per_day, comment_report_limit_per_minute, comment_report_limit_per_day, comment_duplicate_window_minutes, episode_rating_limit_per_minute, episode_rating_limit_per_day, contact_message_limit_per_account_per_hour, contact_message_limit_per_account_per_day, contact_message_limit_per_client_per_hour, contact_message_limit_per_client_per_day, viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day, revision, created_at, updated_at, notification_settings_limit_per_minute, notification_settings_limit_per_day
 `
 
 type InsertTenantCommunityLimitOverridesParams struct {
@@ -74,6 +78,8 @@ type InsertTenantCommunityLimitOverridesParams struct {
 	ContactMessageLimitPerClientPerDay   sql.NullInt32 `json:"contact_message_limit_per_client_per_day"`
 	ViewerPreferencesLimitPerMinute      sql.NullInt32 `json:"viewer_preferences_limit_per_minute"`
 	ViewerPreferencesLimitPerDay         sql.NullInt32 `json:"viewer_preferences_limit_per_day"`
+	NotificationSettingsLimitPerMinute   sql.NullInt32 `json:"notification_settings_limit_per_minute"`
+	NotificationSettingsLimitPerDay      sql.NullInt32 `json:"notification_settings_limit_per_day"`
 }
 
 func (q *Queries) InsertTenantCommunityLimitOverrides(ctx context.Context, arg InsertTenantCommunityLimitOverridesParams) (TenantCommunityLimitOverride, error) {
@@ -92,6 +98,8 @@ func (q *Queries) InsertTenantCommunityLimitOverrides(ctx context.Context, arg I
 		arg.ContactMessageLimitPerClientPerDay,
 		arg.ViewerPreferencesLimitPerMinute,
 		arg.ViewerPreferencesLimitPerDay,
+		arg.NotificationSettingsLimitPerMinute,
+		arg.NotificationSettingsLimitPerDay,
 	)
 	var i TenantCommunityLimitOverride
 	err := row.Scan(
@@ -112,12 +120,14 @@ func (q *Queries) InsertTenantCommunityLimitOverrides(ctx context.Context, arg I
 		&i.Revision,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.NotificationSettingsLimitPerMinute,
+		&i.NotificationSettingsLimitPerDay,
 	)
 	return i, err
 }
 
 const LockTenantCommunityLimitOverrides = `-- name: LockTenantCommunityLimitOverrides :one
-SELECT tenant_id, comment_post_limit_per_minute, comment_post_limit_per_day, comment_report_limit_per_minute, comment_report_limit_per_day, comment_duplicate_window_minutes, episode_rating_limit_per_minute, episode_rating_limit_per_day, contact_message_limit_per_account_per_hour, contact_message_limit_per_account_per_day, contact_message_limit_per_client_per_hour, contact_message_limit_per_client_per_day, viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day, revision, created_at, updated_at FROM tenant_community_limit_overrides WHERE tenant_id = $1 FOR UPDATE
+SELECT tenant_id, comment_post_limit_per_minute, comment_post_limit_per_day, comment_report_limit_per_minute, comment_report_limit_per_day, comment_duplicate_window_minutes, episode_rating_limit_per_minute, episode_rating_limit_per_day, contact_message_limit_per_account_per_hour, contact_message_limit_per_account_per_day, contact_message_limit_per_client_per_hour, contact_message_limit_per_client_per_day, viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day, revision, created_at, updated_at, notification_settings_limit_per_minute, notification_settings_limit_per_day FROM tenant_community_limit_overrides WHERE tenant_id = $1 FOR UPDATE
 `
 
 func (q *Queries) LockTenantCommunityLimitOverrides(ctx context.Context, tenantID uuid.UUID) (TenantCommunityLimitOverride, error) {
@@ -141,6 +151,8 @@ func (q *Queries) LockTenantCommunityLimitOverrides(ctx context.Context, tenantI
 		&i.Revision,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.NotificationSettingsLimitPerMinute,
+		&i.NotificationSettingsLimitPerDay,
 	)
 	return i, err
 }
@@ -153,8 +165,9 @@ UPDATE tenant_community_limit_overrides SET
  contact_message_limit_per_account_per_hour = $8, contact_message_limit_per_account_per_day = $9,
  contact_message_limit_per_client_per_hour = $10, contact_message_limit_per_client_per_day = $11,
  viewer_preferences_limit_per_minute = $12, viewer_preferences_limit_per_day = $13,
+ notification_settings_limit_per_minute = $14, notification_settings_limit_per_day = $15,
  revision = revision + 1, updated_at = NOW()
-WHERE tenant_id = $14 RETURNING tenant_id, comment_post_limit_per_minute, comment_post_limit_per_day, comment_report_limit_per_minute, comment_report_limit_per_day, comment_duplicate_window_minutes, episode_rating_limit_per_minute, episode_rating_limit_per_day, contact_message_limit_per_account_per_hour, contact_message_limit_per_account_per_day, contact_message_limit_per_client_per_hour, contact_message_limit_per_client_per_day, viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day, revision, created_at, updated_at
+WHERE tenant_id = $16 RETURNING tenant_id, comment_post_limit_per_minute, comment_post_limit_per_day, comment_report_limit_per_minute, comment_report_limit_per_day, comment_duplicate_window_minutes, episode_rating_limit_per_minute, episode_rating_limit_per_day, contact_message_limit_per_account_per_hour, contact_message_limit_per_account_per_day, contact_message_limit_per_client_per_hour, contact_message_limit_per_client_per_day, viewer_preferences_limit_per_minute, viewer_preferences_limit_per_day, revision, created_at, updated_at, notification_settings_limit_per_minute, notification_settings_limit_per_day
 `
 
 type UpdateTenantCommunityLimitOverridesParams struct {
@@ -171,6 +184,8 @@ type UpdateTenantCommunityLimitOverridesParams struct {
 	ContactMessageLimitPerClientPerDay   sql.NullInt32 `json:"contact_message_limit_per_client_per_day"`
 	ViewerPreferencesLimitPerMinute      sql.NullInt32 `json:"viewer_preferences_limit_per_minute"`
 	ViewerPreferencesLimitPerDay         sql.NullInt32 `json:"viewer_preferences_limit_per_day"`
+	NotificationSettingsLimitPerMinute   sql.NullInt32 `json:"notification_settings_limit_per_minute"`
+	NotificationSettingsLimitPerDay      sql.NullInt32 `json:"notification_settings_limit_per_day"`
 	TenantID                             uuid.UUID     `json:"tenant_id"`
 }
 
@@ -189,6 +204,8 @@ func (q *Queries) UpdateTenantCommunityLimitOverrides(ctx context.Context, arg U
 		arg.ContactMessageLimitPerClientPerDay,
 		arg.ViewerPreferencesLimitPerMinute,
 		arg.ViewerPreferencesLimitPerDay,
+		arg.NotificationSettingsLimitPerMinute,
+		arg.NotificationSettingsLimitPerDay,
 		arg.TenantID,
 	)
 	var i TenantCommunityLimitOverride
@@ -210,6 +227,8 @@ func (q *Queries) UpdateTenantCommunityLimitOverrides(ctx context.Context, arg U
 		&i.Revision,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.NotificationSettingsLimitPerMinute,
+		&i.NotificationSettingsLimitPerDay,
 	)
 	return i, err
 }

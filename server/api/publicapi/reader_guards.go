@@ -53,6 +53,10 @@ const (
 	// in the viewer rather than on a settings screen, so a press is as cheap as
 	// a rating's and the budget is the same size.
 	actionUpdateViewerPreferences readerAction = "viewer.preferences.update"
+	// The reader's notification settings. Each request upserts the reader's
+	// settings row however much of it the request names, so the budget counts
+	// requests rather than the settings they carry.
+	actionUpdateNotificationSettings readerAction = "notification.settings.update"
 	// A message written to the tenant's staff through the contact form. It is
 	// the one reader-writable RPC a guest may reach, so it is charged twice: the
 	// account holds one allowance when there is an account, and the client holds
@@ -123,6 +127,7 @@ func readerRules(policy platformpolicy.Policy) map[readerAction][]ratelimit.Rule
 		actionRateEpisode:                    minuteDayRules(community.EpisodeRating),
 		actionVerifyPassword:                 minuteDayRules(policy.PasswordVerification),
 		actionUpdateViewerPreferences:        minuteDayRules(community.ViewerPreferencesUpdate),
+		actionUpdateNotificationSettings:     minuteDayRules(community.NotificationSettingsUpdate),
 		actionSubmitContactMessage:           hourDayRules(community.ContactMessagePerAccount),
 		actionSubmitContactMessageFromClient: hourDayRules(community.ContactMessagePerClient),
 		actionConfirmStorePurchase:           minuteDayRules(policy.StorePurchaseConfirmation),
@@ -222,6 +227,10 @@ func (s *apiServer) readerPolicyForTenant(ctx context.Context, tenantID uuid.UUI
 	if override.ViewerPreferencesLimitPerMinute.Valid {
 		policy.Community.ViewerPreferencesUpdate.PerMinute = min(policy.Community.ViewerPreferencesUpdate.PerMinute, int(override.ViewerPreferencesLimitPerMinute.Int32))
 		policy.Community.ViewerPreferencesUpdate.PerDay = min(policy.Community.ViewerPreferencesUpdate.PerDay, int(override.ViewerPreferencesLimitPerDay.Int32))
+	}
+	if override.NotificationSettingsLimitPerMinute.Valid {
+		policy.Community.NotificationSettingsUpdate.PerMinute = min(policy.Community.NotificationSettingsUpdate.PerMinute, int(override.NotificationSettingsLimitPerMinute.Int32))
+		policy.Community.NotificationSettingsUpdate.PerDay = min(policy.Community.NotificationSettingsUpdate.PerDay, int(override.NotificationSettingsLimitPerDay.Int32))
 	}
 	return policy, nil
 }

@@ -89,6 +89,8 @@ var policyFlags = slices.Concat(
 		func(p *policySettings) *platformpolicy.HourDay { return &p.Community.ContactMessagePerClient }),
 	minuteDayFlags("community_limit_defaults.viewer_preferences", "viewer-preferences", "viewer preference updates by one reader", true,
 		func(p *policySettings) *platformpolicy.MinuteDay { return &p.Community.ViewerPreferencesUpdate }),
+	minuteDayFlags("community_limit_defaults.notification_settings", "notification-settings", "notification settings updates by one reader", true,
+		func(p *policySettings) *platformpolicy.MinuteDay { return &p.Community.NotificationSettingsUpdate }),
 	[]fieldFlag[policySettings]{{
 		platformpolicy.FieldDuplicateCommentWindow, "duplicate-comment-window-minutes",
 		"for how many `minutes` the same comment by one reader on one episode is refused, the default a tenant starts from and may loosen up to",
@@ -199,6 +201,7 @@ func setupPolicyShow(_ *commandFlags) func(context.Context, *commandEnv) error {
 		fmt.Fprintf(&b, "  Contact messages per account:\t%s\n", perHour(community.ContactMessagePerAccount))
 		fmt.Fprintf(&b, "  Contact messages per client:\t%s\n", perHour(community.ContactMessagePerClient))
 		fmt.Fprintf(&b, "  Viewer preference updates:\t%s\n", perMinute(community.ViewerPreferencesUpdate))
+		fmt.Fprintf(&b, "  Notification settings updates:\t%s\n", perMinute(community.NotificationSettingsUpdate))
 		if found {
 			fmt.Fprintf(&b, "Revision:\t%d\n", config.Revision)
 			fmt.Fprintf(&b, "Updated:\t%s\n", formatTime(config.UpdatedAt))
