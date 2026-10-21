@@ -347,6 +347,14 @@ REVOKE DELETE ON tenant_analytics_settings FROM publira_admin;
 GRANT SELECT ON tenant_analytics_settings TO publira_public;
 GRANT SELECT, INSERT, UPDATE ON tenant_analytics_settings TO publira_admin;
 
+-- The crawlers and paths a tenant's robots.txt excludes are the tenant
+-- console's to set. The storefront reads them to write the file and must not
+-- be able to lift an exclusion its own tenant made.
+REVOKE INSERT, UPDATE, DELETE ON tenant_crawler_settings FROM publira_public;
+REVOKE DELETE ON tenant_crawler_settings FROM publira_admin;
+GRANT SELECT ON tenant_crawler_settings TO publira_public;
+GRANT SELECT, INSERT, UPDATE ON tenant_crawler_settings TO publira_admin;
+
 -- The tenant console tells staff when a withdrawn comment is deleted, and the
 -- purge batches delete by the same period, so both resolve a tenant's retention
 -- from the platform defaults. They hold no secret, and neither role may write

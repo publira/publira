@@ -111,6 +111,12 @@ const (
 	// TenantSettingsServiceUpdateTenantAnalyticsSettingsProcedure is the procedure name of the
 	// TenantSettingsService's UpdateTenantAnalyticsSettings RPC.
 	TenantSettingsServiceUpdateTenantAnalyticsSettingsProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantAnalyticsSettings"
+	// TenantSettingsServiceGetTenantCrawlerSettingsProcedure is the procedure name of the
+	// TenantSettingsService's GetTenantCrawlerSettings RPC.
+	TenantSettingsServiceGetTenantCrawlerSettingsProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantCrawlerSettings"
+	// TenantSettingsServiceUpdateTenantCrawlerSettingsProcedure is the procedure name of the
+	// TenantSettingsService's UpdateTenantCrawlerSettings RPC.
+	TenantSettingsServiceUpdateTenantCrawlerSettingsProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantCrawlerSettings"
 )
 
 var (
@@ -317,6 +323,20 @@ var (
 			Procedure:  TenantSettingsServiceUpdateTenantAnalyticsSettingsProcedure,
 		}
 	})
+	tenantSettingsServiceGetTenantCrawlerSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("GetTenantCrawlerSettings"),
+			Procedure:  TenantSettingsServiceGetTenantCrawlerSettingsProcedure,
+		}
+	})
+	tenantSettingsServiceUpdateTenantCrawlerSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("UpdateTenantCrawlerSettings"),
+			Procedure:  TenantSettingsServiceUpdateTenantCrawlerSettingsProcedure,
+		}
+	})
 )
 
 // TenantSettingsServiceClient is a client for the publira.admin.v1.TenantSettingsService service.
@@ -383,6 +403,10 @@ type TenantSettingsServiceClient interface {
 	GetTenantAnalyticsSettings(context.Context, *v1.GetTenantAnalyticsSettingsRequest) (*v1.GetTenantAnalyticsSettingsResponse, error)
 	// Minimum role: tenant_admin.
 	UpdateTenantAnalyticsSettings(context.Context, *v1.UpdateTenantAnalyticsSettingsRequest) (*v1.UpdateTenantAnalyticsSettingsResponse, error)
+	// Minimum role: tenant_auditor.
+	GetTenantCrawlerSettings(context.Context, *v1.GetTenantCrawlerSettingsRequest) (*v1.GetTenantCrawlerSettingsResponse, error)
+	// Minimum role: tenant_admin.
+	UpdateTenantCrawlerSettings(context.Context, *v1.UpdateTenantCrawlerSettingsRequest) (*v1.UpdateTenantCrawlerSettingsResponse, error)
 }
 
 // NewTenantSettingsServiceClient constructs a client for the publira.admin.v1.TenantSettingsService
@@ -456,6 +480,10 @@ type TenantSettingsServiceHandler interface {
 	GetTenantAnalyticsSettings(context.Context, *v1.GetTenantAnalyticsSettingsRequest) (*v1.GetTenantAnalyticsSettingsResponse, error)
 	// Minimum role: tenant_admin.
 	UpdateTenantAnalyticsSettings(context.Context, *v1.UpdateTenantAnalyticsSettingsRequest) (*v1.UpdateTenantAnalyticsSettingsResponse, error)
+	// Minimum role: tenant_auditor.
+	GetTenantCrawlerSettings(context.Context, *v1.GetTenantCrawlerSettingsRequest) (*v1.GetTenantCrawlerSettingsResponse, error)
+	// Minimum role: tenant_admin.
+	UpdateTenantCrawlerSettings(context.Context, *v1.UpdateTenantCrawlerSettingsRequest) (*v1.UpdateTenantCrawlerSettingsResponse, error)
 }
 
 // RegisterTenantSettingsServiceHandler registers svc as the publira.admin.v1.TenantSettingsService
@@ -492,6 +520,8 @@ func RegisterTenantSettingsServiceHandler(server *connect.Server, svc TenantSett
 		connect.Method{Spec: tenantSettingsServiceUpdateTenantEmailRejectionSettingsSpec(), Handler: adapter.updateTenantEmailRejectionSettings},
 		connect.Method{Spec: tenantSettingsServiceGetTenantAnalyticsSettingsSpec(), Handler: adapter.getTenantAnalyticsSettings},
 		connect.Method{Spec: tenantSettingsServiceUpdateTenantAnalyticsSettingsSpec(), Handler: adapter.updateTenantAnalyticsSettings},
+		connect.Method{Spec: tenantSettingsServiceGetTenantCrawlerSettingsSpec(), Handler: adapter.getTenantCrawlerSettings},
+		connect.Method{Spec: tenantSettingsServiceUpdateTenantCrawlerSettingsSpec(), Handler: adapter.updateTenantCrawlerSettings},
 	)
 }
 
@@ -612,6 +642,14 @@ func (UnimplementedTenantSettingsServiceHandler) GetTenantAnalyticsSettings(cont
 
 func (UnimplementedTenantSettingsServiceHandler) UpdateTenantAnalyticsSettings(context.Context, *v1.UpdateTenantAnalyticsSettingsRequest) (*v1.UpdateTenantAnalyticsSettingsResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.UpdateTenantAnalyticsSettings is not implemented")
+}
+
+func (UnimplementedTenantSettingsServiceHandler) GetTenantCrawlerSettings(context.Context, *v1.GetTenantCrawlerSettingsRequest) (*v1.GetTenantCrawlerSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.GetTenantCrawlerSettings is not implemented")
+}
+
+func (UnimplementedTenantSettingsServiceHandler) UpdateTenantCrawlerSettings(context.Context, *v1.UpdateTenantCrawlerSettingsRequest) (*v1.UpdateTenantCrawlerSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.UpdateTenantCrawlerSettings is not implemented")
 }
 
 type tenantSettingsServiceClient struct {
@@ -845,6 +883,22 @@ func (c *tenantSettingsServiceClient) GetTenantAnalyticsSettings(ctx context.Con
 func (c *tenantSettingsServiceClient) UpdateTenantAnalyticsSettings(ctx context.Context, req *v1.UpdateTenantAnalyticsSettingsRequest) (*v1.UpdateTenantAnalyticsSettingsResponse, error) {
 	var res v1.UpdateTenantAnalyticsSettingsResponse
 	if err := c.client.CallUnary(ctx, tenantSettingsServiceUpdateTenantAnalyticsSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) GetTenantCrawlerSettings(ctx context.Context, req *v1.GetTenantCrawlerSettingsRequest) (*v1.GetTenantCrawlerSettingsResponse, error) {
+	var res v1.GetTenantCrawlerSettingsResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceGetTenantCrawlerSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) UpdateTenantCrawlerSettings(ctx context.Context, req *v1.UpdateTenantCrawlerSettingsRequest) (*v1.UpdateTenantCrawlerSettingsResponse, error) {
+	var res v1.UpdateTenantCrawlerSettingsResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceUpdateTenantCrawlerSettingsSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1194,6 +1248,30 @@ func (h tenantSettingsServiceHandler) updateTenantAnalyticsSettings(ctx context.
 		return err
 	}
 	res, err := h.svc.UpdateTenantAnalyticsSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) getTenantCrawlerSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetTenantCrawlerSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetTenantCrawlerSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) updateTenantCrawlerSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateTenantCrawlerSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateTenantCrawlerSettings(ctx, &req)
 	if err != nil {
 		return err
 	}

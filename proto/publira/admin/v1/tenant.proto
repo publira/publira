@@ -537,6 +537,70 @@ message UpdateTenantAnalyticsSettingsResponse {
   TenantAnalyticsSettings settings = 1;
 }
 
+// What a crawler the tenant may exclude fetches pages for.
+enum CrawlerPurpose {
+  CRAWLER_PURPOSE_UNSPECIFIED = 0;
+  // Collects pages to train AI models on.
+  CRAWLER_PURPOSE_AI_TRAINING = 1;
+  // Fetches pages for an AI assistant's answers or for its search results.
+  CRAWLER_PURPOSE_AI_ASSISTANT = 2;
+  // Indexes images for an image search.
+  CRAWLER_PURPOSE_IMAGE_SEARCH = 3;
+}
+
+// A crawler TenantCrawlerSettings.excluded_user_agents may name. The list is
+// the server's, so a token outside it is never stored.
+message KnownCrawler {
+  // The user-agent token robots.txt names the crawler by, spelled as its
+  // operator documents it (GPTBot, Googlebot-Image).
+  string user_agent = 1;
+  // The organization that runs the crawler, as it names itself. Not
+  // translated.
+  string operator = 2;
+  // Never CRAWLER_PURPOSE_UNSPECIFIED.
+  CrawlerPurpose purpose = 3;
+}
+
+// What the tenant's robots.txt excludes.
+message TenantCrawlerSettings {
+  // Crawlers the robots.txt refuses every path to, as KnownCrawler.user_agent
+  // tokens in the order GetTenantCrawlerSettingsResponse.known_crawlers lists
+  // them.
+  repeated string excluded_user_agents = 1;
+  // Paths the robots.txt refuses to every crawler, each with what lies under
+  // it, in lexical order. A path starts with /, carries no trailing / unless
+  // it is / itself, and holds no whitespace, control character, *, $, ?, or #.
+  repeated string excluded_paths = 2;
+}
+
+message GetTenantCrawlerSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantCrawlerSettingsResponse {
+  TenantCrawlerSettings settings = 1;
+  // Every crawler excluded_user_agents may name, grouped by purpose.
+  repeated KnownCrawler known_crawlers = 2;
+}
+
+message UpdateTenantCrawlerSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Required: the whole setting is written, so both lists are replaced by the
+  // ones sent, and duplicates are dropped. A user agent that is not a
+  // KnownCrawler.user_agent token, spelled as known_crawlers spells it, is
+  // invalid_argument on that entry of settings.excluded_user_agents. Each path
+  // is trimmed and loses a trailing /; one that does not start with /, holds
+  // whitespace, a control character, *, $, ?, or #, is longer than 512 bytes,
+  // or names /robots.txt, /sitemap.xml, or /sitemap or anything under it is
+  // invalid_argument on that entry of settings.excluded_paths, and so is a
+  // list longer than 100 on settings.excluded_paths itself.
+  TenantCrawlerSettings settings = 2;
+}
+
+message UpdateTenantCrawlerSettingsResponse {
+  TenantCrawlerSettings settings = 1;
+}
+
 // Per-tenant operational settings, separate from TenantConfig (site copy) and
 // TenantTheme (colors).
 service TenantSettingsService {
@@ -602,4 +666,8 @@ service TenantSettingsService {
   rpc GetTenantAnalyticsSettings(GetTenantAnalyticsSettingsRequest) returns (GetTenantAnalyticsSettingsResponse) {}
   // Minimum role: tenant_admin.
   rpc UpdateTenantAnalyticsSettings(UpdateTenantAnalyticsSettingsRequest) returns (UpdateTenantAnalyticsSettingsResponse) {}
+  // Minimum role: tenant_auditor.
+  rpc GetTenantCrawlerSettings(GetTenantCrawlerSettingsRequest) returns (GetTenantCrawlerSettingsResponse) {}
+  // Minimum role: tenant_admin.
+  rpc UpdateTenantCrawlerSettings(UpdateTenantCrawlerSettingsRequest) returns (UpdateTenantCrawlerSettingsResponse) {}
 }

@@ -150,6 +150,29 @@ describe("AuditLogActionCell", () => {
   );
 
   it.each(getLocales())(
+    "names a change to the crawler exclusions in %s",
+    async (locale) => {
+      const cell = await renderActionCell(
+        locale,
+        "tenant_crawler_settings_updated",
+        "tenant_crawler_settings",
+        "TENANT001"
+      );
+
+      const actionName = sharedMessage(
+        "admin.audit.actions.tenant_crawler_settings_updated",
+        locale
+      );
+      const targetName = sharedMessage(
+        "admin.audit.targets.tenant_crawler_settings",
+        locale
+      );
+
+      expect(cell.textContent).toBe(`${actionName}${targetName} / TENANT001`);
+    }
+  );
+
+  it.each(getLocales())(
     "names a change to the refused email addresses in %s",
     async (locale) => {
       const cell = await renderActionCell(

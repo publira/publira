@@ -1324,6 +1324,14 @@ type TenantConfigTranslation struct {
 	UpdatedAt       time.Time `json:"updated_at"`
 }
 
+type TenantCrawlerSetting struct {
+	TenantID           uuid.UUID `json:"tenant_id"`
+	ExcludedUserAgents []string  `json:"excluded_user_agents"`
+	ExcludedPaths      []string  `json:"excluded_paths"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
+}
+
 type TenantEmailRejectionEntry struct {
 	TenantID  uuid.UUID `json:"tenant_id"`
 	Entry     string    `json:"entry"`

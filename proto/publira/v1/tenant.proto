@@ -208,10 +208,30 @@ message GetTenantAnalyticsSettingsResponse {
   TenantGoogleTag google_tag = 1;
 }
 
+message GetTenantCrawlerSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+// What the tenant's robots.txt excludes. Both lists are empty for a tenant
+// that excludes nothing.
+message GetTenantCrawlerSettingsResponse {
+  // User-agent tokens to refuse every path to, each one a token the server
+  // knows (GPTBot, Googlebot-Image), so it is safe to write into a
+  // User-agent line as it is.
+  repeated string excluded_user_agents = 1;
+  // Paths to refuse to every crawler, each with what lies under it, in
+  // lexical order. A path starts with /, carries no trailing / unless it is /
+  // itself, and holds no whitespace, control character, *, $, ?, or #, so it
+  // is safe to write into a Disallow line as it is. None of them names
+  // /robots.txt, /sitemap.xml, or /sitemap or anything under it.
+  repeated string excluded_paths = 2;
+}
+
 service TenantService {
   rpc GetTenant(GetTenantRequest) returns (GetTenantResponse) {}
   rpc GetTenantLegalPages(GetTenantLegalPagesRequest) returns (GetTenantLegalPagesResponse) {}
   rpc GetTenantMobileAppAssociation(GetTenantMobileAppAssociationRequest) returns (GetTenantMobileAppAssociationResponse) {}
   rpc GetTenantReaderIconPolicy(GetTenantReaderIconPolicyRequest) returns (GetTenantReaderIconPolicyResponse) {}
   rpc GetTenantAnalyticsSettings(GetTenantAnalyticsSettingsRequest) returns (GetTenantAnalyticsSettingsResponse) {}
+  rpc GetTenantCrawlerSettings(GetTenantCrawlerSettingsRequest) returns (GetTenantCrawlerSettingsResponse) {}
 }

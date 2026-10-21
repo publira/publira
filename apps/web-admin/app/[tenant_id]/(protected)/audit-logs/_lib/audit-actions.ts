@@ -115,6 +115,7 @@ export const auditActions = [
   "tenant_retention_updated",
   "tenant_email_rejection_settings_updated",
   "tenant_analytics_settings_updated",
+  "tenant_crawler_settings_updated",
   "admin_mfa_enrolled",
   "admin_mfa_verified",
   "admin_mfa_recovery_code_used",
