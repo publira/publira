@@ -6,7 +6,7 @@ import { getMessagesFor } from "#lib/messages";
 import { MAX_ANDROID_CERT_FINGERPRINTS } from "#lib/tenant-mobile-app-association";
 import type { TenantMobileAppAssociation } from "#lib/tenant-mobile-app-association";
 
-// The API's patterns, which are the app manifest's (mobile/config/app.schema.json).
+// The API's patterns, which are the app manifest's (mobile/config/app.schema.v1.json).
 const ANDROID_APPLICATION_ID_RE = /^[A-Za-z]\w*(?:\.[A-Za-z]\w*)+$/u;
 const IOS_BUNDLE_IDENTIFIER_RE = /^[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/u;
 const SHA256_FINGERPRINT_RE = /^[0-9A-F]{2}(?::[0-9A-F]{2}){31}$/u;

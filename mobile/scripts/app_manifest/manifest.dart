@@ -1,7 +1,7 @@
 // The app manifest: the identity one tenant's app is built and
 // published under, read and checked before a platform build is started.
 //
-// `config/app.schema.json` describes the same format to an editor. The
+// `config/app.schema.v1.json` describes the same format to an editor. The
 // patterns below are the ones it carries, which test/app_manifest_test.dart
 // holds the two to.
 

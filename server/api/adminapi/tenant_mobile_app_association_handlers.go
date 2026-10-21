@@ -18,7 +18,7 @@ import (
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 )
 
-// The identifier patterns are the app manifest's (mobile/config/app.schema.json),
+// The identifier patterns are the app manifest's (mobile/config/app.schema.v1.json),
 // so a value copied from the manifest the app was built with is accepted.
 var (
 	androidApplicationIDPattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$`)
