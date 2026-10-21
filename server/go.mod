@@ -21,7 +21,7 @@ require (
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/kaptinlin/messageformat-go v0.8.6
 	github.com/lib/pq v1.12.3
-	github.com/opensearch-project/opensearch-go/v5 v5.0.3
+	github.com/opensearch-project/opensearch-go/v5 v5.1.1
 	github.com/payjp/payjpv2-go v0.0.0-20261002044959-fd8a29251806
 	github.com/pquerna/otp v1.5.0
 	github.com/publira/epub v0.8.0
@@ -138,9 +138,9 @@ require (
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/stretchr/testify v1.12.1 // indirect
-	github.com/tidwall/gjson v1.19.0 // indirect
+	github.com/tidwall/gjson v1.20.0 // indirect
 	github.com/tidwall/match v1.2.0 // indirect
-	github.com/tidwall/pretty v1.2.1 // indirect
+	github.com/tidwall/pretty v1.2.2 // indirect
 	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/tinylib/msgp v1.6.4 // indirect
 	github.com/tklauser/go-sysconf v0.4.0 // indirect
