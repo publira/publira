@@ -57,6 +57,7 @@ export interface PlatformCommunityLimits {
   contactMessagePerClient: HourDay;
   duplicateCommentWindowMinutes: number;
   episodeRating: MinuteDay;
+  notificationSettings: MinuteDay;
   viewerPreferences: MinuteDay;
 }
 
@@ -103,6 +104,7 @@ type RawCommunityLimitDefaults = Pick<
   | "contactMessagePerClient"
   | "duplicateCommentWindowMinutes"
   | "episodeRating"
+  | "notificationSettings"
   | "viewerPreferences"
 >;
 type RawPlatformPolicy = Pick<
@@ -146,6 +148,7 @@ const toCommunityLimits = (
   contactMessagePerClient: toHourDay(community?.contactMessagePerClient),
   duplicateCommentWindowMinutes: community?.duplicateCommentWindowMinutes ?? 0,
   episodeRating: toMinuteDay(community?.episodeRating),
+  notificationSettings: toMinuteDay(community?.notificationSettings),
   viewerPreferences: toMinuteDay(community?.viewerPreferences),
 });
 

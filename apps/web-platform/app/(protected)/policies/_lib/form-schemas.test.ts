@@ -2,6 +2,8 @@ import { toFormDataInput } from "@publira/utils/form-data";
 import { describe, expect, it } from "vitest";
 
 import {
+  communityLimitsFormFields,
+  communityLimitsFormSchema,
   retentionDefaultsFormFields,
   retentionDefaultsFormSchema,
   securityPolicyFormFields,
@@ -233,5 +235,59 @@ describe("retentionDefaultsFormSchema", () => {
     const result = await parseRetention({ withdrawn_comment_days: "1" });
 
     expect(result.success).toBe(true);
+  });
+});
+
+const communityValues = {
+  comment_post_per_day: "100",
+  comment_post_per_minute: "10",
+  comment_report_per_day: "50",
+  comment_report_per_minute: "10",
+  contact_message_per_account_per_day: "10",
+  contact_message_per_account_per_hour: "3",
+  contact_message_per_client_per_day: "30",
+  contact_message_per_client_per_hour: "10",
+  duplicate_comment_window_minutes: "10",
+  episode_rating_per_day: "300",
+  episode_rating_per_minute: "30",
+  notification_settings_per_day: "300",
+  notification_settings_per_minute: "30",
+  revision: "3",
+  viewer_preferences_per_day: "300",
+  viewer_preferences_per_minute: "30",
+};
+
+const parseCommunity = async (fields: Record<string, string>) => {
+  const data = new FormData();
+  for (const [name, value] of Object.entries({
+    ...communityValues,
+    ...fields,
+  })) {
+    data.set(name, value);
+  }
+  const schema = await communityLimitsFormSchema("en");
+  return schema.safeParse(toFormDataInput(data, communityLimitsFormFields));
+};
+
+describe("communityLimitsFormSchema", () => {
+  it("reads the notification settings limit", async () => {
+    const result = await parseCommunity({});
+
+    expect(result.success).toBe(true);
+    expect(result.data).toMatchObject({
+      notificationSettingsPerDay: 300,
+      notificationSettingsPerMinute: 30,
+    });
+  });
+
+  it("refuses a daily notification settings limit below the per-minute one", async () => {
+    const result = await parseCommunity({
+      notification_settings_per_day: "29",
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map((issue) => issue.message)).toContain(
+      "The daily limit for Notification settings updates must be at least its per-minute limit."
+    );
   });
 });

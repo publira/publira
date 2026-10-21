@@ -87,6 +87,7 @@ describe("updateTenantCommunityLimitsAction", () => {
           contactMessagePerClient: undefined,
           duplicateCommentWindowMinutes: undefined,
           episodeRating: undefined,
+          notificationSettings: undefined,
           viewerPreferences: undefined,
         },
         tenantId: "TENANT001",

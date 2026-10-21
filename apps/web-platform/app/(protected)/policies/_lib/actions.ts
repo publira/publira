@@ -137,6 +137,10 @@ export const updatePlatformCommunityLimitsAction = async (
           perDay: data.episodeRatingPerDay,
           perMinute: data.episodeRatingPerMinute,
         },
+        notificationSettings: {
+          perDay: data.notificationSettingsPerDay,
+          perMinute: data.notificationSettingsPerMinute,
+        },
         viewerPreferences: {
           perDay: data.viewerPreferencesPerDay,
           perMinute: data.viewerPreferencesPerMinute,

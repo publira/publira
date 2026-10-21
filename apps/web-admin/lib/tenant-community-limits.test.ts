@@ -44,6 +44,7 @@ const platformDefaults = {
   contactMessagePerClient: { perDay: 20, perHour: 5 },
   duplicateCommentWindowMinutes: 10,
   episodeRating: { perDay: 200, perMinute: 10 },
+  notificationSettings: { perDay: 300, perMinute: 30 },
   viewerPreferences: { perDay: 300, perMinute: 20 },
 };
 
@@ -73,6 +74,18 @@ describe("findLooserCommunityLimit", () => {
         platformDefaults
       )
     ).toBe("commentPost");
+  });
+
+  it("names a notification settings limit above the platform value", async () => {
+    const { findLooserCommunityLimit } =
+      await import("./tenant-community-limits");
+
+    expect(
+      findLooserCommunityLimit(
+        { notificationSettings: { perDay: 300, perMinute: 31 } },
+        platformDefaults
+      )
+    ).toBe("notificationSettings");
   });
 
   // The duplicate-comment window runs the other way: a shorter span lets a
@@ -250,6 +263,7 @@ describe("tenant-community-limits", () => {
           contactMessagePerClient: undefined,
           duplicateCommentWindowMinutes: undefined,
           episodeRating: undefined,
+          notificationSettings: undefined,
           viewerPreferences: undefined,
         },
         tenant: { tenantId: "TENANT001" },

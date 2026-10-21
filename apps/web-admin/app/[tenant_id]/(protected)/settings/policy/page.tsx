@@ -51,6 +51,7 @@ const unreadableCommunityLimits: TenantCommunityLimits = {
   contactMessagePerClient: { perDay: 1, perHour: 1 },
   duplicateCommentWindowMinutes: 1,
   episodeRating: { perDay: 1, perMinute: 1 },
+  notificationSettings: { perDay: 1, perMinute: 1 },
   viewerPreferences: { perDay: 1, perMinute: 1 },
 };
 

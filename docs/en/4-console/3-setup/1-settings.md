@@ -2,7 +2,7 @@
 title: Settings
 description: Set the site's copy, time zone, languages, reader comments, age verification, legal pages, and refused email addresses, tighten the platform's limits for the tenant, and choose what readers can show as their icon.
 published: 2026-10-07
-updated: 2026-10-18
+updated: 2026-10-21
 ---
 
 **Settings**, under **Administration**, has three tabs. **General** holds what the tenant decides about its own site. **Limits and retention** holds the values the operator sets for every tenant, which a tenant may change within bounds. **Reader icons** holds what readers can show as their icon, and the icons the tenant offers them to pick from.
@@ -115,7 +115,7 @@ Sign-in with Apple or Google is never refused here, since the provider supplies 
 
 **Limits and retention** holds two forms:
 
-- **Community limits**: how often one reader may post or report comments, rate episodes, write through the contact form, and save their viewer's layout, and how long a reader is refused when posting the same comment again.
+- **Community limits**: how often one reader may post or report comments, rate episodes, write through the contact form, save their viewer's layout, and save their notification settings, and how long a reader is refused when posting the same comment again.
 - **Retention periods**: how long withdrawn comments, content events, and daily and weekly ranking snapshots are kept before they are deleted.
 
 Each group on these forms starts with **Use the platform default** ticked, and shows the operator's value beside it. A tenant on the default follows the operator's later changes. To set the tenant's own value, clear the box, enter the value, and save the form with **Save the community limits** or **Save the retention periods**. To return to the platform's value, tick the box again and save.
