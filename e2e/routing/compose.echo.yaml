@@ -16,7 +16,7 @@ services:
     # Pin the tag + digest the same way .devcontainer/compose.yaml does. The
     # Node.js version is the one `devEngines.runtime.version` in package.json
     # names, so echo.ts runs on the runtime the rest of the tooling does.
-    image: node:24.22.0-alpine3.24@sha256:44fce696f38ba8c987c4db89954051000bbd05ffd8d8659ba15ed4a8602e937f
+    image: node:24.22.1-alpine3.24@sha256:6a1c190e17215d844926b0677f4bf87273ff7d5e54db06d3b5b5863ab0b09a3d
     command: ["node", "/echo.ts"]
     volumes:
       - ${PUBLIRA_ROUTING_ECHO}:/echo.ts:ro
