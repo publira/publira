@@ -51,6 +51,38 @@ VALUES (
 )
 ON CONFLICT DO NOTHING;
 
+-- A row filed for the tenant's staff for being staff, which no preference
+-- governs, so it is listed in their inbox whatever else shares its key. The
+-- scheduled publication tells the staff about an episode its followers are told
+-- about too, under the same recipient / type / subject, and a member of staff
+-- who follows the episode already holds the follower's row, listed or not by
+-- their own inbox cell. That row is kept, so its push still answers to their
+-- preferences, and listed. The conflict target needs SELECT on the row, so only
+-- the roles that reach every tenant's rows run this.
+-- name: CreateStaffNotification :exec
+INSERT INTO notifications (
+    id,
+    tenant_id,
+    user_id,
+    notification_type,
+    subject_key,
+    payload,
+    category,
+    in_inbox
+)
+VALUES (
+    sqlc.arg('id'),
+    sqlc.arg('tenant_id'),
+    sqlc.arg('user_id'),
+    sqlc.arg('notification_type'),
+    sqlc.arg('subject_key'),
+    sqlc.arg('payload'),
+    sqlc.arg('category')::text,
+    true
+)
+ON CONFLICT (user_id, notification_type, subject_key) DO UPDATE
+SET in_inbox = true;
+
 -- name: CreatePlatformNotification :one
 INSERT INTO platform_notifications (
     id,

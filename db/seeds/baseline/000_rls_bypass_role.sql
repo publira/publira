@@ -488,3 +488,7 @@ GRANT UPDATE (start_revalidated_at, end_revalidated_at) ON campaign_banners TO p
 -- each end of the campaign, and writes nothing of the price or the period.
 GRANT UPDATE (start_revalidated_at, end_revalidated_at) ON episode_campaign_prices TO publira_ticker;
 GRANT SELECT, INSERT ON notifications, platform_notifications, outbox_events TO publira_ticker;
+-- And for a notification: the copy the scheduled publication files for the
+-- tenant's staff lists the row a member of staff already holds as a follower,
+-- and writes nothing else of it.
+GRANT UPDATE (in_inbox) ON notifications TO publira_ticker;

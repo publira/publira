@@ -272,7 +272,7 @@ func (r *Runner) notifyTenantAdmins(ctx context.Context, row dbmodels.ListEpisod
 			)
 			continue
 		}
-		err = r.queries.CreateNotification(ctx, dbmodels.CreateNotificationParams{
+		err = r.queries.CreateStaffNotification(ctx, dbmodels.CreateStaffNotificationParams{
 			ID:               notificationID,
 			TenantID:         row.TenantID,
 			UserID:           adminID,

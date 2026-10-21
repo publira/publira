@@ -383,6 +383,15 @@ type Querier interface {
 	CreateSeriesImageVariant(ctx context.Context, arg CreateSeriesImageVariantParams) (SeriesImageVariant, error)
 	CreateSeriesListing(ctx context.Context, arg CreateSeriesListingParams) (SeriesListing, error)
 	CreateSeriesTag(ctx context.Context, arg CreateSeriesTagParams) error
+	// A row filed for the tenant's staff for being staff, which no preference
+	// governs, so it is listed in their inbox whatever else shares its key. The
+	// scheduled publication tells the staff about an episode its followers are told
+	// about too, under the same recipient / type / subject, and a member of staff
+	// who follows the episode already holds the follower's row, listed or not by
+	// their own inbox cell. That row is kept, so its push still answers to their
+	// preferences, and listed. The conflict target needs SELECT on the row, so only
+	// the roles that reach every tenant's rows run this.
+	CreateStaffNotification(ctx context.Context, arg CreateStaffNotificationParams) error
 	// Records a verified store transaction. A transaction is sold once, so a
 	// second insert of the same one is no row and the caller reads the first.
 	CreateStorePurchase(ctx context.Context, arg CreateStorePurchaseParams) (Purchase, error)

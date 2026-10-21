@@ -190,6 +190,62 @@ func (q *Queries) CreatePlatformNotification(ctx context.Context, arg CreatePlat
 	return i, err
 }
 
+const CreateStaffNotification = `-- name: CreateStaffNotification :exec
+INSERT INTO notifications (
+    id,
+    tenant_id,
+    user_id,
+    notification_type,
+    subject_key,
+    payload,
+    category,
+    in_inbox
+)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7::text,
+    true
+)
+ON CONFLICT (user_id, notification_type, subject_key) DO UPDATE
+SET in_inbox = true
+`
+
+type CreateStaffNotificationParams struct {
+	ID               uuid.UUID       `json:"id"`
+	TenantID         uuid.UUID       `json:"tenant_id"`
+	UserID           uuid.UUID       `json:"user_id"`
+	NotificationType string          `json:"notification_type"`
+	SubjectKey       string          `json:"subject_key"`
+	Payload          json.RawMessage `json:"payload"`
+	Category         string          `json:"category"`
+}
+
+// A row filed for the tenant's staff for being staff, which no preference
+// governs, so it is listed in their inbox whatever else shares its key. The
+// scheduled publication tells the staff about an episode its followers are told
+// about too, under the same recipient / type / subject, and a member of staff
+// who follows the episode already holds the follower's row, listed or not by
+// their own inbox cell. That row is kept, so its push still answers to their
+// preferences, and listed. The conflict target needs SELECT on the row, so only
+// the roles that reach every tenant's rows run this.
+func (q *Queries) CreateStaffNotification(ctx context.Context, arg CreateStaffNotificationParams) error {
+	_, err := q.db.ExecContext(ctx, CreateStaffNotification,
+		arg.ID,
+		arg.TenantID,
+		arg.UserID,
+		arg.NotificationType,
+		arg.SubjectKey,
+		arg.Payload,
+		arg.Category,
+	)
+	return err
+}
+
 const ListNotificationsForUserAsc = `-- name: ListNotificationsForUserAsc :many
 SELECT
     n.id,
