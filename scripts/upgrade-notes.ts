@@ -20,6 +20,10 @@
 import { execFileSync } from "node:child_process";
 import { text } from "node:stream/consumers";
 
+import { fromMarkdown } from "mdast-util-from-markdown";
+import { gfmFromMarkdown } from "mdast-util-gfm";
+import { gfm } from "micromark-extension-gfm";
+
 /** One entry of `GET /repos/{owner}/{repo}/pulls/{number}/files`. */
 export interface ChangedFile {
   filename: string;
@@ -36,117 +40,45 @@ export interface MergedPullRequest {
 
 const HEADING = /^##\s+upgrade notes\s*$/iu;
 
-/** The heading that ends the section: the next one of the same level or above. */
-const NEXT_HEADING = /^#{1,2}\s/u;
-
 const COMMENT = /<!--[\s\S]*?-->/gu;
-
-/**
- * The start of a line that opens or closes a fenced code block: the markers of
- * the blockquotes and list items it sits in and the indentation around them,
- * then a run of at least three backticks or tildes.
- */
-const FENCE =
-  /^(?<prefix>(?:[\t >]|[-+*][\t ]|\d{1,9}[.)][\t ])*)(?<run>`{3,}|~{3,})/u;
-
-interface Fence {
-  /** The container markers and indentation before the run. */
-  prefix: string;
-  /** The text after the run: the info string, or nothing on a closing fence. */
-  rest: string;
-  run: string;
-}
-
-/**
- * The fence on `line`, or `undefined` when the line is no fence. The info
- * string of a backtick fence holds no backtick, so a run followed by one is
- * inline code instead.
- */
-const fenceOn = (line: string): Fence | undefined => {
-  const match = FENCE.exec(line);
-  if (match?.groups === undefined) {
-    return undefined;
-  }
-  const { prefix, run } = match.groups;
-  const rest = line.slice(match[0].length);
-  if (run.startsWith("`") && rest.includes("`")) {
-    return undefined;
-  }
-
-  return { prefix, rest, run };
-};
-
-/**
- * Whether `fence` closes `open`: a run of the same character at least as long,
- * with nothing after it, indented by up to three spaces when `open` starts at
- * column 0.
- */
-const closes = (fence: Fence | undefined, open: Fence): boolean =>
-  fence !== undefined &&
-  fence.run[0] === open.run[0] &&
-  fence.run.length >= open.run.length &&
-  fence.rest.trim() === "" &&
-  (open.prefix !== "" || /^ {0,3}$/u.test(fence.prefix));
-
-/** A line that starts at column 0 with neither indentation nor a `>`. */
-const UNINDENTED = /^[^\s>]/u;
-
-/**
- * Whether each of `lines` lies in a fenced code block, fence lines included.
- * A fence left open at column 0 runs to the end. One that starts after a list
- * marker, a `>`, or indentation is taken to sit in a list item or a
- * blockquote, and a fence takes no lazy continuation lines, so the next line
- * at column 0 ends the container and the fence with it.
- */
-const inFencedCode = (lines: readonly string[]): boolean[] => {
-  let open: Fence | undefined;
-
-  return lines.map((line) => {
-    const fence = fenceOn(line);
-    if (open !== undefined && open.prefix !== "" && UNINDENTED.test(line)) {
-      open = undefined;
-    }
-    if (open === undefined) {
-      open = fence;
-
-      return open !== undefined;
-    }
-    if (closes(fence, open)) {
-      open = undefined;
-    }
-
-    return true;
-  });
-};
 
 /**
  * The text of the Upgrade notes section in `body`, without the template's
  * comments: an empty string when the section is left blank, and `undefined`
  * when the body has no such section, as a pull request opened without the
  * template does.
+ *
+ * The section ends at the next `#` or `##` heading. Only a heading of the
+ * body's own is one, which takes parsing the Markdown: a line starting with
+ * `#` in a fenced code block is code, and whether a fence sits in a list item
+ * or is merely indented decides where it ends.
  */
 export const readUpgradeNotes = (
   body: string | null | undefined
 ): string | undefined => {
-  const lines = (body ?? "")
-    .replaceAll("\r\n", "\n")
-    .replaceAll(COMMENT, "")
-    .split("\n");
-  const code = inFencedCode(lines);
-  const start = lines.findIndex(
-    (line, index) => !code[index] && HEADING.test(line)
+  const source = (body ?? "").replaceAll("\r\n", "\n").replaceAll(COMMENT, "");
+  const tree = fromMarkdown(source, {
+    extensions: [gfm()],
+    mdastExtensions: [gfmFromMarkdown()],
+  });
+  const headings = tree.children.flatMap((node) =>
+    node.type === "heading" && node.depth <= 2 && node.position !== undefined
+      ? [
+          {
+            end: node.position.end.offset ?? 0,
+            start: node.position.start.offset ?? 0,
+          },
+        ]
+      : []
   );
-  if (start === -1) {
+  const at = headings.findIndex(({ end, start }) =>
+    HEADING.test(source.slice(start, end).trimStart())
+  );
+  if (at === -1) {
     return undefined;
   }
-  const end = lines.findIndex(
-    (line, index) => index > start && !code[index] && NEXT_HEADING.test(line)
-  );
 
-  return lines
-    .slice(start + 1, end === -1 ? undefined : end)
-    .join("\n")
-    .trim();
+  return source.slice(headings[at].end, headings.at(at + 1)?.start).trim();
 };
 
 /** Whether the section declares that the pull request asks nothing. */

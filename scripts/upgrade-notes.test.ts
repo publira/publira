@@ -140,6 +140,22 @@ describe("readUpgradeNotes", () => {
     assert.equal(readUpgradeNotes(body), "Restart the proxy.");
   });
 
+  it("closes an indented fence on a fence at column 0", () => {
+    const body = [
+      "## Summary",
+      "",
+      " ```sh",
+      " echo ready",
+      "```",
+      "",
+      "## Upgrade notes",
+      "",
+      "Restart the proxy.",
+    ].join("\n");
+
+    assert.equal(readUpgradeNotes(body), "Restart the proxy.");
+  });
+
   it("ends a fence in a list item at the next line at column 0", () => {
     const body = [
       "## Summary",
