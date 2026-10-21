@@ -2,7 +2,7 @@
 title: Upgrading
 description: Bring a running install to a new release, from the backup before it to the processes of the new release serving.
 published: 2026-10-06
-updated: 2026-10-20
+updated: 2026-10-21
 ---
 
 A release can change the database schema its processes expect, so upgrading an install is more than restarting it on new images. The database goes first: the `publiractl` image of the new release brings the schema and the database roles forward, and only then do the processes of the new release start on it. This page goes through that order, how to check each step, and what to do when a migration fails.
@@ -23,7 +23,7 @@ The notes of a release open with **Upgrade notes**, which names every change in 
 - **A process or a service the install has to run** that it did not run before.
 - **A migration that runs long or locks a busy table**, so that you can choose when to run it.
 
-Only a minor release names any of these. A patch release asks nothing beyond replacing the images, and [Releases](./9-releases.md) says what each kind of release may change and which releases receive fixes.
+Only a major release names any of these, and before `1.0.0` a minor release. A patch release before `1.0.0` still runs every step on this page: it can carry a migration, and its processes fail on a schema `db migrate` has not brought forward, so `db migrate` and `db roles` run before its processes are replaced. [Releases](./9-releases.md) says what each kind of release may change and which releases receive fixes.
 
 ### Get the images of the new release
 
