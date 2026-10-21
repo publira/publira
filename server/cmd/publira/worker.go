@@ -188,6 +188,7 @@ func buildWorker(deps shared) (_ half, err error) {
 	}, pushHandlers, outbox.StaffNotificationHandlerConfig{DB: db, Logger: logger},
 		outbox.AnnouncementNotificationHandlerConfig{DB: db, Logger: logger},
 		outbox.EpisodePublishedNotificationHandlerConfig{DB: db, Logger: logger},
+		outbox.CommentApprovedNotificationHandlerConfig{DB: db},
 		outbox.GooglePlayHandlerConfig{DB: db, Encryptor: encryptor, Purchases: googleplay.NewClient(googleplay.Config{})},
 		outbox.AppleSignInHandlerConfig{DB: db, Encryptor: encryptor, Tokens: signin.NewAppleClient(signin.AppleClientConfig{})},
 		invalidator, catalogIndexer, searchCacheRecorder))
@@ -232,6 +233,7 @@ func workerConfig(
 	staffHandlers outbox.StaffNotificationHandlerConfig,
 	announcementHandlers outbox.AnnouncementNotificationHandlerConfig,
 	episodePublishedHandlers outbox.EpisodePublishedNotificationHandlerConfig,
+	commentApprovedHandlers outbox.CommentApprovedNotificationHandlerConfig,
 	googlePlayHandlers outbox.GooglePlayHandlerConfig,
 	appleSignInHandlers outbox.AppleSignInHandlerConfig,
 	invalidator outbox.CacheInvalidator,
@@ -266,6 +268,7 @@ func workerConfig(
 	handlers.RegisterMessage(outbox.EventTypeCommentReportedNotification, outbox.NewCommentReportedNotificationHandler(staffHandlers))
 	handlers.RegisterMessage(outbox.EventTypeAnnouncementNotification, outbox.NewAnnouncementNotificationHandler(announcementHandlers))
 	handlers.RegisterMessage(outbox.EventTypeEpisodePublishedNotification, outbox.NewEpisodePublishedNotificationHandler(episodePublishedHandlers))
+	handlers.RegisterMessage(outbox.EventTypeCommentApprovedNotification, outbox.NewCommentApprovedNotificationHandler(commentApprovedHandlers))
 	handlers.Register(outbox.EventTypeNextCacheRevalidation, outbox.NewNextCacheRevalidationHandler(invalidator))
 	handlers.Register(outbox.EventTypeCatalogIndexSync, outbox.NewCatalogIndexSyncHandler(catalogIndexer, searchCacheRecorder))
 	handlers.RegisterMessage(outbox.EventTypeMemberPushNotification, outbox.NewMemberPushNotificationHandler(pushHandlers))

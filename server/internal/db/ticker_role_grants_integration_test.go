@@ -98,6 +98,61 @@ func TestTickerRoleRunsPublishEpisodes(t *testing.T) {
 	}
 }
 
+// A member of staff who follows the series and keeps its episodes out of their
+// inbox already holds the follower's row by the time the publication tells the
+// staff. The staff copy lists that row rather than leaving the notice out of
+// their console, and keeps its category, so the push still answers to their
+// preferences as a reader.
+func TestTickerRoleListsTheStaffCopyOfAFollowedEpisode(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenant := pg.SeedTenant(t, "TICKTENANT09", "ticker-staff.example.com", "Ticker Staff Tenant")
+	admin := pg.SeedTenantAdmin(t, tenant.ID, "TICKADMIN009", "ticker-staff-admin@example.com", "Ticker Staff Admin")
+	series := pg.SeedSeries(t, tenant.ID, testutil.SeriesSeed{PublicID: "TICKSERIES09", Title: "Ticker Staff Series", Published: true})
+	episode := pg.SeedEpisode(t, tenant.ID, series.ID, testutil.EpisodeSeed{
+		PublicID:    "TICKEPISODE9",
+		Title:       "Ticker Staff Episode",
+		Status:      testutil.EpisodeStatusScheduled,
+		ScheduledAt: time.Now().Add(-time.Minute),
+	})
+	if _, err := pg.DB.ExecContext(ctx,
+		"INSERT INTO series_follows (tenant_id, user_id, series_id) VALUES ($1, $2, $3)",
+		tenant.ID, admin.ID, series.ID,
+	); err != nil {
+		t.Fatalf("insert series follow: %v", err)
+	}
+	if _, err := pg.DB.ExecContext(ctx,
+		"INSERT INTO user_notification_settings (tenant_id, user_id, followed_episodes_inbox_enabled) VALUES ($1, $2, false)",
+		tenant.ID, admin.ID,
+	); err != nil {
+		t.Fatalf("insert notification settings: %v", err)
+	}
+
+	ticker := pg.OpenTickerDB(t)
+	publishepisodes.New(ticker, dbmodels.New(ticker), nil, discardLogger(), 0).RunOnce(ctx)
+
+	var (
+		category string
+		inInbox  bool
+	)
+	if err := pg.DB.QueryRowContext(ctx,
+		"SELECT category, in_inbox FROM notifications WHERE user_id = $1 AND subject_key = $2",
+		admin.ID, "episode:"+episode.PublicID,
+	).Scan(&category, &inInbox); err != nil {
+		t.Fatalf("read the admin's notification: %v", err)
+	}
+	if !inInbox {
+		t.Fatal("in_inbox = false, want the staff copy to list the row")
+	}
+	if category != "followed_episodes" {
+		t.Fatalf("category = %q, want the follower's followed_episodes kept", category)
+	}
+}
+
 func TestTickerRoleRunsApplyFreeWindows(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)

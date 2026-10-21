@@ -115,6 +115,10 @@ func announcementNotificationHandler(
 		if err != nil {
 			return Permanent(fmt.Errorf("announcement notification payload announcement_id is invalid: %w", err))
 		}
+		category, err := NotificationCategoryFor(NotificationTypeAnnouncementPosted)
+		if err != nil {
+			return Permanent(err)
+		}
 		insert := func(recipient dbmodels.ListAnnouncementRecipientsRow) error {
 			body, encodeErr := json.Marshal(announcementNotificationBody{
 				AnnouncementTitle: strings.TrimSpace(recipient.Title),
@@ -133,6 +137,7 @@ func announcementNotificationHandler(
 				NotificationType: NotificationTypeAnnouncementPosted,
 				SubjectKey:       AnnouncementSubjectKey(announcementID),
 				Payload:          body,
+				Category:         category,
 			})
 			// A recipient who already has this announcement's row, which is what
 			// a redelivered event looks like, is a no-op rather than an error.

@@ -167,9 +167,48 @@ func (e *adminDBEnv) auditRowCount(t *testing.T, tenantID uuid.UUID, action, tar
 	)
 }
 
+// drainCommentApprovedNotifications runs, as the worker would, every
+// comment_approved_notification event ApproveComment has queued, and answers
+// how many there were. The handler files nothing twice, so draining an event a
+// second time is harmless.
+func (e *adminDBEnv) drainCommentApprovedNotifications(t *testing.T) int {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	rows, err := e.PG.DB.QueryContext(ctx,
+		"SELECT id, tenant_id, event_type, payload, idempotency_key FROM outbox_events WHERE event_type = $1 ORDER BY id",
+		outbox.EventTypeCommentApprovedNotification,
+	)
+	if err != nil {
+		t.Fatalf("list comment approved events: %v", err)
+	}
+	defer rows.Close() //nolint:errcheck
+	var events []dbmodels.OutboxEvent
+	for rows.Next() {
+		var event dbmodels.OutboxEvent
+		if err := rows.Scan(&event.ID, &event.TenantID, &event.EventType, &event.Payload, &event.IdempotencyKey); err != nil {
+			t.Fatalf("scan comment approved event: %v", err)
+		}
+		events = append(events, event)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate comment approved events: %v", err)
+	}
+
+	handler := outbox.NewCommentApprovedNotificationHandler(outbox.CommentApprovedNotificationHandlerConfig{DB: e.PG.OpenOutboxDB(t)})
+	for _, event := range events {
+		if err := handler(ctx, event); err != nil {
+			t.Fatalf("handle %s: %v", event.IdempotencyKey, err)
+		}
+	}
+	return len(events)
+}
+
 // commentAuthorNotificationCount is how many bell rows one reader has of one
-// type. ApproveComment writes exactly one for the comment's
-// author, and nobody else.
+// type. An approval files exactly one for the comment's author, and nobody
+// else.
 func (e *adminDBEnv) commentAuthorNotificationCount(t *testing.T, tenantID, userID uuid.UUID, notificationType string) int {
 	t.Helper()
 
@@ -337,6 +376,15 @@ func TestDBAdminCommentApprovalNotifiesTheAuthorAndHideDoesNot(t *testing.T) {
 		t.Fatalf("ApproveComment: %v", err)
 	}
 
+	// The approval queues the notification rather than filing it, because
+	// whether it is listed is the author's own preference, which the console's
+	// connection cannot read.
+	if got := env.commentAuthorNotificationCount(t, tenantID, fixture.reader, outbox.NotificationTypeCommentApproved); got != 0 {
+		t.Fatalf("comment_approved rows before the worker drains = %d, want 0", got)
+	}
+	if got := env.drainCommentApprovedNotifications(t); got != 1 {
+		t.Fatalf("comment approved events = %d, want 1", got)
+	}
 	if got := env.commentAuthorNotificationCount(t, tenantID, fixture.reader, outbox.NotificationTypeCommentApproved); got != 1 {
 		t.Fatalf("comment_approved rows for the author = %d, want 1", got)
 	}
@@ -369,6 +417,9 @@ func TestDBAdminCommentApprovalNotifiesTheAuthorAndHideDoesNot(t *testing.T) {
 		CommentId: comment.ID.String(),
 	}); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("ApproveComment on a published comment error = %v, want failed_precondition", err)
+	}
+	if got := env.drainCommentApprovedNotifications(t); got != 1 {
+		t.Fatalf("comment approved events after a refused second approval = %d, want 1", got)
 	}
 	if got := env.commentAuthorNotificationCount(t, tenantID, fixture.reader, outbox.NotificationTypeCommentApproved); got != 1 {
 		t.Fatalf("comment_approved rows after a refused second approval = %d, want 1", got)

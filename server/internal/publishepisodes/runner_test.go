@@ -451,8 +451,8 @@ func TestPublishFinalFailureNotifiesEachOperatorOnce(t *testing.T) {
 	}
 
 	for _, row := range rows {
-		if row.NotificationType != notificationTypeEpisodePublishFailed {
-			t.Fatalf("type = %q, want %s", row.NotificationType, notificationTypeEpisodePublishFailed)
+		if row.NotificationType != outbox.NotificationTypeEpisodePublishFailed {
+			t.Fatalf("type = %q, want %s", row.NotificationType, outbox.NotificationTypeEpisodePublishFailed)
 		}
 		if row.SubjectKey != "episode:"+env.episode.PublicID {
 			t.Fatalf("subject_key = %q, want episode:%s", row.SubjectKey, env.episode.PublicID)
@@ -482,8 +482,8 @@ func TestPublishFinalFailureNotifiesEachOperatorOnce(t *testing.T) {
 	if tenantRows[0].UserID != env.admin.ID {
 		t.Fatalf("user_id = %s, want admin %s", tenantRows[0].UserID, env.admin.ID)
 	}
-	if tenantRows[0].NotificationType != notificationTypeEpisodePublishFailed {
-		t.Fatalf("type = %q, want %s", tenantRows[0].NotificationType, notificationTypeEpisodePublishFailed)
+	if tenantRows[0].NotificationType != outbox.NotificationTypeEpisodePublishFailed {
+		t.Fatalf("type = %q, want %s", tenantRows[0].NotificationType, outbox.NotificationTypeEpisodePublishFailed)
 	}
 }
 
@@ -512,8 +512,8 @@ func TestPublishFinalFailureNotifiesEachAdminOnce(t *testing.T) {
 			t.Fatalf("duplicate notification for admin %s", row.UserID)
 		}
 		gotAdmins[row.UserID] = row
-		if row.NotificationType != notificationTypeEpisodePublishFailed {
-			t.Fatalf("type = %q, want %s", row.NotificationType, notificationTypeEpisodePublishFailed)
+		if row.NotificationType != outbox.NotificationTypeEpisodePublishFailed {
+			t.Fatalf("type = %q, want %s", row.NotificationType, outbox.NotificationTypeEpisodePublishFailed)
 		}
 		if row.SubjectKey != "episode:"+env.episode.PublicID {
 			t.Fatalf("subject_key = %q, want episode:%s", row.SubjectKey, env.episode.PublicID)

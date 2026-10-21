@@ -153,6 +153,11 @@ func staffCommentNotificationHandler(
 			return Permanent(fmt.Errorf("encode staff comment notification body: %w", err))
 		}
 
+		category, err := NotificationCategoryFor(notificationType)
+		if err != nil {
+			return Permanent(err)
+		}
+
 		staff, err := queries.ListTenantAdminIDs(ctx, tenantID)
 		if err != nil {
 			return fmt.Errorf("list tenant staff: %w", err)
@@ -178,6 +183,7 @@ func staffCommentNotificationHandler(
 				NotificationType: notificationType,
 				SubjectKey:       subjectKey,
 				Payload:          body,
+				Category:         category,
 			})
 			// A recipient who already has this window's row, which is what a
 			// redelivered event looks like, is a no-op rather than an error.

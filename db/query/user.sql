@@ -822,10 +822,52 @@ WHERE tenant_id = $1
 LIMIT 1;
 
 -- name: UpsertUserNotificationSettings :one
-INSERT INTO user_notification_settings (tenant_id, user_id, email_notifications_enabled, updated_at)
-VALUES ($1, $2, $3, NOW())
+-- An omitted (NULL) preference cell keeps the value the row holds, so a client
+-- that knows only some of the cells cannot reset the ones it does not show.
+--
+-- On the insert branch there is no value to keep, and an omitted cell takes
+-- the same default GetNotificationSettings answers for a reader with no row.
+-- The literal repeats the column default because a VALUES list has no way to
+-- ask for it conditionally; TestDBNotificationPreferenceDefaultsAgreeAcrossPaths
+-- is what fails when the two drift apart.
+INSERT INTO user_notification_settings (
+    tenant_id,
+    user_id,
+    email_notifications_enabled,
+    followed_episodes_inbox_enabled,
+    followed_episodes_web_push_enabled,
+    followed_episodes_mobile_push_enabled,
+    followed_creators_inbox_enabled,
+    followed_creators_web_push_enabled,
+    followed_creators_mobile_push_enabled,
+    comments_inbox_enabled,
+    announcements_inbox_enabled,
+    updated_at
+)
+VALUES (
+    sqlc.arg('tenant_id'),
+    sqlc.arg('user_id'),
+    sqlc.arg('email_notifications_enabled'),
+    COALESCE(sqlc.narg('followed_episodes_inbox_enabled')::boolean, true),
+    COALESCE(sqlc.narg('followed_episodes_web_push_enabled')::boolean, true),
+    COALESCE(sqlc.narg('followed_episodes_mobile_push_enabled')::boolean, true),
+    COALESCE(sqlc.narg('followed_creators_inbox_enabled')::boolean, true),
+    COALESCE(sqlc.narg('followed_creators_web_push_enabled')::boolean, true),
+    COALESCE(sqlc.narg('followed_creators_mobile_push_enabled')::boolean, true),
+    COALESCE(sqlc.narg('comments_inbox_enabled')::boolean, true),
+    COALESCE(sqlc.narg('announcements_inbox_enabled')::boolean, true),
+    NOW()
+)
 ON CONFLICT (user_id) DO UPDATE
 SET email_notifications_enabled = EXCLUDED.email_notifications_enabled,
+    followed_episodes_inbox_enabled = COALESCE(sqlc.narg('followed_episodes_inbox_enabled')::boolean, user_notification_settings.followed_episodes_inbox_enabled),
+    followed_episodes_web_push_enabled = COALESCE(sqlc.narg('followed_episodes_web_push_enabled')::boolean, user_notification_settings.followed_episodes_web_push_enabled),
+    followed_episodes_mobile_push_enabled = COALESCE(sqlc.narg('followed_episodes_mobile_push_enabled')::boolean, user_notification_settings.followed_episodes_mobile_push_enabled),
+    followed_creators_inbox_enabled = COALESCE(sqlc.narg('followed_creators_inbox_enabled')::boolean, user_notification_settings.followed_creators_inbox_enabled),
+    followed_creators_web_push_enabled = COALESCE(sqlc.narg('followed_creators_web_push_enabled')::boolean, user_notification_settings.followed_creators_web_push_enabled),
+    followed_creators_mobile_push_enabled = COALESCE(sqlc.narg('followed_creators_mobile_push_enabled')::boolean, user_notification_settings.followed_creators_mobile_push_enabled),
+    comments_inbox_enabled = COALESCE(sqlc.narg('comments_inbox_enabled')::boolean, user_notification_settings.comments_inbox_enabled),
+    announcements_inbox_enabled = COALESCE(sqlc.narg('announcements_inbox_enabled')::boolean, user_notification_settings.announcements_inbox_enabled),
     updated_at = NOW()
 RETURNING *;
 

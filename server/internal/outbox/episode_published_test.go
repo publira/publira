@@ -44,6 +44,9 @@ func TestEpisodePublishedNotificationWritesOneRowPerFollowerAndOnePush(t *testin
 		if row.Availability != (sql.NullString{String: "all", Valid: true}) {
 			t.Fatalf("notification %d availability = %+v, want all", i, row.Availability)
 		}
+		if row.Category != string(NotificationCategoryFollowedEpisodes) {
+			t.Fatalf("notification %d category = %q, want %q", i, row.Category, NotificationCategoryFollowedEpisodes)
+		}
 	}
 	var body EpisodePublishedNotificationBody
 	if err := json.Unmarshal(queries.created[0].Payload, &body); err != nil {
@@ -122,9 +125,55 @@ func TestEpisodePublishedNotificationWritesNothingForAnEpisodeShownNowhere(t *te
 	if err := handler(context.Background(), episodePublishedEvent(t, uuid.New(), episodeID)); err != nil {
 		t.Fatalf("handler: %v", err)
 	}
-	if queries.listCalls != 0 || len(queries.created) != 0 || len(queries.outbox) != 0 {
+	if queries.listCalls+queries.creatorListCalls != 0 || len(queries.created) != 0 || len(queries.outbox) != 0 {
 		t.Fatalf("follower pages, notifications, outbox events = %d, %d, %d, want 0, 0, 0",
-			queries.listCalls, len(queries.created), len(queries.outbox))
+			queries.listCalls+queries.creatorListCalls, len(queries.created), len(queries.outbox))
+	}
+}
+
+// A reader who follows only a creator credited on the episode is filed under
+// followed_creators, which is the cell their preferences are asked about, and
+// the push is queued for them as it is for any other follower.
+func TestEpisodePublishedNotificationFilesACreatorFollowerUnderFollowedCreators(t *testing.T) {
+	episodeID := uuid.New()
+	seriesFollower := uuid.New()
+	creatorFollower := uuid.New()
+	queries := newStubEpisodePublishedQuerier(episodeID, seriesFollower)
+	queries.creatorFollowers = []uuid.UUID{creatorFollower}
+
+	handler := episodePublishedNotificationHandler(EpisodePublishedNotificationHandlerConfig{}, queries, DefaultEpisodeFollowerPageSize)
+	if err := handler(context.Background(), episodePublishedEvent(t, uuid.New(), episodeID)); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+
+	want := map[uuid.UUID]string{
+		seriesFollower:  string(NotificationCategoryFollowedEpisodes),
+		creatorFollower: string(NotificationCategoryFollowedCreators),
+	}
+	if len(queries.created) != len(want) {
+		t.Fatalf("notifications written = %d, want %d", len(queries.created), len(want))
+	}
+	for _, row := range queries.created {
+		if row.Category != want[row.UserID] {
+			t.Fatalf("category for %s = %q, want %q", row.UserID, row.Category, want[row.UserID])
+		}
+	}
+	if len(queries.outbox) != 1 {
+		t.Fatalf("outbox events = %d, want 1", len(queries.outbox))
+	}
+}
+
+func TestEpisodePublishedNotificationQueuesAPushForCreatorFollowersAlone(t *testing.T) {
+	episodeID := uuid.New()
+	queries := newStubEpisodePublishedQuerier(episodeID)
+	queries.creatorFollowers = []uuid.UUID{uuid.New()}
+
+	handler := episodePublishedNotificationHandler(EpisodePublishedNotificationHandlerConfig{}, queries, DefaultEpisodeFollowerPageSize)
+	if err := handler(context.Background(), episodePublishedEvent(t, uuid.New(), episodeID)); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if len(queries.created) != 1 || len(queries.outbox) != 1 {
+		t.Fatalf("notifications, outbox events = %d, %d, want 1, 1", len(queries.created), len(queries.outbox))
 	}
 }
 
@@ -202,14 +251,16 @@ func episodePublishedEvent(t *testing.T, tenantID, episodeID uuid.UUID) dbmodels
 }
 
 type stubEpisodePublishedQuerier struct {
-	episode   dbmodels.GetPublishedEpisodeForFollowerNotificationRow
-	getErr    error
-	lookedUp  dbmodels.GetPublishedEpisodeForFollowerNotificationParams
-	surfaces  []string
-	followers []uuid.UUID
-	listCalls int
-	created   []dbmodels.CreateNotificationParams
-	outbox    []dbmodels.InsertOutboxEventParams
+	episode          dbmodels.GetPublishedEpisodeForFollowerNotificationRow
+	getErr           error
+	lookedUp         dbmodels.GetPublishedEpisodeForFollowerNotificationParams
+	surfaces         []string
+	followers        []uuid.UUID
+	creatorFollowers []uuid.UUID
+	listCalls        int
+	creatorListCalls int
+	created          []dbmodels.CreateNotificationParams
+	outbox           []dbmodels.InsertOutboxEventParams
 }
 
 func newStubEpisodePublishedQuerier(episodeID uuid.UUID, followers ...uuid.UUID) *stubEpisodePublishedQuerier {
@@ -251,17 +302,29 @@ func (s *stubEpisodePublishedQuerier) ListEpisodeFollowerIDs(
 	arg dbmodels.ListEpisodeFollowerIDsParams,
 ) ([]uuid.UUID, error) {
 	s.listCalls++
+	return followerPage(s.followers, arg.AfterUserID, arg.Limit), nil
+}
+
+func (s *stubEpisodePublishedQuerier) ListEpisodeCreatorFollowerIDs(
+	_ context.Context,
+	arg dbmodels.ListEpisodeCreatorFollowerIDsParams,
+) ([]uuid.UUID, error) {
+	s.creatorListCalls++
+	return followerPage(s.creatorFollowers, arg.AfterUserID, arg.Limit), nil
+}
+
+func followerPage(followers []uuid.UUID, after uuid.UUID, limit int32) []uuid.UUID {
 	start := 0
-	if arg.AfterUserID != uuid.Nil {
-		for i, id := range s.followers {
-			if id == arg.AfterUserID {
+	if after != uuid.Nil {
+		for i, id := range followers {
+			if id == after {
 				start = i + 1
 				break
 			}
 		}
 	}
-	end := min(start+int(arg.Limit), len(s.followers))
-	return s.followers[start:end], nil
+	end := min(start+int(limit), len(followers))
+	return followers[start:end]
 }
 
 func (s *stubEpisodePublishedQuerier) CreateNotification(

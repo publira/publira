@@ -139,6 +139,7 @@ func insertTenantNotificationForPlatformTest(
 		TenantID:         tenantID,
 		UserID:           userID,
 		NotificationType: notificationType,
+		Category:         "staff",
 		SubjectKey:       subjectKey,
 		Payload:          json.RawMessage(payload),
 	})

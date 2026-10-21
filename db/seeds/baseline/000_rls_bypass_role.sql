@@ -438,7 +438,8 @@ GRANT CREATE ON SCHEMA public TO publira_outbox;
 --
 -- Reads: the due listings, series, windows, pinned and campaign banners,
 -- campaign prices, the catalog rows the log lines name, the recipients each
--- notification fans out to, and the views that decide whether a published
+-- notification fans out to and the preferences that decide whether it is
+-- listed in their inbox, and the views that decide whether a published
 -- episode is announced at all. A security_invoker view reads its tables with this role's own rights,
 -- so the views it is built on are granted alongside it.
 GRANT SELECT ON
@@ -460,6 +461,7 @@ GRANT SELECT ON
     series_follows,
     creator_follows,
     episode_creators,
+    user_notification_settings,
     tenant_user_roles,
     platform_users,
     platform_user_roles
@@ -486,3 +488,7 @@ GRANT UPDATE (start_revalidated_at, end_revalidated_at) ON campaign_banners TO p
 -- each end of the campaign, and writes nothing of the price or the period.
 GRANT UPDATE (start_revalidated_at, end_revalidated_at) ON episode_campaign_prices TO publira_ticker;
 GRANT SELECT, INSERT ON notifications, platform_notifications, outbox_events TO publira_ticker;
+-- And for a notification: the copy the scheduled publication files for the
+-- tenant's staff lists the row a member of staff already holds as a follower,
+-- and writes nothing else of it.
+GRANT UPDATE (in_inbox) ON notifications TO publira_ticker;

@@ -19,6 +19,7 @@ SELECT COUNT(*)::int AS unread_count
 FROM notifications n
 WHERE n.tenant_id = $1
     AND n.user_id = $2
+    AND n.in_inbox
     AND (
         $3::text IS NULL
         OR n.availability = ANY (ARRAY['all'::text, $3::text])
@@ -71,7 +72,9 @@ INSERT INTO notifications (
     notification_type,
     subject_key,
     payload,
-    availability
+    availability,
+    category,
+    in_inbox
 )
 VALUES (
     $1,
@@ -80,7 +83,19 @@ VALUES (
     $4,
     $5,
     $6,
-    COALESCE($7::text, 'all')
+    COALESCE($7::text, 'all'),
+    $8::text,
+    COALESCE((
+        SELECT CASE $8::text
+            WHEN 'followed_episodes' THEN s.followed_episodes_inbox_enabled
+            WHEN 'followed_creators' THEN s.followed_creators_inbox_enabled
+            WHEN 'comments' THEN s.comments_inbox_enabled
+            WHEN 'announcements' THEN s.announcements_inbox_enabled
+        END
+        FROM user_notification_settings s
+        WHERE s.tenant_id = $2
+            AND s.user_id = $3
+    ), true)
 )
 ON CONFLICT DO NOTHING
 `
@@ -93,6 +108,7 @@ type CreateNotificationParams struct {
 	SubjectKey       string          `json:"subject_key"`
 	Payload          json.RawMessage `json:"payload"`
 	Availability     sql.NullString  `json:"availability"`
+	Category         string          `json:"category"`
 }
 
 // Worker insert. Same recipient / type / subject is a no-op so retries
@@ -103,6 +119,16 @@ type CreateNotificationParams struct {
 //
 // availability is the surface the notification may be shown on, and a writer
 // that names none files it for every surface, the column's default.
+//
+// category is which of the recipient's notification preferences the row
+// answers to, and the row is listed in their inbox unless that preference's
+// inbox cell is off; a recipient who saved nothing holds every cell on, and
+// the staff category has no cell. The cell is read here rather than passed in,
+// so no writer can file a row past it. Reading it needs a connection that sees
+// the recipient's settings, which the worker's do: the settings are isolated
+// to the reader they belong to, so a tenant-scoped API connection reads no row
+// and would list every notification it filed, which is why the
+// reader-facing types are filed by the worker.
 func (q *Queries) CreateNotification(ctx context.Context, arg CreateNotificationParams) error {
 	_, err := q.db.ExecContext(ctx, CreateNotification,
 		arg.ID,
@@ -112,6 +138,7 @@ func (q *Queries) CreateNotification(ctx context.Context, arg CreateNotification
 		arg.SubjectKey,
 		arg.Payload,
 		arg.Availability,
+		arg.Category,
 	)
 	return err
 }
@@ -163,6 +190,62 @@ func (q *Queries) CreatePlatformNotification(ctx context.Context, arg CreatePlat
 	return i, err
 }
 
+const CreateStaffNotification = `-- name: CreateStaffNotification :exec
+INSERT INTO notifications (
+    id,
+    tenant_id,
+    user_id,
+    notification_type,
+    subject_key,
+    payload,
+    category,
+    in_inbox
+)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7::text,
+    true
+)
+ON CONFLICT (user_id, notification_type, subject_key) DO UPDATE
+SET in_inbox = true
+`
+
+type CreateStaffNotificationParams struct {
+	ID               uuid.UUID       `json:"id"`
+	TenantID         uuid.UUID       `json:"tenant_id"`
+	UserID           uuid.UUID       `json:"user_id"`
+	NotificationType string          `json:"notification_type"`
+	SubjectKey       string          `json:"subject_key"`
+	Payload          json.RawMessage `json:"payload"`
+	Category         string          `json:"category"`
+}
+
+// A row filed for the tenant's staff for being staff, which no preference
+// governs, so it is listed in their inbox whatever else shares its key. The
+// scheduled publication tells the staff about an episode its followers are told
+// about too, under the same recipient / type / subject, and a member of staff
+// who follows the episode already holds the follower's row, listed or not by
+// their own inbox cell. That row is kept, so its push still answers to their
+// preferences, and listed. The conflict target needs SELECT on the row, so only
+// the roles that reach every tenant's rows run this.
+func (q *Queries) CreateStaffNotification(ctx context.Context, arg CreateStaffNotificationParams) error {
+	_, err := q.db.ExecContext(ctx, CreateStaffNotification,
+		arg.ID,
+		arg.TenantID,
+		arg.UserID,
+		arg.NotificationType,
+		arg.SubjectKey,
+		arg.Payload,
+		arg.Category,
+	)
+	return err
+}
+
 const ListNotificationsForUserAsc = `-- name: ListNotificationsForUserAsc :many
 SELECT
     n.id,
@@ -179,6 +262,7 @@ FROM notifications n
     AND nr.user_id = $1
 WHERE n.tenant_id = $2
     AND n.user_id = $1
+    AND n.in_inbox
     AND (
         $3::text IS NULL
         OR n.availability = ANY (ARRAY['all'::text, $3::text])
@@ -277,6 +361,7 @@ FROM notifications n
     AND nr.user_id = $1
 WHERE n.tenant_id = $2
     AND n.user_id = $1
+    AND n.in_inbox
     AND (
         $3::text IS NULL
         OR n.availability = ANY (ARRAY['all'::text, $3::text])
@@ -327,7 +412,10 @@ type ListNotificationsForUserDescRow struct {
 // may be shown on it; the unread count and "mark all as read" take the same
 // one, so a surface counts and marks only what it lists. The tenant console,
 // which is neither surface and lists what is addressed to an admin, passes
-// NULL and reads every row.
+// NULL and reads every row of either surface.
+//
+// A row filed with its inbox cell off (in_inbox) is in no inbox, so all four
+// leave it out: it exists only for the push that mirrors it.
 func (q *Queries) ListNotificationsForUserDesc(ctx context.Context, arg ListNotificationsForUserDescParams) ([]ListNotificationsForUserDescRow, error) {
 	rows, err := q.db.QueryContext(ctx, ListNotificationsForUserDesc,
 		arg.UserID,
@@ -547,6 +635,7 @@ SELECT n.id, $1, n.tenant_id, NOW()
 FROM notifications n
 WHERE n.tenant_id = $2
     AND n.user_id = $1
+    AND n.in_inbox
     AND (
         $3::text IS NULL
         OR n.availability = ANY (ARRAY['all'::text, $3::text])

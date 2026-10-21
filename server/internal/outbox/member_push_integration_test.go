@@ -35,6 +35,7 @@ func TestMemberPushNotificationDeliversAcrossJobs(t *testing.T) {
 			TenantID:         tenant.ID,
 			UserID:           user.ID,
 			NotificationType: "episode_published",
+			Category:         string(NotificationCategoryFollowedEpisodes),
 			SubjectKey:       subjectKey,
 			Payload:          json.RawMessage(`{"episode_id":"EPISODE00001"}`),
 		}); err != nil {

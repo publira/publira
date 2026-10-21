@@ -437,7 +437,7 @@ func (s *adminServer) loadCommentForModeration(
 	return row, nil
 }
 
-// commentApprovedNotification is the bell row ApproveComment writes for the
+// commentApprovedNotification is the bell row ApproveComment queues for the
 // person who posted the comment. The catalog fields come off the moderation
 // read so the inbox can name the episode without a second lookup.
 func commentApprovedNotification(row moderationCommentRow) outbox.CommentApprovedNotification {
@@ -735,8 +735,8 @@ func (s *adminServer) ApproveComment(
 	if err := contentevents.ProjectComment(ctx, qtx, tenant.ID, current.ID); err != nil {
 		return nil, s.internalDBError(ctx, "failed to project the engagement event of an approved comment", err, "tenant_id", tenant.ID.String(), "comment_id", current.ID.String())
 	}
-	if err := outbox.NotifyCommentApproved(ctx, qtx, commentApprovedNotification(current)); err != nil {
-		return nil, s.internalDBError(ctx, "failed to notify the author of an approved comment", err, "tenant_id", tenant.ID.String(), "comment_id", current.ID.String())
+	if err := outbox.QueueCommentApprovedNotification(ctx, qtx, commentApprovedNotification(current)); err != nil {
+		return nil, s.internalDBError(ctx, "failed to queue the notification of an approved comment", err, "tenant_id", tenant.ID.String(), "comment_id", current.ID.String())
 	}
 	owed, err := s.recordCommentListRevalidation(ctx, qtx, tenant.ID, current.EpisodePublicID)
 	if err != nil {

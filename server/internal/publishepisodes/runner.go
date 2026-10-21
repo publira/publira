@@ -26,8 +26,6 @@ import (
 const (
 	defaultRetryBaseDelay  = 2 * time.Second
 	defaultRetryMultiplier = 2
-
-	notificationTypeEpisodePublishFailed = "episode_publish_failed"
 )
 
 // errNoLongerDue reports an episode that stopped being due between the job
@@ -173,7 +171,7 @@ func (r *Runner) publishEpisodeWithRetry(ctx context.Context, row dbmodels.ListE
 			"max_retries", r.maxRetries,
 			"error", err,
 		)
-		r.notifyTenantAdmins(ctx, row, notificationTypeEpisodePublishFailed)
+		r.notifyTenantAdmins(ctx, row, outbox.NotificationTypeEpisodePublishFailed)
 		r.notifyOperatorsOfPublishFailure(ctx, row)
 		return
 	}
@@ -251,6 +249,17 @@ func (r *Runner) notifyTenantAdmins(ctx context.Context, row dbmodels.ListEpisod
 		return
 	}
 
+	category, err := outbox.NotificationCategoryFor(notificationType, outbox.NotificationCategoryStaff)
+	if err != nil {
+		r.logger.ErrorContext(ctx, "failed to file publish notification",
+			"episode_id", row.EpisodeID,
+			"tenant_id", row.TenantID.String(),
+			"notification_type", notificationType,
+			"error", err,
+		)
+		return
+	}
+
 	subjectKey := "episode:" + row.EpisodePublicID
 	for _, adminID := range admins {
 		notificationID, err := uuid.NewV7()
@@ -263,13 +272,14 @@ func (r *Runner) notifyTenantAdmins(ctx context.Context, row dbmodels.ListEpisod
 			)
 			continue
 		}
-		err = r.queries.CreateNotification(ctx, dbmodels.CreateNotificationParams{
+		err = r.queries.CreateStaffNotification(ctx, dbmodels.CreateStaffNotificationParams{
 			ID:               notificationID,
 			TenantID:         row.TenantID,
 			UserID:           adminID,
 			NotificationType: notificationType,
 			SubjectKey:       subjectKey,
 			Payload:          payload,
+			Category:         category,
 		})
 		if err != nil {
 			r.logger.ErrorContext(ctx, "failed to insert publish notification",
@@ -324,7 +334,7 @@ func (r *Runner) notifyOperatorsOfPublishFailure(ctx context.Context, row dbmode
 		_, err = r.queries.CreatePlatformNotification(ctx, dbmodels.CreatePlatformNotificationParams{
 			ID:               notificationID,
 			PlatformUserID:   operatorID,
-			NotificationType: notificationTypeEpisodePublishFailed,
+			NotificationType: outbox.NotificationTypeEpisodePublishFailed,
 			SubjectKey:       subjectKey,
 			Payload:          payload,
 		})

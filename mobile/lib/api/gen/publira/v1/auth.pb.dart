@@ -4584,10 +4584,12 @@ class GetNotificationSettingsRequest extends $pb.GeneratedMessage {
 class GetNotificationSettingsResponse extends $pb.GeneratedMessage {
   factory GetNotificationSettingsResponse({
     $core.bool? emailNotificationsEnabled,
+    NotificationPreferences? preferences,
   }) {
     final result = GetNotificationSettingsResponse._();
     if (emailNotificationsEnabled != null)
       result.emailNotificationsEnabled = emailNotificationsEnabled;
+    if (preferences != null) result.preferences = preferences;
     return result;
   }
 
@@ -4605,6 +4607,8 @@ class GetNotificationSettingsResponse extends $pb.GeneratedMessage {
       package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
       createEmptyInstance: GetNotificationSettingsResponse.$_createMessage)
     ..aOB(1, _omitFieldNames ? '' : 'emailNotificationsEnabled')
+    ..aOM<NotificationPreferences>(2, _omitFieldNames ? '' : 'preferences',
+        subBuilder: NotificationPreferences.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -4643,17 +4647,54 @@ class GetNotificationSettingsResponse extends $pb.GeneratedMessage {
   $core.bool hasEmailNotificationsEnabled() => $_has(0);
   @$pb.TagNumber(1)
   void clearEmailNotificationsEnabled() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  NotificationPreferences get preferences => $_getN(1);
+  @$pb.TagNumber(2)
+  set preferences(NotificationPreferences value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPreferences() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPreferences() => $_clearField(2);
+  @$pb.TagNumber(2)
+  NotificationPreferences ensurePreferences() => $_ensure(1);
 }
 
 class UpdateNotificationSettingsRequest extends $pb.GeneratedMessage {
   factory UpdateNotificationSettingsRequest({
     $0.TenantContext? tenant,
     $core.bool? emailNotificationsEnabled,
+    $core.bool? followedEpisodesInboxEnabled,
+    $core.bool? followedEpisodesWebPushEnabled,
+    $core.bool? followedEpisodesMobilePushEnabled,
+    $core.bool? followedCreatorsInboxEnabled,
+    $core.bool? followedCreatorsWebPushEnabled,
+    $core.bool? followedCreatorsMobilePushEnabled,
+    $core.bool? commentsInboxEnabled,
+    $core.bool? announcementsInboxEnabled,
   }) {
     final result = UpdateNotificationSettingsRequest._();
     if (tenant != null) result.tenant = tenant;
     if (emailNotificationsEnabled != null)
       result.emailNotificationsEnabled = emailNotificationsEnabled;
+    if (followedEpisodesInboxEnabled != null)
+      result.followedEpisodesInboxEnabled = followedEpisodesInboxEnabled;
+    if (followedEpisodesWebPushEnabled != null)
+      result.followedEpisodesWebPushEnabled = followedEpisodesWebPushEnabled;
+    if (followedEpisodesMobilePushEnabled != null)
+      result.followedEpisodesMobilePushEnabled =
+          followedEpisodesMobilePushEnabled;
+    if (followedCreatorsInboxEnabled != null)
+      result.followedCreatorsInboxEnabled = followedCreatorsInboxEnabled;
+    if (followedCreatorsWebPushEnabled != null)
+      result.followedCreatorsWebPushEnabled = followedCreatorsWebPushEnabled;
+    if (followedCreatorsMobilePushEnabled != null)
+      result.followedCreatorsMobilePushEnabled =
+          followedCreatorsMobilePushEnabled;
+    if (commentsInboxEnabled != null)
+      result.commentsInboxEnabled = commentsInboxEnabled;
+    if (announcementsInboxEnabled != null)
+      result.announcementsInboxEnabled = announcementsInboxEnabled;
     return result;
   }
 
@@ -4674,6 +4715,14 @@ class UpdateNotificationSettingsRequest extends $pb.GeneratedMessage {
     ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
         subBuilder: $0.TenantContext.$_createMessage)
     ..aOB(2, _omitFieldNames ? '' : 'emailNotificationsEnabled')
+    ..aOB(3, _omitFieldNames ? '' : 'followedEpisodesInboxEnabled')
+    ..aOB(4, _omitFieldNames ? '' : 'followedEpisodesWebPushEnabled')
+    ..aOB(5, _omitFieldNames ? '' : 'followedEpisodesMobilePushEnabled')
+    ..aOB(6, _omitFieldNames ? '' : 'followedCreatorsInboxEnabled')
+    ..aOB(7, _omitFieldNames ? '' : 'followedCreatorsWebPushEnabled')
+    ..aOB(8, _omitFieldNames ? '' : 'followedCreatorsMobilePushEnabled')
+    ..aOB(9, _omitFieldNames ? '' : 'commentsInboxEnabled')
+    ..aOB(10, _omitFieldNames ? '' : 'announcementsInboxEnabled')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -4723,15 +4772,95 @@ class UpdateNotificationSettingsRequest extends $pb.GeneratedMessage {
   $core.bool hasEmailNotificationsEnabled() => $_has(1);
   @$pb.TagNumber(2)
   void clearEmailNotificationsEnabled() => $_clearField(2);
+
+  /// Omitted cells keep the stored value, so a client that shows only some of
+  /// the cells — one released before a cell existed among them — does not
+  /// reset the ones it knows nothing about (proto3 non-optional bool maps an
+  /// omitted field to false). The names are those of NotificationPreferences.
+  @$pb.TagNumber(3)
+  $core.bool get followedEpisodesInboxEnabled => $_getBF(2);
+  @$pb.TagNumber(3)
+  set followedEpisodesInboxEnabled($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasFollowedEpisodesInboxEnabled() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearFollowedEpisodesInboxEnabled() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.bool get followedEpisodesWebPushEnabled => $_getBF(3);
+  @$pb.TagNumber(4)
+  set followedEpisodesWebPushEnabled($core.bool value) => $_setBool(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasFollowedEpisodesWebPushEnabled() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearFollowedEpisodesWebPushEnabled() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.bool get followedEpisodesMobilePushEnabled => $_getBF(4);
+  @$pb.TagNumber(5)
+  set followedEpisodesMobilePushEnabled($core.bool value) =>
+      $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasFollowedEpisodesMobilePushEnabled() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearFollowedEpisodesMobilePushEnabled() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.bool get followedCreatorsInboxEnabled => $_getBF(5);
+  @$pb.TagNumber(6)
+  set followedCreatorsInboxEnabled($core.bool value) => $_setBool(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasFollowedCreatorsInboxEnabled() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearFollowedCreatorsInboxEnabled() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.bool get followedCreatorsWebPushEnabled => $_getBF(6);
+  @$pb.TagNumber(7)
+  set followedCreatorsWebPushEnabled($core.bool value) => $_setBool(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasFollowedCreatorsWebPushEnabled() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearFollowedCreatorsWebPushEnabled() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.bool get followedCreatorsMobilePushEnabled => $_getBF(7);
+  @$pb.TagNumber(8)
+  set followedCreatorsMobilePushEnabled($core.bool value) =>
+      $_setBool(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasFollowedCreatorsMobilePushEnabled() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearFollowedCreatorsMobilePushEnabled() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.bool get commentsInboxEnabled => $_getBF(8);
+  @$pb.TagNumber(9)
+  set commentsInboxEnabled($core.bool value) => $_setBool(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasCommentsInboxEnabled() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearCommentsInboxEnabled() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.bool get announcementsInboxEnabled => $_getBF(9);
+  @$pb.TagNumber(10)
+  set announcementsInboxEnabled($core.bool value) => $_setBool(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasAnnouncementsInboxEnabled() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearAnnouncementsInboxEnabled() => $_clearField(10);
 }
 
 class UpdateNotificationSettingsResponse extends $pb.GeneratedMessage {
   factory UpdateNotificationSettingsResponse({
     $core.bool? emailNotificationsEnabled,
+    NotificationPreferences? preferences,
   }) {
     final result = UpdateNotificationSettingsResponse._();
     if (emailNotificationsEnabled != null)
       result.emailNotificationsEnabled = emailNotificationsEnabled;
+    if (preferences != null) result.preferences = preferences;
     return result;
   }
 
@@ -4750,6 +4879,8 @@ class UpdateNotificationSettingsResponse extends $pb.GeneratedMessage {
       package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
       createEmptyInstance: UpdateNotificationSettingsResponse.$_createMessage)
     ..aOB(1, _omitFieldNames ? '' : 'emailNotificationsEnabled')
+    ..aOM<NotificationPreferences>(2, _omitFieldNames ? '' : 'preferences',
+        subBuilder: NotificationPreferences.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -4788,6 +4919,193 @@ class UpdateNotificationSettingsResponse extends $pb.GeneratedMessage {
   $core.bool hasEmailNotificationsEnabled() => $_has(0);
   @$pb.TagNumber(1)
   void clearEmailNotificationsEnabled() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  NotificationPreferences get preferences => $_getN(1);
+  @$pb.TagNumber(2)
+  set preferences(NotificationPreferences value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPreferences() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPreferences() => $_clearField(2);
+  @$pb.TagNumber(2)
+  NotificationPreferences ensurePreferences() => $_ensure(1);
+}
+
+/// Which notifications reach a reader on each channel, one cell per category
+/// and channel the server delivers, named <category>_<channel>_enabled. Every
+/// field carries a value: a reader who has saved nothing reads every cell on
+/// rather than an absent message, so a client never has to tell "unset" from
+/// "off".
+///
+/// A category is why a notification reached the reader. An episode the reader
+/// is told about takes the most direct follow that earned it: the episode or
+/// its series before a creator credited on it, so turning the creators off
+/// still lets an episode of a followed series through. A combination the server
+/// does not deliver — a push of a comment or an announcement — has no cell
+/// until it does, and the next cell is a field here and a column behind it,
+/// not a second pair of RPCs.
+///
+/// An inbox cell that is off keeps the notification out of the inbox and its
+/// unread count without stopping its push, and a push cell that is off stops
+/// the push to that kind of device alone.
+class NotificationPreferences extends $pb.GeneratedMessage {
+  factory NotificationPreferences({
+    $core.bool? followedEpisodesInboxEnabled,
+    $core.bool? followedEpisodesWebPushEnabled,
+    $core.bool? followedEpisodesMobilePushEnabled,
+    $core.bool? followedCreatorsInboxEnabled,
+    $core.bool? followedCreatorsWebPushEnabled,
+    $core.bool? followedCreatorsMobilePushEnabled,
+    $core.bool? commentsInboxEnabled,
+    $core.bool? announcementsInboxEnabled,
+  }) {
+    final result = NotificationPreferences._();
+    if (followedEpisodesInboxEnabled != null)
+      result.followedEpisodesInboxEnabled = followedEpisodesInboxEnabled;
+    if (followedEpisodesWebPushEnabled != null)
+      result.followedEpisodesWebPushEnabled = followedEpisodesWebPushEnabled;
+    if (followedEpisodesMobilePushEnabled != null)
+      result.followedEpisodesMobilePushEnabled =
+          followedEpisodesMobilePushEnabled;
+    if (followedCreatorsInboxEnabled != null)
+      result.followedCreatorsInboxEnabled = followedCreatorsInboxEnabled;
+    if (followedCreatorsWebPushEnabled != null)
+      result.followedCreatorsWebPushEnabled = followedCreatorsWebPushEnabled;
+    if (followedCreatorsMobilePushEnabled != null)
+      result.followedCreatorsMobilePushEnabled =
+          followedCreatorsMobilePushEnabled;
+    if (commentsInboxEnabled != null)
+      result.commentsInboxEnabled = commentsInboxEnabled;
+    if (announcementsInboxEnabled != null)
+      result.announcementsInboxEnabled = announcementsInboxEnabled;
+    return result;
+  }
+
+  NotificationPreferences._();
+
+  factory NotificationPreferences.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      NotificationPreferences()..mergeFromBuffer(data, registry);
+  factory NotificationPreferences.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      NotificationPreferences()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'NotificationPreferences',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: NotificationPreferences.$_createMessage)
+    ..aOB(1, _omitFieldNames ? '' : 'followedEpisodesInboxEnabled')
+    ..aOB(2, _omitFieldNames ? '' : 'followedEpisodesWebPushEnabled')
+    ..aOB(3, _omitFieldNames ? '' : 'followedEpisodesMobilePushEnabled')
+    ..aOB(4, _omitFieldNames ? '' : 'followedCreatorsInboxEnabled')
+    ..aOB(5, _omitFieldNames ? '' : 'followedCreatorsWebPushEnabled')
+    ..aOB(6, _omitFieldNames ? '' : 'followedCreatorsMobilePushEnabled')
+    ..aOB(7, _omitFieldNames ? '' : 'commentsInboxEnabled')
+    ..aOB(8, _omitFieldNames ? '' : 'announcementsInboxEnabled')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  NotificationPreferences clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  NotificationPreferences copyWith(
+          void Function(NotificationPreferences) updates) =>
+      super.copyWith((message) => updates(message as NotificationPreferences))
+          as NotificationPreferences;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use NotificationPreferences() / NotificationPreferences.new instead')
+  static NotificationPreferences create() => NotificationPreferences._();
+  static $pb.GeneratedMessage $_createMessage() => NotificationPreferences._();
+  @$core.override
+  NotificationPreferences createEmptyInstance() => NotificationPreferences._();
+  @$core.pragma('dart2js:noInline')
+  static NotificationPreferences getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<NotificationPreferences>(
+          NotificationPreferences.$_createMessage);
+  static NotificationPreferences? _defaultInstance;
+
+  /// An episode the reader follows, or one of a series they follow.
+  @$pb.TagNumber(1)
+  $core.bool get followedEpisodesInboxEnabled => $_getBF(0);
+  @$pb.TagNumber(1)
+  set followedEpisodesInboxEnabled($core.bool value) => $_setBool(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasFollowedEpisodesInboxEnabled() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearFollowedEpisodesInboxEnabled() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.bool get followedEpisodesWebPushEnabled => $_getBF(1);
+  @$pb.TagNumber(2)
+  set followedEpisodesWebPushEnabled($core.bool value) => $_setBool(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasFollowedEpisodesWebPushEnabled() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearFollowedEpisodesWebPushEnabled() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.bool get followedEpisodesMobilePushEnabled => $_getBF(2);
+  @$pb.TagNumber(3)
+  set followedEpisodesMobilePushEnabled($core.bool value) =>
+      $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasFollowedEpisodesMobilePushEnabled() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearFollowedEpisodesMobilePushEnabled() => $_clearField(3);
+
+  /// An episode credited to an author the reader follows.
+  @$pb.TagNumber(4)
+  $core.bool get followedCreatorsInboxEnabled => $_getBF(3);
+  @$pb.TagNumber(4)
+  set followedCreatorsInboxEnabled($core.bool value) => $_setBool(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasFollowedCreatorsInboxEnabled() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearFollowedCreatorsInboxEnabled() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.bool get followedCreatorsWebPushEnabled => $_getBF(4);
+  @$pb.TagNumber(5)
+  set followedCreatorsWebPushEnabled($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasFollowedCreatorsWebPushEnabled() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearFollowedCreatorsWebPushEnabled() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.bool get followedCreatorsMobilePushEnabled => $_getBF(5);
+  @$pb.TagNumber(6)
+  set followedCreatorsMobilePushEnabled($core.bool value) =>
+      $_setBool(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasFollowedCreatorsMobilePushEnabled() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearFollowedCreatorsMobilePushEnabled() => $_clearField(6);
+
+  /// The reader's own comment approved.
+  @$pb.TagNumber(7)
+  $core.bool get commentsInboxEnabled => $_getBF(6);
+  @$pb.TagNumber(7)
+  set commentsInboxEnabled($core.bool value) => $_setBool(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasCommentsInboxEnabled() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearCommentsInboxEnabled() => $_clearField(7);
+
+  /// An announcement the tenant posted.
+  @$pb.TagNumber(8)
+  $core.bool get announcementsInboxEnabled => $_getBF(7);
+  @$pb.TagNumber(8)
+  set announcementsInboxEnabled($core.bool value) => $_setBool(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasAnnouncementsInboxEnabled() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearAnnouncementsInboxEnabled() => $_clearField(8);
 }
 
 /// A reader's own choices about how the viewer is laid out, stored against the

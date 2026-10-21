@@ -759,7 +759,7 @@ func TestDBNotificationsAreMemberScopedByRLS(t *testing.T) {
 		// Filing a row for another member is the delivery path, and it goes
 		// through; reading it back is not the filer's to do.
 		if _, err := conn.ExecContext(ctx,
-			"INSERT INTO notifications (id, tenant_id, user_id, notification_type, subject_key) VALUES ($1, $2, $3, 'comment_approved', 'comment:CMT001')",
+			"INSERT INTO notifications (id, tenant_id, user_id, notification_type, subject_key, category) VALUES ($1, $2, $3, 'comment_approved', 'comment:CMT001', 'comments')",
 			uuid.Must(uuid.NewV7()), tenant.ID, unsaved.ID,
 		); err != nil {
 			t.Fatalf("file a bell row for another member: %v", err)
@@ -818,7 +818,7 @@ func TestDBNotificationsAreTenantScopedByRLS(t *testing.T) {
 		}
 
 		createdBell, err := conn.ExecContext(ctx,
-			"INSERT INTO notifications (id, tenant_id, user_id, notification_type, subject_key) VALUES ($1, $2, $3, 'comment_approved', 'comment:CMT001')",
+			"INSERT INTO notifications (id, tenant_id, user_id, notification_type, subject_key, category) VALUES ($1, $2, $3, 'comment_approved', 'comment:CMT001', 'comments')",
 			uuid.Must(uuid.NewV7()), tenant.ID, unsaved.ID,
 		)
 		if err == nil {

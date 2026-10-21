@@ -32,6 +32,7 @@ func TestCreateNotificationIgnoresDuplicateSubject(t *testing.T) {
 		TenantID:         tenantID,
 		UserID:           userID,
 		NotificationType: "episode_published",
+		Category:         "followed_episodes",
 		SubjectKey:       "episode:EPISODE0001",
 		Payload:          json.RawMessage(`{"episode_id":"EPISODE0001"}`),
 	})
@@ -44,6 +45,7 @@ func TestCreateNotificationIgnoresDuplicateSubject(t *testing.T) {
 		TenantID:         tenantID,
 		UserID:           userID,
 		NotificationType: "episode_published",
+		Category:         "followed_episodes",
 		SubjectKey:       "episode:EPISODE0001",
 		Payload:          json.RawMessage(`{"episode_id":"EPISODE0001"}`),
 	})
@@ -56,6 +58,7 @@ func TestCreateNotificationIgnoresDuplicateSubject(t *testing.T) {
 		TenantID:         tenantID,
 		UserID:           userID,
 		NotificationType: "episode_publish_failed",
+		Category:         "followed_episodes",
 		SubjectKey:       "episode:EPISODE0001",
 		Payload:          json.RawMessage(`{"episode_id":"EPISODE0001"}`),
 	})
@@ -270,6 +273,7 @@ func TestNotificationsAreListedCountedAndMarkedOnTheirSurface(t *testing.T) {
 			TenantID:         tenantID,
 			UserID:           userID,
 			NotificationType: "episode_published",
+			Category:         "followed_episodes",
 			SubjectKey:       "episode:" + availability,
 			Payload:          json.RawMessage(`{}`),
 			Availability:     sql.NullString{String: availability, Valid: availability != ""},
@@ -458,6 +462,7 @@ func TestNotificationPayloadMustBeObject(t *testing.T) {
 		TenantID:         tenantID,
 		UserID:           userID,
 		NotificationType: "episode_published",
+		Category:         "followed_episodes",
 		SubjectKey:       "episode:array",
 		Payload:          json.RawMessage(`["not-an-object"]`),
 	})
@@ -493,8 +498,8 @@ func mustInsertNotification(
 	id := uuid.Must(uuid.NewV7())
 	_, err := db.ExecContext(ctx, `
 		INSERT INTO notifications (
-			id, tenant_id, user_id, notification_type, subject_key, payload, created_at
-		) VALUES ($1, $2, $3, $4, $5, '{}'::jsonb, $6)
+			id, tenant_id, user_id, notification_type, subject_key, payload, category, created_at
+		) VALUES ($1, $2, $3, $4, $5, '{}'::jsonb, 'staff', $6)
 	`, id, tenantID, userID, notificationType, subjectKey, createdAt)
 	if err != nil {
 		t.Fatalf("insert notification: %v", err)
