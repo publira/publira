@@ -2,6 +2,7 @@
 title: Operations
 description: Running a Publira install day to day, from adding tenants and managing who signs in to configuring the services it depends on.
 published: 2026-10-06
+updated: 2026-10-21
 ---
 
 These pages are for the operator of an install that is already serving, as [Deployments](../2-deployments/index.md) left it. They cover the work that comes after the first tenant: adding more, managing who signs in to each console, keeping the platform's own accounts in order, and changing the services `publiractl setup` configured.
@@ -21,6 +22,9 @@ Most of this work can be done from either the `publiractl` command line or the P
 - [Platform defaults and policies](./9-platform-policies.md): the defaults, security and community limits, and retention periods every tenant inherits, and which of them a tenant can change.
 - [Scheduled and maintenance jobs](./10-scheduled-jobs.md): what `publira worker` runs on its own, how it catches up after downtime and retries outgoing mail, push, and cache revalidation, and running a job by hand with `publiractl job`.
 - [Monitoring](./11-monitoring.md): the health checks every process answers and how to probe them, the log lines and metrics worth an alert, and turning on OpenTelemetry metrics and traces.
-- [Securing an install](./12-security.md): what keeps tenants and credentials apart, rotating the encryption keys, database passwords, signing keys, and tokens, two-step verification, and the audit logs.
+- [Securing an install](./12-security/index.md): what keeps tenants and credentials apart, and where each secret may go.
+  - [Rotating secrets](./12-security/1-rotating-secrets.md): replacing the encryption keys, database passwords, signing keys, and tokens.
+  - [Two-step verification](./12-security/2-two-step-verification.md): requiring it of tenant staff and of platform operators.
+  - [Audit logs](./12-security/3-audit-logs.md): what the Platform Console's log and a tenant's log record, and what neither records.
 
 Start from [Getting started](../1-getting-started.md) if you have not read what Publira is.

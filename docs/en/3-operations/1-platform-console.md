@@ -110,7 +110,7 @@ From then on, signing in stops after the password at **Two-step verification** a
 - **Regenerate recovery codes** replaces every code you hold, used or not, with ten new ones. It takes a code from the authenticator, not a recovery code.
 - **Turn off two-step verification** takes a code from the authenticator or a recovery code. You can set it up again at any time, with a new authenticator if you have one.
 
-The platform can require it of every operator, as [Security](./12-security.md#platform-operators) describes. You are then asked to set it up the next time you sign in, and signing in finishes once you have.
+The platform can require it of every operator, as [Security](./12-security/2-two-step-verification.md#platform-operators) describes. You are then asked to set it up the next time you sign in, and signing in finishes once you have.
 
 There is no form that changes your password while you are signed in. Sign out, choose **Forgot your password?** on the sign-in screen, and set a new one from the link you are mailed; the link is valid for 24 hours.
 

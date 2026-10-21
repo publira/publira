@@ -369,7 +369,7 @@ for (const locale of DOCS_LOCALES) {
             }),
           ],
           locale,
-          page: "operations/security",
+          page: "operations/security/two-step-verification",
           subject: "mfa-required",
         });
       });
@@ -391,8 +391,8 @@ for (const locale of DOCS_LOCALES) {
         await expectDocsScreenshot(page, {
           element: [docsScreenHeader(page), page.getByRole("table")],
           locale,
-          page: "operations/security",
-          subject: "audit-logs",
+          page: "operations/security/audit-logs",
+          subject: "tenant-filter",
         });
       });
     });
