@@ -2,6 +2,7 @@
 title: The app manifest
 description: Write the file that names a tenant's app and the identifiers the stores know it by, and check it before building.
 published: 2026-10-06
+updated: 2026-10-21
 ---
 
 The app manifest is a short YAML file that says whose app a build is: the name on the home screen, the one tenant it serves, and the identifiers it is published under. Every build of the tenant's app reads it, so keep it with the tenant's other build inputs, outside the repository, and under version control of your own.
@@ -11,7 +12,7 @@ The app manifest is a short YAML file that says whose app a build is: the name o
 Copy [`mobile/config/app.example.yaml`](https://github.com/publira/publira/blob/main/mobile/config/app.example.yaml) to a directory of your own, such as `~/example-reader/app.yaml`, and replace every value with the tenant's:
 
 ```yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/publira/publira/main/mobile/config/app.schema.json
+# yaml-language-server: $schema=https://www.publira.dev/schemas/app-manifest/v1.json
 schemaVersion: 1
 
 app:
@@ -65,6 +66,6 @@ $ dart run mobile/scripts/app_manifest.dart ~/example-reader/app.yaml
   - android.applicationId "com.example-reader" is not a valid Android application ID: it needs at least two dot-separated segments, and each must start with a letter and contain only letters, digits, and underscores (e.g. com.example.reader)
 ```
 
-An editor that understands JSON Schema checks the file as you type: the comment on its first line points it at the [format](https://github.com/publira/publira/blob/main/mobile/config/app.schema.json).
+An editor that understands JSON Schema checks the file as you type: the comment on its first line points it at the [format](https://www.publira.dev/schemas/app-manifest/v1.json).
 
 Next: [Building and signing](./2-building.md).

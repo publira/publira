@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/publira/publira/blob/main/mobile/config/app.schema.json",
+  "$id": "https://www.publira.dev/schemas/app-manifest/v1.json",
   "title": "Publira mobile app manifest",
   "description": "The identity one tenant's mobile app is built and published under.",
   "type": "object",

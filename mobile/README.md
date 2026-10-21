@@ -150,7 +150,7 @@ Every field is required but `ios.googleSignInClientId`, and a field the format d
 
 | File | What it is |
 | --- | --- |
-| `config/app.schema.json` | The format as a JSON Schema, for an editor to validate against |
+| `config/app.schema.v1.json` | The format as a JSON Schema, for an editor to validate against |
 | `config/app.default.yaml` | Publira's own identity, which development, tests, and CI build with |
 | `config/app.example.yaml` | The manifest a tenant copies out of the repository and fills in with its own values |
 | `.generated/` | Build configuration generated from a manifest; ignored by Git |

@@ -126,7 +126,7 @@ void main() {
 
     test('the schema carries the rules the validator applies', () async {
       final schema =
-          jsonDecode(await File('config/app.schema.json').readAsString())
+          jsonDecode(await File('config/app.schema.v1.json').readAsString())
               as Map<String, Object?>;
       Map<String, Object?> field(String section, String key) {
         final sections = schema['properties']! as Map<String, Object?>;
