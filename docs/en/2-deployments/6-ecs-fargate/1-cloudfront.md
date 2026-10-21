@@ -6,7 +6,7 @@ published: 2026-10-21
 
 This page is step 8 of [Amazon ECS on Fargate](./index.md), and runs in the same shell as the steps before it: its commands use the variables and the functions those steps defined, such as `VPC`, `VPC_CIDR`, `ALB`, and `allow`.
 
-CloudFront is the edge readers connect to: it terminates TLS for every tenant's hosts with the certificate in `us-east-1`, redirects plain HTTP to HTTPS, removes the headers a caller must not choose, and forwards everything else to the load balancer, as [What the edge has to do](../4-edge.md#what-the-edge-has-to-do) requires.
+CloudFront is the edge readers connect to: it terminates TLS for every tenant's hosts with the certificate in `us-east-1`, redirects plain HTTP to HTTPS, removes the headers a caller must not choose, and forwards everything else to the load balancer, as [What the edge has to do](../4-edge/index.md#what-the-edge-has-to-do) requires.
 
 ## The VPC origin
 
@@ -57,7 +57,7 @@ aws cloudfront create-function --name publira-strip-request-headers \
 aws cloudfront publish-function --name publira-strip-request-headers --if-match <the ETag above>
 ```
 
-`traceparent`, `tracestate`, and `baggage` are removed as [Trace context](../4-edge.md#trace-context) requires. CloudFront and the load balancer pass on a `Forwarded` and an `X-Forwarded-Host` the caller sent, and Publira would read both, as [The client address](../4-edge.md#the-client-address) and [The host the request was sent to](../4-edge.md#the-host-the-request-was-sent-to) describe; neither of them writes either header itself, so removing them here leaves the web apps reading the `Host` the browser sent, and `PUBLIRA_FORWARDED_HEADER_ENABLED` at its default on every process.
+`traceparent`, `tracestate`, and `baggage` are removed as [Trace context](../4-edge/index.md#trace-context) requires. CloudFront and the load balancer pass on a `Forwarded` and an `X-Forwarded-Host` the caller sent, and Publira would read both, as [The client address](../4-edge/index.md#the-client-address) and [The host the request was sent to](../4-edge/index.md#the-host-the-request-was-sent-to) describe; neither of them writes either header itself, so removing them here leaves the web apps reading the `Host` the browser sent, and `PUBLIRA_FORWARDED_HEADER_ENABLED` at its default on every process.
 
 ## The cache policies
 
@@ -185,7 +185,7 @@ Once the distribution is deployed, point both host names at its domain name, `d1
 
 ## The client address
 
-Publira records the address of the reader behind every request, and reads it from the `X-Forwarded-For` header the edge writes, as [The client address](../4-edge.md#the-client-address) describes. CloudFront puts the reader's address there, appending it to whatever the caller wrote, and the load balancer appends the address CloudFront connected from. A web app that calls the API for a reader appends the load balancer's address in turn. `publira server` walks those addresses from the right and steps over each one it trusts, so `PUBLIRA_TRUSTED_PROXIES` has to cover every hop after the reader:
+Publira records the address of the reader behind every request, and reads it from the `X-Forwarded-For` header the edge writes, as [The client address](../4-edge/index.md#the-client-address) describes. CloudFront puts the reader's address there, appending it to whatever the caller wrote, and the load balancer appends the address CloudFront connected from. A web app that calls the API for a reader appends the load balancer's address in turn. `publira server` walks those addresses from the right and steps over each one it trusts, so `PUBLIRA_TRUSTED_PROXIES` has to cover every hop after the reader:
 
 - **The VPC's range**, which the load balancer and the web apps connect from.
 - **CloudFront's origin-facing ranges**, which AWS publishes under the service `CLOUDFRONT_ORIGIN_FACING`, for the address CloudFront reaches the load balancer from.

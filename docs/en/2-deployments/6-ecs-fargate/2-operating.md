@@ -8,7 +8,7 @@ These are the changes made to an install once [Amazon ECS on Fargate](./index.md
 
 ## Adding a tenant
 
-A tenant created with `publiractl tenant create` or in the Platform Console needs its two host names on the edge, as [Adding a tenant](../4-edge.md#adding-a-tenant) describes. On ECS that is, before its staff open the console:
+A tenant created with `publiractl tenant create` or in the Platform Console needs its two host names on the edge, as [Adding a tenant](../4-edge/index.md#adding-a-tenant) describes. On ECS that is, before its staff open the console:
 
 1. **Certificates.** Request a certificate naming its domain and its console host in the load balancer's Region and in `us-east-1`, as in [Create the load balancer](./index.md#5-create-the-load-balancer), and validate both.
 2. **The load balancer.** Add the first certificate to the listener with `aws elbv2 add-listener-certificates --listener-arn "$LISTENER" --certificates CertificateArn=<its ARN>`, and two rules: its domain and its console host each in the `2000` band, as in the table there. A load balancer takes 25 certificates besides its listener's default one, and 100 rules, unless you raise those quotas; a rule's host condition takes up to three names, so up to three tenants can share each rule.
@@ -19,7 +19,7 @@ Nothing else changes: the services, the parameters, and the security groups serv
 
 ## Keeping the consoles' credentials off the tenants' domains
 
-The load balancer already keeps the consoles' APIs off the internet, but the `publira-server` it forwards the tenants' domains to still serves them, and holds their database logins and the web service token to do so. To take all three out of the process readers reach, a layer apart from the edge rule as [Only the public API goes through the edge](../4-edge.md#only-the-public-api-goes-through-the-edge) describes, run a second service with `--role storefront`, and route the tenants' domains to it.
+The load balancer already keeps the consoles' APIs off the internet, but the `publira-server` it forwards the tenants' domains to still serves them, and holds their database logins and the web service token to do so. To take all three out of the process readers reach, a layer apart from the edge rule as [Only the public API goes through the edge](../4-edge/index.md#only-the-public-api-goes-through-the-edge) describes, run a second service with `--role storefront`, and route the tenants' domains to it.
 
 Its task definition is the `publira-server.json` of [Start the services](./index.md#6-start-the-services) with the family and the container named `publira-storefront`, `["server", "--role", "storefront"]` as its command, and only the secrets that role reads: the encryption keys, `PUBLIRA_AUTH_JWT_SECRET`, `PUBLIRA_REVALIDATE_TOKEN`, `PUBLIRA_REDIS_URL`, and `PUBLIRA_PUBLIC_DB_URL`. Give it a target group of its own, `publira-storefront` on port `8000`, and create its service with the `publira-server` security group and no Cloud Map name, since nothing but the load balancer calls it.
 

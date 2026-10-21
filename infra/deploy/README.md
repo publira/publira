@@ -2,7 +2,7 @@
 
 What a Publira install is made of, which environment variables each of its processes reads, and the order an empty install is brought into service in. It describes the minimal install, which runs no Platform Console: one publisher's site and console, operated from [`publiractl`](../../server/cmd/publiractl/README.md). How the parts are hosted — a Compose file, a Helm chart, a set of systemd units — is the operator's choice. [Running it with Docker Compose](#running-it-with-docker-compose) describes the Compose file beside this README, which runs the whole install on one host.
 
-Every release publishes its images as `ghcr.io/publira/<name>:<version>`, built from [`infra/docker/`](../docker/README.md) at the release's tag, the version behind a `v` (`v0.1.0` for `0.1.0`); an install that changes the code builds its own from there. What the edge in front of the processes has to do — a managed load balancer, a reverse proxy, or a CDN in front of one — is stated in [Edge](../../docs/en/2-deployments/4-edge.md#what-the-edge-has-to-do); [`infra/proxy/`](../proxy/README.md) holds sample configurations of a reverse proxy that does it.
+Every release publishes its images as `ghcr.io/publira/<name>:<version>`, built from [`infra/docker/`](../docker/README.md) at the release's tag, the version behind a `v` (`v0.1.0` for `0.1.0`); an install that changes the code builds its own from there. What the edge in front of the processes has to do — a managed load balancer, a reverse proxy, or a CDN in front of one — is stated in [Edge](../../docs/en/2-deployments/4-edge/index.md#what-the-edge-has-to-do); [`infra/proxy/`](../proxy/README.md) holds sample configurations of a reverse proxy that does it.
 
 ## What an install runs
 
@@ -38,7 +38,7 @@ Together they replace the one `publira server` above, and each reads the `publir
 
 | Service | Used by | What it holds |
 | --- | --- | --- |
-| The edge: a load balancer, a reverse proxy, or a CDN in front of one | Browsers and the mobile app | The routing, TLS, and request headers [Edge](../../docs/en/2-deployments/4-edge.md#what-the-edge-has-to-do) states. The sample configurations in [`infra/proxy/`](../proxy/README.md) take the install's hosts in `PUBLIRA_EDGE_SITE_HOSTS`, `PUBLIRA_EDGE_ADMIN_HOSTS`, and `PUBLIRA_EDGE_PLATFORM_HOSTS` |
+| The edge: a load balancer, a reverse proxy, or a CDN in front of one | Browsers and the mobile app | The routing, TLS, and request headers [Edge](../../docs/en/2-deployments/4-edge/index.md#what-the-edge-has-to-do) states. The sample configurations in [`infra/proxy/`](../proxy/README.md) take the install's hosts in `PUBLIRA_EDGE_SITE_HOSTS`, `PUBLIRA_EDGE_ADMIN_HOSTS`, and `PUBLIRA_EDGE_PLATFORM_HOSTS` |
 | PostgreSQL | Every process | Everything the install stores |
 | Valkey, or any Redis-protocol server | `publira server`, `web-storefront`, `web-admin` | The image conversion cache, the rate limit counters, and the Next.js cache |
 | An S3-compatible object store | `publira server`, `publira worker` | Every uploaded image. The bucket is created by the operator, or by `publiractl setup --create-bucket`; `publiractl` saves where it is |
@@ -129,7 +129,7 @@ Before the first step, provision the dependency services: a PostgreSQL database 
 
    Its summary names the tenant site and the tenant console, and prints the administrator's password when it generated one.
 
-5. **Put the edge in front** of `web-storefront`, `web-admin`, and `publira server`, routing the tenant's domain and its console host and terminating TLS for both, as [Edge](../../docs/en/2-deployments/4-edge.md#what-the-edge-has-to-do) states; the sample configurations take the two names in `PUBLIRA_EDGE_SITE_HOSTS` and `PUBLIRA_EDGE_ADMIN_HOSTS`. The administrator signs in to the tenant console at the URL the summary names.
+5. **Put the edge in front** of `web-storefront`, `web-admin`, and `publira server`, routing the tenant's domain and its console host and terminating TLS for both, as [Edge](../../docs/en/2-deployments/4-edge/index.md#what-the-edge-has-to-do) states; the sample configurations take the two names in `PUBLIRA_EDGE_SITE_HOSTS` and `PUBLIRA_EDGE_ADMIN_HOSTS`. The administrator signs in to the tenant console at the URL the summary names.
 
 On every later release, run `db migrate` and then `db roles` with that release's publiractl image before its processes start. [Upgrading](../../docs/en/2-deployments/7-upgrading.md) is the full procedure, with the backup before it and what to do when a migration fails.
 

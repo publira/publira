@@ -129,9 +129,9 @@ The edge is whatever receives readers' requests and forwards them to the process
 - `admin.<domain>`, or the console host you chose, to `web-admin`.
 - The tenant's domain to `web-storefront`.
 - `/rpc/publira.v1.` and `/images` on either host to `publira server`, port `8000` by default.
-- The rest of `/rpc` on either host to nowhere: the edge answers it with a `404`. That is where `publira server` answers the consoles' APIs, which the web apps call over the private network, as [Only the public API goes through the edge](./4-edge.md#only-the-public-api-goes-through-the-edge) explains.
+- The rest of `/rpc` on either host to nowhere: the edge answers it with a `404`. That is where `publira server` answers the consoles' APIs, which the web apps call over the private network, as [Only the public API goes through the edge](./4-edge/index.md#only-the-public-api-goes-through-the-edge) explains.
 
-Terminate TLS for both host names at the edge. [What the edge has to do](./4-edge.md#what-the-edge-has-to-do) states the rest of what it needs, whatever it is built from: the headers it passes on and the ones it removes, the client address, and the uploads and webhooks it has to let through. The repository's [sample configurations](./4-edge.md#the-sample-configurations) for Traefik, nginx, and Caddy are one way of doing all of it.
+Terminate TLS for both host names at the edge. [What the edge has to do](./4-edge/index.md#what-the-edge-has-to-do) states the rest of what it needs, whatever it is built from: the headers it passes on and the ones it removes, the client address, and the uploads and webhooks it has to let through. The repository's [sample configurations](./4-edge/1-sample-configurations.md) for Traefik, nginx, and Caddy are one way of doing all of it.
 
 ### 6. Sign in
 
@@ -151,7 +151,7 @@ Without `email-renderer`, the worker sends every mail as plain text. Run it, and
 
 - Generate a session key for it the way you did for the other web apps, and set it as its `PUBLIRA_AUTH_SECRET`, at least 32 bytes; without one no operator can sign in. Give it the same `PUBLIRA_GRPC_URL`, `PUBLIRA_WEB_SERVICE_TOKEN`, `PNCH_REDIS_URL`, and `PNCH_REVALIDATE_TOKEN` as `web-admin`.
 - Set `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` on `publira server` and `publira worker`, so cache revalidation reaches it, and `PUBLIRA_PLATFORM_APP_URL` on `publira worker`, the address operators open it at, which the links in its mail are built from.
-- Choose a host name for it, such as `platform.example.com`, point it at the edge, give the edge a certificate for it, and route it to `web-platform`, with the same paths as the other hosts, as [Routing](./4-edge.md#routing) describes. The sample configurations take it in `PUBLIRA_EDGE_PLATFORM_HOSTS`.
+- Choose a host name for it, such as `platform.example.com`, point it at the edge, give the edge a certificate for it, and route it to `web-platform`, with the same paths as the other hosts, as [Routing](./4-edge/index.md#routing) describes. The sample configurations take it in `PUBLIRA_EDGE_PLATFORM_HOSTS`.
 
 Open it and create its first operator on the setup screen. That operator is separate from the tenant administrator `publiractl setup` created: the Platform Console has accounts of its own, and the screen is offered until the first one exists. The language chosen on that screen becomes the platform's default locale, replacing the one `publiractl setup` saved, and so does the time zone, which the screen starts on your browser's. The screen also asks for the default currency, starting on the one `publiractl setup` saved, so leaving it as it is keeps it. Every other setting stays, and `publiractl` keeps working beside the console.
 
