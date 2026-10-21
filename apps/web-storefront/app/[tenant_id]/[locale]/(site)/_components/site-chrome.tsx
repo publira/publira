@@ -519,13 +519,6 @@ const MobileNavigationLinks = async () => {
   );
 };
 
-/** The name of the drawer's language row. */
-const MobileNavigationLocaleSwitcherLabel = () => (
-  <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
-    <Message message="storefront.nav.locale_switcher" />
-  </Suspense>
-);
-
 /**
  * What the band stops drawing below `md`: the catalog field, the navigation,
  * the language, and — for a reader who is not signed in — the account actions.
@@ -564,16 +557,8 @@ const SiteMobileNavigation = () => (
       <Suspense fallback={<MobileNavigationLinksSkeleton />}>
         <MobileNavigationLinks />
       </Suspense>
-      <Suspense
-        fallback={
-          <LocaleSwitcherDisclosureSkeleton
-            label={<MobileNavigationLocaleSwitcherLabel />}
-          />
-        }
-      >
-        <LocaleSwitcherDisclosure
-          label={<MobileNavigationLocaleSwitcherLabel />}
-        />
+      <Suspense fallback={<LocaleSwitcherDisclosureSkeleton />}>
+        <LocaleSwitcherDisclosure />
       </Suspense>
       <Suspense fallback={<MobileNavigationAccountActionsSkeleton />}>
         <MobileNavigationAccountActions />

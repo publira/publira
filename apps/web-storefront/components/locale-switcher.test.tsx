@@ -5,6 +5,8 @@ import { sharedCatalog } from "@publira/i18n/catalog";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { StorefrontClientMessageKey } from "#lib/messages";
+
 import {
   LocaleSwitcher,
   LocaleSwitcherDisclosure,
@@ -55,6 +57,8 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("./client-message", () => ({
+  ClientMessage: ({ message }: { message: StorefrontClientMessageKey }) =>
+    bindMessages(sharedCatalog("en"), "en")(message),
   useClientMessages: () => bindMessages(sharedCatalog("en"), "en"),
 }));
 
@@ -119,7 +123,7 @@ describe("LocaleSwitcher", () => {
 
 describe("LocaleSwitcherDisclosure", () => {
   it("offers every locale as a link to the current page and marks the one in effect", () => {
-    render(<LocaleSwitcherDisclosure label="Language" />);
+    render(<LocaleSwitcherDisclosure />);
 
     expect(screen.getByRole("button", { name: "Language" })).toBeDefined();
     expect(screen.getAllByRole("link")).toHaveLength(getLocales().length);
@@ -140,7 +144,7 @@ describe("LocaleSwitcherDisclosure", () => {
   it("offers only the locales the tenant offers", () => {
     mockUseTenantSupportedLocales.mockReturnValue(["ja", "en"]);
 
-    render(<LocaleSwitcherDisclosure label="Language" />);
+    render(<LocaleSwitcherDisclosure />);
 
     expect(
       screen.getAllByRole("link").map((link) => link.getAttribute("hreflang"))
@@ -150,7 +154,7 @@ describe("LocaleSwitcherDisclosure", () => {
   it("renders neither the row nor the links for a tenant that offers one locale", () => {
     mockUseTenantSupportedLocales.mockReturnValue(["en"]);
 
-    const { container } = render(<LocaleSwitcherDisclosure label="Language" />);
+    const { container } = render(<LocaleSwitcherDisclosure />);
 
     expect(container.childElementCount).toBe(0);
   });
@@ -158,7 +162,7 @@ describe("LocaleSwitcherDisclosure", () => {
   it("renders neither the row nor the links while the tenant's locales are unavailable", () => {
     mockUseTenantSupportedLocales.mockReturnValue(null);
 
-    const { container } = render(<LocaleSwitcherDisclosure label="Language" />);
+    const { container } = render(<LocaleSwitcherDisclosure />);
 
     expect(container.childElementCount).toBe(0);
   });

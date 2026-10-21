@@ -15,14 +15,13 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from "@publira/ui-components/popover";
-import { Skeleton } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
 
 import { toBarePathname, withLocalePrefix } from "#lib/locale-path";
 
-import { useClientMessages } from "./client-message";
+import { ClientMessage, useClientMessages } from "./client-message";
 import {
   useLocale,
   useTenantDefaultLocale,
@@ -178,14 +177,10 @@ const LocaleSwitcherLinks = ({
  * tenant read is pending, since the shell cannot know whether the tenant offers
  * more than one locale.
  */
-export const LocaleSwitcherDisclosureSkeleton = ({
-  label,
-}: {
-  label: ReactNode;
-}) => (
+export const LocaleSwitcherDisclosureSkeleton = () => (
   <SiteLayoutMobileNavigationDisclosure>
     <SiteLayoutMobileNavigationDisclosureTrigger>
-      {label}
+      <SkeletonLine className="h-4 w-16" />
     </SiteLayoutMobileNavigationDisclosureTrigger>
     <SiteLayoutMobileNavigationDisclosurePanel>
       <LocaleSwitcherLinksSkeleton />
@@ -202,10 +197,8 @@ export const LocaleSwitcherDisclosureSkeleton = ({
  * `SiteLayoutMobileNavigationDisclosureTrigger` draws, and each closes the
  * drawer on the way to the other language. The row goes with the options: a
  * tenant that offers one locale gets neither, as the band gets no button.
- *
- * `label` is the row's name, a catalog string the server resolves.
  */
-export const LocaleSwitcherDisclosure = ({ label }: { label: ReactNode }) => {
+export const LocaleSwitcherDisclosure = () => {
   const currentLocale = useLocale();
   const locales = useSwitchableLocales(currentLocale);
 
@@ -216,7 +209,7 @@ export const LocaleSwitcherDisclosure = ({ label }: { label: ReactNode }) => {
   return (
     <SiteLayoutMobileNavigationDisclosure>
       <SiteLayoutMobileNavigationDisclosureTrigger>
-        {label}
+        <ClientMessage message="storefront.nav.locale_switcher" />
       </SiteLayoutMobileNavigationDisclosureTrigger>
       <SiteLayoutMobileNavigationDisclosurePanel>
         <LocaleSwitcherLinks currentLocale={currentLocale} locales={locales} />
