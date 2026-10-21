@@ -1235,6 +1235,17 @@ type TenantAdminInvitation struct {
 	Role       string       `json:"role"`
 }
 
+type TenantAnalyticsSetting struct {
+	TenantID           uuid.UUID      `json:"tenant_id"`
+	Ga4MeasurementID   sql.NullString `json:"ga4_measurement_id"`
+	GtmContainerID     sql.NullString `json:"gtm_container_id"`
+	ServingMode        string         `json:"serving_mode"`
+	ServerContainerUrl sql.NullString `json:"server_container_url"`
+	GatewayPath        sql.NullString `json:"gateway_path"`
+	CreatedAt          time.Time      `json:"created_at"`
+	UpdatedAt          time.Time      `json:"updated_at"`
+}
+
 type TenantAppStoreConfig struct {
 	TenantID            uuid.UUID      `json:"tenant_id"`
 	Enabled             bool           `json:"enabled"`

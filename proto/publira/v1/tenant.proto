@@ -181,9 +181,37 @@ message GetTenantMobileAppAssociationResponse {
   TenantIosAppAssociation ios = 2;
 }
 
+message GetTenantAnalyticsSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+// The Google tag the storefront loads, with only the values its serving mode
+// uses.
+message TenantGoogleTag {
+  // Either ID or both is set. Empty where the tenant has none.
+  string ga4_measurement_id = 1;
+  string gtm_container_id = 2;
+  // Never GOOGLE_TAG_SERVING_MODE_UNSPECIFIED.
+  publira.types.v1.GoogleTagServingMode serving_mode = 3;
+  // The origin of the tenant's server container: set in
+  // GOOGLE_TAG_SERVING_MODE_SERVER_CONTAINER, and in
+  // GOOGLE_TAG_SERVING_MODE_GATEWAY where the gateway forwards to it rather
+  // than to Google. Empty otherwise.
+  string server_container_url = 4;
+  // The first path segment the gateway answers on: set in
+  // GOOGLE_TAG_SERVING_MODE_GATEWAY alone.
+  string gateway_path = 5;
+}
+
+message GetTenantAnalyticsSettingsResponse {
+  // Absent where the tenant loads no tag: it names neither ID.
+  TenantGoogleTag google_tag = 1;
+}
+
 service TenantService {
   rpc GetTenant(GetTenantRequest) returns (GetTenantResponse) {}
   rpc GetTenantLegalPages(GetTenantLegalPagesRequest) returns (GetTenantLegalPagesResponse) {}
   rpc GetTenantMobileAppAssociation(GetTenantMobileAppAssociationRequest) returns (GetTenantMobileAppAssociationResponse) {}
   rpc GetTenantReaderIconPolicy(GetTenantReaderIconPolicyRequest) returns (GetTenantReaderIconPolicyResponse) {}
+  rpc GetTenantAnalyticsSettings(GetTenantAnalyticsSettingsRequest) returns (GetTenantAnalyticsSettingsResponse) {}
 }

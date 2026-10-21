@@ -4,7 +4,7 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { AgeVerification, AppPurchaseRoute, CommentMode, ReaderIconPolicy, ReaderIconPreset, TenantContext, TenantTheme } from "../types/v1/types_pb";
+import type { AgeVerification, AppPurchaseRoute, CommentMode, GoogleTagServingMode, ReaderIconPolicy, ReaderIconPreset, TenantContext, TenantTheme } from "../types/v1/types_pb";
 import { file_publira_types_v1_types } from "../types/v1/types_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file publira/v1/tenant.proto.
  */
 export const file_publira_v1_tenant: GenFile = /*@__PURE__*/
-  fileDesc("ChdwdWJsaXJhL3YxL3RlbmFudC5wcm90bxIKcHVibGlyYS52MSJTChBHZXRUZW5hbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIOCgZsb2NhbGUYAiABKAkiXQoaR2V0VGVuYW50TGVnYWxQYWdlc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg4KBmxvY2FsZRgCIAEoCSJSCg9UZW5hbnRMZWdhbFBhZ2USDAoEc2x1ZxgBIAEoCRINCgV0aXRsZRgCIAEoCRISCgp2ZXJzaW9uX2lkGAMgASgJEg4KBmxvY2FsZRgEIAEoCSKBAQobR2V0VGVuYW50TGVnYWxQYWdlc1Jlc3BvbnNlEi8KCnRlcm1zX3BhZ2UYASABKAsyGy5wdWJsaXJhLnYxLlRlbmFudExlZ2FsUGFnZRIxCgxwcml2YWN5X3BhZ2UYAiABKAsyGy5wdWJsaXJhLnYxLlRlbmFudExlZ2FsUGFnZSKjBgoRR2V0VGVuYW50UmVzcG9uc2USGAoQdGVuYW50X3B1YmxpY19pZBgBIAEoCRITCgt0ZW5hbnRfbmFtZRgCIAEoCRIVCg10ZW5hbnRfZG9tYWluGAMgASgJEhYKDmNvcHlyaWdodF90ZXh0GAQgASgJEhgKEHNpdGVfZGVzY3JpcHRpb24YBSABKAkSFAoMc2l0ZV90YWdsaW5lGAYgASgJEiwKBXRoZW1lGAcgASgLMh0ucHVibGlyYS50eXBlcy52MS5UZW5hbnRUaGVtZRIQCgh0aW1lem9uZRgIIAEoCRIWCg5kZWZhdWx0X2xvY2FsZRgJIAEoCRIYChBhY2NlcHRzX3BheW1lbnRzGAogASgIEjMKDGNvbW1lbnRfbW9kZRgLIAEoDjIdLnB1YmxpcmEudHlwZXMudjEuQ29tbWVudE1vZGUSOwoQYWdlX3ZlcmlmaWNhdGlvbhgMIAEoDjIhLnB1YmxpcmEudHlwZXMudjEuQWdlVmVyaWZpY2F0aW9uEiEKGXdlYl9wdXNoX3ZhcGlkX3B1YmxpY19rZXkYDSABKAkSFQoNYXBwX3N0b3JlX3VybBgOIAEoCRIXCg9nb29nbGVfcGxheV91cmwYDyABKAkSPgoSYXBwX3B1cmNoYXNlX3JvdXRlGBIgASgOMiIucHVibGlyYS50eXBlcy52MS5BcHBQdXJjaGFzZVJvdXRlEiIKGmFjY2VwdHNfYXBwX3N0b3JlX3BheW1lbnRzGBMgASgIEiQKHGFjY2VwdHNfZ29vZ2xlX3BsYXlfcGF5bWVudHMYFCABKAgSNAoNYXBwbGVfc2lnbl9pbhgVIAEoCzIdLnB1YmxpcmEudjEuVGVuYW50QXBwbGVTaWduSW4SNgoOZ29vZ2xlX3NpZ25faW4YFiABKAsyHi5wdWJsaXJhLnYxLlRlbmFudEdvb2dsZVNpZ25JbhIQCghjdXJyZW5jeRgXIAEoCRIZChFzdXBwb3J0ZWRfbG9jYWxlcxgYIAMoCUoECBAQEUoECBEQElIKdGVybXNfcGFnZVIMcHJpdmFjeV9wYWdlIigKEVRlbmFudEFwcGxlU2lnbkluEhMKC3NlcnZpY2VzX2lkGAEgASgJIkIKElRlbmFudEdvb2dsZVNpZ25JbhIVCg13ZWJfY2xpZW50X2lkGAEgASgJEhUKDWlvc19jbGllbnRfaWQYAiABKAkiUwogR2V0VGVuYW50UmVhZGVySWNvblBvbGljeVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0IowBCiFHZXRUZW5hbnRSZWFkZXJJY29uUG9saWN5UmVzcG9uc2USMgoGcG9saWN5GAEgASgOMiIucHVibGlyYS50eXBlcy52MS5SZWFkZXJJY29uUG9saWN5EjMKB3ByZXNldHMYAiADKAsyIi5wdWJsaXJhLnR5cGVzLnYxLlJlYWRlckljb25QcmVzZXQiVwokR2V0VGVuYW50TW9iaWxlQXBwQXNzb2NpYXRpb25SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJXChtUZW5hbnRBbmRyb2lkQXBwQXNzb2NpYXRpb24SFgoOYXBwbGljYXRpb25faWQYASABKAkSIAoYc2hhMjU2X2NlcnRfZmluZ2VycHJpbnRzGAIgAygJIkUKF1RlbmFudElvc0FwcEFzc29jaWF0aW9uEg8KB3RlYW1faWQYASABKAkSGQoRYnVuZGxlX2lkZW50aWZpZXIYAiABKAkikwEKJUdldFRlbmFudE1vYmlsZUFwcEFzc29jaWF0aW9uUmVzcG9uc2USOAoHYW5kcm9pZBgBIAEoCzInLnB1YmxpcmEudjEuVGVuYW50QW5kcm9pZEFwcEFzc29jaWF0aW9uEjAKA2lvcxgCIAEoCzIjLnB1YmxpcmEudjEuVGVuYW50SW9zQXBwQXNzb2NpYXRpb24yygMKDVRlbmFudFNlcnZpY2USSgoJR2V0VGVuYW50EhwucHVibGlyYS52MS5HZXRUZW5hbnRSZXF1ZXN0Gh0ucHVibGlyYS52MS5HZXRUZW5hbnRSZXNwb25zZSIAEmgKE0dldFRlbmFudExlZ2FsUGFnZXMSJi5wdWJsaXJhLnYxLkdldFRlbmFudExlZ2FsUGFnZXNSZXF1ZXN0GicucHVibGlyYS52MS5HZXRUZW5hbnRMZWdhbFBhZ2VzUmVzcG9uc2UiABKGAQodR2V0VGVuYW50TW9iaWxlQXBwQXNzb2NpYXRpb24SMC5wdWJsaXJhLnYxLkdldFRlbmFudE1vYmlsZUFwcEFzc29jaWF0aW9uUmVxdWVzdBoxLnB1YmxpcmEudjEuR2V0VGVuYW50TW9iaWxlQXBwQXNzb2NpYXRpb25SZXNwb25zZSIAEnoKGUdldFRlbmFudFJlYWRlckljb25Qb2xpY3kSLC5wdWJsaXJhLnYxLkdldFRlbmFudFJlYWRlckljb25Qb2xpY3lSZXF1ZXN0Gi0ucHVibGlyYS52MS5HZXRUZW5hbnRSZWFkZXJJY29uUG9saWN5UmVzcG9uc2UiAEJLWklnaXRodWIuY29tL3B1YmxpcmEvcHVibGlyYS9zZXJ2ZXIvaW50ZXJuYWwvcHJvdG8vZ2VuL3B1YmxpcmEvdjE7cHVibGlyYXYxYgZwcm90bzM", [file_publira_types_v1_types]);
+  fileDesc("ChdwdWJsaXJhL3YxL3RlbmFudC5wcm90bxIKcHVibGlyYS52MSJTChBHZXRUZW5hbnRSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dBIOCgZsb2NhbGUYAiABKAkiXQoaR2V0VGVuYW50TGVnYWxQYWdlc1JlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0Eg4KBmxvY2FsZRgCIAEoCSJSCg9UZW5hbnRMZWdhbFBhZ2USDAoEc2x1ZxgBIAEoCRINCgV0aXRsZRgCIAEoCRISCgp2ZXJzaW9uX2lkGAMgASgJEg4KBmxvY2FsZRgEIAEoCSKBAQobR2V0VGVuYW50TGVnYWxQYWdlc1Jlc3BvbnNlEi8KCnRlcm1zX3BhZ2UYASABKAsyGy5wdWJsaXJhLnYxLlRlbmFudExlZ2FsUGFnZRIxCgxwcml2YWN5X3BhZ2UYAiABKAsyGy5wdWJsaXJhLnYxLlRlbmFudExlZ2FsUGFnZSKjBgoRR2V0VGVuYW50UmVzcG9uc2USGAoQdGVuYW50X3B1YmxpY19pZBgBIAEoCRITCgt0ZW5hbnRfbmFtZRgCIAEoCRIVCg10ZW5hbnRfZG9tYWluGAMgASgJEhYKDmNvcHlyaWdodF90ZXh0GAQgASgJEhgKEHNpdGVfZGVzY3JpcHRpb24YBSABKAkSFAoMc2l0ZV90YWdsaW5lGAYgASgJEiwKBXRoZW1lGAcgASgLMh0ucHVibGlyYS50eXBlcy52MS5UZW5hbnRUaGVtZRIQCgh0aW1lem9uZRgIIAEoCRIWCg5kZWZhdWx0X2xvY2FsZRgJIAEoCRIYChBhY2NlcHRzX3BheW1lbnRzGAogASgIEjMKDGNvbW1lbnRfbW9kZRgLIAEoDjIdLnB1YmxpcmEudHlwZXMudjEuQ29tbWVudE1vZGUSOwoQYWdlX3ZlcmlmaWNhdGlvbhgMIAEoDjIhLnB1YmxpcmEudHlwZXMudjEuQWdlVmVyaWZpY2F0aW9uEiEKGXdlYl9wdXNoX3ZhcGlkX3B1YmxpY19rZXkYDSABKAkSFQoNYXBwX3N0b3JlX3VybBgOIAEoCRIXCg9nb29nbGVfcGxheV91cmwYDyABKAkSPgoSYXBwX3B1cmNoYXNlX3JvdXRlGBIgASgOMiIucHVibGlyYS50eXBlcy52MS5BcHBQdXJjaGFzZVJvdXRlEiIKGmFjY2VwdHNfYXBwX3N0b3JlX3BheW1lbnRzGBMgASgIEiQKHGFjY2VwdHNfZ29vZ2xlX3BsYXlfcGF5bWVudHMYFCABKAgSNAoNYXBwbGVfc2lnbl9pbhgVIAEoCzIdLnB1YmxpcmEudjEuVGVuYW50QXBwbGVTaWduSW4SNgoOZ29vZ2xlX3NpZ25faW4YFiABKAsyHi5wdWJsaXJhLnYxLlRlbmFudEdvb2dsZVNpZ25JbhIQCghjdXJyZW5jeRgXIAEoCRIZChFzdXBwb3J0ZWRfbG9jYWxlcxgYIAMoCUoECBAQEUoECBEQElIKdGVybXNfcGFnZVIMcHJpdmFjeV9wYWdlIigKEVRlbmFudEFwcGxlU2lnbkluEhMKC3NlcnZpY2VzX2lkGAEgASgJIkIKElRlbmFudEdvb2dsZVNpZ25JbhIVCg13ZWJfY2xpZW50X2lkGAEgASgJEhUKDWlvc19jbGllbnRfaWQYAiABKAkiUwogR2V0VGVuYW50UmVhZGVySWNvblBvbGljeVJlcXVlc3QSLwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0IowBCiFHZXRUZW5hbnRSZWFkZXJJY29uUG9saWN5UmVzcG9uc2USMgoGcG9saWN5GAEgASgOMiIucHVibGlyYS50eXBlcy52MS5SZWFkZXJJY29uUG9saWN5EjMKB3ByZXNldHMYAiADKAsyIi5wdWJsaXJhLnR5cGVzLnYxLlJlYWRlckljb25QcmVzZXQiVwokR2V0VGVuYW50TW9iaWxlQXBwQXNzb2NpYXRpb25SZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCJXChtUZW5hbnRBbmRyb2lkQXBwQXNzb2NpYXRpb24SFgoOYXBwbGljYXRpb25faWQYASABKAkSIAoYc2hhMjU2X2NlcnRfZmluZ2VycHJpbnRzGAIgAygJIkUKF1RlbmFudElvc0FwcEFzc29jaWF0aW9uEg8KB3RlYW1faWQYASABKAkSGQoRYnVuZGxlX2lkZW50aWZpZXIYAiABKAkikwEKJUdldFRlbmFudE1vYmlsZUFwcEFzc29jaWF0aW9uUmVzcG9uc2USOAoHYW5kcm9pZBgBIAEoCzInLnB1YmxpcmEudjEuVGVuYW50QW5kcm9pZEFwcEFzc29jaWF0aW9uEjAKA2lvcxgCIAEoCzIjLnB1YmxpcmEudjEuVGVuYW50SW9zQXBwQXNzb2NpYXRpb24iVAohR2V0VGVuYW50QW5hbHl0aWNzU2V0dGluZ3NSZXF1ZXN0Ei8KBnRlbmFudBgBIAEoCzIfLnB1YmxpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dCK5AQoPVGVuYW50R29vZ2xlVGFnEhoKEmdhNF9tZWFzdXJlbWVudF9pZBgBIAEoCRIYChBndG1fY29udGFpbmVyX2lkGAIgASgJEjwKDHNlcnZpbmdfbW9kZRgDIAEoDjImLnB1YmxpcmEudHlwZXMudjEuR29vZ2xlVGFnU2VydmluZ01vZGUSHAoUc2VydmVyX2NvbnRhaW5lcl91cmwYBCABKAkSFAoMZ2F0ZXdheV9wYXRoGAUgASgJIlUKIkdldFRlbmFudEFuYWx5dGljc1NldHRpbmdzUmVzcG9uc2USLwoKZ29vZ2xlX3RhZxgBIAEoCzIbLnB1YmxpcmEudjEuVGVuYW50R29vZ2xlVGFnMskECg1UZW5hbnRTZXJ2aWNlEkoKCUdldFRlbmFudBIcLnB1YmxpcmEudjEuR2V0VGVuYW50UmVxdWVzdBodLnB1YmxpcmEudjEuR2V0VGVuYW50UmVzcG9uc2UiABJoChNHZXRUZW5hbnRMZWdhbFBhZ2VzEiYucHVibGlyYS52MS5HZXRUZW5hbnRMZWdhbFBhZ2VzUmVxdWVzdBonLnB1YmxpcmEudjEuR2V0VGVuYW50TGVnYWxQYWdlc1Jlc3BvbnNlIgAShgEKHUdldFRlbmFudE1vYmlsZUFwcEFzc29jaWF0aW9uEjAucHVibGlyYS52MS5HZXRUZW5hbnRNb2JpbGVBcHBBc3NvY2lhdGlvblJlcXVlc3QaMS5wdWJsaXJhLnYxLkdldFRlbmFudE1vYmlsZUFwcEFzc29jaWF0aW9uUmVzcG9uc2UiABJ6ChlHZXRUZW5hbnRSZWFkZXJJY29uUG9saWN5EiwucHVibGlyYS52MS5HZXRUZW5hbnRSZWFkZXJJY29uUG9saWN5UmVxdWVzdBotLnB1YmxpcmEudjEuR2V0VGVuYW50UmVhZGVySWNvblBvbGljeVJlc3BvbnNlIgASfQoaR2V0VGVuYW50QW5hbHl0aWNzU2V0dGluZ3MSLS5wdWJsaXJhLnYxLkdldFRlbmFudEFuYWx5dGljc1NldHRpbmdzUmVxdWVzdBouLnB1YmxpcmEudjEuR2V0VGVuYW50QW5hbHl0aWNzU2V0dGluZ3NSZXNwb25zZSIAQktaSWdpdGh1Yi5jb20vcHVibGlyYS9wdWJsaXJhL3NlcnZlci9pbnRlcm5hbC9wcm90by9nZW4vcHVibGlyYS92MTtwdWJsaXJhdjFiBnByb3RvMw", [file_publira_types_v1_types]);
 
 /**
  * @generated from message publira.v1.GetTenantRequest
@@ -515,6 +515,94 @@ export const GetTenantMobileAppAssociationResponseSchema: GenMessage<GetTenantMo
   messageDesc(file_publira_v1_tenant, 12);
 
 /**
+ * @generated from message publira.v1.GetTenantAnalyticsSettingsRequest
+ */
+export type GetTenantAnalyticsSettingsRequest = Message<"publira.v1.GetTenantAnalyticsSettingsRequest"> & {
+  /**
+   * @generated from field: publira.types.v1.TenantContext tenant = 1;
+   */
+  tenant?: TenantContext | undefined;
+};
+
+/**
+ * Describes the message publira.v1.GetTenantAnalyticsSettingsRequest.
+ * Use `create(GetTenantAnalyticsSettingsRequestSchema)` to create a new message.
+ */
+export const GetTenantAnalyticsSettingsRequestSchema: GenMessage<GetTenantAnalyticsSettingsRequest> = /*@__PURE__*/
+  messageDesc(file_publira_v1_tenant, 13);
+
+/**
+ * The Google tag the storefront loads, with only the values its serving mode
+ * uses.
+ *
+ * @generated from message publira.v1.TenantGoogleTag
+ */
+export type TenantGoogleTag = Message<"publira.v1.TenantGoogleTag"> & {
+  /**
+   * Either ID or both is set. Empty where the tenant has none.
+   *
+   * @generated from field: string ga4_measurement_id = 1;
+   */
+  ga4MeasurementId: string;
+
+  /**
+   * @generated from field: string gtm_container_id = 2;
+   */
+  gtmContainerId: string;
+
+  /**
+   * Never GOOGLE_TAG_SERVING_MODE_UNSPECIFIED.
+   *
+   * @generated from field: publira.types.v1.GoogleTagServingMode serving_mode = 3;
+   */
+  servingMode: GoogleTagServingMode;
+
+  /**
+   * The origin of the tenant's server container: set in
+   * GOOGLE_TAG_SERVING_MODE_SERVER_CONTAINER, and in
+   * GOOGLE_TAG_SERVING_MODE_GATEWAY where the gateway forwards to it rather
+   * than to Google. Empty otherwise.
+   *
+   * @generated from field: string server_container_url = 4;
+   */
+  serverContainerUrl: string;
+
+  /**
+   * The first path segment the gateway answers on: set in
+   * GOOGLE_TAG_SERVING_MODE_GATEWAY alone.
+   *
+   * @generated from field: string gateway_path = 5;
+   */
+  gatewayPath: string;
+};
+
+/**
+ * Describes the message publira.v1.TenantGoogleTag.
+ * Use `create(TenantGoogleTagSchema)` to create a new message.
+ */
+export const TenantGoogleTagSchema: GenMessage<TenantGoogleTag> = /*@__PURE__*/
+  messageDesc(file_publira_v1_tenant, 14);
+
+/**
+ * @generated from message publira.v1.GetTenantAnalyticsSettingsResponse
+ */
+export type GetTenantAnalyticsSettingsResponse = Message<"publira.v1.GetTenantAnalyticsSettingsResponse"> & {
+  /**
+   * Absent where the tenant loads no tag: it names neither ID.
+   *
+   * @generated from field: publira.v1.TenantGoogleTag google_tag = 1;
+   */
+  googleTag?: TenantGoogleTag | undefined;
+};
+
+/**
+ * Describes the message publira.v1.GetTenantAnalyticsSettingsResponse.
+ * Use `create(GetTenantAnalyticsSettingsResponseSchema)` to create a new message.
+ */
+export const GetTenantAnalyticsSettingsResponseSchema: GenMessage<GetTenantAnalyticsSettingsResponse> = /*@__PURE__*/
+  messageDesc(file_publira_v1_tenant, 15);
+
+/**
  * @generated from service publira.v1.TenantService
  */
 export const TenantService: GenService<{
@@ -549,6 +637,14 @@ export const TenantService: GenService<{
     methodKind: "unary";
     input: typeof GetTenantReaderIconPolicyRequestSchema;
     output: typeof GetTenantReaderIconPolicyResponseSchema;
+  },
+  /**
+   * @generated from rpc publira.v1.TenantService.GetTenantAnalyticsSettings
+   */
+  getTenantAnalyticsSettings: {
+    methodKind: "unary";
+    input: typeof GetTenantAnalyticsSettingsRequestSchema;
+    output: typeof GetTenantAnalyticsSettingsResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_publira_v1_tenant, 0);

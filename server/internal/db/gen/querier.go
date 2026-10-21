@@ -1046,6 +1046,8 @@ type Querier interface {
 	GetTenantAdminInvitationByHashForTenant(ctx context.Context, arg GetTenantAdminInvitationByHashForTenantParams) (TenantAdminInvitation, error)
 	GetTenantAdminInvitationByIDForTenant(ctx context.Context, arg GetTenantAdminInvitationByIDForTenantParams) (TenantAdminInvitation, error)
 	GetTenantAdminInvitationByTenantAndEmail(ctx context.Context, arg GetTenantAdminInvitationByTenantAndEmailParams) (TenantAdminInvitation, error)
+	// Returns no rows for a tenant that has saved nothing, which reads as no tag.
+	GetTenantAnalyticsSettings(ctx context.Context, tenantID uuid.UUID) (TenantAnalyticsSetting, error)
 	// A tenant with no config row has no row here either, and sells through the
 	// external checkout, which is what the column's default says.
 	GetTenantAppPurchaseRoute(ctx context.Context, tenantID uuid.UUID) (string, error)
@@ -2771,6 +2773,9 @@ type Querier interface {
 	// opening the episode.
 	LockStoreTransaction(ctx context.Context, arg LockStoreTransactionParams) error
 	LockTenantAdminInvitationByHashForTenant(ctx context.Context, arg LockTenantAdminInvitationByHashForTenantParams) (TenantAdminInvitation, error)
+	// Serializes the saves of one tenant's settings, so a save compared against
+	// the row as unchanged cannot answer a value a concurrent save replaced.
+	LockTenantAnalyticsSettings(ctx context.Context, tenantID uuid.UUID) (TenantAnalyticsSetting, error)
 	LockTenantCommunityLimitOverrides(ctx context.Context, tenantID uuid.UUID) (TenantCommunityLimitOverride, error)
 	// Serializes the writes that together decide whether the store route has a
 	// store that can sell: the store settings and the app association. A tenant
@@ -3571,6 +3576,7 @@ type Querier interface {
 	UpsertTagForTenant(ctx context.Context, arg UpsertTagForTenantParams) (Tag, error)
 	// An upsert for the reason UpsertTenantCommentSettings gives.
 	UpsertTenantAgeVerification(ctx context.Context, arg UpsertTenantAgeVerificationParams) (TenantConfig, error)
+	UpsertTenantAnalyticsSettings(ctx context.Context, arg UpsertTenantAnalyticsSettingsParams) (TenantAnalyticsSetting, error)
 	// An upsert for the reason UpsertTenantCommentSettings gives.
 	UpsertTenantAppPurchaseRoute(ctx context.Context, arg UpsertTenantAppPurchaseRouteParams) (string, error)
 	UpsertTenantAppStoreConfig(ctx context.Context, arg UpsertTenantAppStoreConfigParams) (TenantAppStoreConfig, error)

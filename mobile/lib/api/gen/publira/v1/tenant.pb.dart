@@ -1306,6 +1306,258 @@ class GetTenantMobileAppAssociationResponse extends $pb.GeneratedMessage {
   TenantIosAppAssociation ensureIos() => $_ensure(1);
 }
 
+class GetTenantAnalyticsSettingsRequest extends $pb.GeneratedMessage {
+  factory GetTenantAnalyticsSettingsRequest({
+    $0.TenantContext? tenant,
+  }) {
+    final result = GetTenantAnalyticsSettingsRequest._();
+    if (tenant != null) result.tenant = tenant;
+    return result;
+  }
+
+  GetTenantAnalyticsSettingsRequest._();
+
+  factory GetTenantAnalyticsSettingsRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetTenantAnalyticsSettingsRequest()..mergeFromBuffer(data, registry);
+  factory GetTenantAnalyticsSettingsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetTenantAnalyticsSettingsRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetTenantAnalyticsSettingsRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: GetTenantAnalyticsSettingsRequest.$_createMessage)
+    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $0.TenantContext.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetTenantAnalyticsSettingsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetTenantAnalyticsSettingsRequest copyWith(
+          void Function(GetTenantAnalyticsSettingsRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as GetTenantAnalyticsSettingsRequest))
+          as GetTenantAnalyticsSettingsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use GetTenantAnalyticsSettingsRequest() / GetTenantAnalyticsSettingsRequest.new instead')
+  static GetTenantAnalyticsSettingsRequest create() =>
+      GetTenantAnalyticsSettingsRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      GetTenantAnalyticsSettingsRequest._();
+  @$core.override
+  GetTenantAnalyticsSettingsRequest createEmptyInstance() =>
+      GetTenantAnalyticsSettingsRequest._();
+  @$core.pragma('dart2js:noInline')
+  static GetTenantAnalyticsSettingsRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetTenantAnalyticsSettingsRequest>(
+          GetTenantAnalyticsSettingsRequest.$_createMessage);
+  static GetTenantAnalyticsSettingsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($0.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.TenantContext ensureTenant() => $_ensure(0);
+}
+
+/// The Google tag the storefront loads, with only the values its serving mode
+/// uses.
+class TenantGoogleTag extends $pb.GeneratedMessage {
+  factory TenantGoogleTag({
+    $core.String? ga4MeasurementId,
+    $core.String? gtmContainerId,
+    $0.GoogleTagServingMode? servingMode,
+    $core.String? serverContainerUrl,
+    $core.String? gatewayPath,
+  }) {
+    final result = TenantGoogleTag._();
+    if (ga4MeasurementId != null) result.ga4MeasurementId = ga4MeasurementId;
+    if (gtmContainerId != null) result.gtmContainerId = gtmContainerId;
+    if (servingMode != null) result.servingMode = servingMode;
+    if (serverContainerUrl != null)
+      result.serverContainerUrl = serverContainerUrl;
+    if (gatewayPath != null) result.gatewayPath = gatewayPath;
+    return result;
+  }
+
+  TenantGoogleTag._();
+
+  factory TenantGoogleTag.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TenantGoogleTag()..mergeFromBuffer(data, registry);
+  factory TenantGoogleTag.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TenantGoogleTag()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'TenantGoogleTag',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: TenantGoogleTag.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'ga4MeasurementId')
+    ..aOS(2, _omitFieldNames ? '' : 'gtmContainerId')
+    ..aE<$0.GoogleTagServingMode>(3, _omitFieldNames ? '' : 'servingMode',
+        enumValues: $0.GoogleTagServingMode.values)
+    ..aOS(4, _omitFieldNames ? '' : 'serverContainerUrl')
+    ..aOS(5, _omitFieldNames ? '' : 'gatewayPath')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TenantGoogleTag clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TenantGoogleTag copyWith(void Function(TenantGoogleTag) updates) =>
+      super.copyWith((message) => updates(message as TenantGoogleTag))
+          as TenantGoogleTag;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use TenantGoogleTag() / TenantGoogleTag.new instead')
+  static TenantGoogleTag create() => TenantGoogleTag._();
+  static $pb.GeneratedMessage $_createMessage() => TenantGoogleTag._();
+  @$core.override
+  TenantGoogleTag createEmptyInstance() => TenantGoogleTag._();
+  @$core.pragma('dart2js:noInline')
+  static TenantGoogleTag getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<TenantGoogleTag>(
+          TenantGoogleTag.$_createMessage);
+  static TenantGoogleTag? _defaultInstance;
+
+  /// Either ID or both is set. Empty where the tenant has none.
+  @$pb.TagNumber(1)
+  $core.String get ga4MeasurementId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set ga4MeasurementId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasGa4MeasurementId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearGa4MeasurementId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get gtmContainerId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set gtmContainerId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasGtmContainerId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearGtmContainerId() => $_clearField(2);
+
+  /// Never GOOGLE_TAG_SERVING_MODE_UNSPECIFIED.
+  @$pb.TagNumber(3)
+  $0.GoogleTagServingMode get servingMode => $_getN(2);
+  @$pb.TagNumber(3)
+  set servingMode($0.GoogleTagServingMode value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasServingMode() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearServingMode() => $_clearField(3);
+
+  /// The origin of the tenant's server container: set in
+  /// GOOGLE_TAG_SERVING_MODE_SERVER_CONTAINER, and in
+  /// GOOGLE_TAG_SERVING_MODE_GATEWAY where the gateway forwards to it rather
+  /// than to Google. Empty otherwise.
+  @$pb.TagNumber(4)
+  $core.String get serverContainerUrl => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set serverContainerUrl($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasServerContainerUrl() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearServerContainerUrl() => $_clearField(4);
+
+  /// The first path segment the gateway answers on: set in
+  /// GOOGLE_TAG_SERVING_MODE_GATEWAY alone.
+  @$pb.TagNumber(5)
+  $core.String get gatewayPath => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set gatewayPath($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasGatewayPath() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearGatewayPath() => $_clearField(5);
+}
+
+class GetTenantAnalyticsSettingsResponse extends $pb.GeneratedMessage {
+  factory GetTenantAnalyticsSettingsResponse({
+    TenantGoogleTag? googleTag,
+  }) {
+    final result = GetTenantAnalyticsSettingsResponse._();
+    if (googleTag != null) result.googleTag = googleTag;
+    return result;
+  }
+
+  GetTenantAnalyticsSettingsResponse._();
+
+  factory GetTenantAnalyticsSettingsResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetTenantAnalyticsSettingsResponse()..mergeFromBuffer(data, registry);
+  factory GetTenantAnalyticsSettingsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetTenantAnalyticsSettingsResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetTenantAnalyticsSettingsResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: GetTenantAnalyticsSettingsResponse.$_createMessage)
+    ..aOM<TenantGoogleTag>(1, _omitFieldNames ? '' : 'googleTag',
+        subBuilder: TenantGoogleTag.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetTenantAnalyticsSettingsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetTenantAnalyticsSettingsResponse copyWith(
+          void Function(GetTenantAnalyticsSettingsResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as GetTenantAnalyticsSettingsResponse))
+          as GetTenantAnalyticsSettingsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use GetTenantAnalyticsSettingsResponse() / GetTenantAnalyticsSettingsResponse.new instead')
+  static GetTenantAnalyticsSettingsResponse create() =>
+      GetTenantAnalyticsSettingsResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      GetTenantAnalyticsSettingsResponse._();
+  @$core.override
+  GetTenantAnalyticsSettingsResponse createEmptyInstance() =>
+      GetTenantAnalyticsSettingsResponse._();
+  @$core.pragma('dart2js:noInline')
+  static GetTenantAnalyticsSettingsResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetTenantAnalyticsSettingsResponse>(
+          GetTenantAnalyticsSettingsResponse.$_createMessage);
+  static GetTenantAnalyticsSettingsResponse? _defaultInstance;
+
+  /// Absent where the tenant loads no tag: it names neither ID.
+  @$pb.TagNumber(1)
+  TenantGoogleTag get googleTag => $_getN(0);
+  @$pb.TagNumber(1)
+  set googleTag(TenantGoogleTag value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasGoogleTag() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearGoogleTag() => $_clearField(1);
+  @$pb.TagNumber(1)
+  TenantGoogleTag ensureGoogleTag() => $_ensure(0);
+}
+
 class TenantServiceApi {
   final $pb.RpcClient _client;
 
@@ -1336,6 +1588,14 @@ class TenantServiceApi {
           'GetTenantReaderIconPolicy',
           request,
           GetTenantReaderIconPolicyResponse());
+  $async.Future<GetTenantAnalyticsSettingsResponse> getTenantAnalyticsSettings(
+          $pb.ClientContext? ctx, GetTenantAnalyticsSettingsRequest request) =>
+      _client.invoke<GetTenantAnalyticsSettingsResponse>(
+          ctx,
+          'TenantService',
+          'GetTenantAnalyticsSettings',
+          request,
+          GetTenantAnalyticsSettingsResponse());
 }
 
 const $core.bool _omitFieldNames =

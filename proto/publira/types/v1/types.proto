@@ -649,6 +649,22 @@ enum ReaderIconPolicy {
   READER_ICON_POLICY_DISABLED = 3;
 }
 
+// Where a tenant's storefront loads its Google tag from
+// (tenant_analytics_settings.serving_mode).
+enum GoogleTagServingMode {
+  GOOGLE_TAG_SERVING_MODE_UNSPECIFIED = 0;
+  // The tag is loaded from Google and sends its hits there. This is what a
+  // tenant that has never chosen gets.
+  GOOGLE_TAG_SERVING_MODE_GOOGLE = 1;
+  // The tag is loaded from, and sends its hits to, the tenant's server-side
+  // Tag Manager container at server_container_url.
+  GOOGLE_TAG_SERVING_MODE_SERVER_CONTAINER = 2;
+  // The tag is loaded from, and sends its hits to, gateway_path on the
+  // storefront's own origin, which Publira proxies to Google, or to the
+  // tenant's server container when server_container_url is set.
+  GOOGLE_TAG_SERVING_MODE_GATEWAY = 3;
+}
+
 // An icon the tenant provides for its readers to pick. A reader's account
 // that shows it carries the same variants in User.icon_image_variants.
 message ReaderIconPreset {

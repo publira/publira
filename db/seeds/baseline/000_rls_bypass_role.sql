@@ -338,6 +338,15 @@ GRANT SELECT ON tenant_email_rejection_settings, tenant_email_rejection_entries 
 GRANT SELECT, INSERT, UPDATE ON tenant_email_rejection_settings TO publira_admin;
 GRANT SELECT, INSERT, DELETE ON tenant_email_rejection_entries TO publira_admin;
 
+-- The Google tag a tenant's storefront loads is the tenant console's to set.
+-- The storefront renders it into every page and must not be able to point it
+-- somewhere else: RLS confines it to its own tenant, which is exactly the
+-- tenant whose readers the tag would be sent to.
+REVOKE INSERT, UPDATE, DELETE ON tenant_analytics_settings FROM publira_public;
+REVOKE DELETE ON tenant_analytics_settings FROM publira_admin;
+GRANT SELECT ON tenant_analytics_settings TO publira_public;
+GRANT SELECT, INSERT, UPDATE ON tenant_analytics_settings TO publira_admin;
+
 -- The tenant console tells staff when a withdrawn comment is deleted, and the
 -- purge batches delete by the same period, so both resolve a tenant's retention
 -- from the platform defaults. They hold no secret, and neither role may write

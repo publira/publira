@@ -175,6 +175,16 @@ func TestDBTenantSettingSavesAreAuditedOncePerChange(t *testing.T) {
 				return err
 			},
 		},
+		{
+			name: "Google tag", action: "tenant_analytics_settings_updated", targetType: "tenant_analytics_settings",
+			save: func() error {
+				_, err := updateDBTenantAnalyticsSettings(env, tenant, &publiraadminv1.TenantAnalyticsSettings{
+					GtmContainerId: "GTM-ABC1234",
+					ServingMode:    publirattypesv1.GoogleTagServingMode_GOOGLE_TAG_SERVING_MODE_GATEWAY,
+				}, false)
+				return err
+			},
+		},
 	}
 
 	// The logo and the icon start out empty, so deleting them changes nothing

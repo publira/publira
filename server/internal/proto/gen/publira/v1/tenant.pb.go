@@ -937,6 +937,181 @@ func (x *GetTenantMobileAppAssociationResponse) GetIos() *TenantIosAppAssociatio
 	return nil
 }
 
+type GetTenantAnalyticsSettingsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetTenantAnalyticsSettingsRequest) Reset() {
+	*x = GetTenantAnalyticsSettingsRequest{}
+	mi := &file_publira_v1_tenant_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetTenantAnalyticsSettingsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTenantAnalyticsSettingsRequest) ProtoMessage() {}
+
+func (x *GetTenantAnalyticsSettingsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_tenant_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTenantAnalyticsSettingsRequest.ProtoReflect.Descriptor instead.
+func (*GetTenantAnalyticsSettingsRequest) Descriptor() ([]byte, []int) {
+	return file_publira_v1_tenant_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *GetTenantAnalyticsSettingsRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+// The Google tag the storefront loads, with only the values its serving mode
+// uses.
+type TenantGoogleTag struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Either ID or both is set. Empty where the tenant has none.
+	Ga4MeasurementId string `protobuf:"bytes,1,opt,name=ga4_measurement_id,json=ga4MeasurementId,proto3" json:"ga4_measurement_id,omitempty"`
+	GtmContainerId   string `protobuf:"bytes,2,opt,name=gtm_container_id,json=gtmContainerId,proto3" json:"gtm_container_id,omitempty"`
+	// Never GOOGLE_TAG_SERVING_MODE_UNSPECIFIED.
+	ServingMode v1.GoogleTagServingMode `protobuf:"varint,3,opt,name=serving_mode,json=servingMode,proto3,enum=publira.types.v1.GoogleTagServingMode" json:"serving_mode,omitempty"`
+	// The origin of the tenant's server container: set in
+	// GOOGLE_TAG_SERVING_MODE_SERVER_CONTAINER, and in
+	// GOOGLE_TAG_SERVING_MODE_GATEWAY where the gateway forwards to it rather
+	// than to Google. Empty otherwise.
+	ServerContainerUrl string `protobuf:"bytes,4,opt,name=server_container_url,json=serverContainerUrl,proto3" json:"server_container_url,omitempty"`
+	// The first path segment the gateway answers on: set in
+	// GOOGLE_TAG_SERVING_MODE_GATEWAY alone.
+	GatewayPath   string `protobuf:"bytes,5,opt,name=gateway_path,json=gatewayPath,proto3" json:"gateway_path,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TenantGoogleTag) Reset() {
+	*x = TenantGoogleTag{}
+	mi := &file_publira_v1_tenant_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TenantGoogleTag) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TenantGoogleTag) ProtoMessage() {}
+
+func (x *TenantGoogleTag) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_tenant_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TenantGoogleTag.ProtoReflect.Descriptor instead.
+func (*TenantGoogleTag) Descriptor() ([]byte, []int) {
+	return file_publira_v1_tenant_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *TenantGoogleTag) GetGa4MeasurementId() string {
+	if x != nil {
+		return x.Ga4MeasurementId
+	}
+	return ""
+}
+
+func (x *TenantGoogleTag) GetGtmContainerId() string {
+	if x != nil {
+		return x.GtmContainerId
+	}
+	return ""
+}
+
+func (x *TenantGoogleTag) GetServingMode() v1.GoogleTagServingMode {
+	if x != nil {
+		return x.ServingMode
+	}
+	return v1.GoogleTagServingMode(0)
+}
+
+func (x *TenantGoogleTag) GetServerContainerUrl() string {
+	if x != nil {
+		return x.ServerContainerUrl
+	}
+	return ""
+}
+
+func (x *TenantGoogleTag) GetGatewayPath() string {
+	if x != nil {
+		return x.GatewayPath
+	}
+	return ""
+}
+
+type GetTenantAnalyticsSettingsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Absent where the tenant loads no tag: it names neither ID.
+	GoogleTag     *TenantGoogleTag `protobuf:"bytes,1,opt,name=google_tag,json=googleTag,proto3" json:"google_tag,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetTenantAnalyticsSettingsResponse) Reset() {
+	*x = GetTenantAnalyticsSettingsResponse{}
+	mi := &file_publira_v1_tenant_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetTenantAnalyticsSettingsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTenantAnalyticsSettingsResponse) ProtoMessage() {}
+
+func (x *GetTenantAnalyticsSettingsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_v1_tenant_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTenantAnalyticsSettingsResponse.ProtoReflect.Descriptor instead.
+func (*GetTenantAnalyticsSettingsResponse) Descriptor() ([]byte, []int) {
+	return file_publira_v1_tenant_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *GetTenantAnalyticsSettingsResponse) GetGoogleTag() *TenantGoogleTag {
+	if x != nil {
+		return x.GoogleTag
+	}
+	return nil
+}
+
 var File_publira_v1_tenant_proto protoreflect.FileDescriptor
 
 const file_publira_v1_tenant_proto_rawDesc = "" +
@@ -1006,12 +1181,24 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\x11bundle_identifier\x18\x02 \x01(\tR\x10bundleIdentifier\"\xa1\x01\n" +
 	"%GetTenantMobileAppAssociationResponse\x12A\n" +
 	"\aandroid\x18\x01 \x01(\v2'.publira.v1.TenantAndroidAppAssociationR\aandroid\x125\n" +
-	"\x03ios\x18\x02 \x01(\v2#.publira.v1.TenantIosAppAssociationR\x03ios2\xca\x03\n" +
+	"\x03ios\x18\x02 \x01(\v2#.publira.v1.TenantIosAppAssociationR\x03ios\"\\\n" +
+	"!GetTenantAnalyticsSettingsRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"\x89\x02\n" +
+	"\x0fTenantGoogleTag\x12,\n" +
+	"\x12ga4_measurement_id\x18\x01 \x01(\tR\x10ga4MeasurementId\x12(\n" +
+	"\x10gtm_container_id\x18\x02 \x01(\tR\x0egtmContainerId\x12I\n" +
+	"\fserving_mode\x18\x03 \x01(\x0e2&.publira.types.v1.GoogleTagServingModeR\vservingMode\x120\n" +
+	"\x14server_container_url\x18\x04 \x01(\tR\x12serverContainerUrl\x12!\n" +
+	"\fgateway_path\x18\x05 \x01(\tR\vgatewayPath\"`\n" +
+	"\"GetTenantAnalyticsSettingsResponse\x12:\n" +
+	"\n" +
+	"google_tag\x18\x01 \x01(\v2\x1b.publira.v1.TenantGoogleTagR\tgoogleTag2\xc9\x04\n" +
 	"\rTenantService\x12J\n" +
 	"\tGetTenant\x12\x1c.publira.v1.GetTenantRequest\x1a\x1d.publira.v1.GetTenantResponse\"\x00\x12h\n" +
 	"\x13GetTenantLegalPages\x12&.publira.v1.GetTenantLegalPagesRequest\x1a'.publira.v1.GetTenantLegalPagesResponse\"\x00\x12\x86\x01\n" +
 	"\x1dGetTenantMobileAppAssociation\x120.publira.v1.GetTenantMobileAppAssociationRequest\x1a1.publira.v1.GetTenantMobileAppAssociationResponse\"\x00\x12z\n" +
-	"\x19GetTenantReaderIconPolicy\x12,.publira.v1.GetTenantReaderIconPolicyRequest\x1a-.publira.v1.GetTenantReaderIconPolicyResponse\"\x00BKZIgithub.com/publira/publira/server/internal/proto/gen/publira/v1;publirav1b\x06proto3"
+	"\x19GetTenantReaderIconPolicy\x12,.publira.v1.GetTenantReaderIconPolicyRequest\x1a-.publira.v1.GetTenantReaderIconPolicyResponse\"\x00\x12}\n" +
+	"\x1aGetTenantAnalyticsSettings\x12-.publira.v1.GetTenantAnalyticsSettingsRequest\x1a..publira.v1.GetTenantAnalyticsSettingsResponse\"\x00BKZIgithub.com/publira/publira/server/internal/proto/gen/publira/v1;publirav1b\x06proto3"
 
 var (
 	file_publira_v1_tenant_proto_rawDescOnce sync.Once
@@ -1025,7 +1212,7 @@ func file_publira_v1_tenant_proto_rawDescGZIP() []byte {
 	return file_publira_v1_tenant_proto_rawDescData
 }
 
-var file_publira_v1_tenant_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_publira_v1_tenant_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_publira_v1_tenant_proto_goTypes = []any{
 	(*GetTenantRequest)(nil),                      // 0: publira.v1.GetTenantRequest
 	(*GetTenantLegalPagesRequest)(nil),            // 1: publira.v1.GetTenantLegalPagesRequest
@@ -1040,44 +1227,53 @@ var file_publira_v1_tenant_proto_goTypes = []any{
 	(*TenantAndroidAppAssociation)(nil),           // 10: publira.v1.TenantAndroidAppAssociation
 	(*TenantIosAppAssociation)(nil),               // 11: publira.v1.TenantIosAppAssociation
 	(*GetTenantMobileAppAssociationResponse)(nil), // 12: publira.v1.GetTenantMobileAppAssociationResponse
-	(*v1.TenantContext)(nil),                      // 13: publira.types.v1.TenantContext
-	(*v1.TenantTheme)(nil),                        // 14: publira.types.v1.TenantTheme
-	(v1.CommentMode)(0),                           // 15: publira.types.v1.CommentMode
-	(v1.AgeVerification)(0),                       // 16: publira.types.v1.AgeVerification
-	(v1.AppPurchaseRoute)(0),                      // 17: publira.types.v1.AppPurchaseRoute
-	(v1.ReaderIconPolicy)(0),                      // 18: publira.types.v1.ReaderIconPolicy
-	(*v1.ReaderIconPreset)(nil),                   // 19: publira.types.v1.ReaderIconPreset
+	(*GetTenantAnalyticsSettingsRequest)(nil),     // 13: publira.v1.GetTenantAnalyticsSettingsRequest
+	(*TenantGoogleTag)(nil),                       // 14: publira.v1.TenantGoogleTag
+	(*GetTenantAnalyticsSettingsResponse)(nil),    // 15: publira.v1.GetTenantAnalyticsSettingsResponse
+	(*v1.TenantContext)(nil),                      // 16: publira.types.v1.TenantContext
+	(*v1.TenantTheme)(nil),                        // 17: publira.types.v1.TenantTheme
+	(v1.CommentMode)(0),                           // 18: publira.types.v1.CommentMode
+	(v1.AgeVerification)(0),                       // 19: publira.types.v1.AgeVerification
+	(v1.AppPurchaseRoute)(0),                      // 20: publira.types.v1.AppPurchaseRoute
+	(v1.ReaderIconPolicy)(0),                      // 21: publira.types.v1.ReaderIconPolicy
+	(*v1.ReaderIconPreset)(nil),                   // 22: publira.types.v1.ReaderIconPreset
+	(v1.GoogleTagServingMode)(0),                  // 23: publira.types.v1.GoogleTagServingMode
 }
 var file_publira_v1_tenant_proto_depIdxs = []int32{
-	13, // 0: publira.v1.GetTenantRequest.tenant:type_name -> publira.types.v1.TenantContext
-	13, // 1: publira.v1.GetTenantLegalPagesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	16, // 0: publira.v1.GetTenantRequest.tenant:type_name -> publira.types.v1.TenantContext
+	16, // 1: publira.v1.GetTenantLegalPagesRequest.tenant:type_name -> publira.types.v1.TenantContext
 	2,  // 2: publira.v1.GetTenantLegalPagesResponse.terms_page:type_name -> publira.v1.TenantLegalPage
 	2,  // 3: publira.v1.GetTenantLegalPagesResponse.privacy_page:type_name -> publira.v1.TenantLegalPage
-	14, // 4: publira.v1.GetTenantResponse.theme:type_name -> publira.types.v1.TenantTheme
-	15, // 5: publira.v1.GetTenantResponse.comment_mode:type_name -> publira.types.v1.CommentMode
-	16, // 6: publira.v1.GetTenantResponse.age_verification:type_name -> publira.types.v1.AgeVerification
-	17, // 7: publira.v1.GetTenantResponse.app_purchase_route:type_name -> publira.types.v1.AppPurchaseRoute
+	17, // 4: publira.v1.GetTenantResponse.theme:type_name -> publira.types.v1.TenantTheme
+	18, // 5: publira.v1.GetTenantResponse.comment_mode:type_name -> publira.types.v1.CommentMode
+	19, // 6: publira.v1.GetTenantResponse.age_verification:type_name -> publira.types.v1.AgeVerification
+	20, // 7: publira.v1.GetTenantResponse.app_purchase_route:type_name -> publira.types.v1.AppPurchaseRoute
 	5,  // 8: publira.v1.GetTenantResponse.apple_sign_in:type_name -> publira.v1.TenantAppleSignIn
 	6,  // 9: publira.v1.GetTenantResponse.google_sign_in:type_name -> publira.v1.TenantGoogleSignIn
-	13, // 10: publira.v1.GetTenantReaderIconPolicyRequest.tenant:type_name -> publira.types.v1.TenantContext
-	18, // 11: publira.v1.GetTenantReaderIconPolicyResponse.policy:type_name -> publira.types.v1.ReaderIconPolicy
-	19, // 12: publira.v1.GetTenantReaderIconPolicyResponse.presets:type_name -> publira.types.v1.ReaderIconPreset
-	13, // 13: publira.v1.GetTenantMobileAppAssociationRequest.tenant:type_name -> publira.types.v1.TenantContext
+	16, // 10: publira.v1.GetTenantReaderIconPolicyRequest.tenant:type_name -> publira.types.v1.TenantContext
+	21, // 11: publira.v1.GetTenantReaderIconPolicyResponse.policy:type_name -> publira.types.v1.ReaderIconPolicy
+	22, // 12: publira.v1.GetTenantReaderIconPolicyResponse.presets:type_name -> publira.types.v1.ReaderIconPreset
+	16, // 13: publira.v1.GetTenantMobileAppAssociationRequest.tenant:type_name -> publira.types.v1.TenantContext
 	10, // 14: publira.v1.GetTenantMobileAppAssociationResponse.android:type_name -> publira.v1.TenantAndroidAppAssociation
 	11, // 15: publira.v1.GetTenantMobileAppAssociationResponse.ios:type_name -> publira.v1.TenantIosAppAssociation
-	0,  // 16: publira.v1.TenantService.GetTenant:input_type -> publira.v1.GetTenantRequest
-	1,  // 17: publira.v1.TenantService.GetTenantLegalPages:input_type -> publira.v1.GetTenantLegalPagesRequest
-	9,  // 18: publira.v1.TenantService.GetTenantMobileAppAssociation:input_type -> publira.v1.GetTenantMobileAppAssociationRequest
-	7,  // 19: publira.v1.TenantService.GetTenantReaderIconPolicy:input_type -> publira.v1.GetTenantReaderIconPolicyRequest
-	4,  // 20: publira.v1.TenantService.GetTenant:output_type -> publira.v1.GetTenantResponse
-	3,  // 21: publira.v1.TenantService.GetTenantLegalPages:output_type -> publira.v1.GetTenantLegalPagesResponse
-	12, // 22: publira.v1.TenantService.GetTenantMobileAppAssociation:output_type -> publira.v1.GetTenantMobileAppAssociationResponse
-	8,  // 23: publira.v1.TenantService.GetTenantReaderIconPolicy:output_type -> publira.v1.GetTenantReaderIconPolicyResponse
-	20, // [20:24] is the sub-list for method output_type
-	16, // [16:20] is the sub-list for method input_type
-	16, // [16:16] is the sub-list for extension type_name
-	16, // [16:16] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	16, // 16: publira.v1.GetTenantAnalyticsSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	23, // 17: publira.v1.TenantGoogleTag.serving_mode:type_name -> publira.types.v1.GoogleTagServingMode
+	14, // 18: publira.v1.GetTenantAnalyticsSettingsResponse.google_tag:type_name -> publira.v1.TenantGoogleTag
+	0,  // 19: publira.v1.TenantService.GetTenant:input_type -> publira.v1.GetTenantRequest
+	1,  // 20: publira.v1.TenantService.GetTenantLegalPages:input_type -> publira.v1.GetTenantLegalPagesRequest
+	9,  // 21: publira.v1.TenantService.GetTenantMobileAppAssociation:input_type -> publira.v1.GetTenantMobileAppAssociationRequest
+	7,  // 22: publira.v1.TenantService.GetTenantReaderIconPolicy:input_type -> publira.v1.GetTenantReaderIconPolicyRequest
+	13, // 23: publira.v1.TenantService.GetTenantAnalyticsSettings:input_type -> publira.v1.GetTenantAnalyticsSettingsRequest
+	4,  // 24: publira.v1.TenantService.GetTenant:output_type -> publira.v1.GetTenantResponse
+	3,  // 25: publira.v1.TenantService.GetTenantLegalPages:output_type -> publira.v1.GetTenantLegalPagesResponse
+	12, // 26: publira.v1.TenantService.GetTenantMobileAppAssociation:output_type -> publira.v1.GetTenantMobileAppAssociationResponse
+	8,  // 27: publira.v1.TenantService.GetTenantReaderIconPolicy:output_type -> publira.v1.GetTenantReaderIconPolicyResponse
+	15, // 28: publira.v1.TenantService.GetTenantAnalyticsSettings:output_type -> publira.v1.GetTenantAnalyticsSettingsResponse
+	24, // [24:29] is the sub-list for method output_type
+	19, // [19:24] is the sub-list for method input_type
+	19, // [19:19] is the sub-list for extension type_name
+	19, // [19:19] is the sub-list for extension extendee
+	0,  // [0:19] is the sub-list for field type_name
 }
 
 func init() { file_publira_v1_tenant_proto_init() }
@@ -1091,7 +1287,7 @@ func file_publira_v1_tenant_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_v1_tenant_proto_rawDesc), len(file_publira_v1_tenant_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
