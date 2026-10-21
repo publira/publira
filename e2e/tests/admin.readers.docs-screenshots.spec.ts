@@ -23,8 +23,8 @@ import {
 } from "../src/urls";
 
 /**
- * The tenant console's Readers group, as
- * `docs/<locale>/4-console/2-readers.md` shows it: the reader list and a
+ * The tenant console's Readers group, as the pages under
+ * `docs/<locale>/4-console/2-readers/` show it: the reader list and a
  * reader's page, the comment queues, the contact messages, and the access
  * tickets.
  *
@@ -73,7 +73,6 @@ const helpDeskTenant = {
 
 for (const locale of DOCS_LOCALES) {
   const t = (key: string): string => docsText(locale, key);
-  const readersPage = "console/readers";
 
   test.describe(`web-admin readers documentation screenshots in ${locale}`, () => {
     test("the reader list, with its search", async ({ page }) => {
@@ -82,7 +81,7 @@ for (const locale of DOCS_LOCALES) {
       await expectDocsScreenshot(page, {
         element: [docsScreenHeader(page), page.getByRole("row").last()],
         locale,
-        page: readersPage,
+        page: "console/readers/readers",
         subject: "list",
       });
     });
@@ -96,7 +95,7 @@ for (const locale of DOCS_LOCALES) {
           docsSection(page, t("admin.readers.account_title")),
         ],
         locale,
-        page: readersPage,
+        page: "console/readers/readers",
         subject: "reader",
       });
     });
@@ -110,8 +109,8 @@ for (const locale of DOCS_LOCALES) {
           docsSection(page, t("admin.comments.reports.title")),
         ],
         locale,
-        page: readersPage,
-        subject: "reported-comments",
+        page: "console/readers/comments",
+        subject: "reports",
       });
     });
 
@@ -126,8 +125,8 @@ for (const locale of DOCS_LOCALES) {
           docsSection(page, t("admin.comments.list_title")),
         ],
         locale,
-        page: readersPage,
-        subject: "comments",
+        page: "console/readers/comments",
+        subject: "list",
       });
     });
 
@@ -137,8 +136,8 @@ for (const locale of DOCS_LOCALES) {
       await expectDocsScreenshot(page, {
         element: [docsScreenHeader(page), page.getByRole("row").last()],
         locale,
-        page: readersPage,
-        subject: "contact-messages",
+        page: "console/readers/contact-messages",
+        subject: "list",
       });
     });
 
@@ -156,8 +155,8 @@ for (const locale of DOCS_LOCALES) {
           page.getByRole("main").locator("section").last(),
         ],
         locale,
-        page: readersPage,
-        subject: "contact-message",
+        page: "console/readers/contact-messages",
+        subject: "message",
       });
     });
 
@@ -167,8 +166,8 @@ for (const locale of DOCS_LOCALES) {
       await expectDocsScreenshot(page, {
         element: [docsScreenHeader(page), page.getByRole("row").last()],
         locale,
-        page: readersPage,
-        subject: "access-tickets",
+        page: "console/readers/access-tickets",
+        subject: "list",
       });
     });
 
@@ -183,8 +182,8 @@ for (const locale of DOCS_LOCALES) {
           }),
         ],
         locale,
-        page: readersPage,
-        subject: "issue-ticket",
+        page: "console/readers/access-tickets",
+        subject: "issue-form",
       });
     });
   });
