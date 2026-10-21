@@ -119,6 +119,44 @@ describe("readUpgradeNotes", () => {
     assert.equal(readUpgradeNotes(body), "None.");
   });
 
+  it("reads a fenced code block in a list item as code", () => {
+    const body = [
+      "## Summary",
+      "",
+      "- ```sh",
+      "  echo ready",
+      "  ```",
+      "> ~~~",
+      "> # quoted",
+      "> ~~~",
+      "",
+      "## Upgrade notes",
+      "",
+      "Restart the proxy.",
+      "",
+      "## How to Test",
+    ].join("\n");
+
+    assert.equal(readUpgradeNotes(body), "Restart the proxy.");
+  });
+
+  it("ends a fence in a list item at the next line at column 0", () => {
+    const body = [
+      "## Summary",
+      "",
+      "1. Run:",
+      "",
+      "   ```sh",
+      "   echo ready",
+      "",
+      "## Upgrade notes",
+      "",
+      "Restart the proxy.",
+    ].join("\n");
+
+    assert.equal(readUpgradeNotes(body), "Restart the proxy.");
+  });
+
   it("matches the heading whatever its case", () => {
     assert.equal(readUpgradeNotes("## upgrade Notes\n\nNone."), "None.");
   });

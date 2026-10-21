@@ -42,48 +42,76 @@ const NEXT_HEADING = /^#{1,2}\s/u;
 const COMMENT = /<!--[\s\S]*?-->/gu;
 
 /**
- * The start of a line that opens or closes a fenced code block: up to three
- * spaces, then a run of at least three backticks or tildes.
+ * The start of a line that opens or closes a fenced code block: the markers of
+ * the blockquotes and list items it sits in and the indentation around them,
+ * then a run of at least three backticks or tildes.
  */
-const FENCE = /^ {0,3}(?:`{3,}|~{3,})/u;
+const FENCE =
+  /^(?<prefix>(?:[\t >]|[-+*][\t ]|\d{1,9}[.)][\t ])*)(?<run>`{3,}|~{3,})/u;
+
+interface Fence {
+  /** The container markers and indentation before the run. */
+  prefix: string;
+  /** The text after the run: the info string, or nothing on a closing fence. */
+  rest: string;
+  run: string;
+}
 
 /**
- * The run of a fence on `line` and the text after it, or `undefined` when the
- * line is no fence. The info string of a backtick fence holds no backtick, so
- * a run followed by one is inline code instead.
+ * The fence on `line`, or `undefined` when the line is no fence. The info
+ * string of a backtick fence holds no backtick, so a run followed by one is
+ * inline code instead.
  */
-const fenceOn = (line: string): { rest: string; run: string } | undefined => {
-  const [start] = FENCE.exec(line) ?? [];
-  if (start === undefined) {
+const fenceOn = (line: string): Fence | undefined => {
+  const match = FENCE.exec(line);
+  if (match?.groups === undefined) {
     return undefined;
   }
-  const run = start.trimStart();
-  const rest = line.slice(start.length);
+  const { prefix, run } = match.groups;
+  const rest = line.slice(match[0].length);
+  if (run.startsWith("`") && rest.includes("`")) {
+    return undefined;
+  }
 
-  return run.startsWith("`") && rest.includes("`") ? undefined : { rest, run };
+  return { prefix, rest, run };
 };
 
 /**
+ * Whether `fence` closes `open`: a run of the same character at least as long,
+ * with nothing after it, indented by up to three spaces when `open` starts at
+ * column 0.
+ */
+const closes = (fence: Fence | undefined, open: Fence): boolean =>
+  fence !== undefined &&
+  fence.run[0] === open.run[0] &&
+  fence.run.length >= open.run.length &&
+  fence.rest.trim() === "" &&
+  (open.prefix !== "" || /^ {0,3}$/u.test(fence.prefix));
+
+/** A line that starts at column 0 with neither indentation nor a `>`. */
+const UNINDENTED = /^[^\s>]/u;
+
+/**
  * Whether each of `lines` lies in a fenced code block, fence lines included.
- * A fence closes on a run of the same character at least as long as the one
- * that opened it, with nothing after it, and one left open runs to the end.
+ * A fence left open at column 0 runs to the end. One that starts after a list
+ * marker, a `>`, or indentation is taken to sit in a list item or a
+ * blockquote, and a fence takes no lazy continuation lines, so the next line
+ * at column 0 ends the container and the fence with it.
  */
 const inFencedCode = (lines: readonly string[]): boolean[] => {
-  let open: string | undefined;
+  let open: Fence | undefined;
 
   return lines.map((line) => {
     const fence = fenceOn(line);
+    if (open !== undefined && open.prefix !== "" && UNINDENTED.test(line)) {
+      open = undefined;
+    }
     if (open === undefined) {
-      open = fence?.run;
+      open = fence;
 
       return open !== undefined;
     }
-    if (
-      fence !== undefined &&
-      fence.run[0] === open[0] &&
-      fence.run.length >= open.length &&
-      fence.rest.trim() === ""
-    ) {
+    if (closes(fence, open)) {
       open = undefined;
     }
 
