@@ -40,6 +40,11 @@ message CommunityLimitDefaults {
   HourDayLimit contact_message_per_client = 6;
   // Times one reader may store how they want the viewer laid out.
   MinuteDayLimit viewer_preferences = 7;
+  // How often one reader may ask AuthService.UpdateNotificationSettings to
+  // store their notification settings.
+  //
+  // UpdatePlatformPolicy keeps the saved value when a request leaves it unset.
+  MinuteDayLimit notification_settings = 8;
 }
 
 // The platform's security and abuse-control policy.

@@ -3170,6 +3170,7 @@ type TenantCommunityLimitOverrides struct {
 	ContactMessagePerAccount      *v11.HourDayLimit      `protobuf:"bytes,5,opt,name=contact_message_per_account,json=contactMessagePerAccount,proto3" json:"contact_message_per_account,omitempty"`
 	ContactMessagePerClient       *v11.HourDayLimit      `protobuf:"bytes,6,opt,name=contact_message_per_client,json=contactMessagePerClient,proto3" json:"contact_message_per_client,omitempty"`
 	ViewerPreferences             *v11.MinuteDayLimit    `protobuf:"bytes,7,opt,name=viewer_preferences,json=viewerPreferences,proto3" json:"viewer_preferences,omitempty"`
+	NotificationSettings          *v11.MinuteDayLimit    `protobuf:"bytes,8,opt,name=notification_settings,json=notificationSettings,proto3" json:"notification_settings,omitempty"`
 	unknownFields                 protoimpl.UnknownFields
 	sizeCache                     protoimpl.SizeCache
 }
@@ -3249,6 +3250,13 @@ func (x *TenantCommunityLimitOverrides) GetContactMessagePerClient() *v11.HourDa
 func (x *TenantCommunityLimitOverrides) GetViewerPreferences() *v11.MinuteDayLimit {
 	if x != nil {
 		return x.ViewerPreferences
+	}
+	return nil
+}
+
+func (x *TenantCommunityLimitOverrides) GetNotificationSettings() *v11.MinuteDayLimit {
+	if x != nil {
+		return x.NotificationSettings
 	}
 	return nil
 }
@@ -3945,7 +3953,7 @@ const file_publira_admin_v1_tenant_proto_rawDesc = "" +
 	"\toverrides\x18\x01 \x01(\v2*.publira.admin.v1.TenantRetentionOverridesR\toverrides\x12O\n" +
 	"\x11platform_defaults\x18\x02 \x01(\v2\".publira.types.v1.RetentionPeriodsR\x10platformDefaults\x12@\n" +
 	"\teffective\x18\x03 \x01(\v2\".publira.types.v1.RetentionPeriodsR\teffective\x12\x1a\n" +
-	"\brevision\x18\x04 \x01(\x03R\brevision\"\x88\x05\n" +
+	"\brevision\x18\x04 \x01(\x03R\brevision\"\xe2\x05\n" +
 	"\x1dTenantCommunityLimitOverrides\x12F\n" +
 	"\fcomment_post\x18\x01 \x01(\v2#.publira.platform.v1.MinuteDayLimitR\vcommentPost\x12J\n" +
 	"\x0ecomment_report\x18\x02 \x01(\v2#.publira.platform.v1.MinuteDayLimitR\rcommentReport\x12L\n" +
@@ -3953,7 +3961,8 @@ const file_publira_admin_v1_tenant_proto_rawDesc = "" +
 	"\x0eepisode_rating\x18\x04 \x01(\v2#.publira.platform.v1.MinuteDayLimitR\repisodeRating\x12`\n" +
 	"\x1bcontact_message_per_account\x18\x05 \x01(\v2!.publira.platform.v1.HourDayLimitR\x18contactMessagePerAccount\x12^\n" +
 	"\x1acontact_message_per_client\x18\x06 \x01(\v2!.publira.platform.v1.HourDayLimitR\x17contactMessagePerClient\x12R\n" +
-	"\x12viewer_preferences\x18\a \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x11viewerPreferencesB#\n" +
+	"\x12viewer_preferences\x18\a \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x11viewerPreferences\x12X\n" +
+	"\x15notification_settings\x18\b \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x14notificationSettingsB#\n" +
 	"!_duplicate_comment_window_minutes\"a\n" +
 	"&GetTenantCommunityLimitSettingsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"\xb9\x02\n" +
@@ -4178,79 +4187,80 @@ var file_publira_admin_v1_tenant_proto_depIdxs = []int32{
 	78,  // 65: publira.admin.v1.TenantCommunityLimitOverrides.contact_message_per_account:type_name -> publira.platform.v1.HourDayLimit
 	78,  // 66: publira.admin.v1.TenantCommunityLimitOverrides.contact_message_per_client:type_name -> publira.platform.v1.HourDayLimit
 	77,  // 67: publira.admin.v1.TenantCommunityLimitOverrides.viewer_preferences:type_name -> publira.platform.v1.MinuteDayLimit
-	68,  // 68: publira.admin.v1.GetTenantCommunityLimitSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	58,  // 69: publira.admin.v1.GetTenantCommunityLimitSettingsResponse.overrides:type_name -> publira.admin.v1.TenantCommunityLimitOverrides
-	79,  // 70: publira.admin.v1.GetTenantCommunityLimitSettingsResponse.platform_defaults:type_name -> publira.platform.v1.CommunityLimitDefaults
-	79,  // 71: publira.admin.v1.GetTenantCommunityLimitSettingsResponse.effective:type_name -> publira.platform.v1.CommunityLimitDefaults
-	68,  // 72: publira.admin.v1.UpdateTenantCommunityLimitSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	58,  // 73: publira.admin.v1.UpdateTenantCommunityLimitSettingsRequest.overrides:type_name -> publira.admin.v1.TenantCommunityLimitOverrides
-	58,  // 74: publira.admin.v1.UpdateTenantCommunityLimitSettingsResponse.overrides:type_name -> publira.admin.v1.TenantCommunityLimitOverrides
-	79,  // 75: publira.admin.v1.UpdateTenantCommunityLimitSettingsResponse.platform_defaults:type_name -> publira.platform.v1.CommunityLimitDefaults
-	79,  // 76: publira.admin.v1.UpdateTenantCommunityLimitSettingsResponse.effective:type_name -> publira.platform.v1.CommunityLimitDefaults
-	68,  // 77: publira.admin.v1.GetTenantEmailRejectionSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	63,  // 78: publira.admin.v1.GetTenantEmailRejectionSettingsResponse.settings:type_name -> publira.admin.v1.TenantEmailRejectionSettings
-	68,  // 79: publira.admin.v1.UpdateTenantEmailRejectionSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	63,  // 80: publira.admin.v1.UpdateTenantEmailRejectionSettingsRequest.settings:type_name -> publira.admin.v1.TenantEmailRejectionSettings
-	63,  // 81: publira.admin.v1.UpdateTenantEmailRejectionSettingsResponse.settings:type_name -> publira.admin.v1.TenantEmailRejectionSettings
-	0,   // 82: publira.admin.v1.TenantSettingsService.GetTenantTimezone:input_type -> publira.admin.v1.GetTenantTimezoneRequest
-	2,   // 83: publira.admin.v1.TenantSettingsService.UpdateTenantTimezone:input_type -> publira.admin.v1.UpdateTenantTimezoneRequest
-	4,   // 84: publira.admin.v1.TenantSettingsService.GetTenantDefaultLocale:input_type -> publira.admin.v1.GetTenantDefaultLocaleRequest
-	6,   // 85: publira.admin.v1.TenantSettingsService.UpdateTenantDefaultLocale:input_type -> publira.admin.v1.UpdateTenantDefaultLocaleRequest
-	8,   // 86: publira.admin.v1.TenantSettingsService.GetTenantCommentSettings:input_type -> publira.admin.v1.GetTenantCommentSettingsRequest
-	10,  // 87: publira.admin.v1.TenantSettingsService.UpdateTenantCommentSettings:input_type -> publira.admin.v1.UpdateTenantCommentSettingsRequest
-	12,  // 88: publira.admin.v1.TenantSettingsService.GetTenantReaderIconPolicy:input_type -> publira.admin.v1.GetTenantReaderIconPolicyRequest
-	14,  // 89: publira.admin.v1.TenantSettingsService.UpdateTenantReaderIconPolicy:input_type -> publira.admin.v1.UpdateTenantReaderIconPolicyRequest
-	16,  // 90: publira.admin.v1.TenantSettingsService.ListReaderIconPresets:input_type -> publira.admin.v1.ListReaderIconPresetsRequest
-	18,  // 91: publira.admin.v1.TenantSettingsService.UploadReaderIconPreset:input_type -> publira.admin.v1.UploadReaderIconPresetRequest
-	20,  // 92: publira.admin.v1.TenantSettingsService.DeleteReaderIconPreset:input_type -> publira.admin.v1.DeleteReaderIconPresetRequest
-	22,  // 93: publira.admin.v1.TenantSettingsService.GetTenantAgeVerification:input_type -> publira.admin.v1.GetTenantAgeVerificationRequest
-	24,  // 94: publira.admin.v1.TenantSettingsService.UpdateTenantAgeVerification:input_type -> publira.admin.v1.UpdateTenantAgeVerificationRequest
-	27,  // 95: publira.admin.v1.TenantSettingsService.GetTenantPurchaseSettings:input_type -> publira.admin.v1.GetTenantPurchaseSettingsRequest
-	29,  // 96: publira.admin.v1.TenantSettingsService.UpdateTenantPurchaseSettings:input_type -> publira.admin.v1.UpdateTenantPurchaseSettingsRequest
-	33,  // 97: publira.admin.v1.TenantSettingsService.GetTenantLegalPages:input_type -> publira.admin.v1.GetTenantLegalPagesRequest
-	35,  // 98: publira.admin.v1.TenantSettingsService.UpdateTenantLegalPages:input_type -> publira.admin.v1.UpdateTenantLegalPagesRequest
-	40,  // 99: publira.admin.v1.TenantSettingsService.GetTenantMobileAppAssociation:input_type -> publira.admin.v1.GetTenantMobileAppAssociationRequest
-	42,  // 100: publira.admin.v1.TenantSettingsService.UpdateTenantMobileAppAssociation:input_type -> publira.admin.v1.UpdateTenantMobileAppAssociationRequest
-	47,  // 101: publira.admin.v1.TenantSettingsService.GetTenantSignInSettings:input_type -> publira.admin.v1.GetTenantSignInSettingsRequest
-	51,  // 102: publira.admin.v1.TenantSettingsService.UpdateTenantSignInSettings:input_type -> publira.admin.v1.UpdateTenantSignInSettingsRequest
-	54,  // 103: publira.admin.v1.TenantSettingsService.GetTenantRetentionSettings:input_type -> publira.admin.v1.GetTenantRetentionSettingsRequest
-	56,  // 104: publira.admin.v1.TenantSettingsService.UpdateTenantRetentionSettings:input_type -> publira.admin.v1.UpdateTenantRetentionSettingsRequest
-	59,  // 105: publira.admin.v1.TenantSettingsService.GetTenantCommunityLimitSettings:input_type -> publira.admin.v1.GetTenantCommunityLimitSettingsRequest
-	61,  // 106: publira.admin.v1.TenantSettingsService.UpdateTenantCommunityLimitSettings:input_type -> publira.admin.v1.UpdateTenantCommunityLimitSettingsRequest
-	64,  // 107: publira.admin.v1.TenantSettingsService.GetTenantEmailRejectionSettings:input_type -> publira.admin.v1.GetTenantEmailRejectionSettingsRequest
-	66,  // 108: publira.admin.v1.TenantSettingsService.UpdateTenantEmailRejectionSettings:input_type -> publira.admin.v1.UpdateTenantEmailRejectionSettingsRequest
-	1,   // 109: publira.admin.v1.TenantSettingsService.GetTenantTimezone:output_type -> publira.admin.v1.GetTenantTimezoneResponse
-	3,   // 110: publira.admin.v1.TenantSettingsService.UpdateTenantTimezone:output_type -> publira.admin.v1.UpdateTenantTimezoneResponse
-	5,   // 111: publira.admin.v1.TenantSettingsService.GetTenantDefaultLocale:output_type -> publira.admin.v1.GetTenantDefaultLocaleResponse
-	7,   // 112: publira.admin.v1.TenantSettingsService.UpdateTenantDefaultLocale:output_type -> publira.admin.v1.UpdateTenantDefaultLocaleResponse
-	9,   // 113: publira.admin.v1.TenantSettingsService.GetTenantCommentSettings:output_type -> publira.admin.v1.GetTenantCommentSettingsResponse
-	11,  // 114: publira.admin.v1.TenantSettingsService.UpdateTenantCommentSettings:output_type -> publira.admin.v1.UpdateTenantCommentSettingsResponse
-	13,  // 115: publira.admin.v1.TenantSettingsService.GetTenantReaderIconPolicy:output_type -> publira.admin.v1.GetTenantReaderIconPolicyResponse
-	15,  // 116: publira.admin.v1.TenantSettingsService.UpdateTenantReaderIconPolicy:output_type -> publira.admin.v1.UpdateTenantReaderIconPolicyResponse
-	17,  // 117: publira.admin.v1.TenantSettingsService.ListReaderIconPresets:output_type -> publira.admin.v1.ListReaderIconPresetsResponse
-	19,  // 118: publira.admin.v1.TenantSettingsService.UploadReaderIconPreset:output_type -> publira.admin.v1.UploadReaderIconPresetResponse
-	21,  // 119: publira.admin.v1.TenantSettingsService.DeleteReaderIconPreset:output_type -> publira.admin.v1.DeleteReaderIconPresetResponse
-	23,  // 120: publira.admin.v1.TenantSettingsService.GetTenantAgeVerification:output_type -> publira.admin.v1.GetTenantAgeVerificationResponse
-	25,  // 121: publira.admin.v1.TenantSettingsService.UpdateTenantAgeVerification:output_type -> publira.admin.v1.UpdateTenantAgeVerificationResponse
-	28,  // 122: publira.admin.v1.TenantSettingsService.GetTenantPurchaseSettings:output_type -> publira.admin.v1.GetTenantPurchaseSettingsResponse
-	30,  // 123: publira.admin.v1.TenantSettingsService.UpdateTenantPurchaseSettings:output_type -> publira.admin.v1.UpdateTenantPurchaseSettingsResponse
-	34,  // 124: publira.admin.v1.TenantSettingsService.GetTenantLegalPages:output_type -> publira.admin.v1.GetTenantLegalPagesResponse
-	36,  // 125: publira.admin.v1.TenantSettingsService.UpdateTenantLegalPages:output_type -> publira.admin.v1.UpdateTenantLegalPagesResponse
-	41,  // 126: publira.admin.v1.TenantSettingsService.GetTenantMobileAppAssociation:output_type -> publira.admin.v1.GetTenantMobileAppAssociationResponse
-	43,  // 127: publira.admin.v1.TenantSettingsService.UpdateTenantMobileAppAssociation:output_type -> publira.admin.v1.UpdateTenantMobileAppAssociationResponse
-	48,  // 128: publira.admin.v1.TenantSettingsService.GetTenantSignInSettings:output_type -> publira.admin.v1.GetTenantSignInSettingsResponse
-	52,  // 129: publira.admin.v1.TenantSettingsService.UpdateTenantSignInSettings:output_type -> publira.admin.v1.UpdateTenantSignInSettingsResponse
-	55,  // 130: publira.admin.v1.TenantSettingsService.GetTenantRetentionSettings:output_type -> publira.admin.v1.GetTenantRetentionSettingsResponse
-	57,  // 131: publira.admin.v1.TenantSettingsService.UpdateTenantRetentionSettings:output_type -> publira.admin.v1.UpdateTenantRetentionSettingsResponse
-	60,  // 132: publira.admin.v1.TenantSettingsService.GetTenantCommunityLimitSettings:output_type -> publira.admin.v1.GetTenantCommunityLimitSettingsResponse
-	62,  // 133: publira.admin.v1.TenantSettingsService.UpdateTenantCommunityLimitSettings:output_type -> publira.admin.v1.UpdateTenantCommunityLimitSettingsResponse
-	65,  // 134: publira.admin.v1.TenantSettingsService.GetTenantEmailRejectionSettings:output_type -> publira.admin.v1.GetTenantEmailRejectionSettingsResponse
-	67,  // 135: publira.admin.v1.TenantSettingsService.UpdateTenantEmailRejectionSettings:output_type -> publira.admin.v1.UpdateTenantEmailRejectionSettingsResponse
-	109, // [109:136] is the sub-list for method output_type
-	82,  // [82:109] is the sub-list for method input_type
-	82,  // [82:82] is the sub-list for extension type_name
-	82,  // [82:82] is the sub-list for extension extendee
-	0,   // [0:82] is the sub-list for field type_name
+	77,  // 68: publira.admin.v1.TenantCommunityLimitOverrides.notification_settings:type_name -> publira.platform.v1.MinuteDayLimit
+	68,  // 69: publira.admin.v1.GetTenantCommunityLimitSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	58,  // 70: publira.admin.v1.GetTenantCommunityLimitSettingsResponse.overrides:type_name -> publira.admin.v1.TenantCommunityLimitOverrides
+	79,  // 71: publira.admin.v1.GetTenantCommunityLimitSettingsResponse.platform_defaults:type_name -> publira.platform.v1.CommunityLimitDefaults
+	79,  // 72: publira.admin.v1.GetTenantCommunityLimitSettingsResponse.effective:type_name -> publira.platform.v1.CommunityLimitDefaults
+	68,  // 73: publira.admin.v1.UpdateTenantCommunityLimitSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	58,  // 74: publira.admin.v1.UpdateTenantCommunityLimitSettingsRequest.overrides:type_name -> publira.admin.v1.TenantCommunityLimitOverrides
+	58,  // 75: publira.admin.v1.UpdateTenantCommunityLimitSettingsResponse.overrides:type_name -> publira.admin.v1.TenantCommunityLimitOverrides
+	79,  // 76: publira.admin.v1.UpdateTenantCommunityLimitSettingsResponse.platform_defaults:type_name -> publira.platform.v1.CommunityLimitDefaults
+	79,  // 77: publira.admin.v1.UpdateTenantCommunityLimitSettingsResponse.effective:type_name -> publira.platform.v1.CommunityLimitDefaults
+	68,  // 78: publira.admin.v1.GetTenantEmailRejectionSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	63,  // 79: publira.admin.v1.GetTenantEmailRejectionSettingsResponse.settings:type_name -> publira.admin.v1.TenantEmailRejectionSettings
+	68,  // 80: publira.admin.v1.UpdateTenantEmailRejectionSettingsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	63,  // 81: publira.admin.v1.UpdateTenantEmailRejectionSettingsRequest.settings:type_name -> publira.admin.v1.TenantEmailRejectionSettings
+	63,  // 82: publira.admin.v1.UpdateTenantEmailRejectionSettingsResponse.settings:type_name -> publira.admin.v1.TenantEmailRejectionSettings
+	0,   // 83: publira.admin.v1.TenantSettingsService.GetTenantTimezone:input_type -> publira.admin.v1.GetTenantTimezoneRequest
+	2,   // 84: publira.admin.v1.TenantSettingsService.UpdateTenantTimezone:input_type -> publira.admin.v1.UpdateTenantTimezoneRequest
+	4,   // 85: publira.admin.v1.TenantSettingsService.GetTenantDefaultLocale:input_type -> publira.admin.v1.GetTenantDefaultLocaleRequest
+	6,   // 86: publira.admin.v1.TenantSettingsService.UpdateTenantDefaultLocale:input_type -> publira.admin.v1.UpdateTenantDefaultLocaleRequest
+	8,   // 87: publira.admin.v1.TenantSettingsService.GetTenantCommentSettings:input_type -> publira.admin.v1.GetTenantCommentSettingsRequest
+	10,  // 88: publira.admin.v1.TenantSettingsService.UpdateTenantCommentSettings:input_type -> publira.admin.v1.UpdateTenantCommentSettingsRequest
+	12,  // 89: publira.admin.v1.TenantSettingsService.GetTenantReaderIconPolicy:input_type -> publira.admin.v1.GetTenantReaderIconPolicyRequest
+	14,  // 90: publira.admin.v1.TenantSettingsService.UpdateTenantReaderIconPolicy:input_type -> publira.admin.v1.UpdateTenantReaderIconPolicyRequest
+	16,  // 91: publira.admin.v1.TenantSettingsService.ListReaderIconPresets:input_type -> publira.admin.v1.ListReaderIconPresetsRequest
+	18,  // 92: publira.admin.v1.TenantSettingsService.UploadReaderIconPreset:input_type -> publira.admin.v1.UploadReaderIconPresetRequest
+	20,  // 93: publira.admin.v1.TenantSettingsService.DeleteReaderIconPreset:input_type -> publira.admin.v1.DeleteReaderIconPresetRequest
+	22,  // 94: publira.admin.v1.TenantSettingsService.GetTenantAgeVerification:input_type -> publira.admin.v1.GetTenantAgeVerificationRequest
+	24,  // 95: publira.admin.v1.TenantSettingsService.UpdateTenantAgeVerification:input_type -> publira.admin.v1.UpdateTenantAgeVerificationRequest
+	27,  // 96: publira.admin.v1.TenantSettingsService.GetTenantPurchaseSettings:input_type -> publira.admin.v1.GetTenantPurchaseSettingsRequest
+	29,  // 97: publira.admin.v1.TenantSettingsService.UpdateTenantPurchaseSettings:input_type -> publira.admin.v1.UpdateTenantPurchaseSettingsRequest
+	33,  // 98: publira.admin.v1.TenantSettingsService.GetTenantLegalPages:input_type -> publira.admin.v1.GetTenantLegalPagesRequest
+	35,  // 99: publira.admin.v1.TenantSettingsService.UpdateTenantLegalPages:input_type -> publira.admin.v1.UpdateTenantLegalPagesRequest
+	40,  // 100: publira.admin.v1.TenantSettingsService.GetTenantMobileAppAssociation:input_type -> publira.admin.v1.GetTenantMobileAppAssociationRequest
+	42,  // 101: publira.admin.v1.TenantSettingsService.UpdateTenantMobileAppAssociation:input_type -> publira.admin.v1.UpdateTenantMobileAppAssociationRequest
+	47,  // 102: publira.admin.v1.TenantSettingsService.GetTenantSignInSettings:input_type -> publira.admin.v1.GetTenantSignInSettingsRequest
+	51,  // 103: publira.admin.v1.TenantSettingsService.UpdateTenantSignInSettings:input_type -> publira.admin.v1.UpdateTenantSignInSettingsRequest
+	54,  // 104: publira.admin.v1.TenantSettingsService.GetTenantRetentionSettings:input_type -> publira.admin.v1.GetTenantRetentionSettingsRequest
+	56,  // 105: publira.admin.v1.TenantSettingsService.UpdateTenantRetentionSettings:input_type -> publira.admin.v1.UpdateTenantRetentionSettingsRequest
+	59,  // 106: publira.admin.v1.TenantSettingsService.GetTenantCommunityLimitSettings:input_type -> publira.admin.v1.GetTenantCommunityLimitSettingsRequest
+	61,  // 107: publira.admin.v1.TenantSettingsService.UpdateTenantCommunityLimitSettings:input_type -> publira.admin.v1.UpdateTenantCommunityLimitSettingsRequest
+	64,  // 108: publira.admin.v1.TenantSettingsService.GetTenantEmailRejectionSettings:input_type -> publira.admin.v1.GetTenantEmailRejectionSettingsRequest
+	66,  // 109: publira.admin.v1.TenantSettingsService.UpdateTenantEmailRejectionSettings:input_type -> publira.admin.v1.UpdateTenantEmailRejectionSettingsRequest
+	1,   // 110: publira.admin.v1.TenantSettingsService.GetTenantTimezone:output_type -> publira.admin.v1.GetTenantTimezoneResponse
+	3,   // 111: publira.admin.v1.TenantSettingsService.UpdateTenantTimezone:output_type -> publira.admin.v1.UpdateTenantTimezoneResponse
+	5,   // 112: publira.admin.v1.TenantSettingsService.GetTenantDefaultLocale:output_type -> publira.admin.v1.GetTenantDefaultLocaleResponse
+	7,   // 113: publira.admin.v1.TenantSettingsService.UpdateTenantDefaultLocale:output_type -> publira.admin.v1.UpdateTenantDefaultLocaleResponse
+	9,   // 114: publira.admin.v1.TenantSettingsService.GetTenantCommentSettings:output_type -> publira.admin.v1.GetTenantCommentSettingsResponse
+	11,  // 115: publira.admin.v1.TenantSettingsService.UpdateTenantCommentSettings:output_type -> publira.admin.v1.UpdateTenantCommentSettingsResponse
+	13,  // 116: publira.admin.v1.TenantSettingsService.GetTenantReaderIconPolicy:output_type -> publira.admin.v1.GetTenantReaderIconPolicyResponse
+	15,  // 117: publira.admin.v1.TenantSettingsService.UpdateTenantReaderIconPolicy:output_type -> publira.admin.v1.UpdateTenantReaderIconPolicyResponse
+	17,  // 118: publira.admin.v1.TenantSettingsService.ListReaderIconPresets:output_type -> publira.admin.v1.ListReaderIconPresetsResponse
+	19,  // 119: publira.admin.v1.TenantSettingsService.UploadReaderIconPreset:output_type -> publira.admin.v1.UploadReaderIconPresetResponse
+	21,  // 120: publira.admin.v1.TenantSettingsService.DeleteReaderIconPreset:output_type -> publira.admin.v1.DeleteReaderIconPresetResponse
+	23,  // 121: publira.admin.v1.TenantSettingsService.GetTenantAgeVerification:output_type -> publira.admin.v1.GetTenantAgeVerificationResponse
+	25,  // 122: publira.admin.v1.TenantSettingsService.UpdateTenantAgeVerification:output_type -> publira.admin.v1.UpdateTenantAgeVerificationResponse
+	28,  // 123: publira.admin.v1.TenantSettingsService.GetTenantPurchaseSettings:output_type -> publira.admin.v1.GetTenantPurchaseSettingsResponse
+	30,  // 124: publira.admin.v1.TenantSettingsService.UpdateTenantPurchaseSettings:output_type -> publira.admin.v1.UpdateTenantPurchaseSettingsResponse
+	34,  // 125: publira.admin.v1.TenantSettingsService.GetTenantLegalPages:output_type -> publira.admin.v1.GetTenantLegalPagesResponse
+	36,  // 126: publira.admin.v1.TenantSettingsService.UpdateTenantLegalPages:output_type -> publira.admin.v1.UpdateTenantLegalPagesResponse
+	41,  // 127: publira.admin.v1.TenantSettingsService.GetTenantMobileAppAssociation:output_type -> publira.admin.v1.GetTenantMobileAppAssociationResponse
+	43,  // 128: publira.admin.v1.TenantSettingsService.UpdateTenantMobileAppAssociation:output_type -> publira.admin.v1.UpdateTenantMobileAppAssociationResponse
+	48,  // 129: publira.admin.v1.TenantSettingsService.GetTenantSignInSettings:output_type -> publira.admin.v1.GetTenantSignInSettingsResponse
+	52,  // 130: publira.admin.v1.TenantSettingsService.UpdateTenantSignInSettings:output_type -> publira.admin.v1.UpdateTenantSignInSettingsResponse
+	55,  // 131: publira.admin.v1.TenantSettingsService.GetTenantRetentionSettings:output_type -> publira.admin.v1.GetTenantRetentionSettingsResponse
+	57,  // 132: publira.admin.v1.TenantSettingsService.UpdateTenantRetentionSettings:output_type -> publira.admin.v1.UpdateTenantRetentionSettingsResponse
+	60,  // 133: publira.admin.v1.TenantSettingsService.GetTenantCommunityLimitSettings:output_type -> publira.admin.v1.GetTenantCommunityLimitSettingsResponse
+	62,  // 134: publira.admin.v1.TenantSettingsService.UpdateTenantCommunityLimitSettings:output_type -> publira.admin.v1.UpdateTenantCommunityLimitSettingsResponse
+	65,  // 135: publira.admin.v1.TenantSettingsService.GetTenantEmailRejectionSettings:output_type -> publira.admin.v1.GetTenantEmailRejectionSettingsResponse
+	67,  // 136: publira.admin.v1.TenantSettingsService.UpdateTenantEmailRejectionSettings:output_type -> publira.admin.v1.UpdateTenantEmailRejectionSettingsResponse
+	110, // [110:137] is the sub-list for method output_type
+	83,  // [83:110] is the sub-list for method input_type
+	83,  // [83:83] is the sub-list for extension type_name
+	83,  // [83:83] is the sub-list for extension extendee
+	0,   // [0:83] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_tenant_proto_init() }

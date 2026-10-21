@@ -741,6 +741,8 @@ type PlatformPolicyConfig struct {
 	PasskeyLimitPerDay                    int32     `json:"passkey_limit_per_day"`
 	SeriesRemainderCheckoutLimitPerMinute int32     `json:"series_remainder_checkout_limit_per_minute"`
 	SeriesRemainderCheckoutLimitPerDay    int32     `json:"series_remainder_checkout_limit_per_day"`
+	NotificationSettingsLimitPerMinute    int32     `json:"notification_settings_limit_per_minute"`
+	NotificationSettingsLimitPerDay       int32     `json:"notification_settings_limit_per_day"`
 }
 
 type PlatformRetentionConfig struct {
@@ -1272,6 +1274,8 @@ type TenantCommunityLimitOverride struct {
 	Revision                             int64         `json:"revision"`
 	CreatedAt                            time.Time     `json:"created_at"`
 	UpdatedAt                            time.Time     `json:"updated_at"`
+	NotificationSettingsLimitPerMinute   sql.NullInt32 `json:"notification_settings_limit_per_minute"`
+	NotificationSettingsLimitPerDay      sql.NullInt32 `json:"notification_settings_limit_per_day"`
 }
 
 type TenantConfig struct {
