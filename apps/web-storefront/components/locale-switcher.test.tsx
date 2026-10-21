@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   LocaleSwitcher,
-  LocaleSwitcherLinks,
+  LocaleSwitcherDisclosure,
   LocaleSwitcherLinksSkeleton,
 } from "./locale-switcher";
 
@@ -19,9 +19,25 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-// The drawer row is a slot of the navigation drawer, whose own behaviour
-// `packages/layouts` covers; here it stands in as the anchor it renders.
+// The disclosure and its rows are slots of the navigation drawer, whose own
+// behaviour `packages/layouts` covers; here they stand in as the elements they
+// render, the panel always open.
 vi.mock("@publira/layouts", () => ({
+  SiteLayoutMobileNavigationDisclosure: ({
+    children,
+  }: {
+    children: React.ReactNode;
+  }) => <div>{children}</div>,
+  SiteLayoutMobileNavigationDisclosurePanel: ({
+    children,
+  }: {
+    children: React.ReactNode;
+  }) => <div>{children}</div>,
+  SiteLayoutMobileNavigationDisclosureTrigger: ({
+    children,
+  }: {
+    children: React.ReactNode;
+  }) => <button type="button">{children}</button>,
   SiteLayoutMobileNavigationLink: ({
     children,
     current,
@@ -83,12 +99,29 @@ describe("LocaleSwitcher", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(document.activeElement).toBe(trigger);
   });
+
+  it("renders nothing for a tenant that offers one locale", () => {
+    mockUseTenantSupportedLocales.mockReturnValue(["en"]);
+
+    const { container } = render(<LocaleSwitcher />);
+
+    expect(container.childElementCount).toBe(0);
+  });
+
+  it("renders nothing while the tenant's locales are unavailable", () => {
+    mockUseTenantSupportedLocales.mockReturnValue(null);
+
+    const { container } = render(<LocaleSwitcher />);
+
+    expect(container.childElementCount).toBe(0);
+  });
 });
 
-describe("LocaleSwitcherLinks", () => {
+describe("LocaleSwitcherDisclosure", () => {
   it("offers every locale as a link to the current page and marks the one in effect", () => {
-    render(<LocaleSwitcherLinks />);
+    render(<LocaleSwitcherDisclosure label="Language" />);
 
+    expect(screen.getByRole("button", { name: "Language" })).toBeDefined();
     expect(screen.getAllByRole("link")).toHaveLength(getLocales().length);
     expect(
       screen.getByRole("link", { name: "日本語" }).getAttribute("href")
@@ -107,21 +140,27 @@ describe("LocaleSwitcherLinks", () => {
   it("offers only the locales the tenant offers", () => {
     mockUseTenantSupportedLocales.mockReturnValue(["ja", "en"]);
 
-    render(<LocaleSwitcherLinks />);
+    render(<LocaleSwitcherDisclosure label="Language" />);
 
     expect(
       screen.getAllByRole("link").map((link) => link.getAttribute("hreflang"))
     ).toStrictEqual(["ja", "en"]);
   });
 
-  it("offers only the locale being read while the tenant's locales are unavailable", () => {
+  it("renders neither the row nor the links for a tenant that offers one locale", () => {
+    mockUseTenantSupportedLocales.mockReturnValue(["en"]);
+
+    const { container } = render(<LocaleSwitcherDisclosure label="Language" />);
+
+    expect(container.childElementCount).toBe(0);
+  });
+
+  it("renders neither the row nor the links while the tenant's locales are unavailable", () => {
     mockUseTenantSupportedLocales.mockReturnValue(null);
 
-    render(<LocaleSwitcherLinks />);
+    const { container } = render(<LocaleSwitcherDisclosure label="Language" />);
 
-    expect(
-      screen.getAllByRole("link").map((link) => link.getAttribute("hreflang"))
-    ).toStrictEqual(["en"]);
+    expect(container.childElementCount).toBe(0);
   });
 });
 

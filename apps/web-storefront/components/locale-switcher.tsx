@@ -3,7 +3,12 @@
 import { getLocaleLabel, getLocales } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { LanguageIcon } from "@publira/icons/language-icon";
-import { SiteLayoutMobileNavigationLink } from "@publira/layouts";
+import {
+  SiteLayoutMobileNavigationDisclosure,
+  SiteLayoutMobileNavigationDisclosurePanel,
+  SiteLayoutMobileNavigationDisclosureTrigger,
+  SiteLayoutMobileNavigationLink,
+} from "@publira/layouts";
 import {
   Popover,
   PopoverContent,
@@ -13,6 +18,7 @@ import {
 import { Skeleton } from "@publira/ui-components/skeleton";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { ReactNode } from "react";
 
 import { toBarePathname, withLocalePrefix } from "#lib/locale-path";
 
@@ -42,12 +48,19 @@ import {
  * shell stays static.
  *
  * It lists the locales the tenant offers, the ones `proxy.ts` serves under a
- * prefix. The language names come from `getLocaleLabel`, the same registry the
- * cookie consoles read. They are autonyms — a language is offered in its own
- * language — so they are identical in both directions and belong to the
- * registry rather than to a per-locale catalog.
+ * prefix, and renders nothing for a tenant that offers one: a list holding only
+ * the page being read switches to nothing, and the button alone would promise
+ * languages the site does not have. The language names come from
+ * `getLocaleLabel`, the same registry the cookie consoles read. They are
+ * autonyms — a language is offered in its own language — so they are identical
+ * in both directions and belong to the registry rather than to a per-locale
+ * catalog.
  */
-/** Same footprint as the rendered control, so the header does not shift. */
+/**
+ * Same footprint as the rendered control, so the header does not shift. The
+ * shell is shared by every tenant, so a tenant that offers one locale sees this
+ * give way to nothing.
+ */
 export const LocaleSwitcherSkeleton = () => (
   <div
     aria-hidden="true"
@@ -58,10 +71,15 @@ export const LocaleSwitcherSkeleton = () => (
 /**
  * The locales the switcher lists. While the tenant read is unavailable it is
  * the one being read: `proxy.ts` served it, so the tenant offers it, and no
- * other locale is known to be one the tenant has not switched off.
+ * other locale is known to be one the tenant has not switched off. That one
+ * entry hides the switcher too, and the proxy keeps serving whichever locale
+ * the URL names.
  */
 const useSwitchableLocales = (currentLocale: Locale): readonly Locale[] =>
   useTenantSupportedLocales() ?? [currentLocale];
+
+/** Whether the locales leave a reader anything to switch to. */
+const offersChoice = (locales: readonly Locale[]) => locales.length > 1;
 
 export const LocaleSwitcher = () => {
   const currentLocale = useLocale();
@@ -72,6 +90,10 @@ export const LocaleSwitcher = () => {
   const barePathname = toBarePathname(pathname);
 
   const label = t("storefront.nav.locale_switcher");
+
+  if (!offersChoice(locales)) {
+    return null;
+  }
 
   return (
     <Popover>
@@ -126,19 +148,14 @@ export const LocaleSwitcherLinksSkeleton = () => (
   </div>
 );
 
-/**
- * The same choice {@link LocaleSwitcher} offers, laid out as rows.
- *
- * The drawer the phone header opens is already a panel, so the popover the
- * band uses would be a second one inside it. The options collapse into the
- * drawer instead, behind the one row
- * `SiteLayoutMobileNavigationDisclosureTrigger` draws, and each closes the
- * drawer on the way to the other language.
- */
-export const LocaleSwitcherLinks = () => {
-  const currentLocale = useLocale();
+const LocaleSwitcherLinks = ({
+  currentLocale,
+  locales,
+}: {
+  currentLocale: Locale;
+  locales: readonly Locale[];
+}) => {
   const defaultLocale = useTenantDefaultLocale();
-  const locales = useSwitchableLocales(currentLocale);
   const pathname = usePathname();
   const barePathname = toBarePathname(pathname);
 
@@ -153,4 +170,57 @@ export const LocaleSwitcherLinks = () => {
       {getLocaleLabel(locale)}
     </SiteLayoutMobileNavigationLink>
   ));
+};
+
+/**
+ * The disclosure {@link LocaleSwitcherDisclosure} draws, its panel holding
+ * {@link LocaleSwitcherLinksSkeleton}: the drawer keeps the row while the
+ * tenant read is pending, since the shell cannot know whether the tenant offers
+ * more than one locale.
+ */
+export const LocaleSwitcherDisclosureSkeleton = ({
+  label,
+}: {
+  label: ReactNode;
+}) => (
+  <SiteLayoutMobileNavigationDisclosure>
+    <SiteLayoutMobileNavigationDisclosureTrigger>
+      {label}
+    </SiteLayoutMobileNavigationDisclosureTrigger>
+    <SiteLayoutMobileNavigationDisclosurePanel>
+      <LocaleSwitcherLinksSkeleton />
+    </SiteLayoutMobileNavigationDisclosurePanel>
+  </SiteLayoutMobileNavigationDisclosure>
+);
+
+/**
+ * The same choice {@link LocaleSwitcher} offers, laid out as rows.
+ *
+ * The drawer the phone header opens is already a panel, so the popover the
+ * band uses would be a second one inside it. The options collapse into the
+ * drawer instead, behind the one row
+ * `SiteLayoutMobileNavigationDisclosureTrigger` draws, and each closes the
+ * drawer on the way to the other language. The row goes with the options: a
+ * tenant that offers one locale gets neither, as the band gets no button.
+ *
+ * `label` is the row's name, a catalog string the server resolves.
+ */
+export const LocaleSwitcherDisclosure = ({ label }: { label: ReactNode }) => {
+  const currentLocale = useLocale();
+  const locales = useSwitchableLocales(currentLocale);
+
+  if (!offersChoice(locales)) {
+    return null;
+  }
+
+  return (
+    <SiteLayoutMobileNavigationDisclosure>
+      <SiteLayoutMobileNavigationDisclosureTrigger>
+        {label}
+      </SiteLayoutMobileNavigationDisclosureTrigger>
+      <SiteLayoutMobileNavigationDisclosurePanel>
+        <LocaleSwitcherLinks currentLocale={currentLocale} locales={locales} />
+      </SiteLayoutMobileNavigationDisclosurePanel>
+    </SiteLayoutMobileNavigationDisclosure>
+  );
 };
