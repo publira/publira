@@ -27,7 +27,7 @@ Then make both host names reach the install, in the order [Adding a tenant](../2
 
 The console host does not have to be under the tenant's domain: a site on `example.com` can have its console on `admin.example.net`, given with **Admin domain** or `--admin-domain` below. When you can register a second domain for it, that is the safer choice. Every certificate a public certificate authority issues is published in the Certificate Transparency logs, which services such as crt.sh let anyone search by domain, so a console host under the site's domain is listed beside the site from the moment its certificate is issued, whatever it is named. A wildcard certificate keeps the name out of the logs, but `admin.<domain>` is the first name anyone tries. A console host on another registrable domain, with a certificate that names none of the site's hosts, is not linked to the site that way. The console still asks its staff to sign in, so what this keeps out of sight is its sign-in page. `admin.<domain>` stays the default, and works as it is.
 
-Choose it before staff register passkeys: a passkey is bound to the console's host, so moving the console to another host later leaves the passkeys already registered unusable, as [Two-step verification](./12-security.md#tenant-staff) describes.
+Choose it before staff register passkeys: a passkey is bound to the console's host, so moving the console to another host later leaves the passkeys already registered unusable, as [Two-step verification](./12-security/2-two-step-verification.md#tenant-staff) describes.
 
 The edge can go further and accept the console host only from your staff's IP addresses; the [sample configurations](../2-deployments/4-edge/1-sample-configurations.md) do not do this for you. That covers the console's pages. Its APIs need no such rule: the console calls them over the private network, and an edge configured as [Only the public API goes through the edge](../2-deployments/4-edge/index.md#only-the-public-api-goes-through-the-edge) describes forwards them on no host.
 
@@ -93,7 +93,7 @@ Each web app keeps the host names it has looked up for up to five minutes, so a 
 Moving the domain also moves everything built on it:
 
 - Readers and staff are signed in on one host name, so they sign in again on the new one.
-- Staff passkeys belong to the console's host, so a move that changes it — a new admin domain, or a new domain for a tenant whose console is on `admin.<domain>` — leaves them unusable, as [Two-step verification](./12-security.md#tenant-staff) describes.
+- Staff passkeys belong to the console's host, so a move that changes it — a new admin domain, or a new domain for a tenant whose console is on `admin.<domain>` — leaves them unusable, as [Two-step verification](./12-security/2-two-step-verification.md#tenant-staff) describes.
 - The tenant's mobile app is built for one host, and opens links only on that host. Build and submit it again with the new host in its [app manifest](../5-mobile-app/1-app-manifest.md).
 - The **Webhook URL** the tenant console shows for payments, and the return URLs it shows for sign-in with Apple and Google, are on the domain. Register the new ones with each provider.
 - Mail sent before the change links to the old host.

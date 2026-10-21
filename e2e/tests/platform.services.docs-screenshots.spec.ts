@@ -191,7 +191,7 @@ for (const locale of DOCS_LOCALES) {
           await expectDocsScreenshot(page, {
             element: credentials(page),
             locale,
-            page: "operations/security",
+            page: "operations/security/rotating-secrets",
             subject: "replace-access-key",
           });
         } finally {
@@ -274,7 +274,7 @@ for (const locale of DOCS_LOCALES) {
           await expectDocsScreenshot(page, {
             element: docsField(change),
             locale,
-            page: "operations/security",
+            page: "operations/security/rotating-secrets",
             subject: "smtp-password",
           });
         } finally {
