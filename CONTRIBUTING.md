@@ -1,6 +1,6 @@
 # Contributing to Publira
 
-This page answers three questions for a first-time contributor: what to install, how to check a change, and what a mergeable pull request looks like. It names each rule in a sentence and links to the document that holds it, so there is one copy of every rule to maintain. [`README.md`](README.md) covers how to run the product itself.
+This page answers three questions for a first-time contributor: what to install, how to check a change, and what a mergeable pull request looks like. It names each rule in a sentence and links to the document that holds it, so there is one copy of every rule to maintain. How to run the product itself is in the operator documentation under [`docs/en/`](docs/en/1-getting-started.md).
 
 ## Repository layout
 
@@ -45,7 +45,40 @@ Each area carries its own documentation: the `README.md` of a directory is the r
 
 The repository ships a Dev Container under [`.devcontainer/`](.devcontainer/devcontainer.json) with every tool below preinstalled, so a contributor who uses it installs nothing but Docker and an editor that speaks the Dev Container protocol (VS Code with the Dev Containers extension, or the `devcontainer` CLI). The container image is `ghcr.io/publira/base-images/publira-dev`, built in the `publira/base-images` repository, and its `postCreateCommand` runs `task setup`, which installs dependencies and initializes the database and the object storage bucket. The definition asks the host for four CPUs.
 
-The dependency services — PostgreSQL, Valkey, RustFS, Mailpit, Jaeger, and a Traefik edge — start with the container. The [Dependency services](README.md#dependency-services) section of the README explains how the container reaches them and which ports it forwards.
+The dependency services — PostgreSQL, Valkey, RustFS, Mailpit, Jaeger, and a Traefik edge — start with the container. [Dependency services](#dependency-services) below explains how the container reaches them and which ports they are published on.
+
+### Dependency services
+
+The repository-root `compose.yaml` defines every dependency service — PostgreSQL, Valkey (Redis protocol), RustFS (S3-compatible storage), Mailpit, and Jaeger — and the Traefik edge in front of a host-side `task dev`, and publishes each of them on `127.0.0.1`.
+
+```bash
+docker compose up -d
+```
+
+The Dev Container starts the same file. `dockerComposeFile` in `.devcontainer/devcontainer.json` is `["../compose.yaml", "compose.yaml"]`, and the second file is an overlay that adds the `app` container, points Traefik at it, and resets the published ports, because everything inside the container reaches these services by service name. That Traefik reads its routing from [`infra/proxy/traefik/dynamic/`](infra/proxy/README.md), the same contract every other environment runs. The values the overlay passes to the `app` container, and the ones to export on the host, are under [Environment variables on the host](#environment-variables-on-the-host).
+
+| Service | Host port | Purpose |
+| --- | --- | --- |
+| `db` | `5432` | PostgreSQL |
+| `redis` | `6379` | Valkey: the servers' `PUBLIRA_REDIS_URL` and the web apps' shared Next.js cache (`PNCH_REDIS_URL`). `docker compose exec redis redis-cli` looks inside |
+| `rustfs` | `9000` / `9001` | S3 endpoint (path-style, bucket `publira`) / console UI at `http://localhost:9001/rustfs/console/` |
+| `mailpit` | `1025` / `8025` | SMTP intake / web UI at `http://localhost:8025`, where the mail sent through the seeded SMTP settings arrives |
+| `jaeger` | `4318` / `16686` | OTLP intake (http/protobuf) / query UI at `http://localhost:16686`. Traces are kept in memory, so a restart drops them |
+| `traefik` | `3080` | The edge in front of `task dev` |
+| `opensearch` | `9200` | Catalog search engine (`search` profile only) |
+
+Loopback only: none of these services authenticates a caller, so they are never published on every interface.
+
+`opensearch` starts only when its profile is named, `docker compose --profile search up -d`; plain `docker compose up -d` and the Dev Container leave it off. Inside the Dev Container, `docker compose --profile search up -d opensearch` starts it on the container's own Docker daemon. [Catalog search](server/README.md#catalog-search) in the server README says how to make it the platform's engine.
+
+The Compose project is `publira` (`name:` in `compose.yaml`), whichever directory the checkout sits in, so the containers and named volumes keep their names: `publira_postgres-data`, and in the Dev Container `publira_claude-data`, `publira_pnpm-store`, and the rest. Every checkout therefore shares one stack, which the [per-worktree `dev-env` profiles](#working-in-several-worktrees) are built on. A second checkout opened as a Dev Container of its own would replace the first one's `app` container; to give it a stack of its own, set `COMPOSE_PROJECT_NAME=<name>` in a `.env` at its root, which both `docker compose` and the Dev Containers CLI read ahead of `name:`.
+
+Changing the project name orphans every volume. Nothing fails: the stack comes up under the new name with empty volumes, while the containers and volumes of the old name keep running and keep their data. List what an old name left behind with:
+
+```bash
+docker ps -a --filter label=com.docker.compose.project=<old name>
+docker volume ls --filter label=com.docker.compose.project=<old name>
+```
 
 ### On the host
 
@@ -71,15 +104,48 @@ Outside the Dev Container you install the toolchain yourself. Install the versio
 With the tools installed:
 
 1. Start the dependency services with `docker compose up -d` from the repository root.
-2. Export the environment variables listed under [Running `task setup` / `task dev` on the host](README.md#running-task-setup--task-dev-on-the-host) in the README. The defaults name the Compose services, which resolve only inside the Dev Container.
+2. Export the variables under [Environment variables on the host](#environment-variables-on-the-host). The defaults name the Compose services, which resolve only inside the Dev Container.
 3. Run `task setup`. It installs the Node.js and Go dependencies, runs `flutter pub get`, applies the migrations and the seed, and fills the storage bucket with the images that seed's rows name. Without Flutter, run the pieces you need instead: `task deps`, `task db:setup`, and `task storage:seed`.
 4. Run `task dev` to start every server and web app, or the per-area tasks that `task --list` shows, and open them through the edge on `localhost:3080`.
 
-The shortest path to a green check needs only Task, pnpm, Go, and libvips: `task deps` followed by the commands in the next section.
+The shortest path to a green check needs only Task, pnpm, Go, and libvips: `task deps` followed by the commands in [Verifying a change](#verifying-a-change).
+
+#### Environment variables on the host
+
+The defaults in `server/config`, `server/cmd/*`, and `db/Taskfile.yaml` name the Compose service (`db:5432`, `redis:6379`, `http://rustfs:9000`), which resolves only inside the Compose network, and `.devcontainer/compose.yaml` passes the `app` container the same values. Outside the Dev Container, point them at loopback instead. `turbo.jsonc` passes `PUBLIRA_*` and `PNCH_*` through, so exported values reach `task dev` as is.
+
+```bash
+export PUBLIRA_DB_URL="postgres://postgres:password@127.0.0.1:5432/publira?sslmode=disable"
+export PUBLIRA_PUBLIC_DB_URL="postgres://publira_public:publicpass@127.0.0.1:5432/publira?sslmode=disable"
+export PUBLIRA_ADMIN_DB_URL="postgres://publira_admin:adminpass@127.0.0.1:5432/publira?sslmode=disable"
+export PUBLIRA_PLATFORM_DB_URL="postgres://publira_platform:platformpass@127.0.0.1:5432/publira?sslmode=disable"
+export PUBLIRA_REDIS_URL="redis://127.0.0.1:6379"
+# The same Redis for the web apps' @publira/next-cache-handlers
+export PNCH_REDIS_URL="redis://127.0.0.1:6379"
+export PUBLIRA_S3_ENDPOINT="http://127.0.0.1:9000"
+export PUBLIRA_S3_BUCKET="publira"
+export PUBLIRA_S3_FORCE_PATH_STYLE="true"
+export AWS_REGION="us-east-1"
+export AWS_ACCESS_KEY_ID="publira"
+export AWS_SECRET_ACCESS_KEY="publirapass"
+export OTEL_EXPORTER_OTLP_ENDPOINT="http://127.0.0.1:4318"
+export PUBLIRA_TRACING_ENABLED="true"
+# Required, with no fallback: the web apps' session cookie key and the access token signing key.
+export PUBLIRA_AUTH_SECRET="$(openssl rand -base64 32)"
+export PUBLIRA_AUTH_JWT_SECRET="$(openssl rand -base64 32)"
+# Tenant links are built on the edge, which serves plain HTTP.
+export PUBLIRA_TENANT_URL_SCHEME="http"
+```
+
+The role users come from `db/seeds/baseline` and their development passwords from `db/seeds/dev/000_role_passwords.sql`; every server reads only the variables named for the roles it connects as, so each of them has to be set. `PUBLIRA_DB_URL` is the migration tooling's connection — `task db:*` and `publiractl db` connect with it — and the `publiractl job` subcommands are the only other readers, as a fallback. `e2e/bootstrap/scripts/lib.sh` exports the same set against its own ports and is a working reference. What the two keys protect is in [`@publira/web-session`](packages/web-session/README.md#environment-variables) for `PUBLIRA_AUTH_SECRET` and in [Authentication](server/README.md#authentication-jwt-access-tokens) in the server README for `PUBLIRA_AUTH_JWT_SECRET`. The passwords and access keys above, and the two keys `.devcontainer/compose.yaml` sets, are for the local stack alone; never carry them into a deployment.
+
+Open the apps through the edge on `localhost:3080`, as in the Dev Container: `/images…` belongs to `publira server`, so only the edge serves an app and its images on one origin, and the development seed stores its tenant as `localhost:3080` and `admin.localhost:3080`, which an app on its own port does not answer to. The root `traefik` service reaches the host's processes as `host.docker.internal`, which Docker Desktop resolves itself and Docker Engine on Linux through the `host-gateway` mapping the service declares.
+
+`db/seeds/dev` points the platform and tenant SMTP settings at `mailpit`, which resolves only inside the Compose network. Change the host to `127.0.0.1` in the console when you want to send mail from a host process.
 
 ### Working in several worktrees
 
-When you work in several worktrees in parallel, pick a profile per worktree instead of sharing the default development environment. A profile separates the PostgreSQL database, the Valkey logical database, the RustFS bucket, the ports of every service, the cookie names, and the authentication and revalidation secrets. The plain `task setup` / `task dev` keep using the shared environment as before. A profile records where PostgreSQL, Valkey, and RustFS are when it is created: the hosts named by `PUBLIRA_DB_URL`, `PUBLIRA_REDIS_URL`, and `PUBLIRA_S3_ENDPOINT` in the shell that runs `task dev-env:create`, or the Compose service names when those are not exported. Inside the Dev Container nothing needs to be set. On the host, export the loopback variables listed under [Running `task setup` / `task dev` on the host](README.md#running-task-setup--task-dev-on-the-host) first, as for the plain `task setup`.
+When you work in several worktrees in parallel, pick a profile per worktree instead of sharing the default development environment. A profile separates the PostgreSQL database, the Valkey logical database, the RustFS bucket, the ports of every service, the cookie names, and the authentication and revalidation secrets. The plain `task setup` / `task dev` keep using the shared environment as before. A profile records where PostgreSQL, Valkey, and RustFS are when it is created: the hosts named by `PUBLIRA_DB_URL`, `PUBLIRA_REDIS_URL`, and `PUBLIRA_S3_ENDPOINT` in the shell that runs `task dev-env:create`, or the Compose service names when those are not exported. Inside the Dev Container nothing needs to be set. On the host, export the loopback variables under [Environment variables on the host](#environment-variables-on-the-host) first, as for the plain `task setup`.
 
 ```bash
 # Once per new worktree (the identifier takes lowercase alphanumerics and -)

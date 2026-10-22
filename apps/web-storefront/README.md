@@ -53,7 +53,7 @@ Canonical links, language alternates, the Open Graph URL, and the share URL come
 
 Required environment variables:
 
-- `PUBLIRA_AUTH_SECRET` (32 bytes or more) — the key that seals the `publira_web_storefront_auth` cookie. There is no fallback: an unset or too short value raises. For the details and how to issue one, see the [repository README](../../README.md#session-cookie-encryption-key-publira_auth_secret)
+- `PUBLIRA_AUTH_SECRET` (32 bytes or more) — the key that seals the `publira_web_storefront_auth` cookie. There is no fallback: an unset or too short value raises. For the details and how to issue one, see [`@publira/web-session`](../../packages/web-session/README.md#environment-variables)
 
 ### Server cache (Redis)
 

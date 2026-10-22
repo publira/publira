@@ -279,7 +279,7 @@ It creates `PUBLIRA_S3_BUCKET` with the aws CLI, succeeds as-is when the bucket 
 
 ### Development environment (RustFS)
 
-The Dev Container starts the S3-compatible RustFS and connects to it path-style (endpoint `http://rustfs:9000`, bucket `publira`, with the local-only credentials `publira` / `publirapass`). For the full list of values and the console URL, see [../README.md](../README.md#object-storage-for-development-rustfs).
+The Dev Container starts the S3-compatible RustFS and connects to it path-style (endpoint `http://rustfs:9000`, bucket `publira`, with the local-only credentials `publira` / `publirapass`). The console URL is under [Dependency services](../CONTRIBUTING.md#dependency-services) in `CONTRIBUTING.md`, and the values to export on the host under [Environment variables on the host](../CONTRIBUTING.md#environment-variables-on-the-host).
 
 The Go integration tests against RustFS use the Testcontainers helper `StartRustFS` in `internal/testutil` to verify uploads in `internal/storage/s3` and fetches in `internal/imageserver` (skipped under `-short` or without Docker).
 
@@ -382,6 +382,22 @@ A save does not move the search onto an index nobody has built. The row keeps th
 - A build that fails is recorded on the row and reported by `GetPlatformSearchSettings` and `publiractl search show`; the search stays where it was, and the job tries again on its next pass.
 
 `publira server` and `publira worker` reread the row within 30 seconds, so a save reaches them without a restart. Every write to a series, a creator, or a label, and every write to an episode or a free window that changes what its series is narrowed or sorted by, queues a `catalog_index_sync` outbox event in its own transaction; so do the ticker jobs when a free window opens or closes and when a scheduled episode is published. A save that changes a tenant's locales queues one naming the whole tenant, since the translation a series falls back to in a locale it has none in moves with the default locale. The worker rewrites the named row's document from the database, or replaces it with a tombstone no search finds when the row is published nowhere, and once a search can find that write it records a `next_cache_revalidation` for the cache tag web-storefront holds the searches of that kind under; on `sql` with no build due it marks those events done as it claims them. `publiractl search reindex` rebuilds the index on the saved engine, for a mapping a release changed or an index that was lost; see [publiractl](cmd/publiractl/README.md#search).
+
+### OpenSearch on a development machine
+
+Ordinary development needs no engine: the search stays on `sql` until another is saved. To work on the OpenSearch backend, start the one the root `compose.yaml` keeps in its `search` profile:
+
+```bash
+docker compose --profile search up -d
+```
+
+It is a single node built from [`infra/docker/opensearch`](../infra/docker/opensearch/Dockerfile), with the security plugin off, so it answers plain HTTP without credentials on `http://127.0.0.1:9200`, and it keeps its index in the `opensearch-data` volume. Inside the Dev Container, `docker compose --profile search up -d opensearch` starts it on the container's own Docker daemon, which publishes it on the same loopback address. Then save it as the platform's engine:
+
+```bash
+go -C server run ./cmd/publiractl search set --engine opensearch --url http://127.0.0.1:9200
+```
+
+A running worker builds the index from the seeded database within 30 seconds, and `go -C server run ./cmd/publiractl search reindex` builds it at once instead. `publiractl search set --engine sql` moves the search back to PostgreSQL.
 
 ### Text analysis
 
@@ -534,7 +550,7 @@ To watch the behavior without a collection backend, `OTEL_TRACES_EXPORTER=consol
 PUBLIRA_TRACING_ENABLED=true OTEL_TRACES_EXPORTER=console task server:dev-server
 ```
 
-The Dev Container bundles Jaeger (its UI is at `http://localhost:16686`). For the details, see [../README.md](../README.md#distributed-tracing-jaeger).
+The Dev Container bundles Jaeger, with its UI at `http://localhost:16686`, and passes the processes `PUBLIRA_TRACING_ENABLED=true` and its OTLP endpoint; [Dependency services](../CONTRIBUTING.md#dependency-services) in `CONTRIBUTING.md` lists its ports. Leaving `PUBLIRA_DEPLOYMENT_ENVIRONMENT` unset there samples every root span.
 
 ## Metrics (OpenTelemetry)
 
@@ -592,7 +608,7 @@ Browser cookies are managed on the Next.js side as JWE with `jose`, and only `Au
 
 | Item | Value |
 | --- | --- |
-| Environment variable | `PUBLIRA_AUTH_JWT_SECRET` (**required**, at least 32 bytes. There is no fallback: if it is unset or too short, `publira server` fails to start) |
+| Environment variable | `PUBLIRA_AUTH_JWT_SECRET` (**required**, at least 32 bytes. There is no fallback: if it is unset or too short, `publira server` fails to start. Whoever holds it can sign a token with any `sub` and audience and call every API and the image routes, so issue one per environment, for example with `openssl rand -base64 32`) |
 | TTL | 24h |
 | Audience | `public` / `admin` / `platform` / `media` / `admin-media` / `admin-mfa-verify` / `admin-mfa-enroll` / `platform-mfa-verify` / `platform-mfa-enroll` |
 | Revocation | `users.credentials_version` / `platform_users.credentials_version` (incremented on a password change and the like) |
