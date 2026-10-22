@@ -2,10 +2,10 @@
 title: Getting started
 description: What Publira is, who runs it, and where to start reading.
 published: 2026-10-04
-updated: 2026-10-07
+updated: 2026-10-22
 ---
 
-Publira is a digital distribution platform for manga and novels that a publisher runs under its own brand. Publishers and editors register the works they receive from authors, and readers buy and read them on the web or in the mobile app. It is open source and built to run on ordinary infrastructure, so an install is not tied to one cloud provider.
+Publira is a platform for selling and distributing comics that a publisher runs under its own brand. Publishers and editors register the works they receive from authors as series and episodes made of page images, and readers buy and read them on the web or in the mobile app. It is open source and built to run on ordinary infrastructure, so an install is not tied to one cloud provider.
 
 ## Who these pages are for
 

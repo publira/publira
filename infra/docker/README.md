@@ -34,7 +34,7 @@ Do **not** put Dockerfiles in `apps/*/Dockerfile` or `server/cmd/*/Dockerfile`, 
 | **One Dockerfile per role plus `ARG`** (current) | **Adopted** | Each runtime has one file and only its build target changes. The root context handles the monorepo and `server/` correctly. |
 | Combine Dev Container and production images | Rejected | Development tools (`task`, `sqlc`, Flutter, and more) have different responsibilities from a minimal runtime image. |
 
-Role-based paths and links from this README and the root README retain the discoverability advantage of keeping a Dockerfile beside each service. Dockerfile header comments are the source of truth for implementation details such as `turbo prune` and Go `cmd` paths.
+Role-based paths, the links from this README, and the `infra/docker/` entry in the repository layout of the root `CONTRIBUTING.md` retain the discoverability advantage of keeping a Dockerfile beside each service. Dockerfile header comments are the source of truth for implementation details such as `turbo prune` and Go `cmd` paths.
 
 ## Decision flow for new services
 
@@ -313,4 +313,4 @@ Use these steps when a `Docker / <target>` job or local `task docker:build:*` fa
 - [ ] Verified the build from the root with `docker build -f … .` and `task docker:build:*`
 - [ ] Passed representative verification with `task docker:verify` (and `verify:full` when needed)
 - [ ] For a new target, updated this README's build examples, [`Taskfile.yaml`](./Taskfile.yaml) `verify:full`, the Docker full matrix in [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh), and the image matrix in [`release-images.yml`](../../.github/workflows/release-images.yml)
-- [ ] The documentation link from the root [README.md](../../README.md) reaches this file
+- [ ] The `infra/docker/` entry in the repository layout of the root [CONTRIBUTING.md](../../CONTRIBUTING.md#repository-layout) still describes this directory

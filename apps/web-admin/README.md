@@ -75,7 +75,7 @@ The payment webhook URL on Payment settings is the tenant's storefront (`storefr
 
 Required environment variables:
 
-- `PUBLIRA_AUTH_SECRET` (32 bytes or more) — the key that seals the console's session cookie. There is no fallback: an unset or too short value raises. For the details and how to issue one, see the [repository README](../../README.md#session-cookie-encryption-key-publira_auth_secret)
+- `PUBLIRA_AUTH_SECRET` (32 bytes or more) — the key that seals the console's session cookie. There is no fallback: an unset or too short value raises. For the details and how to issue one, see [`@publira/web-session`](../../packages/web-session/README.md#environment-variables)
 
 ### `/.well-known/change-password`
 

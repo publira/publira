@@ -34,7 +34,7 @@ The session itself is issued by the Go API. Nothing here signs a token or decide
 
 | Variable | What it does |
 | --- | --- |
-| `PUBLIRA_AUTH_SECRET` | **Required**, with no fallback. The key the session cookie is sealed with. At least 32 bytes — A256GCM takes exactly that many, and a shorter value is rejected rather than padded |
+| `PUBLIRA_AUTH_SECRET` | **Required**, with no fallback. The key the session cookie is sealed with. At least 32 bytes — A256GCM takes exactly that many, and a shorter value is rejected rather than padded. The cookie carries the API access token, so whoever holds the key can both read and forge a session: issue one per environment, for example with `openssl rand -base64 32` |
 | `PUBLIRA_COOKIE_SUFFIX` | Optional, development only. Appended to every name that goes through `profileCookieName`, so two local profiles on two ports of `localhost` do not overwrite each other's cookies. Must match `-[a-z][a-z0-9-]{0,31}`. Deployments leave it unset |
 
 ## Usage
