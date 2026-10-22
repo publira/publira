@@ -25,15 +25,18 @@ Widget _listOfRows({required VoidCallback onThirdRowTapped}) {
 }
 
 /// A window-high list whose last row sits at the bottom of the screen, below a
-/// row whose height [grown] changes. [shown] takes the last row away.
+/// row whose height [grown] changes and a section that [expanded] makes many
+/// screens taller. [shown] takes the last row away.
 Widget _screenWithLastRow({
   required VoidCallback onLastRowTapped,
   required ValueNotifier<bool> grown,
+  required ValueNotifier<bool> expanded,
   required ValueNotifier<bool> shown,
 }) {
   return MaterialApp(
     home: Scaffold(
       body: ListView(
+        key: const ValueKey('screen-list'),
         children: [
           for (var index = 0; index < 8; index++)
             SizedBox(height: 70, child: Text('Row $index')),
@@ -42,6 +45,15 @@ Widget _screenWithLastRow({
             builder: (context, grown, _) => SizedBox(
               height: grown ? 160 : 60,
               child: const Text('Growing row'),
+            ),
+          ),
+          ValueListenableBuilder<bool>(
+            valueListenable: expanded,
+            builder: (context, expanded, _) => Column(
+              children: [
+                for (var index = 0; index < (expanded ? 30 : 1); index++)
+                  SizedBox(height: 70, child: Text('Section row $index')),
+              ],
             ),
           ),
           ValueListenableBuilder<bool>(
@@ -247,18 +259,25 @@ void main() {
   });
 
   group('a row that moves while the tap is aimed', () {
+    final list = find.descendant(
+      of: find.byKey(const ValueKey('screen-list')),
+      matching: find.byType(Scrollable),
+    );
     late ValueNotifier<bool> grown;
+    late ValueNotifier<bool> expanded;
     late ValueNotifier<bool> shown;
     late bool tapped;
 
     setUp(() {
       grown = ValueNotifier(false);
+      expanded = ValueNotifier(false);
       shown = ValueNotifier(true);
       tapped = false;
     });
 
     tearDown(() {
       grown.dispose();
+      expanded.dispose();
       shown.dispose();
     });
 
@@ -270,6 +289,7 @@ void main() {
         _screenWithLastRow(
           onLastRowTapped: () => tapped = true,
           grown: grown,
+          expanded: expanded,
           shown: shown,
         ),
       );
@@ -301,6 +321,42 @@ void main() {
       expect(tapped, isTrue);
     });
 
+    testWidgets(
+      'is tapped after a section above it grows past the cache extent',
+      (tester) async {
+        await pumpScreen(tester);
+        final target = find.byKey(const ValueKey('last-row'));
+        final aimedAt = tester.element(target);
+
+        onNextFrame(tester, () => expanded.value = true);
+        await tapVisible(tester, target, scrollable: list);
+
+        expect(aimedAt.mounted, isFalse);
+        expect(tapped, isTrue);
+      },
+    );
+
+    testWidgets(
+      'fails naming the row when a section above it grows past the cache '
+      'extent and no list is given',
+      (tester) async {
+        await pumpScreen(tester);
+
+        onNextFrame(tester, () => expanded.value = true);
+        await expectLater(
+          tapVisible(tester, find.byKey(const ValueKey('last-row'))),
+          throwsA(
+            isA<TestFailure>().having(
+              (failure) => failure.message,
+              'message',
+              contains('left the tree'),
+            ),
+          ),
+        );
+        expect(tapped, isFalse);
+      },
+    );
+
     testWidgets('fails naming the row when it leaves the tree', (tester) async {
       await pumpScreen(tester);
 
@@ -312,6 +368,27 @@ void main() {
             (failure) => failure.message,
             'message',
             contains('left the tree'),
+          ),
+        ),
+      );
+      expect(tapped, isFalse);
+    });
+
+    testWidgets('fails naming the row when it leaves the list', (tester) async {
+      await pumpScreen(tester);
+
+      onNextFrame(tester, () => shown.value = false);
+      await expectLater(
+        tapVisible(
+          tester,
+          find.byKey(const ValueKey('last-row')),
+          scrollable: list,
+        ),
+        throwsA(
+          isA<TestFailure>().having(
+            (failure) => failure.message,
+            'message',
+            allOf(contains('last-row'), contains('at any scroll offset')),
           ),
         ),
       );
