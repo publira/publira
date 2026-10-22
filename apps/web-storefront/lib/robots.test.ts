@@ -240,6 +240,21 @@ describe("buildRobotsTxt", () => {
     expect(text).not.toContain("Allow: /en/notifications/help$");
   });
 
+  it("does not allow again a published page under a locale prefix the tenant excludes", () => {
+    const text = lines(
+      buildRobotsTxt("https://shop.example.com", ["ja", "en"], ["/my"], {
+        paths: ["/en/my"],
+        userAgents: [],
+      })
+    );
+
+    expect(text).toContain("Disallow: /en/my$");
+    expect(text).not.toContain("Allow: /en/my$");
+    expect(text).not.toContain("Allow: /en/my?");
+    expect(text).toContain("Allow: /my$");
+    expect(text).toContain("Allow: /ja/my$");
+  });
+
   it("refuses every page but the sitemap to a tenant that excludes /", () => {
     const text = buildRobotsTxt("https://shop.example.com", ["en"], ["/my"], {
       paths: ["/", "/drafts"],

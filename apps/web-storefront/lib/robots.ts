@@ -75,20 +75,26 @@ const pathPatterns = (
  * allowed as itself and with a query: a rule as long as the disallowing one
  * wins over it, so the screens beneath the page stay out of reach. A page
  * within a path the tenant excludes is not allowed again, since that Allow
- * would win over the tenant's own Disallow.
+ * would win over the tenant's own Disallow. An excluded path is written bare
+ * as well as under each prefix, so `/en/my` is within `/my` and within an
+ * excluded `/en/my` alike.
  */
 const shadowingPagePatterns = (
   supportedLocales: readonly Locale[],
   publishedSlugs: readonly string[],
   excludedPaths: readonly string[]
 ): string[] => {
-  const shadowing = publishedSlugs.filter(
-    (slug) =>
-      READER_ONLY_PATHS.some((path) => isWithin(slug, path)) &&
-      !excludedPaths.some((path) => isWithin(slug, path))
+  const shadowing = publishedSlugs.filter((slug) =>
+    READER_ONLY_PATHS.some((path) => isWithin(slug, path))
   );
   return localePrefixes(supportedLocales).flatMap((prefix) =>
-    shadowing.flatMap((slug) => [`${prefix}${slug}$`, `${prefix}${slug}?`])
+    shadowing.flatMap((slug) =>
+      excludedPaths.some(
+        (path) => isWithin(slug, path) || isWithin(`${prefix}${slug}`, path)
+      )
+        ? []
+        : [`${prefix}${slug}$`, `${prefix}${slug}?`]
+    )
   );
 };
 
