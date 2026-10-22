@@ -35,10 +35,15 @@ spec:
       labels:
         app.kubernetes.io/name: publira-storefront
     spec:
+      terminationGracePeriodSeconds: 45
       containers:
         - name: publira-storefront
           image: ghcr.io/publira/publira:<tag>
           args: ["server", "--role", "storefront"]
+          lifecycle:
+            preStop:
+              sleep:
+                seconds: 5
           ports:
             - name: http
               containerPort: 8000
