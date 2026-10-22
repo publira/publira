@@ -21,7 +21,7 @@ import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
 import { getMessagesFor } from "#lib/messages";
 import { clearPendingSignUp, readPendingSignUp } from "#lib/social-sign-in";
-import { signInFailurePath } from "#lib/social-sign-in-paths";
+import { signInFailurePath, signUpClosedPath } from "#lib/social-sign-in-paths";
 import { readConsentPageVersionIds } from "#lib/tenant";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
 
@@ -109,6 +109,12 @@ export const continueSignUpAction = async (
   if (outcome.kind === "consent_required") {
     updateTag(tenantSiteTag(tenantId));
     return { message: t("storefront.auth.errors.consent_changed"), ok: false };
+  }
+  if (outcome.kind === "sign_up_closed") {
+    await clearPendingSignUp();
+    redirect(
+      await signUpClosedPath({ locale, returnTo: pending.returnTo, tenantId })
+    );
   }
   if (outcome.kind === "refused") {
     rethrowUnclassifiedRpcError(outcome.error);

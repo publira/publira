@@ -183,6 +183,13 @@ export interface TenantSiteInfo {
   name: string;
   publicId: string;
   /**
+   * The tenant's own words for a visitor while sign-up is closed. Absent while
+   * it is open, and where the tenant wrote none and the site shows its own.
+   */
+  signUpClosedMessage?: string;
+  /** Whether the tenant accepts new reader accounts. */
+  signUpOpen: boolean;
+  /**
    * UI locales the site offers its readers, in registry order and always
    * holding {@link defaultLocale}.
    */
@@ -329,6 +336,8 @@ export const getTenantSiteInfo = async (
       ),
       name,
       publicId,
+      signUpClosedMessage: nonEmpty(response.signUpClosedMessage),
+      signUpOpen: response.signUpOpen,
       supportedLocales: toSupportedLocales(
         response.supportedLocales ?? [],
         defaultLocale
@@ -624,6 +633,38 @@ export const getTenantAgeVerification = async (
 ): Promise<TenantAgeVerification> => {
   const tenant = await getTenantSiteInfo(tenantId);
   return tenant?.ageVerification ?? "none";
+};
+
+/** Whether the site takes new readers, and what it tells a visitor if not. */
+export type TenantSignUp =
+  | { open: true }
+  | {
+      /** The tenant's notice, or absent for the site's default copy. */
+      message?: string;
+      open: false;
+    };
+
+/**
+ * Whether a sign-up form belongs on the page. One entry point, the way
+ * {@link getTenantDisplayTimeZone} is, so no screen decides on its own whether
+ * to offer one.
+ *
+ * An unavailable read degrades to open, which only keeps the form showing: the
+ * API still refuses a sign-up while the tenant has closed it, and the form's
+ * action shows the notice then. The read carries `tenant:<id>:site`, which the
+ * API drops when the tenant saves the setting.
+ */
+export const getTenantSignUp = async (
+  tenantId: string
+): Promise<TenantSignUp> => {
+  const tenant = await getTenantSiteInfo(tenantId);
+  if (!tenant || tenant.signUpOpen) {
+    return { open: true };
+  }
+
+  return tenant.signUpClosedMessage
+    ? { message: tenant.signUpClosedMessage, open: false }
+    : { open: false };
 };
 
 /**

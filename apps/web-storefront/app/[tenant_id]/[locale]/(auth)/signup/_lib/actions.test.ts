@@ -153,6 +153,24 @@ describe("signupAction", () => {
     expect(mockRedirect).not.toHaveBeenCalled();
   });
 
+  it("drops the cached site when the tenant closed sign-up after the form rendered", async () => {
+    mockSignupPublic.mockResolvedValueOnce({ ok: false, signUpClosed: true });
+
+    const { signupAction } = await import("./actions");
+    const result = await signupAction(
+      { message: "", ok: false },
+      formData(validSignupFields)
+    );
+
+    expect(result).toEqual({
+      message: "This site is not accepting new accounts right now.",
+      ok: false,
+    });
+    expect(mockUpdateTag).toHaveBeenCalledWith(`tenant:${tenantId}:site`);
+    expect(mockSetEmailFlashCookie).not.toHaveBeenCalled();
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+
   it("refuses a version sent twice in place of two pages", async () => {
     mockReadConsentPageVersionIds.mockResolvedValueOnce([
       "terms-v1",

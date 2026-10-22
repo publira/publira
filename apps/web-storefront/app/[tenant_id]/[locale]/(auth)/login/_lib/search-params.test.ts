@@ -15,6 +15,7 @@ describe("parseLoginSearchParams", () => {
       resetDone: true,
       returnToPath: "/my",
       sessionRevoked: false,
+      signUpClosed: false,
     });
   });
 
@@ -31,6 +32,7 @@ describe("parseLoginSearchParams", () => {
       resetDone: false,
       returnToPath: "/",
       sessionRevoked: false,
+      signUpClosed: false,
     });
   });
 
@@ -40,6 +42,7 @@ describe("parseLoginSearchParams", () => {
       resetDone: false,
       returnToPath: "/",
       sessionRevoked: false,
+      signUpClosed: false,
     });
   });
 
@@ -51,6 +54,19 @@ describe("parseLoginSearchParams", () => {
       resetDone: false,
       returnToPath: "/my",
       sessionRevoked: true,
+      signUpClosed: false,
+    });
+  });
+
+  it("Show the closed sign-up notice for a refused first sign-in", () => {
+    expect(
+      parseLoginSearchParams({ reason: "sign_up_closed", returnTo: "/my" })
+    ).toEqual({
+      errorMessage: undefined,
+      resetDone: false,
+      returnToPath: "/my",
+      sessionRevoked: false,
+      signUpClosed: true,
     });
   });
 });

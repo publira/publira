@@ -11,6 +11,7 @@ import {
   isMissingResourceRpcError,
   isRpcError,
   isLegalPageAgreementRequiredRpcError,
+  isSignUpClosedRpcError,
   isTenantSuspendedRpcError,
   isUnauthenticatedRpcError,
   rpcErrorCode,
@@ -253,6 +254,16 @@ describe("Connect error details", () => {
     expect(isMissingResourceRpcError(tenantRefusal("TENANT_SUSPENDED"))).toBe(
       false
     );
+  });
+
+  it("tells closed sign-up from any other failed precondition", () => {
+    expect(isSignUpClosedRpcError(tenantRefusal("SIGN_UP_CLOSED"))).toBe(true);
+    expect(isSignUpClosedRpcError(tenantRefusal("TENANT_SUSPENDED"))).toBe(
+      false
+    );
+    expect(
+      isSignUpClosedRpcError(tenantRefusal("SIGN_UP_CLOSED", Code.NotFound))
+    ).toBe(false);
   });
 
   it("tells a reader owing an agreement from any other failed precondition", () => {

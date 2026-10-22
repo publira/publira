@@ -4140,6 +4140,10 @@
         "sent": "We sent a reset email. Open the link in it to set a new password.",
         "title": "Reset email sent"
       },
+      "sign_up_closed": {
+        "default_message": "This site is not accepting new accounts right now.",
+        "title": "Sign-up is closed"
+      },
       "signup": {
         "birth_date_help": "This site checks your age before opening age-rated works. You can add it later, but it cannot be changed once given.",
         "birth_date_label": "Date of birth",

@@ -306,6 +306,20 @@ describe("Apple and Google sign-in round trip", () => {
     );
   });
 
+  it("tells a first sign-in that the tenant has closed sign-up", async () => {
+    const authorization = await startSignIn();
+    mockLoginWithIdToken.mockResolvedValueOnce({ kind: "sign_up_closed" });
+
+    const response = await postAnswer("google", {
+      id_token: "header.payload.signature",
+      state: authorization.searchParams.get("state") ?? "",
+    });
+
+    expect(response.headers.get("Location")).toBe(
+      "/en/login?reason=sign_up_closed&returnTo=%2Fseries"
+    );
+  });
+
   it("confirms a deletion with the fresh sign-in", async () => {
     const authorization = await startSignIn({
       intent: "delete",

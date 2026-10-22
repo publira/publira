@@ -15,6 +15,7 @@ import {
   getTenantLinkSupportedLocales,
   getTenantPublicOrigin,
   getTenantSignInClients,
+  getTenantSignUp,
   getTenantSiteCopy,
   getTenantSiteInfo,
   getTenantSupportedLocales,
@@ -52,6 +53,8 @@ const tenantResponse = {
   copyrightText: "© Example",
   currency: "USD",
   defaultLocale: "en",
+  signUpClosedMessage: "",
+  signUpOpen: true,
   siteDescription: "",
   siteTagline: "",
   supportedLocales: ["ja", "en"],
@@ -318,6 +321,48 @@ describe("tenant", () => {
     });
 
     await expect(getTenantPublicOrigin("TENANT_001")).resolves.toBeNull();
+  });
+
+  it("Take new readers where the tenant has not closed sign-up", async () => {
+    mockGetTenant.mockResolvedValueOnce(tenantResponse);
+
+    await expect(getTenantSignUp("TENANT_001")).resolves.toEqual({
+      open: true,
+    });
+  });
+
+  it("Carry the tenant's notice while sign-up is closed", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      ...tenantResponse,
+      signUpClosedMessage: " Back in spring. ",
+      signUpOpen: false,
+    });
+
+    await expect(getTenantSignUp("TENANT_001")).resolves.toEqual({
+      message: "Back in spring.",
+      open: false,
+    });
+  });
+
+  it("Leave the notice to the site while the tenant wrote none", async () => {
+    mockGetTenant.mockResolvedValueOnce({
+      ...tenantResponse,
+      signUpOpen: false,
+    });
+
+    await expect(getTenantSignUp("TENANT_001")).resolves.toEqual({
+      open: false,
+    });
+  });
+
+  it("Keep the sign-up form while the tenant cannot be obtained", async () => {
+    mockGetTenant.mockRejectedValueOnce(
+      new ConnectError("upstream is down", Code.Unavailable)
+    );
+
+    await expect(getTenantSignUp("TENANT_001")).resolves.toEqual({
+      open: true,
+    });
   });
 
   it("Carry the ratings the tenant makes a reader prove an age for", async () => {

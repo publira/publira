@@ -1,11 +1,12 @@
 import {
   AuthScreen,
+  AuthScreenBody,
   AuthScreenHeader,
   AuthScreenMain,
   AuthScreenTagline,
   AuthScreenTitle,
 } from "@publira/layouts/auth-screen";
-import { Skeleton } from "@publira/ui-components/skeleton";
+import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
@@ -16,7 +17,7 @@ import { getMessagesFor } from "#lib/messages";
 import { getTenantSiteCopy, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
-import { SignupForm } from "./_components/signup-form";
+import { SignupContent } from "./_components/signup-content";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const t = await getMessages();
@@ -46,6 +47,24 @@ const SignupPageHeader = async () => {
   );
 };
 
+const SignupFormSkeleton = () => (
+  <AuthScreenBody>
+    <div className="grid gap-2">
+      <SkeletonLine className="h-4 w-20" />
+      <Skeleton className="h-10 w-full" />
+    </div>
+    <div className="grid gap-2">
+      <SkeletonLine className="h-4 w-28" />
+      <Skeleton className="h-10 w-full" />
+    </div>
+    <div className="grid gap-2">
+      <SkeletonLine className="h-4 w-20" />
+      <Skeleton className="h-10 w-full" />
+    </div>
+    <Skeleton className="h-9 w-24" />
+  </AuthScreenBody>
+);
+
 const SignupPage = () => (
   <AuthScreen>
     <AuthScreenMain>
@@ -55,7 +74,9 @@ const SignupPage = () => (
         </Suspense>
       </AuthScreenHeader>
 
-      <SignupForm />
+      <Suspense fallback={<SignupFormSkeleton />}>
+        <SignupContent />
+      </Suspense>
     </AuthScreenMain>
   </AuthScreen>
 );

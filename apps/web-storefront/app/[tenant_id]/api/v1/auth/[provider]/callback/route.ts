@@ -28,6 +28,7 @@ import type { SignInRequest } from "#lib/social-sign-in";
 import {
   CONFIRMING_SCREENS,
   signInFailurePath,
+  signUpClosedPath,
 } from "#lib/social-sign-in-paths";
 import type { SignInOrigin } from "#lib/social-sign-in-paths";
 import { getTenantDefaultLocale } from "#lib/tenant";
@@ -130,6 +131,9 @@ const finishLogin = async (
         "/signup/continue"
       )
     );
+  }
+  if (outcome.kind === "sign_up_closed") {
+    return seeOther(await signUpClosedPath(request));
   }
 
   const t = await getMessagesFor(request.locale);

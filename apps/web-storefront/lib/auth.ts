@@ -1,6 +1,7 @@
 import {
   isExpectedNullableRpcError,
   isRejectedRequestRpcError,
+  isSignUpClosedRpcError,
   isUnauthenticatedRpcError,
   RPC_ERROR_REASON,
   RPC_FIELD_VIOLATION_REASON,
@@ -332,6 +333,8 @@ export type IdTokenSignInOutcome =
   | { kind: "signed_in"; session: PublicSession }
   /** No account matched, and the tenant asks for consent before one is made. */
   | { kind: "consent_required" }
+  /** No account matched, and the tenant has closed sign-up. */
+  | { kind: "sign_up_closed" }
   | { error: unknown; kind: "refused" };
 
 /**
@@ -376,6 +379,9 @@ export const loginWithIdToken = async (
       rpcErrorHasFieldViolation(error, "agreed_page_version_ids")
     ) {
       return { kind: "consent_required" };
+    }
+    if (isSignUpClosedRpcError(error)) {
+      return { kind: "sign_up_closed" };
     }
     return { error, kind: "refused" };
   }
@@ -747,6 +753,11 @@ const emailRefusalOf = (
   return undefined;
 };
 
+export type SignupOutcome =
+  | EmailSubmissionOutcome
+  /** The tenant has closed sign-up, whatever address was given. */
+  | { ok: false; signUpClosed: true };
+
 /**
  * Submit a sign-up and report whether the API took it.
  *
@@ -762,7 +773,7 @@ export const signupPublic = async ({
   name,
   password,
   tenantId,
-}: SignupInput): Promise<EmailSubmissionOutcome> => {
+}: SignupInput): Promise<SignupOutcome> => {
   try {
     const response = await apiClient.auth.createUser(
       {
@@ -777,6 +788,9 @@ export const signupPublic = async ({
     );
     return response.accepted ? { ok: true } : { ok: false };
   } catch (error) {
+    if (isSignUpClosedRpcError(error)) {
+      return { ok: false, signUpClosed: true };
+    }
     if (isRejectedRequestRpcError(error)) {
       return { emailRefusal: emailRefusalOf(error, "email"), ok: false };
     }
