@@ -76,11 +76,22 @@ task server:test
 - `publira server` (the API and image delivery) and `publira worker` (Outbox drain / scheduled publishing / free window boundaries / tenant day roll / pinned announcement expiry / scheduled maintenance): [cmd/publira/README.md](cmd/publira/README.md)
 - publiractl (manual runs of the maintenance jobs: backfills, recovery, dry-run purges): [cmd/publiractl/README.md](cmd/publiractl/README.md)
 
+## Where the design is explained
+
+How a subsystem decides or records something is explained in the doc comment of the code that does it, which `go doc` shows (`go doc -u` for an unexported handler):
+
+- `internal/httpserver`: how a stopping process drains its requests, stops its job queue, and flushes the audit log, the telemetry, and the database pools on one deadline
+- `internal/contentevents`: what each kind of event in `content_events` records, for whom, and what happens when it cannot be written; the handlers that file them are `RecordContentView` (with the `publira_aid` cookie), `RateEpisode`, and `MarkEpisodeAsRead` in `api/publicapi`
+- `db/query/series_rating.sql`: the series rating derived from its episodes' reactions
+- `ListMyEpisodeReads`, `SaveReadingPosition`, `GetMyReadingPosition`, and `GetMySeriesProgress` in `api/publicapi`, and the queries in `db/query/episode.sql` and `db/query/episode_reading_position.sql`: a member's own reading history and reading positions
+- `ListEpisodeReadThrough` in `api/adminapi` and `db/query/engagement.sql`: the read-through rate the console reports
+- `internal/contentstats`: the daily aggregates, the comment count among them
+- `internal/auth`: the token audiences, and the media tokens an image URL carries for a reader, a free body, and a console preview
+- `internal/mfaflow`, `internal/mfa`, and `internal/tenantwebauthn`: the second factor of the tenant consoles and the Platform Console, the challenge that stands in for a session until it is answered, and the console's passkeys
+
 ## Graceful shutdown
 
-On SIGINT / SIGTERM the long-lived processes (`publira server` / `publira worker`) drain in-flight requests and then run their shutdown hooks — stopping the River client, flushing the asynchronous audit log and the pending OpenTelemetry spans, and closing the DB pool — on one shared 30-second deadline. Whatever has not finished by then is cut off; a dropped audit log entry is counted in the metrics and named in the structured log.
-
-Give the orchestrator a SIGKILL grace period longer than 30 seconds (on Kubernetes, a `terminationGracePeriodSeconds` of 45 or more). Draining readiness at the load balancer is configured separately.
+On SIGINT / SIGTERM, `publira server` and `publira worker` stop within 30 seconds. Give the orchestrator a SIGKILL grace period longer than that (on Kubernetes, a `terminationGracePeriodSeconds` of 45 or more). Draining readiness at the load balancer is configured separately.
 
 ## Episode purchases
 
@@ -304,7 +315,7 @@ Which JWT a body is bound to depends on which rule let the request through:
 | Body | Bound to | `Cache-Control` |
 | --- | --- | --- |
 | Unlocked by a grant — a purchase, a ticket, or a credit on the episode | The credential the request carried — the `Authorization` bearer, or the reader's media token on the URL — and its `sub` | `private, max-age=60` |
-| Free (`price = 0`) | The episode's rotating media token (see [Media tokens](#media-tokens-audience-media)) and its synthetic `sub` | `public, max-age=3600` |
+| Free (`price = 0`) | The episode's rotating media token (see [`internal/auth`](internal/auth/doc.go)) and its synthetic `sub` | `public, max-age=3600` |
 
 - `PUBLIRA_REDIS_URL`: Redis for the conversion cache. Unset / `disabled` / `off` / `false` means in-process memory only. A `redis://` URL carrying a password stops the process at startup, because that scheme has no TLS: use `rediss://`
 - `PUBLIRA_IMAGE_CACHE_TTL`: TTL of the conversion cache (a Go duration or a number of seconds; default `1h`)
@@ -624,7 +635,7 @@ An Apple sign-in or link may carry its authorization code. `publira worker` exch
 
 ### Passkeys on the storefront
 
-A signed-in reader registers passkeys (WebAuthn) with `BeginPasskeyRegistration` / `FinishPasskeyRegistration` and manages them with `ListMyPasskeys` / `RenamePasskey` / `DeletePasskey`; `ListMyIdentities` reports `has_passkey`. The library, the ceremony storage, and the stored credential are the console's, described under **Passkeys** below.
+A signed-in reader registers passkeys (WebAuthn) with `BeginPasskeyRegistration` / `FinishPasskeyRegistration` and manages them with `ListMyPasskeys` / `RenamePasskey` / `DeletePasskey`; `ListMyIdentities` reports `has_passkey`. The library (`internal/tenantwebauthn`), the ceremony storage (`user_webauthn_ceremonies`), and the stored credential (`user_webauthn_credentials`) are the console's.
 
 | Item | Value |
 | --- | --- |
@@ -636,220 +647,6 @@ A signed-in reader registers passkeys (WebAuthn) with `BeginPasskeyRegistration`
 | Last way in | `DeletePasskey` is `failed_precondition` for the last passkey of an account with neither a password nor a linked provider, and `UnlinkIdentity` lets such an account unlink its last provider while it holds a passkey. Only a passkey for the storefront's current host counts |
 | Confirmation | `BeginPasskeyConfirmation` begins an assertion over the reader's own passkeys; its result goes in `passkey_credential_json` of `DeleteMe` or `RequestEmailChange` in place of a password or an ID token, and confirms that one request. A reader who owes an agreement to revised legal pages may still call it, as they may call `DeleteMe` |
 | Flood control | `BeginPasskeyRegistration`, `RenamePasskey`, `DeletePasskey`, and `BeginPasskeyConfirmation` spend the reader's `passkey` allowance in the platform policy |
-
-### Media tokens (audience `media`)
-
-A browser cannot attach an `Authorization` header to an `<img>` request. So for a reader who may view a paid episode, `GetEpisodeDetail` returns the body image URLs with a `t=<JWT>` query appended.
-
-| Item | Value |
-| --- | --- |
-| Audience | `media` (separate from `public`; it does not pass to the API, and pasting an access token into the URL does not open the image) |
-| TTL | 15 minutes |
-| Scope | Only the single episode it was issued for (claim `eid`) |
-| Revocation | The same `users.credentials_version` as the access token |
-
-The token only states who the reader is; whether the image may be viewed is decided by the image routes, which consult purchases and access_tickets on every request, under the same rules as the API.
-
-Bodies that are free to everyone — `price = 0`, or a priced episode inside an open `episode_free_windows` period — get a token of the same audience with a different shape, because their reader may hold no credential at all and still needs key material for the encrypted body:
-
-| Item | Value |
-| --- | --- |
-| Subject | The synthetic `anonymous-free-episode`. A `users.public_id` is exactly 12 Base58 characters, so it resolves to no user and the token names no grant |
-| TTL | Two 24-hour rotation windows. `iat` is the start of the current window, so a token in hand always has at least one full window left |
-| Scope | Only the single episode it was issued for (claim `eid`) |
-| Revocation | None to revoke: it carries no reader, and rotation is what ends a copied URL |
-
-Every reader who opens one free episode within one window is handed the identical URL, which is what keeps a free page shareable. Access is still decided entirely by the public rule — published, and `price = 0` — so an unpublished episode and a paid episode without a grant are `403` whether the token is present or not.
-
-### Admin media tokens (audience `admin-media`)
-
-Episode image previews in the admin UI also go through the browser's `<img>` / `next/image`, so they carry no `Authorization` either. `ListEpisodeImages` / `UploadEpisodeImages` / `ReorderEpisodeImages` / `DeleteEpisodeImage` / `ReplaceEpisodeImage` return the body image URLs with a `t=<JWT>` query appended.
-
-| Item | Value |
-| --- | --- |
-| Audience | `admin-media` (separate from both `media` and `admin`; it unlocks nothing on a tenant site and does not pass to the admin API) |
-| TTL | 15 minutes |
-| Scope | Only the single episode it was issued for (claim `eid`) |
-| Revocation | The same `users.credentials_version` as the access token |
-
-The token only states who the administrator is; on a console host the image routes consult the tenant membership and the admin role (`tenant_admin` / `tenant_editor` / `tenant_auditor`) on every request. It does not look at the publication state or the price.
-
-## Admin MFA (TOTP and passkeys)
-
-A tenant member signing in to the admin console can hold a second factor: a TOTP authenticator (RFC 6238), any number of passkeys or security keys (WebAuthn), or both, plus ten one-time recovery codes that stand in for whichever it holds. `AdminAuthService` carries the whole flow — `StartMfaEnrollment` / `ConfirmMfaEnrollment` / `VerifyMfa` / `DisableMfa` / `RegenerateMfaRecoveryCodes` / `GetMfaStatus` for the authenticator, and `BeginPasskeyRegistration` / `FinishPasskeyRegistration` / `BeginPasskeyVerification` / `FinishPasskeyVerification` / `BeginPasskeyConfirmation` / `ListPasskeys` / `RenamePasskey` / `DeletePasskey` for passkeys. `DisableMfa` takes the authenticator off and leaves passkeys alone.
-
-| Item | Value |
-| --- | --- |
-| Algorithm | TOTP, 30-second period, SHA-1, 6 digits, a 160-bit secret — what every mainstream authenticator app assumes when the otpauth URI omits it |
-| Acceptance window | The current step and one on either side |
-| Replay | A step is accepted once. `user_mfa_totp.last_verified_step` is what refuses a code that is still inside the window but was already spent, and `user_mfa_used_challenges` refuses a challenge token that already bought a session |
-| Secret at rest | Encrypted with `secretcrypto` (`PUBLIRA_SECRET_ENCRYPTION_KEYS`). `StartMfaEnrollment` is the only response the plaintext appears in |
-| Recovery codes | Ten per batch, shown once at enrollment, regeneration, or the registration of a passkey on an account with no unused code, stored as bcrypt hashes. Spending one leaves the row with `used_at` set. They go when the account's last factor does |
-| Failure limit | Five refused codes or passkey assertions lock the account for 15 minutes. The counter is per account in `user_mfa_lockouts`, shared by both factors, and covers login, disabling, and regeneration alike |
-| Audit | `admin_mfa_enrolled`, `admin_mfa_verified` (success and failure, with the factor as the reason: `totp`, `recovery_code`, or `passkey`), `admin_mfa_recovery_code_used`, `admin_mfa_disabled`, `admin_mfa_recovery_codes_regenerated` (with `totp` or `passkey` as the reason), `admin_mfa_passkey_registered`, `admin_mfa_passkey_renamed`, `admin_mfa_passkey_removed` in `audit_logs` |
-
-### The challenge that stands in for half a session
-
-`Login` does not issue an access token to an account that still owes a factor. It answers with a short-lived challenge token instead, under an audience of its own — `admin-mfa-verify` when the account has a confirmed authenticator or a passkey, `admin-mfa-enroll` when it has neither and the platform policy requires one. A verify challenge names the factors the account holds in `methods`. The challenge lives five minutes and carries `users.credentials_version`, so a password change ends a pending one.
-
-`VerifyMfa` exchanges a verify challenge and a code for the access token, and `FinishPasskeyVerification` a verify challenge and an assertion. `ConfirmMfaEnrollment` and `FinishPasskeyRegistration` do the same for an enroll challenge: each returns the recovery codes and the session in one response, which is what finishes a login that was stopped at enrollment.
-
-A challenge buys one session, claimed by its `jti` in `user_mfa_used_challenges`; `publiractl job purge-mfa-challenges` deletes those rows once their token has expired, and the passkey ceremonies nobody finished along with them. An enroll challenge is presented twice by design, to `StartMfaEnrollment` and then to `ConfirmMfaEnrollment`, and is claimed by the confirmation in the transaction that enables the factor: a second confirmation with the same token is refused as an invalid session, even after the factor has been turned off. Two confirmations racing on one enrollment enable it once, and the one that loses is refused with `mfa is already enabled` and writes no recovery codes. An enroll challenge is refused as an invalid session once the account holds a confirmed authenticator or a passkey, whichever login enrolled it, so a second login's challenge cannot enroll a factor of its own past the owner's.
-
-### Requiring the factor
-
-`mfa_required_for_tenant_admin` in the platform policy (`PlatformPolicyService` or `publiractl policy set`, off when nothing is saved) turns enrollment from something a tenant admin may do into something it must do before it gets a session. Only `tenant_admin` is covered: an editor or an auditor may enroll and is never held back for not having.
-
-Taking the authenticator off needs the authenticator or a recovery code. Removing a passkey needs the session alone, and is refused with `failed_precondition` when it is the account's last factor and the policy requires one of its role. Minting a new batch of recovery codes needs the authenticator or a passkey, and never a recovery code: `RegenerateMfaRecoveryCodes` takes a code from the authenticator, or an assertion over a challenge `BeginPasskeyConfirmation` issued to the signed-in account. The assertion goes through the same ceremony rows, counter check, and failure limit as a login's.
-
-### Passkeys
-
-| Item | Value |
-| --- | --- |
-| Library | `github.com/go-webauthn/webauthn`, through `internal/tenantwebauthn`, which also carries the software authenticator the tests sign with (`webauthntest`) |
-| Relying party | Derived from the tenant row through `tenantorigin`, never from the request. The RP ID is the console's own host, never the storefront's, even when the console is served under the storefront's domain, so a passkey registered on the storefront never answers the console; the only origin accepted is the console's. The RP name is the tenant's name |
-| Registration | User verification required, a discoverable credential preferred, no attestation requested, the account's existing credentials excluded |
-| Ceremony state | The challenge, the account, the RP ID, and the expiry, five minutes after the begin, in `user_webauthn_ceremonies`. Nothing of it is handed to the client: the finish finds the row by the challenge the response was signed over and deletes it, which spends it whatever the verification then answers. An account may have up to five ceremonies of each kind open at once, so several tabs or devices can sign in side by side; a begin past that drops the oldest |
-| Stored per credential | `user_webauthn_credentials`: the relying party (`admin_console` here), the RP ID, the credential ID (unique per tenant), the COSE public key, the signature counter, the AAGUID, the transports, the backup-eligible and backed-up flags, its owner's name for it, `created_at`, `last_used_at` |
-| Counter | An assertion whose counter does not move past the stored one is refused, unless both are zero, which is what an authenticator that keeps no counter reports |
-| Errors | A refused assertion is `unauthenticated` with the reason `MFA_PASSKEY_REFUSED`; a refused registration is `invalid_argument` with the same reason. An assertion counts toward the failure limit only when it was checked against a ceremony the account had open |
-
-A passkey registered for an RP ID the console no longer derives — after its console host moves, whether to a new `admin_domain` or with the tenant's domain under the default `admin.` host — is not counted as a factor and is not listed, and the account's recovery codes stay while one is stored, since moving the console back makes it a factor again.
-
-## Platform operator MFA (TOTP)
-
-An operator of the Platform Console holds the same second factor, through the same RPCs on `PlatformAuthService`, with the same algorithm, acceptance window, replay checks, recovery codes, and failure limit as the table above. What differs is where it is kept and what requires it:
-
-| Item | Value |
-| --- | --- |
-| Tables | `platform_user_mfa_totp`, `platform_user_mfa_recovery_codes`, `platform_user_mfa_used_challenges`, keyed to `platform_users` and reachable by `publira_platform` alone, apart from the purge below |
-| Challenge audiences | `platform-mfa-verify` / `platform-mfa-enroll`. A platform challenge names no tenant, and neither console accepts the other's |
-| Authenticator entry | Issuer `Publira Platform Console`, account the operator's email address |
-| Requirement | `mfa_required_for_platform_operator` in the platform policy (`PlatformPolicyService` or `publiractl policy set --mfa-required-for-platform-operator`, off when nothing is saved). It covers every operator role, `platform_auditor` included. `UpdatePlatformPolicy` keeps the saved value when a request leaves it unset, and refuses to switch it on with `failed_precondition` on a server without a secret manager, where no operator could enroll |
-| Audit | `operator_mfa_enrolled`, `operator_mfa_verified` (success and failure), `operator_mfa_recovery_code_used`, `operator_mfa_disabled`, `operator_mfa_recovery_codes_regenerated` in `platform_audit_logs`, filed under the operator with the operator as the target |
-
-`publiractl job purge-mfa-challenges` drains `platform_user_mfa_used_challenges` along with `user_mfa_used_challenges`, which is why `publira_content_stats` may read and delete that one table.
-
-## View events (soft PV) and anonymous actors
-
-`ContentViewService.RecordContentView` records a view event in `content_events` for the series or episode detail page a reader opened. This is the Phase 1 soft PV, and it means nothing more than "the reader opened the page" (hard PV, which observes whether the body was actually read, comes later). The target is resolved before anything is written, so an unpublished, cross-tenant, or missing public ID is `not_found`; once it resolves, the recording is decoupled from the main processing and the RPC succeeds even when the write fails.
-
-The detail RPCs deliberately record nothing: their callers cache them, so recording lives in its own RPC and the reader's request is the only thing that files a view.
-
-| Item | Value |
-| --- | --- |
-| Event type | `episode_view` (episode target) / `series_view` (series target) |
-| actor | `user_id` while signed in, otherwise the `anonymous_id` from the `publira_aid` cookie (`content_events.actor_key` unifies them with `COALESCE`) |
-| Debounce | Fixed 30-minute epoch buckets (`floor(unix / 1800)`) plus `ON CONFLICT DO NOTHING` against a partial UNIQUE index. It is not a sliding window |
-| `series_id` | Resolved from `episodes` rather than taken from client input |
-| Authentication | Optional. A rejected or unverifiable bearer does not fail the call; the view falls back to the `publira_aid` cookie, and is recorded only if the request carried one. No identifier is minted for a caller that presented a session |
-| Prefetch | Nothing is recorded when `Sec-Purpose` / `Purpose` / `X-Purpose` / `X-Moz` / `Next-Router-Prefetch` indicate a speculative request |
-| Payload | `{"pv_kind":"soft"}` only. No personal data such as an IP address, a User-Agent, or an email address is stored |
-
-### The `publira_aid` cookie
-
-A cookie whose only purpose is counting signed-out readers. Its value is a UUIDv7 assigned by the server and contains nothing else. When the cookie is absent, or its value does not parse as a UUID, a new one is assigned and returned in the response's `Set-Cookie`.
-
-| Attribute | Value                                  |
-| --------- | -------------------------------------- |
-| Name      | `publira_aid`                          |
-| Path      | `/`                                    |
-| Max-Age   | 180 days                               |
-| Others    | `HttpOnly` / `Secure` / `SameSite=Lax` |
-
-## Rating events
-
-`RatingService.RateEpisode` records a signed-in reader's reaction to one episode, on a 1–5 scale with no neutral point. The reader's own score lives in `episode_ratings`, and every press that raises it files a `rating` event as well. Unlike a view event, it is an explicit action by the reader, so a failure is returned as an error rather than swallowed.
-
-| Item | Value |
-| --- | --- |
-| Event type | `rating` |
-| actor | `user_id` (sign-in required; anonymous reactions are not accepted) |
-| Target | `series_id` + `episode_id`, both resolved from `episodes` rather than taken from client input |
-| Score | `rating_score` carries the points the press added, not the score the reader now stands at |
-| Append-only | Pressing again appends another event; `episode_ratings` holds the score itself |
-
-There is no RPC for withdrawing or lowering a reaction, and none for rating a series directly. How expressive one press is follows `tenant_config.episode_rating_mode`, which a series may override in `series_listings.episode_rating_mode`: `single` stores the whole 5 on the first press, `multiple` lets the reader press their way up to it.
-
-| RPC | Answers |
-| --- | --- |
-| `RatingService.GetMyEpisodeRating` | This reader's score for one episode, the readers who have reacted to it, and the press mode governing it |
-| `RatingService.GetMySeriesRating` | The mean of this reader's own scores across the episodes of one series they reacted to |
-
-### The derived series rating
-
-A series is rated by the episodes it is made of. `CatalogService.GetSeriesDetail` carries `rating_average` and `rating_count` on the series, both derived on read and both absent — `0` — until the reactions reach the daily aggregates.
-
-| Item | Value |
-| --- | --- |
-| Source | The `series` rows of `content_daily_stats`, which already roll up every episode of the series |
-| Rate | `rating_sum / complete_count`, so a long or widely read series does not outrank a beloved one on volume |
-| Prior | Twenty imagined completed reads at the tenant's own mean, which a series with few finished reads is pulled towards. The mean comes from `tenant_rating_totals`, which `aggregate-content-stats` restates on the run that changes it |
-| Scale | Held to 1–5, the scale the reaction itself is given on |
-| `rating_count` | `series_rating_counts`, a trigger-maintained tally of the readers who reacted, counting each reader once per series |
-
-## Completion events and read-through
-
-`EpisodeReadService.MarkEpisodeAsRead` stores the business state — one `episode_reads` row per member and episode, keeping the first read time. Each stored read is also projected into `content_events` as an `episode_complete` event, which is what the aggregates and the ranking read; the two are kept apart so retention, re-aggregation, and metric definitions do not have to share one table.
-
-| Item | Value |
-| --- | --- |
-| Event type | `episode_complete` |
-| actor | `user_id` (sign-in required, so a completion has no anonymous form) |
-| Source | `source_table = 'episode_reads'`, `source_id = episode_reads.id`. The partial UNIQUE index on `(tenant_id, source_table, source_id)` is what makes the projection replayable |
-| `occurred_at` | The read's own `read_at`, so a late projection still files the event on the day the member finished |
-| `series_id` | Resolved from `episodes` rather than taken from client input |
-| Failure | Swallowed. The read is already stored, and `publiractl job project-episode-reads` files whatever the request path lost |
-
-### The member's own reading history
-
-`EpisodeReadService.ListMyEpisodeReads` reads those same rows back for the member who wrote them, most recently finished first, with the episode and series each one names. It is the reader's counterpart of the operator's read-through report: cursor-paginated like every list RPC (`proto/README.md`), session-scoped, and `Cache-Control: private, no-store`.
-
-| Item | Value |
-| --- | --- |
-| Order | `read_at` descending, `episode_reads.id` as the tiebreaker, over `idx_episode_reads_tenant_user_read_at` |
-| Publication | Re-checked. An episode whose series or listing is no longer published drops out, so the history never names something the storefront has taken down |
-| Access | Not re-checked. The member did finish the episode, so an expired rental stays in the history the way an expired purchase stays in `ListMyPurchases` |
-
-### Read-through rate
-
-`content_daily_stats` carries the two halves of the rate per episode, rolled up to the series by summing its episodes:
-
-| Column | Meaning |
-| --- | --- |
-| `complete_count` | `episode_complete` events on that day |
-| `member_view_count` | `episode_view` events on that day whose `user_id` is set |
-
-The rate is `complete_count / member_view_count` over a range of days. A period with no member views has no rate at all rather than a rate of zero; the console shows an em dash there. `AdminEngagementService.ListEpisodeReadThrough` reports the last 28 complete days in the tenant's own time zone, the same calendar day the audit log's date filter means, and names that zone in the response.
-
-## Comment events
-
-`CommentService.PostEpisodeComment` under the `immediate` comment mode and `AdminCommentService.ApproveComment` under `approval_required` are the two ways a comment becomes public, and each files a `comment` event in the transaction that publishes it. A comment that never became public files none: one waiting for approval has no event, and neither has one removed or withdrawn while it was still waiting.
-
-| Item | Value |
-| --- | --- |
-| Event type | `comment` |
-| actor | `user_id` (sign-in required, so a comment has no anonymous form) |
-| Source | `source_table = 'episode_comments'`, `source_id = episode_comments.id`. The partial UNIQUE index on `(tenant_id, source_table, source_id)` is what keeps a comment approved after a restore from filing a second event |
-| `occurred_at` | The comment's own `published_at`, so the event falls on the day the comment became readable rather than the day it was written |
-| `series_id` | Resolved from `episodes` rather than taken from client input |
-| Failure | Returned. The event shares the transaction that published the comment, because no batch replays this projection the way `project-episode-reads` replays completions |
-
-### Comment counts
-
-`content_daily_stats.comment_count` is built from `episode_comments` rather than from those events: it counts the comments whose `published_at` falls on that day and that are still `published` when the aggregate runs. A comment hidden or withdrawn afterwards keeps the event it earned, leaves the count from the next rebuild of its day, and does not disturb a row `aggregate-content-stats` already wrote for a past day. The ranking snapshots and the recommendation features read that column alongside the other engagement totals.
-
-## Reading positions
-
-`EpisodeReadService.SaveReadingPosition` and `GetMyReadingPosition` carry where a member stopped inside an episode, as one `episode_reading_positions` row per member and episode. `GetMySeriesProgress` answers the same member's standing in one series — the episode they moved in most recently, the position they left in it, whether `episode_reads` already records it as finished, and every episode of the series they have finished — so `CatalogService.GetSeriesDetail` keeps returning the same bytes to everyone. That last list is read from `episode_reads` rather than derived from the progress row, because finishing an episode and saving a position in it are separate writes.
-
-| Item | Value |
-| --- | --- |
-| Session | Required. Every one of these RPCs answers for the signed-in member alone and responds `Cache-Control: private, no-store` |
-| Isolation | The member policy `episode_reads` uses: `app.current_tenant_id` and `app.current_user_id` both have to match the row |
-| `page_index` | Zero-based and below `page_count`. A page outside the episode is `invalid_argument`, an episode with no pages `failed_precondition` |
-| `page_count` | Counted from `episode_images` on every save, never taken from the request |
-| Access | Publication and paid-body access are checked on save and on read alike, so an unpublished episode or an expired rental has no position to resume |
 
 ## API namespace separation
 

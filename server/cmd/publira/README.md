@@ -86,7 +86,7 @@ After checking permissions, the image routes convert images to WebP / AVIF with 
 
 #### Authorization for episode body images
 
-`GET /images/episodes/{media_id}` identifies the reader from `Authorization: Bearer <JWT>` (audience `public`) or from the `t=<JWT>` query (audience `media`), and treats a request carrying neither — or a credential that does not verify — as anonymous. Whichever it is, the grant itself is read from the database under the same rules as the API: `price = 0`, a valid purchase, or a valid access ticket. For the details, see the authentication sections of [server/README.md](../../README.md).
+`GET /images/episodes/{media_id}` identifies the reader from `Authorization: Bearer <JWT>` (audience `public`) or from the `t=<JWT>` query (audience `media`), and treats a request carrying neither — or a credential that does not verify — as anonymous. Whichever it is, the grant itself is read from the database under the same rules as the API: `price = 0`, a valid purchase, or a valid access ticket. The media token is described in the package comment of [`internal/auth`](../../internal/auth/doc.go).
 
 On a console host, a `t=<JWT>` of audience `admin-media` is evaluated as a preview for tenant staff on top of that reader-facing decision.
 

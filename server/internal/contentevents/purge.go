@@ -1,18 +1,3 @@
-// Package contentevents holds the parts of the raw engagement log that belong
-// to no single caller: the projections that file an event from the table which
-// owns the fact, and the retention that takes the rows away again.
-// content_events is append-only and high volume, so the rows themselves are
-// kept for a bounded window and the durable numbers live in the aggregates
-// (content_daily_stats) built from them. Keeping the raw log short is also
-// what keeps the personal data in it bounded.
-//
-// The shape is one table plus chunked deletes, which is the simplest thing
-// that reclaims the space. Either of two observations is the trigger to
-// reconsider it in favour of declarative partitioning by occurred_at, dropping
-// a partition instead of deleting rows: one purge no longer fits in its
-// interval (the elapsed time is in its completion log), or the table and its
-// indexes outgrow what autovacuum keeps up with, since the bloat a delete
-// leaves does not come back down on its own.
 package contentevents
 
 import (
