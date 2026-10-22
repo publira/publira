@@ -2,7 +2,7 @@
 title: Web Push
 description: Turn on the browser notifications readers can receive from every tenant's site, and the key pair they are signed with.
 published: 2026-10-06
-updated: 2026-10-09
+updated: 2026-10-22
 ---
 
 A reader can let a tenant's site send notifications to their browser, so they hear of a new episode without opening the site. The install sends them through the push service of each reader's browser, and signs each one with a VAPID key pair that belongs to the install. Web Push is optional and off until you turn it on; an install that never does sends no browser notifications and fails nothing.
@@ -43,7 +43,7 @@ If the screen says it cannot set Web Push up because the API server has no secre
 
 The API and the worker read the settings again every ten seconds, so the saved subject reaches them without a restart. The first save also has the worker drop the cached copy of every tenant's site information about twenty seconds later, once the API is answering with the subject, so each site offers browser notifications from its next request on. That drop is a cache revalidation in the outbox, sent like every other one: a worker without `PUBLIRA_REVALIDATE_TOKEN` cannot send it, as [The outbox](./10-scheduled-jobs.md#the-outbox-mail-push-and-cache-revalidation) describes.
 
-To see it work, sign in to a tenant's site as a reader, turn on **New episode notifications** under **Browser notifications** in the reader's notification settings, and follow a series: the next episode published in it and shown on the site arrives as a browser notification.
+To see it work, sign in to a tenant's site as a reader, turn on **Receive push notifications in this browser** under **Browser notifications** in the reader's notification settings, leave the **Browser** column of the notification preferences on, and follow a series: the next episode published in it and shown on the site arrives as a browser notification.
 
 Each save is recorded in **Audit logs**.
 

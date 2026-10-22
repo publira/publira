@@ -3,7 +3,10 @@ import { Suspense } from "react";
 
 import { LocaleField } from "#components/locale-field";
 import { Message } from "#components/message";
-import { getNotificationSettings } from "#lib/auth";
+import {
+  getNotificationSettings,
+  UNSAVED_NOTIFICATION_PREFERENCE_CELLS,
+} from "#lib/auth";
 import {
   requirePublicSession,
   withPublicSessionReauth,
@@ -13,6 +16,7 @@ import { getTenantWebPushPublicKey } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 import { BrowserNotificationsCard } from "./_components/browser-notifications-card";
+import { NotificationPreferencesGrid } from "./_components/notification-preferences-grid";
 import { updateNotificationSettingsAction } from "./_lib/actions";
 
 const NOTIFICATION_SETTINGS_RETURN_TO = "/settings/notifications";
@@ -36,18 +40,32 @@ const NotificationsSection = async () => {
   );
   const emailNotificationsEnabled =
     notificationSettings?.emailNotificationsEnabled ?? true;
+  const preferences =
+    notificationSettings?.preferences ?? UNSAVED_NOTIFICATION_PREFERENCE_CELLS;
 
   return (
     <section className="border border-border bg-card p-6">
-      <h2 className="mb-4 text-lg font-semibold">
+      <h2 className="mb-2 text-lg font-semibold">
         <Suspense fallback={<SkeletonLine className="h-6 w-40" />}>
-          <Message message="storefront.settings.email_notifications_heading" />
+          <Message message="storefront.settings.notification_preferences_heading" />
         </Suspense>
       </h2>
-      <form action={updateNotificationSettingsAction} className="space-y-4">
+      <p className="mb-4 text-sm text-muted-foreground">
+        <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
+          <Message message="storefront.settings.notification_preferences_help" />
+        </Suspense>
+      </p>
+      <form action={updateNotificationSettingsAction} className="space-y-6">
         <LocaleField />
         <input name="tenantId" type="hidden" value={tenantId} />
 
+        <NotificationPreferencesGrid initialCells={preferences} />
+
+        <h3 className="text-base font-semibold">
+          <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
+            <Message message="storefront.settings.email_notifications_heading" />
+          </Suspense>
+        </h3>
         <div className="flex items-start gap-3 rounded-md border border-border/70 p-3">
           <input
             defaultChecked={emailNotificationsEnabled}
@@ -85,7 +103,8 @@ const NotificationsSection = async () => {
 };
 
 /**
- * Browser pushes, offered only where they can actually be delivered: a
+ * Whether this browser receives the pushes the grid's Web Push column chooses,
+ * offered only where they can actually be delivered: a
  * platform that has not configured Web Push publishes no VAPID key, and
  * `RegisterPushDevice` refuses a web registration there, so the card is left
  * out rather than shown as a switch every subscription would fail behind.

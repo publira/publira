@@ -40,13 +40,25 @@ const updateNotificationSettingsFormSchema = async (locale: Locale) => {
     tenantIdFormSchema(locale),
   ]);
 
+  // A switch submits "on" and an unchecked one nothing at all, so a missing
+  // field is a switch that is off.
+  const switchSchema = z
+    .literal("on", {
+      error: t("storefront.settings.email_notifications_invalid"),
+    })
+    .optional()
+    .transform((value) => value === "on");
+
   return z.object({
-    emailNotificationsEnabled: z
-      .literal("on", {
-        error: t("storefront.settings.email_notifications_invalid"),
-      })
-      .optional()
-      .transform((value) => value === "on"),
+    announcementsInboxEnabled: switchSchema,
+    commentsInboxEnabled: switchSchema,
+    emailNotificationsEnabled: switchSchema,
+    followedCreatorsInboxEnabled: switchSchema,
+    followedCreatorsMobilePushEnabled: switchSchema,
+    followedCreatorsWebPushEnabled: switchSchema,
+    followedEpisodesInboxEnabled: switchSchema,
+    followedEpisodesMobilePushEnabled: switchSchema,
+    followedEpisodesWebPushEnabled: switchSchema,
     locale: localeFormSchema,
     tenantId,
   });
@@ -65,7 +77,15 @@ export const updateNotificationSettingsAction = async (
   ]);
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
+      announcementsInboxEnabled: "value",
+      commentsInboxEnabled: "value",
       emailNotificationsEnabled: "value",
+      followedCreatorsInboxEnabled: "value",
+      followedCreatorsMobilePushEnabled: "value",
+      followedCreatorsWebPushEnabled: "value",
+      followedEpisodesInboxEnabled: "value",
+      followedEpisodesMobilePushEnabled: "value",
+      followedEpisodesWebPushEnabled: "value",
       locale: "value",
       tenantId: "value",
     })
@@ -80,7 +100,8 @@ export const updateNotificationSettingsAction = async (
     redirect(errorPath);
   }
 
-  const { emailNotificationsEnabled, locale, tenantId } = parsed.data;
+  const { emailNotificationsEnabled, locale, tenantId, ...preferences } =
+    parsed.data;
   const accessToken = await requirePublicSession(
     locale,
     NOTIFICATION_SETTINGS_RETURN_TO,
@@ -92,7 +113,7 @@ export const updateNotificationSettingsAction = async (
     () =>
       updateNotificationSettings(
         tenantId,
-        emailNotificationsEnabled,
+        { emailNotificationsEnabled, preferences },
         accessToken
       ),
     tenantId

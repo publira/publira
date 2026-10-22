@@ -1,7 +1,7 @@
 -- Scenario: a member whose own account the settings E2E may rewrite
 --
 -- `storefront.member-settings.spec.ts` renames the reader, sets and removes
--- their icon, turns their email notifications off, submits an email change,
+-- their icon, saves their notification preferences, submits an email change,
 -- changes their password, and follows a series. The dev seed member cannot absorb that: `storefront.auth` signs
 -- in with its address, `announcements.pagination` reads its announcement list,
 -- and both run beside this suite under `workers: 3`.
