@@ -18,7 +18,7 @@ Point both names at the edge's address before you apply the change, so cert-mana
 
 ## Keeping the consoles' credentials off the tenants' domains
 
-The edge already keeps the consoles' APIs off the internet, but the `publira-server` it forwards the tenants' domains to still serves them, and holds their database logins and the web service token to do so. To take all three out of the process readers reach, a layer apart from the edge rule as [Only the public API goes through the edge](../4-edge/index.md#only-the-public-api-goes-through-the-edge) describes, run a second Deployment with `--role storefront`, and route the tenants' domains to it. The split also lets reader traffic scale apart from the consoles, since each Deployment has replicas of its own, as [Splitting the server by role](../7-scaling-out.md#splitting-the-server-by-role) describes:
+The edge already keeps the consoles' APIs off the internet, but the `publira-server` it forwards the tenants' domains to still serves them, and holds their database logins and the web service token to do so. To take all three out of the process readers reach, a layer apart from the edge rule as [Only the public API goes through the edge](../4-edge/index.md#only-the-public-api-goes-through-the-edge) describes, run a second Deployment with `--role storefront`, and route the tenants' domains and `web-storefront` to it. The split also lets reader traffic scale apart from the consoles, since each Deployment has replicas of its own, as [Splitting the server by role](../7-scaling-out.md#splitting-the-server-by-role) describes:
 
 ```yaml
 apiVersion: apps/v1
@@ -87,7 +87,7 @@ kubectl create secret generic publira-storefront \
   --from-literal=PUBLIRA_PUBLIC_DB_URL="postgres://publira_public:$PUBLIC_DB_PASSWORD@$DB"
 ```
 
-Then change the backend of `/images` and the public API under `/rpc` on the tenants' domains alone, in the `web-storefront` HTTPRoute or Ingress, from `publira-server` to `publira-storefront`. The console hosts' routes and the web apps keep calling `publira-server`, which serves every role: `web-admin` calls the public API as well as the console's, through its one `PUBLIRA_GRPC_URL`.
+Then change the backend of `/images` and the public API under `/rpc` on the tenants' domains alone, in the `web-storefront` HTTPRoute or Ingress, from `publira-server` to `publira-storefront`, and point `web-storefront` at it too, since it calls the public API alone: set `PUBLIRA_GRPC_URL` in its Deployment to `http://publira-storefront:8000/rpc`. The console hosts' routes, `web-admin`, and `web-platform` keep calling `publira-server`, which serves every role: `web-admin` calls the public API as well as the console's, through its one `PUBLIRA_GRPC_URL`.
 
 The edge answers a console API with `404` on every host either way, so the check calls the two Services from inside the cluster instead:
 
