@@ -17,13 +17,13 @@ Development bootstrap, from empty database volumes through `task setup` and all 
   sudo env "PATH=$PATH" pnpm --dir e2e exec playwright install-deps chromium
   ```
 
-The default required host ports are `3000` (web-storefront), `3080` (Traefik edge), `4000` (web-admin), `4100` (web-platform), `8000` (the server: every Connect namespace under `/rpc`, and the images), `8003` (worker), `8300` (email-renderer), `8400` (sign-in-provider), `8500` (stripe), `8600` (google-tag-gateway), `5433` (E2E Postgres), `6380` (E2E Redis), `9003` (E2E RustFS / S3), `1026` / `8026` (E2E Mailpit SMTP / API), and `3090` (the pinned browser the screenshot projects connect to). `task e2e:search` also needs `9201` (E2E OpenSearch).
+The default required host ports are `3000` (web-storefront), `3080` (Traefik edge), `4000` (web-admin), `4100` (web-platform), `8000` (the server: every Connect namespace under `/rpc`, and the images), `8003` (worker), `8300` (email-renderer), `8400` (sign-in-provider), `8500` (stripe), `8600` (google-tag-gateway), `5433` (E2E Postgres), `6380` (E2E Redis), `9003` (E2E RustFS / S3), `1026` / `8026` (E2E Mailpit SMTP / API), and `3090` (the pinned browser the screenshot projects connect to). `task e2e:search` also needs `9201` (E2E OpenSearch), and `task e2e:tracing` `4319` / `16687` (E2E Jaeger OTLP intake / query API).
 
 PIDs and logs default to `e2e/.run/`. When `PUBLIRA_E2E_*_PORT` or `COMPOSE_PROJECT_NAME` changes, `lib.sh` isolates state in a directory based on ports and project name; `PUBLIRA_E2E_RUN_DIR` takes precedence. A compose-project lease prevents `down` or `start-apps` from another run directory from operating on a remaining stack. The lock holder waits as a single process, so teardown also releases the lock. `task e2e:down` recovers a stale lease by finding the holder through `/proc`, and reports the PID or `fuser` / `lsof` guidance when recovery is impossible.
 
 A lease lives only as long as its holder process, while a stack outlives one, so `up`, `db`, and `start-apps` read ownership off the containers as well: `compose.yaml` labels every service with the run directory that created it (`com.publira.e2e.run-dir`). A stack whose lease holder is gone therefore still refuses a run from another directory, as does a data port already published by a different compose project. `task e2e:down` stays the way to remove a stack nothing owns any more.
 
-Use distinct compose projects and **all** distinct ports (`PUBLIRA_E2E_EMAIL_RENDERER_PORT`, `PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT`, `PUBLIRA_E2E_EDGE_PORT`, and `PUBLIRA_E2E_OPENSEARCH_PORT` included) for parallel stacks. `PUBLIRA_REDIS_URL` (and the apps' `PNCH_REDIS_URL`, which carries the same value) and `PUBLIRA_S3_ENDPOINT` are always built from E2E ports so tests cannot accidentally use Dev Container Redis or RustFS. `lib.sh` provides the required `PUBLIRA_AUTH_SECRET` and `PUBLIRA_AUTH_JWT_SECRET`, forwarding supplied values to each app and API process. `PUBLIRA_REVALIDATE_TOKEN` is defaulted the same way and reaches the server, the worker's periodic jobs, and all three apps (as `PNCH_REVALIDATE_TOKEN`), so Next.js cache tags are actually dropped during a run; the `PUBLIRA_WEB_STOREFRONT_INTERNAL_URL`, `PUBLIRA_WEB_ADMIN_INTERNAL_URL`, and `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` targets it needs are built from the E2E ports like Redis and S3. `PUBLIRA_TENANT_URL_SCHEME` is `http`. `scripts/db-setup.sh` applies `db/seeds/scenarios/250_web_push.sql`, which stores a VAPID key pair and a subject, so the public API publishes a VAPID key and web-storefront serves the browser notification switch the member settings suite drives.
+Use distinct compose projects and **all** distinct ports (`PUBLIRA_E2E_EMAIL_RENDERER_PORT`, `PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT`, `PUBLIRA_E2E_EDGE_PORT`, `PUBLIRA_E2E_OPENSEARCH_PORT`, `PUBLIRA_E2E_JAEGER_OTLP_PORT`, and `PUBLIRA_E2E_JAEGER_QUERY_PORT` included) for parallel stacks. `PUBLIRA_REDIS_URL` (and the apps' `PNCH_REDIS_URL`, which carries the same value) and `PUBLIRA_S3_ENDPOINT` are always built from E2E ports so tests cannot accidentally use Dev Container Redis or RustFS. `lib.sh` provides the required `PUBLIRA_AUTH_SECRET` and `PUBLIRA_AUTH_JWT_SECRET`, forwarding supplied values to each app and API process. `PUBLIRA_REVALIDATE_TOKEN` is defaulted the same way and reaches the server, the worker's periodic jobs, and all three apps (as `PNCH_REVALIDATE_TOKEN`), so Next.js cache tags are actually dropped during a run; the `PUBLIRA_WEB_STOREFRONT_INTERNAL_URL`, `PUBLIRA_WEB_ADMIN_INTERNAL_URL`, and `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` targets it needs are built from the E2E ports like Redis and S3. `PUBLIRA_TENANT_URL_SCHEME` is `http`. `scripts/db-setup.sh` applies `db/seeds/scenarios/250_web_push.sql`, which stores a VAPID key pair and a subject, so the public API publishes a VAPID key and web-storefront serves the browser notification switch the member settings suite drives.
 
 ## One-command run
 
@@ -52,6 +52,7 @@ This always tears down app processes and compose volumes, including on failure o
 | `task e2e:wait-ready` | Wait for HTTP readiness with wait4x; failure is `readiness failed: …`. |
 | `task e2e:test` | Run Playwright only against a running stack. |
 | `task e2e:search` | The full lifecycle on the OpenSearch search backend, running the `search` group alone; see [Catalog search on OpenSearch](#catalog-search-on-opensearch). |
+| `task e2e:tracing` | The full lifecycle with every process tracing into a Jaeger of the stack's own, running the `tracing` group alone; see [Trace propagation](#trace-propagation). |
 | `task e2e:test-lib` | Verify `PUBLIRA_E2E_RUN_DIR` isolation and compose-project locks (no Docker required; also run by `task e2e`). |
 | `task e2e:down` | Stop applications and remove compose resources, including volumes. |
 
@@ -74,7 +75,7 @@ e2e/
 ├── bootstrap/             # Development bootstrap check (separate lifecycle, no Playwright)
 ├── routing/               # Edge routing check (separate lifecycle, no Playwright)
 ├── browser/               # The pinned browser image the screenshot projects render in
-├── compose.yaml           # postgres + redis + rustfs + mailpit + traefik + browser, and opensearch in the `search` profile (project: publira-e2e)
+├── compose.yaml           # postgres + redis + rustfs + mailpit + traefik + browser, opensearch in the `search` profile, and jaeger in the `tracing` profile (project: publira-e2e)
 ├── fixtures/              # test images, rendered from the vector sources in the repository's assets/
 ├── playwright.config.ts
 ├── scripts/               # lifecycle, API controls, readiness, test, and locking helpers
@@ -84,7 +85,7 @@ e2e/
 ```
 
 - **Compose dependencies:** PostgreSQL 18, Valkey (Redis-compatible), RustFS (S3-compatible, path-style, bucket `publira`), Mailpit (SMTP sink), Traefik, and the browser the screenshot projects connect to.
-- **Host processes:** the server (`publira server`, carrying all three Connect namespaces under `/rpc` and the images on one port), email-renderer, the worker (`publira worker`, which also runs the periodic jobs that promote due episodes, apply free window boundaries, and roll tenant days, on the intervals `PUBLIRA_E2E_PUBLISH_EPISODES_INTERVAL_SEC`, `PUBLIRA_E2E_FREE_WINDOW_INTERVAL_SEC`, and `PUBLIRA_E2E_TENANT_DAY_INTERVAL_SEC` shorten to seconds), and standalone `web-storefront`, `web-admin`, and `web-platform` (`node server.js`). None of them traces: `scripts/lib.sh` drops an inherited `PUBLIRA_TRACING_ENABLED`, so a run inside the Dev Container starts them the way CI does.
+- **Host processes:** the server (`publira server`, carrying all three Connect namespaces under `/rpc` and the images on one port), email-renderer, the worker (`publira worker`, which also runs the periodic jobs that promote due episodes, apply free window boundaries, and roll tenant days, on the intervals `PUBLIRA_E2E_PUBLISH_EPISODES_INTERVAL_SEC`, `PUBLIRA_E2E_FREE_WINDOW_INTERVAL_SEC`, and `PUBLIRA_E2E_TENANT_DAY_INTERVAL_SEC` shorten to seconds), and standalone `web-storefront`, `web-admin`, and `web-platform` (`node server.js`). None of them traces unless the run selects `PUBLIRA_E2E_TRACING=on` ([Trace propagation](#trace-propagation)): `scripts/lib.sh` drops an inherited `PUBLIRA_TRACING_ENABLED`, so a run inside the Dev Container starts them the way CI does.
 - **Seed:** development `task db:setup`: public domain `localhost:<edge>`, admin domain `admin.localhost:<edge>`, tenant `Seed Tenant`, and platform user `platform@example.com`. The seed tenant and `platform_config` both store `en` as their default locale, so every console and public site opens in English with no `publira_locale` cookie — which is the copy the specs locate elements by. `task e2e:db` then runs `task storage:seed`, which uploads the images `db/seeds/dev/060_images.sql` names: an eye-catch for every series and label, an icon for every creator, and eight body pages for every episode, so the canvas viewer has something to draw whichever episode a spec opens. The two commenting suites seed episodes of their own, so they call `scripts/upload-episode-pages.sh` for those after applying their scenario: the comment section is the page after the last page of an episode, so those episodes need pages to turn as well, and seeding their tenants for the whole stack would put them in the tenant list the platform screenshot baseline photographs.
 
 ### Mail
@@ -115,7 +116,7 @@ Host-based URL constants are in `src/urls.ts`. web-storefront resolves the tenan
 
 ### Groups
 
-Every project belongs to one of five groups, and CI runs each group as a job of its own, on a runner and a stack of its own (see [CI](#ci)). A sixth, `search`, takes two projects of `main` onto the OpenSearch backend for `task e2e:search`:
+Every project belongs to one of six groups, and CI runs each group as a job of its own, on a runner and a stack of its own (see [CI](#ci)). A seventh, `search`, takes two projects of `main` onto the OpenSearch backend for `task e2e:search`:
 
 | Group | Projects | What it needs of its stack |
 | --- | --- | --- |
@@ -124,6 +125,7 @@ Every project belongs to one of five groups, and CI runs each group as a job of 
 | `admin` | `web-admin`, `tablet-admin` | The same as `main`. It is a group apart because its tests take far longer than theirs, and Playwright shards by test count; CI shards it across three stacks. |
 | `exclusive` | The outage and error-boundary projects, the projects below that rewrite state the whole console reads, `docs-screenshots-first-operator`, and `platform-setup` | No other suite running while one stops a process or rewrites that state; the group keeps its own chain. |
 | `performance` | `viewer-performance` | A machine with nothing else running on it. |
+| `tracing` | `trace-propagation` | Every process tracing into the stack's Jaeger, which `PUBLIRA_E2E_TRACING=on` starts and no other group's stack runs. |
 | `search` | `catalog-search`, `platform-search-settings` | The OpenSearch backend `task e2e:search` starts and saves. |
 
 `PUBLIRA_E2E_GROUP` runs one group alone, through `task e2e` or `task e2e:test`; a name that is not a group fails the run before any test starts:
@@ -132,7 +134,7 @@ Every project belongs to one of five groups, and CI runs each group as a job of 
 PUBLIRA_E2E_GROUP=exclusive task e2e
 ```
 
-A dependency between projects of two groups only orders work on a stack they share, so a group run drops it and keeps the dependencies inside the group. A project therefore must not need anything a project of another group leaves behind. Without `PUBLIRA_E2E_GROUP`, every group runs on one stack, ordered by the whole graph described below.
+A dependency between projects of two groups only orders work on a stack they share, so a group run drops it and keeps the dependencies inside the group. A project therefore must not need anything a project of another group leaves behind. Without `PUBLIRA_E2E_GROUP`, every group but `tracing` runs on one stack, ordered by the whole graph described below.
 
 `server-logs` belongs to every group. It is the teardown of every other project, so it reads the logs once everything before it has finished — in a run of the whole graph, in a group run, and in each shard of one.
 
@@ -177,6 +179,19 @@ task e2e:up && task e2e:db && task e2e:start-apps && task e2e:wait-ready
 PUBLIRA_E2E_GROUP=search task e2e:test
 task e2e:down
 ```
+
+## Trace propagation
+
+The stack traces nothing. `PUBLIRA_E2E_TRACING` selects whether it does, and `scripts/lib.sh` derives every OpenTelemetry variable the processes read from it, never from an inherited value:
+
+| `PUBLIRA_E2E_TRACING` | The processes | Collector |
+| --- | --- | --- |
+| `off` (default) | `PUBLIRA_TRACING_ENABLED` unset, so nothing is recorded or exported | Not started |
+| `on` | `PUBLIRA_TRACING_ENABLED=true`, exporting over OTLP to `http://127.0.0.1:<PUBLIRA_E2E_JAEGER_OTLP_PORT>`, every root span sampled | The `jaeger` service, through `COMPOSE_PROFILES=tracing`, on `PUBLIRA_E2E_JAEGER_OTLP_PORT` (default `4319`) for the intake and `PUBLIRA_E2E_JAEGER_QUERY_PORT` (default `16687`) for the query API, which a spec reads at `PUBLIRA_E2E_JAEGER_BASE_URL` |
+
+`task e2e:tracing` sets `PUBLIRA_E2E_TRACING=on` and `PUBLIRA_E2E_GROUP=tracing`. Its one project, `trace-propagation`, is `tests/storefront.trace-propagation.spec.ts`: it searches the storefront through the edge for a keyword no request has used, so no cache entry answers it, and reads the trace back with `tracesOfService()` from `src/traces.ts` until it holds the storefront's span, its client span for the search RPC, the server span of `publira-api-server` whose parent is that client span, and a `db.query` span beneath the server span. The run of the whole graph leaves the group out, since its stack traces nothing.
+
+On `on` under `PUBLIRA_E2E_WEB_MODE=dev`, web-storefront also logs the warning `next dev` prints about the root span of a cold render, which its server log check accepts on that stack alone.
 
 ## Readiness and failures
 
@@ -281,7 +296,7 @@ Job: **Test / E2E** (`.github/workflows/ci.yml`)
 
 - Path filter: `e2e/**` except `e2e/routing/**`, the three web apps, packages, the locale catalogs, server, db, the documentation's PNG screenshots under `docs/`, and related build inputs.
 - **Test / E2E Build** runs `task e2e:build` once and uploads the server binaries, the apps' standalone output, email-renderer, and every workspace package's `dist/` as one tar, `e2e-build`.
-- **Test / E2E** is a matrix with one entry per [group](#groups), two for `main` (`--shard=1/2` and `--shard=2/2`), and three for `admin`. Every entry unpacks `e2e-build` and runs `task e2e:run-built` with `PUBLIRA_E2E_GROUP` set, so it seeds, starts, and tears down a stack of its own; one runner per entry is what keeps the default compose project, ports, run directory, database, bucket, and Redis of one entry away from every other.
+- **Test / E2E** is a matrix with one entry per [group](#groups), two for `main` (`--shard=1/2` and `--shard=2/2`), and three for `admin`. The `tracing` entry runs its stack with `PUBLIRA_E2E_TRACING=on`; every other one traces nothing. Every entry unpacks `e2e-build` and runs `task e2e:run-built` with `PUBLIRA_E2E_GROUP` set, so it seeds, starts, and tears down a stack of its own; one runner per entry is what keeps the default compose project, ports, run directory, database, bucket, and Redis of one entry away from every other.
 - Failure artifact: `e2e-artifacts-<entry>` (report, test results, and app logs of that entry), such as `e2e-artifacts-admin-2`.
 - Every entry also uploads a Playwright blob report, `e2e-blob-<entry>`. When an entry fails, **Test / E2E Report** merges them into one HTML report, `e2e-report`, whose tests carry the tag of the group they ran in.
 - Chromium only; `workers: 3`, `fullyParallel: false`, and one retry in CI.

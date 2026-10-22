@@ -56,6 +56,18 @@ tasks:
     cmds:
       - bash {{.PUBLIRA_E2E_DIR}}/scripts/run.sh {{.CLI_ARGS}}
 
+  tracing:
+    desc: Full lifecycle with every process tracing into a Jaeger of the stack's own, running the trace propagation spec alone
+    deps:
+      - task: prepare
+    env:
+      # lib.sh turns this into the processes' OpenTelemetry settings and the
+      # compose profile that starts the collector.
+      PUBLIRA_E2E_TRACING: "on"
+      PUBLIRA_E2E_GROUP: tracing
+    cmds:
+      - bash {{.PUBLIRA_E2E_DIR}}/scripts/run.sh {{.CLI_ARGS}}
+
   prepare:
     desc: Build server binaries, web-storefront, web-admin, web-platform, email-renderer, and install Playwright Chromium
     cmds:

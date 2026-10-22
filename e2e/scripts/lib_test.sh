@@ -44,6 +44,10 @@ stack_env() {
     -u PUBLIRA_E2E_OPENSEARCH_PORT \
     -u PUBLIRA_E2E_SEARCH_BACKEND \
     -u PUBLIRA_E2E_OPENSEARCH_URL \
+    -u PUBLIRA_E2E_JAEGER_OTLP_PORT \
+    -u PUBLIRA_E2E_JAEGER_QUERY_PORT \
+    -u PUBLIRA_E2E_JAEGER_BASE_URL \
+    -u PUBLIRA_E2E_TRACING \
     -u COMPOSE_PROFILES \
     -u PUBLIRA_E2E_LOCK_HELD \
     "$@"
@@ -148,6 +152,15 @@ else
   pass "PUBLIRA_E2E_OPENSEARCH_PORT override isolates RUN_DIR"
 fi
 
+jaeger_override_dir="$(compute_run_dir PUBLIRA_E2E_JAEGER_QUERY_PORT=16697)"
+if [[ "${jaeger_override_dir}" == "${default_run_dir}" ]]; then
+  fail "PUBLIRA_E2E_JAEGER_QUERY_PORT override still uses ${jaeger_override_dir}"
+elif [[ "${jaeger_override_dir}" != *"-jg4319-16697-"* ]]; then
+  fail "PUBLIRA_E2E_JAEGER_QUERY_PORT override dir ${jaeger_override_dir} does not encode jg4319-16697"
+else
+  pass "PUBLIRA_E2E_JAEGER_QUERY_PORT override isolates RUN_DIR"
+fi
+
 # The search engine a run selects, the URL it saves for it, and what it hands
 # compose.
 search_env() {
@@ -239,11 +252,37 @@ else
   fail "PUBLIRA_E2E_RUSTFS_PORT=9004 produced PUBLIRA_S3_ENDPOINT=${port_s3_endpoint}"
 fi
 
-tracing_enabled="$(stack_env PUBLIRA_TRACING_ENABLED=true bash -c 'source "$1"; printf %s "${PUBLIRA_TRACING_ENABLED-unset}"' bash "${LIB}")"
-if [[ "${tracing_enabled}" == "unset" ]]; then
+# Whether the stack traces, where its spans go, where a spec reads them back,
+# and what it hands compose.
+tracing_env() {
+  stack_env "$@" bash -c 'source "$1"; printf "%s|%s|%s|%s" "${PUBLIRA_TRACING_ENABLED-unset}" "${OTEL_EXPORTER_OTLP_ENDPOINT-unset}" "${PUBLIRA_E2E_JAEGER_BASE_URL-unset}" "$COMPOSE_PROFILES"' bash "${LIB}"
+}
+
+default_tracing="$(tracing_env PUBLIRA_TRACING_ENABLED=true OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318)"
+if [[ "${default_tracing}" == unset\|*\|unset\| ]]; then
   pass "ambient PUBLIRA_TRACING_ENABLED does not reach the stack's processes"
 else
-  fail "ambient PUBLIRA_TRACING_ENABLED leaked through as ${tracing_enabled}"
+  fail "default tracing environment is ${default_tracing}, want tracing unset and no profile"
+fi
+
+on_tracing="$(tracing_env PUBLIRA_E2E_TRACING=on PUBLIRA_E2E_JAEGER_OTLP_PORT=4329 PUBLIRA_E2E_JAEGER_QUERY_PORT=16697 OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318 OTEL_SERVICE_NAME=dev)"
+if [[ "${on_tracing}" == "true|http://127.0.0.1:4329|http://127.0.0.1:16697|tracing" ]]; then
+  pass "PUBLIRA_E2E_TRACING=on sends the spans to this run's Jaeger"
+else
+  fail "on tracing environment is ${on_tracing}, want true|http://127.0.0.1:4329|http://127.0.0.1:16697|tracing"
+fi
+
+both_profiles="$(tracing_env PUBLIRA_E2E_TRACING=on PUBLIRA_E2E_SEARCH_BACKEND=opensearch)"
+if [[ "${both_profiles}" == *"|search,tracing" ]]; then
+  pass "a run on OpenSearch that traces starts both profiles"
+else
+  fail "opensearch with tracing hands compose ${both_profiles##*|}, want search,tracing"
+fi
+
+if tracing_env PUBLIRA_E2E_TRACING=true > /dev/null 2>&1; then
+  fail "PUBLIRA_E2E_TRACING=true was accepted"
+else
+  pass "a PUBLIRA_E2E_TRACING other than on or off is refused"
 fi
 
 # App teardown. Dedicated temp RUN_DIRs so this never overwrites a live

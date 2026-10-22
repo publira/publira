@@ -144,6 +144,14 @@ const catalogSearchSpecs = /catalog\.search\./u;
 const platformSearchSettingsSpecs = /platform\.search-settings\./u;
 
 /**
+ * The suite that follows one storefront request into the trace it left. It
+ * needs every process of the stack tracing, which no other suite's stack does,
+ * so it is a group of its own that `task e2e:tracing` runs, and is left out of
+ * the run of the whole graph.
+ */
+const tracePropagationSpecs = /\.trace-propagation\./u;
+
+/**
  * The suites that record what a screen looks like. In a run of the whole
  * graph they run before every other project, as its dependency, because the
  * state they photograph is the one `task e2e:db` seeded: the admin console
@@ -293,6 +301,7 @@ const mainProjects: PlaywrightTestProject[] = [
       serverLogSpecs,
       catalogSearchSpecs,
       tabletSpecs,
+      tracePropagationSpecs,
     ],
     use: {
       ...desktopChrome,
@@ -668,6 +677,17 @@ const performanceProjects: PlaywrightTestProject[] = [
   },
 ];
 
+const tracingProjects: PlaywrightTestProject[] = [
+  {
+    name: "trace-propagation",
+    testMatch: [tracePropagationSpecs],
+    use: {
+      ...desktopChrome,
+      baseURL: WEB_STOREFRONT_BASE_URL,
+    },
+  },
+];
+
 /**
  * The projects CI runs as separate jobs, each on a runner of its own with a
  * stack of its own. `PUBLIRA_E2E_GROUP` names one of them, and the run is then
@@ -680,8 +700,8 @@ const performanceProjects: PlaywrightTestProject[] = [
  * on its stack, and keeps the ones inside the group. A project therefore may
  * not need what another group's project leaves behind.
  *
- * Without `PUBLIRA_E2E_GROUP` the run is every group on one stack, ordered by
- * the whole graph, which is what `task e2e` does.
+ * Without `PUBLIRA_E2E_GROUP` the run is every group but `tracing` on one
+ * stack, ordered by the whole graph, which is what `task e2e` does.
  */
 const groups = {
   admin: adminProjects,
@@ -695,6 +715,9 @@ const groups = {
   search: mainProjects.filter(({ name }) =>
     ["catalog-search", "platform-search-settings"].includes(name ?? "")
   ),
+  // `task e2e:tracing`, on a stack whose every process traces. No other
+  // group's stack does, so the run of the whole graph leaves it out.
+  tracing: tracingProjects,
 } satisfies Record<string, PlaywrightTestProject[]>;
 
 type GroupName = keyof typeof groups;
