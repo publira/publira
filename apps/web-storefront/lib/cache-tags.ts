@@ -51,6 +51,13 @@ export const tenantMobileAppAssociationTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:mobile-app-association`;
 
 /**
+ * The Google tag the tenant's pages load. The console's save drops it, so a
+ * changed ID or serving mode reaches the next page a reader opens.
+ */
+export const tenantAnalyticsSettingsTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:analytics-settings`;
+
+/**
  * Every published page of a tenant, the footer links included.
  *
  * The locale stays out of the tag. Each locale is already its own cache entry,

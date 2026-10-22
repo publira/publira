@@ -11,6 +11,8 @@ import { getTenantPublicOrigin, getTenantSiteInfo } from "#lib/tenant";
 import { resolveTenantIcons } from "#lib/tenant-icon";
 import { getTenantId } from "#lib/tenant-id";
 
+import { GoogleTag } from "./_components/google-tag";
+
 import "../../globals.css";
 
 /**
@@ -84,6 +86,10 @@ export const generateMetadata = async (): Promise<Metadata> => {
  * here: it hands the catalog read down unresolved, so the error boundary sits
  * below it too and the provider is not remounted between `(site)` and `(auth)`.
  *
+ * The tenant's Google tag is read below this layout as well, inside a
+ * `<Suspense>` with no fallback: it renders nothing until it answers, and
+ * nothing at all for a tenant that has set no ID.
+ *
  * `group/document` never changes. Chrome that answers something deeper in the
  * page — the site header giving way to a wide episode viewer — matches that
  * element with `group-has-*`, so nothing above it has to be told.
@@ -103,6 +109,9 @@ const RootLayout = ({ children }: LayoutProps<"/[tenant_id]/[locale]">) => (
           <Message message="storefront.common.offline" />
         </Suspense>
       </OfflineNotice>
+      <Suspense fallback={null}>
+        <GoogleTag />
+      </Suspense>
     </body>
   </html>
 );

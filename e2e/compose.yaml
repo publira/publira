@@ -190,6 +190,7 @@ services:
         google-tag.localhost
         langs.localhost
         locale.localhost
+        measure.localhost
         mobile-push.localhost
         moderate.localhost
         notify.localhost
@@ -222,6 +223,7 @@ services:
         admin.google-tag.localhost
         admin.langs.localhost
         admin.locale.localhost
+        admin.measure.localhost
         admin.mobile-push.localhost
         admin.moderate.localhost
         admin.notify.localhost
