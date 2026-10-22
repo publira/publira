@@ -91,9 +91,9 @@ export const createTracingInterceptor =
       .getTracer(TRACER_NAME)
       .startSpan(rpcSpanName(req.service.typeName, req.method.name), {
         attributes: {
-          [ATTR_RPC_SYSTEM]: RPC_SYSTEMS[transport],
-          [ATTR_RPC_SERVICE]: req.service.typeName,
           [ATTR_RPC_METHOD]: req.method.name,
+          [ATTR_RPC_SERVICE]: req.service.typeName,
+          [ATTR_RPC_SYSTEM]: RPC_SYSTEMS[transport],
           ...serverAttributes(req.url),
         },
         kind: SpanKind.CLIENT,
