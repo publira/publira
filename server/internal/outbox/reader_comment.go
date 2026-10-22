@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -165,10 +166,12 @@ type commentAuthorNotificationBody struct {
 type commentAuthorNotifier interface {
 	CreateNotification(ctx context.Context, arg dbmodels.CreateNotificationParams) error
 	InsertOutboxEvent(ctx context.Context, arg dbmodels.InsertOutboxEventParams) (dbmodels.OutboxEvent, error)
+	ListPublishedEpisodeSurfacesByPublicID(ctx context.Context, arg dbmodels.ListPublishedEpisodeSurfacesByPublicIDParams) ([]string, error)
 }
 
 // notifyCommentApproved writes one bell notification for the author of a
-// comment that was approved, and queues the mail that mirrors it. It does not
+// comment that was approved, and queues the mail that mirrors it while the site
+// can open the comment's episode, since the mail links to it there. It does not
 // enqueue a push: the type is excluded from the allowlist, and the row in
 // `notifications` is the record the bell reads.
 func notifyCommentApproved(ctx context.Context, queries commentAuthorNotifier, n CommentApprovedNotification) error {
@@ -209,6 +212,19 @@ func notifyCommentApproved(ctx context.Context, queries commentAuthorNotifier, n
 	// redelivered event looks like, is a no-op rather than an error.
 	if err != nil {
 		return fmt.Errorf("insert comment author notification: %w", err)
+	}
+	if n.EpisodePublicID == "" {
+		return nil
+	}
+	surfaces, err := queries.ListPublishedEpisodeSurfacesByPublicID(ctx, dbmodels.ListPublishedEpisodeSurfacesByPublicIDParams{
+		TenantID:        n.TenantID,
+		EpisodePublicID: n.EpisodePublicID,
+	})
+	if err != nil {
+		return fmt.Errorf("list comment episode surfaces: %w", err)
+	}
+	if !slices.Contains(surfaces, "web") {
+		return nil
 	}
 	return queueNotificationEmail(ctx, queries, n.TenantID, NotificationTypeCommentApproved, subjectKey)
 }

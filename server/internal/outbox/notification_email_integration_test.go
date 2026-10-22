@@ -11,6 +11,7 @@ import (
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/secretcrypto"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 // notificationEmailFixture is the preferences fixture with the platform's SMTP
@@ -172,7 +173,8 @@ func TestNotificationEmailOfAnAnnouncementForEveryoneIgnoresTheCell(t *testing.T
 }
 
 // The approval of a comment mails its author while their comments email cell
-// is on.
+// is on, and only about an episode the site shows, since the mail links to it
+// there.
 func TestNotificationEmailTellsTheAuthorTheirCommentWasApproved(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
@@ -184,27 +186,48 @@ func TestNotificationEmailTellsTheAuthorTheirCommentWasApproved(t *testing.T) {
 		CommentsEmailEnabled: sql.NullBool{Bool: false, Valid: true},
 	})
 
+	appEpisode := f.pg.SeedEpisode(t, f.tenant.ID, f.series.ID, testutil.EpisodeSeed{
+		PublicID:     "NECMEPISOD09",
+		Title:        "App Episode",
+		Status:       testutil.EpisodeStatusPublished,
+		Availability: "app",
+	})
+
 	queries := dbmodels.New(f.pg.OpenOutboxDB(t))
 	for _, tc := range []struct {
 		commentID string
 		userID    uuid.UUID
+		episode   testutil.Episode
 		want      []string
 	}{
-		{commentID: "NECMCOMMENT1", userID: author.ID, want: []string{"author@necm.example.com"}},
-		{commentID: "NECMCOMMENT2", userID: quiet.ID, want: nil},
+		{commentID: "NECMCOMMENT1", userID: author.ID, episode: f.seriesEpisode, want: []string{"author@necm.example.com"}},
+		{commentID: "NECMCOMMENT2", userID: quiet.ID, episode: f.seriesEpisode, want: nil},
+		{commentID: "NECMCOMMENT3", userID: author.ID, episode: appEpisode, want: nil},
 	} {
 		if err := notifyCommentApproved(ctx, queries, CommentApprovedNotification{
 			TenantID:        f.tenant.ID,
 			UserID:          tc.userID,
 			CommentPublicID: tc.commentID,
-			EpisodePublicID: f.seriesEpisode.PublicID,
-			EpisodeTitle:    "Series Episode",
+			EpisodePublicID: tc.episode.PublicID,
+			EpisodeTitle:    tc.episode.Title,
 			SeriesPublicID:  f.series.PublicID,
 			SeriesTitle:     "Followed Series",
 		}); err != nil {
 			t.Fatalf("notifyCommentApproved: %v", err)
 		}
-		got := f.mail(t, ctx, NotificationTypeCommentApproved, CommentAuthorSubjectKey(tc.commentID))
+		key := CommentAuthorSubjectKey(tc.commentID)
+		if tc.episode.ID == appEpisode.ID {
+			var queued int
+			if err := f.pg.DB.QueryRowContext(ctx, "SELECT count(*) FROM outbox_events WHERE idempotency_key = $1",
+				NotificationEmailIdempotencyKey(f.tenant.ID, NotificationTypeCommentApproved, key)).Scan(&queued); err != nil {
+				t.Fatalf("count queued mail: %v", err)
+			}
+			if queued != 0 {
+				t.Fatalf("%s queued %d mails about an episode the site does not show, want none", tc.commentID, queued)
+			}
+			continue
+		}
+		got := f.mail(t, ctx, NotificationTypeCommentApproved, key)
 		if !slices.Equal(got, tc.want) {
 			t.Fatalf("%s mailed %v, want %v", tc.commentID, got, tc.want)
 		}

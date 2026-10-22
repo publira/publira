@@ -2159,6 +2159,9 @@ type Querier interface {
 	// site's inbox or pushed to a browser, where it would lead to a page that
 	// answers 404.
 	ListPublishedEpisodeSurfaces(ctx context.Context, arg ListPublishedEpisodeSurfacesParams) ([]string, error)
+	// ListPublishedEpisodeSurfaces for an episode named by its public ID, which is
+	// how the approval of a comment names it.
+	ListPublishedEpisodeSurfacesByPublicID(ctx context.Context, arg ListPublishedEpisodeSurfacesByPublicIDParams) ([]string, error)
 	ListPublishedEpisodesBySeries(ctx context.Context, arg ListPublishedEpisodesBySeriesParams) ([]ListPublishedEpisodesBySeriesRow, error)
 	// The public genre list: the tenant's whole genre list, in the order the
 	// console put it in, each genre named in the translation genre_translation_for

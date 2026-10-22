@@ -126,8 +126,15 @@ func (c *emailComposer) from(brand string) {
 	c.lines = append(c.lines, brand)
 }
 
+// setSubject words the subject line. A title a tenant wrote may span lines,
+// and a header holds one, so each break and the spaces around it become one
+// space; the lines of the mail keep the title as it was written.
 func (c *emailComposer) setSubject(key string, values map[string]any) {
-	c.subject = c.message(key, values)
+	lines := strings.FieldsFunc(c.message(key, values), func(r rune) bool { return r == '\r' || r == '\n' })
+	for i, line := range lines {
+		lines[i] = strings.TrimSpace(line)
+	}
+	c.subject = strings.Join(lines, " ")
 }
 
 func (c *emailComposer) line(key string, values map[string]any) {

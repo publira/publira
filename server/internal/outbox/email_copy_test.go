@@ -702,6 +702,56 @@ func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
 // A notification mail names what it is about, links to it, and ends on where
 // the reader chooses which mails they receive — except an announcement sent to
 // every reader, which says so instead, since no setting could have stopped it.
+// A title written over several lines is one line in the subject, which the
+// SMTP client would otherwise refuse on every attempt.
+func TestEmailCopyKeepsATitleOverSeveralLinesOnTheSubjectLine(t *testing.T) {
+	for _, testCase := range []struct {
+		name        string
+		request     emailrenderer.Request
+		wantSubject string
+	}{
+		{
+			name: "an announcement title",
+			request: emailrenderer.Request{
+				Template: "reader_announcement_posted",
+				Locale:   "en",
+				Data: map[string]any{
+					"announcement_title": "New terms \r\nof use",
+					"announcements_url":  "https://reader.example.test/announcements",
+					"sent_to_everyone":   true,
+					"tenant_name":        "Aoto Press",
+				},
+			},
+			wantSubject: "New terms of use",
+		},
+		{
+			name: "a series title",
+			request: emailrenderer.Request{
+				Template: "reader_episode_published",
+				Locale:   "en",
+				Data: map[string]any{
+					"episode_title": "The First Night",
+					"episode_url":   "https://reader.example.test/series/S1/episodes/E1",
+					"series_title":  "The Lighthouse\nKeeper",
+					"settings_url":  "https://reader.example.test/settings/notifications",
+					"tenant_name":   "Aoto Press",
+				},
+			},
+			wantSubject: "The Lighthouse Keeper",
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			email, err := emailCopy(testCase.request)
+			if err != nil {
+				t.Fatalf("emailCopy: %v", err)
+			}
+			if strings.ContainsAny(email.Subject, "\r\n") || !strings.Contains(email.Subject, testCase.wantSubject) {
+				t.Fatalf("subject = %q, want one line naming %q", email.Subject, testCase.wantSubject)
+			}
+		})
+	}
+}
+
 func TestEmailCopyWritesANotificationMail(t *testing.T) {
 	for _, testCase := range []struct {
 		name     string

@@ -365,6 +365,17 @@ WHERE tenant_id = sqlc.arg('tenant_id')
     AND episode_id = sqlc.arg('episode_id')
 ORDER BY surface;
 
+-- name: ListPublishedEpisodeSurfacesByPublicID :many
+-- ListPublishedEpisodeSurfaces for an episode named by its public ID, which is
+-- how the approval of a comment names it.
+SELECT pes.surface
+FROM published_episode_surfaces pes
+    JOIN episodes e ON e.tenant_id = pes.tenant_id
+        AND e.id = pes.episode_id
+WHERE pes.tenant_id = sqlc.arg('tenant_id')
+    AND e.public_id = sqlc.arg('episode_public_id')
+ORDER BY pes.surface;
+
 -- name: ListEpisodeFollowerIDs :many
 -- Worker fan-out: the readers told about a new episode because they follow the
 -- episode itself or the series it belongs to, which files their notification
