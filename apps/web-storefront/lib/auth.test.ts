@@ -343,6 +343,22 @@ describe("web-storefront auth", () => {
     );
   });
 
+  it("loginWithIdToken: reports a first sign-in the tenant's closed sign-up refuses", async () => {
+    const { loginWithIdToken } = await importAuth();
+    mockLoginWithIdToken.mockRejectedValueOnce(
+      new ConnectError("closed", Code.FailedPrecondition, undefined, [
+        {
+          desc: ErrorInfoSchema,
+          value: { domain: "publira", reason: "SIGN_UP_CLOSED" },
+        },
+      ])
+    );
+
+    await expect(loginWithIdToken("TENANT001", idTokenSignIn)).resolves.toEqual(
+      { kind: "sign_up_closed" }
+    );
+  });
+
   it("loginWithIdToken: hands a refusal back for the caller to word", async () => {
     const { loginWithIdToken } = await importAuth();
     const error = new ConnectError("disabled", Code.FailedPrecondition);
@@ -777,6 +793,29 @@ describe("web-storefront auth", () => {
         tenantId: "TENANT001",
       })
     ).resolves.toEqual({ emailRefusal: undefined, ok: false });
+  });
+
+  it("signupPublic: reports a sign-up the tenant has closed", async () => {
+    const { signupPublic } = await importAuth();
+    mockCreateUser.mockRejectedValueOnce(
+      new ConnectError("closed", Code.FailedPrecondition, undefined, [
+        {
+          desc: ErrorInfoSchema,
+          value: { domain: "publira", reason: "SIGN_UP_CLOSED" },
+        },
+      ])
+    );
+
+    await expect(
+      signupPublic({
+        agreedPageVersionIds: [],
+        birthDate: "",
+        email: "reader@example.com",
+        name: "Reader",
+        password: "pw",
+        tenantId: "TENANT001",
+      })
+    ).resolves.toEqual({ ok: false, signUpClosed: true });
   });
 
   it("requestPublicEmailChange: confirms an account without a password with a passkey", async () => {

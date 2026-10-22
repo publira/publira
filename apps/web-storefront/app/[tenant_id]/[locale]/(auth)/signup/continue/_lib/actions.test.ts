@@ -179,6 +179,17 @@ describe("continueSignUpAction", () => {
     expect(mockClearPendingSignUp).not.toHaveBeenCalled();
   });
 
+  it("ends the sign-in on the notice when the tenant has closed sign-up", async () => {
+    mockLoginWithIdToken.mockResolvedValueOnce({ kind: "sign_up_closed" });
+
+    await expect(submit(form())).rejects.toThrow(
+      "redirect to /en/login?reason=sign_up_closed&returnTo=%2Fseries"
+    );
+
+    expect(mockClearPendingSignUp).toHaveBeenCalledOnce();
+    expect(mockWritePublicSessionCookie).not.toHaveBeenCalled();
+  });
+
   it("drops the cached pages when the reader agreed to superseded ones", async () => {
     mockReadConsentPageVersionIds.mockResolvedValueOnce([
       "cccccccc-cccc-4ccc-8ccc-cccccccccccc",

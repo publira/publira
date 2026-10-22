@@ -42,6 +42,25 @@ const NameInput = async () => {
   );
 };
 
+/** The way to the sign-in screen, for a reader who already has an account. */
+export const SignupFooter = () => (
+  <AuthScreenFooter>
+    <p className="text-muted-foreground">
+      <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+        <Message message="storefront.auth.signup.have_account" />
+      </Suspense>{" "}
+      <Suspense fallback={<SkeletonLine className="inline-block h-4 w-12" />}>
+        <LocaleLink
+          href="/login"
+          className="text-primary underline underline-offset-4"
+        >
+          <Message message="storefront.auth.signup.login" />
+        </LocaleLink>
+      </Suspense>
+    </p>
+  </AuthScreenFooter>
+);
+
 export const SignupForm = () => (
   <>
     <AuthScreenBody>
@@ -149,20 +168,6 @@ export const SignupForm = () => (
       </Suspense>
     </AuthScreenBody>
 
-    <AuthScreenFooter>
-      <p className="text-muted-foreground">
-        <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-          <Message message="storefront.auth.signup.have_account" />
-        </Suspense>{" "}
-        <Suspense fallback={<SkeletonLine className="inline-block h-4 w-12" />}>
-          <LocaleLink
-            href="/login"
-            className="text-primary underline underline-offset-4"
-          >
-            <Message message="storefront.auth.signup.login" />
-          </LocaleLink>
-        </Suspense>
-      </p>
-    </AuthScreenFooter>
+    <SignupFooter />
   </>
 );

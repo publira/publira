@@ -4140,6 +4140,10 @@
         "sent": "我們已寄出重設郵件。請開啟郵件中的連結設定新密碼。",
         "title": "重設郵件已寄出"
       },
+      "sign_up_closed": {
+        "default_message": "本站目前不接受新帳號註冊。",
+        "title": "暫停註冊"
+      },
       "signup": {
         "birth_date_help": "本網站在開啟有年齡限制的作品前會核對年齡。您也可以稍後登錄，但登錄後無法變更。",
         "birth_date_label": "出生日期",

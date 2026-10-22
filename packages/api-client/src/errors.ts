@@ -330,6 +330,16 @@ export const isTenantSuspendedRpcError = (error: unknown): boolean =>
   rpcErrorHasReason(error, RPC_ERROR_REASON.tenantSuspended);
 
 /**
+ * The tenant has closed reader sign-up, so the public API refuses to open a new
+ * reader account: a password sign-up, and an Apple or Google sign-in that
+ * matches no account yet. A reader who already has an account is unaffected,
+ * so a caller shows the tenant's notice rather than reporting a failure.
+ */
+export const isSignUpClosedRpcError = (error: unknown): boolean =>
+  isRpcError(error, Code.FailedPrecondition) &&
+  rpcErrorHasReason(error, RPC_ERROR_REASON.signUpClosed);
+
+/**
  * The signed-in reader has not agreed to the version of the tenant's terms of
  * service or privacy policy in force, and the public API refuses what they
  * asked until they do (`AuthService.GetMyLegalPageAgreements` names the pages).

@@ -38,6 +38,10 @@ import { getTenantSiteCopy, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 import { PasskeySignIn } from "./_components/passkey-sign-in";
+import {
+  RefusedSignUpNotice,
+  SignUpPrompt,
+} from "./_components/sign-up-prompt";
 import { loginAction } from "./_lib/actions";
 import { parseLoginSearchParams } from "./_lib/search-params";
 
@@ -82,14 +86,22 @@ const LoginForm = ({
   resetDone,
   returnToPath,
   sessionRevoked,
+  signUpClosed,
 }: {
   errorMessage?: string;
   resetDone?: boolean;
   returnToPath: string;
   sessionRevoked?: boolean;
+  signUpClosed?: boolean;
 }) => (
   <>
     <AuthScreenBody>
+      {signUpClosed ? (
+        <Suspense fallback={<Skeleton className="h-16 w-full" />}>
+          <RefusedSignUpNotice />
+        </Suspense>
+      ) : null}
+
       <form action={loginAction} className="grid gap-4">
         <LocaleField />
         <TenantIdField />
@@ -196,19 +208,9 @@ const LoginForm = ({
           </LocaleLink>
         </Suspense>
       </p>
-      <p className="text-muted-foreground">
-        <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-          <Message message="storefront.auth.login.no_account" />
-        </Suspense>{" "}
-        <Suspense fallback={<SkeletonLine className="inline-block h-4 w-12" />}>
-          <LocaleLink
-            href="/signup"
-            className="text-primary underline underline-offset-4"
-          >
-            <Message message="storefront.auth.login.signup" />
-          </LocaleLink>
-        </Suspense>
-      </p>
+      <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+        <SignUpPrompt refused={signUpClosed === true} />
+      </Suspense>
     </AuthScreenFooter>
   </>
 );
@@ -218,8 +220,13 @@ const LoginFormContent = async ({
 }: {
   searchParams: PageProps<"/[tenant_id]/[locale]/login">["searchParams"];
 }) => {
-  const { errorMessage, resetDone, returnToPath, sessionRevoked } =
-    parseLoginSearchParams(await searchParams);
+  const {
+    errorMessage,
+    resetDone,
+    returnToPath,
+    sessionRevoked,
+    signUpClosed,
+  } = parseLoginSearchParams(await searchParams);
 
   return (
     <LoginForm
@@ -227,6 +234,7 @@ const LoginFormContent = async ({
       resetDone={resetDone}
       returnToPath={returnToPath}
       sessionRevoked={sessionRevoked}
+      signUpClosed={signUpClosed}
     />
   );
 };

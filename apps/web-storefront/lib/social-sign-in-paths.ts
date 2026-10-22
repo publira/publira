@@ -1,5 +1,6 @@
 import type { Locale } from "@publira/i18n";
 
+import { SESSION_REVOKED_PARAM_NAME } from "./auth-shared";
 import type { SignInIntent } from "./social-sign-in";
 import { tenantLocalePath } from "./tenant-locale-path";
 
@@ -46,5 +47,29 @@ export const signInFailurePath = async (
   if (message) {
     params.set("error", message);
   }
+  return `${path}?${params.toString()}`;
+};
+
+/**
+ * The `reason` a first sign-in refused because the tenant has closed sign-up
+ * carries to the sign-in screen, which shows the tenant's notice for it.
+ */
+export const SIGN_UP_CLOSED_REASON = "sign_up_closed";
+
+/**
+ * Where a first sign-in the tenant's closed sign-up refused sends the reader:
+ * the sign-in screen, which keeps the way in for a reader who has an account
+ * and says why none could be made.
+ */
+export const signUpClosedPath = async ({
+  locale,
+  returnTo,
+  tenantId,
+}: Omit<SignInOrigin, "intent">): Promise<string> => {
+  const path = await tenantLocalePath(tenantId, locale, "/login");
+  const params = new URLSearchParams({
+    [SESSION_REVOKED_PARAM_NAME]: SIGN_UP_CLOSED_REASON,
+    returnTo,
+  });
   return `${path}?${params.toString()}`;
 };

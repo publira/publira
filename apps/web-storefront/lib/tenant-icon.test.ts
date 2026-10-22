@@ -13,6 +13,7 @@ const siteInfo = (overrides: Partial<TenantSiteInfo>): TenantSiteInfo => ({
   domain: "example.test",
   name: "Example Tenant",
   publicId: "TENANT_PUBLIC",
+  signUpOpen: true,
   supportedLocales: ["ja"],
   timeZone: "UTC",
   ...overrides,

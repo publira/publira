@@ -158,6 +158,16 @@ export const signupAction = async (
     password,
     tenantId,
   });
+  if (!signup.ok && "signUpClosed" in signup) {
+    // The page that offered the form read sign-up as open from a cache the
+    // setting has since changed under, so dropping it is what re-renders the
+    // page with the tenant's notice in place of the form.
+    updateTag(tenantSiteTag(tenantId));
+    return {
+      message: t("storefront.auth.sign_up_closed.default_message"),
+      ok: false,
+    };
+  }
   if (!signup.ok) {
     return {
       message: emailRefusalMessage(
