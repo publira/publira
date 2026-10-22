@@ -1,20 +1,3 @@
-// Package mfaflow is the second-factor flow the tenant consoles and the
-// Platform Console share: deciding what a correct password still leaves owed,
-// enrolling and confirming an authenticator, settling a sign-in with a code or
-// a recovery code, counting failures toward the lock, spending the challenge a
-// password earned, taking the factor off, and replacing the recovery codes.
-//
-// The flow is written once over [Account], which each API implements for its
-// own principal: tenant staff over users and audit_logs, operators over
-// platform_users and platform_audit_logs. The two keep separate tables,
-// database roles, and row-level security on purpose, so an Account is what
-// the flow reaches them through rather than a schema they share. What one side
-// has and the other does not — the tenant's passkeys and per-role
-// requirement, the operator policy — stays in that side's API and meets the
-// flow only where an Account method names it.
-//
-// The codes and the arithmetic behind them are [mfa]'s; this package is what
-// is done with them, in the order the RPCs do it.
 package mfaflow
 
 import (
