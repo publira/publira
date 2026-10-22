@@ -189,9 +189,7 @@ The stack traces nothing. `PUBLIRA_E2E_TRACING` selects whether it does, and `sc
 | `off` (default) | `PUBLIRA_TRACING_ENABLED` unset, so nothing is recorded or exported | Not started |
 | `on` | `PUBLIRA_TRACING_ENABLED=true`, exporting over OTLP to `http://127.0.0.1:<PUBLIRA_E2E_JAEGER_OTLP_PORT>`, every root span sampled | The `jaeger` service, through `COMPOSE_PROFILES=tracing`, on `PUBLIRA_E2E_JAEGER_OTLP_PORT` (default `4319`) for the intake and `PUBLIRA_E2E_JAEGER_QUERY_PORT` (default `16687`) for the query API, which a spec reads at `PUBLIRA_E2E_JAEGER_BASE_URL` |
 
-`task e2e:tracing` sets `PUBLIRA_E2E_TRACING=on` and `PUBLIRA_E2E_GROUP=tracing`. Its one project, `trace-propagation`, is `tests/storefront.trace-propagation.spec.ts`: it searches the storefront through the edge for a keyword no request has used, so no cache entry answers it, and reads the trace back with `tracesOfService()` from `src/traces.ts` until it holds the storefront's span, its client span for the search RPC, the server span of `publira-api-server` whose parent is that client span, and a `db.query` span beneath the server span. The run of the whole graph leaves the group out, since its stack traces nothing.
-
-On `on` under `PUBLIRA_E2E_WEB_MODE=dev`, web-storefront also logs the warning `next dev` prints about the root span of a cold render, which its server log check accepts on that stack alone.
+`task e2e:tracing` sets `PUBLIRA_E2E_TRACING=on` and `PUBLIRA_E2E_GROUP=tracing`, which runs one project, `trace-propagation` (`tests/storefront.trace-propagation.spec.ts`). The run of the whole graph leaves the group out, since its stack traces nothing.
 
 ## Readiness and failures
 
