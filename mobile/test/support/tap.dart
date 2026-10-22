@@ -26,6 +26,12 @@ import 'package:flutter_test/flutter_test.dart';
 /// [scrollable] and it is scrolled until [finder] matches; without it, the tap
 /// fails naming [finder].
 ///
+/// A row above can also grow by more than the list's cache extent, as a
+/// section that finishes loading does, and the list then disposes the row the
+/// tap was aimed at. With [scrollable] the row is found again the same way and
+/// the aim starts over on its new element; without it, the tap fails naming
+/// [finder].
+///
 /// Those frames move no clock, so the wait gives up after [maxFrames] of them
 /// rather than after a length of time a loaded machine would use up.
 Future<void> tapVisible(
@@ -42,12 +48,19 @@ Future<void> tapVisible(
     }
     await _scrollUntilMatched(tester, finder, scrollable);
   }
-  final element = tester.element(finder);
+  var element = tester.element(finder);
   for (var frame = 0; frame < maxFrames; frame++) {
     await Scrollable.ensureVisible(element);
     await tester.pump();
     if (!element.mounted) {
-      fail('$finder left the tree while a tap was being aimed at it');
+      if (scrollable == null) {
+        fail('$finder left the tree while a tap was being aimed at it');
+      }
+      if (finder.evaluate().isEmpty) {
+        await _scrollUntilMatched(tester, finder, scrollable);
+      }
+      element = tester.element(finder);
+      continue;
     }
     if (_isWholeOnScreen(element) && _isReachable(finder)) {
       await tester.tap(finder);
