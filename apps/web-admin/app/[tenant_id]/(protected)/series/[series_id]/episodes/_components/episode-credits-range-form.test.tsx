@@ -230,7 +230,7 @@ describe("EpisodeCreditsRangeForm", () => {
 
     const form = applyButton().closest("form");
     if (!(form instanceof HTMLFormElement)) {
-      throw new Error("apply is not inside a form");
+      throw new TypeError("apply is not inside a form");
     }
     fireEvent.submit(form);
 
@@ -277,7 +277,7 @@ describe("EpisodeCreditsRangeForm", () => {
 
     const form = applyButton().closest("form");
     if (!(form instanceof HTMLFormElement)) {
-      throw new Error("apply is not inside a form");
+      throw new TypeError("apply is not inside a form");
     }
     fireEvent.submit(form);
 
@@ -328,7 +328,7 @@ describe("EpisodeCreditsRangeForm", () => {
 
     const form = applyButton().closest("form");
     if (!(form instanceof HTMLFormElement)) {
-      throw new Error("apply is not inside a form");
+      throw new TypeError("apply is not inside a form");
     }
     fireEvent.submit(form);
 

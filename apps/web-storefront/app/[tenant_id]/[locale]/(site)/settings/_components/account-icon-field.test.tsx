@@ -69,7 +69,7 @@ const png = () =>
 const sentForm = (action: typeof mockUploadIcon): FormData => {
   const [form] = action.mock.calls[0] ?? [];
   if (!(form instanceof FormData)) {
-    throw new Error("the Action was not called with a form");
+    throw new TypeError("the Action was not called with a form");
   }
   return form;
 };
