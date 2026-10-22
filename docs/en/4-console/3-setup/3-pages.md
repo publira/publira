@@ -1,8 +1,8 @@
 ---
 title: Pages
-description: Write the site's own pages in Markdown, publish and roll back their versions, translate them, and make two of them the terms of service and privacy policy readers agree to.
+description: Write the site's own pages in Markdown, publish and roll back their versions, translate them, make two of them the terms of service and privacy policy readers agree to, and know what the site stores in a reader's browser.
 published: 2026-10-07
-updated: 2026-10-14
+updated: 2026-10-22
 ---
 
 **Pages**, under **Site**, holds the pages the publisher writes for the site: the terms of service, the privacy policy, a page about the publisher, submission guidelines, and anything else that is not a series. A page is written in Markdown, kept in versions, and can be translated into each of the site's languages.
@@ -87,3 +87,30 @@ A reader asked to agree is sent, the next time they open a page of the site whil
 Each translation is asked about on its own. A reader who agreed to the page in another language, whose translation did not change, is not asked, so a change that applies to every language is published with **Publish and ask readers to agree** on each translation's tab.
 
 The app asks too. A reader signed in to the app is shown the same screen in place of the rest of the app when they open it, when they come back to it, or as soon as the app is refused something because they have not agreed. It links the same pages, and offers **Sign out** and **Delete account** instead of agreeing; **Agree and continue** returns them to where they were in the app. An agreement given in the app or on the site counts for both, so a reader is asked once.
+
+### What the site stores in a reader's browser
+
+A privacy policy says what the site keeps in its readers' browsers. These are all the cookies and browser storage the site sets, so the policy can list them without guessing. The cookie names are the same on every Publira site.
+
+| Cookie | Set when | Holds | Kept for |
+| --- | --- | --- | --- |
+| `publira_web_storefront_auth` | The reader signs in | The reader's session, encrypted with a key only the site holds | Until the session ends: a day after signing in, or when the reader signs out |
+| `publira_web_storefront_signup_pending_email`, `publira_web_storefront_reset_password_email`, `publira_web_storefront_resend_verification_email` | The reader submits the sign-up form, asks to reset their password, or asks for the confirmation link again | The email address the message was sent to, so the next page can name it without putting it in the page's address | One minute |
+| `publira_web_storefront_sign_in` | The reader chooses **Continue with Apple** or **Continue with Google** | The sign-in in progress, encrypted, which Apple's or Google's answer is checked against | Ten minutes, or until the answer arrives |
+| `publira_web_storefront_sign_up` | A reader signing in with Apple or Google for the first time is shown **Finish signing up** | What Apple or Google returned about the reader, encrypted, until they agree to the terms | Four minutes |
+| `publira_web_storefront_dismissed_announcement` | The reader chooses **Close this announcement** | The identifier of the announcement they closed | A year |
+| `publira_resolved_locale` | A visit, whenever the cookie does not already hold the site's default language | The site's default language code, such as `en`, and nothing about the reader | A year |
+| `publira_web_storefront_view_actor` | A signed-out reader opens a series or an episode | A random identifier that counts their views and nothing else. It is not tied to an account, and nothing on the site is personalised by it | 180 days |
+
+| Browser storage | Set when | Holds | Kept for |
+| --- | --- | --- | --- |
+| `publira.age-rating.confirmation.<tenant ID>` in `localStorage` | The reader confirms their age before opening a rated series or episode, with **I am 15 or older** or **I am 18 or older** | The highest rating confirmed, `r15` or `r18` | Until the reader clears the site's data |
+| `publira.wide-viewer` in `sessionStorage` | The reader widens the episode viewer to the window, or narrows it again | Whether the viewer is wide | Until the tab is closed |
+| A push subscription | The reader turns on **Browser notifications** under **Settings** and allows notifications in the browser's own prompt | The address the browser's push service delivers the site's notifications to | Until the reader turns notifications off or signs out |
+| The site's service worker | The same moment as the push subscription | The script that shows the site's notifications. It keeps no pages and nothing about the reader | Until the reader clears the site's data. Turning notifications off or signing out ends the subscription, and the worker stays with nothing to deliver |
+
+None of these is sent anywhere but the site itself, and the site loads nothing from another company that could set cookies of its own or learn about the reader. A sentence such as this one can say so in your policy: "Our site stores only the cookies and browser storage listed here, and sends nothing from them to any other company."
+
+The reader's browser reaches another company only when the reader does something that needs one: choosing **Continue with Apple** or **Continue with Google** takes them to Apple or Google to sign in, **Share on X** and **Share on LINE** open those services, and browser notifications are delivered through the push service of the company that makes the reader's browser, encrypted so that service cannot read them.
+
+The list covers what Publira itself stores. A tag added to the site from outside it, such as Google's tag for measuring visits, brings its own cookies and sends what it collects to its provider, and your privacy policy has to cover those as well, from the provider's own documentation.
