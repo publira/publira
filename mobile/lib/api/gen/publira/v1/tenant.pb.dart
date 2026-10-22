@@ -386,6 +386,8 @@ class GetTenantResponse extends $pb.GeneratedMessage {
     TenantGoogleSignIn? googleSignIn,
     $core.String? currency,
     $core.Iterable<$core.String>? supportedLocales,
+    $core.bool? signUpOpen,
+    $core.String? signUpClosedMessage,
   }) {
     final result = GetTenantResponse._();
     if (tenantPublicId != null) result.tenantPublicId = tenantPublicId;
@@ -414,6 +416,9 @@ class GetTenantResponse extends $pb.GeneratedMessage {
     if (currency != null) result.currency = currency;
     if (supportedLocales != null)
       result.supportedLocales.addAll(supportedLocales);
+    if (signUpOpen != null) result.signUpOpen = signUpOpen;
+    if (signUpClosedMessage != null)
+      result.signUpClosedMessage = signUpClosedMessage;
     return result;
   }
 
@@ -458,6 +463,8 @@ class GetTenantResponse extends $pb.GeneratedMessage {
         subBuilder: TenantGoogleSignIn.$_createMessage)
     ..aOS(23, _omitFieldNames ? '' : 'currency')
     ..pPS(24, _omitFieldNames ? '' : 'supportedLocales')
+    ..aOB(25, _omitFieldNames ? '' : 'signUpOpen')
+    ..aOS(26, _omitFieldNames ? '' : 'signUpClosedMessage')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -724,6 +731,32 @@ class GetTenantResponse extends $pb.GeneratedMessage {
   /// fails this RPC rather than being left out.
   @$pb.TagNumber(24)
   $pb.PbList<$core.String> get supportedLocales => $_getList(21);
+
+  /// Whether the tenant accepts new reader accounts. While it does not, the
+  /// storefront shows sign_up_closed_message in place of its sign-up form, and
+  /// AuthService.CreateUser and a LoginWithIdToken that would create an account
+  /// are refused with failed_precondition and the SIGN_UP_CLOSED reason. True
+  /// for a tenant that has saved nothing.
+  @$pb.TagNumber(25)
+  $core.bool get signUpOpen => $_getBF(22);
+  @$pb.TagNumber(25)
+  set signUpOpen($core.bool value) => $_setBool(22, value);
+  @$pb.TagNumber(25)
+  $core.bool hasSignUpOpen() => $_has(22);
+  @$pb.TagNumber(25)
+  void clearSignUpOpen() => $_clearField(25);
+
+  /// The tenant's own words for a visitor while sign_up_open is false, as
+  /// plain text. Empty where the storefront shows its default copy, and always
+  /// empty while sign_up_open is true.
+  @$pb.TagNumber(26)
+  $core.String get signUpClosedMessage => $_getSZ(23);
+  @$pb.TagNumber(26)
+  set signUpClosedMessage($core.String value) => $_setString(23, value);
+  @$pb.TagNumber(26)
+  $core.bool hasSignUpClosedMessage() => $_has(23);
+  @$pb.TagNumber(26)
+  void clearSignUpClosedMessage() => $_clearField(26);
 }
 
 /// How a client signs a reader in with Apple. The iOS app signs in with its own

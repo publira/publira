@@ -1444,6 +1444,14 @@ type TenantRoyaltyConfig struct {
 	UpdatedAt      time.Time     `json:"updated_at"`
 }
 
+type TenantSignUpSetting struct {
+	TenantID      uuid.UUID `json:"tenant_id"`
+	SignUpOpen    bool      `json:"sign_up_open"`
+	ClosedMessage string    `json:"closed_message"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
 type TenantSmtpConfig struct {
 	TenantID            uuid.UUID      `json:"tenant_id"`
 	SmtpOverrideEnabled bool           `json:"smtp_override_enabled"`

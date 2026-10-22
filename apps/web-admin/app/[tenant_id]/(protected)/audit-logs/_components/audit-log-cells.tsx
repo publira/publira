@@ -405,7 +405,7 @@ const readerActionName = (action: string) => {
   }
 };
 
-/** An action on the tenant's settings or its branding. */
+/** An action on the tenant's settings. */
 const settingsActionName = (action: string) => {
   switch (action) {
     case "tenant_site_copy_updated": {
@@ -449,21 +449,6 @@ const settingsActionName = (action: string) => {
         <Message message="admin.audit.actions.tenant_legal_pages_updated" />
       );
     }
-    case "tenant_theme_updated": {
-      return <Message message="admin.audit.actions.tenant_theme_updated" />;
-    }
-    case "tenant_logo_uploaded": {
-      return <Message message="admin.audit.actions.tenant_logo_uploaded" />;
-    }
-    case "tenant_logo_deleted": {
-      return <Message message="admin.audit.actions.tenant_logo_deleted" />;
-    }
-    case "tenant_icon_uploaded": {
-      return <Message message="admin.audit.actions.tenant_icon_uploaded" />;
-    }
-    case "tenant_icon_deleted": {
-      return <Message message="admin.audit.actions.tenant_icon_deleted" />;
-    }
     case "tenant_community_limits_updated": {
       return (
         <Message message="admin.audit.actions.tenant_community_limits_updated" />
@@ -486,6 +471,35 @@ const settingsActionName = (action: string) => {
       return (
         <Message message="admin.audit.actions.tenant_crawler_settings_updated" />
       );
+    }
+    case "tenant_sign_up_settings_updated": {
+      return (
+        <Message message="admin.audit.actions.tenant_sign_up_settings_updated" />
+      );
+    }
+    default: {
+      return null;
+    }
+  }
+};
+
+/** An action on the tenant's branding. */
+const brandingActionName = (action: string) => {
+  switch (action) {
+    case "tenant_theme_updated": {
+      return <Message message="admin.audit.actions.tenant_theme_updated" />;
+    }
+    case "tenant_logo_uploaded": {
+      return <Message message="admin.audit.actions.tenant_logo_uploaded" />;
+    }
+    case "tenant_logo_deleted": {
+      return <Message message="admin.audit.actions.tenant_logo_deleted" />;
+    }
+    case "tenant_icon_uploaded": {
+      return <Message message="admin.audit.actions.tenant_icon_uploaded" />;
+    }
+    case "tenant_icon_deleted": {
+      return <Message message="admin.audit.actions.tenant_icon_deleted" />;
     }
     default: {
       return null;
@@ -601,6 +615,7 @@ const actionName = (action: string) =>
   readerActionName(action) ??
   purchaseActionName(action) ??
   settingsActionName(action) ??
+  brandingActionName(action) ??
   integrationActionName(action) ??
   mfaActionName(action);
 
@@ -727,6 +742,9 @@ const settingTargetName = (targetType: string) => {
     }
     case "tenant_sign_in_settings": {
       return <Message message="admin.audit.targets.tenant_sign_in_settings" />;
+    }
+    case "tenant_sign_up_settings": {
+      return <Message message="admin.audit.targets.tenant_sign_up_settings" />;
     }
     case "tenant_site_copy": {
       return <Message message="admin.audit.targets.tenant_site_copy" />;

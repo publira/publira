@@ -15,6 +15,7 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/signin"
+	"github.com/publira/publira/server/internal/signupsettings"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
 
@@ -135,6 +136,19 @@ func (s *apiServer) GetTenant(
 		}
 	}
 
+	// Failed rather than answered as open, which web-storefront would cache as
+	// a sign-up form the API then refuses.
+	signUp, err := signupsettings.Get(ctx, queries, tenant.ID)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to read the tenant sign-up settings", err, "tenant_id", tenant.ID.String())
+	}
+	// The message is kept while sign-up is open, so reopening and closing again
+	// does not lose it, but it is the console's to show then, not a visitor's.
+	signUpClosedMessage := ""
+	if !signUp.Open {
+		signUpClosedMessage = signUp.ClosedMessage
+	}
+
 	return &publirav1.GetTenantResponse{
 		TenantPublicId:            tenant.PublicID,
 		TenantName:                tenant.Name,
@@ -158,6 +172,8 @@ func (s *apiServer) GetTenant(
 		AcceptsGooglePlayPayments: acceptsGooglePlayPayments,
 		AppleSignIn:               appleSignIn,
 		GoogleSignIn:              googleSignIn,
+		SignUpOpen:                signUp.Open,
+		SignUpClosedMessage:       signUpClosedMessage,
 	}, nil
 }
 

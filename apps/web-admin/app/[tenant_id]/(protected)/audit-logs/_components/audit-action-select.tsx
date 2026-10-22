@@ -505,6 +505,10 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               value: "tenant_crawler_settings_updated",
             },
             {
+              label: t("admin.audit.actions.tenant_sign_up_settings_updated"),
+              value: "tenant_sign_up_settings_updated",
+            },
+            {
               label: t("admin.audit.actions.admin_mfa_enrolled"),
               value: "admin_mfa_enrolled",
             },

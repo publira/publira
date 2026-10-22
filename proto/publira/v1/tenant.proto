@@ -120,6 +120,16 @@ message GetTenantResponse {
   // never empty; like default_locale, a stored code naming no supported locale
   // fails this RPC rather than being left out.
   repeated string supported_locales = 24;
+  // Whether the tenant accepts new reader accounts. While it does not, the
+  // storefront shows sign_up_closed_message in place of its sign-up form, and
+  // AuthService.CreateUser and a LoginWithIdToken that would create an account
+  // are refused with failed_precondition and the SIGN_UP_CLOSED reason. True
+  // for a tenant that has saved nothing.
+  bool sign_up_open = 25;
+  // The tenant's own words for a visitor while sign_up_open is false, as
+  // plain text. Empty where the storefront shows its default copy, and always
+  // empty while sign_up_open is true.
+  string sign_up_closed_message = 26;
 }
 
 // How a client signs a reader in with Apple. The iOS app signs in with its own

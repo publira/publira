@@ -73,6 +73,11 @@ func TestCreateUserRecordsTheRequestWithoutLookingUpTheAddress(t *testing.T) {
 	client, mock := newRequestFormClient(t)
 	tenantID := uuid.Must(uuid.NewV7())
 	expectTenantLookup(mock, tenantID, "TENANT", time.Now())
+	// Whether the tenant accepts new readers is its setting, and says nothing
+	// about the address either.
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantSignUpSettings)).
+		WithArgs(tenantID).
+		WillReturnError(sql.ErrNoRows)
 	expectNoEmailRejection(mock, tenantID)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantLegalPages)).
 		WithArgs("ja", tenantID).

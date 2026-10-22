@@ -29,6 +29,7 @@ export const RPC_ERROR_REASON = {
   readerCreditedOnEpisode: "READER_CREDITED_ON_EPISODE",
   readerIconNotAllowed: "READER_ICON_NOT_ALLOWED",
   readerIconPresetLimit: "READER_ICON_PRESET_LIMIT",
+  signUpClosed: "SIGN_UP_CLOSED",
   smtpTestAuthentication: "SMTP_TEST_AUTHENTICATION",
   smtpTestConnection: "SMTP_TEST_CONNECTION",
   smtpTestRecipient: "SMTP_TEST_RECIPIENT",

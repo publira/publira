@@ -173,6 +173,29 @@ describe("AuditLogActionCell", () => {
   );
 
   it.each(getLocales())(
+    "names a change to reader sign-up in %s",
+    async (locale) => {
+      const cell = await renderActionCell(
+        locale,
+        "tenant_sign_up_settings_updated",
+        "tenant_sign_up_settings",
+        "TENANT001"
+      );
+
+      const actionName = sharedMessage(
+        "admin.audit.actions.tenant_sign_up_settings_updated",
+        locale
+      );
+      const targetName = sharedMessage(
+        "admin.audit.targets.tenant_sign_up_settings",
+        locale
+      );
+
+      expect(cell.textContent).toBe(`${actionName}${targetName} / TENANT001`);
+    }
+  );
+
+  it.each(getLocales())(
     "names a change to the refused email addresses in %s",
     async (locale) => {
       const cell = await renderActionCell(

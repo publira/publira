@@ -355,6 +355,14 @@ REVOKE DELETE ON tenant_crawler_settings FROM publira_admin;
 GRANT SELECT ON tenant_crawler_settings TO publira_public;
 GRANT SELECT, INSERT, UPDATE ON tenant_crawler_settings TO publira_admin;
 
+-- Whether a tenant accepts new readers is the tenant console's to set. The
+-- storefront reads it to render its sign-up form and to refuse a sign-up while
+-- it is closed, and must not be able to reopen sign-up its own tenant closed.
+REVOKE INSERT, UPDATE, DELETE ON tenant_sign_up_settings FROM publira_public;
+REVOKE DELETE ON tenant_sign_up_settings FROM publira_admin;
+GRANT SELECT ON tenant_sign_up_settings TO publira_public;
+GRANT SELECT, INSERT, UPDATE ON tenant_sign_up_settings TO publira_admin;
+
 -- The tenant console tells staff when a withdrawn comment is deleted, and the
 -- purge batches delete by the same period, so both resolve a tenant's retention
 -- from the platform defaults. They hold no secret, and neither role may write

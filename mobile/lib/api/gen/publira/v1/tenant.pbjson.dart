@@ -199,6 +199,14 @@ const GetTenantResponse$json = {
       '5': 9,
       '10': 'supportedLocales'
     },
+    {'1': 'sign_up_open', '3': 25, '4': 1, '5': 8, '10': 'signUpOpen'},
+    {
+      '1': 'sign_up_closed_message',
+      '3': 26,
+      '4': 1,
+      '5': 9,
+      '10': 'signUpClosedMessage'
+    },
   ],
   '9': [
     {'1': 16, '2': 17},
@@ -228,8 +236,10 @@ final $typed_data.Uint8List getTenantResponseDescriptor = $convert.base64Decode(
     'eVBheW1lbnRzEkEKDWFwcGxlX3NpZ25faW4YFSABKAsyHS5wdWJsaXJhLnYxLlRlbmFudEFwcG'
     'xlU2lnbkluUgthcHBsZVNpZ25JbhJECg5nb29nbGVfc2lnbl9pbhgWIAEoCzIeLnB1YmxpcmEu'
     'djEuVGVuYW50R29vZ2xlU2lnbkluUgxnb29nbGVTaWduSW4SGgoIY3VycmVuY3kYFyABKAlSCG'
-    'N1cnJlbmN5EisKEXN1cHBvcnRlZF9sb2NhbGVzGBggAygJUhBzdXBwb3J0ZWRMb2NhbGVzSgQI'
-    'EBARSgQIERASUgp0ZXJtc19wYWdlUgxwcml2YWN5X3BhZ2U=');
+    'N1cnJlbmN5EisKEXN1cHBvcnRlZF9sb2NhbGVzGBggAygJUhBzdXBwb3J0ZWRMb2NhbGVzEiAK'
+    'DHNpZ25fdXBfb3BlbhgZIAEoCFIKc2lnblVwT3BlbhIzChZzaWduX3VwX2Nsb3NlZF9tZXNzYW'
+    'dlGBogASgJUhNzaWduVXBDbG9zZWRNZXNzYWdlSgQIEBARSgQIERASUgp0ZXJtc19wYWdlUgxw'
+    'cml2YWN5X3BhZ2U=');
 
 @$core.Deprecated('Use tenantAppleSignInDescriptor instead')
 const TenantAppleSignIn$json = {

@@ -335,8 +335,18 @@ type GetTenantResponse struct {
 	// never empty; like default_locale, a stored code naming no supported locale
 	// fails this RPC rather than being left out.
 	SupportedLocales []string `protobuf:"bytes,24,rep,name=supported_locales,json=supportedLocales,proto3" json:"supported_locales,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Whether the tenant accepts new reader accounts. While it does not, the
+	// storefront shows sign_up_closed_message in place of its sign-up form, and
+	// AuthService.CreateUser and a LoginWithIdToken that would create an account
+	// are refused with failed_precondition and the SIGN_UP_CLOSED reason. True
+	// for a tenant that has saved nothing.
+	SignUpOpen bool `protobuf:"varint,25,opt,name=sign_up_open,json=signUpOpen,proto3" json:"sign_up_open,omitempty"`
+	// The tenant's own words for a visitor while sign_up_open is false, as
+	// plain text. Empty where the storefront shows its default copy, and always
+	// empty while sign_up_open is true.
+	SignUpClosedMessage string `protobuf:"bytes,26,opt,name=sign_up_closed_message,json=signUpClosedMessage,proto3" json:"sign_up_closed_message,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *GetTenantResponse) Reset() {
@@ -521,6 +531,20 @@ func (x *GetTenantResponse) GetSupportedLocales() []string {
 		return x.SupportedLocales
 	}
 	return nil
+}
+
+func (x *GetTenantResponse) GetSignUpOpen() bool {
+	if x != nil {
+		return x.SignUpOpen
+	}
+	return false
+}
+
+func (x *GetTenantResponse) GetSignUpClosedMessage() string {
+	if x != nil {
+		return x.SignUpClosedMessage
+	}
+	return ""
 }
 
 // How a client signs a reader in with Apple. The iOS app signs in with its own
@@ -1239,7 +1263,7 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\x1bGetTenantLegalPagesResponse\x12:\n" +
 	"\n" +
 	"terms_page\x18\x01 \x01(\v2\x1b.publira.v1.TenantLegalPageR\ttermsPage\x12>\n" +
-	"\fprivacy_page\x18\x02 \x01(\v2\x1b.publira.v1.TenantLegalPageR\vprivacyPage\"\xf9\b\n" +
+	"\fprivacy_page\x18\x02 \x01(\v2\x1b.publira.v1.TenantLegalPageR\vprivacyPage\"\xd0\t\n" +
 	"\x11GetTenantResponse\x12(\n" +
 	"\x10tenant_public_id\x18\x01 \x01(\tR\x0etenantPublicId\x12\x1f\n" +
 	"\vtenant_name\x18\x02 \x01(\tR\n" +
@@ -1264,7 +1288,10 @@ const file_publira_v1_tenant_proto_rawDesc = "" +
 	"\rapple_sign_in\x18\x15 \x01(\v2\x1d.publira.v1.TenantAppleSignInR\vappleSignIn\x12D\n" +
 	"\x0egoogle_sign_in\x18\x16 \x01(\v2\x1e.publira.v1.TenantGoogleSignInR\fgoogleSignIn\x12\x1a\n" +
 	"\bcurrency\x18\x17 \x01(\tR\bcurrency\x12+\n" +
-	"\x11supported_locales\x18\x18 \x03(\tR\x10supportedLocalesJ\x04\b\x10\x10\x11J\x04\b\x11\x10\x12R\n" +
+	"\x11supported_locales\x18\x18 \x03(\tR\x10supportedLocales\x12 \n" +
+	"\fsign_up_open\x18\x19 \x01(\bR\n" +
+	"signUpOpen\x123\n" +
+	"\x16sign_up_closed_message\x18\x1a \x01(\tR\x13signUpClosedMessageJ\x04\b\x10\x10\x11J\x04\b\x11\x10\x12R\n" +
 	"terms_pageR\fprivacy_page\"4\n" +
 	"\x11TenantAppleSignIn\x12\x1f\n" +
 	"\vservices_id\x18\x01 \x01(\tR\n" +
