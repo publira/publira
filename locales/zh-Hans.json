@@ -2840,6 +2840,24 @@
           "entries_refused": "请检查列表。每栏只能填写一个电子邮件地址或域名，最多可列出{$max}个。"
         }
       },
+      "sign_up": {
+        "title": "读者注册",
+        "description": "访客能否在网站上新建读者账户。无论如何选择，已有账户的读者都可以照常登录、购买和阅读。",
+        "closed_notice": "注册已暂停。在重新开放之前，任何人都无法通过电子邮件地址或Apple、Google在网站上新建读者账户。",
+        "open_label": "接受新读者",
+        "open_description": "关闭后将暂停注册。网站的注册页面会显示下方的消息，而不是注册表单。",
+        "message_label": "暂停注册期间显示的消息",
+        "message_description": "纯文本，最多{$max}个字符。留空时，网站会显示默认提示，说明目前不接受新账户注册。",
+        "load_error_hint": "此时保存会覆盖已保存的设置，请先重新加载页面，然后再修改。",
+        "submit": "保存注册设置",
+        "saved_open": "已开放注册。访客可以新建读者账户。",
+        "saved_closed": "已暂停注册。访客会看到你的消息，而不是注册表单。",
+        "load_failed": "无法加载注册设置。请稍后再试。",
+        "save_failed": "无法保存注册设置。请稍后再试。",
+        "validation": {
+          "message_too_long": "消息不能超过{$max}个字符。"
+        }
+      },
       "crawlers": {
         "title": "爬虫排除规则",
         "description": "通过网站的robots.txt要求爬虫不要抓取的内容。遵守robots.txt的爬虫将不再抓取此处排除的内容。读者以及无视该文件的爬虫仍可访问页面。",

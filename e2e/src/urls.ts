@@ -418,6 +418,22 @@ export const WEB_ADMIN_CRAWLER_SETTINGS_BASE_URL = envUrl(
 );
 
 /**
+ * Console of the tenant whose reader sign-up the E2E closes, from
+ * `db/seeds/scenarios/610_sign_up_settings.sql`. A closed sign-up refuses every
+ * new reader of its tenant, so it is not one another suite signs readers up on.
+ */
+export const WEB_ADMIN_SIGN_UP_SETTINGS_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_ADMIN_SIGN_UP_SETTINGS_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.closed.localhost")
+);
+
+/** Public site of the same tenant, where the closed sign-up is seen. */
+export const WEB_STOREFRONT_SIGN_UP_SETTINGS_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_STOREFRONT_SIGN_UP_SETTINGS_BASE_URL",
+  withHostname(WEB_STOREFRONT_BASE_URL, "closed.localhost")
+);
+
+/**
  * Public site of the tenant that names its terms and privacy pages, from
  * `db/seeds/scenarios/300_signup_consent.sql`. The nomination is tenant-wide,
  * so the sign-up that asks for consent is not the one another suite drives.

@@ -15,6 +15,7 @@ import { tenantIdFormSchema } from "#lib/auth-input";
 import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { episodesCacheTag } from "#lib/episode";
+import { checkboxOnFormSchema } from "#lib/form-schemas";
 import { genresCacheTag } from "#lib/genre";
 import { getMessagesFor } from "#lib/messages";
 import { tenantSiteCacheTag } from "#lib/public-api";
@@ -59,6 +60,14 @@ import {
   updateTenantLegalPages,
 } from "#lib/tenant-legal-pages";
 import { updateTenantLocales } from "#lib/tenant-locales";
+import {
+  tenantSignUpSettingsCacheTag,
+  updateTenantSignUpSettings,
+} from "#lib/tenant-sign-up-settings";
+import {
+  MAX_SIGN_UP_CLOSED_MESSAGE_LENGTH,
+  signUpClosedMessageLength,
+} from "#lib/tenant-sign-up-settings-shared";
 import { updateTenantTimezone } from "#lib/tenant-timezone";
 
 import type {
@@ -70,6 +79,7 @@ import type {
   TenantEmailRejectionActionState,
   TenantLegalPagesActionState,
   TenantLocalesActionState,
+  TenantSignUpSettingsActionState,
   TenantTimezoneActionState,
 } from "../settings-types";
 
@@ -725,6 +735,90 @@ export const updateTenantCrawlerSettingsAction = async (
 
   return {
     message: t("admin.settings.crawlers.saved"),
+    ok: true,
+    settings: result.settings,
+  };
+};
+
+/**
+ * The Go server trims the message and measures it in characters
+ * (`signupsettings.Normalize`), and stays the authority; this only gives the
+ * operator immediate feedback instead of a round trip.
+ */
+const tenantSignUpSettingsSchema = async (locale: Locale) => {
+  const t = await getMessagesFor(locale);
+
+  return z.object({
+    closedMessage: z
+      .string()
+      .default("")
+      .refine(
+        (value) =>
+          signUpClosedMessageLength(value) <= MAX_SIGN_UP_CLOSED_MESSAGE_LENGTH,
+        {
+          error: t("admin.settings.sign_up.validation.message_too_long", {
+            max: MAX_SIGN_UP_CLOSED_MESSAGE_LENGTH,
+          }),
+        }
+      )
+      .transform((value) => value.trim()),
+    signUpOpen: checkboxOnFormSchema,
+    tenantId: z.string().trim().min(1, t("admin.settings.tenant_missing")),
+  });
+};
+
+export const updateTenantSignUpSettingsAction = async (
+  _prevState: TenantSignUpSettingsActionState,
+  formData: FormData
+): Promise<TenantSignUpSettingsActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    tenantSignUpSettingsSchema(locale),
+  ]);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      closedMessage: { kind: "value", name: "closed_message" },
+      signUpOpen: { kind: "value", name: "sign_up_open" },
+      tenantId: { kind: "value", name: "tenant_id" },
+    })
+  );
+  if (!parsed.success) {
+    const fieldErrors = toFieldErrors(parsed.error);
+    return {
+      fieldErrors: { closedMessage: fieldErrors.closedMessage },
+      message: toFormErrorMessage(parsed.error, { locale }),
+      ok: false,
+    };
+  }
+
+  const { closedMessage, signUpOpen, tenantId } = parsed.data;
+  const result = await withAdminSessionReauth(() =>
+    updateTenantSignUpSettings({ closedMessage, signUpOpen, tenantId }, locale)
+  );
+
+  if (!result.ok) {
+    return {
+      fieldErrors: result.closedMessageError
+        ? { closedMessage: result.closedMessageError }
+        : undefined,
+      message: result.message,
+      ok: false,
+    };
+  }
+
+  // The settings screen reads the setting through a private cache, so without
+  // this the operator would keep seeing the previous state in the same
+  // session. The storefront's copy is dropped by the API as the update lands.
+  updateTag(tenantSignUpSettingsCacheTag(tenantId));
+
+  return {
+    message: t(
+      result.settings.signUpOpen
+        ? "admin.settings.sign_up.saved_open"
+        : "admin.settings.sign_up.saved_closed"
+    ),
     ok: true,
     settings: result.settings,
   };

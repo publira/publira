@@ -171,6 +171,7 @@ for (const locale of DOCS_LOCALES) {
         ["reader-comments", "admin.settings.comments.title"],
         ["age-verification", "admin.settings.age_verification.title"],
         ["terms-and-privacy-policy", "admin.settings.legal_pages.title"],
+        ["reader-sign-up", "admin.settings.sign_up.title"],
         ["refused-email-addresses", "admin.settings.email_rejection.title"],
         ["crawler-exclusions", "admin.settings.crawlers.title"],
       ] as const) {
