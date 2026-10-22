@@ -398,7 +398,7 @@ export const headingAnchors = (source: string): string[] => {
     }
     const base = headingText(node)
       .toLowerCase()
-      .replace(NOT_IN_ANCHOR, "")
+      .replaceAll(NOT_IN_ANCHOR, "")
       .replaceAll(" ", "-");
     let anchor = base;
     while (taken.has(anchor)) {
