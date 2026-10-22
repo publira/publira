@@ -1,3 +1,4 @@
+import type { TenantSignUpSettings as RpcTenantSignUpSettings } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
   rethrowUnclassifiedRpcError,
@@ -59,13 +60,18 @@ export type UpdateTenantSignUpSettingsResult =
 export const tenantSignUpSettingsCacheTag = (tenantId: string): string =>
   `tenant:${tenantId.trim()}:sign-up-settings`;
 
+type RawTenantSignUpSettings = Pick<
+  RpcTenantSignUpSettings,
+  "closedMessage" | "signUpOpen"
+>;
+
 /**
  * `undefined` for a response that carries no settings. That is a read that
  * failed to say anything, and reporting it as "open" would put that in front
  * of an operator as the tenant's own choice.
  */
 const toTenantSignUpSettings = (
-  settings: { closedMessage: string; signUpOpen: boolean } | undefined
+  settings: RawTenantSignUpSettings | undefined
 ): TenantSignUpSettings | undefined =>
   settings
     ? { closedMessage: settings.closedMessage, signUpOpen: settings.signUpOpen }

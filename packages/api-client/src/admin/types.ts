@@ -62,6 +62,7 @@ export type {
   TenantMobileAppAssociation,
   TenantPurchaseSettings,
   TenantRetentionOverrides,
+  TenantSignUpSettings,
 } from "../gen/publira/admin/v1/tenant_pb.js";
 export type {
   AdminReader,
