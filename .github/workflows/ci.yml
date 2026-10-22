@@ -131,12 +131,16 @@ jobs:
               - '.github/actions/go-setup/**'
               - '.github/actions/pnpm-setup/**'
               - '.github/actions/tool-install/**'
-            # The pages under docs/ are Markdown, which the check filter leaves
-            # out, yet `Check` is where they are validated. A filter of its own,
-            # without docs_excluded, starts that job for a change to them alone.
+            # The pages under docs/ and the links between the repository's
+            # Markdown are validated in `Check`, yet the check filter leaves
+            # Markdown out. A filter of its own, without docs_excluded, starts
+            # that job for a change to them alone, and for a deletion or a rename
+            # anywhere, which can take away a file a link names.
             check_docs:
               - 'docs/**'
+              - '**/*.md'
               - 'scripts/check-docs.ts'
+              - deleted|renamed: '**'
             # Narrower than test_go on purpose: golangci-lint only reads Go
             # sources and server/.golangci.yml, and `task gen` writes its output
             # under server/, so a db/ or proto/ edit cannot change the result
@@ -582,8 +586,8 @@ jobs:
       - name: Validate / Design tokens
         run: node scripts/check-design-tokens.ts
 
-      - name: Validate / Docs
-        run: node scripts/check-docs.ts
+      - name: Validate / Docs and Markdown links
+        run: pnpm docs:check
 
       - name: Validate / Typecheck
         run: pnpm typecheck

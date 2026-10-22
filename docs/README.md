@@ -81,11 +81,11 @@ The dates are written down rather than derived from `git log`, because the numbe
 
 ## Links and images
 
-- A link to another page is a relative path to its `.md` file, a directory's page included (`[Deployments](./2-deployments/index.md)`). It works when the file is read on GitHub, and the website rewrites it to the page URL. A fragment (`./1-overview.md#what-an-install-runs`) is kept.
+- A link to another page is a relative path to its `.md` file, a directory's page included (`[Deployments](./2-deployments/index.md)`). It works when the file is read on GitHub, and the website rewrites it to the page URL. A fragment (`./1-overview.md#what-an-install-runs`) is kept, and is the anchor of a heading on that page: its text lowercased, without punctuation, with each space turned into `-`, and `-1`, `-2`, and so on after a heading that repeats an earlier one.
 - An image sits beside the page that shows it and is referenced by a relative path. It is an `.avif`, `.gif`, `.jpeg`, `.jpg`, `.png`, `.svg`, or `.webp` file, and a page in the same directory shows it.
 - An image is named `<page slug>-<subject>`, where the page slug is the name of a page that shows it, without its number — `index` for an `index.md` — and the subject is lowercase ASCII words joined by `-`: `episodes-create-form.png` beside `2-episodes.md`, `index-sidebar.png` beside `index.md`. Leaving the number out keeps a reordering from renaming images, and the slug keeps the images of sibling pages apart.
 - Every image has alt text that says what it shows, for a reader who cannot see it.
-- A link to source code, or to anything else in the repository outside `docs/en/`, is an absolute `https://github.com/publira/publira/...` URL, since the website does not serve the repository.
+- A link to source code, or to anything else in the repository outside `docs/en/`, is an absolute `https://github.com/publira/publira/...` URL, since the website does not serve the repository. One to `blob/main/` or `tree/main/` names a file or a directory the repository has, and a fragment after a Markdown file names a heading in it, as above.
 
 ### Screenshots
 

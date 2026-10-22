@@ -1,6 +1,7 @@
 /**
  * Fail on a page under `docs/en/` that breaks the contract the website reads it
- * by, or on a tree beside it that the documentation does not have yet.
+ * by, on a tree beside it that the documentation does not have yet, or on a
+ * link in the repository's Markdown that leads to no file or no heading.
  *
  *     node scripts/check-docs.ts
  *
@@ -13,14 +14,31 @@
  * and a tag cannot be fixed afterwards. So the rules are checked here, where the
  * page is written.
  *
+ * The pages send a reader to the READMEs for the full reference, by absolute
+ * `https://github.com/publira/publira/blob/main/` URLs and mostly to a heading,
+ * and the READMEs, the `AGENTS.md` files, `CONTRIBUTING.md`, and the skills
+ * link to each other's headings by relative paths. Neither kind of link breaks
+ * anything that fails when a heading is renamed or a file moves, so both are
+ * resolved here against the checkout, the heading by the anchor GitHub and the
+ * website's `rehype-slug` derive from it.
+ *
  * CI runs this in `Check`, which a path filter of its own starts for a change
- * under `docs/` alone, since the job's main filter leaves Markdown out.
+ * to Markdown or under `docs/` alone, and for a deletion or a rename anywhere,
+ * since the job's main filter leaves Markdown out.
  */
 
+import { execFile } from "node:child_process";
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
+import { promisify } from "node:util";
 
-import type { Definition, ImageReference, LinkReference, Nodes } from "mdast";
+import type {
+  Definition,
+  ImageReference,
+  LinkReference,
+  Nodes,
+  Root,
+} from "mdast";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { gfmFromMarkdown } from "mdast-util-gfm";
 import { gfm } from "micromark-extension-gfm";
@@ -80,8 +98,6 @@ export interface Finding {
 }
 
 interface Frontmatter {
-  /** The lines the frontmatter takes up, its two `---` fences included. */
-  lines: number;
   values: unknown;
 }
 
@@ -102,7 +118,6 @@ const splitFrontmatter = (
   }
   try {
     return {
-      lines: end + 1,
       values: parseYaml(lines.slice(1, end).join("\n")),
     };
   } catch (error) {
@@ -110,6 +125,37 @@ const splitFrontmatter = (
       error: `The frontmatter is not valid YAML: ${(error as Error).message}`,
     };
   }
+};
+
+/**
+ * The lines a leading frontmatter block takes up, its two `---` fences
+ * included, or `0` when the file does not open with a closed one.
+ */
+const frontmatterLength = (lines: readonly string[]): number => {
+  if (lines[0] !== "---") {
+    return 0;
+  }
+  const end = lines.indexOf("---", 1);
+
+  return end === -1 ? 0 : end + 1;
+};
+
+/**
+ * The Markdown tree of a file without its frontmatter, which GitHub and the
+ * website do not render as Markdown. Blank lines stand in for it, so the body
+ * is parsed on its own while every position still names the line in the file.
+ */
+const parseMarkdown = (source: string): Root => {
+  const lines = source.split(/\r?\n/u);
+  const length = frontmatterLength(lines);
+
+  return fromMarkdown(
+    [...Array.from({ length }, () => ""), ...lines.slice(length)].join("\n"),
+    {
+      extensions: [gfm()],
+      mdastExtensions: [gfmFromMarkdown()],
+    }
+  );
 };
 
 /**
@@ -267,6 +313,107 @@ const visit = (node: Nodes, onNode: (node: Nodes) => void): void => {
 };
 
 /**
+ * Every link and image in a tree, in the order they are written, then every
+ * definition by the way it is referenced.
+ *
+ * A definition is a link or an image only by how it is referenced, so each way
+ * it is used is collected once, on the line its URL is written on. One nothing
+ * references is never rendered, and is left alone.
+ */
+const collectLinks = (tree: Root): Link[] => {
+  const links: Link[] = [];
+  const definitions = new Map<string, Definition>();
+  const references: (ImageReference | LinkReference)[] = [];
+  visit(tree, (node) => {
+    if (node.type === "link" || node.type === "image") {
+      links.push({
+        image: node.type === "image",
+        line: node.position?.start.line ?? 1,
+        url: node.url,
+      });
+    }
+    // CommonMark lets the first of two definitions with one label win.
+    if (node.type === "definition" && !definitions.has(node.identifier)) {
+      definitions.set(node.identifier, node);
+    }
+    if (node.type === "linkReference" || node.type === "imageReference") {
+      references.push(node);
+    }
+  });
+
+  const resolved = new Set<string>();
+  for (const reference of references) {
+    const definition = definitions.get(reference.identifier);
+    const image = reference.type === "imageReference";
+    const key = `${reference.identifier}:${image}`;
+    if (definition && !resolved.has(key)) {
+      resolved.add(key);
+      links.push({
+        image,
+        line: definition.position?.start.line ?? 1,
+        url: definition.url,
+      });
+    }
+  }
+
+  return links;
+};
+
+/**
+ * The text a heading's anchor is derived from: what it reads as once rendered,
+ * so the code in it counts and the markup around it, an image, and inline HTML
+ * do not.
+ */
+const headingText = (node: Nodes): string => {
+  if (node.type === "text" || node.type === "inlineCode") {
+    return node.value;
+  }
+  if (node.type === "html" || node.type === "image") {
+    return "";
+  }
+
+  return "children" in node ? node.children.map(headingText).join("") : "";
+};
+
+/**
+ * What GitHub drops from a heading's lowercased text on the way to its anchor:
+ * everything but a letter, a combining mark, a digit, a connector such as `_`,
+ * a space, and `-`. It is the class `github-slugger` strips, which the
+ * website's `rehype-slug` uses too.
+ */
+const NOT_IN_ANCHOR = /[^\p{L}\p{M}\p{N}\p{Pc} -]/gu;
+
+/**
+ * The anchor of every heading in a Markdown file, in order: its text
+ * lowercased, without punctuation, with each space turned into a `-`, and with
+ * `-1`, `-2`, and so on after one an earlier heading took already.
+ */
+export const headingAnchors = (source: string): string[] => {
+  const anchors: string[] = [];
+  const taken = new Set<string>();
+  const repeats = new Map<string, number>();
+  visit(parseMarkdown(source), (node) => {
+    if (node.type !== "heading") {
+      return;
+    }
+    const base = headingText(node)
+      .toLowerCase()
+      .replace(NOT_IN_ANCHOR, "")
+      .replaceAll(" ", "-");
+    let anchor = base;
+    while (taken.has(anchor)) {
+      const repeat = (repeats.get(base) ?? 0) + 1;
+      repeats.set(base, repeat);
+      anchor = `${base}-${repeat}`;
+    }
+    taken.add(anchor);
+    anchors.push(anchor);
+  });
+
+  return anchors;
+};
+
+/**
  * The findings that can be told from the page alone, and the links it makes
  * and the former URLs it redirects from, which only the tree around it can
  * resolve.
@@ -300,20 +447,7 @@ export const checkPage = (
 
   const { findings, redirects } = checkFrontmatter(file, frontmatter.values);
 
-  // Blank lines stand in for the frontmatter, so the body is parsed on its own
-  // while every position still names the line in the file.
-  const body = [
-    ...Array.from({ length: frontmatter.lines }, () => ""),
-    ...source.split(/\r?\n/u).slice(frontmatter.lines),
-  ].join("\n");
-  const tree = fromMarkdown(body, {
-    extensions: [gfm()],
-    mdastExtensions: [gfmFromMarkdown()],
-  });
-
-  const links: Link[] = [];
-  const definitions = new Map<string, Definition>();
-  const references: (ImageReference | LinkReference)[] = [];
+  const tree = parseMarkdown(source);
   visit(tree, (node) => {
     const line = node.position?.start.line ?? 1;
     if (node.type === "heading" && node.depth === 1) {
@@ -323,9 +457,6 @@ export const checkPage = (
         message:
           "The body has a `#` heading. `title` is the page's heading; the body starts at `##`.",
       });
-    }
-    if (node.type === "link" || node.type === "image") {
-      links.push({ image: node.type === "image", line, url: node.url });
     }
     // The alt text is the reference's own, so a definition two images share
     // can still leave one of them without any.
@@ -340,46 +471,153 @@ export const checkPage = (
           "The image has no alt text. Say what it shows in the brackets, for a reader who cannot see it.",
       });
     }
-    // CommonMark lets the first of two definitions with one label win.
-    if (node.type === "definition" && !definitions.has(node.identifier)) {
-      definitions.set(node.identifier, node);
-    }
-    if (node.type === "linkReference" || node.type === "imageReference") {
-      references.push(node);
-    }
   });
 
-  // A definition is a link or an image only by how it is referenced, so each
-  // way it is used is checked once, on the line its URL is written on. One
-  // nothing references is never rendered, and is left alone.
-  const resolved = new Set<string>();
-  for (const reference of references) {
-    const definition = definitions.get(reference.identifier);
-    const image = reference.type === "imageReference";
-    const key = `${reference.identifier}:${image}`;
-    if (definition && !resolved.has(key)) {
-      resolved.add(key);
-      links.push({
-        image,
-        line: definition.position?.start.line ?? 1,
-        url: definition.url,
-      });
-    }
-  }
-
-  return { findings, links, redirects };
+  return { findings, links: collectLinks(tree), redirects };
 };
 
 const SCHEME = /^[a-z][\d+.a-z-]*:/iu;
 
-const exists = async (file: string): Promise<boolean> => {
+/**
+ * The start of an absolute URL to a path on `main` in this repository, which a
+ * checkout of `main` holds. A URL to another branch, a tag, or a commit names a
+ * tree the checkout may not have, and is not resolved.
+ */
+const MAIN_URL =
+  /^https:\/\/github\.com\/publira\/publira\/(?:blob|tree)\/main(?:\/|(?=[?#]|$))/u;
+
+/** A fragment GitHub reads as a line or a range of lines, not as a heading. */
+const LINE_FRAGMENT = /^L\d+(?:C\d+)?(?:-L\d+(?:C\d+)?)?$/u;
+
+/**
+ * What a scan reads once and every link it resolves shares: the repository,
+ * and the anchors of each Markdown file a fragment names.
+ */
+interface Context {
+  anchors: (target: string) => Promise<ReadonlySet<string>>;
+  repository: string;
+}
+
+const createContext = (repository: string): Context => {
+  const anchors = new Map<string, Promise<ReadonlySet<string>>>();
+
+  return {
+    anchors: (target) => {
+      const cached = anchors.get(target);
+      if (cached) {
+        return cached;
+      }
+      const read = (async () =>
+        new Set(
+          headingAnchors(await readFile(path.join(repository, target), "utf-8"))
+        ))();
+      anchors.set(target, read);
+
+      return read;
+    },
+    repository,
+  };
+};
+
+const decode = (value: string): string => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    // A malformed escape is looked up as written, and reported as missing.
+    return value;
+  }
+};
+
+/** Where a link leads in the repository, `/`-separated, and to which heading. */
+interface Destination {
+  /** The anchor the URL names, or `null` when it names none. */
+  fragment: string | null;
+  target: string;
+}
+
+/** A URL's path and its fragment, each decoded, with any query left out. */
+const splitUrl = (url: string): { fragment: string | null; path: string } => {
+  const hash = url.indexOf("#");
+  const [before = ""] = (hash === -1 ? url : url.slice(0, hash)).split("?");
+  const fragment = hash === -1 ? "" : decode(url.slice(hash + 1));
+
+  return { fragment: fragment === "" ? null : fragment, path: decode(before) };
+};
+
+/** Where an absolute URL to `main` in this repository leads, or `null` for any other URL. */
+const mainDestination = (url: string): Destination | null => {
+  const start = MAIN_URL.exec(url);
+  if (!start) {
+    return null;
+  }
+  const { fragment, path: target } = splitUrl(url.slice(start[0].length));
+
+  return {
+    fragment,
+    target: path.posix.normalize(target || ".").replace(/(?<=.)\/$/u, ""),
+  };
+};
+
+const kind = async (file: string): Promise<"directory" | "file" | null> => {
   try {
     const stats = await stat(file);
+    if (stats.isFile()) {
+      return "file";
+    }
 
-    return stats.isFile();
+    return stats.isDirectory() ? "directory" : null;
   } catch {
-    return false;
+    return null;
   }
+};
+
+const exists = async (file: string): Promise<boolean> =>
+  (await kind(file)) === "file";
+
+/**
+ * Why a fragment leads nowhere, or `null` when a heading in the Markdown file
+ * produces it. Only a Markdown file is rendered with anchors, and a line
+ * fragment names no heading, so any other fragment is left alone.
+ */
+const checkFragment = async (
+  context: Context,
+  url: string,
+  { fragment, target }: Destination
+): Promise<string | null> => {
+  if (
+    fragment === null ||
+    LINE_FRAGMENT.test(fragment) ||
+    path.extname(target).toLowerCase() !== PAGE_EXTENSION
+  ) {
+    return null;
+  }
+
+  const anchors = await context.anchors(target);
+
+  return anchors.has(fragment)
+    ? null
+    : `\`${url}\` names \`#${fragment}\`, which no heading in ${target} produces. Link to the anchor of a heading there: its text lowercased, without punctuation, with each space turned into \`-\`.`;
+};
+
+/**
+ * Why a link into the repository leads nowhere, or `null` when the file or
+ * directory it names exists and any heading it names is in that file.
+ */
+const checkDestination = async (
+  context: Context,
+  url: string,
+  destination: Destination
+): Promise<string | null> => {
+  const { target } = destination;
+  if (target === ".." || target.startsWith("../")) {
+    return `\`${url}\` leaves the repository.`;
+  }
+  const found = await kind(path.join(context.repository, target));
+  if (!found) {
+    return `\`${url}\` names ${target}, which is not in the repository.`;
+  }
+
+  return found === "file" ? checkFragment(context, url, destination) : null;
 };
 
 /** Where a link leads, relative to the repository, or why it leads nowhere. */
@@ -388,27 +626,41 @@ type Resolved = { finding: Finding } | { target: string } | null;
 /**
  * The file a link resolves to, the finding for a link that the website cannot
  * rewrite or that leads nowhere, or `null` for one it follows without the
- * tree. Absolute URLs and same-page fragments are such links. An image never
- * is: one the tree does not hold is one the website cannot serve.
+ * tree. Absolute URLs and same-page fragments are such links, though a
+ * fragment and a URL to `main` in this repository have to lead somewhere. An
+ * image never is: one the tree does not hold is one the website cannot serve.
  */
 const checkLink = async (
-  repository: string,
+  context: Context,
   file: string,
   link: Link
 ): Promise<Resolved> => {
   const { line, url } = link;
-  const report = (message: string): Resolved => ({
-    finding: { file, line, message },
-  });
+  const report = (message: string | null): Resolved =>
+    message === null ? null : { finding: { file, line, message } };
+  const main = mainDestination(url);
   if (
     url === "" ||
     url.startsWith("#") ||
+    main ||
     SCHEME.test(url) ||
     url.startsWith("//")
   ) {
-    return link.image
+    if (link.image) {
+      return report(
+        `\`${url}\` is not a file in ${ROOT}/. An image sits beside the page that shows it and is referenced by a relative path.`
+      );
+    }
+    if (main) {
+      return report(await checkDestination(context, url, main));
+    }
+
+    return url.startsWith("#")
       ? report(
-          `\`${url}\` is not a file in ${ROOT}/. An image sits beside the page that shows it and is referenced by a relative path.`
+          await checkFragment(context, url, {
+            fragment: splitUrl(url).fragment,
+            target: file,
+          })
         )
       : null;
   }
@@ -418,18 +670,12 @@ const checkLink = async (
     );
   }
 
-  const [target = ""] = url.split(/[#?]/u);
-  let decoded = target;
-  try {
-    decoded = decodeURIComponent(target);
-  } catch {
-    // A malformed escape is looked up as written, and reported as missing.
-  }
+  const { fragment, path: decoded } = splitUrl(url);
   const resolved = path.join(
-    path.dirname(path.join(repository, file)),
+    path.dirname(path.join(context.repository, file)),
     decoded
   );
-  const root = path.join(repository, ROOT);
+  const root = path.join(context.repository, ROOT);
   if (path.relative(root, resolved).startsWith("..")) {
     return report(
       `\`${url}\` leaves ${ROOT}/, which the website does not serve. Link to source code by an absolute https://github.com/publira/publira/ URL.`
@@ -449,10 +695,15 @@ const checkLink = async (
   if (!(await exists(resolved))) {
     return report(`\`${url}\` does not exist.`);
   }
+  const target = path
+    .relative(context.repository, resolved)
+    .split(path.sep)
+    .join("/");
+  const missing = link.image
+    ? null
+    : await checkFragment(context, url, { fragment, target });
 
-  return {
-    target: path.relative(repository, resolved).split(path.sep).join("/"),
-  };
+  return missing === null ? { target } : report(missing);
 };
 
 /**
@@ -548,15 +799,15 @@ const checkDirectory = async (
  * URLs it redirects from.
  */
 const checkFile = async (
-  repository: string,
+  context: Context,
   file: string
 ): Promise<{ findings: Finding[]; images: string[]; redirects: string[] }> => {
-  const source = await readFile(path.join(repository, file), "utf-8");
+  const source = await readFile(path.join(context.repository, file), "utf-8");
   const { findings, links, redirects } = checkPage(file, source);
   const resolved = await Promise.all(
     links.map(async (link) => ({
       image: link.image,
-      resolved: await checkLink(repository, file, link),
+      resolved: await checkLink(context, file, link),
     }))
   );
 
@@ -728,14 +979,109 @@ const checkLocales = async (repository: string): Promise<Finding[]> => {
     }));
 };
 
+const run = promisify(execFile);
+
 /**
- * Every finding under `root`, and every tree beside it under `docs/`, relative
- * to `repository`, as are the files the findings name, in the order of those files and lines.
+ * The Markdown outside `root` whose links are checked: every `README.md` and
+ * `AGENTS.md`, `CONTRIBUTING.md`, and the skills under `skills/`, tracked or
+ * about to be. The skills vendored under `.agents/skills/` are someone else's
+ * to fix, and `.claude/skills/` only links to the ones under `skills/`.
+ */
+const listMarkdown = async (
+  repository: string,
+  root: string
+): Promise<string[]> => {
+  const { stdout } = await run(
+    "git",
+    [
+      "ls-files",
+      "-z",
+      "--cached",
+      "--others",
+      "--exclude-standard",
+      "--",
+      ":(glob)**/README.md",
+      ":(glob)**/AGENTS.md",
+      "CONTRIBUTING.md",
+      ":(glob)skills/**/*.md",
+      ":(exclude).agents",
+      ":(exclude,glob)**/node_modules/**",
+      `:(exclude)${root}`,
+    ],
+    { cwd: repository, maxBuffer: 16 * 1024 * 1024 }
+  );
+  const files = [...new Set(stdout.split("\0").filter(Boolean))];
+  // A file deleted from the working tree is still in the index until the
+  // deletion is staged, and has no links left to check.
+  const present = await Promise.all(
+    files.map((file) => exists(path.join(repository, file)))
+  );
+
+  return files.filter((_, index) => present[index]);
+};
+
+/**
+ * Why a link in Markdown outside the documentation leads nowhere, or `null`.
+ *
+ * GitHub renders those files where they are, so a relative link is resolved
+ * from the file's directory, a `/`-rooted one from the repository, and a bare
+ * fragment in the file itself. A URL with a scheme is followed only when it
+ * names `main` in this repository; every other host is out of reach.
+ */
+const checkMarkdownLink = async (
+  context: Context,
+  file: string,
+  { image, line, url }: Link
+): Promise<Finding | null> => {
+  let destination = mainDestination(url);
+  if (!destination) {
+    if (url === "" || SCHEME.test(url) || url.startsWith("//")) {
+      return null;
+    }
+    const { fragment, path: target } = splitUrl(url);
+    let resolved = file;
+    if (target.startsWith("/")) {
+      resolved = path.posix.normalize(target.slice(1) || ".");
+    } else if (target !== "") {
+      resolved = path.posix.join(path.posix.dirname(file), target);
+    }
+    destination = { fragment, target: resolved.replace(/(?<=.)\/$/u, "") };
+  }
+  const message = await checkDestination(
+    context,
+    url,
+    image ? { ...destination, fragment: null } : destination
+  );
+
+  return message === null ? null : { file, line, message };
+};
+
+/** The findings for the links in one Markdown file outside the documentation. */
+const checkMarkdown = async (
+  context: Context,
+  file: string
+): Promise<Finding[]> => {
+  const source = await readFile(path.join(context.repository, file), "utf-8");
+  const findings = await Promise.all(
+    collectLinks(parseMarkdown(source)).map((link) =>
+      checkMarkdownLink(context, file, link)
+    )
+  );
+
+  return findings.filter((finding) => finding !== null);
+};
+
+/**
+ * Every finding under `root`, every tree beside it under `docs/`, and every
+ * link that leads nowhere from the Markdown {@link listMarkdown} names,
+ * relative to `repository`, as are the files the findings name, in the order
+ * of those files and lines.
  */
 export const scan = async (
   repository = process.cwd(),
   root = ROOT
 ): Promise<Finding[]> => {
+  const context = createContext(repository);
   const locales = await checkLocales(repository);
   const { findings, images, pages } = await checkDirectory(
     repository,
@@ -743,7 +1089,11 @@ export const scan = async (
     true
   );
   const inPages = await Promise.all(
-    pages.map((page) => checkFile(repository, page))
+    pages.map((page) => checkFile(context, page))
+  );
+  const markdown = await listMarkdown(repository, root);
+  const inMarkdown = await Promise.all(
+    markdown.map((file) => checkMarkdown(context, file))
   );
   const shownBy = new Map<string, string[]>();
   for (const [index, page] of pages.entries()) {
@@ -762,6 +1112,7 @@ export const scan = async (
       inPages.map((page) => page.redirects)
     ),
     ...checkImages(images, shownBy),
+    ...inMarkdown.flat(),
   ].toSorted(
     (a, b) =>
       a.file.localeCompare(b.file, "en") || (a.line ?? 0) - (b.line ?? 0)
@@ -791,7 +1142,9 @@ const main = async (): Promise<void> => {
     return;
   }
 
-  console.log(`${ROOT}: every page follows the contract in docs/README.md.`);
+  console.log(
+    `${ROOT}: every page follows the contract in docs/README.md, and every link in the repository's Markdown resolves.`
+  );
 };
 
 /**
