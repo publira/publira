@@ -121,6 +121,10 @@ export type LoginWithIdTokenRequest = Message<"publira.v1.LoginWithIdTokenReques
 
   /**
    * Read only when no account matches the token and this sign-in creates one.
+   * A tenant whose GetTenantResponse.sign_up_open is false refuses that
+   * sign-in with failed_precondition and the SIGN_UP_CLOSED reason, without
+   * spending the nonce, while a token that matches an account still signs in
+   * to it.
    * The name falls back to the one the token carries, and then to the local
    * part of the address. agreed_page_version_ids and birth_date mean what they
    * mean in CreateUserRequest, and a missing consent is invalid_argument
@@ -794,6 +798,14 @@ export const BeginPasskeyConfirmationResponseSchema: GenMessage<BeginPasskeyConf
   messageDesc(file_publira_v1_auth, 27);
 
 /**
+ * A tenant whose GetTenantResponse.sign_up_open is false refuses the request
+ * with failed_precondition and the SIGN_UP_CLOSED reason, before anything is
+ * recorded or mailed. The setting is read when the request arrives: a sign-up
+ * accepted while sign-up was open completes after it closes, its account is
+ * opened, and the verification link it was mailed still activates it, because
+ * closing sign-up stops new accounts being asked for, not one already asked
+ * for being confirmed.
+ *
  * @generated from message publira.v1.CreateUserRequest
  */
 export type CreateUserRequest = Message<"publira.v1.CreateUserRequest"> & {

@@ -261,6 +261,9 @@ var publicDataTables = []struct {
 	// The crawlers and paths a tenant's robots.txt excludes, which the
 	// storefront's connection reads to write the file.
 	{name: "tenant_crawler_settings", count: "SELECT count(*) FROM tenant_crawler_settings"},
+	// Whether a tenant accepts new readers, which the storefront's connection
+	// reads to render its sign-up form and to refuse a sign-up.
+	{name: "tenant_sign_up_settings", count: "SELECT count(*) FROM tenant_sign_up_settings"},
 	// The tenant's own notices and one reader's state over them. The inbox is
 	// answered on the storefront's connection, so a missing policy here would
 	// put one tenant's notices — and one reader's read state — in another's.
@@ -460,6 +463,7 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	seed("email rejection entry", "INSERT INTO tenant_email_rejection_entries (tenant_id, entry) VALUES ($1, 'blocked.example')", first.ID)
 	seed("analytics settings", "INSERT INTO tenant_analytics_settings (tenant_id, gtm_container_id) VALUES ($1, 'GTM-TENANTA')", first.ID)
 	seed("crawler settings", "INSERT INTO tenant_crawler_settings (tenant_id, excluded_user_agents, excluded_paths) VALUES ($1, '{GPTBot}', '{/drafts}')", first.ID)
+	seed("sign-up settings", "INSERT INTO tenant_sign_up_settings (tenant_id, sign_up_open, closed_message) VALUES ($1, false, 'Closed')", first.ID)
 	seed("linked identity", "INSERT INTO user_identities (id, tenant_id, user_id, provider, subject, email_at_link, refresh_token_encrypted, refresh_token_client_id) VALUES ($1, $2, $3, 'apple', 'apple-subject', 'member@tenant-a.example.com', 'enc:probe', 'com.example.tenant-a.web')", uuid.Must(uuid.NewV7()), first.ID, member.ID)
 	seed("sign-in nonce", "INSERT INTO sign_in_nonces (tenant_id, nonce_hash, expires_at) VALUES ($1, 'nonce-hash', NOW() + INTERVAL '1 hour')", first.ID)
 	env.PG.SeedEpisodeImage(t, first.ID, episode.ID, 1)

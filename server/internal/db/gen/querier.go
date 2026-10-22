@@ -1118,6 +1118,9 @@ type Querier interface {
 	GetTenantRetentionSettings(ctx context.Context, tenantID uuid.UUID) (TenantRetentionSetting, error)
 	GetTenantRoyaltyConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantRoyaltyConfig, error)
 	GetTenantSMTPConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (TenantSmtpConfig, error)
+	// Returns no rows for a tenant that has saved nothing, which reads as sign-up
+	// open with no message of its own.
+	GetTenantSignUpSettings(ctx context.Context, tenantID uuid.UUID) (TenantSignUpSetting, error)
 	GetTenantThemeByTenantID(ctx context.Context, id uuid.UUID) (GetTenantThemeByTenantIDRow, error)
 	// The account of the tenant that holds the inbox an address reaches, whether
 	// or not it holds it under the same tag. A tenant may already hold several
@@ -3651,6 +3654,8 @@ type Querier interface {
 	UpsertTenantReaderIconPolicy(ctx context.Context, arg UpsertTenantReaderIconPolicyParams) (TenantConfig, error)
 	UpsertTenantRoyaltyConfig(ctx context.Context, arg UpsertTenantRoyaltyConfigParams) (TenantRoyaltyConfig, error)
 	UpsertTenantSMTPConfig(ctx context.Context, arg UpsertTenantSMTPConfigParams) (TenantSmtpConfig, error)
+	// The message arrives trimmed and within the column's length.
+	UpsertTenantSignUpSettings(ctx context.Context, arg UpsertTenantSignUpSettingsParams) (TenantSignUpSetting, error)
 	UpsertTenantTheme(ctx context.Context, arg UpsertTenantThemeParams) (TenantTheme, error)
 	// Starting enrollment replaces whatever unconfirmed secret was there.
 	UpsertUserMfaTotpSecret(ctx context.Context, arg UpsertUserMfaTotpSecretParams) (UserMfaTotp, error)

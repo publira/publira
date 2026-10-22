@@ -29,6 +29,7 @@ import (
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/signin"
+	"github.com/publira/publira/server/internal/signupsettings"
 	"github.com/publira/publira/server/internal/tenantconn"
 	"github.com/publira/publira/server/internal/tenantmembers"
 	"github.com/publira/publira/server/internal/tracing"
@@ -367,6 +368,17 @@ func (s *apiServer) CreateUser(
 		auth.AuditEvent(ctx, "signup", "failure", "", "", "tenant_not_found")
 		return nil, err
 	}
+	// Ahead of every other check, the mail guard's charge among them: a closed
+	// sign-up refuses whatever was typed, and an allowance spent on a request
+	// that mails nothing is one the address cannot spend on its own reset.
+	if err := s.refuseClosedSignUp(ctx, tenant.ID); err != nil {
+		reason := "sign_up_closed"
+		if connect.CodeOf(err) == connect.CodeInternal {
+			reason = "sign_up_settings_lookup_failed"
+		}
+		auth.AuditEvent(ctx, "signup", "failure", tenant.PublicID, "", reason)
+		return nil, err
+	}
 
 	name := strings.TrimSpace(req.Name)
 	email := strings.TrimSpace(req.Email)
@@ -457,6 +469,19 @@ func (s *apiServer) CreateUser(
 
 	auth.AuditEvent(ctx, "signup", "success", tenant.PublicID, "", "requested")
 	return &publirav1.CreateUserResponse{Accepted: true}, nil
+}
+
+// refuseClosedSignUp answers signupsettings.Refusal while the tenant does not
+// accept new readers, and a nil error while it does.
+func (s *apiServer) refuseClosedSignUp(ctx context.Context, tenantID uuid.UUID) error {
+	settings, err := signupsettings.Get(ctx, s.queriesFor(ctx), tenantID)
+	if err != nil {
+		return s.internalDBError(ctx, "failed to read the tenant sign-up settings", err, "tenant_id", tenantID.String())
+	}
+	if !settings.Open {
+		return signupsettings.Refusal()
+	}
+	return nil
 }
 
 // refuseEmail answers the invalid_argument that refuses address on field when

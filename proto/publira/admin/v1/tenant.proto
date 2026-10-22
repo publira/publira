@@ -601,6 +601,41 @@ message UpdateTenantCrawlerSettingsResponse {
   TenantCrawlerSettings settings = 1;
 }
 
+// Whether the tenant accepts new reader accounts. While it does not,
+// publira.v1.AuthService.CreateUser and a publira.v1.AuthService.LoginWithIdToken
+// that would create an account are refused with failed_precondition and the
+// SIGN_UP_CLOSED reason; every reader who already has an account keeps signing
+// in.
+message TenantSignUpSettings {
+  // Open until the tenant closes it.
+  bool sign_up_open = 1;
+  // Plain text the storefront shows in place of the sign-up form while
+  // sign_up_open is false, trimmed. Empty where the storefront shows its own
+  // default copy. Kept while sign-up is open, so reopening and closing again
+  // does not lose it.
+  string closed_message = 2;
+}
+
+message GetTenantSignUpSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+}
+
+message GetTenantSignUpSettingsResponse {
+  TenantSignUpSettings settings = 1;
+}
+
+message UpdateTenantSignUpSettingsRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // Required: both fields are written. closed_message is trimmed, and one
+  // longer than 1000 characters is invalid_argument on
+  // settings.closed_message.
+  TenantSignUpSettings settings = 2;
+}
+
+message UpdateTenantSignUpSettingsResponse {
+  TenantSignUpSettings settings = 1;
+}
+
 // Per-tenant operational settings, separate from TenantConfig (site copy) and
 // TenantTheme (colors).
 service TenantSettingsService {
@@ -670,4 +705,11 @@ service TenantSettingsService {
   rpc GetTenantCrawlerSettings(GetTenantCrawlerSettingsRequest) returns (GetTenantCrawlerSettingsResponse) {}
   // Minimum role: tenant_admin.
   rpc UpdateTenantCrawlerSettings(UpdateTenantCrawlerSettingsRequest) returns (UpdateTenantCrawlerSettingsResponse) {}
+  // Minimum role: tenant_auditor.
+  rpc GetTenantSignUpSettings(GetTenantSignUpSettingsRequest) returns (GetTenantSignUpSettingsResponse) {}
+  // Closing sign-up refuses the sign-ups that arrive after the save, and
+  // leaves one the API accepted before it to complete, as
+  // publira.v1.CreateUserRequest states.
+  // Minimum role: tenant_admin.
+  rpc UpdateTenantSignUpSettings(UpdateTenantSignUpSettingsRequest) returns (UpdateTenantSignUpSettingsResponse) {}
 }

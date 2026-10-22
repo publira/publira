@@ -20,6 +20,7 @@ import (
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/signin"
+	"github.com/publira/publira/server/internal/signupsettings"
 )
 
 // maxAccountNameRunes is the longest name UpdateMe accepts, which a name taken
@@ -300,6 +301,16 @@ func (s *apiServer) resolveSignIn(
 			return signInResult{user: existing}, err
 		}
 	case errors.Is(err, sql.ErrNoRows):
+		// Only here, where the sign-in would open an account: a closed sign-up
+		// keeps every reader who has one signing in, through a link that
+		// exists or one made to the account holding the address.
+		signUp, err := signupsettings.Get(ctx, txq, tenant.ID)
+		if err != nil {
+			return signInResult{}, err
+		}
+		if !signUp.Open {
+			return signInResult{}, signInRefusal{reason: "sign_up_closed", err: signupsettings.Refusal()}
+		}
 		result.user, err = s.createAccountForIdentity(ctx, tx, txq, tenant, claims, msg)
 		if err != nil {
 			return signInResult{}, err
