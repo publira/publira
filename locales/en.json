@@ -2840,6 +2840,24 @@
           "entries_refused": "Check the list. Each entry must be one email address or domain, and at most {$max} can be listed."
         }
       },
+      "sign_up": {
+        "title": "Reader sign-up",
+        "description": "Whether visitors can create a reader account on the site. Readers who already have an account keep signing in, buying, and reading whichever you choose.",
+        "closed_notice": "Sign-up is closed. Nobody can create a new reader account on the site, with an email address or with Apple or Google, until you open it again.",
+        "open_label": "Accept new readers",
+        "open_description": "Turn this off to close sign-up. The site's sign-up page then shows the message below in place of the form.",
+        "message_label": "Message while sign-up is closed",
+        "message_description": "Plain text, up to {$max} characters. Leave it empty and the site shows a default notice saying it is not accepting new accounts.",
+        "load_error_hint": "Saving now would overwrite the stored settings, so reload the page before changing them.",
+        "submit": "Save the sign-up settings",
+        "saved_open": "Sign-up is open. Visitors can create a reader account.",
+        "saved_closed": "Sign-up is closed. Visitors see your message in place of the sign-up form.",
+        "load_failed": "Could not load the sign-up settings. Please try again later.",
+        "save_failed": "Could not save the sign-up settings. Please try again later.",
+        "validation": {
+          "message_too_long": "Keep the message to {$max} characters or fewer."
+        }
+      },
       "crawlers": {
         "title": "Crawler exclusions",
         "description": "What the site's robots.txt asks crawlers to stay away from. Crawlers that follow robots.txt stop fetching what is excluded here. A page stays open to readers, and to crawlers that ignore the file.",

@@ -2840,6 +2840,24 @@
           "entries_refused": "請檢查清單。每欄只能填寫一個電子郵件地址或網域，最多可列出{$max}個。"
         }
       },
+      "sign_up": {
+        "title": "讀者註冊",
+        "description": "訪客能否在網站上建立新的讀者帳號。無論如何選擇，已有帳號的讀者都能照常登入、購買和閱讀。",
+        "closed_notice": "註冊已暫停。在重新開放之前，任何人都無法透過電子郵件地址或Apple、Google在網站上建立新的讀者帳號。",
+        "open_label": "接受新讀者",
+        "open_description": "關閉後將暫停註冊。網站的註冊頁面會顯示下方的訊息，而不是註冊表單。",
+        "message_label": "暫停註冊期間顯示的訊息",
+        "message_description": "純文字，最多{$max}個字元。留空時，網站會顯示預設提示，說明目前不接受新帳號註冊。",
+        "load_error_hint": "此時儲存會覆蓋已儲存的設定，請先重新載入頁面，再進行修改。",
+        "submit": "儲存註冊設定",
+        "saved_open": "已開放註冊。訪客可以建立讀者帳號。",
+        "saved_closed": "已暫停註冊。訪客會看到你的訊息，而不是註冊表單。",
+        "load_failed": "無法載入註冊設定。請稍後再試。",
+        "save_failed": "無法儲存註冊設定。請稍後再試。",
+        "validation": {
+          "message_too_long": "訊息不能超過{$max}個字元。"
+        }
+      },
       "crawlers": {
         "title": "爬蟲排除規則",
         "description": "透過網站的robots.txt要求爬蟲不要擷取的內容。遵守robots.txt的爬蟲將不再擷取此處排除的內容。讀者以及無視該檔案的爬蟲仍可瀏覽頁面。",

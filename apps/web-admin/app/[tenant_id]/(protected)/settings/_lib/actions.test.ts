@@ -8,6 +8,7 @@ const {
   mockUpdateTenantEmailRejectionSettings,
   mockUpdateTenantLegalPages,
   mockUpdateTenantLocales,
+  mockUpdateTenantSignUpSettings,
   mockUpdateTenantSiteSettings,
   mockUpdateTenantTimezone,
 } = vi.hoisted(() => ({
@@ -18,6 +19,7 @@ const {
   mockUpdateTenantEmailRejectionSettings: vi.fn(),
   mockUpdateTenantLegalPages: vi.fn(),
   mockUpdateTenantLocales: vi.fn(),
+  mockUpdateTenantSignUpSettings: vi.fn(),
   mockUpdateTenantSiteSettings: vi.fn(),
   mockUpdateTenantTimezone: vi.fn(),
 }));
@@ -96,6 +98,12 @@ vi.mock("#lib/tenant-legal-pages", () => ({
   tenantLegalPagesCacheTag: (tenantId: string) =>
     `tenant:${tenantId}:legal-pages`,
   updateTenantLegalPages: mockUpdateTenantLegalPages,
+}));
+
+vi.mock("#lib/tenant-sign-up-settings", () => ({
+  tenantSignUpSettingsCacheTag: (tenantId: string) =>
+    `tenant:${tenantId}:sign-up-settings`,
+  updateTenantSignUpSettings: mockUpdateTenantSignUpSettings,
 }));
 
 vi.mock("#lib/tenant-timezone", () => ({
@@ -962,6 +970,146 @@ describe("updateTenantCrawlerSettingsAction", () => {
     expect(result).toEqual({
       fieldErrors: { excludedUserAgents: message },
       message,
+      ok: false,
+    });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateTenantSignUpSettingsAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("closes sign-up with the trimmed message and revalidates the tag", async () => {
+    const settings = {
+      closedMessage: "We open again in spring.",
+      signUpOpen: false,
+    };
+    mockUpdateTenantSignUpSettings.mockResolvedValueOnce({
+      ok: true,
+      settings,
+    });
+
+    const { updateTenantSignUpSettingsAction } = await import("./actions");
+
+    const result = await updateTenantSignUpSettingsAction(
+      null,
+      textFormData({
+        closed_message: "  We open again in spring.  ",
+        tenant_id: "TENANT001",
+      })
+    );
+
+    expect(result).toEqual({
+      message:
+        "Sign-up is closed. Visitors see your message in place of the sign-up form.",
+      ok: true,
+      settings,
+    });
+    expect(mockUpdateTenantSignUpSettings).toHaveBeenCalledWith(
+      {
+        closedMessage: "We open again in spring.",
+        signUpOpen: false,
+        tenantId: "TENANT001",
+      },
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      "tenant:TENANT001:sign-up-settings"
+    );
+  });
+
+  it("opens sign-up while the switch posts on", async () => {
+    const settings = { closedMessage: "Kept.", signUpOpen: true };
+    mockUpdateTenantSignUpSettings.mockResolvedValueOnce({
+      ok: true,
+      settings,
+    });
+
+    const { updateTenantSignUpSettingsAction } = await import("./actions");
+
+    const result = await updateTenantSignUpSettingsAction(
+      null,
+      textFormData({
+        closed_message: "Kept.",
+        sign_up_open: "on",
+        tenant_id: "TENANT001",
+      })
+    );
+
+    expect(result).toEqual({
+      message: "Sign-up is open. Visitors can create a reader account.",
+      ok: true,
+      settings,
+    });
+    expect(mockUpdateTenantSignUpSettings).toHaveBeenCalledWith(
+      { closedMessage: "Kept.", signUpOpen: true, tenantId: "TENANT001" },
+      "en"
+    );
+  });
+
+  // The server counts characters, so a message of 1000 emoji is within the
+  // bound although its UTF-16 length is twice that.
+  it("measures the message in characters, as the server does", async () => {
+    mockUpdateTenantSignUpSettings.mockResolvedValueOnce({
+      ok: true,
+      settings: { closedMessage: "🌸".repeat(1000), signUpOpen: false },
+    });
+
+    const { updateTenantSignUpSettingsAction } = await import("./actions");
+
+    const result = await updateTenantSignUpSettingsAction(
+      null,
+      textFormData({
+        closed_message: "🌸".repeat(1000),
+        tenant_id: "TENANT001",
+      })
+    );
+
+    expect(result?.ok).toBe(true);
+  });
+
+  it("refuses a message over the bound beside the field without saving", async () => {
+    const { updateTenantSignUpSettingsAction } = await import("./actions");
+
+    const result = await updateTenantSignUpSettingsAction(
+      null,
+      textFormData({ closed_message: "a".repeat(1001), tenant_id: "TENANT001" })
+    );
+
+    expect(result).toEqual({
+      fieldErrors: {
+        closedMessage: "Keep the message to 1,000 characters or fewer.",
+      },
+      message: "Keep the message to 1,000 characters or fewer.",
+      ok: false,
+    });
+    expect(mockUpdateTenantSignUpSettings).not.toHaveBeenCalled();
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+
+  it("shows the server's refusal of the message beside the field", async () => {
+    mockUpdateTenantSignUpSettings.mockResolvedValueOnce({
+      closedMessageError: "Keep the message to 1,000 characters or fewer.",
+      message: "Keep the message to 1,000 characters or fewer.",
+      ok: false,
+    });
+
+    const { updateTenantSignUpSettingsAction } = await import("./actions");
+
+    const result = await updateTenantSignUpSettingsAction(
+      null,
+      textFormData({ closed_message: "Closed.", tenant_id: "TENANT001" })
+    );
+
+    expect(result).toEqual({
+      fieldErrors: {
+        closedMessage: "Keep the message to 1,000 characters or fewer.",
+      },
+      message: "Keep the message to 1,000 characters or fewer.",
       ok: false,
     });
     expect(mockUpdateTag).not.toHaveBeenCalled();

@@ -3,6 +3,7 @@ import type {
   TenantCrawlerSettingsFieldErrors,
 } from "#lib/tenant-crawler-settings";
 import type { TenantEmailRejectionSettings } from "#lib/tenant-email-rejection-settings";
+import type { TenantSignUpSettings } from "#lib/tenant-sign-up-settings";
 
 export type SiteSettingsActionState =
   | {
@@ -104,6 +105,19 @@ export type TenantCrawlerSettingsActionState =
       ok: false;
       message: string;
       fieldErrors?: TenantCrawlerSettingsFieldErrors;
+    }
+  | null;
+
+export type TenantSignUpSettingsActionState =
+  | {
+      ok: true;
+      message: string;
+      settings: TenantSignUpSettings;
+    }
+  | {
+      ok: false;
+      message: string;
+      fieldErrors?: { closedMessage?: string };
     }
   | null;
 

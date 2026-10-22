@@ -1,6 +1,6 @@
 ---
 title: Settings
-description: Set the site's copy, time zone, languages, reader comments, age verification, legal pages, refused email addresses, and crawler exclusions, tighten the platform's limits for the tenant, and choose what readers can show as their icon.
+description: Set the site's copy, time zone, languages, reader comments, age verification, legal pages, reader sign-up, refused email addresses, and crawler exclusions, tighten the platform's limits for the tenant, and choose what readers can show as their icon.
 published: 2026-10-07
 updated: 2026-10-22
 ---
@@ -97,6 +97,19 @@ Choose **Save the age verification** to save.
 ![The Terms and privacy policy card: a Terms of service and a Privacy policy field, each naming one of the tenant's pages, and Save the terms and privacy policy.](./settings-terms-and-privacy-policy.png)
 
 If a page chosen here is later taken off the site, the card says that nothing links to it any more, and sign-up stops asking readers to agree to it. Publish it again, or choose another page.
+
+### Reader sign-up
+
+Whether visitors can create a reader account on the site. Close sign-up to keep the site serving the readers it has while no new one is let in, for a site opened to an invited group before its launch, or while a wave of unwanted sign-ups is dealt with. Readers who already have an account keep signing in, buying, and reading.
+
+- **Accept new readers** is on until you turn it off. While it is off, nobody can create an account on the site, with an email address or with a first sign-in with Apple or Google. The site's sign-up page shows **Sign-up is closed** and your message in place of the form, and **Sign in** shows the same notice where it would offer **Sign up**.
+- **Message while sign-up is closed** is the text visitors see, up to 1000 characters, shown as written with its line breaks. Leave it empty and the site says "This site is not accepting new accounts right now." The message is kept while sign-up is open, so closing it again shows the same text.
+
+Choose **Save the sign-up settings** to save. While sign-up is closed the card says so above the switch: "Sign-up is closed. Nobody can create a new reader account on the site, with an email address or with Apple or Google, until you open it again." Turning the switch back on and saving opens sign-up at once.
+
+![The Reader sign-up card: Accept new readers switched on, an empty Message while sign-up is closed, and Save the sign-up settings.](./settings-reader-sign-up.png)
+
+Saves are recorded in the [audit log](./8-audit-log.md) as **Reader sign-up updated**.
 
 ### Refused email addresses
 

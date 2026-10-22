@@ -45,6 +45,7 @@ import { getTenantId } from "#lib/tenant-id";
 import { getTenantLegalPages } from "#lib/tenant-legal-pages";
 import { getTenantLocales } from "#lib/tenant-locales";
 import type { GetTenantLocalesResult } from "#lib/tenant-locales";
+import { getTenantSignUpSettings } from "#lib/tenant-sign-up-settings";
 import { getTenantTimezone } from "#lib/tenant-timezone";
 
 import { SettingsTabNav } from "./_components/settings-tab-nav";
@@ -55,6 +56,7 @@ import { TenantCrawlerSettingsForm } from "./_components/tenant-crawler-settings
 import { TenantEmailRejectionForm } from "./_components/tenant-email-rejection-form";
 import { TenantLegalPagesForm } from "./_components/tenant-legal-pages-form";
 import { TenantLocalesForm } from "./_components/tenant-locales-form";
+import { TenantSignUpSettingsForm } from "./_components/tenant-sign-up-settings-form";
 import { TenantTimezoneForm } from "./_components/tenant-timezone-form";
 
 export const generateMetadata = async (): Promise<Metadata> => {
@@ -145,6 +147,11 @@ const SettingsFormsSkeleton = () => (
       <Skeleton className="h-40" />
     </AdminSection>
     <AdminSection>
+      <SkeletonLine className="h-5 w-32" />
+      <Skeleton className="h-10" />
+      <Skeleton className="h-24" />
+    </AdminSection>
+    <AdminSection>
       <SkeletonLine className="h-5 w-40" />
       <Skeleton className="h-40" />
       <Skeleton className="h-10" />
@@ -193,6 +200,7 @@ const SettingsForms = async ({ searchParams }: SettingsPageProps) => {
     legalPagesResult,
     publishedPagesResult,
     currentUser,
+    signUpSettingsResult,
     emailRejectionResult,
     crawlerSettingsResult,
   ] = await Promise.all([
@@ -204,6 +212,7 @@ const SettingsForms = async ({ searchParams }: SettingsPageProps) => {
     getTenantLegalPages(tenantId, locale),
     listPublishedPages(tenantId, locale),
     currentUserPromise,
+    getTenantSignUpSettings(tenantId, locale),
     readEmailRejectionSettings(tenantId, locale, currentUserPromise),
     getTenantCrawlerSettings(tenantId, locale),
   ]);
@@ -214,6 +223,7 @@ const SettingsForms = async ({ searchParams }: SettingsPageProps) => {
     ageVerificationResult,
     legalPagesResult,
     publishedPagesResult,
+    signUpSettingsResult,
     crawlerSettingsResult,
     ...(emailRejectionResult ? [emailRejectionResult] : [])
   );
@@ -305,6 +315,14 @@ const SettingsForms = async ({ searchParams }: SettingsPageProps) => {
               }))
             : []
         }
+        tenantId={tenantId}
+      />
+
+      <TenantSignUpSettingsForm
+        canEdit={canEdit}
+        {...(signUpSettingsResult.ok
+          ? { initialSettings: signUpSettingsResult.settings }
+          : { loadErrorMessage: signUpSettingsResult.message })}
         tenantId={tenantId}
       />
 
