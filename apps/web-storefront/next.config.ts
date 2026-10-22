@@ -46,6 +46,9 @@ const nextConfig: NextConfig = {
   output: "standalone",
   partialPrefetching: true,
   reactCompiler: true,
+  // Google's tag gateway is loaded from `/<gateway path>/` with its slash, so
+  // `proxy.ts` drops a trailing slash itself, from every other path.
+  skipTrailingSlashRedirect: true,
 };
 
 export default nextConfig;

@@ -2,7 +2,7 @@
 title: Edge
 description: What the load balancer, proxy, or CDN in front of an install has to do.
 published: 2026-10-06
-updated: 2026-10-21
+updated: 2026-10-22
 redirect_from:
   - /deployments/reverse-proxy
 ---
@@ -95,7 +95,7 @@ A web app is a hop of the same kind. On a call it makes for a reader, it passes 
 
 The addresses come from the `for=` parameters of the standard `Forwarded` header when the request carries any, and from `X-Forwarded-For` otherwise. `PUBLIRA_FORWARDED_HEADER_ENABLED=false` makes `publira server` read the client address from `X-Forwarded-For` alone, and the web apps take the host from `X-Forwarded-Host` rather than from the `host=` of `Forwarded`. Set it on all four processes or on none: one left reading `Forwarded` behind an edge that passes the caller's on still reads the caller's. Besides `true` and `false`, it takes `1`, `0`, `t`, and `f`, and each of them in upper or title case, such as `TRUE` or `False`. Any other value stops `publira server` at startup, and makes every request to a web app fail.
 
-The trusted proxies are `PUBLIRA_TRUSTED_PROXIES` on `publira server`: addresses and CIDR ranges, separated by commas or spaces, such as `10.0.0.0/8, 203.0.113.7`. A range that covers every address, such as `0.0.0.0/0`, is refused, since trusting every hop makes the address the caller wrote first the client. Unset, they are the loopback, private, and link-local ranges: `127.0.0.0/8`, `::1`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16`, `fc00::/7`, and `fe80::/10`. Those cover an edge and web apps that reach `publira server` over a private network. A value that is set replaces those ranges rather than adding to them, so list the private ranges your edge and web apps use alongside anything else. A value that is not an address or a range stops `publira server` at startup. The same proxies are the only ones whose `host=` of `Forwarded` and `X-Forwarded-Host` `publira server` reads when it finds the tenant an image is requested for.
+The trusted proxies are `PUBLIRA_TRUSTED_PROXIES` on `publira server` and on `web-storefront`, which finds the reader's address the same way to pass it to a tenant's Google tag gateway; set the same value on both. They are addresses and CIDR ranges, separated by commas or spaces, such as `10.0.0.0/8, 203.0.113.7`. A range that covers every address, such as `0.0.0.0/0`, is refused, since trusting every hop makes the address the caller wrote first the client. Unset, they are the loopback, private, and link-local ranges: `127.0.0.0/8`, `::1`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16`, `fc00::/7`, and `fe80::/10`. Those cover an edge and web apps that reach `publira server` over a private network. A value that is set replaces those ranges rather than adding to them, so list the private ranges your edge and web apps use alongside anything else. A value that is not an address or a range stops `publira server` at startup, and makes every request to a Google tag gateway on `web-storefront` fail. The same proxies are the only ones whose `host=` of `Forwarded` and `X-Forwarded-Host` `publira server` reads when it finds the tenant an image is requested for.
 
 #### When to set the trusted proxies
 

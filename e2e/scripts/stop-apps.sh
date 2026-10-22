@@ -9,7 +9,7 @@ join_e2e_lease
 # Every app is tried even when one survives, so a single stubborn process does
 # not leave the rest running.
 status=0
-for app in web-platform web-admin web-storefront worker email-renderer server sign-in-provider stripe; do
+for app in web-platform web-admin web-storefront worker email-renderer server sign-in-provider stripe google-tag-gateway; do
   stop_pid_file "${app}" || status=1
 done
 exit "${status}"

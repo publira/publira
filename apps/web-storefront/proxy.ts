@@ -1,5 +1,6 @@
 import type { Locale } from "@publira/i18n";
 import { sharedMessage } from "@publira/i18n/catalog";
+import { getClientAddress } from "@publira/utils/client-address";
 import { isHealthProbePath } from "@publira/utils/health";
 import { getTenantDomainCandidates } from "@publira/utils/request-host";
 import { applyResolvedLocaleCookie } from "@publira/utils/resolved-locale";
@@ -17,6 +18,11 @@ import {
   isSessionRevokedRedirect,
   PUBLIC_SESSION_COOKIE_NAME,
 } from "./lib/auth-shared";
+import {
+  createGoogleTagGatewayResolver,
+  gatewayPathSegmentOf,
+} from "./lib/google-tag-gateway";
+import { forwardToGoogleTagGateway } from "./lib/google-tag-gateway-proxy";
 import {
   isLocaleExemptPathname,
   splitLocalePathname,
@@ -36,6 +42,7 @@ import type { ResolvedTenant } from "./lib/tenant-resolution";
 
 const resolveTenantByDomain = createTenantResolver(apiClient);
 const resolvePublishedPageSlugs = createPublishedPageSlugResolver(apiClient);
+const resolveGoogleTagGateway = createGoogleTagGatewayResolver(apiClient);
 
 const GUEST_ONLY_PATH_SET: ReadonlySet<string> = new Set(GUEST_ONLY_PATHS);
 
@@ -79,6 +86,41 @@ const redirectToPathname = (
   const url = request.nextUrl.clone();
   url.pathname = pathname;
   return NextResponse.redirect(url, status);
+};
+
+/**
+ * The path without its trailing slashes, or `null` for one that has none, or
+ * for a Google tag gateway path, which is loaded with its slash. It stands in
+ * for the redirect Next.js makes itself unless `skipTrailingSlashRedirect` is
+ * set, which `next.config.ts` sets for the gateway's sake.
+ */
+const withoutTrailingSlash = (pathname: string): string | null => {
+  if (
+    pathname === "/" ||
+    !pathname.endsWith("/") ||
+    gatewayPathSegmentOf(pathname)
+  ) {
+    return null;
+  }
+  let end = pathname.length;
+  while (end > 1 && pathname[end - 1] === "/") {
+    end -= 1;
+  }
+  return pathname.slice(0, end);
+};
+
+/**
+ * What answers a request before any tenant is resolved: a health probe, which
+ * must not depend on tenant resolution or backend availability, and a path
+ * with a trailing slash. `null` for every other request.
+ */
+const answerBeforeTenant = (request: NextRequest): NextResponse | null => {
+  const { pathname } = request.nextUrl;
+  if (isHealthProbePath(pathname)) {
+    return NextResponse.next();
+  }
+  const slashless = withoutTrailingSlash(pathname);
+  return slashless ? redirectToPathname(request, slashless, 308) : null;
 };
 
 /**
@@ -180,6 +222,61 @@ const isDroppedPrefix = (
   (locale === tenant.defaultLocale ||
     !tenant.supportedLocales.includes(locale));
 
+/**
+ * The answer of the tenant's Google tag gateway when the request is on its
+ * current path, or `null` for any other path, which the site serves: a path
+ * the tenant has since regenerated, or one of a tenant that left the gateway
+ * mode, gets the site's 404. None of the site's cookies is forwarded, and none is
+ * set on the way back. A settings read that fails in a way the client cannot
+ * classify, and a setting the gateway cannot read, such as a malformed
+ * `PUBLIRA_TRUSTED_PROXIES`, answer `502` rather than throwing out of the
+ * proxy.
+ */
+const forwardGoogleTagGatewayPath = async (
+  request: NextRequest,
+  tenantId: string
+): Promise<NextResponse | null> => {
+  const gatewayPathSegment = gatewayPathSegmentOf(request.nextUrl.pathname);
+  if (!gatewayPathSegment) {
+    return null;
+  }
+  try {
+    const gateway = await resolveGoogleTagGateway(tenantId);
+    if (gateway?.path !== gatewayPathSegment) {
+      return null;
+    }
+    return await forwardToGoogleTagGateway(
+      request,
+      gateway,
+      getClientAddress(request.headers)
+    );
+  } catch (error) {
+    // A failure the gateway cannot recover from fails its path alone.
+    console.error("[web-storefront] google tag gateway failed", error);
+    return new NextResponse("Bad Gateway", { status: 502 });
+  }
+};
+
+/**
+ * {@link resolveTenant}, with the Google tag gateway's answer in place of the
+ * tenant on its path: the gateway answers before anything that reads or clears
+ * the reader's session.
+ */
+const resolveSiteTenant = async (
+  request: NextRequest,
+  pathLocale: Locale | null
+): Promise<ResolvedTenant | { response: NextResponse }> => {
+  const tenant = await resolveTenant(request, pathLocale);
+  if ("response" in tenant) {
+    return tenant;
+  }
+  const gatewayResponse = await forwardGoogleTagGatewayPath(
+    request,
+    tenant.tenantId
+  );
+  return gatewayResponse ? { response: gatewayResponse } : tenant;
+};
+
 const rewriteTo = (request: NextRequest, pathname: string): NextResponse => {
   const url = request.nextUrl.clone();
   url.pathname = pathname;
@@ -189,9 +286,9 @@ const rewriteTo = (request: NextRequest, pathname: string): NextResponse => {
 export const proxy = async (request: NextRequest): Promise<NextResponse> => {
   const { pathname } = request.nextUrl;
 
-  // Probes must not depend on tenant resolution or backend availability.
-  if (isHealthProbePath(pathname)) {
-    return NextResponse.next();
+  const answered = answerBeforeTenant(request);
+  if (answered) {
+    return answered;
   }
 
   // `/theme.css` and the Route Handlers answer machines rather than readers,
@@ -207,7 +304,7 @@ export const proxy = async (request: NextRequest): Promise<NextResponse> => {
 
   const { locale: requestedLocale, pathname: publicPath } =
     splitLocalePathname(pathname);
-  const tenant = await resolveTenant(request, requestedLocale);
+  const tenant = await resolveSiteTenant(request, requestedLocale);
   if ("response" in tenant) {
     return tenant.response;
   }

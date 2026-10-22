@@ -29,6 +29,7 @@ export PUBLIRA_E2E_WORKER_PORT="${PUBLIRA_E2E_WORKER_PORT:-8003}"
 export PUBLIRA_E2E_EMAIL_RENDERER_PORT="${PUBLIRA_E2E_EMAIL_RENDERER_PORT:-8300}"
 export PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT="${PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT:-8400}"
 export PUBLIRA_E2E_STRIPE_PORT="${PUBLIRA_E2E_STRIPE_PORT:-8500}"
+export PUBLIRA_E2E_GOOGLE_TAG_GATEWAY_PORT="${PUBLIRA_E2E_GOOGLE_TAG_GATEWAY_PORT:-8600}"
 # Traefik entrypoint. `/images` belongs to the server and everything else to
 # web-storefront, so the browser can reach both from one origin the way the Dev
 # Container edge serves them.
@@ -87,6 +88,9 @@ export PUBLIRA_E2E_MAILPIT_BASE_URL="${PUBLIRA_E2E_MAILPIT_BASE_URL:-http://127.
 export PUBLIRA_E2E_SIGN_IN_PROVIDER_BASE_URL="${PUBLIRA_E2E_SIGN_IN_PROVIDER_BASE_URL:-http://127.0.0.1:${PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT}}"
 # The Stripe stand-in, which a spec registers the storefront's webhook with.
 export PUBLIRA_E2E_STRIPE_BASE_URL="${PUBLIRA_E2E_STRIPE_BASE_URL:-http://127.0.0.1:${PUBLIRA_E2E_STRIPE_PORT}}"
+# The stand-in for Google's tag gateway, which a spec reads what the storefront
+# forwarded from.
+export PUBLIRA_E2E_GOOGLE_TAG_GATEWAY_BASE_URL="${PUBLIRA_E2E_GOOGLE_TAG_GATEWAY_BASE_URL:-http://127.0.0.1:${PUBLIRA_E2E_GOOGLE_TAG_GATEWAY_PORT}}"
 # Built from the port like the rest, so a second stack's screenshot projects
 # reach that stack's browser rather than the first one's.
 export PUBLIRA_E2E_BROWSER_WS_ENDPOINT="${PUBLIRA_E2E_BROWSER_WS_ENDPOINT:-ws://127.0.0.1:${PUBLIRA_E2E_BROWSER_PORT}}"
@@ -174,6 +178,12 @@ export PUBLIRA_SIGN_IN_GOOGLE_KEYS_URL="${PUBLIRA_SIGN_IN_APPLE_KEYS_URL}"
 # than sent to Stripe. Always built from the E2E port, never inherited.
 export PUBLIRA_STRIPE_API_URL="http://127.0.0.1:${PUBLIRA_E2E_STRIPE_PORT}"
 
+# Where web-storefront forwards a tenant's Google tag gateway path in place of
+# `https://<tag ID>.fps.goog`: the stand-in scripts/google-tag-gateway.ts
+# serves, so no reader's request reaches Google. Always built from the E2E
+# port, never inherited.
+export PUBLIRA_GOOGLE_TAG_GATEWAY_URL="http://127.0.0.1:${PUBLIRA_E2E_GOOGLE_TAG_GATEWAY_PORT}"
+
 # Where the platform console auth mail points. The worker builds those links, so
 # without this they would name the dev stack's port instead of this run's.
 export PUBLIRA_PLATFORM_APP_URL="${PUBLIRA_E2E_WEB_PLATFORM_BASE_URL}"
@@ -213,6 +223,7 @@ else
     [[ "${PUBLIRA_E2E_EMAIL_RENDERER_PORT}" != "8300" ]] ||
     [[ "${PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT}" != "8400" ]] ||
     [[ "${PUBLIRA_E2E_STRIPE_PORT}" != "8500" ]] ||
+    [[ "${PUBLIRA_E2E_GOOGLE_TAG_GATEWAY_PORT}" != "8600" ]] ||
     [[ "${PUBLIRA_E2E_OPENSEARCH_PORT}" != "9201" ]] ||
     [[ "${PUBLIRA_E2E_EDGE_PORT}" != "3080" ]]; then
     _e2e_uses_default_stack=0
@@ -222,7 +233,7 @@ else
   else
     # Directory name encodes the override set so start/stop/wait in one session
     # share state, while a different port set gets its own directory.
-    export PUBLIRA_E2E_RUN_DIR="${PUBLIRA_E2E_DIR}/.run/${COMPOSE_PROJECT_NAME}-pg${PUBLIRA_E2E_POSTGRES_PORT}-rd${PUBLIRA_E2E_REDIS_PORT}-s3${PUBLIRA_E2E_RUSTFS_PORT}-mp${PUBLIRA_E2E_MAILPIT_SMTP_PORT}-${PUBLIRA_E2E_MAILPIT_HTTP_PORT}-h${PUBLIRA_E2E_WEB_STOREFRONT_PORT}-a${PUBLIRA_E2E_WEB_ADMIN_PORT}-p${PUBLIRA_E2E_WEB_PLATFORM_PORT}-api${PUBLIRA_E2E_PUBLIC_API_PORT}-w${PUBLIRA_E2E_WORKER_PORT}-er${PUBLIRA_E2E_EMAIL_RENDERER_PORT}-sp${PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT}-st${PUBLIRA_E2E_STRIPE_PORT}-os${PUBLIRA_E2E_OPENSEARCH_PORT}-edge${PUBLIRA_E2E_EDGE_PORT}"
+    export PUBLIRA_E2E_RUN_DIR="${PUBLIRA_E2E_DIR}/.run/${COMPOSE_PROJECT_NAME}-pg${PUBLIRA_E2E_POSTGRES_PORT}-rd${PUBLIRA_E2E_REDIS_PORT}-s3${PUBLIRA_E2E_RUSTFS_PORT}-mp${PUBLIRA_E2E_MAILPIT_SMTP_PORT}-${PUBLIRA_E2E_MAILPIT_HTTP_PORT}-h${PUBLIRA_E2E_WEB_STOREFRONT_PORT}-a${PUBLIRA_E2E_WEB_ADMIN_PORT}-p${PUBLIRA_E2E_WEB_PLATFORM_PORT}-api${PUBLIRA_E2E_PUBLIC_API_PORT}-w${PUBLIRA_E2E_WORKER_PORT}-er${PUBLIRA_E2E_EMAIL_RENDERER_PORT}-sp${PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT}-st${PUBLIRA_E2E_STRIPE_PORT}-gt${PUBLIRA_E2E_GOOGLE_TAG_GATEWAY_PORT}-os${PUBLIRA_E2E_OPENSEARCH_PORT}-edge${PUBLIRA_E2E_EDGE_PORT}"
   fi
   unset _e2e_uses_default_stack
 fi

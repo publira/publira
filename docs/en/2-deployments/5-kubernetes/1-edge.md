@@ -2,6 +2,7 @@
 title: The edge on Kubernetes
 description: Put a Gateway or an Ingress in front of an install on a Kubernetes cluster, with cert-manager issuing its certificates, and check it from outside the cluster.
 published: 2026-10-21
+updated: 2026-10-22
 ---
 
 This page is step 6 of [Kubernetes](./index.md): it puts the edge in front of the Services that [Start the processes](./index.md#4-start-the-processes) created, once [Set the install up](./index.md#5-set-the-install-up) has run.
@@ -345,7 +346,7 @@ Publira records the address of the reader behind every request, and reads it fro
 
 **The reader's address has to reach the controller.** A Service of type `LoadBalancer` that forwards connections as they are, as most cloud load balancers in their passthrough mode do, delivers them through whichever node the load balancer picked, and with the default `externalTrafficPolicy: Cluster` that node replaces the reader's address with its own before the connection reaches the controller's Pod. Set `externalTrafficPolicy: Local` on the controller's Service, so a connection is delivered only to a node that runs a controller Pod, with its source address kept. Where that is set is the controller's: Envoy Gateway sets it on the Service it creates for a Gateway unless told otherwise, and the Traefik values above set it on the Service the chart creates. A load balancer that terminates HTTP itself writes the reader's address in `X-Forwarded-For` instead, and then its own addresses are the ones to trust, below.
 
-**`PUBLIRA_TRUSTED_PROXIES` names the hops inside the cluster.** The controller's Pods and the web apps' Pods connect to `publira server` from Pod addresses, so the Pod address range is the value, as in the `publira-server` Deployment of [Start the processes](./index.md#4-start-the-processes). Unset, it trusts every private range, the nodes' addresses among them, and then a request that reached the controller from a node's address, because `externalTrafficPolicy` was left at `Cluster`, is recorded with whatever address the caller wrote in its own `X-Forwarded-For`. With the Pod range alone, such a request is recorded with the node's address: every reader then shares one address, but none of them can choose it.
+**`PUBLIRA_TRUSTED_PROXIES` names the hops inside the cluster.** The controller's Pods and the web apps' Pods connect to `publira server` from Pod addresses, so the Pod address range is the value, as in the `publira-server` and `web-storefront` Deployments of [Start the processes](./index.md#4-start-the-processes). Unset, it trusts every private range, the nodes' addresses among them, and then a request that reached the controller from a node's address, because `externalTrafficPolicy` was left at `Cluster`, is recorded with whatever address the caller wrote in its own `X-Forwarded-For`. With the Pod range alone, such a request is recorded with the node's address: every reader then shares one address, but none of them can choose it.
 
 **A hop in front of the controller is trusted in two places.** A load balancer or a CDN that terminates HTTP in front of the controller sets `X-Forwarded-For` to the address that connected to it, rather than appending to the caller's, as [A hop in front of the proxy](../4-edge/1-sample-configurations.md#a-hop-in-front-of-the-proxy) describes. The controller has to pass that header on:
 

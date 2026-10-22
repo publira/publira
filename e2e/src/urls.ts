@@ -460,6 +460,16 @@ export const STRIPE_BASE_URL = envUrl(
 );
 
 /**
+ * The stand-in for Google's tag gateway (`scripts/google-tag-gateway.ts`),
+ * which web-storefront forwards a tenant's gateway path to and a spec reads
+ * what was forwarded from.
+ */
+export const GOOGLE_TAG_GATEWAY_BASE_URL = envUrl(
+  "PUBLIRA_E2E_GOOGLE_TAG_GATEWAY_BASE_URL",
+  "http://127.0.0.1:8600"
+);
+
+/**
  * Admin console of the members tenant from
  * `db/seeds/scenarios/290_tenant_members.sql`. Its suite changes who
  * administers the tenant, so it needs a console of its own.

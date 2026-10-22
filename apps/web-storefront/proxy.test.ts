@@ -4,7 +4,14 @@ import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
 import type { NextRequest } from "next/server";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockResolvePublishedPageSlugs, mockResolveTenant } = vi.hoisted(() => ({
+const {
+  mockForwardToGoogleTagGateway,
+  mockResolveGoogleTagGateway,
+  mockResolvePublishedPageSlugs,
+  mockResolveTenant,
+} = vi.hoisted(() => ({
+  mockForwardToGoogleTagGateway: vi.fn(),
+  mockResolveGoogleTagGateway: vi.fn(),
   mockResolvePublishedPageSlugs:
     vi.fn<(tenantId: string) => Promise<ReadonlySet<string> | null>>(),
   mockResolveTenant: vi.fn(),
@@ -23,7 +30,17 @@ vi.mock("./lib/published-page-slugs", () => ({
   createPublishedPageSlugResolver: () => mockResolvePublishedPageSlugs,
 }));
 
+vi.mock("./lib/google-tag-gateway", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  createGoogleTagGatewayResolver: () => mockResolveGoogleTagGateway,
+}));
+
+vi.mock("./lib/google-tag-gateway-proxy", () => ({
+  forwardToGoogleTagGateway: mockForwardToGoogleTagGateway,
+}));
+
 beforeEach(() => {
+  mockResolveGoogleTagGateway.mockResolvedValue(null);
   mockResolvePublishedPageSlugs.mockResolvedValue(
     new Set(["/authors-wanted", "/privacy"])
   );
@@ -683,6 +700,146 @@ describe("web-storefront proxy published pages", () => {
     expect(response.headers.get("x-middleware-rewrite")).toContain(
       `/${TENANT_ID}/ja/privacy`
     );
+  });
+});
+
+describe("web-storefront proxy Google tag gateway", () => {
+  const GATEWAY_PATH = "_abcdefghijklmnop";
+
+  beforeAll(() => {
+    process.env.PUBLIRA_AUTH_SECRET = PUBLIRA_AUTH_SECRET;
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResolveTenant.mockResolvedValue({
+      defaultLocale: "ja",
+      supportedLocales: getLocales(),
+      tenantId: TENANT_ID,
+    });
+    mockResolveGoogleTagGateway.mockResolvedValue({
+      path: GATEWAY_PATH,
+      upstream: { mode: "google", tagId: "GTM-TEST1" },
+    });
+    mockForwardToGoogleTagGateway.mockResolvedValue(
+      new Response("ok", { status: 200 })
+    );
+  });
+
+  it("Forward the tenant's gateway path with the reader's address", async () => {
+    const { proxy } = await import("./proxy");
+    const gatewayRequest = request(
+      `https://shop.example.com/${GATEWAY_PATH}/g/collect?v=2`
+    );
+    gatewayRequest.headers.set("x-forwarded-for", "203.0.113.7, 10.0.0.2");
+
+    const response = await proxy(gatewayRequest);
+
+    expect(await response.text()).toBe("ok");
+    expect(mockResolveGoogleTagGateway).toHaveBeenCalledWith(TENANT_ID);
+    expect(mockForwardToGoogleTagGateway).toHaveBeenCalledWith(
+      gatewayRequest,
+      expect.objectContaining({ path: GATEWAY_PATH }),
+      "203.0.113.7"
+    );
+    expect(resolvedLocaleCookie(response)).toBeUndefined();
+  });
+
+  it("Forward the gateway's loader path with its trailing slash", async () => {
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request(`https://shop.example.com/${GATEWAY_PATH}/?id=GTM-TEST1`)
+    );
+
+    expect(response.headers.get("location")).toBeNull();
+    expect(mockForwardToGoogleTagGateway).toHaveBeenCalledOnce();
+  });
+
+  it("Send any other path with a trailing slash to the path without one", async () => {
+    const { proxy } = await import("./proxy");
+
+    const series = await proxy(
+      request("https://shop.example.com/en/series/?page=2")
+    );
+    const slashes = await proxy(request("https://shop.example.com/labels//"));
+
+    expect(series.status).toBe(308);
+    expect(series.headers.get("location")).toBe(
+      "https://shop.example.com/en/series?page=2"
+    );
+    expect(slashes.status).toBe(308);
+    expect(slashes.headers.get("location")).toBe(
+      "https://shop.example.com/labels"
+    );
+    expect(mockResolveTenant).not.toHaveBeenCalled();
+  });
+
+  it("Answer 502 on the gateway path when a setting cannot be read", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.stubEnv("PUBLIRA_TRUSTED_PROXIES", "0.0.0.0/0");
+    const { proxy } = await import("./proxy");
+
+    try {
+      const response = await proxy(
+        request(`https://shop.example.com/${GATEWAY_PATH}/?id=GTM-TEST1`)
+      );
+
+      expect(response.status).toBe(502);
+      expect(mockForwardToGoogleTagGateway).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("Answer 502 on a gateway-shaped path when the settings read fails unexpectedly", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    mockResolveGoogleTagGateway.mockRejectedValue(new Error("broken"));
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request(`https://shop.example.com/${GATEWAY_PATH}/?id=GTM-TEST1`)
+    );
+
+    expect(response.status).toBe(502);
+    expect(mockForwardToGoogleTagGateway).not.toHaveBeenCalled();
+  });
+
+  it("Send a stale gateway path to the app's routes", async () => {
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request("https://shop.example.com/_qrstuvwxyz234567/?id=GTM-TEST1")
+    );
+
+    expect(mockForwardToGoogleTagGateway).not.toHaveBeenCalled();
+    expect(response.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/ja/_qrstuvwxyz234567`
+    );
+  });
+
+  it("Send the path to the app's routes for a tenant with no gateway", async () => {
+    mockResolveGoogleTagGateway.mockResolvedValue(null);
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request(`https://shop.example.com/${GATEWAY_PATH}/?id=GTM-TEST1`)
+    );
+
+    expect(mockForwardToGoogleTagGateway).not.toHaveBeenCalled();
+    expect(response.headers.get("x-middleware-rewrite")).toContain(
+      `/${TENANT_ID}/ja/${GATEWAY_PATH}`
+    );
+  });
+
+  it("Read no settings for a path that cannot be a gateway", async () => {
+    const { proxy } = await import("./proxy");
+
+    await proxy(request("https://shop.example.com/series"));
+    await proxy(request(`https://shop.example.com/en/${GATEWAY_PATH}/`));
+
+    expect(mockResolveGoogleTagGateway).not.toHaveBeenCalled();
+    expect(mockForwardToGoogleTagGateway).not.toHaveBeenCalled();
   });
 });
 
