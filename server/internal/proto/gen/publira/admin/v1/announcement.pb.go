@@ -22,6 +22,62 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Which readers an announcement's notification reaches.
+type AnnouncementDelivery int32
+
+const (
+	// Read as preferred, the delivery an announcement takes unless it is asked
+	// for another.
+	AnnouncementDelivery_ANNOUNCEMENT_DELIVERY_UNSPECIFIED AnnouncementDelivery = 0
+	// Every reader whose notification preferences take announcements.
+	AnnouncementDelivery_ANNOUNCEMENT_DELIVERY_PREFERRED AnnouncementDelivery = 1
+	// Every reader, whatever their notification preferences say about
+	// announcements: for a notice no reader may miss, such as a change of terms
+	// or an outage.
+	AnnouncementDelivery_ANNOUNCEMENT_DELIVERY_EVERYONE AnnouncementDelivery = 2
+)
+
+// Enum value maps for AnnouncementDelivery.
+var (
+	AnnouncementDelivery_name = map[int32]string{
+		0: "ANNOUNCEMENT_DELIVERY_UNSPECIFIED",
+		1: "ANNOUNCEMENT_DELIVERY_PREFERRED",
+		2: "ANNOUNCEMENT_DELIVERY_EVERYONE",
+	}
+	AnnouncementDelivery_value = map[string]int32{
+		"ANNOUNCEMENT_DELIVERY_UNSPECIFIED": 0,
+		"ANNOUNCEMENT_DELIVERY_PREFERRED":   1,
+		"ANNOUNCEMENT_DELIVERY_EVERYONE":    2,
+	}
+)
+
+func (x AnnouncementDelivery) Enum() *AnnouncementDelivery {
+	p := new(AnnouncementDelivery)
+	*p = x
+	return p
+}
+
+func (x AnnouncementDelivery) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AnnouncementDelivery) Descriptor() protoreflect.EnumDescriptor {
+	return file_publira_admin_v1_announcement_proto_enumTypes[0].Descriptor()
+}
+
+func (AnnouncementDelivery) Type() protoreflect.EnumType {
+	return &file_publira_admin_v1_announcement_proto_enumTypes[0]
+}
+
+func (x AnnouncementDelivery) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AnnouncementDelivery.Descriptor instead.
+func (AnnouncementDelivery) EnumDescriptor() ([]byte, []int) {
+	return file_publira_admin_v1_announcement_proto_rawDescGZIP(), []int{0}
+}
+
 // One locale's title and body of an announcement.
 type AnnouncementTranslation struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -100,7 +156,9 @@ type AdminAnnouncement struct {
 	// takes it down.
 	PinnedUntil string `protobuf:"bytes,10,opt,name=pinned_until,json=pinnedUntil,proto3" json:"pinned_until,omitempty"`
 	// Every translation of the announcement, oldest first.
-	Translations  []*AnnouncementTranslation `protobuf:"bytes,11,rep,name=translations,proto3" json:"translations,omitempty"`
+	Translations []*AnnouncementTranslation `protobuf:"bytes,11,rep,name=translations,proto3" json:"translations,omitempty"`
+	// Which readers its notification reached. Never unspecified.
+	Delivery      AnnouncementDelivery `protobuf:"varint,12,opt,name=delivery,proto3,enum=publira.admin.v1.AnnouncementDelivery" json:"delivery,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -189,6 +247,13 @@ func (x *AdminAnnouncement) GetTranslations() []*AnnouncementTranslation {
 		return x.Translations
 	}
 	return nil
+}
+
+func (x *AdminAnnouncement) GetDelivery() AnnouncementDelivery {
+	if x != nil {
+		return x.Delivery
+	}
+	return AnnouncementDelivery_ANNOUNCEMENT_DELIVERY_UNSPECIFIED
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -331,7 +396,10 @@ type CreateAnnouncementRequest struct {
 	Pinned       bool                       `protobuf:"varint,7,opt,name=pinned,proto3" json:"pinned,omitempty"`
 	// RFC 3339 instant the banner stops at. Empty pins it until the console takes
 	// it down, and it is ignored when pinned is false.
-	PinnedUntil   string `protobuf:"bytes,8,opt,name=pinned_until,json=pinnedUntil,proto3" json:"pinned_until,omitempty"`
+	PinnedUntil string `protobuf:"bytes,8,opt,name=pinned_until,json=pinnedUntil,proto3" json:"pinned_until,omitempty"`
+	// Which readers the announcement's notification reaches. Unspecified is
+	// preferred.
+	Delivery      AnnouncementDelivery `protobuf:"varint,10,opt,name=delivery,proto3,enum=publira.admin.v1.AnnouncementDelivery" json:"delivery,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -399,6 +467,13 @@ func (x *CreateAnnouncementRequest) GetPinnedUntil() string {
 		return x.PinnedUntil
 	}
 	return ""
+}
+
+func (x *CreateAnnouncementRequest) GetDelivery() AnnouncementDelivery {
+	if x != nil {
+		return x.Delivery
+	}
+	return AnnouncementDelivery_ANNOUNCEMENT_DELIVERY_UNSPECIFIED
 }
 
 type CreateAnnouncementResponse struct {
@@ -543,7 +618,7 @@ const file_publira_admin_v1_announcement_proto_rawDesc = "" +
 	"\x17AnnouncementTranslation\x12\x16\n" +
 	"\x06locale\x18\x01 \x01(\tR\x06locale\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x12\n" +
-	"\x04body\x18\x03 \x01(\tR\x04body\"\xdb\x02\n" +
+	"\x04body\x18\x03 \x01(\tR\x04body\"\x9f\x03\n" +
 	"\x11AdminAnnouncement\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x12\n" +
@@ -554,7 +629,8 @@ const file_publira_admin_v1_announcement_proto_rawDesc = "" +
 	"\x06pinned\x18\t \x01(\bR\x06pinned\x12!\n" +
 	"\fpinned_until\x18\n" +
 	" \x01(\tR\vpinnedUntil\x12M\n" +
-	"\ftranslations\x18\v \x03(\v2).publira.admin.v1.AnnouncementTranslationR\ftranslationsJ\x04\b\x05\x10\x06J\x04\b\x06\x10\aJ\x04\b\a\x10\bR\raudience_typeR\x15target_user_public_idR\x10target_user_name\"\x8d\x01\n" +
+	"\ftranslations\x18\v \x03(\v2).publira.admin.v1.AnnouncementTranslationR\ftranslations\x12B\n" +
+	"\bdelivery\x18\f \x01(\x0e2&.publira.admin.v1.AnnouncementDeliveryR\bdeliveryJ\x04\b\x05\x10\x06J\x04\b\x06\x10\aJ\x04\b\a\x10\bR\raudience_typeR\x15target_user_public_idR\x10target_user_name\"\x8d\x01\n" +
 	"\x18ListAnnouncementsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x14\n" +
@@ -563,19 +639,25 @@ const file_publira_admin_v1_announcement_proto_rawDesc = "" +
 	"\rannouncements\x18\x01 \x03(\v2#.publira.admin.v1.AdminAnnouncementR\rannouncements\x12%\n" +
 	"\x0eprevious_token\x18\x02 \x01(\tR\rpreviousToken\x12\x1d\n" +
 	"\n" +
-	"next_token\x18\x03 \x01(\tR\tnextToken\"\xc5\x02\n" +
+	"next_token\x18\x03 \x01(\tR\tnextToken\"\x89\x03\n" +
 	"\x19CreateAnnouncementRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12M\n" +
 	"\ftranslations\x18\t \x03(\v2).publira.admin.v1.AnnouncementTranslationR\ftranslations\x12\x19\n" +
 	"\blink_url\x18\x04 \x01(\tR\alinkUrl\x12\x16\n" +
 	"\x06pinned\x18\a \x01(\bR\x06pinned\x12!\n" +
-	"\fpinned_until\x18\b \x01(\tR\vpinnedUntilJ\x04\b\x02\x10\x03J\x04\b\x03\x10\x04J\x04\b\x05\x10\x06J\x04\b\x06\x10\aR\x05titleR\x04bodyR\raudience_typeR\x16target_user_public_ids\"z\n" +
+	"\fpinned_until\x18\b \x01(\tR\vpinnedUntil\x12B\n" +
+	"\bdelivery\x18\n" +
+	" \x01(\x0e2&.publira.admin.v1.AnnouncementDeliveryR\bdeliveryJ\x04\b\x02\x10\x03J\x04\b\x03\x10\x04J\x04\b\x05\x10\x06J\x04\b\x06\x10\aR\x05titleR\x04bodyR\raudience_typeR\x16target_user_public_ids\"z\n" +
 	"\x1aCreateAnnouncementResponse\x12G\n" +
 	"\fannouncement\x18\x02 \x01(\v2#.publira.admin.v1.AdminAnnouncementR\fannouncementJ\x04\b\x01\x10\x02R\rannouncements\"|\n" +
 	"\x18UnpinAnnouncementRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12'\n" +
 	"\x0fannouncement_id\x18\x02 \x01(\tR\x0eannouncementId\"\x1b\n" +
-	"\x19UnpinAnnouncementResponse2\xed\x02\n" +
+	"\x19UnpinAnnouncementResponse*\x86\x01\n" +
+	"\x14AnnouncementDelivery\x12%\n" +
+	"!ANNOUNCEMENT_DELIVERY_UNSPECIFIED\x10\x00\x12#\n" +
+	"\x1fANNOUNCEMENT_DELIVERY_PREFERRED\x10\x01\x12\"\n" +
+	"\x1eANNOUNCEMENT_DELIVERY_EVERYONE\x10\x022\xed\x02\n" +
 	"\x18AdminAnnouncementService\x12n\n" +
 	"\x11ListAnnouncements\x12*.publira.admin.v1.ListAnnouncementsRequest\x1a+.publira.admin.v1.ListAnnouncementsResponse\"\x00\x12q\n" +
 	"\x12CreateAnnouncement\x12+.publira.admin.v1.CreateAnnouncementRequest\x1a,.publira.admin.v1.CreateAnnouncementResponse\"\x00\x12n\n" +
@@ -593,37 +675,41 @@ func file_publira_admin_v1_announcement_proto_rawDescGZIP() []byte {
 	return file_publira_admin_v1_announcement_proto_rawDescData
 }
 
+var file_publira_admin_v1_announcement_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_publira_admin_v1_announcement_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_publira_admin_v1_announcement_proto_goTypes = []any{
-	(*AnnouncementTranslation)(nil),    // 0: publira.admin.v1.AnnouncementTranslation
-	(*AdminAnnouncement)(nil),          // 1: publira.admin.v1.AdminAnnouncement
-	(*ListAnnouncementsRequest)(nil),   // 2: publira.admin.v1.ListAnnouncementsRequest
-	(*ListAnnouncementsResponse)(nil),  // 3: publira.admin.v1.ListAnnouncementsResponse
-	(*CreateAnnouncementRequest)(nil),  // 4: publira.admin.v1.CreateAnnouncementRequest
-	(*CreateAnnouncementResponse)(nil), // 5: publira.admin.v1.CreateAnnouncementResponse
-	(*UnpinAnnouncementRequest)(nil),   // 6: publira.admin.v1.UnpinAnnouncementRequest
-	(*UnpinAnnouncementResponse)(nil),  // 7: publira.admin.v1.UnpinAnnouncementResponse
-	(*v1.TenantContext)(nil),           // 8: publira.types.v1.TenantContext
+	(AnnouncementDelivery)(0),          // 0: publira.admin.v1.AnnouncementDelivery
+	(*AnnouncementTranslation)(nil),    // 1: publira.admin.v1.AnnouncementTranslation
+	(*AdminAnnouncement)(nil),          // 2: publira.admin.v1.AdminAnnouncement
+	(*ListAnnouncementsRequest)(nil),   // 3: publira.admin.v1.ListAnnouncementsRequest
+	(*ListAnnouncementsResponse)(nil),  // 4: publira.admin.v1.ListAnnouncementsResponse
+	(*CreateAnnouncementRequest)(nil),  // 5: publira.admin.v1.CreateAnnouncementRequest
+	(*CreateAnnouncementResponse)(nil), // 6: publira.admin.v1.CreateAnnouncementResponse
+	(*UnpinAnnouncementRequest)(nil),   // 7: publira.admin.v1.UnpinAnnouncementRequest
+	(*UnpinAnnouncementResponse)(nil),  // 8: publira.admin.v1.UnpinAnnouncementResponse
+	(*v1.TenantContext)(nil),           // 9: publira.types.v1.TenantContext
 }
 var file_publira_admin_v1_announcement_proto_depIdxs = []int32{
-	0,  // 0: publira.admin.v1.AdminAnnouncement.translations:type_name -> publira.admin.v1.AnnouncementTranslation
-	8,  // 1: publira.admin.v1.ListAnnouncementsRequest.tenant:type_name -> publira.types.v1.TenantContext
-	1,  // 2: publira.admin.v1.ListAnnouncementsResponse.announcements:type_name -> publira.admin.v1.AdminAnnouncement
-	8,  // 3: publira.admin.v1.CreateAnnouncementRequest.tenant:type_name -> publira.types.v1.TenantContext
-	0,  // 4: publira.admin.v1.CreateAnnouncementRequest.translations:type_name -> publira.admin.v1.AnnouncementTranslation
-	1,  // 5: publira.admin.v1.CreateAnnouncementResponse.announcement:type_name -> publira.admin.v1.AdminAnnouncement
-	8,  // 6: publira.admin.v1.UnpinAnnouncementRequest.tenant:type_name -> publira.types.v1.TenantContext
-	2,  // 7: publira.admin.v1.AdminAnnouncementService.ListAnnouncements:input_type -> publira.admin.v1.ListAnnouncementsRequest
-	4,  // 8: publira.admin.v1.AdminAnnouncementService.CreateAnnouncement:input_type -> publira.admin.v1.CreateAnnouncementRequest
-	6,  // 9: publira.admin.v1.AdminAnnouncementService.UnpinAnnouncement:input_type -> publira.admin.v1.UnpinAnnouncementRequest
-	3,  // 10: publira.admin.v1.AdminAnnouncementService.ListAnnouncements:output_type -> publira.admin.v1.ListAnnouncementsResponse
-	5,  // 11: publira.admin.v1.AdminAnnouncementService.CreateAnnouncement:output_type -> publira.admin.v1.CreateAnnouncementResponse
-	7,  // 12: publira.admin.v1.AdminAnnouncementService.UnpinAnnouncement:output_type -> publira.admin.v1.UnpinAnnouncementResponse
-	10, // [10:13] is the sub-list for method output_type
-	7,  // [7:10] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	1,  // 0: publira.admin.v1.AdminAnnouncement.translations:type_name -> publira.admin.v1.AnnouncementTranslation
+	0,  // 1: publira.admin.v1.AdminAnnouncement.delivery:type_name -> publira.admin.v1.AnnouncementDelivery
+	9,  // 2: publira.admin.v1.ListAnnouncementsRequest.tenant:type_name -> publira.types.v1.TenantContext
+	2,  // 3: publira.admin.v1.ListAnnouncementsResponse.announcements:type_name -> publira.admin.v1.AdminAnnouncement
+	9,  // 4: publira.admin.v1.CreateAnnouncementRequest.tenant:type_name -> publira.types.v1.TenantContext
+	1,  // 5: publira.admin.v1.CreateAnnouncementRequest.translations:type_name -> publira.admin.v1.AnnouncementTranslation
+	0,  // 6: publira.admin.v1.CreateAnnouncementRequest.delivery:type_name -> publira.admin.v1.AnnouncementDelivery
+	2,  // 7: publira.admin.v1.CreateAnnouncementResponse.announcement:type_name -> publira.admin.v1.AdminAnnouncement
+	9,  // 8: publira.admin.v1.UnpinAnnouncementRequest.tenant:type_name -> publira.types.v1.TenantContext
+	3,  // 9: publira.admin.v1.AdminAnnouncementService.ListAnnouncements:input_type -> publira.admin.v1.ListAnnouncementsRequest
+	5,  // 10: publira.admin.v1.AdminAnnouncementService.CreateAnnouncement:input_type -> publira.admin.v1.CreateAnnouncementRequest
+	7,  // 11: publira.admin.v1.AdminAnnouncementService.UnpinAnnouncement:input_type -> publira.admin.v1.UnpinAnnouncementRequest
+	4,  // 12: publira.admin.v1.AdminAnnouncementService.ListAnnouncements:output_type -> publira.admin.v1.ListAnnouncementsResponse
+	6,  // 13: publira.admin.v1.AdminAnnouncementService.CreateAnnouncement:output_type -> publira.admin.v1.CreateAnnouncementResponse
+	8,  // 14: publira.admin.v1.AdminAnnouncementService.UnpinAnnouncement:output_type -> publira.admin.v1.UnpinAnnouncementResponse
+	12, // [12:15] is the sub-list for method output_type
+	9,  // [9:12] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_announcement_proto_init() }
@@ -636,13 +722,14 @@ func file_publira_admin_v1_announcement_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_announcement_proto_rawDesc), len(file_publira_admin_v1_announcement_proto_rawDesc)),
-			NumEnums:      0,
+			NumEnums:      1,
 			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_publira_admin_v1_announcement_proto_goTypes,
 		DependencyIndexes: file_publira_admin_v1_announcement_proto_depIdxs,
+		EnumInfos:         file_publira_admin_v1_announcement_proto_enumTypes,
 		MessageInfos:      file_publira_admin_v1_announcement_proto_msgTypes,
 	}.Build()
 	File_publira_admin_v1_announcement_proto = out.File

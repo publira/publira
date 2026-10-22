@@ -36,10 +36,11 @@ INSERT INTO announcements (
     link_url,
     metadata,
     pinned,
-    pinned_until
+    pinned_until,
+    delivery
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, tenant_id, announcement_type, link_url, metadata, created_at, pinned, pinned_until
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, tenant_id, announcement_type, link_url, metadata, created_at, pinned, pinned_until, delivery
 `
 
 type CreateAnnouncementParams struct {
@@ -50,6 +51,7 @@ type CreateAnnouncementParams struct {
 	Metadata         json.RawMessage `json:"metadata"`
 	Pinned           bool            `json:"pinned"`
 	PinnedUntil      sql.NullTime    `json:"pinned_until"`
+	Delivery         string          `json:"delivery"`
 }
 
 func (q *Queries) CreateAnnouncement(ctx context.Context, arg CreateAnnouncementParams) (Announcement, error) {
@@ -61,6 +63,7 @@ func (q *Queries) CreateAnnouncement(ctx context.Context, arg CreateAnnouncement
 		arg.Metadata,
 		arg.Pinned,
 		arg.PinnedUntil,
+		arg.Delivery,
 	)
 	var i Announcement
 	err := row.Scan(
@@ -72,6 +75,7 @@ func (q *Queries) CreateAnnouncement(ctx context.Context, arg CreateAnnouncement
 		&i.CreatedAt,
 		&i.Pinned,
 		&i.PinnedUntil,
+		&i.Delivery,
 	)
 	return i, err
 }
@@ -121,9 +125,30 @@ func (q *Queries) CreateAnnouncementTranslation(ctx context.Context, arg CreateA
 	return i, err
 }
 
+const GetAnnouncementDelivery = `-- name: GetAnnouncementDelivery :one
+SELECT delivery
+FROM announcements
+WHERE tenant_id = $1
+    AND id = $2
+`
+
+type GetAnnouncementDeliveryParams struct {
+	TenantID       uuid.UUID `json:"tenant_id"`
+	AnnouncementID uuid.UUID `json:"announcement_id"`
+}
+
+// Worker fan-out: whether the announcement answers to its readers'
+// announcements cell ('preferred') or reaches every one of them ('everyone').
+func (q *Queries) GetAnnouncementDelivery(ctx context.Context, arg GetAnnouncementDeliveryParams) (string, error) {
+	row := q.db.QueryRowContext(ctx, GetAnnouncementDelivery, arg.TenantID, arg.AnnouncementID)
+	var delivery string
+	err := row.Scan(&delivery)
+	return delivery, err
+}
+
 const GetAnnouncementForUser = `-- name: GetAnnouncementForUser :one
 SELECT
-    n.id, n.tenant_id, n.announcement_type, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until,
+    n.id, n.tenant_id, n.announcement_type, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until, n.delivery,
     tr.locale,
     tr.title,
     tr.body,
@@ -153,6 +178,7 @@ type GetAnnouncementForUserRow struct {
 	CreatedAt        time.Time       `json:"created_at"`
 	Pinned           bool            `json:"pinned"`
 	PinnedUntil      sql.NullTime    `json:"pinned_until"`
+	Delivery         string          `json:"delivery"`
 	Locale           string          `json:"locale"`
 	Title            string          `json:"title"`
 	Body             string          `json:"body"`
@@ -180,6 +206,7 @@ func (q *Queries) GetAnnouncementForUser(ctx context.Context, arg GetAnnouncemen
 		&i.CreatedAt,
 		&i.Pinned,
 		&i.PinnedUntil,
+		&i.Delivery,
 		&i.Locale,
 		&i.Title,
 		&i.Body,
@@ -190,7 +217,7 @@ func (q *Queries) GetAnnouncementForUser(ctx context.Context, arg GetAnnouncemen
 }
 
 const GetPinnedAnnouncementForTenant = `-- name: GetPinnedAnnouncementForTenant :one
-SELECT n.id, n.tenant_id, n.announcement_type, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until,
+SELECT n.id, n.tenant_id, n.announcement_type, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until, n.delivery,
     tr.locale,
     tr.title,
     tr.body
@@ -217,6 +244,7 @@ type GetPinnedAnnouncementForTenantRow struct {
 	CreatedAt        time.Time       `json:"created_at"`
 	Pinned           bool            `json:"pinned"`
 	PinnedUntil      sql.NullTime    `json:"pinned_until"`
+	Delivery         string          `json:"delivery"`
 	Locale           string          `json:"locale"`
 	Title            string          `json:"title"`
 	Body             string          `json:"body"`
@@ -238,6 +266,7 @@ func (q *Queries) GetPinnedAnnouncementForTenant(ctx context.Context, arg GetPin
 		&i.CreatedAt,
 		&i.Pinned,
 		&i.PinnedUntil,
+		&i.Delivery,
 		&i.Locale,
 		&i.Title,
 		&i.Body,
@@ -403,7 +432,8 @@ SELECT
     n.metadata,
     n.created_at,
     n.pinned,
-    n.pinned_until
+    n.pinned_until,
+    n.delivery
 FROM announcements n
     CROSS JOIN LATERAL announcement_translation_for(n.id, '') tr
 WHERE n.tenant_id = $1
@@ -441,6 +471,7 @@ type ListAnnouncementsForTenantAscRow struct {
 	CreatedAt        time.Time       `json:"created_at"`
 	Pinned           bool            `json:"pinned"`
 	PinnedUntil      sql.NullTime    `json:"pinned_until"`
+	Delivery         string          `json:"delivery"`
 }
 
 func (q *Queries) ListAnnouncementsForTenantAsc(ctx context.Context, arg ListAnnouncementsForTenantAscParams) ([]ListAnnouncementsForTenantAscRow, error) {
@@ -469,6 +500,7 @@ func (q *Queries) ListAnnouncementsForTenantAsc(ctx context.Context, arg ListAnn
 			&i.CreatedAt,
 			&i.Pinned,
 			&i.PinnedUntil,
+			&i.Delivery,
 		); err != nil {
 			return nil, err
 		}
@@ -494,7 +526,8 @@ SELECT
     n.metadata,
     n.created_at,
     n.pinned,
-    n.pinned_until
+    n.pinned_until,
+    n.delivery
 FROM announcements n
     CROSS JOIN LATERAL announcement_translation_for(n.id, '') tr
 WHERE n.tenant_id = $1
@@ -532,6 +565,7 @@ type ListAnnouncementsForTenantDescRow struct {
 	CreatedAt        time.Time       `json:"created_at"`
 	Pinned           bool            `json:"pinned"`
 	PinnedUntil      sql.NullTime    `json:"pinned_until"`
+	Delivery         string          `json:"delivery"`
 }
 
 // Admin ListAnnouncements is (created_at, id) DESC. Forward uses the DESC
@@ -567,6 +601,7 @@ func (q *Queries) ListAnnouncementsForTenantDesc(ctx context.Context, arg ListAn
 			&i.CreatedAt,
 			&i.Pinned,
 			&i.PinnedUntil,
+			&i.Delivery,
 		); err != nil {
 			return nil, err
 		}
@@ -583,7 +618,7 @@ func (q *Queries) ListAnnouncementsForTenantDesc(ctx context.Context, arg ListAn
 
 const ListAnnouncementsForUserAsc = `-- name: ListAnnouncementsForUserAsc :many
 SELECT
-    n.id, n.tenant_id, n.announcement_type, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until,
+    n.id, n.tenant_id, n.announcement_type, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until, n.delivery,
     tr.locale,
     tr.title,
     tr.body,
@@ -628,6 +663,7 @@ type ListAnnouncementsForUserAscRow struct {
 	CreatedAt        time.Time       `json:"created_at"`
 	Pinned           bool            `json:"pinned"`
 	PinnedUntil      sql.NullTime    `json:"pinned_until"`
+	Delivery         string          `json:"delivery"`
 	Locale           string          `json:"locale"`
 	Title            string          `json:"title"`
 	Body             string          `json:"body"`
@@ -661,6 +697,7 @@ func (q *Queries) ListAnnouncementsForUserAsc(ctx context.Context, arg ListAnnou
 			&i.CreatedAt,
 			&i.Pinned,
 			&i.PinnedUntil,
+			&i.Delivery,
 			&i.Locale,
 			&i.Title,
 			&i.Body,
@@ -682,7 +719,7 @@ func (q *Queries) ListAnnouncementsForUserAsc(ctx context.Context, arg ListAnnou
 
 const ListAnnouncementsForUserDesc = `-- name: ListAnnouncementsForUserDesc :many
 SELECT
-    n.id, n.tenant_id, n.announcement_type, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until,
+    n.id, n.tenant_id, n.announcement_type, n.link_url, n.metadata, n.created_at, n.pinned, n.pinned_until, n.delivery,
     tr.locale,
     tr.title,
     tr.body,
@@ -727,6 +764,7 @@ type ListAnnouncementsForUserDescRow struct {
 	CreatedAt        time.Time       `json:"created_at"`
 	Pinned           bool            `json:"pinned"`
 	PinnedUntil      sql.NullTime    `json:"pinned_until"`
+	Delivery         string          `json:"delivery"`
 	Locale           string          `json:"locale"`
 	Title            string          `json:"title"`
 	Body             string          `json:"body"`
@@ -768,6 +806,7 @@ func (q *Queries) ListAnnouncementsForUserDesc(ctx context.Context, arg ListAnno
 			&i.CreatedAt,
 			&i.Pinned,
 			&i.PinnedUntil,
+			&i.Delivery,
 			&i.Locale,
 			&i.Title,
 			&i.Body,

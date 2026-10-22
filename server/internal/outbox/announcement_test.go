@@ -2,6 +2,7 @@ package outbox
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"testing"
@@ -70,6 +71,67 @@ func TestAnnouncementNotificationWritesOneRowPerTenantUserInTheirLocale(t *testi
 		if len(body) != 1 || body["announcement_title"] != want {
 			t.Fatalf("notification %d payload = %v, want exactly announcement_title %q", i, body, want)
 		}
+	}
+}
+
+// The delivery decides the category the rows are filed under, which is what
+// CreateNotification reads the reader's cell by: a preferred announcement
+// answers to the announcements cell, and one for everyone to no cell at all.
+func TestAnnouncementNotificationFilesItsRowsByItsDelivery(t *testing.T) {
+	for _, tc := range []struct {
+		delivery string
+		want     NotificationCategory
+	}{
+		{delivery: AnnouncementDeliveryPreferred, want: NotificationCategoryAnnouncements},
+		{delivery: AnnouncementDeliveryEveryone, want: NotificationCategoryEveryone},
+	} {
+		t.Run(tc.delivery, func(t *testing.T) {
+			queries := &stubAnnouncementQuerier{
+				delivery: tc.delivery,
+				users:    []dbmodels.ListAnnouncementRecipientsRow{{UserID: uuid.New(), Title: "Terms of use updated"}},
+			}
+
+			handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
+			if err := handler(context.Background(), announcementEvent(t, uuid.New(), uuid.New())); err != nil {
+				t.Fatalf("handler: %v", err)
+			}
+			if len(queries.created) != 1 {
+				t.Fatalf("notifications written = %d, want 1", len(queries.created))
+			}
+			if got := queries.created[0].Category; got != string(tc.want) {
+				t.Fatalf("category = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestAnnouncementNotificationRejectsADeliveryItDoesNotKnow(t *testing.T) {
+	queries := &stubAnnouncementQuerier{
+		delivery: "staff_only",
+		users:    []dbmodels.ListAnnouncementRecipientsRow{{UserID: uuid.New(), Title: "Scheduled maintenance"}},
+	}
+
+	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
+	if err := handler(context.Background(), announcementEvent(t, uuid.New(), uuid.New())); !IsPermanent(err) {
+		t.Fatalf("handler error = %v, want a permanent error", err)
+	}
+	if len(queries.created) != 0 {
+		t.Fatalf("notifications written = %d, want 0", len(queries.created))
+	}
+}
+
+func TestAnnouncementNotificationCompletesWhenTheAnnouncementIsGone(t *testing.T) {
+	queries := &stubAnnouncementQuerier{
+		deliveryErr: sql.ErrNoRows,
+		users:       []dbmodels.ListAnnouncementRecipientsRow{{UserID: uuid.New(), Title: "Scheduled maintenance"}},
+	}
+
+	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
+	if err := handler(context.Background(), announcementEvent(t, uuid.New(), uuid.New())); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if len(queries.created) != 0 {
+		t.Fatalf("notifications written = %d, want 0", len(queries.created))
 	}
 }
 
@@ -176,6 +238,9 @@ func announcementEvent(
 }
 
 type stubAnnouncementQuerier struct {
+	// delivery is what GetAnnouncementDelivery answers, preferred when empty.
+	delivery           string
+	deliveryErr        error
 	users              []dbmodels.ListAnnouncementRecipientsRow
 	listedTenant       uuid.NullUUID
 	listedAnnouncement uuid.UUID
@@ -183,6 +248,19 @@ type stubAnnouncementQuerier struct {
 	listErr            error
 	created            []dbmodels.CreateNotificationParams
 	createErr          error
+}
+
+func (s *stubAnnouncementQuerier) GetAnnouncementDelivery(
+	context.Context,
+	dbmodels.GetAnnouncementDeliveryParams,
+) (string, error) {
+	if s.deliveryErr != nil {
+		return "", s.deliveryErr
+	}
+	if s.delivery == "" {
+		return AnnouncementDeliveryPreferred, nil
+	}
+	return s.delivery, nil
 }
 
 // ListAnnouncementRecipients answers the keyset the handler pages with, so a

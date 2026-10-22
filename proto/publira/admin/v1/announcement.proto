@@ -6,6 +6,19 @@ option go_package = "github.com/publira/publira/server/internal/proto/gen/publir
 
 import "publira/types/v1/types.proto";
 
+// Which readers an announcement's notification reaches.
+enum AnnouncementDelivery {
+  // Read as preferred, the delivery an announcement takes unless it is asked
+  // for another.
+  ANNOUNCEMENT_DELIVERY_UNSPECIFIED = 0;
+  // Every reader whose notification preferences take announcements.
+  ANNOUNCEMENT_DELIVERY_PREFERRED = 1;
+  // Every reader, whatever their notification preferences say about
+  // announcements: for a notice no reader may miss, such as a change of terms
+  // or an outage.
+  ANNOUNCEMENT_DELIVERY_EVERYONE = 2;
+}
+
 // One locale's title and body of an announcement.
 message AnnouncementTranslation {
   string locale = 1;
@@ -33,6 +46,8 @@ message AdminAnnouncement {
   string pinned_until = 10;
   // Every translation of the announcement, oldest first.
   repeated AnnouncementTranslation translations = 11;
+  // Which readers its notification reached. Never unspecified.
+  AnnouncementDelivery delivery = 12;
 }
 
 // Cursor pagination. Field shape and token rules: proto/README.md.
@@ -76,6 +91,9 @@ message CreateAnnouncementRequest {
   // RFC 3339 instant the banner stops at. Empty pins it until the console takes
   // it down, and it is ignored when pinned is false.
   string pinned_until = 8;
+  // Which readers the announcement's notification reaches. Unspecified is
+  // preferred.
+  AnnouncementDelivery delivery = 10;
 }
 
 message CreateAnnouncementResponse {

@@ -449,6 +449,12 @@
         "failure": "失敗",
         "success": "成功",
         "unknown": "不明"
+      },
+      "reasons": {
+        "announcement_delivery": {
+          "preferred": "通知設定に従って通知",
+          "everyone": "すべての読者に通知"
+        }
       }
     },
     "announcements": {

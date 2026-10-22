@@ -449,6 +449,12 @@
         "failure": "失敗",
         "success": "成功",
         "unknown": "未知"
+      },
+      "reasons": {
+        "announcement_delivery": {
+          "preferred": "依通知設定通知",
+          "everyone": "通知所有讀者"
+        }
       }
     },
     "announcements": {

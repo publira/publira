@@ -449,6 +449,12 @@
         "failure": "실패",
         "success": "성공",
         "unknown": "불명"
+      },
+      "reasons": {
+        "announcement_delivery": {
+          "preferred": "알림 설정에 따라 알림",
+          "everyone": "모든 독자에게 알림"
+        }
       }
     },
     "announcements": {

@@ -27,7 +27,8 @@ const renderActionCell = async (
   locale: Locale,
   action: string,
   targetType: string,
-  targetId: string
+  targetId: string,
+  reason = ""
 ) => {
   messageLocale.current = locale;
 
@@ -38,7 +39,7 @@ const renderActionCell = async (
           {await AuditLogActionCell({
             action,
             locale,
-            reason: "",
+            reason,
             targetId,
             targetType,
           })}
@@ -168,6 +169,33 @@ describe("AuditLogActionCell", () => {
       );
 
       expect(cell.textContent).toBe(`${actionName}${targetName} / TENANT001`);
+    }
+  );
+
+  it.each(
+    getLocales().flatMap((locale) =>
+      (["preferred", "everyone"] as const).map(
+        (delivery) => [locale, delivery] as const
+      )
+    )
+  )(
+    "names who a posted announcement's notification was for in %s: %s",
+    async (locale, delivery) => {
+      const cell = await renderActionCell(
+        locale,
+        "announcement_created",
+        "announcement",
+        "ANNOUNCEMENT001",
+        `delivery=${delivery}`
+      );
+
+      const label = sharedMessage(
+        `admin.audit.reasons.announcement_delivery.${delivery}`,
+        locale
+      );
+
+      expect(cell.textContent).toContain(` / ${label}`);
+      expect(cell.textContent).not.toContain("delivery=");
     }
   );
 

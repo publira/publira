@@ -35,6 +35,7 @@ type Announcement struct {
 	CreatedAt        time.Time       `json:"created_at"`
 	Pinned           bool            `json:"pinned"`
 	PinnedUntil      sql.NullTime    `json:"pinned_until"`
+	Delivery         string          `json:"delivery"`
 }
 
 type AnnouncementRead struct {

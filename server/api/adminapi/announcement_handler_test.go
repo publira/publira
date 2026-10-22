@@ -37,6 +37,7 @@ func announcementColumns() *sqlmock.Rows {
 		"created_at",
 		"pinned",
 		"pinned_until",
+		"delivery",
 	})
 }
 
@@ -57,6 +58,7 @@ func addAnnouncementRow(
 		createdAt,
 		false,
 		sql.NullTime{},
+		outbox.AnnouncementDeliveryPreferred,
 	)
 }
 
@@ -121,9 +123,9 @@ func TestCreateAnnouncementWritesEveryTranslationAndQueuesOneNotificationEvent(t
 
 	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateAnnouncement)).
-		WithArgs(sqlmock.AnyArg(), tenantID, "announcement", sqlmock.AnyArg(), json.RawMessage("{}"), false, sql.NullTime{}).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "announcement_type", "link_url", "metadata", "created_at", "pinned", "pinned_until"}).
-			AddRow(announcementID, tenantID, "announcement", nil, json.RawMessage("{}"), now, false, sql.NullTime{}))
+		WithArgs(sqlmock.AnyArg(), tenantID, "announcement", sqlmock.AnyArg(), json.RawMessage("{}"), false, sql.NullTime{}, outbox.AnnouncementDeliveryPreferred).
+		WillReturnRows(announcementRowColumns().
+			AddRow(announcementID, tenantID, "announcement", nil, json.RawMessage("{}"), now, false, sql.NullTime{}, outbox.AnnouncementDeliveryPreferred))
 	// The English copy is sent first, and the default locale's still answers
 	// the announcement's own title and body.
 	expectAnnouncementTranslationInsert(mock, tenantID, announcementID, "en", "Update", "Body", now)
@@ -157,6 +159,98 @@ func TestCreateAnnouncementWritesEveryTranslationAndQueuesOneNotificationEvent(t
 	}
 	if !slices.Equal(written, []string{"en:Update", "ja:Update (ja)"}) {
 		t.Fatalf("translations = %v, want both in the order sent", written)
+	}
+
+	assertExpectations(t, mock)
+}
+
+// The delivery a post asks for is what the row stores, what the response
+// answers, and what the audit entry of the post records; leaving it out is the
+// preferred delivery.
+func TestCreateAnnouncementStoresAndRecordsItsDelivery(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		requested publiraadminv1.AnnouncementDelivery
+		stored    string
+		answered  publiraadminv1.AnnouncementDelivery
+	}{
+		{
+			name:      "unspecified",
+			requested: publiraadminv1.AnnouncementDelivery_ANNOUNCEMENT_DELIVERY_UNSPECIFIED,
+			stored:    outbox.AnnouncementDeliveryPreferred,
+			answered:  publiraadminv1.AnnouncementDelivery_ANNOUNCEMENT_DELIVERY_PREFERRED,
+		},
+		{
+			name:      "preferred",
+			requested: publiraadminv1.AnnouncementDelivery_ANNOUNCEMENT_DELIVERY_PREFERRED,
+			stored:    outbox.AnnouncementDeliveryPreferred,
+			answered:  publiraadminv1.AnnouncementDelivery_ANNOUNCEMENT_DELIVERY_PREFERRED,
+		},
+		{
+			name:      "everyone",
+			requested: publiraadminv1.AnnouncementDelivery_ANNOUNCEMENT_DELIVERY_EVERYONE,
+			stored:    outbox.AnnouncementDeliveryEveryone,
+			answered:  publiraadminv1.AnnouncementDelivery_ANNOUNCEMENT_DELIVERY_EVERYONE,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			testServer, mock := newTestAdminServer(t)
+
+			tenantID := uuid.Must(uuid.NewV7())
+			actorID := uuid.Must(uuid.NewV7())
+			announcementID := uuid.Must(uuid.NewV7())
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
+
+			expectTenantLookup(mock, tenantID, "TENANT", now)
+			expectActiveSessionLookupWithRole(mock, tenantID, actorID, sessionToken, now, "tenant_admin")
+
+			mock.ExpectBegin()
+			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.CreateAnnouncement)).
+				WithArgs(sqlmock.AnyArg(), tenantID, "announcement", sqlmock.AnyArg(), json.RawMessage("{}"), false, sql.NullTime{}, tc.stored).
+				WillReturnRows(announcementRowColumns().
+					AddRow(announcementID, tenantID, "announcement", nil, json.RawMessage("{}"), now, false, sql.NullTime{}, tc.stored))
+			expectAnnouncementTranslationInsert(mock, tenantID, announcementID, "ja", "Terms of use updated", "Body", now)
+			expectAnnouncementNotificationEvent(mock, tenantID, announcementID)
+			mock.ExpectCommit()
+
+			mock.ExpectExec(regexp.QuoteMeta(dbmodels.InsertAuditLog)).
+				WithArgs(
+					sqlmock.AnyArg(), tenantID, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+					"announcement_created", sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+					sql.NullString{String: "delivery=" + tc.stored, Valid: true}, sqlmock.AnyArg(),
+				).
+				WillReturnResult(sqlmock.NewResult(0, 1))
+
+			client := publiraadminv1connect.NewAdminAnnouncementServiceClient(connect.NewClient(connecthttp.NewTransport(testServer.Client(), testServer.URL)))
+			resp, err := client.CreateAnnouncement(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.CreateAnnouncementRequest{
+				Tenant:       &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+				Translations: []*publiraadminv1.AnnouncementTranslation{{Title: "Terms of use updated", Body: "Body"}},
+				Delivery:     tc.requested,
+			})
+			if err != nil {
+				t.Fatalf("CreateAnnouncement: %v", err)
+			}
+			if got := resp.GetAnnouncement().GetDelivery(); got != tc.answered {
+				t.Fatalf("delivery = %v, want %v", got, tc.answered)
+			}
+
+			assertExpectations(t, mock)
+		})
+	}
+}
+
+func TestCreateAnnouncementRefusesADeliveryItDoesNotKnow(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	client, mock, sessionToken := newAnnouncementClient(t, tenantID, uuid.Must(uuid.NewV7()), time.Now().UTC().Truncate(time.Microsecond))
+
+	_, err := client.CreateAnnouncement(testutil.WithBearer(context.Background(), sessionToken), &publiraadminv1.CreateAnnouncementRequest{
+		Tenant:       &publirattypesv1.TenantContext{TenantId: tenantID.String()},
+		Translations: []*publiraadminv1.AnnouncementTranslation{{Title: "Update", Body: "Body"}},
+		Delivery:     publiraadminv1.AnnouncementDelivery(99),
+	})
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("CreateAnnouncement error = %v, want invalid_argument", err)
 	}
 
 	assertExpectations(t, mock)
@@ -258,6 +352,12 @@ func expectAnnouncementTranslationsRead(
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListAnnouncementTranslations)).
 		WithArgs(tenantID, sqlmock.AnyArg()).
 		WillReturnRows(rows)
+}
+
+// announcementRowColumns is what CreateAnnouncement returns: the announcements
+// row alone, without the translation the list queries join.
+func announcementRowColumns() *sqlmock.Rows {
+	return sqlmock.NewRows([]string{"id", "tenant_id", "announcement_type", "link_url", "metadata", "created_at", "pinned", "pinned_until", "delivery"})
 }
 
 func announcementTranslationColumns() *sqlmock.Rows {
