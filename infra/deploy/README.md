@@ -78,7 +78,8 @@ The secret encryption keys seal the SMTP password, the object store's access key
 
 | Process | Variable | Value |
 | --- | --- | --- |
-| `web-storefront`, `web-admin` | `PUBLIRA_GRPC_URL` | `/rpc` on `publira server`, such as `http://publira-server:8000/rpc` |
+| `web-storefront` | `PUBLIRA_GRPC_URL` | `/rpc` on `publira server`, such as `http://publira-server:8000/rpc`, or on `publira server --role storefront` when the server is split by role |
+| `web-admin` | `PUBLIRA_GRPC_URL` | `/rpc` on `publira server`, such as `http://publira-server:8000/rpc`, which serves every role even when the server is split |
 | `web-storefront`, `web-admin` | `PUBLIRA_AUTH_SECRET` | The key the app seals its session cookie with, at least 32 bytes. The two apps need not share one |
 | `publira server` | `PUBLIRA_AUTH_JWT_SECRET` | The key access tokens are signed with, at least 32 bytes |
 | `publira server` | `PUBLIRA_PUBLIC_DB_URL`, `PUBLIRA_ADMIN_DB_URL` | The `publira_public` and `publira_admin` connections. A process given `--role` reads only the connection of each role it serves, as the `publira_platform` one is read only with `platform` |
