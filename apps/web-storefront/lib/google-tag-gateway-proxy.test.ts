@@ -259,6 +259,45 @@ describe("forwardToGoogleTagGateway", () => {
     expect(upstream.received[0]?.headers).not.toHaveProperty("x-forwarded-for");
   });
 
+  it("fails the body of an upstream that goes silent after its headers, and nothing else", async () => {
+    const upstream = await startUpstream((response) => {
+      response.writeHead(200, { "content-type": "application/javascript" });
+      response.write("// the start of a loader");
+    });
+    vi.stubEnv(GOOGLE_TAG_GATEWAY_URL_ENV, upstream.origin);
+
+    const response = await forwardToGoogleTagGateway(
+      siteRequest(`/${GATEWAY_PATH}/?id=GTM-TEST1`),
+      GOOGLE_GATEWAY,
+      null,
+      { idleTimeoutMs: 50 }
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.text()).rejects.toThrow();
+  });
+
+  it("fails the body when the reader leaves after the headers, and nothing else", async () => {
+    const upstream = await startUpstream((response) => {
+      response.writeHead(200, { "content-type": "application/javascript" });
+      response.write("// the start of a loader");
+    });
+    vi.stubEnv(GOOGLE_TAG_GATEWAY_URL_ENV, upstream.origin);
+    const reader = new AbortController();
+
+    const response = await forwardToGoogleTagGateway(
+      siteRequest(`/${GATEWAY_PATH}/?id=GTM-TEST1`, {
+        signal: reader.signal,
+      }),
+      GOOGLE_GATEWAY,
+      null
+    );
+    const body = response.text();
+    reader.abort();
+
+    await expect(body).rejects.toThrow();
+  });
+
   it.each([
     ["a host name that resolves to the loopback", "localhost"],
     ["the loopback address", "127.0.0.1"],

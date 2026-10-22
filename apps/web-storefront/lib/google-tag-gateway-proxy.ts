@@ -241,12 +241,15 @@ const textResponse = (status: 502 | 504, body: string): NextResponse =>
  * to an address that passed the check.
  *
  * An upstream that cannot be reached, or resolves to no public address,
- * answers `502`; one that stays silent answers `504`.
+ * answers `502`; one that stays silent answers `504`. Silence after the
+ * headers, or a reader who leaves, fails the body stream alone.
+ * `idleTimeoutMs` is how long that silence may last.
  */
 export const forwardToGoogleTagGateway = async (
   request: Request,
   gateway: GoogleTagGateway,
-  clientAddress: string | null
+  clientAddress: string | null,
+  { idleTimeoutMs = UPSTREAM_IDLE_TIMEOUT_MS }: { idleTimeoutMs?: number } = {}
 ): Promise<NextResponse> => {
   const target = upstreamTarget(gateway);
   const incomingUrl = new URL(request.url);
@@ -287,7 +290,7 @@ export const forwardToGoogleTagGateway = async (
       signal: request.signal,
     };
     const outgoing = send(options);
-    outgoing.setTimeout(UPSTREAM_IDLE_TIMEOUT_MS, () => {
+    outgoing.setTimeout(idleTimeoutMs, () => {
       outgoing.destroy(new UpstreamTimeoutError());
     });
     outgoing.end(body ?? undefined);
@@ -314,7 +317,7 @@ export const forwardToGoogleTagGateway = async (
   if (bodylessStatus(method, status)) {
     received.resume();
   }
-  received.setTimeout(UPSTREAM_IDLE_TIMEOUT_MS, () => {
+  received.setTimeout(idleTimeoutMs, () => {
     received.destroy(new UpstreamTimeoutError());
   });
   return new NextResponse(
