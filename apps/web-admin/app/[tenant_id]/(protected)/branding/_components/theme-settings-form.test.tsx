@@ -97,11 +97,26 @@ const previewFrame = (container: HTMLElement): HTMLElement => {
   return frame;
 };
 
+/**
+ * How long a case waits for what the form renders after "Save the theme": the
+ * fields closing while the Action is in flight, or what the mocked Action
+ * returned. Both land well inside the 1000ms `findBy*` / `waitFor` default on an
+ * idle machine, but not on a runner busy with the whole `Test / TypeScript`
+ * job, where a wait has been seen to take longer than that.
+ */
+const onScreen = { timeout: 5000 };
+
+/**
+ * A case waits on the screen once, after rendering the form, so it is given
+ * room for that wait to use its whole budget on top of the render.
+ */
+const caseTimeout = 2 * onScreen.timeout;
+
 afterEach(() => {
   cleanup();
 });
 
-describe("ThemeSettingsForm", () => {
+describe("ThemeSettingsForm", { timeout: caseTimeout }, () => {
   it("opens on the fields, with the preview behind its own tab", async () => {
     const container = await renderForm();
 
@@ -143,7 +158,9 @@ describe("ThemeSettingsForm", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Save the theme" }));
 
-    expect(await screen.findByText("Enter a color as #RRGGBB.")).toBeTruthy();
+    expect(
+      await screen.findByText("Enter a color as #RRGGBB.", {}, onScreen)
+    ).toBeTruthy();
     expect(
       screen.getByRole("tab", { name: "Edit", selected: true })
     ).toBeTruthy();
@@ -176,7 +193,7 @@ describe("ThemeSettingsForm", () => {
       for (const control of controls()) {
         expect(control.matches(":disabled")).toBe(true);
       }
-    });
+    }, onScreen);
   });
 
   it("adopts the palette the save stored", async () => {
@@ -199,6 +216,6 @@ describe("ThemeSettingsForm", () => {
           name: /Primary color/u,
         }).value
       ).toBe("#aabbcc");
-    });
+    }, onScreen);
   });
 });
