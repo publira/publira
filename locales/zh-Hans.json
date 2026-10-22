@@ -1425,6 +1425,7 @@
       "email_label": "邮件",
       "engagement_label": "读完率",
       "genres_label": "题材",
+      "google_tag_label": "Google代码",
       "integrations": "集成",
       "labels_label": "品牌",
       "members_label": "成员",
@@ -3343,6 +3344,61 @@
           "client_id_required": "要提供通过Google登录，请至少输入一个客户端ID。"
         }
       },
+      "google_tag": {
+        "description": "网站会在除读者登录或付款页面以外的各个页面上，加载此处所填ID对应的Google代码。两个ID都留空则不加载代码。",
+        "measurement_id": "GA4衡量ID",
+        "measurement_id_description": "网站在Google Analytics 4中的网站数据流的ID，以G-开头。显示在Google Analytics中该数据流的详情里。",
+        "container_id": "跟踪代码管理器容器ID",
+        "container_id_description": "网站在Google跟踪代码管理器中的网站容器的ID，以GTM-开头。显示在该容器工作区的顶部。",
+        "serving_mode": "代码的加载来源",
+        "serving_modes": {
+          "google": {
+            "label": "Google",
+            "description": "从Google的服务器加载代码，数据也发送到Google。"
+          },
+          "server_container": {
+            "label": "服务器容器",
+            "description": "从您自己的服务器端跟踪代码管理器容器加载代码，数据也发送到那里。"
+          },
+          "gateway": {
+            "label": "Google代码网关",
+            "description": "从本网站自身域名下的路径加载代码，数据也发送到那里，由Publira转发给Google或您的服务器容器。"
+          }
+        },
+        "server_container_url": "服务器容器URL",
+        "server_container_url_description": "服务器端跟踪代码管理器容器响应的https地址，不含路径，例如https://sgtm.example.com。",
+        "gateway_server_container_url_description": "可选。填写后，网关会转发到您的服务器端跟踪代码管理器容器，而不是Google。",
+        "gateway_path": "网关路径",
+        "gateway_path_description": "在本网站域名下提供代码的路径。由Publira生成，因此不会与网站的页面冲突，也不会与其他网站共用。",
+        "gateway_path_unset": "以此模式保存后会生成路径。",
+        "gateway_path_copy": "复制网关路径",
+        "gateway_path_regenerate": "重新生成路径",
+        "gateway_path_regenerate_title": "重新生成网关路径？",
+        "gateway_path_regenerate_description": "表单将以新路径保存，当前路径会立即停止响应。若要再次通过网关衡量，请在Google跟踪代码管理器中登记新路径。",
+        "gateway_path_regenerate_action": "生成并保存",
+        "gateway_path_regenerated": "已重新生成网关路径，并保存了Google代码设置。",
+        "gateway_tag_id": "代码ID",
+        "gateway_tag_id_unset": "请先保存跟踪代码管理器容器ID或GA4衡量ID。",
+        "gateway_tag_id_description": "网关向Google转发时所对应的代码：设置了跟踪代码管理器容器时为该容器，否则为GA4衡量ID。请在Google跟踪代码管理器中，用上面的路径为此代码设置Google代码网关。",
+        "guidance": {
+          "title": "保存之前",
+          "other_tags": "广告像素等其他代码，请添加到跟踪代码管理器容器中。除这些ID外，控制台不接受其他代码。",
+          "double_counting": "如果跟踪代码管理器容器已在触发GA4代码，请将衡量ID留空。两者都设置会使每次网页浏览被计算两次。",
+          "privacy_page": "请在网站的隐私政策页面上说明网站向Google发送了什么、用于什么目的。"
+        },
+        "submit": "保存Google代码",
+        "saved": "已保存Google代码设置。",
+        "load_failed": "无法加载Google代码设置。请稍后再试。",
+        "save_failed": "无法保存Google代码设置。请稍后再试。",
+        "validation": {
+          "measurement_id_invalid": "请以G-后接字母和数字的形式输入衡量ID，例如G-ABC123DEF4。",
+          "universal_analytics_id": "Google已不再为Universal Analytics ID（UA-）收集数据。请输入以G-开头的Google Analytics 4衡量ID。",
+          "container_id_invalid": "请以GTM-后接字母和数字的形式输入容器ID，例如GTM-ABC1234。",
+          "serving_mode_invalid": "请选择代码的加载来源。",
+          "server_container_url_invalid": "请输入域名的https地址，不含路径，例如https://sgtm.example.com。",
+          "server_container_url_required": "要从服务器容器加载代码，请输入服务器容器URL。"
+        }
+      },
       "royalties": {
         "title": "版税月份结算",
         "description": "结算某月后，该月的版税会成为此后不再变动的明细。可以每月自行结算，也可以在指定的日期自动结算。",
@@ -3525,7 +3581,10 @@
       "app_links_error": "无法显示应用链接设置",
       "sign_in_title": "登录",
       "sign_in_description": "管理该租户的读者可用于登录的Apple和Google账号。",
-      "sign_in_error": "无法显示登录方式设置"
+      "sign_in_error": "无法显示登录方式设置",
+      "google_tag_title": "Google代码",
+      "google_tag_description": "管理该租户的网站加载的Google Analytics和Google跟踪代码管理器代码。",
+      "google_tag_error": "无法显示Google代码设置"
     },
     "notifications": {
       "page_description": "查看发送给您的运营事件并标记为已读。公告的投放在另一个页面管理。",

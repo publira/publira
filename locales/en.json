@@ -1425,6 +1425,7 @@
       "email_label": "Email",
       "engagement_label": "Read-through",
       "genres_label": "Genres",
+      "google_tag_label": "Google tag",
       "integrations": "Integrations",
       "labels_label": "Labels",
       "members_label": "Members",
@@ -3343,6 +3344,61 @@
           "client_id_required": "Enter at least one client ID to offer Sign in with Google."
         }
       },
+      "google_tag": {
+        "description": "The site loads the Google tag for the IDs entered here on its pages, except those where readers sign in or pay. Leave both IDs empty to load no tag.",
+        "measurement_id": "GA4 measurement ID",
+        "measurement_id_description": "The ID of the site's web data stream in Google Analytics 4, starting G-. It is shown in the stream's details in Google Analytics.",
+        "container_id": "Tag Manager container ID",
+        "container_id_description": "The ID of the site's web container in Google Tag Manager, starting GTM-. It is shown at the top of the container's workspace.",
+        "serving_mode": "Where the tag is loaded from",
+        "serving_modes": {
+          "google": {
+            "label": "Google",
+            "description": "The tag is loaded from Google's servers and sends its data there."
+          },
+          "server_container": {
+            "label": "Server container",
+            "description": "The tag is loaded from, and sends its data to, your server-side Tag Manager container."
+          },
+          "gateway": {
+            "label": "Google tag gateway",
+            "description": "The tag is loaded from, and sends its data to, a path on this site's own domain, which Publira forwards to Google or to your server container."
+          }
+        },
+        "server_container_url": "Server container URL",
+        "server_container_url_description": "The https address your server-side Tag Manager container answers on, with no path, such as https://sgtm.example.com.",
+        "gateway_server_container_url_description": "Optional. Enter it to forward the gateway to your server-side Tag Manager container instead of to Google.",
+        "gateway_path": "Gateway path",
+        "gateway_path_description": "The path on this site's domain the tag is served from. Publira generates it, so it never collides with a page of the site and is not shared with other sites.",
+        "gateway_path_unset": "A path is generated when you save in this mode.",
+        "gateway_path_copy": "Copy the gateway path",
+        "gateway_path_regenerate": "Generate a new path",
+        "gateway_path_regenerate_title": "Generate a new gateway path?",
+        "gateway_path_regenerate_description": "The form is saved with a new path, and the current path stops answering at once. Register the new path in Google Tag Manager to measure through the gateway again.",
+        "gateway_path_regenerate_action": "Generate and save",
+        "gateway_path_regenerated": "A new gateway path was generated, and the Google tag settings were saved.",
+        "gateway_tag_id": "Tag ID",
+        "gateway_tag_id_unset": "Save a Tag Manager container ID or a GA4 measurement ID first.",
+        "gateway_tag_id_description": "The tag the gateway forwards to Google for: the Tag Manager container when one is set, and the GA4 measurement ID otherwise. In Google Tag Manager, set up Google tag gateway for this tag with the path above.",
+        "guidance": {
+          "title": "Before you save",
+          "other_tags": "Add any other tags, such as advertising pixels, to your Tag Manager container. The console takes no tags of its own beyond these IDs.",
+          "double_counting": "If your Tag Manager container already fires a GA4 tag, leave the measurement ID empty. Setting both counts every page view twice.",
+          "privacy_page": "State on the site's privacy policy page what the site sends to Google, and what for."
+        },
+        "submit": "Save the Google tag",
+        "saved": "The Google tag settings were saved.",
+        "load_failed": "Could not load the Google tag settings. Please try again later.",
+        "save_failed": "Could not save the Google tag settings. Please try again later.",
+        "validation": {
+          "measurement_id_invalid": "Enter the measurement ID as G- followed by letters and digits, such as G-ABC123DEF4.",
+          "universal_analytics_id": "Google no longer collects data for a Universal Analytics ID (UA-). Enter a Google Analytics 4 measurement ID, starting G-.",
+          "container_id_invalid": "Enter the container ID as GTM- followed by letters and digits, such as GTM-ABC1234.",
+          "serving_mode_invalid": "Choose where the tag is loaded from.",
+          "server_container_url_invalid": "Enter an https address on a domain name, with no path, such as https://sgtm.example.com.",
+          "server_container_url_required": "Enter the server container URL to load the tag from your server container."
+        }
+      },
       "royalties": {
         "title": "Closing royalty months",
         "description": "A month's royalties become a statement that never changes when the month is closed. Close each month yourself, or let it close on a day of your choice.",
@@ -3525,7 +3581,10 @@
       "app_links_error": "Could not display the app link settings",
       "sign_in_title": "Sign-in",
       "sign_in_description": "Manage the Apple and Google accounts readers of this tenant can sign in with.",
-      "sign_in_error": "Could not display the sign-in providers"
+      "sign_in_error": "Could not display the sign-in providers",
+      "google_tag_title": "Google tag",
+      "google_tag_description": "Manage the Google Analytics and Google Tag Manager tag this tenant's site loads.",
+      "google_tag_error": "Could not display the Google tag settings"
     },
     "notifications": {
       "page_description": "Review operational events addressed to you and mark them as read. Announcement delivery is managed on a separate screen.",

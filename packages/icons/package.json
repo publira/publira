@@ -11,6 +11,10 @@
       "types": "./dist/index.d.mts",
       "default": "./dist/index.mjs"
     },
+    "./activity-icon": {
+      "types": "./dist/activity-icon.d.mts",
+      "default": "./dist/activity-icon.mjs"
+    },
     "./archive-icon": {
       "types": "./dist/archive-icon.d.mts",
       "default": "./dist/archive-icon.mjs"

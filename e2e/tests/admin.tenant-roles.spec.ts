@@ -26,6 +26,7 @@ const ADMIN_ONLY_ENTRIES = [
   "Email",
   "Mobile push",
   "Sign-in",
+  "Google tag",
   "Members",
   "Audit logs",
 ] as const;
@@ -161,6 +162,7 @@ test.describe("tenant roles in the console", () => {
 
     // Nor is anything only an administrator may read.
     await expectNotFound(page, "/readers");
+    await expectNotFound(page, "/integrations/google-tag");
   });
 
   test("an editor is offered the catalogue but nothing that administers the tenant", async ({
@@ -188,6 +190,7 @@ test.describe("tenant roles in the console", () => {
 
     await expectNotFound(page, "/audit-logs");
     await expectNotFound(page, "/integrations/sign-in");
+    await expectNotFound(page, "/integrations/google-tag");
     await expectNotFound(page, "/purchases");
   });
 

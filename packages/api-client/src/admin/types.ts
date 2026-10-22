@@ -49,6 +49,7 @@ export type {
   SeriesWaitFreeSettings,
 } from "../gen/publira/admin/v1/series_pb.js";
 export type {
+  TenantAnalyticsSettings,
   TenantAndroidAppAssociation,
   TenantAppleSignInSettings,
   TenantCommunityLimitOverrides,

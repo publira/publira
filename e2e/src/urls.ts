@@ -278,6 +278,16 @@ export const WEB_ADMIN_MOBILE_PUSH_BASE_URL = envUrl(
 );
 
 /**
+ * Admin console of the Google tag tenant from
+ * `db/seeds/scenarios/570_google_tag.sql`. Its suite saves the tenant's Google
+ * tag settings in every serving mode, so it needs a console of its own.
+ */
+export const WEB_ADMIN_GOOGLE_TAG_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_ADMIN_GOOGLE_TAG_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.google-tag.localhost")
+);
+
+/**
  * Admin console of the payment settings tenant from
  * `db/seeds/scenarios/330_payment_settings.sql`. Its suite stores and changes
  * the tenant's payment provider credentials, so it needs a console of its own.
