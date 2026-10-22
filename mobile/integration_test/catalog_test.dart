@@ -3208,6 +3208,46 @@ void main() {
       );
     }
 
+    /// Which notifications reach [member] per category and channel, as
+    /// `GetNotificationSettings` answers them to the storefront's notification
+    /// settings.
+    Future<pb.NotificationPreferences> notificationPreferencesAtApi(
+      ({ConnectClient client, TenantResolver tenants, AuthSession session})
+      member,
+    ) async {
+      final tenantId = await member.tenants.resolve();
+      final response = await pb.AuthServiceApi(member.client)
+          .getNotificationSettings(
+            ConnectCallContext(
+              tenantId: tenantId,
+              accessToken: member.session.accessToken,
+            ),
+            pb.GetNotificationSettingsRequest(
+              tenant: pb.TenantContext(tenantId: tenantId),
+            ),
+          );
+      return response.preferences;
+    }
+
+    /// Saves [request]'s cells for [member] with notification email on, the
+    /// way the storefront's notification settings save them.
+    Future<void> saveNotificationPreferencesAtApi(
+      ({ConnectClient client, TenantResolver tenants, AuthSession session})
+      member,
+      pb.UpdateNotificationSettingsRequest request,
+    ) async {
+      final tenantId = await member.tenants.resolve();
+      await pb.AuthServiceApi(member.client).updateNotificationSettings(
+        ConnectCallContext(
+          tenantId: tenantId,
+          accessToken: member.session.accessToken,
+        ),
+        request
+          ..tenant = pb.TenantContext(tenantId: tenantId)
+          ..emailNotificationsEnabled = true,
+      );
+    }
+
     /// Whether the API holds the row [id] of the first page [rows] reads
     /// as read for [member], or null when the page does not list it.
     Future<bool?> isReadAtApi(
@@ -4230,13 +4270,13 @@ void main() {
           const ValueKey('account-email-notifications'),
         );
         await tester.scrollUntilVisible(
-          // The row is drawn as soon as the screen is, as a spinner until
-          // the setting has been read.
+          // The section is drawn as soon as the screen is, as a spinner
+          // until the settings have been read.
           find.byWidgetPredicate(
             (widget) => switch (widget.key) {
-              ValueKey<String>(:final value) => value.startsWith(
-                'account-email-notifications',
-              ),
+              ValueKey<String>(:final value) =>
+                value.startsWith('account-email-notifications') ||
+                    value.startsWith('account-notification-settings'),
               _ => false,
             },
           ),
@@ -4262,6 +4302,113 @@ void main() {
           findsNothing,
         );
       });
+    });
+
+    testApp('the app and the site share the notification preferences', (
+      tester,
+    ) async {
+      await withFailureScreenshot(
+        tester,
+        'live-notification-preferences',
+        () async {
+          final member = await signInSeedMember();
+          // The seed saves no preference, which the API answers as every cell
+          // on, and the run leaves them there whichever way it ends.
+          addTearDown(
+            () => saveNotificationPreferencesAtApi(
+              member,
+              pb.UpdateNotificationSettingsRequest(
+                followedEpisodesInboxEnabled: true,
+                followedEpisodesWebPushEnabled: true,
+                followedEpisodesMobilePushEnabled: true,
+                followedCreatorsInboxEnabled: true,
+                followedCreatorsWebPushEnabled: true,
+                followedCreatorsMobilePushEnabled: true,
+                commentsInboxEnabled: true,
+                announcementsInboxEnabled: true,
+              ),
+            ),
+          );
+          // Turned off where the site turns it off, so the app has to read
+          // the account rather than show the default.
+          await saveNotificationPreferencesAtApi(
+            member,
+            pb.UpdateNotificationSettingsRequest(commentsInboxEnabled: false),
+          );
+
+          await pumpLive(
+            tester,
+            initialLocation: AppRoutes.account,
+            session: member.session,
+          );
+          await pumpUntilRouteSettled(
+            tester,
+            find.byKey(const ValueKey('account-name')),
+            timeout: const Duration(seconds: 20),
+          );
+          final commentsInbox = find.byKey(
+            const ValueKey(('account-notification', 'comments', 'inbox')),
+          );
+          const creatorsMobilePushKey = ValueKey((
+            'account-notification',
+            'followedCreators',
+            'mobilePush',
+          ));
+          final creatorsMobilePush = find.byKey(creatorsMobilePushKey);
+          await tester.scrollUntilVisible(
+            // The section is drawn as soon as the screen is, as a spinner
+            // until the settings have been read.
+            find.byWidgetPredicate(
+              (widget) => switch (widget.key) {
+                ValueKey<String>(:final value) => value.startsWith(
+                  'account-notification-settings',
+                ),
+                final key => key == creatorsMobilePushKey,
+              },
+            ),
+            100,
+            scrollable: accountList(),
+          );
+          await pumpUntilFound(
+            tester,
+            creatorsMobilePush,
+            timeout: const Duration(seconds: 20),
+          );
+          await tester.scrollUntilVisible(
+            commentsInbox,
+            100,
+            scrollable: accountList(),
+          );
+          expect(tester.widget<SwitchListTile>(commentsInbox).value, isFalse);
+
+          await tapVisible(
+            tester,
+            creatorsMobilePush,
+            scrollable: accountList(),
+          );
+          await pumpUntilTrueAsync(
+            tester,
+            () async => !(await notificationPreferencesAtApi(
+              member,
+            )).followedCreatorsMobilePushEnabled,
+            description: 'the API to hold the cell the app saved',
+          );
+          final stored = await notificationPreferencesAtApi(member);
+          expect(stored.commentsInboxEnabled, isFalse);
+          expect(stored.followedCreatorsInboxEnabled, isTrue);
+          expect(stored.followedEpisodesMobilePushEnabled, isTrue);
+          expect(
+            tester.widget<SwitchListTile>(creatorsMobilePush).value,
+            isFalse,
+          );
+          expect(
+            find.byKey(
+              const ValueKey('account-notification-preferences-failure'),
+            ),
+            findsNothing,
+          );
+        },
+      );
     });
 
     testApp('the live API takes a sign-up and holds the account back', (

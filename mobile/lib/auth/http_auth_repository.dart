@@ -15,6 +15,7 @@ import 'package:publira/auth/auth_repository.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/email_change.dart';
 import 'package:publira/auth/identity_provider.dart';
+import 'package:publira/auth/notification_settings.dart';
 import 'package:publira/auth/passkey.dart';
 import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/reader_age.dart';
@@ -671,36 +672,47 @@ class HttpAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<bool> readEmailNotifications(AuthSession session) =>
+  Future<NotificationSettings> readNotificationSettings(AuthSession session) =>
       _notificationSettings(session, (ctx, tenant) async {
         final body = await _auth.getNotificationSettings(
           ctx,
           pb.GetNotificationSettingsRequest(tenant: tenant),
         );
-        return body.emailNotificationsEnabled;
+        return _toNotificationSettings(
+          body.emailNotificationsEnabled,
+          body.hasPreferences() ? body.preferences : null,
+        );
       });
 
   @override
-  Future<bool> updateEmailNotifications(
+  Future<NotificationSettings> updateNotificationSettings(
     AuthSession session, {
-    required bool enabled,
+    required bool emailEnabled,
+    Map<NotificationCell, bool> cells = const {},
   }) => _notificationSettings(session, (ctx, tenant) async {
-    final body = await _auth.updateNotificationSettings(
-      ctx,
-      pb.UpdateNotificationSettingsRequest(
-        tenant: tenant,
-        emailNotificationsEnabled: enabled,
-      ),
+    final request = pb.UpdateNotificationSettingsRequest(
+      tenant: tenant,
+      emailNotificationsEnabled: emailEnabled,
     );
-    return body.emailNotificationsEnabled;
+    for (final MapEntry(key: cell, value: enabled) in cells.entries) {
+      _setRequestCell(request, cell, enabled);
+    }
+    final body = await _auth.updateNotificationSettings(ctx, request);
+    return _toNotificationSettings(
+      body.emailNotificationsEnabled,
+      body.hasPreferences() ? body.preferences : null,
+    );
   });
 
   /// Sends [send] for the account behind [session], both of whose answers
-  /// carry the setting the account holds afterwards. The wire format omits a
-  /// false, so an absent field is a setting that is off.
-  Future<bool> _notificationSettings(
+  /// carry the settings the account holds afterwards.
+  Future<NotificationSettings> _notificationSettings(
     AuthSession session,
-    Future<bool> Function(ConnectCallContext ctx, pb.TenantContext tenant) send,
+    Future<NotificationSettings> Function(
+      ConnectCallContext ctx,
+      pb.TenantContext tenant,
+    )
+    send,
   ) async {
     try {
       final tenantId = await _tenants.resolve();
@@ -713,6 +725,82 @@ class HttpAuthRepository implements AuthRepository {
       );
     } on ConnectException catch (error) {
       throw _toAccountFailure(error);
+    }
+  }
+
+  /// The settings an answer carries. The wire format omits a false, so an
+  /// absent field is a setting that is off; an absent [preferences] message
+  /// is a server that predates them, whose notifications all still arrive.
+  static NotificationSettings _toNotificationSettings(
+    bool emailEnabled,
+    pb.NotificationPreferences? preferences,
+  ) => NotificationSettings(
+    emailEnabled: emailEnabled,
+    preferences: preferences == null
+        ? const {}
+        : {
+            for (final cell in notificationCells)
+              cell: _preferenceCell(preferences, cell),
+          },
+  );
+
+  static bool _preferenceCell(
+    pb.NotificationPreferences preferences,
+    NotificationCell cell,
+  ) => switch (cell) {
+    (NotificationCategory.followedEpisodes, NotificationChannel.inbox) =>
+      preferences.followedEpisodesInboxEnabled,
+    (NotificationCategory.followedEpisodes, NotificationChannel.webPush) =>
+      preferences.followedEpisodesWebPushEnabled,
+    (NotificationCategory.followedEpisodes, NotificationChannel.mobilePush) =>
+      preferences.followedEpisodesMobilePushEnabled,
+    (NotificationCategory.followedCreators, NotificationChannel.inbox) =>
+      preferences.followedCreatorsInboxEnabled,
+    (NotificationCategory.followedCreators, NotificationChannel.webPush) =>
+      preferences.followedCreatorsWebPushEnabled,
+    (NotificationCategory.followedCreators, NotificationChannel.mobilePush) =>
+      preferences.followedCreatorsMobilePushEnabled,
+    (NotificationCategory.comments, NotificationChannel.inbox) =>
+      preferences.commentsInboxEnabled,
+    (NotificationCategory.announcements, NotificationChannel.inbox) =>
+      preferences.announcementsInboxEnabled,
+    // No cell the server delivers; [notificationCells] names none of these.
+    (NotificationCategory.comments, _) ||
+    (NotificationCategory.announcements, _) => true,
+  };
+
+  static void _setRequestCell(
+    pb.UpdateNotificationSettingsRequest request,
+    NotificationCell cell,
+    bool enabled,
+  ) {
+    switch (cell) {
+      case (NotificationCategory.followedEpisodes, NotificationChannel.inbox):
+        request.followedEpisodesInboxEnabled = enabled;
+      case (NotificationCategory.followedEpisodes, NotificationChannel.webPush):
+        request.followedEpisodesWebPushEnabled = enabled;
+      case (
+        NotificationCategory.followedEpisodes,
+        NotificationChannel.mobilePush,
+      ):
+        request.followedEpisodesMobilePushEnabled = enabled;
+      case (NotificationCategory.followedCreators, NotificationChannel.inbox):
+        request.followedCreatorsInboxEnabled = enabled;
+      case (NotificationCategory.followedCreators, NotificationChannel.webPush):
+        request.followedCreatorsWebPushEnabled = enabled;
+      case (
+        NotificationCategory.followedCreators,
+        NotificationChannel.mobilePush,
+      ):
+        request.followedCreatorsMobilePushEnabled = enabled;
+      case (NotificationCategory.comments, NotificationChannel.inbox):
+        request.commentsInboxEnabled = enabled;
+      case (NotificationCategory.announcements, NotificationChannel.inbox):
+        request.announcementsInboxEnabled = enabled;
+      // The request has no field for a cell the server does not deliver.
+      case (NotificationCategory.comments, _) ||
+          (NotificationCategory.announcements, _):
+        break;
     }
   }
 

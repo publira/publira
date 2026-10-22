@@ -7,6 +7,7 @@ import 'package:publira/auth/auth_repository.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/email_change.dart';
 import 'package:publira/auth/identity_provider.dart';
+import 'package:publira/auth/notification_settings.dart';
 import 'package:publira/auth/passkey.dart';
 import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/reader_age.dart';
@@ -115,24 +116,30 @@ class FakeAuthRepository implements AuthRepository {
   String email;
   AuthFailure? emailFailure;
 
-  /// Whether the account takes notification email, which
-  /// [updateEmailNotifications] writes.
-  var emailNotifications = true;
+  /// What the account holds about notifications, which
+  /// [updateNotificationSettings] writes. Email and every cell on by default,
+  /// as the API answers an account that has saved nothing.
+  var notificationSettings = const NotificationSettings(
+    emailEnabled: true,
+    preferences: {},
+  );
 
-  /// Thrown by [readEmailNotifications], standing in for a setting that
+  /// Thrown by [readNotificationSettings], standing in for settings that
   /// cannot be read.
-  AuthFailure? emailNotificationsFailure;
+  AuthFailure? notificationSettingsFailure;
 
-  /// Thrown by [updateEmailNotifications], standing in for an API that
+  /// Thrown by [updateNotificationSettings], standing in for an API that
   /// refuses the change.
-  AuthFailure? updateEmailNotificationsFailure;
+  AuthFailure? updateNotificationSettingsFailure;
 
-  /// Held open by a test that needs to act while [updateEmailNotifications]
-  /// is in flight.
-  Completer<void>? updateEmailNotificationsGate;
+  /// Held open by a test that needs to act while
+  /// [updateNotificationSettings] is in flight.
+  Completer<void>? updateNotificationSettingsGate;
 
-  /// What [updateEmailNotifications] has been asked to write, in order.
-  final emailNotificationUpdates = <bool>[];
+  /// What [updateNotificationSettings] has been asked to write, one entry per
+  /// request, in order.
+  final notificationSettingsUpdates =
+      <({bool emailEnabled, Map<NotificationCell, bool> cells})>[];
 
   /// Held open by a test that needs to act while [readEmail] is in flight.
   Completer<void>? emailGate;
@@ -689,26 +696,32 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<bool> readEmailNotifications(AuthSession session) async {
-    final failure = emailNotificationsFailure;
+  Future<NotificationSettings> readNotificationSettings(
+    AuthSession session,
+  ) async {
+    final failure = notificationSettingsFailure;
     if (failure != null) {
       throw failure;
     }
-    return emailNotifications;
+    return notificationSettings;
   }
 
   @override
-  Future<bool> updateEmailNotifications(
+  Future<NotificationSettings> updateNotificationSettings(
     AuthSession session, {
-    required bool enabled,
+    required bool emailEnabled,
+    Map<NotificationCell, bool> cells = const {},
   }) async {
-    emailNotificationUpdates.add(enabled);
-    await updateEmailNotificationsGate?.future;
-    final failure = updateEmailNotificationsFailure;
+    notificationSettingsUpdates.add((emailEnabled: emailEnabled, cells: cells));
+    await updateNotificationSettingsGate?.future;
+    final failure = updateNotificationSettingsFailure;
     if (failure != null) {
       throw failure;
     }
-    return emailNotifications = enabled;
+    return notificationSettings = notificationSettings.copyWith(
+      emailEnabled: emailEnabled,
+      cells: cells,
+    );
   }
 
   @override

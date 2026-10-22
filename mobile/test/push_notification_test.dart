@@ -115,7 +115,10 @@ void main() {
     final switchTile = find.byKey(const ValueKey('account-notifications'));
     expect(switchTile, findsOneWidget);
     expect(tester.widget<SwitchListTile>(switchTile).value, isFalse);
-    expect(find.text('New episode notifications'), findsOneWidget);
+    expect(
+      find.text('Receive push notifications on this device'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('turning the switch on registers the device', (tester) async {

@@ -199,9 +199,10 @@ void main() {
       );
 
       await fillPasswords(tester);
+      // Back on the account screen, at the row the change was opened from.
       await pumpUntilFound(
         tester,
-        find.byKey(const ValueKey('account-sign-out')),
+        find.byKey(const ValueKey('account-change-password')),
       );
 
       expect(repository.password, 'replaced-password');

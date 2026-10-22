@@ -298,11 +298,6 @@ final class AppMessages {
     return _format('mobile.account.email_notifications_description');
   }
 
-  /// `mobile.account.email_notifications_load_failed`
-  String get accountEmailNotificationsLoadFailed {
-    return _format('mobile.account.email_notifications_load_failed');
-  }
-
   /// `mobile.account.email_notifications_update_failed`
   String get accountEmailNotificationsUpdateFailed {
     return _format('mobile.account.email_notifications_update_failed');
@@ -441,6 +436,61 @@ final class AppMessages {
   /// `mobile.account.name_unset`
   String get accountNameUnset {
     return _format('mobile.account.name_unset');
+  }
+
+  /// `mobile.account.notification_category_announcements`
+  String get accountNotificationCategoryAnnouncements {
+    return _format('mobile.account.notification_category_announcements');
+  }
+
+  /// `mobile.account.notification_category_comments`
+  String get accountNotificationCategoryComments {
+    return _format('mobile.account.notification_category_comments');
+  }
+
+  /// `mobile.account.notification_category_followed_creators`
+  String get accountNotificationCategoryFollowedCreators {
+    return _format('mobile.account.notification_category_followed_creators');
+  }
+
+  /// `mobile.account.notification_category_followed_episodes`
+  String get accountNotificationCategoryFollowedEpisodes {
+    return _format('mobile.account.notification_category_followed_episodes');
+  }
+
+  /// `mobile.account.notification_channel_inbox`
+  String get accountNotificationChannelInbox {
+    return _format('mobile.account.notification_channel_inbox');
+  }
+
+  /// `mobile.account.notification_channel_mobile_push`
+  String get accountNotificationChannelMobilePush {
+    return _format('mobile.account.notification_channel_mobile_push');
+  }
+
+  /// `mobile.account.notification_channel_web_push`
+  String get accountNotificationChannelWebPush {
+    return _format('mobile.account.notification_channel_web_push');
+  }
+
+  /// `mobile.account.notification_preferences`
+  String get accountNotificationPreferences {
+    return _format('mobile.account.notification_preferences');
+  }
+
+  /// `mobile.account.notification_preferences_description`
+  String get accountNotificationPreferencesDescription {
+    return _format('mobile.account.notification_preferences_description');
+  }
+
+  /// `mobile.account.notification_preferences_update_failed`
+  String get accountNotificationPreferencesUpdateFailed {
+    return _format('mobile.account.notification_preferences_update_failed');
+  }
+
+  /// `mobile.account.notification_settings_load_failed`
+  String get accountNotificationSettingsLoadFailed {
+    return _format('mobile.account.notification_settings_load_failed');
   }
 
   /// `mobile.account.notifications`
@@ -3531,7 +3581,6 @@ const _jaSources = <String, String>{
   'mobile.account.delete': 'アカウントを削除',
   'mobile.account.email_notifications': 'メール通知',
   'mobile.account.email_notifications_description': '購読や重要なお知らせをメールで受信します。',
-  'mobile.account.email_notifications_load_failed': 'メール通知の設定を読み込めませんでした。',
   'mobile.account.email_notifications_update_failed':
       'メール通知の設定を変更できませんでした。もう一度お試しください。',
   'mobile.account.icon_alt': 'あなたのアイコン',
@@ -3565,9 +3614,23 @@ const _jaSources = <String, String>{
   'mobile.account.linked_accounts': '連携アカウント',
   'mobile.account.name': 'お名前',
   'mobile.account.name_unset': '（未設定）',
-  'mobile.account.notifications': '新着エピソードの通知',
+  'mobile.account.notification_category_announcements': 'お知らせ',
+  'mobile.account.notification_category_comments': '自分のコメント',
+  'mobile.account.notification_category_followed_creators': 'フォロー中の著者の新着エピソード',
+  'mobile.account.notification_category_followed_episodes': 'フォロー中の作品・エピソードの新着',
+  'mobile.account.notification_channel_inbox': '通知一覧',
+  'mobile.account.notification_channel_mobile_push': 'アプリ',
+  'mobile.account.notification_channel_web_push': 'ブラウザ',
+  'mobile.account.notification_preferences': '通知設定',
+  'mobile.account.notification_preferences_description':
+      'どの通知をどこで受け取るかを選べます。種類や受け取り先の見出しをタップすると、まとめてオンにし、すべてオンのときはまとめてオフにします。',
+  'mobile.account.notification_preferences_update_failed':
+      '通知設定を変更できませんでした。もう一度お試しください。',
+  'mobile.account.notification_settings_load_failed': '通知設定を読み込めませんでした。',
+  'mobile.account.notifications': 'この端末でプッシュ通知を受け取る',
   'mobile.account.notifications_denied': 'このアプリの通知がオフになっています。端末の設定でオンにしてください。',
-  'mobile.account.notifications_description': '新しいエピソードが公開されたときにお知らせします。',
+  'mobile.account.notifications_description':
+      '「アプリ」でオンにした通知は、ここがオンのあいだだけこの端末に届きます。',
   'mobile.account.notifications_unavailable': '通知をオンにできませんでした。もう一度お試しください。',
   'mobile.account.pages': 'このサイトについて',
   'mobile.account.pages_description': '利用規約やプライバシーポリシーなど、このサイトが公開しているページです。',
@@ -4281,8 +4344,6 @@ const _enSources = <String, String>{
   'mobile.account.email_notifications': 'Email notifications',
   'mobile.account.email_notifications_description':
       'Receive subscription updates and important announcements by email.',
-  'mobile.account.email_notifications_load_failed':
-      'Could not load your email notification setting.',
   'mobile.account.email_notifications_update_failed':
       'Could not change your email notification setting. Try again.',
   'mobile.account.icon_alt': 'Your icon',
@@ -4321,11 +4382,27 @@ const _enSources = <String, String>{
   'mobile.account.linked_accounts': 'Linked accounts',
   'mobile.account.name': 'Name',
   'mobile.account.name_unset': 'Not set',
-  'mobile.account.notifications': 'New episode notifications',
+  'mobile.account.notification_category_announcements': 'Announcements',
+  'mobile.account.notification_category_comments': 'Your comments',
+  'mobile.account.notification_category_followed_creators':
+      'New episodes by authors you follow',
+  'mobile.account.notification_category_followed_episodes':
+      'New episodes of series and episodes you follow',
+  'mobile.account.notification_channel_inbox': 'Inbox',
+  'mobile.account.notification_channel_mobile_push': 'Mobile app',
+  'mobile.account.notification_channel_web_push': 'Browser',
+  'mobile.account.notification_preferences': 'Notification preferences',
+  'mobile.account.notification_preferences_description':
+      'Choose which notifications reach you, and where. Tap a kind of notification or a channel to turn all of it on, or off again when it is all on.',
+  'mobile.account.notification_preferences_update_failed':
+      'Could not change your notification preferences. Try again.',
+  'mobile.account.notification_settings_load_failed':
+      'Could not load your notification settings.',
+  'mobile.account.notifications': 'Receive push notifications on this device',
   'mobile.account.notifications_denied':
       'Notifications are turned off for this app. Turn them on in your device settings.',
   'mobile.account.notifications_description':
-      'Be told when a new episode is published.',
+      'Notifications turned on under Mobile app reach this device only while this is on.',
   'mobile.account.notifications_unavailable':
       'Could not turn notifications on. Try again.',
   'mobile.account.pages': 'About this site',
@@ -5145,7 +5222,6 @@ const _koSources = <String, String>{
   'mobile.account.delete': '계정 삭제',
   'mobile.account.email_notifications': '이메일 알림',
   'mobile.account.email_notifications_description': '구독 소식과 중요한 공지를 이메일로 받습니다.',
-  'mobile.account.email_notifications_load_failed': '이메일 알림 설정을 불러오지 못했습니다.',
   'mobile.account.email_notifications_update_failed':
       '이메일 알림 설정을 변경하지 못했습니다. 다시 시도해 주세요.',
   'mobile.account.icon_alt': '내 아이콘',
@@ -5180,9 +5256,24 @@ const _koSources = <String, String>{
   'mobile.account.linked_accounts': '연결된 계정',
   'mobile.account.name': '이름',
   'mobile.account.name_unset': '미설정',
-  'mobile.account.notifications': '새 에피소드 알림',
+  'mobile.account.notification_category_announcements': '공지사항',
+  'mobile.account.notification_category_comments': '내 댓글',
+  'mobile.account.notification_category_followed_creators': '팔로우 중인 작가의 새 에피소드',
+  'mobile.account.notification_category_followed_episodes':
+      '팔로우 중인 시리즈와 에피소드의 새 에피소드',
+  'mobile.account.notification_channel_inbox': '알림 목록',
+  'mobile.account.notification_channel_mobile_push': '앱',
+  'mobile.account.notification_channel_web_push': '브라우저',
+  'mobile.account.notification_preferences': '알림 설정',
+  'mobile.account.notification_preferences_description':
+      '어떤 알림을 어디에서 받을지 선택하세요. 종류나 받는 곳의 제목을 누르면 모두 켜고, 모두 켜져 있으면 모두 끕니다.',
+  'mobile.account.notification_preferences_update_failed':
+      '알림 설정을 변경하지 못했습니다. 다시 시도해 주세요.',
+  'mobile.account.notification_settings_load_failed': '알림 설정을 불러오지 못했습니다.',
+  'mobile.account.notifications': '이 기기에서 푸시 알림 받기',
   'mobile.account.notifications_denied': '이 앱의 알림이 꺼져 있습니다. 기기 설정에서 켜 주세요.',
-  'mobile.account.notifications_description': '새 에피소드가 공개되면 알려 드립니다.',
+  'mobile.account.notifications_description':
+      '\'앱\'에서 켠 알림은 이 설정이 켜져 있을 때만 이 기기로 전달됩니다.',
   'mobile.account.notifications_unavailable': '알림을 켜지 못했습니다. 다시 시도해 주세요.',
   'mobile.account.pages': '이 사이트에 대하여',
   'mobile.account.pages_description': '이용약관, 개인정보 처리방침 등 이 사이트가 공개한 페이지입니다.',
@@ -5888,7 +5979,6 @@ const _zhHansSources = <String, String>{
   'mobile.account.delete': '注销账户',
   'mobile.account.email_notifications': '邮件通知',
   'mobile.account.email_notifications_description': '通过邮件接收订阅更新和重要公告。',
-  'mobile.account.email_notifications_load_failed': '无法读取您的邮件通知设置。',
   'mobile.account.email_notifications_update_failed': '无法更改您的邮件通知设置。请重试。',
   'mobile.account.icon_alt': '您的头像',
   'mobile.account.icon_help':
@@ -5919,9 +6009,21 @@ const _zhHansSources = <String, String>{
   'mobile.account.linked_accounts': '关联账户',
   'mobile.account.name': '昵称',
   'mobile.account.name_unset': '未设置',
-  'mobile.account.notifications': '新章节通知',
+  'mobile.account.notification_category_announcements': '公告',
+  'mobile.account.notification_category_comments': '我的评论',
+  'mobile.account.notification_category_followed_creators': '关注的作者的新话',
+  'mobile.account.notification_category_followed_episodes': '关注的系列和单话的新话',
+  'mobile.account.notification_channel_inbox': '通知列表',
+  'mobile.account.notification_channel_mobile_push': '应用',
+  'mobile.account.notification_channel_web_push': '浏览器',
+  'mobile.account.notification_preferences': '通知设置',
+  'mobile.account.notification_preferences_description':
+      '选择哪些通知通过哪种方式送达。点击某一类通知或某一种方式的标题，可将其全部开启；已全部开启时则全部关闭。',
+  'mobile.account.notification_preferences_update_failed': '无法更改您的通知设置。请重试。',
+  'mobile.account.notification_settings_load_failed': '无法读取您的通知设置。',
+  'mobile.account.notifications': '在此设备上接收推送通知',
   'mobile.account.notifications_denied': '此应用的通知已关闭。请在设备的系统设置中开启。',
-  'mobile.account.notifications_description': '有新章节发布时通知您。',
+  'mobile.account.notifications_description': '在“应用”中开启的通知，仅在此项开启时才会送达此设备。',
   'mobile.account.notifications_unavailable': '无法开启通知。请重试。',
   'mobile.account.pages': '关于本站点',
   'mobile.account.pages_description': '本站点发布的服务条款、隐私政策等页面。',
@@ -6566,7 +6668,6 @@ const _zhHantSources = <String, String>{
   'mobile.account.delete': '刪除帳戶',
   'mobile.account.email_notifications': '郵件通知',
   'mobile.account.email_notifications_description': '透過電子郵件接收訂閱更新與重要公告。',
-  'mobile.account.email_notifications_load_failed': '無法讀取您的郵件通知設定。',
   'mobile.account.email_notifications_update_failed': '無法變更您的郵件通知設定。請重試。',
   'mobile.account.icon_alt': '您的頭像',
   'mobile.account.icon_help':
@@ -6597,9 +6698,21 @@ const _zhHantSources = <String, String>{
   'mobile.account.linked_accounts': '已連結的帳戶',
   'mobile.account.name': '名稱',
   'mobile.account.name_unset': '未設定',
-  'mobile.account.notifications': '新章節通知',
+  'mobile.account.notification_category_announcements': '公告',
+  'mobile.account.notification_category_comments': '我的留言',
+  'mobile.account.notification_category_followed_creators': '追蹤的作者的新話',
+  'mobile.account.notification_category_followed_episodes': '追蹤的系列與單話的新話',
+  'mobile.account.notification_channel_inbox': '通知列表',
+  'mobile.account.notification_channel_mobile_push': '應用程式',
+  'mobile.account.notification_channel_web_push': '瀏覽器',
+  'mobile.account.notification_preferences': '通知設定',
+  'mobile.account.notification_preferences_description':
+      '選擇哪些通知透過哪種方式送達。點選某一類通知或某一種方式的標題，可將其全部開啟；已全部開啟時則全部關閉。',
+  'mobile.account.notification_preferences_update_failed': '無法變更您的通知設定。請重試。',
+  'mobile.account.notification_settings_load_failed': '無法讀取您的通知設定。',
+  'mobile.account.notifications': '在此裝置上接收推播通知',
   'mobile.account.notifications_denied': '此應用程式的通知已關閉。請在裝置的系統設定中開啟。',
-  'mobile.account.notifications_description': '有新章節發布時通知您。',
+  'mobile.account.notifications_description': '在「應用程式」中開啟的通知，僅在此項開啟時才會送達此裝置。',
   'mobile.account.notifications_unavailable': '無法開啟通知。請重試。',
   'mobile.account.pages': '關於本網站',
   'mobile.account.pages_description': '本網站發布的服務條款、隱私權政策等頁面。',

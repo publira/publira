@@ -2,6 +2,7 @@
 title: Push notifications
 description: Set up the Firebase project a tenant's app receives push notifications through, and give the tenant console the credentials to send with.
 published: 2026-10-06
+updated: 2026-10-22
 ---
 
 The app tells a reader on their phone when a new episode is published of a series they follow, or credited to an author they follow, and a tap opens that episode. The install sends the notification to Firebase Cloud Messaging, which delivers it to Android phones itself and to iPhones through Apple's push service. Three things have to name the same Firebase project for that to work:
@@ -80,7 +81,7 @@ Until a key is saved, the app receives no push notifications. Email and the in-a
 
 Try it on a physical phone: Firebase does not deliver to the iOS simulator. Install the release build, through TestFlight on an iPhone or the release APK on Android, then:
 
-1. Sign in to the app as a reader, open **Account**, turn on **New episode notifications**, and allow notifications when the phone asks.
+1. Sign in to the app as a reader, open **Account**, turn on **Receive push notifications on this device**, and allow notifications when the phone asks. Leave the **Mobile app** switches of the **Notification preferences** above it on: they choose which kinds of notification reach the reader's phones.
 2. Follow a series in the app.
 3. Publish a new episode of that series from the tenant console, with a **Shown on** that includes the app.
 
