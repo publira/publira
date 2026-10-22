@@ -222,6 +222,8 @@ kubectl rollout restart deployment/publira-server
 
 Each process gets its Secrets as environment variables and the rest of the variables the [deployment reference](https://github.com/publira/publira/blob/main/infra/deploy/README.md#environment-variables) lists in its Deployment. Its liveness probe is `/livez` and its readiness probe `/readyz`, with the timeouts [Probing from an orchestrator](../../3-operations/11-monitoring.md#probing-from-an-orchestrator) gives: longer than six seconds for the server and the worker, whose checks run one after another, and longer than two for the web apps.
 
+`publira server` and `publira worker` stop within 30 seconds of being told to, so their Deployments give them 45 before Kubernetes kills them, where the default would be 30, and `publira-server` waits five seconds in a `preStop` hook first, so the edge stops sending it requests before it stops accepting them. [Stopping a copy](../7-scaling-out.md#stopping-a-copy) says why both are needed. The hook uses the `sleep` action, which needs no shell in the image and which Kubernetes runs from version 1.30 on.
+
 `publira-server.yaml`:
 
 ```yaml
@@ -239,9 +241,14 @@ spec:
       labels:
         app.kubernetes.io/name: publira-server
     spec:
+      terminationGracePeriodSeconds: 45
       containers:
         - name: publira-server
           image: ghcr.io/publira/publira:<tag>
+          lifecycle:
+            preStop:
+              sleep:
+                seconds: 5
           ports:
             - name: http
               containerPort: 8000
@@ -299,6 +306,7 @@ spec:
       labels:
         app.kubernetes.io/name: publira-worker
     spec:
+      terminationGracePeriodSeconds: 45
       containers:
         - name: publira-worker
           image: ghcr.io/publira/publira:<tag>

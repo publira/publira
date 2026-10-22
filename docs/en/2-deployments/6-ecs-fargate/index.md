@@ -439,6 +439,8 @@ The load balancer sets no limit on the size of a body, and lets a request take a
 
 Each service gets its secrets from the parameters and the rest of the variables the [deployment reference](https://github.com/publira/publira/blob/main/infra/deploy/README.md#environment-variables) lists in its task definition. The sizes below are a starting point to adjust, and `ARM64` can be `X86_64`: every image is published for both.
 
+`publira server` and `publira worker` stop within 30 seconds of being told to, so their container definitions give them a `stopTimeout` of 45 seconds before ECS kills them, where the default would be 30, as [Stopping a copy](../7-scaling-out.md#stopping-a-copy) describes.
+
 `publira-server.json`:
 
 ```json
@@ -514,6 +516,7 @@ Each service gets its secrets from the parameters and the rest of the variables 
         ],
         "startPeriod": 30
       },
+      "stopTimeout": 45,
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
@@ -591,6 +594,7 @@ Each service gets its secrets from the parameters and the rest of the variables 
         ],
         "startPeriod": 30
       },
+      "stopTimeout": 45,
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
