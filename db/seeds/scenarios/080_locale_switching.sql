@@ -22,6 +22,10 @@
 -- tenant's two genres, the first of which the first series carries, and its
 -- two announcements, at the end of this file.
 --
+-- The bilingual tenant also excludes one crawler and one path, so robots.txt
+-- shows the crawler's group of its own and the path under the prefixes of its
+-- two languages alone. Nothing but robots.txt reads the exclusions.
+--
 -- The public site and the console login screen are both reached without a
 -- session, so neither tenant owns users, and the Japanese-default tenant owns
 -- no series either: its series list is asserted empty. public_id values are
@@ -33,6 +37,7 @@
 --   episode  BlngEPSDAAA1 (of BlngSERSAAA1, Japanese and English)
 --   genre    BLNGGENRAAA1 (Japanese and English, on BlngSERSAAA1) / BLNGGENRAAA2 (Japanese)
 --   announcement 018f0f46-0001-… (Japanese and English) / 018f0f46-0002-… (Japanese)
+--   crawler exclusions GPTBot / /drafts (of BlngTNNTAAA1)
 
 WITH tenant_seed AS (
     SELECT '018f0f40-0001-7000-8000-000000000001'::uuid AS id
@@ -422,3 +427,14 @@ JOIN announcements a ON a.id = tr.announcement_id
 ON CONFLICT (announcement_id, locale) DO UPDATE
 SET title = EXCLUDED.title,
     body = EXCLUDED.body;
+
+-- The bilingual tenant's crawler exclusions, in the form the server stores
+-- them: a token it knows, and a path without a trailing /.
+INSERT INTO tenant_crawler_settings (tenant_id, excluded_user_agents, excluded_paths)
+SELECT t.id, ARRAY['GPTBot'], ARRAY['/drafts']
+FROM tenants t
+WHERE t.public_id = 'BlngTNNTAAA1'
+ON CONFLICT (tenant_id) DO UPDATE
+SET excluded_user_agents = EXCLUDED.excluded_user_agents,
+    excluded_paths = EXCLUDED.excluded_paths,
+    updated_at = NOW();

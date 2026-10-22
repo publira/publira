@@ -38,7 +38,8 @@ export const JAPANESE_DEFAULT_TENANT = {
  * in the reader's language is read off: `translated` and its episode are
  * written in both languages, and `untranslated` in Japanese alone, so its
  * English URL falls back. Its two genres and its two announcements follow the
- * same pattern, and `translated` carries the translated genre.
+ * same pattern, and `translated` carries the translated genre. It excludes
+ * one crawler and one path, which its robots.txt alone reads.
  */
 export const BILINGUAL_TENANT = {
   announcements: {
@@ -55,6 +56,7 @@ export const BILINGUAL_TENANT = {
       japaneseTitle: "Maintenance window (Japanese edition)",
     },
   },
+  crawlerExclusions: { path: "/drafts", userAgent: "GPTBot" },
   domain: "bilingual.localhost",
   englishCopy: {
     copyrightText: "© Bilingual Tenant",

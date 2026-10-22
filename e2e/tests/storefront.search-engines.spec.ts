@@ -174,4 +174,35 @@ test.describe("web-storefront robots.txt and sitemap on a tenant that offers two
     ).toStrictEqual([]);
     expect(lines).toContain(`Sitemap: ${BILINGUAL_ORIGIN}/sitemap.xml`);
   });
+
+  test("robots.txt refuses the excluded crawler every path and the excluded path to every crawler", async ({
+    request,
+  }) => {
+    const response = await request.get(
+      `${WEB_STOREFRONT_BILINGUAL_BASE_URL}/robots.txt`
+    );
+
+    expect(response.status()).toBe(200);
+    const body = await response.text();
+    const lines = body.split("\n");
+    const { path, userAgent } = BILINGUAL_TENANT.crawlerExclusions;
+    expect(lines.slice(0, 4)).toStrictEqual([
+      `User-agent: ${userAgent}`,
+      "Disallow: /",
+      "",
+      "User-agent: *",
+    ]);
+    expect(lines.filter((line) => line.includes(path))).toStrictEqual(
+      ["", "/ja", "/en"].flatMap((prefix) => [
+        `Disallow: ${prefix}${path}$`,
+        `Disallow: ${prefix}${path}/`,
+        `Disallow: ${prefix}${path}?`,
+      ])
+    );
+    expect(lines.slice(-3)).toStrictEqual([
+      "",
+      `Sitemap: ${BILINGUAL_ORIGIN}/sitemap.xml`,
+      "",
+    ]);
+  });
 });
