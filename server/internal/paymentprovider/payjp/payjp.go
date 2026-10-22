@@ -147,7 +147,7 @@ func (p *Provider) StartCheckout(ctx context.Context, credentials paymentprovide
 			Quantity: 1,
 		})
 	}
-	threeDSecure := payjpv2.CheckoutSessionPaymentMethodOptionsCardRequestRequestThreeDSecureAny
+	threeDSecure := payjpv2.RequestThreeDSecureAny
 	body := payjpv2.CheckoutSessionCreateRequest{
 		Mode:       payjpv2.CheckoutSessionModePayment,
 		SuccessUrl: &successURL,
