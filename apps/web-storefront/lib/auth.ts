@@ -12,7 +12,10 @@ import {
 import type { RpcErrorDisposition } from "@publira/api-client/errors";
 import { IdentityProvider } from "@publira/api-client/public/auth";
 import type { LinkedIdentity, Passkey } from "@publira/api-client/public/auth";
-import type { User } from "@publira/api-client/public/types";
+import type {
+  NotificationPreferences,
+  User,
+} from "@publira/api-client/public/types";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheLife } from "next/cache";
 import pRetry, { AbortError } from "p-retry";
@@ -102,9 +105,59 @@ export interface SignupInput {
   tenantId: string;
 }
 
+/**
+ * Which notifications reach the reader on each channel, one cell per category
+ * and channel the server delivers, named as `NotificationPreferences` names
+ * them.
+ */
+export interface NotificationPreferenceCells {
+  announcementsInboxEnabled: boolean;
+  commentsInboxEnabled: boolean;
+  followedCreatorsInboxEnabled: boolean;
+  followedCreatorsMobilePushEnabled: boolean;
+  followedCreatorsWebPushEnabled: boolean;
+  followedEpisodesInboxEnabled: boolean;
+  followedEpisodesMobilePushEnabled: boolean;
+  followedEpisodesWebPushEnabled: boolean;
+}
+
 export interface NotificationSettings {
   emailNotificationsEnabled: boolean;
+  preferences: NotificationPreferenceCells;
 }
+
+/**
+ * The generated `NotificationPreferences` fields
+ * {@link toNotificationPreferenceCells} reads, so a cell renamed or removed in
+ * the proto fails here rather than reading as a cell that is always on.
+ */
+type RawNotificationPreferences = Pick<
+  NotificationPreferences,
+  keyof NotificationPreferenceCells
+>;
+
+/**
+ * A response without the message reads every cell on, which is what the server
+ * answers for a reader who has saved nothing.
+ */
+const toNotificationPreferenceCells = (
+  preferences?: RawNotificationPreferences
+): NotificationPreferenceCells => ({
+  announcementsInboxEnabled: preferences?.announcementsInboxEnabled ?? true,
+  commentsInboxEnabled: preferences?.commentsInboxEnabled ?? true,
+  followedCreatorsInboxEnabled:
+    preferences?.followedCreatorsInboxEnabled ?? true,
+  followedCreatorsMobilePushEnabled:
+    preferences?.followedCreatorsMobilePushEnabled ?? true,
+  followedCreatorsWebPushEnabled:
+    preferences?.followedCreatorsWebPushEnabled ?? true,
+  followedEpisodesInboxEnabled:
+    preferences?.followedEpisodesInboxEnabled ?? true,
+  followedEpisodesMobilePushEnabled:
+    preferences?.followedEpisodesMobilePushEnabled ?? true,
+  followedEpisodesWebPushEnabled:
+    preferences?.followedEpisodesWebPushEnabled ?? true,
+});
 
 /**
  * What a password sign-in came to. A refused one says whether the credentials
@@ -1431,6 +1484,7 @@ export const getNotificationSettings = async (
 
     return {
       emailNotificationsEnabled: response.emailNotificationsEnabled,
+      preferences: toNotificationPreferenceCells(response.preferences),
     };
   } catch (error) {
     if (isUnauthenticatedRpcError(error)) {
@@ -1443,9 +1497,17 @@ export const getNotificationSettings = async (
   }
 };
 
+/** What a reader who has saved nothing reads: every cell on. */
+export const UNSAVED_NOTIFICATION_PREFERENCE_CELLS =
+  toNotificationPreferenceCells();
+
+/**
+ * Sends every cell, so what the reader saves is the grid they saw: a cell left
+ * out of the request would keep its stored value instead.
+ */
 export const updateNotificationSettings = async (
   tenantId: string,
-  emailNotificationsEnabled: boolean,
+  { emailNotificationsEnabled, preferences }: NotificationSettings,
   accessToken?: string
 ): Promise<NotificationSettings | null> => {
   const sid = await resolveAccessToken(accessToken);
@@ -1456,6 +1518,7 @@ export const updateNotificationSettings = async (
   try {
     const response = await apiClient.auth.updateNotificationSettings(
       {
+        ...preferences,
         emailNotificationsEnabled,
         tenant: { tenantId },
       },
@@ -1464,6 +1527,7 @@ export const updateNotificationSettings = async (
 
     return {
       emailNotificationsEnabled: response.emailNotificationsEnabled,
+      preferences: toNotificationPreferenceCells(response.preferences),
     };
   } catch (error) {
     if (isUnauthenticatedRpcError(error)) {

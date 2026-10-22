@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import { applyScenarioSql, querySql } from "../src/db";
@@ -93,11 +93,50 @@ const webPushDevices = (column: string): string =>
 const webPushDeviceCount = (): string => webPushDevices("COUNT(*)");
 const webPushEndpoint = (): string => webPushDevices("d.endpoint");
 
+const FOLLOWED_EPISODES = "New episodes of series and episodes you follow";
+const FOLLOWED_CREATORS = "New episodes by authors you follow";
+
+/** Every switch of the notification grid, as its row and column name it. */
+const NOTIFICATION_CELLS = [
+  [FOLLOWED_EPISODES, "Inbox"],
+  [FOLLOWED_EPISODES, "Browser"],
+  [FOLLOWED_EPISODES, "Mobile app"],
+  [FOLLOWED_CREATORS, "Inbox"],
+  [FOLLOWED_CREATORS, "Browser"],
+  [FOLLOWED_CREATORS, "Mobile app"],
+  ["Your comments", "Inbox"],
+  ["Announcements", "Inbox"],
+] as const;
+
+const notificationCell = (
+  page: Page,
+  category: string,
+  channel: string
+): Locator =>
+  page
+    .getByRole("group", { name: category })
+    .getByRole("switch", { name: channel });
+
+/**
+ * Turn one cell of the notification grid off. The grid is a Client Component
+ * the server already drew, so a press that lands before it hydrates reaches no
+ * listener; the switch is pressed again only while it still reports itself on,
+ * so a retry never turns back on a cell that did move.
+ */
+const turnCellOff = async (cell: Locator): Promise<void> => {
+  await expect(async () => {
+    if ((await cell.getAttribute("aria-checked")) === "true") {
+      await cell.click();
+    }
+    await expect(cell).not.toBeChecked({ timeout: 1000 });
+  }).toPass({ timeout: 15_000 });
+};
+
 /**
  * The member area: My Page and the four `/settings` tabs.
  *
  * Every test here rewrites the account it signs in as — the display name, the
- * notification preference, the follow list, the password, the browser this
+ * notification preferences, the follow list, the password, the browser this
  * reader has registered for push — so the suite owns a member no other spec
  * signs in as, and re-applies its scenario afterwards to put the starting
  * values back. `mode: "serial"` stops a failed write from being read back as a
@@ -247,6 +286,76 @@ test.describe("web-storefront member settings", () => {
     await expect(page.getByRole("checkbox")).not.toBeChecked();
   });
 
+  test("the notification grid saves one cell off and leaves every other cell as it was", async ({
+    page,
+  }) => {
+    await signIn(page, "/settings/notifications");
+
+    await Promise.all(
+      NOTIFICATION_CELLS.map(([category, channel]) =>
+        expect(notificationCell(page, category, channel)).toBeChecked()
+      )
+    );
+    await turnCellOff(notificationCell(page, "Announcements", "Inbox"));
+    await page.getByRole("button", { name: "Save" }).click();
+
+    await expectFlash(
+      page,
+      "status",
+      "Your notification settings have been updated."
+    );
+
+    await page.goto(storefrontUrl("/settings/notifications"));
+    await expect(
+      notificationCell(page, "Announcements", "Inbox")
+    ).not.toBeChecked();
+    await Promise.all(
+      NOTIFICATION_CELLS.filter(
+        ([category]) => category !== "Announcements"
+      ).map(([category, channel]) =>
+        expect(notificationCell(page, category, channel)).toBeChecked()
+      )
+    );
+  });
+
+  test("a column heading turns a mixed column on, and off again once it is all on", async ({
+    page,
+  }) => {
+    await signIn(page, "/settings/notifications");
+
+    const browserColumn = page.getByRole("button", {
+      exact: true,
+      name: "Browser",
+    });
+    const episodes = notificationCell(page, FOLLOWED_EPISODES, "Browser");
+    const creators = notificationCell(page, FOLLOWED_CREATORS, "Browser");
+
+    await turnCellOff(episodes);
+    await expect(creators).toBeChecked();
+
+    await browserColumn.click();
+    await expect(episodes).toBeChecked();
+    await expect(creators).toBeChecked();
+
+    await browserColumn.click();
+    await expect(episodes).not.toBeChecked();
+    await expect(creators).not.toBeChecked();
+    await page.getByRole("button", { name: "Save" }).click();
+
+    await expectFlash(
+      page,
+      "status",
+      "Your notification settings have been updated."
+    );
+
+    await page.goto(storefrontUrl("/settings/notifications"));
+    await expect(episodes).not.toBeChecked();
+    await expect(creators).not.toBeChecked();
+    await expect(
+      notificationCell(page, FOLLOWED_EPISODES, "Inbox")
+    ).toBeChecked();
+  });
+
   test("the browser notification switch registers this browser and takes it off again", async ({
     page,
   }) => {
@@ -254,7 +363,7 @@ test.describe("web-storefront member settings", () => {
     await signIn(page, "/settings/notifications");
 
     const browserNotifications = page.getByRole("switch", {
-      name: "New episode notifications",
+      name: "Receive push notifications in this browser",
     });
     await expect(browserNotifications).not.toBeChecked();
     expect(webPushDeviceCount()).toBe("0");
@@ -278,7 +387,7 @@ test.describe("web-storefront member settings", () => {
     await signIn(page, "/settings/notifications");
 
     const browserNotifications = page.getByRole("switch", {
-      name: "New episode notifications",
+      name: "Receive push notifications in this browser",
     });
     await browserNotifications.click();
 
@@ -298,7 +407,9 @@ test.describe("web-storefront member settings", () => {
     await signIn(page, "/settings/notifications");
 
     await page
-      .getByRole("switch", { name: "New episode notifications" })
+      .getByRole("switch", {
+        name: "Receive push notifications in this browser",
+      })
       .click();
     await expect.poll(webPushDeviceCount).toBe("1");
 

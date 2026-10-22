@@ -33,6 +33,7 @@ const {
   mockResolveAccessToken,
   mockSelectMyIcon,
   mockUpdateMe,
+  mockUpdateNotificationSettings,
   mockUploadMyIcon,
   mockVerifyUserEmail,
 } = vi.hoisted(() => ({
@@ -61,6 +62,7 @@ const {
   mockResolveAccessToken: vi.fn(),
   mockSelectMyIcon: vi.fn(),
   mockUpdateMe: vi.fn(),
+  mockUpdateNotificationSettings: vi.fn(),
   mockUploadMyIcon: vi.fn(),
   mockVerifyUserEmail: vi.fn(),
 }));
@@ -97,6 +99,7 @@ vi.mock("./api-client", () => ({
       requestEmailChange: mockRequestEmailChange,
       selectMyIcon: mockSelectMyIcon,
       updateMe: mockUpdateMe,
+      updateNotificationSettings: mockUpdateNotificationSettings,
       uploadMyIcon: mockUploadMyIcon,
       verifyUserEmail: mockVerifyUserEmail,
     },
@@ -112,6 +115,18 @@ vi.mock("./api-client", () => ({
 const importAuth = () => import("./auth");
 
 const DROPPED_ENTRY = { expire: 0, revalidate: 0, stale: 0 };
+
+/** The notification grid of a reader who has saved nothing. */
+const NOTIFICATION_CELLS_ON = {
+  announcementsInboxEnabled: true,
+  commentsInboxEnabled: true,
+  followedCreatorsInboxEnabled: true,
+  followedCreatorsMobilePushEnabled: true,
+  followedCreatorsWebPushEnabled: true,
+  followedEpisodesInboxEnabled: true,
+  followedEpisodesMobilePushEnabled: true,
+  followedEpisodesWebPushEnabled: true,
+};
 
 const ICON_URL = "/images/users/U001/icon/original.png";
 
@@ -1248,6 +1263,69 @@ describe("web-storefront auth", () => {
     mockResolveAccessToken.mockResolvedValueOnce("");
 
     await expect(getNotificationSettings("TENANT001")).resolves.toBeNull();
+  });
+
+  it("getNotificationSettings: reads every cell of the grid", async () => {
+    const { getNotificationSettings } = await importAuth();
+    mockResolveAccessToken.mockResolvedValueOnce("session_abc");
+    mockGetNotificationSettings.mockResolvedValueOnce({
+      emailNotificationsEnabled: false,
+      preferences: {
+        ...NOTIFICATION_CELLS_ON,
+        commentsInboxEnabled: false,
+        followedCreatorsWebPushEnabled: false,
+      },
+    });
+
+    await expect(getNotificationSettings("TENANT001")).resolves.toEqual({
+      emailNotificationsEnabled: false,
+      preferences: {
+        ...NOTIFICATION_CELLS_ON,
+        commentsInboxEnabled: false,
+        followedCreatorsWebPushEnabled: false,
+      },
+    });
+  });
+
+  it("getNotificationSettings: reads every cell on when the response carries none", async () => {
+    const { getNotificationSettings } = await importAuth();
+    mockResolveAccessToken.mockResolvedValueOnce("session_abc");
+    mockGetNotificationSettings.mockResolvedValueOnce({
+      emailNotificationsEnabled: true,
+    });
+
+    await expect(getNotificationSettings("TENANT001")).resolves.toEqual({
+      emailNotificationsEnabled: true,
+      preferences: NOTIFICATION_CELLS_ON,
+    });
+  });
+
+  it("updateNotificationSettings: sends every cell, so none keeps a value the reader did not see", async () => {
+    const { updateNotificationSettings } = await importAuth();
+    mockResolveAccessToken.mockResolvedValueOnce("session_abc");
+    const preferences = {
+      ...NOTIFICATION_CELLS_ON,
+      announcementsInboxEnabled: false,
+    };
+    mockUpdateNotificationSettings.mockResolvedValueOnce({
+      emailNotificationsEnabled: true,
+      preferences,
+    });
+
+    await expect(
+      updateNotificationSettings("TENANT001", {
+        emailNotificationsEnabled: true,
+        preferences,
+      })
+    ).resolves.toEqual({ emailNotificationsEnabled: true, preferences });
+    expect(mockUpdateNotificationSettings).toHaveBeenCalledWith(
+      {
+        ...preferences,
+        emailNotificationsEnabled: true,
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer session_abc" } }
+    );
   });
 
   it("verifyPublicEmail: returns the API's answer, kept out of prefetches", async () => {

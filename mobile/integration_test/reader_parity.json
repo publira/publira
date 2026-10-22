@@ -720,6 +720,14 @@
       "tests": ["the app and the site share the email notification setting"]
     },
     {
+      "name": "Notification preferences per category and channel",
+      "web": {
+        "routes": ["[locale]/(site)/settings/notifications"],
+        "rpcs": ["GetNotificationSettings", "UpdateNotificationSettings"]
+      },
+      "exception": "Not in the app yet: #4642."
+    },
+    {
       "name": "Viewer preferences",
       "web": { "rpcs": ["GetViewerPreferences", "UpdateViewerPreferences"] },
       "exception": "The one preference widens the web viewer to the whole browser window and hides the site header. The app's viewer always fills the screen, so there is nothing for it to change."

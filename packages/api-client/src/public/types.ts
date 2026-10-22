@@ -2,7 +2,10 @@ export * from "../gen/publira/types/v1/types_pb.js";
 
 // The publira.v1 entity messages, so mappers can Pick them the same way as
 // types.v1. Request/response wrappers stay on the per-service modules.
-export type { AnnouncementItem } from "../gen/publira/v1/auth_pb.js";
+export type {
+  AnnouncementItem,
+  NotificationPreferences,
+} from "../gen/publira/v1/auth_pb.js";
 export type {
   EpisodeComment,
   MyEpisodeComment,

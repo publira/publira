@@ -50,7 +50,7 @@ const copy = {
   denied:
     "Notifications are turned off for this site. Turn them on in your browser settings.",
   heading: "Browser notifications",
-  label: "New episode notifications",
+  label: "Receive push notifications in this browser",
   turnOffFailed: "Could not turn notifications off. Try again.",
   turnOnFailed: "Could not turn notifications on. Try again.",
 };
