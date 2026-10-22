@@ -276,7 +276,7 @@ aws ecs register-task-definition --cli-input-json file://publiractl-db-migrate.j
 run_publiractl publiractl-db-migrate
 ```
 
-A task started with `run-task` runs once, and ECS does not start it again when it fails, which is what a failed migration needs: it leaves the database marked dirty, which [When a migration fails](../7-upgrading.md#when-a-migration-fails) resolves by hand. Running it again, as the last step of that recovery does, is the same `run_publiractl`.
+A task started with `run-task` runs once, and ECS does not start it again when it fails, which is what a failed migration needs: it leaves the database marked dirty, which [When a migration fails](../8-upgrading.md#when-a-migration-fails) resolves by hand. Running it again, as the last step of that recovery does, is the same `run_publiractl`.
 
 ### Create the database roles
 

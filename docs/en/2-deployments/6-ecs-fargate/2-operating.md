@@ -2,6 +2,7 @@
 title: Operating on ECS
 description: Add a tenant, keep the consoles' credentials off the tenants' domains, and upgrade an install that runs on Amazon ECS on Fargate.
 published: 2026-10-21
+updated: 2026-10-22
 ---
 
 These are the changes made to an install once [Amazon ECS on Fargate](./index.md) and [CloudFront in front of ECS](./1-cloudfront.md) have brought it into service. Their commands use the shell variables and functions those pages defined. In a shell other than the one the install was built in, define again the ones a command names: the variables of [Before you start](./index.md#before-you-start), the `run_publiractl` function of [Apply the migrations and create the database roles](./index.md#4-apply-the-migrations-and-create-the-database-roles), and `LISTENER`, which `aws elbv2 describe-listeners --load-balancer-arn <the load balancer ARN> --query 'Listeners[0].ListenerArn' --output text` prints.
@@ -19,7 +20,7 @@ Nothing else changes: the services, the parameters, and the security groups serv
 
 ## Keeping the consoles' credentials off the tenants' domains
 
-The load balancer already keeps the consoles' APIs off the internet, but the `publira-server` it forwards the tenants' domains to still serves them, and holds their database logins and the web service token to do so. To take all three out of the process readers reach, a layer apart from the edge rule as [Only the public API goes through the edge](../4-edge/index.md#only-the-public-api-goes-through-the-edge) describes, run a second service with `--role storefront`, and route the tenants' domains to it.
+The load balancer already keeps the consoles' APIs off the internet, but the `publira-server` it forwards the tenants' domains to still serves them, and holds their database logins and the web service token to do so. To take all three out of the process readers reach, a layer apart from the edge rule as [Only the public API goes through the edge](../4-edge/index.md#only-the-public-api-goes-through-the-edge) describes, run a second service with `--role storefront`, and route the tenants' domains to it. The split also lets reader traffic scale apart from the consoles, since each service runs tasks of its own, as [Splitting the server by role](../7-scaling-out.md#splitting-the-server-by-role) describes.
 
 Its task definition is the `publira-server.json` of [Start the services](./index.md#6-start-the-services) with the family and the container named `publira-storefront`, `["server", "--role", "storefront"]` as its command, and only the secrets that role reads: the encryption keys, `PUBLIRA_AUTH_JWT_SECRET`, `PUBLIRA_REVALIDATE_TOKEN`, `PUBLIRA_REDIS_URL`, and `PUBLIRA_PUBLIC_DB_URL`. Give it a target group of its own, `publira-storefront` on port `8000`, and create its service with the `publira-server` security group and no Cloud Map name, since nothing but the load balancer calls it.
 
@@ -35,7 +36,7 @@ The load balancer answers a console API with `404` on every host either way, so 
 
 ## Upgrading
 
-[Upgrading](../7-upgrading.md) brings an install to a new release: a backup, the migrations and the roles with the new release's `publiractl`, and then the processes. Read it, and its release notes, first. On ECS its steps become:
+[Upgrading](../8-upgrading.md) brings an install to a new release: a backup, the migrations and the roles with the new release's `publiractl`, and then the processes. Read it, and its release notes, first. On ECS its steps become:
 
 Every step below acts on every service the install runs. List them once, adding `web-platform`, `email-renderer`, and `publira-storefront` if you run them:
 
@@ -43,7 +44,7 @@ Every step below acts on every service the install runs. List them once, adding 
 SERVICES="publira-server publira-worker web-storefront web-admin"
 ```
 
-1. **Stop the services** when you decided to stop them first, which [Decide whether to stop the processes first](../7-upgrading.md#decide-whether-to-stop-the-processes-first) weighs, by setting every one of them to no tasks, after noting how many each one ran:
+1. **Stop the services** when you decided to stop them first, which [Decide whether to stop the processes first](../8-upgrading.md#decide-whether-to-stop-the-processes-first) weighs, by setting every one of them to no tasks, after noting how many each one ran:
 
    ```bash
    declare -A COUNT
@@ -55,7 +56,7 @@ SERVICES="publira-server publira-worker web-storefront web-admin"
    aws ecs wait services-stable --cluster publira --services $SERVICES
    ```
 
-2. **Back up the database** with a snapshot of the RDS instance or the Aurora cluster, or with `pg_dump` from a host that reaches it, as [Back up the database](../7-upgrading.md#1-back-up-the-database) describes.
+2. **Back up the database** with a snapshot of the RDS instance or the Aurora cluster, or with `pg_dump` from a host that reaches it, as [Back up the database](../8-upgrading.md#1-back-up-the-database) describes.
 3. **Apply the migrations and the roles**: change `<tag>` in `publiractl-db-migrate.json` and `publiractl-db-roles.json` to the new release, register both, and run them in that order with `run_publiractl`, going on only when each succeeds. The roles task gives each role the password its parameter holds, which is the one it already has, so it runs unchanged. A release that adds a role needs a parameter for that role's password, a `secrets` entry setting it as a variable, and the flag that names the variable.
 4. **Start the new release**: change `<tag>` in every service's task definition, add the variables the release notes name, register them, and update each service to its new revision, and, if you stopped it in step 1, to the number of tasks it ran before, which that step noted in `COUNT`:
 
@@ -68,6 +69,6 @@ SERVICES="publira-server publira-worker web-storefront web-admin"
    aws ecs wait services-stable --cluster publira --services $SERVICES
    ```
 
-5. **Check the install**, as [Check the install](../7-upgrading.md#5-check-the-install) describes.
+5. **Check the install**, as [Check the install](../8-upgrading.md#5-check-the-install) describes.
 
 When the services keep running through the upgrade instead, update every service at once after the roles task: ECS replaces the tasks of a service a few at a time, so the two releases serve side by side until the last old task stops, and the shorter that is the better, as the same page explains.

@@ -172,7 +172,7 @@ docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
   publira/publiractl:<tag> job purge-content-events
 ```
 
-A purge reads the retention periods when it starts, so a dry run counts what the periods saved now would delete. After saving a much shorter period, run one before the real run to see how much the purge will take with it. A dry run of `purge-orphan-images` reports the objects in the bucket that no image row names and that are at least a day old; after a [restore](../2-deployments/8-backup-and-restore.md#what-the-worker-catches-up-on), those include the images uploaded after the backup was taken.
+A purge reads the retention periods when it starts, so a dry run counts what the periods saved now would delete. After saving a much shorter period, run one before the real run to see how much the purge will take with it. A dry run of `purge-orphan-images` reports the objects in the bucket that no image row names and that are at least a day old; after a [restore](../2-deployments/9-backup-and-restore.md#what-the-worker-catches-up-on), those include the images uploaded after the backup was taken.
 
 ### Rebuilding the statistics of a day
 
@@ -209,6 +209,6 @@ Every job can be run again, and alongside the worker's own pass of it:
 | `sync-google-play-voided-purchases` | Takes back nothing a second time |
 | `build-search-index` | Does nothing when no build is due, or when the worker is already building |
 
-The one exception is timing: do not run `purge-orphan-images` while a backup of the bucket is being copied, as [Backup and restore](../2-deployments/8-backup-and-restore.md#1-stop-the-worker) describes.
+The one exception is timing: do not run `purge-orphan-images` while a backup of the bucket is being copied, as [Backup and restore](../2-deployments/9-backup-and-restore.md#1-stop-the-worker) describes.
 
 The publication, free reading period, day rollover, and pinned announcement jobs have no command of their own. To make them act, get the worker running.

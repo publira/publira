@@ -6,7 +6,7 @@ published: 2026-10-21
 
 These procedures replace each secret that [Where each secret may go](./index.md#where-each-secret-may-go) names. Read them before you need them — each is easier to run on a quiet day than during an incident.
 
-Generating the secrets for the first time is part of [Installing](../../2-deployments/2-installing.md#generate-the-secrets), and keeping them is part of [Backup and restore](../../2-deployments/8-backup-and-restore.md#the-secret-encryption-keys).
+Generating the secrets for the first time is part of [Installing](../../2-deployments/2-installing.md#generate-the-secrets), and keeping them is part of [Backup and restore](../../2-deployments/9-backup-and-restore.md#the-secret-encryption-keys).
 
 ## Rotating the secret encryption keys
 

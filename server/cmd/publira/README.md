@@ -128,6 +128,8 @@ Roles combine with a comma, or with the flag given again. A role opens its own p
 
 The process the reverse proxy forwards internet traffic to can therefore run `--role storefront`: it holds `publira_public` alone, serves neither console's API, and takes no web service token. Another process without the flag keeps serving the web apps, which reach every surface they use through one `PUBLIRA_GRPC_URL` — `web-admin` calls `publira.v1` for the tenant's theme and catalog as well as `publira.admin.v1` — and the edge forwards a console host's public API and `/images` to it: the images a console page shows are the `admin` role's, and a `storefront` process answers them `404`.
 
+`web-admin`, the web app the `admin` role is for, therefore cannot be pointed at a `--role admin,platform` process while it takes one `PUBLIRA_GRPC_URL`: it would find no `publira.v1` there for the theme and the catalog. The second example above is a valid set of roles, not a deployment to plan around, and the finest split behind the web apps today is the two processes above ([#4745](https://github.com/publira/publira/issues/4745)).
+
 ### Hosting the worker (`--with-worker`)
 
 ```bash

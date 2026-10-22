@@ -2,7 +2,7 @@
 title: Deployments
 description: How a Publira install is put together and brought into service.
 published: 2026-10-04
-updated: 2026-10-21
+updated: 2026-10-22
 ---
 
 These pages are for the operator who deploys Publira. They describe what an install runs and what it depends on; how those parts are hosted — a Compose file, a Kubernetes cluster, a set of systemd units — is your choice.
@@ -20,8 +20,9 @@ These pages are for the operator who deploys Publira. They describe what an inst
 - [Amazon ECS on Fargate](./6-ecs-fargate/index.md): running an install as ECS services on Fargate, from its parameters, one-off tasks, and services behind an Application Load Balancer to the first sign-in.
   - [CloudFront in front of ECS](./6-ecs-fargate/1-cloudfront.md): CloudFront in front of the load balancer, as a VPC origin.
   - [Operating on ECS](./6-ecs-fargate/2-operating.md): adding a tenant, keeping the consoles' credentials off the tenants' domains, and upgrading.
-- [Upgrading](./7-upgrading.md): bringing a running install to a new release, and what to do when a migration fails.
-- [Backup and restore](./8-backup-and-restore.md): what an install keeps, backing it up, and bringing it back on empty services.
-- [Releases](./9-releases.md): what a `0.x` version number tells you, what a minor and a patch release may change, and which releases receive fixes.
+- [Scaling out](./7-scaling-out.md): running several copies of each process, splitting `publira server` by the traffic it answers, and what the copies share.
+- [Upgrading](./8-upgrading.md): bringing a running install to a new release, and what to do when a migration fails.
+- [Backup and restore](./9-backup-and-restore.md): what an install keeps, backing it up, and bringing it back on empty services.
+- [Releases](./10-releases.md): what a `0.x` version number tells you, what a minor and a patch release may change, and which releases receive fixes.
 
 Start from [Getting started](../1-getting-started.md) if you have not read what Publira is.

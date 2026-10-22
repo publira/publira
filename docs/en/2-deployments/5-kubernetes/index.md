@@ -152,7 +152,7 @@ kubectl wait --for=condition=Complete --timeout=10m job/publira-db-migrate
 kubectl logs job/publira-db-migrate
 ```
 
-`backoffLimit: 0` keeps Kubernetes from running a failed migration again on its own: a failed run leaves the database marked dirty, which [When a migration fails](../7-upgrading.md#when-a-migration-fails) resolves by hand. `kubectl wait` gives up after ten minutes whether the Job failed or is still running, so read its log either way.
+`backoffLimit: 0` keeps Kubernetes from running a failed migration again on its own: a failed run leaves the database marked dirty, which [When a migration fails](../8-upgrading.md#when-a-migration-fails) resolves by hand. `kubectl wait` gives up after ten minutes whether the Job failed or is still running, so read its log either way.
 
 A Job cannot be changed once it exists, and one that has finished, whether it completed or failed, does not run again when its manifest is applied. This one is deleted a day after it finishes. Until then, running it again, as the last step of that recovery does, starts by deleting it:
 

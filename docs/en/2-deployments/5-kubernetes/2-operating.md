@@ -2,6 +2,7 @@
 title: Operating on Kubernetes
 description: Add a tenant, keep the consoles' credentials off the tenants' domains, expose the metrics, and upgrade an install that runs on a Kubernetes cluster.
 published: 2026-10-21
+updated: 2026-10-22
 ---
 
 These are the changes made to an install once [Kubernetes](./index.md) has brought it into service. Each one changes the resources that page and [The edge on Kubernetes](./1-edge.md) created.
@@ -17,7 +18,7 @@ Point both names at the edge's address before you apply the change, so cert-mana
 
 ## Keeping the consoles' credentials off the tenants' domains
 
-The edge already keeps the consoles' APIs off the internet, but the `publira-server` it forwards the tenants' domains to still serves them, and holds their database logins and the web service token to do so. To take all three out of the process readers reach, a layer apart from the edge rule as [Only the public API goes through the edge](../4-edge/index.md#only-the-public-api-goes-through-the-edge) describes, run a second Deployment with `--role storefront`, and route the tenants' domains to it:
+The edge already keeps the consoles' APIs off the internet, but the `publira-server` it forwards the tenants' domains to still serves them, and holds their database logins and the web service token to do so. To take all three out of the process readers reach, a layer apart from the edge rule as [Only the public API goes through the edge](../4-edge/index.md#only-the-public-api-goes-through-the-edge) describes, run a second Deployment with `--role storefront`, and route the tenants' domains to it. The split also lets reader traffic scale apart from the consoles, since each Deployment has replicas of its own, as [Splitting the server by role](../7-scaling-out.md#splitting-the-server-by-role) describes:
 
 ```yaml
 apiVersion: apps/v1
@@ -106,9 +107,9 @@ done
 
 ## Upgrading
 
-[Upgrading](../7-upgrading.md) brings an install to a new release: a backup, the migrations and the roles with the new release's `publiractl`, and then the processes. Read it, and its release notes, first. On a cluster its steps become:
+[Upgrading](../8-upgrading.md) brings an install to a new release: a backup, the migrations and the roles with the new release's `publiractl`, and then the processes. Read it, and its release notes, first. On a cluster its steps become:
 
-1. **Stop the processes** when you decided to stop them first, which [Decide whether to stop the processes first](../7-upgrading.md#decide-whether-to-stop-the-processes-first) weighs, by scaling every Deployment of the install to zero:
+1. **Stop the processes** when you decided to stop them first, which [Decide whether to stop the processes first](../8-upgrading.md#decide-whether-to-stop-the-processes-first) weighs, by scaling every Deployment of the install to zero:
 
    ```bash
    kubectl scale deployment --all --replicas=0
@@ -117,7 +118,7 @@ done
 
    The label selects the Pods of every Deployment of the install and leaves out those of the Jobs, which have finished and are kept for their logs.
 
-2. **Back up the database**, with `pg_dump` from a host that reaches it, or a snapshot of the managed database, as [Back up the database](../7-upgrading.md#1-back-up-the-database) describes.
+2. **Back up the database**, with `pg_dump` from a host that reaches it, or a snapshot of the managed database, as [Back up the database](../8-upgrading.md#1-back-up-the-database) describes.
 3. **Apply the migrations and the roles**: delete the previous release's Jobs if they are still there, since a Job cannot be changed, then change `<tag>` in the two Jobs of [Apply the migrations](./index.md#2-apply-the-migrations) and [Create the roles](./index.md#3-create-the-roles) to the new release, and run them in that order, waiting for each to complete:
 
    ```bash
@@ -127,6 +128,6 @@ done
    The roles Job gives each role the password `publira-db-roles` holds for it, which is the one it already has, so it runs with its flags unchanged. A release that adds a role needs that role's password in `publira-db-roles` and its flag added.
 
 4. **Start the new release**: change `<tag>` in every Deployment, add the variables the release notes name, and apply them. Applying the manifests restores the replicas you scaled to zero.
-5. **Check the install**, as [Check the install](../7-upgrading.md#5-check-the-install) describes.
+5. **Check the install**, as [Check the install](../8-upgrading.md#5-check-the-install) describes.
 
 When the processes keep running through the upgrade instead, apply every Deployment at once after the roles Job: a Deployment rolls one replica at a time, so the two releases serve side by side until the last replica is replaced, and the shorter that is the better, as the same page explains.
