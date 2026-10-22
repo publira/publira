@@ -206,6 +206,7 @@ services:
         sign-in.localhost
         social-consent.localhost
         social.localhost
+        tag-docs.localhost
         team.localhost
         waitfree.localhost
         unknown-tenant.localhost
@@ -240,6 +241,7 @@ services:
         admin.sign-in.localhost
         admin.social-consent.localhost
         admin.social.localhost
+        admin.tag-docs.localhost
         admin.team.localhost
         admin.waitfree.localhost
       PUBLIRA_EDGE_PLATFORM_HOSTS: platform.localhost

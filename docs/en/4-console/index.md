@@ -25,7 +25,7 @@ Every member of the staff holds one of three roles, and the console shows each o
 
 | Role | What it may do |
 | --- | --- |
-| **Tenant admin** | Everything in the console: the staff, every setting of the tenant, its integrations with mail, payments, push notifications, and sign-in, readers' accounts, purchases and their refunds, royalties, and the audit log |
+| **Tenant admin** | Everything in the console: the staff, every setting of the tenant, its integrations with mail, payments, push notifications, sign-in, and the Google tag, readers' accounts, purchases and their refunds, royalties, and the audit log |
 | **Editor** | Write the catalog and the site's pages, announcements, and campaign banners, and moderate comments |
 | **Auditor** | See what an Editor works on, and the tenant's settings, without changing any of it |
 
@@ -41,5 +41,6 @@ A Tenant admin gives the other staff their roles under **Members**. [A tenant's 
 - [Selling episodes](./4-selling-episodes.md): pricing an episode, taking payment through Stripe or PAY.JP, where episodes are sold, in-app purchase, refunds, and testing a setup before going live.
 - [Reports and royalties](./5-reports-and-royalties.md): what the Dashboard and Read-through count, how each Author's royalties are worked out, closing a month into a statement, and exporting it as CSV.
 - [Sign-in with Apple and Google](./6-sign-in.md): letting readers sign in to the site and the app with an Apple or Google account, and what to create in Apple's and Google's consoles for it.
+- [Google tag](./7-google-tag.md): measuring the site with Google Analytics or Google Tag Manager, the three places the tag can be loaded from, and what to set up in Google Tag Manager for the gateway.
 
 Start from [Getting started](../1-getting-started.md) if you have not read what Publira is.
