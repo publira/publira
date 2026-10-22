@@ -101,11 +101,15 @@ const NOTIFICATION_CELLS = [
   [FOLLOWED_EPISODES, "Inbox"],
   [FOLLOWED_EPISODES, "Browser"],
   [FOLLOWED_EPISODES, "Mobile app"],
+  [FOLLOWED_EPISODES, "Email"],
   [FOLLOWED_CREATORS, "Inbox"],
   [FOLLOWED_CREATORS, "Browser"],
   [FOLLOWED_CREATORS, "Mobile app"],
+  [FOLLOWED_CREATORS, "Email"],
   ["Your comments", "Inbox"],
+  ["Your comments", "Email"],
   ["Announcements", "Inbox"],
+  ["Announcements", "Email"],
 ] as const;
 
 const notificationCell = (
@@ -266,26 +270,6 @@ test.describe("web-storefront member settings", () => {
     expect(memberField("icon_image_id")).toBe("");
   });
 
-  test("the notification screen turns email notifications off and keeps them off", async ({
-    page,
-  }) => {
-    await signIn(page, "/settings/notifications");
-
-    const emailNotifications = page.getByRole("checkbox");
-    await expect(emailNotifications).toBeChecked();
-    await emailNotifications.uncheck();
-    await page.getByRole("button", { name: "Save" }).click();
-
-    await expectFlash(
-      page,
-      "status",
-      "Your notification settings have been updated."
-    );
-
-    await page.goto(storefrontUrl("/settings/notifications"));
-    await expect(page.getByRole("checkbox")).not.toBeChecked();
-  });
-
   test("the notification grid saves one cell off and leaves every other cell as it was", async ({
     page,
   }) => {
@@ -311,10 +295,46 @@ test.describe("web-storefront member settings", () => {
     ).not.toBeChecked();
     await Promise.all(
       NOTIFICATION_CELLS.filter(
-        ([category]) => category !== "Announcements"
+        ([category, channel]) =>
+          category !== "Announcements" || channel !== "Inbox"
       ).map(([category, channel]) =>
         expect(notificationCell(page, category, channel)).toBeChecked()
       )
+    );
+  });
+
+  test("the email column saves one cell off and leaves the rest of the column as it was", async ({
+    page,
+  }) => {
+    await signIn(page, "/settings/notifications");
+
+    const emailCells = NOTIFICATION_CELLS.filter(
+      ([, channel]) => channel === "Email"
+    );
+    await Promise.all(
+      emailCells.map(([category, channel]) =>
+        expect(notificationCell(page, category, channel)).toBeChecked()
+      )
+    );
+    await turnCellOff(notificationCell(page, "Your comments", "Email"));
+    await page.getByRole("button", { name: "Save" }).click();
+
+    await expectFlash(
+      page,
+      "status",
+      "Your notification settings have been updated."
+    );
+
+    await page.goto(storefrontUrl("/settings/notifications"));
+    await expect(
+      notificationCell(page, "Your comments", "Email")
+    ).not.toBeChecked();
+    await Promise.all(
+      emailCells
+        .filter(([category]) => category !== "Your comments")
+        .map(([category, channel]) =>
+          expect(notificationCell(page, category, channel)).toBeChecked()
+        )
     );
   });
 

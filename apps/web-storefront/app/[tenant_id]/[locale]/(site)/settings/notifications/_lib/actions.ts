@@ -44,18 +44,21 @@ const updateNotificationSettingsFormSchema = async (locale: Locale) => {
   // field is a switch that is off.
   const switchSchema = z
     .literal("on", {
-      error: t("storefront.settings.email_notifications_invalid"),
+      error: t("storefront.settings.notification_preferences_invalid"),
     })
     .optional()
     .transform((value) => value === "on");
 
   return z.object({
+    announcementsEmailEnabled: switchSchema,
     announcementsInboxEnabled: switchSchema,
+    commentsEmailEnabled: switchSchema,
     commentsInboxEnabled: switchSchema,
-    emailNotificationsEnabled: switchSchema,
+    followedCreatorsEmailEnabled: switchSchema,
     followedCreatorsInboxEnabled: switchSchema,
     followedCreatorsMobilePushEnabled: switchSchema,
     followedCreatorsWebPushEnabled: switchSchema,
+    followedEpisodesEmailEnabled: switchSchema,
     followedEpisodesInboxEnabled: switchSchema,
     followedEpisodesMobilePushEnabled: switchSchema,
     followedEpisodesWebPushEnabled: switchSchema,
@@ -77,12 +80,15 @@ export const updateNotificationSettingsAction = async (
   ]);
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
+      announcementsEmailEnabled: "value",
       announcementsInboxEnabled: "value",
+      commentsEmailEnabled: "value",
       commentsInboxEnabled: "value",
-      emailNotificationsEnabled: "value",
+      followedCreatorsEmailEnabled: "value",
       followedCreatorsInboxEnabled: "value",
       followedCreatorsMobilePushEnabled: "value",
       followedCreatorsWebPushEnabled: "value",
+      followedEpisodesEmailEnabled: "value",
       followedEpisodesInboxEnabled: "value",
       followedEpisodesMobilePushEnabled: "value",
       followedEpisodesWebPushEnabled: "value",
@@ -100,8 +106,7 @@ export const updateNotificationSettingsAction = async (
     redirect(errorPath);
   }
 
-  const { emailNotificationsEnabled, locale, tenantId, ...preferences } =
-    parsed.data;
+  const { locale, tenantId, ...preferences } = parsed.data;
   const accessToken = await requirePublicSession(
     locale,
     NOTIFICATION_SETTINGS_RETURN_TO,
@@ -110,12 +115,7 @@ export const updateNotificationSettingsAction = async (
   const updated = await withPublicSessionReauth(
     locale,
     NOTIFICATION_SETTINGS_RETURN_TO,
-    () =>
-      updateNotificationSettings(
-        tenantId,
-        { emailNotificationsEnabled, preferences },
-        accessToken
-      ),
+    () => updateNotificationSettings(tenantId, preferences, accessToken),
     tenantId
   );
   if (!updated) {
@@ -123,7 +123,7 @@ export const updateNotificationSettingsAction = async (
       locale,
       tenantId,
       "error",
-      t("storefront.settings.email_notifications_update_failed")
+      t("storefront.settings.notification_preferences_update_failed")
     );
     redirect(errorPath);
   }
@@ -132,7 +132,7 @@ export const updateNotificationSettingsAction = async (
     locale,
     tenantId,
     "success",
-    t("storefront.settings.email_notifications_updated")
+    t("storefront.settings.notification_preferences_updated")
   );
   redirect(successPath);
 };

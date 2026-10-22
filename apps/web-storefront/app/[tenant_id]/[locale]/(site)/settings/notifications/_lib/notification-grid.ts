@@ -8,7 +8,7 @@ export type NotificationCategory =
   | "followedEpisodes";
 
 /** Where a notification reaches the reader: a column of the grid. */
-export type NotificationChannel = "inbox" | "mobilePush" | "webPush";
+export type NotificationChannel = "email" | "inbox" | "mobilePush" | "webPush";
 
 export type NotificationCell = keyof NotificationPreferenceCells;
 
@@ -21,14 +21,19 @@ const NOTIFICATION_CELLS: Record<
   NotificationCategory,
   Partial<Record<NotificationChannel, NotificationCell>>
 > = {
-  announcements: { inbox: "announcementsInboxEnabled" },
-  comments: { inbox: "commentsInboxEnabled" },
+  announcements: {
+    email: "announcementsEmailEnabled",
+    inbox: "announcementsInboxEnabled",
+  },
+  comments: { email: "commentsEmailEnabled", inbox: "commentsInboxEnabled" },
   followedCreators: {
+    email: "followedCreatorsEmailEnabled",
     inbox: "followedCreatorsInboxEnabled",
     mobilePush: "followedCreatorsMobilePushEnabled",
     webPush: "followedCreatorsWebPushEnabled",
   },
   followedEpisodes: {
+    email: "followedEpisodesEmailEnabled",
     inbox: "followedEpisodesInboxEnabled",
     mobilePush: "followedEpisodesMobilePushEnabled",
     webPush: "followedEpisodesWebPushEnabled",

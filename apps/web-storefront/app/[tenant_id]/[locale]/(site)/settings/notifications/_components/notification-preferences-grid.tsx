@@ -37,7 +37,7 @@ const GridContext = createContext<GridContextValue | null>(null);
  * columns are a fixed width rather than sized to their content: that is what
  * keeps them lined up from one row to the next.
  */
-const GRID_COLUMNS = "@lg:grid @lg:grid-cols-[minmax(0,1fr)_repeat(3,7rem)]";
+const GRID_COLUMNS = "@lg:grid @lg:grid-cols-[minmax(0,1fr)_repeat(4,6rem)]";
 
 interface RowContextValue {
   category: NotificationCategory;
@@ -228,6 +228,9 @@ export const NotificationPreferencesGrid = ({
             <ColumnToggle channel="mobilePush">
               <ClientMessage message="storefront.settings.notification_channel_mobile_push" />
             </ColumnToggle>
+            <ColumnToggle channel="email">
+              <ClientMessage message="storefront.settings.notification_channel_email" />
+            </ColumnToggle>
           </div>
 
           <Row category="followedEpisodes">
@@ -242,6 +245,9 @@ export const NotificationPreferencesGrid = ({
             </Cell>
             <Cell channel="mobilePush">
               <ClientMessage message="storefront.settings.notification_channel_mobile_push" />
+            </Cell>
+            <Cell channel="email">
+              <ClientMessage message="storefront.settings.notification_channel_email" />
             </Cell>
           </Row>
 
@@ -258,6 +264,9 @@ export const NotificationPreferencesGrid = ({
             <Cell channel="mobilePush">
               <ClientMessage message="storefront.settings.notification_channel_mobile_push" />
             </Cell>
+            <Cell channel="email">
+              <ClientMessage message="storefront.settings.notification_channel_email" />
+            </Cell>
           </Row>
 
           <Row category="comments">
@@ -273,6 +282,9 @@ export const NotificationPreferencesGrid = ({
             <Cell channel="mobilePush">
               <ClientMessage message="storefront.settings.notification_channel_mobile_push" />
             </Cell>
+            <Cell channel="email">
+              <ClientMessage message="storefront.settings.notification_channel_email" />
+            </Cell>
           </Row>
 
           <Row category="announcements">
@@ -287,6 +299,9 @@ export const NotificationPreferencesGrid = ({
             </Cell>
             <Cell channel="mobilePush">
               <ClientMessage message="storefront.settings.notification_channel_mobile_push" />
+            </Cell>
+            <Cell channel="email">
+              <ClientMessage message="storefront.settings.notification_channel_email" />
             </Cell>
           </Row>
         </div>
