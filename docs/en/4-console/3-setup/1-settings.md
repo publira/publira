@@ -1,8 +1,8 @@
 ---
 title: Settings
-description: Set the site's copy, time zone, languages, reader comments, age verification, legal pages, and refused email addresses, tighten the platform's limits for the tenant, and choose what readers can show as their icon.
+description: Set the site's copy, time zone, languages, reader comments, age verification, legal pages, refused email addresses, and crawler exclusions, tighten the platform's limits for the tenant, and choose what readers can show as their icon.
 published: 2026-10-07
-updated: 2026-10-21
+updated: 2026-10-22
 ---
 
 **Settings**, under **Administration**, has three tabs. **General** holds what the tenant decides about its own site. **Limits and retention** holds the values the operator sets for every tenant, which a tenant may change within bounds. **Reader icons** holds what readers can show as their icon, and the icons the tenant offers them to pick from.
@@ -110,6 +110,19 @@ Choose **Save the refused email addresses** to save. The list applies to the nex
 ![The Refused email addresses card: Refuse disposable email domains, a field for an address or a domain with Add an address or domain, and Save the refused email addresses.](./settings-refused-email-addresses.png)
 
 Sign-in with Apple or Google is never refused here, since the provider supplies the address. Only a Tenant admin can see this card's contents.
+
+### Crawler exclusions
+
+What the site's `robots.txt` asks crawlers to stay away from. A crawler that follows `robots.txt` stops fetching what is excluded here. Nothing is hidden from readers, and a crawler that ignores the file can still fetch every page, so this is not a way to keep a page private.
+
+- **Crawlers kept off the whole site** lists the crawlers Publira knows, grouped by what they fetch pages for: **AI training**, **AI assistants**, and **Image search**. Each one is named by the token its operator documents for `robots.txt`, with the operator under it. A ticked crawler is asked not to fetch any page of the site. The list is fixed by Publira; a crawler that is not on it cannot be added.
+- **Paths kept from every crawler** takes one path per field, up to 100, such as `/drafts`. A path starts with `/` and also covers everything under it. Pasting several lines into a field adds a field for each line. There are no wildcards, and a path cannot hold spaces, `*`, `$`, `?`, or `#`. `/robots.txt`, `/sitemap.xml`, and `/sitemap` cannot be excluded, since crawlers need them to read the site.
+
+Choose **Save the crawler exclusions** to save. Each path is saved without a trailing `/`, and the list is shown in alphabetical order.
+
+![The Crawler exclusions card: Crawlers kept off the whole site with a box for each crawler under AI training, AI assistants, and Image search, a field for a path with Add a path, and Save the crawler exclusions.](./settings-crawler-exclusions.png)
+
+Saves are recorded in the [audit log](./8-audit-log.md) as **Crawler exclusions updated**.
 
 ## Limits and retention
 

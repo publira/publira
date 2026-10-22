@@ -2805,6 +2805,49 @@
           "entries_refused": "Check the list. Each entry must be one email address or domain, and at most {$max} can be listed."
         }
       },
+      "crawlers": {
+        "title": "Crawler exclusions",
+        "description": "What the site's robots.txt asks crawlers to stay away from. Crawlers that follow robots.txt stop fetching what is excluded here. A page stays open to readers, and to crawlers that ignore the file.",
+        "crawlers_label": "Crawlers kept off the whole site",
+        "crawlers_description": "Each crawler ticked is asked not to fetch any page of the site.",
+        "crawler_operator": "Run by {$operator}",
+        "purposes": {
+          "ai_training": {
+            "label": "AI training",
+            "description": "Collect pages to train AI models on."
+          },
+          "ai_assistant": {
+            "label": "AI assistants",
+            "description": "Fetch pages for an AI assistant's answers or for its search results."
+          },
+          "image_search": {
+            "label": "Image search",
+            "description": "Index the site's images for an image search."
+          },
+          "other": {
+            "label": "Other crawlers",
+            "description": "Crawlers this console has no description for yet."
+          }
+        },
+        "paths_label": "Paths kept from every crawler",
+        "paths_description": "One path per field, starting with /, such as /drafts. A path also covers everything under it. Pasting several lines adds a field for each. There are no wildcards, and robots.txt and the sitemap cannot be excluded.",
+        "path_label": "Path {$position}",
+        "path_remove": "Remove path {$position}",
+        "paths_add": "Add a path",
+        "submit": "Save the crawler exclusions",
+        "saved": "The crawler exclusions were saved.",
+        "load_failed": "Could not load the crawler exclusions. Please try again later.",
+        "save_failed": "Could not save the crawler exclusions. Please try again later.",
+        "load_error_hint": "Saving now would overwrite the stored settings, so reload the page before changing them.",
+        "validation": {
+          "path_invalid": "\"{$path}\" is not a path. Start it with / and leave out spaces, *, $, ?, and #.",
+          "path_too_long": "\"{$path}\" is too long. A path can be at most {$max} bytes.",
+          "path_reserved": "\"{$path}\" cannot be excluded, since crawlers need robots.txt and the sitemap to read the site.",
+          "path_refused": "\"{$path}\" cannot be excluded. Check the path and save again.",
+          "too_many": "List at most {$max} paths.",
+          "crawler_refused": "{$crawler} can no longer be excluded. Reload the page and choose again."
+        }
+      },
       "icon": {
         "title": "Icon",
         "description": "The icon the public site shows in a browser tab and in the address bar.",

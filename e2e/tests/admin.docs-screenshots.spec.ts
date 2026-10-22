@@ -172,6 +172,7 @@ for (const locale of DOCS_LOCALES) {
         ["age-verification", "admin.settings.age_verification.title"],
         ["terms-and-privacy-policy", "admin.settings.legal_pages.title"],
         ["refused-email-addresses", "admin.settings.email_rejection.title"],
+        ["crawler-exclusions", "admin.settings.crawlers.title"],
       ] as const) {
         test(`the ${subject} card`, async ({ page }) => {
           await openScreen(page, locale, "/settings");

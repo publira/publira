@@ -169,10 +169,3 @@ export const parseEmailRejectionEntries = (
   }
   return { entries, ok: true };
 };
-
-/** The entries a pasted text names, one a line, trimmed, blank lines dropped. */
-export const splitPastedEmailRejectionEntries = (text: string): string[] =>
-  text
-    .split(/\r\n|\r|\n/u)
-    .map((line) => line.trim())
-    .filter((line) => line !== "");

@@ -2805,6 +2805,49 @@
           "entries_refused": "목록을 확인해 주세요. 한 칸에는 하나의 이메일 주소나 도메인을 입력하고, {$max}개까지만 입력할 수 있습니다."
         }
       },
+      "crawlers": {
+        "title": "크롤러 제외",
+        "description": "사이트의 robots.txt로 크롤러에게 가져가지 말도록 요청할 대상을 정합니다. robots.txt를 따르는 크롤러는 여기서 제외한 것을 가져가지 않습니다. 독자와 robots.txt를 무시하는 크롤러는 계속 볼 수 있습니다.",
+        "crawlers_label": "사이트 전체에서 제외할 크롤러",
+        "crawlers_description": "체크한 크롤러에게는 사이트의 어떤 페이지도 가져가지 말도록 요청합니다.",
+        "crawler_operator": "운영: {$operator}",
+        "purposes": {
+          "ai_training": {
+            "label": "AI 학습",
+            "description": "AI 모델 학습에 쓸 페이지를 수집합니다."
+          },
+          "ai_assistant": {
+            "label": "AI 어시스턴트",
+            "description": "AI 어시스턴트의 답변이나 검색 결과를 위해 페이지를 가져갑니다."
+          },
+          "image_search": {
+            "label": "이미지 검색",
+            "description": "이미지 검색을 위해 사이트의 이미지를 색인합니다."
+          },
+          "other": {
+            "label": "기타 크롤러",
+            "description": "이 콘솔에 아직 설명이 없는 크롤러입니다."
+          }
+        },
+        "paths_label": "모든 크롤러에서 제외할 경로",
+        "paths_description": "칸 하나에 /drafts처럼 /로 시작하는 경로를 하나씩 입력합니다. 경로는 그 아래에 있는 것도 포함합니다. 여러 줄을 붙여 넣으면 줄마다 칸이 나뉩니다. 와일드카드는 쓸 수 없으며, robots.txt와 사이트맵은 제외할 수 없습니다.",
+        "path_label": "경로 {$position}",
+        "path_remove": "경로 {$position} 삭제",
+        "paths_add": "경로 추가",
+        "submit": "크롤러 제외 저장",
+        "saved": "크롤러 제외를 저장했습니다.",
+        "load_failed": "크롤러 제외를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        "save_failed": "크롤러 제외를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        "load_error_hint": "지금 저장하면 저장된 설정을 덮어쓰게 되므로, 페이지를 새로 고친 뒤에 변경해 주세요.",
+        "validation": {
+          "path_invalid": "\"{$path}\"은(는) 경로가 아닙니다. /로 시작하고 공백, *, $, ?, #을 넣지 마세요.",
+          "path_too_long": "\"{$path}\"이(가) 너무 깁니다. 경로는 최대 {$max}바이트입니다.",
+          "path_reserved": "\"{$path}\"은(는) 제외할 수 없습니다. 크롤러가 사이트를 읽으려면 robots.txt와 사이트맵이 필요합니다.",
+          "path_refused": "\"{$path}\"은(는) 제외할 수 없습니다. 경로를 확인하고 다시 저장해 주세요.",
+          "too_many": "경로는 최대 {$max}개까지 입력해 주세요.",
+          "crawler_refused": "{$crawler}은(는) 더 이상 제외할 수 없습니다. 페이지를 새로 고친 뒤 다시 선택해 주세요."
+        }
+      },
       "icon": {
         "title": "아이콘",
         "description": "공개 사이트가 브라우저 탭과 주소 표시줄에 보여 주는 아이콘입니다.",
