@@ -36,7 +36,36 @@ import 'package:publira/typography/autospaced_tooltip.dart';
 /// could not answer offers its retry where it stands rather than taking the
 /// screen down with it. A pull to refresh is the one gesture over all of them:
 /// it reads every section again from the top, the catalog list included, which
-/// drops the pages the reader had scrolled into.
+/// drops the pages the reader had scrolled into. The app bar carries the way
+/// to the tenant's announcements.
+///
+/// The sections, in the order they stand, are:
+///
+/// - The campaign banners of [CampaignBannerBand], on a tenant with a banner
+///   scheduled now.
+/// - Continue reading, `ListMyRecentSeries`, for a signed-in reader in the
+///   middle of something. Each card opens the episode the API names for its
+///   series.
+/// - Top 10 this week, `ListRankedSeries` for the weekly period, on a tenant
+///   the ranking batch has written a snapshot for. Cards carry the snapshot's
+///   own positions, so a series unpublished since leaves a gap.
+/// - Recommended, in place of that chart on a tenant the ranking batch has not
+///   written a snapshot for: `ListMyRecommendedSeries` for a signed-in reader,
+///   `ListRecommendedSeries` for a guest. The shelf is headed as a
+///   recommendation and its View all opens `/recommended` rather than the
+///   ranking, as the storefront's popularity module does.
+/// - New arrivals, `ListPublishedSeries` newest first, on a tenant with a
+///   published series.
+/// - All series, `ListPublishedSeries` by title: the whole catalog, as the list
+///   the screen ends in.
+///
+/// Each shelf is a [CatalogShelf], a horizontal row that takes its heading
+/// with it when it is answered with nothing. Only the whole-catalog list is
+/// kept for reading without a network, as `OfflineCatalogRepository` says of
+/// each read; every shelf above it is another order over the same series, a
+/// chart of a window that has closed, or one reader's own history, none of
+/// which the device can answer on its own, so offline each reports that it
+/// could not reach the API.
 class CatalogScreen extends StatefulWidget {
   const CatalogScreen({super.key});
 

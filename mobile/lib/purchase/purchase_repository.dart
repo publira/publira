@@ -124,14 +124,16 @@ class SeriesPurchaseState {
 /// in-app purchase as the tenant's app purchase route says.
 abstract class PurchaseRepository {
   /// Whether the tenant can take a payment in this app right now: its web
-  /// checkout on the external-checkout route, and the store on this device on
-  /// the store route. A tenant that cannot is offered no purchase, whatever
-  /// the episode costs.
+  /// checkout on the external-checkout route (`accepts_payments`), and the
+  /// store on this device on the store route (`accepts_app_store_payments` on
+  /// iOS, `accepts_google_play_payments` on Android). A tenant that cannot is
+  /// offered no purchase, whatever the episode costs.
   ///
   /// Throws [PurchaseFailure] on a transport or unexpected server error.
   Future<bool> acceptsPayments();
 
-  /// Which purchase the tenant's app offers.
+  /// Which purchase the tenant's app offers, as the `app_purchase_route`
+  /// `GetTenant` answers with names it.
   ///
   /// Throws [PurchaseFailure] on a transport or unexpected server error.
   Future<AppPurchaseRoute> appPurchaseRoute();
@@ -148,6 +150,10 @@ abstract class PurchaseRepository {
   /// the rest of it would cost them. A guest is answered as a reader who
   /// holds nothing.
   ///
+  /// A row of the series screen offers a purchase only where this answers the
+  /// episode locked for the reader, so an episode they bought, hold a ticket
+  /// for, or can read inside a free window is offered nothing.
+  ///
   /// Throws [PurchaseFailure] on a transport or unexpected server error.
   Future<SeriesPurchaseState> seriesEpisodeAccess(String seriesInternalId);
 
@@ -159,8 +165,9 @@ abstract class PurchaseRepository {
   Future<String?> seriesOfEpisode(String episodePublicId);
 
   /// The checkout page the signed-in reader pays for the [kind] of the
-  /// episode [episodeInternalId] names on, built to return to the app. The
-  /// page names the episode in its translation in [locale], the reader's.
+  /// episode [episodeInternalId] names on, which `StartEpisodeCheckout` with
+  /// `client: CLIENT_MOBILE` builds to return to the app. The page names the
+  /// episode in its translation in [locale], the reader's.
   ///
   /// Throws [PurchaseFailure]; [PurchaseFailureKind.alreadyPurchased] when
   /// there is nothing to pay for, and [PurchaseFailureKind.notSold] for a

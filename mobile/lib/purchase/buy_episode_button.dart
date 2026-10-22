@@ -50,7 +50,8 @@ class BuyEpisodeButton extends StatefulWidget {
   /// The ISO 4217 code of the currency [price] is in, the tenant's.
   final String currency;
 
-  /// The reader already holds the episode, so there was nothing to pay for.
+  /// The reader already holds the episode, so there was nothing to pay for,
+  /// and they are shown it instead.
   final VoidCallback onAlreadyPurchased;
 
   /// The store took the payment, or holds it for approval: the episode is

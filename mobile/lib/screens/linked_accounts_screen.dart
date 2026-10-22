@@ -17,8 +17,9 @@ import 'package:publira/typography/autospaced_text.dart';
 /// offers that the account has none of yet (`AuthService/LinkIdentity`),
 /// through the same sign-in as the sign-in screen's.
 ///
-/// An account without a password keeps its last linked provider, because it
-/// would have no way left to sign in.
+/// It opens as **Linked accounts** under the account tab. An account without
+/// a password or a passkey keeps its last linked provider, because it would
+/// have no way left to sign in.
 class LinkedAccountsScreen extends StatefulWidget {
   const LinkedAccountsScreen({super.key});
 

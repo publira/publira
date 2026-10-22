@@ -19,9 +19,9 @@ const _pageSize = 20;
 /// The series the reader is in the middle of, newest activity first, each
 /// opening the episode the API names to continue from.
 ///
-/// It is the catalog's continue-reading row as a whole list, one cursor page
-/// at a time. The API answers it for a session alone, so a guest is offered
-/// the way to sign in instead.
+/// It is the catalog's continue-reading row as a whole list, read from
+/// `ListMyRecentSeries` one cursor page at a time. The API answers it for a
+/// session alone, so a guest is offered the way to sign in instead.
 class ContinueReadingList extends StatefulWidget {
   const ContinueReadingList({super.key});
 

@@ -13,6 +13,12 @@ class ReaderIconPreset {
 /// What a reader of the tenant may show as an icon, which decides the icon
 /// controls the account screen offers, so none of them leads to a change the
 /// API refuses under the tenant's policy.
+///
+/// The account screen reads it from `TenantService.GetTenantReaderIconPolicy`
+/// with the screen. Removal sends `AuthService.DeleteMyIcon` under
+/// [ReaderIconUpload] and [ReaderIconPresets]. A policy this build does not
+/// know offers nothing, and a change the API refuses because the policy or
+/// the presets changed since the screen read them reads the policy again.
 sealed class ReaderIconChoice {
   const ReaderIconChoice();
 }

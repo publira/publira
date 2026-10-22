@@ -23,6 +23,9 @@ import 'package:publira/typography/autospaced_tooltip.dart';
 /// the reader closes leaves nothing half-named behind. An account without a
 /// password or a linked provider keeps its last passkey, because it would
 /// have no way left to sign in.
+///
+/// It opens as **Passkeys** under the account tab. A list the device cannot
+/// add to is still listed, renamed, and removed.
 class PasskeysScreen extends StatefulWidget {
   const PasskeysScreen({super.key});
 

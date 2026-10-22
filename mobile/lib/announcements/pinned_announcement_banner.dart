@@ -8,8 +8,8 @@ import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
 import 'package:publira/typography/autospaced_tooltip.dart';
 
-/// The one announcement the operator asked every reader to see, at the top of
-/// the catalog.
+/// The one announcement the operator asked every reader to see, as
+/// `GetPinnedAnnouncement` answers it, at the top of the catalog.
 ///
 /// It draws nothing when the tenant has nothing pinned, when the window has
 /// closed, or when this device has closed it: an addition to the screen has

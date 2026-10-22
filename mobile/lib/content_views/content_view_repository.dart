@@ -5,6 +5,9 @@ enum ContentViewKind { series, episode }
 
 /// Where the app reports that a reader opened a series or an episode, which
 /// the tenant's rankings and content statistics are built from.
+///
+/// Opening a series screen or an episode records one view, so a reader of the
+/// app counts toward them as a reader of the site does.
 abstract class ContentViewRepository {
   /// Records one view of the [kind] whose internal id is [targetId].
   ///

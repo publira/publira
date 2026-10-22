@@ -3,9 +3,11 @@ import 'package:publira/models/follow.dart';
 
 /// The reader's half of `publira.v1.FollowService`.
 ///
-/// Every call reaches the API. What a reader follows is one list held for
-/// them across their devices and the site, so a device that answered it on its
-/// own would show a state the next screen contradicts.
+/// Every call reaches the API, and nothing of it is written to the device.
+/// What a reader follows is one list held for them across their devices and
+/// the site, so a device that answered it on its own would show a state the
+/// next screen contradicts. A follow is also what a new-episode notification
+/// is delivered by.
 abstract class FollowRepository {
   /// Whether the signed-in reader follows the series or creator whose
   /// internal id is [targetId].

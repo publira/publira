@@ -20,6 +20,10 @@ import 'package:publira/typography/autospaced_text.dart';
 /// than in a browser. The API cannot tell whether a token is good without
 /// spending it, so the form is offered for any token and a dead link is found
 /// out on submit; a link without one is known to be dead before that.
+///
+/// A link the API never issued, or one whose time has run out, leads back to
+/// [AppRoutes.resetPassword]; a reset the API could not be reached for keeps
+/// the form to submit again.
 class ConfirmPasswordScreen extends StatefulWidget {
   const ConfirmPasswordScreen({super.key, required this.token});
 

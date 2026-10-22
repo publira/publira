@@ -5,7 +5,8 @@ import 'package:path_provider/path_provider.dart';
 /// Where the app remembers the pinned announcement whose banner the reader
 /// closed.
 ///
-/// It holds one id rather than a list, as the site's cookie does: only the
+/// The announcements are online only, and this id is the one thing of them
+/// written to the device. It holds one id rather than a list, as the site's cookie does: only the
 /// newest pinned announcement is ever shown, so pinning another one stops the
 /// stored id from matching and the banner comes back.
 abstract class DismissedAnnouncementStore {

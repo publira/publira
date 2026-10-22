@@ -7,9 +7,15 @@ import 'package:publira/api/image_cipher.dart';
 /// Body pages kept on the device, addressed by [episodePageKey].
 ///
 /// [EpisodeImageClient] writes a page here once it has turned it into
-/// displayable bytes, and reads it back when the network cannot be reached.
-/// Neither call may throw: a device that cannot save is a device that reads
-/// online, not one whose reader fails.
+/// displayable bytes, which is also what the viewer draws, and reads it back
+/// when the network cannot be reached. Neither call may throw: a device that
+/// cannot save is a device that reads online, not one whose reader fails.
+///
+/// A page cannot be kept as it arrives: image-server derives its content key
+/// from the JWT the request carried, and that token is gone in a day. What is
+/// kept is what was decoded, under an address [episodePageAddress] strips the
+/// media token from, so a free page saved under one rotation window still
+/// opens under the next.
 abstract class EpisodePageStore {
   /// The saved page, or `null` when this device holds none.
   Future<Uint8List?> readPage(String key);

@@ -10,8 +10,11 @@ import 'package:publira/tenant/tenant_brand.dart';
 /// under one would otherwise read forever as long as the reader stays offline.
 const offlineGracePeriod = Duration(days: 7);
 
-/// How many bytes of saved pages one device keeps before the least recently
-/// confirmed episodes are dropped.
+/// How many bytes of saved pages one device keeps, 512 MB, before the least
+/// recently confirmed episodes are dropped.
+///
+/// An episode is dropped whole, and the page files no episode claims any more
+/// go with it.
 const offlineByteLimit = 512 * 1024 * 1024;
 
 /// One episode kept on the device, with what decides whether it may still be
@@ -259,6 +262,17 @@ bool isReadableOffline(
 }
 
 /// What one device holds for reading without a network.
+///
+/// Everything the reader opens is kept, so the same screens open again without
+/// a network: the catalog list, the series screens behind it, and every
+/// episode body that loaded, each saved as it loads. An episode is on the
+/// device because it was read, or because the reader saved it from its row on
+/// the series screen, which fetches every page at once.
+///
+/// The API decides. Every read goes to it first, and only its answer refreshes
+/// what the device holds; the saved copy is reached only when the API cannot
+/// be. A body that comes back locked, or that the API no longer has, is taken
+/// off the device along with its pages.
 ///
 /// Every read answers `null` rather than throwing when the device holds
 /// nothing, or holds something this build cannot read, so a damaged library

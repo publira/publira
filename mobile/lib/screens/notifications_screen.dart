@@ -24,7 +24,13 @@ const _readAheadRows = 5;
 ///
 /// This is the record of what the reader was told, whether or not a push ever
 /// reached the device: a row is read here, marked read here, and opens what it
-/// is about.
+/// is about. It is the screen at `/notifications`, read from
+/// `NotificationService` and online only: nothing of it is written to the
+/// device.
+///
+/// The next page is asked for as the reader nears the end of the rows already
+/// there. Opening an unread row marks it read on the way, each unread row
+/// carries its own mark, and the app bar marks every notification read.
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
 

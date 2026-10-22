@@ -16,7 +16,9 @@ import 'package:publira/typography/autospaced_tooltip.dart';
 
 /// What the device keeps for reading offline, as the library shows it: the
 /// bytes it spends against the cap, the saved episodes by series, and the way
-/// to delete them.
+/// to delete them. Each episode says when it was saved and, for a body that
+/// needed an entitlement or was read inside a free window, until when it opens
+/// offline.
 ///
 /// Only episodes the reader holding the device could open are listed. A body
 /// saved for another account names what that account bought, so it counts

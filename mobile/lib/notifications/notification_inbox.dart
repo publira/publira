@@ -8,8 +8,10 @@ import 'package:publira/notifications/notification_repository.dart';
 /// The signed-in reader's inbox, and the unread count every screen badges.
 ///
 /// The count is never worked out on the device: it is read back from the API
-/// after every read mark and whenever the inbox opens, so it agrees with the
-/// server whatever the pages on screen hold and whatever another device marked.
+/// with `CountUnreadNotifications` after every read mark, when the inbox
+/// opens, when the app returns to the foreground, and when a push arrives in
+/// front, so it agrees with the server whatever the pages on screen hold and
+/// whatever another device marked. It badges the Notifications tab.
 class NotificationInbox extends ChangeNotifier {
   NotificationInbox({required this._repository});
 

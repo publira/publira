@@ -127,26 +127,7 @@ Android takes the flavor from `productFlavors` in `android/app/build.gradle.kts`
 
 ## App manifest
 
-Each tenant builds and publishes the app under its own identity, which an app manifest states in YAML:
-
-```yaml
-schemaVersion: 1
-
-app:
-  name: Example Reader # the launcher name
-
-tenant:
-  host: reader.example.com # the one tenant the app serves, which its links are verified against
-
-android:
-  applicationId: com.example.reader # the production application ID
-
-ios:
-  bundleIdentifier: com.example.reader # the production bundle identifier
-  googleSignInClientId: 123456789012-abc123.apps.googleusercontent.com # optional
-```
-
-Every field is required but `ios.googleSignInClientId`, and a field the format does not define is an error. Android and iOS take separate identifiers, so an app that already has a store listing under different ones keeps both. `schemaVersion` names the format, and a manifest of a version the tooling does not read is refused rather than half-applied.
+Each tenant builds and publishes the app under its own identity, which an app manifest states in YAML. [The app manifest](../docs/en/5-mobile-app/1-app-manifest.md) describes its fields and how a tenant writes one.
 
 | File | What it is |
 | --- | --- |
@@ -173,24 +154,11 @@ The files go into `.generated/`, or into the directory `PUBLIRA_MOBILE_GENERATED
 
 ## Building a tenant's app
 
-A tenant builds the app it publishes from its own manifest:
-
-1. Copy `config/app.example.yaml` out of the repository and replace every value with the tenant's. The identifiers are what the stores know the app by, so they stay the same for every later release.
-2. Export the origin the app connects to, which a production build requires and the app manifest does not carry.
-3. Export the [signing inputs](#signing-a-tenants-app) of the platform being built.
-4. Run `task mobile:build` with the manifest and the `flutter build` target.
-5. Once the stores list the app, enter its identities in the tenant console, as [Linking a tenant's app to its site](#linking-a-tenants-app-to-its-site) describes, so the tenant's links open it.
+`task mobile:build` builds the app a tenant publishes from its own manifest. [Building and signing](../docs/en/5-mobile-app/2-building.md) is the procedure, from the inputs a release needs to the files uploaded to the stores.
 
 ```bash
 # From the repository root; a relative manifest path is read from where the task starts
-export PUBLIRA_BASE_URL=https://reader.example.com
-
-export PUBLIRA_ANDROID_KEYSTORE=../tenant/upload.jks
-export PUBLIRA_ANDROID_KEYSTORE_PASSWORD=... PUBLIRA_ANDROID_KEY_ALIAS=upload PUBLIRA_ANDROID_KEY_PASSWORD=...
-task mobile:build -- ../tenant/app.yaml appbundle
-
-export PUBLIRA_IOS_DEVELOPMENT_TEAM=ABCDE12345
-task mobile:build -- ../tenant/app.yaml ipa
+task mobile:build -- <manifest> <target> [flutter build arguments]
 ```
 
 The command checks the manifest and the arguments, reports every problem before starting Flutter, generates the build configuration from the manifest, and runs `flutter build <target>` in `mobile/`:
@@ -221,31 +189,9 @@ A production release is signed with the tenant's own keys, which the environment
 | `PUBLIRA_ANDROID_KEY_PASSWORD` | The upload key's password |
 | `PUBLIRA_IOS_DEVELOPMENT_TEAM` | The ten-character Team ID of the Apple Developer account the app is published under |
 
-Android reads its four variables while Gradle configures the build. A `production` `release` build — `flutter build apk` or `appbundle` — stops before compiling when any of them is missing or the keystore is not a file, rather than falling back to the debug keys Google Play refuses. With Play App Signing the key is the upload key; Google Play re-signs what it delivers.
+Android reads its four variables while Gradle configures the build. A `production` `release` build — `flutter build apk` or `appbundle` — stops before compiling when any of them is missing or the keystore is not a file, rather than falling back to the debug keys Google Play refuses.
 
-iOS takes the team through the generated build configuration, which `task mobile:build` and `dart run scripts/app_manifest.dart --generate` write it into as the `DEVELOPMENT_TEAM` of the `Release-production` configuration alone, so `project.pbxproj` never names one and every other build keeps signing as Flutter does by default. The Runner target keeps automatic signing: Xcode on the Mac that builds has to be signed in to an account of that team, and creates the certificate and profiles itself. A `Release-production` build for a device stops in the Runner target's first build phase when the configuration was generated without a team, rather than letting Flutter sign under whichever team it finds in the keychain.
-
-## Linking a tenant's app to its site
-
-A link on the tenant host opens the published app only once Android and iOS have verified the app against `https://<tenant.host>/.well-known/assetlinks.json` and `https://<tenant.host>/.well-known/apple-app-site-association`. The public site builds both documents from what a tenant administrator saves under **Integrations** → **App links** in the tenant console, and answers 404 for a platform left unticked; a tenant without apps ticks neither.
-
-The values are those of the app the stores distribute: the `production` flavor `task mobile:build` made from the tenant's manifest. The `dev` flavor's `.dev` identifiers are never entered, and a value that differs from the published app by a single character leaves the links opening in the browser.
-
-| App links field | Where the value comes from |
-| --- | --- |
-| **Application ID** | `android.applicationId` in the manifest. Google Play shows the same value as the `id=` of the app's store address |
-| **SHA-256 signing certificate fingerprints** | The certificate the installed app is signed with, which the manifest does not hold. With Play App Signing, it is the SHA-256 fingerprint of the app signing key certificate on the app's **App signing** page in Play Console; the upload key does not sign what Play delivers. Without it, it is the `SHA256:` line `keytool -list -v -keystore <release keystore> -alias <key alias>` prints. One per line, up to ten, so an upload-key build installed outside Play, or a key being rotated in, can be listed beside it |
-| **Apple Team ID** | The ten-character Team ID in the membership details of the Apple Developer account the app is published under, which the manifest does not hold |
-| **Bundle identifier** | `ios.bundleIdentifier` in the manifest. App Store Connect shows the same value as the Bundle ID under **App Information** |
-
-Checking the manifest prints both identifiers as the build used them, so they are copied from its output rather than retyped:
-
-```console
-$ dart run scripts/app_manifest.dart ../tenant/app.yaml
-../tenant/app.yaml: Example Reader for reader.example.com (Android com.example.reader, iOS com.example.reader)
-```
-
-The manifest's `tenant.host` has no field of its own: it has to be a host the tenant's site is served on, because that is where Android and iOS fetch the documents.
+iOS takes the team through the generated build configuration, which `task mobile:build` and `dart run scripts/app_manifest.dart --generate` write it into as the `DEVELOPMENT_TEAM` of the `Release-production` configuration alone, so `project.pbxproj` never names one and every other build keeps signing as Flutter does by default. The Runner target keeps automatic signing. A `Release-production` build for a device stops in the Runner target's first build phase when the configuration was generated without a team, rather than letting Flutter sign under whichever team it finds in the keychain.
 
 ## Quality gates (format / analyze / test)
 
@@ -290,12 +236,12 @@ mobile/
 ├── lib/
 │   ├── main.dart                 # Entry point
 │   ├── app.dart                  # MaterialApp.router + AuthScope + CatalogScope
-│   ├── router.dart               # go_router definition
+│   ├── router.dart               # go_router definition: every route, and the tab that holds it
 │   ├── config.dart               # --dart-define API / image / tenant configuration
 │   ├── api/                      # Connect client and its generated messages (gen/), tenant lookup, page fetch and decryption
-│   ├── auth/                     # Session, secure storage, AuthController
+│   ├── auth/                     # Session, secure storage, AuthController: sign-in with a password, Apple, Google, or a passkey, sign-up, password reset, and the account icon
 │   ├── announcements/            # AnnouncementBoard: the tenant's announcements and the pinned banner
-│   ├── catalog/                  # CatalogRepository, eye-catch rendition choice and cover widget
+│   ├── catalog/                  # CatalogRepository, the shelves above the catalog list, eye-catch rendition choice and cover widget
 │   ├── comments/                 # CommentRepository, tenant comment mode, own-comment merge
 │   ├── contact/                  # ContactRepository: a reader's message to the tenant's staff
 │   ├── content_views/            # ContentViewRepository: the views the tenant's rankings and content statistics count
@@ -311,11 +257,11 @@ mobile/
 │   ├── models/                   # Series / author / label / episode body / episode comment / follow / inbox notification / announcement
 │   ├── notifications/            # NotificationInbox: the inbox, its unread count, and what a row says and opens
 │   ├── purchase/                 # A paid episode bought through the web checkout in the browser or the store's in-app purchase
-│   ├── push/                     # Firebase Cloud Messaging, device registration, notification routing
+│   ├── push/                     # PushController: Firebase Cloud Messaging, device registration, notification routing
 │   ├── screens/                  # Catalog / search / library / series / author / label / viewer / comments / sign-in / sign-up / email confirmation / password reset / account / linked accounts / passkeys / notifications / contact / announcements / published page
 │   ├── settings/                 # Local preferences, including the age-rating confirmation
 │   ├── tenant/                   # The tenant's brand and theme, the controller that loads them, and whether the API serves the tenant
-│   ├── viewer/                   # Paged reader
+│   ├── viewer/                   # Paged reader: page images, the reading position, and the end of an episode
 │   └── wait_free/                # WaitFreeRepository and the wait-for-free ticket offered on a locked episode
 ├── test/                         # Widget / HTTP fixtures
 ├── integration_test/             # On-device navigation
@@ -329,129 +275,11 @@ mobile/
 └── analysis_options.yaml
 ```
 
-## Navigation
-
-Every screen but the episode viewer and the agreement screen carries a bottom navigation bar of five tabs, each with a navigation stack of its own. Switching tabs keeps each one's screens and scroll positions, and tapping the tab on screen takes it back to its root.
-
-| Tab | Root | Screen |
-| --- | --- | --- |
-| Home | `/` | Catalog list |
-| Search | `/search` | Search, with the keyword field focused while it is empty |
-| Library | `/library` | Continue reading, follows, downloads, and recommendations |
-| Notifications | `/notifications` | The reader's notification inbox, badged with the unread count |
-| Account | `/account` | Signed-in reader, their date of birth, the way to each account setting, and sign-out |
-
-Every tab holds the catalog's routes and the sign-in forms under its own root, so a series, an author, a label, an episode, or an announcement opened from a tab is pushed onto that tab's stack: `/series/:seriesId` on the home tab is `/search/series/:seriesId` on the search tab.
-
-| Path under a tab's root | Screen |
-| --- | --- |
-| `/sign-in` | Sign-in form |
-| `/sign-up` | Sign-up form, and the state that waits for the address to be confirmed |
-| `/sign-up/continue` | Asks the consent and birth date a first Apple or Google sign-in creates an account with |
-| `/resend-verification` | Asks for a fresh confirmation link |
-| `/reset-password` | Asks for a password reset link; the site's own path, claimed as an App Link |
-| `/announcements` | The tenant's announcements; the site's own path, claimed as an App Link |
-| `/announcements/:announcementId` | One announcement |
-| `/page/:pageSlug` | A page the tenant published, its slug one encoded segment (`/page/legal%2Fterms`) |
-| `/series/:seriesId` | Series details |
-| `/creators/:creatorId` | An author and the published series credited to them |
-| `/labels/:labelId` | A label and its published series |
-| `/recommended` | The whole of the order recommended to the reader, which the catalog's popularity shelf leads to while the tenant has no chart |
-| `/series/:seriesId/episodes/:episodeId` | Episode viewer, which hides the bar |
-| `/series/:seriesId/episodes/:episodeId/comments` | Episode comments |
-
-The routes only one tab holds:
-
-| Path | Tab | Screen |
-| --- | --- | --- |
-| `/checkout/return` | Home | A checkout the browser hands back; it opens the episode it was started for |
-| `/account/name` | Account | Renames the account (`AuthService/UpdateMe`) |
-| `/account/email` | Account | Asks to move the account to another address (`AuthService/RequestEmailChange`) |
-| `/account/password` | Account | Replaces the password and keeps this device signed in on the token handed back (`AuthService/ChangePassword`) |
-| `/account/linked-accounts` | Account | The Apple and Google accounts linked to the reader's, each unlinked on its own, and a link for each provider the device offers that the account has none of (`AuthService/ListMyIdentities`, `AuthService/UnlinkIdentity`, `AuthService/LinkIdentity`) |
-| `/account/passkeys` | Account | The reader's passkeys, each renamed or removed on its own, and a way to add one where the device uses the site's (`AuthService/ListMyPasskeys`, `AuthService/RenamePasskey`, `AuthService/DeletePasskey`, `AuthService/BeginPasskeyRegistration`, `AuthService/FinishPasskeyRegistration`) |
-| `/account/delete` | Account | Deletes the account after the password, or a fresh provider sign-in for an account without one, and a second confirmation, then signs out (`AuthService/DeleteMe`) |
-| `/account/contact` | Account | A message to the tenant's staff |
-| `/account/pages` | Account | The pages the storefront's footer lists, each opening `/page/:pageSlug` (`PublicPagesService/ListPublishedPages`) |
-| `/verify` | Account | Where a confirmation link is spent; the site's own path, claimed as an App Link |
-| `/confirm-password` | Account | Where a password reset link sets the new password; the site's own path, claimed as an App Link |
-| `/confirm-email` | Account | Where either link of an email change is confirmed; the site's own path, claimed as an App Link |
-
-An incoming App Link, a push-notification tap, and a checkout return open on the tab their path belongs to — the home tab for a site path under none of the other roots — and leave the other tabs as they were. A session the API stopped accepting offers sign-in on the account tab.
-
-The agreement screen stands outside every tab:
-
-| Path | Screen |
-| --- | --- |
-| `/agreement` | Asks a signed-in reader to agree to a revised terms of service or privacy policy (`AuthService/GetMyLegalPageAgreements`, `AuthService/AgreeToLegalPages`), and returns them to its `return_to` once they owe nothing |
-| `/agreement/page/:pageSlug` | A page it asks about |
-| `/agreement/delete` | The account deletion it offers instead of agreeing |
-
-The router holds a reader who owes an agreement under `/agreement` whatever path they open. What they owe is read when they sign in, when the app comes back to the front, and when the API refuses a request with the `LEGAL_PAGE_AGREEMENT_REQUIRED` reason, which is how a version published while the app is open reaches it.
-
-Details display loading, not-found, and network-error states. In addition, the viewer displays guidance for both locked paid episodes (`EPISODE_ACCESS_LOCKED`) and episodes without pages.
-
-The catalog's app bar carries the way to the announcements.
-
-### Tenant links and sharing
-
-A link to a series, an episode, the announcements, a checkout return, an email confirmation, a password reset, or an email change on the tenant host opens the app when it is installed, rather than the browser. iOS claims the manifest's `tenant.host` through `com.apple.developer.associated-domains`, from the generated `PUBLIRA_ASSOCIATED_DOMAIN` build setting, as `applinks:` for the links and `webcredentials:` for the site's [passkeys](#passkeys). Android claims the same host as an App Link (`autoVerify`) for `/series/…`, `/announcements`, `/checkout/return`, `/verify`, `/reset-password`, `/confirm-password`, and `/confirm-email`, including a locale prefix. `assetlinks.json` and `apple-app-site-association` are served by the public site from tenant configuration, not by this app; see [Linking a tenant's app to its site](#linking-a-tenants-app-to-its-site).
-
-`app_links` receives the URL on a cold or warm start. The host must be `PUBLIRA_TENANT_HOST`; a locale prefix the catalogs know is stripped, and the remainder is an in-app path `go_router` already has. Flutter's own deep linking is off, because the raw `https://…` location would match none of those paths.
-
-The series screen and the viewer carry a share action. It hands the platform share sheet the canonical site URL of that page — `https://` and the tenant host, with a locale prefix only when the reader's language is not the tenant's default — and the wording the catalog uses for the work and who is credited on it.
-
-### The catalog screen
-
-The catalog is a stack of sections, top to bottom. Each reads its own page of `CatalogRepository` and owns its loading, failure-with-retry, and empty states, so a section the API could not answer offers its retry where it stands and leaves the others alone.
-
-| Section | Read | Standing |
-| --- | --- | --- |
-| Campaign banners | `ListCampaignBanners` | A tenant with a banner scheduled now. The banners keep the operator's order, and each opens its link the way an announcement's does. Nothing is drawn while the read is in flight or when it fails, so it offers no retry |
-| Continue reading | `ListMyRecentSeries` | A signed-in reader in the middle of something. Each card opens the episode the API names for its series |
-| Top 10 this week | `ListRankedSeries`, weekly | A tenant the ranking batch has written a snapshot for. Cards carry the snapshot's own positions, so a series unpublished since leaves a gap |
-| Recommended, in place of the chart | `ListMyRecommendedSeries` for a signed-in reader, `ListRecommendedSeries` for a guest | A tenant the ranking batch has not written a snapshot for. The shelf is headed as a recommendation and its **View all** opens `/recommended` rather than the ranking, as the storefront's popularity module does |
-| New arrivals | `ListPublishedSeries`, newest first | A tenant with a published series |
-| All series | `ListPublishedSeries`, by title | The whole catalog, as the list the screen ends in |
-
-The shelves are horizontal rows, and a shelf answered with nothing takes its heading with it: a reader in the middle of nothing, and a tenant with neither a chart nor a published series to recommend, are offered no row rather than an empty one. The whole-catalog list is ordered by title because the newest of it already stands above it as a shelf of its own.
-
-Only the whole-catalog list is kept for reading without a network. The shelves above it are another order over the same series, a chart of a window that has closed, and one reader's own history — none of which the device can answer on its own, so each reports that it could not reach the API.
-
-### The search screen
-
-`/search` is a keyword and the three groups the site's search answers it with: the published series `SearchPublishedSeries` matches, the authors `SearchPublishedCreators` matches, and the labels `SearchPublishedLabels` matches. The field — the app bar's title — is the only place the keyword is held.
-
-The field is searched for once it has stood still for a moment, so a word typed letter by letter costs one request per group, and it is limited to the 100 code points the API accepts. Emptying it puts the screen back to asking for a keyword rather than searching for nothing.
-
-Each group is read, fails, and retries on its own, so a name that matches no title still brings back its author, and a keyword a group has nothing for says so in that group. The overview shows the first five rows of each and offers the rest of a group only when there is more of it. The chips under the field open one group on its own: its whole list, one cursor page at a time, the next asked for as the reader nears the end of the rows already there. A series row opens its series, an author row the author, and a label row the label.
-
-Search is answered by the API alone. Matching a keyword against every published title, synopsis, and name is a read of the whole catalog, and what the device keeps is one page of it.
-
-### The author and label screens
-
-`/creators/:creatorId` reads `GetPublishedCreatorDetail`: the author's portrait, name, profile, and a follow control, above the published series credited to them. `/labels/:labelId` reads `GetPublishedLabelDetail`: the label's artwork and name above its published series. Both lists are in title order, one cursor page at a time, and both screens say so when what they belong to does not exist, offer a retry when the API could not answer, and are answered by the API alone.
-
-A reader reaches an author from the search screen, from a name in the credit line and an author row on the series screen, and from an author row of what they follow; a label, from the search screen and from the label on a row of the catalog list.
-
-### The library
-
-`/library` is what the reader reads, and what is recommended to them next, as four tabs of one screen, each a list that pages and scrolls on its own:
-
-| Tab | Read | A guest sees |
-| --- | --- | --- |
-| Continue reading | `ListMyRecentSeries`, one cursor page at a time; a row opens the episode the API names for its series | The way to sign in |
-| Follows | `ListMyFollows`, as [Follows](#follows) describes | The way to sign in |
-| Downloads | What the device keeps, as [Offline reading](#offline-reading) describes | The same list |
-| Recommended | `ListMyRecommendedSeries`, one cursor page at a time; a row opens its series | The tenant's order, `ListRecommendedSeries` |
-
-A build carrying no follow repository or no offline library leaves that tab out.
+What a module does for the reader is documented on its types. `dart doc` in `mobile/` renders it into `doc/api/`, which Git ignores.
 
 ## Localization
 
-Every string the app shows comes from the shared catalogs in `locales/`, and the app renders in the language the device asks for, among those the tenant offers.
-
-### Copy
+Every string the app shows comes from the shared catalogs in `locales/`, and `resolveAppLocale` in `lib/l10n/locale_negotiation.dart` picks the language it renders in among those the tenant offers.
 
 `scripts/generate-locale-registry.ts` compiles the `mobile` and `errors` namespaces of `locales/*.json` into `lib/l10n/gen/app_messages.dart`: one `AppMessages` getter or method per key, and the MessageFormat 2 source of every message in every locale. A member formats its source at runtime with [`package:messageformat`](https://pub.dev/packages/messageformat), through `formatCatalogMessage` in `lib/l10n/message_format.dart`, in the catalog's `intl` locale; the app reads no JSON at runtime. Each variable of a message becomes a required named parameter, so the compiler is what checks that a screen passes every value a message takes, and a key present in one catalog but not another fails `pnpm locales:generate` rather than a screen.
 
@@ -459,179 +287,7 @@ Every string the app shows comes from the shared catalogs in `locales/`, and the
 
 To add copy, add the key under `mobile.<screen>` to every `locales/*.json`, run `pnpm locales:generate`, and use the new member. Reuse an `errors.*` key when the copy is the classification the web apps show for the same failure, such as `errors.rpc.unavailable` for a request that could not reach the API.
 
-### Locale
-
-`PubliraApp` resolves the locale the way `web-storefront` does, with the device standing in for the browser. The first device language that names a catalog the tenant offers wins, whether by its whole tag, by the script that tag is written in, or by its language alone. A device set to none of them takes the tenant's `default_locale`. `GetTenantByDomain` returns `supported_locales` beside `default_locale`, and `TenantResolver` keeps both. Every catalog stays bundled, so until that answer arrives, and for good when it cannot, on a launch without a network, the device is matched against all of them, and a device set to none of them opens the app in English, the same decision `@publira/i18n` makes for a browser with no usable preference. `MaterialApp.localizationsDelegates` carries the app's own delegate alongside the `flutter_localizations` ones, so Material's own strings follow the same locale.
-
-There is no in-app switcher: the device setting is the switch, and changing it while the app runs re-renders every screen.
-
-## Viewer
-
-The viewer displays the images returned by `GetEpisodeDetail` as episode content, paging from right to left (the same reading direction as the `web-storefront` reader).
-
-- The page container reserves space from the API's `width` / `height` before the image arrives, so the layout does not shift. Images without dimensions use the entire viewport as a provisional container
-- Each page has its own loading and failure-with-retry state, so one failed page does not fail the entire episode body
-- Images come from the server's `/images` routes. The tenant is sent in `X-Forwarded-Host` and the reader in `Authorization: Bearer`, using the token of whoever is signed in. Preserve the media token the API adds to an episode image URL: a paid body's names the reader, a free body's names the episode
-- A body page arrives encrypted whether it is free or paid: `application/octet-stream` plus `X-Publira-Image-Encryption`, `X-Publira-Image-Content-Type`, and `X-Publira-Image-Key-Id`. The app reverses that stream before decoding the page. Its content key is derived from material the request itself carried, so the server never sends a key: read the `Authorization` bearer first and the media token in the URL only when there is no header, the order the server resolves the two in
-- A signed-out reader sends no header, so a free page's key comes from the media token on its own URL. The API issues that one for the episode and a 24-hour rotation window rather than for a reader, so every reader of the episode inside one window is handed the same token, and it stops decoding after at most two days. A signed-in reader's free page still decrypts with the bearer, the material the server resolves first
-- A response without `X-Publira-Image-Encryption` is decoded as it arrives, which is what keeps the reader working when a rolling deploy answers them from a server instance it has not replaced yet. A page whose stream cannot be reversed fails on its own and offers a retry, the same way a failed fetch does
-- Pages are requested with an `Accept` that offers WebP and leaves AVIF out, because the server's image converter negotiates the rendition from that header and Flutter has no AVIF codec
-- Leaving the reader evicts the episode's pages from the shared image cache, so a body's decoded pixels are not left behind whatever is read next
-- A signed-in reader opens the episode on the page `GetMyReadingPosition` answers with, which is the same position `web-storefront` writes, and the page they rest on is recorded with `SaveReadingPosition`. A guest has no position and opens on the first page
-- The screen after the last page ends the episode: it offers the next one `GetEpisodeDetail` names, with what it costs, and leads back to the series; the last published episode of a series says so instead. The bottom bar carries the episodes either side of this one beside the page controls, and taking either of them replaces the reader rather than stacking a second one on it
-
-## Comments
-
-The comments on an episode are offered at the end of it and nowhere else: what a reader has to say about an episode comes after they have read it, so the way to them is on the screen past the last page rather than beside the pages. It opens `/series/:seriesId/episodes/:episodeId/comments`, which lists the published comments newest first, twenty to a page, and pages with the cursor token every list RPC shares.
-
-- The tenant's comment mode, which `GetTenant` answers, decides whether any of this is offered. Under `disabled` the end of the episode offers nothing, and a link kept from before the setting changed lands on a screen saying the site takes no comments; under `approval_required` the screen says a comment appears once a moderator has approved it. A lookup that could not reach the API is not the tenant saying no: the offer stays, and the screen behind it reports the failure
-- A signed-in reader writes one in the box above the list, and a reader who is signed out is offered the way to sign in instead of the box. The body is measured against the API's limit — 1000 Unicode code points rather than UTF-16 units — before the request, so an emoji-heavy comment is measured the way the server measures it
-- `ListMyEpisodeComments` is read beside the public page, and its rows are placed among it by date, which is what shows an author the comment of theirs that is still waiting for approval. A comment staff removed keeps rendering to its author exactly as it did before — never marked, moved, or repeated — because a removal the platform makes must not become visible through the way its author's screen changes
-- A reader takes their own comment down, and reports somebody else's. Reporting asks for one of four reasons and an optional sentence in a dialog, and a repeat report is answered exactly as a first one is
-- Comments are online only, and are no part of what the device keeps for reading without a network. A list that cannot reach the API says so and offers a retry, and a comment written without a connection fails with the same wording rather than being queued; what the reader wrote stays in the box for them to send again
-- A comment's time is rendered in the zone the device is set to, where the site renders it in the tenant's: every other time on a phone reads in the zone its holder chose
-
-## Follows
-
-A reader follows a series, and each author credited on it, from the series screen, and reads back what they follow in the library. A follow is what a new-episode notification is delivered by, and it is the same list the site writes: `FollowService` holds it, and nothing of it is written to the device.
-
-- The series screen carries one control for the series and one for each author credited on it, beside the row that opens the author. The author screen carries the same control
-- What a reader follows is theirs, and the API answers a request without a session `unauthenticated`, so a guest is offered the way to sign in rather than a control that cannot act
-- A state the API could not answer leaves the control offering to follow, which is the request the API takes the same way whether or not the follow is already there. A follow the reader asked for that did not happen says why
-- The library's Follows tab lists what they follow, newest follow first, one cursor page at a time, the next asked for as the reader nears the end of the rows already there. `ListMyFollows` answers with public ids alone, so each row's name is a catalog read of its own — one that leaves the device alone, because a reader who follows a series has not opened it — and a row whose name could not be read is named by its public id. A row opens its series or its author; every row unfollows without asking the API what it already knows
-- The API lists only targets that are still public, so a series taken down leaves the list rather than standing in it as a row nothing names
-
-## Content views
-
-Opening a series screen or an episode records one view through `ContentViewService/RecordContentView` with `CLIENT_SURFACE_APP`, the same RPC the site's pages call, so an app reader counts toward the tenant's rankings and content statistics. The one thing written to the device is the `publira_aid` identifier a signed-out reader is counted under, which `AnonymousIdStore` keeps with its expiry because the app has no cookie jar.
-
-## Notification inbox
-
-`/notifications` is the reader's record of what they were notified of, read from `NotificationService` whether or not a push ever reached the device. It is online only, and nothing of it is written to the device.
-
-- The list is newest first, twenty to a page, the next asked for as the reader nears the end of the rows already there. A row's title and description are assembled from its `notification_type` and payload with the same catalog wording the site uses; a type this build does not know stays as a generic row
-- A row opens what it is about: a new episode opens its viewer, a comment notification the comments of its episode, and a payload naming only a series opens the series. An announcement opens `/announcements`, since its payload names no announcement, and a payload naming nothing the app can open lands on the catalog
-- Opening an unread row marks it read on the way, and each unread row carries its own mark; the app bar marks every notification read
-- The unread count badges the Notifications tab. It is read back from `CountUnreadNotifications` after every read mark, when the inbox opens, when the app returns to the foreground, and when a push arrives in front, so it is the server's count rather than one the device worked out
-
-## Announcements
-
-`/announcements` lists the tenant's announcements from the announcement RPCs of `AuthService`, the same list the site shows at its own `/announcements`, and `/announcements/:announcementId` shows one. Both are read without a session; a signed-in reader's session adds read state and the marks that set it. The pinned announcement (`GetPinnedAnnouncement`) is a banner at the top of the catalog. The announcements are online only, and the one thing written to the device is the id of the banner the reader closed, which `DismissedAnnouncementStore` keeps as the site's cookie does.
-
-## Published pages
-
-`/page/:pageSlug` sets a page the tenant published — its terms of service, its privacy policy, or anything else — from the Markdown `PublicPagesService/GetPublishedPage` answers with, in the app rather than in a browser. The page is online only.
-
-A link in an announcement or in a page body goes to a screen of the app when the app has one. A path on the tenant site it has none for opens the page screen when `ListPublishedPageSlugs` names it, and the site in the system browser otherwise; a URL on another site opens in the browser. Anything else, a `javascript:` or `file:` URL among them, does nothing. An image in a page is fetched only from an `https` address.
-
-## Offline reading
-
-Everything the reader opens is kept on the device, so the same screens open again without a network. An episode is on the device because it was read, or because the reader saved it from its row on the series screen, which fetches every page at once.
-
-- The catalog list, the series screens behind it, and every episode body that loaded are saved as they load. A body page is saved once it has been turned into displayable bytes, which is also what the viewer draws
-- The API decides. Every read goes to it first, and only its answer refreshes what the device holds; the saved copy is reached only when the API cannot be. A body that comes back locked, or that the API no longer has, is taken off the device along with its pages, and a series the API no longer publishes takes every episode saved under it
-- A body that needed a purchase or a ticket is saved against the reader it was granted to, so it stays closed to a signed-out device and to a second reader on the same phone. It also stops opening once **7 days** have passed without the API confirming the grant, because the device cannot see a purchase lapse on its own. That window is measured against the device's own clock: a confirmation dated in the future is refused rather than trusted, but a reader who holds their clock back keeps reading, which is the same boundary the delivery stream draws — not DRM
-- Saved episodes are marked on the series screen and on the offer that ends an episode, so a reader can tell before they lose their connection what they will still be able to open
-- The page the reader stopped on is kept beside the episode, against the member it belongs to, so an episode read without a network opens where they left it. The API wins over it wherever it holds a position of its own, which is what carries a page saved on the website into the app
-- A finish and the latest page a signed-in reader records while the API cannot be reached are kept per reader and episode, and sent once it can: on launch, on resume, on sign-in, and after any request the API answers. Only the signed-in reader's own are sent, signing out drops them, and deleting downloads does not
-- The device keeps up to **512 MB** of pages. Over that, the least recently confirmed episodes are dropped whole, and page files no episode claims any more go with them
-- The library's Downloads tab shows the bytes used against that cap and the saved episodes by series, with when each was saved and, for a body that needed an entitlement or was read inside a free window, until when it opens offline. It deletes one episode or everything. An episode saved for another account counts towards the bytes and goes with "Clear all", but is not listed
-
-Everything is written under the app-private directory `path_provider` resolves (`getApplicationSupportDirectory()`), encrypted with a random 32-byte key this install mints on first use and keeps in the OS keychain / Keystore. The stream is the one `lib/api/image_cipher.dart` speaks, under its own domain separator and a per-file key. Like the delivery stream, it protects the files on the device rather than the reader's own access: whoever may open the episode necessarily holds the key that recovers it.
-
-Every write carries a fresh random nonce in front of its ciphertext, and the nonce goes into the key derivation. Without it two versions of `index.json` would be encrypted under the same keystream, and whoever held both copies could XOR them together and read the difference — which, for a document of known JSON shape, means the saved episode ids and grants. The index is also written through a temporary file and a rename, so an interrupted write cannot leave a half-file the app can only answer by wiping itself.
-
-The pages the server delivers cannot be saved as they arrive: their content key is derived from the JWT the request carried, and that token is gone in a day. The app saves what it decoded, re-encrypted under the device key, under an address the media token is stripped from — so a free page saved under one rotation window still opens under the next, and neither the reader's bearer token nor the media token in a page's URL is written down.
-
-Nothing here fails a screen. A platform with no app-private directory, or with no credential store to hold the key, reads online only; a file this build cannot decrypt is treated as one the device does not have.
-
-## Purchases
-
-A paid episode is bought the way the tenant's `app_purchase_route`, which `GetTenant` answers, says: through the tenant's payment provider's checkout in the system browser, never in an in-app web view, or through the App Store's or Google Play's in-app purchase.
-
-- A locked episode, in the viewer and on its row of the series screen, offers "Buy for ¥N" when the tenant can take the payment: `accepts_payments` on the external-checkout route, and `accepts_app_store_payments` on iOS or `accepts_google_play_payments` on Android on the store route. A row offers it only where `GetSeriesEpisodeAccess` answers the episode locked for the reader, so an episode they bought, hold a ticket for, or can read inside a free window is offered nothing
-- A guest who takes the offer signs in first and lands on the episode
-- On the external-checkout route the button calls `StartEpisodeCheckout` with `client: CLIENT_MOBILE` and opens the page it answers with `url_launcher` in external application mode. A reader who already holds the episode is shown it instead
-- Checkout returns to `/{locale}/checkout/return?episode=…&status=success|cancelled` on the tenant host, which the app claims as a link. The app finds the episode's series and opens the viewer, which reads `GetEpisodeDetail` again. A body still locked after a success is read twice more, each after a longer wait, and then the viewer says the purchase is being confirmed and offers to check again
-- On the store route the button asks `StartStorePurchase` for an intent and the product the episode's price is sold as, and opens the store's payment sheet for that product with the intent as `appAccountToken` (iOS, StoreKit 2) or `obfuscatedAccountId` (Android). The transaction the store reports goes to `ConfirmStorePurchase`, and only once the server has recorded it is it finished — consumed on Google Play, so the same price can be bought again — and the viewer opens as it does after a checkout return. A purchase the store holds for approval is shown as being confirmed
-- A transaction the server has not recorded stays unfinished with the store, which reports it again on the next launch, and is confirmed again on sign-in. A device that cannot pay, and a tenant whose store has no product for the price, are told so
-
-## Sign-in
-
-A reader signs in with an email address and a password, which `AuthService/Login` answers with a public-audience JWT (24-hour TTL, revoked by `credentials_version`). Every API and image request carries that token, so a purchased or ticketed paid episode reads on the device the same way it does in `web-storefront`.
-
-- The session lives in the OS keychain / Keystore through `flutter_secure_storage`, never in `shared_preferences`, and is restored at launch
-- The launch confirms a restored token with `AuthService/GetMe`. A rejected token is dropped and the reader is told, with the sign-in screen one tap away; an unreachable API leaves the session alone, so a launch without a network still opens signed in
-- Nothing signs the reader back in on its own. Once the 24-hour token is gone, the reader signs in again
-- Signing out drops the stored session, and a paid episode goes back to its locked state
-
-`web-storefront` holds its own session in the `@publira/web-session` JWE cookie. The app has no cookie jar, which is why the token lives in the platform credential store instead.
-
-### Apple and Google
-
-The sign-in screen also offers a button for each provider `GetTenant` answers in `apple_sign_in` and `google_sign_in` and the device can sign in with. The provider's token goes to `AuthService/LoginWithIdToken`, and the session it answers with is kept as the password sign-in's is.
-
-| Platform | Apple | Google |
-| --- | --- | --- |
-| iOS | Sign in with Apple, offered only when the app's bundle identifier is the one `GetTenantMobileAppAssociation` names, since the token's audience is the app — never in the `dev` flavor. Apple is handed the SHA-256 of the nonce; `LoginWithIdToken` gets the raw nonce and the authorization code | `google_sign_in_ios` with `google_sign_in.ios_client_id`, offered only when it is the client the build registered (`ios.googleSignInClientId`) and only beside Apple, as the App Store requires |
-| Android | Apple's web flow in a Custom Tab with `apple_sign_in.services_id`, offered only when the application ID is the one `GetTenantMobileAppAssociation` names or its `dev` flavor. `LoginWithIdToken` gets the raw nonce, the authorization code, and the redirect URI | Credential Manager with `google_sign_in.web_client_id` as the server client ID |
-
-- On Android, Apple posts its answer to the tenant site's `/api/v1/auth/apple/callback/android`, which redirects it to `intent://callback` for the application ID the request's `state` names — the `dev` flavor only where the site runs in development, and on a production site only with an `error` the app reports as a failed sign-in — and the plugin's `SignInWithAppleCallback` activity, declared in `AndroidManifest.xml` for the `signinwithapple` scheme, hands it to the sign-in. Apple returns only to a Return URL registered on the Services ID, which **Integrations** → **Sign-in** in the tenant console shows beside the site's own
-- The iOS app claims `com.apple.developer.applesignin` in both entitlements files, and registers the reversed `ios.googleSignInClientId` as its URL scheme through `PUBLIRA_GOOGLE_URL_SCHEME` in `App.xcconfig` — its own bundle identifier where the manifest names no Google client
-- A first sign-in that would create an account on a tenant asking consent to its pages is refused with a field violation on `agreed_page_version_ids`, and continues on `/sign-up/continue`, which sends the same token with the consent and an optional birth date
-- **Linked accounts** under the account tab lists the providers linked to the account and unlinks one; an account without a password or a passkey (`ListMyIdentitiesResponse.has_password`, `has_passkey`) keeps its last one. It links each provider the device offers that the account has none of with a fresh sign-in, whatever address the provider carries (`AuthService/LinkIdentity`)
-- An account without a password confirms an email change and its deletion with one of its passkeys where the device offers them (see [Passkeys](#passkeys)), or with a fresh sign-in to a linked provider the device offers (`provider`, `id_token`, and `nonce` on `RequestEmailChangeRequest` and `DeleteMeRequest`), and **Change password** sends it to the password reset to set a first one
-
-### Passkeys
-
-The sign-in screen offers **Sign in with a passkey** below the Apple and Google buttons. `AuthService/BeginPasskeyLogin` answers options that name no account, the system's sheet offers whichever passkey the reader holds for the tenant host — on the device, in iCloud Keychain or Google Password Manager, or on another device — and `AuthService/FinishPasskeyLogin` signs in with the one they pick. **Passkeys** under the account tab lists the reader's passkeys, renames and removes each, and adds one, which is named once it is made. **Delete account** and **Change email address** confirm an account without a password with one of its passkeys where `ListMyIdentities` reports `has_passkey`: `AuthService/BeginPasskeyConfirmation` answers options that allow the reader's own passkeys, and the assertion goes in `passkey_credential_json` of `DeleteMeRequest` or `RequestEmailChangeRequest`. A passkey is bound to the tenant host, so one registered on the site signs in to the app and one registered in the app signs in to the site.
-
-| Platform | Authenticator | What the site vouches for |
-| --- | --- | --- |
-| iOS | AuthenticationServices, through [`passkeys_darwin`](https://pub.dev/packages/passkeys_darwin) | `webcredentials` in `apple-app-site-association`, matched against the `webcredentials:` associated domain the entitlements claim |
-| Android | Credential Manager, through [`passkeys_android`](https://pub.dev/packages/passkeys_android) | `delegate_permission/common.get_login_creds` in `assetlinks.json`; the server accepts the ceremony under the signing certificates saved for the app |
-
-Both are offered only to the app `GetTenantMobileAppAssociation` names for the platform, on a device that can make passkeys: the site vouches for no other, the `dev` flavor among them, so anything else would open a sheet that can only fail. A list the device cannot add to is still listed, renamed, and removed. An account without a password or a linked provider keeps its last passkey.
-
-## Account icon
-
-The account screen shows the reader's icon and changes it the way the tenant's reader icon policy, read from `TenantService/GetTenantReaderIconPolicy` with the screen, allows:
-
-| Policy | What the screen offers |
-| --- | --- |
-| Upload | An image from the photo library ([`image_picker`](https://pub.dev/packages/image_picker)), sent to `AuthService/UploadMyIcon` |
-| Preset | The tenant's presets, one of which `AuthService/SelectMyIcon` shows |
-| Disabled | No icon at all |
-
-Removal sends `AuthService/DeleteMyIcon` under either of the first two. A policy this build does not know offers nothing, and a change the API refuses because the policy or the presets changed since the screen read them reads the policy again.
-
-## Sign-up
-
-A reader opens an account here rather than on the website. `AuthService/CreateUser` takes a name, an address, a password, an optional birth date where the tenant checks ages, and consent to the terms of service and privacy policy where the tenant names them, and answers by mailing a confirmation link. The age rule comes from `GetTenant` and the pages from `GetTenantLegalPages`, read together, and the form requires the consent before it sends anything, with each page opening on the `/page/:pageSlug` screen above it. The form reads the pages again when it sends, and asks for the consent anew when one was republished in between.
-
-- Every accepted sign-up ends on the same screen, whether the address was free or already had an account, because that is all the API reports. It names the address the link went to and offers another one
-- `AuthService/Login` refuses an account whose address is unconfirmed, and the form then offers a fresh link for the address it was given. `/resend-verification` asks for one from scratch, for a reader who arrived with nothing typed
-- The link in the mail addresses the tenant site's `/verify`, so a tap on it opens this app and spends the token through `AuthService/VerifyUserEmail`. A link the API never issued, or one whose time has run out, leads to `/resend-verification`; a link that could not be spent because the API was unreachable is spent again on the same screen
-
-## Password reset
-
-A reader who has forgotten their password recovers the account here rather than on the website. The sign-in form leads to `/reset-password`, which sends `AuthService/RequestPasswordReset` for the address typed so far and ends on the same screen whether or not that address has an account.
-
-- The link in the mail addresses the tenant site's `/confirm-password`, so a tap on it opens this app, which takes the new password and spends the token through `AuthService/ConfirmPasswordReset`. A link the API never issued, or one whose time has run out, leads back to `/reset-password`; a reset the API could not be reached for keeps the form to submit again
-- The reset ends every session of the account. A session this device holds is checked with `AuthService/GetMe` afterwards and dropped once the API refuses it, without the expiry notice, because the reader has just replaced the password it was signed in with. A session of another account is kept
-
-## Push notifications
-
-A member is told on the device when a tenant publishes a new episode, and a tap opens that episode's viewer with the series behind it. The message comes from the server through Firebase Cloud Messaging, which relays to APNs for iOS, so one integration carries both platforms.
-
-- Permission is never asked for at launch. The account screen carries a switch for new-episode notifications, and the OS prompt — iOS authorization, and `POST_NOTIFICATIONS` on Android 13 and later — is requested the first time a reader turns it on. A reader who denies it sees the switch settle back to off with a line pointing at system settings, and the app does not ask again on its own
-- Turning the switch on registers the device's FCM token against the signed-in reader with `RegisterPushDevice`, and the app re-registers on every token refresh. The token is the identity on the server, so registering one another reader left on the same phone moves it rather than adding a second registration
-- Signing out unregisters, and stops this install's token, so a message already on its way finds nothing to deliver to
-- A message that arrives while the app is in front is drawn by the app, because FCM does not display one then. A payload naming no route the app can open sends the reader to the catalog
-
-FCM does not deliver to the iOS simulator, so verifying iOS needs a physical device.
-
-### Firebase configuration
+## Firebase configuration
 
 The Firebase project is configured with `--dart-define`, the way every other connection setting is, rather than with a `google-services.json` / `GoogleService-Info.plist` in the repository: a build serves one tenant and one Firebase project, and which project that is belongs to whoever builds it. The values are the ones the Firebase console shows for the project's Android and iOS apps.
 
@@ -644,7 +300,7 @@ The Firebase project is configured with `--dart-define`, the way every other con
 
 A build given none of them starts with no Firebase project, so push is off and the account screen leaves the switch out. That is what `flutter test`, the integration tests, and a local `task dev` stack run as.
 
-An iOS build also needs the APNs auth key uploaded to the Firebase project; without it Firebase has nothing to relay through. The push capability itself is in the repository: `ios/Runner/Runner.entitlements` carries the development APNs environment for the Debug and Profile configurations, and `ios/Runner/RunnerRelease.entitlements` the production one for Release.
+FCM does not deliver to the iOS simulator, so verifying push on iOS needs a physical device. The push capability itself is in the repository: `ios/Runner/Runner.entitlements` carries the development APNs environment for the Debug and Profile configurations, and `ios/Runner/RunnerRelease.entitlements` the production one for Release. The APNs auth key the Firebase project relays through is uploaded as [Push notifications](../docs/en/5-mobile-app/3-push-notifications.md) describes.
 
 ## API client
 

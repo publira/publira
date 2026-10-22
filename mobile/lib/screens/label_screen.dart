@@ -13,6 +13,14 @@ import 'package:publira/models/series_item.dart';
 import 'package:publira/typography/autospaced_text.dart';
 
 /// A label: its artwork, and its published series, one cursor page at a time.
+///
+/// `/labels/:labelId` reads `GetPublishedLabelDetail`: the label's artwork and
+/// name above its published series in title order. A label that does not
+/// exist is said not to, and a read the API could not answer offers a retry.
+/// The API alone answers it.
+///
+/// A reader reaches a label from the search screen and from the label on a
+/// row of the catalog list.
 class LabelScreen extends StatefulWidget {
   const LabelScreen({super.key, required this.labelId});
 

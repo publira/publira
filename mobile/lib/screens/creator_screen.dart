@@ -16,6 +16,16 @@ import 'package:publira/typography/autospaced_text.dart';
 
 /// An author: who they are, and the published series credited to them, one
 /// cursor page at a time.
+///
+/// `/creators/:creatorId` reads `GetPublishedCreatorDetail`: the author's
+/// portrait, name, and profile, and a [FollowControl], above the published
+/// series credited to them in title order. An author that does not exist is
+/// said not to, and a read the API could not answer offers a retry. The API
+/// alone answers it.
+///
+/// A reader reaches an author from the search screen, from a name in the
+/// credit line and an author row on the series screen, and from an author row
+/// of what they follow.
 class CreatorScreen extends StatefulWidget {
   const CreatorScreen({super.key, required this.creatorId});
 

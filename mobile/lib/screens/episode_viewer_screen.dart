@@ -64,12 +64,27 @@ class _OpenEpisode {
   final WaitFreeOffer? waitFree;
 }
 
-/// Episode reader. Loads the body of one published episode and hands its pages
-/// to [EpisodeReader].
+/// Episode reader. Loads the body of one published episode, the images
+/// `GetEpisodeDetail` answers with, and hands its pages to [EpisodeReader].
+/// Beside its loading, not-found, and network-error states, it shows guidance
+/// for a locked paid episode (`EPISODE_ACCESS_LOCKED`) and for an episode
+/// without pages.
 ///
 /// The reading position is the screen's rather than the pager's: it is read
 /// beside the body, and the page the reader leaves on is recorded as the
-/// screen goes away, which the pager inside it is not there to see.
+/// screen goes away, which the pager inside it is not there to see. A
+/// signed-in reader opens on the page `GetMyReadingPosition` answers with,
+/// which is the same position `web-storefront` writes, and the page they rest
+/// on is recorded with `SaveReadingPosition`. A guest has no position and opens
+/// on the first page.
+///
+/// Taking the episode either side of this one, from the bottom bar or from the
+/// [EpisodeEndPanel], replaces this screen rather than stacking a second
+/// reader on it.
+///
+/// A body still locked after a checkout the browser reported paid is read
+/// again after each of [checkoutConfirmationDelays], and then the screen says
+/// the purchase is being confirmed and offers to check again.
 class EpisodeViewerScreen extends StatefulWidget {
   const EpisodeViewerScreen({
     super.key,

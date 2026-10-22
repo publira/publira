@@ -37,7 +37,8 @@ import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
 import 'package:publira/typography/autospaced_tooltip.dart';
 
-/// Series detail. Loads the published series and its episodes from the API.
+/// Series detail. Loads the published series and its episodes from the API,
+/// and shows its loading, not-found, and network-error states.
 class SeriesDetailScreen extends StatefulWidget {
   const SeriesDetailScreen({super.key, required this.seriesId, this.checkout});
 

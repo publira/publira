@@ -14,7 +14,9 @@ import 'package:publira/typography/autospaced_text.dart';
 /// Email and password sign-in against `AuthService/Login`.
 ///
 /// Creating an account and resetting a password are screens of their own,
-/// which this form leads to.
+/// which this form leads to. `AuthService/Login` refuses an account whose
+/// address is unconfirmed, and the form then offers a fresh link for the
+/// address it was given.
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key, this.returnTo});
 

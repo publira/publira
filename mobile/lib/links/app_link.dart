@@ -47,8 +47,10 @@ class PublicSite {
 /// In-app location for a tenant-site [uri], or `null` when it is not one
 /// this app opens.
 ///
-/// The host must be [tenantHost]. A locale prefix the catalogs know is
-/// stripped, so `/en/series/SR01` and `/series/SR01` are the same series.
+/// The host must be [tenantHost], which is `PUBLIRA_TENANT_HOST`. A locale
+/// prefix the catalogs know is stripped, so `/en/series/SR01` and
+/// `/series/SR01` are the same series, and the remainder is an in-app path
+/// `go_router` already has.
 /// Query strings ride along, which is how a checkout return still names the
 /// episode it was started for and a confirmation or reset link still carries
 /// its token.

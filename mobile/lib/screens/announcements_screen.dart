@@ -22,6 +22,9 @@ const _readAheadRows = 5;
 /// The tenant's announcements, newest first, each in the app's language
 /// where it was written in it.
 ///
+/// It is the screen at `/announcements`, read from the announcement RPCs of
+/// `AuthService`: the same list the site shows at its own `/announcements`.
+///
 /// A visitor reads the same list as a signed-in reader. What a session adds
 /// is read state: the unread marks, and the controls that set them.
 class AnnouncementsScreen extends StatefulWidget {

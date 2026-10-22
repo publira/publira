@@ -37,8 +37,9 @@ enum AuthFailureKind {
   linkExpired,
 
   /// A first sign-in with Apple or Google would create an account on a tenant
-  /// that asks consent to its pages, which the reader has not given yet. The
-  /// same token is sent again once they have.
+  /// that asks consent to its pages, which the reader has not given yet, and
+  /// the API refused it with a field violation on `agreed_page_version_ids`.
+  /// The same token is sent again with the consent.
   consentRequired,
 
   /// The API will not sign this Apple or Google account in: the tenant has

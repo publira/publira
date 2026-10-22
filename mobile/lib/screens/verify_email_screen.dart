@@ -18,7 +18,8 @@ import 'package:publira/typography/autospaced_text.dart';
 /// browser. A link that did nothing leads to the resend form rather than back
 /// to sign-up: the account behind it already exists, so signing up again
 /// creates nothing, and it cannot be signed into until the address is
-/// confirmed.
+/// confirmed. A link that could not be spent because the API was unreachable
+/// is spent again on the same screen.
 class VerifyEmailScreen extends StatefulWidget {
   const VerifyEmailScreen({super.key, required this.token});
 

@@ -17,7 +17,7 @@ import 'package:publira/typography/autospaced_text.dart';
 
 /// One announcement: its title, when it was posted, its body, and the link
 /// the operator gave it, in the app's language where the announcement was
-/// written in it.
+/// written in it. It is the screen at `/announcements/:announcementId`.
 ///
 /// A visitor reads it as a signed-in reader does. Opening it is what reading
 /// it means, so a signed-in reader's unread announcement is marked read here.

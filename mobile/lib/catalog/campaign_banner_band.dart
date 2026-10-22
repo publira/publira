@@ -26,15 +26,16 @@ const _maxBandWidth = 720.0;
 const _pageFraction = 0.9;
 
 /// The campaigns the tenant has on right now, at the top of the catalog, in
-/// the operator's order. A banner opens the link it carries.
+/// the operator's order, read with `ListCampaignBanners`. A banner opens the
+/// link it carries, the way an announcement's link opens.
 ///
 /// Nothing at all is drawn while the read is in flight, when it fails, or when
 /// nothing is scheduled, so a tenant that schedules no banner has the catalog
 /// it always had: the band is an addition to the screen rather than a part of
 /// it, and a skeleton for a band most tenants never fill would flash on every
-/// launch. A banner whose link the app may not follow, or whose image has no
-/// rendition left to draw, is dropped, since a banner is a picture that is a
-/// link and has lost one half.
+/// launch. A failed read therefore offers no retry either. A banner whose link
+/// the app may not follow, or whose image has no rendition left to draw, is
+/// dropped, since a banner is a picture that is a link and has lost one half.
 ///
 /// One banner is one band. Several are pages the reader swipes through.
 class CampaignBannerBand extends StatefulWidget {

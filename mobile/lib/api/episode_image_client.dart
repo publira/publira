@@ -41,7 +41,10 @@ class EpisodeImageException implements Exception {
 /// carried can reverse (see [decryptImageBytes]). For a body this reader is
 /// entitled to, that material is the credential itself; for a free body it is
 /// the media token the API put on the image URL, which is what lets a
-/// signed-out reader recover the page. A response with no such header is
+/// signed-out reader recover the page. The client reads the `Authorization`
+/// bearer first and the media token in the URL only when there is no header,
+/// the order image-server resolves the two in, so a signed-in reader's free
+/// page still decrypts with the bearer. A response with no such header is
 /// passed through untouched, so a reader a rolling deploy still routes to a
 /// server instance it has not replaced yet keeps reading.
 class EpisodeImageClient {

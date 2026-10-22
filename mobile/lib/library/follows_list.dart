@@ -24,7 +24,16 @@ const _readAheadRows = 5;
 /// The series and authors the reader follows, newest follow first, as the
 /// library shows them.
 ///
-/// A row opens its series or its author.
+/// It is read from `ListMyFollows` one cursor page at a time, the next asked
+/// for as the reader nears the end of the rows already there, and a guest is
+/// offered the way to sign in instead. The API answers with public ids alone,
+/// so each row's name is a read of its own, through
+/// [CatalogRepository.getSeriesTitle] or [CatalogRepository.getCreator], and a
+/// row whose name could not be read is named by its public id.
+///
+/// A row opens its series or its author. Every row carries a [FollowControl]
+/// that already knows the target is followed, so it unfollows without asking
+/// the API what it already knows.
 class FollowsList extends StatefulWidget {
   const FollowsList({super.key});
 

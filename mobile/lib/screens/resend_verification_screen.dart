@@ -18,6 +18,8 @@ import 'package:publira/typography/autospaced_text.dart';
 /// arrived: sign-in refuses an unconfirmed account, and signing up again
 /// creates nothing. Every address is answered the same way, so the screen
 /// reports that the request was taken rather than whether anything was sent.
+///
+/// A reader who arrived with nothing typed asks for a link here from scratch.
 class ResendVerificationScreen extends StatefulWidget {
   const ResendVerificationScreen({super.key, this.email});
 

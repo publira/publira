@@ -25,9 +25,13 @@ const _maxScale = 4.0;
 /// Paged body reader.
 ///
 /// Pages turn the way the episode is bound: right to left unless it says
-/// otherwise, with pairing from [spreadStartIndex]. A page fills the viewport
-/// whole, and a reader who wants a closer look at small lettering pinches or
-/// double taps into it.
+/// otherwise, the same reading direction as the `web-storefront` reader, with
+/// pairing from [spreadStartIndex]. A page fills the viewport whole, and a
+/// reader who wants a closer look at small lettering pinches or double taps
+/// into it.
+///
+/// Leaving the reader evicts the episode's pages from the shared image cache,
+/// so a body's decoded pixels are not left behind whatever is read next.
 class EpisodeReader extends StatefulWidget {
   const EpisodeReader({
     super.key,

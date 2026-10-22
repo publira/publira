@@ -12,7 +12,9 @@ import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
 
 /// A link to set a new password with, through
-/// `AuthService/RequestPasswordReset`.
+/// `AuthService/RequestPasswordReset`, for a reader who has forgotten theirs
+/// and recovers the account here rather than on the website. The sign-in form
+/// leads here with the address typed so far.
 ///
 /// The app claims the site's `/reset-password` path too, so the "your password
 /// was changed" notice and the other mails that point a reader here open this

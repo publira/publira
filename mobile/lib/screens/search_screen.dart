@@ -33,20 +33,29 @@ const _overviewRows = 5;
 enum _SearchGroup { series, creators, labels }
 
 /// Search: a keyword, and the published series, authors, and labels that
-/// match it.
+/// match it, which `SearchPublishedSeries`, `SearchPublishedCreators`, and
+/// `SearchPublishedLabels` answer.
 ///
 /// The field is the app bar, and it is the whole of the screen's input: the
 /// results under it answer whatever is in it, and emptying it takes them away
 /// rather than searching for nothing. It is focused whenever the search tab
 /// comes on screen with nothing typed in it, and left alone when there is a
 /// keyword, so a reader returning to their results is not handed a keyboard
-/// over them.
+/// over them. What is in it is searched for once it has stood still for a
+/// moment, so a word typed letter by letter costs one request per group, and
+/// it holds no more than the [searchQueryMaxRunes] code points the API
+/// accepts.
 ///
 /// Every group is read on its own, so an author a keyword names arrives
-/// whether or not a series matched, and one group the API could not answer
-/// offers its retry without taking the others down. The overview shows the
-/// first rows of all three; a group opened on its own is its whole list, one
-/// cursor page at a time, and keeps what the overview already read.
+/// whether or not a series matched, one group the API could not answer
+/// offers its retry without taking the others down, and a group with nothing
+/// for the keyword says so in its own place. The overview shows the first
+/// five rows of all three, and offers the rest of a group only when there is
+/// more of it; a group opened on its own from the chips under the field is
+/// its whole list, one cursor page at a time, the next asked for as the
+/// reader nears the end of the rows already there, and keeps what the
+/// overview already read. A series row opens its series, an author row the
+/// author, and a label row the label.
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
 

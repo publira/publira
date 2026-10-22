@@ -18,13 +18,17 @@ import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
 
 /// Creating a reader account through `AuthService/CreateUser`, and what
-/// follows it until the address is confirmed.
+/// follows it until the address is confirmed. A reader opens an account here
+/// rather than on the website.
 ///
 /// The API answers an accepted sign-up by mailing a confirmation link, and
 /// says nothing about whether the address already had an account, so this
 /// screen ends the same way either way: it names the address it wrote to and
 /// offers to write again. The link itself is opened from the mailbox, and the
 /// app takes it at [AppRoutes.verifyEmail].
+///
+/// The form reads the pages it asks consent to again when it sends, and asks
+/// for the consent anew when one was republished in between.
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
 

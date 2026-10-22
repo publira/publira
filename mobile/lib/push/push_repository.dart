@@ -23,9 +23,11 @@ enum PushPlatform {
 /// Both calls need the reader's session, so they are only made while one is in
 /// hand: signing out unregisters before the token is dropped.
 abstract class PushRepository {
-  /// Records [token] against the signed-in reader. Registering a token another
-  /// reader left on the same device moves it, so a shared phone does not push
-  /// one reader's episodes to the next.
+  /// Records [token] against the signed-in reader with `RegisterPushDevice`.
+  /// The token is the identity on the server, so registering one another
+  /// reader left on the same device moves it rather than adding a second
+  /// registration, and a shared phone does not push one reader's episodes to
+  /// the next.
   Future<void> register({
     required String token,
     required PushPlatform platform,

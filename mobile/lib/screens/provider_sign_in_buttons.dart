@@ -13,8 +13,8 @@ import 'package:publira/screens/sign_in_screen.dart';
 import 'package:publira/typography/autospaced_text.dart';
 
 /// A button per provider the tenant enables and this device offers, under the
-/// sign-in form, then one that signs in with a passkey where the device uses
-/// the site's, and nothing where there is none of either.
+/// sign-in form, then **Sign in with a passkey** where the device uses the
+/// site's, and nothing where there is none of either.
 ///
 /// A first sign-in that would create an account the tenant asks consent for
 /// continues on [AppRoutes.continueSignUp], which is handed the token.

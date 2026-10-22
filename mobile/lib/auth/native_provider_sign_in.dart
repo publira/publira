@@ -11,6 +11,14 @@ import 'package:publira/auth/provider_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 /// [ProviderSignIn] through Sign in with Apple and Google Sign-In.
+///
+/// | Platform | Apple | Google |
+/// | --- | --- | --- |
+/// | iOS | Sign in with Apple, which is handed the SHA-256 of the nonce, while `LoginWithIdToken` gets the raw nonce and the authorization code | `google_sign_in_ios` with `google_sign_in.ios_client_id` |
+/// | Android | Apple's web flow in a Custom Tab with `apple_sign_in.services_id`, after which `LoginWithIdToken` gets the raw nonce, the authorization code, and the redirect URI | Credential Manager with `google_sign_in.web_client_id` as the server client ID |
+///
+/// Which of them a device offers is decided by [offeredProviders]. The iOS
+/// app claims `com.apple.developer.applesignin` in both entitlements files.
 class NativeProviderSignIn implements ProviderSignIn {
   NativeProviderSignIn({
     required this.googleIosClientId,
@@ -19,6 +27,10 @@ class NativeProviderSignIn implements ProviderSignIn {
 
   /// The iOS client whose URL scheme this build registered, empty for a build
   /// that registered none.
+  ///
+  /// The iOS app registers the reversed `ios.googleSignInClientId` as its URL
+  /// scheme through `PUBLIRA_GOOGLE_URL_SCHEME` in `App.xcconfig` — its own
+  /// bundle identifier where the manifest names no Google client.
   final String googleIosClientId;
 
   /// The tenant's site, which Apple's web flow on Android returns through.

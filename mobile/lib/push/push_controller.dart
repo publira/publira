@@ -9,7 +9,8 @@ import 'package:publira/push/push_repository.dart';
 /// Why the last attempt to turn notifications on did not settle on.
 enum PushFailure {
   /// The reader turned the OS prompt down, or notifications are off for the
-  /// app in system settings. The app does not ask again on its own.
+  /// app in system settings. The switch settles back to off with a line
+  /// pointing at system settings, and the app does not ask again on its own.
   denied,
 
   /// The device could not mint a token, or the API could not be reached. The
@@ -20,6 +21,10 @@ enum PushFailure {
 /// Owns the new-episode notifications the reader can turn on, and everything
 /// that follows from one: the registration token on the server, the messages
 /// that arrive while the app is in front, and the tap that opens an episode.
+///
+/// A member is told on the device when the tenant publishes a new episode, and
+/// a tap opens that episode's viewer with the series behind it. The account
+/// screen carries the switch for these notifications.
 ///
 /// A build with no Firebase project has [supported] false and nothing here
 /// runs, so the account screen leaves the switch out entirely.
@@ -65,6 +70,9 @@ class PushController extends ChangeNotifier {
 
   /// Where a tapped notification asks the app to go, or `null` when there is
   /// nothing waiting. Read it with [acknowledgePendingRoute], which clears it.
+  ///
+  /// An empty one is a tap on a payload naming no route the app can open,
+  /// which sends the reader to the catalog.
   String? get pendingRoute => _pendingRoute;
 
   /// Subscribes to the device's messages and restores what this install had

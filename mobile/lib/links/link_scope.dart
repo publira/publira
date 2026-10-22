@@ -39,6 +39,12 @@ class LinkScope extends InheritedWidget {
 
 /// App-bar action that hands [path] to the platform share sheet.
 ///
+/// The series screen and the viewer carry it. The sheet is handed the
+/// canonical site URL of that page — `https://` and the tenant host, with a
+/// locale prefix only when the reader's language is not the tenant's default,
+/// as [PublicSite.uriFor] builds it — and the wording the catalog uses for the
+/// work and who is credited on it, which [shareMessage] writes.
+///
 /// Missing when this run has no share sheet, which is what a widget test
 /// that does not care about sharing gets, and the action stays off.
 class ShareAction extends StatelessWidget {

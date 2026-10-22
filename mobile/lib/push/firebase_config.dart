@@ -12,8 +12,8 @@ import 'package:flutter/foundation.dart';
 /// [FirebaseOptions] also means the Android build needs no `google-services`
 /// Gradle plugin.
 ///
-/// A build given none of them has no Firebase project, so push is off and the
-/// account switch says so.
+/// A build given none of them starts with no Firebase project, so push is off
+/// and the account screen leaves the switch out.
 @immutable
 class FirebaseConfig {
   const FirebaseConfig({

@@ -25,6 +25,9 @@ import 'package:publira/typography/autospaced_text.dart';
 
 /// The signed-in reader, the settings of their account, and the way out of
 /// that session.
+///
+/// The reader's icon is shown here and changed the way the tenant's
+/// [ReaderIconChoice], read with the screen, allows.
 class AccountScreen extends StatelessWidget {
   const AccountScreen({super.key});
 

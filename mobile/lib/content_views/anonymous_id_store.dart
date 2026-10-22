@@ -17,7 +17,9 @@ class AnonymousId {
 /// Where the app keeps the [AnonymousId].
 ///
 /// Sending it back is what makes a signed-out reader one actor across views;
-/// without it every view would count as a reader of its own.
+/// without it every view would count as a reader of its own. It is the one
+/// thing recording a view writes to the device, kept with its expiry because
+/// the app has no cookie jar.
 abstract class AnonymousIdStore {
   /// The stored identifier, `null` before the API has handed one over.
   Future<AnonymousId?> read();

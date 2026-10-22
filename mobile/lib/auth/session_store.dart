@@ -30,11 +30,14 @@ SessionStore sessionStoreFor(AppConfig config) {
   );
 }
 
-/// [SessionStore] backed by the OS keychain / Keystore.
+/// [SessionStore] backed by the OS keychain / Keystore, through
+/// `flutter_secure_storage`.
 ///
 /// A session carries a bearer token, so it goes to the platform's own
 /// credential store rather than to `shared_preferences`, which keeps what it
-/// holds in plain text.
+/// holds in plain text. `web-storefront` holds its own session in the
+/// `@publira/web-session` JWE cookie; the app has no cookie jar, which is why
+/// the token lives in the platform credential store instead.
 class SecureSessionStore implements SessionStore {
   const SecureSessionStore({this.storage = const FlutterSecureStorage()});
 

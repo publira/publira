@@ -14,13 +14,15 @@ import 'package:publira/typography/autospaced_markdown.dart';
 import 'package:publira/typography/autospaced_text.dart';
 
 /// A page the tenant published — its terms of service, its privacy policy,
-/// or anything else it writes — set from the Markdown the API holds, in the
-/// app's language where the page is translated into it.
+/// or anything else it writes — set in the app rather than in a browser, from
+/// the Markdown `PublicPagesService/GetPublishedPage` answers with, in the
+/// app's language where the page is translated into it. The page is online
+/// only.
 ///
 /// A link in the body goes where an announcement's link goes: a screen of the
 /// app, another published page, or the browser for another site. Anything
 /// else the text names, `javascript:` or a local file among them, is left
-/// inert.
+/// inert. An image in the page is fetched only from an `https` address.
 class PublishedPageScreen extends StatefulWidget {
   const PublishedPageScreen({super.key, required this.slug});
 

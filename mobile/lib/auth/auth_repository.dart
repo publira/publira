@@ -123,6 +123,10 @@ abstract class AuthRepository {
   /// the `PublicKeyCredentialRequestOptionsJSON` the authenticator signs,
   /// which allows that reader's passkeys alone.
   ///
+  /// `AuthService/BeginPasskeyConfirmation` answers the options, and the
+  /// assertion made over them goes in `passkey_credential_json` of
+  /// `DeleteMeRequest` or `RequestEmailChangeRequest`.
+  ///
   /// Throws [AuthFailure]; [AuthFailureKind.passkeyNotFound] where the reader
   /// holds no passkey any more, removed from another device or the site since
   /// the screen read the account.

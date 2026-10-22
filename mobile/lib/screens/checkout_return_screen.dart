@@ -10,7 +10,11 @@ import 'package:publira/typography/autospaced_text.dart';
 
 /// Where a checkout the browser hands back lands: it finds the series of the
 /// episode the return URL names and opens that episode's viewer, which is what
-/// confirms the purchase.
+/// confirms the purchase by reading `GetEpisodeDetail` again.
+///
+/// Checkout returns to `/{locale}/checkout/return?episode=…&status=…` on the
+/// tenant host, with `status` either `success` or `cancelled`, and the app
+/// claims that address as a link.
 class CheckoutReturnScreen extends StatefulWidget {
   const CheckoutReturnScreen({
     super.key,
