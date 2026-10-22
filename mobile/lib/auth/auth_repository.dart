@@ -3,6 +3,7 @@ import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/email_change.dart';
 import 'package:publira/auth/identity_provider.dart';
+import 'package:publira/auth/notification_settings.dart';
 import 'package:publira/auth/passkey.dart';
 import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/reader_age.dart';
@@ -248,19 +249,23 @@ abstract class AuthRepository {
   /// Throws [AuthFailure].
   Future<String> readEmail(AuthSession session);
 
-  /// Whether the account behind [session] takes notification email, the
-  /// setting the storefront's notification settings read and write as well.
+  /// Which notifications the account behind [session] takes, by email and
+  /// per category and channel: the settings the storefront's notification
+  /// settings read and write as well.
   ///
   /// Throws [AuthFailure].
-  Future<bool> readEmailNotifications(AuthSession session);
+  Future<NotificationSettings> readNotificationSettings(AuthSession session);
 
-  /// Turns notification email on or off for the account behind [session] and
-  /// returns what the account then holds.
+  /// Writes [emailEnabled] and [cells] to the account behind [session] in one
+  /// request and returns what the account then holds. A cell [cells] leaves
+  /// out keeps what the account holds; email is written on every request,
+  /// because the API takes it on every one.
   ///
   /// Throws [AuthFailure].
-  Future<bool> updateEmailNotifications(
+  Future<NotificationSettings> updateNotificationSettings(
     AuthSession session, {
-    required bool enabled,
+    required bool emailEnabled,
+    Map<NotificationCell, bool> cells = const {},
   });
 
   /// Writes [birthDate] to the account behind [session] and returns the date

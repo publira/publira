@@ -7,6 +7,7 @@ import 'package:publira/auth/account_icon.dart';
 import 'package:publira/auth/account_icon_picker.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
+import 'package:publira/auth/notification_settings.dart';
 import 'package:publira/auth/passkey.dart';
 import 'package:publira/auth/reader_age.dart';
 import 'package:publira/auth/reader_icon_policy.dart';
@@ -144,12 +145,11 @@ class AccountScreen extends StatelessWidget {
                       ),
                       const Divider(height: 1),
                     ],
-                    const _NotificationSwitch(),
                     // Keyed by the reader as well, under a name of its own so
                     // it does not share a key with the birth date row.
-                    _EmailNotificationSwitch(
+                    _NotificationSettingsSection(
                       key: ValueKey((
-                        'email-notifications',
+                        'notification-settings',
                         session.userPublicId,
                       )),
                     ),
@@ -801,8 +801,9 @@ class _ContactEntry extends StatelessWidget {
   }
 }
 
-/// New-episode notifications, and the only place the OS is ever asked for
-/// permission.
+/// Whether this device receives push notifications at all, and the only place
+/// the OS is ever asked for permission. Which kinds of notification are pushed
+/// to it is the Mobile app channel of the notification preferences.
 ///
 /// A build carrying no Firebase project has nothing to offer, so the row is
 /// left out rather than shown as a switch that cannot move.
@@ -848,28 +849,43 @@ class _NotificationSwitch extends StatelessWidget {
   }
 }
 
-/// Notification email, which the account holds rather than the device, so the
-/// storefront's notification settings read and write the same setting.
+/// The email switch, as the place a refused change of it is worded, beside
+/// the category or channel a refused change of the preferences is worded
+/// under.
+const _emailRow = #email;
+
+/// Which notifications the account takes: a section per category with a
+/// switch per channel the server delivers, this device's own push switch, and
+/// notification email. The account holds all of it rather than the device, so
+/// the storefront's notification settings read and write the same settings.
 ///
-/// Keyed by the reader, so another account signing in reads its own setting
+/// Each change is saved as soon as it is made, in one request however many
+/// switches it moves. Email is held here with the rest because every request
+/// writes it.
+///
+/// Keyed by the reader, so another account signing in reads its own settings
 /// rather than showing the last one's.
-class _EmailNotificationSwitch extends StatefulWidget {
-  const _EmailNotificationSwitch({super.key});
+class _NotificationSettingsSection extends StatefulWidget {
+  const _NotificationSettingsSection({super.key});
 
   @override
-  State<_EmailNotificationSwitch> createState() =>
-      _EmailNotificationSwitchState();
+  State<_NotificationSettingsSection> createState() =>
+      _NotificationSettingsSectionState();
 }
 
-class _EmailNotificationSwitchState extends State<_EmailNotificationSwitch> {
-  late Future<bool?> _future;
+class _NotificationSettingsSectionState
+    extends State<_NotificationSettingsSection> {
+  late Future<NotificationSettings?> _future;
   var _started = false;
 
-  /// The setting the switch shows once it has been read, which a change the
-  /// reader makes moves at once and a refused one moves back.
-  bool? _enabled;
+  /// The settings the switches show once they have been read, which a change
+  /// the reader makes moves at once and a refused one moves back.
+  NotificationSettings? _settings;
   var _saving = false;
-  String? _failure;
+
+  /// Why the last change failed, and the [NotificationCategory],
+  /// [NotificationChannel], or [_emailRow] it is worded under.
+  ({Object at, String message})? _failure;
 
   @override
   void didChangeDependencies() {
@@ -878,120 +894,306 @@ class _EmailNotificationSwitchState extends State<_EmailNotificationSwitch> {
       return;
     }
     _started = true;
-    _future = AuthScope.of(context).readEmailNotifications();
+    _future = AuthScope.of(context).readNotificationSettings();
   }
 
   void _reload() {
     setState(() {
-      _future = AuthScope.of(context).readEmailNotifications();
+      _settings = null;
+      _future = AuthScope.of(context).readNotificationSettings();
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final messages = AppMessages.of(context);
-    return FutureBuilder<bool?>(
+    return FutureBuilder<NotificationSettings?>(
       future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
-          return _section(
+          return _section([
             ListTile(
-              key: const ValueKey('account-email-notifications-loading'),
-              title: AutospacedText(messages.accountEmailNotifications),
+              key: const ValueKey('account-notification-settings-loading'),
+              title: AutospacedText(messages.accountNotificationPreferences),
               trailing: const SizedBox.square(
                 dimension: 24,
                 child: CircularProgressIndicator(strokeWidth: 2),
               ),
             ),
-          );
+            const Divider(height: 1),
+            // The device's own switch reads nothing from the account, so a
+            // read still in flight does not hold back turning it off.
+            const _NotificationSwitch(),
+          ]);
         }
         if (snapshot.hasError) {
-          return _section(
+          return _section([
             ListTile(
-              key: const ValueKey('account-email-notifications-error'),
-              title: AutospacedText(messages.accountEmailNotifications),
+              key: const ValueKey('account-notification-settings-error'),
+              title: AutospacedText(messages.accountNotificationPreferences),
               subtitle: AutospacedText(
-                messages.accountEmailNotificationsLoadFailed,
+                messages.accountNotificationSettingsLoadFailed,
               ),
               trailing: TextButton(
-                key: const ValueKey('account-email-notifications-retry'),
+                key: const ValueKey('account-notification-settings-retry'),
                 onPressed: _reload,
                 child: AutospacedText(messages.commonRetry),
               ),
             ),
-          );
+            const Divider(height: 1),
+            // Nor does a read that failed, which leaves the device's way out
+            // of push notifications open while the API is unreachable.
+            const _NotificationSwitch(),
+          ]);
         }
-        final stored = snapshot.data;
-        if (stored == null) {
+        final settings = _settings ?? snapshot.data;
+        if (settings == null) {
           return const SizedBox.shrink();
         }
-        return _section(
+        return _section([
+          ListTile(
+            title: AutospacedText(messages.accountNotificationPreferences),
+            subtitle: AutospacedText(
+              messages.accountNotificationPreferencesDescription,
+            ),
+          ),
+          _channelRow(context, settings),
+          ..._failureAt(NotificationChannel.values),
+          const Divider(height: 1),
+          for (final category in NotificationCategory.values) ...[
+            ..._categorySection(context, settings, category),
+            const Divider(height: 1),
+          ],
+          // Beside the Mobile app switches it feeds, which reach this device
+          // only while it is on.
+          const _NotificationSwitch(),
           SwitchListTile(
             key: const ValueKey('account-email-notifications'),
             title: AutospacedText(messages.accountEmailNotifications),
             subtitle: AutospacedText(
               messages.accountEmailNotificationsDescription,
             ),
-            value: _enabled ?? stored,
-            onChanged: _saving ? null : (value) => unawaited(_update(value)),
+            value: settings.emailEnabled,
+            onChanged: _saving
+                ? null
+                : (value) => unawaited(
+                    _change(settings, at: _emailRow, emailEnabled: value),
+                  ),
           ),
-          failure: _failure,
-        );
+          ..._failureAt(const [_emailRow]),
+          const Divider(height: 1),
+        ]);
       },
     );
   }
 
-  Widget _section(Widget row, {String? failure}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        row,
-        if (failure != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: AutospacedText(
-              failure,
-              key: const ValueKey('account-email-notifications-failure'),
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
+  /// The heading of every channel, each of which turns that channel on or
+  /// off in every section at once.
+  Widget _channelRow(BuildContext context, NotificationSettings settings) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 0, 16, 8),
+      child: Wrap(
+        spacing: 4,
+        children: [
+          for (final channel in NotificationChannel.values)
+            _GroupToggle(
+              key: ValueKey(('account-notification-channel', channel.name)),
+              label: _channelLabel(AppMessages.of(context), channel),
+              value: settings.stateOf(cellsOfChannel(channel)),
+              onPressed: _saving
+                  ? null
+                  : () => unawaited(
+                      _change(
+                        settings,
+                        at: channel,
+                        cells: settings.toggle(cellsOfChannel(channel)),
+                      ),
+                    ),
             ),
-          ),
-        const Divider(height: 1),
-      ],
+        ],
+      ),
     );
   }
 
-  Future<void> _update(bool enabled) async {
+  /// The title of [category], which turns every switch of it on or off at
+  /// once, above a switch per channel the server delivers it on.
+  List<Widget> _categorySection(
+    BuildContext context,
+    NotificationSettings settings,
+    NotificationCategory category,
+  ) {
+    final messages = AppMessages.of(context);
+    final cells = cellsOfCategory(category);
+    return [
+      CheckboxListTile(
+        key: ValueKey(('account-notification-category', category.name)),
+        tristate: true,
+        title: AutospacedText(
+          _categoryLabel(messages, category),
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        value: settings.stateOf(cells),
+        onChanged: _saving
+            ? null
+            : (_) => unawaited(
+                _change(settings, at: category, cells: settings.toggle(cells)),
+              ),
+      ),
+      for (final cell in cells)
+        SwitchListTile(
+          key: ValueKey(('account-notification', category.name, cell.$2.name)),
+          contentPadding: const EdgeInsetsDirectional.only(start: 32, end: 24),
+          title: AutospacedText(_channelLabel(messages, cell.$2)),
+          value: settings.isEnabled(cell),
+          onChanged: _saving
+              ? null
+              : (value) => unawaited(
+                  _change(settings, at: category, cells: {cell: value}),
+                ),
+        ),
+      ..._failureAt([category]),
+    ];
+  }
+
+  /// The failure of the last change, when it is worded under one of [at].
+  List<Widget> _failureAt(List<Object> at) {
+    final failure = _failure;
+    if (failure == null || !at.contains(failure.at)) {
+      return const [];
+    }
+    return [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: AutospacedText(
+          failure.message,
+          key: ValueKey(
+            failure.at == _emailRow
+                ? 'account-email-notifications-failure'
+                : 'account-notification-preferences-failure',
+          ),
+          style: TextStyle(color: Theme.of(context).colorScheme.error),
+        ),
+      ),
+    ];
+  }
+
+  Widget _section(List<Widget> children) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: children,
+    );
+  }
+
+  /// Writes [cells], and [emailEnabled] when given, over [settings] at once,
+  /// and saves the result with the email setting it then holds.
+  Future<void> _change(
+    NotificationSettings settings, {
+    required Object at,
+    bool? emailEnabled,
+    Map<NotificationCell, bool> cells = const {},
+  }) async {
     final messages = AppMessages.of(context);
     final auth = AuthScope.of(context);
-    final previous = _enabled;
+    final next = settings.copyWith(emailEnabled: emailEnabled, cells: cells);
     setState(() {
-      _enabled = enabled;
+      _settings = next;
       _saving = true;
       _failure = null;
     });
     try {
-      final stored = await auth.updateEmailNotifications(enabled: enabled);
+      final stored = await auth.updateNotificationSettings(
+        emailEnabled: next.emailEnabled,
+        cells: cells,
+      );
       if (!mounted) {
         return;
       }
       setState(() {
-        _enabled = stored;
+        _settings = stored;
         _saving = false;
       });
     } on AuthFailure catch (failure) {
       if (!mounted) {
         return;
       }
-      // The switch goes back to what the account still holds, so trying again
-      // is the same tap as the first one.
+      // The switches go back to what the account still holds, so trying
+      // again is the same tap as the first one.
       setState(() {
-        _enabled = previous;
+        _settings = settings;
         _saving = false;
-        _failure = failure.kind == AuthFailureKind.network
-            ? messages.errorsRpcUnavailable
-            : messages.accountEmailNotificationsUpdateFailed;
+        _failure = (
+          at: at,
+          message: failure.kind == AuthFailureKind.network
+              ? messages.errorsRpcUnavailable
+              : at == _emailRow
+              ? messages.accountEmailNotificationsUpdateFailed
+              : messages.accountNotificationPreferencesUpdateFailed,
+        );
       });
     }
+  }
+}
+
+String _categoryLabel(AppMessages messages, NotificationCategory category) =>
+    switch (category) {
+      NotificationCategory.followedEpisodes =>
+        messages.accountNotificationCategoryFollowedEpisodes,
+      NotificationCategory.followedCreators =>
+        messages.accountNotificationCategoryFollowedCreators,
+      NotificationCategory.comments =>
+        messages.accountNotificationCategoryComments,
+      NotificationCategory.announcements =>
+        messages.accountNotificationCategoryAnnouncements,
+    };
+
+String _channelLabel(AppMessages messages, NotificationChannel channel) =>
+    switch (channel) {
+      NotificationChannel.inbox => messages.accountNotificationChannelInbox,
+      NotificationChannel.webPush => messages.accountNotificationChannelWebPush,
+      NotificationChannel.mobilePush =>
+        messages.accountNotificationChannelMobilePush,
+    };
+
+/// A tristate checkbox and its [label], which turns a group of switches on,
+/// or off again when [value] says they are all on already.
+class _GroupToggle extends StatelessWidget {
+  const _GroupToggle({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.onPressed,
+  });
+
+  final String label;
+
+  /// `true` when every switch of the group is on, `false` when every one is
+  /// off, and `null` when they are mixed.
+  final bool? value;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final onPressed = this.onPressed;
+    return MergeSemantics(
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(4),
+        child: Padding(
+          padding: const EdgeInsetsDirectional.only(end: 12),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Checkbox(
+                tristate: true,
+                value: value,
+                onChanged: onPressed == null ? null : (_) => onPressed(),
+              ),
+              Flexible(child: AutospacedText(label)),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

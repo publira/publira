@@ -13,6 +13,7 @@ import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/email_change.dart';
 import 'package:publira/auth/http_auth_repository.dart';
+import 'package:publira/auth/notification_settings.dart';
 import 'package:publira/auth/reader_age.dart';
 import 'package:publira/auth/reader_icon_policy.dart';
 import 'package:publira/auth/sign_up_requirements.dart';
@@ -1122,42 +1123,97 @@ void main() {
     },
   );
 
-  group('email notifications', () {
-    test('reads the setting the account holds', () async {
-      expect(await auth.readEmailNotifications(stored), isTrue);
+  group('notification settings', () {
+    test('reads the settings the account holds', () async {
+      final settings = await auth.readNotificationSettings(stored);
+      expect(settings.emailEnabled, isTrue);
+      expect(notificationCells.every(settings.isEnabled), isTrue);
 
-      server.memberEmailNotifications = false;
+      server
+        ..memberEmailNotifications = false
+        ..memberNotificationPreferences.commentsInboxEnabled = false;
 
-      expect(await auth.readEmailNotifications(stored), isFalse);
+      final changed = await auth.readNotificationSettings(stored);
+      expect(changed.emailEnabled, isFalse);
+      expect(
+        changed.isEnabled((
+          NotificationCategory.comments,
+          NotificationChannel.inbox,
+        )),
+        isFalse,
+      );
+      expect(
+        changed.isEnabled((
+          NotificationCategory.announcements,
+          NotificationChannel.inbox,
+        )),
+        isTrue,
+      );
+    });
+
+    test('writes the email setting and leaves every cell as it is', () async {
+      final settings = await auth.updateNotificationSettings(
+        stored,
+        emailEnabled: false,
+      );
+      expect(settings.emailEnabled, isFalse);
+      expect(server.memberEmailNotifications, isFalse);
+
+      final request = server.requestsTo('UpdateNotificationSettings').single;
+      expect(request.headers['authorization'], 'Bearer ${stored.accessToken}');
+      expect(
+        request.decode(pb.UpdateNotificationSettingsRequest()),
+        pb.UpdateNotificationSettingsRequest(
+          tenant: _defaultTenant(),
+          emailNotificationsEnabled: false,
+        ),
+      );
+      expect(
+        server.memberNotificationPreferences,
+        ConnectFixtureServer.allNotificationPreferences(),
+      );
     });
 
     test(
-      'writes the setting and reports what the account then holds',
+      'writes the cells it is given in one request, with the email setting',
       () async {
-        expect(
-          await auth.updateEmailNotifications(stored, enabled: false),
-          isFalse,
+        final settings = await auth.updateNotificationSettings(
+          stored,
+          emailEnabled: true,
+          cells: {
+            (NotificationCategory.followedCreators, NotificationChannel.inbox):
+                false,
+            (
+              NotificationCategory.followedCreators,
+              NotificationChannel.mobilePush,
+            ): false,
+          },
         );
-        expect(server.memberEmailNotifications, isFalse);
 
         final request = server.requestsTo('UpdateNotificationSettings').single;
-        expect(
-          request.headers['authorization'],
-          'Bearer ${stored.accessToken}',
-        );
         expect(
           request.decode(pb.UpdateNotificationSettingsRequest()),
           pb.UpdateNotificationSettingsRequest(
             tenant: _defaultTenant(),
-            emailNotificationsEnabled: false,
+            emailNotificationsEnabled: true,
+            followedCreatorsInboxEnabled: false,
+            followedCreatorsMobilePushEnabled: false,
           ),
         );
-
+        expect(settings.emailEnabled, isTrue);
         expect(
-          await auth.updateEmailNotifications(stored, enabled: true),
-          isTrue,
+          [
+            for (final cell in notificationCells)
+              if (!settings.isEnabled(cell)) cell,
+          ],
+          [
+            (NotificationCategory.followedCreators, NotificationChannel.inbox),
+            (
+              NotificationCategory.followedCreators,
+              NotificationChannel.mobilePush,
+            ),
+          ],
         );
-        expect(server.memberEmailNotifications, isTrue);
       },
     );
 
@@ -1165,11 +1221,11 @@ void main() {
       server.activeAccessToken = 'another-token';
 
       await expectLater(
-        () => auth.readEmailNotifications(stored),
+        () => auth.readNotificationSettings(stored),
         failsWith(AuthFailureKind.sessionExpired),
       );
       await expectLater(
-        () => auth.updateEmailNotifications(stored, enabled: false),
+        () => auth.updateNotificationSettings(stored, emailEnabled: false),
         failsWith(AuthFailureKind.sessionExpired),
       );
     });
@@ -1182,7 +1238,7 @@ void main() {
       );
 
       await expectLater(
-        () => offline.updateEmailNotifications(stored, enabled: false),
+        () => offline.updateNotificationSettings(stored, emailEnabled: false),
         failsWith(AuthFailureKind.network),
       );
     });

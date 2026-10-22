@@ -978,6 +978,28 @@ class ConnectFixtureServer {
   /// starts on as well.
   var _signedUpEmailNotifications = true;
 
+  /// Which notifications reach the member per category and channel, which
+  /// `GetNotificationSettings` answers and `UpdateNotificationSettings`
+  /// writes cell by cell. Every cell on by default, as the API answers an
+  /// account that has saved nothing.
+  var memberNotificationPreferences = allNotificationPreferences();
+
+  /// The same cells for the account [signedUpAccessToken] stands for.
+  var _signedUpNotificationPreferences = allNotificationPreferences();
+
+  /// Every cell of `NotificationPreferences` on.
+  static pb.NotificationPreferences allNotificationPreferences() =>
+      pb.NotificationPreferences(
+        followedEpisodesInboxEnabled: true,
+        followedEpisodesWebPushEnabled: true,
+        followedEpisodesMobilePushEnabled: true,
+        followedCreatorsInboxEnabled: true,
+        followedCreatorsWebPushEnabled: true,
+        followedCreatorsMobilePushEnabled: true,
+        commentsInboxEnabled: true,
+        announcementsInboxEnabled: true,
+      );
+
   /// The tenant's age rule and display zone, as `GetTenant` answers them.
   pb.AgeVerification ageVerification;
   String tenantTimeZone;
@@ -1674,25 +1696,39 @@ class ConnectFixtureServer {
         return;
       }
       if (update != null) {
-        // The wire format omits a false, so an absent field turns the mail off.
+        // The wire format omits a false, so an absent field turns the mail off,
+        // while an absent cell keeps what the account holds.
         final enabled = update.emailNotificationsEnabled;
+        final preferences = _mergeNotificationPreferences(
+          isSignedUp
+              ? _signedUpNotificationPreferences
+              : memberNotificationPreferences,
+          update,
+        );
         if (isSignedUp) {
           _signedUpEmailNotifications = enabled;
+          _signedUpNotificationPreferences = preferences;
         } else {
           memberEmailNotifications = enabled;
+          memberNotificationPreferences = preferences;
         }
       }
       final enabled = isSignedUp
           ? _signedUpEmailNotifications
           : memberEmailNotifications;
+      final preferences = isSignedUp
+          ? _signedUpNotificationPreferences
+          : memberNotificationPreferences;
       await _writeMessage(
         request,
         update != null
             ? pb.UpdateNotificationSettingsResponse(
                 emailNotificationsEnabled: enabled ? true : null,
+                preferences: preferences,
               )
             : pb.GetNotificationSettingsResponse(
                 emailNotificationsEnabled: enabled ? true : null,
+                preferences: preferences,
               ),
       );
       return;
@@ -3964,6 +4000,40 @@ class ConnectFixtureServer {
   /// `ChangePassword` as the API answers it: the current password has to be
   /// the member's, the new one has to differ, and the token the request came
   /// with is replaced by the one handed back.
+  /// [stored] with every cell [update] carries written over it.
+  static pb.NotificationPreferences _mergeNotificationPreferences(
+    pb.NotificationPreferences stored,
+    pb.UpdateNotificationSettingsRequest update,
+  ) => stored.deepCopy()
+    ..followedEpisodesInboxEnabled = update.hasFollowedEpisodesInboxEnabled()
+        ? update.followedEpisodesInboxEnabled
+        : stored.followedEpisodesInboxEnabled
+    ..followedEpisodesWebPushEnabled =
+        update.hasFollowedEpisodesWebPushEnabled()
+        ? update.followedEpisodesWebPushEnabled
+        : stored.followedEpisodesWebPushEnabled
+    ..followedEpisodesMobilePushEnabled =
+        update.hasFollowedEpisodesMobilePushEnabled()
+        ? update.followedEpisodesMobilePushEnabled
+        : stored.followedEpisodesMobilePushEnabled
+    ..followedCreatorsInboxEnabled = update.hasFollowedCreatorsInboxEnabled()
+        ? update.followedCreatorsInboxEnabled
+        : stored.followedCreatorsInboxEnabled
+    ..followedCreatorsWebPushEnabled =
+        update.hasFollowedCreatorsWebPushEnabled()
+        ? update.followedCreatorsWebPushEnabled
+        : stored.followedCreatorsWebPushEnabled
+    ..followedCreatorsMobilePushEnabled =
+        update.hasFollowedCreatorsMobilePushEnabled()
+        ? update.followedCreatorsMobilePushEnabled
+        : stored.followedCreatorsMobilePushEnabled
+    ..commentsInboxEnabled = update.hasCommentsInboxEnabled()
+        ? update.commentsInboxEnabled
+        : stored.commentsInboxEnabled
+    ..announcementsInboxEnabled = update.hasAnnouncementsInboxEnabled()
+        ? update.announcementsInboxEnabled
+        : stored.announcementsInboxEnabled;
+
   Future<void> _writeChangePassword(
     HttpRequest request,
     pb.ChangePasswordRequest body,

@@ -7,6 +7,7 @@ import 'package:publira/auth/auth_repository.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/email_change.dart';
 import 'package:publira/auth/identity_provider.dart';
+import 'package:publira/auth/notification_settings.dart';
 import 'package:publira/auth/passkey.dart';
 import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/reader_age.dart';
@@ -365,28 +366,35 @@ class AuthController extends ChangeNotifier {
     return _whileHeld(() => _repository.readEmail(session));
   }
 
-  /// Whether the signed-in account takes notification email, or `null` when
-  /// nobody is signed in.
+  /// Which notifications the signed-in account takes, or `null` when nobody
+  /// is signed in.
   ///
   /// Throws [AuthFailure], and signs out on a token the API has stopped
   /// accepting, the way [readReaderAge] does.
-  Future<bool?> readEmailNotifications() async {
+  Future<NotificationSettings?> readNotificationSettings() async {
     final session = _session;
     if (session == null) {
       return null;
     }
-    return _whileHeld(() => _repository.readEmailNotifications(session));
+    return _whileHeld(() => _repository.readNotificationSettings(session));
   }
 
-  /// Turns notification email on or off for the signed-in account and returns
-  /// what it then holds.
+  /// Writes [emailEnabled] and [cells] to the signed-in account in one
+  /// request and returns what it then holds.
   ///
   /// Throws [AuthFailure], with [AuthFailureKind.sessionExpired] when nobody
   /// is signed in.
-  Future<bool> updateEmailNotifications({required bool enabled}) async {
+  Future<NotificationSettings> updateNotificationSettings({
+    required bool emailEnabled,
+    Map<NotificationCell, bool> cells = const {},
+  }) async {
     final session = _requireSession();
     return _whileHeld(
-      () => _repository.updateEmailNotifications(session, enabled: enabled),
+      () => _repository.updateNotificationSettings(
+        session,
+        emailEnabled: emailEnabled,
+        cells: cells,
+      ),
     );
   }
 
