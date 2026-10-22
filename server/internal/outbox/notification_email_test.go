@@ -59,16 +59,23 @@ func (s *stubNotificationEmailQuerier) RecordOutboxEventProgress(_ context.Conte
 	return 1, nil
 }
 
-// failingRecipientMailer refuses the addresses in refuse and records the rest.
+// failingRecipientMailer answers the addresses in fail with their error and
+// records the rest as sent.
 type failingRecipientMailer struct {
-	refuse map[string]bool
-	sent   []string
-	mails  []internalsmtp.RenderedEmail
+	fail  map[string]error
+	sent  []string
+	mails []internalsmtp.RenderedEmail
 }
 
+var (
+	errRelayDown          = errors.New("dial tcp: connection refused")
+	errRefusedForNow      = &internalsmtp.RecipientRefusedError{Code: 452, Err: errors.New("452 mailbox full")}
+	errRefusedPermanently = &internalsmtp.RecipientRefusedError{Code: 550, Err: errors.New("550 mailbox unavailable")}
+)
+
 func (m *failingRecipientMailer) SendRenderedEmail(_ context.Context, _ emailsettings.SMTPSettings, recipient string, email internalsmtp.RenderedEmail) error {
-	if m.refuse[recipient] {
-		return errors.New("550 mailbox unavailable")
+	if err := m.fail[recipient]; err != nil {
+		return err
 	}
 	m.sent = append(m.sent, recipient)
 	m.mails = append(m.mails, email)
@@ -176,12 +183,12 @@ func TestNotificationEmailMailsEveryRecipientOnceAcrossPages(t *testing.T) {
 	}
 }
 
-// A recipient the relay refuses fails the event once the rest are mailed, and
-// the cursor starts over so the retry asks about them again; the rows already
-// mailed are marked, so the retry mails nobody twice.
+// A recipient the relay refuses for now fails the event once the rest are
+// mailed, and the cursor starts over so the retry asks about them again; the
+// rows already mailed are marked, so the retry mails nobody twice.
 func TestNotificationEmailRetriesOnlyTheRecipientsItFailed(t *testing.T) {
 	queries := &stubNotificationEmailQuerier{recipients: notificationEmailRecipients(t, "a@example.test", "bounce@example.test", "c@example.test")}
-	mailer := &failingRecipientMailer{refuse: map[string]bool{"bounce@example.test": true}}
+	mailer := &failingRecipientMailer{fail: map[string]error{"bounce@example.test": errRefusedForNow}}
 	handler := notificationEmailTestHandler(mailer, queries, defaultNotificationEmailPaging)
 	tenantID := uuid.New()
 
@@ -197,7 +204,7 @@ func TestNotificationEmailRetriesOnlyTheRecipientsItFailed(t *testing.T) {
 	}
 
 	mailer.sent = nil
-	mailer.refuse = nil
+	mailer.fail = nil
 	if err := handler(context.Background(), notificationEmailEvent(t, tenantID, NotificationTypeEpisodePublished, nil)); err != nil {
 		t.Fatalf("retry: %v", err)
 	}
@@ -206,11 +213,84 @@ func TestNotificationEmailRetriesOnlyTheRecipientsItFailed(t *testing.T) {
 	}
 }
 
-// A run whose every mail fails is a relay that is down: the cursor stays where
-// the run found it, so the retry asks about the same recipients.
+// A recipient refused for good is passed over: the rest are mailed, and the
+// event is done rather than retried for a mailbox that will not take it.
+func TestNotificationEmailPassesOverARecipientRefusedForGood(t *testing.T) {
+	queries := &stubNotificationEmailQuerier{recipients: notificationEmailRecipients(t, "a@example.test", "gone@example.test", "c@example.test")}
+	mailer := &failingRecipientMailer{fail: map[string]error{"gone@example.test": errRefusedPermanently}}
+	handler := notificationEmailTestHandler(mailer, queries, defaultNotificationEmailPaging)
+
+	if err := handler(context.Background(), notificationEmailEvent(t, uuid.New(), NotificationTypeEpisodePublished, nil)); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if want := []string{"a@example.test", "c@example.test"}; !slices.Equal(mailer.sent, want) {
+		t.Fatalf("mailed %v, want %v", mailer.sent, want)
+	}
+	if len(queries.emailed) != 2 {
+		t.Fatalf("rows marked emailed = %d, want 2", len(queries.emailed))
+	}
+}
+
+// A refusal is the relay answering for one mailbox, so a run that could afford
+// only that one mail moves past it instead of handing the event back where it
+// found it, and the recipients after it are mailed.
+func TestNotificationEmailMovesPastARecipientRefusedFirst(t *testing.T) {
+	recipients := notificationEmailRecipients(t, "bounce@example.test", "b@example.test")
+	queries := &stubNotificationEmailQuerier{recipients: recipients}
+	mailer := &failingRecipientMailer{fail: map[string]error{"bounce@example.test": errRefusedForNow}}
+	handler := notificationEmailTestHandler(mailer, queries, notificationEmailPaging{pageSize: 10, sendTimeout: time.Hour})
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	err := handler(ctx, notificationEmailEvent(t, uuid.New(), NotificationTypeEpisodePublished, nil))
+	if !errors.Is(err, ErrResume) {
+		t.Fatalf("handler err = %v, want ErrResume", err)
+	}
+	if len(queries.recorded) != 1 {
+		t.Fatalf("recorded cursors = %d, want 1", len(queries.recorded))
+	}
+	cursor, err := parseNotificationEmailCursor(queries.recorded[0])
+	if err != nil {
+		t.Fatalf("parse cursor: %v", err)
+	}
+	if cursor.UserID != recipients[0].UserID || !cursor.Failed {
+		t.Fatalf("cursor = %+v, want after %s with the pass failed", cursor, recipients[0].UserID)
+	}
+
+	// The second run reaches the end of the pass the first one failed in, so
+	// it fails for the retry to ask about the refused recipient again.
+	err = handler(ctx, notificationEmailEvent(t, uuid.New(), NotificationTypeEpisodePublished, &cursor))
+	if err == nil || IsPermanent(err) || errors.Is(err, ErrResume) {
+		t.Fatalf("second run err = %v, want a retriable failure", err)
+	}
+	if want := []string{"b@example.test"}; !slices.Equal(mailer.sent, want) {
+		t.Fatalf("mailed %v, want %v", mailer.sent, want)
+	}
+}
+
+// A run is given the job's timeout, and the default budget of one mail leaves
+// room in it for more than the first.
+func TestNotificationEmailSendsMoreThanOneMailWithinAJob(t *testing.T) {
+	queries := &stubNotificationEmailQuerier{recipients: notificationEmailRecipients(t, "a@example.test", "b@example.test", "c@example.test")}
+	mailer := &failingRecipientMailer{}
+	handler := notificationEmailTestHandler(mailer, queries, defaultNotificationEmailPaging)
+
+	ctx, cancel := context.WithTimeout(context.Background(), defaultJobTimeout)
+	defer cancel()
+	if err := handler(ctx, notificationEmailEvent(t, uuid.New(), NotificationTypeEpisodePublished, nil)); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if want := []string{"a@example.test", "b@example.test", "c@example.test"}; !slices.Equal(mailer.sent, want) {
+		t.Fatalf("mailed %v, want %v", mailer.sent, want)
+	}
+}
+
+// A run whose every mail fails short of the relay answering for a recipient
+// is a relay that is down: the cursor stays where the run found it, so the
+// retry asks about the same recipients.
 func TestNotificationEmailLeavesTheCursorWhenEveryMailFails(t *testing.T) {
 	queries := &stubNotificationEmailQuerier{recipients: notificationEmailRecipients(t, "a@example.test", "b@example.test")}
-	mailer := &failingRecipientMailer{refuse: map[string]bool{"a@example.test": true, "b@example.test": true}}
+	mailer := &failingRecipientMailer{fail: map[string]error{"a@example.test": errRelayDown, "b@example.test": errRelayDown}}
 	handler := notificationEmailTestHandler(mailer, queries, defaultNotificationEmailPaging)
 
 	err := handler(context.Background(), notificationEmailEvent(t, uuid.New(), NotificationTypeEpisodePublished, nil))

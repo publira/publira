@@ -13,6 +13,7 @@ import (
 	"net"
 	"net/mail"
 	"net/smtp"
+	"net/textproto"
 	"strings"
 	"time"
 
@@ -114,6 +115,9 @@ func (c *Client) SendRenderedEmail(ctx context.Context, settings emailsettings.S
 		return err
 	}
 	if err := client.Rcpt(recipient); err != nil {
+		if reply, ok := errors.AsType[*textproto.Error](err); ok {
+			return &RecipientRefusedError{Code: reply.Code, Err: err}
+		}
 		return err
 	}
 
@@ -136,6 +140,22 @@ func (c *Client) SendRenderedEmail(ctx context.Context, settings emailsettings.S
 
 	return nil
 }
+
+// RecipientRefusedError is the server's reply refusing the recipient of a
+// mail. It answers for that one mailbox rather than for the server, which took
+// the connection and the sender before it.
+type RecipientRefusedError struct {
+	Code int
+	Err  error
+}
+
+func (e *RecipientRefusedError) Error() string { return e.Err.Error() }
+
+func (e *RecipientRefusedError) Unwrap() error { return e.Err }
+
+// Permanent reports whether the reply is a 5yz one, which RFC 5321 says not to
+// repeat the same way.
+func (e *RecipientRefusedError) Permanent() bool { return e.Code >= 500 }
 
 // TestFailureReason classifies an SMTP test failure into a stable API reason.
 func TestFailureReason(err error) string {
@@ -296,6 +316,9 @@ func newMIMEBoundary(text, html string) (string, error) {
 	return "", errors.New("could not generate a MIME boundary that does not occur in the body")
 }
 
+// openClient dials the server and holds the whole conversation to the
+// context's deadline, since net/smtp reads and writes the connection without
+// looking at a context.
 func openClient(ctx context.Context, dialer *net.Dialer, addr string, settings emailsettings.SMTPSettings) (*smtp.Client, net.Conn, error) {
 	var (
 		conn net.Conn
@@ -315,6 +338,7 @@ func openClient(ctx context.Context, dialer *net.Dialer, addr string, settings e
 		if err != nil {
 			return nil, nil, err
 		}
+		holdToDeadline(ctx, conn)
 		client, err := smtp.NewClient(conn, settings.Host)
 		if err != nil {
 			return nil, conn, err
@@ -325,6 +349,7 @@ func openClient(ctx context.Context, dialer *net.Dialer, addr string, settings e
 		if err != nil {
 			return nil, nil, err
 		}
+		holdToDeadline(ctx, conn)
 		client, err := smtp.NewClient(conn, settings.Host)
 		if err != nil {
 			return nil, conn, err
@@ -340,5 +365,11 @@ func openClient(ctx context.Context, dialer *net.Dialer, addr string, settings e
 		return client, conn, nil
 	default:
 		return nil, nil, errors.New("unsupported smtp encryption")
+	}
+}
+
+func holdToDeadline(ctx context.Context, conn net.Conn) {
+	if deadline, ok := ctx.Deadline(); ok {
+		_ = conn.SetDeadline(deadline)
 	}
 }

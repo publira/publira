@@ -13,6 +13,7 @@ import (
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailrenderer"
+	internalsmtp "github.com/publira/publira/server/internal/smtp"
 )
 
 // EventTypeNotificationEmail mails one reader notification to each of its
@@ -189,9 +190,12 @@ type notificationEmailPaging struct {
 	reserve time.Duration
 }
 
+// The send timeout and the reserve together stay well inside the job's
+// timeout, so a run whose first mail took as long as a mail may still has room
+// for the next.
 var defaultNotificationEmailPaging = notificationEmailPaging{
 	pageSize:    100,
-	sendTimeout: 30 * time.Second,
+	sendTimeout: 10 * time.Second,
 	reserve:     5 * time.Second,
 }
 
@@ -275,15 +279,22 @@ func newNotificationEmailHandler(
 		// whether any run of this pass failed one. A pass that failed somebody
 		// ends by starting the cursor over and failing, so the retry walks every
 		// recipient again and mails the ones still owed.
+		//
+		// A recipient the relay refused is the relay's answer about that
+		// mailbox, so it counts as the relay working: a mailbox refused for good
+		// is passed over without failing the pass, and one refused for now is
+		// failed like any other mail and asked about again on the retry.
 		var failures []error
-		attempted, sent := 0, 0
-		// Every mail of the run so far failed, which is what a relay that is
-		// down looks like. The recorded cursor is left where the run found it,
-		// so the retry asks about the same recipients again.
+		attempted, sent, refused := 0, 0, 0
+		// Every mail of the run so far failed without the relay answering for
+		// a recipient, which is what a relay that is down looks like. The
+		// recorded cursor is left where the run found it, so the retry asks
+		// about the same recipients again.
 		outage := func() error {
 			return fmt.Errorf("send notification email to all %d recipients failed: %w",
 				attempted, errors.Join(failures...))
 		}
+		relayDown := func() bool { return sent == 0 && refused == 0 && len(failures) > 0 }
 		for {
 			recipients, err := queries.ListNotificationEmailRecipients(ctx, dbmodels.ListNotificationEmailRecipientsParams{
 				TenantID:         tenantID,
@@ -297,7 +308,7 @@ func newNotificationEmailHandler(
 			}
 			for _, recipient := range recipients {
 				if attempted > 0 && !notificationEmailHasRoom(ctx, paging) {
-					if sent == 0 {
+					if relayDown() {
 						return outage()
 					}
 					if err := record(&cursor); err != nil {
@@ -307,9 +318,21 @@ func newNotificationEmailHandler(
 				}
 				attempted++
 				err := sendNotificationEmail(ctx, cfg, delivery, links, compose, recipient, paging.sendTimeout)
+				refusal, isRefusal := errors.AsType[*internalsmtp.RecipientRefusedError](err)
+				if isRefusal {
+					refused++
+				}
 				switch {
 				case IsPermanent(err):
 					return err
+				case isRefusal && refusal.Permanent():
+					if cfg.Logger != nil {
+						cfg.Logger.WarnContext(ctx, "notification email recipient refused",
+							"event_id", event.ID,
+							"user_id", recipient.UserID,
+							"error", err,
+						)
+					}
 				case err != nil:
 					failures = append(failures, fmt.Errorf("mail %s: %w", recipient.UserID, err))
 					cursor.Failed = true
@@ -324,7 +347,7 @@ func newNotificationEmailHandler(
 				}
 				cursor.UserID = recipient.UserID
 			}
-			if sent == 0 && len(failures) > 0 {
+			if relayDown() {
 				return outage()
 			}
 			if int32(len(recipients)) < paging.pageSize {

@@ -6,9 +6,11 @@ import (
 	"io"
 	"mime"
 	"mime/quotedprintable"
+	"net"
 	"net/mail"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/rpcerrors"
@@ -276,4 +278,74 @@ func decodeQuotedPrintablePart(t *testing.T, part string) string {
 		t.Fatalf("decode quoted-printable: %v", err)
 	}
 	return string(decoded)
+}
+
+// The server's reply to RCPT TO is its answer about that mailbox, and says
+// whether trying again could change it.
+func TestSendRenderedEmailTellsARefusedRecipientApart(t *testing.T) {
+	relay := testutil.StartSMTPRelay(t)
+	relay.RefuseRecipient("gone@example.com", "550 5.1.1 No such user")
+	relay.RefuseRecipient("full@example.com", "452 4.2.2 Mailbox full")
+	email := RenderedEmail{Subject: "Subject", Text: "Body"}
+
+	for _, tc := range []struct {
+		recipient string
+		permanent bool
+	}{
+		{recipient: "gone@example.com", permanent: true},
+		{recipient: "full@example.com", permanent: false},
+	} {
+		t.Run(tc.recipient, func(t *testing.T) {
+			err := NewClient().SendRenderedEmail(t.Context(), settingsFor(relay, "", ""), tc.recipient, email)
+			refusal, ok := errors.AsType[*RecipientRefusedError](err)
+			if !ok {
+				t.Fatalf("SendRenderedEmail error = %v, want a RecipientRefusedError", err)
+			}
+			if refusal.Permanent() != tc.permanent {
+				t.Fatalf("Permanent() = %v, want %v", refusal.Permanent(), tc.permanent)
+			}
+		})
+	}
+	if got := len(relay.Messages()); got != 0 {
+		t.Fatalf("messages = %d, want none", got)
+	}
+}
+
+// A server that takes the connection and then says nothing is given up on at
+// the context's deadline, which net/smtp would otherwise wait past.
+func TestSendRenderedEmailGivesUpAtTheContextDeadline(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	t.Cleanup(func() { _ = ln.Close() })
+	go func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			t.Cleanup(func() { _ = conn.Close() })
+		}
+	}()
+	addr := ln.Addr().(*net.TCPAddr)
+	settings := emailsettings.SMTPSettings{
+		Host: addr.IP.String(), Port: int32(addr.Port), //nolint:gosec // a TCP port fits
+		Encryption: "none", FromAddress: "from@example.com",
+	}
+
+	ctx, cancel := context.WithTimeout(t.Context(), 200*time.Millisecond)
+	defer cancel()
+	done := make(chan error, 1)
+	go func() {
+		done <- NewClient().SendRenderedEmail(ctx, settings, "to@example.com", RenderedEmail{Subject: "Subject", Text: "Body"})
+	}()
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("SendRenderedEmail returned no error for a server that never greeted")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("SendRenderedEmail was still waiting for the greeting after the deadline")
+	}
 }
