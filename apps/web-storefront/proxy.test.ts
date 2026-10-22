@@ -792,6 +792,19 @@ describe("web-storefront proxy Google tag gateway", () => {
     }
   });
 
+  it("Answer 502 on a gateway-shaped path when the settings read fails unexpectedly", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    mockResolveGoogleTagGateway.mockRejectedValue(new Error("broken"));
+    const { proxy } = await import("./proxy");
+
+    const response = await proxy(
+      request(`https://shop.example.com/${GATEWAY_PATH}/?id=GTM-TEST1`)
+    );
+
+    expect(response.status).toBe(502);
+    expect(mockForwardToGoogleTagGateway).not.toHaveBeenCalled();
+  });
+
   it("Send a stale gateway path to the app's routes", async () => {
     const { proxy } = await import("./proxy");
 

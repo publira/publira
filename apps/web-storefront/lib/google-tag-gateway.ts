@@ -1,3 +1,4 @@
+import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import type { PublicApiClient } from "@publira/api-client/public/client";
 import { GoogleTagServingMode } from "@publira/api-client/public/types";
 import type { TenantGoogleTag } from "@publira/api-client/public/types";
@@ -117,7 +118,10 @@ export const createGoogleTagGatewayResolver = (
       const entry = { gateway: toGoogleTagGateway(response.googleTag), readAt };
       cache.set(tenantId, entry);
       return entry;
-    } catch {
+    } catch (error) {
+      // A failure the client cannot classify is reported rather than taken for
+      // a tenant with no gateway, which would send its path to the 404.
+      rethrowUnclassifiedRpcError(error);
       return null;
     }
   };
@@ -138,7 +142,10 @@ export const createGoogleTagGatewayResolver = (
     return started;
   };
 
-  /** `null` for a tenant with no gateway, or whose settings cannot be read. */
+  /**
+   * `null` for a tenant with no gateway, or whose settings the API cannot
+   * serve right now. Rejects with an error the client cannot classify.
+   */
   return async function resolveGoogleTagGateway(
     tenantId: string
   ): Promise<GoogleTagGateway | null> {

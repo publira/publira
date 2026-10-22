@@ -1,3 +1,4 @@
+import { Code, ConnectError } from "@publira/api-client/errors";
 import type { PublicApiClient } from "@publira/api-client/public/client";
 import { GoogleTagServingMode } from "@publira/api-client/public/types";
 import { describe, expect, it, vi } from "vitest";
@@ -192,11 +193,27 @@ describe("createGoogleTagGatewayResolver", () => {
     await resolve(TENANT_ID);
     advance(10);
     revalidatedAt = now();
-    getTenantAnalyticsSettings.mockRejectedValueOnce(new Error("unavailable"));
+    getTenantAnalyticsSettings.mockRejectedValueOnce(
+      new ConnectError("upstream is down", Code.Unavailable)
+    );
     advance(10);
 
     expect(await resolve(TENANT_ID)).toMatchObject({ path: GATEWAY_PATH });
   });
+
+  it.each([
+    ["an internal error", new ConnectError("broken", Code.Internal)],
+    ["an unimplemented RPC", new ConnectError("missing", Code.Unimplemented)],
+    ["a throw that is not an RPC error", new TypeError("bad mapping")],
+  ])(
+    "rejects with %s rather than answering no gateway",
+    async (_label, error) => {
+      const { getTenantAnalyticsSettings, resolve } = setup();
+      getTenantAnalyticsSettings.mockRejectedValueOnce(error);
+
+      await expect(resolve(TENANT_ID)).rejects.toBe(error);
+    }
+  );
 
   it("shares one read between concurrent requests", async () => {
     const { getTenantAnalyticsSettings, resolve } = setup();

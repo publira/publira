@@ -227,8 +227,9 @@ const isDroppedPrefix = (
  * current path, or `null` for any other path, which the site serves: a path
  * the tenant has since regenerated, or one of a tenant that left the gateway
  * mode, gets the site's 404. None of the site's cookies is forwarded, and none is
- * set on the way back. A setting it cannot read, such as a malformed
- * `PUBLIRA_TRUSTED_PROXIES`, answers `502` rather than throwing out of the
+ * set on the way back. A settings read that fails in a way the client cannot
+ * classify, and a setting the gateway cannot read, such as a malformed
+ * `PUBLIRA_TRUSTED_PROXIES`, answer `502` rather than throwing out of the
  * proxy.
  */
 const forwardGoogleTagGatewayPath = async (
@@ -239,18 +240,18 @@ const forwardGoogleTagGatewayPath = async (
   if (!gatewayPathSegment) {
     return null;
   }
-  const gateway = await resolveGoogleTagGateway(tenantId);
-  if (gateway?.path !== gatewayPathSegment) {
-    return null;
-  }
   try {
+    const gateway = await resolveGoogleTagGateway(tenantId);
+    if (gateway?.path !== gatewayPathSegment) {
+      return null;
+    }
     return await forwardToGoogleTagGateway(
       request,
       gateway,
       getClientAddress(request.headers)
     );
   } catch (error) {
-    // A setting the gateway cannot read fails the gateway's path alone.
+    // A failure the gateway cannot recover from fails its path alone.
     console.error("[web-storefront] google tag gateway failed", error);
     return new NextResponse("Bad Gateway", { status: 502 });
   }
