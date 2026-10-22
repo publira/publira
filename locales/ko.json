@@ -476,8 +476,13 @@
         "title": "제목",
         "languages": "언어",
         "body": "본문",
+        "delivery": "알림",
         "banner": "배너",
         "link": "링크"
+      },
+      "delivery": {
+        "everyone": "모두에게 발송",
+        "preferred": "알림 설정에 따름"
       },
       "form": {
         "title": "제목",
@@ -493,7 +498,9 @@
         "pinned": "사이트 배너로 게시",
         "pinned_description": "이 공지사항을 사이트 모든 페이지 상단에 게시합니다.",
         "pinned_until": "게시 종료 일시",
-        "pinned_until_description": "시각은 {$time_zone} 기준입니다. 비워 두면 직접 내릴 때까지 계속 게시합니다."
+        "pinned_until_description": "시각은 {$time_zone} 기준입니다. 비워 두면 직접 내릴 때까지 계속 게시합니다.",
+        "send_to_everyone": "모두에게 발송",
+        "send_to_everyone_description": "공지사항 알림을 끈 독자에게도 알립니다. 약관 변경이나 장애처럼 모든 독자가 반드시 알아야 하는 공지사항에만 사용하세요."
       },
       "validation": {
         "body_required": "본문은 필수입니다.",

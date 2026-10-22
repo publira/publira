@@ -48,6 +48,7 @@ const submittedControls = () => [
   screen.getByRole("textbox", { name: /Title/u }),
   screen.getByRole("textbox", { name: /Body/u }),
   screen.getByRole("textbox", { name: "Link" }),
+  screen.getByRole("checkbox", { name: "Send to everyone" }),
   screen.getByRole("checkbox", { name: "Show as a site banner" }),
 ];
 
@@ -132,6 +133,49 @@ describe("AnnouncementForm", () => {
     expect(formData.get("pinned")).toBe("on");
     expect(formData.get("pinned_until")).toBe("2099-06-01T00:00:00Z");
   });
+
+  it.each([
+    [true, "everyone"],
+    [false, null],
+  ])(
+    "posts the delivery the Send to everyone checkbox asks for: %s",
+    async (checked, delivery) => {
+      const action = vi.fn(() =>
+        Promise.resolve<CreateAnnouncementActionState>(null)
+      );
+
+      render(
+        await AnnouncementForm({
+          action,
+          tenantId: "TENANT001",
+          tenantLocales: null,
+          timeZone: "UTC",
+        })
+      );
+      fillIn();
+
+      const checkbox = screen.getByRole("checkbox", {
+        name: "Send to everyone",
+      });
+      // Off unless the editor turns it on.
+      expect(checkbox.getAttribute("aria-checked")).toBe("false");
+      if (checked) {
+        fireEvent.click(checkbox);
+      }
+      fireEvent.click(
+        screen.getByRole("button", { name: "Deliver the announcement" })
+      );
+
+      await waitFor(() => {
+        expect(action).toHaveBeenCalledOnce();
+      });
+      const [, formData] = action.mock.calls[0] as unknown as [
+        CreateAnnouncementActionState,
+        FormData,
+      ];
+      expect(formData.get("delivery")).toBe(delivery);
+    }
+  );
 
   it("shows a tab for each language the site offers and none for another", async () => {
     render(

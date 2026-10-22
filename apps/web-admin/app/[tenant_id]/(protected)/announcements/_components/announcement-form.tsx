@@ -7,6 +7,7 @@ import {
   ActionFormPending,
   ActionFormSubmit,
 } from "@publira/ui-components/action-form";
+import { Checkbox } from "@publira/ui-components/checkbox";
 import {
   Field,
   FieldContent,
@@ -196,6 +197,22 @@ export const AnnouncementForm = async ({
             <FieldDescription>
               <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                 <Message message="admin.announcements.form.link_description" />
+              </Suspense>
+            </FieldDescription>
+          </FieldContent>
+        </Field>
+
+        <Field>
+          <FieldLabel>
+            <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+              <Message message="admin.announcements.form.send_to_everyone" />
+            </Suspense>
+          </FieldLabel>
+          <FieldContent>
+            <Checkbox name="delivery" value="everyone" />
+            <FieldDescription>
+              <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+                <Message message="admin.announcements.form.send_to_everyone_description" />
               </Suspense>
             </FieldDescription>
           </FieldContent>

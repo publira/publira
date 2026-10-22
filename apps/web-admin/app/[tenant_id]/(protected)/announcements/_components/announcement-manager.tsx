@@ -39,7 +39,10 @@ import { hasCursorPageLinks } from "#lib/cursor-page";
 import { getMessagesFor } from "#lib/messages";
 
 import { unpinAnnouncementAction } from "../_lib/actions";
-import type { AnnouncementItem } from "../announcement-types";
+import type {
+  AnnouncementDeliveryValue,
+  AnnouncementItem,
+} from "../announcement-types";
 
 type AnnouncementManagerProps = CursorPageHrefs & {
   /**
@@ -100,6 +103,22 @@ const BannerStateLabel = ({
       }}
     />
   );
+};
+
+/**
+ * Which readers the announcement's notification reached. Each branch names its
+ * key inside the `<Message>` it returns.
+ */
+const DeliveryLabel = ({
+  delivery,
+}: {
+  delivery: AnnouncementDeliveryValue;
+}) => {
+  if (delivery === "everyone") {
+    return <Message message="admin.announcements.delivery.everyone" />;
+  }
+
+  return <Message message="admin.announcements.delivery.preferred" />;
 };
 
 /**
@@ -245,6 +264,11 @@ const AnnouncementListBody = ({
           </TableHead>
           <TableHead className="w-40">
             <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+              <Message message="admin.announcements.columns.delivery" />
+            </Suspense>
+          </TableHead>
+          <TableHead className="w-40">
+            <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
               <Message message="admin.announcements.columns.banner" />
             </Suspense>
           </TableHead>
@@ -270,6 +294,11 @@ const AnnouncementListBody = ({
               <TranslatedLocales locales={announcement.translatedLocales} />
             </TableCell>
             <TableCell>{excerpt(announcement.body, 72)}</TableCell>
+            <TableCell>
+              <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+                <DeliveryLabel delivery={announcement.delivery} />
+              </Suspense>
+            </TableCell>
             <TableCell>
               <BannerCell
                 announcement={announcement}

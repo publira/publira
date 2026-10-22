@@ -121,6 +121,11 @@ const announcementFormSchema = async (locale: Locale) => {
 
   return z
     .object({
+      // Unchecked, the checkbox posts nothing, which is the default delivery.
+      delivery: z.preprocess(
+        (value) => (value === "everyone" ? "everyone" : "preferred"),
+        z.enum(["everyone", "preferred"])
+      ),
       linkUrl: optionalTrimmedString(2048),
       // An unchecked checkbox posts nothing at all, which is the "no banner"
       // answer rather than a missing field.
@@ -202,6 +207,7 @@ export const createAnnouncementAction = async (
     formData,
     {
       bodies: { kind: "values", name: "body" },
+      delivery: "value",
       linkUrl: { kind: "value", name: "link_url" },
       pinned: "value",
       pinnedUntil: { kind: "value", name: "pinned_until" },
@@ -234,6 +240,7 @@ export const createAnnouncementAction = async (
   const result = await withAdminSessionReauth(() =>
     createAnnouncement(
       {
+        delivery: parsed.data.delivery,
         linkUrl: parsed.data.linkUrl,
         pinned: parsed.data.pinned,
         pinnedUntil: pinnedUntil.value,

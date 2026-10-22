@@ -1,3 +1,4 @@
+import { AnnouncementDelivery } from "@publira/api-client/admin/announcement";
 import type { AdminAnnouncement } from "@publira/api-client/admin/types";
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
@@ -10,6 +11,7 @@ import { dropFailedCacheEntry } from "@publira/utils/cached-read";
 import { cacheTag } from "next/cache";
 
 import type {
+  AnnouncementDeliveryValue,
   AnnouncementItem,
   AnnouncementTranslationInput,
   ListAnnouncementsResult,
@@ -36,11 +38,25 @@ const mapErrorMessage = (
   locale: Locale
 ): string => rpcErrorMessage(error, fallback, { locale });
 
+/** The API answers no unspecified delivery, and reads one in a request as preferred. */
+const deliveryValues: Record<AnnouncementDelivery, AnnouncementDeliveryValue> =
+  {
+    [AnnouncementDelivery.UNSPECIFIED]: "preferred",
+    [AnnouncementDelivery.PREFERRED]: "preferred",
+    [AnnouncementDelivery.EVERYONE]: "everyone",
+  };
+
+const deliveryEnums: Record<AnnouncementDeliveryValue, AnnouncementDelivery> = {
+  everyone: AnnouncementDelivery.EVERYONE,
+  preferred: AnnouncementDelivery.PREFERRED,
+};
+
 /** The generated `AdminAnnouncement` fields {@link mapAnnouncement} reads (see `series.ts`). */
 type RawAnnouncement = Pick<
   AdminAnnouncement,
   | "body"
   | "createdAt"
+  | "delivery"
   | "id"
   | "linkUrl"
   | "pinned"
@@ -52,6 +68,7 @@ type RawAnnouncement = Pick<
 const mapAnnouncement = (item: RawAnnouncement): AnnouncementItem => ({
   body: item.body,
   createdAt: item.createdAt,
+  delivery: deliveryValues[item.delivery] ?? "preferred",
   id: item.id,
   linkUrl: item.linkUrl,
   pinned: item.pinned,
@@ -147,6 +164,7 @@ export const createAnnouncement = async (
     /** Every language the announcement is written in, the default one included. */
     translations: readonly AnnouncementTranslationInput[];
     linkUrl: string;
+    delivery: AnnouncementDeliveryValue;
     pinned: boolean;
     /** RFC 3339 instant, or empty for a banner with no end. */
     pinnedUntil: string;
@@ -167,6 +185,7 @@ export const createAnnouncement = async (
   try {
     await apiClient.announcement.createAnnouncement(
       {
+        delivery: deliveryEnums[input.delivery],
         linkUrl: input.linkUrl,
         pinned: input.pinned,
         pinnedUntil: input.pinnedUntil,

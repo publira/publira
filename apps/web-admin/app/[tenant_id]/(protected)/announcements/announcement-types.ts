@@ -2,6 +2,13 @@ import type { Locale } from "@publira/i18n";
 
 import type { CursorPageTokens } from "#lib/cursor-page";
 
+/**
+ * Which readers an announcement's notification reaches: those whose
+ * notification preferences take announcements, or every reader whatever their
+ * preferences say.
+ */
+export type AnnouncementDeliveryValue = "everyone" | "preferred";
+
 export interface AnnouncementItem {
   id: string;
   /** The title in the tenant's default language, else the oldest. */
@@ -12,6 +19,7 @@ export interface AnnouncementItem {
   translatedLocales: readonly Locale[];
   linkUrl: string;
   createdAt: string;
+  delivery: AnnouncementDeliveryValue;
   /** Whether the site is showing this announcement as a banner right now. */
   pinned: boolean;
   /** The instant the banner stops at. Empty when it has no end. */
