@@ -31,6 +31,7 @@ const sidebarEntries = [
   "Mobile push",
   "App links",
   "Sign-in",
+  "Google tag",
   "Members",
   "Branding",
   "Audit logs",
@@ -152,6 +153,7 @@ test.describe("web-admin console navigation", () => {
     await expectIntegrationOpens(page, "Mobile push", "mobile-push");
     await expectIntegrationOpens(page, "App links", "app-links");
     await expectIntegrationOpens(page, "Sign-in", "sign-in");
+    await expectIntegrationOpens(page, "Google tag", "google-tag");
   });
 
   test("the retired integrations landing path answers not found", async ({

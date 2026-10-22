@@ -187,6 +187,7 @@ services:
         comment.localhost
         consent.localhost
         desk.localhost
+        google-tag.localhost
         langs.localhost
         locale.localhost
         mobile-push.localhost
@@ -218,6 +219,7 @@ services:
         admin.comment.localhost
         admin.consent.localhost
         admin.desk.localhost
+        admin.google-tag.localhost
         admin.langs.localhost
         admin.locale.localhost
         admin.mobile-push.localhost

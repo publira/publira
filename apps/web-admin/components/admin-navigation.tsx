@@ -1,4 +1,5 @@
 import {
+  ActivityIcon,
   BellIcon,
   ChartIcon,
   CoinsIcon,
@@ -73,6 +74,7 @@ const hrefs = [
   "/integrations/mobile-push",
   "/integrations/app-links",
   "/integrations/sign-in",
+  "/integrations/google-tag",
   "/members",
   "/branding",
   "/audit-logs",
@@ -416,6 +418,18 @@ export const AdminNavigation = () => (
                 <ConsoleSidebarNavigationItemLabel>
                   <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                     <Message message="admin.nav.sign_in_label" />
+                  </Suspense>
+                </ConsoleSidebarNavigationItemLabel>
+              </ConsoleSidebarNavigationItemHeading>
+            </ConsoleSidebarNavigationItem>
+            <ConsoleSidebarNavigationItem href="/integrations/google-tag">
+              <ConsoleSidebarNavigationItemIcon>
+                <ActivityIcon className="size-4" />
+              </ConsoleSidebarNavigationItemIcon>
+              <ConsoleSidebarNavigationItemHeading>
+                <ConsoleSidebarNavigationItemLabel>
+                  <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
+                    <Message message="admin.nav.google_tag_label" />
                   </Suspense>
                 </ConsoleSidebarNavigationItemLabel>
               </ConsoleSidebarNavigationItemHeading>

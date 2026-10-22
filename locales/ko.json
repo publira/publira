@@ -1434,6 +1434,7 @@
       "email_label": "메일",
       "engagement_label": "완독률",
       "genres_label": "장르",
+      "google_tag_label": "Google 태그",
       "integrations": "연동",
       "labels_label": "레이블",
       "members_label": "멤버",
@@ -3352,6 +3353,61 @@
           "client_id_required": "Google로 로그인을 제공하려면 클라이언트 ID를 하나 이상 입력하세요."
         }
       },
+      "google_tag": {
+        "description": "여기에 입력한 ID의 Google 태그를 독자가 로그인하거나 결제하는 페이지를 제외한 사이트의 각 페이지에서 불러옵니다. 두 ID를 모두 비우면 태그를 불러오지 않습니다.",
+        "measurement_id": "GA4 측정 ID",
+        "measurement_id_description": "Google 애널리틱스 4에서 사이트의 웹 데이터 스트림 ID로, G-로 시작합니다. Google 애널리틱스의 스트림 세부정보에 표시됩니다.",
+        "container_id": "태그 관리자 컨테이너 ID",
+        "container_id_description": "Google 태그 관리자에서 사이트의 웹 컨테이너 ID로, GTM-으로 시작합니다. 컨테이너 작업공간 상단에 표시됩니다.",
+        "serving_mode": "태그를 불러오는 곳",
+        "serving_modes": {
+          "google": {
+            "label": "Google",
+            "description": "태그를 Google 서버에서 불러오고 데이터도 Google로 보냅니다."
+          },
+          "server_container": {
+            "label": "서버 컨테이너",
+            "description": "태그를 자사의 서버 측 태그 관리자 컨테이너에서 불러오고 데이터도 그곳으로 보냅니다."
+          },
+          "gateway": {
+            "label": "Google 태그 게이트웨이",
+            "description": "태그를 이 사이트 자체 도메인의 경로에서 불러오고 데이터도 그곳으로 보냅니다. Publira가 Google 또는 자사의 서버 컨테이너로 전달합니다."
+          }
+        },
+        "server_container_url": "서버 컨테이너 URL",
+        "server_container_url_description": "서버 측 태그 관리자 컨테이너가 응답하는 https 주소입니다. https://sgtm.example.com처럼 경로 없이 입력합니다.",
+        "gateway_server_container_url_description": "선택 사항입니다. 입력하면 게이트웨이가 Google 대신 자사의 서버 측 태그 관리자 컨테이너로 전달합니다.",
+        "gateway_path": "게이트웨이 경로",
+        "gateway_path_description": "이 사이트의 도메인에서 태그를 제공하는 경로입니다. Publira가 생성하므로 사이트의 페이지와 겹치지 않으며 다른 사이트와 공유되지 않습니다.",
+        "gateway_path_unset": "이 모드로 저장하면 경로가 생성됩니다.",
+        "gateway_path_copy": "게이트웨이 경로 복사",
+        "gateway_path_regenerate": "경로 다시 생성",
+        "gateway_path_regenerate_title": "게이트웨이 경로를 다시 생성할까요?",
+        "gateway_path_regenerate_description": "새 경로로 양식을 저장하며, 현재 경로는 즉시 응답하지 않게 됩니다. 게이트웨이를 통해 다시 측정하려면 새 경로를 Google 태그 관리자에 등록하세요.",
+        "gateway_path_regenerate_action": "생성하고 저장",
+        "gateway_path_regenerated": "게이트웨이 경로를 다시 생성하고 Google 태그 설정을 저장했습니다.",
+        "gateway_tag_id": "태그 ID",
+        "gateway_tag_id_unset": "먼저 태그 관리자 컨테이너 ID나 GA4 측정 ID를 저장하세요.",
+        "gateway_tag_id_description": "게이트웨이가 Google로 전달하는 대상 태그입니다. 태그 관리자 컨테이너가 있으면 그 ID, 없으면 GA4 측정 ID입니다. Google 태그 관리자에서 이 태그의 Google 태그 게이트웨이를 위 경로로 설정하세요.",
+        "guidance": {
+          "title": "저장하기 전에",
+          "other_tags": "광고 픽셀 등 다른 태그는 태그 관리자 컨테이너에 추가하세요. 콘솔은 이 ID 외의 태그를 받지 않습니다.",
+          "double_counting": "태그 관리자 컨테이너에서 이미 GA4 태그를 실행하고 있다면 측정 ID를 비워 두세요. 둘 다 설정하면 모든 페이지 조회가 두 번 집계됩니다.",
+          "privacy_page": "사이트의 개인정보 처리방침 페이지에 사이트가 Google로 무엇을 보내고 어디에 쓰는지 밝히세요."
+        },
+        "submit": "Google 태그 저장",
+        "saved": "Google 태그 설정을 저장했습니다.",
+        "load_failed": "Google 태그 설정을 불러올 수 없습니다. 잠시 후 다시 시도해 주세요.",
+        "save_failed": "Google 태그 설정을 저장할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+        "validation": {
+          "measurement_id_invalid": "측정 ID는 G-ABC123DEF4처럼 G- 뒤에 영문자와 숫자로 입력하세요.",
+          "universal_analytics_id": "유니버설 애널리틱스 ID(UA-)로는 Google이 더 이상 데이터를 수집하지 않습니다. G-로 시작하는 Google 애널리틱스 4 측정 ID를 입력하세요.",
+          "container_id_invalid": "컨테이너 ID는 GTM-ABC1234처럼 GTM- 뒤에 영문자와 숫자로 입력하세요.",
+          "serving_mode_invalid": "태그를 불러오는 곳을 선택하세요.",
+          "server_container_url_invalid": "https://sgtm.example.com처럼 도메인 이름의 https 주소를 경로 없이 입력하세요.",
+          "server_container_url_required": "서버 컨테이너에서 태그를 불러오려면 서버 컨테이너 URL을 입력하세요."
+        }
+      },
       "royalties": {
         "title": "인세 월 마감",
         "description": "월을 마감하면 그 달의 인세는 이후 바뀌지 않는 명세서가 됩니다. 매달 직접 마감하거나, 지정한 날에 자동으로 마감되게 할 수 있습니다.",
@@ -3534,7 +3590,10 @@
       "app_links_error": "앱 링크 설정을 표시할 수 없습니다",
       "sign_in_title": "로그인",
       "sign_in_description": "이 테넌트의 독자가 로그인에 사용할 수 있는 Apple 및 Google 계정을 관리합니다.",
-      "sign_in_error": "로그인 방법 설정을 표시할 수 없습니다"
+      "sign_in_error": "로그인 방법 설정을 표시할 수 없습니다",
+      "google_tag_title": "Google 태그",
+      "google_tag_description": "이 테넌트의 사이트가 불러오는 Google 애널리틱스 및 Google 태그 관리자 태그를 관리합니다.",
+      "google_tag_error": "Google 태그 설정을 표시할 수 없습니다"
     },
     "notifications": {
       "page_description": "나에게 온 업무 이벤트를 확인하고 읽음으로 표시합니다. 공지사항 발송 관리는 별도 화면입니다.",

@@ -1,3 +1,4 @@
+export { ActivityIcon } from "./activity-icon";
 export { ArchiveIcon } from "./archive-icon";
 export { BellIcon } from "./bell-icon";
 export { BuildingIcon } from "./building-icon";

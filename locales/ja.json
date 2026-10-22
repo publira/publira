@@ -1434,6 +1434,7 @@
       "email_label": "メール情報",
       "engagement_label": "読了率",
       "genres_label": "ジャンル",
+      "google_tag_label": "Googleタグ",
       "integrations": "外部連携",
       "labels_label": "レーベル",
       "members_label": "メンバー",
@@ -3352,6 +3353,61 @@
           "client_id_required": "Googleでログインを提供するには、クライアントIDを1つ以上入力してください。"
         }
       },
+      "google_tag": {
+        "description": "ここに入力したIDのGoogleタグを、読者がログインや支払いをするページを除くサイトの各ページで読み込みます。どちらのIDも空にするとタグを読み込みません。",
+        "measurement_id": "GA4の測定ID",
+        "measurement_id_description": "Googleアナリティクス4でのサイトのウェブデータストリームのIDで、G-で始まります。Googleアナリティクスのストリームの詳細に表示されます。",
+        "container_id": "タグマネージャーのコンテナID",
+        "container_id_description": "GoogleタグマネージャーでのサイトのウェブコンテナのIDで、GTM-で始まります。コンテナのワークスペースの上部に表示されます。",
+        "serving_mode": "タグの読み込み元",
+        "serving_modes": {
+          "google": {
+            "label": "Google",
+            "description": "タグをGoogleのサーバーから読み込み、データもGoogleに送ります。"
+          },
+          "server_container": {
+            "label": "サーバーコンテナ",
+            "description": "タグを自社のサーバーサイドタグマネージャーのコンテナから読み込み、データもそこに送ります。"
+          },
+          "gateway": {
+            "label": "Googleタグゲートウェイ",
+            "description": "タグをこのサイト自身のドメイン上のパスから読み込み、データもそこに送ります。PubliraがGoogleまたは自社のサーバーコンテナに転送します。"
+          }
+        },
+        "server_container_url": "サーバーコンテナのURL",
+        "server_container_url_description": "サーバーサイドタグマネージャーのコンテナが応答するhttpsのアドレスです。https://sgtm.example.comのように、パスを含めずに入力します。",
+        "gateway_server_container_url_description": "省略できます。入力すると、ゲートウェイはGoogleではなく自社のサーバーサイドタグマネージャーのコンテナに転送します。",
+        "gateway_path": "ゲートウェイのパス",
+        "gateway_path_description": "このサイトのドメイン上で、タグを配信するパスです。Publiraが生成するため、サイトのページと重なることはなく、ほかのサイトとも共通になりません。",
+        "gateway_path_unset": "このモードで保存するとパスが生成されます。",
+        "gateway_path_copy": "ゲートウェイのパスをコピー",
+        "gateway_path_regenerate": "パスを生成し直す",
+        "gateway_path_regenerate_title": "ゲートウェイのパスを生成し直しますか？",
+        "gateway_path_regenerate_description": "新しいパスでフォームを保存し、今のパスはすぐに応答しなくなります。ゲートウェイ経由で再び計測するには、新しいパスをGoogleタグマネージャーに登録してください。",
+        "gateway_path_regenerate_action": "生成して保存",
+        "gateway_path_regenerated": "ゲートウェイのパスを生成し直し、Googleタグの設定を保存しました。",
+        "gateway_tag_id": "タグID",
+        "gateway_tag_id_unset": "先にタグマネージャーのコンテナIDかGA4の測定IDを保存してください。",
+        "gateway_tag_id_description": "ゲートウェイがGoogleに転送する先のタグです。タグマネージャーのコンテナがあればそのID、なければGA4の測定IDです。Googleタグマネージャーで、このタグのGoogleタグゲートウェイを上のパスで設定してください。",
+        "guidance": {
+          "title": "保存する前に",
+          "other_tags": "広告のピクセルなど、ほかのタグはタグマネージャーのコンテナに追加してください。コンソールではこれらのID以外のタグは受け付けません。",
+          "double_counting": "タグマネージャーのコンテナですでにGA4のタグを配信している場合は、測定IDを空にしてください。両方を設定すると、ページビューがすべて二重に計測されます。",
+          "privacy_page": "サイトのプライバシーポリシーのページに、サイトがGoogleに何を送り、何に使うのかを記載してください。"
+        },
+        "submit": "Googleタグを保存",
+        "saved": "Googleタグの設定を保存しました。",
+        "load_failed": "Googleタグの設定を読み込めませんでした。時間をおいて再度お試しください。",
+        "save_failed": "Googleタグの設定を保存できませんでした。時間をおいて再度お試しください。",
+        "validation": {
+          "measurement_id_invalid": "測定IDは、G-ABC123DEF4のようにG-に続けて英数字で入力してください。",
+          "universal_analytics_id": "ユニバーサルアナリティクスのID（UA-）では、Googleはデータを収集していません。G-で始まるGoogleアナリティクス4の測定IDを入力してください。",
+          "container_id_invalid": "コンテナIDは、GTM-ABC1234のようにGTM-に続けて英数字で入力してください。",
+          "serving_mode_invalid": "タグの読み込み元を選んでください。",
+          "server_container_url_invalid": "https://sgtm.example.comのように、ドメイン名のhttpsのアドレスをパスを含めずに入力してください。",
+          "server_container_url_required": "サーバーコンテナからタグを読み込むには、サーバーコンテナのURLを入力してください。"
+        }
+      },
       "royalties": {
         "title": "印税の月の締め",
         "description": "月を締めると、その月の印税は以後変わらない明細になります。毎月ご自身で締めるか、指定した日に自動で締めるかを選べます。",
@@ -3534,7 +3590,10 @@
       "app_links_error": "アプリリンクの設定を表示できませんでした",
       "sign_in_title": "ログイン",
       "sign_in_description": "このテナントの読者がログインに使えるAppleとGoogleのアカウントを管理します。",
-      "sign_in_error": "ログイン方法の設定を表示できませんでした"
+      "sign_in_error": "ログイン方法の設定を表示できませんでした",
+      "google_tag_title": "Googleタグ",
+      "google_tag_description": "このテナントのサイトが読み込むGoogleアナリティクスとGoogleタグマネージャーのタグを管理します。",
+      "google_tag_error": "Googleタグの設定を表示できませんでした"
     },
     "notifications": {
       "page_description": "自分宛の業務イベントを確認し、既読にできます。お知らせの配信管理は別画面です。",
