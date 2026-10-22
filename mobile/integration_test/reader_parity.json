@@ -707,19 +707,6 @@
       "tests": ["an email change is requested and its link opens the app"]
     },
     {
-      "name": "Email notification settings",
-      "web": {
-        "routes": ["[locale]/(site)/settings/notifications"],
-        "rpcs": ["GetNotificationSettings", "UpdateNotificationSettings"]
-      },
-      "mobile": {
-        "routes": ["/account"],
-        "rpcs": ["GetNotificationSettings", "UpdateNotificationSettings"]
-      },
-      "sharedRecord": true,
-      "tests": ["the app and the site share the email notification setting"]
-    },
-    {
       "name": "Notification preferences per category and channel",
       "web": {
         "routes": ["[locale]/(site)/settings/notifications"],

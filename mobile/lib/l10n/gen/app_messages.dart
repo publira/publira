@@ -288,21 +288,6 @@ final class AppMessages {
     return _format('mobile.account.delete');
   }
 
-  /// `mobile.account.email_notifications`
-  String get accountEmailNotifications {
-    return _format('mobile.account.email_notifications');
-  }
-
-  /// `mobile.account.email_notifications_description`
-  String get accountEmailNotificationsDescription {
-    return _format('mobile.account.email_notifications_description');
-  }
-
-  /// `mobile.account.email_notifications_update_failed`
-  String get accountEmailNotificationsUpdateFailed {
-    return _format('mobile.account.email_notifications_update_failed');
-  }
-
   /// `mobile.account.icon_alt`
   String get accountIconAlt {
     return _format('mobile.account.icon_alt');
@@ -456,6 +441,11 @@ final class AppMessages {
   /// `mobile.account.notification_category_followed_episodes`
   String get accountNotificationCategoryFollowedEpisodes {
     return _format('mobile.account.notification_category_followed_episodes');
+  }
+
+  /// `mobile.account.notification_channel_email`
+  String get accountNotificationChannelEmail {
+    return _format('mobile.account.notification_channel_email');
   }
 
   /// `mobile.account.notification_channel_inbox`
@@ -3579,10 +3569,6 @@ const _jaSources = <String, String>{
   'mobile.account.contact': 'お問い合わせ',
   'mobile.account.contact_description': 'このサイトの運営者にメッセージを送ります。',
   'mobile.account.delete': 'アカウントを削除',
-  'mobile.account.email_notifications': 'メール通知',
-  'mobile.account.email_notifications_description': '購読や重要なお知らせをメールで受信します。',
-  'mobile.account.email_notifications_update_failed':
-      'メール通知の設定を変更できませんでした。もう一度お試しください。',
   'mobile.account.icon_alt': 'あなたのアイコン',
   'mobile.account.icon_help':
       'JPEG/PNG/WebP、10MB以下、128x128px以上の画像を選択してください。中央から正方形に切り抜かれます。',
@@ -3618,6 +3604,7 @@ const _jaSources = <String, String>{
   'mobile.account.notification_category_comments': '自分のコメント',
   'mobile.account.notification_category_followed_creators': 'フォロー中の著者の新着エピソード',
   'mobile.account.notification_category_followed_episodes': 'フォロー中の作品・エピソードの新着',
+  'mobile.account.notification_channel_email': 'メール',
   'mobile.account.notification_channel_inbox': '通知一覧',
   'mobile.account.notification_channel_mobile_push': 'アプリ',
   'mobile.account.notification_channel_web_push': 'ブラウザ',
@@ -4341,11 +4328,6 @@ const _enSources = <String, String>{
   'mobile.account.contact_description':
       'Send a message to the people who run this site.',
   'mobile.account.delete': 'Delete account',
-  'mobile.account.email_notifications': 'Email notifications',
-  'mobile.account.email_notifications_description':
-      'Receive subscription updates and important announcements by email.',
-  'mobile.account.email_notifications_update_failed':
-      'Could not change your email notification setting. Try again.',
   'mobile.account.icon_alt': 'Your icon',
   'mobile.account.icon_help':
       'Select a JPEG, PNG, or WebP image no larger than 10MB and at least 128x128px. It is cropped to a square from the center.',
@@ -4388,6 +4370,7 @@ const _enSources = <String, String>{
       'New episodes by authors you follow',
   'mobile.account.notification_category_followed_episodes':
       'New episodes of series and episodes you follow',
+  'mobile.account.notification_channel_email': 'Email',
   'mobile.account.notification_channel_inbox': 'Inbox',
   'mobile.account.notification_channel_mobile_push': 'Mobile app',
   'mobile.account.notification_channel_web_push': 'Browser',
@@ -5220,10 +5203,6 @@ const _koSources = <String, String>{
   'mobile.account.contact': '문의하기',
   'mobile.account.contact_description': '이 사이트 운영자에게 메시지를 보냅니다.',
   'mobile.account.delete': '계정 삭제',
-  'mobile.account.email_notifications': '이메일 알림',
-  'mobile.account.email_notifications_description': '구독 소식과 중요한 공지를 이메일로 받습니다.',
-  'mobile.account.email_notifications_update_failed':
-      '이메일 알림 설정을 변경하지 못했습니다. 다시 시도해 주세요.',
   'mobile.account.icon_alt': '내 아이콘',
   'mobile.account.icon_help':
       'JPEG, PNG, WebP 형식으로 10MB 이하, 128x128px 이상인 이미지를 선택해 주세요. 가운데를 기준으로 정사각형으로 잘립니다.',
@@ -5261,6 +5240,7 @@ const _koSources = <String, String>{
   'mobile.account.notification_category_followed_creators': '팔로우 중인 작가의 새 에피소드',
   'mobile.account.notification_category_followed_episodes':
       '팔로우 중인 시리즈와 에피소드의 새 에피소드',
+  'mobile.account.notification_channel_email': '이메일',
   'mobile.account.notification_channel_inbox': '알림 목록',
   'mobile.account.notification_channel_mobile_push': '앱',
   'mobile.account.notification_channel_web_push': '브라우저',
@@ -5977,9 +5957,6 @@ const _zhHansSources = <String, String>{
   'mobile.account.contact': '联系我们',
   'mobile.account.contact_description': '向本站点的运营者发送消息。',
   'mobile.account.delete': '注销账户',
-  'mobile.account.email_notifications': '邮件通知',
-  'mobile.account.email_notifications_description': '通过邮件接收订阅更新和重要公告。',
-  'mobile.account.email_notifications_update_failed': '无法更改您的邮件通知设置。请重试。',
   'mobile.account.icon_alt': '您的头像',
   'mobile.account.icon_help':
       '请选择不超过10MB、尺寸至少为128x128px的JPEG、PNG或WebP图片。图片将从中心裁剪为正方形。',
@@ -6013,6 +5990,7 @@ const _zhHansSources = <String, String>{
   'mobile.account.notification_category_comments': '我的评论',
   'mobile.account.notification_category_followed_creators': '关注的作者的新话',
   'mobile.account.notification_category_followed_episodes': '关注的系列和单话的新话',
+  'mobile.account.notification_channel_email': '邮件',
   'mobile.account.notification_channel_inbox': '通知列表',
   'mobile.account.notification_channel_mobile_push': '应用',
   'mobile.account.notification_channel_web_push': '浏览器',
@@ -6666,9 +6644,6 @@ const _zhHantSources = <String, String>{
   'mobile.account.contact': '聯絡我們',
   'mobile.account.contact_description': '向本網站的營運者傳送訊息。',
   'mobile.account.delete': '刪除帳戶',
-  'mobile.account.email_notifications': '郵件通知',
-  'mobile.account.email_notifications_description': '透過電子郵件接收訂閱更新與重要公告。',
-  'mobile.account.email_notifications_update_failed': '無法變更您的郵件通知設定。請重試。',
   'mobile.account.icon_alt': '您的頭像',
   'mobile.account.icon_help':
       '請選擇不超過10MB、尺寸至少為128x128px的JPEG、PNG或WebP圖片。圖片將從中心裁切為正方形。',
@@ -6702,6 +6677,7 @@ const _zhHantSources = <String, String>{
   'mobile.account.notification_category_comments': '我的留言',
   'mobile.account.notification_category_followed_creators': '追蹤的作者的新話',
   'mobile.account.notification_category_followed_episodes': '追蹤的系列與單話的新話',
+  'mobile.account.notification_channel_email': '郵件',
   'mobile.account.notification_channel_inbox': '通知列表',
   'mobile.account.notification_channel_mobile_push': '應用程式',
   'mobile.account.notification_channel_web_push': '瀏覽器',

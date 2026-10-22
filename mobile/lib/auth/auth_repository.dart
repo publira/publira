@@ -249,22 +249,26 @@ abstract class AuthRepository {
   /// Throws [AuthFailure].
   Future<String> readEmail(AuthSession session);
 
-  /// Which notifications the account behind [session] takes, by email and
-  /// per category and channel: the settings the storefront's notification
-  /// settings read and write as well.
+  /// Which notifications the account behind [session] takes, per category
+  /// and channel: the settings the storefront's notification settings read
+  /// and write as well.
   ///
   /// Throws [AuthFailure].
   Future<NotificationSettings> readNotificationSettings(AuthSession session);
 
-  /// Writes [emailEnabled] and [cells] to the account behind [session] in one
-  /// request and returns what the account then holds. A cell [cells] leaves
-  /// out keeps what the account holds; email is written on every request,
-  /// because the API takes it on every one.
+  /// Writes [cells] over [current], the settings the reader was shown, to the
+  /// account behind [session] in one request, and returns what the account
+  /// then holds.
+  ///
+  /// A cell [cells] leaves out keeps what the account holds, except that
+  /// [cells] naming no email cell writes every email cell as [current] holds
+  /// it: the API reads a request without one as coming from a client that
+  /// shows a single email switch, and writes the whole email channel from it.
   ///
   /// Throws [AuthFailure].
   Future<NotificationSettings> updateNotificationSettings(
     AuthSession session, {
-    required bool emailEnabled,
+    required NotificationSettings current,
     Map<NotificationCell, bool> cells = const {},
   });
 

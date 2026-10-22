@@ -3168,46 +3168,6 @@ void main() {
       return response.updates;
     }
 
-    /// Whether [member] takes notification email, as `GetNotificationSettings`
-    /// answers it to the storefront's notification settings.
-    Future<bool> emailNotificationsAtApi(
-      ({ConnectClient client, TenantResolver tenants, AuthSession session})
-      member,
-    ) async {
-      final tenantId = await member.tenants.resolve();
-      final response = await pb.AuthServiceApi(member.client)
-          .getNotificationSettings(
-            ConnectCallContext(
-              tenantId: tenantId,
-              accessToken: member.session.accessToken,
-            ),
-            pb.GetNotificationSettingsRequest(
-              tenant: pb.TenantContext(tenantId: tenantId),
-            ),
-          );
-      return response.emailNotificationsEnabled;
-    }
-
-    /// Saves [enabled] as [member]'s notification email setting, the way the
-    /// storefront's notification settings save it.
-    Future<void> saveEmailNotificationsAtApi(
-      ({ConnectClient client, TenantResolver tenants, AuthSession session})
-      member, {
-      required bool enabled,
-    }) async {
-      final tenantId = await member.tenants.resolve();
-      await pb.AuthServiceApi(member.client).updateNotificationSettings(
-        ConnectCallContext(
-          tenantId: tenantId,
-          accessToken: member.session.accessToken,
-        ),
-        pb.UpdateNotificationSettingsRequest(
-          tenant: pb.TenantContext(tenantId: tenantId),
-          emailNotificationsEnabled: enabled,
-        ),
-      );
-    }
-
     /// Which notifications reach [member] per category and channel, as
     /// `GetNotificationSettings` answers them to the storefront's notification
     /// settings.
@@ -3229,8 +3189,10 @@ void main() {
       return response.preferences;
     }
 
-    /// Saves [request]'s cells for [member] with notification email on, the
-    /// way the storefront's notification settings save them.
+    /// Saves [request]'s cells for [member], the way the storefront's
+    /// notification settings save them. [request] names an email cell, since
+    /// the API reads one that names none as the single email switch of an
+    /// older client.
     Future<void> saveNotificationPreferencesAtApi(
       ({ConnectClient client, TenantResolver tenants, AuthSession session})
       member,
@@ -3242,9 +3204,7 @@ void main() {
           tenantId: tenantId,
           accessToken: member.session.accessToken,
         ),
-        request
-          ..tenant = pb.TenantContext(tenantId: tenantId)
-          ..emailNotificationsEnabled = true,
+        request..tenant = pb.TenantContext(tenantId: tenantId),
       );
     }
 
@@ -4244,66 +4204,6 @@ void main() {
       });
     });
 
-    testApp('the app and the site share the email notification setting', (
-      tester,
-    ) async {
-      await withFailureScreenshot(tester, 'live-email-notifications', () async {
-        final member = await signInSeedMember();
-        // The seed saves no setting, which the API answers as on, and the
-        // run leaves it there whichever way it ends.
-        addTearDown(() => saveEmailNotificationsAtApi(member, enabled: true));
-        // Turned off where the site turns it off, so the app has to read
-        // the account rather than show the default.
-        await saveEmailNotificationsAtApi(member, enabled: false);
-
-        await pumpLive(
-          tester,
-          initialLocation: AppRoutes.account,
-          session: member.session,
-        );
-        await pumpUntilRouteSettled(
-          tester,
-          find.byKey(const ValueKey('account-name')),
-          timeout: const Duration(seconds: 20),
-        );
-        final emailSwitch = find.byKey(
-          const ValueKey('account-email-notifications'),
-        );
-        await tester.scrollUntilVisible(
-          // The section is drawn as soon as the screen is, as a spinner
-          // until the settings have been read.
-          find.byWidgetPredicate(
-            (widget) => switch (widget.key) {
-              ValueKey<String>(:final value) =>
-                value.startsWith('account-email-notifications') ||
-                    value.startsWith('account-notification-settings'),
-              _ => false,
-            },
-          ),
-          100,
-          scrollable: accountList(),
-        );
-        await pumpUntilFound(
-          tester,
-          emailSwitch,
-          timeout: const Duration(seconds: 20),
-        );
-        expect(tester.widget<SwitchListTile>(emailSwitch).value, isFalse);
-
-        await tapVisible(tester, emailSwitch, scrollable: accountList());
-        await pumpUntilTrueAsync(
-          tester,
-          () => emailNotificationsAtApi(member),
-          description: 'the API to hold the setting the app saved',
-        );
-        expect(tester.widget<SwitchListTile>(emailSwitch).value, isTrue);
-        expect(
-          find.byKey(const ValueKey('account-email-notifications-failure')),
-          findsNothing,
-        );
-      });
-    });
-
     testApp('the app and the site share the notification preferences', (
       tester,
     ) async {
@@ -4321,11 +4221,15 @@ void main() {
                 followedEpisodesInboxEnabled: true,
                 followedEpisodesWebPushEnabled: true,
                 followedEpisodesMobilePushEnabled: true,
+                followedEpisodesEmailEnabled: true,
                 followedCreatorsInboxEnabled: true,
                 followedCreatorsWebPushEnabled: true,
                 followedCreatorsMobilePushEnabled: true,
+                followedCreatorsEmailEnabled: true,
                 commentsInboxEnabled: true,
+                commentsEmailEnabled: true,
                 announcementsInboxEnabled: true,
+                announcementsEmailEnabled: true,
               ),
             ),
           );
@@ -4333,7 +4237,10 @@ void main() {
           // the account rather than show the default.
           await saveNotificationPreferencesAtApi(
             member,
-            pb.UpdateNotificationSettingsRequest(commentsInboxEnabled: false),
+            pb.UpdateNotificationSettingsRequest(
+              commentsInboxEnabled: false,
+              commentsEmailEnabled: false,
+            ),
           );
 
           await pumpLive(
@@ -4348,6 +4255,16 @@ void main() {
           );
           final commentsInbox = find.byKey(
             const ValueKey(('account-notification', 'comments', 'inbox')),
+          );
+          final commentsEmail = find.byKey(
+            const ValueKey(('account-notification', 'comments', 'email')),
+          );
+          final episodesEmail = find.byKey(
+            const ValueKey((
+              'account-notification',
+              'followedEpisodes',
+              'email',
+            )),
           );
           const creatorsMobilePushKey = ValueKey((
             'account-notification',
@@ -4380,6 +4297,12 @@ void main() {
             scrollable: accountList(),
           );
           expect(tester.widget<SwitchListTile>(commentsInbox).value, isFalse);
+          await tester.scrollUntilVisible(
+            commentsEmail,
+            100,
+            scrollable: accountList(),
+          );
+          expect(tester.widget<SwitchListTile>(commentsEmail).value, isFalse);
 
           await tapVisible(
             tester,
@@ -4395,12 +4318,29 @@ void main() {
           );
           final stored = await notificationPreferencesAtApi(member);
           expect(stored.commentsInboxEnabled, isFalse);
+          expect(stored.commentsEmailEnabled, isFalse);
           expect(stored.followedCreatorsInboxEnabled, isTrue);
           expect(stored.followedEpisodesMobilePushEnabled, isTrue);
+          expect(stored.followedEpisodesEmailEnabled, isTrue);
           expect(
             tester.widget<SwitchListTile>(creatorsMobilePush).value,
             isFalse,
           );
+
+          await tapVisible(tester, episodesEmail, scrollable: accountList());
+          await pumpUntilTrueAsync(
+            tester,
+            () async => !(await notificationPreferencesAtApi(
+              member,
+            )).followedEpisodesEmailEnabled,
+            description: 'the API to hold the email cell the app saved',
+          );
+          final emailed = await notificationPreferencesAtApi(member);
+          expect(emailed.commentsEmailEnabled, isFalse);
+          expect(emailed.followedCreatorsEmailEnabled, isTrue);
+          expect(emailed.announcementsEmailEnabled, isTrue);
+          expect(emailed.followedCreatorsMobilePushEnabled, isFalse);
+          expect(tester.widget<SwitchListTile>(episodesEmail).value, isFalse);
           expect(
             find.byKey(
               const ValueKey('account-notification-preferences-failure'),

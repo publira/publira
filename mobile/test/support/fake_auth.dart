@@ -117,12 +117,9 @@ class FakeAuthRepository implements AuthRepository {
   AuthFailure? emailFailure;
 
   /// What the account holds about notifications, which
-  /// [updateNotificationSettings] writes. Email and every cell on by default,
-  /// as the API answers an account that has saved nothing.
-  var notificationSettings = const NotificationSettings(
-    emailEnabled: true,
-    preferences: {},
-  );
+  /// [updateNotificationSettings] writes. Every cell on by default, as the
+  /// API answers an account that has saved nothing.
+  var notificationSettings = const NotificationSettings(preferences: {});
 
   /// Thrown by [readNotificationSettings], standing in for settings that
   /// cannot be read.
@@ -139,7 +136,7 @@ class FakeAuthRepository implements AuthRepository {
   /// What [updateNotificationSettings] has been asked to write, one entry per
   /// request, in order.
   final notificationSettingsUpdates =
-      <({bool emailEnabled, Map<NotificationCell, bool> cells})>[];
+      <({NotificationSettings current, Map<NotificationCell, bool> cells})>[];
 
   /// Held open by a test that needs to act while [readEmail] is in flight.
   Completer<void>? emailGate;
@@ -709,19 +706,16 @@ class FakeAuthRepository implements AuthRepository {
   @override
   Future<NotificationSettings> updateNotificationSettings(
     AuthSession session, {
-    required bool emailEnabled,
+    required NotificationSettings current,
     Map<NotificationCell, bool> cells = const {},
   }) async {
-    notificationSettingsUpdates.add((emailEnabled: emailEnabled, cells: cells));
+    notificationSettingsUpdates.add((current: current, cells: cells));
     await updateNotificationSettingsGate?.future;
     final failure = updateNotificationSettingsFailure;
     if (failure != null) {
       throw failure;
     }
-    return notificationSettings = notificationSettings.copyWith(
-      emailEnabled: emailEnabled,
-      cells: cells,
-    );
+    return notificationSettings = notificationSettings.copyWith(cells: cells);
   }
 
   @override

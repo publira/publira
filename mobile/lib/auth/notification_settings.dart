@@ -15,7 +15,7 @@ enum NotificationCategory {
 }
 
 /// Where a notification reaches the reader.
-enum NotificationChannel { inbox, webPush, mobilePush }
+enum NotificationChannel { inbox, webPush, mobilePush, email }
 
 /// One switch of the notification preferences: a category on a channel.
 typedef NotificationCell = (NotificationCategory, NotificationChannel);
@@ -28,11 +28,15 @@ const notificationCells = <NotificationCell>[
   (NotificationCategory.followedEpisodes, NotificationChannel.inbox),
   (NotificationCategory.followedEpisodes, NotificationChannel.webPush),
   (NotificationCategory.followedEpisodes, NotificationChannel.mobilePush),
+  (NotificationCategory.followedEpisodes, NotificationChannel.email),
   (NotificationCategory.followedCreators, NotificationChannel.inbox),
   (NotificationCategory.followedCreators, NotificationChannel.webPush),
   (NotificationCategory.followedCreators, NotificationChannel.mobilePush),
+  (NotificationCategory.followedCreators, NotificationChannel.email),
   (NotificationCategory.comments, NotificationChannel.inbox),
+  (NotificationCategory.comments, NotificationChannel.email),
   (NotificationCategory.announcements, NotificationChannel.inbox),
+  (NotificationCategory.announcements, NotificationChannel.email),
 ];
 
 /// The cells of [category], in the order of [NotificationChannel].
@@ -47,15 +51,10 @@ List<NotificationCell> cellsOfChannel(NotificationChannel channel) => [
     if (cell.$2 == channel) cell,
 ];
 
-/// What the account holds about notifications: whether email goes out, and
-/// which cells of [notificationCells] are on.
+/// Which cells of [notificationCells] the account holds on.
 class NotificationSettings {
-  const NotificationSettings({
-    required this.emailEnabled,
-    required this._preferences,
-  });
+  const NotificationSettings({required this._preferences});
 
-  final bool emailEnabled;
   final Map<NotificationCell, bool> _preferences;
 
   /// Whether [cell] is on. A cell the server answered nothing for is on,
@@ -79,13 +78,8 @@ class NotificationSettings {
     return {for (final cell in cells) cell: enabled};
   }
 
-  /// These settings with [cells] written over them, and [emailEnabled] in
-  /// place of the account's when given.
+  /// These settings with [cells] written over them.
   NotificationSettings copyWith({
-    bool? emailEnabled,
     Map<NotificationCell, bool> cells = const {},
-  }) => NotificationSettings(
-    emailEnabled: emailEnabled ?? this.emailEnabled,
-    preferences: {..._preferences, ...cells},
-  );
+  }) => NotificationSettings(preferences: {..._preferences, ...cells});
 }

@@ -1124,40 +1124,37 @@ void main() {
   );
 
   group('notification settings', () {
+    const allOn = NotificationSettings(preferences: {});
+
     test('reads the settings the account holds', () async {
       final settings = await auth.readNotificationSettings(stored);
-      expect(settings.emailEnabled, isTrue);
       expect(notificationCells.every(settings.isEnabled), isTrue);
 
-      server
-        ..memberEmailNotifications = false
-        ..memberNotificationPreferences.commentsInboxEnabled = false;
+      server.memberNotificationPreferences
+        ..commentsInboxEnabled = false
+        ..commentsEmailEnabled = false;
 
       final changed = await auth.readNotificationSettings(stored);
-      expect(changed.emailEnabled, isFalse);
       expect(
-        changed.isEnabled((
-          NotificationCategory.comments,
-          NotificationChannel.inbox,
-        )),
-        isFalse,
-      );
-      expect(
-        changed.isEnabled((
-          NotificationCategory.announcements,
-          NotificationChannel.inbox,
-        )),
-        isTrue,
+        [
+          for (final cell in notificationCells)
+            if (!changed.isEnabled(cell)) cell,
+        ],
+        [
+          (NotificationCategory.comments, NotificationChannel.inbox),
+          (NotificationCategory.comments, NotificationChannel.email),
+        ],
       );
     });
 
-    test('writes the email setting and leaves every cell as it is', () async {
+    test('writes the email cells it is given and no other', () async {
       final settings = await auth.updateNotificationSettings(
         stored,
-        emailEnabled: false,
+        current: allOn,
+        cells: {
+          (NotificationCategory.comments, NotificationChannel.email): false,
+        },
       );
-      expect(settings.emailEnabled, isFalse);
-      expect(server.memberEmailNotifications, isFalse);
 
       final request = server.requestsTo('UpdateNotificationSettings').single;
       expect(request.headers['authorization'], 'Bearer ${stored.accessToken}');
@@ -1165,57 +1162,69 @@ void main() {
         request.decode(pb.UpdateNotificationSettingsRequest()),
         pb.UpdateNotificationSettingsRequest(
           tenant: _defaultTenant(),
-          emailNotificationsEnabled: false,
+          commentsEmailEnabled: false,
         ),
       );
       expect(
-        server.memberNotificationPreferences,
-        ConnectFixtureServer.allNotificationPreferences(),
+        [
+          for (final cell in notificationCells)
+            if (!settings.isEnabled(cell)) cell,
+        ],
+        [(NotificationCategory.comments, NotificationChannel.email)],
       );
     });
 
-    test(
-      'writes the cells it is given in one request, with the email setting',
-      () async {
-        final settings = await auth.updateNotificationSettings(
-          stored,
-          emailEnabled: true,
-          cells: {
-            (NotificationCategory.followedCreators, NotificationChannel.inbox):
-                false,
-            (
-              NotificationCategory.followedCreators,
-              NotificationChannel.mobilePush,
-            ): false,
-          },
-        );
+    test('writes the cells it is given in one request, with every email cell '
+        'as the reader was shown it', () async {
+      server.memberNotificationPreferences.announcementsEmailEnabled = false;
+      final current = allOn.copyWith(
+        cells: {
+          (NotificationCategory.announcements, NotificationChannel.email):
+              false,
+        },
+      );
 
-        final request = server.requestsTo('UpdateNotificationSettings').single;
-        expect(
-          request.decode(pb.UpdateNotificationSettingsRequest()),
-          pb.UpdateNotificationSettingsRequest(
-            tenant: _defaultTenant(),
-            emailNotificationsEnabled: true,
-            followedCreatorsInboxEnabled: false,
-            followedCreatorsMobilePushEnabled: false,
+      final settings = await auth.updateNotificationSettings(
+        stored,
+        current: current,
+        cells: {
+          (NotificationCategory.followedCreators, NotificationChannel.inbox):
+              false,
+          (
+            NotificationCategory.followedCreators,
+            NotificationChannel.mobilePush,
+          ): false,
+        },
+      );
+
+      final request = server.requestsTo('UpdateNotificationSettings').single;
+      expect(
+        request.decode(pb.UpdateNotificationSettingsRequest()),
+        pb.UpdateNotificationSettingsRequest(
+          tenant: _defaultTenant(),
+          followedCreatorsInboxEnabled: false,
+          followedCreatorsMobilePushEnabled: false,
+          followedEpisodesEmailEnabled: true,
+          followedCreatorsEmailEnabled: true,
+          commentsEmailEnabled: true,
+          announcementsEmailEnabled: false,
+        ),
+      );
+      expect(
+        [
+          for (final cell in notificationCells)
+            if (!settings.isEnabled(cell)) cell,
+        ],
+        [
+          (NotificationCategory.followedCreators, NotificationChannel.inbox),
+          (
+            NotificationCategory.followedCreators,
+            NotificationChannel.mobilePush,
           ),
-        );
-        expect(settings.emailEnabled, isTrue);
-        expect(
-          [
-            for (final cell in notificationCells)
-              if (!settings.isEnabled(cell)) cell,
-          ],
-          [
-            (NotificationCategory.followedCreators, NotificationChannel.inbox),
-            (
-              NotificationCategory.followedCreators,
-              NotificationChannel.mobilePush,
-            ),
-          ],
-        );
-      },
-    );
+          (NotificationCategory.announcements, NotificationChannel.email),
+        ],
+      );
+    });
 
     test('maps a rejected token to sessionExpired', () async {
       server.activeAccessToken = 'another-token';
@@ -1225,7 +1234,7 @@ void main() {
         failsWith(AuthFailureKind.sessionExpired),
       );
       await expectLater(
-        () => auth.updateNotificationSettings(stored, emailEnabled: false),
+        () => auth.updateNotificationSettings(stored, current: allOn),
         failsWith(AuthFailureKind.sessionExpired),
       );
     });
@@ -1238,7 +1247,7 @@ void main() {
       );
 
       await expectLater(
-        () => offline.updateNotificationSettings(stored, emailEnabled: false),
+        () => offline.updateNotificationSettings(stored, current: allOn),
         failsWith(AuthFailureKind.network),
       );
     });

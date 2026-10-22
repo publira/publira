@@ -379,20 +379,20 @@ class AuthController extends ChangeNotifier {
     return _whileHeld(() => _repository.readNotificationSettings(session));
   }
 
-  /// Writes [emailEnabled] and [cells] to the signed-in account in one
-  /// request and returns what it then holds.
+  /// Writes [cells] over [current], the settings the reader was shown, to
+  /// the signed-in account in one request and returns what it then holds.
   ///
   /// Throws [AuthFailure], with [AuthFailureKind.sessionExpired] when nobody
   /// is signed in.
   Future<NotificationSettings> updateNotificationSettings({
-    required bool emailEnabled,
+    required NotificationSettings current,
     Map<NotificationCell, bool> cells = const {},
   }) async {
     final session = _requireSession();
     return _whileHeld(
       () => _repository.updateNotificationSettings(
         session,
-        emailEnabled: emailEnabled,
+        current: current,
         cells: cells,
       ),
     );

@@ -679,7 +679,6 @@ class HttpAuthRepository implements AuthRepository {
           pb.GetNotificationSettingsRequest(tenant: tenant),
         );
         return _toNotificationSettings(
-          body.emailNotificationsEnabled,
           body.hasPreferences() ? body.preferences : null,
         );
       });
@@ -687,19 +686,21 @@ class HttpAuthRepository implements AuthRepository {
   @override
   Future<NotificationSettings> updateNotificationSettings(
     AuthSession session, {
-    required bool emailEnabled,
+    required NotificationSettings current,
     Map<NotificationCell, bool> cells = const {},
   }) => _notificationSettings(session, (ctx, tenant) async {
-    final request = pb.UpdateNotificationSettingsRequest(
-      tenant: tenant,
-      emailNotificationsEnabled: emailEnabled,
-    );
-    for (final MapEntry(key: cell, value: enabled) in cells.entries) {
+    final request = pb.UpdateNotificationSettingsRequest(tenant: tenant);
+    final emailCells = cellsOfChannel(NotificationChannel.email);
+    final written = {
+      if (!cells.keys.any(emailCells.contains))
+        for (final cell in emailCells) cell: current.isEnabled(cell),
+      ...cells,
+    };
+    for (final MapEntry(key: cell, value: enabled) in written.entries) {
       _setRequestCell(request, cell, enabled);
     }
     final body = await _auth.updateNotificationSettings(ctx, request);
     return _toNotificationSettings(
-      body.emailNotificationsEnabled,
       body.hasPreferences() ? body.preferences : null,
     );
   });
@@ -732,10 +733,8 @@ class HttpAuthRepository implements AuthRepository {
   /// absent field is a setting that is off; an absent [preferences] message
   /// is a server that predates them, whose notifications all still arrive.
   static NotificationSettings _toNotificationSettings(
-    bool emailEnabled,
     pb.NotificationPreferences? preferences,
   ) => NotificationSettings(
-    emailEnabled: emailEnabled,
     preferences: preferences == null
         ? const {}
         : {
@@ -754,16 +753,24 @@ class HttpAuthRepository implements AuthRepository {
       preferences.followedEpisodesWebPushEnabled,
     (NotificationCategory.followedEpisodes, NotificationChannel.mobilePush) =>
       preferences.followedEpisodesMobilePushEnabled,
+    (NotificationCategory.followedEpisodes, NotificationChannel.email) =>
+      preferences.followedEpisodesEmailEnabled,
     (NotificationCategory.followedCreators, NotificationChannel.inbox) =>
       preferences.followedCreatorsInboxEnabled,
     (NotificationCategory.followedCreators, NotificationChannel.webPush) =>
       preferences.followedCreatorsWebPushEnabled,
     (NotificationCategory.followedCreators, NotificationChannel.mobilePush) =>
       preferences.followedCreatorsMobilePushEnabled,
+    (NotificationCategory.followedCreators, NotificationChannel.email) =>
+      preferences.followedCreatorsEmailEnabled,
     (NotificationCategory.comments, NotificationChannel.inbox) =>
       preferences.commentsInboxEnabled,
+    (NotificationCategory.comments, NotificationChannel.email) =>
+      preferences.commentsEmailEnabled,
     (NotificationCategory.announcements, NotificationChannel.inbox) =>
       preferences.announcementsInboxEnabled,
+    (NotificationCategory.announcements, NotificationChannel.email) =>
+      preferences.announcementsEmailEnabled,
     // No cell the server delivers; [notificationCells] names none of these.
     (NotificationCategory.comments, _) ||
     (NotificationCategory.announcements, _) => true,
@@ -784,6 +791,8 @@ class HttpAuthRepository implements AuthRepository {
         NotificationChannel.mobilePush,
       ):
         request.followedEpisodesMobilePushEnabled = enabled;
+      case (NotificationCategory.followedEpisodes, NotificationChannel.email):
+        request.followedEpisodesEmailEnabled = enabled;
       case (NotificationCategory.followedCreators, NotificationChannel.inbox):
         request.followedCreatorsInboxEnabled = enabled;
       case (NotificationCategory.followedCreators, NotificationChannel.webPush):
@@ -793,10 +802,16 @@ class HttpAuthRepository implements AuthRepository {
         NotificationChannel.mobilePush,
       ):
         request.followedCreatorsMobilePushEnabled = enabled;
+      case (NotificationCategory.followedCreators, NotificationChannel.email):
+        request.followedCreatorsEmailEnabled = enabled;
       case (NotificationCategory.comments, NotificationChannel.inbox):
         request.commentsInboxEnabled = enabled;
+      case (NotificationCategory.comments, NotificationChannel.email):
+        request.commentsEmailEnabled = enabled;
       case (NotificationCategory.announcements, NotificationChannel.inbox):
         request.announcementsInboxEnabled = enabled;
+      case (NotificationCategory.announcements, NotificationChannel.email):
+        request.announcementsEmailEnabled = enabled;
       // The request has no field for a cell the server does not deliver.
       case (NotificationCategory.comments, _) ||
           (NotificationCategory.announcements, _):

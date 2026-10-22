@@ -849,19 +849,13 @@ class _NotificationSwitch extends StatelessWidget {
   }
 }
 
-/// The email switch, as the place a refused change of it is worded, beside
-/// the category or channel a refused change of the preferences is worded
-/// under.
-const _emailRow = #email;
-
 /// Which notifications the account takes: a section per category with a
-/// switch per channel the server delivers, this device's own push switch, and
-/// notification email. The account holds all of it rather than the device, so
-/// the storefront's notification settings read and write the same settings.
+/// switch per channel the server delivers, and this device's own push switch.
+/// The account holds the switches rather than the device, so the storefront's
+/// notification settings read and write the same settings.
 ///
 /// Each change is saved as soon as it is made, in one request however many
-/// switches it moves. Email is held here with the rest because every request
-/// writes it.
+/// switches it moves.
 ///
 /// Keyed by the reader, so another account signing in reads its own settings
 /// rather than showing the last one's.
@@ -883,8 +877,8 @@ class _NotificationSettingsSectionState
   NotificationSettings? _settings;
   var _saving = false;
 
-  /// Why the last change failed, and the [NotificationCategory],
-  /// [NotificationChannel], or [_emailRow] it is worded under.
+  /// Why the last change failed, and the [NotificationCategory] or
+  /// [NotificationChannel] it is worded under.
   ({Object at, String message})? _failure;
 
   @override
@@ -967,21 +961,6 @@ class _NotificationSettingsSectionState
           // Beside the Mobile app switches it feeds, which reach this device
           // only while it is on.
           const _NotificationSwitch(),
-          SwitchListTile(
-            key: const ValueKey('account-email-notifications'),
-            title: AutospacedText(messages.accountEmailNotifications),
-            subtitle: AutospacedText(
-              messages.accountEmailNotificationsDescription,
-            ),
-            value: settings.emailEnabled,
-            onChanged: _saving
-                ? null
-                : (value) => unawaited(
-                    _change(settings, at: _emailRow, emailEnabled: value),
-                  ),
-          ),
-          ..._failureAt(const [_emailRow]),
-          const Divider(height: 1),
         ]);
       },
     );
@@ -1066,11 +1045,7 @@ class _NotificationSettingsSectionState
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         child: AutospacedText(
           failure.message,
-          key: ValueKey(
-            failure.at == _emailRow
-                ? 'account-email-notifications-failure'
-                : 'account-notification-preferences-failure',
-          ),
+          key: const ValueKey('account-notification-preferences-failure'),
           style: TextStyle(color: Theme.of(context).colorScheme.error),
         ),
       ),
@@ -1084,17 +1059,15 @@ class _NotificationSettingsSectionState
     );
   }
 
-  /// Writes [cells], and [emailEnabled] when given, over [settings] at once,
-  /// and saves the result with the email setting it then holds.
+  /// Writes [cells] over [settings] at once, and saves them.
   Future<void> _change(
     NotificationSettings settings, {
     required Object at,
-    bool? emailEnabled,
-    Map<NotificationCell, bool> cells = const {},
+    required Map<NotificationCell, bool> cells,
   }) async {
     final messages = AppMessages.of(context);
     final auth = AuthScope.of(context);
-    final next = settings.copyWith(emailEnabled: emailEnabled, cells: cells);
+    final next = settings.copyWith(cells: cells);
     setState(() {
       _settings = next;
       _saving = true;
@@ -1102,7 +1075,7 @@ class _NotificationSettingsSectionState
     });
     try {
       final stored = await auth.updateNotificationSettings(
-        emailEnabled: next.emailEnabled,
+        current: settings,
         cells: cells,
       );
       if (!mounted) {
@@ -1125,8 +1098,6 @@ class _NotificationSettingsSectionState
           at: at,
           message: failure.kind == AuthFailureKind.network
               ? messages.errorsRpcUnavailable
-              : at == _emailRow
-              ? messages.accountEmailNotificationsUpdateFailed
               : messages.accountNotificationPreferencesUpdateFailed,
         );
       });
@@ -1152,6 +1123,7 @@ String _channelLabel(AppMessages messages, NotificationChannel channel) =>
       NotificationChannel.webPush => messages.accountNotificationChannelWebPush,
       NotificationChannel.mobilePush =>
         messages.accountNotificationChannelMobilePush,
+      NotificationChannel.email => messages.accountNotificationChannelEmail,
     };
 
 /// A tristate checkbox and its [label], which turns a group of switches on,

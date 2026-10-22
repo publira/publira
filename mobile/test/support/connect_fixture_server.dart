@@ -968,16 +968,6 @@ class ConnectFixtureServer {
   /// the column is unset.
   String memberBirthDate;
 
-  /// Whether the member takes notification email, which
-  /// `GetNotificationSettings` answers and `UpdateNotificationSettings`
-  /// writes. On by default, as the API answers an account that has saved no
-  /// setting.
-  var memberEmailNotifications = true;
-
-  /// The same setting for the account [signedUpAccessToken] stands for, which
-  /// starts on as well.
-  var _signedUpEmailNotifications = true;
-
   /// Which notifications reach the member per category and channel, which
   /// `GetNotificationSettings` answers and `UpdateNotificationSettings`
   /// writes cell by cell. Every cell on by default, as the API answers an
@@ -993,11 +983,15 @@ class ConnectFixtureServer {
         followedEpisodesInboxEnabled: true,
         followedEpisodesWebPushEnabled: true,
         followedEpisodesMobilePushEnabled: true,
+        followedEpisodesEmailEnabled: true,
         followedCreatorsInboxEnabled: true,
         followedCreatorsWebPushEnabled: true,
         followedCreatorsMobilePushEnabled: true,
+        followedCreatorsEmailEnabled: true,
         commentsInboxEnabled: true,
+        commentsEmailEnabled: true,
         announcementsInboxEnabled: true,
+        announcementsEmailEnabled: true,
       );
 
   /// The tenant's age rule and display zone, as `GetTenant` answers them.
@@ -1696,9 +1690,7 @@ class ConnectFixtureServer {
         return;
       }
       if (update != null) {
-        // The wire format omits a false, so an absent field turns the mail off,
-        // while an absent cell keeps what the account holds.
-        final enabled = update.emailNotificationsEnabled;
+        // An absent cell keeps what the account holds.
         final preferences = _mergeNotificationPreferences(
           isSignedUp
               ? _signedUpNotificationPreferences
@@ -1706,19 +1698,15 @@ class ConnectFixtureServer {
           update,
         );
         if (isSignedUp) {
-          _signedUpEmailNotifications = enabled;
           _signedUpNotificationPreferences = preferences;
         } else {
-          memberEmailNotifications = enabled;
           memberNotificationPreferences = preferences;
         }
       }
-      final enabled = isSignedUp
-          ? _signedUpEmailNotifications
-          : memberEmailNotifications;
       final preferences = isSignedUp
           ? _signedUpNotificationPreferences
           : memberNotificationPreferences;
+      final enabled = _anyEmailEnabled(preferences);
       await _writeMessage(
         request,
         update != null
@@ -4032,7 +4020,69 @@ class ConnectFixtureServer {
         : stored.commentsInboxEnabled
     ..announcementsInboxEnabled = update.hasAnnouncementsInboxEnabled()
         ? update.announcementsInboxEnabled
-        : stored.announcementsInboxEnabled;
+        : stored.announcementsInboxEnabled
+    ..followedEpisodesEmailEnabled = _mergeNotificationEmailCell(
+      stored,
+      update,
+      update.hasFollowedEpisodesEmailEnabled(),
+      update.followedEpisodesEmailEnabled,
+      stored.followedEpisodesEmailEnabled,
+    )
+    ..followedCreatorsEmailEnabled = _mergeNotificationEmailCell(
+      stored,
+      update,
+      update.hasFollowedCreatorsEmailEnabled(),
+      update.followedCreatorsEmailEnabled,
+      stored.followedCreatorsEmailEnabled,
+    )
+    ..commentsEmailEnabled = _mergeNotificationEmailCell(
+      stored,
+      update,
+      update.hasCommentsEmailEnabled(),
+      update.commentsEmailEnabled,
+      stored.commentsEmailEnabled,
+    )
+    ..announcementsEmailEnabled = _mergeNotificationEmailCell(
+      stored,
+      update,
+      update.hasAnnouncementsEmailEnabled(),
+      update.announcementsEmailEnabled,
+      stored.announcementsEmailEnabled,
+    );
+
+  /// One email cell as the API writes it: what [update] names, else what the
+  /// account holds, unless [update] names no email cell at all. Such a
+  /// request comes from a client with one email switch, whose off turns every
+  /// cell off and whose on turns them all on only when every one is off.
+  static bool _mergeNotificationEmailCell(
+    pb.NotificationPreferences stored,
+    pb.UpdateNotificationSettingsRequest update,
+    bool named,
+    bool value,
+    bool held,
+  ) {
+    if (named) {
+      return value;
+    }
+    final namesAny =
+        update.hasFollowedEpisodesEmailEnabled() ||
+        update.hasFollowedCreatorsEmailEnabled() ||
+        update.hasCommentsEmailEnabled() ||
+        update.hasAnnouncementsEmailEnabled();
+    if (namesAny) {
+      return held;
+    }
+    if (!update.emailNotificationsEnabled) {
+      return false;
+    }
+    return _anyEmailEnabled(stored) ? held : true;
+  }
+
+  static bool _anyEmailEnabled(pb.NotificationPreferences preferences) =>
+      preferences.followedEpisodesEmailEnabled ||
+      preferences.followedCreatorsEmailEnabled ||
+      preferences.commentsEmailEnabled ||
+      preferences.announcementsEmailEnabled;
 
   Future<void> _writeChangePassword(
     HttpRequest request,
