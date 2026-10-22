@@ -2,7 +2,6 @@ package adminapi
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
@@ -73,20 +72,20 @@ func normalizeTenantAnalyticsSettings(requested *publiraadminv1.TenantAnalyticsS
 	}, nil
 }
 
-// lockTenantAnalyticsSettings locks the tenant's settings row in the
-// transaction txCtx carries and answers it, or googletag.Default when the
-// tenant has no row yet, for the reason lockTenantConfig gives.
+// lockTenantAnalyticsSettings locks the tenant's settings in the transaction
+// txCtx carries and answers them, googletag.Default for a tenant that has
+// saved nothing.
 func (s *adminServer) lockTenantAnalyticsSettings(txCtx context.Context, tenantID uuid.UUID) (googletag.Settings, error) {
-	row, err := s.queriesFor(txCtx).LockTenantAnalyticsSettings(txCtx, tenantID)
-	if errors.Is(err, sql.ErrNoRows) {
-		return googletag.Default(), nil
-	}
-	if err != nil {
+	queries := s.queriesFor(txCtx)
+	if _, err := queries.LockTenantForAnalyticsSettings(txCtx, tenantID); err != nil {
 		return googletag.Settings{}, s.internalDBError(txCtx, "failed to lock tenant analytics settings", err, "tenant_id", tenantID.String())
 	}
-	settings, err := googletag.FromRow(row)
-	if err != nil {
+	settings, err := googletag.Get(txCtx, queries, tenantID)
+	if errors.Is(err, googletag.ErrUnresolvedServingMode) {
 		return googletag.Settings{}, s.internalError(txCtx, "tenant analytics serving mode is not a supported mode", err, "tenant_id", tenantID.String())
+	}
+	if err != nil {
+		return googletag.Settings{}, s.internalDBError(txCtx, "failed to get tenant analytics settings", err, "tenant_id", tenantID.String())
 	}
 	return settings, nil
 }

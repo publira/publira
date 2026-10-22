@@ -35,29 +35,27 @@ func (q *Queries) GetTenantAnalyticsSettings(ctx context.Context, tenantID uuid.
 	return i, err
 }
 
-const LockTenantAnalyticsSettings = `-- name: LockTenantAnalyticsSettings :one
-SELECT tenant_id, ga4_measurement_id, gtm_container_id, serving_mode, server_container_url, gateway_path, created_at, updated_at
-FROM tenant_analytics_settings
-WHERE tenant_id = $1
-FOR UPDATE
+const LockTenantForAnalyticsSettings = `-- name: LockTenantForAnalyticsSettings :one
+SELECT id
+FROM tenants
+WHERE id = $1
+FOR NO KEY UPDATE
 `
 
 // Serializes the saves of one tenant's settings, so a save compared against
-// the row as unchanged cannot answer a value a concurrent save replaced.
-func (q *Queries) LockTenantAnalyticsSettings(ctx context.Context, tenantID uuid.UUID) (TenantAnalyticsSetting, error) {
-	row := q.db.QueryRowContext(ctx, LockTenantAnalyticsSettings, tenantID)
-	var i TenantAnalyticsSetting
-	err := row.Scan(
-		&i.TenantID,
-		&i.Ga4MeasurementID,
-		&i.GtmContainerID,
-		&i.ServingMode,
-		&i.ServerContainerUrl,
-		&i.GatewayPath,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
+// the row as unchanged cannot answer a value a concurrent save replaced, and
+// two first saves in gateway mode cannot each generate a path of their own.
+// The lock is on the tenant rather than its settings row, which a tenant that
+// has saved nothing does not have, and the settings are read by the next
+// statement rather than this one, for the reason
+// LockTenantForReaderIconChange gives. NO KEY UPDATE rather than UPDATE, so it
+// does not hold back the foreign key checks every write naming the tenant
+// makes.
+func (q *Queries) LockTenantForAnalyticsSettings(ctx context.Context, tenantID uuid.UUID) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, LockTenantForAnalyticsSettings, tenantID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const UpsertTenantAnalyticsSettings = `-- name: UpsertTenantAnalyticsSettings :one

@@ -3,6 +3,7 @@ package adminapi
 import (
 	"context"
 	"slices"
+	"sync"
 	"testing"
 
 	"connectrpc.com/connect/v2"
@@ -200,6 +201,37 @@ func TestDBTenantAnalyticsGatewayPathIsGeneratedKeptAndRegenerated(t *testing.T)
 	}
 	if got := getDBTenantAnalyticsSettings(t, env, tenant).GatewayPath; got != regenerated.GatewayPath {
 		t.Fatalf("gateway path read back = %q, want %q", got, regenerated.GatewayPath)
+	}
+}
+
+// Concurrent first saves in gateway mode, for a tenant that has saved nothing,
+// must agree on one path: each generating its own would leave the path the
+// first one answered replaced, although neither asked for a new one.
+func TestDBTenantAnalyticsConcurrentFirstSavesKeepOneGatewayPath(t *testing.T) {
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+
+	const concurrentSaves = 4
+	var wg sync.WaitGroup
+	saved := make([]*publiraadminv1.TenantAnalyticsSettings, concurrentSaves)
+	errs := make([]error, concurrentSaves)
+	for i := range concurrentSaves {
+		wg.Go(func() {
+			saved[i], errs[i] = updateDBTenantAnalyticsSettings(env, tenant, &publiraadminv1.TenantAnalyticsSettings{
+				GtmContainerId: "GTM-ABC1234", ServingMode: gatewayServing,
+			}, false)
+		})
+	}
+	wg.Wait()
+
+	stored := getDBTenantAnalyticsSettings(t, env, tenant).GatewayPath
+	for i, err := range errs {
+		if err != nil {
+			t.Fatalf("UpdateTenantAnalyticsSettings[%d]: %v", i, err)
+		}
+		if saved[i].GatewayPath != stored {
+			t.Fatalf("gateway path answered to save %d = %q, want the stored %q", i, saved[i].GatewayPath, stored)
+		}
 	}
 }
 

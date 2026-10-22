@@ -2773,9 +2773,6 @@ type Querier interface {
 	// opening the episode.
 	LockStoreTransaction(ctx context.Context, arg LockStoreTransactionParams) error
 	LockTenantAdminInvitationByHashForTenant(ctx context.Context, arg LockTenantAdminInvitationByHashForTenantParams) (TenantAdminInvitation, error)
-	// Serializes the saves of one tenant's settings, so a save compared against
-	// the row as unchanged cannot answer a value a concurrent save replaced.
-	LockTenantAnalyticsSettings(ctx context.Context, tenantID uuid.UUID) (TenantAnalyticsSetting, error)
 	LockTenantCommunityLimitOverrides(ctx context.Context, tenantID uuid.UUID) (TenantCommunityLimitOverride, error)
 	// Serializes the writes that together decide whether the store route has a
 	// store that can sell: the store settings and the app association. A tenant
@@ -2796,6 +2793,16 @@ type Querier interface {
 	// tenant's currency (LockTenantCurrency), while letting other price writes of
 	// the same tenant go on.
 	LockTenantCurrencyShared(ctx context.Context, tenantID uuid.UUID) error
+	// Serializes the saves of one tenant's settings, so a save compared against
+	// the row as unchanged cannot answer a value a concurrent save replaced, and
+	// two first saves in gateway mode cannot each generate a path of their own.
+	// The lock is on the tenant rather than its settings row, which a tenant that
+	// has saved nothing does not have, and the settings are read by the next
+	// statement rather than this one, for the reason
+	// LockTenantForReaderIconChange gives. NO KEY UPDATE rather than UPDATE, so it
+	// does not hold back the foreign key checks every write naming the tenant
+	// makes.
+	LockTenantForAnalyticsSettings(ctx context.Context, tenantID uuid.UUID) (uuid.UUID, error)
 	// Serializes the creates of one tenant, so two of them cannot both count one
 	// short of the cap and both be stored, nor both take the same next position.
 	// NO KEY UPDATE rather than UPDATE, so it does not hold back the foreign key

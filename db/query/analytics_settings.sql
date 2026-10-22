@@ -4,13 +4,20 @@ SELECT *
 FROM tenant_analytics_settings
 WHERE tenant_id = sqlc.arg('tenant_id');
 
--- name: LockTenantAnalyticsSettings :one
+-- name: LockTenantForAnalyticsSettings :one
 -- Serializes the saves of one tenant's settings, so a save compared against
--- the row as unchanged cannot answer a value a concurrent save replaced.
-SELECT *
-FROM tenant_analytics_settings
-WHERE tenant_id = sqlc.arg('tenant_id')
-FOR UPDATE;
+-- the row as unchanged cannot answer a value a concurrent save replaced, and
+-- two first saves in gateway mode cannot each generate a path of their own.
+-- The lock is on the tenant rather than its settings row, which a tenant that
+-- has saved nothing does not have, and the settings are read by the next
+-- statement rather than this one, for the reason
+-- LockTenantForReaderIconChange gives. NO KEY UPDATE rather than UPDATE, so it
+-- does not hold back the foreign key checks every write naming the tenant
+-- makes.
+SELECT id
+FROM tenants
+WHERE id = sqlc.arg('tenant_id')
+FOR NO KEY UPDATE;
 
 -- name: UpsertTenantAnalyticsSettings :one
 INSERT INTO tenant_analytics_settings (
