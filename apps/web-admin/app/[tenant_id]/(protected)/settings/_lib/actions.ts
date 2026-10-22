@@ -38,6 +38,15 @@ import {
   TENANT_COMMENT_MODES,
 } from "#lib/tenant-comment-settings-shared";
 import {
+  tenantCrawlerSettingsCacheTag,
+  updateTenantCrawlerSettings,
+} from "#lib/tenant-crawler-settings";
+import {
+  crawlerPathMessage,
+  MAX_CRAWLER_EXCLUDED_PATHS,
+  parseCrawlerPaths,
+} from "#lib/tenant-crawler-settings-shared";
+import {
   tenantEmailRejectionSettingsCacheTag,
   updateTenantEmailRejectionSettings,
 } from "#lib/tenant-email-rejection-settings";
@@ -57,6 +66,7 @@ import type {
   SiteSettingsActionState,
   TenantAgeVerificationActionState,
   TenantCommentSettingsActionState,
+  TenantCrawlerSettingsActionState,
   TenantEmailRejectionActionState,
   TenantLegalPagesActionState,
   TenantLocalesActionState,
@@ -204,6 +214,42 @@ const tenantEmailRejectionSchema = async (locale: Locale) => {
       .literal("on")
       .optional()
       .transform((value) => value === "on"),
+    tenantId,
+  });
+};
+
+/**
+ * The paths arrive as one `excluded_paths` field per input, blank ones
+ * included, and are checked entry by entry with the rule the settings card
+ * applies as each field is left — the server's own, so a list this accepts is
+ * one the server accepts. The crawlers arrive as one `excluded_user_agents`
+ * field per ticked box; whether each is a crawler the server offers is the
+ * server's check.
+ */
+const tenantCrawlerSettingsSchema = async (locale: Locale) => {
+  const [t, tenantId] = await Promise.all([
+    getMessagesFor(locale),
+    tenantIdFormSchema(locale),
+  ]);
+
+  return z.object({
+    excludedPaths: z.array(z.string()).transform((values, context) => {
+      const result = parseCrawlerPaths(values);
+      if (result.ok) {
+        return result.paths;
+      }
+      context.addIssue({
+        code: "custom",
+        message:
+          result.reason === "too_many"
+            ? t("admin.settings.crawlers.validation.too_many", {
+                max: MAX_CRAWLER_EXCLUDED_PATHS,
+              })
+            : crawlerPathMessage(t, result),
+      });
+      return z.NEVER;
+    }),
+    excludedUserAgents: z.array(z.string()),
     tenantId,
   });
 };
@@ -622,6 +668,63 @@ export const updateTenantEmailRejectionAction = async (
   return {
     disposableDomainListAvailable: result.disposableDomainListAvailable,
     message: t("admin.settings.email_rejection.saved"),
+    ok: true,
+    settings: result.settings,
+  };
+};
+
+export const updateTenantCrawlerSettingsAction = async (
+  _prevState: TenantCrawlerSettingsActionState,
+  formData: FormData
+): Promise<TenantCrawlerSettingsActionState> => {
+  await assertSameOrigin();
+  const locale = await getActionLocale(formData);
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    tenantCrawlerSettingsSchema(locale),
+  ]);
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      excludedPaths: { kind: "values", name: "excluded_paths" },
+      excludedUserAgents: { kind: "values", name: "excluded_user_agents" },
+      tenantId: { kind: "value", name: "tenant_id" },
+    })
+  );
+  if (!parsed.success) {
+    const fieldErrors = toFieldErrors(parsed.error);
+    return {
+      fieldErrors: {
+        excludedPaths: fieldErrors.excludedPaths,
+        excludedUserAgents: fieldErrors.excludedUserAgents,
+      },
+      message: toFormErrorMessage(parsed.error, { locale }),
+      ok: false,
+    };
+  }
+
+  const { excludedPaths, excludedUserAgents, tenantId } = parsed.data;
+  const result = await withAdminSessionReauth(() =>
+    updateTenantCrawlerSettings(
+      { excludedPaths, excludedUserAgents, tenantId },
+      locale
+    )
+  );
+
+  if (!result.ok) {
+    return {
+      fieldErrors: result.fieldErrors,
+      message: result.message,
+      ok: false,
+    };
+  }
+
+  // The settings screen reads the setting through a private cache, so without
+  // this the operator would keep seeing the previous exclusions in the same
+  // session. The storefront's copy is dropped by the API as the update lands.
+  updateTag(tenantCrawlerSettingsCacheTag(tenantId));
+
+  return {
+    message: t("admin.settings.crawlers.saved"),
     ok: true,
     settings: result.settings,
   };

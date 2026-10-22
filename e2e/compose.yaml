@@ -186,6 +186,7 @@ services:
         bilingual.localhost
         comment.localhost
         consent.localhost
+        crawlers.localhost
         desk.localhost
         google-tag.localhost
         langs.localhost
@@ -219,6 +220,7 @@ services:
         admin.bilingual.localhost
         admin.comment.localhost
         admin.consent.localhost
+        admin.crawlers.localhost
         admin.desk.localhost
         admin.google-tag.localhost
         admin.langs.localhost

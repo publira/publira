@@ -2805,6 +2805,49 @@
           "entries_refused": "請檢查清單。每欄只能填寫一個電子郵件地址或網域，最多可列出{$max}個。"
         }
       },
+      "crawlers": {
+        "title": "爬蟲排除規則",
+        "description": "透過網站的robots.txt要求爬蟲不要擷取的內容。遵守robots.txt的爬蟲將不再擷取此處排除的內容。讀者以及無視該檔案的爬蟲仍可瀏覽頁面。",
+        "crawlers_label": "排除在整個網站之外的爬蟲",
+        "crawlers_description": "勾選的爬蟲會被要求不擷取網站的任何頁面。",
+        "crawler_operator": "營運方：{$operator}",
+        "purposes": {
+          "ai_training": {
+            "label": "AI訓練",
+            "description": "收集頁面用於訓練AI模型。"
+          },
+          "ai_assistant": {
+            "label": "AI助理",
+            "description": "為AI助理的回答或其搜尋結果擷取頁面。"
+          },
+          "image_search": {
+            "label": "圖片搜尋",
+            "description": "為圖片搜尋建立網站圖片的索引。"
+          },
+          "other": {
+            "label": "其他爬蟲",
+            "description": "此主控台尚無說明的爬蟲。"
+          }
+        },
+        "paths_label": "對所有爬蟲排除的路徑",
+        "paths_description": "每欄輸入一個以/開頭的路徑，例如/drafts。路徑也包括其下的所有內容。貼上多行時，每行會成為一欄。不支援萬用字元，且不能排除robots.txt與網站地圖。",
+        "path_label": "路徑{$position}",
+        "path_remove": "刪除路徑{$position}",
+        "paths_add": "新增路徑",
+        "submit": "儲存爬蟲排除規則",
+        "saved": "爬蟲排除規則已儲存。",
+        "load_failed": "無法載入爬蟲排除規則。請稍後再試。",
+        "save_failed": "無法儲存爬蟲排除規則。請稍後再試。",
+        "load_error_hint": "此時儲存會覆蓋已儲存的設定，請先重新載入頁面，再進行修改。",
+        "validation": {
+          "path_invalid": "「{$path}」不是路徑。請以/開頭，且不要包含空格、*、$、?與#。",
+          "path_too_long": "「{$path}」太長。路徑最多{$max}位元組。",
+          "path_reserved": "無法排除「{$path}」，因為爬蟲需要robots.txt與網站地圖來讀取網站。",
+          "path_refused": "無法排除「{$path}」。請檢查路徑後重新儲存。",
+          "too_many": "路徑最多{$max}個。",
+          "crawler_refused": "{$crawler}已無法排除。請重新載入頁面後再選擇。"
+        }
+      },
       "icon": {
         "title": "圖示",
         "description": "公開網站在瀏覽器分頁與網址列中顯示的圖示。",

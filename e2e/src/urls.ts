@@ -396,6 +396,17 @@ export const WEB_ADMIN_EMAIL_REJECTION_BASE_URL = envUrl(
 );
 
 /**
+ * Admin console of the crawler settings tenant from
+ * `db/seeds/scenarios/590_crawler_settings.sql`. Its suite saves the tenant's
+ * crawler exclusions, which the documentation's screenshots of the seed
+ * tenant's card must not show.
+ */
+export const WEB_ADMIN_CRAWLER_SETTINGS_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_ADMIN_CRAWLER_SETTINGS_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.crawlers.localhost")
+);
+
+/**
  * Public site of the tenant that names its terms and privacy pages, from
  * `db/seeds/scenarios/300_signup_consent.sql`. The nomination is tenant-wide,
  * so the sign-up that asks for consent is not the one another suite drives.

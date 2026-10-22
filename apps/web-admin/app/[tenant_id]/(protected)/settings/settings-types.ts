@@ -1,3 +1,7 @@
+import type {
+  TenantCrawlerSettings,
+  TenantCrawlerSettingsFieldErrors,
+} from "#lib/tenant-crawler-settings";
 import type { TenantEmailRejectionSettings } from "#lib/tenant-email-rejection-settings";
 
 export type SiteSettingsActionState =
@@ -82,6 +86,24 @@ export type TenantEmailRejectionActionState =
       ok: false;
       message: string;
       fieldErrors?: { entries?: string };
+    }
+  | null;
+
+/**
+ * A save answers the setting as the server stored it — paths trimmed, without
+ * a trailing /, deduplicated, and sorted — so the card shows that rather than
+ * what was typed.
+ */
+export type TenantCrawlerSettingsActionState =
+  | {
+      ok: true;
+      message: string;
+      settings: TenantCrawlerSettings;
+    }
+  | {
+      ok: false;
+      message: string;
+      fieldErrors?: TenantCrawlerSettingsFieldErrors;
     }
   | null;
 

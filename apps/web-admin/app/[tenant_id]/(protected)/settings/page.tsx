@@ -38,6 +38,7 @@ import { listPublishedPages } from "#lib/page";
 import { getTenantSiteSettingsTabs } from "#lib/site-settings";
 import { getTenantAgeVerification } from "#lib/tenant-age-verification";
 import { getTenantCommentSettings } from "#lib/tenant-comment-settings";
+import { getTenantCrawlerSettings } from "#lib/tenant-crawler-settings";
 import { getTenantEmailRejectionSettings } from "#lib/tenant-email-rejection-settings";
 import type { TenantEmailRejectionSettingsResult } from "#lib/tenant-email-rejection-settings";
 import { getTenantId } from "#lib/tenant-id";
@@ -50,6 +51,7 @@ import { SettingsTabNav } from "./_components/settings-tab-nav";
 import { SiteSettingsForm } from "./_components/site-settings-form";
 import { TenantAgeVerificationForm } from "./_components/tenant-age-verification-form";
 import { TenantCommentSettingsForm } from "./_components/tenant-comment-settings-form";
+import { TenantCrawlerSettingsForm } from "./_components/tenant-crawler-settings-form";
 import { TenantEmailRejectionForm } from "./_components/tenant-email-rejection-form";
 import { TenantLegalPagesForm } from "./_components/tenant-legal-pages-form";
 import { TenantLocalesForm } from "./_components/tenant-locales-form";
@@ -142,6 +144,11 @@ const SettingsFormsSkeleton = () => (
       <Skeleton className="h-10" />
       <Skeleton className="h-40" />
     </AdminSection>
+    <AdminSection>
+      <SkeletonLine className="h-5 w-40" />
+      <Skeleton className="h-40" />
+      <Skeleton className="h-10" />
+    </AdminSection>
   </AdminSections>
 );
 
@@ -187,6 +194,7 @@ const SettingsForms = async ({ searchParams }: SettingsPageProps) => {
     publishedPagesResult,
     currentUser,
     emailRejectionResult,
+    crawlerSettingsResult,
   ] = await Promise.all([
     readSiteSettingsTabs({ locale, localesPromise, searchParams, tenantId }),
     getTenantTimezone(tenantId, locale),
@@ -197,6 +205,7 @@ const SettingsForms = async ({ searchParams }: SettingsPageProps) => {
     listPublishedPages(tenantId, locale),
     currentUserPromise,
     readEmailRejectionSettings(tenantId, locale, currentUserPromise),
+    getTenantCrawlerSettings(tenantId, locale),
   ]);
 
   await redirectToLoginIfSessionRejected(
@@ -205,6 +214,7 @@ const SettingsForms = async ({ searchParams }: SettingsPageProps) => {
     ageVerificationResult,
     legalPagesResult,
     publishedPagesResult,
+    crawlerSettingsResult,
     ...(emailRejectionResult ? [emailRejectionResult] : [])
   );
 
@@ -302,6 +312,17 @@ const SettingsForms = async ({ searchParams }: SettingsPageProps) => {
         canEdit={canEdit}
         tenantId={tenantId}
         {...emailRejectionFormState(emailRejectionResult)}
+      />
+
+      <TenantCrawlerSettingsForm
+        canEdit={canEdit}
+        {...(crawlerSettingsResult.ok
+          ? {
+              initialSettings: crawlerSettingsResult.settings,
+              knownCrawlers: crawlerSettingsResult.knownCrawlers,
+            }
+          : { loadErrorMessage: crawlerSettingsResult.message })}
+        tenantId={tenantId}
       />
     </AdminSections>
   );

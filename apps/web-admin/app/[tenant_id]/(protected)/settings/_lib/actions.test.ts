@@ -4,6 +4,7 @@ const {
   mockAssertSameOrigin,
   mockGetAccessToken,
   mockUpdateTag,
+  mockUpdateTenantCrawlerSettings,
   mockUpdateTenantEmailRejectionSettings,
   mockUpdateTenantLegalPages,
   mockUpdateTenantLocales,
@@ -13,6 +14,7 @@ const {
   mockAssertSameOrigin: vi.fn(),
   mockGetAccessToken: vi.fn(),
   mockUpdateTag: vi.fn(),
+  mockUpdateTenantCrawlerSettings: vi.fn(),
   mockUpdateTenantEmailRejectionSettings: vi.fn(),
   mockUpdateTenantLegalPages: vi.fn(),
   mockUpdateTenantLocales: vi.fn(),
@@ -76,6 +78,12 @@ vi.mock("#lib/site-settings", () => ({
 
 vi.mock("#lib/tenant-locales", () => ({
   updateTenantLocales: mockUpdateTenantLocales,
+}));
+
+vi.mock("#lib/tenant-crawler-settings", () => ({
+  tenantCrawlerSettingsCacheTag: (tenantId: string) =>
+    `tenant:${tenantId}:crawler-settings`,
+  updateTenantCrawlerSettings: mockUpdateTenantCrawlerSettings,
 }));
 
 vi.mock("#lib/tenant-email-rejection-settings", () => ({
@@ -783,6 +791,176 @@ describe("updateTenantEmailRejectionAction", () => {
 
     expect(result).toEqual({
       fieldErrors: { entries: message },
+      message,
+      ok: false,
+    });
+    expect(mockUpdateTag).not.toHaveBeenCalled();
+  });
+});
+
+/** The card's form: one box per ticked crawler, and one field per path input. */
+const CRAWLER_TENANT_ID = "018f1070-0001-7000-8000-000000000001";
+
+const crawlerFormData = (
+  userAgents: string[],
+  paths: string[],
+  tenantId: string = CRAWLER_TENANT_ID
+): FormData => {
+  const formData = textFormData({ tenant_id: tenantId });
+  for (const userAgent of userAgents) {
+    formData.append("excluded_user_agents", userAgent);
+  }
+  for (const path of paths) {
+    formData.append("excluded_paths", path);
+  }
+  return formData;
+};
+
+describe("updateTenantCrawlerSettingsAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetAccessToken.mockResolvedValue("session-token");
+  });
+
+  it("sends the ticked crawlers and each non-blank path, then revalidates the tag", async () => {
+    const settings = {
+      excludedPaths: ["/drafts", "/members"],
+      excludedUserAgents: ["GPTBot", "CCBot"],
+    };
+    mockUpdateTenantCrawlerSettings.mockResolvedValueOnce({
+      ok: true,
+      settings,
+    });
+
+    const { updateTenantCrawlerSettingsAction } = await import("./actions");
+
+    const result = await updateTenantCrawlerSettingsAction(
+      null,
+      crawlerFormData(["GPTBot", "CCBot"], [" /members/ ", "", "/drafts"])
+    );
+
+    expect(result).toEqual({
+      message: "The crawler exclusions were saved.",
+      ok: true,
+      settings,
+    });
+    expect(mockUpdateTenantCrawlerSettings).toHaveBeenCalledWith(
+      {
+        excludedPaths: ["/members/", "/drafts"],
+        excludedUserAgents: ["GPTBot", "CCBot"],
+        tenantId: CRAWLER_TENANT_ID,
+      },
+      "en"
+    );
+    expect(mockUpdateTag).toHaveBeenCalledWith(
+      `tenant:${CRAWLER_TENANT_ID}:crawler-settings`
+    );
+  });
+
+  it("reads no ticked box and empty fields as excluding nothing", async () => {
+    mockUpdateTenantCrawlerSettings.mockResolvedValueOnce({
+      ok: true,
+      settings: { excludedPaths: [], excludedUserAgents: [] },
+    });
+
+    const { updateTenantCrawlerSettingsAction } = await import("./actions");
+
+    await updateTenantCrawlerSettingsAction(null, crawlerFormData([], [""]));
+
+    expect(mockUpdateTenantCrawlerSettings).toHaveBeenCalledWith(
+      {
+        excludedPaths: [],
+        excludedUserAgents: [],
+        tenantId: CRAWLER_TENANT_ID,
+      },
+      "en"
+    );
+  });
+
+  it.each([
+    [
+      "drafts",
+      '"drafts" is not a path. Start it with / and leave out spaces, *, $, ?, and #.',
+    ],
+    [
+      "/sitemap/series",
+      '"/sitemap/series" cannot be excluded, since crawlers need robots.txt and the sitemap to read the site.',
+    ],
+  ])(
+    "names the path %s it refuses without calling the API",
+    async (path, message) => {
+      const { updateTenantCrawlerSettingsAction } = await import("./actions");
+
+      const result = await updateTenantCrawlerSettingsAction(
+        null,
+        crawlerFormData(["GPTBot"], ["/drafts", path])
+      );
+
+      expect(result).toEqual({
+        fieldErrors: { excludedPaths: message },
+        message,
+        ok: false,
+      });
+      expect(mockUpdateTenantCrawlerSettings).not.toHaveBeenCalled();
+      expect(mockUpdateTag).not.toHaveBeenCalled();
+    }
+  );
+
+  it("refuses more paths than the server keeps without calling the API", async () => {
+    const paths = Array.from({ length: 101 }, (_, index) => `/p${index}`);
+
+    const { updateTenantCrawlerSettingsAction } = await import("./actions");
+
+    const result = await updateTenantCrawlerSettingsAction(
+      null,
+      crawlerFormData([], paths)
+    );
+
+    expect(result).toEqual({
+      fieldErrors: { excludedPaths: "List at most 100 paths." },
+      message: "List at most 100 paths.",
+      ok: false,
+    });
+    expect(mockUpdateTenantCrawlerSettings).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["missing", ""],
+    ["not a tenant id", "TENANT001"],
+  ])(
+    "refuses a tenant id that is %s without calling the API",
+    async (_, tenantId) => {
+      const { updateTenantCrawlerSettingsAction } = await import("./actions");
+
+      const result = await updateTenantCrawlerSettingsAction(
+        null,
+        crawlerFormData(["GPTBot"], [], tenantId)
+      );
+
+      expect(result?.ok).toBe(false);
+      expect(mockUpdateTenantCrawlerSettings).not.toHaveBeenCalled();
+    }
+  );
+
+  it("puts the API's refusal beside the part it refused without revalidating", async () => {
+    const message =
+      "Applebot can no longer be excluded. Reload the page and choose again.";
+    mockUpdateTenantCrawlerSettings.mockResolvedValueOnce({
+      fieldErrors: { excludedUserAgents: message },
+      message,
+      ok: false,
+    });
+
+    const { updateTenantCrawlerSettingsAction } = await import("./actions");
+
+    const result = await updateTenantCrawlerSettingsAction(
+      null,
+      crawlerFormData(["Applebot"], [])
+    );
+
+    expect(result).toEqual({
+      fieldErrors: { excludedUserAgents: message },
       message,
       ok: false,
     });

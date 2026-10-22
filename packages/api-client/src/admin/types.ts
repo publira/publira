@@ -49,10 +49,12 @@ export type {
   SeriesWaitFreeSettings,
 } from "../gen/publira/admin/v1/series_pb.js";
 export type {
+  KnownCrawler,
   TenantAnalyticsSettings,
   TenantAndroidAppAssociation,
   TenantAppleSignInSettings,
   TenantCommunityLimitOverrides,
+  TenantCrawlerSettings,
   TenantEmailRejectionSettings,
   TenantGoogleSignInSettings,
   TenantIosAppAssociation,

@@ -2805,6 +2805,49 @@
           "entries_refused": "一覧を確認してください。1つの欄には1つのメールアドレスかドメインを入力し、{$max}件までにしてください。"
         }
       },
+      "crawlers": {
+        "title": "クローラーの除外",
+        "description": "サイトのrobots.txtで、クローラーに取得を控えるよう求める対象を指定します。robots.txtに従うクローラーは、ここで除外したものを取得しなくなります。読者や、robots.txtを無視するクローラーからは引き続き閲覧できます。",
+        "crawlers_label": "サイト全体から除外するクローラー",
+        "crawlers_description": "チェックしたクローラーには、サイトのどのページも取得しないよう求めます。",
+        "crawler_operator": "運営: {$operator}",
+        "purposes": {
+          "ai_training": {
+            "label": "AIの学習",
+            "description": "AIモデルの学習に使うページを収集します。"
+          },
+          "ai_assistant": {
+            "label": "AIアシスタント",
+            "description": "AIアシスタントの回答や検索結果のためにページを取得します。"
+          },
+          "image_search": {
+            "label": "画像検索",
+            "description": "画像検索のためにサイトの画像をインデックスします。"
+          },
+          "other": {
+            "label": "その他のクローラー",
+            "description": "このコンソールにまだ説明のないクローラーです。"
+          }
+        },
+        "paths_label": "すべてのクローラーから除外するパス",
+        "paths_description": "1つの欄に1つ、/draftsのように/で始まるパスを入力します。パスはその下にあるものも対象になります。複数行を貼り付けると1行ずつ欄に分かれます。ワイルドカードは使えず、robots.txtとサイトマップは除外できません。",
+        "path_label": "パス{$position}",
+        "path_remove": "パス{$position}を削除",
+        "paths_add": "パスを追加",
+        "submit": "クローラーの除外を保存",
+        "saved": "クローラーの除外を保存しました。",
+        "load_failed": "クローラーの除外の取得に失敗しました。時間をおいて再試行してください。",
+        "save_failed": "クローラーの除外の保存に失敗しました。時間をおいて再試行してください。",
+        "load_error_hint": "保存すると現在の設定を上書きしてしまうため、再読み込みしてから変更してください。",
+        "validation": {
+          "path_invalid": "「{$path}」はパスではありません。/で始め、空白・*・$・?・#を含めないでください。",
+          "path_too_long": "「{$path}」は長すぎます。パスは{$max}バイトまでです。",
+          "path_reserved": "「{$path}」は除外できません。クローラーがサイトを読むにはrobots.txtとサイトマップが必要です。",
+          "path_refused": "「{$path}」は除外できません。パスを確認して保存し直してください。",
+          "too_many": "パスは{$max}件までにしてください。",
+          "crawler_refused": "{$crawler}は除外できなくなりました。再読み込みしてから選び直してください。"
+        }
+      },
       "icon": {
         "title": "アイコン",
         "description": "公開サイトのタブやロケーションバーに表示するアイコンです。",
