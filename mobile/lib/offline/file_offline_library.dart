@@ -15,12 +15,20 @@ import 'package:publira/tenant/tenant_brand.dart';
 /// point one at a temporary directory instead of the app's own.
 typedef OfflineRootResolver = Future<Directory> Function();
 
-/// [OfflineLibrary] over the app's private directory.
+/// [OfflineLibrary] over the app's private directory, the one `path_provider`
+/// resolves with `getApplicationSupportDirectory()`.
 ///
 /// Metadata lives in one encrypted `index.json`, and each body page in its own
 /// encrypted file under `pages/`. The index is one document because the byte
 /// limit keeps a device to a few dozen episodes, and because eviction has to
-/// see all of them at once to decide which to drop.
+/// see all of them at once to decide which to drop. It is written through a
+/// temporary file and a rename, so an interrupted write cannot leave a
+/// half-file the library can only answer by wiping itself.
+///
+/// Everything is encrypted with [sealOfflineBytes] under the key
+/// [SecureDeviceKeyStore] keeps. A page is kept as the bytes the viewer
+/// decoded, re-encrypted under that key, so neither the reader's bearer token
+/// nor the media token in a page's URL is written down.
 ///
 /// Nothing here throws. A device with no app-private directory, or with no
 /// credential store to hold the key, reads online only; a file this build

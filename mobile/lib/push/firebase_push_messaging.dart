@@ -8,6 +8,9 @@ import 'package:publira/push/push_message.dart';
 import 'package:publira/push/push_messaging.dart';
 
 /// [PushMessaging] backed by Firebase Cloud Messaging.
+///
+/// The server sends every message through FCM, which relays to APNs for iOS,
+/// so one integration carries both platforms.
 class FirebasePushMessaging implements PushMessaging {
   FirebasePushMessaging(this._messaging);
 

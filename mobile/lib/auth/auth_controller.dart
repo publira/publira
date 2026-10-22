@@ -65,9 +65,11 @@ class AuthController extends ChangeNotifier {
   /// [acknowledgeExpiry], which clears it.
   bool get expired => _expired;
 
-  /// Brings back a stored session and confirms the API still accepts it.
+  /// Brings back a stored session at launch and confirms with
+  /// `AuthService/GetMe` that the API still accepts it.
   ///
-  /// A rejected token is dropped, but an unreachable API is not treated as a
+  /// A rejected token is dropped and [expired] tells the reader so, with the
+  /// sign-in screen one tap away, but an unreachable API is not treated as a
   /// rejection: a launch without a network keeps the session so the reader is
   /// still signed in once they are back on one.
   ///
@@ -139,6 +141,12 @@ class AuthController extends ChangeNotifier {
   /// Signs in with one of the reader's passkeys, which [authenticator] asks
   /// them for over a challenge the API begins, the way [signIn] does with a
   /// password.
+  ///
+  /// `AuthService/BeginPasskeyLogin` answers options that name no account,
+  /// the system's sheet offers whichever passkey the reader holds for the
+  /// tenant host — on the device, in iCloud Keychain or Google Password
+  /// Manager, or on another device — and `AuthService/FinishPasskeyLogin`
+  /// signs in with the one they pick.
   ///
   /// Throws [PasskeyCancelled] or [PasskeyFailure] from [authenticator], and
   /// [AuthFailure] from the API, and leaves the current session alone.
@@ -267,10 +275,11 @@ class AuthController extends ChangeNotifier {
   /// Sets [newPassword] on the account behind a reset link's [token].
   ///
   /// The API ends every session of that account, so a session this device
-  /// holds is checked afterwards and dropped once the API refuses it. The
-  /// link does not say whose account it was for, and a session of another
-  /// account is still good. The reader is not told the session expired: they
-  /// have just replaced the password it was signed in with.
+  /// holds is checked with `AuthService/GetMe` afterwards and dropped once the
+  /// API refuses it. The link does not say whose account it was for, and a
+  /// session of another account is still good. The reader is not told the
+  /// session expired: they have just replaced the password it was signed in
+  /// with.
   ///
   /// Throws [AuthFailure] when the reset itself fails. The check that follows
   /// never throws; a session it could not settle is left for the next launch
@@ -666,9 +675,10 @@ class AuthController extends ChangeNotifier {
     }
   }
 
-  /// Drops the session in hand and tells the API without waiting, so the
-  /// sign-out is audited the way one on the website is. The token is
-  /// stateless, so nothing depends on the API hearing of it.
+  /// Drops the session in hand and the one [SessionStore] kept, so a paid
+  /// episode goes back to its locked state, and tells the API without
+  /// waiting, so the sign-out is audited the way one on the website is. The
+  /// token is stateless, so nothing depends on the API hearing of it.
   Future<void> signOut() async {
     final session = _session;
     if (session != null) {

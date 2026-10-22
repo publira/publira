@@ -14,7 +14,9 @@ abstract class CommentRepository {
   /// the section at all.
   ///
   /// Throws [CommentFailure] when the API could not be asked, so a caller can
-  /// tell "this tenant takes no comments" from "nobody could be asked".
+  /// tell "this tenant takes no comments" from "nobody could be asked". A
+  /// lookup that could not reach the API is not the tenant saying no: the
+  /// offer stays, and the screen behind it reports the failure.
   Future<CommentMode> commentMode();
 
   /// One page of the published comments on the episode [episodeInternalId]

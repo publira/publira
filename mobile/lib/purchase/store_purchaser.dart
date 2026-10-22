@@ -55,10 +55,12 @@ InAppPurchasePlatform? registerDeviceInAppPurchasePlatform() {
 /// Buys an episode with the store's payment sheet and hands every transaction
 /// the store reports to the server before finishing it.
 ///
-/// A transaction is finished only once the server has recorded it, so one the
-/// app could not confirm — no session, no network, a store that has not
-/// settled — stays with the store, which reports it again on the next launch,
-/// and is confirmed again on sign-in.
+/// The transaction the store reports goes to `ConfirmStorePurchase`, and it
+/// is finished only once the server has recorded it — consumed on Google
+/// Play, so the same price can be bought again. One the app could not confirm
+/// — no session, no network, a store that has not settled — stays with the
+/// store, which reports it again on the next launch, and is confirmed again on
+/// sign-in.
 class StorePurchaser {
   StorePurchaser({
     required this.platform,
@@ -123,6 +125,12 @@ class StorePurchaser {
   }
 
   /// Opens the payment sheet for the episode [episodeInternalId] names.
+  ///
+  /// `StartStorePurchase` answers with an intent and the product the
+  /// episode's price is sold as, and the sheet is opened for that product
+  /// with the intent as `appAccountToken` (iOS, StoreKit 2) or
+  /// `obfuscatedAccountId` (Android). A purchase the store holds for approval
+  /// is shown as being confirmed.
   ///
   /// Throws [PurchaseFailure]: [PurchaseFailureKind.storeUnavailable] when the
   /// device cannot pay, [PurchaseFailureKind.notSold] when the store has no

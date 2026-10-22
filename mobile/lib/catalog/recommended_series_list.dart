@@ -13,10 +13,10 @@ const _pageSize = 20;
 /// Every published series in the order recommended to the reader, one cursor
 /// page at a time, each row opening its series.
 ///
-/// A signed-in reader is read their own order, and a guest the tenant's, which
-/// is the one every guest is shown; a sign-in or a sign-out therefore reads
-/// the list again from the top rather than going on in the other reader's
-/// order.
+/// A signed-in reader is read their own order, `ListMyRecommendedSeries`, and
+/// a guest the tenant's, `ListRecommendedSeries`, which is the one every guest
+/// is shown; a sign-in or a sign-out therefore reads the list again from the
+/// top rather than going on in the other reader's order.
 class RecommendedSeriesList extends StatefulWidget {
   const RecommendedSeriesList({super.key, required this.sectionKey});
 

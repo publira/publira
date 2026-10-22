@@ -10,6 +10,9 @@ import 'package:publira/content_views/content_view_repository.dart';
 
 /// [ContentViewRepository] backed by `publira.v1.ContentViewService`.
 ///
+/// A view is `ContentViewService/RecordContentView` with `CLIENT_SURFACE_APP`,
+/// the same RPC the site's pages call.
+///
 /// A signed-in reader is attributed by the bearer the client sends. A
 /// signed-out one is attributed by the `publira_aid` cookie, which the API
 /// mints on the first view that carries neither; the app has no cookie jar, so

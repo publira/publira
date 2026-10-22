@@ -28,9 +28,9 @@ enum IdentityProvider {
 }
 
 /// How the tenant lets a reader sign in with Apple and Google, as `GetTenant`
-/// answers it, and the apps it names, which decide where those and its
-/// passkeys sign in. A provider the tenant has not enabled, or that is not
-/// ready, is absent.
+/// answers it in `apple_sign_in` and `google_sign_in`, and the apps it names,
+/// which decide where those and its passkeys sign in. A provider the tenant
+/// has not enabled, or that is not ready, is absent.
 @immutable
 class SignInProviders {
   const SignInProviders({
@@ -133,13 +133,14 @@ class LinkedIdentities {
 
   final List<LinkedIdentity> identities;
 
-  /// False for an account a provider sign-in created, which confirms an email
-  /// change and its deletion with a fresh sign-in, sets a password through
-  /// the password reset, and keeps one way to sign in.
+  /// `ListMyIdentitiesResponse.has_password`: false for an account a provider
+  /// sign-in created, which confirms an email change and its deletion with a
+  /// fresh sign-in, sets a password through the password reset, and keeps one
+  /// way to sign in.
   final bool hasPassword;
 
-  /// Whether the reader holds a passkey the tenant's site and this app sign
-  /// them in with.
+  /// `ListMyIdentitiesResponse.has_passkey`: whether the reader holds a
+  /// passkey the tenant's site and this app sign them in with.
   final bool hasPasskey;
 
   /// Whether [provider] is linked.

@@ -10,17 +10,31 @@ import 'package:publira/router.dart';
 import 'package:publira/typography/autospaced_text.dart';
 import 'package:publira/typography/autospaced_tooltip.dart';
 
-/// The destinations of the tab navigation, in the order it shows them.
+/// The five destinations of the tab navigation, in the order it shows them.
 ///
 /// Each is a branch of its own with its own navigation stack, rooted at
-/// [root]. The catalog's routes live under every root, so a series opened from
+/// [root]. The catalog's routes and the sign-in forms live under every root,
+/// so a series, an author, a label, an episode, or an announcement opened from
 /// the search results is pushed onto the search tab rather than taking the
-/// reader to the home tab.
+/// reader to the home tab: `/series/:seriesId` on the home tab is
+/// `/search/series/:seriesId` on the search tab.
 enum AppTab {
+  /// The catalog list, at `/`.
   home(AppRoutes.catalog),
+
+  /// Search, at `/search`, with the keyword field focused while it is empty.
   search(AppRoutes.search),
+
+  /// Continue reading, follows, downloads, and recommendations, at
+  /// `/library`.
   library(AppRoutes.library),
+
+  /// The reader's notification inbox, at `/notifications`, badged with the
+  /// unread count.
   notifications(AppRoutes.notifications),
+
+  /// The signed-in reader, their date of birth, the way to each account
+  /// setting, and sign-out, at `/account`.
   account(AppRoutes.account);
 
   const AppTab(this.root);
@@ -104,7 +118,11 @@ extension TabNavigation on BuildContext {
 ///
 /// The navigation is left out while the episode viewer is on top, where the
 /// page takes the whole screen; every other screen carries it, including the
-/// comments opened from the viewer.
+/// comments opened from the viewer, except the agreement screen, which stands
+/// outside every tab.
+///
+/// Switching tabs keeps each one's screens and scroll positions, and tapping
+/// the tab on screen takes it back to its root.
 class AppTabShell extends StatelessWidget {
   const AppTabShell({
     super.key,

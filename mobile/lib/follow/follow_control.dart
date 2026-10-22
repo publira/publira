@@ -10,9 +10,19 @@ import 'package:publira/typography/autospaced_text.dart';
 
 /// Follows one series or one author, and stops following it.
 ///
-/// What a reader follows is theirs alone, so a guest is offered the way to
-/// sign in rather than a control that cannot act. A build carrying no
+/// The series screen carries one for the series and one for each author
+/// credited on it, beside the row that opens the author, and the author screen
+/// carries the same control.
+///
+/// What a reader follows is theirs alone, and the API answers a request
+/// without a session `unauthenticated`, so a guest is offered the way to sign
+/// in rather than a control that cannot act. A build carrying no
 /// [FollowScope] offers nothing at all.
+///
+/// A state the API could not answer leaves the control offering to follow,
+/// which is the request the API takes the same way whether or not the follow
+/// is already there. A follow the reader asked for that did not happen says
+/// why.
 class FollowControl extends StatefulWidget {
   const FollowControl({
     super.key,

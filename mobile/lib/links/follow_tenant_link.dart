@@ -32,8 +32,11 @@ TenantLinkDestination? tenantLinkDestinationFrom(
 /// tenant's published pages, or the browser for any other page, saying so
 /// when nothing took it.
 ///
-/// Whether a site path is a published page is asked when the link is
-/// followed, so a page published since the app started is still found.
+/// A path on the tenant site the app has no screen for opens the page screen
+/// when `ListPublishedPageSlugs` names it, and the site in the system browser
+/// otherwise; a URL on another site opens in the browser. Whether a site path
+/// is a published page is asked when the link is followed, so a page published
+/// since the app started is still found.
 void followTenantLink(BuildContext context, TenantLinkDestination destination) {
   switch (destination) {
     case InAppDestination(:final location):

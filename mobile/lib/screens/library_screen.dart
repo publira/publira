@@ -15,6 +15,13 @@ import 'package:publira/typography/autospaced_text.dart';
 /// Each is a list of its own under a tab of this screen, so each pages and
 /// scrolls on its own, and each keeps its place while the reader looks at
 /// another. A build that follows nothing or keeps nothing leaves that tab out.
+///
+/// | Tab at `/library` | Read | A guest sees |
+/// | --- | --- | --- |
+/// | Continue reading | [ContinueReadingList] | The way to sign in |
+/// | Follows | [FollowsList] | The way to sign in |
+/// | Downloads | [DownloadsList] | The same list |
+/// | Recommended | [RecommendedSeriesList] | The tenant's order |
 class LibraryScreen extends StatelessWidget {
   const LibraryScreen({super.key});
 

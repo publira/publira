@@ -11,7 +11,9 @@ import 'package:publira/viewer/page_fit.dart';
 /// One page of the body, drawn inside the box [fitPageSize] reserves for it.
 ///
 /// Fetching and decoding can fail on their own, so the page carries its own
-/// loading and retry states instead of failing the whole episode.
+/// loading and retry states instead of failing the whole episode. A page whose
+/// encrypted stream cannot be reversed fails the same way, and offers the same
+/// retry, as a page whose fetch failed.
 class EpisodePage extends StatefulWidget {
   const EpisodePage({
     super.key,

@@ -69,11 +69,35 @@ class _Section {
   final CommentFailureKind? ownFailure;
 }
 
-/// The comments on one episode, which the reader reaches from the end of it.
+/// The comments on one episode, which the reader reaches from the end of it,
+/// at `/series/:seriesId/episodes/:episodeId/comments`.
+///
+/// It lists the published comments newest first, twenty to a page, and pages
+/// with the cursor token every list RPC shares. The rows of the reader's own
+/// that the public list omits are placed among it by date, as
+/// [mergeOwnComments] decides.
+///
+/// The tenant's [CommentMode] decides whether any of it is offered. Under
+/// [CommentMode.disabled] a link kept from before the setting changed lands
+/// on a screen saying the site takes no comments; under
+/// [CommentMode.approvalRequired] the screen says a comment appears once a
+/// moderator has approved it.
+///
+/// A signed-in reader writes one in the box above the list, and a reader who
+/// is signed out is offered the way to sign in instead of the box. The body is
+/// measured against the API's limit — 1000 Unicode code points rather than
+/// UTF-16 units — before the request, so an emoji-heavy comment is measured
+/// the way the server measures it.
+///
+/// A reader takes their own comment down, and reports somebody else's.
+/// Reporting asks for one of the [CommentReportReason]s and an optional
+/// sentence in a dialog.
 ///
 /// Everything here is online. A comment is a conversation with the other
 /// readers of the episode, so nothing is queued for later against a copy the
-/// device saved: a read that cannot reach the API says so, and so does a post.
+/// device saved: a read that cannot reach the API says so and offers a retry,
+/// and a post written without a connection fails with the same wording. What
+/// the reader wrote stays in the box for them to send again.
 class EpisodeCommentsScreen extends StatefulWidget {
   const EpisodeCommentsScreen({
     super.key,

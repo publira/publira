@@ -76,6 +76,13 @@ import 'package:publira/wait_free/wait_free_repository.dart';
 /// Root widget. Accepts [router], [catalog], and [auth] so tests can inject a
 /// fresh [GoRouter], a fake or fixture-backed catalog, and a session that does
 /// not touch the platform keychain.
+///
+/// The app renders in the locale [resolveAppLocale] decides, the way
+/// `web-storefront` resolves one with the device standing in for the browser.
+/// There is no in-app switcher: the device setting is the switch, and changing
+/// it while the app runs re-renders every screen.
+///
+/// A session the API stopped accepting offers sign-in on the account tab.
 class PubliraApp extends StatefulWidget {
   const PubliraApp({
     super.key,

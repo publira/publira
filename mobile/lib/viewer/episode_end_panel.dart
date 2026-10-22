@@ -7,8 +7,10 @@ import 'package:publira/models/series_item.dart';
 import 'package:publira/typography/autospaced_text.dart';
 import 'package:publira/viewer/episode_reaction_control.dart';
 
-/// What the reader is offered once the pages run out: the next episode, or the
-/// news that there is none yet, and the way back to the series either way.
+/// What the reader is offered once the pages run out: the next episode
+/// `GetEpisodeDetail` names, with what it costs, or, after the last published
+/// episode of a series, the news that there is none yet, and the way back to
+/// the series either way.
 ///
 /// It is a screen of the reader past the last page rather than a page of the
 /// episode, so the counter along the bottom and the position the reader keeps

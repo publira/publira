@@ -3,7 +3,8 @@ import 'package:publira/auth/identity_provider.dart';
 
 /// What a provider's own sign-in hands back, ready for
 /// `AuthService/LoginWithIdToken` or the confirmation `RequestEmailChange` and
-/// `DeleteMe` take.
+/// `DeleteMe` take of an account without a password (`provider`, `id_token`,
+/// and `nonce` on `RequestEmailChangeRequest` and `DeleteMeRequest`).
 @immutable
 class ProviderCredential {
   const ProviderCredential({
@@ -69,10 +70,11 @@ abstract class ProviderSignIn {
 /// tenant's [providers], in the order the buttons are shown.
 ///
 /// On iOS, Apple is offered only to the app the tenant's iOS app association
-/// names, whose bundle identifier its tokens are accepted for. Google there
-/// needs the URL scheme of the client this build registered,
-/// [googleIosClientId], and is offered only beside Apple, as the App Store
-/// requires.
+/// names, whose bundle identifier its tokens are accepted for, since the
+/// token's audience is the app — never to the `dev` flavor. Google there is
+/// offered only where the tenant's iOS client is the one this build
+/// registered the URL scheme of (`ios.googleSignInClientId`, passed as
+/// [googleIosClientId]), and only beside Apple, as the App Store requires.
 ///
 /// Android has no native Sign in with Apple, so the app runs Apple's web flow
 /// with the tenant's Services ID, and the storefront hands Apple's answer back
@@ -118,8 +120,18 @@ List<IdentityProvider> offeredProviders(
 
 /// Where Apple posts the Android app's web flow back to on the tenant's site
 /// at [tenantHost], which hands the answer on to the app as the intent
-/// `sign_in_with_apple` waits for. It has to be registered as a Return URL on
-/// the Services ID, as the tenant console shows it.
+/// `sign_in_with_apple` waits for.
+///
+/// The site redirects the answer to `intent://callback` for the application
+/// ID the request's `state` names — the `dev` flavor only where the site runs
+/// in development, and on a production site only with an `error` the app
+/// reports as a failed sign-in — and the plugin's `SignInWithAppleCallback`
+/// activity, declared in `AndroidManifest.xml` for the `signinwithapple`
+/// scheme, hands it to the sign-in.
+///
+/// Apple returns only to a Return URL registered on the Services ID, which
+/// **Integrations** → **Sign-in** in the tenant console shows beside the
+/// site's own.
 Uri appleAndroidRedirectUri(String tenantHost) =>
     Uri.parse('https://$tenantHost/api/v1/auth/apple/callback/android');
 

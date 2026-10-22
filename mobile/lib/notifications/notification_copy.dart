@@ -78,9 +78,10 @@ extension InboxNotificationCopy on AppMessages {
 /// The in-app location [notification] is about, or `null` when it names none
 /// the app can open, which the inbox answers with the catalog.
 ///
-/// A comment notification opens the comments of its episode, which the app
-/// has a route for where the site does not. An announcement's payload names no
-/// announcement, so it opens the list the announcement is in.
+/// A new episode opens its viewer, and a payload naming only a series opens
+/// the series. A comment notification opens the comments of its episode, which
+/// the app has a route for where the site does not. An announcement's payload
+/// names no announcement, so it opens the list the announcement is in.
 String? notificationLocation(InboxNotification notification) {
   final payload = notification.payload;
   final seriesId = payload.seriesId;

@@ -7,9 +7,14 @@ import 'package:publira/offline/offline_library.dart';
 /// Keeps the reading progress the API could not take when it was made, and
 /// sends it once the API can be reached again.
 ///
+/// A finish and the latest page a signed-in reader records while the API
+/// cannot be reached are kept per reader and episode, and sent on launch, on
+/// resume, on sign-in, and after any request the API answers.
+///
 /// Only the signed-in reader's own progress is sent, so a reader who signs in
 /// on a device someone else read on offline never records that reading as
-/// theirs.
+/// theirs. Signing out drops what the reader left unsent, and deleting
+/// downloads does not.
 class ProgressOutbox {
   ProgressOutbox({
     required this._origin,

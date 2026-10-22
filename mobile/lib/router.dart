@@ -428,6 +428,56 @@ bool isHeldByEveryTab(String location) =>
 ///
 /// With no [initialLocation], the app opens on the route it was launched
 /// with: the `route` extra of an Android intent, or the fragment of a web URL.
+///
+/// Each [AppTab] is a branch rooted at [AppTab.root], and every tab holds
+/// these paths under its own root:
+///
+/// | Path under a tab's root | Screen |
+/// | --- | --- |
+/// | `/sign-in` | Sign-in form |
+/// | `/sign-up` | Sign-up form, and the state that waits for the address to be confirmed |
+/// | `/sign-up/continue` | Asks the consent and birth date a first Apple or Google sign-in creates an account with |
+/// | `/resend-verification` | Asks for a fresh confirmation link |
+/// | `/reset-password` | Asks for a password reset link; the site's own path, claimed as an App Link |
+/// | `/announcements` | The tenant's announcements; the site's own path, claimed as an App Link |
+/// | `/announcements/:announcementId` | One announcement |
+/// | `/page/:pageSlug` | A page the tenant published, its slug one encoded segment (`/page/legal%2Fterms`) |
+/// | `/series/:seriesId` | Series details |
+/// | `/creators/:creatorId` | An author and the published series credited to them |
+/// | `/labels/:labelId` | A label and its published series |
+/// | `/recommended` | The whole of the order recommended to the reader, which the catalog's popularity shelf leads to while the tenant has no chart |
+/// | `/series/:seriesId/episodes/:episodeId` | Episode viewer, which hides the bar |
+/// | `/series/:seriesId/episodes/:episodeId/comments` | Episode comments |
+///
+/// The routes only one tab holds:
+///
+/// | Path | Tab | Screen |
+/// | --- | --- | --- |
+/// | `/checkout/return` | Home | A checkout the browser hands back; it opens the episode it was started for |
+/// | `/account/name` | Account | Renames the account (`AuthService/UpdateMe`) |
+/// | `/account/email` | Account | Asks to move the account to another address (`AuthService/RequestEmailChange`) |
+/// | `/account/password` | Account | Replaces the password and keeps this device signed in on the token handed back (`AuthService/ChangePassword`) |
+/// | `/account/linked-accounts` | Account | The Apple and Google accounts linked to the reader's, each unlinked on its own, and a link for each provider the device offers that the account has none of (`AuthService/ListMyIdentities`, `AuthService/UnlinkIdentity`, `AuthService/LinkIdentity`) |
+/// | `/account/passkeys` | Account | The reader's passkeys, each renamed or removed on its own, and a way to add one where the device uses the site's (`AuthService/ListMyPasskeys`, `AuthService/RenamePasskey`, `AuthService/DeletePasskey`, `AuthService/BeginPasskeyRegistration`, `AuthService/FinishPasskeyRegistration`) |
+/// | `/account/delete` | Account | Deletes the account after the password, or a fresh provider sign-in for an account without one, and a second confirmation, then signs out (`AuthService/DeleteMe`) |
+/// | `/account/contact` | Account | A message to the tenant's staff |
+/// | `/account/pages` | Account | The pages the storefront's footer lists, each opening `/page/:pageSlug` (`PublicPagesService/ListPublishedPages`) |
+/// | `/verify` | Account | Where a confirmation link is spent; the site's own path, claimed as an App Link |
+/// | `/confirm-password` | Account | Where a password reset link sets the new password; the site's own path, claimed as an App Link |
+/// | `/confirm-email` | Account | Where either link of an email change is confirmed; the site's own path, claimed as an App Link |
+///
+/// An incoming App Link, a push-notification tap, and a checkout return open
+/// on the tab their path belongs to — the home tab for a site path under none
+/// of the other roots — and leave the other tabs as they were.
+///
+/// The agreement screen stands outside every tab, and
+/// [legalPageAgreementRedirect] holds a reader who owes an agreement there:
+///
+/// | Path | Screen |
+/// | --- | --- |
+/// | `/agreement` | Asks a signed-in reader to agree to a revised terms of service or privacy policy (`AuthService/GetMyLegalPageAgreements`, `AuthService/AgreeToLegalPages`), and returns them to its `return_to` once they owe nothing |
+/// | `/agreement/page/:pageSlug` | A page it asks about |
+/// | `/agreement/delete` | The account deletion it offers instead of agreeing |
 GoRouter createAppRouter({String? initialLocation}) {
   return GoRouter(
     initialLocation:

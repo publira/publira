@@ -18,8 +18,9 @@ const imageKeyIdHeader = 'x-publira-image-key-id';
 /// Query parameter holding the AudienceMedia token
 /// (`server/internal/auth`.`MediaTokenQueryParam`). On a body the reader is
 /// entitled to it is issued for that reader; on a free one it is issued for
-/// the episode and a rotation window, so every reader of that episode is
-/// handed the same token and the page still decodes without a session.
+/// the episode and a 24-hour rotation window, so every reader of that episode
+/// inside one window is handed the same token and the page still decodes
+/// without a session. That token stops decoding after at most two days.
 const mediaTokenQueryParam = 't';
 
 /// Domain separator the server prefixes to the key input. The trailing NUL is

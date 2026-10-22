@@ -1,8 +1,16 @@
 /// The signed-in reader and the public-audience JWT the app holds for them.
 ///
+/// `AuthService/Login` answers an email address and a password with that
+/// token, which lives 24 hours and is revoked by `credentials_version`.
+///
 /// This is what survives a restart: the token is what every API and
-/// image-server request is authorized with, and the name and the icon are what
-/// the reader's own rows are shown under without a round trip.
+/// image-server request is authorized with, so a purchased or ticketed paid
+/// episode reads on the device the same way it does in `web-storefront`, and
+/// the name and the icon are what the reader's own rows are shown under
+/// without a round trip.
+///
+/// Nothing signs the reader back in on its own. Once the token is gone, the
+/// reader signs in again.
 class AuthSession {
   const AuthSession({
     required this.accessToken,

@@ -3,6 +3,9 @@ import 'package:publira/auth/identity_provider.dart';
 
 /// A passkey the reader signs in to the tenant's site and this app with, as
 /// `publira.v1.Passkey` describes it.
+///
+/// A passkey is bound to the tenant host, so one registered on the site signs
+/// in to the app and one registered in the app signs in to the site.
 @immutable
 class Passkey {
   const Passkey({
@@ -84,9 +87,12 @@ abstract class PasskeyAuthenticator {
 /// The operating system offers a passkey bound to the site only to an app the
 /// site vouches for, and the site vouches for the apps the tenant names under
 /// **App links** and no other: its `apple-app-site-association` lists the iOS
-/// app under `webcredentials`, and its `assetlinks.json` grants the Android
-/// app `get_login_creds`. A build of any other identity, the `dev` flavor
-/// among them, would show a sheet that can only fail.
+/// app under `webcredentials`, matched against the `webcredentials:`
+/// associated domain the entitlements claim, and its `assetlinks.json` grants
+/// the Android app `delegate_permission/common.get_login_creds`, while the
+/// server accepts the Android ceremony under the signing certificates saved
+/// for the app. A build of any other identity, the `dev` flavor among them,
+/// would show a sheet that can only fail.
 bool offersPasskeys(
   SignInProviders providers, {
   required TargetPlatform platform,

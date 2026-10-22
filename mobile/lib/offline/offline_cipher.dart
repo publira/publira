@@ -17,6 +17,10 @@ final _secureRandom = Random.secure();
 
 /// Encrypts [plaintext] for the file [label] names inside the library.
 ///
+/// The stream is the [applyXorKeyStream] one `lib/api/image_cipher.dart`
+/// speaks for delivered pages, under a domain separator of its own and a key
+/// derived per file from [deviceKey], [label], and the nonce.
+///
 /// The result is a fresh random nonce followed by the ciphertext. The nonce is
 /// what keeps two writes of the same file apart: the keystream is a pure XOR
 /// stream, so without it every version of `index.json` would be encrypted

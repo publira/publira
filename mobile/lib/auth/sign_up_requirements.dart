@@ -67,6 +67,9 @@ List<LegalPage> legalPagesToAgreeTo({
 /// What the tenant asks of a sign-up beyond a name, an address, and a
 /// password: a birth date where it checks ages, and consent to the pages it
 /// names.
+///
+/// The age rule comes from `GetTenant` and the pages from
+/// `GetTenantLegalPages`, read together.
 @immutable
 class SignUpRequirements {
   const SignUpRequirements({
