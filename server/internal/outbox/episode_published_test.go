@@ -62,8 +62,8 @@ func TestEpisodePublishedNotificationWritesOneRowPerFollowerAndOnePush(t *testin
 		t.Fatalf("payload = %+v, want %+v", body, wantBody)
 	}
 
-	if len(queries.outbox) != 1 {
-		t.Fatalf("outbox events = %d, want 1", len(queries.outbox))
+	if len(queries.outbox) != 2 {
+		t.Fatalf("outbox events = %d, want the push and the mail", len(queries.outbox))
 	}
 	push := queries.outbox[0]
 	if push.EventType != EventTypeMemberPushNotification {
@@ -74,6 +74,16 @@ func TestEpisodePublishedNotificationWritesOneRowPerFollowerAndOnePush(t *testin
 	}
 	if !push.TenantID.Valid || push.TenantID.UUID != tenantID {
 		t.Fatalf("push tenant_id = %v, want %s", push.TenantID, tenantID)
+	}
+	mail := queries.outbox[1]
+	if mail.EventType != EventTypeNotificationEmail {
+		t.Fatalf("outbox event type = %q, want %q", mail.EventType, EventTypeNotificationEmail)
+	}
+	if want := NotificationEmailIdempotencyKey(tenantID, NotificationTypeEpisodePublished, "episode:EP001"); mail.IdempotencyKey != want {
+		t.Fatalf("mail idempotency_key = %q, want %q", mail.IdempotencyKey, want)
+	}
+	if !mail.TenantID.Valid || mail.TenantID.UUID != tenantID {
+		t.Fatalf("mail tenant_id = %v, want %s", mail.TenantID, tenantID)
 	}
 }
 
@@ -158,8 +168,8 @@ func TestEpisodePublishedNotificationFilesACreatorFollowerUnderFollowedCreators(
 			t.Fatalf("category for %s = %q, want %q", row.UserID, row.Category, want[row.UserID])
 		}
 	}
-	if len(queries.outbox) != 1 {
-		t.Fatalf("outbox events = %d, want 1", len(queries.outbox))
+	if len(queries.outbox) != 2 {
+		t.Fatalf("outbox events = %d, want the push and the mail", len(queries.outbox))
 	}
 }
 
@@ -172,8 +182,8 @@ func TestEpisodePublishedNotificationQueuesAPushForCreatorFollowersAlone(t *test
 	if err := handler(context.Background(), episodePublishedEvent(t, uuid.New(), episodeID)); err != nil {
 		t.Fatalf("handler: %v", err)
 	}
-	if len(queries.created) != 1 || len(queries.outbox) != 1 {
-		t.Fatalf("notifications, outbox events = %d, %d, want 1, 1", len(queries.created), len(queries.outbox))
+	if len(queries.created) != 1 || len(queries.outbox) != 2 {
+		t.Fatalf("notifications, outbox events = %d, %d, want 1, 2", len(queries.created), len(queries.outbox))
 	}
 }
 

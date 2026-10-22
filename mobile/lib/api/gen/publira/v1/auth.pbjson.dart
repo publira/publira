@@ -1470,6 +1470,42 @@ const UpdateNotificationSettingsRequest$json = {
       '10': 'announcementsInboxEnabled',
       '17': true
     },
+    {
+      '1': 'followed_episodes_email_enabled',
+      '3': 11,
+      '4': 1,
+      '5': 8,
+      '9': 8,
+      '10': 'followedEpisodesEmailEnabled',
+      '17': true
+    },
+    {
+      '1': 'followed_creators_email_enabled',
+      '3': 12,
+      '4': 1,
+      '5': 8,
+      '9': 9,
+      '10': 'followedCreatorsEmailEnabled',
+      '17': true
+    },
+    {
+      '1': 'comments_email_enabled',
+      '3': 13,
+      '4': 1,
+      '5': 8,
+      '9': 10,
+      '10': 'commentsEmailEnabled',
+      '17': true
+    },
+    {
+      '1': 'announcements_email_enabled',
+      '3': 14,
+      '4': 1,
+      '5': 8,
+      '9': 11,
+      '10': 'announcementsEmailEnabled',
+      '17': true
+    },
   ],
   '8': [
     {'1': '_followed_episodes_inbox_enabled'},
@@ -1480,6 +1516,10 @@ const UpdateNotificationSettingsRequest$json = {
     {'1': '_followed_creators_mobile_push_enabled'},
     {'1': '_comments_inbox_enabled'},
     {'1': '_announcements_inbox_enabled'},
+    {'1': '_followed_episodes_email_enabled'},
+    {'1': '_followed_creators_email_enabled'},
+    {'1': '_comments_email_enabled'},
+    {'1': '_announcements_email_enabled'},
   ],
 };
 
@@ -1498,13 +1538,20 @@ final $typed_data.Uint8List updateNotificationSettingsRequestDescriptor = $conve
     'AQESVQolZm9sbG93ZWRfY3JlYXRvcnNfbW9iaWxlX3B1c2hfZW5hYmxlZBgIIAEoCEgFUiFmb2'
     'xsb3dlZENyZWF0b3JzTW9iaWxlUHVzaEVuYWJsZWSIAQESOQoWY29tbWVudHNfaW5ib3hfZW5h'
     'YmxlZBgJIAEoCEgGUhRjb21tZW50c0luYm94RW5hYmxlZIgBARJDChthbm5vdW5jZW1lbnRzX2'
-    'luYm94X2VuYWJsZWQYCiABKAhIB1IZYW5ub3VuY2VtZW50c0luYm94RW5hYmxlZIgBAUIiCiBf'
-    'Zm9sbG93ZWRfZXBpc29kZXNfaW5ib3hfZW5hYmxlZEIlCiNfZm9sbG93ZWRfZXBpc29kZXNfd2'
-    'ViX3B1c2hfZW5hYmxlZEIoCiZfZm9sbG93ZWRfZXBpc29kZXNfbW9iaWxlX3B1c2hfZW5hYmxl'
-    'ZEIiCiBfZm9sbG93ZWRfY3JlYXRvcnNfaW5ib3hfZW5hYmxlZEIlCiNfZm9sbG93ZWRfY3JlYX'
-    'RvcnNfd2ViX3B1c2hfZW5hYmxlZEIoCiZfZm9sbG93ZWRfY3JlYXRvcnNfbW9iaWxlX3B1c2hf'
-    'ZW5hYmxlZEIZChdfY29tbWVudHNfaW5ib3hfZW5hYmxlZEIeChxfYW5ub3VuY2VtZW50c19pbm'
-    'JveF9lbmFibGVk');
+    'luYm94X2VuYWJsZWQYCiABKAhIB1IZYW5ub3VuY2VtZW50c0luYm94RW5hYmxlZIgBARJKCh9m'
+    'b2xsb3dlZF9lcGlzb2Rlc19lbWFpbF9lbmFibGVkGAsgASgISAhSHGZvbGxvd2VkRXBpc29kZX'
+    'NFbWFpbEVuYWJsZWSIAQESSgofZm9sbG93ZWRfY3JlYXRvcnNfZW1haWxfZW5hYmxlZBgMIAEo'
+    'CEgJUhxmb2xsb3dlZENyZWF0b3JzRW1haWxFbmFibGVkiAEBEjkKFmNvbW1lbnRzX2VtYWlsX2'
+    'VuYWJsZWQYDSABKAhIClIUY29tbWVudHNFbWFpbEVuYWJsZWSIAQESQwobYW5ub3VuY2VtZW50'
+    'c19lbWFpbF9lbmFibGVkGA4gASgISAtSGWFubm91bmNlbWVudHNFbWFpbEVuYWJsZWSIAQFCIg'
+    'ogX2ZvbGxvd2VkX2VwaXNvZGVzX2luYm94X2VuYWJsZWRCJQojX2ZvbGxvd2VkX2VwaXNvZGVz'
+    'X3dlYl9wdXNoX2VuYWJsZWRCKAomX2ZvbGxvd2VkX2VwaXNvZGVzX21vYmlsZV9wdXNoX2VuYW'
+    'JsZWRCIgogX2ZvbGxvd2VkX2NyZWF0b3JzX2luYm94X2VuYWJsZWRCJQojX2ZvbGxvd2VkX2Ny'
+    'ZWF0b3JzX3dlYl9wdXNoX2VuYWJsZWRCKAomX2ZvbGxvd2VkX2NyZWF0b3JzX21vYmlsZV9wdX'
+    'NoX2VuYWJsZWRCGQoXX2NvbW1lbnRzX2luYm94X2VuYWJsZWRCHgocX2Fubm91bmNlbWVudHNf'
+    'aW5ib3hfZW5hYmxlZEIiCiBfZm9sbG93ZWRfZXBpc29kZXNfZW1haWxfZW5hYmxlZEIiCiBfZm'
+    '9sbG93ZWRfY3JlYXRvcnNfZW1haWxfZW5hYmxlZEIZChdfY29tbWVudHNfZW1haWxfZW5hYmxl'
+    'ZEIeChxfYW5ub3VuY2VtZW50c19lbWFpbF9lbmFibGVk');
 
 @$core.Deprecated('Use updateNotificationSettingsResponseDescriptor instead')
 const UpdateNotificationSettingsResponse$json = {
@@ -1562,6 +1609,13 @@ const NotificationPreferences$json = {
       '10': 'followedEpisodesMobilePushEnabled'
     },
     {
+      '1': 'followed_episodes_email_enabled',
+      '3': 9,
+      '4': 1,
+      '5': 8,
+      '10': 'followedEpisodesEmailEnabled'
+    },
+    {
       '1': 'followed_creators_inbox_enabled',
       '3': 4,
       '4': 1,
@@ -1583,6 +1637,13 @@ const NotificationPreferences$json = {
       '10': 'followedCreatorsMobilePushEnabled'
     },
     {
+      '1': 'followed_creators_email_enabled',
+      '3': 10,
+      '4': 1,
+      '5': 8,
+      '10': 'followedCreatorsEmailEnabled'
+    },
+    {
       '1': 'comments_inbox_enabled',
       '3': 7,
       '4': 1,
@@ -1590,11 +1651,25 @@ const NotificationPreferences$json = {
       '10': 'commentsInboxEnabled'
     },
     {
+      '1': 'comments_email_enabled',
+      '3': 11,
+      '4': 1,
+      '5': 8,
+      '10': 'commentsEmailEnabled'
+    },
+    {
       '1': 'announcements_inbox_enabled',
       '3': 8,
       '4': 1,
       '5': 8,
       '10': 'announcementsInboxEnabled'
+    },
+    {
+      '1': 'announcements_email_enabled',
+      '3': 12,
+      '4': 1,
+      '5': 8,
+      '10': 'announcementsEmailEnabled'
     },
   ],
 };
@@ -1605,13 +1680,18 @@ final $typed_data.Uint8List notificationPreferencesDescriptor = $convert.base64D
     'FibGVkGAEgASgIUhxmb2xsb3dlZEVwaXNvZGVzSW5ib3hFbmFibGVkEkoKImZvbGxvd2VkX2Vw'
     'aXNvZGVzX3dlYl9wdXNoX2VuYWJsZWQYAiABKAhSHmZvbGxvd2VkRXBpc29kZXNXZWJQdXNoRW'
     '5hYmxlZBJQCiVmb2xsb3dlZF9lcGlzb2Rlc19tb2JpbGVfcHVzaF9lbmFibGVkGAMgASgIUiFm'
-    'b2xsb3dlZEVwaXNvZGVzTW9iaWxlUHVzaEVuYWJsZWQSRQofZm9sbG93ZWRfY3JlYXRvcnNfaW'
-    '5ib3hfZW5hYmxlZBgEIAEoCFIcZm9sbG93ZWRDcmVhdG9yc0luYm94RW5hYmxlZBJKCiJmb2xs'
-    'b3dlZF9jcmVhdG9yc193ZWJfcHVzaF9lbmFibGVkGAUgASgIUh5mb2xsb3dlZENyZWF0b3JzV2'
-    'ViUHVzaEVuYWJsZWQSUAolZm9sbG93ZWRfY3JlYXRvcnNfbW9iaWxlX3B1c2hfZW5hYmxlZBgG'
-    'IAEoCFIhZm9sbG93ZWRDcmVhdG9yc01vYmlsZVB1c2hFbmFibGVkEjQKFmNvbW1lbnRzX2luYm'
-    '94X2VuYWJsZWQYByABKAhSFGNvbW1lbnRzSW5ib3hFbmFibGVkEj4KG2Fubm91bmNlbWVudHNf'
-    'aW5ib3hfZW5hYmxlZBgIIAEoCFIZYW5ub3VuY2VtZW50c0luYm94RW5hYmxlZA==');
+    'b2xsb3dlZEVwaXNvZGVzTW9iaWxlUHVzaEVuYWJsZWQSRQofZm9sbG93ZWRfZXBpc29kZXNfZW'
+    '1haWxfZW5hYmxlZBgJIAEoCFIcZm9sbG93ZWRFcGlzb2Rlc0VtYWlsRW5hYmxlZBJFCh9mb2xs'
+    'b3dlZF9jcmVhdG9yc19pbmJveF9lbmFibGVkGAQgASgIUhxmb2xsb3dlZENyZWF0b3JzSW5ib3'
+    'hFbmFibGVkEkoKImZvbGxvd2VkX2NyZWF0b3JzX3dlYl9wdXNoX2VuYWJsZWQYBSABKAhSHmZv'
+    'bGxvd2VkQ3JlYXRvcnNXZWJQdXNoRW5hYmxlZBJQCiVmb2xsb3dlZF9jcmVhdG9yc19tb2JpbG'
+    'VfcHVzaF9lbmFibGVkGAYgASgIUiFmb2xsb3dlZENyZWF0b3JzTW9iaWxlUHVzaEVuYWJsZWQS'
+    'RQofZm9sbG93ZWRfY3JlYXRvcnNfZW1haWxfZW5hYmxlZBgKIAEoCFIcZm9sbG93ZWRDcmVhdG'
+    '9yc0VtYWlsRW5hYmxlZBI0ChZjb21tZW50c19pbmJveF9lbmFibGVkGAcgASgIUhRjb21tZW50'
+    'c0luYm94RW5hYmxlZBI0ChZjb21tZW50c19lbWFpbF9lbmFibGVkGAsgASgIUhRjb21tZW50c0'
+    'VtYWlsRW5hYmxlZBI+Chthbm5vdW5jZW1lbnRzX2luYm94X2VuYWJsZWQYCCABKAhSGWFubm91'
+    'bmNlbWVudHNJbmJveEVuYWJsZWQSPgobYW5ub3VuY2VtZW50c19lbWFpbF9lbmFibGVkGAwgAS'
+    'gIUhlhbm5vdW5jZW1lbnRzRW1haWxFbmFibGVk');
 
 @$core.Deprecated('Use viewerPreferencesDescriptor instead')
 const ViewerPreferences$json = {

@@ -72,6 +72,16 @@ func TestAnnouncementNotificationWritesOneRowPerTenantUserInTheirLocale(t *testi
 			t.Fatalf("notification %d payload = %v, want exactly announcement_title %q", i, body, want)
 		}
 	}
+	if len(queries.queued) != 1 {
+		t.Fatalf("outbox events = %d, want the mail", len(queries.queued))
+	}
+	mail := queries.queued[0]
+	if mail.EventType != EventTypeNotificationEmail {
+		t.Fatalf("outbox event type = %q, want %q", mail.EventType, EventTypeNotificationEmail)
+	}
+	if want := NotificationEmailIdempotencyKey(tenantID, NotificationTypeAnnouncementPosted, AnnouncementSubjectKey(announcementID)); mail.IdempotencyKey != want {
+		t.Fatalf("mail idempotency_key = %q, want %q", mail.IdempotencyKey, want)
+	}
 }
 
 // The delivery decides the category the rows are filed under, which is what
@@ -164,8 +174,8 @@ func TestAnnouncementNotificationCompletesWhenTheTenantHasNoUsers(t *testing.T) 
 	if err := handler(context.Background(), announcementEvent(t, uuid.New(), uuid.New())); err != nil {
 		t.Fatalf("handler: %v", err)
 	}
-	if len(queries.created) != 0 {
-		t.Fatalf("notifications written = %d, want 0", len(queries.created))
+	if len(queries.created) != 0 || len(queries.queued) != 0 {
+		t.Fatalf("notifications, outbox events = %d, %d, want none", len(queries.created), len(queries.queued))
 	}
 }
 
@@ -248,6 +258,15 @@ type stubAnnouncementQuerier struct {
 	listErr            error
 	created            []dbmodels.CreateNotificationParams
 	createErr          error
+	queued             []dbmodels.InsertOutboxEventParams
+}
+
+func (s *stubAnnouncementQuerier) InsertOutboxEvent(
+	_ context.Context,
+	arg dbmodels.InsertOutboxEventParams,
+) (dbmodels.OutboxEvent, error) {
+	s.queued = append(s.queued, arg)
+	return dbmodels.OutboxEvent{ID: arg.ID, EventType: arg.EventType}, nil
 }
 
 func (s *stubAnnouncementQuerier) GetAnnouncementDelivery(

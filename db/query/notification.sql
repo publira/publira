@@ -320,3 +320,60 @@ WHERE n.platform_user_id = sqlc.arg('platform_user_id')
             AND nr.platform_user_id = sqlc.arg('platform_user_id')
     )
 ON CONFLICT (platform_notification_id, platform_user_id) DO NOTHING;
+
+-- name: ListNotificationEmailRecipients :many
+-- Worker mail: the recipients one notification still owes a mail, a page at a
+-- time in recipient order. A row is owed one until it is marked emailed, so a
+-- retry of the event finds only the readers no earlier run reached.
+--
+-- The recipient's email cell for the row's category decides, every cell on
+-- for a reader who saved nothing, and a row for everyone has no cell. A row
+-- filed for staff for being staff is never mailed: they read the console's
+-- bell. A notification shown on the app alone is not mailed either, because
+-- the mail links into the site. The address has to be one the reader
+-- confirmed and the account active, which is what every mail to a reader
+-- takes.
+--
+-- The recipient / type / subject key is unique, so user_id alone orders the
+-- rows of one notification, and `idx_notifications_tenant_subject_user` walks
+-- them in that order. The nil UUID sorts below every UUID, so it is what the
+-- first page asks for.
+SELECT n.id AS notification_id,
+    n.user_id,
+    n.category,
+    n.payload,
+    u.email
+FROM notifications n
+    JOIN users u
+        ON u.tenant_id = n.tenant_id
+        AND u.id = n.user_id
+    LEFT JOIN user_notification_settings s
+        ON s.tenant_id = n.tenant_id
+        AND s.user_id = n.user_id
+WHERE n.tenant_id = sqlc.arg('tenant_id')
+    AND n.notification_type = sqlc.arg('notification_type')
+    AND n.subject_key = sqlc.arg('subject_key')
+    AND n.user_id > sqlc.arg('after_user_id')::uuid
+    AND n.emailed_at IS NULL
+    AND n.availability = ANY (ARRAY['all'::text, 'web'::text])
+    AND u.status = 'active'
+    AND u.email_verified_at IS NOT NULL
+    AND CASE n.category
+        WHEN 'everyone' THEN true
+        WHEN 'followed_episodes' THEN COALESCE(s.followed_episodes_email_enabled, true)
+        WHEN 'followed_creators' THEN COALESCE(s.followed_creators_email_enabled, true)
+        WHEN 'comments' THEN COALESCE(s.comments_email_enabled, true)
+        WHEN 'announcements' THEN COALESCE(s.announcements_email_enabled, true)
+        ELSE false
+    END
+ORDER BY n.user_id
+LIMIT sqlc.arg('page_size');
+
+-- name: MarkNotificationEmailed :exec
+-- Worker mail: records that a row's recipient was mailed about it, once the
+-- relay accepted the mail.
+UPDATE notifications
+SET emailed_at = NOW()
+WHERE tenant_id = sqlc.arg('tenant_id')
+    AND id = sqlc.arg('id')
+    AND emailed_at IS NULL;

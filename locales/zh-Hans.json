@@ -110,6 +110,28 @@
       "test_notice": "这是在支付服务测试模式下的购买，未产生任何扣款。",
       "volume": "卷：{$volume_title}"
     },
+    "reader_announcement_posted": {
+      "action": "查看公告",
+      "everyone": "此公告已发送给{$tenant_name}的所有读者，不受通知设置影响。",
+      "fallback_link": "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。",
+      "heading": "新公告",
+      "intro": "{$tenant_name}发布了一则公告。",
+      "preferences": "您可以在通知设置中选择接收哪些邮件。",
+      "preview": "请查看{$tenant_name}的公告。",
+      "subject": "{$tenant_name}公告：{$announcement_title}",
+      "title": "标题：{$announcement_title}"
+    },
+    "reader_comment_approved": {
+      "action": "打开章节",
+      "body": "您的评论已通过审核，现在所有人都能看到。",
+      "episode": "章节：{$episode_title}",
+      "fallback_link": "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。",
+      "heading": "您的评论已公开",
+      "preferences": "您可以在通知设置中选择接收哪些邮件。",
+      "preview": "您在{$episode_title}下的评论已公开。",
+      "series": "系列：{$series_title}",
+      "subject": "您在{$tenant_name}的评论已公开"
+    },
     "reader_email_change_confirmation": {
       "action": "确认邮箱地址变更",
       "body_current_email": "此变更需要由当前邮箱地址确认。请打开下方按钮完成确认。",
@@ -143,6 +165,17 @@
       "intro": "感谢您注册{$tenant_name}。",
       "preview": "完成邮箱地址验证。",
       "subject": "{$tenant_name}邮箱地址验证"
+    },
+    "reader_episode_published": {
+      "action": "阅读章节",
+      "episode": "章节：{$episode_title}",
+      "fallback_link": "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。",
+      "heading": "有新章节发布",
+      "intro": "您在{$tenant_name}关注的系列或作者有新章节发布。",
+      "preferences": "您可以在通知设置中选择接收哪些邮件。",
+      "preview": "{$episode_title}现已发布。",
+      "series": "系列：{$series_title}",
+      "subject": "{$series_title}有新章节"
     },
     "reader_password_changed_notice": {
       "action": "重设密码",

@@ -110,6 +110,28 @@
       "test_notice": "결제 서비스의 테스트 모드에서 진행된 구매입니다. 요금은 청구되지 않았습니다.",
       "volume": "권: {$volume_title}"
     },
+    "reader_announcement_posted": {
+      "action": "공지사항 읽기",
+      "everyone": "이 공지사항은 알림 설정과 관계없이 {$tenant_name}의 모든 독자에게 발송되었습니다.",
+      "fallback_link": "버튼이 작동하지 않으면 다음 URL을 브라우저에 붙여 넣어 주세요.",
+      "heading": "새 공지사항",
+      "intro": "{$tenant_name}에서 공지사항을 게시했습니다.",
+      "preferences": "받을 이메일은 알림 설정에서 선택할 수 있습니다.",
+      "preview": "{$tenant_name}의 공지사항을 확인해 주세요.",
+      "subject": "{$tenant_name} 공지사항: {$announcement_title}",
+      "title": "제목: {$announcement_title}"
+    },
+    "reader_comment_approved": {
+      "action": "에피소드 열기",
+      "body": "댓글이 승인되어 이제 모든 사람이 볼 수 있습니다.",
+      "episode": "에피소드: {$episode_title}",
+      "fallback_link": "버튼이 작동하지 않으면 다음 URL을 브라우저에 붙여 넣어 주세요.",
+      "heading": "댓글이 공개되었습니다",
+      "preferences": "받을 이메일은 알림 설정에서 선택할 수 있습니다.",
+      "preview": "{$episode_title}에 남긴 댓글이 공개되었습니다.",
+      "series": "시리즈: {$series_title}",
+      "subject": "{$tenant_name}에 남긴 댓글이 공개되었습니다"
+    },
     "reader_email_change_confirmation": {
       "action": "이메일 주소 변경 확인하기",
       "body_current_email": "이 변경에는 현재 주소에서의 확인이 필요합니다. 아래 버튼을 열어 확인을 완료해 주세요.",
@@ -143,6 +165,17 @@
       "intro": "{$tenant_name}에 가입해 주셔서 감사합니다.",
       "preview": "이메일 주소 확인을 완료해 주세요.",
       "subject": "{$tenant_name} 이메일 주소 확인"
+    },
+    "reader_episode_published": {
+      "action": "에피소드 읽기",
+      "episode": "에피소드: {$episode_title}",
+      "fallback_link": "버튼이 작동하지 않으면 다음 URL을 브라우저에 붙여 넣어 주세요.",
+      "heading": "새 에피소드가 공개되었습니다",
+      "intro": "{$tenant_name}에서 팔로우하는 시리즈나 작가의 새 에피소드가 공개되었습니다.",
+      "preferences": "받을 이메일은 알림 설정에서 선택할 수 있습니다.",
+      "preview": "{$episode_title}이(가) 공개되었습니다.",
+      "series": "시리즈: {$series_title}",
+      "subject": "{$series_title} 새 에피소드"
     },
     "reader_password_changed_notice": {
       "action": "비밀번호 재설정",

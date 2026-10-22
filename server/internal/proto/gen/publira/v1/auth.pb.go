@@ -3345,7 +3345,9 @@ func (x *GetNotificationSettingsRequest) GetTenant() *v1.TenantContext {
 }
 
 type GetNotificationSettingsResponse struct {
-	state                     protoimpl.MessageState   `protogen:"open.v1"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Whether any email cell of preferences is on, for a client that shows one
+	// email switch rather than the email cells.
 	EmailNotificationsEnabled bool                     `protobuf:"varint,1,opt,name=email_notifications_enabled,json=emailNotificationsEnabled,proto3" json:"email_notifications_enabled,omitempty"`
 	Preferences               *NotificationPreferences `protobuf:"bytes,2,opt,name=preferences,proto3" json:"preferences,omitempty"`
 	unknownFields             protoimpl.UnknownFields
@@ -3397,9 +3399,14 @@ func (x *GetNotificationSettingsResponse) GetPreferences() *NotificationPreferen
 }
 
 type UpdateNotificationSettingsRequest struct {
-	state                     protoimpl.MessageState `protogen:"open.v1"`
-	Tenant                    *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	EmailNotificationsEnabled bool                   `protobuf:"varint,2,opt,name=email_notifications_enabled,json=emailNotificationsEnabled,proto3" json:"email_notifications_enabled,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// The one email switch of a client that shows no email cell, read only when
+	// the request names none of them. Off turns every email cell off. On keeps
+	// them as they are, unless every one is off, when it turns them all on: the
+	// switch shows on while any cell is on, so a reader who chose some cells on
+	// another device keeps that choice by saving with it on.
+	EmailNotificationsEnabled bool `protobuf:"varint,2,opt,name=email_notifications_enabled,json=emailNotificationsEnabled,proto3" json:"email_notifications_enabled,omitempty"`
 	// Omitted cells keep the stored value, so a client that shows only some of
 	// the cells — one released before a cell existed among them — does not
 	// reset the ones it knows nothing about (proto3 non-optional bool maps an
@@ -3412,6 +3419,10 @@ type UpdateNotificationSettingsRequest struct {
 	FollowedCreatorsMobilePushEnabled *bool `protobuf:"varint,8,opt,name=followed_creators_mobile_push_enabled,json=followedCreatorsMobilePushEnabled,proto3,oneof" json:"followed_creators_mobile_push_enabled,omitempty"`
 	CommentsInboxEnabled              *bool `protobuf:"varint,9,opt,name=comments_inbox_enabled,json=commentsInboxEnabled,proto3,oneof" json:"comments_inbox_enabled,omitempty"`
 	AnnouncementsInboxEnabled         *bool `protobuf:"varint,10,opt,name=announcements_inbox_enabled,json=announcementsInboxEnabled,proto3,oneof" json:"announcements_inbox_enabled,omitempty"`
+	FollowedEpisodesEmailEnabled      *bool `protobuf:"varint,11,opt,name=followed_episodes_email_enabled,json=followedEpisodesEmailEnabled,proto3,oneof" json:"followed_episodes_email_enabled,omitempty"`
+	FollowedCreatorsEmailEnabled      *bool `protobuf:"varint,12,opt,name=followed_creators_email_enabled,json=followedCreatorsEmailEnabled,proto3,oneof" json:"followed_creators_email_enabled,omitempty"`
+	CommentsEmailEnabled              *bool `protobuf:"varint,13,opt,name=comments_email_enabled,json=commentsEmailEnabled,proto3,oneof" json:"comments_email_enabled,omitempty"`
+	AnnouncementsEmailEnabled         *bool `protobuf:"varint,14,opt,name=announcements_email_enabled,json=announcementsEmailEnabled,proto3,oneof" json:"announcements_email_enabled,omitempty"`
 	unknownFields                     protoimpl.UnknownFields
 	sizeCache                         protoimpl.SizeCache
 }
@@ -3516,8 +3527,38 @@ func (x *UpdateNotificationSettingsRequest) GetAnnouncementsInboxEnabled() bool 
 	return false
 }
 
+func (x *UpdateNotificationSettingsRequest) GetFollowedEpisodesEmailEnabled() bool {
+	if x != nil && x.FollowedEpisodesEmailEnabled != nil {
+		return *x.FollowedEpisodesEmailEnabled
+	}
+	return false
+}
+
+func (x *UpdateNotificationSettingsRequest) GetFollowedCreatorsEmailEnabled() bool {
+	if x != nil && x.FollowedCreatorsEmailEnabled != nil {
+		return *x.FollowedCreatorsEmailEnabled
+	}
+	return false
+}
+
+func (x *UpdateNotificationSettingsRequest) GetCommentsEmailEnabled() bool {
+	if x != nil && x.CommentsEmailEnabled != nil {
+		return *x.CommentsEmailEnabled
+	}
+	return false
+}
+
+func (x *UpdateNotificationSettingsRequest) GetAnnouncementsEmailEnabled() bool {
+	if x != nil && x.AnnouncementsEmailEnabled != nil {
+		return *x.AnnouncementsEmailEnabled
+	}
+	return false
+}
+
 type UpdateNotificationSettingsResponse struct {
-	state                     protoimpl.MessageState   `protogen:"open.v1"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Whether any email cell of preferences is on, as on
+	// GetNotificationSettingsResponse.
 	EmailNotificationsEnabled bool                     `protobuf:"varint,1,opt,name=email_notifications_enabled,json=emailNotificationsEnabled,proto3" json:"email_notifications_enabled,omitempty"`
 	Preferences               *NotificationPreferences `protobuf:"bytes,2,opt,name=preferences,proto3" json:"preferences,omitempty"`
 	unknownFields             protoimpl.UnknownFields
@@ -3583,22 +3624,28 @@ func (x *UpdateNotificationSettingsResponse) GetPreferences() *NotificationPrefe
 // not a second pair of RPCs.
 //
 // An inbox cell that is off keeps the notification out of the inbox and its
-// unread count without stopping its push, and a push cell that is off stops
-// the push to that kind of device alone.
+// unread count without stopping its push or its mail, a push cell that is off
+// stops the push to that kind of device alone, and an email cell that is off
+// stops the mail to the reader's confirmed address. An announcement the tenant
+// sends to everyone reaches every channel whatever its cells say.
 type NotificationPreferences struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// An episode the reader follows, or one of a series they follow.
 	FollowedEpisodesInboxEnabled      bool `protobuf:"varint,1,opt,name=followed_episodes_inbox_enabled,json=followedEpisodesInboxEnabled,proto3" json:"followed_episodes_inbox_enabled,omitempty"`
 	FollowedEpisodesWebPushEnabled    bool `protobuf:"varint,2,opt,name=followed_episodes_web_push_enabled,json=followedEpisodesWebPushEnabled,proto3" json:"followed_episodes_web_push_enabled,omitempty"`
 	FollowedEpisodesMobilePushEnabled bool `protobuf:"varint,3,opt,name=followed_episodes_mobile_push_enabled,json=followedEpisodesMobilePushEnabled,proto3" json:"followed_episodes_mobile_push_enabled,omitempty"`
+	FollowedEpisodesEmailEnabled      bool `protobuf:"varint,9,opt,name=followed_episodes_email_enabled,json=followedEpisodesEmailEnabled,proto3" json:"followed_episodes_email_enabled,omitempty"`
 	// An episode credited to an author the reader follows.
 	FollowedCreatorsInboxEnabled      bool `protobuf:"varint,4,opt,name=followed_creators_inbox_enabled,json=followedCreatorsInboxEnabled,proto3" json:"followed_creators_inbox_enabled,omitempty"`
 	FollowedCreatorsWebPushEnabled    bool `protobuf:"varint,5,opt,name=followed_creators_web_push_enabled,json=followedCreatorsWebPushEnabled,proto3" json:"followed_creators_web_push_enabled,omitempty"`
 	FollowedCreatorsMobilePushEnabled bool `protobuf:"varint,6,opt,name=followed_creators_mobile_push_enabled,json=followedCreatorsMobilePushEnabled,proto3" json:"followed_creators_mobile_push_enabled,omitempty"`
+	FollowedCreatorsEmailEnabled      bool `protobuf:"varint,10,opt,name=followed_creators_email_enabled,json=followedCreatorsEmailEnabled,proto3" json:"followed_creators_email_enabled,omitempty"`
 	// The reader's own comment approved.
 	CommentsInboxEnabled bool `protobuf:"varint,7,opt,name=comments_inbox_enabled,json=commentsInboxEnabled,proto3" json:"comments_inbox_enabled,omitempty"`
+	CommentsEmailEnabled bool `protobuf:"varint,11,opt,name=comments_email_enabled,json=commentsEmailEnabled,proto3" json:"comments_email_enabled,omitempty"`
 	// An announcement the tenant posted.
 	AnnouncementsInboxEnabled bool `protobuf:"varint,8,opt,name=announcements_inbox_enabled,json=announcementsInboxEnabled,proto3" json:"announcements_inbox_enabled,omitempty"`
+	AnnouncementsEmailEnabled bool `protobuf:"varint,12,opt,name=announcements_email_enabled,json=announcementsEmailEnabled,proto3" json:"announcements_email_enabled,omitempty"`
 	unknownFields             protoimpl.UnknownFields
 	sizeCache                 protoimpl.SizeCache
 }
@@ -3654,6 +3701,13 @@ func (x *NotificationPreferences) GetFollowedEpisodesMobilePushEnabled() bool {
 	return false
 }
 
+func (x *NotificationPreferences) GetFollowedEpisodesEmailEnabled() bool {
+	if x != nil {
+		return x.FollowedEpisodesEmailEnabled
+	}
+	return false
+}
+
 func (x *NotificationPreferences) GetFollowedCreatorsInboxEnabled() bool {
 	if x != nil {
 		return x.FollowedCreatorsInboxEnabled
@@ -3675,6 +3729,13 @@ func (x *NotificationPreferences) GetFollowedCreatorsMobilePushEnabled() bool {
 	return false
 }
 
+func (x *NotificationPreferences) GetFollowedCreatorsEmailEnabled() bool {
+	if x != nil {
+		return x.FollowedCreatorsEmailEnabled
+	}
+	return false
+}
+
 func (x *NotificationPreferences) GetCommentsInboxEnabled() bool {
 	if x != nil {
 		return x.CommentsInboxEnabled
@@ -3682,9 +3743,23 @@ func (x *NotificationPreferences) GetCommentsInboxEnabled() bool {
 	return false
 }
 
+func (x *NotificationPreferences) GetCommentsEmailEnabled() bool {
+	if x != nil {
+		return x.CommentsEmailEnabled
+	}
+	return false
+}
+
 func (x *NotificationPreferences) GetAnnouncementsInboxEnabled() bool {
 	if x != nil {
 		return x.AnnouncementsInboxEnabled
+	}
+	return false
+}
+
+func (x *NotificationPreferences) GetAnnouncementsEmailEnabled() bool {
+	if x != nil {
+		return x.AnnouncementsEmailEnabled
 	}
 	return false
 }
@@ -5030,7 +5105,7 @@ const file_publira_v1_auth_proto_rawDesc = "" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\"\xa8\x01\n" +
 	"\x1fGetNotificationSettingsResponse\x12>\n" +
 	"\x1bemail_notifications_enabled\x18\x01 \x01(\bR\x19emailNotificationsEnabled\x12E\n" +
-	"\vpreferences\x18\x02 \x01(\v2#.publira.v1.NotificationPreferencesR\vpreferences\"\xa9\b\n" +
+	"\vpreferences\x18\x02 \x01(\v2#.publira.v1.NotificationPreferencesR\vpreferences\"\xc4\v\n" +
 	"!UpdateNotificationSettingsRequest\x127\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12>\n" +
 	"\x1bemail_notifications_enabled\x18\x02 \x01(\bR\x19emailNotificationsEnabled\x12J\n" +
@@ -5042,7 +5117,12 @@ const file_publira_v1_auth_proto_rawDesc = "" +
 	"%followed_creators_mobile_push_enabled\x18\b \x01(\bH\x05R!followedCreatorsMobilePushEnabled\x88\x01\x01\x129\n" +
 	"\x16comments_inbox_enabled\x18\t \x01(\bH\x06R\x14commentsInboxEnabled\x88\x01\x01\x12C\n" +
 	"\x1bannouncements_inbox_enabled\x18\n" +
-	" \x01(\bH\aR\x19announcementsInboxEnabled\x88\x01\x01B\"\n" +
+	" \x01(\bH\aR\x19announcementsInboxEnabled\x88\x01\x01\x12J\n" +
+	"\x1ffollowed_episodes_email_enabled\x18\v \x01(\bH\bR\x1cfollowedEpisodesEmailEnabled\x88\x01\x01\x12J\n" +
+	"\x1ffollowed_creators_email_enabled\x18\f \x01(\bH\tR\x1cfollowedCreatorsEmailEnabled\x88\x01\x01\x129\n" +
+	"\x16comments_email_enabled\x18\r \x01(\bH\n" +
+	"R\x14commentsEmailEnabled\x88\x01\x01\x12C\n" +
+	"\x1bannouncements_email_enabled\x18\x0e \x01(\bH\vR\x19announcementsEmailEnabled\x88\x01\x01B\"\n" +
 	" _followed_episodes_inbox_enabledB%\n" +
 	"#_followed_episodes_web_push_enabledB(\n" +
 	"&_followed_episodes_mobile_push_enabledB\"\n" +
@@ -5050,19 +5130,28 @@ const file_publira_v1_auth_proto_rawDesc = "" +
 	"#_followed_creators_web_push_enabledB(\n" +
 	"&_followed_creators_mobile_push_enabledB\x19\n" +
 	"\x17_comments_inbox_enabledB\x1e\n" +
-	"\x1c_announcements_inbox_enabled\"\xab\x01\n" +
+	"\x1c_announcements_inbox_enabledB\"\n" +
+	" _followed_episodes_email_enabledB\"\n" +
+	" _followed_creators_email_enabledB\x19\n" +
+	"\x17_comments_email_enabledB\x1e\n" +
+	"\x1c_announcements_email_enabled\"\xab\x01\n" +
 	"\"UpdateNotificationSettingsResponse\x12>\n" +
 	"\x1bemail_notifications_enabled\x18\x01 \x01(\bR\x19emailNotificationsEnabled\x12E\n" +
-	"\vpreferences\x18\x02 \x01(\v2#.publira.v1.NotificationPreferencesR\vpreferences\"\xd9\x04\n" +
+	"\vpreferences\x18\x02 \x01(\v2#.publira.v1.NotificationPreferencesR\vpreferences\"\xdd\x06\n" +
 	"\x17NotificationPreferences\x12E\n" +
 	"\x1ffollowed_episodes_inbox_enabled\x18\x01 \x01(\bR\x1cfollowedEpisodesInboxEnabled\x12J\n" +
 	"\"followed_episodes_web_push_enabled\x18\x02 \x01(\bR\x1efollowedEpisodesWebPushEnabled\x12P\n" +
 	"%followed_episodes_mobile_push_enabled\x18\x03 \x01(\bR!followedEpisodesMobilePushEnabled\x12E\n" +
+	"\x1ffollowed_episodes_email_enabled\x18\t \x01(\bR\x1cfollowedEpisodesEmailEnabled\x12E\n" +
 	"\x1ffollowed_creators_inbox_enabled\x18\x04 \x01(\bR\x1cfollowedCreatorsInboxEnabled\x12J\n" +
 	"\"followed_creators_web_push_enabled\x18\x05 \x01(\bR\x1efollowedCreatorsWebPushEnabled\x12P\n" +
-	"%followed_creators_mobile_push_enabled\x18\x06 \x01(\bR!followedCreatorsMobilePushEnabled\x124\n" +
-	"\x16comments_inbox_enabled\x18\a \x01(\bR\x14commentsInboxEnabled\x12>\n" +
-	"\x1bannouncements_inbox_enabled\x18\b \x01(\bR\x19announcementsInboxEnabled\"C\n" +
+	"%followed_creators_mobile_push_enabled\x18\x06 \x01(\bR!followedCreatorsMobilePushEnabled\x12E\n" +
+	"\x1ffollowed_creators_email_enabled\x18\n" +
+	" \x01(\bR\x1cfollowedCreatorsEmailEnabled\x124\n" +
+	"\x16comments_inbox_enabled\x18\a \x01(\bR\x14commentsInboxEnabled\x124\n" +
+	"\x16comments_email_enabled\x18\v \x01(\bR\x14commentsEmailEnabled\x12>\n" +
+	"\x1bannouncements_inbox_enabled\x18\b \x01(\bR\x19announcementsInboxEnabled\x12>\n" +
+	"\x1bannouncements_email_enabled\x18\f \x01(\bR\x19announcementsEmailEnabled\"C\n" +
 	"\x11ViewerPreferences\x12.\n" +
 	"\x13wide_viewer_enabled\x18\x01 \x01(\bR\x11wideViewerEnabled\"V\n" +
 	"\x1bGetViewerPreferencesRequest\x127\n" +

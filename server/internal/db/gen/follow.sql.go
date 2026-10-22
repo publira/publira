@@ -781,6 +781,46 @@ func (q *Queries) ListPublishedEpisodeSurfaces(ctx context.Context, arg ListPubl
 	return items, nil
 }
 
+const ListPublishedEpisodeSurfacesByPublicID = `-- name: ListPublishedEpisodeSurfacesByPublicID :many
+SELECT pes.surface
+FROM published_episode_surfaces pes
+    JOIN episodes e ON e.tenant_id = pes.tenant_id
+        AND e.id = pes.episode_id
+WHERE pes.tenant_id = $1
+    AND e.public_id = $2
+ORDER BY pes.surface
+`
+
+type ListPublishedEpisodeSurfacesByPublicIDParams struct {
+	TenantID        uuid.UUID `json:"tenant_id"`
+	EpisodePublicID string    `json:"episode_public_id"`
+}
+
+// ListPublishedEpisodeSurfaces for an episode named by its public ID, which is
+// how the approval of a comment names it.
+func (q *Queries) ListPublishedEpisodeSurfacesByPublicID(ctx context.Context, arg ListPublishedEpisodeSurfacesByPublicIDParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, ListPublishedEpisodeSurfacesByPublicID, arg.TenantID, arg.EpisodePublicID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var surface string
+		if err := rows.Scan(&surface); err != nil {
+			return nil, err
+		}
+		items = append(items, surface)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const ListPublishedSeriesFollowTargetPublicIDsByIDs = `-- name: ListPublishedSeriesFollowTargetPublicIDsByIDs :many
 SELECT s.id,
     s.public_id

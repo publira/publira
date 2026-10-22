@@ -18,18 +18,12 @@ import {
   EmailIntro,
   EmailMeta,
 } from "../text";
-import { displayNameField, httpUrlField, instantField } from "./fields";
-
-/**
- * A title from the catalogue. The console stores titles with no length limit,
- * and they reach the mail's body rather than a header, so nothing here refuses
- * one the server already stored: a receipt that cannot render is never sent.
- */
-const catalogTitleField = (name: string) =>
-  z
-    .string()
-    .trim()
-    .min(1, { error: `${name} is required` });
+import {
+  catalogTitleField,
+  displayNameField,
+  httpUrlField,
+  instantField,
+} from "./fields";
 
 export const purchaseReceiptDataSchema = z
   .object({

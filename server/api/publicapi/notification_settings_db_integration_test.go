@@ -34,7 +34,7 @@ func TestDBUpdateNotificationSettingsChargesTheReaderAllowance(t *testing.T) {
 	if connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("UpdateNotificationSettings past the allowance code = %v, want resource_exhausted (err=%v)", connect.CodeOf(err), err)
 	}
-	if got := env.countRows(t, "SELECT COUNT(*) FROM user_notification_settings WHERE tenant_id = $1 AND user_id = $2 AND email_notifications_enabled", tenant.ID, member.ID); got != 0 {
+	if got := env.countRows(t, "SELECT COUNT(*) FROM user_notification_settings WHERE tenant_id = $1 AND user_id = $2 AND followed_episodes_email_enabled", tenant.ID, member.ID); got != 0 {
 		t.Fatalf("settings rows switched on after the refused request = %d, want 0", got)
 	}
 }
@@ -74,11 +74,15 @@ func allNotificationPreferencesOn() *publirav1.NotificationPreferences {
 		FollowedEpisodesInboxEnabled:      true,
 		FollowedEpisodesWebPushEnabled:    true,
 		FollowedEpisodesMobilePushEnabled: true,
+		FollowedEpisodesEmailEnabled:      true,
 		FollowedCreatorsInboxEnabled:      true,
 		FollowedCreatorsWebPushEnabled:    true,
 		FollowedCreatorsMobilePushEnabled: true,
+		FollowedCreatorsEmailEnabled:      true,
 		CommentsInboxEnabled:              true,
+		CommentsEmailEnabled:              true,
 		AnnouncementsInboxEnabled:         true,
+		AnnouncementsEmailEnabled:         true,
 	}
 }
 
@@ -144,7 +148,8 @@ func TestDBNotificationSettingsRoundTripAGridWithOneCellOff(t *testing.T) {
 }
 
 // A client that shows only some of the cells, as one released before a cell
-// existed does, writes those and leaves the rest as the reader set them.
+// existed does, writes those and leaves the rest as the reader set them. The
+// email switch of such a client stands for the whole email column.
 func TestDBNotificationSettingsKeepTheCellsAnUpdateOmits(t *testing.T) {
 	env := newPublicDBEnv(t)
 	tenant := env.seedTenant(t, "TENANTNPC", "notification-pref-c.example.com", "Notification Pref C")
@@ -169,9 +174,86 @@ func TestDBNotificationSettingsKeepTheCellsAnUpdateOmits(t *testing.T) {
 	}
 	want := allNotificationPreferencesOn()
 	want.FollowedCreatorsInboxEnabled = false
+	want.FollowedEpisodesEmailEnabled = false
+	want.FollowedCreatorsEmailEnabled = false
+	want.CommentsEmailEnabled = false
+	want.AnnouncementsEmailEnabled = false
 	assertNotificationPreferences(t, "kept", kept.GetPreferences(), want)
 	if kept.GetEmailNotificationsEnabled() {
 		t.Fatal("email_notifications_enabled = true, want the false the update named")
+	}
+}
+
+// The one email switch a client without email cells shows reads on while any
+// email cell is, and saving it stands for the whole email column: off turns
+// every cell off, and on turns them all on only from all off, so saving with
+// it on keeps a choice of cells made elsewhere. A request that names an email
+// cell is a client with the column, and its switch is not read.
+func TestDBNotificationSettingsReadTheEmailSwitchAsTheWholeEmailColumn(t *testing.T) {
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTNPG", "notification-pref-g.example.com", "Notification Pref G")
+	member := env.PG.SeedTenantUser(t, tenant.ID, "MEMBERNPG", "member-notification-pref-g@example.com", "Member G", "tenant_member")
+	client := env.authClient()
+	ctx := testutil.WithBearer(context.Background(), tokenFor(t, tenant, member))
+
+	allEmail := func(on bool) *publirav1.NotificationPreferences {
+		want := allNotificationPreferencesOn()
+		want.FollowedEpisodesEmailEnabled = on
+		want.FollowedCreatorsEmailEnabled = on
+		want.CommentsEmailEnabled = on
+		want.AnnouncementsEmailEnabled = on
+		return want
+	}
+	oneOff := allEmail(true)
+	oneOff.CommentsEmailEnabled = false
+
+	for _, step := range []struct {
+		name        string
+		request     *publirav1.UpdateNotificationSettingsRequest
+		want        *publirav1.NotificationPreferences
+		wantEnabled bool
+	}{
+		{
+			name:        "one email cell off from a client with the column",
+			request:     &publirav1.UpdateNotificationSettingsRequest{CommentsEmailEnabled: proto.Bool(false)},
+			want:        oneOff,
+			wantEnabled: true,
+		},
+		{
+			name:        "the switch saved on",
+			request:     &publirav1.UpdateNotificationSettingsRequest{EmailNotificationsEnabled: true},
+			want:        oneOff,
+			wantEnabled: true,
+		},
+		{
+			name:        "the switch saved off",
+			request:     &publirav1.UpdateNotificationSettingsRequest{EmailNotificationsEnabled: false},
+			want:        allEmail(false),
+			wantEnabled: false,
+		},
+		{
+			name:        "the switch saved on from all off",
+			request:     &publirav1.UpdateNotificationSettingsRequest{EmailNotificationsEnabled: true},
+			want:        allEmail(true),
+			wantEnabled: true,
+		},
+	} {
+		step.request.Tenant = tenantContext(tenant)
+		saved, err := client.UpdateNotificationSettings(ctx, step.request)
+		if err != nil {
+			t.Fatalf("%s: UpdateNotificationSettings: %v", step.name, err)
+		}
+		assertNotificationPreferences(t, step.name, saved.GetPreferences(), step.want)
+		if saved.GetEmailNotificationsEnabled() != step.wantEnabled {
+			t.Fatalf("%s: email_notifications_enabled = %v, want %v", step.name, saved.GetEmailNotificationsEnabled(), step.wantEnabled)
+		}
+		read, err := client.GetNotificationSettings(ctx, getNotificationSettingsRequest(tenant))
+		if err != nil {
+			t.Fatalf("%s: GetNotificationSettings: %v", step.name, err)
+		}
+		if read.GetEmailNotificationsEnabled() != step.wantEnabled {
+			t.Fatalf("%s: read email_notifications_enabled = %v, want %v", step.name, read.GetEmailNotificationsEnabled(), step.wantEnabled)
+		}
 	}
 }
 

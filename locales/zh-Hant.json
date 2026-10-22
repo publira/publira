@@ -110,6 +110,28 @@
       "test_notice": "這是在支付服務測試模式下的購買，未產生任何扣款。",
       "volume": "卷：{$volume_title}"
     },
+    "reader_announcement_posted": {
+      "action": "查看公告",
+      "everyone": "此公告已發送給{$tenant_name}的所有讀者，不受通知設定影響。",
+      "fallback_link": "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。",
+      "heading": "新公告",
+      "intro": "{$tenant_name}發布了一則公告。",
+      "preferences": "您可以在通知設定中選擇接收哪些郵件。",
+      "preview": "請查看{$tenant_name}的公告。",
+      "subject": "{$tenant_name}公告：{$announcement_title}",
+      "title": "標題：{$announcement_title}"
+    },
+    "reader_comment_approved": {
+      "action": "開啟章節",
+      "body": "您的留言已通過審核，現在所有人都能看到。",
+      "episode": "章節：{$episode_title}",
+      "fallback_link": "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。",
+      "heading": "您的留言已公開",
+      "preferences": "您可以在通知設定中選擇接收哪些郵件。",
+      "preview": "您在{$episode_title}下的留言已公開。",
+      "series": "系列：{$series_title}",
+      "subject": "您在{$tenant_name}的留言已公開"
+    },
     "reader_email_change_confirmation": {
       "action": "確認電子郵件地址變更",
       "body_current_email": "這項變更需要由目前的電子郵件地址確認。請開啟下方按鈕完成確認。",
@@ -143,6 +165,17 @@
       "intro": "感謝您註冊{$tenant_name}。",
       "preview": "完成電子郵件地址驗證。",
       "subject": "{$tenant_name}電子郵件地址驗證"
+    },
+    "reader_episode_published": {
+      "action": "閱讀章節",
+      "episode": "章節：{$episode_title}",
+      "fallback_link": "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。",
+      "heading": "有新章節發布",
+      "intro": "您在{$tenant_name}關注的系列或作者有新章節發布。",
+      "preferences": "您可以在通知設定中選擇接收哪些郵件。",
+      "preview": "{$episode_title}現已發布。",
+      "series": "系列：{$series_title}",
+      "subject": "{$series_title}有新章節"
     },
     "reader_password_changed_notice": {
       "action": "重設密碼",

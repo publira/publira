@@ -60,6 +60,35 @@ func TestNotifyCommentApprovedWritesAnApprovedRow(t *testing.T) {
 		"series_title":  "Seed Series",
 		"comment_id":    "CMTPEND00001",
 	})
+	if len(queries.queued) != 1 {
+		t.Fatalf("outbox events = %d, want the mail", len(queries.queued))
+	}
+	if want := NotificationEmailIdempotencyKey(tenantID, NotificationTypeCommentApproved, "comment:CMTPEND00001"); queries.queued[0].IdempotencyKey != want {
+		t.Fatalf("mail idempotency_key = %q, want %q", queries.queued[0].IdempotencyKey, want)
+	}
+}
+
+// The mail links to the episode on the site, so an episode shown on the app
+// alone keeps the bell row and is not mailed.
+func TestNotifyCommentApprovedMailsOnlyAnEpisodeTheSiteShows(t *testing.T) {
+	queries := &stubCommentAuthorNotifier{appOnly: true}
+
+	err := notifyCommentApproved(context.Background(), queries, CommentApprovedNotification{
+		TenantID:        uuid.New(),
+		UserID:          uuid.New(),
+		CommentPublicID: "CMTPEND00001",
+		EpisodePublicID: "EPISODE00001",
+		SeriesPublicID:  "SERIES000001",
+	})
+	if err != nil {
+		t.Fatalf("notifyCommentApproved: %v", err)
+	}
+	if len(queries.created) != 1 {
+		t.Fatalf("notifications written = %d, want 1", len(queries.created))
+	}
+	if len(queries.queued) != 0 {
+		t.Fatalf("outbox events = %+v, want no mail", queries.queued)
+	}
 }
 
 func TestNotifyCommentApprovedReturnsAFailedInsert(t *testing.T) {
@@ -230,6 +259,28 @@ func assertCommentAuthorPayload(t *testing.T, raw []byte, want map[string]string
 type stubCommentAuthorNotifier struct {
 	created   []dbmodels.CreateNotificationParams
 	createErr error
+	queued    []dbmodels.InsertOutboxEventParams
+	// appOnly shows the comment's episode on the app alone, where a stub left
+	// alone shows it on the site too.
+	appOnly bool
+}
+
+func (s *stubCommentAuthorNotifier) ListPublishedEpisodeSurfacesByPublicID(
+	context.Context,
+	dbmodels.ListPublishedEpisodeSurfacesByPublicIDParams,
+) ([]string, error) {
+	if s.appOnly {
+		return []string{"app"}, nil
+	}
+	return []string{"app", "web"}, nil
+}
+
+func (s *stubCommentAuthorNotifier) InsertOutboxEvent(
+	_ context.Context,
+	arg dbmodels.InsertOutboxEventParams,
+) (dbmodels.OutboxEvent, error) {
+	s.queued = append(s.queued, arg)
+	return dbmodels.OutboxEvent{ID: arg.ID, EventType: arg.EventType}, nil
 }
 
 func (s *stubCommentAuthorNotifier) CreateNotification(

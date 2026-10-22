@@ -391,6 +391,61 @@ var emailCopyCases = []struct {
 		},
 	},
 	{
+		name:     "reader_episode_published",
+		subjects: map[string]string{"en": "New episode of The Lighthouse Keeper", "ja": "The Lighthouse Keeperの新しいエピソード"},
+		request: emailrenderer.Request{
+			Template: "reader_episode_published",
+			Data: map[string]any{
+				"episode_title": "The First Night",
+				"episode_url":   "https://reader.example.test/series/SERIES000001/episodes/EPISODE00001",
+				"series_title":  "The Lighthouse Keeper",
+				"settings_url":  "https://reader.example.test/settings/notifications",
+				"tenant_name":   "Aoto Press",
+			},
+		},
+	},
+	{
+		name:     "reader_announcement_posted to the readers who chose it",
+		subjects: map[string]string{"en": "Aoto Press announcement: Scheduled maintenance", "ja": "Aoto Pressからのお知らせ: Scheduled maintenance"},
+		request: emailrenderer.Request{
+			Template: "reader_announcement_posted",
+			Data: map[string]any{
+				"announcement_title": "Scheduled maintenance",
+				"announcements_url":  "https://reader.example.test/announcements",
+				"sent_to_everyone":   false,
+				"settings_url":       "https://reader.example.test/settings/notifications",
+				"tenant_name":        "Aoto Press",
+			},
+		},
+	},
+	{
+		name:     "reader_announcement_posted to everyone",
+		subjects: map[string]string{"en": "Aoto Press announcement: New terms of use", "ja": "Aoto Pressからのお知らせ: New terms of use"},
+		request: emailrenderer.Request{
+			Template: "reader_announcement_posted",
+			Data: map[string]any{
+				"announcement_title": "New terms of use",
+				"announcements_url":  "https://reader.example.test/announcements",
+				"sent_to_everyone":   true,
+				"tenant_name":        "Aoto Press",
+			},
+		},
+	},
+	{
+		name:     "reader_comment_approved",
+		subjects: map[string]string{"en": "Your comment on Aoto Press is now public", "ja": "Aoto Pressでのコメントが公開されました"},
+		request: emailrenderer.Request{
+			Template: "reader_comment_approved",
+			Data: map[string]any{
+				"episode_title": "The First Night",
+				"episode_url":   "https://reader.example.test/series/SERIES000001/episodes/EPISODE00001",
+				"series_title":  "The Lighthouse Keeper",
+				"settings_url":  "https://reader.example.test/settings/notifications",
+				"tenant_name":   "Aoto Press",
+			},
+		},
+	},
+	{
 		name:     "staff_contact_reply to a titled message",
 		subjects: map[string]string{"en": "Re: Wrong date of birth", "ja": "Re: Wrong date of birth"},
 		request: emailrenderer.Request{
@@ -634,6 +689,121 @@ func TestEmailCopyWritesAPurchaseReceipt(t *testing.T) {
 				},
 				TimeZone: "Asia/Tokyo",
 			})
+			if err != nil {
+				t.Fatalf("emailCopy: %v", err)
+			}
+			if email.Text != testCase.wantText {
+				t.Errorf("text =\n%q\nwant\n%q", email.Text, testCase.wantText)
+			}
+		})
+	}
+}
+
+// A notification mail names what it is about, links to it, and ends on where
+// the reader chooses which mails they receive — except an announcement sent to
+// every reader, which says so instead, since no setting could have stopped it.
+// A title written over several lines is one line in the subject, which the
+// SMTP client would otherwise refuse on every attempt.
+func TestEmailCopyKeepsATitleOverSeveralLinesOnTheSubjectLine(t *testing.T) {
+	for _, testCase := range []struct {
+		name        string
+		request     emailrenderer.Request
+		wantSubject string
+	}{
+		{
+			name: "an announcement title",
+			request: emailrenderer.Request{
+				Template: "reader_announcement_posted",
+				Locale:   "en",
+				Data: map[string]any{
+					"announcement_title": "New terms \r\nof use",
+					"announcements_url":  "https://reader.example.test/announcements",
+					"sent_to_everyone":   true,
+					"tenant_name":        "Aoto Press",
+				},
+			},
+			wantSubject: "New terms of use",
+		},
+		{
+			name: "a series title",
+			request: emailrenderer.Request{
+				Template: "reader_episode_published",
+				Locale:   "en",
+				Data: map[string]any{
+					"episode_title": "The First Night",
+					"episode_url":   "https://reader.example.test/series/S1/episodes/E1",
+					"series_title":  "The Lighthouse\nKeeper",
+					"settings_url":  "https://reader.example.test/settings/notifications",
+					"tenant_name":   "Aoto Press",
+				},
+			},
+			wantSubject: "The Lighthouse Keeper",
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			email, err := emailCopy(testCase.request)
+			if err != nil {
+				t.Fatalf("emailCopy: %v", err)
+			}
+			if strings.ContainsAny(email.Subject, "\r\n") || !strings.Contains(email.Subject, testCase.wantSubject) {
+				t.Fatalf("subject = %q, want one line naming %q", email.Subject, testCase.wantSubject)
+			}
+		})
+	}
+}
+
+func TestEmailCopyWritesANotificationMail(t *testing.T) {
+	for _, testCase := range []struct {
+		name     string
+		request  emailrenderer.Request
+		wantText string
+	}{
+		{
+			name: "an episode in English",
+			request: emailrenderer.Request{
+				Template: "reader_episode_published",
+				Locale:   "en",
+				Data: map[string]any{
+					"episode_title": "The First Night",
+					"episode_url":   "https://reader.example.test/series/S1/episodes/E1",
+					"series_title":  "The Lighthouse Keeper",
+					"settings_url":  "https://reader.example.test/settings/notifications",
+					"tenant_name":   "Aoto Press",
+				},
+			},
+			wantText: "Aoto Press\n\nA new episode has been published\n\n" +
+				"Aoto Press published a new episode of a series or by an author you follow.\n\n" +
+				"Series: The Lighthouse Keeper\n\nEpisode: The First Night\n\n" +
+				"Read the episode https://reader.example.test/series/S1/episodes/E1\n\n" +
+				"If the button does not work, paste this URL into your browser. https://reader.example.test/series/S1/episodes/E1\n\n" +
+				"To choose which emails you receive, open your notification settings. https://reader.example.test/settings/notifications\n\n" +
+				"This email was sent by Aoto Press.",
+		},
+		{
+			name: "an announcement to everyone in Japanese",
+			request: emailrenderer.Request{
+				Template: "reader_announcement_posted",
+				Locale:   "ja",
+				Data: map[string]any{
+					"announcement_title": "New terms of use",
+					"announcements_url":  "https://reader.example.test/announcements",
+					"sent_to_everyone":   true,
+					"tenant_name":        "Aoto Press",
+				},
+			},
+			wantText: "Aoto Press\n\n新しいお知らせ\n\n" +
+				"Aoto Pressからお知らせが届きました。\n\n" +
+				"タイトル: New terms of use\n\n" +
+				"お知らせを読む https://reader.example.test/announcements\n\n" +
+				"ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。 https://reader.example.test/announcements\n\n" +
+				"このお知らせは、通知設定にかかわらずAoto Pressのすべての読者に送信されています。\n\n" +
+				"このメールはAoto Pressから送信されています。",
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			request := testCase.request
+			request.TimeZone = "UTC"
+			email, err := emailCopy(request)
 			if err != nil {
 				t.Fatalf("emailCopy: %v", err)
 			}

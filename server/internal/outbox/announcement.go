@@ -29,9 +29,9 @@ const EventTypeAnnouncementNotification = "announcement_notification"
 // handler writes. The storefront assembles its copy from this plus the payload;
 // there is no title or body column.
 //
-// It is bell-only. It is not on the push allowlist, because an announcement is
-// the tenant talking to its whole readership at a time of the operator's
-// choosing, which is not what a lock screen is for.
+// It reaches the bell and the mail. It is not on the push allowlist, because an
+// announcement is the tenant talking to its whole readership at a time of the
+// operator's choosing, which is not what a lock screen is for.
 const NotificationTypeAnnouncementPosted = "announcement_posted"
 
 // AnnouncementDeliveryPreferred and AnnouncementDeliveryEveryone are the
@@ -95,10 +95,11 @@ type announcementNotificationQuerier interface {
 	GetAnnouncementDelivery(ctx context.Context, arg dbmodels.GetAnnouncementDeliveryParams) (string, error)
 	ListAnnouncementRecipients(ctx context.Context, arg dbmodels.ListAnnouncementRecipientsParams) ([]dbmodels.ListAnnouncementRecipientsRow, error)
 	CreateNotification(ctx context.Context, arg dbmodels.CreateNotificationParams) error
+	InsertOutboxEvent(ctx context.Context, arg dbmodels.InsertOutboxEventParams) (dbmodels.OutboxEvent, error)
 }
 
 // NewAnnouncementNotificationHandler writes one bell notification per reader a
-// posted announcement addresses.
+// posted announcement addresses, and queues the mail that mirrors them.
 func NewAnnouncementNotificationHandler(cfg AnnouncementNotificationHandlerConfig) Handler {
 	if cfg.DB == nil {
 		// Reported per event rather than at registration, and as a plain error
@@ -207,8 +208,9 @@ func announcementNotificationHandler(
 			// same empty readership.
 			logAnnouncement(ctx, cfg.Logger, "no readers to notify about an announcement", event,
 				"announcement_id", announcementID.String())
+			return nil
 		}
-		return nil
+		return queueNotificationEmail(ctx, queries, tenantID, NotificationTypeAnnouncementPosted, AnnouncementSubjectKey(announcementID))
 	}
 }
 

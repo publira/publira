@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -26,9 +27,9 @@ const EventTypeCommentApprovedNotification = "comment_approved_notification"
 // reader's own comment raises when staff approve it. The storefront assembles
 // its copy from it plus the payload; there is no title or body column.
 //
-// It is bell-only. It is not on the push allowlist, so a device never receives
-// it: a comment going live is something the reader learns the next time they
-// open the inbox, not an interruption.
+// It reaches the bell and the mail. It is not on the push allowlist, so a
+// device never receives it: a comment going live is something the reader
+// learns the next time they open the inbox or their mail, not an interruption.
 //
 // A removal raises nothing. A removed comment keeps showing to its author
 // exactly as they posted it, so that someone posting to disrupt a comment
@@ -160,16 +161,19 @@ type commentAuthorNotificationBody struct {
 	CommentID    string `json:"comment_id,omitempty"`
 }
 
-// commentAuthorNotifier is the insert the helper runs, named so a test can
+// commentAuthorNotifier is the inserts the helper runs, named so a test can
 // drive the write without a database behind it.
 type commentAuthorNotifier interface {
 	CreateNotification(ctx context.Context, arg dbmodels.CreateNotificationParams) error
+	InsertOutboxEvent(ctx context.Context, arg dbmodels.InsertOutboxEventParams) (dbmodels.OutboxEvent, error)
+	ListPublishedEpisodeSurfacesByPublicID(ctx context.Context, arg dbmodels.ListPublishedEpisodeSurfacesByPublicIDParams) ([]string, error)
 }
 
 // notifyCommentApproved writes one bell notification for the author of a
-// comment that was approved. It does not enqueue a push: the type is excluded
-// from the allowlist, and the row in `notifications` is the record the bell
-// reads.
+// comment that was approved, and queues the mail that mirrors it while the site
+// can open the comment's episode, since the mail links to it there. It does not
+// enqueue a push: the type is excluded from the allowlist, and the row in
+// `notifications` is the record the bell reads.
 func notifyCommentApproved(ctx context.Context, queries commentAuthorNotifier, n CommentApprovedNotification) error {
 	if err := n.validate(); err != nil {
 		return err
@@ -194,12 +198,13 @@ func notifyCommentApproved(ctx context.Context, queries commentAuthorNotifier, n
 	if err != nil {
 		return fmt.Errorf("allocate notification id: %w", err)
 	}
+	subjectKey := CommentAuthorSubjectKey(n.CommentPublicID)
 	err = queries.CreateNotification(ctx, dbmodels.CreateNotificationParams{
 		ID:               notificationID,
 		TenantID:         n.TenantID,
 		UserID:           n.UserID,
 		NotificationType: NotificationTypeCommentApproved,
-		SubjectKey:       CommentAuthorSubjectKey(n.CommentPublicID),
+		SubjectKey:       subjectKey,
 		Payload:          payload,
 		Category:         category,
 	})
@@ -208,5 +213,18 @@ func notifyCommentApproved(ctx context.Context, queries commentAuthorNotifier, n
 	if err != nil {
 		return fmt.Errorf("insert comment author notification: %w", err)
 	}
-	return nil
+	if n.EpisodePublicID == "" {
+		return nil
+	}
+	surfaces, err := queries.ListPublishedEpisodeSurfacesByPublicID(ctx, dbmodels.ListPublishedEpisodeSurfacesByPublicIDParams{
+		TenantID:        n.TenantID,
+		EpisodePublicID: n.EpisodePublicID,
+	})
+	if err != nil {
+		return fmt.Errorf("list comment episode surfaces: %w", err)
+	}
+	if !slices.Contains(surfaces, "web") {
+		return nil
+	}
+	return queueNotificationEmail(ctx, queries, n.TenantID, NotificationTypeCommentApproved, subjectKey)
 }

@@ -657,7 +657,7 @@ func (q *Queries) GetUserByPublicIDForTenant(ctx context.Context, arg GetUserByP
 }
 
 const GetUserNotificationSettings = `-- name: GetUserNotificationSettings :one
-SELECT user_id, email_notifications_enabled, updated_at, tenant_id, followed_episodes_inbox_enabled, followed_episodes_web_push_enabled, followed_episodes_mobile_push_enabled, followed_creators_inbox_enabled, followed_creators_web_push_enabled, followed_creators_mobile_push_enabled, comments_inbox_enabled, announcements_inbox_enabled
+SELECT user_id, email_notifications_enabled, updated_at, tenant_id, followed_episodes_inbox_enabled, followed_episodes_web_push_enabled, followed_episodes_mobile_push_enabled, followed_creators_inbox_enabled, followed_creators_web_push_enabled, followed_creators_mobile_push_enabled, comments_inbox_enabled, announcements_inbox_enabled, followed_episodes_email_enabled, followed_creators_email_enabled, comments_email_enabled, announcements_email_enabled
 FROM user_notification_settings
 WHERE tenant_id = $1
     AND user_id = $2
@@ -685,6 +685,10 @@ func (q *Queries) GetUserNotificationSettings(ctx context.Context, arg GetUserNo
 		&i.FollowedCreatorsMobilePushEnabled,
 		&i.CommentsInboxEnabled,
 		&i.AnnouncementsInboxEnabled,
+		&i.FollowedEpisodesEmailEnabled,
+		&i.FollowedCreatorsEmailEnabled,
+		&i.CommentsEmailEnabled,
+		&i.AnnouncementsEmailEnabled,
 	)
 	return i, err
 }
@@ -2207,21 +2211,24 @@ const UpsertUserNotificationSettings = `-- name: UpsertUserNotificationSettings 
 INSERT INTO user_notification_settings (
     tenant_id,
     user_id,
-    email_notifications_enabled,
     followed_episodes_inbox_enabled,
     followed_episodes_web_push_enabled,
     followed_episodes_mobile_push_enabled,
+    followed_episodes_email_enabled,
     followed_creators_inbox_enabled,
     followed_creators_web_push_enabled,
     followed_creators_mobile_push_enabled,
+    followed_creators_email_enabled,
     comments_inbox_enabled,
+    comments_email_enabled,
     announcements_inbox_enabled,
+    announcements_email_enabled,
     updated_at
 )
 VALUES (
     $1,
     $2,
-    $3,
+    COALESCE($3::boolean, true),
     COALESCE($4::boolean, true),
     COALESCE($5::boolean, true),
     COALESCE($6::boolean, true),
@@ -2230,34 +2237,43 @@ VALUES (
     COALESCE($9::boolean, true),
     COALESCE($10::boolean, true),
     COALESCE($11::boolean, true),
+    COALESCE($12::boolean, true),
+    COALESCE($13::boolean, true),
+    COALESCE($14::boolean, true),
     NOW()
 )
 ON CONFLICT (user_id) DO UPDATE
-SET email_notifications_enabled = EXCLUDED.email_notifications_enabled,
-    followed_episodes_inbox_enabled = COALESCE($4::boolean, user_notification_settings.followed_episodes_inbox_enabled),
-    followed_episodes_web_push_enabled = COALESCE($5::boolean, user_notification_settings.followed_episodes_web_push_enabled),
-    followed_episodes_mobile_push_enabled = COALESCE($6::boolean, user_notification_settings.followed_episodes_mobile_push_enabled),
+SET followed_episodes_inbox_enabled = COALESCE($3::boolean, user_notification_settings.followed_episodes_inbox_enabled),
+    followed_episodes_web_push_enabled = COALESCE($4::boolean, user_notification_settings.followed_episodes_web_push_enabled),
+    followed_episodes_mobile_push_enabled = COALESCE($5::boolean, user_notification_settings.followed_episodes_mobile_push_enabled),
+    followed_episodes_email_enabled = COALESCE($6::boolean, user_notification_settings.followed_episodes_email_enabled),
     followed_creators_inbox_enabled = COALESCE($7::boolean, user_notification_settings.followed_creators_inbox_enabled),
     followed_creators_web_push_enabled = COALESCE($8::boolean, user_notification_settings.followed_creators_web_push_enabled),
     followed_creators_mobile_push_enabled = COALESCE($9::boolean, user_notification_settings.followed_creators_mobile_push_enabled),
-    comments_inbox_enabled = COALESCE($10::boolean, user_notification_settings.comments_inbox_enabled),
-    announcements_inbox_enabled = COALESCE($11::boolean, user_notification_settings.announcements_inbox_enabled),
+    followed_creators_email_enabled = COALESCE($10::boolean, user_notification_settings.followed_creators_email_enabled),
+    comments_inbox_enabled = COALESCE($11::boolean, user_notification_settings.comments_inbox_enabled),
+    comments_email_enabled = COALESCE($12::boolean, user_notification_settings.comments_email_enabled),
+    announcements_inbox_enabled = COALESCE($13::boolean, user_notification_settings.announcements_inbox_enabled),
+    announcements_email_enabled = COALESCE($14::boolean, user_notification_settings.announcements_email_enabled),
     updated_at = NOW()
-RETURNING user_id, email_notifications_enabled, updated_at, tenant_id, followed_episodes_inbox_enabled, followed_episodes_web_push_enabled, followed_episodes_mobile_push_enabled, followed_creators_inbox_enabled, followed_creators_web_push_enabled, followed_creators_mobile_push_enabled, comments_inbox_enabled, announcements_inbox_enabled
+RETURNING user_id, email_notifications_enabled, updated_at, tenant_id, followed_episodes_inbox_enabled, followed_episodes_web_push_enabled, followed_episodes_mobile_push_enabled, followed_creators_inbox_enabled, followed_creators_web_push_enabled, followed_creators_mobile_push_enabled, comments_inbox_enabled, announcements_inbox_enabled, followed_episodes_email_enabled, followed_creators_email_enabled, comments_email_enabled, announcements_email_enabled
 `
 
 type UpsertUserNotificationSettingsParams struct {
 	TenantID                          uuid.UUID    `json:"tenant_id"`
 	UserID                            uuid.UUID    `json:"user_id"`
-	EmailNotificationsEnabled         bool         `json:"email_notifications_enabled"`
 	FollowedEpisodesInboxEnabled      sql.NullBool `json:"followed_episodes_inbox_enabled"`
 	FollowedEpisodesWebPushEnabled    sql.NullBool `json:"followed_episodes_web_push_enabled"`
 	FollowedEpisodesMobilePushEnabled sql.NullBool `json:"followed_episodes_mobile_push_enabled"`
+	FollowedEpisodesEmailEnabled      sql.NullBool `json:"followed_episodes_email_enabled"`
 	FollowedCreatorsInboxEnabled      sql.NullBool `json:"followed_creators_inbox_enabled"`
 	FollowedCreatorsWebPushEnabled    sql.NullBool `json:"followed_creators_web_push_enabled"`
 	FollowedCreatorsMobilePushEnabled sql.NullBool `json:"followed_creators_mobile_push_enabled"`
+	FollowedCreatorsEmailEnabled      sql.NullBool `json:"followed_creators_email_enabled"`
 	CommentsInboxEnabled              sql.NullBool `json:"comments_inbox_enabled"`
+	CommentsEmailEnabled              sql.NullBool `json:"comments_email_enabled"`
 	AnnouncementsInboxEnabled         sql.NullBool `json:"announcements_inbox_enabled"`
+	AnnouncementsEmailEnabled         sql.NullBool `json:"announcements_email_enabled"`
 }
 
 // An omitted (NULL) preference cell keeps the value the row holds, so a client
@@ -2268,19 +2284,25 @@ type UpsertUserNotificationSettingsParams struct {
 // The literal repeats the column default because a VALUES list has no way to
 // ask for it conditionally; TestDBNotificationPreferenceDefaultsAgreeAcrossPaths
 // is what fails when the two drift apart.
+//
+// email_notifications_enabled is not written: nothing reads it, and what the
+// API still answers under that name is derived from the email cells.
 func (q *Queries) UpsertUserNotificationSettings(ctx context.Context, arg UpsertUserNotificationSettingsParams) (UserNotificationSetting, error) {
 	row := q.db.QueryRowContext(ctx, UpsertUserNotificationSettings,
 		arg.TenantID,
 		arg.UserID,
-		arg.EmailNotificationsEnabled,
 		arg.FollowedEpisodesInboxEnabled,
 		arg.FollowedEpisodesWebPushEnabled,
 		arg.FollowedEpisodesMobilePushEnabled,
+		arg.FollowedEpisodesEmailEnabled,
 		arg.FollowedCreatorsInboxEnabled,
 		arg.FollowedCreatorsWebPushEnabled,
 		arg.FollowedCreatorsMobilePushEnabled,
+		arg.FollowedCreatorsEmailEnabled,
 		arg.CommentsInboxEnabled,
+		arg.CommentsEmailEnabled,
 		arg.AnnouncementsInboxEnabled,
+		arg.AnnouncementsEmailEnabled,
 	)
 	var i UserNotificationSetting
 	err := row.Scan(
@@ -2296,6 +2318,10 @@ func (q *Queries) UpsertUserNotificationSettings(ctx context.Context, arg Upsert
 		&i.FollowedCreatorsMobilePushEnabled,
 		&i.CommentsInboxEnabled,
 		&i.AnnouncementsInboxEnabled,
+		&i.FollowedEpisodesEmailEnabled,
+		&i.FollowedCreatorsEmailEnabled,
+		&i.CommentsEmailEnabled,
+		&i.AnnouncementsEmailEnabled,
 	)
 	return i, err
 }

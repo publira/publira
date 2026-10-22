@@ -32,6 +32,9 @@ describe("TEMPLATE_IDS", () => {
       "staff_contact_message_notice",
       "staff_contact_reply",
       "purchase_receipt",
+      "reader_episode_published",
+      "reader_announcement_posted",
+      "reader_comment_approved",
     ]);
     expect(isTemplateId("tenant_admin_invitation")).toBe(true);
     expect(isTemplateId("missing")).toBe(false);

@@ -22,6 +22,7 @@ type SMTPServer struct {
 	mu         sync.Mutex
 	messages   []string
 	logins     []SMTPLogin
+	refusals   map[string]string
 }
 
 // SMTPLogin is a set of credentials a client authenticated with.
@@ -73,6 +74,17 @@ func (s *SMTPServer) Messages() []string {
 	return append([]string(nil), s.messages...)
 }
 
+// RefuseRecipient answers RCPT TO for address with reply, a whole SMTP reply
+// line such as "550 5.1.1 No such user".
+func (s *SMTPServer) RefuseRecipient(address, reply string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.refusals == nil {
+		s.refusals = map[string]string{}
+	}
+	s.refusals[address] = reply
+}
+
 // Logins are the credentials of every AUTH accepted so far.
 func (s *SMTPServer) Logins() []SMTPLogin {
 	s.mu.Lock()
@@ -112,7 +124,17 @@ func (s *SMTPServer) serve(conn net.Conn) {
 			s.logins = append(s.logins, login)
 			s.mu.Unlock()
 			reply("235 Authentication successful")
-		case "MAIL", "RCPT", "RSET", "NOOP":
+		case "RCPT":
+			address := strings.Trim(strings.TrimPrefix(strings.ToUpper(arg), "TO:"), "<>")
+			s.mu.Lock()
+			refusal, refused := s.refusals[strings.ToLower(address)]
+			s.mu.Unlock()
+			if refused {
+				reply(refusal)
+				continue
+			}
+			reply("250 OK")
+		case "MAIL", "RSET", "NOOP":
 			reply("250 OK")
 		case "DATA":
 			reply("354 End data with <CR><LF>.<CR><LF>")
