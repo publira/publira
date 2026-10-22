@@ -21,12 +21,138 @@ import {
   MAX_CRAWLER_EXCLUDED_PATHS,
   parseCrawlerPaths,
 } from "#lib/tenant-crawler-settings-shared";
-import type { KnownCrawler } from "#lib/tenant-crawler-settings-shared";
+import type {
+  CrawlerPurpose,
+  KnownCrawler,
+} from "#lib/tenant-crawler-settings-shared";
 
 import type { TenantCrawlerSettingsActionState } from "../settings-types";
-import { EntryListFields } from "./entry-list-fields";
+import {
+  EntryList,
+  EntryListAdd,
+  EntryListDescription,
+  EntryListField,
+  EntryListInput,
+  EntryListLegend,
+  EntryListMessage,
+  EntryListRemove,
+  EntryListRows,
+  useEntryListRow,
+  useEntryListValues,
+} from "./entry-list";
 
 type SettledState = NonNullable<TenantCrawlerSettingsActionState>;
+
+const PURPOSE_LEGEND_CLASS = "text-sm font-medium text-foreground";
+const PURPOSE_DESCRIPTION_CLASS = "text-xs text-muted-foreground";
+
+/** The legend and the line under it of one purpose's group. */
+const CrawlerPurposeHeading = ({ purpose }: { purpose: CrawlerPurpose }) => {
+  switch (purpose) {
+    case "ai_training": {
+      return (
+        <>
+          <legend className={PURPOSE_LEGEND_CLASS}>
+            <ClientMessage message="admin.settings.crawlers.purposes.ai_training.label" />
+          </legend>
+          <p className={PURPOSE_DESCRIPTION_CLASS}>
+            <ClientMessage message="admin.settings.crawlers.purposes.ai_training.description" />
+          </p>
+        </>
+      );
+    }
+    case "ai_assistant": {
+      return (
+        <>
+          <legend className={PURPOSE_LEGEND_CLASS}>
+            <ClientMessage message="admin.settings.crawlers.purposes.ai_assistant.label" />
+          </legend>
+          <p className={PURPOSE_DESCRIPTION_CLASS}>
+            <ClientMessage message="admin.settings.crawlers.purposes.ai_assistant.description" />
+          </p>
+        </>
+      );
+    }
+    case "image_search": {
+      return (
+        <>
+          <legend className={PURPOSE_LEGEND_CLASS}>
+            <ClientMessage message="admin.settings.crawlers.purposes.image_search.label" />
+          </legend>
+          <p className={PURPOSE_DESCRIPTION_CLASS}>
+            <ClientMessage message="admin.settings.crawlers.purposes.image_search.description" />
+          </p>
+        </>
+      );
+    }
+    default: {
+      return (
+        <>
+          <legend className={PURPOSE_LEGEND_CLASS}>
+            <ClientMessage message="admin.settings.crawlers.purposes.other.label" />
+          </legend>
+          <p className={PURPOSE_DESCRIPTION_CLASS}>
+            <ClientMessage message="admin.settings.crawlers.purposes.other.description" />
+          </p>
+        </>
+      );
+    }
+  }
+};
+
+/**
+ * One path, named once the operator has left its field. The field is read as
+ * a list of one, so blank is no entry and anything else is checked as the
+ * Action checks it.
+ */
+const CrawlerPath = () => {
+  const t = useClientMessages();
+  const { position, touched, value } = useEntryListRow();
+  const result = parseCrawlerPaths([value]);
+  const message =
+    touched && !result.ok && result.reason !== "too_many"
+      ? crawlerPathMessage(t, result)
+      : undefined;
+
+  return (
+    <>
+      <EntryListField invalid={message !== undefined}>
+        <EntryListInput
+          aria-label={t("admin.settings.crawlers.path_label", { position })}
+          name="excluded_paths"
+        />
+        {message === undefined ? null : (
+          <FormMessage variant="destructive">{message}</FormMessage>
+        )}
+      </EntryListField>
+      <EntryListRemove
+        aria-label={t("admin.settings.crawlers.path_remove", { position })}
+      />
+    </>
+  );
+};
+
+/** A list longer than the server keeps, or the server's refusal of it. */
+const CrawlerPathsMessage = () => {
+  const t = useClientMessages();
+  const state = useActionFormState<SettledState>();
+  const list = parseCrawlerPaths(useEntryListValues());
+
+  if (!list.ok && list.reason === "too_many") {
+    return (
+      <EntryListMessage>
+        {t("admin.settings.crawlers.validation.too_many", {
+          max: MAX_CRAWLER_EXCLUDED_PATHS,
+        })}
+      </EntryListMessage>
+    );
+  }
+  return (
+    <EntryListMessage>
+      {state?.ok === false ? state.fieldErrors?.excludedPaths : undefined}
+    </EntryListMessage>
+  );
+};
 
 interface TenantCrawlerSettingsFieldsProps {
   /** Every crawler the setting may name, absent when the setting was not read. */
@@ -45,7 +171,6 @@ export const TenantCrawlerSettingsFields = ({
   initialSettings,
   knownCrawlers,
 }: TenantCrawlerSettingsFieldsProps) => {
-  const t = useClientMessages();
   const crawlersDescriptionId = useId();
   const state = useActionFormState<SettledState>();
   const [excluded, setExcluded] = useState<ReadonlySet<string>>(
@@ -78,25 +203,6 @@ export const TenantCrawlerSettingsFields = ({
     });
   };
 
-  // One field read as a list of one: blank is no entry, and anything else
-  // is checked as the Action checks it.
-  const pathError = (value: string) => {
-    const result = parseCrawlerPaths([value]);
-    return result.ok || result.reason === "too_many"
-      ? undefined
-      : crawlerPathMessage(t, result);
-  };
-
-  const pathsError = (values: readonly string[]) => {
-    const list = parseCrawlerPaths(values);
-    if (!list.ok && list.reason === "too_many") {
-      return t("admin.settings.crawlers.validation.too_many", {
-        max: MAX_CRAWLER_EXCLUDED_PATHS,
-      });
-    }
-    return state?.ok === false ? state.fieldErrors?.excludedPaths : undefined;
-  };
-
   const crawlersError =
     state?.ok === false ? state.fieldErrors?.excludedUserAgents : undefined;
 
@@ -121,16 +227,7 @@ export const TenantCrawlerSettingsFields = ({
 
         {groups.map(({ crawlers, purpose }) => (
           <fieldset className="grid min-w-0 gap-2" key={purpose}>
-            <legend className="text-sm font-medium text-foreground">
-              <ClientMessage
-                message={`admin.settings.crawlers.purposes.${purpose}.label`}
-              />
-            </legend>
-            <p className="text-xs text-muted-foreground">
-              <ClientMessage
-                message={`admin.settings.crawlers.purposes.${purpose}.description`}
-              />
-            </p>
+            <CrawlerPurposeHeading purpose={purpose} />
             <ul className="grid gap-2 sm:grid-cols-2">
               {crawlers.map((crawler) => (
                 <li key={crawler.userAgent}>
@@ -163,24 +260,21 @@ export const TenantCrawlerSettingsFields = ({
         )}
       </fieldset>
 
-      <EntryListFields
-        addLabel={<ClientMessage message="admin.settings.crawlers.paths_add" />}
-        description={
+      <EntryList initialEntries={paths} key={savedCount}>
+        <EntryListLegend>
+          <ClientMessage message="admin.settings.crawlers.paths_label" />
+        </EntryListLegend>
+        <EntryListRows>
+          <CrawlerPath />
+        </EntryListRows>
+        <EntryListAdd>
+          <ClientMessage message="admin.settings.crawlers.paths_add" />
+        </EntryListAdd>
+        <EntryListDescription>
           <ClientMessage message="admin.settings.crawlers.paths_description" />
-        }
-        entryError={pathError}
-        entryLabel={(position) =>
-          t("admin.settings.crawlers.path_label", { position })
-        }
-        initialEntries={paths}
-        key={savedCount}
-        legend={<ClientMessage message="admin.settings.crawlers.paths_label" />}
-        listError={pathsError}
-        name="excluded_paths"
-        removeLabel={(position) =>
-          t("admin.settings.crawlers.path_remove", { position })
-        }
-      />
+        </EntryListDescription>
+        <CrawlerPathsMessage />
+      </EntryList>
     </>
   );
 };

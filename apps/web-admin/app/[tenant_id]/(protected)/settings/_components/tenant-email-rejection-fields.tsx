@@ -22,9 +22,77 @@ import {
 } from "#lib/tenant-email-rejection-settings-shared";
 
 import type { TenantEmailRejectionActionState } from "../settings-types";
-import { EntryListFields } from "./entry-list-fields";
+import {
+  EntryList,
+  EntryListAdd,
+  EntryListDescription,
+  EntryListField,
+  EntryListInput,
+  EntryListLegend,
+  EntryListMessage,
+  EntryListRemove,
+  EntryListRows,
+  useEntryListRow,
+  useEntryListValues,
+} from "./entry-list";
 
 type SettledState = NonNullable<TenantEmailRejectionActionState>;
+
+/** One address or domain, named once the operator has left its field. */
+const EmailRejectionEntry = () => {
+  const t = useClientMessages();
+  const { position, touched, value } = useEntryListRow();
+  const entry = value.trim();
+  const invalid = touched && entry !== "" && !isEmailRejectionEntry(entry);
+
+  return (
+    <>
+      <EntryListField invalid={invalid}>
+        <EntryListInput
+          aria-label={t("admin.settings.email_rejection.entry_label", {
+            position,
+          })}
+          name="entries"
+        />
+        {invalid ? (
+          <FormMessage variant="destructive">
+            <ClientMessage
+              message="admin.settings.email_rejection.validation.entry_invalid"
+              values={{ entry }}
+            />
+          </FormMessage>
+        ) : null}
+      </EntryListField>
+      <EntryListRemove
+        aria-label={t("admin.settings.email_rejection.entry_remove", {
+          position,
+        })}
+      />
+    </>
+  );
+};
+
+/** A list longer than the server keeps, or the server's refusal of it. */
+const EmailRejectionEntriesMessage = () => {
+  const t = useClientMessages();
+  const state = useActionFormState<SettledState>();
+  const list = parseEmailRejectionEntries(useEntryListValues());
+
+  if (!list.ok && list.reason === "too_many") {
+    return (
+      <EntryListMessage>
+        {t("admin.settings.email_rejection.validation.too_many", {
+          max: MAX_EMAIL_REJECTION_ENTRIES,
+        })}
+      </EntryListMessage>
+    );
+  }
+  return (
+    <EntryListMessage>
+      {state?.ok === false ? state.fieldErrors?.entries : undefined}
+    </EntryListMessage>
+  );
+};
 
 interface TenantEmailRejectionFieldsProps {
   /**
@@ -47,8 +115,6 @@ export const TenantEmailRejectionFields = ({
   disposableDomainListAvailable,
   initialSettings,
 }: TenantEmailRejectionFieldsProps) => {
-  const t = useClientMessages();
-  const state = useActionFormState<SettledState>();
   const [rejectDisposableDomains, setRejectDisposableDomains] = useState(
     () => initialSettings?.rejectDisposableDomains ?? false
   );
@@ -68,25 +134,6 @@ export const TenantEmailRejectionFields = ({
     setSavedCount((count) => count + 1);
     setListAvailable(settled.disposableDomainListAvailable);
   });
-
-  const entryError = (value: string) => {
-    const entry = value.trim();
-    return entry === "" || isEmailRejectionEntry(entry)
-      ? undefined
-      : t("admin.settings.email_rejection.validation.entry_invalid", {
-          entry,
-        });
-  };
-
-  const listError = (values: readonly string[]) => {
-    const list = parseEmailRejectionEntries(values);
-    if (!list.ok && list.reason === "too_many") {
-      return t("admin.settings.email_rejection.validation.too_many", {
-        max: MAX_EMAIL_REJECTION_ENTRIES,
-      });
-    }
-    return state?.ok === false ? state.fieldErrors?.entries : undefined;
-  };
 
   return (
     <>
@@ -111,28 +158,21 @@ export const TenantEmailRejectionFields = ({
         </FormMessage>
       ) : null}
 
-      <EntryListFields
-        addLabel={
-          <ClientMessage message="admin.settings.email_rejection.entries_add" />
-        }
-        description={
-          <ClientMessage message="admin.settings.email_rejection.entries_description" />
-        }
-        entryError={entryError}
-        entryLabel={(position) =>
-          t("admin.settings.email_rejection.entry_label", { position })
-        }
-        initialEntries={entries}
-        key={savedCount}
-        legend={
+      <EntryList initialEntries={entries} key={savedCount}>
+        <EntryListLegend>
           <ClientMessage message="admin.settings.email_rejection.entries_label" />
-        }
-        listError={listError}
-        name="entries"
-        removeLabel={(position) =>
-          t("admin.settings.email_rejection.entry_remove", { position })
-        }
-      />
+        </EntryListLegend>
+        <EntryListRows>
+          <EmailRejectionEntry />
+        </EntryListRows>
+        <EntryListAdd>
+          <ClientMessage message="admin.settings.email_rejection.entries_add" />
+        </EntryListAdd>
+        <EntryListDescription>
+          <ClientMessage message="admin.settings.email_rejection.entries_description" />
+        </EntryListDescription>
+        <EmailRejectionEntriesMessage />
+      </EntryList>
     </>
   );
 };
