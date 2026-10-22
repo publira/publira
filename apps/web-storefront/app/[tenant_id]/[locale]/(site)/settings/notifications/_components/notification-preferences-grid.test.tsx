@@ -9,11 +9,15 @@ import { renderWithClientMessages } from "#lib/render-with-client-messages";
 import { NotificationPreferencesGrid } from "./notification-preferences-grid";
 
 const ALL_ON: NotificationPreferenceCells = {
+  announcementsEmailEnabled: true,
   announcementsInboxEnabled: true,
+  commentsEmailEnabled: true,
   commentsInboxEnabled: true,
+  followedCreatorsEmailEnabled: true,
   followedCreatorsInboxEnabled: true,
   followedCreatorsMobilePushEnabled: true,
   followedCreatorsWebPushEnabled: true,
+  followedEpisodesEmailEnabled: true,
   followedEpisodesInboxEnabled: true,
   followedEpisodesMobilePushEnabled: true,
   followedEpisodesWebPushEnabled: true,
@@ -51,10 +55,10 @@ describe("NotificationPreferencesGrid", () => {
     await renderGrid(ALL_ON);
 
     const followed = row("New episodes of series and episodes you follow");
-    expect(within(followed).getAllByRole("switch")).toHaveLength(3);
+    expect(within(followed).getAllByRole("switch")).toHaveLength(4);
 
     const comments = row("Your comments");
-    expect(within(comments).getAllByRole("switch")).toHaveLength(1);
+    expect(within(comments).getAllByRole("switch")).toHaveLength(2);
     expect(within(comments).getAllByText("Not available")).toHaveLength(2);
   });
 
@@ -62,10 +66,14 @@ describe("NotificationPreferencesGrid", () => {
     await renderGrid({ ...ALL_ON, commentsInboxEnabled: false });
 
     expect(submitted()).toEqual({
+      announcementsEmailEnabled: "on",
       announcementsInboxEnabled: "on",
+      commentsEmailEnabled: "on",
+      followedCreatorsEmailEnabled: "on",
       followedCreatorsInboxEnabled: "on",
       followedCreatorsMobilePushEnabled: "on",
       followedCreatorsWebPushEnabled: "on",
+      followedEpisodesEmailEnabled: "on",
       followedEpisodesInboxEnabled: "on",
       followedEpisodesMobilePushEnabled: "on",
       followedEpisodesWebPushEnabled: "on",
@@ -116,6 +124,22 @@ describe("NotificationPreferencesGrid", () => {
     expect(pressed(screen.getByRole("button", { name: "Browser" }))).toBe(
       "mixed"
     );
+  });
+
+  it("turns the email column off from its heading, leaving the other columns alone", async () => {
+    await renderGrid(ALL_ON);
+
+    fireEvent.click(screen.getByRole("button", { name: "Email" }));
+
+    for (const category of [
+      "New episodes of series and episodes you follow",
+      "New episodes by authors you follow",
+      "Your comments",
+      "Announcements",
+    ]) {
+      expect(isOn(cell(category, "Email"))).toBe(false);
+      expect(isOn(cell(category, "Inbox"))).toBe(true);
+    }
   });
 
   it("moves one cell without touching its row or column", async () => {

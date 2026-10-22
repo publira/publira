@@ -118,11 +118,15 @@ const DROPPED_ENTRY = { expire: 0, revalidate: 0, stale: 0 };
 
 /** The notification grid of a reader who has saved nothing. */
 const NOTIFICATION_CELLS_ON = {
+  announcementsEmailEnabled: true,
   announcementsInboxEnabled: true,
+  commentsEmailEnabled: true,
   commentsInboxEnabled: true,
+  followedCreatorsEmailEnabled: true,
   followedCreatorsInboxEnabled: true,
   followedCreatorsMobilePushEnabled: true,
   followedCreatorsWebPushEnabled: true,
+  followedEpisodesEmailEnabled: true,
   followedEpisodesInboxEnabled: true,
   followedEpisodesMobilePushEnabled: true,
   followedEpisodesWebPushEnabled: true,
@@ -1269,21 +1273,20 @@ describe("web-storefront auth", () => {
     const { getNotificationSettings } = await importAuth();
     mockResolveAccessToken.mockResolvedValueOnce("session_abc");
     mockGetNotificationSettings.mockResolvedValueOnce({
-      emailNotificationsEnabled: false,
+      emailNotificationsEnabled: true,
       preferences: {
         ...NOTIFICATION_CELLS_ON,
+        commentsEmailEnabled: false,
         commentsInboxEnabled: false,
         followedCreatorsWebPushEnabled: false,
       },
     });
 
     await expect(getNotificationSettings("TENANT001")).resolves.toEqual({
-      emailNotificationsEnabled: false,
-      preferences: {
-        ...NOTIFICATION_CELLS_ON,
-        commentsInboxEnabled: false,
-        followedCreatorsWebPushEnabled: false,
-      },
+      ...NOTIFICATION_CELLS_ON,
+      commentsEmailEnabled: false,
+      commentsInboxEnabled: false,
+      followedCreatorsWebPushEnabled: false,
     });
   });
 
@@ -1294,10 +1297,9 @@ describe("web-storefront auth", () => {
       emailNotificationsEnabled: true,
     });
 
-    await expect(getNotificationSettings("TENANT001")).resolves.toEqual({
-      emailNotificationsEnabled: true,
-      preferences: NOTIFICATION_CELLS_ON,
-    });
+    await expect(getNotificationSettings("TENANT001")).resolves.toEqual(
+      NOTIFICATION_CELLS_ON
+    );
   });
 
   it("updateNotificationSettings: sends every cell, so none keeps a value the reader did not see", async () => {
@@ -1305,6 +1307,7 @@ describe("web-storefront auth", () => {
     mockResolveAccessToken.mockResolvedValueOnce("session_abc");
     const preferences = {
       ...NOTIFICATION_CELLS_ON,
+      announcementsEmailEnabled: false,
       announcementsInboxEnabled: false,
     };
     mockUpdateNotificationSettings.mockResolvedValueOnce({
@@ -1313,15 +1316,11 @@ describe("web-storefront auth", () => {
     });
 
     await expect(
-      updateNotificationSettings("TENANT001", {
-        emailNotificationsEnabled: true,
-        preferences,
-      })
-    ).resolves.toEqual({ emailNotificationsEnabled: true, preferences });
+      updateNotificationSettings("TENANT001", preferences)
+    ).resolves.toEqual(preferences);
     expect(mockUpdateNotificationSettings).toHaveBeenCalledWith(
       {
         ...preferences,
-        emailNotificationsEnabled: true,
         tenant: { tenantId: "TENANT001" },
       },
       { headers: { Authorization: "Bearer session_abc" } }

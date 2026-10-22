@@ -11,11 +11,15 @@ import {
 } from "./notification-grid";
 
 const ALL_ON: NotificationPreferenceCells = {
+  announcementsEmailEnabled: true,
   announcementsInboxEnabled: true,
+  commentsEmailEnabled: true,
   commentsInboxEnabled: true,
+  followedCreatorsEmailEnabled: true,
   followedCreatorsInboxEnabled: true,
   followedCreatorsMobilePushEnabled: true,
   followedCreatorsWebPushEnabled: true,
+  followedEpisodesEmailEnabled: true,
   followedEpisodesInboxEnabled: true,
   followedEpisodesMobilePushEnabled: true,
   followedEpisodesWebPushEnabled: true,
@@ -28,15 +32,20 @@ describe("notification grid", () => {
     expect(notificationCell("followedCreators", "webPush")).toBe(
       "followedCreatorsWebPushEnabled"
     );
+    expect(notificationCell("comments", "email")).toBe("commentsEmailEnabled");
   });
 
   it("collects a row and a column from the cells that exist", () => {
-    expect(rowCells("comments")).toEqual(["commentsInboxEnabled"]);
+    expect(rowCells("comments").toSorted()).toEqual([
+      "commentsEmailEnabled",
+      "commentsInboxEnabled",
+    ]);
     expect(columnCells("webPush").toSorted()).toEqual([
       "followedCreatorsWebPushEnabled",
       "followedEpisodesWebPushEnabled",
     ]);
     expect(columnCells("inbox")).toHaveLength(4);
+    expect(columnCells("email")).toHaveLength(4);
   });
 
   it("reads a group as on, off, or mixed", () => {
@@ -79,6 +88,7 @@ describe("notification grid", () => {
 
     expect(toggled).toEqual({
       ...cells,
+      followedCreatorsEmailEnabled: false,
       followedCreatorsInboxEnabled: false,
       followedCreatorsMobilePushEnabled: false,
       followedCreatorsWebPushEnabled: false,

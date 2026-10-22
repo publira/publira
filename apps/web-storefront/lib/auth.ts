@@ -111,19 +111,18 @@ export interface SignupInput {
  * them.
  */
 export interface NotificationPreferenceCells {
+  announcementsEmailEnabled: boolean;
   announcementsInboxEnabled: boolean;
+  commentsEmailEnabled: boolean;
   commentsInboxEnabled: boolean;
+  followedCreatorsEmailEnabled: boolean;
   followedCreatorsInboxEnabled: boolean;
   followedCreatorsMobilePushEnabled: boolean;
   followedCreatorsWebPushEnabled: boolean;
+  followedEpisodesEmailEnabled: boolean;
   followedEpisodesInboxEnabled: boolean;
   followedEpisodesMobilePushEnabled: boolean;
   followedEpisodesWebPushEnabled: boolean;
-}
-
-export interface NotificationSettings {
-  emailNotificationsEnabled: boolean;
-  preferences: NotificationPreferenceCells;
 }
 
 /**
@@ -136,28 +135,41 @@ type RawNotificationPreferences = Pick<
   keyof NotificationPreferenceCells
 >;
 
+/** What a reader who has saved nothing reads: every cell on. */
+export const UNSAVED_NOTIFICATION_PREFERENCE_CELLS: NotificationPreferenceCells =
+  {
+    announcementsEmailEnabled: true,
+    announcementsInboxEnabled: true,
+    commentsEmailEnabled: true,
+    commentsInboxEnabled: true,
+    followedCreatorsEmailEnabled: true,
+    followedCreatorsInboxEnabled: true,
+    followedCreatorsMobilePushEnabled: true,
+    followedCreatorsWebPushEnabled: true,
+    followedEpisodesEmailEnabled: true,
+    followedEpisodesInboxEnabled: true,
+    followedEpisodesMobilePushEnabled: true,
+    followedEpisodesWebPushEnabled: true,
+  };
+
 /**
  * A response without the message reads every cell on, which is what the server
  * answers for a reader who has saved nothing.
  */
 const toNotificationPreferenceCells = (
   preferences?: RawNotificationPreferences
-): NotificationPreferenceCells => ({
-  announcementsInboxEnabled: preferences?.announcementsInboxEnabled ?? true,
-  commentsInboxEnabled: preferences?.commentsInboxEnabled ?? true,
-  followedCreatorsInboxEnabled:
-    preferences?.followedCreatorsInboxEnabled ?? true,
-  followedCreatorsMobilePushEnabled:
-    preferences?.followedCreatorsMobilePushEnabled ?? true,
-  followedCreatorsWebPushEnabled:
-    preferences?.followedCreatorsWebPushEnabled ?? true,
-  followedEpisodesInboxEnabled:
-    preferences?.followedEpisodesInboxEnabled ?? true,
-  followedEpisodesMobilePushEnabled:
-    preferences?.followedEpisodesMobilePushEnabled ?? true,
-  followedEpisodesWebPushEnabled:
-    preferences?.followedEpisodesWebPushEnabled ?? true,
-});
+): NotificationPreferenceCells => {
+  const cells = { ...UNSAVED_NOTIFICATION_PREFERENCE_CELLS };
+  if (!preferences) {
+    return cells;
+  }
+  for (const cell of Object.keys(
+    cells
+  ) as (keyof NotificationPreferenceCells)[]) {
+    cells[cell] = preferences[cell];
+  }
+  return cells;
+};
 
 /**
  * What a password sign-in came to. A refused one says whether the credentials
@@ -1468,7 +1480,7 @@ export const deleteMe = async (
 export const getNotificationSettings = async (
   tenantId: string,
   accessToken?: string
-): Promise<NotificationSettings | null> => {
+): Promise<NotificationPreferenceCells | null> => {
   const sid = await resolveAccessToken(accessToken);
   if (!sid) {
     return null;
@@ -1482,10 +1494,7 @@ export const getNotificationSettings = async (
       buildSessionHeaders(sid)
     );
 
-    return {
-      emailNotificationsEnabled: response.emailNotificationsEnabled,
-      preferences: toNotificationPreferenceCells(response.preferences),
-    };
+    return toNotificationPreferenceCells(response.preferences);
   } catch (error) {
     if (isUnauthenticatedRpcError(error)) {
       throw error;
@@ -1497,19 +1506,17 @@ export const getNotificationSettings = async (
   }
 };
 
-/** What a reader who has saved nothing reads: every cell on. */
-export const UNSAVED_NOTIFICATION_PREFERENCE_CELLS =
-  toNotificationPreferenceCells();
-
 /**
  * Sends every cell, so what the reader saves is the grid they saw: a cell left
- * out of the request would keep its stored value instead.
+ * out of the request would keep its stored value instead. Naming the email
+ * cells is also what tells the server to ignore `email_notifications_enabled`,
+ * the one switch of a client without the email column.
  */
 export const updateNotificationSettings = async (
   tenantId: string,
-  { emailNotificationsEnabled, preferences }: NotificationSettings,
+  preferences: NotificationPreferenceCells,
   accessToken?: string
-): Promise<NotificationSettings | null> => {
+): Promise<NotificationPreferenceCells | null> => {
   const sid = await resolveAccessToken(accessToken);
   if (!sid) {
     return null;
@@ -1519,16 +1526,12 @@ export const updateNotificationSettings = async (
     const response = await apiClient.auth.updateNotificationSettings(
       {
         ...preferences,
-        emailNotificationsEnabled,
         tenant: { tenantId },
       },
       buildSessionHeaders(sid)
     );
 
-    return {
-      emailNotificationsEnabled: response.emailNotificationsEnabled,
-      preferences: toNotificationPreferenceCells(response.preferences),
-    };
+    return toNotificationPreferenceCells(response.preferences);
   } catch (error) {
     if (isUnauthenticatedRpcError(error)) {
       throw error;
