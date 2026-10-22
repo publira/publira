@@ -15,7 +15,7 @@ catalog:
   "@next/playwright": 16.4.2
   "@opentelemetry/api": 1.9.1
   "@opentelemetry/semantic-conventions": 1.43.0
-  "@publira/comic-viewer": 0.10.0
+  "@publira/comic-viewer": 0.10.1
   "@publira/next-cache-handlers": 1.0.2
   "@simplewebauthn/browser": 14.0.0
   "@tailwindcss/postcss": 4.3.3
