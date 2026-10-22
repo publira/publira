@@ -58,6 +58,14 @@ export const tenantAnalyticsSettingsTag = (tenantId: string) =>
   `tenant:${normalized(tenantId)}:analytics-settings`;
 
 /**
+ * The crawlers and paths the tenant's `robots.txt` excludes, which nothing but
+ * that file reads. The console's save drops it, so an exclusion reaches the
+ * file without waiting for a page to be published.
+ */
+export const tenantCrawlerSettingsTag = (tenantId: string) =>
+  `tenant:${normalized(tenantId)}:crawler-settings`;
+
+/**
  * Every published page of a tenant, the footer links included.
  *
  * The locale stays out of the tag. Each locale is already its own cache entry,

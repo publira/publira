@@ -806,6 +806,11 @@
       "exception": "Search engines read it to index the storefront's URLs; no reader reaches it, and the app has no URLs of its own for a crawler to list."
     },
     {
+      "name": "The crawlers and paths the storefront's robots.txt excludes",
+      "web": { "rpcs": ["GetTenantCrawlerSettings"] },
+      "exception": "Crawlers read robots.txt before fetching the storefront's URLs; no reader reaches it, and the app has no URLs of its own for a crawler to fetch."
+    },
+    {
       "name": "The tenant's Google tag on the site's pages",
       "web": { "rpcs": ["GetTenantAnalyticsSettings"] },
       "exception": "The IDs name the site's web data stream and web container, which a web page loads as a tag. An app is measured through an SDK of its own rather than a tag."
