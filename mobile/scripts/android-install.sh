@@ -16,7 +16,7 @@ readonly REPOSITORY_URL='https://dl.google.com/android/repository'
 # The Temurin build ci.yml sets up. Renovate updates it together with the
 # java-version there, because both carry the same depName.
 # renovate: datasource=java-version depName=java-jdk
-readonly JDK_VERSION='25.0.4+101.0.LTS'
+readonly JDK_VERSION='25.0.5+8.0.LTS'
 readonly JDK_HOME="${HOME}/Android/temurin-${JDK_VERSION}"
 
 sdkmanager="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
