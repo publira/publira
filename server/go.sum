@@ -219,8 +219,8 @@ github.com/opencontainers/go-digest v1.0.0 h1:apOUWs51W5PlhuyGyz9FCeeBIOUDA/6nW8
 github.com/opencontainers/go-digest v1.0.0/go.mod h1:0JzlMkj0TRzQZfJkVvzbP0HBR3IKzErnv2BNG4W4MAM=
 github.com/opencontainers/image-spec v1.1.1 h1:y0fUlFfIZhPF1W537XOLg0/fcx6zcHCJwooC2xJA040=
 github.com/opencontainers/image-spec v1.1.1/go.mod h1:qpqAh3Dmcf36wStyyWU+kCeDgrGnAve2nCC8+7h8Q0M=
-github.com/opensearch-project/opensearch-go/v5 v5.1.1 h1:HONsa9S2Ysy9uWKQx20JJPuTl6mDJU1UHkXYIk4PnNQ=
-github.com/opensearch-project/opensearch-go/v5 v5.1.1/go.mod h1:VKWkTG+A9Kjq5mqkxb/IlN+6rWH8C46rwzw9dHRti+U=
+github.com/opensearch-project/opensearch-go/v5 v5.1.2 h1:6C6nxABw1AvAJzUXpXXr7xMSwpvz+V6CXSuanV3pxjI=
+github.com/opensearch-project/opensearch-go/v5 v5.1.2/go.mod h1:VKWkTG+A9Kjq5mqkxb/IlN+6rWH8C46rwzw9dHRti+U=
 github.com/payjp/payjpv2-go v0.0.0-20261022044837-cc9b7a0306da h1:Styx45kppfuOWoG0lQPf9GLCQF0rrWe2byAlpeUOdaE=
 github.com/payjp/payjpv2-go v0.0.0-20261022044837-cc9b7a0306da/go.mod h1:PykF8XZvsJOIEycm7eSLPP+vpAUiQsxyLyZApwjH2d4=
 github.com/philhofer/fwd v1.2.0 h1:e6DnBTl7vGY+Gz322/ASL4Gyp1FspeMvx1RNDoToZuM=
