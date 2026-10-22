@@ -4,7 +4,6 @@ import {
   isEmailRejectionEntry,
   MAX_EMAIL_REJECTION_ENTRIES,
   parseEmailRejectionEntries,
-  splitPastedEmailRejectionEntries,
 } from "./tenant-email-rejection-settings-shared";
 
 // The cases mirror server/internal/emailrejection: an entry the card accepts
@@ -95,15 +94,5 @@ describe("parseEmailRejectionEntries", () => {
     expect(
       parseEmailRejectionEntries([...domains, "one-more.example"])
     ).toEqual({ ok: false, reason: "too_many" });
-  });
-});
-
-describe("splitPastedEmailRejectionEntries", () => {
-  it("takes one entry a line, trimmed, whatever the line endings", () => {
-    expect(
-      splitPastedEmailRejectionEntries(
-        "  one.example \r\n\r\ntwo@example.com\rthree.example\n\n"
-      )
-    ).toEqual(["one.example", "two@example.com", "three.example"]);
   });
 });
