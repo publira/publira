@@ -41,7 +41,7 @@ The traffic of an install falls on three groups of processes, and each grows on 
 
 ### Readers
 
-Converting images is the heaviest work an install does. `publira server` resizes every image a page shows and converts it to WebP or AVIF on request, and keeps the result in Valkey for `PUBLIRA_IMAGE_CACHE_TTL`, an hour unless set, so an image is converted once for every copy until the cached result expires. What the cache does not hold yet is converted on the copy the request reached, so the processes that serve the tenants' images are the ones whose CPU a growing site uses up first.
+Converting images is the heaviest work an install does. `publira server` resizes every image a page shows and converts it to WebP or AVIF on request, and keeps the result in Valkey for `PUBLIRA_IMAGE_CACHE_TTL`, an hour unless set, so one copy converts an image and every other copy serves the cached result until it expires. What the cache does not hold yet is converted on the copy the request reached, so the processes that serve the tenants' images are the ones whose CPU a growing site uses up first.
 
 A CDN in front of the edge takes much of that work away. `publira server` marks an image anyone may be shown, such as the pages of a free episode or a tenant's logo, `public, max-age=3600`, or shorter when a free reading period ends sooner, and an image that needs the reader's credential `private`. A CDN can serve the public ones without asking the install again within the hour. Its cache key has to include the host, the `Accept` header, the `Authorization` header, and the whole query string, as [The cache policies](./6-ecs-fargate/1-cloudfront.md#the-cache-policies) sets up for CloudFront. Nothing but `/images` is worth caching at the CDN: the pages depend on the reader's session, and the web apps cache them already.
 
@@ -88,7 +88,7 @@ Every copy of `publira server` and `publira worker` opens one pool of connection
 
 The sum has to fit in the database's `max_connections`, less the connections PostgreSQL keeps for superusers, `superuser_reserved_connections`, three unless set. One server and one worker take 60 of PostgreSQL's default 100. An install with three copies of `publira server --role storefront`, two of `publira server`, and two of `publira worker` takes (3 × 1 + 2 × 3 + 2 × 3) × 10 = 150, which the default no longer accepts.
 
-A request to the public API or the tenant console's API holds one connection of its pool from start to end, and one connection of each pool is kept for the queries those requests make outside a tenant, so one copy answers at most one less than `PUBLIRA_DB_MAX_OPEN_CONNS` of them at once. Raising it lets each copy answer more, and adding copies does too; both cost connections at the database. [Connection pools](https://github.com/publira/publira/blob/main/server/README.md#connection-pools) has the full reference.
+A request to the public API holds one connection of the public API's pool from start to end, and a request to the tenant console's API one of the console's pool, and one connection of each pool is kept for the queries those requests make outside a tenant. A copy therefore answers at most one less than `PUBLIRA_DB_MAX_OPEN_CONNS` public API requests at once, and as many tenant console requests beside them when it serves both. Raising the bound lets each copy answer more, and adding copies does too; both cost connections at the database. [Connection pools](https://github.com/publira/publira/blob/main/server/README.md#connection-pools) has the full reference.
 
 ## What does not scale out
 
