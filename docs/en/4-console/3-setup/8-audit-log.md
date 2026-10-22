@@ -2,7 +2,7 @@
 title: Audit log
 description: Find out who on the staff changed what in the tenant, and when, from the record the console keeps of its staff's actions.
 published: 2026-10-07
-updated: 2026-10-18
+updated: 2026-10-22
 ---
 
 **Audit logs**, under **Administration**, is the tenant's record of what its staff did in the console: who changed what, when, and whether it worked. It answers questions such as who suspended a reader, who changed the payment settings, or when a member was given a role. Only a Tenant admin sees it.
@@ -34,7 +34,7 @@ The log cannot be exported, and its entries are never deleted. An entry keeps th
 | Staff | Members invited, invitations resent, canceled, and accepted, roles changed, and members removed |
 | Branding | The theme changed, and the logo and the icon uploaded and removed |
 | Settings | On the **General** tab, the public site display, the time zone, the default language, reader comments, age verification, the terms of service and privacy policy, and refused email addresses; on **Limits and retention**, community limits and retention periods; and what readers may show as an icon, with the preset icons added and deleted |
-| Integrations | The mail settings and their tests, the payment provider's settings, **Where episodes are sold**, the mobile push credentials, the apps named under **App links**, and the sign-in providers |
+| Integrations | The mail settings and their tests, the payment provider's settings, **Where episodes are sold**, the mobile push credentials, the apps named under **App links**, the sign-in providers, and the Google tag |
 | Two-step verification | Staff setting it up, turning it off, regenerating recovery codes, and signing in with it or with a recovery code |
 
 A member changing their own email address leaves no entry, and neither does anything readers do on the site.

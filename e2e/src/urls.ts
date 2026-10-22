@@ -288,6 +288,17 @@ export const WEB_ADMIN_GOOGLE_TAG_BASE_URL = envUrl(
 );
 
 /**
+ * Admin console of the tenant from
+ * `db/seeds/scenarios/600_docs_google_tag.sql`, whose Google tag the
+ * documentation's screenshots show in the gateway mode, on a console of its
+ * own beside the Google tag suite's.
+ */
+export const WEB_ADMIN_DOCS_GOOGLE_TAG_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_ADMIN_DOCS_GOOGLE_TAG_BASE_URL",
+  withHostname(WEB_ADMIN_BASE_URL, "admin.tag-docs.localhost")
+);
+
+/**
  * Public site of the tenant from
  * `db/seeds/scenarios/580_storefront_google_tag.sql`. Its suite stores the
  * tenant's Google tag settings in every serving mode, which every page of the
