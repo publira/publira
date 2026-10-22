@@ -58,6 +58,15 @@ map $publira_trusted_hop$http_x_forwarded_proto $publira_forwarded_proto {
     1https  https;
 }
 
+# The reader's region snippets/proxy-headers.conf forwards in
+# X-Forwarded-CountryRegion: the one a trusted hop names there, and none for
+# every other request, which removes the one a caller sent. nginx looks up no
+# region of its own.
+map $publira_trusted_hop $publira_country_region {
+    default "";
+    1       $http_x_forwarded_countryregion;
+}
+
 # The peer address in the form Forwarded takes it, which
 # snippets/proxy-headers.conf sends: an IPv6 address has to be quoted and in
 # brackets, an IPv4 address goes as it is.

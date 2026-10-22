@@ -147,11 +147,12 @@ describe("gatewayRequestHeaders", () => {
       host: "GTM-TEST1.fps.goog",
       "sec-ch-ua": '"Chromium";v="140"',
       "user-agent": "Reader/1.0",
+      "x-forwarded-countryregion": "JP-13",
       "x-forwarded-for": "203.0.113.7",
     });
   });
 
-  it("leaves out the cookie and the client address it has none of", () => {
+  it("leaves out the cookie, the client address, and the region it has none of", () => {
     expect(
       gatewayRequestHeaders(
         new Headers({ cookie: "publira_web_storefront_auth=sealed" }),
@@ -159,6 +160,42 @@ describe("gatewayRequestHeaders", () => {
       )
     ).toEqual({ host: "GTM-TEST1.fps.goog" });
   });
+
+  it.each([
+    "jp-13",
+    "JP",
+    "JP-",
+    "JP-1234",
+    "JPN-13",
+    "JP-13, US-CA",
+    "JP_13",
+    "",
+  ])(
+    "leaves out a region of another shape than ISO 3166-2, such as %j",
+    (countryRegion) => {
+      expect(
+        gatewayRequestHeaders(
+          new Headers({ "x-forwarded-countryregion": countryRegion }),
+          { clientAddress: null, host: "GTM-TEST1.fps.goog" }
+        )
+      ).toEqual({ host: "GTM-TEST1.fps.goog" });
+    }
+  );
+
+  it.each(["US-CA", "GB-ENG", "FR-75C", "JP-13"])(
+    "passes on %j as it arrived",
+    (countryRegion) => {
+      expect(
+        gatewayRequestHeaders(
+          new Headers({ "x-forwarded-countryregion": countryRegion }),
+          { clientAddress: null, host: "GTM-TEST1.fps.goog" }
+        )
+      ).toEqual({
+        host: "GTM-TEST1.fps.goog",
+        "x-forwarded-countryregion": countryRegion,
+      });
+    }
+  );
 });
 
 describe("gatewayResponseHeaders", () => {
@@ -234,10 +271,10 @@ describe("forwardToGoogleTagGateway", () => {
       "content-type": "text/plain;charset=UTF-8",
       cookie: "_ga=GA1.1.1",
       host: "GTM-TEST1.fps.goog",
+      "x-forwarded-countryregion": "JP-13",
       "x-forwarded-for": "203.0.113.7",
     });
     expect(hit?.headers).not.toHaveProperty("authorization");
-    expect(hit?.headers).not.toHaveProperty("x-forwarded-countryregion");
   });
 
   it("passes a redirect back to the browser rather than following it", async () => {

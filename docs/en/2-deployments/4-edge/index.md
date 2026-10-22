@@ -117,6 +117,15 @@ An edge that passes a caller's `X-Forwarded-Host` on lets the caller have anothe
 
 The edge removes `traceparent`, `tracestate`, and `baggage` from every request from outside. Publira's processes continue the trace an incoming `traceparent` names, so a caller who could set it would choose the trace and whether the request is sampled: attaching spans to someone else's trace, or exporting traces past the sampling ratio you set. Without the headers, each request starts a trace of its own. Calls between Publira's own processes do not pass through the edge, so they keep theirs.
 
+### The reader's region
+
+A tenant that serves its Google tag through the [Google tag gateway](../../4-console/7-google-tag.md#google-tag-gateway) has `web-storefront` forward the tag's requests to Google, and Google places the reader in a region for its regional reports and its region-specific consent defaults by the `X-Forwarded-CountryRegion` header of that request. `web-storefront` sends the one the edge hands it, an ISO 3166-2 code such as `JP-13` or `US-CA`, and none when the edge hands it none, or a value of another shape:
+
+- **The edge removes `X-Forwarded-CountryRegion` from requests from outside.** A caller's value passed on would let any reader be reported in a region of their choosing.
+- **An edge that knows the reader's region sets it.** A CDN or a load balancer that looks up the country and region of the address that connected to it can write them into the header in that form, as [CloudFront in front of ECS](../6-ecs-fargate/1-cloudfront.md#the-headers) does. A hop after it passes the header on.
+
+An edge that knows no region only removes the header, and Google then reports the tag's requests through the gateway with no region. Nothing else in Publira reads it.
+
 ### Image uploads from a page
 
 A reader's icon on the tenant's site, and the images uploaded in the tenant console — an author's icon, an eye-catch, and the branding logo and browser icon — are posted to the path of the page they are chosen on, with a body of up to 11 MiB. Every hop on the way has to admit a body that size on the paths of the site's and the console's pages. A smaller limit refuses the upload before it reaches Publira.
