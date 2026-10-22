@@ -2,6 +2,7 @@
 title: CloudFront in front of ECS
 description: Put CloudFront in front of the internal Application Load Balancer of an install on Amazon ECS on Fargate, and check it from outside the VPC.
 published: 2026-10-21
+updated: 2026-10-22
 ---
 
 This page is step 8 of [Amazon ECS on Fargate](./index.md), and runs in the same shell as the steps before it: its commands use the variables and the functions those steps defined, such as `VPC`, `VPC_CIDR`, `ALB`, and `allow`.
@@ -196,11 +197,13 @@ TRUSTED_PROXIES="$VPC_CIDR,$(curl -s https://ip-ranges.amazonaws.com/ip-ranges.j
 echo "$TRUSTED_PROXIES"
 ```
 
-Write that value in place of `<see The client address>` in the `publira-server.json` of [Start the services](./index.md#6-start-the-services), register the task definition again, and deploy the service with it:
+`web-storefront` walks the same addresses to find the reader's address it passes to a tenant's Google tag gateway, so it takes the same value. Write it in place of `<see The client address>` in the `publira-server.json` and the `web-storefront.json` of [Start the services](./index.md#6-start-the-services), register both task definitions again, and deploy both services with them:
 
 ```bash
-aws ecs register-task-definition --cli-input-json file://publira-server.json > /dev/null
-aws ecs update-service --cluster publira --service publira-server --task-definition publira-server > /dev/null
+for family in publira-server web-storefront; do
+  aws ecs register-task-definition --cli-input-json "file://$family.json" > /dev/null
+  aws ecs update-service --cluster publira --service "$family" --task-definition "$family" > /dev/null
+done
 ```
 
 AWS changes those ranges from time to time, and announces each change on the `AmazonIpSpaceChanged` SNS topic. Until you update the variable, a request that arrived through a new range is recorded with CloudFront's address rather than the reader's: every reader behind that range shares an address, but none of them can choose it. Trust no wider range than these: a trusted range that reaches readers lets any of them name an address of their choosing.

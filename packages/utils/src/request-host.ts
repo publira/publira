@@ -1,82 +1,20 @@
+import {
+  forwardedParameters,
+  isForwardedHeaderEnabled,
+} from "./forwarded-header";
+
+export { FORWARDED_HEADER_ENABLED_ENV } from "./forwarded-header";
+
 type HeadersLike = Pick<Headers, "get">;
-
-/**
- * Turned to `false` for an install whose edge writes `X-Forwarded-Host` and
- * passes on a `Forwarded` header the caller sent, as `publira server` reads
- * the same variable for the client address. The web apps then take the host
- * from `X-Forwarded-Host` and `Host` alone.
- */
-export const FORWARDED_HEADER_ENABLED_ENV = "PUBLIRA_FORWARDED_HEADER_ENABLED";
-
-/**
- * Exactly the values Go's `strconv.ParseBool` reads, so that a value
- * `publira server` accepts for the same variable is accepted here too, and
- * one it refuses is refused.
- */
-const TRUE_VALUES = new Set(["1", "t", "T", "true", "TRUE", "True"]);
-const FALSE_VALUES = new Set(["0", "f", "F", "false", "FALSE", "False"]);
-
-const isForwardedHeaderEnabled = (): boolean => {
-  const value = (process.env[FORWARDED_HEADER_ENABLED_ENV] ?? "").trim();
-  if (value === "" || TRUE_VALUES.has(value)) {
-    return true;
-  }
-  if (FALSE_VALUES.has(value)) {
-    return false;
-  }
-
-  throw new Error(
-    `${FORWARDED_HEADER_ENABLED_ENV} must be a boolean such as true or false, not ${JSON.stringify(value)}`
-  );
-};
-
-/** Splits `value` at every `separator` outside a quoted string. */
-const splitUnquoted = (value: string, separator: string): string[] => {
-  const parts: string[] = [];
-  let quoted = false;
-  let escaped = false;
-  let start = 0;
-  for (let index = 0; index < value.length; index += 1) {
-    const character = value[index];
-    if (escaped) {
-      escaped = false;
-    } else if (quoted && character === "\\") {
-      escaped = true;
-    } else if (character === '"') {
-      quoted = !quoted;
-    } else if (!quoted && character === separator) {
-      parts.push(value.slice(start, index));
-      start = index + 1;
-    }
-  }
-  parts.push(value.slice(start));
-  return parts;
-};
-
-const unquote = (value: string): string =>
-  value.length >= 2 && value.startsWith('"') && value.endsWith('"')
-    ? value.slice(1, -1).replaceAll(/\\(?<escaped>.)/gu, "$<escaped>")
-    : value;
 
 /**
  * The rightmost `host=` in `Forwarded` (RFC 7239), read across every element
  * the way `publira server` reads its `for=`.
  */
-const forwardedHost = (headers: HeadersLike): string | undefined => {
-  let host: string | undefined;
-  for (const element of splitUnquoted(headers.get("forwarded") ?? "", ",")) {
-    for (const pair of splitUnquoted(element, ";")) {
-      const separator = pair.indexOf("=");
-      if (
-        separator !== -1 &&
-        pair.slice(0, separator).trim().toLowerCase() === "host"
-      ) {
-        host = unquote(pair.slice(separator + 1).trim()) || host;
-      }
-    }
-  }
-  return host;
-};
+const forwardedHost = (headers: HeadersLike): string | undefined =>
+  forwardedParameters(headers.get("forwarded") ?? "", "host").findLast(
+    (host) => host.length > 0
+  );
 
 /** The rightmost of `X-Forwarded-Host`'s values, the one the nearest hop wrote. */
 const forwardedHostHeader = (headers: HeadersLike): string | undefined =>

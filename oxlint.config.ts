@@ -14,6 +14,20 @@ export default defineConfig({
   ],
   overrides: [
     {
+      // These name the address ranges themselves: the proxies a request's
+      // forwarded chain is believed from, and the addresses a tenant's server
+      // container may not be reached on.
+      files: [
+        "packages/utils/src/client-address.ts",
+        "packages/utils/src/client-address.test.ts",
+        "apps/web-storefront/lib/public-address.ts",
+        "apps/web-storefront/lib/public-address.test.ts",
+      ],
+      rules: {
+        "sonarjs/no-hardcoded-ip": "off",
+      },
+    },
+    {
       // Generated protobuf re-exports intentionally use `export *`.
       // Cursor pagination helpers must await each page sequentially (token
       // depends on the previous response); parallel Promise.all is wrong there.

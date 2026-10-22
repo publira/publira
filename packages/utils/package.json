@@ -47,6 +47,10 @@
       "types": "./dist/static-param-placeholder.d.mts",
       "default": "./dist/static-param-placeholder.mjs"
     },
+    "./client-address": {
+      "types": "./dist/client-address.d.mts",
+      "default": "./dist/client-address.mjs"
+    },
     "./request-host": {
       "types": "./dist/request-host.d.mts",
       "default": "./dist/request-host.mjs"

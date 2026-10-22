@@ -24,6 +24,7 @@ The package that provides the shared frontend utilities.
 | `@publira/utils/resolved-locale` | The helper a cookie console's `proxy.ts` publishes its server-resolved display locale to the browser with |
 | `@publira/utils/suspended-tenant` | The `503` page a `proxy.ts` answers a suspended tenant's every path with, and the language it is written in |
 | `@publira/utils/health` | The `/livez` and `/readyz` handlers. Node-only, so it is deliberately outside the barrel |
+| `@publira/utils/client-address` | `getClientAddress`, the address of the client a request came from, found as `publira server` finds it: the chain the `for=` of `Forwarded` names, or `X-Forwarded-For`'s when `PUBLIRA_FORWARDED_HEADER_ENABLED` is `false` or `Forwarded` names none, walked from the right past the proxies `PUBLIRA_TRUSTED_PROXIES` lists (loopback, private, and link-local when unset). Reads the environment and `node:net`, so it is outside the barrel |
 | `@publira/utils/request-host` | `getRequestHost`, the host a request was sent to, and `getTenantDomainCandidates`, the stored tenant domains it can match: the `host=` of `Forwarded` unless `PUBLIRA_FORWARDED_HEADER_ENABLED` is `false`, then `X-Forwarded-Host`, then `Host`. Reads the environment, so it is outside the barrel |
 | `@publira/utils/tenant-origin` | `tenantOrigin`, the absolute origin of a tenant host: the scheme from `PUBLIRA_TENANT_URL_SCHEME`, and the host, including any saved port, as given |
 

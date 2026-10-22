@@ -2,7 +2,7 @@
 title: Amazon ECS on Fargate
 description: Run an install as Amazon ECS services on AWS Fargate behind CloudFront and an Application Load Balancer, from its parameters and task definitions to the first sign-in to the tenant console.
 published: 2026-10-15
-updated: 2026-10-21
+updated: 2026-10-22
 ---
 
 This page takes an install from a VPC with the managed services provisioned to the first sign-in to the tenant console, with every process an Amazon ECS service on AWS Fargate and CloudFront in front of an Application Load Balancer as the edge. It runs the same steps as [Installing](../2-installing.md), which explains why each step exists, what every secret protects, and what each database role can reach, and it puts the edge in front the way [Edge](../4-edge/index.md#what-the-edge-has-to-do) requires. This page covers what is particular to ECS and Fargate: which resources each part becomes, and how each requirement of those two pages is met with them.
@@ -627,6 +627,10 @@ Each service gets its secrets from the parameters and the rest of the variables 
         {
           "name": "PUBLIRA_GRPC_URL",
           "value": "http://publira-server.publira.internal:8000/rpc"
+        },
+        {
+          "name": "PUBLIRA_TRUSTED_PROXIES",
+          "value": "<see The client address>"
         }
       ],
       "secrets": [
@@ -662,7 +666,7 @@ Each service gets its secrets from the parameters and the rest of the variables 
 }
 ```
 
-`web-admin.json` is the same with `web-admin` everywhere `web-storefront` appears, port `4000` in place of `3000`, in its health check too, `/publira/admin-auth-secret` as its `PUBLIRA_AUTH_SECRET`, and one more secret, `PUBLIRA_WEB_SERVICE_TOKEN` from `/publira/web-service-token`.
+`web-storefront` takes the same `PUBLIRA_TRUSTED_PROXIES` as `publira server`, to find the reader's address it passes to a tenant's Google tag gateway. `web-admin.json` is the same with `web-admin` everywhere `web-storefront` appears, port `4000` in place of `3000`, in its health check too, `/publira/admin-auth-secret` as its `PUBLIRA_AUTH_SECRET`, no `PUBLIRA_TRUSTED_PROXIES`, which `web-admin` does not read, and one more secret, `PUBLIRA_WEB_SERVICE_TOKEN` from `/publira/web-service-token`.
 
 Register the four, and create a service for each, with the security group, the target group, and the Cloud Map name each one takes:
 

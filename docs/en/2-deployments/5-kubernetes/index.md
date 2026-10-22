@@ -2,7 +2,7 @@
 title: Kubernetes
 description: Run an install on a Kubernetes cluster, from its Secrets and Deployments and a Gateway or an Ingress in front of them to the first sign-in to the tenant console.
 published: 2026-10-13
-updated: 2026-10-21
+updated: 2026-10-22
 ---
 
 This page takes an install from an empty namespace on a Kubernetes cluster to the first sign-in to the tenant console. It runs the same steps as [Installing](../2-installing.md), which explains why each step exists, what every secret protects, and what each database role can reach, and it puts the edge in front the way [Edge](../4-edge/index.md#what-the-edge-has-to-do) requires. This page covers what is particular to a cluster: which resources each part becomes, and how each requirement of those two pages is met with them.
@@ -356,6 +356,8 @@ spec:
           env:
             - name: PUBLIRA_GRPC_URL
               value: http://publira-server:8000/rpc
+            - name: PUBLIRA_TRUSTED_PROXIES
+              value: 10.244.0.0/16
           livenessProbe:
             httpGet:
               path: /livez
@@ -379,7 +381,7 @@ spec:
       targetPort: http
 ```
 
-`web-admin.yaml` is the same with `web-admin` everywhere `web-storefront` appears, which names its Secret too, and port `4000` in place of `3000`.
+`web-storefront` takes the same `PUBLIRA_TRUSTED_PROXIES` as `publira server`, to find the reader's address it passes to a tenant's Google tag gateway. `web-admin.yaml` is the same with `web-admin` everywhere `web-storefront` appears, which names its Secret too, port `4000` in place of `3000`, and no `PUBLIRA_TRUSTED_PROXIES`, which `web-admin` does not read.
 
 Apply them all, and wait for every Deployment to be ready:
 

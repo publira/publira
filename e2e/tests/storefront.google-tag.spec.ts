@@ -2,6 +2,11 @@ import type { BrowserContext, Page, Request, Route } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import { applyScenarioSql, quoteSqlLiteral, runSql } from "../src/db";
+import {
+  clearGoogleTagGatewayRequests,
+  googleTagGatewayRequests,
+} from "../src/google-tag-gateway";
+import type { GoogleTagGatewayRequest } from "../src/google-tag-gateway";
 import { revalidateStorefrontTags } from "../src/revalidate";
 import {
   STOREFRONT_GOOGLE_TAG_READER,
@@ -9,16 +14,21 @@ import {
   STOREFRONT_GOOGLE_TAG_TENANT,
 } from "../src/scenarios/storefront-google-tag";
 import { signInAsMember } from "../src/storefront";
-import { WEB_STOREFRONT_GOOGLE_TAG_BASE_URL } from "../src/urls";
+import {
+  GOOGLE_TAG_GATEWAY_BASE_URL,
+  WEB_STOREFRONT_GOOGLE_TAG_BASE_URL,
+} from "../src/urls";
 
 /**
  * The tenant's Google tag on its site: which loader each serving mode asks
- * for, the page views a client navigation produces, and the pages that load
- * none.
+ * for, the page views a client navigation produces, the pages that load none,
+ * and the gateway the site runs on its own origin.
  *
  * No request reaches Google. Every origin a loader can come from answers with
  * {@link TAG_STAND_IN}, so what is asserted is the request the site makes and
- * the commands it gives the tag, not what Google's script does with them.
+ * the commands it gives the tag, not what Google's script does with them. The
+ * gateway's own suite lets the site's path through to the storefront, which
+ * forwards it to the E2E stack's stand-in for Google's gateway.
  */
 
 const siteUrl = (pathname: string): string =>
@@ -84,7 +94,7 @@ const TAG_STAND_IN = `(() => {
 const fulfillStandIn = (route: Route): Promise<void> =>
   route.fulfill({ body: TAG_STAND_IN, contentType: "text/javascript" });
 
-const standInTagOrigins = async (context: BrowserContext): Promise<void> => {
+const standInGoogleOrigins = async (context: BrowserContext): Promise<void> => {
   await context.route(
     (url) => TAG_HOST.test(url.hostname),
     async (route) => {
@@ -93,6 +103,10 @@ const standInTagOrigins = async (context: BrowserContext): Promise<void> => {
         : route.fulfill({ status: 204 }));
     }
   );
+};
+
+const standInTagOrigins = async (context: BrowserContext): Promise<void> => {
+  await standInGoogleOrigins(context);
   await context.route(`${GATEWAY_ORIGIN}**`, fulfillStandIn);
 };
 
@@ -362,5 +376,160 @@ test.describe("the tenant's Google tag on its site", () => {
 
     await expectNoTag("/settings");
     await expectNoTag("/settings/security");
+  });
+});
+
+/** The tag the gateway forwards for: the container, which the tenant has too. */
+const GATEWAY_TAG_HOST = `${CONTAINER_ID}.fps.goog`;
+
+/** The forwarded path and query of a request, as a URL on the stand-in. */
+const forwardedUrl = (request: GoogleTagGatewayRequest): URL =>
+  new URL(request.url, GOOGLE_TAG_GATEWAY_BASE_URL);
+
+const forwardedTo = (
+  requests: GoogleTagGatewayRequest[],
+  pathname: string
+): GoogleTagGatewayRequest[] =>
+  requests.filter((request) => forwardedUrl(request).pathname === pathname);
+
+test.describe("the Google tag gateway on the site's own origin", () => {
+  test.beforeAll(async () => {
+    await resetGoogleTag();
+  });
+
+  test.afterAll(async () => {
+    await resetGoogleTag();
+  });
+
+  test.beforeEach(async ({ context }) => {
+    // Only Google's own origins stand in here: the gateway path reaches the
+    // storefront, which forwards it.
+    await standInGoogleOrigins(context);
+    await storeGoogleTag({
+      ga4MeasurementId: MEASUREMENT_ID,
+      gtmContainerId: CONTAINER_ID,
+      mode: "gateway",
+    });
+    await clearGoogleTagGatewayRequests();
+  });
+
+  test("the tag loads through the gateway path, and its hits reach the upstream", async ({
+    page,
+  }) => {
+    await openUntilRequested(
+      page,
+      "/",
+      gtmLoader(GATEWAY_ORIGIN),
+      gtagLoader(GATEWAY_ORIGIN)
+    );
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            (
+              window as unknown as { __e2eGatewayTag?: { loaded: string[] } }
+            ).__e2eGatewayTag?.loaded.toSorted() ?? []
+        )
+      )
+      .toEqual([CONTAINER_ID, MEASUREMENT_ID].toSorted());
+
+    await expect
+      .poll(async () =>
+        forwardedTo(
+          await googleTagGatewayRequests(),
+          `/${GATEWAY_PATH}/g/collect`
+        )
+          .map((request) => forwardedUrl(request).searchParams.get("tid"))
+          // `openUntilRequested` may load the page more than once, and every
+          // load sends its hits.
+          .filter((tid, index, all) => all.indexOf(tid) === index)
+          .toSorted()
+      )
+      .toEqual([CONTAINER_ID, MEASUREMENT_ID].toSorted());
+
+    const forwarded = await googleTagGatewayRequests();
+    const loaders = forwardedTo(forwarded, `/${GATEWAY_PATH}/`).map(
+      (request) => request.url
+    );
+    expect(loaders).toEqual(
+      expect.arrayContaining([
+        `/${GATEWAY_PATH}/?id=${CONTAINER_ID}`,
+        `/${GATEWAY_PATH}/?id=${MEASUREMENT_ID}`,
+      ])
+    );
+    for (const request of forwarded) {
+      expect(request.headers.host, request.url).toBe(GATEWAY_TAG_HOST);
+    }
+  });
+
+  test("the site's cookies and a credential stay behind, and only Google's cookies come back", async ({
+    context,
+    page,
+  }) => {
+    const site = siteUrl("/");
+    await context.addCookies([
+      { name: "publira_web_storefront_auth", url: site, value: "e2e-sealed" },
+      { name: "publira_e2e_marker", url: site, value: "kept" },
+      { name: "_ga", url: site, value: "GA1.1.e2e-reader" },
+    ]);
+    // A page that loads no tag, so the only hit is the one sent below.
+    await page.goto(siteUrl("/login"));
+
+    const status = await page.evaluate(async (pathname) => {
+      const response = await fetch(pathname, {
+        body: "en=e2e_probe",
+        credentials: "include",
+        headers: {
+          Authorization: "Bearer e2e-reader-token",
+          "X-Forwarded-CountryRegion": "JP-13",
+        },
+        method: "POST",
+      });
+      return response.status;
+    }, `/${GATEWAY_PATH}/g/collect?v=2&en=e2e_probe`);
+    expect(status).toBe(204);
+
+    const [probe] = forwardedTo(
+      await googleTagGatewayRequests(),
+      `/${GATEWAY_PATH}/g/collect`
+    );
+    expect(probe?.url).toBe(`/${GATEWAY_PATH}/g/collect?v=2&en=e2e_probe`);
+    expect(probe?.body).toBe("en=e2e_probe");
+    expect(probe?.headers.cookie).toBe("_ga=GA1.1.e2e-reader");
+    expect(probe?.headers).not.toHaveProperty("authorization");
+    expect(probe?.headers).not.toHaveProperty("x-forwarded-countryregion");
+    expect(probe?.headers["x-forwarded-for"]).toMatch(/^[\d.:a-f]+$/u);
+
+    const stored = await context.cookies(site);
+    const cookies = Object.fromEntries(
+      stored.map(({ name, value }) => [name, value])
+    );
+    expect(cookies).toMatchObject({
+      FPLC: "e2e-stand-in",
+      _ga: "GA1.1.e2e-stand-in",
+      publira_e2e_marker: "kept",
+      publira_web_storefront_auth: "e2e-sealed",
+    });
+    expect(cookies).not.toHaveProperty("e2e_stand_in");
+  });
+
+  test("a stale gateway path, and the path of a tenant in another mode, get the site's 404", async ({
+    page,
+  }) => {
+    const stalePath = "_staleaaaaaaaaaaa";
+    const stale = await page.goto(siteUrl(`/${stalePath}/?id=${CONTAINER_ID}`));
+    expect(stale?.status()).toBe(404);
+
+    await storeGoogleTag({
+      ga4MeasurementId: MEASUREMENT_ID,
+      gtmContainerId: CONTAINER_ID,
+      mode: "google",
+    });
+    const otherMode = await page.goto(
+      siteUrl(`/${GATEWAY_PATH}/?id=${CONTAINER_ID}`)
+    );
+    expect(otherMode?.status()).toBe(404);
+
+    expect(await googleTagGatewayRequests()).toEqual([]);
   });
 });
