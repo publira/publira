@@ -95,6 +95,10 @@ The [change-password URL](https://www.w3.org/TR/change-password-url/) a password
 
 The documents a crawler reads. `robots.txt` (`lib/robots.ts`) opens the catalogue, disallows `/api/` and the reader-only paths in `lib/reader-paths.ts`, and names the sitemap. A published page that takes a reader-only path's place is allowed again. The sitemap (`lib/sitemap.ts`) lists every page `ListSitemapEntries` returns: a series, an episode, or a page once in each offered locale it has a translation in, and not at all when it has none, and anything else once in each locale the tenant offers, each `<url>` naming the alternates the page at that URL names itself. It is one file while it fits the protocol's 50,000 URLs and 50 MB, and a `sitemapindex` of `/sitemap/{n}.xml` files once it does not. An unavailable API answers 503.
 
+### Google tag
+
+Every page but sign-in, sign-up, the account flows a mail leads through, and `/settings` loads the GA4 and Tag Manager IDs the tenant enters under **Integrations** › **Google tag**, read from `TenantService.GetTenantAnalyticsSettings` under the `tenant:<id>:analytics-settings` tag. The loaders come from `https://www.googletagmanager.com`, from the tenant's server container, or from `/<gateway path>/` on the site's own origin, by the serving mode. A tenant that has set neither ID loads nothing.
+
 ### Image delivery (`next/image`)
 
 `images.loader: "custom"` / `loaderFile: "./lib/image-loader.ts"` in `next.config.ts` point `next/image` at the Manael conversion of the server's image routes. `lib/image-loader.ts` re-exports the shared loader; its specification is in [`packages/utils/README.md`](../../packages/utils/README.md). An `<Image>` whose source does not go through `/images` — a temporary `blob:` preview, for instance — is `unoptimized`.

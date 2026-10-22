@@ -156,6 +156,19 @@ export default defineConfig({
     },
     {
       /**
+       * The inline half of Google's gtag.js snippet is script by definition,
+       * so the loader sets it directly, from `gtagInitScript` in
+       * `lib/google-tag-scripts.ts`: the tenant's measurement ID and server
+       * container origin, which the API stores only in their fixed formats,
+       * written as `JSON.stringify` literals with every `<` escaped.
+       */
+      files: ["apps/web-storefront/app/*/*/_components/google-tag-loader.tsx"],
+      rules: {
+        "react/no-danger": "off",
+      },
+    },
+    {
+      /**
        * All three apps ship their document with no `lang`, and scripts write
        * one once a locale has been read.
        *

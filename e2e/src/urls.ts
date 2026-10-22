@@ -288,6 +288,17 @@ export const WEB_ADMIN_GOOGLE_TAG_BASE_URL = envUrl(
 );
 
 /**
+ * Public site of the tenant from
+ * `db/seeds/scenarios/580_storefront_google_tag.sql`. Its suite stores the
+ * tenant's Google tag settings in every serving mode, which every page of the
+ * site reads, so it needs a site of its own.
+ */
+export const WEB_STOREFRONT_GOOGLE_TAG_BASE_URL = envUrl(
+  "PUBLIRA_E2E_WEB_STOREFRONT_GOOGLE_TAG_BASE_URL",
+  withHostname(WEB_STOREFRONT_BASE_URL, "measure.localhost")
+);
+
+/**
  * Admin console of the payment settings tenant from
  * `db/seeds/scenarios/330_payment_settings.sql`. Its suite stores and changes
  * the tenant's payment provider credentials, so it needs a console of its own.
