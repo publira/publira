@@ -37,7 +37,7 @@ The site moves between its pages without reloading them, so a page view after th
 | Mode | The tag is loaded from | It sends its data to | It needs |
 | --- | --- | --- | --- |
 | **Google** | Google's servers | Google | Nothing more |
-| **Server container** | The tenant's server-side Tag Manager container | The server container | A **Server container URL** |
+| **Server container** | The tenant's server-side Tag Manager container | The server container | A **Server container URL**, and the server container URL set on the Google tag in the Tag Manager container |
 | **Google tag gateway** | A path on the site's own domain | The same path, which Publira forwards to Google or to the server container | Setting up the gateway in Google Tag Manager |
 
 **Google** is the default, and needs nothing set up besides the IDs.
@@ -50,7 +50,12 @@ The site moves between its pages without reloading them, so a page view after th
 
 **Server container URL** is the `https` address the container answers on, with no path, such as `https://sgtm.example.com`. It has to be a domain name: an IP address is refused. Serving the container on a subdomain of the site's own domain keeps the tag first-party, which is the arrangement Google recommends in [Map a custom domain](https://developers.google.com/tag-platform/tag-manager/server-side/custom-domain).
 
-The site loads `gtm.js` and `gtag.js` from that address, under the paths Google serves them on, and tells Google Analytics to send its data there. The container therefore has to serve Google's scripts as well as receive the data, as Google's [Load Google scripts first-party](https://developers.google.com/tag-platform/tag-manager/server-side/dependency-serving) describes for a tagging server. A container that does not serve them loads no tag on the site, and the site measures nothing until it does.
+The site loads `gtm.js` and `gtag.js` from that address, under the paths Google serves them on. The container therefore has to serve Google's scripts as well as receive the data, as Google's [Load Google scripts first-party](https://developers.google.com/tag-platform/tag-manager/server-side/dependency-serving) describes for a tagging server. A container that does not serve them loads no tag on the site, and the site measures nothing until it does.
+
+Where the data goes depends on which ID loads Google Analytics:
+
+- **A GA4 measurement ID**: the site tells the GA4 tag it loads to send its data to the server container. Nothing more is needed.
+- **A Tag Manager container ID**: the site loads the container from the server container, but the tags inside it send their data wherever the container tells them to, which is Google until it is changed. In the web container, set `server_container_url` to the **Server container URL** on the Google tag, and publish the container, as Google's [Send data to server-side Tag Manager](https://developers.google.com/tag-platform/tag-manager/server-side/send-data?option=GTM) describes. Until then the site measures as before, with every hit going to Google directly.
 
 ### Google tag gateway
 
