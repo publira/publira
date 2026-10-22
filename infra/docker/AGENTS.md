@@ -2,40 +2,68 @@
 
 Conventions for production container images under `infra/docker/`. Prefer this file for Docker image work; root [AGENTS.md](../../AGENTS.md) remains the top-level source of truth for repo-wide agent policy.
 
-Human-facing placement rationale and full decision tables: [`README.md`](./README.md).
+Which Dockerfile builds what and the build ARGs each takes, the build and verification commands, the `Docker / <target>` jobs, and build-failure triage are reference, in [`README.md`](./README.md).
 
-## Layout
+## Placement
 
-| Path | Role |
-| --- | --- |
-| `web/Dockerfile` | Next.js apps (`apps/*`) via `turbo prune` + standalone |
-| `server/Dockerfile` | `server/cmd/publira`, the binary behind `publira server` and `publira worker`; links Manael / libvips, and the container argument picks the process |
-| `publiractl/Dockerfile` | `server/cmd/publiractl`, the command that operates an install: `db migrate` over the `db/migrations` it carries, `db roles` over the `db/seeds/baseline` it carries, `db reseal`, which seals every stored secret again with the primary encryption key, every maintenance job an operator runs by hand (the worker schedules them as well), the `policy` and `retention` commands that change the platform policy and the retention defaults, the `smtp` commands that save and test the platform's SMTP settings, the `storage` commands that save and test the platform's object store, the `tenant` commands that create and manage a tenant, and the `webpush` commands that turn on Web Push |
-| `node/Dockerfile` | Long-running Node.js services in `apps/*` that are not Next.js |
-| `opensearch/Dockerfile` | OpenSearch with `analysis-kuromoji`, `analysis-icu`, `analysis-nori`, and `analysis-smartcn`, for the `search` profile of the root and E2E compose files and for the Go integration tests; a development dependency, not a deployment image, so it has no `task docker:build:*` target or Docker matrix row |
-| `elasticsearch/Dockerfile` | Elasticsearch as its official image ships it, with no plugin, for the Go integration tests; a test dependency, so it has no `task docker:build:*` target or Docker matrix row either |
-| `README.md` | Placement rules, build verification, Docker CI job, build triage (source of truth for humans) |
-| `Taskfile.yaml` | Canonical `task docker:build:*` / `verify` / `smoke:web` / `smoke:node` / `smoke:publiractl` (included from repo root) |
-
-Dev Container is **out of scope** here: its image is built in the `publira/base-images` repository, and `.devcontainer/` holds only the configuration that runs it.
-
-## Placement rules
+Shared Dockerfiles are grouped by runtime role under `infra/docker/<role>/`, and build `ARG`s select the target.
 
 1. **One Dockerfile per runtime role**, not per service. Switch target with build `ARG`s.
 2. **Build context is always the repository root** (`.`). Use  
    `docker build -f infra/docker/<role>/Dockerfile ... .`
-3. **Do not** add `apps/*/Dockerfile` or `server/cmd/*/Dockerfile`.
-4. **Do not** reintroduce template → copy expansion under service directories.
-5. New runtime family (not web/server/publiractl/node) → add `infra/docker/<role>/Dockerfile` and update `README.md`.
+3. **Do not** add `apps/*/Dockerfile` or `server/cmd/*/Dockerfile`, generated copies included.
+4. **Do not** reintroduce template → copy expansion under service directories, and never commit a Dockerfile generated from a template.
+5. **Keep the Dev Container out of it.** Its image, `ghcr.io/publira/base-images/publira-dev`, is built in the `publira/base-images` repository, and `.devcontainer/` holds only the configuration that runs it. It is a development image with a toolchain and volumes, not a production runtime, so no production image logic goes into it.
+6. A temporary verification Dockerfile lives only on a personal branch. To keep one on `main`, promote it to a new role under `infra/docker/`.
 
-### ARG map
+### Why one Dockerfile per role
 
-| Role | Required ARG | Optional | Resolves to |
-| --- | --- | --- | --- |
-| `web` | `APP_NAME` (e.g. `web-admin`) | `PORT` (default `3000`) | package `@publira/${APP_NAME}`, path `apps/${APP_NAME}` |
-| `server` | — | `VERSION` | `server/cmd/publira` → binary `/app/publira`; the process is the container argument (`server`, the default, or `worker`), not a build ARG |
-| `publiractl` | — | — | `server/cmd/publiractl` → binary `/app/publiractl`; the command is container arguments (`db migrate`, `db roles`, `job <kind>`), not a build ARG |
-| `node` | `APP_NAME` (e.g. `email-renderer`) | `PORT` (default `8080`) | package `@publira/${APP_NAME}`, path `apps/${APP_NAME}`, entry `dist/index.mjs` |
+| Option | Decision | Reason |
+| --- | --- | --- |
+| Dockerfile under each service (the old policy) | Rejected | It duplicates the same image shape many times, making base-image digest and build-process updates inconsistent. |
+| `infra/docker/templates/` copied to each command | Rejected | It creates two sources of truth—the template and generated output—which can drift. |
+| **One Dockerfile per role plus `ARG`** (current) | **Adopted** | Each runtime has one file and only its build target changes. The root context handles the monorepo and `server/` correctly. |
+| Combine Dev Container and production images | Rejected | Development tools (`task`, `sqlc`, Flutter, and more) have different responsibilities from a minimal runtime image. |
+
+Role-based paths, the links from the README, and the `infra/docker/` entry in the repository layout of the root `CONTRIBUTING.md` retain the discoverability advantage of keeping a Dockerfile beside each service. Dockerfile header comments are the source of truth for implementation details such as `turbo prune` and Go `cmd` paths.
+
+### Which image a new service goes into
+
+```text
+What is being containerized?
+├─ A Next.js app (apps/<name>)
+│    → infra/docker/web/Dockerfile
+│    → --build-arg APP_NAME=<name>   # package name is @publira/<name>
+│    → Set PORT when needed (default: 3000)
+│
+├─ A long-lived Go process (`publira server` or `publira worker`)
+│    → infra/docker/server/Dockerfile (no build ARG; one image for both)
+│    → Select the process with container arguments: docker run publira/publira:local worker
+│
+├─ The database migrations, or a Go maintenance job (run by hand; the worker schedules it)
+│    → infra/docker/publiractl/Dockerfile (no build ARG; carries db/migrations)
+│    → Select the command with container arguments: docker run publira/publiractl:local db migrate, or job <kind>
+│
+├─ A third-party service the dev or E2E stack needs with something added (an engine plugin)
+│    → infra/docker/<service>/Dockerfile, FROM the published image, built by compose
+│    → No build ARG, no task docker:build:* target
+│
+├─ A long-running non-Next.js Node.js service (apps/<name>)
+│    → infra/docker/node/Dockerfile
+│    → --build-arg APP_NAME=<name>   # package name is @publira/<name>
+│    → Set PORT when needed (default: 8080)
+│
+└─ Another runtime (for example, a worker in another language)
+     → Add a new role at infra/docker/<role>/Dockerfile and add it to the README's layout table
+     → Do not force it into an existing role
+```
+
+A new **maintenance job** is not a new target: it is a `publiractl job` subcommand, carried by the publiractl image as it is.
+
+### Naming
+
+- **Role directories** use a short category name (`web` / `server` / `node`), never a service name. `publiractl` is the exception: it carries one binary, which the directory is named for, and so are `opensearch` and `elasticsearch`, which each carry one third-party service.
+- **`APP_NAME`** is the directory name directly under `apps/` (for example, `web-admin` or `email-renderer`). The Dockerfile adds the `@publira/` prefix.
 
 ## Implementation rules
 
@@ -45,11 +73,19 @@ Dev Container is **out of scope** here: its image is built in the `publira/base-
    - server: `golang:*-trixie` + `libvips-dev` → `debian:13.*-slim` + `libvips42t64` (CGO; distroless/static cannot load libvips, and the worker is the same binary)
    - The build and runtime stages of one image share a Debian release, and move to a new one together. Web / Node copy `node_modules` with native addons such as `sharp` into the runner, and the server binary links libvips, so a glibc or shared-library mismatch fails at run time, not at build time.
    - Shared-library package names follow the Debian release: Debian 13's 64-bit `time_t` transition renamed `libvips42` to `libvips42t64`.
-2. **Pin base images by digest, and tag them with what the digest is** (`image:tag@sha256:…`). The rule covers every `FROM` line, every `# syntax=` frontend, and every compose `image:` in the repository, not only the Dockerfiles here.
-   - The digest is the pin. The tag names the image's full version and its OS release, so a Renovate pull request shows in its diff and title which version the image moves from and to: `node:24.21.0-trixie-slim`, `golang:1.27.1-trixie`, `debian:13.7-slim`, `valkey/valkey:9.1.2-alpine3.24`. Never a tag that names only a line (`node:24-trixie-slim`, `golang:1.27-trixie`, `debian:trixie-slim`) or a bare `-alpine`, which follows whichever Alpine release the publisher currently builds on.
-   - The `node` tag names the version in `devEngines.runtime.version` of the root `package.json`. Renovate raises both, and the `node` images in the compose files, on one branch.
-   - Exceptions: distroless publishes no versioned tags, so its image name carries the Debian release (`nodejs24-debian13`, `static-debian13`, never the unsuffixed `static` alias) and the digest is the only further identifier; caddy publishes no Alpine-versioned tags, so it stays on `-alpine`; OpenSearch and Elasticsearch tag their images with the version alone.
-   - Moving to a new OS release (Alpine 3.24 → 3.25, Debian 13 → 14) is an edit by hand. Renovate's Docker versioning treats the part of the tag after the version as a compatibility marker and never changes it, so its pull requests move the version and the digest within the OS release the tag names.
+2. **Pin base images by digest, and tag them with what the digest is** (`image:tag@sha256:…`). The rule covers every `FROM` line, every `# syntax=` frontend, and every compose `image:` in the repository, wherever the file lives, not only the Dockerfiles here.
+   - The digest is the pin. The tag names the image's full version and its OS release, so a Renovate pull request shows in its diff and title which version the image moves from and to:
+
+     | Write | Not | Why |
+     | --- | --- | --- |
+     | `node:24.21.0-trixie-slim` | `node:24-trixie-slim` | A line-only tag moves to a new patch release with only the digest changing in the diff |
+     | `golang:1.27.1-trixie` | `golang:1.27-trixie` | The same, for the Go patch release |
+     | `debian:13.7-slim` | `debian:trixie-slim` | The same, for the point release |
+     | `valkey/valkey:9.1.2-alpine3.24` | `valkey/valkey:9.1.2-alpine` | A bare `-alpine` follows whichever Alpine release the publisher builds on, so a digest-only update could move musl and every package |
+
+   - The `node` tag names the version in `devEngines.runtime.version` of the root `package.json`, the runtime contributors run. Renovate raises both, and the `node` images in the compose files, on one branch.
+   - Exceptions, for publishers that offer nothing more to name: distroless publishes no versioned tags, so its image name carries the Debian release (`nodejs24-debian13`, `static-debian13`, never the unsuffixed `static` alias) and the digest is the only further identifier; caddy publishes no Alpine-versioned tags, so `caddy:<version>-alpine` keeps a bare `-alpine`; OpenSearch (`opensearchproject/opensearch:3.9.0`) and Elasticsearch (`elasticsearch:9.1.5`) tag their images with the version alone, naming no OS.
+   - Moving to a new OS release (Alpine 3.24 → 3.25, Debian 13 → 14) is an edit by hand. Renovate's Docker versioning treats the part of the tag after the version as a compatibility marker and never changes it, so its pull requests move the version and the digest within the OS release the tag names. An image staying on an older OS release after a newer one has shipped is that behaviour, not a missed update.
 3. **Tool versions** (`pnpm`, `turbo`, …) as `ARG *_VERSION` with a Renovate comment, as `web/Dockerfile` does:
 
    ```dockerfile
@@ -67,37 +103,28 @@ Dev Container is **out of scope** here: its image is built in the `publira/base-
 7. **publiractl**: `CGO_ENABLED=0`. Redeclare `ARG TARGETOS` / `ARG TARGETARCH` **without defaults** so BuildKit’s automatic platform values apply (defaults would pin amd64 even under `--platform linux/arm64`).
 8. **server**: `CGO_ENABLED=1` and do **not** set `GOOS`/`GOARCH`. CGO cannot be cross-compiled here; Buildx `--platform` must match the builder. The runner is debian-slim with `libvips42t64` because Manael links libvips, and `publira worker` runs on the same image because it is the same binary.
 9. Keep root [`.dockerignore`](../../.dockerignore) in mind; do not rely on shipping `node_modules` / `.next` from the host.
+10. **Do not** use Alpine for the Next.js **build** when the runner is Debian-based distroless (glibc / native addons such as `sharp`).
 
-## Verification after Dockerfile changes
+## Docker CI: change detection plus nightly full builds
 
-From the **repository root**, prefer Task (same entrypoint as CI):
+A pull request builds only the representative target of each role its paths touch, and the nightly run builds every target. The README's [Docker CI jobs](./README.md#docker-ci-jobs) lists the triggers and the paths each role watches.
 
-```bash
-# Role representatives (web-storefront / publira / publiractl / email-renderer)
-task docker:verify
+| Strategy | Contents | Benefit | Drawback |
+| --- | --- | --- | --- |
+| **Build every image every time** | Every target on every PR | Least chance of missing a problem | High time and cost, especially Web × 3 |
+| **Detect changes** | Build only the representative of affected roles | Fast PRs | May miss indirect effects outside the role |
+| **Nightly full** | Build all targets periodically | Detects drift | Slow feedback |
 
-# Or only what you touched
-task docker:build:web APP_NAME=web-admin PORT=4000
-task docker:build:server
-task docker:build:publiractl
-task docker:build:node APP_NAME=email-renderer PORT=8080
+Change detection alone keeps pull requests fast but misses an effect that reaches a role through a path it does not watch, and the nightly full build catches that drift within a day without making every pull request pay for Web × 3. A change to a Dockerfile, the Taskfile, `.dockerignore`, or `ci.yml` can break any target, so it builds them all.
 
-# Runtime smoke (publiractl brings up its own PostgreSQL through compose.smoke.yaml)
-task docker:smoke:web APP_NAME=web-storefront PORT=3000
-task docker:smoke:node APP_NAME=email-renderer PORT=8080
-task docker:smoke:publiractl
-```
+Host CI as a whole (jobs, path filters, triage): [`.github/workflows/README.md`](../../.github/workflows/README.md).
 
-Raw `docker build -f infra/docker/<role>/Dockerfile … .` is fine for debugging; keep context at repo root.
+## Change checklist
 
-After adding a service/target: update `README.md` examples, `Taskfile.yaml` `verify:full`, the Docker full matrix in [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh), and the image matrix in [`release-images.yml`](../../.github/workflows/release-images.yml) together. A new **maintenance job** is not a new target — it is a `publiractl job` subcommand, so none of those four registrations change.
+- [ ] For a new role, added `infra/docker/<role>/Dockerfile`, added it to the README's layout table and build examples, and added its branch to the decision flow above
+- [ ] For a new target, updated the README's build examples, [`Taskfile.yaml`](./Taskfile.yaml) `verify:full`, the Docker full matrix in [`scripts/ci-plan-jobs.sh`](../../scripts/ci-plan-jobs.sh), and the image matrix in [`release-images.yml`](../../.github/workflows/release-images.yml) together
+- [ ] Pinned base-image digests under tags that name the full version and the OS release, and made tool-version `ARG`s trackable by Renovate
+- [ ] Built from the repository root through `task docker:build:*`, the same entrypoint CI uses, and passed `task docker:verify` (and `task docker:verify:full` after a large Dockerfile change); the commands are in the README's [Local verification](./README.md#local-verification)
+- [ ] The `infra/docker/` entry in the repository layout of the root [CONTRIBUTING.md](../../CONTRIBUTING.md#repository-layout) still describes this directory
 
-Docker CI strategy and build triage: [`README.md`](./README.md) (its CI strategy and build-failure triage sections).  
-Host CI as a whole (jobs, path filters, triage): [`.github/workflows/README.md`](../../.github/workflows/README.md).  
-Branch ruleset required check is the final aggregator job name **`Summary`** only (UI: `CI / Summary`).
-
-## Do not
-
-- Commit generated per-service Dockerfiles “from templates”.
-- Use Alpine for Next.js **build** when the runner is Debian-based distroless (glibc / native addons such as `sharp`).
-- Put production image logic into the Dev Container image (`publira/base-images`).
+When a build fails: the README's [Build-failure triage](./README.md#build-failure-triage).
