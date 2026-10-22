@@ -33,6 +33,8 @@ abstract class TenantServiceBase extends $pb.GeneratedService {
   $async.Future<$1.GetTenantAnalyticsSettingsResponse>
       getTenantAnalyticsSettings(
           $pb.ServerContext ctx, $1.GetTenantAnalyticsSettingsRequest request);
+  $async.Future<$1.GetTenantCrawlerSettingsResponse> getTenantCrawlerSettings(
+      $pb.ServerContext ctx, $1.GetTenantCrawlerSettingsRequest request);
 
   $pb.GeneratedMessage createRequest($core.String methodName) {
     switch (methodName) {
@@ -46,6 +48,8 @@ abstract class TenantServiceBase extends $pb.GeneratedService {
         return $1.GetTenantReaderIconPolicyRequest();
       case 'GetTenantAnalyticsSettings':
         return $1.GetTenantAnalyticsSettingsRequest();
+      case 'GetTenantCrawlerSettings':
+        return $1.GetTenantCrawlerSettingsRequest();
       default:
         throw $core.ArgumentError('Unknown method: $methodName');
     }
@@ -68,6 +72,9 @@ abstract class TenantServiceBase extends $pb.GeneratedService {
       case 'GetTenantAnalyticsSettings':
         return getTenantAnalyticsSettings(
             ctx, request as $1.GetTenantAnalyticsSettingsRequest);
+      case 'GetTenantCrawlerSettings':
+        return getTenantCrawlerSettings(
+            ctx, request as $1.GetTenantCrawlerSettingsRequest);
       default:
         throw $core.ArgumentError('Unknown method: $methodName');
     }

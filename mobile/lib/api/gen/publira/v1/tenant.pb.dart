@@ -1558,6 +1558,147 @@ class GetTenantAnalyticsSettingsResponse extends $pb.GeneratedMessage {
   TenantGoogleTag ensureGoogleTag() => $_ensure(0);
 }
 
+class GetTenantCrawlerSettingsRequest extends $pb.GeneratedMessage {
+  factory GetTenantCrawlerSettingsRequest({
+    $0.TenantContext? tenant,
+  }) {
+    final result = GetTenantCrawlerSettingsRequest._();
+    if (tenant != null) result.tenant = tenant;
+    return result;
+  }
+
+  GetTenantCrawlerSettingsRequest._();
+
+  factory GetTenantCrawlerSettingsRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetTenantCrawlerSettingsRequest()..mergeFromBuffer(data, registry);
+  factory GetTenantCrawlerSettingsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetTenantCrawlerSettingsRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetTenantCrawlerSettingsRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: GetTenantCrawlerSettingsRequest.$_createMessage)
+    ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
+        subBuilder: $0.TenantContext.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetTenantCrawlerSettingsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetTenantCrawlerSettingsRequest copyWith(
+          void Function(GetTenantCrawlerSettingsRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as GetTenantCrawlerSettingsRequest))
+          as GetTenantCrawlerSettingsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use GetTenantCrawlerSettingsRequest() / GetTenantCrawlerSettingsRequest.new instead')
+  static GetTenantCrawlerSettingsRequest create() =>
+      GetTenantCrawlerSettingsRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      GetTenantCrawlerSettingsRequest._();
+  @$core.override
+  GetTenantCrawlerSettingsRequest createEmptyInstance() =>
+      GetTenantCrawlerSettingsRequest._();
+  @$core.pragma('dart2js:noInline')
+  static GetTenantCrawlerSettingsRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetTenantCrawlerSettingsRequest>(
+          GetTenantCrawlerSettingsRequest.$_createMessage);
+  static GetTenantCrawlerSettingsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.TenantContext get tenant => $_getN(0);
+  @$pb.TagNumber(1)
+  set tenant($0.TenantContext value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTenant() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTenant() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.TenantContext ensureTenant() => $_ensure(0);
+}
+
+/// What the tenant's robots.txt excludes. Both lists are empty for a tenant
+/// that excludes nothing.
+class GetTenantCrawlerSettingsResponse extends $pb.GeneratedMessage {
+  factory GetTenantCrawlerSettingsResponse({
+    $core.Iterable<$core.String>? excludedUserAgents,
+    $core.Iterable<$core.String>? excludedPaths,
+  }) {
+    final result = GetTenantCrawlerSettingsResponse._();
+    if (excludedUserAgents != null)
+      result.excludedUserAgents.addAll(excludedUserAgents);
+    if (excludedPaths != null) result.excludedPaths.addAll(excludedPaths);
+    return result;
+  }
+
+  GetTenantCrawlerSettingsResponse._();
+
+  factory GetTenantCrawlerSettingsResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetTenantCrawlerSettingsResponse()..mergeFromBuffer(data, registry);
+  factory GetTenantCrawlerSettingsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetTenantCrawlerSettingsResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetTenantCrawlerSettingsResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: GetTenantCrawlerSettingsResponse.$_createMessage)
+    ..pPS(1, _omitFieldNames ? '' : 'excludedUserAgents')
+    ..pPS(2, _omitFieldNames ? '' : 'excludedPaths')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetTenantCrawlerSettingsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetTenantCrawlerSettingsResponse copyWith(
+          void Function(GetTenantCrawlerSettingsResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as GetTenantCrawlerSettingsResponse))
+          as GetTenantCrawlerSettingsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use GetTenantCrawlerSettingsResponse() / GetTenantCrawlerSettingsResponse.new instead')
+  static GetTenantCrawlerSettingsResponse create() =>
+      GetTenantCrawlerSettingsResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      GetTenantCrawlerSettingsResponse._();
+  @$core.override
+  GetTenantCrawlerSettingsResponse createEmptyInstance() =>
+      GetTenantCrawlerSettingsResponse._();
+  @$core.pragma('dart2js:noInline')
+  static GetTenantCrawlerSettingsResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetTenantCrawlerSettingsResponse>(
+          GetTenantCrawlerSettingsResponse.$_createMessage);
+  static GetTenantCrawlerSettingsResponse? _defaultInstance;
+
+  /// User-agent tokens to refuse every path to, each one a token the server
+  /// knows (GPTBot, Googlebot-Image), so it is safe to write into a
+  /// User-agent line as it is.
+  @$pb.TagNumber(1)
+  $pb.PbList<$core.String> get excludedUserAgents => $_getList(0);
+
+  /// Paths to refuse to every crawler, each with what lies under it, in
+  /// lexical order. A path starts with /, carries no trailing / unless it is /
+  /// itself, and holds no whitespace, control character, *, $, ?, or #, so it
+  /// is safe to write into a Disallow line as it is. None of them names
+  /// /robots.txt, /sitemap.xml, or /sitemap or anything under it.
+  @$pb.TagNumber(2)
+  $pb.PbList<$core.String> get excludedPaths => $_getList(1);
+}
+
 class TenantServiceApi {
   final $pb.RpcClient _client;
 
@@ -1596,6 +1737,14 @@ class TenantServiceApi {
           'GetTenantAnalyticsSettings',
           request,
           GetTenantAnalyticsSettingsResponse());
+  $async.Future<GetTenantCrawlerSettingsResponse> getTenantCrawlerSettings(
+          $pb.ClientContext? ctx, GetTenantCrawlerSettingsRequest request) =>
+      _client.invoke<GetTenantCrawlerSettingsResponse>(
+          ctx,
+          'TenantService',
+          'GetTenantCrawlerSettings',
+          request,
+          GetTenantCrawlerSettingsResponse());
 }
 
 const $core.bool _omitFieldNames =

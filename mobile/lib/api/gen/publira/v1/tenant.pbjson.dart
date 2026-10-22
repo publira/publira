@@ -483,6 +483,49 @@ final $typed_data.Uint8List getTenantAnalyticsSettingsResponseDescriptor =
         'CiJHZXRUZW5hbnRBbmFseXRpY3NTZXR0aW5nc1Jlc3BvbnNlEjoKCmdvb2dsZV90YWcYASABKA'
         'syGy5wdWJsaXJhLnYxLlRlbmFudEdvb2dsZVRhZ1IJZ29vZ2xlVGFn');
 
+@$core.Deprecated('Use getTenantCrawlerSettingsRequestDescriptor instead')
+const GetTenantCrawlerSettingsRequest$json = {
+  '1': 'GetTenantCrawlerSettingsRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+  ],
+};
+
+/// Descriptor for `GetTenantCrawlerSettingsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getTenantCrawlerSettingsRequestDescriptor =
+    $convert.base64Decode(
+        'Ch9HZXRUZW5hbnRDcmF3bGVyU2V0dGluZ3NSZXF1ZXN0EjcKBnRlbmFudBgBIAEoCzIfLnB1Ym'
+        'xpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dFIGdGVuYW50');
+
+@$core.Deprecated('Use getTenantCrawlerSettingsResponseDescriptor instead')
+const GetTenantCrawlerSettingsResponse$json = {
+  '1': 'GetTenantCrawlerSettingsResponse',
+  '2': [
+    {
+      '1': 'excluded_user_agents',
+      '3': 1,
+      '4': 3,
+      '5': 9,
+      '10': 'excludedUserAgents'
+    },
+    {'1': 'excluded_paths', '3': 2, '4': 3, '5': 9, '10': 'excludedPaths'},
+  ],
+};
+
+/// Descriptor for `GetTenantCrawlerSettingsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getTenantCrawlerSettingsResponseDescriptor =
+    $convert.base64Decode(
+        'CiBHZXRUZW5hbnRDcmF3bGVyU2V0dGluZ3NSZXNwb25zZRIwChRleGNsdWRlZF91c2VyX2FnZW'
+        '50cxgBIAMoCVISZXhjbHVkZWRVc2VyQWdlbnRzEiUKDmV4Y2x1ZGVkX3BhdGhzGAIgAygJUg1l'
+        'eGNsdWRlZFBhdGhz');
+
 const $core.Map<$core.String, $core.dynamic> TenantServiceBase$json = {
   '1': 'TenantService',
   '2': [
@@ -510,6 +553,11 @@ const $core.Map<$core.String, $core.dynamic> TenantServiceBase$json = {
       '1': 'GetTenantAnalyticsSettings',
       '2': '.publira.v1.GetTenantAnalyticsSettingsRequest',
       '3': '.publira.v1.GetTenantAnalyticsSettingsResponse'
+    },
+    {
+      '1': 'GetTenantCrawlerSettings',
+      '2': '.publira.v1.GetTenantCrawlerSettingsRequest',
+      '3': '.publira.v1.GetTenantCrawlerSettingsResponse'
     },
   ],
 };
@@ -544,6 +592,10 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.v1.GetTenantAnalyticsSettingsResponse':
       GetTenantAnalyticsSettingsResponse$json,
   '.publira.v1.TenantGoogleTag': TenantGoogleTag$json,
+  '.publira.v1.GetTenantCrawlerSettingsRequest':
+      GetTenantCrawlerSettingsRequest$json,
+  '.publira.v1.GetTenantCrawlerSettingsResponse':
+      GetTenantCrawlerSettingsResponse$json,
 };
 
 /// Descriptor for `TenantService`. Decode as a `google.protobuf.ServiceDescriptorProto`.
@@ -558,4 +610,6 @@ final $typed_data.Uint8List tenantServiceDescriptor = $convert.base64Decode(
     '9uUG9saWN5UmVxdWVzdBotLnB1YmxpcmEudjEuR2V0VGVuYW50UmVhZGVySWNvblBvbGljeVJl'
     'c3BvbnNlEnsKGkdldFRlbmFudEFuYWx5dGljc1NldHRpbmdzEi0ucHVibGlyYS52MS5HZXRUZW'
     '5hbnRBbmFseXRpY3NTZXR0aW5nc1JlcXVlc3QaLi5wdWJsaXJhLnYxLkdldFRlbmFudEFuYWx5'
-    'dGljc1NldHRpbmdzUmVzcG9uc2U=');
+    'dGljc1NldHRpbmdzUmVzcG9uc2USdQoYR2V0VGVuYW50Q3Jhd2xlclNldHRpbmdzEisucHVibG'
+    'lyYS52MS5HZXRUZW5hbnRDcmF3bGVyU2V0dGluZ3NSZXF1ZXN0GiwucHVibGlyYS52MS5HZXRU'
+    'ZW5hbnRDcmF3bGVyU2V0dGluZ3NSZXNwb25zZQ==');

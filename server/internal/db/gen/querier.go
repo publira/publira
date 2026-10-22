@@ -1072,6 +1072,9 @@ type Querier interface {
 	// The copy a reader in locale is served, picked by
 	// tenant_config_translation_for. No row when the tenant has written none.
 	GetTenantConfigTranslationFor(ctx context.Context, arg GetTenantConfigTranslationForParams) (TenantConfigTranslation, error)
+	// Returns no rows for a tenant that has saved nothing, which reads as nothing
+	// excluded.
+	GetTenantCrawlerSettings(ctx context.Context, tenantID uuid.UUID) (TenantCrawlerSetting, error)
 	// Returns no rows for a tenant that has saved nothing, which reads as the
 	// disposable-domain list off.
 	GetTenantEmailRejectionSettings(ctx context.Context, tenantID uuid.UUID) (TenantEmailRejectionSetting, error)
@@ -3601,6 +3604,9 @@ type Querier interface {
 	// failed.
 	UpsertTenantCommentSettings(ctx context.Context, arg UpsertTenantCommentSettingsParams) (TenantConfig, error)
 	UpsertTenantConfigTranslation(ctx context.Context, arg UpsertTenantConfigTranslationParams) (TenantConfigTranslation, error)
+	// The user agents and paths arrive validated, normalized, and without
+	// duplicates.
+	UpsertTenantCrawlerSettings(ctx context.Context, arg UpsertTenantCrawlerSettingsParams) (TenantCrawlerSetting, error)
 	UpsertTenantEmailRejectionSettings(ctx context.Context, arg UpsertTenantEmailRejectionSettingsParams) (TenantEmailRejectionSetting, error)
 	UpsertTenantFcmConfig(ctx context.Context, arg UpsertTenantFcmConfigParams) (TenantFcmConfig, error)
 	UpsertTenantGooglePlayConfig(ctx context.Context, arg UpsertTenantGooglePlayConfigParams) (TenantGooglePlayConfig, error)

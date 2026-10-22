@@ -482,6 +482,11 @@ const settingsActionName = (action: string) => {
         <Message message="admin.audit.actions.tenant_analytics_settings_updated" />
       );
     }
+    case "tenant_crawler_settings_updated": {
+      return (
+        <Message message="admin.audit.actions.tenant_crawler_settings_updated" />
+      );
+    }
     default: {
       return null;
     }
@@ -684,6 +689,9 @@ const settingTargetName = (targetType: string) => {
     }
     case "tenant_community_limits": {
       return <Message message="admin.audit.targets.tenant_community_limits" />;
+    }
+    case "tenant_crawler_settings": {
+      return <Message message="admin.audit.targets.tenant_crawler_settings" />;
     }
     case "tenant_default_locale": {
       return <Message message="admin.audit.targets.tenant_default_locale" />;

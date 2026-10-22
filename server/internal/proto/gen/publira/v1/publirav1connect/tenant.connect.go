@@ -38,6 +38,9 @@ const (
 	// TenantServiceGetTenantAnalyticsSettingsProcedure is the procedure name of the TenantService's
 	// GetTenantAnalyticsSettings RPC.
 	TenantServiceGetTenantAnalyticsSettingsProcedure = "/publira.v1.TenantService/GetTenantAnalyticsSettings"
+	// TenantServiceGetTenantCrawlerSettingsProcedure is the procedure name of the TenantService's
+	// GetTenantCrawlerSettings RPC.
+	TenantServiceGetTenantCrawlerSettingsProcedure = "/publira.v1.TenantService/GetTenantCrawlerSettings"
 )
 
 var (
@@ -76,6 +79,13 @@ var (
 			Procedure:  TenantServiceGetTenantAnalyticsSettingsProcedure,
 		}
 	})
+	tenantServiceGetTenantCrawlerSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_v1_tenant_proto.Services().ByName("TenantService").Methods().ByName("GetTenantCrawlerSettings"),
+			Procedure:  TenantServiceGetTenantCrawlerSettingsProcedure,
+		}
+	})
 )
 
 // TenantServiceClient is a client for the publira.v1.TenantService service.
@@ -85,6 +95,7 @@ type TenantServiceClient interface {
 	GetTenantMobileAppAssociation(context.Context, *v1.GetTenantMobileAppAssociationRequest) (*v1.GetTenantMobileAppAssociationResponse, error)
 	GetTenantReaderIconPolicy(context.Context, *v1.GetTenantReaderIconPolicyRequest) (*v1.GetTenantReaderIconPolicyResponse, error)
 	GetTenantAnalyticsSettings(context.Context, *v1.GetTenantAnalyticsSettingsRequest) (*v1.GetTenantAnalyticsSettingsResponse, error)
+	GetTenantCrawlerSettings(context.Context, *v1.GetTenantCrawlerSettingsRequest) (*v1.GetTenantCrawlerSettingsResponse, error)
 }
 
 // NewTenantServiceClient constructs a client for the publira.v1.TenantService service. Multiple
@@ -100,6 +111,7 @@ type TenantServiceHandler interface {
 	GetTenantMobileAppAssociation(context.Context, *v1.GetTenantMobileAppAssociationRequest) (*v1.GetTenantMobileAppAssociationResponse, error)
 	GetTenantReaderIconPolicy(context.Context, *v1.GetTenantReaderIconPolicyRequest) (*v1.GetTenantReaderIconPolicyResponse, error)
 	GetTenantAnalyticsSettings(context.Context, *v1.GetTenantAnalyticsSettingsRequest) (*v1.GetTenantAnalyticsSettingsResponse, error)
+	GetTenantCrawlerSettings(context.Context, *v1.GetTenantCrawlerSettingsRequest) (*v1.GetTenantCrawlerSettingsResponse, error)
 }
 
 // RegisterTenantServiceHandler registers svc as the publira.v1.TenantService implementation on
@@ -112,6 +124,7 @@ func RegisterTenantServiceHandler(server *connect.Server, svc TenantServiceHandl
 		connect.Method{Spec: tenantServiceGetTenantMobileAppAssociationSpec(), Handler: adapter.getTenantMobileAppAssociation},
 		connect.Method{Spec: tenantServiceGetTenantReaderIconPolicySpec(), Handler: adapter.getTenantReaderIconPolicy},
 		connect.Method{Spec: tenantServiceGetTenantAnalyticsSettingsSpec(), Handler: adapter.getTenantAnalyticsSettings},
+		connect.Method{Spec: tenantServiceGetTenantCrawlerSettingsSpec(), Handler: adapter.getTenantCrawlerSettings},
 	)
 }
 
@@ -136,6 +149,10 @@ func (UnimplementedTenantServiceHandler) GetTenantReaderIconPolicy(context.Conte
 
 func (UnimplementedTenantServiceHandler) GetTenantAnalyticsSettings(context.Context, *v1.GetTenantAnalyticsSettingsRequest) (*v1.GetTenantAnalyticsSettingsResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.TenantService.GetTenantAnalyticsSettings is not implemented")
+}
+
+func (UnimplementedTenantServiceHandler) GetTenantCrawlerSettings(context.Context, *v1.GetTenantCrawlerSettingsRequest) (*v1.GetTenantCrawlerSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.v1.TenantService.GetTenantCrawlerSettings is not implemented")
 }
 
 type tenantServiceClient struct {
@@ -177,6 +194,14 @@ func (c *tenantServiceClient) GetTenantReaderIconPolicy(ctx context.Context, req
 func (c *tenantServiceClient) GetTenantAnalyticsSettings(ctx context.Context, req *v1.GetTenantAnalyticsSettingsRequest) (*v1.GetTenantAnalyticsSettingsResponse, error) {
 	var res v1.GetTenantAnalyticsSettingsResponse
 	if err := c.client.CallUnary(ctx, tenantServiceGetTenantAnalyticsSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantServiceClient) GetTenantCrawlerSettings(ctx context.Context, req *v1.GetTenantCrawlerSettingsRequest) (*v1.GetTenantCrawlerSettingsResponse, error) {
+	var res v1.GetTenantCrawlerSettingsResponse
+	if err := c.client.CallUnary(ctx, tenantServiceGetTenantCrawlerSettingsSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -238,6 +263,18 @@ func (h tenantServiceHandler) getTenantAnalyticsSettings(ctx context.Context, _ 
 		return err
 	}
 	res, err := h.svc.GetTenantAnalyticsSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantServiceHandler) getTenantCrawlerSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetTenantCrawlerSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetTenantCrawlerSettings(ctx, &req)
 	if err != nil {
 		return err
 	}
