@@ -23,7 +23,7 @@ The notes of a release open with **Upgrade notes**, which names every change in 
 - **A process or a service the install has to run** that it did not run before.
 - **A migration that runs long or locks a busy table**, so that you can choose when to run it.
 
-Only a major release names any of these, and before `1.0.0` a minor release. A patch release before `1.0.0` still runs every step on this page: it can carry a migration, and its processes fail on a schema `db migrate` has not brought forward, so `db migrate` and `db roles` run before its processes are replaced. [Releases](./9-releases.md) says what each kind of release may change and which releases receive fixes.
+Only a major release names any of these, and before `1.0.0` a minor release. A patch release before `1.0.0` still runs every step on this page: it can carry a migration, and its processes fail on a schema `db migrate` has not brought forward, so `db migrate` and `db roles` run before its processes are replaced. [Releases](./10-releases.md) says what each kind of release may change and which releases receive fixes.
 
 ### Get the images of the new release
 

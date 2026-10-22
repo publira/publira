@@ -123,7 +123,7 @@ The language's index is rebuilt with it, and the search in that language moves o
 
 The worker keeps the indices up to date as tenants publish, edit, and change their default language, and builds new ones whenever the engine or the text analysis changes, or a release changes the languages a reader can choose or the default text analysis, so an index rarely needs rebuilding by hand. While it builds them, **Search status** and `publiractl search show` show a build under way, and the storefront keeps answering from the indices it has. `publiractl search reindex` is for the two cases that are left:
 
-- **A release changed the index.** When the [release notes](../2-deployments/7-upgrading.md#read-the-release-notes) say the catalog index changed, run it once the upgrade is done.
+- **A release changed the index.** When the [release notes](../2-deployments/8-upgrading.md#read-the-release-notes) say the catalog index changed, run it once the upgrade is done.
 - **The index was lost**, because the cluster was replaced or the index deleted.
 
 ```bash

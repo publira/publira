@@ -88,7 +88,7 @@ Start every replica you stopped. It sends what waited while it was stopped, and 
 
 ## Restore into an empty install
 
-Restore onto the release the backup was taken on, with that release's `publiractl` image. To run a newer release, restore first and then [upgrade](./7-upgrading.md).
+Restore onto the release the backup was taken on, with that release's `publiractl` image. To run a newer release, restore first and then [upgrade](./8-upgrading.md).
 
 Provision the services as [Installing](./2-installing.md#provision-the-services) describes: a PostgreSQL server of the same major version or newer, with an empty database, an empty bucket, and an empty Valkey. Do not run `db migrate`: the backup brings the schema with it.
 
@@ -236,4 +236,4 @@ Then verify the restore as in [Verify a restore](#verify-a-restore), running `pu
 
 ## Next steps
 
-What `db roles`, `storage`, and `search reindex` do, and every flag they take, is in the [`publiractl` reference](https://github.com/publira/publira/blob/main/server/cmd/publiractl/README.md). Taking the upgrade further after a restore onto an older release is in [Upgrading](./7-upgrading.md).
+What `db roles`, `storage`, and `search reindex` do, and every flag they take, is in the [`publiractl` reference](https://github.com/publira/publira/blob/main/server/cmd/publiractl/README.md). Taking the upgrade further after a restore onto an older release is in [Upgrading](./8-upgrading.md).

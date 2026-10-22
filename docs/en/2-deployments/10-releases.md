@@ -29,21 +29,21 @@ A change that takes more from you than the steps every upgrade runs lands in a m
 - a migration that runs long or locks a busy table;
 - the search index, which then has to be rebuilt.
 
-Every such change is named in the **Upgrade notes** that open the release notes, and the notes say so when there is none; [Read the release notes](./7-upgrading.md#read-the-release-notes) says what to do about each.
+Every such change is named in the **Upgrade notes** that open the release notes, and the notes say so when there is none; [Read the release notes](./8-upgrading.md#read-the-release-notes) says what to do about each.
 
-Nothing promises yet that the processes of two releases work side by side, so upgrade to such a release the way [Upgrading](./7-upgrading.md) describes, whatever its notes say: the migrations and the roles first, and then every process together.
+Nothing promises yet that the processes of two releases work side by side, so upgrade to such a release the way [Upgrading](./8-upgrading.md) describes, whatever its notes say: the migrations and the roles first, and then every process together.
 
 ## Patch releases
 
 A patch release carries fixes alone and is held to what can be applied by replacing the images: no migration, no environment variable added, renamed, or no longer read, no database role, no change to the routing in `infra/proxy/`, no process or service the install did not run before, and no search index to rebuild. A fix that needs any of them is released in the next minor release instead.
 
-Its Upgrade notes therefore ask nothing of you. Upgrade to it the way [Upgrading](./7-upgrading.md) describes all the same, from the backup to replacing every process together: the steps cost little when the schema does not change, and the backup is still the way back if a patch release ever carries a change it should not.
+Its Upgrade notes therefore ask nothing of you. Upgrade to it the way [Upgrading](./8-upgrading.md) describes all the same, from the backup to replacing every process together: the steps cost little when the schema does not change, and the backup is still the way back if a patch release ever carries a change it should not.
 
 ## Before 1.0.0
 
 While the major number is `0`, the minor number takes its place. A change that breaks an install lands in a minor release, such as `v0.2.0`, and everything else lands in a patch release, such as `v0.2.1`, new capabilities and migrations that only add included.
 
-A `0.x` patch release may therefore carry a migration, and its processes can read what that migration adds and fail on a schema that does not have it. Replacing the images is not enough: run `db migrate` and `db roles` before the processes are replaced, as [Upgrading](./7-upgrading.md) describes.
+A `0.x` patch release may therefore carry a migration, and its processes can read what that migration adds and fail on a schema that does not have it. Replacing the images is not enough: run `db migrate` and `db roles` before the processes are replaced, as [Upgrading](./8-upgrading.md) describes.
 
 ## Which releases receive fixes
 
@@ -59,4 +59,4 @@ What it does not apply is what the release notes ask of you, so read the notes o
 
 ## Next steps
 
-[Upgrading](./7-upgrading.md) takes a running install to a new release of any kind, and says what to do when a migration fails.
+[Upgrading](./8-upgrading.md) takes a running install to a new release of any kind, and says what to do when a migration fails.

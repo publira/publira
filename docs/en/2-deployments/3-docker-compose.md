@@ -224,15 +224,15 @@ The proxy passes on the `X-Forwarded-CountryRegion` a trusted hop sends as well,
 The Compose file is a complete install, but every part of it is on one machine:
 
 - **There is no redundancy.** Each process runs once. Docker restarts a process that exits, and restarts the whole install when the host reboots, but while the host is down, so is every tenant's site.
-- **The database and the images share one disk.** PostgreSQL and RustFS keep their data in the `publira-deploy_postgres-data` and `publira-deploy_rustfs-data` volumes, on the host's own disk. A disk that fails takes both with it, so back up both, and `.env` with them: without the encryption keys in it, the SMTP password and every other credential the install stores cannot be read. Valkey keeps nothing that needs a backup, and neither does the `publira-deploy_caddy-data` volume: the proxy obtains the certificates again when it finds it empty. [Backup and restore](./8-backup-and-restore.md#on-the-docker-compose-install) has the commands.
+- **The database and the images share one disk.** PostgreSQL and RustFS keep their data in the `publira-deploy_postgres-data` and `publira-deploy_rustfs-data` volumes, on the host's own disk. A disk that fails takes both with it, so back up both, and `.env` with them: without the encryption keys in it, the SMTP password and every other credential the install stores cannot be read. Valkey keeps nothing that needs a backup, and neither does the `publira-deploy_caddy-data` volume: the proxy obtains the certificates again when it finds it empty. [Backup and restore](./9-backup-and-restore.md#on-the-docker-compose-install) has the commands.
 - **`docker compose down -v` deletes the data.** `-v` removes the volumes, and with them every row and every image. Leave it out to stop the install and keep them.
 
-When the install outgrows one host, the same processes run against a managed PostgreSQL and an S3-compatible object store elsewhere; [Installing](./2-installing.md) brings up such an install step by step.
+When the install outgrows one host, the same processes run against a managed PostgreSQL and an S3-compatible object store elsewhere; [Installing](./2-installing.md) brings up such an install step by step, and [Scaling out](./7-scaling-out.md) says which processes to run more copies of, and what they have to share.
 
 ## Next steps
 
 When you add a tenant, add its domain and its console host to the host lists in `.env`, and run `docker compose up -d proxy`: the proxy routes the two names and, with `PUBLIRA_EDGE_ACME_EMAIL` set, obtains their certificates. [Adding a tenant](./4-edge/index.md#adding-a-tenant) lists the order, DNS first.
 
-On every later release, [Upgrading](./7-upgrading.md#on-the-docker-compose-install) takes the install to it: downloading the release, the backup, the migrations, and restarting on the new images.
+On every later release, [Upgrading](./8-upgrading.md#on-the-docker-compose-install) takes the install to it: downloading the release, the backup, the migrations, and restarting on the new images.
 
 The full list of variables the Compose file reads, and the checks the repository runs against it, are in the [deployment reference](https://github.com/publira/publira/blob/main/infra/deploy/README.md#running-it-with-docker-compose).
