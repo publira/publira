@@ -1202,6 +1202,12 @@ jobs:
           - { id: admin-3, group: admin, shard: 3/3 }
           - { id: exclusive, group: exclusive, shard: 1/1 }
           - { id: performance, group: performance, shard: 1/1 }
+          # The only entry whose processes trace: its stack runs a Jaeger,
+          # and the one spec in the group reads a request's trace back from
+          # it. Every path that trace crosses — the tracing packages, the
+          # api-client interceptor, the server's tracing and sqldb wrappers —
+          # is under this job's path filter.
+          - { id: tracing, group: tracing, shard: 1/1, tracing: "on" }
     steps:
       - name: Setup / Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -1282,6 +1288,7 @@ jobs:
         env:
           CI: true
           PUBLIRA_E2E_GROUP: ${{ matrix.group }}
+          PUBLIRA_E2E_TRACING: ${{ matrix.tracing || 'off' }}
           PLAYWRIGHT_BLOB_OUTPUT_NAME: report-${{ matrix.id }}.zip
 
       # Only `main` saves, because only its entries are readable from a pull

@@ -30,10 +30,28 @@ const EXPECTED_ERRORS = [
   /^\[web-storefront\] \w+ failed Error \[ConnectError\]: \[unavailable\] connect ECONNREFUSED \S+$/u,
 ];
 
+/**
+ * What a stack that traces (`task e2e:tracing`) adds when the apps run under
+ * `next dev` (`PUBLIRA_E2E_WEB_MODE=dev`): Next.js warns about the root span of
+ * a cold render whose metadata it resolved first (vercel/next.js#91831). A
+ * production build does not print it, and neither does a stack that traces
+ * nothing, so there it stays a line this check refuses.
+ */
+const EXPECTED_WHILE_TRACING_UNDER_NEXT_DEV = [
+  /^Unexpected root span type 'ResolveMetadata\.generateMetadata'\. Please report this Next\.js issue https:\/\/github\.com\/vercel\/next\.js$/u,
+];
+
+const tracingUnderNextDev =
+  process.env.PUBLIRA_E2E_TRACING === "on" &&
+  process.env.PUBLIRA_E2E_WEB_MODE === "dev";
+
 test.describe("web-storefront server log", () => {
   test("carries only the lines a passing run leaves", async () => {
     expect(
-      await unexpectedServerLogLines("web-storefront", EXPECTED_ERRORS)
+      await unexpectedServerLogLines("web-storefront", [
+        ...EXPECTED_ERRORS,
+        ...(tracingUnderNextDev ? EXPECTED_WHILE_TRACING_UNDER_NEXT_DEV : []),
+      ])
     ).toEqual([]);
   });
 });

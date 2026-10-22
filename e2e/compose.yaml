@@ -17,10 +17,14 @@
 #   traefik    → localhost:${PUBLIRA_E2E_EDGE_PORT:-3080}
 #   browser    → localhost:${PUBLIRA_E2E_BROWSER_PORT:-3090}
 #   opensearch → localhost:${PUBLIRA_E2E_OPENSEARCH_PORT:-9201}
+#   jaeger     → localhost:${PUBLIRA_E2E_JAEGER_OTLP_PORT:-4319} (OTLP),
+#                localhost:${PUBLIRA_E2E_JAEGER_QUERY_PORT:-16687} (query API)
 #
 # opensearch is in the `search` profile, which scripts/lib.sh turns on when a
 # run selects that search backend (`task e2e:search`); every other run leaves
-# the server on the SQL backend and the engine off.
+# the server on the SQL backend and the engine off. jaeger is in the `tracing`
+# profile, which it turns on for a run that traces (`task e2e:tracing`); every
+# other run traces nothing.
 
 name: publira-e2e
 
@@ -134,6 +138,35 @@ services:
       timeout: 3s
       retries: 60
       start_period: 10s
+
+  # The trace collector, for a run on PUBLIRA_E2E_TRACING=on: every process
+  # of the stack exports its spans here, and a spec reads the trace a request
+  # left back through the query API. The image the root compose.yaml runs,
+  # in memory, so a run starts with no trace.
+  jaeger:
+    profiles: [tracing]
+    image: jaegertracing/jaeger:2.22.0@sha256:836b967b5abcf1f7758066aa6b348619267a2f1459f72d472840570f9bd88a17
+    labels: *run-dir-label
+    ports:
+      # OTLP intake (http/protobuf, the protocol lib.sh configures the SDKs
+      # for) and the query API.
+      - "127.0.0.1:${PUBLIRA_E2E_JAEGER_OTLP_PORT:-4319}:4318"
+      - "127.0.0.1:${PUBLIRA_E2E_JAEGER_QUERY_PORT:-16687}:16686"
+    healthcheck:
+      # The health check extension the default configuration enables.
+      test:
+        [
+          "CMD",
+          "wget",
+          "-q",
+          "-O",
+          "/dev/null",
+          "http://127.0.0.1:13133/status",
+        ]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+      start_period: 2s
 
   # The public edge, matching what Traefik serves in the Dev Container: an
   # episode body image is `/images/episodes/{id}` on the reader's own origin,

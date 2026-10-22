@@ -39,6 +39,10 @@ export PUBLIRA_E2E_EDGE_PORT="${PUBLIRA_E2E_EDGE_PORT:-3080}"
 export PUBLIRA_E2E_BROWSER_PORT="${PUBLIRA_E2E_BROWSER_PORT:-3090}"
 # OpenSearch, published only by a run on that search backend (below).
 export PUBLIRA_E2E_OPENSEARCH_PORT="${PUBLIRA_E2E_OPENSEARCH_PORT:-9201}"
+# Jaeger's OTLP intake and its query API, published only by a run that traces
+# (below).
+export PUBLIRA_E2E_JAEGER_OTLP_PORT="${PUBLIRA_E2E_JAEGER_OTLP_PORT:-4319}"
+export PUBLIRA_E2E_JAEGER_QUERY_PORT="${PUBLIRA_E2E_JAEGER_QUERY_PORT:-16687}"
 
 export PUBLIRA_DB_URL="${PUBLIRA_DB_URL:-postgres://postgres:password@127.0.0.1:${PUBLIRA_E2E_POSTGRES_PORT}/publira?sslmode=disable}"
 export PUBLIRA_PUBLIC_DB_URL="${PUBLIRA_PUBLIC_DB_URL:-postgres://publira_public:publicpass@127.0.0.1:${PUBLIRA_E2E_POSTGRES_PORT}/publira?sslmode=disable}"
@@ -60,14 +64,6 @@ export PUBLIRA_S3_BUCKET="${PUBLIRA_S3_BUCKET:-publira}"
 # E2E uploads in the dev stack's RustFS (and is unreachable once it is down).
 export PUBLIRA_S3_ENDPOINT="http://127.0.0.1:${PUBLIRA_E2E_RUSTFS_PORT}"
 export PUBLIRA_S3_FORCE_PATH_STYLE="true"
-# The stack traces nothing, as on CI, which never sets PUBLIRA_TRACING_ENABLED.
-# The devcontainer sets it for `task dev`, and an inherited value would send
-# this stack's spans to the dev stack's Jaeger and change what the apps log:
-# with tracing on, Next.js logs "Unexpected root span type
-# 'ResolveMetadata.generateMetadata'" on a cold render (vercel/next.js#91831), a
-# line web-storefront's server log check refuses like any other it did not
-# expect.
-unset PUBLIRA_TRACING_ENABLED
 export AWS_REGION="${AWS_REGION:-us-east-1}"
 export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-publira}"
 export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-publirapass}"
@@ -102,15 +98,15 @@ export PUBLIRA_E2E_BROWSER_WS_ENDPOINT="${PUBLIRA_E2E_BROWSER_WS_ENDPOINT:-ws://
 # from the port, never inherited, so a run cannot be pointed at an engine it
 # neither started nor seeded. The engine is in the compose file's `search`
 # profile, so the selection is also what starts it.
+_e2e_compose_profiles=()
 export PUBLIRA_E2E_SEARCH_BACKEND="${PUBLIRA_E2E_SEARCH_BACKEND:-sql}"
 case "${PUBLIRA_E2E_SEARCH_BACKEND}" in
   sql)
     unset PUBLIRA_E2E_OPENSEARCH_URL
-    export COMPOSE_PROFILES=""
     ;;
   opensearch)
     export PUBLIRA_E2E_OPENSEARCH_URL="http://127.0.0.1:${PUBLIRA_E2E_OPENSEARCH_PORT}"
-    export COMPOSE_PROFILES=search
+    _e2e_compose_profiles+=(search)
     ;;
   *)
     printf '[e2e] ERROR: PUBLIRA_E2E_SEARCH_BACKEND %s names no search backend; use sql or opensearch\n' \
@@ -118,6 +114,46 @@ case "${PUBLIRA_E2E_SEARCH_BACKEND}" in
     exit 2
     ;;
 esac
+
+# Whether the stack's processes trace: `off` unless the run selects `on`
+# (`task e2e:tracing` does). The OpenTelemetry variables are always derived
+# from this, never inherited: the devcontainer sets PUBLIRA_TRACING_ENABLED and
+# its OTLP endpoint for `task dev`, which would send this stack's spans to the
+# dev stack's Jaeger. On `on` they name the Jaeger in the compose file's
+# `tracing` profile, which the selection also starts, and every root span is
+# sampled, so the trace a spec looks for is never one the sampler dropped.
+#
+# Under `next dev` (PUBLIRA_E2E_WEB_MODE=dev), tracing changes what
+# web-storefront logs: Next.js warns "Unexpected root span type
+# 'ResolveMetadata.generateMetadata'" on a cold render (vercel/next.js#91831),
+# which its server log check accepts only on `on`.
+export PUBLIRA_E2E_TRACING="${PUBLIRA_E2E_TRACING:-off}"
+case "${PUBLIRA_E2E_TRACING}" in
+  off)
+    unset PUBLIRA_TRACING_ENABLED PUBLIRA_E2E_JAEGER_BASE_URL
+    ;;
+  on)
+    export PUBLIRA_TRACING_ENABLED=true
+    export OTEL_EXPORTER_OTLP_ENDPOINT="http://127.0.0.1:${PUBLIRA_E2E_JAEGER_OTLP_PORT}"
+    export OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+    export OTEL_TRACES_EXPORTER=otlp
+    unset OTEL_SERVICE_NAME OTEL_RESOURCE_ATTRIBUTES OTEL_TRACES_SAMPLER OTEL_TRACES_SAMPLER_ARG
+    export PUBLIRA_DEPLOYMENT_ENVIRONMENT=development
+    export PUBLIRA_E2E_JAEGER_BASE_URL="http://127.0.0.1:${PUBLIRA_E2E_JAEGER_QUERY_PORT}"
+    _e2e_compose_profiles+=(tracing)
+    ;;
+  *)
+    printf '[e2e] ERROR: PUBLIRA_E2E_TRACING %s is neither on nor off\n' \
+      "${PUBLIRA_E2E_TRACING}" >&2
+    exit 2
+    ;;
+esac
+COMPOSE_PROFILES="$(
+  IFS=,
+  printf %s "${_e2e_compose_profiles[*]}"
+)"
+export COMPOSE_PROFILES
+unset _e2e_compose_profiles
 
 # The three periodic jobs the worker runs, in seconds. Short so a
 # scheduled episode, a free window boundary, and a tenant's midnight all land
@@ -225,6 +261,8 @@ else
     [[ "${PUBLIRA_E2E_STRIPE_PORT}" != "8500" ]] ||
     [[ "${PUBLIRA_E2E_GOOGLE_TAG_GATEWAY_PORT}" != "8600" ]] ||
     [[ "${PUBLIRA_E2E_OPENSEARCH_PORT}" != "9201" ]] ||
+    [[ "${PUBLIRA_E2E_JAEGER_OTLP_PORT}" != "4319" ]] ||
+    [[ "${PUBLIRA_E2E_JAEGER_QUERY_PORT}" != "16687" ]] ||
     [[ "${PUBLIRA_E2E_EDGE_PORT}" != "3080" ]]; then
     _e2e_uses_default_stack=0
   fi
@@ -233,7 +271,7 @@ else
   else
     # Directory name encodes the override set so start/stop/wait in one session
     # share state, while a different port set gets its own directory.
-    export PUBLIRA_E2E_RUN_DIR="${PUBLIRA_E2E_DIR}/.run/${COMPOSE_PROJECT_NAME}-pg${PUBLIRA_E2E_POSTGRES_PORT}-rd${PUBLIRA_E2E_REDIS_PORT}-s3${PUBLIRA_E2E_RUSTFS_PORT}-mp${PUBLIRA_E2E_MAILPIT_SMTP_PORT}-${PUBLIRA_E2E_MAILPIT_HTTP_PORT}-h${PUBLIRA_E2E_WEB_STOREFRONT_PORT}-a${PUBLIRA_E2E_WEB_ADMIN_PORT}-p${PUBLIRA_E2E_WEB_PLATFORM_PORT}-api${PUBLIRA_E2E_PUBLIC_API_PORT}-w${PUBLIRA_E2E_WORKER_PORT}-er${PUBLIRA_E2E_EMAIL_RENDERER_PORT}-sp${PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT}-st${PUBLIRA_E2E_STRIPE_PORT}-gt${PUBLIRA_E2E_GOOGLE_TAG_GATEWAY_PORT}-os${PUBLIRA_E2E_OPENSEARCH_PORT}-edge${PUBLIRA_E2E_EDGE_PORT}"
+    export PUBLIRA_E2E_RUN_DIR="${PUBLIRA_E2E_DIR}/.run/${COMPOSE_PROJECT_NAME}-pg${PUBLIRA_E2E_POSTGRES_PORT}-rd${PUBLIRA_E2E_REDIS_PORT}-s3${PUBLIRA_E2E_RUSTFS_PORT}-mp${PUBLIRA_E2E_MAILPIT_SMTP_PORT}-${PUBLIRA_E2E_MAILPIT_HTTP_PORT}-h${PUBLIRA_E2E_WEB_STOREFRONT_PORT}-a${PUBLIRA_E2E_WEB_ADMIN_PORT}-p${PUBLIRA_E2E_WEB_PLATFORM_PORT}-api${PUBLIRA_E2E_PUBLIC_API_PORT}-w${PUBLIRA_E2E_WORKER_PORT}-er${PUBLIRA_E2E_EMAIL_RENDERER_PORT}-sp${PUBLIRA_E2E_SIGN_IN_PROVIDER_PORT}-st${PUBLIRA_E2E_STRIPE_PORT}-gt${PUBLIRA_E2E_GOOGLE_TAG_GATEWAY_PORT}-os${PUBLIRA_E2E_OPENSEARCH_PORT}-jg${PUBLIRA_E2E_JAEGER_OTLP_PORT}-${PUBLIRA_E2E_JAEGER_QUERY_PORT}-edge${PUBLIRA_E2E_EDGE_PORT}"
   fi
   unset _e2e_uses_default_stack
 fi
@@ -355,9 +393,13 @@ e2e_find_foreign_port_publisher() {
     "${PUBLIRA_E2E_MAILPIT_SMTP_PORT}"
     "${PUBLIRA_E2E_MAILPIT_HTTP_PORT}"
   )
-  # The engine's port is this run's only when the run starts the engine.
+  # The engine's and the collector's ports are this run's only when the run
+  # starts them.
   if [[ "${PUBLIRA_E2E_SEARCH_BACKEND}" == "opensearch" ]]; then
     ports+=("${PUBLIRA_E2E_OPENSEARCH_PORT}")
+  fi
+  if [[ "${PUBLIRA_E2E_TRACING}" == "on" ]]; then
+    ports+=("${PUBLIRA_E2E_JAEGER_OTLP_PORT}" "${PUBLIRA_E2E_JAEGER_QUERY_PORT}")
   fi
   for port in "${ports[@]}"; do
     while read -r project; do
