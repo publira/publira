@@ -2,6 +2,7 @@
 title: Google tag
 description: Measure the site with Google Analytics or Google Tag Manager, choose where the tag is loaded from, and set up what Google needs for each choice.
 published: 2026-10-22
+updated: 2026-10-22
 ---
 
 **Integrations** › **Google tag** has the tenant's site load the Google tag: Google Analytics 4 for a measurement ID, Google Tag Manager for a container ID, or both. This page takes a Tenant admin through the IDs, the three places the tag can be loaded from, and what each of them needs set up in Google Analytics and Google Tag Manager.
@@ -67,7 +68,7 @@ Where the data goes depends on which ID loads Google Analytics:
 - **Tag ID** is the tag the gateway forwards to Google for: the **Tag Manager container ID** when one is set, and the **GA4 measurement ID** otherwise. A container covers every tag it fires, so a site with both is set up once, for the container.
 - **Server container URL** is optional here. Enter it to have the gateway forward to the publisher's server container instead of to Google; the container then has to answer the gateway path itself, as Google's [Load Google scripts first-party](https://developers.google.com/tag-platform/tag-manager/server-side/dependency-serving) describes. Publira connects to it only where its name resolves to a public address, so a container on a private network is not reached.
 
-Publira forwards a request on the gateway path as it came, path and query included, to `https://<Tag ID>.fps.goog`, or to the server container. Of the reader's cookies, it passes only Google's own measurement cookies, such as `_ga`, `_gcl_au`, and `FPID`, and it lets back only those. The reader's sign-in to the site, and every other cookie of the site, never leave Publira. The reader's IP address is passed on, as Google's gateway expects. Their country and region are not, which Google's setup guide asks a gateway to pass for reporting by region.
+Publira forwards a request on the gateway path as it came, path and query included, to `https://<Tag ID>.fps.goog`, or to the server container. Of the reader's cookies, it passes only Google's own measurement cookies, such as `_ga`, `_gcl_au`, and `FPID`, and it lets back only those. The reader's sign-in to the site, and every other cookie of the site, never leave Publira. The reader's IP address is passed on, as Google's gateway expects. Their country and region are passed on when the install's edge looks them up, which Google uses for reporting by region and for region-specific consent defaults; behind an edge that does not, Google reports the site's traffic through the gateway with no region. Ask whoever runs the install which it is.
 
 #### Setting it up in Google Tag Manager
 

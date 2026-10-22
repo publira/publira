@@ -24,12 +24,25 @@
 # same way: the host routers leave it out, and no other router takes it. What
 # the server answers there is the consoles' APIs, which web-admin and
 # web-platform call over the private network, so no host needs them.
+#
+# The reader's region reaches web-storefront in X-Forwarded-CountryRegion from
+# a trusted hop alone. Traefik keeps a trusted hop's X-Forwarded-* headers and
+# drops a caller's only for the ones it writes itself, which this is not, so a
+# router of its own takes the requests from the hop:
+# PUBLIRA_EDGE_TRUSTED_PROXIES lists the hop's addresses or CIDR ranges,
+# separated by spaces, the same ones as forwardedHeaders.trustedIPs in
+# traefik.yaml. Every other router removes the header. Traefik looks up no
+# region of its own.
 {{- define "hosts" -}}
   {{- range $i, $host := . }}{{ if $i }} || {{ end }}Host(`{{ $host }}`){{ end -}}
+{{- end -}}
+{{- define "clientIPs" -}}
+  {{- range $i, $address := . }}{{ if $i }} || {{ end }}ClientIP(`{{ $address }}`){{ end -}}
 {{- end -}}
 {{- $site := regexSplit "\\s+" (env "PUBLIRA_EDGE_SITE_HOSTS") -1 | compact -}}
 {{- $admin := regexSplit "\\s+" (env "PUBLIRA_EDGE_ADMIN_HOSTS") -1 | compact -}}
 {{- $platform := regexSplit "\\s+" (env "PUBLIRA_EDGE_PLATFORM_HOSTS") -1 | compact -}}
+{{- $hops := regexSplit "\\s+" (env "PUBLIRA_EDGE_TRUSTED_PROXIES") -1 | compact -}}
 {{- $listed := concat $site $admin $platform }}
 {{- $appPaths := "!PathRegexp(`^/rpc(/.*)?$`)" }}
 http:
@@ -53,6 +66,12 @@ http:
       headers:
         customRequestHeaders:
           Forwarded: ""
+    # Attached to every router but web-storefront-trusted-hop, which is the
+    # one that keeps the header, so it cannot sit on the entry point.
+    strip-country-region:
+      headers:
+        customRequestHeaders:
+          X-Forwarded-CountryRegion: ""
 {{- if $listed }}
 
   routers:
@@ -62,6 +81,18 @@ http:
       priority: 100
       entryPoints: [web]
       service: web-storefront
+      middlewares: [strip-country-region]
+{{- if $hops }}
+
+    # The same requests from a trusted hop, which keep the reader's region the
+    # hop names. Priority 101 puts it above web-storefront, and the paths
+    # keep it below rpc and images.
+    web-storefront-trusted-hop:
+      rule: '({{ template "hosts" $site }}) && {{ $appPaths }} && ({{ template "clientIPs" $hops }})'
+      priority: 101
+      entryPoints: [web]
+      service: web-storefront
+{{- end }}
 {{- end }}
 {{- if $admin }}
 
@@ -70,6 +101,7 @@ http:
       priority: 100
       entryPoints: [web]
       service: web-admin
+      middlewares: [strip-country-region]
 {{- end }}
 {{- if $platform }}
 
@@ -78,6 +110,7 @@ http:
       priority: 100
       entryPoints: [web]
       service: web-platform
+      middlewares: [strip-country-region]
 {{- end }}
 
     # The public API, on every listed host, so priority 105 puts it above the
@@ -89,6 +122,7 @@ http:
       priority: 105
       entryPoints: [web]
       service: api
+      middlewares: [strip-country-region]
 
     # On every listed host, like the API, and answered by the same process:
     # the server picks the rules it applies to an image from the host name it
@@ -98,4 +132,5 @@ http:
       priority: 110
       entryPoints: [web]
       service: api
+      middlewares: [strip-country-region]
 {{- end }}

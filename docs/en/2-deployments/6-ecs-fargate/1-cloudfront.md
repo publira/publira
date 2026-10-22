@@ -37,7 +37,7 @@ That group belongs to the VPC origins of your own account, which is why the load
 
 ## The headers
 
-A CloudFront Function on every viewer request removes the trace context headers, `Forwarded`, and `X-Forwarded-Host` before anything else sees the request. `strip-request-headers.js`:
+A CloudFront Function on every viewer request removes the trace context headers, `Forwarded`, `X-Forwarded-Host`, and `X-Forwarded-CountryRegion` before anything else sees the request, and sets the last of them to the reader's region. `strip-request-headers.js`:
 
 ```js
 function handler(event) {
@@ -47,6 +47,14 @@ function handler(event) {
   delete headers.baggage;
   delete headers.forwarded;
   delete headers["x-forwarded-host"];
+  delete headers["x-forwarded-countryregion"];
+  var country = headers["cloudfront-viewer-country"];
+  var region = headers["cloudfront-viewer-country-region"];
+  if (country && region) {
+    headers["x-forwarded-countryregion"] = {
+      value: country.value + "-" + region.value,
+    };
+  }
   return event.request;
 }
 ```
@@ -60,9 +68,11 @@ aws cloudfront publish-function --name publira-strip-request-headers --if-match 
 
 `traceparent`, `tracestate`, and `baggage` are removed as [Trace context](../4-edge/index.md#trace-context) requires. CloudFront and the load balancer pass on a `Forwarded` and an `X-Forwarded-Host` the caller sent, and Publira would read both, as [The client address](../4-edge/index.md#the-client-address) and [The host the request was sent to](../4-edge/index.md#the-host-the-request-was-sent-to) describe; neither of them writes either header itself, so removing them here leaves the web apps reading the `Host` the browser sent, and `PUBLIRA_FORWARDED_HEADER_ENABLED` at its default on every process.
 
+`X-Forwarded-CountryRegion` carries the reader's region to a tenant's Google tag gateway, as [The reader's region](../4-edge/index.md#the-readers-region) describes. CloudFront looks the region up from the reader's address into `CloudFront-Viewer-Country`, a country code, and `CloudFront-Viewer-Country-Region`, the code of the reader's first-level subdivision that follows the country in its ISO 3166-2 code, and the function joins the two into the form the header takes, such as `JP-13`. A function sees those two headers only when the behaviour's origin request policy forwards them, which is why the default behaviour below uses `Managed-AllViewerAndCloudFrontHeaders-2022-06`. A request CloudFront places in no region reaches the load balancer without the header, a caller's included.
+
 ## The cache policies
 
-Every path but `/images` is forwarded uncached, with every header, cookie, and query string the browser sent: the managed cache policy `Managed-CachingDisabled` and the managed origin request policy `Managed-AllViewer`. The pages depend on the reader's session cookie, and the web apps keep a cache of their own in Valkey, which the revalidation from the server and the worker keeps current; a copy in CloudFront would be one that revalidation never reaches. `Managed-AllViewer` forwards the `Host` header, which picks the tenant, and the `Authorization` header the mobile app signs its requests with.
+Every path but `/images` is forwarded uncached, with every header, cookie, and query string the browser sent: the managed cache policy `Managed-CachingDisabled` and the managed origin request policy `Managed-AllViewerAndCloudFrontHeaders-2022-06`, which adds the headers CloudFront writes itself, the reader's country and region among them, to the ones the browser sent. The pages depend on the reader's session cookie, and the web apps keep a cache of their own in Valkey, which the revalidation from the server and the worker keeps current; a copy in CloudFront would be one that revalidation never reaches. It forwards the `Host` header, which picks the tenant, and the `Authorization` header the mobile app signs its requests with.
 
 `/images` is worth caching. `publira server` marks an image a reader may be shown without signing in as `public` for up to an hour, and one that needs a reader's credential as `private`, which CloudFront does not store. It picks the format from the `Accept` header, and the tenant from the host, and takes a reader's credential from `Authorization` or from the query string, so each of those belongs in the key a cached copy is found by:
 
@@ -131,7 +141,7 @@ One distribution serves one tenant: its domain and its console host, with the ce
     },
     "Compress": true,
     "CachePolicyId": "4135ea2d-6df8-44a3-9df3-4b5a84be39ad",
-    "OriginRequestPolicyId": "216adef6-5c7f-47e4-b989-5492eafa07d3",
+    "OriginRequestPolicyId": "33f36d7e-f396-46d9-90e0-52428a34d9dc",
     "FunctionAssociations": {
       "Quantity": 1,
       "Items": [
@@ -177,7 +187,7 @@ aws cloudfront create-distribution --distribution-config file://distribution.jso
   --query 'Distribution.[Id,DomainName]' --output text
 ```
 
-- **The IDs.** `4135ea2d-…` is `Managed-CachingDisabled`, and `216adef6-…` is `Managed-AllViewer`. `aws elbv2 describe-load-balancers --load-balancer-arns "$ALB" --query 'LoadBalancers[0].DNSName'` prints the load balancer's DNS name.
+- **The IDs.** `4135ea2d-…` is `Managed-CachingDisabled`, `33f36d7e-…` is `Managed-AllViewerAndCloudFrontHeaders-2022-06`, and `216adef6-…` is `Managed-AllViewer`. `aws elbv2 describe-load-balancers --load-balancer-arns "$ALB" --query 'LoadBalancers[0].DNSName'` prints the load balancer's DNS name.
 - **The methods.** The default behaviour admits every method, since the pages post forms and the API is called with `POST`; `/images` answers reads alone.
 - **The upload timeout.** CloudFront sets no limit on a body that matters here, so the uploads and webhooks pass it as they are. `OriginReadTimeout` is how long CloudFront waits for the load balancer to answer, 30 seconds unless set; 120 is the most it takes without raising the quota, and leaves the console time to store a whole episode's pages once they have arrived.
 - **The function** is associated with both behaviours: a behaviour that names none forwards the caller's headers untouched.

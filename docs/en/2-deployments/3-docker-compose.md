@@ -2,7 +2,7 @@
 title: Docker Compose
 description: Run a whole install on one host with the Compose file every release publishes, from downloading it to the first sign-in to the tenant console.
 published: 2026-10-06
-updated: 2026-10-20
+updated: 2026-10-22
 ---
 
 Every release publishes a Compose file that runs a whole install on one host: the services Publira depends on, the processes of an install, and a reverse proxy in front of them, already wired together. It is the shortest way to a working install, and this page takes you from an empty host to the first sign-in to the tenant console.
@@ -216,6 +216,8 @@ Use this only for trying the install: nothing it sends between your browser and 
 If a CDN or a load balancer of your platform terminates TLS for the install instead, leave `PUBLIRA_EDGE_ACME_EMAIL` empty and have it forward to the proxy's port 80, keeping the `Host` header the browser sent: the proxy picks the tenant site, the tenant console, or the Platform Console from it, and Publira picks the tenant from it. A hop that reaches the proxy over HTTPS instead can leave it set, as long as the certificate authority still reaches the proxy on port 80 or 443 at each host name.
 
 The proxy then records every request with the hop's address, so the audit log shows one address for everyone, and the limits Publira keeps per client address are shared by every reader. To record the reader's address instead, have the hop set `X-Forwarded-For`, `X-Forwarded-Host`, and `X-Forwarded-Proto` itself, and set `PUBLIRA_EDGE_TRUSTED_PROXIES` in `.env` to the addresses or CIDR ranges it connects from, which its provider publishes, separated by spaces. Then run `docker compose up -d proxy` to recreate the proxy with them. [A hop in front of the proxy](./4-edge/1-sample-configurations.md#a-hop-in-front-of-the-proxy) explains what trusting the hop means.
+
+The proxy passes on the `X-Forwarded-CountryRegion` a trusted hop sends as well, which carries the reader's region to a tenant's Google tag gateway, as [The reader's region](./4-edge/index.md#the-readers-region) describes. Have a hop that looks up the reader's region set it, and one that does not remove the header, so no reader names a region of their choosing.
 
 ## What one host does not give you
 

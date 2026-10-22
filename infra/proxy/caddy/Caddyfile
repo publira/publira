@@ -54,7 +54,8 @@
 	# is not one of them. {client_ip} below becomes that address, and is the
 	# peer address for requests from anywhere else, as it is for every request
 	# while the list is empty. X-Forwarded-Proto from them is passed on as well,
-	# since a TLS terminator reaches this edge over plain HTTP.
+	# since a TLS terminator reaches this edge over plain HTTP, and so is
+	# X-Forwarded-CountryRegion, as the site block says.
 	servers {
 		trusted_proxies static {$PUBLIRA_EDGE_TRUSTED_PROXIES}
 		trusted_proxies_strict
@@ -93,6 +94,14 @@
 	@unlisted not host no/host {$PUBLIRA_EDGE_SITE_HOSTS} {$PUBLIRA_EDGE_ADMIN_HOSTS} {$PUBLIRA_EDGE_PLATFORM_HOSTS}
 
 	@images path /images*
+
+	# The reader's region travels in X-Forwarded-CountryRegion from a hop the
+	# global options trust, which Caddy marks in the trusted_proxy variable,
+	# and from no one else: Caddy looks up no region of its own, and a
+	# caller's would name a region of their choosing. request_header runs
+	# ahead of `route`, so no backend below is given the caller's.
+	@untrusted_hop not vars {http.vars.trusted_proxy} true
+	request_header @untrusted_hop -X-Forwarded-CountryRegion
 
 	# The client address in the form Forwarded takes it, which the
 	# publira_forwarded snippet sends: an IPv6 address has to be quoted and in

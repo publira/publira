@@ -98,7 +98,7 @@ spec:
           - name: admin-comics-example-com-tls
 ```
 
-One HTTPRoute per web app attaches to that app's HTTPS listeners by name, and takes its host names from them. Every rule removes the trace context headers, `Forwarded`, and `X-Forwarded-Host` from the request with a `RequestHeaderModifier` filter, which every implementation supports:
+One HTTPRoute per web app attaches to that app's HTTPS listeners by name, and takes its host names from them. Every rule removes the trace context headers, `Forwarded`, `X-Forwarded-Host`, and `X-Forwarded-CountryRegion` from the request with a `RequestHeaderModifier` filter, which every implementation supports:
 
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
@@ -117,7 +117,12 @@ spec:
         - type: RequestHeaderModifier
           requestHeaderModifier:
             remove:
-              [traceparent, tracestate, baggage, forwarded, x-forwarded-host]
+              - traceparent
+              - tracestate
+              - baggage
+              - forwarded
+              - x-forwarded-host
+              - x-forwarded-countryregion
       backendRefs:
         - name: publira-server
           port: 8000
@@ -154,7 +159,12 @@ spec:
         - type: RequestHeaderModifier
           requestHeaderModifier:
             remove:
-              [traceparent, tracestate, baggage, forwarded, x-forwarded-host]
+              - traceparent
+              - tracestate
+              - baggage
+              - forwarded
+              - x-forwarded-host
+              - x-forwarded-countryregion
       backendRefs:
         - name: publira-server
           port: 8000
@@ -192,7 +202,7 @@ spec:
 ```
 
 - **The public API and the `404`.** A path that matches `/rpc/publira\.v1\..*` reaches `publira-server`, since Envoy Gateway tries the regular expression first; the rest of `/rpc` and `/api` falls to the `PathPrefix` rule with the `not-found` filter, and `/api/v1`, the longer prefix, to the web app. The rule with the filter has no `backendRefs`: the filter answers every request that matches it, and nothing is forwarded.
-- **The removed headers.** `traceparent`, `tracestate`, and `baggage` are removed as [Trace context](../4-edge/index.md#trace-context) requires. A Gateway passes on a `Forwarded` and an `X-Forwarded-Host` the caller sent unless told otherwise, and Publira would read both, as [The client address](../4-edge/index.md#the-client-address) and [The host the request was sent to](../4-edge/index.md#the-host-the-request-was-sent-to) describe; removing them here leaves `PUBLIRA_FORWARDED_HEADER_ENABLED` at its default on every process.
+- **The removed headers.** `traceparent`, `tracestate`, and `baggage` are removed as [Trace context](../4-edge/index.md#trace-context) requires. A Gateway passes on a `Forwarded` and an `X-Forwarded-Host` the caller sent unless told otherwise, and Publira would read both, as [The client address](../4-edge/index.md#the-client-address) and [The host the request was sent to](../4-edge/index.md#the-host-the-request-was-sent-to) describe; removing them here leaves `PUBLIRA_FORWARDED_HEADER_ENABLED` at its default on every process. `X-Forwarded-CountryRegion` is removed as [The reader's region](../4-edge/index.md#the-readers-region) requires: Envoy Gateway looks up no region of its own, so a tenant's Google tag gateway sends Google none. A CDN in front of the Gateway that sets the header to the reader's region, as [CloudFront in front of ECS](../6-ecs-fargate/1-cloudfront.md#the-headers) shows, reaches `web-storefront` with it once `web-storefront`'s rules leave it out of `remove`, which is safe only while that CDN is the one thing that can connect to the Gateway.
 - **The upload timeout.** `timeouts.request: 0s` turns off the limit on how long a request to a web app may take, as the Gateway API defines the zero duration. Without it a rule gets the implementation's default, which can be far shorter: Envoy Gateway's is 15 seconds for the answer once the request has arrived. The episode upload in the tenant console takes up to 300 seconds to arrive, as [Uploads in the tenant console](../4-edge/index.md#uploads-in-the-tenant-console) describes, and the Gateway API lets an implementation count that time too, before `web-admin` has stored the pages and answered. The web apps give a request 300 seconds to arrive themselves, so the edge needs no limit of its own. The Gateway API has no field for the size of a body, and Envoy Gateway sets no limit on it unless a policy of its own adds one; if your implementation does limit it, allow 256 MiB on a console host's `/api/v1/episode-pages` and 33 MiB under a tenant's domain's `/api/v1/webhook/email/`.
 - **The redirect.** `https-redirect` attaches to the `http` listener alone and sends every request there to HTTPS. While a certificate is being issued, cert-manager adds a route of its own for the challenge to the same listener. It names the host the certificate is for, so it takes that host's plain HTTP requests from the redirect, which answers them again once the certificate is issued and the route removed.
 
@@ -237,6 +247,7 @@ spec:
       tracestate: ""
       baggage: ""
       Forwarded: ""
+      X-Forwarded-CountryRegion: ""
 ---
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
@@ -250,7 +261,7 @@ spec:
 
 Traefik has no Middleware that only answers a request, so `not-found` is an allow list that names the broadcast address, which no connection comes from, and refuses every other address with `404`. `rejectStatusCode` needs Traefik 3.4 or later.
 
-Traefik replaces the caller's `X-Forwarded-For` and `X-Forwarded-Host` with its own unless it is told to trust a hop in front of it, as [The client address](#the-client-address) describes, so neither needs removing. `readTimeout` gives a request 300 seconds to arrive, which the episode upload needs; Traefik sets no limit on the size of a body. The redirect on `web` sends the ACME challenge to HTTPS as well, and the certificate authority follows it there, where the challenge is answered before the certificate exists. On another controller, do each of these with what it offers, by its own annotation or resource.
+Traefik replaces the caller's `X-Forwarded-For` and `X-Forwarded-Host` with its own unless it is told to trust a hop in front of it, as [The client address](#the-client-address) describes, so neither needs removing. It looks up no region of its own, so `X-Forwarded-CountryRegion` is removed from every request, as [The reader's region](../4-edge/index.md#the-readers-region) requires, and a tenant's Google tag gateway sends Google none. `readTimeout` gives a request 300 seconds to arrive, which the episode upload needs; Traefik sets no limit on the size of a body. The redirect on `web` sends the ACME challenge to HTTPS as well, and the certificate authority follows it there, where the challenge is answered before the certificate exists. On another controller, do each of these with what it offers, by its own annotation or resource.
 
 One Ingress per web app then routes its hosts. Traefik matches a `Prefix` or an `ImplementationSpecific` path as a prefix of the path as a string rather than by whole segments, unless its `strictPrefixMatching` option is on, so leave that option off. That is how `/rpc/publira.v1.` names the public API's prefix inside a path segment, given as `ImplementationSpecific` because the Ingress API leaves that meaning to the controller; a controller that matches whole segments needs an annotation or a resource of its own for it.
 

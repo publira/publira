@@ -479,10 +479,7 @@ test.describe("the Google tag gateway on the site's own origin", () => {
       const response = await fetch(pathname, {
         body: "en=e2e_probe",
         credentials: "include",
-        headers: {
-          Authorization: "Bearer e2e-reader-token",
-          "X-Forwarded-CountryRegion": "JP-13",
-        },
+        headers: { Authorization: "Bearer e2e-reader-token" },
         method: "POST",
       });
       return response.status;
@@ -497,6 +494,8 @@ test.describe("the Google tag gateway on the site's own origin", () => {
     expect(probe?.body).toBe("en=e2e_probe");
     expect(probe?.headers.cookie).toBe("_ga=GA1.1.e2e-reader");
     expect(probe?.headers).not.toHaveProperty("authorization");
+    // The page named no region, so the edge handed the storefront none, and
+    // the gateway sends none of its own.
     expect(probe?.headers).not.toHaveProperty("x-forwarded-countryregion");
     expect(probe?.headers["x-forwarded-for"]).toMatch(/^[\d.:a-f]+$/u);
 
@@ -511,6 +510,33 @@ test.describe("the Google tag gateway on the site's own origin", () => {
       publira_web_storefront_auth: "e2e-sealed",
     });
     expect(cookies).not.toHaveProperty("e2e_stand_in");
+  });
+
+  test("the reader's region the edge hands over reaches the upstream", async ({
+    page,
+  }) => {
+    // A page that loads no tag, so the only hit is the one sent below.
+    await page.goto(siteUrl("/login"));
+
+    // The E2E edge trusts the page as it would a CDN in front of it that
+    // looks up the reader's region, so the header the page sends is the one
+    // such a hop sets, and the edge hands it on to the storefront.
+    const status = await page.evaluate(async (pathname) => {
+      const response = await fetch(pathname, {
+        body: "en=e2e_region",
+        headers: { "X-Forwarded-CountryRegion": "JP-13" },
+        method: "POST",
+      });
+      return response.status;
+    }, `/${GATEWAY_PATH}/g/collect?v=2&en=e2e_region`);
+    expect(status).toBe(204);
+
+    const [probe] = forwardedTo(
+      await googleTagGatewayRequests(),
+      `/${GATEWAY_PATH}/g/collect`
+    );
+    expect(probe?.body).toBe("en=e2e_region");
+    expect(probe?.headers["x-forwarded-countryregion"]).toBe("JP-13");
   });
 
   test("a stale gateway path, and the path of a tenant in another mode, get the site's 404", async ({

@@ -33,7 +33,10 @@ entryPoints:
     # them carries and append the hop's address to X-Forwarded-For, so the
     # client address the hop named stays first, where a backend reads it. The
     # hop has to set those headers rather than append to the caller's.
-    # Requests from anywhere else lose theirs, as they do without this.
+    # Requests from anywhere else lose theirs, as they do without this. The
+    # reader's region the hop names in X-Forwarded-CountryRegion is not one of
+    # those headers: the same addresses in PUBLIRA_EDGE_TRUSTED_PROXIES keep
+    # it, as dynamic/routes.yaml describes.
     #
     # forwardedHeaders:
     #   trustedIPs:

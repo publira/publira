@@ -7,6 +7,7 @@ import { isIP } from "node:net";
 import { Readable } from "node:stream";
 
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 import type { GoogleTagGateway } from "./google-tag-gateway";
 import { resolvePublicAddress } from "./public-address";
@@ -50,8 +51,7 @@ export const isGoogleCookieName = (name: string): boolean =>
  * The request headers a tag's script load or hit is forwarded with: what the
  * response is negotiated by, and what describes the browser and the page.
  * Everything else stays behind — `Authorization`, the forwarded headers the
- * edge wrote, any geolocation header the caller wrote, and every header
- * this list does not name.
+ * edge wrote, and every header this list does not name.
  */
 const FORWARDED_REQUEST_HEADERS: ReadonlySet<string> = new Set([
   "accept",
@@ -67,6 +67,19 @@ const FORWARDED_REQUEST_HEADERS: ReadonlySet<string> = new Set([
   "user-agent",
 ]);
 const FORWARDED_REQUEST_HEADER_PREFIXES = ["sec-ch-", "sec-fetch-"] as const;
+
+/**
+ * The reader's region, which the edge hands over as an ISO 3166-2 subdivision
+ * code such as `JP-13`, under the name Google's gateway reads it by. The edge
+ * removes the header from every request it does not set it on, so a value
+ * that arrived is the edge's; one of another shape is left out rather than
+ * passed on for Google to misread.
+ */
+const COUNTRY_REGION_HEADER = "x-forwarded-countryregion";
+const countryRegionSchema = z
+  .string()
+  .trim()
+  .regex(/^[A-Z]{2}-[A-Z0-9]{1,3}$/u);
 
 /**
  * The response headers passed back: what describes the body and how it may
@@ -106,7 +119,8 @@ const cookieName = (pair: string): string => {
  *
  * `host` names the upstream, as its own `Host` would. `clientAddress` goes in
  * `X-Forwarded-For` alone, so Google sees the reader rather than the app;
- * without one the header is left out rather than guessed.
+ * without one the header is left out rather than guessed, and so is the
+ * reader's region without one from the edge.
  */
 export const gatewayRequestHeaders = (
   incoming: Headers,
@@ -133,6 +147,12 @@ export const gatewayRequestHeaders = (
   }
   if (clientAddress) {
     headers["x-forwarded-for"] = clientAddress;
+  }
+  const countryRegion = countryRegionSchema.safeParse(
+    incoming.get(COUNTRY_REGION_HEADER)
+  );
+  if (countryRegion.success) {
+    headers[COUNTRY_REGION_HEADER] = countryRegion.data;
   }
   headers.host = host;
   return headers;

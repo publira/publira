@@ -6,7 +6,9 @@
 # needs the file, because the trusted-proxy setting is what it exercises, and
 # Traefik reads either a file or flags, never both. PUBLIRA_ROUTING_PROXY_DIR is
 # a copy of infra/proxy/traefik with that setting enabled, which scripts/lib.sh
-# writes; its dynamic/services.yaml already names `app`.
+# writes; its dynamic/services.yaml already names `app`. The same address in
+# PUBLIRA_EDGE_TRUSTED_PROXIES gives routes.yaml the router that keeps the
+# reader's region the hop names.
 
 services:
   proxy:
@@ -18,6 +20,7 @@ services:
       PUBLIRA_EDGE_SITE_HOSTS: ${PUBLIRA_ROUTING_SITE_HOSTS:?}
       PUBLIRA_EDGE_ADMIN_HOSTS: ${PUBLIRA_ROUTING_ADMIN_HOSTS:?}
       PUBLIRA_EDGE_PLATFORM_HOSTS: ${PUBLIRA_ROUTING_PLATFORM_HOSTS?}
+      PUBLIRA_EDGE_TRUSTED_PROXIES: ${PUBLIRA_ROUTING_TRUSTED_PROXIES:-}
     ports:
       - "127.0.0.1:${PUBLIRA_ROUTING_EDGE_PORT:-13080}:80"
     volumes:

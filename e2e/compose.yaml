@@ -245,6 +245,12 @@ services:
         admin.team.localhost
         admin.waitfree.localhost
       PUBLIRA_EDGE_PLATFORM_HOSTS: platform.localhost
+      # The suite stands in for a hop in front of the edge that looks up the
+      # reader's region: loopback, which every spec connects from, is trusted
+      # for X-Forwarded-CountryRegion alone, so the region a spec sends reaches
+      # web-storefront the way a CDN's would. No forwardedHeaders setting
+      # trusts it, so the client address and the host stay the edge's own.
+      PUBLIRA_EDGE_TRUSTED_PROXIES: 127.0.0.1/32
     volumes:
       # The repository's own dynamic directory, with this run's addresses laid
       # over the services.yaml in it. The order matters: a file mount can only

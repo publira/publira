@@ -120,9 +120,10 @@ export PUBLIRA_ROUTING_TRUSTED_HOP="${PUBLIRA_ROUTING_TRUSTED_HOP:-0}"
 export PUBLIRA_ROUTING_HOP_SUBNET="${PUBLIRA_ROUTING_HOP_SUBNET:-198.18.0.0/24}"
 export PUBLIRA_ROUTING_HOP_ADDRESS="${PUBLIRA_ROUTING_HOP_ADDRESS:-198.18.0.10}"
 # Caddy is given the hop's address in its environment, as enable_trusted_hop
-# says, and every other proxy a copy of its sample.
+# says, and every other proxy a copy of its sample. Traefik is given it in its
+# environment as well, for the router that keeps the reader's region.
 export PUBLIRA_ROUTING_TRUSTED_PROXIES=""
-if [[ "${PUBLIRA_ROUTING_TRUSTED_HOP}" == "1" && "${PUBLIRA_ROUTING_PROXY}" == "caddy" ]]; then
+if [[ "${PUBLIRA_ROUTING_TRUSTED_HOP}" == "1" && "${PUBLIRA_ROUTING_PROXY}" != "nginx" ]]; then
   PUBLIRA_ROUTING_TRUSTED_PROXIES="${PUBLIRA_ROUTING_HOP_ADDRESS}/32"
 fi
 if [[ "${PUBLIRA_ROUTING_TRUSTED_HOP}" == "1" && "${PUBLIRA_ROUTING_PROXY}" != "caddy" ]]; then
@@ -137,6 +138,8 @@ fi
 # their hop's addresses.
 PUBLIRA_ROUTING_HOP_CLIENT_ADDRESS="198.51.100.7"
 PUBLIRA_ROUTING_SAMPLE_TRUSTED_RANGE="192.0.2.0/24"
+# The client's region the hop names in X-Forwarded-CountryRegion.
+PUBLIRA_ROUTING_HOP_COUNTRY_REGION="JP-13"
 
 # The compose files for this proxy. Traefik is the Dev Container's own edge,
 # so its run overlays the very files the Dev Container starts and proves that
@@ -207,14 +210,15 @@ if [[ -n "${PUBLIRA_ROUTING_PLATFORM_HOSTS// /}" ]]; then
   PUBLIRA_ROUTING_ROUTERS+=(web-platform)
 fi
 
-# Middleware names from the same file. Both are attached to the `web`
-# entrypoint in the static configuration, so every router on that
-# entrypoint refuses requests until the file provider has advertised it;
-# waiting for it turns that into one readable message instead of a wall of
+# Middleware names from the same file. The first two are attached to the
+# `web` entrypoint in the static configuration, and the third to every router,
+# so a router refuses requests until the file provider has advertised them;
+# waiting for them turns that into one readable message instead of a wall of
 # failing probes.
 PUBLIRA_ROUTING_MIDDLEWARES=(
   strip-trace-context
   strip-forwarded
+  strip-country-region
 )
 
 # W3C Trace Context a caller could forge. echo.ts reports each of these
@@ -229,13 +233,15 @@ PUBLIRA_ROUTING_TRACE_CONTEXT_HEADERS=(
 # each of them back, so a probe can assert the edge replaced the value rather
 # than passing the caller's through: publira server finds the client IP it
 # records in Forwarded, ahead of X-Forwarded-For, the apps find the tenant in
-# the host= of Forwarded ahead of X-Forwarded-Host, and the CSRF origin check
-# reads the same host and X-Forwarded-Proto.
+# the host= of Forwarded ahead of X-Forwarded-Host, the CSRF origin check
+# reads the same host and X-Forwarded-Proto, and web-storefront hands
+# X-Forwarded-CountryRegion to a tenant's Google tag gateway.
 PUBLIRA_ROUTING_FORGED_FORWARDED_HEADERS=(
   "Forwarded: for=203.0.113.9"
   "X-Forwarded-For: 203.0.113.9"
   "X-Forwarded-Host: forged.example.test"
   "X-Forwarded-Proto: https"
+  "X-Forwarded-CountryRegion: AQ-01"
 )
 
 # The headers SendGrid Inbound Parse posts a mail with, its webhook token as
@@ -509,9 +515,9 @@ read_handed_client_addresses() {
 # The headers a backend is promised, on a request that forges all of them.
 # `Host` arrives as the browser sent it, `X-Forwarded-Host` and
 # `X-Forwarded-Proto` describe this request rather than the caller's claim,
-# and the client address is the peer address alone, in the header the sample
+# the client address is the peer address alone, in the header the sample
 # hands it over in — appending would pass the forged address on in front of
-# the real one.
+# the real one — and no region arrives, since no sample looks one up itself.
 assert_forwarded_headers() {
   local name="$1" method="$2" host="$3" path="$4" want_backend="$5"
   local out code body actual_backend value
@@ -556,12 +562,18 @@ assert_forwarded_headers() {
     routing_fail "${name}: ${PUBLIRA_ROUTING_CLIENT_ADDRESS_HEADER} '${value}' is a list (want the peer address alone) ${method} ${path} body=${body}"
   fi
 
+  value="$(json_string_field "${body}" x-forwarded-countryregion)"
+  if [[ -n "${value}" ]]; then
+    routing_fail "${name}: backend saw X-Forwarded-CountryRegion '${value}' (want it removed from a caller) ${method} ${path} body=${body}"
+  fi
+
   routing_log "ok: ${name} → ${want_backend} with the edge's own forwarded headers"
 }
 
 # A request the hop sends to the edge on behalf of a client, naming that
-# client's address in X-Forwarded-For and the scheme it used in
-# X-Forwarded-Proto, the way a TLS terminator that sets the headers does. It
+# client's address in X-Forwarded-For, the scheme it used in
+# X-Forwarded-Proto, and its region in X-Forwarded-CountryRegion, the way a
+# TLS terminator or a CDN that sets the headers does. It
 # names them in Forwarded as well, which no sample passes on even from a hop it
 # trusts: each reads the client address from the hop's X-Forwarded-For.
 # Prints the status code on the first line and the body after it, like
@@ -570,11 +582,12 @@ hop_probe() {
   local host="$1" path="$2"
   # shellcheck disable=SC2016 # JavaScript, run inside the hop container
   compose exec -T hop node -e '
-    const [host, path, forwardedFor] = process.argv.slice(1);
+    const [host, path, forwardedFor, countryRegion] = process.argv.slice(1);
     const headers = {
       Host: host,
       "X-Forwarded-For": forwardedFor,
       "X-Forwarded-Proto": "https",
+      "X-Forwarded-CountryRegion": countryRegion,
       Forwarded: `for=${forwardedFor};host=${host};proto=https`,
     };
     const request = require("node:http").get(
@@ -588,12 +601,14 @@ hop_probe() {
     );
     request.setTimeout(5000, () => request.destroy(new Error("timed out")));
     request.on("error", (error) => { console.log("000"); console.log(error.message); });
-  ' "${host}" "${path}" "${PUBLIRA_ROUTING_HOP_CLIENT_ADDRESS}" 2> /dev/null || true
+  ' "${host}" "${path}" "${PUBLIRA_ROUTING_HOP_CLIENT_ADDRESS}" "${PUBLIRA_ROUTING_HOP_COUNTRY_REGION}" 2> /dev/null || true
 }
 
 # A request through the trusted hop: the backend has to be handed the client
 # address the hop named, first in the header the sample hands it over in, and
 # the scheme it named, which the edge's own plain HTTP would otherwise replace.
+# web-storefront, the one backend that reads it, is handed the region the hop
+# named as well.
 # nginx and Caddy set Forwarded to that address alone; Traefik keeps the hop's
 # X-Forwarded-For and appends the hop's own address after it, which leaves the
 # first one as it is.
@@ -626,7 +641,12 @@ assert_hop_client_address() {
     routing_fail "${name}: X-Forwarded-Proto '${value}' (want 'https', the scheme the trusted hop named) host=${host} GET ${path} body=${body}"
   fi
 
-  routing_log "ok: ${name} → ${want_backend} with the client address and scheme the hop named"
+  value="$(json_string_field "${body}" x-forwarded-countryregion)"
+  if [[ "${want_backend}" == web-storefront && "${value}" != "${PUBLIRA_ROUTING_HOP_COUNTRY_REGION}" ]]; then
+    routing_fail "${name}: X-Forwarded-CountryRegion '${value}' (want '${PUBLIRA_ROUTING_HOP_COUNTRY_REGION}', the region the trusted hop named) host=${host} GET ${path} body=${body}"
+  fi
+
+  routing_log "ok: ${name} → ${want_backend} with what the hop named"
 }
 
 # Writes the sample under test to PUBLIRA_ROUTING_PROXY_DIR with its commented
@@ -635,7 +655,8 @@ assert_hop_client_address() {
 # the setting in that shape, rather than starting a proxy that trusts nothing
 # and blaming the proxy for it. The Caddyfile takes the setting from its
 # environment instead, so Caddy keeps the sample as it stands and is given the
-# hop's address in PUBLIRA_EDGE_TRUSTED_PROXIES.
+# hop's address in PUBLIRA_EDGE_TRUSTED_PROXIES; Traefik's routes.yaml reads
+# the same variable, beside the copy of traefik.yaml.
 enable_trusted_hop() {
   if [[ "${PUBLIRA_ROUTING_PROXY}" == "caddy" ]]; then
     routing_log "trusting ${PUBLIRA_ROUTING_TRUSTED_PROXIES} through PUBLIRA_EDGE_TRUSTED_PROXIES"
