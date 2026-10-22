@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { splitPastedEntries } from "./entry-list-fields";
+import { splitPastedEntries } from "./entry-list";
 
 describe("splitPastedEntries", () => {
   it("takes one entry a line, trimmed, whatever the line endings", () => {
