@@ -183,8 +183,8 @@ catalogs:
       specifier: 0.10.1
       version: 0.10.1
     '@publira/next-cache-handlers':
-      specifier: 1.0.2
-      version: 1.0.2
+      specifier: 1.0.3
+      version: 1.0.3
     '@simplewebauthn/browser':
       specifier: 14.0.0
       version: 14.0.0
@@ -415,7 +415,7 @@ importers:
         version: link:../../packages/layouts
       '@publira/next-cache-handlers':
         specifier: 'catalog:'
-        version: 1.0.2(@opentelemetry/api@1.9.1)(next@16.4.2(@opentelemetry/api@1.9.1)(@playwright/test@1.64.1)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))
+        version: 1.0.3(@opentelemetry/api@1.9.1)(next@16.4.2(@opentelemetry/api@1.9.1)(@playwright/test@1.64.1)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))
       '@publira/tracing':
         specifier: workspace:*
         version: link:../../packages/tracing
@@ -509,7 +509,7 @@ importers:
         version: link:../../packages/layouts
       '@publira/next-cache-handlers':
         specifier: 'catalog:'
-        version: 1.0.2(@opentelemetry/api@1.9.1)(next@16.4.2(@opentelemetry/api@1.9.1)(@playwright/test@1.64.1)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))
+        version: 1.0.3(@opentelemetry/api@1.9.1)(next@16.4.2(@opentelemetry/api@1.9.1)(@playwright/test@1.64.1)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))
       '@publira/tracing':
         specifier: workspace:*
         version: link:../../packages/tracing
@@ -606,7 +606,7 @@ importers:
         version: link:../../packages/layouts
       '@publira/next-cache-handlers':
         specifier: 'catalog:'
-        version: 1.0.2(@opentelemetry/api@1.9.1)(next@16.4.2(@opentelemetry/api@1.9.1)(@playwright/test@1.64.1)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))
+        version: 1.0.3(@opentelemetry/api@1.9.1)(next@16.4.2(@opentelemetry/api@1.9.1)(@playwright/test@1.64.1)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))
       '@publira/tracing':
         specifier: workspace:*
         version: link:../../packages/tracing
@@ -2311,8 +2311,8 @@ packages:
     peerDependencies:
       react: '>=19'
 
-  '@publira/next-cache-handlers@1.0.2':
-    resolution: {integrity: sha512-jrb3w7ky0/gn/EJ5LO8xkCcSKmZ1W3ySe09atxNI+P3c9J1O53a28obHUx0CekjmJBG/Ivng7Oe30cIgMISDWA==}
+  '@publira/next-cache-handlers@1.0.3':
+    resolution: {integrity: sha512-NXSmBBo2eA5QYXHPb2m+5Gox7l9b0Ji4JI86CqvuXABEuDTcsAr1lO/uvo6Do6QptB8mCRU3203BGL8s91p0wA==}
     peerDependencies:
       next: ^16.3.0
 
@@ -5625,9 +5625,6 @@ packages:
     resolution: {integrity: sha512-XrBh9ZiQK5mJVRxZBAvD6LwRyAYrK3MFtH3+onyuxFL5hFD44EC3QOmIC1FjTj6H2MMwq46/NAI+NZxLZPZgxg==}
     engines: {node: '>=14.18.0'}
 
-  zod@4.6.5:
-    resolution: {integrity: sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q==}
-
   zod@4.6.7:
     resolution: {integrity: sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==}
 
@@ -6424,11 +6421,11 @@ snapshots:
     dependencies:
       react: 19.3.1
 
-  '@publira/next-cache-handlers@1.0.2(@opentelemetry/api@1.9.1)(next@16.4.2(@opentelemetry/api@1.9.1)(@playwright/test@1.64.1)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))':
+  '@publira/next-cache-handlers@1.0.3(@opentelemetry/api@1.9.1)(next@16.4.2(@opentelemetry/api@1.9.1)(@playwright/test@1.64.1)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))':
     dependencies:
       next: 16.4.2(@opentelemetry/api@1.9.1)(@playwright/test@1.64.1)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       redis: 6.3.0(@opentelemetry/api@1.9.1)
-      zod: 4.6.5
+      zod: 4.6.7
     transitivePeerDependencies:
       - '@node-rs/xxhash'
       - '@opentelemetry/api'
@@ -9978,8 +9975,6 @@ snapshots:
     dependencies:
       '@yuku-toolchain/types': 0.19.0
       yuku-core: 0.19.0
-
-  zod@4.6.5: {}
 
   zod@4.6.7: {}
 
