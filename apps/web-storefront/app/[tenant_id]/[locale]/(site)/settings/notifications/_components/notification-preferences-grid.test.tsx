@@ -106,8 +106,8 @@ describe("NotificationPreferencesGrid", () => {
       })
     );
 
-    const authors = row("New episodes by authors you follow");
-    for (const control of within(authors).getAllByRole("switch")) {
+    const creators = row("New episodes by authors you follow");
+    for (const control of within(creators).getAllByRole("switch")) {
       expect(isOn(control)).toBe(false);
     }
     expect(

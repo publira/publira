@@ -94,16 +94,16 @@ const webPushDeviceCount = (): string => webPushDevices("COUNT(*)");
 const webPushEndpoint = (): string => webPushDevices("d.endpoint");
 
 const FOLLOWED_EPISODES = "New episodes of series and episodes you follow";
-const FOLLOWED_AUTHORS = "New episodes by authors you follow";
+const FOLLOWED_CREATORS = "New episodes by authors you follow";
 
 /** Every switch of the notification grid, as its row and column name it. */
 const NOTIFICATION_CELLS = [
   [FOLLOWED_EPISODES, "Inbox"],
   [FOLLOWED_EPISODES, "Browser"],
   [FOLLOWED_EPISODES, "Mobile app"],
-  [FOLLOWED_AUTHORS, "Inbox"],
-  [FOLLOWED_AUTHORS, "Browser"],
-  [FOLLOWED_AUTHORS, "Mobile app"],
+  [FOLLOWED_CREATORS, "Inbox"],
+  [FOLLOWED_CREATORS, "Browser"],
+  [FOLLOWED_CREATORS, "Mobile app"],
   ["Your comments", "Inbox"],
   ["Announcements", "Inbox"],
 ] as const;
@@ -328,18 +328,18 @@ test.describe("web-storefront member settings", () => {
       name: "Browser",
     });
     const episodes = notificationCell(page, FOLLOWED_EPISODES, "Browser");
-    const authors = notificationCell(page, FOLLOWED_AUTHORS, "Browser");
+    const creators = notificationCell(page, FOLLOWED_CREATORS, "Browser");
 
     await turnCellOff(episodes);
-    await expect(authors).toBeChecked();
+    await expect(creators).toBeChecked();
 
     await browserColumn.click();
     await expect(episodes).toBeChecked();
-    await expect(authors).toBeChecked();
+    await expect(creators).toBeChecked();
 
     await browserColumn.click();
     await expect(episodes).not.toBeChecked();
-    await expect(authors).not.toBeChecked();
+    await expect(creators).not.toBeChecked();
     await page.getByRole("button", { name: "Save" }).click();
 
     await expectFlash(
@@ -350,7 +350,7 @@ test.describe("web-storefront member settings", () => {
 
     await page.goto(storefrontUrl("/settings/notifications"));
     await expect(episodes).not.toBeChecked();
-    await expect(authors).not.toBeChecked();
+    await expect(creators).not.toBeChecked();
     await expect(
       notificationCell(page, FOLLOWED_EPISODES, "Inbox")
     ).toBeChecked();
