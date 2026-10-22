@@ -17,10 +17,6 @@ void main() {
   late InMemorySessionStore store;
   late AuthController auth;
 
-  final emailSwitch = find.byKey(const ValueKey('account-email-notifications'));
-  final emailFailure = find.byKey(
-    const ValueKey('account-email-notifications-failure'),
-  );
   final preferencesFailure = find.byKey(
     const ValueKey('account-notification-preferences-failure'),
   );
@@ -53,6 +49,21 @@ void main() {
     NotificationCategory.followedCreators,
     NotificationChannel.mobilePush,
   );
+  const creatorsEmail = (
+    NotificationCategory.followedCreators,
+    NotificationChannel.email,
+  );
+  const commentsEmail = (
+    NotificationCategory.comments,
+    NotificationChannel.email,
+  );
+
+  /// The switch at the foot of the preferences, which every other one sits
+  /// above.
+  final lastSwitch = cellSwitch((
+    NotificationCategory.announcements,
+    NotificationChannel.email,
+  ));
 
   setUp(() {
     repository = FakeAuthRepository();
@@ -89,19 +100,11 @@ void main() {
     await tester.pump();
   }
 
-  /// The email setting each request wrote, in order.
-  List<bool> updatedEmail() => [
-    for (final update in repository.notificationSettingsUpdates)
-      update.emailEnabled,
-  ];
-
   /// The cells each request wrote, in order.
   List<Map<NotificationCell, bool>> updatedCells() => [
     for (final update in repository.notificationSettingsUpdates) update.cells,
   ];
 
-  bool emailValue(WidgetTester tester) =>
-      tester.widget<SwitchListTile>(emailSwitch).value;
   bool cellValue(WidgetTester tester, NotificationCell cell) =>
       tester.widget<SwitchListTile>(cellSwitch(cell)).value;
   bool? categoryValue(WidgetTester tester, NotificationCategory category) =>
@@ -111,7 +114,7 @@ void main() {
     testWidgets('a section per category, with a switch per channel the '
         'server delivers it on', (tester) async {
       await pumpApp(tester);
-      await showRow(tester, emailSwitch);
+      await showRow(tester, lastSwitch);
 
       for (final cell in notificationCells) {
         expect(cellSwitch(cell), findsOneWidget, reason: '$cell');
@@ -138,15 +141,16 @@ void main() {
       repository.notificationSettings = repository.notificationSettings
           .copyWith(cells: {commentsInbox: false});
       await pumpApp(tester);
-      await showRow(tester, emailSwitch);
+      await showRow(tester, cellSwitch(commentsInbox));
 
       expect(cellValue(tester, commentsInbox), isFalse);
-      expect(categoryValue(tester, NotificationCategory.comments), isFalse);
+      expect(categoryValue(tester, NotificationCategory.comments), isNull);
       expect(cellValue(tester, creatorsInbox), isTrue);
       expect(
         categoryValue(tester, NotificationCategory.followedCreators),
         isTrue,
       );
+      await showRow(tester, channelHeading(NotificationChannel.inbox));
       expect(
         tester
             .widget<Checkbox>(
@@ -162,15 +166,12 @@ void main() {
 
     testWidgets('turning one switch off writes that cell alone and is still '
         'off on the next visit', (tester) async {
-      repository.notificationSettings = repository.notificationSettings
-          .copyWith(emailEnabled: false);
       await pumpApp(tester);
       await showRow(tester, cellSwitch(creatorsWebPush));
 
       await tester.tap(cellSwitch(creatorsWebPush));
       await tester.pumpAndSettle();
 
-      expect(updatedEmail(), [false]);
       expect(updatedCells(), [
         {creatorsWebPush: false},
       ]);
@@ -180,7 +181,7 @@ void main() {
       // A screen built afresh reads what the account now holds.
       await tester.pumpWidget(const SizedBox.shrink());
       await pumpApp(tester);
-      await showRow(tester, emailSwitch);
+      await showRow(tester, lastSwitch);
 
       expect(cellValue(tester, creatorsWebPush), isFalse);
       for (final cell in notificationCells) {
@@ -188,7 +189,6 @@ void main() {
           expect(cellValue(tester, cell), isTrue, reason: '$cell');
         }
       }
-      expect(emailValue(tester), isFalse);
     });
 
     testWidgets('a section title with mixed switches turns them all on, and '
@@ -210,7 +210,9 @@ void main() {
         categoryValue(tester, NotificationCategory.followedCreators),
         isTrue,
       );
-      for (final cell in [creatorsInbox, creatorsWebPush, creatorsMobilePush]) {
+      for (final cell in cellsOfCategory(
+        NotificationCategory.followedCreators,
+      )) {
         expect(cellValue(tester, cell), isTrue, reason: '$cell');
       }
 
@@ -221,17 +223,24 @@ void main() {
         categoryValue(tester, NotificationCategory.followedCreators),
         isFalse,
       );
-      for (final cell in [creatorsInbox, creatorsWebPush, creatorsMobilePush]) {
+      for (final cell in cellsOfCategory(
+        NotificationCategory.followedCreators,
+      )) {
         expect(cellValue(tester, cell), isFalse, reason: '$cell');
       }
       // One request per tap, however many switches it moves.
-      expect(updatedEmail(), [true, true]);
       expect(updatedCells(), [
-        {creatorsInbox: true, creatorsWebPush: true, creatorsMobilePush: true},
+        {
+          creatorsInbox: true,
+          creatorsWebPush: true,
+          creatorsMobilePush: true,
+          creatorsEmail: true,
+        },
         {
           creatorsInbox: false,
           creatorsWebPush: false,
           creatorsMobilePush: false,
+          creatorsEmail: false,
         },
       ]);
       expect(cellValue(tester, commentsInbox), isTrue);
@@ -259,7 +268,7 @@ void main() {
       expect(repository.notificationSettingsUpdates.last.cells, {
         for (final cell in inbox) cell: false,
       });
-      await showRow(tester, emailSwitch);
+      await showRow(tester, lastSwitch);
       for (final cell in notificationCells) {
         expect(
           cellValue(tester, cell),
@@ -291,71 +300,6 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(emailFailure, findsNothing);
-    });
-  });
-
-  group('email', () {
-    testWidgets('shows the setting the account holds', (tester) async {
-      repository.notificationSettings = repository.notificationSettings
-          .copyWith(emailEnabled: false);
-      await pumpApp(tester);
-      await showRow(tester, emailSwitch);
-
-      expect(emailValue(tester), isFalse);
-      expect(find.text('Email notifications'), findsOneWidget);
-      expect(
-        find.text(
-          'Receive subscription updates and important announcements by email.',
-        ),
-        findsOneWidget,
-      );
-    });
-
-    testWidgets('turning the switch off writes it and no cell', (tester) async {
-      await pumpApp(tester);
-      await showRow(tester, emailSwitch);
-      expect(emailValue(tester), isTrue);
-
-      await tester.tap(emailSwitch);
-      await tester.pumpAndSettle();
-
-      expect(updatedEmail(), [false]);
-      expect(updatedCells(), [<NotificationCell, bool>{}]);
-      expect(repository.notificationSettings.emailEnabled, isFalse);
-      expect(emailValue(tester), isFalse);
-      expect(emailFailure, findsNothing);
-    });
-
-    testWidgets('a refused change moves back and can be tried again', (
-      tester,
-    ) async {
-      repository.updateNotificationSettingsFailure = const AuthFailure(
-        AuthFailureKind.unexpected,
-      );
-      await pumpApp(tester);
-      await showRow(tester, emailSwitch);
-
-      await tester.tap(emailSwitch);
-      await tester.pumpAndSettle();
-
-      expect(emailValue(tester), isTrue);
-      expect(repository.notificationSettings.emailEnabled, isTrue);
-      expect(
-        find.text(
-          'Could not change your email notification setting. Try again.',
-        ),
-        findsOneWidget,
-      );
-      expect(preferencesFailure, findsNothing);
-
-      repository.updateNotificationSettingsFailure = null;
-      await tester.tap(emailSwitch);
-      await tester.pumpAndSettle();
-
-      expect(repository.notificationSettingsUpdates, hasLength(2));
-      expect(emailValue(tester), isFalse);
-      expect(emailFailure, findsNothing);
     });
 
     testWidgets('an unreachable API is told apart from a refusal', (
@@ -365,16 +309,126 @@ void main() {
         AuthFailureKind.network,
       );
       await pumpApp(tester);
-      await showRow(tester, emailSwitch);
+      await showRow(tester, cellSwitch(commentsInbox));
 
-      await tester.tap(emailSwitch);
+      await tester.tap(cellSwitch(commentsInbox));
       await tester.pumpAndSettle();
 
-      expect(emailValue(tester), isTrue);
+      expect(cellValue(tester, commentsInbox), isTrue);
       expect(
-        find.text('Could not connect to the server. Please try again later.'),
+        find.descendant(
+          of: preferencesFailure,
+          matching: find.text(
+            'Could not connect to the server. Please try again later.',
+          ),
+        ),
         findsOneWidget,
       );
+    });
+
+    testWidgets('a change is saved over the settings the reader was shown', (
+      tester,
+    ) async {
+      repository.notificationSettings = repository.notificationSettings
+          .copyWith(cells: {commentsEmail: false});
+      await pumpApp(tester);
+      await showRow(tester, cellSwitch(creatorsInbox));
+
+      await tester.tap(cellSwitch(creatorsInbox));
+      await tester.pumpAndSettle();
+
+      final current = repository.notificationSettingsUpdates.single.current;
+      expect(current.isEnabled(commentsEmail), isFalse);
+      expect(current.isEnabled(creatorsInbox), isTrue);
+    });
+  });
+
+  group('email', () {
+    final email = cellsOfChannel(NotificationChannel.email);
+
+    testWidgets('a switch in every section, and a heading of its own', (
+      tester,
+    ) async {
+      await pumpApp(tester);
+      await showRow(tester, lastSwitch);
+
+      expect(email.map((cell) => cell.$1), NotificationCategory.values);
+      for (final cell in email) {
+        expect(cellSwitch(cell), findsOneWidget, reason: '$cell');
+      }
+      expect(channelHeading(NotificationChannel.email), findsOneWidget);
+      expect(find.text('Email'), findsNWidgets(email.length + 1));
+      expect(find.text('Email notifications'), findsNothing);
+    });
+
+    testWidgets('turning one email switch off writes that cell alone and is '
+        'still off on the next visit', (tester) async {
+      await pumpApp(tester);
+      await showRow(tester, cellSwitch(commentsEmail));
+
+      await tester.tap(cellSwitch(commentsEmail));
+      await tester.pumpAndSettle();
+
+      expect(updatedCells(), [
+        {commentsEmail: false},
+      ]);
+      expect(cellValue(tester, commentsEmail), isFalse);
+      expect(preferencesFailure, findsNothing);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await pumpApp(tester);
+      await showRow(tester, lastSwitch);
+
+      expect(cellValue(tester, commentsEmail), isFalse);
+      for (final cell in notificationCells) {
+        if (cell != commentsEmail) {
+          expect(cellValue(tester, cell), isTrue, reason: '$cell');
+        }
+      }
+    });
+
+    testWidgets('a reader with every email cell off sees every email switch '
+        'off', (tester) async {
+      repository.notificationSettings = repository.notificationSettings
+          .copyWith(cells: {for (final cell in email) cell: false});
+      await pumpApp(tester);
+      await showRow(tester, lastSwitch);
+
+      for (final cell in email) {
+        expect(cellValue(tester, cell), isFalse, reason: '$cell');
+      }
+      expect(
+        tester
+            .widget<Checkbox>(
+              find.descendant(
+                of: channelHeading(NotificationChannel.email),
+                matching: find.byType(Checkbox),
+              ),
+            )
+            .value,
+        isFalse,
+      );
+    });
+
+    testWidgets('the Email heading turns email on in every section', (
+      tester,
+    ) async {
+      repository.notificationSettings = repository.notificationSettings
+          .copyWith(cells: {commentsEmail: false});
+      await pumpApp(tester);
+      final heading = channelHeading(NotificationChannel.email);
+      await showRow(tester, heading);
+
+      await tester.tap(heading);
+      await tester.pumpAndSettle();
+
+      expect(updatedCells(), [
+        {for (final cell in email) cell: true},
+      ]);
+      await showRow(tester, lastSwitch);
+      for (final cell in email) {
+        expect(cellValue(tester, cell), isTrue, reason: '$cell');
+      }
     });
   });
 
@@ -388,21 +442,20 @@ void main() {
     // Both start over for another reader, but each by a key of its own: two
     // siblings of one list sharing a key would be told apart by neither.
     expect(birthDate, findsOneWidget);
-    await showRow(tester, emailSwitch);
-    expect(emailSwitch, findsOneWidget);
+    await showRow(tester, lastSwitch);
+    expect(lastSwitch, findsOneWidget);
   });
 
   testWidgets('another reader signing in reads their own settings', (
     tester,
   ) async {
     repository.notificationSettings = repository.notificationSettings.copyWith(
-      emailEnabled: false,
-      cells: {commentsInbox: false},
+      cells: {commentsInbox: false, commentsEmail: false},
     );
     await pumpApp(tester);
-    await showRow(tester, emailSwitch);
-    expect(emailValue(tester), isFalse);
+    await showRow(tester, cellSwitch(commentsEmail));
     expect(cellValue(tester, commentsInbox), isFalse);
+    expect(cellValue(tester, commentsEmail), isFalse);
 
     await auth.signOut();
     repository
@@ -412,16 +465,13 @@ void main() {
         userIconUrl: null,
         userIconPresetId: null,
       )
-      ..notificationSettings = const NotificationSettings(
-        emailEnabled: true,
-        preferences: {},
-      );
+      ..notificationSettings = const NotificationSettings(preferences: {});
     await auth.signIn(email: 'other@example.com', password: 'password');
     await tester.pump();
-    await showRow(tester, emailSwitch);
+    await showRow(tester, cellSwitch(commentsEmail));
 
-    expect(emailValue(tester), isTrue);
     expect(cellValue(tester, commentsInbox), isTrue);
+    expect(cellValue(tester, commentsEmail), isTrue);
   });
 
   testWidgets('every switch holds still while a change is being saved', (
@@ -435,13 +485,16 @@ void main() {
     await tester.pump();
 
     // The new position shows at once, and a second tap cannot race the first,
-    // whose request writes the email setting too.
+    // whose request writes the email cells too.
     expect(cellValue(tester, commentsInbox), isFalse);
     expect(
       tester.widget<SwitchListTile>(cellSwitch(commentsInbox)).onChanged,
       isNull,
     );
-    expect(tester.widget<SwitchListTile>(emailSwitch).onChanged, isNull);
+    expect(
+      tester.widget<SwitchListTile>(cellSwitch(commentsEmail)).onChanged,
+      isNull,
+    );
     expect(
       tester
           .widget<CheckboxListTile>(
@@ -454,7 +507,10 @@ void main() {
     gate.complete();
     await tester.pumpAndSettle();
 
-    expect(tester.widget<SwitchListTile>(emailSwitch).onChanged, isNotNull);
+    expect(
+      tester.widget<SwitchListTile>(cellSwitch(commentsEmail)).onChanged,
+      isNotNull,
+    );
     expect(repository.notificationSettingsUpdates, hasLength(1));
   });
 
@@ -473,20 +529,20 @@ void main() {
       find.text('Could not load your notification settings.'),
       findsOneWidget,
     );
-    expect(emailSwitch, findsNothing);
+    expect(cellSwitch(commentsEmail), findsNothing);
     expect(cellSwitch(commentsInbox), findsNothing);
 
     repository
       ..notificationSettingsFailure = null
       ..notificationSettings = repository.notificationSettings.copyWith(
-        emailEnabled: false,
+        cells: {commentsEmail: false},
       );
     await tester.tap(
       find.byKey(const ValueKey('account-notification-settings-retry')),
     );
-    await showRow(tester, emailSwitch);
+    await showRow(tester, lastSwitch);
 
-    expect(emailValue(tester), isFalse);
+    expect(cellValue(tester, commentsEmail), isFalse);
   });
 
   testWidgets('a session the API has dropped signs the reader out', (
@@ -496,9 +552,9 @@ void main() {
       AuthFailureKind.sessionExpired,
     );
     await pumpApp(tester);
-    await showRow(tester, emailSwitch);
+    await showRow(tester, lastSwitch);
 
-    await tester.tap(emailSwitch);
+    await tester.tap(lastSwitch);
     await pumpUntilFound(tester, find.byKey(const ValueKey('account-sign-in')));
 
     expect(auth.isSignedIn, isFalse);
