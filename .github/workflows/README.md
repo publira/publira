@@ -203,7 +203,7 @@ For **every job**, changes to `.github/workflows/ci.yml` and `scripts/ci-plan-jo
 | Job | Watched paths |
 | --- | --- |
 | `Lint and Format` | Every path (including documentation); oxfmt ignores unsupported and configured-ignored files. |
-| `Check` | `apps/**`, `locales/**`, `packages/**`, `e2e/**`, `server/**`, `db/**`, `proto/**`, generator config, and package / lock / turbo config; and, through the separate `check_docs` filter, `docs/**` Markdown included |
+| `Check` | `apps/**`, `locales/**`, `packages/**`, `e2e/**`, `server/**`, `db/**`, `proto/**`, generator config, and package / lock / turbo config; and, through the separate `check_docs` filter, `docs/**`, every Markdown file, and a deletion or a rename of any file |
 | `Lint / Go` | `server/**`, `scripts/check-go-mod-tidy.sh` |
 | `Test / Go` | `server/**`, `db/**`, `proto/**`, generator config, and `infra/docker/opensearch/**` and `infra/docker/elasticsearch/**` |
 | `Test / TypeScript` | apps, locales, packages, `scripts/*.ts`, package / lock / turbo config |
@@ -235,7 +235,7 @@ filters: |
     …
 ```
 
-**`predicate-quantifier: "some-with-excludes"` is required.** Default `some` treats the negative pattern as merely another choice, so it does not exclude Markdown. `some-with-excludes` requires at least one positive match and no negative matches. Define `&docs_excluded` once and include `*docs_excluded` in every heavyweight filter; the negative-only `docs_excluded` output is always false and is not read by `scripts/ci-plan-jobs.sh`. `format` intentionally omits it, so documentation-only pull requests receive only the lightweight `Lint and Format` job — except under `docs/`, whose pages `Check` validates: the `check_docs` filter omits `*docs_excluded` too, and `scripts/ci-plan-jobs.sh` starts `Check` when either it or `check` matches.
+**`predicate-quantifier: "some-with-excludes"` is required.** Default `some` treats the negative pattern as merely another choice, so it does not exclude Markdown. `some-with-excludes` requires at least one positive match and no negative matches. Define `&docs_excluded` once and include `*docs_excluded` in every heavyweight filter; the negative-only `docs_excluded` output is always false and is not read by `scripts/ci-plan-jobs.sh`. `format` intentionally omits it. `Check` also validates the pages under `docs/` and the links between the repository's Markdown, which a Markdown edit can break by renaming a heading and any deletion or rename can break by taking away the file a link names, so the `check_docs` filter omits `*docs_excluded` too and adds a `deleted|renamed: '**'` entry, and `scripts/ci-plan-jobs.sh` starts `Check` when either it or `check` matches. A documentation-only pull request therefore receives `Lint and Format` and `Check`, and no other job.
 
 For `pull_request`, paths-filter obtains changed files through the GitHub API, so shallow history is sufficient. For `push` it diffs `github.event.before`..HEAD locally, and for `merge_group` it diffs the event's `base_sha`..`head_sha`, so both endpoints have to be in the local repository. `Detect changes` sets `persist-credentials: false`, so the fallback fetch cannot authenticate; on those two events, use `fetch-depth: 0` to provide the history locally:
 
@@ -283,7 +283,7 @@ The job then runs against its own Postgres service and must succeed through `mig
    | Job | Local command |
    | --- | --- |
    | `Lint and Format` | `pnpm check` and `pnpm reader-parity:check` |
-   | `Check` | `pnpm locales:check`, `sqlc diff`, `buf generate` / generated diff, `node scripts/check-design-tokens.ts`, `node scripts/check-docs.ts`, and `pnpm typecheck` |
+   | `Check` | `pnpm locales:check`, `sqlc diff`, `buf generate` / generated diff, `node scripts/check-design-tokens.ts`, `pnpm docs:check` (the pages under `docs/en/`, and the links from them and between the repository's Markdown to a file and a heading), and `pnpm typecheck` |
    | `Test / Go` | `task server:test-short` then `task server:test` |
    | `Test / TypeScript` | `pnpm test` and `pnpm test:scripts` |
    | `Test / Bash` | `shellcheck --external-sources --source-path=SCRIPTDIR --severity=warning $(git ls-files '*.sh')`, `shfmt -i 2 -ci -sr -d $(git ls-files '*.sh')`, `task dev-env:test`, `task e2e:test-lib`, and `task mobile:test-device-ports` |

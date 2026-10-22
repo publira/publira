@@ -186,12 +186,13 @@ Run the commands that match the area you changed, from the repository root. They
 
 | Area | Commands |
 | --- | --- |
-| `apps/`, `packages/`, `locales/`, `scripts/*.ts` | `pnpm preflight` (locale catalog, `typecheck`, `check`, `test`, `test:scripts`) |
+| `apps/`, `packages/`, `locales/`, `scripts/*.ts` | `pnpm preflight` (locale catalog, `docs:check`, `typecheck`, `check`, `test`, `test:scripts`) |
 | `server/` | `task server:lint`, `task server:test-short`, and `task server:test` before finishing (it needs Docker for Testcontainers); `task server:build` when `cmd/` changes |
 | `proto/`, `db/migrations/`, `db/query/`, `sqlc.yaml`, `buf.gen.yaml` | `task gen`, then `sqlc diff` must be clean, then the `server/` commands again; commit the regenerated output |
 | `db/migrations/` | `task db:reset`; the history is append-only once merged, so fix a mistake in a migration already on `main` with a new migration rather than by editing it |
 | `mobile/` | `task mobile:check` |
 | Behaviour that spans the web apps and the API | `task e2e` |
+| `docs/`, and any `README.md`, `AGENTS.md`, `CONTRIBUTING.md`, or skill under `skills/` | `pnpm docs:check`: the pages under `docs/en/`, and every link from them or between those files to a file and a heading |
 | Everything | `pnpm check` formats and lints every file type oxfmt supports, Markdown included |
 
 When a CI run is red, [`.github/workflows/README.md`](.github/workflows/README.md) lists which job checks what and the local command that reproduces each one.

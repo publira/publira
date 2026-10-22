@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
+import { promisify } from "node:util";
 
-import { checkPage, scan } from "./check-docs.ts";
+import { checkPage, headingAnchors, scan } from "./check-docs.ts";
 
 const page = (frontmatter: string[], body: string[] = ["## A section"]) =>
   ["---", ...frontmatter, "---", "", ...body, ""].join("\n");
@@ -220,6 +222,92 @@ describe("checkPage", () => {
   });
 });
 
+describe("headingAnchors", () => {
+  it("lowercases the text and turns each space into a hyphen", () => {
+    assert.deepEqual(
+      headingAnchors(["# Connection Pools", "", "## Two  spaces"].join("\n")),
+      ["connection-pools", "two--spaces"]
+    );
+  });
+
+  it("keeps the text of inline code and drops its backticks", () => {
+    assert.deepEqual(
+      headingAnchors("## `PUBLIRA_DB_URL` and `publiractl db`\n"),
+      ["publira_db_url-and-publiractl-db"]
+    );
+  });
+
+  it("drops punctuation and symbols but keeps hyphens and underscores", () => {
+    assert.deepEqual(
+      headingAnchors(
+        [
+          "## AI agent trailer: `Assisted-by`, never `Co-authored-by`",
+          '## Who? What! (and why) — 100% / 2.0 + C++ & "quotes"',
+          "## snake_case and kebab-case",
+        ].join("\n")
+      ),
+      [
+        "ai-agent-trailer-assisted-by-never-co-authored-by",
+        "who-what-and-why--100--20--c--quotes",
+        "snake_case-and-kebab-case",
+      ]
+    );
+  });
+
+  it("keeps letters, marks, and digits outside ASCII", () => {
+    assert.deepEqual(
+      headingAnchors(
+        ["## 著者と投稿者", "## Café Über", "## Ｆｕｌｌ　width"].join("\n")
+      ),
+      ["著者と投稿者", "café-über", "ｆｕｌｌwidth"]
+    );
+  });
+
+  it("reads the rendered text of links and emphasis, and not of images or HTML", () => {
+    assert.deepEqual(
+      headingAnchors(
+        "## [The *edge*](./edge.md) <sup>beta</sup> ![logo](./logo.png)\n"
+      ),
+      ["the-edge-beta-"]
+    );
+  });
+
+  it("numbers a repeated heading, skipping a suffix a heading took already", () => {
+    assert.deepEqual(
+      headingAnchors(
+        [
+          "## Example",
+          "## Example",
+          "## Example 1",
+          "## Example-1",
+          "## Example",
+        ].join("\n")
+      ),
+      ["example", "example-1", "example-1-1", "example-1-2", "example-2"]
+    );
+  });
+
+  it("reads setext headings, and neither frontmatter nor a `#` in code", () => {
+    assert.deepEqual(
+      headingAnchors(
+        [
+          "---",
+          "name: a-skill",
+          "---",
+          "",
+          "Overview",
+          "--------",
+          "",
+          "```bash",
+          "# A shell comment",
+          "```",
+        ].join("\n")
+      ),
+      ["overview"]
+    );
+  });
+});
+
 describe("scan", () => {
   let repository = "";
 
@@ -239,8 +327,20 @@ describe("scan", () => {
     );
   };
 
+  /** Each finding as `file:line` and the URL it names, the first thing its message quotes. */
+  const urls = async (): Promise<string[]> => {
+    const reported = await scan(repository);
+
+    return reported.map(
+      (finding) =>
+        `${finding.file}:${finding.line} ${/^`(?<url>[^`]*)`/u.exec(finding.message)?.groups?.url ?? finding.message}`
+    );
+  };
+
   beforeEach(async () => {
     repository = await mkdtemp(path.join(tmpdir(), "check-docs-"));
+    // The Markdown outside docs/en/ is listed by Git, as it is in a checkout.
+    await promisify(execFile)("git", ["init", "--quiet"], { cwd: repository });
     await write(
       "docs/en/1-getting-started.md",
       page(VALID, ["See [Deployments](./2-deployments/index.md)."])
@@ -248,17 +348,26 @@ describe("scan", () => {
     await write(
       "docs/en/2-deployments/index.md",
       page(VALID, [
+        "## A section",
+        "",
         "See [the overview](./1-overview.md#what-an-install-runs) and [the start](../1-getting-started.md).",
         "",
         "![A diagram](./index-diagram.png) and ![the same diagram][diagram]",
         "",
         "[diagram]: ./index-diagram.png",
         "",
-        "The [code](https://github.com/publira/publira/blob/main/server/README.md) and [this section](#a-section).",
+        "The [code](https://github.com/publira/publira/blob/main/server/README.md#connection-pools) and [this section](#a-section).",
       ])
     );
-    await write("docs/en/2-deployments/1-overview.md");
+    await write(
+      "docs/en/2-deployments/1-overview.md",
+      page(VALID, ["## What an install runs"])
+    );
     await write("docs/en/2-deployments/index-diagram.png", "");
+    await write(
+      "server/README.md",
+      ["# Server", "", "## Connection pools", ""].join("\n")
+    );
   });
 
   afterEach(async () => {
@@ -501,5 +610,116 @@ describe("scan", () => {
       ),
       ["is not a", "leaves docs/en/, which", "is rooted at", "is not an"]
     );
+  });
+
+  it("reports a link to main in the repository that leads to no file or no heading", async () => {
+    const main = "https://github.com/publira/publira/blob/main";
+    await write(
+      "docs/en/3-upgrading.md",
+      page(VALID, [
+        `[A missing file](${main}/server/MISSING.md)`,
+        "",
+        `[A missing heading](${main}/server/README.md#connection-pool)`,
+        "",
+        `[A heading](${main}/server/README.md#connection-pools)`,
+        "",
+        `[A line](${main}/server/README.md#L3) and [a directory](https://github.com/publira/publira/tree/main/server)`,
+        "",
+        `[Raw](${main}/server/README.md?plain=1) and [the root](${main})`,
+        "",
+        "[Another branch](https://github.com/publira/publira/blob/v0.3.0/server/MISSING.md) and [another host](https://example.com/server/MISSING.md#nowhere)",
+      ])
+    );
+
+    assert.deepEqual(await urls(), [
+      `docs/en/3-upgrading.md:7 ${main}/server/MISSING.md`,
+      `docs/en/3-upgrading.md:9 ${main}/server/README.md#connection-pool`,
+    ]);
+  });
+
+  it("reports a fragment no heading on the page it names produces", async () => {
+    await write(
+      "docs/en/3-upgrading.md",
+      page(VALID, [
+        "## Before you start",
+        "",
+        "[Here](#before-you-start), [nowhere here](#after-you-finish), and [the top](#).",
+        "",
+        "[There](./2-deployments/1-overview.md#what-an-install-run) and [there](./2-deployments/1-overview.md#what-an-install-runs).",
+      ])
+    );
+
+    assert.deepEqual(await urls(), [
+      "docs/en/3-upgrading.md:9 #after-you-finish",
+      "docs/en/3-upgrading.md:11 ./2-deployments/1-overview.md#what-an-install-run",
+    ]);
+  });
+
+  it("reports a link between the repository's Markdown that leads to no file or no heading", async () => {
+    await write(
+      "README.md",
+      [
+        "# Publira",
+        "",
+        "## Contributing",
+        "",
+        "[Guide](CONTRIBUTING.md#verifying-a-change) and [the server](server/README.md#connection-pools).",
+        "[A missing file](server/MISSING.md) and [a missing heading](server/README.md#pools).",
+        "[Here](#contributing), [nowhere here](#licence), and [rooted](/server/README.md#nowhere).",
+        "[A directory](server/), [a source file](./server/main.go#L1), and [a heading in one](server/main.go#main).",
+        "[Out of the repository](../website/README.md) and [another host](https://example.com/README.md#nowhere).",
+        "![A missing image](./logo.png) and [the documentation](docs/en/2-deployments/1-overview.md#what-an-install-runs)",
+        "",
+        "[missing]: ./MISSING.md",
+        "",
+        "[A reference][missing]",
+        "",
+      ].join("\n")
+    );
+    await write(
+      "CONTRIBUTING.md",
+      ["# Contributing", "", "## Verifying a change", ""].join("\n")
+    );
+    await write("server/main.go", "package main\n");
+    await write(
+      "server/AGENTS.md",
+      "[Up](../README.md#publira) and [down](../README.md#publira-1).\n"
+    );
+    await write(
+      "skills/a-skill/SKILL.md",
+      [
+        "---",
+        "name: a-skill",
+        "description: Does a thing.",
+        "---",
+        "",
+        "[A reference](references/MISSING.md)",
+        "",
+      ].join("\n")
+    );
+
+    assert.deepEqual(await urls(), [
+      "README.md:6 server/MISSING.md",
+      "README.md:6 server/README.md#pools",
+      "README.md:7 #licence",
+      "README.md:7 /server/README.md#nowhere",
+      "README.md:9 ../website/README.md",
+      "README.md:10 ./logo.png",
+      "README.md:12 ./MISSING.md",
+      "server/AGENTS.md:1 ../README.md#publira-1",
+      "skills/a-skill/SKILL.md:6 references/MISSING.md",
+    ]);
+  });
+
+  it("leaves vendored skills, dependencies, ignored files, and other Markdown alone", async () => {
+    const broken = "[A missing file](./MISSING.md)\n";
+    await write(".gitignore", "/build/\n");
+    await write(".agents/skills/vendored/SKILL.md", broken);
+    await write(".agents/skills/vendored/README.md", broken);
+    await write("packages/ui/node_modules/dependency/README.md", broken);
+    await write("build/README.md", broken);
+    await write(".github/pull_request_template.md", broken);
+
+    assert.deepEqual(await findings(), []);
   });
 });
