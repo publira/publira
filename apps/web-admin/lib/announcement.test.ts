@@ -1,3 +1,4 @@
+import { AnnouncementDelivery } from "@publira/api-client/admin/announcement";
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -107,6 +108,7 @@ describe("announcement lib", () => {
         {
           body: "Announcement body",
           createdAt: "2026-04-04T00:00:00Z",
+          delivery: AnnouncementDelivery.EVERYONE,
           id: "n1",
           linkUrl: "/series/S001",
           title: "Announcement title",
@@ -129,6 +131,7 @@ describe("announcement lib", () => {
       {
         body: "Announcement body",
         createdAt: "2026-04-04T00:00:00Z",
+        delivery: "everyone",
         id: "n1",
         linkUrl: "/series/S001",
         title: "Announcement title",
@@ -240,6 +243,7 @@ describe("announcement lib", () => {
     const { createAnnouncement } = await import("./announcement");
     const result = await createAnnouncement(
       {
+        delivery: "everyone",
         linkUrl: "",
         pinned: false,
         pinnedUntil: "",
@@ -260,6 +264,7 @@ describe("announcement lib", () => {
     expect(mockCreateAnnouncementsApi).toHaveBeenCalledOnce();
     expect(mockCreateAnnouncementsApi).toHaveBeenCalledWith(
       {
+        delivery: AnnouncementDelivery.EVERYONE,
         linkUrl: "",
         pinned: false,
         pinnedUntil: "",

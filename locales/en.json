@@ -478,8 +478,13 @@
         "title": "Title",
         "languages": "Languages",
         "body": "Body",
+        "delivery": "Notification",
         "banner": "Banner",
         "link": "Link"
+      },
+      "delivery": {
+        "everyone": "Sent to everyone",
+        "preferred": "As each reader allows"
       },
       "form": {
         "title": "Title",
@@ -495,7 +500,9 @@
         "pinned": "Show as a site banner",
         "pinned_description": "Shows this announcement above every page of the site.",
         "pinned_until": "Stop showing at",
-        "pinned_until_description": "Times are in {$time_zone}. Leave it empty to keep the banner up until you take it down."
+        "pinned_until_description": "Times are in {$time_zone}. Leave it empty to keep the banner up until you take it down.",
+        "send_to_everyone": "Send to everyone",
+        "send_to_everyone_description": "Also notifies readers who turned announcement notifications off. Use it only for a notice every reader must see, such as a change of terms or an outage."
       },
       "validation": {
         "body_required": "The body is required.",

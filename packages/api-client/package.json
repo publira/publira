@@ -83,6 +83,10 @@
       "types": "./dist/admin/access-ticket.d.mts",
       "default": "./dist/admin/access-ticket.mjs"
     },
+    "./admin/announcement": {
+      "types": "./dist/admin/announcement.d.mts",
+      "default": "./dist/admin/announcement.mjs"
+    },
     "./admin/purchase": {
       "types": "./dist/admin/purchase.d.mts",
       "default": "./dist/admin/purchase.mjs"

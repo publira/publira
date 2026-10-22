@@ -478,8 +478,13 @@
         "title": "标题",
         "languages": "语言",
         "body": "正文",
+        "delivery": "通知",
         "banner": "横幅",
         "link": "链接"
+      },
+      "delivery": {
+        "everyone": "发送给所有人",
+        "preferred": "按通知设置"
       },
       "form": {
         "title": "标题",
@@ -495,7 +500,9 @@
         "pinned": "作为站点横幅展示",
         "pinned_description": "把该公告展示在站点每个页面的顶部。",
         "pinned_until": "停止展示的时间",
-        "pinned_until_description": "时间以{$time_zone}为准。留空则一直展示，直到你撤下为止。"
+        "pinned_until_description": "时间以{$time_zone}为准。留空则一直展示，直到你撤下为止。",
+        "send_to_everyone": "发送给所有人",
+        "send_to_everyone_description": "也会通知关闭了公告通知的读者。仅用于每位读者都必须看到的公告，例如条款变更或服务故障。"
       },
       "validation": {
         "body_required": "正文为必填项。",

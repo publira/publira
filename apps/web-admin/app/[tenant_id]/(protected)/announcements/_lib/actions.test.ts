@@ -80,6 +80,7 @@ describe("createAnnouncementAction", () => {
     expect(mockCreateAnnouncement).toHaveBeenCalledTimes(1);
     expect(mockCreateAnnouncement).toHaveBeenCalledWith(
       {
+        delivery: "preferred",
         linkUrl: "",
         pinned: false,
         pinnedUntil: "",
@@ -93,6 +94,21 @@ describe("createAnnouncementAction", () => {
     );
     expect(mockUpdateTag).toHaveBeenCalledWith("announcements-TENANT001");
     expect(mockRedirect).toHaveBeenCalledWith("/announcements");
+  });
+
+  it("sends an announcement to everyone when the checkbox is on", async () => {
+    const formData = announcementFormData([
+      { body: "The terms change on July 1.", locale: "", title: "New terms" },
+    ]);
+    formData.set("delivery", "everyone");
+
+    const { createAnnouncementAction } = await import("./actions");
+    await createAnnouncementAction(null, formData);
+
+    expect(mockCreateAnnouncement).toHaveBeenCalledWith(
+      expect.objectContaining({ delivery: "everyone" }),
+      "en"
+    );
   });
 
   it("refuses an announcement whose default language has no title, even with another language written", async () => {

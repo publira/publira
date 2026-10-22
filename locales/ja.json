@@ -478,8 +478,13 @@
         "title": "タイトル",
         "languages": "言語",
         "body": "本文",
+        "delivery": "通知",
         "banner": "バナー",
         "link": "リンク先"
+      },
+      "delivery": {
+        "everyone": "全員に送信",
+        "preferred": "通知設定に従う"
       },
       "form": {
         "title": "タイトル",
@@ -495,7 +500,9 @@
         "pinned": "サイトのバナーとして掲出する",
         "pinned_description": "このお知らせをサイトの全ページの上部に掲出します。",
         "pinned_until": "掲出を終える日時",
-        "pinned_until_description": "時刻は{$time_zone}です。空欄にすると、掲出をやめるまで表示し続けます。"
+        "pinned_until_description": "時刻は{$time_zone}です。空欄にすると、掲出をやめるまで表示し続けます。",
+        "send_to_everyone": "全員に送信する",
+        "send_to_everyone_description": "お知らせの通知をオフにしている読者にも通知します。規約の変更や障害など、すべての読者に必ず伝えるお知らせにだけ使ってください。"
       },
       "validation": {
         "body_required": "本文は必須です。",

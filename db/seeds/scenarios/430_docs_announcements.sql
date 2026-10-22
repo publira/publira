@@ -1,10 +1,11 @@
 -- Scenario: the announcements the documentation's screenshots show
 --
 -- The page under docs/<locale>/4-console/ about announcements explains the
--- list and its Banner column, and a screenshot of an empty list shows
--- neither. Three announcements are written into the banner tenant,
--- BnnrTNNTAAA1, which 200_announcement_banner.sql creates and this file needs
--- first; the newest is still shown as the site banner.
+-- list and its Notification and Banner columns, and a screenshot of an empty
+-- list shows none of them. Three announcements are written into the banner
+-- tenant, BnnrTNNTAAA1, which 200_announcement_banner.sql creates and this file
+-- needs first; the newest is still shown as the site banner, and the change of
+-- terms was sent to everyone.
 --
 -- Every date is a literal, for the reason 160_screenshot_baseline.sql gives.
 --
@@ -24,7 +25,7 @@ WHERE id IN (
 -- Each announcement is written in the tenant's default locale, the one a
 -- reader in any locale is shown where nothing else was written. The newest is
 -- also written in ja, so the list's Languages column names more than one.
-WITH a (id, title, body, link_url, created_at, pinned, pinned_until) AS (
+WITH a (id, title, body, link_url, created_at, pinned, pinned_until, delivery) AS (
     VALUES
         (
             '018f1090-0003-7000-8000-000000000001'::uuid,
@@ -33,7 +34,8 @@ WITH a (id, title, body, link_url, created_at, pinned, pinned_until) AS (
             NULL,
             '2026-02-04T03:00:00Z'::timestamptz,
             true,
-            NULL::timestamptz
+            NULL::timestamptz,
+            'preferred'
         ),
         (
             '018f1090-0003-7000-8000-000000000002'::uuid,
@@ -42,7 +44,8 @@ WITH a (id, title, body, link_url, created_at, pinned, pinned_until) AS (
             '/legal/terms',
             '2026-01-28T03:00:00Z'::timestamptz,
             false,
-            NULL::timestamptz
+            NULL::timestamptz,
+            'everyone'
         ),
         (
             '018f1090-0003-7000-8000-000000000003'::uuid,
@@ -51,7 +54,8 @@ WITH a (id, title, body, link_url, created_at, pinned, pinned_until) AS (
             '/series',
             '2026-01-20T03:00:00Z'::timestamptz,
             false,
-            NULL::timestamptz
+            NULL::timestamptz,
+            'preferred'
         )
 ),
 inserted AS (
@@ -62,7 +66,8 @@ inserted AS (
         link_url,
         created_at,
         pinned,
-        pinned_until
+        pinned_until,
+        delivery
     )
     SELECT
         a.id,
@@ -71,7 +76,8 @@ inserted AS (
         a.link_url,
         a.created_at,
         a.pinned,
-        a.pinned_until
+        a.pinned_until,
+        a.delivery
     FROM a
     JOIN tenants t ON t.public_id = 'BnnrTNNTAAA1'
     RETURNING id, tenant_id

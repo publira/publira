@@ -47,6 +47,7 @@ vi.mock("next/link", () => ({
 const announcement = (id: string): AnnouncementItem => ({
   body: "Announcement body",
   createdAt: "2026-06-01T00:00:00Z",
+  delivery: "preferred",
   id,
   linkUrl: "/series/S001",
   pinned: false,
@@ -197,6 +198,30 @@ describe("AnnouncementManager", () => {
     // 2026-06-01T00:00:00Z is 17:00 the previous calendar day in PDT.
     expect(screen.getByText("May 31, 2026, 5:00 PM")).toBeDefined();
     expect(screen.queryByText("Jun 1, 2026, 12:00 AM")).toBeNull();
+  });
+
+  it("shows which announcements were sent to everyone", async () => {
+    render(
+      await AnnouncementManager({
+        announcements: [
+          { ...announcement("n1"), delivery: "everyone" },
+          announcement("n2"),
+        ],
+        canEdit: true,
+        locale: "en",
+        pageSize: 20,
+        tenantId: "TENANT001",
+        timeZone: "UTC",
+      })
+    );
+
+    const [, everyone, preferred] = screen.getAllByRole("row");
+    expect(
+      within(everyone as HTMLElement).getByText("Sent to everyone")
+    ).toBeDefined();
+    expect(
+      within(preferred as HTMLElement).getByText("As each reader allows")
+    ).toBeDefined();
   });
 
   it.each([

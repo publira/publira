@@ -377,6 +377,49 @@ test.describe("admin announcement delivery", () => {
       .toBe("3");
   });
 
+  for (const { delivery, label, sendToEveryone } of [
+    { delivery: "everyone", label: "Sent to everyone", sendToEveryone: true },
+    {
+      delivery: "preferred",
+      label: "As each reader allows",
+      sendToEveryone: false,
+    },
+  ]) {
+    test(`an announcement posted with Send to everyone ${sendToEveryone ? "on" : "off"} is recorded as ${delivery}`, async ({
+      page,
+    }) => {
+      const title = `E2E ${delivery} ${uniqueSuffix()}`;
+
+      await signInAsAnnouncementDeliveryAdmin(page, "/announcements/new");
+      const sendToEveryoneCheckbox = page.getByRole("checkbox", {
+        name: "Send to everyone",
+      });
+      await expect(sendToEveryoneCheckbox).not.toBeChecked();
+      if (sendToEveryone) {
+        await sendToEveryoneCheckbox.check();
+      }
+      await deliverAnnouncement(page, {
+        body: `Delivery body ${uniqueSuffix()}`,
+        title,
+      });
+
+      const row = page.getByRole("row").filter({
+        has: page.getByRole("cell", { exact: true, name: title }),
+      });
+      await expect(
+        row.getByRole("cell", { exact: true, name: label })
+      ).toBeVisible();
+      expect(
+        querySql(`
+          SELECT a.delivery
+          FROM announcements a
+          JOIN announcement_translations at ON at.announcement_id = a.id
+          WHERE at.title = ${quoteSqlLiteral(title)};
+        `)
+      ).toBe(delivery);
+    });
+  }
+
   test("a missing default-language title opens that language's tab", async ({
     page,
   }) => {
