@@ -1996,6 +1996,23 @@ type Querier interface {
 	// ListMyRecommendedSeriesIDs walked the other way. It exists only to build a
 	// previous page; the order it describes is the same one.
 	ListMyRecommendedSeriesIDsReversed(ctx context.Context, arg ListMyRecommendedSeriesIDsReversedParams) ([]ListMyRecommendedSeriesIDsReversedRow, error)
+	// Worker mail: the recipients one notification still owes a mail, a page at a
+	// time in recipient order. A row is owed one until it is marked emailed, so a
+	// retry of the event finds only the readers no earlier run reached.
+	//
+	// The recipient's email cell for the row's category decides, every cell on
+	// for a reader who saved nothing, and a row for everyone has no cell. A row
+	// filed for staff for being staff is never mailed: they read the console's
+	// bell. A notification shown on the app alone is not mailed either, because
+	// the mail links into the site. The address has to be one the reader
+	// confirmed and the account active, which is what every mail to a reader
+	// takes.
+	//
+	// The recipient / type / subject key is unique, so user_id alone orders the
+	// rows of one notification, and `idx_notifications_tenant_subject_user` walks
+	// them in that order. The nil UUID sorts below every UUID, so it is what the
+	// first page asks for.
+	ListNotificationEmailRecipients(ctx context.Context, arg ListNotificationEmailRecipientsParams) ([]ListNotificationEmailRecipientsRow, error)
 	ListNotificationsForUserAsc(ctx context.Context, arg ListNotificationsForUserAscParams) ([]ListNotificationsForUserAscRow, error)
 	// ListNotifications is (created_at, id) DESC. Forward uses the DESC query;
 	// backward uses ASC so the index can be scanned in reverse. The handler
@@ -2906,6 +2923,9 @@ type Querier interface {
 	// counts no row and is left as the console saved it.
 	MarkEpisodePublished(ctx context.Context, episodeID uuid.UUID) (int64, error)
 	MarkNotificationAsRead(ctx context.Context, arg MarkNotificationAsReadParams) (NotificationRead, error)
+	// Worker mail: records that a row's recipient was mailed about it, once the
+	// relay accepted the mail.
+	MarkNotificationEmailed(ctx context.Context, arg MarkNotificationEmailedParams) error
 	// Same token drop as MarkOutboxEventDone: a dead auth-mail event is
 	// as terminal as a successful one, and the secret is no longer
 	// needed to send the mail.
@@ -3639,6 +3659,9 @@ type Querier interface {
 	// The literal repeats the column default because a VALUES list has no way to
 	// ask for it conditionally; TestDBNotificationPreferenceDefaultsAgreeAcrossPaths
 	// is what fails when the two drift apart.
+	//
+	// email_notifications_enabled is not written: nothing reads it, and what the
+	// API still answers under that name is derived from the email cells.
 	UpsertUserNotificationSettings(ctx context.Context, arg UpsertUserNotificationSettingsParams) (UserNotificationSetting, error)
 	// Records the FCM registration token the reader app holds. The token is the
 	// primary key, so a device that changes hands moves to the new reader instead

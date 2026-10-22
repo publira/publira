@@ -75,7 +75,7 @@ The console refuses a key from another project than the one entered, since the a
 
 If the console answers that the API server has no encryption key, the install was started without `PUBLIRA_SECRET_ENCRYPTION_KEYS`. The operator sets it as [Installing](../2-deployments/2-installing.md#generate-the-secrets) describes, and the key can be saved once `publira server` has restarted with it.
 
-Until a key is saved, the app receives no push notifications. Email and the in-app notification inbox are delivered either way.
+Until a key is saved, the app receives no push notifications. The in-app notification inbox is filled either way, and a reader is still emailed about each kind of notification their preferences leave email on for.
 
 ## Check that a notification arrives
 

@@ -52,6 +52,16 @@ import {
   purchaseReceiptPreview,
 } from "./templates/purchase-receipt";
 import {
+  ReaderAnnouncementPostedEmail,
+  readerAnnouncementPostedDataSchema,
+  readerAnnouncementPostedPreview,
+} from "./templates/reader-announcement-posted";
+import {
+  ReaderCommentApprovedEmail,
+  readerCommentApprovedDataSchema,
+  readerCommentApprovedPreview,
+} from "./templates/reader-comment-approved";
+import {
   ReaderEmailChangeConfirmationEmail,
   readerEmailChangeConfirmationDataSchema,
   readerEmailChangeConfirmationPreview,
@@ -66,6 +76,11 @@ import {
   readerEmailVerificationDataSchema,
   readerEmailVerificationPreview,
 } from "./templates/reader-email-verification";
+import {
+  ReaderEpisodePublishedEmail,
+  readerEpisodePublishedDataSchema,
+  readerEpisodePublishedPreview,
+} from "./templates/reader-episode-published";
 import {
   ReaderPasswordChangedNoticeEmail,
   readerPasswordChangedNoticeDataSchema,
@@ -116,6 +131,9 @@ export const TEMPLATE_IDS = [
   "staff_contact_message_notice",
   "staff_contact_reply",
   "purchase_receipt",
+  "reader_episode_published",
+  "reader_announcement_posted",
+  "reader_comment_approved",
 ] as const;
 
 export type TemplateId = (typeof TEMPLATE_IDS)[number];
@@ -296,6 +314,18 @@ const TEMPLATES: Record<TemplateId, TemplateResolver> = {
     preview: purchaseReceiptPreview,
     schema: purchaseReceiptDataSchema,
   }),
+  reader_announcement_posted: defineTemplate({
+    element: ({ data, locale, messages }) =>
+      createElement(ReaderAnnouncementPostedEmail, { data, locale, messages }),
+    preview: readerAnnouncementPostedPreview,
+    schema: readerAnnouncementPostedDataSchema,
+  }),
+  reader_comment_approved: defineTemplate({
+    element: ({ data, locale, messages }) =>
+      createElement(ReaderCommentApprovedEmail, { data, locale, messages }),
+    preview: readerCommentApprovedPreview,
+    schema: readerCommentApprovedDataSchema,
+  }),
   reader_email_change_confirmation: defineTemplate({
     element: ({ data, locale, messages, timeZone }) =>
       createElement(ReaderEmailChangeConfirmationEmail, {
@@ -323,6 +353,12 @@ const TEMPLATES: Record<TemplateId, TemplateResolver> = {
       }),
     preview: readerEmailVerificationPreview,
     schema: readerEmailVerificationDataSchema,
+  }),
+  reader_episode_published: defineTemplate({
+    element: ({ data, locale, messages }) =>
+      createElement(ReaderEpisodePublishedEmail, { data, locale, messages }),
+    preview: readerEpisodePublishedPreview,
+    schema: readerEpisodePublishedDataSchema,
   }),
   reader_password_changed_notice: defineTemplate({
     element: ({ data, locale, messages }) =>

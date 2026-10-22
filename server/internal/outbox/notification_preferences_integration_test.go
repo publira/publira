@@ -80,7 +80,6 @@ func (f notificationPreferencesFixture) savePreferences(t *testing.T, ctx contex
 	t.Helper()
 	params.TenantID = f.tenant.ID
 	params.UserID = userID
-	params.EmailNotificationsEnabled = true
 	if _, err := dbmodels.New(f.pg.DB).UpsertUserNotificationSettings(ctx, params); err != nil {
 		t.Fatalf("UpsertUserNotificationSettings: %v", err)
 	}

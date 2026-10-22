@@ -830,44 +830,56 @@ LIMIT 1;
 -- The literal repeats the column default because a VALUES list has no way to
 -- ask for it conditionally; TestDBNotificationPreferenceDefaultsAgreeAcrossPaths
 -- is what fails when the two drift apart.
+--
+-- email_notifications_enabled is not written: nothing reads it, and what the
+-- API still answers under that name is derived from the email cells.
 INSERT INTO user_notification_settings (
     tenant_id,
     user_id,
-    email_notifications_enabled,
     followed_episodes_inbox_enabled,
     followed_episodes_web_push_enabled,
     followed_episodes_mobile_push_enabled,
+    followed_episodes_email_enabled,
     followed_creators_inbox_enabled,
     followed_creators_web_push_enabled,
     followed_creators_mobile_push_enabled,
+    followed_creators_email_enabled,
     comments_inbox_enabled,
+    comments_email_enabled,
     announcements_inbox_enabled,
+    announcements_email_enabled,
     updated_at
 )
 VALUES (
     sqlc.arg('tenant_id'),
     sqlc.arg('user_id'),
-    sqlc.arg('email_notifications_enabled'),
     COALESCE(sqlc.narg('followed_episodes_inbox_enabled')::boolean, true),
     COALESCE(sqlc.narg('followed_episodes_web_push_enabled')::boolean, true),
     COALESCE(sqlc.narg('followed_episodes_mobile_push_enabled')::boolean, true),
+    COALESCE(sqlc.narg('followed_episodes_email_enabled')::boolean, true),
     COALESCE(sqlc.narg('followed_creators_inbox_enabled')::boolean, true),
     COALESCE(sqlc.narg('followed_creators_web_push_enabled')::boolean, true),
     COALESCE(sqlc.narg('followed_creators_mobile_push_enabled')::boolean, true),
+    COALESCE(sqlc.narg('followed_creators_email_enabled')::boolean, true),
     COALESCE(sqlc.narg('comments_inbox_enabled')::boolean, true),
+    COALESCE(sqlc.narg('comments_email_enabled')::boolean, true),
     COALESCE(sqlc.narg('announcements_inbox_enabled')::boolean, true),
+    COALESCE(sqlc.narg('announcements_email_enabled')::boolean, true),
     NOW()
 )
 ON CONFLICT (user_id) DO UPDATE
-SET email_notifications_enabled = EXCLUDED.email_notifications_enabled,
-    followed_episodes_inbox_enabled = COALESCE(sqlc.narg('followed_episodes_inbox_enabled')::boolean, user_notification_settings.followed_episodes_inbox_enabled),
+SET followed_episodes_inbox_enabled = COALESCE(sqlc.narg('followed_episodes_inbox_enabled')::boolean, user_notification_settings.followed_episodes_inbox_enabled),
     followed_episodes_web_push_enabled = COALESCE(sqlc.narg('followed_episodes_web_push_enabled')::boolean, user_notification_settings.followed_episodes_web_push_enabled),
     followed_episodes_mobile_push_enabled = COALESCE(sqlc.narg('followed_episodes_mobile_push_enabled')::boolean, user_notification_settings.followed_episodes_mobile_push_enabled),
+    followed_episodes_email_enabled = COALESCE(sqlc.narg('followed_episodes_email_enabled')::boolean, user_notification_settings.followed_episodes_email_enabled),
     followed_creators_inbox_enabled = COALESCE(sqlc.narg('followed_creators_inbox_enabled')::boolean, user_notification_settings.followed_creators_inbox_enabled),
     followed_creators_web_push_enabled = COALESCE(sqlc.narg('followed_creators_web_push_enabled')::boolean, user_notification_settings.followed_creators_web_push_enabled),
     followed_creators_mobile_push_enabled = COALESCE(sqlc.narg('followed_creators_mobile_push_enabled')::boolean, user_notification_settings.followed_creators_mobile_push_enabled),
+    followed_creators_email_enabled = COALESCE(sqlc.narg('followed_creators_email_enabled')::boolean, user_notification_settings.followed_creators_email_enabled),
     comments_inbox_enabled = COALESCE(sqlc.narg('comments_inbox_enabled')::boolean, user_notification_settings.comments_inbox_enabled),
+    comments_email_enabled = COALESCE(sqlc.narg('comments_email_enabled')::boolean, user_notification_settings.comments_email_enabled),
     announcements_inbox_enabled = COALESCE(sqlc.narg('announcements_inbox_enabled')::boolean, user_notification_settings.announcements_inbox_enabled),
+    announcements_email_enabled = COALESCE(sqlc.narg('announcements_email_enabled')::boolean, user_notification_settings.announcements_email_enabled),
     updated_at = NOW()
 RETURNING *;
 

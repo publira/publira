@@ -376,9 +376,8 @@ func seedUserNotificationSetting(t *testing.T, pg *testutil.PostgresEnv, tenantI
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if _, err := dbmodels.New(pg.DB).UpsertUserNotificationSettings(ctx, dbmodels.UpsertUserNotificationSettingsParams{
-		TenantID:                  tenantID,
-		UserID:                    userID,
-		EmailNotificationsEnabled: true,
+		TenantID: tenantID,
+		UserID:   userID,
 	}); err != nil {
 		t.Fatalf("UpsertUserNotificationSettings: %v", err)
 	}

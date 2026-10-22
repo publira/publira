@@ -2,7 +2,7 @@
 title: Email
 description: Set the SMTP account the install sends mail through, let a tenant send through its own, and control what the mail looks like and where its links lead.
 published: 2026-10-06
-updated: 2026-10-16
+updated: 2026-10-22
 ---
 
 The install sends mail for its readers, for each tenant's staff, and for the Platform Console's operators. All of it is sent by `publira worker`, through an SMTP server you provide: `publiractl setup` saved the platform's SMTP account, and a tenant can save one of its own. This page covers both, how to test them, and the settings that decide how a mail looks and where its links go.
@@ -13,11 +13,13 @@ Every `publiractl` command here is shown bare; run it the way [The Platform Cons
 
 | To | Mail |
 | --- | --- |
-| A tenant's readers | The link that confirms a new account's address; password reset, and the notice that the password changed; confirming a new email address, and the notice to the old one that it changed; the notice that someone tried to sign up with an address that already has an account; a staff member's answer to a contact message |
+| A tenant's readers | The link that confirms a new account's address; password reset, and the notice that the password changed; confirming a new email address, and the notice to the old one that it changed; the notice that someone tried to sign up with an address that already has an account; a staff member's answer to a contact message; a new episode of a series or by an author they follow, an announcement the tenant posted, and the approval of their comment |
 | A tenant's staff | The invitation to administer the tenant; password reset; confirming a new email address, and the notice to the old one; a new contact message from a reader |
 | Platform operators | Password reset; confirming a new email address, and the notice to the old one |
 
 Each mail is written in the tenant's default language, or for an operator in the platform's.
+
+The last three reach a reader the way their notification preferences choose: each kind of notification has its own email setting, on unless the reader turned it off, and only a confirmed address receives one. An announcement the tenant sends to everyone is mailed to every reader with a confirmed address whatever their settings, so a tenant with many readers sends that many mails at once through its SMTP account.
 
 The worker queues every mail and retries one it could not send, waiting twice as long after each failure: one second, then two, then four. After the tenth failed attempt, about nine minutes after the first, it gives the mail up for good, and nothing sends it again. An outage of the SMTP server longer than that, or of `email-renderer` once it is on, therefore loses the mail queued during it rather than delaying it. `PUBLIRA_OUTBOX_MAX_ATTEMPTS` on `publira worker` sets the number of attempts; since the wait keeps doubling, up to an hour between attempts, a few more attempts cover a much longer outage.
 

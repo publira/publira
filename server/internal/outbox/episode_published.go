@@ -96,7 +96,7 @@ type EpisodeFollowerQuerier interface {
 
 // NotifyEpisodeFollowers writes one notification per reader who asked to hear
 // about this episode — a follower of the episode, of its series, or of a
-// creator credited on it — and queues the push that mirrors them. A tenant
+// creator credited on it — and queues the push and the mail that mirror them. A tenant
 // whose readers follow nothing publishes silently, which is the point: a
 // follow is the request to be told. So does an episode no reader can open yet,
 // because its series is not public or it is shown on no surface: neither
@@ -204,7 +204,10 @@ func NotifyEpisodeFollowers(ctx context.Context, q EpisodeFollowerQuerier, publi
 	if notified == 0 {
 		return nil
 	}
-	return enqueueEpisodePublishedPush(ctx, q, publication, subjectKey)
+	if err := enqueueEpisodePublishedPush(ctx, q, publication, subjectKey); err != nil {
+		return err
+	}
+	return queueNotificationEmail(ctx, q, publication.TenantID, NotificationTypeEpisodePublished, subjectKey)
 }
 
 // forEachEpisodeFollower walks one recipient query a page at a time, the

@@ -110,6 +110,28 @@
       "test_notice": "これは決済サービスのテストモードでの購入です。料金は請求されていません。",
       "volume": "巻: {$volume_title}"
     },
+    "reader_announcement_posted": {
+      "action": "お知らせを読む",
+      "everyone": "このお知らせは、通知設定にかかわらず{$tenant_name}のすべての読者に送信されています。",
+      "fallback_link": "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。",
+      "heading": "新しいお知らせ",
+      "intro": "{$tenant_name}からお知らせが届きました。",
+      "preferences": "受け取るメールは通知設定で選べます。",
+      "preview": "{$tenant_name}のお知らせをお読みください。",
+      "subject": "{$tenant_name}からのお知らせ: {$announcement_title}",
+      "title": "タイトル: {$announcement_title}"
+    },
+    "reader_comment_approved": {
+      "action": "エピソードを開く",
+      "body": "コメントが承認され、誰でも読めるようになりました。",
+      "episode": "エピソード: {$episode_title}",
+      "fallback_link": "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。",
+      "heading": "コメントが公開されました",
+      "preferences": "受け取るメールは通知設定で選べます。",
+      "preview": "{$episode_title}へのコメントが公開されました。",
+      "series": "シリーズ: {$series_title}",
+      "subject": "{$tenant_name}でのコメントが公開されました"
+    },
     "reader_email_change_confirmation": {
       "action": "メールアドレス変更を確認する",
       "body_current_email": "現在のメールアドレス側の確認が必要です。以下のボタンから確認を完了してください。",
@@ -143,6 +165,17 @@
       "intro": "{$tenant_name}のご登録ありがとうございます。",
       "preview": "メールアドレスの確認を完了してください。",
       "subject": "{$tenant_name}メールアドレス確認"
+    },
+    "reader_episode_published": {
+      "action": "エピソードを読む",
+      "episode": "エピソード: {$episode_title}",
+      "fallback_link": "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。",
+      "heading": "新しいエピソードが公開されました",
+      "intro": "{$tenant_name}で、フォローしているシリーズや著者の新しいエピソードが公開されました。",
+      "preferences": "受け取るメールは通知設定で選べます。",
+      "preview": "{$episode_title}が公開されました。",
+      "series": "シリーズ: {$series_title}",
+      "subject": "{$series_title}の新しいエピソード"
     },
     "reader_password_changed_notice": {
       "action": "パスワードを再設定する",

@@ -110,6 +110,28 @@
       "test_notice": "This was a purchase in the payment provider's test mode. No money was charged.",
       "volume": "Volume: {$volume_title}"
     },
+    "reader_announcement_posted": {
+      "action": "Read the announcement",
+      "everyone": "{$tenant_name} sent this announcement to every reader, whatever their notification settings.",
+      "fallback_link": "If the button does not work, paste this URL into your browser.",
+      "heading": "A new announcement",
+      "intro": "{$tenant_name} posted an announcement.",
+      "preferences": "To choose which emails you receive, open your notification settings.",
+      "preview": "Read the announcement on {$tenant_name}.",
+      "subject": "{$tenant_name} announcement: {$announcement_title}",
+      "title": "Title: {$announcement_title}"
+    },
+    "reader_comment_approved": {
+      "action": "Open the episode",
+      "body": "Your comment was approved and is now visible to everyone.",
+      "episode": "Episode: {$episode_title}",
+      "fallback_link": "If the button does not work, paste this URL into your browser.",
+      "heading": "Your comment is now public",
+      "preferences": "To choose which emails you receive, open your notification settings.",
+      "preview": "Your comment on {$episode_title} is now visible to everyone.",
+      "series": "Series: {$series_title}",
+      "subject": "Your comment on {$tenant_name} is now public"
+    },
     "reader_email_change_confirmation": {
       "action": "Confirm email address change",
       "body_current_email": "This change needs confirmation from your current address. Open the button below to confirm it.",
@@ -143,6 +165,17 @@
       "intro": "Thank you for signing up for {$tenant_name}.",
       "preview": "Finish verifying your email address.",
       "subject": "{$tenant_name} email address verification"
+    },
+    "reader_episode_published": {
+      "action": "Read the episode",
+      "episode": "Episode: {$episode_title}",
+      "fallback_link": "If the button does not work, paste this URL into your browser.",
+      "heading": "A new episode has been published",
+      "intro": "{$tenant_name} published a new episode of a series or by an author you follow.",
+      "preferences": "To choose which emails you receive, open your notification settings.",
+      "preview": "{$episode_title} is now available.",
+      "series": "Series: {$series_title}",
+      "subject": "New episode of {$series_title}"
     },
     "reader_password_changed_notice": {
       "action": "Reset password",

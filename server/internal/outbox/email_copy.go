@@ -160,9 +160,12 @@ var emailTemplates = map[string]func(*emailComposer){
 	"platform_console_operator_role_granted":     platformConsoleOperatorRoleGrantedCopy,
 	"platform_console_password_reset":            platformConsolePasswordResetCopy,
 	"purchase_receipt":                           purchaseReceiptCopy,
+	"reader_announcement_posted":                 readerAnnouncementPostedCopy,
+	"reader_comment_approved":                    readerCommentApprovedCopy,
 	"reader_email_change_confirmation":           readerEmailChangeConfirmationCopy,
 	"reader_email_changed_notice":                readerEmailChangedNoticeCopy,
 	"reader_email_verification":                  readerEmailVerificationCopy,
+	"reader_episode_published":                   readerEpisodePublishedCopy,
 	"reader_password_changed_notice":             readerPasswordChangedNoticeCopy,
 	"reader_password_reset":                      readerPasswordResetCopy,
 	"reader_signup_attempt_notice":               readerSignupAttemptNoticeCopy,
@@ -205,6 +208,60 @@ func purchaseReceiptCopy(c *emailComposer) {
 	}
 	c.linkLine("email.purchase_receipt.action", nil, libraryURL)
 	c.linkLine("email.purchase_receipt.fallback_link", nil, libraryURL)
+}
+
+// readerEpisodePublishedCopy words the mail that tells a reader an episode
+// they asked to hear about is out. Every notification mail ends on where the
+// reader chooses which of them they receive.
+func readerEpisodePublishedCopy(c *emailComposer) {
+	brand := c.value("tenant_name")
+	episodeURL := c.value("episode_url")
+	c.setSubject("email.reader_episode_published.subject", map[string]any{"series_title": c.value("series_title")})
+	c.from(brand)
+	c.line("email.reader_episode_published.heading", nil)
+	c.line("email.reader_episode_published.intro", map[string]any{"tenant_name": brand})
+	c.line("email.reader_episode_published.series", map[string]any{"series_title": c.value("series_title")})
+	c.line("email.reader_episode_published.episode", map[string]any{"episode_title": c.value("episode_title")})
+	c.linkLine("email.reader_episode_published.action", nil, episodeURL)
+	c.linkLine("email.reader_episode_published.fallback_link", nil, episodeURL)
+	c.linkLine("email.reader_episode_published.preferences", nil, c.value("settings_url"))
+}
+
+// readerAnnouncementPostedCopy words the mail that carries the title of an
+// announcement the tenant posted. One sent to every reader says so instead of
+// pointing at the settings, which could not have kept it out.
+func readerAnnouncementPostedCopy(c *emailComposer) {
+	brand := c.value("tenant_name")
+	title := c.value("announcement_title")
+	announcementsURL := c.value("announcements_url")
+	c.setSubject("email.reader_announcement_posted.subject", map[string]any{"announcement_title": title, "tenant_name": brand})
+	c.from(brand)
+	c.line("email.reader_announcement_posted.heading", nil)
+	c.line("email.reader_announcement_posted.intro", map[string]any{"tenant_name": brand})
+	c.line("email.reader_announcement_posted.title", map[string]any{"announcement_title": title})
+	c.linkLine("email.reader_announcement_posted.action", nil, announcementsURL)
+	c.linkLine("email.reader_announcement_posted.fallback_link", nil, announcementsURL)
+	if c.flag("sent_to_everyone") {
+		c.line("email.reader_announcement_posted.everyone", map[string]any{"tenant_name": brand})
+	} else {
+		c.linkLine("email.reader_announcement_posted.preferences", nil, c.value("settings_url"))
+	}
+}
+
+// readerCommentApprovedCopy words the mail that tells a reader the comment they
+// posted is now public, naming the episode it is on.
+func readerCommentApprovedCopy(c *emailComposer) {
+	brand := c.value("tenant_name")
+	episodeURL := c.value("episode_url")
+	c.setSubject("email.reader_comment_approved.subject", map[string]any{"tenant_name": brand})
+	c.from(brand)
+	c.line("email.reader_comment_approved.heading", nil)
+	c.line("email.reader_comment_approved.body", nil)
+	c.line("email.reader_comment_approved.series", map[string]any{"series_title": c.value("series_title")})
+	c.line("email.reader_comment_approved.episode", map[string]any{"episode_title": c.value("episode_title")})
+	c.linkLine("email.reader_comment_approved.action", nil, episodeURL)
+	c.linkLine("email.reader_comment_approved.fallback_link", nil, episodeURL)
+	c.linkLine("email.reader_comment_approved.preferences", nil, c.value("settings_url"))
 }
 
 // staffContactMessageNoticeCopy words the mail that tells a tenant's staff a

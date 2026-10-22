@@ -60,6 +60,12 @@ func TestNotifyCommentApprovedWritesAnApprovedRow(t *testing.T) {
 		"series_title":  "Seed Series",
 		"comment_id":    "CMTPEND00001",
 	})
+	if len(queries.queued) != 1 {
+		t.Fatalf("outbox events = %d, want the mail", len(queries.queued))
+	}
+	if want := NotificationEmailIdempotencyKey(tenantID, NotificationTypeCommentApproved, "comment:CMTPEND00001"); queries.queued[0].IdempotencyKey != want {
+		t.Fatalf("mail idempotency_key = %q, want %q", queries.queued[0].IdempotencyKey, want)
+	}
 }
 
 func TestNotifyCommentApprovedReturnsAFailedInsert(t *testing.T) {
@@ -230,6 +236,15 @@ func assertCommentAuthorPayload(t *testing.T, raw []byte, want map[string]string
 type stubCommentAuthorNotifier struct {
 	created   []dbmodels.CreateNotificationParams
 	createErr error
+	queued    []dbmodels.InsertOutboxEventParams
+}
+
+func (s *stubCommentAuthorNotifier) InsertOutboxEvent(
+	_ context.Context,
+	arg dbmodels.InsertOutboxEventParams,
+) (dbmodels.OutboxEvent, error) {
+	s.queued = append(s.queued, arg)
+	return dbmodels.OutboxEvent{ID: arg.ID, EventType: arg.EventType}, nil
 }
 
 func (s *stubCommentAuthorNotifier) CreateNotification(

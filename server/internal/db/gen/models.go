@@ -594,6 +594,7 @@ type Notification struct {
 	Availability     string          `json:"availability"`
 	Category         string          `json:"category"`
 	InInbox          bool            `json:"in_inbox"`
+	EmailedAt        sql.NullTime    `json:"emailed_at"`
 }
 
 type NotificationRead struct {
@@ -1650,6 +1651,10 @@ type UserNotificationSetting struct {
 	FollowedCreatorsMobilePushEnabled bool      `json:"followed_creators_mobile_push_enabled"`
 	CommentsInboxEnabled              bool      `json:"comments_inbox_enabled"`
 	AnnouncementsInboxEnabled         bool      `json:"announcements_inbox_enabled"`
+	FollowedEpisodesEmailEnabled      bool      `json:"followed_episodes_email_enabled"`
+	FollowedCreatorsEmailEnabled      bool      `json:"followed_creators_email_enabled"`
+	CommentsEmailEnabled              bool      `json:"comments_email_enabled"`
+	AnnouncementsEmailEnabled         bool      `json:"announcements_email_enabled"`
 }
 
 type UserPageConsent struct {

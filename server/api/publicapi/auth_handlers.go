@@ -1515,11 +1515,15 @@ func defaultNotificationPreferences() *publirav1.NotificationPreferences {
 		FollowedEpisodesInboxEnabled:      true,
 		FollowedEpisodesWebPushEnabled:    true,
 		FollowedEpisodesMobilePushEnabled: true,
+		FollowedEpisodesEmailEnabled:      true,
 		FollowedCreatorsInboxEnabled:      true,
 		FollowedCreatorsWebPushEnabled:    true,
 		FollowedCreatorsMobilePushEnabled: true,
+		FollowedCreatorsEmailEnabled:      true,
 		CommentsInboxEnabled:              true,
+		CommentsEmailEnabled:              true,
 		AnnouncementsInboxEnabled:         true,
+		AnnouncementsEmailEnabled:         true,
 	}
 }
 
@@ -1528,12 +1532,78 @@ func notificationPreferencesFromRow(row dbmodels.UserNotificationSetting) *publi
 		FollowedEpisodesInboxEnabled:      row.FollowedEpisodesInboxEnabled,
 		FollowedEpisodesWebPushEnabled:    row.FollowedEpisodesWebPushEnabled,
 		FollowedEpisodesMobilePushEnabled: row.FollowedEpisodesMobilePushEnabled,
+		FollowedEpisodesEmailEnabled:      row.FollowedEpisodesEmailEnabled,
 		FollowedCreatorsInboxEnabled:      row.FollowedCreatorsInboxEnabled,
 		FollowedCreatorsWebPushEnabled:    row.FollowedCreatorsWebPushEnabled,
 		FollowedCreatorsMobilePushEnabled: row.FollowedCreatorsMobilePushEnabled,
+		FollowedCreatorsEmailEnabled:      row.FollowedCreatorsEmailEnabled,
 		CommentsInboxEnabled:              row.CommentsInboxEnabled,
+		CommentsEmailEnabled:              row.CommentsEmailEnabled,
 		AnnouncementsInboxEnabled:         row.AnnouncementsInboxEnabled,
+		AnnouncementsEmailEnabled:         row.AnnouncementsEmailEnabled,
 	}
+}
+
+// emailNotificationsEnabled is the one email switch a client that shows no
+// email cell reads: on while any email cell is.
+func emailNotificationsEnabled(preferences *publirav1.NotificationPreferences) bool {
+	return preferences.GetFollowedEpisodesEmailEnabled() ||
+		preferences.GetFollowedCreatorsEmailEnabled() ||
+		preferences.GetCommentsEmailEnabled() ||
+		preferences.GetAnnouncementsEmailEnabled()
+}
+
+// notificationEmailCells is the email column of an update.
+type notificationEmailCells struct {
+	followedEpisodes sql.NullBool
+	followedCreators sql.NullBool
+	comments         sql.NullBool
+	announcements    sql.NullBool
+}
+
+// updateNotificationEmailCells answers the email cells an update writes. A
+// request that names any of them is taken as it is. One that names none comes
+// from a client that shows a single email switch, and the switch stands for
+// the whole column: off turns every cell off, and on turns every cell on only
+// when all of them are off, since the switch already reads on while any one
+// is and saving with it on must not undo a choice made on another device.
+func (s *apiServer) updateNotificationEmailCells(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	userID uuid.UUID,
+	req *publirav1.UpdateNotificationSettingsRequest,
+) (notificationEmailCells, error) {
+	cells := notificationEmailCells{
+		followedEpisodes: notificationPreferenceCell(req.FollowedEpisodesEmailEnabled),
+		followedCreators: notificationPreferenceCell(req.FollowedCreatorsEmailEnabled),
+		comments:         notificationPreferenceCell(req.CommentsEmailEnabled),
+		announcements:    notificationPreferenceCell(req.AnnouncementsEmailEnabled),
+	}
+	if cells.followedEpisodes.Valid || cells.followedCreators.Valid || cells.comments.Valid || cells.announcements.Valid {
+		return cells, nil
+	}
+	whole := func(on bool) notificationEmailCells {
+		cell := sql.NullBool{Bool: on, Valid: true}
+		return notificationEmailCells{followedEpisodes: cell, followedCreators: cell, comments: cell, announcements: cell}
+	}
+	if !req.EmailNotificationsEnabled {
+		return whole(false), nil
+	}
+	stored, err := s.queriesFor(ctx).GetUserNotificationSettings(ctx, dbmodels.GetUserNotificationSettingsParams{
+		TenantID: tenantID,
+		UserID:   userID,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		// Nothing saved yet holds every cell on, which the insert keeps.
+		return cells, nil
+	}
+	if err != nil {
+		return cells, s.internalDBError(ctx, "failed to get notification settings", err, "user_id", userID.String())
+	}
+	if emailNotificationsEnabled(notificationPreferencesFromRow(stored)) {
+		return cells, nil
+	}
+	return whole(true), nil
 }
 
 // notificationPreferenceCell is one cell of an update: the value it names, or
@@ -1573,9 +1643,10 @@ func (s *apiServer) GetNotificationSettings(
 		}
 		return nil, s.internalDBError(ctx, "failed to get notification settings", err, "user_id", user.ID.String())
 	}
+	preferences := notificationPreferencesFromRow(settings)
 	return &publirav1.GetNotificationSettingsResponse{
-		EmailNotificationsEnabled: settings.EmailNotificationsEnabled,
-		Preferences:               notificationPreferencesFromRow(settings),
+		EmailNotificationsEnabled: emailNotificationsEnabled(preferences),
+		Preferences:               preferences,
 	}, nil
 }
 
@@ -1596,25 +1667,33 @@ func (s *apiServer) UpdateNotificationSettings(
 	if err := s.scopeReaderStateUser(ctx, user.ID); err != nil {
 		return nil, err
 	}
+	email, err := s.updateNotificationEmailCells(ctx, tenant.ID, user.ID, req)
+	if err != nil {
+		return nil, err
+	}
 	updated, err := s.queriesFor(ctx).UpsertUserNotificationSettings(ctx, dbmodels.UpsertUserNotificationSettingsParams{
 		TenantID:                          tenant.ID,
 		UserID:                            user.ID,
-		EmailNotificationsEnabled:         req.EmailNotificationsEnabled,
 		FollowedEpisodesInboxEnabled:      notificationPreferenceCell(req.FollowedEpisodesInboxEnabled),
 		FollowedEpisodesWebPushEnabled:    notificationPreferenceCell(req.FollowedEpisodesWebPushEnabled),
 		FollowedEpisodesMobilePushEnabled: notificationPreferenceCell(req.FollowedEpisodesMobilePushEnabled),
+		FollowedEpisodesEmailEnabled:      email.followedEpisodes,
 		FollowedCreatorsInboxEnabled:      notificationPreferenceCell(req.FollowedCreatorsInboxEnabled),
 		FollowedCreatorsWebPushEnabled:    notificationPreferenceCell(req.FollowedCreatorsWebPushEnabled),
 		FollowedCreatorsMobilePushEnabled: notificationPreferenceCell(req.FollowedCreatorsMobilePushEnabled),
+		FollowedCreatorsEmailEnabled:      email.followedCreators,
 		CommentsInboxEnabled:              notificationPreferenceCell(req.CommentsInboxEnabled),
+		CommentsEmailEnabled:              email.comments,
 		AnnouncementsInboxEnabled:         notificationPreferenceCell(req.AnnouncementsInboxEnabled),
+		AnnouncementsEmailEnabled:         email.announcements,
 	})
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to update notification settings", err, "user_id", user.ID.String())
 	}
+	preferences := notificationPreferencesFromRow(updated)
 	return &publirav1.UpdateNotificationSettingsResponse{
-		EmailNotificationsEnabled: updated.EmailNotificationsEnabled,
-		Preferences:               notificationPreferencesFromRow(updated),
+		EmailNotificationsEnabled: emailNotificationsEnabled(preferences),
+		Preferences:               preferences,
 	}, nil
 }
 

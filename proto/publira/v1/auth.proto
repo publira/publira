@@ -484,12 +484,19 @@ message GetNotificationSettingsRequest {
 }
 
 message GetNotificationSettingsResponse {
+  // Whether any email cell of preferences is on, for a client that shows one
+  // email switch rather than the email cells.
   bool email_notifications_enabled = 1;
   NotificationPreferences preferences = 2;
 }
 
 message UpdateNotificationSettingsRequest {
   publira.types.v1.TenantContext tenant = 1;
+  // The one email switch of a client that shows no email cell, read only when
+  // the request names none of them. Off turns every email cell off. On keeps
+  // them as they are, unless every one is off, when it turns them all on: the
+  // switch shows on while any cell is on, so a reader who chose some cells on
+  // another device keeps that choice by saving with it on.
   bool email_notifications_enabled = 2;
   // Omitted cells keep the stored value, so a client that shows only some of
   // the cells — one released before a cell existed among them — does not
@@ -503,9 +510,15 @@ message UpdateNotificationSettingsRequest {
   optional bool followed_creators_mobile_push_enabled = 8;
   optional bool comments_inbox_enabled = 9;
   optional bool announcements_inbox_enabled = 10;
+  optional bool followed_episodes_email_enabled = 11;
+  optional bool followed_creators_email_enabled = 12;
+  optional bool comments_email_enabled = 13;
+  optional bool announcements_email_enabled = 14;
 }
 
 message UpdateNotificationSettingsResponse {
+  // Whether any email cell of preferences is on, as on
+  // GetNotificationSettingsResponse.
   bool email_notifications_enabled = 1;
   NotificationPreferences preferences = 2;
 }
@@ -525,21 +538,27 @@ message UpdateNotificationSettingsResponse {
 // not a second pair of RPCs.
 //
 // An inbox cell that is off keeps the notification out of the inbox and its
-// unread count without stopping its push, and a push cell that is off stops
-// the push to that kind of device alone.
+// unread count without stopping its push or its mail, a push cell that is off
+// stops the push to that kind of device alone, and an email cell that is off
+// stops the mail to the reader's confirmed address. An announcement the tenant
+// sends to everyone reaches every channel whatever its cells say.
 message NotificationPreferences {
   // An episode the reader follows, or one of a series they follow.
   bool followed_episodes_inbox_enabled = 1;
   bool followed_episodes_web_push_enabled = 2;
   bool followed_episodes_mobile_push_enabled = 3;
+  bool followed_episodes_email_enabled = 9;
   // An episode credited to an author the reader follows.
   bool followed_creators_inbox_enabled = 4;
   bool followed_creators_web_push_enabled = 5;
   bool followed_creators_mobile_push_enabled = 6;
+  bool followed_creators_email_enabled = 10;
   // The reader's own comment approved.
   bool comments_inbox_enabled = 7;
+  bool comments_email_enabled = 11;
   // An announcement the tenant posted.
   bool announcements_inbox_enabled = 8;
+  bool announcements_email_enabled = 12;
 }
 
 // A reader's own choices about how the viewer is laid out, stored against the

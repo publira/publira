@@ -53,6 +53,18 @@ export const emailAddressField = (name: string) =>
       error: `${name} must not contain CR or LF`,
     });
 
+/**
+ * A title from the catalogue or an announcement. The console stores titles with
+ * no length limit, and they reach the mail's body rather than a header, so
+ * nothing here refuses one the server already stored: a mail that cannot render
+ * is never sent.
+ */
+export const catalogTitleField = (name: string) =>
+  z
+    .string()
+    .trim()
+    .min(1, { error: `${name} is required` });
+
 /** A display name the mail is branded with, such as the tenant's. */
 export const displayNameField = (name: string) =>
   z

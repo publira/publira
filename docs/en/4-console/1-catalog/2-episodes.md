@@ -2,7 +2,7 @@
 title: Episodes
 description: Create an episode, add, replace, and delete its pages, change its title in each language, its price, its reading period, and its rental, set its layout and preview its pages, give it a cover image of its own, set its credits and where it is shown and sold, give it free reading periods and campaign prices, and publish it now or on time.
 published: 2026-10-07
-updated: 2026-10-20
+updated: 2026-10-22
 ---
 
 An episode is what a reader opens and pays for: a run of page images with a title, a price, and a time it is published at. Episodes live inside their series. On the **Series** list, choose **Episodes** on the series' row to open them.
@@ -219,7 +219,7 @@ The usual way to publish a new episode of a public series is therefore:
 The episode is published by `publira worker`, which looks for episodes whose time has passed once a minute. At that pass, the episode:
 
 - Opens on its own page and in its series' episode list on the site, and in the app.
-- Is announced to every reader following the episode, its series, or an Author credited on it, with a notification and a push notification on each of the site and the app it is shown on.
+- Is announced to every reader following the episode, its series, or an Author credited on it, with a notification and a push notification on each of the site and the app it is shown on, and by email when it is shown on the site. Each reader's notification settings decide which of these reach them.
 - Is sent to the search index.
 
 So an episode scheduled for 12:00 is readable by about 12:01, and the site's lists, such as the series list ordered by **Recently updated**, show it from the same moment.

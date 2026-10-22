@@ -35,14 +35,15 @@ The list shows each announcement's title in the default language, and the **Lang
 
 ## Sending to everyone
 
-An announcement reaches a reader's notifications only while their notification settings take announcements, so a reader who turned them off does not hear about a campaign. **Send to everyone** notifies every reader with an account whatever those settings say. Keep it for a notice every reader must see, such as a change to the terms or an outage.
+An announcement reaches a reader's notifications and their email only while their notification settings take announcements there, so a reader who turned them off does not hear about a campaign. **Send to everyone** notifies every reader with an account, and emails every one whose address is confirmed, whatever those settings say. Keep it for a notice every reader must see, such as a change to the terms or an outage.
 
 The **Notification** column of the list says how each announcement was sent: **Sent to everyone**, or **As each reader allows** for one sent without the option.
 
 ## What readers see
 
 - **On the site**, the **Announcements** page in the header lists every announcement, newest first, and anyone can read it. Each title opens the announcement on a page of its own. A signed-in reader sees which ones they have not read yet.
-- **In their notifications**, every reader with an account whose notification settings take announcements gets "A new announcement", which leads to it, and every reader with an account gets it for an announcement sent with **Send to everyone**. Announcements are not sent by email or as push notifications.
+- **In their notifications**, every reader with an account whose notification settings take announcements gets "A new announcement", which leads to it, and every reader with an account gets it for an announcement sent with **Send to everyone**.
+- **By email**, every reader with a confirmed address whose notification settings take announcements by email gets a mail with the announcement's title and a link to the **Announcements** page, and every reader with a confirmed address gets it for an announcement sent with **Send to everyone**. Announcements are not sent as push notifications.
 - **In the app**, the **Announcements** screen lists the same announcements, with the same read marks.
 
 A reader sees each announcement in their language: on the site, the one they browse in, and in the app, the one the app is shown in. Where you did not write it in that language, they see the default language's, with a note naming the language it is shown in.
