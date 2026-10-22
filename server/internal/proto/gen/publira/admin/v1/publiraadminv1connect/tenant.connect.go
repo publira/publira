@@ -105,6 +105,12 @@ const (
 	// TenantSettingsServiceUpdateTenantEmailRejectionSettingsProcedure is the procedure name of the
 	// TenantSettingsService's UpdateTenantEmailRejectionSettings RPC.
 	TenantSettingsServiceUpdateTenantEmailRejectionSettingsProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantEmailRejectionSettings"
+	// TenantSettingsServiceGetTenantAnalyticsSettingsProcedure is the procedure name of the
+	// TenantSettingsService's GetTenantAnalyticsSettings RPC.
+	TenantSettingsServiceGetTenantAnalyticsSettingsProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantAnalyticsSettings"
+	// TenantSettingsServiceUpdateTenantAnalyticsSettingsProcedure is the procedure name of the
+	// TenantSettingsService's UpdateTenantAnalyticsSettings RPC.
+	TenantSettingsServiceUpdateTenantAnalyticsSettingsProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantAnalyticsSettings"
 )
 
 var (
@@ -297,6 +303,20 @@ var (
 			Procedure:  TenantSettingsServiceUpdateTenantEmailRejectionSettingsProcedure,
 		}
 	})
+	tenantSettingsServiceGetTenantAnalyticsSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("GetTenantAnalyticsSettings"),
+			Procedure:  TenantSettingsServiceGetTenantAnalyticsSettingsProcedure,
+		}
+	})
+	tenantSettingsServiceUpdateTenantAnalyticsSettingsSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("UpdateTenantAnalyticsSettings"),
+			Procedure:  TenantSettingsServiceUpdateTenantAnalyticsSettingsProcedure,
+		}
+	})
 )
 
 // TenantSettingsServiceClient is a client for the publira.admin.v1.TenantSettingsService service.
@@ -359,6 +379,10 @@ type TenantSettingsServiceClient interface {
 	GetTenantEmailRejectionSettings(context.Context, *v1.GetTenantEmailRejectionSettingsRequest) (*v1.GetTenantEmailRejectionSettingsResponse, error)
 	// Minimum role: tenant_admin.
 	UpdateTenantEmailRejectionSettings(context.Context, *v1.UpdateTenantEmailRejectionSettingsRequest) (*v1.UpdateTenantEmailRejectionSettingsResponse, error)
+	// Minimum role: tenant_admin.
+	GetTenantAnalyticsSettings(context.Context, *v1.GetTenantAnalyticsSettingsRequest) (*v1.GetTenantAnalyticsSettingsResponse, error)
+	// Minimum role: tenant_admin.
+	UpdateTenantAnalyticsSettings(context.Context, *v1.UpdateTenantAnalyticsSettingsRequest) (*v1.UpdateTenantAnalyticsSettingsResponse, error)
 }
 
 // NewTenantSettingsServiceClient constructs a client for the publira.admin.v1.TenantSettingsService
@@ -428,6 +452,10 @@ type TenantSettingsServiceHandler interface {
 	GetTenantEmailRejectionSettings(context.Context, *v1.GetTenantEmailRejectionSettingsRequest) (*v1.GetTenantEmailRejectionSettingsResponse, error)
 	// Minimum role: tenant_admin.
 	UpdateTenantEmailRejectionSettings(context.Context, *v1.UpdateTenantEmailRejectionSettingsRequest) (*v1.UpdateTenantEmailRejectionSettingsResponse, error)
+	// Minimum role: tenant_admin.
+	GetTenantAnalyticsSettings(context.Context, *v1.GetTenantAnalyticsSettingsRequest) (*v1.GetTenantAnalyticsSettingsResponse, error)
+	// Minimum role: tenant_admin.
+	UpdateTenantAnalyticsSettings(context.Context, *v1.UpdateTenantAnalyticsSettingsRequest) (*v1.UpdateTenantAnalyticsSettingsResponse, error)
 }
 
 // RegisterTenantSettingsServiceHandler registers svc as the publira.admin.v1.TenantSettingsService
@@ -462,6 +490,8 @@ func RegisterTenantSettingsServiceHandler(server *connect.Server, svc TenantSett
 		connect.Method{Spec: tenantSettingsServiceUpdateTenantCommunityLimitSettingsSpec(), Handler: adapter.updateTenantCommunityLimitSettings},
 		connect.Method{Spec: tenantSettingsServiceGetTenantEmailRejectionSettingsSpec(), Handler: adapter.getTenantEmailRejectionSettings},
 		connect.Method{Spec: tenantSettingsServiceUpdateTenantEmailRejectionSettingsSpec(), Handler: adapter.updateTenantEmailRejectionSettings},
+		connect.Method{Spec: tenantSettingsServiceGetTenantAnalyticsSettingsSpec(), Handler: adapter.getTenantAnalyticsSettings},
+		connect.Method{Spec: tenantSettingsServiceUpdateTenantAnalyticsSettingsSpec(), Handler: adapter.updateTenantAnalyticsSettings},
 	)
 }
 
@@ -574,6 +604,14 @@ func (UnimplementedTenantSettingsServiceHandler) GetTenantEmailRejectionSettings
 
 func (UnimplementedTenantSettingsServiceHandler) UpdateTenantEmailRejectionSettings(context.Context, *v1.UpdateTenantEmailRejectionSettingsRequest) (*v1.UpdateTenantEmailRejectionSettingsResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.UpdateTenantEmailRejectionSettings is not implemented")
+}
+
+func (UnimplementedTenantSettingsServiceHandler) GetTenantAnalyticsSettings(context.Context, *v1.GetTenantAnalyticsSettingsRequest) (*v1.GetTenantAnalyticsSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.GetTenantAnalyticsSettings is not implemented")
+}
+
+func (UnimplementedTenantSettingsServiceHandler) UpdateTenantAnalyticsSettings(context.Context, *v1.UpdateTenantAnalyticsSettingsRequest) (*v1.UpdateTenantAnalyticsSettingsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.UpdateTenantAnalyticsSettings is not implemented")
 }
 
 type tenantSettingsServiceClient struct {
@@ -791,6 +829,22 @@ func (c *tenantSettingsServiceClient) GetTenantEmailRejectionSettings(ctx contex
 func (c *tenantSettingsServiceClient) UpdateTenantEmailRejectionSettings(ctx context.Context, req *v1.UpdateTenantEmailRejectionSettingsRequest) (*v1.UpdateTenantEmailRejectionSettingsResponse, error) {
 	var res v1.UpdateTenantEmailRejectionSettingsResponse
 	if err := c.client.CallUnary(ctx, tenantSettingsServiceUpdateTenantEmailRejectionSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) GetTenantAnalyticsSettings(ctx context.Context, req *v1.GetTenantAnalyticsSettingsRequest) (*v1.GetTenantAnalyticsSettingsResponse, error) {
+	var res v1.GetTenantAnalyticsSettingsResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceGetTenantAnalyticsSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) UpdateTenantAnalyticsSettings(ctx context.Context, req *v1.UpdateTenantAnalyticsSettingsRequest) (*v1.UpdateTenantAnalyticsSettingsResponse, error) {
+	var res v1.UpdateTenantAnalyticsSettingsResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceUpdateTenantAnalyticsSettingsSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1116,6 +1170,30 @@ func (h tenantSettingsServiceHandler) updateTenantEmailRejectionSettings(ctx con
 		return err
 	}
 	res, err := h.svc.UpdateTenantEmailRejectionSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) getTenantAnalyticsSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetTenantAnalyticsSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetTenantAnalyticsSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) updateTenantAnalyticsSettings(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateTenantAnalyticsSettingsRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateTenantAnalyticsSettings(ctx, &req)
 	if err != nil {
 		return err
 	}

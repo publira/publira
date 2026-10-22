@@ -1046,6 +1046,8 @@ type Querier interface {
 	GetTenantAdminInvitationByHashForTenant(ctx context.Context, arg GetTenantAdminInvitationByHashForTenantParams) (TenantAdminInvitation, error)
 	GetTenantAdminInvitationByIDForTenant(ctx context.Context, arg GetTenantAdminInvitationByIDForTenantParams) (TenantAdminInvitation, error)
 	GetTenantAdminInvitationByTenantAndEmail(ctx context.Context, arg GetTenantAdminInvitationByTenantAndEmailParams) (TenantAdminInvitation, error)
+	// Returns no rows for a tenant that has saved nothing, which reads as no tag.
+	GetTenantAnalyticsSettings(ctx context.Context, tenantID uuid.UUID) (TenantAnalyticsSetting, error)
 	// A tenant with no config row has no row here either, and sells through the
 	// external checkout, which is what the column's default says.
 	GetTenantAppPurchaseRoute(ctx context.Context, tenantID uuid.UUID) (string, error)
@@ -2791,6 +2793,16 @@ type Querier interface {
 	// tenant's currency (LockTenantCurrency), while letting other price writes of
 	// the same tenant go on.
 	LockTenantCurrencyShared(ctx context.Context, tenantID uuid.UUID) error
+	// Serializes the saves of one tenant's settings, so a save compared against
+	// the row as unchanged cannot answer a value a concurrent save replaced, and
+	// two first saves in gateway mode cannot each generate a path of their own.
+	// The lock is on the tenant rather than its settings row, which a tenant that
+	// has saved nothing does not have, and the settings are read by the next
+	// statement rather than this one, for the reason
+	// LockTenantForReaderIconChange gives. NO KEY UPDATE rather than UPDATE, so it
+	// does not hold back the foreign key checks every write naming the tenant
+	// makes.
+	LockTenantForAnalyticsSettings(ctx context.Context, tenantID uuid.UUID) (uuid.UUID, error)
 	// Serializes the creates of one tenant, so two of them cannot both count one
 	// short of the cap and both be stored, nor both take the same next position.
 	// NO KEY UPDATE rather than UPDATE, so it does not hold back the foreign key
@@ -3571,6 +3583,7 @@ type Querier interface {
 	UpsertTagForTenant(ctx context.Context, arg UpsertTagForTenantParams) (Tag, error)
 	// An upsert for the reason UpsertTenantCommentSettings gives.
 	UpsertTenantAgeVerification(ctx context.Context, arg UpsertTenantAgeVerificationParams) (TenantConfig, error)
+	UpsertTenantAnalyticsSettings(ctx context.Context, arg UpsertTenantAnalyticsSettingsParams) (TenantAnalyticsSetting, error)
 	// An upsert for the reason UpsertTenantCommentSettings gives.
 	UpsertTenantAppPurchaseRoute(ctx context.Context, arg UpsertTenantAppPurchaseRouteParams) (string, error)
 	UpsertTenantAppStoreConfig(ctx context.Context, arg UpsertTenantAppStoreConfigParams) (TenantAppStoreConfig, error)

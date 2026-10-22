@@ -402,6 +402,87 @@ final $typed_data.Uint8List getTenantMobileAppAssociationResponseDescriptor =
         'syJy5wdWJsaXJhLnYxLlRlbmFudEFuZHJvaWRBcHBBc3NvY2lhdGlvblIHYW5kcm9pZBI1CgNp'
         'b3MYAiABKAsyIy5wdWJsaXJhLnYxLlRlbmFudElvc0FwcEFzc29jaWF0aW9uUgNpb3M=');
 
+@$core.Deprecated('Use getTenantAnalyticsSettingsRequestDescriptor instead')
+const GetTenantAnalyticsSettingsRequest$json = {
+  '1': 'GetTenantAnalyticsSettingsRequest',
+  '2': [
+    {
+      '1': 'tenant',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.TenantContext',
+      '10': 'tenant'
+    },
+  ],
+};
+
+/// Descriptor for `GetTenantAnalyticsSettingsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getTenantAnalyticsSettingsRequestDescriptor =
+    $convert.base64Decode(
+        'CiFHZXRUZW5hbnRBbmFseXRpY3NTZXR0aW5nc1JlcXVlc3QSNwoGdGVuYW50GAEgASgLMh8ucH'
+        'VibGlyYS50eXBlcy52MS5UZW5hbnRDb250ZXh0UgZ0ZW5hbnQ=');
+
+@$core.Deprecated('Use tenantGoogleTagDescriptor instead')
+const TenantGoogleTag$json = {
+  '1': 'TenantGoogleTag',
+  '2': [
+    {
+      '1': 'ga4_measurement_id',
+      '3': 1,
+      '4': 1,
+      '5': 9,
+      '10': 'ga4MeasurementId'
+    },
+    {'1': 'gtm_container_id', '3': 2, '4': 1, '5': 9, '10': 'gtmContainerId'},
+    {
+      '1': 'serving_mode',
+      '3': 3,
+      '4': 1,
+      '5': 14,
+      '6': '.publira.types.v1.GoogleTagServingMode',
+      '10': 'servingMode'
+    },
+    {
+      '1': 'server_container_url',
+      '3': 4,
+      '4': 1,
+      '5': 9,
+      '10': 'serverContainerUrl'
+    },
+    {'1': 'gateway_path', '3': 5, '4': 1, '5': 9, '10': 'gatewayPath'},
+  ],
+};
+
+/// Descriptor for `TenantGoogleTag`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List tenantGoogleTagDescriptor = $convert.base64Decode(
+    'Cg9UZW5hbnRHb29nbGVUYWcSLAoSZ2E0X21lYXN1cmVtZW50X2lkGAEgASgJUhBnYTRNZWFzdX'
+    'JlbWVudElkEigKEGd0bV9jb250YWluZXJfaWQYAiABKAlSDmd0bUNvbnRhaW5lcklkEkkKDHNl'
+    'cnZpbmdfbW9kZRgDIAEoDjImLnB1YmxpcmEudHlwZXMudjEuR29vZ2xlVGFnU2VydmluZ01vZG'
+    'VSC3NlcnZpbmdNb2RlEjAKFHNlcnZlcl9jb250YWluZXJfdXJsGAQgASgJUhJzZXJ2ZXJDb250'
+    'YWluZXJVcmwSIQoMZ2F0ZXdheV9wYXRoGAUgASgJUgtnYXRld2F5UGF0aA==');
+
+@$core.Deprecated('Use getTenantAnalyticsSettingsResponseDescriptor instead')
+const GetTenantAnalyticsSettingsResponse$json = {
+  '1': 'GetTenantAnalyticsSettingsResponse',
+  '2': [
+    {
+      '1': 'google_tag',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.v1.TenantGoogleTag',
+      '10': 'googleTag'
+    },
+  ],
+};
+
+/// Descriptor for `GetTenantAnalyticsSettingsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getTenantAnalyticsSettingsResponseDescriptor =
+    $convert.base64Decode(
+        'CiJHZXRUZW5hbnRBbmFseXRpY3NTZXR0aW5nc1Jlc3BvbnNlEjoKCmdvb2dsZV90YWcYASABKA'
+        'syGy5wdWJsaXJhLnYxLlRlbmFudEdvb2dsZVRhZ1IJZ29vZ2xlVGFn');
+
 const $core.Map<$core.String, $core.dynamic> TenantServiceBase$json = {
   '1': 'TenantService',
   '2': [
@@ -424,6 +505,11 @@ const $core.Map<$core.String, $core.dynamic> TenantServiceBase$json = {
       '1': 'GetTenantReaderIconPolicy',
       '2': '.publira.v1.GetTenantReaderIconPolicyRequest',
       '3': '.publira.v1.GetTenantReaderIconPolicyResponse'
+    },
+    {
+      '1': 'GetTenantAnalyticsSettings',
+      '2': '.publira.v1.GetTenantAnalyticsSettingsRequest',
+      '3': '.publira.v1.GetTenantAnalyticsSettingsResponse'
     },
   ],
 };
@@ -453,6 +539,11 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
       GetTenantReaderIconPolicyResponse$json,
   '.publira.types.v1.ReaderIconPreset': $0.ReaderIconPreset$json,
   '.publira.types.v1.UserIconVariant': $0.UserIconVariant$json,
+  '.publira.v1.GetTenantAnalyticsSettingsRequest':
+      GetTenantAnalyticsSettingsRequest$json,
+  '.publira.v1.GetTenantAnalyticsSettingsResponse':
+      GetTenantAnalyticsSettingsResponse$json,
+  '.publira.v1.TenantGoogleTag': TenantGoogleTag$json,
 };
 
 /// Descriptor for `TenantService`. Decode as a `google.protobuf.ServiceDescriptorProto`.
@@ -465,4 +556,6 @@ final $typed_data.Uint8List tenantServiceDescriptor = $convert.base64Decode(
     'oxLnB1YmxpcmEudjEuR2V0VGVuYW50TW9iaWxlQXBwQXNzb2NpYXRpb25SZXNwb25zZRJ4ChlH'
     'ZXRUZW5hbnRSZWFkZXJJY29uUG9saWN5EiwucHVibGlyYS52MS5HZXRUZW5hbnRSZWFkZXJJY2'
     '9uUG9saWN5UmVxdWVzdBotLnB1YmxpcmEudjEuR2V0VGVuYW50UmVhZGVySWNvblBvbGljeVJl'
-    'c3BvbnNl');
+    'c3BvbnNlEnsKGkdldFRlbmFudEFuYWx5dGljc1NldHRpbmdzEi0ucHVibGlyYS52MS5HZXRUZW'
+    '5hbnRBbmFseXRpY3NTZXR0aW5nc1JlcXVlc3QaLi5wdWJsaXJhLnYxLkdldFRlbmFudEFuYWx5'
+    'dGljc1NldHRpbmdzUmVzcG9uc2U=');

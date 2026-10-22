@@ -358,6 +358,47 @@ class ReaderIconPolicy extends $pb.ProtobufEnum {
   const ReaderIconPolicy._(super.value, super.name);
 }
 
+/// Where a tenant's storefront loads its Google tag from
+/// (tenant_analytics_settings.serving_mode).
+class GoogleTagServingMode extends $pb.ProtobufEnum {
+  static const GoogleTagServingMode GOOGLE_TAG_SERVING_MODE_UNSPECIFIED =
+      GoogleTagServingMode._(
+          0, _omitEnumNames ? '' : 'GOOGLE_TAG_SERVING_MODE_UNSPECIFIED');
+
+  /// The tag is loaded from Google and sends its hits there. This is what a
+  /// tenant that has never chosen gets.
+  static const GoogleTagServingMode GOOGLE_TAG_SERVING_MODE_GOOGLE =
+      GoogleTagServingMode._(
+          1, _omitEnumNames ? '' : 'GOOGLE_TAG_SERVING_MODE_GOOGLE');
+
+  /// The tag is loaded from, and sends its hits to, the tenant's server-side
+  /// Tag Manager container at server_container_url.
+  static const GoogleTagServingMode GOOGLE_TAG_SERVING_MODE_SERVER_CONTAINER =
+      GoogleTagServingMode._(
+          2, _omitEnumNames ? '' : 'GOOGLE_TAG_SERVING_MODE_SERVER_CONTAINER');
+
+  /// The tag is loaded from, and sends its hits to, gateway_path on the
+  /// storefront's own origin, which Publira proxies to Google, or to the
+  /// tenant's server container when server_container_url is set.
+  static const GoogleTagServingMode GOOGLE_TAG_SERVING_MODE_GATEWAY =
+      GoogleTagServingMode._(
+          3, _omitEnumNames ? '' : 'GOOGLE_TAG_SERVING_MODE_GATEWAY');
+
+  static const $core.List<GoogleTagServingMode> values = <GoogleTagServingMode>[
+    GOOGLE_TAG_SERVING_MODE_UNSPECIFIED,
+    GOOGLE_TAG_SERVING_MODE_GOOGLE,
+    GOOGLE_TAG_SERVING_MODE_SERVER_CONTAINER,
+    GOOGLE_TAG_SERVING_MODE_GATEWAY,
+  ];
+
+  static final $core.List<GoogleTagServingMode?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 3);
+  static GoogleTagServingMode? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
+
+  const GoogleTagServingMode._(super.value, super.name);
+}
+
 /// Which of a tenant's age ratings a reader has to prove an age for
 /// (tenant_config.age_verification). The values are the rungs of one ladder
 /// rather than a switch per rating: a tenant that gated `r15` while leaving

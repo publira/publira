@@ -126,6 +126,29 @@ describe("AuditLogActionCell", () => {
   );
 
   it.each(getLocales())(
+    "names a change to the Google tag in %s",
+    async (locale) => {
+      const cell = await renderActionCell(
+        locale,
+        "tenant_analytics_settings_updated",
+        "tenant_analytics_settings",
+        "TENANT001"
+      );
+
+      const actionName = sharedMessage(
+        "admin.audit.actions.tenant_analytics_settings_updated",
+        locale
+      );
+      const targetName = sharedMessage(
+        "admin.audit.targets.tenant_analytics_settings",
+        locale
+      );
+
+      expect(cell.textContent).toBe(`${actionName}${targetName} / TENANT001`);
+    }
+  );
+
+  it.each(getLocales())(
     "names a change to the refused email addresses in %s",
     async (locale) => {
       const cell = await renderActionCell(

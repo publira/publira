@@ -178,6 +178,24 @@ final $typed_data.Uint8List readerIconPolicyDescriptor = $convert.base64Decode(
     '0KGVJFQURFUl9JQ09OX1BPTElDWV9VUExPQUQQARIdChlSRUFERVJfSUNPTl9QT0xJQ1lfUFJF'
     'U0VUEAISHwobUkVBREVSX0lDT05fUE9MSUNZX0RJU0FCTEVEEAM=');
 
+@$core.Deprecated('Use googleTagServingModeDescriptor instead')
+const GoogleTagServingMode$json = {
+  '1': 'GoogleTagServingMode',
+  '2': [
+    {'1': 'GOOGLE_TAG_SERVING_MODE_UNSPECIFIED', '2': 0},
+    {'1': 'GOOGLE_TAG_SERVING_MODE_GOOGLE', '2': 1},
+    {'1': 'GOOGLE_TAG_SERVING_MODE_SERVER_CONTAINER', '2': 2},
+    {'1': 'GOOGLE_TAG_SERVING_MODE_GATEWAY', '2': 3},
+  ],
+};
+
+/// Descriptor for `GoogleTagServingMode`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List googleTagServingModeDescriptor = $convert.base64Decode(
+    'ChRHb29nbGVUYWdTZXJ2aW5nTW9kZRInCiNHT09HTEVfVEFHX1NFUlZJTkdfTU9ERV9VTlNQRU'
+    'NJRklFRBAAEiIKHkdPT0dMRV9UQUdfU0VSVklOR19NT0RFX0dPT0dMRRABEiwKKEdPT0dMRV9U'
+    'QUdfU0VSVklOR19NT0RFX1NFUlZFUl9DT05UQUlORVIQAhIjCh9HT09HTEVfVEFHX1NFUlZJTk'
+    'dfTU9ERV9HQVRFV0FZEAM=');
+
 @$core.Deprecated('Use ageVerificationDescriptor instead')
 const AgeVerification$json = {
   '1': 'AgeVerification',

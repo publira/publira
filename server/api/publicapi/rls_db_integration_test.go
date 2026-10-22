@@ -255,6 +255,9 @@ var publicDataTables = []struct {
 	// on every sign-up and email change. An entry may be a reader's address.
 	{name: "tenant_email_rejection_settings", count: "SELECT count(*) FROM tenant_email_rejection_settings"},
 	{name: "tenant_email_rejection_entries", count: "SELECT count(*) FROM tenant_email_rejection_entries"},
+	// The Google tag the storefront renders into every page, which its
+	// connection reads to build the tag.
+	{name: "tenant_analytics_settings", count: "SELECT count(*) FROM tenant_analytics_settings"},
 	// The tenant's own notices and one reader's state over them. The inbox is
 	// answered on the storefront's connection, so a missing policy here would
 	// put one tenant's notices — and one reader's read state — in another's.
@@ -452,6 +455,7 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	seed("google sign-in", "INSERT INTO tenant_google_sign_in_config (tenant_id, web_client_id) VALUES ($1, '123-abc.apps.googleusercontent.com')", first.ID)
 	seed("email rejection settings", "INSERT INTO tenant_email_rejection_settings (tenant_id, reject_disposable_domains) VALUES ($1, true)", first.ID)
 	seed("email rejection entry", "INSERT INTO tenant_email_rejection_entries (tenant_id, entry) VALUES ($1, 'blocked.example')", first.ID)
+	seed("analytics settings", "INSERT INTO tenant_analytics_settings (tenant_id, gtm_container_id) VALUES ($1, 'GTM-TENANTA')", first.ID)
 	seed("linked identity", "INSERT INTO user_identities (id, tenant_id, user_id, provider, subject, email_at_link, refresh_token_encrypted, refresh_token_client_id) VALUES ($1, $2, $3, 'apple', 'apple-subject', 'member@tenant-a.example.com', 'enc:probe', 'com.example.tenant-a.web')", uuid.Must(uuid.NewV7()), first.ID, member.ID)
 	seed("sign-in nonce", "INSERT INTO sign_in_nonces (tenant_id, nonce_hash, expires_at) VALUES ($1, 'nonce-hash', NOW() + INTERVAL '1 hour')", first.ID)
 	env.PG.SeedEpisodeImage(t, first.ID, episode.ID, 1)

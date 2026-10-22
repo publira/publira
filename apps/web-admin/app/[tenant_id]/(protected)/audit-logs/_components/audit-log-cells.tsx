@@ -476,6 +476,11 @@ const settingsActionName = (action: string) => {
         <Message message="admin.audit.actions.tenant_email_rejection_settings_updated" />
       );
     }
+    case "tenant_analytics_settings_updated": {
+      return (
+        <Message message="admin.audit.actions.tenant_analytics_settings_updated" />
+      );
+    }
     default: {
       return null;
     }
@@ -664,6 +669,11 @@ const settingTargetName = (targetType: string) => {
   switch (targetType) {
     case "tenant_age_verification": {
       return <Message message="admin.audit.targets.tenant_age_verification" />;
+    }
+    case "tenant_analytics_settings": {
+      return (
+        <Message message="admin.audit.targets.tenant_analytics_settings" />
+      );
     }
     case "tenant_branding": {
       return <Message message="admin.audit.targets.tenant_branding" />;
