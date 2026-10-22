@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:publira/app.dart';
+import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/push/push_controller.dart';
 import 'package:publira/push/push_message.dart';
 import 'package:publira/push/push_messaging.dart';
@@ -52,6 +53,7 @@ void main() {
     WidgetTester tester, {
     String initialLocation = AppRoutes.catalog,
     bool signedIn = true,
+    FakeAuthRepository? auth,
   }) async {
     final push = pushController();
     router = createAppRouter(initialLocation: initialLocation);
@@ -59,7 +61,10 @@ void main() {
       PubliraApp(
         router: router,
         catalog: catalog,
-        auth: fakeAuthController(session: signedIn ? fakeSession : null),
+        auth: fakeAuthController(
+          session: signedIn ? fakeSession : null,
+          repository: auth,
+        ),
         push: push,
       ),
     );
@@ -119,6 +124,29 @@ void main() {
       find.text('Receive push notifications on this device'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('the switch stays when the notification settings cannot be '
+      'read', (tester) async {
+    store.token = 'device-token';
+    await pumpApp(
+      tester,
+      initialLocation: AppRoutes.account,
+      auth: FakeAuthRepository()
+        ..notificationSettingsFailure = const AuthFailure(
+          AuthFailureKind.network,
+        ),
+    );
+    await showSwitch(tester);
+    expect(
+      find.byKey(const ValueKey('account-notification-settings-error')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('account-notifications')));
+    await tester.pumpAndSettle();
+
+    expect(repository.unregistered, ['device-token']);
   });
 
   testWidgets('turning the switch on registers the device', (tester) async {

@@ -921,6 +921,9 @@ class _NotificationSettingsSectionState
               ),
             ),
             const Divider(height: 1),
+            // The device's own switch reads nothing from the account, so a
+            // read still in flight does not hold back turning it off.
+            const _NotificationSwitch(),
           ]);
         }
         if (snapshot.hasError) {
@@ -938,6 +941,9 @@ class _NotificationSettingsSectionState
               ),
             ),
             const Divider(height: 1),
+            // Nor does a read that failed, which leaves the device's way out
+            // of push notifications open while the API is unreachable.
+            const _NotificationSwitch(),
           ]);
         }
         final settings = _settings ?? snapshot.data;
