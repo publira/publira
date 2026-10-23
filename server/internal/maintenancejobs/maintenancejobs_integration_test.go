@@ -89,12 +89,21 @@ func TestWorkerCatchesUpTheDaysItMissed(t *testing.T) {
 // maintenance role's own connection. It answers a function that stops it.
 func startWorkerWithMaintenanceJobs(t *testing.T, pg *testutil.PostgresEnv, source storage.ReclaimerSource) func() {
 	t.Helper()
+	return startWorker(t, pg, maintenancejobs.Config{DB: pg.OpenContentStatsDB(t), Storage: source})
+}
+
+// startWorker is startWorkerWithMaintenanceJobs with the jobs' wiring given
+// whole, for a test that sizes their pool or hands them secrets.
+func startWorker(t *testing.T, pg *testutil.PostgresEnv, cfg maintenancejobs.Config) func() {
+	t.Helper()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
-	jobs, err := maintenancejobs.New(maintenancejobs.Config{DB: pg.OpenContentStatsDB(t), Storage: source, Logger: logger})
+	cfg.Logger = logger
+	jobs, err := maintenancejobs.New(cfg)
 	if err != nil {
 		t.Fatalf("build maintenance jobs: %v", err)
 	}
+	jobs.SetTurnWait(50 * time.Millisecond)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	t.Cleanup(cancel)

@@ -2,9 +2,16 @@ package maintenancejobs_test
 
 import (
 	"context"
+	"io"
+	"log/slog"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/riverqueue/river"
+	"github.com/riverqueue/river/riverdriver/riverdatabasesql"
+
+	"github.com/publira/publira/server/internal/maintenancejobs"
 	"github.com/publira/publira/server/internal/storage"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -92,6 +99,106 @@ func TestTwoWorkersNeverRunOneKindConcurrently(t *testing.T) {
 	}
 }
 
+// Each replica's River client runs one maintenance pass at a time, and two
+// replicas are two clients, so the turn is taken install-wide as well. While
+// one replica's orphan image sweep is held in the middle of its pass, the
+// royalty close the other replica picks up waits for it rather than running
+// beside it, and waiting is not a failure: once the sweep ends, every pass
+// completes with no error recorded against it.
+func TestTwoWorkersRunOneMaintenancePassAtATime(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+
+	source := newHeldSource()
+	startWorkerWithMaintenanceJobs(t, pg, source)
+	startWorkerWithMaintenanceJobs(t, pg, source)
+
+	select {
+	case <-source.entered:
+	case <-ctx.Done():
+		t.Fatalf("waiting for the orphan image sweep to start: %v", ctx.Err())
+	}
+	var sweepStarted time.Time
+	if err := pg.DB.QueryRowContext(ctx,
+		"SELECT attempted_at FROM river_job WHERE kind = 'maintenance.purge_orphan_images' AND state = 'running'",
+	).Scan(&sweepStarted); err != nil {
+		t.Fatalf("read the running sweep: %v", err)
+	}
+
+	inserter, err := river.NewClient(riverdatabasesql.New(pg.DB), &river.Config{
+		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	})
+	if err != nil {
+		t.Fatalf("build an insert-only client: %v", err)
+	}
+	inserted, err := inserter.Insert(ctx, maintenancejobs.CloseRoyaltyStatementsArgs{}, nil)
+	if err != nil {
+		t.Fatalf("enqueue a royalty close: %v", err)
+	}
+	closeID := inserted.Job.ID
+
+	waitFor(t, ctx, "the royalty close to be turned away or to finish while the sweep runs", func() bool {
+		var snoozes int
+		var finalized bool
+		if err := pg.DB.QueryRowContext(ctx,
+			"SELECT coalesce((metadata->>'snoozes')::int, 0), finalized_at IS NOT NULL FROM river_job WHERE id = $1", closeID,
+		).Scan(&snoozes, &finalized); err != nil {
+			t.Fatalf("read the royalty close: %v", err)
+		}
+		return snoozes >= 2 || finalized
+	})
+	var ranBeside int
+	if err := pg.DB.QueryRowContext(ctx, `
+		SELECT count(*) FROM river_job
+		WHERE queue = 'maintenance' AND kind <> 'maintenance.purge_orphan_images'
+			AND state = 'completed' AND attempted_at > $1
+	`, sweepStarted).Scan(&ranBeside); err != nil {
+		t.Fatalf("count passes that ran beside the sweep: %v", err)
+	}
+	if ranBeside != 0 {
+		t.Fatalf("%d maintenance passes started and completed while the orphan image sweep was running, want none", ranBeside)
+	}
+
+	close(source.release)
+	waitFor(t, ctx, "every maintenance pass to finish", func() bool {
+		var inFlight int
+		if err := pg.DB.QueryRowContext(ctx,
+			"SELECT count(*) FROM river_job WHERE queue = 'maintenance' AND finalized_at IS NULL",
+		).Scan(&inFlight); err != nil {
+			t.Fatalf("count in-flight maintenance jobs: %v", err)
+		}
+		return inFlight == 0
+	})
+
+	// The Google Play sync is left out: these workers are given no Google Play
+	// client, so it fails on its own whoever holds the turn.
+	rows, err := pg.DB.QueryContext(ctx, `
+		SELECT kind, state::text FROM river_job
+		WHERE queue = 'maintenance' AND kind <> 'maintenance.sync_google_play_voided_purchases'
+			AND (state <> 'completed' OR cardinality(errors) > 0)
+	`)
+	if err != nil {
+		t.Fatalf("list maintenance passes that did not complete cleanly: %v", err)
+	}
+	defer rows.Close() //nolint:errcheck
+	for rows.Next() {
+		var kind, state string
+		if err := rows.Scan(&kind, &state); err != nil {
+			t.Fatalf("scan maintenance pass: %v", err)
+		}
+		t.Errorf("%s ended %s or recorded an error, want every pass completed with none", kind, state)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("list maintenance passes that did not complete cleanly: %v", err)
+	}
+	if countJobs(t, ctx, pg.DB, "maintenance.close_royalty_statements", "completed") == 0 {
+		t.Fatal("the royalty close never completed")
+	}
+}
+
 // A pass that fails is kept as its river_job row, with the error naming the
 // tenant it failed on, and is retried rather than dropped. The tenants it did
 // not fail on carry on down the chain in the meantime.
@@ -164,3 +271,34 @@ func countFinalized(t *testing.T, ctx context.Context, pg *testutil.PostgresEnv,
 	}
 	return rows
 }
+
+// heldSource holds the orphan image sweep that resolves it until release is
+// closed, and then hands it a bucket with nothing in it. entered is closed once
+// a sweep is waiting.
+type heldSource struct {
+	entered chan struct{}
+	release chan struct{}
+	once    *sync.Once
+}
+
+func newHeldSource() heldSource {
+	return heldSource{entered: make(chan struct{}), release: make(chan struct{}), once: &sync.Once{}}
+}
+
+func (s heldSource) Reclaimer(ctx context.Context) (storage.Reclaimer, string, error) {
+	s.once.Do(func() { close(s.entered) })
+	select {
+	case <-s.release:
+		return emptyBucket{}, "held", nil
+	case <-ctx.Done():
+		return nil, "", ctx.Err()
+	}
+}
+
+type emptyBucket struct{}
+
+func (emptyBucket) List(context.Context, storage.ListRequest) (storage.ListResult, error) {
+	return storage.ListResult{}, nil
+}
+
+func (emptyBucket) Delete(context.Context, []string) error { return nil }
