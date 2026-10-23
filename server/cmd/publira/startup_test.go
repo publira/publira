@@ -2,16 +2,21 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"os"
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect/v2"
 	"connectrpc.com/connect/v2/connecthttp"
+	"github.com/google/uuid"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/outbox"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
@@ -353,6 +358,196 @@ func TestWorkerStartsWithOnlySecretsAndInfrastructure(t *testing.T) {
 	assertReadyChecks(t, worker+"/readyz", "db.outbox", "db.ticker", "db.content_stats")
 }
 
+// Two replicas that split the queues between them, one hosting the Outbox
+// drain alone and one the other three queues, process every kind of work one
+// replica hosting every queue does, each on its own queues alone. River's
+// elected leader enqueues every periodic job whatever it hosts itself, so
+// which replica starts first decides which of them enqueues the other's jobs,
+// and both orders are run.
+//
+// The drain replica is given the other logins' URLs on a port nothing listens
+// on and a maintenance tunable it would refuse, so opening either pool, or
+// reading what only the maintenance jobs read, would stop it from starting.
+func TestWorkerReplicasSplitTheQueues(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		drainFirst bool
+	}{
+		{"the drain replica leads", true},
+		{"the jobs replica leads", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			pg := testutil.StartPostgres(t)
+			pg.Reset(t)
+
+			startDrain := func() *testutil.Process {
+				p := testutil.StartMain(t, testutil.Env(testutil.DeploymentSecrets(), map[string]string{
+					"PUBLIRA_WORKER_DB_URL":           pg.OutboxURL,
+					"PUBLIRA_TICKER_DB_URL":           unreachableDBURL("publira_ticker"),
+					"PUBLIRA_CONTENT_STATS_DB_URL":    unreachableDBURL("publira_content_stats"),
+					"PUBLIRA_ORPHAN_IMAGES_PAGE_SIZE": "not-a-number",
+					"PUBLIRA_WORKER_ADDR":             anyLoopbackPort,
+				}, revalidationWithoutPlatformConsole()), "worker", "--queue", "outbox")
+				base := listenerURL(t, p, "worker")
+				p.WaitReady(t, base+"/readyz")
+				assertReadyChecks(t, base+"/readyz", "db.outbox")
+				return p
+			}
+			startJobs := func() *testutil.Process {
+				p := testutil.StartMain(t, testutil.Env(testutil.DeploymentSecrets(), map[string]string{
+					"PUBLIRA_WORKER_DB_URL":        pg.OutboxURL,
+					"PUBLIRA_TICKER_DB_URL":        pg.TickerURL,
+					"PUBLIRA_CONTENT_STATS_DB_URL": pg.ContentStatsURL,
+					"PUBLIRA_WORKER_ADDR":          anyLoopbackPort,
+				}, revalidationWithoutPlatformConsole()), "worker", "--queue", "ticker,maintenance,search_index")
+				base := listenerURL(t, p, "worker")
+				p.WaitReady(t, base+"/readyz")
+				assertReadyChecks(t, base+"/readyz", "db.outbox", "db.ticker", "db.content_stats")
+				return p
+			}
+
+			// The replica started first is the only one running when River
+			// elects a leader, and it has enqueued and worked a job of its own
+			// before the second starts.
+			var drain, jobs *testutil.Process
+			if tc.drainFirst {
+				drain = startDrain()
+				waitForFinishedKinds(t, pg.DB, "outbox.drain")
+				jobs = startJobs()
+			} else {
+				jobs = startJobs()
+				waitForFinishedKinds(t, pg.DB, "ticker.publish_episodes")
+				drain = startDrain()
+			}
+
+			event, err := dbmodels.New(pg.DB).InsertOutboxEvent(t.Context(), dbmodels.InsertOutboxEventParams{
+				ID:             uuid.Must(uuid.NewV7()),
+				EventType:      outbox.EventTypeTest,
+				Payload:        json.RawMessage(`{}`),
+				IdempotencyKey: "test:" + t.Name(),
+				AvailableAt:    time.Now().UTC().Add(-time.Second),
+			})
+			if err != nil {
+				t.Fatalf("insert an outbox event: %v", err)
+			}
+			waitForFinishedKinds(t, pg.DB,
+				"outbox.drain",
+				"outbox.process",
+				"ticker.publish_episodes",
+				"ticker.apply_free_windows",
+				"ticker.roll_tenant_day",
+				"ticker.expire_pinned_announcements",
+				"ticker.apply_series_publications",
+				"ticker.apply_campaign_banners",
+				"ticker.apply_campaign_prices",
+				"maintenance.project_episode_reads",
+				"maintenance.aggregate_content_stats",
+				"maintenance.aggregate_rankings",
+				"maintenance.build_recommend_features",
+				"maintenance.purge_content_events",
+				"maintenance.purge_ranking_snapshots",
+				"maintenance.purge_mfa_challenges",
+				"maintenance.purge_withdrawn_comments",
+				"maintenance.purge_orphan_images",
+				"maintenance.close_royalty_statements",
+				"maintenance.sync_google_play_voided_purchases",
+				"maintenance.build_search_index",
+			)
+			got, err := dbmodels.New(pg.DB).GetOutboxEvent(t.Context(), event.ID)
+			if err != nil {
+				t.Fatalf("read the outbox event: %v", err)
+			}
+			if got.Status != outbox.StatusDone {
+				t.Fatalf("outbox event status = %q, want %q", got.Status, outbox.StatusDone)
+			}
+
+			// Each replica worked the queues it hosts and no other: the jobs on
+			// River's default queue were attempted by one client, and every
+			// other job by one other.
+			drainClients := riverClientsWorking(t, pg.DB, "queue = 'default'")
+			jobsClients := riverClientsWorking(t, pg.DB, "queue <> 'default'")
+			if len(drainClients) != 1 || len(jobsClients) != 1 || drainClients[0] == jobsClients[0] {
+				t.Fatalf("default queue attempted by %v and the other queues by %v, want one client each and not the same one", drainClients, jobsClients)
+			}
+
+			if out := drain.Output(); !strings.Contains(out, `not_hosted="[ticker maintenance search_index]"`) {
+				t.Fatalf("the drain replica does not name the queues it leaves to others:\n%s", out)
+			}
+			if out := jobs.Output(); !strings.Contains(out, `not_hosted=[outbox]`) {
+				t.Fatalf("the jobs replica does not name the queue it leaves to others:\n%s", out)
+			}
+			for _, p := range []*testutil.Process{drain, jobs} {
+				if code := p.Stop(t); code != 0 {
+					t.Fatalf("exit code after SIGTERM = %d, want 0; output:\n%s", code, p.Output())
+				}
+			}
+		})
+	}
+}
+
+// waitForFinishedKinds waits until a run of each kind has finished in
+// river_job. A cancelled run counts: the orphan image sweep cancels itself on a
+// platform with no object store saved.
+func waitForFinishedKinds(t *testing.T, db *sql.DB, kinds ...string) {
+	t.Helper()
+	deadline := time.Now().Add(60 * time.Second)
+	for {
+		rows, err := db.QueryContext(t.Context(),
+			"SELECT DISTINCT kind FROM river_job WHERE kind = ANY($1) AND state IN ('completed', 'cancelled')", kinds)
+		if err != nil {
+			t.Fatalf("read river_job: %v", err)
+		}
+		finished := map[string]bool{}
+		for rows.Next() {
+			var kind string
+			if err := rows.Scan(&kind); err != nil {
+				t.Fatalf("read river_job: %v", err)
+			}
+			finished[kind] = true
+		}
+		if err := rows.Close(); err != nil {
+			t.Fatalf("read river_job: %v", err)
+		}
+		var missing []string
+		for _, kind := range kinds {
+			if !finished[kind] {
+				missing = append(missing, kind)
+			}
+		}
+		if len(missing) == 0 {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("timed out waiting for a finished run of %v", missing)
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+// riverClientsWorking answers the River clients that attempted a job matching
+// where.
+func riverClientsWorking(t *testing.T, db *sql.DB, where string) []string {
+	t.Helper()
+	rows, err := db.QueryContext(t.Context(),
+		"SELECT DISTINCT client FROM river_job, unnest(attempted_by) AS client WHERE "+where+" ORDER BY client")
+	if err != nil {
+		t.Fatalf("read river_job: %v", err)
+	}
+	defer rows.Close() //nolint:errcheck
+	var clients []string
+	for rows.Next() {
+		var client string
+		if err := rows.Scan(&client); err != nil {
+			t.Fatalf("read river_job: %v", err)
+		}
+		clients = append(clients, client)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("read river_job: %v", err)
+	}
+	return clients
+}
+
 // A server that hosts the worker brings up both listeners, each with the
 // readiness checks it answers with in a process of its own, and one SIGTERM
 // stops all of it: the exit status is 0 only when every listener drained and
@@ -380,6 +575,35 @@ func TestServerWithWorkerServesBothHalvesAndStopsThemTogether(t *testing.T) {
 
 	assertReadyChecks(t, server+"/readyz", "db.public", "db.admin", "db.platform")
 	assertReadyChecks(t, worker+"/readyz", "db.outbox", "db.ticker", "db.content_stats")
+
+	if code := p.Stop(t); code != 0 {
+		t.Fatalf("exit code after SIGTERM = %d, want 0; output:\n%s", code, p.Output())
+	}
+}
+
+// The worker a server hosts takes --queue as a worker process does: it opens
+// the pools of the queues it is given alone, and readiness names those.
+func TestServerWithWorkerHostsTheQueuesItIsGiven(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	p := testutil.StartMain(t, testutil.Env(testutil.DeploymentSecrets(), map[string]string{
+		"PUBLIRA_PUBLIC_DB_URL":        pg.PublicURL,
+		"PUBLIRA_ADMIN_DB_URL":         pg.AdminURL,
+		"PUBLIRA_PLATFORM_DB_URL":      pg.PlatformURL,
+		"PUBLIRA_PUBLIC_API_ADDR":      anyLoopbackPort,
+		"PUBLIRA_WORKER_DB_URL":        pg.OutboxURL,
+		"PUBLIRA_TICKER_DB_URL":        unreachableDBURL("publira_ticker"),
+		"PUBLIRA_CONTENT_STATS_DB_URL": pg.ContentStatsURL,
+		"PUBLIRA_WORKER_ADDR":          anyLoopbackPort,
+	}, revalidationWithoutPlatformConsole()), "server", "--with-worker", "--queue", "outbox,maintenance,search_index")
+	server := listenerURL(t, p, "server")
+	worker := listenerURL(t, p, "worker")
+	for _, url := range []string{server, worker} {
+		p.WaitReady(t, url+"/readyz")
+	}
+
+	assertReadyChecks(t, server+"/readyz", "db.public", "db.admin", "db.platform")
+	assertReadyChecks(t, worker+"/readyz", "db.outbox", "db.content_stats")
 
 	if code := p.Stop(t); code != 0 {
 		t.Fatalf("exit code after SIGTERM = %d, want 0; output:\n%s", code, p.Output())

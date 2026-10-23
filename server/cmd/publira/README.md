@@ -7,7 +7,7 @@ The binary behind both of a deployment's long-lived Go processes. The first argu
 | `publira server` | The API and image delivery, on one port  |
 | `publira worker` | The Outbox drain and every scheduled job |
 
-`publira server --with-worker` runs both in one process; see [Hosting the worker](#hosting-the-worker---with-worker). `publira server --role` serves some of its API surfaces alone; see [Serving some roles](#serving-some-roles---role). Without a command, with a command other than these two, or with any further argument — `--role` and `--with-worker` after `server` aside — the binary prints its usage to stderr and exits with status 2. With the three Next.js apps, a deployment therefore runs five processes, and both Go ones come from one image ([`infra/docker/server/Dockerfile`](../../../infra/docker/server/Dockerfile)). [`publiractl`](../publiractl/README.md), the command an operator runs by hand, stays a binary of its own because it has to work on a deployment that serves nothing.
+`publira server --with-worker` runs both in one process; see [Hosting the worker](#hosting-the-worker---with-worker). `publira server --role` serves some of its API surfaces alone; see [Serving some roles](#serving-some-roles---role). `publira worker --queue` hosts some of its queues alone; see [Hosting some queues](#hosting-some-queues---queue). Without a command, with a command other than these two, or with any further argument — `--role`, `--with-worker`, and `--queue` after `server`, and `--queue` after `worker`, aside — the binary prints its usage to stderr and exits with status 2. With the three Next.js apps, a deployment therefore runs five processes, and both Go ones come from one image ([`infra/docker/server/Dockerfile`](../../../infra/docker/server/Dockerfile)). [`publiractl`](../publiractl/README.md), the command an operator runs by hand, stays a binary of its own because it has to work on a deployment that serves nothing.
 
 ## publira server
 
@@ -136,9 +136,9 @@ The process the reverse proxy forwards internet traffic to can therefore run `--
 publira server --with-worker
 ```
 
-runs everything [`publira worker`](#publira-worker) runs inside this process as well, for an install on one host that will not scale the two apart: the Go side becomes one container, or one systemd unit, instead of two. The flag chooses what the process hosts, and every value still comes from the environment. The image's default command stays `server`; [`infra/deploy/compose.yaml`](../../../infra/deploy/compose.yaml) runs its `server` service with the flag.
+runs everything [`publira worker`](#publira-worker) runs inside this process as well, for an install on one host that will not scale the two apart: the Go side becomes one container, or one systemd unit, instead of two. The flag chooses what the process hosts, and every value still comes from the environment. [`--queue`](#hosting-some-queues---queue) narrows the worker it hosts as it narrows `publira worker`, and is refused without `--with-worker`. The image's default command stays `server`; [`infra/deploy/compose.yaml`](../../../infra/deploy/compose.yaml) runs its `server` service with the flag.
 
-Nothing is merged. The process holds all six pools, one per login, and serves both listeners — the server's `:8000` and the worker's `:8003` — each with the `/livez` and `/readyz` it answers with in a process of its own, so an orchestrator's probes and the reverse proxy's routing are unchanged. It therefore reads the union of both processes' environment variables: the ones [above](#main-environment-variables) and the ones [under the worker](#main-environment-variables-1). The process does not start when either half cannot, just as that half does not start on its own. One `SIGTERM` stops the whole process within the same 30-second window either process takes alone.
+Nothing is merged. The process holds all six pools, one per login, or fewer when `--role` or `--queue` narrows either half, and serves both listeners — the server's `:8000` and the worker's `:8003` — each with the `/livez` and `/readyz` it answers with in a process of its own, so an orchestrator's probes and the reverse proxy's routing are unchanged. It therefore reads the union of both processes' environment variables: the ones [above](#main-environment-variables) and the ones [under the worker](#main-environment-variables-1). The process does not start when either half cannot, just as that half does not start on its own. One `SIGTERM` stops the whole process within the same 30-second window either process takes alone.
 
 Every `service.name` of both processes is kept: the Connect namespaces, the image routes, `publira-worker` for the Outbox drain, and one per job. The process default is `publira-api-server`, so the metrics — the Outbox instruments among them — and the database and outbound HTTP spans that belong to no namespace or job report under that name.
 
@@ -146,7 +146,7 @@ The trade-off is the process boundary. Two processes can be scaled independently
 
 ## publira worker
 
-The long-lived background process. It hosts one River client, on which it drains the Outbox and processes the entries as jobs, runs the four [periodic jobs](#periodic-jobs), and owns the [maintenance jobs](#maintenance-jobs) that rebuild, purge, close, and reconcile stored data. It runs as a separate process from `publira server`, and it is all the scheduling a deployment needs: nothing besides it — no host cron, no Kubernetes CronJob — has to invoke a job on a timer. Any number of replicas may run, since every scheduled job is unique while a run of it is in flight. Besides `outbox_test`, the Outbox drain handles these email events:
+The long-lived background process. It hosts one River client, on which it drains the Outbox and processes the entries as jobs, runs the [periodic jobs](#periodic-jobs), and owns the [maintenance jobs](#maintenance-jobs) that rebuild, purge, close, and reconcile stored data. It runs as a separate process from `publira server`, and it is all the scheduling a deployment needs: nothing besides it — no host cron, no Kubernetes CronJob — has to invoke a job on a timer. Any number of replicas may run, since every scheduled job is unique while a run of it is in flight, and a replica may host some of the work alone; see [Hosting some queues](#hosting-some-queues---queue). Besides `outbox_test`, the Outbox drain handles these email events:
 
 | Event type | Mail |
 | --- | --- |
@@ -319,9 +319,9 @@ docker run --rm publira/publira:local worker
 The connection uses `publira_outbox`, the login across every tenant the baseline seed creates for this process, in every environment. `PUBLIRA_DB_URL` is not a fallback: it is the superuser connection locally and the migration tooling's connection in production, so an unset variable fails to authenticate rather than quietly granting the worker more privilege.
 
 - `PUBLIRA_WORKER_DB_URL` (optional; falls back to the development default `postgres://publira_outbox:outboxpass@db:5432/publira?sslmode=disable`)
-- `PUBLIRA_TICKER_DB_URL` (optional; the periodic jobs' own connection, falling back to `postgres://publira_ticker:tickerpass@db:5432/publira?sslmode=disable` and never to `PUBLIRA_DB_URL`)
-- `PUBLIRA_CONTENT_STATS_DB_URL` (optional; the maintenance jobs' own connection, falling back to `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` and never to `PUBLIRA_DB_URL`)
-- `PUBLIRA_DB_MAX_OPEN_CONNS` / `PUBLIRA_DB_MAX_IDLE_CONNS` / `PUBLIRA_DB_CONN_MAX_IDLE_TIME` (optional, `10`, the first one's value, and `5m` when unset. Bound each of the three pools on its own, as in `publira server`; see [Connection pools](../../README.md#connection-pools))
+- `PUBLIRA_TICKER_DB_URL` (optional; the periodic jobs' own connection, falling back to `postgres://publira_ticker:tickerpass@db:5432/publira?sslmode=disable` and never to `PUBLIRA_DB_URL`. Read only where the `ticker` queue is hosted)
+- `PUBLIRA_CONTENT_STATS_DB_URL` (optional; the maintenance jobs' own connection, falling back to `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` and never to `PUBLIRA_DB_URL`. Read only where the `maintenance` or the `search_index` queue is hosted)
+- `PUBLIRA_DB_MAX_OPEN_CONNS` / `PUBLIRA_DB_MAX_IDLE_CONNS` / `PUBLIRA_DB_CONN_MAX_IDLE_TIME` (optional, `10`, the first one's value, and `5m` when unset. Bound each of the pools on its own, as in `publira server`; see [Connection pools](../../README.md#connection-pools))
 - `PUBLIRA_WORKER_ADDR` (optional, default `:8003`. Serves `/livez` and `/readyz`)
 - `PUBLIRA_OUTBOX_DRAIN_INTERVAL` (optional, a Go duration. Default `2s`)
 - `PUBLIRA_OUTBOX_CLAIM_LIMIT` (optional, the maximum number of rows claimed per drain. Default `100`)
@@ -329,8 +329,8 @@ The connection uses `publira_outbox`, the login across every tenant the baseline
 - `PUBLIRA_OUTBOX_STALE_PROCESSING` (optional, a Go duration. Default `15m`. A `processing` row older than this is returned to `pending`. For the auth mail above the reclaim also counts as a failed attempt, so this duration times `PUBLIRA_OUTBOX_MAX_ATTEMPTS` bounds how long a crash loop can keep the row's raw token)
 - `PUBLIRA_OUTBOX_MAX_WORKERS` (optional, the concurrency of River's default queue, which the Outbox drain has to itself. Default `8`)
 - `PUBLIRA_PUBLISH_INTERVAL_SECONDS` / `PUBLIRA_FREE_WINDOW_INTERVAL_SECONDS` / `PUBLIRA_TENANT_DAY_INTERVAL_SECONDS` / `PUBLIRA_PINNED_ANNOUNCEMENT_INTERVAL_SECONDS` / `PUBLIRA_SERIES_PUBLICATION_INTERVAL_SECONDS` / `PUBLIRA_CAMPAIGN_BANNER_INTERVAL_SECONDS` / `PUBLIRA_CAMPAIGN_PRICE_INTERVAL_SECONDS` (optional, seconds between the passes of each periodic job. Default `60`; a non-numeric or non-positive value falls back to it. Each one bounds how long the site can stay on the wrong side of the instant its job answers to)
-- `PUBLIRA_PUBLISH_MAX_RETRIES` (optional, retries per episode within one `ticker.publish_episodes` pass. Default `3`)
-- `PUBLIRA_EPISODE_READ_PROJECTION_BATCH_SIZE`, `PUBLIRA_CONTENT_RANKING_ITEM_LIMIT`, `PUBLIRA_RECOMMEND_FEATURES_WINDOW_DAYS`, `PUBLIRA_CONTENT_EVENTS_PURGE_CHUNK_SIZE`, `PUBLIRA_CONTENT_RANKING_PURGE_CHUNK_SIZE`, `PUBLIRA_MFA_CHALLENGE_PURGE_CHUNK_SIZE`, `PUBLIRA_COMMENT_PURGE_CHUNK_SIZE`, `PUBLIRA_ORPHAN_IMAGES_MIN_AGE_HOURS`, `PUBLIRA_ORPHAN_IMAGES_PAGE_SIZE` (optional, the maintenance jobs' tunables, documented per job in [publiractl](../publiractl/README.md). They are read once at startup, so a value that is not a positive whole number stops the process with the variable's name. The dated rebuild and dry-run variables are not read here: they control one invocation rather than a deployment, so they belong to `publiractl job`)
+- `PUBLIRA_PUBLISH_MAX_RETRIES` (optional, retries per episode within one `ticker.publish_episodes` pass. Default `3`. Read only where the `ticker` queue is hosted)
+- `PUBLIRA_EPISODE_READ_PROJECTION_BATCH_SIZE`, `PUBLIRA_CONTENT_RANKING_ITEM_LIMIT`, `PUBLIRA_RECOMMEND_FEATURES_WINDOW_DAYS`, `PUBLIRA_CONTENT_EVENTS_PURGE_CHUNK_SIZE`, `PUBLIRA_CONTENT_RANKING_PURGE_CHUNK_SIZE`, `PUBLIRA_MFA_CHALLENGE_PURGE_CHUNK_SIZE`, `PUBLIRA_COMMENT_PURGE_CHUNK_SIZE`, `PUBLIRA_ORPHAN_IMAGES_MIN_AGE_HOURS`, `PUBLIRA_ORPHAN_IMAGES_PAGE_SIZE` (optional, the maintenance jobs' tunables, documented per job in [publiractl](../publiractl/README.md). They are read once at startup, where the `maintenance` or the `search_index` queue is hosted, so a value that is not a positive whole number stops the process with the variable's name. The dated rebuild and dry-run variables are not read here: they control one invocation rather than a deployment, so they belong to `publiractl job`)
 - `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` (optional, the ambient credential `maintenance.purge_orphan_images` signs with when the platform's object store is saved without an access key)
 - `PUBLIRA_EMAIL_RENDERER_URL` (optional, the URL of the email-renderer that renders the HTML part of the emails above. Unset, the mail goes out as text alone; see [What a mail is made of](#what-a-mail-is-made-of))
 - `PUBLIRA_REVALIDATE_TOKEN`, `PUBLIRA_WEB_STOREFRONT_INTERNAL_URL`, `PUBLIRA_WEB_ADMIN_INTERNAL_URL`, `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` (optional, where `next_cache_revalidation` sends cache tags: `POST /api/v1/revalidate` on each `web-*` app whose URL is set, as `publira server` does. A worker without the token retries every such event until an operator restarts it with one, because the drop is owed whoever wrote it)
@@ -343,7 +343,27 @@ The connection uses `publira_outbox`, the login across every tenant the baseline
 
 The trace attributes, span naming, sampling, and the list of `OTEL_*` variables are in [server/README.md](../../README.md#distributed-tracing-opentelemetry).
 
-River's schema (`river_job` and the rest) is applied with `rivermigrate` at startup, which is why `publira_outbox` holds `CREATE` on the `public` schema. `/readyz` names one check per pool — `db.outbox`, `db.ticker`, and `db.content_stats` — so a failure says which login stopped answering.
+River's schema (`river_job` and the rest) is applied with `rivermigrate` at startup, which is why `publira_outbox` holds `CREATE` on the `public` schema. `/readyz` names one check per pool the process holds — `db.outbox`, `db.ticker`, and `db.content_stats` without [`--queue`](#hosting-some-queues---queue) — so a failure says which login stopped answering.
+
+### Hosting some queues (`--queue`)
+
+```bash
+publira worker --queue outbox
+publira worker --queue ticker,maintenance,search_index
+```
+
+hosts the named River queues alone. Every replica otherwise runs every kind of work, so the replica that picks up an hour-long rebuild is also one of the replicas sending mail; with the flag, the Outbox drain gets replicas of its own, sized apart from the ones that run the maintenance passes. Without the flag a replica hosts all four.
+
+| `--queue` | River queue | Runs | Opens | Reads |
+| --- | --- | --- | --- | --- |
+| `outbox` | `default` | The Outbox drain: mail, push, cache revalidation, search index sync | `PUBLIRA_WORKER_DB_URL` |  |
+| `ticker` | `ticker` | The [periodic jobs](#periodic-jobs) | `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_TICKER_DB_URL` | `PUBLIRA_PUBLISH_MAX_RETRIES` |
+| `maintenance` | `maintenance` | Every [maintenance job](#maintenance-jobs) but the search index build | `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL` | The maintenance jobs' tunables |
+| `search_index` | `search_index` | `maintenance.build_search_index` | `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL` | The maintenance jobs' tunables |
+
+Queues combine with a comma, or with the flag given again. Every queue opens `publira_outbox`, which the River client itself connects as, and a queue opens the pool its jobs connect as besides it; a variable only one queue reads is not read without that queue, and `/readyz` names the pools the process holds alone. An unknown queue, an empty one, or a queue named twice prints the usage and exits with status 2.
+
+Every queue needs at least one replica that hosts it. The periodic jobs are enqueued by whichever replica River elects leader, whatever queues it hosts itself, so a job whose queue no running replica hosts is not dropped: it waits in `river_job`, in state `available`, until a replica that hosts its queue starts. A replica that leaves some queues to others logs which at startup, as `worker leaves queues to other replicas` with `not_hosted` naming them. For the same reason every replica reads the interval variables of every periodic job and the Outbox drain's, so give every replica the same values.
 
 ### Logs and metrics
 

@@ -2,7 +2,7 @@
 title: Scheduled and maintenance jobs
 description: What publira worker does on its own schedule, how it catches up after downtime, how it retries outgoing mail, push, and cache revalidation, and when to run a job by hand with publiractl job.
 published: 2026-10-07
-updated: 2026-10-19
+updated: 2026-10-23
 ---
 
 Everything an install does without a request is done by `publira worker`: it publishes the episodes scheduled for now, tells the web apps which cached pages a change made stale, sends mail and push notifications, rebuilds the statistics and rankings, and deletes what has passed its retention period. Nothing else has to run on a timer, and no host cron or Kubernetes CronJob is needed. This page says what runs when, how to tell which job is behind a symptom, and how to run one by hand with `publiractl job`.
@@ -30,7 +30,7 @@ Start from what you see, and look at the job that owns it:
 | The search does not move to a newly saved engine | The search index build | [Search](./7-search.md#when-the-build-fails) |
 | Old records are not deleted | The purges | [Other scheduled jobs](#other-scheduled-jobs) |
 
-Every one of them first needs `publira worker` to be running and ready: an install whose worker is stopped serves every page, but publishes nothing, sends nothing, and rebuilds nothing. `GET /readyz` on the worker names a check for each of its three database logins, so a login that stopped answering is named there.
+Every one of them first needs `publira worker` to be running and ready: an install whose worker is stopped serves every page, but publishes nothing, sends nothing, and rebuilds nothing. `GET /readyz` on the worker names a check for each database login it signs in as, so a login that stopped answering is named there. On an install that splits the worker by queue, each job also needs a running worker that takes its queue, as [Workers that take some of the jobs](#workers-that-take-some-of-the-jobs) describes.
 
 ### Where a job's failures are recorded
 
@@ -94,6 +94,28 @@ The worker remembers, per tenant, the last day each link finished, and starts fr
 | Google Play refund sync (`sync-google-play-voided-purchases`) | Every hour | Reads the purchases Google Play refunded in the last 30 days, for every tenant whose Google Play store is on, and takes them back, as [Selling episodes](../4-console/4-selling-episodes.md#refunds) describes |
 | Search index build (`build-search-index`) | Every 30 seconds | Builds the index on a newly saved search engine and moves the search onto it, as [Search](./7-search.md#moving-to-another-engine) describes |
 | The purges (`purge-*`) | Every hour or every 24 hours | Delete withdrawn comments, analytics events, and ranking snapshots past their retention period, as [Platform defaults and policies](./9-platform-policies.md#retention) describes; the challenges a two-step sign-in has finished with; and the images nothing on any tenant uses any more, once they are a day old |
+
+## Workers that take some of the jobs
+
+A worker started with `--queue` runs the jobs of the queues it names and leaves the others to the workers that name them, as [Splitting the worker by queue](../2-deployments/7-scaling-out.md#splitting-the-worker-by-queue) describes. The jobs on this page are on four queues, which `river_job` names the same way except `outbox`, which it names `default`:
+
+| Queue | Jobs |
+| --- | --- |
+| `outbox` | [The outbox](#the-outbox-mail-push-and-cache-revalidation): mail, push notifications, cache revalidation, and the search engine's index updates |
+| `ticker` | Scheduled publication, free reading periods, the tenant day rollover, pinned announcements, scheduled series, campaign banners, and campaign prices |
+| `maintenance` | The statistics and ranking chain, the royalty close, the Google Play refund sync, and the purges |
+| `search_index` | The search index build |
+
+Every queue needs at least one running worker that takes it. Whichever worker schedules the jobs schedules all of them, whatever queues it takes itself, so a job whose queue no running worker takes is not lost, but nothing runs it: it waits in `river_job` until a worker that takes its queue starts, and then runs as it would [after downtime](#after-downtime). Each worker logs the queues it leaves to others when it starts, as `worker leaves queues to other replicas` with `not_hosted` naming them. A queue whose jobs are waiting shows in `river_job`:
+
+```sql
+SELECT queue, kind, count(*), min(scheduled_at)
+FROM river_job
+WHERE state = 'available' AND scheduled_at < now() - interval '5 minutes'
+GROUP BY queue, kind;
+```
+
+A row here is a job that has been due for five minutes and that no worker has picked up: start a worker that takes its `queue`, or add the queue to the `--queue` of a running one.
 
 ## After downtime
 

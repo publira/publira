@@ -21,6 +21,11 @@
 // those API surfaces alone, each with its namespace, its share of image
 // delivery, and its database login, for an install that keeps the process the
 // edge forwards to from holding the consoles' logins.
+//
+// worker --queue outbox, ticker, maintenance, or search_index, in any
+// combination, hosts those River queues alone, each with the database login
+// its jobs connect as, for an install that keeps the Outbox drain apart from
+// the hour-long maintenance passes. server --with-worker takes the same flag.
 package main
 
 import (
@@ -52,10 +57,11 @@ func run(args []string, stderr io.Writer) int {
 		}
 		return serve(command, h)
 	case "worker":
-		if len(rest) > 0 {
-			return usageError(stderr, fmt.Sprintf("%s takes no arguments", command))
+		queues, err := parseWorkerFlags(rest)
+		if err != nil {
+			return usageError(stderr, err.Error())
 		}
-		return serve(command, hosted{worker: true})
+		return serve(command, hosted{worker: queues})
 	default:
 		return usageError(stderr, fmt.Sprintf("unknown command %q", command))
 	}
@@ -78,16 +84,63 @@ func parseServerFlags(args []string) (hosted, error) {
 		named = true
 		return roles.add(value)
 	})
+	var queues queueFlag
+	queues.define(fs)
 	if err := fs.Parse(args); err != nil {
 		return hosted{}, err
 	}
 	if fs.NArg() > 0 {
-		return hosted{}, errors.New("server takes no arguments other than --role and --with-worker")
+		return hosted{}, errors.New("server takes no arguments other than --role, --with-worker, and --queue")
 	}
 	if !named {
 		roles = allServerRoles
 	}
-	return hosted{server: roles, worker: withWorker}, nil
+	h := hosted{server: roles}
+	switch {
+	case withWorker:
+		h.worker = queues.value()
+	case queues.named:
+		return hosted{}, errors.New("--queue names the queues of the worker --with-worker hosts, and is not given without it")
+	}
+	return h, nil
+}
+
+// parseWorkerFlags reads the flags worker takes, on the same terms as
+// parseServerFlags.
+func parseWorkerFlags(args []string) (workerQueues, error) {
+	fs := flag.NewFlagSet("worker", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	var queues queueFlag
+	queues.define(fs)
+	if err := fs.Parse(args); err != nil {
+		return workerQueues{}, err
+	}
+	if fs.NArg() > 0 {
+		return workerQueues{}, errors.New("worker takes no arguments other than --queue")
+	}
+	return queues.value(), nil
+}
+
+// queueFlag is --queue, which worker and server --with-worker both take.
+type queueFlag struct {
+	queues workerQueues
+	named  bool
+}
+
+func (f *queueFlag) define(fs *flag.FlagSet) {
+	fs.Func("queue", "", func(value string) error {
+		f.named = true
+		return f.queues.add(value)
+	})
+}
+
+// value is what the flag named once parsed: every queue when it was not
+// given.
+func (f *queueFlag) value() workerQueues {
+	if !f.named {
+		return allWorkerQueues
+	}
+	return f.queues
 }
 
 // add takes one --role value, a comma-separated list of roles. A list that
@@ -125,10 +178,13 @@ func usageError(w io.Writer, reason string) int {
 
 func usage() string {
 	return "\nUsage: publira <command> [flags]\n\nCommands:\n" +
-		"  server                Serve the API and image delivery to the edge and the Next.js apps\n" +
-		"  worker                Drain the Outbox and run every scheduled job\n" +
+		"  server                  Serve the API and image delivery to the edge and the Next.js apps\n" +
+		"  worker                  Drain the Outbox and run every scheduled job\n" +
 		"\nFlags of server:\n" +
-		"  --role <role>[,...]   Serve storefront, admin, or platform alone instead of all three\n" +
-		"  --with-worker         Host the worker in the same process as well\n" +
+		"  --role <role>[,...]     Serve storefront, admin, or platform alone instead of all three\n" +
+		"  --with-worker           Host the worker in the same process as well\n" +
+		"  --queue <queue>[,...]   Host the named worker queues alone, as worker does; needs --with-worker\n" +
+		"\nFlags of worker:\n" +
+		"  --queue <queue>[,...]   Host outbox, ticker, maintenance, or search_index alone instead of all four\n" +
 		"\nEvery command reads its settings from the environment.\n"
 }

@@ -2,7 +2,7 @@
 title: Monitoring
 description: Probing every process with /livez and /readyz, the log lines and metrics worth alerting on, and turning on OpenTelemetry metrics and traces.
 published: 2026-10-07
-updated: 2026-10-20
+updated: 2026-10-23
 ---
 
 An install tells you how it is doing in four ways: every process answers a liveness and a readiness check, `publira server` and `publira worker` write a structured log, the same two export OpenTelemetry metrics once you turn them on, and every process but `email-renderer` can export OpenTelemetry traces. This page says what each of them reports, how to wire them into an orchestrator and an alerting system, and what is worth an alert. Which monitoring system receives them is your choice; the page names only what an install sends.
@@ -19,7 +19,7 @@ Every process answers two requests over plain HTTP:
 | Process | Port | What `/readyz` checks |
 | --- | --- | --- |
 | `publira server` | `8000` (`PUBLIRA_PUBLIC_API_ADDR`) | Each of its three database logins: `db.public`, `db.admin`, and `db.platform`, or those of the roles `--role` gives it |
-| `publira worker` | `8003` (`PUBLIRA_WORKER_ADDR`) | Each of its three database logins: `db.outbox`, `db.ticker`, and `db.content_stats`. It also answers not ready until its job queue has started |
+| `publira worker` | `8003` (`PUBLIRA_WORKER_ADDR`) | Each of its three database logins: `db.outbox`, `db.ticker`, and `db.content_stats`, or those of the queues `--queue` gives it. It also answers not ready until its job queue has started |
 | `web-storefront`, `web-admin`, `web-platform` | `PORT`: `3000`, `4000`, and `4100` in the images as the repository builds them | `api`, the `/readyz` of `publira server`, on the host `PUBLIRA_GRPC_URL` names; and `redis`, a ping to the shared cache at `PNCH_REDIS_URL`, which always passes while that cache is turned off |
 | `email-renderer` | `8080` (`PORT`) | Nothing: it depends on no other service, so it is ready whenever it is up |
 

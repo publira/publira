@@ -237,14 +237,20 @@ type scheduled struct {
 
 // schedule is what each job runs on, one entry per job.
 func (j *Jobs) schedule() []scheduled {
+	return scheduleOf(j.cfg)
+}
+
+// scheduleOf is the schedule the intervals of cfg give, once withDefaults has
+// filled them in.
+func scheduleOf(cfg Config) []scheduled {
 	return []scheduled{
-		{schedule: river.PeriodicInterval(j.cfg.PublishInterval), args: PublishEpisodesArgs{}},
-		{schedule: river.PeriodicInterval(j.cfg.FreeWindowInterval), args: ApplyFreeWindowsArgs{}},
-		{schedule: river.PeriodicInterval(j.cfg.TenantDayInterval), args: RollTenantDayArgs{}},
-		{schedule: river.PeriodicInterval(j.cfg.PinnedAnnouncementInterval), args: ExpirePinnedAnnouncementsArgs{}},
-		{schedule: river.PeriodicInterval(j.cfg.SeriesPublicationInterval), args: ApplySeriesPublicationsArgs{}},
-		{schedule: river.PeriodicInterval(j.cfg.CampaignBannerInterval), args: ApplyCampaignBannersArgs{}},
-		{schedule: river.PeriodicInterval(j.cfg.CampaignPriceInterval), args: ApplyCampaignPricesArgs{}},
+		{schedule: river.PeriodicInterval(cfg.PublishInterval), args: PublishEpisodesArgs{}},
+		{schedule: river.PeriodicInterval(cfg.FreeWindowInterval), args: ApplyFreeWindowsArgs{}},
+		{schedule: river.PeriodicInterval(cfg.TenantDayInterval), args: RollTenantDayArgs{}},
+		{schedule: river.PeriodicInterval(cfg.PinnedAnnouncementInterval), args: ExpirePinnedAnnouncementsArgs{}},
+		{schedule: river.PeriodicInterval(cfg.SeriesPublicationInterval), args: ApplySeriesPublicationsArgs{}},
+		{schedule: river.PeriodicInterval(cfg.CampaignBannerInterval), args: ApplyCampaignBannersArgs{}},
+		{schedule: river.PeriodicInterval(cfg.CampaignPriceInterval), args: ApplyCampaignPricesArgs{}},
 	}
 }
 
@@ -255,7 +261,19 @@ func (j *Jobs) schedule() []scheduled {
 // window boundary, or a midnight catches up as soon as it comes back rather
 // than at the next interval.
 func (j *Jobs) PeriodicJobs() []*river.PeriodicJob {
-	entries := j.schedule()
+	return periodicJobs(j.schedule())
+}
+
+// Schedule is what PeriodicJobs answers for the intervals in cfg, built
+// without the pool New needs, for a worker replica that leaves the ticker queue
+// to another. River's elected leader enqueues every periodic job whatever
+// queues it works itself, so such a replica still has to know when each of
+// these is due. Only the intervals of cfg are read.
+func Schedule(cfg Config) []*river.PeriodicJob {
+	return periodicJobs(scheduleOf(cfg.withDefaults()))
+}
+
+func periodicJobs(entries []scheduled) []*river.PeriodicJob {
 	periodic := make([]*river.PeriodicJob, 0, len(entries))
 	for _, entry := range entries {
 		periodic = append(periodic, river.NewPeriodicJob(

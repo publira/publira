@@ -17,6 +17,14 @@ func TestNewRejectsAMissingPool(t *testing.T) {
 	}
 }
 
+// A worker replica that leaves the ticker queue to another opens no ticker
+// pool, and may still be the leader that enqueues every one of these jobs.
+func TestScheduleNeedsNoPool(t *testing.T) {
+	if got, want := len(Schedule(Config{})), len(ServiceNames()); got != want {
+		t.Fatalf("periodic jobs = %d, want one per job (%d)", got, want)
+	}
+}
+
 func TestPeriodicJobsTakeTheConfiguredIntervals(t *testing.T) {
 	jobs, err := New(Config{
 		DB:                         &sql.DB{},
