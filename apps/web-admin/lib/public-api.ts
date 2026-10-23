@@ -14,9 +14,16 @@ import { readCurrency } from "./price";
  * The public API, which the console reads for the few things the admin API
  * cannot answer: the tenant chrome below, resolved before there is a session,
  * and the tag vocabulary in `tag.ts`, which has no admin RPC of its own.
+ *
+ * `PUBLIRA_PUBLIC_GRPC_URL` lets it be a different `publira server` from the
+ * one the admin API is called on, so that one can run `--role admin,platform`
+ * while this one runs `--role storefront`. Unset, both are the same server.
  */
 export const publicApiClient = createPublicApiClient({
-  baseUrl: process.env.PUBLIRA_GRPC_URL ?? "http://localhost:8000/rpc",
+  baseUrl:
+    process.env.PUBLIRA_PUBLIC_GRPC_URL ??
+    process.env.PUBLIRA_GRPC_URL ??
+    "http://localhost:8000/rpc",
   transport: "grpc",
 });
 

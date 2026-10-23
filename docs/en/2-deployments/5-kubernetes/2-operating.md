@@ -2,7 +2,7 @@
 title: Operating on Kubernetes
 description: Add a tenant, keep the consoles' credentials off the tenants' domains, expose the metrics, and upgrade an install that runs on a Kubernetes cluster.
 published: 2026-10-21
-updated: 2026-10-22
+updated: 2026-10-23
 ---
 
 These are the changes made to an install once [Kubernetes](./index.md) has brought it into service. Each one changes the resources that page and [The edge on Kubernetes](./1-edge.md) created.
@@ -92,7 +92,7 @@ kubectl create secret generic publira-storefront \
   --from-literal=PUBLIRA_PUBLIC_DB_URL="postgres://publira_public:$PUBLIC_DB_PASSWORD@$DB"
 ```
 
-Then change the backend of `/images` and the public API under `/rpc` on the tenants' domains alone, in the `web-storefront` HTTPRoute or Ingress, from `publira-server` to `publira-storefront`, and point `web-storefront` at it too, since it calls the public API alone: set `PUBLIRA_GRPC_URL` in its Deployment to `http://publira-storefront:8000/rpc`. The console hosts' routes, `web-admin`, and `web-platform` keep calling `publira-server`, which serves every role: `web-admin` calls the public API as well as the console's, through its one `PUBLIRA_GRPC_URL`.
+Then change the backend of `/images` and the public API under `/rpc` on the tenants' domains alone, in the `web-storefront` HTTPRoute or Ingress, from `publira-server` to `publira-storefront`, and point `web-storefront` at it too, since it calls the public API alone: set `PUBLIRA_GRPC_URL` in its Deployment to `http://publira-storefront:8000/rpc`. The console hosts' routes, `web-admin`, and `web-platform` keep calling `publira-server`, which serves every role, until [Leaving the public API off the consoles' server](#leaving-the-public-api-off-the-consoles-server) takes the public API off it.
 
 The edge answers a console API with `404` on every host either way, so the check calls the two Services from inside the cluster instead:
 
@@ -105,6 +105,66 @@ done
 ```
 
 `publira-storefront` answers `404`, since it does not serve that API. `publira-server` answers `400`: the API is served there, and refuses the empty request.
+
+### Leaving the public API off the consoles' server
+
+`publira-server` still serves the public API and holds `publira_public`, because `web-admin` calls the public API for the tenant's theme and tags, and the console hosts' route forwards it there. Send both to `publira-storefront`, and `publira-server` can run `--role admin,platform`, as step 4 of [Splitting the server by role](../7-scaling-out.md#splitting-the-server-by-role) describes. Make the changes in this order, so that nothing still sends `publira-server` a public API request when it stops serving them.
+
+First point `web-admin`'s public API calls at the storefront Service. Add the variable to the `env` of its Deployment, beside `PUBLIRA_GRPC_URL`, which keeps naming `publira-server`, and apply it:
+
+```yaml
+- name: PUBLIRA_PUBLIC_GRPC_URL
+  value: http://publira-storefront:8000/rpc
+```
+
+Its `/readyz` now checks that Service as well, as `public-api`.
+
+Then route the console host's public API to `publira-storefront`, which answers it on any host, and keep its `/images` on `publira-server`, since the images a console page shows are the `admin` role's. In the `web-admin` HTTPRoute, split the first rule in two:
+
+```yaml
+- matches:
+    - path: { type: PathPrefix, value: /images }
+  filters: &strip-request-headers
+    - type: RequestHeaderModifier
+      requestHeaderModifier:
+        remove:
+          - traceparent
+          - tracestate
+          - baggage
+          - forwarded
+          - x-forwarded-host
+          - x-forwarded-countryregion
+  backendRefs:
+    - name: publira-server
+      port: 8000
+- matches:
+    - path: { type: RegularExpression, value: '/rpc/publira\.v1\..*' }
+  filters: *strip-request-headers
+  backendRefs:
+    - name: publira-storefront
+      port: 8000
+```
+
+In the `web-admin` Ingress, change the backend of the `/rpc/publira.v1.` path to `publira-storefront` instead.
+
+Last, give the `publira-server` container `args: ["server", "--role", "admin,platform"]` in `publira-server.yaml`, take `PUBLIRA_PUBLIC_DB_URL` out of its Secret, which nothing else reads it from, and apply the Deployment:
+
+```bash
+kubectl patch secret publira-server --type=json \
+  -p '[{"op":"remove","path":"/data/PUBLIRA_PUBLIC_DB_URL"}]'
+kubectl apply -f publira-server.yaml
+kubectl rollout status deployment/publira-server
+```
+
+Check that `publira-server` no longer serves the public API. This call answers `404`, where it answered `400` before:
+
+```bash
+kubectl run publira-role-check --rm -i --restart=Never --image=curlimages/curl -- \
+  -s -o /dev/null -w "%{http_code}\n" -X POST -H 'Content-Type: application/json' -d '{}' \
+  "http://publira-server:8000/rpc/publira.v1.TenantService/GetTenant"
+```
+
+Sign in to the tenant console: it draws the tenant's theme and lists the tags as before, now read from `publira-storefront`.
 
 ## Metrics
 

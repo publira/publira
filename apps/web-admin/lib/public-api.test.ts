@@ -1,9 +1,15 @@
 import { Code, ConnectError } from "@publira/api-client/errors";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockCacheLife, mockCacheTag, mockGetTenant } = vi.hoisted(() => ({
+const {
+  mockCacheLife,
+  mockCacheTag,
+  mockCreatePublicApiClient,
+  mockGetTenant,
+} = vi.hoisted(() => ({
   mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
+  mockCreatePublicApiClient: vi.fn(),
   mockGetTenant: vi.fn(),
 }));
 
@@ -13,11 +19,14 @@ vi.mock("next/cache", () => ({
 }));
 
 vi.mock("@publira/api-client/public/client", () => ({
-  createPublicApiClient: () => ({
-    tenant: {
-      getTenant: mockGetTenant,
-    },
-  }),
+  createPublicApiClient: (options: unknown) => {
+    mockCreatePublicApiClient(options);
+    return {
+      tenant: {
+        getTenant: mockGetTenant,
+      },
+    };
+  },
 }));
 
 const tenantId = "018f0e6a-1000-7000-8000-000000000001";
@@ -204,6 +213,46 @@ describe("tenantSiteCacheTag", () => {
 
     expect(tenantSiteCacheTag(`  ${tenantId} `)).toBe(
       `tenant:${tenantId}:site`
+    );
+  });
+});
+
+describe("publicApiClient", () => {
+  beforeEach(() => {
+    mockCreatePublicApiClient.mockReset();
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("calls the server PUBLIRA_PUBLIC_GRPC_URL names", async () => {
+    vi.stubEnv("PUBLIRA_GRPC_URL", "https://publira-admin.example/rpc");
+    vi.stubEnv(
+      "PUBLIRA_PUBLIC_GRPC_URL",
+      "https://publira-storefront.example/rpc"
+    );
+
+    await import("./public-api");
+
+    expect(mockCreatePublicApiClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        baseUrl: "https://publira-storefront.example/rpc",
+      })
+    );
+  });
+
+  it("falls back to PUBLIRA_GRPC_URL without a URL of its own", async () => {
+    vi.stubEnv("PUBLIRA_GRPC_URL", "https://publira-server.example/rpc");
+    // Stubbed first so that `vi.unstubAllEnvs` puts back whatever was there.
+    vi.stubEnv("PUBLIRA_PUBLIC_GRPC_URL", "");
+    delete process.env.PUBLIRA_PUBLIC_GRPC_URL;
+
+    await import("./public-api");
+
+    expect(mockCreatePublicApiClient).toHaveBeenCalledWith(
+      expect.objectContaining({ baseUrl: "https://publira-server.example/rpc" })
     );
   });
 });

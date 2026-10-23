@@ -32,7 +32,16 @@ An install that keeps the consoles' APIs and logins out of the process the tenan
 | `publira server --role storefront` | [`infra/docker/server`](../docker/server/Dockerfile), with `server --role storefront` as the container argument | `publira.v1` under `/rpc`, and the images of every tenant's site, as `publira_public` alone | The edge, on `publira.v1` under `/rpc`, and on `/images`, of each tenant's domain; `web-storefront`, on `/rpc` |
 | `publira server` | [`infra/docker/server`](../docker/server/Dockerfile), no container argument | Everything the one `publira server` above serves | `web-admin` and `web-platform`, on `/rpc`; the edge, on `publira.v1` under `/rpc`, and on `/images`, of each console host |
 
-Together they replace the one `publira server` above, and each reads the `publira server` rows below except where a row says otherwise. The storefront process holds neither console's login nor the web service credential. `web-storefront` calls `publira.v1` alone, so its `PUBLIRA_GRPC_URL` names the storefront process. `web-admin` keeps calling a process that serves every role, because it calls `publira.v1` for the tenant's theme and catalog as well as `publira.admin.v1`, on the one `PUBLIRA_GRPC_URL` it has. Both listen on `:8000` alone, so either can run on a platform that exposes one port per service. [`--role`](../../server/cmd/publira/README.md#serving-some-roles---role) has the details.
+Together they replace the one `publira server` above, and each reads the `publira server` rows below except where a row says otherwise. The storefront process holds neither console's login nor the web service credential. `web-storefront` calls `publira.v1` alone, so its `PUBLIRA_GRPC_URL` names the storefront process. `web-admin` calls `publira.v1` for the tenant's theme and tags as well as `publira.admin.v1`, so with `PUBLIRA_GRPC_URL` alone it calls a process that serves every role. Both listen on `:8000` alone, so either can run on a platform that exposes one port per service. [`--role`](../../server/cmd/publira/README.md#serving-some-roles---role) has the details.
+
+The process behind the consoles can leave out the storefront role as well, once `web-admin` is given a URL of its own for `publira.v1`:
+
+| Process | Image | Serves | Reached by |
+| --- | --- | --- | --- |
+| `publira server --role storefront` | [`infra/docker/server`](../docker/server/Dockerfile), with `server --role storefront` as the container argument | `publira.v1` under `/rpc`, and the images of every tenant's site, as `publira_public` alone | The edge, on `publira.v1` under `/rpc` of every host, and on `/images` of each tenant's domain; `web-storefront` and `web-admin`, on `/rpc` |
+| `publira server --role admin,platform` | [`infra/docker/server`](../docker/server/Dockerfile), with `server --role admin,platform` as the container argument | `publira.admin.v1` and `publira.platform.v1` under `/rpc`, and the images of every console host, as `publira_admin` and `publira_platform` | `web-admin` and `web-platform`, on `/rpc`; the edge, on `/images` of each console host |
+
+`web-admin`'s `PUBLIRA_PUBLIC_GRPC_URL` names the storefront process, and its `PUBLIRA_GRPC_URL` the other. The edge forwards a console host's `publira.v1` to the storefront process, which answers it on any host, and a console host's images to the other, since the images a console page shows are the `admin` role's. The process behind the consoles then holds neither `publira_public` nor any of the public API's work, and the storefront processes are scaled with the public API's traffic alone.
 
 An install whose mail and push notifications have to keep going out while an hour-long rebuild runs may likewise run `publira worker` as two processes:
 
@@ -88,7 +97,8 @@ The secret encryption keys seal the SMTP password, the object store's access key
 | Process | Variable | Value |
 | --- | --- | --- |
 | `web-storefront` | `PUBLIRA_GRPC_URL` | `/rpc` on `publira server`, such as `http://publira-server:8000/rpc`, or on `publira server --role storefront` when the server is split by role |
-| `web-admin` | `PUBLIRA_GRPC_URL` | `/rpc` on `publira server`, such as `http://publira-server:8000/rpc`, which serves every role even when the server is split |
+| `web-admin` | `PUBLIRA_GRPC_URL` | `/rpc` on `publira server`, such as `http://publira-server:8000/rpc`. When the server is split by role, on the process that serves every role, or on `publira server --role admin,platform` once `PUBLIRA_PUBLIC_GRPC_URL` is set |
+| `web-admin` | `PUBLIRA_PUBLIC_GRPC_URL` | Unset, which calls `publira.v1` on `PUBLIRA_GRPC_URL` too. Set to `/rpc` on `publira server --role storefront`, such as `http://publira-storefront:8000/rpc`, when `PUBLIRA_GRPC_URL` names `publira server --role admin,platform` |
 | `web-storefront`, `web-admin` | `PUBLIRA_AUTH_SECRET` | The key the app seals its session cookie with, at least 32 bytes. The two apps need not share one |
 | `publira server` | `PUBLIRA_AUTH_JWT_SECRET` | The key access tokens are signed with, at least 32 bytes |
 | `publira server` | `PUBLIRA_PUBLIC_DB_URL`, `PUBLIRA_ADMIN_DB_URL` | The `publira_public` and `publira_admin` connections. A process given `--role` reads only the connection of each role it serves, as the `publira_platform` one is read only with `platform` |

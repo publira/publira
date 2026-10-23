@@ -2,7 +2,7 @@
 title: Edge
 description: What the load balancer, proxy, or CDN in front of an install has to do.
 published: 2026-10-06
-updated: 2026-10-22
+updated: 2026-10-23
 redirect_from:
   - /deployments/reverse-proxy
 ---
@@ -50,7 +50,7 @@ An edge that checks the health of what it forwards to, as a load balancer does, 
 
 `publira server` serves the tenant console's and the Platform Console's APIs, `publira.admin.v1` and `publira.platform.v1`, under `/rpc` beside the public API, on the one port the edge forwards to. Nothing reaches them through the edge: `web-admin` and `web-platform` call them from their own servers, over the private network on `PUBLIRA_GRPC_URL`, and the mobile app calls the public API alone. No host needs them forwarded, so the edge answers them with a `404` of its own, on the console hosts as on the tenants' domains. An edge that forwards them anyway exposes two APIs to the internet for nothing, along with every call of theirs that runs before there is a session: signing in, resetting a password, confirming an email address, and creating the Platform Console's first operator. Their own authentication, which [The console APIs](../../3-operations/12-security/index.md#the-console-apis) describes, stays in place behind the edge rule.
 
-Running the process the tenants' domains reach with `publira server --role storefront` is a second, separate layer. The edge rule keeps the console APIs' paths off the internet; `--role storefront` keeps the consoles' database logins and the web service token out of the process readers reach at all. Keep sending the console hosts' `/rpc/publira.v1.` and `/images` to the `publira server` `web-admin` calls, which serves every role.
+Running the process the tenants' domains reach with `publira server --role storefront` is a second, separate layer. The edge rule keeps the console APIs' paths off the internet; `--role storefront` keeps the consoles' database logins and the web service token out of the process readers reach at all. Keep sending the console hosts' `/images` to the `publira server` `web-admin` calls on `PUBLIRA_GRPC_URL`, and their `/rpc/publira.v1.` to the one it calls the public API on: the same process, unless `web-admin`'s `PUBLIRA_PUBLIC_GRPC_URL` names a `--role storefront` one, as [Splitting the server by role](../7-scaling-out.md#splitting-the-server-by-role) describes.
 
 ### TLS
 

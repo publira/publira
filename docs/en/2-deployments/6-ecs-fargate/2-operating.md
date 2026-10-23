@@ -2,7 +2,7 @@
 title: Operating on ECS
 description: Add a tenant, keep the consoles' credentials off the tenants' domains, and upgrade an install that runs on Amazon ECS on Fargate.
 published: 2026-10-21
-updated: 2026-10-22
+updated: 2026-10-23
 ---
 
 These are the changes made to an install once [Amazon ECS on Fargate](./index.md) and [CloudFront in front of ECS](./1-cloudfront.md) have brought it into service. Their commands use the shell variables and functions those pages defined. In a shell other than the one the install was built in, define again the ones a command names: the variables of [Before you start](./index.md#before-you-start), the `run_publiractl` function of [Apply the migrations and create the database roles](./index.md#4-apply-the-migrations-and-create-the-database-roles), `SERVER_SG` and `NAMESPACE` and the `registry` function of [Open the network paths](./index.md#3-open-the-network-paths), the `target_group` function of [Create the load balancer](./index.md#5-create-the-load-balancer), the `service` function of [Start the services](./index.md#6-start-the-services), and `LISTENER`, which `aws elbv2 describe-listeners --load-balancer-arn <the load balancer ARN> --query 'Listeners[0].ListenerArn' --output text` prints.
@@ -39,9 +39,57 @@ Then add rules ahead of the server's, which send the tenants' domains to it:
 | --- | --- | --- | --- |
 | `900` to `999` | A tenant's domain | `/images*`, `/rpc/publira.v1.*` | `publira-storefront` |
 
-Point `web-storefront` at the new service too, since it calls the public API alone: set `PUBLIRA_GRPC_URL` in `web-storefront.json` to `http://publira-storefront.publira.internal:8000/rpc`, register it, and update the `web-storefront` service to the new revision. The console hosts, `web-admin`, and `web-platform` keep reaching `publira-server`, which serves every role: `web-admin` calls the public API as well as the console's, through its one `PUBLIRA_GRPC_URL`. The two paths leave room for three host names among the five values a rule takes, so a rule in this band serves the domains of three tenants at most: add a new tenant's domain to a rule that names one, or give it a rule of its own at the next free priority in the band.
+Point `web-storefront` at the new service too, since it calls the public API alone: set `PUBLIRA_GRPC_URL` in `web-storefront.json` to `http://publira-storefront.publira.internal:8000/rpc`, register it, and update the `web-storefront` service to the new revision. The console hosts, `web-admin`, and `web-platform` keep reaching `publira-server`, which serves every role, until [Leaving the public API off the consoles' server](#leaving-the-public-api-off-the-consoles-server) takes the public API off it. The two paths leave room for three host names among the five values a rule takes, so a rule in this band serves the domains of three tenants at most: add a new tenant's domain to a rule that names one, or give it a rule of its own at the next free priority in the band.
 
 The load balancer answers a console API with `404` on every host either way, so check that the tenants' domains reach the new service instead: `aws elbv2 describe-target-health --target-group-arn "$STOREFRONT_SERVER_TG"` lists its tasks as `healthy`, and the public API call in [Check the edge](./1-cloudfront.md#check-the-edge) still answers `invalid_argument` on the tenant's domain, now from `publira-storefront`.
+
+### Leaving the public API off the consoles' server
+
+`publira-server` still serves the public API and holds `publira_public`, because `web-admin` calls the public API for the tenant's theme and tags, and the rule at `1000` forwards the console hosts' public API there. Send both to `publira-storefront`, and `publira-server` can run `--role admin,platform`, as step 4 of [Splitting the server by role](../7-scaling-out.md#splitting-the-server-by-role) describes. Make the changes in this order, so that nothing still sends `publira-server` a public API request when it stops serving them.
+
+First point `web-admin`'s public API calls at the storefront service. Add the variable to the `environment` of `web-admin.json`, beside `PUBLIRA_GRPC_URL`, which keeps naming `publira-server`:
+
+```json
+{
+  "name": "PUBLIRA_PUBLIC_GRPC_URL",
+  "value": "http://publira-storefront.publira.internal:8000/rpc"
+}
+```
+
+and deploy it:
+
+```bash
+aws ecs register-task-definition --cli-input-json file://web-admin.json > /dev/null
+aws ecs update-service --cluster publira --service web-admin --task-definition web-admin > /dev/null
+```
+
+Its `/readyz` now checks that service as well, as `public-api`.
+
+Then route every host's public API to `publira-storefront`, which answers it on any host, and keep the console hosts' `/images` on `publira-server`, since the images a console page shows are the `admin` role's. Add a rule for the public API after the one at `1000`, and then take the public API out of that one, so that it reaches `publira-server` no more:
+
+| Priority | Host | Path                | Forwards to          |
+| -------- | ---- | ------------------- | -------------------- |
+| `1000`   | Any  | `/images*`          | `publira-server`     |
+| `1050`   | Any  | `/rpc/publira.v1.*` | `publira-storefront` |
+
+```bash
+rule 1050 "[$(path_is '["/rpc/publira.v1.*"]')]" "$STOREFRONT_SERVER_TG"
+RULE_1000=$(aws elbv2 describe-rules --listener-arn "$LISTENER" \
+  --query "Rules[?Priority=='1000'].RuleArn" --output text)
+aws elbv2 modify-rule --rule-arn "$RULE_1000" \
+  --conditions "[$(path_is '["/images*"]')]" > /dev/null
+```
+
+`rule` and `path_is` are the functions of [Create the load balancer](./index.md#5-create-the-load-balancer), and `STOREFRONT_SERVER_TG` is the target group created above; in another shell, `aws elbv2 describe-target-groups --names publira-storefront --query 'TargetGroups[0].TargetGroupArn' --output text` prints it. The rules in the `900` band keep forwarding the tenants' domains to `publira-storefront`, the public API included.
+
+Last, give `publira-server.json` `["server", "--role", "admin,platform"]` as its container's `command`, remove `PUBLIRA_PUBLIC_DB_URL` from its `secrets`, since the process no longer reads it, and deploy it:
+
+```bash
+aws ecs register-task-definition --cli-input-json file://publira-server.json > /dev/null
+aws ecs update-service --cluster publira --service publira-server --task-definition publira-server > /dev/null
+```
+
+Sign in to the tenant console: it draws the tenant's theme and lists the tags as before, now read from `publira-storefront`. The public API call in [Check the edge](./1-cloudfront.md#check-the-edge), sent to the console host, `https://admin.comics.example.com/rpc/publira.v1.TenantService/GetTenant`, still answers `invalid_argument`; a `404` there means the console host's public API still reaches `publira-server`.
 
 ## Upgrading
 

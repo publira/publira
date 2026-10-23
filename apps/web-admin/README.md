@@ -45,7 +45,8 @@ pnpm dev --filter @publira/web-admin
 
 ### API connection
 
-- `PUBLIRA_GRPC_URL` — the `/rpc` base URL on `publira server`, which every server-side RPC is made on (`http://localhost:8000/rpc` when unset)
+- `PUBLIRA_GRPC_URL` — the `/rpc` base URL on `publira server`, which every server-side RPC is made on (`http://localhost:8000/rpc` when unset), except the public API's when `PUBLIRA_PUBLIC_GRPC_URL` is set
+- `PUBLIRA_PUBLIC_GRPC_URL` — the `/rpc` base URL the public API, `publira.v1`, is called on: the tenant's name, theme, and locales the console's chrome is drawn with, and the tag vocabulary (`PUBLIRA_GRPC_URL` when unset). Setting it to a `publira server --role storefront` lets `PUBLIRA_GRPC_URL` name a `publira server --role admin,platform`, which does not serve `publira.v1`. `/readyz` checks it as `public-api` when it is set
 - `PUBLIRA_WEB_SERVICE_TOKEN` (required) — the server's `PUBLIRA_WEB_SERVICE_TOKEN`, which the console reads the tenant's catalog with as itself rather than as an operator: genres, creator roles, creators, labels, series, episodes, and the dashboard, each cached once per tenant. The app refuses to start without it. See [Web service credential](../../server/README.md#web-service-credential)
 
 ### Request host
