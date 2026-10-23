@@ -700,7 +700,7 @@ Every pool a process opens is bounded by the same three variables, read at start
 
 | Variable | Default | What it bounds |
 | --- | --- | --- |
-| `PUBLIRA_DB_MAX_OPEN_CONNS` | `10` | The connections one pool holds at once, in use and idle together. At least `2`. A caller past it waits for a connection to be returned |
+| `PUBLIRA_DB_MAX_OPEN_CONNS` | `10` | The connections one pool holds at once, in use and idle together. At least `3`. A caller past it waits for a connection to be returned |
 | `PUBLIRA_DB_MAX_IDLE_CONNS` | the value of `PUBLIRA_DB_MAX_OPEN_CONNS` | The returned connections a pool keeps open for the next caller, from `0` to `PUBLIRA_DB_MAX_OPEN_CONNS` |
 | `PUBLIRA_DB_CONN_MAX_IDLE_TIME` | `5m` | How long a connection nobody uses is kept before it is closed, as a Go duration. `0` keeps it |
 

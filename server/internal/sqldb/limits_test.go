@@ -82,6 +82,7 @@ func TestLimitsFromEnvRefusesAnInvalidValue(t *testing.T) {
 		{name: "max open not a number", maxOpen: "ten"},
 		{name: "max open zero, which database/sql reads as unbounded", maxOpen: "0"},
 		{name: "max open of one, which a request waiting for a second connection deadlocks", maxOpen: "1"},
+		{name: "max open of two, which a maintenance pass and a search index build each holding a lock deadlock", maxOpen: "2"},
 		{name: "max idle negative", maxIdle: "-1"},
 		{name: "max idle above max open", maxOpen: "5", maxIdle: "6"},
 		{name: "idle time without a unit", ttl: "300"},

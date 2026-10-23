@@ -59,13 +59,15 @@ const (
 // room left for publiractl and the superuser's reserved slots.
 const defaultMaxOpenConns = 10
 
-// minMaxOpenConns is the smallest bound a pool works at. A holder of one
+// MinMaxOpenConns is the smallest bound a pool works at. A holder of one
 // connection may wait for a second — tenantconn pins one per request and
-// leaves at least one free for the rest, the worker's migration lock is held
-// while River migrates on the same pool, and a maintenance pass holds its turn
-// on one connection while it works on another — so a pool of one would wait
-// on itself.
-const minMaxOpenConns = 2
+// leaves at least one free for the rest, and the worker's migration lock is
+// held while River migrates on the same pool — so a pool of one would wait on
+// itself. The worker's maintenance pool has two such holders at once: a
+// maintenance pass holds its turn on one connection and the search index build
+// its lock on another, and each then works on a third, which a pool of two
+// would leave to neither of them.
+const MinMaxOpenConns = 3
 
 // defaultConnMaxIdleTime closes a connection nobody has used for a while,
 // so a pool that grew for a burst gives the database its slots back.
@@ -92,8 +94,8 @@ func limitsFromEnv() (poolLimits, error) {
 	}
 	if raw := strings.TrimSpace(os.Getenv(maxOpenConnsEnv)); raw != "" {
 		n, err := strconv.Atoi(raw)
-		if err != nil || n < minMaxOpenConns {
-			return poolLimits{}, fmt.Errorf("%s must be a whole number of at least %d, got %q", maxOpenConnsEnv, minMaxOpenConns, raw)
+		if err != nil || n < MinMaxOpenConns {
+			return poolLimits{}, fmt.Errorf("%s must be a whole number of at least %d, got %q", maxOpenConnsEnv, MinMaxOpenConns, raw)
 		}
 		limits.MaxOpenConns = n
 	}
