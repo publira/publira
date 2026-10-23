@@ -38,7 +38,7 @@ x-tracing: &tracing
 x-web-app: &web-app
   PUBLIRA_GRPC_URL: http://server:8000/rpc
   PNCH_REDIS_URL: redis://valkey:6379
-  PNCH_REVALIDATE_TOKEN: ${PUBLIRA_REVALIDATE_TOKEN:?}
+  PUBLIRA_REVALIDATE_TOKEN: ${PUBLIRA_REVALIDATE_TOKEN:?}
 
 services:
   postgres:

@@ -71,7 +71,7 @@ The [`infra/docker/publiractl`](../docker/publiractl/Dockerfile) image carries `
 | Process | Image | What it adds | What else it needs |
 | --- | --- | --- | --- |
 | `email-renderer` | [`infra/docker/node`](../docker/node/Dockerfile) with `APP_NAME=email-renderer` | An HTML part in every mail. Without it the worker sends the same mail as `text/plain` | `PUBLIRA_EMAIL_RENDERER_URL` on the worker |
-| `web-platform` | [`infra/docker/web`](../docker/web/Dockerfile) with `APP_NAME=web-platform` | The Platform Console: operator accounts, and the tenants, platform settings, dashboard, and audit log in a browser rather than from `publiractl` | Its host routed to it at the edge (`PUBLIRA_EDGE_PLATFORM_HOSTS` and its upstream in the sample configurations), `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` on `publira server` and the worker, `PUBLIRA_PLATFORM_APP_URL` on the worker, and the same `PUBLIRA_GRPC_URL`, `PUBLIRA_AUTH_SECRET`, and `PNCH_*` variables as the other web apps. Its first operator is created on its `/setup` screen |
+| `web-platform` | [`infra/docker/web`](../docker/web/Dockerfile) with `APP_NAME=web-platform` | The Platform Console: operator accounts, and the tenants, platform settings, dashboard, and audit log in a browser rather than from `publiractl` | Its host routed to it at the edge (`PUBLIRA_EDGE_PLATFORM_HOSTS` and its upstream in the sample configurations), `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` on `publira server` and the worker, `PUBLIRA_PLATFORM_APP_URL` on the worker, and the same `PUBLIRA_GRPC_URL`, `PUBLIRA_AUTH_SECRET`, `PUBLIRA_REVALIDATE_TOKEN`, and `PNCH_*` variables as the other web apps. Its first operator is created on its `/setup` screen |
 
 ## Environment variables
 
@@ -84,7 +84,7 @@ Each row is one value, set under the name each process reads it by.
 | Value | `web-storefront` | `web-admin` | `publira server` | `publira worker` | `publiractl` |
 | --- | --- | --- | --- | --- | --- |
 | The secret encryption keys | — | — | `PUBLIRA_SECRET_ENCRYPTION_KEYS`, `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` | the same | the same |
-| The cache revalidation token | `PNCH_REVALIDATE_TOKEN` | `PNCH_REVALIDATE_TOKEN` | `PUBLIRA_REVALIDATE_TOKEN` | `PUBLIRA_REVALIDATE_TOKEN` | — |
+| The cache revalidation token | `PUBLIRA_REVALIDATE_TOKEN` | `PUBLIRA_REVALIDATE_TOKEN` | `PUBLIRA_REVALIDATE_TOKEN` | `PUBLIRA_REVALIDATE_TOKEN` | — |
 | The web service credential, also set on `web-platform` when it runs; not read by `publira server --role storefront` | — | `PUBLIRA_WEB_SERVICE_TOKEN` | `PUBLIRA_WEB_SERVICE_TOKEN` | — | — |
 | The Redis URL | `PNCH_REDIS_URL` | `PNCH_REDIS_URL` | `PUBLIRA_REDIS_URL` | — | — |
 | The `publira_platform` connection, not read by `publira server --role storefront` | — | — | `PUBLIRA_PLATFORM_DB_URL` | — | `PUBLIRA_PLATFORM_DB_URL` |

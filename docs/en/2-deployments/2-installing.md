@@ -2,7 +2,7 @@
 title: Installing
 description: Bring an empty install into service, from the services it depends on to the first sign-in to the tenant console.
 published: 2026-10-06
-updated: 2026-10-20
+updated: 2026-10-23
 ---
 
 This page takes an install from nothing to a tenant console its first administrator signs in to. It follows the order the steps have to run in and explains what each one decides; the full list of variables each process reads, and every flag of `publiractl`, stay in the reference linked from each step.
@@ -38,7 +38,7 @@ An install needs a handful of secrets that only you hold. Generate a fresh set f
 | The secret encryption keys | `k1:$(openssl rand -base64 32)` as `PUBLIRA_SECRET_ENCRYPTION_KEYS`, and `k1` as `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` | `publira server`, `publira worker`, `publiractl` | Every credential the install stores: the SMTP password, the object store's secret key, the search engine's password, the Web Push private key, and each tenant's payment, push, and sign-in credentials |
 | The access token signing key | `openssl rand -base64 32` as `PUBLIRA_AUTH_JWT_SECRET` | `publira server` | Every signed-in session. Whoever holds it can sign a token for any user and call every API as them |
 | Each web app's session key | `openssl rand -base64 32` as that app's `PUBLIRA_AUTH_SECRET` | `web-storefront` and `web-admin`, one each | The session cookie, which carries the user's access token. The two apps may share one, but need not |
-| The cache revalidation token | `openssl rand -hex 32` | `publira server` and `publira worker` as `PUBLIRA_REVALIDATE_TOKEN`, `web-storefront` and `web-admin` as `PNCH_REVALIDATE_TOKEN` | The endpoint the servers call to drop a web app's cached pages after a change. Without it the servers send nothing, and the web apps keep serving what they cached before the change |
+| The cache revalidation token | `openssl rand -hex 32` | `publira server`, `publira worker`, `web-storefront`, and `web-admin` as `PUBLIRA_REVALIDATE_TOKEN` | The endpoint the servers call to drop a web app's cached pages after a change. Without it the servers send nothing, and the web apps keep serving what they cached before the change |
 | The web service token | `openssl rand -base64 32` as `PUBLIRA_WEB_SERVICE_TOKEN` | `publira server` and `web-admin` | The reads the console makes as itself rather than as one of its staff, such as the catalog lists every staff member sees alike, so it can cache them once for all of them. `web-admin` does not start without it |
 | One password per database role | `openssl rand -hex 32`, six times | `publiractl db roles`, and the connection URL of the process that uses the role | The database itself. A connection URL carries the password unescaped, so keep to URL-safe characters, as the hex output does |
 
@@ -149,7 +149,7 @@ Without `email-renderer`, the worker sends every mail as plain text. Run it, and
 
 `web-platform` is the Platform Console, where operators manage tenants and platform settings from a browser rather than from `publiractl`. To run it:
 
-- Generate a session key for it the way you did for the other web apps, and set it as its `PUBLIRA_AUTH_SECRET`, at least 32 bytes; without one no operator can sign in. Give it the same `PUBLIRA_GRPC_URL`, `PUBLIRA_WEB_SERVICE_TOKEN`, `PNCH_REDIS_URL`, and `PNCH_REVALIDATE_TOKEN` as `web-admin`.
+- Generate a session key for it the way you did for the other web apps, and set it as its `PUBLIRA_AUTH_SECRET`, at least 32 bytes; without one no operator can sign in. Give it the same `PUBLIRA_GRPC_URL`, `PUBLIRA_WEB_SERVICE_TOKEN`, `PNCH_REDIS_URL`, and `PUBLIRA_REVALIDATE_TOKEN` as `web-admin`.
 - Set `PUBLIRA_WEB_PLATFORM_INTERNAL_URL` on `publira server` and `publira worker`, so cache revalidation reaches it, and `PUBLIRA_PLATFORM_APP_URL` on `publira worker`, the address operators open it at, which the links in its mail are built from.
 - Choose a host name for it, such as `platform.example.com`, point it at the edge, give the edge a certificate for it, and route it to `web-platform`, with the same paths as the other hosts, as [Routing](./4-edge/index.md#routing) describes. The sample configurations take it in `PUBLIRA_EDGE_PLATFORM_HOSTS`.
 

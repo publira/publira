@@ -51,6 +51,10 @@
       "types": "./dist/client-address.d.mts",
       "default": "./dist/client-address.mjs"
     },
+    "./revalidate": {
+      "types": "./dist/revalidate.d.mts",
+      "default": "./dist/revalidate.mjs"
+    },
     "./request-host": {
       "types": "./dist/request-host.d.mts",
       "default": "./dist/request-host.mjs"

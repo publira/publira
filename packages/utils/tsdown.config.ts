@@ -15,6 +15,7 @@ export default defineConfig({
     "src/next-static-params.ts",
     "src/request-host.ts",
     "src/resolved-locale.ts",
+    "src/revalidate.ts",
     "src/route-params.ts",
     "src/search-params.ts",
     "src/static-param-placeholder.ts",

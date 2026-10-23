@@ -117,7 +117,6 @@ services:
       # These are private loopback endpoints inside the shared app container;
       # public browser URLs and Traefik are deliberately not part of this path.
       PUBLIRA_REVALIDATE_TOKEN: publira-dev-only-revalidate-token
-      PNCH_REVALIDATE_TOKEN: publira-dev-only-revalidate-token
       # The credential the consoles read tenant-level data with, which the
       # server admits to those reads alone.
       PUBLIRA_WEB_SERVICE_TOKEN: publira-dev-only-web-service-token
