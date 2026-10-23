@@ -1,3 +1,6 @@
+/// @docImport 'package:publira/follow/follow_failure.dart';
+library;
+
 import 'package:flutter/widgets.dart';
 import 'package:publira/models/follow.dart';
 

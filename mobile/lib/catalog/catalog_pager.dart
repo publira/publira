@@ -1,3 +1,6 @@
+/// @docImport 'package:flutter/widgets.dart';
+library;
+
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';

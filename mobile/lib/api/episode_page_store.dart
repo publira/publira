@@ -1,3 +1,6 @@
+/// @docImport 'package:publira/api/episode_image_client.dart';
+library;
+
 import 'dart:convert';
 import 'dart:typed_data';
 

@@ -25,6 +25,7 @@ linter:
     - avoid_relative_lib_imports
     - cancel_subscriptions
     - close_sinks
+    - comment_references
     - prefer_const_constructors
     - prefer_const_declarations
     - prefer_single_quotes

@@ -1,3 +1,6 @@
+/// @docImport 'package:publira/notifications/notification_failure.dart';
+library;
+
 import 'package:publira/models/inbox_notification.dart';
 
 /// The inbox half of `publira.v1.NotificationService`.

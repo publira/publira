@@ -1,3 +1,7 @@
+/// @docImport 'package:publira/app.dart';
+/// @docImport 'package:publira/purchase/purchase_failure.dart';
+library;
+
 import 'package:flutter/widgets.dart';
 import 'package:publira/models/episode_detail.dart';
 import 'package:publira/models/my_purchase.dart';

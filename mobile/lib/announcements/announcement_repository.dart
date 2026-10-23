@@ -1,3 +1,6 @@
+/// @docImport 'package:publira/announcements/announcement_failure.dart';
+library;
+
 import 'package:publira/models/announcement.dart';
 
 /// The announcement half of `publira.v1.AuthService`.

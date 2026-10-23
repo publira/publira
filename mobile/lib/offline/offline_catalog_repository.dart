@@ -17,7 +17,7 @@ import 'package:publira/wait_free/wait_free_repository.dart';
 /// Reads the public catalog, and keeps what it read so the same screens open
 /// again without a network.
 ///
-/// Every call goes to [origin] first, because the API is what decides whether
+/// Every call goes to `origin` first, because the API is what decides whether
 /// a body may still be read: only its answer refreshes what the device holds,
 /// and an answer that takes a body away drops it. The saved copy is reached
 /// only when the network is, which is what keeps a lapsed purchase from

@@ -1,3 +1,6 @@
+/// @docImport 'package:publira/pages/page_failure.dart';
+library;
+
 import 'package:flutter/widgets.dart';
 import 'package:publira/pages/published_page.dart';
 

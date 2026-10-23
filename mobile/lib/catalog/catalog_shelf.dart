@@ -81,7 +81,7 @@ class CatalogShelf<T> extends StatefulWidget {
   /// in for a row they were never told to expect.
   final String? failureMessage;
 
-  /// Reads the cards, in [locale], the app's resolved locale as a BCP 47 tag.
+  /// Reads the cards, in `locale`, the app's resolved locale as a BCP 47 tag.
   final Future<List<T>> Function(CatalogRepository catalog, String locale) load;
 
   final Widget Function(BuildContext context, T item) cardBuilder;

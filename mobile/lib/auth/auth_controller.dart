@@ -74,9 +74,9 @@ class AuthController extends ChangeNotifier {
   /// still signed in once they are back on one.
   ///
   /// The app is already interactive while the check is in flight, so its
-  /// answer only counts as long as [stored] is still the session in hand. A
-  /// reader who signs out or signs in again in the meantime has said something
-  /// newer than the API has, and the late answer is dropped.
+  /// answer only counts as long as the session it checked is still the one in
+  /// hand. A reader who signs out or signs in again in the meantime has said
+  /// something newer than the API has, and the late answer is dropped.
   Future<void> restore() async {
     final stored = await _store.read();
     if (stored == null) {
