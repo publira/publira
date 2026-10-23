@@ -108,8 +108,8 @@ RUN if [ "${APP_NAME}" != "node" ]; then mv "apps/${APP_NAME}" apps/node; fi
 # nonroot uid/gid 65532 (matches gcr.io/distroless/*:nonroot)
 # distroless publishes no versioned tags, so the image name carries the Node.js
 # major and the Debian release, and the digest is the only further identifier.
-# The Debian release matches the base stage: node_modules built there, native
-# addons such as sharp included, run against this image's glibc.
+# The Debian release matches the base stage: node_modules built there, and any
+# native addon a dependency brings with it, run against this image's glibc.
 FROM gcr.io/distroless/nodejs24-debian13:nonroot@sha256:78f07ef1b5ea71ad7c055df15d0dd8997f2d288f9158623c4d4ae3d765b7d50d AS runner
 
 ARG PORT=8080

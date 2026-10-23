@@ -71,7 +71,7 @@ A new **maintenance job** is not a new target: it is a `publiractl job` subcomma
    - Web / Node: `node:*-trixie-slim` → `gcr.io/distroless/nodejs*-debian13:nonroot`
    - publiractl: `golang:*-trixie` → `gcr.io/distroless/static-debian13:nonroot`, never the unsuffixed `static` alias, which follows whichever Debian release distroless currently builds on
    - server: `golang:*-trixie` + `libvips-dev` → `debian:13.*-slim` + `libvips42t64` (CGO; distroless/static cannot load libvips, and the worker is the same binary)
-   - The build and runtime stages of one image share a Debian release, and move to a new one together. Web / Node copy `node_modules` with native addons such as `sharp` into the runner, and the server binary links libvips, so a glibc or shared-library mismatch fails at run time, not at build time.
+   - The build and runtime stages of one image share a Debian release, and move to a new one together. Web / Node copy `node_modules` built in the build stage into the runner, native addons included whenever a dependency brings one, and the server binary links libvips, so a glibc or shared-library mismatch fails at run time, not at build time.
    - Shared-library package names follow the Debian release: Debian 13's 64-bit `time_t` transition renamed `libvips42` to `libvips42t64`.
 2. **Pin base images by digest, and tag them with what the digest is** (`image:tag@sha256:…`). The rule covers every `FROM` line, every `# syntax=` frontend, and every compose `image:` in the repository, wherever the file lives, not only the Dockerfiles here.
    - The digest is the pin. The tag names the image's full version and its OS release, so a Renovate pull request shows in its diff and title which version the image moves from and to:
@@ -103,7 +103,7 @@ A new **maintenance job** is not a new target: it is a `publiractl job` subcomma
 7. **publiractl**: `CGO_ENABLED=0`. Redeclare `ARG TARGETOS` / `ARG TARGETARCH` **without defaults** so BuildKit’s automatic platform values apply (defaults would pin amd64 even under `--platform linux/arm64`).
 8. **server**: `CGO_ENABLED=1` and do **not** set `GOOS`/`GOARCH`. CGO cannot be cross-compiled here; Buildx `--platform` must match the builder. The runner is debian-slim with `libvips42t64` because Manael links libvips, and `publira worker` runs on the same image because it is the same binary.
 9. Keep root [`.dockerignore`](../../.dockerignore) in mind; do not rely on shipping `node_modules` / `.next` from the host.
-10. **Do not** use Alpine for the Next.js **build** when the runner is Debian-based distroless (glibc / native addons such as `sharp`).
+10. **Do not** use Alpine for the Next.js **build** when the runner is Debian-based distroless (glibc / any native addon in the copied `node_modules`).
 
 ## Docker CI: change detection plus nightly full builds
 

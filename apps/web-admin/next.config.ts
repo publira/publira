@@ -51,6 +51,19 @@ const nextConfig: NextConfig = {
     },
   },
   output: "standalone",
+  // `images` keeps `/_next/image` from reaching Next.js's image optimizer, so
+  // the standalone output leaves out sharp, the encoder it would load.
+  // Turbopack joins each pattern onto this directory and matches the absolute
+  // path. pnpm keeps sharp and its `@img/*` binaries under `.pnpm/` at the
+  // workspace root, and the links to sharp from `next` and from the root
+  // `node_modules` would be left dangling, so they go as well.
+  outputFileTracingExcludes: {
+    "*": [
+      "../../node_modules/**/sharp",
+      "../../node_modules/.pnpm/sharp@*/**",
+      "../../node_modules/.pnpm/@img+*/**",
+    ],
+  },
   partialPrefetching: true,
   reactCompiler: true,
 };
