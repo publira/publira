@@ -21,6 +21,7 @@ require (
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/kaptinlin/messageformat-go v0.8.6
 	github.com/lib/pq v1.12.3
+	github.com/moby/moby/api v1.55.0
 	github.com/opensearch-project/opensearch-go/v5 v5.1.2
 	github.com/payjp/payjpv2-go v0.0.0-20261022044837-cc9b7a0306da
 	github.com/pquerna/otp v1.5.0
@@ -109,7 +110,6 @@ require (
 	github.com/magiconair/properties v1.8.10 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/go-archive v0.3.0 // indirect
-	github.com/moby/moby/api v1.55.0 // indirect
 	github.com/moby/moby/client v0.5.0 // indirect
 	github.com/moby/patternmatcher v0.6.1 // indirect
 	github.com/moby/sys/sequential v0.7.0 // indirect

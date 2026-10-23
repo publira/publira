@@ -49,7 +49,7 @@ func (h *Handler) handleGetEpisodePreviewImage(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	tenantQueries, cleanup, err := h.tenantQueries(ctx, adminHost, tenant.ID)
+	tenantQueries, cleanup, err := h.readQueries(ctx, adminHost, tenant.ID)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
 		http.Error(w, "internal server error", http.StatusInternalServerError)

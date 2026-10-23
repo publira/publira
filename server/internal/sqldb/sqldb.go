@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/XSAM/otelsql"
+	"github.com/jackc/pgx/v5"
 	"go.opentelemetry.io/otel/attribute"
 	semconv "go.opentelemetry.io/otel/semconv/v1.43.0"
 
@@ -48,7 +49,8 @@ const PingTimeout = 10 * time.Second
 // each pool in the process rather than to the process as a whole, so what an
 // install needs from the database is the number of pools times the bound:
 // `publira server` and `publira worker` hold three pools each, or fewer when
-// `--role` or `--queue` narrows what they host.
+// `--role` or `--queue` narrows what they host, and a server serving the
+// storefront holds one more on the replica when it is given one.
 const (
 	maxOpenConnsEnv    = "PUBLIRA_DB_MAX_OPEN_CONNS"
 	maxIdleConnsEnv    = "PUBLIRA_DB_MAX_IDLE_CONNS"
@@ -130,6 +132,7 @@ func Open(url string) (*sql.DB, error) {
 	}
 	db, err := otelsql.Open(driverName, url,
 		otelsql.WithAttributes(semconv.DBSystemNamePostgreSQL),
+		otelsql.WithAttributes(serverAttributes(url)...),
 		otelsql.WithSpanNameFormatter(spanName),
 		otelsql.WithAttributesGetter(queryAttributes),
 		otelsql.WithSpanOptions(otelsql.SpanOptions{
@@ -154,6 +157,22 @@ func Open(url string) (*sql.DB, error) {
 		return nil, err
 	}
 	return db, nil
+}
+
+// serverAttributes name the server url connects to, so every span and metric of
+// the pool says which server answered it: an install with a replica reads from
+// two, and the span is where an operator sees which one a query reached. A url
+// listing several hosts names the first. A url that does not parse names none,
+// and Open fails on it at the ping.
+func serverAttributes(url string) []attribute.KeyValue {
+	config, err := pgx.ParseConfig(url)
+	if err != nil {
+		return nil
+	}
+	return []attribute.KeyValue{
+		semconv.ServerAddress(config.Host),
+		semconv.ServerPort(int(config.Port)),
+	}
 }
 
 // spanName names statement spans after the operation rather than the

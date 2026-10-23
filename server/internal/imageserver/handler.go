@@ -150,10 +150,16 @@ type VersionedStore interface {
 // this site a request arrived on, and Objects is the store the site's images
 // are read from, resolved from the platform's settings; both read as that same
 // login, so a site is answered without reading anything as the other one.
+//
+// Reads opens the tenant-scoped queries of the routes that read no credential,
+// the images anyone may be shown, and may answer them on a read replica of the
+// same login. The episode body route reads a reader's grant and opens Tenants
+// whatever Reads is. A nil Reads is Tenants.
 type SiteDB struct {
 	Pool     *sql.DB
 	Resolver ResolverQuerier
 	Tenants  TenantScopedQuerierFactory
+	Reads    TenantScopedQuerierFactory
 	Objects  ObjectStore
 }
 
@@ -576,7 +582,7 @@ func (h *Handler) handleGetCreatorImage(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	tenantQueries, cleanup, err := h.tenantQueries(ctx, adminHost, tenant.ID)
+	tenantQueries, cleanup, err := h.readQueries(ctx, adminHost, tenant.ID)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -662,7 +668,7 @@ func (h *Handler) serveReaderIcon(
 		return
 	}
 
-	tenantQueries, cleanup, err := h.tenantQueries(ctx, adminHost, tenant.ID)
+	tenantQueries, cleanup, err := h.readQueries(ctx, adminHost, tenant.ID)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -715,7 +721,7 @@ func (h *Handler) handleGetTenantImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tenantQueries, cleanup, err := h.tenantQueries(ctx, adminHost, tenant.ID)
+	tenantQueries, cleanup, err := h.readQueries(ctx, adminHost, tenant.ID)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -771,7 +777,7 @@ func (h *Handler) handleGetSeriesImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tenantQueries, cleanup, err := h.tenantQueries(ctx, adminHost, tenant.ID)
+	tenantQueries, cleanup, err := h.readQueries(ctx, adminHost, tenant.ID)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -828,7 +834,7 @@ func (h *Handler) handleGetGenreImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tenantQueries, cleanup, err := h.tenantQueries(ctx, adminHost, tenant.ID)
+	tenantQueries, cleanup, err := h.readQueries(ctx, adminHost, tenant.ID)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -889,7 +895,7 @@ func (h *Handler) handleGetEpisodeEyeCatchImage(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	tenantQueries, cleanup, err := h.tenantQueries(ctx, adminHost, tenant.ID)
+	tenantQueries, cleanup, err := h.readQueries(ctx, adminHost, tenant.ID)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -950,7 +956,7 @@ func (h *Handler) handleGetVolumeCoverImage(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	tenantQueries, cleanup, err := h.tenantQueries(ctx, adminHost, tenant.ID)
+	tenantQueries, cleanup, err := h.readQueries(ctx, adminHost, tenant.ID)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -1007,7 +1013,7 @@ func (h *Handler) handleGetCampaignBannerImage(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	tenantQueries, cleanup, err := h.tenantQueries(ctx, adminHost, tenant.ID)
+	tenantQueries, cleanup, err := h.readQueries(ctx, adminHost, tenant.ID)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -1064,7 +1070,7 @@ func (h *Handler) handleGetLabelImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tenantQueries, cleanup, err := h.tenantQueries(ctx, adminHost, tenant.ID)
+	tenantQueries, cleanup, err := h.readQueries(ctx, adminHost, tenant.ID)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "failed to initialize tenant scoped queries", "error", err, "tenant_id", tenant.ID.String())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -1167,6 +1173,16 @@ func (h *Handler) tenantFromHost(w http.ResponseWriter, r *http.Request) (dbmode
 // login the site a request arrived on is answered as.
 func (h *Handler) tenantQueries(ctx context.Context, adminHost bool, tenantID uuid.UUID) (TenantScopedQuerier, func(), error) {
 	return h.site(adminHost).Tenants.ForTenant(ctx, tenantID)
+}
+
+// readQueries is tenantQueries for a route that reads no credential, which may
+// be answered on the site's read replica.
+func (h *Handler) readQueries(ctx context.Context, adminHost bool, tenantID uuid.UUID) (TenantScopedQuerier, func(), error) {
+	site := h.site(adminHost)
+	if site.Reads == nil {
+		return site.Tenants.ForTenant(ctx, tenantID)
+	}
+	return site.Reads.ForTenant(ctx, tenantID)
 }
 
 // site is the SiteDB of the host a request arrived on.

@@ -32,6 +32,7 @@ import (
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
+	"github.com/publira/publira/server/internal/readreplica"
 	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
 	"github.com/publira/publira/server/internal/signin"
@@ -47,7 +48,10 @@ type Querier interface {
 }
 
 type apiServer struct {
-	db        *sql.DB
+	db *sql.DB
+	// reads is db and, when the process is given one, its read replica: a
+	// request [answeredOnReplica] admits is bound to its tenant there.
+	reads     readreplica.Pools
 	queries   Querier
 	encryptor emailsettings.SecretManager
 	tokens    *auth.TokenManager
@@ -181,8 +185,10 @@ type API struct {
 
 // New builds the public API over db, which must be the pool connected as
 // publira_public: the row-level security every handler here relies on is that
-// role's. The flood controls read their limits from the platform policy
-// through that same pool, and so does the disposable-domain list a tenant may
+// role's. replica is a hot standby of db's cluster signed in as the same login,
+// which [replicaProcedures] are answered on when it has caught up; nil answers
+// every request on db. The flood controls read their limits from the platform
+// policy through db, and so does the disposable-domain list a tenant may
 // refuse sign-ups against. reval sends the cache tags its writes leave stale; a
 // nil one turns revalidation off. search answers the catalog searches; a nil
 // one is the SQL backend over queries. idTokens says where the ID tokens a
@@ -195,7 +201,7 @@ type API struct {
 // tenant console sign in, and mail, the same accounts, and a source reaching
 // all three holds one allowance of each, so the counts have to be one even when
 // they are kept in this process. A nil one counts on its own.
-func New(db *sql.DB, queries Querier, storageProvider storage.Provider, encryptor emailsettings.SecretManager, tokens *auth.TokenManager, reval *revalidate.Client, search catalogsearch.Backend, idTokens signin.VerifierConfig, payments *paymentprovider.Registry, login *loginguard.Guard, mail *mailguard.Guard) (*API, error) {
+func New(db, replica *sql.DB, queries Querier, storageProvider storage.Provider, encryptor emailsettings.SecretManager, tokens *auth.TokenManager, reval *revalidate.Client, search catalogsearch.Backend, idTokens signin.VerifierConfig, payments *paymentprovider.Registry, login *loginguard.Guard, mail *mailguard.Guard) (*API, error) {
 	logger := slog.Default()
 	policy := platformpolicy.NewResolver(dbmodels.New(db), platformpolicy.CacheTTL, logger)
 	guards := newReaderGuards(policy, logger)
@@ -212,6 +218,7 @@ func New(db *sql.DB, queries Querier, storageProvider storage.Provider, encrypto
 		server.paymentProviders = payments
 	}
 	server.storage = storageProvider
+	server.reads.Replica = replica
 	return &API{server: server}, nil
 }
 
@@ -251,6 +258,7 @@ func newAPIServer(
 	})
 	return &apiServer{
 		db:               db,
+		reads:            readreplica.Pools{Primary: db, Logger: logger},
 		queries:          queries,
 		encryptor:        encryptor,
 		tokens:           tokens,
@@ -318,8 +326,14 @@ func registerPublicRoutes(mux *http.ServeMux, server *apiServer) {
 	connecthttp.Mount(mux, domain, limits...)
 }
 
+// tenantScopedQuerierInterceptor binds every tenant-scoped request to its
+// tenant on one connection for the whole request, on the read replica when
+// [answeredOnReplica] admits the request and the replica has caught up, and on
+// the primary otherwise. The tenant is looked up on that same connection, so a
+// request answered on the replica does not reach the primary for its tenant
+// either.
 func (s *apiServer) tenantScopedQuerierInterceptor() connect.ServerInterceptor {
-	return rpcmiddleware.NewUnaryRequestInterceptor(func(ctx context.Context, _ connect.Spec, req proto.Message, next func(context.Context) error) error {
+	return rpcmiddleware.NewUnaryRequestInterceptor(func(ctx context.Context, spec connect.Spec, req proto.Message, next func(context.Context) error) error {
 		if s.db == nil {
 			return next(ctx)
 		}
@@ -337,7 +351,20 @@ func (s *apiServer) tenantScopedQuerierInterceptor() connect.ServerInterceptor {
 			return err
 		}
 
-		tenant, err := s.queriesFor(ctx).GetTenantByID(ctx, tenantID)
+		var conn *sql.Conn
+		var release func()
+		if answeredOnReplica(spec.Procedure, rpcmiddleware.RequestHeader(ctx)) {
+			conn, release, _, err = s.reads.Acquire(ctx, tenantID)
+		} else {
+			conn, release, err = tenantconn.Acquire(ctx, s.db, tenantID, s.logger)
+		}
+		if err != nil {
+			return s.internalDBError(ctx, "failed to acquire tenant connection", err, "tenant_id", tenantID.String())
+		}
+		defer release()
+		queries := dbmodels.New(conn)
+
+		tenant, err := queries.GetTenantByID(ctx, tenantID)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return connect.NewError(connect.CodeNotFound, "tenant not found")
@@ -348,16 +375,10 @@ func (s *apiServer) tenantScopedQuerierInterceptor() connect.ServerInterceptor {
 			return tenantstatus.Refusal()
 		}
 
-		conn, release, err := tenantconn.Acquire(ctx, s.db, tenant.ID, s.logger)
-		if err != nil {
-			return s.internalDBError(ctx, "failed to acquire tenant connection", err, "tenant_id", tenant.ID.String())
-		}
-		defer release()
-
 		tracing.SetTenant(ctx, tenant.PublicID)
 		ctx = rpcmiddleware.WithTenantContext(ctx, rpcmiddleware.TenantContext{TenantID: tenant.ID, TenantPublicID: tenant.PublicID})
 		ctx = rpcmiddleware.WithTenantConn(ctx, conn)
-		ctx = rpcmiddleware.WithTenantQueries(ctx, dbmodels.New(conn))
+		ctx = rpcmiddleware.WithTenantQueries(ctx, queries)
 		return next(ctx)
 	})
 }
