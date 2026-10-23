@@ -23,8 +23,17 @@ func runAggregateContentStats(ctx context.Context, logger *slog.Logger, cfg *con
 	}
 	defer db.Close() //nolint:errcheck
 
+	replica, err := openContentStatsReplica(ctx, db)
+	if err != nil {
+		logger.Error("failed to connect to the replica", "error", err)
+		return err
+	}
+	if replica != nil {
+		defer replica.Close() //nolint:errcheck
+	}
+
 	job := maintenance.ContentStatsAggregation{Date: statDate}
-	return job.Run(ctx, maintenance.Deps{DB: db, Logger: logger})
+	return job.Run(ctx, maintenance.Deps{DB: db, Replica: replica, Logger: logger})
 }
 
 func resolveContentStatsDBURL(fallback string) string {

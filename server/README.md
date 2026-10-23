@@ -715,6 +715,8 @@ connections from them, plus one pool for each `publiractl` command running at th
 
 A server serving the storefront and given `PUBLIRA_PUBLIC_DB_REPLICA_URL` holds one more pool, on the replica it names, signed in as `publira_public` and bounded by the same three variables. Its connections are made to the replica rather than the primary, so they count against the replica's `max_connections`, while the primary still sees the server's `publira_public` pool: a request the replica answers takes a connection there only for the moment it reads the primary's write position. `internal/readreplica` documents which requests the replica answers and when.
 
+A worker hosting the `maintenance` queue and given `PUBLIRA_CONTENT_STATS_DB_REPLICA_URL` holds one more pool in the same way, on the replica it names, signed in as `publira_content_stats`, and so do `publiractl job aggregate-content-stats` and `publiractl job build-recommend-features` given it. A rebuild holds a connection of each for as long as it reads a tenant's sources on the replica: its transaction stays open on the primary meanwhile, to replace that tenant's rows with what it read. `maintenance.Deps` documents which reads the replica makes.
+
 A request to `publira.v1` or `publira.admin.v1` holds one connection of its pool from start to end, bound to the tenant it names, and at most `PUBLIRA_DB_MAX_OPEN_CONNS − 1` of them do at once: the last connection is kept for the queries that run outside a tenant, which those same requests make as well. The image routes give their connection back once the image's row is read, before the object is fetched and converted.
 
 ### Local development
@@ -735,7 +737,7 @@ Then set each variable (`PUBLIRA_PLATFORM_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL
   - `GET /livez` — process liveness. Always `200` with a plain `ok`. Intended for a K8s livenessProbe.
   - `GET /readyz` — readiness of the dependencies. `200` when healthy, `503` when not. Intended for a K8s readinessProbe or a load balancer.
   - Server / worker: at minimum a DB `Ping`
-  - `publira server` holds a pool per namespace and names one check per pool — `db.public`, `db.admin`, `db.platform`, and `db.public.replica` when it is given a replica — so a failure says which login, or which server, stopped answering. The edge forwards the public API under `/rpc`, and `/images`, alone, so its `/readyz` is not an outsider's to read.
+  - `publira server` holds a pool per namespace and names one check per pool — `db.public`, `db.admin`, `db.platform`, and `db.public.replica` when it is given a replica — so a failure says which login, or which server, stopped answering. `publira worker` does the same for its logins — `db.outbox`, `db.ticker`, `db.content_stats`, and `db.content_stats.replica` when it hosts the `maintenance` queue and is given a replica. The edge forwards the public API under `/rpc`, and `/images`, alone, so its `/readyz` is not an outsider's to read.
   - Web (`web-admin` / `web-storefront` / `web-platform`): the upstream API's `/readyz` plus Redis (the Redis check is skipped when `PNCH_REDIS_URL` is disabled)
   - Example `/readyz` responses (JSON):
     - Healthy: `{"status":"ok","checks":{"db":{"status":"ok"}}}`

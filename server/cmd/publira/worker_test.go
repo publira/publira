@@ -44,6 +44,7 @@ func TestWorkerOpensThePoolsOfItsQueues(t *testing.T) {
 			t.Setenv("PUBLIRA_WORKER_DB_URL", outboxURL)
 			t.Setenv("PUBLIRA_TICKER_DB_URL", tickerURL)
 			t.Setenv("PUBLIRA_CONTENT_STATS_DB_URL", contentStatsURL)
+			t.Setenv(contentStatsDBReplicaURLEnv, "")
 
 			var opened []string
 			pools, err := openWorkerPools(tc.queues, func(url string) (*sql.DB, error) {

@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/dbroles"
+	"github.com/publira/publira/server/internal/readreplica"
 	"github.com/publira/publira/server/internal/tenantday"
 	"github.com/publira/publira/server/internal/tenantlock"
 )
@@ -42,6 +43,9 @@ const (
 // run spans every tenant: [dbroles.RequireEveryTenant] refuses any other.
 type Builder struct {
 	db *sql.DB
+	// pools reads the events the user snapshot is built from on its replica
+	// once it has caught up, and on db when it has none or it has not.
+	pools readreplica.Pools
 }
 
 // Options describes one build run.
@@ -68,7 +72,18 @@ type Result struct {
 
 // New constructs a Builder backed by db.
 func New(db *sql.DB) *Builder {
-	return &Builder{db: db}
+	return NewReplicated(readreplica.Pools{Primary: db})
+}
+
+// NewReplicated constructs a Builder that writes on pools.Primary and reads
+// each tenant's window of content_events on pools.Replica, once the replica has
+// replayed everything the primary had committed when that tenant's build began
+// ([readreplica.Pools.CaughtUp]). The item snapshot is read from
+// content_daily_stats, which the chain wrote on the primary moments before and
+// which holds a row per title and day rather than one per view, so it is read
+// in the build's own transaction either way.
+func NewReplicated(pools readreplica.Pools) *Builder {
+	return &Builder{db: pools.Primary, pools: pools}
 }
 
 // Run replaces both feature snapshots for every tenant. Each tenant is its own
@@ -169,7 +184,20 @@ func (b *Builder) buildTenant(
 		return 0, 0, err
 	}
 
-	sources, err := countSources(ctx, tx, tenantID, referenceDate, windowDays, tenant.TimeZone)
+	// The replica's connection is taken after the lock, so its position is no
+	// earlier than the one a build on the primary would read from. The
+	// position is read in tx, which borrows no further primary connection.
+	replica, err := b.pools.CaughtUp(ctx, tx)
+	if err != nil {
+		return 0, 0, err
+	}
+	var reads querier = tx
+	if replica != nil {
+		defer replica.Close() //nolint:errcheck
+		reads = replica
+	}
+
+	sources, err := countSources(ctx, reads, tenantID, referenceDate, windowDays, tenant.TimeZone)
 	if err != nil {
 		return 0, 0, fmt.Errorf("count feature sources: %w", err)
 	}
@@ -179,10 +207,12 @@ func (b *Builder) buildTenant(
 	if err != nil {
 		return 0, 0, fmt.Errorf("rebuild item features: %w", err)
 	}
-	userRows, err = replaceSnapshot(ctx, tx, deleteUserFeaturesSQL, insertUserFeaturesSQL,
-		tenantID, referenceDate, windowDays, FeatureVersion, topSeriesLimit, tenant.TimeZone)
+	if _, err := tx.ExecContext(ctx, deleteUserFeaturesSQL, tenantID); err != nil {
+		return 0, 0, fmt.Errorf("rebuild user features: delete previous snapshot: %w", err)
+	}
+	userRows, err = writeUserSnapshot(ctx, tx, replica, tenantID, referenceDate, windowDays, topSeriesLimit, tenant.TimeZone)
 	if err != nil {
-		return 0, 0, fmt.Errorf("rebuild user features: %w", err)
+		return 0, 0, fmt.Errorf("rebuild user features: insert rebuilt snapshot: %w", err)
 	}
 
 	// A source row must yield at least one feature row. This catches an
@@ -221,6 +251,46 @@ func replaceSnapshot(
 	return inserted.RowsAffected()
 }
 
+// querier is where the sources are counted: the build's own transaction, or a
+// connection on the replica.
+type querier interface {
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
+// writeUserSnapshot writes one tenant's user snapshot in tx. Without a
+// replica it is read and written by one statement; with one, it is read on the
+// replica and copied into tx.
+func writeUserSnapshot(
+	ctx context.Context,
+	tx *sql.Tx,
+	replica *sql.Conn,
+	tenantID uuid.UUID,
+	referenceDate string,
+	windowDays, topSeriesLimit int,
+	timeZone string,
+) (int64, error) {
+	if replica == nil {
+		inserted, err := tx.ExecContext(ctx, insertUserFeaturesSQL,
+			tenantID, referenceDate, windowDays, topSeriesLimit, timeZone, FeatureVersion)
+		if err != nil {
+			return 0, err
+		}
+		return inserted.RowsAffected()
+	}
+	rows, err := replica.QueryContext(ctx, selectUserFeaturesSQL,
+		tenantID, referenceDate, windowDays, topSeriesLimit, timeZone)
+	if err != nil {
+		return 0, fmt.Errorf("read on the replica: %w", err)
+	}
+	return readreplica.Copy(rows, func(batch string) (int64, error) {
+		inserted, err := tx.ExecContext(ctx, insertCopiedUserFeaturesSQL, tenantID, FeatureVersion, batch)
+		if err != nil {
+			return 0, err
+		}
+		return inserted.RowsAffected()
+	})
+}
+
 type sourceCounts struct {
 	dailyStats       int64
 	identifiedEvents int64
@@ -229,9 +299,9 @@ type sourceCounts struct {
 // countSources counts the two inputs separately, because they gate different
 // output tables: daily stats feed the item snapshot, and the events carrying a
 // user_id feed the user snapshot.
-func countSources(ctx context.Context, tx *sql.Tx, tenantID uuid.UUID, referenceDate string, windowDays int, timeZone string) (sourceCounts, error) {
+func countSources(ctx context.Context, reads querier, tenantID uuid.UUID, referenceDate string, windowDays int, timeZone string) (sourceCounts, error) {
 	var counts sourceCounts
-	err := tx.QueryRowContext(ctx, `
+	err := reads.QueryRowContext(ctx, `
 		SELECT
 			(SELECT count(*)
 			 FROM content_daily_stats
@@ -291,15 +361,16 @@ WHERE cds.tenant_id = $1
 GROUP BY cds.entity_type, cds.entity_id, b.window_start, b.window_end
 `
 
-// insertUserFeaturesSQL summarises the trailing window per signed-in reader.
-// Anonymous actors are excluded on purpose: user_recommend_features is keyed by
-// users(tenant_id, id), so a publira_aid actor has nowhere to be stored and
-// stays a fallback case for online inference.
+// rebuiltUserFeaturesSQL summarises the trailing window per signed-in reader
+// into rebuilt_users. Anonymous actors are excluded on purpose:
+// user_recommend_features is keyed by users(tenant_id, id), so a publira_aid
+// actor has nowhere to be stored and stays a fallback case for online
+// inference.
 //
-// The window is bounded by instants rather than by stat_date, so $6 carries the
+// The window is bounded by instants rather than by stat_date, so $5 carries the
 // tenant's time zone: its first and last days have to start and end where the
-// daily aggregate's do.
-const insertUserFeaturesSQL = `
+// daily aggregate's do. $4 bounds each reader's top_series.
+const rebuiltUserFeaturesSQL = `
 WITH bounds AS (
 	SELECT ($2::date - ($3::int - 1)) AS window_start, $2::date AS window_end
 ), windowed_events AS (
@@ -308,8 +379,8 @@ WITH bounds AS (
 	CROSS JOIN bounds b
 	WHERE ce.tenant_id = $1
 		AND ce.user_id IS NOT NULL
-		AND ce.occurred_at >= (b.window_start::timestamp AT TIME ZONE $6::text)
-		AND ce.occurred_at < ((b.window_end + 1)::timestamp AT TIME ZONE $6::text)
+		AND ce.occurred_at >= (b.window_start::timestamp AT TIME ZONE $5::text)
+		AND ce.occurred_at < ((b.window_end + 1)::timestamp AT TIME ZONE $5::text)
 ), per_series AS (
 	SELECT
 		user_id,
@@ -350,7 +421,7 @@ WITH bounds AS (
 			ORDER BY position
 		) AS series
 	FROM ranked_series
-	WHERE position <= $5::int
+	WHERE position <= $4::int
 	GROUP BY user_id
 ), totals AS (
 	SELECT
@@ -366,31 +437,56 @@ WITH bounds AS (
 		max(last_event_at) AS last_event_at
 	FROM per_series
 	GROUP BY user_id
+), rebuilt_users AS (
+	SELECT
+		t.user_id,
+		jsonb_build_object(
+			'window_days', $3::int,
+			'window_start', to_char(b.window_start, 'YYYY-MM-DD'),
+			'window_end', to_char(b.window_end, 'YYYY-MM-DD'),
+			'event_count', t.event_count,
+			'view_count', t.view_count,
+			'purchase_count', t.purchase_count,
+			'rating_count', t.rating_count,
+			'rating_sum', t.rating_sum,
+			'favorite_count', t.favorite_count,
+			'comment_count', t.comment_count,
+			'series_count', t.series_count,
+			'last_event_at', to_char(t.last_event_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+			'top_series', COALESCE(ts.series, '[]'::jsonb)
+		) AS features
+	FROM totals t
+	LEFT JOIN top_series ts ON ts.user_id = t.user_id
+	CROSS JOIN bounds b
 )
+`
+
+// insertUserFeaturesSQL reads and writes one tenant's user snapshot in one
+// statement, on the primary, stamped with feature version $6.
+const insertUserFeaturesSQL = rebuiltUserFeaturesSQL + `
 INSERT INTO user_recommend_features (
 	tenant_id, user_id, features, feature_version, computed_at
 )
-SELECT
-	$1,
-	t.user_id,
-	jsonb_build_object(
-		'window_days', $3::int,
-		'window_start', to_char(b.window_start, 'YYYY-MM-DD'),
-		'window_end', to_char(b.window_end, 'YYYY-MM-DD'),
-		'event_count', t.event_count,
-		'view_count', t.view_count,
-		'purchase_count', t.purchase_count,
-		'rating_count', t.rating_count,
-		'rating_sum', t.rating_sum,
-		'favorite_count', t.favorite_count,
-		'comment_count', t.comment_count,
-		'series_count', t.series_count,
-		'last_event_at', to_char(t.last_event_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
-		'top_series', COALESCE(ts.series, '[]'::jsonb)
-	),
-	$4::int,
-	now()
-FROM totals t
-LEFT JOIN top_series ts ON ts.user_id = t.user_id
-CROSS JOIN bounds b
+SELECT $1, user_id, features, $6::int, now()
+FROM rebuilt_users
+`
+
+// selectUserFeaturesSQL reads one tenant's user snapshot on the replica, one
+// JSON object per reader, for insertCopiedUserFeaturesSQL to write on the
+// primary.
+const selectUserFeaturesSQL = rebuiltUserFeaturesSQL + `
+SELECT jsonb_build_object('user_id', user_id, 'features', features) FROM rebuilt_users
+`
+
+// insertCopiedUserFeaturesSQL writes a batch selectUserFeaturesSQL read, $3,
+// stamped with feature version $2. A reader whose account was deleted after the
+// replica answered is left out, as a build on the primary would have left them:
+// their events went with the account.
+const insertCopiedUserFeaturesSQL = `
+INSERT INTO user_recommend_features (
+	tenant_id, user_id, features, feature_version, computed_at
+)
+SELECT $1, r.user_id, r.features, $2::int, now()
+FROM jsonb_to_recordset($3::jsonb) AS r(user_id uuid, features jsonb)
+JOIN users u ON u.tenant_id = $1 AND u.id = r.user_id
 `

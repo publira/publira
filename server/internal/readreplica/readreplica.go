@@ -8,7 +8,8 @@
 // primary's current write position is read, and the replica answers only once
 // it has replayed up to that position: every transaction that committed before
 // the request arrived is then visible on it. A replica still short of that
-// position after [CatchUpWait] does not answer, and the primary does.
+// position after [CatchUpWait], or the longer wait a caller off every reader's
+// path sets, does not answer, and the primary does.
 //
 // The rule is what keeps the web apps' caches correct, and not only a reader's
 // own writes. A write drops the cache entries it leaves stale once it has
@@ -34,6 +35,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -77,6 +79,10 @@ type Pools struct {
 	// Logger reports the connections tenantconn has to discard; nil is
 	// slog.Default.
 	Logger *slog.Logger
+	// Wait is how long a read waits for the replica to replay up to the
+	// primary's position before the primary answers it instead. Zero is
+	// [CatchUpWait], which is sized for a request a reader is waiting on.
+	Wait time.Duration
 }
 
 // CheckLogin refuses a replica that does not sign in as the same login as
@@ -113,16 +119,16 @@ func (p Pools) Acquire(ctx context.Context, tenantID uuid.UUID) (conn *sql.Conn,
 		return conn, release, false, err
 	}
 
-	var position string
-	if err := p.Primary.QueryRowContext(ctx, primaryPositionSQL).Scan(&position); err != nil {
-		return nil, func() {}, false, fmt.Errorf("read the primary's position: %w", err)
+	position, err := p.primaryPosition(ctx)
+	if err != nil {
+		return nil, func() {}, false, err
 	}
 
 	conn, release, err = tenantconn.Acquire(ctx, p.Replica, tenantID, p.Logger)
 	if err != nil {
 		return nil, func() {}, false, err
 	}
-	caughtUp, err := waitForReplay(ctx, conn, position)
+	caughtUp, err := waitForReplay(ctx, conn, position, p.wait())
 	if err != nil {
 		release()
 		return nil, func() {}, false, err
@@ -136,14 +142,70 @@ func (p Pools) Acquire(ctx context.Context, tenantID uuid.UUID) (conn *sql.Conn,
 	return conn, release, false, err
 }
 
+// Querier is a connection or a transaction on the primary.
+type Querier interface {
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
+// CaughtUp is [Pools.Acquire] for a read that spans every tenant and so binds
+// none, as the maintenance jobs' rebuilds do. It returns a connection on the
+// replica once the replica has replayed everything the primary had committed
+// when CaughtUp was called, and nil when the read is the primary's to make:
+// there is no replica, it is not a standby, or it is still short of that
+// position after the wait. The caller closes the connection it is given.
+//
+// The primary's position is read on primary, a connection or a transaction
+// on Primary the caller already holds, rather than on a connection borrowed
+// from the pool: a caller that holds its pool's other connections, as a
+// rebuild beside its pass lock and its transaction may, would otherwise wait
+// for a connection that a job holding the rest is waiting on in turn.
+func (p Pools) CaughtUp(ctx context.Context, primary Querier) (*sql.Conn, error) {
+	if p.Replica == nil {
+		return nil, nil
+	}
+	position, err := readPosition(ctx, primary)
+	if err != nil {
+		return nil, err
+	}
+	conn, err := p.Replica.Conn(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("connect to the replica: %w", err)
+	}
+	caughtUp, err := waitForReplay(ctx, conn, position, p.wait())
+	if err != nil || !caughtUp {
+		_ = conn.Close()
+		return nil, err
+	}
+	return conn, nil
+}
+
+func (p Pools) primaryPosition(ctx context.Context) (string, error) {
+	return readPosition(ctx, p.Primary)
+}
+
+func readPosition(ctx context.Context, primary Querier) (string, error) {
+	var position string
+	if err := primary.QueryRowContext(ctx, primaryPositionSQL).Scan(&position); err != nil {
+		return "", fmt.Errorf("read the primary's position: %w", err)
+	}
+	return position, nil
+}
+
+func (p Pools) wait() time.Duration {
+	if p.Wait > 0 {
+		return p.Wait
+	}
+	return CatchUpWait
+}
+
 // errNotStandby stops the wait for a replica that is not in recovery, which
 // will never replay anything.
 var errNotStandby = errors.New("not a standby")
 
 // waitForReplay reports whether conn's server replays up to position within
-// [CatchUpWait].
-func waitForReplay(ctx context.Context, conn *sql.Conn, position string) (bool, error) {
-	deadline := time.Now().Add(CatchUpWait)
+// wait.
+func waitForReplay(ctx context.Context, conn *sql.Conn, position string, wait time.Duration) (bool, error) {
+	deadline := time.Now().Add(wait)
 	for {
 		caughtUp, err := replayed(ctx, conn, position)
 		if errors.Is(err, errNotStandby) {
@@ -155,11 +217,11 @@ func waitForReplay(ctx context.Context, conn *sql.Conn, position string) (bool, 
 		if caughtUp {
 			return true, nil
 		}
-		wait := min(catchUpPoll, time.Until(deadline))
-		if wait <= 0 {
+		pause := min(catchUpPoll, time.Until(deadline))
+		if pause <= 0 {
 			return false, nil
 		}
-		timer := time.NewTimer(wait)
+		timer := time.NewTimer(pause)
 		select {
 		case <-ctx.Done():
 			timer.Stop()
@@ -178,4 +240,60 @@ func replayed(ctx context.Context, conn *sql.Conn, position string) (bool, error
 		return false, errNotStandby
 	}
 	return caughtUp, nil
+}
+
+// copyBatch is how many rows one write of [Copy] carries. The rows a rebuild
+// copies are JSON objects of a few hundred bytes up to a few kilobytes, so a
+// batch stays around a megabyte while the round trips stay few.
+const copyBatch = 1000
+
+// Copy hands what a read made on the replica answered to write, which writes
+// it on the primary. rows is that read, one JSON object per row in its only
+// column, and write is given them as a JSON array of at most copyBatch rows at
+// a time and reports how many rows it wrote. Copy closes rows and reports the
+// total.
+func Copy(rows *sql.Rows, write func(batch string) (int64, error)) (int64, error) {
+	defer rows.Close() //nolint:errcheck
+
+	var (
+		total int64
+		batch strings.Builder
+		count int
+	)
+	flush := func() error {
+		if count == 0 {
+			return nil
+		}
+		batch.WriteByte(']')
+		written, err := write(batch.String())
+		if err != nil {
+			return err
+		}
+		total += written
+		batch.Reset()
+		count = 0
+		return nil
+	}
+	for rows.Next() {
+		var row []byte
+		if err := rows.Scan(&row); err != nil {
+			return total, fmt.Errorf("read a row from the replica: %w", err)
+		}
+		if count == 0 {
+			batch.WriteByte('[')
+		} else {
+			batch.WriteByte(',')
+		}
+		batch.Write(row)
+		count++
+		if count == copyBatch {
+			if err := flush(); err != nil {
+				return total, err
+			}
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return total, fmt.Errorf("read the rows from the replica: %w", err)
+	}
+	return total, flush()
 }

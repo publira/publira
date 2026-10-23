@@ -95,6 +95,14 @@ No lint covers this — the variable names are strings in each `cmd/` entrypoint
 
 `TestReplicaProceduresAreCatalogReads` checks the list against what a procedure's name gives away, and `TestDBReplicaProceduresWriteNothing` calls every listed procedure against a standby, which refuses any write, so a listed procedure missing from its table fails it as well.
 
+## A maintenance read reaches the replica only where it reads content_events
+
+`PUBLIRA_CONTENT_STATS_DB_REPLICA_URL` gives the `maintenance` queue, and the `publiractl job` subcommands of the same jobs, a second `publira_content_stats` pool on a hot standby, and a job reads on it only where `maintenance.Deps.Replica` says it does. A read joins that list by asking, in order: is it a write, a lock, or a record of progress? Then never. Does the job act on what it read — the projection writing the reads it has not projected, a purge deleting what it found? Then never: the read is the write's own condition, and splitting the two across servers would let another write land between them. Is it a read of `content_events` by a rebuild that replaces rows of its own with what it read? Then it may be listed, and it reads through `readreplica.Pools.CaughtUp` in the rebuild's transaction on the primary, after its lock. The search index build stays off it as well, because it counts on the order of the `catalog_index_sync` events the worker drains from the primary.
+
+`readreplica.Pools.CaughtUp` keeps the lag out of the rows the same way `Acquire` does for the storefront, with a wait sized for work nobody waits on. A rebuild is not given a rule of its own for a day that has ended: a late projection, a hidden comment, and a deleted account all change a past day, and a replica that has not replayed them would rebuild it without them.
+
+`TestRebuildsOnAReplicaWriteThePrimarysRows` runs the rebuilds against a standby that catches up during the wait and one that does not, and fails when either writes rows other than the primary's, or when the reads of `content_events` land on the wrong server.
+
 ## Stored objects must be named by a row the sweep knows
 
 The orphan image sweep — `maintenance.purge_orphan_images` on the worker, and `publiractl job purge-orphan-images` by hand — treats the database as the authority over the bucket: it walks every object under `tenants/` and deletes the ones no variant row `ListReferencedObjectKeys` (`db/query/storage.sql`) reads names. A new upload path that writes under that prefix without a row in one of those tables therefore has its objects deleted a day later, silently.

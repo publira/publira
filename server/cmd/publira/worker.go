@@ -36,6 +36,12 @@ const (
 	defaultWorkerDBURL       = "postgres://publira_outbox:outboxpass@db:5432/publira?sslmode=disable"
 	defaultTickerDBURL       = "postgres://publira_ticker:tickerpass@db:5432/publira?sslmode=disable"
 	defaultContentStatsDBURL = "postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable"
+
+	// contentStatsDBReplicaURLEnv names a hot standby the maintenance jobs'
+	// rebuilds read content_events on. Like the storefront's, it has no
+	// development default: unset is no replica, and every read stays on
+	// PUBLIRA_CONTENT_STATS_DB_URL.
+	contentStatsDBReplicaURLEnv = "PUBLIRA_CONTENT_STATS_DB_REPLICA_URL"
 )
 
 // workerQueues is which River queues a worker process hosts. A queue is named
@@ -198,6 +204,7 @@ func buildWorker(deps shared, queues workerQueues) (_ half, err error) {
 		}, platformstorage.NewStorage)}
 		maintenanceJobs, err := maintenancejobs.New(maintenancejobs.Config{
 			DB:         contentStatsDB,
+			Replica:    pools.contentStatsReplica,
 			Storage:    reclaimers,
 			Secrets:    encryptor,
 			GooglePlay: googleplay.NewClient(googleplay.Config{}),
@@ -309,6 +316,12 @@ type workerPools struct {
 	outbox       *sql.DB
 	ticker       *sql.DB
 	contentStats *sql.DB
+	// contentStatsReplica is a hot standby signed in as publira_content_stats,
+	// which the maintenance queue's rebuilds read content_events on. It is nil
+	// unless the process hosts that queue and PUBLIRA_CONTENT_STATS_DB_REPLICA_URL
+	// names one: the search index build, the other job on that login, reads
+	// nothing on it.
+	contentStatsReplica *sql.DB
 }
 
 // openWorkerPools opens the pool of each login the queues need, closing the
@@ -337,11 +350,19 @@ func openWorkerPools(queues workerQueues, open func(url string) (*sql.DB, error)
 		}
 		*login.pool = db
 	}
+	if queues.maintenance {
+		replica, err := openReplicaPool(pools.contentStats, contentStatsDBReplicaURLEnv)
+		if err != nil {
+			return workerPools{}, errors.Join(failed("failed to initialize the maintenance jobs replica", err), pools.close())
+		}
+		pools.contentStatsReplica = replica
+	}
 	return pools, nil
 }
 
 // checks is one readiness check per pool open: with up to three logins behind
-// one half, a single "db" could not say which of them stopped answering.
+// one half, and a replica beside one of them, a single "db" could not say which
+// of them stopped answering.
 func (p workerPools) checks() []health.Option {
 	var checks []health.Option
 	for _, pool := range []struct {
@@ -351,6 +372,7 @@ func (p workerPools) checks() []health.Option {
 		{"db.outbox", p.outbox},
 		{"db.ticker", p.ticker},
 		{"db.content_stats", p.contentStats},
+		{"db.content_stats.replica", p.contentStatsReplica},
 	} {
 		if pool.db != nil {
 			checks = append(checks, health.WithDBNamed(pool.name, pool.db))
@@ -361,7 +383,7 @@ func (p workerPools) checks() []health.Option {
 
 func (p workerPools) close() error {
 	var errs []error
-	for _, db := range []*sql.DB{p.outbox, p.ticker, p.contentStats} {
+	for _, db := range []*sql.DB{p.outbox, p.ticker, p.contentStats, p.contentStatsReplica} {
 		if db != nil {
 			errs = append(errs, db.Close())
 		}

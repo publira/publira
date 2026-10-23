@@ -15,6 +15,7 @@ import (
 	"github.com/publira/publira/server/internal/contentevents"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dbroles"
+	"github.com/publira/publira/server/internal/readreplica"
 	"github.com/publira/publira/server/internal/tenantday"
 	"github.com/publira/publira/server/internal/tenantlock"
 )
@@ -24,8 +25,11 @@ import (
 // tenant, because each run reads and writes every tenant:
 // [dbroles.RequireEveryTenant] refuses any other.
 type Aggregator struct {
-	db  *sql.DB
-	now func() time.Time
+	db *sql.DB
+	// pools reads a day's sources on its replica once it has caught up, and
+	// on db when it has none or it has not.
+	pools readreplica.Pools
+	now   func() time.Time
 }
 
 // Result describes one aggregate run. Every count covers the tenants the run
@@ -47,7 +51,18 @@ type Skipped struct {
 
 // New constructs an Aggregator backed by db.
 func New(db *sql.DB) *Aggregator {
-	return &Aggregator{db: db, now: time.Now}
+	return NewReplicated(readreplica.Pools{Primary: db})
+}
+
+// NewReplicated constructs an Aggregator that writes on pools.Primary and reads
+// each tenant's day on pools.Replica, once the replica has replayed everything
+// the primary had committed when that tenant's rebuild began
+// ([readreplica.Pools.CaughtUp]). A day is not closed to writes when it ends —
+// a late projection files an episode read on the day the member finished it,
+// and staff hide a comment of any day — so a replica that answered from before
+// them would rebuild the day without them.
+func NewReplicated(pools readreplica.Pools) *Aggregator {
+	return &Aggregator{db: pools.Primary, pools: pools, now: time.Now}
 }
 
 // Options describes one aggregate run.
@@ -177,7 +192,20 @@ func (a *Aggregator) aggregateTenant(ctx context.Context, tenant tenantday.Tenan
 		return 0, err
 	}
 
-	sources, err := countSources(ctx, tx, tenantID, statDate, tenant.TimeZone)
+	// The replica's connection is taken after the lock, so its position is no
+	// earlier than the one a rebuild on the primary would read from. The
+	// position is read in tx, which borrows no further primary connection.
+	replica, err := a.pools.CaughtUp(ctx, tx)
+	if err != nil {
+		return 0, err
+	}
+	var reads querier = tx
+	if replica != nil {
+		defer replica.Close() //nolint:errcheck
+		reads = replica
+	}
+
+	sources, err := countSources(ctx, reads, tenantID, statDate, tenant.TimeZone)
 	if err != nil {
 		return 0, fmt.Errorf("count aggregate sources: %w", err)
 	}
@@ -189,13 +217,9 @@ func (a *Aggregator) aggregateTenant(ctx context.Context, tenant tenantday.Tenan
 		return 0, fmt.Errorf("delete previous stats: %w", err)
 	}
 
-	inserted, err := tx.ExecContext(ctx, insertStatsSQL, tenantID, statDate, tenant.TimeZone)
+	rowCount, err := insertStats(ctx, tx, replica, tenantID, statDate, tenant.TimeZone)
 	if err != nil {
 		return 0, fmt.Errorf("insert rebuilt stats: %w", err)
-	}
-	rowCount, err := inserted.RowsAffected()
-	if err != nil {
-		return 0, fmt.Errorf("count inserted stats: %w", err)
 	}
 	// A source row must yield at least one non-zero aggregate row. This catches
 	// accidental empty reads before the transaction deletes good prior stats.
@@ -213,6 +237,36 @@ func (a *Aggregator) aggregateTenant(ctx context.Context, tenant tenantday.Tenan
 	return rowCount, nil
 }
 
+// querier is where a day's sources are read: the rebuild's own transaction, or
+// a connection on the replica.
+type querier interface {
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
+// insertStats writes the rebuilt rows of one tenant's day in tx. Without a
+// replica they are read and written by one statement; with one, they are read
+// on the replica and copied into tx.
+func insertStats(ctx context.Context, tx *sql.Tx, replica *sql.Conn, tenantID uuid.UUID, statDate, timeZone string) (int64, error) {
+	if replica == nil {
+		inserted, err := tx.ExecContext(ctx, insertStatsSQL, tenantID, statDate, timeZone)
+		if err != nil {
+			return 0, err
+		}
+		return inserted.RowsAffected()
+	}
+	rows, err := replica.QueryContext(ctx, selectStatsSQL, tenantID, statDate, timeZone)
+	if err != nil {
+		return 0, fmt.Errorf("read on the replica: %w", err)
+	}
+	return readreplica.Copy(rows, func(batch string) (int64, error) {
+		inserted, err := tx.ExecContext(ctx, insertCopiedStatsSQL, tenantID, statDate, batch)
+		if err != nil {
+			return 0, err
+		}
+		return inserted.RowsAffected()
+	})
+}
+
 type sourceCounts struct {
 	events    int64
 	purchases int64
@@ -223,9 +277,9 @@ func (s sourceCounts) total() int64 {
 	return s.events + s.purchases + s.comments
 }
 
-func countSources(ctx context.Context, tx *sql.Tx, tenantID uuid.UUID, statDate, timeZone string) (sourceCounts, error) {
+func countSources(ctx context.Context, reads querier, tenantID uuid.UUID, statDate, timeZone string) (sourceCounts, error) {
 	var counts sourceCounts
-	err := tx.QueryRowContext(ctx, `
+	err := reads.QueryRowContext(ctx, `
 		SELECT
 			(SELECT count(*)
 			 FROM content_events
@@ -249,10 +303,10 @@ func countSources(ctx context.Context, tx *sql.Tx, tenantID uuid.UUID, statDate,
 	return counts, err
 }
 
-// insertStatsSQL rebuilds one tenant's rows for one of its own calendar
-// days: $2 is that local date and $3 the zone it is read in, so the window is
-// the instants between two local midnights and stays 24 hours only where the
-// zone has no offset change that day.
+// rebuiltStatsSQL reads one tenant's rows for one of its own calendar days
+// into kept_stats: $2 is that local date and $3 the zone it is read in, so the
+// window is the instants between two local midnights and stays 24 hours only
+// where the zone has no offset change that day.
 //
 // purchase_count comes from the purchases table alone. A purchase is also
 // projected into content_events, so counting both sources would double every
@@ -266,7 +320,7 @@ func countSources(ctx context.Context, tx *sql.Tx, tenantID uuid.UUID, statDate,
 // comment staff removed. Reading the comment rows instead means a hidden or
 // withdrawn comment is gone from the next rebuild of its day, while the row
 // this batch already wrote for a past day keeps the day as it stood.
-const insertStatsSQL = `
+const rebuiltStatsSQL = `
 WITH episode_events AS (
 	SELECT
 		ce.episode_id AS entity_id,
@@ -407,7 +461,24 @@ WITH episode_events AS (
 	LEFT JOIN series_direct_stats sd ON sd.entity_id = se.entity_id
 	LEFT JOIN series_episode_rollup sr ON sr.entity_id = se.entity_id
 	LEFT JOIN series_viewer_counts sv ON sv.entity_id = se.entity_id
+), kept_stats AS (
+	SELECT *
+	FROM rebuilt_stats
+	WHERE view_count > 0
+		OR unique_viewer_count > 0
+		OR member_view_count > 0
+		OR purchase_count > 0
+		OR complete_count > 0
+		OR rating_count > 0
+		OR rating_sum > 0
+		OR favorite_count > 0
+		OR comment_count > 0
 )
+`
+
+// insertStatsSQL reads and writes one tenant's day in one statement, on the
+// primary.
+const insertStatsSQL = rebuiltStatsSQL + `
 INSERT INTO content_daily_stats (
 	id, tenant_id, stat_date, entity_type, entity_id,
 	view_count, unique_viewer_count, member_view_count, purchase_count, complete_count,
@@ -417,16 +488,40 @@ SELECT
 	uuidv7(), $1, $2::date, entity_type, entity_id,
 	view_count, unique_viewer_count, member_view_count, purchase_count, complete_count,
 	rating_count, rating_sum, favorite_count, comment_count
-FROM rebuilt_stats
-WHERE view_count > 0
-	OR unique_viewer_count > 0
-	OR member_view_count > 0
-	OR purchase_count > 0
-	OR complete_count > 0
-	OR rating_count > 0
-	OR rating_sum > 0
-	OR favorite_count > 0
-	OR comment_count > 0
+FROM kept_stats
+`
+
+// selectStatsSQL reads one tenant's day on the replica, one JSON object per
+// row, for insertCopiedStatsSQL to write on the primary.
+const selectStatsSQL = rebuiltStatsSQL + `
+SELECT to_jsonb(kept_stats) FROM kept_stats
+`
+
+// insertCopiedStatsSQL writes a batch selectStatsSQL read, $3, as one tenant's
+// rows for its day $2.
+const insertCopiedStatsSQL = `
+INSERT INTO content_daily_stats (
+	id, tenant_id, stat_date, entity_type, entity_id,
+	view_count, unique_viewer_count, member_view_count, purchase_count, complete_count,
+	rating_count, rating_sum, favorite_count, comment_count
+)
+SELECT
+	uuidv7(), $1, $2::date, r.entity_type, r.entity_id,
+	r.view_count, r.unique_viewer_count, r.member_view_count, r.purchase_count, r.complete_count,
+	r.rating_count, r.rating_sum, r.favorite_count, r.comment_count
+FROM jsonb_to_recordset($3::jsonb) AS r(
+	entity_type text,
+	entity_id uuid,
+	view_count bigint,
+	unique_viewer_count bigint,
+	member_view_count bigint,
+	purchase_count bigint,
+	complete_count bigint,
+	rating_count bigint,
+	rating_sum bigint,
+	favorite_count bigint,
+	comment_count bigint
+)
 `
 
 // upsertRatingTotalsSQL restates one tenant's all-time reaction points and
