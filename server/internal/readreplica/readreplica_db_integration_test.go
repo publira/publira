@@ -1,6 +1,7 @@
 package readreplica_test
 
 import (
+	"context"
 	"database/sql"
 	"slices"
 	"strings"
@@ -170,7 +171,7 @@ func TestDBCaughtUp(t *testing.T) {
 		for range 20 {
 			pg.WaitForReplay(t)
 			var err error
-			if conn, err = pools.CaughtUp(t.Context()); err != nil {
+			if conn, err = pools.CaughtUp(t.Context(), primary); err != nil {
 				t.Fatalf("CaughtUp: %v", err)
 			}
 			if conn != nil {
@@ -190,7 +191,7 @@ func TestDBCaughtUp(t *testing.T) {
 		pg.PauseReplay(t)
 		tenant := pg.SeedTenant(t, "CAUGHTUP0001", "caught-up.example.com", "Caught Up")
 		started := time.Now()
-		conn, err := pools.CaughtUp(t.Context())
+		conn, err := pools.CaughtUp(t.Context(), primary)
 		if err != nil {
 			t.Fatalf("CaughtUp: %v", err)
 		}
@@ -206,14 +207,38 @@ func TestDBCaughtUp(t *testing.T) {
 
 	t.Run("a server that is not a standby answers nothing", func(t *testing.T) {
 		notStandby := readreplica.Pools{Primary: primary, Replica: pg.OpenContentStatsDB(t), Wait: time.Minute}
-		conn, err := notStandby.CaughtUp(t.Context())
+		conn, err := notStandby.CaughtUp(t.Context(), primary)
 		if err != nil || conn != nil {
 			t.Fatalf("CaughtUp = %v, %v; want nothing", conn, err)
 		}
 	})
 
+	// A rebuild holds its pass lock and its transaction, and a search index
+	// build beside it may hold the pool's last connection: the position is
+	// read in the caller's transaction, so CaughtUp waits on no connection of
+	// a pool the caller has used up.
+	t.Run("the position is read on the caller's own connection", func(t *testing.T) {
+		pg.WaitForReplay(t)
+		single := pg.OpenContentStatsDB(t)
+		single.SetMaxOpenConns(1)
+		tx, err := single.BeginTx(t.Context(), nil)
+		if err != nil {
+			t.Fatalf("begin: %v", err)
+		}
+		defer tx.Rollback() //nolint:errcheck
+		ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+		defer cancel()
+		conn, err := readreplica.Pools{Primary: single, Replica: replica, Wait: wait}.CaughtUp(ctx, tx)
+		if err != nil {
+			t.Fatalf("CaughtUp with every primary connection in use: %v", err)
+		}
+		if conn != nil {
+			_ = conn.Close()
+		}
+	})
+
 	t.Run("no replica answers nothing", func(t *testing.T) {
-		conn, err := readreplica.Pools{Primary: primary}.CaughtUp(t.Context())
+		conn, err := readreplica.Pools{Primary: primary}.CaughtUp(t.Context(), primary)
 		if err != nil || conn != nil {
 			t.Fatalf("CaughtUp = %v, %v; want nothing", conn, err)
 		}

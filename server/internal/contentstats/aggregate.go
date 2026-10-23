@@ -193,8 +193,9 @@ func (a *Aggregator) aggregateTenant(ctx context.Context, tenant tenantday.Tenan
 	}
 
 	// The replica's connection is taken after the lock, so its position is no
-	// earlier than the one a rebuild on the primary would read from.
-	replica, err := a.pools.CaughtUp(ctx)
+	// earlier than the one a rebuild on the primary would read from. The
+	// position is read in tx, which borrows no further primary connection.
+	replica, err := a.pools.CaughtUp(ctx, tx)
 	if err != nil {
 		return 0, err
 	}

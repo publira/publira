@@ -142,17 +142,28 @@ func (p Pools) Acquire(ctx context.Context, tenantID uuid.UUID) (conn *sql.Conn,
 	return conn, release, false, err
 }
 
+// Querier is a connection or a transaction on the primary.
+type Querier interface {
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
 // CaughtUp is [Pools.Acquire] for a read that spans every tenant and so binds
 // none, as the maintenance jobs' rebuilds do. It returns a connection on the
 // replica once the replica has replayed everything the primary had committed
 // when CaughtUp was called, and nil when the read is the primary's to make:
 // there is no replica, it is not a standby, or it is still short of that
 // position after the wait. The caller closes the connection it is given.
-func (p Pools) CaughtUp(ctx context.Context) (*sql.Conn, error) {
+//
+// The primary's position is read on primary, a connection or a transaction
+// on Primary the caller already holds, rather than on a connection borrowed
+// from the pool: a caller that holds its pool's other connections, as a
+// rebuild beside its pass lock and its transaction may, would otherwise wait
+// for a connection that a job holding the rest is waiting on in turn.
+func (p Pools) CaughtUp(ctx context.Context, primary Querier) (*sql.Conn, error) {
 	if p.Replica == nil {
 		return nil, nil
 	}
-	position, err := p.primaryPosition(ctx)
+	position, err := readPosition(ctx, primary)
 	if err != nil {
 		return nil, err
 	}
@@ -169,8 +180,12 @@ func (p Pools) CaughtUp(ctx context.Context) (*sql.Conn, error) {
 }
 
 func (p Pools) primaryPosition(ctx context.Context) (string, error) {
+	return readPosition(ctx, p.Primary)
+}
+
+func readPosition(ctx context.Context, primary Querier) (string, error) {
 	var position string
-	if err := p.Primary.QueryRowContext(ctx, primaryPositionSQL).Scan(&position); err != nil {
+	if err := primary.QueryRowContext(ctx, primaryPositionSQL).Scan(&position); err != nil {
 		return "", fmt.Errorf("read the primary's position: %w", err)
 	}
 	return position, nil

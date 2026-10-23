@@ -185,8 +185,9 @@ func (b *Builder) buildTenant(
 	}
 
 	// The replica's connection is taken after the lock, so its position is no
-	// earlier than the one a build on the primary would read from.
-	replica, err := b.pools.CaughtUp(ctx)
+	// earlier than the one a build on the primary would read from. The
+	// position is read in tx, which borrows no further primary connection.
+	replica, err := b.pools.CaughtUp(ctx, tx)
 	if err != nil {
 		return 0, 0, err
 	}
