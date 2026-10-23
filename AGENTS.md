@@ -183,9 +183,17 @@ Wire **both**, backed by Redis (`@publira/next-cache-handlers`): `cacheHandlers`
 
 No lint covers this — it is per-app configuration in `next.config.ts`.
 
+## Compatibility between adjacent releases
+
+The processes of a release work with those of the release before it, in either direction: the web apps and `publira server` of the two releases call each other, and the previous release's processes keep working on the schema and the roles that the new release's `db migrate` and `db roles` leave. Operators are told they may replace processes one copy at a time, bring up either side first, and roll one back, so a change is designed and reviewed against the newest release tag, not only against the clients released with it: add rather than change, and take two releases to retire anything the release before sends, reads, or queries. A contract that no release tag carries yet changes freely.
+
+How to change an API contract within this is in [`proto/README.md`](proto/README.md#compatibility-with-the-previous-release), a schema in [`db/AGENTS.md`](db/AGENTS.md#a-migration-leaves-the-previous-release-working), and what the server hands the worker in [`server/AGENTS.md`](server/AGENTS.md#the-worker-handles-what-the-previous-server-writes).
+
+Enforced for the shape of `proto/` by `scripts/check-proto-compat.sh`, which runs `buf breaking` against the newest release tag in the `Check` job. Whether a field still means what it meant, and whether the release before still reads a column, an RPC, or an event a change removes, is a review judgement no lint covers.
+
 ## API contracts (proto)
 
-Cross-RPC decisions that live in `proto/` — currently the cursor pagination shape shared by every list RPC (`token` in, `previous_token` / `next_token` out): see [`proto/README.md`](proto/README.md).
+Cross-RPC decisions that live in `proto/` — the compatibility a contract change keeps with the previous release, and the cursor pagination shape shared by every list RPC (`token` in, `previous_token` / `next_token` out): see [`proto/README.md`](proto/README.md).
 
 ## Database
 

@@ -31,6 +31,19 @@ These sequence numbers never collide with later timestamps: `00000000000008` is 
 
 `migrate up` cannot move a database whose `schema_migrations` records a version that no longer exists in `migrations/`, and it cannot apply a migration whose objects are already there. Recreate the database with `task db:reset` instead of patching it by hand.
 
+## A migration leaves the previous release working
+
+An upgrade runs `db migrate` and `db roles` while the processes of the release before keep serving, and replaces them one copy at a time afterwards, so the previous release's queries run on the new schema for a while. A migration therefore keeps every query of the newest release working, the rule the root [AGENTS.md](../AGENTS.md#compatibility-between-adjacent-releases) states for every process; a migration no release tag carries yet is not held to it. The processes of a release need its own schema, never an earlier one, which is why the migrations run first.
+
+- **Add freely.** A new table, index, or view is invisible to the older queries, and so is a new column: sqlc writes every column out in place of `*`, so an older `SELECT` or `RETURNING` names only the columns it knew. A new column takes a default or allows `NULL`, because the older `INSERT`s do not name it.
+- **Drop in the release after the last one that uses it.** The release that stops reading and writing a column, a table, or a function leaves it in place, and a later release's migration drops it.
+- **Rename or retype across two releases.** The first adds the new column, fills it from the old one, and keeps the two in step with a trigger in both directions, because the older processes still write and read the old one; its own queries use the new one. The release after it drops the old column and the trigger.
+- **Tighten only what the older release already keeps.** A `NOT NULL`, a `CHECK`, or a unique constraint that the previous release's writes could break waits for the release after the one that stopped writing such rows.
+- **Write a value the older release does not know only once it reads it.** A new state in a column that names one is first read by one release and written from the release after it, unless the previous release's code passes over a value it does not recognize.
+- **A grant outlives its last reader.** `db roles` runs before the restart too, so a privilege that `server/internal/dbroles` takes away from a role is one the release before no longer uses.
+
+No lint covers this. A drop is right when the release before no longer reads what it removes, which no diff shows, so it is the author's judgement and the reviewer's; the `release` skill checks the up migrations for drops and renames once more before a release is cut.
+
 ## Query files
 
 `query/` holds one file per domain or aggregate, named after it: `series.sql`, `episode_image.sql`, `access_ticket.sql`. There is no catch-all file, and no file may become one — a query that fits none of the existing files gets a new file named after its own aggregate rather than a general one.

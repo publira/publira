@@ -195,4 +195,11 @@ Sign in to the tenant console: it draws the tenant's theme and lists the tags as
 4. **Start the new release**: change `<tag>` in every Deployment, add the variables the release notes name, and apply them. Applying the manifests restores the replicas you scaled to zero.
 5. **Check the install**, as [Check the install](../8-upgrading.md#5-check-the-install) describes.
 
-When the processes keep running through the upgrade instead, apply every Deployment at once after the roles Job: a Deployment rolls one replica at a time, so the two releases serve side by side until the last replica is replaced, and the shorter that is the better, as the same page explains.
+When the processes keep running through the upgrade instead, step 4 replaces them in the order [Replace the processes](../8-upgrading.md#4-replace-the-processes) gives. Apply `email-renderer` first if you run it. Then take every Pod of the worker away before its new Deployment starts one, since a Deployment would otherwise start the new Pod while the old one still runs:
+
+```bash
+kubectl scale deployment publira-worker --replicas=0
+kubectl wait --for=delete pod -l app.kubernetes.io/name=publira-worker --timeout=2m
+```
+
+Apply `publira-worker.yaml` with the new tag, which restores its replicas, and then the other Deployments, which roll one replica at a time while the install keeps serving.

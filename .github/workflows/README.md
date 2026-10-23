@@ -150,7 +150,7 @@ Implementation:
 | --- | --- | --- |
 | `Detect changes` | Evaluate path filters and select jobs and Docker matrix entries. | This file |
 | `Lint and Format` | `pnpm check` across every file type that oxfmt supports, then `pnpm reader-parity:check`, which holds the mobile app's reader parity matrix to web-storefront. | [`AGENTS.md`](../../AGENTS.md) |
-| `Check` | Locale-catalog, `sqlc`, and buf-generated drift; the `<svg>`-in-JSX guard, the design-token guard, the `docs/en/` contract, and `pnpm typecheck`. Saves the Go module cache every Go job restores. | [`AGENTS.md`](../../AGENTS.md), [`docs/README.md`](../../docs/README.md) |
+| `Check` | Locale-catalog, `sqlc`, and buf-generated drift; `buf breaking` against the newest release tag through `scripts/check-proto-compat.sh`; the `<svg>`-in-JSX guard, the design-token guard, the `docs/en/` contract, and `pnpm typecheck`. Saves the Go module cache every Go job restores. | [`AGENTS.md`](../../AGENTS.md), [`proto/README.md`](../../proto/README.md#compatibility-with-the-previous-release), [`docs/README.md`](../../docs/README.md) |
 | `Lint / Go` | `go mod tidy` drift guard, then `golangci-lint run ./...` in `server/`. | [`server/AGENTS.md`](../../server/AGENTS.md) |
 | `Test / Go` | Builds the OpenSearch and Elasticsearch images the search integration tests run on, then `go test -count=1 ./...` in `server/`; on `main`, saves the `test` Go build cache. | [`server/AGENTS.md`](../../server/AGENTS.md) |
 | `Test / TypeScript` | `pnpm test`, then `pnpm test:scripts` for the `node --test` suites under `scripts/`. | [`apps/AGENTS.md`](../../apps/AGENTS.md) |
@@ -283,7 +283,7 @@ The job then runs against its own Postgres service and must succeed through `mig
    | Job | Local command |
    | --- | --- |
    | `Lint and Format` | `pnpm check` and `pnpm reader-parity:check` |
-   | `Check` | `pnpm locales:check`, `sqlc diff`, `buf generate` / generated diff, `pnpm jsx-svg:check`, `pnpm design-tokens:check`, `pnpm docs:check` (the pages under `docs/en/`, and the links from them and between the repository's Markdown to a file and a heading), and `pnpm typecheck` |
+   | `Check` | `pnpm locales:check`, `sqlc diff`, `buf generate` / generated diff, `scripts/check-proto-compat.sh`, `pnpm jsx-svg:check`, `pnpm design-tokens:check`, `pnpm docs:check` (the pages under `docs/en/`, and the links from them and between the repository's Markdown to a file and a heading), and `pnpm typecheck` |
    | `Test / Go` | `task server:test-short` then `task server:test` |
    | `Test / TypeScript` | `pnpm test` and `pnpm test:scripts` |
    | `Test / Bash` | `shellcheck --external-sources --source-path=SCRIPTDIR --severity=warning $(git ls-files '*.sh')`, `shfmt -i 2 -ci -sr -d $(git ls-files '*.sh')`, `task dev-env:test`, `task e2e:test-lib`, and `task mobile:test-device-ports` |
