@@ -12,7 +12,7 @@ Throughout 0.x a minor release can still change the behaviour a page describes, 
 
 The documentation is translated from 1.0.0 on, Japanese first and the other locales the UI ships after it. The English page is the source every translation follows. How a translated page records which English page it follows, and how a stale one is found, is decided together with the first translation.
 
-`node scripts/check-docs.ts` fails on any directory under `docs/` other than `en/`, so the rule is enforced rather than remembered; the first translation lifts that check.
+`pnpm docs:check` fails on any directory under `docs/` other than `en/`, so the rule is enforced rather than remembered; the first translation lifts that check.
 
 ## Layout and URLs
 
@@ -107,7 +107,7 @@ A shot is a PNG of the region a passage explains — a form, a list row with its
 ## Checking a change
 
 ```bash
-node scripts/check-docs.ts
+pnpm docs:check
 ```
 
-It enforces every rule above that a program can, and CI runs it in the `Check` job. What it cannot judge — whether a page belongs here at all, and whether a change is one a reader should notice in `updated` — is left to review.
+It enforces every rule above that a program can, and `pnpm preflight` and CI's `Check` job run it. What it cannot judge — whether a page belongs here at all, and whether a change is one a reader should notice in `updated` — is left to review.

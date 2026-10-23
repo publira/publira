@@ -10,4 +10,4 @@ Each page carries its own `updated`, so a translated page is judged by what chan
 
 The author makes that judgement and bumps the date before requesting review, and the reviewer confirms the judgement rather than making it. The website shows `updated` on the page and hands it to search engines as the page's modification date, so a body that changed under an older date tells a returning reader, and a crawler, that there is nothing new to read. A bump left for review to ask for costs a review round and a follow-up commit every time.
 
-`node scripts/check-docs.ts` in the `Check` job enforces the format. Whether a change is one a reader should notice is a review judgement, which no program can make.
+`pnpm docs:check` enforces the format. Whether a change is one a reader should notice is a review judgement, which no program can make.

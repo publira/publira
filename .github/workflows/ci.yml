@@ -127,6 +127,7 @@ jobs:
               - '.github/workflows/ci.yml'
               - '.gitattributes'
               - 'scripts/check-design-tokens.ts'
+              - 'scripts/check-jsx-svg.ts'
               - 'scripts/ci-plan-jobs.sh'
               - '.github/actions/go-setup/**'
               - '.github/actions/pnpm-setup/**'
@@ -571,20 +572,11 @@ jobs:
             exit 1
           fi
 
-      # packages/icons is where a raw <svg> normally lives. `qr-code.tsx` is the
-      # documented exception: it draws a generated image rather than an icon —
-      # the geometry is computed from the text it encodes, and the fixed
-      # black-on-white palette is what makes the code scannable — so nothing in
-      # @publira/icons could stand in for it. See apps/AGENTS.md "Icons".
       - name: Validate / No hand-written SVG in JSX
-        run: |
-          if git grep -n '<svg' -- '*.tsx' '*.jsx' ':!packages/icons/src/**' ':!packages/ui-components/src/qr-code/qr-code.tsx'; then
-            echo "::error::Use an icon from @publira/icons instead of writing <svg> in JSX. See apps/AGENTS.md."
-            exit 1
-          fi
+        run: pnpm jsx-svg:check
 
       - name: Validate / Design tokens
-        run: node scripts/check-design-tokens.ts
+        run: pnpm design-tokens:check
 
       - name: Validate / Docs and Markdown links
         run: pnpm docs:check
