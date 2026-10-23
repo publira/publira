@@ -131,7 +131,7 @@ task docker:smoke:web APP_NAME=web-storefront PORT=3000
 task docker:smoke:node APP_NAME=email-renderer PORT=8080
 ```
 
-`smoke:web` checks `/livez`; `smoke:node` checks the response bodies of both `/livez` and `/readyz`. `smoke:publiractl` brings up its own PostgreSQL. The server image needs the database and object storage as well, so its runtime check is `task deploy:smoke` (see [`infra/deploy/README.md`](../deploy/README.md)), which runs every image together and has image delivery resize an image through libvips.
+`smoke:web` checks that the image carries no `sharp` or `@img/*` package, that `/livez` answers, and that `/_next/image` answers 404; `smoke:node` checks the response bodies of both `/livez` and `/readyz`. `smoke:publiractl` brings up its own PostgreSQL. The server image needs the database and object storage as well, so its runtime check is `task deploy:smoke` (see [`infra/deploy/README.md`](../deploy/README.md)), which runs every image together and has image delivery resize an image through libvips.
 
 ### All images (before release or after large Dockerfile changes)
 
