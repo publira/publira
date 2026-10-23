@@ -817,6 +817,18 @@ jobs:
       - name: Validate / Format, Analyze, and Tests
         run: task mobile:check
 
+      # `flutter pub get` rewrites the committed plugin registrants under
+      # mobile/linux/flutter/ from the resolved dependencies, so a pubspec.lock
+      # that changes the plugin set without them dirties every checkout. Staged
+      # first so a file the tasks add is caught along with one they modify.
+      - name: Validate / Generated Files Committed
+        run: |
+          git add -A -- mobile
+          if ! git diff --cached --exit-code -- mobile; then
+            echo "::error::Files under mobile/ are out of date. Run \`task mobile:deps\` and commit the result."
+            exit 1
+          fi
+
   # A tenant's production build from the example manifest, through the command
   # a tenant runs, signed with a throwaway upload key. A job of its own, beside
   # the integration tests rather than after them: nothing in it reads what they
