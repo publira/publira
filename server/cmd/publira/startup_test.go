@@ -24,6 +24,7 @@ import (
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
+	"github.com/publira/publira/server/internal/sqldb"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -482,6 +483,88 @@ func TestWorkerReplicasSplitTheQueues(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// A replica that hosts the drain alone may be the leader, and River's leader
+// rescues every job a dead client left running, retrying one only for a kind
+// its own registry knows. A pass a jobs replica was killed in the middle of is
+// therefore retried, not discarded, while the drain replica leads.
+func TestWorkerReplicaRescuesTheJobsOfQueuesItLeavesToOthers(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	// River's tables are made the way the worker makes them, so the jobs
+	// below are waiting for the rescuer's first pass on startup.
+	outboxDB, err := sqldb.Open(pg.OutboxURL)
+	if err != nil {
+		t.Fatalf("open the outbox pool: %v", err)
+	}
+	defer outboxDB.Close() //nolint:errcheck
+	if err := outbox.Migrate(t.Context(), outboxDB); err != nil {
+		t.Fatalf("migrate River: %v", err)
+	}
+
+	// Running for longer than River waits before calling a job stuck, on a
+	// client that is gone, with attempts left.
+	kinds := []string{"ticker.publish_episodes", "maintenance.purge_mfa_challenges"}
+	for _, kind := range kinds {
+		queue, _, _ := strings.Cut(kind, ".")
+		if _, err := pg.DB.ExecContext(t.Context(), `
+			INSERT INTO river_job (args, attempt, attempted_at, attempted_by, kind, max_attempts, queue, state)
+			VALUES ('{}', 1, now() - interval '3 hours', ARRAY['a-replica-that-died'], $1, 3, $2, 'running')`,
+			kind, queue); err != nil {
+			t.Fatalf("insert a stuck %s job: %v", kind, err)
+		}
+	}
+
+	p := testutil.StartMain(t, testutil.Env(testutil.DeploymentSecrets(), map[string]string{
+		"PUBLIRA_WORKER_DB_URL":        pg.OutboxURL,
+		"PUBLIRA_TICKER_DB_URL":        unreachableDBURL("publira_ticker"),
+		"PUBLIRA_CONTENT_STATS_DB_URL": unreachableDBURL("publira_content_stats"),
+		"PUBLIRA_WORKER_ADDR":          anyLoopbackPort,
+	}, revalidationWithoutPlatformConsole()), "worker", "--queue", "outbox")
+	p.WaitReady(t, listenerURL(t, p, "worker")+"/readyz")
+
+	deadline := time.Now().Add(60 * time.Second)
+	for {
+		states := map[string]string{}
+		rows, err := pg.DB.QueryContext(t.Context(),
+			"SELECT kind, state FROM river_job WHERE 'a-replica-that-died' = ANY(attempted_by)")
+		if err != nil {
+			t.Fatalf("read river_job: %v", err)
+		}
+		for rows.Next() {
+			var kind, state string
+			if err := rows.Scan(&kind, &state); err != nil {
+				t.Fatalf("read river_job: %v", err)
+			}
+			states[kind] = state
+		}
+		if err := rows.Close(); err != nil {
+			t.Fatalf("read river_job: %v", err)
+		}
+		rescued := 0
+		for _, kind := range kinds {
+			switch states[kind] {
+			case "running":
+			case "retryable", "available":
+				rescued++
+			default:
+				t.Fatalf("stuck %s job is %q, want it scheduled for a retry; output:\n%s", kind, states[kind], p.Output())
+			}
+		}
+		if rescued == len(kinds) {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("stuck jobs still running after 60s: %v", states)
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+
+	if code := p.Stop(t); code != 0 {
+		t.Fatalf("exit code after SIGTERM = %d, want 0; output:\n%s", code, p.Output())
 	}
 }
 

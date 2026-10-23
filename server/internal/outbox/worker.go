@@ -85,15 +85,15 @@ type Config struct {
 	// entry per set of jobs, because a process that hosts two of them — the
 	// ticker jobs and the maintenance jobs — still owns one River client.
 	Periodic []PeriodicRegistrar
-	// UnhostedPeriodicJobs is the schedule of the sets of jobs this process
-	// leaves to another replica. River's elected leader enqueues every periodic
-	// job whatever queues it works itself, so a replica that runs none of a
-	// set's jobs still has to know when each is due, or no replica would
-	// enqueue them while it leads.
-	UnhostedPeriodicJobs []*river.PeriodicJob
 	// Queues names the queues this client works, river.QueueDefault for the
 	// outbox drain's. Empty works every queue: the default one and each a set
 	// in Periodic brings. A queue named here must be one of those.
+	//
+	// A set whose queue is left out is still registered and scheduled, which
+	// is why Periodic carries every set whatever this names. Whichever client
+	// River elects leader enqueues every periodic job and rescues every job a
+	// dead client left running, and it retries one only for a kind its own
+	// registry knows.
 	Queues []string
 }
 
@@ -215,7 +215,6 @@ func Start(ctx context.Context, db *sql.DB, cfg Config) (*Worker, error) {
 		return nil, err
 	}
 	periodicJobs = append(periodicJobs, scheduled...)
-	periodicJobs = append(periodicJobs, cfg.UnhostedPeriodicJobs...)
 	queues, err = hostedQueues(queues, cfg.Queues)
 	if err != nil {
 		return nil, err

@@ -263,6 +263,17 @@ func New(cfg Config) (*Jobs, error) {
 	return jobs, nil
 }
 
+// Unhosted is the jobs as a worker replica that hosts neither QueueName nor
+// SearchIndexQueueName holds them: built without the pool New needs, so none
+// of them can run, and no tunable is read. Whichever replica River elects
+// leader still needs every one of them, hosted or not: it enqueues each
+// periodic job, and it retries a pass left running by a replica that died only
+// when its own registry knows the kind, discarding any other. The client
+// handed these must work neither queue.
+func Unhosted() *Jobs {
+	return &Jobs{}
+}
+
 // Register adds the workers to the River client's registry.
 func (j *Jobs) Register(workers *river.Workers) error {
 	if err := river.AddWorkerSafely(workers, &projectEpisodeReadsWorker{jobs: j}); err != nil {
@@ -314,15 +325,6 @@ func (j *Jobs) Register(workers *river.Workers) error {
 // royalty close likewise closes every month it is owed, so a close day the
 // worker was down for is closed on its return.
 func (j *Jobs) PeriodicJobs() []*river.PeriodicJob {
-	return Schedule()
-}
-
-// Schedule is what PeriodicJobs answers, built without the pool New needs, for
-// a worker replica that hosts neither the maintenance queue nor the search
-// index one. River's elected leader enqueues every periodic job whatever
-// queues it works itself, so such a replica still has to know when each of
-// these is due.
-func Schedule() []*river.PeriodicJob {
 	schedules := []struct {
 		interval time.Duration
 		args     river.JobArgs

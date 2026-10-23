@@ -134,8 +134,9 @@ func workerServiceNames() []string {
 // buildWorker builds and starts the one River client a process needs: it
 // drains the Outbox, runs the periodic jobs, and owns the maintenance jobs, so
 // nothing beside it has to invoke a job on a timer. A queue the process does not
-// host opens no pool and reads no variable of its own, but its jobs stay on the
-// schedule, since whichever replica River elects leader enqueues them all.
+// host opens no pool and reads no variable of its own, but its jobs stay
+// registered and on the schedule, since whichever replica River elects leader
+// enqueues them all and rescues any a dead replica left running.
 func buildWorker(deps shared, queues workerQueues) (_ half, err error) {
 	logger := deps.logger
 
@@ -153,8 +154,7 @@ func buildWorker(deps shared, queues workerQueues) (_ half, err error) {
 	db := pools.outbox
 	encryptor := deps.encryptor
 
-	var hosted []outbox.PeriodicRegistrar
-	var unhosted []*river.PeriodicJob
+	var periodic []outbox.PeriodicRegistrar
 
 	tickerConfig := tickerjobs.Config{
 		Logger:                     logger,
@@ -182,9 +182,9 @@ func buildWorker(deps shared, queues workerQueues) (_ half, err error) {
 			return half{}, failed("failed to initialize the ticker jobs", err)
 		}
 		logger.Info("ticker jobs registered", jobs.Settings()...)
-		hosted = append(hosted, jobs)
+		periodic = append(periodic, jobs)
 	} else {
-		unhosted = append(unhosted, tickerjobs.Schedule(tickerConfig)...)
+		periodic = append(periodic, tickerjobs.Unhosted(tickerConfig))
 	}
 
 	if contentStatsDB := pools.contentStats; contentStatsDB != nil {
@@ -207,9 +207,9 @@ func buildWorker(deps shared, queues workerQueues) (_ half, err error) {
 			return half{}, failed("failed to initialize the maintenance jobs", err)
 		}
 		logger.Info("maintenance jobs registered", maintenanceJobs.Settings()...)
-		hosted = append(hosted, maintenanceJobs)
+		periodic = append(periodic, maintenanceJobs)
 	} else {
-		unhosted = append(unhosted, maintenancejobs.Schedule()...)
+		periodic = append(periodic, maintenancejobs.Unhosted())
 	}
 
 	// A job on a queue no replica hosts is enqueued all the same and waits in
@@ -267,7 +267,7 @@ func buildWorker(deps shared, queues workerQueues) (_ half, err error) {
 	}); requester != nil {
 		searchCacheRecorder = requester
 	}
-	cfg := workerConfig(logger, hosted, outbox.EmailHandlerConfig{
+	cfg := workerConfig(logger, periodic, outbox.EmailHandlerConfig{
 		DB:        db,
 		Encryptor: encryptor,
 		Mailer:    internalsmtp.NewClient(),
@@ -279,7 +279,6 @@ func buildWorker(deps shared, queues workerQueues) (_ half, err error) {
 		outbox.GooglePlayHandlerConfig{DB: db, Encryptor: encryptor, Purchases: googleplay.NewClient(googleplay.Config{})},
 		outbox.AppleSignInHandlerConfig{DB: db, Encryptor: encryptor, Tokens: signin.NewAppleClient(signin.AppleClientConfig{})},
 		invalidator, catalogIndexer, searchCacheRecorder)
-	cfg.UnhostedPeriodicJobs = unhosted
 	cfg.Queues = queues.riverQueues()
 	worker, err := outbox.Start(context.Background(), db, cfg)
 	if err != nil {

@@ -148,10 +148,19 @@ func TestTheChainHeadAndEveryOtherJobAreScheduled(t *testing.T) {
 	if got, want := len(jobs.PeriodicJobs()), 9; got != want {
 		t.Fatalf("periodic jobs = %d, want %d: the chain head, five purges, the royalty close, the voided purchase sync, and the search index build", got, want)
 	}
-	// A worker replica that hosts neither of these queues opens no pool for
-	// them, and may still be the leader that enqueues every one.
-	if got, want := len(Schedule()), 9; got != want {
-		t.Fatalf("Schedule() = %d periodic jobs, want the same %d", got, want)
+}
+
+// A replica that hosts neither queue opens no pool for them, and may still be
+// the leader that enqueues these jobs and rescues one another replica left
+// running.
+func TestUnhostedNeedsNoPool(t *testing.T) {
+	t.Setenv("PUBLIRA_CONTENT_EVENTS_PURGE_CHUNK_SIZE", "0")
+	jobs := Unhosted()
+	if err := jobs.Register(river.NewWorkers()); err != nil {
+		t.Fatalf("Register: %v", err)
+	}
+	if got, want := len(jobs.PeriodicJobs()), 9; got != want {
+		t.Fatalf("periodic jobs = %d, want the same %d a hosted set schedules", got, want)
 	}
 }
 

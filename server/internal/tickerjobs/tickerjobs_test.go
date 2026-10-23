@@ -17,11 +17,19 @@ func TestNewRejectsAMissingPool(t *testing.T) {
 	}
 }
 
-// A worker replica that leaves the ticker queue to another opens no ticker
-// pool, and may still be the leader that enqueues every one of these jobs.
-func TestScheduleNeedsNoPool(t *testing.T) {
-	if got, want := len(Schedule(Config{})), len(ServiceNames()); got != want {
+// A replica that leaves the ticker queue to another opens no ticker pool, and
+// may still be the leader that enqueues these jobs and rescues one a ticker
+// replica left running.
+func TestUnhostedNeedsNoPool(t *testing.T) {
+	jobs := Unhosted(Config{PublishInterval: 5 * time.Second})
+	if err := jobs.Register(river.NewWorkers()); err != nil {
+		t.Fatalf("Register: %v", err)
+	}
+	if got, want := len(jobs.PeriodicJobs()), len(ServiceNames()); got != want {
 		t.Fatalf("periodic jobs = %d, want one per job (%d)", got, want)
+	}
+	if got := jobs.schedule()[0].schedule.Next(time.Time{}).Sub(time.Time{}); got != 5*time.Second {
+		t.Fatalf("%s interval = %s, want the configured 5s", kindPublishEpisodes, got)
 	}
 }
 
