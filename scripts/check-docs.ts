@@ -3,7 +3,7 @@
  * by, on a tree beside it that the documentation does not have yet, or on a
  * link in the repository's Markdown that leads to no file or no heading.
  *
- *     node scripts/check-docs.ts
+ *     pnpm docs:check
  *
  * `docs/README.md` states that contract: the `<n>-<slug>` names the URLs are
  * derived from, an `index.md` in every directory, the frontmatter keys, the

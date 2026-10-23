@@ -54,7 +54,7 @@ No lint covers this — no tool can tell reference from reasoning. A README sect
 
 A page there is written for a reader with a task — an operator deploying an install, a publisher's staff configuring a site — and is read in order, without the code beside it. Reference for the code beside it stays in that directory's `README.md`: what a package exports, which variables a process reads, how a part is run during development. When both are needed, the page says what to do and why, and links to the README on GitHub for the full reference rather than copying it. A behaviour change that a page describes updates the page in the same pull request. Which languages the documentation is written in, and when that changes, is stated under **Languages** in [`docs/README.md`](docs/README.md#languages).
 
-Enforced by `node scripts/check-docs.ts` in the `Check` job, for everything but the choice of where a text belongs, which is a review judgement.
+Enforced by `pnpm docs:check`, which `pnpm preflight` and the `Check` job run, for everything but the choice of where a text belongs, which is a review judgement.
 
 Authoring rules for the pages themselves, including when a change bumps a page's `updated` date: see [`docs/AGENTS.md`](docs/AGENTS.md).
 
@@ -200,9 +200,9 @@ Go backend conventions and verification: see [`server/AGENTS.md`](server/AGENTS.
 Shared frontend monorepo conventions: see [`apps/AGENTS.md`](apps/AGENTS.md).  
 Per-app `apps/*/AGENTS.md` files hold only the Next.js-generated rules block.
 
-Icons are covered there too: they come from `@publira/icons`, and neither a hand-written `<svg>` in JSX nor a direct `lucide-react` import is allowed outside `packages/icons` — see the **Icons** section of [`apps/AGENTS.md`](apps/AGENTS.md), enforced by `no-restricted-imports` and a `git grep` step in CI.
+Icons are covered there too: they come from `@publira/icons`, and neither a hand-written `<svg>` in JSX nor a direct `lucide-react` import is allowed outside `packages/icons` — see the **Icons** section of [`apps/AGENTS.md`](apps/AGENTS.md), enforced by `no-restricted-imports` and `pnpm jsx-svg:check`.
 
-So are the design's two radii, its one shadow, and the face data is set in: `rounded-2xl`, `rounded-3xl`, `rounded-[`, `shadow-(sm|md|lg|xl|2xl)`, `uppercase`, `tracking-[`, and a `font-mono` outside a `<code>` or `<pre>` are refused anywhere under `apps/` or `packages/` by `node scripts/check-design-tokens.ts`, which CI runs in the `Check` job.
+So are the design's two radii, its one shadow, and the face data is set in: `rounded-2xl`, `rounded-3xl`, `rounded-[`, `shadow-(sm|md|lg|xl|2xl)`, `uppercase`, `tracking-[`, and a `font-mono` outside a `<code>` or `<pre>` are refused anywhere under `apps/` or `packages/` by `pnpm design-tokens:check`.
 
 ## Edge routing
 
@@ -218,5 +218,5 @@ Docker image builds (`infra/docker/README.md`) cover only the `Docker / <target>
 ## Other
 
 - Before Next.js work: read `apps/AGENTS.md`, the **target** app's `AGENTS.md`, and that app's `node_modules/next/dist/docs/` (do not load every app's guide)
-- After frontend / shared package changes: `pnpm preflight` (typecheck / check / test)
+- After frontend / shared package changes: `pnpm preflight` (repository checks / typecheck / check / test)
 - After `server/` changes: follow the verification checklist in `server/AGENTS.md` (`task server:test-short` / `task server:test`, plus `task gen` when proto/SQL change)

@@ -585,13 +585,13 @@ Three of the design's decisions are a class away from being undone on any screen
 
 Two more go with them and have no replacement: an all-caps eyebrow (`uppercase`) and per-screen letter-spacing (`tracking-[`). A label appears only when the content underneath needs the distinction, and it is set in sentence case.
 
-`node scripts/check-design-tokens.ts` fails on `rounded-2xl`, `rounded-3xl`, `rounded-[`, `shadow-(sm|md|lg|xl|2xl)`, `uppercase`, `tracking-[`, and a `font-mono` outside a `<code>` or `<pre>`, anywhere under `apps/` or `packages/`. CI runs it in the `Check` job, beside the `<svg>` grep; run it before pushing, because the fix is a class name. Test files are outside it: a test names a class in order to assert about it.
+`pnpm design-tokens:check` fails on `rounded-2xl`, `rounded-3xl`, `rounded-[`, `shadow-(sm|md|lg|xl|2xl)`, `uppercase`, `tracking-[`, and a `font-mono` outside a `<code>` or `<pre>`, anywhere under `apps/` or `packages/`. `pnpm preflight` runs it, and so does CI in the `Check` job. Test files are outside it: a test names a class in order to assert about it.
 
 ## Icons: `@publira/icons`, never inline `<svg>`
 
 Icons come from `@publira/icons`, a thin wrapper around `lucide-react`. App and package code must not hand-write `<svg>` in JSX, and must not import `lucide-react` directly — `packages/icons` is the only place allowed to.
 
-`pnpm check` fails on a `lucide-react` import (`no-restricted-imports`, with a `packages/icons/src/**` override). CI fails on `<svg>` in JSX, via a `git grep` step in the `Check` job.
+`pnpm check` fails on a `lucide-react` import (`no-restricted-imports`, with a `packages/icons/src/**` override). `pnpm jsx-svg:check` fails on `<svg>` in JSX outside `packages/icons` and the exceptions `scripts/check-jsx-svg.ts` lists with their reasons.
 
 The reason is not line count. A hand-written icon is drawn in its own coordinate system and stroke width, so it never matches the lucide icons standing next to it. And a path written into JSX gets copy-pasted instead of imported, so the same glyph drifts between files while the shared component that already covers it goes unused. Neither shows up in review — the markup looks fine on its own.
 
@@ -681,4 +681,4 @@ Until the flag stabilises, do not build alternative "fake root layout" 404 schem
 
 ## After changes
 
-- Frontend / packages: `pnpm preflight` (typecheck / check / test) from the repo root.
+- Frontend / packages: `pnpm preflight` from the repo root.

@@ -1,7 +1,7 @@
 /**
  * Fail on the utility classes the design brief replaced.
  *
- *     node scripts/check-design-tokens.ts
+ *     pnpm design-tokens:check
  *
  * The brief pins two radii (`rounded-control`, `rounded-surface`) and one
  * shadow (`shadow-floating`), and it rejects the tracked-out all-caps eyebrow
@@ -17,10 +17,6 @@
  * source code is genuinely a different kind of text, and the face is what makes
  * it readable. So the face is allowed where the element says it is code, and
  * refused everywhere else.
- *
- * CI runs this in `Check`, beside the step that keeps hand-written `<svg>` out
- * of JSX, and it is worth running before a push for the same reason that one
- * is: the fix is a class name, and finding it locally costs nothing.
  */
 
 import { spawn } from "node:child_process";
