@@ -18,7 +18,7 @@ Every process answers two requests over plain HTTP:
 
 | Process | Port | What `/readyz` checks |
 | --- | --- | --- |
-| `publira server` | `8000` (`PUBLIRA_PUBLIC_API_ADDR`) | Each of its three database logins: `db.public`, `db.admin`, and `db.platform`, or those of the roles `--role` gives it |
+| `publira server` | `8000` (`PUBLIRA_PUBLIC_API_ADDR`) | Each of its three database logins: `db.public`, `db.admin`, and `db.platform`, or those of the roles `--role` gives it, and `db.public.replica`, the [read replica](../2-deployments/7-scaling-out.md#reading-from-a-replica), when it is given one |
 | `publira worker` | `8003` (`PUBLIRA_WORKER_ADDR`) | Each of its three database logins: `db.outbox`, `db.ticker`, and `db.content_stats`, or those of the queues `--queue` gives it. It also answers not ready until its job queue has started |
 | `web-storefront`, `web-admin`, `web-platform` | `PORT`: `3000`, `4000`, and `4100` in the images as the repository builds them | `api`, the `/readyz` of `publira server`, on the host `PUBLIRA_GRPC_URL` names; on `web-admin` with `PUBLIRA_PUBLIC_GRPC_URL` set, `public-api`, the same on the host that one names; and `redis`, a ping to the shared cache at `PNCH_REDIS_URL`, which always passes while that cache is turned off |
 | `email-renderer` | `8080` (`PORT`) | Nothing: it depends on no other service, so it is ready whenever it is up |

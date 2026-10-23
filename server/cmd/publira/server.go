@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
+	"strings"
 
 	"github.com/publira/publira/server/api/adminapi"
 	"github.com/publira/publira/server/api/platformapi"
@@ -26,6 +28,7 @@ import (
 	"github.com/publira/publira/server/internal/platformpolicy"
 	"github.com/publira/publira/server/internal/platformsearch"
 	"github.com/publira/publira/server/internal/platformstorage"
+	"github.com/publira/publira/server/internal/readreplica"
 	"github.com/publira/publira/server/internal/redisurl"
 	"github.com/publira/publira/server/internal/signin"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
@@ -39,6 +42,11 @@ const (
 	defaultPublicDBURL   = "postgres://publira_public:publicpass@db:5432/publira?sslmode=disable"
 	defaultAdminDBURL    = "postgres://publira_admin:adminpass@db:5432/publira?sslmode=disable"
 	defaultPlatformDBURL = "postgres://publira_platform:platformpass@db:5432/publira?sslmode=disable"
+
+	// publicDBReplicaURLEnv names a hot standby the storefront's catalog reads
+	// are answered on. It has no development default: unset is no replica, and
+	// every read stays on PUBLIRA_PUBLIC_DB_URL.
+	publicDBReplicaURLEnv = "PUBLIRA_PUBLIC_DB_REPLICA_URL"
 )
 
 // serverRoles is which API surfaces a server process serves. A role is named
@@ -227,7 +235,7 @@ func assembleServer(deps shared, cfg serverConfig, pools serverPools) (assembled
 		}, platformstorage.NewStorage)}
 		// The revalidate client is shared by the two namespaces whose writes
 		// leave a cache entry stale.
-		publicAPI, err := publicapi.New(pools.public, dbmodels.New(pools.public), storageProvider, encryptor, tokens, deps.revalidate, searcher, cfg.idTokens, cfg.payments, login, mail)
+		publicAPI, err := publicapi.New(pools.public, pools.publicReplica, dbmodels.New(pools.public), storageProvider, encryptor, tokens, deps.revalidate, searcher, cfg.idTokens, cfg.payments, login, mail)
 		if err != nil {
 			return assembledServer{}, failed("failed to initialize public api handler", err)
 		}
@@ -275,10 +283,10 @@ func assembleServer(deps shared, cfg serverConfig, pools serverPools) (assembled
 	if pools.public != nil || pools.admin != nil {
 		var storefront, console imageserver.SiteDB
 		if pools.public != nil {
-			storefront = newImageSite(pools.public, encryptor, logger)
+			storefront = newImageSite(pools.public, pools.publicReplica, encryptor, logger)
 		}
 		if pools.admin != nil {
-			console = newImageSite(pools.admin, encryptor, logger)
+			console = newImageSite(pools.admin, nil, encryptor, logger)
 		}
 		imageHandler, err := imageserver.NewHandler(storefront, console, logger, tokens)
 		if err != nil {
@@ -305,9 +313,10 @@ func assembleServer(deps shared, cfg serverConfig, pools serverPools) (assembled
 // service token before any handler runs.
 //
 // Readiness names one check per pool: with up to three logins behind one
-// listener, a single "db" could not say which of them stopped answering. The
-// client address of every request is determined before any handler runs, so
-// the audit log and the per-client limits never read a context without one.
+// listener, and a replica beside the first, a single "db" could not say which
+// of them stopped answering. The client address of every request is determined
+// before any handler runs, so the audit log and the per-client limits never
+// read a context without one.
 func serverHandler(clientIPs *clientip.Resolver, served servedAPIs, pools serverPools) http.Handler {
 	mux := http.NewServeMux()
 	var checks []health.Option
@@ -316,6 +325,7 @@ func serverHandler(clientIPs *clientip.Resolver, served servedAPIs, pools server
 		db   *sql.DB
 	}{
 		{"db.public", pools.public},
+		{"db.public.replica", pools.publicReplica},
 		{"db.admin", pools.admin},
 		{"db.platform", pools.platform},
 	} {
@@ -344,9 +354,13 @@ func serverHandler(clientIPs *clientip.Resolver, served servedAPIs, pools server
 // serverPools is one pool per PostgreSQL login this process serves as, nil for
 // a role it does not serve.
 type serverPools struct {
-	public   *sql.DB
-	admin    *sql.DB
-	platform *sql.DB
+	public *sql.DB
+	// publicReplica is a hot standby signed in as publira_public, which the
+	// storefront's catalog reads and images are answered on once it has caught
+	// up. It is nil unless PUBLIRA_PUBLIC_DB_REPLICA_URL names one.
+	publicReplica *sql.DB
+	admin         *sql.DB
+	platform      *sql.DB
 }
 
 // leastPrivileged is the pool of the least of the logins held: the platform
@@ -386,12 +400,41 @@ func openServerPools(roles serverRoles) (serverPools, error) {
 		}
 		*login.pool = db
 	}
+	if pools.public != nil {
+		replica, err := openReplicaPool(pools.public, publicDBReplicaURLEnv)
+		if err != nil {
+			return serverPools{}, errors.Join(err, pools.close())
+		}
+		pools.publicReplica = replica
+	}
 	return pools, nil
+}
+
+// openReplicaPool opens the replica the variable env names for primary's
+// login, bounded like every other pool, and nil when env is unset. The replica
+// has to sign in as primary's login: it is the same role on another server, and
+// a URL naming another login would hand the reads that role's reach.
+func openReplicaPool(primary *sql.DB, env string) (*sql.DB, error) {
+	url := strings.TrimSpace(os.Getenv(env))
+	if url == "" {
+		return nil, nil
+	}
+	replica, err := sqldb.Open(url)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", env, err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), sqldb.PingTimeout)
+	defer cancel()
+	if err := readreplica.CheckLogin(ctx, primary, replica); err != nil {
+		_ = replica.Close()
+		return nil, fmt.Errorf("%s: %w", env, err)
+	}
+	return replica, nil
 }
 
 func (p serverPools) close() error {
 	var errs []error
-	for _, db := range []*sql.DB{p.public, p.admin, p.platform} {
+	for _, db := range []*sql.DB{p.public, p.publicReplica, p.admin, p.platform} {
 		if db != nil {
 			errs = append(errs, db.Close())
 		}
@@ -402,12 +445,15 @@ func (p serverPools) close() error {
 // newImageSite is how image delivery answers the site that pool's login
 // belongs to: the host lookup, the tenant-scoped queries, and the object
 // store's settings are all read on pool, so the site is answered without the
-// other site's login.
-func newImageSite(pool *sql.DB, secrets platformstorage.SecretManager, logger *slog.Logger) imageserver.SiteDB {
+// other site's login. replica, when not nil, is a standby of pool's cluster
+// signed in as the same login, and the rows of the images anyone may be shown
+// are read there once it has caught up.
+func newImageSite(pool, replica *sql.DB, secrets platformstorage.SecretManager, logger *slog.Logger) imageserver.SiteDB {
 	return imageserver.SiteDB{
 		Pool:     pool,
 		Resolver: dbmodels.New(pool),
 		Tenants:  imageserver.NewDBTenantScopedFactory(pool, logger),
+		Reads:    imageserver.NewReplicaTenantScopedFactory(readreplica.Pools{Primary: pool, Replica: replica, Logger: logger}),
 		Objects:  newImageObjectStore(secrets, pool, logger),
 	}
 }

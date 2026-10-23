@@ -87,6 +87,14 @@ Adding a role means adding it to `db/seeds/baseline/000_rls_bypass_role.sql` wit
 
 No lint covers this — the variable names are strings in each `cmd/` entrypoint.
 
+## A storefront read reaches the replica only where it is listed
+
+`PUBLIRA_PUBLIC_DB_REPLICA_URL` gives the storefront a second pool on a hot standby, as the same `publira_public` login, and nothing is answered there by default. A `publira.v1` procedure is answered on it only when `replicaProcedures` (`api/publicapi/replica_reads.go`) lists it, and only for a request that carries no credential. List a procedure by asking, in order: does it write anything? Then never. Does its answer depend on who is asking — a `ListMy*` or `GetMy*` read, or an access state such as `GetSeriesEpisodeAccess`? Then never. Is it a sign-in path? Then never. Otherwise it is a read of the published catalog, and it may be listed. An image route reaches the replica through `SiteDB.Reads` on the same terms: a route that reads a credential, as the episode body does, opens `SiteDB.Tenants`.
+
+`internal/readreplica` is what keeps the lag out of sight, by answering on the replica only once it has replayed everything the primary had committed when the request arrived; a listed handler adds nothing for it. The replica variable has no development default and falls back to nothing: unset is no replica.
+
+`TestReplicaProceduresAreCatalogReads` checks the list against what a procedure's name gives away, and `TestDBReplicaProceduresWriteNothing` calls every listed procedure against a standby, which refuses any write, so a listed procedure missing from its table fails it as well.
+
 ## Stored objects must be named by a row the sweep knows
 
 The orphan image sweep — `maintenance.purge_orphan_images` on the worker, and `publiractl job purge-orphan-images` by hand — treats the database as the authority over the bucket: it walks every object under `tenants/` and deletes the ones no variant row `ListReferencedObjectKeys` (`db/query/storage.sql`) reads names. A new upload path that writes under that prefix without a row in one of those tables therefore has its objects deleted a day later, silently.

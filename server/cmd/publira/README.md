@@ -51,6 +51,7 @@ Manael uses libvips, so building and running require `libvips-dev` (at runtime, 
 
 - `PUBLIRA_PUBLIC_API_ADDR` (optional, `:8000` when unset. The one listener)
 - `PUBLIRA_PUBLIC_DB_URL` / `PUBLIRA_ADMIN_DB_URL` / `PUBLIRA_PLATFORM_DB_URL` (optional; a development default is used when unset. One per login; the process never falls back from one to another, and image delivery and the search engine's settings use the first two. A process given [`--role`](#serving-some-roles---role) reads only its roles' ones)
+- `PUBLIRA_PUBLIC_DB_REPLICA_URL` (optional, unset by default, read only where the `storefront` role is served. A hot standby of the database's cluster, signed in as `publira_public` like `PUBLIRA_PUBLIC_DB_URL`, which the catalog reads and the storefront's images that need no credential are answered on once it has replayed everything the primary had committed when the request arrived. A URL signing in as another login stops the process at startup. Unset, every read is made on `PUBLIRA_PUBLIC_DB_URL`. `/readyz` names it `db.public.replica`)
 - `PUBLIRA_DB_MAX_OPEN_CONNS` / `PUBLIRA_DB_MAX_IDLE_CONNS` / `PUBLIRA_DB_CONN_MAX_IDLE_TIME` (optional, `10`, the first one's value, and `5m` when unset. Bound each of its pools on its own; see [Connection pools](../../README.md#connection-pools) for sizing the database)
 - `PUBLIRA_AUTH_JWT_SECRET` (required, at least 32 bytes. The HS256 signing key for access tokens, which the image routes verify as well. The process fails to start when it is unset. For the details, see [Authentication](../../README.md#authentication-jwt-access-tokens) in the server README)
 - `PUBLIRA_SECRET_ENCRYPTION_KEYS` / `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` (optional. Encrypt and decrypt the stored SMTP, payment, object store, search engine, and FCM secrets)
@@ -120,7 +121,7 @@ serves the named API surfaces alone. A role is named the way the web app that co
 
 | `--role` | Registers under `/rpc` | Image delivery on `/images` | Opens | Reads |
 | --- | --- | --- | --- | --- |
-| `storefront` | `publira.v1` | Storefront hosts, as `publira_public` | `PUBLIRA_PUBLIC_DB_URL` | `PUBLIRA_IMAGE_CACHE_TTL` |
+| `storefront` | `publira.v1` | Storefront hosts, as `publira_public` | `PUBLIRA_PUBLIC_DB_URL`, and `PUBLIRA_PUBLIC_DB_REPLICA_URL` when it is set | `PUBLIRA_IMAGE_CACHE_TTL` |
 | `admin` | `publira.admin.v1` | Console hosts, as `publira_admin`, staff preview included | `PUBLIRA_ADMIN_DB_URL` | `PUBLIRA_WEB_SERVICE_TOKEN`, `PUBLIRA_IMAGE_CACHE_TTL` |
 | `platform` | `publira.platform.v1` | None | `PUBLIRA_PLATFORM_DB_URL` | `PUBLIRA_WEB_SERVICE_TOKEN` |
 

@@ -522,6 +522,7 @@ On top of the standard attributes that `otelconnect` / `otelhttp` / `otelsql` ad
 | `db.operation.name` | The SQL keyword (`SELECT` / `INSERT` / …) |
 | `db.query.summary` | The query name taken from sqlc's `-- name: GetTenantByID :one` |
 | `db.query.text` | The generated SQL statement. sqlc emits it with placeholders (`$1`) intact, and argument values are never recorded |
+| `server.address` / `server.port` | Every database span and query metric: the host and port of the server the pool connects to, so a query a read replica answered is told from one the primary did |
 
 Email addresses, raw tokens, passwords, request bodies, and the `Authorization` header are never put on a span. Using public IDs instead of internal UUIDs is part of the same policy.
 
@@ -712,6 +713,8 @@ The bound is per pool, not per process. `publira server` and `publira worker` ho
 
 connections from them, plus one pool for each `publiractl` command running at the same time, inside `max_connections` less the slots PostgreSQL reserves for superusers (`superuser_reserved_connections`, `3` by default). One server and one worker at the defaults use 60 of PostgreSQL's default 100.
 
+A server serving the storefront and given `PUBLIRA_PUBLIC_DB_REPLICA_URL` holds one more pool, on the replica it names, signed in as `publira_public` and bounded by the same three variables. Its connections are made to the replica rather than the primary, so they count against the replica's `max_connections`, while the primary still sees the server's `publira_public` pool: a request the replica answers takes a connection there only for the moment it reads the primary's write position. `internal/readreplica` documents which requests the replica answers and when.
+
 A request to `publira.v1` or `publira.admin.v1` holds one connection of its pool from start to end, bound to the tenant it names, and at most `PUBLIRA_DB_MAX_OPEN_CONNS − 1` of them do at once: the last connection is kept for the queries that run outside a tenant, which those same requests make as well. The image routes give their connection back once the image's row is read, before the object is fetched and converted.
 
 ### Local development
@@ -732,7 +735,7 @@ Then set each variable (`PUBLIRA_PLATFORM_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL
   - `GET /livez` — process liveness. Always `200` with a plain `ok`. Intended for a K8s livenessProbe.
   - `GET /readyz` — readiness of the dependencies. `200` when healthy, `503` when not. Intended for a K8s readinessProbe or a load balancer.
   - Server / worker: at minimum a DB `Ping`
-  - `publira server` holds a pool per namespace and names one check per pool — `db.public`, `db.admin`, `db.platform` — so a failure says which login stopped answering. The edge forwards the public API under `/rpc`, and `/images`, alone, so its `/readyz` is not an outsider's to read.
+  - `publira server` holds a pool per namespace and names one check per pool — `db.public`, `db.admin`, `db.platform`, and `db.public.replica` when it is given a replica — so a failure says which login, or which server, stopped answering. The edge forwards the public API under `/rpc`, and `/images`, alone, so its `/readyz` is not an outsider's to read.
   - Web (`web-admin` / `web-storefront` / `web-platform`): the upstream API's `/readyz` plus Redis (the Redis check is skipped when `PNCH_REDIS_URL` is disabled)
   - Example `/readyz` responses (JSON):
     - Healthy: `{"status":"ok","checks":{"db":{"status":"ok"}}}`

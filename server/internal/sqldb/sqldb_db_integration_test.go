@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -78,6 +80,7 @@ SELECT count(*) FROM tenants
 		}
 		queryChildren++
 		assertQueryAttributes(t, span.Attributes())
+		assertServerAttributes(t, span.Attributes(), env.PublicURL)
 	}
 	if queryChildren == 0 {
 		t.Fatalf("no %q span was recorded as a child of the request span; recorded %d spans",
@@ -160,5 +163,26 @@ func assertQueryAttributes(t *testing.T, attributes []attribute.KeyValue) {
 	}
 	if got := values[semconv.DBQueryTextKey]; !strings.Contains(got, "SELECT count(*) FROM tenants") {
 		t.Errorf("%s = %q, want the generated statement", semconv.DBQueryTextKey, got)
+	}
+}
+
+// assertServerAttributes pins that a statement span names the server it was
+// sent to, which is how a trace tells a replica's answer from the primary's.
+func assertServerAttributes(t *testing.T, attributes []attribute.KeyValue, rawURL string) {
+	t.Helper()
+
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		t.Fatalf("parse %q: %v", rawURL, err)
+	}
+	values := map[attribute.Key]attribute.Value{}
+	for _, kv := range attributes {
+		values[kv.Key] = kv.Value
+	}
+	if got := values[semconv.ServerAddressKey].AsString(); got != u.Hostname() {
+		t.Errorf("%s = %q, want %q", semconv.ServerAddressKey, got, u.Hostname())
+	}
+	if got := strconv.FormatInt(values[semconv.ServerPortKey].AsInt64(), 10); got != u.Port() {
+		t.Errorf("%s = %s, want %s", semconv.ServerPortKey, got, u.Port())
 	}
 }
