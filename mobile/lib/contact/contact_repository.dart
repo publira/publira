@@ -1,3 +1,6 @@
+/// @docImport 'package:publira/contact/contact_failure.dart';
+library;
+
 import 'package:flutter/widgets.dart';
 
 /// The reader's half of `publira.v1.ContactService`.

@@ -29,7 +29,7 @@ class BuyBundleButton extends StatefulWidget {
   /// beside the button.
   final String label;
 
-  /// Starts the checkout for the reader in [locale] and answers its page.
+  /// Starts the checkout for the reader in `locale` and answers its page.
   final Future<Uri> Function(PurchaseRepository repository, String locale)
   start;
 
