@@ -2,6 +2,7 @@ package readreplica_test
 
 import (
 	"database/sql"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -153,4 +154,115 @@ func currentTenant(t *testing.T, conn *sql.Conn) string {
 		t.Fatalf("app.current_tenant_id %q is not a UUID: %v", id, err)
 	}
 	return id
+}
+
+func TestDBCaughtUp(t *testing.T) {
+	pg := testutil.StartReplicatedPostgres(t)
+	primary := pg.OpenContentStatsDB(t)
+	replica := pg.OpenStandbyContentStatsDB(t)
+	const wait = 200 * time.Millisecond
+	pools := readreplica.Pools{Primary: primary, Replica: replica, Wait: wait}
+
+	t.Run("a replica that has caught up answers", func(t *testing.T) {
+		var conn *sql.Conn
+		// As in acquireOnReplica, a busy machine may let the replica fall
+		// behind again between the wait and the call.
+		for range 20 {
+			pg.WaitForReplay(t)
+			var err error
+			if conn, err = pools.CaughtUp(t.Context()); err != nil {
+				t.Fatalf("CaughtUp: %v", err)
+			}
+			if conn != nil {
+				break
+			}
+		}
+		if conn == nil {
+			t.Fatal("the replica never answered after replaying everything")
+		}
+		defer conn.Close() //nolint:errcheck
+		if !inRecovery(t, conn) {
+			t.Fatal("the connection is not on the standby")
+		}
+	})
+
+	t.Run("a replica behind the primary after the wait answers nothing", func(t *testing.T) {
+		pg.PauseReplay(t)
+		tenant := pg.SeedTenant(t, "CAUGHTUP0001", "caught-up.example.com", "Caught Up")
+		started := time.Now()
+		conn, err := pools.CaughtUp(t.Context())
+		if err != nil {
+			t.Fatalf("CaughtUp: %v", err)
+		}
+		if conn != nil {
+			_ = conn.Close()
+			t.Fatalf("CaughtUp answered on a replica that has not replayed tenant %s", tenant.ID)
+		}
+		if elapsed := time.Since(started); elapsed < wait {
+			t.Fatalf("CaughtUp gave up after %s, before its wait (%s)", elapsed, wait)
+		}
+		pg.ResumeReplay(t)
+	})
+
+	t.Run("a server that is not a standby answers nothing", func(t *testing.T) {
+		notStandby := readreplica.Pools{Primary: primary, Replica: pg.OpenContentStatsDB(t), Wait: time.Minute}
+		conn, err := notStandby.CaughtUp(t.Context())
+		if err != nil || conn != nil {
+			t.Fatalf("CaughtUp = %v, %v; want nothing", conn, err)
+		}
+	})
+
+	t.Run("no replica answers nothing", func(t *testing.T) {
+		conn, err := readreplica.Pools{Primary: primary}.CaughtUp(t.Context())
+		if err != nil || conn != nil {
+			t.Fatalf("CaughtUp = %v, %v; want nothing", conn, err)
+		}
+	})
+}
+
+// Copy hands every row to write, in batches small enough to send as one
+// parameter, and adds up what write reports.
+func TestDBCopy(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	db := pg.OpenContentStatsDB(t)
+
+	rows, err := db.QueryContext(t.Context(), "SELECT jsonb_build_object('n', n) FROM generate_series(1, 2500) AS n")
+	if err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	var (
+		sizes []int
+		sum   int
+	)
+	total, err := readreplica.Copy(rows, func(batch string) (int64, error) {
+		var got struct{ Count, Sum int }
+		if err := db.QueryRowContext(t.Context(),
+			"SELECT count(*), sum((r->>'n')::int) FROM jsonb_array_elements($1::jsonb) AS r", batch,
+		).Scan(&got.Count, &got.Sum); err != nil {
+			return 0, err
+		}
+		sizes = append(sizes, got.Count)
+		sum += got.Sum
+		return int64(got.Count), nil
+	})
+	if err != nil {
+		t.Fatalf("Copy: %v", err)
+	}
+	if total != 2500 || sum != 2500*2501/2 {
+		t.Fatalf("Copy wrote %d rows summing to %d, want 2500 summing to %d", total, sum, 2500*2501/2)
+	}
+	if want := []int{1000, 1000, 500}; !slices.Equal(sizes, want) {
+		t.Fatalf("batch sizes = %v, want %v", sizes, want)
+	}
+
+	empty, err := db.QueryContext(t.Context(), "SELECT jsonb_build_object('n', 1) WHERE false")
+	if err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	if total, err := readreplica.Copy(empty, func(string) (int64, error) {
+		t.Fatal("write was called for a read that answered nothing")
+		return 0, nil
+	}); err != nil || total != 0 {
+		t.Fatalf("Copy = %d, %v; want 0, nil", total, err)
+	}
 }

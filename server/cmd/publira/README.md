@@ -322,6 +322,7 @@ The connection uses `publira_outbox`, the login across every tenant the baseline
 - `PUBLIRA_WORKER_DB_URL` (optional; falls back to the development default `postgres://publira_outbox:outboxpass@db:5432/publira?sslmode=disable`)
 - `PUBLIRA_TICKER_DB_URL` (optional; the periodic jobs' own connection, falling back to `postgres://publira_ticker:tickerpass@db:5432/publira?sslmode=disable` and never to `PUBLIRA_DB_URL`. Read only where the `ticker` queue is hosted)
 - `PUBLIRA_CONTENT_STATS_DB_URL` (optional; the maintenance jobs' own connection, falling back to `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` and never to `PUBLIRA_DB_URL`. Read only where the `maintenance` or the `search_index` queue is hosted)
+- `PUBLIRA_CONTENT_STATS_DB_REPLICA_URL` (optional, unset by default, read only where the `maintenance` queue is hosted. A hot standby of the database's cluster, signed in as `publira_content_stats` like `PUBLIRA_CONTENT_STATS_DB_URL`, which the content stats rebuild and the recommend feature build read `content_events` on, a tenant at a time, once it has replayed everything the primary had committed when that tenant's rebuild began. A standby still behind after 5 seconds leaves that tenant's read to the primary. Every write, and every other job's read, stays on `PUBLIRA_CONTENT_STATS_DB_URL`. A URL signing in as another login stops the process at startup. `/readyz` names it `db.content_stats.replica`)
 - `PUBLIRA_DB_MAX_OPEN_CONNS` / `PUBLIRA_DB_MAX_IDLE_CONNS` / `PUBLIRA_DB_CONN_MAX_IDLE_TIME` (optional, `10`, the first one's value, and `5m` when unset. Bound each of the pools on its own, as in `publira server`; see [Connection pools](../../README.md#connection-pools))
 - `PUBLIRA_WORKER_ADDR` (optional, default `:8003`. Serves `/livez` and `/readyz`)
 - `PUBLIRA_OUTBOX_DRAIN_INTERVAL` (optional, a Go duration. Default `2s`)
@@ -359,7 +360,7 @@ hosts the named River queues alone. Every replica otherwise runs every kind of w
 | --- | --- | --- | --- | --- |
 | `outbox` | `default` | The Outbox drain: mail, push, cache revalidation, search index sync | `PUBLIRA_WORKER_DB_URL` |  |
 | `ticker` | `ticker` | The [periodic jobs](#periodic-jobs) | `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_TICKER_DB_URL` | `PUBLIRA_PUBLISH_MAX_RETRIES` |
-| `maintenance` | `maintenance` | Every [maintenance job](#maintenance-jobs) but the search index build | `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL` | The maintenance jobs' tunables |
+| `maintenance` | `maintenance` | Every [maintenance job](#maintenance-jobs) but the search index build | `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL`, and `PUBLIRA_CONTENT_STATS_DB_REPLICA_URL` when it is set | The maintenance jobs' tunables |
 | `search_index` | `search_index` | `maintenance.build_search_index` | `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL` | The maintenance jobs' tunables |
 
 Queues combine with a comma, or with the flag given again. Every queue opens `publira_outbox`, which the River client itself connects as, and a queue opens the pool its jobs connect as besides it; a variable only one queue reads is not read without that queue, and `/readyz` names the pools the process holds alone. An unknown queue, an empty one, or a queue named twice prints the usage and exits with status 2.

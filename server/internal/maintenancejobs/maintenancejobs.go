@@ -172,8 +172,12 @@ func ServiceNames() []string {
 
 // Config is the wiring one process needs to run every job.
 type Config struct {
-	// DB is the maintenance role's own pool. Every query runs on it.
+	// DB is the maintenance role's own pool. Every query runs on it, except
+	// the reads maintenance.Deps.Replica makes.
 	DB *sql.DB
+	// Replica is a hot standby of DB's cluster signed in as the same login, or
+	// nil; maintenance.Deps.Replica says which reads it makes.
+	Replica *sql.DB
 	// Storage resolves the bucket the orphan image sweep reclaims. A platform
 	// with none configured still registers the sweep, whose runs are then
 	// cancelled with storage.ErrNotConfigured.
@@ -229,6 +233,7 @@ func New(cfg Config) (*Jobs, error) {
 
 	jobs := &Jobs{deps: maintenance.Deps{
 		DB:         cfg.DB,
+		Replica:    cfg.Replica,
 		Storage:    cfg.Storage,
 		Secrets:    cfg.Secrets,
 		GooglePlay: cfg.GooglePlay,

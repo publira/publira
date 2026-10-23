@@ -51,7 +51,7 @@ func (s ContentStatsAggregation) Run(ctx context.Context, deps Deps) error {
 	logger := deps.logger()
 
 	started := time.Now()
-	result, err := contentstats.New(deps.DB).Run(ctx, contentstats.Options{StatDate: s.Date})
+	result, err := contentstats.NewReplicated(deps.pools()).Run(ctx, contentstats.Options{StatDate: s.Date})
 	for _, skipped := range result.Skipped {
 		logger.WarnContext(ctx, "content stats aggregation skipped a tenant: its content events for the day may be gone",
 			"tenant_id", skipped.TenantID,
@@ -125,7 +125,7 @@ func (s RecommendFeatureBuild) Run(ctx context.Context, deps Deps) error {
 	logger := deps.logger()
 
 	started := time.Now()
-	result, err := recommendfeatures.New(deps.DB).Run(ctx, recommendfeatures.Options{
+	result, err := recommendfeatures.NewReplicated(deps.pools()).Run(ctx, recommendfeatures.Options{
 		ReferenceDate: s.Date,
 		WindowDays:    s.WindowDays,
 	})

@@ -56,6 +56,9 @@ type ReplicatedPostgres struct {
 	// StandbyPublicURL connects to the standby as publira_public, the login the
 	// storefront's replica pool signs in as.
 	StandbyPublicURL string
+	// StandbyContentStatsURL connects to the standby as publira_content_stats,
+	// the login the maintenance jobs' replica pool signs in as.
+	StandbyContentStatsURL string
 
 	standby *sql.DB
 }
@@ -189,11 +192,16 @@ func StartReplicatedPostgres(t *testing.T) *ReplicatedPostgres {
 	if err != nil {
 		t.Fatal(err)
 	}
+	standbyContentStatsURL, err := appConnectionString(standbyURL, contentStatsDBUser, contentStatsDBPassword)
+	if err != nil {
+		t.Fatal(err)
+	}
 	return &ReplicatedPostgres{
-		PostgresEnv:      env,
-		StandbyURL:       standbyURL,
-		StandbyPublicURL: standbyPublicURL,
-		standby:          standbyDB,
+		PostgresEnv:            env,
+		StandbyURL:             standbyURL,
+		StandbyPublicURL:       standbyPublicURL,
+		StandbyContentStatsURL: standbyContentStatsURL,
+		standby:                standbyDB,
 	}
 }
 
@@ -202,6 +210,13 @@ func StartReplicatedPostgres(t *testing.T) *ReplicatedPostgres {
 func (r *ReplicatedPostgres) OpenStandbyPublicDB(t *testing.T) *sql.DB {
 	t.Helper()
 	return r.openAppDB(t, r.StandbyPublicURL, publicDBUser)
+}
+
+// OpenStandbyContentStatsDB opens a connection to the standby as
+// publira_content_stats. The connection is closed via t.Cleanup.
+func (r *ReplicatedPostgres) OpenStandbyContentStatsDB(t *testing.T) *sql.DB {
+	t.Helper()
+	return r.openAppDB(t, r.StandbyContentStatsURL, contentStatsDBUser)
 }
 
 // WaitForReplay waits until the standby has replayed everything the primary

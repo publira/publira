@@ -89,7 +89,7 @@ func (s ContentStatsAggregation) CatchUp(ctx context.Context, deps Deps) error {
 		return err
 	}
 	now := time.Now()
-	aggregator := contentstats.New(deps.DB)
+	aggregator := contentstats.NewReplicated(deps.pools())
 	return catchUp(ctx, deps, catchUpLink{
 		name: "content stats",
 		lost: func(tenant tenantday.Tenant, day time.Time) (bool, error) {
@@ -132,7 +132,7 @@ func (s RankingAggregation) CatchUp(ctx context.Context, deps Deps) error {
 // the features of its last ranked day: the tables hold one snapshot per tenant,
 // so an earlier day would only be overwritten.
 func (s RecommendFeatureBuild) CatchUp(ctx context.Context, deps Deps) error {
-	builder := recommendfeatures.New(deps.DB)
+	builder := recommendfeatures.NewReplicated(deps.pools())
 	return catchUp(ctx, deps, catchUpLink{
 		name: "recommend feature",
 		pending: func(_ tenantday.Tenant, p dbmodels.ListDailyRebuildProgressRow) (time.Time, time.Time, error) {

@@ -538,6 +538,7 @@ PUBLIRA_CONTENT_STATS_DATE=2026-08-28 go -C server run ./cmd/publiractl job aggr
 Environment variables:
 
 - `PUBLIRA_CONTENT_STATS_DB_URL`: dedicated connection URL, of a role that reaches every tenant. Falls back to `PUBLIRA_DB_URL`.
+- `PUBLIRA_CONTENT_STATS_DB_REPLICA_URL`: optional, and unset by default. A hot standby of the database's cluster, signed in as the same login as the connection above, which each tenant's day is read on once it has replayed everything the primary had committed when that tenant's rebuild began; a standby still behind after 5 seconds leaves the tenant to the primary. A URL signing in as another login stops the run before it starts. Unset, the day is read on the connection above. See [The daily rebuilds](../../../docs/en/2-deployments/7-scaling-out.md#the-daily-rebuilds).
 - `PUBLIRA_CONTENT_STATS_DATE`: the calendar date to rebuild as `YYYY-MM-DD`, read as each tenant's own local date. Unset rebuilds every tenant's own yesterday, which is not the same day for all of them.
 
 The structured log records the target date, how many tenants the run finished, how many it skipped, the rows created, and the elapsed time — on failure too, since each tenant commits on its own — and a warning naming each skipped tenant.
@@ -752,6 +753,7 @@ PUBLIRA_RECOMMEND_FEATURES_DATE=2026-08-28 go -C server run ./cmd/publiractl job
 Environment variables:
 
 - `PUBLIRA_RECOMMEND_FEATURES_DB_URL`: dedicated connection URL, of a role that reaches every tenant. Falls back to `PUBLIRA_CONTENT_STATS_DB_URL`, then `PUBLIRA_DB_URL`.
+- `PUBLIRA_CONTENT_STATS_DB_REPLICA_URL`: optional, and unset by default. The hot standby `aggregate-content-stats` reads on, signed in as the same login as the connection above. Each tenant's window of `content_events` for the user snapshot is read on it, on the same terms; the item snapshot is read from `content_daily_stats` on the connection above.
 - `PUBLIRA_RECOMMEND_FEATURES_DATE`: last day of the window, as `YYYY-MM-DD`, read as each tenant's own local date. Unset ends every tenant's window on its own yesterday.
 - `PUBLIRA_RECOMMEND_FEATURES_WINDOW_DAYS`: window length in days, ending on that date and including it. Defaults to 28, and must be at least 1.
 

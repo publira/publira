@@ -5,7 +5,7 @@ published: 2026-10-22
 updated: 2026-10-23
 ---
 
-An install that has become slow, or is about to grow, gets more of the processes it already runs: more copies of the busy ones, `publira server` split by the traffic it answers, and `publira worker` split by the work it does. This page says which processes can run more than once and what has to be in place before they do, where the load of an install goes, how far `publira server` can be split, how `publira worker` is split, what the database has to accept as the copies multiply, how the readers' catalog reads move to a replica of the database, and which parts no number of copies relieves. It applies on any platform: [Kubernetes](./5-kubernetes/index.md) and [Amazon ECS on Fargate](./6-ecs-fargate/index.md) have the manifests and commands.
+An install that has become slow, or is about to grow, gets more of the processes it already runs: more copies of the busy ones, `publira server` split by the traffic it answers, and `publira worker` split by the work it does. This page says which processes can run more than once and what has to be in place before they do, where the load of an install goes, how far `publira server` can be split, how `publira worker` is split, what the database has to accept as the copies multiply, how the readers' catalog reads and the worker's daily rebuilds move to a replica of the database, and which parts no number of copies relieves. It applies on any platform: [Kubernetes](./5-kubernetes/index.md) and [Amazon ECS on Fargate](./6-ecs-fargate/index.md) have the manifests and commands.
 
 ## What can run more than once
 
@@ -99,7 +99,8 @@ Every copy of `publira server` and `publira worker` opens one pool of connection
 | `publira server --with-worker` | 6 |
 | `publira worker` | 3 |
 | `publira worker --queue <queues>` | 1, and 1 more with `ticker`, and 1 more with `maintenance` or `search_index`: 1 for `--queue outbox` |
-| A `publiractl` command while it runs | 1 |
+| `publira worker` hosting `maintenance` with a replica | 1 more, on the replica rather than the primary |
+| A `publiractl` command while it runs | 1, and 1 more on the replica for `job aggregate-content-stats` and `job build-recommend-features` given one |
 
 The sum has to fit in the database's `max_connections`, less the connections PostgreSQL keeps for superusers, `superuser_reserved_connections`, three unless set. One server and one worker take 60 of PostgreSQL's default 100. An install with three copies of `publira server --role storefront`, two of `publira server`, and two of `publira worker` takes (3 × 1 + 2 × 3 + 2 × 3) × 10 = 150, which the default no longer accepts.
 
@@ -107,9 +108,15 @@ A request to the public API holds one connection of the public API's pool from s
 
 ## Reading from a replica
 
-The readers' traffic is almost all reads of the published catalog: the series and episode pages, the lists and searches, and the row read before each of the tenants' images is served. `publira server` can answer those on a hot standby of the database, so that the readers who make up the growth of an install stop adding load to the primary.
+Two kinds of read grow with an install's readers. The readers' own traffic is almost all reads of the published catalog: the series and episode pages, the lists and searches, and the row read before each of the tenants' images is served. And every view a reader makes is a row of `content_events`, which the worker's daily rebuilds read back, across every tenant, to count the day and to build the recommendations. Both can be made on a hot standby of the database, so that the readers who make up the growth of an install stop adding that load to the primary.
 
-The standby has to be a hot standby of the same cluster, streaming from the primary, such as a read replica of a managed PostgreSQL: the roles, their grants, and their passwords then reach it with everything else, and it is at most a moment behind. A copy restored from a backup, or a database that is not in recovery, is not one. Give it a `max_connections` of its own sized for the replica pools, as [The database connection budget](#the-database-connection-budget) counts them; PostgreSQL also refuses to start a standby with a smaller `max_connections` than the primary's.
+The standby has to be a hot standby of the same cluster, streaming from the primary, such as a read replica of a managed PostgreSQL: the roles, their grants, and their passwords then reach it with everything else, and it is at most a moment behind. A copy restored from a backup, or a database that is not in recovery, is not one. Give it a `max_connections` of its own sized for the replica pools, as [The database connection budget](#the-database-connection-budget) counts them; PostgreSQL also refuses to start a standby with a smaller `max_connections` than the primary's. One standby can serve both kinds of read.
+
+Nothing read on the replica is older than what the primary would have read. Before a read the replica may make, the process reads the primary's position, and the replica makes the read only once it has replayed that far, so every write that had committed by then is in it. A replica still behind after the wait is left out of that read, which the primary makes instead. A replica that falls behind for longer, or is promoted to a primary of its own, therefore sends the reads back to the primary, and the primary's load comes back with them until it catches up. The primary still answers one statement per read the replica takes, the read of its position, which touches no table.
+
+To see the replica taking the reads, turn on [tracing](../3-operations/11-monitoring.md): every query span names the server that answered it in `server.address` and `server.port`, and so does every query metric.
+
+### The readers' catalog reads
 
 Set `PUBLIRA_PUBLIC_DB_REPLICA_URL` on every `publira server` that serves the `storefront` role, the one `--role storefront` process or every process without `--role`, to the standby's connection signed in as `publira_public` with the same password as `PUBLIRA_PUBLIC_DB_URL`. A URL signing in as any other login stops the process at startup. Left unset, which is the default, every read stays on the primary.
 
@@ -119,17 +126,30 @@ What the replica answers:
 - The catalog searches, when the install has no search engine and searches in PostgreSQL.
 - The tenants' images, except the pages of an episode, which check what the reader may read.
 
-Everything else stays on the primary: every request of a signed-in reader, every write, signing in, the consoles, and the worker.
+Everything else `publira server` answers stays on the primary: every request of a signed-in reader, every write, signing in, and the consoles.
 
-A reader is never shown anything older than the primary would show. The server reads the primary's position before each request the replica may answer, and answers it on the replica only once the replica has replayed that far, so every write that had committed when the request arrived is in the answer, the change a staff member saved and the purchase a reader made included. A replica still behind after 50 milliseconds is left out of that request, which the primary answers instead. A replica that falls behind for longer, or is promoted to a primary of its own, therefore sends the reads back to the primary, and the primary's load comes back with them until it catches up. The primary still answers one statement per request the replica takes, the read of its position, which touches no table.
+A reader waits on each of these requests, so the replica is given 50 milliseconds to catch up. `/readyz` names the replica's pool `db.public.replica`, so a replica that stops answering makes the process not ready, like the primary would.
 
-To see the replica taking the reads, turn on [tracing](../3-operations/11-monitoring.md): every query span names the server that answered it in `server.address` and `server.port`, and so does every query metric. `/readyz` names the replica's pool `db.public.replica`, so a replica that stops answering makes the process not ready, like the primary would.
+### The daily rebuilds
+
+Set `PUBLIRA_CONTENT_STATS_DB_REPLICA_URL` on every `publira worker` that hosts the `maintenance` queue, every worker without `--queue` included, to the standby's connection signed in as `publira_content_stats` with the same password as `PUBLIRA_CONTENT_STATS_DB_URL`. `publiractl job aggregate-content-stats` and `publiractl job build-recommend-features` read it too, so set it wherever those are run by hand. A URL signing in as any other login stops the process, or the command, at startup. Left unset, which is the default, every read stays on the primary.
+
+What the replica answers, for each tenant in turn:
+
+- The day the content stats rebuild counts: its views, completed reads, ratings, and favourites from `content_events`, and its purchases and comments.
+- The trailing window of a tenant's `content_events`, four weeks unless set, that the recommend feature build reads for each signed-in reader.
+
+Everything else the worker does stays on the primary: every row a rebuild writes, the rankings and the recommendations' per-title figures, which are read from the day's counts the rebuild has just written, the projection of finished reads into `content_events`, every purge, the search index build, and the jobs on the other queues.
+
+Nobody waits on a rebuild, so the replica is given 5 seconds to catch up before a tenant's rebuild reads on the primary instead. A day is not closed to writes when it ends: a finished read projected late is filed on the day the reader finished it, and staff can hide a comment of any day, so the wait is what keeps a rebuild from counting a day without them. `/readyz` names the replica's pool `db.content_stats.replica`.
+
+A rebuild's read on the standby can run for minutes on a large tenant, and PostgreSQL cancels a query on a standby, as `canceling statement due to conflict with recovery`, when replaying the primary's cleanup would remove rows the query still reads. The tenant's rebuild then fails, and the next pass rebuilds the day again from where it stopped. Turn on `hot_standby_feedback` on the standby so the primary keeps those rows until the read ends; the cost is that the primary's cleanup of dead rows, on every table, waits for it.
 
 ## What does not scale out
 
 Copies of the processes spread their own work. The services they depend on are each one service to Publira, and making any of them larger, or highly available behind the one address Publira is given, is done in that service:
 
-- **PostgreSQL.** Each pool connects to the one URL its variable names, so every write goes to one primary, and so does every read but the readers' catalog reads a [replica](#reading-from-a-replica) can take. The consoles, the worker's jobs, and the signed-in readers still reach the primary alone, which makes it where the load of a growing install ends up: more copies of the processes send it more queries, and only a larger primary relieves it.
+- **PostgreSQL.** Each pool connects to the one URL its variable names, so every write goes to one primary, and so does every read but the readers' catalog reads and the daily rebuilds' reads of `content_events` a [replica](#reading-from-a-replica) can take. The consoles, the signed-in readers, and the worker's other jobs still reach the primary alone, which makes it where the load of a growing install ends up: more copies of the processes send it more queries, and only a larger primary relieves it.
 - **Valkey.** Every process reads one URL.
 - **The object store.** The install has one bucket, saved in the platform's settings.
 - **The SMTP server.** The worker sends every mail through the SMTP server the settings name.

@@ -27,7 +27,16 @@ func runBuildRecommendFeatures(ctx context.Context, logger *slog.Logger, cfg *co
 	}
 	defer db.Close() //nolint:errcheck
 
-	return job.Run(ctx, maintenance.Deps{DB: db, Logger: logger})
+	replica, err := openContentStatsReplica(ctx, db)
+	if err != nil {
+		logger.Error("failed to connect to the replica", "error", err)
+		return err
+	}
+	if replica != nil {
+		defer replica.Close() //nolint:errcheck
+	}
+
+	return job.Run(ctx, maintenance.Deps{DB: db, Replica: replica, Logger: logger})
 }
 
 func resolveRecommendFeaturesDBURL(fallback string) string {
