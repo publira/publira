@@ -34,6 +34,15 @@ An install that keeps the consoles' APIs and logins out of the process the tenan
 
 Together they replace the one `publira server` above, and each reads the `publira server` rows below except where a row says otherwise. The storefront process holds neither console's login nor the web service credential. `web-storefront` calls `publira.v1` alone, so its `PUBLIRA_GRPC_URL` names the storefront process. `web-admin` keeps calling a process that serves every role, because it calls `publira.v1` for the tenant's theme and catalog as well as `publira.admin.v1`, on the one `PUBLIRA_GRPC_URL` it has. Both listen on `:8000` alone, so either can run on a platform that exposes one port per service. [`--role`](../../server/cmd/publira/README.md#serving-some-roles---role) has the details.
 
+An install whose mail and push notifications have to keep going out while an hour-long rebuild runs may likewise run `publira worker` as two processes:
+
+| Process | Image | Serves | Reached by |
+| --- | --- | --- | --- |
+| `publira worker --queue outbox` | [`infra/docker/server`](../docker/server/Dockerfile), with `worker --queue outbox` as the container argument | The Outbox drain — mail, push, cache revalidation — as `publira_outbox` alone | Nothing; it serves `/livez` and `/readyz` on `:8003` |
+| `publira worker --queue ticker,maintenance,search_index` | [`infra/docker/server`](../docker/server/Dockerfile), with `worker --queue ticker,maintenance,search_index` as the container argument | Every scheduled job, as `publira_outbox`, `publira_ticker`, and `publira_content_stats` | Nothing; it serves `/livez` and `/readyz` on `:8003` |
+
+Together they replace the one `publira worker` above, and each reads the `publira worker` rows below except where a row says otherwise. Every queue needs at least one running process that hosts it: the process River elects leader enqueues every scheduled job, whatever queues it hosts itself, and a job whose queue no process hosts waits until one does. [`--queue`](../../server/cmd/publira/README.md#hosting-some-queues---queue) has the details.
+
 ### Services the processes depend on
 
 | Service | Used by | What it holds |
@@ -84,7 +93,7 @@ The secret encryption keys seal the SMTP password, the object store's access key
 | `publira server` | `PUBLIRA_AUTH_JWT_SECRET` | The key access tokens are signed with, at least 32 bytes |
 | `publira server` | `PUBLIRA_PUBLIC_DB_URL`, `PUBLIRA_ADMIN_DB_URL` | The `publira_public` and `publira_admin` connections. A process given `--role` reads only the connection of each role it serves, as the `publira_platform` one is read only with `platform` |
 | `publira server`, `publira worker` | `PUBLIRA_WEB_STOREFRONT_INTERNAL_URL`, `PUBLIRA_WEB_ADMIN_INTERNAL_URL` | The private network URLs of `web-storefront` and `web-admin`, such as `http://web-storefront:3000`, where the cache revalidation is sent |
-| `publira worker` | `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_TICKER_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL` | The `publira_outbox`, `publira_ticker`, and `publira_content_stats` connections |
+| `publira worker` | `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_TICKER_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL` | The `publira_outbox`, `publira_ticker`, and `publira_content_stats` connections. A process given `--queue` reads the `publira_outbox` one and those of the queues it hosts, as the `publira_ticker` one is read only with `ticker` |
 | `publiractl` | `PUBLIRA_DB_URL` | The connection of the login that owns the database and may create roles, read by the `db` commands alone. It need not be a superuser |
 
 `publira server --with-worker` reads every row naming `publira server` or `publira worker`, here and under [Shared values](#shared-values).

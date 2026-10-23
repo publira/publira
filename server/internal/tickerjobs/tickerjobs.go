@@ -198,6 +198,17 @@ func New(cfg Config) (*Jobs, error) {
 	}, nil
 }
 
+// Unhosted is the jobs as a worker replica that leaves the ticker queue to
+// another holds them: built without the pool New needs, so none of them can
+// run, and only the intervals of cfg are read. Whichever replica River elects
+// leader still needs every one of them, hosted or not: it enqueues each
+// periodic job, and it retries a job left running by a replica that died only
+// when its own registry knows the kind, discarding any other. The client
+// handed these must not work QueueName.
+func Unhosted(cfg Config) *Jobs {
+	return &Jobs{cfg: cfg.withDefaults()}
+}
+
 // Register adds the workers to the River client's registry.
 func (j *Jobs) Register(workers *river.Workers) error {
 	if err := river.AddWorkerSafely(workers, &publishEpisodesWorker{jobs: j}); err != nil {

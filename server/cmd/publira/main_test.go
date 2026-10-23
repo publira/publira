@@ -52,8 +52,8 @@ func TestRunRejectsArgumentsTheCommandDoesNotTake(t *testing.T) {
 		reason string
 	}{
 		{[]string{"server", "--port", "8000"}, "flag provided but not defined: -port"},
-		{[]string{"server", "extra"}, "server takes no arguments other than --role and --with-worker"},
-		{[]string{"server", "--with-worker", "extra"}, "server takes no arguments other than --role and --with-worker"},
+		{[]string{"server", "extra"}, "server takes no arguments other than --role, --with-worker, and --queue"},
+		{[]string{"server", "--with-worker", "extra"}, "server takes no arguments other than --role, --with-worker, and --queue"},
 		{[]string{"server", "--listener", "edge"}, "flag provided but not defined: -listener"},
 		{[]string{"server", "--role", "worker"}, `--role must be storefront, admin, or platform, not "worker"`},
 		{[]string{"server", "--role", "edge"}, `--role must be storefront, admin, or platform, not "edge"`},
@@ -62,9 +62,21 @@ func TestRunRejectsArgumentsTheCommandDoesNotTake(t *testing.T) {
 		{[]string{"server", "--role", "admin,admin"}, `--role names "admin" twice`},
 		{[]string{"server", "--role", "admin", "--role", "admin"}, `--role names "admin" twice`},
 		{[]string{"server", "--role"}, "flag needs an argument: -role"},
-		{[]string{"worker", "--role", "storefront"}, "worker takes no arguments"},
-		{[]string{"worker", "extra"}, "worker takes no arguments"},
-		{[]string{"worker", "--with-worker"}, "worker takes no arguments"},
+		{[]string{"server", "--queue", "outbox"}, "--queue names the queues of the worker --with-worker hosts"},
+		{[]string{"server", "--queue", "outbox,ticker,maintenance,search_index"}, "--queue names the queues of the worker --with-worker hosts"},
+		{[]string{"server", "--with-worker=false", "--queue", "outbox"}, "--queue names the queues of the worker --with-worker hosts"},
+		{[]string{"server", "--with-worker", "--queue", "storefront"}, `--queue must be outbox, ticker, maintenance, or search_index, not "storefront"`},
+		{[]string{"worker", "--role", "storefront"}, "flag provided but not defined: -role"},
+		{[]string{"worker", "extra"}, "worker takes no arguments other than --queue"},
+		{[]string{"worker", "--queue", "outbox", "extra"}, "worker takes no arguments other than --queue"},
+		{[]string{"worker", "--with-worker"}, "flag provided but not defined: -with-worker"},
+		{[]string{"worker", "--queue", "default"}, `--queue must be outbox, ticker, maintenance, or search_index, not "default"`},
+		{[]string{"worker", "--queue", "searchindex"}, `--queue must be outbox, ticker, maintenance, or search_index, not "searchindex"`},
+		{[]string{"worker", "--queue", ""}, "--queue names an empty queue"},
+		{[]string{"worker", "--queue", "outbox,"}, "--queue names an empty queue"},
+		{[]string{"worker", "--queue", "ticker,ticker"}, `--queue names "ticker" twice`},
+		{[]string{"worker", "--queue", "ticker", "--queue", "ticker"}, `--queue names "ticker" twice`},
+		{[]string{"worker", "--queue"}, "flag needs an argument: -queue"},
 		{[]string{"--with-worker"}, `unknown command "--with-worker"`},
 	} {
 		t.Run(strings.Join(tc.args, " "), func(t *testing.T) {
@@ -84,21 +96,24 @@ func TestRunRejectsArgumentsTheCommandDoesNotTake(t *testing.T) {
 }
 
 // Without --role the server serves all three surfaces, and --with-worker adds
-// the worker to whichever it serves.
+// the worker to whichever it serves, hosting every queue unless --queue names
+// some.
 func TestParseServerFlags(t *testing.T) {
 	for _, tc := range []struct {
 		args []string
 		want hosted
 	}{
 		{nil, hosted{server: allServerRoles}},
-		{[]string{"--with-worker"}, hosted{server: allServerRoles, worker: true}},
-		{[]string{"-with-worker"}, hosted{server: allServerRoles, worker: true}},
+		{[]string{"--with-worker"}, hosted{server: allServerRoles, worker: allWorkerQueues}},
+		{[]string{"-with-worker"}, hosted{server: allServerRoles, worker: allWorkerQueues}},
 		{[]string{"--with-worker=false"}, hosted{server: allServerRoles}},
 		{[]string{"--role", "storefront"}, hosted{server: serverRoles{storefront: true}}},
 		{[]string{"--role=admin,platform"}, hosted{server: serverRoles{admin: true, platform: true}}},
 		{[]string{"--role", "platform", "--role", "storefront"}, hosted{server: serverRoles{storefront: true, platform: true}}},
 		{[]string{"--role", "admin, storefront,platform"}, hosted{server: allServerRoles}},
-		{[]string{"--role", "storefront", "--with-worker"}, hosted{server: serverRoles{storefront: true}, worker: true}},
+		{[]string{"--role", "storefront", "--with-worker"}, hosted{server: serverRoles{storefront: true}, worker: allWorkerQueues}},
+		{[]string{"--with-worker", "--queue", "outbox"}, hosted{server: allServerRoles, worker: workerQueues{outbox: true}}},
+		{[]string{"--queue=ticker,maintenance", "--with-worker"}, hosted{server: allServerRoles, worker: workerQueues{ticker: true, maintenance: true}}},
 	} {
 		t.Run(strings.Join(tc.args, " "), func(t *testing.T) {
 			got, err := parseServerFlags(tc.args)
@@ -112,9 +127,34 @@ func TestParseServerFlags(t *testing.T) {
 	}
 }
 
+// Without --queue the worker hosts all four queues.
+func TestParseWorkerFlags(t *testing.T) {
+	for _, tc := range []struct {
+		args []string
+		want workerQueues
+	}{
+		{nil, allWorkerQueues},
+		{[]string{"--queue", "outbox"}, workerQueues{outbox: true}},
+		{[]string{"-queue=search_index"}, workerQueues{searchIndex: true}},
+		{[]string{"--queue", "ticker,maintenance,search_index"}, workerQueues{ticker: true, maintenance: true, searchIndex: true}},
+		{[]string{"--queue", "maintenance", "--queue", "ticker"}, workerQueues{ticker: true, maintenance: true}},
+		{[]string{"--queue", "search_index, outbox,ticker,maintenance"}, allWorkerQueues},
+	} {
+		t.Run(strings.Join(tc.args, " "), func(t *testing.T) {
+			got, err := parseWorkerFlags(tc.args)
+			if err != nil {
+				t.Fatalf("parseWorkerFlags(%q): %v", tc.args, err)
+			}
+			if got != tc.want {
+				t.Fatalf("parseWorkerFlags(%q) = %+v, want %+v", tc.args, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestUsageListsEveryCommandAndFlag(t *testing.T) {
 	out := usage()
-	for _, entry := range []string{"server", "worker", "--role", "--with-worker"} {
+	for _, entry := range []string{"server", "worker", "--role", "--with-worker", "--queue"} {
 		if !strings.Contains(out, "  "+entry+" ") {
 			t.Fatalf("usage text is missing %q", entry)
 		}

@@ -704,7 +704,7 @@ Every pool a process opens is bounded by the same three variables, read at start
 | `PUBLIRA_DB_MAX_IDLE_CONNS` | the value of `PUBLIRA_DB_MAX_OPEN_CONNS` | The returned connections a pool keeps open for the next caller, from `0` to `PUBLIRA_DB_MAX_OPEN_CONNS` |
 | `PUBLIRA_DB_CONN_MAX_IDLE_TIME` | `5m` | How long a connection nobody uses is kept before it is closed, as a Go duration. `0` keeps it |
 
-The bound is per pool, not per process. `publira server` and `publira worker` hold three pools each and `publira server --with-worker` holds six, while a server given [`--role`](cmd/publira/README.md#serving-some-roles---role) holds one per role, so the database has to accept
+The bound is per pool, not per process. `publira server` and `publira worker` hold three pools each and `publira server --with-worker` holds six, while a server given [`--role`](cmd/publira/README.md#serving-some-roles---role) holds one per role and a worker given [`--queue`](cmd/publira/README.md#hosting-some-queues---queue) holds the `publira_outbox` one River connects as and one more per login its queues' jobs connect as, so the database has to accept
 
 ```text
 (the pools of every server and worker process, summed) × PUBLIRA_DB_MAX_OPEN_CONNS
@@ -722,7 +722,7 @@ A request to `publira.v1` or `publira.admin.v1` holds one connection of its pool
 
 `publiractl db roles` creates the users from the same files and sets the password each is given, after `publiractl db migrate` and on the same connection; [its README](cmd/publiractl/README.md#db) has the flags and the order of first use. `task db:seed ENV=prod` applies the same files through `psql` and leaves every new user without a password, to be set with `ALTER ROLE ... PASSWORD` or with `publiractl db roles`.
 
-Then set each variable (`PUBLIRA_PLATFORM_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL`, `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_TICKER_DB_URL`, `PUBLIRA_ADMIN_DB_URL`, `PUBLIRA_PUBLIC_DB_URL`) to a URL containing the matching password. The servers and each of the worker's three pools read only the variables named for the roles they connect as, and never fall back from one to another, so an unset one leaves that pool on a development password it cannot authenticate with; the `publiractl job` subcommands an operator runs by hand fall through the chain in the table above and end on `PUBLIRA_DB_URL`, so set `PUBLIRA_CONTENT_STATS_DB_URL` for them rather than relying on that end.
+Then set each variable (`PUBLIRA_PLATFORM_DB_URL`, `PUBLIRA_CONTENT_STATS_DB_URL`, `PUBLIRA_WORKER_DB_URL`, `PUBLIRA_TICKER_DB_URL`, `PUBLIRA_ADMIN_DB_URL`, `PUBLIRA_PUBLIC_DB_URL`) to a URL containing the matching password. The servers and each of the worker's pools read only the variables named for the roles they connect as, and never fall back from one to another, so an unset one leaves that pool on a development password it cannot authenticate with; the `publiractl job` subcommands an operator runs by hand fall through the chain in the table above and end on `PUBLIRA_DB_URL`, so set `PUBLIRA_CONTENT_STATS_DB_URL` for them rather than relying on that end.
 
 ## Notes on initial data
 

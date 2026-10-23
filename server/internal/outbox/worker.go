@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -83,6 +85,16 @@ type Config struct {
 	// entry per set of jobs, because a process that hosts two of them — the
 	// ticker jobs and the maintenance jobs — still owns one River client.
 	Periodic []PeriodicRegistrar
+	// Queues names the queues this client works, river.QueueDefault for the
+	// outbox drain's. Empty works every queue: the default one and each a set
+	// in Periodic brings. A queue named here must be one of those.
+	//
+	// A set whose queue is left out is still registered and scheduled, which
+	// is why Periodic carries every set whatever this names. Whichever client
+	// River elects leader enqueues every periodic job and rescues every job a
+	// dead client left running, and it retries one only for a kind its own
+	// registry knows.
+	Queues []string
 }
 
 // PeriodicRegistrar is a set of jobs that rides the same River client as the
@@ -203,6 +215,10 @@ func Start(ctx context.Context, db *sql.DB, cfg Config) (*Worker, error) {
 		return nil, err
 	}
 	periodicJobs = append(periodicJobs, scheduled...)
+	queues, err = hostedQueues(queues, cfg.Queues)
+	if err != nil {
+		return nil, err
+	}
 
 	riverCfg := &river.Config{
 		Logger:            cfg.Logger,
@@ -231,8 +247,28 @@ func Start(ctx context.Context, db *sql.DB, cfg Config) (*Worker, error) {
 		"claim_limit", cfg.ClaimLimit,
 		"max_attempts", cfg.MaxAttempts,
 		"max_workers", cfg.MaxWorkers,
+		"queues", slices.Sorted(maps.Keys(queues)),
 	)
 	return w, nil
+}
+
+// hostedQueues narrows the queues the client knows to the ones named, or
+// answers all of them when none is. A name the client knows no job for is
+// refused rather than ignored: a producer on it would work nothing, and the
+// queue that was meant would be left with no replica.
+func hostedQueues(known map[string]river.QueueConfig, names []string) (map[string]river.QueueConfig, error) {
+	if len(names) == 0 {
+		return known, nil
+	}
+	hosted := make(map[string]river.QueueConfig, len(names))
+	for _, name := range names {
+		queue, ok := known[name]
+		if !ok {
+			return nil, fmt.Errorf("outbox: no job this process runs is on the %q queue", name)
+		}
+		hosted[name] = queue
+	}
+	return hosted, nil
 }
 
 // registerPeriodic adds every set's workers to the registry and folds its

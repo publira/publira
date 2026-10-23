@@ -1,6 +1,7 @@
 package outbox
 
 import (
+	"maps"
 	"strings"
 	"testing"
 	"time"
@@ -57,6 +58,44 @@ func TestRegisterPeriodicRefusesTwoSetsOnOneQueue(t *testing.T) {
 	})
 	if !strings.Contains(err.Error(), `"shared"`) {
 		t.Fatalf("error = %v, want the contested queue named", err)
+	}
+}
+
+// A replica given some queues works those alone, at the concurrency their
+// sets chose, and one given none works every queue it knows.
+func TestHostedQueuesNarrowsToTheNamedQueues(t *testing.T) {
+	known := map[string]river.QueueConfig{
+		river.QueueDefault: {MaxWorkers: 8},
+		"ticker":           {MaxWorkers: 7},
+		"maintenance":      {MaxWorkers: 1},
+	}
+	for _, tc := range []struct {
+		name  string
+		names []string
+		want  map[string]river.QueueConfig
+	}{
+		{"none named", nil, known},
+		{"the drain alone", []string{river.QueueDefault}, map[string]river.QueueConfig{river.QueueDefault: {MaxWorkers: 8}}},
+		{"the jobs alone", []string{"ticker", "maintenance"}, map[string]river.QueueConfig{"ticker": {MaxWorkers: 7}, "maintenance": {MaxWorkers: 1}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := hostedQueues(known, tc.names)
+			if err != nil {
+				t.Fatalf("hostedQueues: %v", err)
+			}
+			if !maps.Equal(got, tc.want) {
+				t.Fatalf("hostedQueues(%v) = %v, want %v", tc.names, got, tc.want)
+			}
+		})
+	}
+}
+
+// A queue no job of this process runs on would get a producer that works
+// nothing, while the queue that was meant went without a replica.
+func TestHostedQueuesRefusesAQueueNoJobRunsOn(t *testing.T) {
+	_, err := hostedQueues(map[string]river.QueueConfig{river.QueueDefault: {MaxWorkers: 8}}, []string{"ticker"})
+	if err == nil || !strings.Contains(err.Error(), `"ticker"`) {
+		t.Fatalf("error = %v, want the unknown queue named", err)
 	}
 }
 

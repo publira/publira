@@ -47,7 +47,8 @@ const PingTimeout = 10 * time.Second
 // The variables that bound every pool Open creates. One value applies to
 // each pool in the process rather than to the process as a whole, so what an
 // install needs from the database is the number of pools times the bound:
-// `publira server` and `publira worker` hold three pools each.
+// `publira server` and `publira worker` hold three pools each, or fewer when
+// `--role` or `--queue` narrows what they host.
 const (
 	maxOpenConnsEnv    = "PUBLIRA_DB_MAX_OPEN_CONNS"
 	maxIdleConnsEnv    = "PUBLIRA_DB_MAX_IDLE_CONNS"

@@ -150,6 +150,20 @@ func TestTheChainHeadAndEveryOtherJobAreScheduled(t *testing.T) {
 	}
 }
 
+// A replica that hosts neither queue opens no pool for them, and may still be
+// the leader that enqueues these jobs and rescues one another replica left
+// running.
+func TestUnhostedNeedsNoPool(t *testing.T) {
+	t.Setenv("PUBLIRA_CONTENT_EVENTS_PURGE_CHUNK_SIZE", "0")
+	jobs := Unhosted()
+	if err := jobs.Register(river.NewWorkers()); err != nil {
+		t.Fatalf("Register: %v", err)
+	}
+	if got, want := len(jobs.PeriodicJobs()), 9; got != want {
+		t.Fatalf("periodic jobs = %d, want the same %d a hosted set schedules", got, want)
+	}
+}
+
 func TestEveryKindIsNamespacedAndDistinct(t *testing.T) {
 	seen := make(map[string]bool)
 	for _, args := range everyArgs() {

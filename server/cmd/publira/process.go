@@ -23,7 +23,9 @@ type hosted struct {
 	// server names the API surfaces the process serves. None is a process
 	// that hosts no server.
 	server serverRoles
-	worker bool
+	// worker names the queues the process hosts. None is a process that
+	// hosts no worker.
+	worker workerQueues
 }
 
 // shared is what a process builds once from the environment and hands to
@@ -88,7 +90,7 @@ func serve(command string, h hosted) int {
 	if h.server.any() {
 		serviceNames = append(serviceNames, serverServiceNames(h.server)...)
 	}
-	if h.worker {
+	if h.worker.any() {
 		serviceNames = append(serviceNames, workerServiceNames()...)
 	}
 	shutdownTracing, err := tracing.Setup(context.Background(), serviceNames...)
@@ -131,7 +133,7 @@ func serve(command string, h hosted) int {
 	if h.server.any() && !host(buildServer(deps, h.server)) {
 		return 1
 	}
-	if h.worker && !host(buildWorker(deps)) {
+	if h.worker.any() && !host(buildWorker(deps, h.worker)) {
 		return 1
 	}
 
