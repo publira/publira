@@ -61,8 +61,9 @@ const defaultMaxOpenConns = 10
 
 // minMaxOpenConns is the smallest bound a pool works at. A holder of one
 // connection may wait for a second — tenantconn pins one per request and
-// leaves at least one free for the rest, and the worker's migration lock is
-// held while River migrates on the same pool — so a pool of one would wait
+// leaves at least one free for the rest, the worker's migration lock is held
+// while River migrates on the same pool, and a maintenance pass holds its turn
+// on one connection while it works on another — so a pool of one would wait
 // on itself.
 const minMaxOpenConns = 2
 

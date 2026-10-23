@@ -2,6 +2,7 @@
 title: Scaling out
 description: What to run more of when an install outgrows what it started on, what every copy has to share, and the parts that do not scale out.
 published: 2026-10-22
+updated: 2026-10-23
 ---
 
 An install that has become slow, or is about to grow, gets more of the processes it already runs: more copies of the busy ones, and `publira server` split by the traffic it answers. This page says which processes can run more than once and what has to be in place before they do, where the load of an install goes, how far `publira server` can be split, what the database has to accept as the copies multiply, and which parts no number of copies relieves. It applies on any platform: [Kubernetes](./5-kubernetes/index.md) and [Amazon ECS on Fargate](./6-ecs-fargate/index.md) have the manifests and commands.
@@ -51,7 +52,7 @@ Every `publira worker` copy runs every kind of work the worker does, and no piec
 
 - **The outbox**, which sends mail and push notifications and revalidates the web apps' caches, is spread across the copies. Every `PUBLIRA_OUTBOX_DRAIN_INTERVAL`, two seconds unless set, one copy claims up to `PUBLIRA_OUTBOX_CLAIM_LIMIT` due entries, a hundred unless set, and queues a job for each. Any copy then runs those jobs, up to `PUBLIRA_OUTBOX_MAX_WORKERS` at once on each, eight unless set, and each job on one copy alone. More copies send more entries at once, which helps when sending is slow, but the outbox still takes at most `PUBLIRA_OUTBOX_CLAIM_LIMIT` entries per interval however many copies run.
 - **The scheduled jobs**, the ones that publish episodes at their scheduled time, open and close free reading periods, and rebuild and purge stored data, are each run by one copy at a time. A job is unique while a run of it is in flight, so a second copy schedules no second run of it, and a run that outlasts its interval is not started again underneath itself.
-- **The rebuilds and purges** run one at a time on each copy. Two copies may run two different ones at the same time, but never the same one. A copy does not yet take only some of the work, so a copy busy with an hour-long rebuild is also one of the copies sending mail ([#4746](https://github.com/publira/publira/issues/4746)).
+- **The rebuilds and purges** run one at a time across every copy. A copy whose turn comes while another copy is running one waits until that one ends, rather than starting beside it, and the wait is not counted as a failed run. A copy does not yet take only some of the work, so a copy busy with an hour-long rebuild is also one of the copies sending mail ([#4746](https://github.com/publira/publira/issues/4746)).
 
 More copies therefore mean more mail and push notifications sent at once, not faster rebuilds or more scheduled passes. [Scheduled jobs](../3-operations/10-scheduled-jobs.md) says what each job does, and the [`publira worker` reference](https://github.com/publira/publira/blob/main/server/cmd/publira/README.md#publira-worker) lists every variable that tunes it.
 

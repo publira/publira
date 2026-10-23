@@ -95,6 +95,7 @@ func startWorkerWithMaintenanceJobs(t *testing.T, pg *testutil.PostgresEnv, sour
 	if err != nil {
 		t.Fatalf("build maintenance jobs: %v", err)
 	}
+	jobs.SetTurnWait(50 * time.Millisecond)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	t.Cleanup(cancel)

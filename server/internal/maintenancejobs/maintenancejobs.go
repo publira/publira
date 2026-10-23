@@ -65,7 +65,20 @@ const QueueName = "maintenance"
 // queueMaxWorkers runs one pass at a time. These share one database with every
 // request the platform is serving, and a purge that ran beside a rebuild would
 // only take the rows out from under it.
+//
+// The bound is one River client's, and every replica of the worker hosts a
+// client of its own, so it is passLockKey that keeps the whole install to one.
 const queueMaxWorkers = 1
+
+// passLockKey names the session advisory lock a pass on QueueName holds for as
+// long as it runs.
+const passLockKey = "maintenance_pass"
+
+// passTurnWait is how long a pass that finds another replica's pass holding
+// the lock is snoozed for before it asks again. A snooze spends none of the
+// job's attempts, so waiting out an hour-long rebuild costs a pass nothing but
+// the wait.
+const passTurnWait = 10 * time.Second
 
 // SearchIndexQueueName is the queue the search index build runs on. Saving a
 // search engine is waiting on it, so it is kept off the maintenance queue,
@@ -199,6 +212,10 @@ type Jobs struct {
 	googlePlayVoidedPurchases maintenance.GooglePlayVoidedPurchaseSync
 
 	searchIndex maintenance.SearchIndexBuild
+
+	// turnWait is passTurnWait, kept on the value so a test of two replicas
+	// does not wait it out.
+	turnWait time.Duration
 }
 
 // New reads every job's tunables and holds them with the pool they run on.
@@ -216,7 +233,7 @@ func New(cfg Config) (*Jobs, error) {
 		Secrets:    cfg.Secrets,
 		GooglePlay: cfg.GooglePlay,
 		Logger:     cfg.Logger,
-	}}
+	}, turnWait: passTurnWait}
 
 	var err error
 	if jobs.episodeReads, err = maintenance.LoadEpisodeReadProjection(); err != nil {
@@ -397,7 +414,22 @@ func purgeInsertOpts(interval time.Duration) river.InsertOpts {
 //
 // The span and every log line of the pass carry the river_job id and attempt,
 // so a failure found in either leads to the row that holds its retries.
+//
+// A pass on QueueName first takes its turn, and is snoozed rather than failed
+// when another replica's pass has it. A snoozed attempt is not a pass, so it
+// records no span.
 func (j *Jobs) run(ctx context.Context, job *rivertype.JobRow, serviceName string, pass func(context.Context, maintenance.Deps) error) error {
+	if job.Queue == QueueName {
+		release, ok, err := takeTurn(ctx, j.deps.DB)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return river.JobSnooze(j.turnWait)
+		}
+		defer release()
+	}
+
 	tracer := tracing.TracerProvider(serviceName).Tracer("github.com/publira/publira/server/internal/maintenancejobs")
 	ctx, span := tracer.Start(ctx, job.Kind, trace.WithAttributes(
 		attribute.Int64("river.job.id", job.ID),
@@ -413,4 +445,26 @@ func (j *Jobs) run(ctx context.Context, job *rivertype.JobRow, serviceName strin
 		span.SetStatus(codes.Error, "pass failed")
 	}
 	return err
+}
+
+// takeTurn takes passLockKey on a connection of its own, which holds it until
+// the returned function releases it, or until the connection is gone with a
+// process that died mid-pass. ok is false when another pass holds it.
+func takeTurn(ctx context.Context, db *sql.DB) (release func(), ok bool, err error) {
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		return nil, false, fmt.Errorf("connect for the maintenance pass lock: %w", err)
+	}
+	if err := conn.QueryRowContext(ctx, "SELECT pg_try_advisory_lock(hashtextextended($1, 0))", passLockKey).Scan(&ok); err != nil {
+		_ = conn.Close()
+		return nil, false, fmt.Errorf("take the maintenance pass lock: %w", err)
+	}
+	if !ok {
+		_ = conn.Close()
+		return nil, false, nil
+	}
+	return func() {
+		_, _ = conn.ExecContext(context.WithoutCancel(ctx), "SELECT pg_advisory_unlock(hashtextextended($1, 0))", passLockKey)
+		_ = conn.Close()
+	}, true, nil
 }
