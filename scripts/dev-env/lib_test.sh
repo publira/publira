@@ -310,10 +310,8 @@ pass "loading a profile sets every key its file holds"
   dev_env_load_profile alpha > /dev/null
   [[ "${PNCH_REDIS_URL}" == "${PUBLIRA_REDIS_URL}" ]] ||
     fail "PNCH_REDIS_URL is ${PNCH_REDIS_URL}, not the profile's ${PUBLIRA_REDIS_URL}"
-  [[ "${PNCH_REVALIDATE_TOKEN}" == "${PUBLIRA_REVALIDATE_TOKEN}" ]] ||
-    fail "PNCH_REVALIDATE_TOKEN differs from the profile's PUBLIRA_REVALIDATE_TOKEN"
 ) || exit 1
-pass "loading a profile hands the cache handlers the profile's Redis and revalidation token"
+pass "loading a profile hands the cache handlers the profile's Redis"
 
 (
   dev_env_load_profile alpha > /dev/null

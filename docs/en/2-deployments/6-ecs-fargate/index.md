@@ -2,7 +2,7 @@
 title: Amazon ECS on Fargate
 description: Run an install as Amazon ECS services on AWS Fargate behind CloudFront and an Application Load Balancer, from its parameters and task definitions to the first sign-in to the tenant console.
 published: 2026-10-15
-updated: 2026-10-22
+updated: 2026-10-23
 ---
 
 This page takes an install from a VPC with the managed services provisioned to the first sign-in to the tenant console, with every process an Amazon ECS service on AWS Fargate and CloudFront in front of an Application Load Balancer as the edge. It runs the same steps as [Installing](../2-installing.md), which explains why each step exists, what every secret protects, and what each database role can reach, and it puts the edge in front the way [Edge](../4-edge/index.md#what-the-edge-has-to-do) requires. This page covers what is particular to ECS and Fargate: which resources each part becomes, and how each requirement of those two pages is met with them.
@@ -92,7 +92,7 @@ Write your ElastiCache primary endpoint and your RDS endpoint in place of the on
 | `secret-encryption-keys` | `publira-server`, `publira-worker`, and `publiractl setup` | `PUBLIRA_SECRET_ENCRYPTION_KEYS` |
 | `auth-jwt-secret` | `publira-server` | `PUBLIRA_AUTH_JWT_SECRET` |
 | `storefront-auth-secret`, `admin-auth-secret` | `web-storefront` and `web-admin`, one each | `PUBLIRA_AUTH_SECRET` |
-| `revalidate-token` | `publira-server` and `publira-worker`; `web-storefront` and `web-admin` | `PUBLIRA_REVALIDATE_TOKEN`; `PNCH_REVALIDATE_TOKEN` |
+| `revalidate-token` | `publira-server`, `publira-worker`, `web-storefront`, and `web-admin` | `PUBLIRA_REVALIDATE_TOKEN` |
 | `web-service-token` | `publira-server` and `web-admin` | `PUBLIRA_WEB_SERVICE_TOKEN` |
 | `redis-url` | `publira-server`; `web-storefront` and `web-admin` | `PUBLIRA_REDIS_URL`; `PNCH_REDIS_URL` |
 | `db-url/public`, `db-url/admin`, `db-url/platform` | `publira-server`, and `publiractl setup` for `db-url/platform` | `PUBLIRA_PUBLIC_DB_URL`, `PUBLIRA_ADMIN_DB_URL`, `PUBLIRA_PLATFORM_DB_URL` |
@@ -643,7 +643,7 @@ Each service gets its secrets from the parameters and the rest of the variables 
           "valueFrom": "/publira/storefront-auth-secret"
         },
         {
-          "name": "PNCH_REVALIDATE_TOKEN",
+          "name": "PUBLIRA_REVALIDATE_TOKEN",
           "valueFrom": "/publira/revalidate-token"
         },
         { "name": "PNCH_REDIS_URL", "valueFrom": "/publira/redis-url" }

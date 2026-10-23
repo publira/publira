@@ -181,8 +181,6 @@ export PUBLIRA_AUTH_JWT_SECRET="${PUBLIRA_AUTH_JWT_SECRET:-publira-e2e-only-inse
 # revalidate Route Handler each web app mounts; any value works as long as
 # every process in the stack has the same one.
 export PUBLIRA_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN:-publira-e2e-only-insecure-revalidate-token}"
-# The apps' revalidate Route Handler compares the header with this name.
-export PNCH_REVALIDATE_TOKEN="${PUBLIRA_REVALIDATE_TOKEN}"
 # The credential the consoles read tenant-level data from the admin and
 # platform APIs with, shared by the server and those apps.
 export PUBLIRA_WEB_SERVICE_TOKEN="${PUBLIRA_WEB_SERVICE_TOKEN:-publira-e2e-only-insecure-web-service-token}"
