@@ -1452,6 +1452,14 @@ type TenantSignUpSetting struct {
 	UpdatedAt     time.Time `json:"updated_at"`
 }
 
+type TenantSiteVerification struct {
+	TenantID               uuid.UUID      `json:"tenant_id"`
+	GoogleSiteVerification sql.NullString `json:"google_site_verification"`
+	BingSiteVerification   sql.NullString `json:"bing_site_verification"`
+	CreatedAt              time.Time      `json:"created_at"`
+	UpdatedAt              time.Time      `json:"updated_at"`
+}
+
 type TenantSmtpConfig struct {
 	TenantID            uuid.UUID      `json:"tenant_id"`
 	SmtpOverrideEnabled bool           `json:"smtp_override_enabled"`

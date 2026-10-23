@@ -1523,12 +1523,92 @@ class TenantGoogleTag extends $pb.GeneratedMessage {
   void clearGatewayPath() => $_clearField(5);
 }
 
+/// The codes the storefront writes into every page as <meta> tags, each one
+/// the tag's content value: only letters, digits, hyphens, and underscores, so
+/// safe to write into the attribute as it is.
+class TenantSiteVerification extends $pb.GeneratedMessage {
+  factory TenantSiteVerification({
+    $core.String? googleSiteVerification,
+    $core.String? bingSiteVerification,
+  }) {
+    final result = TenantSiteVerification._();
+    if (googleSiteVerification != null)
+      result.googleSiteVerification = googleSiteVerification;
+    if (bingSiteVerification != null)
+      result.bingSiteVerification = bingSiteVerification;
+    return result;
+  }
+
+  TenantSiteVerification._();
+
+  factory TenantSiteVerification.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TenantSiteVerification()..mergeFromBuffer(data, registry);
+  factory TenantSiteVerification.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TenantSiteVerification()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'TenantSiteVerification',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'publira.v1'),
+      createEmptyInstance: TenantSiteVerification.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'googleSiteVerification')
+    ..aOS(2, _omitFieldNames ? '' : 'bingSiteVerification')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TenantSiteVerification clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TenantSiteVerification copyWith(
+          void Function(TenantSiteVerification) updates) =>
+      super.copyWith((message) => updates(message as TenantSiteVerification))
+          as TenantSiteVerification;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use TenantSiteVerification() / TenantSiteVerification.new instead')
+  static TenantSiteVerification create() => TenantSiteVerification._();
+  static $pb.GeneratedMessage $_createMessage() => TenantSiteVerification._();
+  @$core.override
+  TenantSiteVerification createEmptyInstance() => TenantSiteVerification._();
+  @$core.pragma('dart2js:noInline')
+  static TenantSiteVerification getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<TenantSiteVerification>(
+          TenantSiteVerification.$_createMessage);
+  static TenantSiteVerification? _defaultInstance;
+
+  /// The google-site-verification code. Empty where the tenant has none.
+  @$pb.TagNumber(1)
+  $core.String get googleSiteVerification => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set googleSiteVerification($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasGoogleSiteVerification() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearGoogleSiteVerification() => $_clearField(1);
+
+  /// The msvalidate.01 code. Empty where the tenant has none.
+  @$pb.TagNumber(2)
+  $core.String get bingSiteVerification => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set bingSiteVerification($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasBingSiteVerification() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearBingSiteVerification() => $_clearField(2);
+}
+
 class GetTenantAnalyticsSettingsResponse extends $pb.GeneratedMessage {
   factory GetTenantAnalyticsSettingsResponse({
     TenantGoogleTag? googleTag,
+    TenantSiteVerification? siteVerification,
   }) {
     final result = GetTenantAnalyticsSettingsResponse._();
     if (googleTag != null) result.googleTag = googleTag;
+    if (siteVerification != null) result.siteVerification = siteVerification;
     return result;
   }
 
@@ -1548,6 +1628,8 @@ class GetTenantAnalyticsSettingsResponse extends $pb.GeneratedMessage {
       createEmptyInstance: GetTenantAnalyticsSettingsResponse.$_createMessage)
     ..aOM<TenantGoogleTag>(1, _omitFieldNames ? '' : 'googleTag',
         subBuilder: TenantGoogleTag.$_createMessage)
+    ..aOM<TenantSiteVerification>(2, _omitFieldNames ? '' : 'siteVerification',
+        subBuilder: TenantSiteVerification.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1589,6 +1671,18 @@ class GetTenantAnalyticsSettingsResponse extends $pb.GeneratedMessage {
   void clearGoogleTag() => $_clearField(1);
   @$pb.TagNumber(1)
   TenantGoogleTag ensureGoogleTag() => $_ensure(0);
+
+  /// Absent where the tenant has neither code.
+  @$pb.TagNumber(2)
+  TenantSiteVerification get siteVerification => $_getN(1);
+  @$pb.TagNumber(2)
+  set siteVerification(TenantSiteVerification value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSiteVerification() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSiteVerification() => $_clearField(2);
+  @$pb.TagNumber(2)
+  TenantSiteVerification ensureSiteVerification() => $_ensure(1);
 }
 
 class GetTenantCrawlerSettingsRequest extends $pb.GeneratedMessage {

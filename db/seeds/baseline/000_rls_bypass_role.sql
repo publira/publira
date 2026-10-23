@@ -355,6 +355,14 @@ REVOKE DELETE ON tenant_crawler_settings FROM publira_admin;
 GRANT SELECT ON tenant_crawler_settings TO publira_public;
 GRANT SELECT, INSERT, UPDATE ON tenant_crawler_settings TO publira_admin;
 
+-- The search engine verification codes a tenant's storefront writes into every
+-- page are the tenant console's to set. A code the storefront could write would
+-- prove ownership of the tenant's site to whoever the code belongs to.
+REVOKE INSERT, UPDATE, DELETE ON tenant_site_verification FROM publira_public;
+REVOKE DELETE ON tenant_site_verification FROM publira_admin;
+GRANT SELECT ON tenant_site_verification TO publira_public;
+GRANT SELECT, INSERT, UPDATE ON tenant_site_verification TO publira_admin;
+
 -- Whether a tenant accepts new readers is the tenant console's to set. The
 -- storefront reads it to render its sign-up form and to refuse a sign-up while
 -- it is closed, and must not be able to reopen sign-up its own tenant closed.

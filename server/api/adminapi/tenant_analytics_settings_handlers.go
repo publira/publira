@@ -18,7 +18,8 @@ import (
 )
 
 // tenantAnalyticsSettingsRevalidateTags names the storefront read that carries
-// the Google tag, TenantService.GetTenantAnalyticsSettings.
+// the Google tag and the site verification codes,
+// TenantService.GetTenantAnalyticsSettings.
 func tenantAnalyticsSettingsRevalidateTags(tenantID string) []string {
 	return []string{fmt.Sprintf("tenant:%s:analytics-settings", strings.TrimSpace(tenantID))}
 }

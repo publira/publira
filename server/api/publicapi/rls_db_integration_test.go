@@ -258,6 +258,9 @@ var publicDataTables = []struct {
 	// The Google tag the storefront renders into every page, which its
 	// connection reads to build the tag.
 	{name: "tenant_analytics_settings", count: "SELECT count(*) FROM tenant_analytics_settings"},
+	// The search engine verification codes the storefront writes into every
+	// page beside the tag.
+	{name: "tenant_site_verification", count: "SELECT count(*) FROM tenant_site_verification"},
 	// The crawlers and paths a tenant's robots.txt excludes, which the
 	// storefront's connection reads to write the file.
 	{name: "tenant_crawler_settings", count: "SELECT count(*) FROM tenant_crawler_settings"},
@@ -462,6 +465,7 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	seed("email rejection settings", "INSERT INTO tenant_email_rejection_settings (tenant_id, reject_disposable_domains) VALUES ($1, true)", first.ID)
 	seed("email rejection entry", "INSERT INTO tenant_email_rejection_entries (tenant_id, entry) VALUES ($1, 'blocked.example')", first.ID)
 	seed("analytics settings", "INSERT INTO tenant_analytics_settings (tenant_id, gtm_container_id) VALUES ($1, 'GTM-TENANTA')", first.ID)
+	seed("site verification", "INSERT INTO tenant_site_verification (tenant_id, google_site_verification) VALUES ($1, 'TenantACode')", first.ID)
 	seed("crawler settings", "INSERT INTO tenant_crawler_settings (tenant_id, excluded_user_agents, excluded_paths) VALUES ($1, '{GPTBot}', '{/drafts}')", first.ID)
 	seed("sign-up settings", "INSERT INTO tenant_sign_up_settings (tenant_id, sign_up_open, closed_message) VALUES ($1, false, 'Closed')", first.ID)
 	seed("linked identity", "INSERT INTO user_identities (id, tenant_id, user_id, provider, subject, email_at_link, refresh_token_encrypted, refresh_token_client_id) VALUES ($1, $2, $3, 'apple', 'apple-subject', 'member@tenant-a.example.com', 'enc:probe', 'com.example.tenant-a.web')", uuid.Must(uuid.NewV7()), first.ID, member.ID)

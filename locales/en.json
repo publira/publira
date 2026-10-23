@@ -329,6 +329,7 @@
         "tenant_sign_in_settings": "Sign-in providers",
         "tenant_sign_up_settings": "Reader sign-up",
         "tenant_site_copy": "Public site display",
+        "tenant_site_verification": "Search engine verification",
         "tenant_timezone": "Time zone",
         "user": "User",
         "volume": "Volume"
@@ -472,6 +473,7 @@
         "tenant_analytics_settings_updated": "Google tag updated",
         "tenant_crawler_settings_updated": "Crawler exclusions updated",
         "tenant_sign_up_settings_updated": "Reader sign-up updated",
+        "tenant_site_verification_updated": "Search engine verification updated",
         "admin_mfa_enrolled": "Two-step verification set up",
         "admin_mfa_verified": "Two-step verification at sign-in",
         "admin_mfa_recovery_code_used": "Signed in with a recovery code",

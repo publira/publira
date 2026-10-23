@@ -329,6 +329,7 @@
         "tenant_sign_in_settings": "登录方式",
         "tenant_sign_up_settings": "读者注册",
         "tenant_site_copy": "公开站点展示",
+        "tenant_site_verification": "搜索引擎所有权验证",
         "tenant_timezone": "时区",
         "user": "用户",
         "volume": "卷"
@@ -472,6 +473,7 @@
         "tenant_analytics_settings_updated": "更新了Google代码",
         "tenant_crawler_settings_updated": "更新了爬虫排除规则",
         "tenant_sign_up_settings_updated": "更新了读者注册设置",
+        "tenant_site_verification_updated": "更新了搜索引擎所有权验证",
         "admin_mfa_enrolled": "设置了两步验证",
         "admin_mfa_verified": "登录时的两步验证",
         "admin_mfa_recovery_code_used": "使用恢复码登录",

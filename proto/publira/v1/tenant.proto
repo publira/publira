@@ -213,9 +213,21 @@ message TenantGoogleTag {
   string gateway_path = 5;
 }
 
+// The codes the storefront writes into every page as <meta> tags, each one
+// the tag's content value: only letters, digits, hyphens, and underscores, so
+// safe to write into the attribute as it is.
+message TenantSiteVerification {
+  // The google-site-verification code. Empty where the tenant has none.
+  string google_site_verification = 1;
+  // The msvalidate.01 code. Empty where the tenant has none.
+  string bing_site_verification = 2;
+}
+
 message GetTenantAnalyticsSettingsResponse {
   // Absent where the tenant loads no tag: it names neither ID.
   TenantGoogleTag google_tag = 1;
+  // Absent where the tenant has neither code.
+  TenantSiteVerification site_verification = 2;
 }
 
 message GetTenantCrawlerSettingsRequest {

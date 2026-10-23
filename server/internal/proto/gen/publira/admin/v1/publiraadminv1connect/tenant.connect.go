@@ -111,6 +111,12 @@ const (
 	// TenantSettingsServiceUpdateTenantAnalyticsSettingsProcedure is the procedure name of the
 	// TenantSettingsService's UpdateTenantAnalyticsSettings RPC.
 	TenantSettingsServiceUpdateTenantAnalyticsSettingsProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantAnalyticsSettings"
+	// TenantSettingsServiceGetTenantSiteVerificationProcedure is the procedure name of the
+	// TenantSettingsService's GetTenantSiteVerification RPC.
+	TenantSettingsServiceGetTenantSiteVerificationProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantSiteVerification"
+	// TenantSettingsServiceUpdateTenantSiteVerificationProcedure is the procedure name of the
+	// TenantSettingsService's UpdateTenantSiteVerification RPC.
+	TenantSettingsServiceUpdateTenantSiteVerificationProcedure = "/publira.admin.v1.TenantSettingsService/UpdateTenantSiteVerification"
 	// TenantSettingsServiceGetTenantCrawlerSettingsProcedure is the procedure name of the
 	// TenantSettingsService's GetTenantCrawlerSettings RPC.
 	TenantSettingsServiceGetTenantCrawlerSettingsProcedure = "/publira.admin.v1.TenantSettingsService/GetTenantCrawlerSettings"
@@ -329,6 +335,20 @@ var (
 			Procedure:  TenantSettingsServiceUpdateTenantAnalyticsSettingsProcedure,
 		}
 	})
+	tenantSettingsServiceGetTenantSiteVerificationSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("GetTenantSiteVerification"),
+			Procedure:  TenantSettingsServiceGetTenantSiteVerificationProcedure,
+		}
+	})
+	tenantSettingsServiceUpdateTenantSiteVerificationSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_tenant_proto.Services().ByName("TenantSettingsService").Methods().ByName("UpdateTenantSiteVerification"),
+			Procedure:  TenantSettingsServiceUpdateTenantSiteVerificationProcedure,
+		}
+	})
 	tenantSettingsServiceGetTenantCrawlerSettingsSpec = sync.OnceValue(func() connect.Spec {
 		return connect.Spec{
 			StreamType: connect.StreamTypeUnary,
@@ -423,6 +443,10 @@ type TenantSettingsServiceClient interface {
 	GetTenantAnalyticsSettings(context.Context, *v1.GetTenantAnalyticsSettingsRequest) (*v1.GetTenantAnalyticsSettingsResponse, error)
 	// Minimum role: tenant_admin.
 	UpdateTenantAnalyticsSettings(context.Context, *v1.UpdateTenantAnalyticsSettingsRequest) (*v1.UpdateTenantAnalyticsSettingsResponse, error)
+	// Minimum role: tenant_admin.
+	GetTenantSiteVerification(context.Context, *v1.GetTenantSiteVerificationRequest) (*v1.GetTenantSiteVerificationResponse, error)
+	// Minimum role: tenant_admin.
+	UpdateTenantSiteVerification(context.Context, *v1.UpdateTenantSiteVerificationRequest) (*v1.UpdateTenantSiteVerificationResponse, error)
 	// Minimum role: tenant_auditor.
 	GetTenantCrawlerSettings(context.Context, *v1.GetTenantCrawlerSettingsRequest) (*v1.GetTenantCrawlerSettingsResponse, error)
 	// Minimum role: tenant_admin.
@@ -507,6 +531,10 @@ type TenantSettingsServiceHandler interface {
 	GetTenantAnalyticsSettings(context.Context, *v1.GetTenantAnalyticsSettingsRequest) (*v1.GetTenantAnalyticsSettingsResponse, error)
 	// Minimum role: tenant_admin.
 	UpdateTenantAnalyticsSettings(context.Context, *v1.UpdateTenantAnalyticsSettingsRequest) (*v1.UpdateTenantAnalyticsSettingsResponse, error)
+	// Minimum role: tenant_admin.
+	GetTenantSiteVerification(context.Context, *v1.GetTenantSiteVerificationRequest) (*v1.GetTenantSiteVerificationResponse, error)
+	// Minimum role: tenant_admin.
+	UpdateTenantSiteVerification(context.Context, *v1.UpdateTenantSiteVerificationRequest) (*v1.UpdateTenantSiteVerificationResponse, error)
 	// Minimum role: tenant_auditor.
 	GetTenantCrawlerSettings(context.Context, *v1.GetTenantCrawlerSettingsRequest) (*v1.GetTenantCrawlerSettingsResponse, error)
 	// Minimum role: tenant_admin.
@@ -554,6 +582,8 @@ func RegisterTenantSettingsServiceHandler(server *connect.Server, svc TenantSett
 		connect.Method{Spec: tenantSettingsServiceUpdateTenantEmailRejectionSettingsSpec(), Handler: adapter.updateTenantEmailRejectionSettings},
 		connect.Method{Spec: tenantSettingsServiceGetTenantAnalyticsSettingsSpec(), Handler: adapter.getTenantAnalyticsSettings},
 		connect.Method{Spec: tenantSettingsServiceUpdateTenantAnalyticsSettingsSpec(), Handler: adapter.updateTenantAnalyticsSettings},
+		connect.Method{Spec: tenantSettingsServiceGetTenantSiteVerificationSpec(), Handler: adapter.getTenantSiteVerification},
+		connect.Method{Spec: tenantSettingsServiceUpdateTenantSiteVerificationSpec(), Handler: adapter.updateTenantSiteVerification},
 		connect.Method{Spec: tenantSettingsServiceGetTenantCrawlerSettingsSpec(), Handler: adapter.getTenantCrawlerSettings},
 		connect.Method{Spec: tenantSettingsServiceUpdateTenantCrawlerSettingsSpec(), Handler: adapter.updateTenantCrawlerSettings},
 		connect.Method{Spec: tenantSettingsServiceGetTenantSignUpSettingsSpec(), Handler: adapter.getTenantSignUpSettings},
@@ -678,6 +708,14 @@ func (UnimplementedTenantSettingsServiceHandler) GetTenantAnalyticsSettings(cont
 
 func (UnimplementedTenantSettingsServiceHandler) UpdateTenantAnalyticsSettings(context.Context, *v1.UpdateTenantAnalyticsSettingsRequest) (*v1.UpdateTenantAnalyticsSettingsResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.UpdateTenantAnalyticsSettings is not implemented")
+}
+
+func (UnimplementedTenantSettingsServiceHandler) GetTenantSiteVerification(context.Context, *v1.GetTenantSiteVerificationRequest) (*v1.GetTenantSiteVerificationResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.GetTenantSiteVerification is not implemented")
+}
+
+func (UnimplementedTenantSettingsServiceHandler) UpdateTenantSiteVerification(context.Context, *v1.UpdateTenantSiteVerificationRequest) (*v1.UpdateTenantSiteVerificationResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.TenantSettingsService.UpdateTenantSiteVerification is not implemented")
 }
 
 func (UnimplementedTenantSettingsServiceHandler) GetTenantCrawlerSettings(context.Context, *v1.GetTenantCrawlerSettingsRequest) (*v1.GetTenantCrawlerSettingsResponse, error) {
@@ -927,6 +965,22 @@ func (c *tenantSettingsServiceClient) GetTenantAnalyticsSettings(ctx context.Con
 func (c *tenantSettingsServiceClient) UpdateTenantAnalyticsSettings(ctx context.Context, req *v1.UpdateTenantAnalyticsSettingsRequest) (*v1.UpdateTenantAnalyticsSettingsResponse, error) {
 	var res v1.UpdateTenantAnalyticsSettingsResponse
 	if err := c.client.CallUnary(ctx, tenantSettingsServiceUpdateTenantAnalyticsSettingsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) GetTenantSiteVerification(ctx context.Context, req *v1.GetTenantSiteVerificationRequest) (*v1.GetTenantSiteVerificationResponse, error) {
+	var res v1.GetTenantSiteVerificationResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceGetTenantSiteVerificationSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *tenantSettingsServiceClient) UpdateTenantSiteVerification(ctx context.Context, req *v1.UpdateTenantSiteVerificationRequest) (*v1.UpdateTenantSiteVerificationResponse, error) {
+	var res v1.UpdateTenantSiteVerificationResponse
+	if err := c.client.CallUnary(ctx, tenantSettingsServiceUpdateTenantSiteVerificationSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1308,6 +1362,30 @@ func (h tenantSettingsServiceHandler) updateTenantAnalyticsSettings(ctx context.
 		return err
 	}
 	res, err := h.svc.UpdateTenantAnalyticsSettings(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) getTenantSiteVerification(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.GetTenantSiteVerificationRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.GetTenantSiteVerification(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h tenantSettingsServiceHandler) updateTenantSiteVerification(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateTenantSiteVerificationRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateTenantSiteVerification(ctx, &req)
 	if err != nil {
 		return err
 	}

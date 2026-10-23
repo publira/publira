@@ -185,6 +185,15 @@ func TestDBTenantSettingSavesAreAuditedOncePerChange(t *testing.T) {
 				return err
 			},
 		},
+		{
+			name: "site verification", action: "tenant_site_verification_updated", targetType: "tenant_site_verification",
+			save: func() error {
+				_, err := updateDBTenantSiteVerification(env, tenant, &publiraadminv1.TenantSiteVerification{
+					GoogleSiteVerification: "AbC-123_xyzGoogleCode",
+				})
+				return err
+			},
+		},
 	}
 
 	// The logo and the icon start out empty, so deleting them changes nothing
