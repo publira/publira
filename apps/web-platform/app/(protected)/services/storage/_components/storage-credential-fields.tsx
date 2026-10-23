@@ -1,12 +1,7 @@
 "use client";
 
 import { Button } from "@publira/ui-components/button";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { RadioGroup } from "@publira/ui-components/radio-group";
 import { useCallback, useState } from "react";
@@ -92,11 +87,11 @@ export const StorageCredentialFields = ({
 
       {mode === "access_key" ? (
         <>
-          <Field>
-            <FieldLabel required>
+          <Field.Root>
+            <Field.Label required>
               <ClientMessage message="platform.storage.credentials.access_key_id" />
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <Input
                 autoComplete="off"
                 defaultValue={settings.accessKeyId}
@@ -107,14 +102,14 @@ export const StorageCredentialFields = ({
                 spellCheck={false}
                 type="text"
               />
-            </FieldContent>
-          </Field>
+            </Field.Content>
+          </Field.Root>
 
-          <Field>
-            <FieldLabel required={!keepsStoredKey}>
+          <Field.Root>
+            <Field.Label required={!keepsStoredKey}>
               <ClientMessage message="platform.storage.credentials.secret_access_key" />
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               {keepsStoredKey ? (
                 <div className="flex flex-wrap items-center gap-3">
                   <p className="text-sm text-foreground">
@@ -148,15 +143,15 @@ export const StorageCredentialFields = ({
                   ) : null}
                 </div>
               )}
-            </FieldContent>
-            <FieldDescription>
+            </Field.Content>
+            <Field.Description>
               {keepsStoredKey ? (
                 <ClientMessage message="platform.storage.credentials.secret_stored_help" />
               ) : (
                 <ClientMessage message="platform.storage.credentials.secret_help" />
               )}
-            </FieldDescription>
-          </Field>
+            </Field.Description>
+          </Field.Root>
 
           <input
             name="secret_access_key_update_mode"

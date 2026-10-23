@@ -1,11 +1,6 @@
 import type { Locale } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime, formatPrice } from "@publira/utils";
 import type { ReactNode } from "react";
@@ -240,18 +235,18 @@ export const PurchaseLibrary = ({
   return (
     <div className="space-y-6">
       {listErrorMessage ? (
-        <SectionError>
-          <SectionErrorHeading>
-            <SectionErrorTitle>
+        <SectionError.Root>
+          <SectionError.Heading>
+            <SectionError.Title>
               <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
                 <Message message="storefront.library.list_error" />
               </Suspense>
-            </SectionErrorTitle>
-            <SectionErrorDescription>
+            </SectionError.Title>
+            <SectionError.Description>
               {listErrorMessage}
-            </SectionErrorDescription>
-          </SectionErrorHeading>
-        </SectionError>
+            </SectionError.Description>
+          </SectionError.Heading>
+        </SectionError.Root>
       ) : null}
       {!listErrorMessage && purchases.length === 0 ? (
         <section className="border border-dashed border-border bg-muted/20 p-6">

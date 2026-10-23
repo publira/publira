@@ -1,6 +1,6 @@
 import type { Locale } from "@publira/i18n";
 import { Button, LinkButton } from "@publira/ui-components/button";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { Select } from "@publira/ui-components/select";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -30,45 +30,45 @@ export const TicketFilterForm = async ({
         </Suspense>
       </p>
       <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Field>
-          <FieldLabel>
+        <Field.Root>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.access_tickets.filter.user" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               defaultValue={filters.user}
               name="user"
               placeholder={t("admin.access_tickets.filter.user_placeholder")}
               type="text"
             />
-          </FieldContent>
-        </Field>
+          </Field.Content>
+        </Field.Root>
 
-        <Field>
-          <FieldLabel>
+        <Field.Root>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.access_tickets.filter.episode" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               defaultValue={filters.episode}
               name="episode"
               placeholder={t("admin.access_tickets.filter.episode_placeholder")}
               type="text"
             />
-          </FieldContent>
-        </Field>
+          </Field.Content>
+        </Field.Root>
 
-        <Field>
-          <FieldLabel>
+        <Field.Root>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.access_tickets.filter.status" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Select
               defaultValue={filters.active ? "1" : ""}
               items={[
@@ -83,8 +83,8 @@ export const TicketFilterForm = async ({
               ]}
               name="active"
             />
-          </FieldContent>
-        </Field>
+          </Field.Content>
+        </Field.Root>
 
         <div className="flex items-end gap-2">
           <Button type="submit">

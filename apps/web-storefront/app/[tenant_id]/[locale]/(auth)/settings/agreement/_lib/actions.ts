@@ -3,7 +3,7 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import { rethrowUnclassifiedRpcError } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { refresh } from "next/cache";
@@ -52,9 +52,9 @@ const agreementFormSchema = async (locale: Locale) => {
  * reader agrees only to text they were shown.
  */
 export const agreeToLegalPagesAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const submittedLocale = requireFormLocale(formData.get("locale"));
   const [t, schema] = await Promise.all([

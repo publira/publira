@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionFormSettled } from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { createContext, use, useState } from "react";
 import type { ReactNode } from "react";
@@ -30,7 +30,7 @@ export const TenantMemberRemovals = ({ children }: { children: ReactNode }) => {
  */
 export const ReportTenantMemberRemoval = () => {
   const report = use(ReportRemovalContext);
-  useActionFormSettled((state) => {
+  ActionForm.useSettled((state) => {
     report?.(state?.ok ? state.message : null);
   });
 

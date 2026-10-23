@@ -1,11 +1,7 @@
 import { Button } from "@publira/ui-components/button";
-import {
-  DrawerClose,
-  DrawerHeader,
-  DrawerTitle,
-} from "@publira/ui-components/drawer";
+import * as Drawer from "@publira/ui-components/drawer";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import { TableSkeleton } from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -158,20 +154,20 @@ const PurchasesContent = async ({
           closeHref={purchaseListQuery(filters, { token: filters.token })}
           key={filters.purchase}
         >
-          <DrawerHeader>
-            <DrawerTitle className="text-lg font-semibold">
+          <Drawer.Header>
+            <Drawer.Title className="text-lg font-semibold">
               <Suspense fallback={<SkeletonLine className="h-6 w-24" />}>
                 <Message message="admin.purchases.detail_title" />
               </Suspense>
-            </DrawerTitle>
-            <DrawerClose
+            </Drawer.Title>
+            <Drawer.Close
               render={<Button size="sm" type="button" variant="outline" />}
             >
               <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                 <Message message="admin.purchases.close" />
               </Suspense>
-            </DrawerClose>
-          </DrawerHeader>
+            </Drawer.Close>
+          </Drawer.Header>
           <Suspense fallback={<PurchaseDetailSkeleton />}>
             <PurchaseDetail
               locale={locale}
@@ -214,7 +210,7 @@ const PurchasesPage = ({ searchParams }: PurchasesPageProps) => (
               </Suspense>
             }
           >
-            <Suspense fallback={<TableSkeleton />}>
+            <Suspense fallback={<Table.Skeleton />}>
               <PurchasesContent searchParams={searchParams} />
             </Suspense>
           </SectionErrorBoundary>

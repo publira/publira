@@ -1,9 +1,4 @@
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -33,29 +28,29 @@ export const VolumeDetailsFields = ({
   initialTitle,
 }: VolumeDetailsFieldsProps) => (
   <>
-    <Field>
-      <FieldLabel required>
+    <Field.Root>
+      <Field.Label required>
         <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
           <Message message="admin.series.volumes.form.title" />
         </Suspense>
-      </FieldLabel>
-      <FieldContent>
+      </Field.Label>
+      <Field.Content>
         <Input
           defaultValue={initialTitle}
           maxLength={255}
           name="title"
           required
         />
-      </FieldContent>
-    </Field>
+      </Field.Content>
+    </Field.Root>
 
-    <Field>
-      <FieldLabel required>
+    <Field.Root>
+      <Field.Label required>
         <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
           <Message message="admin.series.volumes.form.price" />
         </Suspense>
-      </FieldLabel>
-      <FieldContent>
+      </Field.Label>
+      <Field.Content>
         <Input
           defaultValue={
             initialPrice === undefined
@@ -70,15 +65,15 @@ export const VolumeDetailsFields = ({
           type="number"
         />
         <input name="price_currency" type="hidden" value={currency} />
-        <FieldDescription>
+        <Field.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
             <Message
               message="admin.series.volumes.form.price_description"
               values={{ currency }}
             />
           </Suspense>
-        </FieldDescription>
-      </FieldContent>
-    </Field>
+        </Field.Description>
+      </Field.Content>
+    </Field.Root>
   </>
 );

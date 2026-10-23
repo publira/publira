@@ -1,7 +1,7 @@
 "use client";
 
 import { Checkbox } from "@publira/ui-components/checkbox";
-import { Field, FieldLabel } from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { Fieldset } from "@publira/ui-components/fieldset";
 import { createContext, use, useMemo, useState } from "react";
 import type { ReactNode } from "react";
@@ -62,10 +62,10 @@ export const PolicyOverrideUseDefault = ({
   const { setUseDefault, useDefault } = usePolicyOverride();
 
   return (
-    <Field className="flex items-center gap-2">
+    <Field.Root className="flex items-center gap-2">
       <Checkbox checked={useDefault} onCheckedChange={setUseDefault} />
-      <FieldLabel>{children}</FieldLabel>
-    </Field>
+      <Field.Label>{children}</Field.Label>
+    </Field.Root>
   );
 };
 

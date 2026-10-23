@@ -1,14 +1,8 @@
 import type { Locale } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  SectionError,
-  SectionErrorActions,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import { TableSkeleton } from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -82,22 +76,22 @@ const OpenMonthSkeleton = () => (
     </AdminSection>
     <AdminSection>
       <SkeletonLine className="h-5 w-32" />
-      <TableSkeleton />
+      <Table.Skeleton />
     </AdminSection>
   </AdminSections>
 );
 
 const LoadError = ({ message }: { message: string }) => (
-  <SectionError>
-    <SectionErrorHeading>
-      <SectionErrorTitle>
+  <SectionError.Root>
+    <SectionError.Heading>
+      <SectionError.Title>
         <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
           <Message message="admin.royalties.open.section_error" />
         </Suspense>
-      </SectionErrorTitle>
-      <SectionErrorDescription>{message}</SectionErrorDescription>
-    </SectionErrorHeading>
-  </SectionError>
+      </SectionError.Title>
+      <SectionError.Description>{message}</SectionError.Description>
+    </SectionError.Heading>
+  </SectionError.Root>
 );
 
 /**
@@ -141,20 +135,20 @@ const PreviewContent = ({
   }
 
   return (
-    <SectionError>
-      <SectionErrorHeading>
-        <SectionErrorTitle>
+    <SectionError.Root>
+      <SectionError.Heading>
+        <SectionError.Title>
           <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
             <Message message="admin.royalties.open.not_open_title" />
           </Suspense>
-        </SectionErrorTitle>
-        <SectionErrorDescription>
+        </SectionError.Title>
+        <SectionError.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
             <Message message="admin.royalties.open.not_open_description" />
           </Suspense>
-        </SectionErrorDescription>
-      </SectionErrorHeading>
-      <SectionErrorActions>
+        </SectionError.Description>
+      </SectionError.Heading>
+      <SectionError.Actions>
         <LinkButton
           render={<Link href="/royalties/statements" />}
           variant="outline"
@@ -163,8 +157,8 @@ const PreviewContent = ({
             <Message message="admin.royalties.statements_link" />
           </Suspense>
         </LinkButton>
-      </SectionErrorActions>
-    </SectionError>
+      </SectionError.Actions>
+    </SectionError.Root>
   );
 };
 

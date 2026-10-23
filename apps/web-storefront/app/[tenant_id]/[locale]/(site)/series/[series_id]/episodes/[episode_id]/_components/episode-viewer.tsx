@@ -1,8 +1,5 @@
 import { toViewerPages } from "@publira/comic-viewer-shell";
-import {
-  EmptyState,
-  EmptyStateDescription,
-} from "@publira/ui-components/empty-state";
+import * as EmptyState from "@publira/ui-components/empty-state";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { cn } from "@publira/utils";
 import { Suspense } from "react";
@@ -89,13 +86,13 @@ export const EpisodeViewer = async ({
   if (images.length === 0) {
     return (
       <EpisodeBodyNotice>
-        <EmptyState>
-          <EmptyStateDescription>
+        <EmptyState.Root>
+          <EmptyState.Description>
             <Suspense fallback={<SkeletonLine className="mx-auto h-4 w-72" />}>
               <Message message="storefront.episode.images_empty" />
             </Suspense>
-          </EmptyStateDescription>
-        </EmptyState>
+          </EmptyState.Description>
+        </EmptyState.Root>
       </EpisodeBodyNotice>
     );
   }

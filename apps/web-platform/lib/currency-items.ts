@@ -1,6 +1,6 @@
 import { toIntlLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import type { ComboboxItem } from "@publira/ui-components/combobox";
+import type * as Combobox from "@publira/ui-components/combobox";
 import { currencyDisplayName, listSupportedCurrencies } from "@publira/utils";
 
 /**
@@ -16,7 +16,7 @@ import { currencyDisplayName, listSupportedCurrencies } from "@publira/utils";
 export const currencyItems = (
   locale: Locale,
   current?: string
-): ComboboxItem[] => {
+): Combobox.Item[] => {
   const supported = listSupportedCurrencies();
   const codes =
     !current || supported.includes(current)

@@ -1,26 +1,9 @@
 import { Badge } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  ConfirmDialogCancel,
-  ConfirmDialogContent,
-  ConfirmDialogDescription,
-  ConfirmDialogFooter,
-  ConfirmDialogHeader,
-  ConfirmDialogTitle,
-} from "@publira/ui-components/dialog";
-import { Field, FieldLabel } from "@publira/ui-components/field";
-import {
-  Identifier,
-  IdentifierCopy,
-  IdentifierValue,
-} from "@publira/ui-components/identifier";
-import {
-  SectionError,
-  SectionErrorActions,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as ConfirmDialog from "@publira/ui-components/confirm-dialog";
+import * as Field from "@publira/ui-components/field";
+import * as Identifier from "@publira/ui-components/identifier";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDate } from "@publira/utils";
 import {
@@ -115,17 +98,17 @@ const UserLoadError = ({
   message: string;
   title: string;
 }) => (
-  <SectionError>
-    <SectionErrorHeading>
-      <SectionErrorTitle>{title}</SectionErrorTitle>
-      <SectionErrorDescription>{message}</SectionErrorDescription>
-    </SectionErrorHeading>
-    <SectionErrorActions>
+  <SectionError.Root>
+    <SectionError.Heading>
+      <SectionError.Title>{title}</SectionError.Title>
+      <SectionError.Description>{message}</SectionError.Description>
+    </SectionError.Heading>
+    <SectionError.Actions>
       <LinkButton render={<Link href="/users" />} variant="outline">
         {backLabel}
       </LinkButton>
-    </SectionErrorActions>
-  </SectionError>
+    </SectionError.Actions>
+  </SectionError.Root>
 );
 
 const UserDetailContent = async ({
@@ -198,22 +181,22 @@ const UserDetailContent = async ({
               <DangerConfirmButtonTrigger variant="outline">
                 {t("platform.users.unsuspend")}
               </DangerConfirmButtonTrigger>
-              <ConfirmDialogContent>
-                <ConfirmDialogHeader>
-                  <ConfirmDialogTitle>
+              <ConfirmDialog.Content>
+                <ConfirmDialog.Header>
+                  <ConfirmDialog.Title>
                     {t("platform.users.unsuspend_title")}
-                  </ConfirmDialogTitle>
-                  <ConfirmDialogDescription>
+                  </ConfirmDialog.Title>
+                  <ConfirmDialog.Description>
                     {t("platform.users.unsuspend_description")}
-                  </ConfirmDialogDescription>
-                </ConfirmDialogHeader>
-                <ConfirmDialogFooter>
-                  <ConfirmDialogCancel>{cancelText}</ConfirmDialogCancel>
+                  </ConfirmDialog.Description>
+                </ConfirmDialog.Header>
+                <ConfirmDialog.Footer>
+                  <ConfirmDialog.Cancel>{cancelText}</ConfirmDialog.Cancel>
                   <DangerConfirmButtonAction variant="default">
                     {t("platform.users.unsuspend_action")}
                   </DangerConfirmButtonAction>
-                </ConfirmDialogFooter>
-              </ConfirmDialogContent>
+                </ConfirmDialog.Footer>
+              </ConfirmDialog.Content>
             </DangerConfirmButton>
           ) : null}
           {canSuspend ? (
@@ -224,22 +207,22 @@ const UserDetailContent = async ({
               <DangerConfirmButtonTrigger variant="outline">
                 {t("platform.users.suspend")}
               </DangerConfirmButtonTrigger>
-              <ConfirmDialogContent>
-                <ConfirmDialogHeader>
-                  <ConfirmDialogTitle>
+              <ConfirmDialog.Content>
+                <ConfirmDialog.Header>
+                  <ConfirmDialog.Title>
                     {t("platform.users.suspend_title")}
-                  </ConfirmDialogTitle>
-                  <ConfirmDialogDescription>
+                  </ConfirmDialog.Title>
+                  <ConfirmDialog.Description>
                     {t("platform.users.suspend_description")}
-                  </ConfirmDialogDescription>
-                </ConfirmDialogHeader>
-                <ConfirmDialogFooter>
-                  <ConfirmDialogCancel>{cancelText}</ConfirmDialogCancel>
+                  </ConfirmDialog.Description>
+                </ConfirmDialog.Header>
+                <ConfirmDialog.Footer>
+                  <ConfirmDialog.Cancel>{cancelText}</ConfirmDialog.Cancel>
                   <DangerConfirmButtonAction>
                     {t("platform.users.suspend_action")}
                   </DangerConfirmButtonAction>
-                </ConfirmDialogFooter>
-              </ConfirmDialogContent>
+                </ConfirmDialog.Footer>
+              </ConfirmDialog.Content>
             </DangerConfirmButton>
           ) : null}
           {canDelete ? (
@@ -250,22 +233,22 @@ const UserDetailContent = async ({
               <DangerConfirmButtonTrigger>
                 {t("platform.users.delete")}
               </DangerConfirmButtonTrigger>
-              <ConfirmDialogContent>
-                <ConfirmDialogHeader>
-                  <ConfirmDialogTitle>
+              <ConfirmDialog.Content>
+                <ConfirmDialog.Header>
+                  <ConfirmDialog.Title>
                     {t("platform.users.delete_title")}
-                  </ConfirmDialogTitle>
-                  <ConfirmDialogDescription>
+                  </ConfirmDialog.Title>
+                  <ConfirmDialog.Description>
                     {t("platform.users.delete_description")}
-                  </ConfirmDialogDescription>
-                </ConfirmDialogHeader>
-                <ConfirmDialogFooter>
-                  <ConfirmDialogCancel>{cancelText}</ConfirmDialogCancel>
+                  </ConfirmDialog.Description>
+                </ConfirmDialog.Header>
+                <ConfirmDialog.Footer>
+                  <ConfirmDialog.Cancel>{cancelText}</ConfirmDialog.Cancel>
                   <DangerConfirmButtonAction>
                     {t("platform.users.delete_action")}
                   </DangerConfirmButtonAction>
-                </ConfirmDialogFooter>
-              </ConfirmDialogContent>
+                </ConfirmDialog.Footer>
+              </ConfirmDialog.Content>
             </DangerConfirmButton>
           ) : null}
         </PlatformPageActions>
@@ -287,44 +270,44 @@ const UserDetailContent = async ({
                 </PlatformSectionDescription>
               </PlatformSectionHeading>
             </PlatformSectionHeader>
-            <Field>
-              <FieldLabel>
+            <Field.Root>
+              <Field.Label>
                 <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                   <Message message="platform.users.public_id" />
                 </Suspense>
-              </FieldLabel>
-              <Identifier>
-                <IdentifierValue>{user.publicId}</IdentifierValue>
-                <IdentifierCopy
+              </Field.Label>
+              <Identifier.Root>
+                <Identifier.Value>{user.publicId}</Identifier.Value>
+                <Identifier.Copy
                   aria-label={t("platform.users.copy_public_id")}
                   value={user.publicId}
                 />
-              </Identifier>
-            </Field>
-            <Field>
-              <FieldLabel>
+              </Identifier.Root>
+            </Field.Root>
+            <Field.Root>
+              <Field.Label>
                 <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                   <Message message="platform.users.columns_name" />
                 </Suspense>
-              </FieldLabel>
+              </Field.Label>
               <p className="text-sm">
                 {user.name || t("platform.common.unset")}
               </p>
-            </Field>
-            <Field>
-              <FieldLabel>
+            </Field.Root>
+            <Field.Root>
+              <Field.Label>
                 <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                   <Message message="platform.common.email" />
                 </Suspense>
-              </FieldLabel>
+              </Field.Label>
               <p className="text-sm">{user.email}</p>
-            </Field>
-            <Field>
-              <FieldLabel>
+            </Field.Root>
+            <Field.Root>
+              <Field.Label>
                 <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                   <Message message="platform.users.registered_at" />
                 </Suspense>
-              </FieldLabel>
+              </Field.Label>
               <p className="text-sm">
                 {formatDate(user.createdAt, {
                   fallback: t("platform.common.unset"),
@@ -332,19 +315,19 @@ const UserDetailContent = async ({
                   timeZone,
                 })}
               </p>
-            </Field>
-            <Field>
-              <FieldLabel>
+            </Field.Root>
+            <Field.Root>
+              <Field.Label>
                 <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                   <Message message="platform.users.status" />
                 </Suspense>
-              </FieldLabel>
+              </Field.Label>
               <p>
                 <Badge tone={getEndUserStatusTone(user.status)}>
                   {await getEndUserStatusLabel(user.status, locale)}
                 </Badge>
               </p>
-            </Field>
+            </Field.Root>
           </PlatformSection>
 
           <PlatformSection>

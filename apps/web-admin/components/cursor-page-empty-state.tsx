@@ -1,9 +1,4 @@
-import {
-  EmptyState,
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
+import * as EmptyState from "@publira/ui-components/empty-state";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
@@ -12,8 +7,8 @@ import { Message } from "#components/message";
 
 interface CursorPageEmptyStateProps {
   /**
-   * The empty state of the whole list — its `EmptyStateHeading` and, where a
-   * record can be created, its `EmptyStateActions`.
+   * The empty state of the whole list — its `EmptyState.Heading` and, where a
+   * record can be created, its `EmptyState.Actions`.
    */
   children: ReactNode;
   hasPageLinks: boolean;
@@ -33,11 +28,11 @@ interface CursorPageEmptyStateProps {
  *
  * ```tsx
  * <CursorPageEmptyState hasPageLinks={…} itemLabel={…}>
- *   <EmptyStateHeading>
- *     <EmptyStateTitle>…</EmptyStateTitle>
- *     <EmptyStateDescription>…</EmptyStateDescription>
- *   </EmptyStateHeading>
- *   <EmptyStateActions>…</EmptyStateActions>
+ *   <EmptyState.Heading>
+ *     <EmptyState.Title>…</EmptyState.Title>
+ *     <EmptyState.Description>…</EmptyState.Description>
+ *   </EmptyState.Heading>
+ *   <EmptyState.Actions>…</EmptyState.Actions>
  * </CursorPageEmptyState>
  * ```
  */
@@ -46,25 +41,25 @@ export const CursorPageEmptyState = ({
   hasPageLinks,
   itemLabel,
 }: CursorPageEmptyStateProps) => (
-  <EmptyState>
+  <EmptyState.Root>
     {hasPageLinks ? (
-      <EmptyStateHeading>
-        <EmptyStateTitle>
+      <EmptyState.Heading>
+        <EmptyState.Title>
           <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
             <Message
               message="admin.common.page_empty_title"
               values={{ item: itemLabel }}
             />
           </Suspense>
-        </EmptyStateTitle>
-        <EmptyStateDescription>
+        </EmptyState.Title>
+        <EmptyState.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
             <Message message="admin.common.page_empty_description" />
           </Suspense>
-        </EmptyStateDescription>
-      </EmptyStateHeading>
+        </EmptyState.Description>
+      </EmptyState.Heading>
     ) : (
       children
     )}
-  </EmptyState>
+  </EmptyState.Root>
 );

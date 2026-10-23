@@ -3,22 +3,22 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { Table, TableBody, TableCell, TableHeader, TableRow } from "./table";
+import * as Table from ".";
 
 afterEach(cleanup);
 
 const renderTable = () =>
   render(
-    <Table>
-      <TableHeader>
-        <TableRow />
-      </TableHeader>
-      <TableBody>
-        <TableRow>
-          <TableCell>12</TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
+    <Table.Root>
+      <Table.Header>
+        <Table.Row />
+      </Table.Header>
+      <Table.Body>
+        <Table.Row>
+          <Table.Cell>12</Table.Cell>
+        </Table.Row>
+      </Table.Body>
+    </Table.Root>
   );
 
 describe("Table", () => {

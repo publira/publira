@@ -1,21 +1,7 @@
-import {
-  ActionForm,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
-import {
-  Dialog,
-  DialogBackdrop,
-  DialogClose,
-  DialogHeader,
-  DialogPopup,
-  DialogTitle,
-  DialogTrigger,
-  DialogViewport,
-} from "@publira/ui-components/dialog";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as Dialog from "@publira/ui-components/dialog";
+import * as Field from "@publira/ui-components/field";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Textarea } from "@publira/ui-components/textarea";
 import type { ReactNode } from "react";
@@ -37,13 +23,13 @@ const EpisodeCommentBodyField = async () => {
   const t = await getMessages();
 
   return (
-    <Field>
-      <FieldLabel>
+    <Field.Root>
+      <Field.Label>
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
           <Message message="storefront.episode.comments.body_label" />
         </Suspense>
-      </FieldLabel>
-      <FieldContent>
+      </Field.Label>
+      <Field.Content>
         {/* No `maxLength`: it counts UTF-16 code units, while the API counts
             Unicode code points, so it would cut an emoji-heavy comment off at
             half the length the server allows. The Action checks the real limit
@@ -53,8 +39,8 @@ const EpisodeCommentBodyField = async () => {
           placeholder={t("storefront.episode.comments.body_placeholder")}
           rows={3}
         />
-      </FieldContent>
-    </Field>
+      </Field.Content>
+    </Field.Root>
   );
 };
 
@@ -101,26 +87,26 @@ export const EpisodeCommentDialog = ({
   returnTo: string;
   tenantId: string;
 }) => (
-  <Dialog defaultOpen={initialOpen}>
-    <DialogTrigger render={<Button type="button" variant="outline" />}>
+  <Dialog.Root defaultOpen={initialOpen}>
+    <Dialog.Trigger render={<Button type="button" variant="outline" />}>
       <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
         <Message message="storefront.episode.comments.title" />
       </Suspense>
-    </DialogTrigger>
+    </Dialog.Trigger>
     <EpisodeCommentDialogPortal>
-      <DialogBackdrop />
-      <DialogViewport>
-        <DialogPopup className="flex max-h-[min(85svh,48rem)] flex-col gap-4 text-left">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-semibold">
+      <Dialog.Backdrop />
+      <Dialog.Viewport>
+        <Dialog.Popup className="flex max-h-[min(85svh,48rem)] flex-col gap-4 text-left">
+          <Dialog.Header>
+            <Dialog.Title className="text-lg font-semibold">
               <Suspense fallback={<SkeletonLine className="h-6 w-28" />}>
                 <Message message="storefront.episode.comments.title" />
               </Suspense>
-            </DialogTitle>
-          </DialogHeader>
+            </Dialog.Title>
+          </Dialog.Header>
 
           {prompt ?? (
-            <ActionForm
+            <ActionForm.Root
               action={postEpisodeCommentAction}
               className="grid gap-3"
             >
@@ -136,19 +122,19 @@ export const EpisodeCommentDialog = ({
               <Suspense fallback={<EpisodeCommentBodyFieldSkeleton />}>
                 <EpisodeCommentBodyField />
               </Suspense>
-              <ActionFormSubmit className="justify-self-start">
-                <ActionFormIdle>
+              <ActionForm.Submit className="justify-self-start">
+                <ActionForm.Idle>
                   <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                     <Message message="storefront.episode.comments.submit" />
                   </Suspense>
-                </ActionFormIdle>
-                <ActionFormPending>
+                </ActionForm.Idle>
+                <ActionForm.Pending>
                   <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                     <Message message="storefront.episode.comments.posting" />
                   </Suspense>
-                </ActionFormPending>
-              </ActionFormSubmit>
-            </ActionForm>
+                </ActionForm.Pending>
+              </ActionForm.Submit>
+            </ActionForm.Root>
           )}
 
           {/* The one part that grows with the episode, so it is the one part
@@ -157,16 +143,16 @@ export const EpisodeCommentDialog = ({
             {children}
           </div>
 
-          <DialogClose
+          <Dialog.Close
             className="justify-self-end"
             render={<Button type="button" variant="outline" />}
           >
             <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
               <Message message="storefront.common.close" />
             </Suspense>
-          </DialogClose>
-        </DialogPopup>
-      </DialogViewport>
+          </Dialog.Close>
+        </Dialog.Popup>
+      </Dialog.Viewport>
     </EpisodeCommentDialogPortal>
-  </Dialog>
+  </Dialog.Root>
 );

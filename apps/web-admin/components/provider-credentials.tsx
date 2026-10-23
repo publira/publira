@@ -9,10 +9,10 @@
  * reads back.
  */
 
-import { useActionFormSettled } from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import { Checkbox } from "@publira/ui-components/checkbox";
-import { FieldLabel } from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import type { InputProps } from "@publira/ui-components/input";
 import { Select } from "@publira/ui-components/select";
@@ -170,7 +170,7 @@ export const ProviderEnabledRequiredLabel = ({
 }: {
   children: ReactNode;
 }) => (
-  <FieldLabel required={useProviderEnabled().enabled}>{children}</FieldLabel>
+  <Field.Label required={useProviderEnabled().enabled}>{children}</Field.Label>
 );
 
 /** A setting the provider needs once it is on, required from then. */
@@ -235,7 +235,7 @@ export const ProviderCredential = ({
     [configured, hint, mode, name, required]
   );
 
-  useActionFormSettled((settled) => {
+  ActionForm.useSettled((settled) => {
     if (settled?.ok) {
       setMode(initialMode(configured));
     }
@@ -262,7 +262,7 @@ export const ProviderCredentialLabel = ({
 }) => {
   const { required } = useProviderCredential();
 
-  return <FieldLabel required={required}>{children}</FieldLabel>;
+  return <Field.Label required={required}>{children}</Field.Label>;
 };
 
 /** Renders its children while the credential is in `mode`. */

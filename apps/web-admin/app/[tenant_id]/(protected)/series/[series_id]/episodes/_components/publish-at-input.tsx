@@ -1,9 +1,4 @@
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
@@ -25,20 +20,20 @@ export const PublishAtInput = ({
   initialValue,
   timeZone,
 }: PublishAtInputProps) => (
-  <Field>
-    <FieldLabel>
+  <Field.Root>
+    <Field.Label>
       <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
         <Message message="admin.series.episodes.form.publish_at" />
       </Suspense>
-    </FieldLabel>
-    <FieldContent>
+    </Field.Label>
+    <Field.Content>
       <InstantInput
         initialValue={initialValue}
         name="publish_at"
         step={60}
         timeZone={timeZone}
       />
-      <FieldDescription>{children}</FieldDescription>
-    </FieldContent>
-  </Field>
+      <Field.Description>{children}</Field.Description>
+    </Field.Content>
+  </Field.Root>
 );

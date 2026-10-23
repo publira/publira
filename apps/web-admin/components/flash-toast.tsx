@@ -1,6 +1,6 @@
 "use client";
 
-import { useToastManager } from "@publira/ui-components/toast";
+import * as Toast from "@publira/ui-components/toast";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   startTransition,
@@ -31,7 +31,7 @@ const FlashToastEffect = ({
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { add } = useToastManager();
+  const { add } = Toast.useManager();
   const firedRef = useRef(false);
 
   const onFlash = useEffectEvent(() => {

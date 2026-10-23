@@ -1,16 +1,5 @@
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -78,35 +67,35 @@ export const EpisodeForm = async ({
   const t = await getMessages();
 
   return (
-    <ActionForm action={action} className="grid gap-4">
+    <ActionForm.Root action={action} className="grid gap-4">
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="series_id" type="hidden" value={seriesId} />
       <input name="series_public_id" type="hidden" value={seriesPublicId} />
 
-      <ActionFormFieldset className="grid gap-4">
-        <Field>
-          <FieldLabel required>
+      <ActionForm.Fieldset className="grid gap-4">
+        <Field.Root>
+          <Field.Label required>
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
               <Message message="admin.series.episodes.form.title" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               name="title"
               placeholder={t("admin.series.episodes.form.title_placeholder")}
               required
               type="text"
             />
-          </FieldContent>
-        </Field>
+          </Field.Content>
+        </Field.Root>
 
-        <Field>
-          <FieldLabel required>
+        <Field.Root>
+          <Field.Label required>
             <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
               <Message message="admin.series.episodes.form.price" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               defaultValue={toPriceInputValue(0, currency)}
               max={maxPriceInputValue(currency)}
@@ -117,24 +106,24 @@ export const EpisodeForm = async ({
               type="number"
             />
             <input name="price_currency" type="hidden" value={currency} />
-            <FieldDescription>
+            <Field.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                 <Message
                   message="admin.series.episodes.form.price_description"
                   values={{ currency }}
                 />
               </Suspense>
-            </FieldDescription>
-          </FieldContent>
-        </Field>
+            </Field.Description>
+          </Field.Content>
+        </Field.Root>
 
-        <Field>
-          <FieldLabel required>
+        <Field.Root>
+          <Field.Label required>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.series.episodes.form.reading_period" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               defaultValue={seriesReadingPeriodHours}
               max={MAX_INT32}
@@ -143,13 +132,13 @@ export const EpisodeForm = async ({
               required
               type="number"
             />
-            <FieldDescription>
+            <Field.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                 <Message message="admin.series.episodes.form.reading_period_description" />
               </Suspense>
-            </FieldDescription>
-          </FieldContent>
-        </Field>
+            </Field.Description>
+          </Field.Content>
+        </Field.Root>
 
         <EpisodeRentalFields
           currency={currency}
@@ -175,22 +164,22 @@ export const EpisodeForm = async ({
           initialValue=""
           seriesPurchaseAvailability={seriesPurchaseAvailability}
         />
-      </ActionFormFieldset>
+      </ActionForm.Fieldset>
 
       <div className="mt-2 flex justify-end gap-2">
-        <ActionFormSubmit>
-          <ActionFormIdle>
+        <ActionForm.Submit>
+          <ActionForm.Idle>
             <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
               <Message message="admin.series.episodes.form.create" />
             </Suspense>
-          </ActionFormIdle>
-          <ActionFormPending>
+          </ActionForm.Idle>
+          <ActionForm.Pending>
             <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
               <Message message="admin.series.episodes.form.submitting" />
             </Suspense>
-          </ActionFormPending>
-        </ActionFormSubmit>
+          </ActionForm.Pending>
+        </ActionForm.Submit>
       </div>
-    </ActionForm>
+    </ActionForm.Root>
   );
 };

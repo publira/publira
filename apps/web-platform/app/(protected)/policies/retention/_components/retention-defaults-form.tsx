@@ -1,7 +1,4 @@
-import {
-  ActionForm,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -44,7 +41,7 @@ export const RetentionDefaultsForm = ({
         </PlatformSectionDescription>
       </PlatformSectionHeading>
     </PlatformSectionHeader>
-    <ActionForm
+    <ActionForm.Root
       action={updatePlatformRetentionDefaultsAction}
       className="grid gap-4 sm:max-w-3xl"
     >
@@ -99,12 +96,12 @@ export const RetentionDefaultsForm = ({
         <FormMessage variant="destructive">{loadErrorMessage}</FormMessage>
       ) : null}
       <div className="mt-2 flex justify-end">
-        <ActionFormSubmit disabled={Boolean(loadErrorMessage)}>
+        <ActionForm.Submit disabled={Boolean(loadErrorMessage)}>
           <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
             <Message message="platform.policy.retention.save" />
           </Suspense>
-        </ActionFormSubmit>
+        </ActionForm.Submit>
       </div>
-    </ActionForm>
+    </ActionForm.Root>
   </PlatformSection>
 );

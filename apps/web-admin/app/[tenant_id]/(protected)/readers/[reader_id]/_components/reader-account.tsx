@@ -1,10 +1,6 @@
 import type { Locale } from "@publira/i18n";
 import { Badge, StatusChip } from "@publira/ui-components/badge";
-import {
-  Identifier,
-  IdentifierCopy,
-  IdentifierValue,
-} from "@publira/ui-components/identifier";
+import * as Identifier from "@publira/ui-components/identifier";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   cn,
@@ -156,13 +152,13 @@ export const ReaderAccount = async ({
           </Suspense>
         </dt>
         <dd className={valueClassName}>
-          <Identifier>
-            <IdentifierValue>{reader.publicId}</IdentifierValue>
-            <IdentifierCopy
+          <Identifier.Root>
+            <Identifier.Value>{reader.publicId}</Identifier.Value>
+            <Identifier.Copy
               aria-label={t("admin.readers.copy_public_id")}
               value={reader.publicId}
             />
-          </Identifier>
+          </Identifier.Root>
         </dd>
 
         <dt className={labelClassName}>

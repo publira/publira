@@ -1,14 +1,7 @@
 import { getLocaleLabel } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import type { FormActionState } from "@publira/ui-components/action-form";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -27,9 +20,9 @@ interface EpisodeTitleFormProps {
   /** Shown between the heading and the form: the episode's language tabs. */
   children?: ReactNode;
   action: (
-    prevState: FormActionState,
+    prevState: ActionForm.State,
     formData: FormData
-  ) => Promise<FormActionState>;
+  ) => Promise<ActionForm.State>;
   episodeId: string;
   episodePublicId: string;
   /**
@@ -102,7 +95,7 @@ export const EpisodeTitleForm = ({
       </AdminSectionHeading>
     </AdminSectionHeader>
     {children}
-    <ActionForm action={action} className="grid gap-4">
+    <ActionForm.Root action={action} className="grid gap-4">
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="series_public_id" type="hidden" value={seriesPublicId} />
       <input name="episode_id" type="hidden" value={episodeId} />
@@ -115,53 +108,53 @@ export const EpisodeTitleForm = ({
         />
       ) : null}
 
-      <ActionFormFieldset>
-        <Field>
-          <FieldLabel required>
+      <ActionForm.Fieldset>
+        <Field.Root>
+          <Field.Label required>
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
               <Message message="admin.series.episodes.form.title" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               defaultValue={initialTitle}
               name="title"
               required
               type="text"
             />
-          </FieldContent>
-        </Field>
-      </ActionFormFieldset>
+          </Field.Content>
+        </Field.Root>
+      </ActionForm.Fieldset>
 
       <div className="mt-2 flex justify-end gap-2">
         {translated ? (
-          <ActionFormSubmit>
-            <ActionFormIdle>
+          <ActionForm.Submit>
+            <ActionForm.Idle>
               <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                 <Message message="admin.series.episodes.rename.update" />
               </Suspense>
-            </ActionFormIdle>
-            <ActionFormPending>
+            </ActionForm.Idle>
+            <ActionForm.Pending>
               <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                 <Message message="admin.series.episodes.updating" />
               </Suspense>
-            </ActionFormPending>
-          </ActionFormSubmit>
+            </ActionForm.Pending>
+          </ActionForm.Submit>
         ) : (
-          <ActionFormSubmit>
-            <ActionFormIdle>
+          <ActionForm.Submit>
+            <ActionForm.Idle>
               <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                 <Message message="admin.series.episodes.translations.add_action" />
               </Suspense>
-            </ActionFormIdle>
-            <ActionFormPending>
+            </ActionForm.Idle>
+            <ActionForm.Pending>
               <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                 <Message message="admin.series.episodes.translations.adding" />
               </Suspense>
-            </ActionFormPending>
-          </ActionFormSubmit>
+            </ActionForm.Pending>
+          </ActionForm.Submit>
         )}
       </div>
-    </ActionForm>
+    </ActionForm.Root>
   </AdminSection>
 );

@@ -1,16 +1,8 @@
 import type { Locale } from "@publira/i18n";
 import { ChevronDownIcon, ChevronUpIcon } from "@publira/icons";
 import { Badge } from "@publira/ui-components/badge";
-import {
-  EmptyState,
-  EmptyStateDescription,
-} from "@publira/ui-components/empty-state";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { cn, formatDateTime } from "@publira/utils";
 import type { CachedReadResult } from "@publira/utils/cached-read";
@@ -459,16 +451,16 @@ const RankingChart = async ({
 }) => {
   if (!result.ok) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="storefront.ranking.list_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{result.message}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
@@ -479,13 +471,13 @@ const RankingChart = async ({
   // different answer, and gets the way back into the chart instead.
   if (!computedAt) {
     return (
-      <EmptyState>
-        <EmptyStateDescription>
+      <EmptyState.Root>
+        <EmptyState.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
             <Message message="storefront.ranking.list_empty" />
           </Suspense>
-        </EmptyStateDescription>
-      </EmptyState>
+        </EmptyState.Description>
+      </EmptyState.Root>
     );
   }
 

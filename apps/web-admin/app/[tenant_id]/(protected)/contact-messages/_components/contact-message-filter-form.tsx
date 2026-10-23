@@ -1,6 +1,6 @@
 import type { Locale } from "@publira/i18n";
 import { Button, LinkButton } from "@publira/ui-components/button";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { Select } from "@publira/ui-components/select";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -39,20 +39,20 @@ export const ContactMessageFilterForm = async ({
   locale,
 }: ContactMessageFilterFormProps) => (
   <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-    <Field>
-      <FieldLabel>
+    <Field.Root>
+      <Field.Label>
         <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
           <Message message="admin.contact_messages.filter.status" />
         </Suspense>
-      </FieldLabel>
-      <FieldContent>
+      </Field.Label>
+      <Field.Content>
         <Select
           defaultValue={filters.status}
           items={await statusOptions(locale)}
           name="status"
         />
-      </FieldContent>
-    </Field>
+      </Field.Content>
+    </Field.Root>
 
     <div className="flex items-end gap-2">
       <Button type="submit">

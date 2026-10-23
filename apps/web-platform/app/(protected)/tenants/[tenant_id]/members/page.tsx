@@ -1,13 +1,7 @@
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  SectionError,
-  SectionErrorActions,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import { TableSkeleton } from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import {
   parseRouteParams,
   routeParamString,
@@ -84,7 +78,7 @@ const TenantMembersSkeleton = () => (
       <Skeleton className="h-10 w-64" />
       <PlatformSection>
         <SkeletonLine className="h-5 w-40" />
-        <TableSkeleton />
+        <Table.Skeleton />
       </PlatformSection>
     </div>
   </PlatformPageContent>
@@ -96,23 +90,23 @@ const TenantMembersSkeleton = () => (
  * still there, so an outage keeps the console's own wording and a way back.
  */
 const TenantMembersLoadError = ({ message }: { message: string }) => (
-  <SectionError>
-    <SectionErrorHeading>
-      <SectionErrorTitle>
+  <SectionError.Root>
+    <SectionError.Heading>
+      <SectionError.Title>
         <Suspense fallback="…">
           <Message message="platform.tenants.members_load_failed" />
         </Suspense>
-      </SectionErrorTitle>
-      <SectionErrorDescription>{message}</SectionErrorDescription>
-    </SectionErrorHeading>
-    <SectionErrorActions>
+      </SectionError.Title>
+      <SectionError.Description>{message}</SectionError.Description>
+    </SectionError.Heading>
+    <SectionError.Actions>
       <LinkButton render={<Link href="/tenants" />} variant="outline">
         <Suspense fallback="…">
           <Message message="platform.common.back_to_list" />
         </Suspense>
       </LinkButton>
-    </SectionErrorActions>
-  </SectionError>
+    </SectionError.Actions>
+  </SectionError.Root>
 );
 
 const TenantMembersContent = async ({

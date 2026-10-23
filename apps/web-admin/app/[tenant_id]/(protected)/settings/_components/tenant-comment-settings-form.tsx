@@ -1,16 +1,5 @@
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { RadioGroup } from "@publira/ui-components/radio-group";
@@ -64,20 +53,20 @@ export const TenantCommentSettingsForm = ({
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>
-      <ActionForm
+      <ActionForm.Root
         action={updateTenantCommentSettingsAction}
         className="grid gap-4 sm:max-w-lg"
       >
         <input name="tenant_id" type="hidden" value={tenantId} />
 
-        <ActionFormFieldset className="grid gap-4" disabled={fieldsDisabled}>
-          <Field>
-            <FieldLabel>
+        <ActionForm.Fieldset className="grid gap-4" disabled={fieldsDisabled}>
+          <Field.Root>
+            <Field.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                 <Message message="admin.settings.comments.mode_label" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               {/* Off first, then the two ways of being on. */}
               <RadioGroup
                 defaultValue={initialSettings?.commentMode}
@@ -136,16 +125,16 @@ export const TenantCommentSettingsForm = ({
                 ]}
                 name="comment_mode"
               />
-            </FieldContent>
-          </Field>
+            </Field.Content>
+          </Field.Root>
 
-          <Field>
-            <FieldLabel>
+          <Field.Root>
+            <Field.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                 <Message message="admin.settings.comments.auto_hide_label" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <Input
                 className="sm:max-w-32"
                 defaultValue={
@@ -160,14 +149,14 @@ export const TenantCommentSettingsForm = ({
                 step={1}
                 type="number"
               />
-              <FieldDescription>
+              <Field.Description>
                 <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                   <Message message="admin.settings.comments.auto_hide_description" />
                 </Suspense>
-              </FieldDescription>
-            </FieldContent>
-          </Field>
-        </ActionFormFieldset>
+              </Field.Description>
+            </Field.Content>
+          </Field.Root>
+        </ActionForm.Fieldset>
 
         {canEdit ? null : (
           <FormMessage variant="destructive">
@@ -189,18 +178,18 @@ export const TenantCommentSettingsForm = ({
         ) : null}
 
         <div className="mt-2 flex justify-end gap-2">
-          <ActionFormSubmit disabled={fieldsDisabled}>
+          <ActionForm.Submit disabled={fieldsDisabled}>
             <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-              <ActionFormIdle>
+              <ActionForm.Idle>
                 <Message message="admin.settings.comments.submit" />
-              </ActionFormIdle>
-              <ActionFormPending>
+              </ActionForm.Idle>
+              <ActionForm.Pending>
                 <Message message="admin.settings.saving" />
-              </ActionFormPending>
+              </ActionForm.Pending>
             </Suspense>
-          </ActionFormSubmit>
+          </ActionForm.Submit>
         </div>
-      </ActionForm>
+      </ActionForm.Root>
     </AdminSection>
   );
 };

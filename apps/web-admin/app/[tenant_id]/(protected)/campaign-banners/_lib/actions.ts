@@ -1,7 +1,7 @@
 "use server";
 
 import type { Locale } from "@publira/i18n";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
@@ -132,9 +132,9 @@ const unconfirmedImageMessage = (
  * a band that shows nothing, so it is refused here before it is sent.
  */
 export const createCampaignBannerAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const [t, schema] = await Promise.all([
@@ -298,9 +298,9 @@ const saveCampaignBanner = async (
 };
 
 export const updateCampaignBannerAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   const saved = await saveCampaignBanner(formData, { requireImage: false });
   if (!saved.ok) {
     return saved;
@@ -310,9 +310,9 @@ export const updateCampaignBannerAction = async (
 };
 
 export const updateCampaignBannerImageAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   const saved = await saveCampaignBanner(formData, { requireImage: true });
   if (!saved.ok) {
     return saved;
@@ -322,9 +322,9 @@ export const updateCampaignBannerImageAction = async (
 };
 
 export const deleteCampaignBannerAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const [t, id, tenantId] = await Promise.all([

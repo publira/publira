@@ -1,9 +1,9 @@
 export {
-  LocaleSwitcher,
-  LocaleSwitcherContent,
-  LocaleSwitcherOption,
-  LocaleSwitcherOptions,
-  LocaleSwitcherTitle,
-  LocaleSwitcherTrigger,
+  LocaleSwitcher as Root,
+  LocaleSwitcherContent as Content,
+  LocaleSwitcherOption as Option,
+  LocaleSwitcherOptions as Options,
+  LocaleSwitcherTitle as Title,
+  LocaleSwitcherTrigger as Trigger,
 } from "./locale-switcher";
-export type { LocaleSwitcherProps } from "./locale-switcher";
+export type { LocaleSwitcherProps as RootProps } from "./locale-switcher";

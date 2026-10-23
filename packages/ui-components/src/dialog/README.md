@@ -1,63 +1,45 @@
 # Dialog
 
-The dialog components, used for confirmation flows and detail views.
+A modal dialog for a detail view or a form that does not fit on the screen behind it, implemented on top of [Base UI Dialog](https://base-ui.com/r/components/dialog). A dialog that only asks for confirmation before an action is a [`ConfirmDialog`](../confirm-dialog).
 
 ## Usage
 
 ```tsx
 import { Button } from "@publira/ui-components/button";
-import {
-  ConfirmDialog,
-  ConfirmDialogAction,
-  ConfirmDialogCancel,
-  ConfirmDialogContent,
-  ConfirmDialogDescription,
-  ConfirmDialogFooter,
-  ConfirmDialogHeader,
-  ConfirmDialogTitle,
-  ConfirmDialogTrigger,
-} from "@publira/ui-components/dialog";
+import * as Dialog from "@publira/ui-components/dialog";
 
 export default function Example() {
   return (
-    <ConfirmDialog>
-      <ConfirmDialogTrigger
-        render={<Button variant="destructive">Delete</Button>}
-      />
-      <ConfirmDialogContent>
-        <ConfirmDialogHeader>
-          <ConfirmDialogTitle>Delete this item?</ConfirmDialogTitle>
-          <ConfirmDialogDescription>
-            This cannot be undone.
-          </ConfirmDialogDescription>
-        </ConfirmDialogHeader>
-        <ConfirmDialogFooter>
-          <ConfirmDialogCancel>Cancel</ConfirmDialogCancel>
-          <ConfirmDialogAction onClick={remove}>Delete</ConfirmDialogAction>
-        </ConfirmDialogFooter>
-      </ConfirmDialogContent>
-    </ConfirmDialog>
+    <Dialog.Root>
+      <Dialog.Trigger render={<Button variant="outline">Edit</Button>} />
+      <Dialog.Portal>
+        <Dialog.Backdrop />
+        <Dialog.Viewport>
+          <Dialog.Popup>
+            <Dialog.Header>
+              <Dialog.Title>Edit the reason</Dialog.Title>
+              <Dialog.Description>
+                The reason is shown to the commenter.
+              </Dialog.Description>
+            </Dialog.Header>
+            {/* The form */}
+            <Dialog.Footer>
+              <Dialog.Close
+                render={<Button variant="outline">Cancel</Button>}
+              />
+            </Dialog.Footer>
+          </Dialog.Popup>
+        </Dialog.Viewport>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 ```
 
-`ConfirmDialog` is composed, so the wording of the two footer buttons sits on the buttons themselves. This package is shared by apps that resolve their locale in different ways, so it words nothing of its own.
-
-`ConfirmDialogAction` closes the dialog and runs `onClick`; its `variant` defaults to `destructive`. `ConfirmDialogCancel` only closes it.
-
-To confirm a Server Action, pass `form` instead of `onClick`: the action becomes a submit button for the form with that id (`ActionForm` takes an `id`). The popup is portaled out of any surrounding `<form>`, so the id is what connects the two, and the form and its copy can stay in a Server Component.
+`Dialog.Root`, `Dialog.Trigger`, `Dialog.Portal`, `Dialog.Viewport`, `Dialog.Title`, `Dialog.Description`, and `Dialog.Close` are Base UI's own parts and take its props. `Dialog.Backdrop` and `Dialog.Popup` add this package's surface to Base UI's, and `Dialog.Header` and `Dialog.Footer` take the props of a `<div>`. This package is shared by apps that resolve their locale in different ways, so it words nothing of its own.
 
 ## Subpath import
 
 ```tsx
-import {
-  ConfirmDialog,
-  Dialog,
-  DialogBackdrop,
-  DialogDescription,
-  DialogPopup,
-  DialogPortal,
-  DialogTitle,
-  DialogTrigger,
-} from "@publira/ui-components/dialog";
+import * as Dialog from "@publira/ui-components/dialog";
 ```

@@ -1,4 +1,4 @@
-import { FieldDescription } from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -74,9 +74,9 @@ export const ProviderSecretControls = ({
 
 /** What a secret field says about how it is kept. */
 export const ProviderSecretDescription = () => (
-  <FieldDescription>
+  <Field.Description>
     <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
       <Message message="admin.settings.credentials.secret_description" />
     </Suspense>
-  </FieldDescription>
+  </Field.Description>
 );

@@ -1,14 +1,7 @@
 "use client";
 
-import {
-  useActionFormSettled,
-  useActionFormState,
-} from "@publira/ui-components/action-form";
-import {
-  Field,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Switch } from "@publira/ui-components/switch";
 import { useState } from "react";
@@ -75,7 +68,7 @@ const EmailRejectionEntry = () => {
 /** A list longer than the server keeps, or the server's refusal of it. */
 const EmailRejectionEntriesMessage = () => {
   const t = useClientMessages();
-  const state = useActionFormState<SettledState>();
+  const state = ActionForm.useState<SettledState>();
   const list = parseEmailRejectionEntries(useEntryListValues());
 
   if (!list.ok && list.reason === "too_many") {
@@ -125,7 +118,7 @@ export const TenantEmailRejectionFields = ({
     () => disposableDomainListAvailable
   );
 
-  useActionFormSettled<SettledState>((settled) => {
+  ActionForm.useSettled<SettledState>((settled) => {
     if (!settled?.ok) {
       return;
     }
@@ -137,20 +130,20 @@ export const TenantEmailRejectionFields = ({
 
   return (
     <>
-      <Field className="grid-cols-[auto_1fr] items-start gap-x-3">
+      <Field.Root className="grid-cols-[auto_1fr] items-start gap-x-3">
         <Switch
           checked={rejectDisposableDomains}
           className="row-span-2 mt-0.5"
           name="reject_disposable_domains"
           onCheckedChange={setRejectDisposableDomains}
         />
-        <FieldLabel>
+        <Field.Label>
           <ClientMessage message="admin.settings.email_rejection.disposable_label" />
-        </FieldLabel>
-        <FieldDescription className="col-start-2">
+        </Field.Label>
+        <Field.Description className="col-start-2">
           <ClientMessage message="admin.settings.email_rejection.disposable_description" />
-        </FieldDescription>
-      </Field>
+        </Field.Description>
+      </Field.Root>
 
       {listAvailable === false ? (
         <FormMessage variant="warning">

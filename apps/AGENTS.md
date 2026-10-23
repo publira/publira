@@ -12,6 +12,28 @@ Norm and enforcement: repository root [AGENTS.md](../AGENTS.md) (React: Effects 
 
 Props are limited to values that cannot be rendered as a node: HTML attributes such as `href`, `placeholder`, and `aria-label`, and a Server Action. Do not replace a slot with a bag prop (`navigation`, `currentUser`, `userMenuCopy`, `primaryAction`, `options: { label, locale }[]`) or a `T | Promise<T>` prop. A slot that renders a link receives the `href`; its label is the child node. Do not pass Tailwind classes through a layout data object, and do not add a pass-through `*ClassName` prop for a child element — that element is a slot the caller writes.
 
+### Parts through one namespace
+
+A component that follows the pattern, shared or per-app, is a tree of parts, and the caller reaches the parts through one namespace. Its module exports the root as `Root` and every other part under the part's own name without the component's prefix (`Trigger`, `Popup`, `Title`), and the caller imports the module whole:
+
+```tsx
+import * as Dialog from "@publira/ui-components/dialog";
+
+<Dialog.Root>
+  <Dialog.Trigger>…</Dialog.Trigger>
+  <Dialog.Popup>
+    <Dialog.Title>…</Dialog.Title>
+  </Dialog.Popup>
+</Dialog.Root>;
+```
+
+- **The props types, hooks, and helpers of the tree go in the same namespace**: `Field.LabelProps`, `ActionForm.useSettled`, `Toast.useManager`. A module that needs only the types, such as a Server Action, imports it as `import type * as ActionForm`.
+- **One module, one tree.** `import * as` takes a whole module, so two trees never share one: `ConfirmDialog` lives in `confirm-dialog` beside `dialog`, and `MultiCombobox` in `multi-combobox` beside `combobox`.
+- **Each part keeps its full name where it is declared** (`export const DialogTrigger = …`) and is renamed only where the module exports it (`export { DialogTrigger as Trigger }`), so React DevTools, error overlays, and stack traces name the component instead of showing `Root` and `Trigger` for every tree.
+- **A component that renders one element is a plain named export** — `Button`, `Input`, `Select`, the `Skeleton` family. A namespace holding only `Root` is ceremony.
+
+`@publira/layouts`, `@publira/comic-viewer-shell`, and the per-app components under `components/` and `app/**/_components/` still export flat `<Component><Part>` names until #4799 is done; a new compound component in any of them is written in the namespace form.
+
 ## Untrusted input: validate with zod at the boundary
 
 Treat every value that a caller can put into a request as untrusted, even when Next.js gives the surrounding object a TypeScript type. This includes:
@@ -307,7 +329,10 @@ try {
 }
 
 // NG: `EmptyState` for a failure — it means "nothing yet", not "we could not load it"
-<EmptyState description={result.message} title="データの取得に失敗しました" />;
+<EmptyState.Root
+  description={result.message}
+  title="データの取得に失敗しました"
+/>;
 ```
 
 A list component that receives the failure as a prop (`listErrorMessage` and friends) renders `SectionError` itself, with the same title the pages use. The prop carries the message from `rpcErrorMessage`, so the component supplies the title and passes the prop through as `description`:
@@ -315,7 +340,7 @@ A list component that receives the failure as a prop (`listErrorMessage` and fri
 ```tsx
 if (listErrorMessage) {
   return (
-    <SectionError
+    <SectionError.Root
       description={listErrorMessage}
       title="シリーズ一覧を表示できませんでした"
     />
@@ -327,7 +352,7 @@ Two things follow from the list being gone rather than empty, and both are alrea
 
 Form components keep `FormMessage` for the row above: `creatorsErrorMessage`, `usersErrorMessage`, `loadErrorMessage` and friends stay where they are, next to the control they degrade.
 
-`SectionErrorCatch`, the `catchError` boundary, comes from `@publira/ui-components/section-error-fallback` together with the two slots. Each app's `components/section-error-boundary.tsx` is the Server Component the pages import: it resolves the copy from its own catalog (see **UI locale**) and hands the finished `fallback` tree to `SectionErrorCatch`.
+`SectionErrorCatch`, the `catchError` boundary, comes from `@publira/ui-components/section-error-fallback` together with the two slots. Each app's `components/section-error-boundary.tsx` is the Server Component the pages import: it resolves the copy from its own catalog (see **UI locale**) and hands the finished `fallback` tree to `SectionErrorCatch.Root`.
 
 ## Live regions in a form: `<p role="status">`, never `<output>`
 
@@ -513,8 +538,8 @@ The shape a screen takes when its copy moves into the catalog. Worked example: `
 - **A copy prop takes a `ReactNode`, never a catalog key.** `title="admin.audit.section_error"` is a contract that the component must resolve the key itself, and it hides where the `<Suspense>` lands. Type the prop `ReactNode` and pass `<Suspense><Message /></Suspense>` from the caller
 - **A copy prop is for copy that names the caller, and only where no slot can carry it.** `SectionErrorBoundary`'s `title` says which section is missing, so it differs per boundary and belongs to the page; and a boundary's `children` are the section it protects rather than its fallback, so the caller has no element inside the fallback to write that copy on. Everything else the fallback shows — what the reader can do about it, the retry button, the digest label — says the same thing at every boundary, so it is the frame rather than the section and the app's own component resolves it from the catalog instead of taking it as a prop. Judge that by what the copy is about, not by how many call sites happen to exist today. A shared package still takes everything from the caller: `@publira/ui-components` and `@publira/layouts` are used from both a URL-locale app and the cookie apps, so they cannot read a locale at all
 - **A shared component holds no copy, not even as a default.** A component in `@publira/ui-components` or `@publira/layouts` cannot resolve a locale, so a default string there is a fixed language — one that reads as Japanese on an English console, and only where the caller forgot it, which is exactly where nobody looks. Every string the component renders therefore comes from the caller. The one exception is a string whose absence is itself a design: an omitted `placeholder` renders nothing, in every language. Autonyms — the language names in a switcher — come from `getLocaleLabel` rather than a catalog, because they are the same in every locale
-- **Copy reaches a component through the element that renders it, never through a prop named after one.** This holds for every component that owns its DOM structure: those in `@publira/ui-components` and `@publira/layouts`, and an app's own under `components/` and `app/**/_components/` alike. Such a component follows the Compound Component Pattern: copy that comes from the caller lands in a named child slot the caller writes — visible text as that slot's `children`, an accessible name as a standard `aria-label` on it. An app's component still resolves its frame copy itself, as above. A prop whose only job is to carry a string into an element the call site cannot address (`removeLabel`, `retryLabel`, `digestLabel`, `submitLabel`, `actionText`, `triggerLabel`) says nothing about where it lands, so the caller guesses from the name or reads the component's source; `<MultiComboboxChipRemove aria-label={…} />` and `<ConfirmDialogCancel>{…}</ConfirmDialogCancel>` say it outright. A bag of strings (`copy: { ariaLabel, pending, submit }`) is several such props behind one name. What stays a prop is a value that cannot be a node at all, and it sits on the element that carries it: `href`, `placeholder`, `alt`, a Server Action, and an `aria-label` on the component's own root — spelled `aria-label` and passed through, never renamed `ariaLabel`. When a slot needs something only the framework knows — the digest and the retry callback of a caught error — the component hands that to its own slots through a context (`SectionErrorDigest`, `SectionErrorRetry`) rather than taking the copy instead
-- **Wording that changes while a Server Action is in flight is two children of the submit control, not two strings.** Write `<ActionFormIdle>` and `<ActionFormPending>` from `@publira/ui-components/action-form` inside the control, each around the copy it shows. Both read the pending state of the form they sit in through `useFormStatus()`, so neither the component nor its caller picks a string on `isPending`
+- **Copy reaches a component through the element that renders it, never through a prop named after one.** This holds for every component that owns its DOM structure: those in `@publira/ui-components` and `@publira/layouts`, and an app's own under `components/` and `app/**/_components/` alike. Such a component follows the Compound Component Pattern: copy that comes from the caller lands in a named child slot the caller writes — visible text as that slot's `children`, an accessible name as a standard `aria-label` on it. An app's component still resolves its frame copy itself, as above. A prop whose only job is to carry a string into an element the call site cannot address (`removeLabel`, `retryLabel`, `digestLabel`, `submitLabel`, `actionText`, `triggerLabel`) says nothing about where it lands, so the caller guesses from the name or reads the component's source; `<MultiCombobox.ChipRemove aria-label={…} />` and `<ConfirmDialog.Cancel>{…}</ConfirmDialog.Cancel>` say it outright. A bag of strings (`copy: { ariaLabel, pending, submit }`) is several such props behind one name. What stays a prop is a value that cannot be a node at all, and it sits on the element that carries it: `href`, `placeholder`, `alt`, a Server Action, and an `aria-label` on the component's own root — spelled `aria-label` and passed through, never renamed `ariaLabel`. When a slot needs something only the framework knows — the digest and the retry callback of a caught error — the component hands that to its own slots through a context (`SectionErrorCatch.Digest`, `SectionErrorCatch.Retry`) rather than taking the copy instead
+- **Wording that changes while a Server Action is in flight is two children of the submit control, not two strings.** Write `<ActionForm.Idle>` and `<ActionForm.Pending>` from `@publira/ui-components/action-form` inside the control, each around the copy it shows. Both read the pending state of the form they sit in through `useFormStatus()`, so neither the component nor its caller picks a string on `isPending`
 - **Do not wrap that in a helper.** A function whose whole body is one `<Suspense><Message /></Suspense>`, or a factory returning a bag of them to spread onto a component, buys a little less repetition and costs the reader a jump to its definition to learn what the call site does. Write the JSX where it is used. Repetition that is the frame rather than the call site's own copy is answered by the component owning it, never by a helper the call sites spread
 - **An `error.tsx` boundary must wrap its own copy in `<Suspense>`.** A boundary directly under the root layout has nothing above it to catch a suspend, so React has no fallback to flush and the streamed response is cut off mid-body — the browser shows its own network-error page instead of the error screen, after the 200 is already committed. Measured on `web-admin` by `e2e/tests/admin.error-boundary.spec.ts`, which is what caught it
 - **A string that has to be an attribute has no boundary.** `placeholder`, `aria-label`, and `title` cannot stream, so they come from a section that already blocks, resolved as a string

@@ -1,17 +1,5 @@
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import type { FormActionState } from "@publira/ui-components/action-form";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -35,9 +23,9 @@ import { EpisodeRentalFields } from "../../_components/episode-rental-fields";
 
 interface EpisodePricingFormProps {
   action: (
-    prevState: FormActionState,
+    prevState: ActionForm.State,
     formData: FormData
-  ) => Promise<FormActionState>;
+  ) => Promise<ActionForm.State>;
   /** ISO 4217 code of the currency the price is entered in, the tenant's. */
   currency: string;
   episodeId: string;
@@ -87,20 +75,20 @@ export const EpisodePricingForm = ({
         </AdminSectionDescription>
       </AdminSectionHeading>
     </AdminSectionHeader>
-    <ActionForm action={action} className="grid gap-4">
+    <ActionForm.Root action={action} className="grid gap-4">
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="series_public_id" type="hidden" value={seriesPublicId} />
       <input name="episode_id" type="hidden" value={episodeId} />
       <input name="episode_public_id" type="hidden" value={episodePublicId} />
 
-      <ActionFormFieldset className="grid gap-4">
-        <Field>
-          <FieldLabel required>
+      <ActionForm.Fieldset className="grid gap-4">
+        <Field.Root>
+          <Field.Label required>
             <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
               <Message message="admin.series.episodes.form.price" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               defaultValue={toPriceInputValue(initialPrice, currency)}
               max={maxPriceInputValue(currency)}
@@ -111,24 +99,24 @@ export const EpisodePricingForm = ({
               type="number"
             />
             <input name="price_currency" type="hidden" value={currency} />
-            <FieldDescription>
+            <Field.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                 <Message
                   message="admin.series.episodes.form.price_description"
                   values={{ currency }}
                 />
               </Suspense>
-            </FieldDescription>
-          </FieldContent>
-        </Field>
+            </Field.Description>
+          </Field.Content>
+        </Field.Root>
 
-        <Field>
-          <FieldLabel required>
+        <Field.Root>
+          <Field.Label required>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.series.episodes.form.reading_period" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               defaultValue={initialReadingPeriodHours}
               max={MAX_INT32}
@@ -137,35 +125,35 @@ export const EpisodePricingForm = ({
               required
               type="number"
             />
-            <FieldDescription>
+            <Field.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                 <Message message="admin.series.episodes.pricing.reading_period_description" />
               </Suspense>
-            </FieldDescription>
-          </FieldContent>
-        </Field>
+            </Field.Description>
+          </Field.Content>
+        </Field.Root>
 
         <EpisodeRentalFields
           currency={currency}
           initialRentalPeriodHours={initialRentalPeriodHours}
           initialRentalPrice={initialRentalPrice}
         />
-      </ActionFormFieldset>
+      </ActionForm.Fieldset>
 
       <div className="mt-2 flex justify-end gap-2">
-        <ActionFormSubmit>
-          <ActionFormIdle>
+        <ActionForm.Submit>
+          <ActionForm.Idle>
             <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
               <Message message="admin.series.episodes.pricing.update" />
             </Suspense>
-          </ActionFormIdle>
-          <ActionFormPending>
+          </ActionForm.Idle>
+          <ActionForm.Pending>
             <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
               <Message message="admin.series.episodes.updating" />
             </Suspense>
-          </ActionFormPending>
-        </ActionFormSubmit>
+          </ActionForm.Pending>
+        </ActionForm.Submit>
       </div>
-    </ActionForm>
+    </ActionForm.Root>
   </AdminSection>
 );

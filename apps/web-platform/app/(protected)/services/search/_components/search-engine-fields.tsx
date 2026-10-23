@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { RadioGroup } from "@publira/ui-components/radio-group";
 import { useCallback, useState } from "react";
@@ -100,11 +95,11 @@ export const SearchEngineFields = ({
 
       {engine === "sql" ? null : (
         <>
-          <Field>
-            <FieldLabel required>
+          <Field.Root>
+            <Field.Label required>
               <ClientMessage message="platform.search.form.url" />
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <Input
                 autoComplete="off"
                 defaultValue={settings.url}
@@ -116,17 +111,17 @@ export const SearchEngineFields = ({
                 spellCheck={false}
                 type="url"
               />
-            </FieldContent>
-            <FieldDescription>
+            </Field.Content>
+            <Field.Description>
               <ClientMessage message="platform.search.form.url_help" />
-            </FieldDescription>
-          </Field>
+            </Field.Description>
+          </Field.Root>
 
-          <Field>
-            <FieldLabel>
+          <Field.Root>
+            <Field.Label>
               <ClientMessage message="platform.search.form.index" />
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <Input
                 autoComplete="off"
                 defaultValue={settings.index}
@@ -136,11 +131,11 @@ export const SearchEngineFields = ({
                 spellCheck={false}
                 type="text"
               />
-            </FieldContent>
-            <FieldDescription>
+            </Field.Content>
+            <Field.Description>
               <ClientMessage message="platform.search.form.index_help" />
-            </FieldDescription>
-          </Field>
+            </Field.Description>
+          </Field.Root>
 
           <SearchCredentialFields
             disabled={disabled}

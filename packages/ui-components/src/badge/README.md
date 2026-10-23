@@ -5,7 +5,7 @@ A component for status indicators and supplementary labels.
 ## Usage
 
 ```tsx
-import { Badge, StatusChip } from "@publira/ui-components";
+import { Badge, StatusChip } from "@publira/ui-components/badge";
 
 export default function Example() {
   return (

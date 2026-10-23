@@ -1,6 +1,6 @@
 "use server";
 
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
@@ -18,9 +18,9 @@ import {
 import { webPushFormFields, webPushFormSchema } from "./form-schemas";
 
 export const updatePlatformWebPushSubjectAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
   const schema = await webPushFormSchema(locale);

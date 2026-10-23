@@ -4,8 +4,8 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import type { FormActionState } from "@publira/ui-components/action-form";
-import { ToastProvider } from "@publira/ui-components/toast";
+import type * as ActionForm from "@publira/ui-components/action-form";
+import * as Toast from "@publira/ui-components/toast";
 import {
   act,
   cleanup,
@@ -59,16 +59,16 @@ const {
   deletePasskey:
     vi.fn<
       (
-        previousState: FormActionState,
+        previousState: ActionForm.State,
         formData: FormData
-      ) => Promise<FormActionState>
+      ) => Promise<ActionForm.State>
     >(),
   disable:
     vi.fn<
       (
-        previousState: FormActionState,
+        previousState: ActionForm.State,
         formData: FormData
-      ) => Promise<FormActionState>
+      ) => Promise<ActionForm.State>
     >(),
   finishPasskey:
     vi.fn<(formData: FormData) => Promise<PasskeyRegistrationState>>(),
@@ -84,9 +84,9 @@ const {
   renamePasskey:
     vi.fn<
       (
-        previousState: FormActionState,
+        previousState: ActionForm.State,
         formData: FormData
-      ) => Promise<FormActionState>
+      ) => Promise<ActionForm.State>
     >(),
   start:
     vi.fn<
@@ -192,7 +192,7 @@ const Card = ({ status }: { status: AdminMfaStatus }) => (
 /** The ceremony reads the client catalog, and a settled row raises a toast. */
 const Providers = ({ children }: { children: ReactNode }) => (
   <AdminLocaleTestProvider locale="en">
-    <ToastProvider>{children}</ToastProvider>
+    <Toast.Provider>{children}</Toast.Provider>
   </AdminLocaleTestProvider>
 );
 

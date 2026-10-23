@@ -5,7 +5,7 @@ A checkbox component, implemented on top of [Base UI Checkbox](https://base-ui.c
 ## Usage
 
 ```tsx
-import { Checkbox } from "@publira/ui-components";
+import { Checkbox } from "@publira/ui-components/checkbox";
 
 export default function Example() {
   return (

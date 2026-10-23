@@ -7,7 +7,7 @@ The options are data rather than children: each carries its own label, an option
 ## Usage
 
 ```tsx
-import { RadioGroup } from "@publira/ui-components";
+import { RadioGroup } from "@publira/ui-components/radio-group";
 
 const items = [
   {

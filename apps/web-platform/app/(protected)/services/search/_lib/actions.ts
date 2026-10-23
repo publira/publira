@@ -1,6 +1,6 @@
 "use server";
 
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import { toFieldErrors, toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
@@ -60,9 +60,9 @@ const parseSearchForm = async (formData: FormData) => {
 };
 
 export const updatePlatformSearchSettingsAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const { locale, parsed } = await parseSearchForm(formData);
   if (!parsed.success) {
@@ -101,9 +101,9 @@ export const updatePlatformSearchSettingsAction = async (
  * nothing else.
  */
 export const updatePlatformSearchAnalysisAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
   const [schema, t] = await Promise.all([

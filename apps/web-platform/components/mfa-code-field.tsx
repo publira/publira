@@ -1,10 +1,5 @@
-import { ActionFormFieldset } from "@publira/ui-components/action-form";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -48,18 +43,18 @@ const MfaCodeInput = async ({ allowRecoveryCode }: MfaCodeFieldProps) => {
  * making four call sites pass the same label and hint.
  */
 export const MfaCodeField = ({ allowRecoveryCode }: MfaCodeFieldProps) => (
-  <ActionFormFieldset>
-    <Field>
-      <FieldLabel required>
+  <ActionForm.Fieldset>
+    <Field.Root>
+      <Field.Label required>
         <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
           <Message message="platform.auth.mfa.code_label" />
         </Suspense>
-      </FieldLabel>
-      <FieldContent>
+      </Field.Label>
+      <Field.Content>
         <Suspense fallback={<Skeleton className="h-9 w-full" />}>
           <MfaCodeInput allowRecoveryCode={allowRecoveryCode} />
         </Suspense>
-        <FieldDescription>
+        <Field.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
             {allowRecoveryCode ? (
               <Message message="platform.auth.mfa.code_help" />
@@ -67,8 +62,8 @@ export const MfaCodeField = ({ allowRecoveryCode }: MfaCodeFieldProps) => (
               <Message message="platform.auth.mfa.code_help_totp_only" />
             )}
           </Suspense>
-        </FieldDescription>
-      </FieldContent>
-    </Field>
-  </ActionFormFieldset>
+        </Field.Description>
+      </Field.Content>
+    </Field.Root>
+  </ActionForm.Fieldset>
 );

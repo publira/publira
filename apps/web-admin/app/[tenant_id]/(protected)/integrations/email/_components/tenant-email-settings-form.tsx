@@ -1,30 +1,7 @@
-import {
-  ActionForm,
-  ActionFormFieldError,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
-import {
-  Dialog,
-  DialogBackdrop,
-  DialogClose,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogPopup,
-  DialogPortal,
-  DialogTitle,
-  DialogViewport,
-} from "@publira/ui-components/dialog";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as Dialog from "@publira/ui-components/dialog";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Select } from "@publira/ui-components/select";
@@ -98,7 +75,7 @@ export const TenantEmailSettingsForm = ({
     </AdminSectionHeader>
     {/* An `ActionForm` resets the fields only after its own save succeeds,
         so a test run from the dialog leaves what the operator typed. */}
-    <ActionForm
+    <ActionForm.Root
       action={updateTenantEmailSettingsAction}
       className="grid gap-5 sm:max-w-3xl"
       id={formId}
@@ -112,35 +89,35 @@ export const TenantEmailSettingsForm = ({
         initialEnabled={initialSettings.smtpOverrideEnabled}
         key={JSON.stringify(initialSettings)}
       >
-        <ActionFormFieldset className="grid gap-5">
-          <Field>
-            <FieldLabel>
+        <ActionForm.Fieldset className="grid gap-5">
+          <Field.Root>
+            <Field.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                 <Message message="admin.settings.email.override" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <SmtpOverrideCheckbox>
                 <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                   <Message message="admin.settings.email.override_checkbox" />
                 </Suspense>
               </SmtpOverrideCheckbox>
-              <FieldDescription>
+              <Field.Description>
                 <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                   <Message message="admin.settings.email.override_description" />
                 </Suspense>
-              </FieldDescription>
-            </FieldContent>
-          </Field>
+              </Field.Description>
+            </Field.Content>
+          </Field.Root>
 
           <SmtpOverrideFieldset className="grid gap-5">
-            <Field>
+            <Field.Root>
               <SmtpSettingLabel>
                 <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                   <Message message="admin.settings.email.host" />
                 </Suspense>
               </SmtpSettingLabel>
-              <FieldContent>
+              <Field.Content>
                 <Input
                   defaultValue={initialSettings.host}
                   name="host"
@@ -148,16 +125,16 @@ export const TenantEmailSettingsForm = ({
                   required
                   type="text"
                 />
-              </FieldContent>
-            </Field>
+              </Field.Content>
+            </Field.Root>
 
-            <Field>
+            <Field.Root>
               <SmtpSettingLabel>
                 <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                   <Message message="admin.settings.email.port" />
                 </Suspense>
               </SmtpSettingLabel>
-              <FieldContent>
+              <Field.Content>
                 <Input
                   defaultValue={String(initialSettings.port || 587)}
                   max={65_535}
@@ -166,38 +143,38 @@ export const TenantEmailSettingsForm = ({
                   required
                   type="number"
                 />
-              </FieldContent>
-            </Field>
+              </Field.Content>
+            </Field.Root>
 
-            <Field>
-              <FieldLabel>
+            <Field.Root>
+              <Field.Label>
                 <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                   <Message message="admin.settings.email.username" />
                 </Suspense>
-              </FieldLabel>
-              <FieldContent>
+              </Field.Label>
+              <Field.Content>
                 <Input
                   defaultValue={initialSettings.username}
                   name="username"
                   type="text"
                 />
-                <ActionFormFieldError name="username" />
-                <FieldDescription>
+                <ActionForm.FieldError name="username" />
+                <Field.Description>
                   <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                     <Message message="admin.settings.email.username_description" />
                   </Suspense>
-                </FieldDescription>
-              </FieldContent>
-            </Field>
+                </Field.Description>
+              </Field.Content>
+            </Field.Root>
 
             <SmtpPassword hasStoredPassword={initialSettings.hasPassword}>
-              <Field>
-                <FieldLabel>
+              <Field.Root>
+                <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                     <Message message="admin.settings.email.password" />
                   </Suspense>
-                </FieldLabel>
-                <FieldContent>
+                </Field.Label>
+                <Field.Content>
                   <SmtpPasswordStored>
                     <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                       <Message message="admin.settings.email.password_change" />
@@ -209,25 +186,25 @@ export const TenantEmailSettingsForm = ({
                     </Suspense>
                   </SmtpPasswordEditor>
                   <SmtpPasswordReplacing>
-                    <FieldDescription>
+                    <Field.Description>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-3/4" />}
                       >
                         <Message message="admin.settings.email.password_clear_description" />
                       </Suspense>
-                    </FieldDescription>
+                    </Field.Description>
                   </SmtpPasswordReplacing>
-                </FieldContent>
-              </Field>
+                </Field.Content>
+              </Field.Root>
             </SmtpPassword>
 
-            <Field>
+            <Field.Root>
               <SmtpSettingLabel>
                 <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                   <Message message="admin.settings.email.encryption" />
                 </Suspense>
               </SmtpSettingLabel>
-              <FieldContent>
+              <Field.Content>
                 <Select
                   defaultValue={initialSettings.encryption || "starttls"}
                   items={[
@@ -247,37 +224,37 @@ export const TenantEmailSettingsForm = ({
                   name="encryption"
                   required
                 />
-              </FieldContent>
-            </Field>
+              </Field.Content>
+            </Field.Root>
 
-            <Field>
-              <FieldLabel>
+            <Field.Root>
+              <Field.Label>
                 <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                   <Message message="admin.settings.email.from_name" />
                 </Suspense>
-              </FieldLabel>
-              <FieldContent>
+              </Field.Label>
+              <Field.Content>
                 <Input
                   defaultValue={initialSettings.fromName}
                   name="from_name"
                   placeholder={fromNamePlaceholder}
                   type="text"
                 />
-                <FieldDescription>
+                <Field.Description>
                   <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                     <Message message="admin.settings.email.from_name_description" />
                   </Suspense>
-                </FieldDescription>
-              </FieldContent>
-            </Field>
+                </Field.Description>
+              </Field.Content>
+            </Field.Root>
 
-            <Field>
+            <Field.Root>
               <SmtpSettingLabel>
                 <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
                   <Message message="admin.settings.email.from_address" />
                 </Suspense>
               </SmtpSettingLabel>
-              <FieldContent>
+              <Field.Content>
                 <Input
                   defaultValue={initialSettings.fromAddress}
                   name="from_address"
@@ -285,26 +262,26 @@ export const TenantEmailSettingsForm = ({
                   required
                   type="email"
                 />
-              </FieldContent>
-            </Field>
+              </Field.Content>
+            </Field.Root>
 
-            <Field>
-              <FieldLabel>
+            <Field.Root>
+              <Field.Label>
                 <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
                   <Message message="admin.settings.email.reply_to" />
                 </Suspense>
-              </FieldLabel>
-              <FieldContent>
+              </Field.Label>
+              <Field.Content>
                 <Input
                   defaultValue={initialSettings.replyTo}
                   name="reply_to"
                   placeholder="support@example.com"
                   type="email"
                 />
-              </FieldContent>
-            </Field>
+              </Field.Content>
+            </Field.Root>
           </SmtpOverrideFieldset>
-        </ActionFormFieldset>
+        </ActionForm.Fieldset>
 
         {canEdit ? null : (
           <FormMessage variant="destructive">
@@ -319,36 +296,36 @@ export const TenantEmailSettingsForm = ({
         ) : null}
 
         <div className="flex flex-wrap gap-3">
-          <Dialog>
+          <Dialog.Root>
             <SmtpTestTrigger>
               <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
                 <Message message="admin.settings.email.test" />
               </Suspense>
             </SmtpTestTrigger>
-            <DialogPortal>
-              <DialogBackdrop />
-              <DialogViewport>
-                <DialogPopup>
+            <Dialog.Portal>
+              <Dialog.Backdrop />
+              <Dialog.Viewport>
+                <Dialog.Popup>
                   <SmtpTest
                     action={sendTenantSmtpTestEmailAction}
                     form={formId}
                   >
-                    <DialogHeader>
-                      <DialogTitle>
+                    <Dialog.Header>
+                      <Dialog.Title>
                         <Suspense
                           fallback={<SkeletonLine className="h-5 w-48" />}
                         >
                           <Message message="admin.settings.email.test_title" />
                         </Suspense>
-                      </DialogTitle>
-                      <DialogDescription>
+                      </Dialog.Title>
+                      <Dialog.Description>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-72" />}
                         >
                           <Message message="admin.settings.email.test_description" />
                         </Suspense>
-                      </DialogDescription>
-                    </DialogHeader>
+                      </Dialog.Description>
+                    </Dialog.Header>
 
                     <div className="mt-4 grid gap-4">
                       <SmtpTestSendToSelf>
@@ -368,8 +345,8 @@ export const TenantEmailSettingsForm = ({
                       <SmtpTestResult />
                     </div>
 
-                    <DialogFooter>
-                      <DialogClose
+                    <Dialog.Footer>
+                      <Dialog.Close
                         render={<Button type="button" variant="outline" />}
                       >
                         <Suspense
@@ -377,38 +354,38 @@ export const TenantEmailSettingsForm = ({
                         >
                           <Message message="admin.settings.email.close" />
                         </Suspense>
-                      </DialogClose>
+                      </Dialog.Close>
                       <SmtpTestSubmit>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-20" />}
                         >
-                          <ActionFormIdle>
+                          <ActionForm.Idle>
                             <Message message="admin.settings.email.test_submit" />
-                          </ActionFormIdle>
-                          <ActionFormPending>
+                          </ActionForm.Idle>
+                          <ActionForm.Pending>
                             <Message message="admin.settings.email.test_sending" />
-                          </ActionFormPending>
+                          </ActionForm.Pending>
                         </Suspense>
                       </SmtpTestSubmit>
-                    </DialogFooter>
+                    </Dialog.Footer>
                   </SmtpTest>
-                </DialogPopup>
-              </DialogViewport>
-            </DialogPortal>
-          </Dialog>
+                </Dialog.Popup>
+              </Dialog.Viewport>
+            </Dialog.Portal>
+          </Dialog.Root>
 
-          <ActionFormSubmit disabled={!canEdit}>
+          <ActionForm.Submit disabled={!canEdit}>
             <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-              <ActionFormIdle>
+              <ActionForm.Idle>
                 <Message message="admin.settings.save" />
-              </ActionFormIdle>
-              <ActionFormPending>
+              </ActionForm.Idle>
+              <ActionForm.Pending>
                 <Message message="admin.settings.saving" />
-              </ActionFormPending>
+              </ActionForm.Pending>
             </Suspense>
-          </ActionFormSubmit>
+          </ActionForm.Submit>
         </div>
       </SmtpOverride>
-    </ActionForm>
+    </ActionForm.Root>
   </AdminSection>
 );

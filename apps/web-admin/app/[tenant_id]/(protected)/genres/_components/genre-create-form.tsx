@@ -1,8 +1,4 @@
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -21,20 +17,20 @@ export const GenreCreateForm = ({
   tenantId: string;
   tenantLocales: TenantLocales | null;
 }) => (
-  <ActionForm action={createGenreAction} className="grid gap-4">
+  <ActionForm.Root action={createGenreAction} className="grid gap-4">
     <input name="tenant_id" type="hidden" value={tenantId} />
-    <ActionFormFieldset>
+    <ActionForm.Fieldset>
       <GenreNameFields
         namePlaceholder={namePlaceholder}
         tenantLocales={tenantLocales}
       />
-    </ActionFormFieldset>
+    </ActionForm.Fieldset>
     <div className="flex justify-end">
-      <ActionFormSubmit>
+      <ActionForm.Submit>
         <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
           <Message message="admin.genres.create_action" />
         </Suspense>
-      </ActionFormSubmit>
+      </ActionForm.Submit>
     </div>
-  </ActionForm>
+  </ActionForm.Root>
 );

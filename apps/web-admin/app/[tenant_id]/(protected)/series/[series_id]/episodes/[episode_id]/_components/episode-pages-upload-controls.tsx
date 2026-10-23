@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  ActionForm,
-  useActionFormSettled,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import { Input } from "@publira/ui-components/input";
 import { createContext, use, useMemo, useRef, useState } from "react";
@@ -83,9 +80,9 @@ export const EpisodePagesUploadForm = ({
   });
 
   return (
-    <ActionForm action={upload} className="grid gap-4">
+    <ActionForm.Root action={upload} className="grid gap-4">
       {children}
-    </ActionForm>
+    </ActionForm.Root>
   );
 };
 
@@ -100,7 +97,7 @@ export const EpisodePagesUpload = ({ children }: { children: ReactNode }) => {
 
   // A successful upload empties the file input, and the names listed for it
   // with it.
-  useActionFormSettled((state) => {
+  ActionForm.useSettled((state) => {
     if (state?.ok) {
       setSelectedFileNames([]);
     }

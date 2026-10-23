@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  useActionFormSettled,
-  useActionFormState,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import { Input } from "@publira/ui-components/input";
 import { createContext, use, useMemo, useState } from "react";
@@ -24,7 +21,7 @@ type SavedSettingsState = NonNullable<PlatformEmailSettingsFormState>;
  * at, then the one each successful save wrote.
  */
 export const SmtpRevisionField = ({ revision }: { revision: string }) => {
-  const state = useActionFormState<SavedSettingsState>();
+  const state = ActionForm.useState<SavedSettingsState>();
 
   return (
     <input
@@ -62,14 +59,14 @@ const useSmtpPassword = () => {
  *
  * ```tsx
  * <SmtpPassword hasStoredPassword={…}>
- *   <Field>
- *     <FieldLabel>…</FieldLabel>
- *     <FieldContent>
+ *   <Field.Root>
+ *     <Field.Label>…</Field.Label>
+ *     <Field.Content>
  *       <SmtpPasswordStored>{change}</SmtpPasswordStored>
  *       <SmtpPasswordEditor>{undo}</SmtpPasswordEditor>
- *     </FieldContent>
+ *     </Field.Content>
  *     <SmtpPasswordReplacing>{note}</SmtpPasswordReplacing>
- *   </Field>
+ *   </Field.Root>
  * </SmtpPassword>
  * ```
  */
@@ -80,7 +77,7 @@ export const SmtpPassword = ({
   children: ReactNode;
   hasStoredPassword: boolean;
 }) => {
-  const state = useActionFormState<SavedSettingsState>();
+  const state = ActionForm.useState<SavedSettingsState>();
   const hasStoredPassword = state?.ok
     ? state.settings.hasPassword
     : initialHasStoredPassword;
@@ -91,7 +88,7 @@ export const SmtpPassword = ({
     [hasStoredPassword, isEditing]
   );
 
-  useActionFormSettled<SavedSettingsState>((settled) => {
+  ActionForm.useSettled<SavedSettingsState>((settled) => {
     if (settled?.ok) {
       setIsEditing(!settled.settings.hasPassword);
       setHasEntry(false);

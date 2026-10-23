@@ -1,12 +1,5 @@
 import { getLocaleLabel, getLocales } from "@publira/i18n";
-import {
-  LocaleSwitcher,
-  LocaleSwitcherContent,
-  LocaleSwitcherOption,
-  LocaleSwitcherOptions,
-  LocaleSwitcherTitle,
-  LocaleSwitcherTrigger,
-} from "@publira/ui-components/locale-switcher";
+import * as LocaleSwitcher from "@publira/ui-components/locale-switcher";
 
 import { getLocale } from "../lib/locale";
 import { setAdminLocaleAction } from "../lib/locale-action";
@@ -21,22 +14,22 @@ export const AdminLocaleSwitcher = async () => {
   const label = t("locale.label");
 
   return (
-    <LocaleSwitcher
+    <LocaleSwitcher.Root
       action={setAdminLocaleAction}
       currentLocale={locale}
       fieldName={LOCALE_FIELD_NAME}
     >
-      <LocaleSwitcherTrigger aria-label={label} />
-      <LocaleSwitcherContent>
-        <LocaleSwitcherTitle>{label}</LocaleSwitcherTitle>
-        <LocaleSwitcherOptions aria-label={label}>
+      <LocaleSwitcher.Trigger aria-label={label} />
+      <LocaleSwitcher.Content>
+        <LocaleSwitcher.Title>{label}</LocaleSwitcher.Title>
+        <LocaleSwitcher.Options aria-label={label}>
           {getLocales().map((value) => (
-            <LocaleSwitcherOption key={value} locale={value}>
+            <LocaleSwitcher.Option key={value} locale={value}>
               {getLocaleLabel(value)}
-            </LocaleSwitcherOption>
+            </LocaleSwitcher.Option>
           ))}
-        </LocaleSwitcherOptions>
-      </LocaleSwitcherContent>
-    </LocaleSwitcher>
+        </LocaleSwitcher.Options>
+      </LocaleSwitcher.Content>
+    </LocaleSwitcher.Root>
   );
 };

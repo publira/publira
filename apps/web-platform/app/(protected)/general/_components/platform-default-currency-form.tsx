@@ -1,18 +1,6 @@
-import {
-  ActionForm,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import {
-  ComboboxEmpty,
-  ComboboxItems,
-  ComboboxPopup,
-} from "@publira/ui-components/combobox";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Combobox from "@publira/ui-components/combobox";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -72,17 +60,17 @@ export const PlatformDefaultCurrencyForm = async ({
           </PlatformSectionDescription>
         </PlatformSectionHeading>
       </PlatformSectionHeader>
-      <ActionForm
+      <ActionForm.Root
         action={updatePlatformDefaultCurrencyAction}
         className="grid gap-4 sm:max-w-lg"
       >
-        <Field>
-          <FieldLabel>
+        <Field.Root>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="platform.settings.default_currency_label" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             {/* A save refreshes the stored value and the lock; keying on them
                 remounts the field on what is stored. */}
             <CurrencyCombobox
@@ -93,16 +81,16 @@ export const PlatformDefaultCurrencyForm = async ({
               name="default_currency"
               placeholder={t("platform.settings.default_currency_placeholder")}
             >
-              <ComboboxPopup>
-                <ComboboxEmpty>
+              <Combobox.Popup>
+                <Combobox.Empty>
                   <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                     <Message message="platform.settings.default_currency_empty" />
                   </Suspense>
-                </ComboboxEmpty>
-                <ComboboxItems />
-              </ComboboxPopup>
+                </Combobox.Empty>
+                <Combobox.Items />
+              </Combobox.Popup>
             </CurrencyCombobox>
-            <FieldDescription>
+            <Field.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                 {locked ? (
                   <Message message="platform.settings.default_currency_locked" />
@@ -110,9 +98,9 @@ export const PlatformDefaultCurrencyForm = async ({
                   <Message message="platform.settings.default_currency_help" />
                 )}
               </Suspense>
-            </FieldDescription>
-          </FieldContent>
-        </Field>
+            </Field.Description>
+          </Field.Content>
+        </Field.Root>
 
         {loadErrorMessage ? (
           <FormMessage variant="destructive">
@@ -124,13 +112,13 @@ export const PlatformDefaultCurrencyForm = async ({
         ) : null}
 
         <div className="mt-2 flex justify-end gap-2">
-          <ActionFormSubmit disabled={disabled}>
+          <ActionForm.Submit disabled={disabled}>
             <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
               <Message message="platform.settings.default_currency_save" />
             </Suspense>
-          </ActionFormSubmit>
+          </ActionForm.Submit>
         </div>
-      </ActionForm>
+      </ActionForm.Root>
     </PlatformSection>
   );
 };

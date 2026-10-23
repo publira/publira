@@ -1,17 +1,7 @@
 "use client";
 
 import { Button } from "@publira/ui-components/button";
-import {
-  Dialog,
-  DialogBackdrop,
-  DialogDescription,
-  DialogHeader,
-  DialogPopup,
-  DialogPortal,
-  DialogTitle,
-  DialogTrigger,
-  DialogViewport,
-} from "@publira/ui-components/dialog";
+import * as Dialog from "@publira/ui-components/dialog";
 import { useCallback, useRef, useState, useTransition } from "react";
 
 import { useAdminLocale } from "#components/admin-locale-context";
@@ -97,17 +87,17 @@ export const EpisodeCreditsRangeDialog = ({
   );
 
   return (
-    <Dialog onOpenChange={handleOpenChange} open={open}>
-      <DialogTrigger
+    <Dialog.Root onOpenChange={handleOpenChange} open={open}>
+      <Dialog.Trigger
         render={
           <Button type="button" variant="outline">
             {t("admin.series.episodes.credits_action")}
           </Button>
         }
       />
-      <DialogPortal>
-        <DialogBackdrop />
-        <DialogViewport>
+      <Dialog.Portal>
+        <Dialog.Backdrop />
+        <Dialog.Viewport>
           {/*
            * The body scrolls between the header and the footer. A viewport
            * shorter than 30rem, a phone held sideways or a page zoomed to
@@ -115,15 +105,15 @@ export const EpisodeCreditsRangeDialog = ({
            * the popup lays its parts out at their full height instead and
            * scrolls them as one, the footer last.
            */}
-          <DialogPopup className="flex max-h-[min(90vh,44rem)] w-[min(92vw,40rem)] flex-col overflow-y-auto [@media(max-height:30rem)]:block">
-            <DialogHeader>
-              <DialogTitle className="text-lg font-semibold">
+          <Dialog.Popup className="flex max-h-[min(90vh,44rem)] w-[min(92vw,40rem)] flex-col overflow-y-auto [@media(max-height:30rem)]:block">
+            <Dialog.Header>
+              <Dialog.Title className="text-lg font-semibold">
                 {t("admin.series.episodes.credits.dialog_title")}
-              </DialogTitle>
-              <DialogDescription className="text-sm text-muted-foreground">
+              </Dialog.Title>
+              <Dialog.Description className="text-sm text-muted-foreground">
                 {t("admin.series.episodes.credits.dialog_description")}
-              </DialogDescription>
-            </DialogHeader>
+              </Dialog.Description>
+            </Dialog.Header>
             {hasLoaded ? (
               <EpisodeCreditsRangeForm
                 action={bulkEditEpisodeCreditsAction}
@@ -143,9 +133,9 @@ export const EpisodeCreditsRangeDialog = ({
                 {t("admin.series.episodes.credits.episodes_loading")}
               </p>
             )}
-          </DialogPopup>
-        </DialogViewport>
-      </DialogPortal>
-    </Dialog>
+          </Dialog.Popup>
+        </Dialog.Viewport>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 };

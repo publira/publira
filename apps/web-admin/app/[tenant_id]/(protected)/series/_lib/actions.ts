@@ -2,7 +2,7 @@
 
 import { getLocales } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import { toInstantIsoString } from "@publira/utils";
 import { toFieldErrors, toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -589,9 +589,9 @@ const deleteTranslationSchema = async (locale: Locale) => {
  * is the one whose caches are cleared and whose screen opens.
  */
 export const deleteSeriesTranslationAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await deleteTranslationSchema(locale);
@@ -764,9 +764,9 @@ const waitFreeSettingsFormFields = {
 } as const;
 
 export const updateSeriesWaitFreeSettingsAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const [t, schema] = await Promise.all([

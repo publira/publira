@@ -1,20 +1,9 @@
-import {
-  ActionForm,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Badge } from "@publira/ui-components/badge";
 import { Button, LinkButton } from "@publira/ui-components/button";
-import { Field, FieldLabel } from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
-import {
-  SectionError,
-  SectionErrorActions,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
 import {
@@ -116,23 +105,23 @@ const TenantDetailSkeleton = () => (
  * still there, so an outage keeps the console's own wording and a way back.
  */
 const TenantLoadError = ({ message }: { message: string }) => (
-  <SectionError>
-    <SectionErrorHeading>
-      <SectionErrorTitle>
+  <SectionError.Root>
+    <SectionError.Heading>
+      <SectionError.Title>
         <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
           <Message message="platform.tenants.load_one_failed" />
         </Suspense>
-      </SectionErrorTitle>
-      <SectionErrorDescription>{message}</SectionErrorDescription>
-    </SectionErrorHeading>
-    <SectionErrorActions>
+      </SectionError.Title>
+      <SectionError.Description>{message}</SectionError.Description>
+    </SectionError.Heading>
+    <SectionError.Actions>
       <LinkButton render={<Link href="/tenants" />} variant="outline">
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
           <Message message="platform.common.back_to_list" />
         </Suspense>
       </LinkButton>
-    </SectionErrorActions>
-  </SectionError>
+    </SectionError.Actions>
+  </SectionError.Root>
 );
 
 const TenantDetailContent = async ({
@@ -243,17 +232,17 @@ const TenantDetailContent = async ({
                   </PlatformSectionDescription>
                 </PlatformSectionHeading>
               </PlatformSectionHeader>
-              <ActionForm action={updateTenantNameAction}>
+              <ActionForm.Root action={updateTenantNameAction}>
                 <input name="tenant_id" type="hidden" value={tenant.id} />
                 <div className="grid gap-4">
-                  <Field>
-                    <FieldLabel required>
+                  <Field.Root>
+                    <Field.Label required>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-32" />}
                       >
                         <Message message="platform.tenants.name" />
                       </Suspense>
-                    </FieldLabel>
+                    </Field.Label>
                     <Input
                       key={tenant.name}
                       defaultValue={tenant.name}
@@ -261,15 +250,15 @@ const TenantDetailContent = async ({
                       required
                       type="text"
                     />
-                  </Field>
-                  <Field>
-                    <FieldLabel>
+                  </Field.Root>
+                  <Field.Root>
+                    <Field.Label>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-32" />}
                       >
                         <Message message="platform.common.created_at" />
                       </Suspense>
-                    </FieldLabel>
+                    </Field.Label>
                     <p className="text-sm">
                       {formatDateTime(tenant.createdAt, {
                         fallback: t("platform.common.unset"),
@@ -277,28 +266,28 @@ const TenantDetailContent = async ({
                         timeZone,
                       })}
                     </p>
-                  </Field>
-                  <Field>
-                    <FieldLabel>
+                  </Field.Root>
+                  <Field.Root>
+                    <Field.Label>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-32" />}
                       >
                         <Message message="platform.common.status" />
                       </Suspense>
-                    </FieldLabel>
+                    </Field.Label>
                     <p>
                       <Badge tone={tenantStatusTone}>{tenantStatusLabel}</Badge>
                     </p>
-                  </Field>
+                  </Field.Root>
                 </div>
-                <ActionFormSubmit
+                <ActionForm.Submit
                   className="mt-4 ml-auto block"
                   variant="outline"
                 >
-                  <ActionFormIdle>{saveLabel}</ActionFormIdle>
-                  <ActionFormPending>{savingLabel}</ActionFormPending>
-                </ActionFormSubmit>
-              </ActionForm>
+                  <ActionForm.Idle>{saveLabel}</ActionForm.Idle>
+                  <ActionForm.Pending>{savingLabel}</ActionForm.Pending>
+                </ActionForm.Submit>
+              </ActionForm.Root>
             </PlatformSection>
 
             <PlatformSection>
@@ -317,17 +306,17 @@ const TenantDetailContent = async ({
                 </PlatformSectionHeading>
               </PlatformSectionHeader>
               <TenantDomainCautions showUpdateCaution />
-              <ActionForm action={updateTenantDomainAction}>
+              <ActionForm.Root action={updateTenantDomainAction}>
                 <input name="tenant_id" type="hidden" value={tenant.id} />
                 <div className="grid gap-4">
-                  <Field>
-                    <FieldLabel required>
+                  <Field.Root>
+                    <Field.Label required>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-32" />}
                       >
                         <Message message="platform.tenants.domain" />
                       </Suspense>
-                    </FieldLabel>
+                    </Field.Label>
                     <Input
                       key={tenant.domain}
                       defaultValue={tenant.domain}
@@ -336,15 +325,15 @@ const TenantDetailContent = async ({
                       required
                       type="text"
                     />
-                  </Field>
-                  <Field>
-                    <FieldLabel>
+                  </Field.Root>
+                  <Field.Root>
+                    <Field.Label>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-32" />}
                       >
                         <Message message="platform.tenants.admin_domain" />
                       </Suspense>
-                    </FieldLabel>
+                    </Field.Label>
                     <Input
                       key={tenant.adminDomain}
                       defaultValue={tenant.adminDomain}
@@ -357,16 +346,16 @@ const TenantDetailContent = async ({
                       domain={tenant.domain}
                       showCurrentDomain
                     />
-                  </Field>
+                  </Field.Root>
                 </div>
-                <ActionFormSubmit
+                <ActionForm.Submit
                   className="mt-4 ml-auto block"
                   variant="outline"
                 >
-                  <ActionFormIdle>{saveLabel}</ActionFormIdle>
-                  <ActionFormPending>{savingLabel}</ActionFormPending>
-                </ActionFormSubmit>
-              </ActionForm>
+                  <ActionForm.Idle>{saveLabel}</ActionForm.Idle>
+                  <ActionForm.Pending>{savingLabel}</ActionForm.Pending>
+                </ActionForm.Submit>
+              </ActionForm.Root>
             </PlatformSection>
           </PlatformSections>
         </div>

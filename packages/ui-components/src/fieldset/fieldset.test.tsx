@@ -4,21 +4,9 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { Checkbox } from "../checkbox/checkbox";
-import {
-  Combobox,
-  ComboboxEmpty,
-  ComboboxInput,
-  ComboboxItems,
-  ComboboxPopup,
-} from "../combobox/combobox";
-import {
-  ConfirmDialog,
-  ConfirmDialogAction,
-  ConfirmDialogContent,
-  ConfirmDialogTitle,
-  ConfirmDialogTrigger,
-} from "../dialog/confirm-dialog";
-import { Field, FieldContent, FieldLabel } from "../field/field";
+import * as Combobox from "../combobox";
+import * as ConfirmDialog from "../confirm-dialog";
+import * as Field from "../field";
 import { Input } from "../input/input";
 import { RadioGroup } from "../radio-group/radio-group";
 import { Select } from "../select/select";
@@ -32,63 +20,63 @@ afterEach(() => {
 
 const Controls = ({ disabled }: { disabled: boolean }) => (
   <Fieldset disabled={disabled}>
-    <Field>
-      <FieldLabel>Title</FieldLabel>
-      <FieldContent>
+    <Field.Root>
+      <Field.Label>Title</Field.Label>
+      <Field.Content>
         <Input />
-      </FieldContent>
-    </Field>
-    <Field>
-      <FieldLabel>Synopsis</FieldLabel>
-      <FieldContent>
+      </Field.Content>
+    </Field.Root>
+    <Field.Root>
+      <Field.Label>Synopsis</Field.Label>
+      <Field.Content>
         <Textarea />
-      </FieldContent>
-    </Field>
-    <Field>
-      <FieldLabel>Label</FieldLabel>
-      <FieldContent>
-        <Combobox
+      </Field.Content>
+    </Field.Root>
+    <Field.Root>
+      <Field.Label>Label</Field.Label>
+      <Field.Content>
+        <Combobox.Root
           items={[{ label: "Apple", value: "apple" }]}
           onValueChange={() => null}
           value=""
         >
-          <ComboboxInput />
-          <ComboboxPopup>
-            <ComboboxEmpty>None</ComboboxEmpty>
-            <ComboboxItems />
-          </ComboboxPopup>
-        </Combobox>
-      </FieldContent>
-    </Field>
-    <Field>
-      <FieldLabel>Status</FieldLabel>
-      <FieldContent>
+          <Combobox.Input />
+          <Combobox.Popup>
+            <Combobox.Empty>None</Combobox.Empty>
+            <Combobox.Items />
+          </Combobox.Popup>
+        </Combobox.Root>
+      </Field.Content>
+    </Field.Root>
+    <Field.Root>
+      <Field.Label>Status</Field.Label>
+      <Field.Content>
         <Select items={[{ label: "Ongoing", value: "ongoing" }]} />
-      </FieldContent>
-    </Field>
-    <Field>
-      <FieldLabel>Visibility</FieldLabel>
-      <FieldContent>
+      </Field.Content>
+    </Field.Root>
+    <Field.Root>
+      <Field.Label>Visibility</Field.Label>
+      <Field.Content>
         <RadioGroup
           items={[
             { label: "Public", value: "public" },
             { label: "Private", value: "private" },
           ]}
         />
-      </FieldContent>
-    </Field>
-    <Field>
-      <FieldLabel>Published</FieldLabel>
-      <FieldContent>
+      </Field.Content>
+    </Field.Root>
+    <Field.Root>
+      <Field.Label>Published</Field.Label>
+      <Field.Content>
         <Checkbox />
-      </FieldContent>
-    </Field>
-    <Field>
-      <FieldLabel>Pinned</FieldLabel>
-      <FieldContent>
+      </Field.Content>
+    </Field.Root>
+    <Field.Root>
+      <Field.Label>Pinned</Field.Label>
+      <Field.Content>
         <Switch />
-      </FieldContent>
-    </Field>
+      </Field.Content>
+    </Field.Root>
     {/* Base UI renders these as a `<span>`, which neither the field context
         nor the native `<fieldset>` reaches outside a `Field`. */}
     <Checkbox aria-label="Monday" />
@@ -125,13 +113,13 @@ const controls = () => [
 
 const DateDialog = ({ disabled }: { disabled: boolean }) => (
   <Fieldset disabled={disabled}>
-    <ConfirmDialog>
-      <ConfirmDialogTrigger>Change</ConfirmDialogTrigger>
-      <ConfirmDialogContent>
-        <ConfirmDialogTitle>Change the date?</ConfirmDialogTitle>
-        <ConfirmDialogAction form="date-form">Save</ConfirmDialogAction>
-      </ConfirmDialogContent>
-    </ConfirmDialog>
+    <ConfirmDialog.Root>
+      <ConfirmDialog.Trigger>Change</ConfirmDialog.Trigger>
+      <ConfirmDialog.Content>
+        <ConfirmDialog.Title>Change the date?</ConfirmDialog.Title>
+        <ConfirmDialog.Action form="date-form">Save</ConfirmDialog.Action>
+      </ConfirmDialog.Content>
+    </ConfirmDialog.Root>
   </Fieldset>
 );
 

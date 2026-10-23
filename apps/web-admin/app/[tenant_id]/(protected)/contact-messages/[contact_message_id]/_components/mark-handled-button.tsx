@@ -1,9 +1,4 @@
-import {
-  ActionForm,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -26,19 +21,22 @@ export const MarkHandledButton = ({
   publicId,
   tenantId,
 }: MarkHandledButtonProps) => (
-  <ActionForm action={markContactMessageHandledAction} className="grid gap-1">
+  <ActionForm.Root
+    action={markContactMessageHandledAction}
+    className="grid gap-1"
+  >
     <input name="tenant_id" type="hidden" value={tenantId} />
     <input name="contact_message_id" type="hidden" value={contactMessageId} />
     <input name="public_id" type="hidden" value={publicId} />
-    <ActionFormSubmit>
+    <ActionForm.Submit>
       <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-        <ActionFormIdle>
+        <ActionForm.Idle>
           <Message message="admin.contact_messages.mark_handled" />
-        </ActionFormIdle>
-        <ActionFormPending>
+        </ActionForm.Idle>
+        <ActionForm.Pending>
           <Message message="admin.contact_messages.marking_handled" />
-        </ActionFormPending>
+        </ActionForm.Pending>
       </Suspense>
-    </ActionFormSubmit>
-  </ActionForm>
+    </ActionForm.Submit>
+  </ActionForm.Root>
 );

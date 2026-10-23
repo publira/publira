@@ -1,7 +1,7 @@
 "use server";
 
 import type { Locale } from "@publira/i18n";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
@@ -119,9 +119,9 @@ const withdrawCommentSchema = z.object({
  * they can see afterwards says so on its own.
  */
 export const postEpisodeCommentAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   // The locale field parses on its own — it throws rather than falling back —
   // so every answer below is worded in the reader's language, the rejections
@@ -175,9 +175,9 @@ export const postEpisodeCommentAction = async (
  * author too, which is what makes the control a deletion rather than a hide.
  */
 export const withdrawEpisodeCommentAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const submittedLocale = requireFormLocale(formData.get(LOCALE_FIELD_NAME));
   const parsed = withdrawCommentSchema.safeParse(
@@ -227,9 +227,9 @@ export const withdrawEpisodeCommentAction = async (
  * been.
  */
 export const reportEpisodeCommentAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const submittedLocale = requireFormLocale(formData.get(LOCALE_FIELD_NAME));
   const [t, schema] = await Promise.all([

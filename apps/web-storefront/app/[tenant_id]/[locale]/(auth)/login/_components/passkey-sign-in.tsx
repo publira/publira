@@ -1,6 +1,6 @@
 "use client";
 
-import { ActionForm } from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import {
   browserSupportsWebAuthn,
   browserSupportsWebAuthnAutofill,
@@ -134,10 +134,10 @@ const PasskeySignInForm = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <ActionForm action={signIn} showSuccess={false}>
+    <ActionForm.Root action={signIn} showSuccess={false}>
       <input name={CREDENTIAL_FIELD} ref={credentialRef} type="hidden" />
       {children}
-    </ActionForm>
+    </ActionForm.Root>
   );
 };
 

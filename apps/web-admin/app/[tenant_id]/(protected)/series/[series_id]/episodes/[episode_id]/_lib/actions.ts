@@ -2,7 +2,7 @@
 
 import { getLocales } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import { parseInstant, toInstantIsoString } from "@publira/utils";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -360,9 +360,9 @@ const deleteTranslationSchema = async (locale: Locale) => {
 };
 
 export const updateEpisodeTitleAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await titleFormSchema(locale);
@@ -419,9 +419,9 @@ export const updateEpisodeTitleAction = async (
  * translation the screen picks without one.
  */
 export const deleteEpisodeTranslationAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await deleteTranslationSchema(locale);
@@ -490,9 +490,9 @@ const pricingFormSchema = async (locale: Locale) => {
 };
 
 export const updateEpisodePricingAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await pricingFormSchema(locale);
@@ -587,9 +587,9 @@ const availabilityFormSchema = async (locale: Locale) => {
 };
 
 export const updateEpisodeAvailabilityAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await availabilityFormSchema(locale);
@@ -641,9 +641,9 @@ const purchaseAvailabilityFormSchema = async (locale: Locale) => {
 };
 
 export const updateEpisodePurchaseAvailabilityAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await purchaseAvailabilityFormSchema(locale);
@@ -715,9 +715,9 @@ const layoutFormSchema = async (locale: Locale) => {
 };
 
 export const updateEpisodeLayoutAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await layoutFormSchema(locale);
@@ -1063,9 +1063,9 @@ const deleteImageSchema = async (locale: Locale) => {
 };
 
 export const deleteEpisodeImageAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await deleteImageSchema(locale);
@@ -1151,9 +1151,9 @@ export const createEpisodeFreeWindowAction = async (
 };
 
 export const deleteEpisodeFreeWindowAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await deleteFreeWindowSchema(locale);
@@ -1255,9 +1255,9 @@ export const createEpisodeCampaignPriceAction = async (
 };
 
 export const deleteEpisodeCampaignPriceAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await deleteCampaignPriceSchema(locale);

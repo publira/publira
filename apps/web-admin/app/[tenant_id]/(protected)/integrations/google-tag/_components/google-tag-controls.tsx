@@ -1,6 +1,6 @@
 "use client";
 
-import { IdentifierCopy } from "@publira/ui-components/identifier";
+import * as Identifier from "@publira/ui-components/identifier";
 import { Input } from "@publira/ui-components/input";
 import { RadioGroup } from "@publira/ui-components/radio-group";
 import type { RadioGroupProps } from "@publira/ui-components/radio-group";
@@ -124,7 +124,7 @@ export const GatewayPathCopy = ({ value }: { value: string }) => {
   const t = useClientMessages();
 
   return (
-    <IdentifierCopy
+    <Identifier.Copy
       aria-label={t("admin.settings.google_tag.gateway_path_copy")}
       value={value}
     />

@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  ActionForm,
-  useActionFormSettled,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import { createContext, use, useState } from "react";
 import type { Dispatch, ReactNode } from "react";
@@ -61,16 +58,16 @@ export const PasskeyAddForm = ({ children }: { children: ReactNode }) => {
   );
 
   return (
-    <ActionForm action={add} className="grid gap-3" showSuccess={false}>
+    <ActionForm.Root action={add} className="grid gap-3" showSuccess={false}>
       {children}
-    </ActionForm>
+    </ActionForm.Root>
   );
 };
 
 /** Moves `PasskeyAddition` on to naming once the add form succeeds. */
 export const PasskeyAdded = () => {
   const setAdded = use(SetAddedPasskeyContext);
-  useActionFormSettled<NonNullable<PasskeyRegistrationState>>((state) => {
+  ActionForm.useSettled<NonNullable<PasskeyRegistrationState>>((state) => {
     if (state?.ok && state.passkeyId) {
       setAdded?.(state.passkeyId);
     }
@@ -87,7 +84,7 @@ export const AddedPasskeyIdInput = () => (
 /** Moves `PasskeyAddition` back to its add form once the name is saved. */
 export const PasskeyNamed = () => {
   const setAdded = use(SetAddedPasskeyContext);
-  useActionFormSettled((state) => {
+  ActionForm.useSettled((state) => {
     if (state?.ok) {
       setAdded?.("");
     }

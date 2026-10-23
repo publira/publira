@@ -1,9 +1,4 @@
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
@@ -68,18 +63,18 @@ const BrandingForms = async () => {
 
   if (!themeResult.ok) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="admin.branding.section_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>
+          </SectionError.Title>
+          <SectionError.Description>
             {themeResult.message}
-          </SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 

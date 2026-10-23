@@ -1,39 +1,9 @@
 import type { Locale } from "@publira/i18n";
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
-import {
-  ConfirmDialog,
-  ConfirmDialogAction,
-  ConfirmDialogCancel,
-  ConfirmDialogContent,
-  ConfirmDialogDescription,
-  ConfirmDialogFooter,
-  ConfirmDialogHeader,
-  ConfirmDialogTitle,
-  ConfirmDialogTrigger,
-  Dialog,
-  DialogBackdrop,
-  DialogClose,
-  DialogFooter,
-  DialogHeader,
-  DialogPopup,
-  DialogPortal,
-  DialogTitle,
-  DialogTrigger,
-  DialogViewport,
-} from "@publira/ui-components/dialog";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as ConfirmDialog from "@publira/ui-components/confirm-dialog";
+import * as Dialog from "@publira/ui-components/dialog";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
@@ -67,26 +37,26 @@ const PasskeyNameField = ({
   /** The form the field joins from a dialog's portal. */
   form?: string;
 }) => (
-  <Field>
-    <FieldLabel>
+  <Field.Root>
+    <Field.Label>
       <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
         <Message message="admin.settings.mfa.passkey_name_label" />
       </Suspense>
-    </FieldLabel>
-    <FieldContent>
+    </Field.Label>
+    <Field.Content>
       <Input
         autoComplete="off"
         defaultValue={defaultValue}
         form={form}
         name="name"
       />
-    </FieldContent>
-    <FieldDescription>
+    </Field.Content>
+    <Field.Description>
       <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
         <Message message="admin.settings.mfa.passkey_name_description" />
       </Suspense>
-    </FieldDescription>
-  </Field>
+    </Field.Description>
+  </Field.Root>
 );
 
 /**
@@ -106,7 +76,7 @@ const PasskeyRenameButton = ({
   const formId = useId();
 
   return (
-    <ActionForm
+    <ActionForm.Root
       action={renameAccountPasskeyAction}
       className="grid gap-1"
       id={formId}
@@ -115,54 +85,54 @@ const PasskeyRenameButton = ({
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="passkey_id" type="hidden" value={passkey.id} />
       <SettledToast />
-      <ActionFormFieldset className="grid">
-        <Dialog>
-          <DialogTrigger
+      <ActionForm.Fieldset className="grid">
+        <Dialog.Root>
+          <Dialog.Trigger
             render={<Button size="sm" type="button" variant="outline" />}
           >
             <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-              <ActionFormIdle>
+              <ActionForm.Idle>
                 <Message message="admin.settings.mfa.passkey_rename" />
-              </ActionFormIdle>
-              <ActionFormPending>
+              </ActionForm.Idle>
+              <ActionForm.Pending>
                 <Message message="admin.settings.mfa.passkey_name_submitting" />
-              </ActionFormPending>
+              </ActionForm.Pending>
             </Suspense>
-          </DialogTrigger>
-          <DialogPortal>
-            <DialogBackdrop />
-            <DialogViewport>
-              <DialogPopup>
-                <DialogHeader>
-                  <DialogTitle className="text-lg font-semibold">
+          </Dialog.Trigger>
+          <Dialog.Portal>
+            <Dialog.Backdrop />
+            <Dialog.Viewport>
+              <Dialog.Popup>
+                <Dialog.Header>
+                  <Dialog.Title className="text-lg font-semibold">
                     <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
                       <Message message="admin.settings.mfa.passkey_name_title" />
                     </Suspense>
-                  </DialogTitle>
-                </DialogHeader>
+                  </Dialog.Title>
+                </Dialog.Header>
                 <div className="mt-4">
                   <PasskeyNameField defaultValue={passkey.name} form={formId} />
                 </div>
-                <DialogFooter>
-                  <DialogClose
+                <Dialog.Footer>
+                  <Dialog.Close
                     render={<Button type="button" variant="outline" />}
                   >
                     <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                       <Message message="admin.common.cancel" />
                     </Suspense>
-                  </DialogClose>
-                  <DialogClose form={formId} render={<Button />} type="submit">
+                  </Dialog.Close>
+                  <Dialog.Close form={formId} render={<Button />} type="submit">
                     <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                       <Message message="admin.settings.mfa.passkey_name_submit" />
                     </Suspense>
-                  </DialogClose>
-                </DialogFooter>
-              </DialogPopup>
-            </DialogViewport>
-          </DialogPortal>
-        </Dialog>
-      </ActionFormFieldset>
-    </ActionForm>
+                  </Dialog.Close>
+                </Dialog.Footer>
+              </Dialog.Popup>
+            </Dialog.Viewport>
+          </Dialog.Portal>
+        </Dialog.Root>
+      </ActionForm.Fieldset>
+    </ActionForm.Root>
   );
 };
 
@@ -183,7 +153,7 @@ const PasskeyRemoveButton = ({
   const formId = useId();
 
   return (
-    <ActionForm
+    <ActionForm.Root
       action={deleteAccountPasskeyAction}
       className="grid gap-1"
       id={formId}
@@ -192,49 +162,49 @@ const PasskeyRemoveButton = ({
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="passkey_id" type="hidden" value={passkeyId} />
       <ReportMfaSettingsChange />
-      <ActionFormFieldset className="grid">
-        <ConfirmDialog>
-          <ConfirmDialogTrigger
+      <ActionForm.Fieldset className="grid">
+        <ConfirmDialog.Root>
+          <ConfirmDialog.Trigger
             render={<Button size="sm" type="button" variant="destructive" />}
           >
             <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-              <ActionFormIdle>
+              <ActionForm.Idle>
                 <Message message="admin.settings.mfa.passkey_remove" />
-              </ActionFormIdle>
-              <ActionFormPending>
+              </ActionForm.Idle>
+              <ActionForm.Pending>
                 <Message message="admin.settings.mfa.passkey_removing" />
-              </ActionFormPending>
+              </ActionForm.Pending>
             </Suspense>
-          </ConfirmDialogTrigger>
-          <ConfirmDialogContent>
-            <ConfirmDialogHeader>
-              <ConfirmDialogTitle>
+          </ConfirmDialog.Trigger>
+          <ConfirmDialog.Content>
+            <ConfirmDialog.Header>
+              <ConfirmDialog.Title>
                 <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
                   <Message message="admin.settings.mfa.passkey_remove_confirm_title" />
                 </Suspense>
-              </ConfirmDialogTitle>
-              <ConfirmDialogDescription>
+              </ConfirmDialog.Title>
+              <ConfirmDialog.Description>
                 <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
                   <Message message="admin.settings.mfa.passkey_remove_confirm_description" />
                 </Suspense>
-              </ConfirmDialogDescription>
-            </ConfirmDialogHeader>
-            <ConfirmDialogFooter>
-              <ConfirmDialogCancel>
+              </ConfirmDialog.Description>
+            </ConfirmDialog.Header>
+            <ConfirmDialog.Footer>
+              <ConfirmDialog.Cancel>
                 <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                   <Message message="admin.common.cancel" />
                 </Suspense>
-              </ConfirmDialogCancel>
-              <ConfirmDialogAction form={formId}>
+              </ConfirmDialog.Cancel>
+              <ConfirmDialog.Action form={formId}>
                 <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                   <Message message="admin.settings.mfa.passkey_remove_confirm_action" />
                 </Suspense>
-              </ConfirmDialogAction>
-            </ConfirmDialogFooter>
-          </ConfirmDialogContent>
-        </ConfirmDialog>
-      </ActionFormFieldset>
-    </ActionForm>
+              </ConfirmDialog.Action>
+            </ConfirmDialog.Footer>
+          </ConfirmDialog.Content>
+        </ConfirmDialog.Root>
+      </ActionForm.Fieldset>
+    </ActionForm.Root>
   );
 };
 
@@ -287,16 +257,16 @@ const PasskeyAddStep = ({ tenantId }: { tenantId: string }) => (
     <ReportMfaSettingsChange />
     <PasskeyAdded />
     <div className="flex justify-end">
-      <ActionFormSubmit variant="outline">
+      <ActionForm.Submit variant="outline">
         <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-          <ActionFormIdle>
+          <ActionForm.Idle>
             <Message message="admin.settings.mfa.passkey_add_submit" />
-          </ActionFormIdle>
-          <ActionFormPending>
+          </ActionForm.Idle>
+          <ActionForm.Pending>
             <Message message="admin.auth.mfa.passkey_waiting" />
-          </ActionFormPending>
+          </ActionForm.Pending>
         </Suspense>
-      </ActionFormSubmit>
+      </ActionForm.Submit>
     </div>
   </PasskeyAddForm>
 );
@@ -306,7 +276,7 @@ const PasskeyAddStep = ({ tenantId }: { tenantId: string }) => (
  * success is a toast rather than a message beside a form that is gone.
  */
 const PasskeyNameStep = ({ tenantId }: { tenantId: string }) => (
-  <ActionForm
+  <ActionForm.Root
     action={renameAccountPasskeyAction}
     className="grid gap-3"
     showSuccess={false}
@@ -327,18 +297,18 @@ const PasskeyNameStep = ({ tenantId }: { tenantId: string }) => (
           <Message message="admin.settings.mfa.passkey_name_skip" />
         </Suspense>
       </SkipPasskeyNaming>
-      <ActionFormSubmit variant="outline">
+      <ActionForm.Submit variant="outline">
         <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-          <ActionFormIdle>
+          <ActionForm.Idle>
             <Message message="admin.settings.mfa.passkey_name_submit" />
-          </ActionFormIdle>
-          <ActionFormPending>
+          </ActionForm.Idle>
+          <ActionForm.Pending>
             <Message message="admin.settings.mfa.passkey_name_submitting" />
-          </ActionFormPending>
+          </ActionForm.Pending>
         </Suspense>
-      </ActionFormSubmit>
+      </ActionForm.Submit>
     </div>
-  </ActionForm>
+  </ActionForm.Root>
 );
 
 /**
@@ -362,16 +332,16 @@ const PasskeyRegenerateStep = ({ tenantId }: { tenantId: string }) => (
       </p>
     </div>
     <div className="flex justify-end">
-      <ActionFormSubmit variant="outline">
+      <ActionForm.Submit variant="outline">
         <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-          <ActionFormIdle>
+          <ActionForm.Idle>
             <Message message="admin.settings.mfa.regenerate_passkey_submit" />
-          </ActionFormIdle>
-          <ActionFormPending>
+          </ActionForm.Idle>
+          <ActionForm.Pending>
             <Message message="admin.auth.mfa.passkey_waiting" />
-          </ActionFormPending>
+          </ActionForm.Pending>
         </Suspense>
-      </ActionFormSubmit>
+      </ActionForm.Submit>
     </div>
   </PasskeyRegenerateForm>
 );

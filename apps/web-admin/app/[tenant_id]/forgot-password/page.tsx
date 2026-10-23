@@ -11,7 +11,7 @@ import {
   AuthScreenTitle,
 } from "@publira/layouts/auth-screen";
 import { Button, LinkButton } from "@publira/ui-components/button";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
@@ -90,13 +90,13 @@ const ForgotPasswordPageContent = async ({
         <form action={requestPasswordResetAction} className="grid gap-4">
           <input name="tenant_id" type="hidden" value={tenantId} />
 
-          <Field>
-            <FieldLabel required>
+          <Field.Root>
+            <Field.Label required>
               <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
                 <Message message="admin.auth.fields.email_label" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <Input
                 autoComplete="email"
                 defaultValue={defaultEmail}
@@ -105,8 +105,8 @@ const ForgotPasswordPageContent = async ({
                 required
                 type="email"
               />
-            </FieldContent>
-          </Field>
+            </Field.Content>
+          </Field.Root>
 
           {errorMessage ? (
             <FormMessage variant="destructive">{errorMessage}</FormMessage>

@@ -1,15 +1,5 @@
 import { Button } from "@publira/ui-components/button";
-import {
-  ConfirmDialog,
-  ConfirmDialogAction,
-  ConfirmDialogCancel,
-  ConfirmDialogContent,
-  ConfirmDialogDescription,
-  ConfirmDialogFooter,
-  ConfirmDialogHeader,
-  ConfirmDialogTitle,
-  ConfirmDialogTrigger,
-} from "@publira/ui-components/dialog";
+import * as ConfirmDialog from "@publira/ui-components/confirm-dialog";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -65,37 +55,37 @@ export const PagePublishForm = ({
       />
       <input name="version_id" type="hidden" value={version.id} />
       {asksReadersToAgree ? (
-        <ConfirmDialog>
-          <ConfirmDialogTrigger
+        <ConfirmDialog.Root>
+          <ConfirmDialog.Trigger
             disabled={disabled}
             render={<Button type="button" variant="outline" />}
           >
             {label}
-          </ConfirmDialogTrigger>
-          <ConfirmDialogContent>
-            <ConfirmDialogHeader>
-              <ConfirmDialogTitle>
+          </ConfirmDialog.Trigger>
+          <ConfirmDialog.Content>
+            <ConfirmDialog.Header>
+              <ConfirmDialog.Title>
                 <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
                   <Message
                     message="admin.pages.workspace.publish_agreement.title"
                     values={{ version: `v${version.versionNumber}` }}
                   />
                 </Suspense>
-              </ConfirmDialogTitle>
-              <ConfirmDialogDescription>
+              </ConfirmDialog.Title>
+              <ConfirmDialog.Description>
                 <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
                   <Message message="admin.pages.workspace.publish_agreement.description" />
                 </Suspense>
-              </ConfirmDialogDescription>
-            </ConfirmDialogHeader>
+              </ConfirmDialog.Description>
+            </ConfirmDialog.Header>
             {/* Three buttons do not fit the dialog's width in a row, so they stack, the choice that asks on top. */}
-            <ConfirmDialogFooter className="sm:flex-col-reverse">
-              <ConfirmDialogCancel>
+            <ConfirmDialog.Footer className="sm:flex-col-reverse">
+              <ConfirmDialog.Cancel>
                 <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                   <Message message="admin.common.cancel" />
                 </Suspense>
-              </ConfirmDialogCancel>
-              <ConfirmDialogAction
+              </ConfirmDialog.Cancel>
+              <ConfirmDialog.Action
                 form={formId}
                 name="require_agreement"
                 value="false"
@@ -104,8 +94,8 @@ export const PagePublishForm = ({
                 <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
                   <Message message="admin.pages.workspace.publish_agreement.correction" />
                 </Suspense>
-              </ConfirmDialogAction>
-              <ConfirmDialogAction
+              </ConfirmDialog.Action>
+              <ConfirmDialog.Action
                 form={formId}
                 name="require_agreement"
                 value="true"
@@ -114,10 +104,10 @@ export const PagePublishForm = ({
                 <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                   <Message message="admin.pages.workspace.publish_agreement.require" />
                 </Suspense>
-              </ConfirmDialogAction>
-            </ConfirmDialogFooter>
-          </ConfirmDialogContent>
-        </ConfirmDialog>
+              </ConfirmDialog.Action>
+            </ConfirmDialog.Footer>
+          </ConfirmDialog.Content>
+        </ConfirmDialog.Root>
       ) : (
         <Button disabled={disabled} type="submit" variant="outline">
           {label}

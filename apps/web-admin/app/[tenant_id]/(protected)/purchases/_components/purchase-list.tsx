@@ -1,25 +1,9 @@
 import type { Locale } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import { formatDateTime } from "@publira/utils";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -89,16 +73,18 @@ export const PurchaseList = async ({
 
   if (listErrorMessage) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="admin.purchases.list_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{listErrorMessage}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>
+            {listErrorMessage}
+          </SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
@@ -122,18 +108,18 @@ export const PurchaseList = async ({
           hasPageLinks={hasPageLinks}
           itemLabel={t("admin.purchases.item_label")}
         >
-          <EmptyStateHeading>
-            <EmptyStateTitle>
+          <EmptyState.Heading>
+            <EmptyState.Title>
               <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
                 <Message message="admin.purchases.empty_title" />
               </Suspense>
-            </EmptyStateTitle>
-            <EmptyStateDescription>
+            </EmptyState.Title>
+            <EmptyState.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
                 <Message message="admin.purchases.empty_description" />
               </Suspense>
-            </EmptyStateDescription>
-          </EmptyStateHeading>
+            </EmptyState.Description>
+          </EmptyState.Heading>
         </CursorPageEmptyState>
         {hasPageLinks ? pagination : null}
       </div>
@@ -142,58 +128,58 @@ export const PurchaseList = async ({
 
   return (
     <div className="grid gap-6">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-44">
+      <Table.Root>
+        <Table.Header>
+          <Table.Row>
+            <Table.Head className="w-44">
               <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                 <Message message="admin.purchases.columns.purchased_at" />
               </Suspense>
-            </TableHead>
-            <TableHead>
+            </Table.Head>
+            <Table.Head>
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                 <Message message="admin.purchases.columns.reader" />
               </Suspense>
-            </TableHead>
-            <TableHead>
+            </Table.Head>
+            <Table.Head>
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                 <Message message="admin.purchases.columns.item" />
               </Suspense>
-            </TableHead>
-            <TableHead className="w-28 text-right">
+            </Table.Head>
+            <Table.Head className="w-28 text-right">
               <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                 <Message message="admin.purchases.columns.amount" />
               </Suspense>
-            </TableHead>
-            <TableHead className="w-32">
+            </Table.Head>
+            <Table.Head className="w-32">
               <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                 <Message message="admin.purchases.columns.paid_through" />
               </Suspense>
-            </TableHead>
-            <TableHead className="w-40">
+            </Table.Head>
+            <Table.Head className="w-40">
               <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                 <Message message="admin.purchases.columns.status" />
               </Suspense>
-            </TableHead>
-            <TableHead className="w-24">
+            </Table.Head>
+            <Table.Head className="w-24">
               <span className="sr-only">
                 <Suspense fallback={null}>
                   <Message message="admin.purchases.columns.actions" />
                 </Suspense>
               </span>
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
+            </Table.Head>
+          </Table.Row>
+        </Table.Header>
+        <Table.Body>
           {purchases.map((purchase) => (
-            <TableRow key={purchase.id}>
-              <TableCell className="tabular-nums">
+            <Table.Row key={purchase.id}>
+              <Table.Cell className="tabular-nums">
                 {formatDateTime(purchase.purchasedAt, { locale, timeZone })}
-              </TableCell>
-              <TableCell>
+              </Table.Cell>
+              <Table.Cell>
                 <ReaderCell purchase={purchase} />
-              </TableCell>
-              <TableCell>
+              </Table.Cell>
+              <Table.Cell>
                 <div className="grid gap-0.5">
                   <span className="font-medium">
                     {purchasedItemLabel(purchase, t)}
@@ -202,23 +188,23 @@ export const PurchaseList = async ({
                     {purchase.seriesTitle || purchase.seriesPublicId}
                   </span>
                 </div>
-              </TableCell>
-              <TableCell className="text-right tabular-nums">
+              </Table.Cell>
+              <Table.Cell className="text-right tabular-nums">
                 {formatTenantAmount(purchase.price, {
                   currency: readCurrency(purchase.currency),
                   locale,
                 })}
-              </TableCell>
-              <TableCell>
+              </Table.Cell>
+              <Table.Cell>
                 <PurchasePaidThrough
                   providerNames={providerNames}
                   purchase={purchase}
                 />
-              </TableCell>
-              <TableCell>
+              </Table.Cell>
+              <Table.Cell>
                 <PurchaseStatusChip now={now} purchase={purchase} />
-              </TableCell>
-              <TableCell>
+              </Table.Cell>
+              <Table.Cell>
                 <LinkButton
                   aria-label={t("admin.purchases.view_aria", {
                     item: purchasedItemLabel(purchase, t),
@@ -237,11 +223,11 @@ export const PurchaseList = async ({
                     <Message message="admin.common.view_action" />
                   </Suspense>
                 </LinkButton>
-              </TableCell>
-            </TableRow>
+              </Table.Cell>
+            </Table.Row>
           ))}
-        </TableBody>
-      </Table>
+        </Table.Body>
+      </Table.Root>
 
       {pagination}
     </div>

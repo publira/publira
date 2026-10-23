@@ -1,8 +1,8 @@
 "use client";
 
 import type { DragEndEvent } from "@dnd-kit/react";
-import type { FormActionState } from "@publira/ui-components/action-form";
-import { useToastManager } from "@publira/ui-components/toast";
+import type * as ActionForm from "@publira/ui-components/action-form";
+import * as Toast from "@publira/ui-components/toast";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useOptimistic, useTransition } from "react";
@@ -28,9 +28,9 @@ interface EpisodeImagesSortableGridProps {
    */
   canEdit: boolean;
   deleteAction: (
-    prevState: FormActionState,
+    prevState: ActionForm.State,
     formData: FormData
-  ) => Promise<FormActionState>;
+  ) => Promise<ActionForm.State>;
   seriesPublicId: string;
   episodeId: string;
   episodePublicId: string;
@@ -54,7 +54,7 @@ export const EpisodeImagesSortableGrid = ({
   const t = useClientMessages();
   const tenantId = useTenantId();
   const router = useRouter();
-  const { add } = useToastManager();
+  const { add } = Toast.useManager();
   const [isPending, startTransition] = useTransition();
   const [optimisticItems, setOptimisticItems] = useOptimistic(
     images,

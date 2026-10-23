@@ -3,7 +3,7 @@ import { getLocaleLabel, isLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { Badge } from "@publira/ui-components/badge";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { TableCell } from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import { formatDateTime } from "@publira/utils";
 import { Suspense } from "react";
 
@@ -885,9 +885,9 @@ export const AuditLogDateCell = ({
   locale,
   timeZone,
 }: AuditLogDateCellProps) => (
-  <TableCell className="text-sm text-muted-foreground">
+  <Table.Cell className="text-sm text-muted-foreground">
     {formatDateTime(createdAt, { fallback: "-", locale, timeZone })}
-  </TableCell>
+  </Table.Cell>
 );
 
 export const AuditLogActorCell = async ({
@@ -899,7 +899,7 @@ export const AuditLogActorCell = async ({
   const t = await getMessagesFor(locale);
 
   return (
-    <TableCell>
+    <Table.Cell>
       <div className="font-medium">
         {actorName || t("admin.audit.actor_unnamed")}
       </div>
@@ -907,7 +907,7 @@ export const AuditLogActorCell = async ({
         {actorUserPublicId || t("admin.audit.actor_id_unknown")}
         {actorRole ? ` / ${await getTenantRoleLabel(actorRole, locale)}` : ""}
       </div>
-    </TableCell>
+    </Table.Cell>
   );
 };
 
@@ -923,7 +923,7 @@ export const AuditLogActionCell = async ({
   const reasonLabel = auditReasonLabel(action, reason, locale, t);
 
   return (
-    <TableCell>
+    <Table.Cell>
       <div className="font-medium">
         <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
           {actionName(action) ?? (
@@ -951,7 +951,7 @@ export const AuditLogActionCell = async ({
           {reasonLabel ? ` / ${reasonLabel}` : ""}
         </div>
       )}
-    </TableCell>
+    </Table.Cell>
   );
 };
 
@@ -962,12 +962,12 @@ export const AuditLogOutcomeCell = async ({
   const t = await getMessagesFor(locale);
 
   return (
-    <TableCell>
+    <Table.Cell>
       <Badge tone={outcomeToneMap[outcome]}>
         {outcome === "failure" && t("admin.audit.outcome.failure")}
         {outcome === "success" && t("admin.audit.outcome.success")}
         {outcome === "unknown" && t("admin.audit.outcome.unknown")}
       </Badge>
-    </TableCell>
+    </Table.Cell>
   );
 };

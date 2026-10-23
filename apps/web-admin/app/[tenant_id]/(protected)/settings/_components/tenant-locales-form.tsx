@@ -1,10 +1,4 @@
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -56,18 +50,18 @@ export const TenantLocalesForm = ({
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>
-      <ActionForm
+      <ActionForm.Root
         action={updateTenantLocalesAction}
         className="grid gap-4 sm:max-w-lg"
       >
         <input name="tenant_id" type="hidden" value={tenantId} />
 
-        <ActionFormFieldset className="grid gap-4" disabled={fieldsDisabled}>
+        <ActionForm.Fieldset className="grid gap-4" disabled={fieldsDisabled}>
           <TenantLocalesFields
             initialDefaultLocale={initialLocales?.defaultLocale}
             initialSupportedLocales={initialLocales?.supportedLocales}
           />
-        </ActionFormFieldset>
+        </ActionForm.Fieldset>
 
         {canEdit ? null : (
           <FormMessage variant="destructive">
@@ -89,18 +83,18 @@ export const TenantLocalesForm = ({
         ) : null}
 
         <div className="mt-2 flex justify-end gap-2">
-          <ActionFormSubmit disabled={fieldsDisabled}>
+          <ActionForm.Submit disabled={fieldsDisabled}>
             <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-              <ActionFormIdle>
+              <ActionForm.Idle>
                 <Message message="admin.settings.locales.submit" />
-              </ActionFormIdle>
-              <ActionFormPending>
+              </ActionForm.Idle>
+              <ActionForm.Pending>
                 <Message message="admin.settings.saving" />
-              </ActionFormPending>
+              </ActionForm.Pending>
             </Suspense>
-          </ActionFormSubmit>
+          </ActionForm.Submit>
         </div>
-      </ActionForm>
+      </ActionForm.Root>
     </AdminSection>
   );
 };

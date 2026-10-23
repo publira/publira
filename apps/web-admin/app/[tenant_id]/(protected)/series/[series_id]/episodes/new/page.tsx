@@ -1,10 +1,5 @@
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   createPlaceholderStaticParams,
@@ -125,16 +120,16 @@ const NewEpisodeFormData = async ({
       notFound();
     }
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Message message="admin.series.detail_error" />
-          </SectionErrorTitle>
-          <SectionErrorDescription>
+          </SectionError.Title>
+          <SectionError.Description>
             {seriesResult.message}
-          </SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
@@ -142,13 +137,13 @@ const NewEpisodeFormData = async ({
   // waits for the tenant's.
   if (!currency) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Message message="admin.series.episodes.currency_unavailable" />
-          </SectionErrorTitle>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 

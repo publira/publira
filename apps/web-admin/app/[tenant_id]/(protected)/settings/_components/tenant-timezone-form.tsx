@@ -1,21 +1,6 @@
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import {
-  ComboboxEmpty,
-  ComboboxItems,
-  ComboboxPopup,
-} from "@publira/ui-components/combobox";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Combobox from "@publira/ui-components/combobox";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -60,41 +45,41 @@ export const TenantTimezoneForm = ({
         </AdminSectionDescription>
       </AdminSectionHeading>
     </AdminSectionHeader>
-    <ActionForm
+    <ActionForm.Root
       action={updateTenantTimezoneAction}
       className="grid gap-4 sm:max-w-lg"
     >
       <input name="tenant_id" type="hidden" value={tenantId} />
 
-      <ActionFormFieldset>
-        <Field>
-          <FieldLabel>
+      <ActionForm.Fieldset>
+        <Field.Root>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
               <Message message="admin.settings.timezone.label" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <TenantTimezoneCombobox
               disabled={!canEdit}
               initialTimezone={initialTimezone}
             >
-              <ComboboxPopup>
-                <ComboboxEmpty>
+              <Combobox.Popup>
+                <Combobox.Empty>
                   <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                     <Message message="admin.settings.timezone.empty" />
                   </Suspense>
-                </ComboboxEmpty>
-                <ComboboxItems />
-              </ComboboxPopup>
+                </Combobox.Empty>
+                <Combobox.Items />
+              </Combobox.Popup>
             </TenantTimezoneCombobox>
-            <FieldDescription>
+            <Field.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                 <Message message="admin.settings.timezone.field_description" />
               </Suspense>
-            </FieldDescription>
-          </FieldContent>
-        </Field>
-      </ActionFormFieldset>
+            </Field.Description>
+          </Field.Content>
+        </Field.Root>
+      </ActionForm.Fieldset>
 
       {canEdit ? null : (
         <FormMessage variant="destructive">
@@ -109,17 +94,17 @@ export const TenantTimezoneForm = ({
       ) : null}
 
       <div className="mt-2 flex justify-end gap-2">
-        <ActionFormSubmit disabled={!canEdit}>
+        <ActionForm.Submit disabled={!canEdit}>
           <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-            <ActionFormIdle>
+            <ActionForm.Idle>
               <Message message="admin.settings.timezone.submit" />
-            </ActionFormIdle>
-            <ActionFormPending>
+            </ActionForm.Idle>
+            <ActionForm.Pending>
               <Message message="admin.settings.saving" />
-            </ActionFormPending>
+            </ActionForm.Pending>
           </Suspense>
-        </ActionFormSubmit>
+        </ActionForm.Submit>
       </div>
-    </ActionForm>
+    </ActionForm.Root>
   </AdminSection>
 );

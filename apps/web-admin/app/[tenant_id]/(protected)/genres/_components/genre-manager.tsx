@@ -1,16 +1,6 @@
 import type { Locale } from "@publira/i18n";
-import {
-  EmptyState,
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -59,25 +49,29 @@ const GenreListBody = async ({
   // error would read as "this tenant has no genres".
   if (listErrorMessage) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>{t("admin.genres.list_error")}</SectionErrorTitle>
-          <SectionErrorDescription>{listErrorMessage}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
+            {t("admin.genres.list_error")}
+          </SectionError.Title>
+          <SectionError.Description>
+            {listErrorMessage}
+          </SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
   if (genres.length === 0) {
     return (
-      <EmptyState>
-        <EmptyStateHeading>
-          <EmptyStateTitle>{t("admin.genres.empty_title")}</EmptyStateTitle>
-          <EmptyStateDescription>
+      <EmptyState.Root>
+        <EmptyState.Heading>
+          <EmptyState.Title>{t("admin.genres.empty_title")}</EmptyState.Title>
+          <EmptyState.Description>
             {t("admin.genres.empty_description")}
-          </EmptyStateDescription>
-        </EmptyStateHeading>
-      </EmptyState>
+          </EmptyState.Description>
+        </EmptyState.Heading>
+      </EmptyState.Root>
     );
   }
 

@@ -1,17 +1,11 @@
 export {
-  Combobox,
-  ComboboxEmpty,
-  ComboboxInput,
-  ComboboxItems,
-  ComboboxPopup,
+  Combobox as Root,
+  ComboboxEmpty as Empty,
+  ComboboxInput as Input,
+  ComboboxItems as Items,
+  ComboboxPopup as Popup,
 } from "./combobox";
-export type { ComboboxItem, ComboboxProps } from "./combobox";
-export {
-  MultiCombobox,
-  MultiComboboxChip,
-  MultiComboboxChipRemove,
-  MultiComboboxChips,
-  MultiComboboxInput,
-  MultiComboboxInputGroup,
-} from "./multi-combobox";
-export type { MultiComboboxItem, MultiComboboxProps } from "./multi-combobox";
+export type {
+  ComboboxItem as Item,
+  ComboboxProps as RootProps,
+} from "./combobox";

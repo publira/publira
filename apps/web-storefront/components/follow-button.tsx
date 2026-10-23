@@ -1,4 +1,4 @@
-import { ActionForm } from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { LinkButton } from "@publira/ui-components/button";
 import { Skeleton } from "@publira/ui-components/skeleton";
 import Link from "next/link";
@@ -44,8 +44,8 @@ export const FollowLoginLink = ({
  * ```tsx
  * <FollowButton isFollowing={…} returnTo={…} targetId={…} targetKind="series" tenantId={…}>
  *   <FollowButtonFollow aria-label={t("storefront.follow.follow_aria", { name })}>
- *     <ActionFormIdle>…</ActionFormIdle>
- *     <ActionFormPending>…</ActionFormPending>
+ *     <ActionForm.Idle>…</ActionForm.Idle>
+ *     <ActionForm.Pending>…</ActionForm.Pending>
  *   </FollowButtonFollow>
  *   <FollowButtonUnfollow aria-label={t("storefront.follow.unfollow_aria", { name })}>
  *     …
@@ -70,7 +70,7 @@ export const FollowButton = ({
   targetKind: FollowTargetKind;
   tenantId: string;
 }) => (
-  <ActionForm
+  <ActionForm.Root
     action={toggleFollowAction}
     className="grid justify-items-start gap-2"
   >
@@ -80,5 +80,5 @@ export const FollowButton = ({
     <input name="targetKind" type="hidden" value={targetKind} />
     <input name="tenantId" type="hidden" value={tenantId} />
     <FollowButtonState isFollowing={isFollowing}>{children}</FollowButtonState>
-  </ActionForm>
+  </ActionForm.Root>
 );

@@ -5,7 +5,11 @@ The components used to show a loading state.
 ## Usage
 
 ```tsx
-import { Skeleton, SkeletonCard, SkeletonText } from "@publira/ui-components";
+import {
+  Skeleton,
+  SkeletonCard,
+  SkeletonText,
+} from "@publira/ui-components/skeleton";
 
 export default function Example() {
   return (

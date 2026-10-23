@@ -1,13 +1,5 @@
-import {
-  EmptyState,
-  EmptyStateDescription,
-} from "@publira/ui-components/empty-state";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -76,28 +68,28 @@ export const RecommendedSeriesSection = async () => {
 
   if (!result.ok) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="storefront.my.recommended_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{result.message}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
   if (result.value.length === 0) {
     return (
-      <EmptyState>
-        <EmptyStateDescription>
+      <EmptyState.Root>
+        <EmptyState.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
             <Message message="storefront.my.recommended_empty" />
           </Suspense>
-        </EmptyStateDescription>
-      </EmptyState>
+        </EmptyState.Description>
+      </EmptyState.Root>
     );
   }
 
@@ -116,28 +108,28 @@ export const RecommendedCreatorsSection = async () => {
 
   if (!result.ok) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="storefront.my.creators_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{result.message}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
   if (result.value.length === 0) {
     return (
-      <EmptyState>
-        <EmptyStateDescription>
+      <EmptyState.Root>
+        <EmptyState.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
             <Message message="storefront.my.creators_empty" />
           </Suspense>
-        </EmptyStateDescription>
-      </EmptyState>
+        </EmptyState.Description>
+      </EmptyState.Root>
     );
   }
 

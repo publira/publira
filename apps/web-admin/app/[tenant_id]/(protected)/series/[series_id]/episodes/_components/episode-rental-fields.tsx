@@ -1,9 +1,4 @@
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -39,13 +34,13 @@ export const EpisodeRentalFields = ({
   initialRentalPeriodHours,
 }: EpisodeRentalFieldsProps) => (
   <>
-    <Field>
-      <FieldLabel>
+    <Field.Root>
+      <Field.Label>
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
           <Message message="admin.series.episodes.form.rental_price" />
         </Suspense>
-      </FieldLabel>
-      <FieldContent>
+      </Field.Label>
+      <Field.Content>
         <Input
           defaultValue={
             initialRentalPrice > 0
@@ -58,24 +53,24 @@ export const EpisodeRentalFields = ({
           step={priceInputStep(currency)}
           type="number"
         />
-        <FieldDescription>
+        <Field.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
             <Message
               message="admin.series.episodes.form.rental_price_description"
               values={{ currency }}
             />
           </Suspense>
-        </FieldDescription>
-      </FieldContent>
-    </Field>
+        </Field.Description>
+      </Field.Content>
+    </Field.Root>
 
-    <Field>
-      <FieldLabel>
+    <Field.Root>
+      <Field.Label>
         <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
           <Message message="admin.series.episodes.form.rental_period" />
         </Suspense>
-      </FieldLabel>
-      <FieldContent>
+      </Field.Label>
+      <Field.Content>
         <Input
           defaultValue={
             initialRentalPeriodHours > 0 ? initialRentalPeriodHours : ""
@@ -85,12 +80,12 @@ export const EpisodeRentalFields = ({
           name="rental_period_hours"
           type="number"
         />
-        <FieldDescription>
+        <Field.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
             <Message message="admin.series.episodes.form.rental_period_description" />
           </Suspense>
-        </FieldDescription>
-      </FieldContent>
-    </Field>
+        </Field.Description>
+      </Field.Content>
+    </Field.Root>
   </>
 );

@@ -3,12 +3,8 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { Field, FieldContent, FieldLabel } from "../field/field";
-import {
-  PasswordInput,
-  PasswordInputControl,
-  PasswordInputToggle,
-} from "./password-input";
+import * as PasswordInput from ".";
+import * as Field from "../field";
 
 afterEach(() => {
   cleanup();
@@ -18,19 +14,19 @@ afterEach(() => {
 const renderPasswordInput = () =>
   render(
     <form>
-      <Field>
-        <FieldLabel>Password</FieldLabel>
-        <FieldContent>
-          <PasswordInput>
-            <PasswordInputControl
+      <Field.Root>
+        <Field.Label>Password</Field.Label>
+        <Field.Content>
+          <PasswordInput.Root>
+            <PasswordInput.Control
               autoComplete="new-password"
               name="password"
               required
             />
-            <PasswordInputToggle>Show password</PasswordInputToggle>
-          </PasswordInput>
-        </FieldContent>
-      </Field>
+            <PasswordInput.Toggle>Show password</PasswordInput.Toggle>
+          </PasswordInput.Root>
+        </Field.Content>
+      </Field.Root>
     </form>
   );
 
@@ -128,10 +124,10 @@ describe("PasswordInput", () => {
     render(
       <>
         <label htmlFor="currentPassword">Current password</label>
-        <PasswordInput>
-          <PasswordInputControl id="currentPassword" />
-          <PasswordInputToggle>Show password</PasswordInputToggle>
-        </PasswordInput>
+        <PasswordInput.Root>
+          <PasswordInput.Control id="currentPassword" />
+          <PasswordInput.Toggle>Show password</PasswordInput.Toggle>
+        </PasswordInput.Root>
       </>
     );
 
@@ -143,14 +139,14 @@ describe("PasswordInput", () => {
   it("reveals each field on its own", () => {
     render(
       <>
-        <PasswordInput>
-          <PasswordInputControl aria-label="New password" />
-          <PasswordInputToggle>Show new password</PasswordInputToggle>
-        </PasswordInput>
-        <PasswordInput>
-          <PasswordInputControl aria-label="Confirm password" />
-          <PasswordInputToggle>Show confirmation</PasswordInputToggle>
-        </PasswordInput>
+        <PasswordInput.Root>
+          <PasswordInput.Control aria-label="New password" />
+          <PasswordInput.Toggle>Show new password</PasswordInput.Toggle>
+        </PasswordInput.Root>
+        <PasswordInput.Root>
+          <PasswordInput.Control aria-label="Confirm password" />
+          <PasswordInput.Toggle>Show confirmation</PasswordInput.Toggle>
+        </PasswordInput.Root>
       </>
     );
 

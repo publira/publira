@@ -1,26 +1,10 @@
 import type { Locale } from "@publira/i18n";
 import type { BadgeTone } from "@publira/ui-components/badge";
 import { StatusChip } from "@publira/ui-components/badge";
-import {
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import { formatDateTime } from "@publira/utils";
 import { Suspense } from "react";
 
@@ -118,75 +102,77 @@ const TicketListBody = ({
 }) => {
   if (listErrorMessage) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="admin.access_tickets.list_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{listErrorMessage}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>
+            {listErrorMessage}
+          </SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
   if (tickets.length === 0) {
     return (
       <CursorPageEmptyState hasPageLinks={hasPageLinks} itemLabel={itemLabel}>
-        <EmptyStateHeading>
-          <EmptyStateTitle>{emptyTitle}</EmptyStateTitle>
-          <EmptyStateDescription>{emptyDescription}</EmptyStateDescription>
-        </EmptyStateHeading>
+        <EmptyState.Heading>
+          <EmptyState.Title>{emptyTitle}</EmptyState.Title>
+          <EmptyState.Description>{emptyDescription}</EmptyState.Description>
+        </EmptyState.Heading>
       </CursorPageEmptyState>
     );
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-40">
+    <Table.Root>
+      <Table.Header>
+        <Table.Row>
+          <Table.Head className="w-40">
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.access_tickets.columns.status" />
             </Suspense>
-          </TableHead>
-          <TableHead>
+          </Table.Head>
+          <Table.Head>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.access_tickets.columns.user" />
             </Suspense>
-          </TableHead>
-          <TableHead>
+          </Table.Head>
+          <Table.Head>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.access_tickets.columns.episode" />
             </Suspense>
-          </TableHead>
-          <TableHead className="min-w-40">
+          </Table.Head>
+          <Table.Head className="min-w-40">
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.access_tickets.columns.note" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-44">
+          </Table.Head>
+          <Table.Head className="w-44">
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.access_tickets.columns.expires_at" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-44">
+          </Table.Head>
+          <Table.Head className="w-44">
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.access_tickets.columns.created_at" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-28">
+          </Table.Head>
+          <Table.Head className="w-28">
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.access_tickets.columns.actions" />
             </Suspense>
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
+          </Table.Head>
+        </Table.Row>
+      </Table.Header>
+      <Table.Body>
         {tickets.map((ticket) => (
-          <TableRow key={ticket.publicId}>
-            <TableCell>
+          <Table.Row key={ticket.publicId}>
+            <Table.Cell>
               <div className="grid gap-1">
                 <StatusChip status={statusTone(ticket.status)}>
                   <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
@@ -213,8 +199,8 @@ const TicketListBody = ({
                   </span>
                 ) : null}
               </div>
-            </TableCell>
-            <TableCell>
+            </Table.Cell>
+            <Table.Cell>
               <div className="grid gap-0.5">
                 <span className="font-medium">
                   {ticket.userName || ticket.userPublicId}
@@ -223,8 +209,8 @@ const TicketListBody = ({
                   {ticket.userEmail || ticket.userPublicId}
                 </span>
               </div>
-            </TableCell>
-            <TableCell>
+            </Table.Cell>
+            <Table.Cell>
               <div className="grid gap-0.5">
                 <span className="font-medium">
                   {ticket.episodeTitle || ticket.episodePublicId}
@@ -235,31 +221,31 @@ const TicketListBody = ({
                     : ticket.episodePublicId}
                 </span>
               </div>
-            </TableCell>
-            <TableCell>
+            </Table.Cell>
+            <Table.Cell>
               {ticket.note ? (
                 <span className="line-clamp-2 text-sm">{ticket.note}</span>
               ) : (
                 <span className="text-sm text-muted-foreground">—</span>
               )}
-            </TableCell>
-            <TableCell>
+            </Table.Cell>
+            <Table.Cell>
               {formatTicketDateTime(ticket.expiresAt, locale, timeZone)}
-            </TableCell>
-            <TableCell>
+            </Table.Cell>
+            <Table.Cell>
               {formatTicketDateTime(ticket.createdAt, locale, timeZone)}
-            </TableCell>
-            <TableCell>
+            </Table.Cell>
+            <Table.Cell>
               {ticket.status === "active" ? (
                 <RevokeTicketButton tenantId={tenantId} ticketId={ticket.id} />
               ) : (
                 <span className="text-sm text-muted-foreground">—</span>
               )}
-            </TableCell>
-          </TableRow>
+            </Table.Cell>
+          </Table.Row>
         ))}
-      </TableBody>
-    </Table>
+      </Table.Body>
+    </Table.Root>
   );
 };
 

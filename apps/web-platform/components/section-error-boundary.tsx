@@ -1,15 +1,5 @@
-import {
-  SectionError,
-  SectionErrorActions,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
-import {
-  SectionErrorCatch,
-  SectionErrorDigest,
-  SectionErrorRetry,
-} from "@publira/ui-components/section-error-fallback";
+import * as SectionError from "@publira/ui-components/section-error";
+import * as SectionErrorCatch from "@publira/ui-components/section-error-fallback";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
@@ -43,32 +33,32 @@ export const SectionErrorBoundary = ({
   children,
   title,
 }: SectionErrorBoundaryProps) => (
-  <SectionErrorCatch
+  <SectionErrorCatch.Root
     fallback={
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>{title}</SectionErrorTitle>
-          <SectionErrorDescription>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>{title}</SectionError.Title>
+          <SectionError.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
               <Message message="platform.common.retry_later" />
             </Suspense>
-          </SectionErrorDescription>
-        </SectionErrorHeading>
-        <SectionErrorActions>
-          <SectionErrorRetry>
+          </SectionError.Description>
+        </SectionError.Heading>
+        <SectionError.Actions>
+          <SectionErrorCatch.Retry>
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
               <Message message="platform.common.retry" />
             </Suspense>
-          </SectionErrorRetry>
-        </SectionErrorActions>
-        <SectionErrorDigest>
+          </SectionErrorCatch.Retry>
+        </SectionError.Actions>
+        <SectionErrorCatch.Digest>
           <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
             <Message message="platform.common.error_id" />
           </Suspense>
-        </SectionErrorDigest>
-      </SectionError>
+        </SectionErrorCatch.Digest>
+      </SectionError.Root>
     }
   >
     {children}
-  </SectionErrorCatch>
+  </SectionErrorCatch.Root>
 );

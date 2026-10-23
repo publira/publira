@@ -1,25 +1,9 @@
 import type { Locale } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -75,16 +59,18 @@ const CreatorListBody = async ({
   // list state alongside the error or operators will read it as "no creators".
   if (listErrorMessage) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="admin.creators.list_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{listErrorMessage}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>
+            {listErrorMessage}
+          </SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
@@ -96,46 +82,46 @@ const CreatorListBody = async ({
         hasPageLinks={hasPageLinks}
         itemLabel={t("admin.creators.title")}
       >
-        <EmptyStateHeading>
-          <EmptyStateTitle>{t("admin.creators.empty_title")}</EmptyStateTitle>
-          <EmptyStateDescription>
+        <EmptyState.Heading>
+          <EmptyState.Title>{t("admin.creators.empty_title")}</EmptyState.Title>
+          <EmptyState.Description>
             {t("admin.creators.empty_description")}
-          </EmptyStateDescription>
-        </EmptyStateHeading>
+          </EmptyState.Description>
+        </EmptyState.Heading>
       </CursorPageEmptyState>
     );
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-24">
+    <Table.Root>
+      <Table.Header>
+        <Table.Row>
+          <Table.Head className="w-24">
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.creators.columns.image" />
             </Suspense>
-          </TableHead>
-          <TableHead>
+          </Table.Head>
+          <Table.Head>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.creators.columns.name" />
             </Suspense>
-          </TableHead>
-          <TableHead>
+          </Table.Head>
+          <Table.Head>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.creators.columns.profile" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-56">
+          </Table.Head>
+          <Table.Head className="w-56">
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.creators.columns.actions" />
             </Suspense>
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
+          </Table.Head>
+        </Table.Row>
+      </Table.Header>
+      <Table.Body>
         {creators.map((creator) => (
-          <TableRow key={creator.publicId}>
-            <TableCell>
+          <Table.Row key={creator.publicId}>
+            <Table.Cell>
               {creator.iconImageUrl ? (
                 <Image
                   alt={t("admin.creators.icon_alt", {
@@ -153,10 +139,10 @@ const CreatorListBody = async ({
                   </Suspense>
                 </span>
               )}
-            </TableCell>
-            <TableCell className="font-medium">{creator.name}</TableCell>
-            <TableCell>{excerpt(creator.profileText)}</TableCell>
-            <TableCell>
+            </Table.Cell>
+            <Table.Cell className="font-medium">{creator.name}</Table.Cell>
+            <Table.Cell>{excerpt(creator.profileText)}</Table.Cell>
+            <Table.Cell>
               <div className="flex flex-wrap gap-2">
                 <LinkButton
                   render={<Link href={`/creators/${creator.publicId}`} />}
@@ -171,11 +157,11 @@ const CreatorListBody = async ({
                   </Suspense>
                 </LinkButton>
               </div>
-            </TableCell>
-          </TableRow>
+            </Table.Cell>
+          </Table.Row>
         ))}
-      </TableBody>
-    </Table>
+      </Table.Body>
+    </Table.Root>
   );
 };
 

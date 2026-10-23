@@ -8,12 +8,7 @@ import {
   AuthScreenTagline,
   AuthScreenTitle,
 } from "@publira/layouts/auth-screen";
-import {
-  ActionForm,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -80,7 +75,7 @@ const ContinueSignUpPage = () => (
           </Suspense>
         </AuthScreenNote>
 
-        <ActionForm action={continueSignUpAction} className="grid gap-4">
+        <ActionForm.Root action={continueSignUpAction} className="grid gap-4">
           <LocaleField />
           <TenantIdField />
 
@@ -92,19 +87,19 @@ const ContinueSignUpPage = () => (
             <ConsentField />
           </Suspense>
 
-          <ActionFormSubmit className="justify-self-start">
-            <ActionFormIdle>
+          <ActionForm.Submit className="justify-self-start">
+            <ActionForm.Idle>
               <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                 <Message message="storefront.auth.social.continue.submit" />
               </Suspense>
-            </ActionFormIdle>
-            <ActionFormPending>
+            </ActionForm.Idle>
+            <ActionForm.Pending>
               <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                 <Message message="storefront.auth.signup.submitting" />
               </Suspense>
-            </ActionFormPending>
-          </ActionFormSubmit>
-        </ActionForm>
+            </ActionForm.Pending>
+          </ActionForm.Submit>
+        </ActionForm.Root>
       </AuthScreenBody>
 
       <AuthScreenFooter>

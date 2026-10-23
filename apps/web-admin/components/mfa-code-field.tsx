@@ -1,10 +1,5 @@
-import { ActionFormFieldset } from "@publira/ui-components/action-form";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -81,9 +76,9 @@ const MfaCodeHelp = ({ accepts }: MfaCodeFieldProps) => {
  * making four call sites pass the same label and hint.
  */
 export const MfaCodeField = ({ accepts }: MfaCodeFieldProps) => (
-  <ActionFormFieldset>
-    <Field>
-      <FieldLabel required>
+  <ActionForm.Fieldset>
+    <Field.Root>
+      <Field.Label required>
         <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
           {accepts === "recovery" ? (
             <Message message="admin.auth.mfa.recovery_code_label" />
@@ -91,17 +86,17 @@ export const MfaCodeField = ({ accepts }: MfaCodeFieldProps) => (
             <Message message="admin.auth.mfa.code_label" />
           )}
         </Suspense>
-      </FieldLabel>
-      <FieldContent>
+      </Field.Label>
+      <Field.Content>
         <Suspense fallback={<Skeleton className="h-9 w-full" />}>
           <MfaCodeInput accepts={accepts} />
         </Suspense>
-        <FieldDescription>
+        <Field.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
             <MfaCodeHelp accepts={accepts} />
           </Suspense>
-        </FieldDescription>
-      </FieldContent>
-    </Field>
-  </ActionFormFieldset>
+        </Field.Description>
+      </Field.Content>
+    </Field.Root>
+  </ActionForm.Fieldset>
 );

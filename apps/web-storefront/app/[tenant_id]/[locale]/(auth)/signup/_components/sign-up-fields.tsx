@@ -1,9 +1,4 @@
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 
 import { LegalPagesConsentField } from "#components/legal-pages-consent-field";
@@ -37,15 +32,15 @@ export const BirthDateField = async () => {
   }
 
   return (
-    <Field>
-      <FieldLabel>{t("storefront.auth.signup.birth_date_label")}</FieldLabel>
-      <FieldContent>
+    <Field.Root>
+      <Field.Label>{t("storefront.auth.signup.birth_date_label")}</Field.Label>
+      <Field.Content>
         <Input autoComplete="bday" name="birthDate" type="date" />
-        <FieldDescription>
+        <Field.Description>
           {t("storefront.auth.signup.birth_date_help")}
-        </FieldDescription>
-      </FieldContent>
-    </Field>
+        </Field.Description>
+      </Field.Content>
+    </Field.Root>
   );
 };
 

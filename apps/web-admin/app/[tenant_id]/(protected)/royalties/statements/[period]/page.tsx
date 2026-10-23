@@ -1,18 +1,8 @@
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
-import {
-  SectionError,
-  SectionErrorActions,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import { TableSkeleton } from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import { formatDateTime, formatPlainYearMonth } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
@@ -110,7 +100,7 @@ const StatementSkeleton = () => (
     </AdminSection>
     <AdminSection>
       <SkeletonLine className="h-5 w-32" />
-      <TableSkeleton />
+      <Table.Skeleton />
     </AdminSection>
   </AdminSections>
 );
@@ -146,16 +136,16 @@ const StatementContent = async ({
     await redirectToLoginIfSessionRejected(result);
 
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="admin.royalties.statement.section_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{result.message}</SectionErrorDescription>
-        </SectionErrorHeading>
-        <SectionErrorActions>
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+        <SectionError.Actions>
           <LinkButton
             render={<Link href="/royalties/statements" />}
             variant="outline"
@@ -164,8 +154,8 @@ const StatementContent = async ({
               <Message message="admin.royalties.statement.back_to_list" />
             </Suspense>
           </LinkButton>
-        </SectionErrorActions>
-      </SectionError>
+        </SectionError.Actions>
+      </SectionError.Root>
     );
   }
 
@@ -244,18 +234,18 @@ const StatementContent = async ({
             hasPageLinks={hasPageLinks}
             itemLabel={t("admin.royalties.statement.item_label")}
           >
-            <EmptyStateHeading>
-              <EmptyStateTitle>
+            <EmptyState.Heading>
+              <EmptyState.Title>
                 <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
                   <Message message="admin.royalties.lines.empty_title" />
                 </Suspense>
-              </EmptyStateTitle>
-              <EmptyStateDescription>
+              </EmptyState.Title>
+              <EmptyState.Description>
                 <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
                   <Message message="admin.royalties.lines.empty_description" />
                 </Suspense>
-              </EmptyStateDescription>
-            </EmptyStateHeading>
+              </EmptyState.Description>
+            </EmptyState.Heading>
           </CursorPageEmptyState>
         ) : (
           <RoyaltyLinesTable

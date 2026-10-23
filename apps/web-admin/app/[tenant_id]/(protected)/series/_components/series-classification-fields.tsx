@@ -4,19 +4,8 @@ import { toIntlLocale } from "@publira/i18n";
 import { CloseIcon } from "@publira/icons";
 import { Button } from "@publira/ui-components/button";
 import { Checkbox } from "@publira/ui-components/checkbox";
-import {
-  ComboboxEmpty,
-  ComboboxItems,
-  ComboboxPopup,
-  MultiCombobox,
-  MultiComboboxChip,
-  MultiComboboxChipRemove,
-  MultiComboboxChips,
-  MultiComboboxInput,
-  MultiComboboxInputGroup,
-} from "@publira/ui-components/combobox";
-import type { MultiComboboxItem } from "@publira/ui-components/combobox";
 import { Input } from "@publira/ui-components/input";
+import * as MultiCombobox from "@publira/ui-components/multi-combobox";
 import { Select } from "@publira/ui-components/select";
 import { formatWeekdayName, WEEKDAY_NUMBERS } from "@publira/utils";
 import {
@@ -265,7 +254,7 @@ export const SeriesGenreCombobox = ({
   const [value, setValue] = useState(initialValue);
   // The tenant's own order, which is the order a series presents them in; only
   // the option list is built here.
-  const items = useMemo<MultiComboboxItem[]>(
+  const items = useMemo<MultiCombobox.Item[]>(
     () => genres.map((genre) => ({ label: genre.name, value: genre.id })),
     [genres]
   );
@@ -273,20 +262,24 @@ export const SeriesGenreCombobox = ({
   return (
     <>
       {items.length === 0 ? null : (
-        <MultiCombobox items={items} onValueChange={setValue} value={value}>
-          <MultiComboboxInputGroup>
-            <MultiComboboxChips>
+        <MultiCombobox.Root
+          items={items}
+          onValueChange={setValue}
+          value={value}
+        >
+          <MultiCombobox.InputGroup>
+            <MultiCombobox.Chips>
               {(selected) => (
                 <>
                   {selected.map((item) => (
-                    <MultiComboboxChip item={item} key={item.value}>
+                    <MultiCombobox.Chip item={item} key={item.value}>
                       {item.label}
-                      <MultiComboboxChipRemove
+                      <MultiCombobox.ChipRemove
                         aria-label={t("admin.series.form.genres_remove")}
                       />
-                    </MultiComboboxChip>
+                    </MultiCombobox.Chip>
                   ))}
-                  <MultiComboboxInput
+                  <MultiCombobox.Input
                     placeholder={
                       selected.length > 0
                         ? ""
@@ -295,15 +288,15 @@ export const SeriesGenreCombobox = ({
                   />
                 </>
               )}
-            </MultiComboboxChips>
-          </MultiComboboxInputGroup>
-          <ComboboxPopup>
-            <ComboboxEmpty>
+            </MultiCombobox.Chips>
+          </MultiCombobox.InputGroup>
+          <MultiCombobox.Popup>
+            <MultiCombobox.Empty>
               <ClientMessage message="admin.series.form.genres_no_match" />
-            </ComboboxEmpty>
-            <ComboboxItems />
-          </ComboboxPopup>
-        </MultiCombobox>
+            </MultiCombobox.Empty>
+            <MultiCombobox.Items />
+          </MultiCombobox.Popup>
+        </MultiCombobox.Root>
       )}
 
       {value.map((id) => (

@@ -5,25 +5,18 @@ The card components. A card is made up of the container itself, a header, a titl
 ## Usage
 
 ```tsx
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from "@publira/ui-components";
+import * as Card from "@publira/ui-components/card";
 
 export default function Example() {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Card Title</CardTitle>
-        <CardDescription>Card description</CardDescription>
-      </CardHeader>
-      <CardContent>Card content goes here</CardContent>
-      <CardFooter>Footer content</CardFooter>
-    </Card>
+    <Card.Root>
+      <Card.Header>
+        <Card.Title>Card Title</Card.Title>
+        <Card.Description>Card description</Card.Description>
+      </Card.Header>
+      <Card.Content>Card content goes here</Card.Content>
+      <Card.Footer>Footer content</Card.Footer>
+    </Card.Root>
   );
 }
 ```
@@ -31,21 +24,14 @@ export default function Example() {
 ## Subpath import
 
 ```tsx
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from "@publira/ui-components/card";
+import * as Card from "@publira/ui-components/card";
 ```
 
 ## Components
 
-- `Card` - The container for the whole card
-- `CardHeader` - The header area
-- `CardTitle` - The title
-- `CardDescription` - The description
-- `CardContent` - The main content
-- `CardFooter` - The footer area
+- `Card.Root` - The container for the whole card
+- `Card.Header` - The header area
+- `Card.Title` - The title
+- `Card.Description` - The description
+- `Card.Content` - The main content
+- `Card.Footer` - The footer area

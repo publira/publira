@@ -1,9 +1,4 @@
-import {
-  ActionForm,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -40,7 +35,7 @@ export const CommentActionButton = ({
   commentId,
   tenantId,
 }: CommentActionButtonProps) => (
-  <ActionForm
+  <ActionForm.Root
     action={action === "approve" ? approveCommentAction : restoreCommentAction}
     className="grid gap-1"
     showSuccess={false}
@@ -48,31 +43,31 @@ export const CommentActionButton = ({
     <input name="tenant_id" type="hidden" value={tenantId} />
     <input name="comment_id" type="hidden" value={commentId} />
     <SettledToast />
-    <ActionFormSubmit
+    <ActionForm.Submit
       size="sm"
       variant={action === "approve" ? "default" : "outline"}
     >
       <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
         {action === "approve" ? (
           <>
-            <ActionFormIdle>
+            <ActionForm.Idle>
               <Message message="admin.comments.approve" />
-            </ActionFormIdle>
-            <ActionFormPending>
+            </ActionForm.Idle>
+            <ActionForm.Pending>
               <Message message="admin.comments.approving" />
-            </ActionFormPending>
+            </ActionForm.Pending>
           </>
         ) : (
           <>
-            <ActionFormIdle>
+            <ActionForm.Idle>
               <Message message="admin.comments.restore" />
-            </ActionFormIdle>
-            <ActionFormPending>
+            </ActionForm.Idle>
+            <ActionForm.Pending>
               <Message message="admin.comments.restoring" />
-            </ActionFormPending>
+            </ActionForm.Pending>
           </>
         )}
       </Suspense>
-    </ActionFormSubmit>
-  </ActionForm>
+    </ActionForm.Submit>
+  </ActionForm.Root>
 );

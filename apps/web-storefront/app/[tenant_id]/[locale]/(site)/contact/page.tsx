@@ -1,15 +1,5 @@
-import {
-  ActionForm,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -48,13 +38,13 @@ const ReplyToEmailField = async () => {
   const me = await getMe(tenantId);
 
   return (
-    <Field>
-      <FieldLabel required>
+    <Field.Root>
+      <Field.Label required>
         <Suspense fallback={<SkeletonLine className="h-4 w-36" />}>
           <Message message="storefront.contact.email_label" />
         </Suspense>
-      </FieldLabel>
-      <FieldContent>
+      </Field.Label>
+      <Field.Content>
         <RetainedInput
           autoComplete="email"
           defaultValue={me?.email ?? ""}
@@ -63,13 +53,13 @@ const ReplyToEmailField = async () => {
           required
           type="email"
         />
-        <FieldDescription>
+        <Field.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
             <Message message="storefront.contact.email_help" />
           </Suspense>
-        </FieldDescription>
-      </FieldContent>
-    </Field>
+        </Field.Description>
+      </Field.Content>
+    </Field.Root>
   );
 };
 
@@ -97,7 +87,7 @@ const ContactPage = () => (
       </p>
     </header>
 
-    <ActionForm action={submitContactMessageAction} className="grid gap-4">
+    <ActionForm.Root action={submitContactMessageAction} className="grid gap-4">
       <LocaleField />
       <TenantIdField />
 
@@ -105,43 +95,43 @@ const ContactPage = () => (
         <ReplyToEmailField />
       </Suspense>
 
-      <Field>
-        <FieldLabel>
+      <Field.Root>
+        <Field.Label>
           <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
             <Message message="storefront.contact.subject_label" />
           </Suspense>
-        </FieldLabel>
-        <FieldContent>
+        </Field.Label>
+        <Field.Content>
           <RetainedInput name="subject" type="text" />
-        </FieldContent>
-      </Field>
+        </Field.Content>
+      </Field.Root>
 
-      <Field>
-        <FieldLabel required>
+      <Field.Root>
+        <Field.Label required>
           <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
             <Message message="storefront.contact.body_label" />
           </Suspense>
-        </FieldLabel>
-        <FieldContent>
+        </Field.Label>
+        <Field.Content>
           {/* No `maxLength`: it counts UTF-16 code units, while the API counts
               Unicode code points. The Action checks the real limit. */}
           <RetainedTextarea name="body" required rows={8} />
-        </FieldContent>
-      </Field>
+        </Field.Content>
+      </Field.Root>
 
-      <ActionFormSubmit className="justify-self-start">
-        <ActionFormIdle>
+      <ActionForm.Submit className="justify-self-start">
+        <ActionForm.Idle>
           <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
             <Message message="storefront.contact.submit" />
           </Suspense>
-        </ActionFormIdle>
-        <ActionFormPending>
+        </ActionForm.Idle>
+        <ActionForm.Pending>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="storefront.contact.submitting" />
           </Suspense>
-        </ActionFormPending>
-      </ActionFormSubmit>
-    </ActionForm>
+        </ActionForm.Pending>
+      </ActionForm.Submit>
+    </ActionForm.Root>
   </div>
 );
 

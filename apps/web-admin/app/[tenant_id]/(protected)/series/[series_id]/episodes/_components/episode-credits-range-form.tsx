@@ -2,8 +2,8 @@
 
 import { toIntlLocale } from "@publira/i18n";
 import { Button } from "@publira/ui-components/button";
-import type { ComboboxItem } from "@publira/ui-components/combobox";
-import { DialogClose } from "@publira/ui-components/dialog";
+import type * as Combobox from "@publira/ui-components/combobox";
+import * as Dialog from "@publira/ui-components/dialog";
 import { useActionState, useCallback, useMemo, useState } from "react";
 
 import { useAdminLocale } from "#components/admin-locale-context";
@@ -207,7 +207,7 @@ export const EpisodeCreditsRangeForm = ({
   const [to, setTo] = useState(() => emptyPair(creatorRoles));
   const [shareText, setShareText] = useState("");
 
-  const creatorItems = useMemo<ComboboxItem[]>(
+  const creatorItems = useMemo<Combobox.Item[]>(
     () =>
       creators
         .map((creator) => ({ label: creator.name, value: creator.id }))
@@ -216,7 +216,7 @@ export const EpisodeCreditsRangeForm = ({
         ),
     [creators, locale]
   );
-  const roleItems = useMemo<ComboboxItem[]>(
+  const roleItems = useMemo<Combobox.Item[]>(
     () =>
       creatorRoles.map((role) => ({
         label: role.name,
@@ -273,7 +273,7 @@ export const EpisodeCreditsRangeForm = ({
           <EpisodeCreditsRangeResult episodes={episodes} result={state} />
         </EpisodeCreditsRangeBody>
         <EpisodeCreditsRangeFooter>
-          <DialogClose
+          <Dialog.Close
             render={
               <Button type="button" variant="outline">
                 {t("admin.series.episodes.credits.close")}

@@ -1,31 +1,9 @@
-import {
-  ActionForm,
-  ActionFormFieldError,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
-import {
-  ConfirmDialog,
-  ConfirmDialogAction,
-  ConfirmDialogCancel,
-  ConfirmDialogContent,
-  ConfirmDialogDescription,
-  ConfirmDialogFooter,
-  ConfirmDialogHeader,
-  ConfirmDialogTitle,
-  ConfirmDialogTrigger,
-} from "@publira/ui-components/dialog";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as ConfirmDialog from "@publira/ui-components/confirm-dialog";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { Identifier, IdentifierValue } from "@publira/ui-components/identifier";
+import * as Identifier from "@publira/ui-components/identifier";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -66,39 +44,39 @@ const GatewayPath = ({ gatewayPath }: { gatewayPath: string }) => {
   const path = `/${gatewayPath}`;
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <Identifier>
-        <IdentifierValue>{path}</IdentifierValue>
+      <Identifier.Root>
+        <Identifier.Value>{path}</Identifier.Value>
         <GatewayPathCopy value={path} />
-      </Identifier>
-      <ActionFormFieldset>
-        <ConfirmDialog>
-          <ConfirmDialogTrigger
+      </Identifier.Root>
+      <ActionForm.Fieldset>
+        <ConfirmDialog.Root>
+          <ConfirmDialog.Trigger
             render={<Button size="sm" type="button" variant="outline" />}
           >
             <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
               <Message message="admin.settings.google_tag.gateway_path_regenerate" />
             </Suspense>
-          </ConfirmDialogTrigger>
-          <ConfirmDialogContent>
-            <ConfirmDialogHeader>
-              <ConfirmDialogTitle>
+          </ConfirmDialog.Trigger>
+          <ConfirmDialog.Content>
+            <ConfirmDialog.Header>
+              <ConfirmDialog.Title>
                 <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
                   <Message message="admin.settings.google_tag.gateway_path_regenerate_title" />
                 </Suspense>
-              </ConfirmDialogTitle>
-              <ConfirmDialogDescription>
+              </ConfirmDialog.Title>
+              <ConfirmDialog.Description>
                 <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
                   <Message message="admin.settings.google_tag.gateway_path_regenerate_description" />
                 </Suspense>
-              </ConfirmDialogDescription>
-            </ConfirmDialogHeader>
-            <ConfirmDialogFooter>
-              <ConfirmDialogCancel>
+              </ConfirmDialog.Description>
+            </ConfirmDialog.Header>
+            <ConfirmDialog.Footer>
+              <ConfirmDialog.Cancel>
                 <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                   <Message message="admin.common.cancel" />
                 </Suspense>
-              </ConfirmDialogCancel>
-              <ConfirmDialogAction
+              </ConfirmDialog.Cancel>
+              <ConfirmDialog.Action
                 form={FORM_ID}
                 name="regenerate_gateway_path"
                 value="on"
@@ -106,11 +84,11 @@ const GatewayPath = ({ gatewayPath }: { gatewayPath: string }) => {
                 <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                   <Message message="admin.settings.google_tag.gateway_path_regenerate_action" />
                 </Suspense>
-              </ConfirmDialogAction>
-            </ConfirmDialogFooter>
-          </ConfirmDialogContent>
-        </ConfirmDialog>
-      </ActionFormFieldset>
+              </ConfirmDialog.Action>
+            </ConfirmDialog.Footer>
+          </ConfirmDialog.Content>
+        </ConfirmDialog.Root>
+      </ActionForm.Fieldset>
     </div>
   );
 };
@@ -141,7 +119,7 @@ export const GoogleTagForm = ({
         </AdminSectionHeading>
       </AdminSectionHeader>
       <div className="grid gap-8 xl:grid-cols-[minmax(0,48rem)_minmax(0,1fr)] xl:items-start">
-        <ActionForm
+        <ActionForm.Root
           action={updateGoogleTagAction}
           className="grid gap-6"
           id={FORM_ID}
@@ -157,14 +135,14 @@ export const GoogleTagForm = ({
               initialServingMode={settings.servingMode}
               key={JSON.stringify(settings)}
             >
-              <ActionFormFieldset className="grid gap-6">
-                <Field>
-                  <FieldLabel>
+              <ActionForm.Fieldset className="grid gap-6">
+                <Field.Root>
+                  <Field.Label>
                     <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                       <Message message="admin.settings.google_tag.measurement_id" />
                     </Suspense>
-                  </FieldLabel>
-                  <FieldContent>
+                  </Field.Label>
+                  <Field.Content>
                     <Input
                       autoCapitalize="characters"
                       autoComplete="off"
@@ -174,23 +152,23 @@ export const GoogleTagForm = ({
                       spellCheck={false}
                       type="text"
                     />
-                    <ActionFormFieldError name="ga4MeasurementId" />
-                    <FieldDescription>
+                    <ActionForm.FieldError name="ga4MeasurementId" />
+                    <Field.Description>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-3/4" />}
                       >
                         <Message message="admin.settings.google_tag.measurement_id_description" />
                       </Suspense>
-                    </FieldDescription>
-                  </FieldContent>
-                </Field>
-                <Field>
-                  <FieldLabel>
+                    </Field.Description>
+                  </Field.Content>
+                </Field.Root>
+                <Field.Root>
+                  <Field.Label>
                     <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                       <Message message="admin.settings.google_tag.container_id" />
                     </Suspense>
-                  </FieldLabel>
-                  <FieldContent>
+                  </Field.Label>
+                  <Field.Content>
                     <Input
                       autoCapitalize="characters"
                       autoComplete="off"
@@ -200,23 +178,23 @@ export const GoogleTagForm = ({
                       spellCheck={false}
                       type="text"
                     />
-                    <ActionFormFieldError name="gtmContainerId" />
-                    <FieldDescription>
+                    <ActionForm.FieldError name="gtmContainerId" />
+                    <Field.Description>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-3/4" />}
                       >
                         <Message message="admin.settings.google_tag.container_id_description" />
                       </Suspense>
-                    </FieldDescription>
-                  </FieldContent>
-                </Field>
-                <Field>
-                  <FieldLabel>
+                    </Field.Description>
+                  </Field.Content>
+                </Field.Root>
+                <Field.Root>
+                  <Field.Label>
                     <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                       <Message message="admin.settings.google_tag.serving_mode" />
                     </Suspense>
-                  </FieldLabel>
-                  <FieldContent>
+                  </Field.Label>
+                  <Field.Content>
                     <GoogleTagModeRadioGroup
                       items={[
                         {
@@ -272,68 +250,68 @@ export const GoogleTagForm = ({
                         },
                       ]}
                     />
-                    <ActionFormFieldError name="servingMode" />
-                  </FieldContent>
-                </Field>
+                    <ActionForm.FieldError name="servingMode" />
+                  </Field.Content>
+                </Field.Root>
 
                 <GoogleTagModeWhile mode="server_container">
-                  <Field>
-                    <FieldLabel required>
+                  <Field.Root>
+                    <Field.Label required>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-40" />}
                       >
                         <Message message="admin.settings.google_tag.server_container_url" />
                       </Suspense>
-                    </FieldLabel>
-                    <FieldContent>
+                    </Field.Label>
+                    <Field.Content>
                       <ServerContainerUrlInput />
-                      <ActionFormFieldError name="serverContainerUrl" />
-                      <FieldDescription>
+                      <ActionForm.FieldError name="serverContainerUrl" />
+                      <Field.Description>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-3/4" />}
                         >
                           <Message message="admin.settings.google_tag.server_container_url_description" />
                         </Suspense>
-                      </FieldDescription>
-                    </FieldContent>
-                  </Field>
+                      </Field.Description>
+                    </Field.Content>
+                  </Field.Root>
                 </GoogleTagModeWhile>
-              </ActionFormFieldset>
+              </ActionForm.Fieldset>
 
               <GoogleTagModeWhile mode="gateway">
                 <div className="grid gap-6">
                   {/* Registered in Google Tag Manager rather than typed here,
                       so they sit outside the fields a save submits. */}
-                  <Field>
-                    <FieldLabel>
+                  <Field.Root>
+                    <Field.Label>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-28" />}
                       >
                         <Message message="admin.settings.google_tag.gateway_path" />
                       </Suspense>
-                    </FieldLabel>
-                    <FieldContent>
+                    </Field.Label>
+                    <Field.Content>
                       <GatewayPath gatewayPath={settings.gatewayPath} />
-                      <FieldDescription>
+                      <Field.Description>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-3/4" />}
                         >
                           <Message message="admin.settings.google_tag.gateway_path_description" />
                         </Suspense>
-                      </FieldDescription>
-                    </FieldContent>
-                  </Field>
-                  <Field>
-                    <FieldLabel>
+                      </Field.Description>
+                    </Field.Content>
+                  </Field.Root>
+                  <Field.Root>
+                    <Field.Label>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-16" />}
                       >
                         <Message message="admin.settings.google_tag.gateway_tag_id" />
                       </Suspense>
-                    </FieldLabel>
-                    <FieldContent>
+                    </Field.Label>
+                    <Field.Content>
                       {tagId ? (
-                        <IdentifierValue>{tagId}</IdentifierValue>
+                        <Identifier.Value>{tagId}</Identifier.Value>
                       ) : (
                         <p className="text-sm text-muted-foreground">
                           <Suspense
@@ -343,37 +321,37 @@ export const GoogleTagForm = ({
                           </Suspense>
                         </p>
                       )}
-                      <FieldDescription>
+                      <Field.Description>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-3/4" />}
                         >
                           <Message message="admin.settings.google_tag.gateway_tag_id_description" />
                         </Suspense>
-                      </FieldDescription>
-                    </FieldContent>
-                  </Field>
-                  <ActionFormFieldset>
-                    <Field>
-                      <FieldLabel>
+                      </Field.Description>
+                    </Field.Content>
+                  </Field.Root>
+                  <ActionForm.Fieldset>
+                    <Field.Root>
+                      <Field.Label>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-40" />}
                         >
                           <Message message="admin.settings.google_tag.server_container_url" />
                         </Suspense>
-                      </FieldLabel>
-                      <FieldContent>
+                      </Field.Label>
+                      <Field.Content>
                         <ServerContainerUrlInput />
-                        <ActionFormFieldError name="serverContainerUrl" />
-                        <FieldDescription>
+                        <ActionForm.FieldError name="serverContainerUrl" />
+                        <Field.Description>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-3/4" />}
                           >
                             <Message message="admin.settings.google_tag.gateway_server_container_url_description" />
                           </Suspense>
-                        </FieldDescription>
-                      </FieldContent>
-                    </Field>
-                  </ActionFormFieldset>
+                        </Field.Description>
+                      </Field.Content>
+                    </Field.Root>
+                  </ActionForm.Fieldset>
                 </div>
               </GoogleTagModeWhile>
             </GoogleTagModeScope>
@@ -384,18 +362,18 @@ export const GoogleTagForm = ({
           ) : null}
 
           <div className="flex flex-wrap gap-3">
-            <ActionFormSubmit disabled={settings === undefined}>
+            <ActionForm.Submit disabled={settings === undefined}>
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-                <ActionFormIdle>
+                <ActionForm.Idle>
                   <Message message="admin.settings.google_tag.submit" />
-                </ActionFormIdle>
-                <ActionFormPending>
+                </ActionForm.Idle>
+                <ActionForm.Pending>
                   <Message message="admin.settings.saving" />
-                </ActionFormPending>
+                </ActionForm.Pending>
               </Suspense>
-            </ActionFormSubmit>
+            </ActionForm.Submit>
           </div>
-        </ActionForm>
+        </ActionForm.Root>
         <aside className="grid gap-3">
           <h2 className="text-sm font-semibold text-foreground">
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>

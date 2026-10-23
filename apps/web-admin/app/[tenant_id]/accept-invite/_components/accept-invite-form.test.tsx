@@ -4,7 +4,7 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import {
   cleanup,
   fireEvent,
@@ -17,7 +17,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { AcceptInviteForm } from "./accept-invite-form";
 
 const { save } = vi.hoisted(() => ({
-  save: { current: Promise.withResolvers<FormActionState>() },
+  save: { current: Promise.withResolvers<ActionForm.State>() },
 }));
 
 vi.mock("../_lib/actions", () => ({
@@ -37,18 +37,17 @@ vi.mock("#components/message", () => ({
 // The real field is an async Server Component, which a client render cannot
 // run; the same control without its catalog placeholder stands in for it.
 vi.mock("./name-field", async () => {
-  const { Field, FieldContent, FieldLabel } =
-    await import("@publira/ui-components/field");
+  const Field = await import("@publira/ui-components/field");
   const { Input } = await import("@publira/ui-components/input");
 
   return {
     NameField: () => (
-      <Field>
-        <FieldLabel>Full name</FieldLabel>
-        <FieldContent>
+      <Field.Root>
+        <Field.Label>Full name</Field.Label>
+        <Field.Content>
           <Input name="name" type="text" />
-        </FieldContent>
-      </Field>
+        </Field.Content>
+      </Field.Root>
     ),
   };
 });
@@ -61,7 +60,7 @@ const fields = () => [
 
 afterEach(() => {
   cleanup();
-  save.current = Promise.withResolvers<FormActionState>();
+  save.current = Promise.withResolvers<ActionForm.State>();
 });
 
 describe("AcceptInviteForm", () => {

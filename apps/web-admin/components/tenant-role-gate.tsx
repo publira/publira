@@ -1,7 +1,7 @@
 import { Fieldset } from "@publira/ui-components/fieldset";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { TableSkeleton } from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
@@ -32,7 +32,7 @@ export const TenantRoleRouteSkeleton = () => (
       <SkeletonLine className="h-7 w-32" />
       <SkeletonLine className="h-4 w-80" />
     </div>
-    <TableSkeleton />
+    <Table.Skeleton />
   </div>
 );
 

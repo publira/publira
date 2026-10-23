@@ -4,7 +4,7 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import {
   cleanup,
   fireEvent,
@@ -39,9 +39,9 @@ const storedSettings: SeriesWaitFreeSettings = {
 
 const renderForm = (
   action: (
-    prevState: FormActionState,
+    prevState: ActionForm.State,
     formData: FormData
-  ) => Promise<FormActionState>,
+  ) => Promise<ActionForm.State>,
   initialSettings: SeriesWaitFreeSettings = storedSettings
 ) =>
   render(
@@ -91,8 +91,8 @@ describe("SeriesWaitFreeForm", () => {
   });
 
   it("posts the whole rule with the series it belongs to", async () => {
-    const action = vi.fn((_prevState: FormActionState, _formData: FormData) =>
-      Promise.resolve<FormActionState>(null)
+    const action = vi.fn((_prevState: ActionForm.State, _formData: FormData) =>
+      Promise.resolve<ActionForm.State>(null)
     );
     renderForm(action);
 
@@ -116,8 +116,8 @@ describe("SeriesWaitFreeForm", () => {
   // Turning the rule off saves it off and keeps the numbers, which the API
   // stores for the next time it is turned on.
   it("posts no switch value once the rule is turned off", async () => {
-    const action = vi.fn((_prevState: FormActionState, _formData: FormData) =>
-      Promise.resolve<FormActionState>(null)
+    const action = vi.fn((_prevState: ActionForm.State, _formData: FormData) =>
+      Promise.resolve<ActionForm.State>(null)
     );
     renderForm(action);
 

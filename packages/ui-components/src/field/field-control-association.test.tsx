@@ -16,28 +16,15 @@ import {
   vi,
 } from "vitest";
 
+import * as Field from ".";
 import { Checkbox } from "../checkbox/checkbox";
-import {
-  Combobox,
-  ComboboxEmpty,
-  ComboboxInput,
-  ComboboxItems,
-  ComboboxPopup,
-} from "../combobox/combobox";
-import {
-  MultiCombobox,
-  MultiComboboxChip,
-  MultiComboboxChipRemove,
-  MultiComboboxChips,
-  MultiComboboxInput,
-  MultiComboboxInputGroup,
-} from "../combobox/multi-combobox";
+import * as Combobox from "../combobox";
 import { Input } from "../input/input";
+import * as MultiCombobox from "../multi-combobox";
 import { RadioGroup } from "../radio-group/radio-group";
 import { Select } from "../select/select";
 import { Switch } from "../switch/switch";
 import { Textarea } from "../textarea/textarea";
-import { Field, FieldDescription, FieldLabel } from "./field";
 
 const comboItems = [{ label: "Apple", value: "apple" }] as const;
 const selectItems = [{ label: "Option A", value: "a" }] as const;
@@ -88,13 +75,18 @@ const StatefulCombobox = ({ id }: { id?: string }) => {
   const [value, setValue] = useState("");
 
   return (
-    <Combobox id={id} items={comboItems} onValueChange={setValue} value={value}>
-      <ComboboxInput />
-      <ComboboxPopup>
-        <ComboboxEmpty>No matching items.</ComboboxEmpty>
-        <ComboboxItems />
-      </ComboboxPopup>
-    </Combobox>
+    <Combobox.Root
+      id={id}
+      items={comboItems}
+      onValueChange={setValue}
+      value={value}
+    >
+      <Combobox.Input />
+      <Combobox.Popup>
+        <Combobox.Empty>No matching items.</Combobox.Empty>
+        <Combobox.Items />
+      </Combobox.Popup>
+    </Combobox.Root>
   );
 };
 
@@ -102,32 +94,32 @@ const StatefulMultiCombobox = ({ id }: { id?: string }) => {
   const [value, setValue] = useState<string[]>([]);
 
   return (
-    <MultiCombobox
+    <MultiCombobox.Root
       id={id}
       items={comboItems}
       onValueChange={setValue}
       value={value}
     >
-      <MultiComboboxInputGroup>
-        <MultiComboboxChips>
+      <MultiCombobox.InputGroup>
+        <MultiCombobox.Chips>
           {(selected) => (
             <>
               {selected.map((item) => (
-                <MultiComboboxChip item={item} key={item.value}>
+                <MultiCombobox.Chip item={item} key={item.value}>
                   {item.label}
-                  <MultiComboboxChipRemove aria-label="Remove" />
-                </MultiComboboxChip>
+                  <MultiCombobox.ChipRemove aria-label="Remove" />
+                </MultiCombobox.Chip>
               ))}
-              <MultiComboboxInput />
+              <MultiCombobox.Input />
             </>
           )}
-        </MultiComboboxChips>
-      </MultiComboboxInputGroup>
-      <ComboboxPopup>
-        <ComboboxEmpty>No matching items.</ComboboxEmpty>
-        <ComboboxItems />
-      </ComboboxPopup>
-    </MultiCombobox>
+        </MultiCombobox.Chips>
+      </MultiCombobox.InputGroup>
+      <MultiCombobox.Popup>
+        <MultiCombobox.Empty>No matching items.</MultiCombobox.Empty>
+        <MultiCombobox.Items />
+      </MultiCombobox.Popup>
+    </MultiCombobox.Root>
   );
 };
 
@@ -165,10 +157,10 @@ describe("for/id association between Field and the form parts", () => {
     "a $name without an id gets a unique id, and FieldLabel's for points at it",
     ({ renderControl }) => {
       const { container } = render(
-        <Field>
-          <FieldLabel>Label</FieldLabel>
+        <Field.Root>
+          <Field.Label>Label</Field.Label>
           {renderControl()}
-        </Field>
+        </Field.Root>
       );
 
       const { control, htmlFor } = getAssociation(container, "Label");
@@ -188,14 +180,14 @@ describe("for/id association between Field and the form parts", () => {
   ])("two $name mounted at once do not share an id", ({ renderControl }) => {
     const { container } = render(
       <>
-        <Field>
-          <FieldLabel>First</FieldLabel>
+        <Field.Root>
+          <Field.Label>First</Field.Label>
           {renderControl()}
-        </Field>
-        <Field>
-          <FieldLabel>Second</FieldLabel>
+        </Field.Root>
+        <Field.Root>
+          <Field.Label>Second</Field.Label>
           {renderControl()}
-        </Field>
+        </Field.Root>
       </>
     );
 
@@ -237,10 +229,10 @@ describe("for/id association between Field and the form parts", () => {
       const explicitId = `explicit-${name.toLowerCase()}`;
 
       const { container } = render(
-        <Field>
-          <FieldLabel>Label</FieldLabel>
+        <Field.Root>
+          <Field.Label>Label</Field.Label>
           {renderControl(explicitId)}
-        </Field>
+        </Field.Root>
       );
 
       const { control, htmlFor } = getAssociation(container, "Label");
@@ -260,10 +252,10 @@ describe("for/id association between Field and the form parts", () => {
     },
   ])("clicking the label activates $name", ({ renderControl }) => {
     const { container } = render(
-      <Field>
-        <FieldLabel>Label</FieldLabel>
+      <Field.Root>
+        <Field.Label>Label</Field.Label>
         {renderControl()}
-      </Field>
+      </Field.Root>
     );
 
     const { control, label } = getAssociation(container, "Label");
@@ -333,10 +325,10 @@ describe("for/id association in the server-rendered HTML", () => {
     "FieldLabel's for points at the $name before hydration",
     ({ renderControl }) => {
       const container = renderServerMarkup(
-        <Field>
-          <FieldLabel>Label</FieldLabel>
+        <Field.Root>
+          <Field.Label>Label</Field.Label>
           {renderControl()}
-        </Field>
+        </Field.Root>
       );
 
       const { control, htmlFor } = getAssociation(container, "Label");
@@ -353,22 +345,22 @@ const LateSelect = ({ ready }: { ready: PromiseLike<unknown> }) => {
 // The Select streams in after the label and description have published their
 // ids, which is the order that left the server's attributes on the trigger.
 const LateSelectForm = ({ ready }: { ready: PromiseLike<unknown> }) => (
-  <Field>
-    <FieldLabel>Label</FieldLabel>
+  <Field.Root>
+    <Field.Label>Label</Field.Label>
     <Suspense fallback={null}>
       <LateSelect ready={ready} />
     </Suspense>
-    <FieldDescription>Help</FieldDescription>
-  </Field>
+    <Field.Description>Help</Field.Description>
+  </Field.Root>
 );
 
 describe("FieldLabel over a Select, whose trigger is a button that opens a popup", () => {
   it("renders a non-label element that names the trigger through aria-labelledby", () => {
     const { container } = render(
-      <Field>
-        <FieldLabel>Label</FieldLabel>
+      <Field.Root>
+        <Field.Label>Label</Field.Label>
         <Select items={selectItems} />
-      </Field>
+      </Field.Root>
     );
 
     expect(container.querySelector("label")).toBeNull();
@@ -378,17 +370,17 @@ describe("FieldLabel over a Select, whose trigger is a button that opens a popup
 
   it("switches to the non-label element when the Select mounts after the Field", async () => {
     const { container, rerender } = render(
-      <Field>
-        <FieldLabel>Label</FieldLabel>
-      </Field>
+      <Field.Root>
+        <Field.Label>Label</Field.Label>
+      </Field.Root>
     );
     expect(container.querySelector("label")).not.toBeNull();
 
     rerender(
-      <Field>
-        <FieldLabel>Label</FieldLabel>
+      <Field.Root>
+        <Field.Label>Label</Field.Label>
         <Select items={selectItems} />
-      </Field>
+      </Field.Root>
     );
 
     await waitFor(() => expect(container.querySelector("label")).toBeNull());
@@ -434,14 +426,14 @@ describe("FieldLabel over a Select, whose trigger is a button that opens a popup
   it("gives two Selects mounted at once their own ids", () => {
     render(
       <>
-        <Field>
-          <FieldLabel>First</FieldLabel>
+        <Field.Root>
+          <Field.Label>First</Field.Label>
           <Select items={selectItems} />
-        </Field>
-        <Field>
-          <FieldLabel>Second</FieldLabel>
+        </Field.Root>
+        <Field.Root>
+          <Field.Label>Second</Field.Label>
           <Select items={selectItems} />
-        </Field>
+        </Field.Root>
       </>
     );
 
@@ -452,10 +444,10 @@ describe("FieldLabel over a Select, whose trigger is a button that opens a popup
 
   it("puts an explicit id on the trigger", () => {
     render(
-      <Field>
-        <FieldLabel>Label</FieldLabel>
+      <Field.Root>
+        <Field.Label>Label</Field.Label>
         <Select id="explicit-select" items={selectItems} />
-      </Field>
+      </Field.Root>
     );
 
     expect(screen.getByRole("combobox", { name: "Label" }).id).toBe(
@@ -465,10 +457,10 @@ describe("FieldLabel over a Select, whose trigger is a button that opens a popup
 
   it("focuses the trigger without opening the popup when the label is clicked", () => {
     render(
-      <Field>
-        <FieldLabel>Label</FieldLabel>
+      <Field.Root>
+        <Field.Label>Label</Field.Label>
         <Select items={selectItems} />
-      </Field>
+      </Field.Root>
     );
 
     const trigger = screen.getByRole("combobox", { name: "Label" });
@@ -493,10 +485,10 @@ describe("FieldLabel over a Combobox, whose control is a text input", () => {
     "clicking the label reaches the $name input without opening the popup",
     ({ renderControl }) => {
       const { container } = render(
-        <Field>
-          <FieldLabel>Label</FieldLabel>
+        <Field.Root>
+          <Field.Label>Label</Field.Label>
           {renderControl()}
-        </Field>
+        </Field.Root>
       );
 
       const { control, label } = getAssociation(container, "Label");

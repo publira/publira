@@ -4,7 +4,7 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import {
   cleanup,
   fireEvent,
@@ -20,7 +20,7 @@ import { ReaderIconPresetGallery } from "./reader-icon-preset-gallery";
 
 const { remove } = vi.hoisted(() => ({
   remove: {
-    current: Promise.withResolvers<FormActionState>(),
+    current: Promise.withResolvers<ActionForm.State>(),
     formData: undefined as FormData | undefined,
   },
 }));
@@ -67,7 +67,7 @@ const uploadButton = () =>
 afterEach(() => {
   cleanup();
   remove.current.resolve(null);
-  remove.current = Promise.withResolvers<FormActionState>();
+  remove.current = Promise.withResolvers<ActionForm.State>();
   remove.formData = undefined;
 });
 

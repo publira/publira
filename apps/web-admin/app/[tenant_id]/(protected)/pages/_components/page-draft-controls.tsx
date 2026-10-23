@@ -1,6 +1,6 @@
 "use client";
 
-import { ActionForm } from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Badge } from "@publira/ui-components/badge";
 import { Button } from "@publira/ui-components/button";
 import { Select } from "@publira/ui-components/select";
@@ -132,7 +132,7 @@ export const PageSaveForm = ({
   const { onSaveStart } = usePageDraft();
 
   return (
-    <ActionForm
+    <ActionForm.Root
       action={(prevState: PageFormState, formData: FormData) => {
         onSaveStart();
         return action(prevState, formData);
@@ -140,7 +140,7 @@ export const PageSaveForm = ({
       className={className}
     >
       {children}
-    </ActionForm>
+    </ActionForm.Root>
   );
 };
 

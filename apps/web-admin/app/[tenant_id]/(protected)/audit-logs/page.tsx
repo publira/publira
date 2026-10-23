@@ -1,22 +1,9 @@
 import { Button, LinkButton } from "@publira/ui-components/button";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Table,
-  TableBody,
-  TableEmptyRow,
-  TableHead,
-  TableHeader,
-  TableLoadingRow,
-  TableRow,
-} from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -90,27 +77,27 @@ const AuditLogsSkeleton = () => (
       <Skeleton className="h-16" />
     </div>
 
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>
+    <Table.Root>
+      <Table.Header>
+        <Table.Row>
+          <Table.Head>
             <SkeletonLine className="h-4 w-16" />
-          </TableHead>
-          <TableHead>
+          </Table.Head>
+          <Table.Head>
             <SkeletonLine className="h-4 w-20" />
-          </TableHead>
-          <TableHead>
+          </Table.Head>
+          <Table.Head>
             <SkeletonLine className="h-4 w-24" />
-          </TableHead>
-          <TableHead>
+          </Table.Head>
+          <Table.Head>
             <SkeletonLine className="h-4 w-12" />
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableLoadingRow colSpan={4} rows={6} />
-      </TableBody>
-    </Table>
+          </Table.Head>
+        </Table.Row>
+      </Table.Header>
+      <Table.Body>
+        <Table.LoadingRow colSpan={4} rows={6} />
+      </Table.Body>
+    </Table.Root>
   </AdminSections>
 );
 
@@ -185,43 +172,43 @@ const AuditLogsContent = async ({
           </Suspense>
         </p>
         <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-          <Field>
-            <FieldLabel>
+          <Field.Root>
+            <Field.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                 <Message message="admin.audit.filter.from" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <Input defaultValue={filters.from} name="from" type="date" />
-            </FieldContent>
-          </Field>
+            </Field.Content>
+          </Field.Root>
 
-          <Field>
-            <FieldLabel>
+          <Field.Root>
+            <Field.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                 <Message message="admin.audit.filter.to" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <Input defaultValue={filters.to} name="to" type="date" />
-            </FieldContent>
-          </Field>
+            </Field.Content>
+          </Field.Root>
 
           <AuditActionSelect defaultValue={filters.action} />
 
-          <Field>
-            <FieldLabel>
+          <Field.Root>
+            <Field.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                 <Message message="admin.audit.filter.actor" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <ActorFilterCombobox
                 defaultValue={filters.actor}
                 items={actorItems}
               />
-            </FieldContent>
-          </Field>
+            </Field.Content>
+          </Field.Root>
 
           <div className="flex items-end gap-2">
             <Button type="submit">
@@ -241,41 +228,41 @@ const AuditLogsContent = async ({
       <div className="grid gap-4">
         {result.ok ? (
           <>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-44">
+            <Table.Root>
+              <Table.Header>
+                <Table.Row>
+                  <Table.Head className="w-44">
                     <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                       <Message message="admin.audit.columns.created_at" />
                     </Suspense>
-                  </TableHead>
-                  <TableHead className="w-56">
+                  </Table.Head>
+                  <Table.Head className="w-56">
                     <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                       <Message message="admin.audit.columns.actor" />
                     </Suspense>
-                  </TableHead>
-                  <TableHead>
+                  </Table.Head>
+                  <Table.Head>
                     <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                       <Message message="admin.audit.columns.action" />
                     </Suspense>
-                  </TableHead>
-                  <TableHead className="w-32">
+                  </Table.Head>
+                  <Table.Head className="w-32">
                     <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                       <Message message="admin.audit.columns.outcome" />
                     </Suspense>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+                  </Table.Head>
+                </Table.Row>
+              </Table.Header>
+              <Table.Body>
                 {result.auditLogs.length === 0 ? (
-                  <TableEmptyRow colSpan={4}>
+                  <Table.EmptyRow colSpan={4}>
                     <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                       <Message message="admin.audit.empty" />
                     </Suspense>
-                  </TableEmptyRow>
+                  </Table.EmptyRow>
                 ) : (
                   result.auditLogs.map((item) => (
-                    <TableRow
+                    <Table.Row
                       key={`${item.createdAt}-${item.actorUserPublicId}-${item.action}-${item.targetId}`}
                     >
                       <AuditLogDateCell
@@ -300,11 +287,11 @@ const AuditLogsContent = async ({
                         locale={locale}
                         outcome={item.outcome}
                       />
-                    </TableRow>
+                    </Table.Row>
                   ))
                 )}
-              </TableBody>
-            </Table>
+              </Table.Body>
+            </Table.Root>
 
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm text-muted-foreground">
@@ -336,18 +323,18 @@ const AuditLogsContent = async ({
             </div>
           </>
         ) : (
-          <SectionError>
-            <SectionErrorHeading>
-              <SectionErrorTitle>
+          <SectionError.Root>
+            <SectionError.Heading>
+              <SectionError.Title>
                 <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
                   <Message message="admin.audit.section_error" />
                 </Suspense>
-              </SectionErrorTitle>
-              <SectionErrorDescription>
+              </SectionError.Title>
+              <SectionError.Description>
                 {result.message}
-              </SectionErrorDescription>
-            </SectionErrorHeading>
-          </SectionError>
+              </SectionError.Description>
+            </SectionError.Heading>
+          </SectionError.Root>
         )}
       </div>
     </AdminSections>

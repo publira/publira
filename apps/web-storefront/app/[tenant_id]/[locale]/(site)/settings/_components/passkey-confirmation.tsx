@@ -1,6 +1,6 @@
 "use client";
 
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import { FormMessage } from "@publira/ui-components/form-message";
 import {
   browserSupportsWebAuthn,
@@ -67,7 +67,7 @@ export const PasskeyConfirmation = ({
 }: {
   begin: (formData: FormData) => Promise<PasskeyConfirmationStartState>;
   children: ReactNode;
-  confirm: (formData: FormData) => Promise<FormActionState>;
+  confirm: (formData: FormData) => Promise<ActionForm.State>;
 }) => {
   const t = useClientMessages();
   const [failure, setFailure] = useState("");

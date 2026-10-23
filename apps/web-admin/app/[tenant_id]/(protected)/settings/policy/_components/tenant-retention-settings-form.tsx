@@ -1,11 +1,5 @@
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -78,14 +72,14 @@ export const TenantRetentionSettingsForm = ({
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>
-      <ActionForm
+      <ActionForm.Root
         action={updateTenantRetentionSettingsAction}
         className="grid gap-4 sm:max-w-3xl"
       >
         <input name="tenant_id" type="hidden" value={tenantId} />
         <input name="revision" type="hidden" value={revision} />
 
-        <ActionFormFieldset className="grid gap-4" disabled={fieldsDisabled}>
+        <ActionForm.Fieldset className="grid gap-4" disabled={fieldsDisabled}>
           <PolicyOverrideGroup
             initialUseDefault={overrides.withdrawnCommentDays === undefined}
           >
@@ -110,13 +104,13 @@ export const TenantRetentionSettingsForm = ({
               </Suspense>
             </PolicyOverridePlatformValue>
             <PolicyOverrideValues>
-              <Field>
-                <FieldLabel>
+              <Field.Root>
+                <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                     <Message message="admin.settings.policy.retention.days_label" />
                   </Suspense>
-                </FieldLabel>
-                <FieldContent>
+                </Field.Label>
+                <Field.Content>
                   <Input
                     defaultValue={
                       overrides.withdrawnCommentDays ??
@@ -129,8 +123,8 @@ export const TenantRetentionSettingsForm = ({
                     step={1}
                     type="number"
                   />
-                </FieldContent>
-              </Field>
+                </Field.Content>
+              </Field.Root>
             </PolicyOverrideValues>
           </PolicyOverrideGroup>
 
@@ -156,13 +150,13 @@ export const TenantRetentionSettingsForm = ({
               </Suspense>
             </PolicyOverridePlatformValue>
             <PolicyOverrideValues>
-              <Field>
-                <FieldLabel>
+              <Field.Root>
+                <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                     <Message message="admin.settings.policy.retention.days_label" />
                   </Suspense>
-                </FieldLabel>
-                <FieldContent>
+                </Field.Label>
+                <Field.Content>
                   <Input
                     defaultValue={
                       overrides.contentEventDays ??
@@ -175,8 +169,8 @@ export const TenantRetentionSettingsForm = ({
                     step={1}
                     type="number"
                   />
-                </FieldContent>
-              </Field>
+                </Field.Content>
+              </Field.Root>
             </PolicyOverrideValues>
           </PolicyOverrideGroup>
 
@@ -204,13 +198,13 @@ export const TenantRetentionSettingsForm = ({
               </Suspense>
             </PolicyOverridePlatformValue>
             <PolicyOverrideValues>
-              <Field>
-                <FieldLabel>
+              <Field.Root>
+                <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                     <Message message="admin.settings.policy.retention.days_label" />
                   </Suspense>
-                </FieldLabel>
-                <FieldContent>
+                </Field.Label>
+                <Field.Content>
                   <Input
                     defaultValue={
                       overrides.dailyRankingSnapshotDays ??
@@ -223,8 +217,8 @@ export const TenantRetentionSettingsForm = ({
                     step={1}
                     type="number"
                   />
-                </FieldContent>
-              </Field>
+                </Field.Content>
+              </Field.Root>
             </PolicyOverrideValues>
           </PolicyOverrideGroup>
 
@@ -254,13 +248,13 @@ export const TenantRetentionSettingsForm = ({
               </Suspense>
             </PolicyOverridePlatformValue>
             <PolicyOverrideValues>
-              <Field>
-                <FieldLabel>
+              <Field.Root>
+                <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                     <Message message="admin.settings.policy.retention.days_label" />
                   </Suspense>
-                </FieldLabel>
-                <FieldContent>
+                </Field.Label>
+                <Field.Content>
                   <Input
                     defaultValue={
                       overrides.weeklyRankingSnapshotDays ??
@@ -273,11 +267,11 @@ export const TenantRetentionSettingsForm = ({
                     step={1}
                     type="number"
                   />
-                </FieldContent>
-              </Field>
+                </Field.Content>
+              </Field.Root>
             </PolicyOverrideValues>
           </PolicyOverrideGroup>
-        </ActionFormFieldset>
+        </ActionForm.Fieldset>
 
         {canEdit ? null : (
           <FormMessage variant="destructive">
@@ -299,18 +293,18 @@ export const TenantRetentionSettingsForm = ({
         ) : null}
 
         <div className="mt-2 flex justify-end">
-          <ActionFormSubmit disabled={fieldsDisabled}>
+          <ActionForm.Submit disabled={fieldsDisabled}>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ActionFormIdle>
+              <ActionForm.Idle>
                 <Message message="admin.settings.policy.retention.submit" />
-              </ActionFormIdle>
-              <ActionFormPending>
+              </ActionForm.Idle>
+              <ActionForm.Pending>
                 <Message message="admin.settings.saving" />
-              </ActionFormPending>
+              </ActionForm.Pending>
             </Suspense>
-          </ActionFormSubmit>
+          </ActionForm.Submit>
         </div>
-      </ActionForm>
+      </ActionForm.Root>
     </AdminSection>
   );
 };

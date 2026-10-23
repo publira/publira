@@ -5,7 +5,8 @@ A component that lays out the action area of a form, such as its buttons.
 ## Usage
 
 ```tsx
-import { FormActions, Button } from "@publira/ui-components";
+import { Button } from "@publira/ui-components/button";
+import { FormActions } from "@publira/ui-components/form-actions";
 
 export default function Example() {
   return (

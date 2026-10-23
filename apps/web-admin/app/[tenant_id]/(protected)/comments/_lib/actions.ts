@@ -1,7 +1,7 @@
 "use server";
 
 import type { Locale } from "@publira/i18n";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { refresh } from "next/cache";
@@ -80,7 +80,7 @@ const moderate = async (
   action: CommentModerationAction,
   formData: FormData,
   options: { requireReason?: boolean } = {}
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const [t, schema] = await Promise.all([
@@ -126,24 +126,24 @@ const moderate = async (
 // the promise `moderate` already produces: Next.js rejects an exported Server
 // Action that is not an async function, at build time.
 export const approveCommentAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => await moderate("approve", formData);
+): Promise<ActionForm.State> => await moderate("approve", formData);
 
 export const hideCommentAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => await moderate("hide", formData);
+): Promise<ActionForm.State> => await moderate("hide", formData);
 
 export const restoreCommentAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => await moderate("restore", formData);
+): Promise<ActionForm.State> => await moderate("restore", formData);
 
 export const purgeCommentAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> =>
+): Promise<ActionForm.State> =>
   await moderate("purge", formData, { requireReason: true });
 
 /**
@@ -182,9 +182,9 @@ const decidedMessage = (
     : t("admin.comments.reports.rejected");
 
 export const resolveCommentReportAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await reportDecisionSchema(locale);

@@ -21,7 +21,7 @@ const platformUrl = (pathname: string): string =>
 
 /**
  * `Password` told apart from `Password (confirm)`: both labels start the same
- * way, and `FieldLabel required` appends the asterisk that ends this one.
+ * way, and `Field.Label required` appends the asterisk that ends this one.
  */
 const passwordInput = (page: Page): Locator =>
   page.getByLabel(/^Password\s*\*$/u);

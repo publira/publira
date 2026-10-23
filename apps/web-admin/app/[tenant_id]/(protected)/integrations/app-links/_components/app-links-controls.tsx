@@ -1,7 +1,7 @@
 "use client";
 
 import { Checkbox } from "@publira/ui-components/checkbox";
-import { Field, FieldLabel } from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import type { InputProps } from "@publira/ui-components/input";
 import { Textarea } from "@publira/ui-components/textarea";
@@ -82,15 +82,15 @@ export const AppLinksPlatformToggle = ({
   const { disabled, enabled, setEnabled } = useAppLinksPlatform();
 
   return (
-    <Field className="flex items-center gap-2">
+    <Field.Root className="flex items-center gap-2">
       <Checkbox
         checked={enabled}
         disabled={disabled}
         name={name}
         onCheckedChange={setEnabled}
       />
-      <FieldLabel>{children}</FieldLabel>
-    </Field>
+      <Field.Label>{children}</Field.Label>
+    </Field.Root>
   );
 };
 

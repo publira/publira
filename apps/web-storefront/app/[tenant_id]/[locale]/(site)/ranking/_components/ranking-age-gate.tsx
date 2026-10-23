@@ -1,11 +1,5 @@
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  EmptyState,
-  EmptyStateActions,
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
+import * as EmptyState from "@publira/ui-components/empty-state";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
@@ -75,20 +69,20 @@ export const RankingAgeGate = ({
   }
 
   return (
-    <EmptyState>
-      <EmptyStateHeading>
-        <EmptyStateTitle>
+    <EmptyState.Root>
+      <EmptyState.Heading>
+        <EmptyState.Title>
           <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
             <Message message="storefront.ranking.age_gate.title" />
           </Suspense>
-        </EmptyStateTitle>
-        <EmptyStateDescription>
+        </EmptyState.Title>
+        <EmptyState.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-full max-w-md" />}>
             {closedBecause}
           </Suspense>
-        </EmptyStateDescription>
-      </EmptyStateHeading>
-      <EmptyStateActions>
+        </EmptyState.Description>
+      </EmptyState.Heading>
+      <EmptyState.Actions>
         <div className="flex flex-wrap justify-center gap-3">
           {ageAction}
           <LinkButton
@@ -102,7 +96,7 @@ export const RankingAgeGate = ({
             </Suspense>
           </LinkButton>
         </div>
-      </EmptyStateActions>
-    </EmptyState>
+      </EmptyState.Actions>
+    </EmptyState.Root>
   );
 };

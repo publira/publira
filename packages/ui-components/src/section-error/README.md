@@ -7,24 +7,19 @@ It is composed, so every piece of copy is written on the element that carries it
 ## Usage
 
 ```tsx
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components";
+import * as SectionError from "@publira/ui-components/section-error";
 
 export default function Example() {
   return (
-    <SectionError>
-      <SectionErrorHeading>
-        <SectionErrorTitle>Could not display the operators</SectionErrorTitle>
-        <SectionErrorDescription>
+    <SectionError.Root>
+      <SectionError.Heading>
+        <SectionError.Title>Could not display the operators</SectionError.Title>
+        <SectionError.Description>
           You do not have permission to perform this action. Go back or use an
           account that does.
-        </SectionErrorDescription>
-      </SectionErrorHeading>
-    </SectionError>
+        </SectionError.Description>
+      </SectionError.Heading>
+    </SectionError.Root>
   );
 }
 ```
@@ -34,5 +29,5 @@ Nothing here reads a hook, so a Server Component can render it. The boundary bod
 ## Subpath import
 
 ```tsx
-import { SectionError } from "@publira/ui-components/section-error";
+import * as SectionError from "@publira/ui-components/section-error";
 ```

@@ -1,6 +1,6 @@
 "use client";
 
-import { ActionFormSubmit } from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import type { ReactNode } from "react";
 import { createContext, use, useMemo, useState } from "react";
 
@@ -46,6 +46,6 @@ export const SubmitGateSubmit = ({ children }: { children: ReactNode }) => {
   const { submittable } = useSubmitGateContext("SubmitGateSubmit");
 
   return (
-    <ActionFormSubmit disabled={!submittable}>{children}</ActionFormSubmit>
+    <ActionForm.Submit disabled={!submittable}>{children}</ActionForm.Submit>
   );
 };

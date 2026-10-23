@@ -4,7 +4,7 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import {
   act,
   cleanup,
@@ -23,7 +23,7 @@ import { TenantSignInSettingsForm } from "./tenant-sign-in-settings-form";
 
 const { action } = vi.hoisted(() => ({
   action: {
-    current: (): Promise<FormActionState> => Promise.resolve(null),
+    current: (): Promise<ActionForm.State> => Promise.resolve(null),
   },
 }));
 
@@ -284,7 +284,7 @@ describe("TenantSignInSettingsForm", () => {
   it("keeps the value typed and names the refused field beside it", async () => {
     const refusal =
       "Enter a client ID ending in .apps.googleusercontent.com, as the Google Cloud console shows it.";
-    action.current = vi.fn((): Promise<FormActionState> =>
+    action.current = vi.fn((): Promise<ActionForm.State> =>
       Promise.resolve({
         fieldErrors: { iosClientId: refusal },
         message: "Please check the information you entered.",

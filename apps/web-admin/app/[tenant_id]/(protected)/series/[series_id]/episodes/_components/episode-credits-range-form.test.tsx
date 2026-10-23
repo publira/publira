@@ -27,7 +27,11 @@ vi.mock("@publira/ui-components/combobox", async () => {
   const { Input } = await import("@publira/ui-components/input");
 
   return {
-    Combobox: ({
+    Empty: () => null,
+    Input: () => null,
+    Items: () => null,
+    Popup: () => null,
+    Root: ({
       disabled,
       items,
       onValueChange,
@@ -54,10 +58,6 @@ vi.mock("@publira/ui-components/combobox", async () => {
         value={value}
       />
     ),
-    ComboboxEmpty: () => null,
-    ComboboxInput: () => null,
-    ComboboxItems: () => null,
-    ComboboxPopup: () => null,
   };
 });
 
@@ -84,10 +84,8 @@ vi.mock("@publira/ui-components/checkbox", () => ({
 }));
 
 vi.mock("@publira/ui-components/dialog", () => ({
-  DialogClose: ({ render }: { render: ReactNode }) => render,
-  DialogFooter: ({ children }: { children: ReactNode }) => (
-    <div>{children}</div>
-  ),
+  Close: ({ render }: { render: ReactNode }) => render,
+  Footer: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
 const t = bindMessages(sharedCatalog("en"), "en");

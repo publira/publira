@@ -2,7 +2,7 @@
 
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import type { Locale } from "@publira/i18n";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import {
   toFormErrorMessage,
   validationErrorMessage,
@@ -226,7 +226,7 @@ const requestEmailChangeWithPasskeyFormSchema = async (locale: Locale) => {
  */
 export const requestEmailChangeWithPasskeyAction = async (
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const submittedLocale = requireFormLocale(formData.get("locale"));
   const [t, schema] = await Promise.all([

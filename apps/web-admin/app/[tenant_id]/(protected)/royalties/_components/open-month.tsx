@@ -1,15 +1,7 @@
 import type { Locale } from "@publira/i18n";
 import { Button } from "@publira/ui-components/button";
-import {
-  ConfirmDialogDescription,
-  ConfirmDialogTitle,
-} from "@publira/ui-components/dialog";
-import {
-  EmptyState,
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
+import * as ConfirmDialog from "@publira/ui-components/confirm-dialog";
+import * as EmptyState from "@publira/ui-components/empty-state";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   formatDateTime,
@@ -105,15 +97,15 @@ const CloseStatus = ({
             </Suspense>
           </p>
           <CloseStatementButton period={period} tenantId={tenantId}>
-            <ConfirmDialogTitle>
+            <ConfirmDialog.Title>
               <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
                 <Message
                   message="admin.royalties.close.confirm_title"
                   values={{ period: periodLabel }}
                 />
               </Suspense>
-            </ConfirmDialogTitle>
-            <ConfirmDialogDescription>
+            </ConfirmDialog.Title>
+            <ConfirmDialog.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
                 <Message
                   message="admin.royalties.close.confirm_description"
@@ -125,7 +117,7 @@ const CloseStatus = ({
                   }}
                 />
               </Suspense>
-            </ConfirmDialogDescription>
+            </ConfirmDialog.Description>
           </CloseStatementButton>
         </div>
       );
@@ -220,20 +212,20 @@ export const OpenMonth = ({
         </AdminSectionHeading>
       </AdminSectionHeader>
       {lines.length === 0 ? (
-        <EmptyState>
-          <EmptyStateHeading>
-            <EmptyStateTitle>
+        <EmptyState.Root>
+          <EmptyState.Heading>
+            <EmptyState.Title>
               <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
                 <Message message="admin.royalties.lines.empty_title" />
               </Suspense>
-            </EmptyStateTitle>
-            <EmptyStateDescription>
+            </EmptyState.Title>
+            <EmptyState.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
                 <Message message="admin.royalties.lines.empty_description" />
               </Suspense>
-            </EmptyStateDescription>
-          </EmptyStateHeading>
-        </EmptyState>
+            </EmptyState.Description>
+          </EmptyState.Heading>
+        </EmptyState.Root>
       ) : (
         <RoyaltyLinesTable currency={currency} lines={lines} locale={locale} />
       )}

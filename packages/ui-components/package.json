@@ -7,10 +7,6 @@
   ],
   "type": "module",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.mts",
-      "default": "./dist/index.mjs"
-    },
     "./action-form": {
       "types": "./dist/action-form/index.d.mts",
       "default": "./dist/action-form/index.mjs"
@@ -34,6 +30,10 @@
     "./combobox": {
       "types": "./dist/combobox/index.d.mts",
       "default": "./dist/combobox/index.mjs"
+    },
+    "./confirm-dialog": {
+      "types": "./dist/confirm-dialog/index.d.mts",
+      "default": "./dist/confirm-dialog/index.mjs"
     },
     "./dialog": {
       "types": "./dist/dialog/index.d.mts",
@@ -75,6 +75,14 @@
       "types": "./dist/input/index.d.mts",
       "default": "./dist/input/index.mjs"
     },
+    "./locale-switcher": {
+      "types": "./dist/locale-switcher/index.d.mts",
+      "default": "./dist/locale-switcher/index.mjs"
+    },
+    "./multi-combobox": {
+      "types": "./dist/multi-combobox/index.d.mts",
+      "default": "./dist/multi-combobox/index.mjs"
+    },
     "./offline-notice": {
       "types": "./dist/offline-notice/index.d.mts",
       "default": "./dist/offline-notice/index.mjs"
@@ -86,10 +94,6 @@
     "./popover": {
       "types": "./dist/popover/index.d.mts",
       "default": "./dist/popover/index.mjs"
-    },
-    "./locale-switcher": {
-      "types": "./dist/locale-switcher/index.d.mts",
-      "default": "./dist/locale-switcher/index.mjs"
     },
     "./qr-code": {
       "types": "./dist/qr-code/index.d.mts",

@@ -1,11 +1,5 @@
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -78,14 +72,14 @@ export const TenantCommunityLimitsForm = ({
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>
-      <ActionForm
+      <ActionForm.Root
         action={updateTenantCommunityLimitsAction}
         className="grid gap-4 sm:max-w-3xl"
       >
         <input name="tenant_id" type="hidden" value={tenantId} />
         <input name="revision" type="hidden" value={revision} />
 
-        <ActionFormFieldset className="grid gap-4" disabled={fieldsDisabled}>
+        <ActionForm.Fieldset className="grid gap-4" disabled={fieldsDisabled}>
           <PolicyOverrideGroup
             initialUseDefault={overrides.commentPost === undefined}
           >
@@ -111,13 +105,13 @@ export const TenantCommunityLimitsForm = ({
               </Suspense>
             </PolicyOverridePlatformValue>
             <PolicyOverrideValues>
-              <Field>
-                <FieldLabel>
+              <Field.Root>
+                <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="admin.settings.policy.community.comment_post_per_minute" />
                   </Suspense>
-                </FieldLabel>
-                <FieldContent>
+                </Field.Label>
+                <Field.Content>
                   <Input
                     defaultValue={
                       (overrides.commentPost ?? platformDefaults.commentPost)
@@ -129,15 +123,15 @@ export const TenantCommunityLimitsForm = ({
                     step={1}
                     type="number"
                   />
-                </FieldContent>
-              </Field>
-              <Field>
-                <FieldLabel>
+                </Field.Content>
+              </Field.Root>
+              <Field.Root>
+                <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="admin.settings.policy.community.comment_post_per_day" />
                   </Suspense>
-                </FieldLabel>
-                <FieldContent>
+                </Field.Label>
+                <Field.Content>
                   <Input
                     defaultValue={
                       (overrides.commentPost ?? platformDefaults.commentPost)
@@ -149,8 +143,8 @@ export const TenantCommunityLimitsForm = ({
                     step={1}
                     type="number"
                   />
-                </FieldContent>
-              </Field>
+                </Field.Content>
+              </Field.Root>
             </PolicyOverrideValues>
           </PolicyOverrideGroup>
 
@@ -181,13 +175,13 @@ export const TenantCommunityLimitsForm = ({
               </Suspense>
             </PolicyOverridePlatformValue>
             <PolicyOverrideValues>
-              <Field>
-                <FieldLabel>
+              <Field.Root>
+                <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="admin.settings.policy.community.comment_report_per_minute" />
                   </Suspense>
-                </FieldLabel>
-                <FieldContent>
+                </Field.Label>
+                <Field.Content>
                   <Input
                     defaultValue={
                       (
@@ -201,15 +195,15 @@ export const TenantCommunityLimitsForm = ({
                     step={1}
                     type="number"
                   />
-                </FieldContent>
-              </Field>
-              <Field>
-                <FieldLabel>
+                </Field.Content>
+              </Field.Root>
+              <Field.Root>
+                <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="admin.settings.policy.community.comment_report_per_day" />
                   </Suspense>
-                </FieldLabel>
-                <FieldContent>
+                </Field.Label>
+                <Field.Content>
                   <Input
                     defaultValue={
                       (
@@ -223,8 +217,8 @@ export const TenantCommunityLimitsForm = ({
                     step={1}
                     type="number"
                   />
-                </FieldContent>
-              </Field>
+                </Field.Content>
+              </Field.Root>
             </PolicyOverrideValues>
           </PolicyOverrideGroup>
 
@@ -254,13 +248,13 @@ export const TenantCommunityLimitsForm = ({
               </Suspense>
             </PolicyOverridePlatformValue>
             <PolicyOverrideValues>
-              <Field>
-                <FieldLabel>
+              <Field.Root>
+                <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="admin.settings.policy.community.duplicate_window_label" />
                   </Suspense>
-                </FieldLabel>
-                <FieldContent>
+                </Field.Label>
+                <Field.Content>
                   <Input
                     defaultValue={
                       overrides.duplicateCommentWindowMinutes ??
@@ -273,8 +267,8 @@ export const TenantCommunityLimitsForm = ({
                     step={1}
                     type="number"
                   />
-                </FieldContent>
-              </Field>
+                </Field.Content>
+              </Field.Root>
             </PolicyOverrideValues>
             <PolicyOverrideDescription>
               <Suspense fallback={<SkeletonLine className="h-3 w-3/4" />}>
@@ -310,13 +304,13 @@ export const TenantCommunityLimitsForm = ({
               </Suspense>
             </PolicyOverridePlatformValue>
             <PolicyOverrideValues>
-              <Field>
-                <FieldLabel>
+              <Field.Root>
+                <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="admin.settings.policy.community.episode_rating_per_minute" />
                   </Suspense>
-                </FieldLabel>
-                <FieldContent>
+                </Field.Label>
+                <Field.Content>
                   <Input
                     defaultValue={
                       (
@@ -330,15 +324,15 @@ export const TenantCommunityLimitsForm = ({
                     step={1}
                     type="number"
                   />
-                </FieldContent>
-              </Field>
-              <Field>
-                <FieldLabel>
+                </Field.Content>
+              </Field.Root>
+              <Field.Root>
+                <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="admin.settings.policy.community.episode_rating_per_day" />
                   </Suspense>
-                </FieldLabel>
-                <FieldContent>
+                </Field.Label>
+                <Field.Content>
                   <Input
                     defaultValue={
                       (
@@ -352,8 +346,8 @@ export const TenantCommunityLimitsForm = ({
                     step={1}
                     type="number"
                   />
-                </FieldContent>
-              </Field>
+                </Field.Content>
+              </Field.Root>
             </PolicyOverrideValues>
           </PolicyOverrideGroup>
 
@@ -386,13 +380,13 @@ export const TenantCommunityLimitsForm = ({
               </Suspense>
             </PolicyOverridePlatformValue>
             <PolicyOverrideValues>
-              <Field>
-                <FieldLabel>
+              <Field.Root>
+                <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="admin.settings.policy.community.contact_account_per_hour" />
                   </Suspense>
-                </FieldLabel>
-                <FieldContent>
+                </Field.Label>
+                <Field.Content>
                   <Input
                     defaultValue={
                       (
@@ -406,15 +400,15 @@ export const TenantCommunityLimitsForm = ({
                     step={1}
                     type="number"
                   />
-                </FieldContent>
-              </Field>
-              <Field>
-                <FieldLabel>
+                </Field.Content>
+              </Field.Root>
+              <Field.Root>
+                <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="admin.settings.policy.community.contact_account_per_day" />
                   </Suspense>
-                </FieldLabel>
-                <FieldContent>
+                </Field.Label>
+                <Field.Content>
                   <Input
                     defaultValue={
                       (
@@ -428,8 +422,8 @@ export const TenantCommunityLimitsForm = ({
                     step={1}
                     type="number"
                   />
-                </FieldContent>
-              </Field>
+                </Field.Content>
+              </Field.Root>
             </PolicyOverrideValues>
           </PolicyOverrideGroup>
 
@@ -462,13 +456,13 @@ export const TenantCommunityLimitsForm = ({
               </Suspense>
             </PolicyOverridePlatformValue>
             <PolicyOverrideValues>
-              <Field>
-                <FieldLabel>
+              <Field.Root>
+                <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="admin.settings.policy.community.contact_client_per_hour" />
                   </Suspense>
-                </FieldLabel>
-                <FieldContent>
+                </Field.Label>
+                <Field.Content>
                   <Input
                     defaultValue={
                       (
@@ -482,15 +476,15 @@ export const TenantCommunityLimitsForm = ({
                     step={1}
                     type="number"
                   />
-                </FieldContent>
-              </Field>
-              <Field>
-                <FieldLabel>
+                </Field.Content>
+              </Field.Root>
+              <Field.Root>
+                <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="admin.settings.policy.community.contact_client_per_day" />
                   </Suspense>
-                </FieldLabel>
-                <FieldContent>
+                </Field.Label>
+                <Field.Content>
                   <Input
                     defaultValue={
                       (
@@ -504,8 +498,8 @@ export const TenantCommunityLimitsForm = ({
                     step={1}
                     type="number"
                   />
-                </FieldContent>
-              </Field>
+                </Field.Content>
+              </Field.Root>
             </PolicyOverrideValues>
           </PolicyOverrideGroup>
 
@@ -536,13 +530,13 @@ export const TenantCommunityLimitsForm = ({
               </Suspense>
             </PolicyOverridePlatformValue>
             <PolicyOverrideValues>
-              <Field>
-                <FieldLabel>
+              <Field.Root>
+                <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="admin.settings.policy.community.viewer_preferences_per_minute" />
                   </Suspense>
-                </FieldLabel>
-                <FieldContent>
+                </Field.Label>
+                <Field.Content>
                   <Input
                     defaultValue={
                       (
@@ -556,15 +550,15 @@ export const TenantCommunityLimitsForm = ({
                     step={1}
                     type="number"
                   />
-                </FieldContent>
-              </Field>
-              <Field>
-                <FieldLabel>
+                </Field.Content>
+              </Field.Root>
+              <Field.Root>
+                <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="admin.settings.policy.community.viewer_preferences_per_day" />
                   </Suspense>
-                </FieldLabel>
-                <FieldContent>
+                </Field.Label>
+                <Field.Content>
                   <Input
                     defaultValue={
                       (
@@ -578,8 +572,8 @@ export const TenantCommunityLimitsForm = ({
                     step={1}
                     type="number"
                   />
-                </FieldContent>
-              </Field>
+                </Field.Content>
+              </Field.Root>
             </PolicyOverrideValues>
           </PolicyOverrideGroup>
 
@@ -612,13 +606,13 @@ export const TenantCommunityLimitsForm = ({
               </Suspense>
             </PolicyOverridePlatformValue>
             <PolicyOverrideValues>
-              <Field>
-                <FieldLabel>
+              <Field.Root>
+                <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="admin.settings.policy.community.notification_settings_per_minute" />
                   </Suspense>
-                </FieldLabel>
-                <FieldContent>
+                </Field.Label>
+                <Field.Content>
                   <Input
                     defaultValue={
                       (
@@ -632,15 +626,15 @@ export const TenantCommunityLimitsForm = ({
                     step={1}
                     type="number"
                   />
-                </FieldContent>
-              </Field>
-              <Field>
-                <FieldLabel>
+                </Field.Content>
+              </Field.Root>
+              <Field.Root>
+                <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="admin.settings.policy.community.notification_settings_per_day" />
                   </Suspense>
-                </FieldLabel>
-                <FieldContent>
+                </Field.Label>
+                <Field.Content>
                   <Input
                     defaultValue={
                       (
@@ -654,11 +648,11 @@ export const TenantCommunityLimitsForm = ({
                     step={1}
                     type="number"
                   />
-                </FieldContent>
-              </Field>
+                </Field.Content>
+              </Field.Root>
             </PolicyOverrideValues>
           </PolicyOverrideGroup>
-        </ActionFormFieldset>
+        </ActionForm.Fieldset>
 
         {canEdit ? null : (
           <FormMessage variant="destructive">
@@ -680,18 +674,18 @@ export const TenantCommunityLimitsForm = ({
         ) : null}
 
         <div className="mt-2 flex justify-end">
-          <ActionFormSubmit disabled={fieldsDisabled}>
+          <ActionForm.Submit disabled={fieldsDisabled}>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-              <ActionFormIdle>
+              <ActionForm.Idle>
                 <Message message="admin.settings.policy.community.submit" />
-              </ActionFormIdle>
-              <ActionFormPending>
+              </ActionForm.Idle>
+              <ActionForm.Pending>
                 <Message message="admin.settings.saving" />
-              </ActionFormPending>
+              </ActionForm.Pending>
             </Suspense>
-          </ActionFormSubmit>
+          </ActionForm.Submit>
         </div>
-      </ActionForm>
+      </ActionForm.Root>
     </AdminSection>
   );
 };

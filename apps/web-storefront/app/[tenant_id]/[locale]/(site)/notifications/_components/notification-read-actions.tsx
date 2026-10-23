@@ -1,9 +1,4 @@
-import {
-  ActionForm,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -27,7 +22,7 @@ export const MarkNotificationAsReadButton = ({
   notificationId: string;
   tenantId: string;
 }) => (
-  <ActionForm
+  <ActionForm.Root
     action={markNotificationAsReadAction}
     className="grid justify-items-start gap-1"
     showSuccess={false}
@@ -35,19 +30,19 @@ export const MarkNotificationAsReadButton = ({
     <LocaleField />
     <input name="tenantId" type="hidden" value={tenantId} />
     <input name="notificationId" type="hidden" value={notificationId} />
-    <ActionFormSubmit aria-label={ariaLabel} size="sm" variant="outline">
-      <ActionFormIdle>
+    <ActionForm.Submit aria-label={ariaLabel} size="sm" variant="outline">
+      <ActionForm.Idle>
         <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
           <Message message="storefront.common.mark_read" />
         </Suspense>
-      </ActionFormIdle>
-      <ActionFormPending>
+      </ActionForm.Idle>
+      <ActionForm.Pending>
         <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
           <Message message="storefront.common.updating" />
         </Suspense>
-      </ActionFormPending>
-    </ActionFormSubmit>
-  </ActionForm>
+      </ActionForm.Pending>
+    </ActionForm.Submit>
+  </ActionForm.Root>
 );
 
 export const MarkAllNotificationsAsReadButton = ({
@@ -55,24 +50,24 @@ export const MarkAllNotificationsAsReadButton = ({
 }: {
   tenantId: string;
 }) => (
-  <ActionForm
+  <ActionForm.Root
     action={markAllNotificationsAsReadAction}
     className="grid justify-items-end gap-1"
     showSuccess={false}
   >
     <LocaleField />
     <input name="tenantId" type="hidden" value={tenantId} />
-    <ActionFormSubmit size="sm" variant="outline">
-      <ActionFormIdle>
+    <ActionForm.Submit size="sm" variant="outline">
+      <ActionForm.Idle>
         <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
           <Message message="storefront.common.mark_all_read" />
         </Suspense>
-      </ActionFormIdle>
-      <ActionFormPending>
+      </ActionForm.Idle>
+      <ActionForm.Pending>
         <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
           <Message message="storefront.common.updating" />
         </Suspense>
-      </ActionFormPending>
-    </ActionFormSubmit>
-  </ActionForm>
+      </ActionForm.Pending>
+    </ActionForm.Submit>
+  </ActionForm.Root>
 );

@@ -1,11 +1,5 @@
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  SectionError,
-  SectionErrorActions,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import {
@@ -135,16 +129,16 @@ const ContactMessageDetailContent = async ({
     await redirectToLoginIfSessionRejected(result);
 
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="admin.contact_messages.detail_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{result.message}</SectionErrorDescription>
-        </SectionErrorHeading>
-        <SectionErrorActions>
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+        <SectionError.Actions>
           <LinkButton
             render={<Link href="/contact-messages" />}
             variant="outline"
@@ -153,8 +147,8 @@ const ContactMessageDetailContent = async ({
               <Message message="admin.contact_messages.back_to_list" />
             </Suspense>
           </LinkButton>
-        </SectionErrorActions>
-      </SectionError>
+        </SectionError.Actions>
+      </SectionError.Root>
     );
   }
 

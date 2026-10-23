@@ -4,12 +4,7 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import {
-  EmptyStateActions,
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
+import * as EmptyState from "@publira/ui-components/empty-state";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -33,15 +28,15 @@ describe("CursorPageEmptyState", () => {
   it("says nothing is registered yet and offers the create link when there is no pager", () => {
     render(
       <CursorPageEmptyState hasPageLinks={false} itemLabel="Episodes">
-        <EmptyStateHeading>
-          <EmptyStateTitle>This series has no episodes yet.</EmptyStateTitle>
-          <EmptyStateDescription>
+        <EmptyState.Heading>
+          <EmptyState.Title>This series has no episodes yet.</EmptyState.Title>
+          <EmptyState.Description>
             There are no episodes yet.
-          </EmptyStateDescription>
-        </EmptyStateHeading>
-        <EmptyStateActions>
+          </EmptyState.Description>
+        </EmptyState.Heading>
+        <EmptyState.Actions>
           <button type="button">Create an episode</button>
-        </EmptyStateActions>
+        </EmptyState.Actions>
       </CursorPageEmptyState>
     );
 
@@ -52,15 +47,15 @@ describe("CursorPageEmptyState", () => {
   it("does not say the whole list is empty when there is a pager", () => {
     render(
       <CursorPageEmptyState hasPageLinks itemLabel="Episodes">
-        <EmptyStateHeading>
-          <EmptyStateTitle>This series has no episodes yet.</EmptyStateTitle>
-          <EmptyStateDescription>
+        <EmptyState.Heading>
+          <EmptyState.Title>This series has no episodes yet.</EmptyState.Title>
+          <EmptyState.Description>
             There are no episodes yet.
-          </EmptyStateDescription>
-        </EmptyStateHeading>
-        <EmptyStateActions>
+          </EmptyState.Description>
+        </EmptyState.Heading>
+        <EmptyState.Actions>
           <button type="button">Create an episode</button>
-        </EmptyStateActions>
+        </EmptyState.Actions>
       </CursorPageEmptyState>
     );
 

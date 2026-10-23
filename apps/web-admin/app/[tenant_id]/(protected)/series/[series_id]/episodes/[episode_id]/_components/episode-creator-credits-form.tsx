@@ -1,9 +1,4 @@
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -58,7 +53,7 @@ export const EpisodeCreatorCreditsForm = ({
         <Message message="admin.series.form.creators_share_description" />
       </Suspense>
     </p>
-    <ActionForm action={action} className="grid gap-3">
+    <ActionForm.Root action={action} className="grid gap-3">
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="series_public_id" type="hidden" value={seriesPublicId} />
       <input name="episode_id" type="hidden" value={episodeId} />
@@ -66,28 +61,28 @@ export const EpisodeCreatorCreditsForm = ({
       {/* The stored shares already passed the server's cap, so the form opens
           submittable. */}
       <SubmitGate initialSubmittable>
-        <ActionFormFieldset className="grid gap-3">
+        <ActionForm.Fieldset className="grid gap-3">
           <EpisodeCreatorCreditsField
             creatorRoles={creatorRoles}
             creators={creators}
             initialCredits={initialCredits}
           />
-        </ActionFormFieldset>
+        </ActionForm.Fieldset>
         <div className="flex justify-end">
           <SubmitGateSubmit>
-            <ActionFormIdle>
+            <ActionForm.Idle>
               <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                 <Message message="admin.series.episodes.credits.save" />
               </Suspense>
-            </ActionFormIdle>
-            <ActionFormPending>
+            </ActionForm.Idle>
+            <ActionForm.Pending>
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                 <Message message="admin.series.episodes.credits.saving" />
               </Suspense>
-            </ActionFormPending>
+            </ActionForm.Pending>
           </SubmitGateSubmit>
         </div>
       </SubmitGate>
-    </ActionForm>
+    </ActionForm.Root>
   </section>
 );

@@ -1,21 +1,9 @@
-import {
-  ActionForm,
-  ActionFormFieldError,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { StatusChip } from "@publira/ui-components/badge";
 import type { BadgeTone } from "@publira/ui-components/badge";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
-import { Identifier, IdentifierValue } from "@publira/ui-components/identifier";
+import * as Identifier from "@publira/ui-components/identifier";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -208,101 +196,101 @@ const InboundEmailCredentialSource = ({
   switch (`${provider}.${field}`) {
     case "sendgrid.webhook_token": {
       return (
-        <FieldDescription>
+        <Field.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
             <Message message="admin.settings.inbound_email.field_sources.sendgrid.webhook_token" />
           </Suspense>
-        </FieldDescription>
+        </Field.Description>
       );
     }
     case "resend.api_key": {
       return (
-        <FieldDescription>
+        <Field.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
             <Message message="admin.settings.inbound_email.field_sources.resend.api_key" />
           </Suspense>
-        </FieldDescription>
+        </Field.Description>
       );
     }
     case "resend.webhook_secret": {
       return (
-        <FieldDescription>
+        <Field.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
             <Message message="admin.settings.inbound_email.field_sources.resend.webhook_secret" />
           </Suspense>
-        </FieldDescription>
+        </Field.Description>
       );
     }
     case "mailgun.webhook_signing_key": {
       return (
-        <FieldDescription>
+        <Field.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
             <Message message="admin.settings.inbound_email.field_sources.mailgun.webhook_signing_key" />
           </Suspense>
-        </FieldDescription>
+        </Field.Description>
       );
     }
     case "mime.webhook_token": {
       return (
-        <FieldDescription>
+        <Field.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
             <Message message="admin.settings.inbound_email.field_sources.mime.webhook_token" />
           </Suspense>
-        </FieldDescription>
+        </Field.Description>
       );
     }
     case "ses.webhook_token": {
       return (
-        <FieldDescription>
+        <Field.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
             <Message message="admin.settings.inbound_email.field_sources.ses.webhook_token" />
           </Suspense>
-        </FieldDescription>
+        </Field.Description>
       );
     }
     case "ses.topic_arn": {
       return (
-        <FieldDescription>
+        <Field.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
             <Message message="admin.settings.inbound_email.field_sources.ses.topic_arn" />
           </Suspense>
-        </FieldDescription>
+        </Field.Description>
       );
     }
     case "ses.access_key_id": {
       return (
-        <FieldDescription>
+        <Field.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
             <Message message="admin.settings.inbound_email.field_sources.ses.access_key_id" />
           </Suspense>
-        </FieldDescription>
+        </Field.Description>
       );
     }
     case "ses.secret_access_key": {
       return (
-        <FieldDescription>
+        <Field.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
             <Message message="admin.settings.inbound_email.field_sources.ses.secret_access_key" />
           </Suspense>
-        </FieldDescription>
+        </Field.Description>
       );
     }
     case "ses.region": {
       return (
-        <FieldDescription>
+        <Field.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
             <Message message="admin.settings.inbound_email.field_sources.ses.region" />
           </Suspense>
-        </FieldDescription>
+        </Field.Description>
       );
     }
     case "ses.bucket": {
       return (
-        <FieldDescription>
+        <Field.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
             <Message message="admin.settings.inbound_email.field_sources.ses.bucket" />
           </Suspense>
-        </FieldDescription>
+        </Field.Description>
       );
     }
     default: {
@@ -316,47 +304,47 @@ const InboundEmailDomainNote = ({ provider }: { provider: string }) => {
   switch (provider) {
     case "sendgrid": {
       return (
-        <FieldDescription>
+        <Field.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
             <Message message="admin.settings.inbound_email.domain_sendgrid_description" />
           </Suspense>
-        </FieldDescription>
+        </Field.Description>
       );
     }
     case "resend": {
       return (
-        <FieldDescription>
+        <Field.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
             <Message message="admin.settings.inbound_email.domain_resend_description" />
           </Suspense>
-        </FieldDescription>
+        </Field.Description>
       );
     }
     case "mailgun": {
       return (
-        <FieldDescription>
+        <Field.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
             <Message message="admin.settings.inbound_email.domain_mailgun_description" />
           </Suspense>
-        </FieldDescription>
+        </Field.Description>
       );
     }
     case "mime": {
       return (
-        <FieldDescription>
+        <Field.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
             <Message message="admin.settings.inbound_email.domain_mime_description" />
           </Suspense>
-        </FieldDescription>
+        </Field.Description>
       );
     }
     case "ses": {
       return (
-        <FieldDescription>
+        <Field.Description>
           <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
             <Message message="admin.settings.inbound_email.domain_ses_description" />
           </Suspense>
-        </FieldDescription>
+        </Field.Description>
       );
     }
     default: {
@@ -462,7 +450,7 @@ export const TenantInboundEmailSettingsForm = ({
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>
-      <ActionForm
+      <ActionForm.Root
         action={updateTenantInboundEmailSettingsAction}
         className="grid gap-5 sm:max-w-3xl"
       >
@@ -485,7 +473,7 @@ export const TenantInboundEmailSettingsForm = ({
 
         {/* A save refreshes the settings; keying on them remounts the fields
             on what the API stored, behind the new hints. */}
-        <ActionFormFieldset
+        <ActionForm.Fieldset
           className="grid gap-5"
           disabled={fieldsDisabled}
           key={[
@@ -502,19 +490,19 @@ export const TenantInboundEmailSettingsForm = ({
             credentialsProvider={credentialsProvider}
             initialProvider={initialProvider}
           >
-            <Field>
-              <FieldLabel>
+            <Field.Root>
+              <Field.Label>
                 <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                   <Message message="admin.settings.inbound_email.provider" />
                 </Suspense>
-              </FieldLabel>
-              <FieldContent>
+              </Field.Label>
+              <Field.Content>
                 <ProviderSelect providers={providers} />
-                <FieldDescription>
+                <Field.Description>
                   <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
                     <Message message="admin.settings.inbound_email.provider_description" />
                   </Suspense>
-                </FieldDescription>
+                </Field.Description>
                 <ProviderChangeNotice>
                   <FormMessage variant="warning">
                     <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
@@ -525,37 +513,37 @@ export const TenantInboundEmailSettingsForm = ({
                     </Suspense>
                   </FormMessage>
                 </ProviderChangeNotice>
-              </FieldContent>
-            </Field>
+              </Field.Content>
+            </Field.Root>
 
             <ProviderEnabled initialEnabled={settings.enabled}>
-              <Field>
-                <FieldLabel>
+              <Field.Root>
+                <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
                     <Message message="admin.settings.inbound_email.enabled" />
                   </Suspense>
-                </FieldLabel>
-                <FieldContent>
+                </Field.Label>
+                <Field.Content>
                   <ProviderEnabledCheckbox>
                     <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                       <Message message="admin.settings.inbound_email.enabled_checkbox" />
                     </Suspense>
                   </ProviderEnabledCheckbox>
-                  <FieldDescription>
+                  <Field.Description>
                     <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                       <Message message="admin.settings.inbound_email.enabled_description" />
                     </Suspense>
-                  </FieldDescription>
-                </FieldContent>
-              </Field>
+                  </Field.Description>
+                </Field.Content>
+              </Field.Root>
 
-              <Field>
+              <Field.Root>
                 <ProviderEnabledRequiredLabel>
                   <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
                     <Message message="admin.settings.inbound_email.domain" />
                   </Suspense>
                 </ProviderEnabledRequiredLabel>
-                <FieldContent>
+                <Field.Content>
                   <ProviderEnabledRequiredInput
                     autoComplete="off"
                     defaultValue={settings.domain}
@@ -564,19 +552,19 @@ export const TenantInboundEmailSettingsForm = ({
                     spellCheck={false}
                     type="text"
                   />
-                  <ActionFormFieldError name="domain" />
-                </FieldContent>
-                <FieldDescription>
+                  <ActionForm.FieldError name="domain" />
+                </Field.Content>
+                <Field.Description>
                   <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                     <Message message="admin.settings.inbound_email.domain_description" />
                   </Suspense>
-                </FieldDescription>
+                </Field.Description>
                 {providers.map((provider) => (
                   <ProviderPanel key={provider.id} provider={provider.id}>
                     <InboundEmailDomainNote provider={provider.id} />
                   </ProviderPanel>
                 ))}
-              </Field>
+              </Field.Root>
 
               {providers.map((provider) => (
                 <ProviderPanel key={provider.id} provider={provider.id}>
@@ -591,7 +579,7 @@ export const TenantInboundEmailSettingsForm = ({
                         name={field.name}
                         required={field.required}
                       >
-                        <Field>
+                        <Field.Root>
                           <ProviderCredentialLabel>
                             <Suspense
                               fallback={<SkeletonLine className="h-4 w-32" />}
@@ -602,7 +590,7 @@ export const TenantInboundEmailSettingsForm = ({
                               />
                             </Suspense>
                           </ProviderCredentialLabel>
-                          <FieldContent>
+                          <Field.Content>
                             {field.secret ? (
                               <ProviderSecretControls
                                 configured={Boolean(state?.configured)}
@@ -611,16 +599,16 @@ export const TenantInboundEmailSettingsForm = ({
                             ) : (
                               <ProviderCredentialTextInput />
                             )}
-                            <ActionFormFieldError
+                            <ActionForm.FieldError
                               name={`credential_${field.name}`}
                             />
-                          </FieldContent>
+                          </Field.Content>
                           <InboundEmailCredentialSource
                             field={field.name}
                             provider={provider.id}
                           />
                           {field.secret ? <ProviderSecretDescription /> : null}
-                        </Field>
+                        </Field.Root>
                       </ProviderCredential>
                     );
                   })}
@@ -639,55 +627,55 @@ export const TenantInboundEmailSettingsForm = ({
                   );
                   return (
                     <ProviderPanel key={provider.id} provider={provider.id}>
-                      <Field>
-                        <FieldLabel>
+                      <Field.Root>
+                        <Field.Label>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-24" />}
                           >
                             <Message message="admin.settings.inbound_email.webhook_url" />
                           </Suspense>
-                        </FieldLabel>
-                        <FieldContent>
-                          <Identifier>
-                            <IdentifierValue>{webhookUrl}</IdentifierValue>
+                        </Field.Label>
+                        <Field.Content>
+                          <Identifier.Root>
+                            <Identifier.Value>{webhookUrl}</Identifier.Value>
                             <InboundEmailWebhookUrlCopy value={webhookUrl} />
-                          </Identifier>
-                          <FieldDescription>
+                          </Identifier.Root>
+                          <Field.Description>
                             <Suspense
                               fallback={<SkeletonLine className="h-4 w-3/4" />}
                             >
                               <InboundEmailWebhookNote provider={provider} />
                             </Suspense>
-                          </FieldDescription>
-                        </FieldContent>
-                      </Field>
+                          </Field.Description>
+                        </Field.Content>
+                      </Field.Root>
                     </ProviderPanel>
                   );
                 })
               : null}
 
             {replyAddress ? (
-              <Field>
-                <FieldLabel>
+              <Field.Root>
+                <Field.Label>
                   <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
                     <Message message="admin.settings.inbound_email.reply_address" />
                   </Suspense>
-                </FieldLabel>
-                <FieldContent>
-                  <Identifier>
-                    <IdentifierValue>{replyAddress}</IdentifierValue>
+                </Field.Label>
+                <Field.Content>
+                  <Identifier.Root>
+                    <Identifier.Value>{replyAddress}</Identifier.Value>
                     <InboundEmailReplyAddressCopy value={replyAddress} />
-                  </Identifier>
-                  <FieldDescription>
+                  </Identifier.Root>
+                  <Field.Description>
                     <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                       <Message message="admin.settings.inbound_email.reply_address_description" />
                     </Suspense>
-                  </FieldDescription>
-                </FieldContent>
-              </Field>
+                  </Field.Description>
+                </Field.Content>
+              </Field.Root>
             ) : null}
           </ProviderChoice>
-        </ActionFormFieldset>
+        </ActionForm.Fieldset>
 
         {canEdit ? null : (
           <FormMessage variant="destructive">
@@ -702,18 +690,18 @@ export const TenantInboundEmailSettingsForm = ({
         ) : null}
 
         <div className="flex flex-wrap gap-3">
-          <ActionFormSubmit disabled={fieldsDisabled}>
+          <ActionForm.Submit disabled={fieldsDisabled}>
             <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
-              <ActionFormIdle>
+              <ActionForm.Idle>
                 <Message message="admin.settings.save" />
-              </ActionFormIdle>
-              <ActionFormPending>
+              </ActionForm.Idle>
+              <ActionForm.Pending>
                 <Message message="admin.settings.saving" />
-              </ActionFormPending>
+              </ActionForm.Pending>
             </Suspense>
-          </ActionFormSubmit>
+          </ActionForm.Submit>
         </div>
-      </ActionForm>
+      </ActionForm.Root>
     </AdminSection>
   );
 };

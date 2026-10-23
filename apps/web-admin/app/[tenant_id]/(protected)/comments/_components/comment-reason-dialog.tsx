@@ -1,24 +1,7 @@
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
-import {
-  Dialog,
-  DialogBackdrop,
-  DialogClose,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogPopup,
-  DialogPortal,
-  DialogTitle,
-  DialogTrigger,
-  DialogViewport,
-} from "@publira/ui-components/dialog";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as Dialog from "@publira/ui-components/dialog";
+import * as Field from "@publira/ui-components/field";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense, useId } from "react";
 
@@ -57,7 +40,7 @@ export const CommentReasonDialog = ({
     // The form wraps the dialog rather than sitting in its popup, and the
     // reason field joins it through `form=`, so confirming submits a form that
     // is still mounted while the popup is being torn down.
-    <ActionForm
+    <ActionForm.Root
       action={action === "hide" ? hideCommentAction : purgeCommentAction}
       className="grid gap-1"
       id={formId}
@@ -66,9 +49,9 @@ export const CommentReasonDialog = ({
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="comment_id" type="hidden" value={commentId} />
       <SettledToast />
-      <ActionFormFieldset className="grid">
-        <Dialog>
-          <DialogTrigger
+      <ActionForm.Fieldset className="grid">
+        <Dialog.Root>
+          <Dialog.Trigger
             render={
               <Button
                 size="sm"
@@ -80,31 +63,31 @@ export const CommentReasonDialog = ({
             <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
               {action === "hide" ? (
                 <>
-                  <ActionFormIdle>
+                  <ActionForm.Idle>
                     <Message message="admin.comments.hide" />
-                  </ActionFormIdle>
-                  <ActionFormPending>
+                  </ActionForm.Idle>
+                  <ActionForm.Pending>
                     <Message message="admin.comments.hiding" />
-                  </ActionFormPending>
+                  </ActionForm.Pending>
                 </>
               ) : (
                 <>
-                  <ActionFormIdle>
+                  <ActionForm.Idle>
                     <Message message="admin.comments.purge" />
-                  </ActionFormIdle>
-                  <ActionFormPending>
+                  </ActionForm.Idle>
+                  <ActionForm.Pending>
                     <Message message="admin.comments.purging" />
-                  </ActionFormPending>
+                  </ActionForm.Pending>
                 </>
               )}
             </Suspense>
-          </DialogTrigger>
-          <DialogPortal>
-            <DialogBackdrop />
-            <DialogViewport>
-              <DialogPopup>
-                <DialogHeader>
-                  <DialogTitle className="text-lg font-semibold">
+          </Dialog.Trigger>
+          <Dialog.Portal>
+            <Dialog.Backdrop />
+            <Dialog.Viewport>
+              <Dialog.Popup>
+                <Dialog.Header>
+                  <Dialog.Title className="text-lg font-semibold">
                     <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
                       {action === "hide" ? (
                         <Message message="admin.comments.hide_confirm_title" />
@@ -112,8 +95,8 @@ export const CommentReasonDialog = ({
                         <Message message="admin.comments.purge_confirm_title" />
                       )}
                     </Suspense>
-                  </DialogTitle>
-                  <DialogDescription className="text-sm text-muted-foreground">
+                  </Dialog.Title>
+                  <Dialog.Description className="text-sm text-muted-foreground">
                     <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
                       {action === "hide" ? (
                         <Message message="admin.comments.hide_confirm_description" />
@@ -121,11 +104,11 @@ export const CommentReasonDialog = ({
                         <Message message="admin.comments.purge_confirm_description" />
                       )}
                     </Suspense>
-                  </DialogDescription>
-                </DialogHeader>
+                  </Dialog.Description>
+                </Dialog.Header>
 
-                <Field className="mt-4">
-                  <FieldLabel required={action === "purge"}>
+                <Field.Root className="mt-4">
+                  <Field.Label required={action === "purge"}>
                     <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                       {action === "hide" ? (
                         <Message message="admin.comments.reason_optional" />
@@ -133,23 +116,23 @@ export const CommentReasonDialog = ({
                         <Message message="admin.comments.reason_required" />
                       )}
                     </Suspense>
-                  </FieldLabel>
-                  <FieldContent>
+                  </Field.Label>
+                  <Field.Content>
                     <Suspense fallback={<Skeleton className="h-24 w-full" />}>
                       <CommentReasonInput formId={formId} />
                     </Suspense>
-                  </FieldContent>
-                </Field>
+                  </Field.Content>
+                </Field.Root>
 
-                <DialogFooter>
-                  <DialogClose
+                <Dialog.Footer>
+                  <Dialog.Close
                     render={<Button type="button" variant="outline" />}
                   >
                     <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                       <Message message="admin.common.cancel" />
                     </Suspense>
-                  </DialogClose>
-                  <DialogClose
+                  </Dialog.Close>
+                  <Dialog.Close
                     form={formId}
                     render={
                       <Button
@@ -165,13 +148,13 @@ export const CommentReasonDialog = ({
                         <Message message="admin.comments.purge_confirm_action" />
                       )}
                     </Suspense>
-                  </DialogClose>
-                </DialogFooter>
-              </DialogPopup>
-            </DialogViewport>
-          </DialogPortal>
-        </Dialog>
-      </ActionFormFieldset>
-    </ActionForm>
+                  </Dialog.Close>
+                </Dialog.Footer>
+              </Dialog.Popup>
+            </Dialog.Viewport>
+          </Dialog.Portal>
+        </Dialog.Root>
+      </ActionForm.Fieldset>
+    </ActionForm.Root>
   );
 };

@@ -20,8 +20,6 @@ Each app mounts it once, in its root layout:
 
 ## Subpath import
 
-It is not re-exported from the package root, so importing the root keeps `next/offline` out of every screen that does not mount the notice:
-
 ```tsx
 import { OfflineNotice } from "@publira/ui-components/offline-notice";
 ```

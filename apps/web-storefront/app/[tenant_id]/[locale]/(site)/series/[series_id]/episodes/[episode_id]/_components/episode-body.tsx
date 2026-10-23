@@ -1,9 +1,4 @@
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -155,16 +150,18 @@ export const EpisodeBody = async ({
   if (!viewer.ok) {
     return (
       <EpisodeBodyNotice>
-        <SectionError>
-          <SectionErrorHeading>
-            <SectionErrorTitle>
+        <SectionError.Root>
+          <SectionError.Heading>
+            <SectionError.Title>
               <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
                 <Message message="storefront.episode.body_error" />
               </Suspense>
-            </SectionErrorTitle>
-            <SectionErrorDescription>{viewer.message}</SectionErrorDescription>
-          </SectionErrorHeading>
-        </SectionError>
+            </SectionError.Title>
+            <SectionError.Description>
+              {viewer.message}
+            </SectionError.Description>
+          </SectionError.Heading>
+        </SectionError.Root>
       </EpisodeBodyNotice>
     );
   }

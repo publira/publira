@@ -5,7 +5,7 @@ A multi-line text input field component.
 ## Usage
 
 ```tsx
-import { Textarea } from "@publira/ui-components";
+import { Textarea } from "@publira/ui-components/textarea";
 
 export default function Example() {
   return <Textarea placeholder="Enter your message..." />;

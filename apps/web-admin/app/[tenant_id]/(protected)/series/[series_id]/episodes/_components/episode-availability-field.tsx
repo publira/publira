@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Select } from "@publira/ui-components/select";
 import type { SelectProps } from "@publira/ui-components/select";
@@ -87,26 +82,26 @@ export const EpisodeAvailabilityField = ({
     episodeShownOn(seriesAvailability, value) === "none";
 
   return (
-    <Field>
-      <FieldLabel>
+    <Field.Root>
+      <Field.Label>
         <ClientMessage message="admin.series.episodes.availability.label" />
-      </FieldLabel>
-      <FieldContent>
+      </Field.Label>
+      <Field.Content>
         <EpisodeAvailabilitySelect
           onValueChange={handleValueChange}
           seriesAvailability={seriesAvailability}
           value={value}
         />
         <input name="availability" type="hidden" value={value} />
-        <FieldDescription>
+        <Field.Description>
           <ClientMessage message="admin.series.episodes.availability.field_description" />
-        </FieldDescription>
+        </Field.Description>
         {shownNowhere ? (
           <FormMessage variant="warning">
             <ClientMessage message="admin.series.episodes.availability.shown_nowhere" />
           </FormMessage>
         ) : null}
-      </FieldContent>
-    </Field>
+      </Field.Content>
+    </Field.Root>
   );
 };

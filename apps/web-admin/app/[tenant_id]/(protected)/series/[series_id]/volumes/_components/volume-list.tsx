@@ -1,17 +1,7 @@
 import type { Locale } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  EmptyState,
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import Image from "next/image";
 import Link from "next/link";
@@ -205,29 +195,31 @@ export const VolumeList = ({
   // error would read as "this series has no volumes".
   if (listErrorMessage) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-56" />}>
               <Message message="admin.series.volumes.list_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{listErrorMessage}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>
+            {listErrorMessage}
+          </SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
   if (volumes.length === 0) {
     return (
-      <EmptyState>
-        <EmptyStateHeading>
-          <EmptyStateTitle>
+      <EmptyState.Root>
+        <EmptyState.Heading>
+          <EmptyState.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-56" />}>
               <Message message="admin.series.volumes.empty_title" />
             </Suspense>
-          </EmptyStateTitle>
-          <EmptyStateDescription>
+          </EmptyState.Title>
+          <EmptyState.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
               {canEdit ? (
                 <Message message="admin.series.volumes.empty_description" />
@@ -235,9 +227,9 @@ export const VolumeList = ({
                 <Message message="admin.series.volumes.empty_description_read_only" />
               )}
             </Suspense>
-          </EmptyStateDescription>
-        </EmptyStateHeading>
-      </EmptyState>
+          </EmptyState.Description>
+        </EmptyState.Heading>
+      </EmptyState.Root>
     );
   }
 

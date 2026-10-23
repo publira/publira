@@ -3,12 +3,7 @@ import {
   AuthScreenFooter,
   AuthScreenNote,
 } from "@publira/layouts/auth-screen";
-import {
-  ActionForm,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -63,7 +58,7 @@ const MfaEnrollStart = ({ tenantId }: { tenantId: string }) => (
         </Suspense>
       </AuthScreenNote>
 
-      <ActionForm
+      <ActionForm.Root
         action={startMfaEnrollmentAction}
         className="grid gap-4"
         showSuccess={false}
@@ -71,32 +66,32 @@ const MfaEnrollStart = ({ tenantId }: { tenantId: string }) => (
         <input name="tenant_id" type="hidden" value={tenantId} />
         <MfaEnrollmentStarted />
 
-        <ActionFormSubmit className="justify-self-start">
+        <ActionForm.Submit className="justify-self-start">
           <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <ActionFormIdle>
+            <ActionForm.Idle>
               <Message message="admin.auth.mfa.enroll_start" />
-            </ActionFormIdle>
-            <ActionFormPending>
+            </ActionForm.Idle>
+            <ActionForm.Pending>
               <Message message="admin.auth.mfa.enroll_starting" />
-            </ActionFormPending>
+            </ActionForm.Pending>
           </Suspense>
-        </ActionFormSubmit>
-      </ActionForm>
+        </ActionForm.Submit>
+      </ActionForm.Root>
 
       <PasskeyEnrollForm>
         <input name="tenant_id" type="hidden" value={tenantId} />
         <MfaEnrollmentConfirmed />
 
-        <ActionFormSubmit className="justify-self-start" variant="outline">
+        <ActionForm.Submit className="justify-self-start" variant="outline">
           <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-            <ActionFormIdle>
+            <ActionForm.Idle>
               <Message message="admin.auth.mfa.passkey_enroll_submit" />
-            </ActionFormIdle>
-            <ActionFormPending>
+            </ActionForm.Idle>
+            <ActionForm.Pending>
               <Message message="admin.auth.mfa.passkey_waiting" />
-            </ActionFormPending>
+            </ActionForm.Pending>
           </Suspense>
-        </ActionFormSubmit>
+        </ActionForm.Submit>
       </PasskeyEnrollForm>
     </AuthScreenBody>
 
@@ -119,7 +114,7 @@ const MfaEnrollConfirm = ({ tenantId }: { tenantId: string }) => (
   <AuthScreenBody>
     <MfaEnrollmentSecret />
 
-    <ActionForm
+    <ActionForm.Root
       action={confirmMfaEnrollmentAction}
       className="grid gap-4"
       showSuccess={false}
@@ -129,17 +124,17 @@ const MfaEnrollConfirm = ({ tenantId }: { tenantId: string }) => (
 
       <MfaCodeField accepts="authenticator" />
 
-      <ActionFormSubmit className="justify-self-start">
+      <ActionForm.Submit className="justify-self-start">
         <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-          <ActionFormIdle>
+          <ActionForm.Idle>
             <Message message="admin.auth.mfa.enroll_confirm_submit" />
-          </ActionFormIdle>
-          <ActionFormPending>
+          </ActionForm.Idle>
+          <ActionForm.Pending>
             <Message message="admin.auth.mfa.enroll_confirm_submitting" />
-          </ActionFormPending>
+          </ActionForm.Pending>
         </Suspense>
-      </ActionFormSubmit>
-    </ActionForm>
+      </ActionForm.Submit>
+    </ActionForm.Root>
   </AuthScreenBody>
 );
 

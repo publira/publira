@@ -1,24 +1,7 @@
-import {
-  ActionForm,
-  ActionFormFieldError,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Tabs,
-  TabsList,
-  TabsPanel,
-  TabsTab,
-} from "@publira/ui-components/tabs";
+import * as Tabs from "@publira/ui-components/tabs";
 import { DEFAULT_TENANT_THEME_FONT_FAMILIES } from "@publira/utils/theme-css-variables";
 import type {
   TenantTheme,
@@ -64,11 +47,11 @@ const ThemeColorControl = ({
   field: keyof TenantThemeColors;
   name: string;
 }) => (
-  <FieldContent>
+  <Field.Content>
     <ThemeColorInput field={field} name={name} />
     {children}
-    <ActionFormFieldError name={field} />
-  </FieldContent>
+    <ActionForm.FieldError name={field} />
+  </Field.Content>
 );
 
 export const ThemeSettingsForm = ({
@@ -76,30 +59,30 @@ export const ThemeSettingsForm = ({
   tenantId,
 }: ThemeSettingsFormProps) => (
   <ThemeSettingsScope initialTheme={initialTheme}>
-    <Tabs defaultValue="edit">
-      <TabsList>
-        <TabsTab value="edit">
+    <Tabs.Root defaultValue="edit">
+      <Tabs.List>
+        <Tabs.Tab value="edit">
           <Suspense fallback={<SkeletonLine className="h-4 w-10" />}>
             <Message message="admin.settings.theme.tabs.edit" />
           </Suspense>
-        </TabsTab>
-        <TabsTab value="preview">
+        </Tabs.Tab>
+        <Tabs.Tab value="preview">
           <Suspense fallback={<SkeletonLine className="h-4 w-14" />}>
             <Message message="admin.settings.theme.tabs.preview" />
           </Suspense>
-        </TabsTab>
-      </TabsList>
+        </Tabs.Tab>
+      </Tabs.List>
 
-      <TabsPanel value="edit">
+      <Tabs.Panel value="edit">
         <AdminSections>
-          <ActionForm
+          <ActionForm.Root
             action={updateTenantThemeSettingsAction}
             className="contents"
           >
             <input name="tenant_id" type="hidden" value={tenantId} />
             <ThemeSettingsSaved />
 
-            <ActionFormFieldset className="contents">
+            <ActionForm.Fieldset className="contents">
               <AdminSection>
                 <AdminSectionHeader>
                   <AdminSectionHeading>
@@ -120,15 +103,15 @@ export const ThemeSettingsForm = ({
                   </AdminSectionHeading>
                 </AdminSectionHeader>
                 <div className="grid gap-5 sm:max-w-3xl">
-                  <Field>
-                    <FieldLabel>
+                  <Field.Root>
+                    <Field.Label>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-40" />}
                       >
                         <Message message="admin.settings.theme.typefaces.serif.label" />
                       </Suspense>
-                    </FieldLabel>
-                    <FieldContent>
+                    </Field.Label>
+                    <Field.Content>
                       <ThemeFontFamilyInput
                         field="serifFontFamily"
                         name="serif_font_family"
@@ -136,25 +119,25 @@ export const ThemeSettingsForm = ({
                           DEFAULT_TENANT_THEME_FONT_FAMILIES.serifFontFamily
                         }
                       />
-                      <FieldDescription>
+                      <Field.Description>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-3/4" />}
                         >
                           <Message message="admin.settings.theme.typefaces.serif.description" />
                         </Suspense>
-                      </FieldDescription>
-                      <ActionFormFieldError name="serifFontFamily" />
-                    </FieldContent>
-                  </Field>
-                  <Field>
-                    <FieldLabel>
+                      </Field.Description>
+                      <ActionForm.FieldError name="serifFontFamily" />
+                    </Field.Content>
+                  </Field.Root>
+                  <Field.Root>
+                    <Field.Label>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-40" />}
                       >
                         <Message message="admin.settings.theme.typefaces.sans.label" />
                       </Suspense>
-                    </FieldLabel>
-                    <FieldContent>
+                    </Field.Label>
+                    <Field.Content>
                       <ThemeFontFamilyInput
                         field="sansFontFamily"
                         name="sans_font_family"
@@ -162,16 +145,16 @@ export const ThemeSettingsForm = ({
                           DEFAULT_TENANT_THEME_FONT_FAMILIES.sansFontFamily
                         }
                       />
-                      <FieldDescription>
+                      <Field.Description>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-3/4" />}
                         >
                           <Message message="admin.settings.theme.typefaces.sans.description" />
                         </Suspense>
-                      </FieldDescription>
-                      <ActionFormFieldError name="sansFontFamily" />
-                    </FieldContent>
-                  </Field>
+                      </Field.Description>
+                      <ActionForm.FieldError name="sansFontFamily" />
+                    </Field.Content>
+                  </Field.Root>
                 </div>
               </AdminSection>
 
@@ -196,136 +179,136 @@ export const ThemeSettingsForm = ({
                 </AdminSectionHeader>
                 <div className="grid gap-5 sm:max-w-3xl">
                   <div className="grid gap-5 md:grid-cols-2">
-                    <Field>
-                      <FieldLabel required>
+                    <Field.Root>
+                      <Field.Label required>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-28" />}
                         >
                           <Message message="admin.settings.theme.colors.primary.label" />
                         </Suspense>
-                      </FieldLabel>
+                      </Field.Label>
                       <ThemeColorControl
                         field="primaryColor"
                         name="primary_color"
                       >
-                        <FieldDescription>
+                        <Field.Description>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-3/4" />}
                           >
                             <Message message="admin.settings.theme.colors.primary.description" />
                           </Suspense>
-                        </FieldDescription>
+                        </Field.Description>
                       </ThemeColorControl>
-                    </Field>
-                    <Field>
-                      <FieldLabel required>
+                    </Field.Root>
+                    <Field.Root>
+                      <Field.Label required>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-28" />}
                         >
                           <Message message="admin.settings.theme.colors.primary_foreground.label" />
                         </Suspense>
-                      </FieldLabel>
+                      </Field.Label>
                       <ThemeColorControl
                         field="primaryForegroundColor"
                         name="primary_foreground_color"
                       >
-                        <FieldDescription>
+                        <Field.Description>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-3/4" />}
                           >
                             <Message message="admin.settings.theme.colors.primary_foreground.description" />
                           </Suspense>
-                        </FieldDescription>
+                        </Field.Description>
                       </ThemeColorControl>
-                    </Field>
+                    </Field.Root>
                   </div>
                   <div className="grid gap-5 md:grid-cols-2">
-                    <Field>
-                      <FieldLabel required>
+                    <Field.Root>
+                      <Field.Label required>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-28" />}
                         >
                           <Message message="admin.settings.theme.colors.secondary.label" />
                         </Suspense>
-                      </FieldLabel>
+                      </Field.Label>
                       <ThemeColorControl
                         field="secondaryColor"
                         name="secondary_color"
                       >
-                        <FieldDescription>
+                        <Field.Description>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-3/4" />}
                           >
                             <Message message="admin.settings.theme.colors.secondary.description" />
                           </Suspense>
-                        </FieldDescription>
+                        </Field.Description>
                       </ThemeColorControl>
-                    </Field>
-                    <Field>
-                      <FieldLabel required>
+                    </Field.Root>
+                    <Field.Root>
+                      <Field.Label required>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-28" />}
                         >
                           <Message message="admin.settings.theme.colors.secondary_foreground.label" />
                         </Suspense>
-                      </FieldLabel>
+                      </Field.Label>
                       <ThemeColorControl
                         field="secondaryForegroundColor"
                         name="secondary_foreground_color"
                       >
-                        <FieldDescription>
+                        <Field.Description>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-3/4" />}
                           >
                             <Message message="admin.settings.theme.colors.secondary_foreground.description" />
                           </Suspense>
-                        </FieldDescription>
+                        </Field.Description>
                       </ThemeColorControl>
-                    </Field>
+                    </Field.Root>
                   </div>
                   <div className="grid gap-5 md:grid-cols-2">
-                    <Field>
-                      <FieldLabel required>
+                    <Field.Root>
+                      <Field.Label required>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-28" />}
                         >
                           <Message message="admin.settings.theme.colors.accent.label" />
                         </Suspense>
-                      </FieldLabel>
+                      </Field.Label>
                       <ThemeColorControl
                         field="accentColor"
                         name="accent_color"
                       >
-                        <FieldDescription>
+                        <Field.Description>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-3/4" />}
                           >
                             <Message message="admin.settings.theme.colors.accent.description" />
                           </Suspense>
-                        </FieldDescription>
+                        </Field.Description>
                       </ThemeColorControl>
-                    </Field>
-                    <Field>
-                      <FieldLabel required>
+                    </Field.Root>
+                    <Field.Root>
+                      <Field.Label required>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-28" />}
                         >
                           <Message message="admin.settings.theme.colors.accent_foreground.label" />
                         </Suspense>
-                      </FieldLabel>
+                      </Field.Label>
                       <ThemeColorControl
                         field="accentForegroundColor"
                         name="accent_foreground_color"
                       >
-                        <FieldDescription>
+                        <Field.Description>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-3/4" />}
                           >
                             <Message message="admin.settings.theme.colors.accent_foreground.description" />
                           </Suspense>
-                        </FieldDescription>
+                        </Field.Description>
                       </ThemeColorControl>
-                    </Field>
+                    </Field.Root>
                   </div>
                 </div>
               </AdminSection>
@@ -351,218 +334,218 @@ export const ThemeSettingsForm = ({
                 </AdminSectionHeader>
                 <div className="grid gap-5 sm:max-w-3xl">
                   <div className="grid gap-5 md:grid-cols-2">
-                    <Field>
-                      <FieldLabel required>
+                    <Field.Root>
+                      <Field.Label required>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-28" />}
                         >
                           <Message message="admin.settings.theme.colors.background.label" />
                         </Suspense>
-                      </FieldLabel>
+                      </Field.Label>
                       <ThemeColorControl
                         field="backgroundColor"
                         name="background_color"
                       >
-                        <FieldDescription>
+                        <Field.Description>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-3/4" />}
                           >
                             <Message message="admin.settings.theme.colors.background.description" />
                           </Suspense>
-                        </FieldDescription>
+                        </Field.Description>
                       </ThemeColorControl>
-                    </Field>
-                    <Field>
-                      <FieldLabel required>
+                    </Field.Root>
+                    <Field.Root>
+                      <Field.Label required>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-28" />}
                         >
                           <Message message="admin.settings.theme.colors.foreground.label" />
                         </Suspense>
-                      </FieldLabel>
+                      </Field.Label>
                       <ThemeColorControl
                         field="foregroundColor"
                         name="foreground_color"
                       >
-                        <FieldDescription>
+                        <Field.Description>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-3/4" />}
                           >
                             <Message message="admin.settings.theme.colors.foreground.description" />
                           </Suspense>
-                        </FieldDescription>
+                        </Field.Description>
                       </ThemeColorControl>
-                    </Field>
+                    </Field.Root>
                   </div>
                   <div className="grid gap-5 md:grid-cols-2">
-                    <Field>
-                      <FieldLabel required>
+                    <Field.Root>
+                      <Field.Label required>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-28" />}
                         >
                           <Message message="admin.settings.theme.colors.surface.label" />
                         </Suspense>
-                      </FieldLabel>
+                      </Field.Label>
                       <ThemeColorControl
                         field="surfaceColor"
                         name="surface_color"
                       >
-                        <FieldDescription>
+                        <Field.Description>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-3/4" />}
                           >
                             <Message message="admin.settings.theme.colors.surface.description" />
                           </Suspense>
-                        </FieldDescription>
+                        </Field.Description>
                       </ThemeColorControl>
-                    </Field>
-                    <Field>
-                      <FieldLabel required>
+                    </Field.Root>
+                    <Field.Root>
+                      <Field.Label required>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-28" />}
                         >
                           <Message message="admin.settings.theme.colors.surface_foreground.label" />
                         </Suspense>
-                      </FieldLabel>
+                      </Field.Label>
                       <ThemeColorControl
                         field="surfaceForegroundColor"
                         name="surface_foreground_color"
                       >
-                        <FieldDescription>
+                        <Field.Description>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-3/4" />}
                           >
                             <Message message="admin.settings.theme.colors.surface_foreground.description" />
                           </Suspense>
-                        </FieldDescription>
+                        </Field.Description>
                       </ThemeColorControl>
-                    </Field>
+                    </Field.Root>
                   </div>
                   <div className="grid gap-5 md:grid-cols-2">
-                    <Field>
-                      <FieldLabel required>
+                    <Field.Root>
+                      <Field.Label required>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-28" />}
                         >
                           <Message message="admin.settings.theme.colors.card.label" />
                         </Suspense>
-                      </FieldLabel>
+                      </Field.Label>
                       <ThemeColorControl field="cardColor" name="card_color">
-                        <FieldDescription>
+                        <Field.Description>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-3/4" />}
                           >
                             <Message message="admin.settings.theme.colors.card.description" />
                           </Suspense>
-                        </FieldDescription>
+                        </Field.Description>
                       </ThemeColorControl>
-                    </Field>
-                    <Field>
-                      <FieldLabel required>
+                    </Field.Root>
+                    <Field.Root>
+                      <Field.Label required>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-28" />}
                         >
                           <Message message="admin.settings.theme.colors.card_foreground.label" />
                         </Suspense>
-                      </FieldLabel>
+                      </Field.Label>
                       <ThemeColorControl
                         field="cardForegroundColor"
                         name="card_foreground_color"
                       >
-                        <FieldDescription>
+                        <Field.Description>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-3/4" />}
                           >
                             <Message message="admin.settings.theme.colors.card_foreground.description" />
                           </Suspense>
-                        </FieldDescription>
+                        </Field.Description>
                       </ThemeColorControl>
-                    </Field>
+                    </Field.Root>
                   </div>
                   <div className="grid gap-5 md:grid-cols-2">
-                    <Field>
-                      <FieldLabel required>
+                    <Field.Root>
+                      <Field.Label required>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-28" />}
                         >
                           <Message message="admin.settings.theme.colors.popover.label" />
                         </Suspense>
-                      </FieldLabel>
+                      </Field.Label>
                       <ThemeColorControl
                         field="popoverColor"
                         name="popover_color"
                       >
-                        <FieldDescription>
+                        <Field.Description>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-3/4" />}
                           >
                             <Message message="admin.settings.theme.colors.popover.description" />
                           </Suspense>
-                        </FieldDescription>
+                        </Field.Description>
                       </ThemeColorControl>
-                    </Field>
-                    <Field>
-                      <FieldLabel required>
+                    </Field.Root>
+                    <Field.Root>
+                      <Field.Label required>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-28" />}
                         >
                           <Message message="admin.settings.theme.colors.popover_foreground.label" />
                         </Suspense>
-                      </FieldLabel>
+                      </Field.Label>
                       <ThemeColorControl
                         field="popoverForegroundColor"
                         name="popover_foreground_color"
                       >
-                        <FieldDescription>
+                        <Field.Description>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-3/4" />}
                           >
                             <Message message="admin.settings.theme.colors.popover_foreground.description" />
                           </Suspense>
-                        </FieldDescription>
+                        </Field.Description>
                       </ThemeColorControl>
-                    </Field>
+                    </Field.Root>
                   </div>
                   <div className="grid gap-5 md:grid-cols-2">
-                    <Field>
-                      <FieldLabel required>
+                    <Field.Root>
+                      <Field.Label required>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-28" />}
                         >
                           <Message message="admin.settings.theme.colors.muted.label" />
                         </Suspense>
-                      </FieldLabel>
+                      </Field.Label>
                       <ThemeColorControl field="mutedColor" name="muted_color">
-                        <FieldDescription>
+                        <Field.Description>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-3/4" />}
                           >
                             <Message message="admin.settings.theme.colors.muted.description" />
                           </Suspense>
-                        </FieldDescription>
+                        </Field.Description>
                       </ThemeColorControl>
-                    </Field>
-                    <Field>
-                      <FieldLabel required>
+                    </Field.Root>
+                    <Field.Root>
+                      <Field.Label required>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-28" />}
                         >
                           <Message message="admin.settings.theme.colors.muted_foreground.label" />
                         </Suspense>
-                      </FieldLabel>
+                      </Field.Label>
                       <ThemeColorControl
                         field="mutedForegroundColor"
                         name="muted_foreground_color"
                       >
-                        <FieldDescription>
+                        <Field.Description>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-3/4" />}
                           >
                             <Message message="admin.settings.theme.colors.muted_foreground.description" />
                           </Suspense>
-                        </FieldDescription>
+                        </Field.Description>
                       </ThemeColorControl>
-                    </Field>
+                    </Field.Root>
                   </div>
                 </div>
               </AdminSection>
@@ -587,60 +570,60 @@ export const ThemeSettingsForm = ({
                   </AdminSectionHeading>
                 </AdminSectionHeader>
                 <div className="grid gap-5 sm:max-w-3xl">
-                  <Field>
-                    <FieldLabel required>
+                  <Field.Root>
+                    <Field.Label required>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-28" />}
                       >
                         <Message message="admin.settings.theme.colors.border.label" />
                       </Suspense>
-                    </FieldLabel>
+                    </Field.Label>
                     <ThemeColorControl field="borderColor" name="border_color">
-                      <FieldDescription>
+                      <Field.Description>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-3/4" />}
                         >
                           <Message message="admin.settings.theme.colors.border.description" />
                         </Suspense>
-                      </FieldDescription>
+                      </Field.Description>
                     </ThemeColorControl>
-                  </Field>
-                  <Field>
-                    <FieldLabel required>
+                  </Field.Root>
+                  <Field.Root>
+                    <Field.Label required>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-28" />}
                       >
                         <Message message="admin.settings.theme.colors.input.label" />
                       </Suspense>
-                    </FieldLabel>
+                    </Field.Label>
                     <ThemeColorControl field="inputColor" name="input_color">
-                      <FieldDescription>
+                      <Field.Description>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-3/4" />}
                         >
                           <Message message="admin.settings.theme.colors.input.description" />
                         </Suspense>
-                      </FieldDescription>
+                      </Field.Description>
                     </ThemeColorControl>
-                  </Field>
-                  <Field>
-                    <FieldLabel required>
+                  </Field.Root>
+                  <Field.Root>
+                    <Field.Label required>
                       <Suspense
                         fallback={<SkeletonLine className="h-4 w-28" />}
                       >
                         <Message message="admin.settings.theme.colors.ring.label" />
                       </Suspense>
-                    </FieldLabel>
+                    </Field.Label>
                     <ThemeColorControl field="ringColor" name="ring_color">
-                      <FieldDescription>
+                      <Field.Description>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-3/4" />}
                         >
                           <Message message="admin.settings.theme.colors.ring.description" />
                         </Suspense>
-                      </FieldDescription>
+                      </Field.Description>
                     </ThemeColorControl>
-                  </Field>
+                  </Field.Root>
                 </div>
               </AdminSection>
 
@@ -665,199 +648,199 @@ export const ThemeSettingsForm = ({
                 </AdminSectionHeader>
                 <div className="grid gap-5 sm:max-w-3xl">
                   <div className="grid gap-5 md:grid-cols-2">
-                    <Field>
-                      <FieldLabel required>
+                    <Field.Root>
+                      <Field.Label required>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-28" />}
                         >
                           <Message message="admin.settings.theme.colors.success.label" />
                         </Suspense>
-                      </FieldLabel>
+                      </Field.Label>
                       <ThemeColorControl
                         field="successColor"
                         name="success_color"
                       >
-                        <FieldDescription>
+                        <Field.Description>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-3/4" />}
                           >
                             <Message message="admin.settings.theme.colors.success.description" />
                           </Suspense>
-                        </FieldDescription>
+                        </Field.Description>
                       </ThemeColorControl>
-                    </Field>
-                    <Field>
-                      <FieldLabel required>
+                    </Field.Root>
+                    <Field.Root>
+                      <Field.Label required>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-28" />}
                         >
                           <Message message="admin.settings.theme.colors.success_foreground.label" />
                         </Suspense>
-                      </FieldLabel>
+                      </Field.Label>
                       <ThemeColorControl
                         field="successForegroundColor"
                         name="success_foreground_color"
                       >
-                        <FieldDescription>
+                        <Field.Description>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-3/4" />}
                           >
                             <Message message="admin.settings.theme.colors.success_foreground.description" />
                           </Suspense>
-                        </FieldDescription>
+                        </Field.Description>
                       </ThemeColorControl>
-                    </Field>
+                    </Field.Root>
                   </div>
                   <div className="grid gap-5 md:grid-cols-2">
-                    <Field>
-                      <FieldLabel required>
+                    <Field.Root>
+                      <Field.Label required>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-28" />}
                         >
                           <Message message="admin.settings.theme.colors.warning.label" />
                         </Suspense>
-                      </FieldLabel>
+                      </Field.Label>
                       <ThemeColorControl
                         field="warningColor"
                         name="warning_color"
                       >
-                        <FieldDescription>
+                        <Field.Description>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-3/4" />}
                           >
                             <Message message="admin.settings.theme.colors.warning.description" />
                           </Suspense>
-                        </FieldDescription>
+                        </Field.Description>
                       </ThemeColorControl>
-                    </Field>
-                    <Field>
-                      <FieldLabel required>
+                    </Field.Root>
+                    <Field.Root>
+                      <Field.Label required>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-28" />}
                         >
                           <Message message="admin.settings.theme.colors.warning_foreground.label" />
                         </Suspense>
-                      </FieldLabel>
+                      </Field.Label>
                       <ThemeColorControl
                         field="warningForegroundColor"
                         name="warning_foreground_color"
                       >
-                        <FieldDescription>
+                        <Field.Description>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-3/4" />}
                           >
                             <Message message="admin.settings.theme.colors.warning_foreground.description" />
                           </Suspense>
-                        </FieldDescription>
+                        </Field.Description>
                       </ThemeColorControl>
-                    </Field>
+                    </Field.Root>
                   </div>
                   <div className="grid gap-5 md:grid-cols-2">
-                    <Field>
-                      <FieldLabel required>
+                    <Field.Root>
+                      <Field.Label required>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-28" />}
                         >
                           <Message message="admin.settings.theme.colors.destructive.label" />
                         </Suspense>
-                      </FieldLabel>
+                      </Field.Label>
                       <ThemeColorControl
                         field="destructiveColor"
                         name="destructive_color"
                       >
-                        <FieldDescription>
+                        <Field.Description>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-3/4" />}
                           >
                             <Message message="admin.settings.theme.colors.destructive.description" />
                           </Suspense>
-                        </FieldDescription>
+                        </Field.Description>
                       </ThemeColorControl>
-                    </Field>
-                    <Field>
-                      <FieldLabel required>
+                    </Field.Root>
+                    <Field.Root>
+                      <Field.Label required>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-28" />}
                         >
                           <Message message="admin.settings.theme.colors.destructive_foreground.label" />
                         </Suspense>
-                      </FieldLabel>
+                      </Field.Label>
                       <ThemeColorControl
                         field="destructiveForegroundColor"
                         name="destructive_foreground_color"
                       >
-                        <FieldDescription>
+                        <Field.Description>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-3/4" />}
                           >
                             <Message message="admin.settings.theme.colors.destructive_foreground.description" />
                           </Suspense>
-                        </FieldDescription>
+                        </Field.Description>
                       </ThemeColorControl>
-                    </Field>
+                    </Field.Root>
                   </div>
                   <div className="grid gap-5 md:grid-cols-2">
-                    <Field>
-                      <FieldLabel required>
+                    <Field.Root>
+                      <Field.Label required>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-28" />}
                         >
                           <Message message="admin.settings.theme.colors.info.label" />
                         </Suspense>
-                      </FieldLabel>
+                      </Field.Label>
                       <ThemeColorControl field="infoColor" name="info_color">
-                        <FieldDescription>
+                        <Field.Description>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-3/4" />}
                           >
                             <Message message="admin.settings.theme.colors.info.description" />
                           </Suspense>
-                        </FieldDescription>
+                        </Field.Description>
                       </ThemeColorControl>
-                    </Field>
-                    <Field>
-                      <FieldLabel required>
+                    </Field.Root>
+                    <Field.Root>
+                      <Field.Label required>
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-28" />}
                         >
                           <Message message="admin.settings.theme.colors.info_foreground.label" />
                         </Suspense>
-                      </FieldLabel>
+                      </Field.Label>
                       <ThemeColorControl
                         field="infoForegroundColor"
                         name="info_foreground_color"
                       >
-                        <FieldDescription>
+                        <Field.Description>
                           <Suspense
                             fallback={<SkeletonLine className="h-4 w-3/4" />}
                           >
                             <Message message="admin.settings.theme.colors.info_foreground.description" />
                           </Suspense>
-                        </FieldDescription>
+                        </Field.Description>
                       </ThemeColorControl>
-                    </Field>
+                    </Field.Root>
                   </div>
                 </div>
               </AdminSection>
-            </ActionFormFieldset>
+            </ActionForm.Fieldset>
 
             <div className="flex justify-end">
-              <ActionFormSubmit>
+              <ActionForm.Submit>
                 <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
-                  <ActionFormIdle>
+                  <ActionForm.Idle>
                     <Message message="admin.settings.theme.submit" />
-                  </ActionFormIdle>
-                  <ActionFormPending>
+                  </ActionForm.Idle>
+                  <ActionForm.Pending>
                     <Message message="admin.settings.saving" />
-                  </ActionFormPending>
+                  </ActionForm.Pending>
                 </Suspense>
-              </ActionFormSubmit>
+              </ActionForm.Submit>
             </div>
-          </ActionForm>
+          </ActionForm.Root>
         </AdminSections>
-      </TabsPanel>
+      </Tabs.Panel>
 
-      <TabsPanel value="preview">
+      <Tabs.Panel value="preview">
         <AdminSection>
           <AdminSectionHeader>
             <AdminSectionHeading>
@@ -875,7 +858,7 @@ export const ThemeSettingsForm = ({
           </AdminSectionHeader>
           <ThemePreview />
         </AdminSection>
-      </TabsPanel>
-    </Tabs>
+      </Tabs.Panel>
+    </Tabs.Root>
   </ThemeSettingsScope>
 );

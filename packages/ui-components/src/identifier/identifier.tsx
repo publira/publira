@@ -23,10 +23,10 @@ const COPIED_FEEDBACK_MS = 1500;
  * from {@link IdentifierCopy} instead of from the shape of the glyphs.
  *
  * ```tsx
- * <Identifier>
- *   <IdentifierValue>{user.publicId}</IdentifierValue>
- *   <IdentifierCopy aria-label="Copy the public ID" value={user.publicId} />
- * </Identifier>
+ * <Identifier.Root>
+ *   <Identifier.Value>{user.publicId}</Identifier.Value>
+ *   <Identifier.Copy aria-label="Copy the public ID" value={user.publicId} />
+ * </Identifier.Root>
  * ```
  */
 export const Identifier = ({

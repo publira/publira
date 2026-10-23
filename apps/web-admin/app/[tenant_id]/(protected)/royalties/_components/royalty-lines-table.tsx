@@ -1,14 +1,7 @@
 import { toIntlLocale } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import { formatPlainYearMonth } from "@publira/utils";
 import { Suspense } from "react";
 
@@ -46,66 +39,66 @@ export const RoyaltyLinesTable = ({
   const intlLocale = toIntlLocale(locale);
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>
+    <Table.Root>
+      <Table.Header>
+        <Table.Row>
+          <Table.Head>
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
               <Message message="admin.royalties.lines.columns.series" />
             </Suspense>
-          </TableHead>
-          <TableHead>
+          </Table.Head>
+          <Table.Head>
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
               <Message message="admin.royalties.lines.columns.episode" />
             </Suspense>
-          </TableHead>
-          <TableHead>
+          </Table.Head>
+          <Table.Head>
             <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
               <Message message="admin.royalties.lines.columns.role" />
             </Suspense>
-          </TableHead>
-          <TableHead className="text-right">
+          </Table.Head>
+          <Table.Head className="text-right">
             <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
               <Message message="admin.royalties.lines.columns.sale_count" />
             </Suspense>
-          </TableHead>
-          <TableHead className="text-right">
+          </Table.Head>
+          <Table.Head className="text-right">
             <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
               <Message message="admin.royalties.lines.columns.gross" />
             </Suspense>
-          </TableHead>
-          <TableHead className="text-right">
+          </Table.Head>
+          <Table.Head className="text-right">
             <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
               <Message message="admin.royalties.lines.columns.refunded" />
             </Suspense>
-          </TableHead>
-          <TableHead className="text-right">
+          </Table.Head>
+          <Table.Head className="text-right">
             <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
               <Message message="admin.royalties.lines.columns.share" />
             </Suspense>
-          </TableHead>
-          <TableHead className="text-right">
+          </Table.Head>
+          <Table.Head className="text-right">
             <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
               <Message message="admin.royalties.lines.columns.payout" />
             </Suspense>
-          </TableHead>
-        </TableRow>
-      </TableHeader>
+          </Table.Head>
+        </Table.Row>
+      </Table.Header>
       {groupRoyaltyLinesByCreator(lines).map((group) => (
-        <TableBody key={group.key}>
-          <TableRow className="bg-muted/50 hover:bg-muted/50">
-            <TableHead
+        <Table.Body key={group.key}>
+          <Table.Row className="bg-muted/50 hover:bg-muted/50">
+            <Table.Head
               className="text-foreground"
               colSpan={LEADING_COLUMN_COUNT + 1}
               scope="rowgroup"
             >
               {group.creatorName}
-            </TableHead>
-          </TableRow>
+            </Table.Head>
+          </Table.Row>
           {group.lines.map((line) => (
-            <TableRow key={line.lineNumber}>
-              <TableCell>{line.seriesTitle}</TableCell>
-              <TableCell>
+            <Table.Row key={line.lineNumber}>
+              <Table.Cell>{line.seriesTitle}</Table.Cell>
+              <Table.Cell>
                 {line.episodeTitle}
                 {line.adjustedPeriod ? (
                   <span className="block text-xs text-muted-foreground">
@@ -121,29 +114,29 @@ export const RoyaltyLinesTable = ({
                     </Suspense>
                   </span>
                 ) : null}
-              </TableCell>
-              <TableCell>
+              </Table.Cell>
+              <Table.Cell>
                 {line.roleName || (
                   <Message message="admin.royalties.lines.no_role" />
                 )}
-              </TableCell>
-              <TableCell className="text-right">{line.saleCount}</TableCell>
-              <TableCell className="text-right">
+              </Table.Cell>
+              <Table.Cell className="text-right">{line.saleCount}</Table.Cell>
+              <Table.Cell className="text-right">
                 {formatTenantAmount(line.grossAmount, { currency, locale })}
-              </TableCell>
-              <TableCell className="text-right">
+              </Table.Cell>
+              <Table.Cell className="text-right">
                 {formatTenantAmount(line.refundedAmount, { currency, locale })}
-              </TableCell>
-              <TableCell className="text-right">
+              </Table.Cell>
+              <Table.Cell className="text-right">
                 {formatShareBps(line.shareBps, intlLocale)}
-              </TableCell>
-              <TableCell className="text-right">
+              </Table.Cell>
+              <Table.Cell className="text-right">
                 {formatTenantAmount(line.payoutAmount, { currency, locale })}
-              </TableCell>
-            </TableRow>
+              </Table.Cell>
+            </Table.Row>
           ))}
-          <TableRow>
-            <TableCell
+          <Table.Row>
+            <Table.Cell
               className="text-right text-muted-foreground"
               colSpan={LEADING_COLUMN_COUNT}
             >
@@ -152,13 +145,13 @@ export const RoyaltyLinesTable = ({
               >
                 <Message message="admin.royalties.lines.subtotal" />
               </Suspense>
-            </TableCell>
-            <TableCell className="text-right font-medium">
+            </Table.Cell>
+            <Table.Cell className="text-right font-medium">
               {formatTenantAmount(group.payoutSubtotal, { currency, locale })}
-            </TableCell>
-          </TableRow>
-        </TableBody>
+            </Table.Cell>
+          </Table.Row>
+        </Table.Body>
       ))}
-    </Table>
+    </Table.Root>
   );
 };

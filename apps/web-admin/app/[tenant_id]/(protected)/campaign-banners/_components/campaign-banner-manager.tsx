@@ -1,16 +1,6 @@
 import type { Locale } from "@publira/i18n";
-import {
-  EmptyState,
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as SectionError from "@publira/ui-components/section-error";
 
 import { getMessagesFor } from "#lib/messages";
 
@@ -44,31 +34,33 @@ export const CampaignBannerManager = async ({
   // error would read as "this tenant has no banners".
   if (listErrorMessage) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             {t("admin.campaign_banners.list_error")}
-          </SectionErrorTitle>
-          <SectionErrorDescription>{listErrorMessage}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>
+            {listErrorMessage}
+          </SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
   if (banners.length === 0) {
     return (
-      <EmptyState>
-        <EmptyStateHeading>
-          <EmptyStateTitle>
+      <EmptyState.Root>
+        <EmptyState.Heading>
+          <EmptyState.Title>
             {t("admin.campaign_banners.empty_title")}
-          </EmptyStateTitle>
-          <EmptyStateDescription>
+          </EmptyState.Title>
+          <EmptyState.Description>
             {canEdit
               ? t("admin.campaign_banners.empty_description")
               : t("admin.campaign_banners.empty_description_read_only")}
-          </EmptyStateDescription>
-        </EmptyStateHeading>
-      </EmptyState>
+          </EmptyState.Description>
+        </EmptyState.Heading>
+      </EmptyState.Root>
     );
   }
 

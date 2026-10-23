@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionFormState } from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import type { ReactNode } from "react";
 
 /**
@@ -9,7 +9,7 @@ import type { ReactNode } from "react";
  * would ask for what is already done.
  */
 export const UntilActionSucceeds = ({ children }: { children: ReactNode }) => {
-  const state = useActionFormState();
+  const state = ActionForm.useState();
 
   return state?.ok ? null : children;
 };

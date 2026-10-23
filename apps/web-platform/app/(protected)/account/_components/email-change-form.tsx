@@ -1,19 +1,7 @@
-import {
-  ActionForm,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
-import {
-  PasswordInput,
-  PasswordInputControl,
-  PasswordInputToggle,
-} from "@publira/ui-components/password-input";
+import * as PasswordInput from "@publira/ui-components/password-input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -44,17 +32,17 @@ export const EmailChangeForm = () => (
         </PlatformSectionDescription>
       </PlatformSectionHeading>
     </PlatformSectionHeader>
-    <ActionForm
+    <ActionForm.Root
       action={requestPlatformEmailChangeAction}
       className="grid gap-4"
     >
-      <Field>
-        <FieldLabel required>
+      <Field.Root>
+        <Field.Label required>
           <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
             <Message message="platform.settings.email_change_current" />
           </Suspense>
-        </FieldLabel>
-        <FieldContent>
+        </Field.Label>
+        <Field.Content>
           <Input
             autoComplete="email"
             name="current_email"
@@ -62,16 +50,16 @@ export const EmailChangeForm = () => (
             required
             type="email"
           />
-        </FieldContent>
-      </Field>
+        </Field.Content>
+      </Field.Root>
 
-      <Field>
-        <FieldLabel required>
+      <Field.Root>
+        <Field.Label required>
           <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
             <Message message="platform.settings.email_change_new" />
           </Suspense>
-        </FieldLabel>
-        <FieldContent>
+        </Field.Label>
+        <Field.Content>
           <Input
             autoComplete="email"
             name="new_email"
@@ -79,44 +67,44 @@ export const EmailChangeForm = () => (
             required
             type="email"
           />
-        </FieldContent>
-      </Field>
+        </Field.Content>
+      </Field.Root>
 
-      <Field>
-        <FieldLabel required>
+      <Field.Root>
+        <Field.Label required>
           <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
             <Message message="platform.settings.email_change_password" />
           </Suspense>
-        </FieldLabel>
-        <FieldContent>
-          <PasswordInput>
-            <PasswordInputControl
+        </Field.Label>
+        <Field.Content>
+          <PasswordInput.Root>
+            <PasswordInput.Control
               autoComplete="current-password"
               name="current_password"
               placeholder="••••••••"
               required
             />
-            <PasswordInputToggle>
+            <PasswordInput.Toggle>
               <Suspense fallback={null}>
                 <Message message="platform.common.show_password" />
               </Suspense>
-            </PasswordInputToggle>
-          </PasswordInput>
-          <FieldDescription>
+            </PasswordInput.Toggle>
+          </PasswordInput.Root>
+          <Field.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-64" />}>
               <Message message="platform.settings.email_change_password_help" />
             </Suspense>
-          </FieldDescription>
-        </FieldContent>
-      </Field>
+          </Field.Description>
+        </Field.Content>
+      </Field.Root>
 
       <div className="mt-2 flex justify-end gap-2">
-        <ActionFormSubmit>
+        <ActionForm.Submit>
           <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
             <Message message="platform.settings.email_change_submit" />
           </Suspense>
-        </ActionFormSubmit>
+        </ActionForm.Submit>
       </div>
-    </ActionForm>
+    </ActionForm.Root>
   </PlatformSection>
 );

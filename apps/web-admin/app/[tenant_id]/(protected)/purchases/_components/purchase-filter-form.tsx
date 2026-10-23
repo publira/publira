@@ -1,6 +1,6 @@
 import type { Locale } from "@publira/i18n";
 import { Button, LinkButton } from "@publira/ui-components/button";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
@@ -39,75 +39,75 @@ export const PurchaseFilterForm = async ({
         </Suspense>
       </p>
       <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <Field>
-          <FieldLabel>
+        <Field.Root>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.purchases.filter.email" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               defaultValue={filters.email}
               name="email"
               placeholder={t("admin.purchases.filter.email_placeholder")}
               type="email"
             />
-          </FieldContent>
-        </Field>
+          </Field.Content>
+        </Field.Root>
 
-        <Field>
-          <FieldLabel>
+        <Field.Root>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.purchases.filter.series" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               defaultValue={filters.series}
               name="series"
               placeholder={t("admin.purchases.filter.series_placeholder")}
               type="text"
             />
-          </FieldContent>
-        </Field>
+          </Field.Content>
+        </Field.Root>
 
-        <Field>
-          <FieldLabel>
+        <Field.Root>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.purchases.filter.episode" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               defaultValue={filters.episode}
               name="episode"
               placeholder={t("admin.purchases.filter.episode_placeholder")}
               type="text"
             />
-          </FieldContent>
-        </Field>
+          </Field.Content>
+        </Field.Root>
 
-        <Field>
-          <FieldLabel>
+        <Field.Root>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
               <Message message="admin.purchases.filter.from" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input defaultValue={filters.from} name="from" type="date" />
-          </FieldContent>
-        </Field>
+          </Field.Content>
+        </Field.Root>
 
-        <Field>
-          <FieldLabel>
+        <Field.Root>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
               <Message message="admin.purchases.filter.to" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input defaultValue={filters.to} name="to" type="date" />
-          </FieldContent>
-        </Field>
+          </Field.Content>
+        </Field.Root>
 
         <div className="flex items-end gap-2">
           <Button type="submit">

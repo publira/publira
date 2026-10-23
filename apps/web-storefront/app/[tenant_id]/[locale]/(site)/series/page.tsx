@@ -1,13 +1,5 @@
-import {
-  EmptyState,
-  EmptyStateDescription,
-} from "@publira/ui-components/empty-state";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
@@ -179,16 +171,16 @@ const SeriesListData = async ({
 
   if (!result.ok) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="storefront.series.list_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{result.message}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
@@ -200,13 +192,13 @@ const SeriesListData = async ({
       // catalog being empty, and the way out of it is dropping them.
       return isNarrowedSeriesList(query) ? (
         <div className="grid gap-8">
-          <EmptyState>
-            <EmptyStateDescription>
+          <EmptyState.Root>
+            <EmptyState.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
                 <Message message="storefront.series.filter_empty" />
               </Suspense>
-            </EmptyStateDescription>
-          </EmptyState>
+            </EmptyState.Description>
+          </EmptyState.Root>
           <p>
             <LocaleLink
               className="text-sm text-primary underline underline-offset-4"
@@ -219,13 +211,13 @@ const SeriesListData = async ({
           </p>
         </div>
       ) : (
-        <EmptyState>
-          <EmptyStateDescription>
+        <EmptyState.Root>
+          <EmptyState.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
               <Message message="storefront.series.list_empty" />
             </Suspense>
-          </EmptyStateDescription>
-        </EmptyState>
+          </EmptyState.Description>
+        </EmptyState.Root>
       );
     }
 
@@ -234,13 +226,13 @@ const SeriesListData = async ({
     // the only way out is the first page (`proto/README.md`).
     return (
       <div className="grid gap-8">
-        <EmptyState>
-          <EmptyStateDescription>
+        <EmptyState.Root>
+          <EmptyState.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
               <Message message="storefront.series.page_empty" />
             </Suspense>
-          </EmptyStateDescription>
-        </EmptyState>
+          </EmptyState.Description>
+        </EmptyState.Root>
         {previousToken || nextToken ? (
           <SeriesPagination
             nextToken={nextToken}

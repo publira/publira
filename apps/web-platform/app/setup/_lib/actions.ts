@@ -2,7 +2,7 @@
 
 import type { Locale } from "@publira/i18n";
 import { getLocales } from "@publira/i18n";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import { isValidTimeZone } from "@publira/utils";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -69,9 +69,9 @@ const setupFormSchema = async (locale: Locale) => {
 };
 
 export const setupAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   // The screen this was submitted from renders in the negotiated locale, so
   // the failure copy has to come back in the same language.

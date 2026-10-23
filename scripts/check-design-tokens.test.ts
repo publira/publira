@@ -52,7 +52,7 @@ describe("findInFile", () => {
       "font-mono",
     ]);
     assert.deepEqual(
-      matches('<TableCell className="font-mono">{id}</TableCell>'),
+      matches('<Table.Cell className="font-mono">{id}</Table.Cell>'),
       ["font-mono"]
     );
   });

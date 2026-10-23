@@ -3,22 +3,22 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { Figure, FigureLabel, FigureLine, FigureValue } from "./figure-line";
+import * as FigureLine from ".";
 
 afterEach(cleanup);
 
 const renderLine = () =>
   render(
-    <FigureLine>
-      <Figure>
-        <FigureLabel>Published series</FigureLabel>
-        <FigureValue>12</FigureValue>
-      </Figure>
-      <Figure>
-        <FigureLabel>Draft episodes</FigureLabel>
-        <FigureValue>4</FigureValue>
-      </Figure>
-    </FigureLine>
+    <FigureLine.Root>
+      <FigureLine.Figure>
+        <FigureLine.Label>Published series</FigureLine.Label>
+        <FigureLine.Value>12</FigureLine.Value>
+      </FigureLine.Figure>
+      <FigureLine.Figure>
+        <FigureLine.Label>Draft episodes</FigureLine.Label>
+        <FigureLine.Value>4</FigureLine.Value>
+      </FigureLine.Figure>
+    </FigureLine.Root>
   );
 
 describe("FigureLine", () => {

@@ -1,9 +1,4 @@
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
 import type { Metadata } from "next";
@@ -236,16 +231,18 @@ const AnnouncementsSection = async ({
       </div>
 
       {result.ok ? null : (
-        <SectionError className="mb-4">
-          <SectionErrorHeading>
-            <SectionErrorTitle>
+        <SectionError.Root className="mb-4">
+          <SectionError.Heading>
+            <SectionError.Title>
               <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
                 <Message message="storefront.announcements.list_error" />
               </Suspense>
-            </SectionErrorTitle>
-            <SectionErrorDescription>{result.message}</SectionErrorDescription>
-          </SectionErrorHeading>
-        </SectionError>
+            </SectionError.Title>
+            <SectionError.Description>
+              {result.message}
+            </SectionError.Description>
+          </SectionError.Heading>
+        </SectionError.Root>
       )}
 
       {/*

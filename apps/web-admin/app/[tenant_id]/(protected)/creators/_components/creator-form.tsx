@@ -1,16 +1,5 @@
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Textarea } from "@publira/ui-components/textarea";
@@ -52,18 +41,18 @@ export const CreatorForm = async ({
   const iconImageUrl = initialCreator?.iconImageUrl ?? "";
 
   return (
-    <ActionForm action={action} className="grid gap-4">
+    <ActionForm.Root action={action} className="grid gap-4">
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="creator_id" type="hidden" value={initialCreator?.id ?? ""} />
 
-      <ActionFormFieldset className="grid gap-4">
-        <Field>
-          <FieldLabel required>
+      <ActionForm.Fieldset className="grid gap-4">
+        <Field.Root>
+          <Field.Label required>
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
               <Message message="admin.creators.form.name" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               defaultValue={initialCreator?.name}
               name="name"
@@ -71,29 +60,29 @@ export const CreatorForm = async ({
               required
               type="text"
             />
-          </FieldContent>
-        </Field>
+          </Field.Content>
+        </Field.Root>
 
-        <Field>
-          <FieldLabel>
+        <Field.Root>
+          <Field.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
               <Message message="admin.creators.form.profile" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Textarea
               defaultValue={initialCreator?.profileText}
               name="profile_text"
               placeholder={t("admin.creators.form.profile_placeholder")}
               rows={5}
             />
-            <FieldDescription>
+            <Field.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                 <Message message="admin.creators.form.profile_description" />
               </Suspense>
-            </FieldDescription>
-          </FieldContent>
-        </Field>
+            </Field.Description>
+          </Field.Content>
+        </Field.Root>
 
         {/*
           The saved icon's timestamp keys the field, so a save that replaced
@@ -105,13 +94,13 @@ export const CreatorForm = async ({
           iconImageUrl={iconImageUrl}
           key={initialCreator?.iconImageUpdatedAt ?? ""}
         >
-          <Field>
-            <FieldLabel>
+          <Field.Root>
+            <Field.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                 <Message message="admin.creators.form.icon" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <CreatorIconPreview />
               <CreatorIconFileInput />
               <CreatorIconAdjust>
@@ -126,12 +115,12 @@ export const CreatorForm = async ({
                   </Suspense>
                 </CreatorIconClear>
               ) : null}
-              <FieldDescription>
+              <Field.Description>
                 <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                   <Message message="admin.creators.form.icon_description" />
                 </Suspense>
-              </FieldDescription>
-            </FieldContent>
+              </Field.Description>
+            </Field.Content>
 
             <CreatorIconCropDialog>
               <ImageCropDialogTitle>
@@ -140,13 +129,13 @@ export const CreatorForm = async ({
                 </Suspense>
               </ImageCropDialogTitle>
             </CreatorIconCropDialog>
-          </Field>
+          </Field.Root>
         </CreatorIcon>
-      </ActionFormFieldset>
+      </ActionForm.Fieldset>
 
       <div className="mt-2 flex justify-end gap-2">
-        <ActionFormSubmit>
-          <ActionFormIdle>
+        <ActionForm.Submit>
+          <ActionForm.Idle>
             <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
               {isUpdate ? (
                 <Message message="admin.creators.form.update" />
@@ -154,14 +143,14 @@ export const CreatorForm = async ({
                 <Message message="admin.creators.form.create" />
               )}
             </Suspense>
-          </ActionFormIdle>
-          <ActionFormPending>
+          </ActionForm.Idle>
+          <ActionForm.Pending>
             <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
               <Message message="admin.creators.form.submitting" />
             </Suspense>
-          </ActionFormPending>
-        </ActionFormSubmit>
+          </ActionForm.Pending>
+        </ActionForm.Submit>
       </div>
-    </ActionForm>
+    </ActionForm.Root>
   );
 };

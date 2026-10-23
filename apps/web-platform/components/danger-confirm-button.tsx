@@ -2,11 +2,7 @@
 
 import { Button } from "@publira/ui-components/button";
 import type { ButtonProps } from "@publira/ui-components/button";
-import {
-  ConfirmDialog,
-  ConfirmDialogAction,
-  ConfirmDialogTrigger,
-} from "@publira/ui-components/dialog";
+import * as ConfirmDialog from "@publira/ui-components/confirm-dialog";
 import {
   createContext,
   useCallback,
@@ -36,7 +32,7 @@ const useDangerConfirm = (): DangerConfirmState => {
 interface DangerConfirmButtonProps<T> {
   actionArg: T;
   actionCreator: (arg: T) => Promise<void>;
-  /** A `DangerConfirmButtonTrigger` and the `ConfirmDialogContent` it opens, with a `DangerConfirmButtonAction` in its footer. */
+  /** A `DangerConfirmButtonTrigger` and the `ConfirmDialog.Content` it opens, with a `DangerConfirmButtonAction` in its footer. */
   children: ReactNode;
 }
 
@@ -47,16 +43,16 @@ interface DangerConfirmButtonProps<T> {
  * ```tsx
  * <DangerConfirmButton actionArg={…} actionCreator={…}>
  *   <DangerConfirmButtonTrigger>…</DangerConfirmButtonTrigger>
- *   <ConfirmDialogContent>
- *     <ConfirmDialogHeader>
- *       <ConfirmDialogTitle>…</ConfirmDialogTitle>
- *       <ConfirmDialogDescription>…</ConfirmDialogDescription>
- *     </ConfirmDialogHeader>
- *     <ConfirmDialogFooter>
- *       <ConfirmDialogCancel>…</ConfirmDialogCancel>
+ *   <ConfirmDialog.Content>
+ *     <ConfirmDialog.Header>
+ *       <ConfirmDialog.Title>…</ConfirmDialog.Title>
+ *       <ConfirmDialog.Description>…</ConfirmDialog.Description>
+ *     </ConfirmDialog.Header>
+ *     <ConfirmDialog.Footer>
+ *       <ConfirmDialog.Cancel>…</ConfirmDialog.Cancel>
  *       <DangerConfirmButtonAction>…</DangerConfirmButtonAction>
- *     </ConfirmDialogFooter>
- *   </ConfirmDialogContent>
+ *     </ConfirmDialog.Footer>
+ *   </ConfirmDialog.Content>
  * </DangerConfirmButton>
  * ```
  */
@@ -77,7 +73,7 @@ export const DangerConfirmButton = <T,>({
 
   return (
     <DangerConfirmContext value={state}>
-      <ConfirmDialog>{children}</ConfirmDialog>
+      <ConfirmDialog.Root>{children}</ConfirmDialog.Root>
     </DangerConfirmContext>
   );
 };
@@ -93,7 +89,7 @@ export const DangerConfirmButtonTrigger = ({
   const { isPending } = useDangerConfirm();
 
   return (
-    <ConfirmDialogTrigger
+    <ConfirmDialog.Trigger
       render={
         <Button disabled={isPending} variant={variant}>
           {children}
@@ -114,8 +110,8 @@ export const DangerConfirmButtonAction = ({
   const { run } = useDangerConfirm();
 
   return (
-    <ConfirmDialogAction onClick={run} variant={variant}>
+    <ConfirmDialog.Action onClick={run} variant={variant}>
       {children}
-    </ConfirmDialogAction>
+    </ConfirmDialog.Action>
   );
 };

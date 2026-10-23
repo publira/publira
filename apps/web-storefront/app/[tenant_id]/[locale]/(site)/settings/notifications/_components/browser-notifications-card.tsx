@@ -1,11 +1,7 @@
 "use client";
 
 import type { Locale } from "@publira/i18n";
-import {
-  Field,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Switch } from "@publira/ui-components/switch";
 import { useEffect, useState, useTransition } from "react";
@@ -164,20 +160,20 @@ export const BrowserNotificationsCard = ({
       <h2 className="mb-4 text-lg font-semibold">
         <ClientMessage message="storefront.settings.browser_notifications_heading" />
       </h2>
-      <Field className="grid-cols-[auto_1fr] items-start gap-x-3">
+      <Field.Root className="grid-cols-[auto_1fr] items-start gap-x-3">
         <Switch
           checked={state === "on"}
           className="row-span-2 mt-0.5"
           disabled={isPending || state === "checking"}
           onCheckedChange={onCheckedChange}
         />
-        <FieldLabel className="text-sm">
+        <Field.Label className="text-sm">
           <ClientMessage message="storefront.settings.browser_notifications_label" />
-        </FieldLabel>
-        <FieldDescription className="col-start-2">
+        </Field.Label>
+        <Field.Description className="col-start-2">
           <ClientMessage message="storefront.settings.browser_notifications_help" />
-        </FieldDescription>
-      </Field>
+        </Field.Description>
+      </Field.Root>
       {errorMessage ? (
         <FormMessage className="mt-4" variant="destructive">
           {errorMessage}

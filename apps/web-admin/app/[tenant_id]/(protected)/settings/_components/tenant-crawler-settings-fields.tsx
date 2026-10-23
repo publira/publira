@@ -1,15 +1,8 @@
 "use client";
 
-import {
-  useActionFormSettled,
-  useActionFormState,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Checkbox } from "@publira/ui-components/checkbox";
-import {
-  Field,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { useId, useState } from "react";
 
@@ -135,7 +128,7 @@ const CrawlerPath = () => {
 /** A list longer than the server keeps, or the server's refusal of it. */
 const CrawlerPathsMessage = () => {
   const t = useClientMessages();
-  const state = useActionFormState<SettledState>();
+  const state = ActionForm.useState<SettledState>();
   const list = parseCrawlerPaths(useEntryListValues());
 
   if (!list.ok && list.reason === "too_many") {
@@ -172,7 +165,7 @@ export const TenantCrawlerSettingsFields = ({
   knownCrawlers,
 }: TenantCrawlerSettingsFieldsProps) => {
   const crawlersDescriptionId = useId();
-  const state = useActionFormState<SettledState>();
+  const state = ActionForm.useState<SettledState>();
   const [excluded, setExcluded] = useState<ReadonlySet<string>>(
     () => new Set(initialSettings?.excludedUserAgents)
   );
@@ -182,7 +175,7 @@ export const TenantCrawlerSettingsFields = ({
   // Bumped by each save, which remounts the list on what the server stored.
   const [savedCount, setSavedCount] = useState(0);
 
-  useActionFormSettled<SettledState>((settled) => {
+  ActionForm.useSettled<SettledState>((settled) => {
     if (!settled?.ok) {
       return;
     }
@@ -231,7 +224,7 @@ export const TenantCrawlerSettingsFields = ({
             <ul className="grid gap-2 sm:grid-cols-2">
               {crawlers.map((crawler) => (
                 <li key={crawler.userAgent}>
-                  <Field className="grid-cols-[auto_1fr] items-start gap-x-2 gap-y-0.5">
+                  <Field.Root className="grid-cols-[auto_1fr] items-start gap-x-2 gap-y-0.5">
                     <Checkbox
                       checked={excluded.has(crawler.userAgent)}
                       className="row-span-2 mt-0.5"
@@ -241,14 +234,14 @@ export const TenantCrawlerSettingsFields = ({
                       }}
                       value={crawler.userAgent}
                     />
-                    <FieldLabel>{crawler.userAgent}</FieldLabel>
-                    <FieldDescription className="col-start-2">
+                    <Field.Label>{crawler.userAgent}</Field.Label>
+                    <Field.Description className="col-start-2">
                       <ClientMessage
                         message="admin.settings.crawlers.crawler_operator"
                         values={{ operator: crawler.operator }}
                       />
-                    </FieldDescription>
-                  </Field>
+                    </Field.Description>
+                  </Field.Root>
                 </li>
               ))}
             </ul>

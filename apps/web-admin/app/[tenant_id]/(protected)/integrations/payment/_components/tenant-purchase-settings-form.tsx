@@ -1,17 +1,5 @@
-import {
-  ActionForm,
-  ActionFormFieldError,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { Select } from "@publira/ui-components/select";
@@ -64,7 +52,7 @@ export const TenantPurchaseSettingsForm = ({
           </AdminSectionDescription>
         </AdminSectionHeading>
       </AdminSectionHeader>
-      <ActionForm
+      <ActionForm.Root
         action={updateTenantPurchaseSettingsAction}
         className="grid gap-5 sm:max-w-3xl"
       >
@@ -73,7 +61,7 @@ export const TenantPurchaseSettingsForm = ({
         {initialSettings === undefined ? null : (
           // A save refreshes the settings; keying on them remounts the fields
           // on what the API stored instead of changing a mounted default.
-          <ActionFormFieldset
+          <ActionForm.Fieldset
             className="grid gap-5"
             disabled={fieldsDisabled}
             key={[
@@ -82,13 +70,13 @@ export const TenantPurchaseSettingsForm = ({
               initialSettings.googlePlayUrl,
             ].join("\n")}
           >
-            <Field>
-              <FieldLabel>
+            <Field.Root>
+              <Field.Label>
                 <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                   <Message message="admin.settings.purchase.availability" />
                 </Suspense>
-              </FieldLabel>
-              <FieldContent>
+              </Field.Label>
+              <Field.Content>
                 <Select
                   defaultValue={initialSettings.purchaseAvailability}
                   items={[
@@ -125,22 +113,22 @@ export const TenantPurchaseSettingsForm = ({
                   ]}
                   name="purchase_availability"
                 />
-                <FieldDescription>
+                <Field.Description>
                   <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                     <Message message="admin.settings.purchase.availability_description" />
                   </Suspense>
-                </FieldDescription>
-                <ActionFormFieldError name="purchaseAvailability" />
-              </FieldContent>
-            </Field>
+                </Field.Description>
+                <ActionForm.FieldError name="purchaseAvailability" />
+              </Field.Content>
+            </Field.Root>
 
-            <Field>
-              <FieldLabel>
+            <Field.Root>
+              <Field.Label>
                 <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                   <Message message="admin.settings.purchase.app_store_url" />
                 </Suspense>
-              </FieldLabel>
-              <FieldContent>
+              </Field.Label>
+              <Field.Content>
                 <Input
                   defaultValue={initialSettings.appStoreUrl}
                   inputMode="url"
@@ -148,17 +136,17 @@ export const TenantPurchaseSettingsForm = ({
                   placeholder="https://apps.apple.com/app/id…"
                   type="text"
                 />
-                <ActionFormFieldError name="appStoreUrl" />
-              </FieldContent>
-            </Field>
+                <ActionForm.FieldError name="appStoreUrl" />
+              </Field.Content>
+            </Field.Root>
 
-            <Field>
-              <FieldLabel>
+            <Field.Root>
+              <Field.Label>
                 <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                   <Message message="admin.settings.purchase.google_play_url" />
                 </Suspense>
-              </FieldLabel>
-              <FieldContent>
+              </Field.Label>
+              <Field.Content>
                 <Input
                   defaultValue={initialSettings.googlePlayUrl}
                   inputMode="url"
@@ -166,15 +154,15 @@ export const TenantPurchaseSettingsForm = ({
                   placeholder="https://play.google.com/store/apps/details?id=…"
                   type="text"
                 />
-                <FieldDescription>
+                <Field.Description>
                   <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                     <Message message="admin.settings.purchase.store_url_description" />
                   </Suspense>
-                </FieldDescription>
-                <ActionFormFieldError name="googlePlayUrl" />
-              </FieldContent>
-            </Field>
-          </ActionFormFieldset>
+                </Field.Description>
+                <ActionForm.FieldError name="googlePlayUrl" />
+              </Field.Content>
+            </Field.Root>
+          </ActionForm.Fieldset>
         )}
 
         {canEdit ? null : (
@@ -190,18 +178,18 @@ export const TenantPurchaseSettingsForm = ({
         ) : null}
 
         <div className="flex flex-wrap gap-3">
-          <ActionFormSubmit disabled={fieldsDisabled}>
+          <ActionForm.Submit disabled={fieldsDisabled}>
             <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-              <ActionFormIdle>
+              <ActionForm.Idle>
                 <Message message="admin.settings.purchase.submit" />
-              </ActionFormIdle>
-              <ActionFormPending>
+              </ActionForm.Idle>
+              <ActionForm.Pending>
                 <Message message="admin.settings.saving" />
-              </ActionFormPending>
+              </ActionForm.Pending>
             </Suspense>
-          </ActionFormSubmit>
+          </ActionForm.Submit>
         </div>
-      </ActionForm>
+      </ActionForm.Root>
     </AdminSection>
   );
 };

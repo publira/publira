@@ -1,6 +1,6 @@
 "use client";
 
-import { DialogPortal } from "@publira/ui-components/dialog";
+import * as Dialog from "@publira/ui-components/dialog";
 import { useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
 
@@ -39,8 +39,8 @@ export const EpisodeCommentDialogPortal = ({
   return (
     // `undefined` rather than `null`, which the portal reads as a container it
     // is still waiting for and renders nothing into.
-    <DialogPortal container={fullscreenContainer ?? undefined}>
+    <Dialog.Portal container={fullscreenContainer ?? undefined}>
       {children}
-    </DialogPortal>
+    </Dialog.Portal>
   );
 };

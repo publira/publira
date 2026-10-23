@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@publira/ui-components/button";
-import { DialogClose } from "@publira/ui-components/dialog";
+import * as Dialog from "@publira/ui-components/dialog";
 import { Textarea } from "@publira/ui-components/textarea";
 import type { ReactNode } from "react";
 import { createContext, use, useMemo, useState } from "react";
@@ -76,13 +76,13 @@ export const RefundConfirmButton = ({
   const { reason } = useRefundReason("RefundConfirmButton");
 
   return (
-    <DialogClose
+    <Dialog.Close
       disabled={reason.trim() === ""}
       form={formId}
       render={<Button variant="destructive" />}
       type="submit"
     >
       {children}
-    </DialogClose>
+    </Dialog.Close>
   );
 };

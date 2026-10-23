@@ -1,30 +1,9 @@
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import {
-  EmptyState,
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -92,35 +71,35 @@ export const ReaderIconPresetGallery = async ({
       </AdminSectionHeader>
 
       {listErrorMessage ? (
-        <SectionError>
-          <SectionErrorHeading>
-            <SectionErrorTitle>
+        <SectionError.Root>
+          <SectionError.Heading>
+            <SectionError.Title>
               <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
                 <Message message="admin.settings.reader_icons.presets.list_error" />
               </Suspense>
-            </SectionErrorTitle>
-            <SectionErrorDescription>
+            </SectionError.Title>
+            <SectionError.Description>
               {listErrorMessage}
-            </SectionErrorDescription>
-          </SectionErrorHeading>
-        </SectionError>
+            </SectionError.Description>
+          </SectionError.Heading>
+        </SectionError.Root>
       ) : null}
 
       {!listErrorMessage && presets.length === 0 ? (
-        <EmptyState>
-          <EmptyStateHeading>
-            <EmptyStateTitle>
+        <EmptyState.Root>
+          <EmptyState.Heading>
+            <EmptyState.Title>
               <Suspense fallback={<SkeletonLine className="h-5 w-40" />}>
                 <Message message="admin.settings.reader_icons.presets.empty_title" />
               </Suspense>
-            </EmptyStateTitle>
-            <EmptyStateDescription>
+            </EmptyState.Title>
+            <EmptyState.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
                 <Message message="admin.settings.reader_icons.presets.empty_description" />
               </Suspense>
-            </EmptyStateDescription>
-          </EmptyStateHeading>
-        </EmptyState>
+            </EmptyState.Description>
+          </EmptyState.Heading>
+        </EmptyState.Root>
       ) : null}
 
       {presets.length > 0 ? (
@@ -179,33 +158,33 @@ export const ReaderIconPresetGallery = async ({
         </ul>
       ) : null}
 
-      <ActionForm
+      <ActionForm.Root
         action={uploadReaderIconPresetAction}
         className="grid gap-4 sm:max-w-lg"
       >
         <input name="tenant_id" type="hidden" value={tenantId} />
 
-        <ActionFormFieldset disabled={uploadDisabled}>
-          <Field>
-            <FieldLabel>
+        <ActionForm.Fieldset disabled={uploadDisabled}>
+          <Field.Root>
+            <Field.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                 <Message message="admin.settings.reader_icons.presets.file" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <Input
                 accept="image/jpeg,image/png,image/webp"
                 name="icon"
                 type="file"
               />
-              <FieldDescription>
+              <Field.Description>
                 <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                   <Message message="admin.settings.reader_icons.presets.file_description" />
                 </Suspense>
-              </FieldDescription>
-            </FieldContent>
-          </Field>
-        </ActionFormFieldset>
+              </Field.Description>
+            </Field.Content>
+          </Field.Root>
+        </ActionForm.Fieldset>
 
         {canEdit ? null : (
           <FormMessage variant="destructive">
@@ -227,18 +206,18 @@ export const ReaderIconPresetGallery = async ({
         ) : null}
 
         <div className="flex justify-end gap-2">
-          <ActionFormSubmit disabled={uploadDisabled}>
+          <ActionForm.Submit disabled={uploadDisabled}>
             <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-              <ActionFormIdle>
+              <ActionForm.Idle>
                 <Message message="admin.settings.reader_icons.presets.submit" />
-              </ActionFormIdle>
-              <ActionFormPending>
+              </ActionForm.Idle>
+              <ActionForm.Pending>
                 <Message message="admin.settings.reader_icons.presets.uploading" />
-              </ActionFormPending>
+              </ActionForm.Pending>
             </Suspense>
-          </ActionFormSubmit>
+          </ActionForm.Submit>
         </div>
-      </ActionForm>
+      </ActionForm.Root>
     </AdminSection>
   );
 };

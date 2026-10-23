@@ -1,31 +1,9 @@
 import { Badge } from "@publira/ui-components/badge";
-import {
-  EmptyState,
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
-import {
-  Figure,
-  FigureLabel,
-  FigureLine,
-  FigureValue,
-} from "@publira/ui-components/figure-line";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as FigureLine from "@publira/ui-components/figure-line";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import { formatDateTime } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
@@ -100,18 +78,18 @@ const QueueHeading = () => (
  */
 const DashboardSkeleton = () => (
   <div className="grid gap-10">
-    <FigureLine>
+    <FigureLine.Root>
       {(["skeleton-1", "skeleton-2", "skeleton-3"] as const).map((key) => (
-        <Figure key={key}>
-          <FigureLabel>
+        <FigureLine.Figure key={key}>
+          <FigureLine.Label>
             <SkeletonLine className="h-4 w-28" />
-          </FigureLabel>
-          <FigureValue>
+          </FigureLine.Label>
+          <FigureLine.Value>
             <SkeletonLine className="h-6 w-10" />
-          </FigureValue>
-        </Figure>
+          </FigureLine.Value>
+        </FigureLine.Figure>
       ))}
-    </FigureLine>
+    </FigureLine.Root>
     <section className="grid gap-4">
       <QueueHeading />
       <div className="divide-y divide-border border-t-2 border-border">
@@ -135,16 +113,16 @@ const DashboardContent = async () => {
 
   if (!result.ok) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="admin.dashboard.section_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{result.message}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
@@ -152,77 +130,77 @@ const DashboardContent = async () => {
 
   return (
     <div className="grid gap-10">
-      <FigureLine>
-        <Figure>
-          <FigureLabel>
+      <FigureLine.Root>
+        <FigureLine.Figure>
+          <FigureLine.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
               <Message message="admin.dashboard.published_series" />
             </Suspense>
-          </FigureLabel>
-          <FigureValue>{stats.publishedSeriesCount}</FigureValue>
-        </Figure>
-        <Figure>
-          <FigureLabel>
+          </FigureLine.Label>
+          <FigureLine.Value>{stats.publishedSeriesCount}</FigureLine.Value>
+        </FigureLine.Figure>
+        <FigureLine.Figure>
+          <FigureLine.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
               <Message message="admin.dashboard.draft_episodes" />
             </Suspense>
-          </FigureLabel>
-          <FigureValue>{stats.draftEpisodeCount}</FigureValue>
-        </Figure>
-        <Figure>
-          <FigureLabel>
+          </FigureLine.Label>
+          <FigureLine.Value>{stats.draftEpisodeCount}</FigureLine.Value>
+        </FigureLine.Figure>
+        <FigureLine.Figure>
+          <FigureLine.Label>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.dashboard.scheduled_episodes" />
             </Suspense>
-          </FigureLabel>
-          <FigureValue>{stats.scheduledEpisodeCount}</FigureValue>
-        </Figure>
-      </FigureLine>
+          </FigureLine.Label>
+          <FigureLine.Value>{stats.scheduledEpisodeCount}</FigureLine.Value>
+        </FigureLine.Figure>
+      </FigureLine.Root>
 
       <section className="grid gap-4">
         <QueueHeading />
         {queue.length === 0 ? (
-          <EmptyState>
-            <EmptyStateHeading>
-              <EmptyStateTitle>
+          <EmptyState.Root>
+            <EmptyState.Heading>
+              <EmptyState.Title>
                 <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
                   <Message message="admin.dashboard.queue_empty_title" />
                 </Suspense>
-              </EmptyStateTitle>
-              <EmptyStateDescription>
+              </EmptyState.Title>
+              <EmptyState.Description>
                 <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
                   <Message message="admin.dashboard.queue_empty_description" />
                 </Suspense>
-              </EmptyStateDescription>
-            </EmptyStateHeading>
-          </EmptyState>
+              </EmptyState.Description>
+            </EmptyState.Heading>
+          </EmptyState.Root>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>
+          <Table.Root>
+            <Table.Header>
+              <Table.Row>
+                <Table.Head>
                   <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                     <Message message="admin.dashboard.columns.series" />
                   </Suspense>
-                </TableHead>
-                <TableHead>
+                </Table.Head>
+                <Table.Head>
                   <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                     <Message message="admin.dashboard.columns.episode" />
                   </Suspense>
-                </TableHead>
-                <TableHead className="w-36">
+                </Table.Head>
+                <Table.Head className="w-36">
                   <Suspense fallback={<SkeletonLine className="h-4 w-14" />}>
                     <Message message="admin.dashboard.columns.status" />
                   </Suspense>
-                </TableHead>
-                <TableHead className="w-48">
+                </Table.Head>
+                <Table.Head className="w-48">
                   <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
                     <Message message="admin.dashboard.columns.scheduled_at" />
                   </Suspense>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+                </Table.Head>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
               {queue.map((item) => {
                 // An empty fallback rather than the raw value, so the cell can
                 // tell "no date set" from a date and say so in the operator's
@@ -234,14 +212,14 @@ const DashboardContent = async () => {
                 });
 
                 return (
-                  <TableRow
+                  <Table.Row
                     key={`${item.seriesPublicId}-${item.episodePublicId}`}
                   >
-                    <TableCell className="font-medium">
+                    <Table.Cell className="font-medium">
                       {item.seriesTitle}
-                    </TableCell>
-                    <TableCell>{item.episodeTitle}</TableCell>
-                    <TableCell>
+                    </Table.Cell>
+                    <Table.Cell>{item.episodeTitle}</Table.Cell>
+                    <Table.Cell>
                       <Badge
                         tone={getQueueStatusTone(item.status)}
                         variant="outline"
@@ -252,8 +230,8 @@ const DashboardContent = async () => {
                           <QueueStatusMessage status={item.status} />
                         </Suspense>
                       </Badge>
-                    </TableCell>
-                    <TableCell>
+                    </Table.Cell>
+                    <Table.Cell>
                       {scheduledAt || (
                         <Suspense
                           fallback={<SkeletonLine className="h-4 w-16" />}
@@ -261,12 +239,12 @@ const DashboardContent = async () => {
                           <Message message="admin.dashboard.unset" />
                         </Suspense>
                       )}
-                    </TableCell>
-                  </TableRow>
+                    </Table.Cell>
+                  </Table.Row>
                 );
               })}
-            </TableBody>
-          </Table>
+            </Table.Body>
+          </Table.Root>
         )}
       </section>
     </div>

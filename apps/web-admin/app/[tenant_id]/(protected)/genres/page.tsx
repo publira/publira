@@ -1,5 +1,5 @@
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import { TableSkeleton } from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -43,7 +43,7 @@ const GenreManagerSkeleton = () => (
     </AdminSection>
     <AdminSection>
       <SkeletonLine className="h-5 w-32" />
-      <TableSkeleton />
+      <Table.Skeleton />
     </AdminSection>
   </AdminSections>
 );

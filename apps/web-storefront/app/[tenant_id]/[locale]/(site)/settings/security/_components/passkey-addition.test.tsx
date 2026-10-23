@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 
-import { ActionFormSubmit } from "@publira/ui-components/action-form";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -34,7 +33,7 @@ const {
     vi.fn<(formData: FormData) => Promise<PasskeyRegistrationState>>(),
   namePasskey:
     vi.fn<
-      (state: FormActionState, formData: FormData) => Promise<FormActionState>
+      (state: ActionForm.State, formData: FormData) => Promise<ActionForm.State>
     >(),
   startRegistration:
     vi.fn<(options: { optionsJSON: unknown }) => Promise<unknown>>(),
@@ -73,7 +72,7 @@ const renderAddition = () =>
         <PasskeyAddForm>
           <input name="tenantId" type="hidden" value="TENANT001" />
           <PasskeyAdded />
-          <ActionFormSubmit>Add a passkey</ActionFormSubmit>
+          <ActionForm.Submit>Add a passkey</ActionForm.Submit>
         </PasskeyAddForm>
       }
       name={
@@ -84,7 +83,7 @@ const renderAddition = () =>
             <input name="name" />
           </label>
           <SkipPasskeyNaming>Skip</SkipPasskeyNaming>
-          <ActionFormSubmit>Save</ActionFormSubmit>
+          <ActionForm.Submit>Save</ActionForm.Submit>
         </PasskeyNameForm>
       }
     />

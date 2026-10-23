@@ -9,14 +9,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import {
-  LocaleSwitcher,
-  LocaleSwitcherContent,
-  LocaleSwitcherOption,
-  LocaleSwitcherOptions,
-  LocaleSwitcherTitle,
-  LocaleSwitcherTrigger,
-} from "./locale-switcher";
+import * as LocaleSwitcher from ".";
 
 // Each option carries the language's own name, so the ja one is written in
 // Japanese the way the locale registry spells it.
@@ -30,19 +23,19 @@ const Switcher = ({
 }: {
   action: (formData: FormData) => Promise<void>;
 }) => (
-  <LocaleSwitcher action={action} currentLocale="en" fieldName="locale">
-    <LocaleSwitcherTrigger aria-label="Language" />
-    <LocaleSwitcherContent>
-      <LocaleSwitcherTitle>Language</LocaleSwitcherTitle>
-      <LocaleSwitcherOptions aria-label="Language">
+  <LocaleSwitcher.Root action={action} currentLocale="en" fieldName="locale">
+    <LocaleSwitcher.Trigger aria-label="Language" />
+    <LocaleSwitcher.Content>
+      <LocaleSwitcher.Title>Language</LocaleSwitcher.Title>
+      <LocaleSwitcher.Options aria-label="Language">
         {options.map((option) => (
-          <LocaleSwitcherOption key={option.locale} locale={option.locale}>
+          <LocaleSwitcher.Option key={option.locale} locale={option.locale}>
             {option.label}
-          </LocaleSwitcherOption>
+          </LocaleSwitcher.Option>
         ))}
-      </LocaleSwitcherOptions>
-    </LocaleSwitcherContent>
-  </LocaleSwitcher>
+      </LocaleSwitcher.Options>
+    </LocaleSwitcher.Content>
+  </LocaleSwitcher.Root>
 );
 
 afterEach(() => {

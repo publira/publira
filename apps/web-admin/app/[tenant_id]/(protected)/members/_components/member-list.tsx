@@ -1,32 +1,12 @@
 import type { Locale } from "@publira/i18n";
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Badge } from "@publira/ui-components/badge";
-import {
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
-import { Field, FieldLabel } from "@publira/ui-components/field";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as Field from "@publira/ui-components/field";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Select } from "@publira/ui-components/select";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import { formatDate } from "@publira/utils";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -98,20 +78,20 @@ const MemberRoleForm = ({
   member: TenantMemberItem;
   tenantId: string;
 }) => (
-  <ActionForm action={updateTenantMemberRoleAction} className="grid gap-2">
+  <ActionForm.Root action={updateTenantMemberRoleAction} className="grid gap-2">
     <input name="tenant_id" type="hidden" value={tenantId} />
     <input name="user_id" type="hidden" value={member.userId} />
     <div className="flex flex-wrap items-center gap-2">
-      <ActionFormFieldset>
-        <Field className="min-w-36">
-          <FieldLabel className="sr-only">
+      <ActionForm.Fieldset>
+        <Field.Root className="min-w-36">
+          <Field.Label className="sr-only">
             <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
               <Message
                 message="admin.members.role_label"
                 values={{ name: member.name || member.email }}
               />
             </Suspense>
-          </FieldLabel>
+          </Field.Label>
           {/* Keyed by the role so a change made elsewhere, such as an
             invitation granting it on the spot, replaces the selection. */}
           <Select
@@ -120,15 +100,15 @@ const MemberRoleForm = ({
             key={member.role}
             name="role"
           />
-        </Field>
-      </ActionFormFieldset>
-      <ActionFormSubmit variant="outline">
+        </Field.Root>
+      </ActionForm.Fieldset>
+      <ActionForm.Submit variant="outline">
         <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
           <Message message="admin.members.role_submit" />
         </Suspense>
-      </ActionFormSubmit>
+      </ActionForm.Submit>
     </div>
-  </ActionForm>
+  </ActionForm.Root>
 );
 
 const MemberTable = ({
@@ -137,45 +117,45 @@ const MemberTable = ({
   tenantId,
   timeZone,
 }: Pick<MemberListProps, "locale" | "members" | "tenantId" | "timeZone">) => (
-  <Table>
-    <TableHeader>
-      <TableRow>
-        <TableHead>
+  <Table.Root>
+    <Table.Header>
+      <Table.Row>
+        <Table.Head>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="admin.members.columns.name" />
           </Suspense>
-        </TableHead>
-        <TableHead>
+        </Table.Head>
+        <Table.Head>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="admin.members.columns.email" />
           </Suspense>
-        </TableHead>
-        <TableHead>
+        </Table.Head>
+        <Table.Head>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="admin.members.columns.role" />
           </Suspense>
-        </TableHead>
-        <TableHead>
+        </Table.Head>
+        <Table.Head>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="admin.members.columns.status" />
           </Suspense>
-        </TableHead>
-        <TableHead>
+        </Table.Head>
+        <Table.Head>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="admin.members.columns.joined" />
           </Suspense>
-        </TableHead>
-        <TableHead>
+        </Table.Head>
+        <Table.Head>
           <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
             <Message message="admin.members.columns.actions" />
           </Suspense>
-        </TableHead>
-      </TableRow>
-    </TableHeader>
-    <TableBody>
+        </Table.Head>
+      </Table.Row>
+    </Table.Header>
+    <Table.Body>
       {members.map((member) => (
-        <TableRow key={member.userId}>
-          <TableCell>
+        <Table.Row key={member.userId}>
+          <Table.Cell>
             {/* A member is an account of the tenant like any reader, and
               their reader page is where the account is suspended or deleted. */}
             <Link
@@ -184,28 +164,28 @@ const MemberTable = ({
             >
               {member.name || member.publicId}
             </Link>
-          </TableCell>
-          <TableCell>{member.email}</TableCell>
-          <TableCell>
+          </Table.Cell>
+          <Table.Cell>{member.email}</Table.Cell>
+          <Table.Cell>
             <MemberRoleForm member={member} tenantId={tenantId} />
-          </TableCell>
-          <TableCell>
+          </Table.Cell>
+          <Table.Cell>
             <MemberStatusBadge status={member.status} />
-          </TableCell>
-          <TableCell>
+          </Table.Cell>
+          <Table.Cell>
             {formatDate(member.createdAt, { fallback: "-", locale, timeZone })}
-          </TableCell>
-          <TableCell>
+          </Table.Cell>
+          <Table.Cell>
             <MemberRemoveButton
               name={member.name || member.email}
               tenantId={tenantId}
               userId={member.userId}
             />
-          </TableCell>
-        </TableRow>
+          </Table.Cell>
+        </Table.Row>
       ))}
-    </TableBody>
-  </Table>
+    </Table.Body>
+  </Table.Root>
 );
 
 export const MemberList = async ({
@@ -222,16 +202,18 @@ export const MemberList = async ({
   // error would read as "this tenant has no members".
   if (listErrorMessage) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-56" />}>
               <Message message="admin.members.list_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{listErrorMessage}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>
+            {listErrorMessage}
+          </SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
@@ -245,12 +227,14 @@ export const MemberList = async ({
           hasPageLinks={hasPageLinks}
           itemLabel={t("admin.members.list_title")}
         >
-          <EmptyStateHeading>
-            <EmptyStateTitle>{t("admin.members.empty_title")}</EmptyStateTitle>
-            <EmptyStateDescription>
+          <EmptyState.Heading>
+            <EmptyState.Title>
+              {t("admin.members.empty_title")}
+            </EmptyState.Title>
+            <EmptyState.Description>
               {t("admin.members.empty_description")}
-            </EmptyStateDescription>
-          </EmptyStateHeading>
+            </EmptyState.Description>
+          </EmptyState.Heading>
         </CursorPageEmptyState>
       ) : (
         <MemberTable

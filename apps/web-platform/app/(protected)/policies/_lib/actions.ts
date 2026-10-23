@@ -1,6 +1,6 @@
 "use server";
 
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
@@ -29,9 +29,9 @@ import {
 } from "./form-schemas";
 
 export const updatePlatformSecurityPolicyAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
   const schema = await securityPolicyFormSchema(locale);
@@ -98,9 +98,9 @@ export const updatePlatformSecurityPolicyAction = async (
 };
 
 export const updatePlatformCommunityLimitsAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
   const schema = await communityLimitsFormSchema(locale);
@@ -162,9 +162,9 @@ export const updatePlatformCommunityLimitsAction = async (
 };
 
 export const updatePlatformRetentionDefaultsAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
   const schema = await retentionDefaultsFormSchema(locale);

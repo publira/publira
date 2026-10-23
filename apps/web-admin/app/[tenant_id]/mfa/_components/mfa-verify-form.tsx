@@ -3,12 +3,7 @@ import {
   AuthScreenFooter,
   AuthScreenNote,
 } from "@publira/layouts/auth-screen";
-import {
-  ActionForm,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { LinkButton } from "@publira/ui-components/button";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import Link from "next/link";
@@ -55,16 +50,16 @@ const MfaPasskeyVerify = ({
     <PasskeyVerifyForm>
       <input name="tenant_id" type="hidden" value={tenantId} />
 
-      <ActionFormSubmit className="justify-self-start">
+      <ActionForm.Submit className="justify-self-start">
         <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-          <ActionFormIdle>
+          <ActionForm.Idle>
             <Message message="admin.auth.mfa.passkey_verify_submit" />
-          </ActionFormIdle>
-          <ActionFormPending>
+          </ActionForm.Idle>
+          <ActionForm.Pending>
             <Message message="admin.auth.mfa.passkey_waiting" />
-          </ActionFormPending>
+          </ActionForm.Pending>
         </Suspense>
-      </ActionFormSubmit>
+      </ActionForm.Submit>
     </PasskeyVerifyForm>
 
     <MfaVerifyMethodSwitch to="code">
@@ -104,7 +99,7 @@ const MfaCodeVerify = ({
         </Suspense>
       </AuthScreenNote>
 
-      <ActionForm
+      <ActionForm.Root
         action={verifyMfaAction}
         className="grid gap-4"
         showSuccess={false}
@@ -116,17 +111,17 @@ const MfaCodeVerify = ({
           accepts={recoveryOnly ? "recovery" : "authenticator_or_recovery"}
         />
 
-        <ActionFormSubmit className="justify-self-start">
+        <ActionForm.Submit className="justify-self-start">
           <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-            <ActionFormIdle>
+            <ActionForm.Idle>
               <Message message="admin.auth.mfa.verify_submit" />
-            </ActionFormIdle>
-            <ActionFormPending>
+            </ActionForm.Idle>
+            <ActionForm.Pending>
               <Message message="admin.auth.mfa.verify_submitting" />
-            </ActionFormPending>
+            </ActionForm.Pending>
           </Suspense>
-        </ActionFormSubmit>
-      </ActionForm>
+        </ActionForm.Submit>
+      </ActionForm.Root>
 
       {passkey ? (
         <MfaVerifyMethodSwitch to="passkey">

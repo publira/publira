@@ -1,13 +1,7 @@
 import { getLocaleLabel } from "@publira/i18n";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Table,
-  TableBody,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
@@ -429,28 +423,28 @@ export const SetupStatusSection = () => (
     <Suspense fallback={<Skeleton className="h-9 w-full" />}>
       <ConfigurationSummary />
     </Suspense>
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-56">
+    <Table.Root>
+      <Table.Header>
+        <Table.Row>
+          <Table.Head className="w-56">
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
               <Message message="platform.configuration.columns.setting" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-36">
+          </Table.Head>
+          <Table.Head className="w-36">
             <Suspense fallback={<SkeletonLine className="h-4 w-14" />}>
               <Message message="platform.configuration.columns.status" />
             </Suspense>
-          </TableHead>
-          <TableHead>
+          </Table.Head>
+          <Table.Head>
             <Suspense fallback={<SkeletonLine className="h-4 w-14" />}>
               <Message message="platform.configuration.columns.details" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-28" />
-        </TableRow>
-      </TableHeader>
-      <TableBody>
+          </Table.Head>
+          <Table.Head className="w-28" />
+        </Table.Row>
+      </Table.Header>
+      <Table.Body>
         <Suspense fallback={<ConfigurationRowSkeleton />}>
           <GeneralRow />
         </Suspense>
@@ -469,7 +463,7 @@ export const SetupStatusSection = () => (
         <Suspense fallback={<ConfigurationRowSkeleton />}>
           <PoliciesRow />
         </Suspense>
-      </TableBody>
-    </Table>
+      </Table.Body>
+    </Table.Root>
   </PlatformSection>
 );

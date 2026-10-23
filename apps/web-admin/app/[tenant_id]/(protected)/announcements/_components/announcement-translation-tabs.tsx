@@ -2,12 +2,7 @@
 
 import { getLocaleLabel } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import {
-  Tabs,
-  TabsList,
-  TabsPanel,
-  TabsTab,
-} from "@publira/ui-components/tabs";
+import * as Tabs from "@publira/ui-components/tabs";
 import { useState } from "react";
 import type { InvalidEvent, ReactNode } from "react";
 
@@ -66,22 +61,22 @@ export const AnnouncementTranslationTabs = ({
   };
 
   return (
-    <Tabs
+    <Tabs.Root
       onValueChange={(value: Locale) => {
         setSelectedLocale(value);
       }}
       value={selectedLocale}
     >
-      <TabsList aria-label={label} className="flex-wrap">
+      <Tabs.List aria-label={label} className="flex-wrap">
         {panels.map(({ locale }) => (
-          <TabsTab key={locale} value={locale}>
+          <Tabs.Tab key={locale} value={locale}>
             {/* An autonym, read in the language it names. */}
             <span lang={locale}>{getLocaleLabel(locale)}</span>
-          </TabsTab>
+          </Tabs.Tab>
         ))}
-      </TabsList>
+      </Tabs.List>
       {panels.map(({ fields, locale }) => (
-        <TabsPanel
+        <Tabs.Panel
           className="grid gap-5"
           keepMounted
           key={locale}
@@ -92,8 +87,8 @@ export const AnnouncementTranslationTabs = ({
           value={locale}
         >
           {fields}
-        </TabsPanel>
+        </Tabs.Panel>
       ))}
-    </Tabs>
+    </Tabs.Root>
   );
 };

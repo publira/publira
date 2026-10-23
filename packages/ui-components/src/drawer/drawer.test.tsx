@@ -3,27 +3,20 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "./drawer";
+import * as Drawer from ".";
 
 describe("Drawer", () => {
   it("opens a sheet on the right edge named by its title, and its close control returns to the trigger", () => {
     render(
-      <Drawer>
-        <DrawerTrigger>View the purchase</DrawerTrigger>
-        <DrawerContent className="gap-4">
-          <DrawerHeader>
-            <DrawerTitle>Purchase</DrawerTitle>
-            <DrawerClose>Close</DrawerClose>
-          </DrawerHeader>
-        </DrawerContent>
-      </Drawer>
+      <Drawer.Root>
+        <Drawer.Trigger>View the purchase</Drawer.Trigger>
+        <Drawer.Content className="gap-4">
+          <Drawer.Header>
+            <Drawer.Title>Purchase</Drawer.Title>
+            <Drawer.Close>Close</Drawer.Close>
+          </Drawer.Header>
+        </Drawer.Content>
+      </Drawer.Root>
     );
 
     const trigger = screen.getByRole("button", { name: "View the purchase" });

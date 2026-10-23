@@ -1,9 +1,5 @@
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { Select } from "@publira/ui-components/select";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -23,40 +19,43 @@ import { memberRoleItems } from "./member-role-items";
  * without looking at it never hands out the role that can change the staff.
  */
 export const MemberInviteForm = ({ tenantId }: { tenantId: string }) => (
-  <ActionForm action={createTenantAdminInvitationAction} className="grid gap-4">
+  <ActionForm.Root
+    action={createTenantAdminInvitationAction}
+    className="grid gap-4"
+  >
     <input name="tenant_id" type="hidden" value={tenantId} />
-    <ActionFormFieldset className="grid gap-4 sm:max-w-sm">
-      <Field>
-        <FieldLabel required>
+    <ActionForm.Fieldset className="grid gap-4 sm:max-w-sm">
+      <Field.Root>
+        <Field.Label required>
           <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
             <Message message="admin.members.invite_email" />
           </Suspense>
-        </FieldLabel>
-        <FieldContent>
+        </Field.Label>
+        <Field.Content>
           <Input autoComplete="off" name="email" required type="email" />
-        </FieldContent>
-      </Field>
-      <Field>
-        <FieldLabel required>
+        </Field.Content>
+      </Field.Root>
+      <Field.Root>
+        <Field.Label required>
           <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
             <Message message="admin.members.invite_role" />
           </Suspense>
-        </FieldLabel>
-        <FieldContent>
+        </Field.Label>
+        <Field.Content>
           <Select
             defaultValue="tenant_editor"
             items={memberRoleItems}
             name="role"
           />
-        </FieldContent>
-      </Field>
-    </ActionFormFieldset>
+        </Field.Content>
+      </Field.Root>
+    </ActionForm.Fieldset>
     <div className="flex justify-end">
-      <ActionFormSubmit>
+      <ActionForm.Submit>
         <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
           <Message message="admin.members.invite_action" />
         </Suspense>
-      </ActionFormSubmit>
+      </ActionForm.Submit>
     </div>
-  </ActionForm>
+  </ActionForm.Root>
 );

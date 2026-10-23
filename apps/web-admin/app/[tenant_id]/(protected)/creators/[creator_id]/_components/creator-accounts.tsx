@@ -1,19 +1,7 @@
 import type { Locale } from "@publira/i18n";
-import {
-  EmptyState,
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
+import * as EmptyState from "@publira/ui-components/empty-state";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import { formatDate } from "@publira/utils";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -49,66 +37,66 @@ export const CreatorAccounts = ({
       tenantId={tenantId}
     />
     {accounts.length === 0 ? (
-      <EmptyState>
-        <EmptyStateHeading>
-          <EmptyStateTitle>
+      <EmptyState.Root>
+        <EmptyState.Heading>
+          <EmptyState.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="admin.creators.accounts.empty_title" />
             </Suspense>
-          </EmptyStateTitle>
-          <EmptyStateDescription>
+          </EmptyState.Title>
+          <EmptyState.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
               <Message message="admin.creators.accounts.empty_description" />
             </Suspense>
-          </EmptyStateDescription>
-        </EmptyStateHeading>
-      </EmptyState>
+          </EmptyState.Description>
+        </EmptyState.Heading>
+      </EmptyState.Root>
     ) : (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>
+      <Table.Root>
+        <Table.Header>
+          <Table.Row>
+            <Table.Head>
               <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                 <Message message="admin.creators.accounts.columns.name" />
               </Suspense>
-            </TableHead>
-            <TableHead>
+            </Table.Head>
+            <Table.Head>
               <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                 <Message message="admin.creators.accounts.columns.email" />
               </Suspense>
-            </TableHead>
-            <TableHead className="w-40">
+            </Table.Head>
+            <Table.Head className="w-40">
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                 <Message message="admin.creators.accounts.columns.linked_at" />
               </Suspense>
-            </TableHead>
-            <TableHead className="w-32">
+            </Table.Head>
+            <Table.Head className="w-32">
               <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                 <Message message="admin.creators.accounts.columns.actions" />
               </Suspense>
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
+            </Table.Head>
+          </Table.Row>
+        </Table.Header>
+        <Table.Body>
           {accounts.map((account) => (
-            <TableRow key={account.publicId}>
-              <TableCell>
+            <Table.Row key={account.publicId}>
+              <Table.Cell>
                 <Link
                   className="font-medium underline-offset-4 hover:underline"
                   href={`/readers/${account.publicId}`}
                 >
                   {account.name || account.publicId}
                 </Link>
-              </TableCell>
-              <TableCell>{account.email}</TableCell>
-              <TableCell className="tabular-nums">
+              </Table.Cell>
+              <Table.Cell>{account.email}</Table.Cell>
+              <Table.Cell className="tabular-nums">
                 {formatDate(account.linkedAt, {
                   fallback: "—",
                   locale,
                   timeZone,
                 })}
-              </TableCell>
-              <TableCell>
+              </Table.Cell>
+              <Table.Cell>
                 <UnlinkCreatorAccountButton
                   creatorId={creatorId}
                   creatorPublicId={creatorPublicId}
@@ -117,11 +105,11 @@ export const CreatorAccounts = ({
                   readerPublicId={account.publicId}
                   tenantId={tenantId}
                 />
-              </TableCell>
-            </TableRow>
+              </Table.Cell>
+            </Table.Row>
           ))}
-        </TableBody>
-      </Table>
+        </Table.Body>
+      </Table.Root>
     )}
   </div>
 );

@@ -1,7 +1,7 @@
 "use server";
 
 import type { Locale } from "@publira/i18n";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { redirect } from "next/navigation";
@@ -66,7 +66,7 @@ const contactMessageActionFormFields = {
 const mark = async (
   handled: boolean,
   formData: FormData
-): Promise<{ publicId: string } | { state: FormActionState }> => {
+): Promise<{ publicId: string } | { state: ActionForm.State }> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await contactMessageActionSchema(locale);
@@ -103,9 +103,9 @@ const mark = async (
 // is what raises the toast, since the button that was pressed is replaced by
 // the other one once the state changes.
 export const markContactMessageHandledAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   const outcome = await mark(true, formData);
   if ("state" in outcome) {
     return outcome.state;
@@ -116,9 +116,9 @@ export const markContactMessageHandledAction = async (
 };
 
 export const reopenContactMessageAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   const outcome = await mark(false, formData);
   if ("state" in outcome) {
     return outcome.state;
@@ -155,9 +155,9 @@ const assignActionFormFields = {
  * the controls are read again rather than patched in place.
  */
 export const assignContactMessageAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await assignActionSchema(locale);
@@ -225,9 +225,9 @@ const staffNoteActionFormFields = {
  * read again rather than kept as the field last held it.
  */
 export const updateContactMessageStaffNoteAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await staffNoteActionSchema(locale);
@@ -298,9 +298,9 @@ const replyActionFormFields = {
  * and the handled state are read again rather than drawn from what was typed.
  */
 export const replyToContactMessageAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const schema = await replyActionSchema(locale);

@@ -2,7 +2,7 @@
 
 import { getLocales } from "@publira/i18n";
 import type { Locale } from "@publira/i18n";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import { isValidTimeZone } from "@publira/utils";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
@@ -125,9 +125,9 @@ export const updatePlatformDefaultTimezoneAction = async (
 };
 
 export const updatePlatformDefaultLocaleAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const { locale, t } = await loadActionCatalog();
   const schema = await platformDefaultLocaleSchema(locale);
@@ -163,9 +163,9 @@ export const updatePlatformDefaultLocaleAction = async (
 };
 
 export const updatePlatformDefaultCurrencyAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const { locale, t } = await loadActionCatalog();
   const schema = await platformDefaultCurrencySchema(locale);

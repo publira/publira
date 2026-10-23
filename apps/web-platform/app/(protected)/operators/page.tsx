@@ -1,22 +1,9 @@
 import type { Locale } from "@publira/i18n";
 import { StatusChip } from "@publira/ui-components/badge";
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  TableSkeleton,
-} from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -104,63 +91,65 @@ const OperatorsContent = async ({
   return (
     <div className="grid gap-4">
       {result.ok ? null : (
-        <SectionError>
-          <SectionErrorHeading>
-            <SectionErrorTitle>
+        <SectionError.Root>
+          <SectionError.Heading>
+            <SectionError.Title>
               <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
                 <Message message="platform.operators.load_failed" />
               </Suspense>
-            </SectionErrorTitle>
-            <SectionErrorDescription>{result.message}</SectionErrorDescription>
-          </SectionErrorHeading>
-        </SectionError>
+            </SectionError.Title>
+            <SectionError.Description>
+              {result.message}
+            </SectionError.Description>
+          </SectionError.Heading>
+        </SectionError.Root>
       )}
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>
+      <Table.Root>
+        <Table.Header>
+          <Table.Row>
+            <Table.Head>
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                 <Message message="platform.operators.columns_name" />
               </Suspense>
-            </TableHead>
-            <TableHead>
+            </Table.Head>
+            <Table.Head>
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                 <Message message="platform.operators.columns_email" />
               </Suspense>
-            </TableHead>
-            <TableHead className="w-48">
+            </Table.Head>
+            <Table.Head className="w-48">
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                 <Message message="platform.operators.columns_role" />
               </Suspense>
-            </TableHead>
-            <TableHead className="w-36">
+            </Table.Head>
+            <Table.Head className="w-36">
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                 <Message message="platform.operators.columns_status" />
               </Suspense>
-            </TableHead>
-            <TableHead className="w-24" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
+            </Table.Head>
+            <Table.Head className="w-24" />
+          </Table.Row>
+        </Table.Header>
+        <Table.Body>
           {result.ok && result.operators.length === 0 ? (
-            <TableRow>
-              <TableCell className="text-muted-foreground" colSpan={5}>
+            <Table.Row>
+              <Table.Cell className="text-muted-foreground" colSpan={5}>
                 <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                   <Message message="platform.operators.empty" />
                 </Suspense>
-              </TableCell>
-            </TableRow>
+              </Table.Cell>
+            </Table.Row>
           ) : null}
           {result.ok &&
             result.operators.map((operator) => (
-              <TableRow key={operator.publicId || operator.email}>
-                <TableCell className="font-medium">{operator.name}</TableCell>
-                <TableCell>{operator.email}</TableCell>
-                <TableCell>
+              <Table.Row key={operator.publicId || operator.email}>
+                <Table.Cell className="font-medium">{operator.name}</Table.Cell>
+                <Table.Cell>{operator.email}</Table.Cell>
+                <Table.Cell>
                   <OperatorRoleCell locale={locale} role={operator.role} />
-                </TableCell>
-                <TableCell>
+                </Table.Cell>
+                <Table.Cell>
                   <StatusChip
                     status={
                       operator.status === "active" ? "success" : "warning"
@@ -172,8 +161,8 @@ const OperatorsContent = async ({
                       status={operator.status}
                     />
                   </StatusChip>
-                </TableCell>
-                <TableCell>
+                </Table.Cell>
+                <Table.Cell>
                   <LinkButton
                     render={<Link href={`/operators/${operator.publicId}`} />}
                     size="sm"
@@ -183,11 +172,11 @@ const OperatorsContent = async ({
                       <Message message="platform.common.detail" />
                     </Suspense>
                   </LinkButton>
-                </TableCell>
-              </TableRow>
+                </Table.Cell>
+              </Table.Row>
             ))}
-        </TableBody>
-      </Table>
+        </Table.Body>
+      </Table.Root>
 
       <PaginationControls
         aria-label={t("platform.operators.pagination_aria")}
@@ -229,7 +218,7 @@ const OperatorsPage = ({ searchParams }: OperatorsPageProps) => (
           </Suspense>
         }
       >
-        <Suspense fallback={<TableSkeleton />}>
+        <Suspense fallback={<Table.Skeleton />}>
           <OperatorsContent searchParams={searchParams} />
         </Suspense>
       </SectionErrorBoundary>

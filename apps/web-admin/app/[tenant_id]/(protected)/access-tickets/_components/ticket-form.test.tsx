@@ -63,9 +63,15 @@ vi.mock("@publira/ui-components/combobox", async () => {
   const { Input } = await import("@publira/ui-components/input");
 
   return {
+    // The mocked root stands in for the whole control, so its slots render
+    // nothing.
+    Empty: () => null,
+    Input: () => null,
+    Items: () => null,
+    Popup: () => null,
     // Typing both searches, where the picker searches, and picks the typed
     // value, so one field stands in for the text box and the list.
-    Combobox: ({
+    Root: ({
       disabled,
       items,
       onSearch,
@@ -94,12 +100,6 @@ vi.mock("@publira/ui-components/combobox", async () => {
         ))}
       </>
     ),
-    // The mocked root stands in for the whole control, so its slots render
-    // nothing.
-    ComboboxEmpty: () => null,
-    ComboboxInput: () => null,
-    ComboboxItems: () => null,
-    ComboboxPopup: () => null,
   };
 });
 

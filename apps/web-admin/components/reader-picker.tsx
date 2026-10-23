@@ -1,13 +1,6 @@
 "use client";
 
-import type { ComboboxItem } from "@publira/ui-components/combobox";
-import {
-  Combobox,
-  ComboboxEmpty,
-  ComboboxInput,
-  ComboboxItems,
-  ComboboxPopup,
-} from "@publira/ui-components/combobox";
+import * as Combobox from "@publira/ui-components/combobox";
 import { FormMessage } from "@publira/ui-components/form-message";
 import {
   useCallback,
@@ -52,7 +45,7 @@ export const ReaderPicker = ({ name, onValueChange }: ReaderPickerProps) => {
 
   // The chosen reader stays an option while a later search returns others, so
   // the picker keeps showing who was chosen.
-  const items = useMemo<ComboboxItem[]>(() => {
+  const items = useMemo<Combobox.Item[]>(() => {
     const options =
       selectedReader && !readers.some((item) => item.id === selectedReader.id)
         ? [selectedReader, ...readers]
@@ -111,22 +104,22 @@ export const ReaderPicker = ({ name, onValueChange }: ReaderPickerProps) => {
 
   return (
     <>
-      <Combobox
+      <Combobox.Root
         items={items}
         onSearch={handleSearch}
         onValueChange={handleValueChange}
         value={readerId}
       >
-        <ComboboxInput placeholder={t("admin.reader_picker.placeholder")} />
-        <ComboboxPopup>
-          <ComboboxEmpty>
+        <Combobox.Input placeholder={t("admin.reader_picker.placeholder")} />
+        <Combobox.Popup>
+          <Combobox.Empty>
             {isPending
               ? t("admin.reader_picker.searching")
               : t("admin.reader_picker.empty")}
-          </ComboboxEmpty>
-          <ComboboxItems />
-        </ComboboxPopup>
-      </Combobox>
+          </Combobox.Empty>
+          <Combobox.Items />
+        </Combobox.Popup>
+      </Combobox.Root>
       <input name={name} type="hidden" value={readerId} />
       {errorMessage ? (
         <FormMessage variant="destructive">{errorMessage}</FormMessage>

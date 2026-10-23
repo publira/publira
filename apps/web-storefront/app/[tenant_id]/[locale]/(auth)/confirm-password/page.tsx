@@ -9,13 +9,9 @@ import {
   AuthScreenTitle,
 } from "@publira/layouts/auth-screen";
 import { Button } from "@publira/ui-components/button";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
-import {
-  PasswordInput,
-  PasswordInputControl,
-  PasswordInputToggle,
-} from "@publira/ui-components/password-input";
+import * as PasswordInput from "@publira/ui-components/password-input";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -108,51 +104,51 @@ const ConfirmPasswordForm = ({
         <TenantIdField />
         <input name="token" type="hidden" value={token} />
 
-        <Field>
-          <FieldLabel required>
+        <Field.Root>
+          <Field.Label required>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="storefront.auth.confirm_password.password_label" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
-            <PasswordInput>
-              <PasswordInputControl
+          </Field.Label>
+          <Field.Content>
+            <PasswordInput.Root>
+              <PasswordInput.Control
                 autoComplete="new-password"
                 name="newPassword"
                 placeholder="••••••••"
                 required
               />
-              <PasswordInputToggle>
+              <PasswordInput.Toggle>
                 <Suspense fallback={null}>
                   <Message message="storefront.common.show_password" />
                 </Suspense>
-              </PasswordInputToggle>
-            </PasswordInput>
-          </FieldContent>
-        </Field>
+              </PasswordInput.Toggle>
+            </PasswordInput.Root>
+          </Field.Content>
+        </Field.Root>
 
-        <Field>
-          <FieldLabel required>
+        <Field.Root>
+          <Field.Label required>
             <Suspense fallback={<SkeletonLine className="h-4 w-44" />}>
               <Message message="storefront.auth.confirm_password.password_confirm_label" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
-            <PasswordInput>
-              <PasswordInputControl
+          </Field.Label>
+          <Field.Content>
+            <PasswordInput.Root>
+              <PasswordInput.Control
                 autoComplete="new-password"
                 name="confirmPassword"
                 placeholder="••••••••"
                 required
               />
-              <PasswordInputToggle>
+              <PasswordInput.Toggle>
                 <Suspense fallback={null}>
                   <Message message="storefront.common.show_password" />
                 </Suspense>
-              </PasswordInputToggle>
-            </PasswordInput>
-          </FieldContent>
-        </Field>
+              </PasswordInput.Toggle>
+            </PasswordInput.Root>
+          </Field.Content>
+        </Field.Root>
 
         {errorMessage ? (
           <FormMessage variant="destructive">{errorMessage}</FormMessage>

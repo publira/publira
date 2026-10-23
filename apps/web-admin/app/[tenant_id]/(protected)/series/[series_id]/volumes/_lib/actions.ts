@@ -1,7 +1,7 @@
 "use server";
 
 import type { Locale } from "@publira/i18n";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import { toFormErrorMessage } from "@publira/utils/field-errors";
 import { toFormDataInput } from "@publira/utils/form-data";
 import { updateTag } from "next/cache";
@@ -125,9 +125,9 @@ const parseVolumePrice = async (
  * volume holds no episodes and the next thing the editor does is give it some.
  */
 export const createVolumeAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const [t, base, details] = await Promise.all([
@@ -183,9 +183,9 @@ export const createVolumeAction = async (
 };
 
 export const updateVolumeAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const [t, base, details] = await Promise.all([
@@ -226,9 +226,9 @@ export const updateVolumeAction = async (
 
 /** Puts the volume on sale when `published` is `"1"`, and takes it off otherwise. */
 export const publishVolumeAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const [t, base] = await Promise.all([
@@ -270,9 +270,9 @@ export const publishVolumeAction = async (
  * volume that has been on sale.
  */
 export const setVolumeEpisodesAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const [t, base] = await Promise.all([
@@ -390,9 +390,9 @@ const unconfirmedCoverMessage = (
  * when the form's delete toggle was set.
  */
 export const updateVolumeCoverAction = async (
-  _prevState: FormActionState,
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<FormActionState> => {
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getActionLocale(formData);
   const [t, base] = await Promise.all([

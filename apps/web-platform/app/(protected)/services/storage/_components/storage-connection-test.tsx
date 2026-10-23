@@ -1,11 +1,7 @@
 "use client";
 
 import { CheckIcon, CloseIcon } from "@publira/icons";
-import {
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { cn } from "@publira/utils";
 import { useActionState } from "react";
@@ -42,14 +38,14 @@ export const StorageConnectionTest = ({
         </p>
       </div>
       <div>
-        <ActionFormSubmit formAction={dispatch} variant="outline">
-          <ActionFormIdle>
+        <ActionForm.Submit formAction={dispatch} variant="outline">
+          <ActionForm.Idle>
             <ClientMessage message="platform.storage.test.submit" />
-          </ActionFormIdle>
-          <ActionFormPending>
+          </ActionForm.Idle>
+          <ActionForm.Pending>
             <ClientMessage message="platform.storage.test.pending" />
-          </ActionFormPending>
-        </ActionFormSubmit>
+          </ActionForm.Pending>
+        </ActionForm.Submit>
       </div>
       {state ? (
         <FormMessage variant={state.ok ? "success" : "destructive"}>

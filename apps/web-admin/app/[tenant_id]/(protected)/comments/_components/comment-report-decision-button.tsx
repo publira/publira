@@ -1,9 +1,4 @@
-import {
-  ActionForm,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -32,7 +27,7 @@ export const CommentReportDecisionButton = ({
   resolution,
   tenantId,
 }: CommentReportDecisionButtonProps) => (
-  <ActionForm
+  <ActionForm.Root
     action={resolveCommentReportAction}
     className="grid gap-1"
     showSuccess={false}
@@ -41,31 +36,31 @@ export const CommentReportDecisionButton = ({
     <input name="report_id" type="hidden" value={reportId} />
     <input name="resolution" type="hidden" value={resolution} />
     <SettledToast />
-    <ActionFormSubmit
+    <ActionForm.Submit
       size="sm"
       variant={resolution === "resolved" ? "default" : "outline"}
     >
       <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
         {resolution === "resolved" ? (
           <>
-            <ActionFormIdle>
+            <ActionForm.Idle>
               <Message message="admin.comments.reports.resolve" />
-            </ActionFormIdle>
-            <ActionFormPending>
+            </ActionForm.Idle>
+            <ActionForm.Pending>
               <Message message="admin.comments.reports.resolving" />
-            </ActionFormPending>
+            </ActionForm.Pending>
           </>
         ) : (
           <>
-            <ActionFormIdle>
+            <ActionForm.Idle>
               <Message message="admin.comments.reports.reject" />
-            </ActionFormIdle>
-            <ActionFormPending>
+            </ActionForm.Idle>
+            <ActionForm.Pending>
               <Message message="admin.comments.reports.rejecting" />
-            </ActionFormPending>
+            </ActionForm.Pending>
           </>
         )}
       </Suspense>
-    </ActionFormSubmit>
-  </ActionForm>
+    </ActionForm.Submit>
+  </ActionForm.Root>
 );

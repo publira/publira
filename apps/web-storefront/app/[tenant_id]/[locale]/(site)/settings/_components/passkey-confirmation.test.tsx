@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -18,7 +18,7 @@ const { begin, browserSupportsWebAuthn, confirm, startAuthentication } =
     begin:
       vi.fn<(formData: FormData) => Promise<PasskeyConfirmationStartState>>(),
     browserSupportsWebAuthn: vi.fn<() => boolean>(),
-    confirm: vi.fn<(formData: FormData) => Promise<FormActionState>>(),
+    confirm: vi.fn<(formData: FormData) => Promise<ActionForm.State>>(),
     startAuthentication:
       vi.fn<(options: { optionsJSON: unknown }) => Promise<unknown>>(),
   }));

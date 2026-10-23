@@ -1,22 +1,7 @@
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
-import {
-  PasswordInput,
-  PasswordInputControl,
-  PasswordInputToggle,
-} from "@publira/ui-components/password-input";
+import * as PasswordInput from "@publira/ui-components/password-input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
@@ -51,17 +36,17 @@ export const EmailChangeForm = ({ tenantId }: EmailChangeFormProps) => (
         </AdminSectionDescription>
       </AdminSectionHeading>
     </AdminSectionHeader>
-    <ActionForm action={requestEmailChangeAction} className="grid gap-4">
+    <ActionForm.Root action={requestEmailChangeAction} className="grid gap-4">
       <input name="tenant_id" type="hidden" value={tenantId} />
 
-      <ActionFormFieldset className="grid gap-4">
-        <Field>
-          <FieldLabel required>
+      <ActionForm.Fieldset className="grid gap-4">
+        <Field.Root>
+          <Field.Label required>
             <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
               <Message message="admin.settings.email_change.current_email" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               autoComplete="email"
               name="current_email"
@@ -69,16 +54,16 @@ export const EmailChangeForm = ({ tenantId }: EmailChangeFormProps) => (
               required
               type="email"
             />
-          </FieldContent>
-        </Field>
+          </Field.Content>
+        </Field.Root>
 
-        <Field>
-          <FieldLabel required>
+        <Field.Root>
+          <Field.Label required>
             <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
               <Message message="admin.settings.email_change.new_email" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
+          </Field.Label>
+          <Field.Content>
             <Input
               autoComplete="email"
               name="new_email"
@@ -86,50 +71,50 @@ export const EmailChangeForm = ({ tenantId }: EmailChangeFormProps) => (
               required
               type="email"
             />
-          </FieldContent>
-        </Field>
+          </Field.Content>
+        </Field.Root>
 
-        <Field>
-          <FieldLabel required>
+        <Field.Root>
+          <Field.Label required>
             <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
               <Message message="admin.settings.email_change.current_password" />
             </Suspense>
-          </FieldLabel>
-          <FieldContent>
-            <PasswordInput>
-              <PasswordInputControl
+          </Field.Label>
+          <Field.Content>
+            <PasswordInput.Root>
+              <PasswordInput.Control
                 autoComplete="current-password"
                 name="current_password"
                 placeholder="••••••••"
                 required
               />
-              <PasswordInputToggle>
+              <PasswordInput.Toggle>
                 <Suspense fallback={null}>
                   <Message message="admin.common.show_password" />
                 </Suspense>
-              </PasswordInputToggle>
-            </PasswordInput>
-            <FieldDescription>
+              </PasswordInput.Toggle>
+            </PasswordInput.Root>
+            <Field.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
                 <Message message="admin.settings.email_change.password_description" />
               </Suspense>
-            </FieldDescription>
-          </FieldContent>
-        </Field>
-      </ActionFormFieldset>
+            </Field.Description>
+          </Field.Content>
+        </Field.Root>
+      </ActionForm.Fieldset>
 
       <div className="mt-2 flex justify-end gap-2">
-        <ActionFormSubmit>
+        <ActionForm.Submit>
           <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-            <ActionFormIdle>
+            <ActionForm.Idle>
               <Message message="admin.settings.email_change.submit" />
-            </ActionFormIdle>
-            <ActionFormPending>
+            </ActionForm.Idle>
+            <ActionForm.Pending>
               <Message message="admin.settings.email_change.submitting" />
-            </ActionFormPending>
+            </ActionForm.Pending>
           </Suspense>
-        </ActionFormSubmit>
+        </ActionForm.Submit>
       </div>
-    </ActionForm>
+    </ActionForm.Root>
   </AdminSection>
 );

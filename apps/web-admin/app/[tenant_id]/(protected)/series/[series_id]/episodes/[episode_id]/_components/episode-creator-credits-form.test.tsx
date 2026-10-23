@@ -32,7 +32,11 @@ vi.mock("#components/message", () => ({
   }) => bindMessages(sharedCatalog("en"), "en")(message, values),
 }));
 vi.mock("@publira/ui-components/combobox", () => ({
-  Combobox: ({
+  Empty: () => null,
+  Input: () => null,
+  Items: () => null,
+  Popup: () => null,
+  Root: ({
     id,
     items,
     onValueChange,
@@ -56,10 +60,6 @@ vi.mock("@publira/ui-components/combobox", () => ({
       ))}
     </select>
   ),
-  ComboboxEmpty: () => null,
-  ComboboxInput: () => null,
-  ComboboxItems: () => null,
-  ComboboxPopup: () => null,
 }));
 
 const guestCredit: EpisodeCreatorCredit = {

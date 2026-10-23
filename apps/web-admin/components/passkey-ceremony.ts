@@ -1,6 +1,6 @@
 "use client";
 
-import type { ActionFormResult } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import {
   browserSupportsWebAuthn,
   startAuthentication,
@@ -72,7 +72,7 @@ const runCeremony = async (
  * is how a spent challenge or a lost session goes back to `/login` and a
  * finished sign-in goes on — so both are left to propagate.
  */
-export const usePasskeyCeremony = <State extends ActionFormResult | null>(
+export const usePasskeyCeremony = <State extends ActionForm.Result | null>(
   begin: (formData: FormData) => Promise<PasskeyCeremonyStartState>,
   ceremony: (optionsJson: string) => Promise<unknown>,
   finish: (formData: FormData) => Promise<State>

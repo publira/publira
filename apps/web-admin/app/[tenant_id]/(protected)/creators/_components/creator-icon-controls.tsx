@@ -2,7 +2,7 @@
 
 import { Button } from "@publira/ui-components/button";
 import { Checkbox } from "@publira/ui-components/checkbox";
-import { Field, FieldLabel } from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import Image from "next/image";
 import type { ChangeEventHandler, ReactEventHandler, ReactNode } from "react";
@@ -222,13 +222,13 @@ export const CreatorIconClear = ({ children }: { children: ReactNode }) => {
   const { clearIconImage, onClearIconImageChange } = useCreatorIcon();
 
   return (
-    <Field className="mt-2 flex items-center gap-2">
+    <Field.Root className="mt-2 flex items-center gap-2">
       <Checkbox
         checked={clearIconImage}
         onCheckedChange={onClearIconImageChange}
       />
-      <FieldLabel className="font-normal">{children}</FieldLabel>
-    </Field>
+      <Field.Label className="font-normal">{children}</Field.Label>
+    </Field.Root>
   );
 };
 

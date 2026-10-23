@@ -4,7 +4,7 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import {
   act,
   cleanup,
@@ -24,14 +24,14 @@ import { GoogleTagForm } from "./google-tag-form";
 const { save } = vi.hoisted(() => ({
   save: {
     current: vi.fn(
-      (_state: FormActionState, _formData: FormData) =>
-        Promise.withResolvers<FormActionState>().promise
+      (_state: ActionForm.State, _formData: FormData) =>
+        Promise.withResolvers<ActionForm.State>().promise
     ),
   },
 }));
 
 vi.mock("../_lib/actions", () => ({
-  updateGoogleTagAction: (state: FormActionState, formData: FormData) =>
+  updateGoogleTagAction: (state: ActionForm.State, formData: FormData) =>
     save.current(state, formData),
 }));
 
@@ -86,8 +86,8 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   save.current = vi.fn(
-    (_state: FormActionState, _formData: FormData) =>
-      Promise.withResolvers<FormActionState>().promise
+    (_state: ActionForm.State, _formData: FormData) =>
+      Promise.withResolvers<ActionForm.State>().promise
   );
 });
 
@@ -173,8 +173,8 @@ describe("GoogleTagForm", () => {
 
   it("regenerates the gateway path only once the operator confirms", async () => {
     // Settled, so the transition does not hold up the tests after this one.
-    save.current = vi.fn((_state: FormActionState, _formData: FormData) =>
-      Promise.resolve<FormActionState>({ message: "Saved.", ok: true })
+    save.current = vi.fn((_state: ActionForm.State, _formData: FormData) =>
+      Promise.resolve<ActionForm.State>({ message: "Saved.", ok: true })
     );
     await renderForm(
       <GoogleTagForm
@@ -232,7 +232,7 @@ describe("GoogleTagForm", () => {
     const refusal =
       "Enter the measurement ID as G- followed by letters and digits, such as G-ABC123DEF4.";
     save.current = vi.fn(() =>
-      Promise.resolve<FormActionState>({
+      Promise.resolve<ActionForm.State>({
         fieldErrors: { ga4MeasurementId: refusal },
         message: "Please check the information you entered.",
         ok: false,

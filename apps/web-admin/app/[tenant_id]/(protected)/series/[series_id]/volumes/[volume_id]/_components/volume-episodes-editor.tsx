@@ -3,15 +3,8 @@
 import type { DragEndEvent } from "@dnd-kit/react";
 import { CloseIcon, PlusIcon } from "@publira/icons";
 import { Button } from "@publira/ui-components/button";
-import {
-  Combobox,
-  ComboboxEmpty,
-  ComboboxInput,
-  ComboboxItems,
-  ComboboxPopup,
-} from "@publira/ui-components/combobox";
-import type { ComboboxItem } from "@publira/ui-components/combobox";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as Combobox from "@publira/ui-components/combobox";
+import * as Field from "@publira/ui-components/field";
 import { useCallback, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 
@@ -136,7 +129,7 @@ export const VolumeEpisodesEditor = ({
     [episodes]
   );
   const locked = useMemo(() => new Set(lockedEpisodeIds), [lockedEpisodeIds]);
-  const candidateItems = useMemo<ComboboxItem[]>(() => {
+  const candidateItems = useMemo<Combobox.Item[]>(() => {
     const unavailable = new Set([...takenEpisodeIds, ...episodeIds]);
     return episodes.flatMap((episode) =>
       unavailable.has(episode.id)
@@ -196,32 +189,32 @@ export const VolumeEpisodesEditor = ({
 
       {candidateItems.length > 0 ? (
         <div className="flex flex-wrap items-end gap-2">
-          <Field className="min-w-48 flex-1">
-            <FieldLabel>
+          <Field.Root className="min-w-48 flex-1">
+            <Field.Label>
               <ClientMessage message="admin.series.volumes.episodes.add_label" />
-            </FieldLabel>
-            <FieldContent>
-              <Combobox
+            </Field.Label>
+            <Field.Content>
+              <Combobox.Root
                 disabled={pending}
                 items={candidateItems}
                 key={pickerKey}
                 onValueChange={setPickedEpisodeId}
                 value={pickedEpisodeId}
               >
-                <ComboboxInput
+                <Combobox.Input
                   placeholder={t(
                     "admin.series.volumes.episodes.add_placeholder"
                   )}
                 />
-                <ComboboxPopup>
-                  <ComboboxEmpty>
+                <Combobox.Popup>
+                  <Combobox.Empty>
                     <ClientMessage message="admin.series.volumes.episodes.no_match" />
-                  </ComboboxEmpty>
-                  <ComboboxItems />
-                </ComboboxPopup>
-              </Combobox>
-            </FieldContent>
-          </Field>
+                  </Combobox.Empty>
+                  <Combobox.Items />
+                </Combobox.Popup>
+              </Combobox.Root>
+            </Field.Content>
+          </Field.Root>
           <Button
             disabled={pending || !pickedEpisodeId}
             onClick={handleAdd}

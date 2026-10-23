@@ -1,25 +1,9 @@
 import type { Locale } from "@publira/i18n";
 import { StatusChip } from "@publira/ui-components/badge";
-import {
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -102,18 +86,18 @@ export const ReaderComments = async ({
       </AdminSectionHeader>
 
       {listErrorMessage ? (
-        <SectionError>
-          <SectionErrorHeading>
-            <SectionErrorTitle>
+        <SectionError.Root>
+          <SectionError.Heading>
+            <SectionError.Title>
               <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
                 <Message message="admin.readers.comments_error" />
               </Suspense>
-            </SectionErrorTitle>
-            <SectionErrorDescription>
+            </SectionError.Title>
+            <SectionError.Description>
               {listErrorMessage}
-            </SectionErrorDescription>
-          </SectionErrorHeading>
-        </SectionError>
+            </SectionError.Description>
+          </SectionError.Heading>
+        </SectionError.Root>
       ) : null}
 
       {!listErrorMessage && comments.length === 0 ? (
@@ -121,56 +105,56 @@ export const ReaderComments = async ({
           hasPageLinks={hasPageLinks}
           itemLabel={t("admin.comments.item_label")}
         >
-          <EmptyStateHeading>
-            <EmptyStateTitle>
+          <EmptyState.Heading>
+            <EmptyState.Title>
               <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
                 <Message message="admin.readers.comments_empty_title" />
               </Suspense>
-            </EmptyStateTitle>
-            <EmptyStateDescription>
+            </EmptyState.Title>
+            <EmptyState.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
                 <Message message="admin.readers.comments_empty_description" />
               </Suspense>
-            </EmptyStateDescription>
-          </EmptyStateHeading>
+            </EmptyState.Description>
+          </EmptyState.Heading>
         </CursorPageEmptyState>
       ) : null}
 
       {!listErrorMessage && comments.length > 0 ? (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-56">
+        <Table.Root>
+          <Table.Header>
+            <Table.Row>
+              <Table.Head className="w-56">
                 <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                   <Message message="admin.comments.columns.status" />
                 </Suspense>
-              </TableHead>
-              <TableHead>
+              </Table.Head>
+              <Table.Head>
                 <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                   <Message message="admin.comments.columns.comment" />
                 </Suspense>
-              </TableHead>
-              <TableHead className="w-56">
+              </Table.Head>
+              <Table.Head className="w-56">
                 <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                   <Message message="admin.comments.columns.episode" />
                 </Suspense>
-              </TableHead>
-              <TableHead className="w-44">
+              </Table.Head>
+              <Table.Head className="w-44">
                 <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                   <Message message="admin.comments.columns.created_at" />
                 </Suspense>
-              </TableHead>
-              <TableHead className="w-36">
+              </Table.Head>
+              <Table.Head className="w-36">
                 <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                   <Message message="admin.comments.columns.actions" />
                 </Suspense>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+              </Table.Head>
+            </Table.Row>
+          </Table.Header>
+          <Table.Body>
             {comments.map((comment) => (
-              <TableRow key={comment.id}>
-                <TableCell>
+              <Table.Row key={comment.id}>
+                <Table.Cell>
                   <div className="grid gap-1">
                     <StatusChip status={commentStatusTone(comment.status)}>
                       <Suspense
@@ -185,16 +169,16 @@ export const ReaderComments = async ({
                       timeZone={timeZone}
                     />
                   </div>
-                </TableCell>
-                <TableCell>
+                </Table.Cell>
+                <Table.Cell>
                   <div className="grid gap-1">
                     <p className="text-sm whitespace-pre-wrap">
                       {comment.body}
                     </p>
                     <CommentCreatorMark creator={comment.creator} />
                   </div>
-                </TableCell>
-                <TableCell>
+                </Table.Cell>
+                <Table.Cell>
                   <div className="grid gap-0.5">
                     <Link
                       className="font-medium underline-offset-4 hover:underline"
@@ -206,17 +190,17 @@ export const ReaderComments = async ({
                       {comment.seriesTitle || comment.seriesPublicId}
                     </span>
                   </div>
-                </TableCell>
-                <TableCell>
+                </Table.Cell>
+                <Table.Cell>
                   {formatCommentDateTime(comment.createdAt, locale, timeZone)}
-                </TableCell>
-                <TableCell>
+                </Table.Cell>
+                <Table.Cell>
                   <CommentRowActions comment={comment} tenantId={tenantId} />
-                </TableCell>
-              </TableRow>
+                </Table.Cell>
+              </Table.Row>
             ))}
-          </TableBody>
-        </Table>
+          </Table.Body>
+        </Table.Root>
       ) : null}
 
       {showPagination ? (

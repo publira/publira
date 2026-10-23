@@ -1,6 +1,6 @@
 import { LinkButton } from "@publira/ui-components/button";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import { TableSkeleton } from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -141,7 +141,7 @@ const AccessTicketsPage = ({ searchParams }: AccessTicketsPageProps) => (
         </AdminPageHeader>
         <AdminPageContent>
           <FlashToast message="admin.access_tickets.issued" />
-          <Suspense fallback={<TableSkeleton />}>
+          <Suspense fallback={<Table.Skeleton />}>
             <TicketManagerData searchParams={searchParams} />
           </Suspense>
         </AdminPageContent>

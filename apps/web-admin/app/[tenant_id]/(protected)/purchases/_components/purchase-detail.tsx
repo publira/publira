@@ -1,15 +1,6 @@
 import type { Locale } from "@publira/i18n";
-import {
-  Identifier,
-  IdentifierCopy,
-  IdentifierValue,
-} from "@publira/ui-components/identifier";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as Identifier from "@publira/ui-components/identifier";
+import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDateTime } from "@publira/utils";
 import Link from "next/link";
@@ -107,16 +98,16 @@ export const PurchaseDetail = async ({
 
   if (!result.ok) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="admin.purchases.detail_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{result.message}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
@@ -273,13 +264,13 @@ export const PurchaseDetail = async ({
           </Suspense>
         </dt>
         <dd className={valueClassName}>
-          <Identifier>
-            <IdentifierValue>{purchase.id}</IdentifierValue>
-            <IdentifierCopy
+          <Identifier.Root>
+            <Identifier.Value>{purchase.id}</Identifier.Value>
+            <Identifier.Copy
               aria-label={t("admin.purchases.copy_purchase_id")}
               value={purchase.id}
             />
-          </Identifier>
+          </Identifier.Root>
         </dd>
       </dl>
 

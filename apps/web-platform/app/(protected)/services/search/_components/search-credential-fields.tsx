@@ -1,12 +1,7 @@
 "use client";
 
 import { Button } from "@publira/ui-components/button";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { RadioGroup } from "@publira/ui-components/radio-group";
 import { useCallback, useState } from "react";
@@ -104,11 +99,11 @@ export const SearchCredentialFields = ({
 
       {mode === "basic" ? (
         <>
-          <Field>
-            <FieldLabel required>
+          <Field.Root>
+            <Field.Label required>
               <ClientMessage message="platform.search.credentials.username" />
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               <Input
                 autoComplete="off"
                 defaultValue={settings.username}
@@ -121,14 +116,14 @@ export const SearchCredentialFields = ({
                 spellCheck={false}
                 type="text"
               />
-            </FieldContent>
-          </Field>
+            </Field.Content>
+          </Field.Root>
 
-          <Field>
-            <FieldLabel required={!keepsStoredCredential}>
+          <Field.Root>
+            <Field.Label required={!keepsStoredCredential}>
               <ClientMessage message="platform.search.credentials.password" />
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               {keepsStoredCredential ? (
                 <div className="flex flex-wrap items-center gap-3">
                   <p className="text-sm text-foreground">
@@ -165,15 +160,15 @@ export const SearchCredentialFields = ({
                   ) : null}
                 </div>
               )}
-            </FieldContent>
-            <FieldDescription>
+            </Field.Content>
+            <Field.Description>
               {keepsStoredCredential ? (
                 <ClientMessage message="platform.search.credentials.password_stored_help" />
               ) : (
                 <ClientMessage message="platform.search.credentials.password_help" />
               )}
-            </FieldDescription>
-          </Field>
+            </Field.Description>
+          </Field.Root>
 
           <input
             name="password_update_mode"

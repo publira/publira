@@ -1,8 +1,7 @@
 "use client";
 
-import { ActionFormSubmit } from "@publira/ui-components/action-form";
-import type { ActionFormControlAction } from "@publira/ui-components/action-form";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { createContext, use, useActionState, useMemo, useState } from "react";
@@ -16,7 +15,7 @@ import {
 import type { PlatformSmtpTestFormState } from "../_lib/actions";
 
 interface SmtpTestContextValue {
-  dispatch: ActionFormControlAction;
+  dispatch: ActionForm.ControlAction;
   form: string;
   sendToSelf: boolean;
   setSendToSelf: (sendToSelf: boolean) => void;
@@ -104,9 +103,9 @@ export const SmtpTestRecipient = ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <Field>
-      <FieldLabel required>{children}</FieldLabel>
-      <FieldContent>
+    <Field.Root>
+      <Field.Label required>{children}</Field.Label>
+      <Field.Content>
         <Input
           form={form}
           name="recipient_email"
@@ -114,8 +113,8 @@ export const SmtpTestRecipient = ({ children }: { children: ReactNode }) => {
           required
           type="email"
         />
-      </FieldContent>
-    </Field>
+      </Field.Content>
+    </Field.Root>
   );
 };
 
@@ -135,8 +134,8 @@ export const SmtpTestSubmit = ({ children }: { children: ReactNode }) => {
   const { dispatch, form } = useSmtpTest();
 
   return (
-    <ActionFormSubmit form={form} formAction={dispatch} variant="outline">
+    <ActionForm.Submit form={form} formAction={dispatch} variant="outline">
       {children}
-    </ActionFormSubmit>
+    </ActionForm.Submit>
   );
 };

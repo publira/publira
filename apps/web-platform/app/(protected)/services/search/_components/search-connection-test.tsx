@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { useActionState } from "react";
 
@@ -68,18 +64,18 @@ export const SearchConnectionTest = ({
         </p>
       </div>
       <div>
-        <ActionFormSubmit
+        <ActionForm.Submit
           disabled={disabled}
           formAction={dispatch}
           variant="outline"
         >
-          <ActionFormIdle>
+          <ActionForm.Idle>
             <ClientMessage message="platform.search.test.submit" />
-          </ActionFormIdle>
-          <ActionFormPending>
+          </ActionForm.Idle>
+          <ActionForm.Pending>
             <ClientMessage message="platform.search.test.pending" />
-          </ActionFormPending>
-        </ActionFormSubmit>
+          </ActionForm.Pending>
+        </ActionForm.Submit>
       </div>
       {state ? (
         <FormMessage variant={state.ok ? "success" : "destructive"}>

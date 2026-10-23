@@ -1,25 +1,9 @@
 import type { Locale } from "@publira/i18n";
 import { LinkButton } from "@publira/ui-components/button";
-import {
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import { formatDateTime, formatPlainYearMonth } from "@publira/utils";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -59,16 +43,18 @@ export const StatementList = async ({
 }: StatementListProps) => {
   if (listErrorMessage) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="admin.royalties.statements.section_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{listErrorMessage}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>
+            {listErrorMessage}
+          </SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
@@ -82,109 +68,109 @@ export const StatementList = async ({
           hasPageLinks={hasPageLinks}
           itemLabel={t("admin.royalties.statements.item_label")}
         >
-          <EmptyStateHeading>
-            <EmptyStateTitle>
+          <EmptyState.Heading>
+            <EmptyState.Title>
               <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
                 <Message message="admin.royalties.statements.empty_title" />
               </Suspense>
-            </EmptyStateTitle>
-            <EmptyStateDescription>
+            </EmptyState.Title>
+            <EmptyState.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
                 <Message message="admin.royalties.statements.empty_description" />
               </Suspense>
-            </EmptyStateDescription>
-          </EmptyStateHeading>
+            </EmptyState.Description>
+          </EmptyState.Heading>
         </CursorPageEmptyState>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>
+        <Table.Root>
+          <Table.Header>
+            <Table.Row>
+              <Table.Head>
                 <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                   <Message message="admin.royalties.statements.columns.period" />
                 </Suspense>
-              </TableHead>
-              <TableHead>
+              </Table.Head>
+              <Table.Head>
                 <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                   <Message message="admin.royalties.statements.columns.closed_at" />
                 </Suspense>
-              </TableHead>
-              <TableHead>
+              </Table.Head>
+              <Table.Head>
                 <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                   <Message message="admin.royalties.statements.columns.closed_by" />
                 </Suspense>
-              </TableHead>
-              <TableHead className="text-right">
+              </Table.Head>
+              <Table.Head className="text-right">
                 <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                   <Message message="admin.royalties.statements.columns.gross" />
                 </Suspense>
-              </TableHead>
-              <TableHead className="text-right">
+              </Table.Head>
+              <Table.Head className="text-right">
                 <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                   <Message message="admin.royalties.statements.columns.refunded" />
                 </Suspense>
-              </TableHead>
-              <TableHead className="text-right">
+              </Table.Head>
+              <Table.Head className="text-right">
                 <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                   <Message message="admin.royalties.statements.columns.adjustment" />
                 </Suspense>
-              </TableHead>
-              <TableHead className="text-right">
+              </Table.Head>
+              <Table.Head className="text-right">
                 <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
                   <Message message="admin.royalties.statements.columns.payout" />
                 </Suspense>
-              </TableHead>
-              <TableHead className="text-right">
+              </Table.Head>
+              <Table.Head className="text-right">
                 <Suspense fallback={<SkeletonLine className="h-4 w-8" />}>
                   <Message message="admin.royalties.statements.columns.export" />
                 </Suspense>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+              </Table.Head>
+            </Table.Row>
+          </Table.Header>
+          <Table.Body>
             {statements.map((statement) => (
-              <TableRow key={statement.period}>
-                <TableCell className="font-medium">
+              <Table.Row key={statement.period}>
+                <Table.Cell className="font-medium">
                   <Link
                     className="underline-offset-4 hover:underline"
                     href={`/royalties/statements/${statement.period}`}
                   >
                     {formatPlainYearMonth(statement.period, { locale })}
                   </Link>
-                </TableCell>
-                <TableCell>
+                </Table.Cell>
+                <Table.Cell>
                   {formatDateTime(statement.closedAt, { locale, timeZone })}
-                </TableCell>
-                <TableCell>
+                </Table.Cell>
+                <Table.Cell>
                   {statement.closedByUserName || (
                     <Message message="admin.royalties.statements.closed_by_none" />
                   )}
-                </TableCell>
-                <TableCell className="text-right">
+                </Table.Cell>
+                <Table.Cell className="text-right">
                   {formatTenantAmount(statement.totals.gross, {
                     currency: statement.currency,
                     locale,
                   })}
-                </TableCell>
-                <TableCell className="text-right">
+                </Table.Cell>
+                <Table.Cell className="text-right">
                   {formatTenantAmount(statement.totals.refunded, {
                     currency: statement.currency,
                     locale,
                   })}
-                </TableCell>
-                <TableCell className="text-right">
+                </Table.Cell>
+                <Table.Cell className="text-right">
                   {formatTenantAmount(statement.totals.adjustment, {
                     currency: statement.currency,
                     locale,
                   })}
-                </TableCell>
-                <TableCell className="text-right">
+                </Table.Cell>
+                <Table.Cell className="text-right">
                   {formatTenantAmount(statement.totals.payout, {
                     currency: statement.currency,
                     locale,
                   })}
-                </TableCell>
-                <TableCell className="text-right">
+                </Table.Cell>
+                <Table.Cell className="text-right">
                   <LinkButton
                     aria-label={t("admin.royalties.export.row_label", {
                       period: formatPlainYearMonth(statement.period, {
@@ -197,11 +183,11 @@ export const StatementList = async ({
                   >
                     <Message message="admin.royalties.export.button" />
                   </LinkButton>
-                </TableCell>
-              </TableRow>
+                </Table.Cell>
+              </Table.Row>
             ))}
-          </TableBody>
-        </Table>
+          </Table.Body>
+        </Table.Root>
       )}
 
       {statements.length > 0 || hasPageLinks ? (

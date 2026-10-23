@@ -1,25 +1,9 @@
 import type { Locale } from "@publira/i18n";
 import { Badge, StatusChip } from "@publira/ui-components/badge";
-import {
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import { formatDate } from "@publira/utils";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -76,29 +60,31 @@ const ReaderListBody = ({
 }) => {
   if (listErrorMessage) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="admin.readers.list_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{listErrorMessage}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>
+            {listErrorMessage}
+          </SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
   if (rows.length === 0) {
     return (
       <CursorPageEmptyState hasPageLinks={hasPageLinks} itemLabel={itemLabel}>
-        <EmptyStateHeading>
-          <EmptyStateTitle>
+        <EmptyState.Heading>
+          <EmptyState.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="admin.readers.empty_title" />
             </Suspense>
-          </EmptyStateTitle>
-          <EmptyStateDescription>
+          </EmptyState.Title>
+          <EmptyState.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-80" />}>
               {filtered ? (
                 <Message message="admin.readers.empty_filtered_description" />
@@ -106,47 +92,47 @@ const ReaderListBody = ({
                 <Message message="admin.readers.empty_description" />
               )}
             </Suspense>
-          </EmptyStateDescription>
-        </EmptyStateHeading>
+          </EmptyState.Description>
+        </EmptyState.Heading>
       </CursorPageEmptyState>
     );
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>
+    <Table.Root>
+      <Table.Header>
+        <Table.Row>
+          <Table.Head>
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
               <Message message="admin.readers.columns.name" />
             </Suspense>
-          </TableHead>
-          <TableHead>
+          </Table.Head>
+          <Table.Head>
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
               <Message message="admin.readers.columns.email" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-36">
+          </Table.Head>
+          <Table.Head className="w-36">
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
               <Message message="admin.readers.columns.role" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-36">
+          </Table.Head>
+          <Table.Head className="w-36">
             <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
               <Message message="admin.readers.columns.status" />
             </Suspense>
-          </TableHead>
-          <TableHead className="w-40">
+          </Table.Head>
+          <Table.Head className="w-40">
             <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
               <Message message="admin.readers.columns.created_at" />
             </Suspense>
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
+          </Table.Head>
+        </Table.Row>
+      </Table.Header>
+      <Table.Body>
         {rows.map(({ reader, roleLabel }) => (
-          <TableRow key={reader.publicId}>
-            <TableCell>
+          <Table.Row key={reader.publicId}>
+            <Table.Cell>
               <div className="flex min-w-0 items-center gap-2">
                 {/* The name beside it says whose icon it is. */}
                 <ReaderIcon alt="" icon={reader.icon} size={32} />
@@ -157,27 +143,27 @@ const ReaderListBody = ({
                   {reader.name || reader.publicId}
                 </Link>
               </div>
-            </TableCell>
-            <TableCell>{reader.email}</TableCell>
-            <TableCell>
+            </Table.Cell>
+            <Table.Cell>{reader.email}</Table.Cell>
+            <Table.Cell>
               {roleLabel ? <Badge tone="info">{roleLabel}</Badge> : null}
-            </TableCell>
-            <TableCell>
+            </Table.Cell>
+            <Table.Cell>
               <StatusChip status={readerStatusTone(reader.status)}>
                 <Suspense fallback={<SkeletonLine className="h-4 w-16" />}>
                   <ReaderStatusMessage status={reader.status} />
                 </Suspense>
               </StatusChip>
-            </TableCell>
-            <TableCell className="tabular-nums">
+            </Table.Cell>
+            <Table.Cell className="tabular-nums">
               {reader.createdAt
                 ? formatDate(reader.createdAt, { locale, timeZone })
                 : "—"}
-            </TableCell>
-          </TableRow>
+            </Table.Cell>
+          </Table.Row>
         ))}
-      </TableBody>
-    </Table>
+      </Table.Body>
+    </Table.Root>
   );
 };
 

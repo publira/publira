@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import { cn } from "@publira/utils";
 import type { ChangeEventHandler, RefObject } from "react";
@@ -52,11 +47,11 @@ export const EyeCatchImageField = ({
   const t = useClientMessages();
 
   return (
-    <Field>
-      <FieldLabel>
+    <Field.Root>
+      <Field.Label>
         <ClientMessage message="admin.eye_catch.label" />
-      </FieldLabel>
-      <FieldContent>
+      </Field.Label>
+      <Field.Content>
         <div className="grid gap-2">
           {!hasVariants || clearEyeCatchImage ? (
             <button
@@ -122,14 +117,14 @@ export const EyeCatchImageField = ({
             value={clearEyeCatchImage ? "1" : "0"}
           />
         ) : null}
-        <FieldDescription>
+        <Field.Description>
           {clearable ? (
             <ClientMessage message="admin.eye_catch.description" />
           ) : (
             <ClientMessage message="admin.eye_catch.description_required" />
           )}
-        </FieldDescription>
-      </FieldContent>
-    </Field>
+        </Field.Description>
+      </Field.Content>
+    </Field.Root>
   );
 };

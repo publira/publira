@@ -1,12 +1,6 @@
 import type { Locale } from "@publira/i18n";
-import {
-  ActionForm,
-  ActionFormFieldset,
-  ActionFormIdle,
-  ActionFormPending,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Select } from "@publira/ui-components/select";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -129,7 +123,7 @@ export const ContactMessageAssignment = async ({
         </AdminSectionHeading>
         {canAssignSelf ? (
           <AdminSectionActions>
-            <ActionForm action={assignContactMessageAction}>
+            <ActionForm.Root action={assignContactMessageAction}>
               <HiddenFields
                 contactMessage={contactMessage}
                 tenantId={tenantId}
@@ -139,34 +133,34 @@ export const ContactMessageAssignment = async ({
                 type="hidden"
                 value={self.userId}
               />
-              <ActionFormSubmit variant="outline">
+              <ActionForm.Submit variant="outline">
                 <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-                  <ActionFormIdle>
+                  <ActionForm.Idle>
                     <Message message="admin.contact_messages.assignment.assign_to_me" />
-                  </ActionFormIdle>
-                  <ActionFormPending>
+                  </ActionForm.Idle>
+                  <ActionForm.Pending>
                     <Message message="admin.contact_messages.assignment.assigning" />
-                  </ActionFormPending>
+                  </ActionForm.Pending>
                 </Suspense>
-              </ActionFormSubmit>
-            </ActionForm>
+              </ActionForm.Submit>
+            </ActionForm.Root>
           </AdminSectionActions>
         ) : null}
       </AdminSectionHeader>
 
-      <ActionForm
+      <ActionForm.Root
         action={assignContactMessageAction}
         className="grid gap-4 sm:max-w-lg"
       >
         <HiddenFields contactMessage={contactMessage} tenantId={tenantId} />
-        <ActionFormFieldset disabled={Boolean(assigneesErrorMessage)}>
-          <Field>
-            <FieldLabel>
+        <ActionForm.Fieldset disabled={Boolean(assigneesErrorMessage)}>
+          <Field.Root>
+            <Field.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-20" />}>
                 <Message message="admin.contact_messages.columns.assignee" />
               </Suspense>
-            </FieldLabel>
-            <FieldContent>
+            </Field.Label>
+            <Field.Content>
               {/* Keyed by the assignee so an assignment made from "Assign to
                   me" or by somebody else replaces the selection. */}
               <Select
@@ -175,9 +169,9 @@ export const ContactMessageAssignment = async ({
                 key={contactMessage.assigneeUserId}
                 name="assignee_user_id"
               />
-            </FieldContent>
-          </Field>
-        </ActionFormFieldset>
+            </Field.Content>
+          </Field.Root>
+        </ActionForm.Fieldset>
 
         {assigneesErrorMessage ? (
           <FormMessage variant="destructive">
@@ -186,18 +180,18 @@ export const ContactMessageAssignment = async ({
         ) : null}
 
         <div className="flex justify-end">
-          <ActionFormSubmit disabled={Boolean(assigneesErrorMessage)}>
+          <ActionForm.Submit disabled={Boolean(assigneesErrorMessage)}>
             <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-              <ActionFormIdle>
+              <ActionForm.Idle>
                 <Message message="admin.contact_messages.assignment.submit" />
-              </ActionFormIdle>
-              <ActionFormPending>
+              </ActionForm.Idle>
+              <ActionForm.Pending>
                 <Message message="admin.contact_messages.assignment.assigning" />
-              </ActionFormPending>
+              </ActionForm.Pending>
             </Suspense>
-          </ActionFormSubmit>
+          </ActionForm.Submit>
         </div>
-      </ActionForm>
+      </ActionForm.Root>
     </AdminSection>
   );
 };

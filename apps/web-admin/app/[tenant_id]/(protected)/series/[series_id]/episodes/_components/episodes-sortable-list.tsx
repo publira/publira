@@ -3,7 +3,7 @@
 import type { DragEndEvent } from "@dnd-kit/react";
 import { LinkButton } from "@publira/ui-components/button";
 import { Checkbox } from "@publira/ui-components/checkbox";
-import { useToastManager } from "@publira/ui-components/toast";
+import * as Toast from "@publira/ui-components/toast";
 import { formatDateTime } from "@publira/utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -74,7 +74,7 @@ export const EpisodesSortableList = ({
   const tenantId = useTenantId();
   const { selectedIds, selectMany, toggle } = useEpisodeSelection();
   const router = useRouter();
-  const { add } = useToastManager();
+  const { add } = Toast.useManager();
   const [isPending, startTransition] = useTransition();
   const [optimisticItems, setOptimisticItems] = useOptimistic(
     episodes,

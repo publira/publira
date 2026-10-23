@@ -4,7 +4,7 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import {
   cleanup,
   fireEvent,
@@ -147,7 +147,7 @@ describe("EpisodeReadingLayoutForm", () => {
   // The Action carries what the form held when it was submitted, so a change
   // made while it is in flight would sit under the success message unsaved.
   it("closes every field while the save is in flight", async () => {
-    const save = Promise.withResolvers<FormActionState>();
+    const save = Promise.withResolvers<ActionForm.State>();
     render(
       <EpisodeReadingLayoutForm
         action={() => save.promise}

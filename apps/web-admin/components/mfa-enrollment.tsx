@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionFormSettled } from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { QrCode } from "@publira/ui-components/qr-code";
 import type { QrCodePath } from "@publira/ui-components/qr-code";
 import { createContext, use, useState } from "react";
@@ -46,7 +46,7 @@ export const MfaEnrollment = ({
 /** Moves `MfaEnrollment` on to its confirm step once the start form succeeds. */
 export const MfaEnrollmentStarted = () => {
   const start = use(StartMfaEnrollmentContext);
-  useActionFormSettled<NonNullable<MfaEnrollmentStartState>>((state) => {
+  ActionForm.useSettled<NonNullable<MfaEnrollmentStartState>>((state) => {
     if (state?.ok) {
       start?.({ qr: state.qr, secret: state.secret });
     }

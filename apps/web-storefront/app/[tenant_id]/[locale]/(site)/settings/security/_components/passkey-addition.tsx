@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  ActionForm,
-  useActionFormSettled,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import {
   browserSupportsWebAuthn,
   startRegistration,
@@ -119,16 +116,16 @@ export const PasskeyAddForm = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <ActionForm action={add} className="grid gap-3" showSuccess={false}>
+    <ActionForm.Root action={add} className="grid gap-3" showSuccess={false}>
       {children}
-    </ActionForm>
+    </ActionForm.Root>
   );
 };
 
 /** Moves `PasskeyAddition` on to naming once the add form succeeds. */
 export const PasskeyAdded = () => {
   const setAdded = use(SetAddedPasskeyContext);
-  useActionFormSettled<NonNullable<PasskeyRegistrationState>>((state) => {
+  ActionForm.useSettled<NonNullable<PasskeyRegistrationState>>((state) => {
     if (state?.ok) {
       setAdded?.(state.passkeyId);
     }
@@ -139,20 +136,20 @@ export const PasskeyAdded = () => {
 
 /** Names the passkey the add form stored. */
 export const PasskeyNameForm = ({ children }: { children: ReactNode }) => (
-  <ActionForm
+  <ActionForm.Root
     action={namePasskeyAction}
     className="grid gap-3"
     showSuccess={false}
   >
     <input name="passkeyId" type="hidden" value={use(AddedPasskeyContext)} />
     {children}
-  </ActionForm>
+  </ActionForm.Root>
 );
 
 /** Moves `PasskeyAddition` back to its add form once the name is saved. */
 export const PasskeyNamed = () => {
   const setAdded = use(SetAddedPasskeyContext);
-  useActionFormSettled((state) => {
+  ActionForm.useSettled((state) => {
     if (state?.ok) {
       setAdded?.("");
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { ActionForm } from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import type { ReactNode } from "react";
 
 import {
@@ -32,8 +32,12 @@ export const PasskeyRegenerateForm = ({
   );
 
   return (
-    <ActionForm action={regenerate} className="grid gap-3" showSuccess={false}>
+    <ActionForm.Root
+      action={regenerate}
+      className="grid gap-3"
+      showSuccess={false}
+    >
       {children}
-    </ActionForm>
+    </ActionForm.Root>
   );
 };

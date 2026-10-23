@@ -1,9 +1,6 @@
 import { Badge } from "@publira/ui-components/badge";
 import type { BadgeTone } from "@publira/ui-components/badge";
-import {
-  EmptyState,
-  EmptyStateDescription,
-} from "@publira/ui-components/empty-state";
+import * as EmptyState from "@publira/ui-components/empty-state";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   formatDate,
@@ -665,13 +662,13 @@ const SeriesDetailContent = async (
                 </p>
               ) : null}
               {episodes.length === 0 ? (
-                <EmptyState>
-                  <EmptyStateDescription>
+                <EmptyState.Root>
+                  <EmptyState.Description>
                     <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
                       <Message message="storefront.series.episodes_empty" />
                     </Suspense>
-                  </EmptyStateDescription>
-                </EmptyState>
+                  </EmptyState.Description>
+                </EmptyState.Root>
               ) : (
                 <ol className="divide-y divide-border">
                   {episodes.map((episode) => (

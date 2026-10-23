@@ -1,14 +1,6 @@
 import type { Locale } from "@publira/i18n";
-import {
-  EmptyState,
-  EmptyStateDescription,
-} from "@publira/ui-components/empty-state";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
 import {
   createPlaceholderStaticParams,
@@ -182,16 +174,16 @@ const TagSeries = async ({
   // that section and leaves the heading and the filters above it standing.
   if (!result.ok) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="storefront.series.list_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{result.message}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
@@ -201,8 +193,8 @@ const TagSeries = async ({
     if (!query.token) {
       return (
         <div className="grid gap-8">
-          <EmptyState>
-            <EmptyStateDescription>
+          <EmptyState.Root>
+            <EmptyState.Description>
               <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
                 {isNarrowedTagSeries(query) ? (
                   <Message message="storefront.series.filter_empty" />
@@ -210,8 +202,8 @@ const TagSeries = async ({
                   <Message message="storefront.tags.series_empty" />
                 )}
               </Suspense>
-            </EmptyStateDescription>
-          </EmptyState>
+            </EmptyState.Description>
+          </EmptyState.Root>
           {isNarrowedTagSeries(query) && (
             <p>
               <LocaleLink
@@ -233,13 +225,13 @@ const TagSeries = async ({
     // then the only way out is the first page (`proto/README.md`).
     return (
       <div className="grid gap-8">
-        <EmptyState>
-          <EmptyStateDescription>
+        <EmptyState.Root>
+          <EmptyState.Description>
             <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
               <Message message="storefront.series.page_empty" />
             </Suspense>
-          </EmptyStateDescription>
-        </EmptyState>
+          </EmptyState.Description>
+        </EmptyState.Root>
         {previousToken || nextToken ? (
           <TagSeriesPagination
             nextToken={nextToken}

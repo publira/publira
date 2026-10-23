@@ -4,7 +4,7 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import {
   act,
   cleanup,
@@ -20,16 +20,16 @@ import { ContactMessageReplyForm } from "./contact-message-reply-form";
 const reply =
   vi.fn<
     (
-      previousState: FormActionState,
+      previousState: ActionForm.State,
       formData: FormData
-    ) => Promise<FormActionState>
+    ) => Promise<ActionForm.State>
   >();
 
 // The Action is `"use server"`, so the module it lives in cannot be evaluated
 // here at all.
 vi.mock("../_lib/actions", () => ({
   replyToContactMessageAction: (
-    previousState: FormActionState,
+    previousState: ActionForm.State,
     formData: FormData
   ) => reply(previousState, formData),
 }));
@@ -145,7 +145,7 @@ describe("ContactMessageReplyForm", () => {
   it("closes the field and the button while the answer is being sent", async () => {
     // React entangles pending async actions across roots, so the send is
     // settled before the test ends rather than left running into the next.
-    const { promise, resolve } = Promise.withResolvers<FormActionState>();
+    const { promise, resolve } = Promise.withResolvers<ActionForm.State>();
     reply.mockReturnValue(promise);
     render(
       <ContactMessageReplyForm

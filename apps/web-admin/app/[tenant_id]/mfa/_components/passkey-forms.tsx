@@ -1,6 +1,6 @@
 "use client";
 
-import { ActionForm } from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import type { ReactNode } from "react";
 
 import {
@@ -32,9 +32,9 @@ export const PasskeyVerifyForm = ({ children }: { children: ReactNode }) => {
   );
 
   return (
-    <ActionForm action={verify} className="grid gap-4" showSuccess={false}>
+    <ActionForm.Root action={verify} className="grid gap-4" showSuccess={false}>
       {children}
-    </ActionForm>
+    </ActionForm.Root>
   );
 };
 
@@ -51,8 +51,8 @@ export const PasskeyEnrollForm = ({ children }: { children: ReactNode }) => {
   );
 
   return (
-    <ActionForm action={enroll} className="grid gap-4" showSuccess={false}>
+    <ActionForm.Root action={enroll} className="grid gap-4" showSuccess={false}>
       {children}
-    </ActionForm>
+    </ActionForm.Root>
   );
 };

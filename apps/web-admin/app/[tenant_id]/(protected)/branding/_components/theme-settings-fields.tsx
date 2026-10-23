@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionFormSettled } from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Input } from "@publira/ui-components/input";
 import { toPubliraThemeCssVariables } from "@publira/utils/theme-css-variables";
 import type {
@@ -70,7 +70,7 @@ export const ThemeSettingsScope = ({
 /** Adopts the palette a save stored, normalization included, so the fields show what a reload would. */
 export const ThemeSettingsSaved = () => {
   const { setTheme } = useThemeSettings();
-  useActionFormSettled<NonNullable<ThemeSettingsActionState>>((state) => {
+  ActionForm.useSettled<NonNullable<ThemeSettingsActionState>>((state) => {
     if (state?.ok) {
       setTheme(() => state.theme);
     }

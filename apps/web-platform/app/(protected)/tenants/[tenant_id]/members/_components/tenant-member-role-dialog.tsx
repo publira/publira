@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionFormSettled } from "@publira/ui-components/action-form";
-import { Dialog } from "@publira/ui-components/dialog";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Dialog from "@publira/ui-components/dialog";
 import { createContext, use, useState } from "react";
 import type { ReactNode } from "react";
 
@@ -19,9 +19,9 @@ export const TenantMemberRoleDialog = ({
 
   return (
     <SetRoleDialogOpenContext value={setOpen}>
-      <Dialog onOpenChange={setOpen} open={open}>
+      <Dialog.Root onOpenChange={setOpen} open={open}>
         {children}
-      </Dialog>
+      </Dialog.Root>
     </SetRoleDialogOpenContext>
   );
 };
@@ -32,7 +32,7 @@ export const TenantMemberRoleDialog = ({
  */
 export const CloseTenantMemberRoleDialogOnSuccess = () => {
   const setOpen = use(SetRoleDialogOpenContext);
-  useActionFormSettled((state) => {
+  ActionForm.useSettled((state) => {
     if (state?.ok) {
       setOpen?.(false);
     }

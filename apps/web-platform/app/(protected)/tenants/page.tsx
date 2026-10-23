@@ -2,23 +2,10 @@ import type { Locale } from "@publira/i18n";
 import { Badge } from "@publira/ui-components/badge";
 import { Button, LinkButton } from "@publira/ui-components/button";
 import { Input } from "@publira/ui-components/input";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as SectionError from "@publira/ui-components/section-error";
 import { Select } from "@publira/ui-components/select";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  TableSkeleton,
-} from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import { formatDateTime } from "@publira/utils";
 import type { Metadata } from "next";
 import Form from "next/form";
@@ -76,7 +63,7 @@ const TenantsTableSkeleton = () => (
       <Skeleton className="h-10 w-44" />
       <Skeleton className="h-10 w-24" />
     </div>
-    <TableSkeleton />
+    <Table.Skeleton />
   </div>
 );
 
@@ -158,69 +145,71 @@ const TenantsContent = async ({
       </Form>
 
       {result.ok ? null : (
-        <SectionError>
-          <SectionErrorHeading>
-            <SectionErrorTitle>
+        <SectionError.Root>
+          <SectionError.Heading>
+            <SectionError.Title>
               <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
                 <Message message="platform.tenants.load_failed" />
               </Suspense>
-            </SectionErrorTitle>
-            <SectionErrorDescription>{result.message}</SectionErrorDescription>
-          </SectionErrorHeading>
-        </SectionError>
+            </SectionError.Title>
+            <SectionError.Description>
+              {result.message}
+            </SectionError.Description>
+          </SectionError.Heading>
+        </SectionError.Root>
       )}
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>
+      <Table.Root>
+        <Table.Header>
+          <Table.Row>
+            <Table.Head>
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                 <Message message="platform.tenants.columns_tenant" />
               </Suspense>
-            </TableHead>
-            <TableHead className="w-40">
+            </Table.Head>
+            <Table.Head className="w-40">
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                 <Message message="platform.tenants.columns_status" />
               </Suspense>
-            </TableHead>
-            <TableHead className="w-52">
+            </Table.Head>
+            <Table.Head className="w-52">
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                 <Message message="platform.tenants.columns_created" />
               </Suspense>
-            </TableHead>
-            <TableHead className="w-40" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
+            </Table.Head>
+            <Table.Head className="w-40" />
+          </Table.Row>
+        </Table.Header>
+        <Table.Body>
           {result.ok && result.tenants.length === 0 ? (
-            <TableRow>
-              <TableCell className="text-muted-foreground" colSpan={4}>
+            <Table.Row>
+              <Table.Cell className="text-muted-foreground" colSpan={4}>
                 {filters.name || filters.status
                   ? t("platform.tenants.empty_filtered")
                   : t("platform.tenants.empty")}
-              </TableCell>
-            </TableRow>
+              </Table.Cell>
+            </Table.Row>
           ) : null}
           {result.ok &&
             result.tenants.map((tenant) => (
-              <TableRow key={tenant.publicId}>
-                <TableCell className="font-medium">{tenant.name}</TableCell>
-                <TableCell>
+              <Table.Row key={tenant.publicId}>
+                <Table.Cell className="font-medium">{tenant.name}</Table.Cell>
+                <Table.Cell>
                   <Badge
                     tone={getTenantStatusTone(tenant.status)}
                     variant="outline"
                   >
                     <TenantStatusCell locale={locale} status={tenant.status} />
                   </Badge>
-                </TableCell>
-                <TableCell>
+                </Table.Cell>
+                <Table.Cell>
                   {formatDateTime(tenant.createdAt, {
                     fallback: t("platform.common.unset"),
                     locale,
                     timeZone,
                   })}
-                </TableCell>
-                <TableCell>
+                </Table.Cell>
+                <Table.Cell>
                   <LinkButton
                     render={<Link href={`/tenants/${tenant.publicId}`} />}
                     size="sm"
@@ -230,11 +219,11 @@ const TenantsContent = async ({
                       <Message message="platform.common.detail" />
                     </Suspense>
                   </LinkButton>
-                </TableCell>
-              </TableRow>
+                </Table.Cell>
+              </Table.Row>
             ))}
-        </TableBody>
-      </Table>
+        </Table.Body>
+      </Table.Root>
 
       <PaginationControls
         aria-label={t("platform.tenants.pagination_aria")}

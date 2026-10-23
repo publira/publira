@@ -1,7 +1,4 @@
-import {
-  ActionForm,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import type { ReactNode } from "react";
 
 import {
@@ -19,16 +16,16 @@ export const MarkNotificationAsReadButton = ({
   children: ReactNode;
   notificationId: string;
 }) => (
-  <ActionForm
+  <ActionForm.Root
     action={markNotificationAsReadAction}
     className="grid justify-items-end gap-1"
     showSuccess={false}
   >
     <input name="notification_id" type="hidden" value={notificationId} />
-    <ActionFormSubmit aria-label={ariaLabel} size="sm" variant="outline">
+    <ActionForm.Submit aria-label={ariaLabel} size="sm" variant="outline">
       {children}
-    </ActionFormSubmit>
-  </ActionForm>
+    </ActionForm.Submit>
+  </ActionForm.Root>
 );
 
 export const MarkAllNotificationsAsReadButton = ({
@@ -36,13 +33,13 @@ export const MarkAllNotificationsAsReadButton = ({
 }: {
   children: ReactNode;
 }) => (
-  <ActionForm
+  <ActionForm.Root
     action={markAllNotificationsAsReadAction}
     className="grid justify-items-end gap-1"
     showSuccess={false}
   >
-    <ActionFormSubmit size="sm" variant="outline">
+    <ActionForm.Submit size="sm" variant="outline">
       {children}
-    </ActionFormSubmit>
-  </ActionForm>
+    </ActionForm.Submit>
+  </ActionForm.Root>
 );

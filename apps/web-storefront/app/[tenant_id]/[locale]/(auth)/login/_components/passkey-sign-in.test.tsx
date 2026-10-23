@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { ActionFormSubmit } from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -71,7 +71,7 @@ const renderControl = () =>
       <input name="locale" type="hidden" value="en" />
       <input name="tenantId" type="hidden" value={TENANT_ID} />
       <input name="returnTo" type="hidden" value="/my" />
-      <ActionFormSubmit>Sign in with a passkey</ActionFormSubmit>
+      <ActionForm.Submit>Sign in with a passkey</ActionForm.Submit>
     </PasskeySignIn>
   );
 

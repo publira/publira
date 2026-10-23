@@ -5,7 +5,7 @@ A text input field component.
 ## Usage
 
 ```tsx
-import { Input } from "@publira/ui-components";
+import { Input } from "@publira/ui-components/input";
 
 export default function Example() {
   return <Input placeholder="Enter text..." />;

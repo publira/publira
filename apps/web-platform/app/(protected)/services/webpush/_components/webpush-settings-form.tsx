@@ -1,13 +1,5 @@
-import {
-  ActionForm,
-  ActionFormSubmit,
-} from "@publira/ui-components/action-form";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@publira/ui-components/field";
+import * as ActionForm from "@publira/ui-components/action-form";
+import * as Field from "@publira/ui-components/field";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
@@ -70,7 +62,7 @@ export const WebPushSettingsForm = ({
       </FormMessage>
     )}
 
-    <ActionForm
+    <ActionForm.Root
       action={updatePlatformWebPushSubjectAction}
       className="grid gap-5 sm:max-w-3xl"
     >
@@ -78,13 +70,13 @@ export const WebPushSettingsForm = ({
 
       {/* A save refreshes the settings; the new revision remounts the field
           instead of changing a mounted field's default. */}
-      <Field key={settings.revision}>
-        <FieldLabel required>
+      <Field.Root key={settings.revision}>
+        <Field.Label required>
           <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
             <Message message="platform.webpush.form.subject" />
           </Suspense>
-        </FieldLabel>
-        <FieldContent>
+        </Field.Label>
+        <Field.Content>
           <Input
             autoComplete="off"
             defaultValue={settings.subject}
@@ -95,21 +87,21 @@ export const WebPushSettingsForm = ({
             spellCheck={false}
             type="text"
           />
-        </FieldContent>
-        <FieldDescription>
+        </Field.Content>
+        <Field.Description>
           <Suspense fallback={<SkeletonLine className="h-3 w-64" />}>
             <Message message="platform.webpush.form.subject_help" />
           </Suspense>
-        </FieldDescription>
-      </Field>
+        </Field.Description>
+      </Field.Root>
 
       <div className="flex justify-end">
-        <ActionFormSubmit disabled={Boolean(loadErrorMessage)}>
+        <ActionForm.Submit disabled={Boolean(loadErrorMessage)}>
           <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
             <Message message="platform.webpush.save" />
           </Suspense>
-        </ActionFormSubmit>
+        </ActionForm.Submit>
       </div>
-    </ActionForm>
+    </ActionForm.Root>
   </PlatformSection>
 );

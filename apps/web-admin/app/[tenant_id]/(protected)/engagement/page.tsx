@@ -1,31 +1,9 @@
 import type { Locale } from "@publira/i18n";
-import {
-  EmptyStateDescription,
-  EmptyStateHeading,
-  EmptyStateTitle,
-} from "@publira/ui-components/empty-state";
-import {
-  Figure,
-  FigureLabel,
-  FigureLine,
-  FigureValue,
-} from "@publira/ui-components/figure-line";
-import {
-  SectionError,
-  SectionErrorDescription,
-  SectionErrorHeading,
-  SectionErrorTitle,
-} from "@publira/ui-components/section-error";
+import * as EmptyState from "@publira/ui-components/empty-state";
+import * as FigureLine from "@publira/ui-components/figure-line";
+import * as SectionError from "@publira/ui-components/section-error";
 import { SkeletonLine } from "@publira/ui-components/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableLoadingRow,
-  TableRow,
-} from "@publira/ui-components/table";
+import * as Table from "@publira/ui-components/table";
 import { formatPercent, formatPlainDate } from "@publira/utils";
 import { createPlaceholderStaticParams } from "@publira/utils/next-static-params";
 import type { Metadata } from "next";
@@ -114,43 +92,43 @@ const ReadThroughRateCell = async ({
 
 const EngagementSkeleton = () => (
   <AdminSections>
-    <FigureLine>
+    <FigureLine.Root>
       {(["skeleton-1", "skeleton-2", "skeleton-3"] as const).map((key) => (
-        <Figure key={key}>
-          <FigureLabel>
+        <FigureLine.Figure key={key}>
+          <FigureLine.Label>
             <SkeletonLine className="h-4 w-28" />
-          </FigureLabel>
-          <FigureValue>
+          </FigureLine.Label>
+          <FigureLine.Value>
             <SkeletonLine className="h-6 w-12" />
-          </FigureValue>
-        </Figure>
+          </FigureLine.Value>
+        </FigureLine.Figure>
       ))}
-    </FigureLine>
+    </FigureLine.Root>
 
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>
+    <Table.Root>
+      <Table.Header>
+        <Table.Row>
+          <Table.Head>
             <SkeletonLine className="h-4 w-24" />
-          </TableHead>
-          <TableHead>
+          </Table.Head>
+          <Table.Head>
             <SkeletonLine className="h-4 w-32" />
-          </TableHead>
-          <TableHead>
+          </Table.Head>
+          <Table.Head>
             <SkeletonLine className="h-4 w-16" />
-          </TableHead>
-          <TableHead>
+          </Table.Head>
+          <Table.Head>
             <SkeletonLine className="h-4 w-16" />
-          </TableHead>
-          <TableHead>
+          </Table.Head>
+          <Table.Head>
             <SkeletonLine className="h-4 w-20" />
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableLoadingRow colSpan={5} rows={6} />
-      </TableBody>
-    </Table>
+          </Table.Head>
+        </Table.Row>
+      </Table.Header>
+      <Table.Body>
+        <Table.LoadingRow colSpan={5} rows={6} />
+      </Table.Body>
+    </Table.Root>
   </AdminSections>
 );
 
@@ -172,16 +150,16 @@ const EngagementContent = async ({
 
   if (!result.ok) {
     return (
-      <SectionError>
-        <SectionErrorHeading>
-          <SectionErrorTitle>
+      <SectionError.Root>
+        <SectionError.Heading>
+          <SectionError.Title>
             <Suspense fallback={<SkeletonLine className="h-5 w-64" />}>
               <Message message="admin.engagement.section_error" />
             </Suspense>
-          </SectionErrorTitle>
-          <SectionErrorDescription>{result.message}</SectionErrorDescription>
-        </SectionErrorHeading>
-      </SectionError>
+          </SectionError.Title>
+          <SectionError.Description>{result.message}</SectionError.Description>
+        </SectionError.Heading>
+      </SectionError.Root>
     );
   }
 
@@ -207,34 +185,34 @@ const EngagementContent = async ({
             />
           </Suspense>
         </p>
-        <FigureLine>
-          <Figure>
-            <FigureLabel>
+        <FigureLine.Root>
+          <FigureLine.Figure>
+            <FigureLine.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                 <Message message="admin.engagement.complete_count_label" />
               </Suspense>
-            </FigureLabel>
-            <FigureValue>{result.totalCompleteCount}</FigureValue>
-          </Figure>
-          <Figure>
-            <FigureLabel>
+            </FigureLine.Label>
+            <FigureLine.Value>{result.totalCompleteCount}</FigureLine.Value>
+          </FigureLine.Figure>
+          <FigureLine.Figure>
+            <FigureLine.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                 <Message message="admin.engagement.member_view_count_label" />
               </Suspense>
-            </FigureLabel>
-            <FigureValue>{result.totalMemberViewCount}</FigureValue>
-          </Figure>
-          <Figure>
-            <FigureLabel>
+            </FigureLine.Label>
+            <FigureLine.Value>{result.totalMemberViewCount}</FigureLine.Value>
+          </FigureLine.Figure>
+          <FigureLine.Figure>
+            <FigureLine.Label>
               <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                 <Message message="admin.engagement.rate_label" />
               </Suspense>
-            </FigureLabel>
-            <FigureValue>
+            </FigureLine.Label>
+            <FigureLine.Value>
               {await formatReadThroughRate(totalRate, locale)}
-            </FigureValue>
-          </Figure>
-        </FigureLine>
+            </FigureLine.Value>
+          </FigureLine.Figure>
+        </FigureLine.Root>
         <p className="text-xs text-muted-foreground">
           <Suspense fallback={<SkeletonLine className="h-4 w-56" />}>
             <Message message="admin.engagement.definition" />
@@ -262,68 +240,68 @@ const EngagementContent = async ({
             hasPageLinks={hasPageLinks}
             itemLabel={t("admin.engagement.title")}
           >
-            <EmptyStateHeading>
-              <EmptyStateTitle>
+            <EmptyState.Heading>
+              <EmptyState.Title>
                 {t("admin.engagement.empty_title")}
-              </EmptyStateTitle>
-              <EmptyStateDescription>
+              </EmptyState.Title>
+              <EmptyState.Description>
                 <Message message="admin.engagement.empty_description" />
-              </EmptyStateDescription>
-            </EmptyStateHeading>
+              </EmptyState.Description>
+            </EmptyState.Heading>
           </CursorPageEmptyState>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>
+          <Table.Root>
+            <Table.Header>
+              <Table.Row>
+                <Table.Head>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="admin.engagement.columns.series" />
                   </Suspense>
-                </TableHead>
-                <TableHead>
+                </Table.Head>
+                <Table.Head>
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="admin.engagement.columns.episode" />
                   </Suspense>
-                </TableHead>
-                <TableHead className="w-32">
+                </Table.Head>
+                <Table.Head className="w-32">
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="admin.engagement.columns.complete_count" />
                   </Suspense>
-                </TableHead>
-                <TableHead className="w-32">
+                </Table.Head>
+                <Table.Head className="w-32">
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="admin.engagement.columns.member_view_count" />
                   </Suspense>
-                </TableHead>
-                <TableHead className="w-32">
+                </Table.Head>
+                <Table.Head className="w-32">
                   <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                     <Message message="admin.engagement.columns.rate" />
                   </Suspense>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+                </Table.Head>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
               {result.episodes.map((item) => (
-                <TableRow
+                <Table.Row
                   key={`${item.seriesPublicId}-${item.episodePublicId}`}
                 >
-                  <TableCell>{item.seriesTitle}</TableCell>
-                  <TableCell className="font-medium">
+                  <Table.Cell>{item.seriesTitle}</Table.Cell>
+                  <Table.Cell className="font-medium">
                     {item.episodeTitle}
-                  </TableCell>
-                  <TableCell>{item.completeCount}</TableCell>
-                  <TableCell>{item.memberViewCount}</TableCell>
-                  <TableCell>
+                  </Table.Cell>
+                  <Table.Cell>{item.completeCount}</Table.Cell>
+                  <Table.Cell>{item.memberViewCount}</Table.Cell>
+                  <Table.Cell>
                     <ReadThroughRateCell
                       completeCount={item.completeCount}
                       locale={locale}
                       memberViewCount={item.memberViewCount}
                     />
-                  </TableCell>
-                </TableRow>
+                  </Table.Cell>
+                </Table.Row>
               ))}
-            </TableBody>
-          </Table>
+            </Table.Body>
+          </Table.Root>
         )}
 
         {result.episodes.length > 0 || hasPageLinks ? (

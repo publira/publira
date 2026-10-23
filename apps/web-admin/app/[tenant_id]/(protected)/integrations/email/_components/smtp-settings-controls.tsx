@@ -1,15 +1,10 @@
 "use client";
 
-import {
-  ActionFormSubmit,
-  useActionFormSettled,
-  useActionFormState,
-} from "@publira/ui-components/action-form";
-import type { ActionFormControlAction } from "@publira/ui-components/action-form";
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import { Checkbox } from "@publira/ui-components/checkbox";
-import { DialogTrigger } from "@publira/ui-components/dialog";
-import { Field, FieldContent, FieldLabel } from "@publira/ui-components/field";
+import * as Dialog from "@publira/ui-components/dialog";
+import * as Field from "@publira/ui-components/field";
 import { Fieldset } from "@publira/ui-components/fieldset";
 import { FormMessage } from "@publira/ui-components/form-message";
 import { Input } from "@publira/ui-components/input";
@@ -77,7 +72,7 @@ export const SmtpOverride = ({
     [canEdit, enabled]
   );
 
-  useActionFormSettled<SavedSettingsState>((settled) => {
+  ActionForm.useSettled<SavedSettingsState>((settled) => {
     if (settled?.ok) {
       setEnabled(settled.settings.smtpOverrideEnabled);
     }
@@ -124,7 +119,7 @@ export const SmtpOverrideFieldset = ({
 export const SmtpSettingLabel = ({ children }: { children: ReactNode }) => {
   const { interactive } = useSmtpOverride();
 
-  return <FieldLabel required={interactive}>{children}</FieldLabel>;
+  return <Field.Label required={interactive}>{children}</Field.Label>;
 };
 
 interface SmtpPasswordContextValue {
@@ -159,7 +154,7 @@ export const SmtpPassword = ({
   children: ReactNode;
   hasStoredPassword: boolean;
 }) => {
-  const state = useActionFormState<SavedSettingsState>();
+  const state = ActionForm.useState<SavedSettingsState>();
   const hasStoredPassword = state?.ok
     ? state.settings.hasPassword
     : initialHasStoredPassword;
@@ -179,7 +174,7 @@ export const SmtpPassword = ({
     [hasStoredPassword, isEditing]
   );
 
-  useActionFormSettled<SavedSettingsState>((settled) => {
+  ActionForm.useSettled<SavedSettingsState>((settled) => {
     if (settled?.ok) {
       setIsEditing(!settled.settings.hasPassword);
       setHasEntry(false);
@@ -288,7 +283,7 @@ export const SmtpTestTrigger = ({ children }: { children: ReactNode }) => {
   const { pending } = useFormStatus();
 
   return (
-    <DialogTrigger
+    <Dialog.Trigger
       render={
         <Button
           disabled={!interactive || pending}
@@ -298,12 +293,12 @@ export const SmtpTestTrigger = ({ children }: { children: ReactNode }) => {
       }
     >
       {children}
-    </DialogTrigger>
+    </Dialog.Trigger>
   );
 };
 
 interface SmtpTestContextValue {
-  dispatch: ActionFormControlAction;
+  dispatch: ActionForm.ControlAction;
   form: string;
   isTesting: boolean;
   sendToSelf: boolean;
@@ -390,9 +385,9 @@ export const SmtpTestRecipient = ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <Field>
-      <FieldLabel required>{children}</FieldLabel>
-      <FieldContent>
+    <Field.Root>
+      <Field.Label required>{children}</Field.Label>
+      <Field.Content>
         <Input
           disabled={isTesting}
           form={form}
@@ -401,8 +396,8 @@ export const SmtpTestRecipient = ({ children }: { children: ReactNode }) => {
           required
           type="email"
         />
-      </FieldContent>
-    </Field>
+      </Field.Content>
+    </Field.Root>
   );
 };
 
@@ -422,8 +417,8 @@ export const SmtpTestSubmit = ({ children }: { children: ReactNode }) => {
   const { dispatch, form } = useSmtpTest();
 
   return (
-    <ActionFormSubmit form={form} formAction={dispatch} variant="outline">
+    <ActionForm.Submit form={form} formAction={dispatch} variant="outline">
       {children}
-    </ActionFormSubmit>
+    </ActionForm.Submit>
   );
 };

@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  PasswordInput,
-  PasswordInputControl,
-  PasswordInputToggle,
-} from "@publira/ui-components/password-input";
+import * as PasswordInput from "@publira/ui-components/password-input";
 import { cn } from "@publira/utils";
 import { useCallback, useState } from "react";
 
@@ -114,8 +110,8 @@ export const DeleteAccountModal = ({
                   >
                     <ClientMessage message="storefront.settings.current_password_label" />
                   </label>
-                  <PasswordInput>
-                    <PasswordInputControl
+                  <PasswordInput.Root>
+                    <PasswordInput.Control
                       autoComplete="current-password"
                       className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                       id="deletePassword"
@@ -123,10 +119,10 @@ export const DeleteAccountModal = ({
                       placeholder="********"
                       required
                     />
-                    <PasswordInputToggle>
+                    <PasswordInput.Toggle>
                       <ClientMessage message="storefront.common.show_password" />
-                    </PasswordInputToggle>
-                  </PasswordInput>
+                    </PasswordInput.Toggle>
+                  </PasswordInput.Root>
                 </div>
 
                 <div className="flex justify-end gap-2 pt-2">

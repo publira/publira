@@ -4,7 +4,7 @@ import { bindMessages } from "@publira/i18n";
 import type { MessageKey, MessageValues } from "@publira/i18n";
 import { sharedCatalog } from "@publira/i18n/catalog";
 import type { SharedMessages } from "@publira/i18n/catalog";
-import type { FormActionState } from "@publira/ui-components/action-form";
+import type * as ActionForm from "@publira/ui-components/action-form";
 import {
   act,
   cleanup,
@@ -37,9 +37,9 @@ const { confirm, disable, regenerate, start } = vi.hoisted(() => ({
   disable:
     vi.fn<
       (
-        previousState: FormActionState,
+        previousState: ActionForm.State,
         formData: FormData
-      ) => Promise<FormActionState>
+      ) => Promise<ActionForm.State>
     >(),
   regenerate:
     vi.fn<
